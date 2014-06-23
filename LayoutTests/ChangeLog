@@ -1,3 +1,384 @@
+2014-06-22  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r170257) http/tests/navigation/javascriptlink-frames.html fails on MountainLion
+        https://bugs.webkit.org/show_bug.cgi?id=134182
+
+        Unreviewed gardening.
+
+        * platform/mac-mountainlion/TestExpectations: Added, skip the test.
+
+2014-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        [WK2] Frameset frames are not scrollable after loading (and should be)
+        https://bugs.webkit.org/show_bug.cgi?id=134151
+        <rdar://problem/17403365>
+
+        Reviewed by Dan Bates.
+        
+        Frameset test that dumps the scrolling tree.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-frame-scrollability.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/resources/scrollable-page.html: Added.
+
+2014-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Have scrollingTreeAsText() dump the non-fast-scrollable region
+        https://bugs.webkit.org/show_bug.cgi?id=134149
+
+        Reviewed by Sam Weinig.
+        
+        Rebaselined.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/fixed-in-overflow-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-in-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+
+2014-06-21  Dean Jackson  <dino@apple.com>
+
+        [Mac] Margins for new form controls need tweaking
+        https://bugs.webkit.org/show_bug.cgi?id=134135
+        <rdar://problem/17262164>
+
+        Reviewed by Sam Weinig.
+
+        Take 2 of this patch adds some Mountain Lion results.
+
+        Rebaseline a bunch of results since some <input> dimensions
+        changed slightly.
+
+        * platform/mac-mountainlion/fast/block/margin-collapse/103-expected.txt:
+        * platform/mac-mountainlion/fast/forms/basic-inputs-expected.png: Added.
+        * platform/mac-mountainlion/fast/forms/basic-inputs-expected.txt:
+        * platform/mac-mountainlion/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac-mountainlion/fast/forms/form-element-geometry-expected.png: Added.
+        * platform/mac-mountainlion/fast/forms/form-element-geometry-expected.txt:
+        * platform/mac-mountainlion/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac-mountainlion/fast/forms/input-value-expected.txt:
+        * platform/mac-mountainlion/fast/replaced/replaced-breaking-expected.txt:
+        * platform/mac-mountainlion/http/tests/navigation/javascriptlink-frame-expected.txt: Added.
+        * platform/mac-mountainlion/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/mac/css1/box_properties/acid_test-expected.png:
+        * platform/mac/css1/box_properties/acid_test-expected.txt:
+        * platform/mac/css2.1/t09-c5526c-display-00-e-expected.png:
+        * platform/mac/css2.1/t09-c5526c-display-00-e-expected.txt:
+        * platform/mac/fast/block/basic/011-expected.png:
+        * platform/mac/fast/block/basic/011-expected.txt:
+        * platform/mac/fast/block/margin-collapse/103-expected.png:
+        * platform/mac/fast/block/margin-collapse/103-expected.txt:
+        * platform/mac/fast/forms/basic-inputs-expected.png:
+        * platform/mac/fast/forms/basic-inputs-expected.txt:
+        * platform/mac/fast/forms/box-shadow-override-expected.png:
+        * platform/mac/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac/fast/forms/form-element-geometry-expected.png:
+        * platform/mac/fast/forms/form-element-geometry-expected.txt:
+        * platform/mac/fast/forms/formmove-expected.txt:
+        * platform/mac/fast/forms/formmove2-expected.png:
+        * platform/mac/fast/forms/formmove2-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.png:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.png:
+        * platform/mac/fast/forms/input-value-expected.txt:
+        * platform/mac/fast/inline/positionedLifetime-expected.txt:
+        * platform/mac/fast/replaced/replaced-breaking-expected.png:
+        * platform/mac/fast/replaced/replaced-breaking-expected.txt:
+        * platform/mac/fast/replaced/width100percent-radio-expected.txt:
+        * platform/mac/http/tests/navigation/javascriptlink-frames-expected.png:
+        * platform/mac/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug1318-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug1318-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4527-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/core/captions1-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/core/captions2-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/core/captions2-expected.txt:
+
+2014-06-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170228.
+        https://bugs.webkit.org/show_bug.cgi?id=134155
+
+        Caused 9 layout test failures on Mountain Lion
+        http://build.webkit.org/builders/Apple%20MountainLion%20Release%20WK2%20(Tests)/builds/19216
+        (Requested by bradee-oh on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] Margins for new form controls need tweaking"
+        https://bugs.webkit.org/show_bug.cgi?id=134135
+        http://trac.webkit.org/changeset/170228
+
+2014-06-21  Frédéric Wang  <fred.wang@free.fr>
+
+        Remove latinmodern-math.woff from LayoutTests/mathml/opentype
+        https://bugs.webkit.org/show_bug.cgi?id=134094
+
+        Reviewed by Martin Robinson.
+
+        We remove latinmodern-math.woff from the source and make mathml/opentype/*LatinModern* tests not font-specific, so that each platform will use whatever OpenType MATH is available.
+        Until bug 133604 is fixed and Latin Modern Math installed on the Linux bots, the tests are marked as failed. More generally, we need to fix bug 133603.
+        The test mathml/opentype/roots-LatinModern is removed since it will duplicate mathml/presentation/roots.xhtml when OpenType MATH fonts are available.
+
+        * mathml/opentype/LICENSE-LatinModern.txt: Removed.
+        * mathml/opentype/horizontal-munderover.html: Renamed from LayoutTests/mathml/opentype/horizontal-LatinModern-munderover.html.
+        * mathml/opentype/horizontal.html: Renamed from LayoutTests/mathml/opentype/horizontal-LatinModern.html.
+        * mathml/opentype/large-operators-LatinModern.html: Removed.
+        * mathml/opentype/large-operators.html: Added.
+        * mathml/opentype/latinmodern-math.woff: Removed.
+        * mathml/opentype/opentype-stretchy-horizontal.html:
+        * mathml/opentype/roots-LatinModern.html: Removed.
+        * mathml/opentype/vertical.html: Renamed from LayoutTests/mathml/opentype/vertical-LatinModern.html.
+        * platform/efl/TestExpectations:
+        * platform/efl/mathml/opentype/horizontal-expected.txt: Renamed from LayoutTests/platform/efl/mathml/opentype/horizontal-LatinModern-expected.txt.
+        * platform/efl/mathml/opentype/horizontal-munderover-expected.txt: Renamed from LayoutTests/platform/efl/mathml/opentype/horizontal-LatinModern-munderover-expected.txt.
+        * platform/efl/mathml/opentype/large-operators-expected.png: Renamed from LayoutTests/platform/gtk/mathml/opentype/large-operators-LatinModern-expected.png.
+        * platform/efl/mathml/opentype/large-operators-expected.txt: Renamed from LayoutTests/platform/efl/mathml/opentype/large-operators-LatinModern-expected.txt.
+        * platform/efl/mathml/opentype/roots-LatinModern-expected.txt: Removed.
+        * platform/efl/mathml/opentype/vertical-expected.png: Renamed from LayoutTests/platform/gtk/mathml/opentype/vertical-LatinModern-expected.png.
+        * platform/efl/mathml/opentype/vertical-expected.txt: Renamed from LayoutTests/platform/efl/mathml/opentype/vertical-LatinModern-expected.txt.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/mathml/opentype/horizontal-expected.png: Renamed from LayoutTests/platform/gtk/mathml/opentype/horizontal-LatinModern-expected.png.
+        * platform/gtk/mathml/opentype/horizontal-expected.txt: Renamed from LayoutTests/platform/gtk/mathml/opentype/horizontal-LatinModern-expected.txt.
+        * platform/gtk/mathml/opentype/horizontal-munderover-expected.png: Renamed from LayoutTests/platform/gtk/mathml/opentype/horizontal-LatinModern-munderover-expected.png.
+        * platform/gtk/mathml/opentype/horizontal-munderover-expected.txt: Renamed from LayoutTests/platform/gtk/mathml/opentype/horizontal-LatinModern-munderover-expected.txt.
+        * platform/gtk/mathml/opentype/large-operators-expected.png: Renamed from LayoutTests/platform/efl/mathml/opentype/large-operators-LatinModern-expected.png.
+        * platform/gtk/mathml/opentype/large-operators-expected.txt: Renamed from LayoutTests/platform/gtk/mathml/opentype/large-operators-LatinModern-expected.txt.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.png: Removed.
+        * platform/gtk/mathml/opentype/roots-LatinModern-expected.txt: Removed.
+        * platform/gtk/mathml/opentype/vertical-expected.png: Renamed from LayoutTests/platform/efl/mathml/opentype/vertical-LatinModern-expected.png.
+        * platform/gtk/mathml/opentype/vertical-expected.txt: Renamed from LayoutTests/platform/gtk/mathml/opentype/vertical-LatinModern-expected.txt.
+        * platform/mac-wk2/mathml/opentype/large-operators-LatinModern-expected.txt: Removed.
+        * platform/mac-wk2/mathml/opentype/vertical-LatinModern-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+        * platform/mac/mathml/opentype/horizontal-expected.txt: Renamed from LayoutTests/platform/mac/mathml/opentype/horizontal-LatinModern-expected.txt.
+        * platform/mac/mathml/opentype/horizontal-munderover-expected.txt: Renamed from LayoutTests/platform/mac/mathml/opentype/horizontal-LatinModern-munderover-expected.txt.
+        * platform/mac/mathml/opentype/large-operators-expected.txt: Renamed from LayoutTests/platform/mac/mathml/opentype/large-operators-LatinModern-expected.txt.
+        * platform/mac/mathml/opentype/roots-LatinModern-expected.txt: Removed.
+        * platform/mac/mathml/opentype/vertical-expected.txt: Renamed from LayoutTests/platform/mac/mathml/opentype/vertical-LatinModern-expected.txt.
+        * platform/win/TestExpectations:
+        * platform/win/mathml/opentype/horizontal-expected.txt: Renamed from LayoutTests/platform/win/mathml/opentype/horizontal-LatinModern-expected.txt.
+        * platform/win/mathml/opentype/horizontal-munderover-expected.txt: Renamed from LayoutTests/platform/win/mathml/opentype/horizontal-LatinModern-munderover-expected.txt.
+        * platform/win/mathml/opentype/roots-LatinModern-expected.txt: Removed.
+
+2014-06-20  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove WebKit1 test results
+        https://bugs.webkit.org/show_bug.cgi?id=134137
+
+        Reviewed by Daniel Bates.
+
+        * platform/efl-wk1: Removed entire directory which contains the WebKit1 EFL test results.
+
+2014-06-20  Dean Jackson  <dino@apple.com>
+
+        [Mac] Margins for new form controls need tweaking
+        https://bugs.webkit.org/show_bug.cgi?id=134135
+        <rdar://problem/17262164>
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline a bunch of results since some <input> dimensions
+        changed slightly.
+
+        * platform/mac/css1/box_properties/acid_test-expected.png:
+        * platform/mac/css1/box_properties/acid_test-expected.txt:
+        * platform/mac/css2.1/t09-c5526c-display-00-e-expected.png:
+        * platform/mac/css2.1/t09-c5526c-display-00-e-expected.txt:
+        * platform/mac/fast/block/basic/011-expected.png:
+        * platform/mac/fast/block/basic/011-expected.txt:
+        * platform/mac/fast/block/margin-collapse/103-expected.png:
+        * platform/mac/fast/block/margin-collapse/103-expected.txt:
+        * platform/mac/fast/forms/basic-inputs-expected.png:
+        * platform/mac/fast/forms/basic-inputs-expected.txt:
+        * platform/mac/fast/forms/box-shadow-override-expected.png:
+        * platform/mac/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac/fast/forms/form-element-geometry-expected.png:
+        * platform/mac/fast/forms/form-element-geometry-expected.txt:
+        * platform/mac/fast/forms/formmove-expected.txt:
+        * platform/mac/fast/forms/formmove2-expected.png:
+        * platform/mac/fast/forms/formmove2-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.png:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.png:
+        * platform/mac/fast/forms/input-value-expected.txt:
+        * platform/mac/fast/inline/positionedLifetime-expected.txt:
+        * platform/mac/fast/replaced/replaced-breaking-expected.png:
+        * platform/mac/fast/replaced/replaced-breaking-expected.txt:
+        * platform/mac/fast/replaced/width100percent-radio-expected.txt:
+        * platform/mac/http/tests/navigation/javascriptlink-frames-expected.png:
+        * platform/mac/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug1318-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug1318-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4527-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/core/captions1-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/core/captions2-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/core/captions2-expected.txt:
+
+2014-06-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Support Khmer and Lao fallback fonts
+        https://bugs.webkit.org/show_bug.cgi?id=134114
+
+        Reviewed by Enrica Casucci.
+
+        Simply dump the render tree of a page that includes Khmer and Lao text. The success
+        of this test depends on font font metrics being different than system fallback font
+        (which just shows rectangles instead of glyphs).
+
+        * fast/text/khmer-lao-font.html: Added.
+        * platform/ios-sim/fast/text/khmer-lao-font-expected.txt: Added.
+        * platform/mac/fast/text/khmer-lao-font-expected.txt: Added.
+
+2014-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r169972): fix issue when removing masks from compositing layers
+        https://bugs.webkit.org/show_bug.cgi?id=134118
+        <rdar://problem/17366654>
+
+        Reviewed by Dean Jackson.
+        
+        Test that toggles the mask on a composited element.
+
+        * compositing/masks/toggle-mask-expected.txt: Added.
+        * compositing/masks/toggle-mask.html: Added.
+
+2014-06-19  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WebKit2] Make -webkit-overflow-scrolling:touch work in iframes (breaks MSWord previews)
+        https://bugs.webkit.org/show_bug.cgi?id=134085
+
+        Reviewed by Tim Horton.
+        
+        Tests that add and remove a fixed container of a scroll-coordinated iframe.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-gain-scrolling-ancestor-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-gain-scrolling-ancestor.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-in-fixed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-lose-scrolling-ancestor-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/coordinated-frame-lose-scrolling-ancestor.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/remove-coordinated-frame-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/remove-coordinated-frame.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/resources/doc-with-sticky.html:
+
+2014-06-19  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed GTK gardening.
+
+        Updated text expectations after r170138.
+
+        * platform/gtk/accessibility/image-map2-expected.txt: Updated.
+        * platform/gtk/inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Updated.
+
+2014-06-19  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [EFL] Add expectations for failing svg/wicd/rightsizing-grid.xhtml layout test
+        https://bugs.webkit.org/show_bug.cgi?id=133982
+
+        Unreviewed gardening.
+
+        * platform/efl/TestExpectations:
+
+2014-06-18  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: expose aria-relevant
+        https://bugs.webkit.org/show_bug.cgi?id=130913
+
+        Reviewed by Joseph Pecoraro.
+
+        Expose ARIA live region relevance in Web Inspector.
+        E.g. "Live: Assertive (Additions, Text)"
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Minor update.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion-expected.txt: Updated with new output.
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion.html: Updated with new elements.
+
+2014-06-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Add rebeccapurple to CSS named color list
+        https://bugs.webkit.org/show_bug.cgi?id=133804
+
+        Reviewed by Jer Noble.
+
+        Add the named color "rebeccapurple" (#639).
+
+        * fast/css/named-colors-expected.txt:
+        * fast/css/named-colors.html:
+
+2014-06-11  Jeffrey Pfau  <jpfau@apple.com>
+
+        Fix flaky beforeload tests
+        https://bugs.webkit.org/show_bug.cgi?id=133685
+
+        Reviewed by David Kilzer.
+
+        * platform/wk2/TestExpectations: Unskip tests that are no longer flaky
+
+2014-06-18  Benjamin Poulain  <benjamin@webkit.org>
+
+        Subtrees with :first-child and :last-child are not invalidated when siblings are added/removed
+        https://bugs.webkit.org/show_bug.cgi?id=133934
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/getComputedStyle/empty-update-without-renderer-expected.txt: Added.
+        * fast/css/getComputedStyle/empty-update-without-renderer.html: Added.
+        * fast/css/getComputedStyle/first-child-update-without-renderer-expected.txt: Added.
+        * fast/css/getComputedStyle/first-child-update-without-renderer.html: Added.
+        * fast/css/getComputedStyle/last-child-update-without-renderer-expected.txt: Added.
+        * fast/css/getComputedStyle/last-child-update-without-renderer.html: Added.
+
+2014-06-18  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r167856): Unable to log into HSBC app
+        https://bugs.webkit.org/show_bug.cgi?id=133991
+        <rdar://problem/17044839>
+
+        Reviewed by David Kilzer.
+
+        Add tests to ensure that the WebKit client will be notified to service a redirect to an invalid
+        URL when the setting allowNavigationToInvalidURL is enabled and will not be notified when
+        the setting is disabled.
+
+        * fast/loader/allow-redirect-to-invalid-url-using-javascript-expected.txt: Added.
+        * fast/loader/allow-redirect-to-invalid-url-using-javascript.html: Added.
+        * fast/loader/allow-redirect-to-invalid-url-using-meta-refresh-expected.txt: Added.
+        * fast/loader/allow-redirect-to-invalid-url-using-meta-refresh.html: Added.
+        * fast/loader/disallow-redirect-to-invalid-url-using-javascript-expected.txt: Added.
+        * fast/loader/disallow-redirect-to-invalid-url-using-javascript.html: Added.
+        * fast/loader/disallow-redirect-to-invalid-url-using-meta-refresh-expected.txt: Added.
+        * fast/loader/disallow-redirect-to-invalid-url-using-meta-refresh.html: Added.
+        * fast/loader/resources/redirect-to-invalid-url-using-javascript.html: Added.
+        * fast/loader/resources/redirect-to-invalid-url-using-meta-refresh.html: Added.
+
+2014-06-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170099.
+        https://bugs.webkit.org/show_bug.cgi?id=134031
+
+        Introduced a layouttest failure to the mac bots (Requested by
+        bradeeoh on #webkit).
+
+        Reverted changeset:
+
+        "Mark mathml/wbr-in-mroot-crash.html as "Timeout Pass""
+        https://bugs.webkit.org/show_bug.cgi?id=130353
+        http://trac.webkit.org/changeset/170099
+
+2014-06-18  Frédéric Wang  <fred.wang@free.fr>
+
+        Mark mathml/wbr-in-mroot-crash.html as "Timeout Pass"
+        https://bugs.webkit.org/show_bug.cgi?id=130353
+
+        Unreviewed gardening.
+
+        * platform/efl/TestExpectations:
+        * platform/mac/TestExpectations:
+
 2014-06-17  Zalan Bujtas  <zalan@apple.com>
 
         Fix 'lint-test-files' warnings on run-webkit-test -2

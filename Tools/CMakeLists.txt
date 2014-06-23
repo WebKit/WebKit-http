@@ -4,16 +4,8 @@ endif ()
 
 if ("${PORT}" STREQUAL "Efl")
     add_subdirectory(ImageDiff)
-    add_subdirectory(EWebLauncher/ControlTheme)
 
-    if (ENABLE_WEBKIT)
-        add_subdirectory(DumpRenderTree)
-        add_subdirectory(EWebLauncher)
-    endif ()
-
-    if (ENABLE_WEBKIT2)
-        add_subdirectory(MiniBrowser/efl)
-    endif ()
+    add_subdirectory(MiniBrowser/efl)
     add_subdirectory(DumpRenderTree/TestNetscapePlugIn)
 elseif ("${PORT}" STREQUAL "Haiku")
     add_subdirectory(DumpRenderTree)

@@ -78,6 +78,7 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 @property (nonatomic, readonly) NSArray *_certificateChain;
 @property (nonatomic, readonly) NSURL *_committedURL;
+@property (nonatomic, readonly) NSString *_MIMEType;
 
 @property (copy, setter=_setApplicationNameForUserAgent:) NSString *_applicationNameForUserAgent;
 @property (copy, setter=_setCustomUserAgent:) NSString *_customUserAgent;
@@ -150,8 +151,7 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
 #endif
 
-- (void)_runJavaScriptInMainFrame:(NSString *)scriptString;
-
+- (void)_getMainResourceDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;
 - (void)_getWebArchiveDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;
 
 @property (nonatomic, setter=_setPaginationMode:) _WKPaginationMode _paginationMode;
@@ -173,6 +173,8 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 - (void)_hideFindUI;
 
 @property (nonatomic, weak, setter=_setFormDelegate:) id <_WKFormDelegate> _formDelegate;
+
+@property (nonatomic, readonly, getter=_isDisplayingStandaloneImageDocument) BOOL _displayingStandaloneImageDocument;
 
 @end
 

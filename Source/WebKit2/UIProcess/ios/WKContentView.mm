@@ -310,6 +310,7 @@ private:
 
     if (auto drawingArea = _page->drawingArea())
         drawingArea->updateDebugIndicator();
+    [self _updateUnscaledView];
 }
 
 - (void)setMinimumSize:(CGSize)size
@@ -379,12 +380,13 @@ private:
 
 - (void)_processDidExit
 {
-    // FIXME: Implement.
+    [self cleanupInteraction];
 }
 
 - (void)_didRelaunchProcess
 {
     [self _accessibilityRegisterUIProcessTokens];
+    [self setupInteraction];
 }
 
 - (void)_didCommitLoadForMainFrame

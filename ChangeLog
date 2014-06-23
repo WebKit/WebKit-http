@@ -1,3 +1,95 @@
+2014-06-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Disable gamepad feature on EFL and GTK ports by default
+        https://bugs.webkit.org/show_bug.cgi?id=134169
+
+        Reviewed by Brady Eidson.
+
+        * Source/cmake/OptionsEfl.cmake: Disable ENABLE_GAMEPAD_DEPRECATED.
+
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Add the "Deprecated" suffix to some implementation files
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-06-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170244.
+        https://bugs.webkit.org/show_bug.cgi?id=134157
+
+        GTK/EFL bindings generator works differently, making this
+        patch not work there.  Will fix entire patch after a rollout.
+        (Requested by bradee-oh on #webkit).
+
+        Reverted changeset:
+
+        "Gamepad API - Deprecate the existing implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+        http://trac.webkit.org/changeset/170244
+
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Add the "Deprecated" suffix to some implementation files
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-06-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Removing PAGE_VISIBILITY_API compile guard.
+        https://bugs.webkit.org/show_bug.cgi?id=133844
+
+        Reviewed by Gavin Barraclough.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-06-19  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][CMAKE] Disable WebKit1 build as a default
+        https://bugs.webkit.org/show_bug.cgi?id=134093
+
+        Reviewed by Gyuyoung Kim.
+
+        Disable WebKit1 build and enable WebKit2 build for the EFL port.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-06-19  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Remove ENABLE(LLINT) and ENABLE(LLINT_C_LOOP) guards
+        https://bugs.webkit.org/show_bug.cgi?id=130389
+
+        Reviewed by Mark Lam.
+
+        Removed ENABLE(LLINT) since we always build with it, and changed ENABLE(LLINT_C_LOOP)
+        into !ENABLE(JIT) since they are mutually exclusive.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
 2014-06-17  Zan Dobersek  <zdobersek@igalia.com>
 
         Remove the USE_GTK2=1 branch in OptionsGTK.cmake. This used to determine

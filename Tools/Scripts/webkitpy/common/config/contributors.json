@@ -1078,6 +1078,14 @@
             "loislo"
          ]
       },
+      "Ion Rosca" : {
+         "emails" : [
+            "rosca@adobe.com"
+         ],
+         "nicks" : [
+            "rosca"
+         ]
+      },
       "Ivan Ivan Krsti\u0107" : {
          "emails" : [
             "ike@apple.com"
@@ -2729,23 +2737,21 @@
          ],
          "expertise" : "JavaScriptCore"
       },
+      "Yusuke Suzuki" : {
+         "emails" : [
+            "utatane.tea@gmail.com"
+         ],
+         "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript",
+         "nicks" : [
+            "yusukesuzuki"
+         ]
+      },
       "Yuzo Fujishima" : {
          "emails" : [
             "yuzo@google.com"
          ],
          "nicks" : [
             "yuzo"
-         ]
-      },
-      "Zalan Bujtas" : {
-         "emails" : [
-            "zalan@apple.com",
-            "zbujtas@gmail.com",
-            "zalan.bujtas@nokia.com"
-         ],
-         "expertise" : "Frame flattening",
-         "nicks" : [
-            "zalan"
          ]
       },
       "Zeno Albisser" : {
@@ -2783,6 +2789,14 @@
          ],
          "nicks" : [
             "zdobersek"
+         ]
+      },
+      "Javier Fernandez" : {
+         "emails" : [
+            "jfernandez@igalia.com"
+         ],
+         "nicks" : [
+            "lajava"
          ]
       }
    },
@@ -3037,14 +3051,6 @@
             "hixie"
          ]
       },
-      "Javier Fernandez" : {
-         "emails" : [
-            "jfernandez@igalia.com"
-         ],
-         "nicks" : [
-            "lajava"
-         ]
-      },
       "Jeff Timanus" : {
          "emails" : [
             "twiz@chromium.org",
@@ -3276,12 +3282,6 @@
          "nicks" : [
             "wcarss"
          ]
-      },
-      "Yusuke Suzuki" : {
-         "emails" : [
-            "utatane.tea@gmail.com"
-         ],
-         "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript"
       },
       "Zeev Lieber" : {
          "emails" : [
@@ -4601,6 +4601,17 @@
          "expertise" : "Core KHTML contributor, The QtWebKit Port",
          "nicks" : [
             "zackr"
+         ]
+      },
+      "Zalan Bujtas" : {
+         "emails" : [
+            "zalan@apple.com",
+            "zbujtas@gmail.com",
+            "zalan.bujtas@nokia.com"
+         ],
+         "expertise" : "Layout and Rendering, subpixel positioning, frame flattening",
+         "nicks" : [
+            "zalan"
          ]
       },
       "Zoltan Herczeg" : {

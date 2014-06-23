@@ -2622,6 +2622,11 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     _data->_page->viewStateDidChange(ViewState::IsVisible);
 }
 
+- (void)_applicationWillTerminate:(NSNotification *)notification
+{
+    _data->_page->process().context().applicationWillTerminate();
+}
+
 - (void)_accessibilityRegisterUIProcessTokens
 {
     // Initialize remote accessibility when the window connection has been established.
@@ -3485,6 +3490,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
     [workspaceNotificationCenter addObserver:self selector:@selector(_activeSpaceDidChange:) name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
 
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillTerminate:) name:NSApplicationWillTerminateNotification object:NSApp];
+
     return self;
 }
 
@@ -3508,7 +3515,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     else
         [self _setAcceleratedCompositingModeRootLayer:_data->_rootLayer.get()];
 
-    _data->_page->viewStateDidChange(ViewState::WindowIsActive | ViewState::IsInWindow | ViewState::IsVisible);
+    if (!thumbnailView.usesSnapshot)
+        _data->_page->viewStateDidChange(ViewState::WindowIsActive | ViewState::IsInWindow | ViewState::IsVisible);
 }
 
 - (_WKThumbnailView *)_thumbnailView
@@ -3521,7 +3529,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _WKThumbnailView *thumbnailView = _data->_thumbnailView;
     ASSERT(thumbnailView);
 
-    if (!thumbnailView.usesSnapshot || thumbnailView._waitingForSnapshot)
+    if (!thumbnailView.usesSnapshot || (thumbnailView._waitingForSnapshot && self.window))
         [self _reparentLayerTreeInThumbnailView];
 }
 

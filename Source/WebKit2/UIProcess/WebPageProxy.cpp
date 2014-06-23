@@ -42,6 +42,7 @@
 #include "DrawingAreaProxyMessages.h"
 #include "EventDispatcherMessages.h"
 #include "FindIndicator.h"
+#include "LegacySessionState.h"
 #include "Logging.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
@@ -53,7 +54,6 @@
 #include "PluginInformation.h"
 #include "PluginProcessManager.h"
 #include "PrintInfo.h"
-#include "SessionState.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
 #include "WKContextPrivate.h"
@@ -1241,15 +1241,12 @@ void WebPageProxy::clearSelection()
 
 void WebPageProxy::validateCommand(const String& commandName, std::function<void (const String&, bool, int32_t, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<ValidateCommandCallback> callback = ValidateCommandCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), false, 0, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_validateCommandCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::ValidateCommand(commandName, callbackID), m_pageID);
 }
 
@@ -2187,149 +2184,127 @@ void WebPageProxy::countStringMatches(const String& string, FindOptions options,
 
 void WebPageProxy::runJavaScriptInMainFrame(const String& script, std::function<void (WebSerializedScriptValue*, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<ScriptValueCallback> callback = ScriptValueCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_scriptValueCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::RunJavaScriptInMainFrame(script, callbackID), m_pageID);
 }
 
 void WebPageProxy::getRenderTreeExternalRepresentation(std::function<void (const String&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<StringCallback> callback = StringCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
-    m_stringCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::GetRenderTreeExternalRepresentation(callbackID), m_pageID);
 }
 
 void WebPageProxy::getSourceForFrame(WebFrameProxy* frame, std::function<void (const String&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<StringCallback> callback = StringCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_loadDependentStringCallbackIDs.add(callbackID);
-    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetSourceForFrame(frame->frameID(), callbackID), m_pageID);
 }
 
 void WebPageProxy::getContentsAsString(std::function<void (const String&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<StringCallback> callback = StringCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_loadDependentStringCallbackIDs.add(callbackID);
-    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetContentsAsString(callbackID), m_pageID);
 }
 
 void WebPageProxy::getBytecodeProfile(std::function<void (const String&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<StringCallback> callback = StringCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_loadDependentStringCallbackIDs.add(callbackID);
-    m_stringCallbacks.set(callbackID, callback);
     m_process->send(Messages::WebPage::GetBytecodeProfile(callbackID), m_pageID);
 }
     
 #if ENABLE(MHTML)
 void WebPageProxy::getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction, bool useBinaryEncoding)
 {
-    RefPtr<DataCallback> callback = DataCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::GetContentsAsMHTMLData(callbackID, useBinaryEncoding), m_pageID);
 }
 #endif
 
 void WebPageProxy::getSelectionOrContentsAsString(std::function<void (const String&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<StringCallback> callback = StringCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
-    m_stringCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::GetSelectionOrContentsAsString(callbackID), m_pageID);
 }
 
 void WebPageProxy::getSelectionAsWebArchiveData(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<DataCallback> callback = DataCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::GetSelectionAsWebArchiveData(callbackID), m_pageID);
 }
 
 void WebPageProxy::getMainResourceDataOfFrame(WebFrameProxy* frame, std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<DataCallback> callback = DataCallback::create(std::move(callbackFunction));
-    if (!isValid()) {
-        callback->invalidate();
+    if (!isValid() || !frame) {
+        callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::GetMainResourceDataOfFrame(frame->frameID(), callbackID), m_pageID);
 }
 
 void WebPageProxy::getResourceDataFromFrame(WebFrameProxy* frame, API::URL* resourceURL, std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<DataCallback> callback = DataCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::GetResourceDataFromFrame(frame->frameID(), resourceURL->string(), callbackID), m_pageID);
 }
 
 void WebPageProxy::getWebArchiveOfFrame(WebFrameProxy* frame, std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<DataCallback> callback = DataCallback::create(std::move(callbackFunction));
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
     
-    uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::GetWebArchiveOfFrame(frame->frameID(), callbackID), m_pageID);
 }
 
@@ -2343,7 +2318,7 @@ void WebPageProxy::forceRepaint(PassRefPtr<VoidCallback> prpCallback)
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_voidCallbacks.set(callbackID, callback);
+    m_callbacks.put(callback);
     m_drawingArea->waitForBackingStoreUpdateOnNextPaint();
     m_process->send(Messages::WebPage::ForceRepaint(callbackID), m_pageID); 
 }
@@ -2501,7 +2476,7 @@ void WebPageProxy::clearLoadDependentCallbacks()
     m_loadDependentStringCallbackIDs.clear();
 
     for (size_t i = 0; i < callbackIDsCopy.size(); ++i) {
-        RefPtr<StringCallback> callback = m_stringCallbacks.take(callbackIDsCopy[i]);
+        auto callback = m_callbacks.take<StringCallback>(callbackIDsCopy[i]);
         if (callback)
             callback->invalidate();
     }
@@ -2554,7 +2529,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     // WebPageProxy's cache of the value can get out of sync (e.g. in the case where a
     // plugin is handling page scaling itself) so we should reset it to the default
     // for standard main frame loads.
-    if (frame->isMainFrame() && static_cast<FrameLoadType>(opaqueFrameLoadType) == FrameLoadTypeStandard)
+    if (frame->isMainFrame() && static_cast<FrameLoadType>(opaqueFrameLoadType) == FrameLoadType::Standard)
         m_pageScaleFactor = 1;
 
     m_pageLoadState.commitChanges();
@@ -4000,7 +3975,7 @@ void WebPageProxy::stopResponsivenessTimer()
 
 void WebPageProxy::voidCallback(uint64_t callbackID)
 {
-    RefPtr<VoidCallback> callback = m_voidCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<VoidCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         return;
@@ -4011,7 +3986,7 @@ void WebPageProxy::voidCallback(uint64_t callbackID)
 
 void WebPageProxy::dataCallback(const IPC::DataReference& dataReference, uint64_t callbackID)
 {
-    RefPtr<DataCallback> callback = m_dataCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<DataCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         return;
@@ -4022,7 +3997,7 @@ void WebPageProxy::dataCallback(const IPC::DataReference& dataReference, uint64_
 
 void WebPageProxy::imageCallback(const ShareableBitmap::Handle& bitmapHandle, uint64_t callbackID)
 {
-    RefPtr<ImageCallback> callback = m_imageCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<ImageCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         return;
@@ -4033,7 +4008,7 @@ void WebPageProxy::imageCallback(const ShareableBitmap::Handle& bitmapHandle, ui
 
 void WebPageProxy::stringCallback(const String& resultString, uint64_t callbackID)
 {
-    RefPtr<StringCallback> callback = m_stringCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<StringCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         // this can validly happen if a load invalidated the callback, though
@@ -4047,7 +4022,7 @@ void WebPageProxy::stringCallback(const String& resultString, uint64_t callbackI
 
 void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, uint64_t callbackID)
 {
-    RefPtr<ScriptValueCallback> callback = m_scriptValueCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<ScriptValueCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         return;
@@ -4062,7 +4037,7 @@ void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, 
 
 void WebPageProxy::computedPagesCallback(const Vector<IntRect>& pageRects, double totalScaleFactorForPrinting, uint64_t callbackID)
 {
-    RefPtr<ComputedPagesCallback> callback = m_computedPagesCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<ComputedPagesCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         return;
@@ -4073,7 +4048,7 @@ void WebPageProxy::computedPagesCallback(const Vector<IntRect>& pageRects, doubl
 
 void WebPageProxy::validateCommandCallback(const String& commandName, bool isEnabled, int state, uint64_t callbackID)
 {
-    RefPtr<ValidateCommandCallback> callback = m_validateCommandCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<ValidateCommandCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         return;
@@ -4084,7 +4059,7 @@ void WebPageProxy::validateCommandCallback(const String& commandName, bool isEna
 
 void WebPageProxy::unsignedCallback(uint64_t result, uint64_t callbackID)
 {
-    RefPtr<UnsignedCallback> callback = m_unsignedCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<UnsignedCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         // this can validly happen if a load invalidated the callback, though
@@ -4098,7 +4073,7 @@ void WebPageProxy::editingRangeCallback(const EditingRange& range, uint64_t call
 {
     MESSAGE_CHECK(range.isValid());
 
-    RefPtr<EditingRangeCallback> callback = m_editingRangeCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<EditingRangeCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         // this can validly happen if a load invalidated the callback, though
@@ -4112,7 +4087,7 @@ void WebPageProxy::rectForCharacterRangeCallback(const IntRect& rect, const Edit
 {
     MESSAGE_CHECK(actualRange.isValid());
 
-    RefPtr<RectForCharacterRangeCallback> callback = m_rectForCharacterRangeCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<RectForCharacterRangeCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         // this can validly happen if a load invalidated the callback, though
@@ -4125,7 +4100,7 @@ void WebPageProxy::rectForCharacterRangeCallback(const IntRect& rect, const Edit
 #if PLATFORM(GTK)
 void WebPageProxy::printFinishedCallback(const ResourceError& printError, uint64_t callbackID)
 {
-    RefPtr<PrintFinishedCallback> callback = m_printFinishedCallbacks.take(callbackID);
+    auto callback = m_callbacks.take<PrintFinishedCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
         return;
@@ -4281,30 +4256,8 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
         break;
     }
 
-    invalidateCallbackMap(m_voidCallbacks, error);
-    invalidateCallbackMap(m_dataCallbacks, error);
-    invalidateCallbackMap(m_imageCallbacks, error);
-    invalidateCallbackMap(m_stringCallbacks, error);
+    m_callbacks.invalidate(error);
     m_loadDependentStringCallbackIDs.clear();
-    invalidateCallbackMap(m_scriptValueCallbacks, error);
-    invalidateCallbackMap(m_computedPagesCallbacks, error);
-    invalidateCallbackMap(m_validateCommandCallbacks, error);
-    invalidateCallbackMap(m_unsignedCallbacks, error);
-    invalidateCallbackMap(m_editingRangeCallbacks, error);
-    invalidateCallbackMap(m_rectForCharacterRangeCallbacks, error);
-#if PLATFORM(MAC)
-    invalidateCallbackMap(m_attributedStringForCharacterRangeCallbacks, error);
-#endif
-#if PLATFORM(IOS)
-    invalidateCallbackMap(m_gestureCallbacks, error);
-    invalidateCallbackMap(m_touchesCallbacks, error);
-    invalidateCallbackMap(m_autocorrectionCallbacks, error);
-    invalidateCallbackMap(m_autocorrectionContextCallbacks, error);
-    invalidateCallbackMap(m_dictationContextCallbacks, error);
-#endif
-#if PLATFORM(GTK)
-    invalidateCallbackMap(m_printFinishedCallbacks, error);
-#endif
 
     Vector<WebEditCommandProxy*> editCommandVector;
     copyToVector(m_editCommandSet, editCommandVector);
@@ -4344,9 +4297,9 @@ void WebPageProxy::resetStateAfterProcessExited()
         m_loadStateAtProcessExit = m_mainFrame->frameLoadState().m_state;
     }
 
-    resetState(ResetStateReason::WebProcessExited);
-
     m_pageClient.processDidExit();
+
+    resetState(ResetStateReason::WebProcessExited);
 
     m_pageClient.clearAllEditCommands();
     m_pendingLearnOrIgnoreWordMessageCount = 0;
@@ -4397,7 +4350,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.pageLength = m_pageLength;
     parameters.gapBetweenPages = m_gapBetweenPages;
     parameters.userAgent = userAgent();
-    parameters.sessionState = SessionState(m_backForwardList->entries(), m_backForwardList->currentIndex());
+    parameters.sessionState = LegacySessionState(m_backForwardList->entries(), m_backForwardList->currentIndex());
     parameters.sessionID = m_session->getID();
     parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highedUsedItemID();
     parameters.userContentControllerID = m_userContentController ? m_userContentController->identifier() : 0;
@@ -4490,7 +4443,7 @@ void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originI
         WebFrameProxy* frame = m_process->webFrame(record->frameID);
         MESSAGE_CHECK(frame);
 
-        RefPtr<WebSecurityOrigin> origin = WebSecurityOrigin::createFromDatabaseIdentifier(record->originIdentifier);
+        RefPtr<WebSecurityOrigin> origin = WebSecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(record->originIdentifier));
 
         uint64_t newQuota = m_uiClient->exceededDatabaseQuota(this, frame, origin.get(),
             record->databaseName, record->displayName, record->currentQuota,
@@ -4507,7 +4460,7 @@ void WebPageProxy::requestGeolocationPermissionForFrame(uint64_t geolocationID, 
     MESSAGE_CHECK(frame);
 
     // FIXME: Geolocation should probably be using toString() as its string representation instead of databaseIdentifier().
-    RefPtr<WebSecurityOrigin> origin = WebSecurityOrigin::createFromDatabaseIdentifier(originIdentifier);
+    RefPtr<WebSecurityOrigin> origin = WebSecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(originIdentifier));
     RefPtr<GeolocationPermissionRequestProxy> request = m_geolocationPermissionRequestManager.createRequest(geolocationID);
 
     if (m_uiClient->decidePolicyForGeolocationPermissionRequest(this, frame, origin.get(), request.get()))
@@ -4718,7 +4671,7 @@ void WebPageProxy::computePagesForPrinting(WebFrameProxy* frame, const PrintInfo
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_computedPagesCallbacks.set(callbackID, callback);
+    m_callbacks.put(callback);
     m_isInPrintingMode = true;
     m_process->send(Messages::WebPage::ComputePagesForPrinting(frame->frameID(), printInfo, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
@@ -4733,7 +4686,7 @@ void WebPageProxy::drawRectToImage(WebFrameProxy* frame, const PrintInfo& printI
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_imageCallbacks.set(callbackID, callback);
+    m_callbacks.put(callback);
     m_process->send(Messages::WebPage::DrawRectToImage(frame->frameID(), printInfo, rect, imageSize, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 
@@ -4746,7 +4699,7 @@ void WebPageProxy::drawPagesToPDF(WebFrameProxy* frame, const PrintInfo& printIn
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback);
+    m_callbacks.put(callback);
     m_process->send(Messages::WebPage::DrawPagesToPDF(frame->frameID(), printInfo, first, count, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 #elif PLATFORM(GTK)
@@ -4759,7 +4712,7 @@ void WebPageProxy::drawPagesForPrinting(WebFrameProxy* frame, const PrintInfo& p
     }
 
     uint64_t callbackID = callback->callbackID();
-    m_printFinishedCallbacks.set(callbackID, callback);
+    m_callbacks.put(callback);
     m_isInPrintingMode = true;
     m_process->send(Messages::WebPage::DrawPagesForPrinting(frame->frameID(), printInfo, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? IPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
@@ -4990,16 +4943,12 @@ void WebPageProxy::insertTextAsync(const String& text, const EditingRange& repla
 
 void WebPageProxy::getMarkedRangeAsync(std::function<void (EditingRange, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<EditingRangeCallback> callback = EditingRangeCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(EditingRange(), CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_editingRangeCallbacks.set(callbackID, callback);
-
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     process().send(Messages::WebPage::GetMarkedRangeAsync(callbackID), m_pageID);
 }
 
@@ -5012,39 +4961,29 @@ void WebPageProxy::getSelectedRangeAsync(std::function<void (EditingRange, Callb
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_editingRangeCallbacks.set(callbackID, callback);
-
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     process().send(Messages::WebPage::GetSelectedRangeAsync(callbackID), m_pageID);
 }
 
 void WebPageProxy::characterIndexForPointAsync(const WebCore::IntPoint& point, std::function<void (uint64_t, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<UnsignedCallback> callback = UnsignedCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(0, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_unsignedCallbacks.set(callbackID, callback);
-
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     process().send(Messages::WebPage::CharacterIndexForPointAsync(point, callbackID), m_pageID);
 }
 
 void WebPageProxy::firstRectForCharacterRangeAsync(const EditingRange& range, std::function<void (const WebCore::IntRect&, const EditingRange&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<RectForCharacterRangeCallback> callback = RectForCharacterRangeCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(WebCore::IntRect(), EditingRange(), CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_rectForCharacterRangeCallbacks.set(callbackID, callback);
-
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     process().send(Messages::WebPage::FirstRectForCharacterRangeAsync(range, callbackID), m_pageID);
 }
 
@@ -5071,16 +5010,12 @@ void WebPageProxy::confirmCompositionAsync()
 
 void WebPageProxy::takeSnapshot(IntRect rect, IntSize bitmapSize, SnapshotOptions options, std::function<void (const ShareableBitmap::Handle&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<ImageCallback> callback = ImageCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(ShareableBitmap::Handle(), CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_imageCallbacks.set(callbackID, callback.get());
-
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
     m_process->send(Messages::WebPage::TakeSnapshot(rect, bitmapSize, options, callbackID), m_pageID);
 }
 

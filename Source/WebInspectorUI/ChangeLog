@@ -1,3 +1,111 @@
+2014-06-21  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: UI fonts should pull from system fonts automatically to whatever degree possible
+        https://bugs.webkit.org/show_bug.cgi?id=133966
+
+        Reviewed by Timothy Hatcher.
+
+        Updated font families to use -webkit-system-font, and set this on the body to be
+        inherited. Also made sure that popovers use Menlo as the default. Updated 
+        autocompletions with system font names.
+
+        * UserInterface/Models/CSSKeywordCompletions.js: Updated completions with available system fonts.
+
+        * UserInterface/Controllers/CodeMirrorGradientEditingController.css:
+        * UserInterface/Views/Breakpoint.css:
+        * UserInterface/Views/ButtonNavigationItem.css:
+        * UserInterface/Views/ButtonToolbarItem.css:
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        * UserInterface/Views/DataGrid.css:
+        * UserInterface/Views/DebuggerDashboardView.css:
+        * UserInterface/Views/DetailsSection.css:
+        * UserInterface/Views/FindBanner.css:
+        * UserInterface/Views/GoToLineDialog.css:
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        * UserInterface/Views/Main.css:
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        * UserInterface/Views/ProbeSetDataGrid.css:
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        * UserInterface/Views/ScopeBar.css:
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        * UserInterface/Views/TimelineDataGrid.css:
+        * UserInterface/Views/TimelineRuler.css:
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        Changes to fonts. Set default font stack to -webkit-system-font, sans-serif. Default size is
+        11px. Only changes to this default size or changes to the font (to Menlo, monospace usually) remain.
+
+2014-06-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Esc in quick console no longer toggles console drawer
+        https://bugs.webkit.org/show_bug.cgi?id=134068
+
+        Reviewed by Timothy Hatcher.
+
+        For Escape to toggle console behavior we were relying on the Escape
+        keyboard event to propagate up to the window and be handled by
+        QuickConsole's global keyboard shortcut. With CodeMirror 4, all
+        editors have a default "Esc" key handler to reduce multiple selections
+        to a single selection. Unfortunately this always prevents default,
+        which our keyboard shortcut respects and doesn't toggle the console.
+
+        Workaround this by putting a specific handler for when a Console
+        Prompt is empty and the Escape key is triggered. This does not go
+        through the normal ConsolePrompt delegate because the delegate
+        is never the QuickConsole, it is actually the JavaScript log.
+
+        * UserInterface/Views/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt):
+        (WebInspector.ConsolePrompt.prototype.set escapeKeyHandlerWhenEmpty):
+        (WebInspector.ConsolePrompt.prototype._handleEscapeKey):
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole.this.prompt.escapeKeyHandlerWhenEmpty):
+        (WebInspector.QuickConsole):
+
+2014-06-18  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AXI: expose aria-relevant
+        https://bugs.webkit.org/show_bug.cgi?id=130913
+
+        Reviewed by Joseph Pecoraro.
+
+        Expose ARIA live region relevance in Web Inspector.
+        E.g. "Live: Assertive (Additions, Text)"
+
+        * Localizations/en.lproj/localizedStrings.js: New strings.
+        * UserInterface/Models/DOMNode.js: One additional property passed.
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js: UI updates to support new property.
+
+2014-06-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Add rebeccapurple to CSS named color list
+        https://bugs.webkit.org/show_bug.cgi?id=133804
+
+        Reviewed by Jer Noble.
+        
+        Add the named color "rebeccapurple" (#639).
+
+        * UserInterface/External/CodeMirror/css.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        * UserInterface/Models/Color.js:
+
+2014-06-18  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: REGRESSION: Style declaration editor: placeholder misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=134012
+
+        Reviewed by Timothy Hatcher.
+
+        Removed a rule needed to align the placeholder for selectors in 
+        the style declation text editors with no rules declared in
+        http://trac.webkit.org/changeset/170077. The necessary
+        rule has been added back to fix the issue.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-placeholder):
+
 2014-06-17  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: PrettyPrinting regression on "var a=1"

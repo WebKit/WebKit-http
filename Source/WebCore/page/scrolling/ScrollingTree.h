@@ -116,7 +116,7 @@ public:
     void setScrollingPerformanceLoggingEnabled(bool flag);
     bool scrollingPerformanceLoggingEnabled();
 
-    ScrollingTreeScrollingNode* rootNode() const { return m_rootNode.get(); }
+    ScrollingTreeNode* rootNode() const { return m_rootNode.get(); }
 
     ScrollingNodeID latchedNode();
     void setLatchedNode(ScrollingNodeID);
@@ -131,13 +131,15 @@ protected:
 
 private:
     void removeDestroyedNodes(const ScrollingStateTree&);
-    void updateTreeFromStateNode(const ScrollingStateNode*);
+    
+    typedef HashMap<ScrollingNodeID, RefPtr<ScrollingTreeNode>> OrphanScrollingNodeMap;
+    void updateTreeFromStateNode(const ScrollingStateNode*, OrphanScrollingNodeMap&);
 
-    virtual PassOwnPtr<ScrollingTreeNode> createNode(ScrollingNodeType, ScrollingNodeID) = 0;
+    virtual PassRefPtr<ScrollingTreeNode> createNode(ScrollingNodeType, ScrollingNodeID) = 0;
 
     ScrollingTreeNode* nodeForID(ScrollingNodeID) const;
 
-    OwnPtr<ScrollingTreeScrollingNode> m_rootNode;
+    RefPtr<ScrollingTreeNode> m_rootNode;
 
     typedef HashMap<ScrollingNodeID, ScrollingTreeNode*> ScrollingTreeNodeMap;
     ScrollingTreeNodeMap m_nodeMap;

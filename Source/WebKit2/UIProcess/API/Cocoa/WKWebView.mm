@@ -79,6 +79,7 @@
 #import "_WKWebViewPrintFormatter.h"
 #import "PrintInfo.h"
 #import "ProcessThrottler.h"
+#import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "WKPDFView.h"
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
@@ -86,6 +87,7 @@
 #import <CoreGraphics/CGFloat.h>
 #import <CoreGraphics/CGPDFDocumentPrivate.h>
 #import <UIKit/UIApplication.h>
+#import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIPeripheralHost_Private.h>
 #import <UIKit/UIWindow_Private.h>
 #import <QuartzCore/CARenderServer.h>
@@ -161,6 +163,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     BOOL _overridesInterfaceOrientation;
 
     BOOL _needsResetViewStateAfterCommitLoadForMainFrame;
+    uint64_t _firstPaintAfterCommitLoadTransactionID;
     BOOL _isAnimatingResize;
     CATransform3D _resizeAnimationTransformAdjustments;
     RetainPtr<UIView> _resizeAnimationView;
@@ -253,7 +256,7 @@ static int32_t deviceOrientation()
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::suppressesIncrementalRenderingKey(), WebKit::WebPreferencesStore::Value(!![_configuration suppressesIncrementalRendering]));
 
 #if PLATFORM(IOS)
-    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsAirPlayKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsInlineKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackRequiresUserGestureKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackRequiresUserAction]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsAirPlayKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackAllowsAirPlay]));
 #endif
@@ -267,8 +270,9 @@ static int32_t deviceOrientation()
     [_scrollView setBackgroundColor:[UIColor whiteColor]];
 
     _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration) webView:self]);
-    _page = [_contentView page];
 
+    _page = [_contentView page];
+    _page->setApplicationNameForUserAgent([@"Mobile/" stringByAppendingString:[UIDevice currentDevice].buildVersion]);
     _page->setDeviceOrientation(deviceOrientation());
 
     [_contentView layer].anchorPoint = CGPointZero;
@@ -703,6 +707,8 @@ static CGFloat contentZoomScale(WKWebView* webView)
 
 - (void)_didCommitLoadForMainFrame
 {
+    _firstPaintAfterCommitLoadTransactionID = toRemoteLayerTreeDrawingAreaProxy(_page->drawingArea())->nextLayerTreeTransactionID();
+
     _needsResetViewStateAfterCommitLoadForMainFrame = YES;
     _usesMinimalUI = NO;
 }
@@ -737,9 +743,10 @@ static CGFloat contentZoomScale(WKWebView* webView)
             [static_cast<id <WKUIDelegatePrivate>>(delegate.get()) _webView:self usesMinimalUI:_usesMinimalUI];
     }
 
-    if (_needsResetViewStateAfterCommitLoadForMainFrame) {
+    if (_needsResetViewStateAfterCommitLoadForMainFrame && layerTreeTransaction.transactionID() >= _firstPaintAfterCommitLoadTransactionID) {
         _needsResetViewStateAfterCommitLoadForMainFrame = NO;
         [_scrollView setContentOffset:CGPointMake(-_obscuredInsets.left, -_obscuredInsets.top)];
+        [self _updateVisibleContentRects];
     }
 }
 
@@ -1179,6 +1186,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (_isAnimatingResize)
         return;
 
+    if (_needsResetViewStateAfterCommitLoadForMainFrame)
+        return;
+
     CGRect fullViewRect = self.bounds;
     CGRect visibleRectInContentCoordinates = [self convertRect:fullViewRect toView:_contentView.get()];
 
@@ -1392,6 +1402,14 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     return [NSURL _web_URLWithWTFString:_page->pageLoadState().url()];
 }
 
+- (NSString *)_MIMEType
+{
+    if (_page->mainFrame())
+        return _page->mainFrame()->mimeType();
+
+    return nil;
+}
+
 - (NSString *)_applicationNameForUserAgent
 {
     return _page->applicationNameForUserAgent();
@@ -1501,9 +1519,19 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     _page->listenForLayoutMilestones(layoutMilestones(observedRenderingProgressEvents));
 }
 
-- (void)_runJavaScriptInMainFrame:(NSString *)scriptString
+- (void)_getMainResourceDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler
 {
-    [self evaluateJavaScript:scriptString completionHandler:^(id, NSError *) { }];
+    auto handler = adoptNS([completionHandler copy]);
+
+    _page->getMainResourceDataOfFrame(_page->mainFrame(), [handler](API::Data* data, WebKit::CallbackBase::Error error) {
+        void (^completionHandlerBlock)(NSData *, NSError *) = (void (^)(NSData *, NSError *))handler.get();
+        if (error != WebKit::CallbackBase::Error::None) {
+            // FIXME: Pipe a proper error in from the WebPageProxy.
+            RetainPtr<NSError> error = adoptNS([[NSError alloc] init]);
+            completionHandlerBlock(nil, error.get());
+        } else
+            completionHandlerBlock(wrapper(*data), nil);
+    });
 }
 
 - (void)_getWebArchiveDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler
@@ -1738,6 +1766,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         _page->setFormClient(std::make_unique<FormClient>(self));
     else
         _page->setFormClient(nullptr);
+}
+
+- (BOOL)_isDisplayingStandaloneImageDocument
+{
+    if (auto* mainFrame = _page->mainFrame())
+        return mainFrame->isDisplayingStandaloneImageDocument();
+    return NO;
 }
 
 #pragma mark iOS-specific methods

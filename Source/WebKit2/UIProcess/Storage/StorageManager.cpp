@@ -38,6 +38,7 @@
 #include <WebCore/StorageMap.h>
 #include <WebCore/TextEncoding.h>
 #include <memory>
+#include <wtf/threads/BinarySemaphore.h>
 
 using namespace WebCore;
 
@@ -427,9 +428,9 @@ void StorageManager::getStorageDetailsByOrigin(FunctionDispatcher& callbackDispa
     m_queue->dispatch(bind(&StorageManager::getStorageDetailsByOriginInternal, this, RefPtr<FunctionDispatcher>(&callbackDispatcher), context, callback));
 }
 
-void StorageManager::deleteEntriesForOrigin(SecurityOrigin* securityOrigin)
+void StorageManager::deleteEntriesForOrigin(const SecurityOrigin& securityOrigin)
 {
-    m_queue->dispatch(bind(&StorageManager::deleteEntriesForOriginInternal, this, RefPtr<SecurityOrigin>(securityOrigin)));
+    m_queue->dispatch(bind(&StorageManager::deleteEntriesForOriginInternal, this, RefPtr<SecurityOrigin>(const_cast<SecurityOrigin*>(&securityOrigin))));
 }
 
 void StorageManager::deleteAllEntries()
@@ -586,6 +587,24 @@ void StorageManager::cloneSessionStorageNamespaceInternal(uint64_t storageNamesp
     ASSERT(newSessionStorageNamespace);
 
     sessionStorageNamespace->cloneTo(*newSessionStorageNamespace);
+}
+
+void StorageManager::applicationWillTerminate()
+{
+    BinarySemaphore semaphore;
+    m_queue->dispatch([this, &semaphore] {
+        Vector<std::pair<RefPtr<IPC::Connection>, uint64_t>> connectionAndStorageMapIDPairsToRemove;
+        for (auto& connectionStorageAreaPair : m_storageAreasByConnection) {
+            connectionStorageAreaPair.value->removeListener(connectionStorageAreaPair.key.first.get(), connectionStorageAreaPair.key.second);
+            connectionAndStorageMapIDPairsToRemove.append(connectionStorageAreaPair.key);
+        }
+
+        for (auto& connectionStorageAreaPair : connectionAndStorageMapIDPairsToRemove)
+            m_storageAreasByConnection.remove(connectionStorageAreaPair);
+
+        semaphore.signal();
+    });
+    semaphore.wait(std::numeric_limits<double>::max());
 }
 
 void StorageManager::invalidateConnectionInternal(IPC::Connection* connection)

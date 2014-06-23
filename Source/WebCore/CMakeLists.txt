@@ -3,6 +3,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/gamepad"
+    "${WEBCORE_DIR}/Modules/gamepad/deprecated"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/leveldb"
@@ -131,6 +132,7 @@ set(WebCore_IDL_INCLUDES
     Modules/battery
     Modules/encryptedmedia
     Modules/gamepad
+    Modules/gamepad/deprecated
     Modules/geolocation
     Modules/indexeddb
     Modules/indieui
@@ -166,9 +168,9 @@ set(WebCore_IDL_FILES
     Modules/battery/BatteryManager.idl
     Modules/battery/NavigatorBattery.idl
 
-    Modules/gamepad/Gamepad.idl
-    Modules/gamepad/GamepadList.idl
-    Modules/gamepad/NavigatorGamepad.idl
+    Modules/gamepad/deprecated/Gamepad.idl
+    Modules/gamepad/deprecated/GamepadList.idl
+    Modules/gamepad/deprecated/NavigatorGamepad.idl
 
     Modules/geolocation/Coordinates.idl
     Modules/geolocation/Geolocation.idl
@@ -776,9 +778,9 @@ set(WebCore_SOURCES
     Modules/battery/BatteryStatus.cpp
     Modules/battery/NavigatorBattery.cpp
 
-    Modules/gamepad/Gamepad.cpp
-    Modules/gamepad/GamepadList.cpp
-    Modules/gamepad/NavigatorGamepad.cpp
+    Modules/gamepad/deprecated/Gamepad.cpp
+    Modules/gamepad/deprecated/GamepadList.cpp
+    Modules/gamepad/deprecated/NavigatorGamepad.cpp
 
     Modules/geolocation/Coordinates.cpp
     Modules/geolocation/Geolocation.cpp
@@ -2920,10 +2922,7 @@ if (ENABLE_VIDEO_TRACK)
     )
 endif ()
 
-# On the GTK+ autotools build we used to add these files even if QUOTA is disabled, and
-# because of that we generate GObject bindings for some of the objects. We need to do
-# the same for the cmake build, for now.
-if (ENABLE_QUOTA OR PORT STREQUAL "GTK")
+if (ENABLE_QUOTA)
     list(APPEND WebCore_SOURCES
         Modules/quota/DOMWindowQuota.cpp
         Modules/quota/NavigatorStorageQuota.cpp

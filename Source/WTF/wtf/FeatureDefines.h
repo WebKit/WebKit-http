@@ -468,6 +468,10 @@
 #define ENABLE_GAMEPAD 0
 #endif
 
+#if !defined(ENABLE_GAMEPAD_DEPRECATED)
+#define ENABLE_GAMEPAD_DEPRECATED 0
+#endif
+
 #if !defined(ENABLE_GEOLOCATION)
 #define ENABLE_GEOLOCATION 0
 #endif
@@ -632,10 +636,6 @@
 
 #if !defined(ENABLE_ORIENTATION_EVENTS)
 #define ENABLE_ORIENTATION_EVENTS 0
-#endif
-
-#if !defined(ENABLE_PAGE_VISIBILITY_API)
-#define ENABLE_PAGE_VISIBILITY_API 0
 #endif
 
 #if OS(WINDOWS)

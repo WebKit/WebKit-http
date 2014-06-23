@@ -1540,7 +1540,6 @@ void Document::removeTitle(Element* titleElement)
         updateTitle(StringWithDirection());
 }
 
-#if ENABLE(PAGE_VISIBILITY_API)
 void Document::registerForVisibilityStateChangedCallbacks(Element* element)
 {
     m_visibilityStateCallbackElements.add(element);
@@ -1578,7 +1577,6 @@ bool Document::hidden() const
 {
     return pageVisibilityState() != PageVisibilityStateVisible;
 }
-#endif
 
 #if ENABLE(CSP_NEXT)
 DOMSecurityPolicy* Document::securityPolicy()
@@ -3611,9 +3609,8 @@ void Document::nodeWillBeRemoved(Node* n)
 void Document::textInserted(Node* text, unsigned offset, unsigned length)
 {
     if (!m_ranges.isEmpty()) {
-        HashSet<Range*>::const_iterator end = m_ranges.end();
-        for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
-            (*it)->textInserted(text, offset, length);
+        for (auto& range : m_ranges)
+            range->textInserted(text, offset, length);
     }
 
     // Update the markers for spelling and grammar checking.
@@ -3623,9 +3620,8 @@ void Document::textInserted(Node* text, unsigned offset, unsigned length)
 void Document::textRemoved(Node* text, unsigned offset, unsigned length)
 {
     if (!m_ranges.isEmpty()) {
-        HashSet<Range*>::const_iterator end = m_ranges.end();
-        for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
-            (*it)->textRemoved(text, offset, length);
+        for (auto& range : m_ranges)
+            range->textRemoved(text, offset, length);
     }
 
     // Update the markers for spelling and grammar checking.
@@ -3637,9 +3633,8 @@ void Document::textNodesMerged(Text* oldNode, unsigned offset)
 {
     if (!m_ranges.isEmpty()) {
         NodeWithIndex oldNodeWithIndex(oldNode);
-        HashSet<Range*>::const_iterator end = m_ranges.end();
-        for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
-            (*it)->textNodesMerged(oldNodeWithIndex, offset);
+        for (auto& range : m_ranges)
+            range->textNodesMerged(oldNodeWithIndex, offset);
     }
 
     // FIXME: This should update markers for spelling and grammar checking.

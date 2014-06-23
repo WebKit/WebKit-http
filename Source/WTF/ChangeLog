@@ -1,3 +1,115 @@
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Move some implementation files into a "deprecated" subdirectory.
+
+        * wtf/FeatureDefines.h:
+
+2014-06-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170244.
+        https://bugs.webkit.org/show_bug.cgi?id=134157
+
+        GTK/EFL bindings generator works differently, making this
+        patch not work there.  Will fix entire patch after a rollout.
+        (Requested by bradee-oh on #webkit).
+
+        Reverted changeset:
+
+        "Gamepad API - Deprecate the existing implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+        http://trac.webkit.org/changeset/170244
+
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Add the "Deprecated" suffix to some implementation files
+
+        * wtf/FeatureDefines.h:
+
+2014-06-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Removing PAGE_VISIBILITY_API compile guard.
+        https://bugs.webkit.org/show_bug.cgi?id=133844
+
+        Reviewed by Gavin Barraclough.
+
+        * wtf/FeatureDefines.h:
+
+2014-06-20  Anders Carlsson  <andersca@apple.com>
+
+        Add encoding and decoding support for WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=134125
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Optional.h:
+        (WTF::Optional::operator=):
+
+2014-06-20  Anders Carlsson  <andersca@apple.com>
+
+        Add copy/move constructors and assignment operators to WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=134119
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Optional.h:
+        (WTF::Optional::Optional):
+        (WTF::Optional::operator=):
+
+2014-06-19  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF::Optional class
+        https://bugs.webkit.org/show_bug.cgi?id=134083
+
+        Reviewed by Andreas Kling.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Optional.h: Added.
+        (WTF::Optional::Optional):
+        (WTF::Optional::~Optional):
+        (WTF::Optional::operator bool):
+        (WTF::Optional::value):
+
+2014-06-19  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Remove ENABLE(LLINT) and ENABLE(LLINT_C_LOOP) guards
+        https://bugs.webkit.org/show_bug.cgi?id=130389
+
+        Reviewed by Mark Lam.
+
+        Removed ENABLE(LLINT) since we always build with it, and changed ENABLE(LLINT_C_LOOP)
+        into !ENABLE(JIT) since they are mutually exclusive.
+
+        * wtf/OSAllocatorPosix.cpp:
+        (WTF::OSAllocator::reserveAndCommit):
+        * wtf/Platform.h:
+
+2014-06-18  Anders Carlsson  <andersca@apple.com>
+
+        Add CF type cast function templates and use them in KeyedDecoder in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=134033
+
+        Reviewed by Sam Weinig.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/cf/TypeCasts.h: Added.
+        (WTF::dynamic_cf_cast):
+        Returns null if the given CFTypeRef object doesn't have the right type.
+
+        (WTF::checked_cf_cast):
+        ASSERTs (with security implication) if the given CFTypeRef object is null or doesn't have the right type.
+
 2014-06-17  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
 
         Misused PLATFORM(MIDDLE_ENDIAN) and PLATFORM(BIG_ENDIAN).

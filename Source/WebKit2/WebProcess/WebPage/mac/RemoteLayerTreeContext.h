@@ -31,6 +31,7 @@
 #include "RemoteLayerTreeTransaction.h"
 #include "WebPage.h"
 #include <WebCore/GraphicsLayerFactory.h>
+#include <WebCore/LayerPool.h>
 #include <WebCore/PlatformCALayer.h>
 #include <wtf/Vector.h>
 
@@ -42,26 +43,28 @@ class WebPage;
 // FIXME: This class doesn't do much now. Roll into RemoteLayerTreeDrawingArea?
 class RemoteLayerTreeContext : public WebCore::GraphicsLayerFactory {
 public:
-    explicit RemoteLayerTreeContext(WebPage*);
+    explicit RemoteLayerTreeContext(WebPage&);
     ~RemoteLayerTreeContext();
 
-    void layerWasCreated(PlatformCALayerRemote*, WebCore::PlatformCALayer::LayerType);
-    void layerWillBeDestroyed(PlatformCALayerRemote*);
+    void layerWasCreated(PlatformCALayerRemote&, WebCore::PlatformCALayer::LayerType);
+    void layerWillBeDestroyed(PlatformCALayerRemote&);
 
-    void backingStoreWasCreated(RemoteLayerBackingStore*);
-    void backingStoreWillBeDestroyed(RemoteLayerBackingStore*);
-    void backingStoreWillBeDisplayed(RemoteLayerBackingStore*);
+    void backingStoreWasCreated(RemoteLayerBackingStore&);
+    void backingStoreWillBeDestroyed(RemoteLayerBackingStore&);
+    void backingStoreWillBeDisplayed(RemoteLayerBackingStore&);
 
-    LayerHostingMode layerHostingMode() const { return m_webPage->layerHostingMode(); }
+    WebCore::LayerPool& layerPool() { return m_layerPool; }
+
+    LayerHostingMode layerHostingMode() const { return m_webPage.layerHostingMode(); }
 
     void buildTransaction(RemoteLayerTreeTransaction&, WebCore::PlatformCALayer& rootLayer);
 
-    void layerPropertyChangedWhileBuildingTransaction(PlatformCALayerRemote*);
+    void layerPropertyChangedWhileBuildingTransaction(PlatformCALayerRemote&);
 
     // From the UI process
     void animationDidStart(WebCore::GraphicsLayer::PlatformLayerID, const String& key, double startTime);
 
-    void willStartAnimationOnLayer(PlatformCALayerRemote*);
+    void willStartAnimationOnLayer(PlatformCALayerRemote&);
 
     RemoteLayerBackingStoreCollection& backingStoreCollection() { return m_backingStoreCollection; }
 
@@ -69,7 +72,7 @@ private:
     // WebCore::GraphicsLayerFactory
     virtual std::unique_ptr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayerClient&) override;
 
-    WebPage* m_webPage;
+    WebPage& m_webPage;
 
     Vector<RemoteLayerTreeTransaction::LayerCreationProperties> m_createdLayers;
     Vector<WebCore::GraphicsLayer::PlatformLayerID> m_destroyedLayers;
@@ -80,6 +83,8 @@ private:
     RemoteLayerBackingStoreCollection m_backingStoreCollection;
     
     RemoteLayerTreeTransaction* m_currentTransaction;
+
+    WebCore::LayerPool m_layerPool;
 };
 
 } // namespace WebKit

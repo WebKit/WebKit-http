@@ -34,9 +34,9 @@
 
 namespace WebCore {
 
-PassOwnPtr<ScrollingStateFrameScrollingNode> ScrollingStateFrameScrollingNode::create(ScrollingStateTree& stateTree, ScrollingNodeID nodeID)
+PassRefPtr<ScrollingStateFrameScrollingNode> ScrollingStateFrameScrollingNode::create(ScrollingStateTree& stateTree, ScrollingNodeID nodeID)
 {
-    return adoptPtr(new ScrollingStateFrameScrollingNode(stateTree, nodeID));
+    return adoptRef(new ScrollingStateFrameScrollingNode(stateTree, nodeID));
 }
 
 ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(ScrollingStateTree& stateTree, ScrollingNodeID nodeID)
@@ -96,9 +96,9 @@ ScrollingStateFrameScrollingNode::~ScrollingStateFrameScrollingNode()
 {
 }
 
-PassOwnPtr<ScrollingStateNode> ScrollingStateFrameScrollingNode::clone(ScrollingStateTree& adoptiveTree)
+PassRefPtr<ScrollingStateNode> ScrollingStateFrameScrollingNode::clone(ScrollingStateTree& adoptiveTree)
 {
-    return adoptPtr(new ScrollingStateFrameScrollingNode(*this, adoptiveTree));
+    return adoptRef(new ScrollingStateFrameScrollingNode(*this, adoptiveTree));
 }
 
 void ScrollingStateFrameScrollingNode::setFrameScaleFactor(float scaleFactor)
@@ -243,6 +243,20 @@ void ScrollingStateFrameScrollingNode::dumpProperties(TextStream& ts, int indent
     if (m_frameScaleFactor != 1) {
         writeIndent(ts, indent + 1);
         ts << "(frame scale factor " << m_frameScaleFactor << ")\n";
+    }
+    
+    if (!m_nonFastScrollableRegion.isEmpty()) {
+        ++indent;
+        writeIndent(ts, indent);
+        ts << "(non-fast-scrollable region";
+        ++indent;
+        for (auto rect : m_nonFastScrollableRegion.rects()) {
+            ts << "\n";
+            writeIndent(ts, indent);
+            ts << rect;
+        }
+        ts << ")\n";
+        indent -= 2;
     }
 
     if (m_synchronousScrollingReasons) {

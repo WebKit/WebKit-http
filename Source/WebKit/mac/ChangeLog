@@ -1,3 +1,100 @@
+2014-06-21  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the iOS build after r170235.
+
+        * WebView/WebView.mm:
+
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Move some implementation files into a "deprecated" subdirectory.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-06-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170244.
+        https://bugs.webkit.org/show_bug.cgi?id=134157
+
+        GTK/EFL bindings generator works differently, making this
+        patch not work there.  Will fix entire patch after a rollout.
+        (Requested by bradee-oh on #webkit).
+
+        Reverted changeset:
+
+        "Gamepad API - Deprecate the existing implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+        http://trac.webkit.org/changeset/170244
+
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Add the "Deprecated" suffix to some implementation files
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-06-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Removing PAGE_VISIBILITY_API compile guard.
+        https://bugs.webkit.org/show_bug.cgi?id=133844
+
+        Reviewed by Gavin Barraclough.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        (-[WebView _visibilityState]):
+
+2014-06-18  Anders Carlsson  <andersca@apple.com>
+
+        Make FrameLoadType a strongly typed enum
+        https://bugs.webkit.org/show_bug.cgi?id=134047
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebFrame.mm:
+        (toWebFrameLoadType):
+        (-[WebFrame _loadType]):
+        * WebView/WebView.mm:
+        (-[WebView _loadBackForwardListFromOtherView:]):
+        (-[WebView goToBackForwardItem:]):
+
+2014-06-18  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r167856): Unable to log into HSBC app
+        https://bugs.webkit.org/show_bug.cgi?id=133991
+        <rdar://problem/17044839>
+
+        Reviewed by David Kilzer.
+
+        Only enable the setting allowNavigationToInvalidURL for iOS app linked against WebKit/UIKit before iOS 8.
+
+        * Misc/WebKitVersionChecks.h: Added macro constant WEBKIT_FIRST_VERSION_WITH_NAVIGATION_URL_VALIDATION.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Enable or disable the setting allowNavigationToInvalidURL as appropriate.
+
+2014-06-18  Anders Carlsson  <andersca@apple.com>
+
+        Adopt modern C++11 loops and fix WebArchive creation functions
+        https://bugs.webkit.org/show_bug.cgi?id=134032
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource subresources]):
+
 2014-06-15  Anders Carlsson  <andersca@apple.com>
 
         Add an autorelease() member function to RetainPtr

@@ -317,8 +317,10 @@ bool ArgumentCoder<ScrollingStateStickyNode>::decode(ArgumentDecoder& decoder, S
 
 namespace WebKit {
 
-static void encodeNodeAndDescendants(IPC::ArgumentEncoder& encoder, const ScrollingStateNode& stateNode)
+static void encodeNodeAndDescendants(IPC::ArgumentEncoder& encoder, const ScrollingStateNode& stateNode, int& encodedNodeCount)
 {
+    ++encodedNodeCount;
+
     switch (stateNode.nodeType()) {
     case FrameScrollingNode:
         encoder << toScrollingStateFrameScrollingNode(stateNode);
@@ -337,10 +339,8 @@ static void encodeNodeAndDescendants(IPC::ArgumentEncoder& encoder, const Scroll
     if (!stateNode.children())
         return;
 
-    for (size_t i = 0; i < stateNode.children()->size(); ++i) {
-        const OwnPtr<ScrollingStateNode>& child = stateNode.children()->at(i);
-        encodeNodeAndDescendants(encoder, *child.get());
-    }
+    for (const auto& child : *stateNode.children())
+        encodeNodeAndDescendants(encoder, *child.get(), encodedNodeCount);
 }
 
 void RemoteScrollingCoordinatorTransaction::encode(IPC::ArgumentEncoder& encoder) const
@@ -354,9 +354,11 @@ void RemoteScrollingCoordinatorTransaction::encode(IPC::ArgumentEncoder& encoder
     if (m_scrollingStateTree) {
         encoder << m_scrollingStateTree->hasChangedProperties();
 
+        int numNodesEncoded = 0;
         if (const ScrollingStateNode* rootNode = m_scrollingStateTree->rootStateNode())
-            encodeNodeAndDescendants(encoder, *rootNode);
+            encodeNodeAndDescendants(encoder, *rootNode, numNodesEncoded);
 
+        ASSERT_UNUSED(numNodesEncoded, numNodesEncoded == numNodes);
         encoder << m_scrollingStateTree->removedNodes();
     } else
         encoder << Vector<ScrollingNodeID>();
@@ -426,7 +428,7 @@ bool RemoteScrollingCoordinatorTransaction::decode(IPC::ArgumentDecoder& decoder
     m_scrollingStateTree->setHasNewRootStateNode(hasNewRootNode);
 
     // Removed nodes
-    Vector<ScrollingNodeID> removedNodes;
+    HashSet<ScrollingNodeID> removedNodes;
     if (!decoder.decode(removedNodes))
         return false;
     
@@ -590,7 +592,22 @@ void RemoteScrollingTreeTextStream::dump(const ScrollingStateFrameScrollingNode&
     if (!changedPropertiesOnly || node.hasChangedProperty(ScrollingStateFrameScrollingNode::FrameScaleFactor))
         dumpProperty(ts, "frame-scale-factor", node.frameScaleFactor());
 
-    // FIXME: dump nonFastScrollableRegion
+    if (!changedPropertiesOnly || node.hasChangedProperty(ScrollingStateFrameScrollingNode::NonFastScrollableRegion)) {
+        ts << "\n";
+        ts.increaseIndent();
+        ts.writeIndent();
+        ts << "(non-fast-scrollable-region";
+        ts.increaseIndent();
+        for (auto rect : node.nonFastScrollableRegion().rects()) {
+            ts << "\n";
+            ts.writeIndent();
+            ts << rect;
+        }
+        ts << ")\n";
+        ts.decreaseIndent();
+        ts.decreaseIndent();
+    }
+
     // FIXME: dump wheelEventHandlerCount
     // FIXME: dump synchronousScrollingReasons
     // FIXME: dump scrollableAreaParameters
@@ -685,8 +702,11 @@ void RemoteScrollingTreeTextStream::dump(const ScrollingStateTree& stateTree, bo
     if (stateTree.rootStateNode())
         recursiveDumpNodes(*stateTree.rootStateNode(), changedPropertiesOnly);
 
-    if (!stateTree.removedNodes().isEmpty())
-        dumpProperty<Vector<ScrollingNodeID>>(ts, "removed-nodes", stateTree.removedNodes());
+    if (!stateTree.removedNodes().isEmpty()) {
+        Vector<ScrollingNodeID> removedNodes;
+        copyToVector(stateTree.removedNodes(), removedNodes);
+        dumpProperty<Vector<ScrollingNodeID>>(ts, "removed-nodes", removedNodes);
+    }
 }
 
 WTF::CString RemoteScrollingCoordinatorTransaction::description() const

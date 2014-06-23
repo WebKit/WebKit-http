@@ -1,3 +1,326 @@
+2014-06-21  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Disable gamepad feature on EFL and GTK ports by default
+        https://bugs.webkit.org/show_bug.cgi?id=134169
+
+        Reviewed by Brady Eidson.
+
+        EFL and GTK ports disabled Gamepad feature now. Besides current implementation
+        was treated to 'deprecated' status.
+
+        ENABLE_GAMEPAD_DEPRECATED is disabled for now. There is build break on EFL port.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-06-21  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [Inspector][EFL] Can't resume a special break point on EFL inspector
+        https://bugs.webkit.org/show_bug.cgi?id=129294
+
+        Reviewed by Gyuyoung Kim.
+
+        Patch our EFL 1.9 with the fix landed in upstream EFL 1.10
+        by Ryuan Choi - <https://phab.enlightenment.org/D790>
+
+        * efl/jhbuild.modules:
+        * efl/patches/ecore.patch: Added.
+
+2014-06-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Removing PAGE_VISIBILITY_API compile guard.
+        https://bugs.webkit.org/show_bug.cgi?id=133844
+
+        Reviewed by Gavin Barraclough.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-06-20  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove DumpRenderTree/efl and EWebLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=134138
+
+        Reviewed by Gyuyoung Kim.
+
+        DumpRenderTree/efl and EWebLauncher are not necessary anymore because WebKit1 EFL will be removed.
+
+        * CMakeLists.txt:
+        * DumpRenderTree/PlatformEfl.cmake: Removed.
+        * DumpRenderTree/efl: Removed entire directory.
+        * EWebLauncher: Ditto.
+        * WebKitTestRunner/InjectedBundle/efl/FontManagement.cpp: Renamed from Tools/DumpRenderTree/efl/FontManagement.cpp.
+        (buildPath):
+        (getCoreFontFiles):
+        (addFontDirectory):
+        (addFontFiles):
+        (getCustomBuildDir):
+        (getPlatformFontsPath):
+        (addFontsToEnvironment):
+        * WebKitTestRunner/InjectedBundle/efl/FontManagement.h: Renamed from Tools/DumpRenderTree/efl/FontManagement.h.
+        * WebKitTestRunner/PlatformEfl.cmake:
+
+2014-06-20  Zalan Bujtas  <zalan@apple.com>
+
+        Name moving. Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-20  Javier Fernandez  <jfernandez@igalia.com>
+
+        Unreviewed. Adding myself to committers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed. Adding myself to committers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-20  Tim Horton  <timothy_horton@apple.com>
+
+        Make WebKit2 more accessible in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=134099
+
+        Reviewed by Anders Carlsson.
+
+        * MiniBrowser/mac/AppDelegate.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate newWindow:]):
+        (-[BrowserAppDelegate applicationDidFinishLaunching:]):
+        (-[BrowserAppDelegate toggleUseWebKit2ByDefault:]):
+        (-[BrowserAppDelegate _useWebKit2ByDefault]):
+        (-[BrowserAppDelegate _updateNewWindowKeyEquivalents]):
+        (-[BrowserAppDelegate validateMenuItem:]):
+        * MiniBrowser/mac/MainMenu.xib:
+        Add a "Use WebKit2 By Default" menu item to the top of the Debug menu.
+        When switched on, Cmd-N will make WebKit2 windows (and the default window will be WebKit2).
+        Make the non-default new-window menu item always show up, because people often don't find it
+        when you have to press option to have it show up.
+
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController initWithWindow:]):
+        
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController validateMenuItem:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        Use the cached [menuItem action] like the earlier cases do.
+
+2014-06-20  Daniel Bates  <dabates@apple.com>
+
+        Teach run-{safari, webkit-app} about iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=133986
+
+        Reviewed by David Kilzer.
+
+        Extract the logic from old-run-webkit-tests to install and launch {DumpRenderTree, WebKitTestRunnerApp}.app
+        into general-purpose routines in webkitdirs.pm so that they can be used both by script old-run-webkit-tests
+        and run-safari.
+
+        * Scripts/old-run-webkit-tests:
+        (installAndLaunchDumpToolAppUsingNotification): Extracted logic to install and launch {DumpRenderTree,
+        WebKitTestRunnerApp}.app into webkitdirs::installAndLaunchIOSWebKitAppInSimulator() and modified code
+        to call it.
+        (openIPhoneSimulator): Deleted; moved logic to webkitdirs::openIOSSimulator().
+        (quitIPhoneSimulator): Deleted; moved logic to webkitdirs::quitIOSSimulator().
+        * Scripts/run-webkit-app: Modified to call runIOSWebKitApp() when the iOS simulator SDK is used
+        (say, by specifying the optional command-line argument --simulator). For now, die() with an error
+        when the iOS device SDK is used as we don't support launching an app on the device at this time.
+        * Scripts/webkitdirs.pm:
+        (xcodeSDKVersion): Added.
+        (setupIOSWebKitEnvironment): Added.
+        (installedMobileSafariBundle): Added.
+        (mobileSafariBundle): Added.
+        (plistPathFromBundle): Added.
+        (appIdentiferFromBundle): Added.
+        (appDisplayNameFromBundle): Added.
+        (loadIPhoneSimulatorNotificationIfNeeded): Added.
+        (openIOSSimulator): Added.
+        (quitIOSSimulator): Added.
+        (iosSimulatorDeviceByName): Added.
+        (iosSimulatorRuntime): Added.
+        (findOrCreateSimulatorForIOSDevice): Added.
+        (runIOSWebKitAppInSimulator): Added.
+        (installAndLaunchIOSWebKitAppInSimulator): Added.
+        (runIOSWebKitApp): Added.
+        (runSafari): Modified to call runIOSWebKitAppInSimulator() the iOS simulator SDK is used. For now,
+        die() with an error when the iOS device SDK is used as we don't support launching Safari on the
+        device at this time.
+
+2014-06-19  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF::Optional class
+        https://bugs.webkit.org/show_bug.cgi?id=134083
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Optional.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2014-06-20  Ion Rosca  <rosca@adobe.com>
+
+        Unreviewed. Adding myself to Committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-20  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Add gstreamer as dependecy of EFL after r169785
+        https://bugs.webkit.org/show_bug.cgi?id=134066
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2014-06-20  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Merge url_utils.c to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=134095
+
+        Reviewed by Csaba Osztrogonác.
+
+        url_utils.c is simple code to share between EWebLauncher and MiniBrowser.
+        This patch removes the dependency of url_utils.c from MiniBrowser to drop WebKit1 EFL port.
+
+        * MiniBrowser/efl/CMakeLists.txt:
+        Remove the EWebLauncher/ from the includes and url_utils.h from the source lists.
+        * MiniBrowser/efl/main.c:
+        (has_scheme): Copied from url_utils.c
+        (url_from_user_input): Ditto.
+
+2014-06-19  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Fix webkitpy tests after EFL WK1 buildbot and EWS removal - r170172.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        (DeprecatedPortTest.test_gtk_wk2_port):
+        (DeprecatedPortTest.test_efl_port): Deleted.
+        * Scripts/webkitpy/style/checkers/test_expectations_unittest.py:
+        (TestExpectationsTestCase.test_determine_port_from_expectations_path):
+        * Scripts/webkitpy/tool/commands/rebaseline_unittest.py:
+        (TestRebaselineExpectations.test_rebaseline_expectations):
+
+2014-06-19  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][CMAKE] Disable WebKit1 build as a default
+        https://bugs.webkit.org/show_bug.cgi?id=134093
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+
+2014-06-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] webkit_dom_document_create_tree_walker impossible to use due to WebKitDOMNodeFilter
+        https://bugs.webkit.org/show_bug.cgi?id=93002
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add unit tests to check WebKitDOMNodefilter API used from both
+        TreeWalker and NodeIterator.
+
+        * Scripts/webkitpy/style/checker.py: Add exceptions for GTK+
+        public headers and add WebKitDOMNodeFilter to the list of exceptions.
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt: Add new files to compilation.
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeFilterTest.cpp: Added.
+        (webkitNodeFilterAcceptNode):
+        (webkitNodeFilterDOMNodeFilterIfaceInit):
+        (webkit_node_filter_init):
+        (webkit_node_filter_class_init):
+        (WebKitDOMNodeFilterTest::create):
+        (WebKitDOMNodeFilterTest::webPageFromArgs):
+        (WebKitDOMNodeFilterTest::testTreeWalker):
+        (WebKitDOMNodeFilterTest::testNodeIterator):
+        (WebKitDOMNodeFilterTest::runTest):
+        (registerTests):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDOMNodeFilter.cpp: Added.
+        (runTest):
+        (testWebKitDOMNodeFilterTreeWalker):
+        (testWebKitDOMNodeFilterNodeIterator):
+        (beforeAll):
+        (afterAll):
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGeneratorSections.__init__):
+        (WebKitDOMDocGeneratorSections._symbol_list):
+        (WebKitDOMDocGeneratorSections.write_section):
+
+2014-06-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Limit the amount of API exposed to GObject DOM bindings API
+        https://bugs.webkit.org/show_bug.cgi?id=133726
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Don't make fatal finding files without a .symbols file, since now
+        only the stable DOM API has .symbols files.
+
+        * gtk/webkitdom.py:
+        (get_all_webkitdom_symbol_files):
+
+2014-06-19  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove efl wk1 buildbot and ews
+        https://bugs.webkit.org/show_bug.cgi?id=134089
+
+        Reviewed by Benjamin Poulain.
+
+        EFL WK1 is not supported anymore. Removed all bots for EFL WK1 bots.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * QueueStatusServer/config/queues.py:
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.port):
+        (QtWK2Port.run_webkit_tests_command):
+        (EflPort): Deleted.
+        (EflPort.build_webkit_command): Deleted.
+        * Scripts/webkitpy/port/builders.py:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+        * TestResultServer/static-dashboards/loader_unittests.js:
+
+2014-06-19  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style does not understand Obj-C literal syntax for NSDictionary
+        <http://webkit.org/b/134061>
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_spacing): Ignore '@' immediately before '{'.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_spacing_before_braces): Add unit test for
+        '^{' block syntax and '@{' Objective-C liternal NSDitionary
+        syntax.
+
+2014-06-18  Tim Horton  <timothy_horton@apple.com>
+
+        All of MiniBrowser's WKWebViews should share a configuration
+        https://bugs.webkit.org/show_bug.cgi?id=134017
+
+        Reviewed by Anders Carlsson.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        Share a single WKWebViewConfiguration between all of MiniBrowser's views.
+        This means that they'll share things like preferences, visited links, etc.
+        It also means that we'll properly share processes once we hit the process limit.
+
+2014-06-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Bump the GLib and GTK+ dependencies in jhbuild-wayland.modules
+        https://bugs.webkit.org/show_bug.cgi?id=133971
+
+        Reviewed by Martin Robinson.
+
+        * gtk/jhbuild-wayland.modules: Bump the GTK+ dependency that's required for
+        building for the Wayland target. The latest 3.12 version is required to match
+        the xdg_shell protocol version used in Weston 1.5. GLib dependency is bumped
+        as well due to GTK+ depending on a newer version.
+
 2014-06-17  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL] Turn on NOSNIFF in FeatureList.pm

@@ -347,28 +347,6 @@ FilterEffectRenderer* RenderLayer::filterRenderer() const
 
 #endif
 
-LayoutPoint RenderLayer::computeOffsetFromRoot(bool& hasLayerOffset) const
-{
-    hasLayerOffset = true;
-
-    if (!parent())
-        return LayoutPoint();
-
-    // This is similar to root() but we check if an ancestor layer would
-    // prevent the optimization from working.
-    const RenderLayer* rootLayer = 0;
-    for (const RenderLayer* parentLayer = parent(); parentLayer; rootLayer = parentLayer, parentLayer = parentLayer->parent()) {
-        hasLayerOffset = parentLayer->canUseConvertToLayerCoords();
-        if (!hasLayerOffset)
-            return LayoutPoint();
-    }
-    ASSERT(rootLayer == root());
-
-    LayoutPoint offset;
-    parent()->convertToLayerCoords(rootLayer, offset);
-    return offset;
-}
-
 void RenderLayer::updateLayerPositionsAfterLayout(const RenderLayer* rootLayer, UpdateLayerPositionsFlags flags)
 {
     RenderGeometryMap geometryMap(UseTransforms);
@@ -389,15 +367,15 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
     clearClipRects();
     
     if (hasOverflowControls()) {
-        LayoutPoint offsetFromRoot;
+        LayoutSize offsetFromRoot;
         if (geometryMap)
-            offsetFromRoot = LayoutPoint(geometryMap->absolutePoint(FloatPoint()));
+            offsetFromRoot = LayoutSize(toFloatSize(geometryMap->absolutePoint(FloatPoint())));
         else {
             // FIXME: It looks suspicious to call convertToLayerCoords here
             // as canUseConvertToLayerCoords may be true for an ancestor layer.
-            convertToLayerCoords(root(), offsetFromRoot);
+            offsetFromRoot = offsetFromAncestor(root());
         }
-        positionOverflowControls(toIntSize(roundedIntPoint(offsetFromRoot)));
+        positionOverflowControls(roundedIntSize(offsetFromRoot));
     }
 
     updateDescendantDependentFlags();
@@ -1582,11 +1560,7 @@ static void expandClipRectForRegionAndReflection(LayoutRect& clipRect, const Ren
         RenderLayer* flowThreadLayer = region->flowThread()->layer();
         if (!layer->reflection() || layer->reflectionLayer() != flowThreadLayer) {
             LayoutRect flowThreadClipRect = transparencyClipBox(flowThreadLayer, rootLayer, transparencyBehavior, DescendantsOfTransparencyClipBox, paintBehavior);
-            
-            LayoutPoint offsetFromRoot;
-            layer->convertToLayerCoords(flowThreadLayer, offsetFromRoot);
-
-            LayoutSize moveOffset = (offsetFromRoot + regionContainer->contentBoxRect().location()) - region->flowThreadPortionRect().location();
+            LayoutSize moveOffset = (regionContainer->contentBoxRect().location() + layer->offsetFromAncestor(flowThreadLayer)) - region->flowThreadPortionRect().location();
             flowThreadClipRect.move(moveOffset);
             
             clipRect.unite(flowThreadClipRect);
@@ -1615,11 +1589,10 @@ static void expandClipRectForDescendantsAndReflection(LayoutRect& clipRect, cons
     // FIXME: Accelerated compositing will eventually want to do something smart here to avoid incorporating this
     // size into the parent layer.
     if (layer->renderer().hasReflection()) {
-        LayoutPoint delta;
-        layer->convertToLayerCoords(rootLayer, delta);
-        clipRect.move(-delta.x(), -delta.y());
+        LayoutSize delta = layer->offsetFromAncestor(rootLayer);
+        clipRect.move(-delta);
         clipRect.unite(layer->renderBox()->reflectedRect(clipRect));
-        clipRect.moveBy(delta);
+        clipRect.move(delta);
     }
 }
 
@@ -1637,11 +1610,10 @@ static LayoutRect transparencyClipBox(const RenderLayer* layer, const RenderLaye
         RenderLayer::PaginationInclusionMode mode = transparencyBehavior == HitTestingTransparencyClipBox ? RenderLayer::IncludeCompositedPaginatedLayers : RenderLayer::ExcludeCompositedPaginatedLayers;
         const RenderLayer* paginationLayer = transparencyMode == DescendantsOfTransparencyClipBox ? layer->enclosingPaginationLayer(mode) : 0;
         const RenderLayer* rootLayerForTransform = paginationLayer ? paginationLayer : rootLayer;
-        LayoutPoint delta;
-        layer->convertToLayerCoords(rootLayerForTransform, delta);
+        LayoutSize delta = layer->offsetFromAncestor(rootLayerForTransform);
 
         TransformationMatrix transform;
-        transform.translate(delta.x(), delta.y());
+        transform.translate(delta.width(), delta.height());
         transform = transform * *layer->transform();
 
         // We don't use fragment boxes when collecting a transformed layer's bounding box, since it always
@@ -1660,10 +1632,7 @@ static LayoutRect transparencyClipBox(const RenderLayer* layer, const RenderLaye
         // get our true bounding box.
         RenderFlowThread& enclosingFlowThread = toRenderFlowThread(paginationLayer->renderer());
         result = enclosingFlowThread.fragmentsBoundingBox(result);
-        
-        LayoutPoint rootLayerDelta;
-        paginationLayer->convertToLayerCoords(rootLayer, rootLayerDelta);
-        result.moveBy(rootLayerDelta);
+        result.move(paginationLayer->offsetFromAncestor(rootLayer));
         return result;
     }
     
@@ -1876,15 +1845,13 @@ void RenderLayer::insertOnlyThisLayer()
 
 void RenderLayer::convertToPixelSnappedLayerCoords(const RenderLayer* ancestorLayer, IntPoint& roundedLocation, ColumnOffsetAdjustment adjustForColumns) const
 {
-    LayoutPoint location = roundedLocation;
-    convertToLayerCoords(ancestorLayer, location, adjustForColumns);
+    LayoutPoint location = convertToLayerCoords(ancestorLayer, roundedLocation, adjustForColumns);
     roundedLocation = roundedIntPoint(location);
 }
 
 void RenderLayer::convertToPixelSnappedLayerCoords(const RenderLayer* ancestorLayer, IntRect& roundedRect, ColumnOffsetAdjustment adjustForColumns) const
 {
-    LayoutRect rect = roundedRect;
-    convertToLayerCoords(ancestorLayer, rect, adjustForColumns);
+    LayoutRect rect = convertToLayerCoords(ancestorLayer, roundedRect, adjustForColumns);
     roundedRect = pixelSnappedIntRect(rect);
 }
 
@@ -1919,7 +1886,7 @@ static inline const RenderLayer* accumulateOffsetTowardsAncestor(const RenderLay
     // element in render flow thread, we will hit the fixed positioned container before hitting the ancestor layer.
     if (position == FixedPosition && !fixedFlowThreadContainer) {
         // For a fixed layers, we need to walk up to the root to see if there's a fixed position container
-        // (e.g. a transformed layer). It's an error to call convertToLayerCoords() across a layer with a transform,
+        // (e.g. a transformed layer). It's an error to call offsetFromAncestor() across a layer with a transform,
         // so we should always find the ancestor at or before we find the fixed position container.
         RenderLayer* fixedPositionContainerLayer = 0;
         bool foundAncestor = false;
@@ -1937,12 +1904,8 @@ static inline const RenderLayer* accumulateOffsetTowardsAncestor(const RenderLay
         ASSERT(fixedPositionContainerLayer); // We should have hit the RenderView's layer at least.
 
         if (fixedPositionContainerLayer != ancestorLayer) {
-            LayoutPoint fixedContainerCoords;
-            layer->convertToLayerCoords(fixedPositionContainerLayer, fixedContainerCoords);
-
-            LayoutPoint ancestorCoords;
-            ancestorLayer->convertToLayerCoords(fixedPositionContainerLayer, ancestorCoords);
-
+            LayoutSize fixedContainerCoords = layer->offsetFromAncestor(fixedPositionContainerLayer);
+            LayoutSize ancestorCoords = ancestorLayer->offsetFromAncestor(fixedPositionContainerLayer);
             location += (fixedContainerCoords - ancestorCoords);
             return ancestorLayer;
         }
@@ -1995,13 +1958,8 @@ static inline const RenderLayer* accumulateOffsetTowardsAncestor(const RenderLay
             // Found ancestorLayer before the abs. positioned container, so compute offset of both relative
             // to enclosingPositionedAncestor and subtract.
             RenderLayer* positionedAncestor = parentLayer->enclosingPositionedAncestor();
-
-            LayoutPoint thisCoords;
-            layer->convertToLayerCoords(positionedAncestor, thisCoords);
-            
-            LayoutPoint ancestorCoords;
-            ancestorLayer->convertToLayerCoords(positionedAncestor, ancestorCoords);
-
+            LayoutSize thisCoords = layer->offsetFromAncestor(positionedAncestor);
+            LayoutSize ancestorCoords = ancestorLayer->offsetFromAncestor(positionedAncestor);
             location += (thisCoords - ancestorCoords);
             return ancestorLayer;
         }
@@ -2026,21 +1984,29 @@ static inline const RenderLayer* accumulateOffsetTowardsAncestor(const RenderLay
     return parentLayer;
 }
 
-void RenderLayer::convertToLayerCoords(const RenderLayer* ancestorLayer, LayoutPoint& location, ColumnOffsetAdjustment adjustForColumns) const
+LayoutPoint RenderLayer::convertToLayerCoords(const RenderLayer* ancestorLayer, const LayoutPoint& location, ColumnOffsetAdjustment adjustForColumns) const
 {
     if (ancestorLayer == this)
-        return;
+        return location;
 
     const RenderLayer* currLayer = this;
+    LayoutPoint locationInLayerCoords = location;
     while (currLayer && currLayer != ancestorLayer)
-        currLayer = accumulateOffsetTowardsAncestor(currLayer, ancestorLayer, location, adjustForColumns);
+        currLayer = accumulateOffsetTowardsAncestor(currLayer, ancestorLayer, locationInLayerCoords, adjustForColumns);
+    return locationInLayerCoords;
 }
 
-void RenderLayer::convertToLayerCoords(const RenderLayer* ancestorLayer, LayoutRect& rect, ColumnOffsetAdjustment adjustForColumns) const
+LayoutRect RenderLayer::convertToLayerCoords(const RenderLayer* ancestorLayer, const LayoutRect& rect, ColumnOffsetAdjustment adjustForColumns) const
 {
-    LayoutPoint delta;
-    convertToLayerCoords(ancestorLayer, delta, adjustForColumns);
-    rect.move(-delta.x(), -delta.y());
+    LayoutPoint delta = convertToLayerCoords(ancestorLayer, LayoutPoint(), adjustForColumns);
+    LayoutRect rectInLayerCoords = rect;
+    rectInLayerCoords.moveBy(-delta);
+    return rectInLayerCoords;
+}
+
+LayoutSize RenderLayer::offsetFromAncestor(const RenderLayer* ancestorLayer) const
+{
+    return toLayoutSize(convertToLayerCoords(ancestorLayer, LayoutPoint()));
 }
 
 #if PLATFORM(IOS)
@@ -3593,9 +3559,7 @@ void RenderLayer::clipToRect(RenderLayer* rootLayer, GraphicsContext* context, c
     // containing block chain so we check that also.
     for (RenderLayer* layer = rule == IncludeSelfForBorderRadius ? this : parent(); layer; layer = layer->parent()) {
         if (layer->renderer().hasOverflowClip() && layer->renderer().style().hasBorderRadius() && inContainingBlockChain(this, layer)) {
-                LayoutPoint delta;
-                layer->convertToLayerCoords(rootLayer, delta);
-                context->clipRoundedRect(layer->renderer().style().getRoundedInnerBorderFor(LayoutRect(delta, layer->size())).pixelSnappedRoundedRectForPainting(deviceScaleFactor));
+            context->clipRoundedRect(layer->renderer().style().getRoundedInnerBorderFor(LayoutRect(toLayoutPoint(layer->offsetFromAncestor(rootLayer)), layer->size())).pixelSnappedRoundedRectForPainting(deviceScaleFactor));
         }
 
         if (layer == rootLayer)
@@ -3790,7 +3754,7 @@ bool RenderLayer::setupFontSubpixelQuantization(GraphicsContext* context, bool& 
 }
 
 template <class ReferenceBoxClipPathOperation>
-static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const ReferenceBoxClipPathOperation& clippingPath, const LayoutPoint& offsetFromRoot, const LayoutRect& rootRelativeBounds)
+static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const ReferenceBoxClipPathOperation& clippingPath, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds)
 {
     // FIXME: Support different reference boxes for inline content.
     // https://bugs.webkit.org/show_bug.cgi?id=129047
@@ -3802,11 +3766,11 @@ static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const
     switch (clippingPath.referenceBox()) {
     case ContentBox:
         referenceBox = box.contentBoxRect();
-        referenceBox.moveBy(offsetFromRoot);
+        referenceBox.move(offsetFromRoot);
         break;
     case PaddingBox:
         referenceBox = box.paddingBoxRect();
-        referenceBox.moveBy(offsetFromRoot);
+        referenceBox.move(offsetFromRoot);
         break;
     // FIXME: Support margin-box. Use bounding client rect for now.
     // https://bugs.webkit.org/show_bug.cgi?id=127984
@@ -3818,14 +3782,14 @@ static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const
     case BorderBox:
     case BoxMissing:
         referenceBox = box.borderBoxRect();
-        referenceBox.moveBy(offsetFromRoot);
+        referenceBox.move(offsetFromRoot);
         break;
     }
 
     return referenceBox;
 }
 
-bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, const LayoutPoint& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
+bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
 {
     if (!renderer().hasClipPath() || context->paintingDisabled())
         return false;
@@ -3850,7 +3814,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
         BoxClipPathOperation& clippingPath = toBoxClipPathOperation(*(style.clipPath()));
 
         RoundedRect shapeRect = computeRoundedRectForBoxShape(clippingPath.referenceBox(), toRenderBox(renderer()));
-        shapeRect.moveBy(offsetFromRoot);
+        shapeRect.move(offsetFromRoot);
 
         context->save();
         context->clipPath(clippingPath.pathForReferenceRect(shapeRect), RULE_NONZERO);
@@ -3872,7 +3836,7 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
 
 #if ENABLE(CSS_FILTERS)
 
-std::unique_ptr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsContext* context, LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutPoint& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
+std::unique_ptr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsContext* context, LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
 {
     if (context->paintingDisabled())
         return nullptr;
@@ -3890,7 +3854,7 @@ std::unique_ptr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsCo
         return nullptr;
     
     LayoutRect filterRepaintRect = filterInfo->dirtySourceRect();
-    filterRepaintRect.move(offsetFromRoot.x(), offsetFromRoot.y());
+    filterRepaintRect.move(offsetFromRoot);
 
     if (!rootRelativeBoundsComputed) {
         rootRelativeBounds = calculateLayerBounds(paintingInfo.rootLayer, &offsetFromRoot, 0);
@@ -3999,9 +3963,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         && renderer().fixedPositionedWithNamedFlowContainingBlock())
         return;
 
-    LayoutPoint offsetFromRoot;
-    convertToLayerCoords(paintingInfo.rootLayer, offsetFromRoot);
-
+    LayoutSize offsetFromRoot = offsetFromAncestor(paintingInfo.rootLayer);
     LayoutRect rootRelativeBounds;
     bool rootRelativeBoundsComputed = false;
 
@@ -4132,18 +4094,17 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         context->restore();
 }
 
-void RenderLayer::paintLayerByApplyingTransform(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutPoint& translationOffset)
+void RenderLayer::paintLayerByApplyingTransform(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutSize& translationOffset)
 {
     // This involves subtracting out the position of the layer in our current coordinate space, but preserving
     // the accumulated error for sub-pixel layout.
     float deviceScaleFactor = renderer().document().deviceScaleFactor();
-    LayoutPoint offsetFromParent;
-    convertToLayerCoords(paintingInfo.rootLayer, offsetFromParent);
-    offsetFromParent.moveBy(translationOffset);
+    LayoutSize offsetFromParent = offsetFromAncestor(paintingInfo.rootLayer);
+    offsetFromParent += translationOffset;
     TransformationMatrix transform(renderableTransform(paintingInfo.paintBehavior));
-    FloatPoint devicePixelSnappedOffsetFromParent = roundedForPainting(offsetFromParent, deviceScaleFactor);
+    FloatSize devicePixelSnappedOffsetFromParent = toFloatSize(roundedForPainting(toLayoutPoint(offsetFromParent), deviceScaleFactor));
     // Translate the graphics context to the snapping position to avoid off-device-pixel positing.
-    transform.translateRight(devicePixelSnappedOffsetFromParent.x(), devicePixelSnappedOffsetFromParent.y());
+    transform.translateRight(devicePixelSnappedOffsetFromParent.width(), devicePixelSnappedOffsetFromParent.height());
     // We handle accumulated subpixels through nested layers here. Since the context gets translated to device pixels,
     // all we need to do is add the delta to the accumulated pixels coming from ancestor layers. With deep nesting of subpixel positioned
     // boxes, this could grow to a relatively large number, but the translateRight() balances it.
@@ -4204,7 +4165,7 @@ RenderLayer* RenderLayer::enclosingPaginationLayerInSubtree(const RenderLayer* r
 }
 
 void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer* rootLayer, const LayoutRect& dirtyRect, PaginationInclusionMode inclusionMode,
-    ClipRectsType clipRectsType, OverlayScrollbarSizeRelevancy inOverlayScrollbarSizeRelevancy, ShouldRespectOverflowClip respectOverflowClip, const LayoutPoint* offsetFromRoot,
+    ClipRectsType clipRectsType, OverlayScrollbarSizeRelevancy inOverlayScrollbarSizeRelevancy, ShouldRespectOverflowClip respectOverflowClip, const LayoutSize* offsetFromRoot,
     const LayoutRect* layerBoundingBox, ShouldApplyRootOffsetToFragments applyRootOffsetToFragments)
 {
     RenderLayer* paginationLayer = enclosingPaginationLayerInSubtree(rootLayer, inclusionMode);
@@ -4218,8 +4179,7 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
     }
     
     // Compute our offset within the enclosing pagination layer.
-    LayoutPoint offsetWithinPaginatedLayer;
-    convertToLayerCoords(paginationLayer, offsetWithinPaginatedLayer);
+    LayoutSize offsetWithinPaginatedLayer = offsetFromAncestor(paginationLayer);
     
     // Calculate clip rects relative to the enclosingPaginationLayer. The purpose of this call is to determine our bounds clipped to intermediate
     // layers between us and the pagination context. It's important to minimize the number of fragments we need to create and this helps with that.
@@ -4243,9 +4203,8 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
         LayoutRect layerFragmentBoundingBoxInParentPaginationLayer = enclosingFlowThread.fragmentsBoundingBox(layerBoundingBoxInFlowThread);
         
         // Convert to be in the ancestor pagination context's coordinate space.
-        LayoutPoint offsetWithinParentPaginatedLayer;
-        paginationLayer->convertToLayerCoords(parentPaginationLayer, offsetWithinParentPaginatedLayer);
-        layerFragmentBoundingBoxInParentPaginationLayer.moveBy(offsetWithinParentPaginatedLayer);
+        LayoutSize offsetWithinParentPaginatedLayer = paginationLayer->offsetFromAncestor(parentPaginationLayer);
+        layerFragmentBoundingBoxInParentPaginationLayer.move(offsetWithinParentPaginatedLayer);
         
         // Now collect ancestor fragments.
         parentPaginationLayer->collectFragments(ancestorFragments, rootLayer, dirtyRect, inclusionMode, clipRectsType, inOverlayScrollbarSizeRelevancy, respectOverflowClip, nullptr, &layerFragmentBoundingBoxInParentPaginationLayer, ApplyRootOffsetToFragments);
@@ -4256,7 +4215,7 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
         for (auto& ancestorFragment : ancestorFragments) {
             // Shift the dirty rect into flow thread coordinates.
             LayoutRect dirtyRectInFlowThread(dirtyRect);
-            dirtyRectInFlowThread.moveBy(-offsetWithinParentPaginatedLayer + -ancestorFragment.paginationOffset);
+            dirtyRectInFlowThread.move(-offsetWithinParentPaginatedLayer - ancestorFragment.paginationOffset);
             
             size_t oldSize = fragments.size();
             
@@ -4276,7 +4235,7 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
                 fragment.setRects(layerBoundsInFlowThread, backgroundRectInFlowThread, foregroundRectInFlowThread, outlineRectInFlowThread, &layerBoundingBoxInFlowThread);
                 
                 // Shift to the root-relative physical position used when painting the flow thread in this fragment.
-                fragment.moveBy(ancestorFragment.paginationOffset + fragment.paginationOffset + offsetWithinParentPaginatedLayer);
+                fragment.moveBy(toLayoutPoint(ancestorFragment.paginationOffset + fragment.paginationOffset + offsetWithinParentPaginatedLayer));
 
                 // Intersect the fragment with our ancestor's background clip so that e.g., columns in an overflow:hidden block are
                 // properly clipped by the overflow.
@@ -4295,10 +4254,9 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
     }
     
     // Shift the dirty rect into flow thread coordinates.
-    LayoutPoint offsetOfPaginationLayerFromRoot;
-    enclosingPaginationLayer(inclusionMode)->convertToLayerCoords(rootLayer, offsetOfPaginationLayerFromRoot);
+    LayoutSize offsetOfPaginationLayerFromRoot = enclosingPaginationLayer(inclusionMode)->offsetFromAncestor(rootLayer);
     LayoutRect dirtyRectInFlowThread(dirtyRect);
-    dirtyRectInFlowThread.moveBy(-offsetOfPaginationLayerFromRoot);
+    dirtyRectInFlowThread.move(-offsetOfPaginationLayerFromRoot);
 
     // Tell the flow thread to collect the fragments. We pass enough information to create a minimal number of fragments based off the pages/columns
     // that intersect the actual dirtyRect as well as the pages/columns that intersect our layer's bounding box.
@@ -4322,7 +4280,7 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
         fragment.setRects(layerBoundsInFlowThread, backgroundRectInFlowThread, foregroundRectInFlowThread, outlineRectInFlowThread, &layerBoundingBoxInFlowThread);
         
         // Shift to the root-relative physical position used when painting the flow thread in this fragment.
-        fragment.moveBy(fragment.paginationOffset + offsetOfPaginationLayerFromRoot);
+        fragment.moveBy(toLayoutPoint(fragment.paginationOffset + offsetOfPaginationLayerFromRoot));
 
         // Intersect the fragment with our ancestor's background clip so that e.g., columns in an overflow:hidden block are
         // properly clipped by the overflow.
@@ -4338,14 +4296,14 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
 }
 
 void RenderLayer::updatePaintingInfoForFragments(LayerFragments& fragments, const LayerPaintingInfo& localPaintingInfo, PaintLayerFlags localPaintFlags,
-    bool shouldPaintContent, const LayoutPoint* offsetFromRoot)
+    bool shouldPaintContent, const LayoutSize* offsetFromRoot)
 {
     ASSERT(offsetFromRoot);
     for (size_t i = 0; i < fragments.size(); ++i) {
         LayerFragment& fragment = fragments.at(i);
         fragment.shouldPaintContent = shouldPaintContent;
         if (this != localPaintingInfo.rootLayer || !(localPaintFlags & PaintLayerPaintingOverflowContents)) {
-            LayoutPoint newOffsetFromRoot = *offsetFromRoot + fragment.paginationOffset;
+            LayoutSize newOffsetFromRoot = *offsetFromRoot + fragment.paginationOffset;
             fragment.shouldPaintContent &= intersectsDamageRect(fragment.layerBounds, fragment.backgroundRect.rect(), localPaintingInfo.rootLayer, &newOffsetFromRoot, fragment.hasBoundingBox ? &fragment.boundingBox : 0);
         }
     }
@@ -4354,7 +4312,7 @@ void RenderLayer::updatePaintingInfoForFragments(LayerFragments& fragments, cons
 void RenderLayer::paintTransformedLayerIntoFragments(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
 {
     LayerFragments enclosingPaginationFragments;
-    LayoutPoint offsetOfPaginationLayerFromRoot;
+    LayoutSize offsetOfPaginationLayerFromRoot;
     RenderLayer* paginatedLayer = enclosingPaginationLayer(ExcludeCompositedPaginatedLayers);
     LayoutRect transformedExtent = transparencyClipBox(this, paginatedLayer, PaintingTransparencyClipBox, RootOfTransparencyClipBox, paintingInfo.paintBehavior);
     paginatedLayer->collectFragments(enclosingPaginationFragments, paintingInfo.rootLayer, paintingInfo.paintDirtyRect, ExcludeCompositedPaginatedLayers,
@@ -4370,12 +4328,12 @@ void RenderLayer::paintTransformedLayerIntoFragments(GraphicsContext* context, c
         
         // Now compute the clips within a given fragment
         if (parent() != paginatedLayer) {
-            paginatedLayer->convertToLayerCoords(paintingInfo.rootLayer, offsetOfPaginationLayerFromRoot);
+            offsetOfPaginationLayerFromRoot = toLayoutSize(paginatedLayer->convertToLayerCoords(paintingInfo.rootLayer, toLayoutPoint(offsetOfPaginationLayerFromRoot)));
     
             ClipRectsContext clipRectsContext(paginatedLayer, (paintFlags & PaintLayerTemporaryClipRects) ? TemporaryClipRects : PaintingClipRects,
                 IgnoreOverlayScrollbarSize, (paintFlags & PaintLayerPaintingOverflowContents) ? IgnoreOverflowClip : RespectOverflowClip);
             LayoutRect parentClipRect = backgroundClipRect(clipRectsContext).rect();
-            parentClipRect.moveBy(fragment.paginationOffset + offsetOfPaginationLayerFromRoot);
+            parentClipRect.move(fragment.paginationOffset + offsetOfPaginationLayerFromRoot);
             clipRect.intersect(parentClipRect);
         }
 
@@ -4619,29 +4577,29 @@ static double computeZOffset(const HitTestingTransformState& transformState)
 PassRefPtr<HitTestingTransformState> RenderLayer::createLocalTransformState(RenderLayer* rootLayer, RenderLayer* containerLayer,
                                         const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation,
                                         const HitTestingTransformState* containerTransformState,
-                                        const LayoutPoint& translationOffset) const
+                                        const LayoutSize& translationOffset) const
 {
     RefPtr<HitTestingTransformState> transformState;
-    LayoutPoint offset;
+    LayoutSize offset;
     if (containerTransformState) {
         // If we're already computing transform state, then it's relative to the container (which we know is non-null).
         transformState = HitTestingTransformState::create(*containerTransformState);
-        convertToLayerCoords(containerLayer, offset);
+        offset = offsetFromAncestor(containerLayer);
     } else {
         // If this is the first time we need to make transform state, then base it off of hitTestLocation,
         // which is relative to rootLayer.
         transformState = HitTestingTransformState::create(hitTestLocation.transformedPoint(), hitTestLocation.transformedRect(), FloatQuad(hitTestRect));
-        convertToLayerCoords(rootLayer, offset);
+        offset = offsetFromAncestor(rootLayer);
     }
-    offset.moveBy(translationOffset);
+    offset += translationOffset;
 
     RenderObject* containerRenderer = containerLayer ? &containerLayer->renderer() : 0;
     if (renderer().shouldUseTransformFromContainer(containerRenderer)) {
         TransformationMatrix containerTransform;
-        renderer().getTransformFromContainer(containerRenderer, toLayoutSize(offset), containerTransform);
+        renderer().getTransformFromContainer(containerRenderer, offset, containerTransform);
         transformState->applyTransform(containerTransform, HitTestingTransformState::AccumulateTransform);
     } else {
-        transformState->translate(offset.x(), offset.y(), HitTestingTransformState::AccumulateTransform);
+        transformState->translate(offset.width(), offset.height(), HitTestingTransformState::AccumulateTransform);
     }
     
     return transformState;
@@ -4954,7 +4912,7 @@ RenderLayer* RenderLayer::hitTestTransformedLayerInFragments(RenderLayer* rootLa
     const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation, const HitTestingTransformState* transformState, double* zOffset)
 {
     LayerFragments enclosingPaginationFragments;
-    LayoutPoint offsetOfPaginationLayerFromRoot;
+    LayoutSize offsetOfPaginationLayerFromRoot;
     RenderLayer* paginatedLayer = enclosingPaginationLayer(IncludeCompositedPaginatedLayers);
     LayoutRect transformedExtent = transparencyClipBox(this, paginatedLayer, HitTestingTransparencyClipBox, RootOfTransparencyClipBox);
     paginatedLayer->collectFragments(enclosingPaginationFragments, rootLayer, hitTestRect, IncludeCompositedPaginatedLayers,
@@ -4969,11 +4927,11 @@ RenderLayer* RenderLayer::hitTestTransformedLayerInFragments(RenderLayer* rootLa
         
         // Now compute the clips within a given fragment
         if (parent() != paginatedLayer) {
-            paginatedLayer->convertToLayerCoords(rootLayer, offsetOfPaginationLayerFromRoot);
+            offsetOfPaginationLayerFromRoot = toLayoutSize(paginatedLayer->convertToLayerCoords(rootLayer, toLayoutPoint(offsetOfPaginationLayerFromRoot)));
     
             ClipRectsContext clipRectsContext(paginatedLayer, RootRelativeClipRects, IncludeOverlayScrollbarSize);
             LayoutRect parentClipRect = backgroundClipRect(clipRectsContext).rect();
-            parentClipRect.moveBy(fragment.paginationOffset + offsetOfPaginationLayerFromRoot);
+            parentClipRect.move(fragment.paginationOffset + offsetOfPaginationLayerFromRoot);
             clipRect.intersect(parentClipRect);
         }
         
@@ -4991,7 +4949,7 @@ RenderLayer* RenderLayer::hitTestTransformedLayerInFragments(RenderLayer* rootLa
 
 RenderLayer* RenderLayer::hitTestLayerByApplyingTransform(RenderLayer* rootLayer, RenderLayer* containerLayer, const HitTestRequest& request, HitTestResult& result,
     const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation, const HitTestingTransformState* transformState, double* zOffset,
-    const LayoutPoint& translationOffset)
+    const LayoutSize& translationOffset)
 {
     // Create a transform state to accumulate this transform.
     RefPtr<HitTestingTransformState> newTransformState = createLocalTransformState(rootLayer, containerLayer, hitTestRect, hitTestLocation, transformState, translationOffset);
@@ -5293,7 +5251,7 @@ ClipRect RenderLayer::backgroundClipRect(const ClipRectsContext& clipRectsContex
 }
 
 void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const LayoutRect& paintDirtyRect, LayoutRect& layerBounds,
-    ClipRect& backgroundRect, ClipRect& foregroundRect, ClipRect& outlineRect, const LayoutPoint* offsetFromRoot) const
+    ClipRect& backgroundRect, ClipRect& foregroundRect, ClipRect& outlineRect, const LayoutSize* offsetFromRoot) const
 {
     if (clipRectsContext.rootLayer != this && parent()) {
         backgroundRect = backgroundClipRect(clipRectsContext);
@@ -5301,22 +5259,21 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
     } else
         backgroundRect = paintDirtyRect;
 
-    LayoutPoint offset;
+    LayoutSize offsetFromAcestor;
     if (offsetFromRoot)
-        offset = *offsetFromRoot;
+        offsetFromAcestor = *offsetFromRoot;
     else
-        convertToLayerCoords(clipRectsContext.rootLayer, offset);
-
+        offsetFromAcestor = offsetFromAncestor(clipRectsContext.rootLayer);
 
     RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
     // If the view is scrolled, the flow thread is not scrolled with it and we should
     // take the scroll offset into account.
     if (clipRectsContext.rootLayer->isOutOfFlowRenderFlowThread() && !namedFlowFragment) {
-        FloatPoint absPos = renderer().view().localToAbsolute(FloatPoint(), IsFixed);
-        offset += LayoutSize(absPos.x(), absPos.y());
+        LayoutPoint absPos = LayoutPoint(renderer().view().localToAbsolute(FloatPoint(), IsFixed));
+        offsetFromAcestor += toLayoutSize(absPos);
     }
 
-    layerBounds = LayoutRect(offset, size());
+    layerBounds = LayoutRect(toLayoutPoint(offsetFromAcestor), size());
 
     foregroundRect = backgroundRect;
     outlineRect = backgroundRect;
@@ -5339,7 +5296,7 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
                 rendererContainingBlock->flipForWritingMode(layerBoundsWithVisualOverflow);
         }
 
-        layerBoundsWithVisualOverflow.moveBy(offset);
+        layerBoundsWithVisualOverflow.move(offsetFromAcestor);
         backgroundRect.intersect(layerBoundsWithVisualOverflow);
 
         foregroundRect = backgroundRect;
@@ -5356,14 +5313,14 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
     if (renderer().hasClipOrOverflowClip()) {
         // This layer establishes a clip of some kind.
         if (renderer().hasOverflowClip() && (this != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)) {
-            foregroundRect.intersect(toRenderBox(renderer()).overflowClipRect(offset, namedFlowFragment, clipRectsContext.overlayScrollbarSizeRelevancy));
+            foregroundRect.intersect(toRenderBox(renderer()).overflowClipRect(toLayoutPoint(offsetFromAcestor), namedFlowFragment, clipRectsContext.overlayScrollbarSizeRelevancy));
             if (renderer().style().hasBorderRadius())
                 foregroundRect.setHasRadius(true);
         }
 
         if (renderer().hasClip()) {
             // Clip applies to *us* as well, so go ahead and update the damageRect.
-            LayoutRect newPosClip = toRenderBox(renderer()).clipRect(offset, namedFlowFragment);
+            LayoutRect newPosClip = toRenderBox(renderer()).clipRect(toLayoutPoint(offsetFromAcestor), namedFlowFragment);
             backgroundRect.intersect(newPosClip);
             foregroundRect.intersect(newPosClip);
             outlineRect.intersect(newPosClip);
@@ -5377,7 +5334,7 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
             // individual region boxes as overflow.
             LayoutRect layerBoundsWithVisualOverflow = namedFlowFragment ? namedFlowFragment->visualOverflowRectForBox(renderBox()) : renderBox()->visualOverflowRect();
             renderBox()->flipForWritingMode(layerBoundsWithVisualOverflow); // Layers are in physical coordinates, so the overflow has to be flipped.
-            layerBoundsWithVisualOverflow.moveBy(offset);
+            layerBoundsWithVisualOverflow.move(offsetFromAcestor);
             if (this != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)
                 backgroundRect.intersect(layerBoundsWithVisualOverflow);
         } else {
@@ -5386,7 +5343,7 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
             if (namedFlowFragment)
                 bounds = namedFlowFragment->rectFlowPortionForBox(renderBox(), bounds);
 
-            bounds.moveBy(offset);
+            bounds.move(offsetFromAcestor);
             if (this != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)
                 backgroundRect.intersect(bounds);
             
@@ -5437,9 +5394,7 @@ LayoutRect RenderLayer::localClipRect(bool& clipExceedsBounds) const
     // FIXME: border-radius not accounted for.
     // FIXME: Regions not accounted for.
     RenderLayer* clippingRootLayer = clippingRootForPainting();
-
-    LayoutPoint offsetFromRoot;
-    convertToLayerCoords(clippingRootLayer, offsetFromRoot);
+    LayoutSize offsetFromRoot = offsetFromAncestor(clippingRootLayer);
 
     LayoutRect layerBounds;
     ClipRect backgroundRect, foregroundRect, outlineRect;
@@ -5452,14 +5407,11 @@ LayoutRect RenderLayer::localClipRect(bool& clipExceedsBounds) const
 
     if (renderer().hasClip()) {
         // CSS clip may be larger than our border box.
-        LayoutRect cssClipRect = toRenderBox(renderer()).clipRect(offsetFromRoot, currentRenderNamedFlowFragment());
+        LayoutRect cssClipRect = toRenderBox(renderer()).clipRect(toLayoutPoint(offsetFromRoot), currentRenderNamedFlowFragment());
         clipExceedsBounds = !clipRect.contains(cssClipRect);
     }
 
-    LayoutPoint clippingRootOffset;
-    convertToLayerCoords(clippingRootLayer, clippingRootOffset);
-    clipRect.moveBy(-clippingRootOffset);
-
+    clipRect.move(-offsetFromAncestor(clippingRootLayer));
     return clipRect;
 }
 
@@ -5493,7 +5445,7 @@ void RenderLayer::repaintBlockSelectionGaps()
         renderer().repaintRectangle(rect);
 }
 
-bool RenderLayer::intersectsDamageRect(const LayoutRect& layerBounds, const LayoutRect& damageRect, const RenderLayer* rootLayer, const LayoutPoint* offsetFromRoot, const LayoutRect* cachedBoundingBox) const
+bool RenderLayer::intersectsDamageRect(const LayoutRect& layerBounds, const LayoutRect& damageRect, const RenderLayer* rootLayer, const LayoutSize* offsetFromRoot, const LayoutRect* cachedBoundingBox) const
 {
     // Always examine the canvas and the root.
     // FIXME: Could eliminate the isRoot() check if we fix background painting so that the RenderView
@@ -5575,7 +5527,7 @@ LayoutRect RenderLayer::localBoundingBox(CalculateLayerBoundsFlags flags) const
     return result;
 }
 
-LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, CalculateLayerBoundsFlags flags, const LayoutPoint* offsetFromRoot) const
+LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, CalculateLayerBoundsFlags flags, const LayoutSize* offsetFromRoot) const
 {    
     LayoutRect result = localBoundingBox(flags);
     if (renderer().isBox())
@@ -5595,9 +5547,7 @@ LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, CalculateL
     while (paginationLayer) {
         // Split our box up into the actual fragment boxes that render in the columns/pages and unite those together to
         // get our true bounding box.
-        LayoutPoint offsetWithinPaginationLayer;
-        childLayer->convertToLayerCoords(paginationLayer, offsetWithinPaginationLayer);
-        result.moveBy(offsetWithinPaginationLayer);
+        result.move(childLayer->offsetFromAncestor(paginationLayer));
 
         RenderFlowThread& enclosingFlowThread = toRenderFlowThread(paginationLayer->renderer());
         result = enclosingFlowThread.fragmentsBoundingBox(result);
@@ -5607,19 +5557,17 @@ LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, CalculateL
     }
 
     if (isPaginated) {
-        LayoutPoint delta;
-        childLayer->convertToLayerCoords(ancestorLayer, delta);
-        result.moveBy(delta);
+        result.move(childLayer->offsetFromAncestor(ancestorLayer));
         return result;
     }
     
-    LayoutPoint delta;
+    LayoutSize delta;
     if (offsetFromRoot)
         delta = *offsetFromRoot;
     else
-        convertToLayerCoords(ancestorLayer, delta);
+        delta = offsetFromAncestor(ancestorLayer);
     
-    result.moveBy(delta);
+    result.move(delta);
     return result;
 }
 
@@ -5633,7 +5581,7 @@ FloatRect RenderLayer::absoluteBoundingBoxForPainting() const
     return pixelSnappedForPainting(boundingBox(root()), renderer().document().deviceScaleFactor());
 }
 
-LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, const LayoutPoint* offsetFromRoot, CalculateLayerBoundsFlags flags) const
+LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, const LayoutSize* offsetFromRoot, CalculateLayerBoundsFlags flags) const
 {
     if (!isSelfPaintingLayer())
         return LayoutRect();
@@ -5672,9 +5620,7 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
             if ((flags & IncludeSelfTransform) && paintsWithTransform(PaintBehaviorNormal))
                 localClipRect = transform()->mapRect(localClipRect);
 
-            LayoutPoint ancestorRelOffset;
-            convertToLayerCoords(ancestorLayer, ancestorRelOffset);
-            localClipRect.moveBy(ancestorRelOffset);
+            localClipRect.move(offsetFromAncestor(ancestorLayer));
             return localClipRect;
         }
     }
@@ -5748,12 +5694,12 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
         unionBounds = affineTrans->mapRect(unionBounds);
     }
 
-    LayoutPoint ancestorRelOffset;
+    LayoutSize offsetFromAncestor;
     if (offsetFromRoot)
-        ancestorRelOffset = *offsetFromRoot;
+        offsetFromAncestor = *offsetFromRoot;
     else
-        convertToLayerCoords(ancestorLayer, ancestorRelOffset);
-    unionBounds.moveBy(ancestorRelOffset);
+        offsetFromAncestor = this->offsetFromAncestor(ancestorLayer);
+    unionBounds.move(offsetFromAncestor);
     
     return unionBounds;
 }
@@ -5896,10 +5842,8 @@ bool RenderLayer::listBackgroundIsKnownToBeOpaqueInRect(const Vector<RenderLayer
         if (!childLayer->canUseConvertToLayerCoords())
             continue;
 
-        LayoutPoint childOffset;
         LayoutRect childLocalRect(localRect);
-        childLayer->convertToLayerCoords(this, childOffset);
-        childLocalRect.moveBy(-childOffset);
+        childLocalRect.move(-childLayer->offsetFromAncestor(this));
 
         if (childLayer->backgroundIsKnownToBeOpaqueInRect(childLocalRect))
             return true;
@@ -6145,9 +6089,7 @@ void RenderLayer::setBackingNeedsRepaintInRect(const LayoutRect& r, GraphicsLaye
         // If we're trying to repaint the placeholder document layer, propagate the
         // repaint to the native view system.
         LayoutRect absRect(r);
-        LayoutPoint delta;
-        convertToLayerCoords(root(), delta);
-        absRect.moveBy(delta);
+        absRect.move(offsetFromAncestor(root()));
 
         renderer().view().repaintViewRectangle(absRect);
     } else
@@ -6734,11 +6676,8 @@ void RenderLayer::paintFlowThreadIfRegionForFragments(const LayerFragments& frag
         // GraphicsLayer coordinates in which the fragment gets painted. So what is computed so far is enough.
         // If the layer of the flowFragment is not composited, then we change the coordinates to be relative to the flow
         // thread's layer.
-        if (!isComposited()) {
-            LayoutPoint regionOffsetFromRoot;
-            convertToLayerCoords(paintingInfo.rootLayer, regionOffsetFromRoot);
-            regionClipRect.moveBy(regionOffsetFromRoot);
-        }
+        if (!isComposited())
+            regionClipRect.move(offsetFromAncestor(paintingInfo.rootLayer));
     }
     
     for (size_t i = 0; i < fragments.size(); ++i) {
@@ -6760,7 +6699,7 @@ void RenderLayer::paintFlowThreadIfRegionForFragments(const LayerFragments& frag
     }
 }
 
-RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragments& fragments, RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result, const LayoutRect& hitTestRect, 
+RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragments& fragments, RenderLayer*, const HitTestRequest& request, HitTestResult& result, const LayoutRect& hitTestRect,
     const HitTestLocation& hitTestLocation,
     const HitTestingTransformState* transformState, 
     double* zOffsetForDescendants, double* zOffset,
@@ -6774,9 +6713,6 @@ RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragm
         return 0;
 
     RenderFlowThread* flowThread = region->flowThread();
-    LayoutPoint regionOffsetFromRoot;
-    convertToLayerCoords(rootLayer, regionOffsetFromRoot);
-
     LayoutPoint portionLocation = region->flowThreadPortionRect().location();
     if (flowThread->style().isFlippedBlocksWritingMode()) {
         // The portion location coordinate must be translated into physical coordinates.
@@ -6805,7 +6741,7 @@ RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragm
 
         // Expand the hit-test rect to the flow thread's coordinate system.
         LayoutRect hitTestRectInFlowThread = hitTestRect;
-        hitTestRectInFlowThread.move(hitTestOffset.width(), hitTestOffset.height());
+        hitTestRectInFlowThread.move(hitTestOffset);
         hitTestRectInFlowThread.expand(LayoutSize(fabs((double)hitTestOffset.width()), fabs((double)hitTestOffset.height())));
 
         CurrentRenderFlowThreadMaintainer flowThreadMaintainer(flowThread);

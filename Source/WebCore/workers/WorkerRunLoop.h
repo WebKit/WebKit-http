@@ -74,7 +74,7 @@ namespace WebCore {
             void performTask(const WorkerRunLoop&, WorkerGlobalScope*);
 
         private:
-            Task(ScriptExecutionContext::Task task, const String& mode);
+            Task(ScriptExecutionContext::Task, const String& mode);
         
             ScriptExecutionContext::Task m_task;
             String m_mode;

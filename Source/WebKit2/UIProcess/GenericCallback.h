@@ -52,9 +52,24 @@ public:
 
     uint64_t callbackID() const { return m_callbackID; }
 
+    template<class T>
+    T* as()
+    {
+        if (T::type() == m_type)
+            return static_cast<T*>(this);
+
+        return nullptr;
+    }
+
+    virtual void invalidate(Error) = 0;
+
 protected:
-    explicit CallbackBase()
-        : m_callbackID(generateCallbackID())
+    struct TypeTag { };
+    typedef const TypeTag* Type;
+
+    explicit CallbackBase(Type type)
+        : m_type(type)
+        , m_callbackID(generateCallbackID())
     {
     }
 
@@ -66,6 +81,7 @@ private:
         return uniqueCallbackID++;
     }
 
+    Type m_type;
     uint64_t m_callbackID;
 };
 
@@ -99,7 +115,7 @@ public:
         performCallbackWithReturnValue();
     }
 
-    void invalidate(Error error = Error::Unknown)
+    virtual void invalidate(Error error = Error::Unknown) override final
     {
         if (!m_callback)
             return;
@@ -111,8 +127,16 @@ public:
 
 private:
     GenericCallback(CallbackFunction callback)
-        : m_callback(callback)
+        : CallbackBase(type())
+        , m_callback(callback)
     {
+    }
+
+    friend class CallbackBase;
+    static Type type()
+    {
+        static TypeTag tag;
+        return &tag;
     }
 
     CallbackFunction m_callback;
@@ -140,6 +164,53 @@ void invalidateCallbackMap(HashMap<uint64_t, T>& callbackMap, CallbackBase::Erro
 
     callbackMap.clear();
 }
+
+class CallbackMap {
+public:
+    uint64_t put(PassRefPtr<CallbackBase> callback)
+    {
+        ASSERT(!m_map.contains(callback->callbackID()));
+
+        uint64_t callbackID = callback->callbackID();
+        m_map.set(callbackID, callback);
+        return callbackID;
+    }
+
+    template<unsigned I, typename T, typename... U>
+    struct GenericCallbackType {
+        typedef typename GenericCallbackType<I - 1, U..., T>::type type;
+    };
+
+    template<typename... U>
+    struct GenericCallbackType<1, CallbackBase::Error, U...> {
+        typedef GenericCallback<U...> type;
+    };
+
+    template<typename... T>
+    uint64_t put(std::function<void (T...)> function)
+    {
+        auto callback = GenericCallbackType<sizeof...(T), T...>::type::create(std::move(function));
+        return put(callback);
+    }
+
+    template<class T>
+    RefPtr<T> take(uint64_t callbackID)
+    {
+        RefPtr<CallbackBase> base = m_map.take(callbackID);
+        if (!base)
+            return nullptr;
+
+        return adoptRef(base.release().leakRef()->as<T>());
+    }
+
+    void invalidate(CallbackBase::Error error)
+    {
+        invalidateCallbackMap(m_map, error);
+    }
+
+private:
+    HashMap<uint64_t, RefPtr<CallbackBase>> m_map;
+};
 
 } // namespace WebKit
 

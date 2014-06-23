@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,35 +22,98 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 #ifndef SessionState_h
 #define SessionState_h
 
-#include "WebBackForwardListItem.h"
+#include <WebCore/IntPoint.h>
+#include <WebCore/URL.h>
+#include <wtf/Optional.h>
+#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class ArgumentDecoder;
+class ArgumentEncoder;
 }
 
 namespace WebKit {
 
-class SessionState {
-public:
-    SessionState();
-    SessionState(const BackForwardListItemVector&, uint32_t currentIndex);
+struct HTTPBody {
+    struct Element {
+        void encode(IPC::ArgumentEncoder&) const;
+        static bool decode(IPC::ArgumentDecoder&, Element&);
 
-    const BackForwardListItemVector& list() const { return m_list; }
-    uint32_t currentIndex() const { return m_currentIndex; }
+        enum class Type {
+            Data,
+            File,
+            Blob,
+        };
 
-    bool isEmpty() const;
+        Type type = Type::Data;
+
+        // Data.
+        Vector<char> data;
+
+        // File.
+        String filePath;
+        int64_t fileStart;
+        Optional<int64_t> fileLength;
+        Optional<double> expectedFileModificationTime;
+
+        // Blob.
+        String blobURLString;
+    };
 
     void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, SessionState&);
+    static bool decode(IPC::ArgumentDecoder&, HTTPBody&);
 
-private:
-    BackForwardListItemVector m_list;
-    uint32_t m_currentIndex;
+    String contentType;
+    Vector<Element> elements;
+};
+
+struct FrameState {
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, FrameState&);
+
+    String urlString;
+    String originalURLString;
+    String referrer;
+    String target;
+
+    Vector<String> documentState;
+    Vector<uint8_t> stateObjectData;
+
+    int64_t documentSequenceNumber;
+    int64_t itemSequenceNumber;
+
+    WebCore::IntPoint scrollPoint;
+    float pageScaleFactor;
+
+    Optional<HTTPBody> httpBody;
+
+    Vector<FrameState> children;
+};
+
+struct PageState {
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, PageState&);
+
+    String title;
+    FrameState mainFrameState;
+};
+
+struct BackForwardListState {
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, BackForwardListState&);
+
+    Vector<PageState> items;
+    uint32_t currentIndex;
+};
+
+struct SessionState {
+    BackForwardListState backForwardListState;
+    WebCore::URL provisionalURL;
 };
 
 } // namespace WebKit

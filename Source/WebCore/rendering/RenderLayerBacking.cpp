@@ -458,8 +458,7 @@ void RenderLayerBacking::updateCompositedBounds()
         if (&m_owningLayer != rootLayer)
             clippingBounds.intersect(m_owningLayer.backgroundClipRect(RenderLayer::ClipRectsContext(rootLayer, AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
 
-        LayoutPoint delta;
-        m_owningLayer.convertToLayerCoords(rootLayer, delta, RenderLayer::AdjustForColumns);
+        LayoutPoint delta = m_owningLayer.convertToLayerCoords(rootLayer, LayoutPoint(), RenderLayer::AdjustForColumns);
         clippingBounds.move(-delta.x(), -delta.y());
 
         layerBounds.intersect(clippingBounds);
@@ -563,8 +562,7 @@ bool RenderLayerBacking::updateConfiguration()
             m_graphicsLayer->addChild(flatteningLayer);
     }
 
-    if (updateMaskLayer(renderer().hasMask()))
-        m_graphicsLayer->setMaskLayer(m_maskLayer.get());
+    updateMaskLayer(renderer().hasMask());
 
     if (m_owningLayer.hasReflection()) {
         if (m_owningLayer.reflectionLayer()->backing()) {
@@ -712,8 +710,7 @@ void RenderLayerBacking::updateGeometry()
     LayoutRect localCompositingBounds = compositedBounds();
     LayoutRect relativeCompositingBounds(localCompositingBounds);
 
-    LayoutPoint offsetFromParent;
-    m_owningLayer.convertToLayerCoords(compAncestor, offsetFromParent, RenderLayer::AdjustForColumns);
+    LayoutPoint offsetFromParent = m_owningLayer.convertToLayerCoords(compAncestor, LayoutPoint(), RenderLayer::AdjustForColumns);
     // Device pixel fractions get accumulated through ancestor layers. Our painting offset is layout offset + parent's painting offset.
     offsetFromParent = offsetFromParent + (compAncestor ? compAncestor->backing()->devicePixelFractionFromRenderer() : LayoutSize());
     relativeCompositingBounds.moveBy(offsetFromParent);
@@ -1385,7 +1382,7 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
     return layerChanged;
 }
 
-bool RenderLayerBacking::updateMaskLayer(bool needsMaskLayer)
+void RenderLayerBacking::updateMaskLayer(bool needsMaskLayer)
 {
     bool layerChanged = false;
     if (needsMaskLayer) {
@@ -1394,8 +1391,10 @@ bool RenderLayerBacking::updateMaskLayer(bool needsMaskLayer)
             m_maskLayer->setDrawsContent(true);
             m_maskLayer->setPaintingPhase(GraphicsLayerPaintMask);
             layerChanged = true;
+            m_graphicsLayer->setMaskLayer(m_maskLayer.get());
         }
     } else if (m_maskLayer) {
+        m_graphicsLayer->setMaskLayer(nullptr);
         willDestroyLayer(m_maskLayer.get());
         m_maskLayer = nullptr;
         layerChanged = true;
@@ -1403,8 +1402,6 @@ bool RenderLayerBacking::updateMaskLayer(bool needsMaskLayer)
 
     if (layerChanged)
         m_graphicsLayer->setPaintingPhase(paintingPhaseForPrimaryLayer());
-
-    return layerChanged;
 }
 
 bool RenderLayerBacking::updateScrollingLayers(bool needsScrollingLayers)

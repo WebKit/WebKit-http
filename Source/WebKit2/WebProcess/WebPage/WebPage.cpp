@@ -41,6 +41,7 @@
 #include "InjectedBundleBackForwardList.h"
 #include "InjectedBundleUserMessageCoders.h"
 #include "LayerTreeHost.h"
+#include "LegacySessionState.h"
 #include "Logging.h"
 #include "NetscapePlugin.h"
 #include "NotificationPermissionRequestManager.h"
@@ -50,7 +51,6 @@
 #include "PluginView.h"
 #include "PrintInfo.h"
 #include "SelectionOverlayController.h"
-#include "SessionState.h"
 #include "SessionTracker.h"
 #include "ShareableBitmap.h"
 #include "TelephoneNumberOverlayController.h"
@@ -354,7 +354,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     m_page = std::make_unique<Page>(pageClients);
 
-    m_drawingArea = DrawingArea::create(this, parameters);
+    m_drawingArea = DrawingArea::create(*this, parameters);
     m_drawingArea->setPaintingEnabled(false);
     m_pageOverlayController.initialize();
 
@@ -442,8 +442,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     
     setMediaVolume(parameters.mediaVolume);
 
-    // We use the DidFirstLayout milestone to determine when to unfreeze the layer tree.
-    m_page->addLayoutMilestones(DidFirstLayout);
+    // We use the DidFirstVisuallyNonEmptyLayout milestone to determine when to unfreeze the layer tree.
+    m_page->addLayoutMilestones(DidFirstLayout | DidFirstVisuallyNonEmptyLayout);
 
     WebProcess::shared().addMessageReceiver(Messages::WebPage::messageReceiverName(), m_pageID, *this);
 
@@ -1098,7 +1098,7 @@ void WebPage::goForward(uint64_t navigationID, uint64_t backForwardItemID)
     if (!item->isInPageCache())
         m_pendingNavigationID = navigationID;
 
-    m_page->goToItem(item, FrameLoadTypeForward);
+    m_page->goToItem(item, FrameLoadType::Forward);
 }
 
 void WebPage::goBack(uint64_t navigationID, uint64_t backForwardItemID)
@@ -1114,7 +1114,7 @@ void WebPage::goBack(uint64_t navigationID, uint64_t backForwardItemID)
     if (!item->isInPageCache())
         m_pendingNavigationID = navigationID;
 
-    m_page->goToItem(item, FrameLoadTypeBack);
+    m_page->goToItem(item, FrameLoadType::Back);
 }
 
 void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardItemID)
@@ -1130,7 +1130,7 @@ void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardIte
     if (!item->isInPageCache())
         m_pendingNavigationID = navigationID;
 
-    m_page->goToItem(item, FrameLoadTypeIndexedBackForward);
+    m_page->goToItem(item, FrameLoadType::IndexedBackForward);
 }
 
 void WebPage::tryRestoreScrollPosition()
@@ -1949,7 +1949,7 @@ void WebPage::executeEditCommand(const String& commandName)
     executeEditingCommand(commandName, String());
 }
 
-uint64_t WebPage::restoreSession(const SessionState& sessionState)
+uint64_t WebPage::restoreSession(const LegacySessionState& sessionState)
 {
     const BackForwardListItemVector& list = sessionState.list();
     size_t size = list.size();
@@ -1973,7 +1973,7 @@ uint64_t WebPage::restoreSession(const SessionState& sessionState)
     return currentItemID;
 }
 
-void WebPage::restoreSessionAndNavigateToCurrentItem(uint64_t navigationID, const SessionState& sessionState)
+void WebPage::restoreSessionAndNavigateToCurrentItem(uint64_t navigationID, const LegacySessionState& sessionState)
 {
     if (uint64_t currentItemID = restoreSession(sessionState))
         goToBackForwardItem(navigationID, currentItemID);
@@ -2265,10 +2265,11 @@ void WebPage::didStartPageTransition()
 void WebPage::didCompletePageTransition()
 {
 #if USE(TILED_BACKING_STORE)
-    if (m_mainFrame->coreFrame()->view()->delegatesScrolling())
+    // m_mainFrame can be null since r170163.
+    if (m_mainFrame && m_mainFrame->coreFrame()->view()->delegatesScrolling()) {
         // Wait until the UI process sent us the visible rect it wants rendered.
         send(Messages::WebPageProxy::PageTransitionViewportReady());
-    else
+    } else
 #endif
         
     m_drawingArea->setLayerTreeStateIsFrozen(false);
@@ -2732,10 +2733,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     settings.setHiddenPageDOMTimerThrottlingEnabled(store.getBoolValueForKey(WebPreferencesKey::hiddenPageDOMTimerThrottlingEnabledKey()));
 #endif
-#if ENABLE(PAGE_VISIBILITY_API)
-    settings.setHiddenPageCSSAnimationSuspensionEnabled(store.getBoolValueForKey(WebPreferencesKey::hiddenPageCSSAnimationSuspensionEnabledKey()));
-#endif
 
+    settings.setHiddenPageCSSAnimationSuspensionEnabled(store.getBoolValueForKey(WebPreferencesKey::hiddenPageCSSAnimationSuspensionEnabledKey()));
     settings.setLowPowerVideoAudioBufferSizeEnabled(store.getBoolValueForKey(WebPreferencesKey::lowPowerVideoAudioBufferSizeEnabledKey()));
     settings.setSimpleLineLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutEnabledKey()));
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
@@ -3489,7 +3488,7 @@ static bool shouldReuseCommittedSandboxExtension(WebFrame* frame)
     FrameLoadType frameLoadType = frameLoader.loadType();
 
     // If the page is being reloaded, it should reuse whatever extension is committed.
-    if (frameLoadType == FrameLoadTypeReload || frameLoadType == FrameLoadTypeReloadFromOrigin)
+    if (frameLoadType == FrameLoadType::Reload || frameLoadType == FrameLoadType::ReloadFromOrigin)
         return true;
 
     DocumentLoader* documentLoader = frameLoader.documentLoader();
@@ -4342,7 +4341,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
         reportUsedFeatures();
 
     // Only restore the scale factor for standard frame loads (of the main frame).
-    if (frame->coreFrame()->loader().loadType() == FrameLoadTypeStandard) {
+    if (frame->coreFrame()->loader().loadType() == FrameLoadType::Standard) {
         Page* page = frame->coreFrame()->page();
 
         if (page) {

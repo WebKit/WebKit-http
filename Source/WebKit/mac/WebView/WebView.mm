@@ -518,6 +518,7 @@ WebLayoutMilestones kitLayoutMilestones(LayoutMilestones milestones)
         | (milestones & DidHitRelevantRepaintedObjectsAreaThreshold ? WebDidHitRelevantRepaintedObjectsAreaThreshold : 0);
 }
 
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
 static WebPageVisibilityState kit(PageVisibilityState visibilityState)
 {
     switch (visibilityState) {
@@ -532,6 +533,7 @@ static WebPageVisibilityState kit(PageVisibilityState visibilityState)
     ASSERT_NOT_REACHED();
     return WebPageVisibilityStateVisible;
 }
+#endif
 
 @interface WebView (WebFileInternal)
 #if !PLATFORM(IOS)
@@ -2002,7 +2004,7 @@ static bool fastDocumentTeardownEnabled()
     }
     
     ASSERT(newItemToGoTo);
-    _private->page->goToItem(newItemToGoTo, FrameLoadTypeIndexedBackForward);
+    _private->page->goToItem(newItemToGoTo, FrameLoadType::IndexedBackForward);
 }
 
 - (void)_setFormDelegate: (id<WebFormDelegate>)delegate
@@ -2342,6 +2344,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     settings.setMinimumZoomFontSize([preferences _minimumZoomFontSize]);
 #endif
+
+    settings.setAllowNavigationToInvalidURL(!WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_NAVIGATION_URL_VALIDATION));
 #endif // PLATFORM(IOS)
 
 #if PLATFORM(MAC)
@@ -2402,9 +2406,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setHiddenPageDOMTimerThrottlingEnabled([preferences hiddenPageDOMTimerThrottlingEnabled]);
 #endif
 
-#if ENABLE(PAGE_VISIBILITY_API)
-    settings.setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
-#endif
+settings.setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -4323,7 +4325,7 @@ static Vector<String> toStringVector(NSArray* patterns)
 
 - (WebPageVisibilityState)_visibilityState
 {
-#if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     if (_private->page)
         return kit(_private->page->visibilityState());
 #endif
@@ -5607,7 +5609,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     if (!_private->page)
         return NO;
 
-    _private->page->goToItem(core(item), FrameLoadTypeIndexedBackForward);
+    _private->page->goToItem(core(item), FrameLoadType::IndexedBackForward);
     return YES;
 }
 

@@ -1,3 +1,279 @@
+2014-06-20  Sam Weinig  <sam@webkit.org>
+
+        Remove static tables for bindings that use eager reification
+        https://bugs.webkit.org/show_bug.cgi?id=134126
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putDirectCustomAccessor):
+        * runtime/Structure.h:
+        (JSC::Structure::setHasCustomGetterSetterProperties):
+        Change setHasCustomGetterSetterProperties to behave like setHasGetterSetterProperties, and set
+        the m_hasReadOnlyOrGetterSetterPropertiesExcludingProto bit if the property is not __proto__.
+        Without this, JSObject::put() won't think there are any setters on the prototype chain of an
+        object that has no static lookup table and uses eagerly reified custom getter/setter properties.
+
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Move some implementation files into a "deprecated" subdirectory.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-06-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170244.
+        https://bugs.webkit.org/show_bug.cgi?id=134157
+
+        GTK/EFL bindings generator works differently, making this
+        patch not work there.  Will fix entire patch after a rollout.
+        (Requested by bradee-oh on #webkit).
+
+        Reverted changeset:
+
+        "Gamepad API - Deprecate the existing implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+        http://trac.webkit.org/changeset/170244
+
+2014-06-21  Brady Eidson  <beidson@apple.com>
+
+        Gamepad API - Deprecate the existing implementation
+        https://bugs.webkit.org/show_bug.cgi?id=134108
+
+        Reviewed by Timothy Hatcher.
+
+        -Add new "GAMEPAD_DEPRECATED" build flag, moving the existing implementation to use it
+        -Add the "Deprecated" suffix to some implementation files
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-06-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Removing PAGE_VISIBILITY_API compile guard.
+        https://bugs.webkit.org/show_bug.cgi?id=133844
+
+        Reviewed by Gavin Barraclough.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-06-21  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        ARM traditional buildfix after r169942.
+        https://bugs.webkit.org/show_bug.cgi?id=134100
+
+        Reviewed by Zoltan Herczeg.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::abortWithReason): Added.
+
+2014-06-20  Andreas Kling  <akling@apple.com>
+
+        [Cocoa] Release freed up blocks from the JS heap after simulated memory pressure.
+        <https://webkit.org/b/134112>
+
+        Reviewed by Mark Hahnenberg.
+
+        * heap/BlockAllocator.h:
+
+2014-06-19  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed fix after r170130.
+
+        * JavaScriptCore.vcxproj/libllvmForJSC/libllvmForJSC.vcxproj:
+        Corrected directory so it can find common.props when opening Visual Studio.
+
+2014-06-19  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Remove ENABLE(LLINT) and ENABLE(LLINT_C_LOOP) guards
+        https://bugs.webkit.org/show_bug.cgi?id=130389
+
+        Reviewed by Mark Lam.
+
+        Removed ENABLE(LLINT) since we always build with it, and changed ENABLE(LLINT_C_LOOP)
+        into !ENABLE(JIT) since they are mutually exclusive.
+
+        * CMakeLists.txt:
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::MacroAssemblerCodePtr::createLLIntCodePtr):
+        (JSC::MacroAssemblerCodeRef::createLLIntCodeRef):
+        * assembler/MaxFrameExtentForSlowPathCall.h:
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFromLLInt):
+        * bytecode/CodeBlock.cpp:
+        (JSC::dumpStructure):
+        (JSC::CodeBlock::printGetByIdCacheStatus):
+        (JSC::CodeBlock::printCallOp):
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::~CodeBlock):
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        (JSC::CodeBlock::unlinkCalls):
+        (JSC::CodeBlock::unlinkIncomingCalls):
+        (JSC::CodeBlock::linkIncomingCall):
+        (JSC::CodeBlock::frameRegisterCount):
+        * bytecode/CodeBlock.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        * bytecode/Opcode.h:
+        (JSC::padOpcodeName):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFromLLInt):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitCall):
+        (JSC::BytecodeGenerator::emitConstruct):
+        * heap/Heap.cpp:
+        (JSC::Heap::gatherJSStackRoots):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::initialize):
+        (JSC::Interpreter::isOpcode):
+        * interpreter/Interpreter.h:
+        (JSC::Interpreter::getOpcodeID):
+        * interpreter/JSStack.cpp:
+        (JSC::JSStack::JSStack):
+        (JSC::JSStack::committedByteCount):
+        * interpreter/JSStack.h:
+        * interpreter/JSStackInlines.h:
+        (JSC::JSStack::ensureCapacityFor):
+        (JSC::JSStack::topOfFrameFor):
+        (JSC::JSStack::setStackLimit):
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        * jit/JIT.h:
+        (JSC::JIT::compileCTINativeCall):
+        * jit/JITExceptions.h:
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::ctiNativeCall):
+        (JSC::JITThunks::ctiNativeConstruct):
+        * llint/LLIntCLoop.cpp:
+        * llint/LLIntCLoop.h:
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::initialize):
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LLIntData.h:
+        (JSC::LLInt::Data::performAssertions): Deleted.
+        * llint/LLIntEntrypoint.cpp:
+        * llint/LLIntEntrypoint.h:
+        * llint/LLIntExceptions.cpp:
+        * llint/LLIntExceptions.h:
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LLIntOffsetsExtractor.cpp:
+        (JSC::LLIntOffsetsExtractor::dummy):
+        * llint/LLIntOpcode.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LLIntThunks.cpp:
+        * llint/LLIntThunks.h:
+        * llint/LowLevelInterpreter.cpp:
+        * llint/LowLevelInterpreter.h:
+        * runtime/CommonSlowPaths.cpp:
+        * runtime/CommonSlowPaths.h:
+        * runtime/ErrorHandlingScope.cpp:
+        (JSC::ErrorHandlingScope::ErrorHandlingScope):
+        (JSC::ErrorHandlingScope::~ErrorHandlingScope):
+        * runtime/Executable.cpp:
+        (JSC::setupLLInt):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::sanitizeStackForVM):
+        * runtime/VM.h:
+        (JSC::VM::canUseJIT): Deleted.
+
+2014-06-18  Alex Christensen  <achristensen@webkit.org>
+
+        Add FTL to Windows build.
+        https://bugs.webkit.org/show_bug.cgi?id=134015
+
+        Reviewed by Filip Pizlo.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        Added ftl source files.
+        * JavaScriptCore.vcxproj/JavaScriptCoreCommon.props:
+        Added ftl and llvm directories to include path.
+        * JavaScriptCore.vcxproj/libllvmForJSC: Added.
+        * JavaScriptCore.vcxproj/libllvmForJSC/libllvmForJSC.props: Added.
+        * JavaScriptCore.vcxproj/libllvmForJSC/libllvmForJSC.vcxproj: Added.
+        * JavaScriptCore.vcxproj/libllvmForJSC/libllvmForJSC.vcxproj.filters: Added.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileArithMinOrMax):
+        MSVC doesn't like to divide by zero while compiling.  Use std::nan instead.
+        * llvm/InitializeLLVMWin.cpp: Added.
+        (JSC::initializeLLVMImpl):
+        Implemented dynamic loading and linking for Windows.
+
+2014-06-18  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix after r170107.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithMod):
+        Use non-template sub for armv7s.
+
+2014-06-18  David Kilzer  <ddkilzer@apple.com>
+
+        -[JSContext setName:] leaks NSString
+        <http://webkit.org/b/134038>
+
+        Reviewed by Joseph Pecoraro.
+
+        Fixes the following static analyzer warning:
+
+            JavaScriptCore/API/JSContext.mm:200:73: warning: Potential leak of an object
+                JSStringRef nameJS = name ? JSStringCreateWithCFString((CFStringRef)[name copy]) : nullptr;
+                                                                                    ^
+
+        * API/JSContext.mm:
+        (-[JSContext setName:]): Autorelease the copy of |name|.
+
+2014-06-18  Mark Lam  <mark.lam@apple.com>
+
+        DFGGraph::m_doubleConstantMap will not map 0 values correctly.
+        <https://webkit.org/b/133994>
+
+        Reviewed by Geoffrey Garen.
+
+        DFGGraph::m_doubleConstantsMap should not use a double as a key to its HashMap,
+        because it means two unfortunate things:
+        - It will probably break for zero.
+        - It will think that -0 is the same as +0 under some circumstances, size
+          -0==+0 even though they are distinct values (for example 1/-0 != 1/+0).
+
+        The fix is to use std::unordered_map which does not require special empty
+        and deleted values, and to use the raw bits instead of the double value as
+        the key.
+
+        * dfg/DFGGraph.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::addressOfDoubleConstant):
+
+2014-06-18  Alex Christensen  <achristensen@webkit.org>
+
+        Remove duplicate code using sdiv.
+        https://bugs.webkit.org/show_bug.cgi?id=133764
+
+        Reviewed by Daniel Bates.
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::sdiv):
+        Make sdiv a template to match arm64.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithDiv):
+        (JSC::DFG::SpeculativeJIT::compileArithMod):
+        Remove duplicate code that was identical except for sdiv not being a template.
+
 2014-06-17  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r170082.

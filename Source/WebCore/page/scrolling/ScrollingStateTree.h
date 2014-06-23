@@ -56,8 +56,8 @@ public:
     void detachNode(ScrollingNodeID);
     void clear();
     
-    const Vector<ScrollingNodeID>& removedNodes() const { return m_nodesRemovedSinceLastCommit; }
-    void setRemovedNodes(Vector<ScrollingNodeID>);
+    const HashSet<ScrollingNodeID>& removedNodes() const { return m_nodesRemovedSinceLastCommit; }
+    void setRemovedNodes(HashSet<ScrollingNodeID>);
 
     // Copies the current tree state and clears the changed properties mask in the original.
     PassOwnPtr<ScrollingStateTree> commit(LayerRepresentation::Type preferredLayerRepresentation);
@@ -79,15 +79,25 @@ public:
 private:
     ScrollingStateTree(AsyncScrollingCoordinator*);
 
-    void setRootStateNode(PassOwnPtr<ScrollingStateFrameScrollingNode> rootStateNode) { m_rootStateNode = rootStateNode; }
+    void setRootStateNode(PassRefPtr<ScrollingStateFrameScrollingNode> rootStateNode) { m_rootStateNode = rootStateNode; }
     void addNode(ScrollingStateNode*);
-    void removeNode(ScrollingStateNode*);
-    void didRemoveNode(ScrollingNodeID);
+
+    PassRefPtr<ScrollingStateNode> createNode(ScrollingNodeType, ScrollingNodeID);
+    
+    enum class SubframeNodeRemoval {
+        Delete,
+        Orphan
+    };
+    void removeNodeAndAllDescendants(ScrollingStateNode*, SubframeNodeRemoval = SubframeNodeRemoval::Delete);
+
+    void recursiveNodeWillBeRemoved(ScrollingStateNode* currNode, SubframeNodeRemoval);
+    void willRemoveNode(ScrollingStateNode*);
 
     AsyncScrollingCoordinator* m_scrollingCoordinator;
     StateNodeMap m_stateNodeMap;
-    OwnPtr<ScrollingStateFrameScrollingNode> m_rootStateNode;
-    Vector<ScrollingNodeID> m_nodesRemovedSinceLastCommit;
+    RefPtr<ScrollingStateFrameScrollingNode> m_rootStateNode;
+    HashSet<ScrollingNodeID> m_nodesRemovedSinceLastCommit;
+    HashMap<ScrollingNodeID, RefPtr<ScrollingStateNode>> m_orphanedSubframeNodes;
     bool m_hasChangedProperties;
     bool m_hasNewRootStateNode;
     LayerRepresentation::Type m_preferredLayerRepresentation;

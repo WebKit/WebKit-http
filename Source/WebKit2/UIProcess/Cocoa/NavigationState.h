@@ -106,7 +106,6 @@ private:
         virtual bool canAuthenticateAgainstProtectionSpaceInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::WebProtectionSpace*) override;
         virtual void didReceiveAuthenticationChallengeInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::AuthenticationChallengeProxy*) override;
         virtual void processDidCrash(WebKit::WebPageProxy*) override;
-        virtual void didChangeBackForwardList(WebKit::WebPageProxy*, WebKit::WebBackForwardListItem* addedItem, Vector<RefPtr<WebKit::WebBackForwardListItem>> removedItems) override;
         virtual PassRefPtr<API::Data> webCryptoMasterKey(WebKit::WebPageProxy&) override;
 #if USE(QUICK_LOOK)
         virtual void didStartLoadForQuickLookDocumentInMainFrame(const WTF::String& fileName, const WTF::String& uti) override;
@@ -149,7 +148,7 @@ private:
         bool webViewDidFailNavigationWithError : 1;
 
         bool webViewRenderingProgressDidChange : 1;
-        bool webViewWillSendRequestForAuthenticationChallenge : 1;
+        bool webViewDidReceiveAuthenticationChallengeCompletionHandler : 1;
         bool webViewCanAuthenticateAgainstProtectionSpace : 1;
         bool webViewDidReceiveAuthenticationChallenge : 1;
         bool webViewWebProcessDidCrash : 1;

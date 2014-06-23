@@ -69,6 +69,7 @@ typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
  triggering the navigation request.
  @param decisionHandler The decision handler to call to allow or cancel the
  navigation. The argument is one of the constants of the enumerated type WKNavigationActionPolicy.
+ @discussion If you do not implement this method, the web view will load the request or, if appropriate, forward it to another application.
  */
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler;
 
@@ -79,6 +80,7 @@ typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
  response.
  @param decisionHandler The decision handler to call to allow or cancel the
  navigation. The argument is one of the constants of the enumerated type WKNavigationResponsePolicy.
+ @discussion If you do not implement this method, the web view will allow the response, if the web view can show it.
  */
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler;
 
@@ -122,6 +124,18 @@ typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
  @param error The error that occurred.
  */
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error;
+
+/*! @abstract Invoked when the web view needs to respond to an authentication challenge.
+ @param webView The web view that received the authentication challenge.
+ @param challenge The authentication challenge.
+ @param completionHandler The completion handler you must invoke to respond to the challenge. The
+ disposition argument is one of the constants of the enumerated type
+ NSURLSessionAuthChallengeDisposition. When disposition is NSURLSessionAuthChallengeUseCredential,
+ the credential argument is the credential to use, or nil to indicate continuing without a
+ credential.
+ @discussion If you do not implement this method, the web view will respond to the authentication challenge with the NSURLSessionAuthChallengeRejectProtectionSpace disposition.
+ */
+- (void)webView:(WKWebView *)webView didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler;
 
 @end
 

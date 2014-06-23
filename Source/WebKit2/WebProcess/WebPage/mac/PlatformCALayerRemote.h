@@ -31,21 +31,25 @@
 #include <WebCore/PlatformLayer.h>
 #include <WebCore/TileController.h>
 
+namespace WebCore {
+class LayerPool;
+}
+
 namespace WebKit {
 
 class RemoteLayerTreeContext;
 
 class PlatformCALayerRemote : public WebCore::PlatformCALayer {
 public:
-    static PassRefPtr<PlatformCALayerRemote> create(WebCore::PlatformCALayer::LayerType, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext*);
-    static PassRefPtr<PlatformCALayerRemote> create(PlatformLayer *, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext*);
-    static PassRefPtr<PlatformCALayerRemote> create(const PlatformCALayerRemote&, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext*);
+    static PassRefPtr<PlatformCALayerRemote> create(WebCore::PlatformCALayer::LayerType, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext&);
+    static PassRefPtr<PlatformCALayerRemote> create(PlatformLayer *, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext&);
+    static PassRefPtr<PlatformCALayerRemote> create(const PlatformCALayerRemote&, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext&);
 
     virtual ~PlatformCALayerRemote();
 
     virtual PlatformLayer* platformLayer() const override { return nullptr; }
 
-    void recursiveBuildTransaction(RemoteLayerTreeTransaction&);
+    void recursiveBuildTransaction(RemoteLayerTreeContext&, RemoteLayerTreeTransaction&);
 
     virtual void setNeedsDisplay(const WebCore::FloatRect* dirtyRect = 0) override;
 
@@ -161,12 +165,11 @@ public:
     void didCommit();
 
     void clearContext() { m_context = nullptr; }
+    RemoteLayerTreeContext* context() const { return m_context; }
 
 protected:
-    PlatformCALayerRemote(WebCore::PlatformCALayer::LayerType, WebCore::PlatformCALayerClient* owner, RemoteLayerTreeContext* context);
-    PlatformCALayerRemote(const PlatformCALayerRemote&, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext*);
-
-    RemoteLayerTreeContext* context() const { return m_context; }
+    PlatformCALayerRemote(WebCore::PlatformCALayer::LayerType, WebCore::PlatformCALayerClient* owner, RemoteLayerTreeContext& context);
+    PlatformCALayerRemote(const PlatformCALayerRemote&, WebCore::PlatformCALayerClient*, RemoteLayerTreeContext&);
 
 private:
     virtual bool isPlatformCALayerRemote() const override { return true; }
@@ -175,6 +178,8 @@ private:
     void removeSublayer(PlatformCALayerRemote*);
 
     bool requiresCustomAppearanceUpdateOnBoundsChange() const;
+
+    virtual WebCore::LayerPool& layerPool() override;
 
     RemoteLayerTreeTransaction::LayerProperties m_properties;
     WebCore::PlatformCALayerList m_children;
