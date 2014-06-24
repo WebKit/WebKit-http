@@ -664,6 +664,7 @@ void tst_QWebFrame::hitTestContent()
     QCOMPARE(result.linkText(), QString("link text"));
     QWebElement link = result.linkElement();
     QCOMPARE(link.attribute("target"), QString("_foo"));
+    QCOMPARE(result.element().tagName(), QString("A"));
 }
 
 void tst_QWebFrame::baseUrl_data()

@@ -928,9 +928,13 @@ QWebHitTestResultPrivate::~QWebHitTestResultPrivate()
 
 QWebElement QWebHitTestResultPrivate::elementForInnerNode() const
 {
-    if (!innerNonSharedNode || !innerNonSharedNode->isElementNode())
-        return QWebElement();
-    return QWebElement(downcast<Element>(innerNonSharedNode));
+    // Uses the similar logic as HitTestResult::innerElement().
+    for (Node* node = innerNonSharedNode; node; node = node->parentNode()) {
+        if (node->isElementNode())
+            return QWebElement(downcast<Element>(node));
+    }
+
+    return QWebElement();
 }
 
 // ======================================================
