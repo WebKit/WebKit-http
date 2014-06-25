@@ -47,6 +47,7 @@ AcceleratedCompositingContext::AcceleratedCompositingContext(BWebView* view)
 
 AcceleratedCompositingContext::~AcceleratedCompositingContext()
 {
+    m_syncTimer.stop();
     m_textureMapper = nullptr;
 }
 
