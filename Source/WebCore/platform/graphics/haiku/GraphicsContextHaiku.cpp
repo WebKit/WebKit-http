@@ -199,18 +199,43 @@ public:
     // combination of clipping levels here.
     void constrainClipping(const BRegion& region)
     {
-        if(m_currentLayer->clippingSet)
-            m_currentLayer->clipping.IntersectWith(&region);
+        // Region-clipping in Haiku applies the clipping after the view
+        // transformation, whereas WebKit would want it applied before.
+        // However, the fast region clipping that reduces the viewport to
+        // small dimensions when drawing is an essential element in getting
+        // acceptable performances when drawing (performing alpha-blended
+        // picture clipping on the whole view is extremely slow).
+        // However, there is no way to transform a region with an arbitrary
+        // transformation. The result would not be represented as a set of
+        // grid-aligned (vertical/horizontal) rectangles.
+        // So, the idea is to use region-clipping when the transformation is
+        // simple enough (translation + scaling only), and picture-based
+        // clipping for more complex cases.
+        BAffineTransform t = m_currentLayer->view->Transform();
+        BRegion regionCopy(region);
+        // region.ScaleBy(t.sx, t.sy);
+        regionCopy.OffsetBy(t.tx, t.ty);
+
+        // Matrix is made only of translation and scaling. We can transform
+        // the region safely.
+        if (m_currentLayer->clippingSet)
+            m_currentLayer->clipping.IntersectWith(&regionCopy);
         else
-            m_currentLayer->clipping = region;
+            m_currentLayer->clipping = regionCopy;
 
         m_currentLayer->clippingSet = true;
-        m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
+        m_currentLayer->view->ConstrainClippingRegion(
+            &m_currentLayer->clipping);
     }
 
     void excludeClipping(const FloatRect& rect)
     {
-        // This is always called after the initial clipping has been set.
+        if (!m_currentLayer->clippingSet) {
+            BRegion region(m_currentLayer->view->Bounds());
+            m_currentLayer->clipping = region;
+            m_currentLayer->clippingSet = true;
+        }
+
         m_currentLayer->clipping.Exclude(rect);
         m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
     }
