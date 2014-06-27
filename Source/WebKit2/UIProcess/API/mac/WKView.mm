@@ -90,6 +90,7 @@
 #import <WebCore/Region.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/TextUndoInsertionMarkupMac.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
 #import <WebCore/WebCoreCALayerExtras.h>
 #import <WebCore/WebCoreFullScreenPlaceholderView.h>
@@ -301,6 +302,8 @@ struct WKViewInterpretKeyEventsParameters {
 
     NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
     [workspaceNotificationCenter removeObserver:self name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
+
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationWillTerminateNotification object:NSApp];
 
     WebContext::statistics().wkViewCount--;
 
@@ -1427,9 +1430,13 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     NSString *text;
     Vector<TextAlternativeWithRange> dictationAlternatives;
 
+    bool registerUndoGroup = false;
     if (isAttributedString) {
 #if USE(DICTATION_ALTERNATIVES)
         collectDictationTextAlternatives(string, dictationAlternatives);
+#endif
+#if USE(INSERTION_UNDO_GROUPING)
+        registerUndoGroup = shouldRegisterInsertionUndoGroup(string);
 #endif
         // FIXME: We ignore most attributes from the string, so for example inserting from Character Palette loses font and glyph variation data.
         text = [string string];
@@ -1454,9 +1461,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     String eventText = text;
     eventText.replace(NSBackTabCharacter, NSTabCharacter); // same thing is done in KeyEventMac.mm in WebCore
     if (!dictationAlternatives.isEmpty())
-        _data->_page->insertDictatedTextAsync(eventText, replacementRange, dictationAlternatives);
+        _data->_page->insertDictatedTextAsync(eventText, replacementRange, dictationAlternatives, registerUndoGroup);
     else
-        _data->_page->insertTextAsync(eventText, replacementRange);
+        _data->_page->insertTextAsync(eventText, replacementRange, registerUndoGroup);
 }
 
 - (void)selectedRangeWithCompletionHandler:(void(^)(NSRange selectedRange))completionHandlerPtr
@@ -2230,6 +2237,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
                            NSMarkedClauseSegmentAttributeName,
 #if USE(DICTATION_ALTERNATIVES)
                            NSTextAlternativesAttributeName,
+#endif
+#if USE(INSERTION_UNDO_GROUPING)
+                           NSTextInsertionUndoableAttributeName,
 #endif
                            nil];
         // NSText also supports the following attributes, but it's
@@ -3113,6 +3123,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     IntSize imageSize(CGImageGetWidth(croppedSnapshotImage.get()), CGImageGetHeight(croppedSnapshotImage.get()));
     snapshot.size = imageSize;
     snapshot.imageSizeInBytes = imageSize.width() * imageSize.height() * 4;
+    snapshot.backgroundColor = _data->_page->pageExtendedBackgroundColor();
 
     return snapshot;
 }
@@ -3754,6 +3765,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 #endif
 }
 
+// FIXME: All of these "DeferringViewInWindowChanges" methods should be able to be removed once clients are weaned off of them.
 - (void)beginDeferringViewInWindowChanges
 {
     if (_data->_shouldDeferViewInWindowChanges) {
@@ -3786,18 +3798,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return;
     }
 
-    PageClient* pageClient = _data->_pageClient.get();
-    bool hasPendingViewInWindowChange = _data->_viewInWindowChangeWasDeferred && _data->_page->isInWindow() != pageClient->isViewInWindow();
-
     _data->_shouldDeferViewInWindowChanges = NO;
 
     if (_data->_viewInWindowChangeWasDeferred) {
-        _data->_page->viewStateDidChange(ViewState::IsInWindow, hasPendingViewInWindowChange ? WebPageProxy::WantsReplyOrNot::DoesWantReply : WebPageProxy::WantsReplyOrNot::DoesNotWantReply);
+        _data->_page->viewStateDidChange(ViewState::IsInWindow);
         _data->_viewInWindowChangeWasDeferred = NO;
     }
-
-    if (hasPendingViewInWindowChange)
-        _data->_page->waitForDidUpdateViewState();
 }
 
 - (BOOL)isDeferringViewInWindowChanges

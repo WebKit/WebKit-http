@@ -16,6 +16,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/plugins"
     "${WEBCORE_DIR}/Modules/proximity"
     "${WEBCORE_DIR}/Modules/quota"
+    "${WEBCORE_DIR}/Modules/speech"
     "${WEBCORE_DIR}/Modules/vibration"
     "${WEBCORE_DIR}/Modules/webaudio"
     "${WEBCORE_DIR}/Modules/webdatabase"
@@ -168,6 +169,11 @@ set(WebCore_IDL_FILES
     Modules/battery/BatteryManager.idl
     Modules/battery/NavigatorBattery.idl
 
+    Modules/gamepad/Gamepad.idl
+    Modules/gamepad/GamepadButton.idl
+    Modules/gamepad/GamepadEvent.idl
+    Modules/gamepad/NavigatorGamepad.idl
+
     Modules/gamepad/deprecated/Gamepad.idl
     Modules/gamepad/deprecated/GamepadList.idl
     Modules/gamepad/deprecated/NavigatorGamepad.idl
@@ -250,6 +256,12 @@ set(WebCore_IDL_FILES
     Modules/notifications/WorkerGlobalScopeNotifications.idl
 
     Modules/proximity/DeviceProximityEvent.idl
+
+    Modules/speech/DOMWindowSpeechSynthesis.idl
+    Modules/speech/SpeechSynthesis.idl
+    Modules/speech/SpeechSynthesisEvent.idl
+    Modules/speech/SpeechSynthesisUtterance.idl
+    Modules/speech/SpeechSynthesisVoice.idl
 
     Modules/vibration/NavigatorVibration.idl
 
@@ -884,6 +896,12 @@ set(WebCore_SOURCES
 
     Modules/proximity/DeviceProximityController.cpp
     Modules/proximity/DeviceProximityEvent.cpp
+
+    Modules/speech/DOMWindowSpeechSynthesis.cpp
+    Modules/speech/SpeechSynthesis.cpp
+    Modules/speech/SpeechSynthesisEvent.cpp
+    Modules/speech/SpeechSynthesisUtterance.cpp
+    Modules/speech/SpeechSynthesisVoice.cpp
 
     Modules/vibration/NavigatorVibration.cpp
     Modules/vibration/Vibration.cpp
@@ -1976,6 +1994,9 @@ set(WebCore_SOURCES
     platform/MemoryPressureHandler.cpp
     platform/NotImplemented.cpp
     platform/PlatformEvent.cpp
+    platform/PlatformSpeechSynthesisUtterance.cpp
+    platform/PlatformSpeechSynthesisVoice.cpp
+    platform/PlatformSpeechSynthesizer.cpp
     platform/PlatformStrategies.cpp
     platform/RemoteCommandListener.cpp
     platform/SystemSleepListener.cpp
@@ -2073,6 +2094,7 @@ set(WebCore_SOURCES
     platform/graphics/IntPoint.cpp
     platform/graphics/IntRect.cpp
     platform/graphics/IntSize.cpp
+    platform/graphics/ISOVTTCue.cpp
     platform/graphics/LayoutBoxExtent.cpp
     platform/graphics/LayoutRect.cpp
     platform/graphics/MediaPlayer.cpp

@@ -361,9 +361,10 @@ public:
     bool delegatesScrolling() const { return m_delegatesScrolling; }
 
     enum class WantsReplyOrNot { DoesNotWantReply, DoesWantReply };
-    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, WantsReplyOrNot = WantsReplyOrNot::DoesNotWantReply);
+    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged);
     bool isInWindow() const { return m_viewState & WebCore::ViewState::IsInWindow; }
     void waitForDidUpdateViewState();
+    void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
 
     void layerHostingModeDidChange();
 
@@ -381,11 +382,12 @@ public:
     const WebCore::FloatRect& exposedContentRect() const { return m_lastVisibleContentRectUpdate.exposedRect(); }
     const WebCore::FloatRect& unobscuredContentRect() const { return m_lastVisibleContentRectUpdate.unobscuredRect(); }
 
-    bool updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
+    void updateVisibleContentRects(const WebCore::FloatRect& exposedRect, const WebCore::FloatRect& unobscuredRect, const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate);
 
     enum class UnobscuredRectConstraint { ConstrainedToDocumentRect, Unconstrained };
     WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained) const;
-    void scrollViewWillStartPanGesture();
+    void overflowScrollViewWillStartPanGesture();
+    void overflowScrollViewDidScroll();
 
     void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate();
@@ -471,7 +473,7 @@ public:
     void setAcceleratedCompositingRootLayer(LayerOrView*);
     LayerOrView* acceleratedCompositingRootLayer() const;
 
-    void insertTextAsync(const String& text, const EditingRange& replacementRange);
+    void insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup = false);
     void getMarkedRangeAsync(std::function<void (EditingRange, CallbackBase::Error)>);
     void getSelectedRangeAsync(std::function<void (EditingRange, CallbackBase::Error)>);
     void characterIndexForPointAsync(const WebCore::IntPoint&, std::function<void (uint64_t, CallbackBase::Error)>);
@@ -480,7 +482,7 @@ public:
     void confirmCompositionAsync();
 
 #if PLATFORM(MAC)
-    void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives);
+    void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives, bool registerUndoGroup);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, std::function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)>);
 
 #if !USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -574,8 +576,6 @@ public:
     const WebCore::IntSize& fixedLayoutSize() const { return m_fixedLayoutSize; };
 
     void listenForLayoutMilestones(WebCore::LayoutMilestones);
-
-    void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
 
     bool hasHorizontalScrollbar() const { return m_mainFrameHasHorizontalScrollbar; }
     bool hasVerticalScrollbar() const { return m_mainFrameHasVerticalScrollbar; }
@@ -846,6 +846,9 @@ public:
     void cancelPotentialTap();
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
 
+    void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
+    void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
+
     void blurAssistedNode();
 #endif
 
@@ -1002,6 +1005,7 @@ private:
     void runOpenPanel(uint64_t frameID, const WebCore::FileChooserSettings&);
     void printFrame(uint64_t frameID);
     void exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, PassRefPtr<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>);
+    void reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>);
     void requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier);
     void runModal();
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&);
@@ -1055,6 +1059,7 @@ private:
 
     // Undo management
     void registerEditCommandForUndo(uint64_t commandID, uint32_t editAction);
+    void registerInsertionUndoGrouping();
     void clearAllEditCommands();
     void canUndoRedo(uint32_t action, bool& result);
     void executeUndoRedo(uint32_t action, bool& result);
@@ -1198,14 +1203,23 @@ private:
     float textAutosizingWidth();
 
     void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition);
+    void restorePageState(const WebCore::FloatRect&, double scale);
+    void restorePageCenterAndScale(const WebCore::FloatPoint&, double scale);
+
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
 
     void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, IPC::MessageDecoder&);
     void stopAssistingNode();
 
 #if ENABLE(INSPECTOR)
+    void showInspectorHighlight(const WebCore::Highlight&);
+    void hideInspectorHighlight();
+
     void showInspectorIndication();
     void hideInspectorIndication();
+
+    void enableInspectorNodeSearch();
+    void disableInspectorNodeSearch();
 #endif
 
     void notifyRevealedSelection();
@@ -1226,6 +1240,7 @@ private:
 #if PLUGIN_ARCHITECTURE(X11)
     void createPluginContainer(uint64_t& windowID);
     void windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID);
+    void windowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID);
 #endif
 
     void processNextQueuedWheelEvent();
@@ -1321,6 +1336,7 @@ private:
     NotificationPermissionRequestManagerProxy m_notificationPermissionRequestManager;
 
     WebCore::ViewState::Flags m_viewState;
+    bool m_viewWasEverInWindow;
 
 #if PLATFORM(IOS)
     std::unique_ptr<ProcessThrottler::ForegroundActivityToken> m_activityToken;

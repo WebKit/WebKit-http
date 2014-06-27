@@ -1289,18 +1289,6 @@ bool webkitAccessibleIsDetached(WebKitAccessible* accessible)
     return accessible->m_object == fallbackObject();
 }
 
-AtkObject* webkitAccessibleGetFocusedElement(WebKitAccessible* accessible)
-{
-    if (!accessible->m_object)
-        return 0;
-
-    RefPtr<AccessibilityObject> focusedObj = accessible->m_object->focusedUIElement();
-    if (!focusedObj)
-        return 0;
-
-    return focusedObj->wrapper();
-}
-
 AccessibilityObject* objectFocusedAndCaretOffsetUnignored(AccessibilityObject* referenceObject, int& offset)
 {
     // Indication that something bogus has transpired.
@@ -1329,8 +1317,10 @@ AccessibilityObject* objectFocusedAndCaretOffsetUnignored(AccessibilityObject* r
     if (!firstUnignoredParent)
         return 0;
 
-    // Don't ignore links if the offset is being requested for a link.
-    if (!referenceObject->isLink() && firstUnignoredParent->isLink())
+    // Don't ignore links if the offset is being requested for a link
+    // or if the link is a block.
+    if (!referenceObject->isLink() && firstUnignoredParent->isLink()
+        && !(firstUnignoredParent->renderer() && !firstUnignoredParent->renderer()->isInline()))
         firstUnignoredParent = firstUnignoredParent->parentObjectUnignored();
     if (!firstUnignoredParent)
         return 0;

@@ -1002,13 +1002,12 @@ private:
     int m_currentWidth, m_currentHeight;
     bool isResourceSafe();
 
-#if PLATFORM(IOS)
-    PlatformGraphicsContext3D m_contextObj;
-    RetainPtr<PlatformLayer> m_webGLLayer;
-#elif PLATFORM(MAC)
-    CGLContextObj m_contextObj;
+#if PLATFORM(COCOA)
     RetainPtr<WebGLLayer> m_webGLLayer;
-#elif PLATFORM(WIN) && USE(CA)
+    PlatformGraphicsContext3D m_contextObj;
+#endif
+
+#if PLATFORM(WIN) && USE(CA)
     RefPtr<PlatformCALayer> m_webGLLayer;
 #endif
 

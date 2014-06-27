@@ -31,6 +31,13 @@
 #import "WKBackForwardListItemInternal.h"
 #import "WKNSArray.h"
 
+//@@@@@
+WK_EXTERN NSString * const WKBackForwardListDidChangeNotification;
+WK_EXTERN NSString * const _WKBackForwardListDidChangeNotification;
+NSString * const WKBackForwardListDidChangeNotification = @"_WKBackForwardListDidChangeNotification";
+NSString * const _WKBackForwardListDidChangeNotification = @"_WKBackForwardListDidChangeNotification";
+//@@@@@
+
 using namespace WebKit;
 
 @implementation WKBackForwardList {
@@ -95,6 +102,20 @@ static WKBackForwardListItem *toWKBackForwardListItem(WebBackForwardListItem* it
 - (API::Object&)_apiObject
 {
     return *_list;
+}
+
+@end
+
+@implementation WKBackForwardList (WKPrivate)
+
+- (void)_removeAllItems
+{
+    _list->removeAllItems();
+}
+
+- (void)_clear
+{
+    _list->clear();
 }
 
 @end

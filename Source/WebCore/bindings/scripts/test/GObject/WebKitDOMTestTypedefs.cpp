@@ -36,7 +36,7 @@
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
 
-#define WEBKIT_DOM_TEST_TYPEDEFS_GET_PRIVATE(obj) G_TYPE_INSTANCE_GET_PRIVATE(obj, WEBKIT_TYPE_DOM_TEST_TYPEDEFS, WebKitDOMTestTypedefsPrivate)
+#define WEBKIT_DOM_TEST_TYPEDEFS_GET_PRIVATE(obj) G_TYPE_INSTANCE_GET_PRIVATE(obj, WEBKIT_DOM_TYPE_TEST_TYPEDEFS, WebKitDOMTestTypedefsPrivate)
 
 typedef struct _WebKitDOMTestTypedefsPrivate {
     RefPtr<WebCore::TestTypedefs> coreObject;
@@ -63,12 +63,12 @@ WebCore::TestTypedefs* core(WebKitDOMTestTypedefs* request)
 WebKitDOMTestTypedefs* wrapTestTypedefs(WebCore::TestTypedefs* coreObject)
 {
     ASSERT(coreObject);
-    return WEBKIT_DOM_TEST_TYPEDEFS(g_object_new(WEBKIT_TYPE_DOM_TEST_TYPEDEFS, "core-object", coreObject, NULL));
+    return WEBKIT_DOM_TEST_TYPEDEFS(g_object_new(WEBKIT_DOM_TYPE_TEST_TYPEDEFS, "core-object", coreObject, nullptr));
 }
 
 } // namespace WebKit
 
-G_DEFINE_TYPE(WebKitDOMTestTypedefs, webkit_dom_test_typedefs, WEBKIT_TYPE_DOM_OBJECT)
+G_DEFINE_TYPE(WebKitDOMTestTypedefs, webkit_dom_test_typedefs, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
     PROP_0,
@@ -202,7 +202,7 @@ static void webkit_dom_test_typedefs_class_init(WebKitDOMTestTypedefsClass* requ
             "immutable-serialized-script-value",
             "TestTypedefs:immutable-serialized-script-value",
             "read-only WebKitDOMSerializedScriptValue* TestTypedefs:immutable-serialized-script-value",
-            WEBKIT_TYPE_DOM_SERIALIZED_SCRIPT_VALUE,
+            WEBKIT_DOM_TYPE_SERIALIZED_SCRIPT_VALUE,
             WEBKIT_PARAM_READABLE));
 
     g_object_class_install_property(
@@ -289,40 +289,6 @@ WebKitDOMSVGPoint* webkit_dom_test_typedefs_immutable_point_function(WebKitDOMTe
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_TYPEDEFS(self), 0);
     WebCore::TestTypedefs* item = WebKit::core(self);
     RefPtr<WebCore::SVGPoint> gobjectResult = WTF::getPtr(item->immutablePointFunction());
-    return WebKit::kit(gobjectResult.get());
-}
-
-WebKitDOMDOMString[]* webkit_dom_test_typedefs_string_array_function(WebKitDOMTestTypedefs* self, WebKitDOMDOMString[]* values, GError** error)
-{
-    WebCore::JSMainThreadNullState state;
-    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_TYPEDEFS(self), 0);
-    g_return_val_if_fail(WEBKIT_DOM_IS_DOM_STRING[](values), 0);
-    g_return_val_if_fail(!error || !*error, 0);
-    WebCore::TestTypedefs* item = WebKit::core(self);
-    WebCore::DOMString[]* convertedValues = WebKit::core(values);
-    WebCore::ExceptionCode ec = 0;
-    RefPtr<WebCore::DOMString[]> gobjectResult = WTF::getPtr(item->stringArrayFunction(convertedValues, ec));
-    if (ec) {
-        WebCore::ExceptionCodeDescription ecdesc(ec);
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
-    }
-    return WebKit::kit(gobjectResult.get());
-}
-
-WebKitDOMDOMString[]* webkit_dom_test_typedefs_string_array_function2(WebKitDOMTestTypedefs* self, WebKitDOMDOMString[]* values, GError** error)
-{
-    WebCore::JSMainThreadNullState state;
-    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_TYPEDEFS(self), 0);
-    g_return_val_if_fail(WEBKIT_DOM_IS_DOM_STRING[](values), 0);
-    g_return_val_if_fail(!error || !*error, 0);
-    WebCore::TestTypedefs* item = WebKit::core(self);
-    WebCore::DOMString[]* convertedValues = WebKit::core(values);
-    WebCore::ExceptionCode ec = 0;
-    RefPtr<WebCore::DOMString[]> gobjectResult = WTF::getPtr(item->stringArrayFunction2(convertedValues, ec));
-    if (ec) {
-        WebCore::ExceptionCodeDescription ecdesc(ec);
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
-    }
     return WebKit::kit(gobjectResult.get());
 }
 

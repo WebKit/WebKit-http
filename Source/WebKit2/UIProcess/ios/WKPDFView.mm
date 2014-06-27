@@ -29,7 +29,9 @@
 #if PLATFORM(IOS)
 
 #import "WKPDFPageNumberIndicator.h"
+#import "WKWebViewInternal.h"
 #import <CorePDF/UIPDFDocument.h>
+#import <CorePDF/UIPDFPage.h>
 #import <CorePDF/UIPDFPageView.h>
 #import <WebCore/FloatRect.h>
 #import <wtf/RetainPtr.h>
@@ -55,22 +57,28 @@ typedef struct {
     RetainPtr<WKPDFPageNumberIndicator> _pageNumberIndicator;
 
     Vector<PDFPageInfo> _pages;
-    CGRect _documentFrame;
     unsigned _centerPageNumber;
 
     CGSize _minimumSize;
     CGSize _overlaidAccessoryViewsInset;
-    UIEdgeInsets _obscuredInsets;
+    WKWebView *_webView;
     UIScrollView *_scrollView;
     UIView *_fixedOverlayView;
 }
 
-- (instancetype)initWithFrame:(CGRect)frame
+- (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView
 {
     if (!(self = [super initWithFrame:frame]))
         return nil;
 
     self.backgroundColor = [UIColor grayColor];
+
+    _webView = webView;
+
+    _scrollView = webView.scrollView;
+    [_scrollView setMinimumZoomScale:pdfMinimumZoomScale];
+    [_scrollView setMaximumZoomScale:pdfMaximumZoomScale];
+    [_scrollView setBackgroundColor:[UIColor grayColor]];
 
     return self;
 }
@@ -114,16 +122,6 @@ typedef struct {
 
     [self _computePageAndDocumentFrames];
     [self _revalidateViews];
-}
-
-- (void)web_setScrollView:(UIScrollView *)scrollView
-{
-    _scrollView = scrollView;
-
-    [_scrollView setMinimumZoomScale:pdfMinimumZoomScale];
-    [_scrollView setMaximumZoomScale:pdfMaximumZoomScale];
-    [_scrollView setContentSize:_documentFrame.size];
-    [_scrollView setBackgroundColor:[UIColor grayColor]];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -175,7 +173,8 @@ typedef struct {
 
 - (CGPoint)_offsetForPageNumberIndicator
 {
-    return CGPointMake(_obscuredInsets.left, _obscuredInsets.top + _overlaidAccessoryViewsInset.height);
+    UIEdgeInsets contentInset = [_webView _computedContentInset];
+    return CGPointMake(contentInset.left, contentInset.top + _overlaidAccessoryViewsInset.height);
 }
 
 - (void)_updatePageNumberIndicator
@@ -189,20 +188,15 @@ typedef struct {
     [_pageNumberIndicator moveToPoint:[self _offsetForPageNumberIndicator] animated:NO];
 }
 
-- (void)web_setObscuredInsets:(UIEdgeInsets)insets
-{
-    if (UIEdgeInsetsEqualToEdgeInsets(insets, _obscuredInsets))
-        return;
-
-    _obscuredInsets = insets;
-
-    [self _updatePageNumberIndicator];
-}
-
 - (void)web_setOverlaidAccessoryViewsInset:(CGSize)inset
 {
     _overlaidAccessoryViewsInset = inset;
     [_pageNumberIndicator moveToPoint:[self _offsetForPageNumberIndicator] animated:YES];
+}
+
+- (void)web_computedContentInsetDidChange
+{
+    [self _updatePageNumberIndicator];
 }
 
 - (void)web_setFixedOverlayView:(UIView *)fixedOverlayView
@@ -241,12 +235,13 @@ typedef struct {
         pageFrame.origin.y += pageFrame.size.height - pdfPageMargin;
     }
 
-    _documentFrame = [self frame];
-    _documentFrame.size.width = _minimumSize.width;
-    _documentFrame.size.height = std::max(pageFrame.origin.y + pdfPageMargin, _minimumSize.height);
+    CGFloat scale = _scrollView.zoomScale;
+    CGRect newFrame = [self frame];
+    newFrame.size.width = _minimumSize.width * scale;
+    newFrame.size.height = std::max(pageFrame.origin.y + pdfPageMargin, _minimumSize.height) * scale;
 
-    [self setFrame:_documentFrame];
-    [_scrollView setContentSize:_documentFrame.size];
+    [self setFrame:newFrame];
+    [_scrollView setContentSize:newFrame.size];
 }
 
 @end

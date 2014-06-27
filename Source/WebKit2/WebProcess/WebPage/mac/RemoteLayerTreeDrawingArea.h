@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,6 +53,8 @@ public:
     RemoteLayerTreeDrawingArea(WebPage&, const WebPageCreationParameters&);
     virtual ~RemoteLayerTreeDrawingArea();
 
+    uint64_t currentTransactionID() const { return m_currentTransactionID; }
+
 private:
     // DrawingArea
     virtual void setNeedsDisplay() override;
@@ -95,6 +97,8 @@ private:
 
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) override;
 
+    virtual void viewStateDidChange(WebCore::ViewState::Flags changed, bool wantsDidUpdateViewState) override;
+
     // GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) override { }
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) override { }
@@ -108,6 +112,8 @@ private:
     WebCore::TiledBacking* mainFrameTiledBacking() const;
 
     uint64_t takeNextTransactionID() { return ++m_currentTransactionID; }
+
+    virtual bool markLayersVolatileImmediatelyIfPossible() override;
 
     class BackingStoreFlusher : public ThreadSafeRefCounted<BackingStoreFlusher> {
     public:

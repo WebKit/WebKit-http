@@ -1200,6 +1200,14 @@
             "jasonliu"
          ]
       },
+      "Javier Fernandez" : {
+         "emails" : [
+            "jfernandez@igalia.com"
+         ],
+         "nicks" : [
+            "lajava"
+         ]
+      },
       "Jay Civelli" : {
          "emails" : [
             "jcivelli@chromium.org"
@@ -1701,12 +1709,12 @@
       },
       "Mahesh Kulkarni" : {
          "emails" : [
-            "mahesh.kulkarni@nokia.com",
-            "maheshk@webkit.org"
+            "maheshk@webkit.org",
+            "mahesh.kk@samsung.com"
          ],
          "expertise" : "The Qt port, Geolocation",
          "nicks" : [
-            "maheshk"
+            "maheshkk"
          ]
       },
       "Manuel Rego Casasnovas" : {
@@ -2789,14 +2797,6 @@
          ],
          "nicks" : [
             "zdobersek"
-         ]
-      },
-      "Javier Fernandez" : {
-         "emails" : [
-            "jfernandez@igalia.com"
-         ],
-         "nicks" : [
-            "lajava"
          ]
       }
    },
@@ -3928,7 +3928,7 @@
             "gyuyoung.kim@webkit.org",
             "gyuyoung.kim@samsung.com"
          ],
-         "expertise" : "The EFLWebKit Port",
+         "expertise" : "The EFLWebKit Port, Navigator Content Utils",
          "nicks" : [
             "gyuyoung"
          ]

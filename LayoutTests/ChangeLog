@@ -1,3 +1,348 @@
+2014-06-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        compositing/visible-rect/iframe-no-layers.html is broken and confusing
+        https://bugs.webkit.org/show_bug.cgi?id=134317
+
+        Reviewed by Simon Fraser.
+
+        The test doesn't wait for scrolling to occur and has unnecessary style stanzas.
+
+        * compositing/visible-rect/iframe-no-layers.html:
+        * compositing/visible-rect/resources/subframe-with-layers.html:
+        * platform/mac-wk2/compositing/visible-rect/iframe-no-layers-expected.txt:
+        * platform/ios-sim/compositing/visible-rect/iframe-no-layers-expected.txt:
+        * platform/mac/compositing/visible-rect/iframe-no-layers-expected.txt:
+
+2014-06-25  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, rolling out r166876.
+
+        Caused some ECMA test262 failures
+
+        Reverted changeset:
+
+        "Date object needs to check for ES5 15.9.1.14 TimeClip limit."
+        https://bugs.webkit.org/show_bug.cgi?id=131248
+        http://trac.webkit.org/changeset/166876
+
+2014-06-25  Dirk Schulze  <krit@webkit.org>
+
+        Add all blend modes to feBlend
+
+        feBlend should support all blend modes from CSS and Canvas
+        https://bugs.webkit.org/show_bug.cgi?id=134296
+
+        Added tests for new blend modes in feBlend as well as a test for 'normal' blend mode
+        on HTML Canvas.
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/canvas-blend-image-expected.txt:
+        * fast/canvas/canvas-blend-solid-expected.txt:
+        * fast/canvas/script-tests/canvas-blend-image.js: Test 'normal' blend mode in Canvas.
+        (prepareTestScenario):
+        * fast/canvas/script-tests/canvas-blend-solid.js: Ditto.
+        (prepareTestScenario):
+        * platform/mac/svg/W3C-SVG-1.1/filters-blend-01-b-expected.png:
+        * platform/mac/svg/W3C-SVG-1.1/filters-blend-01-b-expected.txt: DRT output is lowercase now.
+        * platform/mac/svg/filters/feBlend-all-blendmodes-expected.png: Added.
+        * platform/mac/svg/filters/feBlend-all-blendmodes-expected.txt: Added.
+        * svg/filters/feBlend-all-blendmodes.svg: Added. Tests all blend modes now supported by feBlend.
+        * svg/filters/feBlend-invalid-mode.xhtml: Add an upper bound check as well.
+
+2014-06-25  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Crash at com.apple.WebCore: WebCore::AlternativeTextController::removeDictationAlternativesForMarker + 43
+        https://bugs.webkit.org/show_bug.cgi?id=134226
+
+        Reviewed by Enrica Casucci.
+
+        * platform/mac-wk2/TestExpectations:
+            Skip test on wk2 because dictation related tests are not yet supported (89401)
+        * platform/mac/editing/input/crash-for-empty-text-alternative-expected.txt: Added.
+        * platform/mac/editing/input/crash-for-empty-text-alternative.html: Added.
+
+2014-06-25  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove build guard for progress element
+        https://bugs.webkit.org/show_bug.cgi?id=134292
+
+        Reviewed by Benjamin Poulain.
+
+        Remove PROGRESS_ELEMENT from the comment to reflect the change.
+
+        * fast/dom/wrapper-classes.html:
+
+2014-06-24  Frédéric Wang  <fred.wang@free.fr>
+
+        [EFL] [GTK] Update the MathML test references.
+        https://bugs.webkit.org/show_bug.cgi?id=134153
+
+        Reviewed by Martin Robinson.
+
+        We update the GTK references after the move to Latin Modern Math.
+
+        * mathml/presentation/bug95015-expected.html: hide the base X since it is causing antialiasing diff.
+        * mathml/presentation/bug95015.html: ditto
+        * platform/efl/TestExpectations: enable some tests again (the references must be updated).
+        * platform/gtk/TestExpectations: enable OpenType MATH test again, mark mo-stacked-glyphs as failing.
+        * platform/gtk/mathml/presentation/menclose-notation-default-longdiv-expected.txt: update reference.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png: ditto
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt: ditto
+        * platform/gtk/mathml/presentation/roots-expected.png: ditto
+        * platform/gtk/mathml/presentation/roots-expected.txt: ditto
+
+2014-06-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170414.
+        https://bugs.webkit.org/show_bug.cgi?id=134291
+
+        the patch added a test that fails on almost every Mac tester
+        (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Tiles on bottom of screen are not always allocated when
+        necessary"
+        https://bugs.webkit.org/show_bug.cgi?id=134272
+        http://trac.webkit.org/changeset/170414
+
+2014-06-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Tiles on bottom of screen are not always allocated when necessary
+        https://bugs.webkit.org/show_bug.cgi?id=134272
+
+        Reviewed by Simon Fraser.
+
+        Apply a content inset, then dump visible rects.
+
+        * platform/mac-wk2/tiled-drawing/visible-rect-content-inset-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/visible-rect-content-inset.html: Added.
+
+2014-06-24  Samuel White  <samuel_white@apple.com>
+
+        AX: Remove tight platform expectation coupling form roles-exposed layout test.
+        https://bugs.webkit.org/show_bug.cgi?id=134123
+
+        Reviewed by Chris Fleizach.
+
+        Don't enforce platform specific differences in the test itself. This is what the various expectation files are for.
+
+        * accessibility/roles-exposed-expected.txt:
+        * accessibility/roles-exposed.html:
+        * platform/mac-mountainlion/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2014-06-24  Mark Rowe  <mrowe@apple.com>
+
+        WKContextHistoryClient::didNavigateWithNavigationData is passed incorrect URL when history.pushState is used
+        <https://webkit.org/b/134271> / <rdar://problem/16270167>
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/globalhistory/history-delegate-pushstate-expected.txt: Added.
+        * http/tests/globalhistory/history-delegate-pushstate.html: Added.
+        * http/tests/globalhistory/history-delegate-replacestate-expected.txt: Added.
+        * http/tests/globalhistory/history-delegate-replacestate.html: Added.
+
+2014-06-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS JIT: Add positionInRootFragments to SelectorFragment
+        https://bugs.webkit.org/show_bug.cgi?id=133609
+
+        Reviewed by Benjamin Poulain.
+
+        Some non-backtrack-related predicates use relationToRightFragment information
+        to decide whether checkingContext->elementStyle should be refered.
+        To make it works correctly, add the positionInRootFragments field to SelectorFragment.
+        When positionInRootFragments == Rightmost and relationToRightFragment == Rightmost,
+        we should see checkingContext->elementStyle.
+
+        * fast/selectors/first-child-update-with-renderer-expected.txt: Added.
+        * fast/selectors/first-child-update-with-renderer.html: Added.
+
+2014-06-24  Jarek Czekalski  <jarekczek@poczta.onet.pl>
+
+        [ATK] Extended the test for accessibility of text inside "span" block in "a" block
+        with the tests for caret movements in these cases.
+        https://bugs.webkit.org/show_bug.cgi?id=130941
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/gtk/accessibility/text-in-span-block-in-a-block-expected.txt: 
+        * platform/gtk/accessibility/text-in-span-block-in-a-block.html:
+        Added testing for text-caret-moved signal. Added one more "a" element to the set.
+
+2014-06-24  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Merge efl-wk2 and efl test expectations files
+        https://bugs.webkit.org/show_bug.cgi?id=134245
+
+        Unreviewed gardening after removing WebKit1.
+
+        * platform/efl-wk2/TestExpectations: An empty file left, as deleting it may break flakiness dashboard.
+        * platform/efl/TestExpectations: Merged with platform/efl-wk2/TestExpectations.
+
+2014-06-20  Jer Noble  <jer.noble@apple.com>
+
+        HTMLMediaElement seek algorithm should allow cancelling previous seeks.
+        https://bugs.webkit.org/show_bug.cgi?id=134116
+
+        Reviewed by Eric Carlson.
+
+        * media/video-seek-double-expected.txt: Added.
+        * media/video-seek-double.html: Added.
+
+2014-06-19  Jeffrey Pfau  <jpfau@apple.com>
+
+        Database process crashes when multiple transactions attempt to run at once
+        https://bugs.webkit.org/show_bug.cgi?id=134139
+
+        Reviewed by David Kilzer.
+
+        * storage/indexeddb/transaction-overlapping-expected.txt: Added.
+        * storage/indexeddb/transaction-overlapping.html: Added.
+
+2014-06-23  Antti Koivisto  <antti@apple.com>
+
+        Fix a test case failing on WK1 after r170296.
+
+        There is now a non-visual render tree dump difference between WK1 and Wk2 results here due to wk1 requiring an additional style synchronization.
+
+        * platform/mac-wk2/editing/inserting: Added.
+        * platform/mac-wk2/editing/inserting/break-blockquote-after-delete-expected.txt: Copied from LayoutTests/platform/mac/editing/inserting/break-blockquote-after-delete-expected.txt.
+        * platform/mac/editing/inserting/break-blockquote-after-delete-expected.txt:
+
+2014-06-23  Simon Fraser  <simon.fraser@apple.com>
+
+        CSS clip property should make layers non-opaque
+        https://bugs.webkit.org/show_bug.cgi?id=134147
+
+        Reviewed by Tim Horton.
+
+        * compositing/contents-opaque/opaque-with-clip-expected.html: Added.
+        * compositing/contents-opaque/opaque-with-clip.html: Added.
+
+2014-06-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Adding a mask on a simple color compositing layer removes the content
+        https://bugs.webkit.org/show_bug.cgi?id=134127
+
+        Reviewed by Dean Jackson.
+
+        * compositing/masks/mask-layer-size-expected.txt:
+        * compositing/masks/solid-color-masked-expected.html: Added.
+        * compositing/masks/solid-color-masked.html: Added.
+
+2014-06-23  David Hyatt  <hyatt@apple.com>
+
+        [New Multicolumn] Writing mode changes on the <html> and RenderView need to
+        be propagated to column sets and flow thread children of those renderers.
+        https://bugs.webkit.org/show_bug.cgi?id=134121
+        <rdar://problem/16884527>
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/pagination/RightToLeft-rl-dynamic.html: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/BottomToTop-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/BottomToTop-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/BottomToTop-tb-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/LeftToRight-tb-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/RightToLeft-tb-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-bt-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-lr-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-rl-expected.png:
+        * platform/mac/fast/multicol/pagination/TopToBottom-tb-expected.png:
+        * platform/mac/fast/multicol/pagination/nested-transforms-expected.png:
+
+2014-06-23  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Move WebKit2 test results into LayoutTests/platform/efl
+        https://bugs.webkit.org/show_bug.cgi?id=134192
+
+        Unreviewed gardening, moving files into LayoutTests/platform/efl after removing EFL WebKit1.
+
+        * platform/efl/webaudio/oscillator-custom-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/oscillator-custom-expected.wav.
+        * platform/efl/webaudio/oscillator-sawtooth-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/oscillator-sawtooth-expected.wav.
+        * platform/efl/webaudio/oscillator-sine-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/oscillator-sine-expected.wav.
+        * platform/efl/webaudio/oscillator-square-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/oscillator-square-expected.wav.
+        * platform/efl/webaudio/oscillator-triangle-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/oscillator-triangle-expected.wav.
+        * platform/efl/webaudio/up-mixing-mono-51-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/up-mixing-mono-51-expected.wav.
+        * platform/efl/webaudio/up-mixing-mono-stereo-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/up-mixing-mono-stereo-expected.wav.
+        * platform/efl/webaudio/up-mixing-stereo-51-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/up-mixing-stereo-51-expected.wav.
+
+2014-06-23  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Move WebKit2 test results into LayoutTests/platform/efl
+        https://bugs.webkit.org/show_bug.cgi?id=134192
+
+        Unreviewed gardening, moving files into LayoutTests/platform/efl after removing EFL WebKit1.
+
+        * platform/efl/webaudio/audiobuffersource-loop-points-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/audiobuffersource-loop-points-expected.wav.
+        * platform/efl/webaudio/audiobuffersource-multi-channels-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/audiobuffersource-multi-channels-expected.wav.
+        * platform/efl/webaudio/audiobuffersource-playbackrate-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/audiobuffersource-playbackrate-expected.wav.
+        * platform/efl/webaudio/gain-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/gain-expected.wav.
+        * platform/efl/webaudio/mixing-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/mixing-expected.wav.
+
+2014-06-23  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Move WebKit2 test results into LayoutTests/platform/efl
+        https://bugs.webkit.org/show_bug.cgi?id=134192
+
+        Unreviewed gardening, moving files into LayoutTests/platform/efl after removing EFL WebKit1.
+
+        * platform/efl/fast/: Renamed from LayoutTests/platform/efl-wk2/fast/.
+        * platform/efl/webaudio/audiobuffersource-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/audiobuffersource-expected.wav.
+        * platform/efl/webaudio/codec-tests/aac/vbr-128kbps-44khz-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/codec-tests/aac/vbr-128kbps-44khz-expected.wav.
+        * platform/efl/webaudio/codec-tests/vorbis/vbr-128kbps-44khz-expected.txt: Renamed from LayoutTests/platform/efl-wk2/webaudio/codec-tests/vorbis/vbr-128kbps-44khz-expected.txt.
+        * platform/efl/webaudio/codec-tests/vorbis/vbr-70kbps-44khz-expected.txt: Renamed from LayoutTests/platform/efl-wk2/webaudio/codec-tests/vorbis/vbr-70kbps-44khz-expected.txt.
+        * platform/efl/webaudio/codec-tests/vorbis/vbr-96kbps-44khz-expected.txt: Renamed from LayoutTests/platform/efl-wk2/webaudio/codec-tests/vorbis/vbr-96kbps-44khz-expected.txt.
+        * platform/efl/webaudio/codec-tests/wav/24bit-22khz-resample-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/codec-tests/wav/24bit-22khz-resample-expected.wav.
+        * platform/efl/webaudio/codec-tests/wav/24bit-44khz-expected.wav: Renamed from LayoutTests/platform/efl-wk2/webaudio/codec-tests/wav/24bit-44khz-expected.wav.
+
+2014-06-23  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Move WebKit2 test results into LayoutTests/platform/efl
+
+        Unreviewed gardening, moving files into LayoutTests/platform/efl after removing EFL WebKit1.
+
+        * platform/efl/accessibility/: Renamed from LayoutTests/platform/efl-wk2/accessibility/.
+        * platform/efl/compositing/: Renamed from LayoutTests/platform/efl-wk2/compositing/.
+        * platform/efl/editing/: Renamed from LayoutTests/platform/efl-wk2/editing/.
+        * platform/efl/fast/: Renamed from LayoutTests/platform/efl-wk2/fast/.
+        * platform/efl/http/: Renamed from LayoutTests/platform/efl-wk2/http/.
+        * platform/efl/ietestcenter: Renamed from LayoutTests/platform/efl-wk2/ietestcenter/.
+        * platform/efl/inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local-expected.txt: Renamed from LayoutTests/platform/efl-wk2/inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local-expected.txt.
+        * platform/efl/loader/go-back-cached-main-resource-expected.txt: Renamed from LayoutTests/platform/efl-wk2/loader/go-back-cached-main-resource-expected.txt.
+        * platform/efl/media/video-layer-crash-expected.png: Renamed from LayoutTests/platform/efl-wk2/media/video-layer-crash-expected.png.
+        * platform/efl/media/video-transformed-expected.png: Renamed from LayoutTests/platform/efl-wk2/media/video-transformed-expected.png.
+        * platform/efl/media/video-zoom-controls-expected.png: Renamed from LayoutTests/platform/efl-wk2/media/video-zoom-controls-expected.png.
+        * platform/efl/media/video-zoom-expected.png: Renamed from LayoutTests/platform/efl-wk2/media/video-zoom-expected.png.
+        * platform/efl/plugins/npruntime/object-from-destroyed-plugin-expected.txt: Renamed from LayoutTests/platform/efl-wk2/plugins/npruntime/object-from-destroyed-plugin-expected.txt.
+        * platform/efl/plugins/npruntime/object-from-destroyed-plugin-in-subframe-expected.txt: Renamed from LayoutTests/platform/efl-wk2/plugins/npruntime/object-from-destroyed-plugin-in-subframe-expected.txt.
+        * platform/efl/svg/: Renamed from LayoutTests/platform/efl-wk2/svg/.
+        * platform/efl/transforms/2d/hindi-rotated-expected.png:
+        * platform/efl/transforms/2d/hindi-rotated-expected.txt:
+
+2014-06-23  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r170257) http/tests/navigation/javascriptlink-frames.html fails on MountainLion
+        https://bugs.webkit.org/show_bug.cgi?id=134182
+
+        Rebaseline for Mountain Lion.
+
+        * platform/mac-mountainlion/TestExpectations: Removed.
+        * platform/mac-mountainlion/http/tests/navigation/javascriptlink-frames-expected.txt:
+
 2014-06-22  Brady Eidson  <beidson@apple.com>
 
         REGRESSION (r170257) http/tests/navigation/javascriptlink-frames.html fails on MountainLion

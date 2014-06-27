@@ -113,6 +113,8 @@ private:
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) override;
     virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition) override;
+    virtual void restorePageState(const WebCore::FloatRect&, double) override;
+    virtual void restorePageCenterAndScale(const WebCore::FloatPoint&, double) override;
 
     virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) override;
     virtual void stopAssistingNode() override;
@@ -130,12 +132,19 @@ private:
     virtual WebCore::FloatSize contentsSize() const override;
 
 #if ENABLE(INSPECTOR)
+    virtual void showInspectorHighlight(const WebCore::Highlight&) override;
+    virtual void hideInspectorHighlight() override;
+
     virtual void showInspectorIndication() override;
     virtual void hideInspectorIndication() override;
+
+    virtual void enableInspectorNodeSearch() override;
+    virtual void disableInspectorNodeSearch() override;
 #endif
 
     virtual void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale) override;
-    virtual void scrollViewWillStartPanGesture() override;
+    virtual void overflowScrollViewWillStartPanGesture() override;
+    virtual void overflowScrollViewDidScroll() override;
     virtual void didFinishDrawingPagesToPDF(const IPC::DataReference&) override;
 
     // Auxiliary Client Creation

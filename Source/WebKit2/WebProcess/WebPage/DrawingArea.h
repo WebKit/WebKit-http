@@ -114,8 +114,10 @@ public:
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(std::function<void ()>);
 
-    virtual void viewStateDidChange(WebCore::ViewState::Flags) { }
+    virtual void viewStateDidChange(WebCore::ViewState::Flags, bool /*wantsDidUpdateViewState*/) { }
     virtual void setLayerHostingMode(LayerHostingMode) { }
+
+    virtual bool markLayersVolatileImmediatelyIfPossible() { return true; }
 
 protected:
     DrawingArea(DrawingAreaType, WebPage&);

@@ -33,6 +33,7 @@
 #import "EditingRange.h"
 #import "NativeWebKeyboardEvent.h"
 #import "PageClient.h"
+#import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "ViewUpdateDispatcherMessages.h"
@@ -186,14 +187,19 @@ void WebPageProxy::autocorrectionContextCallback(const String& beforeText, const
     callback->performCallbackWithReturnValue(beforeText, markedText, selectedText, afterText, location, length);
 }
 
-bool WebPageProxy::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo)
+void WebPageProxy::updateVisibleContentRects(const WebCore::FloatRect& exposedRect, const WebCore::FloatRect& unobscuredRect, const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate)
 {
+    if (!isValid())
+        return;
+
+    VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(exposedRect, unobscuredRect, unobscuredRectInScrollViewCoordinates, customFixedPositionRect, scale, inStableState, isChangingObscuredInsetsInteractively, timestamp, horizontalVelocity, verticalVelocity, scaleChangeRate, toRemoteLayerTreeDrawingAreaProxy(drawingArea())->lastCommittedLayerTreeTransactionID());
+
     if (visibleContentRectUpdateInfo == m_lastVisibleContentRectUpdate)
-        return false;
+        return;
 
     m_lastVisibleContentRectUpdate = visibleContentRectUpdateInfo;
     m_process->send(Messages::ViewUpdateDispatcher::VisibleContentRectUpdate(m_pageID, visibleContentRectUpdateInfo), 0);
-    return true;
+    return;
 }
 
 static inline float adjustedUnexposedEdge(float documentEdge, float exposedRectEdge, float factor)
@@ -236,9 +242,14 @@ WebCore::FloatRect WebPageProxy::computeCustomFixedPositionRect(const FloatRect&
     return FrameView::rectForViewportConstrainedObjects(enclosingLayoutRect(constrainedUnobscuredRect), roundedLayoutSize(contentsSize), displayedContentScale, false, StickToViewportBounds);
 }
 
-void WebPageProxy::scrollViewWillStartPanGesture()
+void WebPageProxy::overflowScrollViewWillStartPanGesture()
 {
-    m_pageClient.scrollViewWillStartPanGesture();
+    m_pageClient.overflowScrollViewWillStartPanGesture();
+}
+
+void WebPageProxy::overflowScrollViewDidScroll()
+{
+    m_pageClient.overflowScrollViewDidScroll();
 }
 
 void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
@@ -305,29 +316,23 @@ void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& 
 
 void WebPageProxy::selectWithGesture(const WebCore::IntPoint point, WebCore::TextGranularity granularity, uint32_t gestureType, uint32_t gestureState, std::function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<GestureCallback> callback = GestureCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(WebCore::IntPoint(), 0, 0, 0, CallbackBase::Error::Unknown);
         return;
     }
-    
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(callback);
+
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::SelectWithGesture(point, (uint32_t)granularity, gestureType, gestureState, callbackID), m_pageID);
 }
 
 void WebPageProxy::updateSelectionWithTouches(const WebCore::IntPoint point, uint32_t touches, bool baseIsStart, std::function<void (const WebCore::IntPoint&, uint32_t, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<TouchesCallback> callback = TouchesCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(WebCore::IntPoint(), 0, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::UpdateSelectionWithTouches(point, touches, baseIsStart, callbackID), m_pageID);
 }
     
@@ -343,29 +348,23 @@ void WebPageProxy::replaceSelectedText(const String& oldText, const String& newT
 
 void WebPageProxy::requestAutocorrectionData(const String& textForAutocorrection, std::function<void (const Vector<WebCore::FloatRect>&, const String&, double, uint64_t, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<AutocorrectionDataCallback> callback = AutocorrectionDataCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(Vector<WebCore::FloatRect>(), String(), 0, 0, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::RequestAutocorrectionData(textForAutocorrection, callbackID), m_pageID);
 }
 
 void WebPageProxy::applyAutocorrection(const String& correction, const String& originalText, std::function<void (const String&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<StringCallback> callback = StringCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::ApplyAutocorrection(correction, originalText, callbackID), m_pageID);
 }
 
@@ -378,29 +377,23 @@ bool WebPageProxy::applyAutocorrection(const String& correction, const String& o
 
 void WebPageProxy::requestDictationContext(std::function<void (const String&, const String&, const String&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<DictationContextCallback> callback = DictationContextCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), String(), String(), CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::RequestDictationContext(callbackID), m_pageID);
 }
 
 void WebPageProxy::requestAutocorrectionContext(std::function<void (const String&, const String&, const String&, const String&, uint64_t, uint64_t, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<AutocorrectionContextCallback> callback = AutocorrectionContextCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(String(), String(), String(), String(), 0, 0, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::RequestAutocorrectionContext(callbackID), m_pageID);
 }
 
@@ -411,15 +404,12 @@ void WebPageProxy::getAutocorrectionContext(String& beforeContext, String& marke
 
 void WebPageProxy::selectWithTwoTouches(const WebCore::IntPoint from, const WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, std::function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<GestureCallback> callback = GestureCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(WebCore::IntPoint(), 0, 0, 0, CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(callback);
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::SelectWithTwoTouches(from, to, gestureType, gestureState, callbackID), m_pageID);
 }
 
@@ -587,6 +577,16 @@ void WebPageProxy::tapHighlightAtPosition(const WebCore::FloatPoint& position, u
     process().send(Messages::WebPage::TapHighlightAtPosition(requestID, position), m_pageID);
 }
 
+void WebPageProxy::inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint& position)
+{
+    process().send(Messages::WebPage::InspectorNodeSearchMovedToPosition(position), m_pageID);
+}
+
+void WebPageProxy::inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint& position)
+{
+    process().send(Messages::WebPage::InspectorNodeSearchEndedAtPosition(position), m_pageID);
+}
+
 void WebPageProxy::blurAssistedNode()
 {
     process().send(Messages::WebPage::BlurAssistedNode(), m_pageID);
@@ -615,6 +615,16 @@ void WebPageProxy::dynamicViewportUpdateChangedTarget(double newScale, const Web
     }
 }
 
+void WebPageProxy::restorePageState(const WebCore::FloatRect& exposedRect, double scale)
+{
+    m_pageClient.restorePageState(exposedRect, scale);
+}
+
+void WebPageProxy::restorePageCenterAndScale(const WebCore::FloatPoint& center, double scale)
+{
+    m_pageClient.restorePageCenterAndScale(center, scale);
+}
+
 void WebPageProxy::didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius)
 {
     m_pageClient.didGetTapHighlightGeometries(requestID, color, highlightedQuads, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius);
@@ -636,6 +646,16 @@ void WebPageProxy::stopAssistingNode()
 }
 
 #if ENABLE(INSPECTOR)
+void WebPageProxy::showInspectorHighlight(const WebCore::Highlight& highlight)
+{
+    m_pageClient.showInspectorHighlight(highlight);
+}
+
+void WebPageProxy::hideInspectorHighlight()
+{
+    m_pageClient.hideInspectorHighlight();
+}
+
 void WebPageProxy::showInspectorIndication()
 {
     m_pageClient.showInspectorIndication();
@@ -644,6 +664,16 @@ void WebPageProxy::showInspectorIndication()
 void WebPageProxy::hideInspectorIndication()
 {
     m_pageClient.hideInspectorIndication();
+}
+
+void WebPageProxy::enableInspectorNodeSearch()
+{
+    m_pageClient.enableInspectorNodeSearch();
+}
+
+void WebPageProxy::disableInspectorNodeSearch()
+{
+    m_pageClient.disableInspectorNodeSearch();
 }
 #endif
 

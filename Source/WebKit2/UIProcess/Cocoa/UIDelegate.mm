@@ -37,6 +37,7 @@
 #import "WKWindowFeaturesInternal.h"
 #import "WKUIDelegatePrivate.h"
 #import "_WKFrameHandleInternal.h"
+#import "_WKSecurityOriginInternal.h"
 
 namespace WebKit {
 
@@ -67,6 +68,8 @@ void UIDelegate::setDelegate(id <WKUIDelegate> delegate)
     m_delegateMethods.webViewRunJavaScriptAlertPanelWithMessageInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:)];
     m_delegateMethods.webViewRunJavaScriptConfirmPanelWithMessageInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:)];
     m_delegateMethods.webViewRunJavaScriptTextInputPanelWithPromptDefaultTextInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:)];
+    m_delegateMethods.webViewDecideDatabaseQuotaForSecurityOriginCurrentQuotaCurrentOriginUsageCurrentDatabaseUsageExpectedUsageDecisionHandler = [delegate respondsToSelector:@selector(_webView:decideDatabaseQuotaForSecurityOrigin:currentQuota:currentOriginUsage:currentDatabaseUsage:expectedUsage:decisionHandler:)];
+    m_delegateMethods.webViewDecideWebApplicationCacheQuotaForSecurityOriginCurrentQuotaTotalBytesNeeded = [delegate respondsToSelector:@selector(_webView:decideWebApplicationCacheQuotaForSecurityOrigin:currentQuota:totalBytesNeeded:decisionHandler:)];
     m_delegateMethods.webViewPrintFrame = [delegate respondsToSelector:@selector(_webView:printFrame:)];
 #if PLATFORM(IOS)
     m_delegateMethods.webViewActionsForElementDefaultActions = [delegate respondsToSelector:@selector(_webView:actionsForElement:defaultActions:)];
@@ -171,6 +174,46 @@ void UIDelegate::UIClient::runJavaScriptPrompt(WebKit::WebPageProxy*, const WTF:
     }];
 }
 
+void UIDelegate::UIClient::exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, WebSecurityOrigin* securityOrigin, const WTF::String& databaseName, const WTF::String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentUsage, unsigned long long expectedUsage, std::function<void (unsigned long long)> completionHandler)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewDecideDatabaseQuotaForSecurityOriginCurrentQuotaCurrentOriginUsageCurrentDatabaseUsageExpectedUsageDecisionHandler) {
+        completionHandler(currentQuota);
+        return;
+    }
+
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate) {
+        completionHandler(currentQuota);
+        return;
+    }
+
+    RefPtr<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(delegate.get(), @selector(_webView:decideDatabaseQuotaForSecurityOrigin:currentQuota:currentOriginUsage:currentDatabaseUsage:expectedUsage:decisionHandler:));
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView decideDatabaseQuotaForSecurityOrigin:adoptNS([[_WKSecurityOrigin alloc] _initWithSecurityOrigin:securityOrigin->securityOrigin()]).get() currentQuota:currentQuota currentOriginUsage:currentOriginUsage currentDatabaseUsage:currentUsage expectedUsage:expectedUsage decisionHandler:[completionHandler, checker](unsigned long long newQuota) {
+        checker->didCallCompletionHandler();
+        completionHandler(newQuota);
+    }];
+}
+
+void UIDelegate::UIClient::reachedApplicationCacheOriginQuota(WebPageProxy*, const WebCore::SecurityOrigin& securityOrigin, uint64_t currentQuota, uint64_t totalBytesNeeded, std::function<void (unsigned long long)> completionHandler)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewDecideWebApplicationCacheQuotaForSecurityOriginCurrentQuotaTotalBytesNeeded) {
+        completionHandler(currentQuota);
+        return;
+    }
+
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate) {
+        completionHandler(currentQuota);
+        return;
+    }
+
+    RefPtr<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(delegate.get(), @selector(_webView:decideWebApplicationCacheQuotaForSecurityOrigin:currentQuota:totalBytesNeeded:decisionHandler:));
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView decideWebApplicationCacheQuotaForSecurityOrigin:adoptNS([[_WKSecurityOrigin alloc] _initWithSecurityOrigin:securityOrigin]).get() currentQuota:currentQuota totalBytesNeeded:totalBytesNeeded decisionHandler:[completionHandler, checker](unsigned long long newQuota) {
+        checker->didCallCompletionHandler();
+        completionHandler(newQuota);
+    }];
+}
+
 void UIDelegate::UIClient::printFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy* webFrameProxy)
 {
     ASSERT_ARG(webFrameProxy, webFrameProxy);
@@ -208,17 +251,6 @@ void UIDelegate::UIClient::didNotHandleTapAsClick(const WebCore::IntPoint& point
         return;
 
     [static_cast<id <WKUIDelegatePrivate>>(delegate) _webView:m_uiDelegate.m_webView didNotHandleTapAsClickAtPoint:point];
-}
-
-WebCore::FloatRect UIDelegate::UIClient::windowFrame(WebKit::WebPageProxy*)
-{
-    if (!m_uiDelegate.m_webView)
-        return WebCore::FloatRect();
-
-    if (UIWindow* window = m_uiDelegate.m_webView.window)
-        return WebCore::enclosingIntRect(window.frame);
-
-    return WebCore::enclosingIntRect(m_uiDelegate.m_webView.bounds);
 }
 #endif
 

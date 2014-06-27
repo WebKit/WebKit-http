@@ -28,6 +28,7 @@
 
 #include "APIFrameHandle.h"
 #include "AuthenticationManager.h"
+#include "DrawingArea.h"
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
 #include "InjectedBundleUserMessageCoders.h"
@@ -151,7 +152,8 @@ WebProcess::WebProcess()
     : m_eventDispatcher(EventDispatcher::create())
 #if PLATFORM(IOS)
     , m_viewUpdateDispatcher(ViewUpdateDispatcher::create())
-#endif // PLATFORM(IOS)
+#endif
+    , m_processSuspensionCleanupTimer(this, &WebProcess::processSuspensionCleanupTimerFired)
     , m_inDidClose(false)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
@@ -1159,14 +1161,47 @@ void WebProcess::resetAllGeolocationPermissions()
             mainFrame->resetAllGeolocationPermission();
     }
 }
+#endif
     
 void WebProcess::processWillSuspend()
 {
     memoryPressureHandler().releaseMemory(true);
-    parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
+
+    if (!markAllLayersVolatileIfPossible())
+        m_processSuspensionCleanupTimer.startRepeating(std::chrono::milliseconds(20));
+    else
+        parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
 }
-    
-#endif // PLATFORM(IOS)
+
+void WebProcess::cancelProcessWillSuspend()
+{
+    // If we've already finished cleaning up and sent ProcessReadyToSuspend, we
+    // shouldn't send DidCancelProcessSuspension; the UI process strictly expects one or the other.
+    if (!m_processSuspensionCleanupTimer.isActive())
+        return;
+
+    m_processSuspensionCleanupTimer.stop();
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidCancelProcessSuspension(), 0);
+}
+
+bool WebProcess::markAllLayersVolatileIfPossible()
+{
+    bool successfullyMarkedAllLayersVolatile = true;
+    for (auto& page : m_pageMap.values()) {
+        if (auto drawingArea = page->drawingArea())
+            successfullyMarkedAllLayersVolatile &= drawingArea->markLayersVolatileImmediatelyIfPossible();
+    }
+
+    return successfullyMarkedAllLayersVolatile;
+}
+
+void WebProcess::processSuspensionCleanupTimerFired(Timer<WebProcess>* timer)
+{
+    if (markAllLayersVolatileIfPossible()) {
+        parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
+        timer->stop();
+    }
+}
 
 void WebProcess::pageDidEnterWindow(uint64_t pageID)
 {

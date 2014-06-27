@@ -210,13 +210,19 @@ public:
     RenderBoxModelObject& enclosingBoxModelObject() const;
 
     bool fixedPositionedWithNamedFlowContainingBlock() const;
+
+    enum ShouldUseFlowThreadCache {
+        UseFlowThreadCache,
+        SkipFlowThreadCache
+    };
+
     // Function to return our enclosing flow thread if we are contained inside one. This
     // function follows the containing block chain.
-    RenderFlowThread* flowThreadContainingBlock() const
+    RenderFlowThread* flowThreadContainingBlock(ShouldUseFlowThreadCache useCache = UseFlowThreadCache) const
     {
         if (flowThreadState() == NotInsideFlowThread)
             return 0;
-        return locateFlowThreadContainingBlock();
+        return (useCache == SkipFlowThreadCache) ? locateFlowThreadContainingBlockNoCache() : locateFlowThreadContainingBlock();
     }
 
     RenderNamedFlowFragment* currentRenderNamedFlowFragment() const;
@@ -320,9 +326,7 @@ public:
     virtual bool isMeter() const { return false; }
 #endif
     virtual bool isSnapshottedPlugIn() const { return false; }
-#if ENABLE(PROGRESS_ELEMENT)
     virtual bool isProgress() const { return false; }
-#endif
     virtual bool isRenderSVGBlock() const { return false; };
     virtual bool isRenderButton() const { return false; }
     virtual bool isRenderIFrame() const { return false; }

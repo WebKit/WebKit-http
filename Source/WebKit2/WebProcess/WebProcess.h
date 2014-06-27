@@ -29,6 +29,7 @@
 #include "CacheModel.h"
 #include "ChildProcess.h"
 #include "DownloadManager.h"
+#include "DrawingArea.h"
 #include "PluginProcessConnectionManager.h"
 #include "ResourceCachesToClear.h"
 #include "SandboxExtension.h"
@@ -174,10 +175,14 @@ public:
     void allowSpecificHTTPSCertificateForHost(const WebCore::CertificateInfo&, const String& host);
 #endif
 
+    void processWillSuspend();
+    void cancelProcessWillSuspend();
+    bool markAllLayersVolatileIfPossible();
+    void processSuspensionCleanupTimerFired(WebCore::Timer<WebProcess>*);
+
 #if PLATFORM(IOS)
     void resetAllGeolocationPermissions();
-    void processWillSuspend();
-#endif // PLATFORM(IOS)
+#endif
 
     RefPtr<API::Object> apiObjectByConvertingFromHandles(API::Object*);
 
@@ -287,6 +292,7 @@ private:
 #if PLATFORM(IOS)
     RefPtr<ViewUpdateDispatcher> m_viewUpdateDispatcher;
 #endif
+    WebCore::Timer<WebProcess> m_processSuspensionCleanupTimer;
 
     bool m_inDidClose;
 

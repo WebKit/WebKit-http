@@ -112,12 +112,14 @@ void RemoteLayerTreeDrawingArea::willDestroyDisplayRefreshMonitor(DisplayRefresh
 
 void RemoteLayerTreeDrawingArea::setRootCompositingLayer(GraphicsLayer* rootLayer)
 {
-    Vector<GraphicsLayer *> children;
+    Vector<GraphicsLayer*> children;
     if (rootLayer) {
         children.append(rootLayer);
         children.append(m_webPage.pageOverlayController().viewOverlayRootLayer());
     }
     m_rootLayer->setChildren(children);
+
+    scheduleCompositingLayerFlush();
 }
 
 void RemoteLayerTreeDrawingArea::updateGeometry(const IntSize& viewSize, const IntSize& layerPosition)
@@ -200,8 +202,10 @@ void RemoteLayerTreeDrawingArea::setExposedContentRect(const FloatRect& exposedC
     FrameView* frameView = m_webPage.mainFrameView();
     if (!frameView)
         return;
+    if (frameView->exposedContentRect() == exposedContentRect)
+        return;
 
-    frameView->setExposedContentRect(enclosingIntRect(exposedContentRect));
+    frameView->setExposedContentRect(exposedContentRect);
     scheduleCompositingLayerFlush();
 }
 #endif
@@ -353,6 +357,11 @@ void RemoteLayerTreeDrawingArea::mainFrameContentSizeChanged(const IntSize& cont
     m_webPage.pageOverlayController().didChangeDocumentSize();
 }
 
+bool RemoteLayerTreeDrawingArea::markLayersVolatileImmediatelyIfPossible()
+{
+    return m_remoteLayerTreeContext->backingStoreCollection().markAllBackingStoreVolatileImmediatelyIfPossible();
+}
+
 PassRefPtr<RemoteLayerTreeDrawingArea::BackingStoreFlusher> RemoteLayerTreeDrawingArea::BackingStoreFlusher::create(IPC::Connection* connection, std::unique_ptr<IPC::MessageEncoder> encoder, Vector<RetainPtr<CGContextRef>> contextsToFlush)
 {
     return adoptRef(new RemoteLayerTreeDrawingArea::BackingStoreFlusher(connection, std::move(encoder), std::move(contextsToFlush)));
@@ -375,6 +384,11 @@ void RemoteLayerTreeDrawingArea::BackingStoreFlusher::flush()
     m_hasFlushed = true;
 
     m_connection->sendMessage(std::move(m_commitEncoder));
+}
+
+void RemoteLayerTreeDrawingArea::viewStateDidChange(ViewState::Flags, bool wantsDidUpdateViewState)
+{
+    // FIXME: Should we suspend painting while not visible, like TiledCoreAnimationDrawingArea? Probably.
 }
 
 } // namespace WebKit

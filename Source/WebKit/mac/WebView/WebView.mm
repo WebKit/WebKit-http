@@ -518,7 +518,6 @@ WebLayoutMilestones kitLayoutMilestones(LayoutMilestones milestones)
         | (milestones & DidHitRelevantRepaintedObjectsAreaThreshold ? WebDidHitRelevantRepaintedObjectsAreaThreshold : 0);
 }
 
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
 static WebPageVisibilityState kit(PageVisibilityState visibilityState)
 {
     switch (visibilityState) {
@@ -533,7 +532,6 @@ static WebPageVisibilityState kit(PageVisibilityState visibilityState)
     ASSERT_NOT_REACHED();
     return WebPageVisibilityStateVisible;
 }
-#endif
 
 @interface WebView (WebFileInternal)
 #if !PLATFORM(IOS)
@@ -2406,7 +2404,11 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setHiddenPageDOMTimerThrottlingEnabled([preferences hiddenPageDOMTimerThrottlingEnabled]);
 #endif
 
-settings.setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
+    settings.setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
+
+#if ENABLE(GAMEPAD)
+    RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled([preferences gamepadsEnabled]);
+#endif
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -4325,10 +4327,8 @@ static Vector<String> toStringVector(NSArray* patterns)
 
 - (WebPageVisibilityState)_visibilityState
 {
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     if (_private->page)
         return kit(_private->page->visibilityState());
-#endif
     return WebPageVisibilityStateVisible;
 }
 
@@ -5296,6 +5296,16 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 - (void)windowKeyStateChanged:(NSNotification *)notification
 {
     [self _updateActiveState];
+}
+
+- (void)viewDidHide
+{
+    [self _updateVisibilityState];
+}
+
+- (void)viewDidUnhide
+{
+    [self _updateVisibilityState];
 }
 
 - (void)_windowWillOrderOnScreen:(NSNotification *)notification

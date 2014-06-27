@@ -59,6 +59,7 @@
 #include "WebProcessMessages.h"
 #include "WebProcessProxy.h"
 #include "WebResourceCacheManagerProxy.h"
+#include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/Language.h>
 #include <WebCore/LinkHash.h>
 #include <WebCore/Logging.h>
@@ -406,7 +407,7 @@ void WebContext::ensureNetworkProcess()
 
     parameters.cacheModel = m_cacheModel;
 
-    parameters.diskCacheDirectory = diskCacheDirectory();
+    parameters.diskCacheDirectory = stringByResolvingSymlinksInPath(diskCacheDirectory());
     if (!parameters.diskCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
 
@@ -642,6 +643,9 @@ WebProcessProxy& WebContext::createNewWebProcess()
 
 #if PLATFORM(COCOA)
     process->send(Messages::WebProcess::SetQOS(webProcessLatencyQOS(), webProcessThroughputQOS()), 0);
+#endif
+#if PLATFORM(IOS)
+    cacheStorage().setDefaultOriginQuota(25ULL * 1024 * 1024);
 #endif
 
     if (WebPreferences::anyPagesAreUsingPrivateBrowsing())

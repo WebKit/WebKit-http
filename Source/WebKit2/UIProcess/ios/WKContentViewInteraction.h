@@ -62,6 +62,7 @@ class WebPageProxy;
 
 @class WKActionSheetAssistant;
 @class WKFormInputSession;
+@class WKInspectorNodeSearchGestureRecognizer;
 @class WebIOSEvent;
 @class _UIHighlightView;
 @class _UIWebHighlightLongPressGestureRecognizer;
@@ -92,6 +93,7 @@ struct WKAutoCorrectionData {
     RetainPtr<UILongPressGestureRecognizer> _longPressGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _doubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _twoFingerDoubleTapGestureRecognizer;
+    RetainPtr<WKInspectorNodeSearchGestureRecognizer> _inspectorNodeSearchGestureRecognizer;
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
@@ -136,6 +138,7 @@ struct WKAutoCorrectionData {
     BOOL _potentialTapInProgress;
     BOOL _selectionNeedsUpdate;
     BOOL _usingGestureForSelection;
+    BOOL _inspectorNodeSearchEnabled;
 }
 
 @end
@@ -168,14 +171,17 @@ struct WKAutoCorrectionData {
 - (void)_updatePositionInformation;
 - (void)_performAction:(WebKit::SheetAction)action;
 - (void)_willStartScrollingOrZooming;
+- (void)_didScroll;
 - (void)_didEndScrollingOrZooming;
 - (void)_didUpdateBlockSelectionWithTouch:(WebKit::SelectionTouch)touch withFlags:(WebKit::SelectionFlags)flags growThreshold:(CGFloat)growThreshold shrinkThreshold:(CGFloat)shrinkThreshold;
 - (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const WebCore::IntRect&)elementRect;
 - (void)_showRunOpenPanel:(WebKit::WebOpenPanelParameters*)parameters resultListener:(WebKit::WebOpenPanelResultListenerProxy*)listener;
 - (void)accessoryDone;
 - (void)_didHandleKeyEvent:(WebIOSEvent *)event;
-- (Vector<WebKit::WKOptionItem>&) assistedNodeSelectOptions;
+- (Vector<WebKit::OptionItem>&) assistedNodeSelectOptions;
 - (void)_updateUnscaledView;
+- (void)_enableInspectorNodeSearch;
+- (void)_disableInspectorNodeSearch;
 @end
 
 #endif // PLATFORM(IOS)

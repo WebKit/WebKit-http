@@ -97,9 +97,7 @@ WebProcessProxy::WebProcessProxy(WebContext& context)
     , m_processSuppressionEnabled(false)
 #endif
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
-#if PLATFORM(IOS)
     , m_throttler(std::make_unique<ProcessThrottler>(this))
-#endif
 {
     connect();
 }
@@ -723,6 +721,28 @@ RefPtr<API::Object> WebProcessProxy::apiObjectByConvertingToHandles(API::Object*
             return nullptr;
         }
     });
+}
+
+void WebProcessProxy::sendProcessWillSuspend()
+{
+    if (canSendMessage())
+        send(Messages::WebProcess::ProcessWillSuspend(), 0);
+}
+
+void WebProcessProxy::sendCancelProcessWillSuspend()
+{
+    if (canSendMessage())
+        send(Messages::WebProcess::CancelProcessWillSuspend(), 0);
+}
+    
+void WebProcessProxy::processReadyToSuspend()
+{
+    m_throttler->processReadyToSuspend();
+}
+
+void WebProcessProxy::didCancelProcessSuspension()
+{
+    m_throttler->didCancelProcessSuspension();
 }
 
 } // namespace WebKit

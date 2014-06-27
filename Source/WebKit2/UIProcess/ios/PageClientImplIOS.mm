@@ -235,6 +235,13 @@ void PageClientImpl::registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPag
     notImplemented();
 }
 
+#if USE(INSERTION_UNDO_GROUPING)
+void PageClientImpl::registerInsertionUndoGrouping()
+{
+    notImplemented();
+}
+#endif
+
 void PageClientImpl::clearAllEditCommands()
 {
     notImplemented();
@@ -317,7 +324,8 @@ FloatRect PageClientImpl::convertToDeviceSpace(const FloatRect& rect)
 
 FloatRect PageClientImpl::convertToUserSpace(const FloatRect& rect)
 {
-    return rect;
+    notImplemented();
+    return FloatRect();
 }
 
 IntPoint PageClientImpl::screenToRootView(const IntPoint& point)
@@ -433,6 +441,16 @@ void PageClientImpl::dynamicViewportUpdateChangedTarget(double newScale, const W
     [m_webView _dynamicViewportUpdateChangedTargetToScale:newScale position:newScrollPosition];
 }
 
+void PageClientImpl::restorePageState(const WebCore::FloatRect& exposedRect, double scale)
+{
+    [m_webView _restorePageStateToExposedRect:exposedRect scale:scale];
+}
+
+void PageClientImpl::restorePageCenterAndScale(const WebCore::FloatPoint& center, double scale)
+{
+    [m_webView _restorePageStateToUnobscuredCenter:center scale:scale];
+}
+
 void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInformation, bool userIsInteracting, bool blurPreviousNode, API::Object* userData)
 {
     MESSAGE_CHECK(!userData || userData->type() == API::Object::Type::Data);
@@ -474,14 +492,34 @@ bool PageClientImpl::handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPa
 }
 
 #if ENABLE(INSPECTOR)
+void PageClientImpl::showInspectorHighlight(const WebCore::Highlight& highlight)
+{
+    [m_contentView _showInspectorHighlight:highlight];
+}
+
+void PageClientImpl::hideInspectorHighlight()
+{
+    [m_contentView _hideInspectorHighlight];
+}
+
 void PageClientImpl::showInspectorIndication()
 {
-    [m_webView _showInspectorIndication];
+    [m_contentView setShowingInspectorIndication:YES];
 }
 
 void PageClientImpl::hideInspectorIndication()
 {
-    [m_webView _hideInspectorIndication];
+    [m_contentView setShowingInspectorIndication:NO];
+}
+
+void PageClientImpl::enableInspectorNodeSearch()
+{
+    [m_contentView _enableInspectorNodeSearch];
+}
+
+void PageClientImpl::disableInspectorNodeSearch()
+{
+    [m_contentView _disableInspectorNodeSearch];
 }
 #endif
 
@@ -532,9 +570,14 @@ void PageClientImpl::zoomToRect(FloatRect rect, double minimumScale, double maxi
     [m_contentView _zoomToRect:rect withOrigin:rect.center() fitEntireRect:YES minimumScale:minimumScale maximumScale:maximumScale minimumScrollDistance:0];
 }
 
-void PageClientImpl::scrollViewWillStartPanGesture()
+void PageClientImpl::overflowScrollViewWillStartPanGesture()
 {
     [m_contentView scrollViewWillStartPanOrPinchGesture];
+}
+
+void PageClientImpl::overflowScrollViewDidScroll()
+{
+    [m_contentView _didScroll];
 }
 
 void PageClientImpl::didFinishDrawingPagesToPDF(const IPC::DataReference& pdfData)

@@ -280,6 +280,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
     , m_viewState(ViewState::NoFlags)
+    , m_viewWasEverInWindow(false)
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_loadStateAtProcessExit(FrameLoadState::State::Finished)
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -362,7 +363,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_autoSizingShouldExpandToViewHeight(false)
     , m_mediaVolume(1)
     , m_mayStartMediaWhenInWindow(true)
-    , m_waitingForDidUpdateViewState(false)
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
     , m_configurationPreferenceValues(configuration.preferenceValues)
@@ -1094,18 +1094,26 @@ void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
         m_viewState |= ViewState::IsVisible;
     if (flagsToUpdate & ViewState::IsVisibleOrOccluded && m_pageClient.isViewVisibleOrOccluded())
         m_viewState |= ViewState::IsVisibleOrOccluded;
-    if (flagsToUpdate & ViewState::IsInWindow && m_pageClient.isViewInWindow())
+    if (flagsToUpdate & ViewState::IsInWindow && m_pageClient.isViewInWindow()) {
         m_viewState |= ViewState::IsInWindow;
+        m_viewWasEverInWindow = true;
+    }
     if (flagsToUpdate & ViewState::IsVisuallyIdle && m_pageClient.isVisuallyIdle())
         m_viewState |= ViewState::IsVisuallyIdle;
 }
 
-void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, WantsReplyOrNot wantsReply)
+void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged)
 {
+    bool isNewlyInWindow = !isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow();
+
     m_potentiallyChangedViewStateFlags |= mayHaveChanged;
-    m_viewStateChangeWantsReply = (wantsReply == WantsReplyOrNot::DoesWantReply || m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply) ? WantsReplyOrNot::DoesWantReply : WantsReplyOrNot::DoesNotWantReply;
+    m_viewStateChangeWantsReply = ((m_viewWasEverInWindow && isNewlyInWindow) || m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply) ? WantsReplyOrNot::DoesWantReply : WantsReplyOrNot::DoesNotWantReply;
 
 #if PLATFORM(COCOA)
+    if (isNewlyInWindow) {
+        dispatchViewStateChange();
+        return;
+    }
     m_viewStateChangeDispatcher->schedule();
 #else
     dispatchViewStateChange();
@@ -1169,6 +1177,9 @@ void WebPageProxy::dispatchViewStateChange()
 
     updateBackingStoreDiscardableState();
 
+    if (m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply)
+        waitForDidUpdateViewState();
+
     m_potentiallyChangedViewStateFlags = ViewState::NoFlags;
     m_viewStateChangeWantsReply = WantsReplyOrNot::DoesNotWantReply;
 }
@@ -1198,19 +1209,19 @@ void WebPageProxy::layerHostingModeDidChange()
 
 void WebPageProxy::waitForDidUpdateViewState()
 {
+    if (!isValid())
+        return;
+
+    if (m_process->state() != WebProcessProxy::State::Running)
+        return;
+
     // If we have previously timed out with no response from the WebProcess, don't block the UIProcess again until it starts responding.
     if (m_waitingForDidUpdateViewState)
         return;
 
-    if (!isValid())
-        return;
-
     m_waitingForDidUpdateViewState = true;
 
-    if (m_process->state() != WebProcessProxy::State::Launching) {
-        auto viewStateUpdateTimeout = std::chrono::milliseconds(250);
-        m_process->connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DidUpdateViewState>(m_pageID, viewStateUpdateTimeout);
-    }
+    m_drawingArea->waitForDidUpdateViewState();
 }
 
 IntSize WebPageProxy::viewSize() const
@@ -1246,7 +1257,7 @@ void WebPageProxy::validateCommand(const String& commandName, std::function<void
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::ValidateCommand(commandName, callbackID), m_pageID);
 }
 
@@ -2189,7 +2200,7 @@ void WebPageProxy::runJavaScriptInMainFrame(const String& script, std::function<
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::RunJavaScriptInMainFrame(script, callbackID), m_pageID);
 }
 
@@ -2200,7 +2211,7 @@ void WebPageProxy::getRenderTreeExternalRepresentation(std::function<void (const
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::GetRenderTreeExternalRepresentation(callbackID), m_pageID);
 }
 
@@ -2211,7 +2222,7 @@ void WebPageProxy::getSourceForFrame(WebFrameProxy* frame, std::function<void (c
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_loadDependentStringCallbackIDs.add(callbackID);
     m_process->send(Messages::WebPage::GetSourceForFrame(frame->frameID(), callbackID), m_pageID);
 }
@@ -2223,7 +2234,7 @@ void WebPageProxy::getContentsAsString(std::function<void (const String&, Callba
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_loadDependentStringCallbackIDs.add(callbackID);
     m_process->send(Messages::WebPage::GetContentsAsString(callbackID), m_pageID);
 }
@@ -2235,7 +2246,7 @@ void WebPageProxy::getBytecodeProfile(std::function<void (const String&, Callbac
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_loadDependentStringCallbackIDs.add(callbackID);
     m_process->send(Messages::WebPage::GetBytecodeProfile(callbackID), m_pageID);
 }
@@ -2248,7 +2259,7 @@ void WebPageProxy::getContentsAsMHTMLData(std::function<void (API::Data*, Callba
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::GetContentsAsMHTMLData(callbackID, useBinaryEncoding), m_pageID);
 }
 #endif
@@ -2260,7 +2271,7 @@ void WebPageProxy::getSelectionOrContentsAsString(std::function<void (const Stri
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::GetSelectionOrContentsAsString(callbackID), m_pageID);
 }
 
@@ -2271,7 +2282,7 @@ void WebPageProxy::getSelectionAsWebArchiveData(std::function<void (API::Data*, 
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::GetSelectionAsWebArchiveData(callbackID), m_pageID);
 }
 
@@ -2282,7 +2293,7 @@ void WebPageProxy::getMainResourceDataOfFrame(WebFrameProxy* frame, std::functio
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::GetMainResourceDataOfFrame(frame->frameID(), callbackID), m_pageID);
 }
 
@@ -2293,7 +2304,7 @@ void WebPageProxy::getResourceDataFromFrame(WebFrameProxy* frame, API::URL* reso
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::GetResourceDataFromFrame(frame->frameID(), resourceURL->string(), callbackID), m_pageID);
 }
 
@@ -2304,7 +2315,7 @@ void WebPageProxy::getWebArchiveOfFrame(WebFrameProxy* frame, std::function<void
         return;
     }
     
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::GetWebArchiveOfFrame(frame->frameID(), callbackID), m_pageID);
 }
 
@@ -3385,6 +3396,13 @@ void WebPageProxy::registerEditCommandForUndo(uint64_t commandID, uint32_t editA
 {
     registerEditCommand(WebEditCommandProxy::create(commandID, static_cast<EditAction>(editAction), this), Undo);
 }
+    
+void WebPageProxy::registerInsertionUndoGrouping()
+{
+#if USE(INSERTION_UNDO_GROUPING)
+    m_pageClient.registerInsertionUndoGrouping();
+#endif
+}
 
 void WebPageProxy::canUndoRedo(uint32_t action, bool& result)
 {
@@ -4290,7 +4308,6 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     m_isValid = false;
     m_isPageSuspended = false;
-    m_waitingForDidUpdateViewState = false;
 
     if (m_mainFrame) {
         m_urlAtProcessExit = m_mainFrame->url();
@@ -4444,14 +4461,22 @@ void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originI
         MESSAGE_CHECK(frame);
 
         RefPtr<WebSecurityOrigin> origin = WebSecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(record->originIdentifier));
-
-        uint64_t newQuota = m_uiClient->exceededDatabaseQuota(this, frame, origin.get(),
+        auto currentReply = record->reply;
+        m_uiClient->exceededDatabaseQuota(this, frame, origin.get(),
             record->databaseName, record->displayName, record->currentQuota,
-            record->currentOriginUsage, record->currentDatabaseUsage, record->expectedUsage);
+            record->currentOriginUsage, record->currentDatabaseUsage, record->expectedUsage,
+            [currentReply](unsigned long long newQuota) { currentReply->send(newQuota); });
 
-        record->reply->send(newQuota);
         record = records.next();
     }
+}
+
+void WebPageProxy::reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply> reply)
+{
+    RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::createFromDatabaseIdentifier(originIdentifier);
+    MESSAGE_CHECK(securityOrigin);
+
+    m_uiClient->reachedApplicationCacheOriginQuota(this, *securityOrigin.get(), currentQuota, totalBytesNeeded, [reply](unsigned long long newQuota) { reply->send(newQuota); });
 }
 
 void WebPageProxy::requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier)
@@ -4933,12 +4958,12 @@ void WebPageProxy::addMIMETypeWithCustomContentProvider(const String& mimeType)
 
 #if PLATFORM(COCOA)
 
-void WebPageProxy::insertTextAsync(const String& text, const EditingRange& replacementRange)
+void WebPageProxy::insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup)
 {
     if (!isValid())
         return;
 
-    process().send(Messages::WebPage::InsertTextAsync(text, replacementRange), m_pageID);
+    process().send(Messages::WebPage::InsertTextAsync(text, replacementRange, registerUndoGroup), m_pageID);
 }
 
 void WebPageProxy::getMarkedRangeAsync(std::function<void (EditingRange, CallbackBase::Error)> callbackFunction)
@@ -4948,20 +4973,18 @@ void WebPageProxy::getMarkedRangeAsync(std::function<void (EditingRange, Callbac
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     process().send(Messages::WebPage::GetMarkedRangeAsync(callbackID), m_pageID);
 }
 
 void WebPageProxy::getSelectedRangeAsync(std::function<void (EditingRange, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<EditingRangeCallback> callback = EditingRangeCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(EditingRange(), CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     process().send(Messages::WebPage::GetSelectedRangeAsync(callbackID), m_pageID);
 }
 
@@ -4972,7 +4995,7 @@ void WebPageProxy::characterIndexForPointAsync(const WebCore::IntPoint& point, s
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     process().send(Messages::WebPage::CharacterIndexForPointAsync(point, callbackID), m_pageID);
 }
 
@@ -4983,7 +5006,7 @@ void WebPageProxy::firstRectForCharacterRangeAsync(const EditingRange& range, st
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     process().send(Messages::WebPage::FirstRectForCharacterRangeAsync(range, callbackID), m_pageID);
 }
 
@@ -5015,7 +5038,7 @@ void WebPageProxy::takeSnapshot(IntRect rect, IntSize bitmapSize, SnapshotOption
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction));
+    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::TakeSnapshot(rect, bitmapSize, options, callbackID), m_pageID);
 }
 

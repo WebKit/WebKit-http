@@ -36,6 +36,7 @@
 
 #if PLATFORM(COCOA)
 #include "PluginComplexTextInputState.h"
+#include <WebCore/TextUndoInsertionMarkup.h>
 
 OBJC_CLASS CALayer;
 
@@ -48,6 +49,7 @@ OBJC_CLASS NSTextAlternatives;
 namespace WebCore {
 class Cursor;
 struct ViewportAttributes;
+struct Highlight;
 }
 
 namespace WebKit {
@@ -241,6 +243,9 @@ public:
     virtual void showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext) = 0;
     virtual Vector<String> dictationAlternatives(uint64_t dictationContext) = 0;
 #endif // USE(DICTATION_ALTERNATIVES)
+#if USE(INSERTION_UNDO_GROUPING)
+    virtual void registerInsertionUndoGrouping() = 0;
+#endif // USE(INSERTION_UNDO_GROUPING)
 #endif // USE(APPKIT)
 #endif // PLATFORM(MAC)
 
@@ -250,6 +255,8 @@ public:
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;
     virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition) = 0;
+    virtual void restorePageState(const WebCore::FloatRect&, double) = 0;
+    virtual void restorePageCenterAndScale(const WebCore::FloatPoint&, double) = 0;
 
     virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) = 0;
     virtual void stopAssistingNode() = 0;
@@ -264,12 +271,19 @@ public:
     virtual void setUsesMinimalUI(bool) = 0;
     virtual double minimumZoomScale() const = 0;
     virtual WebCore::FloatSize contentsSize() const = 0;
-    virtual void scrollViewWillStartPanGesture() = 0;
+    virtual void overflowScrollViewWillStartPanGesture() = 0;
+    virtual void overflowScrollViewDidScroll() = 0;
     virtual void didFinishDrawingPagesToPDF(const IPC::DataReference&) = 0;
 
 #if ENABLE(INSPECTOR)
+    virtual void showInspectorHighlight(const WebCore::Highlight&) = 0;
+    virtual void hideInspectorHighlight() = 0;
+
     virtual void showInspectorIndication() = 0;
     virtual void hideInspectorIndication() = 0;
+
+    virtual void enableInspectorNodeSearch() = 0;
+    virtual void disableInspectorNodeSearch() = 0;
 #endif
 #endif
 

@@ -833,11 +833,14 @@ sub builtDylibPathForName
         }
         return "NotFound";
     }
-    if (isEfl() || isHaiku()) {
+    if (isHaiku()) {
         if (isWK2()) {
             return "$configurationProductDir/lib/libewebkit2.so";
         }
         return "$configurationProductDir/lib/libewebkit.so";
+    }
+    if (isEfl()) {
+        return "$configurationProductDir/lib/libewebkit2.so";
     }
     if (isWinCE()) {
         return "$configurationProductDir/$libraryName";
@@ -2525,6 +2528,20 @@ sub writeRegistryString
     # return a successful exit code. So we double-check here that the value we tried to write to the
     # registry was really written.
     return !$error && readRegistryString($valueName) eq $string;
+}
+
+sub formatBuildTime($)
+{
+    my ($buildTime) = @_;
+
+    my $buildHours = int($buildTime / 3600);
+    my $buildMins = int(($buildTime - $buildHours * 3600) / 60);
+    my $buildSecs = $buildTime - $buildHours * 3600 - $buildMins * 60;
+
+    if ($buildHours) {
+        return sprintf("%dh:%02dm:%02ds", $buildHours, $buildMins, $buildSecs);
+    }
+    return sprintf("%02dm:%02ds", $buildMins, $buildSecs);
 }
 
 1;

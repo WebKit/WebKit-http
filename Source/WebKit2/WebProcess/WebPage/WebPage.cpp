@@ -55,6 +55,8 @@
 #include "ShareableBitmap.h"
 #include "TelephoneNumberOverlayController.h"
 #include "VisitedLinkTableController.h"
+#include "WKBundleAPICast.h"
+#include "WKRetainPtr.h"
 #include "WKSharedAPICast.h"
 #include "WebAlternativeTextClient.h"
 #include "WebBackForwardListItem.h"
@@ -177,6 +179,7 @@
 #if PLATFORM(COCOA)
 #include "PDFPlugin.h"
 #include "RemoteLayerTreeTransaction.h"
+#include "WKStringCF.h"
 #include <WebCore/LegacyWebArchive.h>
 #endif
 
@@ -187,6 +190,7 @@
 #endif
 
 #if PLATFORM(IOS)
+#include "RemoteLayerTreeDrawingArea.h"
 #include "WebVideoFullscreenManager.h"
 #include <CoreGraphics/CoreGraphics.h>
 #include <WebCore/Icon.h>
@@ -266,7 +270,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_accessibilityObject(0)
 #endif
     , m_setCanStartMediaTimer(RunLoop::main(), this, &WebPage::setCanStartMediaTimerFired)
-    , m_sendDidUpdateViewStateTimer(RunLoop::main(), this, &WebPage::didUpdateViewStateTimerFired)
     , m_formClient(std::make_unique<API::InjectedBundle::FormClient>())
     , m_uiClient(std::make_unique<API::InjectedBundle::PageUIClient>())
     , m_findController(this)
@@ -292,7 +295,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_isShowingContextMenu(false)
 #endif
 #if PLATFORM(IOS)
-    , m_obscuredTopInset(0)
+    , m_lastLayerTreeTransactionIDBeforeDidCommitLoad(0)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
@@ -2174,13 +2177,6 @@ void WebPage::setCanStartMediaTimerFired()
         m_page->setCanStartMedia(true);
 }
 
-#if !PLATFORM(MAC)
-void WebPage::didUpdateViewStateTimerFired()
-{
-    send(Messages::WebPageProxy::DidUpdateViewState());
-}
-#endif
-
 inline bool WebPage::canHandleUserEvents() const
 {
 #if USE(TILED_BACKING_STORE)
@@ -2220,16 +2216,14 @@ void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewSt
     ViewState::Flags changed = m_viewState ^ viewState;
     m_viewState = viewState;
 
-    m_drawingArea->viewStateDidChange(changed);
     m_page->setViewState(viewState);
     for (auto* pluginView : m_pluginViews)
         pluginView->viewStateDidChange(changed);
 
+    m_drawingArea->viewStateDidChange(changed, wantsDidUpdateViewState);
+
     if (changed & ViewState::IsInWindow)
         updateIsInWindow();
-
-    if (wantsDidUpdateViewState)
-        m_sendDidUpdateViewStateTimer.startOneShot(0);
 }
 
 void WebPage::setLayerHostingMode(unsigned layerHostingMode)
@@ -2280,18 +2274,30 @@ void WebPage::show()
     send(Messages::WebPageProxy::ShowPage());
 }
 
+String WebPage::userAgent(const URL& webCoreURL) const
+{
+    return userAgent(nullptr, webCoreURL);
+}
+
+String WebPage::userAgent(WebFrame* frame, const URL& webcoreURL) const
+{
+    if (frame && m_loaderClient.client().userAgentForURL) {
+        RefPtr<API::URL> url = API::URL::create(webcoreURL);
+
+        API::String* apiString = m_loaderClient.userAgentForURL(frame, url.get());
+        if (apiString)
+            return apiString->string();
+    }
+
+    String userAgent = platformUserAgent(webcoreURL);
+    if (!userAgent.isEmpty())
+        return userAgent;
+    return m_userAgent;
+}
+    
 void WebPage::setUserAgent(const String& userAgent)
 {
     m_userAgent = userAgent;
-}
-
-String WebPage::userAgent(const URL& url) const
-{
-    String userAgent = platformUserAgent(url);
-    if (!userAgent.isEmpty())
-        return userAgent;
-
-    return m_userAgent;
 }
 
 void WebPage::suspendActiveDOMObjectsAndAnimations()
@@ -2767,6 +2773,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if PLATFORM(IOS)
     settings.setUseImageDocumentForSubframePDF(true);
+#endif
+
+#if ENABLE(GAMEPAD)
+    RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled(store.getBoolValueForKey(WebPreferencesKey::gamepadsEnabledKey()));
 #endif
 
     if (store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey()))
@@ -4025,7 +4035,7 @@ bool WebPage::shouldUseCustomContentProviderForResponse(const ResourceResponse& 
 
 #if PLATFORM(COCOA)
 
-void WebPage::insertTextAsync(const String& text, const EditingRange& replacementEditingRange)
+void WebPage::insertTextAsync(const String& text, const EditingRange& replacementEditingRange, bool registerUndoGroup)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
@@ -4034,7 +4044,10 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
         if (replacementRange)
             frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
     }
-
+    
+    if (registerUndoGroup)
+        send(Messages::WebPageProxy::RegisterInsertionUndoGrouping());
+    
     if (!frame.editor().hasComposition()) {
         // An insertText: might be handled by other responders in the chain if we don't handle it.
         // One example is space bar that results in scrolling down the page.
@@ -4354,6 +4367,8 @@ void WebPage::didCommitLoad(WebFrame* frame)
     }
 #if PLATFORM(IOS)
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
+    m_scaleWasSetByUIProcess = false;
+    m_lastLayerTreeTransactionIDBeforeDidCommitLoad = toRemoteLayerTreeDrawingArea(*m_drawingArea).currentTransactionID();
     m_userHasChangedPageScaleFactor = false;
 
     WebProcess::shared().eventDispatcher().clearQueuedTouchEventsForPage(*this);

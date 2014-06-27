@@ -323,7 +323,7 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const URL& url,
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
 #endif
-        if (options.requestOriginPolicy == RestrictToSameOrigin && !m_document->securityOrigin()->canRequest(url)) {
+        if (options.requestOriginPolicy() == RestrictToSameOrigin && !m_document->securityOrigin()->canRequest(url)) {
             printAccessDeniedMessage(url);
             return false;
         }
@@ -401,6 +401,8 @@ bool CachedResourceLoader::shouldContinueAfterNotifyingLoadedFromMemoryCache(con
 #if ENABLE(INSPECTOR)
     if (request.resourceRequest().hiddenFromInspector())
         newRequest.setHiddenFromInspector(true);
+#else
+    UNUSED_PARAM(request);
 #endif
     frame()->loader().loadedResourceFromMemoryCache(resource, newRequest);
     

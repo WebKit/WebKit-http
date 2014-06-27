@@ -64,7 +64,7 @@ public:
     void setReadyState(MediaPlayer::ReadyState);
     void setNetworkState(MediaPlayer::NetworkState);
 
-    void seekInternal(double, double, double);
+    void seekInternal();
     void setLoadingProgresssed(bool flag) { m_loadingProgressed = flag; }
     void setHasAvailableVideoFrame(bool flag) { m_hasAvailableVideoFrame = flag; }
     void durationChanged();
@@ -156,6 +156,7 @@ private:
 
     void ensureLayer();
     void destroyLayer();
+    bool shouldBePlaying() const;
 
     // MediaPlayer Factory Methods
     static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
@@ -165,6 +166,19 @@ private:
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     friend class MediaSourcePrivateAVFObjC;
+
+    struct PendingSeek {
+        PendingSeek(const MediaTime& targetTime, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold)
+            : targetTime(targetTime)
+            , negativeThreshold(negativeThreshold)
+            , positiveThreshold(positiveThreshold)
+        {
+        }
+        MediaTime targetTime;
+        MediaTime negativeThreshold;
+        MediaTime positiveThreshold;
+    };
+    std::unique_ptr<PendingSeek> m_pendingSeek;
 
     MediaPlayer* m_player;
     WeakPtrFactory<MediaPlayerPrivateMediaSourceAVFObjC> m_weakPtrFactory;
@@ -181,6 +195,7 @@ private:
     double m_rate;
     bool m_playing;
     bool m_seeking;
+    bool m_seekCompleted;
     mutable bool m_loadingProgressed;
     bool m_hasAvailableVideoFrame;
 };

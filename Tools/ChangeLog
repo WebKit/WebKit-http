@@ -1,3 +1,606 @@
+2014-06-25  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        [JavaScriptCore] Make build-jsc output format better.
+        https://bugs.webkit.org/show_bug.cgi?id=133547
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/build-jsc: Emit built time information on successful builds.
+        (writeCongrats):
+        * Scripts/build-webkit: Move formatBuildTime function into webkitdirs.pm.
+        (cMakeArgsFromFeatures):
+        (formatBuildTime): Deleted.
+        * Scripts/webkitdirs.pm:
+        (formatBuildTime):
+
+2014-06-25  Chris Fleizach  <cfleizach@apple.com>
+
+        Add an undo group for each dictated utterance in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=134086
+
+        Reviewed by Enrica Casucci.
+
+        Create a method for creating attributed strings with the undo insertion marker.
+
+        * DumpRenderTree/mac/TextInputController.m:
+        (+[TextInputController isSelectorExcludedFromWebScript:]):
+        (+[TextInputController webScriptNameForSelector:]):
+        (-[TextInputController stringWithUndoGroupingInsertion:]):
+
+2014-06-25  Michael Saboff  <msaboff@apple.com>
+
+        Provide javascript aware backtrace script for lldb
+        https://bugs.webkit.org/show_bug.cgi?id=134276
+
+        Reviewed by Jer Noble.
+
+        * lldb/lldb_webkit.py:
+        (__lldb_init_module):
+        (btjs): New scripted command to display a backtrace that shows JavaScript frames with details.
+
+2014-06-25  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        REGRESSION (r170426) Broke two python tests
+        https://bugs.webkit.org/show_bug.cgi?id=134299
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort._search_paths): Added search path for efl-wk2.
+
+2014-06-25  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Remove WebKit1 related code from scripts
+        https://bugs.webkit.org/show_bug.cgi?id=134195
+
+        Reviewed by Laszlo Gombos.
+
+        After removing WebKit1 from EFL port, still there is some code left related to DumpRenderTree, 
+        EWebLauncher. Also running layout tests does not require adding -2/--webkit-test-runner switch.
+
+        * Scripts/run-launcher: MiniBrowser now runs as default without -2 switch.
+        * Scripts/webkitdirs.pm:
+        (builtDylibPathForName): Remove reference to libewebkit.so
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (_set_up_derived_options): Script runs WKTR by default.
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner.__init__): Ditto.
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort._search_paths): Remove efl-wk2 from baseline search path.
+        (EflPort.show_results_html_file): Run MiniBrowser as result viewer.
+
+2014-06-25  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove build guard for progress element
+        https://bugs.webkit.org/show_bug.cgi?id=134292
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-06-24  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Some of DOM bindings macros are misnamed
+        https://bugs.webkit.org/show_bug.cgi?id=121543
+
+        Reviewed by Carlos Garcia Campos.
+
+        As we are using WebKitDOM as a namespace we should unify all type macros
+        to have WEBKIT_DOM_TYPE prefix instead of WEBKIT_TYPE_DOM. Also add
+        more exceptions to decamelize function in GObject bindings generator
+        to fix the names of bindings for BR, HR, UL, OL, DL and LI elements.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeFilterTest.cpp:
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGeneratorSections._dom_class_decamelize):
+        (WebKitDOMDocGeneratorSections.write_section):
+
+2014-06-24  Frédéric Wang  <fred.wang@free.fr>
+
+        [EFL] Install Latin Modern Math on the bots
+        https://bugs.webkit.org/show_bug.cgi?id=134153
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules: Switch back to https://github.com/ for the webkitgtk-test-fonts.
+
+2014-06-24  Frédéric Wang  <fred.wang@free.fr>
+
+        [EFL] [GTK] Use Latin Modern Math in the jhbuild environments.
+        https://bugs.webkit.org/show_bug.cgi?id=134153
+
+        Reviewed by Martin Robinson.
+
+        * efl/jhbuild.modules: Use webkitgtk-test-fonts.git instead of the zip archive and upgrade to 0.0.5.
+        * gtk/jhbuild.modules: Upgrade webkitgtk-test-fonts to 0.0.5.
+
+2014-06-24  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, update my speciality.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Clean up and refactor WinLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=134209
+
+        Reviewed by Tim Thorton.
+
+        Relanding r170339 and r170340 with correct WinLauncher.h file.
+
+        * WinLauncher/Common.cpp: Copied from WinLauncher/WinLauncher.cpp.
+        (PrintView):
+        (ToggleMenuItem):
+        (WndProc):
+        (BackButtonProc):
+        (ForwardButtonProc):
+        (loadURL):
+        (shouldUseFullDesktop): Deleted.
+        (SimpleEventListener::SimpleEventListener): Deleted.
+        (SimpleEventListener::handleEvent): Deleted.
+        (WinLauncherWebHost::updateAddressBar): Deleted.
+        (WinLauncherWebHost::didFailProvisionalLoadWithError): Deleted.
+        (WinLauncherWebHost::QueryInterface): Deleted.
+        (WinLauncherWebHost::AddRef): Deleted.
+        (WinLauncherWebHost::Release): Deleted.
+        (updateMenuItemForHistoryItem): Deleted.
+        (showLastVisitedSites): Deleted.
+        (WinLauncherWebHost::didFinishLoadForFrame): Deleted.
+        (resizeSubViews): Deleted.
+        (setToDefaultPreferences): Deleted.
+        (wWinMain): Deleted.
+        (MyRegisterClass): Deleted.
+        (LaunchInspector): Deleted.
+        (NavigateForwardOrBackward): Deleted.
+        (NavigateToHistory): Deleted.
+        * WinLauncher/DOMDefaultImpl.cpp: Copied from WinLauncher/DOMDefaultImpl.h.
+        (DOMEventListener::Release):
+        (WebScriptObject::WebScriptObject): Deleted.
+        (WebScriptObject::~WebScriptObject): Deleted.
+        (WebScriptObject::throwException): Deleted.
+        (WebScriptObject::callWebScriptMethod): Deleted.
+        (WebScriptObject::evaluateWebScript): Deleted.
+        (WebScriptObject::removeWebScriptKey): Deleted.
+        (WebScriptObject::stringRepresentation): Deleted.
+        (WebScriptObject::webScriptValueAtIndex): Deleted.
+        (WebScriptObject::setWebScriptValueAtIndex): Deleted.
+        (WebScriptObject::setException): Deleted.
+        (DOMEventListener::throwException): Deleted.
+        (DOMEventListener::callWebScriptMethod): Deleted.
+        (DOMEventListener::evaluateWebScript): Deleted.
+        (DOMEventListener::removeWebScriptKey): Deleted.
+        (DOMEventListener::stringRepresentation): Deleted.
+        (DOMEventListener::webScriptValueAtIndex): Deleted.
+        (DOMEventListener::setWebScriptValueAtIndex): Deleted.
+        (DOMEventListener::setException): Deleted.
+        (DOMEventListener::handleEvent): Deleted.
+        * WinLauncher/DOMDefaultImpl.h:
+        (WebScriptObject::QueryInterface): Deleted.
+        (WebScriptObject::AddRef): Deleted.
+        (WebScriptObject::Release): Deleted.
+        (DOMObject::QueryInterface): Deleted.
+        (DOMEventListener::QueryInterface): Deleted.
+        (DOMEventListener::AddRef): Deleted.
+        (DOMEventListener::Release): Deleted.
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::WinLauncher):
+        (WinLauncher::init):
+        (WinLauncher::prepareViews):
+        (WinLauncher::setFrameLoadDelegate):
+        (WinLauncher::setUIDelegate):
+        (WinLauncher::setAccessibilityDelegate):
+        (WinLauncher::mainFrame):
+        (WinLauncher::seedInitialDefaultPreferences):
+        (WinLauncher::setToDefaultPreferences):
+        (updateMenuItemForHistoryItem):
+        (WinLauncher::showLastVisitedSites):
+        (WinLauncher::launchInspector):
+        (WinLauncher::navigateForwardOrBackward):
+        (WinLauncher::navigateToHistory):
+        (WinLauncher::goBack):
+        (WinLauncher::goForward):
+        (WinLauncher::loadURL):
+        (shouldUseFullDesktop): Deleted.
+        (SimpleEventListener::SimpleEventListener): Deleted.
+        (SimpleEventListener::handleEvent): Deleted.
+        (WinLauncherWebHost::updateAddressBar): Deleted.
+        (WinLauncherWebHost::didFailProvisionalLoadWithError): Deleted.
+        (WinLauncherWebHost::QueryInterface): Deleted.
+        (WinLauncherWebHost::AddRef): Deleted.
+        (WinLauncherWebHost::Release): Deleted.
+        (showLastVisitedSites): Deleted.
+        (WinLauncherWebHost::didFinishLoadForFrame): Deleted.
+        (resizeSubViews): Deleted.
+        (subclassForLayeredWindow): Deleted.
+        (computeFullDesktopFrame): Deleted.
+        (DllMain): Deleted.
+        (getAppDataFolder): Deleted.
+        (setToDefaultPreferences): Deleted.
+        (setCacheFolder): Deleted.
+        (createCrashReport): Deleted.
+        (wWinMain): Deleted.
+        (MyRegisterClass): Deleted.
+        (AbortProc): Deleted.
+        (getPrinterDC): Deleted.
+        (initDocStruct): Deleted.
+        (PrintView): Deleted.
+        (ToggleMenuItem): Deleted.
+        (LaunchInspector): Deleted.
+        (NavigateForwardOrBackward): Deleted.
+        (NavigateToHistory): Deleted.
+        (WndProc): Deleted.
+        (EditProc): Deleted.
+        (BackButtonProc): Deleted.
+        (ForwardButtonProc): Deleted.
+        (About): Deleted.
+        (loadURL): Deleted.
+        (dllLauncherEntryPoint): Deleted.
+        * WinLauncher/WinLauncher.h:
+        (WinLauncher::standardPreferences):
+        (WinLauncher::privatePreferences):
+        (WinLauncher::hasWebView):
+        (WinLauncher::usesLayeredWebView):
+        (WinLauncherWebHost::WinLauncherWebHost): Deleted.
+        (WinLauncherWebHost::didStartProvisionalLoadForFrame): Deleted.
+        (WinLauncherWebHost::didReceiveServerRedirectForProvisionalLoadForFrame): Deleted.
+        (WinLauncherWebHost::didCommitLoadForFrame): Deleted.
+        (WinLauncherWebHost::didReceiveTitle): Deleted.
+        (WinLauncherWebHost::didChangeIcons): Deleted.
+        (WinLauncherWebHost::didReceiveIcon): Deleted.
+        (WinLauncherWebHost::didFailLoadWithError): Deleted.
+        (WinLauncherWebHost::didChangeLocationWithinPageForFrame): Deleted.
+        (WinLauncherWebHost::willPerformClientRedirectToURL): Deleted.
+        (WinLauncherWebHost::didCancelClientRedirectForFrame): Deleted.
+        (WinLauncherWebHost::willCloseFrame): Deleted.
+        (WinLauncherWebHost::windowScriptObjectAvailable): Deleted.
+        (WinLauncherWebHost::didClearWindowObject): Deleted.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj.filters:
+        * WinLauncher/WinLauncherReplace.h:
+        (processCrashReport):
+        * WinLauncher/WinLauncherWebHost.cpp: Copied from WinLauncher/WinLauncher.cpp.
+        (WinLauncherWebHost::updateAddressBar):
+        (WinLauncherWebHost::QueryInterface):
+        (WinLauncherWebHost::AddRef):
+        (WinLauncherWebHost::Release):
+        (WinLauncherWebHost::didFinishLoadForFrame):
+        (shouldUseFullDesktop): Deleted.
+        (updateMenuItemForHistoryItem): Deleted.
+        (showLastVisitedSites): Deleted.
+        (resizeSubViews): Deleted.
+        (subclassForLayeredWindow): Deleted.
+        (computeFullDesktopFrame): Deleted.
+        (DllMain): Deleted.
+        (getAppDataFolder): Deleted.
+        (setToDefaultPreferences): Deleted.
+        (setCacheFolder): Deleted.
+        (createCrashReport): Deleted.
+        (wWinMain): Deleted.
+        (MyRegisterClass): Deleted.
+        (AbortProc): Deleted.
+        (getPrinterDC): Deleted.
+        (initDocStruct): Deleted.
+        (PrintView): Deleted.
+        (ToggleMenuItem): Deleted.
+        (LaunchInspector): Deleted.
+        (NavigateForwardOrBackward): Deleted.
+        (NavigateToHistory): Deleted.
+        (WndProc): Deleted.
+        (EditProc): Deleted.
+        (BackButtonProc): Deleted.
+        (ForwardButtonProc): Deleted.
+        (About): Deleted.
+        (loadURL): Deleted.
+        (dllLauncherEntryPoint): Deleted.
+        * WinLauncher/WinLauncherWebHost.h: Copied from WinLauncher/WinLauncher.h.
+        (WinLauncherWebHost::WinLauncherWebHost):
+        (WinLauncherWebHost::didStartProvisionalLoadForFrame):
+        (WinLauncherWebHost::didReceiveServerRedirectForProvisionalLoadForFrame):
+        (WinLauncherWebHost::didCommitLoadForFrame):
+        (WinLauncherWebHost::didReceiveTitle):
+        (WinLauncherWebHost::didChangeIcons):
+        (WinLauncherWebHost::didReceiveIcon):
+        (WinLauncherWebHost::didFailLoadWithError):
+        (WinLauncherWebHost::didChangeLocationWithinPageForFrame):
+        (WinLauncherWebHost::willPerformClientRedirectToURL):
+        (WinLauncherWebHost::didCancelClientRedirectForFrame):
+        (WinLauncherWebHost::willCloseFrame):
+        (WinLauncherWebHost::windowScriptObjectAvailable):
+        (WinLauncherWebHost::didClearWindowObject):
+        * WinLauncher/WinMain.cpp: Copied from WinLauncher/WinLauncher.cpp.
+        (wWinMain):
+        (MyRegisterClass):
+        (shouldUseFullDesktop): Deleted.
+        (SimpleEventListener::SimpleEventListener): Deleted.
+        (SimpleEventListener::handleEvent): Deleted.
+        (WinLauncherWebHost::updateAddressBar): Deleted.
+        (WinLauncherWebHost::didFailProvisionalLoadWithError): Deleted.
+        (WinLauncherWebHost::QueryInterface): Deleted.
+        (WinLauncherWebHost::AddRef): Deleted.
+        (WinLauncherWebHost::Release): Deleted.
+        (updateMenuItemForHistoryItem): Deleted.
+        (showLastVisitedSites): Deleted.
+        (WinLauncherWebHost::didFinishLoadForFrame): Deleted.
+        (resizeSubViews): Deleted.
+        (subclassForLayeredWindow): Deleted.
+        (computeFullDesktopFrame): Deleted.
+        (DllMain): Deleted.
+        (getAppDataFolder): Deleted.
+        (setToDefaultPreferences): Deleted.
+        (setCacheFolder): Deleted.
+        (createCrashReport): Deleted.
+        (AbortProc): Deleted.
+        (getPrinterDC): Deleted.
+        (initDocStruct): Deleted.
+        (PrintView): Deleted.
+        (ToggleMenuItem): Deleted.
+        (LaunchInspector): Deleted.
+        (NavigateForwardOrBackward): Deleted.
+        (NavigateToHistory): Deleted.
+        (WndProc): Deleted.
+        (EditProc): Deleted.
+        (BackButtonProc): Deleted.
+        (ForwardButtonProc): Deleted.
+        (About): Deleted.
+        (loadURL): Deleted.
+        (dllLauncherEntryPoint): Deleted.
+
+2014-06-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] getsectdata() is deprecated and we use it in DRT
+        https://bugs.webkit.org/show_bug.cgi?id=134122
+
+        Reviewed by Alexey Proskuryakov.
+
+        Migrate to using magic linker symbols.
+
+        No tests because there should be no behavior change
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (activateFontsIOS):
+
+2014-06-24  Javier Fernandez  <jfernandez@igalia.com>
+
+        Name moving. Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-06-24  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove EFL WK1 watch category
+        https://bugs.webkit.org/show_bug.cgi?id=134231
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/config/watchlist: Removed EFL WK1 category.
+
+2014-06-24  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Remove some unused code from DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=134191
+
+        Reviewed by Chris Fleizach.
+
+        DumpRenderTree's accessibility code could be removed since GTK and EFL has stopped supporting WK1.
+
+        * DumpRenderTree/atk/AccessibilityCallbacks.h: Removed.
+        * DumpRenderTree/atk/AccessibilityCallbacksAtk.cpp: Removed.
+        * DumpRenderTree/atk/AccessibilityControllerAtk.cpp: Removed.
+        * DumpRenderTree/atk/AccessibilityNotificationHandlerAtk.cpp: Removed.
+        * DumpRenderTree/atk/AccessibilityNotificationHandlerAtk.h: Removed.
+        * DumpRenderTree/atk/AccessibilityUIElementAtk.cpp: Removed.
+
+2014-06-23  Shivakumar JM  <shiva.jm@samsung.com>
+
+        [EFL][WK2] Search field is not shown properly on doing ctrl+f on Minibrowser.
+        https://bugs.webkit.org/show_bug.cgi?id=134025
+
+        Reviewed by Gyuyoung Kim.
+
+        Use EVAS_HINT_FILL in evas_object_size_hint_align_set() api.
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+
+2014-06-23  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Replace RefPtr<Evas_Object> with UniquePtrEfl
+        https://bugs.webkit.org/show_bug.cgi?id=134236
+
+        Reviewed by Gyuyoung Kim.
+
+        * ImageDiff/efl/ImageDiff.cpp:
+        (calculateDifference):
+        (printImageDifferences):
+        (readImageFromStdin):
+        (main):
+
+2014-06-23  Daniel Bates  <dabates@apple.com>
+
+        Rolling out r170340 and r170339.
+
+        Changeset r170339 broke the Apple Windows Debug and Release builds.
+
+        Reverted changesets:
+
+        "[Win] Build fix after r134209"
+        http://trac.webkit.org/changeset/170340
+
+        "[Win] Clean up and refactor WinLauncher"
+        https://bugs.webkit.org/show_bug.cgi?id=134209
+        http://trac.webkit.org/changeset/170339
+
+2014-06-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Build fix after r134209
+
+        * WinLauncher/WinMain.cpp: Must include the resources file
+        before Common.cpp.
+
+2014-06-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Clean up and refactor WinLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=134209
+
+        Reviewed by Tim Horton.
+
+        Make WinLauncher a class, and move all non-class driver functions
+        into "Common.cpp" and "WinMain.cpp". These files are distinct
+        to allow some internal tools to reuse the code in 'Common'.
+
+        * WinLauncher/Common.cpp: Added. Consists of code moved from
+        'WinLauncher.cpp' that can be reused for other tools.
+        (subclassForLayeredWindow):
+        (computeFullDesktopFrame):
+        (DllMain):
+        (getAppDataFolder):
+        (setCacheFolder):
+        (createCrashReport):
+        (AbortProc):
+        (getPrinterDC):
+        (initDocStruct):
+        (PrintView):
+        (ToggleMenuItem):
+        (WndProc):
+        (EditProc):
+        (BackButtonProc):
+        (ForwardButtonProc):
+        (About):
+        (loadURL):
+        (dllLauncherEntryPoint):
+        * WinLauncher/DOMDefaultImpl.cpp: Copied from WinLauncher/DOMDefaultImpl.h.
+        (DOMEventListener::Release):
+        (WebScriptObject::WebScriptObject): Deleted.
+        (WebScriptObject::~WebScriptObject): Deleted.
+        (WebScriptObject::throwException): Deleted.
+        (WebScriptObject::callWebScriptMethod): Deleted.
+        (WebScriptObject::evaluateWebScript): Deleted.
+        (WebScriptObject::removeWebScriptKey): Deleted.
+        (WebScriptObject::stringRepresentation): Deleted.
+        (WebScriptObject::webScriptValueAtIndex): Deleted.
+        (WebScriptObject::setWebScriptValueAtIndex): Deleted.
+        (WebScriptObject::setException): Deleted.
+        (DOMEventListener::throwException): Deleted.
+        (DOMEventListener::callWebScriptMethod): Deleted.
+        (DOMEventListener::evaluateWebScript): Deleted.
+        (DOMEventListener::removeWebScriptKey): Deleted.
+        (DOMEventListener::stringRepresentation): Deleted.
+        (DOMEventListener::webScriptValueAtIndex): Deleted.
+        (DOMEventListener::setWebScriptValueAtIndex): Deleted.
+        (DOMEventListener::setException): Deleted.
+        (DOMEventListener::handleEvent): Deleted.
+        * WinLauncher/DOMDefaultImpl.h:
+        (WebScriptObject::QueryInterface): Deleted.
+        (WebScriptObject::AddRef): Deleted.
+        (WebScriptObject::Release): Deleted.
+        (DOMObject::QueryInterface): Deleted.
+        (DOMEventListener::QueryInterface): Deleted.
+        (DOMEventListener::AddRef): Deleted.
+        (DOMEventListener::Release): Deleted.
+        * WinLauncher/WinLauncher.cpp: Converted stand-alone implementation
+        into a C++ class and removed WinAPI code.
+        (WinLauncher::WinLauncher):
+        (WinLauncher::init):
+        (WinLauncher::prepareViews):
+        (WinLauncher::setFrameLoadDelegate):
+        (WinLauncher::setUIDelegate):
+        (WinLauncher::setAccessibilityDelegate):
+        (WinLauncher::mainFrame):
+        (WinLauncher::seedInitialDefaultPreferences):
+        (WinLauncher::setToDefaultPreferences):
+        (updateMenuItemForHistoryItem):
+        (WinLauncher::showLastVisitedSites):
+        (WinLauncher::launchInspector):
+        (WinLauncher::navigateForwardOrBackward):
+        (WinLauncher::navigateToHistory):
+        (WinLauncher::goBack):
+        (WinLauncher::goForward):
+        (WinLauncher::loadURL):
+        (shouldUseFullDesktop): Deleted.
+        (SimpleEventListener::SimpleEventListener): Deleted.
+        (SimpleEventListener::handleEvent): Deleted.
+        (WinLauncherWebHost::updateAddressBar): Deleted.
+        (WinLauncherWebHost::didFailProvisionalLoadWithError): Deleted.
+        (WinLauncherWebHost::QueryInterface): Deleted.
+        (WinLauncherWebHost::AddRef): Deleted.
+        (WinLauncherWebHost::Release): Deleted.
+        (showLastVisitedSites): Deleted.
+        (WinLauncherWebHost::didFinishLoadForFrame): Deleted.
+        (resizeSubViews): Deleted.
+        (subclassForLayeredWindow): Deleted.
+        (computeFullDesktopFrame): Deleted.
+        (DllMain): Deleted.
+        (getAppDataFolder): Deleted.
+        (setToDefaultPreferences): Deleted.
+        (setCacheFolder): Deleted.
+        (createCrashReport): Deleted.
+        (wWinMain): Deleted.
+        (MyRegisterClass): Deleted.
+        (AbortProc): Deleted.
+        (getPrinterDC): Deleted.
+        (initDocStruct): Deleted.
+        (PrintView): Deleted.
+        (ToggleMenuItem): Deleted.
+        (LaunchInspector): Deleted.
+        (NavigateForwardOrBackward): Deleted.
+        (NavigateToHistory): Deleted.
+        (WndProc): Deleted.
+        (EditProc): Deleted.
+        (BackButtonProc): Deleted.
+        (ForwardButtonProc): Deleted.
+        (About): Deleted.
+        (loadURL): Deleted.
+        (dllLauncherEntryPoint): Deleted.
+        * WinLauncher/WinLauncher.h: Removed.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj.filters:
+        * WinLauncher/WinLauncherReplace.h:
+        (processCrashReport):
+        * WinLauncher/WinLauncherWebHost.cpp: Added.
+        (SimpleEventListener::SimpleEventListener):
+        (SimpleEventListener::handleEvent):
+        (WinLauncherWebHost::updateAddressBar):
+        (WinLauncherWebHost::didFailProvisionalLoadWithError):
+        (WinLauncherWebHost::QueryInterface):
+        (WinLauncherWebHost::AddRef):
+        (WinLauncherWebHost::Release):
+        (WinLauncherWebHost::didFinishLoadForFrame):
+        * WinLauncher/WinLauncherWebHost.h: Copied from WinLauncher/WinLauncher.h.
+        Moved WinLauncherWebHost implementation from WinLauncher.cpp into
+        its own set of files.
+        (WinLauncherWebHost::WinLauncherWebHost):
+        (WinLauncherWebHost::didStartProvisionalLoadForFrame):
+        (WinLauncherWebHost::didReceiveServerRedirectForProvisionalLoadForFrame):
+        (WinLauncherWebHost::didCommitLoadForFrame):
+        (WinLauncherWebHost::didReceiveTitle):
+        (WinLauncherWebHost::didChangeIcons):
+        (WinLauncherWebHost::didReceiveIcon):
+        (WinLauncherWebHost::didFailLoadWithError):
+        (WinLauncherWebHost::didChangeLocationWithinPageForFrame):
+        (WinLauncherWebHost::willPerformClientRedirectToURL):
+        (WinLauncherWebHost::didCancelClientRedirectForFrame):
+        (WinLauncherWebHost::willCloseFrame):
+        (WinLauncherWebHost::windowScriptObjectAvailable):
+        (WinLauncherWebHost::didClearWindowObject):
+        * WinLauncher/WinMain.cpp: Added. This consists of code from
+        WinLauncher that is unique to the WinLauncher utility, and is
+        not part of the WinLauncher class.
+        (wWinMain):
+        (MyRegisterClass):
+
+2014-06-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable the Web Inspector in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=134148
+
+        Reviewed by Joseph Pecoraro.
+        
+        Set the pref to enable Web Inspector in both WK1 and WK2 windows.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate applicationDidFinishLaunching:]):
+
 2014-06-21  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Disable gamepad feature on EFL and GTK ports by default

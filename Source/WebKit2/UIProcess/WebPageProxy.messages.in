@@ -210,6 +210,7 @@ messages -> WebPageProxy {
     # Undo/Redo messages
     RegisterEditCommandForUndo(uint64_t commandID, uint32_t editAction)
     ClearAllEditCommands()
+    RegisterInsertionUndoGrouping()
     CanUndoRedo(uint32_t action) -> (bool result)
     ExecuteUndoRedo(uint32_t action) -> (bool result)
 
@@ -240,6 +241,9 @@ messages -> WebPageProxy {
 
     # Database messages
     ExceededDatabaseQuota(uint64_t frameID, String originIdentifier, String databaseName, String databaseDisplayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage) -> (uint64_t newQuota) Delayed
+
+    # Application cache messages
+    ReachedApplicationCacheOriginQuota(String originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded) -> (uint64_t newQuota) Delayed
 
     # Geolocation messages
     RequestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier)
@@ -325,10 +329,13 @@ messages -> WebPageProxy {
     # X11 windowed plugin messages
     CreatePluginContainer() -> (uint64_t windowID)
     WindowedPluginGeometryDidChange(WebCore::IntRect frameRect, WebCore::IntRect clipRect, uint64_t windowID)
+    WindowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID)
 #endif
 
 #if PLATFORM(IOS)
     DynamicViewportUpdateChangedTarget(double newTargetScale, WebCore::FloatPoint newScrollPosition)
+    RestorePageState(WebCore::FloatRect exposedRect, double scale)
+    RestorePageCenterAndScale(WebCore::FloatPoint unobscuredCenter, double scale)
     DidGetTapHighlightGeometries(uint64_t requestID, WebCore::Color color, Vector<WebCore::FloatQuad> geometries, WebCore::IntSize topLeftRadius, WebCore::IntSize topRightRadius, WebCore::IntSize bottomLeftRadius, WebCore::IntSize bottomRightRadius)
 
     StartAssistingNode(WebKit::AssistedNodeInformation information, bool userIsInteracting, bool blurPreviousNode, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
@@ -336,8 +343,14 @@ messages -> WebPageProxy {
     NotifyRevealedSelection()
 
 #if ENABLE(INSPECTOR)
+    ShowInspectorHighlight(WebCore::Highlight highlight)
+    HideInspectorHighlight()
+
     ShowInspectorIndication()
     HideInspectorIndication()
+
+    EnableInspectorNodeSearch()
+    DisableInspectorNodeSearch()
 #endif
 #endif
 

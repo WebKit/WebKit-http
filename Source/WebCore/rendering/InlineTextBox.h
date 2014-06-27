@@ -34,8 +34,8 @@ struct CompositionUnderline;
 class DocumentMarker;
 class TextPainter;
 
-const unsigned short cNoTruncation = USHRT_MAX;
-const unsigned short cFullTruncation = USHRT_MAX - 1;
+const unsigned cNoTruncation = std::numeric_limits<unsigned>::max();
+const unsigned cFullTruncation = std::numeric_limits<unsigned>::max() - 1;
 
 class BufferForAppendingHyphen : public StringBuilder {
 public:
@@ -75,7 +75,7 @@ public:
 
     void offsetRun(int d) { ASSERT(!isDirty()); m_start += d; }
 
-    unsigned short truncation() const { return m_truncation; }
+    unsigned truncation() const { return m_truncation; }
 
     virtual void markDirty(bool dirty = true) override final;
 
@@ -110,15 +110,15 @@ private:
     LayoutUnit selectionBottom() const;
     LayoutUnit selectionHeight() const;
 
-    TextRun constructTextRun(const RenderStyle&, const Font&, BufferForAppendingHyphen* = 0) const;
-    TextRun constructTextRun(const RenderStyle&, const Font&, String, int maximumLength, BufferForAppendingHyphen* = 0) const;
+    TextRun constructTextRun(const RenderStyle&, const Font&, BufferForAppendingHyphen* = nullptr) const;
+    TextRun constructTextRun(const RenderStyle&, const Font&, String, unsigned maximumLength, BufferForAppendingHyphen* = nullptr) const;
 
 public:
     virtual FloatRect calculateBoundaries() const { return FloatRect(x(), y(), width(), height()); }
 
-    virtual LayoutRect localSelectionRect(int startPos, int endPos) const;
-    bool isSelected(int startPos, int endPos) const;
-    void selectionStartEnd(int& sPos, int& ePos);
+    virtual LayoutRect localSelectionRect(unsigned startPos, unsigned endPos) const;
+    bool isSelected(unsigned startPos, unsigned endPos) const;
+    void selectionStartEnd(unsigned& sPos, unsigned& ePos);
 
 protected:
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
@@ -158,13 +158,13 @@ private:
 
 public:
     virtual int offsetForPosition(float x, bool includePartialGlyphs = true) const;
-    virtual float positionForOffset(int offset) const;
+    virtual float positionForOffset(unsigned offset) const;
 
     // Needs to be public, so the static paintTextWithShadows() function can use it.
     static FloatSize applyShadowToGraphicsContext(GraphicsContext*, const ShadowData*, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal);
 
 protected:
-    void paintCompositionBackground(GraphicsContext*, const FloatPoint& boxOrigin, const RenderStyle&, const Font&, int startPos, int endPos);
+    void paintCompositionBackground(GraphicsContext*, const FloatPoint& boxOrigin, const RenderStyle&, const Font&, unsigned startPos, unsigned endPos);
     void paintDocumentMarkers(GraphicsContext*, const FloatPoint& boxOrigin, const RenderStyle&, const Font&, bool background);
     void paintCompositionUnderline(GraphicsContext*, const FloatPoint& boxOrigin, const CompositionUnderline&);
 
@@ -187,12 +187,12 @@ private:
     InlineTextBox* m_prevTextBox; // The previous box that also uses our RenderObject
     InlineTextBox* m_nextTextBox; // The next box that also uses our RenderObject
 
-    int m_start;
-    unsigned short m_len;
+    unsigned m_start;
+    unsigned m_len;
 
     // Where to truncate when text overflow is applied. We use special constants to
     // denote no truncation (the whole run paints) and full truncation (nothing paints at all).
-    unsigned short m_truncation;
+    unsigned m_truncation;
 };
 
 INLINE_BOX_OBJECT_TYPE_CASTS(InlineTextBox, isInlineTextBox())

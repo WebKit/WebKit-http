@@ -1,3 +1,156 @@
+2014-06-25  Dana Burkart  <dburkart@apple.com>
+
+        Add support for 5-tuple versioning.
+
+        Reviewed by David Farler.
+
+        * Configurations/Version.xcconfig:
+
+2014-06-25  Geoffrey Garen  <ggaren@apple.com>
+
+        Build fix.
+
+        Unreviewed.
+
+        * runtime/JSDateMath.cpp:
+        (JSC::parseDateFromNullTerminatedCharacters):
+        * runtime/VM.cpp:
+        (JSC::VM::resetDateCache): Use std::numeric_limits instead of QNaN
+        constant since that constant doesn't exist anymore.
+
+2014-06-25  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, rolling out r166876.
+
+        Caused some ECMA test262 failures
+
+        Reverted changeset:
+
+        "Date object needs to check for ES5 15.9.1.14 TimeClip limit."
+        https://bugs.webkit.org/show_bug.cgi?id=131248
+        http://trac.webkit.org/changeset/166876
+
+2014-06-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: Update to
+        put various files in proper IDE categories.
+
+2014-06-25  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win64] ASM LLINT is not enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=130638
+
+        This patch adds a new LLINT assembler backend for Win64, and implements it.
+        It makes adjustments to follow the Win64 ABI spec. where it's found to be needed.
+        Also, LLINT and JIT is enabled for Win64.
+
+        Reviewed by Mark Lam.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj: Added JITStubsMSVC64.asm.
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: Ditto.
+        * JavaScriptCore/JavaScriptCore.vcxproj/jsc/jscCommon.props: Increased stack size to avoid stack overflow in tests.
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.sh: Generate assembler source file for Win64.
+        * assembler/MacroAssemblerX86_64.h: 
+        (JSC::MacroAssemblerX86_64::call): Follow Win64 ABI spec.
+        * jit/JITStubsMSVC64.asm: Added.
+        * jit/Repatch.cpp:
+        (JSC::emitPutTransitionStub): Compile fix.
+        * jit/ThunkGenerators.cpp:
+        (JSC::nativeForGenerator): Follow Win64 ABI spec.
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions): Ditto.
+        * llint/LLIntOfflineAsmConfig.h: Enable new llint backend for Win64.
+        * llint/LowLevelInterpreter.asm: Implement new Win64 backend, and follow Win64 ABI spec.
+        * llint/LowLevelInterpreter64.asm: Ditto.
+        * offlineasm/asm.rb: Compile fix.
+        * offlineasm/backends.rb: Add new llint backend for Win64.
+        * offlineasm/settings.rb: Compile fix.
+        * offlineasm/x86.rb: Implement new llint Win64 backend.
+
+2014-06-25  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove build guard for progress element
+        https://bugs.webkit.org/show_bug.cgi?id=134292
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-06-24  Michael Saboff  <msaboff@apple.com>
+
+        Add support routines to provide descriptive JavaScript backtraces
+        https://bugs.webkit.org/show_bug.cgi?id=134278
+
+        Reviewed by Mark Lam.
+
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::dump):
+        (JSC::CallFrame::describeFrame):
+        * interpreter/CallFrame.h:
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::dumpForBacktrace):
+        * runtime/JSCJSValue.h:
+
+2014-06-24  Brady Eidson  <beidson@apple.com>
+
+        Enable GAMEPAD in the Mac build, but disabled at runtime.
+        https://bugs.webkit.org/show_bug.cgi?id=134255
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+        * runtime/JSObject.h: Export JSObject::removeDirect() to allow disabling
+          functions at runtime.
+
+2014-06-24  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        REGRESSION (r169703): Invalid cast in JSC::asGetterSetter / JSC::JSObject::defineOwnNonIndexProperty
+        https://bugs.webkit.org/show_bug.cgi?id=134046
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/GetterSetter.h:
+        (JSC::asGetterSetter):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::defineOwnNonIndexProperty): We need to check for a CustomGetterSetter here as well as
+        a normal GetterSetter. If we encounter a CustomGetterSetter, we delete it, create a new normal GetterSetter,
+        and insert it like normal. We also need to check for CustomAccessors when checking for unconfigurable properties.
+
+2014-06-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] MSVC mishandles enums in bitfields
+        https://bugs.webkit.org/show_bug.cgi?id=134237
+
+        Reviewed by Michael Saboff.
+
+        Replace uses of enum types in bit fields with unsigned to
+        avoid losing a bit to hold the sign value. This can result
+        in Windows interpreting the value of the field improperly.
+
+        * bytecode/StructureStubInfo.h:
+        * parser/Nodes.h:
+
+2014-06-23  Andreas Kling  <akling@apple.com>
+
+        Inline the UnlinkedInstructionStream::Reader logic.
+        <https://webkit.org/b/134203>
+
+        This class is only used by CodeBlock to unpack the unlinked instructions,
+        and we were spending 0.5% of total time on PLT calling Reader::next().
+        Move the logic to the header file and mark it ALWAYS_INLINE.
+
+        Reviewed by Geoffrey Garen.
+
+        * bytecode/UnlinkedInstructionStream.cpp:
+        * bytecode/UnlinkedInstructionStream.h:
+        (JSC::UnlinkedInstructionStream::Reader::Reader):
+        (JSC::UnlinkedInstructionStream::Reader::read8):
+        (JSC::UnlinkedInstructionStream::Reader::read32):
+        (JSC::UnlinkedInstructionStream::Reader::next):
+
 2014-06-20  Sam Weinig  <sam@webkit.org>
 
         Remove static tables for bindings that use eager reification

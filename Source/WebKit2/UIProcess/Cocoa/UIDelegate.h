@@ -62,11 +62,12 @@ private:
         virtual void runJavaScriptAlert(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, std::function<void ()> completionHandler) override;
         virtual void runJavaScriptConfirm(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, std::function<void (bool)> completionHandler) override;
         virtual void runJavaScriptPrompt(WebKit::WebPageProxy*, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy*, std::function<void (const WTF::String&)> completionHandler) override;
+        virtual void exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, WebSecurityOrigin*, const WTF::String& databaseName, const WTF::String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentUsage, unsigned long long expectedUsage, std::function<void (unsigned long long)>) override;
+        virtual void reachedApplicationCacheOriginQuota(WebPageProxy*, const WebCore::SecurityOrigin&, uint64_t currentQuota, uint64_t totalBytesNeeded, std::function<void (unsigned long long)> completionHandler) override;
         virtual void printFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*) override;
     #if PLATFORM(IOS)
         virtual RetainPtr<NSArray> actionsForElement(_WKActivatedElementInfo *, RetainPtr<NSArray> defaultActions) override;
         virtual void didNotHandleTapAsClick(const WebCore::IntPoint&) override;
-        virtual WebCore::FloatRect windowFrame(WebKit::WebPageProxy*) override;
     #endif
 
         UIDelegate& m_uiDelegate;
@@ -80,6 +81,8 @@ private:
         bool webViewRunJavaScriptAlertPanelWithMessageInitiatedByFrameCompletionHandler : 1;
         bool webViewRunJavaScriptConfirmPanelWithMessageInitiatedByFrameCompletionHandler : 1;
         bool webViewRunJavaScriptTextInputPanelWithPromptDefaultTextInitiatedByFrameCompletionHandler : 1;
+        bool webViewDecideDatabaseQuotaForSecurityOriginCurrentQuotaCurrentOriginUsageCurrentDatabaseUsageExpectedUsageDecisionHandler : 1;
+        bool webViewDecideWebApplicationCacheQuotaForSecurityOriginCurrentQuotaTotalBytesNeeded : 1;
         bool webViewPrintFrame : 1;
 #if PLATFORM(IOS)
         bool webViewActionsForElementDefaultActions : 1;

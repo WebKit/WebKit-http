@@ -578,12 +578,10 @@ bool StyleResolver::sharingCandidateHasIdenticalStyleAffectingAttributes(StyledE
     if (state.styledElement()->presentationAttributeStyle() != sharingCandidate->presentationAttributeStyle())
         return false;
 
-#if ENABLE(PROGRESS_ELEMENT)
     if (state.element()->hasTagName(progressTag)) {
         if (state.element()->shouldAppearIndeterminate() != sharingCandidate->shouldAppearIndeterminate())
             return false;
     }
-#endif
 
     return true;
 }
@@ -1332,8 +1330,10 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     }
 
     // Let the theme also have a crack at adjusting the style.
-    if (style.hasAppearance())
-        RenderTheme::defaultTheme()->adjustStyle(*this, style, e, m_state.hasUAAppearance(), m_state.borderData(), m_state.backgroundData(), m_state.backgroundColor());
+    if (style.hasAppearance()) {
+        ASSERT(e);
+        RenderTheme::defaultTheme()->adjustStyle(*this, style, *e, m_state.hasUAAppearance(), m_state.borderData(), m_state.backgroundData(), m_state.backgroundColor());
+    }
 
     // If we have first-letter pseudo style, do not share this style.
     if (style.hasPseudoStyle(FIRST_LETTER))
@@ -3536,8 +3536,8 @@ void StyleResolver::loadPendingShapeImage(ShapeValue* shapeValue)
     auto& pendingImage = toStylePendingImage(*image);
 
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
-    options.requestOriginPolicy = PotentiallyCrossOriginEnabled;
-    options.allowCredentials = DoNotAllowStoredCredentials;
+    options.setRequestOriginPolicy(PotentiallyCrossOriginEnabled);
+    options.setAllowCredentials(DoNotAllowStoredCredentials);
 
     shapeValue->setImage(loadPendingImage(pendingImage, options));
 }

@@ -64,6 +64,7 @@
 #import <WebCore/HTMLParserIdioms.h>
 #import <WebCore/HTMLSelectElement.h>
 #import <WebCore/HTMLTextAreaElement.h>
+#import <WebCore/HistoryItem.h>
 #import <WebCore/HitTestResult.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/MainFrame.h>
@@ -151,17 +152,99 @@ void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
         resetViewportDefaultConfiguration(m_mainFrame.get());
 }
 
-void WebPage::restorePageState(double scale, bool userHasChangedPageScaleFactor, const IntPoint& exposedOrigin)
+void WebPage::savePageState(HistoryItem& historyItem)
 {
-    // FIXME: ideally, we should sync this with the UIProcess. We should not try to change the position if the user is interacting
-    // with the page, and we should send the new scroll position as soon as possible to the UIProcess.
+    historyItem.setScaleIsInitial(!m_userHasChangedPageScaleFactor);
+    historyItem.setMinimumLayoutSizeInScrollViewCoordinates(m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates());
+    historyItem.setContentSize(m_viewportConfiguration.contentsSize());
+}
 
-    float boundedScale = std::min<float>(m_viewportConfiguration.maximumScale(), std::max<float>(m_viewportConfiguration.minimumScale(), scale));
-    float topInsetInPageCoordinates = m_obscuredTopInset / boundedScale;
-    IntPoint scrollPosition(exposedOrigin.x(), exposedOrigin.y() + topInsetInPageCoordinates);
-    scalePage(boundedScale, scrollPosition);
-    m_page->mainFrame().view()->setScrollPosition(scrollPosition);
-    m_userHasChangedPageScaleFactor = userHasChangedPageScaleFactor;
+static double scaleAfterViewportWidthChange(double currentScale, bool userHasChangedPageScaleFactor, const ViewportConfiguration& viewportConfiguration, float unobscuredWidthInScrollViewCoordinates, const IntSize& newContentSize, const IntSize& oldContentSize, float visibleHorizontalFraction)
+{
+    double scale;
+    if (!userHasChangedPageScaleFactor)
+        scale = viewportConfiguration.initialScale();
+    else
+        scale = std::max(std::min(currentScale, viewportConfiguration.maximumScale()), viewportConfiguration.minimumScale());
+
+    if (userHasChangedPageScaleFactor) {
+        // When the content size changes, we keep the same relative horizontal content width in view, otherwise we would
+        // end up zoomed too far in landscape->portrait, and too close in portrait->landscape.
+        float widthToKeepInView = visibleHorizontalFraction * newContentSize.width();
+        double newScale = unobscuredWidthInScrollViewCoordinates / widthToKeepInView;
+        scale = std::max(std::min(newScale, viewportConfiguration.maximumScale()), viewportConfiguration.minimumScale());
+    }
+    return scale;
+}
+
+static FloatPoint relativeCenterAfterContentSizeChange(const FloatRect& originalContentRect, IntSize oldContentSize, IntSize newContentSize)
+{
+    // If the content size has changed, keep the same relative position.
+    FloatPoint oldContentCenter = originalContentRect.center();
+    float relativeHorizontalPosition = oldContentCenter.x() / oldContentSize.width();
+    float relativeVerticalPosition =  oldContentCenter.y() / oldContentSize.height();
+    return FloatPoint(relativeHorizontalPosition * newContentSize.width(), relativeVerticalPosition * newContentSize.height());
+}
+
+static inline FloatRect adjustExposedRectForNewScale(const FloatRect& exposedRect, double exposedRectScale, double newScale)
+{
+    double overscaledWidth = exposedRect.width();
+    double missingHorizonalMargin = exposedRect.width() * exposedRectScale / newScale - overscaledWidth;
+
+    double overscaledHeight = exposedRect.height();
+    double missingVerticalMargin = exposedRect.height() * exposedRectScale / newScale - overscaledHeight;
+
+    return FloatRect(exposedRect.x() - missingHorizonalMargin / 2, exposedRect.y() - missingVerticalMargin / 2, exposedRect.width() + missingHorizonalMargin, exposedRect.height() + missingVerticalMargin);
+}
+
+void WebPage::restorePageState(const HistoryItem& historyItem)
+{
+    // When a HistoryItem is cleared, its scale factor and scroll point are set to zero. We should not try to restore the other
+    // parameters in those conditions.
+    if (!historyItem.pageScaleFactor())
+        return;
+
+    // We can restore the exposed rect and scale, but we cannot touch the scroll position since the obscured insets
+    // may be changing in the UIProcess. The UIProcess can update the position from the information we send and will then
+    // scroll to the correct position through a regular VisibleContentRectUpdate.
+
+    m_userHasChangedPageScaleFactor = !historyItem.scaleIsInitial();
+
+    FloatSize currentMinimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates();
+    if (historyItem.minimumLayoutSizeInScrollViewCoordinates() == currentMinimumLayoutSizeInScrollViewCoordinates) {
+        float boundedScale = std::min<float>(m_viewportConfiguration.maximumScale(), std::max<float>(m_viewportConfiguration.minimumScale(), historyItem.pageScaleFactor()));
+        scalePage(boundedScale, IntPoint());
+
+        m_drawingArea->setExposedContentRect(historyItem.exposedContentRect());
+
+        send(Messages::WebPageProxy::RestorePageState(historyItem.exposedContentRect(), boundedScale));
+    } else {
+        IntSize oldContentSize = historyItem.contentSize();
+        FrameView& frameView = *m_page->mainFrame().view();
+        IntSize newContentSize = frameView.contentsSize();
+        double visibleHorizontalFraction = static_cast<float>(historyItem.unobscuredContentRect().width()) / oldContentSize.width();
+
+        double newScale = scaleAfterViewportWidthChange(historyItem.pageScaleFactor(), !historyItem.scaleIsInitial(), m_viewportConfiguration, currentMinimumLayoutSizeInScrollViewCoordinates.width(), newContentSize, oldContentSize, visibleHorizontalFraction);
+
+        FloatPoint newCenter;
+        if (!oldContentSize.isEmpty() && !newContentSize.isEmpty() && newContentSize != oldContentSize)
+            newCenter = relativeCenterAfterContentSizeChange(historyItem.unobscuredContentRect(), oldContentSize, newContentSize);
+        else
+            newCenter = FloatRect(historyItem.unobscuredContentRect()).center();
+
+        FloatSize unobscuredRectAtNewScale = frameView.customSizeForResizeEvent();
+        unobscuredRectAtNewScale.scale(1 / newScale, 1 / newScale);
+
+        FloatRect oldExposedRect = frameView.exposedContentRect();
+        FloatRect adjustedExposedRect = adjustExposedRectForNewScale(oldExposedRect, m_page->pageScaleFactor(), newScale);
+
+        FloatPoint oldCenter = adjustedExposedRect.center();
+        adjustedExposedRect.move(newCenter - oldCenter);
+
+        scalePage(newScale, IntPoint());
+
+        send(Messages::WebPageProxy::RestorePageCenterAndScale(newCenter, newScale));
+    }
 }
 
 double WebPage::minimumPageScaleFactor() const
@@ -493,6 +576,21 @@ void WebPage::tapHighlightAtPosition(uint64_t requestID, const FloatPoint& posit
     sendTapHighlightForNodeIfNecessary(requestID, mainframe.nodeRespondingToClickEvents(position, adjustedPoint));
 }
 
+void WebPage::inspectorNodeSearchMovedToPosition(const FloatPoint& position)
+{
+    IntPoint adjustedPoint = roundedIntPoint(position);
+    Frame& mainframe = m_page->mainFrame();
+
+    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(adjustedPoint, adjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0));
+    mainframe.document()->updateStyleIfNeeded();
+}
+
+void WebPage::inspectorNodeSearchEndedAtPosition(const FloatPoint& position)
+{
+    if (Node* node = m_page->mainFrame().deepestNodeAtLocation(position))
+        node->inspect();
+}
+
 void WebPage::blurAssistedNode()
 {
     if (m_assistedNode && m_assistedNode->isElementNode())
@@ -529,6 +627,16 @@ void WebPage::setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSel
 }
 
 #if ENABLE(INSPECTOR)
+void WebPage::showInspectorHighlight(const WebCore::Highlight& highlight)
+{
+    send(Messages::WebPageProxy::ShowInspectorHighlight(highlight));
+}
+
+void WebPage::hideInspectorHighlight()
+{
+    send(Messages::WebPageProxy::HideInspectorHighlight());
+}
+
 void WebPage::showInspectorIndication()
 {
     send(Messages::WebPageProxy::ShowInspectorIndication());
@@ -537,6 +645,16 @@ void WebPage::showInspectorIndication()
 void WebPage::hideInspectorIndication()
 {
     send(Messages::WebPageProxy::HideInspectorIndication());
+}
+
+void WebPage::enableInspectorNodeSearch()
+{
+    send(Messages::WebPageProxy::EnableInspectorNodeSearch());
+}
+
+void WebPage::disableInspectorNodeSearch()
+{
+    send(Messages::WebPageProxy::DisableInspectorNodeSearch());
 }
 #endif
 
@@ -593,6 +711,7 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
     Node* currentNode = result.innerNode();
     RefPtr<Range> range;
     IntRect boundingRect;
+    FloatRect boundingRectInScrollViewCoordinates;
 
     if (currentNode->isTextNode()) {
         range = enclosingTextUnitOfGranularity(position, ParagraphGranularity, DirectionForward);
@@ -612,7 +731,9 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
             else
                 boundingRect.unite(coreRect);
         }
-        if (boundingRect.width() > m_blockSelectionDesiredSize.width() && boundingRect.height() > m_blockSelectionDesiredSize.height())
+        boundingRectInScrollViewCoordinates = boundingRect;
+        boundingRectInScrollViewCoordinates.scale(m_page->pageScaleFactor());
+        if (boundingRectInScrollViewCoordinates.width() > m_blockSelectionDesiredSize.width() && boundingRectInScrollViewCoordinates.height() > m_blockSelectionDesiredSize.height())
             return wordRangeFromPosition(position);
 
         currentNode = range->commonAncestorContainer(ASSERT_NO_EXCEPTION);
@@ -624,7 +745,9 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
     Node* bestChoice = currentNode;
     while (currentNode) {
         boundingRect = currentNode->renderer()->absoluteBoundingBoxRect(true);
-        if (boundingRect.width() > m_blockSelectionDesiredSize.width() && boundingRect.height() > m_blockSelectionDesiredSize.height())
+        boundingRectInScrollViewCoordinates = boundingRect;
+        boundingRectInScrollViewCoordinates.scale(m_page->pageScaleFactor());
+        if (boundingRectInScrollViewCoordinates.width() > m_blockSelectionDesiredSize.width() && boundingRectInScrollViewCoordinates.height() > m_blockSelectionDesiredSize.height())
             break;
         bestChoice = currentNode;
         currentNode = currentNode->parentElement();
@@ -1835,7 +1958,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 
     if (isHTMLSelectElement(m_assistedNode.get())) {
         HTMLSelectElement* element = toHTMLSelectElement(m_assistedNode.get());
-        information.elementType = WKTypeSelect;
+        information.elementType = InputType::Select;
         size_t count = element->listItems().size();
         int parentGroupID = 0;
         // The parent group ID indicates the group the option belongs to and is 0 for group elements.
@@ -1845,11 +1968,11 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             HTMLElement* item = element->listItems()[i];
             if (isHTMLOptionElement(item)) {
                 HTMLOptionElement* option = toHTMLOptionElement(item);
-                information.selectOptions.append(WKOptionItem(option->text(), false, parentGroupID, option->selected(), option->fastHasAttribute(WebCore::HTMLNames::disabledAttr)));
+                information.selectOptions.append(OptionItem(option->text(), false, parentGroupID, option->selected(), option->fastHasAttribute(WebCore::HTMLNames::disabledAttr)));
             } else if (isHTMLOptGroupElement(item)) {
                 HTMLOptGroupElement* group = toHTMLOptGroupElement(item);
                 parentGroupID++;
-                information.selectOptions.append(WKOptionItem(group->groupLabelText(), true, 0, false, group->fastHasAttribute(WebCore::HTMLNames::disabledAttr)));
+                information.selectOptions.append(OptionItem(group->groupLabelText(), true, 0, false, group->fastHasAttribute(WebCore::HTMLNames::disabledAttr)));
             }
         }
         information.selectedIndex = element->selectedIndex();
@@ -1858,7 +1981,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         HTMLTextAreaElement* element = toHTMLTextAreaElement(m_assistedNode.get());
         information.autocapitalizeType = static_cast<WebAutocapitalizeType>(element->autocapitalizeType());
         information.isAutocorrect = element->autocorrect();
-        information.elementType = WKTypeTextArea;
+        information.elementType = InputType::TextArea;
         information.isReadOnly = element->isReadOnly();
         information.value = element->value();
     } else if (isHTMLInputElement(m_assistedNode.get())) {
@@ -1869,38 +1992,38 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.autocapitalizeType = static_cast<WebAutocapitalizeType>(element->autocapitalizeType());
         information.isAutocorrect = element->autocorrect();
         if (element->isPasswordField())
-            information.elementType = WKTypePassword;
+            information.elementType = InputType::Password;
         else if (element->isSearchField())
-            information.elementType = WKTypeSearch;
+            information.elementType = InputType::Search;
         else if (element->isEmailField())
-            information.elementType = WKTypeEmail;
+            information.elementType = InputType::Email;
         else if (element->isTelephoneField())
-            information.elementType = WKTypePhone;
+            information.elementType = InputType::Phone;
         else if (element->isNumberField())
-            information.elementType = element->getAttribute("pattern") == "\\d*" || element->getAttribute("pattern") == "[0-9]*" ? WKTypeNumberPad : WKTypeNumber;
+            information.elementType = element->getAttribute("pattern") == "\\d*" || element->getAttribute("pattern") == "[0-9]*" ? InputType::NumberPad : InputType::Number;
         else if (element->isDateTimeLocalField())
-            information.elementType = WKTypeDateTimeLocal;
+            information.elementType = InputType::DateTimeLocal;
         else if (element->isDateField())
-            information.elementType = WKTypeDate;
+            information.elementType = InputType::Date;
         else if (element->isDateTimeField())
-            information.elementType = WKTypeDateTime;
+            information.elementType = InputType::DateTime;
         else if (element->isTimeField())
-            information.elementType = WKTypeTime;
+            information.elementType = InputType::Time;
         else if (element->isWeekField())
-            information.elementType = WKTypeWeek;
+            information.elementType = InputType::Week;
         else if (element->isMonthField())
-            information.elementType = WKTypeMonth;
+            information.elementType = InputType::Month;
         else if (element->isURLField())
-            information.elementType = WKTypeURL;
+            information.elementType = InputType::URL;
         else if (element->isText()) {
             const AtomicString& pattern = element->fastGetAttribute(HTMLNames::patternAttr);
             if (pattern == "\\d*" || pattern == "[0-9]*")
-                information.elementType = WKTypeNumberPad;
+                information.elementType = InputType::NumberPad;
             else {
-                information.elementType = WKTypeText;
+                information.elementType = InputType::Text;
                 if (!information.formAction.isEmpty()
                     && (element->getNameAttribute().contains("search") || element->getIdAttribute().contains("search") || element->fastGetAttribute(HTMLNames::titleAttr).contains("search")))
-                    information.elementType = WKTypeSearch;
+                    information.elementType = InputType::Search;
             }
         }
 
@@ -1909,7 +2032,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.valueAsNumber = element->valueAsNumber();
         information.title = element->title();
     } else if (m_assistedNode->hasEditableStyle()) {
-        information.elementType = WKTypeContentEditable;
+        information.elementType = InputType::ContentEditable;
         information.isAutocorrect = true;   // FIXME: Should we look at the attribute?
         information.autocapitalizeType = WebAutocapitalizeTypeSentences; // FIXME: Should we look at the attribute?
         information.isReadOnly = false;
@@ -2046,20 +2169,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
 
     IntSize newContentSize = frameView.contentsSize();
 
-    double scale;
-    if (!m_userHasChangedPageScaleFactor)
-        scale = m_viewportConfiguration.initialScale();
-    else
-        scale = std::max(std::min(targetScale, m_viewportConfiguration.maximumScale()), m_viewportConfiguration.minimumScale());
-
-    if (m_userHasChangedPageScaleFactor && newContentSize.width() != oldContentSize.width()) {
-        // When the content size change, we keep the same relative horizontal content width in view, otherwise we would
-        // end up zoom to far in landscape->portrait, and too close in portrait->landscape.
-        float widthToKeepInView = visibleHorizontalFraction * newContentSize.width();
-        double newScale = targetUnobscuredRectInScrollViewCoordinates.width() / widthToKeepInView;
-        scale = std::max(std::min(newScale, m_viewportConfiguration.maximumScale()), m_viewportConfiguration.minimumScale());
-    }
-
+    double scale = scaleAfterViewportWidthChange(targetScale, m_userHasChangedPageScaleFactor, m_viewportConfiguration, targetUnobscuredRectInScrollViewCoordinates.width(), newContentSize, oldContentSize, visibleHorizontalFraction);
     FloatRect newUnobscuredContentRect = targetUnobscuredRect;
     FloatRect newExposedContentRect = targetExposedContentRect;
 
@@ -2106,13 +2216,8 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
                 FrameView& containingView = *oldNodeAtCenter->document().frame()->view();
                 FloatRect newBoundingBox = containingView.contentsToRootView(renderer->absoluteBoundingBoxRect(true));
                 newRelativeContentCenter = FloatPoint(newBoundingBox.x() + relativeHorizontalPositionInNodeAtCenter * newBoundingBox.width(), newBoundingBox.y() + relativeVerticalPositionInNodeAtCenter * newBoundingBox.height());
-            } else {
-                // If the content size has changed, keep the same relative position.
-                FloatPoint oldContentCenter = targetUnobscuredRect.center();
-                float relativeHorizontalPosition = oldContentCenter.x() / oldContentSize.width();
-                float relativeVerticalPosition =  oldContentCenter.y() / oldContentSize.height();
-                newRelativeContentCenter = FloatPoint(relativeHorizontalPosition * newContentSize.width(), relativeVerticalPosition * newContentSize.height());
-            }
+            } else
+                newRelativeContentCenter = relativeCenterAfterContentSizeChange(targetUnobscuredRect, oldContentSize, newContentSize);
 
             FloatPoint newUnobscuredContentRectCenter = newUnobscuredContentRect.center();
             FloatPoint positionDelta(newRelativeContentCenter.x() - newUnobscuredContentRectCenter.x(), newRelativeContentCenter.y() - newUnobscuredContentRectCenter.y());
@@ -2234,7 +2339,7 @@ void WebPage::viewportConfigurationChanged()
 
         // FIXME: We could send down the obscured margins to find a better exposed rect and unobscured rect.
         // It is not a big deal at the moment because the tile coverage will always extend past the obscured bottom inset.
-        m_drawingArea->setExposedContentRect(IntRect(scrollPosition, minimumLayoutSizeInDocumentCoordinates));
+        m_drawingArea->setExposedContentRect(FloatRect(scrollPosition, minimumLayoutSizeInDocumentCoordinates));
     }
     scalePage(scale, scrollPosition);
     
@@ -2272,20 +2377,6 @@ void WebPage::applicationDidBecomeActive()
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidBecomeActiveNotification object:nil];
 }
 
-static inline FloatRect adjustExposedRectForBoundedScale(const FloatRect& exposedRect, double exposedRectScale, double boundedScale)
-{
-    if (exposedRectScale < boundedScale)
-        return exposedRect;
-
-    double overscaledWidth = exposedRect.width();
-    double missingHorizonalMargin = exposedRect.width() * exposedRectScale / boundedScale - overscaledWidth;
-
-    double overscaledHeight = exposedRect.height();
-    double missingVerticalMargin = exposedRect.height() * exposedRectScale / boundedScale - overscaledHeight;
-
-    return FloatRect(exposedRect.x() - missingHorizonalMargin / 2, exposedRect.y() - missingVerticalMargin / 2, exposedRect.width() + missingHorizonalMargin, exposedRect.height() + missingVerticalMargin);
-}
-
 static inline void adjustVelocityDataForBoundedScale(double& horizontalVelocity, double& verticalVelocity, double& scaleChangeRate, double exposedRectScale, double boundedScale)
 {
     if (scaleChangeRate) {
@@ -2297,10 +2388,21 @@ static inline void adjustVelocityDataForBoundedScale(double& horizontalVelocity,
         scaleChangeRate = 0;
 }
 
+static inline FloatRect adjustExposedRectForBoundedScale(const FloatRect& exposedRect, double exposedRectScale, double newScale)
+{
+    if (exposedRectScale < newScale)
+        return exposedRect;
+
+    return adjustExposedRectForNewScale(exposedRect, exposedRectScale, newScale);
+}
+
 void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo)
 {
+    // Skip any VisibleContentRectUpdate that have been queued before DidCommitLoad suppresses the updates in the UIProcess.
+    if (visibleContentRectUpdateInfo.lastLayerTreeTransactionID() <= m_lastLayerTreeTransactionIDBeforeDidCommitLoad)
+        return;
+
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = true;
-    m_obscuredTopInset = (visibleContentRectUpdateInfo.unobscuredRect().y() - visibleContentRectUpdateInfo.exposedRect().y()) * visibleContentRectUpdateInfo.scale();
 
     double scaleNoiseThreshold = 0.005;
     double filteredScale = visibleContentRectUpdateInfo.scale();
@@ -2315,7 +2417,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     FloatRect exposedRect = visibleContentRectUpdateInfo.exposedRect();
     FloatRect adjustedExposedRect = adjustExposedRectForBoundedScale(exposedRect, visibleContentRectUpdateInfo.scale(), boundedScale);
-    m_drawingArea->setExposedContentRect(enclosingIntRect(adjustedExposedRect));
+    m_drawingArea->setExposedContentRect(adjustedExposedRect);
 
     IntRect roundedUnobscuredRect = roundedIntRect(visibleContentRectUpdateInfo.unobscuredRect());
     IntPoint scrollPosition = roundedUnobscuredRect.location();
@@ -2359,7 +2461,9 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())
         frameView.setCustomSizeForResizeEvent(expandedIntSize(visibleContentRectUpdateInfo.unobscuredRectInScrollViewCoordinates().size()));
 
+    frameView.setConstrainsScrollingToContentEdge(false);
     frameView.setScrollOffset(scrollPosition);
+    frameView.setConstrainsScrollingToContentEdge(true);
 }
 
 void WebPage::willStartUserTriggeredZooming()

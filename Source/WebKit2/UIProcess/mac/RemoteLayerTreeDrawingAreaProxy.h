@@ -50,6 +50,7 @@ public:
     void coreAnimationDidCommitLayers();
 
     uint64_t nextLayerTreeTransactionID() const { return m_pendingLayerTreeTransactionID + 1; }
+    uint64_t lastCommittedLayerTreeTransactionID() const { return m_transactionIDForPendingCACommit; }
 
 private:
     virtual void sizeDidChange() override;
@@ -67,6 +68,8 @@ private:
     virtual void updateDebugIndicator() override;
     void updateDebugIndicator(WebCore::IntSize contentsSize, bool rootLayerChanged, float scale);
     void updateDebugIndicatorPosition();
+
+    virtual void waitForDidUpdateViewState() override;
     
     WebCore::FloatPoint indicatorLocation() const;
 

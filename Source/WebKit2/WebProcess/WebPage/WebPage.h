@@ -131,6 +131,7 @@ class SubstituteData;
 class TextCheckingRequest;
 class URL;
 class VisibleSelection;
+struct Highlight;
 struct KeypressCommand;
 struct TextCheckingResult;
 }
@@ -255,6 +256,7 @@ public:
     void didFinishLoad(WebFrame*);
     void show();
     String userAgent(const WebCore::URL&) const;
+    String userAgent(WebFrame*, const WebCore::URL&) const;
     String platformUserAgent(const WebCore::URL&) const;
     WebCore::IntRect windowResizerRect() const;
     WebCore::KeyboardUIMode keyboardUIMode();
@@ -457,7 +459,8 @@ public:
     int32_t deviceOrientation() const { return m_deviceOrientation; }
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
     void didReceiveMobileDocType(bool);
-    void restorePageState(double scale, bool userHasChangedPageScaleFactor, const WebCore::IntPoint& exposedOrigin);
+    void savePageState(WebCore::HistoryItem&);
+    void restorePageState(const WebCore::HistoryItem&);
 
     void setUseTestingViewportConfiguration(bool useTestingViewport) { m_useTestingViewportConfiguration = useTestingViewport; }
     bool isUsingTestingViewportConfiguration() const { return m_useTestingViewportConfiguration; }
@@ -465,7 +468,6 @@ public:
     double minimumPageScaleFactor() const;
     double maximumPageScaleFactor() const;
     bool allowsUserScaling() const;
-    bool userHasChangedPageScaleFactor() const { return m_userHasChangedPageScaleFactor; }
 
     void handleTap(const WebCore::IntPoint&);
     void potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
@@ -473,6 +475,9 @@ public:
     void commitPotentialTapFailed();
     void cancelPotentialTap();
     void tapHighlightAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
+
+    void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
+    void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
 
     void blurAssistedNode();
     void selectWithGesture(const WebCore::IntPoint&, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID);
@@ -506,8 +511,14 @@ public:
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
     void contentSizeCategoryDidChange(const String&);
 #if ENABLE(INSPECTOR)
+    void showInspectorHighlight(const WebCore::Highlight&);
+    void hideInspectorHighlight();
+
     void showInspectorIndication();
     void hideInspectorIndication();
+
+    void enableInspectorNodeSearch();
+    void disableInspectorNodeSearch();
 #endif
 #endif
 
@@ -578,7 +589,7 @@ public:
     
     void sendComplexTextInputToPlugin(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
 
-    void insertTextAsync(const String& text, const EditingRange& replacementRange);
+    void insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup = false);
     void getMarkedRangeAsync(uint64_t callbackID);
     void getSelectedRangeAsync(uint64_t callbackID);
     void characterIndexForPointAsync(const WebCore::IntPoint&, uint64_t callbackID);
@@ -587,7 +598,7 @@ public:
     void confirmCompositionAsync();
 
 #if PLATFORM(MAC)
-    void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations);
+    void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, bool registerUndoGroup = false);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, uint64_t callbackID);
 #if !USE(ASYNC_NSTEXTINPUTCLIENT)
     void insertText(const String& text, const EditingRange& replacementRange, bool& handled, EditorState& newState);
@@ -1024,7 +1035,6 @@ private:
 
     void changeSelectedIndex(int32_t index);
     void setCanStartMediaTimerFired();
-    void didUpdateViewStateTimerFired();
 
     bool canHandleUserEvents() const;
 
@@ -1128,7 +1138,6 @@ private:
 #endif // !PLATFORM(IOS)
 
     RunLoop::Timer<WebPage> m_setCanStartMediaTimer;
-    RunLoop::Timer<WebPage> m_sendDidUpdateViewStateTimer;
     bool m_mayStartMediaWhenInWindow;
 
     HashMap<uint64_t, RefPtr<WebUndoStep>> m_undoStepMap;
@@ -1217,7 +1226,7 @@ private:
     WebCore::FloatPoint m_potentialTapLocation;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
-    float m_obscuredTopInset;
+    uint64_t m_lastLayerTreeTransactionIDBeforeDidCommitLoad;
     bool m_hasReceivedVisibleContentRectsAfterDidCommitLoad;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;

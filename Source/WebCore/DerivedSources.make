@@ -30,6 +30,7 @@ VPATH = \
     $(WebCore) \
     $(WebCore)/Modules/airplay \
     $(WebCore)/Modules/encryptedmedia \
+    $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
     $(WebCore)/Modules/indieui \
@@ -74,6 +75,10 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/encryptedmedia/MediaKeyNeededEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeys.idl \
+    $(WebCore)/Modules/gamepad/Gamepad.idl \
+    $(WebCore)/Modules/gamepad/GamepadButton.idl \
+    $(WebCore)/Modules/gamepad/GamepadEvent.idl \
+    $(WebCore)/Modules/gamepad/NavigatorGamepad.idl \
     $(WebCore)/Modules/geolocation/Coordinates.idl \
     $(WebCore)/Modules/geolocation/Geolocation.idl \
     $(WebCore)/Modules/geolocation/Geoposition.idl \
@@ -963,10 +968,6 @@ endif
 
 ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMENT)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_METER_ELEMENT=1
-endif
-
-ifeq ($(findstring ENABLE_PROGRESS_ELEMENT,$(FEATURE_DEFINES)), ENABLE_PROGRESS_ELEMENT)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_PROGRESS_ELEMENT=1
 endif
 
 ifeq ($(findstring ENABLE_VIDEO,$(FEATURE_DEFINES)), ENABLE_VIDEO)

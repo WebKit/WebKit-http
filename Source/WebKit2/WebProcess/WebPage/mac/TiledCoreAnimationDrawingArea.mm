@@ -75,6 +75,7 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage& webPage, c
     , m_exposedRect(FloatRect::infiniteRect())
     , m_scrolledExposedRect(FloatRect::infiniteRect())
     , m_transientZoomScale(1)
+    , m_sendDidUpdateViewStateTimer(RunLoop::main(), this, &TiledCoreAnimationDrawingArea::didUpdateViewStateTimerFired)
 {
     m_webPage.corePage()->settings().setForceCompositingMode(true);
 
@@ -294,7 +295,7 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
     return returnValue;
 }
 
-void TiledCoreAnimationDrawingArea::viewStateDidChange(ViewState::Flags changed)
+void TiledCoreAnimationDrawingArea::viewStateDidChange(ViewState::Flags changed, bool wantsDidUpdateViewState)
 {
     if (changed & ViewState::IsVisible) {
         if (m_webPage.isVisible())
@@ -302,6 +303,15 @@ void TiledCoreAnimationDrawingArea::viewStateDidChange(ViewState::Flags changed)
         else
             suspendPainting();
     }
+
+    if (wantsDidUpdateViewState)
+        m_sendDidUpdateViewStateTimer.startOneShot(0);
+}
+
+void TiledCoreAnimationDrawingArea::didUpdateViewStateTimerFired()
+{
+    [CATransaction flush];
+    m_webPage.send(Messages::WebPageProxy::DidUpdateViewState());
 }
 
 void TiledCoreAnimationDrawingArea::suspendPainting()
@@ -537,7 +547,7 @@ void TiledCoreAnimationDrawingArea::applyTransientZoomToLayers(double scale, Flo
         shadowBounds.scale(scale);
 
         shadowLayer->setBounds(shadowBounds);
-        shadowLayer->setPosition(origin + shadowBounds.center());
+        shadowLayer->setPosition(origin);
     }
 
     m_transientZoomScale = scale;
@@ -629,7 +639,7 @@ void TiledCoreAnimationDrawingArea::commitTransientZoom(double scale, FloatPoint
         RetainPtr<CABasicAnimation> shadowBoundsAnimation = transientZoomSnapAnimationForKeyPath("bounds");
         [shadowBoundsAnimation setToValue:[NSValue valueWithRect:shadowBounds]];
         RetainPtr<CABasicAnimation> shadowPositionAnimation = transientZoomSnapAnimationForKeyPath("position");
-        [shadowPositionAnimation setToValue:[NSValue valueWithPoint:constrainedOrigin + shadowBounds.center()]];
+        [shadowPositionAnimation setToValue:[NSValue valueWithPoint:constrainedOrigin]];
         RetainPtr<CABasicAnimation> shadowPathAnimation = transientZoomSnapAnimationForKeyPath("shadowPath");
         [shadowPathAnimation setToValue:(id)shadowPath.get()];
 
@@ -653,7 +663,7 @@ void TiledCoreAnimationDrawingArea::applyTransientZoomToPage(double scale, Float
         RenderView* renderView = m_webPage.mainFrameView()->renderView();
         IntRect overflowRect = renderView->pixelSnappedLayoutOverflowRect();
         shadowLayer->setBounds(IntRect(IntPoint(), toIntSize(overflowRect.maxXMaxYCorner())));
-        shadowLayer->setPosition(shadowLayer->bounds().center());
+        shadowLayer->setPosition(FloatPoint());
     }
 
     FloatPoint unscrolledOrigin(origin);

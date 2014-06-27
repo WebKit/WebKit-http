@@ -45,6 +45,10 @@
 #define WK_WEB_VIEW_PROTOCOLS
 #endif
 
+namespace WebCore {
+struct Highlight;
+}
+
 namespace WebKit {
 class WebPageProxy;
 struct PrintInfo;
@@ -71,6 +75,8 @@ struct ViewSnapshot;
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction;
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition;
+- (void)_restorePageStateToExposedRect:(WebCore::FloatRect)exposedRect scale:(double)scale;
+- (void)_restorePageStateToUnobscuredCenter:(WebCore::FloatPoint)center scale:(double)scale;
 
 - (WebKit::ViewSnapshot)_takeViewSnapshot;
 
@@ -86,6 +92,10 @@ struct ViewSnapshot;
 
 - (void)_willInvokeUIScrollViewDelegateCallback;
 - (void)_didInvokeUIScrollViewDelegateCallback;
+
+- (void)_updateVisibleContentRects;
+
+@property (nonatomic, readonly) UIEdgeInsets _computedContentInset;
 #endif
 @end
 

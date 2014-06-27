@@ -37,6 +37,7 @@
 #import <WebCore/IOSurfacePool.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
 
+using namespace IPC;
 using namespace WebCore;
 
 static const CFIndex didCommitLayersRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit + 1;
@@ -49,6 +50,7 @@ RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy(WebPageProxy* w
     , m_isWaitingForDidUpdateGeometry(false)
     , m_pendingLayerTreeTransactionID(0)
     , m_lastVisibleTransactionID(0)
+    , m_transactionIDForPendingCACommit(0)
 {
 #if USE(IOSURFACE)
     // We don't want to pool surfaces in the UI process.
@@ -317,6 +319,18 @@ void RemoteLayerTreeDrawingAreaProxy::coreAnimationDidCommitLayers()
     m_webPageProxy->process().send(Messages::DrawingArea::DidUpdate(), m_webPageProxy->pageID());
 
     m_lastVisibleTransactionID = m_transactionIDForPendingCACommit;
+
+    m_webPageProxy->didUpdateViewState();
+}
+
+void RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateViewState()
+{
+#if PLATFORM(IOS)
+    auto viewStateUpdateTimeout = std::chrono::milliseconds(500);
+#else
+    auto viewStateUpdateTimeout = std::chrono::milliseconds(250);
+#endif
+    m_webPageProxy->process().connection()->waitForAndDispatchImmediately<Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree>(m_webPageProxy->pageID(), viewStateUpdateTimeout, InterruptWaitingIfSyncMessageArrives);
 }
 
 } // namespace WebKit

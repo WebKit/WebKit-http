@@ -674,8 +674,7 @@
 #if !defined(ENABLE_JIT) \
     && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)) \
     && !CPU(APPLE_ARMV7K)                                                           \
-    && !OS(WINCE) \
-    && !(OS(WINDOWS) && CPU(X86_64))
+    && !OS(WINCE)
 #define ENABLE_JIT 1
 #endif
 
@@ -749,7 +748,7 @@
    values get stored to atomically. This is trivially true on 64-bit platforms,
    but not true at all on 32-bit platforms where values are composed of two
    separate sub-values. */
-#if OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK) && ENABLE(DFG_JIT) && USE(JSVALUE64)
+#if (OS(DARWIN) || PLATFORM(EFL)) && !PLATFORM(GTK) && ENABLE(DFG_JIT) && USE(JSVALUE64)
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 

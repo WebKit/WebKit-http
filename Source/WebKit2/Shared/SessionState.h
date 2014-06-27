@@ -26,7 +26,8 @@
 #ifndef SessionState_h
 #define SessionState_h
 
-#include <WebCore/IntPoint.h>
+#include <WebCore/FloatRect.h>
+#include <WebCore/IntRect.h>
 #include <WebCore/URL.h>
 #include <wtf/Optional.h>
 #include <wtf/Vector.h>
@@ -82,7 +83,7 @@ struct FrameState {
     String target;
 
     Vector<String> documentState;
-    Vector<uint8_t> stateObjectData;
+    Optional<Vector<uint8_t>> stateObjectData;
 
     int64_t documentSequenceNumber;
     int64_t itemSequenceNumber;
@@ -91,6 +92,15 @@ struct FrameState {
     float pageScaleFactor;
 
     Optional<HTTPBody> httpBody;
+
+    // FIXME: These should not be per frame.
+#if PLATFORM(IOS)
+    WebCore::FloatRect exposedContentRect;
+    WebCore::IntRect unobscuredContentRect;
+    WebCore::FloatSize minimumLayoutSizeInScrollViewCoordinates;
+    WebCore::IntSize contentSize;
+    bool scaleIsInitial = false;
+#endif
 
     Vector<FrameState> children;
 };
@@ -108,7 +118,7 @@ struct BackForwardListState {
     static bool decode(IPC::ArgumentDecoder&, BackForwardListState&);
 
     Vector<PageState> items;
-    uint32_t currentIndex;
+    Optional<uint32_t> currentIndex;
 };
 
 struct SessionState {
