@@ -59,9 +59,9 @@ RenderThemeHaiku::~RenderThemeHaiku()
 {
 }
 
-bool RenderThemeHaiku::supportsFocusRing(const RenderStyle* style) const
+bool RenderThemeHaiku::supportsFocusRing(const RenderStyle& style) const
 {
-    switch (style->appearance()) {
+    switch (style.appearance()) {
     case PushButtonPart:
     case ButtonPart:
     case TextFieldPart:
@@ -135,20 +135,20 @@ bool RenderThemeHaiku::paintCheckbox(const RenderObject& object, const PaintInfo
     return false;
 }
 
-void RenderThemeHaiku::setCheckboxSize(RenderStyle* style) const
+void RenderThemeHaiku::setCheckboxSize(RenderStyle& style) const
 {
     int size = 14;
 
     // If the width and height are both specified, then we have nothing to do.
-    if (!style->width().isIntrinsicOrAuto() && !style->height().isAuto())
+    if (!style.width().isIntrinsicOrAuto() && !style.height().isAuto())
         return;
 
     // FIXME: A hard-coded size of 'size' is used. This is wrong but necessary for now.
-    if (style->width().isIntrinsicOrAuto())
-        style->setWidth(Length(size, Fixed));
+    if (style.width().isIntrinsicOrAuto())
+        style.setWidth(Length(size, Fixed));
 
-    if (style->height().isAuto())
-        style->setHeight(Length(size, Fixed));
+    if (style.height().isAuto())
+        style.setHeight(Length(size, Fixed));
 }
 
 bool RenderThemeHaiku::paintRadio(const RenderObject& object, const PaintInfo& info,
@@ -171,7 +171,7 @@ bool RenderThemeHaiku::paintRadio(const RenderObject& object, const PaintInfo& i
     return false;
 }
 
-void RenderThemeHaiku::setRadioSize(RenderStyle* style) const
+void RenderThemeHaiku::setRadioSize(RenderStyle& style) const
 {
     // This is the same as checkboxes.
     setCheckboxSize(style);
@@ -203,9 +203,9 @@ bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& 
     return false;
 }
 
-void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
 {
-    style->setBackgroundColor(Color::transparent);
+    style.setBackgroundColor(Color::transparent);
 }
 
 bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
@@ -233,7 +233,7 @@ bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInf
     return false;
 }
 
-void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
 {
 	adjustTextFieldStyle(selector, style, element);
 }
@@ -243,9 +243,9 @@ bool RenderThemeHaiku::paintTextArea(const RenderObject& object, const PaintInfo
     return paintTextField(object, info, intRect);
 }
 
-void RenderThemeHaiku::adjustMenuListStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustMenuListStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
 {
-    adjustMenuListButtonStyle(*selector, *style, *element);
+    adjustMenuListButtonStyle(selector, style, element);
 }
 
 void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver& selector, RenderStyle& style, Element& element) const

@@ -40,7 +40,7 @@ public:
     static PassRefPtr<RenderTheme> create();
 
     // A method asking if the theme is able to draw the focus ring.
-    bool supportsFocusRing(const RenderStyle*) const override;
+    bool supportsFocusRing(const RenderStyle&) const override;
 
     // The platform selection color.
     Color platformActiveSelectionBackgroundColor() const override;
@@ -57,20 +57,20 @@ public:
 #endif
 protected:
     bool paintCheckbox(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    void setCheckboxSize(RenderStyle*) const override;
+    void setCheckboxSize(RenderStyle&) const override;
 
     bool paintRadio(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    void setRadioSize(RenderStyle*) const override;
+    void setRadioSize(RenderStyle&) const override;
 
     bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    void adjustTextFieldStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element&) const override;
     bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustTextAreaStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element&) const override;
     bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const override;
+    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element&) const override;
     bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
     void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const override;

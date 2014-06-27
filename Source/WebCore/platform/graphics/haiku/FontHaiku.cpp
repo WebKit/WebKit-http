@@ -48,13 +48,13 @@ bool Font::canReturnFallbackFontsForComplexText()
     return false;
 }
 
-void Font::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
+void Font::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
 {
     notImplemented();
 }
 
 void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* font,
-                      const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
+                      const GlyphBuffer& glyphBuffer, unsigned int from, unsigned int numGlyphs, const FloatPoint& point) const
 {
     BView* view = graphicsContext->platformContext();
     view->PushState();
@@ -75,7 +75,7 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
     char buffer[4];
     BString utf8;
 	float offset = point.x();
-    for (int i = 0; i < numGlyphs; i++) {
+    for (unsigned int i = 0; i < numGlyphs; i++) {
         offsets[i].x = offset;
         offsets[i].y = point.y();
         offset += glyphBuffer.advanceAt(from + i).width();
@@ -103,7 +103,7 @@ bool Font::canExpandAroundIdeographsInComplexText()
  * try displaying something.
  */
 float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const FloatPoint& point,
-                           int from, int to) const
+                           unsigned int from, unsigned int to) const
 {
     BView* view = context->platformContext();
     view->SetFont(primaryFont()->platformData().font());
@@ -115,7 +115,7 @@ float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const 
 }
 
 
-float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
+float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
 {
     const BFont* font = primaryFont()->platformData().font();
     ASSERT(font);
@@ -130,7 +130,7 @@ int Font::offsetForPositionForComplexText(const TextRun& run, float position,
 }
 
 void Font::adjustSelectionRectForComplexText(const TextRun& run,
-    LayoutRect& rect, int from, int to) const
+    LayoutRect& rect, unsigned int from, unsigned int to) const
 {
     adjustSelectionRectForSimpleText(run, rect, from, to);
 }
