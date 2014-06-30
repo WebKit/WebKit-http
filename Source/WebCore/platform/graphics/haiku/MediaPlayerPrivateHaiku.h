@@ -64,10 +64,12 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         bool paused() const override;
 
         void setVolume(float) override;
-        
+
         MediaPlayer::NetworkState networkState() const override;
         MediaPlayer::ReadyState readyState() const override;
-        
+
+        float maxTimeSeekable() const override { return currentTime(); }
+
         std::unique_ptr<PlatformTimeRanges> buffered() const override;
         bool didLoadingProgress() const override;
 

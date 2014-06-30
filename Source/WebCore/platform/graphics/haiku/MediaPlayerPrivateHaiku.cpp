@@ -187,8 +187,9 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
 	if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
     {
         // Notify that we're done playing...
-        BMessenger(player).SendMessage('ends');
-        return;
+        player->m_currentTime = player->m_audioTrack->Duration();
+        player->m_soundPlayer->Stop();
+        player->m_player->timeChanged();
     }
 
     if (player->m_videoTrack) {
@@ -199,7 +200,17 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
             int64 count;
             player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
                 &count);
-            BMessenger(player).SendMessage('rfsh');
+
+            // The ffmpeg decoder leaves us with the alpha channel set to 0!
+            // This goes unnoticed usually, but it's a problem here because the
+            // bitmap is copied on a layer that is later alpha-blended on screen.
+            char* buffer = (char*)player->m_frameBuffer->Bits();
+            for (int i = 3; i < player->m_frameBuffer->BitsLength(); i+=4)
+            {
+                *(buffer + i) = 0xff;
+            }
+
+            player->m_player->repaint();
         }
     }
 }
@@ -304,7 +315,7 @@ MediaPlayer::ReadyState MediaPlayerPrivate::readyState() const
 {
     return m_readyState;
 }
-        
+
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivate::buffered() const
 {
     notImplemented();
@@ -333,8 +344,9 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
         return;
 
     if (m_frameBuffer) {
-        context->platformContext()->SetDrawingMode(B_OP_COPY);
-        context->platformContext()->DrawBitmap(m_frameBuffer, r);
+        BView* target = context->platformContext();
+        target->SetDrawingMode(B_OP_COPY);
+        target->DrawBitmap(m_frameBuffer, r);
     }
 }
 
@@ -373,20 +385,6 @@ void MediaPlayerPrivate::MessageReceived(BMessage* message)
 {
     switch(message->what)
     {
-        case 'rfsh':
-            m_player->repaint();
-            return;
-        case 'ends':
-        {
-            // Make sure we reallt get to the track end, and that's properly
-            // detected by WebKit.
-            m_currentTime = m_audioTrack->Duration();
-            m_soundPlayer->Stop();
-            // fall through
-        }
-        case 'prog':
-            m_player->timeChanged();
-            return;
         case 'redy':
             IdentifyTracks();
             if (m_mediaFile) {
