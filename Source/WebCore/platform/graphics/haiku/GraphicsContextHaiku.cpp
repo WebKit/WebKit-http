@@ -92,6 +92,10 @@ public:
             accumulatedOrigin.y = -frameInParent.top;
             locationInParent += frameInParent.LeftTop();
 
+            // FIXME not so good design here. Creating a BBitmap that accept
+            // views is not cheap (spawns a window thread in app_server, etc),
+            // and layers are created and deleted a lot in WebKit. We really
+            // need a cheaper way to handle this.
             frameInParent.OffsetTo(B_ORIGIN);
             view = new BView(frameInParent, "WebCore transparency layer", 0, 0);
             bitmap = new BBitmap(frameInParent, B_RGBA32, true);
@@ -777,7 +781,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
 
 bool GraphicsContext::supportsTransparencyLayers()
 {
-    return true;
+    return false;
 }
 
 void GraphicsContext::clearRect(const FloatRect& rect)
