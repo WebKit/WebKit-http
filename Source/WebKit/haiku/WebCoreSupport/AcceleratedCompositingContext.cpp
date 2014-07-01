@@ -59,9 +59,13 @@ void AcceleratedCompositingContext::syncLayers(Timer<AcceleratedCompositingConte
 void AcceleratedCompositingContext::flushAndRenderLayers()
 {
     // Check that we aren't being deleted...
-    if (!m_view->WebPage()) return;
+    if (!m_view->LockLooper()) return;
+    BWebPage* page = m_view->WebPage();
+    m_view->UnlockLooper();
 
-    MainFrame& frame = *(MainFrame*)(m_view->WebPage()->MainFrame()->Frame());
+    if (!page) return;
+
+    MainFrame& frame = *(MainFrame*)(page->MainFrame()->Frame());
     if (!frame.contentRenderer() || !frame.view())
         return;
     frame.view()->updateLayoutAndStyleIfNeededRecursive();

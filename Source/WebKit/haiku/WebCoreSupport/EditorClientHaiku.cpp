@@ -794,7 +794,10 @@ void EditorClientHaiku::imContextPreeditChanged(EditorClient* /*client*/)
 
 void EditorClientHaiku::dispatchMessage(BMessage& message)
 {
-    m_page->fListener.Target(NULL)->MessageReceived(&message);
+    BHandler* handler = m_page->fListener.Target(NULL);
+    if (!handler)
+        return;
+    handler->MessageReceived(&message);
         // We need the message to be delivered synchronously, otherwise the
         // pointers passed through it would not be valid anymore.
 }
