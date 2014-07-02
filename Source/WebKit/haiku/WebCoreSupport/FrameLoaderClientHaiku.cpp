@@ -621,9 +621,11 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
         ASSERT(loader->frame());
         loader->commitData(data, length);
 
+#if 0
         Frame* coreFrame = loader->frame();
         if (coreFrame && coreFrame->document()->isMediaDocument())
             loader->cancelMainResourceLoad(coreFrame->loader().client().pluginWillHandleLoadError(loader->response()));
+#endif
     }
 
     // We re-check here as the plugin can have been created.
