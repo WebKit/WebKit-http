@@ -57,6 +57,9 @@ public:
 private:
     void handleMessageToNavigatorQtObject(WKBundlePageRef, WKTypeRef messageBody);
     void handleSetNavigatorQtObjectEnabled(WKBundlePageRef, WKTypeRef messageBody);
+#ifdef HAVE_WEBCHANNEL
+    void handleMessageToNavigatorQtWebChannelTransport(WKBundlePageRef, WKTypeRef messageBody);
+#endif
 
     HashMap<WKBundlePageRef, OwnPtr<QtBuiltinBundlePage> > m_pages;
     WKBundleRef m_bundle;

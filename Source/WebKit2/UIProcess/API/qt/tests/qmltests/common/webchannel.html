@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+        <script type="text/javascript">
+            //BEGIN SETUP
+            var channel = new QWebChannel(navigator.qtWebChannelTransport, function(channel) {
+                window.testObject = channel.objects.testObject;
+                testObject.runTest.connect(function(foo) {
+                    testObject.foo = foo;
+                    testObject.bar(foo);
+                });
+                testObject.clientInitialized(testObject.foo);
+            });
+            //END SETUP
+        </script>
+    </head>
+    <body>
+    </body>
+</html>

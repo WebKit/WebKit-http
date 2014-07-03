@@ -39,11 +39,127 @@
 
 namespace WebKit {
 
+typedef JSClassRef (*CreateClassRefCallback)();
+
+static void registerNavigatorObject(JSObjectRef *object, JSStringRef name,
+                                    JSGlobalContextRef context, void* data,
+                                    CreateClassRefCallback createClassRefCallback,
+                                    JSStringRef postMessageName, JSObjectCallAsFunctionCallback postMessageCallback)
+{
+    static JSStringRef navigatorName = JSStringCreateWithUTF8CString("navigator");
+
+    if (*object)
+        JSValueUnprotect(context, *object);
+    *object = JSObjectMake(context, createClassRefCallback(), data);
+    JSValueProtect(context, *object);
+
+    JSObjectRef postMessage = JSObjectMakeFunctionWithCallback(context, postMessageName, postMessageCallback);
+    JSObjectSetProperty(context, *object, postMessageName, postMessage, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly, 0);
+
+    JSValueRef navigatorValue = JSObjectGetProperty(context, JSContextGetGlobalObject(context), navigatorName, 0);
+    if (!JSValueIsObject(context, navigatorValue))
+        return;
+    JSObjectRef navigatorObject = JSValueToObject(context, navigatorValue, 0);
+    JSObjectSetProperty(context, navigatorObject, name, *object, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly, 0);
+}
+
+static JSClassRef createEmptyJSClassRef()
+{
+    const JSClassDefinition definition = kJSClassDefinitionEmpty;
+    return JSClassCreate(&definition);
+}
+
+static JSClassRef navigatorQtObjectClass()
+{
+    static JSClassRef classRef = createEmptyJSClassRef();
+    return classRef;
+}
+
+static JSValueRef qt_postMessageCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef*)
+{
+    // FIXME: should it work regardless of the thisObject?
+
+    if (argumentCount < 1 || !JSValueIsString(context, arguments[0]))
+        return JSValueMakeUndefined(context);
+
+    QtBuiltinBundlePage* bundlePage = reinterpret_cast<QtBuiltinBundlePage*>(JSObjectGetPrivate(thisObject));
+    ASSERT(bundlePage);
+
+    // FIXME: needed?
+    if (!bundlePage->navigatorQtObjectEnabled())
+        return JSValueMakeUndefined(context);
+
+    JSRetainPtr<JSStringRef> jsContents = JSValueToStringCopy(context, arguments[0], 0);
+    WKRetainPtr<WKStringRef> contents(AdoptWK, WKStringCreateWithJSString(jsContents.get()));
+    bundlePage->postMessageFromNavigatorQtObject(contents.get());
+    return JSValueMakeUndefined(context);
+}
+
+static JSObjectRef createWrappedMessage(JSGlobalContextRef context, WKStringRef data)
+{
+    static JSStringRef dataName = JSStringCreateWithUTF8CString("data");
+
+    JSRetainPtr<JSStringRef> jsData = WKStringCopyJSString(data);
+    JSObjectRef wrappedMessage = JSObjectMake(context, 0, 0);
+    JSObjectSetProperty(context, wrappedMessage, dataName, JSValueMakeString(context, jsData.get()), kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly, 0);
+    return wrappedMessage;
+}
+
+static void callOnMessage(JSObjectRef object, WKStringRef contents, WKBundlePageRef page)
+{
+    static JSStringRef onmessageName = JSStringCreateWithUTF8CString("onmessage");
+
+    if (!object)
+        return;
+
+    WKBundleFrameRef frame = WKBundlePageGetMainFrame(page);
+    JSGlobalContextRef context = WKBundleFrameGetJavaScriptContext(frame);
+
+    JSValueRef onmessageValue = JSObjectGetProperty(context, object, onmessageName, 0);
+    if (!JSValueIsObject(context, onmessageValue))
+        return;
+
+    JSObjectRef onmessageFunction = JSValueToObject(context, onmessageValue, 0);
+    if (!JSObjectIsFunction(context, onmessageFunction))
+        return;
+
+    JSObjectRef wrappedMessage = createWrappedMessage(context, contents);
+    JSObjectCallAsFunction(context, onmessageFunction, 0, 1, &wrappedMessage, 0);
+}
+
+#ifdef HAVE_WEBCHANNEL
+static JSClassRef navigatorQtWebChannelTransportObjectClass()
+{
+    static JSClassRef classRef = createEmptyJSClassRef();
+    return classRef;
+}
+
+static JSValueRef qt_postWebChannelMessageCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef*)
+{
+    // FIXME: should it work regardless of the thisObject?
+
+    if (argumentCount < 1 || !JSValueIsString(context, arguments[0]))
+        return JSValueMakeUndefined(context);
+
+    QtBuiltinBundlePage* bundlePage = reinterpret_cast<QtBuiltinBundlePage*>(JSObjectGetPrivate(thisObject));
+    ASSERT(bundlePage);
+
+    // TODO: can we transmit the data as JS object, instead of as a string?
+    JSRetainPtr<JSStringRef> jsContents = JSValueToStringCopy(context, arguments[0], 0);
+    WKRetainPtr<WKStringRef> contents(AdoptWK, WKStringCreateWithJSString(jsContents.get()));
+    bundlePage->postMessageFromNavigatorQtWebChannelTransport(contents.get());
+    return JSValueMakeUndefined(context);
+}
+#endif
+
 QtBuiltinBundlePage::QtBuiltinBundlePage(QtBuiltinBundle* bundle, WKBundlePageRef page)
     : m_bundle(bundle)
     , m_page(page)
     , m_navigatorQtObject(0)
     , m_navigatorQtObjectEnabled(false)
+#ifdef HAVE_WEBCHANNEL
+    , m_navigatorQtWebChannelTransportObject(0)
+#endif
 {
     WKBundlePageLoaderClient loaderClient = {
         kWKBundlePageLoaderClientCurrentVersion,
@@ -89,36 +205,30 @@ QtBuiltinBundlePage::QtBuiltinBundlePage(QtBuiltinBundle* bundle, WKBundlePageRe
 
 QtBuiltinBundlePage::~QtBuiltinBundlePage()
 {
-    if (!m_navigatorQtObject)
+    if (!m_navigatorQtObject
+#ifdef HAVE_WEBCHANNEL
+        && !m_navigatorQtWebChannelTransportObject
+#endif
+    )
+    {
         return;
+    }
+
     WKBundleFrameRef frame = WKBundlePageGetMainFrame(m_page);
     JSGlobalContextRef context = WKBundleFrameGetJavaScriptContext(frame);
-    JSValueUnprotect(context, m_navigatorQtObject);
+
+    if (m_navigatorQtObject)
+        JSValueUnprotect(context, m_navigatorQtObject);
+
+#ifdef HAVE_WEBCHANNEL
+    if (m_navigatorQtWebChannelTransportObject)
+        JSValueUnprotect(context, m_navigatorQtWebChannelTransportObject);
+#endif
 }
 
 void QtBuiltinBundlePage::didClearWindowForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKBundleScriptWorldRef world, const void* clientInfo)
 {
     static_cast<QtBuiltinBundlePage*>(const_cast<void*>(clientInfo))->didClearWindowForFrame(frame, world);
-}
-
-static JSValueRef qt_postMessageCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef*)
-{
-    // FIXME: should it work regardless of the thisObject?
-
-    if (argumentCount < 1 || !JSValueIsString(context, arguments[0]))
-        return JSValueMakeUndefined(context);
-
-    QtBuiltinBundlePage* bundlePage = reinterpret_cast<QtBuiltinBundlePage*>(JSObjectGetPrivate(thisObject));
-    ASSERT(bundlePage);
-
-    // FIXME: needed?
-    if (!bundlePage->navigatorQtObjectEnabled())
-        return JSValueMakeUndefined(context);
-
-    JSRetainPtr<JSStringRef> jsContents = JSValueToStringCopy(context, arguments[0], 0);
-    WKRetainPtr<WKStringRef> contents(AdoptWK, WKStringCreateWithJSString(jsContents.get()));
-    bundlePage->postMessageFromNavigatorQtObject(contents.get());
-    return JSValueMakeUndefined(context);
 }
 
 void QtBuiltinBundlePage::didClearWindowForFrame(WKBundleFrameRef frame, WKBundleScriptWorldRef world)
@@ -127,46 +237,20 @@ void QtBuiltinBundlePage::didClearWindowForFrame(WKBundleFrameRef frame, WKBundl
         return;
     JSGlobalContextRef context = WKBundleFrameGetJavaScriptContextForWorld(frame, world);
     registerNavigatorQtObject(context);
+#ifdef HAVE_WEBCHANNEL
+    registerNavigatorQtWebChannelTransportObject(context);
+#endif
 }
 
-void QtBuiltinBundlePage::postMessageFromNavigatorQtObject(WKStringRef contents)
+void QtBuiltinBundlePage::postMessageFromNavigatorQtObject(WKStringRef message)
 {
     static WKStringRef messageName = WKStringCreateWithUTF8CString("MessageFromNavigatorQtObject");
-    WKTypeRef body[] = { page(), contents };
-    WKRetainPtr<WKArrayRef> messageBody(AdoptWK, WKArrayCreate(body, sizeof(body) / sizeof(WKTypeRef)));
-    WKBundlePostMessage(m_bundle->toRef(), messageName, messageBody.get());
+    postNavigatorMessage(messageName, message);
 }
 
-static JSObjectRef createWrappedMessage(JSGlobalContextRef context, WKStringRef data)
+void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtObject(WKStringRef message)
 {
-    static JSStringRef dataName = JSStringCreateWithUTF8CString("data");
-
-    JSRetainPtr<JSStringRef> jsData = WKStringCopyJSString(data);
-    JSObjectRef wrappedMessage = JSObjectMake(context, 0, 0);
-    JSObjectSetProperty(context, wrappedMessage, dataName, JSValueMakeString(context, jsData.get()), kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly, 0);
-    return wrappedMessage;
-}
-
-void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtObject(WKStringRef contents)
-{
-    static JSStringRef onmessageName = JSStringCreateWithUTF8CString("onmessage");
-
-    if (!m_navigatorQtObject)
-        return;
-
-    WKBundleFrameRef frame = WKBundlePageGetMainFrame(m_page);
-    JSGlobalContextRef context = WKBundleFrameGetJavaScriptContext(frame);
-
-    JSValueRef onmessageValue = JSObjectGetProperty(context, m_navigatorQtObject, onmessageName, 0);
-    if (!JSValueIsObject(context, onmessageValue))
-        return;
-
-    JSObjectRef onmessageFunction = JSValueToObject(context, onmessageValue, 0);
-    if (!JSObjectIsFunction(context, onmessageFunction))
-        return;
-
-    JSObjectRef wrappedMessage = createWrappedMessage(context, contents);
-    JSObjectCallAsFunction(context, onmessageFunction, 0, 1, &wrappedMessage, 0);
+    callOnMessage(m_navigatorQtObject, message, m_page);
 }
 
 void QtBuiltinBundlePage::setNavigatorQtObjectEnabled(bool enabled)
@@ -179,33 +263,40 @@ void QtBuiltinBundlePage::setNavigatorQtObjectEnabled(bool enabled)
 
 void QtBuiltinBundlePage::registerNavigatorQtObject(JSGlobalContextRef context)
 {
+    static JSStringRef name = JSStringCreateWithUTF8CString("qt");
     static JSStringRef postMessageName = JSStringCreateWithUTF8CString("postMessage");
-    static JSStringRef navigatorName = JSStringCreateWithUTF8CString("navigator");
-    static JSStringRef qtName = JSStringCreateWithUTF8CString("qt");
-
-    if (m_navigatorQtObject)
-        JSValueUnprotect(context, m_navigatorQtObject);
-    m_navigatorQtObject = JSObjectMake(context, navigatorQtObjectClass(), this);
-    JSValueProtect(context, m_navigatorQtObject);
-
-    JSObjectRef postMessage = JSObjectMakeFunctionWithCallback(context, postMessageName, qt_postMessageCallback);
-    JSObjectSetProperty(context, m_navigatorQtObject, postMessageName, postMessage, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly, 0);
-
-    JSValueRef navigatorValue = JSObjectGetProperty(context, JSContextGetGlobalObject(context), navigatorName, 0);
-    if (!JSValueIsObject(context, navigatorValue))
-        return;
-    JSObjectRef navigatorObject = JSValueToObject(context, navigatorValue, 0);
-    JSObjectSetProperty(context, navigatorObject, qtName, m_navigatorQtObject, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly, 0);
+    registerNavigatorObject(&m_navigatorQtObject, name, context, this,
+                            &navigatorQtObjectClass,
+                            postMessageName, &qt_postMessageCallback);
 }
 
-JSClassRef QtBuiltinBundlePage::navigatorQtObjectClass()
+#ifdef HAVE_WEBCHANNEL
+void QtBuiltinBundlePage::registerNavigatorQtWebChannelTransportObject(JSGlobalContextRef context)
 {
-    static JSClassRef classRef = 0;
-    if (!classRef) {
-        const JSClassDefinition navigatorQtObjectClass = kJSClassDefinitionEmpty;
-        classRef = JSClassCreate(&navigatorQtObjectClass);
-    }
-    return classRef;
+    static JSStringRef name = JSStringCreateWithUTF8CString("qtWebChannelTransport");
+    static JSStringRef postMessageName = JSStringCreateWithUTF8CString("send");
+    registerNavigatorObject(&m_navigatorQtWebChannelTransportObject, name, context, this,
+                            &navigatorQtWebChannelTransportObjectClass,
+                            postMessageName, &qt_postWebChannelMessageCallback);
+}
+
+void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtWebChannelTransport(WKStringRef contents)
+{
+    callOnMessage(m_navigatorQtWebChannelTransportObject, contents, m_page);
+}
+
+void QtBuiltinBundlePage::postMessageFromNavigatorQtWebChannelTransport(WKStringRef message)
+{
+    static WKStringRef messageName = WKStringCreateWithUTF8CString("MessageFromNavigatorQtWebChannelTransportObject");
+    postNavigatorMessage(messageName, message);
+}
+#endif
+
+void QtBuiltinBundlePage::postNavigatorMessage(WKStringRef messageName, WKStringRef message)
+{
+    WKTypeRef body[] = { page(), message };
+    WKRetainPtr<WKArrayRef> messageBody(AdoptWK, WKArrayCreate(body, sizeof(body) / sizeof(WKTypeRef)));
+    WKBundlePostMessage(m_bundle->toRef(), messageName, messageBody.get());
 }
 
 } // namespace WebKit

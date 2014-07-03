@@ -84,6 +84,11 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
+#ifdef HAVE_WEBCHANNEL
+#include <QtWebChannel/QQmlWebChannel>
+#include "qwebchannelwebkittransport_p.h"
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -960,6 +965,14 @@ void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtObject(WKStringRef me
     emit q_ptr->experimental()->messageReceived(variantMap);
 }
 
+#ifdef HAVE_WEBCHANNEL
+void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKStringRef message)
+{
+    // TODO: can I convert a WKStringRef to a UTF8 QByteArray directly?
+    q_ptr->experimental()->m_webChannelTransport->receiveMessage(WKStringCopyQString(message).toUtf8());
+}
+#endif
+
 CoordinatedGraphicsScene* QQuickWebViewPrivate::coordinatedGraphicsScene()
 {
     if (webPageProxy && webPageProxy->drawingArea() && webPageProxy->drawingArea()->coordinatedLayerTreeHostProxy())
@@ -1075,7 +1088,14 @@ QQuickWebViewExperimental::QQuickWebViewExperimental(QQuickWebView *webView, QQu
     , d_ptr(webViewPrivate)
     , schemeParent(new QObject(this))
     , m_test(new QWebKitTest(webViewPrivate, this))
+#ifdef HAVE_WEBCHANNEL
+    , m_webChannel(new QQmlWebChannel(this))
+    , m_webChannelTransport(new QWebChannelWebKitTransport(this))
+#endif
 {
+#ifdef HAVE_WEBCHANNEL
+    m_webChannel->connectTo(m_webChannelTransport);
+#endif
 }
 
 QQuickWebViewExperimental::~QQuickWebViewExperimental()
@@ -1164,6 +1184,29 @@ bool QQuickWebViewExperimental::flickableViewportEnabled()
     return s_flickableViewportEnabled;
 }
 
+#ifdef HAVE_WEBCHANNEL
+QQmlWebChannel* QQuickWebViewExperimental::webChannel() const
+{
+    return m_webChannel;
+}
+
+void QQuickWebViewExperimental::setWebChannel(QQmlWebChannel* channel)
+{
+    if (channel == m_webChannel)
+        return;
+
+    if (m_webChannel)
+        m_webChannel->disconnectFrom(m_webChannelTransport);
+
+    m_webChannel = channel;
+
+    if (m_webChannel)
+        m_webChannel->connectTo(m_webChannelTransport);
+
+    emit webChannelChanged(channel);
+}
+#endif
+
 /*!
     \internal
 
@@ -1182,6 +1225,16 @@ void QQuickWebViewExperimental::postMessage(const QString& message)
     WKRetainPtr<WKStringRef> contents = adoptWK(WKStringCreateWithQString(message));
     WKPagePostMessageToInjectedBundle(d->webPage.get(), messageName, contents.get());
 }
+
+#ifdef HAVE_WEBCHANNEL
+void QQuickWebViewExperimental::postQtWebChannelTransportMessage(const QByteArray& message)
+{
+    Q_D(QQuickWebView);
+    static WKStringRef messageName = WKStringCreateWithUTF8CString("MessageToNavigatorQtWebChannelTransportObject");
+    WKRetainPtr<WKStringRef> contents = adoptWK(WKStringCreateWithUTF8CString(message.constData()));
+    WKPagePostMessageToInjectedBundle(d->webPage.get(), messageName, contents.get());
+}
+#endif
 
 QQmlComponent* QQuickWebViewExperimental::alertDialog() const
 {
