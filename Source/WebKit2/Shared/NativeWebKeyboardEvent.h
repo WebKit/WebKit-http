@@ -50,6 +50,10 @@ struct KeypressCommand;
 typedef union _GdkEvent GdkEvent;
 #endif
 
+#if PLATFORM(HAIKU)
+#include <Message.h>
+#endif
+
 #if PLATFORM(IOS)
 #include <wtf/RetainPtr.h>
 OBJC_CLASS WebIOSEvent;
@@ -80,6 +84,8 @@ public:
 #elif PLATFORM(EFL)
     const void* nativeEvent() const { return m_nativeEvent; }
     bool isFiltered() const { return m_isFiltered; }
+#elif PLATFORM(HAIKU)
+    const BMessage* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(IOS)
     WebIOSEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #endif
@@ -94,6 +100,8 @@ private:
 #elif PLATFORM(EFL)
     const void* m_nativeEvent;
     bool m_isFiltered;
+#elif PLATFORM(HAIKU)
+    BMessage* m_nativeEvent;
 #elif PLATFORM(IOS)
     RetainPtr<WebIOSEvent> m_nativeEvent;
 #endif

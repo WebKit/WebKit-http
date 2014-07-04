@@ -1036,7 +1036,7 @@ private:
 #if USE(COORDINATED_GRAPHICS)
     void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
 #endif
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(HAIKU)
     void didChangeContentSize(const WebCore::IntSize&);
 #endif
 

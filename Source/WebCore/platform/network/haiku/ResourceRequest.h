@@ -64,6 +64,7 @@ namespace WebCore {
         BUrlRequest* toNetworkRequest(BUrlContext*);
 
         void setCredentials(const char* username, const char* password);
+        void updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest) { *this = delegateProvidedRequest; }
 
     private:
         friend class ResourceRequestBase;

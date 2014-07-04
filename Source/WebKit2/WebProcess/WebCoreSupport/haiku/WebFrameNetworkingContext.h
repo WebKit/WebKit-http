@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Haiku Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,24 +23,37 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef WebFrameNetworkingContext_h
+#define WebFrameNetworkingContext_h
 
-#ifndef PlatformProcessIdentifier_h
-#define PlatformProcessIdentifier_h
-
-#if PLATFORM(EFL)
-#include <unistd.h>
-#endif
+#include "HTTPCookieAcceptPolicy.h"
+#include <WebCore/FrameNetworkingContext.h>
+#include <WebCore/SessionID.h>
 
 namespace WebKit {
 
-#if PLATFORM(COCOA)
-typedef pid_t PlatformProcessIdentifier;
-#elif PLATFORM(GTK)
-typedef int PlatformProcessIdentifier;
-#elif PLATFORM(EFL) || PLATFORM(HAIKU)
-typedef pid_t PlatformProcessIdentifier;
-#endif
+class WebFrame;
+class WebFrameLoaderClient;
 
-} // namespace WebKit 
+class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
+public:
+    static PassRefPtr<WebFrameNetworkingContext> create(WebFrame* frame)
+    {
+        return adoptRef(new WebFrameNetworkingContext(frame));
+    }
 
-#endif // PlatformProcessIdentifier_h
+    static void ensurePrivateBrowsingSession(WebCore::SessionID);
+    static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
+
+    WebFrameLoaderClient* webFrameLoaderClient() const;
+
+    BUrlContext* context() override;
+private:
+    WebFrameNetworkingContext(WebFrame*);
+
+    virtual WebCore::NetworkStorageSession& storageSession() const;
+};
+
+}
+
+#endif // WebFrameNetworkingContext_h

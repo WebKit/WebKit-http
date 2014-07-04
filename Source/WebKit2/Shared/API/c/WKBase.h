@@ -42,6 +42,10 @@
 #include <WebKit/WKBaseEfl.h>
 #endif
 
+#if defined(BUILDING_HAIKU__)
+#include <WebKit/WKBaseHaiku.h>
+#endif
+
 #if defined(__APPLE__)
 #include <WebKit/WKBaseMac.h>
 #endif

@@ -44,6 +44,10 @@ typedef struct _GModule GModule;
 #include <Eina.h>
 #endif
 
+#if PLATFORM(HAIKU)
+#include <kernel/image.h>
+#endif
+
 #if USE(FOUNDATION)
 OBJC_CLASS NSBundle;
 OBJC_CLASS NSMutableDictionary;
@@ -69,6 +73,8 @@ typedef NSBundle *PlatformBundle;
 typedef ::GModule* PlatformBundle;
 #elif PLATFORM(EFL)
 typedef Eina_Module* PlatformBundle;
+#elif PLATFORM(HAIKU)
+typedef image_id PlatformBundle;
 #endif
 
 class InjectedBundleScriptWorld;

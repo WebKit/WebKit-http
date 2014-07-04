@@ -98,7 +98,7 @@ messages -> WebPageProxy {
     DidFindZoomableArea(WebCore::IntPoint target, WebCore::IntRect area)
 #endif
 
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(HAIKU)
     DidChangeContentSize(WebCore::IntSize newSize)
 #endif
 
