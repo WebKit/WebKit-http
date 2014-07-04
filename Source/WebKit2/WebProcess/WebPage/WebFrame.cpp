@@ -36,6 +36,7 @@
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
 #include "WebChromeClient.h"
+#include "WebDocumentLoader.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
@@ -108,7 +109,7 @@ static uint64_t generateListenerID()
 PassRefPtr<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::Frame* coreFrame)
 {
     RefPtr<WebFrame> frame = create(std::unique_ptr<WebFrameLoaderClient>(static_cast<WebFrameLoaderClient*>(&coreFrame->loader().client())));
-    page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()));
+    page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()), page->pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
 
     frame->m_coreFrame = coreFrame;
     frame->m_coreFrame->tree().setName(String());
@@ -119,7 +120,7 @@ PassRefPtr<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::F
 PassRefPtr<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frameName, HTMLFrameOwnerElement* ownerElement)
 {
     RefPtr<WebFrame> frame = create(std::make_unique<WebFrameLoaderClient>());
-    page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()));
+    page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()), page->pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
 
     RefPtr<Frame> coreFrame = Frame::create(page->corePage(), ownerElement, frame->m_frameLoaderClient.get());
     frame->m_coreFrame = coreFrame.get();
@@ -134,7 +135,7 @@ PassRefPtr<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frame
 
 PassRefPtr<WebFrame> WebFrame::create(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
 {
-    RefPtr<WebFrame> frame = adoptRef(new WebFrame(std::move(frameLoaderClient)));
+    RefPtr<WebFrame> frame = adoptRef(new WebFrame(WTF::move(frameLoaderClient)));
 
     // Add explict ref() that will be balanced in WebFrameLoaderClient::frameLoaderDestroyed().
     frame->ref();
@@ -147,7 +148,7 @@ WebFrame::WebFrame(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
     , m_policyListenerID(0)
     , m_policyFunction(0)
     , m_policyDownloadID(0)
-    , m_frameLoaderClient(std::move(frameLoaderClient))
+    , m_frameLoaderClient(WTF::move(frameLoaderClient))
     , m_loadListener(0)
     , m_frameID(generateFrameID())
 {
@@ -215,7 +216,7 @@ void WebFrame::invalidatePolicyListener()
     m_policyFunction = 0;
 }
 
-void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t downloadID)
+void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, uint64_t downloadID)
 {
     if (!m_coreFrame)
         return;
@@ -228,11 +229,16 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
 
     ASSERT(m_policyFunction);
 
-    FramePolicyFunction function = std::move(m_policyFunction);
+    FramePolicyFunction function = WTF::move(m_policyFunction);
 
     invalidatePolicyListener();
 
     m_policyDownloadID = downloadID;
+    if (navigationID) {
+        if (WebDocumentLoader* documentLoader = static_cast<WebDocumentLoader*>(m_coreFrame->loader().policyDocumentLoader()))
+            documentLoader->setNavigationID(navigationID);
+    }
+
     function(action);
 }
 
@@ -402,16 +408,16 @@ String WebFrame::url() const
     return documentLoader->url().string();
 }
 
-const WebCore::CertificateInfo& WebFrame::certificateInfo() const
+WebCore::CertificateInfo WebFrame::certificateInfo() const
 {
     if (!m_coreFrame)
-        return std::move(CertificateInfo());
+        return CertificateInfo();
 
     DocumentLoader* documentLoader = m_coreFrame->loader().documentLoader();
     if (!documentLoader)
-        return std::move(CertificateInfo());
+        return CertificateInfo();
 
-    return std::move(CertificateInfo(documentLoader->response()));
+    return CertificateInfo(documentLoader->response());
 }
 
 String WebFrame::innerText() const
@@ -451,7 +457,7 @@ PassRefPtr<API::Array> WebFrame::childFrames()
         vector.uncheckedAppend(webFrame);
     }
 
-    return API::Array::create(std::move(vector));
+    return API::Array::create(WTF::move(vector));
 }
 
 String WebFrame::layerTreeAsText() const
@@ -749,6 +755,11 @@ void WebFrame::setTextDirection(const String& direction)
         m_coreFrame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
     else if (direction == "rtl")
         m_coreFrame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
+}
+
+void WebFrame::documentLoaderDetached(uint64_t navigationID)
+{
+    page()->send(Messages::WebPageProxy::DidDestroyNavigation(navigationID));
 }
 
 #if PLATFORM(COCOA)

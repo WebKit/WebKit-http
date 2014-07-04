@@ -75,7 +75,7 @@ String MediaQuery::serialize() const
 MediaQuery::MediaQuery(Restrictor r, const String& mediaType, std::unique_ptr<ExpressionVector> exprs)
     : m_restrictor(r)
     , m_mediaType(mediaType.lower())
-    , m_expressions(std::move(exprs))
+    , m_expressions(WTF::move(exprs))
     , m_ignored(false)
 {
     if (!m_expressions) {
@@ -110,7 +110,7 @@ MediaQuery::MediaQuery(const MediaQuery& o)
     , m_serializationCache(o.m_serializationCache)
 {
     for (unsigned i = 0; i < m_expressions->size(); ++i)
-        (*m_expressions)[i] = std::move(o.m_expressions->at(i)->copy());
+        (*m_expressions)[i] = o.m_expressions->at(i)->copy();
 }
 
 MediaQuery::~MediaQuery()

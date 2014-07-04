@@ -142,7 +142,7 @@ def message_to_struct_declaration(message):
         result.append('\n        : m_arguments(%s)\n' % ', '.join([x[1] for x in function_parameters]))
         result.append('    {\n')
         result.append('    }\n\n')
-    result.append('    const %s arguments() const\n' % arguments_type(message))
+    result.append('    const %s& arguments() const\n' % arguments_type(message))
     result.append('    {\n')
     result.append('        return m_arguments;\n')
     result.append('    }\n')
@@ -193,6 +193,7 @@ def struct_or_class(namespace, type):
         'WebCore::WindowFeatures',
         'WebKit::AssistedNodeInformation',
         'WebKit::AttributedString',
+        'WebKit::BackForwardListItemState',
         'WebKit::ColorSpaceData',
         'WebKit::ContextMenuState',
         'WebKit::DatabaseProcessCreationParameters',
@@ -203,6 +204,7 @@ def struct_or_class(namespace, type):
         'WebKit::InteractionInformationAtPosition',
         'WebKit::NavigationActionData',
         'WebKit::NetworkProcessCreationParameters',
+        'WebKit::PageState',
         'WebKit::PlatformPopupMenuData',
         'WebKit::PluginCreationParameters',
         'WebKit::PluginProcessCreationParameters',
@@ -436,7 +438,9 @@ def headers_for_type(type):
         'WebCore::TextCheckingRequestData': ['<WebCore/TextChecking.h>'],
         'WebCore::TextCheckingResult': ['<WebCore/TextCheckerClient.h>'],
         'WebCore::ViewportAttributes': ['<WebCore/ViewportArguments.h>'],
+        'WebKit::BackForwardListItemState': ['"SessionState.h"'],
         'WebKit::InjectedBundleUserMessageEncoder': [],
+        'WebKit::PageState': ['"SessionState.h"'],
         'WebKit::WebContextUserMessageEncoder': [],
         'WebKit::WebGestureEvent': ['"WebEvent.h"'],
         'WebKit::WebKeyboardEvent': ['"WebEvent.h"'],
@@ -554,7 +558,7 @@ def generate_message_handler(file):
 
             result.append('%s::DelayedReply::DelayedReply(PassRefPtr<IPC::Connection> connection, std::unique_ptr<IPC::MessageEncoder> encoder)\n' % message.name)
             result.append('    : m_connection(connection)\n')
-            result.append('    , m_encoder(std::move(encoder))\n')
+            result.append('    , m_encoder(WTF::move(encoder))\n')
             result.append('{\n')
             result.append('}\n')
             result.append('\n')
@@ -567,7 +571,7 @@ def generate_message_handler(file):
             result.append('{\n')
             result.append('    ASSERT(m_encoder);\n')
             result += ['    *m_encoder << %s;\n' % x.name for x in message.reply_parameters]
-            result.append('    bool _result = m_connection->sendSyncReply(std::move(m_encoder));\n')
+            result.append('    bool _result = m_connection->sendSyncReply(WTF::move(m_encoder));\n')
             result.append('    m_connection = nullptr;\n')
             result.append('    return _result;\n')
             result.append('}\n')

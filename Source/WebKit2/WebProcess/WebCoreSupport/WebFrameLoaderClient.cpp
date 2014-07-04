@@ -169,6 +169,7 @@ void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identi
         pageIsProvisionallyLoading = frameLoader->provisionalDocumentLoader() == loader;
 
     webPage->injectedBundleResourceLoadClient().didInitiateLoadForResource(webPage, m_frame, identifier, request, pageIsProvisionallyLoading);
+    webPage->addResourceRequest(identifier, request);
 }
 
 void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader*, unsigned long identifier, ResourceRequest& request, const ResourceResponse& redirectResponse)
@@ -249,6 +250,7 @@ void WebFrameLoaderClient::dispatchDidFinishLoading(DocumentLoader*, unsigned lo
         return;
 
     webPage->injectedBundleResourceLoadClient().didFinishLoadForResource(webPage, m_frame, identifier);
+    webPage->removeResourceRequest(identifier);
 }
 
 void WebFrameLoaderClient::dispatchDidFailLoading(DocumentLoader*, unsigned long identifier, const ResourceError& error)
@@ -258,6 +260,7 @@ void WebFrameLoaderClient::dispatchDidFailLoading(DocumentLoader*, unsigned long
         return;
 
     webPage->injectedBundleResourceLoadClient().didFailLoadForResource(webPage, m_frame, identifier, error);
+    webPage->removeResourceRequest(identifier);
 }
 
 bool WebFrameLoaderClient::dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int /*length*/)
@@ -657,7 +660,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
 
     bool canShowMIMEType = webPage->canShowMIMEType(response.mimeType());
 
-    uint64_t listenerID = m_frame->setUpPolicyListener(std::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
     bool receivedPolicyAction;
     uint64_t policyAction;
     uint64_t downloadID;
@@ -670,7 +673,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
 
     // We call this synchronously because CFNetwork can only convert a loading connection to a download from its didReceiveResponse callback.
     if (receivedPolicyAction)
-        m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), downloadID);
+        m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), 0, downloadID);
 }
 
 void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& navigationAction, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName, FramePolicyFunction function)
@@ -691,7 +694,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
     }
 
 
-    uint64_t listenerID = m_frame->setUpPolicyListener(std::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
 
     NavigationActionData navigationActionData;
     navigationActionData.navigationType = action->navigationType();
@@ -727,8 +730,9 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
         return;
     }
     
-    uint64_t listenerID = m_frame->setUpPolicyListener(std::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
     bool receivedPolicyAction;
+    uint64_t newNavigationID;
     uint64_t policyAction;
     uint64_t downloadID;
 
@@ -760,13 +764,18 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     navigationActionData.isProcessingUserGesture = navigationAction.processingUserGesture();
     navigationActionData.canHandleRequest = webPage->canHandleRequest(request);
 
+    WebCore::Frame* coreFrame = m_frame->coreFrame();
+    WebDocumentLoader* documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().policyDocumentLoader());
+    if (!documentLoader)
+        documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().documentLoader());
+
     // Notify the UIProcess.
-    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), navigationActionData, originatingFrame ? originatingFrame->frameID() : 0, navigationAction.resourceRequest(), request, listenerID, InjectedBundleUserMessageEncoder(userData.get())), Messages::WebPageProxy::DecidePolicyForNavigationAction::Reply(receivedPolicyAction, policyAction, downloadID)))
+    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), documentLoader->navigationID(), navigationActionData, originatingFrame ? originatingFrame->frameID() : 0, navigationAction.resourceRequest(), request, listenerID, InjectedBundleUserMessageEncoder(userData.get())), Messages::WebPageProxy::DecidePolicyForNavigationAction::Reply(receivedPolicyAction, newNavigationID, policyAction, downloadID)))
         return;
 
     // We call this synchronously because WebCore cannot gracefully handle a frame load without a synchronous navigation policy reply.
     if (receivedPolicyAction)
-        m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), downloadID);
+        m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), newNavigationID, downloadID);
 }
 
 void WebFrameLoaderClient::cancelPolicyCheck()
@@ -824,7 +833,7 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(PassRefPtr<FormState> prpFormS
     webPage->injectedBundleFormClient().willSubmitForm(webPage, form, m_frame, sourceFrame, values, userData);
 
 
-    uint64_t listenerID = m_frame->setUpPolicyListener(std::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
 
     webPage->send(Messages::WebPageProxy::WillSubmitForm(m_frame->frameID(), sourceFrame->frameID(), values, listenerID, InjectedBundleUserMessageEncoder(userData.get())));
 }

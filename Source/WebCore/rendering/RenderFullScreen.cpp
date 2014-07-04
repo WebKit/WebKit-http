@@ -37,7 +37,7 @@ namespace WebCore {
 class RenderFullScreenPlaceholder final : public RenderBlockFlow {
 public:
     RenderFullScreenPlaceholder(RenderFullScreen& owner, PassRef<RenderStyle> style)
-        : RenderBlockFlow(owner.document(), std::move(style))
+        : RenderBlockFlow(owner.document(), WTF::move(style))
         , m_owner(owner) 
     {
     }
@@ -55,7 +55,7 @@ void RenderFullScreenPlaceholder::willBeDestroyed()
 }
 
 RenderFullScreen::RenderFullScreen(Document& document, PassRef<RenderStyle> style)
-    : RenderFlexibleBox(document, std::move(style))
+    : RenderFlexibleBox(document, WTF::move(style))
     , m_placeholder(0)
 {
     setReplaced(false); 
@@ -138,11 +138,32 @@ RenderFullScreen* RenderFullScreen::wrapRenderer(RenderObject* object, RenderEle
     return fullscreenRenderer;
 }
 
-void RenderFullScreen::unwrapRenderer()
+void RenderFullScreen::unwrapRenderer(bool& requiresRenderTreeRebuild)
 {
+    requiresRenderTreeRebuild = false;
     if (parent()) {
-        RenderObject* child;
+        auto* child = firstChild();
+        // Things can get very complicated with anonymous block generation.
+        // We can restore correctly without rebuild in simple cases only.
+        // FIXME: We should have a mechanism for removing a block without reconstructing the tree.
+        if (child != lastChild())
+            requiresRenderTreeRebuild = true;
+        else if (child && child->isAnonymousBlock()) {
+            auto& anonymousBlock = toRenderBlock(*child);
+            if (anonymousBlock.firstChild() != anonymousBlock.lastChild())
+                requiresRenderTreeRebuild = true;
+        }
+
         while ((child = firstChild())) {
+            if (child->isAnonymousBlock() && !requiresRenderTreeRebuild) {
+                if (auto* nonAnonymousChild = toRenderBlock(*child).firstChild())
+                    child = nonAnonymousChild;
+                else {
+                    child->removeFromParent();
+                    child->destroy();
+                    continue;
+                }
+            }
             // We have to clear the override size, because as a flexbox, we
             // may have set one on the child, and we don't want to leave that
             // lying around on the child.
@@ -172,11 +193,11 @@ void RenderFullScreen::createPlaceholder(PassRef<RenderStyle> style, const Layou
         style.get().setHeight(Length(frameRect.height(), Fixed));
 
     if (m_placeholder) {
-        m_placeholder->setStyle(std::move(style));
+        m_placeholder->setStyle(WTF::move(style));
         return;
     }
 
-    m_placeholder = new RenderFullScreenPlaceholder(*this, std::move(style));
+    m_placeholder = new RenderFullScreenPlaceholder(*this, WTF::move(style));
     m_placeholder->initializeStyle();
     if (parent()) {
         parent()->addChild(m_placeholder, this);

@@ -409,9 +409,11 @@ PluginView* PluginView::currentPluginView()
 static char* createUTF8String(const String& str)
 {
     CString cstr = str.utf8();
-    char* result = reinterpret_cast<char*>(fastMalloc(cstr.length() + 1));
+    const size_t cstrLength = cstr.length();
+    char* result = reinterpret_cast<char*>(fastMalloc(cstrLength + 1));
 
-    strncpy(result, cstr.data(), cstr.length() + 1);
+    memcpy(result, cstr.data(), cstrLength);
+    result[cstrLength] = '\0';
 
     return result;
 }
@@ -1176,7 +1178,7 @@ NPError PluginView::handlePost(const char* url, const char* target, uint32_t len
 
     frameLoadRequest.resourceRequest().setHTTPMethod("POST");
     frameLoadRequest.resourceRequest().setURL(makeURL(m_parentFrame->document()->baseURL(), url));
-    frameLoadRequest.resourceRequest().setHTTPHeaderFields(std::move(headerFields));
+    frameLoadRequest.resourceRequest().setHTTPHeaderFields(WTF::move(headerFields));
     frameLoadRequest.resourceRequest().setHTTPBody(FormData::create(postData, postDataLength));
     frameLoadRequest.setFrameName(target);
 

@@ -103,16 +103,14 @@ static bool isProtocolWhitelisted(const String& scheme)
 
 static bool verifyProtocolHandlerScheme(const String& scheme, ExceptionCode& ec)
 {
+    if (isProtocolWhitelisted(scheme))
+        return true;
+
     if (scheme.startsWith("web+")) {
         // The specification requires that the length of scheme is at least five characters (including 'web+' prefix).
         if (scheme.length() >= 5 && isValidProtocol(scheme))
             return true;
-        ec = SECURITY_ERR;
-        return false;
     }
-
-    if (isProtocolWhitelisted(scheme))
-        return true;
 
     ec = SECURITY_ERR;
     return false;
@@ -205,7 +203,7 @@ const char* NavigatorContentUtils::supplementName()
 
 void provideNavigatorContentUtilsTo(Page* page, std::unique_ptr<NavigatorContentUtilsClient> client)
 {
-    NavigatorContentUtils::provideTo(page, NavigatorContentUtils::supplementName(), std::make_unique<NavigatorContentUtils>(std::move(client)));
+    NavigatorContentUtils::provideTo(page, NavigatorContentUtils::supplementName(), std::make_unique<NavigatorContentUtils>(WTF::move(client)));
 }
 
 } // namespace WebCore

@@ -282,6 +282,10 @@
 #import <WebCore/DiskImageCacheIOS.h>
 #endif
 
+#if ENABLE(GAMEPAD)
+#import <WebCore/HIDGamepadProvider.h>
+#endif
+
 #if !PLATFORM(IOS)
 @interface NSSpellChecker (WebNSSpellCheckerDetails)
 - (void)_preflightChosenSpellServer;
@@ -673,22 +677,14 @@ static CFMutableSetRef allWebViewsSet;
 
 @implementation WebView (WebPrivate)
 
-static String userVisibleWebKitVersionString()
+static String webKitBundleVersionString()
 {
-    // If the version is longer than 3 digits then the leading digits represent the version of the OS. Our user agent
-    // string should not include the leading digits, so strip them off and report the rest as the version. <rdar://problem/4997547>
-    NSString *fullVersion = [[NSBundle bundleForClass:[WebView class]] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
-    NSRange nonDigitRange = [fullVersion rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]];
-    if (nonDigitRange.location == NSNotFound && fullVersion.length > 3)
-        return [fullVersion substringFromIndex:fullVersion.length - 3];
-    if (nonDigitRange.location != NSNotFound && nonDigitRange.location > 3)
-        return [fullVersion substringFromIndex:nonDigitRange.location - 3];
-    return fullVersion;
+    return [[NSBundle bundleForClass:[WebView class]] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
 }
 
 + (NSString *)_standardUserAgentWithApplicationName:(NSString *)applicationName
 {
-    return standardUserAgentWithApplicationName(applicationName, userVisibleWebKitVersionString());
+    return standardUserAgentWithApplicationName(applicationName, webKitBundleVersionString());
 }
 
 #if PLATFORM(IOS)
@@ -838,6 +834,18 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
     return shouldUseLegacyBackgroundSizeShorthandBehavior;
 }
 
+#if ENABLE(GAMEPAD)
+static void WebKitInitializeGamepadProviderIfNecessary()
+{
+    static bool initialized = false;
+    if (initialized)
+        return;
+
+    GamepadProvider::shared().setSharedProvider(HIDGamepadProvider::shared());
+    initialized = true;
+}
+#endif
+
 - (void)_commonInitializationWithFrameName:(NSString *)frameName groupName:(NSString *)groupName
 {
     WebCoreThreadViolationCheckRoundTwo();
@@ -895,6 +903,9 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
         WebKitInitializeApplicationCachePathIfNecessary();
 #if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
         WebKitInitializeWebDiskImageCache();
+#endif
+#if ENABLE(GAMEPAD)
+        WebKitInitializeGamepadProviderIfNecessary();
 #endif
         
         Settings::setDefaultMinDOMTimerInterval(0.004);
@@ -1037,12 +1048,8 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
 #endif
 }
 
-- (id)_initWithFrame:(NSRect)f frameName:(NSString *)frameName groupName:(NSString *)groupName usesDocumentViews:(BOOL)usesDocumentViews
+- (id)_initWithFrame:(NSRect)f frameName:(NSString *)frameName groupName:(NSString *)groupName
 {
-    // FIXME: Remove the usesDocumentViews parameter; it's only here for compatibility with WebKit nightly builds
-    // running against Safari 5 on Leopard.
-    ASSERT(usesDocumentViews);
-
     self = [super initWithFrame:f];
     if (!self)
         return nil;
@@ -1189,14 +1196,7 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
     [self setGroupName:groupName];
 
 #if ENABLE(REMOTE_INSPECTOR)
-    // Production installs always disallow debugging simple HTML documents.
-    // Internal installs allow debugging simple HTML documents (TextFields) if the Internal Setting is enabled.
-    if (!isInternalInstall())
-        _private->page->setRemoteInspectionAllowed(false);
-    else {
-        static BOOL textFieldInspectionEnabled = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitTextFieldRemoteInspectionEnabledPreferenceKey];
-        _private->page->setRemoteInspectionAllowed(textFieldInspectionEnabled);
-    }
+    _private->page->setRemoteInspectionAllowed(isInternalInstall());
 #endif
     
     [self _updateScreenScaleFromWindow];
@@ -1453,13 +1453,6 @@ static NSMutableSet *knownPluginMIMETypes()
 #endif
     return NO;
 }
-
-#if !PLATFORM(IOS)
-+ (void)_setAlwaysUseATSU:(BOOL)f
-{
-    [self _setAlwaysUsesComplexTextCodePath:f];
-}
-#endif
 
 + (void)_setAlwaysUsesComplexTextCodePath:(BOOL)f
 {
@@ -2124,17 +2117,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 }
 
-- (BOOL)_needsUnrestrictedGetMatchedCSSRules
-{
-#if !PLATFORM(IOS)
-    static bool needsUnrestrictedGetMatchedCSSRules = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_GET_MATCHED_CSS_RULES_RESTRICTIONS) && applicationIsSafari();
-    return needsUnrestrictedGetMatchedCSSRules;
-#else
-    // FIXME: <rdar://problem/8963684> Implement linked-on-or-after check for needsUnrestrictedGetMatchedCSSRules
-    return NO;
-#endif
-}
-
 - (void)_preferencesChangedNotification:(NSNotification *)notification
 {
 #if PLATFORM(IOS)
@@ -2279,7 +2261,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAsynchronousSpellCheckingEnabled([preferences asynchronousSpellCheckingEnabled]);
     settings.setHyperlinkAuditingEnabled([preferences hyperlinkAuditingEnabled]);
     settings.setUsePreHTML5ParserQuirks([self _needsPreHTML5ParserQuirks]);
-    settings.setCrossOriginCheckInGetMatchedCSSRulesDisabled([self _needsUnrestrictedGetMatchedCSSRules]);
     settings.setInteractiveFormValidationEnabled([self interactiveFormValidationEnabled]);
     settings.setValidationMessageTimerMagnification([self validationMessageTimerMagnification]);
 
@@ -5001,7 +4982,7 @@ static bool needsWebViewInitThreadWorkaround()
 #endif
 
     WebCoreThreadViolationCheckRoundTwo();
-    return [self _initWithFrame:f frameName:frameName groupName:groupName usesDocumentViews:YES];
+    return [self _initWithFrame:f frameName:frameName groupName:groupName];
 }
 
 #if !PLATFORM(IOS)

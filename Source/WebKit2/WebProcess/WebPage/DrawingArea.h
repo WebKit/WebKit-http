@@ -30,6 +30,7 @@
 #include "LayerTreeContext.h"
 #include <WebCore/FloatRect.h>
 #include <WebCore/IntRect.h>
+#include <WebCore/LayerFlushThrottleState.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ViewState.h>
 #include <functional>
@@ -119,6 +120,8 @@ public:
 
     virtual bool markLayersVolatileImmediatelyIfPossible() { return true; }
 
+    virtual bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) { return false; }
+
 protected:
     DrawingArea(DrawingAreaType, WebPage&);
 
@@ -140,6 +143,8 @@ private:
 
     virtual void adjustTransientZoom(double scale, WebCore::FloatPoint origin) { }
     virtual void commitTransientZoom(double scale, WebCore::FloatPoint origin) { }
+
+    virtual void addTransactionCallbackID(uint64_t callbackID) { ASSERT_NOT_REACHED(); }
 #endif
 };
 

@@ -28,6 +28,7 @@
 
 #include "DrawingArea.h"
 #include "GraphicsLayerCARemote.h"
+#include "RemoteLayerTreeTransaction.h"
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/Timer.h>
 #include <atomic>
@@ -66,6 +67,8 @@ private:
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
     virtual void scheduleCompositingLayerFlush() override;
 
+    virtual void addTransactionCallbackID(uint64_t callbackID) override;
+
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
     void willDestroyDisplayRefreshMonitor(WebCore::DisplayRefreshMonitor*);
 
@@ -98,6 +101,8 @@ private:
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) override;
 
     virtual void viewStateDidChange(WebCore::ViewState::Flags changed, bool wantsDidUpdateViewState) override;
+
+    virtual bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) override;
 
     // GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) override { }
@@ -143,6 +148,9 @@ private:
     WebCore::Timer<RemoteLayerTreeDrawingArea> m_layerFlushTimer;
     bool m_isFlushingSuspended;
     bool m_hasDeferredFlush;
+    bool m_isThrottlingLayerFlushes;
+    bool m_isLayerFlushThrottlingTemporarilyDisabledForInteraction;
+    bool m_isInitialThrottledLayerFlush;
 
     bool m_waitingForBackingStoreSwap;
     bool m_hadFlushDeferredWhileWaitingForBackingStoreSwap;
@@ -154,6 +162,7 @@ private:
     HashSet<RemoteLayerTreeDisplayRefreshMonitor*>* m_displayRefreshMonitorsToNotify;
 
     uint64_t m_currentTransactionID;
+    Vector<RemoteLayerTreeTransaction::TransactionCallbackID> m_pendingCallbackIDs;
 };
 
 DRAWING_AREA_TYPE_CASTS(RemoteLayerTreeDrawingArea, type() == DrawingAreaTypeRemoteLayerTree);

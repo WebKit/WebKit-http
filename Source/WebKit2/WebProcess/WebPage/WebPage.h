@@ -144,8 +144,7 @@ class NotificationPermissionRequestManager;
 class PageBanner;
 class PageOverlay;
 class PluginView;
-class LegacySessionState;
-class SelectionOverlayController;
+class ServicesOverlayController;
 class VisibleContentRectUpdateInfo;
 class WebColorChooser;
 class WebContextMenu;
@@ -168,6 +167,7 @@ class WebVideoFullscreenManager;
 class WebWheelEvent;
 struct AssistedNodeInformation;
 struct AttributedString;
+struct BackForwardListItemState;
 struct EditingRange;
 struct EditorState;
 struct InteractionInformationAtPosition;
@@ -181,10 +181,6 @@ class RemoteLayerTreeTransaction;
 
 #if ENABLE(TOUCH_EVENTS)
 class WebTouchEvent;
-#endif
-
-#if ENABLE(TELEPHONE_NUMBER_DETECTION)
-class TelephoneNumberOverlayController;
 #endif
 
 class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender {
@@ -694,6 +690,9 @@ public:
     void didFinishPrintOperation(const WebCore::ResourceError&, uint64_t callbackID);
 #endif
 
+    void addResourceRequest(unsigned long, const WebCore::ResourceRequest&);
+    void removeResourceRequest(unsigned long);
+
     void setMediaVolume(float);
     void setMayStartMediaWhenInWindow(bool);
 
@@ -827,13 +826,10 @@ public:
     // Some platforms require accessibility-enabled processes to spin the run loop so that the WebProcess doesn't hang.
     // While this is not ideal, it does not have to be applied to every platform at the moment.
     static bool synchronousMessagesShouldSpinRunLoop();
-    
-#if ENABLE(TELEPHONE_NUMBER_DETECTION)
-    TelephoneNumberOverlayController& telephoneNumberOverlayController();
+
+#if ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION) 
+    ServicesOverlayController& servicesOverlayController();
     void handleTelephoneNumberClick(const String& number, const WebCore::IntPoint&);
-#endif
-#if ENABLE(SERVICE_CONTROLS)
-    SelectionOverlayController& selectionOverlayController();
     void handleSelectionServiceClick(WebCore::FrameSelection&, const WebCore::IntPoint&);
     bool serviceControlsEnabled() const { return m_serviceControlsEnabled; }
 #endif
@@ -930,9 +926,7 @@ private:
 
     void loadURLInFrame(const String&, uint64_t frameID);
 
-    uint64_t restoreSession(const LegacySessionState&);
-    void restoreSessionAndNavigateToCurrentItem(uint64_t navigationID, const LegacySessionState&);
-
+    void restoreSession(const Vector<BackForwardListItemState>&);
     void didRemoveBackForwardItem(uint64_t);
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -966,7 +960,7 @@ private:
     void platformPreferencesDidChange(const WebPreferencesStore&);
     void updatePreferences(const WebPreferencesStore&);
 
-    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t downloadID);
+    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, uint64_t downloadID);
     void setUserAgent(const String&);
     void setCustomTextEncodingName(const String&);
     void suspendActiveDOMObjectsAndAnimations();
@@ -1095,7 +1089,7 @@ private:
     RunLoop::Timer<WebPage> m_determinePrimarySnapshottedPlugInTimer;
 #endif
 
-#if ENABLE(SERVICE_CONTROLS)
+#if ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION)
     bool m_serviceControlsEnabled;
 #endif
 
@@ -1209,6 +1203,8 @@ private:
 
     unsigned m_cachedPageCount;
 
+    HashSet<unsigned long> m_networkResourceRequestIdentifiers;
+
     WebCore::IntSize m_minimumLayoutSize;
     bool m_autoSizingShouldExpandToViewHeight;
 
@@ -1271,11 +1267,8 @@ private:
     WebCore::WebGLLoadPolicy m_systemWebGLPolicy;
 #endif
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION)
-    RefPtr<TelephoneNumberOverlayController> m_telephoneNumberOverlayController;
-#endif
-#if ENABLE(SERVICE_CONTROLS)
-    RefPtr<SelectionOverlayController> m_selectionOverlayController;
+#if ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION)
+    std::unique_ptr<ServicesOverlayController> m_servicesOverlayController;
 #endif
 
     PageOverlayController m_pageOverlayController;

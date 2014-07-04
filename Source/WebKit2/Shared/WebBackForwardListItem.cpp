@@ -26,23 +26,20 @@
 #include "config.h"
 #include "WebBackForwardListItem.h"
 
-#include "DataReference.h"
-#include "WebCoreArgumentCoders.h"
-
 namespace WebKit {
 
 static uint64_t highestUsedItemID = 0;
 
-WebBackForwardListItem::WebBackForwardListItem(const String& originalURL, const String& url, const String& title, const uint8_t* backForwardData, size_t backForwardDataSize, uint64_t itemID)
-    : m_originalURL(originalURL)
-    , m_url(url)
-    , m_title(title)
-    , m_itemID(itemID)
+PassRefPtr<WebBackForwardListItem> WebBackForwardListItem::create(BackForwardListItemState backForwardListItemState)
 {
-    if (m_itemID > highestUsedItemID)
-        highestUsedItemID = m_itemID;
+    return adoptRef(new WebBackForwardListItem(WTF::move(backForwardListItemState)));
+}
 
-    setBackForwardData(backForwardData, backForwardDataSize);
+WebBackForwardListItem::WebBackForwardListItem(BackForwardListItemState backForwardListItemState)
+    : m_itemState(WTF::move(backForwardListItemState))
+{
+    if (m_itemState.identifier > highestUsedItemID)
+        highestUsedItemID = m_itemState.identifier;
 }
 
 WebBackForwardListItem::~WebBackForwardListItem()
@@ -52,47 +49,6 @@ WebBackForwardListItem::~WebBackForwardListItem()
 uint64_t WebBackForwardListItem::highedUsedItemID()
 {
     return highestUsedItemID;
-}
-
-void WebBackForwardListItem::setBackForwardData(const uint8_t* data, size_t size)
-{
-    m_backForwardData.clear();
-    m_backForwardData.reserveCapacity(size);
-    m_backForwardData.append(data, size);
-}
-
-void WebBackForwardListItem::encode(IPC::ArgumentEncoder& encoder) const
-{
-    encoder << m_originalURL;
-    encoder << m_url;
-    encoder << m_title;
-    encoder << m_itemID;
-    encoder << IPC::DataReference(m_backForwardData);
-}
-
-PassRefPtr<WebBackForwardListItem> WebBackForwardListItem::decode(IPC::ArgumentDecoder& decoder)
-{
-    String originalURL;
-    if (!decoder.decode(originalURL))
-        return 0;
-
-    String url;
-    if (!decoder.decode(url))
-        return 0;
-
-    String title;
-    if (!decoder.decode(title))
-        return 0;
-
-    uint64_t itemID;
-    if (!decoder.decode(itemID))
-        return 0;
-    
-    IPC::DataReference data;
-    if (!decoder.decode(data))
-        return 0;
-
-    return create(originalURL, url, title, data.data(), data.size(), itemID);
 }
 
 } // namespace WebKit

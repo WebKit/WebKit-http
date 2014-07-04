@@ -48,7 +48,7 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << pageLength;
     encoder << gapBetweenPages;
     encoder << userAgent;
-    encoder << sessionState;
+    encoder << itemStates;
     encoder << sessionID;
     encoder << highestUsedBackForwardItemID;
     encoder << userContentControllerID;
@@ -64,6 +64,7 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder.encodeEnum(scrollPinningBehavior);
     encoder << backgroundExtendsBeyondPage;
     encoder.encodeEnum(layerHostingMode);
+    encoder << mimeTypesWithCustomContentProviders;
 
 #if ENABLE(REMOTE_INSPECTOR)
     encoder << allowsRemoteInspection;
@@ -110,7 +111,7 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
         return false;
     if (!decoder.decode(parameters.userAgent))
         return false;
-    if (!decoder.decode(parameters.sessionState))
+    if (!decoder.decode(parameters.itemStates))
         return false;
     if (!decoder.decode(parameters.sessionID))
         return false;
@@ -141,6 +142,8 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
     if (!decoder.decode(parameters.backgroundExtendsBeyondPage))
         return false;
     if (!decoder.decodeEnum(parameters.layerHostingMode))
+        return false;
+    if (!decoder.decode(parameters.mimeTypesWithCustomContentProviders))
         return false;
 
 #if ENABLE(REMOTE_INSPECTOR)

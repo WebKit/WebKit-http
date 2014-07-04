@@ -58,6 +58,9 @@ void ScrollingTreeScrollingNode::updateBeforeChildren(const ScrollingStateNode& 
         m_totalContentsSize = state.totalContentsSize();
     }
 
+    if (state.hasChangedProperty(ScrollingStateScrollingNode::ReachableContentsSize))
+        m_reachableContentsSize = state.reachableContentsSize();
+
     if (state.hasChangedProperty(ScrollingStateScrollingNode::ScrollPosition))
         m_lastCommittedScrollPosition = state.scrollPosition();
 
@@ -73,6 +76,15 @@ void ScrollingTreeScrollingNode::updateAfterChildren(const ScrollingStateNode& s
     const ScrollingStateScrollingNode& scrollingStateNode = toScrollingStateScrollingNode(stateNode);
     if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::RequestedScrollPosition))
         scrollingTree().scrollingTreeNodeRequestsScroll(scrollingNodeID(), scrollingStateNode.requestedScrollPosition(), scrollingStateNode.requestedScrollPositionRepresentsProgrammaticScroll());
+}
+
+void ScrollingTreeScrollingNode::updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta)
+{
+    if (!m_children)
+        return;
+
+    for (auto& child : *m_children)
+        child->updateLayersAfterAncestorChange(changedNode, fixedPositionRect, cumulativeDelta);
 }
 
 void ScrollingTreeScrollingNode::setScrollPosition(const FloatPoint& scrollPosition)

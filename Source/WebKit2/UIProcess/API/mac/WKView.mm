@@ -241,6 +241,13 @@ struct WKViewInterpretKeyEventsParameters {
 
     RetainPtr<CALayer> _rootLayer;
 
+    BOOL _didScheduleSetTopContentInset;
+    CGFloat _topContentInset;
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    BOOL _automaticallyAdjustsContentInsets;
+#endif
+
 #if WK_API_ENABLED
     _WKThumbnailView *_thumbnailView;
 #endif
@@ -315,7 +322,7 @@ struct WKViewInterpretKeyEventsParameters {
 - (WKBrowsingContextController *)browsingContextController
 {
     if (!_data->_browsingContextController)
-        _data->_browsingContextController = [[WKBrowsingContextController alloc] _initWithPageRef:toAPI(_data->_page.get())];
+        _data->_browsingContextController = adoptNS([[WKBrowsingContextController alloc] _initWithPageRef:toAPI(_data->_page.get())]);
 
     return _data->_browsingContextController.get();
 }
@@ -480,6 +487,10 @@ struct WKViewInterpretKeyEventsParameters {
     // Update the view frame.
     if ([self window])
         [self _updateWindowAndViewFrames];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [self _updateContentInsetsIfAutomatic];
+#endif
 
     [super renewGState];
 }
@@ -2402,6 +2413,10 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     return NSMouseInRect(localPoint, visibleThumbRect, [self isFlipped]);
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+static void* keyValueObservingContext = &keyValueObservingContext;
+#endif
+
 - (void)addWindowObserversForWindow:(NSWindow *)window
 {
     if (window) {
@@ -2431,6 +2446,10 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeOcclusionState:)
                                                      name:NSWindowDidChangeOcclusionStateNotification object:window];
 #endif
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+        [window addObserver:self forKeyPath:@"contentLayoutRect" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
+        [window addObserver:self forKeyPath:@"titlebarAppearsTransparent" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
+#endif
     }
 }
 
@@ -2454,6 +2473,10 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
+#endif
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [window removeObserver:self forKeyPath:@"contentLayoutRect" context:keyValueObservingContext];
+    [window removeObserver:self forKeyPath:@"titlebarAppearsTransparent" context:keyValueObservingContext];
 #endif
 }
 
@@ -3473,7 +3496,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     _data = [[WKViewData alloc] init];
     _data->_pageClient = std::make_unique<PageClientImpl>(self, webView);
-    _data->_page = context.createWebPage(*_data->_pageClient, std::move(webPageConfiguration));
+    _data->_page = context.createWebPage(*_data->_pageClient, WTF::move(webPageConfiguration));
     _data->_page->setAddsVisitedLinks(context.historyClient().addsVisitedLinks());
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
@@ -3549,6 +3572,35 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_thumbnailView._thumbnailLayer = _data->_rootLayer.get();
 }
 #endif // WK_API_ENABLED
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (void)_updateContentInsetsIfAutomatic
+{
+    if (!self._automaticallyAdjustsContentInsets)
+        return;
+
+    if ((self.window.styleMask & NSFullSizeContentViewWindowMask) && !self.window.titlebarAppearsTransparent && ![self enclosingScrollView]) {
+        NSRect contentLayoutRect = [self convertRect:self.window.contentLayoutRect fromView:nil];
+        CGFloat newTopContentInset = NSMaxY(contentLayoutRect) - NSHeight(contentLayoutRect);
+        if (self._topContentInset != newTopContentInset)
+            self._topContentInset = newTopContentInset;
+    } else
+        self._topContentInset = 0;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    if (context == keyValueObservingContext) {
+        if ([keyPath isEqualToString:@"contentLayoutRect"] || [keyPath isEqualToString:@"titlebarAppearsTransparent"])
+            [self _updateContentInsetsIfAutomatic];
+        return;
+    }
+
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+}
+
+#endif
 
 @end
 
@@ -3835,12 +3887,23 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_setTopContentInset:(CGFloat)contentInset
 {
-    _data->_page->setTopContentInset(contentInset);
+    _data->_topContentInset = contentInset;
+
+    if (_data->_didScheduleSetTopContentInset)
+        return;
+
+    _data->_didScheduleSetTopContentInset = YES;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        _data->_didScheduleSetTopContentInset = NO;
+
+        _data->_page->setTopContentInset(_data->_topContentInset);
+    });
 }
 
 - (CGFloat)_topContentInset
 {
-    return _data->_page->topContentInset();
+    return _data->_topContentInset;
 }
 
 - (NSColor *)_pageExtendedBackgroundColor
@@ -3987,6 +4050,21 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     return handledEvent;
 }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (void)_setAutomaticallyAdjustsContentInsets:(BOOL)automaticallyAdjustsContentInsets
+{
+    _data->_automaticallyAdjustsContentInsets = automaticallyAdjustsContentInsets;
+    [self _updateContentInsetsIfAutomatic];
+}
+
+- (BOOL)_automaticallyAdjustsContentInsets
+{
+    return _data->_automaticallyAdjustsContentInsets;
+}
+
+#endif
 
 @end
 

@@ -35,6 +35,7 @@
 #import <WebCore/ScrollingTree.h>
 #import <UIKit/UIPanGestureRecognizer.h>
 #import <UIKit/UIScrollView.h>
+#import <wtf/TemporaryChange.h>
 
 using namespace WebCore;
 
@@ -98,6 +99,7 @@ PassRefPtr<ScrollingTreeOverflowScrollingNodeIOS> ScrollingTreeOverflowScrolling
 
 ScrollingTreeOverflowScrollingNodeIOS::ScrollingTreeOverflowScrollingNodeIOS(WebCore::ScrollingTree& scrollingTree, WebCore::ScrollingNodeID nodeID)
     : ScrollingTreeOverflowScrollingNode(scrollingTree, nodeID)
+    , m_updatingFromStateNode(false)
 {
 }
 
@@ -136,11 +138,15 @@ void ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren(const ScrollingS
 {
     ScrollingTreeOverflowScrollingNode::updateAfterChildren(stateNode);
 
+    TemporaryChange<bool> updatingChange(m_updatingFromStateNode, true);
+
     const auto& scrollingStateNode = toScrollingStateOverflowScrollingNode(stateNode);
 
     if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollLayer)
         || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::TotalContentsSize)
-        || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollPosition)) {
+        || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ReachableContentsSize)
+        || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollPosition)
+        || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollOrigin)) {
         BEGIN_BLOCK_OBJC_EXCEPTIONS
         UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate];
         ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
@@ -149,17 +155,48 @@ void ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren(const ScrollingS
             if (!m_scrollViewDelegate)
                 m_scrollViewDelegate = adoptNS([[WKOverflowScrollViewDelegate alloc] initWithScrollingTreeNode:this]);
 
+            scrollView.scrollsToTop = NO;
             scrollView.delegate = m_scrollViewDelegate.get();
         }
 
-        if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::TotalContentsSize))
-            scrollView.contentSize = scrollingStateNode.totalContentsSize();
+        bool recomputeInsets = scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::TotalContentsSize);
+        if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ReachableContentsSize)) {
+            scrollView.contentSize = scrollingStateNode.reachableContentsSize();
+            recomputeInsets = true;
+        }
 
-        if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollPosition) && ![m_scrollViewDelegate _isInUserInteraction])
-            scrollView.contentOffset = scrollingStateNode.scrollPosition();
+        if ((scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollPosition)
+            || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollOrigin))
+            && ![m_scrollViewDelegate _isInUserInteraction]) {
+            scrollView.contentOffset = scrollingStateNode.scrollPosition() + scrollOrigin();
+            recomputeInsets = true;
+        }
 
+        if (recomputeInsets) {
+            UIEdgeInsets insets = UIEdgeInsetsMake(0, 0, 0, 0);
+            // With RTL or bottom-to-top scrolling (non-zero origin), we need extra space on the left or top.
+            if (scrollOrigin().x())
+                insets.left = reachableContentsSize().width() - totalContentsSize().width();
+
+            if (scrollOrigin().y())
+                insets.top = reachableContentsSize().height() - totalContentsSize().height();
+
+            scrollView.contentInset = insets;
+        }
+            
         END_BLOCK_OBJC_EXCEPTIONS
     }
+}
+
+void ScrollingTreeOverflowScrollingNodeIOS::updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta)
+{
+    if (!m_children)
+        return;
+
+    FloatSize scrollDelta = lastCommittedScrollPosition() - scrollPosition();
+
+    for (auto& child : *m_children)
+        child->updateLayersAfterAncestorChange(changedNode, fixedPositionRect, cumulativeDelta + scrollDelta);
 }
 
 FloatPoint ScrollingTreeOverflowScrollingNodeIOS::scrollPosition() const
@@ -202,6 +239,9 @@ void ScrollingTreeOverflowScrollingNodeIOS::overflowScrollViewWillStartPanGestur
 
 void ScrollingTreeOverflowScrollingNodeIOS::scrollViewDidScroll(const FloatPoint& scrollPosition, bool inUserInteration)
 {
+    if (m_updatingFromStateNode)
+        return;
+
     scrollingTree().scrollPositionChangedViaDelegatedScrolling(scrollingNodeID(), scrollPosition, inUserInteration);
 }
 

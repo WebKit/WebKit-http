@@ -201,7 +201,6 @@ set(WebKit2_SOURCES
     Shared/FontInfo.cpp
     Shared/ImmutableDictionary.cpp
     Shared/LayerTreeContext.cpp
-    Shared/LegacySessionState.cpp
     Shared/MutableDictionary.cpp
     Shared/NavigationActionData.cpp
     Shared/OriginAndDatabases.cpp
@@ -301,6 +300,7 @@ set(WebKit2_SOURCES
     UIProcess/FrameLoadState.cpp
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp
     UIProcess/GeolocationPermissionRequestProxy.cpp
+    UIProcess/LegacySessionStateCodingNone.cpp
     UIProcess/PageLoadState.cpp
     UIProcess/ProcessAssertion.cpp
     UIProcess/ProcessThrottler.cpp
@@ -354,6 +354,8 @@ set(WebKit2_SOURCES
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
 
+    UIProcess/API/APISessionState.cpp
+
     UIProcess/API/C/WKApplicationCacheManager.cpp
     UIProcess/API/C/WKAuthenticationChallenge.cpp
     UIProcess/API/C/WKAuthenticationDecisionListener.cpp
@@ -392,6 +394,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKPreferences.cpp
     UIProcess/API/C/WKProtectionSpace.cpp
     UIProcess/API/C/WKResourceCacheManager.cpp
+    UIProcess/API/C/WKSessionStateRef.cpp
     UIProcess/API/C/WKTextChecker.cpp
     UIProcess/API/C/WKVibration.cpp
     UIProcess/API/C/WKViewportAttributes.cpp
@@ -522,6 +525,7 @@ set(WebKit2_SOURCES
 
     WebProcess/UserContent/WebUserContentController.cpp
 
+    WebProcess/WebCoreSupport/SessionStateConversion.cpp
     WebProcess/WebCoreSupport/WebBatteryClient.cpp
     WebProcess/WebCoreSupport/WebChromeClient.cpp
     WebProcess/WebCoreSupport/WebColorChooser.cpp
@@ -542,9 +546,7 @@ set(WebKit2_SOURCES
     WebProcess/WebCoreSupport/WebSearchPopupMenu.cpp
     WebProcess/WebCoreSupport/WebVibrationClient.cpp
 
-    WebProcess/WebPage/DecoderAdapter.cpp
     WebProcess/WebPage/DrawingArea.cpp
-    WebProcess/WebPage/EncoderAdapter.cpp
     WebProcess/WebPage/EventDispatcher.cpp
     WebProcess/WebPage/FindController.cpp
     WebProcess/WebPage/LayerTreeHost.cpp

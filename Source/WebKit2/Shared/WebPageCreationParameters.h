@@ -28,7 +28,7 @@
 
 #include "DrawingAreaInfo.h"
 #include "LayerTreeContext.h"
-#include "LegacySessionState.h"
+#include "SessionState.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebPageGroupData.h"
 #include "WebPreferencesStore.h"
@@ -81,7 +81,7 @@ struct WebPageCreationParameters {
 
     String userAgent;
 
-    LegacySessionState sessionState;
+    Vector<BackForwardListItemState> itemStates;
     WebCore::SessionID sessionID;
     uint64_t highestUsedBackForwardItemID;
 
@@ -105,6 +105,8 @@ struct WebPageCreationParameters {
     bool backgroundExtendsBeyondPage;
 
     LayerHostingMode layerHostingMode;
+
+    Vector<String> mimeTypesWithCustomContentProviders;
 
 #if ENABLE(REMOTE_INSPECTOR)
     bool allowsRemoteInspection;

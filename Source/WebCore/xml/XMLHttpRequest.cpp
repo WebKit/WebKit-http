@@ -242,7 +242,7 @@ Blob* XMLHttpRequest::responseBlob()
             Vector<char> data;
             data.append(m_binaryResponseBuilder->data(), m_binaryResponseBuilder->size());
             String normalizedContentType = Blob::normalizedContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
-            m_responseBlob = Blob::create(std::move(data), normalizedContentType);
+            m_responseBlob = Blob::create(WTF::move(data), normalizedContentType);
             m_binaryResponseBuilder.clear();
         } else {
             // If we errored out or got no data, we still return a blob, just an empty one.
@@ -394,7 +394,7 @@ bool XMLHttpRequest::isAllowedHTTPMethod(const String& method)
 
 String XMLHttpRequest::uppercaseKnownHTTPMethod(const String& method)
 {
-    const char* const methods[] = { "COPY", "DELETE", "GET", "HEAD", "INDEX", "LOCK", "M-POST", "MKCOL", "MOVE", "OPTIONS", "POST", "PROPFIND", "PROPPATCH", "PUT", "UNLOCK" };
+    const char* const methods[] = { "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT" };
     for (unsigned i = 0; i < WTF_ARRAY_LENGTH(methods); ++i) {
         if (equalIgnoringCase(method, methods[i])) {
             // Don't bother allocating a new string if it's already all uppercase.

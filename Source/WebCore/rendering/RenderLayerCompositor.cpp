@@ -45,7 +45,6 @@
 #include "MainFrame.h"
 #include "NodeList.h"
 #include "Page.h"
-#include "ProgressTracker.h"
 #include "RenderEmbeddedObject.h"
 #include "RenderFlowThread.h"
 #include "RenderFullScreen.h"
@@ -284,7 +283,7 @@ RenderLayerCompositor::RenderLayerCompositor(RenderView& renderView)
     , m_layersWithTiledBackingCount(0)
     , m_rootLayerAttachment(RootLayerUnattached)
     , m_layerFlushTimer(this, &RenderLayerCompositor::layerFlushTimerFired)
-    , m_layerFlushThrottlingEnabled(page() && page()->progress().isMainLoadProgressing())
+    , m_layerFlushThrottlingEnabled(false)
     , m_layerFlushThrottlingTemporarilyDisabledForInteraction(false)
     , m_hasPendingLayerFlush(false)
     , m_paintRelatedMilestonesTimer(this, &RenderLayerCompositor::paintRelatedMilestonesTimerFired)
@@ -461,7 +460,7 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
         rootLayer->flushCompositingState(visibleRect);
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
-        IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.contentsSize()) : frameView.visibleContentRect();
+        IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.unscaledTotalVisibleContentSize()) : frameView.visibleContentRect();
         if (!frameView.exposedRect().isInfinite())
             visibleRect.intersect(IntRect(frameView.exposedRect()));
         rootLayer->flushCompositingState(visibleRect);
@@ -508,7 +507,7 @@ static void updateScrollingLayerWithClient(RenderLayer& layer, ChromeClient* cli
     bool allowHorizontalScrollbar = !scrollbarHasDisplayNone(layer.horizontalScrollbar());
     bool allowVerticalScrollbar = !scrollbarHasDisplayNone(layer.verticalScrollbar());
     client->addOrUpdateScrollingLayer(layer.renderer().element(), backing->scrollingLayer()->platformLayer(), backing->scrollingContentsLayer()->platformLayer(),
-        IntSize(layer.scrollWidth(), layer.scrollHeight()), allowHorizontalScrollbar, allowVerticalScrollbar);
+        layer.scrollableContentsSize(), allowHorizontalScrollbar, allowVerticalScrollbar);
 }
 
 void RenderLayerCompositor::updateCustomLayersAfterFlush()
@@ -1819,20 +1818,16 @@ void RenderLayerCompositor::updateCompositingDescendantGeometry(RenderLayer& com
     }
 }
 
-void RenderLayerCompositor::repaintCompositedLayers(const IntRect* absRect)
+void RenderLayerCompositor::repaintCompositedLayers()
 {
-    recursiveRepaintLayer(rootRenderLayer(), absRect);
+    recursiveRepaintLayer(rootRenderLayer());
 }
 
-void RenderLayerCompositor::recursiveRepaintLayer(RenderLayer& layer, const IntRect* rect)
+void RenderLayerCompositor::recursiveRepaintLayer(RenderLayer& layer)
 {
     // FIXME: This method does not work correctly with transforms.
-    if (layer.isComposited() && !layer.backing()->paintsIntoCompositedAncestor()) {
-        if (rect)
-            layer.setBackingNeedsRepaintInRect(*rect);
-        else
-            layer.setBackingNeedsRepaint();
-    }
+    if (layer.isComposited() && !layer.backing()->paintsIntoCompositedAncestor())
+        layer.setBackingNeedsRepaint();
 
 #if !ASSERT_DISABLED
     LayerListMutationDetector mutationChecker(&layer);
@@ -1840,39 +1835,18 @@ void RenderLayerCompositor::recursiveRepaintLayer(RenderLayer& layer, const IntR
 
     if (layer.hasCompositingDescendant()) {
         if (Vector<RenderLayer*>* negZOrderList = layer.negZOrderList()) {
-            for (size_t i = 0, size = negZOrderList->size(); i < size; ++i) {
-                RenderLayer& childLayer = *negZOrderList->at(i);
-                if (rect) {
-                    IntRect childRect(*rect);
-                    childLayer.convertToPixelSnappedLayerCoords(&layer, childRect);
-                    recursiveRepaintLayer(childLayer, &childRect);
-                } else
-                    recursiveRepaintLayer(childLayer);
-            }
+            for (size_t i = 0, size = negZOrderList->size(); i < size; ++i)
+                recursiveRepaintLayer(*negZOrderList->at(i));
         }
 
         if (Vector<RenderLayer*>* posZOrderList = layer.posZOrderList()) {
-            for (size_t i = 0, size = posZOrderList->size(); i < size; ++i) {
-                RenderLayer& childLayer = *posZOrderList->at(i);
-                if (rect) {
-                    IntRect childRect(*rect);
-                    childLayer.convertToPixelSnappedLayerCoords(&layer, childRect);
-                    recursiveRepaintLayer(childLayer, &childRect);
-                } else
-                    recursiveRepaintLayer(childLayer);
-            }
+            for (size_t i = 0, size = posZOrderList->size(); i < size; ++i)
+                recursiveRepaintLayer(*posZOrderList->at(i));
         }
     }
     if (Vector<RenderLayer*>* normalFlowList = layer.normalFlowList()) {
-        for (size_t i = 0, size = normalFlowList->size(); i < size; ++i) {
-            RenderLayer& childLayer = *normalFlowList->at(i);
-            if (rect) {
-                IntRect childRect(*rect);
-                childLayer.convertToPixelSnappedLayerCoords(&layer, childRect);
-                recursiveRepaintLayer(childLayer, &childRect);
-            } else
-                recursiveRepaintLayer(childLayer);
-        }
+        for (size_t i = 0, size = normalFlowList->size(); i < size; ++i)
+            recursiveRepaintLayer(*normalFlowList->at(i));
     }
 }
 
@@ -3001,7 +2975,7 @@ GraphicsLayer* RenderLayerCompositor::updateLayerForHeader(bool wantsLayer)
 #ifndef NDEBUG
         m_layerForHeader->setName("header");
 #endif
-        m_scrollLayer->addChildBelow(m_layerForHeader.get(), m_rootContentLayer.get());
+        m_scrollLayer->addChildAbove(m_layerForHeader.get(), m_rootContentLayer.get());
         m_renderView.frameView().addPaintPendingMilestones(DidFirstFlushForHeaderLayer);
     }
 
@@ -3042,7 +3016,7 @@ GraphicsLayer* RenderLayerCompositor::updateLayerForFooter(bool wantsLayer)
 #ifndef NDEBUG
         m_layerForFooter->setName("footer");
 #endif
-        m_scrollLayer->addChildBelow(m_layerForFooter.get(), m_rootContentLayer.get());
+        m_scrollLayer->addChildAbove(m_layerForFooter.get(), m_rootContentLayer.get());
     }
 
     float totalContentHeight = m_rootContentLayer->size().height() + m_renderView.frameView().headerHeight() + m_renderView.frameView().footerHeight();
@@ -3739,7 +3713,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
         if (isRootLayer)
             updateScrollCoordinationForThisFrame(parentNodeID);
         else {
-            ScrollingNodeType nodeType = isRootLayer ? FrameScrollingNode : OverflowScrollingNode;
+            ScrollingNodeType nodeType = OverflowScrollingNode;
             ScrollingNodeID nodeID = attachScrollingNode(layer, nodeType, parentNodeID);
             if (!nodeID)
                 return;
@@ -3749,6 +3723,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
             scrollingGeometry.scrollPosition = layer.scrollPosition();
             scrollingGeometry.scrollableAreaSize = layer.visibleSize();
             scrollingGeometry.contentSize = layer.contentsSize();
+            scrollingGeometry.reachableContentSize = layer.scrollableContentsSize();
             scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), &scrollingGeometry);
         }
     }
@@ -3810,7 +3785,7 @@ void RenderLayerCompositor::registerAllViewportConstrainedLayers()
         else
             continue;
 
-        layerMap.add(layer.backing()->graphicsLayer()->platformLayer(), std::move(constraints));
+        layerMap.add(layer.backing()->graphicsLayer()->platformLayer(), WTF::move(constraints));
     }
     
     if (ChromeClient* client = this->chromeClient())
@@ -3858,13 +3833,10 @@ void RenderLayerCompositor::unregisterAllScrollingLayers()
 }
 #endif
 
-void RenderLayerCompositor::willRemoveScrollingLayer(RenderLayer& layer)
+void RenderLayerCompositor::willRemoveScrollingLayerWithBacking(RenderLayer& layer, RenderLayerBacking& backing)
 {
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
-        RenderLayerBacking* backing = layer.backing();
-    
-        if (backing)
-            backing->detachFromScrollingCoordinator();
+        backing.detachFromScrollingCoordinator();
 
         // For Coordinated Graphics.
         scrollingCoordinator->scrollableAreaScrollLayerDidChange(&layer);
@@ -3875,12 +3847,12 @@ void RenderLayerCompositor::willRemoveScrollingLayer(RenderLayer& layer)
     m_scrollingLayersNeedingUpdate.remove(&layer);
     m_scrollingLayers.remove(&layer);
 
-    if (m_renderView.document().inPageCache() || !layer.backing())
+    if (m_renderView.document().inPageCache())
         return;
 
     if (ChromeClient* client = this->chromeClient()) {
-        PlatformLayer* scrollingLayer = layer.backing()->scrollingLayer()->platformLayer();
-        PlatformLayer* contentsLayer = layer.backing()->scrollingContentsLayer()->platformLayer();
+        PlatformLayer* scrollingLayer = backing.scrollingLayer()->platformLayer();
+        PlatformLayer* contentsLayer = backing.scrollingContentsLayer()->platformLayer();
         client->removeScrollingLayer(layer.renderer().element(), scrollingLayer, contentsLayer);
     }
 #endif

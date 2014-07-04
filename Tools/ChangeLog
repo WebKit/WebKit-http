@@ -1,3 +1,480 @@
+2014-07-03  Daniel Bates  <dabates@apple.com>
+
+        Add WTF::move()
+        https://bugs.webkit.org/show_bug.cgi?id=134500
+
+        Rubber-stamped by Anders Carlsson.
+
+        Substitute WTF::move() for std::move().
+
+        * DumpRenderTree/win/DRTDataObject.cpp:
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+        * TestWebKitAPI/Tests/WTF/RefPtr.cpp:
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        * TestWebKitAPI/Tests/WTF/ns/RetainPtr.mm: Added FIXME comments that explain that some of the sub-tests
+        aren't actually testing move semantics in tests: MoveAssignmentFromSameType, MoveAssignmentFromSimilarType,
+        ConstructionFromSameType, and ConstructionFromSimilarType.
+        * TestWebKitAPI/Tests/WebCore/CalculationValue.cpp:
+
+2014-07-03  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        [JavaScriptCore] Add --cmakeargs option to build-jsc.
+        https://bugs.webkit.org/show_bug.cgi?id=134590
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/build-jsc:
+
+2014-07-03  Gergo Balogh  <gbalogh.u-szeged@partner.samsung.com>
+
+        Add option to specify jsc args in run-sunspider.
+        https://bugs.webkit.org/show_bug.cgi?id=134341
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-sunspider:
+
+2014-07-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed gardening.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Report and mark flaky test WebKit2Gtk/TestCookieManager:persistent-storage
+
+2014-07-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Clean up unused EFL buildbot information in BuildSlaveSupport and TestResultServer
+        https://bugs.webkit.org/show_bug.cgi?id=134581
+
+        Reviewed by Tim Horton.
+
+        Should be removed unused EFL bot info.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/config.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWS.js:
+        (EWS):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard_unittests.js:
+        (test):
+
+2014-07-02  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed.  Moved self to reviewers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+        Moved self to reviewers list, added WebGL to expertise.
+
+2014-07-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make dist only works when run from the source directory
+        https://bugs.webkit.org/show_bug.cgi?id=134543
+
+        Reviewed by Martin Robinson.
+
+        Since the paths in the manifest are relative to the source dir,
+        and the script expects the current working directory to be the
+        source directory, resolve all passed in relative paths while
+        parsing the arguments and then change the current working
+        directory.
+
+        * gtk/make-dist.py:
+
+2014-07-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] make dist is broken
+        https://bugs.webkit.org/show_bug.cgi?id=134542
+
+        Reviewed by Martin Robinson.
+
+        * gtk/make-dist.py: Rename command line options to match what cmake uses.
+        * gtk/manifest.txt: Remove WebKit1 references and add WebKitDOM documentation.
+
+2014-07-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebKitWebView::create should receive information about the navigation action
+        https://bugs.webkit.org/show_bug.cgi?id=133680
+
+        Reviewed by Martin Robinson.
+
+        Add unit test to check the WebKitNavigationAction passed to
+        WebKitWebView::create callback.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewCreate): Add WebKitNavigationAction parameter.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestMultiprocess.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestPrinting.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (testWebViewCreateNavigationData):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitPolicyClient.cpp:
+        (createCallback):
+
+2014-07-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not add forward declaration of class struct for interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=134297
+
+        Reviewed by Martin Robinson.
+
+        Add Iface symbol to documentation instead of Class for interfaces.
+
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGeneratorSections.write_section):
+
+2014-07-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] XPathNSResolver should be exposed as an interface instead of as a class
+        https://bugs.webkit.org/show_bug.cgi?id=134028
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add unit tests to check WebKitDOMXPathNSResolver API when using the
+        native one and a user provided one.
+
+        * Scripts/webkitpy/style/checker.py: Add WebKitDOMXPathNSResolver
+        to the list of GTK+ public API exceptions.
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt: Add new files to compilation.
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMXPathNSResolverTest.cpp: Added.
+        (webkitXPathNSResolverLookupNamespaceURI):
+        (webkitXPathNSResolverDOMXPathNSResolverIfaceInit):
+        (webkit_xpath_ns_resolver_init):
+        (webkit_xpath_ns_resolver_class_init):
+        (WebKitDOMXPathNSResolverTest::create):
+        (WebKitDOMXPathNSResolverTest::webPageFromArgs):
+        (WebKitDOMXPathNSResolverTest::evaluateFooChildTextAndCheckResult):
+        (WebKitDOMXPathNSResolverTest::testXPathNSResolverNative):
+        (WebKitDOMXPathNSResolverTest::testXPathNSResolverCustom):
+        (WebKitDOMXPathNSResolverTest::runTest):
+        (registerTests):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDOMXPathNSResolver.cpp: Added.
+        (runTest):
+        (testWebKitDOMXPathNSResolverNative):
+        (testWebKitDOMXPathNSResolverCustom):
+        (serverCallback):
+        (beforeAll):
+        (afterAll):
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGeneratorSections.write_section): Add
+        WebKitDOMXPathNSResolver to the list of interfaces.
+
+2014-07-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Fix build break on EFL and GTK ports since r170683
+        https://bugs.webkit.org/show_bug.cgi?id=134536
+
+        Unreviewed, build fix.
+
+        * TestWebKitAPI/Tests/WebKit2/RestoreSessionStateContainingFormData.cpp:
+
+2014-07-01  Sam Weinig  <sam@webkit.org>
+
+        [Cocoa][Mac] WKWebView should automatically set topContentInset when beneath a toolbar
+        <rdar://problem/17523159>
+        https://bugs.webkit.org/show_bug.cgi?id=134496
+
+        Reviewed by Beth Dakin.
+
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController windowDidLoad]):
+        Use the NSFullSizeContentViewWindowMask bit on Yosemite and later to enable toolbar blurring.
+
+2014-07-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Add necessary support for building for the Wayland target
+        https://bugs.webkit.org/show_bug.cgi?id=134160
+
+        Reviewed by Darin Adler.
+
+        * CMakeLists.txt: Only build the TestNetscapePlugIn target in case
+        the X11 windowing target is enabled.
+
+2014-07-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: HTML indeterminate IDL attribute not mapped to checkbox value=2
+        https://bugs.webkit.org/show_bug.cgi?id=134492
+
+        Reviewed by Andreas Kling.
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::isIndeterminate):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::isIndeterminate):
+
+2014-07-01  Daniel Bates  <dabates@apple.com>
+
+        Remove unnecessary calls to std::move()
+        https://bugs.webkit.org/show_bug.cgi?id=134493
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/ns/RetainPtr.mm:
+        (TestWebKitAPI::TEST):
+
+2014-07-01  Pratik Solanki  <psolanki@apple.com>
+
+        Unreviewed. Adding myself to the reviewers list to make commit bot happy.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-07-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        webkit-patch apply-from-bug / apply-attachment should not ask for credentials if none are required
+        https://bugs.webkit.org/show_bug.cgi?id=40095
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.fetch_attachment_contents): make a first fetch on bugzilla without authentication. If failing, use authentication (similar to fetch_bug_dictionary).
+        (Bugzilla):
+        (Bugzilla.bug_id_for_attachment_id): ditto.
+
+2014-07-01  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [webkitpy] Refactor pluralizer in grammar.py
+        https://bugs.webkit.org/show_bug.cgi?id=133067
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.run_tests):
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.run):
+        * Scripts/webkitpy/layout_tests/views/printing.py:
+        (Printer.print_found):
+        (Printer.print_workers_and_shards):
+        (Printer._print_one_line_summary):
+        * Scripts/webkitpy/test/printer.py:
+        (Printer.print_result):
+        * Scripts/webkitpy/tool/bot/feeders.py:
+        (EWSFeeder.feed):
+        * Scripts/webkitpy/tool/bot/flakytestreporter.py:
+        (FlakyTestReporter._lookup_bug_for_flaky_test):
+        * Scripts/webkitpy/tool/bot/irc_command.py:
+        (Rollout._check_diff_failure):
+        * Scripts/webkitpy/tool/bot/irc_command_unittest.py:
+        (IRCCommandTest.test_rollout):
+        * Scripts/webkitpy/tool/commands/download.py:
+        (AbstractPatchProcessingCommand._process_patch.execute):
+        (ProcessBugsMixin._fetch_list_of_patches_to_process):
+        (ProcessURLsMixin._fetch_list_of_patches_to_process):
+        * Scripts/webkitpy/tool/commands/queries.py:
+        (WhatBroke.execute):
+        * Scripts/webkitpy/tool/commands/suggestnominations.py:
+        (SuggestNominations._print_nominations):
+        (SuggestNominations._print_counts):
+        * Scripts/webkitpy/tool/commands/suggestnominations_unittest.py:
+        (_make_options):
+        (test_basic):
+        (test_with_verbose):
+        * Scripts/webkitpy/tool/commands/upload.py:
+        (PostCommits.execute):
+        * Scripts/webkitpy/tool/grammar.py:
+        (pluralize):
+        * Scripts/webkitpy/tool/grammar_unittest.py:
+        (GrammarTest.test_join_with_separators):
+        (GrammarTest):
+        (GrammarTest.test_plural):
+        (GrammarTest.test_pluralize):
+        * Scripts/webkitpy/tool/multicommandtool.py:
+        (Command.check_arguments_and_execute):
+        * Scripts/webkitpy/tool/steps/obsoletepatches.py:
+        (ObsoletePatches.run):
+        * Scripts/webkitpy/tool/steps/preparechangelogforrevert.py:
+        (PrepareChangeLogForRevert._message_for_revert):
+
+2014-06-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] GSFontAddCGFont is deprecated and we use it in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=134133
+
+        Reviewed by Simon Fraser.
+
+        Replace it with CTFontManagerRegisterGraphicsFont
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (activateFontIOS):
+
+2014-06-30  Michael Saboff  <msaboff@apple.com>
+
+        Add option to run-jsc-stress-testes to filter out tests that use large heaps
+        https://bugs.webkit.org/show_bug.cgi?id=134458
+
+        Reviewed by Filip Pizlo.
+
+        Added new --memory-limited to filter out tests that have large heap usage.
+        Such tests are either tagged with //@largeHeap or logic is added to their .yaml file.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-06-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        DRT in iOS sim crashes while loading fonts
+        https://bugs.webkit.org/show_bug.cgi?id=134451
+
+        Reviewed by Geoffrey Garen.
+
+        The magic linker symbols had the same name, and were therefore being unified
+        to a single font file. Then, adding the same file twice was failing.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (activateFontsIOS):
+
+2014-06-30  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove Qt cruft from webkitpy
+        https://bugs.webkit.org/show_bug.cgi?id=134445
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.port):
+        (QtPort): Deleted.
+        (QtPort.build_webkit_command): Deleted.
+        (QtPort.run_webkit_tests_command): Deleted.
+        (QtWK2Port): Deleted.
+        (QtWK2Port.build_webkit_command): Deleted.
+        (QtWK2Port.run_webkit_tests_command): Deleted.
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        (DeprecatedPortTest): Deleted.
+        (DeprecatedPortTest.test_qt_port): Deleted.
+        (DeprecatedPortTest.test_qt_wk2_port): Deleted.
+
+2014-06-29  Yoav Weiss  <yoav@yoav.ws>
+
+        Add support for HTMLImageElement's sizes attribute
+        https://bugs.webkit.org/show_bug.cgi?id=133620
+
+        Reviewed by Dean Jackson.
+
+        Added an ENABLE_PICTURE_SIZES compile flag.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-06-27  Tim Horton  <timothy_horton@apple.com>
+
+        check-webkit-style should check the order of #imports as well as #includes
+        https://bugs.webkit.org/show_bug.cgi?id=134428
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        Allow "import" in addition to "include", so that the sort order of headers in ObjC files is checked.
+
+2014-06-27  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Remove efl-wk2 from baseline search path
+        https://bugs.webkit.org/show_bug.cgi?id=134391
+
+        Reviewed by Gyuyoung Kim.
+
+        As WebKit1 EFL is removed and platform/efl and platform/efl-wk2 baselines and test expectations files
+        are merged efl-wk2 search path should be removed.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.test_expectations_file_postion): Added method to determine port test expectations file position in expectations_dict.
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort._search_paths): Changed baseline search paths from efl-wk2 -> wk2 -> efl -> generic is changed to: efl -> wk2 -> generic.
+        (EflPort.test_expectations_file_postion): Added method to determine EFL port specific test expectation file position.
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase.test_expectations_ordering): Changed constant value to one returned from test_expectations_file_postion().
+        * Scripts/webkitpy/style/checkers/test_expectations_unittest.py:
+        (TestExpectationsTestCase.test_determine_port_from_expectations_path): Removed efl-wk2 test case.
+        * Scripts/webkitpy/tool/commands/rebaseline_unittest.py:
+        (TestRebaselineTest.test_baseline_directory): Changed directory name in assertion from platform/efl-wk2 to platform/efl.
+
+2014-06-26  Dan Bernstein  <mitz@apple.com>
+
+        prepare-ChangeLog outputs (NS_ENUM): entries for Cocoa enums
+        https://bugs.webkit.org/show_bug.cgi?id=134387
+
+        Reviewed by Tim Horton.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp): Don’t consider {CF,NS}_{ENUM,OPTIONS} as function names.
+
+2014-06-26  Dan Bernstein  <mitz@apple.com>
+
+        prepare-ChangeLog mangles Objective-C selectors for methods with parameter types that contain colons
+        https://bugs.webkit.org/show_bug.cgi?id=134383
+
+        Reviewed by Tim Horton.
+
+        * Scripts/prepare-ChangeLog:
+        (method_decl_to_selector): Strip out the return type and parameter types before splitting at
+        colons.
+
+2014-06-26  Brady Eidson  <beidson@apple.com>
+
+        MiniBrowser should support a preference to override the default URL
+        https://bugs.webkit.org/show_bug.cgi?id=134373
+
+        Reviewed by Darin Adler.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate applicationDidFinishLaunching:]): See if there’s a pref
+          overriding the default URL, and use it if there is.
+
+2014-06-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Fix potential buffer overrun in DLLLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=134351
+        <rdar://problem/17469185>
+
+        Reviewed by Darin Adler.
+
+        * win/DLLLauncher/DLLLauncherMain.cpp: Correct error
+        in end-of-buffer calculation.
+
+2014-06-26  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        [EFL] Missing dependency between freetype6 and fontconfig libs.
+        https://bugs.webkit.org/show_bug.cgi?id=134190
+
+        Reviewed by Gyuyoung Kim.
+
+        The external dependencies contain the freetype6 and the fontconfig libs.
+        The fontconfig lib requires freetype, but the dependency is not set in
+        the efl/jhbuild.modules file. So, during building the external libs,
+        fontconfig uses the freetype package of the system, while WebKit
+        binaries will use freetype from the WebKitBuild/Dependency directory.
+        There are more similar dependencies that were not indicated in the
+        jhbuild.modules file.
+
+        * efl/jhbuild.modules:
+          Added dependencies between libs.
+
+2014-06-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Expose Cache Information to WinLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=134318
+
+        Reviewed by Dean Jackson.
+
+        * WinLauncher/Common.cpp: Update for new dialog.
+        * WinLauncher/WinLauncher.cpp: Add support for WebCache
+        and WebCoreStatistics.
+        * WinLauncher/WinLauncher.h:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.rc:
+        Update for new Cache Dialog.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibCommon.props: Link to
+        WTF.lib
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibResource.h: Update
+        for new Dialog.
+
+2014-06-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening. Use consistent line-endings in file.
+
+        * WinLauncher/WinLauncher.h: Use '\n' EOL marker, not DOS-style
+        '\r\n' EOL.
+
 2014-06-25  László Langó  <llango.u-szeged@partner.samsung.com>
 
         [JavaScriptCore] Make build-jsc output format better.

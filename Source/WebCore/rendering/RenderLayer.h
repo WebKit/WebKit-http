@@ -344,7 +344,7 @@ public:
     String name() const;
 
     RenderLayerModelObject& renderer() const { return m_renderer; }
-    RenderBox* renderBox() const { return renderer().isBox() ? &toRenderBox(renderer()) : 0; }
+    RenderBox* renderBox() const { return renderer().isBox() ? &toRenderBox(renderer()) : nullptr; }
     RenderLayer* parent() const { return m_parent; }
     RenderLayer* previousSibling() const { return m_previous; }
     RenderLayer* nextSibling() const { return m_next; }
@@ -420,6 +420,7 @@ public:
     int scrollXOffset() const { return m_scrollOffset.width() + scrollOrigin().x(); }
     int scrollYOffset() const { return m_scrollOffset.height() + scrollOrigin().y(); }
     IntSize scrollOffset() const { return IntSize(scrollXOffset(), scrollYOffset()); }
+    IntSize scrollableContentsSize() const;
 
     void scrollRectToVisible(const LayoutRect&, const ScrollAlignment& alignX, const ScrollAlignment& alignY);
 
@@ -645,10 +646,7 @@ public:
     // FIXME: adjustForColumns allows us to position compositing layers in columns correctly, but eventually they need to be split across columns too.
     enum ColumnOffsetAdjustment { DontAdjustForColumns, AdjustForColumns };
     void convertToPixelSnappedLayerCoords(const RenderLayer* ancestorLayer, IntPoint& location, ColumnOffsetAdjustment adjustForColumns = DontAdjustForColumns) const;
-    void convertToPixelSnappedLayerCoords(const RenderLayer* ancestorLayer, IntRect&, ColumnOffsetAdjustment adjustForColumns = DontAdjustForColumns) const;
     LayoutPoint convertToLayerCoords(const RenderLayer* ancestorLayer, const LayoutPoint&, ColumnOffsetAdjustment adjustForColumns = DontAdjustForColumns) const;
-    LayoutRect convertToLayerCoords(const RenderLayer* ancestorLayer, const LayoutRect&, ColumnOffsetAdjustment adjustForColumns = DontAdjustForColumns) const;
-
     LayoutSize offsetFromAncestor(const RenderLayer*) const;
 
     int zIndex() const { return renderer().style().zIndex(); }
@@ -890,6 +888,25 @@ public:
 private:
     enum CollectLayersBehavior { StopAtStackingContexts, StopAtStackingContainers };
 
+    struct LayerPaintingInfo {
+        LayerPaintingInfo(RenderLayer* inRootLayer, const LayoutRect& inDirtyRect, PaintBehavior inPaintBehavior, const LayoutSize& inSubPixelAccumulation, RenderObject* inSubtreePaintRoot = nullptr, OverlapTestRequestMap* inOverlapTestRequests = nullptr)
+            : rootLayer(inRootLayer)
+            , subtreePaintRoot(inSubtreePaintRoot)
+            , paintDirtyRect(inDirtyRect)
+            , subPixelAccumulation(inSubPixelAccumulation)
+            , overlapTestRequests(inOverlapTestRequests)
+            , paintBehavior(inPaintBehavior)
+            , clipToDirtyRect(true)
+        { }
+        RenderLayer* rootLayer;
+        RenderObject* subtreePaintRoot; // only paint descendants of this object
+        LayoutRect paintDirtyRect; // relative to rootLayer;
+        LayoutSize subPixelAccumulation;
+        OverlapTestRequestMap* overlapTestRequests; // May be null.
+        PaintBehavior paintBehavior;
+        bool clipToDirtyRect;
+    };
+
     void updateZOrderLists();
     void rebuildZOrderLists();
     void rebuildZOrderLists(CollectLayersBehavior, std::unique_ptr<Vector<RenderLayer*>>&, std::unique_ptr<Vector<RenderLayer*>>&);
@@ -914,8 +931,7 @@ private:
     void computeRepaintRectsIncludingDescendants();
     void clearRepaintRects();
 
-    void clipToRect(RenderLayer* rootLayer, GraphicsContext*, const LayoutRect& paintDirtyRect, const ClipRect&,
-                    BorderRadiusClippingRule = IncludeSelfForBorderRadius);
+    void clipToRect(const LayerPaintingInfo&, GraphicsContext*, const ClipRect&, BorderRadiusClippingRule = IncludeSelfForBorderRadius);
     void restoreClip(GraphicsContext*, const LayoutRect& paintDirtyRect, const ClipRect&);
 
     bool shouldRepaintAfterLayout() const;
@@ -965,25 +981,6 @@ private:
     void collectLayers(bool includeHiddenLayers, CollectLayersBehavior, std::unique_ptr<Vector<RenderLayer*>>&, std::unique_ptr<Vector<RenderLayer*>>&);
 
     void updateCompositingAndLayerListsIfNeeded();
-
-    struct LayerPaintingInfo {
-        LayerPaintingInfo(RenderLayer* inRootLayer, const LayoutRect& inDirtyRect, PaintBehavior inPaintBehavior, const LayoutSize& inSubPixelAccumulation, RenderObject* inSubtreePaintRoot = nullptr, OverlapTestRequestMap* inOverlapTestRequests = nullptr)
-            : rootLayer(inRootLayer)
-            , subtreePaintRoot(inSubtreePaintRoot)
-            , paintDirtyRect(inDirtyRect)
-            , subPixelAccumulation(inSubPixelAccumulation)
-            , overlapTestRequests(inOverlapTestRequests)
-            , paintBehavior(inPaintBehavior)
-            , clipToDirtyRect(true)
-        { }
-        RenderLayer* rootLayer;
-        RenderObject* subtreePaintRoot; // only paint descendants of this object
-        LayoutRect paintDirtyRect; // relative to rootLayer;
-        LayoutSize subPixelAccumulation;
-        OverlapTestRequestMap* overlapTestRequests; // May be null.
-        PaintBehavior paintBehavior;
-        bool clipToDirtyRect;
-    };
 
     bool setupFontSubpixelQuantization(GraphicsContext*, bool& didQuantizeFonts);
     bool setupClipPath(GraphicsContext*, const LayerPaintingInfo&, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed);
@@ -1077,7 +1074,7 @@ private:
     virtual IntPoint minimumScrollPosition() const override;
     virtual IntPoint maximumScrollPosition() const override;
     virtual IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const override;
-    virtual IntSize visibleSize() const override { return m_layerSize; }
+    virtual IntSize visibleSize() const override;
     virtual IntSize contentsSize() const override;
     virtual IntSize overhangAmount() const override;
     virtual IntPoint lastKnownMousePosition() const override;

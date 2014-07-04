@@ -374,7 +374,7 @@ WebHistoryItem *kit(HistoryItem* item)
         auto redirectURLsVector = std::make_unique<Vector<String>>(size);
         for (NSUInteger i = 0; i < size; ++i)
             (*redirectURLsVector)[i] = String([redirectURLs _webkit_stringAtIndex:i]);
-        core(_private)->setRedirectURLs(std::move(redirectURLsVector));
+        core(_private)->setRedirectURLs(WTF::move(redirectURLsVector));
     }
 
     NSArray *childDicts = [dict objectForKey:childrenKey];
@@ -545,11 +545,6 @@ WebHistoryItem *kit(HistoryItem* item)
         [result addObject:kit(children[i].get())];
     
     return result;
-}
-
-- (void)setAlwaysAttemptToUsePageCache:(BOOL)flag
-{
-    // Safari 2.0 uses this for SnapBack, so we stub it out to avoid a crash.
 }
 
 - (NSURL *)URL

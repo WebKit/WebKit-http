@@ -60,6 +60,8 @@ RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy(WebPageProxy* w
 
     m_webPageProxy->process().addMessageReceiver(Messages::RemoteLayerTreeDrawingAreaProxy::messageReceiverName(), m_webPageProxy->pageID(), *this);
 
+    setShouldShowDebugIndicator(m_webPageProxy->preferences().tiledScrollingIndicatorVisible());
+
     m_layerCommitObserver = RunLoopObserver::create(didCommitLayersRunLoopOrder, [this]() {
         this->coreAnimationDidCommitLayers();
     });
@@ -67,6 +69,7 @@ RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy(WebPageProxy* w
 
 RemoteLayerTreeDrawingAreaProxy::~RemoteLayerTreeDrawingAreaProxy()
 {
+    m_callbacks.invalidate(CallbackBase::Error::OwnerWasInvalidated);
     m_webPageProxy->process().removeMessageReceiver(Messages::RemoteLayerTreeDrawingAreaProxy::messageReceiverName(), m_webPageProxy->pageID());
 }
 
@@ -131,6 +134,11 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
     ASSERT(layerTreeTransaction.transactionID() == m_lastVisibleTransactionID + 1);
     m_transactionIDForPendingCACommit = layerTreeTransaction.transactionID();
 
+    for (auto& callbackID : layerTreeTransaction.callbackIDs()) {
+        if (auto callback = m_callbacks.take<VoidCallback>(callbackID))
+            callback->performCallback();
+    }
+
     if (m_remoteLayerTreeHost.updateLayerTree(layerTreeTransaction))
         m_webPageProxy->setAcceleratedCompositingRootLayer(m_remoteLayerTreeHost.rootLayer());
 
@@ -150,8 +158,6 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
     }
 #endif
 #endif // ENABLE(ASYNC_SCROLLING)
-
-    showDebugIndicator(m_webPageProxy->preferences().tiledScrollingIndicatorVisible());
 
     if (m_debugIndicatorLayerTreeHost) {
         float scale = indicatorScale(layerTreeTransaction.contentsSize());
@@ -260,7 +266,7 @@ void RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator(IntSize contentsSize,
     }
 }
 
-void RemoteLayerTreeDrawingAreaProxy::showDebugIndicator(bool show)
+void RemoteLayerTreeDrawingAreaProxy::setShouldShowDebugIndicator(bool show)
 {
     if (show == !!m_debugIndicatorLayerTreeHost)
         return;
@@ -331,6 +337,18 @@ void RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateViewState()
     auto viewStateUpdateTimeout = std::chrono::milliseconds(250);
 #endif
     m_webPageProxy->process().connection()->waitForAndDispatchImmediately<Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree>(m_webPageProxy->pageID(), viewStateUpdateTimeout, InterruptWaitingIfSyncMessageArrives);
+}
+
+void RemoteLayerTreeDrawingAreaProxy::dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)> callbackFunction)
+{
+    RefPtr<VoidCallback> callback = VoidCallback::create(callbackFunction);
+
+    if (!m_webPageProxy->isValid()) {
+        callbackFunction(CallbackBase::Error::OwnerWasInvalidated);
+        return;
+    }
+
+    m_webPageProxy->process().send(Messages::DrawingArea::AddTransactionCallbackID(m_callbacks.put(WTF::move(callbackFunction), nullptr)), m_webPageProxy->pageID());
 }
 
 } // namespace WebKit

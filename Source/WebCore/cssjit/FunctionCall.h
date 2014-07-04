@@ -37,7 +37,7 @@ namespace WebCore {
 
 class FunctionCall {
 public:
-    FunctionCall(JSC::MacroAssembler& assembler, RegisterAllocator& registerAllocator, StackAllocator& stackAllocator, Vector<std::pair<JSC::MacroAssembler::Call, JSC::FunctionPtr>>& callRegistry)
+    FunctionCall(JSC::MacroAssembler& assembler, RegisterAllocator& registerAllocator, StackAllocator& stackAllocator, Vector<std::pair<JSC::MacroAssembler::Call, JSC::FunctionPtr>, 32>& callRegistry)
         : m_assembler(assembler)
         , m_registerAllocator(registerAllocator)
         , m_stackAllocator(stackAllocator)
@@ -113,7 +113,7 @@ private:
         ASSERT(m_functionAddress.executableAddress());
         ASSERT(!m_firstArgument || (m_firstArgument && !m_secondArgument) || (m_firstArgument && m_secondArgument));
 
-        saveAllocatedRegisters();
+        saveAllocatedCallerSavedRegisters();
         m_stackAllocator.alignStackPreFunctionCall();
 
         if (m_argumentCount == 2) {
@@ -155,30 +155,35 @@ private:
     void cleanupPostCall()
     {
         m_stackAllocator.unalignStackPostFunctionCall();
-        restoreAllocatedRegisters();
+        restoreAllocatedCallerSavedRegisters();
     }
 
-    void saveAllocatedRegisters()
+    void saveAllocatedCallerSavedRegisters()
     {
         ASSERT(m_savedRegisterStackReferences.isEmpty());
-        const Vector<JSC::MacroAssembler::RegisterID, registerCount>& allocatedRegisters = m_registerAllocator.allocatedRegisters();
-        Vector<StackAllocator::StackReference> stackReferences = m_stackAllocator.push(allocatedRegisters);
-        m_savedRegisterStackReferences.appendVector(stackReferences);
+        ASSERT(m_savedRegisters.isEmpty());
+        const RegisterVector& allocatedRegisters = m_registerAllocator.allocatedRegisters();
+        for (auto registerID : allocatedRegisters) {
+            if (RegisterAllocator::isCallerSavedRegister(registerID))
+                m_savedRegisters.append(registerID);
+        }
+        m_savedRegisterStackReferences = m_stackAllocator.push(m_savedRegisters);
     }
 
-    void restoreAllocatedRegisters()
+    void restoreAllocatedCallerSavedRegisters()
     {
-        m_stackAllocator.pop(m_savedRegisterStackReferences, m_registerAllocator.allocatedRegisters());
+        m_stackAllocator.pop(m_savedRegisterStackReferences, m_savedRegisters);
         m_savedRegisterStackReferences.clear();
     }
 
     JSC::MacroAssembler& m_assembler;
     RegisterAllocator& m_registerAllocator;
     StackAllocator& m_stackAllocator;
-    Vector<std::pair<JSC::MacroAssembler::Call, JSC::FunctionPtr>>& m_callRegistry;
+    Vector<std::pair<JSC::MacroAssembler::Call, JSC::FunctionPtr>, 32>& m_callRegistry;
 
-    Vector<StackAllocator::StackReference> m_savedRegisterStackReferences;
-
+    RegisterVector m_savedRegisters;
+    StackAllocator::StackReferenceVector m_savedRegisterStackReferences;
+    
     JSC::FunctionPtr m_functionAddress;
     unsigned m_argumentCount;
     JSC::MacroAssembler::RegisterID m_firstArgument;

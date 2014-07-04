@@ -32,8 +32,10 @@
 #include "APIFindClient.h"
 #include "APILoaderClient.h"
 #include "APIPolicyClient.h"
+#include "APISessionState.h"
 #include "APIUIClient.h"
 #include "ImmutableDictionary.h"
+#include "LegacySessionStateCoding.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebWheelEvent.h"
 #include "NavigationActionData.h"
@@ -349,14 +351,45 @@ WKStringRef WKPageGetSessionBackForwardListItemValueType()
     return toAPI(sessionBackForwardListValueType);
 }
 
-WKDataRef WKPageCopySessionState(WKPageRef pageRef, void *context, WKPageSessionStateFilterCallback filter)
+WKTypeRef WKPageCopySessionState(WKPageRef pageRef, void* context, WKPageSessionStateFilterCallback filter)
 {
-    return toAPI(toImpl(pageRef)->sessionStateData(filter, context).leakRef());
+    // FIXME: This is a hack to make sure we return a WKDataRef to maintain compatibility with older versions of Safari.
+    bool shouldReturnData = !(reinterpret_cast<uintptr_t>(context) & 1);
+    context = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(context) & ~1);
+
+    auto sessionState = toImpl(pageRef)->sessionState([pageRef, context, filter](WebBackForwardListItem& item) {
+        if (filter) {
+            if (!filter(pageRef, WKPageGetSessionBackForwardListItemValueType(), toAPI(&item), context))
+                return false;
+
+            if (!filter(pageRef, WKPageGetSessionHistoryURLValueType(), toURLRef(item.originalURL().impl()), context))
+                return false;
+        }
+
+        return true;
+    });
+
+    if (shouldReturnData)
+        return toAPI(encodeLegacySessionState(sessionState).release().leakRef());
+
+    return toAPI(API::SessionState::create(WTF::move(sessionState)).leakRef());
 }
 
-void WKPageRestoreFromSessionState(WKPageRef pageRef, WKDataRef sessionStateData)
+void WKPageRestoreFromSessionState(WKPageRef pageRef, WKTypeRef sessionStateRef)
 {
-    toImpl(pageRef)->restoreFromSessionStateData(toImpl(sessionStateData));
+    SessionState sessionState;
+
+    // FIXME: This is for backwards compatibility with Safari. Remove it once Safari no longer depends on it.
+    if (toImpl(sessionStateRef)->type() == API::Object::Type::Data) {
+        if (!decodeLegacySessionState(toImpl(static_cast<WKDataRef>(sessionStateRef))->bytes(), toImpl(static_cast<WKDataRef>(sessionStateRef))->size(), sessionState))
+            return;
+    } else {
+        ASSERT(toImpl(sessionStateRef)->type() == API::Object::Type::SessionState);
+
+        sessionState = toImpl(static_cast<WKSessionStateRef>(sessionStateRef))->sessionState();
+    }
+
+    toImpl(pageRef)->restoreFromSessionState(WTF::move(sessionState));
 }
 
 double WKPageGetTextZoomFactor(WKPageRef pageRef)
@@ -956,9 +989,9 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
                 Vector<RefPtr<API::Object>> removedItemsVector;
                 removedItemsVector.reserveInitialCapacity(removedItems.size());
                 for (auto& removedItem : removedItems)
-                    removedItemsVector.append(std::move(removedItem));
+                    removedItemsVector.append(WTF::move(removedItem));
 
-                removedItemsArray = API::Array::create(std::move(removedItemsVector));
+                removedItemsArray = API::Array::create(WTF::move(removedItemsVector));
             }
 
             m_client.didChangeBackForwardList(toAPI(page), toAPI(addedItem), toAPI(removedItemsArray.get()), m_client.base.clientInfo);
@@ -1064,7 +1097,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
     if (milestones)
         webPageProxy->process().send(Messages::WebPage::ListenForLayoutMilestones(milestones), webPageProxy->pageID());
 
-    webPageProxy->setLoaderClient(std::move(loaderClient));
+    webPageProxy->setLoaderClient(WTF::move(loaderClient));
 }
 
 void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* wkClient)
@@ -1170,7 +1203,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             map.set("resizable", API::Boolean::create(windowFeatures.resizable));
             map.set("fullscreen", API::Boolean::create(windowFeatures.fullscreen));
             map.set("dialog", API::Boolean::create(windowFeatures.dialog));
-            RefPtr<ImmutableDictionary> featuresMap = ImmutableDictionary::create(std::move(map));
+            RefPtr<ImmutableDictionary> featuresMap = ImmutableDictionary::create(WTF::move(map));
 
             if (!m_client.base.version)
                 return adoptRef(toImpl(m_client.createNewPage_deprecatedForUseWithV0(toAPI(page), toAPI(featuresMap.get()), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), m_client.base.clientInfo)));
@@ -1757,7 +1790,7 @@ WKArrayRef WKPageCopyRelatedPages(WKPageRef pageRef)
             relatedPages.append(page);
     }
 
-    return toAPI(API::Array::create(std::move(relatedPages)).leakRef());
+    return toAPI(API::Array::create(WTF::move(relatedPages)).leakRef());
 }
 
 void WKPageSetMayStartMediaWhenInWindow(WKPageRef pageRef, bool mayStartMedia)

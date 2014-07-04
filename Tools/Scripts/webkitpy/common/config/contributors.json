@@ -92,17 +92,6 @@
             "alecf"
          ]
       },
-      "Alex Christensen" : {
-         "emails" : [
-            "achristensen@apple.com",
-            "achristensen@webkit.org",
-            "alex.christensen@flexsim.com"
-         ],
-         "expertise" : "Win64",
-         "nicks" : [
-            "alexchristensen"
-         ]
-      },
       "Alexander F\u00e6r\u00f8y" : {
          "emails" : [
             "ahf@0x90.dk",
@@ -2142,14 +2131,6 @@
             "pol"
          ]
       },
-      "Pratik Solanki" : {
-         "emails" : [
-            "psolanki@apple.com"
-         ],
-         "nicks" : [
-            "psolanki"
-         ]
-      },
       "Pravin D" : {
          "emails" : [
             "pravind@webkit.org",
@@ -3374,6 +3355,17 @@
             "alexg__"
          ]
       },
+      "Alex Christensen" : {
+         "emails" : [
+            "achristensen@apple.com",
+            "achristensen@webkit.org",
+            "alex.christensen@flexsim.com"
+         ],
+         "expertise" : "Win64, WebGL",
+         "nicks" : [
+            "alexchristensen"
+         ]
+      },
       "Alexander Pavlov" : {
          "emails" : [
             "apavlov@chromium.org",
@@ -4362,6 +4354,14 @@
          "expertise" : "WebKitGTK+, Media support (focused on the GStreamer implementation)",
          "nicks" : [
             "philn"
+         ]
+      },
+      "Pratik Solanki" : {
+         "emails" : [
+            "psolanki@apple.com"
+         ],
+         "nicks" : [
+            "psolanki"
          ]
       },
       "Richard Williamson" : {

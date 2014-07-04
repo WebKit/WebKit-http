@@ -691,7 +691,7 @@ void Document::removedLastRef()
 void Document::commonTeardown()
 {
     if (svgExtensions())
-        svgExtensions()->pauseAnimations();
+        accessSVGExtensions()->pauseAnimations();
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     clearScriptedAnimationController();
@@ -2386,7 +2386,7 @@ void Document::implicitClose()
     // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
     // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
     if (svgExtensions())
-        svgExtensions()->dispatchSVGLoadEventToOutermostSVGElements();
+        accessSVGExtensions()->dispatchSVGLoadEventToOutermostSVGElements();
 
     dispatchWindowLoadEvent();
     enqueuePageshowEvent(PageshowEventNotPersisted);
@@ -2451,7 +2451,7 @@ void Document::implicitClose()
 #endif
 
     if (svgExtensions())
-        svgExtensions()->startAnimations();
+        accessSVGExtensions()->startAnimations();
 }
 
 void Document::setParsing(bool b)
@@ -4330,7 +4330,7 @@ void Document::applyXSLTransform(ProcessingInstruction* pi)
 
 void Document::setTransformSource(std::unique_ptr<TransformSource> source)
 {
-    m_transformSource = std::move(source);
+    m_transformSource = WTF::move(source);
 }
 
 #endif
@@ -4902,7 +4902,7 @@ SecurityOrigin* Document::topOrigin() const
 
 void Document::postTask(Task task)
 {
-    Task* taskPtr = std::make_unique<Task>(std::move(task)).release();
+    Task* taskPtr = std::make_unique<Task>(WTF::move(task)).release();
     WeakPtr<Document> documentReference(m_weakFactory.createWeakPtr());
 
     callOnMainThread([=] {
@@ -4915,7 +4915,7 @@ void Document::postTask(Task task)
 
         Page* page = document->page();
         if ((page && page->defersLoading()) || !document->m_pendingTasks.isEmpty())
-            document->m_pendingTasks.append(std::move(*task.release()));
+            document->m_pendingTasks.append(WTF::move(*task.release()));
         else
             task->performTask(*document);
     });
@@ -4923,7 +4923,7 @@ void Document::postTask(Task task)
 
 void Document::pendingTasksTimerFired(Timer<Document>&)
 {
-    Vector<Task> pendingTasks = std::move(m_pendingTasks);
+    Vector<Task> pendingTasks = WTF::move(m_pendingTasks);
     for (auto& task : pendingTasks)
         task.performTask(*this);
 }
@@ -5311,6 +5311,17 @@ bool Document::webkitFullscreenEnabled() const
     return isAttributeOnAllOwners(allowfullscreenAttr, webkitallowfullscreenAttr, ownerElement());
 }
 
+static void unwrapFullScreenRenderer(RenderFullScreen* fullScreenRenderer, Element* fullScreenElement)
+{
+    if (!fullScreenRenderer)
+        return;
+    bool requiresRenderTreeRebuild;
+    fullScreenRenderer->unwrapRenderer(requiresRenderTreeRebuild);
+
+    if (requiresRenderTreeRebuild && fullScreenElement && fullScreenElement->parentNode())
+        fullScreenElement->parentNode()->setNeedsStyleRecalc(ReconstructRenderTree);
+}
+
 void Document::webkitWillEnterFullScreenForElement(Element* element)
 {
     if (!hasLivingRenderTree() || inPageCache())
@@ -5324,8 +5335,7 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
 
     ASSERT(page()->settings().fullScreenEnabled());
 
-    if (m_fullScreenRenderer)
-        m_fullScreenRenderer->unwrapRenderer();
+    unwrapFullScreenRenderer(m_fullScreenRenderer, m_fullScreenElement.get());
 
     m_fullScreenElement = element;
 
@@ -5388,16 +5398,12 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     m_fullScreenElement->setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(false);
 
     m_areKeysEnabledInFullScreen = false;
-    
-    if (m_fullScreenRenderer)
-        m_fullScreenRenderer->unwrapRenderer();
 
-    if (m_fullScreenElement->parentNode())
-        m_fullScreenElement->parentNode()->setNeedsStyleRecalc(ReconstructRenderTree);
+    unwrapFullScreenRenderer(m_fullScreenRenderer, m_fullScreenElement.get());
 
     m_fullScreenElement = nullptr;
     scheduleForcedStyleRecalc();
-    
+
     // When webkitCancelFullScreen is called, we call webkitExitFullScreen on the topDocument(). That
     // means that the events will be queued there. So if we have no events here, start the timer on
     // the exiting document.
@@ -5536,7 +5542,7 @@ void Document::addDocumentToFullScreenChangeEventQueue(Document* doc)
 #endif
 
 #if ENABLE(POINTER_LOCK)
-void Document::webkitExitPointerLock()
+void Document::exitPointerLock()
 {
     if (!page())
         return;
@@ -5547,7 +5553,7 @@ void Document::webkitExitPointerLock()
     page()->pointerLockController().requestPointerUnlock();
 }
 
-Element* Document::webkitPointerLockElement() const
+Element* Document::pointerLockElement() const
 {
     if (!page() || page()->pointerLockController().lockPending())
         return nullptr;

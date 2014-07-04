@@ -673,10 +673,12 @@ bool RenderStyle::changeRequiresPositionedLayoutOnly(const RenderStyle* other, u
 
 bool RenderStyle::changeRequiresLayerRepaint(const RenderStyle* other, unsigned& changedContextSensitiveProperties) const
 {
+    // StyleResolver has ensured that zIndex is non-auto only if it's applicable.
+    if (m_box->zIndex() != other->m_box->zIndex() || m_box->hasAutoZIndex() != other->m_box->hasAutoZIndex())
+        return true;
+
     if (position() != StaticPosition) {
-        if (m_box->zIndex() != other->m_box->zIndex()
-            || m_box->hasAutoZIndex() != other->m_box->hasAutoZIndex()
-            || visual->clip != other->visual->clip
+        if (visual->clip != other->visual->clip
             || visual->hasClip != other->visual->hasClip)
             return true;
     }
@@ -862,9 +864,9 @@ void RenderStyle::appendContent(std::unique_ptr<ContentData> contentData)
         lastContent = lastContent->next();
 
     if (lastContent)
-        lastContent->setNext(std::move(contentData));
+        lastContent->setNext(WTF::move(contentData));
     else
-        content = std::move(contentData);
+        content = WTF::move(contentData);
 }
 
 void RenderStyle::setContent(PassRefPtr<StyleImage> image, bool add)
@@ -915,11 +917,11 @@ void RenderStyle::setContent(std::unique_ptr<CounterContent> counter, bool add)
         return;
 
     if (add) {
-        appendContent(std::make_unique<CounterContentData>(std::move(counter)));
+        appendContent(std::make_unique<CounterContentData>(WTF::move(counter)));
         return;
     }
 
-    rareNonInheritedData.access()->m_content = std::make_unique<CounterContentData>(std::move(counter));
+    rareNonInheritedData.access()->m_content = std::make_unique<CounterContentData>(WTF::move(counter));
 }
 
 void RenderStyle::setContent(QuoteType quote, bool add)
@@ -1007,24 +1009,24 @@ void RenderStyle::setTextShadow(std::unique_ptr<ShadowData> shadowData, bool add
 
     StyleRareInheritedData* rareData = rareInheritedData.access();
     if (!add) {
-        rareData->textShadow = std::move(shadowData);
+        rareData->textShadow = WTF::move(shadowData);
         return;
     }
 
-    shadowData->setNext(std::move(rareData->textShadow));
-    rareData->textShadow = std::move(shadowData);
+    shadowData->setNext(WTF::move(rareData->textShadow));
+    rareData->textShadow = WTF::move(shadowData);
 }
 
 void RenderStyle::setBoxShadow(std::unique_ptr<ShadowData> shadowData, bool add)
 {
     StyleRareNonInheritedData* rareData = rareNonInheritedData.access();
     if (!add) {
-        rareData->m_boxShadow = std::move(shadowData);
+        rareData->m_boxShadow = WTF::move(shadowData);
         return;
     }
 
-    shadowData->setNext(std::move(rareData->m_boxShadow));
-    rareData->m_boxShadow = std::move(shadowData);
+    shadowData->setNext(WTF::move(rareData->m_boxShadow));
+    rareData->m_boxShadow = WTF::move(shadowData);
 }
 
 static RoundedRect::Radii calcRadiiFor(const BorderData& border, const LayoutSize& size)
@@ -1375,7 +1377,7 @@ void RenderStyle::setWordSpacing(Length value)
         break;
     }
     inherited.access()->font.setWordSpacing(fontWordSpacing);
-    rareInheritedData.access()->wordSpacing = std::move(value);
+    rareInheritedData.access()->wordSpacing = WTF::move(value);
 }
 
 void RenderStyle::setLetterSpacing(float v) { inherited.access()->font.setLetterSpacing(v); }

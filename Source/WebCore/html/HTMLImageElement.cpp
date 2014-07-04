@@ -38,6 +38,7 @@
 #include "RenderImage.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "SourceSizeList.h"
 
 #if ENABLE(SERVICE_CONTROLS)
 #include "ImageControlsRootElement.h"
@@ -126,6 +127,9 @@ const AtomicString& HTMLImageElement::imageSourceURL() const
 void HTMLImageElement::setBestFitURLAndDPRFromImageCandidate(const ImageCandidate& candidate)
 {
     m_bestFitImageURL = candidate.string.toString();
+#if ENABLE(PICTURE_SIZES)
+    m_currentSrc = AtomicString(document().completeURL(imageSourceURL()).string());
+#endif
     if (candidate.density >= 0)
         m_imageDevicePixelRatio = 1 / candidate.density;
     if (renderer() && renderer()->isImage())
@@ -138,7 +142,11 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
         if (renderer() && renderer()->isRenderImage())
             toRenderImage(renderer())->updateAltText();
     } else if (name == srcAttr || name == srcsetAttr) {
-        ImageCandidate candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr));
+        ImageCandidate candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr)
+#if ENABLE(PICTURE_SIZES)
+            , SourceSizeList::parseSizesAttribute(fastGetAttribute(sizesAttr), document().renderView(), document().frame())
+#endif
+        );
         setBestFitURLAndDPRFromImageCandidate(candidate);
         m_imageLoader.updateFromElementIgnoringPreviousError();
     } else if (name == usemapAttr) {
@@ -203,9 +211,9 @@ String HTMLImageElement::altText() const
 RenderPtr<RenderElement> HTMLImageElement::createElementRenderer(PassRef<RenderStyle> style)
 {
     if (style.get().hasContent())
-        return RenderElement::createFor(*this, std::move(style));
+        return RenderElement::createFor(*this, WTF::move(style));
 
-    return createRenderer<RenderImage>(*this, std::move(style), nullptr, m_imageDevicePixelRatio);
+    return createRenderer<RenderImage>(*this, WTF::move(style), nullptr, m_imageDevicePixelRatio);
 }
 
 bool HTMLImageElement::canStartSelection() const

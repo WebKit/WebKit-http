@@ -4854,6 +4854,7 @@ private:
             return Int52;
         }
         RELEASE_ASSERT_NOT_REACHED();
+        return Int52;
     }
     
     LValue lowWhicheverInt52(Edge edge, Int52Kind& kind)
@@ -5873,7 +5874,9 @@ private:
             return;
         }
 
-        dataLog("Cannot find value for node: ", node, "\n");
+        startCrashing();
+        dataLog("Cannot find value for node: ", node, " while compiling exit at ", exit.m_codeOrigin, " in node ", m_node, "\n");
+        m_graph.dump();
         RELEASE_ASSERT_NOT_REACHED();
     }
     

@@ -161,12 +161,12 @@ bool RenderBoxModelObject::shouldPaintAtLowQuality(GraphicsContext* context, Ima
 }
 
 RenderBoxModelObject::RenderBoxModelObject(Element& element, PassRef<RenderStyle> style, unsigned baseTypeFlags)
-    : RenderLayerModelObject(element, std::move(style), baseTypeFlags | RenderBoxModelObjectFlag)
+    : RenderLayerModelObject(element, WTF::move(style), baseTypeFlags | RenderBoxModelObjectFlag)
 {
 }
 
 RenderBoxModelObject::RenderBoxModelObject(Document& document, PassRef<RenderStyle> style, unsigned baseTypeFlags)
-    : RenderLayerModelObject(document, std::move(style), baseTypeFlags | RenderBoxModelObjectFlag)
+    : RenderLayerModelObject(document, WTF::move(style), baseTypeFlags | RenderBoxModelObjectFlag)
 {
 }
 
@@ -451,10 +451,7 @@ FloatRect RenderBoxModelObject::constrainingRectForStickyPosition() const
         return constrainingRect;
     }
     
-    LayoutRect viewportRect = view().frameView().viewportConstrainedVisibleContentRect();
-    float scale = frame().frameScaleFactor();
-    viewportRect.scale(1 / scale);
-    return viewportRect;
+    return view().frameView().viewportConstrainedVisibleContentRect();
 }
 
 LayoutSize RenderBoxModelObject::stickyPositionOffset() const
@@ -1149,7 +1146,7 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
     LayoutUnit availableWidth = positioningAreaSize.width() - geometry.tileSize().width();
     LayoutUnit availableHeight = positioningAreaSize.height() - geometry.tileSize().height();
 
-    LayoutUnit computedXPosition = minimumValueForLength(fillLayer->xPosition(), availableWidth, true);
+    LayoutUnit computedXPosition = minimumValueForLength(fillLayer->xPosition(), availableWidth, false);
     if (backgroundRepeatX == RoundFill && positioningAreaSize.width() > 0 && fillTileSize.width() > 0) {
         int numTiles = std::max(1, roundToInt(positioningAreaSize.width() / fillTileSize.width()));
         if (fillLayer->size().size.height().isAuto() && backgroundRepeatY != RoundFill)
@@ -1161,7 +1158,7 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
         geometry.setSpaceSize(LayoutSize());
     }
 
-    LayoutUnit computedYPosition = minimumValueForLength(fillLayer->yPosition(), availableHeight, true);
+    LayoutUnit computedYPosition = minimumValueForLength(fillLayer->yPosition(), availableHeight, false);
     if (backgroundRepeatY == RoundFill && positioningAreaSize.height() > 0 && fillTileSize.height() > 0) {
         int numTiles = std::max(1, roundToInt(positioningAreaSize.height() / fillTileSize.height()));
         if (fillLayer->size().size.width().isAuto() && backgroundRepeatX != RoundFill)
@@ -1181,7 +1178,7 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
         LayoutUnit actualWidth = geometry.tileSize().width() + space;
 
         if (space >= 0) {
-            computedXPosition = minimumValueForLength(Length(), availableWidth, true);
+            computedXPosition = minimumValueForLength(Length(), availableWidth, false);
             geometry.setSpaceSize(LayoutSize(space, 0));
             geometry.setPhaseX(actualWidth ? actualWidth - fmodf((computedXPosition + left), actualWidth) : 0);
         } else
@@ -1201,7 +1198,7 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
         LayoutUnit actualHeight = geometry.tileSize().height() + space;
 
         if (space >= 0) {
-            computedYPosition = minimumValueForLength(Length(), availableHeight, true);
+            computedYPosition = minimumValueForLength(Length(), availableHeight, false);
             geometry.setSpaceSize(LayoutSize(geometry.spaceSize().width(), space));
             geometry.setPhaseY(actualHeight ? actualHeight - fmodf((computedYPosition + top), actualHeight) : 0);
         } else

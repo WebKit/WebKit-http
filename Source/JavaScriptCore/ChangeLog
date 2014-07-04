@@ -1,3 +1,273 @@
+2014-07-03  Daniel Bates  <dabates@apple.com>
+
+        Add WTF::move()
+        https://bugs.webkit.org/show_bug.cgi?id=134500
+
+        Rubber-stamped by Anders Carlsson.
+
+        Substitute WTF::move() for std::move().
+
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        * bytecompiler/BytecodeGenerator.cpp:
+        * dfg/DFGGraph.cpp:
+        * dfg/DFGJITCompiler.cpp:
+        * dfg/DFGStackLayoutPhase.cpp:
+        * dfg/DFGWorklist.cpp:
+        * heap/DelayedReleaseScope.h:
+        * heap/HeapInlines.h:
+        [...]
+
+2014-07-03  Filip Pizlo  <fpizlo@apple.com>
+
+        SSA DCE should process blocks in forward order
+        https://bugs.webkit.org/show_bug.cgi?id=134611
+
+        Reviewed by Andreas Kling.
+
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::addExitArgumentForNode):
+        * tests/stress/dead-value-with-mov-hint-in-another-block.js: Added.
+        (foo):
+
+2014-07-03  Filip Pizlo  <fpizlo@apple.com>
+
+        JSActivation::symbolTablePut() should invalidate variable watchpoints
+        https://bugs.webkit.org/show_bug.cgi?id=134602
+
+        Reviewed by Oliver Hunt.
+        
+        Usually stores to captured variables cause us to invalidate the variable watchpoint because CodeBlock does so
+        during linking - we essentially assume that if it's at all possible for an inner function to store to a
+        variable we declare then this variable cannot be a constant. But this misses the dynamic store case, i.e.
+        JSActivation::symbolTablePut(). Part of the problem here is that JSActivation duplicates
+        JSSymbolTableObject's symbolTablePut() logic, which did have the invalidation. This patch keeps that code
+        duplicated, but fixes JSActivation::symbolTablePut() to do the right thing.
+
+        * runtime/JSActivation.cpp:
+        (JSC::JSActivation::symbolTablePut):
+        * runtime/JSSymbolTableObject.h:
+        (JSC::symbolTablePut):
+        * tests/stress/constant-closure-var-with-dynamic-invalidation.js: Added.
+        (.):
+
+2014-07-01  Mark Lam  <mark.lam@apple.com>
+
+        Debugger's breakpoint list should not be a Vector.
+        <https://webkit.org/b/134514>
+
+        Reviewed by Geoffrey Garen.
+
+        The debugger currently stores breakpoint data as entries in a Vector (see
+        BreakpointsInLine).  It also keeps a fast map look up of breakpoint IDs to
+        the breakpoint data (see m_breakpointIDToBreakpoint).  Because a Vector can
+        compact or reallocate its backing store, this can causes all sorts of havoc.
+        The m_breakpointIDToBreakpoint map assumes that the breakpoint data doesn't
+        move in memory.
+
+        The fix is to replace the BreakpointsInLine Vector with a BreakpointsList
+        doubly linked list.
+
+        * debugger/Breakpoint.h:
+        (JSC::Breakpoint::Breakpoint):
+        (JSC::BreakpointsList::~BreakpointsList):
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::setBreakpoint):
+        (JSC::Debugger::removeBreakpoint):
+        (JSC::Debugger::hasBreakpoint):
+        * debugger/Debugger.h:
+
+2014-06-30  Michael Saboff  <msaboff@apple.com>
+
+        Add option to run-jsc-stress-testes to filter out tests that use large heaps
+        https://bugs.webkit.org/show_bug.cgi?id=134458
+
+        Reviewed by Filip Pizlo.
+
+        Added test to skip js1_5/Regress/regress-159334.js when testing on a memory limited device.
+
+        * tests/mozilla/mozilla-tests.yaml:
+
+2014-06-30  Daniel Bates  <dabates@apple.com>
+
+        Avoid copying closed variables vector; actually use move semantics
+
+        Rubber-stamped by Oliver Hunt.
+
+        Currently we always copy the closed variables vector passed by Parser::closedVariables()
+        to ProgramNode::setClosedVariables() because these member functions return and take a const
+        rvalue reference, respectively. Instead, these member functions should take an return a non-
+        constant rvalue reference so that we actually move the closed variables vector from the Parser
+        object to the Node object.
+
+        * parser/Nodes.cpp:
+        (JSC::ProgramNode::setClosedVariables): Remove const qualifier for argument.
+        * parser/Nodes.h:
+        (JSC::ScopeNode::setClosedVariables): Ditto.
+        * parser/Parser.h:
+        (JSC::Parser::closedVariables): Remove const qualifier on return type.
+        (JSC::parse): Remove extraneous call to std::move(). Calling std::move() is unnecessary here
+        because Parser::closedVariables() returns an rvalue reference.
+
+2014-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspection: Provide a way to use a non-Main RunLoop for Inspector JavaScript Evaluations
+        https://bugs.webkit.org/show_bug.cgi?id=134371
+
+        Reviewed by Timothy Hatcher.
+
+        * API/JSContextPrivate.h:
+        * API/JSContext.mm:
+        (-[JSContext _debuggerRunLoop]):
+        (-[JSContext _setDebuggerRunLoop:]):
+        Private API for setting the CFRunLoop for a debugger to evaluate in.
+        
+        * API/JSContextRefInternal.h: Added.
+        * API/JSContextRef.cpp:
+        (JSGlobalContextGetDebuggerRunLoop):
+        (JSGlobalContextSetDebuggerRunLoop):
+        Internal API for setting a CFRunLoop on a JSContextRef.
+        Set this on the debuggable.
+        
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.h:
+        (Inspector::RemoteInspectorBlock::RemoteInspectorBlock):
+        (Inspector::RemoteInspectorBlock::~RemoteInspectorBlock):
+        (Inspector::RemoteInspectorBlock::operator=):
+        (Inspector::RemoteInspectorBlock::operator()):
+        Moved into the header.
+
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::inspectorDebuggable):
+        Lets store the RunLoop on the debuggable instead of this core
+        platform agnostic class, so expose the debuggable.
+
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorHandleRunSourceGlobal):
+        (Inspector::RemoteInspectorQueueTaskOnGlobalQueue):
+        (Inspector::RemoteInspectorInitializeGlobalQueue):
+        Rename the global functions for clarity.
+
+        (Inspector::RemoteInspectorHandleRunSourceWithInfo):
+        Handler for private run loops.
+
+        (Inspector::RemoteInspectorDebuggableConnection::RemoteInspectorDebuggableConnection):
+        (Inspector::RemoteInspectorDebuggableConnection::~RemoteInspectorDebuggableConnection):
+        (Inspector::RemoteInspectorDebuggableConnection::dispatchAsyncOnDebuggable):
+        (Inspector::RemoteInspectorDebuggableConnection::setupRunLoop):
+        (Inspector::RemoteInspectorDebuggableConnection::teardownRunLoop):
+        (Inspector::RemoteInspectorDebuggableConnection::queueTaskOnPrivateRunLoop):
+        Setup and teardown and use private run loop sources if the debuggable needs it.
+
+2014-06-30  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Add missing ENABLE(DFG_JIT) guards
+        https://bugs.webkit.org/show_bug.cgi?id=134444
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGFunctionWhitelist.cpp:
+        * dfg/DFGFunctionWhitelist.h:
+
+2014-06-29  Yoav Weiss  <yoav@yoav.ws>
+
+        Add support for HTMLImageElement's sizes attribute
+        https://bugs.webkit.org/show_bug.cgi?id=133620
+
+        Reviewed by Dean Jackson.
+
+        Added an ENABLE_PICTURE_SIZES compile flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-06-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't fold a UInt32ToNumber with DoOverflow to Identity since that would result in an Identity that takes an Int32 and returns a DoubleRep
+        https://bugs.webkit.org/show_bug.cgi?id=134412
+
+        Reviewed by Mark Hahnenberg.
+
+        * dfg/DFGCSEPhase.cpp:
+        (JSC::DFG::CSEPhase::setReplacement):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        * tests/stress/uint32-to-number-fold-constant-with-do-overflow.js: Added.
+        (foo):
+        (bar):
+        (baz):
+
+2014-06-27  Peyton Randolph  <prandolph@apple.com>
+
+         Add feature flag for link long-press gesture.                                                                   
+         https://bugs.webkit.org/show_bug.cgi?id=134262                                                                  
+                                                                                                                         
+         Reviewed by Enrica Casucci.                                                                                     
+                                                                                                                         
+         * Configurations/FeatureDefines.xcconfig:                                                                       
+         Add ENABLE_LINK_LONG_PRESS. 
+
+2014-06-27  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        [JavaScriptCore] FTL buildfix for EFL platform.
+        https://bugs.webkit.org/show_bug.cgi?id=133546
+
+        Reviewed by Darin Adler.
+
+        * ftl/FTLAbstractHeap.cpp:
+        (JSC::FTL::IndexedAbstractHeap::IndexedAbstractHeap):
+        * ftl/FTLLocation.cpp:
+        (JSC::FTL::Location::forStackmaps):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::opposite):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        * ftl/FTLStackMaps.cpp:
+        (JSC::FTL::StackMaps::Constant::dump):
+        * llvm/InitializeLLVMPOSIX.cpp:
+        (JSC::initializeLLVMPOSIX):
+
+2014-06-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        iOS 8 beta 2 ES6 'Set' clear() broken
+        https://bugs.webkit.org/show_bug.cgi?id=134346
+
+        Reviewed by Oliver Hunt.
+
+        The object map was not cleared :(.
+
+        Kudos to Ashley Gullen for tracking this and making a regression test.
+        Credit to Oliver for finding the missing code.
+
+        * runtime/MapData.h:
+        (JSC::MapData::clear):
+
+2014-06-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Expose Cache Information to WinLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=134318
+
+        Reviewed by Dean Jackson.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj: Add missing
+        MemoryStatistics files to the WIndows build.
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+
+2014-06-26  David Kilzer  <ddkilzer@apple.com>
+
+        DFG::FunctionWhitelist::parseFunctionNamesInFile does not close file
+        <http://webkit.org/b/134343>
+        <rdar://problem/17459487>
+
+        Reviewed by Michael Saboff.
+
+        * dfg/DFGFunctionWhitelist.cpp:
+        (JSC::DFG::FunctionWhitelist::parseFunctionNamesInFile):
+        Close the file handle, and log an error on failure.
+
 2014-06-25  Dana Burkart  <dburkart@apple.com>
 
         Add support for 5-tuple versioning.

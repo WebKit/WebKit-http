@@ -113,11 +113,22 @@ struct PageState {
     FrameState mainFrameState;
 };
 
+struct BackForwardListItemState {
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, BackForwardListItemState&);
+
+    uint64_t identifier;
+
+    PageState pageState;
+    // FIXME: This should hold the snapshot itself, not its UUID.
+    String snapshotUUID;
+};
+
 struct BackForwardListState {
     void encode(IPC::ArgumentEncoder&) const;
     static bool decode(IPC::ArgumentDecoder&, BackForwardListState&);
 
-    Vector<PageState> items;
+    Vector<BackForwardListItemState> items;
     Optional<uint32_t> currentIndex;
 };
 

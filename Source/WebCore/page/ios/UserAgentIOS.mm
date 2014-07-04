@@ -26,30 +26,12 @@
 #import "config.h"
 #import "UserAgent.h"
 
-#import <WebCoreSystemInterface.h>
-#import <wtf/NeverDestroyed.h>
-#import <wtf/RetainPtr.h>
+#import "SystemVersion.h"
+#import "WebCoreSystemInterface.h"
 
 namespace WebCore {
 
-static NSString *platformSystemRootDirectory()
-{
-#if PLATFORM(IOS_SIMULATOR)
-    const char *simulatorRoot = getenv("IPHONE_SIMULATOR_ROOT");
-    return [NSString stringWithUTF8String:(simulatorRoot ? simulatorRoot : "/")];
-#else
-    return @"/";
-#endif
-}
-
-static NSString *osMarketingVersion()
-{
-    RetainPtr<NSDictionary> systemInfo = adoptNS([[NSDictionary alloc] initWithContentsOfFile:[platformSystemRootDirectory() stringByAppendingPathComponent:@"System/Library/CoreServices/SystemVersion.plist"]]);
-    NSString *productVersion = [systemInfo objectForKey:@"ProductVersion"];
-    return !productVersion ? @"" : [productVersion stringByReplacingOccurrencesOfString:@"." withString:@"_"];
-}
-
-String standardUserAgentWithApplicationName(const String& applicationName, const String& webkitVersionString)
+String standardUserAgentWithApplicationName(const String& applicationName, const String& fullWebKitVersionString)
 {
     if (CFStringRef overrideUserAgent = wkGetUserAgent())
         return overrideUserAgent;
@@ -62,10 +44,10 @@ String standardUserAgentWithApplicationName(const String& applicationName, const
         CFRelease(override);
     }
 
-    NSString *webKitVersion = webkitVersionString;
+    NSString *webKitVersion = userAgentBundleVersionFromFullVersionString(fullWebKitVersionString);
     CFStringRef deviceName = wkGetDeviceName();
     CFStringRef osNameForUserAgent = wkGetOSNameForUserAgent();
-    NSString *osMarketingVersionString = osMarketingVersion();
+    NSString *osMarketingVersionString = systemMarketingVersionForUserAgentString();
     if (applicationName.isEmpty())
         return [NSString stringWithFormat:@"Mozilla/5.0 (%@; CPU %@ %@ like Mac OS X) AppleWebKit/%@ (KHTML, like Gecko)", deviceName, osNameForUserAgent, osMarketingVersionString, webKitVersion];
     return [NSString stringWithFormat:@"Mozilla/5.0 (%@; CPU %@ %@ like Mac OS X) AppleWebKit/%@ (KHTML, like Gecko) %@", deviceName, osNameForUserAgent, osMarketingVersionString, webKitVersion, static_cast<NSString *>(applicationName)];

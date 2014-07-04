@@ -27,8 +27,13 @@
 #define WebBackForwardListItem_h
 
 #include "APIObject.h"
+#include "SessionState.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
+
+namespace API {
+class Data;
+}
 
 namespace IPC {
     class ArgumentDecoder;
@@ -39,44 +44,27 @@ namespace WebKit {
 
 class WebBackForwardListItem : public API::ObjectImpl<API::Object::Type::BackForwardListItem> {
 public:
-    static PassRefPtr<WebBackForwardListItem> create(const String& originalURL, const String& url, const String& title, const uint8_t* backForwardData, size_t backForwardDataSize, uint64_t itemID)
-    {
-        return adoptRef(new WebBackForwardListItem(originalURL, url, title, backForwardData, backForwardDataSize, itemID));
-    }
-
+    static PassRefPtr<WebBackForwardListItem> create(BackForwardListItemState);
     virtual ~WebBackForwardListItem();
 
-    uint64_t itemID() const { return m_itemID; }
+    uint64_t itemID() const { return m_itemState.identifier; }
+    const BackForwardListItemState& itemState() { return m_itemState; }
 
-    void setOriginalURL(const String& originalURL) { m_originalURL = originalURL; }
-    const String& originalURL() const { return m_originalURL; }
+    void setPageState(PageState pageState) { m_itemState.pageState = WTF::move(pageState); }
 
-    void setURL(const String& url) { m_url = url; }
-    const String& url() const { return m_url; }
-
-    void setTitle(const String& title) { m_title = title; }
-    const String& title() const { return m_title; }
+    const String& originalURL() const { return m_itemState.pageState.mainFrameState.originalURLString; }
+    const String& url() const { return m_itemState.pageState.mainFrameState.urlString; }
+    const String& title() const { return m_itemState.pageState.title; }
     
-    void setBackForwardData(const uint8_t* buffer, size_t size);
-    const Vector<uint8_t>& backForwardData() const { return m_backForwardData; }
-
-    void setSnapshotUUID(const String& uuid) { m_snapshotUUID = uuid; }
-    const String& snapshotUUID() const { return m_snapshotUUID; }
-
-    void encode(IPC::ArgumentEncoder&) const;
-    static PassRefPtr<WebBackForwardListItem> decode(IPC::ArgumentDecoder&);
+    void setSnapshotUUID(const String& uuid) { m_itemState.snapshotUUID = uuid; }
+    const String& snapshotUUID() const { return m_itemState.snapshotUUID; }
 
     static uint64_t highedUsedItemID();
 
 private:
-    WebBackForwardListItem(const String& originalURL, const String& url, const String& title, const uint8_t* backForwardData, size_t backForwardDataSize, uint64_t itemID);
+    explicit WebBackForwardListItem(BackForwardListItemState);
 
-    String m_originalURL;
-    String m_url;
-    String m_title;
-    uint64_t m_itemID;
-    Vector<uint8_t> m_backForwardData;
-    String m_snapshotUUID;
+    BackForwardListItemState m_itemState;
 };
 
 typedef Vector<RefPtr<WebBackForwardListItem>> BackForwardListItemVector;

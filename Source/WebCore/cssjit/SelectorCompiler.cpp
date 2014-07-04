@@ -159,11 +159,11 @@ struct SelectorFragment {
     const QualifiedName* tagName;
     const AtomicString* id;
     const AtomicString* langFilter;
-    Vector<const AtomicStringImpl*, 1> classNames;
+    Vector<const AtomicStringImpl*, 32> classNames;
     HashSet<unsigned> pseudoClasses;
-    Vector<JSC::FunctionPtr> unoptimizedPseudoClasses;
-    Vector<AttributeMatchingInfo> attributes;
-    Vector<std::pair<int, int>> nthChildFilters;
+    Vector<JSC::FunctionPtr, 32> unoptimizedPseudoClasses;
+    Vector<AttributeMatchingInfo, 32> attributes;
+    Vector<std::pair<int, int>, 32> nthChildFilters;
     Vector<SelectorFragment> notFilters;
     Vector<Vector<SelectorFragment>> anyFilters;
 
@@ -192,8 +192,8 @@ struct TagNamePattern {
 };
 
 typedef JSC::MacroAssembler Assembler;
-typedef Vector<SelectorFragment, 8> SelectorFragmentList;
-typedef Vector<TagNamePattern, 8> TagNameList;
+typedef Vector<SelectorFragment, 32> SelectorFragmentList;
+typedef Vector<TagNamePattern, 32> TagNameList;
 
 class SelectorCodeGenerator {
 public:
@@ -206,7 +206,7 @@ private:
     static const Assembler::RegisterID checkingContextRegister;
     static const Assembler::RegisterID callFrameRegister;
 
-    bool generateSelectorChecker();
+    void generateSelectorChecker();
 
     // Element relations tree walker.
     void generateWalkToParentNode(Assembler::RegisterID targetRegister);
@@ -265,12 +265,12 @@ private:
 
     bool generatePrologue();
     void generateEpilogue();
-    Vector<StackAllocator::StackReference> m_prologueStackReferences;
+    StackAllocator::StackReferenceVector m_prologueStackReferences;
 
     Assembler m_assembler;
     RegisterAllocator m_registerAllocator;
     StackAllocator m_stackAllocator;
-    Vector<std::pair<Assembler::Call, JSC::FunctionPtr>> m_functionCalls;
+    Vector<std::pair<Assembler::Call, JSC::FunctionPtr>, 32> m_functionCalls;
 
     SelectorContext m_selectorContext;
     FunctionType m_functionType;
@@ -476,7 +476,7 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
 
     case CSSSelector::PseudoClassAny:
         {
-            Vector<SelectorFragment> anyFragments;
+            Vector<SelectorFragment, 32> anyFragments;
             FunctionType functionType = FunctionType::SimpleSelectorChecker;
             for (const CSSSelector* rootSelector = selector.selectorList()->first(); rootSelector; rootSelector = CSSSelectorList::next(rootSelector)) {
                 SelectorFragmentList fragmentList;
@@ -733,8 +733,7 @@ inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::VM* vm, JSC
     switch (m_functionType) {
     case FunctionType::SimpleSelectorChecker:
     case FunctionType::SelectorCheckerWithCheckingContext:
-        if (!generateSelectorChecker())
-            return SelectorCompilationStatus::CannotCompile;
+        generateSelectorChecker();
         break;
     case FunctionType::CannotMatchAnything:
         m_assembler.move(Assembler::TrustedImm32(0), returnRegister);
@@ -1165,30 +1164,19 @@ inline void SelectorCodeGenerator::generateEpilogue()
 #endif
 }
 
-bool SelectorCodeGenerator::generateSelectorChecker()
+void SelectorCodeGenerator::generateSelectorChecker()
 {
-    Vector<StackAllocator::StackReference> calleeSavedRegisterStackReferences;
+    StackAllocator::StackReferenceVector calleeSavedRegisterStackReferences;
     bool reservedCalleeSavedRegisters = false;
     unsigned availableRegisterCount = m_registerAllocator.availableRegisterCount();
     unsigned minimumRegisterCountForAttributes = minimumRegisterRequirements(m_selectorFragments);
-    if (minimumRegisterCountForAttributes > registerCount) {
-#if !CPU(ARM_THUMB2)
-        // ARM_THUMB2 does not have enough registers to compile complicated selectors.
-        // Compiling should always succeed on non-ARM_THUMB2 CPUs.
-        ASSERT_NOT_REACHED();
-#endif
-#if CSS_SELECTOR_JIT_DEBUGGING
-        dataLogF("Failed to compile because it would have required %u registers\n", minimumRegisterCountForAttributes);
-#endif
-        return false;
-    }
 #if CSS_SELECTOR_JIT_DEBUGGING
     dataLogF("Compiling with minimum required register count %u\n", minimumRegisterCountForAttributes);
 #endif
     
     bool needsEpilogue = generatePrologue();
     
-    ASSERT(minimumRegisterCountForAttributes <= registerCount);
+    ASSERT(minimumRegisterCountForAttributes <= maximumRegisterCount);
     if (availableRegisterCount < minimumRegisterCountForAttributes) {
         reservedCalleeSavedRegisters = true;
         calleeSavedRegisterStackReferences = m_stackAllocator.push(m_registerAllocator.reserveCalleeSavedRegisters(minimumRegisterCountForAttributes - availableRegisterCount));
@@ -1281,7 +1269,6 @@ bool SelectorCodeGenerator::generateSelectorChecker()
             generateEpilogue();
         m_assembler.ret();
     }
-    return true;
 }
 
 static inline Assembler::Jump testIsElementFlagOnNode(Assembler::ResultCondition condition, Assembler& assembler, Assembler::RegisterID nodeAddress)
@@ -1432,9 +1419,14 @@ void SelectorCodeGenerator::addFlagsToElementStyleFromContext(Assembler::Registe
     // FIXME: We should look into doing something smart in MacroAssembler instead.
     Assembler::Address flagAddress(childStyle, RenderStyle::noninheritedFlagsMemoryOffset() + RenderStyle::NonInheritedFlags::flagsMemoryOffset());
 #if CPU(ARM_THUMB2)
-    m_assembler.or32(Assembler::TrustedImm32(newFlag & 0xffffffff), flagAddress);
-    Assembler::Address flagHighBits = flagAddress.withOffset(4);
-    m_assembler.or32(Assembler::TrustedImm32(newFlag >> 32), flagHighBits);
+    int32_t flagLowBits = newFlag & 0xffffffff;
+    int32_t flagHighBits = newFlag >> 32;
+    if (flagLowBits)
+        m_assembler.or32(Assembler::TrustedImm32(flagLowBits), flagAddress);
+    if (flagHighBits) {
+        Assembler::Address flagHighAddress = flagAddress.withOffset(4);
+        m_assembler.or32(Assembler::TrustedImm32(flagHighBits), flagHighAddress);
+    }
 #elif CPU(X86_64) || CPU(ARM64)
     LocalRegister flags(m_registerAllocator);
     m_assembler.load64(flagAddress, flags);
@@ -2590,7 +2582,7 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
     Assembler::RegisterID parentElement = m_registerAllocator.allocateRegister();
     generateWalkToParentElement(failureCases, parentElement);
 
-    Vector<std::pair<int, int>> validSubsetFilters;
+    Vector<std::pair<int, int>, 32> validSubsetFilters;
     validSubsetFilters.reserveInitialCapacity(fragment.nthChildFilters.size());
     for (const auto& slot : fragment.nthChildFilters) {
         int a = slot.first;

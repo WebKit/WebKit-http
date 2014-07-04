@@ -34,6 +34,7 @@
 
 OBJC_CLASS WKContentView;
 OBJC_CLASS WKWebView;
+OBJC_CLASS WKEditorUndoTargetObjC;
 
 namespace WebKit {
     
@@ -164,8 +165,11 @@ private:
 
     virtual void didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference&) override;
 
+    virtual Vector<String> mimeTypesWithCustomContentProviders() override;
+
     WKContentView *m_contentView;
     WKWebView *m_webView;
+    RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
 };
 } // namespace WebKit
 

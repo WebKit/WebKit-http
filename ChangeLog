@@ -1,3 +1,99 @@
+2014-07-03  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Broken build with build-webkit --no-video
+        https://bugs.webkit.org/show_bug.cgi?id=134587
+
+        Reviewed by Darin Adler.
+
+        MEDIA_CONTROLS_SCRIPT requires VIDEO enabled.
+
+        * Source/cmake/WebKitFeatures.cmake: Added the dependency for ENABLE_MEDIA_CONTROLS_SCRIPT.
+
+2014-07-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] The list of features shown by cmake is not accurate
+        https://bugs.webkit.org/show_bug.cgi?id=134588
+
+        Reviewed by Gustavo Noronha Silva.
+
+        The problem is that some options might change after the feature
+        list has been printed.
+
+        * Source/cmake/OptionsGTK.cmake: Find package dependencies before
+        setting the default values of features and set WEBGL value
+        depending on the dependencies, and API_TEST depending on whether
+        developer mode is enabled or not.
+
+2014-07-03  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [CMAKE] Add WEBKIT_OPTION_DEPEND macro to resolve macro dependency
+        https://bugs.webkit.org/show_bug.cgi?id=134578
+
+        Reviewed by Gyuyoung Kim.
+
+        Some options depend on another option such as ENABLE_VIDEO_TRACK and ENABLE_VIDEO.
+        This patch adds WEBKIT_OPTION_DEPEND to check the depending option and
+        disable related option if it is not ON.
+
+        * Source/cmake/OptionsEfl.cmake: Removed hack for option dependency.
+        * Source/cmake/OptionsGTK.cmake: Ditto.
+        * Source/cmake/WebKitFeatures.cmake: Added WEBKIT_OPTION_DEPEND macro.
+
+2014-07-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] make dist is broken
+        https://bugs.webkit.org/show_bug.cgi?id=134542
+
+        Reviewed by Martin Robinson.
+
+        * Source/PlatformGTK.cmake: Remove ENABLE_WEBKIT check.
+
+2014-07-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Add necessary support for building for the Wayland target
+        https://bugs.webkit.org/show_bug.cgi?id=134160
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/FindGTK3.cmake: Check for the gtk+-x11-3.0 package if the X11 target
+        is enabled, and that its version matches the version of the generic package. Same
+        for the gtk+-wayland-3.0 package and the Wayland target.
+        * Source/cmake/OptionsCommon.cmake: Don't add the -DXP_UNIX definition here.
+        * Source/cmake/OptionsEfl.cmake: Add -DXP_UNIX here for the EFL port, under the same
+        condition as in OptionsCommon.cmake. ENABLE_X11_TARGET is enabled by default for EFL
+        so they keep building the TestNetscapePlugin target.
+        * Source/cmake/OptionsGTK.cmake: Enable the X11 target and disable the Wayland target
+        by default. Group all the X11-specific macro definitions (WTF_PLATFORM_X11, MOZ_X11,
+        XP_UNIX) and only add them if the X11 target is enabled. Similar goes for the Wayland
+        target and WTF_PLATFORM_WAYLAND. The Wayland target requires GTK+ 3.12.0, so that's
+        the minimum required version as soon as that target is enabled. Only search for GLX
+        if the X11 target is enabled.
+
+2014-06-29  Yoav Weiss  <yoav@yoav.ws>
+
+        Add support for HTMLImageElement's sizes attribute
+        https://bugs.webkit.org/show_bug.cgi?id=133620
+
+        Reviewed by Dean Jackson.
+
+        Added an ENABLE_PICTURE_SIZES compile flag.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-06-26  Daniel Bates  <dabates@apple.com>
+
+        [iOS][WK2] Distant focusable element may not be scrolled into view when focused using keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=134309
+        <rdar://problem/17427385>
+
+        Reviewed by Darin Adler.
+
+        Add a manual test to ensure that we scroll to a distant focused text field when it's focused
+        using the keyboard.
+
+        * ManualTests/ios/scroll-to-distant-keyboard-focused-text-field.html: Added.
+
 2014-06-25  Laszlo Gombos  <l.gombos@samsung.com>
 
         Remove build guard for progress element

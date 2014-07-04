@@ -46,8 +46,7 @@ public:
     virtual void updateBeforeChildren(const ScrollingStateNode&) override;
     virtual void updateAfterChildren(const ScrollingStateNode&) override;
 
-    // FIXME: We should implement this when we support ScrollingTreeScrollingNodes as children.
-    virtual void updateLayersAfterAncestorChange(const ScrollingTreeNode& /*changedNode*/, const FloatRect& /*fixedPositionRect*/, const FloatSize& /*cumulativeDelta*/) override { }
+    virtual void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) override;
 
     virtual void handleWheelEvent(const PlatformWheelEvent&) = 0;
     virtual void setScrollPosition(const FloatPoint&);
@@ -69,6 +68,7 @@ protected:
     FloatPoint lastCommittedScrollPosition() const { return m_lastCommittedScrollPosition; }
     const FloatSize& scrollableAreaSize() const { return m_scrollableAreaSize; }
     const FloatSize& totalContentsSize() const { return m_totalContentsSize; }
+    const FloatSize& reachableContentsSize() const { return m_reachableContentsSize; }
     const IntPoint& scrollOrigin() const { return m_scrollOrigin; }
 
     // If the totalContentsSize changes in the middle of a rubber-band, we still want to use the old totalContentsSize for the sake of
@@ -89,6 +89,7 @@ private:
     FloatSize m_scrollableAreaSize;
     FloatSize m_totalContentsSize;
     FloatSize m_totalContentsSizeForRubberBand;
+    FloatSize m_reachableContentsSize;
     FloatPoint m_lastCommittedScrollPosition;
     IntPoint m_scrollOrigin;
     

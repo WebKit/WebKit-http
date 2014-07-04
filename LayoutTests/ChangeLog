@@ -1,3 +1,637 @@
+2014-07-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] WebKit1 WebView iframe not responding to scroll gestures
+        https://bugs.webkit.org/show_bug.cgi?id=134569
+        <rdar://problem/17309008>
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac/fast/scrolling/scroll-iframe-fragment-expected.txt: Added.
+        * platform/mac/fast/scrolling/scroll-iframe-fragment.html: Added.
+
+2014-07-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Report and mark several flaky tests.
+        * platform/gtk/fast/text/indic-expected.txt: Added. Add baseline for GTK.
+        * platform/mac-wk2/TestExpectations: Report and mark flaky test http/tests/cache/iframe-304-crash.html.
+
+2014-07-01  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(160908): vube.com video won't play after going into and out of fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=134489
+
+        Reviewed by Zalan Bujtas.
+
+        * fullscreen/full-screen-plugin-expected.txt: Added.
+        * fullscreen/full-screen-plugin.html: Added.
+
+2014-07-02  Dean Jackson  <dino@apple.com>
+
+        Skip fast/canvas/webgl/tex-image-and-sub-image-2d-with-potentially-subsampled-image.html
+        on Mountain Lion. It doesn't support such large textures (or at least our
+        bots don't).
+
+        * platform/mac/TestExpectations:
+
+2014-07-02  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        REGRESSION(r170008): [GTK] Layout Tests fast/forms/option-constructor-selected.html and fast/forms/select-live-pseudo-selectors.html crash.
+        https://bugs.webkit.org/show_bug.cgi?id=134399
+
+        Reviewed by Chris Fleizach.
+
+        Removing Crash expectations for two layout tests.
+
+        * platform/gtk/TestExpectations: Updated.
+
+2014-07-01  Frédéric Wang  <fred.wang@free.fr>
+
+        The OpenType MATH table is not read on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=133569
+
+        Reviewed by Chris Fleizach.
+
+        We update the references for some tests in LayoutTests/mathml/opentype/ and remove the failure from TestExpectations.
+        Other tests require a font with a MATH table to be installed on Mac bots and to be used by default (bug 133603).
+
+        * platform/mac-wk2/mathml/opentype/opentype-stretchy-expected.txt: Removed.
+        * platform/mac/TestExpectations: Enable mathml/opentype/opentype-stretchy-horizontal.html and mathml/opentype/opentype-stretchy.html.
+        * platform/mac/mathml/horizontal-LatinModern-expected.txt: Removed. This file should not have been in this directory.
+        * platform/mac/mathml/horizontal-LatinModern-munderover-expected.txt: Removed. This file should not have been in this directory.
+        * platform/mac/mathml/opentype-stretchy-horizontal-expected.txt: Removed. This file should not have been in this directory.
+        * platform/mac/mathml/opentype/opentype-stretchy-expected.txt: Add text reference.
+        * platform/mac/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Add text reference.
+
+2014-07-01  Eric Carlson  <eric.carlson@apple.com>
+
+        WebVTT percentage value can be a float
+        https://bugs.webkit.org/show_bug.cgi?id=134511
+
+        Reviewed by Brent Fulgham.
+
+        * media/track/captions-webvtt/tc015-positioning-ltr.vtt:
+        * media/track/captions-webvtt/tc015-positioning.vtt:
+        * media/track/captions-webvtt/tc017-line-position.vtt:
+        * media/track/captions-webvtt/tc018-align-text-line-position.vtt:
+        * media/track/captions-webvtt/tc019-cue-size.vtt:
+        * media/track/track-webvtt-tc015-positioning-expected.txt:
+        * media/track/track-webvtt-tc015-positioning.html:
+        * media/track/track-webvtt-tc017-line-position-expected.txt:
+        * media/track/track-webvtt-tc017-line-position.html:
+        * media/track/track-webvtt-tc018-align-text-line-position-expected.txt:
+        * media/track/track-webvtt-tc018-align-text-line-position.html:
+        * media/video-test.js:
+        (testCues):
+
+2014-07-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix this test; it was waiting about 32 years for the end of an animation.
+        What we really care about is the start of the animation.
+
+        * compositing/animation/keyframe-order.html:
+
+2014-07-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS does not expose ARIA toggle buttons at all (not even as a regular button)
+        https://bugs.webkit.org/show_bug.cgi?id=133875
+
+        Reviewed by Enrica Casucci.
+
+        * platform/ios-sim/accessibility/toggle-button-expected.txt: Added.
+        * platform/ios-sim/accessibility/toggle-button.html: Added.
+
+2014-07-01  Dean Jackson  <dino@apple.com>
+
+        [iOS] Subsampled JPEG images do not draw correctly via the canvas APIs
+        https://bugs.webkit.org/show_bug.cgi?id=134513
+        <rdar://problem/12078860>
+        <rdar://problem/16745393>
+
+        Reviewed by Tim Horton.
+
+        Add Canvas2D and WebGL tests that exercise a very large JPEG image.
+
+        The WebGL test is mostly copied from the WebGL test suite, so please
+        excuse the coding style.
+
+        * fast/canvas/image-potential-subsample-expected.txt: Added.
+        * fast/canvas/image-potential-subsample.html: Added.
+        * fast/canvas/resources/image-8000x8000.jpg: Added.
+        * fast/canvas/webgl/resources/tex-image-and-sub-image-2d-with-potentially-subsampled-image.js: Added.
+        (.init):
+        (.runOneIteration):
+        (.runTestOnImage):
+        (.runTest):
+        (generateTest):
+        * fast/canvas/webgl/tex-image-and-sub-image-2d-with-potentially-subsampled-image-expected.txt: Added.
+        * fast/canvas/webgl/tex-image-and-sub-image-2d-with-potentially-subsampled-image.html: Added.
+
+2014-07-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: HTML indeterminate IDL attribute not mapped to checkbox value=2
+        https://bugs.webkit.org/show_bug.cgi?id=134492
+
+        Reviewed by Andreas Kling.
+
+        * accessibility/aria-checked-mixed-value-expected.txt:
+        * accessibility/aria-checked-mixed-value.html:
+        * platform/mac/accessibility/aria-checked-mixed-value-expected.txt: Added.
+
+2014-07-01  Simon Fraser  <simon.fraser@apple.com>
+
+        [UI-side compositing] Bad spinner on news.google.com: animations need to be ordered
+        https://bugs.webkit.org/show_bug.cgi?id=134504
+        <rdar://problem/17507892>
+
+        Reviewed by Tim Horton.
+        
+        Test that the transforms from the animation are applied in the correct order.
+
+        * compositing/animation/keyframe-order-expected.html: Added.
+        * compositing/animation/keyframe-order.html: Added.
+
+2014-07-01  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Pixel crack in breadcrumbs at devforums.apple.com.
+        https://bugs.webkit.org/show_bug.cgi?id=134491
+
+        Reviewed by Simon Fraser.
+
+        Do not early round geometry values, while computing background image position. It changes the final
+        subpixel values and that could lead to wrong snap positions.
+        pixelSnapBackgroundImageGeometryForPainting() takes care of geometry snapping.
+
+        * fast/backgrounds/background-image-size-double-rounding-expected.html: Added.
+        * fast/backgrounds/background-image-size-double-rounding.html: Added.
+
+2014-06-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        All Indic text is rendered as boxes on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=134464
+
+        Reviewed by Simon Fraser.
+
+        Simply draw some indic text and test that against currently good metric values.
+
+        * fast/text/indic.html: Added
+        * platform/ios-sim/fast/text/indic-expected.txt: Added.
+        * platform/mac/fast/text/indic-expected.txt: Added.
+        * platform/mac/fast/text/indic-expected.png: Added.
+
+2014-06-30  Michael Saboff  <msaboff@apple.com>
+
+        js/script-tests/function-apply-many-args.js fails on ARM
+        https://bugs.webkit.org/show_bug.cgi?id=126588
+
+        Reviewed by Mark Lam.
+
+        Removed three test cases that fail on some platforms and pass on others due
+        to stack size.  Other test cases cover what will fit on a stack or what will
+        throw an out of stack exception.
+
+        * js/function-apply-many-args-expected.txt:
+        * js/script-tests/function-apply-many-args.js:
+
+2014-06-30  Michael Saboff  <msaboff@apple.com>
+
+        Add option to run-jsc-stress-testes to filter out tests that use large heaps
+        https://bugs.webkit.org/show_bug.cgi?id=134458
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/script-tests/lots-of-fields.js: Added //@largeHeap tag to skip when
+        running on a memoryLimited device.
+
+2014-06-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Tiles on bottom of screen are not always allocated when necessary
+        https://bugs.webkit.org/show_bug.cgi?id=134272
+
+        Reviewed by Simon Fraser.
+
+        Apply a content inset, then dump visible rects.
+
+        * platform/mac-wk2/tiled-drawing/visible-rect-content-inset-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/visible-rect-content-inset.html: Added.
+        * compositing/visible-rect/iframe-no-layers.html: For WK2, the size of the visibleRect
+        includes the size of the border of the iframe. In order to elliminate platform
+        differences, set this border to 0. 
+
+2014-06-30  Michael Saboff  <msaboff@apple.com>
+
+        Reduce memory required for js/typedarray-zero-size.js
+        https://bugs.webkit.org/show_bug.cgi?id=134448
+
+        Reviewed by Mark Hahnenberg.
+
+        Reduce the loop count from 10000 to 4000 to further reduce memory requirements
+        on older devices.
+
+        * js/script-tests/typedarray-zero-size.js:
+
+2014-06-30  Michael Saboff  <msaboff@apple.com>
+
+        Reduce memory required for js/typedarray-zero-size.js
+        https://bugs.webkit.org/show_bug.cgi?id=134448
+
+        Reviewed by Darin Adler.
+
+        Making the loop count down reduces memory usage from ~190MB to ~22MB while
+        still testing the original issue.
+
+        * js/script-tests/typedarray-zero-size.js:
+
+2014-06-29  Yoav Weiss  <yoav@yoav.ws>
+
+        Add support for HTMLImageElement's sizes attribute
+        https://bugs.webkit.org/show_bug.cgi?id=133620
+
+        Reviewed by Dean Jackson.
+
+        These layout tests check that the sizes attribute and the related
+        srcset syntax are well supported, that the right resource is displayed,
+        that the currentSrc attribute is well supported and also that the right
+        resource is preloaded.
+
+        * fast/dom/HTMLImageElement/resources/currentSrcHelper.js: Added.
+        (fileName):
+        (currentSrcFileName):
+        * fast/dom/HTMLImageElement/resources/image-set-4x.png: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-1x-expected.txt: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-1x.html: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-2x-expected.txt: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-2x.html: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-js-change-expected.txt: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-js-innerhtml-expected.txt: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-js-innerhtml.html: Added.
+        * http/tests/loading/sizes/preload-image-sizes-2x-expected.txt: Added.
+        * http/tests/loading/sizes/preload-image-sizes-2x.html: Added.
+        * http/tests/loading/sizes/preload-image-sizes-expected.txt: Added.
+        * http/tests/loading/sizes/preload-image-sizes.html: Added.
+
+2014-06-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        TextCodecICU::encode turns the whole string as yen signs if there is any backslash in it
+        https://bugs.webkit.org/show_bug.cgi?id=133678
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/encoding/backslash-encoding-jp-expected.txt: Added.
+        * fast/encoding/backslash-encoding-jp.html: Added.
+
+2014-06-28  Radu Stavila  <stavila@adobe.com>
+
+        [New Multicolumn] Elements with rounded corners and overflow:hidden do not properly clip their content
+        https://bugs.webkit.org/show_bug.cgi?id=133941
+
+        Reviewed by Darin Adler.
+
+        Added test for multicol element inside an element with overflow:hidden and border radius.
+
+        * fast/multicol/newmulticol/multicol-clip-rounded-corners-expected.html: Added.
+        * fast/multicol/newmulticol/multicol-clip-rounded-corners.html: Added.
+
+2014-06-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Background clipping with subpixel behaves differently when composited.
+        https://bugs.webkit.org/show_bug.cgi?id=134422
+
+        Reviewed by Simon Fraser.
+
+        Adjust cliprect with the subpixel offset from the graphics layer the same way we do it for painting.
+        It ensures that cliprect starts from the right position when graphics layer is not on the same
+        coordinates as the associated render layer.
+
+        * compositing/hidpi-compositing-layer-with-subpixel-offset-accumulation-clipping-expected.html: Added.
+        * compositing/hidpi-compositing-layer-with-subpixel-offset-accumulation-clipping.html: Added.
+
+2014-06-27  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed gardening; fix whitespace issues in the W3C Media Source expected results.
+
+        * http/tests/media/media-source/mediasource-addsourcebuffer-expected.txt:
+        * http/tests/media/media-source/mediasource-append-buffer-expected.txt:
+        * http/tests/media/media-source/mediasource-append-stream-expected.txt:
+        * http/tests/media/media-source/mediasource-appendwindow-expected.txt:
+        * http/tests/media/media-source/mediasource-buffered-expected.txt:
+        * http/tests/media/media-source/mediasource-closed-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-a-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-audio-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-video-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-framerate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-a-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-audio-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-video-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-framerate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-duration-expected.txt:
+        * http/tests/media/media-source/mediasource-endofstream-invaliderror-expected.txt:
+        * http/tests/media/media-source/mediasource-endofstream-invaliderror.html:
+        * http/tests/media/media-source/mediasource-getvideoplaybackquality-expected.txt:
+        * http/tests/media/media-source/mediasource-is-type-supported-expected.txt:
+        * http/tests/media/media-source/mediasource-multiple-attach-expected.txt:
+        * http/tests/media/media-source/mediasource-play-expected.txt:
+        * http/tests/media/media-source/mediasource-play-then-seek-back-expected.txt:
+        * http/tests/media/media-source/mediasource-redundant-seek-expected.txt:
+        * http/tests/media/media-source/mediasource-remove-expected.txt:
+        * http/tests/media/media-source/mediasource-seek-beyond-duration-expected.txt:
+        * http/tests/media/media-source/mediasource-seek-during-pending-seek-expected.txt:
+        * http/tests/media/media-source/mediasource-sourcebuffer-mode-expected.txt:
+        * http/tests/media/media-source/mediasource-sourcebufferlist-expected.txt:
+
+2014-06-27  Martin Hodovan  <mhodovan.u-szeged@partner.samsung.com>
+
+        REGRESSION (r168685): css calc() expression fails 
+        https://bugs.webkit.org/show_bug.cgi?id=134059
+
+        Added test demonstrates that expressions like
+        'calc((100% - 20px) / 3' work correctly again.
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/calc-percentage-pixel-expected.html: Added.
+        * fast/css/calc-percentage-pixel.html: Added.
+
+2014-06-27  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Import latest Media Source tests from W3C test suite
+        https://bugs.webkit.org/show_bug.cgi?id=134388
+
+        Reviewed by Eric Carlson.
+
+        Import the most recent Media Source tests from the proposed W3C test suite:
+        <https://github.com/acolwell/web-platform-tests/tree/submission/acolwell/media-source/media-source>
+
+        No ports currently enable these tests, so update the expected results for each
+        test with the ideal expected result.
+
+        * http/tests/media/media-source/mediasource-addsourcebuffer-expected.txt:
+        * http/tests/media/media-source/mediasource-addsourcebuffer.html:
+        * http/tests/media/media-source/mediasource-append-buffer-expected.txt:
+        * http/tests/media/media-source/mediasource-append-buffer.html:
+        * http/tests/media/media-source/mediasource-append-stream-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-append-stream.html: Added.
+        * http/tests/media/media-source/mediasource-appendwindow-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-appendwindow.html: Added.
+        * http/tests/media/media-source/mediasource-buffered-expected.txt:
+        * http/tests/media/media-source/mediasource-buffered.html:
+        * http/tests/media/media-source/mediasource-closed-expected.txt:
+        * http/tests/media/media-source/mediasource-closed.html:
+        * http/tests/media/media-source/mediasource-config-change-mp4-a-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-a-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-audio-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-audio-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-framesize.html:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-video-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-av-video-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-framerate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-framerate.html:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-mp4-v-framesize.html:
+        * http/tests/media/media-source/mediasource-config-change-webm-a-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-a-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-audio-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-audio-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-framesize.html:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-video-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-av-video-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-bitrate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-bitrate.html:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-framerate-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-framerate.html:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-framesize-expected.txt:
+        * http/tests/media/media-source/mediasource-config-change-webm-v-framesize.html:
+        * http/tests/media/media-source/mediasource-config-changes.js:
+        * http/tests/media/media-source/mediasource-duration-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-duration.html: Added.
+        * http/tests/media/media-source/mediasource-endofstream-invaliderror-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-endofstream-invaliderror.html: Added.
+        * http/tests/media/media-source/mediasource-getvideoplaybackquality-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-getvideoplaybackquality.html: Added.
+        * http/tests/media/media-source/mediasource-is-type-supported-expected.txt:
+        * http/tests/media/media-source/mediasource-is-type-supported.html:
+        * http/tests/media/media-source/mediasource-multiple-attach-expected.txt:
+        * http/tests/media/media-source/mediasource-multiple-attach.html:
+        * http/tests/media/media-source/mediasource-play-expected.txt:
+        * http/tests/media/media-source/mediasource-play-then-seek-back-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-play-then-seek-back.html: Added.
+        * http/tests/media/media-source/mediasource-play.html:
+        * http/tests/media/media-source/mediasource-redundant-seek-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-redundant-seek.html: Added.
+        * http/tests/media/media-source/mediasource-remove-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-remove.html: Added.
+        * http/tests/media/media-source/mediasource-seek-beyond-duration-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-seek-beyond-duration.html: Added.
+        * http/tests/media/media-source/mediasource-seek-during-pending-seek-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-seek-during-pending-seek.html: Added.
+        * http/tests/media/media-source/mediasource-sourcebuffer-mode-expected.txt: Added.
+        * http/tests/media/media-source/mediasource-sourcebuffer-mode.html: Added.
+        * http/tests/media/media-source/mediasource-sourcebufferlist-expected.txt:
+        * http/tests/media/media-source/mediasource-sourcebufferlist.html:
+        * http/tests/media/media-source/mediasource-util.js:
+        * http/tests/media/media-source/mp4/test-a-128k-44100Hz-1ch-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-a-128k-44100Hz-1ch.mp4: Added.
+        * http/tests/media/media-source/mp4/test-a-192k-44100Hz-1ch-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-a-192k-44100Hz-1ch.mp4: Added.
+        * http/tests/media/media-source/mp4/test-av-384k-44100Hz-1ch-320x240-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-av-384k-44100Hz-1ch-320x240-30fps-10kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test-av-384k-44100Hz-1ch-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-av-384k-44100Hz-1ch-640x480-30fps-10kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test-av-448k-44100Hz-1ch-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-av-448k-44100Hz-1ch-640x480-30fps-10kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test-av-640k-44100Hz-1ch-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-av-640k-44100Hz-1ch-640x480-30fps-10kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test-v-128k-320x240-24fps-8kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-v-128k-320x240-24fps-8kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test-v-128k-320x240-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-v-128k-320x240-30fps-10kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test-v-128k-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-v-128k-640x480-30fps-10kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test-v-256k-320x240-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/mp4/test-v-256k-320x240-30fps-10kfr.mp4: Added.
+        * http/tests/media/media-source/mp4/test.mp4: Added.
+        * http/tests/media/media-source/seek-to-end-after-duration-change-expected.txt: Removed.
+        * http/tests/media/media-source/seek-to-end-after-duration-change.html: Removed.
+        * http/tests/media/media-source/video-media-source-abort-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-abort.html: Removed.
+        * http/tests/media/media-source/video-media-source-add-and-remove-buffers-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-add-and-remove-buffers.html: Removed.
+        * http/tests/media/media-source/video-media-source-append-in-ended-state-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-append-in-ended-state.html: Removed.
+        * http/tests/media/media-source/video-media-source-append-with-offset-in-ended-state-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-append-with-offset-in-ended-state.html: Removed.
+        * http/tests/media/media-source/video-media-source-async-events-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-async-events.html: Removed.
+        * http/tests/media/media-source/video-media-source-closed-on-htmlmediaelement-destruction-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-closed-on-htmlmediaelement-destruction.html: Removed.
+        * http/tests/media/media-source/video-media-source-duration-boundaryconditions-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-duration-boundaryconditions.html: Removed.
+        * http/tests/media/media-source/video-media-source-duration-changed-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-duration-changed.html: Removed.
+        * http/tests/media/media-source/video-media-source-duration-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-duration.html: Removed.
+        * http/tests/media/media-source/video-media-source-errors-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-errors.html: Removed.
+        * http/tests/media/media-source/video-media-source-event-attributes-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-event-attributes.html: Removed.
+        * http/tests/media/media-source/video-media-source-garbage-collection-before-sourceopen-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-garbage-collection-before-sourceopen.html: Removed.
+        * http/tests/media/media-source/video-media-source-is-type-supported-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-is-type-supported.html: Removed.
+        * http/tests/media/media-source/video-media-source-objects-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-objects.html: Removed.
+        * http/tests/media/media-source/video-media-source-play-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-play.html: Removed.
+        * http/tests/media/media-source/video-media-source-reject-append-after-reopening-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-reject-append-after-reopening.html: Removed.
+        * http/tests/media/media-source/video-media-source-seek-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-seek.html: Removed.
+        * http/tests/media/media-source/video-media-source-sourcebufferlist-crash-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-sourcebufferlist-crash.html: Removed.
+        * http/tests/media/media-source/video-media-source-state-changes-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-state-changes.html: Removed.
+        * http/tests/media/media-source/video-media-source-zero-byte-append-in-ended-state-expected.txt: Removed.
+        * http/tests/media/media-source/video-media-source-zero-byte-append-in-ended-state.html: Removed.
+        * http/tests/media/media-source/webm/segment-info.js: Added.
+        * http/tests/media/media-source/webm/test-a-128k-44100Hz-1ch-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-a-128k-44100Hz-1ch.webm: Added.
+        * http/tests/media/media-source/webm/test-a-192k-44100Hz-1ch-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-a-192k-44100Hz-1ch.webm: Added.
+        * http/tests/media/media-source/webm/test-av-384k-44100Hz-1ch-320x240-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-av-384k-44100Hz-1ch-320x240-30fps-10kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-av-384k-44100Hz-1ch-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-av-384k-44100Hz-1ch-640x480-30fps-10kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-av-448k-44100Hz-1ch-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-av-448k-44100Hz-1ch-640x480-30fps-10kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-av-640k-44100Hz-1ch-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-av-640k-44100Hz-1ch-640x480-30fps-10kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-v-128k-320x240-24fps-8kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-v-128k-320x240-24fps-8kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-v-128k-320x240-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-v-128k-320x240-30fps-10kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-v-128k-640x480-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-v-128k-640x480-30fps-10kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-v-256k-320x240-30fps-10kfr-manifest.json: Added.
+        * http/tests/media/media-source/webm/test-v-256k-320x240-30fps-10kfr.webm: Added.
+        * http/tests/media/media-source/webm/test-vp8-vorbis-webvtt.webm: Added.
+        * http/tests/media/media-source/webm/test.webm: Added.
+
+2014-06-27  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Rebaseline tests after r170207, r170249, r170304, r170418 and r170433.
+        Update expectations for new crashing tests.
+
+        * platform/gtk/TestExpectations: Report and mark new crashing tests. Adjust some tests expectations.
+        * platform/gtk/fast/canvas/canvas-blend-image-expected.txt: Rebaseline after r170433.
+        * platform/gtk/fast/canvas/canvas-blend-solid-expected.txt: Rebaseline after r170433.
+        * platform/gtk/fast/dom/navigator-detached-no-crash-expected.txt: Rebaseline after r170249.
+        * platform/gtk/fast/dynamic/text-combine-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt: Added. Add baseline after r170304.
+        * platform/gtk/fast/regions/repaint/japanese-rl-selection-repaint-in-regions-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/repaint/japanese-rl-selection-clear-expected.txt: Added. Rebaseline after r170418.
+        * platform/gtk/fast/repaint/japanese-rl-selection-repaint-expected.txt: Added. Rebaseline after r170418.
+        * platform/gtk/fast/text/decorations-with-text-combine-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/text/emphasis-vertical-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/text/international/002-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/text/international/text-combine-image-test-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/text/international/text-spliced-font-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/text/international/wrap-CJK-001-expected.txt: Added. Rebaseline after r170418.
+        * platform/gtk/fast/text/khmer-lao-font-expected.txt: Added. Add baseline after r170207.
+        * platform/gtk/fast/writing-mode/border-vertical-lr-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/writing-mode/japanese-lr-selection-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/writing-mode/japanese-lr-text-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/writing-mode/japanese-rl-selection-expected.txt: Rebaseline after r170418.
+        * platform/gtk/fast/writing-mode/japanese-rl-text-expected.txt: Rebaseline after r170418.
+        * platform/gtk/svg/W3C-SVG-1.1/filters-blend-01-b-expected.txt: Added. Rebaseline after r170433.
+        * platform/gtk/svg/filters/feBlend-all-blendmodes-expected.txt: Added. Add baseline after r170433.
+
+2014-06-27  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        XHR should keep attributes on instance
+        https://bugs.webkit.org/show_bug.cgi?id=134363
+
+        Reviewed by Sam Weinig.
+
+        Added a new test for defining properties on XHR prototype.
+
+        * js/dom/xhr-prototype-define-property-expected.txt: Added.
+        * js/dom/xhr-prototype-define-property.html: Added.
+
+2014-06-27  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Interaction between auto-placement and column / row spanning
+        https://bugs.webkit.org/show_bug.cgi?id=110633
+
+        Reviewed by Sergio Villar Senin.
+
+        Add new specific test cases for span in auto-placement algorithm.
+
+        * fast/css-grid-layout/grid-item-auto-placement-automatic-span-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-placement-automatic-span.html: Added.
+        * fast/css-grid-layout/grid-item-auto-placement-definite-span-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-placement-definite-span.html: Added.
+        * fast/css-grid-layout/grid-item-spanning-resolution.html: Update test
+        case now that span in auto-positioned items is supported.
+
+2014-06-27  Mahesh Kulkarni  <mahesh.kk@samsung.com>
+
+        [XHR] open method must uppercase only standard method types
+        https://bugs.webkit.org/show_bug.cgi?id=134264
+
+        Reviewed by Darin Adler.
+
+        All tests from w3c-test suite pass http://w3c-test.org/XMLHttpRequest/open-method-case-sensitive.htm.
+        This merges blink changes from r176592.
+
+        * http/tests/xmlhttprequest/resources/echo-request-method.php: Added.
+        * http/tests/xmlhttprequest/xmlhttprequest-open-method-allowed-expected.txt: Added.
+        * http/tests/xmlhttprequest/xmlhttprequest-open-method-allowed.html: Added.
+        * http/tests/xmlhttprequest/xmlhttprequest-open-method-case-insensitive-expected.txt: Added.
+        * http/tests/xmlhttprequest/xmlhttprequest-open-method-case-insensitive.html: Added.
+
+2014-06-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        iOS 8 beta 2 ES6 'Set' clear() broken
+        https://bugs.webkit.org/show_bug.cgi?id=134346
+
+        Reviewed by Oliver Hunt.
+
+        * js/script-tests/set-clear.js: Added.
+        * js/set-clear-expected.txt: Added.
+        * js/set-clear.html: Added.
+
+2014-06-26  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Properly support for z-index on grid items
+        https://bugs.webkit.org/show_bug.cgi?id=103329
+
+        Reviewed by Benjamin Poulain.
+
+        From Blink r157620 by <jchaffraix@chromium.org> and r172402 by
+        <wangxianzhu@chromium.org>.
+
+        * css3/blending/repaint/blend-mode-turn-off-isolation-expected.txt: Test rebaseline.
+        * fast/css-grid-layout/grid-item-z-index-change-repaint-expected.html: Added.
+        * fast/css-grid-layout/grid-item-z-index-change-repaint.html: Added.
+        * fast/css-grid-layout/grid-item-z-index-stacking-context-expected.html: Added.
+        * fast/css-grid-layout/grid-item-z-index-stacking-context.html: Added.
+        * fast/css-grid-layout/grid-item-z-index-support-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-z-index-support.html: Added.
+
 2014-06-25  Myles C. Maxfield  <mmaxfield@apple.com>
 
         compositing/visible-rect/iframe-no-layers.html is broken and confusing

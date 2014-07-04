@@ -432,7 +432,7 @@ static void layerPath(CAShapeLayer *layer, const FloatQuad& outerQuad)
 
     _pageClient = std::make_unique<PageClientImpl>(self, webView);
 
-    _page = context.createWebPage(*_pageClient, std::move(webPageConfiguration));
+    _page = context.createWebPage(*_pageClient, WTF::move(webPageConfiguration));
     _page->initializeWebPage();
     _page->setIntrinsicDeviceScaleFactor(WKGetScaleFactorForScreen([UIScreen mainScreen]));
     _page->setUseFixedLayout(true);
@@ -556,6 +556,8 @@ static void layerPath(CAShapeLayer *layer, const FloatQuad& outerQuad)
 - (void)didUpdateVisibleRect:(CGRect)visibleRect unobscuredRect:(CGRect)unobscuredRect unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
     scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale inStableState:(BOOL)isStableState isChangingObscuredInsetsInteractively:(BOOL)isChangingObscuredInsetsInteractively
 {
+    double oldDisplayedContentScale = _page->displayedContentScale();
+
     double timestamp = monotonicallyIncreasingTime();
     HistoricalVelocityData::VelocityData velocityData;
     if (!isStableState)
@@ -572,7 +574,9 @@ static void layerPath(CAShapeLayer *layer, const FloatQuad& outerQuad)
 
     if (auto drawingArea = _page->drawingArea())
         drawingArea->updateDebugIndicator();
-    [self _updateUnscaledView];
+
+    if (!withinEpsilon(oldDisplayedContentScale, zoomScale))
+        [self _updateUnscaledView];
 }
 
 - (void)setMinimumSize:(CGSize)size

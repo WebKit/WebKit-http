@@ -26,16 +26,27 @@
 #include "config.h"
 #include "WKSessionStateRef.h"
 
+#include "APIData.h"
 #include "APISessionState.h"
 #include "LegacySessionStateCoding.h"
 #include "SessionState.h"
 #include "WKAPICast.h"
 
+WKTypeID WKSessionStateGetTypeID()
+{
+    return WebKit::toAPI(API::SessionState::APIType);
+}
+
 WKSessionStateRef WKSessionStateCreateFromData(WKDataRef data)
 {
     WebKit::SessionState sessionState;
-    if (!WebKit::decodeLegacySessionState(*WebKit::toImpl(data), sessionState))
+    if (!WebKit::decodeLegacySessionState(WebKit::toImpl(data)->bytes(), WebKit::toImpl(data)->size(), sessionState))
         return nullptr;
 
-    return WebKit::toAPI(API::SessionState::create(std::move(sessionState)).leakRef());
+    return WebKit::toAPI(API::SessionState::create(WTF::move(sessionState)).leakRef());
+}
+
+WKDataRef WKSessionStateCopyData(WKSessionStateRef sessionState)
+{
+    return WebKit::toAPI(WebKit::encodeLegacySessionState(WebKit::toImpl(sessionState)->sessionState()).release().leakRef());
 }

@@ -19,6 +19,14 @@ Role: AXRole: AXCheckMenuItem
 Mixed: true
 
 
+Role: AXRole: AXCheckBox
+Mixed: true
+
+
+Role: AXRole: AXCheckBox
+Mixed: false
+
+
 PASS successfullyParsed is true
 
 TEST COMPLETE

@@ -30,6 +30,7 @@
 
 #import "APIFormClient.h"
 #import "FindClient.h"
+#import "LegacySessionStateCoding.h"
 #import "NavigationState.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteObjectRegistry.h"
@@ -277,7 +278,7 @@ static int32_t deviceOrientation()
     [self addSubview:_scrollView.get()];
     [_scrollView setBackgroundColor:[UIColor whiteColor]];
 
-    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration) webView:self]);
+    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self]);
 
     _page = [_contentView page];
     _page->setApplicationNameForUserAgent([@"Mobile/" stringByAppendingString:[UIDevice currentDevice].buildVersion]);
@@ -303,9 +304,13 @@ static int32_t deviceOrientation()
 #endif
 
 #if PLATFORM(MAC)
-    _wkView = [[WKView alloc] initWithFrame:bounds context:context configuration:std::move(webPageConfiguration) webView:self];
+    _wkView = [[WKView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self];
     [self addSubview:_wkView.get()];
     _page = WebKit::toImpl([_wkView pageRef]);
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [_wkView _setAutomaticallyAdjustsContentInsets:YES];
+#endif
 #endif
 
     _page->setBackgroundExtendsBeyondPage(true);
@@ -582,6 +587,11 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     return CGSizeMake(floorToDevicePixel(contentSize.width, deviceScaleFactor), floorToDevicePixel(contentSize.height, deviceScaleFactor));
 }
 
+- (UIView *)_currentContentView
+{
+    return _customContentView ? _customContentView.get() : _contentView.get();
+}
+
 - (void)_setHasCustomContentView:(BOOL)pageHasCustomContentView loadedMIMEType:(const WTF::String&)mimeType
 {
     if (pageHasCustomContentView) {
@@ -642,13 +652,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
 
 static CGFloat contentZoomScale(WKWebView* webView)
 {
-    UIView *zoomView;
-    if (webView->_customContentView)
-        zoomView = webView->_customContentView.get();
-    else
-        zoomView = webView->_contentView.get();
-
-    CGFloat scale = [[zoomView layer] affineTransform].a;
+    CGFloat scale = [[webView._currentContentView layer] affineTransform].a;
     ASSERT(scale == [webView->_scrollView zoomScale]);
     return scale;
 }
@@ -738,11 +742,6 @@ static CGFloat contentZoomScale(WKWebView* webView)
 
     _needsResetViewStateAfterCommitLoadForMainFrame = YES;
     _usesMinimalUI = NO;
-}
-
-static inline bool withinEpsilon(float a, float b)
-{
-    return fabs(a - b) < std::numeric_limits<float>::epsilon();
 }
 
 static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, WebCore::FloatPoint contentOffset)
@@ -916,7 +915,7 @@ static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, Web
 {
     // FIMXE: Some of this could be shared with _scrollToRect.
     const double visibleRectScaleChange = contentZoomScale(self) / scale;
-    const WebCore::FloatRect visibleRect([self convertRect:self.bounds toView:_contentView.get()]);
+    const WebCore::FloatRect visibleRect([self convertRect:self.bounds toView:self._currentContentView]);
     const WebCore::FloatRect unobscuredRect([self _contentRectForUserInteraction]);
 
     const WebCore::FloatSize topLeftObscuredInsetAfterZoom((unobscuredRect.minXMinYCorner() - visibleRect.minXMinYCorner()) * visibleRectScaleChange);
@@ -967,7 +966,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     WebCore::FloatRect unobscuredContentRect([self _contentRectForUserInteraction]);
     WebCore::FloatPoint unobscuredContentOffset = unobscuredContentRect.location();
-    WebCore::FloatSize contentSize([_contentView bounds].size);
+    WebCore::FloatSize contentSize([self._currentContentView bounds].size);
 
     // Center the target rect in the scroll view.
     // If the target doesn't fit in the scroll view, center on the gesture location instead.
@@ -1279,7 +1278,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     UIEdgeInsets obscuredInsets = _obscuredInsets;
     obscuredInsets.bottom = std::max(_obscuredInsets.bottom, _inputViewBounds.size.height);
     CGRect unobscuredRect = UIEdgeInsetsInsetRect(self.bounds, obscuredInsets);
-    return [self convertRect:unobscuredRect toView:_contentView.get()];
+    return [self convertRect:unobscuredRect toView:self._currentContentView];
 }
 
 - (void)_updateVisibleContentRects
@@ -1554,30 +1553,71 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     _page->process().terminate();
 }
 
+#if PLATFORM(IOS)
+static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRect& bounds)
+{
+    return WebCore::FloatSize(webView->_overridesMinimumLayoutSize ? webView->_minimumLayoutSizeOverride : bounds.size);
+}
+
+static WebCore::FloatSize activeMinimumLayoutSizeForMinimalUI(WKWebView *webView, WebCore::FloatSize minimumLayoutSize)
+{
+    return webView->_overridesMinimumLayoutSizeForMinimalUI ? WebCore::FloatSize(webView->_minimumLayoutSizeOverrideForMinimalUI) : minimumLayoutSize;
+}
+
+static WebCore::FloatSize activeMaximumUnobscuredSize(WKWebView *webView, const CGRect& bounds)
+{
+    return WebCore::FloatSize(webView->_overridesMaximumUnobscuredSize ? webView->_maximumUnobscuredSizeOverride : bounds.size);
+}
+
+static int32_t activeOrientation(WKWebView *webView)
+{
+    return webView->_overridesInterfaceOrientation ? deviceOrientationForUIInterfaceOrientation(webView->_interfaceOrientationOverride) : webView->_page->deviceOrientation();
+}
+#endif
+
 - (void)_didRelaunchProcess
 {
 #if PLATFORM(IOS)
-    WebCore::FloatSize boundsSize(self.bounds.size);
-    _page->setViewportConfigurationMinimumLayoutSize(_overridesMinimumLayoutSize ? WebCore::FloatSize(_minimumLayoutSizeOverride) : boundsSize);
-    _page->setViewportConfigurationMinimumLayoutSizeForMinimalUI(_overridesMinimumLayoutSizeForMinimalUI ? WebCore::FloatSize(_minimumLayoutSizeOverrideForMinimalUI) : boundsSize);
-    _page->setMaximumUnobscuredSize(_overridesMaximumUnobscuredSize ? WebCore::FloatSize(_maximumUnobscuredSizeOverride) : boundsSize);
+    CGRect bounds = self.bounds;
+    WebCore::FloatSize minimalLayoutSize = activeMinimumLayoutSize(self, bounds);
+    _page->setViewportConfigurationMinimumLayoutSize(minimalLayoutSize);
+    _page->setViewportConfigurationMinimumLayoutSizeForMinimalUI(activeMinimumLayoutSizeForMinimalUI(self, minimalLayoutSize));
+    _page->setMaximumUnobscuredSize(activeMaximumUnobscuredSize(self, bounds));
 #endif
 }
 
+- (NSData *)_sessionStateData
+{
+    WebKit::SessionState sessionState = _page->sessionState();
+
+    // FIXME: This should not use the legacy session state encoder.
+    return [wrapper(*WebKit::encodeLegacySessionState(sessionState).release().leakRef()) autorelease];
+}
+
+// FIXME: This should return a _WKSessionState object.
 - (NSData *)_sessionState
 {
-    return [wrapper(*_page->sessionStateData(nullptr, nullptr).leakRef()) autorelease];
+    return [self _sessionStateData];
 }
 
-static void releaseNSData(unsigned char*, const void* data)
+- (void)_restoreFromSessionStateData:(NSData *)sessionStateData
 {
-    [(NSData *)data release];
+    // FIXME: This should not use the legacy session state decoder.
+    WebKit::SessionState sessionState;
+    if (!WebKit::decodeLegacySessionState(static_cast<const uint8_t*>(sessionStateData.bytes), sessionStateData.length, sessionState))
+        return;
+
+    uint64_t navigationID = _page->restoreFromSessionState(WTF::move(sessionState));
+    if (navigationID) {
+        // FIXME: This is not necessarily always a reload navigation.
+        _navigationState->createReloadNavigation(navigationID);
+    }
 }
 
-- (void)_restoreFromSessionState:(NSData *)sessionState
+// FIXME: This should take a _WKSessionState object.
+- (void)_restoreFromSessionState:(NSData *)sessionStateData
 {
-    [sessionState retain];
-    _page->restoreFromSessionStateData(API::Data::createWithoutCopying((const unsigned char*)sessionState.bytes, sessionState.length, releaseNSData, sessionState).get());
+    [self _restoreFromSessionStateData:sessionStateData];
 }
 
 - (void)_close
@@ -1609,6 +1649,11 @@ static void releaseNSData(unsigned char*, const void* data)
 - (void)_setAddsVisitedLinks:(BOOL)addsVisitedLinks
 {
     _page->setAddsVisitedLinks(addsVisitedLinks);
+}
+
+- (BOOL)_networkRequestsInProgress
+{
+    return _page->pageLoadState().networkRequestsInProgress();
 }
 
 static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEvents events)
@@ -2009,10 +2054,38 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_beginAnimatedResizeWithUpdates:(void (^)(void))updateBlock
 {
-    _isAnimatingResize = YES;
-
     if (_customContentView) {
         updateBlock();
+        return;
+    }
+
+    _isAnimatingResize = YES;
+
+    CGRect oldBounds = self.bounds;
+    WebCore::FloatSize oldMinimumLayoutSize = activeMinimumLayoutSize(self, oldBounds);
+    WebCore::FloatSize oldMinimumLayoutSizeForMinimalUI = activeMinimumLayoutSizeForMinimalUI(self, oldMinimumLayoutSize);
+    WebCore::FloatSize oldMaximumUnobscuredSize = activeMaximumUnobscuredSize(self, oldBounds);
+    int32_t oldOrientation = activeOrientation(self);
+    UIEdgeInsets oldObscuredInsets = _obscuredInsets;
+    WebCore::FloatRect oldUnobscuredContentRect = _page->unobscuredContentRect();
+
+    updateBlock();
+
+    CGRect newBounds = self.bounds;
+    WebCore::FloatSize newMinimumLayoutSize = activeMinimumLayoutSize(self, newBounds);
+    WebCore::FloatSize newMinimumLayoutSizeForMinimalUI = activeMinimumLayoutSizeForMinimalUI(self, newMinimumLayoutSize);
+    WebCore::FloatSize newMaximumUnobscuredSize = activeMaximumUnobscuredSize(self, newBounds);
+    int32_t newOrientation = activeOrientation(self);
+    UIEdgeInsets newObscuredInsets = _obscuredInsets;
+
+    if (CGRectEqualToRect(oldBounds, newBounds)
+        && oldMinimumLayoutSize == newMinimumLayoutSize
+        && oldMinimumLayoutSizeForMinimalUI == newMinimumLayoutSizeForMinimalUI
+        && oldMaximumUnobscuredSize == newMaximumUnobscuredSize
+        && oldOrientation == newOrientation
+        && UIEdgeInsetsEqualToEdgeInsets(oldObscuredInsets, newObscuredInsets)) {
+        _isAnimatingResize = NO;
+        [self _updateVisibleContentRects];
         return;
     }
 
@@ -2022,21 +2095,15 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _resizeAnimationView = adoptNS([[UIView alloc] init]);
     [_scrollView insertSubview:_resizeAnimationView.get() atIndex:indexOfContentView];
     [_resizeAnimationView addSubview:_contentView.get()];
-    WebCore::FloatRect oldUnobscuredContentRect = _page->unobscuredContentRect();
-
-    updateBlock();
-
-    CGRect newBounds = self.bounds;
-    CGSize newMinimumLayoutSize = newBounds.size;
 
     CGSize contentSizeInContentViewCoordinates = [_contentView bounds].size;
-    [_scrollView setMinimumZoomScale:std::min(newMinimumLayoutSize.width / contentSizeInContentViewCoordinates.width, [_scrollView minimumZoomScale])];
-    [_scrollView setMaximumZoomScale:std::max(newMinimumLayoutSize.width / contentSizeInContentViewCoordinates.width, [_scrollView maximumZoomScale])];
+    [_scrollView setMinimumZoomScale:std::min(newMinimumLayoutSize.width() / contentSizeInContentViewCoordinates.width, [_scrollView minimumZoomScale])];
+    [_scrollView setMaximumZoomScale:std::max(newMinimumLayoutSize.width() / contentSizeInContentViewCoordinates.width, [_scrollView maximumZoomScale])];
 
     // Compute the new scale to keep the current content width in the scrollview.
     CGFloat oldWebViewWidthInContentViewCoordinates = oldUnobscuredContentRect.width();
     CGFloat visibleContentViewWidthInContentCoordinates = std::min(contentSizeInContentViewCoordinates.width, oldWebViewWidthInContentViewCoordinates);
-    CGFloat targetScale = newMinimumLayoutSize.width / visibleContentViewWidthInContentCoordinates;
+    CGFloat targetScale = newMinimumLayoutSize.width() / visibleContentViewWidthInContentCoordinates;
     CGFloat resizeAnimationViewAnimationScale = targetScale / contentZoomScale(self);
     [_resizeAnimationView setTransform:CGAffineTransformMakeScale(resizeAnimationViewAnimationScale, resizeAnimationViewAnimationScale)];
 
@@ -2074,68 +2141,49 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     CGRect visibleRectInContentCoordinates = [self convertRect:newBounds toView:_contentView.get()];
     CGRect unobscuredRectInContentCoordinates = [self convertRect:futureUnobscuredRectInSelfCoordinates toView:_contentView.get()];
 
-    CGSize minimumLayoutSize = newBounds.size;
-    if (_overridesMinimumLayoutSize)
-        minimumLayoutSize = _minimumLayoutSizeOverride;
-
-    CGSize minimumLayoutSizeForMinimalUI = minimumLayoutSize;
-    if (_overridesMinimumLayoutSizeForMinimalUI)
-        minimumLayoutSizeForMinimalUI = _minimumLayoutSizeOverrideForMinimalUI;
-
-    CGSize maximumUnobscuredSize = newBounds.size;
-    if (_overridesMaximumUnobscuredSize)
-        maximumUnobscuredSize = _maximumUnobscuredSizeOverride;
-
-    int32_t orientation;
-    if (_overridesInterfaceOrientation)
-        orientation = deviceOrientationForUIInterfaceOrientation(_interfaceOrientationOverride);
-    else
-        orientation = _page->deviceOrientation();
-
-    _page->dynamicViewportSizeUpdate(WebCore::FloatSize(minimumLayoutSize), WebCore::FloatSize(minimumLayoutSizeForMinimalUI), WebCore::FloatSize(maximumUnobscuredSize), visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, targetScale, orientation);
+    _page->dynamicViewportSizeUpdate(newMinimumLayoutSize, newMinimumLayoutSizeForMinimalUI, newMaximumUnobscuredSize, visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, targetScale, newOrientation);
 }
 
 - (void)_endAnimatedResize
 {
+    if (!_isAnimatingResize)
+        return;
+
     _page->synchronizeDynamicViewportUpdate();
 
-    if (!_customContentView && _isAnimatingResize) {
-        NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
-        [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
+    NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
+    [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
 
-        CALayer *contentViewLayer = [_contentView layer];
-        CATransform3D resizeAnimationTransformAdjustements = _resizeAnimationTransformAdjustments;
-        CGFloat adjustmentScale = resizeAnimationTransformAdjustements.m11;
-        contentViewLayer.sublayerTransform = CATransform3DIdentity;
+    CALayer *contentViewLayer = [_contentView layer];
+    CGFloat adjustmentScale = _resizeAnimationTransformAdjustments.m11;
+    contentViewLayer.sublayerTransform = CATransform3DIdentity;
 
-        CGFloat animatingScaleTarget = [[_resizeAnimationView layer] transform].m11;
-        CALayer *contentLayer = [_contentView layer];
-        CATransform3D contentLayerTransform = contentLayer.transform;
-        CGFloat currentScale = [[_resizeAnimationView layer] transform].m11 * contentLayerTransform.m11;
+    CGFloat animatingScaleTarget = [[_resizeAnimationView layer] transform].m11;
+    CALayer *contentLayer = [_contentView layer];
+    CATransform3D contentLayerTransform = contentLayer.transform;
+    CGFloat currentScale = [[_resizeAnimationView layer] transform].m11 * contentLayerTransform.m11;
 
-        // We cannot use [UIScrollView setZoomScale:] directly because the UIScrollView delegate would get a callback with
-        // an invalid contentOffset. The real content offset is only set below.
-        // Since there is no public API for setting both the zoomScale and the contentOffset, we set the zoomScale manually
-        // on the zoom layer and then only change the contentOffset.
-        CGFloat adjustedScale = adjustmentScale * currentScale;
-        contentLayerTransform.m11 = adjustedScale;
-        contentLayerTransform.m22 = adjustedScale;
-        contentLayer.transform = contentLayerTransform;
+    // We cannot use [UIScrollView setZoomScale:] directly because the UIScrollView delegate would get a callback with
+    // an invalid contentOffset. The real content offset is only set below.
+    // Since there is no public API for setting both the zoomScale and the contentOffset, we set the zoomScale manually
+    // on the zoom layer and then only change the contentOffset.
+    CGFloat adjustedScale = adjustmentScale * currentScale;
+    contentLayerTransform.m11 = adjustedScale;
+    contentLayerTransform.m22 = adjustedScale;
+    contentLayer.transform = contentLayerTransform;
 
-        CGPoint currentScrollOffset = [_scrollView contentOffset];
-        double horizontalScrollAdjustement = _resizeAnimationTransformAdjustments.m41 * animatingScaleTarget;
-        double verticalScrollAdjustment = _resizeAnimationTransformAdjustments.m42 * animatingScaleTarget;
+    CGPoint currentScrollOffset = [_scrollView contentOffset];
+    double horizontalScrollAdjustement = _resizeAnimationTransformAdjustments.m41 * animatingScaleTarget;
+    double verticalScrollAdjustment = _resizeAnimationTransformAdjustments.m42 * animatingScaleTarget;
 
-        [_scrollView setContentSize:roundScrollViewContentSize(*_page, [_contentView frame].size)];
-        [_scrollView setContentOffset:CGPointMake(currentScrollOffset.x - horizontalScrollAdjustement, currentScrollOffset.y - verticalScrollAdjustment)];
+    [_scrollView setContentSize:roundScrollViewContentSize(*_page, [_contentView frame].size)];
+    [_scrollView setContentOffset:CGPointMake(currentScrollOffset.x - horizontalScrollAdjustement, currentScrollOffset.y - verticalScrollAdjustment)];
 
-        [_resizeAnimationView removeFromSuperview];
-        _resizeAnimationView = nil;
-    }
-
-    _isAnimatingResize = NO;
+    [_resizeAnimationView removeFromSuperview];
+    _resizeAnimationView = nil;
     _resizeAnimationTransformAdjustments = CATransform3DIdentity;
 
+    _isAnimatingResize = NO;
     [self _updateVisibleContentRects];
 }
 
@@ -2244,13 +2292,27 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_setTopContentInset:(CGFloat)contentInset
 {
-    _page->setTopContentInset(contentInset);
+    [_wkView _setTopContentInset:contentInset];
 }
 
 - (CGFloat)_topContentInset
 {
-    return _page->topContentInset();
+    return [_wkView _topContentInset];
 }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (void)_setAutomaticallyAdjustsContentInsets:(BOOL)automaticallyAdjustsContentInsets
+{
+    [_wkView _setAutomaticallyAdjustsContentInsets:automaticallyAdjustsContentInsets];
+}
+
+- (BOOL)_automaticallyAdjustsContentInsets
+{
+    return [_wkView _automaticallyAdjustsContentInsets];
+}
+
+#endif
 
 #endif
 

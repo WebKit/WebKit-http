@@ -28,6 +28,7 @@
 #define DrawingAreaProxy_h
 
 #include "DrawingAreaInfo.h"
+#include "GenericCallback.h"
 #include "MessageReceiver.h"
 #include <WebCore/FloatRect.h>
 #include <WebCore/IntRect.h>
@@ -82,12 +83,11 @@ public:
 #endif
 
     virtual void updateDebugIndicator() { }
-    virtual void showDebugIndicator(bool) { }
-    virtual bool isShowingDebugIndicator() const { return false; }
-
-    virtual uint64_t lastVisibleTransactionID() const { ASSERT_NOT_REACHED(); return 0; }
+    virtual void setShouldShowDebugIndicator(bool) { }
 
     virtual void waitForDidUpdateViewState() { }
+    
+    virtual void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) { ASSERT_NOT_REACHED(); }
 
 protected:
     explicit DrawingAreaProxy(DrawingAreaType, WebPageProxy*);

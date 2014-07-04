@@ -36,6 +36,7 @@
 #import "WKFormInputControl.h"
 #import "WKFormSelectControl.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
+#import "WKWebViewConfiguration.h"
 #import "WKWebViewPrivate.h"
 #import "WebEvent.h"
 #import "WebIOSEventFactory.h"
@@ -45,6 +46,7 @@
 #import "_WKFormInputSession.h"
 #import <DataDetectorsUI/DDDetectionController.h>
 #import <TextInput/TI_NSStringExtras.h>
+#import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIFont_Private.h>
 #import <UIKit/UIGestureRecognizer_Private.h>
 #import <UIKit/UIKeyboardImpl.h>
@@ -70,6 +72,7 @@ using namespace WebKit;
 
 static const float highlightDelay = 0.12;
 static const float tapAndHoldDelay  = 0.75;
+const CGFloat minimumTapHighlightRadius = 2.0;
 
 @interface WKTextRange : UITextRange {
     CGRect _startRect;
@@ -188,7 +191,24 @@ static const float tapAndHoldDelay  = 0.75;
 
 @end
 
+@interface WKContentView (WKInteractionPrivate)
+- (void)accessibilitySpeakSelectionSetContent:(NSString *)string;
+@end
+
 @implementation WKContentView (WKInteraction)
+
+static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularity)
+{
+    switch (granularity) {
+    case WKSelectionGranularityDynamic:
+        return UIWebSelectionModeWeb;
+    case WKSelectionGranularityCharacter:
+        return UIWebSelectionModeTextOnly;
+    }
+
+    ASSERT_NOT_REACHED();
+    return UIWebSelectionModeWeb;
+}
 
 - (void)setupInteraction
 {
@@ -237,7 +257,7 @@ static const float tapAndHoldDelay  = 0.75;
     _showingTextStyleOptions = NO;
 
     // FIXME: This should be called when we get notified that loading has completed.
-    [self useSelectionAssistantWithMode:UIWebSelectionModeWeb];
+    [self useSelectionAssistantWithMode:toUIWebSelectionMode([[_webView configuration] selectionGranularity])];
     
     _actionSheetAssistant = adoptNS([[WKActionSheetAssistant alloc] initWithView:self]);
     _smartMagnificationController = std::make_unique<SmartMagnificationController>(self);
@@ -249,10 +269,10 @@ static const float tapAndHoldDelay  = 0.75;
     _textSelectionAssistant = nil;
     _actionSheetAssistant = nil;
     _smartMagnificationController = nil;
+    _didAccessoryTabInitiateFocus = NO;
     [_formInputSession invalidate];
     _formInputSession = nil;
     [_highlightView removeFromSuperview];
-    [_highlightRootView removeFromSuperview];
     [_inverseScaleRootView removeFromSuperview];
     [_touchEventGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_touchEventGestureRecognizer.get()];
@@ -324,6 +344,7 @@ static const float tapAndHoldDelay  = 0.75;
     [_inverseScaleRootView setTransform:CGAffineTransformMakeScale(inverseScale, inverseScale)];
     _selectionNeedsUpdate = YES;
     [self _updateChangedSelection];
+    [self _updateTapHighlight];
 }
 
 - (void)_enableInspectorNodeSearch
@@ -492,35 +513,25 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     return true;
 }
 
-- (void)_showTapHighlightWithColor:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius
+static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius)
 {
-    if (!highlightedQuadsAreSmallerThanRect(highlightedQuads, _page->unobscuredContentRect()))
+    return [NSValue valueWithCGSize:CGSizeMake(borderRadius.width() + minimumTapHighlightRadius, borderRadius.height() + minimumTapHighlightRadius)];
+}
+
+- (void)_updateTapHighlight
+{
+    if (![_highlightView superview])
         return;
 
-    const CGFloat UIWebViewMinimumHighlightRadius = 2.0;
-
-    if (!_highlightRootView) {
-        _highlightRootView = adoptNS([[UIView alloc] init]);
-        [_highlightRootView setOpaque:NO];
-        [_highlightRootView layer].anchorPoint = CGPointMake(0, 0);
-
-        _highlightView = adoptNS([[_UIHighlightView alloc] initWithFrame:CGRectZero]);
-        [_highlightView setOpaque:NO];
-        [_highlightView setCornerRadius:UIWebViewMinimumHighlightRadius];
-        [_highlightRootView addSubview:_highlightView.get()];
-    }
-    [self addSubview:_highlightRootView.get()];
-    CGFloat selfScale = [[self layer] transform].m11;
-    CGFloat highlightViewScale = 1 / selfScale;
-    [_highlightRootView setTransform:CGAffineTransformMakeScale(highlightViewScale, highlightViewScale)];
-
     {
-        RetainPtr<UIColor> highlightUIKitColor = adoptNS([[UIColor alloc] initWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)]);
+        RetainPtr<UIColor> highlightUIKitColor = adoptNS([[UIColor alloc] initWithCGColor:cachedCGColor(_tapHighlightInformation.color, WebCore::ColorSpaceDeviceRGB)]);
         [_highlightView setColor:highlightUIKitColor.get()];
     }
 
+    CGFloat selfScale = self.layer.transform.m11;
     bool allHighlightRectsAreRectilinear = true;
     float deviceScaleFactor = _page->deviceScaleFactor();
+    const Vector<WebCore::FloatQuad>& highlightedQuads = _tapHighlightInformation.quads;
     const size_t quadCount = highlightedQuads.size();
     RetainPtr<NSMutableArray> rects = adoptNS([[NSMutableArray alloc] initWithCapacity:static_cast<const NSUInteger>(quadCount)]);
     for (size_t i = 0; i < quadCount; ++i) {
@@ -528,7 +539,7 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
         if (quad.isRectilinear()) {
             FloatRect boundingBox = quad.boundingBox();
             boundingBox.scale(selfScale);
-            boundingBox.inflate(UIWebViewMinimumHighlightRadius);
+            boundingBox.inflate(minimumTapHighlightRadius);
             CGRect pixelAlignedRect = static_cast<CGRect>(enclosingRectExtendedToDevicePixels(boundingBox, deviceScaleFactor));
             [rects addObject:[NSValue valueWithCGRect:pixelAlignedRect]];
         } else {
@@ -545,7 +556,7 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
         for (size_t i = 0; i < quadCount; ++i) {
             FloatQuad quad = highlightedQuads[i];
             quad.scale(selfScale, selfScale);
-            FloatQuad extendedQuad = inflateQuad(quad, UIWebViewMinimumHighlightRadius);
+            FloatQuad extendedQuad = inflateQuad(quad, minimumTapHighlightRadius);
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p1()]];
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p2()]];
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p3()]];
@@ -555,11 +566,26 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     }
 
     RetainPtr<NSMutableArray> borderRadii = adoptNS([[NSMutableArray alloc] initWithCapacity:4]);
-    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(topLeftRadius.width() + UIWebViewMinimumHighlightRadius, topLeftRadius.height() + UIWebViewMinimumHighlightRadius)]];
-    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(topRightRadius.width() + UIWebViewMinimumHighlightRadius, topRightRadius.height() + UIWebViewMinimumHighlightRadius)]];
-    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(bottomLeftRadius.width() + UIWebViewMinimumHighlightRadius, bottomLeftRadius.height() + UIWebViewMinimumHighlightRadius)]];
-    [borderRadii addObject:[NSValue valueWithCGSize:CGSizeMake(bottomRightRadius.width() + UIWebViewMinimumHighlightRadius, bottomRightRadius.height() + UIWebViewMinimumHighlightRadius)]];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.topLeftRadius)];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.topRightRadius)];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.bottomLeftRadius)];
+    [borderRadii addObject:nsSizeForTapHighlightBorderRadius(_tapHighlightInformation.bottomRightRadius)];
     [_highlightView setCornerRadii:borderRadii.get()];
+}
+
+- (void)_showTapHighlight
+{
+    if (!highlightedQuadsAreSmallerThanRect(_tapHighlightInformation.quads, _page->unobscuredContentRect()))
+        return;
+
+    if (!_highlightView) {
+        _highlightView = adoptNS([[_UIHighlightView alloc] initWithFrame:CGRectZero]);
+        [_highlightView setOpaque:NO];
+        [_highlightView setCornerRadius:minimumTapHighlightRadius];
+    }
+    [_highlightView layer].opacity = 1;
+    [_inverseScaleRootView addSubview:_highlightView.get()];
+    [self _updateTapHighlight];
 }
 
 - (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius
@@ -567,23 +593,21 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
     if (!_isTapHighlightIDValid || _latestTapHighlightID != requestID)
         return;
 
+    _isTapHighlightIDValid = NO;
+
+    _tapHighlightInformation.color = color;
+    _tapHighlightInformation.quads = highlightedQuads;
+    _tapHighlightInformation.topLeftRadius = topLeftRadius;
+    _tapHighlightInformation.topRightRadius = topRightRadius;
+    _tapHighlightInformation.bottomLeftRadius = bottomLeftRadius;
+    _tapHighlightInformation.bottomRightRadius = bottomRightRadius;
+
     if (_potentialTapInProgress) {
-        _potentialTapHighlightInformation = std::make_unique<TapHighlightInformation>();
-        _potentialTapHighlightInformation->color = color;
-        _potentialTapHighlightInformation->quads = highlightedQuads;
-        _potentialTapHighlightInformation->topLeftRadius = topLeftRadius;
-        _potentialTapHighlightInformation->topRightRadius = topRightRadius;
-        _potentialTapHighlightInformation->bottomLeftRadius = bottomLeftRadius;
-        _potentialTapHighlightInformation->bottomRightRadius = bottomRightRadius;
+        _hasTapHighlightForPotentialTap = YES;
         return;
     }
 
-    [self _showTapHighlightWithColor:color
-                               quads:highlightedQuads
-                       topLeftRadius:topLeftRadius
-                      topRightRadius:topRightRadius
-                    bottomLeftRadius:bottomLeftRadius
-                   bottomRightRadius:bottomRightRadius];
+    [self _showTapHighlight];
 }
 
 - (void)_cancelLongPressGestureRecognizer
@@ -624,12 +648,13 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
 - (void)_displayFormNodeInputView
 {
     [self _zoomToFocusRect:_assistedNodeInformation.elementRect
-             selectionRect:_assistedNodeInformation.selectionRect
+             selectionRect: _didAccessoryTabInitiateFocus ? IntRect() : _assistedNodeInformation.selectionRect
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
               maximumScale:_assistedNodeInformation.maximumScaleFactor
               allowScaling:(_assistedNodeInformation.allowsUserScaling && !UICurrentUserInterfaceIdiomIsPad())
                forceScroll:[self requiresAccessoryView]];
+    _didAccessoryTabInitiateFocus = NO;
     [self _updateAccessory];
 }
 
@@ -650,8 +675,9 @@ static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& q
 {
     // A long-press gesture can not be recognized while panning, but a pan can be recognized
     // during a long-press gesture.
-    BOOL shouldNotPreventPanGesture = preventingGestureRecognizer == _highlightLongPressGestureRecognizer || preventingGestureRecognizer == _longPressGestureRecognizer;
-    return !(shouldNotPreventPanGesture && [preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]);
+    BOOL shouldNotPreventScrollViewGestures = preventingGestureRecognizer == _highlightLongPressGestureRecognizer || preventingGestureRecognizer == _longPressGestureRecognizer;
+    return !(shouldNotPreventScrollViewGestures
+        && ([preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")] || [preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPinchGestureRecognizer")]));
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)preventedGestureRecognizer canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventingGestureRecognizer {
@@ -782,20 +808,18 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_cancelInteraction
 {
-    _isTapHighlightIDValid = NO;
-    [_highlightRootView removeFromSuperview];
+    [_highlightView removeFromSuperview];
 }
 
 - (void)_finishInteraction
 {
     [UIView animateWithDuration:0.1
                      animations:^{
-                         [[_highlightRootView layer] setOpacity:0];
+                         [_highlightView layer].opacity = 0;
                      }
-                     completion:^(BOOL){
-                         _isTapHighlightIDValid = NO;
-                         [_highlightRootView removeFromSuperview];
-                         [[_highlightRootView layer] setOpacity:1];
+                     completion:^(BOOL finished){
+                         if (finished)
+                             [_highlightView removeFromSuperview];
                      }];
 }
 
@@ -853,6 +877,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     switch ([gestureRecognizer state]) {
     case UIGestureRecognizerStateBegan:
+        cancelPotentialTapIfNecessary(self);
         _page->tapHighlightAtPosition([gestureRecognizer startPoint], ++_latestTapHighlightID);
         _isTapHighlightIDValid = YES;
         break;
@@ -882,6 +907,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         if (action) {
             [self performSelector:action];
             [self _cancelLongPressGestureRecognizer];
+            [UIApp _cancelAllTouches];
         }
     }
 }
@@ -896,15 +922,20 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     _isTapHighlightIDValid = YES;
 }
 
+static void cancelPotentialTapIfNecessary(WKContentView* contentView)
+{
+    if (contentView->_potentialTapInProgress) {
+        contentView->_potentialTapInProgress = NO;
+        contentView->_isTapHighlightIDValid = NO;
+        [contentView _cancelInteraction];
+        contentView->_page->cancelPotentialTap();
+    }
+}
+
 - (void)_singleTapDidReset:(UITapGestureRecognizer *)gestureRecognizer
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
-    if (_potentialTapInProgress) {
-        _potentialTapInProgress = NO;
-        _potentialTapHighlightInformation = nullptr;
-        [self _cancelInteraction];
-        _page->cancelPotentialTap();
-    }
+    cancelPotentialTapIfNecessary(self);
 }
 
 - (void)_commitPotentialTapFailed
@@ -936,14 +967,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     _potentialTapInProgress = NO;
 
-    if (_potentialTapHighlightInformation) {
-        [self _showTapHighlightWithColor:_potentialTapHighlightInformation->color
-                                   quads:_potentialTapHighlightInformation->quads
-                           topLeftRadius:_potentialTapHighlightInformation->topLeftRadius
-                          topRightRadius:_potentialTapHighlightInformation->topRightRadius
-                        bottomLeftRadius:_potentialTapHighlightInformation->bottomLeftRadius
-                       bottomRightRadius:_potentialTapHighlightInformation->bottomRightRadius];
-        _potentialTapHighlightInformation = nullptr;
+    if (_hasTapHighlightForPotentialTap) {
+        [self _showTapHighlight];
+        _hasTapHighlightForPotentialTap = NO;
     }
 
     _page->commitPotentialTap();
@@ -1342,6 +1368,16 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     });
 }
 
+- (void)accessibilityRetrieveSpeakSelectionContent
+{
+    _page->getSelectionOrContentsAsString([self](const String& string, CallbackBase::Error error) {
+        if (error != CallbackBase::Error::None)
+            return;
+        if ([self respondsToSelector:@selector(accessibilitySpeakSelectionSetContent:)])
+            [self accessibilitySpeakSelectionSetContent:string];
+    });
+}
+
 // UIWKInteractionViewProtocol
 
 static inline GestureType toGestureType(UIWKGestureType gestureType)
@@ -1715,6 +1751,10 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)accessoryTab:(BOOL)isNext
 {
+    [_inputPeripheral endEditing];
+    _inputPeripheral = nil;
+
+    _didAccessoryTabInitiateFocus = YES; // Will be cleared in either -_displayFormNodeInputView or -cleanupInteraction.
     _page->focusNextAssistedNode(isNext);
 }
 
@@ -2306,7 +2346,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
 - (void)_stopAssistingKeyboard
 {
-    [self useSelectionAssistantWithMode:UIWebSelectionModeWeb];
+    [self useSelectionAssistantWithMode:toUIWebSelectionMode([[_webView configuration] selectionGranularity])];
 }
 
 - (const AssistedNodeInformation&)assistedNodeInformation
@@ -2374,6 +2414,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     _formInputSession = nil;
     _isEditable = NO;
     _assistedNodeInformation.elementType = InputType::None;
+    [_inputPeripheral endEditing];
     _inputPeripheral = nil;
 
     [self _stopAssistingKeyboard];

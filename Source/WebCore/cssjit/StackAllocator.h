@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #if ENABLE(CSS_SELECTOR_JIT)
 
+#include "RegisterAllocator.h"
 #include <JavaScriptCore/MacroAssembler.h>
 
 namespace WebCore {
@@ -46,6 +47,8 @@ public:
     private:
         unsigned m_offsetFromTop;
     };
+
+    typedef Vector<StackReference, maximumRegisterCount> StackReferenceVector;
 
     StackAllocator(JSC::MacroAssembler& assembler)
         : m_assembler(assembler)
@@ -68,21 +71,20 @@ public:
         return StackReference(m_offsetFromTop);
     }
 
-    Vector<StackReference> push(const Vector<JSC::MacroAssembler::RegisterID>& registerIDs)
+    StackReferenceVector push(const Vector<JSC::MacroAssembler::RegisterID>& registerIDs)
     {
         RELEASE_ASSERT(!m_hasFunctionCallPadding);
-        unsigned registerCount = registerIDs.size();
-        Vector<StackReference> stackReferences;
-        stackReferences.reserveInitialCapacity(registerCount);
+        StackReferenceVector stackReferences;
 #if CPU(ARM64)
-        for (unsigned i = 0; i < registerCount - 1; i += 2) {
+        unsigned pushRegisterCount = registerIDs.size();
+        for (unsigned i = 0; i < pushRegisterCount - 1; i += 2) {
             m_assembler.pushPair(registerIDs[i + 1], registerIDs[i]);
             m_offsetFromTop += stackUnitInBytes();
             stackReferences.append(StackReference(m_offsetFromTop - stackUnitInBytes() / 2));
             stackReferences.append(StackReference(m_offsetFromTop));
         }
-        if (registerCount % 2)
-            stackReferences.append(push(registerIDs[registerCount - 1]));
+        if (pushRegisterCount % 2)
+            stackReferences.append(push(registerIDs[pushRegisterCount - 1]));
 #else
         for (auto registerID : registerIDs)
             stackReferences.append(push(registerID));
@@ -98,18 +100,18 @@ public:
         return StackReference(m_offsetFromTop);
     }
 
-    void pop(const Vector<StackReference>& stackReferences, const Vector<JSC::MacroAssembler::RegisterID>& registerIDs)
+    void pop(const StackReferenceVector& stackReferences, const Vector<JSC::MacroAssembler::RegisterID>& registerIDs)
     {
         RELEASE_ASSERT(!m_hasFunctionCallPadding);
 
-        unsigned registerCount = registerIDs.size();
-        RELEASE_ASSERT(stackReferences.size() == registerCount);
+        unsigned popRegisterCount = registerIDs.size();
+        RELEASE_ASSERT(stackReferences.size() == popRegisterCount);
 #if CPU(ARM64)
-        ASSERT(m_offsetFromTop >= stackUnitInBytes() * ((registerCount + 1) / 2));
-        unsigned registerCountOdd = registerCount % 2;
-        if (registerCountOdd)
-            pop(stackReferences[registerCount - 1], registerIDs[registerCount - 1]);
-        for (unsigned i = registerCount - registerCountOdd; i > 0; i -= 2) {
+        ASSERT(m_offsetFromTop >= stackUnitInBytes() * ((popRegisterCount + 1) / 2));
+        unsigned popRegisterCountOdd = popRegisterCount % 2;
+        if (popRegisterCountOdd)
+            pop(stackReferences[popRegisterCount - 1], registerIDs[popRegisterCount - 1]);
+        for (unsigned i = popRegisterCount - popRegisterCountOdd; i > 0; i -= 2) {
             RELEASE_ASSERT(stackReferences[i - 1] == m_offsetFromTop);
             RELEASE_ASSERT(stackReferences[i - 2] == m_offsetFromTop - stackUnitInBytes() / 2);
             RELEASE_ASSERT(m_offsetFromTop >= stackUnitInBytes());
@@ -117,8 +119,8 @@ public:
             m_assembler.popPair(registerIDs[i - 1], registerIDs[i - 2]);
         }
 #else
-        ASSERT(m_offsetFromTop >= stackUnitInBytes() * registerCount);
-        for (unsigned i = registerCount; i > 0; --i)
+        ASSERT(m_offsetFromTop >= stackUnitInBytes() * popRegisterCount);
+        for (unsigned i = popRegisterCount; i > 0; --i)
             pop(stackReferences[i - 1], registerIDs[i - 1]);
 #endif
     }

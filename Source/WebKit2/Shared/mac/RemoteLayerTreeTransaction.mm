@@ -410,7 +410,7 @@ bool RemoteLayerTreeTransaction::LayerProperties::decode(IPC::ArgumentDecoder& d
             if (!decoder.decode(*backingStore))
                 return false;
             
-            result.backingStore = std::move(backingStore);
+            result.backingStore = WTF::move(backingStore);
         } else
             result.backingStore = nullptr;
     }
@@ -419,7 +419,7 @@ bool RemoteLayerTreeTransaction::LayerProperties::decode(IPC::ArgumentDecoder& d
         std::unique_ptr<FilterOperations> filters = std::make_unique<FilterOperations>();
         if (!decoder.decode(*filters))
             return false;
-        result.filters = std::move(filters);
+        result.filters = WTF::move(filters);
     }
 
     if (result.changedProperties & EdgeAntialiasingMaskChanged) {
@@ -475,6 +475,8 @@ void RemoteLayerTreeTransaction::encode(IPC::ArgumentEncoder& encoder) const
 
     encoder << m_scaleWasSetByUIProcess;
     encoder << m_allowsUserScaling;
+
+    encoder << m_callbackIDs;
 }
 
 bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLayerTreeTransaction& result)
@@ -500,7 +502,7 @@ bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLay
         if (!decoder.decode(*layerProperties))
             return false;
 
-        result.changedLayerProperties().set(layerID, std::move(layerProperties));
+        result.changedLayerProperties().set(layerID, WTF::move(layerProperties));
     }
 
     if (!decoder.decode(result.m_destroyedLayerIDs))
@@ -549,6 +551,9 @@ bool RemoteLayerTreeTransaction::decode(IPC::ArgumentDecoder& decoder, RemoteLay
     if (!decoder.decode(result.m_allowsUserScaling))
         return false;
 
+    if (!decoder.decode(result.m_callbackIDs))
+        return false;
+
     return true;
 }
 
@@ -566,17 +571,17 @@ void RemoteLayerTreeTransaction::layerPropertiesChanged(PlatformCALayerRemote& r
 
 void RemoteLayerTreeTransaction::setCreatedLayers(Vector<LayerCreationProperties> createdLayers)
 {
-    m_createdLayers = std::move(createdLayers);
+    m_createdLayers = WTF::move(createdLayers);
 }
 
 void RemoteLayerTreeTransaction::setDestroyedLayerIDs(Vector<GraphicsLayer::PlatformLayerID> destroyedLayerIDs)
 {
-    m_destroyedLayerIDs = std::move(destroyedLayerIDs);
+    m_destroyedLayerIDs = WTF::move(destroyedLayerIDs);
 }
 
 void RemoteLayerTreeTransaction::setLayerIDsWithNewlyUnreachableBackingStore(Vector<GraphicsLayer::PlatformLayerID> layerIDsWithNewlyUnreachableBackingStore)
 {
-    m_layerIDsWithNewlyUnreachableBackingStore = std::move(layerIDsWithNewlyUnreachableBackingStore);
+    m_layerIDsWithNewlyUnreachableBackingStore = WTF::move(layerIDsWithNewlyUnreachableBackingStore);
 }
 
 #if !defined(NDEBUG) || !LOG_DISABLED
@@ -1103,8 +1108,8 @@ static void dumpChangedLayers(RemoteLayerTreeTextStream& ts, const RemoteLayerTr
             dumpProperty(ts, "filters", layerProperties.filters ? *layerProperties.filters : FilterOperations());
 
         if (layerProperties.changedProperties & RemoteLayerTreeTransaction::AnimationsChanged) {
-            for (const auto& keyValuePair : layerProperties.addedAnimations)
-                dumpProperty(ts, "animation " +  keyValuePair.key, keyValuePair.value);
+            for (const auto& keyAnimationPair : layerProperties.addedAnimations)
+                dumpProperty(ts, "animation " +  keyAnimationPair.first, keyAnimationPair.second);
 
             for (const auto& name : layerProperties.keyPathsOfAnimationsToRemove)
                 dumpProperty(ts, "removed animation", name);

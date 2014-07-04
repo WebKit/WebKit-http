@@ -36,7 +36,6 @@
 
 #if PLATFORM(COCOA)
 #include "PluginComplexTextInputState.h"
-#include <WebCore/TextUndoInsertionMarkup.h>
 
 OBJC_CLASS CALayer;
 
@@ -274,6 +273,7 @@ public:
     virtual void overflowScrollViewWillStartPanGesture() = 0;
     virtual void overflowScrollViewDidScroll() = 0;
     virtual void didFinishDrawingPagesToPDF(const IPC::DataReference&) = 0;
+    virtual Vector<String> mimeTypesWithCustomContentProviders() = 0;
 
 #if ENABLE(INSPECTOR)
     virtual void showInspectorHighlight(const WebCore::Highlight&) = 0;

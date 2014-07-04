@@ -301,6 +301,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case StaticTextRole:
     case TabRole:
     case TextFieldRole:
+    case ToggleButtonRole:
         return !m_object->accessibilityIsIgnored();
     default:
         return false;
@@ -562,6 +563,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case RadioButtonRole:
             traits |= [self _axRadioButtonTrait] | [self _axToggleTrait];
             break;
+        case ToggleButtonRole:
         case CheckBoxRole:
             traits |= ([self _axButtonTrait] | [self _axToggleTrait]);
             break;
@@ -623,6 +625,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case TextFieldRole:
         case TextAreaRole:
         case ButtonRole:
+        case ToggleButtonRole:
         case PopUpButtonRole:
         case CheckBoxRole:
         case RadioButtonRole:
@@ -2262,6 +2265,14 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
         return NO;
     
     return m_object->ariaLiveRegionAtomic();
+}
+
+- (BOOL)accessibilitySupportsARIAExpanded
+{
+    if (![self _prepareAccessibilityCall])
+        return NO;
+    
+    return m_object->supportsARIAExpanded();
 }
 
 - (BOOL)accessibilityIsExpanded

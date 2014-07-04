@@ -196,12 +196,6 @@ sub GetClassName {
     return "WebKitDOM$name";
 }
 
-sub GetCoreObject {
-    my ($interfaceName, $name, $parameter) = @_;
-
-    return "WebCore::${interfaceName}* $name = WebKit::core($parameter);";
-}
-
 sub SkipAttribute {
     my $attribute = shift;
 
@@ -494,19 +488,13 @@ sub GenerateProperty {
     my @writeableProperties = @{shift @_};
     my $parentNode = shift;
 
-    my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-    my @conditionalWarn = GenerateConditionalWarning($attribute->signature, 8);
-    my $parentConditionalString = $codeGenerator->GenerateConditionalString($parentNode);
-    my @parentConditionalWarn = GenerateConditionalWarning($parentNode, 8);
-    my $camelPropName = $attribute->signature->name;
-    my $setPropNameFunction = $codeGenerator->WK_ucfirst($camelPropName);
-    my $getPropNameFunction = $codeGenerator->WK_lcfirst($camelPropName);
     my $hasGetterException = $attribute->signature->extendedAttributes->{"GetterRaisesException"};
     my $hasSetterException = $attribute->signature->extendedAttributes->{"SetterRaisesException"};
 
-    my $propName = decamelize($camelPropName);
+    my $decamelizeInterfaceName = decamelize($interfaceName);
+    my $propName = decamelize($attribute->signature->name);
+    my $propFunctionName = GetFunctionSignatureName($interfaceName, $attribute);
     my $propNameCaps = uc($propName);
-    $propName =~ s/_/-/g;
     my ${propEnum} = "PROP_${propNameCaps}";
     push(@cBodyProperties, "    ${propEnum},\n");
 
@@ -527,71 +515,32 @@ sub GenerateProperty {
         $mutableString = "read-write";
     }
 
-    my $convertFunction = "";
-    if ($gtype eq "string") {
-        $convertFunction = "WTF::String::fromUTF8";
-    }
+    my @getterArguments = ();
+    push(@getterArguments, "self");
+    push(@getterArguments, "nullptr") if $hasGetterException;
 
-    my ($getterFunctionName, @getterArguments) = $codeGenerator->GetterExpression(\%implIncludes, $interfaceName, $attribute);
-    my ($setterFunctionName, @setterArguments) = $codeGenerator->SetterExpression(\%implIncludes, $interfaceName, $attribute);
-
-    if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
-        my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
-        $implIncludes{"${implementedBy}.h"} = 1;
-        push(@setterArguments, "${convertFunction}(g_value_get_$gtype(value))");
-        unshift(@getterArguments, "coreSelf");
-        unshift(@setterArguments, "coreSelf");
-        $getterFunctionName = "WebCore::${implementedBy}::$getterFunctionName";
-        $setterFunctionName = "WebCore::${implementedBy}::$setterFunctionName";
-    } else {
-        push(@setterArguments, "${convertFunction}(g_value_get_$gtype(value))");
-        $getterFunctionName = "coreSelf->$getterFunctionName";
-        $setterFunctionName = "coreSelf->$setterFunctionName";
-    }
-    push(@getterArguments, "isNull") if $attribute->signature->isNullable;
-    push(@getterArguments, "ec") if $hasGetterException;
-    push(@setterArguments, "ec") if $hasSetterException;
+    my @setterArguments = ();
+    push(@setterArguments, "self, g_value_get_$gtype(value)");
+    push(@setterArguments, "nullptr") if $hasSetterException;
 
     if (grep {$_ eq $attribute} @writeableProperties) {
-        push(@txtSetProps, "    case ${propEnum}: {\n");
-        push(@txtSetProps, "#if ${parentConditionalString}\n") if $parentConditionalString;
-        push(@txtSetProps, "#if ${conditionalString}\n") if $conditionalString;
-        push(@txtSetProps, "        WebCore::ExceptionCode ec = 0;\n") if $hasSetterException;
-        push(@txtSetProps, "        ${setterFunctionName}(" . join(", ", @setterArguments) . ");\n");
-        push(@txtSetProps, "#else\n") if $conditionalString;
-        push(@txtSetProps, @conditionalWarn) if scalar(@conditionalWarn);
-        push(@txtSetProps, "#endif /* ${conditionalString} */\n") if $conditionalString;
-        push(@txtSetProps, "#else\n") if $parentConditionalString;
-        push(@txtSetProps, @parentConditionalWarn) if scalar(@parentConditionalWarn);
-        push(@txtSetProps, "#endif /* ${parentConditionalString} */\n") if $parentConditionalString;
-        push(@txtSetProps, "        break;\n    }\n");
+        push(@txtSetProps, "    case ${propEnum}:\n");
+        push(@txtSetProps, "        webkit_dom_${decamelizeInterfaceName}_set_" . $propFunctionName . "(" . join(", ", @setterArguments) . ");\n");
+        push(@txtSetProps, "        break;\n");
     }
 
-    push(@txtGetProps, "    case ${propEnum}: {\n");
-    push(@txtGetProps, "#if ${parentConditionalString}\n") if $parentConditionalString;
-    push(@txtGetProps, "#if ${conditionalString}\n") if $conditionalString;
-    push(@txtGetProps, "        bool isNull = false;\n") if $attribute->signature->isNullable;
-    push(@txtGetProps, "        WebCore::ExceptionCode ec = 0;\n") if $hasGetterException;
+    push(@txtGetProps, "    case ${propEnum}:\n");
 
     # FIXME: Should we return a default value when isNull == true?
 
     my $postConvertFunction = "";
     if ($gtype eq "string") {
-        push(@txtGetProps, "        g_value_take_string(value, convertToUTF8String(${getterFunctionName}(" . join(", ", @getterArguments) . ")));\n");
-    } elsif ($gtype eq "object") {
-        push(@txtGetProps, "        RefPtr<WebCore::${propType}> ptr = ${getterFunctionName}(" . join(", ", @getterArguments) . ");\n");
-        push(@txtGetProps, "        g_value_set_object(value, WebKit::kit(ptr.get()));\n");
+        push(@txtGetProps, "        g_value_take_string(value, webkit_dom_${decamelizeInterfaceName}_get_" . $propFunctionName . "(" . join(", ", @getterArguments) . "));\n");
     } else {
-        push(@txtGetProps, "        g_value_set_$gtype(value, ${convertFunction}${getterFunctionName}(" . join(", ", @getterArguments) . ")${postConvertFunction});\n");
+        push(@txtGetProps, "        g_value_set_$gtype(value, webkit_dom_${decamelizeInterfaceName}_get_" . $propFunctionName . "(" . join(", ", @getterArguments) . "));\n");
     }
 
-    push(@txtGetProps, "#else\n") if $conditionalString;
-    push(@txtGetProps, @conditionalWarn) if scalar(@conditionalWarn);
-    push(@txtGetProps, "#endif /* ${conditionalString} */\n") if $conditionalString;
-    push(@txtGetProps, "#else\n") if $parentConditionalString;
-    push(@txtGetProps, @parentConditionalWarn) if scalar(@parentConditionalWarn);
-    push(@txtGetProps, "#endif /* ${parentConditionalString} */\n") if $parentConditionalString;
-    push(@txtGetProps, "        break;\n    }\n");
+    push(@txtGetProps, "        break;\n");
 
     my %parameterSpecOptions = ("int" =>     [ "G_MININT", "G_MAXINT", "0" ],
                                 "int8" =>    [ "G_MININT8", "G_MAXINT8", "0" ],
@@ -612,6 +561,7 @@ sub GenerateProperty {
 
     my $extraParameters = join(", ", @{$parameterSpecOptions{$gtype}});
     my $glibTypeName = GetGlibTypeName($propType);
+    $propName =~ s/_/-/g;
     my $txtInstallProp = << "EOF";
     g_object_class_install_property(
         gobjectClass,
@@ -650,7 +600,6 @@ sub GenerateProperties {
     my $numProperties = scalar @readableProperties;
 
     # Properties
-    my $privFunction = GetCoreObject($interfaceName, "coreSelf", "self");
     if ($numProperties > 0) {
         $implContent = << "EOF";
 enum {
@@ -660,30 +609,14 @@ EOF
 
         push(@txtGetProps, "static void ${lowerCaseIfaceName}_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)\n");
         push(@txtGetProps, "{\n");
-        push(@txtGetProps, "    WebCore::JSMainThreadNullState state;\n");
-        push(@txtGetProps, "${conditionGuardStart}\n") if $conditionalString;
         push(@txtGetProps, "    ${className}* self = WEBKIT_DOM_${clsCaps}(object);\n");
-        push(@txtGetProps, "    ${privFunction}\n");
-        if ($conditionalString) {
-            push(@txtGetProps, "#else\n");
-            push(@txtGetProps, "    UNUSED_PARAM(value);\n");
-            push(@txtGetProps, "${conditionGuardEnd}\n");
-        }
         push(@txtGetProps, "\n");
         push(@txtGetProps, "    switch (propertyId) {\n");
 
         if (scalar @writeableProperties > 0) {
             push(@txtSetProps, "static void ${lowerCaseIfaceName}_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)\n");
             push(@txtSetProps, "{\n");
-            push(@txtSetProps, "    WebCore::JSMainThreadNullState state;\n");
-            push(@txtSetProps, "${conditionGuardStart}\n") if $conditionalString;
             push(@txtSetProps, "    ${className}* self = WEBKIT_DOM_${clsCaps}(object);\n");
-            push(@txtSetProps, "    ${privFunction}\n");
-            if ($conditionalString) {
-                push(@txtSetProps, "#else\n");
-                push(@txtSetProps, "    UNUSED_PARAM(value);\n");
-                push(@txtSetProps, "${conditionGuardEnd}\n");
-            }
             push(@txtSetProps, "\n");
             push(@txtSetProps, "    switch (propertyId) {\n");
         }
@@ -815,8 +748,42 @@ EOF
     push(@cBodyProperties, $implContent);
 }
 
+sub GenerateConstants {
+    my ($interface, $prefix) = @_;
+
+    my $isStableClass = scalar(@stableSymbols);
+
+    if (@{$interface->constants}) {
+        my @constants = @{$interface->constants};
+        foreach my $constant (@constants) {
+            my $conditionalString = $codeGenerator->GenerateConditionalString($constant);
+            my $constantName = $prefix . $constant->name;
+            my $constantValue = $constant->value;
+            my $isStableSymbol = grep {$_ eq $constantName} @stableSymbols;
+            if ($isStableSymbol) {
+                push(@symbols, "$constantName\n");
+            }
+
+            my @constantHeader = ();
+            push(@constantHeader, "#if ${conditionalString}") if $conditionalString;
+            push(@constantHeader, "/**");
+            push(@constantHeader, " * ${constantName}:");
+            push(@constantHeader, " */");
+            push(@constantHeader, "#define $constantName $constantValue");
+            push(@constantHeader, "#endif /* ${conditionalString} */") if $conditionalString;
+            push(@constantHeader, "\n");
+
+            if ($isStableSymbol or !$isStableClass) {
+                push(@hBody, join("\n", @constantHeader));
+            } else {
+                push(@hBodyUnstable, join("\n", @constantHeader));
+            }
+        }
+    }
+}
+
 sub GenerateHeader {
-    my ($object, $interfaceName, $parentClassName) = @_;
+    my ($object, $interfaceName, $parentClassName, $interface) = @_;
 
     my $implContent = "";
 
@@ -868,6 +835,17 @@ EOF
 #define WEBKIT_DOM_IS_${clsCaps}_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass),  WEBKIT_DOM_TYPE_${clsCaps}))
 #define WEBKIT_DOM_${clsCaps}_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj),  WEBKIT_DOM_TYPE_${clsCaps}, ${className}Class))
 
+EOF
+
+    push(@hBody, $implContent);
+
+    if ($isStableClass) {
+        push(@symbols, "GType ${lowerCaseIfaceName}_get_type(void)\n");
+    }
+
+    GenerateConstants($interface, "WEBKIT_DOM_${clsCaps}_");
+
+    $implContent = << "EOF";
 struct _${className} {
     ${parentClassName} parent_instance;
 };
@@ -880,9 +858,6 @@ EOF
 
     push(@hBody, $implContent);
 
-    if ($isStableClass) {
-        push(@symbols, "GType ${lowerCaseIfaceName}_get_type(void)\n");
-    }
     push(@hBody, "WEBKIT_API GType\n${lowerCaseIfaceName}_get_type(void);\n");
     push(@hBody, "\n");
 }
@@ -926,6 +901,46 @@ sub ParamCanBeNull {
     return 0;
 }
 
+sub GetFunctionSignatureName {
+    my ($interfaceName, $function) = @_;
+
+    my $signatureName = decamelize($function->signature->name);
+
+    return $signatureName if $signatureName ne "type";
+
+    # For HTML type attribute use type_attr.
+    # Example: webkit_dom_html_link_element_get_type_attr()
+    my $contentAttributeName = $codeGenerator->ContentAttributeName(\%implIncludes, $interfaceName, $function);
+    if ($contentAttributeName) {
+        return "type_attr" if $contentAttributeName eq "WebCore::HTMLNames::typeAttr";
+    }
+
+    # For methods returning a MIME type use content_type.
+    # Examples: webkit_dom_style_sheet_get_content_type(), webkit_dom_dom_mime_type_get_content_type()
+    if ($interfaceName eq "StyleSheet" || $interfaceName eq "DOMMimeType") {
+        return "content_type";
+    }
+
+    # For HTMLFieldSet use field_set_type.
+    # Example: webkit_dom_html_field_set_element_get_field_set_type()
+    if ($interfaceName eq "HTMLFieldSet") {
+        return "field_set_type";
+    }
+
+    # For any other cases use the last word of the interface name.
+    # Examples: webkit_dom_blob_get_blob_type(), webkit_dom_event_get_event_type()
+    my @nameTokens = split('_', decamelize($interfaceName));
+    my $name = $nameTokens[-1];
+
+    # If the last word is element and there are more words, use the previous one.
+    # Example: webkit_dom_html_button_element_get_button_type()
+    if (scalar(@nameTokens) > 1 && $name eq "element") {
+        $name = $nameTokens[-2];
+    }
+
+    return "${name}_type";
+}
+
 sub GenerateFunction {
     my ($object, $interfaceName, $function, $prefix, $parentNode) = @_;
 
@@ -936,7 +951,8 @@ sub GenerateFunction {
     }
 
     my $functionSigType = $prefix eq "set_" ? "void" : $function->signature->type;
-    my $functionName = "webkit_dom_" . $decamelize . "_" . $prefix . decamelize($function->signature->name);
+    my $functionSigName = GetFunctionSignatureName($interfaceName, $function);
+    my $functionName = "webkit_dom_" . $decamelize . "_" . $prefix . $functionSigName;
     my $returnType = GetGlibTypeName($functionSigType);
     my $returnValueIsGDOMType = IsGDOMClassType($functionSigType);
     my $raisesException = $function->signature->extendedAttributes->{"RaisesException"};
@@ -968,7 +984,7 @@ sub GenerateFunction {
         if ($paramIsGDOMType || ($paramIDLType eq "DOMString") || ($paramIDLType eq "CompareHow")) {
             $paramName = "converted" . $codeGenerator->WK_ucfirst($paramName);
         }
-        if ($paramIDLType eq "NodeFilter") {
+        if ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
             $paramName = "WTF::getPtr(" . $paramName . ")";
         }
         push(@callImplParams, $paramName);
@@ -1072,7 +1088,7 @@ sub GenerateFunction {
             push(@cBody, "    WTF::String ${convertedParamName} = WTF::String::fromUTF8($paramName);\n");
         } elsif ($paramIDLType eq "CompareHow") {
             push(@cBody, "    WebCore::Range::CompareHow ${convertedParamName} = static_cast<WebCore::Range::CompareHow>($paramName);\n");
-        } elsif ($paramIDLType eq "NodeFilter") {
+        } elsif ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
             push(@cBody, "    RefPtr<WebCore::$paramIDLType> ${convertedParamName} = WebKit::core($paramName);\n");
         } elsif ($paramIsGDOMType) {
             push(@cBody, "    WebCore::${paramIDLType}* ${convertedParamName} = WebKit::core($paramName);\n");
@@ -1291,12 +1307,6 @@ sub GenerateFunctions {
             next TOP;
         }
 
-        if ($attribute->signature->name eq "type") {
-            # This will conflict with the get_type() function we define to return a GType
-            # according to GObject conventions.  Skip this for now.
-            next TOP;
-        }
-            
         my $attrNameUpper = $codeGenerator->WK_ucfirst($attribute->signature->name);
         my $getname = "get${attrNameUpper}";
         my $setname = "set${attrNameUpper}";
@@ -1549,7 +1559,7 @@ sub Generate {
 
     $hdrIncludes{"webkitdom/${parentClassName}.h"} = 1;
 
-    $object->GenerateHeader($interfaceName, $parentClassName);
+    $object->GenerateHeader($interfaceName, $parentClassName, $interface);
     $object->GenerateCFile($interfaceName, $parentClassName, $parentGObjType, $interface);
     $object->GenerateEndHeader();
 }
@@ -1642,12 +1652,13 @@ EOF
 #ifndef $guard
 #define $guard
 
-#include <webkitdom/${className}.h>
+#ifdef WEBKIT_DOM_USE_UNSTABLE_API
+
+#include <webkitdom/webkitdomdefines-unstable.h>
 EOF
 
         print UNSTABLE $text;
         print UNSTABLE "\n";
-        print UNSTABLE "#ifdef WEBKIT_DOM_USE_UNSTABLE_API\n\n";
         print UNSTABLE "#if ${conditionalString}\n\n" if $conditionalString;
         print UNSTABLE "G_BEGIN_DECLS\n";
         print UNSTABLE "\n";
@@ -1673,6 +1684,9 @@ EOF
     # Remove the implementation header from the list of included files.
     %includesCopy = %implIncludes;
     print IMPL map { "#include \"$_\"\n" } sort keys(%includesCopy);
+    if ($isStableClass and scalar(@hBodyUnstable)) {
+        print IMPL "#include \"${className}Unstable.h\"\n";
+    }
 
     print IMPL "#include <wtf/GetPtr.h>\n";
     print IMPL "#include <wtf/RefPtr.h>\n\n";
@@ -1713,6 +1727,18 @@ EOF
     @stableSymbols = ();
 }
 
+sub IsInterfaceSymbol {
+    my ($line, $lowerCaseIfaceName) = @_;
+
+    # Function.
+    return 1 if $line =~ /^[a-zA-Z0-9\*]+\s${lowerCaseIfaceName}_.+$/;
+
+    # Constant.
+    my $prefix = uc($lowerCaseIfaceName);
+    return 1 if $line =~ /^${prefix}_[A-Z_]+$/;
+    return 0;
+}
+
 sub ReadStableSymbols {
     my $interfaceName = shift;
 
@@ -1735,7 +1761,7 @@ sub ReadStableSymbols {
             next;
         }
 
-        if (scalar(@stableSymbols) and $line =~ /^[a-zA-Z0-9\*]+\s${lowerCaseIfaceName}_.+$/ and $line !~ /^GType/) {
+        if (scalar(@stableSymbols) and IsInterfaceSymbol($line, $lowerCaseIfaceName) and $line !~ /^GType/) {
             push(@stableSymbols, $line);
             next;
         }

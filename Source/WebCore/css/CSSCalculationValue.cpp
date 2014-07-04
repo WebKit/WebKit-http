@@ -427,7 +427,7 @@ private:
         std::unique_ptr<CalcExpressionNode> right(m_rightSide->createCalcExpression(conversionData));
         if (!right)
             return nullptr;
-        return std::make_unique<CalcExpressionBinaryOperation>(std::move(left), std::move(right), m_operator);
+        return std::make_unique<CalcExpressionBinaryOperation>(WTF::move(left), WTF::move(right), m_operator);
     }
 
     virtual double doubleValue() const override
@@ -493,14 +493,14 @@ private:
                 return leftType;
             return CSSPrimitiveValue::CSS_UNKNOWN;
         }
-        case CalcPercentLength:
-        case CalcPercentNumber:
         case CalcAngle:
             return CSSPrimitiveValue::CSS_DEG;
         case CalcTime:
             return CSSPrimitiveValue::CSS_MS;
         case CalcFrequency:
             return CSSPrimitiveValue::CSS_HZ;
+        case CalcPercentLength:
+        case CalcPercentNumber:
         case CalcOther:
             return CSSPrimitiveValue::CSS_UNKNOWN;
         }

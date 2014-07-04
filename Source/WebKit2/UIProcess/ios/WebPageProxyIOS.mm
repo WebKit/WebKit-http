@@ -61,22 +61,14 @@ void WebPageProxy::platformInitialize()
 {
 }
 
-static String userVisibleWebKitVersionString()
+static String webKitBundleVersionString()
 {
-    // If the version is longer than 3 digits then the leading digits represent the version of the OS. Our user agent
-    // string should not include the leading digits, so strip them off and report the rest as the version. <rdar://problem/4997547>
-    NSString *fullVersion = [[NSBundle bundleForClass:NSClassFromString(@"WKView")] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
-    NSRange nonDigitRange = [fullVersion rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]];
-    if (nonDigitRange.location == NSNotFound && fullVersion.length > 3)
-        return [fullVersion substringFromIndex:fullVersion.length - 3];
-    if (nonDigitRange.location != NSNotFound && nonDigitRange.location > 3)
-        return [fullVersion substringFromIndex:nonDigitRange.location - 3];
-    return fullVersion;
+    return [[NSBundle bundleForClass:NSClassFromString(@"WKWebView")] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
 }
 
-String WebPageProxy::standardUserAgent(const String& applicationName)
+String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
-    return standardUserAgentWithApplicationName(applicationName, userVisibleWebKitVersionString());
+    return standardUserAgentWithApplicationName(applicationNameForUserAgent, webKitBundleVersionString());
 }
 
 void WebPageProxy::getIsSpeaking(bool&)
@@ -199,7 +191,6 @@ void WebPageProxy::updateVisibleContentRects(const WebCore::FloatRect& exposedRe
 
     m_lastVisibleContentRectUpdate = visibleContentRectUpdateInfo;
     m_process->send(Messages::ViewUpdateDispatcher::VisibleContentRectUpdate(m_pageID, visibleContentRectUpdateInfo), 0);
-    return;
 }
 
 static inline float adjustedUnexposedEdge(float documentEdge, float exposedRectEdge, float factor)
@@ -321,7 +312,7 @@ void WebPageProxy::selectWithGesture(const WebCore::IntPoint point, WebCore::Tex
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::SelectWithGesture(point, (uint32_t)granularity, gestureType, gestureState, callbackID), m_pageID);
 }
 
@@ -332,7 +323,7 @@ void WebPageProxy::updateSelectionWithTouches(const WebCore::IntPoint point, uin
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::UpdateSelectionWithTouches(point, touches, baseIsStart, callbackID), m_pageID);
 }
     
@@ -353,7 +344,7 @@ void WebPageProxy::requestAutocorrectionData(const String& textForAutocorrection
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::RequestAutocorrectionData(textForAutocorrection, callbackID), m_pageID);
 }
 
@@ -364,7 +355,7 @@ void WebPageProxy::applyAutocorrection(const String& correction, const String& o
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::ApplyAutocorrection(correction, originalText, callbackID), m_pageID);
 }
 
@@ -382,7 +373,7 @@ void WebPageProxy::requestDictationContext(std::function<void (const String&, co
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::RequestDictationContext(callbackID), m_pageID);
 }
 
@@ -393,7 +384,7 @@ void WebPageProxy::requestAutocorrectionContext(std::function<void (const String
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::RequestAutocorrectionContext(callbackID), m_pageID);
 }
 
@@ -409,7 +400,7 @@ void WebPageProxy::selectWithTwoTouches(const WebCore::IntPoint from, const WebC
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::SelectWithTwoTouches(from, to, gestureType, gestureState, callbackID), m_pageID);
 }
 

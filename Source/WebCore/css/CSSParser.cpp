@@ -1452,8 +1452,23 @@ std::unique_ptr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
     setupParser("@-webkit-mediaquery ", string, "} ");
     cssyyparse(this);
 
-    return std::move(m_mediaQuery);
+    return WTF::move(m_mediaQuery);
 }
+
+#if ENABLE(PICTURE_SIZES)
+std::unique_ptr<SourceSizeList> CSSParser::parseSizesAttribute(const String& string)
+{
+    if (string.isEmpty())
+        return nullptr;
+
+    ASSERT(!m_sourceSizeList.get());
+
+    setupParser("@-webkit-sizesattr ", string, "}");
+    cssyyparse(this);
+
+    return WTF::move(m_sourceSizeList);
+}
+#endif
 
 static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties)
 {
@@ -10802,6 +10817,10 @@ inline void CSSParser::detectAtToken(int length, bool hasEscape)
         case 18:
             if (isEqualToCSSIdentifier(name + 2, "webkit-keyframes"))
                 m_token = WEBKIT_KEYFRAMES_SYM;
+#if ENABLE(PICTURE_SIZES)
+            else if (isEqualToCSSIdentifier(name + 2, "webkit-sizesattr"))
+                m_token = WEBKIT_SIZESATTR_SYM;
+#endif
             return;
 
         case 19:
@@ -11409,7 +11428,7 @@ void CSSParser::logError(const String& message, int lineNumber)
 
 PassRefPtr<StyleRuleKeyframes> CSSParser::createKeyframesRule(const String& name, std::unique_ptr<Vector<RefPtr<StyleKeyframe>>> popKeyframes)
 {
-    std::unique_ptr<Vector<RefPtr<StyleKeyframe>>> keyframes = std::move(popKeyframes);
+    std::unique_ptr<Vector<RefPtr<StyleKeyframe>>> keyframes = WTF::move(popKeyframes);
     m_allowImportRules = m_allowNamespaceDeclarations = false;
     RefPtr<StyleRuleKeyframes> rule = StyleRuleKeyframes::create();
     for (size_t i = 0; i < keyframes->size(); ++i)
@@ -11519,15 +11538,15 @@ std::unique_ptr<CSSParserSelector> CSSParser::rewriteSpecifiers(std::unique_ptr<
 {
     if (newSpecifier->isCustomPseudoElement() || newSpecifier->isPseudoElementCueFunction()) {
         // Unknown pseudo element always goes at the top of selector chain.
-        newSpecifier->appendTagHistory(CSSSelector::ShadowDescendant, std::move(specifiers));
+        newSpecifier->appendTagHistory(CSSSelector::ShadowDescendant, WTF::move(specifiers));
         return newSpecifier;
     }
     if (specifiers->isCustomPseudoElement()) {
         // Specifiers for unknown pseudo element go right behind it in the chain.
-        specifiers->insertTagHistory(CSSSelector::SubSelector, std::move(newSpecifier), CSSSelector::ShadowDescendant);
+        specifiers->insertTagHistory(CSSSelector::SubSelector, WTF::move(newSpecifier), CSSSelector::ShadowDescendant);
         return specifiers;
     }
-    specifiers->appendTagHistory(CSSSelector::SubSelector, std::move(newSpecifier));
+    specifiers->appendTagHistory(CSSSelector::SubSelector, WTF::move(newSpecifier));
     return specifiers;
 }
 
@@ -11539,7 +11558,7 @@ PassRefPtr<StyleRuleBase> CSSParser::createPageRule(std::unique_ptr<CSSParserSel
     if (pageSelector) {
         rule = StyleRulePage::create(createStyleProperties());
         Vector<std::unique_ptr<CSSParserSelector>> selectorVector;
-        selectorVector.append(std::move(pageSelector));
+        selectorVector.append(WTF::move(pageSelector));
         rule->parserAdoptSelectorVector(selectorVector);
         processAndAddNewRuleToSourceTreeIfNeeded();
     } else
@@ -11552,7 +11571,7 @@ std::unique_ptr<Vector<std::unique_ptr<CSSParserSelector>>> CSSParser::createSel
 {
     if (m_recycledSelectorVector) {
         m_recycledSelectorVector->shrink(0);
-        return std::move(m_recycledSelectorVector);
+        return WTF::move(m_recycledSelectorVector);
     }
     return std::make_unique<Vector<std::unique_ptr<CSSParserSelector>>>();
 }
@@ -11560,7 +11579,7 @@ std::unique_ptr<Vector<std::unique_ptr<CSSParserSelector>>> CSSParser::createSel
 void CSSParser::recycleSelectorVector(std::unique_ptr<Vector<std::unique_ptr<CSSParserSelector>>> vector)
 {
     if (vector && !m_recycledSelectorVector)
-        m_recycledSelectorVector = std::move(vector);
+        m_recycledSelectorVector = WTF::move(vector);
 }
 
 PassRefPtr<StyleRuleBase> CSSParser::createRegionRule(Vector<std::unique_ptr<CSSParserSelector>>* regionSelector, RuleList* rules)

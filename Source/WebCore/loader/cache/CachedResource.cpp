@@ -515,15 +515,14 @@ void CachedResource::removeClient(CachedResourceClient* client)
         if (!m_switchingClientsToRevalidatedResource)
             allClientsRemoved();
         destroyDecodedDataIfNeeded();
-        if (response().cacheControlContainsNoStore()) {
+        if (response().cacheControlContainsNoStore() && url().protocolIs("https")) {
             // RFC2616 14.9.2:
             // "no-store: ... MUST make a best-effort attempt to remove the information from volatile storage as promptly as possible"
             // "... History buffers MAY store such responses as part of their normal operation."
             // We allow non-secure content to be reused in history, but we do not allow secure content to be reused.
-            if (url().protocolIs("https"))
-                memoryCache()->remove(this);
-        } else
-            memoryCache()->prune();
+            memoryCache()->remove(this);
+        }
+        memoryCache()->prune();
     }
     // This object may be dead here.
 }
@@ -900,11 +899,9 @@ void CachedResource::tryReplaceEncodedData(PassRefPtr<SharedBuffer> newBuffer)
     
     if (!mayTryReplaceEncodedData())
         return;
-    
-    // Because the disk cache is asynchronous and racey with regards to the data we might be asked to replace,
-    // we need to verify that the new buffer has the same contents as our old buffer.
-    if (m_data->size() != newBuffer->size() || memcmp(m_data->data(), newBuffer->data(), m_data->size()))
-        return;
+
+    ASSERT(m_data->size() == newBuffer->size());
+    ASSERT(!memcmp(m_data->data(), newBuffer->data(), m_data->size()));
 
     m_data->tryReplaceSharedBufferContents(newBuffer.get());
 }

@@ -236,7 +236,7 @@ SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicTranscribesSpokenDialogForA
 
 #if ENABLE(DATACUE_VALUE)
 SOFT_LINK_POINTER(AVFoundation, AVMetadataKeySpaceQuickTimeUserData, NSString*)
-SOFT_LINK_POINTER(AVFoundation, AVMetadataKeySpaceISOUserData, NSString*)
+SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVMetadataKeySpaceISOUserData, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMetadataKeySpaceQuickTimeMetadata, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMetadataKeySpaceiTunes, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMetadataKeySpaceID3, NSString*)
@@ -671,6 +671,24 @@ void MediaPlayerPrivateAVFoundationObjC::synchronizeTextTrackState()
 }
 #endif
 
+
+static NSURL *canonicalURL(const String& url)
+{
+    NSURL *cocoaURL = URL(ParsedURLString, url);
+    if (url.isEmpty())
+        return cocoaURL;
+
+    RetainPtr<NSURLRequest> request = adoptNS([[NSURLRequest alloc] initWithURL:cocoaURL]);
+    if (!request)
+        return cocoaURL;
+
+    NSURLRequest *canonicalRequest = [NSURLProtocol canonicalRequestForRequest:request.get()];
+    if (!canonicalRequest)
+        return cocoaURL;
+
+    return [canonicalRequest URL];
+}
+
 void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
 {
     if (m_avAsset)
@@ -733,7 +751,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
         [options setObject:networkInterfaceName forKey:AVURLAssetBoundNetworkInterfaceName];
 #endif
 
-    NSURL *cocoaURL = URL(ParsedURLString, url);
+    NSURL *cocoaURL = canonicalURL(url);
     m_avAsset = adoptNS([[AVURLAsset alloc] initWithURL:cocoaURL options:options.get()]);
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
@@ -1923,58 +1941,6 @@ void MediaPlayerPrivateAVFoundationObjC::outputMediaDataWillChange(AVPlayerItemV
 }
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-bool MediaPlayerPrivateAVFoundationObjC::extractKeyURIKeyIDAndCertificateFromInitData(Uint8Array* initData, String& keyURI, String& keyID, RefPtr<Uint8Array>& certificate)
-{
-    // initData should have the following layout:
-    // [4 bytes: keyURI length][N bytes: keyURI][4 bytes: contentID length], [N bytes: contentID], [4 bytes: certificate length][N bytes: certificate]
-    if (initData->byteLength() < 4)
-        return false;
-
-    RefPtr<ArrayBuffer> initDataBuffer = initData->buffer();
-
-    // Use a DataView to read uint32 values from the buffer, as Uint32Array requires the reads be aligned on 4-byte boundaries. 
-    RefPtr<JSC::DataView> initDataView = JSC::DataView::create(initDataBuffer, 0, initDataBuffer->byteLength());
-    uint32_t offset = 0;
-    bool status = true;
-
-    uint32_t keyURILength = initDataView->get<uint32_t>(offset, true, &status);
-    offset += 4;
-    if (!status || offset + keyURILength > initData->length())
-        return false;
-
-    RefPtr<Uint16Array> keyURIArray = Uint16Array::create(initDataBuffer, offset, keyURILength);
-    if (!keyURIArray)
-        return false;
-
-    keyURI = String(keyURIArray->data(), keyURILength / sizeof(unsigned short));
-    offset += keyURILength;
-
-    uint32_t keyIDLength = initDataView->get<uint32_t>(offset, true, &status);
-    offset += 4;
-    if (!status || offset + keyIDLength > initData->length())
-        return false;
-
-    RefPtr<Uint16Array> keyIDArray = Uint16Array::create(initDataBuffer, offset, keyIDLength);
-    if (!keyIDArray)
-        return false;
-
-    keyID = String(keyIDArray->data(), keyIDLength / sizeof(unsigned short));
-    offset += keyIDLength;
-
-    uint32_t certificateLength = initDataView->get<uint32_t>(offset, true, &status);
-    offset += 4;
-    if (!status || offset + certificateLength > initData->length())
-        return false;
-
-    certificate = Uint8Array::create(initDataBuffer, offset, certificateLength);
-    if (!certificate)
-        return false;
-
-    return true;
-}
-#endif
-
 #if ENABLE(ENCRYPTED_MEDIA)
 MediaPlayer::MediaKeyException MediaPlayerPrivateAVFoundationObjC::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
 {
@@ -2449,7 +2415,7 @@ static const AtomicString& metadataType(NSString *avMetadataKeySpace)
 
     if ([avMetadataKeySpace isEqualToString:AVMetadataKeySpaceQuickTimeUserData])
         return quickTimeUserData;
-    if ([avMetadataKeySpace isEqualToString:AVMetadataKeySpaceISOUserData])
+    if (AVMetadataKeySpaceISOUserData && [avMetadataKeySpace isEqualToString:AVMetadataKeySpaceISOUserData])
         return isoUserData;
     if ([avMetadataKeySpace isEqualToString:AVMetadataKeySpaceQuickTimeMetadata])
         return quickTimeMetadata;

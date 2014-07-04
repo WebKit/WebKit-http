@@ -44,6 +44,12 @@
 */
 @property (setter=_setIncludesNativeCallStackWhenReportingExceptions:) BOOL _includesNativeCallStackWhenReportingExceptions NS_AVAILABLE(10_10, 8_0);
 
+/*!
+@property
+@discussion Set the run loop the Web Inspector debugger should use when evaluating JavaScript in the JSContext.
+*/
+@property (setter=_setDebuggerRunLoop:) CFRunLoopRef _debuggerRunLoop NS_AVAILABLE(10_10, 8_0);
+
 @end
 
 #endif

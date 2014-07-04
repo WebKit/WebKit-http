@@ -36,10 +36,11 @@
 namespace WebCore {
 
 struct HIDGamepadElement {
-    HIDGamepadElement(double theMin, double theMax)
+    HIDGamepadElement(double theMin, double theMax, IOHIDElementRef element)
         : min(theMin)
         , max(theMax)
         , rawValue(theMin)
+        , iohidElement(element)
     {
     }
     
@@ -50,6 +51,7 @@ struct HIDGamepadElement {
     double min;
     double max;
     double rawValue;
+    RetainPtr<IOHIDElementRef> iohidElement;
 
     virtual bool isButton() const { return false; }
     virtual bool isAxis() const { return false; }
@@ -57,9 +59,9 @@ struct HIDGamepadElement {
     virtual double normalizedValue() = 0;
 };
 
-struct HIDGamepadButton : public HIDGamepadElement {
-    HIDGamepadButton(uint32_t thePriority, double min, double max)
-        : HIDGamepadElement(min, max)
+struct HIDGamepadButton : HIDGamepadElement {
+    HIDGamepadButton(uint32_t thePriority, double min, double max, IOHIDElementRef element)
+        : HIDGamepadElement(min, max, element)
         , priority(thePriority)
     {
     }
@@ -75,9 +77,9 @@ struct HIDGamepadButton : public HIDGamepadElement {
     }
 };
 
-struct HIDGamepadAxis : public HIDGamepadElement {
-    HIDGamepadAxis(double min, double max)
-        : HIDGamepadElement(min, max)
+struct HIDGamepadAxis : HIDGamepadElement {
+    HIDGamepadAxis(double min, double max, IOHIDElementRef element)
+        : HIDGamepadElement(min, max, element)
     {
     }
 
@@ -108,6 +110,8 @@ private:
     bool maybeAddButton(IOHIDElementRef);
     bool maybeAddAxis(IOHIDElementRef);
 
+    void getCurrentValueForElement(const HIDGamepadElement&);
+
     RetainPtr<IOHIDDeviceRef> m_hidDevice;
 
     HashMap<IOHIDElementCookie, HIDGamepadElement*> m_elementMap;
@@ -121,4 +125,4 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(GAMEPAD)
-#endif // HIDGamepadListener_h
+#endif // HIDGamepad_h

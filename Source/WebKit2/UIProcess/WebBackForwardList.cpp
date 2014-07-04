@@ -27,9 +27,23 @@
 #include "WebBackForwardList.h"
 
 #include "APIArray.h"
+#include "SessionState.h"
 #include "WebPageProxy.h"
 
 namespace WebKit {
+
+// FIXME: Make this static once WebBackForwardListCF.cpp is no longer using it.
+uint64_t generateWebBackForwardItemID();
+
+uint64_t generateWebBackForwardItemID()
+{
+    // These IDs exist in the UIProcess for items created by the UIProcess.
+    // The IDs generated here need to never collide with the IDs created in WebBackForwardListProxy in the WebProcess.
+    // We accomplish this by starting from 2, and only ever using even ids.
+    static uint64_t uniqueHistoryItemID = 0;
+    uniqueHistoryItemID += 2;
+    return uniqueHistoryItemID;
+}
 
 static const unsigned DefaultCapacity = 100;
 
@@ -142,7 +156,7 @@ void WebBackForwardList::addItem(WebBackForwardListItem* newItem)
             m_entries.insert(m_currentIndex, newItem);
     }
 
-    m_page->didChangeBackForwardList(newItem, std::move(removedItems));
+    m_page->didChangeBackForwardList(newItem, WTF::move(removedItems));
 }
 
 void WebBackForwardList::goToItem(WebBackForwardListItem* item)
@@ -262,7 +276,7 @@ PassRefPtr<API::Array> WebBackForwardList::backListAsAPIArrayWithLimit(unsigned 
         vector.uncheckedAppend(m_entries[i].get());
     }
 
-    return API::Array::create(std::move(vector));
+    return API::Array::create(WTF::move(vector));
 }
 
 PassRefPtr<API::Array> WebBackForwardList::forwardListAsAPIArrayWithLimit(unsigned limit) const
@@ -286,7 +300,7 @@ PassRefPtr<API::Array> WebBackForwardList::forwardListAsAPIArrayWithLimit(unsign
         vector.uncheckedAppend(m_entries[i].get());
     }
 
-    return API::Array::create(std::move(vector));
+    return API::Array::create(WTF::move(vector));
 }
 
 void WebBackForwardList::removeAllItems()
@@ -301,12 +315,12 @@ void WebBackForwardList::removeAllItems()
             continue;
 
         m_page->backForwardRemovedItem(entry->itemID());
-        removedItems.append(std::move(entry));
+        removedItems.append(WTF::move(entry));
     }
 
     m_entries.clear();
     m_hasCurrentIndex = false;
-    m_page->didChangeBackForwardList(nullptr, std::move(removedItems));
+    m_page->didChangeBackForwardList(nullptr, WTF::move(removedItems));
 }
 
 void WebBackForwardList::clear()
@@ -336,7 +350,7 @@ void WebBackForwardList::clear()
 
         m_entries.clear();
         m_hasCurrentIndex = false;
-        m_page->didChangeBackForwardList(nullptr, std::move(removedItems));
+        m_page->didChangeBackForwardList(nullptr, WTF::move(removedItems));
 
         return;
     }
@@ -363,7 +377,56 @@ void WebBackForwardList::clear()
         m_hasCurrentIndex = false;
     }
 
-    m_page->didChangeBackForwardList(nullptr, std::move(removedItems));
+    m_page->didChangeBackForwardList(nullptr, WTF::move(removedItems));
+}
+
+BackForwardListState WebBackForwardList::backForwardListState(const std::function<bool (WebBackForwardListItem&)>& filter) const
+{
+    ASSERT(!m_hasCurrentIndex || m_currentIndex < m_entries.size());
+
+    BackForwardListState backForwardListState;
+    if (m_hasCurrentIndex)
+        backForwardListState.currentIndex = m_currentIndex;
+
+    for (size_t i = 0; i < m_entries.size(); ++i) {
+        auto& entry = *m_entries[i];
+
+        if (filter && !filter(entry)) {
+            if (backForwardListState.currentIndex && i <= backForwardListState.currentIndex.value())
+                --backForwardListState.currentIndex.value();
+
+            continue;
+        }
+
+        backForwardListState.items.append(entry.itemState());
+    }
+
+    return backForwardListState;
+}
+
+void WebBackForwardList::restoreFromState(BackForwardListState backForwardListState)
+{
+    Vector<RefPtr<WebBackForwardListItem>> items;
+    items.reserveInitialCapacity(backForwardListState.items.size());
+
+    for (auto& backForwardListItemState : backForwardListState.items) {
+        backForwardListItemState.identifier = generateWebBackForwardItemID();
+        items.uncheckedAppend(WebBackForwardListItem::create(WTF::move(backForwardListItemState)));
+    }
+    m_hasCurrentIndex = !!backForwardListState.currentIndex;
+    m_currentIndex = backForwardListState.currentIndex.valueOr(0);
+    m_entries = WTF::move(items);
+}
+
+Vector<BackForwardListItemState> WebBackForwardList::itemStates() const
+{
+    Vector<BackForwardListItemState> itemStates;
+    itemStates.reserveInitialCapacity(m_entries.size());
+
+    for (const auto& entry : m_entries)
+        itemStates.uncheckedAppend(entry->itemState());
+
+    return itemStates;
 }
 
 } // namespace WebKit

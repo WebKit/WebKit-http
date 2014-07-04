@@ -85,12 +85,18 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 @property (nonatomic, readonly) pid_t _webProcessIdentifier;
 
+@property (nonatomic, readonly) NSData *_sessionStateData;
+- (void)_restoreFromSessionStateData:(NSData *)sessionStateData;
+
+// FIXME: Remove these once nobody is using them.
 @property (nonatomic, readonly) NSData *_sessionState;
 - (void)_restoreFromSessionState:(NSData *)sessionState;
 
 @property (nonatomic, setter=_setAllowsRemoteInspection:) BOOL _allowsRemoteInspection;
 
 @property (nonatomic, setter=_setAddsVisitedLinks:) BOOL _addsVisitedLinks;
+
+@property (nonatomic, readonly) BOOL _networkRequestsInProgress;
 
 - (void)_close;
 
@@ -146,6 +152,9 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
 @property (nonatomic, setter=_setDrawsTransparentBackground:) BOOL _drawsTransparentBackground;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+@property (nonatomic, setter=_setAutomaticallyAdjustsContentInsets:) BOOL _automaticallyAdjustsContentInsets;
+#endif
 #endif
 
 - (void)_getMainResourceDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;

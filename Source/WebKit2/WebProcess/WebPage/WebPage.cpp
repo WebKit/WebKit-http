@@ -30,7 +30,6 @@
 
 #include "Arguments.h"
 #include "DataReference.h"
-#include "DecoderAdapter.h"
 #include "DragControllerAction.h"
 #include "DrawingArea.h"
 #include "DrawingAreaMessages.h"
@@ -41,7 +40,6 @@
 #include "InjectedBundleBackForwardList.h"
 #include "InjectedBundleUserMessageCoders.h"
 #include "LayerTreeHost.h"
-#include "LegacySessionState.h"
 #include "Logging.h"
 #include "NetscapePlugin.h"
 #include "NotificationPermissionRequestManager.h"
@@ -50,10 +48,11 @@
 #include "PluginProxy.h"
 #include "PluginView.h"
 #include "PrintInfo.h"
-#include "SelectionOverlayController.h"
+#include "ServicesOverlayController.h"
+#include "SessionState.h"
+#include "SessionStateConversion.h"
 #include "SessionTracker.h"
 #include "ShareableBitmap.h"
-#include "TelephoneNumberOverlayController.h"
 #include "VisitedLinkTableController.h"
 #include "WKBundleAPICast.h"
 #include "WKRetainPtr.h"
@@ -435,8 +434,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     WebBackForwardListProxy::setHighestItemIDFromUIProcess(parameters.highestUsedBackForwardItemID);
     
-    if (!parameters.sessionState.isEmpty())
-        restoreSession(parameters.sessionState);
+    if (!parameters.itemStates.isEmpty())
+        restoreSession(parameters.itemStates);
 
     if (parameters.sessionID.isValid())
         setSessionID(parameters.sessionID);
@@ -470,6 +469,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     if (m_useAsyncScrolling)
         WebProcess::shared().eventDispatcher().addScrollingTreeForPage(this);
 #endif
+
+    for (auto& mimeType : parameters.mimeTypesWithCustomContentProviders)
+        m_mimeTypesWithCustomContentProviders.add(mimeType);
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -556,7 +558,7 @@ void WebPage::setInjectedBundleFormClient(std::unique_ptr<API::InjectedBundle::F
         return;
     }
 
-    m_formClient = std::move(formClient);
+    m_formClient = WTF::move(formClient);
 }
 
 void WebPage::initializeInjectedBundleLoaderClient(WKBundlePageLoaderClientBase* client)
@@ -595,7 +597,7 @@ void WebPage::setInjectedBundleUIClient(std::unique_ptr<API::InjectedBundle::Pag
         return;
     }
 
-    m_uiClient = std::move(uiClient);
+    m_uiClient = WTF::move(uiClient);
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -615,7 +617,14 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
 {
     String frameURLString = frame->coreFrame()->loader().documentLoader()->responseURL().string();
     String pageURLString = m_page->mainFrame().loader().documentLoader()->responseURL().string();
+
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
+    HTMLPlugInImageElement& pluginImageElement = toHTMLPlugInImageElement(*pluginElement);
+    unsigned pluginArea = 0;
+    PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot && !(plugInIsPrimarySize(pluginImageElement, pluginArea) && !plugInIntersectsSearchRect(pluginImageElement)) ? PluginProcessTypeSnapshot : PluginProcessTypeNormal;
+#else
     PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot ? PluginProcessTypeSnapshot : PluginProcessTypeNormal;
+#endif
 
     bool allowOnlyApplicationPlugins = !frame->coreFrame()->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin);
 
@@ -792,7 +801,7 @@ PassRefPtr<API::Array> WebPage::trackedRepaintRects()
     for (const auto& repaintRect : view->trackedRepaintRects())
         repaintRects.uncheckedAppend(API::Rect::create(toAPI(repaintRect)));
 
-    return API::Array::create(std::move(repaintRects));
+    return API::Array::create(WTF::move(repaintRects));
 }
 
 PluginView* WebPage::focusedPluginViewForFrame(Frame& frame)
@@ -1952,34 +1961,10 @@ void WebPage::executeEditCommand(const String& commandName)
     executeEditingCommand(commandName, String());
 }
 
-uint64_t WebPage::restoreSession(const LegacySessionState& sessionState)
+void WebPage::restoreSession(const Vector<BackForwardListItemState>& itemStates)
 {
-    const BackForwardListItemVector& list = sessionState.list();
-    size_t size = list.size();
-    uint64_t currentItemID = 0;
-    for (size_t i = 0; i < size; ++i) {
-        WebBackForwardListItem* webItem = list[i].get();
-        DecoderAdapter decoder(webItem->backForwardData().data(), webItem->backForwardData().size());
-        
-        RefPtr<HistoryItem> item = HistoryItem::decodeBackForwardTree(webItem->url(), webItem->title(), webItem->originalURL(), decoder);
-        if (!item) {
-            LOG_ERROR("Failed to decode a HistoryItem from session state data.");
-            return 0;
-        }
-        
-        if (i == sessionState.currentIndex())
-            currentItemID = webItem->itemID();
-        
-        WebBackForwardListProxy::addItemFromUIProcess(list[i]->itemID(), item.release());
-    }    
-    ASSERT(currentItemID);
-    return currentItemID;
-}
-
-void WebPage::restoreSessionAndNavigateToCurrentItem(uint64_t navigationID, const LegacySessionState& sessionState)
-{
-    if (uint64_t currentItemID = restoreSession(sessionState))
-        goToBackForwardItem(navigationID, currentItemID);
+    for (const auto& itemState : itemStates)
+        WebBackForwardListProxy::addItemFromUIProcess(itemState.identifier, toHistoryItem(itemState.pageState));
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -2243,12 +2228,12 @@ void WebPage::setSessionID(SessionID sessionID)
     m_page->setSessionID(sessionID);
 }
 
-void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t downloadID)
+void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, uint64_t downloadID)
 {
     WebFrame* frame = WebProcess::shared().webFrame(frameID);
     if (!frame)
         return;
-    frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), downloadID);
+    frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), navigationID, downloadID);
 }
 
 void WebPage::didStartPageTransition()
@@ -3821,6 +3806,27 @@ void WebPage::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String&
 }
 #endif
 
+void WebPage::addResourceRequest(unsigned long identifier, const WebCore::ResourceRequest& request)
+{
+    if (!request.url().protocolIsInHTTPFamily())
+        return;
+
+    ASSERT(!m_networkResourceRequestIdentifiers.contains(identifier));
+    bool wasEmpty = m_networkResourceRequestIdentifiers.isEmpty();
+    m_networkResourceRequestIdentifiers.add(identifier);
+    if (wasEmpty)
+        send(Messages::WebPageProxy::SetNetworkRequestsInProgress(true));
+}
+
+void WebPage::removeResourceRequest(unsigned long identifier)
+{
+    if (!m_networkResourceRequestIdentifiers.remove(identifier))
+        return;
+
+    if (m_networkResourceRequestIdentifiers.isEmpty())
+        send(Messages::WebPageProxy::SetNetworkRequestsInProgress(false));
+}
+
 void WebPage::setMediaVolume(float volume)
 {
     m_page->setMediaVolume(volume);
@@ -4723,23 +4729,13 @@ bool WebPage::synchronousMessagesShouldSpinRunLoop()
     return false;
 }
     
-#if ENABLE(TELEPHONE_NUMBER_DETECTION)
-TelephoneNumberOverlayController& WebPage::telephoneNumberOverlayController()
+#if ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION)
+ServicesOverlayController& WebPage::servicesOverlayController()
 {
-    if (!m_telephoneNumberOverlayController)
-        m_telephoneNumberOverlayController = TelephoneNumberOverlayController::create(this);
+    if (!m_servicesOverlayController)
+        m_servicesOverlayController = std::make_unique<ServicesOverlayController>(*this);
 
-    return *m_telephoneNumberOverlayController;
-}
-#endif
-
-#if ENABLE(SERVICE_CONTROLS)
-SelectionOverlayController& WebPage::selectionOverlayController()
-{
-    if (!m_selectionOverlayController)
-        m_selectionOverlayController = SelectionOverlayController::create(this);
-
-    return *m_selectionOverlayController;
+    return *m_servicesOverlayController;
 }
 #endif
 

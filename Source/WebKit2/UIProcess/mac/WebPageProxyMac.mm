@@ -55,6 +55,7 @@
 #import <WebKitSystemInterface.h>
 #import <mach-o/dyld.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/cf/TypeCasts.h>
 #import <wtf/text/StringConcatenate.h>
 
 @interface NSApplication (Details)
@@ -97,22 +98,14 @@ void WebPageProxy::platformInitialize()
     setShouldUseImplicitRubberBandControl(clientExpectsLegacyImplicitRubberBandControl);
 }
 
-static String userVisibleWebKitVersionString()
+static String webKitBundleVersionString()
 {
-    // If the version is longer than 3 digits then the leading digits represent the version of the OS. Our user agent
-    // string should not include the leading digits, so strip them off and report the rest as the version. <rdar://problem/4997547>
-    NSString *fullVersion = [[NSBundle bundleForClass:NSClassFromString(@"WKView")] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
-    NSRange nonDigitRange = [fullVersion rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]];
-    if (nonDigitRange.location == NSNotFound && fullVersion.length > 3)
-        return [fullVersion substringFromIndex:fullVersion.length - 3];
-    if (nonDigitRange.location != NSNotFound && nonDigitRange.location > 3)
-        return [fullVersion substringFromIndex:nonDigitRange.location - 3];
-    return fullVersion;
+    return [[NSBundle bundleForClass:NSClassFromString(@"WKView")] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
 }
 
 String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
-    return standardUserAgentWithApplicationName(applicationNameForUserAgent, userVisibleWebKitVersionString());
+    return standardUserAgentWithApplicationName(applicationNameForUserAgent, webKitBundleVersionString());
 }
 
 void WebPageProxy::getIsSpeaking(bool& isSpeaking)
@@ -327,15 +320,12 @@ void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRang
 
 void WebPageProxy::attributedSubstringForCharacterRangeAsync(const EditingRange& range, std::function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<AttributedStringForCharacterRangeCallback> callback = AttributedStringForCharacterRangeCallback::create(std::move(callbackFunction));
-
     if (!isValid()) {
-        callback->invalidate();
+        callbackFunction(AttributedString(), EditingRange(), CallbackBase::Error::Unknown);
         return;
     }
 
-    uint64_t callbackID = callback->callbackID();
-    m_callbacks.put(std::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
 
     process().send(Messages::WebPage::AttributedSubstringForCharacterRangeAsync(range, callbackID), m_pageID);
 }
@@ -653,6 +643,48 @@ void WebPageProxy::openPDFFromTemporaryFolderWithNativeApplication(const String&
         return;
 
     [[NSWorkspace sharedWorkspace] openFile:pdfFilename];
+}
+
+static RetainPtr<CFStringRef> autosaveKey(const String& name)
+{
+    return String("com.apple.WebKit.searchField:" + name).createCFString();
+}
+
+void WebPageProxy::saveRecentSearches(const String& name, const Vector<String>& searchItems)
+{
+    if (!name) {
+        // FIXME: This should be a message check.
+        return;
+    }
+
+    RetainPtr<CFMutableArrayRef> items;
+
+    if (!searchItems.isEmpty()) {
+        items = adoptCF(CFArrayCreateMutable(0, searchItems.size(), &kCFTypeArrayCallBacks));
+
+        for (const auto& searchItem : searchItems)
+            CFArrayAppendValue(items.get(), searchItem.createCFString().get());
+    }
+
+    CFPreferencesSetAppValue(autosaveKey(name).get(), items.get(), kCFPreferencesCurrentApplication);
+    CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
+}
+
+void WebPageProxy::loadRecentSearches(const String& name, Vector<String>& searchItems)
+{
+    if (!name) {
+        // FIXME: This should be a message check.
+        return;
+    }
+
+    auto items = adoptCF(dynamic_cf_cast<CFArrayRef>(CFPreferencesCopyAppValue(autosaveKey(name).get(), kCFPreferencesCurrentApplication)));
+    if (!items)
+        return;
+
+    for (size_t i = 0, size = CFArrayGetCount(items.get()); i < size; ++i) {
+        if (auto item = dynamic_cf_cast<CFStringRef>(CFArrayGetValueAtIndex(items.get(), i)))
+            searchItems.append(item);
+    }
 }
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)

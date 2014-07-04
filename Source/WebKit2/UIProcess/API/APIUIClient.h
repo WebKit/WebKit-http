@@ -115,7 +115,7 @@ public:
         completionHandler(currentQuota);
     }
 
-    virtual void reachedApplicationCacheOriginQuota(WebKit::WebPageProxy*, const WebCore::SecurityOrigin&, uint64_t currentQuota, uint64_t totalBytesNeeded, std::function<void (unsigned long long)> completionHandler)
+    virtual void reachedApplicationCacheOriginQuota(WebKit::WebPageProxy*, const WebCore::SecurityOrigin&, uint64_t currentQuota, uint64_t, std::function<void (unsigned long long)> completionHandler)
     {
         completionHandler(currentQuota);
     }
@@ -141,7 +141,7 @@ public:
     virtual void pinnedStateDidChange(WebKit::WebPageProxy&) { }
 
 #if PLATFORM(IOS)
-    virtual RetainPtr<NSArray> actionsForElement(_WKActivatedElementInfo *, RetainPtr<NSArray> defaultActions) { return std::move(defaultActions); }
+    virtual RetainPtr<NSArray> actionsForElement(_WKActivatedElementInfo *, RetainPtr<NSArray> defaultActions) { return WTF::move(defaultActions); }
     virtual void didNotHandleTapAsClick(const WebCore::IntPoint&) { }
 #endif
 };

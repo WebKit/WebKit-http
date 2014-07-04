@@ -23,17 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "config.h"
-#import "CDMPrivateMediaPlayer.h"
+#include "config.h"
+#include "CDMPrivateMediaPlayer.h"
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 
-#import "CDM.h"
-#import "CDMSession.h"
-#import "ContentType.h"
-#import "ExceptionCode.h"
-#import "MediaPlayer.h"
-#import "SoftLinking.h"
+#include "CDM.h"
+#include "CDMSession.h"
+#include "ContentType.h"
+#include "ExceptionCode.h"
+#include "MediaPlayer.h"
+#include "SoftLinking.h"
 
 namespace WebCore {
 

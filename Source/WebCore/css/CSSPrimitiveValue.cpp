@@ -934,13 +934,13 @@ NEVER_INLINE PassRef<StringImpl> CSSPrimitiveValue::formatNumberValue(const char
     for (unsigned i = 0; i < suffixLength; ++i)
         buffer[length + i] = static_cast<LChar>(suffix[i]);
 
-    return std::move(string);
+    return WTF::move(string);
 }
 
 template <unsigned characterCount>
 ALWAYS_INLINE PassRef<StringImpl> CSSPrimitiveValue::formatNumberValue(const char (&characters)[characterCount]) const
 {
-    return std::move(formatNumberValue(characters, characterCount - 1));
+    return formatNumberValue(characters, characterCount - 1);
 }
 
 ALWAYS_INLINE String CSSPrimitiveValue::formatNumberForcustomCSSText() const

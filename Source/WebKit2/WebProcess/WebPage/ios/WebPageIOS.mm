@@ -170,7 +170,7 @@ static double scaleAfterViewportWidthChange(double currentScale, bool userHasCha
     if (userHasChangedPageScaleFactor) {
         // When the content size changes, we keep the same relative horizontal content width in view, otherwise we would
         // end up zoomed too far in landscape->portrait, and too close in portrait->landscape.
-        float widthToKeepInView = visibleHorizontalFraction * newContentSize.width();
+        double widthToKeepInView = visibleHorizontalFraction * newContentSize.width();
         double newScale = unobscuredWidthInScrollViewCoordinates / widthToKeepInView;
         scale = std::max(std::min(newScale, viewportConfiguration.maximumScale()), viewportConfiguration.minimumScale());
     }
@@ -757,11 +757,23 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
         return nullptr;
 
     RenderObject* renderer = bestChoice->renderer();
-    if (renderer && renderer->childrenInline() && (renderer->isRenderBlock() && toRenderBlock(renderer)->inlineElementContinuation() == nil) && !renderer->isTable()) {
+    if (!renderer || renderer->style().userSelect() == SELECT_NONE)
+        return nullptr;
+
+    if (renderer->childrenInline() && (renderer->isRenderBlock() && !toRenderBlock(renderer)->inlineElementContinuation()) && !renderer->isTable()) {
         range = enclosingTextUnitOfGranularity(position, WordGranularity, DirectionBackward);
         if (range && !range->collapsed(ASSERT_NO_EXCEPTION))
             return range;
     }
+
+    // If all we could find is a block whose height is very close to the height
+    // of the visible area, don't use it.
+    const float adjustmentFactor = .97;
+    boundingRectInScrollViewCoordinates = renderer->absoluteBoundingBoxRect(true);
+
+    if (boundingRectInScrollViewCoordinates.height() > m_page->mainFrame().view()->exposedContentRect().height() * adjustmentFactor)
+        return nullptr;
+
     flags = IsBlockSelection;
     range = Range::create(bestChoice->document());
     range->selectNodeContents(bestChoice, ASSERT_NO_EXCEPTION);
@@ -856,7 +868,10 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
         break;
 
     case GestureType::Loupe:
-        range = Range::create(*frame.document(), position, position);
+        if (position.rootEditableElement())
+            range = Range::create(*frame.document(), position, position);
+        else
+            range = wordRangeFromPosition(position);
         break;
 
     case GestureType::TapAndAHalf:
@@ -1107,8 +1122,13 @@ PassRefPtr<Range> WebPage::expandedRangeFromHandle(Range* currentRange, Selectio
             break;
         }
 
+        distance = ceilf(distance * multiple);
+
         RefPtr<Range> newRange;
         RefPtr<Range> rangeAtPosition = rangeForBlockAtPoint(testPoint);
+        if (&currentRange->ownerDocument() != &rangeAtPosition->ownerDocument())
+            continue;
+
         if (containsRange(rangeAtPosition.get(), currentRange))
             newRange = rangeAtPosition;
         else if (containsRange(currentRange, rangeAtPosition.get()))
@@ -1152,8 +1172,6 @@ PassRefPtr<Range> WebPage::expandedRangeFromHandle(Range* currentRange, Selectio
             bestRange = newRange;
             bestRect = copyRect;
         }
-
-        distance = ceilf(distance * multiple);
     }
 
     if (bestRange)
@@ -1226,13 +1244,22 @@ PassRefPtr<Range> WebPage::contractedRangeFromHandle(Range* currentRange, Select
             break;
         }
 
+        distance *= multiple;
+
         RefPtr<Range> newRange = rangeForBlockAtPoint(testPoint);
+        if (&newRange->ownerDocument() != &currentRange->ownerDocument())
+            continue;
+
         if (handlePosition == SelectionHandlePosition::Top || handlePosition == SelectionHandlePosition::Left)
-            newRange = Range::create(newRange->startContainer()->document(), newRange->startPosition(), currentRange->endPosition());
+            newRange = Range::create(newRange->startContainer()->document(), newRange->endPosition(), currentRange->endPosition());
         else
-            newRange = Range::create(newRange->startContainer()->document(), currentRange->startPosition(), newRange->endPosition());
+            newRange = Range::create(newRange->startContainer()->document(), currentRange->startPosition(), newRange->startPosition());
 
         IntRect copyRect = newRange->boundingBox();
+        if (copyRect.isEmpty()) {
+            bestRange = rangeForBlockAtPoint(testPoint);
+            break;
+        }
         bool isBetterChoice;
         switch (handlePosition) {
         case SelectionHandlePosition::Top:
@@ -1263,23 +1290,22 @@ PassRefPtr<Range> WebPage::contractedRangeFromHandle(Range* currentRange, Select
             bestRect = copyRect;
         }
 
-        distance *= multiple;
     }
 
+    if (!bestRange)
+        bestRange = currentRange;
+    
     // If we can shrink down to text only, the only reason we wouldn't is that
     // there are multiple sub-element blocks beneath us.  If we didn't find
     // multiple sub-element blocks, don't shrink to a sub-element block.
-    if (!bestRange) {
-        bestRange = currentRange;
-        Node* node = currentRange->commonAncestorContainer(ASSERT_NO_EXCEPTION);
-        if (!node->isElementNode())
-            node = node->parentElement();
 
-        RenderObject* renderer = node->renderer();
-        if (renderer && renderer->childrenInline() && (renderer->isRenderBlock() && !toRenderBlock(renderer)->inlineElementContinuation()) && !renderer->isTable()) {
-            flags = None;
-        }
-    }
+    Node* node = bestRange->commonAncestorContainer(ASSERT_NO_EXCEPTION);
+    if (!node->isElementNode())
+        node = node->parentElement();
+
+    RenderObject* renderer = node->renderer();
+    if (renderer && renderer->childrenInline() && (renderer->isRenderBlock() && !toRenderBlock(renderer)->inlineElementContinuation()) && !renderer->isTable())
+        flags = None;
 
     return bestRange;
 }
@@ -1427,30 +1453,30 @@ void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches
     VisiblePosition result;
     
     switch (static_cast<SelectionTouch>(touches)) {
-        case SelectionTouch::Started:
-        case SelectionTouch::EndedNotMoving:
-            break;
-        
-        case SelectionTouch::Ended:
-            if (frame.selection().selection().isContentEditable()) {
-                result = closestWordBoundaryForPosition(position);
-                if (result.isNotNull())
-                    range = Range::create(*frame.document(), result, result);
-            } else
-                range = rangeForPosition(&frame, position, baseIsStart);
-            break;
-
-        case SelectionTouch::EndedMovingForward:
-            range = rangeAtWordBoundaryForPosition(&frame, position, baseIsStart, DirectionForward);
-            break;
-            
-        case SelectionTouch::EndedMovingBackward:
-            range = rangeAtWordBoundaryForPosition(&frame, position, baseIsStart, DirectionBackward);
-            break;
-
-        case SelectionTouch::Moved:
+    case SelectionTouch::Started:
+    case SelectionTouch::EndedNotMoving:
+        break;
+    
+    case SelectionTouch::Ended:
+        if (frame.selection().selection().isContentEditable()) {
+            result = closestWordBoundaryForPosition(position);
+            if (result.isNotNull())
+                range = Range::create(*frame.document(), result, result);
+        } else
             range = rangeForPosition(&frame, position, baseIsStart);
-            break;
+        break;
+
+    case SelectionTouch::EndedMovingForward:
+        range = rangeAtWordBoundaryForPosition(&frame, position, baseIsStart, DirectionForward);
+        break;
+        
+    case SelectionTouch::EndedMovingBackward:
+        range = rangeAtWordBoundaryForPosition(&frame, position, baseIsStart, DirectionBackward);
+        break;
+
+    case SelectionTouch::Moved:
+        range = rangeForPosition(&frame, position, baseIsStart);
+        break;
     }
     if (range)
         frame.selection().setSelectedRange(range.get(), position.affinity(), true);
@@ -2135,9 +2161,8 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     float relativeHorizontalPositionInNodeAtCenter = 0;
     float relativeVerticalPositionInNodeAtCenter = 0;
     {
-        IntRect unobscuredContentRect = frameView.unobscuredContentRect();
-        visibleHorizontalFraction = static_cast<float>(unobscuredContentRect.width()) / oldContentSize.width();
-        IntPoint unobscuredContentRectCenter = unobscuredContentRect.center();
+        visibleHorizontalFraction = frameView.unobscuredContentSize().width() / oldContentSize.width();
+        IntPoint unobscuredContentRectCenter = frameView.unobscuredContentRect().center();
 
         HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
         HitTestResult hitTestResult = HitTestResult(unobscuredContentRectCenter);
@@ -2173,7 +2198,8 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     FloatRect newUnobscuredContentRect = targetUnobscuredRect;
     FloatRect newExposedContentRect = targetExposedContentRect;
 
-    if (scale != targetScale) {
+    bool scaleChanged = !withinEpsilon(scale, targetScale);
+    if (scaleChanged) {
         // The target scale the UI is using cannot be reached by the content. We need to compute new targets based
         // on the viewport constraint and report everything back to the UIProcess.
 
@@ -2196,7 +2222,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
                                           newUnobscuredRectHeight + obscuredTopMargin + obscuredBottomMargin);
     }
 
-    if (oldContentSize != newContentSize || scale != targetScale) {
+    if (oldContentSize != newContentSize || scaleChanged) {
         // Snap the new unobscured rect back into the content rect.
         newUnobscuredContentRect.setWidth(std::min(static_cast<float>(newContentSize.width()), newUnobscuredContentRect.width()));
         newUnobscuredContentRect.setHeight(std::min(static_cast<float>(newContentSize.height()), newUnobscuredContentRect.height()));
@@ -2252,14 +2278,14 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         }
 
         float horizontalAdjustment = 0;
-        if (newExposedContentRect.maxX() > newContentSize.width())
+        if (newUnobscuredContentRect.maxX() > newContentSize.width())
             horizontalAdjustment -= newUnobscuredContentRect.maxX() - newContentSize.width();
         float verticalAdjustment = 0;
-        if (newExposedContentRect.maxY() > newContentSize.height())
+        if (newUnobscuredContentRect.maxY() > newContentSize.height())
             verticalAdjustment -= newUnobscuredContentRect.maxY() - newContentSize.height();
-        if (newExposedContentRect.x() < 0)
+        if (newUnobscuredContentRect.x() < 0)
             horizontalAdjustment += - newUnobscuredContentRect.x();
-        if (newExposedContentRect.y() < 0)
+        if (newUnobscuredContentRect.y() < 0)
             verticalAdjustment += - newUnobscuredContentRect.y();
 
         FloatPoint adjustmentDelta(horizontalAdjustment, verticalAdjustment);
@@ -2269,11 +2295,11 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
 
     frameView.setScrollVelocity(0, 0, 0, monotonicallyIncreasingTime());
 
-    IntRect roundedUnobscuredContentRect = roundedIntRect(newUnobscuredContentRect);
-    frameView.setUnobscuredContentSize(roundedUnobscuredContentRect.size());
+    IntPoint roundedUnobscuredContentRectPosition = roundedIntPoint(newUnobscuredContentRect.location());
+    frameView.setUnobscuredContentSize(newUnobscuredContentRect.size());
     m_drawingArea->setExposedContentRect(newExposedContentRect);
 
-    scalePage(scale, roundedUnobscuredContentRect.location());
+    scalePage(scale, roundedUnobscuredContentRectPosition);
 
     frameView.updateLayoutAndStyleIfNeededRecursive();
     IntRect fixedPositionLayoutRect = enclosingIntRect(frameView.viewportConstrainedObjectsRect());
@@ -2281,7 +2307,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
 
     frameView.setCustomSizeForResizeEvent(expandedIntSize(targetUnobscuredRectInScrollViewCoordinates.size()));
     setDeviceOrientation(deviceOrientation);
-    frameView.setScrollOffset(roundedUnobscuredContentRect.location());
+    frameView.setScrollOffset(roundedUnobscuredContentRectPosition);
 
     send(Messages::WebPageProxy::DynamicViewportUpdateChangedTarget(pageScaleFactor(), frameView.scrollPosition()));
 }
@@ -2419,8 +2445,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     FloatRect adjustedExposedRect = adjustExposedRectForBoundedScale(exposedRect, visibleContentRectUpdateInfo.scale(), boundedScale);
     m_drawingArea->setExposedContentRect(adjustedExposedRect);
 
-    IntRect roundedUnobscuredRect = roundedIntRect(visibleContentRectUpdateInfo.unobscuredRect());
-    IntPoint scrollPosition = roundedUnobscuredRect.location();
+    IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredRect().location());
 
     float floatBoundedScale = boundedScale;
     bool hasSetPageScale = false;
@@ -2446,7 +2471,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (scrollPosition != frameView.scrollPosition())
         m_dynamicSizeUpdateHistory.clear();
 
-    frameView.setUnobscuredContentSize(roundedUnobscuredRect.size());
+    frameView.setUnobscuredContentSize(visibleContentRectUpdateInfo.unobscuredRect().size());
 
     double horizontalVelocity = visibleContentRectUpdateInfo.horizontalVelocity();
     double verticalVelocity = visibleContentRectUpdateInfo.verticalVelocity();
@@ -2501,7 +2526,7 @@ void WebPage::computePagesForPrintingAndStartDrawingToPDF(uint64_t frameID, cons
     double totalScaleFactor = 1;
     computePagesForPrintingImpl(frameID, printInfo, pageRects, totalScaleFactor);
     std::size_t pageCount = pageRects.size();
-    reply->send(std::move(pageRects), totalScaleFactor);
+    reply->send(WTF::move(pageRects), totalScaleFactor);
 
     RetainPtr<CFMutableDataRef> pdfPageData;
     drawPagesToPDFImpl(frameID, printInfo, firstPage, pageCount - firstPage, pdfPageData);

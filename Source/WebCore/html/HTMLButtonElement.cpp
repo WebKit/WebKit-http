@@ -59,7 +59,7 @@ void HTMLButtonElement::setType(const AtomicString& type)
 
 RenderPtr<RenderElement> HTMLButtonElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    return createRenderer<RenderButton>(*this, std::move(style));
+    return createRenderer<RenderButton>(*this, WTF::move(style));
 }
 
 const AtomicString& HTMLButtonElement::formControlType() const
@@ -154,9 +154,7 @@ void HTMLButtonElement::defaultEventHandler(Event* event)
 
 bool HTMLButtonElement::willRespondToMouseClickEvents()
 {
-    if (!isDisabledFormControl() && form() && (m_type == SUBMIT || m_type == RESET))
-        return true;
-    return HTMLFormControlElement::willRespondToMouseClickEvents();
+    return !isDisabledFormControl();
 }
 
 bool HTMLButtonElement::isSuccessfulSubmitButton() const
