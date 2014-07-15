@@ -223,6 +223,10 @@ private:
 #else
     RetainPtr<NSView> m_widget;
 #endif
+
+#if PLATFORM(HAIKU)
+    PlatformWidget m_topLevelPlatformWidget;
+#endif
     bool m_selfVisible;
     bool m_parentVisible;
 
