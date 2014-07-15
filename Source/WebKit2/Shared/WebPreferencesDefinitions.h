@@ -80,15 +80,11 @@
 #define DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED true
 #endif
 
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
-#define DEFAULT_ACCELERATED_DRAWING_ENABLED true
-#else
-#define DEFAULT_ACCELERATED_DRAWING_ENABLED false
-#endif
-
 #if PLATFORM(IOS) && PLATFORM(IOS_SIMULATOR)
+#define DEFAULT_ACCELERATED_DRAWING_ENABLED false
 #define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING false
 #else
+#define DEFAULT_ACCELERATED_DRAWING_ENABLED true
 #define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING true
 #endif
 
@@ -166,6 +162,7 @@
     macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, false) \
     macro(ScrollingPerformanceLoggingEnabled, scrollingPerformanceLoggingEnabled, Bool, bool, false) \
     macro(ScrollAnimatorEnabled, scrollAnimatorEnabled, Bool, bool, DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED) \
+    macro(ForceUpdateScrollbarsOnMainThreadForPerformanceTesting, forceUpdateScrollbarsOnMainThreadForPerformanceTesting, Bool, bool, false) \
     macro(ScreenFontSubstitutionEnabled, screenFontSubstitutionEnabled, Bool, bool, DEFAULT_SCREEN_FONT_SUBSTITUTION_ENABLED) \
     macro(CookieEnabled, cookieEnabled, Bool, bool, true) \
     macro(PlugInSnapshottingEnabled, plugInSnapshottingEnabled, Bool, bool, false) \

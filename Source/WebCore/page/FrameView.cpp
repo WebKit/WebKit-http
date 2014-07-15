@@ -51,6 +51,7 @@
 #include "HTMLFrameSetElement.h"
 #include "HTMLNames.h"
 #include "HTMLPlugInImageElement.h"
+#include "ImageDocument.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
@@ -2251,12 +2252,26 @@ void FrameView::addedOrRemovedScrollbar()
     }
 }
 
+static LayerFlushThrottleState::Flags determineLayerFlushThrottleState(Page& page)
+{
+    // We only throttle when constantly receiving new data during the inital page load.
+    if (!page.progress().isMainLoadProgressing())
+        return 0;
+    // Disable for image documents so large GIF animations don't get throttled during loading.
+    auto* document = page.mainFrame().document();
+    if (!document || isImageDocument(*document))
+        return 0;
+    return LayerFlushThrottleState::Enabled;
+}
+
 void FrameView::disableLayerFlushThrottlingTemporarilyForInteraction()
 {
-    bool mainLoadProgressing = frame().page()->progress().isMainLoadProgressing();
+    if (!frame().page())
+        return;
+    auto& page = *frame().page();
 
-    LayerFlushThrottleState::Flags flags = LayerFlushThrottleState::UserIsInteracting | (mainLoadProgressing ? LayerFlushThrottleState::MainLoadProgressing : 0);
-    if (frame().page()->chrome().client().adjustLayerFlushThrottling(flags))
+    LayerFlushThrottleState::Flags flags = LayerFlushThrottleState::UserIsInteracting | determineLayerFlushThrottleState(page);
+    if (page.chrome().client().adjustLayerFlushThrottling(flags))
         return;
 
     if (RenderView* view = renderView())
@@ -2272,17 +2287,17 @@ void FrameView::loadProgressingStatusChanged()
 void FrameView::updateLayerFlushThrottling()
 {
     ASSERT(frame().isMainFrame());
+    auto& page = *frame().page();
 
-    bool isMainLoadProgressing = frame().page()->progress().isMainLoadProgressing();
+    LayerFlushThrottleState::Flags flags = determineLayerFlushThrottleState(page);
 
     // See if the client is handling throttling.
-    LayerFlushThrottleState::Flags flags = isMainLoadProgressing ? LayerFlushThrottleState::MainLoadProgressing : 0;
-    if (frame().page()->chrome().client().adjustLayerFlushThrottling(flags))
+    if (page.chrome().client().adjustLayerFlushThrottling(flags))
         return;
 
     for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
         if (RenderView* renderView = frame->contentRenderer())
-            renderView->compositor().setLayerFlushThrottlingEnabled(isMainLoadProgressing);
+            renderView->compositor().setLayerFlushThrottlingEnabled(flags & LayerFlushThrottleState::Enabled);
     }
 }
 
@@ -2508,7 +2523,18 @@ bool FrameView::isTransparent() const
 
 void FrameView::setTransparent(bool isTransparent)
 {
+    if (m_isTransparent == isTransparent)
+        return;
+
     m_isTransparent = isTransparent;
+
+    RenderView* renderView = this->renderView();
+    if (!renderView)
+        return;
+
+    RenderLayerCompositor& compositor = renderView->compositor();
+    compositor.setCompositingLayersNeedRebuild();
+    compositor.scheduleCompositingLayerUpdate();
 }
 
 bool FrameView::hasOpaqueBackground() const
@@ -3124,6 +3150,12 @@ bool FrameView::updatesScrollLayerPositionOnMainThread() const
     }
 
     return true;
+}
+
+bool FrameView::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const
+{
+    Page* page = frame().page();
+    return page && page->settings().forceUpdateScrollbarsOnMainThreadForPerformanceTesting();
 }
 
 void FrameView::scrollTo(const IntSize& newOffset)

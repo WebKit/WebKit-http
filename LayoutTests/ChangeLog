@@ -1,3 +1,397 @@
+2014-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Pasting rich content does not perform a two-step paste
+        https://bugs.webkit.org/show_bug.cgi?id=134795
+
+        Reviewed by Benjamin Poulain.
+
+        Copy and paste some text, and make sure that the two step paste occurred.
+        The mechanism for detecting this is whether or not styles have changed appropriately.
+
+        * platform/ios-sim/editing/pasteboard/two-step-paste-expected.txt: Added.
+        * platform/ios-sim/editing/pasteboard/two-step-paste.html: Added.
+
+2014-07-10  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening.
+
+        Rebaseline tests after r170304 and r170619.
+
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.png: Added after r170304.
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt: Added after r170304.
+        * platform/efl/fast/text/indic-expected.png: Added after r170619.
+        * platform/efl/fast/text/indic-expected.txt: Added after r170619.
+
+2014-07-10  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening.
+
+        Rebaseline tests after r170207.
+
+        * platform/efl/fast/text/khmer-lao-font-expected.txt: Added.
+
+2014-07-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [XHR] overrideMimeType() should be able to change encoding in HEADERS RECEIVED state
+        https://bugs.webkit.org/show_bug.cgi?id=128968
+
+        Reviewed by Alexey Proskuryakov.
+
+        Added test equivalent to http://w3c-test.org/web-platform-tests/master/XMLHttpRequest/overridemimetype-headers-received-state-force-shiftjis.htm
+        The test sets overrideMimeType when xhr state is changed to HEADERS RECEIVED.
+
+        * http/tests/xmlhttprequest/overridemimetype-headers-received-state-force-shiftjis-expected.txt: Added.
+        * http/tests/xmlhttprequest/overridemimetype-headers-received-state-force-shiftjis.html: Added.
+        * http/tests/xmlhttprequest/resources/get-content.php: Added.
+
+2014-07-08  Jeffrey Pfau  <jpfau@apple.com>
+
+        Fix flaky loading tests
+        https://bugs.webkit.org/show_bug.cgi?id=133696
+
+        Reviewed by Ryosuke Niwa.
+
+        * platform/wk2/TestExpectations: Unskip no-longer failing tests
+
+2014-07-09  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] gardening after r170868  
+        https://bugs.webkit.org/show_bug.cgi?id=134717 
+
+        Unreviewed, EFL gardening. 
+
+        Four tests have been rebaselined, and disable the gamepad tests
+
+        * platform/efl/TestExpectations: Disable the gamepad tests
+        * platform/efl/fast/text/atsui-multiple-renderers-expected.png:
+        * platform/efl/fast/text/atsui-multiple-renderers-expected.txt:
+        * platform/efl/fast/text/complex-text-opacity-expected.png:
+        * platform/efl/fast/text/complex-text-opacity-expected.txt:
+        * platform/efl/fast/text/midword-break-before-surrogate-pair-expected.png:
+        * platform/efl/fast/text/midword-break-before-surrogate-pair-expected.txt:
+        * platform/efl/transforms/2d/hindi-rotated-expected.png:
+        * platform/efl/transforms/2d/hindi-rotated-expected.txt:
+
+2014-07-09  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] http/tests/media/media-source/mediasource-closed.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=134775
+
+        Reviewed by Eric Carlson.
+
+        Update the test to use isNaN rather than Number.isNaN.
+
+        * http/tests/media/media-source/mediasource-closed.html:
+
+2014-07-09  Javier Fernandez  <jfernandez@igalia.com>
+
+        CSS canvas color parsing accepts invalid color identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=134661
+
+        Reviewed by Benjamin Poulain.
+
+        The parseSystemFunction determines now whether the parsed color is
+        valid or not.
+
+        The rgb-color-parser covers css style color parsing cases, which
+        already provide coverage for invalid color identifiers. I've added
+        a few more, though.
+
+        * fast/canvas/canvas-color-serialization-expected.txt:
+        * fast/canvas/script-tests/canvas-color-serialization.js:
+        * fast/css/test-setting-canvas-color-expected.txt:
+        * fast/css/test-setting-canvas-color.html:
+        * svg/dom/rgb-color-parser-expected.txt:
+        * svg/dom/rgb-color-parser.html:
+
+2014-06-28  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] http/tests/media/media-source/mediasource-remove.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=134768
+
+        Reviewed by Eric Carlson.
+
+        Update mediasource-remove.html with the correct locations of sync-samples.
+
+        * http/tests/media/media-source/mediasource-remove.html:
+
+2014-07-09  Antti Koivisto  <antti@apple.com>
+
+        fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html is failing in some bots
+        https://bugs.webkit.org/show_bug.cgi?id=134769
+
+        * TestExpectations: Skipping the test.
+
+2014-07-09  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] http/tests/media/media-source/mediasource-endofstream-invaliderror.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=134413
+
+        Reviewed by Eric Carlson.
+
+        Fix an inadevntant editing error in mediasource-endofstream-invaliderror.html, and fix missing
+        whitespace at the end of http/tests/media/media-source/mediasource-endofstream-invaliderror-expected.txt.
+
+        * http/tests/media/media-source/mediasource-endofstream-invaliderror-expected.txt:
+        * http/tests/media/media-source/mediasource-endofstream-invaliderror.html:
+
+2014-07-09  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failing and flaky tests. Adjust some tests expectations.
+        * platform/gtk/css1/formatting_model/inline_elements-expected.txt: Rebaseline after r170875.
+
+2014-07-08  Alex Christensen  <achristensen@webkit.org>
+
+        Remove webkit prefix from pointer lock tests.
+        https://bugs.webkit.org/show_bug.cgi?id=134744
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/pointer-lock/iframe-sandboxed-allow-pointer-lock-expected.txt:
+        * http/tests/pointer-lock/iframe-sandboxed-allow-pointer-lock.html:
+        * http/tests/pointer-lock/iframe-sandboxed-expected.txt:
+        * http/tests/pointer-lock/iframe-sandboxed-nested-allow-pointer-lock-expected.txt:
+        * http/tests/pointer-lock/iframe-sandboxed-nested-allow-pointer-lock.html:
+        * http/tests/pointer-lock/iframe-sandboxed-nested-disallow-then-allow-pointer-lock-expected.txt:
+        * http/tests/pointer-lock/iframe-sandboxed-nested-disallow-then-allow-pointer-lock.html:
+        * http/tests/pointer-lock/iframe-sandboxed.html:
+        * http/tests/pointer-lock/pointerlockelement-different-origin-expected.txt:
+        * http/tests/pointer-lock/pointerlockelement-different-origin.html:
+        * http/tests/pointer-lock/pointerlockelement-same-origin-expected.txt:
+        * http/tests/pointer-lock/pointerlockelement-same-origin.html:
+        * http/tests/pointer-lock/requestPointerLock-can-not-transfer-between-documents-expected.txt:
+        * http/tests/pointer-lock/requestPointerLock-can-not-transfer-between-documents.html:
+        * http/tests/resources/pointer-lock/iframe-common.js:
+        (document.onpointerlockchange):
+        (document.onpointerlockerror):
+        (document.onwebkitpointerlockchange): Deleted.
+        (document.onwebkitpointerlockerror): Deleted.
+        * http/tests/resources/pointer-lock/pointer-lock-test-harness.js:
+        (expectOnlyChangeEvent):
+        (expectOnlyErrorEvent):
+        (expectNoEvents):
+        * pointer-lock/bug90391-move-then-window-open-crash-expected.txt:
+        * pointer-lock/bug90391-move-then-window-open-crash.html:
+        * pointer-lock/lock-already-locked-expected.txt:
+        * pointer-lock/lock-already-locked.html:
+        * pointer-lock/lock-element-not-in-dom-expected.txt:
+        * pointer-lock/lock-element-not-in-dom.html:
+        * pointer-lock/locked-element-iframe-removed-from-dom-expected.txt:
+        * pointer-lock/locked-element-iframe-removed-from-dom.html:
+        * pointer-lock/locked-element-removed-from-dom-expected.txt:
+        * pointer-lock/locked-element-removed-from-dom.html:
+        * pointer-lock/mouse-event-api-expected.txt:
+        * pointer-lock/mouse-event-api.html:
+        * pointer-lock/mouse-event-delivery-expected.txt:
+        * pointer-lock/mouse-event-delivery.html:
+        * pointer-lock/pointer-lock-api-expected.txt:
+        * pointer-lock/pointer-lock-api.html:
+        * pointer-lock/pointerlockchange-event-on-lock-lost-expected.txt:
+        * pointer-lock/pointerlockchange-event-on-lock-lost.html:
+        * pointer-lock/pointerlockchange-pointerlockerror-events-expected.txt:
+        * pointer-lock/pointerlockchange-pointerlockerror-events.html:
+        * pointer-lock/pointerlockelement-null-when-pending-expected.txt:
+        * pointer-lock/pointerlockelement-null-when-pending.html:
+        Remove webkit prefix on pointer lock functions and events.
+        This should have been done in r170585.
+
+2014-07-08  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Ensure we compute the height of replaced elements to 'auto' when appropriate.
+        https://bugs.webkit.org/show_bug.cgi?id=134700
+
+        Reviewed by David Hyatt.
+
+        * css2.1/20110323/height-percentage-005-expected.html: Added.
+        * css2.1/20110323/height-percentage-005.htm: Added.
+        * css2.1/20110323/support/black96x96.png: Added.
+        * fast/css/replaced-element-ignore-top-bottom-expected.txt: Added.
+        * fast/css/replaced-element-ignore-top-bottom.html: Added.
+
+2014-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: icloud.com password arrow has clipped circle at some window sizes.
+        https://bugs.webkit.org/show_bug.cgi?id=134710
+        <rdar://problem/17545291>
+
+        Reviewed by Simon Fraser.
+
+        Transparent layer clipping needs device pixel snapping.
+
+        * fast/layers/wrong-clipping-semi-transparent-layer-on-subpixel-position-expected.html: Added.
+        * fast/layers/wrong-clipping-semi-transparent-layer-on-subpixel-position.html: Added.
+
+2014-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Inline box decoration rounds to integral.
+        https://bugs.webkit.org/show_bug.cgi?id=134523
+        <rdar://problem/17530298>
+
+        Reviewed by Darin Adler.
+
+        This patch removes 2 integral roundings from InlineFlowBox:
+        1. Border and padding sizes are implicitly integral truncated by the 'int' return type
+           of borderLogicalLeft/Right()/paddingLogicalLeft/Right(). It results in losing
+           fractional border/padding values.
+        2. Painting rectangle is explicitly rounded which pushes border and
+           other decoration elements to odd device pixel positions on retina displays.
+        These values get pixel snapped right before calling in to GraphicsContext::*.
+
+        * fast/inline/hidpi-inline-text-decoration-with-subpixel-value-expected.html: Added.
+        * fast/inline/hidpi-inline-text-decoration-with-subpixel-value.html: Added.
+        * platform/mac/css1/formatting_model/inline_elements-expected.txt:
+
+2014-07-07  Hunseop Jeong  <hs85.jeong@samsung.com>
+        [EFL] gardening after r170864
+        https://bugs.webkit.org/show_bug.cgi?id=134713
+
+        Unreviewed, EFL gardening. 
+
+        * platform/efl/TestExpectations: Report and mark several unexpected image-only failures.
+
+2014-07-07  Daniel Bates  <dabates@apple.com>
+
+        Add test to ensure that SVGDocumentExtensions::rebuildElements() doesn't rebuild invalid elements
+        https://bugs.webkit.org/show_bug.cgi?id=134417
+        <rdar://problem/17479854>
+
+        Reviewed by David Kilzer.
+
+        Add a test that implicitly checks that the list of SVG elements to be rebuilt doesn't contain
+        removed elements. Run this test in DRT with Guard Malloc/MallocScribble (or the platform-
+        specific equivalent) enabled.
+
+        * svg/custom/overwrite-page-that-has-use-elements-expected.txt: Added.
+        * svg/custom/overwrite-page-that-has-use-elements.html: Added.
+
+2014-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed Mac gardening after r170817.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-07-07  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        Remove failure expectations for tests that have been passing after r168046, r168350, r168400,
+        r168479, r169309, r169620, r169689 and r169799.
+
+        * platform/gtk/TestExpectations:
+
+2014-07-07  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending]The background images set on the root element will blend on an initial white backdrop.
+        https://bugs.webkit.org/show_bug.cgi?id=134342
+
+        Reviewed by Dean Jackson.
+
+        * css3/blending/background-blend-mode-body-image-expected.html: Added.
+        * css3/blending/background-blend-mode-body-image.html: Added.
+        * css3/blending/background-blend-mode-body-transparent-color-and-image-expected.html: Added.
+        * css3/blending/background-blend-mode-body-transparent-color-and-image.html: Added.
+        * css3/blending/background-blend-mode-body-transparent-image-expected.html: Added.
+        * css3/blending/background-blend-mode-body-transparent-image.html: Added.
+
+2014-07-06  Yoav Weiss  <yoav@yoav.ws>
+
+        Turn on img@sizes compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=134634
+
+        Reviewed by Benjamin Poulain.
+
+        * TestExpectations: Turned on layout tests for the img@sizes feature.
+
+2014-07-04  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Support Geolocation
+        https://bugs.webkit.org/show_bug.cgi?id=134439
+
+        Reviewed by Antonio Gomes.
+
+        * platform/efl/TestExpectations: Unskip geolocation tests.
+
+2014-07-04  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: ebay.com rotating billboard on the main page has cut off buttons.
+        https://bugs.webkit.org/show_bug.cgi?id=134636
+        <rdar://problem/17529112>
+
+        Reviewed by Darin Adler.
+
+        Missing pixel snapping when clipping the transparency layer for BackgroundBleedUseTransparencyLayer.
+        Clipping needs to take the same snapping strategy as the rest of the painting code.
+
+        * fast/borders/border-radius-on-subpixel-position-non-hidpi-expected.html: Added.
+        * fast/borders/border-radius-on-subpixel-position-non-hidpi.html: Added.
+
+2014-07-04  Julien Quint  <pom@graougraou.com>
+
+        input type=range element should only fire change events after committing a  value
+        https://bugs.webkit.org/show_bug.cgi?id=134545
+
+        Reviewed by Dean Jackson.
+
+        Two existing tests are updated to count "input" events as well as
+        "change" events. The tests now verify that "change" is only fired once
+        after every slider drag completes, whereas "input" may be fired more
+        than once.
+
+        * fast/forms/range/range-drag-expected.txt:
+        * fast/forms/range/range-drag-when-toggled-disabled-expected.txt:
+        * fast/forms/range/range-drag-when-toggled-disabled.html:
+        * fast/forms/range/range-drag.html:
+
+2014-07-04  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        buildAccessibilityTree() needs to be removed from individual layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=95286
+
+        Reviewed by Chris Fleizach.
+
+        Extracted two functions to 'dump' and 'touch' the accessibility
+        hierarchies out of different layout tests and into a single file,
+        living in LayoutTests/resources/accessibility-helper.js
+
+        * resources/accessibility-helper.js: Added.
+        (dumpAccessibilityTree): New, based on buildAccessibilityTree()
+        for the cases where it was used to actually 'dump' it into the output.
+        (touchAccessibilityTree): Same, but for the cases where we don't
+        want to dump the accessibility tree, just to make sure is generated.
+
+        Updated affected layout tests to use the newly added helper functions.
+
+        * accessibility/adjacent-continuations-cause-assertion-failure.html: Updated.
+        * accessibility/children-changed-sends-notification.html: Ditto.
+        * accessibility/deleting-iframe-destroys-axcache.html: Ditto.
+        * accessibility/div-within-anchors-causes-crash.html: Ditto.
+        * accessibility/first-letter-text-transform-causes-crash.html: Ditto.
+        * accessibility/image-map-update-parent-crash.html: Ditto.
+        * accessibility/table-with-empty-thead-causes-crash.html: Ditto.
+        * platform/efl/accessibility/media-emits-object-replacement.html: Ditto.
+        * platform/gtk/accessibility/entry-and-password.html: Ditto.
+        * platform/gtk/accessibility/media-emits-object-replacement.html: Ditto.
+        * platform/gtk/accessibility/replaced-objects-in-anonymous-blocks.html: Ditto.
+
+        Updated Mac specific expectations not to print the "End of test" element.
+
+        * platform/mac-wk2/accessibility/deleting-iframe-destroys-axcache-expected.txt: Updated.
+        * platform/mac/accessibility/adjacent-continuations-cause-assertion-failure-expected.txt: Ditto.
+        * platform/mac/accessibility/deleting-iframe-destroys-axcache-expected.txt: Ditto.
+        * platform/mac/accessibility/div-within-anchors-causes-crash-expected.txt: Ditto.
+
+2014-07-04  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r159345): Lines are clipped between pages when printing web content from Safari
+        https://bugs.webkit.org/show_bug.cgi?id=134633
+
+        Reviewed by Zalan Bujtas.
+
+        * printing/simple-lines-break-expected.html: Added.
+        * printing/simple-lines-break.html: Added.
+
 2014-07-02  Brent Fulgham  <bfulgham@apple.com>
 
         [Mac] WebKit1 WebView iframe not responding to scroll gestures

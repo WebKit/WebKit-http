@@ -54,6 +54,7 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 @class WKBrowsingContextHandle;
 @class _WKRemoteObjectRegistry;
+@class _WKSessionState;
 @class _WKWebViewPrintFormatter;
 
 @protocol WKHistoryDelegatePrivate;
@@ -74,8 +75,6 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 - (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL;
 
-- (WKNavigation *)_reload;
-
 @property (nonatomic, readonly) NSArray *_certificateChain;
 @property (nonatomic, readonly) NSURL *_committedURL;
 @property (nonatomic, readonly) NSString *_MIMEType;
@@ -85,12 +84,16 @@ typedef NS_OPTIONS(NSUInteger, _WKFindOptions) {
 
 @property (nonatomic, readonly) pid_t _webProcessIdentifier;
 
+// FIXME: Remove these once nobody is using them.
 @property (nonatomic, readonly) NSData *_sessionStateData;
 - (void)_restoreFromSessionStateData:(NSData *)sessionStateData;
 
-// FIXME: Remove these once nobody is using them.
-@property (nonatomic, readonly) NSData *_sessionState;
-- (void)_restoreFromSessionState:(NSData *)sessionState;
+// FIXME: This should return a _WKSessionState object, not an id.
+@property (nonatomic, readonly) id _sessionState;
+- (WKNavigation *)_restoreSessionState:(_WKSessionState *)sessionState andNavigate:(BOOL)navigate;
+
+// FIXME: Remove this once nobody is using it.
+- (void)_restoreFromSessionState:(id)sessionState;
 
 @property (nonatomic, setter=_setAllowsRemoteInspection:) BOOL _allowsRemoteInspection;
 

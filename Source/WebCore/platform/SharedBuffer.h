@@ -118,6 +118,7 @@ public:
     unsigned platformDataSize() const;
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
+    static PassRefPtr<SharedBuffer> wrapCFDataArray(CFArrayRef);
     void append(CFDataRef);
 #endif
 
@@ -188,6 +189,7 @@ private:
 
     void clearPlatformData();
     void maybeTransferPlatformData();
+    bool maybeAppendPlatformData(SharedBuffer*);
 
     void copyBufferAndClear(char* destination, unsigned bytesToCopy) const;
 
@@ -196,9 +198,11 @@ private:
     bool m_shouldUsePurgeableMemory;
     mutable OwnPtr<PurgeableBuffer> m_purgeableBuffer;
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
+    explicit SharedBuffer(CFArrayRef);
     mutable Vector<RetainPtr<CFDataRef>> m_dataArray;
     unsigned copySomeDataFromDataArray(const char*& someData, unsigned position) const;
     const char *singleDataArrayBuffer() const;
+    bool maybeAppendDataArray(SharedBuffer*);
 #else
     mutable Vector<char*> m_segments;
 #endif

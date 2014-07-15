@@ -1,3 +1,61 @@
+2014-07-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][CMake] Add a 'distcheck' target
+        https://bugs.webkit.org/show_bug.cgi?id=130675
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/PlatformGTK.cmake: Add distcheck target.
+
+2014-07-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use the same default options for production builds that previous stable releases
+        https://bugs.webkit.org/show_bug.cgi?id=134589
+
+        Reviewed by Martin Robinson.
+
+        Change the default value of some features to match our stable releases.
+        Add FindCairoGL to find cairo-gl libraries and make accelearetd 2D
+        canvas depend on whether cairo-gl is found.
+
+        * Source/cmake/FindCairoGL.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-07-08  Sun-woo Nam  <sunny.nam@samsung.com>
+
+        [EFL] Support Encrypted Media Extensions.
+        https://bugs.webkit.org/show_bug.cgi?id=134750
+
+        Reviewed by Gyuyoung Kim.
+
+        Webkit needs to play encrypted media contents when media player
+        is played by Media source extensions and normal video procedure.
+
+        * Source/cmake/OptionsEfl.cmake: Turn on ENABLE_ENCRYPTED_MEDIA_V2
+
+2014-07-08  Alex Christensen  <achristensen@webkit.org>
+
+        Steps towards CMake on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=134716
+
+        Reviewed by Martin Robinson.
+
+        * CMakeLists.txt:
+        Added AppleWin and WinCairo to list of CMake ports.
+        * Source/cmake/OptionsAppleWin.cmake: Added.
+        * Source/cmake/OptionsWinCairo.cmake: Added.
+        * Source/cmake/OptionsWindows.cmake:
+        Windows needs to use the system malloc.  Other options to come.
+
+2014-07-04  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Support Geolocation
+        https://bugs.webkit.org/show_bug.cgi?id=134439
+
+        Reviewed by Antonio Gomes.
+
+        * Source/cmake/OptionsEfl.cmake: Turn on ENABLE_GEOLOCATION.
+
 2014-07-03  Ryuan Choi  <ryuan.choi@samsung.com>
 
         Broken build with build-webkit --no-video

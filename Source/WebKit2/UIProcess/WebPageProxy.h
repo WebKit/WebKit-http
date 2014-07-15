@@ -152,6 +152,7 @@ class PageClient;
 class RemoteLayerTreeTransaction;
 class RemoteScrollingCoordinatorProxy;
 class StringPairVector;
+class ViewSnapshot;
 class VisitedLinkProvider;
 class WebBackForwardList;
 class WebBackForwardListItem;
@@ -173,7 +174,6 @@ struct EditingRange;
 struct EditorState;
 struct PlatformPopupMenuData;
 struct PrintInfo;
-struct ViewSnapshot;
 struct WebPopupItem;
 
 #if ENABLE(VIBRATION)
@@ -360,8 +360,7 @@ public:
     void setDelegatesScrolling(bool delegatesScrolling) { m_delegatesScrolling = delegatesScrolling; }
     bool delegatesScrolling() const { return m_delegatesScrolling; }
 
-    enum class WantsReplyOrNot { DoesNotWantReply, DoesWantReply };
-    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged);
+    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, bool wantsReply = false);
     bool isInWindow() const { return m_viewState & WebCore::ViewState::IsInWindow; }
     void waitForDidUpdateViewState();
     void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
@@ -378,6 +377,7 @@ public:
     void executeEditCommand(const String& commandName);
     void validateCommand(const String& commandName, std::function<void (const String&, bool, int32_t, CallbackBase::Error)>);
 #if PLATFORM(IOS)
+    void executeEditCommand(const String& commandName, std::function<void (CallbackBase::Error)>);
     double displayedContentScale() const { return m_lastVisibleContentRectUpdate.scale(); }
     const WebCore::FloatRect& exposedContentRect() const { return m_lastVisibleContentRectUpdate.exposedRect(); }
     const WebCore::FloatRect& unobscuredContentRect() const { return m_lastVisibleContentRectUpdate.unobscuredRect(); }
@@ -551,7 +551,7 @@ public:
     void terminateProcess();
 
     SessionState sessionState(const std::function<bool (WebBackForwardListItem&)>& = nullptr) const;
-    uint64_t restoreFromSessionState(SessionState);
+    uint64_t restoreFromSessionState(SessionState, bool navigate);
 
     bool supportsTextZoom() const;
     double textZoomFactor() const { return m_textZoomFactor; }
@@ -885,7 +885,7 @@ public:
     void recordNavigationSnapshot();
 
 #if PLATFORM(COCOA)
-    ViewSnapshot takeViewSnapshot();
+    PassRefPtr<ViewSnapshot> takeViewSnapshot();
 #endif
 
 #if ENABLE(SUBTLE_CRYPTO)
@@ -1099,7 +1099,7 @@ private:
 #endif
 
 #if ENABLE(SERVICE_CONTROLS)
-    void showSelectionServiceMenu(const IPC::DataReference& selectionAsRTFD, bool isEditable, const WebCore::IntPoint&);
+    void showSelectionServiceMenu(const IPC::DataReference& selectionAsRTFD, const Vector<String>& telephoneNumbers, bool isEditable, const WebCore::IntPoint&);
 #endif
 
     // Search popup results
@@ -1223,7 +1223,6 @@ private:
     void enableInspectorNodeSearch();
     void disableInspectorNodeSearch();
 #endif
-
     void notifyRevealedSelection();
 #endif // PLATFORM(IOS)
 
@@ -1266,6 +1265,8 @@ private:
     WebPreferencesStore preferencesStore() const;
 
     void dispatchViewStateChange();
+    void viewDidLeaveWindow();
+    void viewDidEnterWindow();
 
     PageClient& m_pageClient;
     std::unique_ptr<API::LoaderClient> m_loaderClient;
@@ -1425,7 +1426,7 @@ private:
     RefPtr<WebColorPicker> m_colorPicker;
 #endif
 
-    uint64_t m_pageID;
+    const uint64_t m_pageID;
     Ref<API::Session> m_session;
 
     bool m_isPageSuspended;
@@ -1513,7 +1514,7 @@ private:
 
     WebPreferencesStore::ValueMap m_configurationPreferenceValues;
     WebCore::ViewState::Flags m_potentiallyChangedViewStateFlags;
-    WantsReplyOrNot m_viewStateChangeWantsReply;
+    bool m_viewStateChangeWantsReply;
 };
 
 } // namespace WebKit

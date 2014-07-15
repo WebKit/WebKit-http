@@ -439,6 +439,9 @@ editing/secure-input [ Failure ]
 # ATK does not support helpText/aria-help
 accessibility/aria-help.html [ Skip ]
 
+# ENABLE_GAMEPAD not enabled.
+webkit.org/b/134718 gamepad [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1167,9 +1170,7 @@ webkit.org/b/88191 fast/viewport/viewport-legacy-ordering-6.html [ Failure ]
 webkit.org/b/88191 fast/viewport/viewport-legacy-xhtmlmp.html [ Failure ]
 webkit.org/b/88191 fast/viewport/viewport-legacy-xhtmlmp-remove-and-add.html [ Failure ]
 
-# EFL's TestRunner should support for the Geolocation API
-webkit.org/b/82140 fast/dom/Geolocation [ Skip ]
-webkit.org/b/82140 fast/dom/Window/window-properties-geolocation.html [ Failure ]
+webkit.org/b/82140 fast/dom/Geolocation/page-reload-cancel-permission-requests.html
 
 # IETC namespace failures
 webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
@@ -1197,9 +1198,6 @@ webkit.org/b/88138 http/tests/media/video-buffered.html [ Failure ]
 # EFL port does not support hyphenation
 webkit.org/b/89830 fast/text/hyphen-min-preferred-width.html [ ImageOnlyFailure ]
 webkit.org/b/89830 fast/text/hyphenate-locale.html [ Skip ]
-
-# Missing test infrastructure, no gamepads available.
-Bug(EFL) gamepad/gamepad-polling-access.html [ Failure ]
 
 # ENABLE_INPUT_TYPE_* are not enabled on EFL port.
 webkit.org/b/29359 fast/forms/date [ Skip ]
@@ -1307,9 +1305,6 @@ webkit.org/b/10890 fast/selectors/unqualified-hover-strict.html [ Failure Pass ]
 
 # User Timing is not enable yet. so skip it.
 webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing [ Skip ]
-
-# Regression after r131640.
-webkit.org/b/99691 gamepad/gamepad-out-of-range-crasher.html [ Failure ]
 
 # Resource Timing is not enable yet, skip it.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing [ Skip ]
@@ -2081,6 +2076,8 @@ webkit.org/b/131987 fast/inline/hidpi-selection-gap-on-subpixel-position.html [ 
 webkit.org/b/131987 fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
 webkit.org/b/131987 fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html [ Failure ]
 webkit.org/b/131987 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
+webkit.org/b/131987 fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
+webkit.org/b/131987 svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
 
 webkit.org/b/132049 fast/css3-text/css3-text-decoration/text-decoration-skip/glyph-inside-underline.html [ ImageOnlyFailure ]
 
@@ -2148,3 +2145,7 @@ webkit.org/b/133859 fast/regions/inline-block-inside-anonymous-overflow.html [ I
 webkit.org/b/133860 fast/regions/auto-size/autosize-region-window-resize.html [ ImageOnlyFailure Pass ]
 webkit.org/b/133974 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html [ ImageOnlyFailure Pass ]
 
+# Difference invisible at the naked eye with Latin Modern Math.
+webkit.org/b/134153 mathml/presentation/mo-stacked-glyphs.html [ ImageOnlyFailure ]
+
+webkit.org/b/134712 svg/masking/mask-transformed-text-missing.svg [ ImageOnlyFailure ]

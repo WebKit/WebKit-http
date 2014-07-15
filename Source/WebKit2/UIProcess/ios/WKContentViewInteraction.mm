@@ -138,6 +138,10 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 - (void)didHandleWebKeyEvent;
 @end
 
+@interface UIView (UIViewInternalHack)
++ (BOOL)_addCompletion:(void(^)(BOOL))completion;
+@end
+
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
 - (instancetype)initWithContentView:(WKContentView *)view userObject:(NSObject <NSSecureCoding> *)userObject;
@@ -212,14 +216,14 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 - (void)setupInteraction
 {
-    if (!_inverseScaleRootView) {
-        _inverseScaleRootView = adoptNS([[UIView alloc] init]);
-        [_inverseScaleRootView setOpaque:NO];
-        [_inverseScaleRootView layer].anchorPoint = CGPointMake(0, 0);
+    if (!_interactionViewsContainerView) {
+        _interactionViewsContainerView = adoptNS([[UIView alloc] init]);
+        [_interactionViewsContainerView setOpaque:NO];
+        [_interactionViewsContainerView layer].anchorPoint = CGPointZero;
+        [self.superview addSubview:_interactionViewsContainerView.get()];
     }
-    [self addSubview:_inverseScaleRootView.get()];
-    CGFloat inverseScale = 1 / [[self layer] transform].m11;
-    [_inverseScaleRootView setTransform:CGAffineTransformMakeScale(inverseScale, inverseScale)];
+
+    [self.layer addObserver:self forKeyPath:@"transform" options:NSKeyValueObservingOptionInitial context:nil];
 
     _touchEventGestureRecognizer = adoptNS([[UIWebTouchEventsGestureRecognizer alloc] initWithTarget:self action:@selector(_webTouchEventsRecognized:) touchDelegate:self]);
     [_touchEventGestureRecognizer setDelegate:self];
@@ -273,7 +277,13 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     [_formInputSession invalidate];
     _formInputSession = nil;
     [_highlightView removeFromSuperview];
-    [_inverseScaleRootView removeFromSuperview];
+
+    if (_interactionViewsContainerView) {
+        [self.layer removeObserver:self forKeyPath:@"transform"];
+        [_interactionViewsContainerView removeFromSuperview];
+        _interactionViewsContainerView = nil;
+    }
+
     [_touchEventGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_touchEventGestureRecognizer.get()];
 
@@ -330,18 +340,29 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 - (UIView*)unscaledView
 {
-    return _inverseScaleRootView.get();
+    return _interactionViewsContainerView.get();
 }
 
 - (CGFloat)inverseScale
 {
-    return [[_inverseScaleRootView layer] transform].m11;
+    return 1 / [[self layer] transform].m11;
 }
 
-- (void)_updateUnscaledView
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    CGFloat inverseScale = 1 / [[self layer] transform].m11;
-    [_inverseScaleRootView setTransform:CGAffineTransformMakeScale(inverseScale, inverseScale)];
+    ASSERT([keyPath isEqualToString:@"transform"]);
+    ASSERT(object == self.layer);
+
+    if ([UIView _isInAnimationBlock] && _page->editorState().selectionIsNone) {
+        // If the utility views are not already visible, we don't want them to become visible during the animation since
+        // they could not start from a reasonable state.
+        // This is not perfect since views could also get updated during the animation, in practice this is rare and the end state
+        // remains correct.
+        [self _cancelInteraction];
+        [_interactionViewsContainerView setHidden:YES];
+        [UIView _addCompletion:^(BOOL){ [_interactionViewsContainerView setHidden:NO]; }];
+    }
+
     _selectionNeedsUpdate = YES;
     [self _updateChangedSelection];
     [self _updateTapHighlight];
@@ -369,7 +390,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(::UIEvent *)event
 {
-    for (UIView *subView in [_inverseScaleRootView.get() subviews]) {
+    for (UIView *subView in [_interactionViewsContainerView.get() subviews]) {
         UIView *hitView = [subView hitTest:[subView convertPoint:point fromView:self] withEvent:event];
         if (hitView)
             return hitView;
@@ -584,7 +605,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius)
         [_highlightView setCornerRadius:minimumTapHighlightRadius];
     }
     [_highlightView layer].opacity = 1;
-    [_inverseScaleRootView addSubview:_highlightView.get()];
+    [_interactionViewsContainerView addSubview:_highlightView.get()];
     [self _updateTapHighlight];
 }
 
@@ -808,11 +829,13 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_cancelInteraction
 {
+    _isTapHighlightIDValid = NO;
     [_highlightView removeFromSuperview];
 }
 
 - (void)_finishInteraction
 {
+    _isTapHighlightIDValid = NO;
     [UIView animateWithDuration:0.1
                      animations:^{
                          [_highlightView layer].opacity = 0;
@@ -926,7 +949,6 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     if (contentView->_potentialTapInProgress) {
         contentView->_potentialTapInProgress = NO;
-        contentView->_isTapHighlightIDValid = NO;
         [contentView _cancelInteraction];
         contentView->_page->cancelPotentialTap();
     }
@@ -1288,20 +1310,12 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)cut:(id)sender
 {
-    [self.inputDelegate textWillChange:self];
-
     _page->executeEditCommand(ASCIILiteral("cut"));
-
-    [self.inputDelegate textDidChange:self];
 }
 
 - (void)paste:(id)sender
 {
-    [self.inputDelegate textWillChange:self];
-    
     _page->executeEditCommand(ASCIILiteral("paste"));
-    
-    [self.inputDelegate textDidChange:self];
 }
 
 - (void)select:(id)sender
@@ -2215,6 +2229,86 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     }
 
     return NO;
+}
+
+- (void)executeEditCommandWithCallback:(NSString *)commandName
+{
+    [self beginSelectionChange];
+    _page->executeEditCommand(commandName, [self](CallbackBase::Error) {
+        [self endSelectionChange];
+    });
+}
+
+- (UITextInputArrowKeyHistory *)_moveUp:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveUp"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveDown:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveDown"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveLeft:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveLeft"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveRight:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveRight"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToStartOfWord:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveWordBackward"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToStartOfParagraph:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveToStartOfParagraph"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToStartOfLine:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveToStartOfLine"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToStartOfDocument:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveToBeginningOfDocument"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToEndOfWord:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveWordForward"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToEndOfParagraph:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveToEndOfParagraph"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToEndOfLine:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveToEndOfLine"];
+    return nil;
+}
+
+- (UITextInputArrowKeyHistory *)_moveToEndOfDocument:(BOOL) extending withHistory:(UITextInputArrowKeyHistory *)history
+{
+    [self executeEditCommandWithCallback:@"moveToEndOfDocument"];
+    return nil;
 }
 
 // Sets a buffer to make room for autocorrection views

@@ -24,16 +24,17 @@
  */
 
 #ifndef ServicesOverlayController_h
+#define ServicesOverlayController_h
 
 #if ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION)
 
 #include "PageOverlay.h"
+#include <WebCore/Range.h>
 
 typedef void* DDHighlightRef;
 
 namespace WebCore {
 class LayoutRect;
-class Range;
 
 struct GapRects;
 }
@@ -43,6 +44,17 @@ namespace WebKit {
 class WebPage;
 
 typedef void* DDHighlightRef;
+
+struct TelephoneNumberData {
+    TelephoneNumberData(RetainPtr<DDHighlightRef> highlight, PassRefPtr<WebCore::Range> range)
+        : highlight(highlight)
+        , range(range)
+    {
+    }
+
+    RetainPtr<DDHighlightRef> highlight;
+    RefPtr<WebCore::Range> range;
+};
 
 class ServicesOverlayController : private PageOverlay::Client {
 public:
@@ -54,32 +66,39 @@ public:
 
 private:
     void createOverlayIfNeeded();
-    void handleClick(const WebCore::IntPoint&);
+    void handleClick(const WebCore::IntPoint&, DDHighlightRef);
     void clearHighlightState();
-    
+
     virtual void pageOverlayDestroyed(PageOverlay*) override;
     virtual void willMoveToWebPage(PageOverlay*, WebPage*) override;
     virtual void didMoveToWebPage(PageOverlay*, WebPage*) override;
     virtual void drawRect(PageOverlay*, WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect) override;
     virtual bool mouseEvent(PageOverlay*, const WebMouseEvent&) override;
 
-    void drawTelephoneNumberHighlight(WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect);
+    bool drawTelephoneNumberHighlightIfVisible(WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect);
     void drawSelectionHighlight(WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect);
-    void drawCurrentHighlight(WebCore::GraphicsContext&);
+    void drawHighlight(DDHighlightRef, WebCore::GraphicsContext&);
+
+    void establishHoveredTelephoneHighlight(Boolean& onButton);
+    void maybeCreateSelectionHighlight();
+
+    void clearSelectionHighlight();
+    void clearHoveredTelephoneNumberHighlight();
 
     WebPage* m_webPage;
     PageOverlay* m_servicesOverlay;
     
     Vector<WebCore::LayoutRect> m_currentSelectionRects;
+    RetainPtr<DDHighlightRef> m_selectionHighlight;
+
     Vector<RefPtr<WebCore::Range>> m_currentTelephoneNumberRanges;
+    Vector<RetainPtr<DDHighlightRef>> m_telephoneNumberHighlights;
+    std::unique_ptr<TelephoneNumberData> m_hoveredTelephoneNumberData;
+
+    RetainPtr<DDHighlightRef> m_currentHoveredHighlight;
+    RetainPtr<DDHighlightRef> m_currentMouseDownOnButtonHighlight;
 
     WebCore::IntPoint m_mousePosition;
-    bool m_mouseIsDownOnButton;
-    bool m_mouseIsOverHighlight;
-    bool m_drawingTelephoneNumberHighlight;
-
-    RetainPtr<DDHighlightRef> m_currentHighlight;
-    bool m_currentHighlightIsDirty;
 };
 
 } // namespace WebKit

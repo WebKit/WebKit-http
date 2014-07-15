@@ -404,7 +404,6 @@ webkit.org/b/131347 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-
 webkit.org/b/131347 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
-webkit.org/b/131347 fast/borders/hidpi-rounded-border-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/box-shadow/hidpi-webkit-box-shadow-subpixel-position.html [ Missing ]
 webkit.org/b/131347 fast/forms/hidpi-fieldset-on-subpixel-position-when-legend-is-present.html [ ImageOnlyFailure ]
@@ -418,6 +417,7 @@ webkit.org/b/131347 fast/hidpi/image-srcset-invalid-inputs-except-one.html [ Fai
 webkit.org/b/131347 fast/hidpi/image-srcset-simple-2x.html [ Failure ]
 webkit.org/b/131347 fast/hidpi/image-srcset-src-selection-2x.html [ Failure ]
 webkit.org/b/131347 fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
+webkit.org/b/131347 fast/inline/hidpi-inline-text-decoration-with-subpixel-value.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html [ ImageOnlyFailure ]
@@ -660,6 +660,7 @@ webkit.org/b/103443 fast/parser/parser-yield-timing.html [ Failure Pass ]
 
 webkit.org/b/105191 media/video-playing-and-pause.html [ Failure Pass ]
 
+webkit.org/b/105280 http/tests/xmlhttprequest/access-control-preflight-async-header-denied.html [ Failure Pass ]
 webkit.org/b/105280 http/tests/xmlhttprequest/access-control-preflight-async-method-denied.html [ Failure Pass ]
 webkit.org/b/105280 http/tests/xmlhttprequest/access-control-preflight-async-not-supported.html [ Failure Pass ]
 webkit.org/b/105280 http/tests/xmlhttprequest/cross-site-denied-response.html [ Failure Pass ]
@@ -784,8 +785,9 @@ webkit.org/b/132183 fast/dom/adopt-node-crash-2.html [ Failure Pass ]
 webkit.org/b/132184 fast/multicol/span/span-as-immediate-columns-child-dynamic.html [ Failure Pass ]
 webkit.org/b/132185 platform/gtk/editing/pasteboard/middle-button-paste.html [ Failure Pass ]
 
-#Some media fragment tests are flaky
+# Some media fragment tests are flaky
 webkit.org/b/132864 media/media-fragments/TC0005.html [ Failure Pass ]
+webkit.org/b/132248 media/media-fragments/TC0006.html [ Failure Pass ]
 webkit.org/b/132248 media/media-fragments/TC0037.html [ Failure Pass ]
 webkit.org/b/132248 media/media-fragments/TC0078.html [ Failure Pass ]
 webkit.org/b/132248 media/media-fragments/TC0079.html [ Failure Pass ]
@@ -866,10 +868,18 @@ webkit.org/b/134550 http/tests/cache/iframe-304-crash.html [ Failure Pass ]
 webkit.org/b/134573 media/track/audio-track.html [ Failure Timeout Pass ]
 webkit.org/b/134574 media/media-fragments/TC0024.html [ Failure Timeout Pass ]
 webkit.org/b/134575 http/tests/media/hls/video-controls-live-stream.html [ Crash Failure Timeout Pass ]
+webkit.org/b/134576 media/track/audio/audio-track-mkv-vorbis-language.html [ Failure Timeout Pass ]
+webkit.org/b/134576 media/track/track-cue-rendering.html [ Failure Timeout Pass ]
 webkit.org/b/134576 media/track/video/video-track-mkv-theora-selected.html [ Failure Timeout Pass ]
+webkit.org/b/134576 media/track/video/video-track-mkv-theora-language.html [ Failure Timeout Pass ]
 webkit.org/b/134577 svg/dom/svg-root-lengths.html [ Failure Timeout Pass ]
 webkit.org/b/103383 fast/css/counters/element-removal-crash.xhtml [ Failure Pass ]
 webkit.org/b/134579 fast/forms/state-restore-to-non-edited-controls.html [ Timeout Pass ]
+webkit.org/b/134758 svg/custom/composited-svg-with-opacity.html [ ImageOnlyFailure Pass ]
+
+webkit.org/b/134760 plugins/layout-in-beforeload-listener-affects-plugin-loading.html [ Failure Pass ]
+
+webkit.org/b/134761 svg/custom/animate-initial-pause-unpause.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -993,7 +1003,7 @@ webkit.org/b/122571 inspector-protocol/debugger/call-frame-this-strict.html [ Ti
 webkit.org/b/122571 inspector-protocol/debugger/setBreakpoint-dfg.html [ Failure Pass ]
 webkit.org/b/122571 inspector-protocol/profiler/console-profile.html [ Failure Pass ]
 webkit.org/b/122571 inspector-protocol/dom/request-child-nodes-depth.html [ Timeout Pass ]
-webkit.org/b/122571 inspector-protocol/dom/focus.html [ Timeout Pass ]
+webkit.org/b/122571 inspector-protocol/dom/focus.html [ Failure Timeout Pass ]
 webkit.org/b/122571 inspector-protocol/runtime/getProperties.html [ Timeout Pass ]
 webkit.org/b/122571 inspector-protocol/page/javascriptDialogEvents.html [ Timeout Pass ]
 webkit.org/b/122571 inspector-protocol/page/frameStartedLoading.html [ Timeout Pass ]
@@ -1428,8 +1438,6 @@ Bug(GTK) canvas/philip/tests/2d.drawImage.image.incomplete.omitted.html [ Failur
 Bug(GTK) canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.missingargs.html [ Failure ]
-Bug(GTK) canvas/philip/tests/2d.pattern.image.broken.html [ Failure ]
-Bug(GTK) canvas/philip/tests/2d.pattern.image.incomplete.empty.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.pattern.image.incomplete.omitted.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.text.draw.baseline.bottom.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.text.draw.baseline.hanging.html [ Failure ]
@@ -1603,8 +1611,6 @@ webkit.org/b/98613 css3/masking/clip-path-reference.html [ ImageOnlyFailure ]
 
 webkit.org/b/98950 transitions/blendmode-transitions.html [ Failure ]
 
-webkit.org/b/98718 svg/animations/animate-css-xml-attributeType.html [ Failure ]
-
 webkit.org/b/100424 editing/selection/user-select-all-selection.html [ Failure ]
 webkit.org/b/100424 editing/selection/user-select-all-with-shift.html [ Failure ]
 
@@ -1726,7 +1732,6 @@ webkit.org/b/118416 storage/websql/sql-error-codes.html [ Failure ]
 Bug(GTK) mathml/very-large-stretchy-operators.html [ Pass Timeout ]
 
 webkit.org/b/119841 fast/sub-pixel/sub-pixel-composited-layers.html [ ImageOnlyFailure ]
-webkit.org/b/119841 fast/sub-pixel/sub-pixel-root-layer.html [ ImageOnlyFailure ]
 webkit.org/b/119841 fast/sub-pixel/zoomed-em-border.html [ ImageOnlyFailure ]
 
 webkit.org/b/120105 http/tests/navigation/post-frames-goback1-uncached.html [ Failure ]
@@ -1767,15 +1772,6 @@ webkit.org/b/124509 media/video-controls-captions-trackmenu-hide-on-click.html [
 
 webkit.org/b/124566 fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml [ Failure ]
 
-webkit.org/b/124770 fast/dom/access-key-iframe.html [ Failure ]
-webkit.org/b/124770 fast/forms/ValidityState-valueMissing-002.html [ Failure ]
-webkit.org/b/124770 fast/forms/access-key-for-all-elements.html [ Failure ]
-webkit.org/b/124770 fast/forms/access-key.html [ Failure ]
-webkit.org/b/124770 fast/forms/focus-selection-input.html [ Failure ]
-webkit.org/b/124770 fast/forms/focus-selection-textarea.html [ Failure ]
-webkit.org/b/124770 fast/forms/legend-access-key.html [ Failure ]
-webkit.org/b/124770 fast/forms/select-accesskey.html [ Failure ]
-
 webkit.org/b/124834 fast/block/float/clear-negative-margin-top.html [ ImageOnlyFailure ]
 webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-bt.html [ ImageOnlyFailure ]
 webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-continuation.html [ ImageOnlyFailure ]
@@ -1810,13 +1806,9 @@ webkit.org/b/128061 tables/mozilla_expected_failures/bugs/bug1055-2.html [ Failu
 # End of subpixel failures.
 
 # After webkit.org/b/123097 we flag these tests that also fail in mac
-webkit.org/b/123097 media/track/track-cue-mutable-text.html [ Failure ]
 webkit.org/b/123097 media/video-controls-toggling.html [ Timeout ]
 
 # Regressions in svg/clip-path
-webkit.org/b/128499 svg/clip-path/clip-path-content-use-005.svg [ ImageOnlyFailure ]
-webkit.org/b/128499 svg/clip-path/clip-path-precision-001.svg [ ImageOnlyFailure ]
-webkit.org/b/128499 svg/clip-path/clip-path-content-use-006.svg [ ImageOnlyFailure ]
 webkit.org/b/129180 svg/clip-path/clip-path-on-svg-001.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure Pass ]
 
@@ -1963,8 +1955,6 @@ webkit.org/b/132235 fast/shapes/shape-outside-floats/shape-outside-floats-shape-
 
 webkit.org/b/132253 media/volume-bar-empty-when-muted.html [ Failure ]
 
-webkit.org/b/132274 fast/multicol/newmulticol/compare-with-old-impl/column-rules-stacking.html [ ImageOnlyFailure ]
-
 webkit.org/b/132909 accessibility/table-with-footer-section-above-body.html [ Failure ]
 
 webkit.org/b/132910 editing/pasteboard/drag-drop-paragraph-crasher.html [ Failure ]
@@ -1994,6 +1984,10 @@ webkit.org/b/133803 editing/undo/undo-deleteWord.html [ Failure ]
 
 # Difference invisible at the naked eye with Latin Modern Math.
 webkit.org/b/134153 mathml/presentation/mo-stacked-glyphs.html [ ImageOnlyFailure ]
+
+webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-2x.html [ Failure ]
+webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html [ Failure ]
+webkit.org/b/134756 http/tests/loading/sizes/preload-image-sizes-2x.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

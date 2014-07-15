@@ -29,6 +29,7 @@
 #include "JSCInlines.h"
 #include "StringObject.h"
 #include "StringPrototype.h"
+#include "StrongInlines.h"
 
 namespace JSC {
     
@@ -372,6 +373,15 @@ bool JSString::getStringPropertyDescriptor(ExecState* exec, PropertyName propert
     }
     
     return false;
+}
+
+JSString* jsStringWithCacheSlowCase(VM& vm, StringImpl& stringImpl)
+{
+    auto addResult = vm.stringCache.add(&stringImpl, nullptr);
+    if (addResult.isNewEntry)
+        addResult.iterator->value = jsString(&vm, String(stringImpl));
+    vm.lastCachedString.set(vm, addResult.iterator->value.get());
+    return addResult.iterator->value.get();
 }
 
 } // namespace JSC

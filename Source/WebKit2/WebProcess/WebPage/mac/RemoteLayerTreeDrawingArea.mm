@@ -239,6 +239,11 @@ TiledBacking* RemoteLayerTreeDrawingArea::mainFrameTiledBacking() const
     return frameView ? frameView->tiledBacking() : nullptr;
 }
 
+void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlushImmediately()
+{
+    m_layerFlushTimer.startOneShot(0_ms);
+}
+
 void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlush()
 {
     if (m_isFlushingSuspended) {
@@ -248,7 +253,7 @@ void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlush()
     }
     if (m_isLayerFlushThrottlingTemporarilyDisabledForInteraction) {
         m_isLayerFlushThrottlingTemporarilyDisabledForInteraction = false;
-        m_layerFlushTimer.startOneShot(0_ms);
+        scheduleCompositingLayerFlushImmediately();
         return;
     }
 
@@ -269,7 +274,7 @@ bool RemoteLayerTreeDrawingArea::adjustLayerFlushThrottling(WebCore::LayerFlushT
         m_isLayerFlushThrottlingTemporarilyDisabledForInteraction = true;
 
     bool wasThrottlingLayerFlushes = m_isThrottlingLayerFlushes;
-    m_isThrottlingLayerFlushes = flags & WebCore::LayerFlushThrottleState::MainLoadProgressing;
+    m_isThrottlingLayerFlushes = flags & WebCore::LayerFlushThrottleState::Enabled;
 
     if (!wasThrottlingLayerFlushes && m_isThrottlingLayerFlushes)
         m_isInitialThrottledLayerFlush = true;
@@ -427,6 +432,9 @@ void RemoteLayerTreeDrawingArea::BackingStoreFlusher::flush()
 void RemoteLayerTreeDrawingArea::viewStateDidChange(ViewState::Flags, bool wantsDidUpdateViewState)
 {
     // FIXME: Should we suspend painting while not visible, like TiledCoreAnimationDrawingArea? Probably.
+
+    if (wantsDidUpdateViewState)
+        scheduleCompositingLayerFlushImmediately();
 }
 
 void RemoteLayerTreeDrawingArea::addTransactionCallbackID(uint64_t callbackID)

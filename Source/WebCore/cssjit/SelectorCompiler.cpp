@@ -369,6 +369,9 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
     case CSSSelector::PseudoClassFocus:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(SelectorChecker::matchesFocusPseudoClass));
         return FunctionType::SimpleSelectorChecker;
+    case CSSSelector::PseudoClassInRange:
+        fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isInRange));
+        return FunctionType::SimpleSelectorChecker;
     case CSSSelector::PseudoClassIndeterminate:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(shouldAppearIndeterminate));
         return FunctionType::SimpleSelectorChecker;
@@ -377,6 +380,9 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
         return FunctionType::SimpleSelectorChecker;
     case CSSSelector::PseudoClassOptional:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isOptionalFormControl));
+        return FunctionType::SimpleSelectorChecker;
+    case CSSSelector::PseudoClassOutOfRange:
+        fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isOutOfRange));
         return FunctionType::SimpleSelectorChecker;
     case CSSSelector::PseudoClassReadOnly:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(matchesReadOnlyPseudoClass));
@@ -743,7 +749,7 @@ inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::VM* vm, JSC
         return SelectorCompilationStatus::CannotCompile;
     }
 
-    JSC::LinkBuffer linkBuffer(*vm, &m_assembler, CSS_CODE_ID);
+    JSC::LinkBuffer linkBuffer(*vm, m_assembler, CSS_CODE_ID);
     for (unsigned i = 0; i < m_functionCalls.size(); i++)
         linkBuffer.link(m_functionCalls[i].first, m_functionCalls[i].second);
 
@@ -1466,7 +1472,8 @@ Assembler::Jump SelectorCodeGenerator::jumpIfNotResolvingStyle(Assembler::Regist
     m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToCheckingContext), checkingContext);
 
     // If we not resolving style, skip the whole marking.
-    return m_assembler.branch8(Assembler::NotEqual, Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, resolvingMode)), Assembler::TrustedImm32(SelectorChecker::ResolvingStyle));
+    static_assert(sizeof(SelectorChecker::Mode) == 1, "We generate a byte load/test for the SelectorChecker::Mode.");
+    return m_assembler.branch8(Assembler::NotEqual, Assembler::Address(checkingContext, OBJECT_OFFSETOF(CheckingContext, resolvingMode)), Assembler::TrustedImm32(static_cast<std::underlying_type<SelectorChecker::Mode>::type>(SelectorChecker::Mode::ResolvingStyle)));
 }
 
 static void getDocument(Assembler& assembler, Assembler::RegisterID element, Assembler::RegisterID output)
@@ -2207,7 +2214,7 @@ static bool elementIsActive(Element* element)
 
 static bool elementIsActiveForStyleResolution(Element* element, const CheckingContext* checkingContext)
 {
-    if (checkingContext->resolvingMode == SelectorChecker::ResolvingStyle)
+    if (checkingContext->resolvingMode == SelectorChecker::Mode::ResolvingStyle)
         element->setChildrenAffectedByActive();
     return element->active() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassActive);
 }
@@ -2303,7 +2310,7 @@ static bool elementIsHovered(Element* element)
 
 static bool elementIsHoveredForStyleResolution(Element* element, const CheckingContext* checkingContext)
 {
-    if (checkingContext->resolvingMode == SelectorChecker::ResolvingStyle)
+    if (checkingContext->resolvingMode == SelectorChecker::Mode::ResolvingStyle)
         element->setChildrenAffectedByHover();
     return element->hovered() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassHover);
 }

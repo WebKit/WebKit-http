@@ -86,6 +86,12 @@ void RemoteLayerBackingStore::ensureBackingStore(FloatSize size, float scale, bo
     m_acceleratesDrawing = acceleratesDrawing;
     m_isOpaque = isOpaque;
 
+    if (m_frontBuffer) {
+        // If we have a valid backing store, we need to ensure that it gets completely
+        // repainted the next time display() is called.
+        setNeedsDisplay();
+    }
+
     clearBackingStore();
 }
 
@@ -337,6 +343,7 @@ void RemoteLayerBackingStore::drawInContext(GraphicsContext& context, CGImageRef
     case PlatformCALayer::LayerTypePageTiledBackingLayer:
     case PlatformCALayer::LayerTypeRootLayer:
     case PlatformCALayer::LayerTypeAVPlayerLayer:
+    case PlatformCALayer::LayerTypeWebGLLayer:
     case PlatformCALayer::LayerTypeCustom:
         ASSERT_NOT_REACHED();
         break;

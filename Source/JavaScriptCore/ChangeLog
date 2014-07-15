@@ -1,3 +1,301 @@
+2014-07-09  Benjamin Poulain  <benjamin@webkit.org>
+
+        Use 16bits instructions for push/pop on ARMv7 when possible
+        https://bugs.webkit.org/show_bug.cgi?id=134753
+
+        Reviewed by Geoffrey Garen.
+
+        The patch r170839 mixed the code for push/pop pair and single push/pop.
+        That part was reverted in r170909.
+
+        This patch puts the code back but specialized for single push/pop.
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::pop):
+        (JSC::ARMv7Assembler::push):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::pop):
+        (JSC::MacroAssemblerARMv7::push):
+
+2014-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove uses of 'bash' in build system
+        https://bugs.webkit.org/show_bug.cgi?id=134782
+        <rdar://problem/17615533>
+
+        Reviewed by Dean Jackson.
+
+        Remove uses of 'bash' by replacing Windows-specific bash scripts
+        with Perl equivalents.
+
+        * JavaScriptCore.vcxproj/JavaScriptCoreGenerated.make:
+        * JavaScriptCore.vcxproj/JavaScriptCoreGenerated.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCoreGenerated.vcxproj.filters:
+        * JavaScriptCore.vcxproj/JavaScriptCorePreBuild.cmd:
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/LLIntAssembly.make:
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/LLIntAssembly.vcxproj:
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.pl: Copied from Source/JavaScriptCore/JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.sh.
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.sh: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/LLIntDesiredOffsets.make:
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/LLIntDesiredOffsets.vcxproj:
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/build-LLIntDesiredOffsets.pl: Copied from Source/JavaScriptCore/JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/build-LLIntDesiredOffsets.sh.
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/build-LLIntDesiredOffsets.sh: Removed.
+        * JavaScriptCore.vcxproj/build-generated-files.pl: Copied from Source/JavaScriptCore/JavaScriptCore.vcxproj/build-generated-files.sh.
+        * JavaScriptCore.vcxproj/build-generated-files.sh: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testapi/testapiPreBuild.cmd:
+
+2014-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove use of 'grep' in build steps
+        https://bugs.webkit.org/show_bug.cgi?id=134770
+        <rdar://problem/17608783>
+
+        Reviewed by Tim Horton.
+
+        Replace uses of the grep command in Windows builds with the equivalent
+        Perl program.
+
+        * JavaScriptCore.vcxproj/JavaScriptCorePreBuild.cmd:
+        * JavaScriptCore.vcxproj/jsc/jscPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testapi/testapiPreBuild.cmd:
+
+2014-07-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Restore the assertion changed with 170839
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::pop):
+        (JSC::ARMv7Assembler::push):
+        Revert the Assembler part of 170839. The assertions do not match both encoding.
+
+        I'll add specific version of push and pop instead.
+
+2014-07-08  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        RemoteInspector::shared() should not call WTF::initializeMainThread()
+        <https://bugs.webkit.org/show_bug.cgi?id=134747>
+        <rdar://problem/17161482>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::shared):
+        Don't call WTF::initializeMainThread(). WTF threading is initialized by
+        JSC::initializeThreading().
+
+2014-07-08  Andreas Kling  <akling@apple.com>
+
+        VM::lastCachedString should be a Strong, not a Weak.
+        <https://webkit.org/b/134746>
+
+        Using Weak<JSString> for this regressed some of our bindings perf tests
+        due to Weak having to allocate a new WeakImpl every time the last cached
+        string changed. Make it a Strong instead should make that problem go away.
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/JSString.cpp:
+        (JSC::jsStringWithCacheSlowCase):
+        * runtime/VM.h:
+
+2014-07-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix the build after r170876
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::linkCode):
+
+2014-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        LinkBuffer should not keep a reference to the MacroAssembler
+        https://bugs.webkit.org/show_bug.cgi?id=134668
+
+        Reviewed by Geoffrey Garen.
+
+        In FTL, the LinkBuffer can outlive the MacroAssembler that was used for code generation.
+        When that happens, the pointer m_assembler points to released memory. That was not causing
+        issues because the attribute is not used after linking, but that was not particularily
+        future proof.
+
+        This patch refactors LinkBuffer to avoid any lifetime risk. The MacroAssembler is now passed
+        as a reference, it is used for linking but no reference is ever stored with the LinkBuffer.
+
+        While fixing the call sites to use a reference, I also discovered LinkBuffer.h was included
+        everywhere. I refactored some #include to avoid that.
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+        (JSC::LinkBuffer::linkCode):
+        * assembler/LinkBuffer.h:
+        (JSC::LinkBuffer::LinkBuffer):
+        * bytecode/Watchpoint.cpp:
+        * dfg/DFGDisassembler.cpp:
+        * dfg/DFGDisassembler.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        (JSC::DFG::JITCompiler::linkFunction):
+        * dfg/DFGOSRExitCompiler.cpp:
+        * dfg/DFGPlan.cpp:
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitGenerationThunkGenerator):
+        (JSC::DFG::osrEntryThunkGenerator):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::generateICFastPath):
+        (JSC::FTL::fixFunctionBasedOnStackMaps):
+        * ftl/FTLJSCall.cpp:
+        * ftl/FTLJSCall.h:
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        * ftl/FTLThunks.cpp:
+        (JSC::FTL::osrExitGenerationThunkGenerator):
+        (JSC::FTL::slowPathCallThunkGenerator):
+        * jit/ArityCheckFailReturnThunks.cpp:
+        (JSC::ArityCheckFailReturnThunks::returnPCsFor):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        * jit/JITCall.cpp:
+        (JSC::JIT::privateCompileClosureCall):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::privateCompileClosureCall):
+        * jit/JITDisassembler.cpp:
+        * jit/JITDisassembler.h:
+        * jit/JITOpcodes.cpp:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::stringGetByValStubGenerator):
+        (JSC::JIT::privateCompileGetByVal):
+        (JSC::JIT::privateCompilePutByVal):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::stringGetByValStubGenerator):
+        * jit/RegisterPreservationWrapperGenerator.cpp:
+        (JSC::generateRegisterPreservationWrapper):
+        (JSC::registerRestorationThunkGenerator):
+        * jit/Repatch.cpp:
+        (JSC::generateByIdStub):
+        (JSC::tryCacheGetByID):
+        (JSC::emitPutReplaceStub):
+        (JSC::emitPutTransitionStub):
+        (JSC::tryRepatchIn):
+        (JSC::linkClosureCall):
+        * jit/SpecializedThunkJIT.h:
+        (JSC::SpecializedThunkJIT::finalize):
+        * jit/ThunkGenerators.cpp:
+        (JSC::throwExceptionFromCallSlowPathGenerator):
+        (JSC::linkForThunkGenerator):
+        (JSC::linkClosureCallForThunkGenerator):
+        (JSC::virtualForThunkGenerator):
+        (JSC::nativeForGenerator):
+        (JSC::arityFixup):
+        * llint/LLIntThunks.cpp:
+        (JSC::LLInt::generateThunkWithJumpTo):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::compile):
+
+2014-07-07  Andreas Kling  <akling@apple.com>
+
+        Fast path for jsStringWithCache() when asked for the same string repeatedly.
+        <https://webkit.org/b/134635>
+
+        Reviewed by Darin Adler.
+
+        Follow-up to r170818 addressing a review comment by Geoff Garen.
+
+        * runtime/JSString.cpp:
+        (JSC::jsStringWithCacheSlowCase):
+
+2014-07-07  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Add missing ENABLE(FTL_JIT) guards
+        https://bugs.webkit.org/show_bug.cgi?id=134680
+
+        Reviewed by Darin Adler.
+
+        * ftl/FTLDWARFDebugLineInfo.cpp:
+        * ftl/FTLDWARFDebugLineInfo.h:
+        * ftl/FTLGeneratedFunction.h:
+
+2014-07-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        Enable ARMv7 disassembler for the GTK port
+        https://bugs.webkit.org/show_bug.cgi?id=134676
+
+        Reviewed by Benjamin Poulain.
+
+        * CMakeLists.txt: Add ARMv7DOpcode.cpp file to the build.
+        * disassembler/ARMv7/ARMv7DOpcode.cpp: Include the string.h header for strlen().
+
+2014-07-06  Benjamin Poulain  <benjamin@webkit.org>
+
+        [ARMv7] Use 16 bits instructions for push/pop when possible
+        https://bugs.webkit.org/show_bug.cgi?id=134656
+
+        Reviewed by Andreas Kling.
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::pop):
+        (JSC::ARMv7Assembler::push):
+        (JSC::ARMv7Assembler::ARMInstructionFormatter::oneWordOp7Imm9):
+        Add the 16 bits version of push and pop.
+
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::pop):
+        (JSC::MacroAssemblerARMv7::push):
+        Use the new push/pop instead of a regular load/store.
+
+        * disassembler/ARMv7/ARMv7DOpcode.cpp:
+        (JSC::ARMv7Disassembler::ARMv7DOpcode::appendRegisterList):
+        * disassembler/ARMv7/ARMv7DOpcode.h:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeMiscPushPop::registerMask):
+        Fix the disassembler for push/pop:
+        -The register mask was on 7 bits for some reason.
+        -The code printing the registers was comparing a register ID with a register
+         mask.
+
+2014-07-06  Yoav Weiss  <yoav@yoav.ws>
+
+        Turn on img@sizes compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=134634
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig: Moved compile flag to alphabetical order.
+
+2014-07-06  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        Flags value of SourceCodeKey should be unique for each case.
+        https://bugs.webkit.org/show_bug.cgi?id=134435
+
+        Reviewed by Darin Adler.
+
+        Different combinations of CodeType and JSParserStrictness could generate same m_flags value because
+        the value of CodeType and the value of JSParserStrictness shares a bit inside m_flags member variable.
+        Shift the value of CodeType one bit farther to the left so those values don't overlap.
+
+        * runtime/CodeCache.h:
+        (JSC::SourceCodeKey::SourceCodeKey):
+
+2014-07-04  Andreas Kling  <akling@apple.com>
+
+        Fast path for jsStringWithCache() when asked for the same string repeatedly.
+        <https://webkit.org/b/134635>
+
+        Also moved the whole thing from WebCore to JavaScriptCore since it
+        makes more sense here, and inline the lightweight checks, leaving only
+        the hashmap stuff out of line.
+
+        Reviewed by Darin Adler.
+
+        * runtime/JSString.cpp:
+        (JSC::jsStringWithCacheSlowCase):
+        * runtime/JSString.h:
+        (JSC::jsStringWithCache):
+        * runtime/VM.h:
+
 2014-07-03  Daniel Bates  <dabates@apple.com>
 
         Add WTF::move()

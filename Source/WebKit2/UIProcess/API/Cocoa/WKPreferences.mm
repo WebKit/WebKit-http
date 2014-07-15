@@ -53,7 +53,7 @@
     _preferences->setMinimumFontSize(minimumFontSize);
 }
 
-- (BOOL)isJavaScriptEnabled
+- (BOOL)javaScriptEnabled
 {
     return _preferences->javaScriptEnabled();
 }
@@ -77,7 +77,7 @@
 
 #if PLATFORM(MAC)
 
-- (BOOL)isJavaEnabled
+- (BOOL)javaEnabled
 {
     return _preferences->javaEnabled();
 }
@@ -87,7 +87,7 @@
     _preferences->setJavaEnabled(javaEnabled);
 }
 
-- (BOOL)arePlugInsEnabled
+- (BOOL)plugInsEnabled
 {
     return _preferences->pluginsEnabled();
 }
@@ -161,6 +161,36 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setOfflineApplicationCacheIsEnabled:(BOOL)offlineApplicationCacheIsEnabled
 {
     _preferences->setOfflineWebApplicationCacheEnabled(offlineApplicationCacheIsEnabled);
+}
+
+- (BOOL)_compositingBordersVisible
+{
+    return _preferences->compositingBordersVisible();
+}
+
+- (void)_setCompositingBordersVisible:(BOOL)compositingBordersVisible
+{
+    _preferences->setCompositingBordersVisible(compositingBordersVisible);
+}
+
+- (BOOL)_compositingRepaintCountersVisible
+{
+    return _preferences->compositingRepaintCountersVisible();
+}
+
+- (void)_setCompositingRepaintCountersVisible:(BOOL)repaintCountersVisible
+{
+    _preferences->setCompositingRepaintCountersVisible(repaintCountersVisible);
+}
+
+- (BOOL)_tiledScrollingIndicatorVisible
+{
+    return _preferences->tiledScrollingIndicatorVisible();
+}
+
+- (void)_setTiledScrollingIndicatorVisible:(BOOL)tiledScrollingIndicatorVisible
+{
+    _preferences->setTiledScrollingIndicatorVisible(tiledScrollingIndicatorVisible);
 }
 
 @end

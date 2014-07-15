@@ -1666,6 +1666,12 @@ void WebPage::applyAutocorrection(const String& correction, const String& origin
     send(Messages::WebPageProxy::StringCallback(correctionApplied ? correction : String(), callbackID));
 }
 
+void WebPage::executeEditCommandWithCallback(const String& commandName, uint64_t callbackID)
+{
+    executeEditCommand(commandName);
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
 void WebPage::syncApplyAutocorrection(const String& correction, const String& originalText, bool& correctionApplied)
 {
     RefPtr<Range> range;
@@ -2447,10 +2453,14 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredRect().location());
 
+    if (!m_hasStablePageScaleFactor && visibleContentRectUpdateInfo.inStableState())
+        m_hasStablePageScaleFactor = true;
+
     float floatBoundedScale = boundedScale;
     bool hasSetPageScale = false;
     if (floatBoundedScale != currentScale) {
         m_scaleWasSetByUIProcess = true;
+        m_hasStablePageScaleFactor = visibleContentRectUpdateInfo.inStableState();
 
         m_dynamicSizeUpdateHistory.clear();
 

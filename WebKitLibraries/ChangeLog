@@ -1,3 +1,68 @@
+2014-07-10  Alex Christensen  <achristensen@webkit.org>
+
+        Enable same features on all Windows ports.
+        https://bugs.webkit.org/show_bug.cgi?id=134715
+
+        Reviewed by Brent Fulgham.
+
+        * win/tools/vsprops/FeatureDefinesCairo.props:
+        Made identical to FeatureDefines.props.
+
+2014-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix.
+
+        Build bots don't have a three-part default version string,
+        breaking pattern matching. Handle this case.
+
+        * win/tools/scripts/auto-version.pl:
+
+2014-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * win/tools/scripts/auto-version.pl: Protect against
+        malformed paths (trailing backslashes).
+        * win/tools/scripts/feature-defines.pl: Make sure result
+        has an EOL character.
+
+2014-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove uses of 'bash' in build system
+        https://bugs.webkit.org/show_bug.cgi?id=134782
+        <rdar://problem/17615533>
+
+        Reviewed by Dean Jackson.
+
+        Remove uses of 'bash' by replacing Windows-specific bash scripts
+        with Perl equivalents.
+
+        * win/tools/scripts/feature-defines.pl: Copied from WebKitLibraries/win/tools/scripts/feature-defines.sh.
+        * win/tools/scripts/feature-defines.sh: Removed.
+
+2014-07-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Implement auto-version as a Perl program
+        https://bugs.webkit.org/show_bug.cgi?id=134745
+        <rdar://problem/17597801>
+
+        Reviewed by David Kilzer.
+
+        Translate the auto-version.sh bash script into an equivalent
+        Perl script.
+
+        * win/tools/scripts/auto-version.pl: Added.
+        * win/tools/scripts/auto-version.sh: Removed.
+
+2014-07-06  Yoav Weiss  <yoav@yoav.ws>
+
+        Turn on img@sizes compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=134634
+
+        Reviewed by Benjamin Poulain.
+
+        * win/tools/vsprops/FeatureDefines.props: Added compile flag.
+
 2014-07-01  Pratik Solanki  <psolanki@apple.com>
 
         Encode/decode CFURLRequestRefs when USE(CFNETWORK) is enabled

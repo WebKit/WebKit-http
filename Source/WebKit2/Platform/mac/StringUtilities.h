@@ -32,7 +32,11 @@ namespace WebKit {
 
 // NOTE: This does not use String::operator NSString*() since that function
 // expects to be called on the thread running WebCore.
-NSString* nsStringFromWebCoreString(const String&);
+NSString *nsStringFromWebCoreString(const String&);
+
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+NSString *formattedPhoneNumberString(NSString *originalPhoneNumber);
+#endif
 
 }
 

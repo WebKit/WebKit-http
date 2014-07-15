@@ -73,6 +73,7 @@
 #import <WebCore/PluginDocument.h>
 #import <WebCore/RenderBoxModelObject.h>
 #import <WebCore/ScrollbarTheme.h>
+#import <WebCore/Settings.h>
 #import <WebCore/UUID.h>
 #import <WebKitSystemInterface.h>
 #import <wtf/CurrentTime.h>
@@ -743,6 +744,16 @@ bool PDFPlugin::isActive() const
     if (Frame* coreFrame = m_frame->coreFrame()) {
         if (Page* page = coreFrame->page())
             return page->focusController().isActive();
+    }
+
+    return false;
+}
+
+bool PDFPlugin::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const
+{
+    if (Frame* coreFrame = m_frame->coreFrame()) {
+        if (Page* page = coreFrame->page())
+            return page->settings().forceUpdateScrollbarsOnMainThreadForPerformanceTesting();
     }
 
     return false;
@@ -1789,7 +1800,8 @@ bool PDFPlugin::findString(const String& target, WebCore::FindOptions options, u
 
 bool PDFPlugin::performDictionaryLookupAtLocation(const WebCore::FloatPoint& point)
 {
-    PDFSelection* lookupSelection = [m_pdfLayerController getSelectionForWordAtPoint:convertFromPluginToPDFView(roundedIntPoint(point))];
+    IntPoint localPoint = convertFromRootViewToPlugin(roundedIntPoint(point));
+    PDFSelection* lookupSelection = [m_pdfLayerController getSelectionForWordAtPoint:convertFromPluginToPDFView(localPoint)];
 
     if ([[lookupSelection string] length])
         [m_pdfLayerController searchInDictionaryWithSelection:lookupSelection];

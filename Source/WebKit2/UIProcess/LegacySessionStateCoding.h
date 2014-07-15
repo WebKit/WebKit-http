@@ -26,7 +26,7 @@
 #ifndef LegacySessionStateCoding_h
 #define LegacySessionStateCoding_h
 
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace API {
 class Data;

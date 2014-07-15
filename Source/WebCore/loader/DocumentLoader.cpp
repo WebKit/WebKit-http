@@ -143,7 +143,7 @@ DocumentLoader::DocumentLoader(const ResourceRequest& req, const SubstituteData&
     , m_dataLoadTimer(this, &DocumentLoader::handleSubstituteDataLoadNow)
     , m_waitingForContentPolicy(false)
     , m_subresourceLoadersArePageCacheAcceptable(false)
-    , m_applicationCacheHost(adoptPtr(new ApplicationCacheHost(this)))
+    , m_applicationCacheHost(adoptPtr(new ApplicationCacheHost(*this)))
 {
 }
 
@@ -958,7 +958,7 @@ void DocumentLoader::clearMainResourceLoader()
 
 #if PLATFORM(IOS)
     // FIXME: Remove PLATFORM(IOS)-guard once we upstream the iOS changes to ResourceRequest.h.
-    m_request.setMainResourceRequest(false);
+    m_request.deprecatedSetMainResourceRequest(false);
 #endif
 
     if (this == frameLoader()->activeDocumentLoader())
@@ -1433,7 +1433,7 @@ void DocumentLoader::startLoadingMainResource()
 
 #if PLATFORM(IOS)
     // FIXME: Remove PLATFORM(IOS)-guard once we upstream the iOS changes to ResourceRequest.h.
-    m_request.setMainResourceRequest(true);
+    m_request.deprecatedSetMainResourceRequest(true);
 #endif
 
     ResourceRequest request(m_request);
@@ -1445,7 +1445,7 @@ void DocumentLoader::startLoadingMainResource()
         // If the load was aborted by clearing m_request, it's possible the ApplicationCacheHost
         // is now in a state where starting an empty load will be inconsistent. Replace it with
         // a new ApplicationCacheHost.
-        m_applicationCacheHost = adoptPtr(new ApplicationCacheHost(this));
+        m_applicationCacheHost = adoptPtr(new ApplicationCacheHost(*this));
         maybeLoadEmpty();
         return;
     }

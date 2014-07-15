@@ -366,7 +366,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_navigationID(0)
     , m_configurationPreferenceValues(configuration.preferenceValues)
     , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
-    , m_viewStateChangeWantsReply(WantsReplyOrNot::DoesNotWantReply)
+    , m_viewStateChangeWantsReply(false)
 {
     if (m_process->state() == WebProcessProxy::State::Running) {
         if (m_userContentController)
@@ -537,8 +537,10 @@ void WebPageProxy::initializeContextMenuClient(const WKPageContextMenuClientBase
 
 void WebPageProxy::reattachToWebProcess()
 {
+    ASSERT(!m_isClosed);
     ASSERT(!isValid());
     ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
+
     m_isValid = true;
 
     if (m_process->context().processModel() == ProcessModelSharedSecondaryProcess)
@@ -569,6 +571,9 @@ void WebPageProxy::reattachToWebProcess()
 
 uint64_t WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item)
 {
+    if (m_isClosed)
+        return 0;
+
     if (item && item != m_backForwardList->currentItem())
         m_backForwardList->goToItem(item);
     
@@ -703,6 +708,9 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
 
 uint64_t WebPageProxy::loadRequest(const ResourceRequest& request, API::Object* userData)
 {
+    if (m_isClosed)
+        return 0;
+
     uint64_t navigationID = generateNavigationID();
 
     auto transaction = m_pageLoadState.transaction();
@@ -724,6 +732,9 @@ uint64_t WebPageProxy::loadRequest(const ResourceRequest& request, API::Object* 
 
 void WebPageProxy::loadFile(const String& fileURLString, const String& resourceDirectoryURLString, API::Object* userData)
 {
+    if (m_isClosed)
+        return;
+
     if (!isValid())
         reattachToWebProcess();
 
@@ -751,6 +762,9 @@ void WebPageProxy::loadFile(const String& fileURLString, const String& resourceD
 
 void WebPageProxy::loadData(API::Data* data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData)
 {
+    if (m_isClosed)
+        return;
+
     if (!isValid())
         reattachToWebProcess();
 
@@ -761,6 +775,9 @@ void WebPageProxy::loadData(API::Data* data, const String& MIMEType, const Strin
 
 uint64_t WebPageProxy::loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData)
 {
+    if (m_isClosed)
+        return 0;
+
     uint64_t navigationID = generateNavigationID();
 
     auto transaction = m_pageLoadState.transaction();
@@ -780,6 +797,9 @@ uint64_t WebPageProxy::loadHTMLString(const String& htmlString, const String& ba
 
 void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData)
 {
+    if (m_isClosed)
+        return;
+
     if (!isValid())
         reattachToWebProcess();
 
@@ -797,6 +817,9 @@ void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const Strin
 
 void WebPageProxy::loadPlainTextString(const String& string, API::Object* userData)
 {
+    if (m_isClosed)
+        return;
+
     if (!isValid())
         reattachToWebProcess();
 
@@ -806,6 +829,9 @@ void WebPageProxy::loadPlainTextString(const String& string, API::Object* userDa
 
 void WebPageProxy::loadWebArchiveData(API::Data* webArchiveData, API::Object* userData)
 {
+    if (m_isClosed)
+        return;
+
     if (!isValid())
         reattachToWebProcess();
 
@@ -1101,15 +1127,13 @@ void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
         m_viewState |= ViewState::IsVisuallyIdle;
 }
 
-void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged)
+void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, bool wantsReply)
 {
-    bool isNewlyInWindow = !isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow();
-
     m_potentiallyChangedViewStateFlags |= mayHaveChanged;
-    m_viewStateChangeWantsReply = ((m_viewWasEverInWindow && isNewlyInWindow) || m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply) ? WantsReplyOrNot::DoesWantReply : WantsReplyOrNot::DoesNotWantReply;
+    m_viewStateChangeWantsReply = m_viewStateChangeWantsReply || wantsReply;
 
 #if PLATFORM(COCOA)
-    if (isNewlyInWindow) {
+    if (!isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow()) {
         dispatchViewStateChange();
         return;
     }
@@ -1117,6 +1141,29 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged)
 #else
     dispatchViewStateChange();
 #endif
+}
+
+void WebPageProxy::viewDidLeaveWindow()
+{
+#if ENABLE(INPUT_TYPE_COLOR_POPOVER)
+    // When leaving the current page, close the popover color well.
+    if (m_colorPicker)
+        endColorPicker();
+#endif
+#if PLATFORM(IOS)
+    // When leaving the current page, close the video fullscreen.
+    if (m_videoFullscreenManager)
+        m_videoFullscreenManager->requestHideAndExitFullscreen();
+#endif
+}
+
+void WebPageProxy::viewDidEnterWindow()
+{
+    LayerHostingMode layerHostingMode = m_pageClient.viewLayerHostingMode();
+    if (m_layerHostingMode != layerHostingMode) {
+        m_layerHostingMode = layerHostingMode;
+        m_process->send(Messages::WebPage::SetLayerHostingMode(static_cast<unsigned>(layerHostingMode)), m_pageID);
+    }
 }
 
 void WebPageProxy::dispatchViewStateChange()
@@ -1138,8 +1185,12 @@ void WebPageProxy::dispatchViewStateChange()
     updateViewState(m_potentiallyChangedViewStateFlags);
     ViewState::Flags changed = m_viewState ^ previousViewState;
 
+    // We always want to wait for the Web process to reply if we've been in-window before and are coming back in-window.
+    if (m_viewWasEverInWindow && (changed & ViewState::IsInWindow) && isInWindow())
+        m_viewStateChangeWantsReply = true;
+
     if (changed)
-        m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply), m_pageID);
+        m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsReply), m_pageID);
 
     // This must happen after the SetViewState message is sent, to ensure the page visibility event can fire.
     updateActivityToken();
@@ -1153,34 +1204,20 @@ void WebPageProxy::dispatchViewStateChange()
     if ((changed & ViewState::IsVisible) && !isViewVisible())
         m_process->responsivenessTimer()->stop();
 
-    if ((m_potentiallyChangedViewStateFlags & ViewState::IsInWindow) && (m_viewState & ViewState::IsInWindow)) {
-        LayerHostingMode layerHostingMode = m_pageClient.viewLayerHostingMode();
-        if (m_layerHostingMode != layerHostingMode) {
-            m_layerHostingMode = layerHostingMode;
-            m_process->send(Messages::WebPage::SetLayerHostingMode(static_cast<unsigned>(layerHostingMode)), m_pageID);
-        }
-    }
-
-    if ((m_potentiallyChangedViewStateFlags & ViewState::IsInWindow) && !(m_viewState & ViewState::IsInWindow)) {
-#if ENABLE(INPUT_TYPE_COLOR_POPOVER)
-        // When leaving the current page, close the popover color well.
-        if (m_colorPicker)
-            endColorPicker();
-#endif
-#if PLATFORM(IOS)
-        // When leaving the current page, close the video fullscreen.
-        if (m_videoFullscreenManager)
-            m_videoFullscreenManager->requestHideAndExitFullscreen();
-#endif
+    if (changed & ViewState::IsInWindow) {
+        if (isInWindow())
+            viewDidEnterWindow();
+        else
+            viewDidLeaveWindow();
     }
 
     updateBackingStoreDiscardableState();
 
-    if (m_viewStateChangeWantsReply == WantsReplyOrNot::DoesWantReply)
+    if (m_viewStateChangeWantsReply)
         waitForDidUpdateViewState();
 
     m_potentiallyChangedViewStateFlags = ViewState::NoFlags;
-    m_viewStateChangeWantsReply = WantsReplyOrNot::DoesNotWantReply;
+    m_viewStateChangeWantsReply = false;
 }
 
 void WebPageProxy::updateActivityToken()
@@ -1848,7 +1885,7 @@ SessionState WebPageProxy::sessionState(const std::function<bool (WebBackForward
     return sessionState;
 }
 
-uint64_t WebPageProxy::restoreFromSessionState(SessionState sessionState)
+uint64_t WebPageProxy::restoreFromSessionState(SessionState sessionState, bool navigate)
 {
     bool hasBackForwardList = !!sessionState.backForwardListState.currentIndex;
 
@@ -1861,15 +1898,17 @@ uint64_t WebPageProxy::restoreFromSessionState(SessionState sessionState)
         process().send(Messages::WebPage::RestoreSession(m_backForwardList->itemStates()), m_pageID);
     }
 
-    // FIXME: Navigating should be separate from state restoration.
+    if (navigate) {
+        // FIXME: Navigating should be separate from state restoration.
 
-    if (!sessionState.provisionalURL.isNull())
-        return loadRequest(sessionState.provisionalURL);
+        if (!sessionState.provisionalURL.isNull())
+            return loadRequest(sessionState.provisionalURL);
 
-    if (hasBackForwardList) {
-        // FIXME: Do we have to null check the back forward list item here?
-        if (WebBackForwardListItem* item = m_backForwardList->currentItem())
-            return goToBackForwardItem(item);
+        if (hasBackForwardList) {
+            // FIXME: Do we have to null check the back forward list item here?
+            if (WebBackForwardListItem* item = m_backForwardList->currentItem())
+                return goToBackForwardItem(item);
+        }
     }
 
     return 0;
@@ -2372,9 +2411,6 @@ void WebPageProxy::preferencesDidChange()
     if (m_preferences->developerExtrasEnabled())
         inspector()->enableRemoteInspection();
 #endif
-
-    if (m_drawingArea)
-        m_drawingArea->setShouldShowDebugIndicator(m_preferences->tiledScrollingIndicatorVisible());
 
     m_process->pagePreferencesChanged(this);
 
@@ -4905,7 +4941,7 @@ void WebPageProxy::dictationAlternatives(uint64_t dictationContext, Vector<Strin
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(COCOA)
-ViewSnapshot WebPageProxy::takeViewSnapshot()
+PassRefPtr<ViewSnapshot> WebPageProxy::takeViewSnapshot()
 {
     return m_pageClient.takeViewSnapshot();
 }

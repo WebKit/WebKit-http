@@ -464,6 +464,7 @@ public:
     double minimumPageScaleFactor() const;
     double maximumPageScaleFactor() const;
     bool allowsUserScaling() const;
+    bool hasStablePageScaleFactor() const { return m_hasStablePageScaleFactor; }
 
     void handleTap(const WebCore::IntPoint&);
     void potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
@@ -506,6 +507,7 @@ public:
 
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
     void contentSizeCategoryDidChange(const String&);
+    void executeEditCommandWithCallback(const String&, uint64_t callbackID);
 #if ENABLE(INSPECTOR)
     void showInspectorHighlight(const WebCore::Highlight&);
     void hideInspectorHighlight();
@@ -830,7 +832,7 @@ public:
 #if ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION) 
     ServicesOverlayController& servicesOverlayController();
     void handleTelephoneNumberClick(const String& number, const WebCore::IntPoint&);
-    void handleSelectionServiceClick(WebCore::FrameSelection&, const WebCore::IntPoint&);
+    void handleSelectionServiceClick(WebCore::FrameSelection&, const Vector<String>& telephoneNumbers, const WebCore::IntPoint&);
     bool serviceControlsEnabled() const { return m_serviceControlsEnabled; }
 #endif
 
@@ -1226,6 +1228,7 @@ private:
     bool m_hasReceivedVisibleContentRectsAfterDidCommitLoad;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
+    bool m_hasStablePageScaleFactor;
     bool m_userIsInteracting;
     bool m_hasPendingBlurNotification;
     bool m_useTestingViewportConfiguration;

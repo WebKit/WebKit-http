@@ -184,7 +184,7 @@ static void showGlyphsWithAdvances(const FloatPoint& point, const SimpleFontData
     }
 }
 
-void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* font, const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs, const FloatPoint& anchorPoint) const
+void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* font, const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& anchorPoint) const
 {
     const FontPlatformData& platformData = font->platformData();
     if (!platformData.size())
@@ -303,6 +303,7 @@ void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* font, cons
 
 #if PLATFORM(IOS)
     CGContextSetFontSize(cgContext, 1);
+    CGContextSetShouldSubpixelQuantizeFonts(cgContext, context->shouldSubpixelQuantizeFonts());
 #else
     wkSetCGFontRenderingMode(cgContext, drawFont, context->shouldSubpixelQuantizeFonts());
     if (drawFont)
@@ -468,7 +469,7 @@ private:
     virtual void advance() override;
     void moveToNextValidGlyph();
 
-    unsigned m_index;
+    int m_index;
     const TextRun& m_textRun;
     const GlyphBuffer& m_glyphBuffer;
     const SimpleFontData* m_fontData;
@@ -576,7 +577,8 @@ DashArray Font::dashesForIntersectionsWithRect(const TextRun& run, const FloatPo
 bool Font::primaryFontDataIsSystemFont() const
 {
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED > 1090
-    return !isSVGFont() && CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(primaryFont()->platformData().ctFont())).get());
+    const auto* fontData = primaryFont();
+    return !fontData->isSVGFont() && CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(fontData->platformData().ctFont())).get());
 #else
     // System fonts are hidden by having a name that begins with a period, so simply search
     // for that here rather than try to keep the list up to date.

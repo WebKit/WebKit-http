@@ -60,7 +60,8 @@ RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy(WebPageProxy* w
 
     m_webPageProxy->process().addMessageReceiver(Messages::RemoteLayerTreeDrawingAreaProxy::messageReceiverName(), m_webPageProxy->pageID(), *this);
 
-    setShouldShowDebugIndicator(m_webPageProxy->preferences().tiledScrollingIndicatorVisible());
+    if (m_webPageProxy->preferences().tiledScrollingIndicatorVisible())
+        initializeDebugIndicator();
 
     m_layerCommitObserver = RunLoopObserver::create(didCommitLayersRunLoopOrder, [this]() {
         this->coreAnimationDidCommitLayers();
@@ -266,19 +267,8 @@ void RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator(IntSize contentsSize,
     }
 }
 
-void RemoteLayerTreeDrawingAreaProxy::setShouldShowDebugIndicator(bool show)
+void RemoteLayerTreeDrawingAreaProxy::initializeDebugIndicator()
 {
-    if (show == !!m_debugIndicatorLayerTreeHost)
-        return;
-    
-    if (!show) {
-        [m_tileMapHostLayer removeFromSuperlayer];
-        m_tileMapHostLayer = nullptr;
-        m_exposedRectIndicatorLayer = nullptr;
-        m_debugIndicatorLayerTreeHost = nullptr;
-        return;
-    }
-    
     m_debugIndicatorLayerTreeHost = std::make_unique<RemoteLayerTreeHost>(*this);
     m_debugIndicatorLayerTreeHost->setIsDebugLayerTreeHost(true);
 
@@ -341,8 +331,6 @@ void RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateViewState()
 
 void RemoteLayerTreeDrawingAreaProxy::dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)> callbackFunction)
 {
-    RefPtr<VoidCallback> callback = VoidCallback::create(callbackFunction);
-
     if (!m_webPageProxy->isValid()) {
         callbackFunction(CallbackBase::Error::OwnerWasInvalidated);
         return;

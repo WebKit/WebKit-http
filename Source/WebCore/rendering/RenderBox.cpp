@@ -1256,9 +1256,8 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
         // To avoid the background color bleeding out behind the border, we'll render background and border
         // into a transparency layer, and then clip that in one go (which requires setting up the clip before
         // beginning the layer).
-        RoundedRect border = style().getRoundedBorderFor(paintRect);
         stateSaver.save();
-        paintInfo.context->clipRoundedRect(FloatRoundedRect(border));
+        paintInfo.context->clipRoundedRect(style().getRoundedBorderFor(paintRect).pixelSnappedRoundedRectForPainting(document().deviceScaleFactor()));
         paintInfo.context->beginTransparencyLayer(1);
     }
 
@@ -1566,21 +1565,27 @@ void RenderBox::paintFillLayers(const PaintInfo& paintInfo, const Color& c, cons
     GraphicsContext* context = paintInfo.context;
     if (!context)
         shouldDrawBackgroundInSeparateBuffer = false;
-    if (shouldDrawBackgroundInSeparateBuffer)
+
+    BaseBackgroundColorUsage baseBgColorUsage = BaseBackgroundColorUse;
+
+    if (shouldDrawBackgroundInSeparateBuffer) {
+        paintFillLayer(paintInfo, c, *layers.rbegin(), rect, bleedAvoidance, op, backgroundObject, BaseBackgroundColorOnly);
+        baseBgColorUsage = BaseBackgroundColorSkip;
         context->beginTransparencyLayer(1);
+    }
 
     Vector<const FillLayer*>::const_reverse_iterator topLayer = layers.rend();
     for (Vector<const FillLayer*>::const_reverse_iterator it = layers.rbegin(); it != topLayer; ++it)
-        paintFillLayer(paintInfo, c, *it, rect, bleedAvoidance, op, backgroundObject);
+        paintFillLayer(paintInfo, c, *it, rect, bleedAvoidance, op, backgroundObject, baseBgColorUsage);
 
     if (shouldDrawBackgroundInSeparateBuffer)
         context->endTransparencyLayer();
 }
 
 void RenderBox::paintFillLayer(const PaintInfo& paintInfo, const Color& c, const FillLayer* fillLayer, const LayoutRect& rect,
-    BackgroundBleedAvoidance bleedAvoidance, CompositeOperator op, RenderElement* backgroundObject)
+    BackgroundBleedAvoidance bleedAvoidance, CompositeOperator op, RenderElement* backgroundObject, BaseBackgroundColorUsage baseBgColorUsage)
 {
-    paintFillLayerExtended(paintInfo, c, fillLayer, rect, bleedAvoidance, 0, LayoutSize(), op, backgroundObject);
+    paintFillLayerExtended(paintInfo, c, fillLayer, rect, bleedAvoidance, 0, LayoutSize(), op, backgroundObject, baseBgColorUsage);
 }
 
 static bool layersUseImage(WrappedImagePtr image, const FillLayer* layers)

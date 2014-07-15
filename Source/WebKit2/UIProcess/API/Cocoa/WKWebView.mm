@@ -67,6 +67,7 @@
 #import "_WKFindDelegate.h"
 #import "_WKFormDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
+#import "_WKSessionStateInternal.h"
 #import "_WKVisitedLinkProviderInternal.h"
 #import "_WKWebsiteDataStoreInternal.h"
 #import <JavaScriptCore/JSContext.h>
@@ -276,7 +277,6 @@ static int32_t deviceOrientation()
     [_scrollView setBouncesZoom:YES];
 
     [self addSubview:_scrollView.get()];
-    [_scrollView setBackgroundColor:[UIColor whiteColor]];
 
     _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self]);
 
@@ -287,6 +287,9 @@ static int32_t deviceOrientation()
     [_contentView layer].anchorPoint = CGPointZero;
     [_contentView setFrame:bounds];
     [_scrollView addSubview:_contentView.get()];
+    [_scrollView addSubview:[_contentView unscaledView]];
+    [self _updateScrollViewBackground];
+
     _viewportMetaTagWidth = -1;
 
     [self _frameOrBoundsChanged];
@@ -304,7 +307,7 @@ static int32_t deviceOrientation()
 #endif
 
 #if PLATFORM(MAC)
-    _wkView = [[WKView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self];
+    _wkView = adoptNS([[WKView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self]);
     [self addSubview:_wkView.get()];
     _page = WebKit::toImpl([_wkView pageRef]);
 
@@ -391,6 +394,9 @@ static int32_t deviceOrientation()
 - (WKNavigation *)loadHTMLString:(NSString *)string baseURL:(NSURL *)baseURL
 {
     uint64_t navigationID = _page->loadHTMLString(string, baseURL.absoluteString);
+    if (!navigationID)
+        return nil;
+
     auto navigation = _navigationState->createLoadDataNavigation(navigationID);
 
     return navigation.autorelease();
@@ -448,7 +454,7 @@ static int32_t deviceOrientation()
 
     ASSERT(_page->backForwardList().currentItem());
     auto navigation = _navigationState->createBackForwardNavigation(navigationID, *_page->backForwardList().currentItem());
-
+ 
     return navigation.autorelease();
 }
 
@@ -467,7 +473,8 @@ static int32_t deviceOrientation()
 - (WKNavigation *)reload
 {
     uint64_t navigationID = _page->reload(false);
-    ASSERT(navigationID);
+    if (!navigationID)
+        return nil;
 
     auto navigation = _navigationState->createReloadNavigation(navigationID);
     return navigation.autorelease();
@@ -476,7 +483,8 @@ static int32_t deviceOrientation()
 - (WKNavigation *)reloadFromOrigin
 {
     uint64_t navigationID = _page->reload(true);
-    ASSERT(navigationID);
+    if (!navigationID)
+        return nil;
 
     auto navigation = _navigationState->createReloadNavigation(navigationID);
     return navigation.autorelease();
@@ -604,6 +612,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
         _customContentFixedOverlayView = adoptNS([[UIView alloc] initWithFrame:self.bounds]);
         [_customContentFixedOverlayView setUserInteractionEnabled:NO];
 
+        [[_contentView unscaledView] removeFromSuperview];
         [_contentView removeFromSuperview];
         [_scrollView addSubview:_customContentView.get()];
         [self addSubview:_customContentFixedOverlayView.get()];
@@ -618,6 +627,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
         _customContentFixedOverlayView = nullptr;
 
         [_scrollView addSubview:_contentView.get()];
+        [_scrollView addSubview:[_contentView unscaledView]];
         [_scrollView setContentSize:roundScrollViewContentSize(*_page, [_contentView frame].size)];
 
         [_customContentFixedOverlayView setFrame:self.bounds];
@@ -650,27 +660,42 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     }
 }
 
-static CGFloat contentZoomScale(WKWebView* webView)
+static CGFloat contentZoomScale(WKWebView *webView)
 {
-    CGFloat scale = [[webView._currentContentView layer] affineTransform].a;
+    CGFloat scale = webView._currentContentView.layer.affineTransform.a;
     ASSERT(scale == [webView->_scrollView zoomScale]);
     return scale;
 }
 
-- (void)_updateScrollViewBackground
+static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 {
+    if (!webView.opaque)
+        return WebCore::Color::transparent;
+
     WebCore::Color color;
-    if (_customContentView)
-        color = [_customContentView backgroundColor].CGColor;
+
+    if (webView->_customContentView)
+        color = [webView->_customContentView backgroundColor].CGColor;
     else
-        color = _page->pageExtendedBackgroundColor();
-    CGFloat zoomScale = contentZoomScale(self);
-    CGFloat minimumZoomScale = [_scrollView minimumZoomScale];
+        color = webView->_page->pageExtendedBackgroundColor();
+
+    if (!color.isValid())
+        color = WebCore::Color::white;
+
+    CGFloat zoomScale = contentZoomScale(webView);
+    CGFloat minimumZoomScale = [webView->_scrollView minimumZoomScale];
     if (zoomScale < minimumZoomScale) {
         CGFloat slope = 12;
         CGFloat opacity = std::max<CGFloat>(1 - slope * (minimumZoomScale - zoomScale), 0);
         color = WebCore::colorWithOverrideAlpha(color.rgb(), opacity);
     }
+
+    return color;
+}
+
+- (void)_updateScrollViewBackground
+{
+    WebCore::Color color = scrollViewBackgroundColor(self);
 
     if (_scrollViewBackgroundColor == color)
         return;
@@ -716,6 +741,7 @@ static CGFloat contentZoomScale(WKWebView* webView)
     if (!_customContentView && _isAnimatingResize) {
         NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
         [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
+        [_scrollView insertSubview:[_contentView unscaledView] atIndex:indexOfResizeAnimationView + 1];
         [_resizeAnimationView removeFromSuperview];
         _resizeAnimationView = nil;
 
@@ -836,7 +862,7 @@ static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, Web
         CGFloat animatingScaleTarget = [[_resizeAnimationView layer] transform].m11;
         double currentTargetScale = animatingScaleTarget * [[_contentView layer] transform].m11;
         double scale = newScale / currentTargetScale;
-        _resizeAnimationTransformAdjustments = CATransform3DMakeScale(scale, scale, 0);
+        _resizeAnimationTransformAdjustments = CATransform3DMakeScale(scale, scale, 1);
 
         CGPoint newContentOffset = [self _adjustedContentOffset:CGPointMake(newScrollPosition.x * newScale, newScrollPosition.y * newScale)];
         CGPoint currentContentOffset = [_scrollView contentOffset];
@@ -876,24 +902,23 @@ static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, Web
     _scaleToRestore = scale;
 }
 
-- (WebKit::ViewSnapshot)_takeViewSnapshot
+- (PassRefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot
 {
     float deviceScale = WKGetScreenScaleFactor();
     CGSize snapshotSize = self.bounds.size;
     snapshotSize.width *= deviceScale;
     snapshotSize.height *= deviceScale;
 
-    WebKit::ViewSnapshot snapshot;
-    snapshot.slotID = [WebKit::ViewSnapshotStore::snapshottingContext() createImageSlot:snapshotSize hasAlpha:YES];
+    uint32_t slotID = [WebKit::ViewSnapshotStore::snapshottingContext() createImageSlot:snapshotSize hasAlpha:YES];
+
+    if (!slotID)
+        return nullptr;
 
     CATransform3D transform = CATransform3DMakeScale(deviceScale, deviceScale, 1);
-    CARenderServerCaptureLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, (uint64_t)self.layer, snapshot.slotID, 0, 0, &transform);
+    CARenderServerCaptureLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, (uint64_t)self.layer, slotID, 0, 0, &transform);
 
-    snapshot.size = WebCore::expandedIntSize(WebCore::FloatSize(snapshotSize));
-    snapshot.imageSizeInBytes = snapshotSize.width * snapshotSize.height * 4;
-    snapshot.backgroundColor = _page->pageExtendedBackgroundColor();
-
-    return snapshot;
+    WebCore::IntSize imageSize = WebCore::expandedIntSize(WebCore::FloatSize(snapshotSize));
+    return WebKit::ViewSnapshot::create(slotID, imageSize, imageSize.width() * imageSize.height() * 4);
 }
 
 - (void)_zoomToPoint:(WebCore::FloatPoint)point atScale:(double)scale
@@ -1152,6 +1177,26 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)didMoveToWindow
 {
     _page->viewStateDidChange(WebCore::ViewState::IsInWindow);
+}
+
+- (void)setOpaque:(BOOL)opaque
+{
+    BOOL oldOpaque = self.opaque;
+
+    [super setOpaque:opaque];
+    [_contentView setOpaque:opaque];
+
+    if (oldOpaque == opaque)
+        return;
+
+    _page->setDrawsBackground(opaque);
+    [self _updateScrollViewBackground];
+}
+
+- (void)setBackgroundColor:(UIColor *)backgroundColor
+{
+    [super setBackgroundColor:backgroundColor];
+    [_contentView setBackgroundColor:backgroundColor];
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -1494,11 +1539,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     _page->loadAlternateHTMLString(string, [baseURL _web_originalDataAsWTFString], [unreachableURL _web_originalDataAsWTFString]);
 }
 
-- (WKNavigation *)_reload
-{
-    return [self reload];
-}
-
 - (NSArray *)_certificateChain
 {
     if (WebKit::WebFrameProxy* mainFrame = _page->mainFrame())
@@ -1595,9 +1635,9 @@ static int32_t activeOrientation(WKWebView *webView)
 }
 
 // FIXME: This should return a _WKSessionState object.
-- (NSData *)_sessionState
+- (id)_sessionState
 {
-    return [self _sessionStateData];
+    return adoptNS([[_WKSessionState alloc] _initWithSessionState:_page->sessionState()]).autorelease();
 }
 
 - (void)_restoreFromSessionStateData:(NSData *)sessionStateData
@@ -1607,17 +1647,26 @@ static int32_t activeOrientation(WKWebView *webView)
     if (!WebKit::decodeLegacySessionState(static_cast<const uint8_t*>(sessionStateData.bytes), sessionStateData.length, sessionState))
         return;
 
-    uint64_t navigationID = _page->restoreFromSessionState(WTF::move(sessionState));
-    if (navigationID) {
+    if (uint64_t navigationID = _page->restoreFromSessionState(WTF::move(sessionState), true)) {
         // FIXME: This is not necessarily always a reload navigation.
         _navigationState->createReloadNavigation(navigationID);
     }
 }
 
-// FIXME: This should take a _WKSessionState object.
-- (void)_restoreFromSessionState:(NSData *)sessionStateData
+// FIXME: Remove this once nobody is using it.
+- (void)_restoreFromSessionState:(id)sessionState
 {
-    [self _restoreFromSessionStateData:sessionStateData];
+    [self _restoreSessionState:sessionState andNavigate:YES];
+}
+
+- (WKNavigation *)_restoreSessionState:(_WKSessionState *)sessionState andNavigate:(BOOL)navigate
+{
+    if (uint64_t navigationID = _page->restoreFromSessionState(sessionState->_sessionState, navigate)) {
+        // FIXME: This is not necessarily always a reload navigation.
+        return _navigationState->createReloadNavigation(navigationID).autorelease();
+    }
+
+    return nil;
 }
 
 - (void)_close
@@ -2095,6 +2144,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _resizeAnimationView = adoptNS([[UIView alloc] init]);
     [_scrollView insertSubview:_resizeAnimationView.get() atIndex:indexOfContentView];
     [_resizeAnimationView addSubview:_contentView.get()];
+    [_resizeAnimationView addSubview:[_contentView unscaledView]];
 
     CGSize contentSizeInContentViewCoordinates = [_contentView bounds].size;
     [_scrollView setMinimumZoomScale:std::min(newMinimumLayoutSize.width() / contentSizeInContentViewCoordinates.width, [_scrollView minimumZoomScale])];
@@ -2153,6 +2203,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
     [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
+    [_scrollView insertSubview:[_contentView unscaledView] atIndex:indexOfResizeAnimationView + 1];
 
     CALayer *contentViewLayer = [_contentView layer];
     CGFloat adjustmentScale = _resizeAnimationTransformAdjustments.m11;

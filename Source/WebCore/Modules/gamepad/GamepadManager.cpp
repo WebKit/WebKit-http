@@ -27,13 +27,25 @@
 
 #if ENABLE(GAMEPAD)
 
+#include "DOMWindow.h"
+#include "Document.h"
 #include "Gamepad.h"
+#include "GamepadEvent.h"
 #include "GamepadProvider.h"
 #include "Logging.h"
 #include "NavigatorGamepad.h"
 #include "PlatformGamepad.h"
 
 namespace WebCore {
+
+static NavigatorGamepad* navigatorGamepadFromDOMWindow(DOMWindow* window)
+{
+    Navigator* navigator = window->navigator();
+    if (!navigator)
+        return nullptr;
+
+    return NavigatorGamepad::from(navigator);
+}
 
 GamepadManager& GamepadManager::shared()
 {
@@ -42,51 +54,101 @@ GamepadManager& GamepadManager::shared()
 }
 
 GamepadManager::GamepadManager()
+    : m_isMonitoringGamepads(false)
 {
-    GamepadProvider::shared().stopMonitoringGamepads(this);
 }
 
-void GamepadManager::platformGamepadConnected(unsigned index)
+void GamepadManager::platformGamepadConnected(PlatformGamepad& platformGamepad)
 {
-    for (auto& navigator : m_navigators) {
-        if (!m_gamepadBlindNavigators.contains(navigator))
-            navigator->gamepadConnected(index);
+    // Notify blind Navigators and Windows about all gamepads except for this one.
+    for (auto* gamepad : GamepadProvider::shared().platformGamepads()) {
+        if (!gamepad || gamepad == &platformGamepad)
+            continue;
 
-        // FIXME: Fire connected event to all pages with listeners.
+        makeGamepadVisible(*gamepad, m_gamepadBlindNavigators, m_gamepadBlindDOMWindows);
     }
 
-    makeGamepadsVisibileToBlindNavigators();
+    m_gamepadBlindNavigators.clear();
+    m_gamepadBlindDOMWindows.clear();
+
+    // Notify everyone of this new gamepad.
+    makeGamepadVisible(platformGamepad, m_navigators, m_domWindows);
 }
 
-void GamepadManager::platformGamepadDisconnected(unsigned index)
+void GamepadManager::platformGamepadDisconnected(PlatformGamepad& platformGamepad)
 {
-    for (auto& navigator : m_navigators) {
-        if (!m_gamepadBlindNavigators.contains(navigator))
-            navigator->gamepadDisconnected(index);
+    Vector<DOMWindow*> domWindowVector;
+    copyToVector(m_domWindows, domWindowVector);
 
-        // FIXME: Fire disconnected event to all pages with listeners.
+    HashSet<NavigatorGamepad*> notifiedNavigators;
+
+    // Handle the disconnect for all DOMWindows with event listeners and their Navigators.
+    for (auto* window : domWindowVector) {
+        // Event dispatch might have made this window go away.
+        if (!m_domWindows.contains(window))
+            continue;
+
+        NavigatorGamepad* navigator = navigatorGamepadFromDOMWindow(window);
+        if (!navigator)
+            continue;
+
+        // If this Navigator hasn't seen gamepads yet then its Window should not get the disconnect event.
+        if (m_gamepadBlindNavigators.contains(navigator))
+            continue;
+
+        RefPtr<Gamepad> gamepad = navigator->gamepadAtIndex(platformGamepad.index());
+        ASSERT(gamepad);
+
+        navigator->gamepadDisconnected(platformGamepad);
+        notifiedNavigators.add(navigator);
+
+        window->dispatchEvent(GamepadEvent::create(eventNames().gamepaddisconnectedEvent, gamepad.get()), window->document());
+    }
+
+    // Notify all the Navigators that haven't already been notified.
+    for (auto* navigator : m_navigators) {
+        if (!notifiedNavigators.contains(navigator))
+            navigator->gamepadDisconnected(platformGamepad);
     }
 }
 
 void GamepadManager::platformGamepadInputActivity()
 {
-    makeGamepadsVisibileToBlindNavigators();
-}
+    if (m_gamepadBlindNavigators.isEmpty() && m_gamepadBlindDOMWindows.isEmpty())
+        return;
 
-void GamepadManager::makeGamepadsVisibileToBlindNavigators()
-{
-    for (auto& navigator : m_gamepadBlindNavigators) {
-        // FIXME: Here we notify a blind Navigator of each existing gamepad.
-        // But we also need to fire the connected event to its corresponding DOMWindow objects.
-        auto& platformGamepads = GamepadProvider::shared().platformGamepads();
-        unsigned size = platformGamepads.size();
-        for (unsigned i = 0; i < size; ++i) {
-            if (platformGamepads[i])
-                navigator->gamepadConnected(i);
-        }
-    }
+    for (auto* gamepad : GamepadProvider::shared().platformGamepads())
+        makeGamepadVisible(*gamepad, m_gamepadBlindNavigators, m_gamepadBlindDOMWindows);
 
     m_gamepadBlindNavigators.clear();
+    m_gamepadBlindDOMWindows.clear();
+}
+
+void GamepadManager::makeGamepadVisible(PlatformGamepad& platformGamepad, HashSet<NavigatorGamepad*>& navigatorSet, HashSet<DOMWindow*>& domWindowSet)
+{
+    if (navigatorSet.isEmpty() && domWindowSet.isEmpty())
+        return;
+
+    for (auto* navigator : navigatorSet)
+        navigator->gamepadConnected(platformGamepad);
+
+    Vector<DOMWindow*> domWindowVector;
+    copyToVector(domWindowSet, domWindowVector);
+
+    for (auto* window : domWindowVector) {
+        // Event dispatch might have made this window go away.
+        if (!m_domWindows.contains(window))
+            continue;
+
+        NavigatorGamepad* navigator = navigatorGamepadFromDOMWindow(window);
+        if (!navigator)
+            continue;
+
+        RefPtr<Gamepad> gamepad = navigator->gamepadAtIndex(platformGamepad.index());
+        ASSERT(gamepad);
+
+        window->dispatchEvent(GamepadEvent::create(eventNames().gamepadconnectedEvent, gamepad.get()), window->document());
+    }
 }
 
 void GamepadManager::registerNavigator(NavigatorGamepad* navigator)
@@ -97,13 +159,7 @@ void GamepadManager::registerNavigator(NavigatorGamepad* navigator)
     m_navigators.add(navigator);
     m_gamepadBlindNavigators.add(navigator);
 
-    // FIXME: Monitoring gamepads will also be reliant on whether or not there are any
-    // connected/disconnected event listeners.
-    // Those event listeners will also need to register with the GamepadManager.
-    if (m_navigators.size() == 1) {
-        LOG(Gamepad, "GamepadManager registered first navigator, is starting gamepad monitoring");
-        GamepadProvider::shared().startMonitoringGamepads(this);
-    }
+    maybeStartMonitoringGamepads();
 }
 
 void GamepadManager::unregisterNavigator(NavigatorGamepad* navigator)
@@ -114,11 +170,62 @@ void GamepadManager::unregisterNavigator(NavigatorGamepad* navigator)
     m_navigators.remove(navigator);
     m_gamepadBlindNavigators.remove(navigator);
 
-    // FIXME: Monitoring gamepads will also be reliant on whether or not there are any
-    // connected/disconnected event listeners.
-    // Those event listeners will also need to register with the GamepadManager.
-    if (m_navigators.isEmpty()) {
-        LOG(Gamepad, "GamepadManager unregistered last navigator, is stopping gamepad monitoring");
+    maybeStopMonitoringGamepads();
+}
+
+void GamepadManager::registerDOMWindow(DOMWindow* window)
+{
+    LOG(Gamepad, "GamepadManager registering DOMWindow %p", window);
+
+    ASSERT(!m_domWindows.contains(window));
+    m_domWindows.add(window);
+
+    // Anytime we register a DOMWindow, we should also double check that its NavigatorGamepad is registered.
+    NavigatorGamepad* navigator = navigatorGamepadFromDOMWindow(window);
+    ASSERT(navigator);
+
+    if (m_navigators.add(navigator).isNewEntry)
+        m_gamepadBlindNavigators.add(navigator);
+
+    // If this DOMWindow's NavigatorGamepad was already registered but was still blind,
+    // then this DOMWindow should be blind.
+    if (m_gamepadBlindNavigators.contains(navigator))
+        m_gamepadBlindDOMWindows.add(window);
+
+    maybeStartMonitoringGamepads();
+}
+
+void GamepadManager::unregisterDOMWindow(DOMWindow* window)
+{
+    LOG(Gamepad, "GamepadManager unregistering DOMWindow %p", window);
+
+    ASSERT(m_domWindows.contains(window));
+    m_domWindows.remove(window);
+    m_gamepadBlindDOMWindows.remove(window);
+
+    maybeStopMonitoringGamepads();
+}
+
+void GamepadManager::maybeStartMonitoringGamepads()
+{
+    if (m_isMonitoringGamepads)
+        return;
+
+    if (!m_navigators.isEmpty() || !m_domWindows.isEmpty()) {
+        LOG(Gamepad, "GamepadManager has %i NavigatorGamepads and %i DOMWindows registered, is starting gamepad monitoring", m_navigators.size(), m_domWindows.size());
+        m_isMonitoringGamepads = true;
+        GamepadProvider::shared().startMonitoringGamepads(this);
+    }
+}
+
+void GamepadManager::maybeStopMonitoringGamepads()
+{
+    if (!m_isMonitoringGamepads)
+        return;
+
+    if (m_navigators.isEmpty() && m_domWindows.isEmpty()) {
+        LOG(Gamepad, "GamepadManager has no NavigatorGamepads or DOMWindows registered, is stopping gamepad monitoring");
+        m_isMonitoringGamepads = false;
         GamepadProvider::shared().stopMonitoringGamepads(this);
     }
 }

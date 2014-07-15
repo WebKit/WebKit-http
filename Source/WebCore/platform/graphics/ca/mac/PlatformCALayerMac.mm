@@ -42,6 +42,7 @@
 #import "WebActionDisablingCALayerDelegate.h"
 #import "WebCoreCALayerExtras.h"
 #import "WebLayer.h"
+#import "WebGLLayer.h"
 #import "WebTiledBackingLayer.h"
 #import <objc/objc-auto.h>
 #import <objc/runtime.h>
@@ -132,7 +133,8 @@ static double mediaTimeToCurrentTime(CFTimeInterval t)
             }
         }
 
-        m_owner->animationStarted(animationKey, startTime);
+        if (!animationKey.isEmpty())
+            m_owner->animationStarted(animationKey, startTime);
     }
 }
 
@@ -174,6 +176,17 @@ static NSString *toCAFilterType(PlatformCALayer::FilterType type)
     }
 }
 
+PlatformCALayer::LayerType PlatformCALayerMac::layerTypeForPlatformLayer(PlatformLayer* layer)
+{
+    if ([layer isKindOfClass:getAVPlayerLayerClass()])
+        return LayerTypeAVPlayerLayer;
+
+    if ([layer isKindOfClass:[WebGLLayer class]])
+        return LayerTypeWebGLLayer;
+
+    return LayerTypeCustom;
+}
+
 PlatformCALayerMac::PlatformCALayerMac(LayerType layerType, PlatformCALayerClient* owner)
     : PlatformCALayer(layerType, owner)
     , m_customAppearance(GraphicsLayer::NoCustomAppearance)
@@ -205,6 +218,10 @@ PlatformCALayerMac::PlatformCALayerMac(LayerType layerType, PlatformCALayerClien
     case LayerTypeAVPlayerLayer:
         layerClass = getAVPlayerLayerClass();
         break;
+    case LayerTypeWebGLLayer:
+        // We don't create PlatformCALayerMacs wrapped around WebGLLayers.
+        ASSERT_NOT_REACHED();
+        break;
     case LayerTypeCustom:
         break;
     }
@@ -216,7 +233,7 @@ PlatformCALayerMac::PlatformCALayerMac(LayerType layerType, PlatformCALayerClien
 }
 
 PlatformCALayerMac::PlatformCALayerMac(PlatformLayer* layer, PlatformCALayerClient* owner)
-    : PlatformCALayer([layer isKindOfClass:getAVPlayerLayerClass()] ? LayerTypeAVPlayerLayer : LayerTypeCustom, owner)
+    : PlatformCALayer(layerTypeForPlatformLayer(layer), owner)
     , m_customAppearance(GraphicsLayer::NoCustomAppearance)
     , m_customBehavior(GraphicsLayer::NoCustomBehavior)
 {
@@ -231,7 +248,7 @@ void PlatformCALayerMac::commonInit()
     [m_layer setValue:[NSValue valueWithPointer:this] forKey:platformCALayerPointer];
     
     // Clear all the implicit animations on the CALayer
-    if (m_layerType == LayerTypeAVPlayerLayer || m_layerType == LayerTypeCustom)
+    if (m_layerType == LayerTypeAVPlayerLayer || m_layerType == LayerTypeWebGLLayer || m_layerType == LayerTypeCustom)
         [m_layer web_disableAllActions];
     else
         [m_layer setDelegate:[WebActionDisablingCALayerDelegate shared]];

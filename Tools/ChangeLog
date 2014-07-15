@@ -1,3 +1,324 @@
+2014-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Pasting rich content does not perform a two-step paste
+        https://bugs.webkit.org/show_bug.cgi?id=134795
+
+        Reviewed by Benjamin Poulain.
+
+        Two-step paste requires setting InputViewObeysDOMFocus on the UIWebBrowserView.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (createWebViewAndOffscreenWindow):
+
+2014-07-10  Carlos Garcia Campos  <cgarcia@igalia.com> and Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][CMake] Add a 'distcheck' target
+        https://bugs.webkit.org/show_bug.cgi?id=130675
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add --check option to make-dist script that builds and installs the tarball.
+
+        * gtk/make-dist.py:
+        (Distcheck.__init__):
+        (Distcheck.extract_tarball): Extratc the tarball.
+        (Distcheck.configure): Run cmake.
+        (Distcheck.configure.create_dir): Helper function to create a directory.
+        (Distcheck.build): Run make.
+        (Distcheck.install): Run make install.
+        (Distcheck.clean): Clean up the extracted tarball.
+        (Distcheck.check): Run all previous methods in order.
+        * gtk/manifest.txt: Add missing file.
+
+2014-07-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use the same default options for production builds that previous stable releases
+        https://bugs.webkit.org/show_bug.cgi?id=134589
+
+        Reviewed by Martin Robinson.
+
+        Make sure all features enabled in production builds are also
+        enabled in developer mode.
+
+        * Scripts/webkitperl/FeatureList.pm: Enable ACCELERATED_2D_CANVAS
+        and CSS_FILTERS for the GTK port.
+
+2014-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove uses of 'bash' in build system
+        https://bugs.webkit.org/show_bug.cgi?id=134782
+        <rdar://problem/17615533>
+
+        Reviewed by Dean Jackson.
+
+        Remove uses of 'bash' by replacing Windows-specific bash scripts
+        with Perl equivalents.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreePreBuild.cmd:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffPreBuild.cmd:
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginPreBuild.cmd:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIPreBuild.cmd:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibPreBuild.cmd:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherPreBuild.cmd:
+
+2014-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove use of 'grep' in build steps
+        https://bugs.webkit.org/show_bug.cgi?id=134770
+        <rdar://problem/17608783>
+
+        Reviewed by Tim Horton.
+
+        Replace uses of the grep command in Windows builds with the equivalent
+        Perl program.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreePreBuild.cmd:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffPreBuild.cmd:
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginPreBuild.cmd:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIPreBuild.cmd:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibPreBuild.cmd:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherPreBuild.cmd:
+
+2014-07-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170889.
+        https://bugs.webkit.org/show_bug.cgi?id=134754
+
+        This patch is wrong (Requested by philn on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Gstreamer missing from the install-dependencies script"
+        https://bugs.webkit.org/show_bug.cgi?id=134727
+        http://trac.webkit.org/changeset/170889
+
+2014-07-08  Brian J. Burg  <burg@cs.washington.edu>
+
+        resolve-ChangeLogs fails when WebKit repository is a git submodule
+        https://bugs.webkit.org/show_bug.cgi?id=134734
+
+        Reviewed by David Kilzer.
+
+        When using resolve-ChangeLogs in a WebKit git repository with a
+        non-default arrangement of GIT_DIR and GIT_WORK_TREE, incorrect
+        paths are computed and the script fails mysteriously.
+
+        We were naively computing GIT_WORK_TREE as being one level above
+        GIT_DIR, but this is not the case for submodules or a manually
+        configured GIT_WORK_TREE or GIT_DIR location.
+
+        * Scripts/VCSUtils.pm:
+        (gitTreeDirectory): Added. Find the equivalent of GIT_WORK_TREE.
+        (determineVCSRoot): Calculate the working tree root directly.
+
+2014-07-08  Tim Horton  <timothy_horton@apple.com>
+
+        [WK2] Expose a few drawing/compositing settings on WKPreferences(Private)
+        https://bugs.webkit.org/show_bug.cgi?id=134645
+
+        Reviewed by Dan Bernstein.
+
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/MainMenu.xib:
+        Add menu items for layer borders and the tiled scrolling indicator.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController validateMenuItem:]):
+        (-[WK1BrowserWindowController layerBordersAreVisible]):
+        (-[WK1BrowserWindowController toggleLayerBordersVisibility:]):
+        Add getters/setters/validators for layer borders.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController layerBordersAreVisible]):
+        (-[WK2BrowserWindowController toggleLayerBordersVisibility:]):
+        (-[WK2BrowserWindowController tiledScrollingIndicatorIsVisible]):
+        (-[WK2BrowserWindowController toggleTiledScrollingIndicatorVisibility:]):
+        Add getters/setters/validators for layer borders and the tiled scrolling indicator.
+
+        (-[WK2BrowserWindowController isSubpixelCSSOMElementMetricsEnabled]): Deleted.
+        (-[WK2BrowserWindowController toggleSubpixelCSSOMElementMetricsEnabled:]): Deleted.
+        Remove the WebKit2 version of the subpixel metrics pref, because it doesn't work, because
+        nothing in WebKit2 reads this default, and there is no WebKit2 API for adjusting this preference.
+
+2014-07-08  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Move user style sheet API out of WebKitWebViewGroup
+        https://bugs.webkit.org/show_bug.cgi?id=134551
+
+        Reviewed by Carlos Garcia Campos.
+
+        Removes testing user style sheet injection from
+        TestWebKitWebViewGroup and moves that into a new
+        TestWebKitUserContentManager, adapting the existing tests to the new
+        API. Also, it contains a new test case for
+        webkit_web_view_new_with_user_content_manager().
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp: Added.
+        (UserContentManagerTest::UserContentManagerTest):
+        (testWebViewNewWithUserContentManager):
+        (isStyleSheetInjectedForURLAtPath):
+        (fillURLListFromPaths):
+        (removeOldInjectedStyleSheetsAndResetLists):
+        (testUserContentManagerInjectedStyleSheet):
+        (serverCallback):
+        (beforeAll):
+        (afterAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebViewGroup.cpp:
+        (beforeAll):
+        (afterAll):
+        (isStyleSheetInjectedForURLAtPath): Deleted.
+        (fillURLListFromPaths): Deleted.
+        (removeOldInjectedStyleSheetsAndResetLists): Deleted.
+        (testWebViewGroupInjectedStyleSheet): Deleted.
+        (serverCallback): Deleted.
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::WebViewTest):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2014-07-08  Ziran Sun  <ziran.sun@samsung.com>
+
+        [GTK] Gstreamer missing from the install-dependencies script
+        https://bugs.webkit.org/show_bug.cgi?id=134727
+
+        Reviewed by Mario Sanchez Prada.
+
+        Added missing gstreamer dependencies for debian based systems.
+
+        * gtk/install-dependencies: Added 2 dependencies for apt-get.
+
+2014-07-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add myself to the watchlist for text-related files
+        https://bugs.webkit.org/show_bug.cgi?id=134707
+
+        Reviewed by Timothy Horton.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-07-08  Gergo Balogh  <gbalogh.u-szeged@partner.samsung.com>
+
+        Add option to specify output file location in sunspider.
+        https://bugs.webkit.org/show_bug.cgi?id=134339
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-sunspider:
+
+2014-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix.
+
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj:
+        Make Common.cpp excluded from both 32-bit and 64-bit builds.
+
+2014-07-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Have MiniBrowser log and reload if the Web Content Process crashes
+        https://bugs.webkit.org/show_bug.cgi?id=134691
+
+        Reviewed by Tim Horton.
+        
+        Implement _webViewWebProcessDidCrash, log and reload when the web process
+        crashes.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController _webViewWebProcessDidCrash:]):
+
+2014-07-07  Alberto Garcia  <berto@igalia.com>
+
+        update-webkitgtk-libs script fails by unsatisfied dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=134547
+
+        Reviewed by Martin Robinson.
+
+        Install libxcb-xfixes0-dev, needed to build Mesa.
+
+        * gtk/install-dependencies:
+
+2014-07-06  Yoav Weiss  <yoav@yoav.ws>
+
+        Turn on img@sizes compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=134634
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkitperl/FeatureList.pm: Turn on the img@sizes feature.
+
+2014-07-06  Hyowon Kim  <hw1008.kim@samsung.com>
+
+        Unreviewed. Adding myself to committers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-07-05  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] Add libgeoclue-dev to Tools/efl/install-dependencies.
+        https://bugs.webkit.org/show_bug.cgi?id=134648
+
+        Reviewed by Gyuyoung Kim.
+
+        As Geoclue is enabled for EFL, libgeoclue-dev is also added to Tools/efl/install-dependencies.
+
+        * efl/install-dependencies:
+
+2014-07-04  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Support Geolocation
+        https://bugs.webkit.org/show_bug.cgi?id=134439
+
+        Reviewed by Antonio Gomes.
+
+        * Scripts/webkitperl/FeatureList.pm: Enable geolocation for EFL port.
+
+2014-07-04  Shivakumar JM  <shiva.jm@samsung.com>
+
+        [EFL][WK2] Enhance the Minibrowser to show selected/highlighted text in search bar, if any.
+        https://bugs.webkit.org/show_bug.cgi?id=134485
+
+        Reviewed by Gyuyoung Kim.
+
+        Use script_execute_callback to get selected/highlighted text and show in search bar.
+
+        * MiniBrowser/efl/main.c:
+        (script_execute_callback):
+        (on_key_down):
+
+2014-07-04  Dan Bernstein  <mitz@apple.com>
+
+        Build fix after r170811.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController reload:]):
+
+2014-07-04  Timothy Horton  <timothy_horton@apple.com>
+
+        Typo in watchlist config means four specific people get Cc'd on everything
+        https://bugs.webkit.org/show_bug.cgi?id=134626
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitpy/common/config/watchlist:
+        Remove leading pipe, which meant that this rule matched everything!
+
+2014-07-03  Shivakumar JM  <shiva.jm@samsung.com>
+
+        [EFL][WK2] Enhance the Minibrowser to show text search count and close search bar.
+        https://bugs.webkit.org/show_bug.cgi?id=134486
+
+        Reviewed by Gyuyoung Kim.
+
+        Use on_search_close_button_clicked() callback to close search bar and on_search_text_found() callback to show search count.
+
+        * MiniBrowser/efl/main.c:
+        (search_box_show):
+        (search_box_hide):
+        (on_search_close_button_clicked):
+        (on_search_text_found):
+        (window_create):
+
 2014-07-03  Daniel Bates  <dabates@apple.com>
 
         Add WTF::move()

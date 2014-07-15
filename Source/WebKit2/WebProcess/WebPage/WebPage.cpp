@@ -298,6 +298,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
+    , m_hasStablePageScaleFactor(true)
     , m_userIsInteracting(false)
     , m_hasPendingBlurNotification(false)
     , m_useTestingViewportConfiguration(false)
@@ -1964,7 +1965,7 @@ void WebPage::executeEditCommand(const String& commandName)
 void WebPage::restoreSession(const Vector<BackForwardListItemState>& itemStates)
 {
     for (const auto& itemState : itemStates)
-        WebBackForwardListProxy::addItemFromUIProcess(itemState.identifier, toHistoryItem(itemState.pageState));
+        WebBackForwardListProxy::addItemFromUIProcess(itemState.identifier, toHistoryItem(itemState.pageState), m_pageID);
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -2636,6 +2637,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(SMOOTH_SCROLLING)
     settings.setScrollAnimatorEnabled(store.getBoolValueForKey(WebPreferencesKey::scrollAnimatorEnabledKey()));
 #endif
+    settings.setForceUpdateScrollbarsOnMainThreadForPerformanceTesting(store.getBoolValueForKey(WebPreferencesKey::forceUpdateScrollbarsOnMainThreadForPerformanceTestingKey()));
     settings.setInteractiveFormValidationEnabled(store.getBoolValueForKey(WebPreferencesKey::interactiveFormValidationEnabledKey()));
     settings.setSpatialNavigationEnabled(store.getBoolValueForKey(WebPreferencesKey::spatialNavigationEnabledKey()));
 
