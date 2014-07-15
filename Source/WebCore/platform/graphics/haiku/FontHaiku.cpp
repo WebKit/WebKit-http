@@ -48,13 +48,13 @@ bool Font::canReturnFallbackFontsForComplexText()
     return false;
 }
 
-void Font::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
+void Font::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
 {
     notImplemented();
 }
 
 void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* font,
-                      const GlyphBuffer& glyphBuffer, unsigned int from, unsigned int numGlyphs, const FloatPoint& point) const
+                      const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
 {
     BView* view = graphicsContext->platformContext();
     view->PushState();
@@ -103,7 +103,7 @@ bool Font::canExpandAroundIdeographsInComplexText()
  * try displaying something.
  */
 float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const FloatPoint& point,
-                           unsigned int from, unsigned int to) const
+                           int from, int to) const
 {
     BView* view = context->platformContext();
     view->SetFont(primaryFont()->platformData().font());
@@ -130,7 +130,7 @@ int Font::offsetForPositionForComplexText(const TextRun& run, float position,
 }
 
 void Font::adjustSelectionRectForComplexText(const TextRun& run,
-    LayoutRect& rect, unsigned int from, unsigned int to) const
+    LayoutRect& rect, int from, int to) const
 {
     adjustSelectionRectForSimpleText(run, rect, from, to);
 }
