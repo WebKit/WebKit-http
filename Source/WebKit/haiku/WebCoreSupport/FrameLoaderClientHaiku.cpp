@@ -494,7 +494,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::Reso
         return;
     }
     // we need to call directly here
-    if (canShowMIMEType(response.mimeType())) {
+    if (!response.isAttachment() && canShowMIMEType(response.mimeType())) {
         function(PolicyUse);
     } else if (!request.url().isLocalFile() && response.mimeType() != "application/x-shockwave-flash") {
         function(PolicyDownload);
