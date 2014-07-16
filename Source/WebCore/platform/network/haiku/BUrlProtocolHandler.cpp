@@ -21,6 +21,7 @@
 #include "config.h"
 #include "BUrlProtocolHandler.h"
 
+#include "BlobRegistryImpl.h"
 #include "FormData.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
@@ -89,44 +90,51 @@ ssize_t
 BFormDataIO::Read(void* buffer, size_t size)
 {
     if (m_formElements.isEmpty())
-    	// -1 indicates the end of data
+        // -1 indicates the end of data
         return -1;
 
     ssize_t read = 0;
     while (read < (ssize_t)size && !m_formElements.isEmpty()) {
         const FormDataElement& element = m_formElements[0];
         const ssize_t remaining = size - read;
-        
-		switch (element.m_type) {
+
+        switch (element.m_type) {
             case FormDataElement::Type::EncodedBlob:
             case FormDataElement::Type::EncodedFile:
-				{
-					read += m_currentFile->Read(reinterpret_cast<char*>(buffer) + read, remaining);
+                {
+                    ssize_t result = m_currentFile->Read(
+                        reinterpret_cast<char*>(buffer) + read, remaining);
 
-					if (m_currentFile->Position() >= m_currentFileSize 
-						|| !m_currentFile->IsReadable())
-						_NextElement();
-				}
-				break;
-				
+                    if (result < 0)
+                        return read;
+
+                    read += result;
+
+                    if (m_currentFile->Position() >= m_currentFileSize 
+                            || !m_currentFile->IsReadable())
+                        _NextElement();
+                }
+                break;
+
             case FormDataElement::Type::Data:
-				{
-					size_t toCopy = 0;
-					
-					if (remaining < element.m_data.size() - m_currentOffset)
-						toCopy = remaining;
-					else
-						toCopy = element.m_data.size() - m_currentOffset;
-						
-					memcpy(reinterpret_cast<char*>(buffer) + read, element.m_data.data() + m_currentOffset, toCopy); 
-					m_currentOffset += toCopy;
-            		read += toCopy;
+                {
+                    size_t toCopy = 0;
 
-           	 		if (m_currentOffset >= element.m_data.size())
-						_NextElement();
-				}
-				break;
-		}
+                    if (remaining < element.m_data.size() - m_currentOffset)
+                        toCopy = remaining;
+                    else
+                        toCopy = element.m_data.size() - m_currentOffset;
+
+                    memcpy(reinterpret_cast<char*>(buffer) + read,
+                        element.m_data.data() + m_currentOffset, toCopy); 
+                    m_currentOffset += toCopy;
+                    read += toCopy;
+
+                    if (m_currentOffset >= element.m_data.size())
+                        _NextElement();
+                }
+                break;
+        }
     }
 
     return read;
@@ -135,13 +143,13 @@ BFormDataIO::Read(void* buffer, size_t size)
 ssize_t 
 BFormDataIO::Write(const void* /*buffer*/, size_t /*size*/)
 {
-	// Write isn't implemented since we don't use it
-	return B_NOT_SUPPORTED;
+    // Write isn't implemented since we don't use it
+    return B_NOT_SUPPORTED;
 }
 
 void
 BFormDataIO::_NextElement()
-{        
+{
     m_currentOffset = 0;
     m_currentFileSize = 0;
     m_formElements.remove(0);
@@ -159,24 +167,44 @@ BFormDataIO::_ParseCurrentElement()
     if (m_currentFile == NULL)
         m_currentFile = new BFile();
 
-    if (m_formElements[0].m_type == FormDataElement::Type::EncodedFile)
-    {
-        // If the next element is an encodedFile, prepare the BFile for reading it.
-        m_currentFile->SetTo(BString(m_formElements[0].m_filename).String(), B_READ_ONLY);
-        m_currentFile->GetSize(&m_currentFileSize);
-        return;
-    }
+    FormDataElement& currentElement = m_formElements[0];
 
-#if ENABLE(BLOB)
-    if (m_formElements[0].m_type == FormDataElement::Type::EncodedBlob)
-    {
-        m_currentFileSize = m_formElements[0].m_fileLength;
-        m_currentFile->SetTo(m_formElements[0].m_url.path().utf8().data(),
-            B_READ_ONLY);
-        m_currentFile->Seek(m_formElements[0].m_fileStart, SEEK_SET);
-        return;
+    switch (currentElement.m_type) {
+        case FormDataElement::Type::EncodedFile:
+            m_currentFile->SetTo(BString(currentElement.m_filename).String(), B_READ_ONLY);
+            m_currentFile->GetSize(&m_currentFileSize);
+            return;
+        case FormDataElement::Type::EncodedBlob:
+        {
+            BlobRegistryImpl& registry = static_cast<BlobRegistryImpl&>(blobRegistry());
+            RefPtr<BlobData> blobData = registry.getBlobDataFromURL(URL(ParsedURLString, currentElement.m_url));
+            if (!blobData)
+                debugger("Empty blob! This shouldn't happen!");
+
+            if (blobData->items().size() != 1)
+                debugger("Composite blobs are currently unsupported. Please submit a bugreport with the webpage that triggered this.");
+
+            // FIXME handle blobs with multiple items
+            const BlobDataItem& item = blobData->items()[0];
+
+            // FIXME handle BlobDataItem::Data too!
+            if (item.type == BlobDataItem::File)
+            {
+                printf("blobfile:%s\n", item.file->path().utf8().data());
+                m_currentFile->SetTo(item.file->path().utf8().data(), B_READ_ONLY);
+                m_currentFile->Seek(item.offset(), SEEK_SET);
+                if (item.length() == BlobDataItem::toEndOfFile)
+                    m_currentFile->GetSize(&m_currentFileSize);
+                else
+                    m_currentFileSize = item.length();
+                return;
+            }
+            debugger("Data blobs are currently unsupported. Please submit a bugreport with the webpage that triggered this.");
+        }
+        default:
+            // Nothing to do for other types.
+            return;
     }
-#endif
 }
 
 
@@ -256,7 +284,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
             // (this isn't done on other platforms either...)
         return;
     }
-    
+
     if(httpRequest) {
         const BHttpResult& result = static_cast<const BHttpResult&>(httpRequest->Result());
         int httpStatusCode = result.StatusCode();
@@ -269,7 +297,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
             return;
         }
     }
-    
+
     ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), strerror(caller->Status()));
     client->didFail(m_resourceHandle, error);
 }
@@ -284,7 +312,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
     if (url.protocolIs("https"))
         serverType = ProtectionSpaceServerHTTPS;
-    
+
     String challenge = static_cast<const BHttpResult&>(request->Result()).Headers()["WWW-Authenticate"];
     ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
     if (challenge.startsWith("Digest", false))
