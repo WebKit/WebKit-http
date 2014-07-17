@@ -129,6 +129,9 @@ void WebContext::applyPlatformSpecificConfigurationDefaults(WebContextConfigurat
     if (!configuration.webSQLDatabaseDirectory)
         configuration.webSQLDatabaseDirectory = platformDefaultWebSQLDatabaseDirectory();
 
+    // *********
+    // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
+    // *********
     if (!configuration.indexedDBDatabaseDirectory)
         configuration.indexedDBDatabaseDirectory = platformDefaultIndexedDBDatabaseDirectory();
 }
@@ -466,6 +469,9 @@ void WebContext::ensureDatabaseProcess()
 
     ASSERT(!m_indexedDBDatabaseDirectory.isEmpty());
 
+    // *********
+    // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
+    // *********
     DatabaseProcessCreationParameters parameters;
     parameters.indexedDatabaseDirectory = m_indexedDBDatabaseDirectory;
 
@@ -593,6 +599,10 @@ WebProcessProxy& WebContext::createNewWebProcess()
     parameters.openGLCacheDirectory = openGLCacheDirectory();
     if (!parameters.openGLCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.openGLCacheDirectory, parameters.openGLCacheDirectoryExtensionHandle);
+
+    parameters.mediaCacheDirectory = mediaCacheDirectory();
+    if (!parameters.mediaCacheDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(parameters.mediaCacheDirectory, parameters.mediaCacheDirectoryExtensionHandle);
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
 
@@ -1185,6 +1195,14 @@ String WebContext::openGLCacheDirectory() const
         return m_overrideOpenGLCacheDirectory;
 
     return platformDefaultOpenGLCacheDirectory();
+}
+
+String WebContext::mediaCacheDirectory() const
+{
+    if (!m_overrideMediaCacheDirectory.isEmpty())
+        return m_overrideMediaCacheDirectory;
+
+    return platformMediaCacheDirectory();
 }
 
 void WebContext::useTestingNetworkSession()

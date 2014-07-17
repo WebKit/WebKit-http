@@ -122,17 +122,49 @@
     -webkit-grid-row: auto;
 }
 
+.autoRowAutoColumnSpanning2 {
+    background-color: maroon;
+    -webkit-grid-column: span 2;
+    -webkit-grid-row: auto;
+}
+
+.autoRowSpanning2AutoColumn {
+    background-color: aqua;
+    -webkit-grid-column: auto;
+    -webkit-grid-row: span 2;
+}
+
+.autoRowSpanning2AutoColumnSpanning3 {
+    background-color: olive;
+    -webkit-grid-column: span 3;
+    -webkit-grid-row: span 2;
+}
+
+.autoRowSpanning3AutoColumnSpanning2 {
+    background-color: indigo;
+    -webkit-grid-column: span 2;
+    -webkit-grid-row: span 3;
+}
+
 /* Grid element flow. */
-.gridAutoFlowNone {
-    -webkit-grid-auto-flow: none;
+.gridAutoFlowStack {
+    -webkit-grid-auto-flow: stack;
 }
 
 .gridAutoFlowColumn {
     -webkit-grid-auto-flow: column;
 }
 
+.gridAutoFlowColumnDense {
+    -webkit-grid-auto-flow: column dense;
+}
+
 .gridAutoFlowRow {
     -webkit-grid-auto-flow: row;
+}
+
+.gridAutoFlowRowDense {
+    -webkit-grid-auto-flow: row dense;
 }
 
 /* This rule makes sure the container is smaller than any grid items to avoid distributing any extra logical space to them. */

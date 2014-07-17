@@ -72,11 +72,13 @@ public:
     virtual void setPrivateAndOpen(PassRef<MediaSourcePrivate>) override;
     virtual double duration() const override;
     virtual std::unique_ptr<PlatformTimeRanges> buffered() const override;
+    virtual void seekToTime(const MediaTime&) override;
 
     bool attachToElement(HTMLMediaElement*);
     void close();
     bool isClosed() const;
     void monitorSourceBuffers();
+    void completeSeek();
 
     void setDuration(double, ExceptionCode&);
     void setDurationInternal(double);
@@ -121,12 +123,16 @@ protected:
     void scheduleEvent(const AtomicString& eventName);
     GenericEventQueue& asyncEventQueue() { return m_asyncEventQueue; }
 
+    void regenerateActiveSourceBuffers();
+
     static URLRegistry* s_registry;
 
     RefPtr<MediaSourcePrivate> m_private;
     RefPtr<SourceBufferList> m_sourceBuffers;
     RefPtr<SourceBufferList> m_activeSourceBuffers;
     HTMLMediaElement* m_mediaElement;
+    double m_duration;
+    MediaTime m_pendingSeekTime;
     AtomicString m_readyState;
     GenericEventQueue m_asyncEventQueue;
 };

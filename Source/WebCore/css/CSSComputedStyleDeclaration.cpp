@@ -283,6 +283,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitFlexDirection,
     CSSPropertyWebkitFlexWrap,
     CSSPropertyWebkitJustifyContent,
+    CSSPropertyWebkitJustifySelf,
     CSSPropertyWebkitFontKerning,
     CSSPropertyWebkitFontSmoothing,
     CSSPropertyWebkitFontVariantLigatures,
@@ -2006,6 +2007,13 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return cssValuePool().createValue(style->flexWrap());
         case CSSPropertyWebkitJustifyContent:
             return cssValuePool().createValue(style->justifyContent());
+        case CSSPropertyWebkitJustifySelf: {
+            RefPtr<CSSValueList> result = CSSValueList::createSpaceSeparated();
+            result->append(CSSPrimitiveValue::create(style->justifySelf()));
+            if (style->justifySelf() >= JustifySelfCenter && style->justifySelfOverflowAlignment() != JustifySelfOverflowAlignmentDefault)
+                result->append(CSSPrimitiveValue::create(style->justifySelfOverflowAlignment()));
+            return result.release();
+        }
         case CSSPropertyWebkitOrder:
             return cssValuePool().createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyFloat:
@@ -2050,8 +2058,21 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return list.release();
         }
 #if ENABLE(CSS_GRID_LAYOUT)
-        case CSSPropertyWebkitGridAutoFlow:
-            return cssValuePool().createValue(style->gridAutoFlow());
+        case CSSPropertyWebkitGridAutoFlow: {
+            RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+            ASSERT(style->isGridAutoFlowDirectionRow() || style->isGridAutoFlowDirectionColumn());
+            if (style->isGridAutoFlowDirectionRow())
+                list->append(cssValuePool().createIdentifierValue(CSSValueRow));
+            else
+                list->append(cssValuePool().createIdentifierValue(CSSValueColumn));
+
+            if (style->isGridAutoFlowAlgorithmDense())
+                list->append(cssValuePool().createIdentifierValue(CSSValueDense));
+            else if (style->isGridAutoFlowAlgorithmStack())
+                list->append(cssValuePool().createIdentifierValue(CSSValueStack));
+
+            return list.release();
+        }
 
         // Specs mention that getComputedStyle() should return the used value of the property instead of the computed
         // one for grid-definition-{rows|columns} but not for the grid-auto-{rows|columns} as things like

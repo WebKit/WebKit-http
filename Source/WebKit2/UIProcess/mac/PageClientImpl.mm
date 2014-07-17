@@ -28,7 +28,6 @@
 
 #if PLATFORM(MAC)
 
-#import "_WKDownloadInternal.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "DataReference.h"
@@ -37,17 +36,20 @@
 #import "FindIndicator.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebWheelEvent.h"
+#import "NavigationState.h"
 #import "StringUtilities.h"
 #import "ViewSnapshotStore.h"
 #import "WKAPICast.h"
 #import "WKFullScreenWindowController.h"
 #import "WKStringCF.h"
 #import "WKViewInternal.h"
+#import "WKWebViewInternal.h"
 #import "WebColorPickerMac.h"
 #import "WebContextMenuProxyMac.h"
 #import "WebEditCommandProxy.h"
 #import "WebPopupMenuProxyMac.h"
 #import "WindowServerConnection.h"
+#import "_WKDownloadInternal.h"
 #import "_WKThumbnailView.h"
 #import <WebCore/AlternativeTextUIController.h>
 #import <WebCore/BitmapImage.h>
@@ -684,6 +686,46 @@ void PageClientImpl::beganExitFullScreen(const IntRect& initialFrame, const IntR
 }
 
 #endif // ENABLE(FULLSCREEN_API)
+
+void PageClientImpl::navigationGestureDidBegin()
+{
+#if WK_API_ENABLED
+    if (m_webView)
+        NavigationState::fromWebPage(*m_webView->_page).navigationGestureDidBegin();
+#endif
+}
+
+void PageClientImpl::navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem& item)
+{
+#if WK_API_ENABLED
+    if (m_webView)
+        NavigationState::fromWebPage(*m_webView->_page).navigationGestureWillEnd(willNavigate, item);
+#else
+    UNUSED_PARAM(willNavigate);
+    UNUSED_PARAM(item);
+#endif
+}
+
+void PageClientImpl::navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem& item)
+{
+#if WK_API_ENABLED
+    if (m_webView)
+        NavigationState::fromWebPage(*m_webView->_page).navigationGestureDidEnd(willNavigate, item);
+#else
+    UNUSED_PARAM(willNavigate);
+    UNUSED_PARAM(item);
+#endif
+}
+
+void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem& item)
+{
+#if WK_API_ENABLED
+    if (m_webView)
+        NavigationState::fromWebPage(*m_webView->_page).willRecordNavigationSnapshot(item);
+#else
+    UNUSED_PARAM(item);
+#endif
+}
 
 } // namespace WebKit
 

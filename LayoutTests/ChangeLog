@@ -1,3 +1,430 @@
+2014-07-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failures. Update some expectations.
+        * platform/gtk/http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_xserver_redirect-expected.txt: Rebaseline after r171033.
+        * platform/gtk/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt: Added. Rebaseline after r171046.
+
+2014-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed gardening. Skip some text track tests that fail only on release wk1 builds.
+
+        * platform/mac-wk1/TestExpectations:
+
+2014-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Skip in-band text track test on Mountain Lion.
+
+        * platform/mac/TestExpectations:
+        In-band text tracks not supported on ML.
+
+2014-07-16  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Adjust cliprect with devicePixelFractionFromRenderer() before painting.
+        https://bugs.webkit.org/show_bug.cgi?id=134950
+        <rdar://problem/17617994>
+
+        Reviewed by Simon Fraser.
+
+        The cliprect coming from the graphics layer needs to be adjusted with the subpixel gap
+        from renderer. This is symmetric with the offsetting we do, when the dirty rect is sent off to the GraphicsLayer.
+        It puts us back to the correct coordinating system for intersecting with renderers.
+
+        * compositing/hidpi-compositing-layer-with-tile-layers-on-subpixel-position-expected.html: Added.
+        * compositing/hidpi-compositing-layer-with-tile-layers-on-subpixel-position.html: Added.
+
+2014-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Captions container should not clip content.
+        https://bugs.webkit.org/show_bug.cgi?id=134840.
+        <rdar://problem/14553608>.
+
+        Reviewed by Simon Fraser.
+
+        * media/track/track-cue-rendering-snap-to-lines-not-set-expected.txt: Rebaseline.
+        * media/track/captions-webvtt/long-word-small-track-display.vtt: Added.
+        * media/track/track-in-band-subtitles-too-large-expected.txt: Added.
+        * media/track/track-in-band-subtitles-too-large.html: Added.
+        * media/track/track-long-word-container-sizing-expected.txt: Added.
+        * media/track/track-long-word-container-sizing.html: Added.
+        
+        We no longer break in the middle of a word, this test is no longer useful.
+        * media/track/captions-webvtt/long-word.vtt: Removed.
+        * media/track/track-word-breaking-expected.txt: Removed.
+        * media/track/track-word-breaking.html: Removed.
+
+2014-07-16  Mike West  <mkwst@chromium.org>
+
+        CSP: Drop 'script-nonce' directive.
+        https://bugs.webkit.org/show_bug.cgi?id=134926
+
+        Reviewed by Darin Adler.
+
+        Dropping the nonce tests, as we're removing the functionality.
+
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-allowed-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-allowed.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-scriptsrc-blocked-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-scriptsrc-blocked.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-separators-allowed-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-separators-allowed.html: Removed.
+
+2014-07-16  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] REGRESSION(r171033): ASSERT in WebCore::MediaSource::onReadyStateChange()
+        https://bugs.webkit.org/show_bug.cgi?id=134941
+
+        Reviewed by Eric Carlson.
+
+        Update media/media-source/media-source-end-of-stream.html to use an empty parameter, rather
+        than an empty string parameter, to endOfStream().
+
+        * media/media-source/media-source-end-of-stream-expected.txt:
+        * media/media-source/media-source-end-of-stream.html:
+
+2014-07-16  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening.
+
+        Rebaseline tests after r168575, r170138 and r170418.
+
+        * platform/efl/fast/dynamic/text-combine-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/dynamic/text-combine-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/forms/control-restrict-line-height-expected.png: Rebaseline after r168575.
+        * platform/efl/fast/forms/control-restrict-line-height-expected.txt: Rebaseline after r168575.
+        * platform/efl/fast/forms/placeholder-position-expected.png: Rebaseline after r168575.
+        * platform/efl/fast/forms/placeholder-position-expected.txt: Rebaseline after r168575.
+        * platform/efl/fast/repaint/japanese-rl-selection-clear-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/repaint/japanese-rl-selection-clear-expected.txt: Added. Rebaseline after r170418.
+        * platform/efl/fast/repaint/japanese-rl-selection-repaint-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/repaint/japanese-rl-selection-repaint-expected.txt: Added. Rebaseline after r170418.
+        * platform/efl/fast/text/international/wrap-CJK-001-expected.txt: Added. Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/Kusa-Makura-background-canvas-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/Kusa-Makura-background-canvas-expected.txt: Rebaseline after r170418.
+
+2014-07-16  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening after r170138.
+
+        * platform/efl/accessibility/image-map2-expected.txt: Updated.
+        * platform/efl/inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Updated.
+
+2014-07-15  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r155957): Invalid cast in WebCore::RenderNamedFlowThread::getRanges
+        https://bugs.webkit.org/show_bug.cgi?id=134888
+
+        Reviewed by Mihnea Ovidenie.
+
+        * fast/regions/flowthread-getranges-box-cast-expected.txt: Added.
+        * fast/regions/flowthread-getranges-box-cast.html: Added.
+
+2014-07-14  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Zero sized compositing container's content positioned off by one device pixel.
+        https://bugs.webkit.org/show_bug.cgi?id=134903
+
+        Reviewed by Simon Fraser.
+
+        The compositing layer boundaries are calculated using its renderer()'s and the renderer()'s
+        descendants' bounds. However when the renderer() is zero sized, its bounds are omitted.
+        In such cases, when the child content has offset from the renderer(), the subpixel adjustment
+        of the compositing layer becomes negative (-meaning that the compositing layer is to the right/bottom
+        direction from its renderer()). Remove fabs() to be able to express such direction.
+
+        * compositing/hidpi-compositing-layer-with-zero-sized-container-expected.html: Added.
+        * compositing/hidpi-compositing-layer-with-zero-sized-container.html: Added.
+
+2014-07-14  Dean Jackson  <dino@apple.com>
+
+        Provide some large JPEG images with EXIF orientation for subsampling tests
+        https://bugs.webkit.org/show_bug.cgi?id=134847
+
+        Reviewed by Sam Weinig.
+
+        Four images (either 3000x2000 or 2000x3000) that each have EXIF rotation
+        attributes that should render with an arrow pointing UP. The
+        orientation-rotate-0.jpg should always render correctly, even if EXIF
+        rotation is ignored. The others are variations on that image that were
+        saved in rotated form, then reverted to the correct orientation via EXIF.
+
+        * fast/canvas/resources/orientation-rotate-0.jpg: Added.
+        * fast/canvas/resources/orientation-rotate-180.jpg: Added.
+        * fast/canvas/resources/orientation-rotate-90-ccw.jpg: Added.
+        * fast/canvas/resources/orientation-rotate-90-cw.jpg: Added.
+
+2014-07-14  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add tests to ensure CSS :active and :hover are applied when processing touch events
+        https://bugs.webkit.org/show_bug.cgi?id=134905
+        <rdar://problem/16602779> 
+
+        Reviewed by Simon Fraser.
+
+        Upstream tests by Andreas Kling for <rdar://problem/14324231>.
+
+        Add a DRT test to ensure that we apply the style for the CSS pseudo-class :active when
+        processing touch events.
+
+        * platform/iphone-simulator/fast/events/ontouchstart-active-selector-expected.txt: Added.
+        * platform/iphone-simulator/fast/events/ontouchstart-active-selector.html: Added.
+
+2014-07-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Support sparse in auto-placement algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=134544
+
+        Reviewed by Sergio Villar Senin.
+
+        Test cases have been adapted accordingly, adding new cases to cover both
+        sparse and dense options.
+
+        * fast/css-grid-layout/grid-auto-flow-resolution-expected.txt:
+        * fast/css-grid-layout/grid-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-auto-flow-sparse-expected.txt: Added.
+        * fast/css-grid-layout/grid-auto-flow-sparse.html: Added.
+        * fast/css-grid-layout/grid-container-change-named-grid-lines-recompute-child.html:
+        * fast/css-grid-layout/grid-item-auto-placement-automatic-span-expected.txt:
+        * fast/css-grid-layout/grid-item-auto-placement-automatic-span.html:
+        * fast/css-grid-layout/grid-item-auto-placement-definite-span-expected.txt:
+        * fast/css-grid-layout/grid-item-auto-placement-definite-span.html:
+        * fast/css-grid-layout/grid-item-removal-auto-placement-update.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-resolution.html:
+        * fast/css-grid-layout/resources/grid.css:
+        (.autoRowAutoColumnSpanning2):
+        (.autoRowSpanning2AutoColumn):
+        (.autoRowSpanning2AutoColumnSpanning3):
+        (.autoRowSpanning3AutoColumnSpanning2):
+        (.gridAutoFlowColumnDense):
+        (.gridAutoFlowRowDense):
+
+2014-07-14  Bear Travis  <betravis@adobe.com>
+
+        [Feature Queries] Enable Feature Queries on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=134404
+
+        Reviewed by Antti Koivisto.
+
+        Resume running the Feature Queries tests on Mac.
+
+        * platform/mac/TestExpectations: Unskip the tests.
+
+2014-07-14  Bruno de Oliveira Abinader  <bruno.d@partner.samsung.com>
+
+        [css3-text] Add editing test for CSS3 Text Decoration properties
+        https://bugs.webkit.org/show_bug.cgi?id=120114
+
+        Reviewed by Darin Adler.
+
+        Adds editing layout test to verify that CSS3 Text Decoration properties
+        are being properly propagated.
+
+        * editing/pasteboard/insert-text-decoration-expected.txt: Added.
+        * editing/pasteboard/insert-text-decoration.html: Added.
+        * platform/mac/TestExpectations: Skip while CSS3_TEXT is disabled by default.
+        * platform/win/TestExpectations: Skip while CSS3_TEXT is disabled by default.
+
+2014-07-14  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening.
+
+        Rebaseline tests after r170418 and r170433.
+
+        * platform/efl/fast/regions/repaint/japanese-rl-selection-repaint-in-regions-expected.png: Added. Rebaseline after r170418.
+        * platform/efl/fast/regions/repaint/japanese-rl-selection-repaint-in-regions-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/text/decorations-with-text-combine-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/text/decorations-with-text-combine-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/text/emphasis-vertical-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/text/emphasis-vertical-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/text/international/002-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/text/international/002-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/text/international/text-combine-image-test-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/text/international/text-combine-image-test-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/text/international/wrap-CJK-001-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/border-vertical-lr-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/border-vertical-lr-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-lr-selection-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-lr-selection-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-lr-text-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-lr-text-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-rl-selection-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-rl-selection-expected.txt: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-rl-text-expected.png: Rebaseline after r170418.
+        * platform/efl/fast/writing-mode/japanese-rl-text-expected.txt: Rebaseline after r170418.
+        * platform/efl/svg/W3C-SVG-1.1/filters-blend-01-b-expected.png: Rebaseline after r170433.
+        * platform/efl/svg/W3C-SVG-1.1/filters-blend-01-b-expected.txt: Added. Rebaseline after r170433.
+        * platform/efl/svg/filters/feBlend-all-blendmodes-expected.txt: Added. Rebaseline after r170433.
+
+2014-07-14  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening.
+
+        Remove failure expectations for tests that have been passing after r168350, r169309 and r169620.
+
+        * platform/efl/TestExpectations:
+
+2014-07-14  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening.
+
+        * platform/efl/css1/formatting_model/inline_elements-expected.png: Rebaseline after r170875.
+        * platform/efl/css1/formatting_model/inline_elements-expected.txt: Rebaseline after r170875.
+
+2014-07-12  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        Elements with rendering disabled due to dimensions should not contribute to parent bounding box
+        https://bugs.webkit.org/show_bug.cgi?id=134184
+
+        Reviewed by Dirk Schulze.
+
+        Test, for each element type, that when rendering is disabled, that element does not contribute
+        to the bounding box for an ancestor element.
+
+        Added test to ensure zero width/height polyline and polygon do contribute to ancestor bounding box.
+
+        Updated expected results for 1 existing test (shapes-rect-02-t) as this test included zero
+        width and zero height rects and these were previously included in the repaint rect.
+
+        * platform/mac/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+        * svg/custom/GetBBox-path-nodata-expected.txt: Added.
+        * svg/custom/GetBBox-path-nodata.html: Added.
+        * svg/custom/GetBBox-polygon-nodata-expected.txt: Added.
+        * svg/custom/GetBBox-polygon-nodata.html: Added.
+        * svg/custom/GetBBox-polyline-nodata-expected.txt: Added.
+        * svg/custom/GetBBox-polyline-nodata.html: Added.
+        * svg/custom/getBBox-container-hiddenchild-expected.txt: Added.
+        * svg/custom/getBBox-container-hiddenchild.html: Added.
+        * svg/custom/getBBox-perpendicular-polygon-expected.txt: Added.
+        * svg/custom/getBBox-perpendicular-polygon.svg: Added.
+        * svg/custom/getBBox-perpendicular-polyline-expected.txt: Added.
+        * svg/custom/getBBox-perpendicular-polyline.svg: Added.
+
+2014-07-11  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] http/tests/media/media-source/mediasource-duration.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=134852
+
+        Reviewed by Eric Carlson.
+
+        Eliminate flakiness in the mediasource-duration.html test by not playing
+        the media while testing seeking and duration.
+        * http/tests/media/media-source/mediasource-duration.html:
+
+        Update testharness.js to the latest W3C version:
+        * http/tests/w3c/resources/testharness.js:
+
+2014-07-11  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r168868): eBay 'see all' links fail due to different JS bindings conversion behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=134841
+        <rdar://problem/17577563>
+
+        Reviewed by Simon Fraser.
+
+        Revert back to type int for Element.scroll* APIs in order to preserve exception handling
+        behavior.
+
+        * cssom/non-subpixel-scroll-top-left-values-expected.txt: Added.
+        * cssom/non-subpixel-scroll-top-left-values.html: Added.
+
+2014-07-11  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Implement justify-self css property
+        https://bugs.webkit.org/show_bug.cgi?id=134419
+
+        Reviewed by Dean Jackson.
+
+        This change adds the justify-self property from CSS 3 Box Alignment
+        and implements the parsing.
+
+        From Blink r164685 by <jchaffraix@chromium.org>
+
+        * fast/css/parse-justify-self-expected.txt: Added.
+        * fast/css/parse-justify-self.html: Added.
+
+2014-07-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Use a separate backdrop element to allow cues to have highlight and background color
+        https://bugs.webkit.org/show_bug.cgi?id=134821
+        <rdar://problem/15999721>
+
+        Reviewed by Eric Carlson.
+
+        Updated tests for new formatting logic.
+
+        * platform/mac/media/track/track-cue-rendering-horizontal-expected.png:
+        * platform/mac/media/track/track-cue-rendering-horizontal-expected.txt:
+
+2014-07-11  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: return integral results for offset*, client*, scroll* by default.
+        https://bugs.webkit.org/show_bug.cgi?id=134651
+
+        Reviewed by Simon Fraser.
+
+        Revert to returning integral values for Element.offset* client* scroll* by default.
+        Fractional values break number of sites(tight design) and JS frameworks(fail to handle fractional values).
+
+        Since snapped dimension depends on both the original point and the width/height of the box,
+        we need to call RenderBoxModelObject::pixelSnapped*() helpers, instead of round().
+
+        Covered by existing tests
+
+        * cssom/subpixel-offsetleft-top-width-height-values-expected.txt:
+
+2014-07-11  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: icloud.com password arrow has clipped circle at some window sizes.
+        https://bugs.webkit.org/show_bug.cgi?id=134824
+        <rdar://problem/17612729>
+
+        Reviewed by Simon Fraser.
+
+        Transparent layer clipping needs device pixel offset adjusting.
+
+        * fast/layers/wrong-clipping-semi-transparent-compositing-layer-on-subpixel-position-expected.html: Added.
+        * fast/layers/wrong-clipping-semi-transparent-compositing-layer-on-subpixel-position.html: Added.
+
+2014-07-11  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Update grid-auto-flow to the new syntax
+        https://bugs.webkit.org/show_bug.cgi?id=134057
+
+        Reviewed by Sergio Villar Senin.
+
+        Adapted current tests to the new syntax. Keeping old "none" behavior
+        using "stack".
+
+        Add new use cases to cover the new syntax to grid-auto-flow-get-set.html
+        and grid-shorthand-get-set.html.
+
+        * fast/css-grid-layout/grid-auto-flow-get-set-expected.txt:
+        * fast/css-grid-layout/grid-auto-flow-get-set.html:
+        * fast/css-grid-layout/grid-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-auto-flow-update-expected.txt:
+        * fast/css-grid-layout/grid-auto-flow-update.html:
+        * fast/css-grid-layout/grid-item-named-grid-area-resolution.html:
+        * fast/css-grid-layout/grid-item-z-index-change-repaint.html:
+        * fast/css-grid-layout/grid-item-z-index-stacking-context.html:
+        * fast/css-grid-layout/grid-shorthand-get-set-expected.txt:
+        * fast/css-grid-layout/grid-shorthand-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-dynamic-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-resolution.html:
+        * fast/css-grid-layout/resources/grid.css:
+        (.gridAutoFlowStack):
+        (.gridAutoFlowNone): Deleted.
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * ietestcenter/css3/grid/grid-column-001.htm:
+        * ietestcenter/css3/grid/grid-column-002.htm:
+        * ietestcenter/css3/grid/grid-column-003.htm:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
 2014-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [iOS] Pasting rich content does not perform a two-step paste

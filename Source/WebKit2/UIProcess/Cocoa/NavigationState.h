@@ -74,6 +74,12 @@ public:
     void didPerformServerRedirect(const WTF::String& sourceURL, const WTF::String& destinationURL);
     void didUpdateHistoryTitle(const WTF::String& title, const WTF::String& url);
 
+    // Called by the page client.
+    void navigationGestureDidBegin();
+    void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&);
+    void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&);
+    void willRecordNavigationSnapshot(WebBackForwardListItem&);
+
 private:
     class PolicyClient : public API::PolicyClient {
     public:
@@ -102,6 +108,7 @@ private:
         virtual void didFinishDocumentLoadForFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, uint64_t navigationID, API::Object*) override;
         virtual void didFinishLoadForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, API::Object*) override;
         virtual void didFailLoadWithErrorForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, const WebCore::ResourceError&, API::Object*) override;
+        virtual void didSameDocumentNavigationForFrame(WebPageProxy*, WebFrameProxy*, uint64_t navigationID, SameDocumentNavigationType, API::Object*) override;
         virtual void didDestroyNavigation(WebKit::WebPageProxy*, uint64_t navigationID) override;
         virtual void didLayout(WebKit::WebPageProxy*, WebCore::LayoutMilestones, API::Object*) override;
         virtual bool canAuthenticateAgainstProtectionSpaceInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::WebProtectionSpace*) override;
@@ -149,6 +156,7 @@ private:
         bool webViewNavigationDidFinishDocumentLoad : 1;
         bool webViewDidFinishNavigation : 1;
         bool webViewDidFailNavigationWithError : 1;
+        bool webViewNavigationDidSameDocumentNavigation : 1;
 
         bool webViewRenderingProgressDidChange : 1;
         bool webViewDidReceiveAuthenticationChallengeCompletionHandler : 1;
@@ -156,6 +164,10 @@ private:
         bool webViewDidReceiveAuthenticationChallenge : 1;
         bool webViewWebProcessDidCrash : 1;
         bool webCryptoMasterKeyForWebView : 1;
+        bool webViewDidBeginNavigationGesture : 1;
+        bool webViewWillEndNavigationGestureWithNavigationToBackForwardListItem : 1;
+        bool webViewDidEndNavigationGestureWithNavigationToBackForwardListItem : 1;
+        bool webViewWillSnapshotBackForwardListItem : 1;
 #if USE(QUICK_LOOK)
         bool webViewDidStartLoadForQuickLookDocumentInMainFrame : 1;
         bool webViewDidFinishLoadForQuickLookDocumentInMainFrame : 1;

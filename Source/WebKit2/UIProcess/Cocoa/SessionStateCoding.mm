@@ -23,21 +23,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "SessionStateCoding.h"
+#import "config.h"
+#import "SessionStateCoding.h"
+
+#import "LegacySessionStateCoding.h"
+#import "WKNSData.h"
 
 namespace WebKit {
 
-RetainPtr<NSData> encodeSessionState(const SessionState&)
+RetainPtr<NSData> encodeSessionState(const SessionState& sessionState)
 {
-    // FIXME: Implement.
+#if WK_API_ENABLED
+    return [wrapper(*WebKit::encodeLegacySessionState(sessionState).release().leakRef()) autorelease];
+#else
     return nullptr;
+#endif
 }
 
-bool decodeSessionState(NSData *, SessionState&)
+bool decodeSessionState(NSData *data, SessionState& state)
 {
-    // FIXME: Implement.
-    return false;
+    return decodeLegacySessionState(static_cast<const uint8_t*>(data.bytes), data.length, state);
 }
 
 }

@@ -274,7 +274,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_userAgent(standardUserAgent())
 #if PLATFORM(IOS)
     , m_deviceOrientation(0)
-    , m_dynamicViewportSizeUpdateInProgress(false)
+    , m_dynamicViewportSizeUpdateWaitingForTarget(false)
+    , m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit(false)
+    , m_dynamicViewportSizeUpdateLayerTreeTransactionID(0)
 #endif
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
@@ -355,6 +357,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_enableHorizontalRubberBanding(true)
     , m_backgroundExtendsBeyondPage(false)
     , m_shouldRecordNavigationSnapshots(false)
+    , m_isShowingNavigationGestureSnapshot(false)
     , m_pageCount(0)
     , m_renderTreeSize(0)
     , m_shouldSendEventsSynchronously(false)
@@ -2683,7 +2686,7 @@ void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, 
     m_loaderClient->didFailLoadWithErrorForFrame(this, frame, navigationID, error, userData.get());
 }
 
-void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint32_t opaqueSameDocumentNavigationType, const String& url, IPC::MessageDecoder& decoder)
+void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t opaqueSameDocumentNavigationType, const String& url, IPC::MessageDecoder& decoder)
 {
     RefPtr<API::Object> userData;
     WebContextUserMessageDecoder messageDecoder(userData, process());
@@ -2703,7 +2706,7 @@ void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint32_t 
     frame->didSameDocumentNavigation(url);
 
     m_pageLoadState.commitChanges();
-    m_loaderClient->didSameDocumentNavigationForFrame(this, frame, static_cast<SameDocumentNavigationType>(opaqueSameDocumentNavigationType), userData.get());
+    m_loaderClient->didSameDocumentNavigationForFrame(this, frame, navigationID, static_cast<SameDocumentNavigationType>(opaqueSameDocumentNavigationType), userData.get());
 }
 
 void WebPageProxy::didReceiveTitleForFrame(uint64_t frameID, const String& title, IPC::MessageDecoder& decoder)
@@ -4272,10 +4275,6 @@ void WebPageProxy::processDidCrash()
 
     resetStateAfterProcessExited();
 
-    // FIXME: Should we do this when the process exits cleanly, instead of just upon crashing?
-    auto transaction = m_pageLoadState.transaction();
-    m_pageLoadState.reset(transaction);
-
     m_loaderClient->processDidCrash(this);
 }
 
@@ -4343,7 +4342,9 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     }
 
     m_lastVisibleContentRectUpdate = VisibleContentRectUpdateInfo();
-    m_dynamicViewportSizeUpdateInProgress = false;
+    m_dynamicViewportSizeUpdateWaitingForTarget = false;
+    m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
+    m_dynamicViewportSizeUpdateLayerTreeTransactionID = 0;
 #endif
 
     CallbackBase::Error error;
@@ -4428,6 +4429,9 @@ void WebPageProxy::resetStateAfterProcessExited()
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
     m_pageClient.dismissDictionaryLookupPanel();
 #endif
+
+    auto transaction = m_pageLoadState.transaction();
+    m_pageLoadState.reset(transaction);
 }
 
 WebPageCreationParameters WebPageProxy::creationParameters()
@@ -5124,6 +5128,32 @@ void WebPageProxy::takeSnapshot(IntRect rect, IntSize bitmapSize, SnapshotOption
 
     uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
     m_process->send(Messages::WebPage::TakeSnapshot(rect, bitmapSize, options, callbackID), m_pageID);
+}
+
+void WebPageProxy::navigationGestureDidBegin()
+{
+    m_isShowingNavigationGestureSnapshot = true;
+    m_pageClient.navigationGestureDidBegin();
+}
+
+void WebPageProxy::navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem& item)
+{
+    m_pageClient.navigationGestureWillEnd(willNavigate, item);
+}
+
+void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem& item)
+{
+    m_pageClient.navigationGestureDidEnd(willNavigate, item);
+}
+
+void WebPageProxy::willRecordNavigationSnapshot(WebBackForwardListItem& item)
+{
+    m_pageClient.willRecordNavigationSnapshot(item);
+}
+
+void WebPageProxy::navigationGestureSnapshotWasRemoved()
+{
+    m_isShowingNavigationGestureSnapshot = false;
 }
 
 } // namespace WebKit

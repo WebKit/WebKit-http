@@ -192,6 +192,8 @@
 #include "RemoteLayerTreeDrawingArea.h"
 #include "WebVideoFullscreenManager.h"
 #include <CoreGraphics/CoreGraphics.h>
+#include <CoreText/CTFontDescriptorPriv.h>
+#include <CoreText/CTFontPriv.h>
 #include <WebCore/Icon.h>
 #endif
 
@@ -294,7 +296,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_isShowingContextMenu(false)
 #endif
 #if PLATFORM(IOS)
-    , m_lastLayerTreeTransactionIDBeforeDidCommitLoad(0)
+    , m_firstLayerTreeTransactionIDAfterDidCommitLoad(0)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
@@ -743,6 +745,24 @@ EditorState WebPage::editorState() const
         const int maxSelectedTextLength = 200;
         if (selectedText.length() <= maxSelectedTextLength)
             result.wordAtSelection = selectedText;
+    }
+    if (!selection.isNone()) {
+        Node* nodeToRemove;
+        if (RenderStyle* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
+            CTFontRef font = style->font().primaryFont()->getCTFont();
+            CTFontSymbolicTraits traits = font ? CTFontGetSymbolicTraits(font) : 0;
+            
+            if (traits & kCTFontTraitBold)
+                result.typingAttributes |= AttributeBold;
+            if (traits & kCTFontTraitItalic)
+                result.typingAttributes |= AttributeItalics;
+            
+            if (style->textDecorationsInEffect() & TextDecorationUnderline)
+                result.typingAttributes |= AttributeUnderline;
+            
+            if (nodeToRemove)
+                nodeToRemove->remove(ASSERT_NO_EXCEPTION);
+        }
     }
 #endif
 
@@ -1668,6 +1688,57 @@ PassRefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize&
         graphicsContext->strokeRect(selectionRectangle, 1);
     }
     
+    return snapshot.release();
+}
+
+PassRefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions options, unsigned maximumPixelCount)
+{
+    Frame* coreFrame = m_mainFrame->coreFrame();
+    if (!coreFrame)
+        return nullptr;
+
+    FrameView* frameView = coreFrame->view();
+    if (!frameView)
+        return nullptr;
+
+    if (!node.renderer())
+        return nullptr;
+
+    LayoutRect topLevelRect;
+    IntRect snapshotRect = pixelSnappedIntRect(node.renderer()->paintingRootRect(topLevelRect));
+
+    double scaleFactor = 1;
+    IntSize snapshotSize = snapshotRect.size();
+    unsigned maximumHeight = maximumPixelCount / snapshotSize.width();
+    if (maximumHeight < static_cast<unsigned>(snapshotSize.height())) {
+        scaleFactor = static_cast<double>(maximumHeight) / snapshotSize.height();
+        snapshotSize = IntSize(snapshotSize.width() * scaleFactor, maximumHeight);
+    }
+
+    RefPtr<WebImage> snapshot = WebImage::create(snapshotSize, snapshotOptionsToImageOptions(options));
+    if (!snapshot->bitmap())
+        return nullptr;
+
+    auto graphicsContext = snapshot->bitmap()->createGraphicsContext();
+
+    if (!(options & SnapshotOptionsExcludeDeviceScaleFactor)) {
+        double deviceScaleFactor = corePage()->deviceScaleFactor();
+        graphicsContext->applyDeviceScaleFactor(deviceScaleFactor);
+        scaleFactor /= deviceScaleFactor;
+    }
+
+    graphicsContext->scale(FloatSize(scaleFactor, scaleFactor));
+    graphicsContext->translate(-snapshotRect.x(), -snapshotRect.y());
+
+    Color savedBackgroundColor = frameView->baseBackgroundColor();
+    frameView->setBaseBackgroundColor(Color::transparent);
+    frameView->setNodeToDraw(&node);
+
+    frameView->paintContentsForSnapshot(graphicsContext.get(), snapshotRect, FrameView::ExcludeSelection, FrameView::DocumentCoordinates);
+
+    frameView->setBaseBackgroundColor(savedBackgroundColor);
+    frameView->setNodeToDraw(nullptr);
+
     return snapshot.release();
 }
 
@@ -4376,7 +4447,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
 #if PLATFORM(IOS)
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
     m_scaleWasSetByUIProcess = false;
-    m_lastLayerTreeTransactionIDBeforeDidCommitLoad = toRemoteLayerTreeDrawingArea(*m_drawingArea).currentTransactionID();
+    m_firstLayerTreeTransactionIDAfterDidCommitLoad = toRemoteLayerTreeDrawingArea(*m_drawingArea).nextTransactionID();
     m_userHasChangedPageScaleFactor = false;
 
     WebProcess::shared().eventDispatcher().clearQueuedTouchEventsForPage(*this);

@@ -199,7 +199,6 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     , m_staticInlinePosition(0)
     , m_staticBlockPosition(0)
     , m_enclosingPaginationLayer(0)
-    , m_enclosingLayerIsPaginatedAndComposited(false)
 {
     m_isNormalFlowOnly = shouldBeNormalFlowOnly();
     m_isSelfPaintingLayer = shouldBeSelfPaintingLayer();
@@ -382,10 +381,8 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
 
     if (flags & UpdatePagination)
         updatePagination();
-    else {
+    else
         m_enclosingPaginationLayer = nullptr;
-        m_enclosingLayerIsPaginatedAndComposited = false;
-    }
     
     if (m_hasVisibleContent) {
         // FIXME: LayoutState does not work with RenderLayers as there is not a 1-to-1
@@ -916,10 +913,46 @@ RenderLayer* RenderLayer::enclosingOverflowClipLayer(IncludeSelfOrNot includeSel
     return 0;
 }
 
+// FIXME: This is terrible. Bring back a cached bit for this someday. This crawl is going to slow down all
+// painting of content inside paginated layers.
+bool RenderLayer::hasCompositedLayerInEnclosingPaginationChain() const
+{
+    // No enclosing layer means no compositing in the chain.
+    if (!m_enclosingPaginationLayer)
+        return false;
+    
+    // If the enclosing layer is composited, we don't have to check anything in between us and that
+    // layer.
+    if (m_enclosingPaginationLayer->isComposited())
+        return true;
+
+    // If we are the enclosing pagination layer, then we can't be composited or we'd have passed the
+    // previous check.
+    if (m_enclosingPaginationLayer == this)
+        return false;
+
+    // The enclosing paginated layer is our ancestor and is not composited, so we have to check
+    // intermediate layers between us and the enclosing pagination layer. Start with our own layer.
+    if (isComposited())
+        return true;
+    
+    // For normal flow layers, we can recur up the layer tree.
+    if (isNormalFlowOnly())
+        return parent()->hasCompositedLayerInEnclosingPaginationChain();
+    
+    // Otherwise we have to go up the containing block chain. Find the first enclosing
+    // containing block layer ancestor, and check that.
+    RenderView* renderView = &renderer().view();
+    for (RenderBlock* containingBlock = renderer().containingBlock(); containingBlock && containingBlock != renderView; containingBlock = containingBlock->containingBlock()) {
+        if (containingBlock->hasLayer())
+            return containingBlock->layer()->hasCompositedLayerInEnclosingPaginationChain();
+    }
+    return false;
+}
+
 void RenderLayer::updatePagination()
 {
     m_enclosingPaginationLayer = nullptr;
-    m_enclosingLayerIsPaginatedAndComposited = false;
     
     if (!parent())
         return;
@@ -930,7 +963,6 @@ void RenderLayer::updatePagination()
     // to that layer easily.
     if (renderer().isInFlowRenderFlowThread()) {
         m_enclosingPaginationLayer = this;
-        m_enclosingLayerIsPaginatedAndComposited = isComposited();
         return;
     }
 
@@ -938,13 +970,10 @@ void RenderLayer::updatePagination()
         // Content inside a transform is not considered to be paginated, since we simply
         // paint the transform multiple times in each column, so we don't have to use
         // fragments for the transformed content.
-        if (parent()->hasTransform()) {
+        if (parent()->hasTransform())
             m_enclosingPaginationLayer = nullptr;
-            m_enclosingLayerIsPaginatedAndComposited = false;
-        } else {
+        else
             m_enclosingPaginationLayer = parent()->enclosingPaginationLayer(IncludeCompositedPaginatedLayers);
-            m_enclosingLayerIsPaginatedAndComposited = isComposited() ? true : parent()->enclosingLayerIsPaginatedAndComposited();
-        }
         return;
     }
 
@@ -957,13 +986,10 @@ void RenderLayer::updatePagination()
             // Content inside a transform is not considered to be paginated, since we simply
             // paint the transform multiple times in each column, so we don't have to use
             // fragments for the transformed content.
-            if (containingBlock->layer()->hasTransform()) {
+            if (containingBlock->layer()->hasTransform())
                 m_enclosingPaginationLayer = nullptr;
-                m_enclosingLayerIsPaginatedAndComposited = false;
-            } else {
+            else
                 m_enclosingPaginationLayer = containingBlock->layer()->enclosingPaginationLayer(IncludeCompositedPaginatedLayers);
-                m_enclosingLayerIsPaginatedAndComposited = isComposited() ? true : containingBlock->layer()->enclosingLayerIsPaginatedAndComposited();
-            }
             return;
         }
     }
@@ -1655,19 +1681,21 @@ static LayoutRect paintingExtent(const RenderLayer& currentLayer, const RenderLa
     return intersection(transparencyClipBox(currentLayer, rootLayer, PaintingTransparencyClipBox, RootOfTransparencyClipBox, paintBehavior), paintDirtyRect);
 }
 
-void RenderLayer::beginTransparencyLayers(GraphicsContext* context, const RenderLayer* rootLayer, const LayoutRect& paintDirtyRect, PaintBehavior paintBehavior)
+void RenderLayer::beginTransparencyLayers(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, const LayoutRect& dirtyRect)
 {
-    if (context->paintingDisabled() || (paintsWithTransparency(paintBehavior) && m_usedTransparency))
+    if (context->paintingDisabled() || (paintsWithTransparency(paintingInfo.paintBehavior) && m_usedTransparency))
         return;
-    
+
     RenderLayer* ancestor = transparentPaintingAncestor();
     if (ancestor)
-        ancestor->beginTransparencyLayers(context, rootLayer, paintDirtyRect, paintBehavior);
+        ancestor->beginTransparencyLayers(context, paintingInfo, dirtyRect);
     
-    if (paintsWithTransparency(paintBehavior)) {
+    if (paintsWithTransparency(paintingInfo.paintBehavior)) {
         m_usedTransparency = true;
         context->save();
-        FloatRect pixelSnappedClipRect = pixelSnappedForPainting(paintingExtent(*this, rootLayer, paintDirtyRect, paintBehavior), renderer().document().deviceScaleFactor());
+        LayoutRect adjustedClipRect = paintingExtent(*this, paintingInfo.rootLayer, dirtyRect, paintingInfo.paintBehavior);
+        adjustedClipRect.move(paintingInfo.subPixelAccumulation);
+        FloatRect pixelSnappedClipRect = pixelSnappedForPainting(adjustedClipRect, renderer().document().deviceScaleFactor());
         context->clip(pixelSnappedClipRect);
 
 #if ENABLE(CSS_COMPOSITING)
@@ -3693,9 +3721,9 @@ void RenderLayer::paintLayer(GraphicsContext* context, const LayerPaintingInfo& 
         // layer from the parent now, assuming there is a parent
         if (paintFlags & PaintLayerHaveTransparency) {
             if (parent())
-                parent()->beginTransparencyLayers(context, paintingInfo.rootLayer, paintingInfo.paintDirtyRect, paintingInfo.paintBehavior);
+                parent()->beginTransparencyLayers(context, paintingInfo, paintingInfo.paintDirtyRect);
             else
-                beginTransparencyLayers(context, paintingInfo.rootLayer, paintingInfo.paintDirtyRect, paintingInfo.paintBehavior);
+                beginTransparencyLayers(context, paintingInfo, paintingInfo.paintDirtyRect);
         }
 
         if (enclosingPaginationLayer(ExcludeCompositedPaginatedLayers)) {
@@ -4003,7 +4031,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         context = filterPainter->filterContext();
         if (context != transparencyLayerContext && haveTransparency) {
             // If we have a filter and transparency, we have to eagerly start a transparency layer here, rather than risk a child layer lazily starts one with the wrong context.
-            beginTransparencyLayers(transparencyLayerContext, localPaintingInfo.rootLayer, paintingInfo.paintDirtyRect, localPaintingInfo.paintBehavior);
+            beginTransparencyLayers(transparencyLayerContext, localPaintingInfo, paintingInfo.paintDirtyRect);
         }
     }
 #endif
@@ -4380,7 +4408,7 @@ void RenderLayer::paintBackgroundForFragments(const LayerFragments& layerFragmen
 
         // Begin transparency layers lazily now that we know we have to paint something.
         if (haveTransparency)
-            beginTransparencyLayers(transparencyLayerContext, localPaintingInfo.rootLayer, transparencyPaintDirtyRect, localPaintingInfo.paintBehavior);
+            beginTransparencyLayers(transparencyLayerContext, localPaintingInfo, transparencyPaintDirtyRect);
     
         if (localPaintingInfo.clipToDirtyRect) {
             // Paint our background first, before painting any child layers.
@@ -4407,7 +4435,7 @@ void RenderLayer::paintForegroundForFragments(const LayerFragments& layerFragmen
         for (size_t i = 0; i < layerFragments.size(); ++i) {
             const LayerFragment& fragment = layerFragments.at(i);
             if (fragment.shouldPaintContent && !fragment.foregroundRect.isEmpty()) {
-                beginTransparencyLayers(transparencyLayerContext, localPaintingInfo.rootLayer, transparencyPaintDirtyRect, localPaintingInfo.paintBehavior);
+                beginTransparencyLayers(transparencyLayerContext, localPaintingInfo, transparencyPaintDirtyRect);
                 break;
             }
         }

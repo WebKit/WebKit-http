@@ -1,3 +1,84 @@
+2014-07-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r171107.
+        https://bugs.webkit.org/show_bug.cgi?id=134959
+
+        This was not the problem! (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "Revert: Run the FastMalloc scavenger thread on iOS as well."
+        https://bugs.webkit.org/show_bug.cgi?id=134927
+        http://trac.webkit.org/changeset/171107
+
+2014-07-15  Andreas Kling  <akling@apple.com>
+
+        Revert: Run the FastMalloc scavenger thread on iOS as well.
+        <https://webkit.org/b/134927>
+        <rdar://problem/17485079>
+
+        This appears to be the cause of some elusive crashes, and since I don't
+        have a way to reproduce them, let's just go back to not running the
+        scavenger thread on iOS.
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/FastMalloc.cpp:
+
+2014-07-13  Filip Pizlo  <fpizlo@apple.com>
+
+        HashMap should have removeIf()
+        https://bugs.webkit.org/show_bug.cgi?id=134870
+
+        Reviewed by Sam Weinig.
+        
+        Expose a new HashMap method, called removeIf(), which allows you to do an efficient
+        pass over the map and remove a bunch of things at once. This is used by DFG GCSE as
+        part of https://bugs.webkit.org/show_bug.cgi?id=134677.
+
+        * wtf/HashMap.h:
+        (WTF::X>::removeIf):
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::removeIf):
+
+2014-07-11  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Enable DFG JIT.
+        https://bugs.webkit.org/show_bug.cgi?id=123615
+
+        Reviewed by Mark Lam.
+
+        * wtf/Platform.h:
+
+2014-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r170995.
+        https://bugs.webkit.org/show_bug.cgi?id=134831
+
+        Causing odd crashes in debug builds (Requested by zdobersek on
+        #webkit).
+
+        Reverted changeset:
+
+        "[WTF] Add the move constructor, move assignment operator for
+        HashTable"
+        https://bugs.webkit.org/show_bug.cgi?id=130772
+        http://trac.webkit.org/changeset/170995
+
+2014-07-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WTF] Add the move constructor, move assignment operator for HashTable
+        https://bugs.webkit.org/show_bug.cgi?id=130772
+
+        Reviewed by Darin Adler.
+
+        HashTable has both copy constructor and copy assignment operator, meaning that the move constructor
+        and move assignment operator are implicitly deleted. This patch defines both to avoid unnecessary
+        copies when moves can be performed.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::HashTable):
+
 2014-07-10  Alex Christensen  <achristensen@webkit.org>
 
         Enable same features on all Windows ports.

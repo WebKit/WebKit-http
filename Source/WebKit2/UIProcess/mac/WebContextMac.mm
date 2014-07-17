@@ -276,7 +276,12 @@ String WebContext::platformDefaultCookieStorageDirectory() const
         path = NSHomeDirectory();
 
     path = path + "/Library/Cookies";
-    return stringByResolvingSymlinksInPath(path);
+    path = stringByResolvingSymlinksInPath(path);
+    // Temporary work around for <rdar://<rdar://problem/17513375>
+    if (path == "/private/var/mobile/Library/Cookies")
+        return String();
+
+    return path;
 #else
     notImplemented();
     return [@"" stringByStandardizingPath];
@@ -291,6 +296,18 @@ String WebContext::platformDefaultOpenGLCacheDirectory() const
         path = NSHomeDirectory();
 
     path = path + "/Library/Caches/com.apple.WebKit.WebContent/com.apple.opengl/";
+    return stringByResolvingSymlinksInPath(path);
+#else
+    notImplemented();
+    return [@"" stringByStandardizingPath];
+#endif
+}
+
+String WebContext::platformMediaCacheDirectory() const
+{
+#if PLATFORM(IOS)
+    String path = NSTemporaryDirectory();
+    path = path + "/MediaCache";
     return stringByResolvingSymlinksInPath(path);
 #else
     notImplemented();

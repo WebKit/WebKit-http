@@ -1145,19 +1145,27 @@ class _FileState(object):
     def __init__(self, clean_lines, file_extension):
         self._did_inside_namespace_indent_warning = False
         self._clean_lines = clean_lines
-        if file_extension in ['m', 'mm']:
+        if file_extension == 'm':
+            self._is_objective_cpp = False
             self._is_objective_c = True
+            self._is_c = False
+        elif file_extension == 'mm':
+            self._is_objective_cpp = True
+            self._is_objective_c = False
             self._is_c = False
         elif file_extension == 'h':
             # In the case of header files, it is unknown if the file
-            # is c / objective c or not, so set this value to None and then
+            # is C / Objective-C / Objective-C++ or not, so set this value to None and then
             # if it is requested, use heuristics to guess the value.
+            self._is_objective_cpp = None
             self._is_objective_c = None
             self._is_c = None
         elif file_extension == 'c':
+            self._is_objective_cpp = False
             self._is_c = True
             self._is_objective_c = False
         else:
+            self._is_objective_cpp = False
             self._is_objective_c = False
             self._is_c = False
 
@@ -1178,6 +1186,9 @@ class _FileState(object):
             else:
                 self._is_objective_c = False
         return self._is_objective_c
+
+    def is_objective_c_or_objective_cpp(self):
+        return self._is_objective_cpp or self.is_objective_c()
 
     def is_c(self):
         if self._is_c is None:
@@ -1217,28 +1228,28 @@ class _EnumState(object):
             if match(r'\s*' + expr_enum_end + r'$', line):
                 self.in_enum_decl = False
                 self.is_webidl_enum = False
+                return True
             elif match(expr_all_uppercase, line):
                 return self.is_webidl_enum
             elif match(expr_starts_lowercase, line):
                 return False
+        matched = match(expr_enum_start + r'$', line)
+        if matched:
+            self.in_enum_decl = True
         else:
-            matched = match(expr_enum_start + r'$', line)
+            matched = match(expr_enum_start + r'(?P<members>.*)' + expr_enum_end + r'$', line)
             if matched:
-                self.in_enum_decl = True
-            else:
-                matched = match(expr_enum_start + r'(?P<members>.*)' + expr_enum_end + r'$', line)
-                if matched:
-                    members = matched.group('members').split(',')
-                    found_invalid_member = False
-                    for member in members:
-                        if match(expr_all_uppercase, member):
-                            found_invalid_member = not self.is_webidl_enum
-                        if match(expr_starts_lowercase, member):
-                            found_invalid_member = True
-                        if found_invalid_member:
-                            self.is_webidl_enum = False
-                            return False
-                    return True
+                members = matched.group('members').split(',')
+                found_invalid_member = False
+                for member in members:
+                    if match(expr_all_uppercase, member):
+                        found_invalid_member = not self.is_webidl_enum
+                    if match(expr_starts_lowercase, member):
+                        found_invalid_member = True
+                    if found_invalid_member:
+                        self.is_webidl_enum = False
+                        return False
+                return True
         return True
 
 def check_for_non_standard_constructs(clean_lines, line_number,
@@ -2127,6 +2138,7 @@ def check_namespace_indentation(clean_lines, line_number, file_extension, file_s
         else:
             looking_for_semicolon = False; # If we have a brace we may not need a semicolon.
         current_indentation_level += current_line.count('{') - current_line.count('}')
+        current_indentation_level += current_line.count('(') - current_line.count(')')
         if current_indentation_level < 0:
             break;
 
@@ -2243,7 +2255,7 @@ def check_using_namespace(clean_lines, line_number, file_extension, error):
           "Do not use 'using namespace %s;'." % method_name)
 
 def check_max_min_macros(clean_lines, line_number, file_state, error):
-    """Looks use of MAX() and MIN() macros that should be replaced with std::max() and std::min().
+    """Looks for use of MAX() and MIN() macros that should be replaced with std::max() and std::min().
 
     Args:
       clean_lines: A CleansedLines instance containing the file.
@@ -2268,6 +2280,30 @@ def check_max_min_macros(clean_lines, line_number, file_state, error):
     error(line_number, 'runtime/max_min_macros', 4,
           'Use std::%s() or std::%s<type>() instead of the %s() macro.'
           % (max_min_macro_lower, max_min_macro_lower, max_min_macro))
+
+
+def check_wtf_move(clean_lines, line_number, file_state, error):
+    """Looks for use of 'std::move()' which should be replaced with 'WTF::move()'.
+
+    Args:
+      clean_lines: A CleansedLines instance containing the file.
+      line_number: The number of the line to check.
+      file_state: A _FileState instance which maintains information about
+                  the state of things in the file.
+      error: The function to call with any errors found.
+    """
+
+    # This check doesn't apply to C or Objective-C implementation files.
+    if file_state.is_c_or_objective_c():
+        return
+
+    line = clean_lines.elided[line_number]  # Get rid of comments and strings.
+
+    using_std_move = search(r'\bstd::move\s*\(', line)
+    if not using_std_move:
+        return
+
+    error(line_number, 'runtime/wtf_move', 4, "Use 'WTF::move()' instead of 'std::move()'.")
 
 
 def check_ctype_functions(clean_lines, line_number, file_state, error):
@@ -2638,8 +2674,8 @@ def check_for_comparisons_to_zero(clean_lines, line_number, error):
 
 
 def check_for_null(clean_lines, line_number, file_state, error):
-    # This check doesn't apply to C or Objective-C implementation files.
-    if file_state.is_c_or_objective_c():
+    # This check doesn't apply to C, Objective-C, Objective-C++ implementation files.
+    if file_state.is_c() or file_state.is_objective_c_or_objective_cpp():
         return
 
     line = clean_lines.elided[line_number]
@@ -2665,6 +2701,8 @@ def check_for_null(clean_lines, line_number, file_state, error):
         return
 
     if search(r'\bNULL\b', line):
+        # FIXME: We should recommend using nullptr instead of NULL in C++ code per
+        # <http://www.webkit.org/coding/coding-style.html#zero-null>.
         error(line_number, 'readability/null', 5, 'Use 0 instead of NULL.')
         return
 
@@ -2673,6 +2711,8 @@ def check_for_null(clean_lines, line_number, file_state, error):
     # matches, then do the check with strings collapsed to avoid giving errors for
     # NULLs occurring in strings.
     if search(r'\bNULL\b', line) and search(r'\bNULL\b', CleansedLines.collapse_strings(line)):
+        # FIXME: We should recommend using nullptr instead of 0 or null in C++ code per
+        # <http://www.webkit.org/coding/coding-style.html#zero-null>.
         error(line_number, 'readability/null', 4, 'Use 0 or null instead of NULL (even in *comments*).')
 
 def get_line_width(line):
@@ -2758,6 +2798,7 @@ def check_style(clean_lines, line_number, file_extension, class_state, file_stat
     check_using_std(clean_lines, line_number, file_state, error)
     check_using_namespace(clean_lines, line_number, file_extension, error)
     check_max_min_macros(clean_lines, line_number, file_state, error)
+    check_wtf_move(clean_lines, line_number, file_state, error)
     check_ctype_functions(clean_lines, line_number, file_state, error)
     check_switch_indentation(clean_lines, line_number, error)
     check_braces(clean_lines, line_number, error)
@@ -3196,6 +3237,17 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
         error(line_number, 'runtime/bitfields', 5,
               'Please declare integral type bitfields with either signed or unsigned.')
 
+    # Beware of using enums as types for bitfields, there can sometimes be a mismatch
+    # between the signedness of the enum and the enum bitfield type.
+    # Visual Studio's 8.0 compiler is an example where it represents bit fields of
+    # enum types with a signed type, but enums as unsigned.
+    matched = re.match(r'\s*((const|mutable)\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s+[a-zA-Z_][a-zA-Z0-9_]*\s*:\s*\d+\s*;', line)
+    if matched:
+        # Make sure the type is an enum and not an integral type
+        if not match(r'char|(short(\s+int)?)|int|long(\s+(long|int))|(signed|unsigned)(\s+int)?', matched.group(3)):
+            error(line_number, 'runtime/enum_bitfields', 5,
+                  'Please declare enum bitfields as unsigned integral types.')
+
     check_identifier_name_in_declaration(filename, line_number, line, file_state, error)
 
     # Check for unsigned int (should be just 'unsigned')
@@ -3302,7 +3354,7 @@ def check_identifier_name_in_declaration(filename, line_number, line, file_state
 
         # Remove "m_" and "s_" to allow them.
         modified_identifier = sub(r'(^|(?<=::))[ms]_', '', identifier)
-        if not file_state.is_objective_c() and modified_identifier.find('_') >= 0:
+        if not file_state.is_objective_c_or_objective_cpp() and modified_identifier.find('_') >= 0:
             # Various exceptions to the rule: JavaScript op codes functions, const_iterator.
             if (not (filename.find('JavaScriptCore') >= 0 and modified_identifier.find('op_') >= 0)
                 and not (filename.find('gtk') >= 0 and modified_identifier.startswith('webkit_') >= 0)
@@ -3784,6 +3836,7 @@ class CppChecker(object):
         'runtime/bitfields',
         'runtime/casting',
         'runtime/ctype_function',
+        'runtime/enum_bitfields',
         'runtime/explicit',
         'runtime/init',
         'runtime/int',
@@ -3800,6 +3853,7 @@ class CppChecker(object):
         'runtime/threadsafe_fn',
         'runtime/unsigned',
         'runtime/virtual',
+        'runtime/wtf_move',
         'whitespace/blank_line',
         'whitespace/braces',
         'whitespace/colon',

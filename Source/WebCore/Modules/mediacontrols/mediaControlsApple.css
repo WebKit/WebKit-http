@@ -709,7 +709,6 @@ video::-webkit-media-text-track-container {
     text-decoration: none;
     pointer-events: none;
     -webkit-user-select: none;
-    word-break: break-word;
 
     -webkit-flex: 1 1;
 
@@ -726,6 +725,10 @@ video::-webkit-media-text-track-display {
     white-space: pre-wrap;
     -webkit-box-sizing: border-box;
     font: 22px sans-serif;
+}
+
+video::-webkit-media-text-track-display-backdrop {
+    display: inline-block;
 }
 
 video::cue(:future) {

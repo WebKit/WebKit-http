@@ -253,7 +253,7 @@ public:
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) = 0;
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;
-    virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition) = 0;
+    virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t transactionID) = 0;
     virtual void restorePageState(const WebCore::FloatRect&, double) = 0;
     virtual void restorePageCenterAndScale(const WebCore::FloatPoint&, double) = 0;
 
@@ -294,6 +294,11 @@ public:
 
     // Custom representations.
     virtual void didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference&) = 0;
+
+    virtual void navigationGestureDidBegin() = 0;
+    virtual void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&) = 0;
+    virtual void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&) = 0;
+    virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) = 0;
 };
 
 } // namespace WebKit

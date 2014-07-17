@@ -58,7 +58,7 @@ Controller.prototype = {
         canplaythrough: 'handleReadyStateChange',
         timeupdate: 'handleTimeUpdate',
         durationchange: 'handleDurationChange',
-        play: 'handlePlay',
+        playing: 'handlePlay',
         pause: 'handlePause',
         progress: 'handleProgress',
         volumechange: 'handleVolumeChange',
@@ -71,6 +71,7 @@ Controller.prototype = {
     ClassNames: {
         active: 'active',
         exit: 'exit',
+        failed: 'failed',
         hidden: 'hidden',
         hiding: 'hiding',
         hourLongTime: 'hour-long-time',

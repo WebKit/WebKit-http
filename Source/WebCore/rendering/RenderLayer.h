@@ -377,8 +377,6 @@ public:
     bool cannotBlitToWindow() const;
 
     bool isTransparent() const { return renderer().isTransparent() || renderer().hasMask(); }
-    RenderLayer* transparentPaintingAncestor();
-    void beginTransparencyLayers(GraphicsContext*, const RenderLayer* rootLayer, const LayoutRect& paintDirtyRect, PaintBehavior);
 
     bool hasReflection() const { return renderer().hasReflection(); }
     bool isReflection() const { return renderer().isReplica(); }
@@ -516,14 +514,14 @@ public:
 
     void positionNewlyCreatedOverflowControls();
 
+    bool hasCompositedLayerInEnclosingPaginationChain() const;
     enum PaginationInclusionMode { ExcludeCompositedPaginatedLayers, IncludeCompositedPaginatedLayers };
     RenderLayer* enclosingPaginationLayer(PaginationInclusionMode mode) const
     {
-        if (mode == ExcludeCompositedPaginatedLayers && m_enclosingLayerIsPaginatedAndComposited)
+        if (mode == ExcludeCompositedPaginatedLayers && hasCompositedLayerInEnclosingPaginationChain())
             return nullptr;
         return m_enclosingPaginationLayer;
     }
-    bool enclosingLayerIsPaginatedAndComposited() const { return m_enclosingLayerIsPaginatedAndComposited; }
 
     void updateTransform();
     
@@ -1012,6 +1010,9 @@ private:
     void paintMaskForFragments(const LayerFragments&, GraphicsContext*, const LayerPaintingInfo&, RenderObject* paintingRootForRenderer);
     void paintTransformedLayerIntoFragments(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
 
+    RenderLayer* transparentPaintingAncestor();
+    void beginTransparencyLayers(GraphicsContext*, const LayerPaintingInfo&, const LayoutRect& dirtyRect);
+
     RenderLayer* hitTestLayer(RenderLayer* rootLayer, RenderLayer* containerLayer, const HitTestRequest& request, HitTestResult& result,
         const LayoutRect& hitTestRect, const HitTestLocation&, bool appliedTransform,
         const HitTestingTransformState* = nullptr, double* zOffset = nullptr);
@@ -1336,7 +1337,6 @@ private:
 
     // Pointer to the enclosing RenderLayer that caused us to be paginated. It is 0 if we are not paginated.
     RenderLayer* m_enclosingPaginationLayer;
-    bool m_enclosingLayerIsPaginatedAndComposited;
 
     IntRect m_blockSelectionGapsBounds;
 

@@ -1,3 +1,401 @@
+2014-07-15  Benjamin Poulain  <benjamin@webkit.org>
+
+        Reduce the overhead of updating the AssemblerBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=134659
+
+        Reviewed by Gavin Barraclough.
+
+        In r164548, the linker was changed to allow the LinkBuffer to survive its MacroAssembler.
+        That feature is useful for JSC to get offsets inside a linked buffer in order to jump directly
+        there.
+
+        On ARM, we use branch compaction and we need to keep the "compaction offset" somewher to be able
+        to get the real address of a lable. That is done by reusing the memory of AssemblerData.
+
+        To share the memory between LinkBuffer and the Assembler, r164548 moved the AssemblerData into
+        a ref-counted object. Unfortunately, the extra complexity related to the new AssemblerData was enough
+        to make clang give up a bunch of optimizations.
+
+        This patch solve (some of) the problems by making AssemblerBuffer and AssemblerData super low overhead structures.
+        In particular, the grow() function becomes 8 Thumb instructions, which is easily inlined everywhere it is used.
+
+        Instead of sharing ownership between the Assembler and LinkBuffer, LinkBuffer now takes full ownership of
+        the AssemblerData. I feel this is also safer since LinkBuffer is reusing the AssemblerData is a very
+        specific way that would make it unusable for the Assembler.
+
+        -- Technical details --
+
+        From LinkBuffer, we don't want to ever access the Assembler after releasing its buffer (or writting anything
+        into it really). This was obviously already the case, but that was hard to prove from LinkBuffer::copyCompactAndLinkCode().
+        To make this easier to work with, I changed all the assembler specific function to be static. This way we know
+        exactly what code access the Assembler instance. The code that does access the instance is then moved
+        at the beginning, before we modify anything.
+
+        The function recordLinkOffsets() that was on the MacroAssembler and copied in Assembler was moved directly
+        to LinkBuffer. This make the modification of AssemblerData completely explicit, and that code is specific
+        to LinkBuffer anyway (see LinkBuffer::executableOffsetFor()).
+
+        -- Perf impact --
+
+        This does not put us exactly at before r164548 due to the missing inline buffer. Still, it is very close.
+        On ARMv7, this reduces the time spent in Assembler by half. On the CSS JIT, this reduces the compilation
+        time by ~20%.
+
+        I could not measure any difference on x86_64.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::jumpSizeDelta):
+        (JSC::ARM64Assembler::canCompact):
+        (JSC::ARM64Assembler::computeJumpType):
+        (JSC::ARM64Assembler::link):
+        (JSC::ARM64Assembler::recordLinkOffsets): Deleted.
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::ifThenElseConditionBit):
+        (JSC::ARMv7Assembler::ifThenElse):
+        (JSC::ARMv7Assembler::jumpSizeDelta):
+        (JSC::ARMv7Assembler::canCompact):
+        (JSC::ARMv7Assembler::computeJumpType):
+        (JSC::ARMv7Assembler::link):
+        (JSC::ARMv7Assembler::linkJumpT1):
+        (JSC::ARMv7Assembler::linkJumpT3):
+        (JSC::ARMv7Assembler::linkConditionalJumpT4):
+        (JSC::ARMv7Assembler::linkConditionalBX):
+        (JSC::ARMv7Assembler::recordLinkOffsets): Deleted.
+        * assembler/AssemblerBuffer.h:
+        (JSC::AssemblerData::AssemblerData):
+        (JSC::AssemblerData::operator=):
+        (JSC::AssemblerData::~AssemblerData):
+        (JSC::AssemblerData::buffer):
+        (JSC::AssemblerData::capacity):
+        (JSC::AssemblerData::grow):
+        (JSC::AssemblerBuffer::AssemblerBuffer):
+        (JSC::AssemblerBuffer::isAvailable):
+        (JSC::AssemblerBuffer::data):
+        (JSC::AssemblerBuffer::releaseAssemblerData):
+        (JSC::AssemblerBuffer::putIntegral):
+        (JSC::AssemblerBuffer::putIntegralUnchecked):
+        (JSC::AssemblerBuffer::append):
+        (JSC::AssemblerBuffer::grow):
+        (JSC::AssemblerBuffer::~AssemblerBuffer): Deleted.
+        (JSC::AssemblerBuffer::storage): Deleted.
+        * assembler/LinkBuffer.cpp:
+        (JSC::recordLinkOffsets):
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+        * assembler/LinkBuffer.h:
+        (JSC::LinkBuffer::LinkBuffer):
+        (JSC::LinkBuffer::executableOffsetFor):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::canCompact):
+        (JSC::MacroAssemblerARM64::computeJumpType):
+        (JSC::MacroAssemblerARM64::jumpSizeDelta):
+        (JSC::MacroAssemblerARM64::link):
+        (JSC::MacroAssemblerARM64::recordLinkOffsets): Deleted.
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::canCompact):
+        (JSC::MacroAssemblerARMv7::computeJumpType):
+        (JSC::MacroAssemblerARMv7::jumpSizeDelta):
+        (JSC::MacroAssemblerARMv7::link):
+        (JSC::MacroAssemblerARMv7::recordLinkOffsets): Deleted.
+
+2014-07-15  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Stores to PropertyTable use the Structure as the owner
+        https://bugs.webkit.org/show_bug.cgi?id=134595
+
+        Reviewed by Darin Adler.
+
+        Since PropertyTable is the object that does the marking of these references, it should be the owner.
+
+        Also removed some unused parameters to other methods that historically used the Structure as the owner.
+
+        * runtime/JSPropertyNameIterator.h:
+        (JSC::StructureRareData::setEnumerationCache):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToString):
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::copy):
+        * runtime/PropertyTable.cpp:
+        (JSC::PropertyTable::clone):
+        (JSC::PropertyTable::PropertyTable):
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::materializePropertyMap):
+        (JSC::Structure::addPropertyTransition):
+        (JSC::Structure::changePrototypeTransition):
+        (JSC::Structure::despecifyFunctionTransition):
+        (JSC::Structure::attributeChangeTransition):
+        (JSC::Structure::toDictionaryTransition):
+        (JSC::Structure::preventExtensionsTransition):
+        (JSC::Structure::takePropertyTableOrCloneIfPinned):
+        (JSC::Structure::nonPropertyTransition):
+        (JSC::Structure::copyPropertyTable):
+        (JSC::Structure::copyPropertyTableForPinning):
+        (JSC::Structure::putSpecificValue):
+        * runtime/Structure.h:
+        (JSC::Structure::setObjectToStringValue):
+        (JSC::Structure::setPreviousID):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setEnumerationCache):
+        * runtime/StructureRareData.h:
+        * runtime/StructureRareDataInlines.h:
+        (JSC::StructureRareData::setPreviousID):
+        (JSC::StructureRareData::setObjectToStringValue):
+
+2014-07-15  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        ScriptExecutable::forEachCodeBlock can dereference null CodeBlocks
+        https://bugs.webkit.org/show_bug.cgi?id=134928
+
+        Reviewed by Andreas Kling.
+
+        * bytecode/CodeBlock.h:
+        (JSC::ScriptExecutable::forEachCodeBlock): Check for null CodeBlocks before calling forEachRelatedCodeBlock.
+
+2014-07-15  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Buildfix if LLINT_SLOW_PATH_TRACING is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=133790
+
+        Reviewed by Mark Lam.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+
+2014-07-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Allow for Int52Rep to see things other than Int32, and make this testable
+        https://bugs.webkit.org/show_bug.cgi?id=134873
+        <rdar://problem/17641915>
+
+        Reviewed by Geoffrey Garen and Mark Hahnenberg.
+        
+        A major premise of our type inference is that prediction propagation can say whatever it
+        wants and we'll still have valid IR after Fixup. This previously didn't work with Int52s.
+        We required some kind of agreement between prediction propagation and fixup over which
+        data flow paths were Int52 and which weren't.
+        
+        It turns out that we basically had such an agreement, with the exception of code that was
+        unreachable due to ForceOSRExit. Then, fixup and prediction propagation would disagree. It
+        might be nice to fix that bug - but it's only in the case of Int52 that such a thing would
+        be a bug! Normally, we allow sloppiness in prediction propagation.
+        
+        This patch allows us to be sloppy with Int52 prediction propagation by giving Int52Rep the
+        ability to see inputs other than Int32. This fixes the particular ForceOSRExit bug (see
+        int52-force-osr-exit-path.js for the reduced test case). To make sure that the newly
+        empowered Int52Rep is actually correct - in case we end up using it on paths other than
+        ForceOSRExit - this patch introduces an internal intrinsic called fiatInt52() that forces
+        us to attempt Int52 conversion on the input. This patch adds a bunch of tests that stress
+        this intrinsic. This means that we're now stressing Int52Rep more so than ever before!
+        
+        Note that it would still be a bug for prediction propagation to ever cause us to create an
+        Int52Rep node for a non-Int32 input. But, this will now be a performance bug, rather than
+        a crash bug.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::fixTypeForRepresentation):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsic):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::injectTypeConversionsForEdge):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::isMachineIntConstant):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isMachineIntConstant):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::SafeToExecuteEdge::operator()):
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculate):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::convertMachineInt):
+        (JSC::DFG::SpeculativeJIT::speculateMachineInt):
+        (JSC::DFG::SpeculativeJIT::speculateDoubleRepMachineInt):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * dfg/DFGUseKind.cpp:
+        (WTF::printInternal):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        (JSC::DFG::isNumerical):
+        (JSC::DFG::isDouble):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileInt52Rep):
+        (JSC::FTL::LowerDFGToLLVM::doubleToInt32):
+        (JSC::FTL::LowerDFGToLLVM::jsValueToDouble):
+        (JSC::FTL::LowerDFGToLLVM::jsValueToStrictInt52):
+        (JSC::FTL::LowerDFGToLLVM::doubleToStrictInt52):
+        (JSC::FTL::LowerDFGToLLVM::speculate):
+        (JSC::FTL::LowerDFGToLLVM::speculateMachineInt):
+        (JSC::FTL::LowerDFGToLLVM::speculateDoubleRepMachineInt):
+        * jit/JITOperations.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionIdentity):
+        * runtime/Intrinsic.h:
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::tryConvertToInt52):
+        (JSC::isInt52):
+        (JSC::JSValue::isMachineInt):
+        * tests/stress/dead-fiat-double-to-int52-then-exit-not-int52.js: Added.
+        (foo):
+        * tests/stress/dead-fiat-double-to-int52.js: Added.
+        (foo):
+        * tests/stress/dead-fiat-int32-to-int52.js: Added.
+        (foo):
+        * tests/stress/dead-fiat-value-to-int52-double-path.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/dead-fiat-value-to-int52-then-exit-not-double.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/dead-fiat-value-to-int52-then-exit-not-int52.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/dead-fiat-value-to-int52.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/fiat-double-to-int52-then-exit-not-int52.js: Added.
+        (foo):
+        * tests/stress/fiat-double-to-int52-then-fail-to-fold.js: Added.
+        (foo):
+        * tests/stress/fiat-double-to-int52-then-fold.js: Added.
+        (foo):
+        * tests/stress/fiat-double-to-int52.js: Added.
+        (foo):
+        * tests/stress/fiat-int32-to-int52.js: Added.
+        (foo):
+        * tests/stress/fiat-value-to-int52-double-path.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/fiat-value-to-int52-then-exit-not-double.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/fiat-value-to-int52-then-exit-not-int52.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/fiat-value-to-int52-then-fail-to-fold.js: Added.
+        (foo):
+        * tests/stress/fiat-value-to-int52-then-fold.js: Added.
+        (foo):
+        * tests/stress/fiat-value-to-int52.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/int52-force-osr-exit-path.js: Added.
+        (foo):
+
+2014-07-14  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Flattening dictionaries with oversize backing stores can cause crashes
+        https://bugs.webkit.org/show_bug.cgi?id=134906
+
+        Reviewed by Filip Pizlo.
+
+        The collector expects any pointers into CopiedSpace passed to copyLater are within 32 KB 
+        of the CopiedBlock header. This was always the case except for when flattening a dictionary 
+        caused the size of the Butterfly to decrease. This was equivalent to moving the base of the 
+        Butterfly to higher addresses. If the object was reduced sufficiently in size, the base 
+        would no longer be within the first 32 KB of the CopiedBlock and the next collection would 
+        choke on the Butterfly pointer.
+
+        This patch fixes this issue by detect this situation during flattening and memmove-ing 
+        the Butterfly down to where the old base was.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::shiftButterflyAfterFlattening):
+        * runtime/JSObject.h:
+        (JSC::JSObject::butterflyPreCapacity):
+        (JSC::JSObject::butterflyTotalSize):
+        * runtime/Structure.cpp:
+        (JSC::Structure::flattenDictionaryStructure):
+        * tests/stress/flatten-oversize-dictionary-object.js: Added.
+        (foo):
+
+2014-07-14  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove some dead code from FTLJITFinalizer
+        https://bugs.webkit.org/show_bug.cgi?id=134874
+
+        Reviewed by Geoffrey Garen.
+
+        Not sure what that code was for...but it does not do anything :)
+
+        * ftl/FTLJITFinalizer.cpp:
+        (JSC::FTL::JITFinalizer::finalizeFunction):
+        The pointer of the label is computed but never used.
+
+        * ftl/FTLJITFinalizer.h:
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        The label is never set to anything.
+
+2014-07-14  Bear Travis  <betravis@adobe.com>
+
+        [Feature Queries] Enable Feature Queries on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=134404
+
+        Reviewed by Antti Koivisto.
+
+        Enable Feature Queries on Mac and resume running the
+        feature tests.
+
+        * Configurations/FeatureDefines.xcconfig: Turn on
+        ENABLE_CSS3_CONDITIONAL_RULES.
+
+2014-07-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger Pause button does not work
+        https://bugs.webkit.org/show_bug.cgi?id=134785
+
+        Reviewed by Timothy Hatcher.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        Minification strips the sourceURL command. Add it back with minification.
+
+2014-07-11  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Enable DFG JIT.
+        https://bugs.webkit.org/show_bug.cgi?id=123615
+
+        Reviewed by Mark Lam.
+
+        When the return type of a JIT generated function call is larger than 64-bit (e.g. SlowPathReturnType),
+        the normal call() implementation cannot be used on 64-bit Windows, because the 64-bit Windows ABI is different in this case.
+        Also, when generating calls with double arguments, we need to make sure the arguments are put in the correct registers,
+        since the register allocation differs on 64-bit Windows.
+
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::callWithSlowPathReturnType): Added method to handle function calls where the return value type size is larger than 64-bit.
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState): Move arguments to correct registers when there are floating point arguments.
+        (JSC::CCallHelpers::setupArgumentsWithExecStateForCallWithSlowPathReturnType): Added method.
+        * jit/JIT.h:
+        (JSC::JIT::appendCallWithSlowPathReturnType): Added method.
+        * jit/JITInlines.h:
+        (JSC::JIT::appendCallWithExceptionCheckAndSlowPathReturnType): Added method.
+        (JSC::JIT::callOperation): Call new method.
+
 2014-07-09  Benjamin Poulain  <benjamin@webkit.org>
 
         Use 16bits instructions for push/pop on ARMv7 when possible

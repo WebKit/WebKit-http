@@ -66,7 +66,7 @@ using namespace WebKit;
 
 namespace API {
 template<> struct ClientTraits<WKPageLoaderClientBase> {
-    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4> Versions;
+    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4, WKPageLoaderClientV5> Versions;
 };
 
 template<> struct ClientTraits<WKPagePolicyClientBase> {
@@ -835,7 +835,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didFailLoadWithErrorForFrame(toAPI(page), toAPI(frame), toAPI(error), toAPI(userData), m_client.base.clientInfo);
         }
 
-        virtual void didSameDocumentNavigationForFrame(WebPageProxy* page, WebFrameProxy* frame, SameDocumentNavigationType type, API::Object* userData) override
+        virtual void didSameDocumentNavigationForFrame(WebPageProxy* page, WebFrameProxy* frame, uint64_t, SameDocumentNavigationType type, API::Object* userData) override
         {
             if (!m_client.didSameDocumentNavigationForFrame)
                 return;

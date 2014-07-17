@@ -184,12 +184,8 @@ SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingC
 
             // When invalidating style all pseudo elements need to match.
             PseudoId pseudoId = m_mode == Mode::StyleInvalidation ? NOPSEUDO : CSSSelector::pseudoId(context.selector->pseudoElementType());
-            if (pseudoId != NOPSEUDO) {
+            if (pseudoId != NOPSEUDO)
                 dynamicPseudo = pseudoId;
-
-                if (pseudoId == FIRST_LETTER)
-                    context.element->document().styleSheetCollection().setUsesFirstLetterRules(true);
-            }
         }
     }
 
@@ -275,7 +271,7 @@ SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingC
         // to follow the pseudo elements.
         nextContext.hasScrollbarPseudo = dynamicPseudo != NOPSEUDO && (context.scrollbar || dynamicPseudo == SCROLLBAR_CORNER || dynamicPseudo == RESIZER);
         nextContext.hasSelectionPseudo = dynamicPseudo == SELECTION;
-        if ((context.elementStyle || m_mode == Mode::CollectingRules || m_mode == Mode::QueryingRules) && dynamicPseudo != NOPSEUDO
+        if ((context.elementStyle || m_mode == Mode::CollectingRules) && dynamicPseudo != NOPSEUDO
             && !nextContext.hasSelectionPseudo
             && !(nextContext.hasScrollbarPseudo && nextContext.selector->m_match == CSSSelector::PseudoClass))
             return SelectorFailsCompletely;

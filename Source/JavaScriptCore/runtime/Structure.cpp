@@ -237,7 +237,7 @@ Structure::Structure(VM& vm, Structure* previous)
     ASSERT(!previous->typeInfo().structureIsImmortal());
     if (previous->m_hasRareData && previous->rareData()->needsCloning())
         cloneRareDataFrom(vm, previous);
-    setPreviousID(vm, this, previous);
+    setPreviousID(vm, previous);
 
     previous->notifyTransitionFromThisStructure();
     if (previous->m_globalObject)
@@ -293,7 +293,7 @@ void Structure::materializePropertyMap(VM& vm)
     findStructuresAndMapForMaterialization(structures, structure, table);
     
     if (table) {
-        table = table->copy(vm, structure, numberOfSlotsForLastOffset(m_offset, m_inlineCapacity));
+        table = table->copy(vm, numberOfSlotsForLastOffset(m_offset, m_inlineCapacity));
         structure->m_lock.unlock();
     }
     
@@ -450,7 +450,7 @@ Structure* Structure::addPropertyTransition(VM& vm, Structure* structure, Proper
     transition->m_nameInPrevious = propertyName.uid();
     transition->m_attributesInPrevious = attributes;
     transition->m_specificValueInPrevious.setMayBeNull(vm, transition, specificValue);
-    transition->propertyTable().set(vm, transition, structure->takePropertyTableOrCloneIfPinned(vm, transition));
+    transition->propertyTable().set(vm, transition, structure->takePropertyTableOrCloneIfPinned(vm));
     transition->m_offset = structure->m_offset;
 
     offset = transition->putSpecificValue(vm, propertyName, attributes, specificValue);
@@ -485,7 +485,7 @@ Structure* Structure::changePrototypeTransition(VM& vm, Structure* structure, JS
 
     DeferGC deferGC(vm.heap);
     structure->materializePropertyMapIfNecessary(vm, deferGC);
-    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm, transition));
+    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
     transition->m_offset = structure->m_offset;
     transition->pin();
 
@@ -502,7 +502,7 @@ Structure* Structure::despecifyFunctionTransition(VM& vm, Structure* structure, 
 
     DeferGC deferGC(vm.heap);
     structure->materializePropertyMapIfNecessary(vm, deferGC);
-    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm, transition));
+    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
     transition->m_offset = structure->m_offset;
     transition->pin();
 
@@ -524,7 +524,7 @@ Structure* Structure::attributeChangeTransition(VM& vm, Structure* structure, Pr
         Structure* transition = create(vm, structure);
 
         structure->materializePropertyMapIfNecessary(vm, deferGC);
-        transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm, transition));
+        transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
         transition->m_offset = structure->m_offset;
         transition->pin();
         
@@ -548,7 +548,7 @@ Structure* Structure::toDictionaryTransition(VM& vm, Structure* structure, Dicti
 
     DeferGC deferGC(vm.heap);
     structure->materializePropertyMapIfNecessary(vm, deferGC);
-    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm, transition));
+    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
     transition->m_offset = structure->m_offset;
     transition->m_dictionaryKind = kind;
     transition->pin();
@@ -611,7 +611,7 @@ Structure* Structure::preventExtensionsTransition(VM& vm, Structure* structure)
 
     DeferGC deferGC(vm.heap);
     structure->materializePropertyMapIfNecessary(vm, deferGC);
-    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm, transition));
+    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
     transition->m_offset = structure->m_offset;
     transition->m_preventExtensions = true;
     transition->pin();
@@ -620,13 +620,13 @@ Structure* Structure::preventExtensionsTransition(VM& vm, Structure* structure)
     return transition;
 }
 
-PropertyTable* Structure::takePropertyTableOrCloneIfPinned(VM& vm, Structure* owner)
+PropertyTable* Structure::takePropertyTableOrCloneIfPinned(VM& vm)
 {
     DeferGC deferGC(vm.heap);
     materializePropertyMapIfNecessaryForPinning(vm, deferGC);
     
     if (m_isPinnedPropertyTable)
-        return propertyTable()->copy(vm, owner, propertyTable()->size() + 1);
+        return propertyTable()->copy(vm, propertyTable()->size() + 1);
     
     // Hold the lock while stealing the table - so that getConcurrently() on another thread
     // will either have to bypass this structure, or will get to use the property table
@@ -662,7 +662,7 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
     Structure* transition = create(vm, structure);
     transition->m_attributesInPrevious = attributes;
     transition->m_blob.setIndexingType(indexingType);
-    transition->propertyTable().set(vm, transition, structure->takePropertyTableOrCloneIfPinned(vm, transition));
+    transition->propertyTable().set(vm, transition, structure->takePropertyTableOrCloneIfPinned(vm));
     transition->m_offset = structure->m_offset;
     checkOffset(transition->m_offset, transition->inlineCapacity());
     
@@ -720,6 +720,8 @@ Structure* Structure::flattenDictionaryStructure(VM& vm, JSObject* object)
 {
     checkOffsetConsistency();
     ASSERT(isDictionary());
+
+    size_t beforeOutOfLineCapacity = this->outOfLineCapacity();
     if (isUncacheableDictionary()) {
         ASSERT(propertyTable());
 
@@ -748,10 +750,20 @@ Structure* Structure::flattenDictionaryStructure(VM& vm, JSObject* object)
     m_dictionaryKind = NoneDictionaryKind;
     m_hasBeenFlattenedBefore = true;
 
-    // If the object had a Butterfly but after flattening/compacting we no longer have need of it,
-    // we need to zero it out because the collector depends on the Structure to know the size for copying.
-    if (object->butterfly() && !this->outOfLineCapacity() && !this->hasIndexingHeader(object))
-        object->setStructureAndButterfly(vm, this, 0);
+    size_t afterOutOfLineCapacity = this->outOfLineCapacity();
+
+    if (beforeOutOfLineCapacity != afterOutOfLineCapacity) {
+        ASSERT(beforeOutOfLineCapacity > afterOutOfLineCapacity);
+        // If the object had a Butterfly but after flattening/compacting we no longer have need of it,
+        // we need to zero it out because the collector depends on the Structure to know the size for copying.
+        if (object->butterfly() && !afterOutOfLineCapacity && !this->hasIndexingHeader(object))
+            object->setStructureAndButterfly(vm, this, 0);
+        // If the object was down-sized to the point where the base of the Butterfly is no longer within the 
+        // first CopiedBlock::blockSize bytes, we'll get the wrong answer if we try to mask the base back to 
+        // the CopiedBlock header. To prevent this case we need to memmove the Butterfly down.
+        else if (object->butterfly())
+            object->shiftButterflyAfterFlattening(vm, beforeOutOfLineCapacity, afterOutOfLineCapacity);
+    }
 
     return this;
 }
@@ -852,17 +864,17 @@ inline void Structure::checkConsistency()
 
 #endif
 
-PropertyTable* Structure::copyPropertyTable(VM& vm, Structure* owner)
+PropertyTable* Structure::copyPropertyTable(VM& vm)
 {
     if (!propertyTable())
         return 0;
-    return PropertyTable::clone(vm, owner, *propertyTable().get());
+    return PropertyTable::clone(vm, *propertyTable().get());
 }
 
-PropertyTable* Structure::copyPropertyTableForPinning(VM& vm, Structure* owner)
+PropertyTable* Structure::copyPropertyTableForPinning(VM& vm)
 {
     if (propertyTable())
-        return PropertyTable::clone(vm, owner, *propertyTable().get());
+        return PropertyTable::clone(vm, *propertyTable().get());
     return PropertyTable::create(vm, numberOfSlotsForLastOffset(m_offset, m_inlineCapacity));
 }
 
@@ -944,7 +956,7 @@ PropertyOffset Structure::putSpecificValue(VM& vm, PropertyName propertyName, un
 
     PropertyOffset newOffset = propertyTable()->nextOffset(m_inlineCapacity);
 
-    propertyTable()->add(PropertyMapEntry(vm, this, rep, newOffset, attributes, specificValue), m_offset, PropertyTable::PropertyOffsetMayChange);
+    propertyTable()->add(PropertyMapEntry(vm, propertyTable().get(), rep, newOffset, attributes, specificValue), m_offset, PropertyTable::PropertyOffsetMayChange);
     
     checkConsistency();
     return newOffset;

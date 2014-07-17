@@ -34,6 +34,13 @@ static const WKNavigationActionPolicy _WKNavigationActionPolicyDownload = (WKNav
 
 static const WKNavigationResponsePolicy _WKNavigationResponsePolicyBecomeDownload = (WKNavigationResponsePolicy)(WKNavigationResponsePolicyAllow + 1);
 
+typedef NS_ENUM(NSInteger, _WKSameDocumentNavigationType) {
+    _WKSameDocumentNavigationTypeAnchorNavigation,
+    _WKSameDocumentNavigationTypeSessionStatePush,
+    _WKSameDocumentNavigationTypeSessionStateReplace,
+    _WKSameDocumentNavigationTypeSessionStatePop,
+} WK_AVAILABLE(10_10, 8_0);
+
 @protocol WKNavigationDelegatePrivate <WKNavigationDelegate>
 
 @optional
@@ -41,6 +48,7 @@ static const WKNavigationResponsePolicy _WKNavigationResponsePolicyBecomeDownloa
 - (void)_webView:(WKWebView *)webView navigation:(WKNavigation *)navigation didFailProvisionalLoadInSubframe:(WKFrameInfo *)subframe withError:(NSError *)error;
 
 - (void)_webView:(WKWebView *)webView navigationDidFinishDocumentLoad:(WKNavigation *)navigation;
+- (void)_webView:(WKWebView *)webView navigation:(WKNavigation *)navigation didSameDocumentNavigation:(_WKSameDocumentNavigationType)navigationType;
 
 - (void)_webView:(WKWebView *)webView renderingProgressDidChange:(_WKRenderingProgressEvents)progressEvents;
 
@@ -50,6 +58,13 @@ static const WKNavigationResponsePolicy _WKNavigationResponsePolicyBecomeDownloa
 - (void)_webViewWebProcessDidCrash:(WKWebView *)webView;
 
 - (NSData *)_webCryptoMasterKeyForWebView:(WKWebView *)webView;
+
+- (void)_webViewDidBeginNavigationGesture:(WKWebView *)webView;
+// Item is nil if the gesture ended without navigation.
+- (void)_webViewDidEndNavigationGesture:(WKWebView *)webView withNavigationToBackForwardListItem:(WKBackForwardListItem *)item;
+// Only called if how the gesture will end (with or without navigation) is known before it ends.
+- (void)_webViewWillEndNavigationGesture:(WKWebView *)webView withNavigationToBackForwardListItem:(WKBackForwardListItem *)item;
+- (void)_webView:(WKWebView *)webView willSnapshotBackForwardListItem:(WKBackForwardListItem *)item;
 
 #if TARGET_OS_IPHONE
 - (void)_webView:(WKWebView *)webView didStartLoadForQuickLookDocumentInMainFrameWithFileName:(NSString *)fileName uti:(NSString *)uti;

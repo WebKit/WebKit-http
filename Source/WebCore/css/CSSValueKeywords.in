@@ -544,6 +544,22 @@ space-around
 // space-between
 // space-around
 
+// CSS_PROP_JUSTIFY_SELF
+// auto
+// stretch
+// baseline
+// center
+// start
+// end
+self-start
+self-end
+// flex-start
+// flex-end
+// left
+// right
+true
+safe
+
 // CSS_PROP_FLEX_FLOW
 row
 row-reverse
@@ -1041,6 +1057,10 @@ markers
 
 // -webkit-grid-{column-start|column-end|row-start|row-end}
 span
+
+// -webkit-grid-auto-flow
+dense
+stack
 
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
 // text-indent

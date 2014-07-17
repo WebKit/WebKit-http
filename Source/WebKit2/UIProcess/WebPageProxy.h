@@ -383,6 +383,7 @@ public:
     const WebCore::FloatRect& unobscuredContentRect() const { return m_lastVisibleContentRectUpdate.unobscuredRect(); }
 
     void updateVisibleContentRects(const WebCore::FloatRect& exposedRect, const WebCore::FloatRect& unobscuredRect, const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate);
+    void resendLastVisibleContentRects();
 
     enum class UnobscuredRectConstraint { ConstrainedToDocumentRect, Unconstrained };
     WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained) const;
@@ -897,6 +898,14 @@ public:
 
     void takeSnapshot(WebCore::IntRect, WebCore::IntSize bitmapSize, SnapshotOptions, std::function<void (const ShareableBitmap::Handle&, CallbackBase::Error)>);
 
+    void navigationGestureDidBegin();
+    void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&);
+    void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&);
+    void navigationGestureSnapshotWasRemoved();
+    void willRecordNavigationSnapshot(WebBackForwardListItem&);
+
+    bool isShowingNavigationGestureSnapshot() const { return m_isShowingNavigationGestureSnapshot; }
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     void platformInitialize();
@@ -943,7 +952,7 @@ private:
     void didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, IPC::MessageDecoder&);
     void didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, IPC::MessageDecoder&);
     void didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, IPC::MessageDecoder&);
-    void didSameDocumentNavigationForFrame(uint64_t frameID, uint32_t sameDocumentNavigationType, const String&, IPC::MessageDecoder&);
+    void didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t sameDocumentNavigationType, const String&, IPC::MessageDecoder&);
     void didReceiveTitleForFrame(uint64_t frameID, const String&, IPC::MessageDecoder&);
     void didFirstLayoutForFrame(uint64_t frameID, IPC::MessageDecoder&);
     void didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, IPC::MessageDecoder&);
@@ -1313,7 +1322,9 @@ private:
     RefPtr<WebVideoFullscreenManagerProxy> m_videoFullscreenManager;
     VisibleContentRectUpdateInfo m_lastVisibleContentRectUpdate;
     int32_t m_deviceOrientation;
-    bool m_dynamicViewportSizeUpdateInProgress;
+    bool m_dynamicViewportSizeUpdateWaitingForTarget;
+    bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit;
+    uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID;
 #endif
 
 #if ENABLE(VIBRATION)
@@ -1485,6 +1496,7 @@ private:
     bool m_backgroundExtendsBeyondPage;
 
     bool m_shouldRecordNavigationSnapshots;
+    bool m_isShowingNavigationGestureSnapshot;
 
     unsigned m_pageCount;
 

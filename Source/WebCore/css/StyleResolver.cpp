@@ -109,7 +109,6 @@
 #include "SVGNames.h"
 #include "SVGURIReference.h"
 #include "SecurityOrigin.h"
-#include "SelectorCheckerFastPath.h"
 #include "Settings.h"
 #include "ShadowData.h"
 #include "ShadowRoot.h"
@@ -2790,7 +2789,53 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         state.style()->setNamedGridAreaColumnCount(gridTemplateAreasValue->columnCount());
         return;
     }
+    case CSSPropertyWebkitGridAutoFlow: {
+        HANDLE_INHERIT_AND_INITIAL(gridAutoFlow, GridAutoFlow);
+        if (!value->isValueList())
+            return;
+        CSSValueList* list = toCSSValueList(value);
+
+        if (!list->length()) {
+            state.style()->setGridAutoFlow(RenderStyle::initialGridAutoFlow());
+            return;
+        }
+
+        CSSPrimitiveValue* first = toCSSPrimitiveValue(list->item(0));
+        CSSPrimitiveValue* second = list->length() == 2 ? toCSSPrimitiveValue(list->item(1)) : nullptr;
+
+        GridAutoFlow autoFlow = RenderStyle::initialGridAutoFlow();
+        switch (first->getValueID()) {
+        case CSSValueRow:
+            if (second)
+                autoFlow = second->getValueID() == CSSValueDense ? AutoFlowRowDense : AutoFlowStackRow;
+            else
+                autoFlow = AutoFlowRow;
+            break;
+        case CSSValueColumn:
+            if (second)
+                autoFlow = second->getValueID() == CSSValueDense ? AutoFlowColumnDense : AutoFlowStackColumn;
+            else
+                autoFlow = AutoFlowColumn;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            break;
+        }
+
+        state.style()->setGridAutoFlow(autoFlow);
+        return;
+    }
 #endif /* ENABLE(CSS_GRID_LAYOUT) */
+    case CSSPropertyWebkitJustifySelf: {
+        HANDLE_INHERIT_AND_INITIAL(justifySelf, JustifySelf);
+        CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
+        if (Pair* pairValue = primitiveValue->getPairValue()) {
+            state.style()->setJustifySelf(*pairValue->first());
+            state.style()->setJustifySelfOverflowAlignment(*pairValue->second());
+        } else
+            state.style()->setJustifySelf(*primitiveValue);
+        return;
+    }
     // These properties are aliased and DeprecatedStyleBuilder already applied the property on the prefixed version.
     case CSSPropertyTransitionDelay:
     case CSSPropertyTransitionDuration:

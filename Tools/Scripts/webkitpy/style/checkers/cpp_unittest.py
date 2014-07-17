@@ -2502,6 +2502,14 @@ class CppStyleTest(CppStyleTestBase):
                          'Changing pointer instead of value (or unused value of '
                          'operator*).  [runtime/invalid_increment] [5]')
 
+    # Enum bitfields are not allowed and should be declared as unsigned integral types.
+    def test_enum_bitfields(self):
+        errmsg = ('Please declare enum bitfields as unsigned integral types.  [runtime/enum_bitfields] [5]')
+
+        self.assert_lint('AnEnum a : 30;', errmsg)
+        self.assert_lint('mutable AnEnum a : 14;', errmsg)
+        self.assert_lint('const AnEnum a : 6;', errmsg)
+
     # Integral bitfields must be declared with either signed or unsigned keyword.
     def test_plain_integral_bitfields(self):
         errmsg = ('Please declare integral type bitfields with either signed or unsigned.  [runtime/bitfields] [5]')
@@ -2511,6 +2519,7 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('const char a : 6;', errmsg)
         self.assert_lint('long int a : 30;', errmsg)
         self.assert_lint('int a = 1 ? 0 : 30;', '')
+
 
 class CleansedLinesTest(unittest.TestCase):
     def test_init(self):
@@ -3806,6 +3815,15 @@ class WebKitStyleTest(CppStyleTestBase):
             '}',
             'Code inside a namespace should not be indented.  [whitespace/indent] [4]',
             'foo.cpp')
+        self.assert_multi_line_lint(
+            'namespace WebCore {\n'
+            'static const char* vertexTemplate =\n'
+            '    STRINGIFY(\n'
+            '        attribute vec4 a_vertex;\n'
+            '        uniform mat4 u_modelViewMatrix;\n'
+            '    );\n'
+            '}\n',
+            '')
 
         # 5. A case label should line up with its switch statement. The
         #    case statement is indented.
@@ -4482,7 +4500,7 @@ class WebKitStyleTest(CppStyleTestBase):
             'myVariable = NULLify',
             '',
             'foo.cpp')
-        # Make sure that the NULL check does not apply to C and Objective-C files.
+        # Make sure that the NULL check does not apply to C, Objective-C, and Objective-C++ files.
         self.assert_lint(
             'functionCall(NULL)',
             '',
@@ -4491,6 +4509,10 @@ class WebKitStyleTest(CppStyleTestBase):
             'functionCall(NULL)',
             '',
             'foo.m')
+        self.assert_lint(
+            'functionCall(NULL)',
+            '',
+            'foo.mm')
 
         # Make sure that the NULL check does not apply to g_object_{set,get} and
         # g_str{join,concat}
@@ -4658,6 +4680,12 @@ class WebKitStyleTest(CppStyleTestBase):
             "  [build/using_std] [4]",
             'foo.cpp')
 
+        self.assert_lint(
+            'using std::min;',
+            "Use 'using namespace std;' instead of 'using std::min;'."
+            "  [build/using_std] [4]",
+            'foo.mm')
+
     def test_using_namespace(self):
         self.assert_lint(
             'using namespace foo;',
@@ -4673,9 +4701,20 @@ class WebKitStyleTest(CppStyleTestBase):
 
         self.assert_lint(
             'int i = MAX(0, 1);',
+            '',
+            'foo.m')
+
+        self.assert_lint(
+            'int i = MAX(0, 1);',
             'Use std::max() or std::max<type>() instead of the MAX() macro.'
             '  [runtime/max_min_macros] [4]',
             'foo.cpp')
+
+        self.assert_lint(
+            'int i = MAX(0, 1);',
+            'Use std::max() or std::max<type>() instead of the MAX() macro.'
+            '  [runtime/max_min_macros] [4]',
+            'foo.mm')
 
         self.assert_lint(
             'inline int foo() { return MAX(0, 1); }',
@@ -4691,15 +4730,44 @@ class WebKitStyleTest(CppStyleTestBase):
 
         self.assert_lint(
             'int i = MIN(0, 1);',
+            '',
+            'foo.m')
+
+        self.assert_lint(
+            'int i = MIN(0, 1);',
             'Use std::min() or std::min<type>() instead of the MIN() macro.'
             '  [runtime/max_min_macros] [4]',
             'foo.cpp')
+
+        self.assert_lint(
+            'int i = MIN(0, 1);',
+            'Use std::min() or std::min<type>() instead of the MIN() macro.'
+            '  [runtime/max_min_macros] [4]',
+            'foo.mm')
 
         self.assert_lint(
             'inline int foo() { return MIN(0, 1); }',
             'Use std::min() or std::min<type>() instead of the MIN() macro.'
             '  [runtime/max_min_macros] [4]',
             'foo.h')
+
+    def test_wtf_move(self):
+        self.assert_lint(
+             'A a = WTF::move(b);',
+             '',
+             'foo.cpp')
+
+        self.assert_lint(
+            'A a = std::move(b);',
+            "Use 'WTF::move()' instead of 'std::move()'."
+            "  [runtime/wtf_move] [4]",
+            'foo.cpp')
+
+        self.assert_lint(
+            'A a = std::move(b);',
+            "Use 'WTF::move()' instead of 'std::move()'."
+            "  [runtime/wtf_move] [4]",
+            'foo.mm')
 
     def test_ctype_fucntion(self):
         self.assert_lint(
