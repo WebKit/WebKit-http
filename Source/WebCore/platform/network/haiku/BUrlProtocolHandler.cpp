@@ -270,6 +270,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
 
     if (m_redirected) {
+puts("###REDIRECTING > NEW REQ");
         BUrlContext* context = m_request->Context();
         delete m_request;
         m_request = m_nextRequest.toNetworkRequest(context);
@@ -319,6 +320,8 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
     else if (challenge.startsWith("Basic", false))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
+
+
 
     String realm;
     int realmStart = challenge.find("realm=\"", 0, false);
@@ -458,6 +461,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         if (((statusCode >= 301 && statusCode <= 303) || statusCode == 307) && m_method == B_HTTP_POST) {
             m_method = B_HTTP_GET;
             m_nextRequest.setHTTPMethod(m_method.String());
+
+            // Remove headers that are not appropriate in a GET request
+            m_nextRequest.clearHTTPContentType();
+            m_nextRequest.clearHTTPOrigin();
         }
 
         client->willSendRequest(m_resourceHandle, m_nextRequest, response);
