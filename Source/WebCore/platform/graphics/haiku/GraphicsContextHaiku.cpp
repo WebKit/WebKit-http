@@ -59,23 +59,25 @@ public:
     public:
         Layer(BView* _view)
             : view(_view)
-            , bitmap(0)
+            , bitmap(nullptr)
             , clipping()
             , clippingSet(false)
-            , globalAlpha(255)
-            , currentShape(0)
+            , opacity(255)
+            , globalAlpha(1.f)
+            , currentShape(nullptr)
             , locationInParent(B_ORIGIN)
             , accumulatedOrigin(B_ORIGIN)
-            , previous(0)
+            , previous(nullptr)
         {
         }
         Layer(Layer* previous)
-            : view(0)
-            , bitmap(0)
+            : view(nullptr)
+            , bitmap(nullptr)
             , clipping()
             , clippingSet(false)
-            , globalAlpha(255)
-            , currentShape(0)
+            , opacity(255)
+            , globalAlpha(1.f)
+            , currentShape(nullptr)
             , locationInParent(B_ORIGIN)
             , accumulatedOrigin(B_ORIGIN)
             , previous(previous)
@@ -102,9 +104,7 @@ public:
             bitmap->Lock();
             bitmap->AddChild(view);
 
-            rgb_color color = previous->view->HighColor();
-            color.alpha = 0;
-            view->SetHighColor(color);
+            view->SetHighColor(255, 255, 255, 0);
             view->FillRect(view->Bounds());
 
             view->SetHighColor(previous->view->HighColor());
@@ -130,7 +130,8 @@ public:
         BBitmap* bitmap;
         BRegion clipping;
         bool clippingSet;
-        uint8 globalAlpha;
+        uint8 opacity;
+        float globalAlpha;
         BShape* currentShape;
         BPoint locationInParent;
         BPoint accumulatedOrigin;
@@ -190,11 +191,6 @@ public:
     {
         return m_currentLayer->view;
     }
-
-	uint8 globalAlpha() const
-	{
-		return m_currentLayer->globalAlpha;
-	}
 
     // Unlike in Haiku, all clipping operations are cumulative. It's possible
     // to clip several times, and the intersection of all the clipping path is
@@ -297,7 +293,7 @@ public:
     void pushLayer(float opacity)
     {
         m_currentLayer = new Layer(m_currentLayer);
-        m_currentLayer->globalAlpha = (uint8)(opacity * 255.0);
+        m_currentLayer->opacity = (uint8)(opacity * 255.0);
     }
 
     void popLayer()
@@ -306,7 +302,7 @@ public:
             return;
         Layer* layer = m_currentLayer;
         m_currentLayer = layer->previous;
-        if (layer->globalAlpha > 0) {
+        if (layer->opacity > 0) {
             // Post process the bitmap in order to apply global alpha...
             layer->view->Sync();
 
@@ -316,7 +312,7 @@ public:
 
             BPicture picture;
             target->BeginPicture(&picture);
-            target->SetHighColor(make_color(0, 0, 0, layer->globalAlpha));
+            target->SetHighColor(make_color(0, 0, 0, layer->opacity));
             target->FillRect(target->Bounds());
             target->EndPicture();
             target->ClipToPicture(&picture);
@@ -455,6 +451,7 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float width)
 
     float oldSize = m_data->view()->PenSize();
     m_data->view()->SetPenSize(width);
+    // TODO stroke the shadow
     m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
     m_data->view()->SetPenSize(oldSize);
 }
@@ -465,6 +462,8 @@ void GraphicsContext::strokePath(const Path& path)
         return;
 
     m_data->view()->MovePenTo(B_ORIGIN);
+
+    // TODO: stroke the shadow (cf shadowAndStrokeCurrentCairoPath)
 
     if (m_state.strokePattern || m_state.strokeGradient || strokeColor().alpha()) {
         if (m_state.strokePattern)
@@ -534,6 +533,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     }
 #endif
 
+    //setPlatformFillColor(color, ColorSpaceDeviceRGB);
     view->SetHighColor(color);
     view->FillRect(rect);
 
@@ -545,6 +545,7 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
+    // TODO fill the shadow
     m_data->view()->FillRect(rect);
 }
 
@@ -605,7 +606,7 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& roundRect,
     shape.Close();
 
     rgb_color oldColor = m_data->view()->HighColor();
-    m_data->view()->SetHighColor(color);
+    setPlatformFillColor(color, ColorSpaceDeviceRGB);
     m_data->view()->MovePenTo(B_ORIGIN);
     m_data->view()->FillShape(&shape);
 
@@ -621,8 +622,8 @@ void GraphicsContext::fillPath(const Path& path)
         fillRule() == RULE_NONZERO ? B_NONZERO : B_EVEN_ODD);
     m_data->view()->MovePenTo(B_ORIGIN);
 
+    // TODO: Render the shadow (cf shadowAndFillCurrentCairoPath)
     if (m_state.fillPattern || m_state.fillGradient || fillColor().alpha()) {
-//        drawFilledShadowPath(this, p, path); TODO: What's this shadow business?
         if (m_state.fillPattern)
             notImplemented();
         else if (m_state.fillGradient) {
@@ -727,7 +728,7 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width *
         for (unsigned i = 0; i < rectCount; ++i)
             region.Include(BRect(rects[i]));
 
-        m_data->view()->SetHighColor(color);
+        setPlatformFillColor(color, ColorSpaceDeviceRGB);
         m_data->view()->StrokeRect(region.Frame(), B_MIXED_COLORS);
     }
 }
@@ -790,7 +791,7 @@ void GraphicsContext::clearRect(const FloatRect& rect)
         return;
 
     m_data->view()->PushState();
-    m_data->view()->SetHighColor(0, 0, 0, 0);
+    m_data->view()->SetHighColor(255, 255, 255, 0);
     m_data->view()->SetDrawingMode(B_OP_COPY);
     m_data->view()->FillRect(rect);
     m_data->view()->PopState();
@@ -856,7 +857,10 @@ void GraphicsContext::setAlpha(float opacity)
     if (paintingDisabled())
         return;
 
-    m_data->m_currentLayer->globalAlpha = (uint8)(opacity * 255.0f);
+    // FIXME the alpha is only applied to plain colors, not bitmaps, gradients,
+    // or anything else. Support should be moved to app_server using the trick
+    // mentionned here: http://permalink.gmane.org/gmane.comp.graphics.agg/2241
+    m_data->m_currentLayer->globalAlpha = opacity;
 }
 
 void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendMode blend)
@@ -999,7 +1003,7 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace /*co
     // below. More stuff needs to be fixed, though, it will for example
     // prevent the text caret from rendering.
 //    m_data->view()->SetLowColor(color);
-    m_data->view()->SetHighColor(color);
+    setPlatformFillColor(color, ColorSpaceDeviceRGB);
 }
 
 bool GraphicsContext::inTransparencyLayer() const
@@ -1046,7 +1050,9 @@ void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace /*colo
     if (paintingDisabled())
         return;
 
-    m_data->view()->SetHighColor(color);
+    rgb_color fixed = color;
+    fixed.alpha *= m_data->m_currentLayer->globalAlpha;
+    m_data->view()->SetHighColor(fixed);
 }
 
 void GraphicsContext::clearPlatformShadow()
