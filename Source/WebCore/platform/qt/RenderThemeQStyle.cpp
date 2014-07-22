@@ -168,6 +168,13 @@ QRectF RenderThemeQStyle::inflateButtonRect(const QRectF& originalRect) const
     return originalRect;
 }
 
+int extendFixedPadding(Length oldPadding, int padding) {
+    if (oldPadding.isFixed()) {
+        return oldPadding.value() + padding;
+    }
+    return padding;
+}
+
 void RenderThemeQStyle::computeSizeBasedOnStyle(RenderStyle& renderStyle) const
 {
     QSize size(0, 0);
@@ -178,13 +185,14 @@ void RenderThemeQStyle::computeSizeBasedOnStyle(RenderStyle& renderStyle) const
     case SearchFieldPart:
     case TextFieldPart: {
         int padding = m_qStyle->findFrameLineWidth();
-        renderStyle.setPaddingLeft(Length(padding, Fixed));
-        renderStyle.setPaddingRight(Length(padding, Fixed));
-        renderStyle.setPaddingTop(Length(padding, Fixed));
-        renderStyle.setPaddingBottom(Length(padding, Fixed));
+        renderStyle.setPaddingLeft(Length(extendFixedPadding(renderStyle.paddingLeft(),  padding), Fixed));
+        renderStyle.setPaddingRight(Length(extendFixedPadding(renderStyle.paddingRight(),  padding), Fixed));
+        renderStyle.setPaddingTop(Length(extendFixedPadding(renderStyle.paddingTop(),  padding), Fixed));
+        renderStyle.setPaddingBottom(Length(extendFixedPadding(renderStyle.paddingBottom(),  padding), Fixed));
         break;
     }
     default:
+        renderStyle.resetPadding();
         break;
     }
     // If the width and height are both specified, then we have nothing to do.

@@ -675,6 +675,7 @@ void RenderThemeQtMobile::computeSizeBasedOnStyle(RenderStyle& renderStyle) cons
         break;
     }
     default:
+        renderStyle.resetPadding();
         break;
     }
     // If the width and height are both specified, then we have nothing to do.
