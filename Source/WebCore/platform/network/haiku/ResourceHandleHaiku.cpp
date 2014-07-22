@@ -106,8 +106,7 @@ ResourceHandleInternal::~ResourceHandleInternal()
 
 ResourceHandle::~ResourceHandle()
 {
-    if (d->m_urlrequest)
-        cancel();
+    cancel();
 }
 
 bool ResourceHandle::start()
@@ -126,10 +125,9 @@ bool ResourceHandle::start()
         d->m_firstRequest.setURL(urlWithCredentials);
     }
 
-    BUrlRequest* request = firstRequest().toNetworkRequest(
-        d->m_context.get() ? d->m_context->context() : NULL);
-    d->m_urlrequest = new BUrlProtocolHandler(d->m_context.get(), this, request, false);
-    if (request == NULL)
+    d->m_urlrequest = new BUrlProtocolHandler(d->m_context.get(), this, false);
+
+    if (!d->m_urlrequest->isValid())
         scheduleFailure(InvalidURLFailure);
     return true;
 }
@@ -165,12 +163,9 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     }
     //d->m_context = context;
     
-    // haiku
-    BUrlRequest* nativeRequest = handle->firstRequest().toNetworkRequest(
-        context ? context->context() : NULL);
     d->m_urlrequest = new BUrlProtocolHandler(context, handle.get(),
-        nativeRequest, true);
-    if (nativeRequest == NULL)
+        true);
+    if (!d->m_urlrequest->isValid())
         handle->scheduleFailure(InvalidURLFailure);
 
     syncLoader.waitForCompletion();

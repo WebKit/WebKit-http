@@ -209,7 +209,7 @@ BFormDataIO::_ParseCurrentElement()
 
 
 BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
-        ResourceHandle* handle, BUrlRequest* request, bool synchronous)
+        ResourceHandle* handle, bool synchronous)
     : BUrlProtocolAsynchronousListener(!synchronous)
     , m_resourceHandle(handle)
     , m_redirected(false)

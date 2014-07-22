@@ -61,14 +61,16 @@ class BUrlProtocolHandler : public BUrlProtocolAsynchronousListener
 {
 public:
     BUrlProtocolHandler(NetworkingContext* context, ResourceHandle *handle, 
-        BUrlRequest* request, bool synchronous);
+        bool synchronous);
     virtual ~BUrlProtocolHandler();
     void abort();
+
+    bool isValid() { return m_request != NULL; }
 
 private:
     void sendResponseIfNeeded();
     void AuthenticationNeeded(BHttpRequest* caller, ResourceResponse& response);
-    
+
     // BUrlListener hooks
 	void HeadersReceived(BUrlRequest* caller) override;
 	void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;
@@ -78,7 +80,7 @@ private:
 private:
     void start();
     void resetState();
-    
+
     ResourceHandle* m_resourceHandle;
     ResourceRequest m_nextRequest;
     bool m_redirected;
