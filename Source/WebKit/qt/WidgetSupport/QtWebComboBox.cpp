@@ -55,12 +55,16 @@ bool QtWebComboBox::eventFilter(QObject* watched, QEvent* event)
 
 void QtWebComboBox::hidePopup()
 {
+    if (m_hiding)
+        return;
     m_hiding = true;
     // QComboBox::hidePopup() runs an eventloop, we need to make sure we do not delete ourselves in that loop.
     QComboBox::hidePopup();
     m_hiding = false;
-    if (m_deleteAfterHiding)
+    if (m_deleteAfterHiding) {
         deleteLater();
+        m_deleteAfterHiding = false;
+    }
 }
 
 
