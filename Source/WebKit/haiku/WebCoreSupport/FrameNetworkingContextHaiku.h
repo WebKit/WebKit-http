@@ -31,11 +31,13 @@
 
 #include "FrameNetworkingContext.h"
 
+#include <Referenceable.h>
+
 namespace WebCore {
 
 class FrameNetworkingContextHaiku : public WebCore::FrameNetworkingContext {
 public:
-    static PassRefPtr<FrameNetworkingContextHaiku> create(Frame*, BUrlContext** context);
+    static PassRefPtr<FrameNetworkingContextHaiku> create(Frame*, BUrlContext* context);
     virtual ~FrameNetworkingContextHaiku();
 
     WebCore::Frame* coreFrame() const { return frame(); }
@@ -44,11 +46,11 @@ public:
     BUrlContext* context();
 
 private:
-    FrameNetworkingContextHaiku(Frame*, BUrlContext** context);
+    FrameNetworkingContextHaiku(Frame*, BUrlContext* context);
 
-    BUrlContext** m_context;
+    BReference<BUrlContext> m_context;
 
-    static BUrlContext gDefaultContext;
+    static BReference<BUrlContext> gDefaultContext;
 };
 
 }

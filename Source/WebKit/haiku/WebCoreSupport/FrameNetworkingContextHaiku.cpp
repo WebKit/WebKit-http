@@ -37,17 +37,20 @@
 
 namespace WebCore {
 
-PassRefPtr<FrameNetworkingContextHaiku> FrameNetworkingContextHaiku::create(Frame* frame, BUrlContext** context)
+PassRefPtr<FrameNetworkingContextHaiku> FrameNetworkingContextHaiku::create(Frame* frame, BUrlContext* context)
 {
     return adoptRef(new FrameNetworkingContextHaiku(frame, context));
 }
 
-BUrlContext FrameNetworkingContextHaiku::gDefaultContext;
+BReference<BUrlContext> FrameNetworkingContextHaiku::gDefaultContext = new BUrlContext();
 
-FrameNetworkingContextHaiku::FrameNetworkingContextHaiku(Frame* frame, BUrlContext** context)
+FrameNetworkingContextHaiku::FrameNetworkingContextHaiku(Frame* frame, BUrlContext* context)
     : FrameNetworkingContext(frame)
 {
     m_context = context;
+    if(m_context == NULL) {
+        m_context = gDefaultContext;
+    }
 }
 
 FrameNetworkingContextHaiku::~FrameNetworkingContextHaiku()
@@ -56,9 +59,7 @@ FrameNetworkingContextHaiku::~FrameNetworkingContextHaiku()
 
 BUrlContext* FrameNetworkingContextHaiku::context()
 {
-    if(*m_context == NULL)
-        return &gDefaultContext;
-    return *m_context;
+    return m_context.Get();
 }
 
 uint64_t FrameNetworkingContextHaiku::initiatingPageID() const
