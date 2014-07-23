@@ -327,11 +327,6 @@ public:
         delete layer;
     }
 
-    bool inTransparencyLayer() const
-    {
-        return m_currentLayer->previous;
-    }
-
     ShadowBlur& shadowBlur()
     {
         return blur;
@@ -340,6 +335,7 @@ public:
     Layer* m_currentLayer;
     CustomGraphicsState* m_graphicsState;
     ShadowBlur blur;
+    pattern m_strokeStyle;
 };
 
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
@@ -408,7 +404,7 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
     if (strokeStyle() != NoStroke && borderThickness > 0.0f && strokeColor().alpha())
     {
         m_data->view()->SetPenSize(borderThickness);
-        m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
+        m_data->view()->StrokeRect(rect, m_data->m_strokeStyle);
     }
 }
 
@@ -418,7 +414,7 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
     if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f || !strokeColor().alpha())
         return;
 
-    m_data->view()->StrokeLine(point1, point2, getHaikuStrokeStyle());
+    m_data->view()->StrokeLine(point1, point2, m_data->m_strokeStyle);
 }
 
 // This method is only used to draw the little circles used in lists.
@@ -441,7 +437,7 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
 
     // TODO: Support gradients
     if (strokeStyle() != NoStroke && strokeThickness() > 0.0f && strokeColor().alpha())
-        m_data->view()->StrokeEllipse(rect, getHaikuStrokeStyle());
+        m_data->view()->StrokeEllipse(rect, m_data->m_strokeStyle);
 }
 
 void GraphicsContext::strokeRect(const FloatRect& rect, float width)
@@ -452,7 +448,7 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float width)
     float oldSize = m_data->view()->PenSize();
     m_data->view()->SetPenSize(width);
     // TODO stroke the shadow
-    m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
+    m_data->view()->StrokeRect(rect, m_data->m_strokeStyle);
     m_data->view()->SetPenSize(oldSize);
 }
 
@@ -478,7 +474,7 @@ void GraphicsContext::strokePath(const Path& path)
             if (m_data->view()->HighColor().alpha < 255)
                 m_data->view()->SetDrawingMode(B_OP_ALPHA);
 
-            m_data->view()->StrokeShape(path.platformPath());
+            m_data->view()->StrokeShape(path.platformPath(), m_data->m_strokeStyle);
             m_data->view()->SetDrawingMode(mode);
         }
     }
@@ -499,7 +495,7 @@ void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* p
 
     if (strokeStyle() != NoStroke) {
         // Stroke with low color
-        m_data->view()->StrokePolygon(bPoints, pointsLength, true, getHaikuStrokeStyle());
+        m_data->view()->StrokePolygon(bPoints, pointsLength, true, m_data->m_strokeStyle);
     }
 }
 
@@ -999,42 +995,31 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace /*co
         return;
 
     // NOTE: In theory, we should be able to use the low color and
-    // return B_SOLID_LOW for the SolidStroke case in getHaikuStrokeStyle()
+    // return B_SOLID_LOW for the SolidStroke case in setPlatformStrokeStyle()
     // below. More stuff needs to be fixed, though, it will for example
     // prevent the text caret from rendering.
 //    m_data->view()->SetLowColor(color);
     setPlatformFillColor(color, ColorSpaceDeviceRGB);
 }
 
-bool GraphicsContext::inTransparencyLayer() const
+void GraphicsContext::setPlatformStrokeStyle(StrokeStyle strokeStyle)
 {
-	return m_data->inTransparencyLayer();
-}
-
-pattern GraphicsContext::getHaikuStrokeStyle()
-{
-    switch (strokeStyle()) {
+    switch (strokeStyle) {
     case SolidStroke:
-        return B_SOLID_HIGH;
+        m_data->m_strokeStyle = B_SOLID_HIGH;
         break;
     case DottedStroke:
-        return B_MIXED_COLORS;
+        m_data->m_strokeStyle = B_MIXED_COLORS;
         break;
     case DashedStroke:
         // FIXME: use a better dashed stroke!
         notImplemented();
-        return B_MIXED_COLORS;
+        m_data->m_strokeStyle = B_MIXED_COLORS;
         break;
     default:
-        return B_SOLID_LOW;
+        m_data->m_strokeStyle = B_SOLID_LOW;
         break;
     }
-}
-
-void GraphicsContext::setPlatformStrokeStyle(StrokeStyle /* strokeStyle */)
-{
-    // FIXME: see getHaikuStrokeStyle.
-    notImplemented();
 }
 
 void GraphicsContext::setPlatformStrokeThickness(float thickness)

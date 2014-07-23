@@ -558,11 +558,6 @@ namespace WebCore {
         GdkEventExpose* gdkExposeEvent() const;
 #endif
 
-#if PLATFORM(HAIKU)
-        bool inTransparencyLayer() const;
-        pattern getHaikuStrokeStyle();
-#endif
-
         static void adjustLineToPixelBoundaries(FloatPoint& p1, FloatPoint& p2, float strokeWidth, StrokeStyle);
 
     private:

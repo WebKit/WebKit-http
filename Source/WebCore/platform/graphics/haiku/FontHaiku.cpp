@@ -61,7 +61,7 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
 
     rgb_color color = graphicsContext->fillColor();
 
-    if (color.alpha < 255 || graphicsContext->inTransparencyLayer())
+    if (color.alpha < 255 || graphicsContext->isInTransparencyLayer())
         view->SetDrawingMode(B_OP_ALPHA);
     else
         view->SetDrawingMode(B_OP_OVER);
