@@ -30,7 +30,7 @@
 
 #include "GraphicsContext.h"
 #include <GradientLinear.h>
-#include <GradientRadial.h>
+#include <GradientRadialFocus.h>
 #include <View.h>
 
 
@@ -48,8 +48,8 @@ PlatformGradient Gradient::platformGradient()
         return m_gradient;
 
     if (m_radial) {
-        // TODO: Support m_r0?
-        m_gradient = new BGradientRadial(m_p0, m_r1);
+        // TODO: Support m_r0, the starting radius of the gradient.
+        m_gradient = new BGradientRadialFocus(m_p1, m_r1, m_p0);
     } else
         m_gradient = new BGradientLinear(m_p0, m_p1);
 
