@@ -205,7 +205,6 @@ bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& 
 
 void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
 {
-    style.setBackgroundColor(Color::transparent);
 }
 
 bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
@@ -219,16 +218,12 @@ bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInf
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
     //rgb_color background = base;
     	// TODO: From PaintInfo?
-    BRect rect = intRect;
-    BView* view = info.context->platformContext();
+    BRect rect(intRect);
+    BView* view(info.context->platformContext());
     unsigned flags = flagsForObject(object) & ~BControlLook::B_CLICKED;
 
 	view->PushState();
     be_control_look->DrawTextControlBorder(view, rect, rect, base, flags);
-    // Fill the background as well (we set it to transparent in
-    // adjustTextFieldStyle), otherwise it would draw over the border.
-    view->SetHighColor(255, 255, 255);
-    view->FillRect(rect);
     view->PopState();
     return false;
 }
