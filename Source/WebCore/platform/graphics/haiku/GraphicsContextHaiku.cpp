@@ -461,22 +461,20 @@ void GraphicsContext::strokePath(const Path& path)
 
     // TODO: stroke the shadow (cf shadowAndStrokeCurrentCairoPath)
 
-    if (m_state.strokePattern || m_state.strokeGradient || strokeColor().alpha()) {
-        if (m_state.strokePattern)
-            notImplemented();
-        else if (m_state.strokeGradient) {
-            notImplemented();
-//            BGradient* gradient = m_state.strokeGradient->platformGradient();
-//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
-//            m_data->view()->StrokeShape(m_data->shape(), *gradient);
-        } else {
-            drawing_mode mode = m_data->view()->DrawingMode();
-            if (m_data->view()->HighColor().alpha < 255)
-                m_data->view()->SetDrawingMode(B_OP_ALPHA);
+    if (m_state.strokePattern)
+        notImplemented();
+    else if (m_state.strokeGradient) {
+        notImplemented();
+//      BGradient* gradient = m_state.strokeGradient->platformGradient();
+//      gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
+//      m_data->view()->StrokeShape(m_data->shape(), *gradient);
+    } else if(strokeColor().alpha()) {
+        drawing_mode mode = m_data->view()->DrawingMode();
+        if (m_data->view()->HighColor().alpha < 255)
+            m_data->view()->SetDrawingMode(B_OP_ALPHA);
 
-            m_data->view()->StrokeShape(path.platformPath(), m_data->m_strokeStyle);
-            m_data->view()->SetDrawingMode(mode);
-        }
+        m_data->view()->StrokeShape(path.platformPath(), m_data->m_strokeStyle);
+        m_data->view()->SetDrawingMode(mode);
     }
 }
 
@@ -614,26 +612,26 @@ void GraphicsContext::fillPath(const Path& path)
     if (paintingDisabled())
         return;
 
-    m_data->view()->SetFillRule(
-        fillRule() == RULE_NONZERO ? B_NONZERO : B_EVEN_ODD);
-    m_data->view()->MovePenTo(B_ORIGIN);
+    BView* view = m_data->view();
+
+    view->SetFillRule(fillRule() == RULE_NONZERO ? B_NONZERO : B_EVEN_ODD);
+    view->MovePenTo(B_ORIGIN);
 
     // TODO: Render the shadow (cf shadowAndFillCurrentCairoPath)
-    if (m_state.fillPattern || m_state.fillGradient || fillColor().alpha()) {
-        if (m_state.fillPattern)
-            notImplemented();
-        else if (m_state.fillGradient) {
-            BGradient* gradient = m_state.fillGradient->platformGradient();
-//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
-            m_data->view()->FillShape(path.platformPath(), *gradient);
-        } else {
-            drawing_mode mode = m_data->view()->DrawingMode();
-            if (m_data->view()->HighColor().alpha < 255)
-                m_data->view()->SetDrawingMode(B_OP_ALPHA);
+    if (m_state.fillPattern)
+        notImplemented();
+    else if (m_state.fillGradient) {
+        view->SetDrawingMode(B_OP_ALPHA);
+        BGradient* gradient = m_state.fillGradient->platformGradient();
+//      gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
+        view->FillShape(path.platformPath(), *gradient);
+    } else if (fillColor().alpha()) {
+        drawing_mode mode = view->DrawingMode();
+        if (view->HighColor().alpha < 255)
+            view->SetDrawingMode(B_OP_ALPHA);
 
-            m_data->view()->FillShape(path.platformPath());
-            m_data->view()->SetDrawingMode(mode);
-        }
+        view->FillShape(path.platformPath());
+        view->SetDrawingMode(mode);
     }
 }
 
@@ -781,13 +779,14 @@ bool GraphicsContext::supportsTransparencyLayers()
     return false;
 }
 
+/* Used by canvas.clearRect. Must clear the given rectangle with transparent black. */
 void GraphicsContext::clearRect(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
 
     m_data->view()->PushState();
-    m_data->view()->SetHighColor(255, 255, 255, 0);
+    m_data->view()->SetHighColor(0, 0, 0, 0);
     m_data->view()->SetDrawingMode(B_OP_COPY);
     m_data->view()->FillRect(rect);
     m_data->view()->PopState();
@@ -816,6 +815,7 @@ void GraphicsContext::setLineCap(LineCap lineCap)
 
 void GraphicsContext::setLineDash(const DashArray& /*dashes*/, float /*dashOffset*/)
 {
+    // TODO this is used to draw dashed strokes in SVG, but we need app_server support
     notImplemented();
 }
 
@@ -1006,6 +1006,8 @@ void GraphicsContext::setPlatformStrokeStyle(StrokeStyle strokeStyle)
 {
     switch (strokeStyle) {
     case SolidStroke:
+    case DoubleStroke:
+    case WavyStroke:
         m_data->m_strokeStyle = B_SOLID_HIGH;
         break;
     case DottedStroke:
@@ -1016,7 +1018,7 @@ void GraphicsContext::setPlatformStrokeStyle(StrokeStyle strokeStyle)
         notImplemented();
         m_data->m_strokeStyle = B_MIXED_COLORS;
         break;
-    default:
+    case NoStroke:
         m_data->m_strokeStyle = B_SOLID_LOW;
         break;
     }
