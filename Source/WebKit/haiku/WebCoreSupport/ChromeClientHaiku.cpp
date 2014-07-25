@@ -321,10 +321,14 @@ void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect)
 	// We can ignore this, since we implement fast scrolling.
 }
 
-void ChromeClientHaiku::scroll(const IntSize& /*scrollDelta*/,
-                               const IntRect& /*rectToScroll*/,
-                               const IntRect& /*clipRect*/)
+void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
+                               const IntRect& rectToScroll,
+                               const IntRect& clipRect)
 {
+    if (!m_webView->IsComposited()) {
+        m_webPage->scroll(scrollDelta.width(), scrollDelta.height(),
+            rectToScroll, clipRect);
+    }
 }
 
 void ChromeClientHaiku::delegatedScrollRequested(const IntPoint& /*scrollPos*/)

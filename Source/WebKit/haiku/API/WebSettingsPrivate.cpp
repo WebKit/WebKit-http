@@ -88,9 +88,11 @@ void WebSettingsPrivate::apply()
 	    settings->setDefaultTextEncodingName("UTF-8");
         settings->setUsesPageCache(WebCore::pageCache()->capacity());
         settings->setNeedsSiteSpecificQuirks(true);
-        settings->setUsesPageCache(true);
+
         settings->setAcceleratedCompositingEnabled(true);
         settings->setForceCompositingMode(true);
+
+//      settings->setShowDebugBorders(true);
 
 	    // Apply local or global settings
 		if (defaultFontSizeSet)

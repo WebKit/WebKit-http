@@ -660,19 +660,121 @@ void BWebPage::paint(BRect rect, bool immediate)
     if (!view || !frame->contentRenderer())
         return;
 
-	// calling layoutIfNeededRecursive can cycle back into paint(),
+    // calling layoutIfNeededRecursive can cycle back into paint(),
     // we avoid recursion using fLayoutingView to abort the nested paint
     // calls early
-	fLayoutingView = true;
-	if (view->needsLayout())
+    fLayoutingView = true;
+    if (view->needsLayout())
         view->layout(true);
-	fLayoutingView = false;
+    fLayoutingView = false;
+
+    if (!fWebView->IsComposited())
+    {
+        if (!fWebView->LockLooper())
+            return;
+        BView* offscreenView = fWebView->OffscreenView();
+
+        // Lock the offscreen bitmap while we still have the
+        // window locked. This cannot deadlock and makes sure
+        // the window is not deleting the offscreen view right
+        // after we unlock it and before locking the bitmap.
+        if (!offscreenView->LockLooper()) {
+            fWebView->UnlockLooper();
+            return;
+        }
+        fWebView->UnlockLooper();
+
+        BRegion region(rect);
+        internalPaint(offscreenView, view, &region);
+        MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
+
+        offscreenView->Sync();
+        offscreenView->UnlockLooper();
+    }
 
     // Notify the window that it can now pull the bitmap in its own thread
     fWebView->SetOffscreenViewClean(rect, immediate);
 
     fPageDirty = false;
 }
+
+
+void BWebPage::internalPaint(BView* offscreenView,
+                             WebCore::FrameView* frameView, BRegion* dirty)
+{
+    ASSERT(!frameView->needsLayout());
+
+    offscreenView->PushState();
+    offscreenView->ConstrainClippingRegion(dirty);
+
+    WebCore::GraphicsContext context(offscreenView);
+    frameView->paint(&context, IntRect(dirty->Frame()));
+
+    offscreenView->PopState();
+}
+
+
+void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
+       const BRect& clipRect)
+{
+    if (!fWebView->LockLooper())
+        return;
+    BBitmap* bitmap = fWebView->OffscreenBitmap();
+    BView* offscreenView = fWebView->OffscreenView();
+
+    // Lock the offscreen bitmap while we still have the
+    // window locked. This cannot deadlock and makes sure
+    // the window is not deleting the offscreen view right
+    // after we unlock it and before locking the bitmap.
+    if (!bitmap->Lock()) {
+       fWebView->UnlockLooper();
+       return;
+    }
+    fWebView->UnlockLooper();
+
+    BRect clip = offscreenView->Bounds();
+    if (clipRect.IsValid())
+        clip = clip & clipRect;
+
+    BRect rectAtSrc = rectToScroll;
+    BRect rectAtDst = rectAtSrc.OffsetByCopy(xOffset, yOffset);
+
+    // remember the part that will be clean
+    BRegion repaintRegion(rectAtSrc);
+    repaintRegion.Exclude(rectAtDst);
+    BRegion clipRegion(clip);
+    repaintRegion.IntersectWith(&clipRegion);
+
+    if (clip.Intersects(rectAtSrc) && clip.Intersects(rectAtDst)) {
+        // clip source rect
+        rectAtSrc = rectAtSrc & clip;
+        // clip dest rect
+        rectAtDst = rectAtDst & clip;
+
+        // move dest back over source and clip source to dest
+        rectAtDst.OffsetBy(-xOffset, -yOffset);
+        rectAtSrc = rectAtSrc & rectAtDst;
+        rectAtDst.OffsetBy(xOffset, yOffset);
+
+        offscreenView->CopyBits(rectAtSrc, rectAtDst);
+    }
+
+    if (repaintRegion.Frame().IsValid()) {
+        WebCore::Frame* frame = fMainFrame->Frame();
+        WebCore::FrameView* view = frame->view();
+        // Make sure the view is layouted, since it will refuse to paint
+        // otherwise.
+        fLayoutingView = true;
+        view->layout(true);
+        fLayoutingView = false;
+
+        internalPaint(offscreenView, view, &repaintRegion);
+    }
+
+    offscreenView->Sync();
+    bitmap->Unlock();
+}
+
 
 void BWebPage::setLoadingProgress(float progress)
 {

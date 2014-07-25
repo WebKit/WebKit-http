@@ -135,6 +135,8 @@ private:
 			void				SetOffscreenViewClean(BRect cleanRect,
 									bool immediate);
 
+            bool                IsComposited();
+
 private:
             void                _ResizeOffscreenView(int width, int height);
 			void				_DispatchMouseEvent(const BPoint& where,

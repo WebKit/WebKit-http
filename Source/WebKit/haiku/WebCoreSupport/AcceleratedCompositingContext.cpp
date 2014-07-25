@@ -95,7 +95,7 @@ void AcceleratedCompositingContext::paintToGraphicsContext()
     }
 
     if(m_view->LockLooper()) {
-        m_view->Invalidate();
+        m_view->Invalidate(m_updateRect);
         m_view->UnlockLooper();
     }
 }
@@ -105,6 +105,8 @@ void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
     TextureMapperLayer* currentRootLayer = toTextureMapperLayer(m_rootLayer);
     if (!currentRootLayer)
         return;
+
+    m_updateRect = updateRect;
 
     currentRootLayer->setTextureMapper(m_textureMapper.get());
     currentRootLayer->applyAnimationsRecursively();

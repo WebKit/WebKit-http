@@ -24,8 +24,9 @@
 #include "Timer.h"
 #include <wtf/Noncopyable.h>
 
+#include <Rect.h>
+
 class BBitmap;
-class BRect;
 class BView;
 class BWebView;
 
@@ -43,6 +44,7 @@ public:
     ~AcceleratedCompositingContext();
 
     void setRootGraphicsLayer(GraphicsLayer* rootLayer);
+    bool isValid() { return m_rootLayer != NULL; }
     void flushAndRenderLayers();
 
 private:
@@ -53,6 +55,7 @@ private:
     void syncLayers(Timer<AcceleratedCompositingContext>*);
 
     BWebView* m_view;
+    BRect m_updateRect;
 
     std::unique_ptr<TextureMapper> m_textureMapper;
     GraphicsLayer* m_rootLayer;

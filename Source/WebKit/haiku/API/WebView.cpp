@@ -507,12 +507,22 @@ void BWebView::SetRootLayer(WebCore::GraphicsLayer* layer)
 
 void BWebView::SetOffscreenViewClean(BRect cleanRect, bool immediate)
 {
-    fCompositor->flushAndRenderLayers();
+    if (IsComposited())
+        fCompositor->flushAndRenderLayers();
+
     if (LockLooper()) {
         if (immediate)
             Draw(cleanRect);
+        else if(!IsComposited())
+            Invalidate(cleanRect);
         UnlockLooper();
     }
+}
+
+
+bool BWebView::IsComposited()
+{
+    return fCompositor->isValid();
 }
 
 // #pragma mark - private
