@@ -402,6 +402,8 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     ResourceResponse response(url, mimeType, contentLength, encoding, url.lastPathComponent());
 
+    response.setSuggestedFilename(url.lastPathComponent());
+
     if (!httpRequest) {
         // For protocols other than http, we don't have more information to add.
         // (this includes file: and data: for now).
@@ -418,8 +420,6 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
         if (!suggestedFilename.isEmpty())
             response.setSuggestedFilename(suggestedFilename);
-        else
-            response.setSuggestedFilename(url.lastPathComponent());
 
         response.setHTTPStatusCode(statusCode);
         response.setHTTPStatusText(result.StatusText());
@@ -432,11 +432,8 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         }
     }
 
-
-    if (statusCode == 401) {
+    if (statusCode == 401)
         AuthenticationNeeded(httpRequest, response);
-    }
-
 
     BString locationString(result.Headers()["Location"]);
     if (locationString.Length()) {
