@@ -190,7 +190,6 @@ BFormDataIO::_ParseCurrentElement()
             // FIXME handle BlobDataItem::Data too!
             if (item.type == BlobDataItem::File)
             {
-                printf("blobfile:%s\n", item.file->path().utf8().data());
                 m_currentFile->SetTo(item.file->path().utf8().data(), B_READ_ONLY);
                 m_currentFile->Seek(item.offset(), SEEK_SET);
                 if (item.length() == BlobDataItem::toEndOfFile)
@@ -270,7 +269,6 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
 
     if (m_redirected) {
-puts("###REDIRECTING > NEW REQ");
         BUrlContext* context = m_request->Context();
         delete m_request;
         m_request = m_nextRequest.toNetworkRequest(context);
@@ -443,7 +441,6 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     BString locationString(result.Headers()["Location"]);
     if (locationString.Length()) {
         URL location(url, locationString);
-
         m_redirectionTries--;
 
         if (m_redirectionTries == 0) {
