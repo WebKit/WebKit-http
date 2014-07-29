@@ -121,7 +121,7 @@ public:
 			void				SendEditingCapabilities();
 			void				SendPageSource();
 
-	static	void				RequestDownload(const BString& url);
+            void				RequestDownload(const BString& url);
 
 private:
 	friend class BWebFrame;
@@ -148,60 +148,60 @@ private:
         const BRect& clipRect);
 
 private:
-	// The following methods are only supposed to be called by the
-	// ChromeClientHaiku and FrameLoaderHaiku code! Not from within the window
-	// thread! This coud go into a private class.
-	friend class WebCore::ChromeClientHaiku;
-	friend class WebCore::ContextMenuClientHaiku;
-	friend class WebCore::DragClientHaiku;
-	friend class WebCore::DumpRenderTreeClient;
-	friend class WebCore::EditorClientHaiku;
-	friend class WebCore::FrameLoaderClientHaiku;
-	friend class WebCore::ProgressTrackerClientHaiku;
-	friend class WebCore::InspectorClientHaiku;
+    // The following methods are only supposed to be called by the
+    // ChromeClientHaiku and FrameLoaderHaiku code! Not from within the window
+    // thread! This coud go into a private class.
+    friend class WebCore::ChromeClientHaiku;
+    friend class WebCore::ContextMenuClientHaiku;
+    friend class WebCore::DragClientHaiku;
+    friend class WebCore::DumpRenderTreeClient;
+    friend class WebCore::EditorClientHaiku;
+    friend class WebCore::FrameLoaderClientHaiku;
+    friend class WebCore::ProgressTrackerClientHaiku;
+    friend class WebCore::InspectorClientHaiku;
 
-	WebCore::Page* page() const;
+    WebCore::Page* page() const;
 
-	WebCore::Page* createNewPage(BRect frame = BRect(),
-		bool modalDialog = false, bool resizable = true,
-		bool activate = true);
+    WebCore::Page* createNewPage(BRect frame = BRect(),
+        bool modalDialog = false, bool resizable = true,
+        bool activate = true);
 
     BUrlContext** GetContext();
-	BRect windowFrame();
-	BRect windowBounds();
-	void setWindowBounds(const BRect& bounds);
-	BRect viewBounds();
-	void setViewBounds(const BRect& bounds);
+    BRect windowFrame();
+    BRect windowBounds();
+    void setWindowBounds(const BRect& bounds);
+    BRect viewBounds();
+    void setViewBounds(const BRect& bounds);
 
-	void setToolbarsVisible(bool);
-	bool areToolbarsVisible() const { return fToolbarsVisible; }
+    void setToolbarsVisible(bool);
+    bool areToolbarsVisible() const { return fToolbarsVisible; }
 
-	void setStatusbarVisible(bool);
-	bool isStatusbarVisible() const { return fStatusbarVisible; }
+    void setStatusbarVisible(bool);
+    bool isStatusbarVisible() const { return fStatusbarVisible; }
 
-	void setMenubarVisible(bool);
-	bool isMenubarVisible() const { return fMenubarVisible; }
+    void setMenubarVisible(bool);
+    bool isMenubarVisible() const { return fMenubarVisible; }
 
-	void setResizable(bool);
-	void closeWindow();
-	void linkHovered(const BString&, const BString&, const BString&);
+    void setResizable(bool);
+    void closeWindow();
+    void linkHovered(const BString&, const BString&, const BString&);
 
-	friend class BWebDownload;
+    friend class BWebDownload;
 
-	static void requestDownload(const WebCore::ResourceRequest& request,
-		bool isAsynchronousRequest = true);
-	static void downloadCreated(BWebDownload* download,
-		bool isAsynchronousRequest);
+    static void downloadCreated(BWebDownload* download,
+        bool isAsynchronousRequest);
 
     void paint(BRect rect, bool immediate);
-    
-	void setLoadingProgress(float progress);
-	void setStatusMessage(const BString& message);
-	void setDisplayedStatusMessage(const BString& message, bool force = false);
-	void addMessageToConsole(const BString& source, int lineNumber,
+
+    void setLoadingProgress(float progress);
+    void setStatusMessage(const BString& message);
+    void setDisplayedStatusMessage(const BString& message, bool force = false);
+    void addMessageToConsole(const BString& source, int lineNumber,
         int columnNumber, const BString& message);
     void runJavaScriptAlert(const BString& message);
     bool runJavaScriptConfirm(const BString& message);
+    void requestDownload(const WebCore::ResourceRequest& request,
+        bool isAsynchronousRequest = true);
 
 private:
 	virtual						~BWebPage();

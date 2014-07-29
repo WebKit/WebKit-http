@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebDownloadPrivate.h"
 
+#include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
@@ -42,15 +43,17 @@
 #include <MimeType.h>
 #include <NodeInfo.h>
 #include <stdio.h>
+
 #include <wtf/text/CString.h>
 
 namespace BPrivate {
 
 static const int kMaxMimeTypeGuessTries	= 5;
 
-WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
+WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request,
+        WebCore::NetworkingContext* context)
     : m_webDownload(0)
-    , m_resourceHandle(ResourceHandle::create(NULL, request, this, false, false))
+    , m_resourceHandle(ResourceHandle::create(context, request, this, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
     , m_url(request.url().string())

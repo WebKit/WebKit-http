@@ -76,7 +76,7 @@ void ContextMenuClientHaiku::contextMenuItemSelected(ContextMenuItem*, const Con
 void ContextMenuClientHaiku::downloadURL(const URL& url)
 {
 	ResourceRequest request(url);
-    BWebPage::requestDownload(request);
+    m_webPage->requestDownload(request);
 }
 
 void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)

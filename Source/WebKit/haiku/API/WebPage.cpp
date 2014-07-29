@@ -343,7 +343,7 @@ void BWebPage::SendPageSource()
 	Looper()->PostMessage(HANDLE_SEND_PAGE_SOURCE, this);
 }
 
-/*static*/ void BWebPage::RequestDownload(const BString& url)
+void BWebPage::RequestDownload(const BString& url)
 {
 	ResourceRequest request(url);
 	requestDownload(request, false);
@@ -610,10 +610,11 @@ void BWebPage::linkHovered(const BString& url, const BString& /*title*/, const B
 		setDisplayedStatusMessage(fStatusMessage);
 }
 
-/*static*/ void BWebPage::requestDownload(const WebCore::ResourceRequest& request,
+void BWebPage::requestDownload(const WebCore::ResourceRequest& request,
 	bool isAsynchronousRequest)
 {
-    BWebDownload* download = new BWebDownload(new BPrivate::WebDownloadPrivate(request));
+    BWebDownload* download = new BWebDownload(new BPrivate::WebDownloadPrivate(
+        request, MainFrame()->Frame()->loader().networkingContext()));
     downloadCreated(download, isAsynchronousRequest);
 }
 

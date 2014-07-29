@@ -38,6 +38,7 @@
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
+class NetworkingContext;
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
@@ -56,7 +57,7 @@ namespace BPrivate {
 class WebDownloadPrivate : public WebCore::ResourceHandleClient {
 	WTF_MAKE_NONCOPYABLE(WebDownloadPrivate);
 public:
-    WebDownloadPrivate(const ResourceRequest&);
+    WebDownloadPrivate(const ResourceRequest&, WebCore::NetworkingContext*);
 
     // ResourceHandleClient implementation
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&) override;
