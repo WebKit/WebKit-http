@@ -835,9 +835,9 @@ sub builtDylibPathForName
     }
     if (isHaiku()) {
         if (isWK2()) {
-            return "$configurationProductDir/lib/libewebkit2.so";
+            return "$configurationProductDir/lib/libWebKit2.so";
         }
-        return "$configurationProductDir/lib/libewebkit.so";
+        return "$configurationProductDir/lib/libWebKit.so";
     }
     if (isEfl()) {
         return "$configurationProductDir/lib/libewebkit2.so";
@@ -981,18 +981,6 @@ sub isEfl()
     return $isEfl;
 }
 
-sub determineIsHaiku()
-{
-    return if defined($isHaiku);
-    $isHaiku = checkForArgumentAndRemoveFromARGV("--haiku");
-}
-
-sub isHaiku()
-{
-    determineIsHaiku();
-    return $isHaiku;
-}
-
 sub determineIsGtk()
 {
     return if defined($isGtk);
@@ -1120,6 +1108,11 @@ sub isLinux()
 sub isBSD()
 {
     return ($^O eq "freebsd") || ($^O eq "openbsd") || ($^O eq "netbsd") || 0;
+}
+
+sub isHaiku()
+{
+    return ($^O eq "haiku") || 0;
 }
 
 sub isARM()
