@@ -37,6 +37,8 @@
 #include <ControlLook.h>
 #include <View.h>
 
+#include <wtf/text/StringBuilder.h>
+
 
 namespace WebCore {
 
@@ -106,6 +108,7 @@ void RenderThemeHaiku::systemFont(CSSValueID, FontDescription& fontDescription) 
     fontDescription.setItalic(false);
 }
 
+#if ENABLE(VIDEO)
 String RenderThemeHaiku::mediaControlsStyleSheet()
 {
     return ASCIILiteral(mediaControlsAppleUserAgentStyleSheet);
@@ -113,8 +116,12 @@ String RenderThemeHaiku::mediaControlsStyleSheet()
 
 String RenderThemeHaiku::mediaControlsScript()
 {
-    return ASCIILiteral(mediaControlsAppleJavaScript);
+    StringBuilder scriptBuilder;
+    scriptBuilder.append(mediaControlsLocalizedStringsJavaScript, sizeof(mediaControlsLocalizedStringsJavaScript));
+    scriptBuilder.append(mediaControlsAppleJavaScript, sizeof(mediaControlsAppleJavaScript));
+    return scriptBuilder.toString();
 }
+#endif
 
 bool RenderThemeHaiku::paintCheckbox(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
