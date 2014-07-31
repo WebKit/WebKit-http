@@ -429,7 +429,10 @@ void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     BMessage message(B_REFS_RECEIVED);
     message.AddPointer("chooser", ref);
     BMessenger target(m_webPage);
-    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, (*ref)->settings().allowsMultipleFiles, &message, NULL, true, true);
+    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target,
+        &m_filePanelDirectory, 0, (*ref)->settings().allowsMultipleFiles,
+        &message, NULL, true, true);
+
     panel->Show();
 }
 

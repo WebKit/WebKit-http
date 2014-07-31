@@ -34,6 +34,8 @@
 #include "NotImplemented.h"
 #include "URL.h"
 
+#include <Entry.h>
+
 #include <wtf/RefCounted.h>
 #include "WebPage.h"
 
@@ -140,6 +142,8 @@ namespace WebCore {
         void scheduleCompositingLayerFlush() override;
 
         void runOpenPanel(Frame*, PassRefPtr<FileChooser>) override;
+        void setPanelDirectory(entry_ref dir) { m_filePanelDirectory = dir; }
+
         // Asynchronous request to load an icon for specified filenames.
         void loadIconForFiles(const Vector<String>&, FileIconLoader*) override;
 
@@ -161,6 +165,8 @@ namespace WebCore {
         URL lastHoverURL;
         String lastHoverTitle;
         String lastHoverContent;
+
+        entry_ref m_filePanelDirectory;
     };
 
 } // namespace WebCore

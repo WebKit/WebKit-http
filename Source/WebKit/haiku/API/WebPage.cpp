@@ -32,6 +32,7 @@
 
 
 #include "BackForwardController.h"
+#include "Chrome.h"
 #include "ChromeClientHaiku.h"
 #include "ContextMenu.h"
 #include "ContextMenuClientHaiku.h"
@@ -978,8 +979,16 @@ void BWebPage::MessageReceived(BMessage* message)
     	if (message->FindPointer("source", reinterpret_cast<void**>(&panel)) == B_OK
     		&& message->FindInt32("old_what", &oldWhat) == B_OK
     		&& oldWhat == B_REFS_RECEIVED) {
-    		// TODO: Eventually it would be nice to reuse the same file panel...
-    		// At least don't leak the file panel for now.
+
+            // Remember the directory so we can reuse it next time we open a
+            // file panel
+            entry_ref panelDirectory;
+            panel->GetPanelDirectory(&panelDirectory);
+            static_cast<ChromeClientHaiku&>(fPage->chrome().client())
+                .setPanelDirectory(panelDirectory);
+
+            // Delete the panel, it can't be reused because we can switch
+            // between multi- and single-file modes.
     		delete panel;
     	}
     	break;
