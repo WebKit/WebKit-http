@@ -231,6 +231,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
 BUrlProtocolHandler::~BUrlProtocolHandler()
 {
     abort();
+    m_request->SetListener(NULL);
     delete m_request;
 }
 
@@ -271,7 +272,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     if (m_redirected) {
         BUrlContext* context = m_request->Context();
         delete m_request;
-        m_request = m_nextRequest.toNetworkRequest(context);
+        m_request = m_nextRequest->toNetworkRequest(context);
         resetState();
         start();
         return;
@@ -304,6 +305,9 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 
 void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceResponse& response)
 {
+    if (!m_resourceHandle)
+        return;
+
     ResourceHandleInternal* d = m_resourceHandle->getInternal();
     unsigned failureCount = 0;
 
@@ -342,7 +346,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         return;
     }
 
-    m_nextRequest = m_resourceHandle->firstRequest();
+    m_nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
 
     Credential proposedCredential(d->m_user, d->m_pass, CredentialPersistenceForSession);
 
@@ -357,10 +361,9 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         m_redirected = true;
 
         // We just reuse the same request, it's already set up like we want it.
-        //m_nextRequest = m_resourceHandle->firstRequest();
-        //m_nextRequest.setURL(location);
-        m_nextRequest.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
-        client->willSendRequest(m_resourceHandle, m_nextRequest, response);
+        //m_nextRequest->setURL(location);
+        m_nextRequest->setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
+        client->willSendRequest(m_resourceHandle, *m_nextRequest, response);
     } else {
         client->didFinishLoading(m_resourceHandle, 0);
     }
@@ -449,19 +452,19 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
         m_redirected = true;
 
-        m_nextRequest = m_resourceHandle->firstRequest();
-        m_nextRequest.setURL(location);
+        m_nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
+        m_nextRequest->setURL(location);
 
         if (((statusCode >= 301 && statusCode <= 303) || statusCode == 307) && m_method == B_HTTP_POST) {
             m_method = B_HTTP_GET;
-            m_nextRequest.setHTTPMethod(m_method.String());
+            m_nextRequest->setHTTPMethod(m_method.String());
 
             // Remove headers that are not appropriate in a GET request
-            m_nextRequest.clearHTTPContentType();
-            m_nextRequest.clearHTTPOrigin();
+            m_nextRequest->clearHTTPContentType();
+            m_nextRequest->clearHTTPOrigin();
         }
 
-        client->willSendRequest(m_resourceHandle, m_nextRequest, response);
+        client->willSendRequest(m_resourceHandle, *m_nextRequest, response);
         return;
     }
 
@@ -546,7 +549,7 @@ void BUrlProtocolHandler::start()
             return;
 
         ResourceError error("BUrlProtocol", 42,
-            m_nextRequest.url().string().utf8().data(),
+            m_nextRequest->url().string().utf8().data(),
             "The service kit failed to start the request.");
         client->didFail(m_resourceHandle, error);
     }

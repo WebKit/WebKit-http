@@ -30,6 +30,7 @@
 #include "ResourceRequestBase.h"
 
 #include <String.h>
+#include <Referenceable.h>
 
 #include "wtf/PassOwnPtr.h"
 
@@ -38,7 +39,7 @@ class BUrlRequest;
 
 namespace WebCore {
 
-    class ResourceRequest : public ResourceRequestBase {
+    class ResourceRequest : public ResourceRequestBase, public BReferenceable {
     public:
         ResourceRequest(const String& url) 
             : ResourceRequestBase(URL(ParsedURLString, url), UseProtocolCachePolicy)
