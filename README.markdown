@@ -26,11 +26,10 @@ Packages for other flavors of Haiku may or may not be available. Use [haikuporte
 #### Configuring your build for the first time ####
 On a gcc2hybrid Haiku:
     $ PKG_CONFIG_LIBDIR=/boot/system/develop/lib/x86/pkgconfig \
-        CC=gcc-x86 CXX=g++-x86 \
-        Tools/Scripts/build-webkit --haiku --no-webkit2
+        CC=gcc-x86 CXX=g++-x86 Tools/Scripts/build-webkit
 
 On other versions:
-    $ Tools/Scripts/build-webkit --haiku --no-webkit2
+    $ Tools/Scripts/build-webkit
 
 #### Regular build, once configured ####
     $ cd WebKitBuild/Release
@@ -107,16 +106,31 @@ distcc.
     $ python Tools/Scripts/test-webkitpy
 
 The ruby tests pass (all 2 of them!)
-The perl test almost pass: Failed 2/25 test programs. 1/412 subtests failed.
+The perl test almost pass: Failed 1/27 test programs. 1/482 subtests failed.
 The python testsuite prints a lot of "sem\_init: No space left on device" then crashes.
 But before it does, there already are some test failures.
 
 ### JSC ###
-    $ perl Tools/Scripts/run-javascriptcore-tests --no-build --haiku
+    $ perl Tools/Scripts/run-javascriptcore-tests
+
+Add the --no-build argument if you already compiled JSC. It is built by default
+for the Haiku port, so it is a good idea to always add this.
 
 Current results:
-- 7500 tests are run (some are excluded because of missing features in our Ruby port)
-- 4 failure related to parsing dates (ecmascript 3, Date, 15.9.5.6)
+- 9258 tests are run (some are excluded because of missing features in our Ruby port)
+- 10 failures related to parsing dates and trigonometry:
+
+    mozilla-tests.yaml/ecma_3/Date/15.9.5.6.js.mozilla
+    mozilla-tests.yaml/ecma_3/Date/15.9.5.6.js.mozilla-baseline
+    mozilla-tests.yaml/ecma_3/Date/15.9.5.6.js.mozilla-dfg-eager-no-cjit-validate-phases
+    mozilla-tests.yaml/ecma_3/Date/15.9.5.6.js.mozilla-llint
+    stress/ftl-arithcos.js.always-trigger-copy-phase
+    stress/ftl-arithcos.js.default
+    stress/ftl-arithcos.js.dfg-eager
+    stress/ftl-arithcos.js.dfg-eager-no-cjit-validate
+    stress/ftl-arithcos.js.no-cjit-validate-phases
+    stress/ftl-arithcos.js.no-llint
+
 
 ### WebKit ###
 You will have to install the Ahem font for layout tests to work properly. This
@@ -124,7 +138,7 @@ is a font with known-size glyphs that render the same on all platforms. Most of
 the characters look like black squares, this is expected and not a bug!
 http://www.w3.org/Style/CSS/Test/Fonts/Ahem/
 
-    $ cp LayoutTests/resources/Ahem.ttf /system/non-packaged/data/fonts/
+$ cp LayoutTests/resources/Ahem.ttf /system/non-packaged/data/fonts/
 
 It is also a good idea to enable automated debug reports for DumpRenderTree.
 Create the file ~/config/settings/system/debug\_server/settings and add:
@@ -163,13 +177,14 @@ There are more tests, but the build-\* scripts must be working before we can run
 cmake is smart enough to detect when a variable has changed and will rebuild everything.
 You can keep several generated folders with different settings if you need to switch
 between them very often (eg. debug and release builds). Just invoke the build-webkit
-script with different settings and different output dirs. You can then run make from each
-of these folders.
+script with different settings and different output dirs. You can then run make 
+(or ninja) from each of these folders.
 
 You can copy a WebPositive binary from your Haiku installation into the
 WebKitBuild/Release folder. Launching it will then use the freshly built
-libraries instead of the system ones.
+libraries instead of the system ones. It is a good idea to test this because
+HaikuLauncher doesn't use tabs, which sometimes expose different bugs.
 
-This document was last updated November 26, 2013
+This document was last updated July 30, 2014.
 
 Authors: Maxime Simon, Alexandre Deckner, Adrien Destugues
