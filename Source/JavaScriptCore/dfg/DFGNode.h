@@ -38,6 +38,7 @@
 #include "DFGNodeFlags.h"
 #include "DFGNodeOrigin.h"
 #include "DFGNodeType.h"
+#include "DFGTransition.h"
 #include "DFGUseKind.h"
 #include "DFGVariableAccessData.h"
 #include "GetByIdVariant.h"
@@ -65,19 +66,6 @@ struct MultiPutByOffsetData {
     
     bool writesStructures() const;
     bool reallocatesStorage() const;
-};
-
-struct StructureTransitionData {
-    Structure* previousStructure;
-    Structure* newStructure;
-    
-    StructureTransitionData() { }
-    
-    StructureTransitionData(Structure* previousStructure, Structure* newStructure)
-        : previousStructure(previousStructure)
-        , newStructure(newStructure)
-    {
-    }
 };
 
 struct NewArrayBufferData {
@@ -335,7 +323,6 @@ struct Node {
     
     bool mergeFlags(NodeFlags flags)
     {
-        ASSERT(!(flags & NodeDoesNotExit));
         NodeFlags newFlags = m_flags | flags;
         if (newFlags == m_flags)
             return false;
@@ -345,7 +332,6 @@ struct Node {
     
     bool filterFlags(NodeFlags flags)
     {
-        ASSERT(flags & NodeDoesNotExit);
         NodeFlags newFlags = m_flags & flags;
         if (newFlags == m_flags)
             return false;
@@ -393,19 +379,6 @@ struct Node {
         return m_flags & NodeMustGenerate;
     }
     
-    void setCanExit(bool exits)
-    {
-        if (exits)
-            m_flags &= ~NodeDoesNotExit;
-        else
-            m_flags |= NodeDoesNotExit;
-    }
-    
-    bool canExit()
-    {
-        return !(m_flags & NodeDoesNotExit);
-    }
-    
     bool isConstant()
     {
         switch (op()) {
@@ -416,11 +389,6 @@ struct Node {
         default:
             return false;
         }
-    }
-    
-    bool isWeakConstant()
-    {
-        return op() == WeakJSConstant;
     }
     
     bool isPhantomArguments()
@@ -434,7 +402,6 @@ struct Node {
         case JSConstant:
         case DoubleConstant:
         case Int52Constant:
-        case WeakJSConstant:
         case PhantomArguments:
             return true;
         default:
@@ -442,13 +409,16 @@ struct Node {
         }
     }
 
-    unsigned constantNumber()
+    FrozenValue* constant()
     {
-        ASSERT(isConstant());
-        return m_opInfo;
+        ASSERT(hasConstant());
+        if (op() == PhantomArguments)
+            return FrozenValue::emptySingleton();
+        return bitwise_cast<FrozenValue*>(m_opInfo);
     }
     
-    void convertToConstant(unsigned constantNumber)
+    // Don't call this directly - use Graph::convertToConstant() instead!
+    void convertToConstant(FrozenValue* value)
     {
         if (hasDoubleResult())
             m_op = DoubleConstant;
@@ -457,15 +427,7 @@ struct Node {
         else
             m_op = JSConstant;
         m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
-        m_opInfo = constantNumber;
-        children.reset();
-    }
-    
-    void convertToWeakConstant(JSCell* cell)
-    {
-        m_op = WeakJSConstant;
-        m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
-        m_opInfo = bitwise_cast<uintptr_t>(cell);
+        m_opInfo = bitwise_cast<uintptr_t>(value);
         children.reset();
     }
     
@@ -485,20 +447,6 @@ struct Node {
         children.reset();
     }
     
-    void convertToStructureTransitionWatchpoint(Structure* structure)
-    {
-        ASSERT(m_op == CheckStructure || m_op == ArrayifyToStructure);
-        ASSERT(!child2());
-        ASSERT(!child3());
-        m_opInfo = bitwise_cast<uintptr_t>(structure);
-        m_op = StructureTransitionWatchpoint;
-    }
-    
-    void convertToStructureTransitionWatchpoint()
-    {
-        convertToStructureTransitionWatchpoint(structureSet().singletonStructure());
-    }
-    
     void convertToGetByOffset(unsigned storageAccessDataIndex, Edge storage)
     {
         ASSERT(m_op == GetById || m_op == GetByIdFlush || m_op == MultiGetByOffset);
@@ -510,14 +458,31 @@ struct Node {
         m_flags &= ~NodeClobbersWorld;
     }
     
+    void convertToMultiGetByOffset(MultiGetByOffsetData* data)
+    {
+        ASSERT(m_op == GetById || m_op == GetByIdFlush);
+        m_opInfo = bitwise_cast<intptr_t>(data);
+        child1().setUseKind(CellUse);
+        m_op = MultiGetByOffset;
+        m_flags &= ~NodeClobbersWorld;
+    }
+    
     void convertToPutByOffset(unsigned storageAccessDataIndex, Edge storage)
     {
-        ASSERT(m_op == PutById || m_op == PutByIdDirect || m_op == MultiPutByOffset);
+        ASSERT(m_op == PutById || m_op == PutByIdDirect || m_op == PutByIdFlush || m_op == MultiPutByOffset);
         m_opInfo = storageAccessDataIndex;
         children.setChild3(children.child2());
         children.setChild2(children.child1());
         children.setChild1(storage);
         m_op = PutByOffset;
+        m_flags &= ~NodeClobbersWorld;
+    }
+    
+    void convertToMultiPutByOffset(MultiPutByOffsetData* data)
+    {
+        ASSERT(m_op == PutById || m_op == PutByIdDirect || m_op == PutByIdFlush);
+        m_opInfo = bitwise_cast<intptr_t>(data);
+        m_op = MultiPutByOffset;
         m_flags &= ~NodeClobbersWorld;
     }
     
@@ -544,59 +509,79 @@ struct Node {
         m_op = ToString;
     }
     
-    JSCell* weakConstant()
+    JSValue asJSValue()
     {
-        ASSERT(op() == WeakJSConstant);
-        return bitwise_cast<JSCell*>(m_opInfo);
+        return constant()->value();
+    }
+     
+    bool isInt32Constant()
+    {
+        return isConstant() && constant()->value().isInt32();
+    }
+     
+    int32_t asInt32()
+    {
+        return asJSValue().asInt32();
+    }
+     
+    uint32_t asUInt32()
+    {
+        return asInt32();
+    }
+     
+    bool isDoubleConstant()
+    {
+        return isConstant() && constant()->value().isDouble();
+    }
+     
+    bool isNumberConstant()
+    {
+        return isConstant() && constant()->value().isNumber();
     }
     
-    JSValue valueOfJSConstant(CodeBlock* codeBlock)
+    double asNumber()
     {
-        switch (op()) {
-        case WeakJSConstant:
-            return JSValue(weakConstant());
-        case JSConstant:
-        case DoubleConstant:
-        case Int52Constant:
-            return codeBlock->constantRegister(FirstConstantRegisterIndex + constantNumber()).get();
-        case PhantomArguments:
-            return JSValue();
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return JSValue(); // Have to return something in release mode.
-        }
+        return asJSValue().asNumber();
     }
-
-    bool isInt32Constant(CodeBlock* codeBlock)
+     
+    bool isMachineIntConstant()
     {
-        return isConstant() && valueOfJSConstant(codeBlock).isInt32();
+        return isConstant() && constant()->value().isMachineInt();
     }
-    
-    bool isDoubleConstant(CodeBlock* codeBlock)
+     
+    int64_t asMachineInt()
     {
-        bool result = isConstant() && valueOfJSConstant(codeBlock).isDouble();
-        if (result)
-            ASSERT(!isInt32Constant(codeBlock));
-        return result;
+        return asJSValue().asMachineInt();
     }
-    
-    bool isNumberConstant(CodeBlock* codeBlock)
+     
+    bool isBooleanConstant()
     {
-        bool result = isConstant() && valueOfJSConstant(codeBlock).isNumber();
-        ASSERT(result == (isInt32Constant(codeBlock) || isDoubleConstant(codeBlock)));
-        return result;
+        return isConstant() && constant()->value().isBoolean();
     }
-    
-    bool isMachineIntConstant(CodeBlock* codeBlock)
+     
+    bool asBoolean()
     {
-        return isConstant() && valueOfJSConstant(codeBlock).isMachineInt();
+        return constant()->value().asBoolean();
     }
-    
-    bool isBooleanConstant(CodeBlock* codeBlock)
+     
+    bool isCellConstant()
     {
-        return isConstant() && valueOfJSConstant(codeBlock).isBoolean();
+        return isConstant() && constant()->value().isCell();
     }
-    
+     
+    JSCell* asCell()
+    {
+        return constant()->value().asCell();
+    }
+     
+    template<typename T>
+    T dynamicCastConstant()
+    {
+        if (!isCellConstant())
+            return nullptr;
+        return jsDynamicCast<T>(asCell());
+    }
+     
     bool containsMovHint()
     {
         switch (op()) {
@@ -1009,6 +994,8 @@ struct Node {
         case GetMyArgumentByValSafe:
         case Call:
         case Construct:
+        case NativeCall:
+        case NativeConstruct:
         case GetByOffset:
         case MultiGetByOffset:
         case GetClosureVar:
@@ -1042,6 +1029,40 @@ struct Node {
         m_opInfo2 = prediction;
     }
     
+    bool canBeKnownFunction()
+    {
+        switch (op()) {
+        case NativeConstruct:
+        case NativeCall:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool hasKnownFunction()
+    {
+        switch (op()) {
+        case NativeConstruct:
+        case NativeCall:
+            return (bool)m_opInfo;
+        default:
+            return false;
+        }
+    }
+    
+    JSFunction* knownFunction()
+    {
+        ASSERT(canBeKnownFunction());
+        return bitwise_cast<JSFunction*>(m_opInfo);
+    }
+
+    void giveKnownFunction(JSFunction* callData) 
+    {
+        ASSERT(canBeKnownFunction());
+        m_opInfo = bitwise_cast<uintptr_t>(callData);
+    }
+
     bool hasFunction()
     {
         switch (op()) {
@@ -1053,12 +1074,10 @@ struct Node {
         }
     }
 
-    JSCell* function()
+    FrozenValue* function()
     {
         ASSERT(hasFunction());
-        JSCell* result = reinterpret_cast<JSFunction*>(m_opInfo);
-        ASSERT(JSValue(result).isFunction());
-        return result;
+        return reinterpret_cast<FrozenValue*>(m_opInfo);
     }
     
     bool hasExecutable()
@@ -1101,11 +1120,10 @@ struct Node {
         return reinterpret_cast<void*>(m_opInfo);
     }
 
-    bool hasStructureTransitionData()
+    bool hasTransition()
     {
         switch (op()) {
         case PutStructure:
-        case PhantomPutStructure:
         case AllocatePropertyStorage:
         case ReallocatePropertyStorage:
             return true;
@@ -1114,10 +1132,10 @@ struct Node {
         }
     }
     
-    StructureTransitionData& structureTransitionData()
+    Transition* transition()
     {
-        ASSERT(hasStructureTransitionData());
-        return *reinterpret_cast<StructureTransitionData*>(m_opInfo);
+        ASSERT(hasTransition());
+        return reinterpret_cast<Transition*>(m_opInfo);
     }
     
     bool hasStructureSet()
@@ -1139,7 +1157,6 @@ struct Node {
     bool hasStructure()
     {
         switch (op()) {
-        case StructureTransitionWatchpoint:
         case ArrayifyToStructure:
         case NewObject:
         case NewStringObject:
@@ -1157,7 +1174,7 @@ struct Node {
     
     bool hasStorageAccessData()
     {
-        return op() == GetByOffset || op() == PutByOffset;
+        return op() == GetByOffset || op() == GetGetterSetterByOffset || op() == PutByOffset;
     }
     
     unsigned storageAccessDataIndex()

@@ -73,7 +73,7 @@
 #include "ArchiveFactory.h"
 #endif
 
-#if USE(CONTENT_FILTERING)
+#if ENABLE(CONTENT_FILTERING)
 #include "ContentFilter.h"
 #endif
 
@@ -404,7 +404,7 @@ void DocumentLoader::finishedLoading(double finishTime)
         frameLoader()->notifier().dispatchDidFinishLoading(this, identifier, finishTime);
     }
 
-#if USE(CONTENT_FILTERING)
+#if ENABLE(CONTENT_FILTERING)
     if (m_contentFilter && m_contentFilter->needsMoreData()) {
         m_contentFilter->finishedAddingData();
         int length;
@@ -413,7 +413,7 @@ void DocumentLoader::finishedLoading(double finishTime)
             dataReceived(m_mainResource.get(), data, length);
 
         if (m_contentFilter->didBlockData())
-            setContentFilterForBlockedLoad(m_contentFilter);
+            frameLoader()->client().contentFilterDidBlockLoad(WTF::move(m_contentFilter));
     }
 #endif
 
@@ -662,9 +662,9 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     }
 #endif
 
-#if USE(CONTENT_FILTERING)
+#if ENABLE(CONTENT_FILTERING)
     if (response.url().protocolIsInHTTPFamily() && ContentFilter::isEnabled())
-        m_contentFilter = ContentFilter::create(response);
+        m_contentFilter = std::make_unique<ContentFilter>(response);
 #endif
 
     frameLoader()->policyChecker().checkContentPolicy(m_response, [this](PolicyAction policy) {
@@ -819,7 +819,7 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
 
         bool userChosen;
         String encoding;
-#if USE(CONTENT_FILTERING)
+#if ENABLE(CONTENT_FILTERING)
         // The content filter's replacement data has a known encoding that might
         // differ from the response's encoding.
         if (m_contentFilter && m_contentFilter->didBlockData()) {
@@ -858,7 +858,7 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
     ASSERT(!mainResourceLoader() || !mainResourceLoader()->defersLoading());
 #endif
 
-#if USE(CONTENT_FILTERING)
+#if ENABLE(CONTENT_FILTERING)
     bool loadWasBlockedBeforeFinishing = false;
     if (m_contentFilter && m_contentFilter->needsMoreData()) {
         m_contentFilter->addData(data, length);
@@ -874,7 +874,7 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
         loadWasBlockedBeforeFinishing = m_contentFilter->didBlockData();
 
         if (loadWasBlockedBeforeFinishing)
-            setContentFilterForBlockedLoad(m_contentFilter);
+            frameLoader()->client().contentFilterDidBlockLoad(WTF::move(m_contentFilter));
     }
 #endif
 
@@ -887,7 +887,7 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
     if (!isMultipartReplacingLoad())
         commitLoad(data, length);
 
-#if USE(CONTENT_FILTERING)
+#if ENABLE(CONTENT_FILTERING)
     if (loadWasBlockedBeforeFinishing)
         cancelMainResourceLoad(frameLoader()->cancelledError(m_request));
 #endif
@@ -1564,39 +1564,5 @@ void DocumentLoader::handledOnloadEvents()
     m_wasOnloadHandled = true;
     applicationCacheHost()->stopDeferringEvents();
 }
-
-#if USE(CONTENT_FILTERING)
-void DocumentLoader::setContentFilterForBlockedLoad(PassRefPtr<ContentFilter> contentFilter)
-{
-    ASSERT(!m_contentFilterForBlockedLoad);
-    ASSERT(contentFilter);
-    ASSERT(contentFilter->didBlockData());
-    m_contentFilterForBlockedLoad = contentFilter;
-}
-
-bool DocumentLoader::handleContentFilterRequest(const ResourceRequest& request)
-{
-    // FIXME: Remove PLATFORM(IOS)-guard once we upstream ContentFilterIOS.mm and
-    // implement ContentFilter::requestUnblockAndDispatchIfSuccessful() for Mac.
-#if PLATFORM(IOS)
-    if (!m_contentFilterForBlockedLoad)
-        return false;
-
-    if (!request.url().protocolIs(ContentFilter::scheme()))
-        return false;
-
-    if (equalIgnoringCase(request.url().host(), "unblock")) {
-        // Tell the FrameLoader to reload if the unblock is successful.
-        m_contentFilterForBlockedLoad->requestUnblockAndDispatchIfSuccessful(bind(&FrameLoader::reload, &(m_frame->loader()), false));
-        return true;
-    }
-
-    return false;
-#else
-    UNUSED_PARAM(request);
-    return false;
-#endif
-}
-#endif
 
 } // namespace WebCore

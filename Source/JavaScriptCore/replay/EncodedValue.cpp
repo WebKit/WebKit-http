@@ -55,6 +55,16 @@ PassRefPtr<InspectorArray> EncodedValue::asArray()
     return result.release();
 }
 
+EncodedValue EncodingTraits<Vector<char>>::encodeValue(const Vector<char>& buffer)
+{
+    return EncodedValue::createString(base64Encode(buffer));
+}
+
+bool EncodingTraits<Vector<char>>::decodeValue(EncodedValue& encodedBuffer, Vector<char>& decodedValue)
+{
+    return base64Decode(encodedBuffer.convertTo<String>(), decodedValue);
+}
+
 template<> EncodedValue ScalarEncodingTraits<bool>::encodeValue(const bool& value)
 {
     return EncodedValue(InspectorBasicValue::create(value));
@@ -86,11 +96,6 @@ template<> EncodedValue ScalarEncodingTraits<uint32_t>::encodeValue(const uint32
 }
 
 template<> EncodedValue ScalarEncodingTraits<uint64_t>::encodeValue(const uint64_t& value)
-{
-    return EncodedValue(InspectorBasicValue::create((double)value));
-}
-
-template<> EncodedValue ScalarEncodingTraits<unsigned long>::encodeValue(const unsigned long& value)
 {
     return EncodedValue(InspectorBasicValue::create((double)value));
 }
@@ -152,15 +157,6 @@ template<> uint32_t EncodedValue::convertTo<uint32_t>()
 template<> uint64_t EncodedValue::convertTo<uint64_t>()
 {
     uint64_t result;
-    bool castSucceeded = m_value->asNumber(&result);
-    ASSERT_UNUSED(castSucceeded, castSucceeded);
-
-    return result;
-}
-
-template<> unsigned long EncodedValue::convertTo<unsigned long>()
-{
-    unsigned long result;
     bool castSucceeded = m_value->asNumber(&result);
     ASSERT_UNUSED(castSucceeded, castSucceeded);
 

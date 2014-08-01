@@ -30,6 +30,7 @@
 
 #include "MessageReceiver.h"
 #include "RemoteScrollingCoordinator.h"
+#include "RemoteScrollingTree.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
 
@@ -67,21 +68,30 @@ public:
 
     const RemoteLayerTreeHost* layerTreeHost() const;
 
-    void updateScrollingTree(const RemoteScrollingCoordinatorTransaction&, bool& fixedOrStickyLayerChanged);
+    struct RequestedScrollInfo {
+        bool requestsScrollPositionUpdate { };
+        bool requestIsProgrammaticScroll { };
+        WebCore::FloatPoint requestedScrollPosition;
+    };
+    void updateScrollingTree(const RemoteScrollingCoordinatorTransaction&, RequestedScrollInfo&);
 
     void setPropagatesMainFrameScrolls(bool propagatesMainFrameScrolls) { m_propagatesMainFrameScrolls = propagatesMainFrameScrolls; }
     bool propagatesMainFrameScrolls() const { return m_propagatesMainFrameScrolls; }
+    bool hasFixedOrSticky() const { return m_scrollingTree->hasFixedOrSticky(); }
 
 #if PLATFORM(IOS)
     WebCore::FloatRect customFixedPositionRect() const;
     void scrollingTreeNodeWillStartPanGesture();
+    void scrollingTreeNodeWillStartScroll();
+    void scrollingTreeNodeDidEndScroll();
 #endif
 
 private:
-    void connectStateNodeLayers(WebCore::ScrollingStateTree&, const RemoteLayerTreeHost&, bool& fixedOrStickyLayerChanged);
+    void connectStateNodeLayers(WebCore::ScrollingStateTree&, const RemoteLayerTreeHost&);
 
     WebPageProxy& m_webPageProxy;
     RefPtr<RemoteScrollingTree> m_scrollingTree;
+    RequestedScrollInfo* m_requestedScrollInfo;
     bool m_propagatesMainFrameScrolls;
 };
 

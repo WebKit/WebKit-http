@@ -26,7 +26,6 @@
 #include "WebCookieManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebKitBatteryProvider.h"
-#include "WebKitCertificateInfoPrivate.h"
 #include "WebKitCookieManagerPrivate.h"
 #include "WebKitDownloadClient.h"
 #include "WebKitDownloadPrivate.h"
@@ -37,12 +36,13 @@
 #include "WebKitPrivate.h"
 #include "WebKitRequestManagerClient.h"
 #include "WebKitSecurityManagerPrivate.h"
+#include "WebKitSettingsPrivate.h"
 #include "WebKitTextChecker.h"
 #include "WebKitURISchemeRequestPrivate.h"
 #include "WebKitUserContentManagerPrivate.h"
 #include "WebKitWebContextPrivate.h"
 #include "WebKitWebViewBasePrivate.h"
-#include "WebKitWebViewGroupPrivate.h"
+#include "WebKitWebViewPrivate.h"
 #include "WebResourceCacheManagerProxy.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/IconDatabase.h>
@@ -156,7 +156,6 @@ struct _WebKitWebContextPrivate {
     WebKitTLSErrorsPolicy tlsErrorsPolicy;
 
     HashMap<uint64_t, WebKitWebView*> webViews;
-    GRefPtr<WebKitWebViewGroup> defaultWebViewGroup;
 
     CString webExtensionsDirectory;
     GRefPtr<GVariant> webExtensionsInitializationUserData;
@@ -900,20 +899,20 @@ void webkit_web_context_prefetch_dns(WebKitWebContext* context, const char* host
 /**
  * webkit_web_context_allow_tls_certificate_for_host:
  * @context: a #WebKitWebContext
- * @info: a #WebKitCertificateInfo
+ * @certificate: a #GTlsCertificate
  * @host: the host for which a certificate is to be allowed
  *
  * Ignore further TLS errors on the @host for the certificate present in @info.
  *
- * Since: 2.4
+ * Since: 2.6
  */
-void webkit_web_context_allow_tls_certificate_for_host(WebKitWebContext* context, WebKitCertificateInfo* info, const gchar* host)
+void webkit_web_context_allow_tls_certificate_for_host(WebKitWebContext* context, GTlsCertificate* certificate, const gchar* host)
 {
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
-    g_return_if_fail(info);
+    g_return_if_fail(G_IS_TLS_CERTIFICATE(certificate));
     g_return_if_fail(host);
 
-    RefPtr<WebCertificateInfo> webCertificateInfo = WebCertificateInfo::create(webkitCertificateInfoGetCertificateInfo(info));
+    RefPtr<WebCertificateInfo> webCertificateInfo = WebCertificateInfo::create(WebCore::CertificateInfo(certificate, static_cast<GTlsCertificateFlags>(0)));
     context->priv->context->allowSpecificHTTPSCertificateForHost(webCertificateInfo.get(), String::fromUTF8(host));
 }
 
@@ -1051,19 +1050,16 @@ void webkitWebContextDidFinishLoadingCustomProtocol(WebKitWebContext* context, u
     context->priv->uriSchemeRequests.remove(customProtocolID);
 }
 
-void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebView* webView, WebKitWebViewGroup* webViewGroup, WebKitUserContentManager* userContentManager, WebKitWebView* relatedView)
+void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebView* webView, WebKitUserContentManager* userContentManager, WebKitWebView* relatedView)
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(webView);
-    WebPageGroup* pageGroup = webViewGroup ? webkitWebViewGroupGetPageGroup(webViewGroup) : 0;
     WebPageProxy* relatedPage = relatedView ? webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(relatedView)) : nullptr;
+    WebPreferences* preferences = webkitSettingsGetPreferences(webkit_web_view_get_settings(webView));
     WebUserContentControllerProxy* userContentControllerProxy = userContentManager ? webkitUserContentManagerGetUserContentControllerProxy(userContentManager) : nullptr;
-    webkitWebViewBaseCreateWebPage(webViewBase, context->priv->context.get(), pageGroup, userContentControllerProxy, relatedPage);
+    webkitWebViewBaseCreateWebPage(webViewBase, context->priv->context.get(), preferences, nullptr, userContentControllerProxy, relatedPage);
 
     WebPageProxy* page = webkitWebViewBaseGetPage(webViewBase);
     context->priv->webViews.set(page->pageID(), webView);
-
-    if (!pageGroup && !context->priv->defaultWebViewGroup)
-        context->priv->defaultWebViewGroup = adoptGRef(webkitWebViewGroupCreate(&page->pageGroup()));
 }
 
 void webkitWebContextWebViewDestroyed(WebKitWebContext* context, WebKitWebView* webView)
@@ -1075,9 +1071,4 @@ void webkitWebContextWebViewDestroyed(WebKitWebContext* context, WebKitWebView* 
 WebKitWebView* webkitWebContextGetWebViewForPage(WebKitWebContext* context, WebPageProxy* page)
 {
     return page ? context->priv->webViews.get(page->pageID()) : 0;
-}
-
-WebKitWebViewGroup* webkitWebContextGetDefaultWebViewGroup(WebKitWebContext* context)
-{
-    return context->priv->defaultWebViewGroup.get();
 }

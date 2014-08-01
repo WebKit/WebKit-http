@@ -562,7 +562,8 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         // and the next sync sample frame are removed. But we must start from the first sample in decode order, not
         // presentation order.
         PresentationOrderSampleMap::iterator minDecodeTimeIter = std::min_element(removePresentationStart, removePresentationEnd, decodeTimeComparator);
-        DecodeOrderSampleMap::iterator removeDecodeStart = trackBuffer.samples.decodeOrder().findSampleWithDecodeTime(minDecodeTimeIter->second->decodeTime());
+        DecodeOrderSampleMap::KeyType decodeKey(minDecodeTimeIter->second->decodeTime(), minDecodeTimeIter->second->presentationTime());
+        DecodeOrderSampleMap::iterator removeDecodeStart = trackBuffer.samples.decodeOrder().findSampleWithDecodeKey(decodeKey);
 
         DecodeOrderSampleMap::MapType erasedSamples(removeDecodeStart, removeDecodeEnd);
 
@@ -576,6 +577,13 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
             erasedRanges->add(startTime, endTime);
         }
 
+        // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
+        // not yet displayed samples.
+        PlatformTimeRanges possiblyEnqueuedRanges(currentMediaTime, trackBuffer.lastEnqueuedPresentationTime);
+        possiblyEnqueuedRanges.intersectWith(erasedRanges->ranges());
+        if (possiblyEnqueuedRanges.length())
+            trackBuffer.needsReenqueueing = true;
+
         erasedRanges->invert();
         m_buffered->intersectWith(*erasedRanges);
 
@@ -584,8 +592,6 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         // the HTMLMediaElement.readyState attribute to HAVE_METADATA and stall playback.
         if (m_active && currentMediaTime >= start && currentMediaTime < end && m_private->readyState() > MediaPlayer::HaveMetadata)
             m_private->setReadyState(MediaPlayer::HaveMetadata);
-
-        trackBuffer.needsReenqueueing = true;
     }
 
     // 4. If buffer full flag equals true and this object is ready to accept more bytes, then set the buffer full flag to false.
@@ -1139,9 +1145,29 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
         if (trackBuffer.highestPresentationTimestamp.isValid() && trackBuffer.highestPresentationTimestamp <= presentationTimestamp) {
             // Remove all coded frames from track buffer that have a presentation timestamp greater than highest
             // presentation timestamp and less than or equal to frame end timestamp.
-            auto iter_pair = trackBuffer.samples.presentationOrder().findSamplesWithinPresentationRange(trackBuffer.highestPresentationTimestamp, frameEndTimestamp);
-            if (iter_pair.first != trackBuffer.samples.presentationOrder().end())
-                erasedSamples.addRange(iter_pair.first, iter_pair.second);
+            do {
+                // NOTE: Searching from the end of the trackBuffer will be vastly more efficient if the search range is
+                // near the end of the buffered range. Use a linear-backwards search if the search range is within one
+                // frame duration of the end:
+                if (!m_buffered)
+                    break;
+
+                unsigned bufferedLength = m_buffered->ranges().length();
+                if (!bufferedLength)
+                    break;
+
+                bool ignoreValid;
+                MediaTime highestBufferedTime = m_buffered->ranges().end(bufferedLength - 1, ignoreValid);
+
+                PresentationOrderSampleMap::iterator_range range;
+                if (highestBufferedTime - trackBuffer.highestPresentationTimestamp < trackBuffer.lastFrameDuration)
+                    range = trackBuffer.samples.presentationOrder().findSamplesWithinPresentationRangeFromEnd(trackBuffer.highestPresentationTimestamp, frameEndTimestamp);
+                else
+                    range = trackBuffer.samples.presentationOrder().findSamplesWithinPresentationRange(trackBuffer.highestPresentationTimestamp, frameEndTimestamp);
+
+                if (range.first != trackBuffer.samples.presentationOrder().end())
+                    erasedSamples.addRange(range.first, range.second);
+            } while(false);
         }
 
         // 1.16 Remove decoding dependencies of the coded frames removed in the previous step:
@@ -1152,8 +1178,8 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
 
             // Otherwise: Remove all coded frames between the coded frames removed in the previous step
             // and the next random access point after those removed frames.
-            auto firstDecodeIter = trackBuffer.samples.decodeOrder().findSampleWithDecodeTime(erasedSamples.decodeOrder().begin()->first);
-            auto lastDecodeIter = trackBuffer.samples.decodeOrder().findSampleWithDecodeTime(erasedSamples.decodeOrder().rbegin()->first);
+            auto firstDecodeIter = trackBuffer.samples.decodeOrder().findSampleWithDecodeKey(erasedSamples.decodeOrder().begin()->first);
+            auto lastDecodeIter = trackBuffer.samples.decodeOrder().findSampleWithDecodeKey(erasedSamples.decodeOrder().rbegin()->first);
             auto nextSyncIter = trackBuffer.samples.decodeOrder().findSyncSampleAfterDecodeIterator(lastDecodeIter);
             dependentSamples.insert(firstDecodeIter, nextSyncIter);
 
@@ -1181,7 +1207,9 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
         // Otherwise:
         // Add the coded frame with the presentation timestamp, decode timestamp, and frame duration to the track buffer.
         trackBuffer.samples.addSample(sample);
-        trackBuffer.decodeQueue.insert(DecodeOrderSampleMap::MapType::value_type(decodeTimestamp, sample));
+
+        DecodeOrderSampleMap::KeyType decodeKey(decodeTimestamp, presentationTimestamp);
+        trackBuffer.decodeQueue.insert(DecodeOrderSampleMap::MapType::value_type(decodeKey, sample));
 
         // 1.18 Set last decode timestamp for track buffer to decode timestamp.
         trackBuffer.lastDecodeTimestamp = decodeTimestamp;
@@ -1375,8 +1403,8 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, AtomicString 
     }
 
     // Seach backward for the previous sync sample.
-    MediaTime currentSampleDecodeTime = currentSamplePTSIterator->second->decodeTime();
-    auto currentSampleDTSIterator = trackBuffer.samples.decodeOrder().findSampleWithDecodeTime(currentSampleDecodeTime);
+    DecodeOrderSampleMap::KeyType decodeKey(currentSamplePTSIterator->second->decodeTime(), currentSamplePTSIterator->second->presentationTime());
+    auto currentSampleDTSIterator = trackBuffer.samples.decodeOrder().findSampleWithDecodeKey(decodeKey);
     ASSERT(currentSampleDTSIterator != trackBuffer.samples.decodeOrder().end());
 
     auto reverseCurrentSampleIter = --DecodeOrderSampleMap::reverse_iterator(currentSampleDTSIterator);
@@ -1426,13 +1454,27 @@ void SourceBuffer::monitorBufferingRate()
     LOG(MediaSource, "SourceBuffer::monitorBufferingRate(%p) - m_avegareBufferRate: %lf", this, m_averageBufferRate);
 }
 
+std::unique_ptr<PlatformTimeRanges> SourceBuffer::bufferedAccountingForEndOfStream() const
+{
+    // FIXME: Revisit this method once the spec bug <https://www.w3.org/Bugs/Public/show_bug.cgi?id=26436> is resolved.
+    std::unique_ptr<PlatformTimeRanges> virtualRanges = PlatformTimeRanges::create(m_buffered->ranges());
+    if (m_source->isEnded()) {
+        MediaTime start = virtualRanges->maximumBufferedTime();
+        MediaTime end = MediaTime::createWithDouble(m_source->duration());
+        if (start <= end)
+            virtualRanges->add(start, end);
+    }
+    return virtualRanges;
+}
+
 bool SourceBuffer::hasCurrentTime() const
 {
     if (isRemoved() || !m_buffered->length())
         return false;
 
     MediaTime currentTime = MediaTime::createWithDouble(m_source->currentTime());
-    return abs(m_buffered->ranges().nearest(currentTime) - currentTime) <= currentTimeFudgeFactor();
+    std::unique_ptr<PlatformTimeRanges> ranges = bufferedAccountingForEndOfStream();
+    return abs(ranges->nearest(currentTime) - currentTime) <= currentTimeFudgeFactor();
 }
 
 bool SourceBuffer::hasFutureTime() const
@@ -1440,21 +1482,21 @@ bool SourceBuffer::hasFutureTime() const
     if (isRemoved())
         return false;
 
-    const PlatformTimeRanges& ranges = m_buffered->ranges();
-    if (!ranges.length())
+    std::unique_ptr<PlatformTimeRanges> ranges = bufferedAccountingForEndOfStream();
+    if (!ranges->length())
         return false;
 
     MediaTime currentTime = MediaTime::createWithDouble(m_source->currentTime());
-    MediaTime nearest = ranges.nearest(currentTime);
+    MediaTime nearest = ranges->nearest(currentTime);
     if (abs(nearest - currentTime) > currentTimeFudgeFactor())
         return false;
 
-    size_t found = ranges.find(nearest);
+    size_t found = ranges->find(nearest);
     if (found == notFound)
         return false;
 
     bool ignoredValid = false;
-    return ranges.end(found, ignoredValid) - currentTime > currentTimeFudgeFactor();
+    return ranges->end(found, ignoredValid) - currentTime > currentTimeFudgeFactor();
 }
 
 bool SourceBuffer::canPlayThrough()
@@ -1470,17 +1512,15 @@ bool SourceBuffer::canPlayThrough()
         return true;
 
     // Add up all the time yet to be buffered.
-    MediaTime unbufferedTime = MediaTime::zeroTime();
     MediaTime currentTime = MediaTime::createWithDouble(m_source->currentTime());
     MediaTime duration = MediaTime::createWithDouble(m_source->duration());
 
-    PlatformTimeRanges unbufferedRanges = m_buffered->ranges();
-    unbufferedRanges.invert();
-    unbufferedRanges.intersectWith(PlatformTimeRanges(currentTime, std::max(currentTime, duration)));
-    bool valid = true;
-
-    for (size_t i = 0, end = unbufferedRanges.length(); i < end; ++i)
-        unbufferedTime += unbufferedRanges.end(i, valid) - unbufferedRanges.start(i, valid);
+    std::unique_ptr<PlatformTimeRanges> unbufferedRanges = bufferedAccountingForEndOfStream();
+    unbufferedRanges->invert();
+    unbufferedRanges->intersectWith(PlatformTimeRanges(currentTime, std::max(currentTime, duration)));
+    MediaTime unbufferedTime = unbufferedRanges->totalDuration();
+    if (!unbufferedTime.isValid())
+        return true;
 
     MediaTime timeRemaining = duration - currentTime;
     return unbufferedTime.toDouble() / m_averageBufferRate < timeRemaining.toDouble();

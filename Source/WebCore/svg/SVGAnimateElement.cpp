@@ -3,6 +3,7 @@
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
  * Copyright (C) 2008 Apple Inc. All rights reserved.
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
+ * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -206,7 +207,7 @@ void SVGAnimateElement::resetAnimatedType()
     if (shouldApply == DontApplyAnimation)
         return;
 
-    if (shouldApply == ApplyXMLAnimation) {
+    if (shouldApply == ApplyXMLAnimation || shouldApply == ApplyXMLandCSSAnimation) {
         // SVG DOM animVal animation code-path.
         m_animatedProperties = animator->findAnimatedPropertiesForAttributeName(targetElement, attributeName);
         ASSERT(!m_animatedProperties.isEmpty());
@@ -334,6 +335,10 @@ void SVGAnimateElement::clearAnimatedType(SVGElement* targetElement)
         return;
     }
 
+    ShouldApplyAnimation shouldApply = shouldApplyAnimation(targetElement, attributeName());
+    if (shouldApply == ApplyXMLandCSSAnimation)
+        removeCSSPropertyFromTargetAndInstances(targetElement, attributeName());
+
     // SVG DOM animVal animation code-path.
     if (m_animator) {
         m_animator->stopAnimValAnimation(m_animatedProperties);
@@ -354,18 +359,25 @@ void SVGAnimateElement::applyResultsToTarget()
     if (!m_animatedType)
         return;
 
+    SVGElement* targetElement = this->targetElement();
+    const QualifiedName& attributeName = this->attributeName();
     if (m_animatedProperties.isEmpty()) {
         // CSS properties animation code-path.
         // Convert the result of the animation to a String and apply it as CSS property on the target & all instances.
-        applyCSSPropertyToTargetAndInstances(targetElement(), attributeName(), m_animatedType->valueAsString());
+        applyCSSPropertyToTargetAndInstances(targetElement, attributeName, m_animatedType->valueAsString());
         return;
     }
+
+    // We do update the style and the animation property independent of each other.
+    ShouldApplyAnimation shouldApply = shouldApplyAnimation(targetElement, attributeName);
+    if (shouldApply == ApplyXMLandCSSAnimation)
+        applyCSSPropertyToTargetAndInstances(targetElement, attributeName, m_animatedType->valueAsString());
 
     // SVG DOM animVal animation code-path.
     // At this point the SVG DOM values are already changed, unlike for CSS.
     // We only have to trigger update notifications here.
     m_animator->animValDidChange(m_animatedProperties);
-    notifyTargetAndInstancesAboutAnimValChange(targetElement(), attributeName());
+    notifyTargetAndInstancesAboutAnimValChange(targetElement, attributeName);
 }
 
 bool SVGAnimateElement::animatedPropertyTypeSupportsAddition() const

@@ -41,6 +41,8 @@ BasicBlock::BasicBlock(
     , cfaShouldRevisit(false)
     , cfaFoundConstants(false)
     , cfaDidFinish(true)
+    , cfaStructureClobberStateAtHead(StructuresAreWatched)
+    , cfaStructureClobberStateAtTail(StructuresAreWatched)
     , cfaBranchDirection(InvalidBranchDirection)
 #if !ASSERT_DISABLED
     , isLinked(false)
@@ -50,6 +52,8 @@ BasicBlock::BasicBlock(
     , variablesAtTail(numArguments, numLocals)
     , valuesAtHead(numArguments, numLocals)
     , valuesAtTail(numArguments, numLocals)
+    , intersectionOfPastValuesAtHead(numArguments, numLocals, AbstractValue::fullTop())
+    , intersectionOfCFAHasVisited(true)
     , executionCount(executionCount)
 {
 }
@@ -62,6 +66,7 @@ void BasicBlock::ensureLocals(unsigned newNumLocals)
     variablesAtTail.ensureLocals(newNumLocals);
     valuesAtHead.ensureLocals(newNumLocals);
     valuesAtTail.ensureLocals(newNumLocals);
+    intersectionOfPastValuesAtHead.ensureLocals(newNumLocals, AbstractValue::fullTop());
 }
 
 bool BasicBlock::isInPhis(Node* node) const

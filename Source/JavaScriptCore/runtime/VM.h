@@ -46,9 +46,11 @@
 #include "Strong.h"
 #include "ThunkGenerators.h"
 #include "TypedArrayController.h"
+#include "TypeLocation.h"
 #include "Watchdog.h"
 #include "Watchpoint.h"
 #include "WeakRandom.h"
+#include <wtf/Bag.h>
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/DateMath.h>
 #include <wtf/Forward.h>
@@ -74,6 +76,8 @@ namespace JSC {
     class CommonIdentifiers;
     class ExecState;
     class HandleStack;
+    class HighFidelityTypeProfiler;
+    class HighFidelityLog;
     class Identifier;
     class Interpreter;
     class JSGlobalObject;
@@ -84,6 +88,7 @@ namespace JSC {
     class NativeExecutable;
     class ParserArena;
     class RegExpCache;
+    class ScriptExecutable;
     class SourceProvider;
     class SourceProviderCache;
     struct StackFrame;
@@ -96,6 +101,7 @@ namespace JSC {
     class UnlinkedEvalCodeBlock;
     class UnlinkedFunctionExecutable;
     class UnlinkedProgramCodeBlock;
+    class VirtualRegister;
     class VMEntryScope;
     class Watchpoint;
     class WatchpointSet;
@@ -232,31 +238,9 @@ namespace JSC {
         ExecState* topCallFrame;
         std::unique_ptr<Watchdog> watchdog;
 
-        const OwnPtr<const HashTable> arrayConstructorTable;
-        const OwnPtr<const HashTable> arrayPrototypeTable;
-        const OwnPtr<const HashTable> booleanPrototypeTable;
-        const OwnPtr<const HashTable> dataViewTable;
-        const OwnPtr<const HashTable> dateTable;
-        const OwnPtr<const HashTable> dateConstructorTable;
-        const OwnPtr<const HashTable> errorPrototypeTable;
-        const OwnPtr<const HashTable> globalObjectTable;
-        const OwnPtr<const HashTable> jsonTable;
-        const OwnPtr<const HashTable> numberConstructorTable;
-        const OwnPtr<const HashTable> numberPrototypeTable;
-        const OwnPtr<const HashTable> objectConstructorTable;
-        const OwnPtr<const HashTable> privateNamePrototypeTable;
-        const OwnPtr<const HashTable> regExpTable;
-        const OwnPtr<const HashTable> regExpConstructorTable;
-        const OwnPtr<const HashTable> regExpPrototypeTable;
-        const OwnPtr<const HashTable> stringConstructorTable;
-#if ENABLE(PROMISES)
-        const OwnPtr<const HashTable> promisePrototypeTable;
-        const OwnPtr<const HashTable> promiseConstructorTable;
-#endif
-
         Strong<Structure> structureStructure;
         Strong<Structure> structureRareDataStructure;
-        Strong<Structure> debuggerActivationStructure;
+        Strong<Structure> debuggerScopeStructure;
         Strong<Structure> terminatedExecutionErrorStructure;
         Strong<Structure> stringStructure;
         Strong<Structure> notAnObjectStructure;
@@ -275,7 +259,6 @@ namespace JSC {
         Strong<Structure> structureChainStructure;
         Strong<Structure> sparseArrayValueMapStructure;
         Strong<Structure> arrayBufferNeuteringWatchpointStructure;
-        Strong<Structure> withScopeStructure;
         Strong<Structure> unlinkedFunctionExecutableStructure;
         Strong<Structure> unlinkedProgramCodeBlockStructure;
         Strong<Structure> unlinkedEvalCodeBlockStructure;
@@ -510,6 +493,15 @@ namespace JSC {
         
         BuiltinExecutables* builtinExecutables() { return m_builtinExecutables.get(); }
 
+        bool isProfilingTypesWithHighFidelity() { return !!m_highFidelityTypeProfiler; }
+        String getTypesForVariableInRange(unsigned startLine, unsigned startColumn, unsigned endLine, unsigned endColumn, const String& variableName, const String& sourceID);
+        HighFidelityLog* highFidelityLog() { return m_highFidelityLog.get(); }
+        HighFidelityTypeProfiler* highFidelityTypeProfiler() { return m_highFidelityTypeProfiler.get(); }
+        void updateHighFidelityTypeProfileState();
+        TypeLocation* nextLocation() { return m_locationInfo.add(); } //TODO: possible optmization: when codeblocks die, report which locations are no longer being changed so we don't walk over them
+        JS_EXPORT_PRIVATE void dumpHighFidelityProfilingTypes();
+        int64_t getNextUniqueVariableID() { return m_nextUniqueVariableID++; }
+
     private:
         friend class LLIntOffsetsExtractor;
         friend class ClearExceptionScope;
@@ -558,6 +550,10 @@ namespace JSC {
         OwnPtr<BuiltinExecutables> m_builtinExecutables;
         RefCountedArray<StackFrame> m_exceptionStack;
         HashMap<String, RefPtr<WatchpointSet>> m_impurePropertyWatchpointSets;
+        std::unique_ptr<HighFidelityTypeProfiler> m_highFidelityTypeProfiler;
+        std::unique_ptr<HighFidelityLog> m_highFidelityLog;
+        int64_t m_nextUniqueVariableID;
+        Bag<TypeLocation> m_locationInfo;
     };
 
 #if ENABLE(GC_VALIDATION)

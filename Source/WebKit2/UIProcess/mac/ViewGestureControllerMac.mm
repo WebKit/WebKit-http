@@ -97,7 +97,7 @@ namespace WebKit {
 ViewGestureController::ViewGestureController(WebPageProxy& webPageProxy)
     : m_webPageProxy(webPageProxy)
     , m_activeGestureType(ViewGestureType::None)
-    , m_swipeWatchdogTimer(this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
+    , m_swipeWatchdogTimer(RunLoop::main(), this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
     , m_lastMagnificationGestureWasSmartMagnification(false)
     , m_visibleContentRectIsValid(false)
     , m_frameHandlesMagnificationGesture(false)
@@ -113,6 +113,9 @@ ViewGestureController::~ViewGestureController()
 {
     if (m_swipeCancellationTracker)
         [m_swipeCancellationTracker setIsCancelled:YES];
+
+    if (m_activeGestureType == ViewGestureType::Swipe)
+        removeSwipeSnapshot();
 
     m_webPageProxy.process().removeMessageReceiver(Messages::ViewGestureController::messageReceiverName(), m_webPageProxy.pageID());
 }
@@ -366,7 +369,7 @@ void ViewGestureController::wheelEventWasNotHandledByWebCore(NSEvent *event)
 
 void ViewGestureController::trackSwipeGesture(NSEvent *event, SwipeDirection direction)
 {
-    ViewSnapshotStore::shared().recordSnapshot(m_webPageProxy);
+    m_webPageProxy.recordNavigationSnapshot();
 
     CGFloat maxProgress = (direction == SwipeDirection::Left) ? 1 : 0;
     CGFloat minProgress = (direction == SwipeDirection::Right) ? -1 : 0;
@@ -638,13 +641,8 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
 
     m_webPageProxy.process().send(Messages::ViewGestureGeometryCollector::SetRenderTreeSizeNotificationThreshold(renderTreeSize * swipeSnapshotRemovalRenderTreeSizeTargetFraction), m_webPageProxy.pageID());
 
-    // We don't want to replace the current back-forward item's snapshot
-    // like we normally would when going back or forward, because we are
-    // displaying the destination item's snapshot.
-    ViewSnapshotStore::shared().disableSnapshotting();
     m_webPageProxy.navigationGestureDidEnd(true, *targetItem);
     m_webPageProxy.goToBackForwardItem(targetItem);
-    ViewSnapshotStore::shared().enableSnapshotting();
 
     if (!renderTreeSize) {
         removeSwipeSnapshot();
@@ -659,7 +657,7 @@ void ViewGestureController::didHitRenderTreeSizeThreshold()
     removeSwipeSnapshot();
 }
 
-void ViewGestureController::swipeSnapshotWatchdogTimerFired(WebCore::Timer<ViewGestureController>*)
+void ViewGestureController::swipeSnapshotWatchdogTimerFired()
 {
     removeSwipeSnapshot();
 }

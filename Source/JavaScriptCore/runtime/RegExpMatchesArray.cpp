@@ -31,7 +31,7 @@
 
 namespace JSC {
 
-const ClassInfo RegExpMatchesArray::s_info = {"Array", &JSArray::s_info, 0, 0, CREATE_METHOD_TABLE(RegExpMatchesArray)};
+const ClassInfo RegExpMatchesArray::s_info = {"Array", &JSArray::s_info, 0, CREATE_METHOD_TABLE(RegExpMatchesArray)};
 
 RegExpMatchesArray::RegExpMatchesArray(VM& vm, Butterfly* butterfly, JSGlobalObject* globalObject, JSString* input, RegExp* regExp, MatchResult result)
     : JSArray(vm, globalObject->regExpMatchesArrayStructure(), butterfly)
@@ -74,6 +74,8 @@ void RegExpMatchesArray::reifyAllProperties(ExecState* exec)
     ASSERT(m_state != ReifiedAll);
     ASSERT(m_result);
  
+    SamplingRegion samplingRegion("Reifying substring properties");
+    
     reifyMatchPropertyIfNecessary(exec);
 
     if (unsigned numSubpatterns = m_regExp->numSubpatterns()) {

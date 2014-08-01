@@ -1,3 +1,809 @@
+2014-07-31  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] MiniBrower comes to crash when combo box is pressed
+        https://bugs.webkit.org/show_bug.cgi?id=135378
+
+        Reviewed by Gyuyoung Kim.
+
+        "clicked" signal of elm_menu is emitted after EwkView calls popup_menu_hide
+        and removes Ewk_Popup_Menu instance.
+
+        * MiniBrowser/efl/main.c:
+        (on_popup_menu_show):
+        (on_popup_menu_discarded): Deleted.
+
+2014-07-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use RC_PROJECTBUILDVERSION as build portion of version
+        https://bugs.webkit.org/show_bug.cgi?id=135478
+
+        Reviewed by David Kilzer.
+
+        Add new test suite for the version-stamp program.
+
+        * Scripts/webkitperl/auto-version_unittest/versionStampTests.pl: Added.
+
+2014-07-31  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r171893, because it broke http/tests/appcache/different-https-origin-resource-main.html,
+        which loads HTTPS content without calling the delegate.
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * WebKitTestRunner/InjectedBundle/ios/InjectedBundleIOS.mm:
+        (WTR::InjectedBundle::platformInitialize):
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize):
+
+2014-07-31  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed typo correction (and build fix).
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]): Use correct
+        property name (_fullScreenIsEnabled -> _fullScreenEnabled)
+
+2014-07-31  Brent Fulgham  <bfulgham@apple.com>
+
+        MiniBrowser Should Support Fullscreen Videos in WebKit2 Mode
+        https://bugs.webkit.org/show_bug.cgi?id=135482
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]): Activate the Fullscreen
+        feature.
+
+2014-07-31  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac, iOS] Remove -setAllowsAnyHTTPSCertificate calls
+        https://bugs.webkit.org/show_bug.cgi?id=135472
+
+        Reviewed by Dan Bernstein.
+
+        We now handle server trust challenges, and don't need such hacks.
+
+        * WebKitTestRunner/InjectedBundle/ios/InjectedBundleIOS.mm:
+        (WTR::InjectedBundle::platformInitialize):
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize):
+
+2014-07-31  Alexey Proskuryakov  <ap@apple.com>
+
+        media/track/add-and-remove-track.html and media/media-fragments/TC0001.html are flaky
+        on Mac WK2 EWS, asserting under TestRunner::removeAllWebNotificationPermissions
+        https://bugs.webkit.org/show_bug.cgi?id=135418
+
+        Reviewed by Anders Carlsson.
+
+        This was only happening in shared web process mode, because WKBundlePostMessage
+        has different behavior then. When there is no process, the message is dropped on
+        the floor in multiple process mode, but it's stored to be delivered after launch
+        in shared process mode.
+
+        So, calling resetStateToConsistentValues() resulted in storing a Reset bundle message
+        that was delivered immediately after launch, when there was nothing to reset.
+
+        We don't actually need to reset anything at this point, as the previous call has
+        already reset everything UI process side, and web process is brand new. All we need
+        is to reattach the page to a process, as invoke() expects one to exist.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::reattachPageToWebProcess):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp: (WTR::TestInvocation::invoke):
+
+2014-07-31  Dan Bernstein  <mitz@apple.com>
+
+        [WK2] Regression tests can't load HTTPS pages with NetworkProcess due to self-signed certificate
+        https://bugs.webkit.org/show_bug.cgi?id=115282
+
+        Reviewed by Sam Weinig.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::canAuthenticateAgainstProtectionSpaceInFrame): Return true for any
+        local host server trust protection space.
+        (WTR::TestController::didReceiveAuthenticationChallengeInFrame): Respond with a non-empty
+        credential to server trust challenges.
+
+2014-07-31  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [webkitpy] Make diff_text generate correct diff if there is no newline at the end of file
+        https://bugs.webkit.org/show_bug.cgi?id=135381
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.diff_text):
+        * Scripts/webkitpy/port/base_unittest.py:
+        (PortTest.test_diff_text):
+
+2014-07-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ make distcheck.
+
+        * gtk/make-dist.py:
+        (ensure_version_if_possible): Use 4.0 instead of 3.0 as binary
+        version to find the pkg-config file.
+        * gtk/manifest.txt: Add missing resource to the tarball.
+
+2014-07-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] make distcheck is building from sources dir instead of dist dir
+        https://bugs.webkit.org/show_bug.cgi?id=135457
+
+        Reviewed by Philippe Normand.
+
+        * gtk/make-dist.py:
+        (Distcheck.configure): Use dist_dir as source dir.
+        (Distcheck.check): Pass dist_dir to configure().
+
+2014-07-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not include files that are not in git in the tarball
+        https://bugs.webkit.org/show_bug.cgi?id=134804
+
+        Reviewed by Philippe Normand.
+
+        Skip all files in the source tree that are not under version control
+        except for files added from the build dir like the documentation.
+
+        * gtk/make-dist.py:
+        (Directory.__init__): Initialize the list of files under control version.
+        (Directory.list_cms_files): Helper function to list all files
+        under the control version for the current source root.
+        (Directory.should_skip_file): Return True for files that are not
+        under control version only when the source root is also under
+        control version.
+        (Directory.get_files): Filter the files also using should_skip_file().
+
+2014-07-29  David Farler  <dfarler@apple.com>
+
+        iOS Simulator LayoutTestRelay
+        https://bugs.webkit.org/show_bug.cgi?id=135269
+
+        Reviewed by David Kilzer.
+
+        * LayoutTestRelay/Configurations/Base.xcconfig: Added.
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig: Added.
+        * LayoutTestRelay/LayoutTestRelay.xcodeproj/project.pbxproj: Added.
+        * LayoutTestRelay/LayoutTestRelay/LTPipeRelay.h: Added.
+        * LayoutTestRelay/LayoutTestRelay/LTPipeRelay.m: Added.
+        (-[LTPipeRelay inPipePath]):
+        (-[LTPipeRelay outPipePath]):
+        (-[LTPipeRelay errorPipePath]):
+        (-[LTPipeRelay outputStream]):
+        (-[LTPipeRelay initWithPrefix:]):
+        (-[LTPipeRelay setup]):
+        (-[LTPipeRelay tearDown]):
+        (-[LTPipeRelay connect]):
+        (-[LTPipeRelay disconnect]):
+        (-[LTPipeRelay createFIFOs]):
+        (-[LTPipeRelay destroyFIFOs]):
+        (-[LTPipeRelay relayStream:]):
+        (-[LTPipeRelay stream:handleEvent:]):
+        * LayoutTestRelay/LayoutTestRelay/LTRelay.h: Added.
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.h: Added.
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m: Added.
+        (-[LTRelayController uniqueAppPath]):
+        (-[LTRelayController uniqueAppURL]):
+        (-[LTRelayController uniqueAppIdentifier]):
+        (-[LTRelayController processName]):
+        (-[LTRelayController initWithDevice:productDir:appPath:identifierSuffix:dumpToolArguments:]):
+        (-[LTRelayController readFileHandle:]):
+        (-[LTRelayController receivedStandardOutputData:]):
+        (-[LTRelayController receivedStandardErrorData:]):
+        (-[LTRelayController disconnected]):
+        (-[LTRelayController connected]):
+        (-[LTRelayController crashWithMessage:]):
+        (-[LTRelayController launchSimulator]):
+        (-[LTRelayController bootDevice]):
+        (-[LTRelayController createUniqueApp]):
+        (-[LTRelayController killApp]):
+        (-[LTRelayController launchApp]):
+        (-[LTRelayController start]):
+        * LayoutTestRelay/LayoutTestRelay/main.m: Added.
+        (usage):
+        (getTestingSimDevice):
+        (getRequiredStringArgument):
+        (getRemainderArguments):
+        (main):
+        * LayoutTestRelay/Makefile: Added.
+        * Tools/Scripts/build-layouttestrelay: Added.
+
+2014-07-29  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Modify version numbering scheme to support 5-tuple versions
+        https://bugs.webkit.org/show_bug.cgi?id=135400
+        <rdar://problem/17849033>
+
+        Reviewed by David Kilzer.
+
+        Update test cases to recognize that we can only support Major
+        values from 0-65535, Minor values from 0-64, Tiny values from 0-999,
+        Micro values from 0-64, and Nano values from 0-999.
+
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl: Update
+        test expectations for physical limits.
+
+2014-07-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] GLib tests fail with recent GTK+ due to runtime warning about deprecated properties
+        https://bugs.webkit.org/show_bug.cgi?id=135411
+
+        Reviewed by Sergio Villar Senin.
+
+        Recent versions of GTK+ now warn at runtime when a deprecated
+        property or signal is used. A diagnostic mode was added that is
+        enabled by default, but that can be disabled by setting
+        G_ENABLE_DIAGNOSTIC=0. Runtime warnings are considered test
+        failures by gtester, so we need to run the tests with the
+        diganostic mode disabled.
+
+        * TestWebKitAPI/gtk/WebKit2Gtk/TestMain.cpp:
+        (main):
+
+2014-07-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove WebKitCertificateInfo from WebKit2GTK+ API
+        https://bugs.webkit.org/show_bug.cgi?id=134830
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Update the SSL test for the API changes.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestSSL.cpp:
+        (testLoadFailedWithTLSErrors):
+
+2014-07-24  David Farler  <dfarler@apple.com>
+
+        Add knowledge of the iOS Simulator to webkitpy
+        http://bugs.webkit.org/show_bug.cgi?id=133963
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration): Add --ios-sim*
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        --runtime and --device-type args added.
+        * Scripts/webkitpy/port/base.py:
+        * Scripts/webkitpy/port/driver.py: Add simulator driver.
+        (IOSSimulatorDriver): Added.
+        * Scripts/webkitpy/port/factory.py: Add simulator platform.
+        * Scripts/webkitpy/port/ios.py: Added.
+
+2014-07-29  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/borders/border-radius-on-subpixel-position-non-hidpi.html fails on Retina machines
+        https://bugs.webkit.org/show_bug.cgi?id=135398
+
+        Reviewed by Zalan Bujtas.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::updateWindowScaleForTest):
+        "hidpi-" should be at the start. This allows "hidpi-" in both file and directory names.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm: (changeWindowScaleIfNeeded): Same fix.
+        For some reason, I wasn't seeing this test fail on WK1 even without the fix, not
+        sure why.
+
+2014-07-29  Alexey Proskuryakov  <ap@apple.com>
+
+        PPT: run-webkit-tests doesn't upload crash logs to bots
+        https://bugs.webkit.org/show_bug.cgi?id=135391
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::processDidCrash):
+        Not a fix to be proud of, but better than not having it work at all.
+
+2014-07-29  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Remove WebKitWebViewGroup from WebKit2 GTK+ API
+        https://bugs.webkit.org/show_bug.cgi?id=133729
+
+        Reviewed by Carlos Garcia Campos.
+
+        Removes WebKitWebViewGroup, effectively reverting the changes
+        introduced by r149117. The motivation for WebKitWebViewGroup
+        was using the user style sheet injection API, which has been
+        moved into WebKitUserContentManager, rendering it unneeded.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt: Remove tests
+        for WebKitWebViewGroup.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewSettings):
+        Restore the assertions that check that settings objects are
+        released. Add test for webkit_web_view_new_with_settings().
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebViewGroup.cpp: Removed.
+
+2014-07-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Implement webkit_web_view_load_string() in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=134735
+
+        Reviewed by Sergio Villar Senin.
+
+        Add /webkit2/WebKitWebView/load-bytes test case and simplify
+        TestDOMXPathNSResolver by using webkit_web_view_load_bytes()
+        instead of a soup server just to sent the Content-type header.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDOMXPathNSResolver.cpp:
+        (testWebKitDOMXPathNSResolverNative):
+        (testWebKitDOMXPathNSResolverCustom):
+        (beforeAll):
+        (afterAll):
+        (serverCallback): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestLoaderClient.cpp:
+        (testLoadBytes):
+        (beforeAll):
+        * TestWebKitAPI/gtk/WebKit2Gtk/LoadTrackingTest.cpp:
+        (LoadTrackingTest::loadBytes):
+        * TestWebKitAPI/gtk/WebKit2Gtk/LoadTrackingTest.h:
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::loadBytes):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2014-07-28  Daniel Bates  <dabates@apple.com>
+
+        Add support for running the Clang static analyzer when building WebKit and JSC
+        https://bugs.webkit.org/show_bug.cgi?id=134955
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/build-jsc: Added command line options -[no]-analyze (disabled by default).
+        * Scripts/build-webkit: Add --analyze command line option to build-webkit to enable
+        running the Clang static analyzer.
+        * Scripts/webkitdirs.pm:
+        (XcodeStaticAnalyzerOption): Added.
+
+2014-07-24  David Farler  <dfarler@apple.com>
+
+        Allow for multiple DumpRenderTree and WebKitTestRunner instances in the iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=135272
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpRenderTree): Remove hard-coding of FIFO paths.
+        (-[DumpRenderTree applicationDidEnterBackground:]): Create background task.
+        (DumpRenderTreeMain): Set DumpRenderTree as UIApplication delegate.
+        * DumpRenderTree/mac/DumpRenderTreeMac.h: bgTask ivar.
+        * Scripts/old-run-webkit-tests: Update FIFO paths for ORWT.
+        * WebKitTestRunner/TestController.cpp: Remove hard-coding of FIFO paths.
+        * WebKitTestRunner/ios/TestControllerIOS.mm: Move dup2 calls to platformInitialize
+        * WebKitTestRunner/ios/mainIOS.mm: bgTask ivar.
+        (-[WebKitTestRunnerApp applicationDidEnterBackground:]): Create background task.
+        (main): Set WebKitTestRunnerApp as UIApplication delegate.
+
+2014-07-24  David Farler  <dfarler@apple.com>
+
+        ImageDiff builds for the simulator when running iOS layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=135270
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/build-imagediff: Added.
+
+2014-07-28  Renato Nagy  <nagy.renato@stud.u-szeged.hu>
+
+        Followup fix after r171594
+        https://bugs.webkit.org/show_bug.cgi?id=135048
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/sort-export-file: Removed extra newlines from help.
+
+2014-07-25  Anders Carlsson  <andersca@apple.com>
+
+        WKNavigation's properties are either always nil or don't behave as documented
+        https://bugs.webkit.org/show_bug.cgi?id=135267
+        <rdar://problem/17730536>
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Navigation.mm:
+        (-[NavigationDelegate webView:didStartProvisionalNavigation:]):
+        (TEST):
+        (-[DidFailProvisionalNavigationDelegate webView:didStartProvisionalNavigation:]):
+        (-[DidFailProvisionalNavigationDelegate webView:didFailProvisionalNavigation:withError:]):
+
+2014-07-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] install-dependencies needs to install perl-CGI on Fedora
+        https://bugs.webkit.org/show_bug.cgi?id=135302
+
+        Reviewed by Martin Robinson.
+
+        * gtk/install-dependencies:
+        Add perl-CGI to yum dependencies needed for tests
+
+2014-07-25  Renato Nagy  <nagy.renato@stud.u-szeged.hu>
+
+        Add --dry-run option to sort-export-file
+        https://bugs.webkit.org/show_bug.cgi?id=135048
+
+        Reviewed by Csaba Osztrogonác.
+
+        Added --dry-run option to sort-export-file. Running the script with --dry-run
+        option does not sort the export files but creates a list of the files that
+        need to be sorted.
+
+        * Scripts/sort-export-file:
+        (sawError):
+
+2014-07-24  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        GTK jhbuild modules needs to build xserver with --disable-local-transport
+        https://bugs.webkit.org/show_bug.cgi?id=135262
+
+        Reviewed by Martin Robinson.
+
+        * gtk/jhbuild.modules:
+        Build X server with --disable-local-transport, since local transport
+        is only supported on Solaris, SCO, and System V. Fixes build on
+        Fedora.
+
+2014-07-24  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] build-webkit script fails under jhbuild if ACLOCAL_FLAGS is unset
+        https://bugs.webkit.org/show_bug.cgi?id=135065
+
+        Reviewed by Martin Robinson.
+
+        * jhbuild/jhbuild-wrapper:
+        (ensure_jhbuild): do not assume jhbuild sets ACLOCAL_FLAGS
+
+2014-07-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed iOS build fix after r171355.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        Since all the Tests/WebKit2Cocoa tests are already explicitly skipped on iOS,
+        simplify to skipping all the tests in the directory. PlatformUtilities are not
+        building on iOS, which means we are missing necessary Util functions.
+
+2014-07-23  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Fix build after r171454
+        https://bugs.webkit.org/show_bug.cgi?id=135191
+
+        Reviewed by Csaba Osztrogonác.
+
+        * MiniBrowser/efl/CMakeLists.txt: Add path to new EWebKit2.h location .
+
+2014-07-23  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Do not generate forwarding header for ewk headers
+        https://bugs.webkit.org/show_bug.cgi?id=135147
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebKitTestRunner/EventSenderProxy.h:
+
+2014-07-21  Sam Weinig  <sam@webkit.org>
+
+        [Cocoa] WKScriptMessageHandlers don't seem to function properly after navigating
+        https://bugs.webkit.org/show_bug.cgi?id=135148
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm: Added.
+        (-[SimpleNavigationDelegate webView:didFinishNavigation:]):
+        (-[ScriptMessageHandler userContentController:didReceiveScriptMessage:]):
+
+2014-07-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct handling of __VERSION_TEXT__ for 4+-tuple versions
+        https://bugs.webkit.org/show_bug.cgi?id=135161
+        <rdar://problem/17763546>
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl:
+        Add additional test cases to catch errors in multiple-tuple
+        version string handling.
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Extend exception fuzzing to the LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=135076
+
+        Reviewed by Oliver Hunt.
+
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz:
+
+2014-07-22  Jochen Eisinger  <jochen@chromium.org>
+
+        Fix my email address in contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=135156
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-07-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix.
+
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl: Revert
+        to older Perl 5.8 syntax for iterating over hashes to allow tests to
+        run on Mountain Lion bots.
+
+2014-07-21  Alexey Proskuryakov  <ap@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=135137
+        build.webkit.org/dashboard: webkitperl failures show up as yellow, not red
+
+        Reviewed by Darin Adler.
+
+        webkitperl results are binary, handle them the same way we handle bindings test results.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus):
+        (BuildbotTesterQueueView.prototype._presentPopoverForMultipleFailureKinds):
+
+2014-07-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Follow-up for r171324.
+
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl: Cygwin
+        perl reports itself as 'cygwin'; native Windows Perl reports as
+        'MSWin32'. We need to handle both cases.
+
+2014-07-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r171319.
+
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl: This test should
+        only execute on Windows. It will fail on other platforms, so give it a way to
+        successfully exit.
+
+2014-07-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Extend auto-version.pl to support 5-tuple versions
+        https://bugs.webkit.org/show_bug.cgi?id=135124
+        <rdar://problem/17750334>
+
+        Reviewed by David Kilzer.
+
+        Add test cases for auto-version.pl.
+
+        * Scripts/webkitperl/auto-version_unittest: Added.
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl: Added.
+
+2014-07-21  Dean Jackson  <dino@apple.com>
+
+        Allow MiniBrowser WK1 to do element fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=135125
+
+        Reviewed by Simon Fraser.
+
+        Allow WK1 windows to go fullscreen using the DOM API.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController awakeFromNib]): Enable the preference for
+        fullscreen.
+
+2014-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Documentation files are added twice to the tarball
+        https://bugs.webkit.org/show_bug.cgi?id=135115
+
+        Reviewed by Sergio Villar Senin.
+
+        * gtk/manifest.txt: Remove duplicated rules.
+
+2014-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Simplify make-dist command line arguments
+        https://bugs.webkit.org/show_bug.cgi?id=134832
+
+        Reviewed by Martin Robinson.
+
+        Remove --tarball-root and -o command line options and add
+        --version, since the version can be used to build both, the
+        tarball root and the output filename. When the version it's not
+        provided, the pkg-config file is used to get the version. Also
+        change the default value of build-dir to the current directory,
+        since it's very common to call make-dist.py from the build dir.
+
+        * gtk/make-dist.py:
+        (get_tarball_root_and_output_filename_from_arguments):
+
+2014-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Reduce the size of the tarball generated by distcheck
+        https://bugs.webkit.org/show_bug.cgi?id=134802
+
+        Reviewed by Martin Robinson.
+
+        Add more rules to the manifest to decide what files to add:
+
+          - Do not include platform specific directories of other ports.
+          - Do not include port specific cmake files.
+          - Do not include Objective-C sources.
+          - Do not include .orig and .rej files.
+          - Do not include mac specific sandbox files.
+          - Only include the resources we actually build.
+
+        * gtk/manifest.txt:
+
+2014-07-20  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] Enable mpg123 feature for gst-plugin-bad.
+        https://bugs.webkit.org/show_bug.cgi?id=135016
+
+        Reviewed by Laszlo Gombos.
+
+        enable-mpg123 feature is added to jhbuild in order to support playback of mp3 format.
+
+        * efl/install-dependencies:
+        * efl/jhbuild.modules:
+
+2014-07-20  Dan Bernstein  <mitz@apple.com>
+
+        Test for <rdar://problems/17742611> -[_WKActivatedElementInfo image] is often empty
+        https://bugs.webkit.org/show_bug.cgi?id=135107
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/RenderedImageFromDOMNode.mm: Added.
+        (-[RenderedImageFromDOMNodeFrameLoadDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+
+2014-07-20  David Kilzer  <ddkilzer@apple.com>
+
+        Checker: Value stored to 'kernResult' is never read (LayoutTestHelper.m:164)
+        <http://webkit.org/b/135096>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (lockDownDiscreteGraphics): Check the return values of
+        IOServiceOpen() and IOObjectRelease(), and log if not
+        KERN_SUCCESS.
+
+2014-07-19  Anders Carlsson  <andersca@apple.com>
+
+        Update.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-07-18  Sam Weinig  <sam@webkit.org>
+
+        Revert accidental commit to MiniBrowser to make everything layer backed.
+
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController windowDidLoad]):
+
+2014-07-18  Dana Burkart  <dburkart@apple.com>
+
+        Add a new 'analyze' target to the makefile. This will make use of a new
+        'PATH_TO_SCAN_BUILD' which, if set will wrap xcodebuild in the clang
+        static analyzer.
+        https://bugs.webkit.org/show_bug.cgi?id=135057
+        <rdar://problem/10193187>
+
+        Reviewed by David Kilzer.
+
+        * Makefile:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix EFL+GTK.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Exception fuzzing should work on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=135070
+
+        Reviewed by Mark Hahnenberg.
+
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz:
+        (fail):
+        * Scripts/run-jsc-stress-tests:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        run-jsc-stress-tests should be able to run helper-based tests in remote mode
+        https://bugs.webkit.org/show_bug.cgi?id=135064
+
+        Reviewed by Mark Hahnenberg.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        run-jsc-stress-tests: rename $copy to $doNotMessWithVMPath
+        https://bugs.webkit.org/show_bug.cgi?id=135061
+
+        Rubber stamped by Mark Hahnenberg.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Refactor run-jsc-stress-tests VM copying code to remove some abstractions
+        https://bugs.webkit.org/show_bug.cgi?id=135059
+
+        Reviewed by Mark Lam.
+        
+        This is meant to make it easier for me to extend the copying functionality to copy things other than
+        the framework.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix cloop build.
+
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz:
+
+2014-07-18  Renato Nagy  <nagy.renato@stud.u-szeged.hu>
+
+        Fix -v|--verbose option in sort-export-file script.
+        https://bugs.webkit.org/show_bug.cgi?id=135043
+
+        Reviewed by Tim Horton.
+
+        -v|--verbose option does not work. Option added to getOptionsResult.
+
+        * Scripts/sort-export-file:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Really remove dependency on ShellQuote.
+
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz:
+
+2014-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix build for platforms that don't have ShellQuote.
+        
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz: Take a single argument that has the whole command string.
+        * Scripts/run-jsc-stress-tests: Do the escaping in Ruby.
+
+2014-07-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Need ability to fuzz exception throwing
+        https://bugs.webkit.org/show_bug.cgi?id=134945
+        <rdar://problem/17722027>
+
+        Reviewed by Sam Weinig.
+        
+        Adds a new script, js-exception-fuzz, which will run some jsc command-line using
+        exception fuzzing. This means that we will force exceptions to be thrown in random
+        places to see how the engine reacts. This is now integrated with the various test
+        drivers, so run-javascriptcore-tests will run some exception fuzzing tests by
+        default.
+
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz: Added.
+        (fail):
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/run-jsc-stress-tests:
+
+2014-07-17  Sam Weinig  <sam@webkit.org>
+
+        Fix failing API tests.
+
+        * TestWebKitAPI/mac/PlatformWebViewMac.mm:
+        (-[ActiveOffscreenWindow isVisible]):
+        Override isVisible to make the NSWindows pretend they are visible.
+
+2014-07-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Disable button animations in regression tests
+        https://bugs.webkit.org/show_bug.cgi?id=133647
+        <rdar://problem/16677530>
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm: (setDefaultsToConsistentValuesForTesting):
+        We already did this for WebKit2, let's do it for WebKit1 too.
+
 2014-07-16  Alexey Proskuryakov  <ap@apple.com>
 
         A test that hangs at cleanup stage confuses webkitpy hugely

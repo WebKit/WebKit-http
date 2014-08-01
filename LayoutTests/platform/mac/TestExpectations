@@ -1392,3 +1392,22 @@ webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/id.html [ Pass Failu
 webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html [ Pass Failure ]
 webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/startTime.html [ Pass Failure ]
 webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/track.html [ Pass Failure ]
+
+webkit.org/b/134490 [ MountainLion ] media/video-ended-event-negative-playback.html [ Pass Failure ]
+
+webkit.org/b/135015 plugins/quicktime-plugin-replacement.html [ Pass Failure ]
+
+webkit.org/b/131477 fast/repaint/obscured-background-no-repaint.html [ Pass Failure ]
+
+webkit.org/b/135071 [ MountainLion ] media/video-seek-with-negative-playback.html [ Pass Failure Timeout ]
+
+webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Pass Failure ]
+
+webkit.org/b/131787 fast/canvas/canvas-putImageData-zero-alpha.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/135133 [ MountainLion ] fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/135160 media/track/track-in-band-subtitles-too-large.html [ Pass Failure ]
+webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Failure ]
+
+webkit.org/b/135485 platform/mac/fast/scrolling/scroll-select-bottom-test.html [ Skip ]

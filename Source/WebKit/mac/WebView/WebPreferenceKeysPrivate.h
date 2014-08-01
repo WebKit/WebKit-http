@@ -171,9 +171,6 @@
 // default.
 #define WebKitEnableDeferredUpdatesPreferenceKey @"WebKitEnableDeferredUpdates"
 
-// For debugging only. Don't use these.
-#define WebKitPageCacheSizePreferenceKey @"WebKitPageCacheSizePreferenceKey"
-#define WebKitObjectCacheSizePreferenceKey @"WebKitObjectCacheSizePreferenceKey"
 #define WebKitDebugFullPageZoomPreferenceKey @"WebKitDebugFullPageZoomPreferenceKey"
 
 #define WebKitMinimumZoomFontSizePreferenceKey @"WebKitMinimumZoomFontSizePreferenceKey"
@@ -183,8 +180,6 @@
 #define WebKitTelephoneParsingEnabledPreferenceKey @"WebKitTelephoneParsingEnabledPreferenceKey"
 #define WebKitAlwaysUseBaselineOfPrimaryFontPreferenceKey @"WebKitAlwaysUseBaselineOfPrimaryFontPreferenceKey"
 #define WebKitAllowMultiElementImplicitFormSubmissionPreferenceKey @"WebKitAllowMultiElementImplicitFormSubmissionPreferenceKey"
-#define WebKitNSURLMemoryCacheSizePreferenceKey @"WebKitNSURLMemoryCacheSizePreferenceKey"
-#define WebKitNSURLDiskCacheSizePreferenceKey @"WebKitNSURLDiskCacheSizePreferenceKey"
 #define WebKitAlwaysRequestGeolocationPermissionPreferenceKey @"WebKitAlwaysRequestGeolocationPermission"
 #define WebKitLayoutIntervalPreferenceKey @"WebKitLayoutIntervalPreferenceKey"
 #define WebKitMaxParseDurationPreferenceKey @"WebKitMaxParseDurationPreferenceKey"

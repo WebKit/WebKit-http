@@ -230,7 +230,7 @@ class ApplyPropertyClip {
 private:
     static Length convertToLength(StyleResolver* styleResolver, CSSPrimitiveValue* value)
     {
-        return value->convertToLength<FixedIntegerConversion | PercentConversion | FractionConversion | AutoConversion>(styleResolver->state().cssToLengthConversionData());
+        return value->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(styleResolver->state().cssToLengthConversionData());
     }
 public:
     static void applyInheritValue(CSSPropertyID propertyID, StyleResolver* styleResolver)
@@ -384,16 +384,19 @@ public:
                 setValue(styleResolver->style(), Length(FitContent));
         }
 
+        CSSToLengthConversionData conversionData = styleResolver->useSVGZoomRulesForLength() ?
+            styleResolver->state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f)
+            : styleResolver->state().cssToLengthConversionData();
         if (autoEnabled && primitiveValue->getValueID() == CSSValueAuto)
             setValue(styleResolver->style(), Length());
         else if (primitiveValue->isLength()) {
-            Length length = primitiveValue->computeLength<Length>(styleResolver->state().cssToLengthConversionData());
+            Length length = primitiveValue->computeLength<Length>(conversionData);
             length.setHasQuirk(primitiveValue->isQuirkValue());
             setValue(styleResolver->style(), length);
         } else if (primitiveValue->isPercentage())
             setValue(styleResolver->style(), Length(primitiveValue->getDoubleValue(), Percent));
         else if (primitiveValue->isCalculatedPercentageWithLength())
-            setValue(styleResolver->style(), Length(primitiveValue->cssCalcValue()->createCalculationValue(styleResolver->state().cssToLengthConversionData())));
+            setValue(styleResolver->style(), Length(primitiveValue->cssCalcValue()->createCalculationValue(conversionData)));
     }
 
     static PropertyHandler createHandler()
@@ -2590,6 +2593,10 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
 
     // UAs must treat 'word-wrap' as an alternate name for the 'overflow-wrap' property. So using the same handlers.
     setPropertyHandler(CSSPropertyWordWrap, ApplyPropertyDefault<EOverflowWrap, &RenderStyle::overflowWrap, EOverflowWrap, &RenderStyle::setOverflowWrap, EOverflowWrap, &RenderStyle::initialOverflowWrap>::createHandler());
+
+    setPropertyHandler(CSSPropertyX, ApplyPropertyLength<&RenderStyle::x, &RenderStyle::setX, &RenderStyle::initialZeroLength>::createHandler());
+    setPropertyHandler(CSSPropertyY, ApplyPropertyLength<&RenderStyle::y, &RenderStyle::setY, &RenderStyle::initialZeroLength>::createHandler());
+
     setPropertyHandler(CSSPropertyZIndex, ApplyPropertyAuto<int, &RenderStyle::zIndex, &RenderStyle::setZIndex, &RenderStyle::hasAutoZIndex, &RenderStyle::setHasAutoZIndex>::createHandler());
     setPropertyHandler(CSSPropertyZoom, ApplyPropertyZoom::createHandler());
 }

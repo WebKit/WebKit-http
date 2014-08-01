@@ -141,9 +141,8 @@ private:
         bool changed = false;
         
         switch (op) {
-        case JSConstant:
-        case WeakJSConstant: {
-            SpeculatedType type = speculationFromValue(m_graph.valueOfJSConstant(node));
+        case JSConstant: {
+            SpeculatedType type = speculationFromValue(node->asJSValue());
             if (type == SpecInt52AsDouble && enableInt52())
                 type = SpecInt52;
             changed |= setPrediction(type);
@@ -188,9 +187,25 @@ private:
         case MultiGetByOffset:
         case Call:
         case Construct:
+        case NativeCall:
+        case NativeConstruct:
         case GetGlobalVar:
         case GetClosureVar: {
             changed |= setPrediction(node->getHeapPrediction());
+            break;
+        }
+            
+        case GetGetterSetterByOffset: {
+            changed |= setPrediction(SpecCellOther);
+            break;
+        }
+
+        case GetGetter:
+        case GetSetter:
+        case GetCallee:
+        case NewFunctionNoCheck:
+        case NewFunctionExpression: {
+            changed |= setPrediction(SpecFunction);
             break;
         }
 
@@ -396,12 +411,19 @@ private:
                 changed |= mergePrediction(SpecFullDouble);
                 break;
             case Array::Uint32Array:
-                if (isInt32Speculation(node->getHeapPrediction()))
+                if (isInt32SpeculationForArithmetic(node->getHeapPrediction()))
                     changed |= mergePrediction(SpecInt32);
                 else if (enableInt52())
                     changed |= mergePrediction(SpecMachineInt);
                 else
                     changed |= mergePrediction(SpecInt32 | SpecInt52AsDouble);
+                break;
+            case Array::Int8Array:
+            case Array::Uint8Array:
+            case Array::Int16Array:
+            case Array::Uint16Array:
+            case Array::Int32Array:
+                changed |= mergePrediction(SpecInt32);
                 break;
             default:
                 changed |= mergePrediction(node->getHeapPrediction());
@@ -440,11 +462,6 @@ private:
         case SkipTopScope:
         case SkipScope: {
             changed |= setPrediction(SpecObjectOther);
-            break;
-        }
-            
-        case GetCallee: {
-            changed |= setPrediction(SpecFunction);
             break;
         }
             
@@ -510,12 +527,6 @@ private:
             break;
         }
             
-        case NewFunctionNoCheck:
-        case NewFunctionExpression: {
-            changed |= setPrediction(SpecFunction);
-            break;
-        }
-            
         case FiatInt52: {
             RELEASE_ASSERT(enableInt52());
             changed |= setPrediction(SpecMachineInt);
@@ -529,7 +540,6 @@ private:
         case GetLocalUnlinked:
         case GetMyArgumentsLength:
         case GetMyArgumentByVal:
-        case PhantomPutStructure:
         case PhantomArguments:
         case CheckArray:
         case Arrayify:
@@ -600,7 +610,6 @@ private:
         case SetArgument:
         case CheckStructure:
         case CheckExecutable:
-        case StructureTransitionWatchpoint:
         case CheckFunction:
         case PutStructure:
         case TearOffActivation:

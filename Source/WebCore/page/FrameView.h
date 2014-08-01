@@ -241,6 +241,7 @@ public:
     virtual bool isRubberBandInProgress() const override;
     virtual IntPoint minimumScrollPosition() const override;
     virtual IntPoint maximumScrollPosition() const override;
+    void delayedScrollEventTimerFired(Timer<FrameView>&);
 
     // This is different than visibleContentRect() in that it ignores negative (or overly positive)
     // offsets from rubber-banding, and it takes zooming into account. 
@@ -386,10 +387,10 @@ public:
     void scrollElementToRect(Element*, const IntRect&);
 
     // Methods to convert points and rects between the coordinate space of the renderer, and this view.
-    IntRect convertFromRenderer(const RenderElement*, const IntRect&) const;
-    IntRect convertToRenderer(const RenderElement*, const IntRect&) const;
-    IntPoint convertFromRenderer(const RenderElement*, const IntPoint&) const;
-    IntPoint convertToRenderer(const RenderElement*, const IntPoint&) const;
+    IntRect convertFromRendererToContainingView(const RenderElement*, const IntRect&) const;
+    IntRect convertFromContainingViewToRenderer(const RenderElement*, const IntRect&) const;
+    IntPoint convertFromRendererToContainingView(const RenderElement*, const IntPoint&) const;
+    IntPoint convertFromContainingViewToRenderer(const RenderElement*, const IntPoint&) const;
 
     bool isFrameViewScrollCorner(RenderScrollbarPart* scrollCorner) const { return m_scrollCorner == scrollCorner; }
 
@@ -464,8 +465,8 @@ public:
     virtual int footerHeight() const override { return m_footerHeight; }
     void setFooterHeight(int);
 
-    virtual float topContentInset() const override;
-    void topContentInsetDidChange();
+    virtual float topContentInset(TopContentInsetType = TopContentInsetType::WebCoreContentInset) const override;
+    void topContentInsetDidChange(float newTopContentInset);
 
     virtual void willStartLiveResize() override;
     virtual void willEndLiveResize() override;
@@ -597,6 +598,7 @@ private:
     void scrollToAnchor();
     void scrollPositionChanged(const IntPoint& oldPosition, const IntPoint& newPosition);
     void scrollableAreaSetChanged();
+    void sendScrollEvent();
 
     bool hasCustomScrollbars() const;
 
@@ -666,6 +668,7 @@ private:
     bool m_wasScrolledByUser;
     bool m_inProgrammaticScroll;
     bool m_safeToPropagateScrollToParent;
+    Timer<FrameView> m_delayedScrollEventTimer;
 
     double m_lastPaintTime;
 

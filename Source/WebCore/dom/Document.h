@@ -1265,7 +1265,7 @@ public:
     virtual SecurityOrigin* topOrigin() const override;
 
 #if ENABLE(FONT_LOAD_EVENTS)
-    PassRefPtr<FontLoader> fontloader();
+    PassRefPtr<FontLoader> fonts();
 #endif
 
     void ensurePlugInsInjectedScript(DOMWrapperWorld&);
@@ -1695,6 +1695,7 @@ private:
 
     bool m_hasInjectedPlugInsScript;
     bool m_renderTreeBeingDestroyed;
+    bool m_hasPreparedForDestruction;
 
     bool m_hasStyleWithViewportUnits;
 };

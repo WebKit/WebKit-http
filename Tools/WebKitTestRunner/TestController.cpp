@@ -124,16 +124,6 @@ TestController::TestController(int argc, const char* argv[])
     , m_shouldUseRemoteLayerTree(false)
     , m_shouldLogHistoryClientCallbacks(false)
 {
-
-#if PLATFORM(IOS)
-    int infd = open("/tmp/WebKitTestRunner_IN", O_RDWR);
-    dup2(infd, STDIN_FILENO);
-    int outfd = open("/tmp/WebKitTestRunner_OUT", O_RDWR);
-    dup2(outfd, STDOUT_FILENO);
-    int errfd = open("/tmp/WebKitTestRunner_ERROR", O_RDWR | O_NONBLOCK);
-    dup2(errfd, STDERR_FILENO);
-#endif
-
     initialize(argc, argv);
     controller = this;
     run();
@@ -673,6 +663,14 @@ void TestController::terminateWebContentProcess()
     WKPageTerminate(m_mainWebView->page());
 }
 
+void TestController::reattachPageToWebProcess()
+{
+    // Loading a web page is the only way to reattach an existing page to a process.
+    m_doneResetting = false;
+    WKPageLoadURL(m_mainWebView->page(), blankURL());
+    runUntil(m_doneResetting, LongTimeout);
+}
+
 void TestController::updateWebViewSizeForTest(const TestInvocation& test)
 {
     bool isSVGW3CTest = strstr(test.pathOrURL(), "svg/W3C-SVG-1.1") || strstr(test.pathOrURL(), "svg\\W3C-SVG-1.1");
@@ -690,7 +688,7 @@ void TestController::updateWebViewSizeForTest(const TestInvocation& test)
 void TestController::updateWindowScaleForTest(const TestInvocation& test)
 {
     WTF::String localPathOrUrl = String(test.pathOrURL());
-    bool needsHighDPIWindow = localPathOrUrl.findIgnoringCase("hidpi-") != notFound;
+    bool needsHighDPIWindow = localPathOrUrl.findIgnoringCase("/hidpi-") != notFound;
     mainWebView()->changeWindowScaleIfNeeded(needsHighDPIWindow ? 2 : 1);
 }
 
@@ -1208,7 +1206,14 @@ void TestController::didFinishLoadForFrame(WKPageRef page, WKFrameRef frame, WKT
 
 bool TestController::canAuthenticateAgainstProtectionSpaceInFrame(WKPageRef, WKFrameRef, WKProtectionSpaceRef protectionSpace, const void*)
 {
-    return WKProtectionSpaceGetAuthenticationScheme(protectionSpace) <= kWKProtectionSpaceAuthenticationSchemeHTTPDigest;
+    WKProtectionSpaceAuthenticationScheme authenticationScheme = WKProtectionSpaceGetAuthenticationScheme(protectionSpace);
+
+    if (authenticationScheme == kWKProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested) {
+        std::string host = toSTD(adoptWK(WKProtectionSpaceCopyHost(protectionSpace)).get());
+        return host == "localhost" || host == "127.0.0.1";
+    }
+
+    return authenticationScheme <= kWKProtectionSpaceAuthenticationSchemeHTTPDigest;
 }
 
 void TestController::didReceiveAuthenticationChallengeInFrame(WKPageRef page, WKFrameRef frame, WKAuthenticationChallengeRef authenticationChallenge, const void *clientInfo)
@@ -1259,6 +1264,18 @@ void TestController::didFinishLoadForFrame(WKPageRef page, WKFrameRef frame)
 
 void TestController::didReceiveAuthenticationChallengeInFrame(WKPageRef page, WKFrameRef frame, WKAuthenticationChallengeRef authenticationChallenge)
 {
+    WKProtectionSpaceRef protectionSpace = WKAuthenticationChallengeGetProtectionSpace(authenticationChallenge);
+    WKAuthenticationDecisionListenerRef decisionListener = WKAuthenticationChallengeGetDecisionListener(authenticationChallenge);
+
+    if (WKProtectionSpaceGetAuthenticationScheme(protectionSpace) == kWKProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested) {
+        // Any non-empty credential signals to accept the server trust. Since the cross-platform API
+        // doesn't expose a way to create a credential from server trust, we use a password credential.
+
+        WKRetainPtr<WKCredentialRef> credential = adoptWK(WKCredentialCreate(toWK("accept server trust").get(), toWK("").get(), kWKCredentialPersistenceNone));
+        WKAuthenticationDecisionListenerUseCredential(decisionListener, credential.get());
+        return;
+    }
+
     String message;
     if (!m_handlesAuthenticationChallenges)
         message = "didReceiveAuthenticationChallenge - Simulating cancelled authentication sheet\n";
@@ -1266,7 +1283,6 @@ void TestController::didReceiveAuthenticationChallengeInFrame(WKPageRef page, WK
         message = String::format("didReceiveAuthenticationChallenge - Responding with %s:%s\n", m_authenticationUsername.utf8().data(), m_authenticationPassword.utf8().data());
     m_currentInvocation->outputText(message);
 
-    WKAuthenticationDecisionListenerRef decisionListener = WKAuthenticationChallengeGetDecisionListener(authenticationChallenge);
     if (!m_handlesAuthenticationChallenges) {
         WKAuthenticationDecisionListenerUseCredential(decisionListener, 0);
         return;
@@ -1284,7 +1300,15 @@ void TestController::processDidCrash()
     if (!m_didPrintWebProcessCrashedMessage) {
 #if PLATFORM(COCOA)
         pid_t pid = WKPageGetProcessIdentifier(m_mainWebView->page());
-        fprintf(stderr, "#CRASHED - WebProcess (pid %ld)\n", static_cast<long>(pid));
+        // FIXME: Find a way to not hardcode the process name.
+#if PLATFORM(IOS)
+        const char* processName = "com.apple.WebKit.WebContent";
+#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
+        const char* processName = "com.apple.WebKit.WebContent.Development";
+#else
+        const char* processName = "WebProcess";
+#endif
+        fprintf(stderr, "#CRASHED - %s (pid %ld)\n", processName, static_cast<long>(pid));
 #else
         fputs("#CRASHED - WebProcess\n", stderr);
 #endif

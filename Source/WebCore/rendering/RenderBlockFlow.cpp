@@ -27,6 +27,7 @@
 #include "Editor.h"
 #include "FloatingObjects.h"
 #include "Frame.h"
+#include "FrameSelection.h"
 #include "HTMLElement.h"
 #include "HitTestLocation.h"
 #include "InlineTextBox.h"
@@ -120,6 +121,7 @@ void RenderBlockFlow::createMultiColumnFlowThread()
     RenderMultiColumnFlowThread* flowThread = new RenderMultiColumnFlowThread(document(), RenderStyle::createAnonymousStyleWithDisplay(&style(), BLOCK));
     flowThread->initializeStyle();
     setChildrenInline(false); // Do this to avoid wrapping inline children that are just going to move into the flow thread.
+    deleteLines();
     RenderBlock::addChild(flowThread);
     flowThread->populate(); // Called after the flow thread is inserted so that we are reachable by the flow thread.
     setMultiColumnFlowThread(flowThread);
@@ -162,10 +164,8 @@ void RenderBlockFlow::willBeDestroyed()
         if (firstRootBox()) {
             // We can't wait for RenderBox::destroy to clear the selection,
             // because by then we will have nuked the line boxes.
-            // FIXME: The FrameSelection should be responsible for this when it
-            // is notified of DOM mutations.
             if (isSelectionBorder())
-                view().clearSelection();
+                frame().selection().setNeedsSelectionUpdate();
 
             // If we are an anonymous block, then our line boxes might have children
             // that will outlast this block. In the non-anonymous block case those
@@ -3015,7 +3015,8 @@ void RenderBlockFlow::createRenderNamedFlowFragmentIfNeeded()
     if (!document().cssRegionsEnabled() || renderNamedFlowFragment() || isRenderNamedFlowFragment())
         return;
 
-    if (style().isDisplayRegionType() && style().hasFlowFrom()) {
+    // FIXME: Multicolumn regions not yet supported (http://dev.w3.org/csswg/css-regions/#multi-column-regions)
+    if (style().isDisplayRegionType() && style().hasFlowFrom() && !style().specifiesColumns()) {
         RenderNamedFlowFragment* flowFragment = new RenderNamedFlowFragment(document(), RenderNamedFlowFragment::createStyle(style()));
         flowFragment->initializeStyle();
         setRenderNamedFlowFragment(flowFragment);

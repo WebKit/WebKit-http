@@ -515,6 +515,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_disabledFieldsetElementsCount(0)
     , m_hasInjectedPlugInsScript(false)
     , m_renderTreeBeingDestroyed(false)
+    , m_hasPreparedForDestruction(false)
     , m_hasStyleWithViewportUnits(false)
 {
     allDocuments().add(this);
@@ -2047,6 +2048,9 @@ void Document::destroyRenderTree()
 
 void Document::prepareForDestruction()
 {
+    if (m_hasPreparedForDestruction)
+        return;
+
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     clearTouchEventListeners();
 #endif
@@ -2055,7 +2059,8 @@ void Document::prepareForDestruction()
     if (m_domWindow && m_frame)
         m_domWindow->willDetachDocumentFromFrame();
 
-    destroyRenderTree();
+    if (hasLivingRenderTree())
+        destroyRenderTree();
 
     if (isPluginDocument())
         toPluginDocument(this)->detachFromPluginElement();
@@ -2087,6 +2092,8 @@ void Document::prepareForDestruction()
         m_mediaQueryMatcher->documentDestroyed();
 
     disconnectFromFrame();
+
+    m_hasPreparedForDestruction = true;
 }
 
 void Document::removeAllEventListeners()
@@ -3491,13 +3498,12 @@ void Document::unregisterNodeListForInvalidation(LiveNodeList& list)
     m_nodeListAndCollectionCounts[list.invalidationType()]--;
     if (!list.isRegisteredForInvalidationAtDocument())
         return;
-    if (!m_listsInvalidatedAtDocument.size()) {
-        ASSERT(m_inInvalidateNodeListAndCollectionCaches);
-        return;
-    }
-    ASSERT(m_listsInvalidatedAtDocument.contains(&list));
-    m_listsInvalidatedAtDocument.remove(&list);
+
     list.setRegisteredForInvalidationAtDocument(false);
+    ASSERT(m_inInvalidateNodeListAndCollectionCaches
+        ? m_listsInvalidatedAtDocument.isEmpty()
+        : m_listsInvalidatedAtDocument.contains(&list));
+    m_listsInvalidatedAtDocument.remove(&list);
 }
 
 void Document::registerCollection(HTMLCollection& collection)
@@ -3511,14 +3517,13 @@ void Document::unregisterCollection(HTMLCollection& collection)
 {
     ASSERT(m_nodeListAndCollectionCounts[collection.invalidationType()]);
     m_nodeListAndCollectionCounts[collection.invalidationType()]--;
-    if (collection.isRootedAtDocument()) {
-        if (!m_collectionsInvalidatedAtDocument.size()) {
-            ASSERT(m_inInvalidateNodeListAndCollectionCaches);
-            return;
-        }
-        ASSERT(m_collectionsInvalidatedAtDocument.contains(&collection));
-        m_collectionsInvalidatedAtDocument.remove(&collection);
-    }
+    if (!collection.isRootedAtDocument())
+        return;
+
+    ASSERT(m_inInvalidateNodeListAndCollectionCaches
+        ? m_collectionsInvalidatedAtDocument.isEmpty()
+        : m_collectionsInvalidatedAtDocument.contains(&collection));
+    m_collectionsInvalidatedAtDocument.remove(&collection);
 }
 
 void Document::collectionCachedIdNameMap(const HTMLCollection& collection)
@@ -6069,7 +6074,7 @@ Document* Document::ensureTemplateDocument()
 #endif
 
 #if ENABLE(FONT_LOAD_EVENTS)
-PassRefPtr<FontLoader> Document::fontloader()
+PassRefPtr<FontLoader> Document::fonts()
 {
     if (!m_fontloader)
         m_fontloader = FontLoader::create(this);

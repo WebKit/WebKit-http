@@ -1,3 +1,125 @@
+2014-07-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use RC_PROJECTBUILDVERSION as build portion of version
+        https://bugs.webkit.org/show_bug.cgi?id=135478
+
+        Reviewed by David Kilzer.
+
+        * win/tools/scripts/version-stamp.pl: Check environment for
+        RC_PROJECTBUILDVERSION, and use it for the build portion of
+        the file version resource. Otherwise, use the __VERSION_BUILD__
+        value we calculated from the version string.
+
+2014-07-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Fix build failure when using 5-tuple build versions.
+        https://bugs.webkit.org/show_bug.cgi?id=135464
+        <rdar://problem/17872507>
+
+        Reviewed by David Kilzer.
+
+        * win/tools/scripts/version-stamp.pl: Modify the environment for
+        the VersionStamper sub-process to work around bug in that tool.
+
+2014-07-29  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Modify version numbering scheme to support 5-tuple versions
+        https://bugs.webkit.org/show_bug.cgi?id=135400
+        <rdar://problem/17849033>
+
+        Reviewed by David Kilzer.
+
+        Revise the auto-version.pl script so that it generates a set of packed
+        version tuples that allow us to map 5-tuple versions into something
+        that will work with Windows' 3-tuple version structure.
+
+        * win/tools/scripts/auto-version.pl:
+        (packTwoValues): Added,
+        (splitVersion): Revised to return packed combination of minor-tiny and
+        micro-nano to be used as "MINOR" and "TINY" portion of version.
+        (splitBuildMajorVersion): Deleted.
+        * win/tools/scripts/version-stamp.pl: Added.
+
+2014-07-23  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Remove CSS_EXCLUSIONS compile flag and leftover code
+        https://bugs.webkit.org/show_bug.cgi?id=135175
+
+        Reviewed by Zoltan Horvath.
+
+        At this point, the CSS_EXCLUSIONS flag guards nothing but some useless
+        stubs. This removes the flag and the useless code.
+
+        * win/tools/vsprops/FeatureDefines.props:
+        * win/tools/vsprops/FeatureDefinesCairo.props:
+
+2014-07-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct handling of __VERSION_TEXT__ for 4+-tuple versions
+        https://bugs.webkit.org/show_bug.cgi?id=135161
+        <rdar://problem/17763546>
+
+        Reviewed by David Kilzer.
+
+        Revise the auto-version.pl script to properly handle version
+        strings with 4 (or more) version tuples. Previously these were
+        being truncated from the version.
+
+        * win/tools/scripts/auto-version.pl:
+        (splitVersion): Return truncated version of
+        overall version string.
+
+2014-07-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Extend auto-version.pl to handle 5-tuple versions
+        https://bugs.webkit.org/show_bug.cgi?id=135124
+        <rdar://problem/17750334>
+
+        Reviewed by David Kilzer.
+
+        Extend tuple parsing to handle up to five tuples, and as
+        few as a single tuple. On Windows, the two additional
+        tuples are unused.
+
+        Also corrected regular expression capture logic to use local
+        blocks, preventing later capture expressions from reusing
+        previous capture results when the current expression failed
+        to find a match (GRRR, Perl!).
+
+        Clean up code by putting logic into a couple of subroutines.
+
+        * win/tools/scripts/auto-version.pl:
+
+2014-07-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct auto-version.pl script for two-digit version numbers
+        https://bugs.webkit.org/show_bug.cgi?id=135119
+        <rdar://problem/17743959>
+
+        Reviewed by David Kilzer.
+
+        The $MAJOR_VERSION must be the first digit of $BUILD_MAJOR_VERSION,
+        and $MINOR_VERSION must be the remaining digits.
+
+        Also correct regexp (line 90) that was allowing version numbers
+        larger than three digits to be processed.
+
+        * win/tools/scripts/auto-version.pl: Correct regular expression.
+
+2014-07-18  Dana Burkart  <dburkart@apple.com>
+
+        Add a new 'analyze' target to the makefile. This will make use of a new
+        'PATH_TO_SCAN_BUILD' which, if set will wrap xcodebuild in the clang
+        static analyzer.
+        https://bugs.webkit.org/show_bug.cgi?id=135057
+        <rdar://problem/10193187>
+
+        Reviewed by David Kilzer.
+
+        * Makefile:
+        * Makefile.shared:
+        * Source/Makefile:
+
 2014-07-10  Alex Christensen  <achristensen@webkit.org>
 
         Enable same features on all Windows ports.

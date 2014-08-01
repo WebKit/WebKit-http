@@ -104,9 +104,9 @@
 #include "RuleSet.h"
 #include "SVGDocument.h"
 #include "SVGDocumentExtensions.h"
-#include "SVGElement.h"
 #include "SVGFontFaceElement.h"
 #include "SVGNames.h"
+#include "SVGSVGElement.h"
 #include "SVGURIReference.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
@@ -389,7 +389,7 @@ inline void StyleResolver::State::initElement(Element* e)
 {
     m_element = e;
     m_styledElement = e && e->isStyledElement() ? toStyledElement(e) : nullptr;
-    m_elementLinkState = e ? e->document().visitedLinkState().determineLinkState(e) : NotInsideLink;
+    m_elementLinkState = e ? e->document().visitedLinkState().determineLinkState(*e) : NotInsideLink;
     updateConversionData();
 }
 
@@ -825,6 +825,7 @@ PassRef<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementS
 
     // Create the style
     state.setStyle(RenderStyle::clone(elementStyle));
+    state.setParentStyle(RenderStyle::clone(elementStyle));
     state.setLineHeightValue(0);
 
     TextDirection direction;
@@ -1463,12 +1464,12 @@ Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(Element* ele
 
 Length StyleResolver::convertToIntLength(const CSSPrimitiveValue* primitiveValue, const CSSToLengthConversionData& conversionData)
 {
-    return primitiveValue ? primitiveValue->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion | FractionConversion>(conversionData) : Length(Undefined);
+    return primitiveValue ? primitiveValue->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(conversionData) : Length(Undefined);
 }
 
 Length StyleResolver::convertToFloatLength(const CSSPrimitiveValue* primitiveValue, const CSSToLengthConversionData& conversionData)
 {
-    return primitiveValue ? primitiveValue->convertToLength<FixedFloatConversion | PercentConversion | CalculatedConversion | FractionConversion>(conversionData) : Length(Undefined);
+    return primitiveValue ? primitiveValue->convertToLength<FixedFloatConversion | PercentConversion | CalculatedConversion>(conversionData) : Length(Undefined);
 }
 
 static bool shouldApplyPropertyInParseOrder(CSSPropertyID propertyID)
@@ -1859,6 +1860,12 @@ inline bool StyleResolver::isValidCueStyleProperty(CSSPropertyID id)
 bool StyleResolver::useSVGZoomRules()
 {
     return m_state.element() && m_state.element()->isSVGElement();
+}
+
+// Scale with/height properties on inline SVG root.
+bool StyleResolver::useSVGZoomRulesForLength()
+{
+    return m_state.element() && m_state.element()->isSVGElement() && !(isSVGSVGElement(m_state.element()) && m_state.element()->parentNode());
 }
 
 #if ENABLE(CSS_GRID_LAYOUT)

@@ -887,10 +887,6 @@ void WebFrameLoaderClient::didChangeTitle(DocumentLoader*)
 
 void WebFrameLoaderClient::committedLoad(DocumentLoader* loader, const char* data, int length)
 {
-    // If we're loading a custom representation, we don't want to hand off the data to WebCore.
-    if (m_frameHasCustomContentProvider)
-        return;
-
     if (!m_pluginView)
         loader->commitData(data, length);
 
@@ -1620,5 +1616,24 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
     RefPtr<WebFrameNetworkingContext> context = WebFrameNetworkingContext::create(m_frame);
     return context.release();
 }
+
+void WebFrameLoaderClient::willChangeCurrentHistoryItem()
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+    if (!m_frame->isMainFrame())
+        return;
+
+    webPage->willChangeCurrentHistoryItemForMainFrame();
+}
+
+#if ENABLE(CONTENT_FILTERING)
+void WebFrameLoaderClient::contentFilterDidBlockLoad(std::unique_ptr<WebCore::ContentFilter> contentFilter)
+{
+    if (WebPage* webPage = m_frame->page())
+        webPage->send(Messages::WebPageProxy::ContentFilterDidBlockLoadForFrame(*contentFilter, m_frame->frameID()));
+}
+#endif
 
 } // namespace WebKit

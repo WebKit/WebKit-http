@@ -44,7 +44,6 @@ inline CapabilityLevel canCompile(Node* node)
     
     switch (node->op()) {
     case JSConstant:
-    case WeakJSConstant:
     case GetMyArgumentsLength:
     case GetLocal:
     case SetLocal:
@@ -63,15 +62,16 @@ inline CapabilityLevel canCompile(Node* node)
     case BitLShift:
     case BitURShift:
     case CheckStructure:
-    case StructureTransitionWatchpoint:
     case ArrayifyToStructure:
     case PutStructure:
-    case PhantomPutStructure:
     case GetButterfly:
     case NewObject:
     case NewArray:
     case NewArrayBuffer:
     case GetByOffset:
+    case GetGetterSetterByOffset:
+    case GetGetter:
+    case GetSetter:
     case PutByOffset:
     case GetGlobalVar:
     case PutGlobalVar:
@@ -117,6 +117,8 @@ inline CapabilityLevel canCompile(Node* node)
     case StoreBarrierWithNullCheck:
     case Call:
     case Construct:
+    case NativeCall:
+    case NativeConstruct:
     case ValueToInt32:
     case Branch:
     case LogicalNot:

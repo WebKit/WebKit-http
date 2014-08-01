@@ -130,6 +130,7 @@ private:
     virtual void updateGlobalHistoryRedirectLinks() override;
     
     virtual bool shouldGoToHistoryItem(WebCore::HistoryItem*) const override;
+    virtual void willChangeCurrentHistoryItem() override;
 
     virtual void didDisplayInsecureContent() override;
     virtual void didRunInsecureContent(WebCore::SecurityOrigin*, const WebCore::URL&) override;
@@ -225,6 +226,10 @@ private:
 
 #if USE(QUICK_LOOK)
     virtual void didCreateQuickLookHandle(WebCore::QuickLookHandle&) override;
+#endif
+
+#if ENABLE(CONTENT_FILTERING)
+    virtual void contentFilterDidBlockLoad(std::unique_ptr<WebCore::ContentFilter>) override;
 #endif
 
     WebFrame* m_frame;

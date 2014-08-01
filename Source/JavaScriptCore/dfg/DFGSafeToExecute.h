@@ -111,7 +111,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case JSConstant:
     case DoubleConstant:
     case Int52Constant:
-    case WeakJSConstant:
     case Identity:
     case ToThis:
     case CreateThis:
@@ -257,8 +256,14 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Int52Rep:
     case BooleanToNumber:
     case FiatInt52:
+    case GetGetter:
+    case GetSetter:
         return true;
-        
+
+    case NativeCall:
+    case NativeConstruct:
+        return false; // TODO: add a check for already checked.  https://bugs.webkit.org/show_bug.cgi?id=133769
+
     case GetByVal:
     case GetIndexedPropertyStorage:
     case GetArrayLength:
@@ -277,21 +282,25 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
         return node->arrayMode().modeForPut().alreadyChecked(
             graph, node, state.forNode(graph.varArgChild(node, 0)));
 
-    case StructureTransitionWatchpoint:
-        return state.forNode(node->child1()).m_futurePossibleStructure.isSubsetOf(
-            StructureSet(node->structure()));
-        
     case PutStructure:
-    case PhantomPutStructure:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
-        return state.forNode(node->child1()).m_currentKnownStructure.isSubsetOf(
-            StructureSet(node->structureTransitionData().previousStructure));
+        return state.forNode(node->child1()).m_structure.isSubsetOf(
+            StructureSet(node->transition()->previous));
         
     case GetByOffset:
-    case PutByOffset:
-        return state.forNode(node->child1()).m_currentKnownStructure.isValidOffset(
-            graph.m_storageAccessData[node->storageAccessDataIndex()].offset);
+    case GetGetterSetterByOffset:
+    case PutByOffset: {
+        StructureAbstractValue& value = state.forNode(node->child1()).m_structure;
+        if (value.isTop())
+            return false;
+        PropertyOffset offset = graph.m_storageAccessData[node->storageAccessDataIndex()].offset;
+        for (unsigned i = value.size(); i--;) {
+            if (!value[i]->isValidOffset(offset))
+                return false;
+        }
+        return true;
+    }
         
     case LastNodeType:
         RELEASE_ASSERT_NOT_REACHED();

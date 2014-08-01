@@ -33,6 +33,7 @@
 #include "DFGArrayifySlowPathGenerator.h"
 #include "DFGBinarySwitch.h"
 #include "DFGCallArrayAllocatorSlowPathGenerator.h"
+#include "DFGMayExit.h"
 #include "DFGSaneStringGetByValSlowPathGenerator.h"
 #include "DFGSlowPathGenerator.h"
 #include "LinkBuffer.h"
@@ -215,6 +216,8 @@ void SpeculativeJIT::terminateSpeculativeExecution(ExitKind kind, JSValueRegs js
         return;
     speculationCheck(kind, jsValueRegs, node, m_jit.jump());
     m_compileOkay = false;
+    if (verboseCompilationEnabled())
+        dataLog("Bailing compilation.\n");
 }
 
 void SpeculativeJIT::terminateSpeculativeExecution(ExitKind kind, JSValueRegs jsValueRegs, Edge nodeUse)
@@ -321,7 +324,7 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spil
         ASSERT(info.gpr() == source);
         ASSERT(isJSInt32(info.registerFormat()));
         if (node->hasConstant()) {
-            ASSERT(isInt32Constant(node));
+            ASSERT(node->isInt32Constant());
             fillAction = SetInt32Constant;
         } else
             fillAction = Load32Payload;
@@ -332,7 +335,7 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spil
 #elif USE(JSVALUE32_64)
         ASSERT(info.gpr() == source);
         if (node->hasConstant()) {
-            ASSERT(isBooleanConstant(node));
+            ASSERT(node->isBooleanConstant());
             fillAction = SetBooleanConstant;
         } else
             fillAction = Load32Payload;
@@ -340,8 +343,8 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spil
     } else if (registerFormat == DataFormatCell) {
         ASSERT(info.gpr() == source);
         if (node->hasConstant()) {
-            JSValue value = valueOfJSConstant(node);
-            ASSERT_UNUSED(value, value.isCell());
+            DFG_ASSERT(m_jit.graph(), m_currentNode, node->isCellConstant());
+            node->asCell(); // To get the assertion.
             fillAction = SetCellConstant;
         } else {
 #if USE(JSVALUE64)
@@ -384,8 +387,9 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spil
 #if USE(JSVALUE64)
         ASSERT(info.gpr() == source);
         if (node->hasConstant()) {
-            if (valueOfJSConstant(node).isCell())
+            if (node->isCellConstant())
                 fillAction = SetTrustedJSConstant;
+            else
                 fillAction = SetJSConstant;
         } else if (info.spillFormat() == DataFormatInt32) {
             ASSERT(registerFormat == DataFormatJSInt32);
@@ -443,7 +447,7 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForFPR(VirtualRegister spil
         
 #if USE(JSVALUE64)
     if (node->hasConstant()) {
-        ASSERT(isNumberConstant(node));
+        node->asNumber(); // To get the assertion.
         fillAction = SetDoubleConstant;
     } else {
         ASSERT(info.spillFormat() == DataFormatNone || info.spillFormat() == DataFormatDouble);
@@ -452,7 +456,7 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForFPR(VirtualRegister spil
 #elif USE(JSVALUE32_64)
     ASSERT(info.registerFormat() == DataFormatDouble);
     if (node->hasConstant()) {
-        ASSERT(isNumberConstant(node));
+        node->asNumber(); // To get the assertion.
         fillAction = SetDoubleConstant;
     } else
         fillAction = LoadDouble;
@@ -497,21 +501,21 @@ void SpeculativeJIT::silentFill(const SilentRegisterSavePlan& plan, GPRReg canTr
     case DoNothingForFill:
         break;
     case SetInt32Constant:
-        m_jit.move(Imm32(valueOfInt32Constant(plan.node())), plan.gpr());
+        m_jit.move(Imm32(plan.node()->asInt32()), plan.gpr());
         break;
 #if USE(JSVALUE64)
     case SetInt52Constant:
-        m_jit.move(Imm64(valueOfJSConstant(plan.node()).asMachineInt() << JSValue::int52ShiftAmount), plan.gpr());
+        m_jit.move(Imm64(plan.node()->asMachineInt() << JSValue::int52ShiftAmount), plan.gpr());
         break;
     case SetStrictInt52Constant:
-        m_jit.move(Imm64(valueOfJSConstant(plan.node()).asMachineInt()), plan.gpr());
+        m_jit.move(Imm64(plan.node()->asMachineInt()), plan.gpr());
         break;
 #endif // USE(JSVALUE64)
     case SetBooleanConstant:
-        m_jit.move(TrustedImm32(valueOfBooleanConstant(plan.node())), plan.gpr());
+        m_jit.move(TrustedImm32(plan.node()->asBoolean()), plan.gpr());
         break;
     case SetCellConstant:
-        m_jit.move(TrustedImmPtr(valueOfJSConstant(plan.node()).asCell()), plan.gpr());
+        m_jit.move(TrustedImmPtr(plan.node()->asCell()), plan.gpr());
         break;
 #if USE(JSVALUE64)
     case SetTrustedJSConstant:
@@ -521,7 +525,7 @@ void SpeculativeJIT::silentFill(const SilentRegisterSavePlan& plan, GPRReg canTr
         m_jit.move(valueOfJSConstantAsImm64(plan.node()), plan.gpr());
         break;
     case SetDoubleConstant:
-        m_jit.move(Imm64(reinterpretDoubleToInt64(valueOfNumberConstant(plan.node()))), canTrample);
+        m_jit.move(Imm64(reinterpretDoubleToInt64(plan.node()->asNumber())), canTrample);
         m_jit.move64ToDouble(canTrample, plan.fpr());
         break;
     case Load32PayloadBoxInt:
@@ -539,10 +543,10 @@ void SpeculativeJIT::silentFill(const SilentRegisterSavePlan& plan, GPRReg canTr
         break;
 #else
     case SetJSConstantTag:
-        m_jit.move(Imm32(valueOfJSConstant(plan.node()).tag()), plan.gpr());
+        m_jit.move(Imm32(plan.node()->asJSValue().tag()), plan.gpr());
         break;
     case SetJSConstantPayload:
-        m_jit.move(Imm32(valueOfJSConstant(plan.node()).payload()), plan.gpr());
+        m_jit.move(Imm32(plan.node()->asJSValue().payload()), plan.gpr());
         break;
     case SetInt32Tag:
         m_jit.move(TrustedImm32(JSValue::Int32Tag), plan.gpr());
@@ -554,7 +558,7 @@ void SpeculativeJIT::silentFill(const SilentRegisterSavePlan& plan, GPRReg canTr
         m_jit.move(TrustedImm32(JSValue::BooleanTag), plan.gpr());
         break;
     case SetDoubleConstant:
-        m_jit.loadDouble(TrustedImmPtr(addressOfDoubleConstant(plan.node())), plan.fpr());
+        m_jit.loadDouble(TrustedImmPtr(m_jit.addressOfDoubleConstant(plan.node())), plan.fpr());
         break;
 #endif
     case Load32Tag:
@@ -856,12 +860,9 @@ void SpeculativeJIT::compileIn(Node* node)
 {
     SpeculateCellOperand base(this, node->child2());
     GPRReg baseGPR = base.gpr();
-        
-    if (isConstant(node->child1().node())) {
-        JSString* string =
-            jsDynamicCast<JSString*>(valueOfJSConstant(node->child1().node()));
-        if (string && string->tryGetValueImpl()
-            && string->tryGetValueImpl()->isAtomic()) {
+    
+    if (JSString* string = node->child1()->dynamicCastConstant<JSString*>()) {
+        if (string->tryGetValueImpl() && string->tryGetValueImpl()->isAtomic()) {
             StructureStubInfo* stubInfo = m_jit.codeBlock()->addStubInfo();
             
             GPRTemporary result(this);
@@ -1219,13 +1220,13 @@ void SpeculativeJIT::compilePeepHoleBooleanBranch(Node* node, Node* branchNode, 
         notTaken = tmp;
     }
 
-    if (isBooleanConstant(node->child1().node())) {
-        bool imm = valueOfBooleanConstant(node->child1().node());
+    if (node->child1()->isBooleanConstant()) {
+        bool imm = node->child1()->asBoolean();
         SpeculateBooleanOperand op2(this, node->child2());
         branch32(condition, JITCompiler::Imm32(static_cast<int32_t>(JSValue::encode(jsBoolean(imm)))), op2.gpr(), taken);
-    } else if (isBooleanConstant(node->child2().node())) {
+    } else if (node->child2()->isBooleanConstant()) {
         SpeculateBooleanOperand op1(this, node->child1());
-        bool imm = valueOfBooleanConstant(node->child2().node());
+        bool imm = node->child2()->asBoolean();
         branch32(condition, op1.gpr(), JITCompiler::Imm32(static_cast<int32_t>(JSValue::encode(jsBoolean(imm)))), taken);
     } else {
         SpeculateBooleanOperand op1(this, node->child1());
@@ -1250,13 +1251,13 @@ void SpeculativeJIT::compilePeepHoleInt32Branch(Node* node, Node* branchNode, JI
         notTaken = tmp;
     }
 
-    if (isInt32Constant(node->child1().node())) {
-        int32_t imm = valueOfInt32Constant(node->child1().node());
+    if (node->child1()->isInt32Constant()) {
+        int32_t imm = node->child1()->asInt32();
         SpeculateInt32Operand op2(this, node->child2());
         branch32(condition, JITCompiler::Imm32(imm), op2.gpr(), taken);
-    } else if (isInt32Constant(node->child2().node())) {
+    } else if (node->child2()->isInt32Constant()) {
         SpeculateInt32Operand op1(this, node->child1());
-        int32_t imm = valueOfInt32Constant(node->child2().node());
+        int32_t imm = node->child2()->asInt32();
         branch32(condition, op1.gpr(), JITCompiler::Imm32(imm), taken);
     } else {
         SpeculateInt32Operand op1(this, node->child1());
@@ -1341,6 +1342,8 @@ void SpeculativeJIT::compileMovHint(Node* node)
 
 void SpeculativeJIT::bail(AbortReason reason)
 {
+    if (verboseCompilationEnabled())
+        dataLog("Bailing compilation.\n");
     m_compileOkay = true;
     m_jit.abortWithReason(reason, m_lastGeneratedNode);
     clearGenerationInfo();
@@ -1357,7 +1360,7 @@ void SpeculativeJIT::compileCurrentBlock()
     
     m_jit.blockHeads()[m_block->index] = m_jit.label();
 
-    if (!m_block->cfaHasVisited) {
+    if (!m_block->intersectionOfCFAHasVisited) {
         // Don't generate code for basic blocks that are unreachable according to CFA.
         // But to be sure that nobody has generated a jump to this block, drop in a
         // breakpoint here.
@@ -1404,8 +1407,12 @@ void SpeculativeJIT::compileCurrentBlock()
             bail(DFGBailedAtTopOfBlock);
             return;
         }
+
+        if (ASSERT_DISABLED)
+            m_canExit = true; // Essentially disable the assertions.
+        else
+            m_canExit = mayExit(m_jit.graph(), m_currentNode);
         
-        m_canExit = m_currentNode->canExit();
         bool shouldExecuteEffects = m_interpreter.startExecuting(m_currentNode);
         m_jit.setForNode(m_currentNode);
         m_codeOriginForExitTarget = m_currentNode->origin.forExit;
@@ -1414,11 +1421,6 @@ void SpeculativeJIT::compileCurrentBlock()
         if (!m_currentNode->shouldGenerate()) {
             switch (m_currentNode->op()) {
             case JSConstant:
-                m_minifiedGraph->append(MinifiedNode::fromNode(m_currentNode));
-                break;
-                
-            case WeakJSConstant:
-                m_jit.addWeakReference(m_currentNode->weakConstant());
                 m_minifiedGraph->append(MinifiedNode::fromNode(m_currentNode));
                 break;
                 
@@ -2071,7 +2073,7 @@ void SpeculativeJIT::compileDoubleRep(Node* node)
 {
     switch (node->child1().useKind()) {
     case NumberUse: {
-        ASSERT(!isNumberConstant(node->child1().node())); // This should have been constant folded.
+        ASSERT(!node->child1()->isNumberConstant()); // This should have been constant folded.
     
         if (isInt32Speculation(m_state.forNode(node->child1()).m_type)) {
             SpeculateInt32Operand op1(this, node->child1(), ManualOperandSpeculation);
@@ -2268,7 +2270,7 @@ JITCompiler::Jump SpeculativeJIT::jumpForTypedArrayOutOfBounds(Node* node, GPRRe
     if (JSArrayBufferView* view = m_jit.graph().tryGetFoldableViewForChild1(node)) {
         uint32_t length = view->length();
         Node* indexNode = m_jit.graph().child(node, 1).node();
-        if (m_jit.graph().isInt32Constant(indexNode) && static_cast<uint32_t>(m_jit.graph().valueOfInt32Constant(indexNode)) < length)
+        if (indexNode->isInt32Constant() && indexNode->asUInt32() < length)
             return JITCompiler::Jump();
         return m_jit.branch32(
             MacroAssembler::AboveOrEqual, indexGPR, MacroAssembler::Imm32(length));
@@ -2364,7 +2366,7 @@ void SpeculativeJIT::compilePutByValForIntTypedArray(GPRReg base, GPRReg propert
     GPRReg valueGPR = InvalidGPRReg;
     
     if (valueUse->isConstant()) {
-        JSValue jsValue = valueOfJSConstant(valueUse.node());
+        JSValue jsValue = valueUse->asJSValue();
         if (!jsValue.isNumber()) {
             terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
             noResult(node);
@@ -2652,8 +2654,8 @@ void SpeculativeJIT::compileAdd(Node* node)
     case Int32Use: {
         ASSERT(!shouldCheckNegativeZero(node->arithMode()));
         
-        if (isInt32Constant(node->child1().node())) {
-            int32_t imm1 = valueOfInt32Constant(node->child1().node());
+        if (node->child1()->isInt32Constant()) {
+            int32_t imm1 = node->child1()->asInt32();
             SpeculateInt32Operand op2(this, node->child2());
             GPRTemporary result(this);
 
@@ -2667,9 +2669,9 @@ void SpeculativeJIT::compileAdd(Node* node)
             return;
         }
         
-        if (isInt32Constant(node->child2().node())) {
+        if (node->child2()->isInt32Constant()) {
             SpeculateInt32Operand op1(this, node->child1());
-            int32_t imm2 = valueOfInt32Constant(node->child2().node());
+            int32_t imm2 = node->child2()->asInt32();
             GPRTemporary result(this);
                 
             if (!shouldCheckOverflow(node->arithMode())) {
@@ -2848,9 +2850,9 @@ void SpeculativeJIT::compileArithSub(Node* node)
     case Int32Use: {
         ASSERT(!shouldCheckNegativeZero(node->arithMode()));
         
-        if (isNumberConstant(node->child2().node())) {
+        if (node->child2()->isNumberConstant()) {
             SpeculateInt32Operand op1(this, node->child1());
-            int32_t imm2 = valueOfInt32Constant(node->child2().node());
+            int32_t imm2 = node->child2()->asInt32();
             GPRTemporary result(this);
 
             if (!shouldCheckOverflow(node->arithMode())) {
@@ -2865,8 +2867,8 @@ void SpeculativeJIT::compileArithSub(Node* node)
             return;
         }
             
-        if (isNumberConstant(node->child1().node())) {
-            int32_t imm1 = valueOfInt32Constant(node->child1().node());
+        if (node->child1()->isNumberConstant()) {
+            int32_t imm1 = node->child1()->asInt32();
             SpeculateInt32Operand op2(this, node->child2());
             GPRTemporary result(this);
                 
@@ -3279,8 +3281,8 @@ void SpeculativeJIT::compileArithMod(Node* node)
         // (in case of |dividend| < |divisor|), so we speculate it as strict int32.
         SpeculateStrictInt32Operand op1(this, node->child1());
         
-        if (isInt32Constant(node->child2().node())) {
-            int32_t divisor = valueOfInt32Constant(node->child2().node());
+        if (node->child2()->isInt32Constant()) {
+            int32_t divisor = node->child2()->asInt32();
             if (divisor > 1 && hasOneBitSet(divisor)) {
                 unsigned logarithm = WTF::fastLog2(divisor);
                 GPRReg dividendGPR = op1.gpr();
@@ -3341,8 +3343,8 @@ void SpeculativeJIT::compileArithMod(Node* node)
         }
         
 #if CPU(X86) || CPU(X86_64)
-        if (isInt32Constant(node->child2().node())) {
-            int32_t divisor = valueOfInt32Constant(node->child2().node());
+        if (node->child2()->isInt32Constant()) {
+            int32_t divisor = node->child2()->asInt32();
             if (divisor && divisor != -1) {
                 GPRReg op1Gpr = op1.gpr();
 
@@ -4220,7 +4222,7 @@ bool SpeculativeJIT::compileRegExpExec(Node* node)
 
 void SpeculativeJIT::compileAllocatePropertyStorage(Node* node)
 {
-    if (node->structureTransitionData().previousStructure->couldHaveIndexingHeader()) {
+    if (node->transition()->previous->couldHaveIndexingHeader()) {
         SpeculateCellOperand base(this, node->child1());
         
         GPRReg baseGPR = base.gpr();
@@ -4240,8 +4242,8 @@ void SpeculativeJIT::compileAllocatePropertyStorage(Node* node)
     GPRReg baseGPR = base.gpr();
     GPRReg scratchGPR1 = scratch1.gpr();
         
-    ASSERT(!node->structureTransitionData().previousStructure->outOfLineCapacity());
-    ASSERT(initialOutOfLineCapacity == node->structureTransitionData().newStructure->outOfLineCapacity());
+    ASSERT(!node->transition()->previous->outOfLineCapacity());
+    ASSERT(initialOutOfLineCapacity == node->transition()->next->outOfLineCapacity());
     
     JITCompiler::Jump slowPath =
         emitAllocateBasicStorage(
@@ -4259,11 +4261,11 @@ void SpeculativeJIT::compileAllocatePropertyStorage(Node* node)
 
 void SpeculativeJIT::compileReallocatePropertyStorage(Node* node)
 {
-    size_t oldSize = node->structureTransitionData().previousStructure->outOfLineCapacity() * sizeof(JSValue);
+    size_t oldSize = node->transition()->previous->outOfLineCapacity() * sizeof(JSValue);
     size_t newSize = oldSize * outOfLineGrowthFactor;
-    ASSERT(newSize == node->structureTransitionData().newStructure->outOfLineCapacity() * sizeof(JSValue));
+    ASSERT(newSize == node->transition()->next->outOfLineCapacity() * sizeof(JSValue));
 
-    if (node->structureTransitionData().previousStructure->couldHaveIndexingHeader()) {
+    if (node->transition()->previous->couldHaveIndexingHeader()) {
         SpeculateCellOperand base(this, node->child1());
         
         GPRReg baseGPR = base.gpr();

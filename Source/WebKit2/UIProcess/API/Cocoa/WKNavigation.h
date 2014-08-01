@@ -29,33 +29,13 @@
 
 #import <Foundation/Foundation.h>
 
-/*! A WKNavigation object contains information for tracking the loading
- progress of a webpage.
+/*! A WKNavigation object can be used for tracking the loading progress of a webpage.
  @discussion A navigation is returned from the web view load methods, and is
  also passed to the navigation delegate methods, to uniquely identify a webpage
  load from start to finish.
  */
 WK_CLASS_AVAILABLE(10_10, 8_0)
 @interface WKNavigation : NSObject
-
-/*! @abstract The initial request used to perform the navigation.
- */
-@property (nonatomic, readonly, copy) NSURLRequest *initialRequest;
-
-/*! @abstract The navigation's current request.
- @discussion This request may be different from the one returned by
- initialRequest if server-side redirects have occurred.
- */
-@property (nonatomic, readonly, copy) NSURLRequest *request;
-
-/* @abstract The response to the navigation, or nil if no response has yet
- been received.
- */
-@property (nonatomic, readonly, copy) NSURLResponse *response;
-
-/* @abstract The error if the navigation failed, or nil if it did not fail.
- */
-@property (nonatomic, readonly, copy) NSError *error;
 
 @end
 

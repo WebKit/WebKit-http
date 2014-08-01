@@ -304,6 +304,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_userIsInteracting(false)
     , m_hasPendingBlurNotification(false)
     , m_useTestingViewportConfiguration(false)
+    , m_isInStableState(true)
+    , m_oldestNonStableUpdateVisibleContentRectsTimestamp(std::chrono::milliseconds::zero())
+    , m_estimatedLatency(std::chrono::milliseconds::zero())
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_deviceOrientation(0)
@@ -497,6 +500,8 @@ WebPage::~WebPage()
         WebProcess::shared().eventDispatcher().removeScrollingTreeForPage(this);
 #endif
 
+    platformDetach();
+    
     m_sandboxExtensionTracker.invalidate();
 
     for (auto* pluginView : m_pluginViews)
@@ -730,8 +735,11 @@ EditorState WebPage::editorState() const
         // FIXME: The following check should take into account writing direction.
         result.isReplaceAllowed = result.isContentEditable && atBoundaryOfGranularity(selection.start(), WordGranularity, DirectionForward);
         result.wordAtSelection = plainTextReplacingNoBreakSpace(wordRangeFromPosition(selection.start()).get());
-        if (selection.isContentEditable())
+        if (selection.isContentEditable()) {
             charactersAroundPosition(selection.start(), result.characterAfterSelection, result.characterBeforeSelection, result.twoCharacterBeforeSelection);
+            Node* root = selection.rootEditableElement();
+            result.hasContent = root && root->hasChildNodes() && !isEndOfEditableOrNonEditableContent(firstPositionInNode(root));
+        }
     } else if (selection.isRange()) {
         result.caretRectAtStart = view->contentsToRootView(VisiblePosition(selection.start()).absoluteCaretBounds());
         result.caretRectAtEnd = view->contentsToRootView(VisiblePosition(selection.end()).absoluteCaretBounds());
@@ -2859,9 +2867,23 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
     layerTransaction.setPageExtendedBackgroundColor(corePage()->pageExtendedBackgroundColor());
 #if PLATFORM(IOS)
     layerTransaction.setScaleWasSetByUIProcess(scaleWasSetByUIProcess());
-    layerTransaction.setMinimumScaleFactor(minimumPageScaleFactor());
-    layerTransaction.setMaximumScaleFactor(maximumPageScaleFactor());
+    layerTransaction.setMinimumScaleFactor(m_viewportConfiguration.minimumScale());
+    layerTransaction.setMaximumScaleFactor(m_viewportConfiguration.maximumScale());
     layerTransaction.setAllowsUserScaling(allowsUserScaling());
+#endif
+}
+
+void WebPage::didFlushLayerTreeAtTime(std::chrono::milliseconds timestamp)
+{
+#if PLATFORM(IOS)
+    if (m_oldestNonStableUpdateVisibleContentRectsTimestamp != std::chrono::milliseconds::zero()) {
+        std::chrono::milliseconds elapsed = timestamp - m_oldestNonStableUpdateVisibleContentRectsTimestamp;
+        m_oldestNonStableUpdateVisibleContentRectsTimestamp = std::chrono::milliseconds::zero();
+
+        m_estimatedLatency = std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(m_estimatedLatency.count() * 0.80 + elapsed.count() * 0.20));
+    }
+#else
+    UNUSED_PARAM(timestamp);
 #endif
 }
 #endif
@@ -4449,6 +4471,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
     m_scaleWasSetByUIProcess = false;
     m_firstLayerTreeTransactionIDAfterDidCommitLoad = toRemoteLayerTreeDrawingArea(*m_drawingArea).nextTransactionID();
     m_userHasChangedPageScaleFactor = false;
+    m_estimatedLatency = std::chrono::milliseconds(1000 / 60);
 
     WebProcess::shared().eventDispatcher().clearQueuedTouchEventsForPage(*this);
 
@@ -4825,6 +4848,11 @@ void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
         return;
 
     updateMainFrameScrollOffsetPinning();
+}
+
+void WebPage::willChangeCurrentHistoryItemForMainFrame()
+{
+    send(Messages::WebPageProxy::WillChangeCurrentHistoryItemForMainFrame());
 }
 
 } // namespace WebKit

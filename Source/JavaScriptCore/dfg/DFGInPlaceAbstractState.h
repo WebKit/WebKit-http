@@ -103,6 +103,9 @@ public:
     // Did the last executed node clobber the world?
     bool didClobber() const { return m_didClobber; }
     
+    // Are structures currently clobbered?
+    StructureClobberState structureClobberState() const { return m_structureClobberState; }
+    
     // Is the execution state still valid? This will be false if execute() has
     // returned false previously.
     bool isValid() const { return m_isValid; }
@@ -122,11 +125,16 @@ public:
     
     // Methods intended to be called from AbstractInterpreter.
     void setDidClobber(bool didClobber) { m_didClobber = didClobber; }
+    void setStructureClobberState(StructureClobberState value) { m_structureClobberState = value; }
     void setIsValid(bool isValid) { m_isValid = isValid; }
     void setBranchDirection(BranchDirection branchDirection) { m_branchDirection = branchDirection; }
+    
+    // This method is evil - it causes a huge maintenance headache and there is a gross amount of
+    // code devoted to it. It would be much nicer to just always run the constant folder on each
+    // block. But, the last time we did it, it was a 1% SunSpider regression:
+    // https://bugs.webkit.org/show_bug.cgi?id=133947
+    // So, we should probably keep this method.
     void setFoundConstants(bool foundConstants) { m_foundConstants = foundConstants; }
-    bool haveStructures() const { return m_haveStructures; } // It's always safe to return true.
-    void setHaveStructures(bool haveStructures) { m_haveStructures = haveStructures; }
 
 private:
     bool mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node*);
@@ -138,11 +146,11 @@ private:
     Operands<AbstractValue> m_variables;
     BasicBlock* m_block;
     
-    bool m_haveStructures;
     bool m_foundConstants;
     
     bool m_isValid;
     bool m_didClobber;
+    StructureClobberState m_structureClobberState;
     
     BranchDirection m_branchDirection; // This is only set for blocks that end in Branch and that execute to completion (i.e. m_isValid == true).
 };

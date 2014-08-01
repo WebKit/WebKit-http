@@ -223,6 +223,7 @@ public:
 
 #if PLATFORM(COCOA)
     void willCommitLayerTree(RemoteLayerTreeTransaction&);
+    void didFlushLayerTreeAtTime(std::chrono::milliseconds);
 #endif
 
 #if ENABLE(INSPECTOR)
@@ -484,6 +485,7 @@ public:
     void selectWithTwoTouches(const WebCore::IntPoint& from, const WebCore::IntPoint& to, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID);
     void extendSelection(uint32_t granularity);
     void selectWordBackward();
+    void moveSelectionByOffset(int32_t offset, uint64_t callbackID);
     void elementDidFocus(WebCore::Node*);
     void elementDidBlur(WebCore::Node*);
     void requestDictationContext(uint64_t callbackID);
@@ -509,6 +511,8 @@ public:
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
     void contentSizeCategoryDidChange(const String&);
     void executeEditCommandWithCallback(const String&, uint64_t callbackID);
+
+    std::chrono::milliseconds eventThrottlingDelay() const;
 #if ENABLE(INSPECTOR)
     void showInspectorHighlight(const WebCore::Highlight&);
     void hideInspectorHighlight();
@@ -631,7 +635,7 @@ public:
     void cancelComposition();
 #elif PLATFORM(GTK)
 #if USE(TEXTURE_MAPPER_GL)
-    void setAcceleratedCompositingWindowId(int64_t nativeWindowHandle);
+    void setAcceleratedCompositingWindowId(uint64_t nativeWindowHandle);
 #endif
 #endif
 
@@ -748,7 +752,7 @@ public:
     void setDeviceOrientation(int32_t);
     void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate(double& newTargetScale, WebCore::FloatPoint& newScrollPosition, uint64_t& nextValidLayerTreeTransactionID);
-    void updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
+    void updateVisibleContentRects(const VisibleContentRectUpdateInfo&, double oldestTimestamp);
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
     void applicationWillResignActive();
@@ -839,6 +843,8 @@ public:
 
     void didChangeScrollOffsetForFrame(WebCore::Frame*);
 
+    void willChangeCurrentHistoryItemForMainFrame();
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -847,6 +853,7 @@ private:
     virtual uint64_t messageSenderDestinationID() override;
 
     void platformInitialize();
+    void platformDetach();
 
     void didReceiveWebPageMessage(IPC::Connection*, IPC::MessageDecoder&);
     void didReceiveSyncWebPageMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
@@ -1233,6 +1240,9 @@ private:
     bool m_userIsInteracting;
     bool m_hasPendingBlurNotification;
     bool m_useTestingViewportConfiguration;
+    bool m_isInStableState;
+    std::chrono::milliseconds m_oldestNonStableUpdateVisibleContentRectsTimestamp;
+    std::chrono::milliseconds m_estimatedLatency;
     WebCore::FloatSize m_screenSize;
     WebCore::FloatSize m_availableScreenSize;
     RefPtr<WebCore::Range> m_currentBlockSelection;

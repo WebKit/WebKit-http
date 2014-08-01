@@ -101,6 +101,11 @@ void WebPage::platformInitialize()
     platformInitializeAccessibility();
 }
 
+void WebPage::platformDetach()
+{
+    [m_mockAccessibilityElement setWebPage:nullptr];
+}
+    
 void WebPage::platformInitializeAccessibility()
 {
     m_mockAccessibilityElement = adoptNS([[WKAccessibilityWebPageObject alloc] init]);
@@ -251,11 +256,15 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
 
 double WebPage::minimumPageScaleFactor() const
 {
+    if (!m_viewportConfiguration.allowsUserScaling())
+        return m_page->pageScaleFactor();
     return m_viewportConfiguration.minimumScale();
 }
 
 double WebPage::maximumPageScaleFactor() const
 {
+    if (!m_viewportConfiguration.allowsUserScaling())
+        return m_page->pageScaleFactor();
     return m_viewportConfiguration.maximumScale();
 }
 
@@ -1528,6 +1537,25 @@ void WebPage::selectWordBackward()
         frame.selection().setSelectedRange(Range::create(*frame.document(), startPosition, position).get(), position.affinity(), true);
 }
 
+void WebPage::moveSelectionByOffset(int32_t offset, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    
+    VisiblePosition startPosition = frame.selection().selection().end();
+    if (startPosition.isNull())
+        return;
+    SelectionDirection direction = offset < 0 ? DirectionBackward : DirectionForward;
+    VisiblePosition position = startPosition;
+    for (int i = 0; i < abs(offset); ++i) {
+        position = positionOfNextBoundaryOfGranularity(position, CharacterGranularity, direction);
+        if (position.isNull())
+            break;
+    }
+    if (position.isNotNull() && startPosition != position)
+        frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).get(), position.affinity(), true);
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
 void WebPage::convertSelectionRectsToRootView(FrameView* view, Vector<SelectionRect>& selectionRects)
 {
     for (size_t i = 0; i < selectionRects.size(); ++i) {
@@ -1620,7 +1648,6 @@ void WebPage::replaceDictatedText(const String& oldText, const String& newText)
 
 void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uint64_t callbackID)
 {
-    RefPtr<Range> range;
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     if (!frame.selection().isCaret()) {
         send(Messages::WebPageProxy::AutocorrectionDataCallback(Vector<FloatRect>(), String(), 0, 0, callbackID));
@@ -1628,9 +1655,12 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uin
     }
 
     VisiblePosition position = frame.selection().selection().start();
-    Vector<SelectionRect> selectionRects;
+    RefPtr<Range> range = wordRangeFromPosition(position);
+    if (!range) {
+        send(Messages::WebPageProxy::AutocorrectionDataCallback(Vector<FloatRect>(), String(), 0, 0, callbackID));
+        return;
+    }
 
-    range = wordRangeFromPosition(position);
     String textForRange = plainTextReplacingNoBreakSpace(range.get());
     const unsigned maxSearchAttempts = 5;
     for (size_t i = 0;  i < maxSearchAttempts && textForRange != textForAutocorrection; ++i)
@@ -1641,6 +1671,8 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uin
         range = Range::create(*frame.document(), wordRangeFromPosition(position)->startPosition(), range->endPosition());
         textForRange = plainTextReplacingNoBreakSpace(range.get());
     }
+
+    Vector<SelectionRect> selectionRects;
     if (textForRange == textForAutocorrection)
         range->collectSelectionRects(selectionRects);
 
@@ -1673,6 +1705,14 @@ void WebPage::executeEditCommandWithCallback(const String& commandName, uint64_t
 {
     executeEditCommand(commandName);
     send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+std::chrono::milliseconds WebPage::eventThrottlingDelay() const
+{
+    if (m_isInStableState || m_estimatedLatency <= std::chrono::milliseconds(1000 / 60))
+        return std::chrono::milliseconds::zero();
+
+    return std::chrono::milliseconds(std::min<std::chrono::milliseconds::rep>(m_estimatedLatency.count() * 2, 1000));
 }
 
 void WebPage::syncApplyAutocorrection(const String& correction, const String& originalText, bool& correctionApplied)
@@ -1855,11 +1895,14 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
 
             if (elementIsLinkOrImage) {
                 // Ensure that the image contains at most 600K pixels, so that it is not too big.
-                info.image = snapshotNode(*element, SnapshotOptionsShareable, 600 * 1024)->bitmap();
+                if (RefPtr<WebImage> snapshot = snapshotNode(*element, SnapshotOptionsShareable, 600 * 1024))
+                    info.image = snapshot->bitmap();
             }
             if (linkElement)
                 info.url = [(NSURL *)linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr))) absoluteString];
             info.title = element->fastGetAttribute(HTMLNames::titleAttr).string();
+            if (linkElement && info.title.isEmpty())
+                info.title = element->innerText();
             if (element->renderer())
                 info.bounds = element->renderer()->absoluteBoundingBoxRect(true);
         }
@@ -1982,16 +2025,35 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 {
     layoutIfNeeded();
 
-    if (RenderObject* renderer = m_assistedNode->renderer()) {
-        information.elementRect = m_page->focusController().focusedOrMainFrame().view()->contentsToRootView(renderer->absoluteBoundingBoxRect());
-        information.nodeFontSize = renderer->style().fontDescription().computedSize();
-    } else
-        information.elementRect = IntRect();
     // FIXME: This should return the selection rect, but when this is called at focus time
     // we don't have a selection yet. Using the last interaction location is a reasonable approximation for now.
+    // FIXME: should the selection rect always be inside the elementRect?
     information.selectionRect = IntRect(m_lastInteractionLocation, IntSize(1, 1));
-    information.minimumScaleFactor = m_viewportConfiguration.minimumScale();
-    information.maximumScaleFactor = m_viewportConfiguration.maximumScale();
+
+    if (RenderObject* renderer = m_assistedNode->renderer()) {
+        Frame& elementFrame = m_page->focusController().focusedOrMainFrame();
+        information.elementRect = elementFrame.view()->contentsToRootView(renderer->absoluteBoundingBoxRect());
+        information.nodeFontSize = renderer->style().fontDescription().computedSize();
+
+        bool inFixed = false;
+        renderer->localToContainerPoint(FloatPoint(), nullptr, 0, &inFixed);
+        information.insideFixedPosition = inFixed;
+        
+        if (inFixed && elementFrame.isMainFrame()) {
+            FrameView* frameView = elementFrame.view();
+            IntRect currentFixedPositionRect = frameView->customFixedPositionLayoutRect();
+            frameView->setCustomFixedPositionLayoutRect(frameView->renderView()->documentRect());
+            information.elementRect = frameView->contentsToRootView(renderer->absoluteBoundingBoxRect());
+            frameView->setCustomFixedPositionLayoutRect(currentFixedPositionRect);
+            
+            if (!information.elementRect.contains(information.selectionRect))
+                information.selectionRect.setLocation(information.elementRect.location());
+        }
+    } else
+        information.elementRect = IntRect();
+
+    information.minimumScaleFactor = minimumPageScaleFactor();
+    information.maximumScaleFactor = maximumPageScaleFactor();
     information.allowsUserScaling = m_viewportConfiguration.allowsUserScaling();
     information.hasNextNode = hasFocusableElement(m_assistedNode.get(), m_page.get(), true);
     information.hasPreviousNode = hasFocusableElement(m_assistedNode.get(), m_page.get(), false);
@@ -2178,11 +2240,12 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         visibleHorizontalFraction = frameView.unobscuredContentSize().width() / oldContentSize.width();
         IntPoint unobscuredContentRectCenter = frameView.unobscuredContentRect().center();
 
-        HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
         HitTestResult hitTestResult = HitTestResult(unobscuredContentRectCenter);
 
-        RenderView* mainFrameRenderView = frameView.renderView();
-        mainFrameRenderView->hitTest(request, hitTestResult);
+        if (RenderView* mainFrameRenderView = frameView.renderView()) {
+            HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
+            mainFrameRenderView->hitTest(request, hitTestResult);
+        }
 
         if (Node* node = hitTestResult.innerNode()) {
             if (RenderObject* renderer = node->renderer()) {
@@ -2437,18 +2500,19 @@ static inline FloatRect adjustExposedRectForBoundedScale(const FloatRect& expose
     return adjustExposedRectForNewScale(exposedRect, exposedRectScale, newScale);
 }
 
-void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo)
+void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo, double oldestTimestamp)
 {
     // Skip any VisibleContentRectUpdate that have been queued before DidCommitLoad suppresses the updates in the UIProcess.
-    if (visibleContentRectUpdateInfo.lastLayerTreeTransactionID() <= m_firstLayerTreeTransactionIDAfterDidCommitLoad)
+    if (visibleContentRectUpdateInfo.lastLayerTreeTransactionID() < m_firstLayerTreeTransactionIDAfterDidCommitLoad)
         return;
 
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = true;
+    m_isInStableState = visibleContentRectUpdateInfo.inStableState();
 
     double scaleNoiseThreshold = 0.005;
     double filteredScale = visibleContentRectUpdateInfo.scale();
     double currentScale = m_page->pageScaleFactor();
-    if (!visibleContentRectUpdateInfo.inStableState() && fabs(filteredScale - m_page->pageScaleFactor()) < scaleNoiseThreshold) {
+    if (!m_isInStableState && fabs(filteredScale - m_page->pageScaleFactor()) < scaleNoiseThreshold) {
         // Tiny changes of scale during interactive zoom cause content to jump by one pixel, creating
         // visual noise. We filter those useless updates.
         filteredScale = currentScale;
@@ -2457,8 +2521,15 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     double boundedScale = std::min(m_viewportConfiguration.maximumScale(), std::max(m_viewportConfiguration.minimumScale(), filteredScale));
 
     // Skip progressively redrawing tiles if pinch-zooming while the system is under memory pressure.
-    if (boundedScale != currentScale && !visibleContentRectUpdateInfo.inStableState() && memoryPressureHandler().isUnderMemoryPressure())
+    if (boundedScale != currentScale && !m_isInStableState && memoryPressureHandler().isUnderMemoryPressure())
         return;
+
+    if (m_isInStableState)
+        m_hasStablePageScaleFactor = true;
+    else {
+        if (m_oldestNonStableUpdateVisibleContentRectsTimestamp == std::chrono::milliseconds::zero())
+            m_oldestNonStableUpdateVisibleContentRectsTimestamp = std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(oldestTimestamp * 1000));
+    }
 
     FloatRect exposedRect = visibleContentRectUpdateInfo.exposedRect();
     FloatRect adjustedExposedRect = adjustExposedRectForBoundedScale(exposedRect, visibleContentRectUpdateInfo.scale(), boundedScale);
@@ -2466,18 +2537,15 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredRect().location());
 
-    if (!m_hasStablePageScaleFactor && visibleContentRectUpdateInfo.inStableState())
-        m_hasStablePageScaleFactor = true;
-
     float floatBoundedScale = boundedScale;
     bool hasSetPageScale = false;
     if (floatBoundedScale != currentScale) {
         m_scaleWasSetByUIProcess = true;
-        m_hasStablePageScaleFactor = visibleContentRectUpdateInfo.inStableState();
+        m_hasStablePageScaleFactor = m_isInStableState;
 
         m_dynamicSizeUpdateHistory.clear();
 
-        m_page->setPageScaleFactor(floatBoundedScale, scrollPosition, visibleContentRectUpdateInfo.inStableState());
+        m_page->setPageScaleFactor(floatBoundedScale, scrollPosition, m_isInStableState);
         hasSetPageScale = true;
 
         if (LayerTreeHost* layerTreeHost = m_drawingArea->layerTreeHost())
@@ -2485,7 +2553,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
         send(Messages::WebPageProxy::PageScaleFactorDidChange(floatBoundedScale));
     }
 
-    if (!hasSetPageScale && visibleContentRectUpdateInfo.inStableState()) {
+    if (!hasSetPageScale && m_isInStableState) {
         m_page->setPageScaleFactor(floatBoundedScale, scrollPosition, true);
         hasSetPageScale = true;
     }
@@ -2503,7 +2571,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     frameView.setScrollVelocity(horizontalVelocity, verticalVelocity, scaleChangeRate, visibleContentRectUpdateInfo.timestamp());
 
-    if (visibleContentRectUpdateInfo.inStableState())
+    if (m_isInStableState)
         m_page->mainFrame().view()->setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
 
     if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())

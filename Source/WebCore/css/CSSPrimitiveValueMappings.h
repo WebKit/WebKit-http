@@ -2562,17 +2562,8 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(TextJustify e)
     case TextJustifyInterWord:
         m_value.valueID = CSSValueInterWord;
         break;
-    case TextJustifyInterIdeograph:
-        m_value.valueID = CSSValueInterIdeograph;
-        break;
-    case TextJustifyInterCluster:
-        m_value.valueID = CSSValueInterCluster;
-        break;
     case TextJustifyDistribute:
         m_value.valueID = CSSValueDistribute;
-        break;
-    case TextJustifyKashida:
-        m_value.valueID = CSSValueKashida;
         break;
     }
 }
@@ -2588,14 +2579,8 @@ template<> inline CSSPrimitiveValue::operator TextJustify() const
         return TextJustifyNone;
     case CSSValueInterWord:
         return TextJustifyInterWord;
-    case CSSValueInterIdeograph:
-        return TextJustifyInterIdeograph;
-    case CSSValueInterCluster:
-        return TextJustifyInterCluster;
     case CSSValueDistribute:
         return TextJustifyDistribute;
-    case CSSValueKashida:
-        return TextJustifyKashida;
     default:
         break;
     }
@@ -4580,8 +4565,7 @@ enum LengthConversion {
     FixedFloatConversion = 1 << 1,
     AutoConversion = 1 << 2,
     PercentConversion = 1 << 3,
-    FractionConversion = 1 << 4,
-    CalculatedConversion = 1 << 5
+    CalculatedConversion = 1 << 4
 };
 
 template<int supported> Length CSSPrimitiveValue::convertToLength(const CSSToLengthConversionData& conversionData) const
@@ -4594,8 +4578,6 @@ template<int supported> Length CSSPrimitiveValue::convertToLength(const CSSToLen
         return Length(computeLength<double>(conversionData), Fixed);
     if ((supported & PercentConversion) && isPercentage())
         return Length(getDoubleValue(), Percent);
-    if ((supported & FractionConversion) && isNumber())
-        return Length(getDoubleValue() * 100.0, Percent);
     if ((supported & AutoConversion) && getValueID() == CSSValueAuto)
         return Length(Auto);
     if ((supported & CalculatedConversion) && isCalculated())

@@ -31,6 +31,7 @@
 #include <wtf/Forward.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -68,23 +69,7 @@ public:
     ~SharedBuffer();
     
 #if USE(FOUNDATION)
-    // FIXME: This class exists as a temporary workaround so that code that does:
-    // [buffer->createNSData() autorelease] will fail to compile.
-    // Once both Mac and iOS builds with this change we can change the return type to be RetainPtr<NSData>,
-    // since we're mostly worried about existing code breaking (it's unlikely that we'd use retain/release together
-    // with RetainPtr in new code.
-    class NSDataRetainPtrWithoutImplicitConversionOperator : public RetainPtr<NSData*> {
-    public:
-        template<typename T>
-        NSDataRetainPtrWithoutImplicitConversionOperator(RetainPtr<T*>&& other)
-            : RetainPtr<NSData*>(WTF::move(other))
-        {
-        }
-
-        explicit operator PtrType() = delete;
-    };
-
-    NSDataRetainPtrWithoutImplicitConversionOperator createNSData();
+    RetainPtr<NSData> createNSData();
     static PassRefPtr<SharedBuffer> wrapNSData(NSData *data);
 #endif
 #if USE(CF)
@@ -174,6 +159,10 @@ public:
     void tryReplaceContentsWithPlatformBuffer(SharedBuffer*);
     bool hasPlatformData() const;
 
+    struct DataBuffer : public ThreadSafeRefCounted<DataBuffer> {
+        Vector<char> data;
+    };
+
 private:
     SharedBuffer();
     explicit SharedBuffer(unsigned);
@@ -193,8 +182,13 @@ private:
 
     void copyBufferAndClear(char* destination, unsigned bytesToCopy) const;
 
+    void appendToDataBuffer(const char *, unsigned) const;
+    void duplicateDataBufferIfNecessary() const;
+    void clearDataBuffer();
+
     unsigned m_size;
-    mutable Vector<char> m_buffer;
+    mutable RefPtr<DataBuffer> m_buffer;
+
     bool m_shouldUsePurgeableMemory;
     mutable OwnPtr<PurgeableBuffer> m_purgeableBuffer;
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)

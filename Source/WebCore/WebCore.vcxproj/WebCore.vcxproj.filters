@@ -1791,7 +1791,7 @@
     <ClCompile Include="..\platform\network\BlobResourceHandle.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\network\Credential.cpp">
+    <ClCompile Include="..\platform\network\CredentialBase.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\CredentialStorage.cpp">
@@ -1827,7 +1827,7 @@
     <ClCompile Include="..\platform\network\ParsedContentType.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\network\ProtectionSpace.cpp">
+    <ClCompile Include="..\platform\network\ProtectionSpaceBase.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\ProxyServer.cpp">
@@ -1879,6 +1879,9 @@
       <Filter>platform\network\cf</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\cf\NetworkStorageSessionCFNet.cpp">
+      <Filter>platform\network\cf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\cf\ProtectionSpaceCFNet.cpp">
       <Filter>platform\network\cf</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\cf\ProxyServerCFNet.cpp">
@@ -2593,6 +2596,9 @@
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderSearchField.cpp">
+      <Filter>rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rendering\RenderSelectionInfo.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderSlider.cpp">
@@ -4249,9 +4255,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\CallbackFunction.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\DOMObjectHashTableMap.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\DOMWrapperWorld.cpp">
@@ -8805,6 +8808,9 @@
     <ClInclude Include="..\platform\network\Credential.h">
       <Filter>platform\network</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\network\CredentialBase.h">
+      <Filter>platform\network</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\network\CredentialStorage.h">
       <Filter>platform\network</Filter>
     </ClInclude>
@@ -11461,9 +11467,6 @@
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\Dictionary.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bindings\js\DOMObjectHashTableMap.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\DOMWrapperWorld.h">
@@ -15360,6 +15363,9 @@
       <Filter>platform\network\cf</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\network\cf\FormDataStreamCFNet.h">
+      <Filter>platform\network\cf</Filter>
+    </CustomBuildStep>
+    <CustomBuildStep Include="..\platform\network\cf\ProtectionSpaceCFNet.h">
       <Filter>platform\network\cf</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\network\cf\ResourceError.h">

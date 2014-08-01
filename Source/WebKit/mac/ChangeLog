@@ -1,3 +1,280 @@
+2014-07-30  Andy Estes  <aestes@apple.com>
+
+        USE(CONTENT_FILTERING) should be ENABLE(CONTENT_FILTERING)
+        https://bugs.webkit.org/show_bug.cgi?id=135439
+
+        Reviewed by Tim Horton.
+
+        We now support two different platform content filters, and will soon support a mock content filter (as part of
+        webkit.org/b/128858). This makes content filtering a feature of WebKit, not just an adoption of a third-party
+        library. ENABLE() is the correct macro to use for such a feature.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-07-30  Andreas Kling  <akling@apple.com>
+
+        Static hash tables no longer need to be coupled with a VM.
+        <https://webkit.org/b/135421>
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/Hosted/ProxyInstance.mm:
+        * Plugins/Hosted/ProxyRuntimeObject.mm:
+
+2014-07-30  Dan Bernstein  <mitz@apple.com>
+
+        Updated for changes to the WebCore::Credential API.
+        Work towards fixing https://bugs.webkit.org/show_bug.cgi?id=135327
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownloadInternal download:didReceiveAuthenticationChallenge:]): Use new nsCredential
+        getter.
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (WebKit::getAuthenticationInfo): Ditto.
+
+2014-07-27  Pratik Solanki  <psolanki@apple.com>
+
+        Remove unused preference keys
+        https://bugs.webkit.org/show_bug.cgi?id=135280
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences _setPageCacheSize:]): Deleted.
+        (-[WebPreferences _pageCacheSize]): Deleted.
+        (-[WebPreferences _setObjectCacheSize:]): Deleted.
+        (-[WebPreferences _objectCacheSize]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+
+2014-07-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Merge r170090, r170092, r170129, r170141, r170161, r170215, r170275, r170375, r170376, r170382, r170383, r170399, r170436, r170489, r170490, r170556 from ftlopt.
+
+    2014-07-25  Mark Lam  <mark.lam@apple.com>
+    
+            [ftlopt] Renamed DebuggerActivation to DebuggerScope.
+            <https://webkit.org/b/134273>
+    
+            Reviewed by Michael Saboff.
+    
+            * WebView/WebScriptDebugDelegate.mm:
+            - Removed unneeded #include.
+    
+2014-07-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out r171641-r171644. It broke some tests; will investigate and
+        reland later.
+
+        * WebView/WebScriptDebugDelegate.mm:
+
+2014-07-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Merge r170090, r170092, r170129, r170141, r170161, r170215, r170275, r170375, r170376, r170382, r170383, r170399, r170436, r170489, r170490, r170556 from ftlopt.
+
+    2014-07-25  Mark Lam  <mark.lam@apple.com>
+    
+            [ftlopt] Renamed DebuggerActivation to DebuggerScope.
+            <https://webkit.org/b/134273>
+    
+            Reviewed by Michael Saboff.
+    
+            * WebView/WebScriptDebugDelegate.mm:
+            - Removed unneeded #include.
+    
+2014-07-25  Jeremy Jones  <jeremyj@apple.com>
+
+        Parent fullscreen from window instead of view
+        https://bugs.webkit.org/show_bug.cgi?id=135310
+
+        Reviewed by Jer Noble.
+
+        Parenting in the view causes an incorrect animation to fullscreen, and can cause 
+        fullscreen to only expand to the size of the view instead of the whole window.
+
+        * WebView/WebView.mm:
+        (-[WebView _enterFullscreenForNode:]): Pass window instead of view.
+
+2014-07-24  Pratik Solanki  <psolanki@apple.com>
+
+        [iOS] Remove prefs to tweak cache values
+        https://bugs.webkit.org/show_bug.cgi?id=135274
+        <rdar://problem/17784826>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Remove iOS specific code that used to look up user defaults to see if any cache values were
+        overridden. This was added for testing, is not used any more and is actually harmful now. It
+        can cause unnecessary memory churn when under memory pressure since we call [WebView _setCacheModel]
+        as a means to clear out memory cache.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences _setNSURLMemoryCacheSize:]): Deleted.
+        (-[WebPreferences _NSURLMemoryCacheSize]): Deleted.
+        (-[WebPreferences _setNSURLDiskCacheSize:]): Deleted.
+        (-[WebPreferences _NSURLDiskCacheSize]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+
+2014-07-24  Peyton Randolph  <prandolph@apple.com>
+
+        Rename feature flag for long-press gesture on Mac.                                                                   
+        https://bugs.webkit.org/show_bug.cgi?id=135259                                                                 
+
+        Reviewed by Beth Dakin.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Rename LINK_LONG_PRESS to MAC_LONG_PRESS.
+
+2014-07-24  Dan Bernstein  <mitz@apple.com>
+
+        WebKit part of <rdar://problem/17766348> [Cocoa] WebCore::ProtectionSpace doesn’t preserve all NSURLProtectionSpace properties, such as the distinguishedNames array
+        https://bugs.webkit.org/show_bug.cgi?id=135229
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownloadInternal download:didReceiveAuthenticationChallenge:]): Chanegd to use the
+        ProtectionSpace constructor that takes an NSURLProtectionSpace.
+
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (WebKit::getAuthenticationInfo): Ditto.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::canAuthenticateAgainstProtectionSpace): Changed to use
+        ProtectionSpace::nsSpace.
+
+2014-07-23  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Remove CSS_EXCLUSIONS compile flag and leftover code
+        https://bugs.webkit.org/show_bug.cgi?id=135175
+
+        Reviewed by Zoltan Horvath.
+
+        At this point, the CSS_EXCLUSIONS flag guards nothing but some useless
+        stubs. This removes the flag and the useless code.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-07-22  Enrica Casucci  <enrica@apple.com>
+
+        REGRESSION (WebKit2): Selection inside accelerated overflow:scroll doesn't track scrolling.
+        https://bugs.webkit.org/show_bug.cgi?id=135180
+        <rdar://problem/16721055>
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2014-07-22  Jeremy Jones  <jeremyj@apple.com>
+
+        Don't create new UIWindow for video fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=135038
+
+        Reviewed by Darin Adler.
+
+        Provide UIView to WebVideoFullscreenController
+
+        * WebView/WebView.mm:
+        (-[WebView _enterFullscreenForNode:]): pass UIView instead of nil
+
+2014-07-21  Pratik Solanki  <psolanki@apple.com>
+
+        Unreviewed iOS build fix after r171321.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-07-21  Beth Dakin  <bdakin@apple.com>
+
+        WK1 should always setAcceleratedCompositingForFixedPositionEnabled(true) on 
+        Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=135135
+
+        Reviewed by Darin Adler.
+
+        Get rid of the ChromeClient function, and enable the Setting instead.
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::requiresAcceleratedCompositingForViewportConstrainedPosition): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-07-21  Beth Dakin  <bdakin@apple.com>
+
+        Build fix.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::requiresAcceleratedCompositingForViewportConstrainedPosition):
+
+2014-07-21  Beth Dakin  <bdakin@apple.com>
+
+        Put position:fixed elements into layers when a WK1 view is layer-backed
+        https://bugs.webkit.org/show_bug.cgi?id=135075
+
+        Reviewed by Darin Adler.
+
+        Returns true when the WebHTMLView has a layer.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::requiresAcceleratedCompositingForViewportConstrainedPosition):
+
+2014-07-18  Andy Estes  <aestes@apple.com>
+
+        [iOS] Tapping "Allow Website" on a restricted page does not bring up the keypad
+        https://bugs.webkit.org/show_bug.cgi?id=135072
+        <rdar://problem/17528188>
+
+        Reviewed by David Kilzer.
+
+        * WebCoreSupport/WebFrameLoaderClient.h: Override contentFilterDidBlockLoad().
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidStartProvisionalLoad): Reset contentFilterForBlockedLoad to nullptr.
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction): Check if this is navigation represents an
+        unblock request and ignore if so.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _contentFilterDidHandleNavigationAction:]): Called ContentFilter::handleUnblockRequestAndDispatchIfSuccessful().
+        If the unblock is successful, reload the main frame.
+        * WebView/WebFrameInternal.h:
+
+2014-07-17  David Kilzer  <ddkilzer@apple.com>
+
+        SECTORDER_FLAGS should be defined in target's xcconfig file, not Base.xcconfig
+        <http://webkit.org/b/135006>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Move SECTORDER_FLAGS to
+        WebKitLegacy.xcconfig.
+        * Configurations/DebugRelease.xcconfig: Remove empty
+        SECTORDER_FLAGS definition.
+        * Configurations/WebKit.xcconfig: Removed.  Unused.
+        * Configurations/WebKitLegacy.xcconfig: Use $(CONFIGURATION) so
+        SECTORDER_FLAGS is only set on Production builds.
+
+2014-07-17  Timothy Hatcher  <timothy@apple.com>
+
+        Make console.profile record to the Timeline.
+
+        https://bugs.webkit.org/show_bug.cgi?id=134643
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebInspector/WebInspector.mm:
+        (-[WebInspector isProfilingJavaScript]):
+        (-[WebInspector toggleProfilingJavaScript:]):
+        (-[WebInspector startProfilingJavaScript:]):
+        (-[WebInspector stopProfilingJavaScript:]):
+        (-[WebInspector isJavaScriptProfilingEnabled]):
+        (-[WebInspector setJavaScriptProfilingEnabled:]):
+
 2014-07-16  David Kilzer  <ddkilzer@apple.com>
 
         [iOS] Update order file paths for WebKit and WebKit2

@@ -41,7 +41,6 @@
 #import "WKHistoryDelegatePrivate.h"
 #import "WKNSURLAuthenticationChallenge.h"
 #import "WKNSURLExtras.h"
-#import "WKNSURLProtectionSpace.h"
 #import "WKNSURLRequest.h"
 #import "WKNavigationActionInternal.h"
 #import "WKNavigationDataInternal.h"
@@ -54,9 +53,10 @@
 #import "WebFrameProxy.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
+#import "WebProtectionSpace.h"
 #import "_WKErrorRecoveryAttempting.h"
 #import "_WKFrameHandleInternal.h"
-#import <WebCore/AuthenticationMac.h>
+#import <WebCore/Credential.h>
 #import <wtf/NeverDestroyed.h>
 
 #if USE(QUICK_LOOK)
@@ -167,7 +167,7 @@ RetainPtr<WKNavigation> NavigationState::createLoadRequestNavigation(uint64_t na
     ASSERT(!m_navigations.contains(navigationID));
 
     RetainPtr<WKNavigation> navigation = adoptNS([[WKNavigation alloc] init]);
-    [navigation setRequest:request];
+    navigation->_request = request;
 
     m_navigations.set(navigationID, navigation);
 
@@ -691,7 +691,7 @@ void NavigationState::LoaderClient::didLayout(WebKit::WebPageProxy*, WebCore::La
 bool NavigationState::LoaderClient::canAuthenticateAgainstProtectionSpaceInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::WebProtectionSpace* protectionSpace)
 {
     if (m_navigationState.m_navigationDelegateMethods.webViewDidReceiveAuthenticationChallengeCompletionHandler)
-        return protectionSpace->authenticationScheme() != WebCore::ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested;
+        return true;
 
     if (!m_navigationState.m_navigationDelegateMethods.webViewCanAuthenticateAgainstProtectionSpace)
         return false;
@@ -700,14 +700,13 @@ bool NavigationState::LoaderClient::canAuthenticateAgainstProtectionSpaceInFrame
     if (!navigationDelegate)
         return false;
 
-    return [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webView:m_navigationState.m_webView canAuthenticateAgainstProtectionSpace:wrapper(*protectionSpace)];
+    return [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webView:m_navigationState.m_webView canAuthenticateAgainstProtectionSpace:protectionSpace->protectionSpace().nsSpace()];
 }
 
 void NavigationState::LoaderClient::didReceiveAuthenticationChallengeInFrame(WebPageProxy*, WebFrameProxy*, AuthenticationChallengeProxy* authenticationChallenge)
 {
 #if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     if (m_navigationState.m_navigationDelegateMethods.webViewDidReceiveAuthenticationChallengeCompletionHandler) {
-        ASSERT(authenticationChallenge->protectionSpace()->authenticationScheme() != WebCore::ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested);
         auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
         if (!navigationDelegate) {
             authenticationChallenge->listener()->performDefaultHandling();
@@ -724,7 +723,7 @@ void NavigationState::LoaderClient::didReceiveAuthenticationChallengeInFrame(Web
                 case NSURLSessionAuthChallengeUseCredential: {
                     RefPtr<WebCredential> webCredential;
                     if (credential)
-                        webCredential = WebCredential::create(WebCore::core(credential));
+                        webCredential = WebCredential::create(WebCore::Credential(credential));
 
                     challenge->listener()->useCredential(webCredential.get());
                     break;

@@ -2,6 +2,7 @@
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Rob Buis <buis@kde.org>
  * Copyright (C) 2006 Alexander Kellett <lypanov@kde.org>
+ * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -87,23 +88,6 @@ bool SVGImageElement::isSupportedAttribute(const QualifiedName& attrName)
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
 }
 
-bool SVGImageElement::isPresentationAttribute(const QualifiedName& name) const
-{
-    if (name == SVGNames::widthAttr || name == SVGNames::heightAttr)
-        return true;
-    return SVGGraphicsElement::isPresentationAttribute(name);
-}
-
-void SVGImageElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
-{
-    if (!isSupportedAttribute(name))
-        SVGGraphicsElement::collectStyleForPresentationAttribute(name, value, style);
-    else if (name == SVGNames::widthAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyWidth, value);
-    else if (name == SVGNames::heightAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyHeight, value);
-}
-
 void SVGImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     SVGParsingError parseError = NoError;
@@ -139,7 +123,13 @@ void SVGImageElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     SVGElementInstance::InvalidationGuard invalidationGuard(this);
-    
+
+    if (attrName == SVGNames::widthAttr
+        || attrName == SVGNames::heightAttr) {
+        invalidateSVGPresentationAttributeStyle();
+        return;
+    }
+
     bool isLengthAttribute = attrName == SVGNames::xAttr
                           || attrName == SVGNames::yAttr
                           || attrName == SVGNames::widthAttr
@@ -171,14 +161,6 @@ void SVGImageElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     ASSERT_NOT_REACHED();
-}
-
-bool SVGImageElement::selfHasRelativeLengths() const
-{
-    return x().isRelative()
-        || y().isRelative()
-        || width().isRelative()
-        || height().isRelative();
 }
 
 RenderPtr<RenderElement> SVGImageElement::createElementRenderer(PassRef<RenderStyle> style)

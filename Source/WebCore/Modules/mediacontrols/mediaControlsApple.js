@@ -26,6 +26,7 @@ function Controller(root, video, host)
     this.updateThumbnail();
     this.updateCaptionButton();
     this.updateCaptionContainer();
+    this.updateFullscreenButton();
     this.updateVolume();
     this.updateHasAudio();
     this.updateHasVideo();
@@ -63,6 +64,8 @@ Controller.prototype = {
         progress: 'handleProgress',
         volumechange: 'handleVolumeChange',
         webkitfullscreenchange: 'handleFullscreenChange',
+        webkitbeginfullscreen: 'handleFullscreenChange',
+        webkitendfullscreen: 'handleFullscreenChange',
     },
     HideControlsDelay: 4 * 1000,
     RewindAmount: 30,
@@ -282,6 +285,9 @@ Controller.prototype = {
 
     createControls: function()
     {
+        var panelCompositedParent = this.controls.panelCompositedParent = document.createElement('div');
+        panelCompositedParent.setAttribute('pseudo', '-webkit-media-controls-panel-composited-parent');
+
         var panel = this.controls.panel = document.createElement('div');
         panel.setAttribute('pseudo', '-webkit-media-controls-panel');
         panel.setAttribute('aria-label', (this.isAudio() ? this.UIString('Audio Playback') : this.UIString('Video Playback')));
@@ -552,6 +558,7 @@ Controller.prototype = {
         this.updateDuration();
         this.updateCaptionButton();
         this.updateCaptionContainer();
+        this.updateFullscreenButton();
         this.updateProgress();
     },
 
@@ -614,7 +621,7 @@ Controller.prototype = {
 
     isFullScreen: function()
     {
-        return document.webkitCurrentFullScreenElement === this.video;
+        return this.video.webkitDisplayingFullscreen;
     },
 
     handleFullscreenChange: function(event)
@@ -827,12 +834,17 @@ Controller.prototype = {
         return true;
     },
 
+    updateFullscreenButton: function()
+    {
+        this.controls.fullscreenButton.classList.toggle(this.ClassNames.hidden, !this.video.webkitSupportsFullscreen);
+    },
+
     handleFullscreenButtonClicked: function(event)
     {
         if (this.isFullScreen())
-            document.webkitExitFullscreen();
+            this.video.webkitExitFullscreen();
         else
-            this.video.webkitRequestFullscreen();
+            this.video.webkitEnterFullscreen();
         return true;
     },
 
@@ -1017,7 +1029,8 @@ Controller.prototype = {
 
     addControls: function()
     {
-        this.base.appendChild(this.controls.panel);
+        this.base.appendChild(this.controls.panelCompositedParent);
+        this.controls.panelCompositedParent.appendChild(this.controls.panel);
         this.setNeedsTimelineMetricsUpdate();
     },
 

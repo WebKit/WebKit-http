@@ -211,5 +211,6 @@ public:
 #endif
 
 private:
+
     WebView *m_webView;
 };

@@ -37,8 +37,10 @@ WebInspector.TimelineOverview = function(timelineOverviewGraphsMap)
 
     this._timelineOverviewGraphsMap = timelineOverviewGraphsMap;
 
-    for (var timelineOverviewGraph of this._timelineOverviewGraphsMap.values())
+    for (var timelineOverviewGraph of this._timelineOverviewGraphsMap.values()) {
+        timelineOverviewGraph.timelineOverview = this;
         this._graphsContainer.appendChild(timelineOverviewGraph.element);
+    }
 
     this._timelineRuler = new WebInspector.TimelineRuler;
     this._timelineRuler.allowsClippedLabels = true;
@@ -67,6 +69,7 @@ WebInspector.TimelineOverview = function(timelineOverviewGraphsMap)
     this._endTime = 0;
     this._secondsPerPixel = this._secondsPerPixelSetting.value;
     this._scrollStartTime = 0;
+    this._cachedScrollContainerWidth = NaN;
 
     this.selectionStartTime = this._selectionStartTimeSetting.value;
     this.selectionDuration = this._selectionDurationSetting.value;
@@ -175,7 +178,12 @@ WebInspector.TimelineOverview.prototype = {
 
     get visibleDuration()
     {
-        return this._scrollContainer.offsetWidth * this._secondsPerPixel;
+        if (isNaN(this._cachedScrollContainerWidth)) {
+            this._cachedScrollContainerWidth = this._scrollContainer.offsetWidth;
+            console.assert(this._cachedScrollContainerWidth > 0);
+        }
+
+        return this._cachedScrollContainerWidth * this._secondsPerPixel;
     },
 
     get selectionStartTime()
@@ -213,6 +221,12 @@ WebInspector.TimelineOverview.prototype = {
         this.scrollStartTime = marker.time - (this.visibleDuration / 2);
     },
 
+    updateLayoutForResize: function()
+    {
+        this._cachedScrollContainerWidth = NaN;
+        this.updateLayout();
+    },
+
     updateLayout: function()
     {
         if (this._scheduledLayoutUpdateIdentifier) {
@@ -234,8 +248,10 @@ WebInspector.TimelineOverview.prototype = {
             delete this._revealCurrentTime;
         }
 
+        const visibleDuration = this.visibleDuration;
+
         // Clamp the scroll start time to match what the scroll bar would allow.
-        var scrollStartTime = Math.min(this._scrollStartTime, this._endTime - this.visibleDuration);
+        var scrollStartTime = Math.min(this._scrollStartTime, this._endTime - visibleDuration);
         scrollStartTime = Math.max(this._startTime, scrollStartTime);
 
         this._timelineRuler.zeroTime = this._startTime;
@@ -253,7 +269,7 @@ WebInspector.TimelineOverview.prototype = {
             timelineOverviewGraph.zeroTime = this._startTime;
             timelineOverviewGraph.startTime = scrollStartTime;
             timelineOverviewGraph.currentTime = this._currentTime;
-            timelineOverviewGraph.endTime = scrollStartTime + this.visibleDuration;
+            timelineOverviewGraph.endTime = scrollStartTime + visibleDuration;
             timelineOverviewGraph.updateLayout();
         }
     },

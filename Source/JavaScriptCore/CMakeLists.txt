@@ -68,6 +68,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CodeBlockJettisoningWatchpoint.cpp
     bytecode/CodeOrigin.cpp
     bytecode/CodeType.cpp
+    bytecode/ConstantStructureCheck.cpp
     bytecode/DFGExitProfile.cpp
     bytecode/DeferredCompilationCallback.cpp
     bytecode/ExecutionCounter.cpp
@@ -90,8 +91,10 @@ set(JavaScriptCore_SOURCES
     bytecode/SamplingTool.cpp
     bytecode/SpecialPointer.cpp
     bytecode/SpeculatedType.cpp
+    bytecode/StructureSet.cpp
     bytecode/StructureStubClearingWatchpoint.cpp
     bytecode/StructureStubInfo.cpp
+    bytecode/ToThisStatus.cpp
     bytecode/UnlinkedCodeBlock.cpp
     bytecode/UnlinkedInstructionStream.cpp
     bytecode/ValueRecovery.cpp
@@ -101,8 +104,8 @@ set(JavaScriptCore_SOURCES
     bytecompiler/NodesCodegen.cpp
 
     debugger/Debugger.cpp
-    debugger/DebuggerActivation.cpp
     debugger/DebuggerCallFrame.cpp
+    debugger/DebuggerScope.cpp
 
     dfg/DFGAbstractHeap.cpp
     dfg/DFGAbstractValue.cpp
@@ -131,12 +134,12 @@ set(JavaScriptCore_SOURCES
     dfg/DFGCriticalEdgeBreakingPhase.cpp
     dfg/DFGDCEPhase.cpp
     dfg/DFGDesiredIdentifiers.cpp
-    dfg/DFGDesiredStructureChains.cpp
     dfg/DFGDesiredTransitions.cpp
     dfg/DFGDesiredWatchpoints.cpp
     dfg/DFGDesiredWeakReferences.cpp
     dfg/DFGDesiredWriteBarriers.cpp
     dfg/DFGDisassembler.cpp
+    dfg/DFGDoesGC.cpp
     dfg/DFGDominators.cpp
     dfg/DFGDriver.cpp
     dfg/DFGEdge.cpp
@@ -145,6 +148,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFixupPhase.cpp
     dfg/DFGFlushFormat.cpp
     dfg/DFGFlushedAt.cpp
+    dfg/DFGFrozenValue.cpp
     dfg/DFGFunctionWhitelist.cpp
     dfg/DFGGraph.cpp
     dfg/DFGGraphSafepoint.cpp
@@ -160,6 +164,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLivenessAnalysisPhase.cpp
     dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
+    dfg/DFGMayExit.cpp
     dfg/DFGMinifiedNode.cpp
     dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
@@ -191,19 +196,23 @@ set(JavaScriptCore_SOURCES
     dfg/DFGStaticExecutionCountEstimationPhase.cpp
     dfg/DFGStoreBarrierElisionPhase.cpp
     dfg/DFGStrengthReductionPhase.cpp
+    dfg/DFGStructureAbstractValue.cpp
     dfg/DFGThreadData.cpp
     dfg/DFGThunks.cpp
     dfg/DFGTierUpCheckInjectionPhase.cpp
+    dfg/DFGTransition.cpp
     dfg/DFGTypeCheckHoistingPhase.cpp
     dfg/DFGUnificationPhase.cpp
     dfg/DFGUseKind.cpp
     dfg/DFGValidate.cpp
     dfg/DFGValueSource.cpp
+    dfg/DFGValueStrength.cpp
     dfg/DFGVariableAccessData.cpp
     dfg/DFGVariableAccessDataDump.cpp
     dfg/DFGVariableEvent.cpp
     dfg/DFGVariableEventStream.cpp
     dfg/DFGVirtualRegisterAllocationPhase.cpp
+    dfg/DFGWatchableStructureWatchingPhase.cpp
     dfg/DFGWatchpointCollectionPhase.cpp
     dfg/DFGWorklist.cpp
 
@@ -380,12 +389,15 @@ set(JavaScriptCore_SOURCES
     runtime/ErrorHandlingScope.cpp
     runtime/ErrorInstance.cpp
     runtime/ErrorPrototype.cpp
-    runtime/ExceptionHelpers.cpp
+    runtime/ExceptionFuzz.cpp
+    runtime/ExceptionHelpers.cpp 
     runtime/Executable.cpp
     runtime/FunctionConstructor.cpp
     runtime/FunctionExecutableDump.cpp
     runtime/FunctionPrototype.cpp
     runtime/GetterSetter.cpp
+    runtime/HighFidelityLog.cpp
+    runtime/HighFidelityTypeProfiler.cpp
     runtime/Identifier.cpp
     runtime/IndexingType.cpp
     runtime/InitializeThreading.cpp
@@ -491,6 +503,7 @@ set(JavaScriptCore_SOURCES
     runtime/StructureRareData.cpp
     runtime/SymbolTable.cpp
     runtime/TestRunnerUtils.cpp
+    runtime/TypeSet.cpp
     runtime/TypedArrayController.cpp
     runtime/TypedArrayType.cpp
     runtime/VM.cpp

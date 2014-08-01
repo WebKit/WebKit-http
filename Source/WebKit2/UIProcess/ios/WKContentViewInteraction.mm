@@ -37,6 +37,7 @@
 #import "WKFormSelectControl.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
 #import "WKWebViewConfiguration.h"
+#import "WKWebViewInternal.h"
 #import "WKWebViewPrivate.h"
 #import "WebEvent.h"
 #import "WebIOSEventFactory.h"
@@ -133,6 +134,10 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 - (void)scheduleReplacementsForText:(NSString *)text;
 - (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)scheduleChineseTransliterationForText:(NSString *)text;
+@end
+
+@interface UIWKSelectionAssistant (StagingToRemove)
+- (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 @end
 
 @interface UIKeyboardImpl (StagingToRemove)
@@ -653,6 +658,25 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius)
     [self _cancelInteraction];
 }
 
+- (void)_overflowScrollingWillBegin
+{
+    [_webSelectionAssistant willStartScrollingOverflow];
+    [_textSelectionAssistant willStartScrollingOverflow];    
+}
+
+- (void)_overflowScrollingDidEnd
+{
+    // If scrolling ends before we've received a selection update,
+    // we postpone showing the selection until the update is received.
+    if (!_selectionNeedsUpdate) {
+        _shouldRestoreSelection = YES;
+        return;
+    }
+    [self _updateChangedSelection];
+    [_webSelectionAssistant didEndScrollingOverflow];
+    [_textSelectionAssistant didEndScrollingOverflow];
+}
+
 - (BOOL)_requiresKeyboardWhenFirstResponder
 {
     // FIXME: We should add the logic to handle keyboard visibility during focus redirects.
@@ -1154,6 +1178,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     if (_textSelectionAssistant && [_textSelectionAssistant respondsToSelector:@selector(showTextServiceFor:fromRect:)])
         [_textSelectionAssistant showTextServiceFor:[self selectedText] fromRect:_page->editorState().selectionRects[0].rect()];
+    else if (_webSelectionAssistant && [_webSelectionAssistant respondsToSelector:@selector(showTextServiceFor:fromRect:)])
+        [_webSelectionAssistant showTextServiceFor:[self selectedText] fromRect:_page->editorState().selectionRects[0].rect()];
 }
 
 - (NSString *)selectedText
@@ -1592,6 +1618,8 @@ static inline UIWKSelectionFlags toUIWKSelectionFlags(SelectionFlags flags)
         uiFlags |= UIWKWordIsNearTap;
     if (flags & IsBlockSelection)
         uiFlags |= UIWKIsBlockSelection;
+    if (flags & PhraseBoundaryChanged)
+        uiFlags |= UIWKPhraseBoundaryChanged;
 
     return static_cast<UIWKSelectionFlags>(uiFlags);
 }
@@ -1675,6 +1703,17 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     _usingGestureForSelection = YES;
     _page->updateBlockSelectionWithTouch(WebCore::IntPoint(point), static_cast<uint32_t>(toSelectionTouch(touch)), static_cast<uint32_t>(toSelectionHandlePosition(handle)));
+}
+
+- (void)moveByOffset:(NSInteger)offset
+{
+    if (!offset)
+        return;
+    
+    [self beginSelectionChange];
+    _page->moveSelectionByOffset(offset, [self](CallbackBase::Error) {
+        [self endSelectionChange];
+    });
 }
 
 - (const WKAutoCorrectionData&)autocorrectionData
@@ -2438,7 +2477,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
 - (BOOL)hasContent
 {
-    return YES;
+    return _page->editorState().hasContent;
 }
 
 - (void)selectAll
@@ -2548,6 +2587,10 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
         [self _startAssistingKeyboard];
         break;
     }
+    
+    if (information.insideFixedPosition)
+        [_webView _updateVisibleContentRects];
+
     [self reloadInputViews];
     [self _displayFormNodeInputView];
 
@@ -2604,6 +2647,11 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     } else if (!_page->editorState().isContentEditable)
         [_webSelectionAssistant selectionChanged];
     _selectionNeedsUpdate = NO;
+    if (_shouldRestoreSelection) {
+        [_webSelectionAssistant didEndScrollingOverflow];
+        [_textSelectionAssistant didEndScrollingOverflow];
+        _shouldRestoreSelection = NO;
+    }
 }
 
 - (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const IntRect&)elementRect

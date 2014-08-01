@@ -114,6 +114,11 @@ audio::-webkit-media-text-track-container {
     -webkit-flex: 1 1 auto;
 }
 
+video::-webkit-media-controls-panel-composited-parent {
+    -webkit-transform: translateZ(0);
+    width: 100%;
+}
+
 audio::-webkit-media-controls-panel,
 video::-webkit-media-controls-panel {
     box-sizing: border-box;
@@ -189,6 +194,11 @@ audio::-webkit-media-controls-start-playback-button {
     background-repeat: no-repeat;
     background-position: center;
     background-image: url('data:image/svg+xml,<svg viewBox="0 0 144 144" xmlns="http://www.w3.org/2000/svg"><circle cx="72" cy="72" r="70" fill="rgba(247, 247, 247, .82)"/><path d="M48,36v74L109,74L48,36z" fill="rgba(129, 129, 129, .9)"/></svg>');
+}
+
+video::-webkit-media-controls-start-playback-button:active,
+audio::-webkit-media-controls-start-playback-button:active {
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 144 144" xmlns="http://www.w3.org/2000/svg"><circle cx="72" cy="72" r="70" fill="rgba(192, 192, 192, .82)"/><path d="M48,36v74L109,74L48,36z" fill="rgba(96, 96, 96, .9)"/></svg>');
 }
 
 video::-webkit-media-controls-start-playback-button.failed,

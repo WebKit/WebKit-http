@@ -141,6 +141,7 @@ typedef const char* optionString;
     v(bool, testTheFTL, false) \
     v(bool, verboseSanitizeStack, false) \
     v(bool, alwaysDoFullCollection, false) \
+    v(bool, eagerlyUpdateTopCallFrame, false) \
     \
     v(bool, enableOSREntryToDFG, true) \
     v(bool, enableOSREntryToFTL, true) \
@@ -166,6 +167,7 @@ typedef const char* optionString;
     v(bool, enableAccessInlining, true) \
     v(bool, enablePolyvariantDevirtualization, true) \
     v(bool, enablePolymorphicAccessInlining, true) \
+    v(bool, optimizeNativeCalls, false) \
     \
     v(bool, enableConcurrentJIT, true) \
     v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1) \
@@ -195,6 +197,8 @@ typedef const char* optionString;
     v(unsigned, maximumInliningRecursion, 2) \
     v(unsigned, maximumInliningDepthForMustInline, 7) \
     v(unsigned, maximumInliningRecursionForMustInline, 3) \
+    \
+    v(unsigned, maximumLLVMInstructionCountForNativeInlining, 80) \
     \
     /* Maximum size of a caller for enabling inlining. This is purely to protect us */\
     /* from super long compiles that take a lot of memory. */\
@@ -269,7 +273,11 @@ typedef const char* optionString;
     v(bool, disableGC, false) \
     v(unsigned, gcMaxHeapSize, 0) \
     v(bool, recordGCPauseTimes, false) \
-    v(bool, logHeapStatisticsAtExit, false)
+    v(bool, logHeapStatisticsAtExit, false) \
+    v(bool, profileTypesWithHighFidelity, false) \
+    \
+    v(bool, enableExceptionFuzz, false) \
+    v(unsigned, fireExceptionFuzzAt, 0)
 
 class Options {
 public:

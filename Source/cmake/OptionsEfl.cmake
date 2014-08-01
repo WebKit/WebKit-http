@@ -1,5 +1,5 @@
-set(PROJECT_VERSION_MAJOR 0)
-set(PROJECT_VERSION_MINOR 1)
+set(PROJECT_VERSION_MAJOR 1)
+set(PROJECT_VERSION_MINOR 11)
 set(PROJECT_VERSION_PATCH 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
@@ -19,7 +19,11 @@ find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
-find_package(GLIB 2.38.0 REQUIRED COMPONENTS gio gobject gthread)
+set(glib_components gio gobject gthread)
+if (ENABLE_GEOLOCATION)
+    list(APPEND glib_components gio-unix)
+endif ()
+find_package(GLIB 2.38.0 REQUIRED COMPONENTS ${glib_components})
 find_package(LibSoup 2.42.0 REQUIRED)
 
 set(WTF_USE_SOUP 1)
@@ -203,8 +207,6 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
 endif ()
 
 if (WTF_USE_TILED_BACKING_STORE)
-    add_definitions(-DWTF_USE_ACCELERATED_COMPOSITING=1)
-
     add_definitions(-DWTF_USE_COORDINATED_GRAPHICS=1)
 
     set(WTF_USE_TEXTURE_MAPPER 1)

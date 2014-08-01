@@ -1028,7 +1028,6 @@ set(WebCore_SOURCES
 
     bindings/js/ArrayValue.cpp
     bindings/js/CallbackFunction.cpp
-    bindings/js/DOMObjectHashTableMap.cpp
     bindings/js/DOMWrapperWorld.cpp
     bindings/js/Dictionary.cpp
     bindings/js/GCController.cpp
@@ -2212,7 +2211,7 @@ set(WebCore_SOURCES
     platform/network/BlobRegistry.cpp
     platform/network/BlobRegistryImpl.cpp
     platform/network/BlobResourceHandle.cpp
-    platform/network/Credential.cpp
+    platform/network/CredentialBase.cpp
     platform/network/CredentialStorage.cpp
     platform/network/DNSResolveQueue.cpp
     platform/network/DataURL.cpp
@@ -2223,7 +2222,7 @@ set(WebCore_SOURCES
     platform/network/MIMEHeader.cpp
     platform/network/NetworkStateNotifier.cpp
     platform/network/ParsedContentType.cpp
-    platform/network/ProtectionSpace.cpp
+    platform/network/ProtectionSpaceBase.cpp
     platform/network/ProxyServer.cpp
     platform/network/ResourceErrorBase.cpp
     platform/network/ResourceHandle.cpp
@@ -2356,6 +2355,7 @@ set(WebCore_SOURCES
     rendering/RenderScrollbarPart.cpp
     rendering/RenderScrollbarTheme.cpp
     rendering/RenderSearchField.cpp
+    rendering/RenderSelectionInfo.cpp
     rendering/RenderSlider.cpp
     rendering/RenderSnapshottedPlugIn.cpp
     rendering/RenderTable.cpp
@@ -3038,7 +3038,6 @@ endif ()
 if (WTF_USE_3D_GRAPHICS)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${THIRDPARTY_DIR}/ANGLE/src"
-        "${THIRDPARTY_DIR}/ANGLE/include"
         "${THIRDPARTY_DIR}/ANGLE/include/KHR"
         "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
         "${WEBCORE_DIR}/platform/graphics/gpu"
@@ -3618,6 +3617,7 @@ endif ()
 if (WTF_USE_3D_GRAPHICS)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
     set_target_properties(ANGLESupport PROPERTIES FOLDER "WebCore")
+    target_include_directories(ANGLESupport PRIVATE "${THIRDPARTY_DIR}/ANGLE/include")
     list(APPEND WebCore_LIBRARIES ANGLESupport)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)
 endif ()

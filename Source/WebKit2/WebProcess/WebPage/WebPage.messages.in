@@ -64,6 +64,7 @@ messages -> WebPage LegacyReceiver {
     SelectWithTwoTouches(WebCore::IntPoint from, WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID)
     ExtendSelection(uint32_t granularity)
     SelectWordBackward()
+    MoveSelectionByOffset(int32_t offset, uint64_t callbackID)
     RequestDictationContext(uint64_t callbackID)
     ReplaceDictatedText(String oldText, String newText)
     ReplaceSelectedText(String oldText, String newText)
@@ -373,7 +374,7 @@ messages -> WebPage LegacyReceiver {
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
-    SetAcceleratedCompositingWindowId(int64_t id)
+    SetAcceleratedCompositingWindowId(uint64_t nativeWindowHandle)
 #endif
   
     SetScrollPinningBehavior(uint32_t pinning)

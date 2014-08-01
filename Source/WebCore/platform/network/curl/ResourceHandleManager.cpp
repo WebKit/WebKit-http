@@ -246,6 +246,9 @@ ResourceHandleManager::ResourceHandleManager()
     , m_cookieJarFileName(cookieJarPath())
     , m_certificatePath (certificatePath())
     , m_runningJobs(0)
+#ifndef NDEBUG
+    , m_logFile(nullptr)
+#endif
 {
     curl_global_init(CURL_GLOBAL_ALL);
     m_curlMultiHandle = curl_multi_init();
@@ -256,6 +259,12 @@ ResourceHandleManager::ResourceHandleManager()
     curl_share_setopt(m_curlShareHandle, CURLSHOPT_UNLOCKFUNC, curl_unlock_callback);
 
     initCookieSession();
+
+#ifndef NDEBUG
+    char* logFile = getenv("CURL_LOG_FILE");
+    if (logFile)
+        m_logFile = fopen(logFile, "a");
+#endif
 }
 
 ResourceHandleManager::~ResourceHandleManager()
@@ -265,6 +274,11 @@ ResourceHandleManager::~ResourceHandleManager()
     if (m_cookieJarFileName)
         fastFree(m_cookieJarFileName);
     curl_global_cleanup();
+
+#ifndef NDEBUG
+    if (m_logFile)
+        fclose(m_logFile);
+#endif
 }
 
 CURLSH* ResourceHandleManager::getCurlShareHandle() const
@@ -1090,6 +1104,8 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
 #ifndef NDEBUG
     if (getenv("DEBUG_CURL"))
         curl_easy_setopt(d->m_handle, CURLOPT_VERBOSE, 1);
+    if (m_logFile)
+        curl_easy_setopt(d->m_handle, CURLOPT_STDERR, m_logFile);
 #endif
     curl_easy_setopt(d->m_handle, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(d->m_handle, CURLOPT_SSL_VERIFYHOST, 2L);

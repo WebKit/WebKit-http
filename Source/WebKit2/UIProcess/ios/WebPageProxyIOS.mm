@@ -220,6 +220,9 @@ WebCore::FloatRect WebPageProxy::computeCustomFixedPositionRect(const FloatRect&
     FloatSize contentsSize = m_pageClient.contentsSize();
     FloatRect documentRect = FloatRect(FloatPoint(), contentsSize);
 
+    if (m_pageClient.isAssistingNode())
+        return documentRect;
+
     if (constraint == UnobscuredRectConstraint::ConstrainedToDocumentRect)
         constrainedUnobscuredRect.intersect(documentRect);
 
@@ -248,8 +251,21 @@ void WebPageProxy::overflowScrollViewDidScroll()
     m_pageClient.overflowScrollViewDidScroll();
 }
 
+void WebPageProxy::overflowScrollWillStartScroll()
+{
+    m_pageClient.overflowScrollWillStartScroll();
+}
+
+void WebPageProxy::overflowScrollDidEndScroll()
+{
+    m_pageClient.overflowScrollDidEndScroll();
+}
+
 void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
 {
+    if (!isValid())
+        return;
+
     m_dynamicViewportSizeUpdateWaitingForTarget = true;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = true;
     m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, minimumLayoutSizeForMinimalUI, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, targetScale, deviceOrientation), m_pageID);
@@ -257,6 +273,9 @@ void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize,
 
 void WebPageProxy::synchronizeDynamicViewportUpdate()
 {
+    if (!isValid())
+        return;
+
     if (m_dynamicViewportSizeUpdateWaitingForTarget) {
         // We do not want the UIProcess to finish animated resize with the old content size, scale, etc.
         // If that happens, the UIProcess would start pushing new VisibleContentRectUpdateInfo to the WebProcess with
@@ -510,6 +529,17 @@ void WebPageProxy::extendSelection(WebCore::TextGranularity granularity)
 void WebPageProxy::selectWordBackward()
 {
     m_process->send(Messages::WebPage::SelectWordBackward(), m_pageID);
+}
+
+void WebPageProxy::moveSelectionByOffset(int32_t offset, std::function<void (CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    m_process->send(Messages::WebPage::MoveSelectionByOffset(offset, callbackID), m_pageID);
 }
 
 void WebPageProxy::interpretKeyEvent(const EditorState& state, bool isCharEvent, bool& handled)

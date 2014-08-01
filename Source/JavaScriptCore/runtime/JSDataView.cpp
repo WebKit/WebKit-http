@@ -34,7 +34,7 @@
 namespace JSC {
 
 const ClassInfo JSDataView::s_info = {
-    "DataView", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(JSDataView)};
+    "DataView", &Base::s_info, 0, CREATE_METHOD_TABLE(JSDataView)};
 
 JSDataView::JSDataView(VM& vm, ConstructionContext& context, ArrayBuffer* buffer)
     : Base(vm, context)
@@ -47,10 +47,13 @@ JSDataView* JSDataView::create(
     unsigned byteOffset, unsigned byteLength)
 {
     RefPtr<ArrayBuffer> buffer = passedBuffer;
-    if (!ArrayBufferView::verifySubRange<uint8_t>(buffer, byteOffset, byteLength)) {
-        throwVMError(
-            exec, createRangeError(exec, "Byte offset and length out of range of buffer"));
-        return 0;
+    if (!ArrayBufferView::verifySubRangeLength(buffer, byteOffset, byteLength, sizeof(uint8_t))) {
+        throwVMError(exec, createRangeError(exec, "Length out of range of buffer"));
+        return nullptr;
+    }
+    if (!ArrayBufferView::verifyByteOffsetAlignment(byteOffset, sizeof(uint8_t))) {
+        exec->vm().throwException(exec, createRangeError(exec, "Byte offset is not aligned"));
+        return nullptr;
     }
     VM& vm = exec->vm();
     ConstructionContext context(

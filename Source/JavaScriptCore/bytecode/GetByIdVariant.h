@@ -26,6 +26,8 @@
 #ifndef GetByIdVariant_h
 #define GetByIdVariant_h
 
+#include "CallLinkStatus.h"
+#include "ConstantStructureCheck.h"
 #include "IntendedStructureChain.h"
 #include "JSCJSValue.h"
 #include "PropertyOffset.h"
@@ -33,6 +35,7 @@
 
 namespace JSC {
 
+class CallLinkStatus;
 class GetByIdStatus;
 struct DumpContext;
 
@@ -41,25 +44,25 @@ public:
     GetByIdVariant(
         const StructureSet& structureSet = StructureSet(),
         PropertyOffset offset = invalidOffset, JSValue specificValue = JSValue(),
-        PassRefPtr<IntendedStructureChain> chain = nullptr)
-        : m_structureSet(structureSet)
-        , m_chain(chain)
-        , m_specificValue(specificValue)
-        , m_offset(offset)
-    {
-        if (!structureSet.size()) {
-            ASSERT(offset == invalidOffset);
-            ASSERT(!specificValue);
-            ASSERT(!chain);
-        }
-    }
+        const IntendedStructureChain* chain = nullptr,
+        std::unique_ptr<CallLinkStatus> callLinkStatus = nullptr);
+    
+    ~GetByIdVariant();
+    
+    GetByIdVariant(const GetByIdVariant&);
+    GetByIdVariant& operator=(const GetByIdVariant&);
     
     bool isSet() const { return !!m_structureSet.size(); }
     bool operator!() const { return !isSet(); }
     const StructureSet& structureSet() const { return m_structureSet; }
-    IntendedStructureChain* chain() const { return const_cast<IntendedStructureChain*>(m_chain.get()); }
+    StructureSet& structureSet() { return m_structureSet; }
+    const ConstantStructureCheckVector& constantChecks() const { return m_constantChecks; }
+    JSObject* alternateBase() const { return m_alternateBase; }
     JSValue specificValue() const { return m_specificValue; }
     PropertyOffset offset() const { return m_offset; }
+    CallLinkStatus* callLinkStatus() const { return m_callLinkStatus.get(); }
+    
+    bool attemptToMerge(const GetByIdVariant& other);
     
     void dump(PrintStream&) const;
     void dumpInContext(PrintStream&, DumpContext*) const;
@@ -68,9 +71,11 @@ private:
     friend class GetByIdStatus;
     
     StructureSet m_structureSet;
-    RefPtr<IntendedStructureChain> m_chain;
+    ConstantStructureCheckVector m_constantChecks;
+    JSObject* m_alternateBase;
     JSValue m_specificValue;
     PropertyOffset m_offset;
+    std::unique_ptr<CallLinkStatus> m_callLinkStatus;
 };
 
 } // namespace JSC

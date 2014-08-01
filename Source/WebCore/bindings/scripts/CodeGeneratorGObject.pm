@@ -968,6 +968,8 @@ sub GenerateFunction {
     my @callImplParams;
     foreach my $param (@{$function->parameters}) {
         my $paramIDLType = $param->type;
+        my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($paramIDLType);
+        $paramIDLType = $arrayOrSequenceType if $arrayOrSequenceType ne "";
         my $paramType = GetGlibTypeName($paramIDLType);
         my $const = $paramType eq "gchar*" ? "const " : "";
         my $paramName = $param->name;
@@ -1011,7 +1013,10 @@ sub GenerateFunction {
     push(@functionHeader, " * \@self: A #${className}");
 
     foreach my $param (@{$function->parameters}) {
-        my $paramType = GetGlibTypeName($param->type);
+        my $paramIDLType = $param->type;
+        my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($paramIDLType);
+        $paramIDLType = $arrayOrSequenceType if $arrayOrSequenceType ne "";
+        my $paramType = GetGlibTypeName($paramIDLType);
         # $paramType can have a trailing * in some cases
         $paramType =~ s/\*$//;
         my $paramName = $param->name;
@@ -1552,6 +1557,7 @@ sub Generate {
     $implIncludes{"Document.h"} = 1;
     $implIncludes{"JSMainThreadExecState.h"} = 1;
     $implIncludes{"ExceptionCode.h"} = 1;
+    $implIncludes{"ExceptionCodeDescription.h"} = 1;
     $implIncludes{"CSSImportRule.h"} = 1;
     if ($parentImplClassName ne "Object" and IsPolymorphic($baseClassName)) {
         $implIncludes{"WebKitDOM${baseClassName}Private.h"} = 1;

@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Apple Inc. All rights reserved.
+# Copyright (C) 2011, 2014 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -21,6 +21,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebOriginDataManagerProxy {
-    DidGetOrigins(Vector<WebKit::SecurityOriginData> originIdentifiers, uint64_t callbackID);
-    DidChange()
+    DidGetOrigins(Vector<WebKit::SecurityOriginData> originIdentifiers, uint64_t callbackID) WantsConnection
+    DidDeleteEntries(uint64_t callbackID) WantsConnection
+    DidDeleteAllEntries(uint64_t callbackID) WantsConnection
 }

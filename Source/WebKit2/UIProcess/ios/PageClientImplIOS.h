@@ -119,6 +119,7 @@ private:
 
     virtual void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) override;
     virtual void stopAssistingNode() override;
+    virtual bool isAssistingNode() override;
     virtual void selectionDidChange() override;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) override;
     virtual void positionInformationDidChange(const InteractionInformationAtPosition&) override;
@@ -146,6 +147,9 @@ private:
     virtual void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale) override;
     virtual void overflowScrollViewWillStartPanGesture() override;
     virtual void overflowScrollViewDidScroll() override;
+    virtual void overflowScrollWillStartScroll() override;
+    virtual void overflowScrollDidEndScroll() override;
+
     virtual void didFinishDrawingPagesToPDF(const IPC::DataReference&) override;
 
     // Auxiliary Client Creation

@@ -24,9 +24,9 @@
 
 #include "CachedScript.h"
 #include "DOMConstructorWithDocument.h"
-#include "DOMObjectHashTableMap.h"
 #include "DOMStringList.h"
 #include "ExceptionCode.h"
+#include "ExceptionCodeDescription.h"
 #include "ExceptionHeaders.h"
 #include "ExceptionInterfaces.h"
 #include "Frame.h"
@@ -56,11 +56,6 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DOMConstructorWithDocument);
 void addImpureProperty(const AtomicString& propertyName)
 {
     JSDOMWindow::commonVM().addImpureProperty(propertyName);
-}
-
-const JSC::HashTable& getHashTableForGlobalData(VM& vm, const JSC::HashTable& staticTable)
-{
-    return DOMObjectHashTableMap::mapFor(vm).get(staticTable);
 }
 
 JSValue jsStringOrNull(ExecState* exec, const String& s)
@@ -101,15 +96,6 @@ JSValue jsStringOrUndefined(ExecState* exec, const URL& url)
     if (url.isNull())
         return jsUndefined();
     return jsStringWithCache(exec, url.string());
-}
-
-AtomicStringImpl* findAtomicString(PropertyName propertyName)
-{
-    StringImpl* impl = propertyName.publicName();
-    if (!impl)
-        return 0;
-    ASSERT(impl->existingHash());
-    return AtomicString::findStringWithHash(*impl);
 }
 
 String valueToStringWithNullCheck(ExecState* exec, JSValue value)

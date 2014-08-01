@@ -27,7 +27,10 @@
 #include "DatabaseProcessProxy.h"
 
 #include "DatabaseProcessMessages.h"
+#include "DatabaseProcessProxyMessages.h"
 #include "WebContext.h"
+#include "WebOriginDataManagerProxy.h"
+#include "WebOriginDataManagerProxyMessages.h"
 
 #if ENABLE(DATABASE_PROCESS)
 
@@ -66,6 +69,19 @@ void DatabaseProcessProxy::connectionWillClose(IPC::Connection*)
 {
 }
 
+void DatabaseProcessProxy::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
+{
+    if (decoder.messageReceiverName() == Messages::DatabaseProcessProxy::messageReceiverName()) {
+        didReceiveDatabaseProcessProxyMessage(connection, decoder);
+        return;
+    }
+
+    if (decoder.messageReceiverName() == Messages::WebOriginDataManagerProxy::messageReceiverName()) {
+        m_webContext->supplement<WebOriginDataManagerProxy>()->didReceiveMessage(connection, decoder);
+        return;
+    }
+}
+
 void DatabaseProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply> reply)
 {
     m_pendingConnectionReplies.append(reply);
@@ -80,6 +96,22 @@ void DatabaseProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::Web
 
 void DatabaseProcessProxy::didClose(IPC::Connection*)
 {
+    // The database process must have crashed or exited, so send any pending sync replies we might have.
+    while (!m_pendingConnectionReplies.isEmpty()) {
+        auto reply = m_pendingConnectionReplies.takeFirst();
+
+#if OS(DARWIN)
+        reply->send(IPC::Attachment(0, MACH_MSG_TYPE_MOVE_SEND));
+#elif USE(UNIX_DOMAIN_SOCKETS)
+        reply->send(IPC::Attachment());
+#else
+        notImplemented();
+#endif
+    }
+
+    // Tell WebContext to forget about this database process. This may cause us to be deleted.
+    m_webContext->databaseProcessCrashed(this);
+    
 }
 
 void DatabaseProcessProxy::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName)

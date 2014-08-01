@@ -201,12 +201,15 @@ private:
     _page->setDelegatesScrolling(true);
 
     _webView = webView;
+    
+    _isBackground = [UIApplication sharedApplication].applicationState == UIApplicationStateBackground;
 
     WebContext::statistics().wkViewCount++;
 
     _rootContentView = adoptNS([[UIView alloc] init]);
     [_rootContentView layer].masksToBounds = NO;
-    
+    [_rootContentView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
+
     _fixedClippingView = adoptNS([[UIView alloc] init]);
     [_fixedClippingView layer].masksToBounds = YES;
     [_fixedClippingView layer].anchorPoint = CGPointZero;
@@ -285,6 +288,11 @@ private:
     return [self isEditable];
 }
 
+- (BOOL)isBackground
+{
+    return _isBackground;
+}
+
 - (void)_showInspectorHighlight:(const WebCore::Highlight&)highlight
 {
     if (!_inspectorHighlightView) {
@@ -313,6 +321,7 @@ private:
     if (show) {
         if (!_inspectorIndicationView) {
             _inspectorIndicationView = adoptNS([[WKInspectorIndicationView alloc] initWithFrame:[self bounds]]);
+            [_inspectorIndicationView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
             [self insertSubview:_inspectorIndicationView.get() aboveSubview:_rootContentView.get()];
         }
     } else {
@@ -443,11 +452,8 @@ private:
     CGRect oldBounds = [self bounds];
 
     BOOL boundsChanged = !CGRectEqualToRect(oldBounds, contentBounds);
-    if (boundsChanged) {
+    if (boundsChanged)
         [self setBounds:contentBounds];
-        [_rootContentView setFrame:contentBounds];
-        [_inspectorIndicationView setFrame:contentBounds];
-    }
 
     [_webView _didCommitLayerTree:layerTreeTransaction];
     
@@ -505,13 +511,17 @@ private:
 
 - (void)_applicationDidEnterBackground:(NSNotification*)notification
 {
+    _isBackground = YES;
     _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
 }
 
 - (void)_applicationWillEnterForeground:(NSNotification*)notification
 {
+    _isBackground = NO;
     _page->applicationWillEnterForeground();
-    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow, true);
+    if (auto drawingArea = _page->drawingArea())
+        drawingArea->hideContentUntilNextUpdate();
+    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow, true, WebPageProxy::ViewStateChangeDispatchMode::Immediate);
 }
 
 - (void)_applicationDidBecomeActive:(NSNotification*)notification

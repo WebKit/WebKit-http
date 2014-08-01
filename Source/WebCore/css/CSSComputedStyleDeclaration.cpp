@@ -428,7 +428,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyGlyphOrientationHorizontal,
     CSSPropertyGlyphOrientationVertical,
     CSSPropertyWebkitSvgShadow,
-    CSSPropertyVectorEffect
+    CSSPropertyVectorEffect,
+    CSSPropertyX,
+    CSSPropertyY
 };
 
 const unsigned numComputedProperties = WTF_ARRAY_LENGTH(computedProperties);
@@ -2117,7 +2119,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return CSSGridTemplateAreasValue::create(style->namedGridArea(), style->namedGridAreaRowCount(), style->namedGridAreaColumnCount());
 #endif /* ENABLE(CSS_GRID_LAYOUT) */
         case CSSPropertyHeight:
-            if (renderer) {
+            if (renderer && !renderer->isRenderSVGModelObject()) {
                 // According to http://www.w3.org/TR/CSS2/visudet.html#the-height-property,
                 // the "height" property does not apply for non-replaced inline elements.
                 if (!renderer->isReplaced() && renderer->isInline())
@@ -2421,7 +2423,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
             return cssValuePool().createValue(style->widows(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyWidth:
-            if (renderer) {
+            if (renderer && !renderer->isRenderSVGModelObject()) {
                 // According to http://www.w3.org/TR/CSS2/visudet.html#the-width-property,
                 // the "width" property does not apply for non-replaced inline elements.
                 if (!renderer->isReplaced() && renderer->isInline())
@@ -2896,6 +2898,12 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyBackgroundRepeatX:
         case CSSPropertyBackgroundRepeatY:
             break;
+
+        // New positioning properties for SVG.
+        case CSSPropertyX:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().x(), style.get());
+        case CSSPropertyY:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().y(), style.get());
 
         /* Unimplemented CSS 3 properties (including CSS3 shorthand properties) */
         case CSSPropertyWebkitTextEmphasis:

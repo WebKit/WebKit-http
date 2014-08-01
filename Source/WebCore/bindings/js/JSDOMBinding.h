@@ -283,7 +283,6 @@ JSC::JSValue jsOwnedStringOrNull(JSC::ExecState*, const String&);
 String propertyNameToString(JSC::PropertyName);
 
 AtomicString propertyNameToAtomicString(JSC::PropertyName);
-AtomicStringImpl* findAtomicString(JSC::PropertyName);
 
 String valueToStringWithNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null
 String valueToStringWithUndefinedOrNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null or undefined
@@ -588,10 +587,10 @@ inline AtomicString propertyNameToAtomicString(JSC::PropertyName propertyName)
 
 template<typename DOMClass> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
 {
-    const JSC::HashTable* table = DOMClass::info()->propHashTable(exec);
+    const JSC::HashTable* table = DOMClass::info()->staticPropHashTable;
     if (!table)
         return getStaticValueSlotEntryWithoutCaching<typename DOMClass::Base>(exec, propertyName);
-    const JSC::HashTableValue* entry = table->entry(exec, propertyName);
+    const JSC::HashTableValue* entry = table->entry(propertyName);
     if (!entry) // not found, forward to parent
         return getStaticValueSlotEntryWithoutCaching<typename DOMClass::Base>(exec, propertyName);
     return entry;

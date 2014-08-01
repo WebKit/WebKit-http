@@ -146,6 +146,8 @@ enum PredictionPass {
     FixupPass
 };
 
+enum StructureWatchpointState { HaveNotStartedWatching, WatchingAllWatchableStructures };
+
 enum OptimizationFixpointState { BeforeFixpoint, FixpointNotConverged, FixpointConverged };
 
 // Describes the form you can expect the entire graph to be in.
@@ -258,6 +260,8 @@ bool checkAndSet(T& left, U right)
 // start crashing at the same time, you get coherent dump output. Use this only
 // when you're forcing a crash with diagnostics.
 void startCrashing();
+
+JS_EXPORT_PRIVATE bool isCrashing();
 
 } } // namespace JSC::DFG
 

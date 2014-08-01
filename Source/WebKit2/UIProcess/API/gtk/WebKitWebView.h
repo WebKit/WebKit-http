@@ -49,7 +49,6 @@
 #include <webkit2/WebKitWebInspector.h>
 #include <webkit2/WebKitWebResource.h>
 #include <webkit2/WebKitWebViewBase.h>
-#include <webkit2/WebKitWebViewGroup.h>
 #include <webkit2/WebKitWindowProperties.h>
 
 G_BEGIN_DECLS
@@ -236,7 +235,8 @@ struct _WebKitWebViewClass {
     gboolean   (* authenticate)                (WebKitWebView               *web_view,
                                                 WebKitAuthenticationRequest *request);
     gboolean   (* load_failed_with_tls_errors) (WebKitWebView               *web_view,
-                                                WebKitCertificateInfo       *info,
+                                                GTlsCertificate             *certificate,
+                                                GTlsCertificateFlags         errors,
                                                 const gchar                 *host);
     void (*_webkit_reserved0) (void);
     void (*_webkit_reserved1) (void);
@@ -256,19 +256,16 @@ WEBKIT_API GtkWidget *
 webkit_web_view_new_with_context                     (WebKitWebContext          *context);
 
 WEBKIT_API GtkWidget *
-webkit_web_view_new_with_related_view                (WebKitWebView             *web_view);
+webkit_web_view_new_with_settings                    (WebKitSettings            *settings);
 
 WEBKIT_API GtkWidget *
-webkit_web_view_new_with_group                       (WebKitWebViewGroup        *group);
+webkit_web_view_new_with_related_view                (WebKitWebView             *web_view);
 
 WEBKIT_API GtkWidget *
 webkit_web_view_new_with_user_content_manager        (WebKitUserContentManager  *user_content_manager);
 
 WEBKIT_API WebKitWebContext *
 webkit_web_view_get_context                          (WebKitWebView             *web_view);
-
-WEBKIT_API WebKitWebViewGroup *
-webkit_web_view_get_group                            (WebKitWebView             *web_view);
 
 WEBKIT_API void
 webkit_web_view_load_uri                             (WebKitWebView             *web_view,
@@ -286,6 +283,13 @@ webkit_web_view_load_alternate_html                  (WebKitWebView             
 WEBKIT_API void
 webkit_web_view_load_plain_text                      (WebKitWebView             *web_view,
                                                       const gchar               *plain_text);
+
+WEBKIT_API void
+webkit_web_view_load_bytes                           (WebKitWebView             *web_view,
+                                                      GBytes                    *bytes,
+                                                      const gchar               *mime_type,
+                                                      const gchar               *encoding,
+                                                      const gchar               *base_uri);
 
 WEBKIT_API void
 webkit_web_view_load_request                         (WebKitWebView             *web_view,

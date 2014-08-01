@@ -1,3 +1,634 @@
+2014-07-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Stop Recording" button feels unresponsive, recording takes a long time to stop
+        https://bugs.webkit.org/show_bug.cgi?id=135490
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.stopCapturing):
+        Immediately stop the recording without waiting for an event from the backend.
+        This makes the Web Inspector UI feel responsive to the user stopping the recording.
+        This also matches behavior before r171195.
+
+2014-07-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline recording is not working inspecting iOS 7 and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=135466
+
+        Reviewed by Timothy Hatcher.
+
+        Start / stop capturing for older backends that won't emit start / stop events.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Agent.prototype.hasEvent):
+        Provide a way to check if an event is supported.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.startCapturing):
+        (WebInspector.TimelineManager.prototype.stopCapturing):
+        Fallback to starting and stopping capturing manually if the backend
+        does not provide the events.
+
+2014-07-31  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Sync button look and feel with Xcode updates.
+        https://bugs.webkit.org/show_bug.cgi?id=135445
+
+        Reviewed by Timothy Hatcher.
+
+        Update styles to match recent changes to Xcode text-only
+        buttons, the navigation bar, and search fields. Include
+        older style rules for older Mac platforms.
+
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button.text-only):
+        (body.mac-platform.legacy .navigation-bar .item.button.text-only):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .navigation-bar):
+        (.sidebar > .panel.details.css-style > .content):
+        (body.mac-platform.legacy .sidebar > .panel.details.css-style > .content):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger > .content):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.debugger > .content):
+        * UserInterface/Views/DividerNavigationItem.css:
+        (.navigation-bar .item.divider):
+        (body.mac-platform.legacy .navigation-bar .item.divider):
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar):
+        (body.mac-platform.legacy .filter-bar):
+        (.filter-bar > input[type="search"]):
+        (body.mac-platform.legacy .filter-bar > input[type="search"]):
+        * UserInterface/Views/LogContentView.css:
+        (.search-bar.log-search-bar > input[type="search"]):
+        (@media reader):
+        (.log-search-bar > input): Deleted.
+        * UserInterface/Views/Main.css:
+        (#split-content-browser > .navigation-bar):
+        (body.mac-platform.legacy #split-content-browser > .navigation-bar):
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar):
+        (body.mac-platform.legacy .navigation-bar):
+        (.navigation-bar .item):
+        (body.mac-platform.legacy .navigation-bar .item):
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .content):
+        (body.mac-platform.legacy .sidebar > .panel.navigation > .content):
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console):
+        (body.mac-platform.legacy .quick-console):
+        * UserInterface/Views/RadioButtonNavigationItem.css:
+        (.navigation-bar .item.radio.button.text-only:hover):
+        (body.mac-platform.legacy .navigation-bar .item.radio.button.text-only:hover):
+        (.navigation-bar .item.radio.button.text-only.selected):
+        (body.mac-platform.legacy .navigation-bar .item.radio.button.text-only.selected):
+        (.navigation-bar .item.radio.button.text-only:active):
+        (.navigation-bar .item.radio.button.text-only.selected:active):
+        (body.mac-platform.legacy .navigation-bar .item.radio.button.text-only.selected:active):
+        * UserInterface/Views/ResourceSidebarPanel.css:
+        (.sidebar > .panel.navigation.resource > .empty-content-placeholder):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.resource > .empty-content-placeholder):
+        (.sidebar > .panel.navigation.resource > .search-bar):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.resource > .search-bar):
+        (.sidebar > .panel.navigation.resource > .search-bar > input[type="search"]):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.resource > .search-bar > input[type="search"]):
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li):
+        (body.mac-platform.legacy .scope-bar > li):
+        (.scope-bar > li:hover):
+        (body.mac-platform.legacy .scope-bar > li:hover):
+        (.scope-bar > li.selected):
+        (.scope-bar > li:active):
+        (body.mac-platform.legacy .scope-bar > li:active):
+        (.scope-bar > li.selected:active):
+        (body.mac-platform.legacy .scope-bar > li.selected:active):
+        * UserInterface/Views/SearchBar.css:
+        (.search-bar > input[type="search"]):
+        (body.mac-platform.legacy .search-bar > input[type="search"]):
+        Update styles and apply older styles to legacy Mac platforms.
+
+2014-07-31  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: MessageDispatcher should not synchronously dispatch all backend messages
+        https://bugs.webkit.org/show_bug.cgi?id=135427
+
+        Reviewed by Timothy Hatcher.
+
+        The frontend dispatches all queued messages from the backend synchronously, even if there are
+        hundreds of messages, or even if some of the messages take a long time (>10ms) to process.
+
+        This patch adds a time limit to the frontend's message dispatcher. If the time limit is exceeded
+        when processing the message queue, unhandled messages remain in the queue and the dispatcher goes
+        to sleep until the next run loop (obtained by a new setTimeout).
+
+        This has the effect of removing stutters when the message queue has hundreds of small messages.
+        The outliers are still the same since some single messages can take over 200ms to be handled.
+
+        This patch also improves performance logging in InspectorBackend so that it is easier to see
+        message handling times and their distribution among run loop turns.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass): Add a new diagnostic flag that warns about slow message handling.
+        (InspectorBackendClass.prototype._dispatchCallback.get if): Improve logging.
+        (InspectorBackendClass.prototype._dispatchCallback): Improve logging.
+        (InspectorBackendClass.prototype._dispatchEvent): Improve logging.
+        * UserInterface/Protocol/MessageDispatcher.js:
+        (WebInspector.dispatchNextQueuedMessageFromBackend): Keep track of a time limit for message
+        dispatching, and set a new timeout if we exceed the time limit.
+
+2014-07-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Right edge of Timeline Record button does not work
+        https://bugs.webkit.org/show_bug.cgi?id=135444
+
+        Reviewed by Timothy Hatcher.
+
+        When hovering the record button we would show the status text, however
+        because the left edge of the status text box would overlap the right
+        edge of the record button causing completely unexpected behavior.
+
+        Position the status text correctly so that it never overlaps the record
+        button. 5px to match the left margin of the record button, and another
+        2px for some padding between the button and text.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-status):
+
+2014-07-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.profile missing profile information
+        https://bugs.webkit.org/show_bug.cgi?id=135432
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        Delete the payload information as soon as it has been processed.
+        It is no longer needed anymore and can be garbage collected.
+
+2014-07-30  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: ProbeSetDetailsSection should not create live location links for unresolved breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=135367
+
+        Reviewed by Timothy Hatcher.
+
+        Regenerate the source code link whenever the breakpoint resolved status changes. If it is
+        resolved, then we can create a live location link that respects source maps.
+
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        (WebInspector.ProbeSetDetailsSection):
+        (WebInspector.ProbeSetDetailsSection.prototype._updateLinkElement): Added.
+        (WebInspector.ProbeSetDetailsSection.prototype._probeSetPositionTextOrLink): Deleted.
+
+2014-07-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: 80% of time during recording is spent creating source code locations for profile nodes
+        https://bugs.webkit.org/show_bug.cgi?id=135399
+
+        Reviewed by Timothy Hatcher.
+
+        Profiling the inspector while recording a timeline, a significant amount of
+        time was spent creating SourceCodeLocation objects for profiling information
+        and call frames. A lot of this data was eagerly being processed, even though
+        it would not immediately be presentable to the user.
+
+        This makes two significant changes. We create a LazySourceCodeLocation class
+        which does as little as possible until display information is requested. We
+        also lazily convert the profiler payload data to a Profile object, so the
+        processing is only done if you drill into the Script specific timeline.
+
+        This results in a significant performance improvement in the overview view.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        (WebInspector.TimelineManager.prototype._callFramesFromPayload.createCallFrame):
+        (WebInspector.TimelineManager.prototype._callFramesFromPayload):
+        (WebInspector.TimelineManager.prototype._profileFromPayload.profileNodeFromPayload): Deleted.
+        (WebInspector.TimelineManager.prototype._profileFromPayload.profileNodeCallFromPayload): Deleted.
+        (WebInspector.TimelineManager.prototype._profileFromPayload): Deleted.
+        Do not eagerly process profile payloads. Instead pass the payload to ScriptTimelineRecords.
+        Likewise create callframes with lazy source code locations to do the minimum amount of work.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord):
+        (WebInspector.ScriptTimelineRecord.prototype.get profile):
+        (WebInspector.ScriptTimelineRecord.prototype._initializeProfileFromPayload.profileNodeFromPayload):
+        (WebInspector.ScriptTimelineRecord.prototype._initializeProfileFromPayload.profileNodeCallFromPayload):
+        (WebInspector.ScriptTimelineRecord.prototype._initializeProfileFromPayload):
+        Only when the profile is asked do we process the profiler payload information.
+        This defer the processing until at least the user drills into the Script timeline.
+
+        * UserInterface/Main.html:
+        Add the new class and ensure SourceCodeLocation is available beforehand.
+
+        * UserInterface/Models/LazySourceCodeLocation.js: Added.
+        (WebInspector.LazySourceCodeLocation):
+        (WebInspector.LazySourceCodeLocation.prototype.isEqual):
+        (WebInspector.LazySourceCodeLocation.prototype.get sourceCode):
+        (WebInspector.LazySourceCodeLocation.prototype.set sourceCode):
+        (WebInspector.LazySourceCodeLocation.prototype.get formattedLineNumber):
+        (WebInspector.LazySourceCodeLocation.prototype.get formattedColumnNumber):
+        (WebInspector.LazySourceCodeLocation.prototype.formattedPosition):
+        (WebInspector.LazySourceCodeLocation.prototype.hasFormattedLocation):
+        (WebInspector.LazySourceCodeLocation.prototype.hasDifferentDisplayLocation):
+        (WebInspector.LazySourceCodeLocation.prototype.resolveMappedLocation):
+        (WebInspector.LazySourceCodeLocation.prototype._lazyInitialization):
+        Only when display information is requested will we perform extra processing.
+        For basic information we do not need to check for formatted (pretty-printed) info.
+
+        * UserInterface/Models/SourceCode.js:
+        (WebInspector.SourceCode.prototype.createLazySourceCodeLocation):
+        Provide an explict create function for lazy source codes.
+
+        * UserInterface/Models/SourceCodeLocation.js:
+        (WebInspector.SourceCodeLocation.prototype.set sourceCode):
+        (WebInspector.SourceCodeLocation.prototype.get displaySourceCode):
+        (WebInspector.SourceCodeLocation.prototype.get displayLineNumber):
+        (WebInspector.SourceCodeLocation.prototype.get displayColumnNumber):
+        (WebInspector.SourceCodeLocation.prototype.hasMappedLocation):
+        (WebInspector.SourceCodeLocation.prototype.setSourceCode):
+        (WebInspector.SourceCodeLocation.prototype.resolveMappedLocation):
+        (WebInspector.SourceCodeLocation.prototype._makeChangeAndDispatchChangeEventIfNeeded):
+        (WebInspector.SourceCodeLocation.prototype._resolveMappedLocation): Deleted.
+        Include two protected functions which LazySourceCodeLocation overrides.
+
+2014-07-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Only compute full ProfileNode times if needed - Legacy Profiler
+        https://bugs.webkit.org/show_bug.cgi?id=135406
+
+        Reviewed by Timothy Hatcher.
+
+        Full ProfileNode times are only used by the Legacy Profiler. The new profile
+        information in the Scripts Timelines currently never uses the pass. We should
+        avoid calculating it if we never use it.
+
+        * UserInterface/Models/ProfileNode.js:
+        (WebInspector.ProfileNode.prototype.get startTime):
+        (WebInspector.ProfileNode.prototype.get endTime):
+        (WebInspector.ProfileNode.prototype.get selfTime):
+        (WebInspector.ProfileNode.prototype.get totalTime):
+        (WebInspector.ProfileNode.prototype.establishRelationships):
+        (WebInspector.ProfileNode.prototype._computeTotalTimes):
+
+2014-07-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce forced layouts in TimelineOverview
+        https://bugs.webkit.org/show_bug.cgi?id=135405
+
+        Reviewed by Timothy Hatcher.
+
+        Remove another forced layout. The scroll container won't
+        change size unless the ContentView itself resized. Make the
+        distinction between a layout update due to a resize and
+        normal events (scale changes, etc) and only calculate
+        element sizes then.
+
+        * UserInterface/Views/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.updateLayout):
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.get visibleDuration):
+        (WebInspector.TimelineOverview.prototype.updateLayoutForResize):
+
+2014-07-29  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: breakpoints are always speculatively resolved when restored from local storage
+        https://bugs.webkit.org/show_bug.cgi?id=135396
+
+        Reviewed by Timothy Hatcher.
+
+        A longstanding quirk/optimization in the frontend is that we immediately set a breakpoint
+        as resolved if the breakpoint was successfully set in the backend. This ensures that clicking in
+        the gutter immediately produces a resolved breakpoint with only one round-trip.
+
+        However, not all breakpoints should be speculatively resolved, because the corresponding resource
+        may not be loaded yet. This situation causes problems for code that assumes a resolved breakpoint
+        also has a valid sourceCodeLocation.sourceCode.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.restoreBreakpointsSoon): Don't leak the variable to global scope.
+        (WebInspector.DebuggerManager):
+        (WebInspector.DebuggerManager.prototype.speculativelyResolveBreakpoint):
+        (WebInspector.DebuggerManager.prototype.addBreakpoint): Speculatively resolve here if requested
+        using the success callback passed to _setBreakpoint.
+
+        (WebInspector.DebuggerManager.prototype.didSetBreakpoint): Emit simulated
+        Debugger.breakpointResolved events since they are only sent by the backend when a script is parsed.
+
+        (WebInspector.DebuggerManager.prototype._setBreakpoint):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorBreakpointAdded): Request speculative resolve.
+
+2014-07-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Eliminate more forced layouts during timeline recordings
+        https://bugs.webkit.org/show_bug.cgi?id=135397
+
+        Reviewed by Timothy Hatcher.
+
+        Instead of computing the secondsPerPixel in each overview graph,
+        we can ask the overview view itself which has a cached value.
+        The computation used to force a layout, now it doesn't need to.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        * UserInterface/Views/NetworkTimelineOverviewGraph.js:
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WebInspector.TimelineOverviewGraph):
+        (WebInspector.TimelineOverviewGraph.prototype.get timelineOverview):
+        (WebInspector.TimelineOverviewGraph.prototype.set timelineOverview):
+
+2014-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Incorrectly sized TimelineDataGrid event bubble
+        https://bugs.webkit.org/show_bug.cgi?id=135371
+
+        Reviewed by Timothy Hatcher.
+
+        Previously the secondsPerPixel calculation was relying on an element
+        that may not be sized yet. This was resulting in a visibleWidth of 0
+        and resulted in secondsPerPixel being Infinity. Fortunately, the
+        graph data source already knows the secondsPerPixel so we can just
+        ask it. Getting the correct value and eliminating forced layouts.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.get secondsPerPixel):
+        * UserInterface/Views/TimelineDataGridNode.js:
+
+2014-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce work creating the initial WebInspector.TimelineRecordBar
+        https://bugs.webkit.org/show_bug.cgi?id=135373
+
+        Reviewed by Timothy Hatcher.
+
+        Eliminate a bit of extra work creating TimelineRecordBars. Previously
+        the constructor would setup an empty list of records, and then we would
+        immediately after replace them. Now just set them in the constructor.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.updateLayout.createBar):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.updateLayout):
+        * UserInterface/Views/NetworkTimelineOverviewGraph.js:
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.updateLayout.createBar):
+        (WebInspector.NetworkTimelineOverviewGraph.prototype.updateLayout):
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout.createBar):
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout):
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.refreshGraph.createBar):
+
+2014-07-28  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Unexpected dark border on selected but window inactive timeline
+        https://bugs.webkit.org/show_bug.cgi?id=135360
+
+        Update the border-top colors for the item adjacent to the selected item.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .timelines-content li.item.selected + li.item):
+        (.sidebar > .panel.navigation.timeline > .timelines-content :focus li.item.selected + li.item):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .timelines-content li.item.selected + li.item):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .timelines-content :focus li.item.selected + li.item):
+
+2014-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Disable Copy Row in Timelines DataGrids, it does not currently provide value
+        https://bugs.webkit.org/show_bug.cgi?id=135364
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode):
+        (WebInspector.DataGridNode.prototype.get copyable):
+        (WebInspector.DataGridNode.prototype.set copyable):
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode):
+
+2014-07-26  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: ReplayManager uses undefined events and inconsistent event data
+        https://bugs.webkit.org/show_bug.cgi?id=135222
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/ReplayManager.js:
+        (WebInspector.ReplayManager.prototype.sessionCreated.this):
+        (WebInspector.ReplayManager.prototype.sessionCreated):
+        (WebInspector.ReplayManager.prototype.segmentLoaded):
+        (WebInspector.ReplayManager.prototype.segmentUnloaded):
+        (WebInspector.ReplayManager.prototype.stopCapturing):
+        (WebInspector.ReplayManager.prototype.replayToMarkIndex):
+        (WebInspector.ReplayManager.prototype.segmentCompleted.set catch):
+        (WebInspector.ReplayManager.prototype.segmentCompleted):
+        (WebInspector.ReplayManager.prototype.startCapturing):
+        (WebInspector.ReplayManager.prototype._changeSessionState):
+
+2014-07-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove accidental debugging console.log
+        https://bugs.webkit.org/show_bug.cgi?id=135315
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype._sortDataGrid):
+
+2014-07-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timelines performance is very slow, has many forced layouts
+        https://bugs.webkit.org/show_bug.cgi?id=135313
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NavigationItem.js:
+        (WebInspector.NavigationItem):
+        (WebInspector.NavigationItem.prototype.get hidden):
+        (WebInspector.NavigationItem.prototype.set hidden):
+        Don't have the parent navigation bar update layout if the hidden state did not change.
+        This greatly reduces the number of forced layouts as timeline nodes are added.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.showEmptyContentPlaceholder):
+        (WebInspector.NavigationSidebarPanel.prototype.hideEmptyContentPlaceholder):
+        Don't do any work if this is not changing the view.
+
+        (WebInspector.NavigationSidebarPanel.prototype._updateContentOverflowShadowVisibilitySoon):
+        (WebInspector.NavigationSidebarPanel.prototype._updateContentOverflowShadowVisibility):
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+        When first selecting a specific timeline (Layout / Scripts) we would have a very long hang
+        updating the content. Most of this was time spent updating the overflow shadow visibility
+        because every single tree element addition was causing a layout invalidation and forced layout.
+        Coalesce all of the tree element adds into a single update at the end.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        Calculating the visible duration checks offsetLeft. Calculate this once, outside
+        of a loop down below, to prevent or reduce possible forced layouts.
+
+        * UserInterface/Views/TreeOutline.js:
+        (TreeElement.prototype.revealed):
+        Prevent doing any work for timeline tree elements outside of the selected time range.
+        Previously they were considered revealed if a parent was expanded, even though that
+        parent was hidden. This greatly reduces the amount of work during a recording, since
+        previously we were potentially doing a forced layout for hidden nodes.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.looselyCompareRepresentedObjects):
+        Ignore ProfileNode, which may happen here in the Script timeline.
+
+2014-07-23  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: InspectorBackend's promise-based agent API does not support multiple return values
+        https://bugs.webkit.org/show_bug.cgi?id=135207
+
+        Reviewed by Joseph Pecoraro.
+
+        The promise wrapper implementation assumed that the protocol callback supplies a single 'payload'
+        return value, but InspectorBackend will actually unpack multiple return values as multiple
+        callback arguments. Set a special flag so it will not try to apply multiple return values.
+
+        It would read better if multiple return values could be spread to the resolve callback, but
+        multiple argument support are not required by the Promises specification, so we won't use them.
+
+        * UserInterface/Controllers/ReplayManager.js: Fix uses of promise return values.
+        (WebInspector.ReplayManager):
+        * UserInterface/Models/ReplaySession.js:
+        * UserInterface/Models/ReplaySessionSegment.js:
+        (WebInspector.ReplaySessionSegment):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Command.prototype.promise):
+
+2014-07-21  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: Add esprima to the WebInspector.
+        https://bugs.webkit.org/show_bug.cgi?id=135098
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch includes Esprima into the WebInspector and attaches its
+        exported function onto the WebInspector namespace object. 
+
+        * UserInterface/External/Esprima: Added.
+        * UserInterface/External/Esprima/esprima.js: Added.
+        (.):
+        * UserInterface/Main.html:
+
+2014-07-21  Jonathan Wells  <jonowells@apple.com>
+
+        Back/Forward arrows (modern) are too large.
+        https://bugs.webkit.org/show_bug.cgi?id=135073
+
+        Reviewed by Joseph Pecoraro.
+
+        Changes to adjust new forward and back arrow sizes to be more consistent with the 
+        universal design language. Moved WebInspector.Platform definition to its own file.
+        Refactored handling of image versions inside ImageUtilities.js.
+
+        * UserInterface/Base/ImageUtilities.js:
+        (.restoreImage):
+        (.generateImage):
+        (generateColoredImagesForCSS):
+        Make the default image versioning smarter.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.contentLoaded.WebInspector.Platform.version.toString): Deleted.
+        (WebInspector.contentLoaded.WebInspector.Platform.toString): Deleted.
+        * UserInterface/Base/Platform.js: Added.
+        Move platform information definition into Platform.js.
+
+        * UserInterface/Main.html: Include Platform.js.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser):
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner > button > .glyph):
+        (body.mac-platform.legacy .find-banner > button > .glyph):
+        (.find-banner > button.segmented.left > .glyph):
+        (body.mac-platform.legacy .find-banner > button.segmented.left > .glyph):
+        (.find-banner > button.segmented.right > .glyph):
+        (body.mac-platform.legacy .find-banner > button.segmented.right > .glyph):
+        (.find-banner > button.segmented):
+        (body.mac-platform.legacy .find-banner > button.segmented):
+        * UserInterface/Views/FindBanner.js:
+        (WebInspector.FindBanner.prototype._generateButtonsGlyphsIfNeeded):
+        Size of forward and back arrows adjusted.
+
+2014-07-19  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: TextContentView calls wrong prototype function in the hidden() function
+        https://bugs.webkit.org/show_bug.cgi?id=135097
+
+        Reviewed by Timothy Hatcher.
+
+        Corollary bug to: https://bugs.webkit.org/show_bug.cgi?id=135001
+
+        * UserInterface/Views/TextContentView.js:
+        (WebInspector.TextContentView.prototype.hidden):
+
+2014-07-18  Timothy Hatcher  <timothy@apple.com>
+
+        Revert r169735 since it broke Timeline, and fix bug 129696 in a more targeted way.
+
+        REGRESSION (r169735): Web Inspector: Timeline tree outline missing data until collapse-expand.
+        https://bugs.webkit.org/show_bug.cgi?id=134845
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.adjustCollapsedRange): Use button isteand of assuming
+        item.listItemElement will be ready to use. The listItemElement node is lazily created.
+        * UserInterface/Views/TreeOutline.js:
+        (TreeOutline.prototype.appendChild): Don't attach unless _childrenListNode exists.
+        (TreeOutline.prototype.insertChild): Ditto.
+
+2014-07-17  Timothy Hatcher  <timothy@apple.com>
+
+        Make console.profile record to the Timeline.
+
+        https://bugs.webkit.org/show_bug.cgi?id=134643
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.startCapturing):
+        (WebInspector.TimelineManager.prototype.stopCapturing):
+        (WebInspector.TimelineManager.prototype.capturingStarted):
+        (WebInspector.TimelineManager.prototype.capturingStopped):
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        * UserInterface/Images/TimelineRecordConsoleProfile.svg: Added.
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        * UserInterface/Protocol/TimelineObserver.js:
+        (WebInspector.TimelineObserver.prototype.eventRecorded):
+        (WebInspector.TimelineObserver.prototype.recordingStarted):
+        (WebInspector.TimelineObserver.prototype.recordingStopped):
+        * UserInterface/Views/TimelineIcons.css:
+        (.console-profile-record .icon):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+
+2014-07-16  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: TextContentView calls the wrong super function in shown()
+        https://bugs.webkit.org/show_bug.cgi?id=135001
+
+        Reviewed by Timothy Hatcher.
+        TextContentView calls ResourceContentView.shown instead of ContentView.shown.
+        It should call ContentView.shown because ContentView is its prototype.
+
+
+        * UserInterface/Views/TextContentView.js:
+        (WebInspector.TextContentView.prototype.shown):
+
 2014-07-15  Jonathan Wells  <jonowells@apple.com>
 
         Web Inspector: Modernize UI styles and better sync with platform styles

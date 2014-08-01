@@ -227,6 +227,7 @@
 #import "WebVisiblePosition.h"
 #import <CFNetwork/CFURLCachePriv.h>
 #import <MobileGestalt.h>
+#import <UIKit/UIKit.h>
 #import <WebCore/EventNames.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/GraphicsLayer.h>
@@ -2298,6 +2299,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setPlugInSnapshottingEnabled([preferences plugInSnapshottingEnabled]);
 
     settings.setFixedPositionCreatesStackingContext(true);
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
+    settings.setAcceleratedCompositingForFixedPositionEnabled(true);
+#endif
 
 #if PLATFORM(IOS)
     settings.setStandalone([preferences _standalone]);
@@ -7804,10 +7808,6 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
         break;
     }
     case WebCacheModelPrimaryWebBrowser: {
-#if PLATFORM(IOS)
-        WebPreferences *preferences = [WebPreferences standardPreferences];
-        int prefValue;
-#endif
         // Page cache capacity (in pages)
         // (Research indicates that value / page drops substantially after 3 pages.)
         if (memSize >= 2048)
@@ -7827,9 +7827,6 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
         // Reducing the capacity by 1 reduces overall back-forward performance.
         if (pageCacheCapacity > 0)
             pageCacheCapacity -= 1;
-        prefValue = [preferences _pageCacheSize];
-        if (prefValue >= 0)
-            pageCacheCapacity = prefValue;
 #endif
 
         // Object cache capacities (in bytes)
@@ -7845,12 +7842,6 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
         else if (memSize >= 512)
             cacheTotalCapacity = 32 * 1024 * 1024;
 
-#if PLATFORM(IOS)
-        prefValue = [preferences _objectCacheSize];
-        if (prefValue >= 0)
-            cacheTotalCapacity = prefValue;
-#endif
-
         cacheMinDeadCapacity = cacheTotalCapacity / 4;
         cacheMaxDeadCapacity = cacheTotalCapacity / 2;
 
@@ -7865,10 +7856,6 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
             nsurlCacheMemoryCapacity = 16 * 1024 * 1024;
         else
             nsurlCacheMemoryCapacity = 8 * 1024 * 1024;
-        
-        prefValue = [preferences _NSURLMemoryCacheSize];
-        if (prefValue >= 0)
-            nsurlCacheMemoryCapacity = prefValue;
 #else
         // Foundation memory cache capacity (in bytes)
         // (These values are small because WebCore does most caching itself.)
@@ -7897,10 +7884,6 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
             nsurlCacheDiskCapacity = 50 * 1024 * 1024;
 
 #if PLATFORM(IOS)
-        prefValue = [preferences _NSURLDiskCacheSize];
-        if (prefValue >= 0)
-            nsurlCacheDiskCapacity = prefValue;
-
         // TileCache layer pool capacity, in bytes.
         if (memSize >= 1024)
             tileLayerPoolCapacity = 48 * 1024 * 1024;
@@ -8426,7 +8409,7 @@ bool LayerFlushController::flushLayers()
         _private->fullscreenController = [[WebVideoFullscreenController alloc] init];
         [_private->fullscreenController setMediaElement:videoElement];
 #if PLATFORM(IOS)
-        [_private->fullscreenController enterFullscreen:nil];
+        [_private->fullscreenController enterFullscreen:[(UIView *)[[[self window] hostLayer] delegate] window]];
 #else
         [_private->fullscreenController enterFullscreen:[[self window] screen]];
 #endif

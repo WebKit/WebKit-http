@@ -1,3 +1,131 @@
+2014-07-31  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Bump ewebkit version to 1.11
+        https://bugs.webkit.org/show_bug.cgi?id=135487
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Bump version numbers.
+
+2014-07-31  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [EFL] Add support for building with Geoclue2.
+        https://bugs.webkit.org/show_bug.cgi?id=135455
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Add gio-unix if ENABLE_GEOLOCATION
+        is set.
+
+2014-07-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.5.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2014-07-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump binary version for 2.6
+        https://bugs.webkit.org/show_bug.cgi?id=133724
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsGTK.cmake: Bump binary version to 4.0 and
+        update library version numbers.
+
+2014-07-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Bump the minimum required version
+        https://bugs.webkit.org/show_bug.cgi?id=135382
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt: Bump the minimum required version to 2.8.11 after
+        we introduced usage of target_include_directories().
+
+2014-07-29  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL][GTK] Remove ACCELERATED_COMPOSITING compile flag 
+        https://bugs.webkit.org/show_bug.cgi?id=135376
+
+        Reviewed by Gyuyoung Kim.
+
+        ACCELERATED_COMPOSITING was changed to the mandatory code after r163079.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-07-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] CMake tries to install JavaScriptCore-3.0.gir outside of install prefix
+        https://bugs.webkit.org/show_bug.cgi?id=135288
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/FindGObjectIntrospection.cmake: pass correct libdir and
+        datadir to pkgconfig
+        * Source/cmake/OptionsGTK.cmake: define install directories early
+        enough to be used in FindGObjectIntrospection.cmake
+
+2014-07-23  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Remove CSS_EXCLUSIONS compile flag and leftover code
+        https://bugs.webkit.org/show_bug.cgi?id=135175
+
+        Reviewed by Zoltan Horvath.
+
+        At this point, the CSS_EXCLUSIONS flag guards nothing but some useless
+        stubs. This removes the flag and the useless code.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-07-22  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GStreamer] [GTK] WebKit does not build with GStreamer 1.4
+        https://bugs.webkit.org/show_bug.cgi?id=135114
+
+        Fix build with GStreamer 1.4
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/FindGStreamer.cmake: Check version 1.4.0 for the
+        gst-mpegts component instead of the unstable 1.3.x verstions.
+
+2014-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Simplify make-dist command line arguments
+        https://bugs.webkit.org/show_bug.cgi?id=134832
+
+        Reviewed by Martin Robinson.
+
+        * Source/PlatformGTK.cmake: Use --version instead of
+        --tarball-root when running make-dist.py.
+
+2014-07-18  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Add a manual test for r135044
+
+        <https://bugs.webkit.org/show_bug.cgi?id=135044>
+
+        Rubber-stamped by Andy Estes.
+
+        * ManualTests/ios/typing-in-field-that-clears-on-keyup.html: Added.
+
+2014-07-18  Dana Burkart  <dburkart@apple.com>
+
+        Add a new 'analyze' target to the makefile. This will make use of a new
+        'PATH_TO_SCAN_BUILD' which, if set will wrap xcodebuild in the clang
+        static analyzer.
+        https://bugs.webkit.org/show_bug.cgi?id=135057
+        <rdar://problem/10193187>
+
+        Reviewed by David Kilzer.
+
+        * Makefile:
+        * Makefile.shared:
+        * Source/Makefile:
+
 2014-07-15  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [CMAKE] ENABLE_ENCRYPTED_MEDIA_V2 should depend on ENABLE_VIDEO

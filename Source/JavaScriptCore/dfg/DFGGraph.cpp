@@ -60,23 +60,34 @@ Graph::Graph(VM& vm, Plan& plan, LongLivedState& longLivedState)
     , m_codeBlock(m_plan.codeBlock.get())
     , m_profiledBlock(m_codeBlock->alternative())
     , m_allocator(longLivedState.m_allocator)
-    , m_mustHandleAbstractValues(OperandsLike, plan.mustHandleValues)
+    , m_mustHandleValues(OperandsLike, plan.mustHandleValues)
     , m_hasArguments(false)
     , m_nextMachineLocal(0)
     , m_machineCaptureStart(std::numeric_limits<int>::max())
     , m_fixpointState(BeforeFixpoint)
+    , m_structureWatchpointState(HaveNotStartedWatching)
     , m_form(LoadStore)
     , m_unificationState(LocallyUnified)
     , m_refCountState(EverythingIsLive)
 {
     ASSERT(m_profiledBlock);
     
-    for (unsigned i = m_mustHandleAbstractValues.size(); i--;)
-        m_mustHandleAbstractValues[i].setMostSpecific(*this, plan.mustHandleValues[i]);
+    for (unsigned i = m_mustHandleValues.size(); i--;)
+        m_mustHandleValues[i] = freezeFragile(plan.mustHandleValues[i]);
 }
 
 Graph::~Graph()
 {
+    for (BlockIndex blockIndex = numBlocks(); blockIndex--;) {
+        BasicBlock* block = this->block(blockIndex);
+        if (!block)
+            continue;
+
+        for (unsigned phiIndex = block->phis.size(); phiIndex--;)
+            m_allocator.free(block->phis[phiIndex]);
+        for (unsigned nodeIndex = block->size(); nodeIndex--;)
+            m_allocator.free(block->at(nodeIndex));
+    }
     m_allocator.freeAll();
 }
 
@@ -168,7 +179,6 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     // (5) The arguments to the operation. The may be of the form:
     //         @#   - a NodeIndex referencing a prior node in the graph.
     //         arg# - an argument number.
-    //         $#   - the index in the CodeBlock of a constant { for numeric constants the value is displayed | for integers, in both decimal and hex }.
     //         id#  - the index in the CodeBlock of an identifier { if codeBlock is passed to dump(), the string representation is displayed }.
     //         var# - the index of a var on the global object, used by GetGlobalVar/PutGlobalVar operations.
     out.printf("% 4d:%s<%c%u:", (int)node->index(), skipped ? "  skipped  " : "           ", mustGenerate ? '!' : ' ', refCount);
@@ -211,12 +221,13 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, inContext(node->structureSet(), context));
     if (node->hasStructure())
         out.print(comma, inContext(*node->structure(), context));
-    if (node->hasStructureTransitionData())
-        out.print(comma, inContext(*node->structureTransitionData().previousStructure, context), " -> ", inContext(*node->structureTransitionData().newStructure, context));
+    if (node->hasTransition())
+        out.print(comma, pointerDumpInContext(node->transition(), context));
     if (node->hasFunction()) {
-        out.print(comma, "function(", RawPointer(node->function()), ", ");
-        if (node->function()->inherits(JSFunction::info())) {
-            JSFunction* function = jsCast<JSFunction*>(node->function());
+        out.print(comma, "function(", pointerDump(node->function()), ", ");
+        if (node->function()->value().isCell()
+            && node->function()->value().asCell()->inherits(JSFunction::info())) {
+            JSFunction* function = jsCast<JSFunction*>(node->function()->value().asCell());
             if (function->isHostFunction())
                 out.print("<host function>");
             else
@@ -296,7 +307,7 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(node->startConstant(), ":[");
         CommaPrinter anotherComma;
         for (unsigned i = 0; i < node->numConstants(); ++i)
-            out.print(anotherComma, inContext(m_codeBlock->constantBuffer(node->startConstant())[i], context));
+            out.print(anotherComma, pointerDumpInContext(freeze(m_codeBlock->constantBuffer(node->startConstant())[i]), context));
         out.print("]");
     }
     if (node->hasIndexingType())
@@ -313,13 +324,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, inContext(JSValue(node->typedArray()), context));
     if (node->hasStoragePointer())
         out.print(comma, RawPointer(node->storagePointer()));
-    if (node->isConstant()) {
-        out.print(comma, "$", node->constantNumber());
-        JSValue value = valueOfJSConstant(node);
-        out.print(" = ", inContext(value, context));
-    }
-    if (op == WeakJSConstant)
-        out.print(comma, RawPointer(node->weakConstant()), " (", inContext(*node->weakConstant()->structure(), context), ")");
+    if (node->isConstant())
+        out.print(comma, pointerDumpInContext(node->constant(), context));
     if (node->isJump())
         out.print(comma, "T:", *node->targetBlock());
     if (node->isBranch())
@@ -338,9 +344,11 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, "R:", sortedListDump(reads.direct(), ","));
     if (!writes.isEmpty())
         out.print(comma, "W:", sortedListDump(writes.direct(), ","));
-    out.print(comma, "bc#", node->origin.semantic.bytecodeIndex);
-    if (node->origin.semantic != node->origin.forExit)
-        out.print(comma, "exit: ", node->origin.forExit);
+    if (node->origin.isSet()) {
+        out.print(comma, "bc#", node->origin.semantic.bytecodeIndex);
+        if (node->origin.semantic != node->origin.forExit)
+            out.print(comma, "exit: ", node->origin.forExit);
+    }
     
     out.print(")");
 
@@ -356,7 +364,7 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
 
 void Graph::dumpBlockHeader(PrintStream& out, const char* prefix, BasicBlock* block, PhiNodeDumpMode phiNodeDumpMode, DumpContext* context)
 {
-    out.print(prefix, "Block ", *block, " (", inContext(block->at(0)->origin.semantic, context), "): ", block->isReachable ? "" : "(skipped)", block->isOSRTarget ? " (OSR target)" : "", "\n");
+    out.print(prefix, "Block ", *block, " (", inContext(block->at(0)->origin.semantic, context), "):", block->isReachable ? "" : " (skipped)", block->isOSRTarget ? " (OSR target)" : "", "\n");
     if (block->executionCount == block->executionCount)
         out.print(prefix, "  Execution count: ", block->executionCount, "\n");
     out.print(prefix, "  Predecessors:");
@@ -439,16 +447,28 @@ void Graph::dump(PrintStream& out, DumpContext* context)
         if (!block)
             continue;
         dumpBlockHeader(out, "", block, DumpAllPhis, context);
+        out.print("  States: ", block->cfaStructureClobberStateAtHead);
+        if (!block->cfaHasVisited)
+            out.print(", CurrentlyCFAUnreachable");
+        if (!block->intersectionOfCFAHasVisited)
+            out.print(", CFAUnreachable");
+        out.print("\n");
         switch (m_form) {
         case LoadStore:
         case ThreadedCPS: {
-            out.print("  vars before: ");
+            out.print("  Vars Before: ");
             if (block->cfaHasVisited)
                 out.print(inContext(block->valuesAtHead, context));
             else
                 out.print("<empty>");
             out.print("\n");
-            out.print("  var links: ", block->variablesAtHead, "\n");
+            out.print("  Intersected Vars Before: ");
+            if (block->intersectionOfCFAHasVisited)
+                out.print(inContext(block->intersectionOfPastValuesAtHead, context));
+            else
+                out.print("<empty>");
+            out.print("\n");
+            out.print("  Var Links: ", block->variablesAtHead, "\n");
             break;
         }
             
@@ -464,16 +484,20 @@ void Graph::dump(PrintStream& out, DumpContext* context)
             dump(out, "", block->at(i), context);
             lastNode = block->at(i);
         }
+        out.print("  States: ", block->cfaBranchDirection, ", ", block->cfaStructureClobberStateAtTail);
+        if (!block->cfaDidFinish)
+            out.print(", CFAInvalidated");
+        out.print("\n");
         switch (m_form) {
         case LoadStore:
         case ThreadedCPS: {
-            out.print("  vars after: ");
+            out.print("  Vars After: ");
             if (block->cfaHasVisited)
                 out.print(inContext(block->valuesAtTail, context));
             else
                 out.print("<empty>");
             out.print("\n");
-            out.print("  var links: ", block->variablesAtTail, "\n");
+            out.print("  Var Links: ", block->variablesAtTail, "\n");
             break;
         }
             
@@ -571,17 +595,6 @@ void Graph::killUnreachableBlocks()
             continue;
         
         killBlockAndItsContents(block);
-    }
-}
-
-void Graph::resetExitStates()
-{
-    for (BlockIndex blockIndex = 0; blockIndex < m_blocks.size(); ++blockIndex) {
-        BasicBlock* block = m_blocks[blockIndex].get();
-        if (!block)
-            continue;
-        for (unsigned indexInBlock = block->size(); indexInBlock--;)
-            block->at(indexInBlock)->setCanExit(true);
     }
 }
 
@@ -778,9 +791,7 @@ unsigned Graph::requiredRegisterCountForExecutionAndExit()
 
 JSActivation* Graph::tryGetActivation(Node* node)
 {
-    if (!node->hasConstant())
-        return 0;
-    return jsDynamicCast<JSActivation*>(valueOfJSConstant(node));
+    return node->dynamicCastConstant<JSActivation*>();
 }
 
 WriteBarrierBase<Unknown>* Graph::tryGetRegisters(Node* node)
@@ -795,13 +806,12 @@ WriteBarrierBase<Unknown>* Graph::tryGetRegisters(Node* node)
 
 JSArrayBufferView* Graph::tryGetFoldableView(Node* node)
 {
-    if (!node->hasConstant())
-        return 0;
-    JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(valueOfJSConstant(node));
+    JSArrayBufferView* view = node->dynamicCastConstant<JSArrayBufferView*>();
     if (!view)
-        return 0;
-    if (!watchpoints().isStillValid(view))
-        return 0;
+        return nullptr;
+    if (!view->length())
+        return nullptr;
+    WTF::loadLoadFence();
     return view;
 }
 
@@ -817,8 +827,43 @@ JSArrayBufferView* Graph::tryGetFoldableViewForChild1(Node* node)
     return tryGetFoldableView(child(node, 0).node(), node->arrayMode());
 }
 
+void Graph::registerFrozenValues()
+{
+    m_codeBlock->constants().resize(0);
+    for (FrozenValue* value : m_frozenValues) {
+        if (value->structure() && value->structure()->dfgShouldWatch())
+            m_plan.weakReferences.addLazily(value->structure());
+        
+        switch (value->strength()) {
+        case FragileValue: {
+            break;
+        }
+        case WeakValue: {
+            m_plan.weakReferences.addLazily(value->value().asCell());
+            break;
+        }
+        case StrongValue: {
+            unsigned constantIndex = m_codeBlock->addConstantLazily();
+            initializeLazyWriteBarrierForConstant(
+                m_plan.writeBarriers,
+                m_codeBlock->constants()[constantIndex],
+                m_codeBlock,
+                constantIndex,
+                m_codeBlock->ownerExecutable(),
+                value->value());
+            break;
+        } }
+    }
+    m_codeBlock->constants().shrinkToFit();
+}
+
 void Graph::visitChildren(SlotVisitor& visitor)
 {
+    for (FrozenValue* value : m_frozenValues) {
+        visitor.appendUnbarrieredReadOnlyValue(value->value());
+        visitor.appendUnbarrieredReadOnlyPointer(value->structure());
+    }
+    
     for (BlockIndex blockIndex = numBlocks(); blockIndex--;) {
         BasicBlock* block = this->block(blockIndex);
         if (!block)
@@ -828,15 +873,6 @@ void Graph::visitChildren(SlotVisitor& visitor)
             Node* node = block->at(nodeIndex);
             
             switch (node->op()) {
-            case JSConstant:
-            case WeakJSConstant:
-                visitor.appendUnbarrieredReadOnlyValue(valueOfJSConstant(node));
-                break;
-                
-            case CheckFunction:
-                visitor.appendUnbarrieredReadOnlyPointer(node->function());
-                break;
-                
             case CheckExecutable:
                 visitor.appendUnbarrieredReadOnlyPointer(node->executable());
                 break;
@@ -846,7 +882,6 @@ void Graph::visitChildren(SlotVisitor& visitor)
                     visitor.appendUnbarrieredReadOnlyPointer(node->structureSet()[i]);
                 break;
                 
-            case StructureTransitionWatchpoint:
             case NewObject:
             case ArrayifyToStructure:
             case NewStringObject:
@@ -854,13 +889,39 @@ void Graph::visitChildren(SlotVisitor& visitor)
                 break;
                 
             case PutStructure:
-            case PhantomPutStructure:
             case AllocatePropertyStorage:
             case ReallocatePropertyStorage:
                 visitor.appendUnbarrieredReadOnlyPointer(
-                    node->structureTransitionData().previousStructure);
+                    node->transition()->previous);
                 visitor.appendUnbarrieredReadOnlyPointer(
-                    node->structureTransitionData().newStructure);
+                    node->transition()->next);
+                break;
+                
+            case MultiGetByOffset:
+                for (unsigned i = node->multiGetByOffsetData().variants.size(); i--;) {
+                    GetByIdVariant& variant = node->multiGetByOffsetData().variants[i];
+                    visitor.appendUnbarrieredReadOnlyValue(variant.specificValue());
+                    const StructureSet& set = variant.structureSet();
+                    for (unsigned j = set.size(); j--;)
+                        visitor.appendUnbarrieredReadOnlyPointer(set[j]);
+
+                    // Don't need to mark anything in the structure chain because that would
+                    // have been decomposed into CheckStructure's. Don't need to mark the
+                    // callLinkStatus because we wouldn't use MultiGetByOffset if any of the
+                    // variants did that.
+                    ASSERT(!variant.callLinkStatus());
+                }
+                break;
+                    
+            case MultiPutByOffset:
+                for (unsigned i = node->multiPutByOffsetData().variants.size(); i--;) {
+                    PutByIdVariant& variant = node->multiPutByOffsetData().variants[i];
+                    const StructureSet& set = variant.oldStructure();
+                    for (unsigned j = set.size(); j--;)
+                        visitor.appendUnbarrieredReadOnlyPointer(set[j]);
+                    if (variant.kind() == PutByIdVariant::Transition)
+                        visitor.appendUnbarrieredReadOnlyPointer(variant.newStructure());
+                }
                 break;
                 
             default:
@@ -868,6 +929,87 @@ void Graph::visitChildren(SlotVisitor& visitor)
             }
         }
     }
+}
+
+FrozenValue* Graph::freezeFragile(JSValue value)
+{
+    if (UNLIKELY(!value))
+        return FrozenValue::emptySingleton();
+    
+    auto result = m_frozenValueMap.add(JSValue::encode(value), nullptr);
+    if (LIKELY(!result.isNewEntry))
+        return result.iterator->value;
+    
+    return result.iterator->value = m_frozenValues.add(FrozenValue::freeze(value));
+}
+
+FrozenValue* Graph::freeze(JSValue value)
+{
+    FrozenValue* result = freezeFragile(value);
+    result->strengthenTo(WeakValue);
+    return result;
+}
+
+FrozenValue* Graph::freezeStrong(JSValue value)
+{
+    FrozenValue* result = freezeFragile(value);
+    result->strengthenTo(StrongValue);
+    return result;
+}
+
+void Graph::convertToConstant(Node* node, FrozenValue* value)
+{
+    if (value->structure())
+        assertIsWatched(value->structure());
+    if (m_form == ThreadedCPS) {
+        if (node->op() == GetLocal)
+            dethread();
+        else
+            ASSERT(!node->hasVariableAccessData(*this));
+    }
+    node->convertToConstant(value);
+}
+
+void Graph::convertToConstant(Node* node, JSValue value)
+{
+    convertToConstant(node, freeze(value));
+}
+
+void Graph::convertToStrongConstant(Node* node, JSValue value)
+{
+    convertToConstant(node, freezeStrong(value));
+}
+
+void Graph::assertIsWatched(Structure* structure)
+{
+    if (m_structureWatchpointState == HaveNotStartedWatching)
+        return;
+    
+    if (!structure->dfgShouldWatch())
+        return;
+    if (watchpoints().isWatched(structure->transitionWatchpointSet()))
+        return;
+    
+    DFG_CRASH(*this, nullptr, toCString("Structure ", pointerDump(structure), " is watchable but isn't being watched.").data());
+}
+
+void Graph::handleAssertionFailure(
+    Node* node, const char* file, int line, const char* function, const char* assertion)
+{
+    startCrashing();
+    dataLog("DFG ASSERTION FAILED: ", assertion, "\n");
+    dataLog(file, "(", line, ") : ", function, "\n");
+    dataLog("\n");
+    if (node) {
+        dataLog("While handling node ", node, "\n");
+        dataLog("\n");
+    }
+    dataLog("Graph at time of failure:\n");
+    dump();
+    dataLog("\n");
+    dataLog("DFG ASSERTION FAILED: ", assertion, "\n");
+    dataLog(file, "(", line, ") : ", function, "\n");
+    CRASH();
 }
 
 } } // namespace JSC::DFG

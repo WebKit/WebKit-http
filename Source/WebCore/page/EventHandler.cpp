@@ -73,6 +73,7 @@
 #include "RenderFrameSet.h"
 #include "RenderLayer.h"
 #include "RenderListBox.h"
+#include "RenderNamedFlowThread.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
@@ -283,16 +284,50 @@ static inline ScrollGranularity wheelGranularityToScrollGranularity(unsigned del
     }
 }
 
-static inline bool scrollNode(float delta, ScrollGranularity granularity, ScrollDirection positiveDirection, ScrollDirection negativeDirection, Node* node, Element** stopElement, const IntPoint& wheelEventAbsolutePoint)
+static inline bool didScrollInScrollableAreaForSingleAxis(ScrollableArea* scrollableArea, WheelEvent* wheelEvent, ScrollEventAxis axis)
 {
-    if (!delta)
-        return false;
-    if (!node->renderer())
-        return false;
-    RenderBox& enclosingBox = node->renderer()->enclosingBox();
-    float absDelta = delta > 0 ? delta : -delta;
+    float delta = axis == ScrollEventAxis::Vertical ? wheelEvent->deltaY() : wheelEvent->deltaX();
+    ScrollDirection negativeDirection = axis == ScrollEventAxis::Vertical ? ScrollUp : ScrollLeft;
+    ScrollDirection positiveDirection = axis == ScrollEventAxis::Vertical ? ScrollDown : ScrollRight;
+    return scrollableArea->scroll(delta < 0 ? negativeDirection : positiveDirection, wheelGranularityToScrollGranularity(wheelEvent->deltaMode()), delta > 0 ? delta : -delta);
+}
 
-    return enclosingBox.scroll(delta < 0 ? negativeDirection : positiveDirection, granularity, absDelta, stopElement, &enclosingBox, wheelEventAbsolutePoint);
+static inline bool handleWheelEventInAppropriateEnclosingBoxForSingleAxis(Node* startNode, WheelEvent* wheelEvent, Element** stopElement, ScrollEventAxis axis)
+{
+    if (!startNode->renderer() || (axis == ScrollEventAxis::Vertical && !wheelEvent->deltaY()) || (axis == ScrollEventAxis::Horizontal && !wheelEvent->deltaX()))
+        return false;
+
+    RenderBox& initialEnclosingBox = startNode->renderer()->enclosingBox();
+    if (initialEnclosingBox.isListBox())
+        return didScrollInScrollableAreaForSingleAxis(static_cast<RenderListBox*>(&initialEnclosingBox), wheelEvent, axis);
+
+    RenderBox* currentEnclosingBox = &initialEnclosingBox;
+    while (currentEnclosingBox) {
+        if (RenderLayer* boxLayer = currentEnclosingBox->layer()) {
+            const PlatformWheelEvent* platformEvent = wheelEvent->wheelEvent();
+            bool scrollingWasHandled;
+            if (platformEvent != nullptr)
+                scrollingWasHandled = boxLayer->handleWheelEvent(axis == ScrollEventAxis::Vertical ? platformEvent->copyIgnoringHorizontalDelta() : platformEvent->copyIgnoringVerticalDelta());
+            else
+                scrollingWasHandled = didScrollInScrollableAreaForSingleAxis(boxLayer, wheelEvent, axis);
+
+            if (scrollingWasHandled) {
+                if (stopElement)
+                    *stopElement = currentEnclosingBox->element();
+                return true;
+            }
+        }
+
+        if (stopElement && *stopElement && *stopElement == currentEnclosingBox->element())
+            return true;
+
+        currentEnclosingBox = currentEnclosingBox->containingBlock();
+        if (currentEnclosingBox && currentEnclosingBox->isRenderNamedFlowThread())
+            currentEnclosingBox = RenderNamedFlowThread::fragmentFromRenderBoxAsRenderBlock(currentEnclosingBox, roundedIntPoint(wheelEvent->absoluteLocation()), initialEnclosingBox);
+        if (!currentEnclosingBox || currentEnclosingBox->isRenderView())
+            return false;
+    }
+    return false;
 }
 
 #if (ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS))
@@ -2505,14 +2540,17 @@ bool EventHandler::isInsideScrollbar(const IntPoint& windowPoint) const
 }
 
 #if !PLATFORM(GTK)
+
 bool EventHandler::shouldTurnVerticalTicksIntoHorizontal(const HitTestResult&, const PlatformWheelEvent&) const
 {
     return false;
 }
+
 #endif
 
 #if !PLATFORM(MAC)
-void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent&, const HitTestResult&, Element*&, ContainerNode*&, ScrollableArea*&, bool&)
+
+void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent&, const HitTestResult&, RefPtr<Element>&, RefPtr<ContainerNode>&, ScrollableArea*&, bool&)
 {
 }
 
@@ -2535,15 +2573,15 @@ bool EventHandler::platformCompletePlatformWidgetWheelEvent(const PlatformWheelE
 {
     return true;
 }
+
 #endif
 
-bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
+bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
 {
     Document* document = m_frame.document();
-
     if (!document->renderView())
         return false;
-    
+
     RefPtr<FrameView> protector(m_frame.view());
 
     FrameView* view = m_frame.view();
@@ -2552,63 +2590,56 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
 
     m_isHandlingWheelEvent = true;
     setFrameWasScrolledByUser();
-    LayoutPoint vPoint = view->windowToContents(e.position());
 
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::DisallowShadowContent);
-    HitTestResult result(vPoint);
+    HitTestResult result(view->windowToContents(event.position()));
     document->renderView()->hitTest(request, result);
 
-    Element* element = result.innerElement();
-
-    bool isOverWidget = result.isOverWidget();
-
-    ContainerNode* scrollableContainer = nullptr;
+    RefPtr<Element> element = result.innerElement();
+    RefPtr<ContainerNode> scrollableContainer;
     ScrollableArea* scrollableArea = nullptr;
-    platformPrepareForWheelEvents(e, result, element, scrollableContainer, scrollableArea, isOverWidget);
+    bool isOverWidget = result.isOverWidget();
+    platformPrepareForWheelEvents(event, result, element, scrollableContainer, scrollableArea, isOverWidget);
 
 #if PLATFORM(COCOA)
-    if (e.phase() == PlatformWheelEventPhaseNone && e.momentumPhase() == PlatformWheelEventPhaseNone) {
-#else
-    if (!e.useLatchedEventElement()) {
+    if (event.phase() == PlatformWheelEventPhaseNone && event.momentumPhase() == PlatformWheelEventPhaseNone)
 #endif
+    {
         m_latchedWheelEventElement = nullptr;
         m_previousWheelScrolledElement = nullptr;
     }
 
     // FIXME: It should not be necessary to do this mutation here.
-    // Instead, the handlers should know convert vertical scrolls
-    // appropriately.
-    PlatformWheelEvent event = e;
-    if (m_baseEventType == PlatformEvent::NoType && shouldTurnVerticalTicksIntoHorizontal(result, e))
-        event = event.copyTurningVerticalTicksIntoHorizontalTicks();
+    // Instead, the handlers should know convert vertical scrolls appropriately.
+    PlatformWheelEvent adjustedEvent = event;
+    if (m_baseEventType == PlatformEvent::NoType && shouldTurnVerticalTicksIntoHorizontal(result, event))
+        adjustedEvent = event.copyTurningVerticalTicksIntoHorizontalTicks();
 
-    platformRecordWheelEvent(event);
+    platformRecordWheelEvent(adjustedEvent);
 
     if (element) {
-        // Figure out which view to send the event to.
-        RenderElement* target = element->renderer();
-        
-        if (isOverWidget && target && target->isWidget()) {
-            Widget* widget = toRenderWidget(target)->widget();
-            if (widget && passWheelEventToWidget(e, widget)) {
-                m_isHandlingWheelEvent = false;
-                if (scrollableArea)
-                    scrollableArea->setScrolledProgrammatically(false);
-                if (widget->platformWidget())
-                    return platformCompletePlatformWidgetWheelEvent(e, scrollableContainer);
-                return true;
+        if (isOverWidget) {
+            RenderElement* target = element->renderer();
+            if (target && target->isWidget()) {
+                Widget* widget = toRenderWidget(target)->widget();
+                if (widget && passWheelEventToWidget(event, widget)) {
+                    m_isHandlingWheelEvent = false;
+                    if (scrollableArea)
+                        scrollableArea->setScrolledProgrammatically(false);
+                    if (!widget->platformWidget())
+                        return true;
+                    return platformCompletePlatformWidgetWheelEvent(event, scrollableContainer.get());
+                }
             }
         }
 
-        if (!element->dispatchWheelEvent(event)) {
+        if (!element->dispatchWheelEvent(adjustedEvent)) {
             m_isHandlingWheelEvent = false;
-
             if (scrollableArea && scrollableArea->isScrolledProgrammatically()) {
-                // Web developer is controlling scrolling. Don't attempt to latch ourselves:
+                // Web developer is controlling scrolling, so don't attempt to latch.
                 clearLatchedState();
                 scrollableArea->setScrolledProgrammatically(false);
             }
-
             return true;
         }
     }
@@ -2616,7 +2647,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
     if (scrollableArea)
         scrollableArea->setScrolledProgrammatically(false);
 
-    return platformCompleteWheelEvent(e, element, scrollableContainer, scrollableArea);
+    return platformCompleteWheelEvent(event, element.get(), scrollableContainer.get(), scrollableArea);
 }
 
 void EventHandler::clearLatchedState()
@@ -2635,7 +2666,6 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
         return;
     
     Element* stopElement = m_previousWheelScrolledElement.get();
-    ScrollGranularity granularity = wheelGranularityToScrollGranularity(wheelEvent->deltaMode());
     DominantScrollGestureDirection dominantDirection = DominantScrollGestureDirection::None;
 
     // Workaround for scrolling issues <rdar://problem/14758615>.
@@ -2646,10 +2676,10 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
     
     // Break up into two scrolls if we need to.  Diagonal movement on 
     // a MacBook pro is an example of a 2-dimensional mouse wheel event (where both deltaX and deltaY can be set).
-    if (dominantDirection != DominantScrollGestureDirection::Vertical && scrollNode(wheelEvent->deltaX(), granularity, ScrollRight, ScrollLeft, startNode, &stopElement, roundedIntPoint(wheelEvent->absoluteLocation())))
+    if (dominantDirection != DominantScrollGestureDirection::Vertical && handleWheelEventInAppropriateEnclosingBoxForSingleAxis(startNode, wheelEvent, &stopElement, ScrollEventAxis::Horizontal))
         wheelEvent->setDefaultHandled();
     
-    if (dominantDirection != DominantScrollGestureDirection::Horizontal && scrollNode(wheelEvent->deltaY(), granularity, ScrollDown, ScrollUp, startNode, &stopElement, roundedIntPoint(wheelEvent->absoluteLocation())))
+    if (dominantDirection != DominantScrollGestureDirection::Horizontal && handleWheelEventInAppropriateEnclosingBoxForSingleAxis(startNode, wheelEvent, &stopElement, ScrollEventAxis::Vertical))
         wheelEvent->setDefaultHandled();
     
     if (!m_latchedWheelEventElement)

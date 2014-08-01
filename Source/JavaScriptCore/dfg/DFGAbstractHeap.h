@@ -50,6 +50,8 @@ namespace JSC { namespace DFG {
     macro(Butterfly_arrayBuffer) \
     macro(Butterfly_publicLength) \
     macro(Butterfly_vectorLength) \
+    macro(GetterSetter_getter) \
+    macro(GetterSetter_setter) \
     macro(JSArrayBufferView_length) \
     macro(JSArrayBufferView_mode) \
     macro(JSArrayBufferView_vector) \
@@ -68,8 +70,7 @@ namespace JSC { namespace DFG {
     macro(ArrayStorageProperties) \
     macro(Variables) \
     macro(TypedArrayProperties) \
-    macro(GCState) \
-    macro(BarrierState) \
+    macro(HeapObjectCount) /* Used to reflect the fact that some allocations reveal object identity */\
     macro(RegExpState) \
     macro(InternalState) \
     macro(Absolute) \

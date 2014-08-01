@@ -893,8 +893,6 @@ uint64_t WebPageProxy::goForward()
     if (!forwardItem)
         return 0;
 
-    recordNavigationSnapshot();
-
     auto transaction = m_pageLoadState.transaction();
 
     m_pageLoadState.setPendingAPIRequestURL(transaction, forwardItem->url());
@@ -902,7 +900,7 @@ uint64_t WebPageProxy::goForward()
     if (!isValid())
         return reattachToWebProcessWithItem(forwardItem);
 
-    uint64_t navigationID = generateNavigationID();
+    uint64_t navigationID = m_backForwardList->currentItem()->itemIsInSameDocument(*forwardItem) ? 0 : generateNavigationID();
 
     m_process->send(Messages::WebPage::GoForward(navigationID, forwardItem->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
@@ -916,8 +914,6 @@ uint64_t WebPageProxy::goBack()
     if (!backItem)
         return 0;
 
-    recordNavigationSnapshot();
-
     auto transaction = m_pageLoadState.transaction();
 
     m_pageLoadState.setPendingAPIRequestURL(transaction, backItem->url());
@@ -925,7 +921,7 @@ uint64_t WebPageProxy::goBack()
     if (!isValid())
         return reattachToWebProcessWithItem(backItem);
 
-    uint64_t navigationID = generateNavigationID();
+    uint64_t navigationID = m_backForwardList->currentItem()->itemIsInSameDocument(*backItem) ? 0 : generateNavigationID();
 
     m_process->send(Messages::WebPage::GoBack(navigationID, backItem->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
@@ -938,13 +934,11 @@ uint64_t WebPageProxy::goToBackForwardItem(WebBackForwardListItem* item)
     if (!isValid())
         return reattachToWebProcessWithItem(item);
 
-    recordNavigationSnapshot();
-    
     auto transaction = m_pageLoadState.transaction();
 
     m_pageLoadState.setPendingAPIRequestURL(transaction, item->url());
 
-    uint64_t navigationID = generateNavigationID();
+    uint64_t navigationID = m_backForwardList->currentItem()->itemIsInSameDocument(*item) ? 0 : generateNavigationID();
 
     m_process->send(Messages::WebPage::GoToBackForwardItem(navigationID, item->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
@@ -1130,18 +1124,20 @@ void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
         m_viewState |= ViewState::IsVisuallyIdle;
 }
 
-void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, bool wantsReply)
+void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, bool wantsReply, ViewStateChangeDispatchMode dispatchMode)
 {
     m_potentiallyChangedViewStateFlags |= mayHaveChanged;
     m_viewStateChangeWantsReply = m_viewStateChangeWantsReply || wantsReply;
 
 #if PLATFORM(COCOA)
-    if (!isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow()) {
+    bool isNewlyInWindow = !isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow();
+    if (dispatchMode == ViewStateChangeDispatchMode::Immediate || isNewlyInWindow) {
         dispatchViewStateChange();
         return;
     }
     m_viewStateChangeDispatcher->schedule();
 #else
+    UNUSED_PARAM(dispatchMode);
     dispatchViewStateChange();
 #endif
 }
@@ -1192,7 +1188,7 @@ void WebPageProxy::dispatchViewStateChange()
     if (m_viewWasEverInWindow && (changed & ViewState::IsInWindow) && isInWindow())
         m_viewStateChangeWantsReply = true;
 
-    if (changed)
+    if (changed || m_viewStateChangeWantsReply)
         m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsReply), m_pageID);
 
     // This must happen after the SetViewState message is sent, to ensure the page visibility event can fire.
@@ -1317,7 +1313,13 @@ void WebPageProxy::executeEditCommand(const String& commandName)
 
     m_process->send(Messages::WebPage::ExecuteEditCommand(commandName), m_pageID);
 }
-    
+
+#if !PLATFORM(IOS)
+void WebPageProxy::didCommitLayerTree(const RemoteLayerTreeTransaction&)
+{
+}
+#endif
+
 #if USE(TILED_BACKING_STORE)
 void WebPageProxy::commitPageTransitionViewport()
 {
@@ -2507,10 +2509,8 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK_URL(url);
 
-    if (frame->isMainFrame()) {
-        recordNavigationSnapshot();
+    if (frame->isMainFrame())
         m_pageLoadState.didStartProvisionalLoad(transaction, url, unreachableURL);
-    }
 
     frame->setUnreachableURL(unreachableURL);
     frame->didStartProvisionalLoad(url);
@@ -2860,6 +2860,14 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, uint64_t na
         newNavigationID = generateNavigationID();
         listener->setNavigationID(newNavigationID);
     }
+
+#if ENABLE(CONTENT_FILTERING)
+    if (frame->contentFilterDidHandleNavigationAction(request)) {
+        receivedPolicyAction = true;
+        policyAction = PolicyIgnore;
+        return;
+    }
+#endif
 
     ASSERT(!m_inDecidePolicyForNavigationAction);
 
@@ -3774,6 +3782,16 @@ void WebPageProxy::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vect
     if (!isValid())
         return;
 
+#if ENABLE(SANDBOX_EXTENSIONS)
+    // FIXME: The sandbox extensions should be sent with the DidChooseFilesForOpenPanel message. This
+    // is gated on a way of passing SandboxExtension::Handles in a Vector.
+    for (size_t i = 0; i < fileURLs.size(); ++i) {
+        SandboxExtension::Handle sandboxExtensionHandle;
+        SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandle);
+        m_process->send(Messages::WebPage::ExtendSandboxForFileFromOpenPanel(sandboxExtensionHandle), m_pageID);
+    }
+#endif
+
     m_process->send(Messages::WebPage::DidChooseFilesForOpenPanelWithDisplayStringAndIcon(fileURLs, displayString, iconData ? iconData->dataReference() : IPC::DataReference()), m_pageID);
 
     m_openPanelResultListener->invalidate();
@@ -4273,6 +4291,9 @@ void WebPageProxy::processDidCrash()
 {
     ASSERT(m_isValid);
 
+    // There is a nested transaction in resetStateAfterProcessExited() that we don't want to commit before the client call.
+    PageLoadState::Transaction transaction = m_pageLoadState.transaction();
+
     resetStateAfterProcessExited();
 
     m_loaderClient->processDidCrash(this);
@@ -4430,7 +4451,7 @@ void WebPageProxy::resetStateAfterProcessExited()
     m_pageClient.dismissDictionaryLookupPanel();
 #endif
 
-    auto transaction = m_pageLoadState.transaction();
+    PageLoadState::Transaction transaction = m_pageLoadState.transaction();
     m_pageLoadState.reset(transaction);
 }
 
@@ -5154,6 +5175,11 @@ void WebPageProxy::willRecordNavigationSnapshot(WebBackForwardListItem& item)
 void WebPageProxy::navigationGestureSnapshotWasRemoved()
 {
     m_isShowingNavigationGestureSnapshot = false;
+}
+
+void WebPageProxy::willChangeCurrentHistoryItemForMainFrame()
+{
+    recordNavigationSnapshot();
 }
 
 } // namespace WebKit

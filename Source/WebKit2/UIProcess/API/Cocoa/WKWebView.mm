@@ -118,6 +118,13 @@
 - (UIViewController *)_rootAncestorViewController;
 - (UIViewController *)_viewControllerForSupportedInterfaceOrientations;
 @end
+
+enum class DynamicViewportUpdateMode {
+    NotResizing,
+    ResizingWithAnimation,
+    ResizingWithDocumentHidden,
+};
+
 #endif
 
 #if PLATFORM(MAC)
@@ -161,14 +168,16 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     CGFloat _viewportMetaTagWidth;
 
     UIEdgeInsets _obscuredInsets;
-    bool _isChangingObscuredInsetsInteractively;
+    BOOL _haveSetObscuredInsets;
+    BOOL _isChangingObscuredInsetsInteractively;
 
     UIInterfaceOrientation _interfaceOrientationOverride;
     BOOL _overridesInterfaceOrientation;
 
+    BOOL _hasCommittedLoadForMainFrame;
     BOOL _needsResetViewStateAfterCommitLoadForMainFrame;
     uint64_t _firstPaintAfterCommitLoadTransactionID;
-    BOOL _isAnimatingResize;
+    DynamicViewportUpdateMode _dynamicViewportUpdateMode;
     CATransform3D _resizeAnimationTransformAdjustments;
     uint64_t _resizeAnimationTransformTransactionID;
     RetainPtr<UIView> _resizeAnimationView;
@@ -732,7 +741,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
 - (UIEdgeInsets)_computedContentInset
 {
-    if (!UIEdgeInsetsEqualToEdgeInsets(_obscuredInsets, UIEdgeInsetsZero))
+    if (_haveSetObscuredInsets)
         return _obscuredInsets;
 
     return [_scrollView contentInset];
@@ -740,14 +749,13 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
 - (void)_processDidExit
 {
-    if (!_customContentView && _isAnimatingResize) {
+    if (!_customContentView && _dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
         NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
         [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
         [_scrollView insertSubview:[_contentView unscaledView] atIndex:indexOfResizeAnimationView + 1];
         [_resizeAnimationView removeFromSuperview];
         _resizeAnimationView = nil;
 
-        _isAnimatingResize = NO;
         _resizeAnimationTransformAdjustments = CATransform3DIdentity;
     }
     [_contentView setFrame:self.bounds];
@@ -756,7 +764,10 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     [_scrollView setZoomScale:1];
 
     _viewportMetaTagWidth = -1;
+    _hasCommittedLoadForMainFrame = NO;
     _needsResetViewStateAfterCommitLoadForMainFrame = NO;
+    _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
+    [_contentView setHidden:NO];
     _needsToRestoreExposedRect = NO;
     _needsToRestoreUnobscuredCenter = NO;
     _scrollViewBackgroundColor = WebCore::Color();
@@ -768,27 +779,30 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 {
     _firstPaintAfterCommitLoadTransactionID = toRemoteLayerTreeDrawingAreaProxy(_page->drawingArea())->nextLayerTreeTransactionID();
 
+    _hasCommittedLoadForMainFrame = YES;
     _needsResetViewStateAfterCommitLoadForMainFrame = YES;
     _usesMinimalUI = NO;
 }
 
-static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, WebCore::FloatPoint contentOffset)
+static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoint contentOffset)
 {
     UIEdgeInsets contentInsets = scrollView.contentInset;
     CGSize contentSize = scrollView.contentSize;
     CGSize scrollViewSize = scrollView.bounds.size;
 
-    float maxHorizontalOffset = contentSize.width + contentInsets.right - scrollViewSize.width;
-    if (contentOffset.x() > maxHorizontalOffset)
-        contentOffset.setX(maxHorizontalOffset);
-    float maxVerticalOffset = contentSize.height + contentInsets.bottom - scrollViewSize.height;
-    if (contentOffset.y() > maxVerticalOffset)
-        contentOffset.setY(maxVerticalOffset);
-    if (contentOffset.x() < -contentInsets.left)
-        contentOffset.setX(-contentInsets.left);
-    if (contentOffset.y() < -contentInsets.top)
-        contentOffset.setY(-contentInsets.top);
-    scrollView.contentOffset = contentOffset;
+    CGFloat maxHorizontalOffset = contentSize.width + contentInsets.right - scrollViewSize.width;
+    contentOffset.x = std::min(maxHorizontalOffset, contentOffset.x);
+    contentOffset.x = std::max(-contentInsets.left, contentOffset.x);
+
+    CGFloat maxVerticalOffset = contentSize.height + contentInsets.bottom - scrollViewSize.height;
+    contentOffset.y = std::min(maxVerticalOffset, contentOffset.y);
+    contentOffset.y = std::max(-contentInsets.top, contentOffset.y);
+    return contentOffset;
+}
+
+static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, WebCore::FloatPoint contentOffset)
+{
+    scrollView.contentOffset = contentOffsetBoundedInValidRange(scrollView, contentOffset);
 }
 
 // WebCore stores the page scale factor as float instead of double. When we get a scale from WebCore,
@@ -804,9 +818,14 @@ static inline bool withinEpsilon(TypeA a, TypeB b)
     if (_customContentView)
         return;
 
-    if (_isAnimatingResize) {
-        if (layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID)
+    if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
+        if (layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID) {
             [_resizeAnimationView layer].sublayerTransform = _resizeAnimationTransformAdjustments;
+            if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::ResizingWithDocumentHidden) {
+                [_contentView setHidden:NO];
+                [self _endAnimatedResize];
+            }
+        }
         return;
     }
 
@@ -869,7 +888,7 @@ static inline bool withinEpsilon(TypeA a, TypeB b)
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition nextValidLayerTreeTransactionID:(uint64_t)nextValidLayerTreeTransactionID
 {
-    if (_isAnimatingResize) {
+    if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
         CGFloat animatingScaleTarget = [[_resizeAnimationView layer] transform].m11;
         double currentTargetScale = animatingScaleTarget * [[_contentView layer] transform].m11;
         double scale = newScale / currentTargetScale;
@@ -886,7 +905,7 @@ static inline bool withinEpsilon(TypeA a, TypeB b)
 
 - (void)_restorePageStateToExposedRect:(WebCore::FloatRect)exposedRect scale:(double)scale
 {
-    if (_isAnimatingResize)
+    if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
 
     if (_customContentView)
@@ -901,7 +920,7 @@ static inline bool withinEpsilon(TypeA a, TypeB b)
 
 - (void)_restorePageStateToUnobscuredCenter:(WebCore::FloatPoint)center scale:(double)scale
 {
-    if (_isAnimatingResize)
+    if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
 
     if (_customContentView)
@@ -985,29 +1004,22 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     return contentOffset;
 }
 
-- (void)_scrollToContentOffset:(WebCore::FloatPoint)contentOffset
+- (void)_scrollToContentOffset:(WebCore::FloatPoint)contentOffsetInPageCoordinates
 {
-    if (_isAnimatingResize)
+    if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
 
-    WebCore::FloatPoint scaledOffset = contentOffset;
+    WebCore::FloatPoint scaledOffset = contentOffsetInPageCoordinates;
     CGFloat zoomScale = contentZoomScale(self);
     scaledOffset.scale(zoomScale, zoomScale);
 
-    WebCore::FloatPoint contentOffsetInDocument = scaledOffset;
-    WebCore::FloatSize documentSizeInSelfCoordinates([_contentView frame].size);
-    WebCore::FloatSize unobscuredRectSize(UIEdgeInsetsInsetRect(self.bounds, [self _computedContentInset]).size);
-
-    float maximumHorizontalOffset = documentSizeInSelfCoordinates.width() - unobscuredRectSize.width();
-    float maximumVerticalOffset = documentSizeInSelfCoordinates.height() - unobscuredRectSize.height();
-    contentOffsetInDocument = contentOffsetInDocument.shrunkTo(WebCore::FloatPoint(maximumHorizontalOffset, maximumVerticalOffset));
-    contentOffsetInDocument = contentOffsetInDocument.expandedTo(WebCore::FloatPoint(0, 0));
+    CGPoint contentOffsetInScrollViewCoordinates = [self _adjustedContentOffset:scaledOffset];
+    contentOffsetInScrollViewCoordinates = contentOffsetBoundedInValidRange(_scrollView.get(), contentOffsetInScrollViewCoordinates);
 
     [_scrollView _stopScrollingAndZoomingAnimations];
 
-    CGPoint adjustedContentOffset = [self _adjustedContentOffset:contentOffsetInDocument];
-    if (!CGPointEqualToPoint(adjustedContentOffset, [_scrollView contentOffset]))
-        [_scrollView setContentOffset:adjustedContentOffset];
+    if (!CGPointEqualToPoint(contentOffsetInScrollViewCoordinates, [_scrollView contentOffset]))
+        [_scrollView setContentOffset:contentOffsetInScrollViewCoordinates];
     else {
         // If we haven't changed anything, there would not be any VisibleContentRect update sent to the content.
         // The WebProcess would keep the invalid contentOffset as its scroll position.
@@ -1332,14 +1344,15 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     CGRect bounds = self.bounds;
     [_scrollView setFrame:bounds];
 
-    if (!_isAnimatingResize) {
+    if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing) {
         if (!_overridesMinimumLayoutSize)
             _page->setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(bounds.size));
         if (!_overridesMinimumLayoutSizeForMinimalUI)
             _page->setViewportConfigurationMinimumLayoutSizeForMinimalUI(WebCore::FloatSize(bounds.size));
         if (!_overridesMaximumUnobscuredSize)
             _page->setMaximumUnobscuredSize(WebCore::FloatSize(bounds.size));
-        _page->drawingArea()->setSize(WebCore::IntSize(bounds.size), WebCore::IntSize(), WebCore::IntSize());
+        if (WebKit::DrawingAreaProxy* drawingArea = _page->drawingArea())
+            drawingArea->setSize(WebCore::IntSize(bounds.size), WebCore::IntSize(), WebCore::IntSize());
     }
 
     [_customContentView web_setMinimumSize:bounds.size];
@@ -1368,7 +1381,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
     }
 
-    if (_isAnimatingResize)
+    if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
 
     if (_needsResetViewStateAfterCommitLoadForMainFrame)
@@ -1465,6 +1478,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         if (!_gestureController) {
             _gestureController = std::make_unique<WebKit::ViewGestureController>(*_page);
             _gestureController->installSwipeHandler(self, [self scrollView]);
+            _gestureController->setAlternateBackForwardListSourceView([_configuration _alternateWebViewForNavigationGestures]);
         }
     } else
         _gestureController = nullptr;
@@ -2027,7 +2041,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
 
     _minimumLayoutSizeOverride = minimumLayoutSizeOverride;
-    if (!_isAnimatingResize)
+    if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         _page->setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(minimumLayoutSizeOverride));
 }
 
@@ -2044,7 +2058,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
 
     _minimumLayoutSizeOverrideForMinimalUI = size;
-    if (!_isAnimatingResize)
+    if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         _page->setViewportConfigurationMinimumLayoutSizeForMinimalUI(WebCore::FloatSize(size));
 }
 
@@ -2059,6 +2073,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     ASSERT(obscuredInsets.left >= 0);
     ASSERT(obscuredInsets.bottom >= 0);
     ASSERT(obscuredInsets.right >= 0);
+    
+    _haveSetObscuredInsets = YES;
 
     if (UIEdgeInsetsEqualToEdgeInsets(_obscuredInsets, obscuredInsets))
         return;
@@ -2080,7 +2096,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     _interfaceOrientationOverride = interfaceOrientation;
 
-    if (!_isAnimatingResize)
+    if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         _page->setDeviceOrientation(deviceOrientationForUIInterfaceOrientation(_interfaceOrientationOverride));
 }
 
@@ -2104,7 +2120,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
 
     _maximumUnobscuredSizeOverride = size;
-    if (!_isAnimatingResize)
+    if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         _page->setMaximumUnobscuredSize(WebCore::FloatSize(size));
 }
 
@@ -2133,12 +2149,12 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_beginAnimatedResizeWithUpdates:(void (^)(void))updateBlock
 {
-    if (_customContentView) {
+    if (_customContentView || !_hasCommittedLoadForMainFrame) {
         updateBlock();
         return;
     }
 
-    _isAnimatingResize = YES;
+    _dynamicViewportUpdateMode = DynamicViewportUpdateMode::ResizingWithAnimation;
 
     CGRect oldBounds = self.bounds;
     WebCore::FloatSize oldMinimumLayoutSize = activeMinimumLayoutSize(self, oldBounds);
@@ -2163,7 +2179,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         && oldMaximumUnobscuredSize == newMaximumUnobscuredSize
         && oldOrientation == newOrientation
         && UIEdgeInsetsEqualToEdgeInsets(oldObscuredInsets, newObscuredInsets)) {
-        _isAnimatingResize = NO;
+        _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
         [self _updateVisibleContentRects];
         return;
     }
@@ -2222,12 +2238,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     CGRect unobscuredRectInContentCoordinates = [self convertRect:futureUnobscuredRectInSelfCoordinates toView:_contentView.get()];
 
     _page->dynamicViewportSizeUpdate(newMinimumLayoutSize, newMinimumLayoutSizeForMinimalUI, newMaximumUnobscuredSize, visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, targetScale, newOrientation);
-    _page->drawingArea()->setSize(WebCore::IntSize(newBounds.size), WebCore::IntSize(), WebCore::IntSize());
+    if (WebKit::DrawingAreaProxy* drawingArea = _page->drawingArea())
+        drawingArea->setSize(WebCore::IntSize(newBounds.size), WebCore::IntSize(), WebCore::IntSize());
 }
 
 - (void)_endAnimatedResize
 {
-    if (!_isAnimatingResize)
+    if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         return;
 
     _page->synchronizeDynamicViewportUpdate();
@@ -2265,8 +2282,18 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _resizeAnimationView = nil;
     _resizeAnimationTransformAdjustments = CATransform3DIdentity;
 
-    _isAnimatingResize = NO;
+    _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
+    [_contentView setHidden:NO];
     [self _updateVisibleContentRects];
+}
+
+- (void)_resizeWhileHidingContentWithUpdates:(void (^)(void))updateBlock
+{
+    [self _beginAnimatedResizeWithUpdates:updateBlock];
+    if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::ResizingWithAnimation) {
+        [_contentView setHidden:YES];
+        _dynamicViewportUpdateMode = DynamicViewportUpdateMode::ResizingWithDocumentHidden;
+    }
 }
 
 - (void)_setOverlaidAccessoryViewsInset:(CGSize)inset

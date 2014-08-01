@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nikolas Zimmermann <zimmermann@kde.org>
+ * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -112,13 +113,14 @@ void SVGForeignObjectElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     SVGElementInstance::InvalidationGuard invalidationGuard(this);
-    
-    bool isLengthAttribute = attrName == SVGNames::xAttr
-                          || attrName == SVGNames::yAttr
-                          || attrName == SVGNames::widthAttr
-                          || attrName == SVGNames::heightAttr;
 
-    if (isLengthAttribute)
+    if (attrName == SVGNames::widthAttr
+        || attrName == SVGNames::heightAttr) {
+        invalidateSVGPresentationAttributeStyle();
+        return;
+    }
+
+    if (attrName == SVGNames::xAttr || attrName == SVGNames::yAttr)
         updateRelativeLengthsInformation();
 
     if (auto renderer = this->renderer())
@@ -156,14 +158,6 @@ bool SVGForeignObjectElement::rendererIsNeeded(const RenderStyle& style)
     }
 
     return SVGGraphicsElement::rendererIsNeeded(style);
-}
-
-bool SVGForeignObjectElement::selfHasRelativeLengths() const
-{
-    return x().isRelative()
-        || y().isRelative()
-        || width().isRelative()
-        || height().isRelative();
 }
 
 }

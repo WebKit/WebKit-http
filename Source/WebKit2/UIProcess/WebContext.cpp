@@ -78,6 +78,7 @@
 #if ENABLE(DATABASE_PROCESS)
 #include "DatabaseProcessCreationParameters.h"
 #include "DatabaseProcessMessages.h"
+#include "WebOriginDataManagerProxy.h"
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
@@ -216,6 +217,9 @@ WebContext::WebContext(WebContextConfiguration configuration)
 #endif
 #if ENABLE(BATTERY_STATUS)
     addSupplement<WebBatteryManagerProxy>();
+#endif
+#if ENABLE(DATABASE_PROCESS)
+    addSupplement<WebOriginDataManagerProxy>();
 #endif
 
     contexts().append(this);
@@ -420,6 +424,12 @@ void WebContext::ensureNetworkProcess()
     if (!parameters.cookieStorageDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.cookieStorageDirectory, parameters.cookieStorageDirectoryExtensionHandle);
 
+#if PLATFORM(IOS)
+    parameters.hstsDatabasePath = networkingHSTSDatabasePath();
+    if (!parameters.hstsDatabasePath.isEmpty())
+        SandboxExtension::createHandle(parameters.hstsDatabasePath, SandboxExtension::ReadWrite, parameters.hstsDatabasePathExtensionHandle);
+#endif
+
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
 
     // Add any platform specific parameters
@@ -487,6 +497,17 @@ void WebContext::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessPro
     ensureDatabaseProcess();
 
     m_databaseProcess->getDatabaseProcessConnection(reply);
+}
+
+void WebContext::databaseProcessCrashed(DatabaseProcessProxy* databaseProcessProxy)
+{
+    ASSERT(m_databaseProcess);
+    ASSERT(databaseProcessProxy == m_databaseProcess.get());
+
+    for (auto& supplement : m_supplements)
+        supplement.value->processDidClose(databaseProcessProxy);
+
+    m_databaseProcess = nullptr;
 }
 #endif
 
@@ -1195,6 +1216,11 @@ String WebContext::openGLCacheDirectory() const
         return m_overrideOpenGLCacheDirectory;
 
     return platformDefaultOpenGLCacheDirectory();
+}
+
+String WebContext::networkingHSTSDatabasePath() const
+{
+    return platformDefaultNetworkingHSTSDatabasePath();
 }
 
 String WebContext::mediaCacheDirectory() const

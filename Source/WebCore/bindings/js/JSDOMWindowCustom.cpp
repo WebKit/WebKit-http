@@ -54,6 +54,10 @@
 #include "JSWebSocket.h"
 #endif
 
+#if ENABLE(USER_MESSAGE_HANDLERS)
+#include "JSWebKitNamespace.h"
+#endif
+
 using namespace JSC;
 
 namespace WebCore {
@@ -78,7 +82,7 @@ static EncodedJSValue namedItemGetter(ExecState* exec, JSObject* slotBase, Encod
     ASSERT(document);
     ASSERT(document->isHTMLDocument());
 
-    AtomicStringImpl* atomicPropertyName = findAtomicString(propertyName);
+    AtomicStringImpl* atomicPropertyName = propertyName.publicName();
     if (!atomicPropertyName || !toHTMLDocument(document)->hasWindowNamedItem(*atomicPropertyName))
         return JSValue::encode(jsUndefined());
 
@@ -90,6 +94,16 @@ static EncodedJSValue namedItemGetter(ExecState* exec, JSObject* slotBase, Encod
 
     return JSValue::encode(toJS(exec, thisObj->globalObject(), toHTMLDocument(document)->windowNamedItem(*atomicPropertyName)));
 }
+
+#if ENABLE(USER_MESSAGE_HANDLERS)
+static EncodedJSValue jsDOMWindowWebKit(ExecState* exec, JSObject*, EncodedJSValue thisValue, PropertyName)
+{
+    JSDOMWindow* castedThis = toJSDOMWindow(JSValue::decode(thisValue));
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->impl()))
+        return JSValue::encode(jsUndefined());
+    return JSValue::encode(toJS(exec, castedThis->globalObject(), castedThis->impl().webkitNamespace()));
+}
+#endif
 
 bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
@@ -168,11 +182,18 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
         }
     }
 
-    const HashTableValue* entry = JSDOMWindow::info()->propHashTable(exec)->entry(exec, propertyName);
+    const HashTableValue* entry = JSDOMWindow::info()->staticPropHashTable->entry(propertyName);
     if (entry) {
         slot.setCacheableCustom(thisObject, allowsAccess ? entry->attributes() : ReadOnly | DontDelete | DontEnum, entry->propertyGetter());
         return true;
     }
+
+#if ENABLE(USER_MESSAGE_HANDLERS)
+    if (propertyName == exec->propertyNames().webkit && thisObject->impl().shouldHaveWebKitNamespaceForWorld(thisObject->world())) {
+        slot.setCacheableCustom(thisObject, allowsAccess ? DontDelete | ReadOnly : ReadOnly | DontDelete | DontEnum, jsDOMWindowWebKit);
+        return true;
+    }
+#endif
 
     // Do prototype lookup early so that functions and attributes in the prototype can have
     // precedence over the index and name getters.  
@@ -224,7 +245,7 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
     // Allow shortcuts like 'Image1' instead of document.images.Image1
     Document* document = thisObject->impl().frame()->document();
     if (document->isHTMLDocument()) {
-        AtomicStringImpl* atomicPropertyName = findAtomicString(propertyName);
+        AtomicStringImpl* atomicPropertyName = propertyName.publicName();
         if (atomicPropertyName && toHTMLDocument(document)->hasWindowNamedItem(*atomicPropertyName)) {
             slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, namedItemGetter);
             return true;
@@ -301,7 +322,7 @@ bool JSDOMWindow::getOwnPropertySlotByIndex(JSObject* object, ExecState* exec, u
     // Allow shortcuts like 'Image1' instead of document.images.Image1
     Document* document = thisObject->impl().frame()->document();
     if (document->isHTMLDocument()) {
-        AtomicStringImpl* atomicPropertyName = findAtomicString(propertyName);
+        AtomicStringImpl* atomicPropertyName = propertyName.publicName();
         if (atomicPropertyName && toHTMLDocument(document)->hasWindowNamedItem(*atomicPropertyName)) {
             slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, namedItemGetter);
             return true;
@@ -324,7 +345,7 @@ void JSDOMWindow::put(JSCell* cell, ExecState* exec, PropertyName propertyName, 
         return;
     }
 
-    if (lookupPut(exec, propertyName, thisObject, value, *s_info.propHashTable(exec), slot))
+    if (lookupPut(exec, propertyName, thisObject, value, *s_info.staticPropHashTable, slot))
         return;
 
     if (BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->impl()))

@@ -40,6 +40,7 @@ OBJC_CLASS WebAVPlayerController;
 OBJC_CLASS AVPlayerViewController;
 OBJC_CLASS UIViewController;
 OBJC_CLASS UIWindow;
+OBJC_CLASS UIView;
 OBJC_CLASS CALayer;
 OBJC_CLASS WebAVVideoLayer;
 
@@ -62,7 +63,6 @@ class WebVideoFullscreenInterfaceAVKit
     RetainPtr<WebAVPlayerController> m_playerController;
     RetainPtr<AVPlayerViewController> m_playerViewController;
     RetainPtr<UIViewController> m_viewController;
-    RetainPtr<UIWindow> m_window;
     RetainPtr<CALayer> m_videoLayer;
     RetainPtr<WebAVVideoLayer> m_videoLayerContainer;
     WebVideoFullscreenModel* m_videoFullscreenModel;
@@ -83,11 +83,12 @@ public:
     virtual void setRate(bool isPlaying, float playbackRate) override;
     virtual void setVideoDimensions(bool hasVideo, float width, float height) override;
     virtual void setSeekableRanges(const TimeRanges&) override;
+    virtual void setCanPlayFastReverse(bool) override;
     virtual void setAudioMediaSelectionOptions(const Vector<String>& options, uint64_t selectedIndex) override;
     virtual void setLegibleMediaSelectionOptions(const Vector<String>& options, uint64_t selectedIndex) override;
     virtual void setExternalPlayback(bool enabled, ExternalPlaybackTargetType, String localizedDeviceName) override;
 
-    virtual void setupFullscreen(PlatformLayer&, WebCore::IntRect initialRect);
+    virtual void setupFullscreen(PlatformLayer&, WebCore::IntRect initialRect, UIView *);
     virtual void enterFullscreen();
     virtual void exitFullscreen(WebCore::IntRect finalRect);
     virtual void cleanupFullscreen();

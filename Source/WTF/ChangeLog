@@ -1,3 +1,148 @@
+2014-07-30  Andreas Kling  <akling@apple.com>
+
+        PropertyName's internal string is always atomic.
+        <https://webkit.org/b/135451>
+
+        Remove AtomicString::findStringWithHash() since nobody uses it anymore.
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::findString): Deleted.
+        (WTF::AtomicString::findStringWithHash): Deleted.
+        * wtf/text/AtomicString.h:
+
+2014-07-30  Andy Estes  <aestes@apple.com>
+
+        USE(CONTENT_FILTERING) should be ENABLE(CONTENT_FILTERING)
+        https://bugs.webkit.org/show_bug.cgi?id=135439
+
+        Reviewed by Tim Horton.
+
+        We now support two different platform content filters, and will soon support a mock content filter (as part of
+        webkit.org/b/128858). This makes content filtering a feature of WebKit, not just an adoption of a third-party
+        library. ENABLE() is the correct macro to use for such a feature.
+
+        * wtf/Platform.h:
+
+2014-07-29  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Modify version numbering scheme to support 5-tuple versions
+        https://bugs.webkit.org/show_bug.cgi?id=135400
+        <rdar://problem/17849033>
+
+        Reviewed by David Kilzer.
+
+        * WTF.vcxproj/WTFPostBuild.cmd: Use new version-stamp.pl script
+        to version WTF.dll.
+        * WTF.vcxproj/WTFPreBuild.cmd: Make sure we have created the
+        appropriate version resource during builds.
+
+2014-07-29  Daniel Bates  <dabates@apple.com>
+
+        Use WTF::move() instead of std::move() to help ensure move semantics
+        https://bugs.webkit.org/show_bug.cgi?id=135351
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::HashTable):
+
+2014-07-28  Brian J. Burg  <burg@cs.washington.edu>
+
+        Should not export symbols for base64Encode inline adapter methods
+        https://bugs.webkit.org/show_bug.cgi?id=135355
+
+        Unreviewed build fix.
+
+        Fixes the build break introduced by r171682, where a base64Encode
+        inline adapter method was used in another header, thus creating
+        multiple definitions of it (and problems with with weak symbols).
+
+        * wtf/text/Base64.h: Remove WTF_EXPORT_PRIVATE for inlined methods.
+
+2014-07-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Merge r170090, r170092, r170129, r170141, r170161, r170215, r170275, r170375, r170376, r170382, r170383, r170399, r170436, r170489, r170490, r170556 from ftlopt.
+
+        * wtf/text/WTFString.h:
+
+2014-07-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out r171641-r171644. It broke some tests; will investigate and
+        reland later.
+
+        * wtf/text/WTFString.h:
+
+2014-07-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Attempt to fix Windows.
+
+        * wtf/text/WTFString.h:
+
+2014-07-25  Gavin Barraclough  <baraclough@apple.com>
+
+        Yosemite version number is 101000
+        https://bugs.webkit.org/show_bug.cgi?id=135301
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2014-07-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use NO_RETURN_DUE_TO_CRASH on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=13519
+
+        Reviewed by Mark Lam.
+
+        * wtf/Assertions.h: Add MSVC to list of compilers supporting this macro.
+        * wtf/FastMalloc.cpp: Correct function declaration for NO_RETURN_DUE_TO_CRASH.
+
+2014-07-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Merge r169148, r169185, r169188, r169578, r169582, r169584, r169588, r169753 from ftlopt.
+
+    2014-06-04  Filip Pizlo  <fpizlo@apple.com>
+    
+            [ftlopt] AI should be able track structure sets larger than 1
+            https://bugs.webkit.org/show_bug.cgi?id=128073
+    
+            Reviewed by Oliver Hunt.
+    
+            * wtf/Bag.h:
+            (WTF::Bag::Node::Node):
+            (WTF::Bag::add):
+    
+2014-07-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Merge r168635, r168780, r169005, r169014, and r169143 from ftlopt.
+
+    2014-05-20  Filip Pizlo  <fpizlo@apple.com>
+    
+            [ftlopt] DFG bytecode parser should turn GetById with nothing but a Getter stub as stuff+handleCall, and handleCall should be allowed to inline if it wants to
+            https://bugs.webkit.org/show_bug.cgi?id=133105
+    
+            Reviewed by Michael Saboff.
+    
+            * wtf/Bag.h:
+            (WTF::Bag::iterator::operator!=):
+    
+2014-07-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WTF] Add the move constructor, move assignment operator for HashTable
+        https://bugs.webkit.org/show_bug.cgi?id=130772
+
+        Reviewed by Darin Adler.
+
+        HashTable has both copy constructor and copy assignment operator, meaning that the move constructor
+        and move assignment operator are implicitly deleted. This patch defines both to avoid unnecessary
+        copies when moves can be performed.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::HashTable):
+
 2014-07-15  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r171107.

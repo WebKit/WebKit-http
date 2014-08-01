@@ -200,21 +200,26 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
     if (m_remoteLayerTreeHost.updateLayerTree(layerTreeTransaction))
         m_webPageProxy->setAcceleratedCompositingRootLayer(m_remoteLayerTreeHost.rootLayer());
 
-#if PLATFORM(IOS)
-    m_webPageProxy->didCommitLayerTree(layerTreeTransaction);
+#if ENABLE(ASYNC_SCROLLING)
+    RemoteScrollingCoordinatorProxy::RequestedScrollInfo requestedScrollInfo;
+    m_webPageProxy->scrollingCoordinatorProxy()->updateScrollingTree(scrollingTreeTransaction, requestedScrollInfo);
 #endif
 
-#if ENABLE(ASYNC_SCROLLING)
-    bool fixedOrStickyLayerChanged = false;
-    m_webPageProxy->scrollingCoordinatorProxy()->updateScrollingTree(scrollingTreeTransaction, fixedOrStickyLayerChanged);
+    m_webPageProxy->didCommitLayerTree(layerTreeTransaction);
 
+#if ENABLE(ASYNC_SCROLLING)
 #if PLATFORM(IOS)
-    if (fixedOrStickyLayerChanged) {
-        FloatRect customFixedPositionRect = m_webPageProxy->computeCustomFixedPositionRect(m_webPageProxy->unobscuredContentRect(), m_webPageProxy->displayedContentScale());
+    if (m_webPageProxy->scrollingCoordinatorProxy()->hasFixedOrSticky()) {
         // If we got a new layer for a fixed or sticky node, its position from the WebProcess is probably stale. We need to re-run the "viewport" changed logic to udpate it with our UI-side state.
+        FloatRect customFixedPositionRect = m_webPageProxy->computeCustomFixedPositionRect(m_webPageProxy->unobscuredContentRect(), m_webPageProxy->displayedContentScale());
         m_webPageProxy->scrollingCoordinatorProxy()->viewportChangedViaDelegatedScrolling(m_webPageProxy->scrollingCoordinatorProxy()->rootScrollingNodeID(), customFixedPositionRect, m_webPageProxy->displayedContentScale());
     }
 #endif
+
+    // Handle requested scroll position updates from the scrolling tree transaction after didCommitLayerTree()
+    // has updated the view size based on the content size.
+    if (requestedScrollInfo.requestsScrollPositionUpdate)
+        m_webPageProxy->requestScroll(requestedScrollInfo.requestedScrollPosition, requestedScrollInfo.requestIsProgrammaticScroll);
 #endif // ENABLE(ASYNC_SCROLLING)
 
     if (m_debugIndicatorLayerTreeHost) {
@@ -396,6 +401,11 @@ void RemoteLayerTreeDrawingAreaProxy::dispatchAfterEnsuringDrawing(std::function
     }
 
     m_webPageProxy->process().send(Messages::DrawingArea::AddTransactionCallbackID(m_callbacks.put(WTF::move(callbackFunction), nullptr)), m_webPageProxy->pageID());
+}
+
+void RemoteLayerTreeDrawingAreaProxy::hideContentUntilNextUpdate()
+{
+    m_remoteLayerTreeHost.detachRootLayer();
 }
 
 } // namespace WebKit

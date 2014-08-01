@@ -172,7 +172,7 @@ const double progressAnimationNumFrames = 256;
 @implementation WebCoreRenderThemeBundle
 @end
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 @interface NSSearchFieldCell(Details)
 @property (getter=isCenteredLook) BOOL centeredLook;
 @end
@@ -1934,6 +1934,11 @@ NSPopUpButtonCell* RenderThemeMac::popupButton() const
         m_popupButton = adoptNS([[NSPopUpButtonCell alloc] initTextCell:@"" pullsDown:NO]);
         [m_popupButton.get() setUsesItemFromMenu:NO];
         [m_popupButton.get() setFocusRingType:NSFocusRingTypeExterior];
+        // We don't want the app's UI layout direction to affect the appearance of popup buttons in
+        // web content, which has its own layout direction.
+        // FIXME: Make this depend on the directionality of the select element, once the rest of the
+        // rendering code can account for the popup arrows appearing on the other side.
+        [m_popupButton setUserInterfaceLayoutDirection:NSUserInterfaceLayoutDirectionLeftToRight];
     }
 
     return m_popupButton.get();
@@ -1947,7 +1952,7 @@ NSSearchFieldCell* RenderThemeMac::search() const
         [m_search.get() setBezeled:YES];
         [m_search.get() setEditable:YES];
         [m_search.get() setFocusRingType:NSFocusRingTypeExterior];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         [m_search.get() setCenteredLook:NO];
 #endif
     }
@@ -2017,6 +2022,15 @@ String RenderThemeMac::fileListNameForWidth(const FileList* fileList, const Font
         return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font, StringTruncator::EnableRoundingHacks);
 
     return StringTruncator::centerTruncate(strToTruncate, width, font, StringTruncator::EnableRoundingHacks);
+}
+
+bool RenderThemeMac::defaultButtonHasAnimation() const
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    return false;
+#else
+    return true;
+#endif
 }
 
 #if ENABLE(SERVICE_CONTROLS)

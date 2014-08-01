@@ -71,6 +71,46 @@ SOFT_LINK(CoreMedia, CMBlockBufferGetDataLength, size_t, (CMBlockBufferRef theBu
 SOFT_LINK(CoreMedia, CMSampleBufferGetSampleTimingInfo, OSStatus, (CMSampleBufferRef sbuf, CMItemIndex sampleIndex, CMSampleTimingInfo* timingInfoOut), (sbuf, sampleIndex, timingInfoOut))
 SOFT_LINK(CoreMedia, CMFormatDescriptionGetExtensions, CFDictionaryRef, (CMFormatDescriptionRef desc), (desc))
 SOFT_LINK(CoreMedia, CMSampleBufferGetFormatDescription, CMFormatDescriptionRef, (CMSampleBufferRef sbuf), (sbuf))
+#else
+typedef struct OpaqueCMBlockBuffer* CMBlockBufferRef;
+typedef const struct opaqueCMFormatDescription* CMFormatDescriptionRef;
+typedef struct opaqueCMSampleBuffer* CMSampleBufferRef;
+
+#ifndef CMSAMPLEBUFFER_H
+extern "C" {
+#pragma pack(push, 4)
+#ifndef CMTIME_H
+    typedef struct {
+        int64_t value;
+        int32_t timescale;
+        uint32_t flags;
+        int64_t epoch;
+    } CMTime;
+#endif
+
+    typedef struct {
+        CMTime duration;
+        CMTime presentationTimeStamp;
+        CMTime decodeTimeStamp;
+    } CMSampleTimingInfo;
+#pragma pack(pop)
+}
+#endif
+
+SOFT_LINK_DLL_IMPORT(CoreMedia, CMTimeGetSeconds, Float64, __cdecl, (CMTime time), (time))
+#define CMTimeGetSeconds softLink_CMTimeGetSeconds
+SOFT_LINK_DLL_IMPORT(CoreMedia, CMSampleBufferGetDataBuffer, CMBlockBufferRef, __cdecl, (CMSampleBufferRef sbuf), (sbuf))
+#define CMSampleBufferGetDataBuffer softLink_CMSampleBufferGetDataBuffer
+SOFT_LINK_DLL_IMPORT(CoreMedia, CMBlockBufferCopyDataBytes, OSStatus, __cdecl, (CMBlockBufferRef theSourceBuffer, size_t offsetToData, size_t dataLength, void* destination), (theSourceBuffer, offsetToData, dataLength, destination))
+#define CMBlockBufferCopyDataBytes softLink_CMBlockBufferCopyDataBytes
+SOFT_LINK_DLL_IMPORT(CoreMedia, CMBlockBufferGetDataLength, size_t, __cdecl, (CMBlockBufferRef theBuffer), (theBuffer))
+#define CMBlockBufferGetDataLength softLink_CMBlockBufferGetDataLength
+SOFT_LINK_DLL_IMPORT(CoreMedia, CMSampleBufferGetSampleTimingInfo, OSStatus, __cdecl, (CMSampleBufferRef sbuf, CMItemIndex sampleIndex, CMSampleTimingInfo* timingInfoOut), (sbuf, sampleIndex, timingInfoOut))
+#define CMSampleBufferGetSampleTimingInfo softLink_CMSampleBufferGetSampleTimingInfo
+SOFT_LINK_DLL_IMPORT(CoreMedia, CMFormatDescriptionGetExtensions, CFDictionaryRef, __cdecl, (CMFormatDescriptionRef desc), (desc))
+#define CMFormatDescriptionGetExtensions softLink_CMFormatDescriptionGetExtensions
+SOFT_LINK_DLL_IMPORT(CoreMedia, CMSampleBufferGetFormatDescription, CMFormatDescriptionRef, __cdecl, (CMSampleBufferRef sbuf), (sbuf))
+#define CMSampleBufferGetFormatDescription softLink_CMSampleBufferGetFormatDescription
 #endif
 
 SOFT_LINK_AVF_POINTER(CoreMedia, kCMTextMarkupAttribute_Alignment, CFStringRef)
@@ -435,7 +475,7 @@ void InbandTextTrackPrivateAVF::processAttributedStrings(CFArrayRef attributedSt
                     if (!arrivingCue->doesExtendCueData(*cueData))
                         nonExtensionCues.append(arrivingCue);
                     else
-                        LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - found an extension cue (\"%s\") for time = %.2f, position =  %.2f, line =  %.2f", this, arrivingCue->content().utf8().data(), arrivingCue->startTime(), arrivingCue->position(), arrivingCue->line());
+                        LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - found an extension cue (\"%s\") for time = %.2f, end = %.2f, position =  %.2f, line =  %.2f", this, arrivingCue->content().utf8().data(), arrivingCue->startTime(), arrivingCue->endTime(), arrivingCue->position(), arrivingCue->line());
                 }
 
                 bool currentCueIsExtended = (arrivingCues.size() != nonExtensionCues.size());
@@ -449,7 +489,7 @@ void InbandTextTrackPrivateAVF::processAttributedStrings(CFArrayRef attributedSt
                     cueData->setEndTime(m_currentCueEndTime);
                     cueData->setStatus(GenericCueData::Complete);
 
-                    LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - updating cue: start=%.2f, end=%.2f, content=\"%s\"", this, cueData->startTime(), m_currentCueEndTime, cueData->content().utf8().data());
+                    LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - updating cue \"%s\": start=%.2f, end=%.2f", this, cueData->content().utf8().data(), cueData->startTime(), m_currentCueEndTime);
                     client()->updateGenericCue(this, cueData.get());
                 } else {
                     // We have to assume that the implicit duration is invalid for cues delivered during a seek because the AVF decode pipeline may not
@@ -472,7 +512,7 @@ void InbandTextTrackPrivateAVF::processAttributedStrings(CFArrayRef attributedSt
 
         m_cues.append(cueData);
         
-        LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - adding cue for time = %.2f, position =  %.2f, line =  %.2f", this, cueData->startTime(), cueData->position(), cueData->line());
+        LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - adding cue \"%s\" for time = %.2f, end = %.2f, position =  %.2f, line =  %.2f", this, cueData->content().utf8().data(), cueData->startTime(), cueData->endTime(), cueData->position(), cueData->line());
 
         client()->addGenericCue(this, cueData.release());
     }
@@ -502,6 +542,8 @@ void InbandTextTrackPrivateAVF::removeCompletedCues()
         for (; currentCue >= 0; --currentCue) {
             if (m_cues[currentCue]->status() != GenericCueData::Complete)
                 continue;
+
+            LOG(Media, "InbandTextTrackPrivateAVF::removeCompletedCues(%p) - removing cue \"%s\": start=%.2f, end=%.2f", this, m_cues[currentCue]->content().utf8().data(), m_cues[currentCue]->startTime(), m_cues[currentCue]->endTime());
 
             m_cues.remove(currentCue);
         }
@@ -546,11 +588,6 @@ void InbandTextTrackPrivateAVF::setMode(InbandTextTrackPrivate::Mode newMode)
 
 void InbandTextTrackPrivateAVF::processNativeSamples(CFArrayRef nativeSamples, double presentationTime)
 {
-#if PLATFORM(WIN)
-    UNUSED_PARAM(nativeSamples);
-    UNUSED_PARAM(presentationTime);
-    ASSERT_NOT_REACHED();
-#else
     if (!nativeSamples)
         return;
 
@@ -644,7 +681,6 @@ void InbandTextTrackPrivateAVF::processNativeSamples(CFArrayRef nativeSamples, d
 
         m_sampleInputBuffer.remove(0, boxLength);
     }
-#endif
 }
 
 } // namespace WebCore

@@ -27,6 +27,9 @@
 #include "WebOriginDataManager.h"
 
 #include "ChildProcess.h"
+#if ENABLE(DATABASE_PROCESS)
+#include "DatabaseProcess.h"
+#endif
 #include "SecurityOriginData.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebOriginDataManagerMessages.h"
@@ -51,53 +54,74 @@ WebOriginDataManager::WebOriginDataManager(ChildProcess* childProcess)
     m_childProcess->addMessageReceiver(Messages::WebOriginDataManager::messageReceiverName(), *this);
 }
 
-void WebOriginDataManager::getOrigins(WKOriginDataTypes, uint64_t callbackID)
+void WebOriginDataManager::getOrigins(WKOriginDataTypes types, uint64_t callbackID)
 {
-    HashSet<RefPtr<SecurityOrigin>> origins;
-
-    // FIXME: populate origins
-
-    Vector<SecurityOriginData> identifiers;
-    identifiers.reserveCapacity(origins.size());
-
-    HashSet<RefPtr<SecurityOrigin>>::iterator end = origins.end();
-    HashSet<RefPtr<SecurityOrigin>>::iterator i = origins.begin();
-    for (; i != end; ++i) {
-        RefPtr<SecurityOrigin> origin = *i;
-
-        SecurityOriginData originData;
-        originData.protocol = origin->protocol();
-        originData.host = origin->host();
-        originData.port = origin->port();
-
-        identifiers.uncheckedAppend(originData);
-    }
-
-    m_childProcess->send(Messages::WebOriginDataManagerProxy::DidGetOrigins(identifiers, callbackID), 0);
-}
-
-void WebOriginDataManager::deleteEntriesForOrigin(WKOriginDataTypes, const SecurityOriginData& originData)
-{
-    RefPtr<SecurityOrigin> origin = SecurityOrigin::create(originData.protocol, originData.host, originData.port);
-    if (!origin)
+#if ENABLE(DATABASE_PROCESS)
+    // FIXME: For now, the DatabaseProcess only handles IndexedDatabase origin data.
+    // If it ever starts handling other data types (e.g. WebSQL) then it will have to aggregrate requests
+    // for multiple types into the one callback.
+    if (types & kWKIndexedDatabaseData) {
+        DatabaseProcess::shared().getIndexedDatabaseOrigins(callbackID);
         return;
+    }
+#else
+    UNUSED_PARAM(types);
+#endif
 
-    // FIXME: delete entries for origin
+    Vector<SecurityOriginData> results;
+    m_childProcess->send(Messages::WebOriginDataManagerProxy::DidGetOrigins(results, callbackID), 0);
 }
 
-void WebOriginDataManager::deleteAllEntries(WKOriginDataTypes)
+void WebOriginDataManager::deleteEntriesForOrigin(WKOriginDataTypes types, const SecurityOriginData& originData, uint64_t callbackID)
 {
-    // FIXME: delete entries
+#if ENABLE(DATABASE_PROCESS)
+    // FIXME: For now, the DatabaseProcess only handles IndexedDatabase origin data.
+    // If it ever starts handling other data types (e.g. WebSQL) then it will have to aggregrate requests
+    // for multiple types into the one callback.
+    if (types & kWKIndexedDatabaseData) {
+        DatabaseProcess::shared().deleteIndexedDatabaseEntriesForOrigin(originData, callbackID);
+        return;
+    }
+#else
+    UNUSED_PARAM(types);
+    UNUSED_PARAM(originData);
+#endif
+
+    m_childProcess->send(Messages::WebOriginDataManagerProxy::DidDeleteEntries(callbackID), 0);
 }
 
-void WebOriginDataManager::startObservingChanges(WKOriginDataTypes)
+void WebOriginDataManager::deleteEntriesModifiedBetweenDates(WKOriginDataTypes types, double startTime, double endTime, uint64_t callbackID)
 {
-    // FIXME: start observing changes
+#if ENABLE(DATABASE_PROCESS)
+    // FIXME: For now, the DatabaseProcess only handles IndexedDatabase origin data.
+    // If it ever starts handling other data types (e.g. WebSQL) then it will have to aggregrate requests
+    // for multiple types into the one callback.
+    if (types & kWKIndexedDatabaseData) {
+        DatabaseProcess::shared().deleteIndexedDatabaseEntriesModifiedBetweenDates(startTime, endTime, callbackID);
+        return;
+    }
+#else
+    UNUSED_PARAM(types);
+    UNUSED_PARAM(startTime);
+    UNUSED_PARAM(endTime);
+#endif
+    m_childProcess->send(Messages::WebOriginDataManagerProxy::DidDeleteEntries(callbackID), 0);
 }
 
-void WebOriginDataManager::stopObservingChanges(WKOriginDataTypes)
+void WebOriginDataManager::deleteAllEntries(WKOriginDataTypes types, uint64_t callbackID)
 {
-    // FIXME: stop observing changes
+#if ENABLE(DATABASE_PROCESS)
+    // FIXME: For now, the DatabaseProcess only handles IndexedDatabase origin data.
+    // If it ever starts handling other data types (e.g. WebSQL) then it will have to aggregrate requests
+    // for multiple types into the one callback.
+    if (types & kWKIndexedDatabaseData) {
+        DatabaseProcess::shared().deleteAllIndexedDatabaseEntries(callbackID);
+        return;
+    }
+#else
+    UNUSED_PARAM(types);
+#endif
+    m_childProcess->send(Messages::WebOriginDataManagerProxy::DidDeleteAllEntries(callbackID), 0);
 }
 
 } // namespace WebKit

@@ -2,6 +2,7 @@
  * Copyright (C) 2004, 2005, 2006 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Rob Buis <buis@kde.org>
  * Copyright (C) 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -270,49 +271,15 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
     reportAttributeParsingError(parseError, name, value);
 }
 
-bool SVGSVGElement::isPresentationAttribute(const QualifiedName& name) const
-{
-    if (isOutermostSVGSVGElement() && (name == SVGNames::widthAttr || name == SVGNames::heightAttr))
-        return true;
-    return SVGGraphicsElement::isPresentationAttribute(name);
-}
-
-void SVGSVGElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
-{
-    if (isOutermostSVGSVGElement() && (name == SVGNames::widthAttr || name == SVGNames::heightAttr)) {
-        if (name == SVGNames::widthAttr)
-            addPropertyToPresentationAttributeStyle(style, CSSPropertyWidth, value);
-        else if (name == SVGNames::heightAttr)
-            addPropertyToPresentationAttributeStyle(style, CSSPropertyHeight, value);
-    } else
-        SVGGraphicsElement::collectStyleForPresentationAttribute(name, value, style);
-}
-
 void SVGSVGElement::svgAttributeChanged(const QualifiedName& attrName)
 {
     bool updateRelativeLengthsOrViewBox = false;
-    bool widthChanged = attrName == SVGNames::widthAttr;
-    bool heightChanged = attrName == SVGNames::heightAttr;
-    if (widthChanged || heightChanged
+    if (attrName == SVGNames::widthAttr
+        || attrName == SVGNames::heightAttr
         || attrName == SVGNames::xAttr
         || attrName == SVGNames::yAttr) {
+        invalidateSVGPresentationAttributeStyle();
         updateRelativeLengthsOrViewBox = true;
-        updateRelativeLengthsInformation();
-
-        // At the SVG/HTML boundary (aka RenderSVGRoot), the width and
-        // height attributes can affect the replaced size so we need
-        // to mark it for updating.
-        if (widthChanged || heightChanged) {
-            // FIXME: This is a hack to synchronize changes from SVG DOM earlier in the
-            // run. We need these changes in the style calculation process earlier than
-            // usual.
-            synchronizeAllAttributes();
-            RenderObject* renderObject = renderer();
-            if (renderObject && renderObject->isSVGRoot()) {
-                invalidateSVGPresentationAttributeStyle();
-                setNeedsStyleRecalc();
-            }
-        }
     }
 
     if (SVGFitToViewBox::isKnownAttribute(attrName)) {

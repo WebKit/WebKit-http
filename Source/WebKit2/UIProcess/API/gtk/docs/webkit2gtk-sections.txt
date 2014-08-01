@@ -134,15 +134,15 @@ WEBKIT_EDITING_COMMAND_REDO
 webkit_web_view_new
 webkit_web_view_new_with_context
 webkit_web_view_new_with_related_view
-webkit_web_view_new_with_group
+webkit_web_view_new_with_settings
 webkit_web_view_new_with_user_content_manager
 webkit_web_view_get_context
-webkit_web_view_get_group
 webkit_web_view_get_user_content_manager
 webkit_web_view_load_uri
 webkit_web_view_load_html
 webkit_web_view_load_alternate_html
 webkit_web_view_load_plain_text
+webkit_web_view_load_bytes
 webkit_web_view_load_request
 webkit_web_view_can_go_back
 webkit_web_view_go_back
@@ -1059,29 +1059,6 @@ webkit_security_manager_get_type
 </SECTION>
 
 <SECTION>
-<FILE>WebKitWebViewGroup</FILE>
-WebKitWebViewGroup
-WebKitInjectedContentFrames
-webkit_web_view_group_new
-webkit_web_view_group_get_name
-webkit_web_view_group_get_settings
-webkit_web_view_group_set_settings
-
-<SUBSECTION Standard>
-WebKitWebViewGroupClass
-WEBKIT_TYPE_WEB_VIEW_GROUP
-WEBKIT_WEB_VIEW_GROUP
-WEBKIT_IS_WEB_VIEW_GROUP
-WEBKIT_WEB_VIEW_GROUP_CLASS
-WEBKIT_IS_WEB_VIEW_GROUP_CLASS
-WEBKIT_WEB_VIEW_GROUP_GET_CLASS
-
-<SUBSECTION Private>
-WebKitWebViewGroupPrivate
-webkit_web_view_group_get_type
-</SECTION>
-
-<SECTION>
 <FILE>WebKitWebExtension</FILE>
 WebKitWebExtension
 WebKitWebExtensionInitializeFunction
@@ -1164,19 +1141,4 @@ WEBKIT_SCRIPT_WORLD_GET_CLASS
 <SUBSECTION Private>
 WebKitScriptWorldPrivate
 webkit_script_world_get_type
-</SECTION>
-
-<SECTION>
-<FILE>WebKitCertificateInfo</FILE>
-WebKitCertificateInfo
-webkit_certificate_info_copy
-webkit_certificate_info_free
-webkit_certificate_info_get_tls_certificate
-webkit_certificate_info_get_tls_errors
-
-<SUBSECTION Standard>
-WEBKIT_TYPE_CERTIFICATE_INFO
-
-<SUBSECTION Private>
-webkit_certificate_info_get_type
 </SECTION>

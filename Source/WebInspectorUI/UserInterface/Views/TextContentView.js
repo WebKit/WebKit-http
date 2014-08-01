@@ -70,14 +70,14 @@ WebInspector.TextContentView.prototype = {
 
     shown: function()
     {
-        WebInspector.ResourceContentView.prototype.shown.call(this);
+        WebInspector.ContentView.prototype.shown.call(this);
 
         this._textEditor.shown();
     },
 
     hidden: function()
     {
-        WebInspector.ResourceContentView.prototype.hidden.call(this);
+        WebInspector.ContentView.prototype.hidden.call(this);
 
         this._textEditor.hidden();
     },

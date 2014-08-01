@@ -28,11 +28,13 @@
 
 #if PLATFORM(IOS)
 
+#include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
 #include "WebVideoFullscreenManagerMessages.h"
 #include "WebVideoFullscreenManagerProxyMessages.h"
 #include <QuartzCore/CoreAnimation.h>
+#include <UIKit/UIKit.h>
 #include <WebKitSystemInterface.h>
 #include <WebCore/TimeRanges.h>
 
@@ -75,7 +77,8 @@ void WebVideoFullscreenManagerProxy::setupFullscreenWithID(uint32_t videoLayerID
 {
     ASSERT(videoLayerID);
     m_layerHost = WKMakeRenderLayer(videoLayerID);
-    setupFullscreen(*m_layerHost.get(), initialRect);
+    UIView *parentView = toRemoteLayerTreeDrawingAreaProxy(m_page->drawingArea())->remoteLayerTreeHost().rootLayer();
+    setupFullscreen(*m_layerHost.get(), initialRect, [parentView window]);
 }
     
 void WebVideoFullscreenManagerProxy::setSeekableRangesVector(Vector<std::pair<double, double>>& ranges)
@@ -109,12 +112,12 @@ void WebVideoFullscreenManagerProxy::requestExitFullscreen()
 void WebVideoFullscreenManagerProxy::didExitFullscreen()
 {
     m_page->send(Messages::WebVideoFullscreenManager::DidExitFullscreen(), m_page->pageID());
-    [m_layerHost removeFromSuperlayer];
-    m_layerHost.clear();
 }
     
 void WebVideoFullscreenManagerProxy::didCleanupFullscreen()
 {
+    [m_layerHost removeFromSuperlayer];
+    m_layerHost.clear();
     m_page->send(Messages::WebVideoFullscreenManager::DidCleanupFullscreen(), m_page->pageID());
 }
 

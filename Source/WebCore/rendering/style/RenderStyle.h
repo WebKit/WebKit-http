@@ -285,6 +285,7 @@ public:
         static uint64_t flagIsUnique() { return oneBitMask << isUniqueOffset; }
         static uint64_t flagIsaffectedByActive() { return oneBitMask << affectedByActiveOffset; }
         static uint64_t flagIsaffectedByHover() { return oneBitMask << affectedByHoverOffset; }
+        static uint64_t flagPseudoStyle(PseudoId pseudo) { return oneBitMask << (pseudoBitsOffset - 1 + pseudo); }
         static uint64_t setFirstChildStateFlags() { return flagFirstChildState() | flagIsUnique(); }
         static uint64_t setLastChildStateFlags() { return flagLastChildState() | flagIsUnique(); }
     private:
@@ -1631,6 +1632,11 @@ public:
     float strokeMiterLimit() const { return svgStyle().strokeMiterLimit(); }
     void setStrokeMiterLimit(float f) { accessSVGStyle().setStrokeMiterLimit(f); }
 
+    const Length& x() const { return svgStyle().x(); }
+    void setX(Length x) { accessSVGStyle().setX(x); }
+    const Length& y() const { return svgStyle().y(); }
+    void setY(Length y) { accessSVGStyle().setY(y); }
+
     float floodOpacity() const { return svgStyle().floodOpacity(); }
     void setFloodOpacity(float f) { accessSVGStyle().setFloodOpacity(f); }
 
@@ -1786,6 +1792,7 @@ public:
     static Length initialMargin() { return Length(Fixed); }
     static Length initialPadding() { return Length(Fixed); }
     static Length initialTextIndent() { return Length(Fixed); }
+    static Length initialZeroLength() { return Length(Fixed); }
 #if ENABLE(CSS3_TEXT)
     static TextIndentLine initialTextIndentLine() { return TextIndentFirstLine; }
     static TextIndentType initialTextIndentType() { return TextIndentNormal; }
@@ -2073,10 +2080,10 @@ inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const Render
 
 inline bool RenderStyle::setZoom(float f)
 {
+    setEffectiveZoom(effectiveZoom() * f);
     if (compareEqual(visual->m_zoom, f))
         return false;
     visual.access()->m_zoom = f;
-    setEffectiveZoom(effectiveZoom() * zoom());
     return true;
 }
 

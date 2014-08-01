@@ -98,6 +98,10 @@ namespace WebCore {
     class QuickLookHandle;
 #endif
 
+#if ENABLE(CONTENT_FILTERING)
+    class ContentFilter;
+#endif
+
     typedef std::function<void (PolicyAction)> FramePolicyFunction;
 
     class FrameLoaderClient {
@@ -203,6 +207,8 @@ namespace WebCore {
 
         virtual bool shouldGoToHistoryItem(HistoryItem*) const = 0;
         virtual void updateGlobalHistoryItemForPage() { }
+
+        virtual void willChangeCurrentHistoryItem() { }
 
         // This frame has set its opener to null, disowning it for the lifetime of the frame.
         // See http://html.spec.whatwg.org/#dom-opener.
@@ -328,6 +334,10 @@ namespace WebCore {
 
 #if USE(QUICK_LOOK)
         virtual void didCreateQuickLookHandle(QuickLookHandle&) { }
+#endif
+
+#if ENABLE(CONTENT_FILTERING)
+        virtual void contentFilterDidBlockLoad(std::unique_ptr<ContentFilter>) { }
 #endif
     };
 

@@ -30,7 +30,6 @@
 #include <webkit2/WebKitAuthenticationRequest.h>
 #include <webkit2/WebKitBackForwardList.h>
 #include <webkit2/WebKitBackForwardListItem.h>
-#include <webkit2/WebKitCertificateInfo.h>
 #include <webkit2/WebKitContextMenu.h>
 #include <webkit2/WebKitContextMenuActions.h>
 #include <webkit2/WebKitContextMenuItem.h>
@@ -69,7 +68,6 @@
 #include <webkit2/WebKitWebResource.h>
 #include <webkit2/WebKitWebView.h>
 #include <webkit2/WebKitWebViewBase.h>
-#include <webkit2/WebKitWebViewGroup.h>
 #include <webkit2/WebKitWindowProperties.h>
 
 #undef __WEBKIT2_H_INSIDE__

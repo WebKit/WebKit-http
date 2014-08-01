@@ -360,7 +360,8 @@ public:
     void setDelegatesScrolling(bool delegatesScrolling) { m_delegatesScrolling = delegatesScrolling; }
     bool delegatesScrolling() const { return m_delegatesScrolling; }
 
-    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, bool wantsReply = false);
+    enum class ViewStateChangeDispatchMode { Deferrable, Immediate };
+    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, bool wantsReply = false, ViewStateChangeDispatchMode = ViewStateChangeDispatchMode::Deferrable);
     bool isInWindow() const { return m_viewState & WebCore::ViewState::IsInWindow; }
     void waitForDidUpdateViewState();
     void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
@@ -376,6 +377,15 @@ public:
 
     void executeEditCommand(const String& commandName);
     void validateCommand(const String& commandName, std::function<void (const String&, bool, int32_t, CallbackBase::Error)>);
+
+    const EditorState& editorState() const { return m_editorState; }
+    bool canDelete() const { return hasSelectedRange() && isContentEditable(); }
+    bool hasSelectedRange() const { return m_editorState.selectionIsRange; }
+    bool isContentEditable() const { return m_editorState.isContentEditable; }
+    
+    bool maintainsInactiveSelection() const { return m_maintainsInactiveSelection; }
+    void setMaintainsInactiveSelection(bool);
+
 #if PLATFORM(IOS)
     void executeEditCommand(const String& commandName, std::function<void (CallbackBase::Error)>);
     double displayedContentScale() const { return m_lastVisibleContentRectUpdate.scale(); }
@@ -389,6 +399,8 @@ public:
     WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained) const;
     void overflowScrollViewWillStartPanGesture();
     void overflowScrollViewDidScroll();
+    void overflowScrollWillStartScroll();
+    void overflowScrollDidEndScroll();
 
     void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate();
@@ -399,7 +411,6 @@ public:
     void setDeviceOrientation(int32_t);
     int32_t deviceOrientation() const { return m_deviceOrientation; }
     void willCommitLayerTree(uint64_t transactionID);
-    void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
 
     void selectWithGesture(const WebCore::IntPoint, WebCore::TextGranularity, uint32_t gestureType, uint32_t gestureState, std::function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)>);
     void updateSelectionWithTouches(const WebCore::IntPoint, uint32_t touches, bool baseIsStart, std::function<void (const WebCore::IntPoint&, uint32_t, CallbackBase::Error)>);
@@ -407,6 +418,7 @@ public:
     void updateBlockSelectionWithTouch(const WebCore::IntPoint, uint32_t touch, uint32_t handlePosition);
     void extendSelection(WebCore::TextGranularity);
     void selectWordBackward();
+    void moveSelectionByOffset(int32_t offset, std::function<void (CallbackBase::Error)>);
     void requestAutocorrectionData(const String& textForAutocorrection, std::function<void (const Vector<WebCore::FloatRect>&, const String&, double, uint64_t, CallbackBase::Error)>);
     void applyAutocorrection(const String& correction, const String& originalText, std::function<void (const String&, CallbackBase::Error)>);
     bool applyAutocorrection(const String& correction, const String& originalText);
@@ -439,13 +451,8 @@ public:
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
 #endif
 
-    const EditorState& editorState() const { return m_editorState; }
-    bool canDelete() const { return hasSelectedRange() && isContentEditable(); }
-    bool hasSelectedRange() const { return m_editorState.selectionIsRange; }
-    bool isContentEditable() const { return m_editorState.isContentEditable; }
-    
-    bool maintainsInactiveSelection() const { return m_maintainsInactiveSelection; }
-    void setMaintainsInactiveSelection(bool);
+    void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
+
 #if USE(TILED_BACKING_STORE) 
     void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
 #endif
@@ -1030,6 +1037,7 @@ private:
     void didBlockInsecurePluginVersion(const String& mimeType, const String& pluginURLString, const String& frameURLString, const String& pageURLString, bool replacementObscured);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
     void setCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents) { m_canShortCircuitHorizontalWheelEvents = canShortCircuitHorizontalWheelEvents; }
+    void willChangeCurrentHistoryItemForMainFrame();
 
     void reattachToWebProcess();
     uint64_t reattachToWebProcessWithItem(WebBackForwardListItem*);
@@ -1267,6 +1275,10 @@ private:
 #if USE(QUICK_LOOK)
     void didStartLoadForQuickLookDocumentInMainFrame(const String& fileName, const String& uti);
     void didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData&);
+#endif
+
+#if ENABLE(CONTENT_FILTERING)
+    void contentFilterDidBlockLoadForFrame(const WebCore::ContentFilter&, uint64_t frameID);
 #endif
 
     uint64_t generateNavigationID();

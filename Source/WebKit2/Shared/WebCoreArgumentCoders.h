@@ -105,6 +105,12 @@ struct ViewportArguments;
 }
 #endif
 
+#if ENABLE(CONTENT_FILTERING)
+namespace WebCore {
+class ContentFilter;
+}
+#endif
+
 namespace IPC {
 
 template<> struct ArgumentCoder<WebCore::AffineTransform> {
@@ -222,11 +228,15 @@ template<> struct ArgumentCoder<WebCore::AuthenticationChallenge> {
 template<> struct ArgumentCoder<WebCore::ProtectionSpace> {
     static void encode(ArgumentEncoder&, const WebCore::ProtectionSpace&);
     static bool decode(ArgumentDecoder&, WebCore::ProtectionSpace&);
+    static void encodePlatformData(ArgumentEncoder&, const WebCore::ProtectionSpace&);
+    static bool decodePlatformData(ArgumentDecoder&, WebCore::ProtectionSpace&);
 };
 
 template<> struct ArgumentCoder<WebCore::Credential> {
     static void encode(ArgumentEncoder&, const WebCore::Credential&);
     static bool decode(ArgumentDecoder&, WebCore::Credential&);
+    static void encodePlatformData(ArgumentEncoder&, const WebCore::Credential&);
+    static bool decodePlatformData(ArgumentDecoder&, WebCore::Credential&);
 };
 
 template<> struct ArgumentCoder<WebCore::Cursor> {
@@ -435,6 +445,13 @@ template<> struct ArgumentCoder<WebCore::BlobPart> {
     static void encode(ArgumentEncoder&, const WebCore::BlobPart&);
     static bool decode(ArgumentDecoder&, WebCore::BlobPart&);
 };
+
+#if ENABLE(CONTENT_FILTERING)
+template<> struct ArgumentCoder<WebCore::ContentFilter> {
+    static void encode(ArgumentEncoder&, const WebCore::ContentFilter&);
+    static bool decode(ArgumentDecoder&, WebCore::ContentFilter&);
+};
+#endif
 
 } // namespace IPC
 

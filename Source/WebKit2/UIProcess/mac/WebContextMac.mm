@@ -277,10 +277,6 @@ String WebContext::platformDefaultCookieStorageDirectory() const
 
     path = path + "/Library/Cookies";
     path = stringByResolvingSymlinksInPath(path);
-    // Temporary work around for <rdar://<rdar://problem/17513375>
-    if (path == "/private/var/mobile/Library/Cookies")
-        return String();
-
     return path;
 #else
     notImplemented();
@@ -297,6 +293,30 @@ String WebContext::platformDefaultOpenGLCacheDirectory() const
 
     path = path + "/Library/Caches/com.apple.WebKit.WebContent/com.apple.opengl/";
     return stringByResolvingSymlinksInPath(path);
+#else
+    notImplemented();
+    return [@"" stringByStandardizingPath];
+#endif
+}
+
+String WebContext::platformDefaultNetworkingHSTSDatabasePath() const
+{
+#if PLATFORM(IOS)
+    String path = pathForProcessContainer();
+    if (path.isEmpty())
+        path = NSHomeDirectory();
+
+    path = path + "/Library/Caches/com.apple.WebKit.Networking/";
+    path = stringByResolvingSymlinksInPath(path);
+
+    NSError *error = nil;
+    NSString* nsPath = path;
+    if (![[NSFileManager defaultManager] createDirectoryAtPath:nsPath withIntermediateDirectories:YES attributes:nil error:&error]) {
+        NSLog(@"could not create \"%@\", error %@", nsPath, error);
+        return String();
+    }
+
+    return path + "/HSTS.plist";
 #else
     notImplemented();
     return [@"" stringByStandardizingPath];

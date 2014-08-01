@@ -58,14 +58,22 @@ function TestBuild(repositories, builders, platform, rawRun) {
     if (!maxTime)
         maxTime = rawRun.buildTime;
     maxTime = TestBuild.UTCtoPST(maxTime);
-    var maxTimeString = new Date(maxTime).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+    var maxTimeString;
     var buildTime = TestBuild.UTCtoPST(rawRun.buildTime);
-    var buildTimeString = new Date(buildTime).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+    var buildTimeString;
 
     this.time = function () { return maxTime; }
-    this.formattedTime = function () { return maxTimeString; }
+    this.formattedTime = function () {
+        if (!maxTimeString)
+            maxTimeString = new Date(maxTime).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+        return maxTimeString;
+    }
     this.buildTime = function () { return buildTime; }
-    this.formattedBuildTime = function () { return buildTimeString; }
+    this.formattedBuildTime = function () {
+        if (!buildTimeString)
+            buildTimeString = new Date(buildTime).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+        return buildTimeString;
+    }
     this.builder = function () { return builders[rawRun.builder].name; }
     this.buildNumber = function () { return rawRun.buildNumber; }
     this.buildUrl = function () {
@@ -85,19 +93,30 @@ function TestBuild(repositories, builders, platform, rawRun) {
                 previousRevision = undefined;
 
             var revisionPrefix = '';
-            var revisionDelimitor = '-';
+            var revisionDelimiter = '-';
+            var isHash = false;
             if (parseInt(currentRevision) == currentRevision) { // e.g. r12345.
                 revisionPrefix = 'r';
                 if (previousRevision)
                     previousRevision = (parseInt(previousRevision) + 1);
             } else if (currentRevision.indexOf(' ') >= 0) // e.g. 10.9 13C64.
-                revisionDelimitor = ' - ';
+                revisionDelimiter = ' - ';
+            else if (currentRevision.length == 40) // e.g. git hash
+                isHash = true;
 
             var labelForThisRepository;
-            if (previousRevision)
-                labelForThisRepository = revisionPrefix + previousRevision + revisionDelimitor + revisionPrefix + currentRevision;
-            else
-                labelForThisRepository = '@ ' + revisionPrefix + currentRevision;
+            if (isHash) {
+                formattedCurrentHash = currentRevision.substring(0, 8);
+                if (previousRevision)
+                    labelForThisRepository = previousRevision.substring(0, 8) + '..' + formattedCurrentHash;
+                else
+                    labelForThisRepository = '@ ' + formattedCurrentHash;
+            } else {
+                if (previousRevision)
+                    labelForThisRepository = revisionPrefix + previousRevision + revisionDelimiter + revisionPrefix + currentRevision;
+                else
+                    labelForThisRepository = '@ ' + revisionPrefix + currentRevision;
+            }
 
             var url;
             var repository = repositories[repositoryName];
@@ -167,10 +186,8 @@ function PerfTestRuns(metric, platform) {
 
     this.metric = function () { return metric; }
     this.platform = function () { return platform; }
-    this.addResult = function (newResult) {
-        if (results.indexOf(newResult) >= 0)
-            return;
-        results.push(newResult);
+    this.setResults = function (newResults) {
+        results = newResults;
         cachedUnit = null;
         cachedScalingFactor = null;
     }

@@ -39,6 +39,7 @@ namespace WebKit {
 class AsyncTask;
 class DatabaseToWebProcessConnection;
 class UniqueIDBDatabase;
+class WebOriginDataManager;
 
 struct DatabaseProcessCreationParameters;
 
@@ -47,6 +48,7 @@ class DatabaseProcess : public ChildProcess  {
     friend class NeverDestroyed<DatabaseProcess>;
 public:
     static DatabaseProcess& shared();
+    ~DatabaseProcess();
 
     const String& indexedDatabaseDirectory() const { return m_indexedDatabaseDirectory; }
 
@@ -58,7 +60,10 @@ public:
 
     WorkQueue& queue() { return m_queue.get(); }
 
-    ~DatabaseProcess();
+    void getIndexedDatabaseOrigins(uint64_t callbackID);
+    void deleteIndexedDatabaseEntriesForOrigin(const SecurityOriginData&, uint64_t callbackID);
+    void deleteIndexedDatabaseEntriesModifiedBetweenDates(double startDate, double endDate, uint64_t callbackID);
+    void deleteAllIndexedDatabaseEntries(uint64_t callbackID);
 
 private:
     DatabaseProcess();
@@ -74,6 +79,7 @@ private:
     virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
     virtual void didClose(IPC::Connection*) override;
     virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    void didReceiveDatabaseProcessMessage(IPC::Connection*, IPC::MessageDecoder&);
 
     // Message Handlers
     void initializeDatabaseProcess(const DatabaseProcessCreationParameters&);
@@ -84,6 +90,10 @@ private:
     // For execution on work queue thread only
     void performNextDatabaseTask();
     void ensurePathExists(const String&);
+    void doGetIndexedDatabaseOrigins(uint64_t callbackID);
+    void doDeleteIndexedDatabaseEntriesForOrigin(const SecurityOriginData&, uint64_t callbackID);
+    void doDeleteIndexedDatabaseEntriesModifiedBetweenDates(double startDate, double endDate, uint64_t callbackID);
+    void doDeleteAllIndexedDatabaseEntries(uint64_t callbackID);
 
     Vector<RefPtr<DatabaseToWebProcessConnection>> m_databaseToWebProcessConnections;
 
@@ -95,6 +105,8 @@ private:
 
     Deque<std::unique_ptr<AsyncTask>> m_databaseTasks;
     Mutex m_databaseTaskMutex;
+
+    std::unique_ptr<WebOriginDataManager> m_webOriginDataManager;
 };
 
 } // namespace WebKit

@@ -26,9 +26,11 @@
 #include "config.h"
 #include "ResourceBuffer.h"
 
+#include "SharedBuffer.h"
+
 namespace WebCore {
 
-SharedBuffer::NSDataRetainPtrWithoutImplicitConversionOperator ResourceBuffer::createNSData()
+RetainPtr<NSData> ResourceBuffer::createNSData()
 {
     return m_sharedBuffer->createNSData();
 }

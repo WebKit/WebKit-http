@@ -177,7 +177,7 @@ bool PageClientImpl::isViewFocused()
 
 bool PageClientImpl::isViewVisible()
 {
-    return isViewInWindow() && [UIApplication sharedApplication].applicationState != UIApplicationStateBackground;
+    return isViewInWindow() && !m_contentView.isBackground;
 }
 
 bool PageClientImpl::isViewInWindow()
@@ -530,6 +530,11 @@ void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInfor
     [m_contentView _startAssistingNode:nodeInformation userIsInteracting:userIsInteracting blurPreviousNode:blurPreviousNode userObject:userObject];
 }
 
+bool PageClientImpl::isAssistingNode()
+{
+    return [m_contentView isAssistingNode];
+}
+
 void PageClientImpl::stopAssistingNode()
 {
     [m_contentView _stopAssistingNode];
@@ -638,6 +643,16 @@ void PageClientImpl::overflowScrollViewWillStartPanGesture()
 void PageClientImpl::overflowScrollViewDidScroll()
 {
     [m_contentView _didScroll];
+}
+
+void PageClientImpl::overflowScrollWillStartScroll()
+{
+    [m_contentView _overflowScrollingWillBegin];
+}
+
+void PageClientImpl::overflowScrollDidEndScroll()
+{
+    [m_contentView _overflowScrollingDidEnd];
 }
 
 void PageClientImpl::didFinishDrawingPagesToPDF(const IPC::DataReference& pdfData)

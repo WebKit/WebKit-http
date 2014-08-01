@@ -32,7 +32,6 @@
 #include "CSSSelectorList.h"
 #include "Document.h"
 #include "ElementTraversal.h"
-#include "FocusController.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLAnchorElement.h"
@@ -169,6 +168,11 @@ SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingC
         return SelectorFailsLocally;
 
     if (context.selector->m_match == CSSSelector::PseudoElement) {
+        // In Selectors Level 4, a pseudo element inside a functional pseudo class is undefined (issue 7).
+        // Make it as matching failure until the spec clarifies this case.
+        if (context.inFunctionalPseudoClass)
+            return SelectorFailsCompletely;
+
         if (context.selector->isCustomPseudoElement()) {
             if (ShadowRoot* root = context.element->containingShadowRoot()) {
                 if (context.element->shadowPseudoId() != context.selector->value())
@@ -207,7 +211,7 @@ SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingC
             return SelectorFailsCompletely;
 
         // Disable :visited matching when we see the first link or try to match anything else than an ancestors.
-        if (context.firstSelectorOfTheFragment == context.selector && (context.element->isLink() || (relation != CSSSelector::Descendant && relation != CSSSelector::Child)))
+        if (context.element->isLink() || (relation != CSSSelector::Descendant && relation != CSSSelector::Child))
             nextContext.visitedMatchType = VisitedMatchDisabled;
 
         nextContext.pseudoId = NOPSEUDO;
@@ -481,9 +485,6 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             // CSS scrollbars match a specific subset of pseudo classes, and they have specialized rules for each
             // (since there are no elements involved).
             return checkScrollbarPseudoClass(context, &element->document(), selector);
-        } else if (context.hasSelectionPseudo) {
-            if (selector->pseudoClassType() == CSSSelector::PseudoClassWindowInactive)
-                return !element->document().page()->focusController().isActive();
         }
 
         // Normal element pseudo class checking.
@@ -745,17 +746,11 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         case CSSSelector::PseudoClassFullScreen:
             return matchesFullScreenPseudoClass(element);
         case CSSSelector::PseudoClassAnimatingFullScreenTransition:
-            if (element != element->document().webkitCurrentFullScreenElement())
-                return false;
-            return element->document().isAnimatingFullScreen();
+            return matchesFullScreenAnimatingFullScreenTransitionPseudoClass(element);
         case CSSSelector::PseudoClassFullScreenAncestor:
-            return element->containsFullScreenElement();
+            return matchesFullScreenAncestorPseudoClass(element);
         case CSSSelector::PseudoClassFullScreenDocument:
-            // While a Document is in the fullscreen state, the 'full-screen-document' pseudoclass applies
-            // to all elements of that Document.
-            if (!element->document().webkitIsFullScreen())
-                return false;
-            return true;
+            return matchesFullScreenDocumentPseudoClass(element);
 #endif
         case CSSSelector::PseudoClassInRange:
             return isInRange(element);
@@ -776,6 +771,9 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
                 break;
             }
 
+        case CSSSelector::PseudoClassWindowInactive:
+            return isWindowInactive(element);
+
         case CSSSelector::PseudoClassHorizontal:
         case CSSSelector::PseudoClassVertical:
         case CSSSelector::PseudoClassDecrement:
@@ -789,7 +787,6 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             return false;
 
         case CSSSelector::PseudoClassUnknown:
-        default:
             ASSERT_NOT_REACHED();
             break;
         }

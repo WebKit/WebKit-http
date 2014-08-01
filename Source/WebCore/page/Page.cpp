@@ -83,6 +83,7 @@
 #include "TextResourceDecoder.h"
 #include "UserContentController.h"
 #include "UserInputBridge.h"
+#include "ViewStateChangeObserver.h"
 #include "VisitedLinkState.h"
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
@@ -200,6 +201,7 @@ Page::Page(PageClients& pageClients)
     , m_userContentController(WTF::move(pageClients.userContentController))
     , m_visitedLinkStore(WTF::move(pageClients.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
+    , m_isClosing(false)
 {
     ASSERT(m_editorClient);
     
@@ -804,7 +806,7 @@ void Page::setTopContentInset(float contentInset)
     m_topContentInset = contentInset;
     
     if (FrameView* view = mainFrame().view())
-        view->topContentInsetDidChange();
+        view->topContentInsetDidChange(m_topContentInset);
 }
 
 void Page::setShouldSuppressScrollbarAnimations(bool suppressAnimations)
@@ -899,6 +901,16 @@ void Page::setIsInWindowInternal(bool isInWindow)
 
     if (isInWindow)
         resumeAnimatingImages();
+}
+
+void Page::addViewStateChangeObserver(ViewStateChangeObserver& observer)
+{
+    m_viewStateChangeObservers.add(&observer);
+}
+
+void Page::removeViewStateChangeObserver(ViewStateChangeObserver& observer)
+{
+    m_viewStateChangeObservers.remove(&observer);
 }
 
 void Page::suspendScriptedAnimations()
@@ -1196,6 +1208,8 @@ void Page::setViewState(ViewState::Flags viewState)
     if (!changed)
         return;
 
+    ViewState::Flags oldViewState = m_viewState;
+
     m_viewState = viewState;
     m_focusController->setViewState(viewState);
     if (m_pageThrottler)
@@ -1207,6 +1221,9 @@ void Page::setViewState(ViewState::Flags viewState)
         setIsInWindowInternal(viewState & ViewState::IsInWindow);
     if (changed & ViewState::IsVisuallyIdle)
         setIsVisuallyIdleInternal(viewState & ViewState::IsVisuallyIdle);
+
+    for (auto* observer : m_viewStateChangeObservers)
+        observer->viewStateDidChange(oldViewState, m_viewState);
 }
 
 void Page::setIsVisible(bool isVisible)

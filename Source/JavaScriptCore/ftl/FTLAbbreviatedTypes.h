@@ -43,6 +43,7 @@ typedef LLVMModuleRef LModule;
 typedef LLVMRealPredicate LRealPredicate;
 typedef LLVMTypeRef LType;
 typedef LLVMValueRef LValue;
+typedef LLVMMemoryBufferRef LMemoryBuffer;
 
 } } // namespace JSC::FTL
 

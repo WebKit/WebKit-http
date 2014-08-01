@@ -49,9 +49,11 @@ BEGIN {
    $VERSION     = 1.00;
    @ISA         = qw(Exporter);
    @EXPORT      = qw(
+       &XcodeCoverageSupportOptions
        &XcodeOptionString
        &XcodeOptionStringNoConfig
        &XcodeOptions
+       &XcodeStaticAnalyzerOption
        &appDisplayNameFromBundle
        &baseProductDir
        &chdirWebKit
@@ -394,6 +396,7 @@ sub argumentsForConfiguration()
     push(@args, '--release') if ($configuration =~ "^Release");
     push(@args, '--device') if (defined $xcodeSDK && $xcodeSDK =~ /^iphoneos/);
     push(@args, '--sim') if (defined $xcodeSDK && $xcodeSDK =~ /^iphonesimulator/);
+    push(@args, '--ios-simulator') if (defined $xcodeSDK && $xcodeSDK =~ /^iphonesimulator/);
     push(@args, '--32-bit') if ($architecture ne "x86_64" and !isWin64());
     push(@args, '--64-bit') if (isWin64());
     push(@args, '--gtk') if isGtk();
@@ -416,7 +419,8 @@ sub determineXcodeSDK
         $xcodeSDK ||= 'iphoneos.internal';
     }
     if (checkForArgumentAndRemoveFromARGV("--sim") ||
-        checkForArgumentAndRemoveFromARGV("--simulator")) {
+        checkForArgumentAndRemoveFromARGV("--simulator") ||
+        checkForArgumentAndRemoveFromARGV("--ios-simulator")) {
         $xcodeSDK ||= 'iphonesimulator';
     }
 }
@@ -646,6 +650,11 @@ sub XcodeCoverageSupportOptions()
     push @coverageSupportOptions, "GCC_GENERATE_TEST_COVERAGE_FILES=YES";
     push @coverageSupportOptions, "GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES";
     return @coverageSupportOptions;
+}
+
+sub XcodeStaticAnalyzerOption()
+{
+    return "RUN_CLANG_STATIC_ANALYZER=YES";
 }
 
 my $passedConfiguration;

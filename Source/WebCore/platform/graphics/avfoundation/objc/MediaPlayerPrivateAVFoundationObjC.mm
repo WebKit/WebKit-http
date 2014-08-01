@@ -86,6 +86,19 @@
 #import <VideoToolbox/VideoToolbox.h>
 #endif
 
+@interface WebVideoContainerLayer : CALayer
+@end
+
+@implementation WebVideoContainerLayer
+
+- (void)setBounds:(CGRect)bounds
+{
+    [super setBounds:bounds];
+    for (CALayer* layer in self.sublayers)
+        layer.frame = bounds;
+}
+@end
+
 #if ENABLE(AVF_CAPTIONS)
 // Note: This must be defined before our SOFT_LINK macros:
 @class AVMediaSelectionOption;
@@ -579,14 +592,20 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
     [m_videoLayer addObserver:m_objcObserver.get() forKeyPath:@"readyForDisplay" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextAVPlayerLayer];
     updateVideoLayerGravity();
     IntSize defaultSize = player()->mediaPlayerClient() ? player()->mediaPlayerClient()->mediaPlayerContentBoxRect().pixelSnappedSize() : IntSize();
-    [m_videoLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoLayer(%p) - returning %p", this, m_videoLayer.get());
 
 #if PLATFORM(IOS)
+    m_videoInlineLayer = adoptNS([[WebVideoContainerLayer alloc] init]);
+    [m_videoInlineLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
     if (m_videoFullscreenLayer) {
-        [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
+        [m_videoLayer setFrame:[m_videoFullscreenLayer bounds]];
         [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
+    } else {
+        [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
+        [m_videoLayer setFrame:m_videoInlineLayer.get().bounds];
     }
+#else
+    [m_videoLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
 #endif
 }
 
@@ -603,9 +622,10 @@ void MediaPlayerPrivateAVFoundationObjC::destroyVideoLayer()
 #if PLATFORM(IOS)
     if (m_videoFullscreenLayer)
         [m_videoLayer removeFromSuperlayer];
+    m_videoInlineLayer = nil;
 #endif
 
-    m_videoLayer = 0;
+    m_videoLayer = nil;
 }
 
 bool MediaPlayerPrivateAVFoundationObjC::hasAvailableVideoFrame() const
@@ -936,7 +956,11 @@ PlatformMedia MediaPlayerPrivateAVFoundationObjC::platformMedia() const
 
 PlatformLayer* MediaPlayerPrivateAVFoundationObjC::platformLayer() const
 {
+#if PLATFORM(IOS)
+    return m_haveBeenAskedToCreateLayer ? m_videoInlineLayer.get() : nullptr;
+#else
     return m_haveBeenAskedToCreateLayer ? m_videoLayer.get() : nullptr;
+#endif
 }
 
 #if PLATFORM(IOS)
@@ -945,16 +969,23 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer(PlatformLayer* 
     if (m_videoFullscreenLayer == videoFullscreenLayer)
         return;
 
-    if (m_videoFullscreenLayer)
-       [m_videoLayer removeFromSuperlayer];
-
     m_videoFullscreenLayer = videoFullscreenLayer;
 
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+
     if (m_videoFullscreenLayer && m_videoLayer) {
-        CGRect frame = CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height());
-        [m_videoLayer setFrame:frame];
+        [m_videoLayer setFrame:[m_videoFullscreenLayer bounds]];
+        [m_videoLayer removeFromSuperlayer];
         [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
-    }
+    } else if (m_videoInlineLayer && m_videoLayer) {
+        [m_videoLayer setFrame:[m_videoInlineLayer bounds]];
+        [m_videoLayer removeFromSuperlayer];
+        [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
+    } else if (m_videoLayer)
+        [m_videoLayer removeFromSuperlayer];
+
+    [CATransaction commit];
 
     if (m_videoFullscreenLayer && m_textTrackRepresentationLayer) {
         syncTextTrackBounds();
@@ -971,9 +1002,12 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenFrame(FloatRect frame
     if (!m_videoFullscreenLayer)
         return;
 
-    if (m_videoLayer)
+    if (m_videoLayer) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
         [m_videoLayer setFrame:CGRectMake(0, 0, frame.width(), frame.height())];
-
+        [CATransaction commit];
+    }
     syncTextTrackBounds();
 }
 
@@ -1126,10 +1160,15 @@ void MediaPlayerPrivateAVFoundationObjC::seekToTime(double time, double negative
 
 void MediaPlayerPrivateAVFoundationObjC::setVolume(float volume)
 {
+#if PLATFORM(IOS)
+    UNUSED_PARAM(volume);
+    return;
+#else
     if (!metaDataAvailable())
         return;
 
     [m_avPlayer.get() setVolume:volume];
+#endif
 }
 
 void MediaPlayerPrivateAVFoundationObjC::setClosedCaptionsVisible(bool closedCaptionsVisible)
@@ -1529,6 +1568,13 @@ void MediaPlayerPrivateAVFoundationObjC::updateVideoLayerGravity()
 {
     if (!m_videoLayer)
         return;
+
+#if PLATFORM(IOS)
+    // Do not attempt to change the video gravity while in full screen mode.
+    // See setVideoFullscreenGravity().
+    if (m_videoFullscreenLayer)
+        return;
+#endif
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];    
@@ -2538,6 +2584,16 @@ void MediaPlayerPrivateAVFoundationObjC::playbackTargetIsWirelessDidChange()
 }
 #endif
 
+void MediaPlayerPrivateAVFoundationObjC::canPlayFastForwardDidChange(bool newValue)
+{
+    m_cachedCanPlayFastForward = newValue;
+}
+
+void MediaPlayerPrivateAVFoundationObjC::canPlayFastReverseDidChange(bool newValue)
+{
+    m_cachedCanPlayFastReverse = newValue;
+}
+
 NSArray* assetMetadataKeyNames()
 {
     static NSArray* keys;
@@ -2571,6 +2627,8 @@ NSArray* itemKVOProperties()
                 @"duration",
                 @"hasEnabledAudio",
                 @"timedMetadata",
+                @"canPlayFastForward",
+                @"canPlayFastReverse",
                 nil];
     }
     return keys;
@@ -2680,7 +2738,10 @@ NSArray* assetTrackMetadataKeyNames()
             if (CMTIME_IS_NUMERIC(itemTime))
                 now = std::max(narrowPrecisionToFloat(CMTimeGetSeconds(itemTime)), 0.0f);
             function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::metadataDidArrive, m_callback, RetainPtr<NSArray>(newValue), now);
-        }
+        } else if ([keyPath isEqualToString:@"canPlayFastReverse"])
+            function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::canPlayFastReverseDidChange, m_callback, [newValue boolValue]);
+        else if ([keyPath isEqualToString:@"canPlayFastForward"])
+            function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::canPlayFastForwardDidChange, m_callback, [newValue boolValue]);
     }
 
     if (context == MediaPlayerAVFoundationObservationContextPlayer && !willChange) {

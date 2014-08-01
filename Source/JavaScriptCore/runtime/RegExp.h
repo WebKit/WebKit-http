@@ -61,7 +61,7 @@ namespace JSC {
         const char* errorMessage() const { return m_constructionError; }
 
         JS_EXPORT_PRIVATE int match(VM&, const String&, unsigned startOffset, Vector<int, 32>& ovector);
-        MatchResult match(VM&, const String&, unsigned startOffset);
+        JS_EXPORT_PRIVATE MatchResult match(VM&, const String&, unsigned startOffset);
         unsigned numSubpatterns() const { return m_numSubpatterns; }
 
         bool hasCode()
@@ -77,7 +77,7 @@ namespace JSC {
 
         static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
         {
-            return Structure::create(vm, globalObject, prototype, TypeInfo(LeafType, StructureFlags), info());
+            return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
         }
         
         DECLARE_INFO;

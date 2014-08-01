@@ -63,6 +63,8 @@ void link(State& state)
     if (!graph.m_plan.inlineCallFrames->isEmpty())
         state.jitCode->common.inlineCallFrames = graph.m_plan.inlineCallFrames;
     
+    graph.registerFrozenValues();
+
     // Create the entrypoint. Note that we use this entrypoint totally differently
     // depending on whether we're doing OSR entry or not.
     CCallHelpers jit(&vm, codeBlock);
@@ -177,7 +179,7 @@ void link(State& state)
 
         linkBuffer = adoptPtr(new LinkBuffer(vm, jit, codeBlock, JITCompilationMustSucceed));
         linkBuffer->link(callArityCheck, codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck);
-        linkBuffer->link(callArityFixup, FunctionPtr((vm.getCTIStub(arityFixup)).code().executableAddress()));
+        linkBuffer->link(callArityFixup, FunctionPtr((vm.getCTIStub(arityFixupGenerator)).code().executableAddress()));
         linkBuffer->link(mainPathJumps, CodeLocationLabel(bitwise_cast<void*>(state.generatedFunction)));
 
         state.jitCode->initializeAddressForCall(MacroAssemblerCodePtr(bitwise_cast<void*>(state.generatedFunction)));

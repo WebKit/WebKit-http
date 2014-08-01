@@ -88,6 +88,7 @@ class StyleRuleRegion;
 class StyleSheet;
 class StyleSheetList;
 class StyledElement;
+class SVGSVGElement;
 class ViewportStyleResolver;
 class WebKitCSSFilterValue;
 struct ResourceLoaderOptions;
@@ -206,6 +207,7 @@ public:
 
 public:
     bool useSVGZoomRules();
+    bool useSVGZoomRulesForLength();
 
     static bool colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue*);
     Color colorFromPrimitiveValue(CSSPrimitiveValue*, bool forVisitedLink = false) const;

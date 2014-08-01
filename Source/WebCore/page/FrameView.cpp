@@ -64,6 +64,7 @@
 #include "RenderEmbeddedObject.h"
 #include "RenderFullScreen.h"
 #include "RenderIFrame.h"
+#include "RenderInline.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
@@ -170,6 +171,7 @@ FrameView::FrameView(Frame& frame)
     , m_wasScrolledByUser(false)
     , m_inProgrammaticScroll(false)
     , m_safeToPropagateScrollToParent(true)
+    , m_delayedScrollEventTimer(this, &FrameView::delayedScrollEventTimerFired)
     , m_isTrackingRepaints(false)
     , m_shouldUpdateWhileOffscreen(true)
     , m_exposedRect(FloatRect::infiniteRect())
@@ -255,6 +257,7 @@ void FrameView::reset()
     m_firstLayoutCallbackPending = false;
     m_wasScrolledByUser = false;
     m_safeToPropagateScrollToParent = true;
+    m_delayedScrollEventTimer.stop();
     m_lastViewportSize = IntSize();
     m_lastZoomFactor = 1.0f;
     m_isTrackingRepaints = false;
@@ -927,8 +930,11 @@ void FrameView::setFooterHeight(int footerHeight)
         renderView->setNeedsLayout();
 }
 
-float FrameView::topContentInset() const
+float FrameView::topContentInset(TopContentInsetType contentInsetTypeToReturn) const
 {
+    if (platformWidget() && contentInsetTypeToReturn == TopContentInsetType::WebCoreOrPlatformContentInset)
+        return platformTopContentInset();
+
     if (!frame().isMainFrame())
         return 0;
     
@@ -936,11 +942,14 @@ float FrameView::topContentInset() const
     return page ? page->topContentInset() : 0;
 }
     
-void FrameView::topContentInsetDidChange()
+void FrameView::topContentInsetDidChange(float newTopContentInset)
 {
     RenderView* renderView = this->renderView();
     if (!renderView)
         return;
+
+    if (platformWidget())
+        platformSetTopContentInset(newTopContentInset);
     
     layout();
 
@@ -949,7 +958,7 @@ void FrameView::topContentInsetDidChange()
         renderView->compositor().frameViewDidChangeSize();
 
     if (TiledBacking* tiledBacking = this->tiledBacking())
-        tiledBacking->setTopContentInset(topContentInset());
+        tiledBacking->setTopContentInset(newTopContentInset);
 }
     
 bool FrameView::hasCompositedContent() const
@@ -1703,6 +1712,11 @@ IntPoint FrameView::maximumScrollPosition() const
     return maximumOffset;
 }
 
+void FrameView::delayedScrollEventTimerFired(Timer<FrameView>&)
+{
+    sendScrollEvent();
+}
+
 bool FrameView::fixedElementsLayoutRelativeToFrame() const
 {
     return frame().settings().fixedElementsLayoutRelativeToFrame();
@@ -2039,9 +2053,14 @@ void FrameView::scrollPositionChangedViaPlatformWidget(const IntPoint& oldPositi
 
 void FrameView::scrollPositionChanged(const IntPoint& oldPosition, const IntPoint& newPosition)
 {
-    frame().eventHandler().sendScrollEvent();
-    frame().eventHandler().dispatchFakeMouseMoveEventSoon();
-    
+    std::chrono::milliseconds throttlingDelay = frame().page()->chrome().client().eventThrottlingDelay();
+
+    if (throttlingDelay == std::chrono::milliseconds::zero()) {
+        m_delayedScrollEventTimer.stop();
+        sendScrollEvent();
+    } else if (!m_delayedScrollEventTimer.isActive())
+        m_delayedScrollEventTimer.startOneShot(throttlingDelay);
+
     if (Document* document = frame().document())
         document->sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition, visibleContentRect(), contentsSize());
 
@@ -2803,7 +2822,7 @@ void FrameView::performPostLayoutTasks()
 
     m_postLayoutTasksTimer.stop();
 
-    frame().selection().layoutDidChange();
+    frame().selection().didLayout();
 
     if (m_nestedLayoutCount <= 1 && frame().document()->documentElement())
         fireLayoutRelatedMilestonesIfNeeded();
@@ -2818,7 +2837,7 @@ void FrameView::performPostLayoutTasks()
 
 #if ENABLE(FONT_LOAD_EVENTS)
     if (RuntimeEnabledFeatures::sharedFeatures().fontLoadEventsEnabled())
-        frame().document()->fontloader()->didLayout();
+        frame().document()->fonts()->didLayout();
 #endif
     
     // FIXME: We should consider adding DidLayout as a LayoutMilestone. That would let us merge this
@@ -3666,7 +3685,12 @@ void FrameView::paintContents(GraphicsContext* context, const IntRect& dirtyRect
     RenderElement::SetLayoutNeededForbiddenScope forbidSetNeedsLayout(&rootLayer->renderer());
 #endif
 
-    rootLayer->paint(context, dirtyRect, m_paintBehavior, eltRenderer);
+    // To work around http://webkit.org/b/135106, ensure that the paint root isn't an inline with culled line boxes.
+    // FIXME: This can cause additional content to be included in the snapshot, so remove this once that bug is fixed.
+    while (eltRenderer && eltRenderer->isRenderInline() && !toRenderInline(eltRenderer)->firstLineBox())
+        eltRenderer = eltRenderer->parent();
+
+    rootLayer->paint(context, dirtyRect, LayoutSize(), m_paintBehavior, eltRenderer);
     if (rootLayer->containsDirtyOverlayScrollbars())
         rootLayer->paintOverlayScrollbars(context, dirtyRect, m_paintBehavior, eltRenderer);
 
@@ -3913,18 +3937,18 @@ void FrameView::adjustPageHeightDeprecated(float *newBottom, float oldTop, float
     renderView->setPrintRect(IntRect());
 }
 
-IntRect FrameView::convertFromRenderer(const RenderElement* renderer, const IntRect& rendererRect) const
+IntRect FrameView::convertFromRendererToContainingView(const RenderElement* renderer, const IntRect& rendererRect) const
 {
     IntRect rect = pixelSnappedIntRect(enclosingLayoutRect(renderer->localToAbsoluteQuad(FloatRect(rendererRect)).boundingBox()));
 
     // Convert from page ("absolute") to FrameView coordinates.
     if (!delegatesScrolling())
-        rect.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset()));
+        rect.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset(TopContentInsetType::WebCoreOrPlatformContentInset)));
 
     return rect;
 }
 
-IntRect FrameView::convertToRenderer(const RenderElement* renderer, const IntRect& viewRect) const
+IntRect FrameView::convertFromContainingViewToRenderer(const RenderElement* renderer, const IntRect& viewRect) const
 {
     IntRect rect = viewRect;
     
@@ -3938,17 +3962,17 @@ IntRect FrameView::convertToRenderer(const RenderElement* renderer, const IntRec
     return rect;
 }
 
-IntPoint FrameView::convertFromRenderer(const RenderElement* renderer, const IntPoint& rendererPoint) const
+IntPoint FrameView::convertFromRendererToContainingView(const RenderElement* renderer, const IntPoint& rendererPoint) const
 {
     IntPoint point = roundedIntPoint(renderer->localToAbsolute(rendererPoint, UseTransforms));
 
     // Convert from page ("absolute") to FrameView coordinates.
     if (!delegatesScrolling())
-        point.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset()));
+        point.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset(TopContentInsetType::WebCoreOrPlatformContentInset)));
     return point;
 }
 
-IntPoint FrameView::convertToRenderer(const RenderElement* renderer, const IntPoint& viewPoint) const
+IntPoint FrameView::convertFromContainingViewToRenderer(const RenderElement* renderer, const IntPoint& viewPoint) const
 {
     IntPoint point = viewPoint;
 
@@ -3973,7 +3997,7 @@ IntRect FrameView::convertToContainingView(const IntRect& localRect) const
             // Add borders and padding??
             rect.move(renderer->borderLeft() + renderer->paddingLeft(),
                       renderer->borderTop() + renderer->paddingTop());
-            return parentView->convertFromRenderer(renderer, rect);
+            return parentView->convertFromRendererToContainingView(renderer, rect);
         }
         
         return Widget::convertToContainingView(localRect);
@@ -3993,7 +4017,7 @@ IntRect FrameView::convertFromContainingView(const IntRect& parentRect) const
             if (!renderer)
                 return parentRect;
 
-            IntRect rect = parentView->convertToRenderer(renderer, parentRect);
+            IntRect rect = parentView->convertFromContainingViewToRenderer(renderer, parentRect);
             // Subtract borders and padding
             rect.move(-renderer->borderLeft() - renderer->paddingLeft(),
                       -renderer->borderTop() - renderer->paddingTop());
@@ -4022,7 +4046,7 @@ IntPoint FrameView::convertToContainingView(const IntPoint& localPoint) const
             // Add borders and padding
             point.move(renderer->borderLeft() + renderer->paddingLeft(),
                        renderer->borderTop() + renderer->paddingTop());
-            return parentView->convertFromRenderer(renderer, point);
+            return parentView->convertFromRendererToContainingView(renderer, point);
         }
         
         return Widget::convertToContainingView(localPoint);
@@ -4042,7 +4066,7 @@ IntPoint FrameView::convertFromContainingView(const IntPoint& parentPoint) const
             if (!renderer)
                 return parentPoint;
 
-            IntPoint point = parentView->convertToRenderer(renderer, parentPoint);
+            IntPoint point = parentView->convertFromContainingViewToRenderer(renderer, parentPoint);
             // Subtract borders and padding
             point.move(-renderer->borderLeft() - renderer->paddingLeft(),
                        -renderer->borderTop() - renderer->paddingTop());
@@ -4130,6 +4154,12 @@ void FrameView::scrollableAreaSetChanged()
         if (auto* scrollingCoordinator = page->scrollingCoordinator())
             scrollingCoordinator->frameViewNonFastScrollableRegionChanged(this);
     }
+}
+
+void FrameView::sendScrollEvent()
+{
+    frame().eventHandler().sendScrollEvent();
+    frame().eventHandler().dispatchFakeMouseMoveEventSoon();
 }
 
 void FrameView::removeChild(Widget* widget)
@@ -4498,7 +4528,7 @@ IntSize FrameView::viewportSizeForCSSViewportUnits() const
     if (m_hasOverrideViewportSize)
         return m_overrideViewportSize;
     
-    return visibleContentRectIncludingScrollbars(ScrollableArea::LegacyIOSDocumentVisibleRect).size();
+    return visibleContentRectIncludingScrollbars().size();
 }
     
 } // namespace WebCore

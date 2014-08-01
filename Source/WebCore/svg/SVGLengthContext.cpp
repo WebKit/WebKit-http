@@ -3,6 +3,7 @@
  * Copyright (C) 2004, 2005, 2006, 2007 Rob Buis <buis@kde.org>
  * Copyright (C) 2007 Apple Inc. All rights reserved.
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
+ * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -27,6 +28,7 @@
 #include "ExceptionCode.h"
 #include "FontMetrics.h"
 #include "Frame.h"
+#include "LengthFunctions.h"
 #include "RenderSVGRoot.h"
 #include "RenderSVGViewportContainer.h"
 #include "RenderView.h"
@@ -83,6 +85,27 @@ float SVGLengthContext::resolveLength(const SVGElement* context, SVGUnitTypes::S
 
     // FIXME: valueAsPercentage() won't be correct for eg. cm units. They need to be resolved in user space and then be considered in objectBoundingBox space.
     return x.valueAsPercentage();
+}
+
+float SVGLengthContext::valueForLength(const Length& length, SVGLengthMode mode)
+{
+    if (length.isPercent())
+        return convertValueFromPercentageToUserUnits(length.value() / 100, mode, IGNORE_EXCEPTION);
+    if (length.isAuto())
+        return 0;
+
+    FloatSize viewportSize;
+    determineViewport(viewportSize);
+
+    switch (mode) {
+    case LengthModeWidth:
+        return floatValueForLength(length, viewportSize.width());
+    case LengthModeHeight:
+        return floatValueForLength(length, viewportSize.height());
+    case LengthModeOther:
+        return floatValueForLength(length, sqrtf(viewportSize.diagonalLengthSquared() / 2));
+    };
+    return 0;
 }
 
 float SVGLengthContext::convertValueToUserUnits(float value, SVGLengthMode mode, SVGLengthType fromUnit, ExceptionCode& ec) const

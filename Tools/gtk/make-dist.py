@@ -81,6 +81,10 @@ class File(object):
         self.source_root = source_root
         self.tarball_root = tarball_root
 
+    def should_skip_file(self, path):
+        # Do not skip files explicitly added from the manifest.
+        return False
+
     def get_files(self):
         yield (self.source_root, self.tarball_root)
 
@@ -91,11 +95,24 @@ class Directory(object):
         self.tarball_root = tarball_root
         self.rules = Ruleset()
 
+        self.files_in_version_control = self.list_files_in_version_control()
+
     def add_rule(self, rule):
         self.rules.add_rule(rule)
 
     def get_tarball_path(self, filename):
         return filename.replace(self.source_root, self.tarball_root, 1)
+
+    def list_files_in_version_control(self):
+        # FIXME: Only git is supported for now.
+        p = subprocess.Popen(['git', 'ls-tree', '-r', '--name-only', 'HEAD', self.source_root], stdout=subprocess.PIPE)
+        out = p.communicate()[0]
+        if not out:
+            return []
+        return out.rstrip('\n').split('\n')
+
+    def should_skip_file(self, path):
+        return path not in self.files_in_version_control
 
     def get_files(self):
         for root, dirs, files in os.walk(self.source_root):
@@ -189,9 +206,18 @@ class Manifest(object):
         elif parts[0] == "include" and len(parts) > 1:
             self.add_rule(Rule(Rule.Result.INCLUDE, self.resolve_variables(parts[1])))
 
+    def should_skip_file(self, directory, filename):
+        # Only allow files that are not in version control when they are explicitly included in the manifest from the build dir.
+        if filename.startswith(self.build_root):
+            return False
+
+        return directory.should_skip_file(filename)
+
     def get_files(self):
         for directory in self.directories:
             for file_tuple in directory.get_files():
+                if self.should_skip_file(directory, file_tuple[0]):
+                    continue
                 yield file_tuple
 
     def create_tarfile(self, output):
@@ -218,7 +244,7 @@ class Distcheck(object):
         with closing(tarfile.open(tarball_path, 'r')) as tarball:
             tarball.extractall(self.build_root)
 
-    def configure(self, build_dir, install_dir):
+    def configure(self, dist_dir, build_dir, install_dir):
         def create_dir(directory, directory_type):
             try:
                 os.mkdir(directory)
@@ -229,7 +255,7 @@ class Distcheck(object):
         create_dir(build_dir, "build")
         create_dir(install_dir, "install")
 
-        command = ['cmake', '-DPORT=GTK', '-DCMAKE_INSTALL_PREFIX=%s' % install_dir, '-DCMAKE_BUILD_TYPE=Release', self.source_root]
+        command = ['cmake', '-DPORT=GTK', '-DCMAKE_INSTALL_PREFIX=%s' % install_dir, '-DCMAKE_BUILD_TYPE=Release', dist_dir]
         subprocess.check_call(command, cwd=build_dir)
 
     def build(self, build_dir):
@@ -254,7 +280,7 @@ class Distcheck(object):
         install_dir = os.path.join(dist_dir, self.INSTALL_DIRECTORY_NAME)
 
         self.extract_tarball(tarball)
-        self.configure(build_dir, install_dir)
+        self.configure(dist_dir, build_dir, install_dir)
         self.build(build_dir)
         self.install(build_dir)
         self.clean(dist_dir)
@@ -264,19 +290,37 @@ if __name__ == "__main__":
         def __call__(self, parser, namespace, values, option_string=None):
             setattr(namespace, self.dest, os.path.abspath(values))
 
+    def ensure_version_if_possible(arguments):
+        if arguments.version is not None:
+            return
+
+        pkgconfig_file = os.path.join(arguments.build_dir, "Source/WebKit2/webkit2gtk-4.0.pc")
+        if os.path.isfile(pkgconfig_file):
+            p = subprocess.Popen(['pkg-config', '--modversion', pkgconfig_file], stdout=subprocess.PIPE)
+            version = p.communicate()[0]
+            if version:
+                arguments.version = version.rstrip('\n')
+
+
+    def get_tarball_root_and_output_filename_from_arguments(arguments):
+        tarball_root = "webkitgtk"
+        if arguments.version is not None:
+            tarball_root += '-' + arguments.version
+
+        output_filename = os.path.join(arguments.build_dir, tarball_root + ".tar")
+        return tarball_root, output_filename
+
     parser = argparse.ArgumentParser(description='Build a distribution bundle.')
     parser.add_argument('-c', '--check', action='store_true',
                         help='Check the tarball')
     parser.add_argument('-s', '--source-dir', type=str, action=FilePathAction, default=os.getcwd(),
                         help='The top-level directory of the source distribution. ' + \
                               'Directory for relative paths. Defaults to current directory.')
-    parser.add_argument('--tarball-root', type=str, default='/',
-                        help='The top-level path of the tarball. By default files are added to the root of the tarball.')
-    parser.add_argument('-b', '--build-dir', type=str, action=FilePathAction, default=None,
+    parser.add_argument('--version', type=str, default=None,
+                        help='The version of the tarball to generate')
+    parser.add_argument('-b', '--build-dir', type=str, action=FilePathAction, default=os.getcwd(),
                         help='The top-level path of directory of the build root. ' + \
-                              'By default there is no build root.')
-    parser.add_argument('-o', type=str, action=FilePathAction, default='out.tar', dest="output_filename",
-                        help='The tarfile to produce. By default this is "out.tar"')
+                              'By default is the current directory.')
     parser.add_argument('manifest_filename', metavar="manifest", type=str, action=FilePathAction, help='The path to the manifest file.')
 
     arguments = parser.parse_args()
@@ -286,8 +330,11 @@ if __name__ == "__main__":
     # to be the source directory.
     os.chdir(arguments.source_dir)
 
-    manifest = Manifest(arguments.manifest_filename, arguments.source_dir, arguments.build_dir, arguments.tarball_root)
-    manifest.create_tarfile(arguments.output_filename)
+    ensure_version_if_possible(arguments)
+    tarball_root, output_filename = get_tarball_root_and_output_filename_from_arguments(arguments)
+
+    manifest = Manifest(arguments.manifest_filename, arguments.source_dir, arguments.build_dir, tarball_root)
+    manifest.create_tarfile(output_filename)
 
     if arguments.check:
-        Distcheck(arguments.source_dir, arguments.build_dir).check(arguments.output_filename)
+        Distcheck(arguments.source_dir, arguments.build_dir).check(output_filename)
