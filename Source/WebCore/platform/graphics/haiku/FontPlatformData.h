@@ -31,6 +31,8 @@
 
 #include "FontDescription.h"
 #include "GlyphBuffer.h"
+#include "SharedBuffer.h"
+
 #include <interface/Font.h>
 #include <support/String.h>
 
@@ -70,6 +72,10 @@ public:
     unsigned hash() const;
     bool isHashTableDeletedValue() const;
 
+    PassRefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
+
+    // Other platforms have this only in !NDEBUG builds, but we use it to
+    // compute the hash.
     String description() const;
 
 private:

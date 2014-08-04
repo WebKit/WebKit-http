@@ -554,6 +554,11 @@ void EditorClientHaiku::textDidChangeInTextArea(Element*)
     notImplemented();
 }
 
+void EditorClientHaiku::overflowScrollPositionChanged()
+{
+    notImplemented();
+}
+
 bool EditorClientHaiku::shouldEraseMarkersAfterChangeSelection(TextCheckingType) const
 {
     return true;

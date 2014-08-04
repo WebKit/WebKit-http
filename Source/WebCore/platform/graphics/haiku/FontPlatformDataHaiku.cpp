@@ -322,6 +322,13 @@ String FontPlatformData::description() const
     return String(fontFamily) + "/" + String(fontStyle) + String::format("/%.1f/%d&%d", size, isBold, isOblique);
 }
 
+PassRefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
+{
+    // FIXME implement
+    return nullptr;
+}
+
+
 void
 FontPlatformData::SetFallBackSerifFont(const BString& font)
 {
