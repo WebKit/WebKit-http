@@ -85,7 +85,6 @@ list(APPEND WebCore_SOURCES
   platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
   platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
   platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
-  platform/graphics/texmap/coordinated/CoordinatedTile.cpp
 
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
 
@@ -109,6 +108,14 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.css
 )
 
+if (WTF_USE_COORDINATED_GRAPHICS)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+    )
+else()
+
+endif()
+
 if (WTF_USE_TEXTURE_MAPPER)
     list(APPEND WebCore_SOURCES
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
@@ -119,7 +126,7 @@ else()
     )
 endif ()
 
-set(WebCore_USER_AGENT_SCRIPTS 
+set(WebCore_USER_AGENT_SCRIPTS
     ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js
 )
@@ -244,6 +251,10 @@ if (ENABLE_WEB_AUDIO)
     install(FILES ${WEB_AUDIO_DATA} DESTINATION ${WEB_AUDIO_DIR})
     add_definitions(-DUNINSTALLED_AUDIO_RESOURCES_DIR="${WEBCORE_DIR}/platform/audio/resources")
 endif ()
+
+# Directory listing template for FTP/file/gopher directory listings.
+install(FILES "${WEBCORE_DIR}/platform/haiku/resources/Directory Listing Template.html"
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/${DATA_INSTALL_DIR})
 
 if (ENABLE_SPELLCHECK)
     list(APPEND WebCore_INCLUDE_DIRECTORIES

@@ -32,6 +32,9 @@
 #include "Settings.h"
 #include "WebSettings.h"
 
+#include <Path.h>
+#include <PathFinder.h>
+
 namespace BPrivate {
 
 BList WebSettingsPrivate::sAllSettings(128);
@@ -88,6 +91,17 @@ void WebSettingsPrivate::apply()
 	    settings->setDefaultTextEncodingName("UTF-8");
         settings->setUsesPageCache(WebCore::pageCache()->capacity());
         settings->setNeedsSiteSpecificQuirks(true);
+
+        char path[256];
+        status_t result = find_path(B_CURRENT_IMAGE_SYMBOL,
+            B_FIND_PATH_DATA_DIRECTORY,
+            "/WebKit/Directory Listing Template.html", path, 256);
+        if (result != B_OK) {
+            find_directory(B_SYSTEM_NONPACKAGED_DATA_DIRECTORY, 0, false, path, 256);
+            strcat(path, "/WebKit/Directory Listing Template.html");
+        }
+        settings->setFTPDirectoryTemplatePath(path);
+printf("dt: %s\n", path);
 
         settings->setAcceleratedCompositingEnabled(true);
         settings->setForceCompositingMode(true);
