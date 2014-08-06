@@ -20,6 +20,7 @@
 #ifndef AcceleratedCompositingContext_h
 #define AcceleratedCompositingContext_h
 
+#include <config.h>
 #include "TextureMapperFPSCounter.h"
 #include "Timer.h"
 #include <wtf/Noncopyable.h>
@@ -57,11 +58,13 @@ private:
     BWebView* m_view;
     BRect m_updateRect;
 
-    std::unique_ptr<TextureMapper> m_textureMapper;
     GraphicsLayer* m_rootLayer;
     Timer<AcceleratedCompositingContext> m_syncTimer;
 
+#if USE(TEXTURE_MAPPER)
+    std::unique_ptr<TextureMapper> m_textureMapper;
     TextureMapperFPSCounter m_fpsCounter;
+#endif
 };
 
 } // namespace WebCore

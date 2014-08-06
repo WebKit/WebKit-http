@@ -26,7 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#include <config.h>
 #include "WebView.h"
 
 #include "AcceleratedCompositingContext.h"
@@ -74,7 +74,9 @@ BWebView::BWebView(const char* name)
     , fWebPage(new BWebPage(this))
     , fUserData(nullptr)
 {
+#if USE(TEXTURE_MAPPER)
     fCompositor = std::make_unique<WebCore::AcceleratedCompositingContext>(this);
+#endif
 
     fWebPage->Init();
 
@@ -95,8 +97,10 @@ BWebView::~BWebView()
 {
     delete fWebPage;
     fWebPage = nullptr;
-    
+
+#if USE(TEXTURE_MAPPER)
     fCompositor = nullptr;
+#endif
 
     if (fOffscreenBitmap) {
         fOffscreenBitmap->Lock();
@@ -499,7 +503,9 @@ BWebView* BWebView::GetInspectorView()
 
 void BWebView::SetRootLayer(WebCore::GraphicsLayer* layer)
 {
+#if USE(TEXTURE_MAPPER)
     fCompositor->setRootGraphicsLayer(layer);
+#endif
 }
 
 
@@ -507,8 +513,10 @@ void BWebView::SetRootLayer(WebCore::GraphicsLayer* layer)
 
 void BWebView::SetOffscreenViewClean(BRect cleanRect, bool immediate)
 {
+#if USE(TEXTURE_MAPPER)
     if (IsComposited())
         fCompositor->flushAndRenderLayers();
+#endif
 
     if (LockLooper()) {
         if (immediate)
@@ -522,7 +530,11 @@ void BWebView::SetOffscreenViewClean(BRect cleanRect, bool immediate)
 
 bool BWebView::IsComposited()
 {
+#if USE(TEXTURE_MAPPER)
     return fCompositor->isValid();
+#else
+    return false;
+#endif
 }
 
 // #pragma mark - private

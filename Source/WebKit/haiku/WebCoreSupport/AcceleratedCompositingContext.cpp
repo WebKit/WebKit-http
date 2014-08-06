@@ -42,13 +42,17 @@ AcceleratedCompositingContext::AcceleratedCompositingContext(BWebView* view)
 {
     ASSERT(m_view);
 
+#if USE(TEXTURE_MAPPER)
     m_textureMapper = TextureMapper::create(TextureMapper::SoftwareMode);
+#endif
 }
 
 AcceleratedCompositingContext::~AcceleratedCompositingContext()
 {
     m_syncTimer.stop();
+#if USE(TEXTURE_MAPPER)
     m_textureMapper = nullptr;
+#endif
 }
 
 void AcceleratedCompositingContext::syncLayers(Timer<AcceleratedCompositingContext>*)
@@ -76,8 +80,10 @@ void AcceleratedCompositingContext::flushAndRenderLayers()
 
 bool AcceleratedCompositingContext::flushPendingLayerChanges()
 {
+#if USE(TEXTURE_MAPPER)
     if (m_rootLayer)
         m_rootLayer->flushCompositingStateForThisLayerOnly();
+#endif
     return m_view->WebPage()->MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
 }
 
@@ -86,7 +92,9 @@ void AcceleratedCompositingContext::paintToGraphicsContext()
     BView* target = m_view->OffscreenView();
     GraphicsContext context(target);
 
+#if USE(TEXTURE_MAPPER)
     m_textureMapper->setGraphicsContext(&context);
+#endif
 
     if(target->LockLooper()) {
         compositeLayers(target->Bounds());
@@ -102,6 +110,7 @@ void AcceleratedCompositingContext::paintToGraphicsContext()
 
 void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
 {
+#if USE(TEXTURE_MAPPER)
     TextureMapperLayer* currentRootLayer = toTextureMapperLayer(m_rootLayer);
     if (!currentRootLayer)
         return;
@@ -121,11 +130,14 @@ void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
 
     if (currentRootLayer->descendantsOrSelfHaveRunningAnimations() && !m_syncTimer.isActive())
         m_syncTimer.startOneShot(1 / compositingFrameRate);
+#endif
 }
 
 void AcceleratedCompositingContext::setRootGraphicsLayer(GraphicsLayer* rootLayer)
 {
+#if USE(TEXTURE_MAPPER)
     m_rootLayer = rootLayer;
+#endif
 
     if (!m_syncTimer.isActive())
         m_syncTimer.startOneShot(0);

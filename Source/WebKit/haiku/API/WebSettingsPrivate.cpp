@@ -25,7 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#include <config.h>
 #include "WebSettingsPrivate.h"
 
 #include "PageCache.h"
@@ -101,10 +101,11 @@ void WebSettingsPrivate::apply()
             strcat(path, "/WebKit/Directory Listing Template.html");
         }
         settings->setFTPDirectoryTemplatePath(path);
-printf("dt: %s\n", path);
 
+#if USE(TEXTURE_MAPPER)
         settings->setAcceleratedCompositingEnabled(true);
         settings->setForceCompositingMode(true);
+#endif
 
 //      settings->setShowDebugBorders(true);
 
