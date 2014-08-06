@@ -175,8 +175,11 @@ void LauncherWindow::initializeView()
         WebViewGraphicsBased* view = new WebViewGraphicsBased(splitter);
         m_view = view;
 #ifndef QT_NO_OPENGL
-        toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
+        if (!m_windowOptions.useQOpenGLWidgetViewport)
+            toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
 #endif
+        if (!m_windowOptions.useQGLWidgetViewport)
+            toggleQOpenGLWidgetViewport(m_windowOptions.useQOpenGLWidgetViewport);
         view->setPage(page());
 
         connect(view, SIGNAL(currentFPSUpdated(int)), this, SLOT(updateFPS(int)));
@@ -404,6 +407,13 @@ void LauncherWindow::createChrome()
     toggleQGLWidgetViewport->setChecked(m_windowOptions.useQGLWidgetViewport);
     toggleQGLWidgetViewport->setEnabled(isGraphicsBased());
     toggleQGLWidgetViewport->connect(toggleGraphicsView, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+    QAction* toggleQOpenGLWidgetViewport = graphicsViewMenu->addAction("Toggle use of QOpenGLWidget Viewport", this, SLOT(toggleQOpenGLWidgetViewport(bool)));
+    toggleQOpenGLWidgetViewport->setCheckable(true);
+    toggleQOpenGLWidgetViewport->setChecked(m_windowOptions.useQOpenGLWidgetViewport);
+    toggleQOpenGLWidgetViewport->setEnabled(isGraphicsBased());
+    toggleQOpenGLWidgetViewport->connect(toggleGraphicsView, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
 #endif
 
     QMenu* viewportUpdateMenu = graphicsViewMenu->addMenu("Change Viewport Update Mode");
@@ -790,8 +800,11 @@ void LauncherWindow::screenshot()
 #endif
 
 #ifndef QT_NO_OPENGL
-    toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
+    if (!m_windowOptions.useQOpenGLWidgetViewport)
+        toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
 #endif
+    if (!m_windowOptions.useQGLWidgetViewport)
+        toggleQOpenGLWidgetViewport(m_windowOptions.useQOpenGLWidgetViewport);
 }
 
 void LauncherWindow::setEditable(bool on)
@@ -977,12 +990,29 @@ void LauncherWindow::toggleQGLWidgetViewport(bool enable)
     if (!isGraphicsBased())
         return;
 
+    if (enable)
+        m_windowOptions.useQOpenGLWidgetViewport = false;
     m_windowOptions.useQGLWidgetViewport = enable;
-    WebViewGraphicsBased* view = static_cast<WebViewGraphicsBased*>(m_view);
 
+    WebViewGraphicsBased* view = static_cast<WebViewGraphicsBased*>(m_view);
     view->setViewport(enable ? new QGLWidget() : 0);
 }
 #endif
+
+void LauncherWindow::toggleQOpenGLWidgetViewport(bool enable)
+{
+    if (!isGraphicsBased())
+        return;
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+    if (enable)
+        m_windowOptions.useQGLWidgetViewport = false;
+    m_windowOptions.useQOpenGLWidgetViewport = enable;
+
+    WebViewGraphicsBased* view = static_cast<WebViewGraphicsBased*>(m_view);
+    view->setViewport(enable ? new QOpenGLWidget() : 0);
+#endif
+}
 
 void LauncherWindow::changeViewportUpdateMode(int mode)
 {

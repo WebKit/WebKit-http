@@ -38,6 +38,9 @@
 #ifndef QT_NO_OPENGL
 #include <QtOpenGL/QGLWidget>
 #endif
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+#include <QOpenGLWidget>
+#endif
 
 #include <QDebug>
 
@@ -82,9 +85,8 @@ public:
         , useDiskCookies(true)
         , enableScrollAnimator(false)
         , offlineStorageDefaultQuotaSize(0)
-#ifndef QT_NO_OPENGL
         , useQGLWidgetViewport(false)
-#endif
+        , useQOpenGLWidgetViewport(false)
         , printLoadedUrls(false)
         , startMaximized(false)
     {
@@ -107,9 +109,8 @@ public:
     bool useDiskCookies;
     bool enableScrollAnimator;
     quint64 offlineStorageDefaultQuotaSize;
-#ifndef QT_NO_OPENGL
     bool useQGLWidgetViewport;
-#endif
+    bool useQOpenGLWidgetViewport;
     bool printLoadedUrls;
     QUrl inspectorUrl;
     quint16 remoteInspectorPort;
@@ -180,6 +181,7 @@ protected Q_SLOTS:
 #ifndef QT_NO_OPENGL
     void toggleQGLWidgetViewport(bool enable);
 #endif
+    void toggleQOpenGLWidgetViewport(bool enable);
 
     void changeViewportUpdateMode(int mode);
     void animatedFlip();
