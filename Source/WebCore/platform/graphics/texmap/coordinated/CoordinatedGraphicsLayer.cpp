@@ -33,7 +33,6 @@
 #include "GraphicsLayer.h"
 #include "Page.h"
 #include "ScrollableArea.h"
-#include "TextureMapperPlatformLayer.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/HashMap.h>
 #ifndef NDEBUG

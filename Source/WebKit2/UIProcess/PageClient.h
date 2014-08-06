@@ -146,7 +146,7 @@ public:
     virtual void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&) = 0;
 #endif
 
-#if PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(HAIKU)
     virtual void updateTextInputState() = 0;
 #endif // PLATFORM(EFL) || PLATOFRM(GTK)
 

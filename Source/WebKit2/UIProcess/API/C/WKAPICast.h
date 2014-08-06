@@ -526,4 +526,8 @@ inline ProxyingRefPtr<WebGrammarDetail> toAPI(const WebCore::GrammarDetail& gram
 #include "WKAPICastEfl.h"
 #endif
 
+#if defined(BUILDING_HAIKU__)
+#include "WKAPICastHaiku.h"
+#endif
+
 #endif // WKAPICast_h

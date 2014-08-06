@@ -69,7 +69,7 @@
 #include "OpenGLESShims.h"
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(HAIKU) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 #endif

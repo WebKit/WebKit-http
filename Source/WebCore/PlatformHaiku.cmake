@@ -185,13 +185,6 @@ if (WTF_USE_3D_GRAPHICS)
     endif ()
 
     list(APPEND WebCore_SOURCES
-        platform/graphics/cairo/DrawingBufferCairo.cpp
-
-        platform/graphics/efl/EvasGLContext.cpp
-        platform/graphics/efl/EvasGLSurface.cpp
-        platform/graphics/efl/GraphicsContext3DEfl.cpp
-        platform/graphics/efl/GraphicsContext3DPrivate.cpp
-        
         platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
         platform/graphics/opengl/GLPlatformContext.cpp
         platform/graphics/opengl/GLPlatformSurface.cpp
@@ -200,10 +193,6 @@ if (WTF_USE_3D_GRAPHICS)
 
         platform/graphics/surfaces/GLTransportSurface.cpp
         platform/graphics/surfaces/GraphicsSurface.cpp
-
-        platform/graphics/surfaces/efl/GraphicsSurfaceCommon.cpp
-
-        platform/graphics/surfaces/glx/X11Helper.cpp
     )
 
     if (WTF_USE_EGL)

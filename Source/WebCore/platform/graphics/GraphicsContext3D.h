@@ -64,6 +64,10 @@ OBJC_CLASS WebGLLayer;
 typedef unsigned int GLuint;
 #endif
 
+#if PLATFORM(HAIKU)
+class BView;
+#endif
+
 #if PLATFORM(IOS)
 #ifdef __OBJC__
 typedef EAGLContext* PlatformGraphicsContext3D;
@@ -836,6 +840,9 @@ public:
 #elif USE(CG)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                        int canvasWidth, int canvasHeight, GraphicsContext*);
+#elif PLATFORM(HAIKU)
+    void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
+                       int canvasWidth, int canvasHeight, BView*);
 #endif
 
     void markContextChanged();

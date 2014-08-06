@@ -24,7 +24,7 @@
 #include "GraphicsContext3D.h"
 
 #if USE(TEXTURE_MAPPER_GL)
-#include <texmap/TextureMapperPlatformLayer.h>
+#include "texmap/TextureMapperPlatformLayer.h"
 #endif
 
 #include "GLPlatformContext.h"

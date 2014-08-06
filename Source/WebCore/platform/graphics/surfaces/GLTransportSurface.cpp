@@ -36,7 +36,7 @@
 #include "EGLSurface.h"
 #endif
 
-#include <texmap/TextureMapperShaderProgram.h>
+#include "texmap/TextureMapperShaderProgram.h"
 
 namespace WebCore {
 
@@ -211,7 +211,7 @@ PassOwnPtr<GLTransportSurfaceClient> GLTransportSurfaceClient::createTransportSu
 #if USE(GLX)
     client = adoptPtr(new GLXTransportSurfaceClient(handle, hasAlpha));
     UNUSED_PARAM(size);
-#else
+#elif USE(EGL)
     client = EGLTransportSurface::createTransportSurfaceClient(handle, size, hasAlpha);
 #endif
 
