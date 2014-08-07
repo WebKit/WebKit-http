@@ -231,7 +231,8 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
 BUrlProtocolHandler::~BUrlProtocolHandler()
 {
     abort();
-    m_request->SetListener(NULL);
+    if (m_request)
+        m_request->SetListener(NULL);
     delete m_request;
 }
 
