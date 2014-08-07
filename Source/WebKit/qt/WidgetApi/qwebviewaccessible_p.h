@@ -22,11 +22,7 @@
 
 #include <qaccessible.h>
 #include <qaccessibleobject.h>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0) && QT_VERSION < QT_VERSION_CHECK(5, 2, 0)
-#include <private/qaccessiblewidget_p.h>
-#else
 #include <qaccessiblewidget.h>
-#endif
 
 #ifndef QT_NO_ACCESSIBILITY
 
