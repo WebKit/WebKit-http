@@ -2,6 +2,8 @@ list(APPEND WebKit2_SOURCES
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
 
+    Platform/haiku/ModuleHaiku.cpp
+
     Platform/unix/SharedMemoryUnix.cpp
 
     PluginProcess/unix/PluginControllerProxyUnix.cpp
@@ -10,6 +12,10 @@ list(APPEND WebKit2_SOURCES
 
     Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp
     Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp
+
+    Shared/haiku/ShareableBitmapHaiku.cpp
+
+    Shared/haiku/WebMemorySamplerHaiku.cpp
 
     Shared/unix/ChildProcessMain.cpp
 
@@ -33,20 +39,18 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/Plugins/Netscape/unix/PluginProxyUnix.cpp
 
+    WebProcess/WebCoreSupport/haiku/WebErrorsHaiku.cpp
+
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
     WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp
 
+    WebProcess/WebPage/haiku/WebPageHaiku.cpp
 )
 
 list(APPEND WebKit2_MESSAGES_IN_FILES
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.messages.in
-
-    UIProcess/soup/WebSoupRequestManagerProxy.messages.in
-
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.messages.in
-
-    WebProcess/soup/WebSoupRequestManager.messages.in
 )
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES

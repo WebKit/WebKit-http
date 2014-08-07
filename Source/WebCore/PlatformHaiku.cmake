@@ -34,6 +34,7 @@ list(APPEND WebCore_SOURCES
   platform/haiku/DragDataHaiku.cpp
   platform/haiku/EventLoopHaiku.cpp
   platform/haiku/FileSystemHaiku.cpp
+  platform/haiku/KeyboardUtilities.cpp
   platform/haiku/KURLHaiku.cpp
   platform/haiku/LanguageHaiku.cpp
   platform/haiku/LocalizedStringsHaiku.cpp

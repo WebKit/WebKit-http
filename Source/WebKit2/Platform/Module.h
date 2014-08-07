@@ -42,6 +42,10 @@ typedef struct _GModule GModule;
 #include <wtf/efl/UniquePtrEfl.h>
 #endif
 
+#if PLATFORM(HAIKU)
+#include <image.h>
+#endif
+
 namespace WebKit {
 
 class Module {
@@ -78,6 +82,8 @@ private:
     GModule* m_handle;
 #elif PLATFORM(EFL)
     EflUniquePtr<Eina_Module> m_module;
+#elif PLATFORM(HAIKU)
+    image_id m_module;
 #endif
 };
 

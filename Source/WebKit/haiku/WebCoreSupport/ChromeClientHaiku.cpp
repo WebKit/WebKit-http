@@ -331,11 +331,13 @@ void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
     }
 }
 
+#if USE(TILED_BACKING_STORE)
 void ChromeClientHaiku::delegatedScrollRequested(const IntPoint& /*scrollPos*/)
 {
     // Unused - we let WebKit handle the scrolling.
     ASSERT(false);
 }
+#endif
 
 
 IntPoint ChromeClientHaiku::screenToRootView(const IntPoint& point) const
