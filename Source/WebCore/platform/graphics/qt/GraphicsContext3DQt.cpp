@@ -38,11 +38,7 @@
 #include <qpa/qplatformpixmap.h>
 #include <wtf/text/CString.h>
 
-#if QT_VERSION >= 0x050100
 #include <QOffscreenSurface>
-#else
-#include <QWindow>
-#endif
 
 #if USE(TEXTURE_MAPPER_GL)
 #include <texmap/TextureMapperGL.h>
@@ -124,19 +120,10 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
     if (hostWindow && hostWindow->platformPageClient() && hostWindow->platformPageClient()->makeOpenGLContextCurrentIfAvailable())
         shareContext = QOpenGLContext::currentContext();
 
-#if QT_VERSION >= 0x050100
     QOffscreenSurface* surface = new QOffscreenSurface;
     surface->create();
     m_surface = surface;
     m_surfaceOwner = surface;
-#else
-    QWindow* window = new QWindow;
-    window->setSurfaceType(QSurface::OpenGLSurface);
-    window->setGeometry(-10, -10, 1, 1);
-    window->create();
-    m_surface = window;
-    m_surfaceOwner = window;
-#endif
 
     m_platformContext = new QOpenGLContext(m_surfaceOwner);
     if (shareContext)
