@@ -53,72 +53,44 @@ HighFidelityLog::~HighFidelityLog()
     delete[] m_nextBuffer;
 }
 
-void HighFidelityLog::recordTypeInformationForLocation(JSValue v, TypeLocation* location)
+void HighFidelityLog::processHighFidelityLog(String reason)
 {
-    ASSERT(m_logStartPtr);
-    ASSERT(m_currentOffset < m_highFidelityLogSize);
-
-    LogEntry* entry = m_logStartPtr + m_currentOffset;
-
-    entry->location = location;
-    entry->value = v;
-    entry->structure = (v.isCell() ? v.asCell()->structure() : nullptr);
-
-    m_currentOffset += 1;
-    if (m_currentOffset == m_highFidelityLogSize)
-        processHighFidelityLog(true, "Log Full");
-}
-
-void HighFidelityLog::processHighFidelityLog(bool asynchronously, String reason)
-{
-    // This should only be called from the main execution thread.
     if (!m_currentOffset)
         return;
 
     if (verbose)
         dataLog("Process caller:'", reason,"'");
 
-    ByteSpinLocker* locker = new ByteSpinLocker(m_lock);
-    ThreadData* data = new ThreadData;
-    data->m_proccessLogToOffset = m_currentOffset;
-    data->m_processLogPtr = m_logStartPtr;
-    data->m_locker = locker;
-
-    m_currentOffset = 0;
-    LogEntry* temp = m_logStartPtr;
-    m_logStartPtr = m_nextBuffer;
-    m_nextBuffer = temp;
-    
-    if (asynchronously)
-        createThread(actuallyProcessLogThreadFunction, data, "ProcessHighFidelityLog");
-    else 
-        actuallyProcessLogThreadFunction(data);
-}
-
-void HighFidelityLog::actuallyProcessLogThreadFunction(void* arg)
-{
-    double before  = currentTimeMS();
-    ThreadData* data = static_cast<ThreadData*>(arg);
-    LogEntry* entry = data->m_processLogPtr;
-    size_t processLogToOffset = data->m_proccessLogToOffset; 
+    double before = currentTimeMS();
+    LogEntry* entry = m_logStartPtr;
+    HashMap<StructureID, RefPtr<StructureShape>> seenShapes;
     size_t i = 0;
-    while (i < processLogToOffset) {
-        Structure* structure = entry->structure ? entry->structure : nullptr;
+    while (i < m_currentOffset) {
+        StructureID id = entry->structureID;
         RefPtr<StructureShape> shape; 
-        if (structure)
-            shape = structure->toStructureShape();
+        if (id) {
+            auto iter = seenShapes.find(id);
+            if (iter == seenShapes.end()) {
+                shape = Heap::heap(entry->value.asCell())->structureIDTable().get(entry->structureID)->toStructureShape(entry->value);
+                seenShapes.set(id, shape);
+            } else 
+                shape = iter->value;
+        }
+
         if (entry->location->m_globalTypeSet)
-            entry->location->m_globalTypeSet->addTypeForValue(entry->value, shape);
-        entry->location->m_instructionTypeSet->addTypeForValue(entry->value, shape);
+            entry->location->m_globalTypeSet->addTypeForValue(entry->value, shape, id);
+        entry->location->m_instructionTypeSet->addTypeForValue(entry->value, shape, id);
+
         entry++;
         i++;
     }
 
-    delete data->m_locker;
-    delete data;
-    double after = currentTimeMS();
-    if (verbose)
-        dataLogF("Processing the log took: '%f' ms\n", after - before);
+    m_currentOffset = 0;
+
+    if (verbose) {
+        double after = currentTimeMS();
+        dataLogF(" Processing the log took: '%f' ms\n", after - before);
+    }
 }
 
 } //namespace JSC

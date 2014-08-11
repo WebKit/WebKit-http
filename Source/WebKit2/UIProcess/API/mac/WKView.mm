@@ -2506,6 +2506,9 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
         [self _updateWindowAndViewFrames];
 
+        // FIXME(135509) This call becomes unnecessary once 135509 is fixed; remove.
+        _data->_page->layerHostingModeDidChange();
+
         if (!_data->_flagsChangedEventMonitor) {
             _data->_flagsChangedEventMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSFlagsChangedMask handler:^(NSEvent *flagsChangedEvent) {
                 [self _postFakeMouseMovedEventForFlagsChangedEvent:flagsChangedEvent];
@@ -3544,9 +3547,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [self _updateThumbnailViewLayer];
     else
         [self _setAcceleratedCompositingModeRootLayer:_data->_rootLayer.get()];
-
-    if (!thumbnailView.usesSnapshot)
-        _data->_page->viewStateDidChange(ViewState::WindowIsActive | ViewState::IsInWindow | ViewState::IsVisible);
 }
 
 - (_WKThumbnailView *)_thumbnailView
@@ -3559,7 +3559,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _WKThumbnailView *thumbnailView = _data->_thumbnailView;
     ASSERT(thumbnailView);
 
-    if (!thumbnailView.usesSnapshot || (thumbnailView._waitingForSnapshot && self.window))
+    if (thumbnailView._waitingForSnapshot && self.window)
         [self _reparentLayerTreeInThumbnailView];
 }
 

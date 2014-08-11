@@ -1,3 +1,593 @@
+2014-08-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Unbreak webkitpy unit tests by checking for the existence of the image diff template
+        file before trying to open it (as the tests do for results.html).
+
+        * Scripts/webkitpy/layout_tests/controllers/test_result_writer.py:
+        (TestResultWriter.write_image_diff_files):
+
+2014-08-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Load the layout test result image diff HTML from a file, rather than having it inline in webkitpy
+        https://bugs.webkit.org/show_bug.cgi?id=135780
+
+        Reviewed by Dan Bates.
+        
+        Pull the HTML for the image diff file into a separate file, for easier hackability.
+
+        * Scripts/webkitpy/layout_tests/controllers/test_result_writer.py:
+        (TestResultWriter.write_image_diff_files):
+
+2014-08-08  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix Windows build after r172259.
+
+        Not reviewed.
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::addMockSpeechInputResult): Deleted.
+        (TestRunner::setMockSpeechInputDumpRect): Deleted.
+        (TestRunner::startSpeechInput): Deleted.
+
+2014-08-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        make clean does not work in OpenSource, fails in WebKitLibraries
+        https://bugs.webkit.org/show_bug.cgi?id=135734
+
+        Reviewed by David Kilzer.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+        Add a --clean switch that removes possible WebKitSystemInterface
+        and LLVM libraries and headers that may have been copied to the
+        product directory.
+
+2014-08-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        commit-log-message has extra blank line at the top of pre-populated message
+        https://bugs.webkit.org/show_bug.cgi?id=135744
+
+        Reviewed by Csaba Osztrogonác.
+
+        Do not add a blank leading line in single ChangeLog commit messages.
+
+        * Scripts/commit-log-editor:
+        (createCommitMessage):
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        (test_commit_message_for_one_reviewed_changelog):
+        (test_commit_message_for_one_rollout_changelog):
+
+2014-08-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        Have 'Assemble Build Logs' step work properly for DebugSuffix target
+        (both 32-bit and 64-bit).
+
+        * win/AssembleBuildLogs/AssembleBuildLogs.vcxproj:
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of INPUT_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135672
+
+        Reviewed by Andreas Kling.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::staticFunctions):
+        (addMockSpeechInputResultCallback): Deleted.
+        (setMockSpeechInputDumpRectCallback): Deleted.
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::addMockSpeechInputResult): Deleted.
+        (TestRunner::setMockSpeechInputDumpRect): Deleted.
+        (TestRunner::startSpeechInput): Deleted.
+
+2014-08-07  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        The support directory shouldn't be skipped unconditionally in test import
+        https://bugs.webkit.org/show_bug.cgi?id=135660
+
+        Reviewed by Ryosuke Niwa.
+
+        The 'DIRS_TO_SKIP' should only be skipped when in the root directory
+        of the test repo, as that's the only time they are special. In
+        addition, instead of hardcoding .hg and .git as special, skip all
+        directories that begin with '.', just like with files that begin with '.'.
+        
+        In order to make this work, the root directory must always be
+        passed in, so the interface to the script has been changed to take the
+        root directory, and if one wants to only import a subset of the tests,
+        a new -t option can be used to limit the tests imported.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (main): Remove repo_dir command line argument.
+        (parse_args): Add -t option and set expected non-option args to 1.
+        (TestImporter.__init__): Remove repo_dir.
+        (TestImporter.do_import): Handle the varying number of import
+            directories.
+        (TestImporter.should_keep_subdir): Helper for find_importable_tests to
+            determine if a subdirectory should be skipped.
+        (TestImporter.find_importable_tests): Filter directories using new
+            helper.
+        (TestImporter.import_tests): Remove use of repo_dir.
+        (TestImporter.setup_destination_directory): Unused, Deleted. 
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.test_import_dir_with_no_tests_and_no_hg): Update for
+            new API.
+        (TestImporterTest.test_import_dir_with_no_tests): Ditto.
+
+2014-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use WebKitNavigationAction also for WebKitNavigationPolicyDecision
+        https://bugs.webkit.org/show_bug.cgi?id=135695
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Use WebKitNavigationAction API.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewDecidePolicy):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitPolicyClient.cpp:
+        (testNavigationPolicy):
+
+2014-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test /webkit2/WebKitUserContentManager/injected-script fails
+        https://bugs.webkit.org/show_bug.cgi?id=135696
+
+        Reviewed by Sergio Villar Senin.
+
+        Don't assume the JavaScript result is always a valid pointer. In case of JavaScript
+        exception (that happens when testing the script hasn't been injected) the JavaScript
+        result is NULL.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        (isScriptInjectedForURLAtPath):
+
+2014-08-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Disable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=135692
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-08-06  Dean Jackson  <dino@apple.com>
+
+        ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED is not used anywhere. Remove it.
+        https://bugs.webkit.org/show_bug.cgi?id=135675
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-08-06  David Farler  <dfarler@apple.com>
+
+        Set DSYMUTIL_NUM_THREADS to the number of logical cores
+        https://bugs.webkit.org/show_bug.cgi?id=135655
+
+        Reviewed by Mark Rowe.
+
+        * Scripts/webkitdirs.pm:
+        (buildXCodeProject): Set before calling xcodebuild.
+
+2014-08-06  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Add support for user scripts to WebKitUserContentManager
+        https://bugs.webkit.org/show_bug.cgi?id=134738
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add support for user scripts, to complement the user style sheet
+        support already present in WebKitUserContentManager. Most of the
+        moving parts are already present, so this just adds a boxed type
+        for user scripts (WebKitUserScript) and the corresponding methods
+        to add and remove scripts from the WebKitUserContentManager.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        Add test case for injected user scripts.
+        (isScriptInjectedForURLAtPath):
+        (removeOldInjectedContentAndResetLists):
+        (testUserContentManagerInjectedStyleSheet):
+        (testUserContentManagerInjectedScript):
+        (beforeAll):
+        (removeOldInjectedStyleSheetsAndResetLists): Deleted.
+
+2014-08-06  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] run-launcher --gtk still fails
+        https://bugs.webkit.org/show_bug.cgi?id=135642
+
+        Reviewed by Carlos Garcia Campos.
+
+        The perl interpreter is confused by the combination of string
+        concatenation and a ternary in the same line. Using a separate
+        variable to determine the library file extension fixes this issue.
+
+        * Scripts/webkitdirs.pm:
+        (builtDylibPathForName): Use an intermediate variable, it's more
+        readable and unambiguous.
+
+2014-07-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Merge r170564, r170571, r170604, r170628, r170672, r170680, r170724, r170728, r170729, r170819, r170821, r170836, r170855, r170860, r170890, r170907, r170929, r171052, r171106, r171152, r171153, r171214 from ftlopt.
+
+    2014-06-25  Filip Pizlo  <fpizlo@apple.com>
+    
+            [ftlopt] If a CodeBlock is jettisoned due to a watchpoint then it should be possible to figure out something about that watchpoint
+            https://bugs.webkit.org/show_bug.cgi?id=134333
+    
+            Reviewed by Geoffrey Garen.
+    
+            * Scripts/display-profiler-output:
+    
+2014-08-05  David Farler  <dfarler@apple.com>
+
+        [iOS] Run ImageDiff in the sim bootstrap
+        https://bugs.webkit.org/show_bug.cgi?id=135624
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitpy/port/image_diff.py:
+        (ImageDiffer.stop):
+        (IOSSimulatorImageDiffer):
+        (IOSSimulatorImageDiffer._start):
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.diff_image):
+
+2014-08-05  David Farler  <dfarler@apple.com>
+
+        [iOS] run-webkit-tests: defaults for --runtime and --device-type flags
+        https://bugs.webkit.org/show_bug.cgi?id=135441
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args):
+        (_set_up_derived_options):
+        If using the ios-simulator platform and runtime or device-type
+        aren't defined, get the latest runtime from the active Xcode.app
+        and pick a default device type based on the desired architecture:
+        iPhone 5 for i386 and iPhone 5s for x86_64.
+        * Scripts/webkitpy/xcode/__init__.py: Added.
+        * Scripts/webkitpy/xcode/simulator.py: Added.
+
+2014-08-05  David Farler  <dfarler@apple.com>
+
+        [iOS] simctl can hang if run quickly after shutting down CoreSimulator services
+        https://bugs.webkit.org/show_bug.cgi?id=135626
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_test_run):
+        Remove call to simctl shutdown <device> - telling the simulator app to quit
+        will shut down all booted devices.
+
+2014-08-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove an unused argument from BuildbotQueue.update()
+        https://bugs.webkit.org/show_bug.cgi?id=135623
+
+        Reviewed by Timothy Hatcher.
+
+        Also remaned a constant to better match what it means.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+
+2014-08-05  Vivek Galatage  <vivek.vg@samsung.com>
+
+        [gtk] Include llvm-dev(el) package to satisfy mesa build configuration
+        https://bugs.webkit.org/show_bug.cgi?id=135555
+
+        Reviewed by Philippe Normand.
+
+        Initial setup of gtk on linux requires this package to be installed.
+        This is required during the build configuration of mesa through jhbuild.
+
+        * gtk/install-dependencies:
+
+2014-08-05  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Fix the commit-log-editor after r167243 and add more unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=131727
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/commit-log-editor:
+        (createCommitMessage):
+        (removeLongestCommonPrefixEndingInNewline):
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        (CommitMessageForThisCommitTest):
+        (CommitMessageForThisCommitTest.mock_changelog):
+        (CommitMessageForThisCommitTest.mock_checkout_for_test):
+        (CommitMessageForThisCommitTest.test_commit_message_for_unreviewed_changelogs_with_different_messages):
+        (test_commit_message_for_one_reviewed_changelog):
+        (test_commit_message_for_changelogs_with_same_messages):
+        (test_commit_message_for_changelogs_with_different_messages):
+        (test_commit_message_for_one_rollout_changelog):
+        (test_commit_message_for_rollout_changelogs_with_different_directories):
+        (setUp): Deleted.
+        (test_commit_message_for_this_commit): Deleted.
+
+2014-08-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] run-launcher --gtk is broken
+        https://bugs.webkit.org/show_bug.cgi?id=135571
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/webkitdirs.pm:
+        (builtDylibPathForName): Search for libwebkit2gtk-4.0
+
+2014-08-04  Matt Baker  <mattbaker@apple.com>
+
+        lldb_webkit.py throws exception when generating summary of null StringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=129448
+
+        Reviewed by Jer Noble.
+
+        Added checks for null StringImpl and 0 byte ReadMemory calls.
+
+        * lldb/lldb_webkit.py:
+        (WTFStringImpl_SummaryProvider):
+        (ustring_to_string):
+        (lstring_to_string):
+        (WTFStringImplProvider.to_string):
+        (WTFStringImplProvider.is_initialized):
+
+2014-08-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not include JavaScriptCore stress tests in release tarballs
+        https://bugs.webkit.org/show_bug.cgi?id=135503
+
+        Reviewed by Martin Robinson.
+
+        * gtk/manifest.txt: Exclude Source/JavaScriptCore/tests dir.
+
+2014-07-30  David Farler  <dfarler@apple.com>
+
+        build-webkittestrunner doesn't build the app target for iOS SDKs
+        https://bugs.webkit.org/show_bug.cgi?id=135433
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/build-dumprendertree: Build the app target on iOS.
+        * Scripts/build-webkittestrunner: Build the app target on iOS.
+        * Scripts/webkitdirs.pm: Add -sdk flags when building for iOS.
+        (buildXCodeProject):
+        * Scripts/webkitpy/port/ios.py: Use --sdk flags instead of SDKROOT.
+        (IOSSimulatorPort._build_driver_flags):
+
+2014-07-30  David Farler  <dfarler@apple.com>
+
+        Remove iOS Perl DumpRenderTree support target
+        https://bugs.webkit.org/show_bug.cgi?id=135271
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Remove the target.
+        * DumpRenderTree/ios/PerlSupport/DumpRenderTreeSupport.c: Removed.
+        * DumpRenderTree/ios/PerlSupport/DumpRenderTreeSupportPregenerated.pm: Removed.
+        * DumpRenderTree/ios/PerlSupport/DumpRenderTreeSupport_wrapPregenerated.c: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/Changes: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/IPhoneSimulatorNotification.xs: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/MANIFEST: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/Makefile.PL: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/README: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/lib/IPhoneSimulatorNotification.pm: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/ppport.h: Removed.
+        * DumpRenderTree/ios/PerlSupport/IPhoneSimulatorNotification/t/IPhoneSimulatorNotification.t: Removed.
+        * DumpRenderTree/ios/PerlSupport/Makefile: Removed.
+
+2014-07-30  David Farler  <dfarler@apple.com>
+
+        Remove old-run-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=135374
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/old-run-webkit-tests: Removed.
+
+2014-08-02  Dan Bernstein  <mitz@apple.com>
+
+        prepare-ChangeLog --no-write shouldn’t require ChangeLog to exist
+        https://bugs.webkit.org/show_bug.cgi?id=135542
+
+        Reviewed by Tim Horton.
+
+        * Scripts/prepare-ChangeLog:
+        (main): Pass $writeChangeLogs for the new requireChangeLogToExist parameter of
+        findChangeLogs.
+        (findChangeLogs): Don’t require a ChangeLog file to exist if unless the
+        requireChangeLogToExist argument is true.
+
+2014-08-01  Dan Bernstein  <mitz@apple.com>
+
+        commit-log-editor uses a non-standard message format when git index contains no ChangeLog changes
+        https://bugs.webkit.org/show_bug.cgi?id=135527
+
+        Reviewed by Tim Horton.
+
+        * Scripts/commit-log-editor:
+        In the case of a git repository when there are no changed ChangeLog files, changed to pass
+        the --delimiters option to prepare-ChangeLog, then process each entry in the output using
+        commitMessageFromChangeLogEntry.
+        (commitMessageFromChangeLogEntry): Factored out from createCommitMessage.
+        (sortKey): Factored out from createCommitMessage.
+        (createCommitMessage): Changed to use new sortKey and commitMessageFromChangeLogEntry
+        subroutines.
+
+        * Scripts/prepare-ChangeLog:
+        (main): Parse new --delimiters option.
+        (generateNewChangeLogs): When --no-write and --delimiters are both specified, always print
+        the label before each change log entry, and a "~" delimiter on a new line after each entry.
+
+2014-08-01  Bear Travis  <betravis@adobe.com>
+
+        [Feature Queries] Enable Feature Queries on EFL/GTK
+        https://bugs.webkit.org/show_bug.cgi?id=134902
+
+        Reviewed by Benjamin Poulain.
+
+        Turn the feature on by default for the build script.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-08-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Build fix for 32-bit after r171926.
+
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+
+2014-08-01  Tim Horton  <timothy_horton@apple.com>
+
+        Confusing build fix after r171926.
+
+        * MiniBrowser/mac/AppDelegate.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        * MiniBrowser/mac/SettingsController.m:
+
+2014-08-01  Tim Horton  <timothy_horton@apple.com>
+
+        Make it easer to add switches to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=135499
+
+        Reviewed by Simon Fraser.
+
+        Add a single class to manage a set of persistent, global settings for MiniBrowser.
+        Add a new menu that contains items to toggle the aforementioned settings (moving them out of the Debug menu).
+
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj:
+        Add SettingsController.{m, h}.
+
+        * MiniBrowser/mac/AppDelegate.h:
+        Move _browserWindowControllers to the implementation.
+        Get rid of toggleUseWebKit2ByDefault, because SettingsController now takes care
+        of that; instead, we'll receive didChangeSettings.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        Move the default URL, default URL preference key, and use-WebKit2-by-default
+        preference key into SettingsController.
+
+        (-[BrowserAppDelegate awakeFromNib]):
+        Add the dynamically-generated SettingsController menu just to the left of the Debug menu.
+
+        (-[BrowserAppDelegate newWindow:]):
+        Ask SettingsController if we should use WebKit2 by default, and what the initial URL to load is.
+
+        (-[BrowserAppDelegate applicationDidFinishLaunching:]):
+        SettingsController now takes care of reading the default URL preference.
+        WK1BrowserWindowController now takes care of enabling the developer extras, via WebPreferences.
+
+        (-[BrowserAppDelegate didChangeSettings]):
+        When settings change, update the key equivalents for the new-window menu items, as they
+        might have changed (as use-WebKit2-by-default is one of the settings).
+
+        Dispatch settings change notifications to all live BrowserControllers.
+
+        (-[BrowserAppDelegate _updateNewWindowKeyEquivalents]):
+        (-[BrowserAppDelegate toggleUseWebKit2ByDefault:]): Deleted.
+        (-[BrowserAppDelegate _useWebKit2ByDefault]): Deleted.
+        (-[BrowserAppDelegate validateMenuItem:]): Deleted.
+        All menu item validation for settings is moved into SettingsController.
+
+        * MiniBrowser/mac/BrowserWindowController.h:
+        Simplify the BrowserWindowController interface; "toggling" settings will happen inside SettingsController,
+        the BrowserWindowController subclasses will be able to a) know when any setting changes, b) query the current setting state.
+
+        * MiniBrowser/mac/MainMenu.xib:
+        Remove the settings menu items from the "Debug" menu.
+
+        * MiniBrowser/mac/SettingsController.h: Added.
+        * MiniBrowser/mac/SettingsController.m: Added.
+        (+[SettingsController shared]):
+        (-[SettingsController menu]):
+
+        (-[SettingsController _addItemWithTitle:action:indented:]):
+        (-[SettingsController _addHeaderWithTitle:]):
+        NSMenuItem-creating helpers.
+
+        (-[SettingsController _populateMenu]):
+        Build the menu. Ideally this and the validation step would eventually be made more dynamic.
+
+        (-[SettingsController validateMenuItem:]):
+        Validate menu items; since they can be used to toggle the default state of a setting,
+        we'll always return YES. However, we will use this opportunity to set the 'checked' state
+        of each item.
+
+
+        (-[SettingsController _toggleBooleanDefault:]):
+        Toggle the given boolean default, and notify BrowserAppDelegate that something changed.
+
+        (-[SettingsController toggleUseWebKit2ByDefault:]):
+        (-[SettingsController useWebKit2ByDefault]):
+        (-[SettingsController toggleUseTransparentWindows:]):
+        (-[SettingsController useTransparentWindows]):
+        (-[SettingsController toggleUsePaginatedMode:]):
+        (-[SettingsController usePaginatedMode]):
+        (-[SettingsController toggleUseUISideCompositing:]):
+        (-[SettingsController useUISideCompositing]):
+        (-[SettingsController toggleShowLayerBorders:]):
+        (-[SettingsController layerBordersVisible]):
+        (-[SettingsController toggleShowTiledScrollingIndicator:]):
+        (-[SettingsController tiledScrollingIndicatorVisible]):
+        (-[SettingsController toggleEnableSubPixelCSSOMMetrics:]):
+        (-[SettingsController subPixelCSSOMMetricsEnabled]):
+        (-[SettingsController defaultURL]):
+        Toggle or return the current state of each preference.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController awakeFromNib]):
+        (-[WK1BrowserWindowController validateMenuItem:]):
+        (-[WK1BrowserWindowController windowWillClose:]):
+        (-[WK1BrowserWindowController find:]):
+        (-[WK1BrowserWindowController dumpSourceToConsole:]):
+        (-[WK1BrowserWindowController didChangeSettings]):
+        (-[WK1BrowserWindowController webView:didReceiveTitle:forFrame:]):
+        (-[WK1BrowserWindowController isPaginated]): Deleted.
+        (-[WK1BrowserWindowController togglePaginationMode:]): Deleted.
+        (-[WK1BrowserWindowController toggleTransparentWindow:]): Deleted.
+        (-[WK1BrowserWindowController isSubpixelCSSOMElementMetricsEnabled]): Deleted.
+        (-[WK1BrowserWindowController toggleSubpixelCSSOMElementMetricsEnabled:]): Deleted.
+        (-[WK1BrowserWindowController layerBordersVisible]): Deleted.
+        (-[WK1BrowserWindowController toggleLayerBordersVisibility:]): Deleted.
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController forceRepaint:]):
+        (-[WK2BrowserWindowController windowWillClose:]):
+        (-[WK2BrowserWindowController didChangeSettings]):
+        (-[WK2BrowserWindowController isPaginated]): Deleted.
+        (-[WK2BrowserWindowController togglePaginationMode:]): Deleted.
+        (-[WK2BrowserWindowController toggleTransparentWindow:]): Deleted.
+        (-[WK2BrowserWindowController isUISideCompositingEnabled]): Deleted.
+        (-[WK2BrowserWindowController toggleUISideCompositing:]): Deleted.
+        (-[WK2BrowserWindowController layerBordersVisible]): Deleted.
+        (-[WK2BrowserWindowController toggleLayerBordersVisibility:]): Deleted.
+        (-[WK2BrowserWindowController tiledScrollingIndicatorVisible]): Deleted.
+        (-[WK2BrowserWindowController toggleTiledScrollingIndicatorVisibility:]): Deleted.
+
+2014-08-01  Tim Horton  <timothy_horton@apple.com>
+
+        MiniBrowser doesn't support data URLs
+        https://bugs.webkit.org/show_bug.cgi?id=135492
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController addProtocolIfNecessary:]):
+        Don't add http:// to data: URLs.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetch:]):
+        (-[WK2BrowserWindowController updateTextFieldFromURL:]):
+        Percent-escape the contents of the address field before trying to make a URL.
+        Percent-unescape the URL when displaying it in the address field.
+        This is not great, but trivial and good-enough-for-Minibrowser.
+
 2014-07-31  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL][WK2] MiniBrower comes to crash when combo box is pressed

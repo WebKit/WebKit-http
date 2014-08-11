@@ -1,3 +1,245 @@
+2014-08-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] REGRESSION(r166239): The ld version script is not being used
+        https://bugs.webkit.org/show_bug.cgi?id=135694
+
+        Reviewed by Martin Robinson.
+
+        Move the symbols filter file from Tools/gtk to Source/cmake and rename
+        it as gtksymbols.filter. Also updated it, since some of the symbols
+        exported were renamed.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/gtksymbols.filter: Renamed from Tools/gtk/symbols.filter.
+
+2014-08-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Child processes should be installed in a versioned directory
+        https://bugs.webkit.org/show_bug.cgi?id=135754
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Define LIBEXEC_INSTALL_DIR as
+        ${CMAKE_INSTALL_FULL_LIBEXECDIR}/webkitgtk-${WEBKITGTK_API_VERSION}
+        so that the child processes are installed in $libexec/webkitgtk-4.0.
+        This makes it possible to install 2.6 in parallel to older versions.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-08-08  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards using CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=135662
+
+        Reviewed by Laszlo Gombos.
+
+        * CMakeLists.txt:
+        Mavericks has a flex version of "flex 2.5.35 Apple(flex-31)" which CMake doesn't like on Mac.
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+        Added features that are needed by the Mac port.
+        * Source/cmake/OptionsMac.cmake:
+        Enable CSS_IMAGE_SET based on FeatureDefines.h.
+        Disable the FTL with CMake for now.
+        * Source/cmake/OptionsEFL.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        Enable subpixel layout to not conflict with FeatureDefines.h
+
+2014-08-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Undo some erroneous changes to the Xcode scheme files from r172259.
+        
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source (target WebProcess).xcscheme:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2014-08-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Drop the required version of CMake down to 2.8.8
+        https://bugs.webkit.org/show_bug.cgi?id=135713
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Require CMake 2.8.8.
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of INPUT_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135672
+
+        Reviewed by Andreas Kling.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-08-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Disable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=135692
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-08-06  Dean Jackson  <dino@apple.com>
+
+        ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED is not used anywhere. Remove it.
+        https://bugs.webkit.org/show_bug.cgi?id=135675
+
+        Reviewed by Sam Weinig.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-08-06  David Farler  <dfarler@apple.com>
+
+        Unreviewed build fix: Make includes semicolon in assignment.
+
+        * Makefile.shared: Remove a ;
+
+2014-08-06  David Farler  <dfarler@apple.com>
+
+        Set DSYMUTIL_NUM_THREADS to the number of logical cores
+        https://bugs.webkit.org/show_bug.cgi?id=135655
+
+        Reviewed by Mark Rowe.
+
+        * Makefile.shared: Export DSYMUTIL_NUM_THREADS.
+
+2014-08-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Be able to disable gtk2 dependency
+        https://bugs.webkit.org/show_bug.cgi?id=135505
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add ENABLE_PLUGIN_PROCESS_GTK2 compile option. GTK+2 is only
+        required when it's enabled. It's enabled by default.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-08-05  Alex Christensen  <achristensen@webkit.org>
+
+        More work on CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=135620
+
+        Reviewed by Laszlo Gombos.
+
+        * Source/cmake/OptionsMac.cmake:
+        Use UDIS86 by default on Mac.
+
+2014-08-04  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add a flag for the CSS Selectors level 4 implementation
+        https://bugs.webkit.org/show_bug.cgi?id=135535
+
+        Reviewed by Andreas Kling.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=135528
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsMac.cmake:
+        Made options list based on FeatureDefines.xcconfig files.
+
+2014-08-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Windowing target support should reflect the support in the GTK+ dependency
+        https://bugs.webkit.org/show_bug.cgi?id=134736
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/FindGTK3.cmake: Don't error out if the GTK+ dependency doesn't
+        support the X11 or Wayland windowing targets -- instead, if there's no support
+        the specific target is disabled, and an error is thrown only if neither of the
+        backends is enabled at the end..
+        For now the X11 target remains enabled by default, and the Wayland target is
+        kept disabled. Once it's possible to have both targets enabled at runtime in
+        WebKit, the Wayland target will be enabled as well and we'll leave it to the
+        GTK+ dependency to determine which targets can be enabled.
+
+2014-08-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Add FindWayland.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=135540
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/FindWayland.cmake: Added. Enables finding the Wayland
+        dependency. For now bundles the wayland-client, wayland-server and
+        wayland-egl pkg-config targets into one dependency, but these could
+        be split in the future if necessary.
+
+2014-08-03  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Move DATA_INSTALL_DIR to ewebkit2-0
+        https://bugs.webkit.org/show_bug.cgi?id=135553
+
+        Reviewed by Gyuyoung Kim.
+
+        Since WebKit1/Efl is dropped, we don't need to use ewebkit-1 and ewebkit2-1.
+        And removed WebKit_OUTPUT_NAME variable which is not used anymore on the EFL port.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-08-01  Bear Travis  <betravis@adobe.com>
+
+        [Feature Queries] Enable Feature Queries on EFL/GTK
+        https://bugs.webkit.org/show_bug.cgi?id=134902
+
+        Reviewed by Benjamin Poulain.
+
+        Enable CSS Feature Queries by default on the EFL and GTK
+        platforms.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards cmake on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=135484
+
+        Reviewed by Martin Robinson.
+
+        * CMakeLists.txt:
+        Added Mac to list of ports, even though it is not done yet.
+        Changed minimum bison version to version installed on Macs.
+        * Source/cmake/OptionsAppleWin.cmake:
+        Added some definitions.
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        Set WTF_LIBRARY_TYPE to STATIC to not change WTF linking on EFL or GTK ports.
+        * Source/cmake/OptionsMac.cmake: Added blank for now.
+        * Source/cmake/OptionsWinCairo.cmake:
+        * Source/cmake/OptionsWindows.cmake:
+        Added some definitions.
+        Removed /WX (warnings treated as error while compiling).
+        Copied warnings to ignore from WebKitLibraries/win/tools/vsprops/common.props.
+
+2014-08-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [CMake] GTK and EFL are using PROJECT_VERSION_PATCH to define the micro version
+        https://bugs.webkit.org/show_bug.cgi?id=135501
+
+        Reviewed by Gyuyoung Kim.
+
+        Use PROJECT_VERSION_MICRO instead.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitHelpers.cmake:
+
 2014-07-31  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL] Bump ewebkit version to 1.11

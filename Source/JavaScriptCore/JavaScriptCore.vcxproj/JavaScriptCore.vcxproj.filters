@@ -591,10 +591,19 @@
     <ClCompile Include="..\runtime\FunctionConstructor.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\FunctionHasExecutedCache.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\FunctionPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\GetterSetter.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\HighFidelityLog.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\HighFidelityTypeProfiler.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\Identifier.cpp">
@@ -657,7 +666,7 @@
     <ClCompile Include="..\runtime\JSONObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\JSPropertyNameIterator.cpp">
+    <ClCompile Include="..\runtime\JSPropertyNameEnumerator.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSProxy.cpp">
@@ -829,6 +838,12 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\SymbolTable.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\TypeLocationCache.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\TypeSet.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\Watchdog.cpp">
@@ -1180,6 +1195,9 @@
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGOSRExitPreparation.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGPhantomCanonicalizationPhase.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGPhase.cpp">
@@ -1847,6 +1865,9 @@
     <ClInclude Include="..\bytecode\StructureStubInfo.h">
       <Filter>bytecode</Filter>
     </ClInclude>
+    <ClInclude Include="..\bytecode\TypeLocation.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
     <ClInclude Include="..\bytecode\UnlinkedCodeBlock.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -2444,6 +2465,9 @@
     <ClInclude Include="..\runtime\DatePrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\EnumerationMode.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\Error.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2468,10 +2492,19 @@
     <ClInclude Include="..\runtime\FunctionConstructor.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\FunctionHasExecutedCache.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\FunctionPrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\GetterSetter.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\HighFidelityLog.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\HighFidelityTypeProfiler.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\Identifier.h">
@@ -2546,7 +2579,7 @@
     <ClInclude Include="..\runtime\JSONObject.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\JSPropertyNameIterator.h">
+    <ClInclude Include="..\runtime\JSPropertyNameEnumerator.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSProxy.h">
@@ -2739,6 +2772,12 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\Tracing.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\TypeLocationCache.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\TypeSet.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\Uint16WithFraction.h">
@@ -3382,6 +3421,9 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGOSRExitPreparation.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGPhantomCanonicalizationPhase.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGPhase.h">

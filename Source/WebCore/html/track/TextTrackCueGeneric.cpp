@@ -30,6 +30,7 @@
 #include "TextTrackCueGeneric.h"
 
 #include "CSSPropertyNames.h"
+#include "CSSStyleDeclaration.h"
 #include "CSSValueKeywords.h"
 #include "HTMLNames.h"
 #include "HTMLSpanElement.h"
@@ -37,7 +38,9 @@
 #include "Logging.h"
 #include "RenderObject.h"
 #include "ScriptExecutionContext.h"
+#include "StyleProperties.h"
 #include "TextTrackCue.h"
+#include <wtf/MathExtras.h>
 
 namespace WebCore {
 
@@ -75,16 +78,25 @@ void TextTrackCueGenericBoxElement::applyCSSProperties(const IntSize& videoSize)
         setInlineStyleProperty(CSSPropertyLeft, static_cast<float>(cue->position()), CSSPrimitiveValue::CSS_PERCENTAGE);
         setInlineStyleProperty(CSSPropertyTop, static_cast<float>(cue->line()), CSSPrimitiveValue::CSS_PERCENTAGE);
 
+        double authorFontSize = std::max(DEFAULTCAPTIONFONTSIZE, videoSize.height() * cue->baseFontSizeRelativeToVideoHeight() / 100.0);
+        if (cue->fontSizeMultiplier())
+            authorFontSize *= cue->fontSizeMultiplier() / 100;
+
+        double multiplier = std::max(1.0, m_fontSizeFromCaptionUserPrefs / authorFontSize);
         if (cue->getWritingDirection() == VTTCue::Horizontal)
-            setInlineStyleProperty(CSSPropertyWidth, size, CSSPrimitiveValue::CSS_PERCENTAGE);
+            setInlineStyleProperty(CSSPropertyWidth, std::min(size * multiplier, 100.0), CSSPrimitiveValue::CSS_PERCENTAGE);
         else
-            setInlineStyleProperty(CSSPropertyHeight, size,  CSSPrimitiveValue::CSS_PERCENTAGE);
+            setInlineStyleProperty(CSSPropertyHeight, std::min(size * multiplier, 100.0),  CSSPrimitiveValue::CSS_PERCENTAGE);
     }
 
-    if (cue->getWritingDirection() == VTTCue::Horizontal)
+    std::pair<float, float> position = m_cue.getCSSPosition();
+    if (cue->getWritingDirection() == VTTCue::Horizontal) {
         setInlineStyleProperty(CSSPropertyMinWidth, "-webkit-min-content");
-    else
+        setInlineStyleProperty(CSSPropertyMaxWidth, 100.0 - position.first, CSSPrimitiveValue::CSS_PERCENTAGE);
+    } else {
         setInlineStyleProperty(CSSPropertyMinHeight, "-webkit-min-content");
+        setInlineStyleProperty(CSSPropertyMaxHeight, 100.0 - position.second, CSSPrimitiveValue::CSS_PERCENTAGE);
+    }
 
     if (cue->foregroundColor().isValid())
         cueElement->setInlineStyleProperty(CSSPropertyColor, cue->foregroundColor().serialized());
@@ -202,6 +214,9 @@ bool TextTrackCueGeneric::doesExtendCue(const TextTrackCue& cue) const
 
 bool TextTrackCueGeneric::isOrderedBefore(const TextTrackCue* that) const
 {
+    if (VTTCue::isOrderedBefore(that))
+        return true;
+
     if (that->cueType() == Generic && startTime() == that->startTime() && endTime() == that->endTime()) {
         // Further order generic cues by their calculated line value.
         std::pair<double, double> thisPosition = getPositionCoordinates();
@@ -209,6 +224,18 @@ bool TextTrackCueGeneric::isOrderedBefore(const TextTrackCue* that) const
         return thisPosition.second > thatPosition.second || (thisPosition.second == thatPosition.second && thisPosition.first < thatPosition.first);
     }
 
+    return false;
+}
+
+bool TextTrackCueGeneric::isPositionedAbove(const TextTrackCue* that) const
+{
+    if (that->cueType() == Generic && startTime() == that->startTime() && endTime() == that->endTime()) {
+        // Further order generic cues by their calculated line value.
+        std::pair<double, double> thisPosition = getPositionCoordinates();
+        std::pair<double, double> thatPosition = toVTTCue(that)->getPositionCoordinates();
+        return thisPosition.second > thatPosition.second || (thisPosition.second == thatPosition.second && thisPosition.first < thatPosition.first);
+    }
+    
     if (that->cueType() == Generic)
         return startTime() > that->startTime();
     

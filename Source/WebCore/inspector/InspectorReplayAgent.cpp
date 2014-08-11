@@ -71,9 +71,6 @@ static PassRefPtr<TypeBuilder::Replay::ReplayInput> buildInspectorObjectForInput
         .setOffset(offset)
         .setData(encodedInput.asObject());
 
-    if (input.queue() == InputQueue::EventLoopInput)
-        inputObject->setTimestamp(static_cast<const EventLoopInputBase&>(input).timestamp());
-
     return inputObject.release();
 }
 
@@ -91,6 +88,25 @@ static PassRefPtr<TypeBuilder::Replay::ReplaySession> buildInspectorObjectForSes
         .setSegments(segments.release());
 
     return sessionObject.release();
+}
+
+static Inspector::TypeBuilder::Replay::SessionState::Enum buildInspectorObjectForSessionState(SessionState sessionState)
+{
+    switch (sessionState) {
+    case SessionState::Capturing: return Inspector::TypeBuilder::Replay::SessionState::Capturing;
+    case SessionState::Inactive: return Inspector::TypeBuilder::Replay::SessionState::Inactive;
+    case SessionState::Replaying: return Inspector::TypeBuilder::Replay::SessionState::Replaying;
+    }
+}
+
+static Inspector::TypeBuilder::Replay::SegmentState::Enum buildInspectorObjectForSegmentState(SegmentState segmentState)
+{
+    switch (segmentState) {
+    case SegmentState::Appending: return Inspector::TypeBuilder::Replay::SegmentState::Appending;
+    case SegmentState::Unloaded: return Inspector::TypeBuilder::Replay::SegmentState::Unloaded;
+    case SegmentState::Loaded: return Inspector::TypeBuilder::Replay::SegmentState::Loaded;
+    case SegmentState::Dispatching: return Inspector::TypeBuilder::Replay::SegmentState::Dispatching;
+    }
 }
 
 class SerializeInputToJSONFunctor {
@@ -122,7 +138,7 @@ static PassRefPtr<TypeBuilder::Replay::SessionSegment> buildInspectorObjectForSe
     for (size_t i = 0; i < static_cast<size_t>(InputQueue::Count); i++) {
         SerializeInputToJSONFunctor collector;
         InputQueue queue = static_cast<InputQueue>(i);
-        RefPtr<FunctorInputCursor> functorCursor = segment->createFunctorCursor();
+        RefPtr<FunctorInputCursor> functorCursor = FunctorInputCursor::create(segment);
         RefPtr<TypeBuilder::Array<TypeBuilder::Replay::ReplayInput>> queueInputs = functorCursor->forEachInputInQueue(queue, collector);
 
         RefPtr<TypeBuilder::Replay::ReplayInputQueue> queueObject = TypeBuilder::Replay::ReplayInputQueue::create()
@@ -334,8 +350,8 @@ void InspectorReplayAgent::replayToPosition(ErrorString* errorString, const RefP
         return;
     }
 
-    if (sessionState() != SessionState::Inactive) {
-        *errorString = ASCIILiteral("Can't start replay while capture or playback is in progress.");
+    if (sessionState() == SessionState::Capturing) {
+        *errorString = ASCIILiteral("Can't start replay while capture is in progress.");
         return;
     }
 
@@ -344,8 +360,8 @@ void InspectorReplayAgent::replayToPosition(ErrorString* errorString, const RefP
 
 void InspectorReplayAgent::replayToCompletion(ErrorString* errorString, bool fastReplay)
 {
-    if (sessionState() != SessionState::Inactive) {
-        *errorString = ASCIILiteral("Can't start replay while capture or playback is in progress.");
+    if (sessionState() == SessionState::Capturing) {
+        *errorString = ASCIILiteral("Can't start replay while capture is in progress.");
         return;
     }
 
@@ -464,6 +480,18 @@ PassRefPtr<ReplaySessionSegment> InspectorReplayAgent::findSegment(ErrorString* 
     return it->value;
 }
 
+void InspectorReplayAgent::currentReplayState(ErrorString*, SessionIdentifier* sessionIdentifier, Inspector::TypeBuilder::OptOutput<int>* segmentIdentifier, Inspector::TypeBuilder::Replay::SessionState::Enum* sessionState, Inspector::TypeBuilder::Replay::SegmentState::Enum* segmentState, RefPtr<Inspector::TypeBuilder::Replay::ReplayPosition>& replayPosition)
+{
+    *sessionState = buildInspectorObjectForSessionState(m_page.replayController().sessionState());
+    *segmentState = buildInspectorObjectForSegmentState(m_page.replayController().segmentState());
+
+    *sessionIdentifier = m_page.replayController().loadedSession()->identifier();
+    if (m_page.replayController().loadedSegment())
+        *segmentIdentifier = m_page.replayController().loadedSegment()->identifier();
+
+    replayPosition = buildInspectorObjectForPosition(m_page.replayController().currentPosition());
+}
+
 void InspectorReplayAgent::getAvailableSessions(ErrorString*, RefPtr<Inspector::TypeBuilder::Array<SessionIdentifier>>& sessionsList)
 {
     sessionsList = TypeBuilder::Array<SessionIdentifier>::create();
@@ -471,7 +499,7 @@ void InspectorReplayAgent::getAvailableSessions(ErrorString*, RefPtr<Inspector::
         sessionsList->addItem(pair.key);
 }
 
-void InspectorReplayAgent::getSerializedSession(ErrorString* errorString, SessionIdentifier identifier, RefPtr<Inspector::TypeBuilder::Replay::ReplaySession>& serializedObject)
+void InspectorReplayAgent::getSessionData(ErrorString* errorString, SessionIdentifier identifier, RefPtr<Inspector::TypeBuilder::Replay::ReplaySession>& serializedObject)
 {
     RefPtr<ReplaySession> session = findSession(errorString, identifier);
     if (!session) {
@@ -482,7 +510,7 @@ void InspectorReplayAgent::getSerializedSession(ErrorString* errorString, Sessio
     serializedObject = buildInspectorObjectForSession(session);
 }
 
-void InspectorReplayAgent::getSerializedSegment(ErrorString* errorString, SegmentIdentifier identifier, RefPtr<Inspector::TypeBuilder::Replay::SessionSegment>& serializedObject)
+void InspectorReplayAgent::getSegmentData(ErrorString* errorString, SegmentIdentifier identifier, RefPtr<Inspector::TypeBuilder::Replay::SessionSegment>& serializedObject)
 {
     RefPtr<ReplaySessionSegment> segment = findSegment(errorString, identifier);
     if (!segment) {

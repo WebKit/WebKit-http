@@ -1,3 +1,127 @@
+2014-08-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: new glyphs are visible on OS X 10.9 builds
+        https://bugs.webkit.org/show_bug.cgi?id=135743
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController window]): Use 10100 instead of 1090 for the version.
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of SCRIPTED_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135729
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of INPUT_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135672
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Update glyphs to be more like Xcode 6
+        https://bugs.webkit.org/show_bug.cgi?id=135705
+
+        Reviewed by Joseph Pecoraro.
+
+        * Resources/Dock.pdf: Added.
+        * Resources/DockLegacy.pdf: Copied from Source/WebKit/mac/Resources/Dock.pdf.
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController window]): Use new images.
+
+2014-08-06  Dean Jackson  <dino@apple.com>
+
+        ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED is not used anywhere. Remove it.
+        https://bugs.webkit.org/show_bug.cgi?id=135675
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement parsing for CSS scroll snap points
+        https://bugs.webkit.org/show_bug.cgi?id=134301
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Added ENABLE_CSS_SCROLL_SNAP
+
+2014-08-06  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (WebKit2): iOS Safari default encoding doesn't follow system language
+        https://bugs.webkit.org/show_bug.cgi?id=135667
+        <rdar://problem/17862892>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebPreferences.mm: (+[WebPreferences _setInitialDefaultTextEncodingToSystemEncoding]):
+        Moved implementation to WebCore, so that it can be shared with WebKit2.
+
+        * WebCoreSupport/WebSystemInterface.mm: (InitWebCoreSystemInterface):
+        We now use WKGetWebDefaultCFStringEncoding in WebCore, so it needs to be initialized.
+
+2014-08-05  Peyton Randolph  <prandolph@apple.com>
+
+        Rename MAC_LONG_PRESS feature flag to LONG_MOUSE_PRESS.
+        https://bugs.webkit.org/show_bug.cgi?id=135276
+
+        Reviewed by Beth Dakin.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-04  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add a flag for the CSS Selectors level 4 implementation
+        https://bugs.webkit.org/show_bug.cgi?id=135535
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        Check for null frame when processing geolocation authorization request
+        https://bugs.webkit.org/show_bug.cgi?id=135577
+        <rdar://problem/17896295>
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebGeolocationClient.mm:
+        (WebGeolocationClient::requestPermission):
+
+2014-08-02  Jeremy Jones  <jeremyj@apple.com>
+
+        Support both window and view based video fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=135525
+
+        Reviewed by Simon Fraser.
+
+        Parenting in the view instead of the window gives the fullscreen implementation more latitude 
+        in how it implements the animation.
+
+        * WebView/WebView.mm:
+        (-[WebView _enterFullscreenForNode:]): Use view instead of window.
+
+2014-08-01  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/17891752> [iOS] WebKit links against libraries it doesn’t use
+        https://bugs.webkit.org/show_bug.cgi?id=135536
+
+        Reviewed by Tim Horton.
+
+        * Configurations/WebKitLegacy.xcconfig: Removed -framework MobileAsset from
+        OTHER_LDFLAGS_iphoneos.
+
 2014-07-30  Andy Estes  <aestes@apple.com>
 
         USE(CONTENT_FILTERING) should be ENABLE(CONTENT_FILTERING)

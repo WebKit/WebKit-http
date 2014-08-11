@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
  * Copyright (C) 2010 Google Inc. All rights reserved.
@@ -204,13 +204,6 @@ HTMLElement* HTMLInputElement::cancelButtonElement() const
 {
     return m_inputType->cancelButtonElement();
 }
-
-#if ENABLE(INPUT_SPEECH)
-HTMLElement* HTMLInputElement::speechButtonElement() const
-{
-    return m_inputType->speechButtonElement();
-}
-#endif
 
 HTMLElement* HTMLInputElement::sliderThumbElement() const
 {
@@ -677,13 +670,8 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         // Search field and slider attributes all just cause updateFromElement to be called through style recalcing.
         setAttributeEventListener(eventNames().searchEvent, name, value);
     } else if (name == resultsAttr) {
-        int oldResults = m_maxResults;
         m_maxResults = !value.isNull() ? std::min(value.toInt(), maxSavedResults) : -1;
-
-        if (m_maxResults != oldResults && (m_maxResults <= 0 || oldResults <= 0))
-            setNeedsStyleRecalc(ReconstructRenderTree);
-        else
-            setNeedsStyleRecalc();
+        m_inputType->maxResultsAttributeChanged();
     } else if (name == autosaveAttr) {
         setNeedsStyleRecalc();
     } else if (name == incrementalAttr) {
@@ -719,21 +707,6 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
             listAttributeTargetChanged();
         }
     }
-#endif
-#if ENABLE(INPUT_SPEECH)
-    else if (name == webkitspeechAttr) {
-        m_inputType->destroyShadowSubtree();
-        m_inputType->createShadowSubtree();
-        updateInnerTextElementEditability();
-
-        // This renderer and its children have quite different layouts and styles depending on
-        // whether the speech button is visible or not. So we reset the whole thing and recreate
-        // to get the right styles and layout.
-        setNeedsStyleRecalc(ReconstructRenderTree);
-
-        setFormControlValueMatchesRenderer(false);
-    } else if (name == onwebkitspeechchangeAttr)
-        setAttributeEventListener(eventNames().webkitspeechchangeEvent, name, value);
 #endif
     else
         HTMLTextFormControlElement::parseAttribute(name, value);
@@ -1597,16 +1570,6 @@ bool HTMLInputElement::isSteppable() const
 {
     return m_inputType->isSteppable();
 }
-
-#if ENABLE(INPUT_SPEECH)
-
-bool HTMLInputElement::isSpeechEnabled() const
-{
-    // FIXME: Add support for RANGE, EMAIL, URL, COLOR and DATE/TIME input types.
-    return m_inputType->shouldRespectSpeechAttribute() && RuntimeEnabledFeatures::sharedFeatures().speechInputEnabled() && hasAttribute(webkitspeechAttr);
-}
-
-#endif
 
 #if PLATFORM(IOS)
 DateComponents::Type HTMLInputElement::dateType() const

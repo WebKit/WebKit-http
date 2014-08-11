@@ -34,6 +34,7 @@
 namespace WebCore {
 
 class LayoutRect;
+class RenderLayerModelObject;
 class RenderView;
 
 struct GapRects;
@@ -44,8 +45,10 @@ class SelectionRectGatherer {
 public:
     SelectionRectGatherer(RenderView&);
 
-    void addRect(const LayoutRect&);
-    void addRects(const GapRects&);
+    void addRect(RenderLayerModelObject *repaintContainer, const LayoutRect&);
+    void addGapRects(RenderLayerModelObject *repaintContainer, const GapRects&);
+    void setTextOnly(bool isTextOnly) { m_isTextOnly = isTextOnly; }
+    bool isTextOnly() const { return m_isTextOnly; }
 
     class Notifier {
         WTF_MAKE_NONCOPYABLE(Notifier);
@@ -61,8 +64,11 @@ public:
     
 private:
     RenderView& m_renderView;
+
+    // All rects are in RenderView coordinates.
     Vector<LayoutRect> m_rects;
     Vector<GapRects> m_gapRects;
+    bool m_isTextOnly;
 };
 
 } // namespace WebCore

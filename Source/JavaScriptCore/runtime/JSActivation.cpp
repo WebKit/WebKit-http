@@ -44,8 +44,6 @@ void JSActivation::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSActivation* thisObject = jsCast<JSActivation*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
 
     // No need to mark our registers if they're still in the JSStack.
@@ -105,7 +103,7 @@ inline bool JSActivation::symbolTablePut(ExecState* exec, PropertyName propertyN
         if (isTornOff() && !isValid(iter->value))
             return false;
         if (VariableWatchpointSet* set = iter->value.watchpointSet())
-            set->invalidate(); // Don't mess around - if we had found this statically, we would have invcalidated it.
+            set->invalidate(VariableWriteFireDetail(this, propertyName)); // Don't mess around - if we had found this statically, we would have invcalidated it.
         reg = &registerAt(iter->value.getIndex());
     }
     reg->set(vm, this, value);
@@ -117,14 +115,14 @@ void JSActivation::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec
     JSActivation* thisObject = jsCast<JSActivation*>(object);
 
     CallFrame* callFrame = CallFrame::create(reinterpret_cast<Register*>(thisObject->m_registers));
-    if (mode == IncludeDontEnumProperties && !thisObject->isTornOff() && (callFrame->codeBlock()->usesArguments() || callFrame->codeBlock()->usesEval()))
+    if (shouldIncludeDontEnumProperties(mode) && !thisObject->isTornOff() && (callFrame->codeBlock()->usesArguments() || callFrame->codeBlock()->usesEval()))
         propertyNames.add(exec->propertyNames().arguments);
 
     {
         ConcurrentJITLocker locker(thisObject->symbolTable()->m_lock);
         SymbolTable::Map::iterator end = thisObject->symbolTable()->end(locker);
         for (SymbolTable::Map::iterator it = thisObject->symbolTable()->begin(locker); it != end; ++it) {
-            if (it->value.getAttributes() & DontEnum && mode != IncludeDontEnumProperties)
+            if (it->value.getAttributes() & DontEnum && !shouldIncludeDontEnumProperties(mode))
                 continue;
             if (!thisObject->isValid(it->value))
                 continue;

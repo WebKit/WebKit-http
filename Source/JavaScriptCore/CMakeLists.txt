@@ -15,6 +15,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/debugger"
     "${JAVASCRIPTCORE_DIR}/inspector"
     "${JAVASCRIPTCORE_DIR}/inspector/agents"
+    "${JAVASCRIPTCORE_DIR}/inspector/remote"
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
     "${JAVASCRIPTCORE_DIR}/llint"
@@ -26,7 +27,9 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/tools"
     "${JAVASCRIPTCORE_DIR}/yarr"
     "${WTF_DIR}"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
+    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
     "${CMAKE_SOURCE_DIR}/Source"
     ${ICU_INCLUDE_DIRS}
 )
@@ -68,6 +71,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CodeBlockJettisoningWatchpoint.cpp
     bytecode/CodeOrigin.cpp
     bytecode/CodeType.cpp
+    bytecode/ComplexGetStatus.cpp
     bytecode/ConstantStructureCheck.cpp
     bytecode/DFGExitProfile.cpp
     bytecode/DeferredCompilationCallback.cpp
@@ -84,7 +88,6 @@ set(JavaScriptCore_SOURCES
     bytecode/PolymorphicGetByIdList.cpp
     bytecode/PolymorphicPutByIdList.cpp
     bytecode/PreciseJumpTargets.cpp
-    bytecode/ProfiledCodeBlockJettisoningWatchpoint.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/PutByIdVariant.cpp
     bytecode/ReduceWhitespace.cpp
@@ -98,6 +101,7 @@ set(JavaScriptCore_SOURCES
     bytecode/UnlinkedCodeBlock.cpp
     bytecode/UnlinkedInstructionStream.cpp
     bytecode/ValueRecovery.cpp
+    bytecode/VariableWatchpointSet.cpp
     bytecode/Watchpoint.cpp
 
     bytecompiler/BytecodeGenerator.cpp
@@ -152,6 +156,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFunctionWhitelist.cpp
     dfg/DFGGraph.cpp
     dfg/DFGGraphSafepoint.cpp
+    dfg/DFGHeapLocation.cpp
     dfg/DFGInPlaceAbstractState.cpp
     dfg/DFGIntegerCheckCombiningPhase.cpp
     dfg/DFGInvalidationPointInjectionPhase.cpp
@@ -181,10 +186,13 @@ set(JavaScriptCore_SOURCES
     dfg/DFGOSRExitJumpPlaceholder.cpp
     dfg/DFGOSRExitPreparation.cpp
     dfg/DFGOperations.cpp
+    dfg/DFGPhantomCanonicalizationPhase.cpp
+    dfg/DFGPhantomRemovalPhase.cpp
     dfg/DFGPhase.cpp
     dfg/DFGPlan.cpp
     dfg/DFGPredictionInjectionPhase.cpp
     dfg/DFGPredictionPropagationPhase.cpp
+    dfg/DFGPureValue.cpp
     dfg/DFGResurrectionForValidationPhase.cpp
     dfg/DFGSSAConversionPhase.cpp
     dfg/DFGSSALoweringPhase.cpp
@@ -220,7 +228,6 @@ set(JavaScriptCore_SOURCES
     disassembler/ARMv7Disassembler.cpp
     disassembler/Disassembler.cpp
     disassembler/LLVMDisassembler.cpp
-    disassembler/UDis86Disassembler.cpp
     disassembler/X86Disassembler.cpp
 
     heap/BlockAllocator.cpp
@@ -258,6 +265,7 @@ set(JavaScriptCore_SOURCES
 
     inspector/ConsoleMessage.cpp
     inspector/ContentSearchUtilities.cpp
+    inspector/EventLoop.cpp
     inspector/IdentifiersFactory.cpp
     inspector/InjectedScript.cpp
     inspector/InjectedScriptBase.cpp
@@ -267,8 +275,11 @@ set(JavaScriptCore_SOURCES
     inspector/InspectorAgentRegistry.cpp
     inspector/InspectorBackendDispatcher.cpp
     inspector/InspectorValues.cpp
+    inspector/JSConsoleClient.cpp
     inspector/JSInjectedScriptHost.cpp
     inspector/JSInjectedScriptHostPrototype.cpp
+    inspector/JSGlobalObjectInspectorController.cpp
+    inspector/JSGlobalObjectScriptDebugServer.cpp
     inspector/JSJavaScriptCallFrame.cpp
     inspector/JSJavaScriptCallFramePrototype.cpp
     inspector/JavaScriptCallFrame.cpp
@@ -277,11 +288,16 @@ set(JavaScriptCore_SOURCES
     inspector/ScriptCallStack.cpp
     inspector/ScriptCallStackFactory.cpp
     inspector/ScriptDebugServer.cpp
+
     inspector/agents/InspectorAgent.cpp
     inspector/agents/InspectorConsoleAgent.cpp
     inspector/agents/InspectorDebuggerAgent.cpp
     inspector/agents/InspectorProfilerAgent.cpp
     inspector/agents/InspectorRuntimeAgent.cpp
+    inspector/agents/JSGlobalObjectConsoleAgent.cpp
+    inspector/agents/JSGlobalObjectDebuggerAgent.cpp
+    inspector/agents/JSGlobalObjectProfilerAgent.cpp
+    inspector/agents/JSGlobalObjectRuntimeAgent.cpp
 
     interpreter/AbstractPC.cpp
     interpreter/CallFrame.cpp
@@ -394,6 +410,7 @@ set(JavaScriptCore_SOURCES
     runtime/Executable.cpp
     runtime/FunctionConstructor.cpp
     runtime/FunctionExecutableDump.cpp
+    runtime/FunctionHasExecutedCache.cpp
     runtime/FunctionPrototype.cpp
     runtime/GetterSetter.cpp
     runtime/HighFidelityLog.cpp
@@ -413,6 +430,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSArrayBufferView.cpp
     runtime/JSArrayIterator.cpp
     runtime/JSBoundFunction.cpp
+    runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCell.cpp
     runtime/JSConsole.cpp
@@ -435,8 +453,8 @@ set(JavaScriptCore_SOURCES
     runtime/JSPromiseFunctions.cpp
     runtime/JSPromiseReaction.cpp
     runtime/JSPromisePrototype.cpp
-    runtime/JSPropertyNameIterator.cpp
     runtime/JSProxy.cpp
+    runtime/JSPropertyNameEnumerator.cpp
     runtime/JSScope.cpp
     runtime/JSSegmentedVariableObject.cpp
     runtime/JSSet.cpp
@@ -503,6 +521,7 @@ set(JavaScriptCore_SOURCES
     runtime/StructureRareData.cpp
     runtime/SymbolTable.cpp
     runtime/TestRunnerUtils.cpp
+    runtime/TypeLocationCache.cpp
     runtime/TypeSet.cpp
     runtime/TypedArrayController.cpp
     runtime/TypedArrayType.cpp
@@ -579,6 +598,7 @@ if (WTF_USE_UDIS86)
         disassembler/udis86/udis86_syn-att.c
         disassembler/udis86/udis86_syn-intel.c
         disassembler/udis86/udis86_syn.c
+        disassembler/UDis86Disassembler.cpp
     )
 endif ()
 
@@ -796,23 +816,46 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
 )
 
 set(JavaScriptCore_FORWARDING_HEADERS_FILES
+    API/APICallbackFunction.h
     API/APICast.h
+    API/JSAPIWrapperObject.h
     API/JSBase.h
+    API/JSBasePrivate.h
     API/JSCTestRunnerUtils.h
+    API/JSCallbackConstructor.h
+    API/JSCallbackFunction.h
+    API/JSCallbackObject.h
+    API/JSCallbackObjectFunctions.h
+    API/JSClassRef.h
+    API/JSContext.h
+    API/JSContextInternal.h
+    API/JSContextPrivate.h
     API/JSContextRef.h
+    API/JSContextRefInternal.h
     API/JSContextRefPrivate.h
+    API/JSExport.h
+    API/JSManagedValue.h
+    API/JSManagedValueInternal.h
     API/JSObjectRef.h
     API/JSObjectRefPrivate.h
+    API/JSProfilerPrivate.h
     API/JSRetainPtr.h
     API/JSScriptRefPrivate.h
     API/JSStringRef.h
     API/JSStringRefBSTR.h
     API/JSStringRefCF.h
+    API/JSStringRefPrivate.h
+    API/JSValue.h
+    API/JSValueInternal.h
     API/JSValueRef.h
+    API/JSVirtualMachine.h
+    API/JSVirtualMachineInternal.h
     API/JSWeakObjectMapRefInternal.h
     API/JSWeakObjectMapRefPrivate.h
+    API/JSWrapperMap.h
     API/JavaScript.h
     API/JavaScriptCore.h
+    API/ObjcRuntimeExtras.h
     API/OpaqueJSString.h
     API/WebKitAvailability.h
 
@@ -872,18 +915,19 @@ add_custom_command(
 
 # Inspector Backend Dispatchers, Frontend Dispatchers, Type Builders
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.cpp
-           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h
-           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.cpp
-           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h
-           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.cpp
-           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSBackendDispatchers.cpp
+           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSBackendDispatchers.h
+           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSFrontendDispatchers.cpp
+           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSFrontendDispatchers.h
+           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSTypeBuilders.cpp
+           ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSTypeBuilders.h
            ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorJSBackendCommands.js
     MAIN_DEPENDENCY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
     DEPENDS ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py
             ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspectorStrings.py
-    COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_cpp_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}" --output_js_dir "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol" --output_type JavaScript --write_always && mkdir -p ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector && cp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector
+    COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector" --output_cpp_dir "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector" --output_js_dir "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol" --output_type JavaScript --write_always
     VERBATIM)
+file(MAKE_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector)
 
 # JSCBuiltins
 file(GLOB JSCBuiltins_js_files "${CMAKE_CURRENT_SOURCE_DIR}/builtins/*.js")
@@ -895,16 +939,16 @@ add_custom_command(
    VERBATIM)
 
 list(APPEND JavaScriptCore_SOURCES
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.cpp
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.cpp
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.cpp
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSBackendDispatchers.cpp
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSFrontendDispatchers.cpp
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSTypeBuilders.cpp
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
 )
 
 list(APPEND JavaScriptCore_HEADERS
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSBackendDispatchers.h
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSFrontendDispatchers.h
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSBackendDispatchers.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSFrontendDispatchers.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSTypeBuilders.h
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
 )
 
@@ -992,7 +1036,6 @@ add_subdirectory(shell)
 
 WEBKIT_WRAP_SOURCELIST(${JavaScriptCore_SOURCES})
 include_directories(${JavaScriptCore_INCLUDE_DIRECTORIES})
-add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
 add_library(JavaScriptCore ${JavaScriptCore_LIBRARY_TYPE} ${JavaScriptCore_HEADERS} ${JavaScriptCore_SOURCES})
 target_link_libraries(JavaScriptCore ${JavaScriptCore_LIBRARIES})
 set_target_properties(JavaScriptCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_JavaScriptCore")

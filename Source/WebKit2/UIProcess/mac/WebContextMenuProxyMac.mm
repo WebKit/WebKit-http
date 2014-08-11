@@ -31,6 +31,7 @@
 #import "DataReference.h"
 #import "MenuUtilities.h"
 #import "PageClientImpl.h"
+#import "ServicesController.h"
 #import "ShareableBitmap.h"
 #import "StringUtilities.h"
 #import "WebContext.h"
@@ -370,10 +371,10 @@ static Vector<RetainPtr<NSMenuItem>> nsMenuItemVector(const Vector<WebContextMen
 
 void WebContextMenuProxyMac::setupServicesMenu(const ContextMenuContextData& context)
 {
-    RetainPtr<NSSharingServicePicker> picker;
     bool includeEditorServices = context.controlledDataIsEditable();
+    bool hasControlledImage = !context.controlledImageHandle().isNull();
     NSArray *items = nil;
-    if (!context.controlledImageHandle().isNull()) {
+    if (hasControlledImage) {
         RefPtr<ShareableBitmap> image = ShareableBitmap::create(context.controlledImageHandle());
         if (!image)
             return;
@@ -391,29 +392,34 @@ void WebContextMenuProxyMac::setupServicesMenu(const ContextMenuContextData& con
         return;
     }
 
-    picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:items]);
-    [picker setStyle:NSSharingServicePickerStyleRollover];
+    RetainPtr<NSSharingServicePicker> picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:items]);
+    [picker setStyle:hasControlledImage ? NSSharingServicePickerStyleRollover : NSSharingServicePickerStyleTextSelection];
     [picker setDelegate:[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate]];
     [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setPicker:picker.get()];
     [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setIncludeEditorServices:includeEditorServices];
 
-    m_servicesMenu = [picker menu];
+    m_servicesMenu = adoptNS([[picker menu] copy]);
+
+    if (!hasControlledImage)
+        [m_servicesMenu setShowsStateColumn:YES];
 
     // Explicitly add a menu item for each telephone number that is in the selection.
     const Vector<String>& selectedTelephoneNumbers = context.selectedTelephoneNumbers();
     if (!selectedTelephoneNumbers.isEmpty()) {
-        [m_servicesMenu.get() addItem:[NSMenuItem separatorItem]];
+        if (m_servicesMenu)
+            [m_servicesMenu addItem:[NSMenuItem separatorItem]];
+        else
+            m_servicesMenu = adoptNS([[NSMenu alloc] init]);
         for (auto& telephoneNumber : selectedTelephoneNumbers) {
             if (NSMenuItem *item = menuItemForTelephoneNumber(telephoneNumber))
-                [m_servicesMenu.get() addItem:item];
+                [m_servicesMenu addItem:item];
         }
     }
 
-    // If there is no services menu, then the existing services on the system have changed.
-    // Ask the UIProcess to refresh that list of services.
-    // If <rdar://problem/16776831> is resolved then we can more accurately keep the list up to date without this call.
+    // If there is no services menu, then the existing services on the system have changed, so refresh that list of services.
+    // If <rdar://problem/17954709> is resolved then we can more accurately keep the list up to date without this call.
     if (!m_servicesMenu)
-        m_page->process().context().refreshExistingServices();
+        ServicesController::shared().refreshExistingServices();
 }
 
 void WebContextMenuProxyMac::clearServicesMenu()

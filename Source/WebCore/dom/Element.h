@@ -330,6 +330,7 @@ public:
     ShadowRoot* userAgentShadowRoot() const;
     ShadowRoot& ensureUserAgentShadowRoot();
 
+    // FIXME: this should not be virtual, do not override this.
     virtual const AtomicString& shadowPseudoId() const;
 
     bool inActiveChain() const { return isUserActionElement() && isUserActionElementInActiveChain(); }
@@ -393,6 +394,8 @@ public:
     virtual void accessKeyAction(bool /*sendToAnyEvent*/) { }
 
     virtual bool isURLAttribute(const Attribute&) const { return false; }
+    virtual bool attributeContainsURL(const Attribute& attribute) const { return isURLAttribute(attribute); }
+    virtual String completeURLsInAttributeValue(const URL& base, const Attribute&) const;
     virtual bool isHTMLContentAttribute(const Attribute&) const { return false; }
 
     URL getURLAttribute(const QualifiedName&) const;
@@ -464,10 +467,6 @@ public:
 
 #if ENABLE(VIDEO)
     virtual bool isMediaElement() const { return false; }
-#endif
-
-#if ENABLE(INPUT_SPEECH)
-    virtual bool isInputFieldSpeechButtonElement() const { return false; }
 #endif
 
     virtual bool isFormControlElement() const { return false; }

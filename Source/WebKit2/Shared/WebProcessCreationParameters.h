@@ -74,8 +74,14 @@ struct WebProcessCreationParameters {
     SandboxExtension::Handle cookieStorageDirectoryExtensionHandle;
     String openGLCacheDirectory;
     SandboxExtension::Handle openGLCacheDirectoryExtensionHandle;
-    String mediaCacheDirectory;
-    SandboxExtension::Handle mediaCacheDirectoryExtensionHandle;
+    String containerTemporaryDirectory;
+    SandboxExtension::Handle containerTemporaryDirectoryExtensionHandle;
+
+#if PLATFORM(IOS)
+    // FIXME: Remove this once <rdar://problem/17726660> is fixed.
+    String hstsDatabasePath;
+    SandboxExtension::Handle hstsDatabasePathExtensionHandle;
+#endif
 
     bool shouldUseTestingNetworkSession;
 
@@ -162,6 +168,7 @@ struct WebProcessCreationParameters {
 #if ENABLE(SERVICE_CONTROLS)
     bool hasImageServices;
     bool hasSelectionServices;
+    bool hasRichContentServices;
 #endif
 };
 

@@ -66,7 +66,7 @@
 #include "JSNotAnObject.h"
 #include "JSPromiseDeferred.h"
 #include "JSPromiseReaction.h"
-#include "JSPropertyNameIterator.h"
+#include "JSPropertyNameEnumerator.h"
 #include "JSWithScope.h"
 #include "Lexer.h"
 #include "Lookup.h"
@@ -210,7 +210,7 @@ VM::VM(VMType vmType, HeapType heapType)
     terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, 0, jsNull()));
     stringStructure.set(*this, JSString::createStructure(*this, 0, jsNull()));
     notAnObjectStructure.set(*this, JSNotAnObject::createStructure(*this, 0, jsNull()));
-    propertyNameIteratorStructure.set(*this, JSPropertyNameIterator::createStructure(*this, 0, jsNull()));
+    propertyNameEnumeratorStructure.set(*this, JSPropertyNameEnumerator::createStructure(*this, 0, jsNull()));
     getterSetterStructure.set(*this, GetterSetter::createStructure(*this, 0, jsNull()));
     customGetterSetterStructure.set(*this, CustomGetterSetter::createStructure(*this, 0, jsNull()));
     apiWrapperStructure.set(*this, JSAPIValueWrapper::createStructure(*this, 0, jsNull()));
@@ -835,7 +835,7 @@ void VM::registerWatchpointForImpureProperty(const Identifier& propertyName, Wat
 void VM::addImpureProperty(const String& propertyName)
 {
     if (RefPtr<WatchpointSet> watchpointSet = m_impurePropertyWatchpointSets.take(propertyName))
-        watchpointSet->fireAll();
+        watchpointSet->fireAll("Impure property added");
 }
 
 class SetEnabledProfilerFunctor {
@@ -858,43 +858,16 @@ void VM::setEnabledProfiler(LegacyProfiler* profiler)
     }
 }
 
-String VM::getTypesForVariableInRange(unsigned startLine, unsigned startColumn, unsigned endLine, unsigned endColumn, const String& variableName, const String& sourceIDAsString)
-{
-    if (!isProfilingTypesWithHighFidelity())
-        return "(Not Profiling)";
-
-    bool okay;
-    intptr_t sourceID = sourceIDAsString.toIntPtrStrict(&okay);
-    if (!okay)
-        CRASH();
-
-    updateHighFidelityTypeProfileState();
-    return m_highFidelityTypeProfiler->getTypesForVariableInRange(startLine, startColumn, endLine, endColumn, variableName, sourceID);
-}
-
-void VM::updateHighFidelityTypeProfileState()
-{
-    if (!isProfilingTypesWithHighFidelity())
-        return;
-
-    highFidelityLog()->processHighFidelityLog(false, "VM Update");
-}
-
 void VM::dumpHighFidelityProfilingTypes()
 {
     if (!isProfilingTypesWithHighFidelity())
         return;
 
-    updateHighFidelityTypeProfileState();
+    highFidelityLog()->processHighFidelityLog("VM Dump Types");
     HighFidelityTypeProfiler* profiler = m_highFidelityTypeProfiler.get();
     for (Bag<TypeLocation>::iterator iter = m_locationInfo.begin(); !!iter; ++iter) {
         TypeLocation* location = *iter;
-        dataLogF("[Line, Column]::[%u, %u] ", location->m_line, location->m_column);
-        dataLog("\n\t\t#Local#\n\t\t",
-                profiler->getLocalTypesForVariableInRange(location->m_line, location->m_column, location->m_line, location->m_column, "", location->m_sourceID).replace("\n", "\n\t\t"),
-                "\n\t\t#Global#\n\t\t",
-                profiler->getGlobalTypesForVariableInRange(location->m_line, location->m_column, location->m_line, location->m_column, "", location->m_sourceID).replace("\n", "\n\t\t"),
-                "\n");
+        profiler->logTypesForTypeLocation(location);
     }
 }
 

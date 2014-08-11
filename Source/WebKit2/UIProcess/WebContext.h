@@ -352,10 +352,6 @@ public:
 
     void setMemoryCacheDisabled(bool);
 
-#if ENABLE(SERVICE_CONTROLS)
-    void refreshExistingServices();
-#endif
-
 private:
     void platformInitialize();
 
@@ -433,8 +429,12 @@ private:
     String networkingHSTSDatabasePath() const;
     String platformDefaultNetworkingHSTSDatabasePath() const;
 
-    String mediaCacheDirectory() const;
-    String platformMediaCacheDirectory() const;
+#if PLATFORM(IOS)
+    String parentBundleDirectory() const;
+    String webContentHSTSDatabasePath() const;
+#endif
+
+    String containerTemporaryDirectory() const;
 
 #if PLATFORM(COCOA)
     void registerNotificationObservers();
@@ -532,7 +532,6 @@ private:
     String m_overrideDiskCacheDirectory;
     String m_overrideCookieStorageDirectory;
     String m_overrideOpenGLCacheDirectory;
-    String m_overrideMediaCacheDirectory;
 
     String m_webSQLDatabaseDirectory;
     String m_indexedDBDatabaseDirectory;

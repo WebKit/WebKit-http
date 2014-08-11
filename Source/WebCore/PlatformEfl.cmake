@@ -101,6 +101,7 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
+    platform/graphics/ImageSource.cpp
     platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/cairo/BitmapImageCairo.cpp
@@ -165,7 +166,23 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/coordinated/CoordinatedTile.cpp
     platform/graphics/texmap/coordinated/UpdateAtlas.cpp
 
+    platform/image-decoders/ImageDecoder.cpp
+
+    platform/image-decoders/bmp/BMPImageDecoder.cpp
+    platform/image-decoders/bmp/BMPImageReader.cpp
+
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
+
+    platform/image-decoders/gif/GIFImageDecoder.cpp
+    platform/image-decoders/gif/GIFImageReader.cpp
+
+    platform/image-decoders/ico/ICOImageDecoder.cpp
+
+    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
+
+    platform/image-decoders/png/PNGImageDecoder.cpp
+
+    platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/linux/GamepadDeviceLinux.cpp
 
@@ -322,6 +339,16 @@ if (ENABLE_VIDEO)
         ${GSTREAMER_TAG_LIBRARIES}
         ${GSTREAMER_VIDEO_LIBRARIES}
     )
+
+    if (USE_GSTREAMER_MPEGTS)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES
+            ${GSTREAMER_MPEGTS_INCLUDE_DIRS}
+        )
+
+        list(APPEND WebCore_LIBRARIES
+            ${GSTREAMER_MPEGTS_LIBRARIES}
+        )
+    endif ()
 endif ()
 
 if (WTF_USE_3D_GRAPHICS)

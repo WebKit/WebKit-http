@@ -173,12 +173,6 @@ gamepad/
 # X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
 http/tests/security/contentTypeOptions
 
-# Speech input is not yet enabled.
-fast/speech
-
-# Speech JavaScript API is not yet enabled.
-fast/events/constructors/speech-recognition-event-constructor.html
-
 # Media Stream API is not yet enabled.
 fast/mediastream
 fast/events/constructors/media-stream-event-constructor.html
@@ -1195,8 +1189,6 @@ webkit.org/b/123489 [ Mavericks ] inspector-protocol/debugger/setBreakpoint-opti
 
 webkit.org/b/123490 [ Mavericks ] webaudio/oscillator-sawtooth.html [ Failure ]
 
-webkit.org/b/123498 [ Mavericks ] media/track/track-in-band-cues-added-once.html [ Failure ]
-
 webkit.org/b/123522 [ Mavericks ] media/track/track-in-band-legacy-api.html [ Pass Failure ]
 
 # Audio and video tracks aren't supported on mac
@@ -1409,5 +1401,3 @@ webkit.org/b/135133 [ MountainLion ] fast/layers/no-clipping-overflow-hidden-add
 
 webkit.org/b/135160 media/track/track-in-band-subtitles-too-large.html [ Pass Failure ]
 webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Failure ]
-
-webkit.org/b/135485 platform/mac/fast/scrolling/scroll-select-bottom-test.html [ Skip ]

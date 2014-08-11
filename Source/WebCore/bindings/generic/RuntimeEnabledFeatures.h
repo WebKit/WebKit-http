@@ -127,21 +127,6 @@ public:
     bool deviceOrientationEventEnabled() const { return m_isDeviceOrientationEnabled; }
     bool ondeviceorientationEnabled() const { return m_isDeviceOrientationEnabled; }
 
-    void setSpeechInputEnabled(bool isEnabled) { m_isSpeechInputEnabled = isEnabled; }
-    bool speechInputEnabled() const { return m_isSpeechInputEnabled; }
-    bool webkitSpeechEnabled() const { return m_isSpeechInputEnabled; }
-    bool webkitGrammarEnabled() const { return m_isSpeechInputEnabled; }
-
-#if ENABLE(SCRIPTED_SPEECH)
-    void setScriptedSpeechEnabled(bool isEnabled) { m_isScriptedSpeechEnabled = isEnabled; }
-    bool scriptedSpeechEnabled() const { return m_isScriptedSpeechEnabled; }
-    bool webkitSpeechRecognitionEnabled() const { return m_isScriptedSpeechEnabled; }
-    bool webkitSpeechRecognitionErrorEnabled() const { return m_isScriptedSpeechEnabled; }
-    bool webkitSpeechRecognitionEventEnabled() const { return m_isScriptedSpeechEnabled; }
-    bool webkitSpeechGrammarEnabled() const { return m_isScriptedSpeechEnabled; }
-    bool webkitSpeechGrammarListEnabled() const { return m_isScriptedSpeechEnabled; }
-#endif
-
 #if ENABLE(JAVASCRIPT_I18N_API)
     bool javaScriptI18NAPIEnabled() const;
     void setJavaScriptI18NAPIEnabled(bool isEnabled) { m_isJavaScriptI18NAPIEnabled = isEnabled; }
@@ -231,16 +216,11 @@ private:
     bool m_isTouchEnabled;
     bool m_isDeviceMotionEnabled;
     bool m_isDeviceOrientationEnabled;
-    bool m_isSpeechInputEnabled;
     bool m_isCSSShapesEnabled;
     bool m_isCSSRegionsEnabled;
     bool m_isCSSCompositingEnabled;
     bool m_isLangAttributeAwareFormControlUIEnabled;
     bool m_isPluginReplacementEnabled;
-
-#if ENABLE(SCRIPTED_SPEECH)
-    bool m_isScriptedSpeechEnabled;
-#endif
 
 #if ENABLE(JAVASCRIPT_I18N_API)
     bool m_isJavaScriptI18NAPIEnabled;

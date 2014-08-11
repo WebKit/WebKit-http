@@ -37,18 +37,30 @@ namespace WebCore {
 
 SelectionRectGatherer::SelectionRectGatherer(RenderView& renderView)
     : m_renderView(renderView)
+    , m_isTextOnly(true)
 {
 }
 
-void SelectionRectGatherer::addRect(const LayoutRect& rect)
+void SelectionRectGatherer::addRect(RenderLayerModelObject *repaintContainer, const LayoutRect& rect)
 {
-    if (!rect.isEmpty())
-        m_rects.append(rect);
+    if (!rect.isEmpty()) {
+        if (repaintContainer)
+            m_rects.append(LayoutRect(repaintContainer->localToAbsoluteQuad(FloatQuad(rect)).boundingBox()));
+        else
+            m_rects.append(rect);
+    }
 }
 
-void SelectionRectGatherer::addRects(const GapRects& rects)
+void SelectionRectGatherer::addGapRects(RenderLayerModelObject *repaintContainer, const GapRects& rects)
 {
-    m_gapRects.append(rects);
+    if (repaintContainer) {
+        GapRects absoluteGapRects;
+        absoluteGapRects.uniteLeft(LayoutRect(repaintContainer->localToAbsoluteQuad(FloatQuad(rects.left())).boundingBox()));
+        absoluteGapRects.uniteCenter(LayoutRect(repaintContainer->localToAbsoluteQuad(FloatQuad(rects.center())).boundingBox()));
+        absoluteGapRects.uniteRight(LayoutRect(repaintContainer->localToAbsoluteQuad(FloatQuad(rects.right())).boundingBox()));
+        m_gapRects.append(absoluteGapRects);
+    } else
+        m_gapRects.append(rects);
 }
 
 SelectionRectGatherer::Notifier::Notifier(SelectionRectGatherer& gatherer)
@@ -59,13 +71,14 @@ SelectionRectGatherer::Notifier::Notifier(SelectionRectGatherer& gatherer)
 SelectionRectGatherer::Notifier::~Notifier()
 {
     if (EditorClient* client = m_gatherer.m_renderView.view().frame().editor().client())
-        client->selectionRectsDidChange(m_gatherer.m_rects, m_gatherer.m_gapRects);
+        client->selectionRectsDidChange(m_gatherer.m_rects, m_gatherer.m_gapRects, m_gatherer.isTextOnly());
 }
 
 std::unique_ptr<SelectionRectGatherer::Notifier> SelectionRectGatherer::clearAndCreateNotifier()
 {
     m_rects.clear();
     m_gapRects.clear();
+    m_isTextOnly = true;
 
     return std::make_unique<Notifier>(*this);
 }

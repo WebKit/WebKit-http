@@ -41,9 +41,6 @@ void JSSymbolTableObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSSymbolTableObject* thisObject = jsCast<JSSymbolTableObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
-
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_symbolTable);
 }
@@ -66,7 +63,7 @@ void JSSymbolTableObject::getOwnNonIndexPropertyNames(JSObject* object, ExecStat
         for (SymbolTable::Map::iterator it = thisObject->symbolTable()->begin(locker); it != end; ++it) {
             if (it->key->isEmptyUnique())
                 continue;
-            if (!(it->value.getAttributes() & DontEnum) || (mode == IncludeDontEnumProperties))
+            if (!(it->value.getAttributes() & DontEnum) || shouldIncludeDontEnumProperties(mode))
                 propertyNames.add(Identifier(exec, it->key.get()));
         }
     }

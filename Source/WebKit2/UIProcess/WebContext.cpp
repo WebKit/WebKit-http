@@ -428,6 +428,10 @@ void WebContext::ensureNetworkProcess()
     parameters.hstsDatabasePath = networkingHSTSDatabasePath();
     if (!parameters.hstsDatabasePath.isEmpty())
         SandboxExtension::createHandle(parameters.hstsDatabasePath, SandboxExtension::ReadWrite, parameters.hstsDatabasePathExtensionHandle);
+
+    parameters.parentBundleDirectory = parentBundleDirectory();
+    if (!parameters.parentBundleDirectory.isEmpty())
+        SandboxExtension::createHandle(parameters.parentBundleDirectory, SandboxExtension::ReadOnly, parameters.parentBundleDirectoryExtensionHandle);
 #endif
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
@@ -621,9 +625,15 @@ WebProcessProxy& WebContext::createNewWebProcess()
     if (!parameters.openGLCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.openGLCacheDirectory, parameters.openGLCacheDirectoryExtensionHandle);
 
-    parameters.mediaCacheDirectory = mediaCacheDirectory();
-    if (!parameters.mediaCacheDirectory.isEmpty())
-        SandboxExtension::createHandleForReadWriteDirectory(parameters.mediaCacheDirectory, parameters.mediaCacheDirectoryExtensionHandle);
+    parameters.containerTemporaryDirectory = containerTemporaryDirectory();
+    if (!parameters.containerTemporaryDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(parameters.containerTemporaryDirectory, parameters.containerTemporaryDirectoryExtensionHandle);
+
+#if PLATFORM(IOS)
+    parameters.hstsDatabasePath = webContentHSTSDatabasePath();
+    if (!parameters.hstsDatabasePath.isEmpty())
+        SandboxExtension::createHandle(parameters.hstsDatabasePath, SandboxExtension::ReadWrite, parameters.hstsDatabasePathExtensionHandle);
+#endif
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
 
@@ -671,7 +681,8 @@ WebProcessProxy& WebContext::createNewWebProcess()
 #if ENABLE(SERVICE_CONTROLS)
     parameters.hasImageServices = ServicesController::shared().hasImageServices();
     parameters.hasSelectionServices = ServicesController::shared().hasSelectionServices();
-    ServicesController::shared().refreshExistingServices(this);
+    parameters.hasRichContentServices = ServicesController::shared().hasRichContentServices();
+    ServicesController::shared().refreshExistingServices();
 #endif
 
     // Add any platform specific parameters
@@ -1223,14 +1234,6 @@ String WebContext::networkingHSTSDatabasePath() const
     return platformDefaultNetworkingHSTSDatabasePath();
 }
 
-String WebContext::mediaCacheDirectory() const
-{
-    if (!m_overrideMediaCacheDirectory.isEmpty())
-        return m_overrideMediaCacheDirectory;
-
-    return platformMediaCacheDirectory();
-}
-
 void WebContext::useTestingNetworkSession()
 {
     ASSERT(m_processes.isEmpty());
@@ -1358,14 +1361,6 @@ void WebContext::didGetStatistics(const StatisticsData& statisticsData, uint64_t
     request->completedRequest(requestID, statisticsData);
 }
 
-#if ENABLE(SERVICE_CONTROLS)
-void WebContext::refreshExistingServices()
-{
-    ServicesController::shared().refreshExistingServices(this);
-}
-#endif
-
-    
 void WebContext::garbageCollectJavaScriptObjects()
 {
     sendToAllProcesses(Messages::WebProcess::GarbageCollectJavaScriptObjects());

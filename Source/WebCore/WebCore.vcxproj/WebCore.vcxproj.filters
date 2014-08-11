@@ -810,9 +810,6 @@
     <ClCompile Include="..\page\SpatialNavigation.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\SpeechInput.cpp">
-      <Filter>page</Filter>
-    </ClCompile>
     <ClCompile Include="..\page\SuspendableTimer.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -2851,6 +2848,9 @@
       <Filter>rendering\style</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\style\StyleRareNonInheritedData.cpp">
+      <Filter>rendering\style</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rendering\style\StyleScrollSnapPoints.cpp">
       <Filter>rendering\style</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\style\StyleSurroundData.cpp">
@@ -7812,15 +7812,6 @@
     <ClInclude Include="..\page\SpatialNavigation.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClInclude Include="..\page\SpeechInput.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\SpeechInputClient.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\SpeechInputListener.h">
-      <Filter>page</Filter>
-    </ClInclude>
     <ClInclude Include="..\page\SuspendableTimer.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -9261,6 +9252,9 @@
     <ClInclude Include="..\css\LengthFunctions.h">
       <Filter>css</Filter>
     </ClInclude>
+    <ClInclude Include="..\css\LengthRepeat.h">
+      <Filter>css</Filter>
+    </ClInclude>
     <ClInclude Include="..\css\MediaFeatureNames.h">
       <Filter>css</Filter>
     </ClInclude>
@@ -9907,6 +9901,9 @@
       <Filter>rendering\style</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\style\StyleReflection.h">
+      <Filter>rendering\style</Filter>
+    </ClInclude>
+    <ClInclude Include="..\rendering\style\StyleScrollSnapPoints.h">
       <Filter>rendering\style</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\style\StyleSurroundData.h">

@@ -79,13 +79,13 @@ void SymbolTableEntry::addWatchpoint(Watchpoint* watchpoint)
     fatEntry()->m_watchpoints->add(watchpoint);
 }
 
-void SymbolTableEntry::notifyWriteSlow(VM& vm, JSValue value)
+void SymbolTableEntry::notifyWriteSlow(VM& vm, JSValue value, const FireDetail& detail)
 {
     VariableWatchpointSet* watchpoints = fatEntry()->m_watchpoints.get();
     if (!watchpoints)
         return;
     
-    watchpoints->notifyWrite(vm, value);
+    watchpoints->notifyWrite(vm, value, detail);
 }
 
 SymbolTableEntry::FatEntry* SymbolTableEntry::inflateSlow()
@@ -132,11 +132,12 @@ SymbolTable::WatchpointCleanup::~WatchpointCleanup() { }
 
 void SymbolTable::WatchpointCleanup::finalizeUnconditionally()
 {
+    StringFireDetail detail("Symbol table clean-up during GC");
     Map::iterator iter = m_symbolTable->m_map.begin();
     Map::iterator end = m_symbolTable->m_map.end();
     for (; iter != end; ++iter) {
         if (VariableWatchpointSet* set = iter->value.watchpointSet())
-            set->finalizeUnconditionally();
+            set->finalizeUnconditionally(detail);
     }
 }
 
@@ -191,13 +192,13 @@ SymbolTable* SymbolTable::cloneCapturedNames(VM& vm)
     return result;
 }
 
-int64_t SymbolTable::uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm)
+GlobalVariableID SymbolTable::uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm)
 {
     auto iter = m_uniqueIDMap->find(key);
     auto end = m_uniqueIDMap->end();
     ASSERT_UNUSED(end, iter != end);
 
-    int64_t& id = iter->value;
+    GlobalVariableID& id = iter->value;
     if (id == HighFidelityNeedsUniqueIDGeneration) {
         id = vm.getNextUniqueVariableID();
         m_uniqueTypeSetMap->set(key, TypeSet::create()); //make a new global typeset for the ID
@@ -206,7 +207,7 @@ int64_t SymbolTable::uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl*
     return id;
 }
 
-int64_t SymbolTable::uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm)
+GlobalVariableID SymbolTable::uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm)
 {
     auto iter = m_registerToVariableMap->find(registerIndex);
     auto end = m_registerToVariableMap->end();

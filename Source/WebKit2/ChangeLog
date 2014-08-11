@@ -1,3 +1,1102 @@
+2014-08-10  Tim Horton  <timothy_horton@apple.com>
+
+        Yelp phone number highlights often disappear
+        https://bugs.webkit.org/show_bug.cgi?id=135789
+        <rdar://problem/17971057>
+
+        Reviewed by Brady Eidson.
+
+        Since selectedTelephoneNumberRangesChanged doesn't provide an associated
+        Frame, an incoming selectedTelephoneNumberRangesChanged from a subframe
+        would overwrite ServicesOverlayController's cached (and potentially active)
+        telephone number highlights.
+
+        This happens a lot on Yelp, because they have many subframes which are
+        doing layout on a regular basis.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::selectedTelephoneNumberRangesChanged):
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+        Adjust to the new (lack of) arguments.
+
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::selectedTelephoneNumberRangesChanged):
+        Adjust logging; we can revisit it later.
+
+        (WebKit::ServicesOverlayController::buildPhoneNumberHighlights):
+        When building phone number highlights, walk the Frame tree and retrieve
+        them from all of the Editors.
+
+        (WebKit::ServicesOverlayController::didRebuildPotentialHighlights):
+        (WebKit::ServicesOverlayController::telephoneNumberRangesForFocusedFrame):
+        (WebKit::ServicesOverlayController::determineActiveHighlight):
+        (WebKit::ServicesOverlayController::handleClick):
+        Retrieve the detected telephone number ranges from the focused frame
+        when combining telephone numbers with selection services.
+        This ensures that we don't show combined phone number highlights from other frames.
+
+2014-08-10  Tim Horton  <timothy_horton@apple.com>
+
+        Refactor ServiceOverlayController in preparation for fading between highlights
+        https://bugs.webkit.org/show_bug.cgi?id=135787
+        <rdar://problem/17935736>
+
+        Reviewed by Brady Eidson.
+
+        Rework ServicesOverlayController so that we always keep a set of generic
+        "potential highlights", which are refcounted Highlight objects and
+        wrap a DDHighlightRef, as well as a type (Selection or TelephoneNumber),
+        Range (only used in the case of TelephoneNumber), and potentially more
+        things in the future (like, say, fade state!).
+
+        We eagerly update the list of potential highlights when the selection or set
+        of detected telephone numbers changes, and use this information to install
+        or uninstall the page overlay as needed.
+
+        When we need to recompute the "active" highlight from this set (for example,
+        we need to handle a mouse event or paint the highlight), we look through
+        the set of potential highlights and decide. This moves the "active" highlight
+        decision logic into one small and confined place.
+
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        (WebKit::ServicesOverlayController::Highlight):
+        Add the new aforementioned refcounted Highlight class.
+        Rename m_lastHoveredHighlightChangeTime to m_lastActiveHighlightChangeTime.
+        Make m_webPage a reference.
+        The rest is just added/removed/adjusted functions for the refactoring.
+
+        (WebKit::TelephoneNumberData::TelephoneNumberData): Deleted.
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::Highlight::createForSelection):
+        (WebKit::ServicesOverlayController::Highlight::createForTelephoneNumber):
+        Create Highlights for the two different highlight types.
+
+        (WebKit::ServicesOverlayController::ServicesOverlayController):
+        (WebKit::ServicesOverlayController::willMoveToWebPage):
+        Our WebPage pointer is always valid because it owns us; don't clear it.
+        We need to keep it around so that we can uninstall the overlay and
+        install it again later, anyway.
+
+        (WebKit::ServicesOverlayController::selectionRectsDidChange):
+        (WebKit::ServicesOverlayController::selectedTelephoneNumberRangesChanged):
+        When selection rects or detected telephone numbers change, rebuild potential highlights.
+        This will have the side-effect of installing the overlay if needed.
+
+        (WebKit::ServicesOverlayController::mouseIsOverHighlight):
+        Make this function take a Highlight instead of a DDHighlightRef.
+
+        (WebKit::ServicesOverlayController::remainingTimeUntilHighlightShouldBeShown):
+        Make this function take a Highlight instead of a DDHighlightRef.
+
+        (WebKit::ServicesOverlayController::drawHighlight):
+        Make this function take a Highlight instead of a DDHighlightRef.
+        There's no reason to do the translation separately from the layer blit,
+        also allowing us to avoid the StateSaver.
+
+        (WebKit::ServicesOverlayController::drawRect):
+        drawRect now always paints the active highlight, instead of duplicating
+        logic about which highlight should be active.
+        Also, it will update the active highlight before painting.
+        We no longer need to re-determine whether the active highlight's phone
+        number range is still a valid phone number range, because we rebuild
+        the potential highlights whenever the set of phone number ranges changes.
+
+        (WebKit::ServicesOverlayController::clearActiveHighlight):
+        Mostly an adoption of new names.
+
+        (WebKit::ServicesOverlayController::removeAllPotentialHighlightsOfType):
+        Run through the list of potential highlights and remove any of the given type.
+        The two highlight building functions use this helper to clear the old ones before building.
+
+        (WebKit::ServicesOverlayController::buildPhoneNumberHighlights):
+        (WebKit::ServicesOverlayController::buildSelectionHighlight):
+        Rebuild the list of potential highlights, replacing all highlights of
+        the given type with new ones.
+
+        (WebKit::ServicesOverlayController::hasRelevantSelectionServices):
+        Factor out the code that decides whether our current selection is
+        viable for servicing based on whether we have plain-text and/or rich-text services.
+
+        (WebKit::ServicesOverlayController::didRebuildPotentialHighlights):
+        When rebuilding potential highlights, if we have no potential highlights at all,
+        uninstall the page overlay; we don't need mouse tracking and don't need to
+        paint anything. This improves memory use and compositing performance significantly,
+        where previously we were leaving the overlay up forever after creating it.
+
+        If we have either detected telephone numbers or relevant selection services,
+        create and install the overlay if it doesn't already exist.
+
+        (WebKit::ServicesOverlayController::createOverlayIfNeeded):
+        This just moved from elsehwere, except that it now uses FadeMode::DoNotFade.
+        It doesn't make sense to fade on install/uninstall (which happens even before hover)
+        but not on changing the active highlight; fading will be re-addressed in the next patch.
+
+        (WebKit::ServicesOverlayController::highlightsAreEquivalent):
+        Determine whether two highlights are equivalent. While we may have
+        created a new Highlight at rebuild time, if two telephone number
+        highlights have equivalent ranges, there's no need to 'transition' to the new one.
+
+        (WebKit::ServicesOverlayController::determineActiveHighlight):
+        Run through the list of services, and try to find one that is hovered.
+        We prefer telephone number highlights to selection highlights, and
+        we will never make a selection highlight active if it is both
+        not serviceable and there are no telephone numbers to show in the combined menu.
+        This is the centralized location for determination of which highlight
+        should be considered active. If the active highlight changed, update
+        the time since last change and cancel the mouse-down tracking.
+
+        (WebKit::ServicesOverlayController::mouseEvent):
+        Adjust some comments to be more explanatory.
+        A bunch of code moved out of here and into determineActiveHighlight.
+
+        (WebKit::ServicesOverlayController::handleClick):
+        Adjust to take a reference and use Highlight instead of DDHighlightRef.
+
+2014-08-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: new glyphs are visible on OS X 10.9 builds
+        https://bugs.webkit.org/show_bug.cgi?id=135743
+
+        Reviewed by Joseph Pecoraro.
+
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::createInspectorWindow): Use 10100 instead of 1090 for the version.
+
+2014-08-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] REGRESSION(r166239): The ld version script is not being used
+        https://bugs.webkit.org/show_bug.cgi?id=135694
+
+        Reviewed by Martin Robinson.
+
+        * CMakeLists.txt: Add VERSION_SCRIPT to WebKit2 link flags if present.
+
+2014-08-09  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r172301): Combined phone number highlight doesn't appear if rich content is selected and we have no rich content services
+        https://bugs.webkit.org/show_bug.cgi?id=135785
+        <rdar://problem/17969843>
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::drawSelectionHighlight):
+        We can't early return in the rich-content-but-no-rich-services case
+        if we have telephone numbers in the selection, because we want to offer
+        them up in the combined menu.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        If we end up with no menu, because there were no services available,
+        make a fresh one that we can fill with combined telephone number items.
+
+2014-08-08  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        [EFL] Do not initialize g_type in WebProcessMain::platformInitialize()
+        https://bugs.webkit.org/show_bug.cgi?id=135700
+
+        Reviewed by Gyuyoung Kim.
+
+        Inspired by r171788.
+        Glib since 2.36 itself initializes g_type_init.
+
+        * WebProcess/efl/WebProcessMainEfl.cpp:
+
+2014-08-08  Tim Horton  <timothy_horton@apple.com>
+
+        Build fix for 32-bit.
+
+        * UIProcess/mac/ServicesController.mm:
+        (WebKit::ServicesController::ServicesController):
+        Don't dynamically refresh services in 32-bit apps. It's not possible
+        to write a 32-bit app with the Modern API, so this doesn't matter.
+
+2014-08-08  Tim Horton  <timothy_horton@apple.com>
+
+        [mac] Dynamically update serviceability when the set of services changes
+        https://bugs.webkit.org/show_bug.cgi?id=135738
+        <rdar://problem/17533459>
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::createNewWebProcess):
+        Adopt the new universal refreshExistingServices.
+
+        (WebKit::WebContext::refreshExistingServices): Deleted.
+        * UIProcess/WebContext.h:
+        Remove WebContext::refreshExistingServices; there's no need for it.
+
+        * UIProcess/mac/ServicesController.h:
+        * UIProcess/mac/ServicesController.mm:
+        Fix the build with only public headers by including NSSharingService.h itself.
+        Place the NSSharingServicePicker (Details) category outside the #ifdef.
+        Forward-declare and possibly import NSExtension SPI.
+
+        (WebKit::ServicesController::ServicesController):
+        Register a callback to be notified whenever the set of services changes.
+        When this occurs, call refreshExistingServices. We let refreshExistingServices
+        coalesce updates because these notifications can come in small batches.
+
+        (WebKit::ServicesController::refreshExistingServices):
+        Dispatch changes in service availability to all processes in all contexts.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::setupServicesMenu):
+        Adjust the referenced rdar:// and call ServicesController::refreshExistingServices
+        instead of the now-removed WebContext:: variant. We can't remove this
+        yet because our services state can still be stale because NSServiceSharingPicker
+        can still sometimes lie about the current service state immediately after a change occurs;
+        once that is fixed, we should get rid of this as well as the refresh in Web Process creation.
+
+2014-08-08  Timothy Horton  <timothy_horton@apple.com>
+
+        Clients that request the selection services menu after WebKit2 will get one with different metrics than otherwise
+        https://bugs.webkit.org/show_bug.cgi?id=135765
+        <rdar://problem/17962180>
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::setupServicesMenu):
+        The menu is cached between clients, but we make adjustments to it.
+        We should copy it before adjusting.
+
+2014-08-08  Timothy Horton  <timothy_horton@apple.com>
+
+        Services overlay dropdown is often in the wrong place with zoomed pages or horizontal scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=135755
+        <rdar://problem/17907752>
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::establishHoveredTelephoneHighlight):
+        (WebKit::ServicesOverlayController::maybeCreateSelectionHighlight):
+        DDHighlightCreateWithRectsInVisibleRectWithStyleAndDirection adjusts the
+        location of the button based on the visible rect, trying to keep the button visible.
+
+        We're handing it the wrong visible rect, though, not taking scrolling into account.
+
+        This leads to pages that scroll horizontally showing the button on the left
+        even if there's space for it on the right, or sometimes not showing it at all.
+
+        Instead, provide the actual main FrameView visible rect; the same coordinate
+        space that the highlight rects are provided in.
+
+2014-08-08  Timothy Horton  <timothy_horton@apple.com>
+
+        Additional items added to selection services menus are misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=135747
+        <rdar://problem/17933167>
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::setupServicesMenu):
+        Use NSSharingServicePickerStyleRollover for the rollover image services menu;
+        use NSSharingServicePickerStyleTextSelection for the selection services menu.
+
+        Set NSMenu's showsStateColumn to YES for selection services menus, so that
+        other items added to the menu line up correctly.
+
+        Remove an unncessary .get()
+
+2014-08-08  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        [EFL] Remove unnecessary ewk_private.h includes
+        https://bugs.webkit.org/show_bug.cgi?id=135753
+
+        Reviewed by Gyuyoung Kim.
+
+        Neither the below file uses the functionality from ewk_private.h.
+
+        * UIProcess/API/efl/ewk_context.cpp:
+        * UIProcess/API/efl/ewk_context_menu_item.cpp:
+        * UIProcess/API/efl/ewk_cookie_manager.cpp:
+        * UIProcess/API/efl/ewk_navigation_policy_decision.cpp:
+        * UIProcess/API/efl/ewk_popup_menu_item.cpp:
+        * UIProcess/API/efl/ewk_view.cpp:
+
+2014-08-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not use GtkWindow:resize-grip-visible with recent GTK+ versions
+        https://bugs.webkit.org/show_bug.cgi?id=135699
+
+        Reviewed by Philippe Normand.
+
+        Resize grips support have been removed from GTK+ since 3.13.4, the
+        API has been deprecated and does nothing.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseSetToplevelOnScreenWindow):
+        (resizeWebKitWebViewBaseFromAllocation):
+
+2014-08-07  Tim Horton  <timothy_horton@apple.com>
+
+        [Services with UI] Action menu does not appear if selection includes both text and an image
+        https://bugs.webkit.org/show_bug.cgi?id=135731
+        <rdar://problem/17837491>
+
+        Reviewed by Dean Jackson.
+
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::createNewWebProcess):
+        Initialize hasRichContentServices with the cached value.
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of SCRIPTED_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135729
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-07  Timothy Horton  <timothy_horton@apple.com>
+
+        setCustomSwipeViews inside didChangeBackForwardList client callback is ignored
+        https://bugs.webkit.org/show_bug.cgi?id=135633
+        <rdar://problem/17926507>
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didChangeBackForwardList):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::clearCustomSwipeViews): Deleted.
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::clearCustomSwipeViews): Deleted.
+        WebKit clears the set of custom swipe views at the end of WebPageProxy::didChangeBackForwardList,
+        *after* calling into the client. This means that if the client wants to setCustomSwipeViews in
+        didChangeBackForwardList, it won't be respected.
+
+        Since there's only one client of this SPI, let's just stop clearing the list of custom swipe
+        views in WebKit and leave that totally up to the client.
+
+2014-08-07  Enrica Casucci  <enrica@apple.com>
+
+        [Services with UI] Action menu does not appear if selection includes both text and an image.
+        https://bugs.webkit.org/show_bug.cgi?id=135731
+        <rdar://problem/17837491>
+
+        Reviewed by Brady Eidson.
+
+        Adding a new setting to ServicesController to communicate to the WebProcess if
+        there are services installed that can handle a combination of text and images.
+        This way ServicesOverlayController can decide if it appropriate to show the hightlight
+        based on the type of selection (text only or non text only). This information is retrieved
+        when the selection rects are collected by SelectionGatherer and used by
+        SelectionGatherer::Notifier to communicate the selection change.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::WebProcessCreationParameters):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/mac/ServicesController.h:
+        (WebKit::ServicesController::hasRichContentServices):
+        * UIProcess/mac/ServicesController.mm:
+        (WebKit::ServicesController::ServicesController):
+        (WebKit::ServicesController::refreshExistingServices):
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::selectionRectsDidChange):
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::ServicesOverlayController):
+        (WebKit::ServicesOverlayController::selectionRectsDidChange):
+        (WebKit::ServicesOverlayController::drawSelectionHighlight):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess):
+        (WebKit::WebProcess::initializeWebProcess):
+        (WebKit::WebProcess::setEnabledServices):
+        * WebProcess/WebProcess.h:
+        (WebKit::WebProcess::hasRichContentServices):
+        * WebProcess/WebProcess.messages.in:
+
+2014-08-07  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Fix several warnings of doxygen
+        https://bugs.webkit.org/show_bug.cgi?id=135643
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/efl/ewk_context_menu_item.h: Removed /info which is not doxygen keyword and unnecessary to the user.
+        * UIProcess/API/efl/ewk_cookie_manager.h: Fixed parameter name.
+        * UIProcess/API/efl/ewk_form_submission_request.h: Removed # from Eina_List because doxygen may not know the EFL structures.
+        * UIProcess/API/efl/ewk_page_group.h: Fixed to match with parameter name.
+        * UIProcess/API/efl/ewk_settings.h: Fixed wrong keyword and parameter name.
+        * UIProcess/API/efl/ewk_text_checker.h: Ditto.
+        * UIProcess/API/efl/ewk_view.h:
+        - Used escape string for the tag.
+        - Used @code, @endcode for media query example.
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of INPUT_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135672
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * PlatformGTK.cmake:
+
+2014-08-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Update glyphs to be more like Xcode 6
+        https://bugs.webkit.org/show_bug.cgi?id=135705
+
+        Reviewed by Joseph Pecoraro.
+
+        * Resources/DockBottom.pdf: Added.
+        * Resources/DockBottomLegacy.pdf: Copied from Source/WebKit/mac/Resources/Dock.pdf.
+        * Resources/DockRight.pdf: Added.
+        * Resources/DockRightLegacy.pdf: Copied from Source/WebKit2/Resources/DockRight.pdf.
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::createInspectorWindow): Use new images.
+        * WebKit2.xcodeproj/project.pbxproj: Added new images.
+
+2014-08-07  Oliver Hunt  <oliver@apple.com>
+
+        WebContent needs access to HSTS database due to some networking still being performed in process
+        https://bugs.webkit.org/show_bug.cgi?id=135711
+        <rdar://17940220>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Simple patch in the same theme as the equivalent network process
+        extension.  Provide an extension that covers the WebContent specific
+        HSTS file and consume it on launch.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::createNewWebProcess):
+        * UIProcess/WebContext.h:
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::webContentHSTSDatabasePath):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2014-08-07  Gordon Sheridan  <gordon_sheridan@apple.com>
+
+        Clear the m_previousItem member of HistoryControllers when it matches the HistoryItem being removed.
+        https://bugs.webkit.org/show_bug.cgi?id=135634
+        <rdar://problem/17388461>
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        (WebKit::WebBackForwardListProxy::removeItem):
+        Call WebCore::Page::clearPreviousItemFromAllPages() for each item removed from
+        the back/forward list to ensure the page URL is released from IconDatabase.
+
+2014-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use WebKitNavigationAction also for WebKitNavigationPolicyDecision
+        https://bugs.webkit.org/show_bug.cgi?id=135695
+
+        Reviewed by Gustavo Noronha Silva.
+
+        WebKitNavigationAction was introduced to extend WebKitWebView::create signal
+        and its API is mostly duplicated in WebKitNavigationPolicyDecision.
+        Use WebKitNavigationAction insternally in WebKitNavigationPolicyDecision and
+        deprecated all the duplicated API in favor of a single property navigation-action.
+
+        * UIProcess/API/gtk/WebKitDefines.h: Remove unused macro
+        WEBKIT_OBSOLETE and add WEBKIT_DEPRECATED and WEBKIT_DEPRECATED_FOR.
+        * UIProcess/API/gtk/WebKitNavigationPolicyDecision.cpp:
+        (_WebKitNavigationPolicyDecisionPrivate::~_WebKitNavigationPolicyDecisionPrivate):
+        Free the WebKitNavigationAction.
+        (webkitNavigationPolicyDecisionGetProperty): Add getter for
+        navigation-action and use WebKitNavigationAction in all other getters.
+        (webkit_navigation_policy_decision_class_init): Add navigation-action
+        property and deprecated all others except frame-name.
+        (webkit_navigation_policy_decision_get_navigation_action): Return the WebKitNavigationAction.
+        (webkit_navigation_policy_decision_get_navigation_type): Use WebKitNavigationAction.
+        (webkit_navigation_policy_decision_get_mouse_button): Ditto.
+        (webkit_navigation_policy_decision_get_modifiers): Ditto.
+        (webkit_navigation_policy_decision_get_request): Ditto.
+        (webkitNavigationPolicyDecisionCreate):
+        (webkitNewWindowPolicyDecisionCreate):
+        * UIProcess/API/gtk/WebKitNavigationPolicyDecision.h:
+        * UIProcess/API/gtk/WebKitNavigationPolicyDecisionPrivate.h:
+        * UIProcess/API/gtk/WebKitPolicyClient.cpp: Use a custom
+        PolicyClient class so that we receive a NavigationActionData in
+        the callbacks.
+        (attachPolicyClientToView):
+        (toWebKitNavigationType): Deleted.
+        (decidePolicyForNavigationAction): Deleted.
+        (decidePolicyForNewWindowAction): Deleted.
+        (decidePolicyForResponse): Deleted.
+        * UIProcess/API/gtk/WebKitResponsePolicyDecision.cpp:
+        (webkitResponsePolicyDecisionCreate):
+        * UIProcess/API/gtk/WebKitResponsePolicyDecisionPrivate.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml: Add new section for
+        deprecated symbols.
+        * UIProcess/API/gtk/docs/webkit2gtk-sections.txt: Add new symbols.
+
+2014-08-06  Antti Koivisto  <antti@apple.com>
+
+        Move Soup specific code out of WebCoreArgumentCoders.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=135665
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceRequest>::encode):
+        (IPC::ArgumentCoder<ResourceRequest>::decode):
+        (IPC::ArgumentCoder<ResourceError>::encode):
+        (IPC::ArgumentCoder<ResourceError>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        
+            Soup is the only client for this code. Move it to *Soup.cpp
+
+        * Shared/soup/WebCoreArgumentCodersSoup.cpp:
+        (IPC::ArgumentCoder<ResourceRequest>::encodePlatformData):
+        (IPC::ArgumentCoder<ResourceRequest>::decodePlatformData):
+        (IPC::ArgumentCoder<ResourceError>::encodePlatformData):
+        (IPC::ArgumentCoder<ResourceError>::decodePlatformData):
+
+2014-08-06  Tim Horton  <timothy_horton@apple.com>
+
+        Services overlay flashes a lot; should have some hysteresis before showing overlay
+        https://bugs.webkit.org/show_bug.cgi?id=135683
+        <rdar://problem/16878039>
+
+        Reviewed by Simon Fraser.
+
+        Don't show the highlight until it's been 200ms since the last change
+        in selection or change in which highlight is hovered, whichever was more recent.
+
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::ServicesOverlayController):
+        (WebKit::ServicesOverlayController::selectionRectsDidChange):
+        Keep track of when the selection last changed.
+
+        (WebKit::ServicesOverlayController::drawTelephoneNumberHighlightIfVisible):
+        Make establishHoveredTelephoneHighlight take a bool instead of Boolean.
+
+        (WebKit::ServicesOverlayController::mouseIsOverHighlight):
+        Factor mouseIsOverHighlight out of establishHoveredTelephoneHighlight and drawHighlight.
+
+        (WebKit::ServicesOverlayController::remainingTimeUntilHighlightShouldBeShown):
+        Return the amount of time until the highlight should be shown; this is
+        the maximum of (the difference between the last selection change and the timeout)
+        and (the difference between the last change in which highlight is hovered and the timeout).
+
+        Telephone number highlights are shown immediately, because they are already stable
+        by virtue of being expanded to include the entire telephone number.
+
+        (WebKit::ServicesOverlayController::repaintHighlightTimerFired):
+        (WebKit::ServicesOverlayController::drawHighlight):
+        If the highlight shouldn't be shown yet (because we haven't hit the two timeouts),
+        schedule a timer to repaint us around when we will hit the timeouts.
+
+        (WebKit::ServicesOverlayController::establishHoveredTelephoneHighlight):
+        (WebKit::ServicesOverlayController::mouseEvent):
+        Don't allow mouseUp to trigger the menu if we shouldn't be showing the overlay yet.
+
+2014-08-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] www.france24.com doesn't always load the page, sections stay white
+        https://bugs.webkit.org/show_bug.cgi?id=135684
+        <rdar://problem/17931712>
+
+        Reviewed by Tim Horton.
+        
+        It's possible for a UIScrollView for overflow to move between one scrolling tree node
+        and another. When this happens, we need to avoid unconditionally clearing the delegate
+        on the node that's being destroyed, because the new node will already have set the
+        UIScrollView delegate to its own delegate.
+
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::~ScrollingTreeOverflowScrollingNodeIOS):
+
+2014-08-06  Dean Jackson  <dino@apple.com>
+
+        ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED is not used anywhere. Remove it.
+        https://bugs.webkit.org/show_bug.cgi?id=135675
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-06  Brady Eidson and Jeffrey Pfau <beidson@apple.com>
+
+        IDB transactions never reset if the Web Process ends before cleaning up
+        https://bugs.webkit.org/show_bug.cgi?id=135218
+
+        Reviewed by Darin Adler and David Kilzer.
+
+        * DatabaseProcess/DatabaseToWebProcessConnection.cpp:
+        (WebKit::DatabaseToWebProcessConnection::didReceiveMessage):
+        (WebKit::DatabaseToWebProcessConnection::didReceiveSyncMessage): Added.
+        (WebKit::DatabaseToWebProcessConnection::didClose):
+        * DatabaseProcess/DatabaseToWebProcessConnection.h:
+
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp:
+        (WebKit::DatabaseProcessIDBConnection::resetTransactionSync): Added
+            Wait until the reset is complete before sending the sync reply.
+        (WebKit::DatabaseProcessIDBConnection::rollbackTransactionSync): Added.
+            Ditto.
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.h:
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.messages.in:
+
+        Keep track of all in progress transactions and make sure they’re cleaned up
+        whenever a connection to a WebProcess is broken:
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::unregisterConnection):
+        (WebKit::UniqueIDBDatabase::didCompleteTransactionOperation):
+        (WebKit::UniqueIDBDatabase::openBackingStoreTransaction):
+        (WebKit::UniqueIDBDatabase::resetBackingStoreTransaction):
+        (WebKit::UniqueIDBDatabase::didEstablishTransaction):
+        (WebKit::UniqueIDBDatabase::didResetTransaction):
+        (WebKit::UniqueIDBDatabase::resetAllTransactions):
+        (WebKit::UniqueIDBDatabase::finalizeRollback):
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::rollbackTransaction):
+
+        Add sync versions of reset/rollback:
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp:
+        (WebKit::WebIDBServerConnection::resetTransactionSync):
+        (WebKit::WebIDBServerConnection::rollbackTransactionSync):
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.h:
+
+2014-08-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement parsing for CSS scroll snap points
+        https://bugs.webkit.org/show_bug.cgi?id=134301
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Added ENABLE_CSS_SCROLL_SNAP
+
+2014-08-06  Andy Estes  <aestes@apple.com>
+
+        [iOS] Subresources referenced in converted QuickLook documents sometimes fail to load
+        https://bugs.webkit.org/show_bug.cgi?id=135676
+
+        Reviewed by David Kilzer.
+
+        QuickLookHandle needs to stay alive in order for its NSURLProtocol to service subresource loads originating
+        from the converted HTML document. Some of these loads happen dynamically after the main resource finishes
+        loading, so we cannot tie the lifetime of the QuickLookHandle to that of the main resource's ResourceLoader.
+        Instead, give ownership of the QuickLookHandle to DocumentLoader.
+
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResponseWithCertificateInfo): Stored the created QuickLookHandle in DocumentLoader.
+        (WebKit::WebResourceLoader::didReceiveData): Accessed DocumentLoader's QuickLookHandle.
+        (WebKit::WebResourceLoader::didFinishResourceLoad): Ditto.
+        (WebKit::WebResourceLoader::didFailResourceLoad): Ditto.
+        (WebKit::WebResourceLoader::didReceiveResource): Ditto.
+        * WebProcess/Network/WebResourceLoader.h: Removed m_quickLookHandle.
+
+2014-08-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Merge r171389, r171495, r171508, r171510, r171605, r171606, r171611, r171614, r171763 from ftlopt.
+
+    2014-08-06  Mark Hahnenberg  <mhahnenberg@apple.com>
+    
+            Refactor our current implementation of for-in
+            https://bugs.webkit.org/show_bug.cgi?id=134142
+    
+            Reviewed by Filip Pizlo.
+    
+            * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+            (WebKit::JSNPObject::invalidate): Fixed an invalid ASSERT that was crashing in debug builds.
+    
+2014-08-06  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (WebKit2): iOS Safari default encoding doesn't follow system language
+        https://bugs.webkit.org/show_bug.cgi?id=135667
+        <rdar://problem/17862892>
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/WebPreferencesDefinitions.h: Compute the actual proper default, don't
+        hardcode it to ISO-8859-1 hoping that someone else will correct it later.
+
+        * Shared/WebPreferencesStore.cpp: Added an include for WebPreferencesDefinitions.h
+        macro expansion to compile.
+
+        * UIProcess/WebPreferences.cpp: (WebKit::WebPreferences::createWithLegacyDefaults):
+        Added a FIXME.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm: (InitWebCoreSystemInterface):
+        We now use WKGetWebDefaultCFStringEncoding in WebCore, so it needs to be initialized.
+
+2014-08-06  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Add support for user scripts to WebKitUserContentManager
+        https://bugs.webkit.org/show_bug.cgi?id=134738
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add support for user scripts, to complement the user style sheet
+        support already present in WebKitUserContentManager. Most of the
+        moving parts are already present, so this just adds a boxed type
+        for user scripts (WebKitUserScript) and the corresponding methods
+        to add and remove scripts from the WebKitUserContentManager.
+
+        * UIProcess/API/gtk/WebKitUserContent.cpp: Add a WebKitUserScript
+        boxed type and its corresponding methods and enums.
+        (toUserScriptInjectionTime): Needed to convert
+        WebKitUserScriptInjectionTime values into its WebCore counterparts.
+        (_WebKitUserScript::_WebKitUserScript): Added.
+        (_WebKitUserScript::referenceCount): Ditto.
+        (webkit_user_script_ref):
+        (webkit_user_script_unref):
+        (webkit_user_script_new):
+        (webkitUserScriptGetUserScript): Internal method to obtain the
+        boxed WebCore::UserScript value.
+        * UIProcess/API/gtk/WebKitUserContent.h: Add the new public API
+        methods.
+        * UIProcess/API/gtk/WebKitUserContentManager.cpp: Implement the
+        methods for adding and removing user scripts.
+        (webkit_user_content_manager_add_script):
+        (webkit_user_content_manager_remove_all_scripts):
+        * UIProcess/API/gtk/WebKitUserContentManager.h: Add the new public
+        API methods.
+        * UIProcess/API/gtk/WebKitUserContentPrivate.h: Add the definition
+        for the new private function.
+        * UIProcess/API/gtk/docs/webkit2gtk-sections.txt: Include the
+        new public methods in the API documentation.
+
+2014-08-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Be able to disable gtk2 dependency
+        https://bugs.webkit.org/show_bug.cgi?id=135505
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Only build WebKitPluginProcess2 when
+        ENABLE_PLUGIN_PROCESS_GTK2 is ON.
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+        (WebKit::ProcessLauncher::launchProcess): Do not try to launch
+        WebKitPluginProcess2 executable when ENABLE_PLUGIN_PROCESS_GTK2 is OFF.
+
+2014-08-05  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r164337): Pages are sometimes cut off/oriented incorrectly after using WKThumbnailView
+        https://bugs.webkit.org/show_bug.cgi?id=135622
+        <rdar://problem/17202556>
+
+        Reviewed by Dan Bernstein.
+
+        In some cases (when the page changed scroll offset while thumbnailed),
+        when transitioning back to thumbnail scale = 1, we would get the math
+        wrong and end up with a non-identity sublayerTransform on the DrawingArea.
+
+        Luckily, none of this code is necessary anymore, as the only client
+        of WKThumbnailView only uses its snapshotting mode.
+
+        * Shared/ImageOptions.h:
+        Remove SnapshotOptionsRespectDrawingAreaTransform; DrawingArea no longer
+        has a rootLayerTransform().
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setThumbnailScale): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        (WebKit::WebPage::scaledSnapshotWithOptions):
+        (WebKit::WebPage::snapshotAtSize):
+        
+        (WebKit::WebPage::setThumbnailScale): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        Remove setThumbnailScale and SnapshotOptionsRespectDrawingAreaTransform.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didCommitLoad):
+        Revert this to its state before r164337, as we no longer have "thumbnail scale".
+
+        * UIProcess/API/Cocoa/_WKThumbnailView.h:
+        * UIProcess/API/Cocoa/_WKThumbnailView.mm:
+        (-[_WKThumbnailView initWithFrame:fromWKView:]):
+        (-[_WKThumbnailView _viewWasUnparented]):
+        (-[_WKThumbnailView _viewWasParented]):
+        (-[_WKThumbnailView _requestSnapshotIfNeeded]):
+        (-[_WKThumbnailView setScale:]):
+        Clean up code assuming _shouldApplyThumbnailScale = NO, _usesSnapshot = YES.
+
+        (-[_WKThumbnailView setUsesSnapshot:]):
+        (-[_WKThumbnailView usesSnapshot]):
+        Always return YES from usesSnapshot; we only support snapshotting WKThumbnailViews.
+        Ignore setUsesSnapshot.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _setThumbnailView:]):
+        (-[WKView _updateThumbnailViewLayer]):
+        Stop checking usesSnapshot; it's always true.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::setRootLayerTransform): Deleted.
+        * WebProcess/WebPage/DrawingArea.cpp:
+        (WebKit::DrawingArea::rootLayerTransform): Deleted.
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::setRootLayerTransform): Deleted.
+        Remove rootLayerTransform() and setRootLayerTransform().
+
+2014-08-05  Peyton Randolph  <prandolph@apple.com>
+
+        Rename MAC_LONG_PRESS feature flag to LONG_MOUSE_PRESS.
+        https://bugs.webkit.org/show_bug.cgi?id=135276
+
+        Reviewed by Beth Dakin.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-04  Andy Estes  <aestes@apple.com>
+
+        [iOS] The raw bytes of an iWork document's PDF preview are displayed rather than the PDF itself
+        https://bugs.webkit.org/show_bug.cgi?id=135596
+
+        Reviewed by David Kilzer.
+
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResponseWithCertificateInfo): If the response will be handled by
+        QuickLook, do not call ResourceLoader::didReceiveResponse. It will be called later by
+        WebResourceLoaderQuickLookDelegate once converted data is received.
+
+2014-08-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * UIProcess/WebContext.h:
+
+2014-08-05  Oliver Hunt  <oliver@apple.com>
+
+        SSO expects to be able to walk parent application's bundle
+        https://bugs.webkit.org/show_bug.cgi?id=135581
+        <rdar://problem/17864079>
+
+        Reviewed by Alexey Proskuryakov.
+
+        SSO expects to be able to walk the parent application's
+        bundle looking for Info plists. To allow this to actually
+        work we provide an extension from the ui process that
+        covers the bundle directory, and then in the profile
+        restrict access to the ability to read directories and
+        files named Info.plist.
+
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::platformInitializeNetworkProcessCocoa):
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+        * Shared/Network/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode):
+        (WebKit::NetworkProcessCreationParameters::decode):
+        * Shared/Network/NetworkProcessCreationParameters.h:
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::ensureNetworkProcess):
+        (WebKit::WebContext::parentBundleDirectory):
+        * UIProcess/WebContext.h:
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::parentBundleDirectory):
+
+2014-08-04  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add a flag for the CSS Selectors level 4 implementation
+        https://bugs.webkit.org/show_bug.cgi?id=135535
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        Check for null frame when processing geolocation authorization request
+        https://bugs.webkit.org/show_bug.cgi?id=135577
+        <rdar://problem/17896295>
+
+        Reviewed by Geoffrey Garen.
+
+        I could have put the null check in GeolocationController instead of the WebKit layer,
+        but that would be a little weird as GeolocationController knows nothing about how
+        the WebKit layer decides what to do with requests.
+
+        * WebProcess/Geolocation/GeolocationPermissionRequestManager.cpp:
+        (WebKit::GeolocationPermissionRequestManager::startRequestForGeolocation):
+
+2014-08-02  Jeremy Jones  <jeremyj@apple.com>
+
+        Support both window and view based video fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=135525
+
+        Reviewed by Simon Fraser.
+
+        Parenting in the view instead of the window gives the fullscreen implementation more latitude 
+        in how it implements the animation.
+
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::setupFullscreenWithID): Use view instead of window.
+        * WebProcess/ios/WebVideoFullscreenManager.mm:
+        (WebKit::clientRectForNode): Use client rect instead of screen rect.
+        (WebKit::WebVideoFullscreenManager::enterFullscreenForNode): ditto
+        (WebKit::WebVideoFullscreenManager::exitFullscreenForNode): ditto
+        (WebKit::screenRectForNode): Deleted.
+
+2014-08-01  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/17891752> [iOS] WebKit links against libraries it doesn’t use
+        https://bugs.webkit.org/show_bug.cgi?id=135536
+
+        Reviewed by Tim Horton.
+
+        * Configurations/WebKit.xcconfig: Removed -lassertion_extension and -framework MobileAsset
+        from FRAMEWORK_AND_LIBRARY_LDFLAGS_iphonesimulator.
+
+2014-08-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS WK2] Add extension read permission to network sandbox profile
+        <rdar://problem/17671574>
+
+        Reviewed by Alexey Proskuryakov and Oliver Hunt.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+
+2014-08-01  Oliver Hunt  <oliver@apple.com>
+
+        Various frameworks may want to use the container temp directory, so our current restrictions are too tight
+        https://bugs.webkit.org/show_bug.cgi?id=135518
+        <rdar://17869279>
+
+        Reviewed by Anders Carlsson.
+
+        We don't (and can't) have complete knowledge of what different frameworks
+        will want to use the container temporary directory for, and so our
+        current attempt to heavily restrict access is simply too tight.
+
+        This patch recognises this by simply giving read-write access to the
+        entire NSTemporary() directory (e.g. $container/tmp in the general case),
+        rather than the single sub directory we wishfully thought that we would
+        be able to get away with.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::createNewWebProcess):
+        (WebKit::WebContext::mediaCacheDirectory): Deleted.
+        * UIProcess/WebContext.h:
+        * UIProcess/efl/WebContextEfl.cpp:
+        (WebKit::WebContext::containerTemporaryDirectory):
+        (WebKit::WebContext::platformMediaCacheDirectory): Deleted.
+        * UIProcess/gtk/WebContextGtk.cpp:
+        (WebKit::WebContext::containerTemporaryDirectory):
+        (WebKit::WebContext::platformMediaCacheDirectory): Deleted.
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::containerTemporaryDirectory):
+        (WebKit::WebContext::platformMediaCacheDirectory): Deleted.
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2014-08-01  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/17862013> REGRESSION (r169357): Disabling "allow plug-ins" doesn't stick on quit/relaunch
+        https://bugs.webkit.org/show_bug.cgi?id=135511
+
+        Reviewed by Alexey Proskuryakov.
+
+        Since the values map in the preferences store doesn’t include values that are equal to the
+        defaults, we need to update it when a new default is registered.
+
+        * UIProcess/WebPreferences.cpp:
+        (WebKit::WebPreferences::createWithLegacyDefaults): Changed to use new member functions
+        for registering defaults.
+        (WebKit::WebPreferences::registerDefaultBoolValueForKey): Added. Sets an override default
+        in the store, and sets the user default, if there is one, on top of it.
+        (WebKit::WebPreferences::registerDefaultUInt32ValueForKey): Ditto.
+        * UIProcess/WebPreferences.h: Declared new member functions for getting the user default
+        value for a key.
+
+        * UIProcess/efl/WebPreferencesEfl.cpp:
+        (WebKit::WebPreferences::platformGetStringUserValueForKey): Added an implementation that
+        returns false, because the EFL port doesn’t support persistent user defaults.
+        (WebKit::WebPreferences::platformGetBoolUserValueForKey): Ditto.
+        (WebKit::WebPreferences::platformGetUInt32UserValueForKey): Ditto.
+        (WebKit::WebPreferences::platformGetDoubleUserValueForKey): Ditto.
+
+        * UIProcess/gtk/WebPreferencesGtk.cpp:
+        (WebKit::WebPreferences::platformGetStringUserValueForKey): Ditto for the GTK port.
+        (WebKit::WebPreferences::platformGetBoolUserValueForKey): Ditto.
+        (WebKit::WebPreferences::platformGetUInt32UserValueForKey): Ditto.
+        (WebKit::WebPreferences::platformGetDoubleUserValueForKey): Ditto.
+
+        * UIProcess/mac/WebPreferencesMac.mm:
+        (WebKit::WebPreferences::platformGetStringUserValueForKey): Added. Replaces
+        setStringValueIfInUserDefaults, on which it is based.
+        (WebKit::WebPreferences::platformGetBoolUserValueForKey): Similarly for booleans.
+        (WebKit::WebPreferences::platformGetUInt32UserValueForKey): Similarly for integers.
+        (WebKit::WebPreferences::platformGetDoubleUserValueForKey): Similarly for doubles.
+        (WebKit::WebPreferences::platformInitializeStore): Changed to use the above functions.
+
+2014-08-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Fullscreen mode for some applications shows only a black screen.
+        https://bugs.webkit.org/show_bug.cgi?id=135493
+        <rdar://problem/17628212>
+
+        Reviewed by Jer Noble.
+
+        In some applications, the window hosting the WKView is an InProcess layer hosting mode.
+        The fullscreen window created by the WKFullScreenWindowController defaults to an
+        OutOfProcess mode.
+
+        When this kind of mismatch is encountered, the WK2 layer in the UI process is supposed
+        to send a message back to the WebProcess indicating that the layer hosting mode of the
+        containing window is different, so that the WebProcess can adjust its logic accordingly.
+        Unfortunately, the notification that this had happened was not getting sent to the
+        WebProcess due to an optimization in window state change logic (see Bug 135509 for
+        details).
+
+        The fix is to check layer hosting mode state when a WKView is added to a window, and
+        notify the WebProcess when it needs to change state to match.
+        
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView viewDidMoveToWindow]): When moving to a new window, always call
+        'layerHostingModeDidChange' to pick up any changes in the layer hosting mode.
+
+2014-08-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [CMake] GTK and EFL are using PROJECT_VERSION_PATCH to define the micro version
+        https://bugs.webkit.org/show_bug.cgi?id=135501
+
+        Reviewed by Gyuyoung Kim.
+
+        Use PROJECT_VERSION_MICRO instead.
+
+        * UIProcess/API/efl/EWebKit2.h.in:
+        * UIProcess/API/gtk/WebKitVersion.h.in:
+
+2014-08-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Add missing sections to documentation.
+
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml: Add
+        WebKitUserContent and WebKitUserContentManager sections to the
+        documentation.
+
+2014-08-01  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Unable to do make install since r171901
+        https://bugs.webkit.org/show_bug.cgi?id=135497
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Removed ewk_defins.h from the installation list.
+
 2014-07-31  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL][WK2] MiniBrower comes to crash when combo box is pressed

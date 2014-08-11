@@ -67,8 +67,10 @@ WebInspector.DebuggerManager = function()
     this._updateBreakOnExceptionsState();
 
     function restoreBreakpointsSoon() {
+        this._restoringBreakpoints = true;
         for (var cookie of this._breakpointsSetting.value)
             this.addBreakpoint(new WebInspector.Breakpoint(cookie));
+        delete this._restoringBreakpoints;
     }
 
     // Ensure that all managers learn about restored breakpoints,
@@ -101,18 +103,12 @@ WebInspector.DebuggerManager.prototype = {
 
     set breakpointsEnabled(enabled)
     {
-        if (this._breakpointsEnabled === enabled)
+        if (this._breakpointsEnabledSetting.value === enabled)
             return;
 
         this._breakpointsEnabledSetting.value = enabled;
 
         this.dispatchEventToListeners(WebInspector.DebuggerManager.Event.BreakpointsEnabledDidChange);
-
-        this._allExceptionsBreakpoint.dispatchEventToListeners(WebInspector.Breakpoint.Event.ResolvedStateDidChange);
-        this._allUncaughtExceptionsBreakpoint.dispatchEventToListeners(WebInspector.Breakpoint.Event.ResolvedStateDidChange);
-
-        for (var i = 0; i < this._breakpoints.length; ++i)
-            this._breakpoints[i].dispatchEventToListeners(WebInspector.Breakpoint.Event.ResolvedStateDidChange);
 
         DebuggerAgent.setBreakpointsActive(enabled);
 
@@ -310,6 +306,11 @@ WebInspector.DebuggerManager.prototype = {
             return;
 
         console.assert(breakpoint.identifier === breakpointIdentifier);
+
+        if (!breakpoint.sourceCodeLocation.sourceCode) {
+            var sourceCodeLocation = this._sourceCodeLocationFromPayload(location);
+            breakpoint.sourceCodeLocation.sourceCode = sourceCodeLocation.sourceCode;
+        }
 
         breakpoint.resolved = true;
     },
@@ -524,9 +525,11 @@ WebInspector.DebuggerManager.prototype = {
         if (breakpoint.identifier || breakpoint.disabled)
             return;
 
-        // Enable breakpoints since a breakpoint is being set. This eliminates
-        // a multi-step process for the user that can be confusing.
-        this.breakpointsEnabled = true;
+        if (!this._restoringBreakpoints) {
+            // Enable breakpoints since a breakpoint is being set. This eliminates
+            // a multi-step process for the user that can be confusing.
+            this.breakpointsEnabled = true;
+        }
 
         function didSetBreakpoint(error, breakpointIdentifier, locations)
         {

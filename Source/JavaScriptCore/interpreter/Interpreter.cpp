@@ -47,7 +47,6 @@
 #include "JSBoundFunction.h"
 #include "JSNameScope.h"
 #include "JSNotAnObject.h"
-#include "JSPropertyNameIterator.h"
 #include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
@@ -1181,7 +1180,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     if (numVariables || numFunctions) {
         BatchedTransitionOptimizer optimizer(vm, variableObject);
         if (variableObject->next())
-            variableObject->globalObject()->varInjectionWatchpoint()->fireAll();
+            variableObject->globalObject()->varInjectionWatchpoint()->fireAll("Executed eval, fired VarInjection watchpoint");
 
         for (unsigned i = 0; i < numVariables; ++i) {
             const Identifier& ident = codeBlock->variable(i);

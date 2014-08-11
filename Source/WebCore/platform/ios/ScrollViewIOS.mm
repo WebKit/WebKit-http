@@ -161,12 +161,12 @@ void ScrollView::setActualScrollPosition(const IntPoint& position)
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
-float ScrollView::platformTopContentInset(float) const
+float ScrollView::platformTopContentInset() const
 {
     return 0;
 }
 
-void ScrollView::platformSetTopContentInset()
+void ScrollView::platformSetTopContentInset(float)
 {
 }
 
@@ -193,6 +193,16 @@ IntSize ScrollView::platformVisibleContentSize(bool includeScrollbars) const
     return expandedIntSize(FloatSize([scrollView() documentVisibleRect].size));
     END_BLOCK_OBJC_EXCEPTIONS;
     return IntSize();
+}
+
+IntRect ScrollView::platformVisibleContentRectIncludingObscuredArea(bool includeScrollbars) const
+{
+    return platformVisibleContentRect(includeScrollbars);
+}
+
+IntSize ScrollView::platformVisibleContentSizeIncludingObscuredArea(bool includeScrollbars) const
+{
+    return platformVisibleContentSize(includeScrollbars);
 }
 
 LegacyTileCache* ScrollView::legacyTileCache()

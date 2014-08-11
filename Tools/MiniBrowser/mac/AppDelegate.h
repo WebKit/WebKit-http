@@ -32,6 +32,6 @@
 
 - (void)browserWindowWillClose:(NSWindow *)window;
 
-- (IBAction)toggleUseWebKit2ByDefault:(id)sender;
+- (void)didChangeSettings;
 
 @end

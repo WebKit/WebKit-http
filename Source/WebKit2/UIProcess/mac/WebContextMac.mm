@@ -323,16 +323,37 @@ String WebContext::platformDefaultNetworkingHSTSDatabasePath() const
 #endif
 }
 
-String WebContext::platformMediaCacheDirectory() const
-{
 #if PLATFORM(IOS)
-    String path = NSTemporaryDirectory();
-    path = path + "/MediaCache";
-    return stringByResolvingSymlinksInPath(path);
-#else
-    notImplemented();
-    return [@"" stringByStandardizingPath];
+String WebContext::parentBundleDirectory() const
+{
+    return [[[NSBundle mainBundle] bundlePath] stringByStandardizingPath];
+}
+
+String WebContext::webContentHSTSDatabasePath() const
+{
+    String path = pathForProcessContainer();
+    if (path.isEmpty())
+        path = NSHomeDirectory();
+
+    path = path + "/Library/Caches/com.apple.WebKit.WebContent/";
+    path = stringByResolvingSymlinksInPath(path);
+
+    NSError *error = nil;
+    NSString* nsPath = path;
+    if (![[NSFileManager defaultManager] createDirectoryAtPath:nsPath withIntermediateDirectories:YES attributes:nil error:&error]) {
+        NSLog(@"could not create \"%@\", error %@", nsPath, error);
+        return String();
+    }
+
+    return path + "/HSTS.plist";
+}
+
 #endif
+
+String WebContext::containerTemporaryDirectory() const
+{
+    String path = NSTemporaryDirectory();
+    return stringByResolvingSymlinksInPath(path);
 }
 
 String WebContext::platformDefaultWebSQLDatabaseDirectory()

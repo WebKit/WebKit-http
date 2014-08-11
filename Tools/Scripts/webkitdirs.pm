@@ -831,16 +831,8 @@ sub builtDylibPathForName
     determineConfigurationProductDir();
 
     if (isGtk()) {
-        # WebKitGTK+ for GTK2, WebKitGTK+ for GTK3, and WebKit2 respectively.
-        my @libraries = ("libwebkitgtk-1.0", "libwebkitgtk-3.0", "libwebkit2gtk-3.0");
         my $extension = isDarwin() ? ".dylib" : ".so";
-        my $builtLibraryPath = "$configurationProductDir/lib/";
-
-        foreach $libraryName (@libraries) {
-            my $libraryPath = "$builtLibraryPath" . $libraryName . $extension;
-            return $libraryPath if -e $libraryPath;
-        }
-        return "NotFound";
+        return "$configurationProductDir/lib/libwebkit2gtk-4.0" . $extension;
     }
     if (isHaiku()) {
         if (isWK2()) {
@@ -1771,6 +1763,10 @@ sub buildXCodeProject($$@)
         push(@extraOptions, "clean");
     }
 
+    push(@extraOptions, ("-sdk", "iphonesimulator")) if willUseIOSSimulatorSDKWhenBuilding();
+    push(@extraOptions, ("-sdk", "iphoneos.internal")) if willUseIOSDeviceSDKWhenBuilding();
+
+    chomp($ENV{DSYMUTIL_NUM_THREADS} = `sysctl -n hw.activecpu`);
     return system "xcodebuild", "-project", "$project.xcodeproj", @extraOptions;
 }
 
@@ -1790,7 +1786,7 @@ sub buildVisualStudioProject
     dieIfWindowsPlatformSDKNotInstalled() if $willUseVCExpressWhenBuilding;
 
     chomp($project = `cygpath -w "$project"`) if isCygwin();
-    
+
     my $action = "/build";
     if ($clean) {
         $action = "/clean";

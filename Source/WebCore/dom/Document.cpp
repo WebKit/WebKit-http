@@ -3520,9 +3520,6 @@ void Document::unregisterCollection(HTMLCollection& collection)
     if (!collection.isRootedAtDocument())
         return;
 
-    ASSERT(m_inInvalidateNodeListAndCollectionCaches
-        ? m_collectionsInvalidatedAtDocument.isEmpty()
-        : m_collectionsInvalidatedAtDocument.contains(&collection));
     m_collectionsInvalidatedAtDocument.remove(&collection);
 }
 
@@ -4919,7 +4916,7 @@ void Document::postTask(Task task)
             return;
 
         Page* page = document->page();
-        if ((page && page->defersLoading()) || !document->m_pendingTasks.isEmpty())
+        if ((page && page->defersLoading() && document->activeDOMObjectsAreSuspended()) || !document->m_pendingTasks.isEmpty())
             document->m_pendingTasks.append(WTF::move(*task.release()));
         else
             task->performTask(*document);

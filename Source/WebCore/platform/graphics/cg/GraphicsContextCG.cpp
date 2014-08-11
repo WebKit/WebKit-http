@@ -169,18 +169,11 @@ void GraphicsContext::restorePlatformState()
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
 }
 
-void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, float scale, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
+void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
 {
     RetainPtr<CGImageRef> image(imagePtr);
 
     float currHeight = orientation.usesWidthAsHeight() ? CGImageGetWidth(image.get()) : CGImageGetHeight(image.get());
-#if PLATFORM(IOS)
-    // Unapply the scaling since we are getting this from a scaled bitmap.
-    currHeight /= scale;
-#else
-    UNUSED_PARAM(scale);
-#endif
-
     if (currHeight <= srcRect.y())
         return;
 
@@ -221,9 +214,6 @@ void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSi
             subimageRect.setHeight(ceilf(subimageRect.height() + topPadding));
             adjustedDestRect.setHeight(subimageRect.height() / yScale);
 
-#if PLATFORM(IOS)
-            subimageRect.scale(scale, scale);
-#endif
 #if CACHE_SUBIMAGES
             image = subimageCache().getSubimage(image.get(), subimageRect);
 #else
@@ -1161,7 +1151,19 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float lineWidth)
 
     if (m_state.strokePattern)
         applyStrokePattern();
-    CGContextStrokeRectWithWidth(context, rect, lineWidth);
+
+    // Using CGContextAddRect and CGContextStrokePath to stroke rect rather than
+    // convenience functions (CGContextStrokeRect/CGContextStrokeRectWithWidth).
+    // The convenience functions currently (in at least OSX 10.9.4) fail to
+    // apply some attributes of the graphics state in certain cases
+    // (as identified in https://bugs.webkit.org/show_bug.cgi?id=132948)
+    CGContextSaveGState(context);
+    setStrokeThickness(lineWidth);
+
+    CGContextAddRect(context, rect);
+    CGContextStrokePath(context);
+
+    CGContextRestoreGState(context);
 }
 
 void GraphicsContext::setLineCap(LineCap cap)

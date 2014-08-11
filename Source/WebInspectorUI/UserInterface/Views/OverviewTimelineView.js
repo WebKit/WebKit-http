@@ -25,11 +25,11 @@
 
 WebInspector.OverviewTimelineView = function(recording)
 {
-    WebInspector.TimelineView.call(this);
-
-    this._recording = recording;
+    WebInspector.TimelineView.call(this, recording);
 
     this.navigationSidebarTreeOutline.onselect = this._treeElementSelected.bind(this);
+
+    this._recording = recording;
 
     var columns = {"graph": {width: "100%"}};
 
@@ -105,7 +105,7 @@ WebInspector.OverviewTimelineView.prototype = {
             }
         }
 
-        if (!this.currentTime !== oldCurrentTime) {
+        if (this.currentTime !== oldCurrentTime) {
             var selectedTreeElement = this.navigationSidebarTreeOutline.selectedTreeElement;
             var selectionWasHidden = selectedTreeElement && selectedTreeElement.hidden;
 

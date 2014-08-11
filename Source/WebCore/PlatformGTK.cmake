@@ -41,6 +41,7 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
     platform/graphics/GraphicsContext3DPrivate.cpp
+    platform/graphics/ImageSource.cpp
     platform/graphics/OpenGLShims.cpp
     platform/graphics/WOFFFileFormat.cpp
 
@@ -100,7 +101,23 @@ list(APPEND WebCore_SOURCES
 
     platform/gtk/GamepadsGtk.cpp
 
+    platform/image-decoders/ImageDecoder.cpp
+
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
+
+    platform/image-decoders/gif/GIFImageDecoder.cpp
+    platform/image-decoders/gif/GIFImageReader.cpp
+
+    platform/image-decoders/ico/ICOImageDecoder.cpp
+
+    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
+
+    platform/image-decoders/bmp/BMPImageDecoder.cpp
+    platform/image-decoders/bmp/BMPImageReader.cpp
+
+    platform/image-decoders/png/PNGImageDecoder.cpp
+
+    platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/linux/GamepadDeviceLinux.cpp
 
@@ -382,8 +399,8 @@ if (WTF_USE_EGL)
     )
 endif ()
 
-if (ENABLE_WEBKIT2)
-    # WebKit2 needs a version of WebCore compiled against GTK+2, so we've isolated all the GTK+
+if (ENABLE_PLUGIN_PROCESS_GTK2)
+    # WebKitPluginProcess2 needs a version of WebCore compiled against GTK+2, so we've isolated all the GTK+
     # dependent files into a separate library which can be used to construct a GTK+2 WebCore
     # for the plugin process.
     add_library(WebCorePlatformGTK2 ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
@@ -669,9 +686,7 @@ foreach (file ${GObjectDOMBindingsStable_IDL_FILES})
     get_filename_component(classname ${file} NAME_WE)
     list(APPEND GObjectDOMBindingsStable_CLASS_LIST ${classname})
     list(APPEND GObjectDOMBindingsStable_INSTALLED_HEADERS ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}.h)
-    if (EXISTS "${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}Unstable.h")
-        list(APPEND GObjectDOMBindingsUnstable_INSTALLED_HEADERS ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}Unstable.h)
-    endif ()
+    list(APPEND GObjectDOMBindingsUnstable_INSTALLED_HEADERS ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}Unstable.h)
 endforeach ()
 
 foreach (file ${GObjectDOMBindingsUnstable_IDL_FILES})
@@ -749,13 +764,18 @@ file(WRITE ${CMAKE_BINARY_DIR}/gtkdoc-webkitdom.cfg
     "headers=${GObjectDOMBindingsStable_INSTALLED_HEADERS}\n"
 )
 
-set(GObjectDOMBindings_INSTALLED_HEADERS ${GObjectDOMBindingsStable_INSTALLED_HEADERS} ${GObjectDOMBindingsUnstable_INSTALLED_HEADERS})
-install(FILES ${GObjectDOMBindings_INSTALLED_HEADERS}
+install(FILES ${GObjectDOMBindingsStable_INSTALLED_HEADERS}
         DESTINATION "${WEBKITGTK_HEADER_INSTALL_DIR}/webkitdom"
 )
 
+# Make unstable header optional if they don't exist
+install(FILES ${GObjectDOMBindingsUnstable_INSTALLED_HEADERS}
+        DESTINATION "${WEBKITGTK_HEADER_INSTALL_DIR}/webkitdom"
+        OPTIONAL
+)
+
 # Some installed headers are not on the list of headers used for gir generation.
-set(GObjectDOMBindings_GIR_HEADERS ${GObjectDOMBindings_INSTALLED_HEADERS})
+set(GObjectDOMBindings_GIR_HEADERS ${GObjectDOMBindingsStable_INSTALLED_HEADERS})
 list(REMOVE_ITEM GObjectDOMBindings_GIR_HEADERS
      bindings/gobject/WebKitDOMEventTarget.h
      bindings/gobject/WebKitDOMNodeFilter.h

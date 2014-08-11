@@ -26,10 +26,20 @@
 #ifndef TypeSet_h
 #define TypeSet_h
 
+#include "StructureIDTable.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Vector.h>
+
+namespace Inspector { namespace TypeBuilder  { 
+template<typename T>
+class Array;
+}}
+
+namespace Inspector { 
+class InspectorObject;
+}
 
 namespace JSC {
 
@@ -44,8 +54,7 @@ enum RuntimeType {
     TypeMachineInt         = 0x10,
     TypeNumber             = 0x20,
     TypeString             = 0x40,
-    TypePrimitive          = 0x80,
-    TypeObject             = 0x100
+    TypeObject             = 0x80
 };
 
 class StructureShape : public RefCounted<StructureShape> {
@@ -58,12 +67,19 @@ public:
     String propertyHash();
     void markAsFinal();
     void addProperty(RefPtr<StringImpl>);
-    static String leastUpperBound(Vector<RefPtr<StructureShape>>*);
     String stringRepresentation();
+    PassRefPtr<Inspector::InspectorObject> inspectorRepresentation();
+    void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? "Object" : name); }
+    String constructorName() { return m_constructorName; }
+    void setProto(PassRefPtr<StructureShape> shape) { m_proto = shape; }
 
 private:
-    HashMap<RefPtr<StringImpl>, bool> m_fields;         
+    static String leastCommonAncestor(const Vector<RefPtr<StructureShape>>*);
+
+    Vector<RefPtr<StringImpl>> m_fields;
+    RefPtr<StructureShape> m_proto;
     std::unique_ptr<String> m_propertyHash;
+    String m_constructorName;
     bool m_final;
 };
 
@@ -72,17 +88,21 @@ class TypeSet : public RefCounted<TypeSet> {
 public:
     static PassRefPtr<TypeSet> create() { return adoptRef(new TypeSet); }
     TypeSet();
-    void addTypeForValue(JSValue v, PassRefPtr<StructureShape>);
+    void addTypeForValue(JSValue v, PassRefPtr<StructureShape>, StructureID);
     static RuntimeType getRuntimeTypeForValue(JSValue);
-    JS_EXPORT_PRIVATE String seenTypes();
+    JS_EXPORT_PRIVATE String seenTypes() const;
+    String displayName() const;
+    PassRefPtr<Inspector::TypeBuilder::Array<String>> allPrimitiveTypeNames() const;
+    PassRefPtr<Inspector::TypeBuilder::Array<Inspector::InspectorObject>> allStructureRepresentations() const;
 
 private:
-    uint32_t m_seenTypes;
+    String leastCommonAncestor() const;
     void dumpSeenTypes();
-    Vector<RefPtr<StructureShape>>* m_structureHistory;
-    bool m_mightHaveDuplicatesInStructureHistory;
-    void removeDuplicatesInStructureHistory();
+    bool doesTypeConformTo(uint32_t test) const;
 
+    uint32_t m_seenTypes;
+    Vector<RefPtr<StructureShape>>* m_structureHistory;
+    HashMap<StructureID, uint8_t> m_structureIDHistory;
 };
 
 } //namespace JSC

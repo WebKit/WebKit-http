@@ -179,7 +179,7 @@ public:
 
     static Masquerader* create(VM& vm, JSGlobalObject* globalObject)
     {
-        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll();
+        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll("Masquerading object allocated");
         Structure* structure = createStructure(vm, globalObject, jsNull());
         Masquerader* result = new (NotNull, allocateCell<Masquerader>(vm.heap, sizeof(Masquerader))) Masquerader(vm, structure);
         result->finishCreation(vm);
@@ -272,7 +272,7 @@ public:
             m_delegate.set(vm, this, delegate);
     }
 
-    static const unsigned StructureFlags = JSC::HasImpureGetOwnPropertySlot | JSC::OverridesGetOwnPropertySlot | JSC::OverridesVisitChildren | Base::StructureFlags;
+    static const unsigned StructureFlags = JSC::HasImpureGetOwnPropertySlot | JSC::OverridesGetOwnPropertySlot | Base::StructureFlags;
 
     static bool getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName name, PropertySlot& slot)
     {
@@ -661,20 +661,7 @@ GlobalObject::GlobalObject(VM& vm, Structure* structure)
 
 static inline String stringFromUTF(const char* utf8)
 {
-    // Find the the first non-ascii character, or nul.
-    const char* pos = utf8;
-    while (*pos > 0)
-        pos++;
-    size_t asciiLength = pos - utf8;
-    
-    // Fast case - string is all ascii.
-    if (!*pos)
-        return String(utf8, asciiLength);
-    
-    // Slow case - contains non-ascii characters, use fromUTF8WithLatin1Fallback.
-    ASSERT(*pos < 0);
-    ASSERT(strlen(utf8) == asciiLength + strlen(pos));
-    return String::fromUTF8WithLatin1Fallback(utf8, asciiLength + strlen(pos));
+    return String::fromUTF8WithLatin1Fallback(utf8, strlen(utf8));
 }
 
 static inline SourceCode jscSource(const char* utf8, const String& filename)

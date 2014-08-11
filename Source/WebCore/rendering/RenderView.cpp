@@ -523,6 +523,9 @@ static inline bool rendererObscuresBackground(RenderElement* rootObject)
     if (rootObject->rendererForRootBackground().style().backgroundClip() == TextFillBox)
         return false;
 
+    if (style.hasBorderRadius())
+        return false;
+
     return true;
 }
 
@@ -831,12 +834,6 @@ void RenderView::setMaximalOutlineSize(int o)
 
 void RenderView::setSelection(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode blockRepaintMode)
 {
-#if ENABLE(SERVICE_CONTROLS)
-    // Clear the current rects and create a notifier for the new rects we are about to gather.
-    // The Notifier updates the Editor when it goes out of scope and is destroyed.
-    std::unique_ptr<SelectionRectGatherer::Notifier> rectNotifier = m_selectionRectGatherer.clearAndCreateNotifier();
-#endif // ENABLE(SERVICE_CONTROLS)
-
     // Make sure both our start and end objects are defined.
     // Check www.msnbc.com and try clicking around to find the case where this happened.
     if ((start && !end) || (end && !start))
@@ -850,6 +847,11 @@ void RenderView::setSelection(RenderObject* start, int startPos, RenderObject* e
         return;
     }
 
+#if ENABLE(SERVICE_CONTROLS)
+    // Clear the current rects and create a notifier for the new rects we are about to gather.
+    // The Notifier updates the Editor when it goes out of scope and is destroyed.
+    std::unique_ptr<SelectionRectGatherer::Notifier> rectNotifier = m_selectionRectGatherer.clearAndCreateNotifier();
+#endif // ENABLE(SERVICE_CONTROLS)
     // Set global positions for new selection.
     m_selectionUnsplitStart = start;
     m_selectionUnsplitStartPos = startPos;
@@ -1013,7 +1015,9 @@ void RenderView::applySubtreeSelection(SelectionSubtreeRoot& root, RenderObject*
 
 #if ENABLE(SERVICE_CONTROLS)
             for (auto& rect : selectionInfo->collectedSelectionRects())
-                m_selectionRectGatherer.addRect(rect);
+                m_selectionRectGatherer.addRect(selectionInfo->repaintContainer(), rect);
+            if (!o->isTextOrLineBreak())
+                m_selectionRectGatherer.setTextOnly(false);
 #endif
 
             newSelectedObjects.set(o, WTF::move(selectionInfo));
@@ -1027,7 +1031,7 @@ void RenderView::applySubtreeSelection(SelectionSubtreeRoot& root, RenderObject*
                 cb = cb->containingBlock();
 
 #if ENABLE(SERVICE_CONTROLS)
-                m_selectionRectGatherer.addRects(blockInfo->rects());
+                m_selectionRectGatherer.addGapRects(blockInfo->repaintContainer(), blockInfo->rects());
 #endif
             }
         }

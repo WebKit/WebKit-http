@@ -99,6 +99,8 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_unlinkedBodyEndColumn(m_lineCount ? node->endColumn() : node->endColumn() - node->startColumn())
     , m_startOffset(node->source().startOffset() - source.startOffset())
     , m_sourceLength(node->source().length())
+    , m_highFidelityTypeProfilingStartOffset(node->functionNameStart())
+    , m_highFidelityTypeProfilingEndOffset(node->startStartOffset() + node->source().length() - 1)
     , m_features(node->features())
     , m_functionMode(node->functionMode())
 {
@@ -113,8 +115,6 @@ void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visito
 {
     UnlinkedFunctionExecutable* thisObject = jsCast<UnlinkedFunctionExecutable*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_codeBlockForCall);
     visitor.append(&thisObject->m_codeBlockForConstruct);
@@ -231,8 +231,6 @@ void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_symbolTable);
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionDecls.begin(), end = thisObject->m_functionDecls.end(); ptr != end; ++ptr)
@@ -404,12 +402,36 @@ void UnlinkedCodeBlock::addExpressionInfo(unsigned instructionOffset,
     m_expressionInfo.append(info);
 }
 
+bool UnlinkedCodeBlock::highFidelityTypeProfileExpressionInfoForBytecodeOffset(unsigned bytecodeOffset, unsigned& startDivot, unsigned& endDivot)
+{
+    static const bool verbose = false;
+    auto iter = m_highFidelityTypeProfileInfoMap.find(bytecodeOffset);
+    if (iter == m_highFidelityTypeProfileInfoMap.end()) {
+        if (verbose)
+            dataLogF("Don't have assignment info for offset:%u\n", bytecodeOffset);
+        startDivot = UINT_MAX;
+        endDivot = UINT_MAX;
+        return false;
+    }
+    
+    HighFidelityTypeProfileExpressionRange& range = iter->value;
+    startDivot = range.m_startDivot;
+    endDivot = range.m_endDivot;
+    return true;
+}
+
+void UnlinkedCodeBlock::addHighFidelityTypeProfileExpressionInfo(unsigned instructionOffset, unsigned startDivot, unsigned endDivot)
+{
+    HighFidelityTypeProfileExpressionRange range;
+    range.m_startDivot = startDivot;
+    range.m_endDivot = endDivot;
+    m_highFidelityTypeProfileInfoMap.set(instructionOffset, range);  
+}
+
 void UnlinkedProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     UnlinkedProgramCodeBlock* thisObject = jsCast<UnlinkedProgramCodeBlock*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
     for (size_t i = 0, end = thisObject->m_functionDeclarations.size(); i != end; i++)
         visitor.append(&thisObject->m_functionDeclarations[i].second);

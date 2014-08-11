@@ -81,9 +81,6 @@ void RegExpObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     RegExpObject* thisObject = jsCast<RegExpObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
-
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_regExp);
     visitor.append(&thisObject->m_lastIndex);
@@ -109,16 +106,23 @@ bool RegExpObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName pr
 
 void RegExpObject::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
-    if (mode == IncludeDontEnumProperties)
+    if (shouldIncludeDontEnumProperties(mode))
         propertyNames.add(exec->propertyNames().lastIndex);
     Base::getOwnNonIndexPropertyNames(object, exec, propertyNames, mode);
 }
 
 void RegExpObject::getPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
-    if (mode == IncludeDontEnumProperties)
+    if (shouldIncludeDontEnumProperties(mode))
         propertyNames.add(exec->propertyNames().lastIndex);
     Base::getPropertyNames(object, exec, propertyNames, mode);
+}
+
+void RegExpObject::getGenericPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
+{
+    if (shouldIncludeDontEnumProperties(mode))
+        propertyNames.add(exec->propertyNames().lastIndex);
+    Base::getGenericPropertyNames(object, exec, propertyNames, mode);
 }
 
 static bool reject(ExecState* exec, bool throwException, const char* message)

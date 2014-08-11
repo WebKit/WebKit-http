@@ -170,15 +170,18 @@ void VTTCueBox::applyCSSProperties(const IntSize&)
     // the 'left' property must be set to left
     setInlineStyleProperty(CSSPropertyLeft, static_cast<double>(position.first), CSSPrimitiveValue::CSS_PERCENTAGE);
 
+    double multiplier = std::max(1.0, m_fontSizeFromCaptionUserPrefs / DEFAULTCAPTIONFONTSIZE);
     // the 'width' property must be set to width, and the 'height' property  must be set to height
     if (m_cue.vertical() == horizontalKeyword()) {
-        setInlineStyleProperty(CSSPropertyWidth, static_cast<double>(m_cue.getCSSSize()), CSSPrimitiveValue::CSS_PERCENTAGE);
+        setInlineStyleProperty(CSSPropertyWidth, std::min(m_cue.getCSSSize() * multiplier, 100.0), CSSPrimitiveValue::CSS_PERCENTAGE);
         setInlineStyleProperty(CSSPropertyHeight, CSSValueAuto);
         setInlineStyleProperty(CSSPropertyMinWidth, "-webkit-min-content");
+        setInlineStyleProperty(CSSPropertyMaxWidth, 100.0 - position.first, CSSPrimitiveValue::CSS_PERCENTAGE);
     } else {
         setInlineStyleProperty(CSSPropertyWidth, CSSValueAuto);
-        setInlineStyleProperty(CSSPropertyHeight, static_cast<double>(m_cue.getCSSSize()),  CSSPrimitiveValue::CSS_PERCENTAGE);
+        setInlineStyleProperty(CSSPropertyHeight, std::min(m_cue.getCSSSize() * multiplier, 100.0), CSSPrimitiveValue::CSS_PERCENTAGE);
         setInlineStyleProperty(CSSPropertyMinHeight, "-webkit-min-content");
+        setInlineStyleProperty(CSSPropertyMaxHeight, 100.0 - position.second, CSSPrimitiveValue::CSS_PERCENTAGE);
     }
 
     // The 'text-align' property on the (root) List of WebVTT Node Objects must
@@ -186,7 +189,7 @@ void VTTCueBox::applyCSSProperties(const IntSize&)
     // whose first cell is the value of the corresponding cue's text track cue
     // alignment:
     setInlineStyleProperty(CSSPropertyTextAlign, m_cue.getCSSAlignment());
-
+    
     if (!m_cue.snapToLines()) {
         // 10.13.1 Set up x and y:
         // Note: x and y are set through the CSS left and top above.
@@ -777,7 +780,7 @@ void VTTCue::updateDisplayTree(double movieTime)
     m_cueHighlightBox->appendChild(referenceTree);
 }
 
-VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize)
+VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize, int fontSize)
 {
     RefPtr<VTTCueBox> displayTree = displayTreeInternal();
     if (!m_displayTreeShouldChange || !track()->isRendered())
@@ -808,13 +811,7 @@ VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize)
     // WebVTT Ruby Text Objects must be wrapped in anonymous boxes whose
     // 'display' property has the value 'ruby-base'.
 
-    // FIXME(BUG 79916): Text runs must be wrapped according to the CSS
-    // line-wrapping rules, except that additionally, regardless of the value of
-    // the 'white-space' property, lines must be wrapped at the edge of their
-    // containing blocks, even if doing so requires splitting a word where there
-    // is no line breaking opportunity. (Thus, normally text wraps as needed,
-    // but if there is a particularly long word, it does not overflow as it
-    // normally would in CSS, it is instead forcibly wrapped at the box's edge.)
+    displayTree->setFontSizeFromCaptionUserPrefs(fontSize);
     displayTree->applyCSSProperties(videoSize);
 
     m_displayTreeShouldChange = false;
@@ -1143,6 +1140,7 @@ void VTTCue::setFontSize(int fontSize, const IntSize&, bool important)
     
     LOG(Media, "TextTrackCue::setFontSize - setting cue font size to %i", fontSize);
 
+    m_displayTreeShouldChange = true;
     displayTreeInternal()->setInlineStyleProperty(CSSPropertyFontSize, fontSize, CSSPrimitiveValue::CSS_PX, important);
 }
 

@@ -6,7 +6,9 @@
 </head>
 <body>
 
-<p contenteditable="true" id="text">The quick brown fox <span id="target">jumps</span> over the lazy dog.</p>
+<p contenteditable="true" id="text">The quick brown fox <span id="target">jumps</span> over the lazy dog. </p>
+
+<p contenteditable="true" id="text2">TEXT2: The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.</p>
 
 <p id="description"></p>
 <div id="console"></div>
@@ -78,38 +80,85 @@
         // Select and replace text closest to selection (single search string).
         selectElementText(target);
         result = text.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", "quick", "slow");
-        shouldBe("result", "'quick'");
+        shouldBe("result", "'slow'");
         selection = selectedText();
         shouldBe("selection", "'slow'");
         
         // Select and replace text closest to selection (multiple search strings).
         selectElementText(target);
         result = text.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", ["dog", "fox"], "cat");
-        shouldBe("result", "'fox'");
+        shouldBe("result", "'cat'");
         selection = selectedText();
         shouldBe("selection", "'cat'");
 
         // Select brown and capitalize it.
         selectElementText(target);
         result = text.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", "brown", null, "AXSelectTextActivityFindAndCapitalize");
-        shouldBe("result", "'brown'");
+        shouldBe("result", "'Brown'");
         selection = selectedText();
         shouldBe("selection", "'Brown'");
 
         // Select Brown and lowercase it.
         selectElementText(target);
         result = text.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", "Brown", null, "AXSelectTextActivityFindAndLowercase");
-        shouldBe("result", "'Brown'");
+        shouldBe("result", "'brown'");
         selection = selectedText();
         shouldBe("selection", "'brown'");
 
         // Select brown and uppercase it.
         selectElementText(target);
         result = text.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", "brown", null, "AXSelectTextActivityFindAndUppercase");
-        shouldBe("result", "'brown'");
+        shouldBe("result", "'BROWN'");
         selection = selectedText();
         shouldBe("selection", "'BROWN'");
 
+        // [https://bugs.webkit.org/show_bug.cgi?id=135546] 
+        // A matching range before the selection should be selected when searching for closest match.
+        document.getElementById("text2").focus();
+        var windowSelection = window.getSelection();
+        windowSelection.removeAllRanges();
+
+        // First find the range before the current selection.
+        var range = document.createRange();
+        range.setStart(document.getElementById("text2").firstChild, 20);
+        range.setEnd(document.getElementById("text2").firstChild, 20);
+        windowSelection.addRange(range);
+      
+        var text2 = accessibilityController.accessibleElementById("text2");
+        result = text2.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", "quick");
+        shouldBe("result", "'quick'");
+        selection = window.getSelection();
+        shouldBe("windowSelection.getRangeAt(0).startOffset", "11");
+        shouldBe("windowSelection.getRangeAt(0).endOffset", "16");
+
+        // Move the cursor closer to the second instance in front of the selection.
+        range = document.createRange();
+        range.setStart(document.getElementById("text2").firstChild, 48);
+        range.setEnd(document.getElementById("text2").firstChild, 48);
+        windowSelection.removeAllRanges();
+        windowSelection.addRange(range);
+
+        result = text2.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", "quick");
+        shouldBe("result", "'quick'");
+        shouldBe("windowSelection.getRangeAt(0).startOffset", "56");
+        shouldBe("windowSelection.getRangeAt(0).endOffset", "61");
+
+        // [https://bugs.webkit.org/show_bug.cgi?id=135575]
+        // When an existing range is already selected, we should not ignore that when searching for future activities.
+        // First find the range before the current selection.
+        var range = document.createRange();
+        range.setStart(document.getElementById("text2").firstChild, 7);
+        range.setEnd(document.getElementById("text2").firstChild, 10);
+        windowSelection.removeAllRanges();
+        windowSelection.addRange(range);
+        shouldBe("windowSelection.getRangeAt(0).toString()", "'The'");
+      
+        var text2 = accessibilityController.accessibleElementById("text2");
+        result = text2.selectTextWithCriteria("AXSelectTextAmbiguityResolutionClosestToSelection", "the", null, "AXSelectTextActivityFindAndUppercase");
+        shouldBe("result", "'THE'");
+        shouldBe("windowSelection.getRangeAt(0).toString()", "'THE'");
+        shouldBe("windowSelection.getRangeAt(0).startOffset", "7");
+        shouldBe("windowSelection.getRangeAt(0).endOffset", "10");
     }
 </script>
 

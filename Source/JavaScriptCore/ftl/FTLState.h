@@ -73,6 +73,7 @@ public:
     unsigned capturedStackmapID;
     SegmentedVector<GetByIdDescriptor> getByIds;
     SegmentedVector<PutByIdDescriptor> putByIds;
+    SegmentedVector<CheckInDescriptor> checkIns;
     Vector<JSCall> jsCalls;
     Vector<CString> codeSectionNames;
     Vector<CString> dataSectionNames;
@@ -83,7 +84,10 @@ public:
     void dumpState(const char* when);
 
     HashSet<CString> nativeLoadedLibraries;
+
+#if ENABLE(FTL_NATIVE_CALL_INLINING)
     HashMap<CString, CString> symbolTable;
+#endif
 };
 
 } } // namespace JSC::FTL

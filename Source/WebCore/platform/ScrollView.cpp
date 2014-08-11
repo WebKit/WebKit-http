@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -266,10 +266,10 @@ IntRect ScrollView::unobscuredContentRectInternal(VisibleContentRectIncludesScro
     return IntRect(IntPoint(m_scrollOffset), expandedIntSize(visibleContentSize));
 }
 
-IntSize ScrollView::unscaledTotalVisibleContentSize(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
+IntSize ScrollView::unscaledVisibleContentSizeIncludingObscuredArea(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
     if (platformWidget())
-        return platformVisibleContentSize(scrollbarInclusion == IncludeScrollbars);
+        return platformVisibleContentSizeIncludingObscuredArea(scrollbarInclusion == IncludeScrollbars);
 
 #if USE(TILED_BACKING_STORE)
     if (!m_fixedVisibleContentRect.isEmpty())
@@ -291,10 +291,10 @@ IntSize ScrollView::unscaledTotalVisibleContentSize(VisibleContentRectIncludesSc
     
 IntSize ScrollView::unscaledUnobscuredVisibleContentSize(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
-    IntSize visibleContentSize = unscaledTotalVisibleContentSize(scrollbarInclusion);
-    
+    IntSize visibleContentSize = unscaledVisibleContentSizeIncludingObscuredArea(scrollbarInclusion);
+
     if (platformWidget())
-        return visibleContentSize;
+        return platformVisibleContentSize(scrollbarInclusion == IncludeScrollbars);
 
 #if USE(TILED_BACKING_STORE)
     if (!m_fixedVisibleContentRect.isEmpty())
@@ -677,7 +677,7 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
 
     if (m_horizontalScrollbar) {
         int clientWidth = visibleWidth();
-        int pageStep = std::max(std::max<int>(clientWidth * Scrollbar::minFractionToStepWhenPaging(), clientWidth - Scrollbar::maxOverlapBetweenPages()), 1);
+        int pageStep = Scrollbar::pageStep(clientWidth);
         IntRect oldRect(m_horizontalScrollbar->frameRect());
         IntRect hBarRect(0,
             height() - m_horizontalScrollbar->height(),
@@ -698,7 +698,7 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
 
     if (m_verticalScrollbar) {
         int clientHeight = visibleHeight();
-        int pageStep = std::max(std::max<int>(clientHeight * Scrollbar::minFractionToStepWhenPaging(), clientHeight - Scrollbar::maxOverlapBetweenPages()), 1);
+        int pageStep = Scrollbar::pageStep(clientHeight);
         IntRect oldRect(m_verticalScrollbar->frameRect());
         IntRect vBarRect(width() - m_verticalScrollbar->width(), 
             topContentInset(),
@@ -1525,6 +1525,16 @@ void ScrollView::platformSetTopContentInset(float)
 }
 
 IntSize ScrollView::platformVisibleContentSize(bool) const
+{
+    return IntSize();
+}
+
+IntRect ScrollView::platformVisibleContentRectIncludingObscuredArea(bool) const
+{
+    return IntRect();
+}
+
+IntSize ScrollView::platformVisibleContentSizeIncludingObscuredArea(bool) const
 {
     return IntSize();
 }

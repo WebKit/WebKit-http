@@ -1,3 +1,86 @@
+2014-08-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        Update HashTable's operator= after r172167 per review comments
+
+        * wtf/HashTable.h:
+        Update the type as suggested by Darin.
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of SCRIPTED_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135729
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/FeatureDefines.h:
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of INPUT_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135672
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FeatureDefines.h:
+
+2014-08-06  Dean Jackson  <dino@apple.com>
+
+        ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED is not used anywhere. Remove it.
+        https://bugs.webkit.org/show_bug.cgi?id=135675
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2014-08-06  Benjamin Poulain  <benjamin@webkit.org>
+
+        HashTable based classes leak a lot
+        https://bugs.webkit.org/show_bug.cgi?id=135638
+
+        Reviewed by Darin Adler.
+
+        * wtf/HashTable.h:
+        The operator= taking a rvalue reference was never freeing the memory allocated
+        for the table of the left hand side object.
+
+        This patch fixes the leaks by doing an alloc+swap with a new object.
+        The object temp gets the reference to m_table, and destroys it in the regular destructor
+        when going out of scope.
+
+        Kudos to Pratik Solanki for finding the leaks.
+
+2014-08-06  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        [JSC] Build fix for FTL on EFL after ftlopt merge
+        https://bugs.webkit.org/show_bug.cgi?id=135565
+
+        Reviewed by Mark Lam.
+
+        Added ENABLE(FTL_NATIVE_CALL_INLINING).
+
+        * wtf/Platform.h:
+
+2014-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=135528
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/CMakeLists.txt:
+        Include text directory.
+        * wtf/PlatformMac.cmake: Added.
+
+2014-07-31  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards cmake on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=135484
+
+        Reviewed by Martin Robinson.
+
+        * wtf/CMakeLists.txt:
+        Added WTF_LIBRARY_TYPE because Windows needs WTF to be a shared library.
+
 2014-07-30  Andreas Kling  <akling@apple.com>
 
         PropertyName's internal string is always atomic.

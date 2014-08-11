@@ -489,6 +489,8 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekCompleted()
         return;
     LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekCompleted(%p)", this);
     m_seekCompleted = true;
+    if (shouldBePlaying())
+        [m_synchronizer setRate:m_rate];
     if (!m_seeking)
         m_player->timeChanged();
 }
@@ -758,6 +760,10 @@ void MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer(AVSampleBufferAudioR
         return;
 
     m_sampleBufferAudioRenderers.append(audioRenderer);
+
+    [audioRenderer setMuted:m_player->muted()];
+    [audioRenderer setVolume:m_player->volume()];
+
     [m_synchronizer addRenderer:audioRenderer];
     m_player->mediaPlayerClient()->mediaPlayerRenderingModeChanged(m_player);
 }

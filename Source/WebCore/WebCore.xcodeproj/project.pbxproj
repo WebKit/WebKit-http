@@ -473,6 +473,7 @@
 		0F1774801378B772009DA76A /* ScrollAnimatorIOS.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F17747E1378B771009DA76A /* ScrollAnimatorIOS.h */; };
 		0F1774811378B772009DA76A /* ScrollAnimatorIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0F17747F1378B772009DA76A /* ScrollAnimatorIOS.mm */; };
 		0F29C16E1300C2E2002D794E /* AccessibilityAllInOne.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F29C16D1300C2E2002D794E /* AccessibilityAllInOne.cpp */; };
+		0F3C725E1974874B00AEDD0C /* ImageSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F3C725D1974874B00AEDD0C /* ImageSource.cpp */; };
 		0F3DD44F12F5EA1B000D9190 /* ShadowBlur.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F3DD44D12F5EA1B000D9190 /* ShadowBlur.cpp */; };
 		0F3DD45012F5EA1B000D9190 /* ShadowBlur.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F3DD44E12F5EA1B000D9190 /* ShadowBlur.h */; };
 		0F3F0E59157030C3006DA57F /* RenderGeometryMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F3F0E57157030C3006DA57F /* RenderGeometryMap.cpp */; };
@@ -933,6 +934,7 @@
 		1C18DA59181AF6A500C4EF22 /* TextPainter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1C18DA57181AF6A500C4EF22 /* TextPainter.h */; };
 		1C21E57C183ED1FF001C289D /* IOSurfacePool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C21E57A183ED1FF001C289D /* IOSurfacePool.cpp */; };
 		1C21E57D183ED1FF001C289D /* IOSurfacePool.h in Headers */ = {isa = PBXBuildFile; fileRef = 1C21E57B183ED1FF001C289D /* IOSurfacePool.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		1C2417BA1992C04100EF9938 /* SpellingDot@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 1C2417B91992C04100EF9938 /* SpellingDot@3x.png */; };
 		1C26497A0D7E248A00BD10F2 /* DocumentLoaderMac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C2649790D7E248A00BD10F2 /* DocumentLoaderMac.cpp */; };
 		1C26497C0D7E24EC00BD10F2 /* PageMac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C26497B0D7E24EC00BD10F2 /* PageMac.cpp */; };
 		1C4C8F020AD85D87009475CE /* DeleteButtonController.h in Headers */ = {isa = PBXBuildFile; fileRef = 1C4C8F000AD85D87009475CE /* DeleteButtonController.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -2293,22 +2295,11 @@
 		71E623D1151F72A60036E2F4 /* SVGAnimatedIntegerOptionalInteger.h in Headers */ = {isa = PBXBuildFile; fileRef = 71E623CF151F72A60036E2F4 /* SVGAnimatedIntegerOptionalInteger.h */; };
 		71FB967B1383D64600AC8A4C /* SVGAnimatedEnumerationPropertyTearOff.h in Headers */ = {isa = PBXBuildFile; fileRef = 71FB967A1383D64600AC8A4C /* SVGAnimatedEnumerationPropertyTearOff.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		72626E020EF022FE00A07E20 /* FontFastPath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 72626E010EF022FE00A07E20 /* FontFastPath.cpp */; };
-		750D029411D0E7F300BD1B27 /* RenderInputSpeech.h in Headers */ = {isa = PBXBuildFile; fileRef = 750D029211D0E7F300BD1B27 /* RenderInputSpeech.h */; };
 		754133A8102E00E800075D00 /* InspectorTimelineAgent.h in Headers */ = {isa = PBXBuildFile; fileRef = 754133A7102E00E800075D00 /* InspectorTimelineAgent.h */; };
 		754133AA102E00F400075D00 /* InspectorTimelineAgent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 754133A9102E00F400075D00 /* InspectorTimelineAgent.cpp */; };
-		75415AFD12958D5E003AD669 /* SpeechInputEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 75415AF812958D5E003AD669 /* SpeechInputEvent.h */; };
-		75415B0012958D5E003AD669 /* SpeechInputResultList.h in Headers */ = {isa = PBXBuildFile; fileRef = 75415AFB12958D5E003AD669 /* SpeechInputResultList.h */; };
-		75415C29129A9920003AD669 /* SpeechInputResultList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 75415C27129A9920003AD669 /* SpeechInputResultList.cpp */; };
-		75415D56129AB2D2003AD669 /* JSSpeechInputEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 75415D50129AB2D2003AD669 /* JSSpeechInputEvent.h */; };
-		75415D58129AB2D2003AD669 /* JSSpeechInputResult.h in Headers */ = {isa = PBXBuildFile; fileRef = 75415D52129AB2D2003AD669 /* JSSpeechInputResult.h */; };
-		75415D59129AB2D2003AD669 /* JSSpeechInputResultList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 75415D53129AB2D2003AD669 /* JSSpeechInputResultList.cpp */; };
-		75415D5A129AB2D2003AD669 /* JSSpeechInputResultList.h in Headers */ = {isa = PBXBuildFile; fileRef = 75415D54129AB2D2003AD669 /* JSSpeechInputResultList.h */; };
 		7553CFE8108F473F00EA281E /* TimelineRecordFactory.h in Headers */ = {isa = PBXBuildFile; fileRef = 7553CFE6108F473F00EA281E /* TimelineRecordFactory.h */; };
 		7553CFE9108F473F00EA281E /* TimelineRecordFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7553CFE7108F473F00EA281E /* TimelineRecordFactory.cpp */; };
 		756B2CE118B7101600FECFAA /* SessionID.h in Headers */ = {isa = PBXBuildFile; fileRef = 756B2CE018B7101600FECFAA /* SessionID.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		7578F90C11DDF26900D933C5 /* SpeechInput.h in Headers */ = {isa = PBXBuildFile; fileRef = 7578F90911DDF26900D933C5 /* SpeechInput.h */; };
-		7578F90D11DDF26900D933C5 /* SpeechInputClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 7578F90A11DDF26900D933C5 /* SpeechInputClient.h */; };
-		7578F92011E4E32800D933C5 /* SpeechInputListener.h in Headers */ = {isa = PBXBuildFile; fileRef = 7578F91E11E4E32800D933C5 /* SpeechInputListener.h */; };
 		75793E830D0CE0B3007FC0AC /* MessageEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 75793E800D0CE0B3007FC0AC /* MessageEvent.cpp */; };
 		75793E840D0CE0B3007FC0AC /* MessageEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 75793E810D0CE0B3007FC0AC /* MessageEvent.h */; };
 		75793EC80D0CE72D007FC0AC /* JSMessageEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 75793EC60D0CE72D007FC0AC /* JSMessageEvent.cpp */; };
@@ -3151,7 +3142,6 @@
 		93153BDE141959F400FCF5BE /* deleteButton.png in Resources */ = {isa = PBXBuildFile; fileRef = 93153BDD141959F400FCF5BE /* deleteButton.png */; };
 		93153BE014195A2800FCF5BE /* deleteButtonPressed.png in Resources */ = {isa = PBXBuildFile; fileRef = 93153BDF14195A2800FCF5BE /* deleteButtonPressed.png */; };
 		93153BE214195A5700FCF5BE /* missingImage.png in Resources */ = {isa = PBXBuildFile; fileRef = 93153BE114195A5700FCF5BE /* missingImage.png */; };
-		93153BE414195B2A00FCF5BE /* inputSpeech.png in Resources */ = {isa = PBXBuildFile; fileRef = 93153BE314195B2900FCF5BE /* inputSpeech.png */; };
 		931BCC611124DFCB00BE70DD /* MediaCanStartListener.h in Headers */ = {isa = PBXBuildFile; fileRef = 931BCC601124DFCB00BE70DD /* MediaCanStartListener.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		931CBD0C161A44E900E4C874 /* ScrollingStateNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 931CBD06161A44E900E4C874 /* ScrollingStateNode.cpp */; };
 		931CBD0D161A44E900E4C874 /* ScrollingStateNode.h in Headers */ = {isa = PBXBuildFile; fileRef = 931CBD07161A44E900E4C874 /* ScrollingStateNode.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -6254,6 +6244,9 @@
 		F3D4C47912E07663003DA150 /* InspectorDOMDebuggerAgent.h in Headers */ = {isa = PBXBuildFile; fileRef = F3D4C47712E07663003DA150 /* InspectorDOMDebuggerAgent.h */; };
 		F3F5CF1112ED81A80084C569 /* InspectorConsoleInstrumentation.h in Headers */ = {isa = PBXBuildFile; fileRef = F3F5CF1012ED81A80084C569 /* InspectorConsoleInstrumentation.h */; };
 		F3F5CF1312ED81B30084C569 /* InspectorDatabaseInstrumentation.h in Headers */ = {isa = PBXBuildFile; fileRef = F3F5CF1212ED81B30084C569 /* InspectorDatabaseInstrumentation.h */; };
+		F42FFB461984B71600F6837F /* LengthRepeat.h in Headers */ = {isa = PBXBuildFile; fileRef = F42FFB451984B71600F6837F /* LengthRepeat.h */; };
+		F47A5E3E195B8C8A00483100 /* StyleScrollSnapPoints.h in Headers */ = {isa = PBXBuildFile; fileRef = F47A5E3B195B8C8A00483100 /* StyleScrollSnapPoints.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		F47A5E3F195B8E4800483100 /* StyleScrollSnapPoints.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F47A5E3A195B8C8A00483100 /* StyleScrollSnapPoints.cpp */; };
 		F50664F7157F52DC00AC226F /* FormController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F50664F5157F52DC00AC226F /* FormController.cpp */; };
 		F50664F8157F52DC00AC226F /* FormController.h in Headers */ = {isa = PBXBuildFile; fileRef = F50664F6157F52DC00AC226F /* FormController.h */; };
 		F513A3EA15FF4841001526DB /* ValidationMessageClient.h in Headers */ = {isa = PBXBuildFile; fileRef = F513A3E915FF4841001526DB /* ValidationMessageClient.h */; };
@@ -7414,6 +7407,7 @@
 		0F17747E1378B771009DA76A /* ScrollAnimatorIOS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ScrollAnimatorIOS.h; path = ios/ScrollAnimatorIOS.h; sourceTree = "<group>"; };
 		0F17747F1378B772009DA76A /* ScrollAnimatorIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = ScrollAnimatorIOS.mm; path = ios/ScrollAnimatorIOS.mm; sourceTree = "<group>"; };
 		0F29C16D1300C2E2002D794E /* AccessibilityAllInOne.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AccessibilityAllInOne.cpp; sourceTree = "<group>"; };
+		0F3C725D1974874B00AEDD0C /* ImageSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ImageSource.cpp; sourceTree = "<group>"; };
 		0F3DD44D12F5EA1B000D9190 /* ShadowBlur.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ShadowBlur.cpp; sourceTree = "<group>"; };
 		0F3DD44E12F5EA1B000D9190 /* ShadowBlur.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShadowBlur.h; sourceTree = "<group>"; };
 		0F3F0E57157030C3006DA57F /* RenderGeometryMap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RenderGeometryMap.cpp; sourceTree = "<group>"; };
@@ -7908,6 +7902,7 @@
 		1C18DA57181AF6A500C4EF22 /* TextPainter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextPainter.h; sourceTree = "<group>"; };
 		1C21E57A183ED1FF001C289D /* IOSurfacePool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = IOSurfacePool.cpp; path = ../cg/IOSurfacePool.cpp; sourceTree = "<group>"; };
 		1C21E57B183ED1FF001C289D /* IOSurfacePool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IOSurfacePool.h; path = ../cg/IOSurfacePool.h; sourceTree = "<group>"; };
+		1C2417B91992C04100EF9938 /* SpellingDot@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "SpellingDot@3x.png"; sourceTree = "<group>"; };
 		1C2649790D7E248A00BD10F2 /* DocumentLoaderMac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DocumentLoaderMac.cpp; sourceTree = "<group>"; };
 		1C26497B0D7E24EC00BD10F2 /* PageMac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PageMac.cpp; sourceTree = "<group>"; };
 		1C4C8EFF0AD85D87009475CE /* DeleteButtonController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DeleteButtonController.cpp; sourceTree = "<group>"; tabWidth = 8; usesTabs = 0; };
@@ -9436,25 +9431,11 @@
 		71E623CF151F72A60036E2F4 /* SVGAnimatedIntegerOptionalInteger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVGAnimatedIntegerOptionalInteger.h; sourceTree = "<group>"; };
 		71FB967A1383D64600AC8A4C /* SVGAnimatedEnumerationPropertyTearOff.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVGAnimatedEnumerationPropertyTearOff.h; sourceTree = "<group>"; };
 		72626E010EF022FE00A07E20 /* FontFastPath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FontFastPath.cpp; sourceTree = "<group>"; };
-		750D029211D0E7F300BD1B27 /* RenderInputSpeech.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RenderInputSpeech.h; sourceTree = "<group>"; };
 		754133A7102E00E800075D00 /* InspectorTimelineAgent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorTimelineAgent.h; sourceTree = "<group>"; };
 		754133A9102E00F400075D00 /* InspectorTimelineAgent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorTimelineAgent.cpp; sourceTree = "<group>"; };
-		75415AF812958D5E003AD669 /* SpeechInputEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpeechInputEvent.h; sourceTree = "<group>"; };
-		75415AF912958D5E003AD669 /* SpeechInputEvent.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SpeechInputEvent.idl; sourceTree = "<group>"; };
-		75415AFA12958D5E003AD669 /* SpeechInputResult.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SpeechInputResult.idl; sourceTree = "<group>"; };
-		75415AFB12958D5E003AD669 /* SpeechInputResultList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpeechInputResultList.h; sourceTree = "<group>"; };
-		75415AFC12958D5E003AD669 /* SpeechInputResultList.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SpeechInputResultList.idl; sourceTree = "<group>"; };
-		75415C27129A9920003AD669 /* SpeechInputResultList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpeechInputResultList.cpp; sourceTree = "<group>"; };
-		75415D50129AB2D2003AD669 /* JSSpeechInputEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSpeechInputEvent.h; sourceTree = "<group>"; };
-		75415D52129AB2D2003AD669 /* JSSpeechInputResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSpeechInputResult.h; sourceTree = "<group>"; };
-		75415D53129AB2D2003AD669 /* JSSpeechInputResultList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSpeechInputResultList.cpp; sourceTree = "<group>"; };
-		75415D54129AB2D2003AD669 /* JSSpeechInputResultList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSpeechInputResultList.h; sourceTree = "<group>"; };
 		7553CFE6108F473F00EA281E /* TimelineRecordFactory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TimelineRecordFactory.h; sourceTree = "<group>"; };
 		7553CFE7108F473F00EA281E /* TimelineRecordFactory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TimelineRecordFactory.cpp; sourceTree = "<group>"; };
 		756B2CE018B7101600FECFAA /* SessionID.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SessionID.h; sourceTree = "<group>"; };
-		7578F90911DDF26900D933C5 /* SpeechInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpeechInput.h; sourceTree = "<group>"; };
-		7578F90A11DDF26900D933C5 /* SpeechInputClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpeechInputClient.h; sourceTree = "<group>"; };
-		7578F91E11E4E32800D933C5 /* SpeechInputListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpeechInputListener.h; sourceTree = "<group>"; };
 		75793E800D0CE0B3007FC0AC /* MessageEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = MessageEvent.cpp; path = dom/MessageEvent.cpp; sourceTree = SOURCE_ROOT; };
 		75793E810D0CE0B3007FC0AC /* MessageEvent.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = MessageEvent.h; path = dom/MessageEvent.h; sourceTree = SOURCE_ROOT; };
 		75793E820D0CE0B3007FC0AC /* MessageEvent.idl */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; name = MessageEvent.idl; path = dom/MessageEvent.idl; sourceTree = SOURCE_ROOT; };
@@ -9463,7 +9444,6 @@
 		75793ED00D0CE85B007FC0AC /* DOMMessageEvent.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = DOMMessageEvent.h; sourceTree = "<group>"; };
 		75793ED10D0CE85B007FC0AC /* DOMMessageEvent.mm */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.objcpp; path = DOMMessageEvent.mm; sourceTree = "<group>"; };
 		75793ED20D0CE85B007FC0AC /* DOMMessageEventInternal.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = DOMMessageEventInternal.h; sourceTree = "<group>"; };
-		758978EB127090D60076D5A9 /* SpeechInputResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SpeechInputResult.h; sourceTree = "<group>"; };
 		75DCC7B718B81C8800A57128 /* SessionIDHash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SessionIDHash.h; sourceTree = "<group>"; };
 		7633A72413D8B33A008501B6 /* LocaleToScriptMapping.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LocaleToScriptMapping.h; sourceTree = "<group>"; };
 		7633A72513D8B33A008501B6 /* LocaleToScriptMappingDefault.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LocaleToScriptMappingDefault.cpp; sourceTree = "<group>"; };
@@ -10290,7 +10270,6 @@
 		93153BDD141959F400FCF5BE /* deleteButton.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deleteButton.png; sourceTree = "<group>"; };
 		93153BDF14195A2800FCF5BE /* deleteButtonPressed.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deleteButtonPressed.png; sourceTree = "<group>"; };
 		93153BE114195A5700FCF5BE /* missingImage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = missingImage.png; sourceTree = "<group>"; };
-		93153BE314195B2900FCF5BE /* inputSpeech.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = inputSpeech.png; sourceTree = "<group>"; };
 		931BCC601124DFCB00BE70DD /* MediaCanStartListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MediaCanStartListener.h; sourceTree = "<group>"; };
 		931CBD06161A44E900E4C874 /* ScrollingStateNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ScrollingStateNode.cpp; sourceTree = "<group>"; };
 		931CBD07161A44E900E4C874 /* ScrollingStateNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScrollingStateNode.h; sourceTree = "<group>"; };
@@ -13782,6 +13761,9 @@
 		F3D4C47712E07663003DA150 /* InspectorDOMDebuggerAgent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorDOMDebuggerAgent.h; sourceTree = "<group>"; };
 		F3F5CF1012ED81A80084C569 /* InspectorConsoleInstrumentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorConsoleInstrumentation.h; sourceTree = "<group>"; };
 		F3F5CF1212ED81B30084C569 /* InspectorDatabaseInstrumentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorDatabaseInstrumentation.h; sourceTree = "<group>"; };
+		F42FFB451984B71600F6837F /* LengthRepeat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LengthRepeat.h; sourceTree = "<group>"; };
+		F47A5E3A195B8C8A00483100 /* StyleScrollSnapPoints.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StyleScrollSnapPoints.cpp; path = style/StyleScrollSnapPoints.cpp; sourceTree = "<group>"; };
+		F47A5E3B195B8C8A00483100 /* StyleScrollSnapPoints.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = StyleScrollSnapPoints.h; path = style/StyleScrollSnapPoints.h; sourceTree = "<group>"; };
 		F50664F5157F52DC00AC226F /* FormController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FormController.cpp; sourceTree = "<group>"; };
 		F50664F6157F52DC00AC226F /* FormController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FormController.h; sourceTree = "<group>"; };
 		F513A3E915FF4841001526DB /* ValidationMessageClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ValidationMessageClient.h; sourceTree = "<group>"; };
@@ -14842,7 +14824,6 @@
 				85136C8A0AED665800F90A3D /* eastWestResizeCursor.png */,
 				85136C8B0AED665800F90A3D /* helpCursor.png */,
 				7CC7E3D617208C0F003C5277 /* IDNScriptWhiteList.txt */,
-				93153BE314195B2900FCF5BE /* inputSpeech.png */,
 				2D9F0E1214FF1CBF00BA0FF7 /* linearSRGB.icc */,
 				85136C8C0AED665800F90A3D /* linkCursor.png */,
 				BCAD1808131C7A0D00990406 /* Localizable.strings */,
@@ -16518,6 +16499,7 @@
 		65998A650E5F5FD3004E097A /* images */ = {
 			isa = PBXGroup;
 			children = (
+				1C2417B91992C04100EF9938 /* SpellingDot@3x.png */,
 				D02B64B014089E56006EFA21 /* DictationPhraseWithAlternativesDot.png */,
 				D02B64B114089E56006EFA21 /* DictationPhraseWithAlternativesDot@2x.png */,
 				BE8C753010681324001E93F5 /* SpellingDot.png */,
@@ -16684,16 +16666,6 @@
 				BC59DEF8169DEDC30016AC34 /* Settings.in */,
 				626CDE0C1140424C001E5A68 /* SpatialNavigation.cpp */,
 				626CDE0D1140424C001E5A68 /* SpatialNavigation.h */,
-				7578F90911DDF26900D933C5 /* SpeechInput.h */,
-				7578F90A11DDF26900D933C5 /* SpeechInputClient.h */,
-				75415AF812958D5E003AD669 /* SpeechInputEvent.h */,
-				75415AF912958D5E003AD669 /* SpeechInputEvent.idl */,
-				7578F91E11E4E32800D933C5 /* SpeechInputListener.h */,
-				758978EB127090D60076D5A9 /* SpeechInputResult.h */,
-				75415AFA12958D5E003AD669 /* SpeechInputResult.idl */,
-				75415C27129A9920003AD669 /* SpeechInputResultList.cpp */,
-				75415AFB12958D5E003AD669 /* SpeechInputResultList.h */,
-				75415AFC12958D5E003AD669 /* SpeechInputResultList.idl */,
 				62C1217A11AB9E76003C462C /* SuspendableTimer.cpp */,
 				62C1217B11AB9E77003C462C /* SuspendableTimer.h */,
 				1AE79D40188DB61F002239C2 /* UserContentController.cpp */,
@@ -19372,10 +19344,6 @@
 				E4B423860CBFB73C00AF2ECE /* JSProgressEvent.h */,
 				4998AECB13F9D6C90090B1AA /* JSRequestAnimationFrameCallback.cpp */,
 				4998AECC13F9D6C90090B1AA /* JSRequestAnimationFrameCallback.h */,
-				75415D50129AB2D2003AD669 /* JSSpeechInputEvent.h */,
-				75415D52129AB2D2003AD669 /* JSSpeechInputResult.h */,
-				75415D53129AB2D2003AD669 /* JSSpeechInputResultList.cpp */,
-				75415D54129AB2D2003AD669 /* JSSpeechInputResultList.h */,
 				65DF31EF09D1CC60000BE325 /* JSText.cpp */,
 				65DF31F009D1CC60000BE325 /* JSText.h */,
 				D7613AC214753E5600DB8606 /* JSWebKitNamedFlow.cpp */,
@@ -20490,6 +20458,7 @@
 				A8748D6612CC3763001FBA41 /* ImageOrientation.h */,
 				49291E4A134172C800E753DE /* ImageRenderingMode.h */,
 				B27535430B053814002CE64F /* ImageSource.h */,
+				0F3C725D1974874B00AEDD0C /* ImageSource.cpp */,
 				07941793166EA04E009416C2 /* InbandTextTrackPrivate.h */,
 				07CE77D416712A6A00C55A47 /* InbandTextTrackPrivateClient.h */,
 				2D46F04D17B96FBD005647F0 /* IntPoint.cpp */,
@@ -21089,6 +21058,8 @@
 				BC2274760E8366E200E7F975 /* SVGRenderStyleDefs.cpp */,
 				BC2274770E8366E200E7F975 /* SVGRenderStyleDefs.h */,
 				448B1B780F3A2F9B0047A9E2 /* TextSizeAdjustment.h */,
+				F47A5E3A195B8C8A00483100 /* StyleScrollSnapPoints.cpp */,
+				F47A5E3B195B8C8A00483100 /* StyleScrollSnapPoints.h */,
 			);
 			name = style;
 			sourceTree = "<group>";
@@ -22159,6 +22130,7 @@
 				93CA4C9F09DF93FA00DF8677 /* quirks.css */,
 				BC4368E70C226E32005EFB5F /* Rect.h */,
 				A80E79960A19BD21007FB8C5 /* Rect.idl */,
+				F42FFB451984B71600F6837F /* LengthRepeat.h */,
 				BC74DA361013F3F7007987AD /* RGBColor.cpp */,
 				BC74DA351013F3F7007987AD /* RGBColor.h */,
 				858C38EF0AA8FDD100B187A4 /* RGBColor.idl */,
@@ -22358,7 +22330,6 @@
 				08641D4612142F7D008DE9F6 /* RenderImageResourceStyleImage.h */,
 				BCEA4838097D93020094C9E4 /* RenderInline.cpp */,
 				BCEA4839097D93020094C9E4 /* RenderInline.h */,
-				750D029211D0E7F300BD1B27 /* RenderInputSpeech.h */,
 				B595FF461824CEE300FF51CD /* RenderIterator.h */,
 				BCEA483A097D93020094C9E4 /* RenderLayer.cpp */,
 				BCEA483B097D93020094C9E4 /* RenderLayer.h */,
@@ -24584,6 +24555,7 @@
 				510192D218B6B9AB007FC7A1 /* ImageControlsRootElementMac.h in Headers */,
 				A779791A0D6B9D0C003851B9 /* ImageData.h in Headers */,
 				97205AB61239291000B17380 /* ImageDocument.h in Headers */,
+				F42FFB461984B71600F6837F /* LengthRepeat.h in Headers */,
 				F55B3DC21251F12D003EF269 /* ImageInputType.h in Headers */,
 				089582560E857A7E00F82C83 /* ImageLoader.h in Headers */,
 				BC7F44A80B9E324E00A9D081 /* ImageObserver.h in Headers */,
@@ -24993,9 +24965,6 @@
 				CD9DE17B17AAC75B00EA386D /* JSSourceBuffer.h in Headers */,
 				CD9DE17D17AAC75B00EA386D /* JSSourceBufferList.h in Headers */,
 				076306E117E16089005A7C4E /* JSSourceInfo.h in Headers */,
-				75415D56129AB2D2003AD669 /* JSSpeechInputEvent.h in Headers */,
-				75415D58129AB2D2003AD669 /* JSSpeechInputResult.h in Headers */,
-				75415D5A129AB2D2003AD669 /* JSSpeechInputResultList.h in Headers */,
 				0FB6252F18DE1B1500A07C05 /* GeometryUtilities.h in Headers */,
 				AA7FEEAD16A4E74B004C0C33 /* JSSpeechSynthesis.h in Headers */,
 				AA2A5AD216A4860A00976A25 /* JSSpeechSynthesisEvent.h in Headers */,
@@ -25021,6 +24990,7 @@
 				E1FF8F65180745D800132674 /* JSSubtleCrypto.h in Headers */,
 				B20111080AB7740500DB0E68 /* JSSVGAElement.h in Headers */,
 				24D9129213CA951E00D21915 /* JSSVGAltGlyphDefElement.h in Headers */,
+				F47A5E3E195B8C8A00483100 /* StyleScrollSnapPoints.h in Headers */,
 				07AC47021952102100EE9723 /* ISOVTTCue.h in Headers */,
 				6515EC920D9723FF0063D49A /* JSSVGAltGlyphElement.h in Headers */,
 				24D9129613CA956100D21915 /* JSSVGAltGlyphItemElement.h in Headers */,
@@ -25662,7 +25632,6 @@
 				08F2F00A1213E61700DCEC48 /* RenderImageResource.h in Headers */,
 				08641D4812142F7D008DE9F6 /* RenderImageResourceStyleImage.h in Headers */,
 				BCEA4878097D93020094C9E4 /* RenderInline.h in Headers */,
-				750D029411D0E7F300BD1B27 /* RenderInputSpeech.h in Headers */,
 				B595FF471824CEE300FF51CD /* RenderIterator.h in Headers */,
 				BCEA487A097D93020094C9E4 /* RenderLayer.h in Headers */,
 				0F580CFF0F12DE9B0051D689 /* RenderLayerBacking.h in Headers */,
@@ -25978,11 +25947,6 @@
 				076306D817E149D0005A7C4E /* SourceInfo.h in Headers */,
 				D01A27AE10C9BFD800026A42 /* SpaceSplitString.h in Headers */,
 				626CDE0F1140424C001E5A68 /* SpatialNavigation.h in Headers */,
-				7578F90C11DDF26900D933C5 /* SpeechInput.h in Headers */,
-				7578F90D11DDF26900D933C5 /* SpeechInputClient.h in Headers */,
-				75415AFD12958D5E003AD669 /* SpeechInputEvent.h in Headers */,
-				7578F92011E4E32800D933C5 /* SpeechInputListener.h in Headers */,
-				75415B0012958D5E003AD669 /* SpeechInputResultList.h in Headers */,
 				AA2A5AD416A4861100975A25 /* SpeechSynthesis.h in Headers */,
 				AA2A5AD216A4860A00975A25 /* SpeechSynthesisEvent.h in Headers */,
 				AA2A5AD016A4860400975A25 /* SpeechSynthesisUtterance.h in Headers */,
@@ -26875,6 +26839,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				46F9D5DD0B0D60170028EE36 /* aliasCursor.png in Resources */,
+				1C2417BA1992C04100EF9938 /* SpellingDot@3x.png in Resources */,
 				46D4F2490AF97E810035385A /* cellCursor.png in Resources */,
 				93153BDE141959F400FCF5BE /* deleteButton.png in Resources */,
 				93153BCD1417FBBF00FCF5BE /* deleteButton@2x.png in Resources */,
@@ -26886,7 +26851,6 @@
 				85136C9A0AED665900F90A3D /* eastWestResizeCursor.png in Resources */,
 				85136C9B0AED665900F90A3D /* helpCursor.png in Resources */,
 				7CC7E3D717208C0F003C5277 /* IDNScriptWhiteList.txt in Resources */,
-				93153BE414195B2A00FCF5BE /* inputSpeech.png in Resources */,
 				2D9F0E1314FF1CBF00BA0FF7 /* linearSRGB.icc in Resources */,
 				85136C9C0AED665900F90A3D /* linkCursor.png in Resources */,
 				BCAD180A131C7A0D00990406 /* Localizable.strings in Resources */,
@@ -27820,6 +27784,7 @@
 				93309E0D099E64920056E581 /* FrameSelection.cpp in Sources */,
 				4A8C96EB0BE69032004EEFF0 /* FrameSelectionMac.mm in Sources */,
 				C4CD629A18383766007EBAF1 /* FrameSnapshotting.cpp in Sources */,
+				F47A5E3F195B8E4800483100 /* StyleScrollSnapPoints.cpp in Sources */,
 				65A21484097A3F5300B9050A /* FrameTree.cpp in Sources */,
 				65CBFEF90974F607001DAC25 /* FrameView.cpp in Sources */,
 				97205AAF123928CA00B17380 /* FTPDirectoryDocument.cpp in Sources */,
@@ -28527,7 +28492,6 @@
 				CD9DE17A17AAC75B00EA386D /* JSSourceBuffer.cpp in Sources */,
 				CD9DE17C17AAC75B00EA386D /* JSSourceBufferList.cpp in Sources */,
 				076306E017E16089005A7C4E /* JSSourceInfo.cpp in Sources */,
-				75415D59129AB2D2003AD669 /* JSSpeechInputResultList.cpp in Sources */,
 				AA7FEEA416A4E6F3004C0C33 /* JSSpeechSynthesis.cpp in Sources */,
 				AA2A5AD316A4860D00976A25 /* JSSpeechSynthesisEvent.cpp in Sources */,
 				AA7FEEA616A4E6F3004C0C33 /* JSSpeechSynthesisUtterance.cpp in Sources */,
@@ -29414,7 +29378,6 @@
 				076306D717E149CF005A7C4E /* SourceInfo.cpp in Sources */,
 				D01A27AD10C9BFD800026A42 /* SpaceSplitString.cpp in Sources */,
 				626CDE0E1140424C001E5A68 /* SpatialNavigation.cpp in Sources */,
-				75415C29129A9920003AD669 /* SpeechInputResultList.cpp in Sources */,
 				AA2A5AD516A4861400975A25 /* SpeechSynthesis.cpp in Sources */,
 				AA2A5AD316A4860D00975A25 /* SpeechSynthesisEvent.cpp in Sources */,
 				AA2A5AD116A4860700975A25 /* SpeechSynthesisUtterance.cpp in Sources */,
@@ -29438,6 +29401,7 @@
 				97BC6A441505F081001B74AC /* SQLResultSetRowList.cpp in Sources */,
 				97BC6A471505F081001B74AC /* SQLStatement.cpp in Sources */,
 				FE8A674716CDD19E00930BF8 /* SQLStatementBackend.cpp in Sources */,
+				0F3C725E1974874B00AEDD0C /* ImageSource.cpp in Sources */,
 				97BC6A4D1505F081001B74AC /* SQLStatementSync.cpp in Sources */,
 				97BC6A4F1505F081001B74AC /* SQLTransaction.cpp in Sources */,
 				FEE1811316C319E800084849 /* SQLTransactionBackend.cpp in Sources */,

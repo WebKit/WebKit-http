@@ -125,6 +125,8 @@ public:
     unsigned unlinkedBodyEndColumn() const { return m_unlinkedBodyEndColumn; }
     unsigned startOffset() const { return m_startOffset; }
     unsigned sourceLength() { return m_sourceLength; }
+    unsigned highFidelityTypeProfilingStartOffset() const { return m_highFidelityTypeProfilingStartOffset; }
+    unsigned highFidelityTypeProfilingEndOffset() const { return m_highFidelityTypeProfilingEndOffset; }
 
     String paramString() const;
 
@@ -185,6 +187,8 @@ private:
     unsigned m_unlinkedBodyEndColumn;
     unsigned m_startOffset;
     unsigned m_sourceLength;
+    unsigned m_highFidelityTypeProfilingStartOffset;
+    unsigned m_highFidelityTypeProfilingEndOffset;
 
     CodeFeatures m_features;
 
@@ -205,7 +209,7 @@ public:
         return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionExecutableType, StructureFlags), info());
     }
 
-    static const unsigned StructureFlags = OverridesVisitChildren | StructureIsImmortal | JSCell::StructureFlags;
+    static const unsigned StructureFlags = StructureIsImmortal | JSCell::StructureFlags;
 
     DECLARE_EXPORT_INFO;
 };
@@ -271,6 +275,8 @@ public:
 
     void addExpressionInfo(unsigned instructionOffset, int divot,
         int startOffset, int endOffset, unsigned line, unsigned column);
+
+    void addHighFidelityTypeProfileExpressionInfo(unsigned instructionOffset, unsigned startDivot, unsigned endDivot);
 
     bool hasExpressionInfo() { return m_expressionInfo.size(); }
 
@@ -464,6 +470,8 @@ public:
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
         int& startOffset, int& endOffset, unsigned& line, unsigned& column);
 
+    bool highFidelityTypeProfileExpressionInfoForBytecodeOffset(unsigned bytecodeOffset, unsigned& startDivot, unsigned& endDivot);
+
     void recordParse(CodeFeatures features, bool hasCapturedVariables, unsigned firstLine, unsigned lineCount, unsigned endColumn)
     {
         m_features = features;
@@ -575,10 +583,15 @@ public:
 private:
     OwnPtr<RareData> m_rareData;
     Vector<ExpressionRangeInfo> m_expressionInfo;
+    struct HighFidelityTypeProfileExpressionRange {
+        unsigned m_startDivot;
+        unsigned m_endDivot;
+    };
+    HashMap<unsigned, HighFidelityTypeProfileExpressionRange> m_highFidelityTypeProfileInfoMap;
 
 protected:
 
-    static const unsigned StructureFlags = OverridesVisitChildren | StructureIsImmortal | Base::StructureFlags;
+    static const unsigned StructureFlags = StructureIsImmortal | Base::StructureFlags;
     static void visitChildren(JSCell*, SlotVisitor&);
 
 public:
@@ -594,8 +607,6 @@ protected:
         : Base(vm, structure, codeType, info)
     {
     }
-
-    static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
 
     DECLARE_INFO;
 };
@@ -647,8 +658,6 @@ public:
         return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedProgramCodeBlockType, StructureFlags), info());
     }
 
-    static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
-
     DECLARE_INFO;
 };
 
@@ -689,8 +698,6 @@ public:
         return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedEvalCodeBlockType, StructureFlags), info());
     }
 
-    static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
-
     DECLARE_INFO;
 };
 
@@ -717,8 +724,6 @@ public:
     {
         return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionCodeBlockType, StructureFlags), info());
     }
-
-    static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
 
     DECLARE_INFO;
 };

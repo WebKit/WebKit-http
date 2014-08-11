@@ -39,10 +39,6 @@ void JSProxy::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSProxy* thisObject = jsCast<JSProxy*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
-
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_target);
 }
@@ -116,6 +112,24 @@ void JSProxy::getPropertyNames(JSObject* object, ExecState* exec, PropertyNameAr
 {
     JSProxy* thisObject = jsCast<JSProxy*>(object);
     thisObject->target()->methodTable(exec->vm())->getPropertyNames(thisObject->target(), exec, propertyNames, mode);
+}
+
+uint32_t JSProxy::getEnumerableLength(ExecState* exec, JSObject* object)
+{
+    JSProxy* thisObject = jsCast<JSProxy*>(object);
+    return thisObject->target()->methodTable(exec->vm())->getEnumerableLength(exec, thisObject->target());
+}
+
+void JSProxy::getStructurePropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
+{
+    JSProxy* thisObject = jsCast<JSProxy*>(object);
+    thisObject->target()->methodTable(exec->vm())->getStructurePropertyNames(thisObject->target(), exec, propertyNames, mode);
+}
+
+void JSProxy::getGenericPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
+{
+    JSProxy* thisObject = jsCast<JSProxy*>(object);
+    thisObject->target()->methodTable(exec->vm())->getGenericPropertyNames(thisObject->target(), exec, propertyNames, mode);
 }
 
 void JSProxy::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)

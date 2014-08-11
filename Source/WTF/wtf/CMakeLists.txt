@@ -213,6 +213,7 @@ set(WTF_INCLUDE_DIRECTORIES
     "${WTF_DIR}"
     "${WTF_DIR}/wtf"
     "${WTF_DIR}/wtf/dtoa"
+    "${WTF_DIR}/wtf/text"
     "${WTF_DIR}/wtf/threads"
     "${WTF_DIR}/wtf/unicode"
     "${THIRDPARTY_DIR}"
@@ -255,7 +256,7 @@ WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})
 include_directories(${WTF_INCLUDE_DIRECTORIES})
-add_library(WTF STATIC ${WTF_HEADERS} ${WTF_SOURCES})
+add_library(WTF ${WTF_LIBRARY_TYPE} ${WTF_HEADERS} ${WTF_SOURCES})
 target_link_libraries(WTF ${WTF_LIBRARIES})
 set_target_properties(WTF PROPERTIES COMPILE_DEFINITIONS "BUILDING_WTF")
 set_target_properties(WTF PROPERTIES FOLDER "JavaScriptCore")

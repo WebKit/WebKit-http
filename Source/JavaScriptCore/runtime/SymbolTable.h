@@ -230,11 +230,11 @@ struct SymbolTableEntry {
         return fatEntry()->m_watchpoints.get();
     }
     
-    ALWAYS_INLINE void notifyWrite(VM& vm, JSValue value)
+    ALWAYS_INLINE void notifyWrite(VM& vm, JSValue value, const FireDetail& detail)
     {
         if (LIKELY(!isFat()))
             return;
-        notifyWriteSlow(vm, value);
+        notifyWriteSlow(vm, value, detail);
     }
     
 private:
@@ -258,7 +258,7 @@ private:
     };
     
     SymbolTableEntry& copySlow(const SymbolTableEntry&);
-    JS_EXPORT_PRIVATE void notifyWriteSlow(VM&, JSValue);
+    JS_EXPORT_PRIVATE void notifyWriteSlow(VM&, JSValue, const FireDetail&);
     
     bool isFat() const
     {
@@ -337,7 +337,7 @@ public:
     typedef JSCell Base;
 
     typedef HashMap<RefPtr<StringImpl>, SymbolTableEntry, IdentifierRepHash, HashTraits<RefPtr<StringImpl>>, SymbolTableIndexHashTraits> Map;
-    typedef HashMap<RefPtr<StringImpl>, int64_t> UniqueIDMap;
+    typedef HashMap<RefPtr<StringImpl>, GlobalVariableID> UniqueIDMap;
     typedef HashMap<RefPtr<StringImpl>, RefPtr<TypeSet>> UniqueTypeSetMap;
     typedef HashMap<int, RefPtr<StringImpl>, WTF::IntHash<int>, WTF::UnsignedWithZeroKeyHashTraits<int>> RegisterToVariableMap;
 
@@ -458,8 +458,8 @@ public:
         return contains(locker, key);
     }
     
-    int64_t uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm);
-    int64_t uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm);
+    GlobalVariableID uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm);
+    GlobalVariableID uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm);
     RefPtr<TypeSet> globalTypeSetForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm);
     RefPtr<TypeSet> globalTypeSetForVariable(const ConcurrentJITLocker& locker, StringImpl* key, VM& vm);
 

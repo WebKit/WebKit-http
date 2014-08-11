@@ -44,8 +44,6 @@ void Arguments::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     Arguments* thisObject = jsCast<Arguments*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     JSObject::visitChildren(thisObject, visitor);
 
     if (thisObject->m_registerArray) {
@@ -223,7 +221,7 @@ void Arguments::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyN
             continue;
         propertyNames.add(Identifier::from(exec, i));
     }
-    if (mode == IncludeDontEnumProperties) {
+    if (shouldIncludeDontEnumProperties(mode)) {
         propertyNames.add(exec->propertyNames().callee);
         propertyNames.add(exec->propertyNames().length);
     }

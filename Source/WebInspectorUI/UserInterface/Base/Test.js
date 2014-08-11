@@ -57,9 +57,15 @@ WebInspector.loaded = function()
     InspectorFrontendHost.loaded();
 }
 
-WebInspector.contentLoaded = function() {
+WebInspector.contentLoaded = function()
+{
     // Signal that the frontend is now ready to receive messages.
     InspectorFrontendAPI.loadCompleted();
+}
+
+WebInspector.UIString = function(string)
+{
+    return string;
 }
 
 // Add stubs that are called by the frontend API.
@@ -71,6 +77,9 @@ WebInspector.updateDockedState = function()
 // in the Web Inspector page. They rely on equivalents in the actual test page
 // which are provided by `inspector-test.js`.
 InspectorTest = {};
+
+// This is useful for debugging Inspector tests by synchronously logging messages.
+InspectorTest.dumpMessagesToConsole = false;
 
 // This is a workaround for the fact that it would be hard to set up a constructor,
 // prototype, and prototype chain for the singleton InspectorTest.
@@ -126,11 +135,17 @@ InspectorTest.expectThat = function(condition, message)
 // This function should only be used to debug tests and not to produce normal test output.
 InspectorTest.debugLog = function(message)
 {
+    if (InspectorTest.dumpMessagesToConsole)
+        InspectorFrontendHost.unbufferedLog("debugLog: " + message);
+
     this.evaluateInPage("InspectorTestProxy.debugLog(unescape('" + escape(JSON.stringify(message)) + "'))");
 }
 
 InspectorTest.completeTest = function()
 {
+    if (InspectorTest.dumpMessagesToConsole)
+        InspectorFrontendHost.unbufferedLog("InspectorTest.completeTest()");
+
     function signalCompletionToTestPage() {
         InspectorBackend.runAfterPendingDispatches(this.evaluateInPage.bind(this, "InspectorTestProxy.completeTest()"));
     }
@@ -158,6 +173,9 @@ InspectorTest.evaluateInPage = function(codeString, callback)
 InspectorTest.addResult = function(text)
 {
     this._results.push(text);
+
+    if (InspectorTest.dumpMessagesToConsole)
+        InspectorFrontendHost.unbufferedLog("addResult: " + text);
 
     if (!this._testPageIsReloading)
         this.evaluateInPage("InspectorTestProxy.addResult(unescape('" + escape(text) + "'))");

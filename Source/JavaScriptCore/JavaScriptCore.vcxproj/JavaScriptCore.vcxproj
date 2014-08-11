@@ -321,6 +321,7 @@
     <ClCompile Include="..\bytecode\CodeBlockJettisoningWatchpoint.cpp" />
     <ClCompile Include="..\bytecode\CodeOrigin.cpp" />
     <ClCompile Include="..\bytecode\CodeType.cpp" />
+    <ClCompile Include="..\bytecode\ComplexGetStatus.cpp" />
     <ClCompile Include="..\bytecode\ConstantStructureCheck.cpp" />
     <ClCompile Include="..\bytecode\DeferredCompilationCallback.cpp" />
     <ClCompile Include="..\bytecode\DFGExitProfile.cpp" />
@@ -336,7 +337,6 @@
     <ClCompile Include="..\bytecode\Opcode.cpp" />
     <ClCompile Include="..\bytecode\PolymorphicGetByIdList.cpp" />
     <ClCompile Include="..\bytecode\PolymorphicPutByIdList.cpp" />
-    <ClCompile Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.cpp" />
     <ClCompile Include="..\bytecode\PreciseJumpTargets.cpp" />
     <ClCompile Include="..\bytecode\PutByIdStatus.cpp" />
     <ClCompile Include="..\bytecode\PutByIdVariant.cpp" />
@@ -351,6 +351,7 @@
     <ClCompile Include="..\bytecode\UnlinkedCodeBlock.cpp" />
     <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp" />
     <ClCompile Include="..\bytecode\ValueRecovery.cpp" />
+    <ClCompile Include="..\bytecode\VariableWatchpointSet.cpp" />
     <ClCompile Include="..\bytecode\Watchpoint.cpp" />
     <ClCompile Include="..\bytecompiler\BytecodeGenerator.cpp" />
     <ClCompile Include="..\bytecompiler\NodesCodegen.cpp" />
@@ -402,6 +403,7 @@
     <ClCompile Include="..\dfg\DFGFunctionWhitelist.cpp" />
     <ClCompile Include="..\dfg\DFGGraph.cpp" />
     <ClCompile Include="..\dfg\DFGGraphSafepoint.cpp" />
+    <ClCompile Include="..\dfg\DFGHeapLocation.cpp" />
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp" />
     <ClCompile Include="..\dfg\DFGIntegerCheckCombiningPhase.cpp" />
     <ClCompile Include="..\dfg\DFGInvalidationPointInjectionPhase.cpp" />
@@ -431,10 +433,13 @@
     <ClCompile Include="..\dfg\DFGOSRExitCompilerCommon.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitJumpPlaceholder.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitPreparation.cpp" />
+    <ClCompile Include="..\dfg\DFGPhantomCanonicalizationPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGPhantomRemovalPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPlan.cpp" />
     <ClCompile Include="..\dfg\DFGPredictionInjectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPredictionPropagationPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGPureValue.cpp" />
     <ClCompile Include="..\dfg\DFGResurrectionForValidationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGSafepoint.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT.cpp" />
@@ -681,6 +686,7 @@
     <ClCompile Include="..\runtime\Executable.cpp" />
     <ClCompile Include="..\runtime\FunctionConstructor.cpp" />
     <ClCompile Include="..\runtime\FunctionExecutableDump.cpp" />
+    <ClCompile Include="..\runtime\FunctionHasExecutedCache.cpp" />
     <ClCompile Include="..\runtime\FunctionPrototype.cpp" />
     <ClCompile Include="..\runtime\GetterSetter.cpp" />
     <ClCompile Include="..\runtime\HighFidelityLog.cpp" />
@@ -722,7 +728,7 @@
     <ClCompile Include="..\runtime\JSPromiseFunctions.cpp" />
     <ClCompile Include="..\runtime\JSPromiseReaction.cpp" />
     <ClCompile Include="..\runtime\JSPromisePrototype.cpp" />
-    <ClCompile Include="..\runtime\JSPropertyNameIterator.cpp" />
+    <ClCompile Include="..\runtime\JSPropertyNameEnumerator.cpp" />
     <ClCompile Include="..\runtime\JSProxy.cpp" />
     <ClCompile Include="..\runtime\JSScope.cpp" />
     <ClCompile Include="..\runtime\JSSegmentedVariableObject.cpp" />
@@ -792,6 +798,7 @@
     <ClCompile Include="..\runtime\TestRunnerUtils.cpp" />
     <ClCompile Include="..\runtime\TypedArrayController.cpp" />
     <ClCompile Include="..\runtime\TypedArrayType.cpp" />
+    <ClCompile Include="..\runtime\TypeLocationCache.cpp" />
     <ClCompile Include="..\runtime\TypeSet.cpp" />
     <ClCompile Include="..\runtime\VM.cpp" />
     <ClCompile Include="..\runtime\VMEntryScope.cpp" />
@@ -908,6 +915,7 @@
     <ClInclude Include="..\bytecode\CodeOrigin.h" />
     <ClInclude Include="..\bytecode\CodeType.h" />
     <ClInclude Include="..\bytecode\Comment.h" />
+    <ClInclude Include="..\bytecode\ComplexGetStatus.h" />
     <ClInclude Include="..\bytecode\ConstantStructureCheck.h" />
     <ClInclude Include="..\bytecode\DataFormat.h" />
     <ClInclude Include="..\bytecode\DeferredCompilationCallback.h" />
@@ -929,7 +937,6 @@
     <ClInclude Include="..\bytecode\Operands.h" />
     <ClInclude Include="..\bytecode\PolymorphicGetByIdList.h" />
     <ClInclude Include="..\bytecode\PolymorphicPutByIdList.h" />
-    <ClInclude Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.h" />
     <ClInclude Include="..\bytecode\PreciseJumpTargets.h" />
     <ClInclude Include="..\bytecode\PutByIdStatus.h" />
     <ClInclude Include="..\bytecode\PutByIdVariant.h" />
@@ -1023,6 +1030,7 @@
     <ClInclude Include="..\dfg\DFGGPRInfo.h" />
     <ClInclude Include="..\dfg\DFGGraph.h" />
     <ClInclude Include="..\dfg\DFGGraphSafepoint.h" />
+    <ClInclude Include="..\dfg\DFGHeapLocation.h" />
     <ClInclude Include="..\dfg\DFGInPlaceAbstractState.h" />
     <ClInclude Include="..\dfg\DFGInsertionSet.h" />
     <ClInclude Include="..\dfg\DFGIntegerCheckCombiningPhase.h" />
@@ -1058,10 +1066,13 @@
     <ClInclude Include="..\dfg\DFGOSRExitCompilerCommon.h" />
     <ClInclude Include="..\dfg\DFGOSRExitJumpPlaceholder.h" />
     <ClInclude Include="..\dfg\DFGOSRExitPreparation.h" />
+    <ClInclude Include="..\dfg\DFGPhantomCanonicalizationPhase.h" />
+    <ClInclude Include="..\dfg\DFGPhantomRemovalPhase.h" />
     <ClInclude Include="..\dfg\DFGPhase.h" />
     <ClInclude Include="..\dfg\DFGPlan.h" />
     <ClInclude Include="..\dfg\DFGPredictionInjectionPhase.h" />
     <ClInclude Include="..\dfg\DFGPredictionPropagationPhase.h" />
+    <ClInclude Include="..\dfg\DFGPureValue.h" />
     <ClInclude Include="..\dfg\DFGRegisterBank.h" />
     <ClInclude Include="..\dfg\DFGRegisterSet.h" />
     <ClInclude Include="..\dfg\DFGResurrectionForValidationPhase.h" />
@@ -1395,6 +1406,7 @@
     <ClInclude Include="..\runtime\DateInstanceCache.h" />
     <ClInclude Include="..\runtime\DatePrototype.h" />
     <ClInclude Include="..\runtime\DumpContext.h" />
+    <ClInclude Include="..\runtime\EnumerationMode.h" />
     <ClInclude Include="..\runtime\Error.h" />
     <ClInclude Include="..\runtime\ErrorConstructor.h" />
     <ClInclude Include="..\runtime\ErrorHandlingScope.h" />
@@ -1407,6 +1419,7 @@
     <ClInclude Include="..\runtime\Float64Array.h" />
     <ClInclude Include="..\runtime\FunctionConstructor.h" />
     <ClInclude Include="..\runtime\FunctionExecutableDump.h" />
+    <ClInclude Include="..\runtime\FunctionHasExecutedCache.h" />
     <ClInclude Include="..\runtime\FunctionPrototype.h" />
     <ClInclude Include="..\runtime\GenericTypedArrayView.h" />
     <ClInclude Include="..\runtime\GenericTypedArrayViewInlines.h" />
@@ -1472,7 +1485,7 @@
     <ClInclude Include="..\runtime\JSPromiseFunctions.h" />
     <ClInclude Include="..\runtime\JSPromiseReaction.h" />
     <ClInclude Include="..\runtime\JSPromisePrototype.h" />
-    <ClInclude Include="..\runtime\JSPropertyNameIterator.h" />
+    <ClInclude Include="..\runtime\JSPropertyNameEnumerator.h" />
     <ClInclude Include="..\runtime\JSProxy.h" />
     <ClInclude Include="..\runtime\JSScope.h" />
     <ClInclude Include="..\runtime\JSSegmentedVariableObject.h" />
@@ -1569,6 +1582,7 @@
     <ClInclude Include="..\runtime\TypedArrayController.h" />
     <ClInclude Include="..\runtime\TypedArrayInlines.h" />
     <ClInclude Include="..\runtime\TypedArrayType.h" />
+    <ClInclude Include="..\runtime\TypeLocationCache.h" />
     <ClInclude Include="..\runtime\TypeSet.h" />
     <ClInclude Include="..\runtime\TypedArrays.h" />
     <ClInclude Include="..\runtime\Uint16Array.h" />

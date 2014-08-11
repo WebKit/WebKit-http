@@ -1,5 +1,6 @@
 set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
+    "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/gamepad"
@@ -30,6 +31,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/jsc"
     "${WEBCORE_DIR}/crypto"
     "${WEBCORE_DIR}/crypto/keys"
+    "${WEBCORE_DIR}/crypto/parameters"
     "${WEBCORE_DIR}/cssjit"
     "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/editing"
@@ -111,6 +113,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WTF_DIR}"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
+    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
     "${CMAKE_BINARY_DIR}"
@@ -130,6 +133,7 @@ SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
 )
 
 set(WebCore_IDL_INCLUDES
+    Modules/airplay
     Modules/battery
     Modules/encryptedmedia
     Modules/gamepad
@@ -166,6 +170,8 @@ set(WebCore_IDL_INCLUDES
 )
 
 set(WebCore_IDL_FILES
+    Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl
+
     Modules/battery/BatteryManager.idl
     Modules/battery/NavigatorBattery.idl
 
@@ -200,6 +206,8 @@ set(WebCore_IDL_FILES
     Modules/indexeddb/IDBTransaction.idl
     Modules/indexeddb/IDBVersionChangeEvent.idl
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
+
+    Modules/indieui/UIRequestEvent.idl
 
     Modules/mediacontrols/MediaControlsHost.idl
 
@@ -562,6 +570,7 @@ set(WebCore_IDL_FILES
 
     loader/appcache/DOMApplicationCache.idl
 
+    page/AbstractView.idl
     page/BarProp.idl
     page/Crypto.idl
     page/DOMSecurityPolicy.idl
@@ -580,10 +589,10 @@ set(WebCore_IDL_FILES
     page/PerformanceResourceTiming.idl
     page/PerformanceTiming.idl
     page/Screen.idl
-    page/SpeechInputEvent.idl
-    page/SpeechInputResult.idl
-    page/SpeechInputResultList.idl
     page/WebKitPoint.idl
+    page/WebKitNamespace.idl
+    page/UserMessageHandlersNamespace.idl
+    page/UserMessageHandler.idl
     page/WindowBase64.idl
     page/WindowTimers.idl
     page/WorkerNavigator.idl
@@ -785,6 +794,8 @@ set(WebCore_INSPECTOR_DOMAINS
 )
 
 set(WebCore_SOURCES
+    Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.cpp
+
     Modules/battery/BatteryController.cpp
     Modules/battery/BatteryManager.cpp
     Modules/battery/BatteryStatus.cpp
@@ -1936,10 +1947,6 @@ set(WebCore_SOURCES
     page/SecurityPolicy.cpp
     page/Settings.cpp
     page/SpatialNavigation.cpp
-    page/SpeechInput.cpp
-    page/SpeechInputEvent.cpp
-    page/SpeechInputResult.cpp
-    page/SpeechInputResultList.cpp
     page/SuspendableTimer.cpp
     page/UserContentController.cpp
     page/UserContentURLPattern.cpp
@@ -2090,7 +2097,6 @@ set(WebCore_SOURCES
     platform/graphics/Image.cpp
     platform/graphics/ImageBuffer.cpp
     platform/graphics/ImageOrientation.cpp
-    platform/graphics/ImageSource.cpp
     platform/graphics/IntPoint.cpp
     platform/graphics/IntRect.cpp
     platform/graphics/IntSize.cpp
@@ -2164,22 +2170,6 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformState.cpp
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
-
-    platform/image-decoders/ImageDecoder.cpp
-
-    platform/image-decoders/bmp/BMPImageDecoder.cpp
-    platform/image-decoders/bmp/BMPImageReader.cpp
-
-    platform/image-decoders/gif/GIFImageDecoder.cpp
-    platform/image-decoders/gif/GIFImageReader.cpp
-
-    platform/image-decoders/ico/ICOImageDecoder.cpp
-
-    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-
-    platform/image-decoders/png/PNGImageDecoder.cpp
-
-    platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/leveldb/LevelDBDatabase.cpp
     platform/leveldb/LevelDBTransaction.cpp
@@ -2318,7 +2308,6 @@ set(WebCore_SOURCES
     rendering/RenderImageResource.cpp
     rendering/RenderImageResourceStyleImage.cpp
     rendering/RenderInline.cpp
-    rendering/RenderInputSpeech.cpp
     rendering/RenderLayer.cpp
     rendering/RenderLayerBacking.cpp
     rendering/RenderLayerCompositor.cpp
@@ -2441,6 +2430,7 @@ set(WebCore_SOURCES
     rendering/style/StyleMultiColData.cpp
     rendering/style/StyleRareInheritedData.cpp
     rendering/style/StyleRareNonInheritedData.cpp
+    rendering/style/StyleScrollSnapPoints.cpp
     rendering/style/StyleSurroundData.cpp
     rendering/style/StyleTransformData.cpp
     rendering/style/StyleVisualData.cpp
@@ -3279,7 +3269,7 @@ add_custom_command(
     DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py
             ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspectorStrings.py
             ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
-            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJSTypeBuilders.h
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSTypeBuilders.h
     COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_cpp_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_js_dir "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol" --output_type Web --write_always
     VERBATIM)
 
@@ -3617,7 +3607,12 @@ endif ()
 if (WTF_USE_3D_GRAPHICS)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
     set_target_properties(ANGLESupport PROPERTIES FOLDER "WebCore")
-    target_include_directories(ANGLESupport PRIVATE "${THIRDPARTY_DIR}/ANGLE/include")
+    set_property(
+        TARGET ANGLESupport
+        APPEND
+        PROPERTY INCLUDE_DIRECTORIES
+            "${THIRDPARTY_DIR}/ANGLE/include"
+    )
     list(APPEND WebCore_LIBRARIES ANGLESupport)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)
 endif ()

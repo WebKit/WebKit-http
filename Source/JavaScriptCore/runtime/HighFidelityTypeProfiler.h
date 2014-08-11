@@ -27,63 +27,93 @@
 #define HighFidelityTypeProfiler_h
 
 #include "CodeBlock.h"
-#include <unordered_map>
+#include "FunctionHasExecutedCache.h"
+#include "TypeLocationCache.h"
 #include <wtf/HashMap.h>
-#include <wtf/HashMethod.h>
 #include <wtf/text/WTFString.h>
+#include <wtf/Vector.h>
+
+namespace Inspector { namespace TypeBuilder  { namespace Runtime {
+class TypeDescription;
+}}}
+namespace Inspector {
+class InspectorObject;
+}
 
 namespace JSC {
 
 class TypeLocation;
 
-struct LocationKey {
+struct QueryKey {
+    QueryKey()
+        : m_sourceID(0)
+        , m_divot(0)
+    { }
 
-public:
-    LocationKey(intptr_t sourceID, unsigned line, unsigned column) 
+    QueryKey(intptr_t sourceID, unsigned divot)
         : m_sourceID(sourceID)
-        , m_line(line)
-        , m_column(column)
+        , m_divot(divot)
+    { }
 
-    {
-    }
+    QueryKey(WTF::HashTableDeletedValueType)
+        : m_sourceID(INTPTR_MAX)
+        , m_divot(UINT_MAX)
+    { }
 
-    unsigned hash() const
-    {
-        return m_line + m_sourceID;
-    }
-
-    // FIXME: For now, this is a hack. We do the following: Map:"ID:Line" => TypeSet. Obviously, this assumes all assignments are on discrete lines, which is an incorrect assumption.
-    bool operator==(const LocationKey& other) const
-    {
-        return m_sourceID == other.m_sourceID
-               && m_line == other.m_line;
-    }
+    bool isHashTableDeletedValue() const { return m_sourceID == INTPTR_MAX && m_divot == UINT_MAX; }
+    bool operator==(const QueryKey& other) const { return m_sourceID == other.m_sourceID && m_divot == other.m_divot; }
+    unsigned hash() const { return m_sourceID + m_divot; }
 
     intptr_t m_sourceID;
-    unsigned m_line;
-    unsigned m_column;
+    unsigned m_divot;
 };
 
-class HighFidelityTypeProfiler {
-
-public:
-    String getTypesForVariableInRange(unsigned startLine, unsigned startColumn, unsigned endLine, unsigned endColumn, const String& variableName, intptr_t sourceID);
-    String getGlobalTypesForVariableInRange(unsigned startLine, unsigned startColumn, unsigned endLine, unsigned endColumn, const String& variableName, intptr_t sourceID);
-    String getLocalTypesForVariableInRange(unsigned startLine, unsigned startColumn, unsigned endLine, unsigned endColumn, const String& variableName, intptr_t sourceID);
-    void insertNewLocation(TypeLocation*);
-    
-private:
-    static LocationKey getLocationBasedHash(intptr_t, unsigned);
-
-    typedef std::unordered_map<LocationKey, RefPtr<TypeSet>, HashMethod<LocationKey>> GlobalLocationMap; 
-    typedef std::unordered_map<int64_t, RefPtr<TypeSet>> GlobalIDMap; 
-    typedef std::unordered_map<LocationKey, int64_t, HashMethod<LocationKey>> GlobalLocationToGlobalIDMap;
-
-    GlobalIDMap m_globalIDMap;
-    GlobalLocationMap m_globalLocationMap;
-    GlobalLocationToGlobalIDMap m_globalLocationToGlobalIDMap;
+struct QueryKeyHash {
+    static unsigned hash(const QueryKey& key) { return key.hash(); }
+    static bool equal(const QueryKey& a, const QueryKey& b) { return a == b; }
+    static const bool safeToCompareToEmptyOrDeleted = true;
 };
 
 } //namespace JSC
+
+namespace WTF {
+
+template<typename T> struct DefaultHash;
+template<> struct DefaultHash<JSC::QueryKey> {
+    typedef JSC::QueryKeyHash Hash;
+};
+
+template<typename T> struct HashTraits;
+template<> struct HashTraits<JSC::QueryKey> : SimpleClassHashTraits<JSC::QueryKey> { };
+
+} // namespace WTF
+
+namespace JSC {
+
+enum TypeProfilerSearchDescriptor {
+    TypeProfilerSearchDescriptorNormal = 1,
+    TypeProfilerSearchDescriptorThisStatement = 2,
+    TypeProfilerSearchDescriptorFunctionReturn = 3
+};
+
+class HighFidelityTypeProfiler {
+public:
+    void logTypesForTypeLocation(TypeLocation*);
+    void getTypesForVariableAtOffsetForInspector(TypeProfilerSearchDescriptor descriptor, unsigned divot, intptr_t sourceID, RefPtr<Inspector::InspectorObject>&);
+    void insertNewLocation(TypeLocation*);
+    FunctionHasExecutedCache* functionHasExecutedCache() { return &m_functionHasExecutedCache; }
+    TypeLocationCache* typeLocationCache() { return &m_typeLocationCache; }
+    
+private:
+    TypeLocation* findLocation(unsigned divot, intptr_t sourceID, TypeProfilerSearchDescriptor descriptor);
+    typedef HashMap<intptr_t, Vector<TypeLocation*>> SourceIDToLocationBucketMap;
+    SourceIDToLocationBucketMap m_bucketMap;
+    FunctionHasExecutedCache m_functionHasExecutedCache;
+    TypeLocationCache m_typeLocationCache;
+    typedef HashMap<QueryKey, TypeLocation*> TypeLocationQueryCache;
+    TypeLocationQueryCache m_queryCache;
+};
+
+} // namespace JSC
 
 #endif //HighFidelityTypeProfiler_h
