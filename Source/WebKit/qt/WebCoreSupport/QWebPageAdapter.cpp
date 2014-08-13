@@ -267,8 +267,10 @@ void QWebPageAdapter::initializeWebCorePage()
         m_deviceMotionClient = new DeviceMotionClientQt;
     }
 #endif
-    WebCore::provideDeviceOrientationTo(page, m_deviceOrientationClient);
-    WebCore::provideDeviceMotionTo(page, m_deviceMotionClient);
+    if (m_deviceOrientationClient)
+        WebCore::provideDeviceOrientationTo(page, m_deviceOrientationClient);
+    if (m_deviceMotionClient)
+        WebCore::provideDeviceMotionTo(page, m_deviceMotionClient);
 #endif
 
     // By default each page is put into their own unique page group, which affects popup windows
