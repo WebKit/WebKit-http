@@ -29,6 +29,7 @@ WebInspector.DashboardManager = function() {
     this._dashboards = {};
     this._dashboards.default = new WebInspector.DefaultDashboard;
     this._dashboards.debugger = new WebInspector.DebuggerDashboard;
+    this._dashboards.replay = new WebInspector.ReplayDashboard;
 };
 
 WebInspector.DashboardManager.prototype = {

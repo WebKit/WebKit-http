@@ -1,3 +1,127 @@
+2014-08-12  Daniel Bates  <dabates@apple.com>
+
+        [iOS] build-webkit should not build WebKitSystemInterface and WebKitAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=135845
+
+        Reviewed by Andy Estes.
+
+        Towards building the iOS WebKit port using the public SDK, remove the logic
+        added to build-webkit to build projects WebKitSystemInterface and
+        WebKitAdditions when building the iOS WebKit port.
+
+        * Scripts/build-webkit:
+
+2014-08-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK] Adds dependency for GnuTLS 3.0+ explicitly in gtk/install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=135850
+
+        Reviewed by Philippe Normand.
+
+        After r172433, GTK port requires GnuTLS 3.0+. In this time, libgnutls-dev is 2.x in
+        Ubuntu(trusty) and Debian(sid). So added libgnutls28-dev explicitly.
+
+        * gtk/install-dependencies:
+
+2014-08-12  Eduardo Lima Mitev  <elima@igalia.com>
+
+        [GTK] Subtle-crypto feature off by default and add a new configure flag to enable it
+        https://bugs.webkit.org/show_bug.cgi?id=135798
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitperl/FeatureList.pm: Adds new flag --subtle-crypto to
+            toggle SUBTLE_CRYPTO feature.
+
+2014-08-12  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Disable ecore logs about bad fd
+        https://bugs.webkit.org/show_bug.cgi?id=135831
+
+        Reviewed by Gyuyoung Kim.
+
+        ecore checks EBADF and prints the warnings.
+        But, it looks noise in layout test because it's not webkit issue.
+        This patch disables it until we found right solution.
+
+        * efl/jhbuild.modules:
+        * efl/patches/ecore_remove_warnings.patch: Added.
+
+2014-08-12  Shivakumar JM  <shiva.jm@samsung.com>
+
+        [EFL][WK2] Minibrowser: Enhance the application to use download directory selector.
+        https://bugs.webkit.org/show_bug.cgi?id=135791
+
+        Reviewed by Gyuyoung Kim.
+
+        Currently Minibrowser stores the downloaded files to /tmp directory, add support so that destination folder can be selected by the
+        user.
+
+        * MiniBrowser/efl/main.c:
+        (on_download_request):
+
+2014-08-11  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        [EFL] Prevent the client from creating ewk_view when EWebkit is not initialized
+        https://bugs.webkit.org/show_bug.cgi?id=135606
+
+        Reviewed by Gyuyoung Kim.
+
+        TestWebKitAPI does not initialize EWebkit using ewk_init()
+        which is not recommended.
+
+        * TestWebKitAPI/efl/PlatformWebView.cpp:
+        (TestWebKitAPI::createEcoreEvas):
+        Renamed from initEcoreEvas() since it doesn't not initialize
+        ecore evas.
+
+        (TestWebKitAPI::PlatformWebView::PlatformWebView):
+        Call ewk_init() that initalizes all EFL modules needed by EWebKit
+        instead of ecore_evas_init() only.
+
+        (TestWebKitAPI::PlatformWebView::~PlatformWebView):
+        Call ewk_shutdown() to finalize EWebkit.
+        (TestWebKitAPI::initEcoreEvas): Deleted.
+
+2014-08-11  Dan Bernstein  <mitz@apple.com>
+
+        Added an update-webkit option to update the auxiliary libraries or not.
+        Part of https://bugs.webkit.org/show_bug.cgi?id=135815
+
+        Reviewed by Tim Horton.
+
+        * Scripts/update-webkit: Added --[no-]auxiliary-libs option, which defaults to yes unless
+        an Internal directory exists alongside the WebKit root directory.
+
+2014-08-11  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Remove hg changeset from w3c-import.log
+        https://bugs.webkit.org/show_bug.cgi?id=135735
+
+        Reviewed by Ryosuke Niwa.
+
+        Since the csswg's test suite is now accessible via github and it is
+        possible to push changes by creating github pull requests, the hg
+        changeset makes less sense, as many people will just use a clone of
+        the git repo. There isn't an obvious thing to replace it with, so
+        might as well remove it for now instead of having it just be set to
+        UNKNOWN in imports.
+
+        This also adds a pointer to the github repo in the generated comments
+        in the w3c-import.log.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.__init__): Remove changeset handling.
+        (TestImporter.do_import): Ditto.
+        (TestImporter.write_import_log): Ditto.
+        (TestImporter.load_changeset): Deleted.
+
+2014-08-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ make distcheck.
+
+        * gtk/manifest.txt: Remove Source/WebCore/Resources/inputSpeech.png.
+
 2014-08-08  Simon Fraser  <simon.fraser@apple.com>
 
         Unbreak webkitpy unit tests by checking for the existence of the image diff template

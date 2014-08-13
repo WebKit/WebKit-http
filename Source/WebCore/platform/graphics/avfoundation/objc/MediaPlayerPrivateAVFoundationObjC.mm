@@ -33,6 +33,7 @@
 #import "AuthenticationChallenge.h"
 #import "BlockExceptions.h"
 #import "CDMSessionAVFoundationObjC.h"
+#import "Cookie.h"
 #import "ExceptionCodePlaceholder.h"
 #import "FloatConversion.h"
 #import "FloatConversion.h"
@@ -228,6 +229,7 @@ SOFT_LINK_POINTER(AVFoundation, AVPlayerItemLegibleOutputTextStylingResolutionSo
 #endif
 
 #if ENABLE(AVF_CAPTIONS)
+SOFT_LINK_POINTER(AVFoundation, AVURLAssetHTTPCookiesKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVURLAssetOutOfBandAlternateTracksKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackDisplayNameKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackExtendedLanguageTagKey, NSString*)
@@ -238,6 +240,7 @@ SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackSourceKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicDescribesMusicAndSoundForAccessibility, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicTranscribesSpokenDialogForAccessibility, NSString*)
 
+#define AVURLAssetHTTPCookiesKey getAVURLAssetHTTPCookiesKey()
 #define AVURLAssetOutOfBandAlternateTracksKey getAVURLAssetOutOfBandAlternateTracksKey()
 #define AVOutOfBandAlternateTrackDisplayNameKey getAVOutOfBandAlternateTrackDisplayNameKey()
 #define AVOutOfBandAlternateTrackExtendedLanguageTagKey getAVOutOfBandAlternateTrackExtendedLanguageTagKey()
@@ -712,6 +715,26 @@ static NSURL *canonicalURL(const String& url)
     return [canonicalRequest URL];
 }
 
+#if PLATFORM(IOS)
+static NSHTTPCookie* toNSHTTPCookie(const Cookie& cookie)
+{
+    RetainPtr<NSMutableDictionary> properties = adoptNS([[NSMutableDictionary alloc] init]);
+    [properties setDictionary:@{
+        NSHTTPCookieName: cookie.name,
+        NSHTTPCookieValue: cookie.value,
+        NSHTTPCookieDomain: cookie.domain,
+        NSHTTPCookiePath: cookie.path,
+        NSHTTPCookieExpires: [NSDate dateWithTimeIntervalSince1970:(cookie.expires / 1000)],
+    }];
+    if (cookie.secure)
+        [properties setObject:@YES forKey:NSHTTPCookieSecure];
+    if (cookie.session)
+        [properties setObject:@YES forKey:NSHTTPCookieDiscard];
+
+    return [NSHTTPCookie cookieWithProperties:properties.get()];
+}
+#endif
+
 void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
 {
     if (m_avAsset)
@@ -772,6 +795,17 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
     String networkInterfaceName = player()->mediaPlayerNetworkInterfaceName();
     if (!networkInterfaceName.isEmpty())
         [options setObject:networkInterfaceName forKey:AVURLAssetBoundNetworkInterfaceName];
+#endif
+
+#if PLATFORM(IOS)
+    Vector<Cookie> cookies;
+    if (player()->getRawCookies(URL(ParsedURLString, url), cookies)) {
+        RetainPtr<NSMutableArray> nsCookies = adoptNS([[NSMutableArray alloc] initWithCapacity:cookies.size()]);
+        for (auto& cookie : cookies)
+            [nsCookies addObject:toNSHTTPCookie(cookie)];
+
+        [options setObject:nsCookies.get() forKey:AVURLAssetHTTPCookiesKey];
+    }
 #endif
 
     NSURL *cocoaURL = canonicalURL(url);
@@ -1096,12 +1130,12 @@ void MediaPlayerPrivateAVFoundationObjC::platformPause()
     setDelayCallbacks(false);
 }
 
-float MediaPlayerPrivateAVFoundationObjC::platformDuration() const
+double MediaPlayerPrivateAVFoundationObjC::platformDuration() const
 {
     // Do not ask the asset for duration before it has been loaded or it will fetch the
     // answer synchronously.
     if (!m_avAsset || assetStatus() < MediaPlayerAVAssetStatusLoaded)
-         return MediaPlayer::invalidTime();
+        return MediaPlayer::invalidTime();
     
     CMTime cmDuration;
     
@@ -1112,24 +1146,24 @@ float MediaPlayerPrivateAVFoundationObjC::platformDuration() const
         cmDuration= [m_avAsset.get() duration];
 
     if (CMTIME_IS_NUMERIC(cmDuration))
-        return narrowPrecisionToFloat(CMTimeGetSeconds(cmDuration));
+        return CMTimeGetSeconds(cmDuration);
 
     if (CMTIME_IS_INDEFINITE(cmDuration)) {
-        return std::numeric_limits<float>::infinity();
+        return std::numeric_limits<double>::infinity();
     }
 
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::platformDuration(%p) - invalid duration, returning %.0f", this, MediaPlayer::invalidTime());
     return MediaPlayer::invalidTime();
 }
 
-float MediaPlayerPrivateAVFoundationObjC::currentTime() const
+double MediaPlayerPrivateAVFoundationObjC::currentTimeDouble() const
 {
     if (!metaDataAvailable() || !m_avPlayerItem)
         return 0;
 
     CMTime itemTime = [m_avPlayerItem.get() currentTime];
     if (CMTIME_IS_NUMERIC(itemTime))
-        return std::max(narrowPrecisionToFloat(CMTimeGetSeconds(itemTime)), 0.0f);
+        return std::max(CMTimeGetSeconds(itemTime), 0.0);
 
     return 0;
 }

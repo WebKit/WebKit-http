@@ -1,3 +1,726 @@
+2014-08-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Elements whose contents start with an astral Unicode symbol disappear when CSS `::first-letter` is applied to them
+        https://bugs.webkit.org/show_bug.cgi?id=135756
+
+        Reviewed by Darin Adler.
+
+        The previous code assumed that all "characters" are exactly 1 16-bit code unit wide. Instead, use numCharactersInGraphemeClusters().
+
+        This patch also modifies the signature of numCharactersInGraphemeClusters() to take a StringView instead
+        of a string, which will avoid a copy.
+
+        Test: css1/pseudo/firstletter-surrogate.html
+
+        * platform/text/TextBreakIterator.cpp:
+        (WebCore::numCharactersInGraphemeClusters): Update numCharactersInGraphemeClusters() to take a StringView.
+        * platform/text/TextBreakIterator.h: Ditto.
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::createFirstLetterRenderer): Use numCharactersInGraphemeClusters() to determine the length
+        of the first letter, rather than assuming it has length of 1 code unit
+        (WebCore::RenderBlock::updateFirstLetter): Add a FIXME comment.
+
+2014-08-12  Jer Noble  <jer.noble@apple.com>
+
+        [MSE][Mac] Seeking to the very beginning of a buffered range stalls video playback
+        https://bugs.webkit.org/show_bug.cgi?id=135865
+
+        Reviewed by Eric Carlson.
+
+        AVSampleBufferRenderSynchronizer will report a current time of about 100ms or so before
+        the destination seek time when seeking. It does this in order to pre-roll the synchronized
+        audio renderer, but this can lead to playback stalling when MediaSource::monitorSourceBuffers()
+        looks at the media element's current time and determines that the current time is 100ms before
+        any buffered samples.
+
+        Clamp the value of currentMediaTime() to, at a minimum, the last requested seek time. This was
+        the suggested course of action from <rdar://problem/17789374>.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::durationDouble):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::currentMediaTime):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::seekInternal):
+
+2014-08-12  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] YouTube will lose audio, video after seeking backwards to an unbuffered range.
+        https://bugs.webkit.org/show_bug.cgi?id=135855
+
+        Reviewed by Eric Carlson.
+
+        When seeking into an unbuffered or partially buffered range, we will unconditionally pass samples to the
+        decode queue even if there exist large gaps between those samples. Subsequently, the decoder will not
+        notify us that it has become ready for new samples until playback reaches those later samples and the samples
+        are discarded.
+
+        When sending samples to be decoded in provideMediaData(), stop if there exists a large gap in the sample timeline.
+        Do this by tracking the last enqueued decode end time, and look to see if the next sample's decode time indicates
+        a gap of greater than 1 second.
+
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::TrackBuffer::TrackBuffer): Initialize lastEnqueuedDecodeEndTime.
+        (WebCore::SourceBuffer::seekToTime): Set needsReenqueueing, in case samples do not yet exist in the trackBuffer
+            sufficient to re-enqueue for the destination time, so that re-enqueueing will occur after the next append.
+        (WebCore::SourceBuffer::sourceBufferPrivateDidReceiveSample): Check against lastEnqueuedDecodeEndTime, rather than
+            lastEnqueuedPresentationTime before adding samples to the decodeQueue.
+        (WebCore::SourceBuffer::provideMediaData): Stop when we reach a large gap between samples.
+        (WebCore::SourceBuffer::reenqueueMediaForTime): Set or clear lastEnqueuedDecodeEndTime based on whether we
+            have appended any non-displaying samples after flushing.
+
+2014-08-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172494.
+        https://bugs.webkit.org/show_bug.cgi?id=135864
+
+        asserting on bots (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "Don't recurse into non-rendered subtrees when computing
+        style"
+        https://bugs.webkit.org/show_bug.cgi?id=135844
+        http://trac.webkit.org/changeset/172494
+
+2014-08-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fonts forced to use non synthetic italics might be laid out with the incorrect baseline
+        https://bugs.webkit.org/show_bug.cgi?id=135403
+
+        Reviewed by Darin Adler.
+
+        When italics is specified on a font, and the font isn't coming from the cache, we ask
+        the SimpleFontData to provide a non-synthetic-italic version of itself. Our current
+        implementation doesn't preserve whether or not the SimpleFontData includes vertical
+        glyphs (glyphs that are not rotated when drawn in the vertical writing mode), which
+        determines which baseline we use to lay out the text. By passing "false" to
+        the isTextOrientationFallback argument to SimpleFontData::create(), we preserve this
+        hasVerticalGlyphs flag.
+
+        Test: fast/text/international/synthesized-italic-vertical-latin-double.html
+
+        * platform/graphics/SimpleFontData.cpp:
+        (WebCore::SimpleFontData::nonSyntheticItalicFontData):
+        * testing/Internals.cpp:
+        (WebCore::Internals::invalidateFontCache): Add "invalidateFontCache" to window.internals.
+        * testing/Internals.h: Ditto.
+        * testing/Internals.idl: Ditto.
+
+2014-08-12  Peyton Randolph  <prandolph@apple.com>
+
+        Runtime switch for long mouse press gesture. Part of 135257 - Add long mouse press gesture.
+        https://bugs.webkit.org/show_bug.cgi?id=135682
+
+        Reviewed by Tim Horton.
+
+        This patch adds a runtime switch for the Long Mouse Press Gesture and initially sets the feature flag
+        to false. It also removes the ENABLE_LONG_MOUSE_PRESS feature flag as the runtime switch now guards
+        its functionality.
+
+        * Configurations/FeatureDefines.xcconfig: Remove LONG_MOUSE_PRESS feature flag.
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::EventHandler):
+        (WebCore::EventHandler::clear): Remove feature flag.
+        (WebCore::EventHandler::handleMousePressEvent): Ditto.
+        (WebCore::EventHandler::eventMayStartDrag): Ditto.
+        (WebCore::EventHandler::handleMouseReleaseEvent):
+        Perform event iff long mouse presses are enabled.
+        (WebCore::EventHandler::beginTrackingPotentialLongMousePress): Ditto.
+        (WebCore::EventHandler::recognizeLongMousePress): Ditto.
+        (WebCore::EventHandler::cancelTrackingPotentialLongMousePress): Ditto.
+        (WebCore::EventHandler::handleMouseMoveEvent): Remove feature flag.
+        (WebCore::EventHandler::handleDrag): Ditto.
+        (WebCore::EventHandler::mouseMovementExceedsThreshold): Ditto.
+        * page/EventHandler.h:
+        * page/Settings.in: Add longMousePressEnabled setting, initially false.
+
+2014-08-12  Pratik Solanki  <psolanki@apple.com>
+
+        Cached file backed resources don't make it to the Web Process when NETWORK_CFDATA_ARRAY_CALLBACK is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=135727
+        <rdar://problem/17947880>
+
+        Reviewed by Darin Adler.
+
+        Add SharedBuffer::existingCFData() which returns CFDataRef if it has one. Refactor
+        this code out of createCFData().
+
+        * WebCore.exp.in:
+        * platform/SharedBuffer.h:
+        * platform/mac/SharedBufferMac.mm:
+        (WebCore::SharedBuffer::existingCFData): Added.
+        (WebCore::SharedBuffer::createCFData):
+
+2014-08-12  Tim Horton  <timothy_horton@apple.com>
+
+        Small region (~1px tall) where you get the selection button instead of the phone number overlay
+        https://bugs.webkit.org/show_bug.cgi?id=135852
+        <rdar://problem/17992795>
+
+        Reviewed by Enrica Casucci.
+
+        * WebCore.exp.in:
+
+2014-08-12  Alex Christensen  <achristensen@webkit.org>
+
+        Generate header detection headers for CMake on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=135807
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+        Generate and include a stub WebCoreHeaderDetection.h.
+
+2014-08-12  Renata Hodovan  <rhodovan.u-szeged@partner.samsung.com>
+
+        Make sure that begin time cannot be greater than SMILTime::indefiniteValue unintentionally.
+        https://bugs.webkit.org/show_bug.cgi?id=135838
+
+        Reviewed by Darin Adler.
+
+        When WebCore::SVGSMILElement::resolveInterval creates a SMILTime begin
+        node for a SMILInterval, then it only checks if the value of begin is
+        indefinite or unresolved but misses the case if it is between these two
+        reference values.
+
+        This is a backport of my fix in Blink: https://codereview.chromium.org/406263002/.
+
+        Test: svg/animations/animateMotion-crash-with-large-begin-time.html
+
+        * svg/animation/SVGSMILElement.cpp:
+        (WebCore::SVGSMILElement::parseOffsetValue):
+        (WebCore::SVGSMILElement::parseClockValue):
+
+2014-08-12  Andy Estes  <aestes@apple.com>
+
+        Revert a change that wasn't meant to be a part of r172482.
+
+        * loader/ResourceLoader.cpp:
+        (WebCore::ResourceLoader::init):
+
+2014-08-12  Antti Koivisto  <antti@apple.com>
+
+        Don't recurse into non-rendered subtrees when computing style
+        https://bugs.webkit.org/show_bug.cgi?id=135844
+
+        Reviewed by Andreas Kling.
+
+        * style/StyleResolveTree.cpp:
+        (WebCore::Style::resetStyleForNonRenderedDescendants):
+        
+        Do a simple reset of the style dirty bits and any computed style in non-rendered subtrees.
+
+        (WebCore::Style::attachRenderTree):
+        (WebCore::Style::resolveTree):
+        
+        Don't recurse into descendants if the element does not create a renderer.
+        We didn't compute style anyway in such subtrees.
+
+2014-08-12  Antti Koivisto  <antti@apple.com>
+
+        Remove isInCanvasSubtree bit
+        https://bugs.webkit.org/show_bug.cgi?id=135837
+
+        Reviewed by Andreas Kling.
+
+        The logic to update this bit is in a wrong place and it is not clear it does 
+        the right thing in all cases. Also the optimization doesn't seem necessary,
+        the focus code is not that hot.
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::getOrCreate):
+        * dom/Element.cpp:
+        (WebCore::Element::isFocusable):
+        (WebCore::Element::clearStyleDerivedDataBeforeDetachingRenderer):
+        (WebCore::Element::setIsInCanvasSubtree): Deleted.
+        (WebCore::Element::isInCanvasSubtree): Deleted.
+        * dom/Element.h:
+        * dom/ElementRareData.h:
+        (WebCore::ElementRareData::ElementRareData):
+        (WebCore::ElementRareData::isInCanvasSubtree): Deleted.
+        (WebCore::ElementRareData::setIsInCanvasSubtree): Deleted.
+        * html/HTMLAnchorElement.cpp:
+        (WebCore::HTMLAnchorElement::isKeyboardFocusable):
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::HTMLCanvasElement):
+        (WebCore::HTMLCanvasElement::willAttachRenderers): Deleted.
+        * html/HTMLCanvasElement.h:
+        * style/StyleResolveTree.cpp:
+        (WebCore::Style::attachRenderTree):
+
+2014-08-11  Andy Estes  <aestes@apple.com>
+
+        [iOS] Get rid of iOS.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=135809
+
+        Reviewed by Joseph Pecoraro.
+
+        All iOS.xcconfig did was include AspenFamily.xcconfig, so there's no need for the indirection.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/iOS.xcconfig: Removed.
+        * WebCore.xcodeproj/project.pbxproj:
+
+2014-08-11  Roger Fong  <roger_fong@apple.com>
+
+        Adjust max-width of cues based on text alignment when cue size is expanded.
+        https://bugs.webkit.org/show_bug.cgi?id=135823.
+
+        Reviewed by Brent Fulgham.
+
+        All units are in percentages.
+        If we are left aligned the max cue width is the 100 minus the cue position.
+        If we are right aligned the max cue width is the cue position.
+        If we are centered the max cue width is just 100.
+
+        * html/track/TextTrackCueGeneric.cpp:
+        (WebCore::TextTrackCueGenericBoxElement::applyCSSProperties):
+        * html/track/VTTCue.cpp:
+        (WebCore::VTTCueBox::applyCSSProperties):
+
+2014-08-12  Fabien Vallée  <fvallee@connected-labs.com>
+
+        [GStreamer] playback rate is rounded to integer
+        https://bugs.webkit.org/show_bug.cgi?id=135802
+
+        Reviewed by Philippe Normand.
+
+        Test: media/video-ended-event-slow-motion-playback.html
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::setRate):
+
+2014-08-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r17425
+
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.h: Remove
+        unused 'currentTime' declaration from header file. This is now fully implemented
+        in platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.h.
+
+2014-08-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Dont allocate GCond in VideoSinkGStreamer.cpp dynamically.
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * platform/graphics/gstreamer/VideoSinkGStreamer.cpp:
+        (_WebKitVideoSinkPrivate::_WebKitVideoSinkPrivate): Move the
+        g_cond_init() and gst_video_info_init() calls here.
+        (_WebKitVideoSinkPrivate::~_WebKitVideoSinkPrivate): Move the
+        g_cond_clear() call here.
+        (webkit_video_sink_init):
+        (webkitVideoSinkTimeoutCallback):
+        (webkitVideoSinkRender):
+        (unlockBufferMutex):
+        (webkit_video_sink_class_init):
+        (webkitVideoSinkDispose): Deleted. Not required anymore.
+
+2014-08-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Clean up GMutexLocker
+        https://bugs.webkit.org/show_bug.cgi?id=135833
+
+        Reviewed by Carlos Garcia Campos.
+
+        Don't dynamically allocate GMutex objects. Update GMutexLocker
+        initializations to pass in a GMutex reference, not a pointer.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase):
+        (WebCore::MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+        * platform/graphics/gstreamer/VideoSinkGStreamer.cpp:
+        (_WebKitVideoSinkPrivate::_WebKitVideoSinkPrivate): Initialize the GMutex.
+        (_WebKitVideoSinkPrivate::~_WebKitVideoSinkPrivate): Clear the GMutex.
+        (webkit_video_sink_init):
+        (webkitVideoSinkRender):
+        (webkitVideoSinkDispose):
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webKitWebSrcGetProperty):
+        (webKitWebSrcStop):
+        (webKitWebSrcStart):
+        (webKitWebSrcChangeState):
+        (webKitWebSrcQueryWithParent):
+        (webKitWebSrcGetUri):
+        (webKitWebSrcSetUri):
+        (webKitWebSrcNeedDataMainCb):
+        (webKitWebSrcNeedDataCb):
+        (webKitWebSrcEnoughDataMainCb):
+        (webKitWebSrcEnoughDataCb):
+        (webKitWebSrcSeekDataCb):
+        (webKitWebSrcSetMediaPlayer):
+        (StreamingClient::createReadBuffer):
+        (StreamingClient::handleResponseReceived):
+        (StreamingClient::handleDataReceived):
+        (StreamingClient::handleNotifyFinished):
+        (ResourceHandleStreamingClient::wasBlocked):
+        (ResourceHandleStreamingClient::cannotShowURL):
+
+2014-08-12  Eduardo Lima Mitev  <elima@igalia.com>
+        [GTK] Adds dependency on GnuTLS 3.0+ for the implementation of subtle crypto algorithms
+        https://bugs.webkit.org/show_bug.cgi?id=133317
+
+        Reviewed by Philippe Normand.
+
+        No new tests since no new functionality has been added.
+
+        * PlatformGTK.cmake: Adds GnuTLS libs and included dirs to WebCore targets
+
+2014-08-10  Philippe Normand  <pnormand@igalia.com>
+
+        [WebAudio] FFTFrame is cluttered with dead code
+        https://bugs.webkit.org/show_bug.cgi?id=135751
+
+        Reviewed by Eric Carlson.
+
+        Cleaned up unused FFTFrame implementations from the tree. If the
+        FFMPEG or IPP versions are needed later on again this patch can be
+        rolled out.
+
+        No new tests, the code removed was disabled on all ports.
+
+        * platform/audio/Biquad.cpp:
+        (WebCore::Biquad::Biquad):
+        (WebCore::Biquad::~Biquad):
+        (WebCore::Biquad::process):
+        (WebCore::Biquad::reset):
+        (WebCore::Biquad::setNormalizedCoefficients):
+        * platform/audio/Biquad.h:
+        * platform/audio/DirectConvolver.cpp:
+        (WebCore::DirectConvolver::DirectConvolver):
+        (WebCore::DirectConvolver::process):
+        (WebCore::DirectConvolver::reset):
+        * platform/audio/DirectConvolver.h:
+        * platform/audio/FFTFrame.h:
+        * platform/audio/FFTFrameStub.cpp:
+        * platform/audio/ffmpeg/FFTFrameFFMPEG.cpp: Removed.
+        * platform/audio/ipp/FFTFrameIPP.cpp: Removed.
+        * platform/audio/mac/FFTFrameMac.cpp:
+
+2014-08-11  Mark Rowe  <mrowe@apple.com>
+
+        Fix the Mac build.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        #if a function that's only used on iOS.
+
+2014-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac, iOS] Some media content never reaches full 'loaded' state
+        https://bugs.webkit.org/show_bug.cgi?id=135814
+        <rdar://problem/17476923>
+
+        Reviewed by Jer Noble.
+
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp:
+        (WebCore::MediaPlayerPrivateAVFoundation::duration): Change to a wrapper that just calls
+        the durationDouble method and narrows to a float.
+        (WebCore::MediaPlayerPrivateAVFoundation::durationDouble): Revised version of duration
+        that works with doubles.
+        (WebCore::MediaPlayerPrivateAVFoundation::currentTime): Wrapper that calls the
+        currentTimeDouble method and narrows to a float.
+        (WebCore::MediaPlayerPrivateAVFoundation::seekWithTolerance): Use durationDouble for
+        comparison with passed 'time' argument (which is a double).
+        (WebCore::MediaPlayerPrivateAVFoundation::didEnd): Use 'currentTimeDouble' so we can
+        cache the double precision version of this value.
+        (WebCore::MediaPlayerPrivateAVFoundation::extraMemoryCost): Use 'durationDouble' since
+        the rest of the calculation is in terms of doubles.
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.h:
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.cpp:
+        (WebCore::MediaPlayerPrivateAVFoundationCF::platformDuration): Convert to 'double'. All
+        uses of this method are internal to the MediaPlayerPrivateAVFoundation* files.
+        (WebCore::MediaPlayerPrivateAVFoundationCF::currentTimeDouble): Switch from float implementation.
+        (WebCore::MediaPlayerPrivateAVFoundationCF::currentTime): Deleted. (Moved to parent class)
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::platformDuration): Convert to 'double'. All
+        uses of this method are internal to the MediaPlayerPrivateAVFoundation* files.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::currentTimeDouble): Switch from floating implementation.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::currentTime): Deleted. (Moved to parent class)
+
+2014-08-11  Enrica Casucci  <enrica@apple.com>
+
+        Improve look and feel of combined service menu..
+        https://bugs.webkit.org/show_bug.cgi?id=135824
+        <rdar://problem/17936880>
+
+        Reviewed by Tim Horton.
+
+        Adding some localizable strings.
+
+        * English.lproj/Localizable.strings:
+
+2014-08-11  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] <video> element requests are missing session cookies; sometimes persistant cookies.
+        https://bugs.webkit.org/show_bug.cgi?id=135816
+
+        Reviewed by Alexey Proskuryakov.
+
+        On iOS, the AVFoundation framework will copy appropriate cookies for the requested URL across to the
+        mediaserverd process. For WebKit2, the WebProcess does not have access to session cookies for the 
+        current browsing session. When creating an AVURLAsset, fetch the appropriate cookies for the requested
+        URL, and pass them into AVURLAsset in the options dictionary.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::mediaPlayerGetRawCookies): Call CookieJar's equivalent method.
+        * html/HTMLMediaElement.h:
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::getRawCookies): Pass to HTMLMediaElement.
+        * platform/graphics/MediaPlayer.h:
+        (WebCore::MediaPlayerClient::mediaPlayerGetRawCookies):
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::toNSHTTPCookie): Convert a WebCore Cookie -> NSHTTPCookie.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL): Fetch cookies for the requested
+            URL, and if successful, add them to the AVURLAsset options dictionary.
+
+2014-08-11  Roger Fong  <roger_fong@apple.com>
+
+        Adjustments to CueBox CSS Width calculations Part 2.
+        https://bugs.webkit.org/show_bug.cgi?id=135820
+        <rdar://problem/17954473>.
+
+        Reviewed by Brent Fulgham.
+
+        Two adjustments made:
+        a) The default font size used was incorrect. It is not just 10px, 
+        but should be based off a percentage of the video size.
+        b) The top/left CSS property needs to be adjusted appropriately if the cue
+        is center aligned and we change the cue's size such that the cue remains centered.
+        * html/track/TextTrackCueGeneric.cpp:
+        (WebCore::TextTrackCueGenericBoxElement::applyCSSProperties):
+        * html/track/VTTCue.cpp:
+        (WebCore::VTTCueBox::applyCSSProperties):
+        * html/track/VTTCue.h: Remove unnecessary constant.
+
+2014-08-11  Beth Dakin  <bdakin@apple.com>
+
+        Fixed backgrounds don't paint in blurred inset areas
+        https://bugs.webkit.org/show_bug.cgi?id=135712
+
+        Reviewed by Simon Fraser.
+
+        Background geometry calculations for fixed background need to use the larger 
+        visible rect.
+
+        The first version of this patch caused a regression because it universally 
+        adjusted the value for top to account for the inset whether or not the 
+        viewportRect location was adjusted for the same. This version fixes that — those 
+        two changes go hand-in-hand.
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::calculateBackgroundImageGeometry):
+
+2014-08-11  Antti Koivisto  <antti@apple.com>
+
+        Pass inherited style only when resolving tree style
+        https://bugs.webkit.org/show_bug.cgi?id=135799
+
+        Reviewed by Andreas Kling.
+
+        No need to pass around the style parent element.
+
+        * dom/ContainerNode.h:
+        (WebCore::ContainerNode::childShouldCreateRenderer): Deleted.
+        * dom/Element.cpp:
+        (WebCore::Element::childShouldCreateRenderer):
+        * dom/Element.h:
+        * style/StyleResolveTree.cpp:
+        (WebCore::Style::RenderTreePosition::parent):
+        (WebCore::Style::nextSiblingRenderer):
+        (WebCore::Style::RenderTreePosition::RenderTreePosition):
+        (WebCore::Style::RenderTreePosition::computeNextSibling):
+        (WebCore::Style::shouldCreateRenderer):
+        (WebCore::Style::styleForElement):
+        (WebCore::Style::createRendererIfNeeded):
+        (WebCore::Style::textRendererIsNeeded):
+        (WebCore::Style::createTextRendererIfNeeded):
+        (WebCore::Style::attachTextRenderer):
+        (WebCore::Style::updateTextRendererAfterContentChange):
+        (WebCore::Style::attachChildren):
+        (WebCore::Style::attachDistributedChildren):
+        (WebCore::Style::attachShadowRoot):
+        (WebCore::Style::attachBeforeOrAfterPseudoElementIfNeeded):
+        (WebCore::Style::attachRenderTree):
+        (WebCore::Style::resolveLocal):
+        (WebCore::Style::resolveTextNode):
+        (WebCore::Style::resolveShadowTree):
+        (WebCore::Style::updateBeforeOrAfterPseudoElement):
+        (WebCore::Style::resolveTree):
+        * svg/SVGDocument.cpp:
+        (WebCore::SVGDocument::childShouldCreateRenderer): Deleted.
+        
+            Implement this in SVGSVGElement::rendererIsNeeded instead.
+
+        * svg/SVGDocument.h:
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::rendererIsNeeded):
+
+2014-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS JIT: support :scope
+        https://bugs.webkit.org/show_bug.cgi?id=135733
+
+        Reviewed by Benjamin Poulain.
+
+        Implement :scope for CSS JIT. It introduces scope field to CheckingContext
+        and it makes CheckingContext more similar to SelectorChecker::SelectorCheckingContext.
+        And since :scope requires CheckingContext, QueryingRules can accept SelectorCheckerWithCheckingContext.
+
+        Tests: fast/selectors/querySelector-scope-filtered-root.html
+               fast/selectors/scope-works-as-root.html
+
+        * css/ElementRuleCollector.cpp:
+        (WebCore::ElementRuleCollector::ruleMatches):
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::shouldUseRenderStyleFromCheckingContext):
+        (WebCore::SelectorCompiler::addPseudoClassType):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateSelectorChecker):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::addFlagsToElementStyleFromContext):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::loadCheckingContext):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementMatching):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsActive):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsFirstChild):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsHovered):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsLastChild):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsOnlyChild):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsNthChild):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementHasPseudoElement):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateRequestedPseudoElementEqualsToSelectorPseudoElement):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsScopeRoot):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateMarkPseudoStyleForPseudoElement):
+        * cssjit/SelectorCompiler.h:
+        (WebCore::SelectorCompiler::CheckingContext::CheckingContext):
+        * dom/SelectorQuery.cpp:
+        (WebCore::SelectorDataList::executeCompiledSimpleSelectorChecker):
+        (WebCore::SelectorDataList::executeCompiledSelectorCheckerWithCheckingContext):
+        (WebCore::SelectorDataList::execute):
+        * dom/SelectorQuery.h:
+
+2014-08-11  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: console.profile shouldn't stop auto-recorded profiles
+        https://bugs.webkit.org/show_bug.cgi?id=135810
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/InspectorTimelineAgent.cpp:
+        (WebCore::InspectorTimelineAgent::start): Added. Call internalStart. Set m_enabledFromFrontend.
+        (WebCore::InspectorTimelineAgent::stop): Added. Calls internalStop. Clear m_enabledFromFrontend.
+        (WebCore::InspectorTimelineAgent::internalStart): Renamed from start.
+        (WebCore::InspectorTimelineAgent::internalStop): Renamed from stop.
+        (WebCore::InspectorTimelineAgent::startFromConsole): Use internalStart.
+        (WebCore::InspectorTimelineAgent::stopFromConsole): Use internalStop. Only stop if !m_enabledFromFrontend.
+        (WebCore::InspectorTimelineAgent::InspectorTimelineAgent): Initialize m_enabledFromFrontend.
+        * inspector/InspectorTimelineAgent.h: Added m_enabledFromFrontend.
+
+2014-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Adjust build script for Windows production build.
+        https://bugs.webkit.org/show_bug.cgi?id=135806
+        <rdar://problem/17978299>
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCore.vcxproj/copyForwardingHeaders.cmd: Copy file needed
+        for WebInspectorUI build.
+
+2014-08-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172393.
+        https://bugs.webkit.org/show_bug.cgi?id=135796
+
+        discussion needed about GnuTLS version bump on the bots
+        (Requested by philn on #webkit).
+
+        Reverted changeset:
+
+        https://bugs.webkit.org/show_bug.cgi?id=133317
+        http://trac.webkit.org/changeset/172393
+
+2014-08-11  Eduardo Lima Mitev  <elima@igalia.com>
+        [GTK] Adds dependency on GnuTLS 3.0+ for the implementation of subtle crypto algorithms
+        https://bugs.webkit.org/show_bug.cgi?id=133317
+
+        Reviewed by Philippe Normand.
+
+        No new tests since no new functionality has been added.
+
+        * PlatformGTK.cmake: Adds GnuTLS libs and included dirs to WebCore targets
+
+2014-08-11  Eduardo Lima Mitev  <elima@igalia.com>
+
+        [GTK] Fix debug build after r172389.
+
+        Rubber-stamped by Philippe Normand.
+
+        * crypto/gtk/CryptoKeyRSAGtk.cpp:
+        (WebCore::CryptoKeyRSA::exportData): Remove spurious ASSERT from
+        stub. It will be added back along with the real implementation of
+        the method.
+
+2014-08-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed fix after r172348.
+
+        * platform/graphics/cairo/BitmapImageCairo.cpp:
+        (WebCore::BitmapImage::BitmapImage): Initialize m_minimumSubsamplingLevel to 0.
+
+2014-08-11  Eduardo Lima Mitev  <elima@igalia.com>
+
+        [GTK] Adds stubs for all subtle crypto algorithm implemntations
+        https://bugs.webkit.org/show_bug.cgi?id=133316
+
+        Reviewed by Philippe Normand.
+
+        No new tests since no new functionality has been added.
+
+        * CMakeLists.txt: Add subtle crypto 'algorithms' and 'parameters' dirs to WebCore incuded dirs
+        * PlatformGTK.cmake:  Add subtle crypto sources to WebCore target
+        * crypto/gtk/CryptoAlgorithmAES_CBCGtk.cpp: Added.
+        (WebCore::CryptoAlgorithmAES_CBC::platformEncrypt):
+        (WebCore::CryptoAlgorithmAES_CBC::platformDecrypt):
+        * crypto/gtk/CryptoAlgorithmAES_KWGtk.cpp: Added.
+        (WebCore::CryptoAlgorithmAES_KW::platformEncrypt):
+        (WebCore::CryptoAlgorithmAES_KW::platformDecrypt):
+        * crypto/gtk/CryptoAlgorithmHMACGtk.cpp: Added.
+        (WebCore::CryptoAlgorithmHMAC::platformSign):
+        (WebCore::CryptoAlgorithmHMAC::platformVerify):
+        * crypto/gtk/CryptoAlgorithmRSAES_PKCS1_v1_5Gtk.cpp: Added.
+        (WebCore::CryptoAlgorithmRSAES_PKCS1_v1_5::platformEncrypt):
+        (WebCore::CryptoAlgorithmRSAES_PKCS1_v1_5::platformDecrypt):
+        * crypto/gtk/CryptoAlgorithmRSASSA_PKCS1_v1_5Gtk.cpp: Added.
+        (WebCore::CryptoAlgorithmRSASSA_PKCS1_v1_5::platformSign):
+        (WebCore::CryptoAlgorithmRSASSA_PKCS1_v1_5::platformVerify):
+        * crypto/gtk/CryptoAlgorithmRSA_OAEPGtk.cpp: Added.
+        (WebCore::CryptoAlgorithmRSA_OAEP::platformEncrypt):
+        (WebCore::CryptoAlgorithmRSA_OAEP::platformDecrypt):
+        * crypto/gtk/CryptoAlgorithmRegistryGtk.cpp: Added.
+        (WebCore::CryptoAlgorithmRegistry::platformRegisterAlgorithms):
+        * crypto/gtk/CryptoDigestGtk.cpp: Added.
+        (WebCore::CryptoDigest::CryptoDigest):
+        (WebCore::CryptoDigest::~CryptoDigest):
+        (WebCore::CryptoDigest::create):
+        (WebCore::CryptoDigest::addBytes):
+        (WebCore::CryptoDigest::computeHash):
+        * crypto/gtk/CryptoKeyRSAGtk.cpp: Added.
+        (WebCore::CryptoKeyRSA::CryptoKeyRSA):
+        (WebCore::CryptoKeyRSA::create):
+        (WebCore::CryptoKeyRSA::~CryptoKeyRSA):
+        (WebCore::CryptoKeyRSA::restrictToHash):
+        (WebCore::CryptoKeyRSA::isRestrictedToHash):
+        (WebCore::CryptoKeyRSA::keySizeInBits):
+        (WebCore::CryptoKeyRSA::buildAlgorithmDescription):
+        (WebCore::CryptoKeyRSA::exportData):
+        (WebCore::CryptoKeyRSA::generatePair):
+        * crypto/gtk/SerializedCryptoKeyWrapGtk.cpp: Added.
+        (WebCore::getDefaultWebCryptoMasterKey):
+        (WebCore::wrapSerializedCryptoKey):
+        (WebCore::unwrapSerializedCryptoKey):
+        * crypto/keys/CryptoKeyRSA.h:
+
 2014-08-10  Benjamin Poulain  <bpoulain@apple.com>
 
         Remove inputSpeech.png

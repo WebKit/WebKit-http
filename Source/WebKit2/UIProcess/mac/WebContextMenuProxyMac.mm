@@ -405,15 +405,25 @@ void WebContextMenuProxyMac::setupServicesMenu(const ContextMenuContextData& con
 
     // Explicitly add a menu item for each telephone number that is in the selection.
     const Vector<String>& selectedTelephoneNumbers = context.selectedTelephoneNumbers();
-    if (!selectedTelephoneNumbers.isEmpty()) {
+    Vector<RetainPtr<NSMenuItem>> telephoneNumberMenuItems;
+    for (auto& telephoneNumber : selectedTelephoneNumbers) {
+        if (NSMenuItem *item = menuItemForTelephoneNumber(telephoneNumber)) {
+            [item setIndentationLevel:1];
+            telephoneNumberMenuItems.append(item);
+        }
+    }
+
+    if (!telephoneNumberMenuItems.isEmpty()) {
         if (m_servicesMenu)
-            [m_servicesMenu addItem:[NSMenuItem separatorItem]];
+            [m_servicesMenu insertItem:[NSMenuItem separatorItem] atIndex:0];
         else
             m_servicesMenu = adoptNS([[NSMenu alloc] init]);
-        for (auto& telephoneNumber : selectedTelephoneNumbers) {
-            if (NSMenuItem *item = menuItemForTelephoneNumber(telephoneNumber))
-                [m_servicesMenu addItem:item];
-        }
+        int itemPosition = 0;
+        NSMenuItem *groupEntry = [[NSMenuItem alloc] initWithTitle:menuItemTitleForTelephoneNumberGroup() action:nil keyEquivalent:@""];
+        [groupEntry setEnabled:NO];
+        [m_servicesMenu insertItem:groupEntry atIndex:itemPosition++];
+        for (auto& menuItem : telephoneNumberMenuItems)
+            [m_servicesMenu insertItem:menuItem.get() atIndex:itemPosition++];
     }
 
     // If there is no services menu, then the existing services on the system have changed, so refresh that list of services.

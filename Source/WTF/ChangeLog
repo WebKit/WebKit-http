@@ -1,3 +1,90 @@
+2014-08-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Elements whose contents start with an astral Unicode symbol disappear when CSS `::first-letter` is applied to them
+        https://bugs.webkit.org/show_bug.cgi?id=135756
+
+        Reviewed by Darin Adler.
+
+        Add a method to StringView which passes through contains() to find().
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::contains):
+
+2014-08-12  Pratik Solanki  <psolanki@apple.com>
+
+        Enable didReceiveDataArray callback on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=135554
+        <rdar://problem/9170731>
+
+        Reviewed by Andreas Kling.
+
+        Enable WTF_USE_NETWORK_CFDATA_ARRAY_CALLBACK for all Cocoa platforms so that we use the same
+        code path for Mac and iOS.
+
+        * wtf/Platform.h:
+
+2014-08-12  Alex Christensen  <achristensen@webkit.org>
+
+        Generate header detection headers for CMake on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=135807
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformWin.cmake:
+        Generate and include a stub WTFHeaderDetection.h.
+
+2014-08-11  Andy Estes  <aestes@apple.com>
+
+        [iOS] Get rid of iOS.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=135809
+
+        Reviewed by Joseph Pecoraro.
+
+        All iOS.xcconfig did was include AspenFamily.xcconfig, so there's no need for the indirection.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/iOS.xcconfig: Removed.
+        * WTF.xcodeproj/project.pbxproj:
+
+2014-08-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Clean up GMutexLocker
+        https://bugs.webkit.org/show_bug.cgi?id=135833
+
+        Reviewed by Carlos Garcia Campos.
+
+        Place the GMutexLocker into the WTF namespace. There's no need for this
+        class to use FastMalloc since it's always allocated on the stack. The
+        constructor and class now operate on a GMutex reference. There's little
+        need for an additional inline specifier for methods defined in the header.
+        The mutex() method is removed as it was not used. m_val is renamed to a
+        more descriptive m_locked and is made a boolean.
+
+        * wtf/gobject/GMutexLocker.h:
+        (WTF::GMutexLocker::GMutexLocker):
+        (WTF::GMutexLocker::~GMutexLocker):
+        (WTF::GMutexLocker::lock):
+        (WTF::GMutexLocker::unlock):
+        (WebCore::GMutexLocker::GMutexLocker): Deleted.
+        (WebCore::GMutexLocker::~GMutexLocker): Deleted.
+        (WebCore::GMutexLocker::lock): Deleted.
+        (WebCore::GMutexLocker::unlock): Deleted.
+        (WebCore::GMutexLocker::mutex): Deleted.
+
+2014-08-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Make GRefPtr move-able
+        https://bugs.webkit.org/show_bug.cgi?id=135801
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add move constructor and move assignment operator for GRefPtr.
+
+        * wtf/gobject/GRefPtr.h:
+        (WTF::GRefPtr::GRefPtr):
+        (WTF::=):
+
 2014-08-10  Benjamin Poulain  <benjamin@webkit.org>
 
         Update HashTable's operator= after r172167 per review comments

@@ -44,6 +44,9 @@
 
 namespace WebCore {
 
+// This default value must be the same as the one specified in mediaControlsApple.css for -webkit-media-controls-closed-captions-container
+const static int DEFAULTCAPTIONFONTSIZE = 10;
+
 class TextTrackCueGenericBoxElement final : public VTTCueBox {
 public:
     static PassRefPtr<TextTrackCueGenericBoxElement> create(Document& document, TextTrackCueGeneric& cue)
@@ -70,6 +73,7 @@ void TextTrackCueGenericBoxElement::applyCSSProperties(const IntSize& videoSize)
     TextTrackCueGeneric* cue = static_cast<TextTrackCueGeneric*>(getCue());
     RefPtr<HTMLSpanElement> cueElement = cue->element();
 
+    CSSValueID alignment = cue->getCSSAlignment();
     float size = static_cast<float>(cue->getCSSSize());
     if (cue->useDefaultPosition()) {
         setInlineStyleProperty(CSSPropertyBottom, 0, CSSPrimitiveValue::CSS_PX);
@@ -78,24 +82,40 @@ void TextTrackCueGenericBoxElement::applyCSSProperties(const IntSize& videoSize)
         setInlineStyleProperty(CSSPropertyLeft, static_cast<float>(cue->position()), CSSPrimitiveValue::CSS_PERCENTAGE);
         setInlineStyleProperty(CSSPropertyTop, static_cast<float>(cue->line()), CSSPrimitiveValue::CSS_PERCENTAGE);
 
-        double authorFontSize = std::max(DEFAULTCAPTIONFONTSIZE, videoSize.height() * cue->baseFontSizeRelativeToVideoHeight() / 100.0);
+        double authorFontSize = videoSize.height() * cue->baseFontSizeRelativeToVideoHeight() / 100.0;
+        if (!authorFontSize)
+            authorFontSize = DEFAULTCAPTIONFONTSIZE;
+
         if (cue->fontSizeMultiplier())
             authorFontSize *= cue->fontSizeMultiplier() / 100;
 
-        double multiplier = std::max(1.0, m_fontSizeFromCaptionUserPrefs / authorFontSize);
-        if (cue->getWritingDirection() == VTTCue::Horizontal)
-            setInlineStyleProperty(CSSPropertyWidth, std::min(size * multiplier, 100.0), CSSPrimitiveValue::CSS_PERCENTAGE);
-        else
-            setInlineStyleProperty(CSSPropertyHeight, std::min(size * multiplier, 100.0),  CSSPrimitiveValue::CSS_PERCENTAGE);
+        double multiplier = m_fontSizeFromCaptionUserPrefs / authorFontSize;
+        double newCueSize = std::min(size * multiplier, 100.0);
+        if (cue->getWritingDirection() == VTTCue::Horizontal) {
+            setInlineStyleProperty(CSSPropertyWidth, newCueSize, CSSPrimitiveValue::CSS_PERCENTAGE);
+            if ((alignment == CSSValueMiddle || alignment == CSSValueCenter) && multiplier != 1.0)
+                setInlineStyleProperty(CSSPropertyLeft, static_cast<double>(cue->position() - (newCueSize - m_cue.getCSSSize()) / 2), CSSPrimitiveValue::CSS_PERCENTAGE);
+        } else {
+            setInlineStyleProperty(CSSPropertyHeight, newCueSize,  CSSPrimitiveValue::CSS_PERCENTAGE);
+            if ((alignment == CSSValueMiddle || alignment == CSSValueCenter) && multiplier != 1.0)
+                setInlineStyleProperty(CSSPropertyTop, static_cast<double>(cue->line() - (newCueSize - m_cue.getCSSSize()) / 2), CSSPrimitiveValue::CSS_PERCENTAGE);
+        }
     }
 
-    std::pair<float, float> position = m_cue.getCSSPosition();
+    double textPosition = m_cue.position();
+    double maxSize = 100.0;
+    
+    if (alignment == CSSValueEnd || alignment == CSSValueRight)
+        maxSize = textPosition;
+    else if (alignment == CSSValueStart || alignment == CSSValueLeft)
+        maxSize = 100.0 - textPosition;
+
     if (cue->getWritingDirection() == VTTCue::Horizontal) {
         setInlineStyleProperty(CSSPropertyMinWidth, "-webkit-min-content");
-        setInlineStyleProperty(CSSPropertyMaxWidth, 100.0 - position.first, CSSPrimitiveValue::CSS_PERCENTAGE);
+        setInlineStyleProperty(CSSPropertyMaxWidth, maxSize, CSSPrimitiveValue::CSS_PERCENTAGE);
     } else {
         setInlineStyleProperty(CSSPropertyMinHeight, "-webkit-min-content");
-        setInlineStyleProperty(CSSPropertyMaxHeight, 100.0 - position.second, CSSPrimitiveValue::CSS_PERCENTAGE);
+        setInlineStyleProperty(CSSPropertyMaxHeight, maxSize, CSSPrimitiveValue::CSS_PERCENTAGE);
     }
 
     if (cue->foregroundColor().isValid())

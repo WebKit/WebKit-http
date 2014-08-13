@@ -1,3 +1,177 @@
+2014-08-12  Peyton Randolph  <prandolph@apple.com>
+
+        Runtime switch for long mouse press gesture. Part of 135257 - Add long mouse press gesture.
+        https://bugs.webkit.org/show_bug.cgi?id=135682
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove ENABLE_LONG_MOUSE_PRESS feature flag.
+
+2014-08-12  Alex Christensen  <achristensen@webkit.org>
+
+        Generate header detection headers for CMake on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=135807
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Include the derived sources directory to find WTF/WTFHeaderDetection.h.
+
+2014-08-11  Andy Estes  <aestes@apple.com>
+
+        [iOS] Get rid of iOS.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=135809
+
+        Reviewed by Joseph Pecoraro.
+
+        All iOS.xcconfig did was include AspenFamily.xcconfig, so there's no need for the indirection.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/iOS.xcconfig: Removed.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2014-08-11  Michael Saboff  <msaboff@apple.com>
+
+        Eliminate {push,pop}CalleeSaves in favor of individual pushes & pops
+        https://bugs.webkit.org/show_bug.cgi?id=127155
+
+        Reviewed by Geoffrey Garen.
+
+        Eliminated the offline assembler instructions {push,pop}CalleeSaves as well as the
+        ARM64 specific {push,pop}LRAndFP and replaced them with individual push and pop
+        instructions. Where the registers referenced by the added push and pop instructions
+        are not part of the offline assembler register aliases, used a newly added "emit"
+        offline assembler instruction which takes a string literal and outputs that
+        string as a native instruction.
+
+        * llint/LowLevelInterpreter.asm:
+        * offlineasm/arm.rb:
+        * offlineasm/arm64.rb:
+        * offlineasm/ast.rb:
+        * offlineasm/cloop.rb:
+        * offlineasm/instructions.rb:
+        * offlineasm/mips.rb:
+        * offlineasm/parser.rb:
+        * offlineasm/sh4.rb:
+        * offlineasm/transform.rb:
+        * offlineasm/x86.rb:
+
+2014-08-11  Mark Lam  <mark.lam@apple.com>
+
+        Re-landing r172401 with fixed test.
+        <https://webkit.org/b/135782>
+
+        Not reviewed.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetByVal):
+        (JSC::BytecodeGenerator::pushIndexedForInScope):
+        (JSC::BytecodeGenerator::pushStructureForInScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::ForInContext::ForInContext):
+        (JSC::ForInContext::base):
+        (JSC::StructureForInContext::StructureForInContext):
+        (JSC::IndexedForInContext::IndexedForInContext):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::emitMultiLoopBytecode):
+        * tests/stress/for-in-tests.js:
+
+2014-08-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172401.
+        https://bugs.webkit.org/show_bug.cgi?id=135812
+
+        Failing stress/for-in-tests.js
+        http://build.webkit.org/builders/Apple%20Mavericks%20Release%20WK1%20%28Tests%29/builds/7945/steps
+        /jscore-test/logs/stdio (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "for-in optimization should also make sure the base matches
+        the object being iterated"
+        https://bugs.webkit.org/show_bug.cgi?id=135782
+        http://trac.webkit.org/changeset/172401
+
+2014-08-11  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: use type builders to construct high fidelity type information payloads
+        https://bugs.webkit.org/show_bug.cgi?id=135803
+
+        Reviewed by Timothy Hatcher.
+
+        Due to some typos in the protocol file, the code had worked with raw objects
+        rather than with type builders. Convert to using builders.
+
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/protocol/Runtime.json: Fix 'item' for 'items'; true for 'true'.
+        * runtime/HighFidelityTypeProfiler.cpp:
+        (JSC::HighFidelityTypeProfiler::getTypesForVariableAtOffsetForInspector):
+        * runtime/HighFidelityTypeProfiler.h:
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::allStructureRepresentations):
+        (JSC::StructureShape::stringRepresentation):
+        (JSC::StructureShape::inspectorRepresentation):
+        * runtime/TypeSet.h:
+
+2014-08-11  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        for-in optimization should also make sure the base matches the object being iterated
+        https://bugs.webkit.org/show_bug.cgi?id=135782
+
+        Reviewed by Geoffrey Garen.
+
+        If we access a different base object with the same index, we shouldn't try to randomly 
+        load from that object's backing store.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetByVal):
+        (JSC::BytecodeGenerator::pushIndexedForInScope):
+        (JSC::BytecodeGenerator::pushStructureForInScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::ForInContext::ForInContext):
+        (JSC::ForInContext::base):
+        (JSC::StructureForInContext::StructureForInContext):
+        (JSC::IndexedForInContext::IndexedForInContext):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::emitMultiLoopBytecode):
+        * tests/stress/for-in-tests.js:
+
+2014-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: Display files in
+        proper folder categories..
+
+2014-08-11  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JIT should use full 64-bit stores for jsBoolean and jsNull
+        https://bugs.webkit.org/show_bug.cgi?id=135784
+
+        Reviewed by Michael Saboff.
+
+        This guarantees that we set the high bits of the register with the correct tag.
+
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_has_structure_property):
+        (JSC::JIT::emit_op_next_enumerator_pname):
+
+2014-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Adjust build script for Windows production build.
+        https://bugs.webkit.org/show_bug.cgi?id=135806
+        <rdar://problem/17978299>
+
+        Reviewed by Timothy Hatcher.
+
+        * JavaScriptCore.vcxproj/copy-files.cmd: Copy file for later use
+        in WebInspectorUI build.
+
 2014-08-10  Oliver Hunt  <oliver@apple.com>
 
         Destructuring assignment in a var declaration list incorrectly consumes subsequent variable initialisers

@@ -382,9 +382,6 @@ public:
     void setChildrenAffectedByBackwardPositionalRules();
     void setChildIndex(unsigned);
 
-    void setIsInCanvasSubtree(bool);
-    bool isInCanvasSubtree() const;
-
     void setRegionOversetState(RegionOversetState);
     RegionOversetState regionOversetState() const;
 
@@ -488,7 +485,7 @@ public:
     // to event listeners, and prevents DOMActivate events from being sent at all.
     virtual bool isDisabledFormControl() const { return false; }
 
-    virtual bool childShouldCreateRenderer(const Node&) const override;
+    virtual bool childShouldCreateRenderer(const Node&) const;
 
     bool hasPendingResources() const;
     void setHasPendingResources();
