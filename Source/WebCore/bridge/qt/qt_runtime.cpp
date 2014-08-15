@@ -650,7 +650,7 @@ QVariant convertValueToQVariant(JSContextRef context, JSValueRef value, QMetaTyp
                         *distance = 1;
                     return QVariant();
                 }
-                if (type == Object) {
+                if (JSValueIsObject(context, value)) {
                     // Since we haven't really visited this object yet, we remove it
                     visitedObjects->remove(object);
                 }
