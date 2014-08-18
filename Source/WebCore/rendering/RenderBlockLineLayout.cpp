@@ -348,6 +348,12 @@ RootInlineBox* RenderBlockFlow::constructLine(BidiRunList<BidiRun>& bidiRuns, co
 ETextAlign RenderBlockFlow::textAlignmentForLine(bool endsWithSoftBreak) const
 {
     ETextAlign alignment = style().textAlign();
+#if ENABLE(CSS3_TEXT)
+    TextJustify textJustify = style().textJustify();
+    if (alignment == JUSTIFY && textJustify == TextJustifyNone)
+        return style().direction() == LTR ? LEFT : RIGHT;
+#endif
+
     if (endsWithSoftBreak)
         return alignment;
 
@@ -372,7 +378,7 @@ ETextAlign RenderBlockFlow::textAlignmentForLine(bool endsWithSoftBreak) const
     case TextAlignLastJustify:
         return JUSTIFY;
     case TextAlignLastAuto:
-        if (style().textJustify() == TextJustifyDistribute)
+        if (textJustify == TextJustifyDistribute)
             return JUSTIFY;
         return TASTART;
     }

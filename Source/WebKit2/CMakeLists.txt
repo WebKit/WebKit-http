@@ -656,8 +656,6 @@ set(WebKit2_MESSAGES_IN_FILES
 )
 
 set(WebProcess_LIBRARIES
-    JavaScriptCore
-    WebCore
     WebKit2
 )
 

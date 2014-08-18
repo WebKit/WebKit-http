@@ -1,3 +1,116 @@
+2014-08-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Extend auto-version and version-stamp for RC_ProjectBuildVersion
+        https://bugs.webkit.org/show_bug.cgi?id=135948
+        <rdar://problem/18022221>
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl: Add tests
+        for RC_ProjectBuildVersion.
+
+2014-08-05  David Farler  <dfarler@apple.com>
+
+        [iOS] run-webkit-tests runs webkit-build-directory on every test
+        https://bugs.webkit.org/show_bug.cgi?id=135409
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.__init__): Cache Mac build directory.
+        (IOSSimulatorPort.relay_path): Use cached build directory.
+        (IOSSimulatorPort._path_to_image_diff): Use cached build directory.
+
+2014-08-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        Initialize a separate variable (TestWTF_SOURCES) with the list of files
+        that are built into the TestWTF executable and move it above the platform-specific
+        config file inclusion. This makes it possible to add platform-specific files to that
+        list (e.g. GUniquePtr.cpp for the GTK port).
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2014-08-13  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        [EFL] Bump up and patch dependencies to allow building for aarch64
+        https://bugs.webkit.org/show_bug.cgi?id=135885
+
+        Reviewed by Gyuyoung Kim.
+
+        The currently used versions of pixman, libffi, glib, glib-networking,
+        and fontconfig fail to configure for aarch64, so they are bumped up to
+        the latest stable version.
+
+        Gstreamer-plugins-base configures for aarch64 but incorrectly recogizes
+        ARM NEON assembly support, so it is patched with a change that has been
+        accepted by upstream.
+
+        * efl/jhbuild.modules:
+        * efl/patches/gst-prevent-neon-check-in-configure-from-passing-under-aarch64.patch: Added.
+
+2014-08-13  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/135911> WebKit should build on Yosemite with the public SDK.
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/TextInputController.m: Don't use extern "C" in a non-C++ file.
+
+2014-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=135819
+
+        Reviewed by Laszlo Gombos.
+
+        * WebKitTestRunner/CMakeLists.txt:
+        Added new cpp parameter for the extension of the generated files.
+
+2014-08-13  Renato Nagy  <nagy.renato@stud.u-szeged.hu>
+
+        Make check-webkit-style run sort-export-file
+        https://bugs.webkit.org/show_bug.cgi?id=135877
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/style/checker.py:
+        (_all_categories):
+        (FileType):
+        (CheckerDispatcher._file_type):
+        (CheckerDispatcher._create_checker):
+        * Scripts/webkitpy/style/checkers/exportfile.py: Added.
+        (ExportFileChecker):
+        (ExportFileChecker.__init__):
+        (ExportFileChecker.check):
+        * Scripts/webkitpy/style/checkers/exportfile_unittest.py: Added.
+        (handle_style_error):
+        (MockErrorHandler):
+        (MockErrorHandler.__init__):
+        (MockErrorHandler.turn_off_line_filtering):
+        (MockErrorHandler.__call__):
+        (ExportFileTest):
+        (ExportFileTest.setUp):
+        (ExportFileTest.tearDown):
+        (ExportFileTest.test_sorted):
+        (ExportFileTest.test_non_sorted):
+        (ExportFileTest.test_parse_error):
+
+2014-08-13  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Sets the persistent storage for cookies in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=135875
+
+        Reviewed by Gyuyoung Kim.
+
+        In case of EWK_COOKIE_ACCEPT_POLICY_ALWAYS, sets the persistent storage
+        for non-session cookies can be stored persistently.
+
+        * MiniBrowser/efl/main.c:
+        (elm_main):
+
 2014-08-12  Daniel Bates  <dabates@apple.com>
 
         [iOS] build-webkit should not build WebKitSystemInterface and WebKitAdditions

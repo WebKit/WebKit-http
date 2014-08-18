@@ -33,6 +33,7 @@
 #import "WebProcess.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/Document.h>
+#import <WebCore/EventHandler.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FrameView.h>
@@ -400,18 +401,27 @@ std::chrono::milliseconds ServicesOverlayController::remainingTimeUntilHighlight
     if (!highlight)
         return std::chrono::milliseconds::zero();
 
-    // Highlight hysteresis is only for selection services, because telephone number highlights are already much more stable
-    // by virtue of being expanded to include the entire telephone number.
-    if (highlight->type() == Highlight::Type::TelephoneNumber)
-        return std::chrono::milliseconds::zero();
+    auto minimumTimeUntilHighlightShouldBeShown = 200_ms;
+    if (m_webPage.corePage()->focusController().focusedOrMainFrame().selection().selection().isContentEditable())
+        minimumTimeUntilHighlightShouldBeShown = 1000_ms;
 
-    std::chrono::steady_clock::duration minimumTimeUntilHighlightShouldBeShown = 200_ms;
+    bool mousePressed = false;
+    if (Frame* mainFrame = m_webPage.mainFrame())
+        mousePressed = mainFrame->eventHandler().mousePressed();
+
+    // Highlight hysteresis is only for selection services, because telephone number highlights are already much more stable
+    // by virtue of being expanded to include the entire telephone number. However, we will still avoid highlighting
+    // telephone numbers while the mouse is down.
+    if (highlight->type() == Highlight::Type::TelephoneNumber)
+        return mousePressed ? minimumTimeUntilHighlightShouldBeShown : 0_ms;
 
     auto now = std::chrono::steady_clock::now();
     auto timeSinceLastSelectionChange = now - m_lastSelectionChangeTime;
     auto timeSinceHighlightBecameActive = now - m_nextActiveHighlightChangeTime;
+    auto timeSinceLastMouseUp = mousePressed ? 0_ms : now - m_lastMouseUpTime;
 
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::max(minimumTimeUntilHighlightShouldBeShown - timeSinceLastSelectionChange, minimumTimeUntilHighlightShouldBeShown - timeSinceHighlightBecameActive));
+    auto remainingDelay = minimumTimeUntilHighlightShouldBeShown - std::min(std::min(timeSinceLastSelectionChange, timeSinceHighlightBecameActive), timeSinceLastMouseUp);
+    return std::chrono::duration_cast<std::chrono::milliseconds>(remainingDelay);
 }
 
 void ServicesOverlayController::determineActiveHighlightTimerFired(Timer<ServicesOverlayController>&)
@@ -508,14 +518,24 @@ void ServicesOverlayController::buildSelectionHighlight()
     Vector<CGRect> cgRects;
     cgRects.reserveCapacity(m_currentSelectionRects.size());
 
-    for (auto& rect : m_currentSelectionRects)
-        cgRects.append((CGRect)pixelSnappedIntRect(rect));
+    RefPtr<Range> selectionRange = m_webPage.corePage()->selection().firstRange();
+    if (selectionRange) {
+        Frame* mainFrame = m_webPage.mainFrame();
+        FrameView& mainFrameView = *mainFrame->view();
+        FrameView* viewForRange = selectionRange->ownerDocument().view();
 
-    if (!cgRects.isEmpty()) {
-        CGRect visibleRect = m_webPage.corePage()->mainFrame().view()->visibleContentRect();
-        RetainPtr<DDHighlightRef> ddHighlight = adoptCF(DDHighlightCreateWithRectsInVisibleRectWithStyleAndDirection(nullptr, cgRects.begin(), cgRects.size(), visibleRect, DDHighlightNoOutlineWithArrow, YES, NSWritingDirectionNatural, NO, YES));
-        
-        m_potentialHighlights.add(Highlight::createForSelection(*this, ddHighlight));
+        for (auto& rect : m_currentSelectionRects) {
+            IntRect currentRect = pixelSnappedIntRect(rect);
+            currentRect.setLocation(mainFrameView.windowToContents(viewForRange->contentsToWindow(currentRect.location())));
+            cgRects.append((CGRect)currentRect);
+        }
+
+        if (!cgRects.isEmpty()) {
+            CGRect visibleRect = m_webPage.corePage()->mainFrame().view()->visibleContentRect();
+            RetainPtr<DDHighlightRef> ddHighlight = adoptCF(DDHighlightCreateWithRectsInVisibleRectWithStyleAndDirection(nullptr, cgRects.begin(), cgRects.size(), visibleRect, DDHighlightNoOutlineWithArrow, YES, NSWritingDirectionNatural, NO, YES));
+            
+            m_potentialHighlights.add(Highlight::createForSelection(*this, ddHighlight));
+        }
     }
 
     didRebuildPotentialHighlights();
@@ -688,6 +708,8 @@ bool ServicesOverlayController::mouseEvent(PageOverlay*, const WebMouseEvent& ev
         RefPtr<Highlight> mouseDownHighlight = m_currentMouseDownOnButtonHighlight;
         m_currentMouseDownOnButtonHighlight = nullptr;
 
+        m_lastMouseUpTime = std::chrono::steady_clock::now();
+
         if (mouseIsOverActiveHighlightButton && mouseDownHighlight) {
             handleClick(m_mousePosition, *mouseDownHighlight);
             return true;
@@ -733,7 +755,7 @@ void ServicesOverlayController::handleClick(const IntPoint& clickPoint, Highligh
         for (auto& range : telephoneNumberRanges)
             selectedTelephoneNumbers.append(range->text());
 
-        m_webPage.handleSelectionServiceClick(m_webPage.corePage()->mainFrame().selection(), selectedTelephoneNumbers, windowPoint);
+        m_webPage.handleSelectionServiceClick(m_webPage.corePage()->focusController().focusedOrMainFrame().selection(), selectedTelephoneNumbers, windowPoint);
     } else if (highlight.type() == Highlight::Type::TelephoneNumber)
         m_webPage.handleTelephoneNumberClick(highlight.range()->text(), windowPoint);
 }

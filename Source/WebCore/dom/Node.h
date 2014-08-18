@@ -572,6 +572,7 @@ public:
 #if ENABLE(CSS_SELECTOR_JIT)
     static ptrdiff_t nodeFlagsMemoryOffset() { return OBJECT_OFFSETOF(Node, m_nodeFlags); }
     static ptrdiff_t rareDataMemoryOffset() { return OBJECT_OFFSETOF(Node, m_data.m_rareData); }
+    static int32_t flagIsText() { return IsTextFlag; }
     static int32_t flagIsElement() { return IsElementFlag; }
     static int32_t flagIsHTML() { return IsHTMLFlag; }
     static int32_t flagIsLink() { return IsLinkFlag; }
@@ -685,8 +686,6 @@ private:
 
     virtual void refEventTarget() override;
     virtual void derefEventTarget() override;
-
-    virtual RenderStyle* nonRendererStyle() const { return nullptr; }
 
     Element* ancestorElement() const;
 

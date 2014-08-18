@@ -1,3 +1,36 @@
+2014-08-13  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/135909> Move helper applications out of the root of the framework.
+
+        As described in <https://developer.apple.com/library/mac/technotes/tn2206/>, for bundles containing
+        a Versions directory there may be no other content at the top level of the bundle other than symlinks.
+        Upcoming changes to code signing will prevent bundles that violate this rule from being signed.
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj: Add the symlink to WebKitPluginHost.app in the Versions/A
+        directory of the framework rather than at the top level.
+
+2014-08-14  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed.  Removing empty directories.
+
+        * qt: Removed.
+        * qt/declarative: Removed.
+        * qt/docs: Removed.
+        * qt/docs/webkitsnippets: Removed.
+        * qt/examples: Removed.
+        * qt/tests: Removed.
+        * qt/tests/MIMESniffing: Removed.
+        * qt/tests/benchmarks: Removed.
+        * qt/tests/qgraphicswebview: Removed.
+        * qt/tests/qwebelement: Removed.
+        * qt/tests/qwebframe: Removed.
+        * qt/tests/qwebhistory: Removed.
+        * qt/tests/qwebpage: Removed.
+        * qt/tests/qwebsecurityorigin: Removed.
+        * qt/tests/qwebview: Removed.
+
 2014-08-12  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Unreviewed build fix after r172504

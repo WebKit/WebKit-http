@@ -1,3 +1,205 @@
+2014-08-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Dragging Undocked inspector by window title has broken behavior
+        https://bugs.webkit.org/show_bug.cgi?id=135950
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        On Mac ports where we the inspector content goes everywhere, window dragging behavior
+        still exists for the top 22px of the window. So don't do our JavaScript based window
+        dragging for this special region.
+
+        * UserInterface/Models/KeyboardShortcut.js:
+        (WebInspector.KeyboardShortcut.Modifier.get CommandOrControl):
+        (WebInspector.KeyboardShortcut.prototype.get displayName):
+        Instead of calling a host function, use the value already in the frontend.
+
+2014-08-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Split console toggle button wrong - Images/Images/SplitToggleUp.svg does not exist
+        https://bugs.webkit.org/show_bug.cgi?id=135957
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        Wrong image path passed to platformImagePath.
+
+2014-08-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Avoid re-binding the same function over and over
+        https://bugs.webkit.org/show_bug.cgi?id=135949
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._startAutoCapturing):
+        (WebInspector.TimelineManager.prototype._stopAutoRecordingSoon):
+        (WebInspector.TimelineManager.prototype._resetAutoRecordingDeadTimeTimeout):
+        Stash a bound copy of the function once, and reuse it.
+
+2014-08-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timelines can get caught in requestAnimationFrame loop when not recording
+        https://bugs.webkit.org/show_bug.cgi?id=135946
+
+        Reviewed by Timothy Hatcher.
+
+        Each TimelineContentView was listening for the TimelineManager's start/stop
+        capturing events. However, only the active recording could possibly update.
+        Likewise, if a pre-existing recording started and stopped we did not properly
+        stop in the case where we were waiting for an event to update the current time,
+        which would result in an infinite rAF loop of no updates.
+
+        * UserInterface/Models/TimelineRecording.js:
+        (WebInspector.TimelineRecording.prototype.unloaded):
+        When a timeline recording is unloaded trigger an event.
+
+        * UserInterface/Views/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._startUpdatingCurrentTime):
+        Assert we were not already waiting.
+
+        (WebInspector.TimelineContentView.prototype._stopUpdatingCurrentTime):
+        Properly handle the case of starting/stoping an already existing recording
+        without a new event coming in.
+
+        (WebInspector.TimelineContentView.prototype._recordingTimesUpdated):
+        (WebInspector.TimelineContentView.prototype._recordingReset):
+        Convert to a boolean instead of deleting state.
+
+        (WebInspector.TimelineContentView.prototype._recordingUnloaded):
+        Stop listening to timeline manager events that no longer affect unloaded recordings.
+
+2014-08-13  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: eslint configuration should be stored as .eslintrc
+        https://bugs.webkit.org/show_bug.cgi?id=135916
+
+        .eslintrc file added to allow for ESLint solutions, within editors and otherwise,
+        to be automatically configured based on the WebKit JavaScript coding style. The
+        initial file is incomplete.
+
+        Reviewed by Joseph Pecoraro.
+
+        * .eslintrc: Added.
+        * External/.eslintrc: Added.
+
+2014-08-13  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Missing semicolon after console.assert in TimelineSidebarPanel.js
+        https://bugs.webkit.org/show_bug.cgi?id=135917
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+
+2014-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inline DataGrid inside details sidebar has double thick top border with legacy styles
+        https://bugs.webkit.org/show_bug.cgi?id=135894
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DetailsSection.css:
+        (body.mac-platform.legacy .details-section:not(.collapsed) .data-grid.inline):
+        In legacy styles the details-section header always has a 1px bottom border.
+        In all styles, an inline data grid had a 1px border everywhere. So, handle
+        this specific case by removing the top border of an inline data grid
+        that is inside an expanded details section.
+
+2014-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "No Filter Results" view only shows once, does not show again
+        https://bugs.webkit.org/show_bug.cgi?id=135892
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.showEmptyContentPlaceholder):
+        We were checking at the wrong level for a parent. Check if the root
+        placeholder element has a parent or not.
+
+2014-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Incorrect border colors in event listeners sections in details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=135891
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section .details-section > .header):
+        (.details-section .details-section:not(.collapsed) > .header):
+        Remove box-shadow and replace with a bottom border.
+
+        (body.mac-platform.legacy .details-section .details-section.collapsed > .header):
+        (.details-section .details-section.collaspsed > .header): Deleted.
+        Collapsed was spelled incorrectly so this was not applying properly before.
+        But correct this for legacy because legacy still uses a box-shadow.
+
+2014-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline Close buttons can use polish for new and legacy styles
+        https://bugs.webkit.org/show_bug.cgi?id=135870
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/Legacy/Close.svg:
+        Ensure this has fill colors in tree selections.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .timelines-content .close-button):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .timelines-content .close-button):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .content .item > .status > .status-button):
+        Size the close-button for the top overviews differently in new styles (14x14) and legacy (12x12).
+
+2014-08-13  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Workaround a NSWindow change to the title bar.
+        https://bugs.webkit.org/show_bug.cgi?id=135880
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._updateToolbarHeight): Don't call in legacy mode.
+
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard-container):
+        (.toolbar .dashboard):
+        Drive-by fix some errant drop-shadows. The transparent border was pushing the inset top
+        drop shadow down when it shouldn't. Remove duplicate background and shadow.
+
+        * UserInterface/Views/Main.css:
+        (body): Set the background white, never needs to be transparent now.
+        (body.mac-platform.legacy:not(.docked)): Set background to transparent when not docked in legacy.
+        (body.docked.bottom): Update border color.
+        (body.docked.right): Ditto.
+        (body.docked.bottom.mac-platform.legacy): Keep old border color.
+        (body.docked.right.mac-platform.legacy): Ditto.
+
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar): Set a default border and background gradient.
+        (body.window-inactive .toolbar): No gradient but use a solid color when inactive.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar): Padding on the top for the title bar.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.icon-and-label-vertical): Account for title bar height.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.icon-and-label-vertical.small-size): Ditto.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.icon-only): Ditto.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.label-only): Ditto.
+        (body.mac-platform.legacy .toolbar): No inset shadow in legacy when not docked.
+        (body.mac-platform.legacy.docked .toolbar): Restore legacy border color.
+        (body.mac-platform.legacy:not(.docked) .toolbar .item.button > .label): Only disable sub-pixel antialiasing on legacy!
+        (body.mac-platform.legacy.window-inactive .toolbar): Restore legacy border color.
+
+2014-08-13  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Restore Helvetica as the dashboard font in legacy mode
+        https://bugs.webkit.org/show_bug.cgi?id=135886
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DefaultDashboardView.css:
+        (body.mac-platform.legacy .toolbar .dashboard.default > .item):
+
 2014-08-12  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Timeline record content view close button does not work after scrolling, invisible scrollbar

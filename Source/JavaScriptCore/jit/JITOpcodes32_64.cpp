@@ -905,11 +905,9 @@ void JIT::emit_op_enter(Instruction* currentInstruction)
 void JIT::emit_op_create_activation(Instruction* currentInstruction)
 {
     int activation = currentInstruction[1].u.operand;
-    
-    Jump activationCreated = branch32(NotEqual, tagFor(activation), TrustedImm32(JSValue::EmptyValueTag));
+
     callOperation(operationCreateActivation, 0);
     emitStoreCell(activation, returnValueGPR);
-    activationCreated.link(this);
 }
 
 void JIT::emit_op_create_arguments(Instruction* currentInstruction)
@@ -1305,6 +1303,12 @@ void JIT::emit_op_next_enumerator_pname(Instruction* currentInstruction)
 void JIT::emit_op_to_index_string(Instruction* currentInstruction)
 {
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_to_index_string);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_profile_types_with_high_fidelity(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_profile_types_with_high_fidelity);
     slowPathCall.call();
 }
 

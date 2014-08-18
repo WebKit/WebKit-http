@@ -115,7 +115,7 @@ ParserError BytecodeGenerator::generate()
 
     m_codeBlock->shrinkToFit();
 
-    if (m_codeBlock->symbolTable())
+    if (m_codeBlock->symbolTable() && !m_codeBlock->vm()->isProfilingTypesWithHighFidelity())
         m_codeBlock->setSymbolTable(m_codeBlock->symbolTable()->cloneCapturedNames(*m_codeBlock->vm()));
 
     if (m_expressionTooDeep)
@@ -248,6 +248,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
         m_activationRegister = addVar();
         emitInitLazyRegister(m_activationRegister);
         m_codeBlock->setActivationRegister(m_activationRegister->virtualRegister());
+        emitOpcode(op_create_activation);
+        instructions().append(m_activationRegister->index());
     }
 
     m_symbolTable->setCaptureStart(virtualRegisterForLocal(m_codeBlock->m_numVars).offset());
@@ -1005,7 +1007,7 @@ RegisterID* BytecodeGenerator::emitMove(RegisterID* dst, CaptureMode captureMode
         instructions().append(watchableVariable(dst->index()));
 
     if (!dst->isTemporary() && isProfilingTypesWithHighFidelity())
-        emitProfileTypesWithHighFidelity(dst, ProfileTypesBytecodeHasGlobalID);
+        emitProfileTypesWithHighFidelity(dst, ProfileTypesBytecodeHasGlobalID, nullptr);
 
     return dst;
 }
@@ -1124,12 +1126,18 @@ void BytecodeGenerator::emitHighFidelityTypeProfilingExpressionInfo(const JSText
     m_codeBlock->addHighFidelityTypeProfileExpressionInfo(instructionOffset, start, end);
 }
 
-void BytecodeGenerator::emitProfileTypesWithHighFidelity(RegisterID* registerToProfile, ProfileTypesWithHighFidelityBytecodeFlag flag)
+void BytecodeGenerator::emitProfileTypesWithHighFidelity(RegisterID* registerToProfile, ProfileTypesWithHighFidelityBytecodeFlag flag, const Identifier* identifier)
 {
+    if (flag == ProfileTypesBytecodeGetFromScope || flag == ProfileTypesBytecodePutToScope)
+        RELEASE_ASSERT(identifier);
+
+    // The format of this instruction is: op_profile_types_with_high_fidelity regToProfile, TypeLocation*, flag, identifier?, resolveType?
     emitOpcode(op_profile_types_with_high_fidelity);
     instructions().append(registerToProfile->index());
-    instructions().append(0); // This is a placeholder for the TypeLocation object pointer.
+    instructions().append(0);
     instructions().append(flag);
+    instructions().append(identifier ? addConstant(*identifier) : 0);
+    instructions().append(resolveType());
 }
 
 RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, bool b)
@@ -1271,22 +1279,6 @@ RegisterID* BytecodeGenerator::emitGetFromScope(RegisterID* dst, RegisterID* sco
     return dst;
 }
 
-RegisterID* BytecodeGenerator::emitGetFromScopeWithProfile(RegisterID* dst, RegisterID* scope, const Identifier& identifier, ResolveMode resolveMode)
-{
-    m_codeBlock->addPropertyAccessInstruction(instructions().size());
-
-    UnlinkedValueProfile profile = emitProfiledOpcode(op_get_from_scope_with_profile);
-    instructions().append(kill(dst));
-    instructions().append(scope->index());
-    instructions().append(addConstant(identifier));
-    instructions().append(ResolveModeAndType(resolveMode, resolveType()).operand());
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(profile);
-    instructions().append(0); // This is a placeholder for a TypeLocation pointer.
-    return dst;
-}
-
 RegisterID* BytecodeGenerator::emitPutToScope(RegisterID* scope, const Identifier& identifier, RegisterID* value, ResolveMode resolveMode)
 {
     m_codeBlock->addPropertyAccessInstruction(instructions().size());
@@ -1299,21 +1291,6 @@ RegisterID* BytecodeGenerator::emitPutToScope(RegisterID* scope, const Identifie
     instructions().append(ResolveModeAndType(resolveMode, resolveType()).operand());
     instructions().append(0);
     instructions().append(0);
-    return value;
-}
-
-RegisterID* BytecodeGenerator::emitPutToScopeWithProfile(RegisterID* scope, const Identifier& identifier, RegisterID* value, ResolveMode resolveMode)
-{
-    m_codeBlock->addPropertyAccessInstruction(instructions().size());
-
-    emitOpcode(op_put_to_scope_with_profile);
-    instructions().append(scope->index());
-    instructions().append(addConstant(identifier));
-    instructions().append(value->index());
-    instructions().append(ResolveModeAndType(resolveMode, resolveType()).operand());
-    instructions().append(0);
-    instructions().append(0);
-    instructions().append(0); // This is a placeholder for a TypeLocation pointer.
     return value;
 }
 
@@ -1642,7 +1619,6 @@ RegisterID* BytecodeGenerator::emitLazyNewFunction(RegisterID* dst, FunctionBody
 
 RegisterID* BytecodeGenerator::emitNewFunctionInternal(RegisterID* dst, CaptureMode captureMode, unsigned index, bool doNullCheck)
 {
-    createActivationIfNecessary();
     emitOpcode(captureMode == IsCaptured ? op_new_captured_func : op_new_func);
     instructions().append(dst->index());
     instructions().append(index);
@@ -1666,8 +1642,7 @@ RegisterID* BytecodeGenerator::emitNewFunctionExpression(RegisterID* r0, FuncExp
 {
     FunctionBodyNode* function = n->body();
     unsigned index = m_codeBlock->addFunctionExpr(makeFunction(function));
-    
-    createActivationIfNecessary();
+
     emitOpcode(op_new_func_exp);
     instructions().append(r0->index());
     instructions().append(index);
@@ -1695,17 +1670,8 @@ void BytecodeGenerator::createArgumentsIfNecessary()
     ASSERT(!hasWatchableVariable(m_codeBlock->argumentsRegister().offset()));
 }
 
-void BytecodeGenerator::createActivationIfNecessary()
-{
-    if (!m_activationRegister)
-        return;
-    emitOpcode(op_create_activation);
-    instructions().append(m_activationRegister->index());
-}
-
 RegisterID* BytecodeGenerator::emitCallEval(RegisterID* dst, RegisterID* func, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
-    createActivationIfNecessary();
     return emitCall(op_call_eval, dst, func, NoExpectedFunction, callArguments, divot, divotStart, divotEnd);
 }
 
@@ -2010,7 +1976,6 @@ RegisterID* BytecodeGenerator::emitPushWithScope(RegisterID* scope)
     m_scopeContextStack.append(context);
     m_localScopeDepth++;
 
-    createActivationIfNecessary();
     return emitUnaryNoDstOp(op_push_with_scope, scope);
 }
 
@@ -2336,8 +2301,6 @@ void BytecodeGenerator::emitPushFunctionNameScope(const Identifier& property, Re
 
 void BytecodeGenerator::emitPushCatchScope(const Identifier& property, RegisterID* value, unsigned attributes)
 {
-    createActivationIfNecessary();
-
     ControlFlowContext context;
     context.isFinallyBlock = false;
     m_scopeContextStack.append(context);

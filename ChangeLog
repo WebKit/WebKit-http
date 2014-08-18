@@ -1,3 +1,96 @@
+2014-08-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.5.3 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2014-08-15  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [GTK] Disable memory sampler on non-Linux system
+        https://bugs.webkit.org/show_bug.cgi?id=134483
+
+        Reviewed by Philippe Normand.
+
+        Source/WebKit2/Shared/linux/WebMemorySamplerLinux.cpp only works on
+        Linux because it uses many Linux-specific features, so we should disable
+        memory sampler on other systems by default.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-08-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] HTML API documentation should also be installed versioned
+        https://bugs.webkit.org/show_bug.cgi?id=135970
+
+        Reviewed by Philippe Normand.
+
+        * Source/PlatformGTK.cmake: Append -${WEBKITGTK_API_VERSION} to
+        the directory name.
+
+2014-08-14  Tomas Popela  <tpopela@redhat.com>
+
+        Add support for ppc, ppc64, ppc64le, s390, s390x into the CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=135937
+
+        Reviewed by Carlos Garcia Campos.
+
+        * CMakeLists.txt:
+
+2014-08-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] REGRESSION(r171598, CMake): Introspection files are installed at the wrong path
+        https://bugs.webkit.org/show_bug.cgi?id=135934
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Since r171598 gir files are installed under $datadir/webkitgtk-4.0/gir-1.0/.
+        The gir files should installed in $datadir/gir-1.0/ together with all other
+        gir files. We don't need to install introspection files in a versioned
+        directory because their filenames already contain the binary version. But before
+        r171598, the files were only installed to the right directory if the
+        gobject-instrospection pkg-config file was in the same prefix than the one we
+        wanted to install, because the gir and typelibs directories were extracted from
+        the pkg-config file. We should define INTROSPECTION_INSTALL_GIRDIR and
+        INTROSPECTION_INSTALL_TYPELIBDIR in OptionsGTK.cmake based on $datadir and $libdir
+        like we do in the autotools build.
+
+        * Source/cmake/FindGObjectIntrospection.cmake: Do not define
+        INTROSPECTION_INSTALL_GIRDIR and INTROSPECTION_INSTALL_TYPELIBDIR.
+        * Source/cmake/OptionsGTK.cmake: Define
+        INTROSPECTION_INSTALL_GIRDIR and INTROSPECTION_INSTALL_TYPELIBDIR.
+
+2014-08-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebKit DOM documentation (webkitdomgtk) not installed after make install
+        https://bugs.webkit.org/show_bug.cgi?id=135836
+
+        Reviewed by Philippe Normand.
+
+        * Source/PlatformGTK.cmake: Add install command to also install
+        the GObject DOM bindings API docs.
+
+2014-08-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. In r165709 I mistakenly appended the -fno-exceptions
+        and -fno-strict-aliasing compiler flags to CMAKE_CXX_FLAGS and then
+        re-set CMAKE_C_FLAGS with the new string. The two flags should really
+        be appended to CMAKE_C_FLAGS and the same variable re-set with the
+        new string.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2014-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=135819
+
+        Reviewed by Laszlo Gombos.
+
+        * Source/cmake/OptionsMac.cmake:
+        Disable some more features temporarily to get CMake working.
+        * Source/cmake/WebKitMacros.cmake:
+        Added an extension parameter to GENERATE_BINDINGS to allow ObjC bindings to generate .mm files.
+
 2014-08-12  Eduardo Lima Mitev  <elima@igalia.com>
 
         [GTK] Subtle-crypto feature off by default and add a new configure flag to enable it

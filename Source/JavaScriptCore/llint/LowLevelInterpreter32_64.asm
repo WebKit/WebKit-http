@@ -697,9 +697,7 @@ _llint_op_enter:
 _llint_op_create_activation:
     traceExecution()
     loadi 4[PC], t0
-    bineq TagOffset[cfr, t0, 8], EmptyValueTag, .opCreateActivationDone
     callSlowPath(_llint_slow_path_create_activation)
-.opCreateActivationDone:
     dispatch(2)
 
 
@@ -2172,7 +2170,6 @@ macro resolveScope()
     loadisFromInstruction(4, t2)
     btbz CodeBlock::m_needsActivation[t0], .resolveScopeAfterActivationCheck
     loadis CodeBlock::m_activationRegister[t0], t1
-    btpz PayloadOffset[cfr, t1, 8], .resolveScopeAfterActivationCheck
     addi 1, t2
 
 .resolveScopeAfterActivationCheck:

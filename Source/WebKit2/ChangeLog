@@ -1,3 +1,174 @@
+2014-08-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.5.3 release.
+
+        * gtk/NEWS: Add release notes for 2.5.3.
+
+2014-08-14  Enrica Casucci  <enrica@apple.com>
+
+        [Services with UI] Selection services don't work inside <iframes>.
+        https://bugs.webkit.org/show_bug.cgi?id=135941
+        <rdar://problem/17957690>
+
+        Reviewed by Tim Horton.
+
+        Need to map the selection rectangles using the correct FrameView.
+        When handling the click, we must use the selection from the focused frame.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::buildSelectionHighlight):
+        (WebKit::ServicesOverlayController::handleClick):
+
+2014-08-13  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/135909> Move helper applications out of the root of the framework.
+
+        As described in <https://developer.apple.com/library/mac/technotes/tn2206/>, for bundles containing
+        a Versions directory there may be no other content at the top level of the bundle other than symlinks.
+        Upcoming changes to code signing will prevent bundles that violate this rule from being signed.
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Define a configuration setting that points to the content directory
+        of the framework. On OS X this is Versions/A. On iOS, where frameworks are shallow, this is the top level.
+        * Configurations/BaseLegacyProcess.xcconfig: Install the legacy processes in the content directory
+        of the framework.
+        * WebKit2.xcodeproj/project.pbxproj: Copy the legacy processes into the content directory of the
+        framework during engineering builds. Generate symlinks for the legacy processes to their locations
+        in Versions/Current. This is necessary because -[NSBundle pathForAuxiliaryExecutable:] only looks
+        at the top level of the framework wrapper.
+
+2014-08-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        WebKit2GTK - WebKitWebProcess assertion fails when dragging and dropping a file into the view
+        https://bugs.webkit.org/show_bug.cgi?id=127576
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::performDragControllerAction): Assume read access
+        to any file that has been dragged into the web view when compiling for
+        GTK, since we don't support sandbox extensions.
+
+2014-08-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Enable CSS_SCROLL_SNAP for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=135915
+
+        Turn on CSS_SCROLL_SNAP for iOS and the iOS simulator.
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-13  Enrica Casucci  <enrica@apple.com>
+
+        [Services with UI] Use a longer delay duration for editable content.
+        https://bugs.webkit.org/show_bug.cgi?id=135918
+        <rdar://problem/17998929>
+
+        Reviewed by Tim Horton.
+
+        Use a 1 second delay for selections in editable content.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::remainingTimeUntilHighlightShouldBeShown):
+
+2014-08-13  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/135911> WebKit should build on Yosemite with the public SDK.
+
+        Reviewed by Darin Adler.
+
+        * Platform/IPC/mac/ImportanceAssertion.h: Forward-declare the new assertion functions we use.
+        * UIProcess/mac/WebContextMenuProxyMac.mm: Forward-declare some details related to NSSharingServicePicker.
+
+2014-08-13  Alexey Proskuryakov  <ap@apple.com>
+
+        iOS build fix.
+
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::ensureNetworkProcess):
+        (WebKit::WebContext::createNewWebProcess):
+
+2014-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Opening Web Inspector causes a large amount of sandbox violations
+        https://bugs.webkit.org/show_bug.cgi?id=135908
+
+        Reviewed by Timothy Hatcher.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+        Permit the WebContent process to create file read extensions for the
+        system WebInspectorUI.framework which the Network process can already
+        read anyways.
+
+2014-08-13  Tim Horton  <timothy_horton@apple.com>
+
+        Avoid making new active service overlay highlights while the mouse is down
+        https://bugs.webkit.org/show_bug.cgi?id=135872
+        <rdar://problem/17982341>
+
+        Reviewed by Enrica Casucci.
+
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::remainingTimeUntilHighlightShouldBeShown):
+        (WebKit::ServicesOverlayController::mouseEvent):
+        If the mouse is pressed or it's been less than 200ms since the mouse went up,
+        don't allow the highlight to change. We apply the mouse-is-pressed rule to telephone
+        number highlights as well, unlike the rest of the hysteresis logic.
+
+2014-08-13  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Workaround a NSWindow change to the title bar.
+        https://bugs.webkit.org/show_bug.cgi?id=135880
+
+        Reviewed by Joseph Pecoraro.
+
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::createInspectorWindow): Set titlebarAppearsTransparent on 10.10.
+        Only call border thickness APIs on 10.9 and earlier.
+        (WebKit::WebInspectorProxy::platformCreateInspectorPage): Only call setDrawsBackground: on 10.9 and earlier.
+        (WebKit::WebInspectorProxy::platformSetToolbarHeight): Only call setContentBorderThickness: on 10.9 and earlier.
+
+2014-08-13  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Add API to set application name for the user agent
+        https://bugs.webkit.org/show_bug.cgi?id=135640
+
+        Reviewed by Gyuyoung Kim.
+
+        Add ewk_application_name_for_user_agent_set to make default user agent string
+        with application name which application passes.
+        It's useful for application to set only application information without knowledge
+        of legacy user agent components.
+
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::EwkView):
+        (EwkView::setApplicationNameForUserAgent):
+        * UIProcess/API/efl/EwkView.h:
+        (EwkView::applicationNameForUserAgent):
+        * UIProcess/API/efl/ewk_view.cpp:
+        (ewk_view_application_name_for_user_agent_set):
+        (ewk_view_application_name_for_user_agent_get):
+        * UIProcess/API/efl/ewk_view.h:
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp:
+        (TEST_F):
+        * UIProcess/efl/WebPageProxyEfl.cpp:
+        (WebKit::WebPageProxy::standardUserAgent):
+
+2014-08-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [CMAKE] WebProcess shouldn't need to explicitly link to JavaScriptCore and WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=135832
+
+        Reviewed by Gyuyoung Kim.
+
+        Linking to WebKit2 should be enough, like Network and Plugin processes.
+
+        * CMakeLists.txt:
+
 2014-08-12  Tim Horton  <timothy_horton@apple.com>
 
         Document-relative page overlays drop some mouse events with non-zero top content inset

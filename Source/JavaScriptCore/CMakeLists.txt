@@ -804,6 +804,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     heap
     inspector
     inspector/agents
+    inspector/remote
     interpreter
     jit
     llint
@@ -864,7 +865,15 @@ set(JavaScriptCore_FORWARDING_HEADERS_FILES
     assembler/MacroAssembler.h
     assembler/MacroAssemblerCodeRef.h
     assembler/MacroAssemblerCodeRef.h
+
+    inspector/remote/RemoteInspector.h
+    inspector/remote/RemoteInspectorConstants.h
+    inspector/remote/RemoteInspectorDebuggable.h
+    inspector/remote/RemoteInspectorDebuggableConnection.h
+    inspector/remote/RemoteInspectorXPCConnection.h
+
     jit/GPRInfo.h
+
     runtime/VM.h
 
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
@@ -1004,6 +1013,12 @@ if (WTF_CPU_ARM)
 
         list(APPEND JavaScriptCore_SOURCES ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.obj)
     endif ()
+elseif (WTF_CPU_ARM64)
+elseif (WTF_CPU_PPC)
+elseif (WTF_CPU_PPC64)
+elseif (WTF_CPU_PPC64LE)
+elseif (WTF_CPU_S390)
+elseif (WTF_CPU_S390X)
 elseif (WTF_CPU_MIPS)
 elseif (WTF_CPU_SH4)
 elseif (WTF_CPU_X86)
