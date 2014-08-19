@@ -82,10 +82,6 @@ namespace WebCore {
 
         PlatformMenuDescription releasePlatformDescription();
 
-#if PLATFORM(HAIKU)
-        void setController(ContextMenuController*);
-#endif
-
 #endif // USE(CROSS_PLATFORM_CONTEXT_MENUS)
 
     private:
@@ -101,11 +97,6 @@ namespace WebCore {
         unsigned m_itemCount;
 #endif
 
-#endif
-
-#if PLATFORM(HAIKU)
-        class ContextMenuHandler;
-        ContextMenuHandler* m_menuHandler;
 #endif
 
 #endif // USE(CROSS_PLATFORM_CONTEXT_MENUS)

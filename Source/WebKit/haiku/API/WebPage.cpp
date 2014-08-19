@@ -84,6 +84,7 @@
 #include <FilePanel.h>
 #include <FindDirectory.h>
 #include <Font.h>
+#include <MenuItem.h>
 #include <Message.h>
 #include <MessageQueue.h>
 #include <Messenger.h>
@@ -1119,11 +1120,21 @@ void BWebPage::handleMouseEvent(const BMessage* message)
             // also swallow the event.
             ContextMenu* contextMenu = fPage->contextMenuController().contextMenu();
             if (contextMenu) {
+#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
+                BPopUpMenu* platformMenu = contextMenu->platformContextMenu();
+#else
                 BPopUpMenu* platformMenu = dynamic_cast<BPopUpMenu*>(contextMenu->releasePlatformDescription());
+#endif
                 if (platformMenu) {
                     BPoint screenLocation(event.globalPosition().x() + 2,
                         event.globalPosition().y() + 2);
-                    platformMenu->Go(screenLocation, true, true, true);
+                    BMenuItem* item = platformMenu->Go(screenLocation, false,
+                        true);
+                    BMessage* message = item->Message();
+                    ContextMenuItem* itemHandle;
+                    message->FindPointer("ContextMenuItem", (void**)&itemHandle);
+                    fPage->contextMenuController().contextMenuItemSelected(
+                        itemHandle);
                 }
             }
         }

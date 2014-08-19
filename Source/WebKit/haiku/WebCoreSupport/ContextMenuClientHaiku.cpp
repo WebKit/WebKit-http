@@ -54,6 +54,13 @@ void ContextMenuClientHaiku::contextMenuDestroyed()
     delete this;
 }
 
+#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
+PassOwnPtr<ContextMenu> ContextMenuClientHaiku::customizeMenu(PassOwnPtr<ContextMenu> menu)
+{
+    // We can add items to the menu here.
+    return menu;
+}
+#else
 PlatformMenuDescription ContextMenuClientHaiku::getCustomMenuFromDefaultItems(ContextMenu* menu)
 {
     // This method appears to allow some form of filtering. I.e. we get the
@@ -67,6 +74,7 @@ PlatformMenuDescription ContextMenuClientHaiku::getCustomMenuFromDefaultItems(Co
 
     return menu->platformDescription();
 }
+#endif
 
 void ContextMenuClientHaiku::contextMenuItemSelected(ContextMenuItem*, const ContextMenu*)
 {

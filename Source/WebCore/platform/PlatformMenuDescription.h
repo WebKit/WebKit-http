@@ -33,7 +33,8 @@ OBJC_CLASS NSMutableArray;
 #elif PLATFORM(GTK)
 typedef struct _GtkMenu GtkMenu;
 #elif PLATFORM(HAIKU)
-class BMenu;
+class BPopUpMenu;
+class BMenuItem;
 #endif
 
 namespace WebCore {
@@ -43,8 +44,6 @@ namespace WebCore {
     typedef NSMutableArray* PlatformMenuDescription;
 #elif PLATFORM(GTK)
     typedef GtkMenu* PlatformMenuDescription;
-#elif PLATFORM(HAIKU)
-    typedef BMenu* PlatformMenuDescription;
 #else
     typedef void* PlatformMenuDescription;
 #endif
@@ -54,6 +53,9 @@ namespace WebCore {
 #if PLATFORM(WIN)
     typedef HMENU PlatformContextMenu;
     typedef MENUITEMINFO PlatformContextMenuItem;
+#elif PLATFORM(HAIKU)
+    typedef BPopUpMenu* PlatformContextMenu;
+    typedef BMenuItem* PlatformContextMenuItem;
 #else
     typedef void* PlatformContextMenu;
     typedef void* PlatformContextMenuItem;

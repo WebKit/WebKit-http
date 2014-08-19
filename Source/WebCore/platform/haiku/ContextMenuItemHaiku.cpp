@@ -28,143 +28,34 @@
 #include "ContextMenuItem.h"
 
 #include "ContextMenu.h"
-#include <Menu.h>
 #include <MenuItem.h>
 #include <Message.h>
-#include <String.h>
+#include <PopUpMenu.h>
+#include "wtf/text/CString.h"
 
-using namespace WebCore;
+namespace WebCore {
 
-ContextMenuItem::ContextMenuItem(PlatformMenuItemDescription item)
+BMenuItem* ContextMenuItem::platformContextMenuItem() const
 {
-    m_platformDescription = item;
-}
+    BMessage* message = new BMessage(m_action);
+    message->AddPointer("ContextMenuItem", this);
+    BMenuItem* item;
 
-ContextMenuItem::ContextMenuItem(ContextMenu* subMenu)
-{
-    if (subMenu) {
-        m_platformDescription = new BMenuItem(subMenu->releasePlatformDescription(),
-                                              new BMessage(ContextMenuItemTagNoAction));
+    if (m_type == SeparatorType)
+        return new BSeparatorItem(message);
+
+    if (m_type == SubmenuType) {
+        BPopUpMenu* subMenu = ContextMenu::createPlatformContextMenuFromItems(
+            m_subMenuItems);
+        item = new BMenuItem(subMenu, message);
+        item->SetLabel(m_title.utf8().data());
     } else
-        m_platformDescription = 0;
-}
+        item = new BMenuItem(m_title.utf8().data(), message);
 
-ContextMenuItem::ContextMenuItem(ContextMenuItemType type, ContextMenuAction action,
-                                 const String& title, ContextMenu* subMenu)
-{
-    if (type == ActionType || type == CheckableActionType)
-        m_platformDescription = new BMenuItem(BString(title).String(), new BMessage(action));
-    else if (type == SeparatorType)
-        m_platformDescription = new BSeparatorItem();
-    else {
-    	BMenu* menu;
-    	if (subMenu)
-    	    menu = subMenu->releasePlatformDescription();
-    	else
-    	    menu = new BMenu("");
-        m_platformDescription = new BMenuItem(menu, new BMessage(action));
-        m_platformDescription->SetLabel(BString(title).String());
-    }
-}
+    item->SetEnabled(m_enabled);
+    item->SetMarked(m_checked);
 
-ContextMenuItem::~ContextMenuItem()
-{
-    delete m_platformDescription;
-}
-
-PlatformMenuItemDescription ContextMenuItem::releasePlatformDescription()
-{
-    BMenuItem* item = m_platformDescription;
-    m_platformDescription = 0;
     return item;
 }
 
-ContextMenuItemType ContextMenuItem::type() const
-{
-    if (dynamic_cast<BSeparatorItem*>(m_platformDescription))
-        return SeparatorType;
-    if (m_platformDescription && m_platformDescription->Submenu())
-        return SubmenuType;
-    return ActionType;
 }
-
-void ContextMenuItem::setType(ContextMenuItemType type)
-{
-    ContextMenuAction theAction = action();
-    String theTitle = title();
-    BMenu* subMenu = platformSubMenu();
-    delete m_platformDescription;
-
-    if (type == ActionType || type == CheckableActionType)
-        m_platformDescription = new BMenuItem(BString(theTitle).String(), new BMessage(theAction));
-    else if (type == SeparatorType)
-        m_platformDescription = new BSeparatorItem();
-    else {
-        if (subMenu) {
-            m_platformDescription = new BMenuItem(subMenu, new BMessage(theAction));
-            m_platformDescription->SetLabel(BString(theTitle).String());
-        } else
-            m_platformDescription = new BMenuItem(BString(theTitle).String(), new BMessage(theAction));
-    }
-}
-
-ContextMenuAction ContextMenuItem::action() const
-{
-    if (m_platformDescription && m_platformDescription->Message())
-        return static_cast<WebCore::ContextMenuAction>(m_platformDescription->Message()->what);
-    return ContextMenuItemTagNoAction;
-}
-
-void ContextMenuItem::setAction(ContextMenuAction action)
-{
-    if (m_platformDescription && m_platformDescription->Message())
-        m_platformDescription->Message()->what = action;
-}
-
-String ContextMenuItem::title() const
-{
-    if (!m_platformDescription)
-        return "";
-    return BString(m_platformDescription->Label());
-}
-
-void ContextMenuItem::setTitle(const String& title)
-{
-    // FIXME: We need to find a better way to convert WebKit Strings into c strings
-    if (m_platformDescription)
-        m_platformDescription->SetLabel(BString(title).String());
-}
-
-PlatformMenuDescription ContextMenuItem::platformSubMenu() const
-{
-    return m_platformDescription ? m_platformDescription->Submenu() : 0;
-}
-
-void ContextMenuItem::setSubMenu(ContextMenu* menu)
-{
-    // FIXME: We assume m_platformDescription is valid
-    const char* title = m_platformDescription ? m_platformDescription->Label() : "";
-    delete m_platformDescription;
-    m_platformDescription = new BMenuItem(menu->releasePlatformDescription(), new BMessage(action()));
-    m_platformDescription->SetLabel(title);
-}
-
-void ContextMenuItem::setChecked(bool checked)
-{
-    if (m_platformDescription)
-        m_platformDescription->SetMarked(checked);
-}
-
-void ContextMenuItem::setEnabled(bool enable)
-{
-    if (m_platformDescription)
-        m_platformDescription->SetEnabled(enable);
-}
-
-bool ContextMenuItem::enabled() const
-{
-    if (!m_platformDescription)
-        return true;
-    return m_platformDescription->IsEnabled();
-}
-
