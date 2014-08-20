@@ -41,7 +41,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/CoordinatedGraphics/WebView.cpp
     UIProcess/CoordinatedGraphics/WebViewClient.cpp
 
-    UIProcess/Launcher/efl/ProcessLauncherEfl.cpp
+    UIProcess/Launcher/haiku/ProcessLauncherHaiku.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp

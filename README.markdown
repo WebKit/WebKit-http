@@ -168,6 +168,16 @@ code itself, or in the various parts of the test harness, none of which are
 actually complete: DumpRenderTree, webkitpy, etc. Some of them are triggering
 asserts in WebKit code.
 
+### WebKit2 ###
+
+Same as above, but:
+
+    $ python Tools/Scripts/run-webkit-tests --platform=haiku-wk2 --no-build \
+        --no-http --no-retry-failures --clobber-old-results \
+        --no-new-test-results
+
+Note that this is currently not working.
+
 ### Others ###
 
 There are more tests, but the build-\* scripts must be working before we can run them.
