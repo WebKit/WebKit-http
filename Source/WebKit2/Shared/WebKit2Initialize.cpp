@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebKit2Initialize.h"
 
-#include "Logging.h"
+#include <Platform/Logging.h>
 #include <WebCore/Logging.h>
 #include <runtime/InitializeThreading.h>
 #include <wtf/MainThread.h>

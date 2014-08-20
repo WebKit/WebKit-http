@@ -31,7 +31,6 @@ set(WebKitTestRunner_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
     ${WEBCORE_DIR}/editing
     ${WEBCORE_DIR}/platform
-    ${WEBCORE_DIR}/platform/graphics
     ${WEBCORE_DIR}/platform/graphics/harfbuzz
     ${WEBCORE_DIR}/platform/graphics/harfbuzz/ng
     ${WEBCORE_DIR}/platform/network
@@ -50,6 +49,10 @@ set(WebKitTestRunner_INCLUDE_DIRECTORIES
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
     ${LIBSOUP_INCLUDE_DIRS}
+)
+
+SET(WebKitTestRunner_LOCAL_INCLUDE_DIRECTORIES
+    ${WEBCORE_DIR}/platform/graphics
 )
 
 set(WebKitTestRunnerInjectedBundle_SOURCES
@@ -93,6 +96,9 @@ GENERATE_BINDINGS(WebKitTestRunnerInjectedBundle_SOURCES
 
 INCLUDE_IF_EXISTS(${WEBKIT_TESTRUNNER_DIR}/Platform${PORT}.cmake)
 
+foreach(inc ${WebKitTestRunner_LOCAL_INCLUDE_DIRECTORIES})
+    ADD_DEFINITIONS(-iquote ${inc})
+endforeach(inc)
 include_directories(${WebKitTestRunner_INCLUDE_DIRECTORIES})
 
 add_library(TestRunnerInjectedBundle SHARED ${WebKitTestRunnerInjectedBundle_SOURCES})

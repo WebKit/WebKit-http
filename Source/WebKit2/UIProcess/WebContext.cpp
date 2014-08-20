@@ -31,7 +31,7 @@
 #include "APIHistoryClient.h"
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
-#include "Logging.h"
+#include "Platform/Logging.h"
 #include "MutableDictionary.h"
 #include "SandboxExtension.h"
 #include "StatisticsData.h"

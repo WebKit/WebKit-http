@@ -143,5 +143,10 @@ WebMemoryStatistics WebMemorySampler::sampleWebKit() const
     return webKitMemoryStats;
 }
 
+void WebMemorySampler::sendMemoryPressureEvent()
+{
+    notImplemented();
+}
+
 }
 #endif

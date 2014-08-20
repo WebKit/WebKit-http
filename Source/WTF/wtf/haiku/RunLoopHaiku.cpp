@@ -32,7 +32,7 @@ namespace WTF {
 
 RunLoop::RunLoop()
 {
-    puts("FIXME IMPLEMENT RunLoop!");
+    puts("FIXME RunLoop");
 }
 
 RunLoop::~RunLoop()
@@ -41,17 +41,17 @@ RunLoop::~RunLoop()
 
 void RunLoop::run()
 {
-    puts("FIXME IMPLEMENT RunLoop!");
+    puts("FIXME RunLoop");
 }
 
 void RunLoop::stop()
 {
-    puts("FIXME IMPLEMENT RunLoop!");
+    puts("FIXME RunLoop");
 }
 
 void RunLoop::wakeUp()
 {
-    puts("FIXME IMPLEMENT RunLoop!");
+    puts("FIXME RunLoop");
 }
 
 RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
@@ -66,12 +66,17 @@ RunLoop::TimerBase::~TimerBase()
 
 void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
 {
-    puts("FIXME IMPLEMENT RunLoop!");
+    puts("FIXME RunLoop");
+}
+
+bool RunLoop::TimerBase::isActive() const
+{
+    puts("FIXME RunLoop");
 }
 
 void RunLoop::TimerBase::stop()
 {
-    puts("FIXME IMPLEMENT RunLoop!");
+    puts("FIXME RunLoop");
 }
 
 }

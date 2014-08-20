@@ -407,6 +407,11 @@ String inactivePluginText()
     return String();
 }
 
+String localizedString(const char* key)
+{
+    return String::fromUTF8(key, strlen(key));
+}
+
 #if ENABLE(VIDEO_TRACK)
 String textTrackClosedCaptionsText()
 {

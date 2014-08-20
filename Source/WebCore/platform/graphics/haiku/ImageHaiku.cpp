@@ -167,6 +167,11 @@ void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, con
         imageObserver()->didDraw(this);
 }
 
+void BitmapImage::determineMinimumSubsamplingLevel() const
+{
+    m_minimumSubsamplingLevel = 0;
+}
+
 void BitmapImage::checkForSolidColor()
 {
     m_isSolidColor = false;

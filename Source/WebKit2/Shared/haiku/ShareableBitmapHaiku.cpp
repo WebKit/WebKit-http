@@ -26,6 +26,8 @@
 #include "config.h"
 #include "ShareableBitmap.h"
 
+#include "BitmapImage.h"
+#include "NotImplemented.h"
 #include <WebCore/GraphicsContext.h>
 
 #include <Bitmap.h>
@@ -52,12 +54,30 @@ std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
     return std::make_unique<GraphicsContext>(v);
 }
 
+void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const IntPoint& dstPoint, const IntRect& srcRect)
+{
+    FloatRect destRect(dstPoint, srcRect.size());
+    FloatRect srcRectScaled(srcRect);
+    srcRectScaled.scale(scaleFactor);
+    notImplemented();
+    //context.platformContext()->DrawBitmap(surface.get(), destRect, srcRectScaled);
+}
+
 PassRefPtr<StillImage> ShareableBitmap::createBitmapSurface()
 {
     RefPtr<StillImage> image = createSurfaceFromData(data(), m_size);
 
     ref(); // Balanced by deref in releaseSurfaceData.
     return image.release();
+}
+
+PassRefPtr<Image> ShareableBitmap::createImage()
+{
+    RefPtr<StillImage> surface = createBitmapSurface();
+    if (!surface)
+        return 0;
+
+    return BitmapImage::create(surface->nativeImageForCurrentFrame());
 }
 
 }

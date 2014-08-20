@@ -41,6 +41,9 @@ typedef RetainPtr<CFRunLoopTimerRef> PlatformTimerRef;
 typedef unsigned int PlatformTimerRef;
 #elif PLATFORM(EFL)
 typedef Ecore_Timer* PlatformTimerRef;
+#elif PLATFORM(HAIKU)
+class BMessageRunner;
+typedef BMessageRunner* PlatformTimerRef;
 #endif
 
 namespace WTR {

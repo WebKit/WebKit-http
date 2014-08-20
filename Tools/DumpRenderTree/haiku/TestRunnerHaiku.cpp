@@ -315,27 +315,6 @@ int TestRunner::numberOfPendingGeolocationPermissionRequests()
     return -1;
 }
 
-void TestRunner::addMockSpeechInputResult(JSStringRef, double, JSStringRef)
-{
-    // FIXME: Implement for speech input layout tests.
-    // See https://bugs.webkit.org/show_bug.cgi?id=39485.
-    notImplemented();
-}
-
-void TestRunner::setMockSpeechInputDumpRect(bool)
-{
-    // FIXME: Implement for speech input layout tests.
-    // See https://bugs.webkit.org/show_bug.cgi?id=39485.
-    notImplemented();
-}
-
-void TestRunner::startSpeechInput(JSContextRef inputElement)
-{
-    // FIXME: Implement for speech input layout tests.
-    // See https://bugs.webkit.org/show_bug.cgi?id=39485.
-    notImplemented();
-}
-
 void TestRunner::setIconDatabaseEnabled(bool enabled)
 {
     notImplemented();

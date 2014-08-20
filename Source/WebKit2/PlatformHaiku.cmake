@@ -2,7 +2,9 @@ list(APPEND WebKit2_SOURCES
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
 
+    Platform/haiku/LoggingHaiku.cpp
     Platform/haiku/ModuleHaiku.cpp
+    Platform/haiku/WorkQueueHaiku.cpp
 
     Platform/unix/SharedMemoryUnix.cpp
 
@@ -13,8 +15,15 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp
     Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp
 
+    Shared/Downloads/haiku/DownloadHaiku.cpp
+
+    Shared/WebCoreArgumentCoders.cpp
+
     Shared/haiku/ShareableBitmapHaiku.cpp
 
+    Shared/haiku/ProcessExecutablePathHaiku.cpp
+
+    Shared/haiku/WebCoreArgumentCodersHaiku.cpp
     Shared/haiku/WebMemorySamplerHaiku.cpp
 
     Shared/unix/ChildProcessMain.cpp
@@ -32,20 +41,43 @@ list(APPEND WebKit2_SOURCES
     UIProcess/CoordinatedGraphics/WebView.cpp
     UIProcess/CoordinatedGraphics/WebViewClient.cpp
 
+    UIProcess/Launcher/efl/ProcessLauncherEfl.cpp
+
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
     UIProcess/Storage/StorageManager.cpp
 
+    UIProcess/haiku/BackingStoreHaiku.cpp
+    UIProcess/haiku/TextCheckerHaiku.cpp
+    UIProcess/haiku/WebContextHaiku.cpp
+    UIProcess/haiku/WebInspectorProxyHaiku.cpp
+    UIProcess/haiku/WebPageProxyHaiku.cpp
+    UIProcess/haiku/WebPreferencesHaiku.cpp
+    UIProcess/haiku/WebProcessProxyHaiku.cpp
+
+    WebProcess/Cookies/haiku/WebCookieManagerHaiku.cpp
+
+    WebProcess/InjectedBundle/haiku/InjectedBundleHaiku.cpp
+
     WebProcess/Plugins/Netscape/unix/PluginProxyUnix.cpp
 
+    WebProcess/WebCoreSupport/haiku/WebContextMenuClientHaiku.cpp
     WebProcess/WebCoreSupport/haiku/WebErrorsHaiku.cpp
+    WebProcess/WebCoreSupport/haiku/WebFrameNetworkingContext.cpp
+    WebProcess/WebCoreSupport/haiku/WebPopupMenuHaiku.cpp
+
+    WebProcess/WebPage/DrawingAreaImpl.cpp
 
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
     WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp
 
+    WebProcess/WebPage/haiku/WebInspectorHaiku.cpp
     WebProcess/WebPage/haiku/WebPageHaiku.cpp
+
+    WebProcess/haiku/WebProcessHaiku.cpp
+    WebProcess/haiku/WebProcessMainHaiku.cpp
 )
 
 list(APPEND WebKit2_MESSAGES_IN_FILES
@@ -57,6 +89,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/network/haiku"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
+    "${WEBKIT2_DIR}/Platform"
     "${WEBKIT2_DIR}/Shared/API/c/haiku"
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
     "${WEBKIT2_DIR}/Shared/unix"
@@ -105,5 +138,12 @@ add_custom_target(forwarding-headerHaiku
 
 set(WEBKIT2_EXTRA_DEPENDENCIES
     forwarding-headerHaiku
+)
+
+add_definitions(
+    -DLIBEXECDIR=\"${EXEC_INSTALL_DIR}\"
+    -DWEBPROCESSNAME=\"WebProcess\"
+    -DPLUGINPROCESSNAME=\"PluginProcess\"
+    -DNETWORKPROCESSNAME=\"NetworkProcess\"
 )
 

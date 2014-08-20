@@ -49,6 +49,9 @@ typedef GtkWidget *PlatformWindow;
 #elif PLATFORM(EFL)
 typedef Evas_Object* PlatformWKView;
 typedef Ecore_Evas* PlatformWindow;
+#elif PLATFORM(HAIKU)
+typedef BView* PlatformWKView;
+typedef BWindow* PlatformWindow;
 #endif
 
 namespace TestWebKitAPI {

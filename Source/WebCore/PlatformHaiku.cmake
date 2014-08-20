@@ -14,12 +14,6 @@ list(APPEND WebCore_SOURCES
 
   platform/Cursor.cpp
 
-  platform/audio/haiku/AudioBusHaiku.cpp
-  platform/audio/haiku/AudioDestinationHaiku.cpp
-  platform/audio/haiku/AudioFileReaderHaiku.cpp
-
-  platform/audio/ffmpeg/FFTFrameFFMPEG.cpp
-
   page/haiku/DragControllerHaiku.cpp
   page/haiku/EventHandlerHaiku.cpp
 
@@ -32,6 +26,7 @@ list(APPEND WebCore_SOURCES
   platform/haiku/CursorHaiku.cpp
   platform/haiku/DragImageHaiku.cpp
   platform/haiku/DragDataHaiku.cpp
+  platform/haiku/ErrorsHaiku.cpp
   platform/haiku/EventLoopHaiku.cpp
   platform/haiku/FileSystemHaiku.cpp
   platform/haiku/KeyboardUtilities.cpp
@@ -55,9 +50,11 @@ list(APPEND WebCore_SOURCES
   platform/haiku/TemporaryLinkStubs.cpp
   platform/haiku/WidgetHaiku.cpp
 
+  platform/graphics/ImageSource.cpp
   platform/graphics/WOFFFileFormat.cpp
 
   platform/graphics/haiku/AffineTransformHaiku.cpp
+  platform/graphics/haiku/BitmapImageHaiku.cpp
   platform/graphics/haiku/ColorHaiku.cpp
   platform/graphics/haiku/FontCacheHaiku.cpp
   platform/graphics/haiku/FontCustomPlatformData.cpp
@@ -82,19 +79,38 @@ list(APPEND WebCore_SOURCES
   platform/graphics/haiku/StillImageHaiku.cpp
   platform/graphics/haiku/TileHaiku.cpp
   platform/graphics/haiku/TiledBackingStoreHaiku.cpp
-  
+
   platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
   platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
   platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
 
+  platform/image-decoders/ImageDecoder.cpp
+
+  platform/image-decoders/bmp/BMPImageDecoder.cpp
+  platform/image-decoders/bmp/BMPImageReader.cpp
+
+  platform/image-decoders/gif/GIFImageDecoder.cpp
+  platform/image-decoders/gif/GIFImageReader.cpp
+
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
 
+  platform/image-decoders/ico/ICOImageDecoder.cpp
+
+  platform/image-decoders/jpeg/JPEGImageDecoder.cpp
+
+  platform/image-decoders/png/PNGImageDecoder.cpp
+
+  platform/image-decoders/webp/WEBPImageDecoder.cpp
+
   platform/network/haiku/BUrlProtocolHandler.cpp
+  platform/network/haiku/CertificateInfo.cpp
+  platform/network/haiku/CookieJarHaiku.cpp
   platform/network/haiku/DNSHaiku.cpp
+  platform/network/haiku/ProxyServerHaiku.cpp
   platform/network/haiku/ResourceHandleHaiku.cpp
   platform/network/haiku/ResourceRequestHaiku.cpp
-  platform/network/haiku/CookieJarHaiku.cpp
 
+  platform/network/haiku/CredentialStorageHaiku.cpp
   platform/network/haiku/SocketStreamHandleHaiku.cpp
   platform/network/NetworkStorageSessionStub.cpp
   

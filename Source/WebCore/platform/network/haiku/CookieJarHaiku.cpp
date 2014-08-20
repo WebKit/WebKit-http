@@ -29,6 +29,8 @@
 #include "config.h"
 
 #include "Cookie.h"
+#include "CookieStorage.h"
+
 #include "URL.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
@@ -132,6 +134,35 @@ void setCookieStoragePrivateBrowsingEnabled(bool)
 	printf("CookieJar: private browsing (NOT IMPLEMENTED)\n");
 #endif
     notImplemented();
+}
+
+void getHostnamesWithCookies(const NetworkStorageSession& session, HashSet<String>& hostnames)
+{
+    notImplemented();
+}
+
+void deleteCookiesForHostname(const NetworkStorageSession& session, const String& hostname)
+{
+    notImplemented();
+}
+
+void deleteAllCookies(const NetworkStorageSession& session)
+{
+    notImplemented();
+}
+
+void deleteAllCookiesModifiedAfterDate(const NetworkStorageSession&, double)
+{
+    notImplemented();
+}
+
+void startObservingCookieChanges(CookieChangeCallbackPtr callback)
+{
+    notImplemented();
+}
+
+void stopObservingCookieChanges()
+{
 }
 
 } // namespace WebCore

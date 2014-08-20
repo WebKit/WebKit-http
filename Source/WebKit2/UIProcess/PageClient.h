@@ -154,7 +154,7 @@ public:
 
     virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) { return false; }
 
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(HAIKU)
     virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
 #endif
 

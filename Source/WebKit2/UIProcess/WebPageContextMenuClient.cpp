@@ -30,7 +30,7 @@
 #include "WebPageContextMenuClient.h"
 
 #include "APIArray.h"
-#include "Logging.h"
+#include "Platform/Logging.h"
 #include "WebContextMenuItem.h"
 #include "WKAPICast.h"
 #include "WKSharedAPICast.h"

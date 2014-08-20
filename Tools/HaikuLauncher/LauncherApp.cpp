@@ -223,6 +223,7 @@ bool LauncherApp::QuitRequested()
         	continue;
         if (webWindow->QuitRequested()) {
         	m_lastWindowFrame = webWindow->Frame();
+            webWindow->CurrentWebView()->Shutdown();
             delete webWindow->CurrentWebView();
         	webWindow->Quit();
         	i--;
