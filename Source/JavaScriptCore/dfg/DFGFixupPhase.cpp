@@ -282,7 +282,7 @@ private:
                 break;
             }
             if (m_graph.binaryArithShouldSpeculateInt32(node, FixupPass)) {
-                if (optimizeForX86() || optimizeForARM64() || optimizeForARMv7IDIVSupported()) {
+                if (optimizeForX86() || optimizeForARM64() || optimizeForARMv7IDIVSupported() || optimizeForMIPS()) {
                     fixIntOrBooleanEdge(leftChild);
                     fixIntOrBooleanEdge(rightChild);
                     if (bytecodeCanTruncateInteger(node->arithNodeFlags()))
