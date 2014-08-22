@@ -71,9 +71,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<ServicesOverlayController::Highlight> ServicesOverlayController::Highlight::createForSelection(ServicesOverlayController& controller, RetainPtr<DDHighlightRef> ddHighlight)
+PassRefPtr<ServicesOverlayController::Highlight> ServicesOverlayController::Highlight::createForSelection(ServicesOverlayController& controller, RetainPtr<DDHighlightRef> ddHighlight, PassRefPtr<Range> range)
 {
-    return adoptRef(new Highlight(controller, Type::Selection, ddHighlight, nullptr));
+    return adoptRef(new Highlight(controller, Type::Selection, ddHighlight, range));
 }
 
 PassRefPtr<ServicesOverlayController::Highlight> ServicesOverlayController::Highlight::createForTelephoneNumber(ServicesOverlayController& controller, RetainPtr<DDHighlightRef> ddHighlight, PassRefPtr<Range> range)
@@ -82,22 +82,18 @@ PassRefPtr<ServicesOverlayController::Highlight> ServicesOverlayController::High
 }
 
 ServicesOverlayController::Highlight::Highlight(ServicesOverlayController& controller, Type type, RetainPtr<DDHighlightRef> ddHighlight, PassRefPtr<WebCore::Range> range)
-    : m_ddHighlight(ddHighlight)
-    , m_range(range)
+    : m_range(range)
     , m_type(type)
     , m_controller(&controller)
 {
-    ASSERT(m_ddHighlight);
-    ASSERT(type != Type::TelephoneNumber || m_range);
+    ASSERT(ddHighlight);
+    ASSERT(m_range);
 
     DrawingArea* drawingArea = controller.webPage().drawingArea();
     m_graphicsLayer = GraphicsLayer::create(drawingArea ? drawingArea->graphicsLayerFactory() : nullptr, *this);
     m_graphicsLayer->setDrawsContent(true);
-    m_graphicsLayer->setNeedsDisplay();
 
-    CGRect highlightBoundingRect = DDHighlightGetBoundingRect(ddHighlight.get());
-    m_graphicsLayer->setPosition(FloatPoint(highlightBoundingRect.origin));
-    m_graphicsLayer->setSize(FloatSize(highlightBoundingRect.size));
+    setDDHighlight(ddHighlight.get());
 
     // Set directly on the PlatformCALayer so that when we leave the 'from' value implicit
     // in our animations, we get the right initial value regardless of flush timing.
@@ -110,6 +106,23 @@ ServicesOverlayController::Highlight::~Highlight()
 {
     if (m_controller)
         m_controller->willDestroyHighlight(this);
+}
+
+void ServicesOverlayController::Highlight::setDDHighlight(DDHighlightRef highlight)
+{
+    if (!m_controller)
+        return;
+
+    m_ddHighlight = highlight;
+
+    if (!m_ddHighlight)
+        return;
+
+    CGRect highlightBoundingRect = DDHighlightGetBoundingRect(m_ddHighlight.get());
+    m_graphicsLayer->setPosition(FloatPoint(highlightBoundingRect.origin));
+    m_graphicsLayer->setSize(FloatSize(highlightBoundingRect.size));
+
+    m_graphicsLayer->setNeedsDisplay();
 }
 
 void ServicesOverlayController::Highlight::invalidate()
@@ -266,7 +279,7 @@ static inline void stitchRects(Vector<LayoutRect>& rects)
     // First stitch together all the rects on the first line of the selection.
     size_t indexFromStart = 0;
     LayoutUnit firstTop = rects[indexFromStart].y();
-    LayoutRect& currentRect = rects[indexFromStart++];
+    LayoutRect& currentRect = rects[indexFromStart];
     while (indexFromStart < rects.size() && rects[indexFromStart].y() == firstTop)
         currentRect.unite(rects[indexFromStart++]);
     
@@ -281,18 +294,22 @@ static inline void stitchRects(Vector<LayoutRect>& rects)
     size_t indexFromEnd = rects.size() - 1;
     LayoutUnit lastTop = rects[indexFromEnd].y();
     LayoutRect lastRect = rects[indexFromEnd];
-    while (indexFromEnd != indexFromStart && rects[--indexFromEnd].y() == lastTop)
-        lastRect.unite(rects[indexFromEnd]);
+    while (indexFromEnd >= indexFromStart && rects[indexFromEnd].y() == lastTop)
+        lastRect.unite(rects[indexFromEnd--]);
     
-    if (indexFromEnd == indexFromStart) {
-        // All the rects are on two lines only. There is nothing else to do.
+    // indexFromStart is the index of the first rectangle on the second line.
+    // indexFromEnd is the index of the last rectangle on the second to the last line.
+    // if they are equal, there is one additional rectangle for the line in the middle.
+    if (indexFromEnd == indexFromStart)
+        newRects.append(rects[indexFromStart]);
+    
+    if (indexFromEnd <= indexFromStart) {
+        // There are no more rects to stitch. Just append the last line.
         newRects.append(lastRect);
         rects.swap(newRects);
         return;
     }
     
-    // indexFromStart is the index of the first rectangle on the second line.
-    // indexFromEnd is the index of the last rectangle on the second to the last line.
     // Stitch together all the rects after the first line until the second to the last included.
     currentRect = rects[indexFromStart];
     while (indexFromStart != indexFromEnd)
@@ -486,34 +503,14 @@ void ServicesOverlayController::buildPhoneNumberHighlights()
         }
     }
 
-    // If any old Highlights are equivalent (by Range) to a new Highlight, reuse the old
-    // one so that any metadata is retained.
-    HashSet<RefPtr<Highlight>> reusedPotentialHighlights;
-
-    for (auto& oldHighlight : m_potentialHighlights) {
-        if (oldHighlight->type() != Highlight::Type::TelephoneNumber)
-            continue;
-
-        for (auto& newHighlight : newPotentialHighlights) {
-            if (highlightsAreEquivalent(oldHighlight.get(), newHighlight.get())) {
-                reusedPotentialHighlights.add(oldHighlight);
-                newPotentialHighlights.remove(newHighlight);
-                break;
-            }
-        }
-    }
-
-    removeAllPotentialHighlightsOfType(Highlight::Type::TelephoneNumber);
-
-    m_potentialHighlights.add(newPotentialHighlights.begin(), newPotentialHighlights.end());
-    m_potentialHighlights.add(reusedPotentialHighlights.begin(), reusedPotentialHighlights.end());
+    replaceHighlightsOfTypePreservingEquivalentHighlights(newPotentialHighlights, Highlight::Type::TelephoneNumber);
 
     didRebuildPotentialHighlights();
 }
 
 void ServicesOverlayController::buildSelectionHighlight()
 {
-    removeAllPotentialHighlightsOfType(Highlight::Type::Selection);
+    HashSet<RefPtr<Highlight>> newPotentialHighlights;
 
     Vector<CGRect> cgRects;
     cgRects.reserveCapacity(m_currentSelectionRects.size());
@@ -534,11 +531,41 @@ void ServicesOverlayController::buildSelectionHighlight()
             CGRect visibleRect = m_webPage.corePage()->mainFrame().view()->visibleContentRect();
             RetainPtr<DDHighlightRef> ddHighlight = adoptCF(DDHighlightCreateWithRectsInVisibleRectWithStyleAndDirection(nullptr, cgRects.begin(), cgRects.size(), visibleRect, DDHighlightNoOutlineWithArrow, YES, NSWritingDirectionNatural, NO, YES));
             
-            m_potentialHighlights.add(Highlight::createForSelection(*this, ddHighlight));
+            newPotentialHighlights.add(Highlight::createForSelection(*this, ddHighlight, selectionRange));
         }
     }
 
+    replaceHighlightsOfTypePreservingEquivalentHighlights(newPotentialHighlights, Highlight::Type::Selection);
+
     didRebuildPotentialHighlights();
+}
+
+void ServicesOverlayController::replaceHighlightsOfTypePreservingEquivalentHighlights(HashSet<RefPtr<Highlight>>& newPotentialHighlights, Highlight::Type type)
+{
+    // If any old Highlights are equivalent (by Range) to a new Highlight, reuse the old
+    // one so that any metadata is retained.
+    HashSet<RefPtr<Highlight>> reusedPotentialHighlights;
+
+    for (auto& oldHighlight : m_potentialHighlights) {
+        if (oldHighlight->type() != type)
+            continue;
+
+        for (auto& newHighlight : newPotentialHighlights) {
+            if (highlightsAreEquivalent(oldHighlight.get(), newHighlight.get())) {
+                oldHighlight->setDDHighlight(newHighlight->ddHighlight());
+
+                reusedPotentialHighlights.add(oldHighlight);
+                newPotentialHighlights.remove(newHighlight);
+
+                break;
+            }
+        }
+    }
+
+    removeAllPotentialHighlightsOfType(type);
+
+    m_potentialHighlights.add(newPotentialHighlights.begin(), newPotentialHighlights.end());
+    m_potentialHighlights.add(reusedPotentialHighlights.begin(), reusedPotentialHighlights.end());
 }
 
 bool ServicesOverlayController::hasRelevantSelectionServices()
@@ -590,7 +617,7 @@ bool ServicesOverlayController::highlightsAreEquivalent(const Highlight* a, cons
     if (!a || !b)
         return false;
 
-    if (a->type() == Highlight::Type::TelephoneNumber && b->type() == Highlight::Type::TelephoneNumber && areRangesEqual(a->range(), b->range()))
+    if (a->type() == b->type() && areRangesEqual(a->range(), b->range()))
         return true;
 
     return false;
@@ -738,6 +765,18 @@ bool ServicesOverlayController::mouseEvent(PageOverlay*, const WebMouseEvent& ev
     }
 
     return false;
+}
+
+void ServicesOverlayController::didScrollFrame(PageOverlay*, Frame* frame)
+{
+    if (frame->isMainFrame())
+        return;
+
+    buildPhoneNumberHighlights();
+    buildSelectionHighlight();
+
+    bool mouseIsOverActiveHighlightButton;
+    determineActiveHighlight(mouseIsOverActiveHighlightButton);
 }
 
 void ServicesOverlayController::handleClick(const IntPoint& clickPoint, Highlight& highlight)

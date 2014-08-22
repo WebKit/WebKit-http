@@ -77,21 +77,20 @@ void RenderSVGEllipse::updateShapeFromElement()
 
 void RenderSVGEllipse::calculateRadiiAndCenter()
 {
+    SVGLengthContext lengthContext(&graphicsElement());
+    m_center = FloatPoint(
+        lengthContext.valueForLength(style().svgStyle().cx(), LengthModeWidth),
+        lengthContext.valueForLength(style().svgStyle().cy(), LengthModeHeight));
     if (isSVGCircleElement(graphicsElement())) {
-        SVGCircleElement& circle = toSVGCircleElement(graphicsElement());
-        SVGLengthContext lengthContext(&circle);
-        float radius = circle.r().value(lengthContext);
+        float radius = lengthContext.valueForLength(style().svgStyle().r());
         m_radii = FloatSize(radius, radius);
-        m_center = FloatPoint(circle.cx().value(lengthContext), circle.cy().value(lengthContext));
         return;
     }
 
     ASSERT(isSVGEllipseElement(graphicsElement()));
-    SVGEllipseElement& ellipse = toSVGEllipseElement(graphicsElement());
-
-    SVGLengthContext lengthContext(&ellipse);
-    m_radii = FloatSize(ellipse.rx().value(lengthContext), ellipse.ry().value(lengthContext));
-    m_center = FloatPoint(ellipse.cx().value(lengthContext), ellipse.cy().value(lengthContext));
+    m_radii = FloatSize(
+        lengthContext.valueForLength(style().svgStyle().rx(), LengthModeWidth),
+        lengthContext.valueForLength(style().svgStyle().ry(), LengthModeHeight));
 }
 
 void RenderSVGEllipse::fillShape(GraphicsContext* context) const

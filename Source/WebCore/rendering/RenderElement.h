@@ -159,6 +159,9 @@ public:
     void setRenderBoxNeedsLazyRepaint(bool b) { m_renderBoxNeedsLazyRepaint = b; }
     bool renderBoxNeedsLazyRepaint() const { return m_renderBoxNeedsLazyRepaint; }
 
+    bool hasCounterNodeMap() const { return m_hasCounterNodeMap; }
+    void setHasCounterNodeMap(bool f) { m_hasCounterNodeMap = f; }
+
 protected:
     enum BaseTypeFlags {
         RenderLayerModelObjectFlag = 1 << 0,
@@ -231,6 +234,7 @@ private:
     bool m_renderInlineAlwaysCreatesLineBoxes : 1;
     bool m_renderBoxNeedsLazyRepaint : 1;
     bool m_hasPausedImageAnimations : 1;
+    bool m_hasCounterNodeMap : 1;
 
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;
@@ -373,12 +377,10 @@ inline int adjustForAbsoluteZoom(int value, const RenderElement& renderer)
     return adjustForAbsoluteZoom(value, renderer.style());
 }
 
-#if ENABLE(SUBPIXEL_LAYOUT)
 inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const RenderElement& renderer)
 {
     return adjustLayoutUnitForAbsoluteZoom(value, renderer.style());
 }
-#endif
 
 } // namespace WebCore
 

@@ -2321,7 +2321,7 @@ void RenderLayer::scrollTo(int x, int y)
     if (scrollsOverflow())
         frame.loader().client().didChangeScrollOffset();
 
-    renderer().view().resumePausedImageAnimationsIfNeeded();
+    view.frameView().resumeVisibleImageAnimationsIncludingSubframes();
 }
 
 static inline bool frameElementAndViewPermitScroll(HTMLFrameElementBase* frameElementBase, FrameView* frameView) 
@@ -2649,7 +2649,28 @@ IntRect RenderLayer::visibleContentRectInternal(VisibleContentRectIncludesScroll
 
 IntSize RenderLayer::overhangAmount() const
 {
+#if ENABLE(RUBBER_BANDING)
+    if (!renderer().frame().settings().rubberBandingForOverflowScrollEnabled())
+        return IntSize();
+
+    IntSize stretch;
+
+    int physicalScrollY = scrollPosition().y() + scrollOrigin().y();
+    if (physicalScrollY < 0)
+        stretch.setHeight(physicalScrollY);
+    else if (scrollableContentsSize().height() && physicalScrollY > scrollableContentsSize().height() - visibleHeight())
+        stretch.setHeight(physicalScrollY - (scrollableContentsSize().height() - visibleHeight()));
+
+    int physicalScrollX = scrollPosition().x() + scrollOrigin().x();
+    if (physicalScrollX < 0)
+        stretch.setWidth(physicalScrollX);
+    else if (scrollableContentsSize().width() && physicalScrollX > scrollableContentsSize().width() - visibleWidth())
+        stretch.setWidth(physicalScrollX - (scrollableContentsSize().width() - visibleWidth()));
+
+    return stretch;
+#else
     return IntSize();
+#endif
 }
 
 bool RenderLayer::isActive() const
@@ -2981,10 +3002,17 @@ void RenderLayer::setHasHorizontalScrollbar(bool hasScrollbar)
     if (hasScrollbar == hasHorizontalScrollbar())
         return;
 
-    if (hasScrollbar)
+    if (hasScrollbar) {
         m_hBar = createScrollbar(HorizontalScrollbar);
-    else
+#if ENABLE(RUBBER_BANDING)
+        ScrollableArea::setHorizontalScrollElasticity(renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone);
+#endif
+    } else {
         destroyScrollbar(HorizontalScrollbar);
+#if ENABLE(RUBBER_BANDING)
+        ScrollableArea::setHorizontalScrollElasticity(ScrollElasticityNone);
+#endif
+    }
 
     // Destroying or creating one bar can cause our scrollbar corner to come and go.  We need to update the opposite scrollbar's style.
     if (m_hBar)
@@ -3004,10 +3032,17 @@ void RenderLayer::setHasVerticalScrollbar(bool hasScrollbar)
     if (hasScrollbar == hasVerticalScrollbar())
         return;
 
-    if (hasScrollbar)
+    if (hasScrollbar) {
         m_vBar = createScrollbar(VerticalScrollbar);
-    else
+#if ENABLE(RUBBER_BANDING)
+        ScrollableArea::setVerticalScrollElasticity((renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone));
+#endif
+    } else {
         destroyScrollbar(VerticalScrollbar);
+#if ENABLE(RUBBER_BANDING)
+        ScrollableArea::setVerticalScrollElasticity(ScrollElasticityNone);
+#endif
+    }
 
      // Destroying or creating one bar can cause our scrollbar corner to come and go.  We need to update the opposite scrollbar's style.
     if (m_hBar)
@@ -3309,6 +3344,12 @@ void RenderLayer::updateScrollInfoAfterLayout()
     // Composited scrolling may need to be enabled or disabled if the amount of overflow changed.
     if (compositor().updateLayerCompositingState(*this))
         compositor().setCompositingLayersNeedRebuild();
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    // FIXME: Ensure that offsets are also updated in case of programmatic style changes.
+    // https://bugs.webkit.org/show_bug.cgi?id=135964
+    updateSnapOffsets();
+#endif
 }
 
 bool RenderLayer::overflowControlsIntersectRect(const IntRect& localRect) const

@@ -132,6 +132,7 @@ class Port(object):
         self._reftest_list = {}
         self._results_directory = None
         self._root_was_set = hasattr(options, 'root') and options.root
+        self._jhbuild_wrapper = []
 
     def additional_drt_flag(self):
         return []
@@ -543,7 +544,7 @@ class Port(object):
 
     def _real_tests(self, paths):
         # When collecting test cases, skip these directories
-        skipped_directories = set(['.svn', '_svn', 'resources', 'script-tests', 'reference', 'reftest'])
+        skipped_directories = set(['.svn', '_svn', 'resources', 'support', 'script-tests', 'reference', 'reftest'])
         files = find_files.find(self._filesystem, self.layout_tests_dir(), paths, skipped_directories, Port._is_test_file, self.test_key)
         return [self.relative_test_filename(f) for f in files]
 
@@ -1266,6 +1267,9 @@ class Port(object):
         # Default behavior is to allow all test to run as pixel tests if --pixel-tests is on and
         # --pixel-test-directory is not specified.
         return True
+
+    def _should_use_jhbuild(self):
+        return os.path.exists(self.path_from_webkit_base('WebKitBuild', 'Dependencies'))
 
     # FIXME: Eventually we should standarize port naming, and make this method smart enough
     # to use for all port configurations (including architectures, graphics types, etc).

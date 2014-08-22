@@ -297,7 +297,11 @@ static inline bool didScrollInScrollableAreaForSingleAxis(ScrollableArea* scroll
 
 static inline bool handleWheelEventInAppropriateEnclosingBoxForSingleAxis(Node* startNode, WheelEvent* wheelEvent, Element** stopElement, ScrollEventAxis axis)
 {
-    if (!startNode->renderer() || (axis == ScrollEventAxis::Vertical && !wheelEvent->deltaY()) || (axis == ScrollEventAxis::Horizontal && !wheelEvent->deltaX()))
+    bool shouldHandleEvent = (axis == ScrollEventAxis::Vertical && wheelEvent->deltaY()) || (axis == ScrollEventAxis::Horizontal && wheelEvent->deltaX());
+#if PLATFORM(MAC)
+    shouldHandleEvent |= wheelEvent->phase() == PlatformWheelEventPhaseEnded;
+#endif
+    if (!startNode->renderer() || !shouldHandleEvent)
         return false;
 
     RenderBox& initialEnclosingBox = startNode->renderer()->enclosingBox();
@@ -770,7 +774,7 @@ bool EventHandler::handleMousePressEvent(const MouseEventWithHitTestResults& eve
 
     if (event.event().button() == LeftButton && event.isOverLink()) {
         // FIXME 135703: Handle long press for more than just links.
-        beginTrackingPotentialLongMousePress();
+        beginTrackingPotentialLongMousePress(event.hitTestResult());
     }
 
     // We don't do this at the start of mouse down handling,
@@ -1565,7 +1569,7 @@ void EventHandler::autoHideCursorTimerFired(Timer<EventHandler>& timer)
 }
 #endif
     
-void EventHandler::beginTrackingPotentialLongMousePress()
+void EventHandler::beginTrackingPotentialLongMousePress(const HitTestResult& hitTestResult)
 {
     clearLongMousePressState();
 
@@ -1575,7 +1579,7 @@ void EventHandler::beginTrackingPotentialLongMousePress()
 
     m_longMousePressTimer.startOneShot(longMousePressRecognitionDelay);
 
-    // FIXME 135580: Bubble long mouse press up to the client.
+    page->chrome().didBeginTrackingPotentialLongMousePress(m_mouseDownPos, hitTestResult);
 }
     
 void EventHandler::recognizeLongMousePress(Timer<EventHandler>& timer)
@@ -1592,7 +1596,7 @@ void EventHandler::recognizeLongMousePress(Timer<EventHandler>& timer)
     m_mousePressed = false;
     invalidateClick();
 
-    // FIXME 135580: Bubble long mouse press up to the client.
+    page->chrome().didRecognizeLongMousePress();
 }
     
 void EventHandler::cancelTrackingPotentialLongMousePress()
@@ -1603,10 +1607,10 @@ void EventHandler::cancelTrackingPotentialLongMousePress()
     clearLongMousePressState();
 
     Page* page = m_frame.page();
-    if (!(page && page->settings().longMousePressEnabled()))
+    if (!page)
         return;
 
-    // FIXME 135580: Bubble long mouse press up to the client.
+    page->chrome().didCancelTrackingPotentialLongMousePress();
 }
 
 void EventHandler::clearLongMousePressState()
@@ -2655,7 +2659,7 @@ bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& event, E
     return didHandleEvent;
 }
 
-bool EventHandler::platformCompletePlatformWidgetWheelEvent(const PlatformWheelEvent&, ContainerNode*)
+bool EventHandler::platformCompletePlatformWidgetWheelEvent(const PlatformWheelEvent&, const Widget&, ContainerNode*)
 {
     return true;
 }
@@ -2714,7 +2718,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
                         scrollableArea->setScrolledProgrammatically(false);
                     if (!widget->platformWidget())
                         return true;
-                    return platformCompletePlatformWidgetWheelEvent(event, scrollableContainer.get());
+                    return platformCompletePlatformWidgetWheelEvent(event, *widget, scrollableContainer.get());
                 }
             }
         }

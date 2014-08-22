@@ -300,10 +300,6 @@
 #define ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 1
 #endif
 
-#if !defined(ENABLE_SUBPIXEL_LAYOUT)
-#define ENABLE_SUBPIXEL_LAYOUT 1
-#endif
-
 #endif /* PLATFORM(EFL) */
 
 /* --------- Gtk port (Unix, Windows, Mac) --------- */
@@ -313,10 +309,6 @@
 #if !defined(ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH)
 #define ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 1
 #endif
-#endif
-
-#if !defined(ENABLE_SUBPIXEL_LAYOUT)
-#define ENABLE_SUBPIXEL_LAYOUT 1
 #endif
 
 #endif /* PLATFORM(GTK) */
@@ -669,7 +661,7 @@
 #endif
 
 #if !defined(ENABLE_SATURATED_LAYOUT_ARITHMETIC)
-#define ENABLE_SATURATED_LAYOUT_ARITHMETIC 0
+#define ENABLE_SATURATED_LAYOUT_ARITHMETIC 1
 #endif
 
 #if !defined(ENABLE_SHARED_WORKERS)
@@ -690,10 +682,6 @@
 
 #if !defined(ENABLE_SQL_DATABASE)
 #define ENABLE_SQL_DATABASE 1
-#endif
-
-#if !defined(ENABLE_SUBPIXEL_LAYOUT)
-#define ENABLE_SUBPIXEL_LAYOUT 0
 #endif
 
 #if !defined(ENABLE_SVG_FONTS)
@@ -793,10 +781,6 @@
 #endif
 
 /* Asserts, invariants for macro definitions */
-
-#if ENABLE(SATURATED_LAYOUT_ARITHMETIC) && !ENABLE(SUBPIXEL_LAYOUT)
-#error "ENABLE(SATURATED_LAYOUT_ARITHMETIC) requires ENABLE(SUBPIXEL_LAYOUT)"
-#endif
 
 #if ENABLE(VIDEO_TRACK) && !ENABLE(VIDEO)
 #error "ENABLE(VIDEO_TRACK) requires ENABLE(VIDEO)"

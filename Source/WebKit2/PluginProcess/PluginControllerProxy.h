@@ -35,6 +35,7 @@
 #include "ShareableBitmap.h"
 #include "WebProcessConnectionMessages.h"
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/UserActivity.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RunLoop.h>
 
@@ -148,10 +149,12 @@ private:
     void didUpdate();
     void getPluginScriptableNPObject(uint64_t& pluginScriptableNPObjectID);
 
-#if PLATFORM(COCOA)
     void windowFocusChanged(bool);
-    void windowAndViewFramesChanged(const WebCore::IntRect& windowFrameInScreenCoordinates, const WebCore::IntRect& viewFrameInWindowCoordinates);
     void windowVisibilityChanged(bool);
+    void updateVisibilityActivity();
+
+#if PLATFORM(COCOA)
+    void windowAndViewFramesChanged(const WebCore::IntRect& windowFrameInScreenCoordinates, const WebCore::IntRect& viewFrameInWindowCoordinates);
     void sendComplexTextInput(const String& textInput);
     void setLayerHostingMode(uint32_t);
 
@@ -174,6 +177,8 @@ private:
     bool m_isPrivateBrowsingEnabled;
     bool m_isAcceleratedCompositingEnabled;
     bool m_isInitializing;
+    bool m_isVisible;
+    bool m_isWindowVisible;
 
     RefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply> m_initializationReply;
 
@@ -220,6 +225,9 @@ private:
 
     // The plug-in element NPObject.
     NPObject* m_pluginElementNPObject;
+
+    // Hold an activity when the plugin is visible to prevent throttling.
+    UserActivity m_visiblityActivity;
 };
 
 } // namespace WebKit

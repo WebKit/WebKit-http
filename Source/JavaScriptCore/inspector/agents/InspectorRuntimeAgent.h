@@ -61,7 +61,7 @@ public:
 
     virtual void enable(ErrorString*) override { m_enabled = true; }
     virtual void disable(ErrorString*) override { m_enabled = false; }
-    virtual void parse(ErrorString*, const String& expression, Inspector::TypeBuilder::Runtime::SyntaxErrorType::Enum* result, Inspector::TypeBuilder::OptOutput<String>* message, RefPtr<Inspector::TypeBuilder::Runtime::ErrorRange>&) override final;
+    virtual void parse(ErrorString*, const String& expression, Inspector::TypeBuilder::Runtime::SyntaxErrorType* result, Inspector::TypeBuilder::OptOutput<String>* message, RefPtr<Inspector::TypeBuilder::Runtime::ErrorRange>&) override final;
     virtual void evaluate(ErrorString*, const String& expression, const String* objectGroup, const bool* includeCommandLineAPI, const bool* doNotPauseOnExceptionsAndMuteConsole, const int* executionContextId, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result, Inspector::TypeBuilder::OptOutput<bool>* wasThrown) override final;
     virtual void callFunctionOn(ErrorString*, const String& objectId, const String& expression, const RefPtr<Inspector::InspectorArray>* optionalArguments, const bool* doNotPauseOnExceptionsAndMuteConsole, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result, Inspector::TypeBuilder::OptOutput<bool>* wasThrown) override final;
     virtual void releaseObject(ErrorString*, const ErrorString& objectId) override final;
@@ -69,8 +69,8 @@ public:
     virtual void releaseObjectGroup(ErrorString*, const String& objectGroup) override final;
     virtual void run(ErrorString*) override;
     virtual void getRuntimeTypesForVariablesAtOffsets(ErrorString*, const RefPtr<Inspector::InspectorArray>& locations, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Runtime::TypeDescription>>&) override;
-    virtual void enableHighFidelityTypeProfiling(ErrorString*) override;
-    virtual void disableHighFidelityTypeProfiling(ErrorString*) override;
+    virtual void enableTypeProfiler(ErrorString*) override;
+    virtual void disableTypeProfiler(ErrorString*) override;
     
     void setScriptDebugServer(ScriptDebugServer* scriptDebugServer) { m_scriptDebugServer = scriptDebugServer; }
 
@@ -88,7 +88,7 @@ protected:
     virtual void unmuteConsole() = 0;
 
 private:
-    void setHighFidelityTypeProfilingEnabledState(bool);
+    void setTypeProfilerEnabledState(bool);
 
     InjectedScriptManager* m_injectedScriptManager;
     ScriptDebugServer* m_scriptDebugServer;

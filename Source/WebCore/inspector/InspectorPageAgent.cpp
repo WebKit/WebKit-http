@@ -112,17 +112,6 @@ static bool prepareCachedResourceBuffer(CachedResource* cachedResource, bool* ha
         return true;
     }
 
-    if (cachedResource->isPurgeable()) {
-        // If the resource is purgeable then make it unpurgeable to get
-        // get its data. This might fail, in which case we return an
-        // empty String.
-        // FIXME: should we do something else in the case of a purged
-        // resource that informs the user why there is no data in the
-        // inspector?
-        if (!cachedResource->makePurgeable(false))
-            return false;
-    }
-
     return true;
 }
 
@@ -287,7 +276,7 @@ CachedResource* InspectorPageAgent::cachedResource(Frame* frame, const URL& url)
     return cachedResource;
 }
 
-Inspector::TypeBuilder::Page::ResourceType::Enum InspectorPageAgent::resourceTypeJson(InspectorPageAgent::ResourceType resourceType)
+Inspector::TypeBuilder::Page::ResourceType InspectorPageAgent::resourceTypeJson(InspectorPageAgent::ResourceType resourceType)
 {
     switch (resourceType) {
     case DocumentResource:
@@ -335,7 +324,7 @@ InspectorPageAgent::ResourceType InspectorPageAgent::cachedResourceType(const Ca
     return InspectorPageAgent::OtherResource;
 }
 
-Inspector::TypeBuilder::Page::ResourceType::Enum InspectorPageAgent::cachedResourceTypeJson(const CachedResource& cachedResource)
+Inspector::TypeBuilder::Page::ResourceType InspectorPageAgent::cachedResourceTypeJson(const CachedResource& cachedResource)
 {
     return resourceTypeJson(cachedResourceType(cachedResource));
 }
@@ -706,7 +695,7 @@ void InspectorPageAgent::setContinuousPaintingEnabled(ErrorString*, bool enabled
         mainFrame()->view()->invalidate();
 }
 
-void InspectorPageAgent::getScriptExecutionStatus(ErrorString*, InspectorPageBackendDispatcherHandler::Result::Enum* status)
+void InspectorPageAgent::getScriptExecutionStatus(ErrorString*, InspectorPageBackendDispatcherHandler::Result* status)
 {
     bool disabledByScriptController = false;
     bool disabledInSettings = false;
@@ -963,13 +952,13 @@ PassRefPtr<Inspector::TypeBuilder::Page::Frame> InspectorPageAgent::buildObjectF
 PassRefPtr<Inspector::TypeBuilder::Page::FrameResourceTree> InspectorPageAgent::buildObjectForFrameTree(Frame* frame)
 {
     RefPtr<Inspector::TypeBuilder::Page::Frame> frameObject = buildObjectForFrame(frame);
-    RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResourceTree::Resources>> subresources = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResourceTree::Resources>::create();
+    RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResource>> subresources = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResource>::create();
     RefPtr<Inspector::TypeBuilder::Page::FrameResourceTree> result = Inspector::TypeBuilder::Page::FrameResourceTree::create()
          .setFrame(frameObject)
          .setResources(subresources);
 
     for (auto* cachedResource : cachedResourcesForFrame(frame)) {
-        RefPtr<Inspector::TypeBuilder::Page::FrameResourceTree::Resources> resourceObject = Inspector::TypeBuilder::Page::FrameResourceTree::Resources::create()
+        RefPtr<Inspector::TypeBuilder::Page::FrameResource> resourceObject = Inspector::TypeBuilder::Page::FrameResource::create()
             .setUrl(cachedResource->url())
             .setType(cachedResourceTypeJson(*cachedResource))
             .setMimeType(cachedResource->response().mimeType());

@@ -404,6 +404,8 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyBufferedRendering,
     CSSPropertyClipPath,
     CSSPropertyClipRule,
+    CSSPropertyCx,
+    CSSPropertyCy,
     CSSPropertyMask,
     CSSPropertyFilter,
     CSSPropertyFloodColor,
@@ -422,6 +424,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyMarkerStart,
     CSSPropertyMaskType,
     CSSPropertyPaintOrder,
+    CSSPropertyR,
+    CSSPropertyRx,
+    CSSPropertyRy,
     CSSPropertyShapeRendering,
     CSSPropertyStroke,
     CSSPropertyStrokeDasharray,
@@ -2965,7 +2970,21 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyBackgroundRepeatY:
             break;
 
-        // New positioning properties for SVG.
+        // Length properties for SVG.
+        case CSSPropertyCx:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().cx(), style.get());
+        case CSSPropertyCy:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().cy(), style.get());
+        case CSSPropertyR:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().r(), style.get());
+        case CSSPropertyRx:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().rx(), style.get());
+        case CSSPropertyRy:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().ry(), style.get());
+        case CSSPropertyStrokeWidth:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().strokeWidth(), style.get());
+        case CSSPropertyStrokeDashoffset:
+            return zoomAdjustedPixelValueForLength(style->svgStyle().strokeDashOffset(), style.get());
         case CSSPropertyX:
             return zoomAdjustedPixelValueForLength(style->svgStyle().x(), style.get());
         case CSSPropertyY:
@@ -3088,12 +3107,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyShapeRendering:
         case CSSPropertyStroke:
         case CSSPropertyStrokeDasharray:
-        case CSSPropertyStrokeDashoffset:
         case CSSPropertyStrokeLinecap:
         case CSSPropertyStrokeLinejoin:
         case CSSPropertyStrokeMiterlimit:
         case CSSPropertyStrokeOpacity:
-        case CSSPropertyStrokeWidth:
         case CSSPropertyAlignmentBaseline:
         case CSSPropertyBaselineShift:
         case CSSPropertyDominantBaseline:

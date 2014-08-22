@@ -1,3 +1,105 @@
+2014-08-21  Tim Horton  <timothy_horton@apple.com>
+
+        Revert r172831, it broke the Windows build.
+
+        * wtf/ExportMacros.h:
+
+2014-08-21  Zalan Bujtas  <zalan@apple.com>
+
+        Enable SATURATED_LAYOUT_ARITHMETIC.
+        https://bugs.webkit.org/show_bug.cgi?id=136106
+
+        Reviewed by Simon Fraser.
+
+        SATURATED_LAYOUT_ARITHMETIC protects LayoutUnit against arithmetic overflow.
+        (No measurable performance regression on Mac.)
+
+        * wtf/FeatureDefines.h:
+
+2014-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        More WEBCORE_EXPORT macros.
+        https://bugs.webkit.org/show_bug.cgi?id=136129
+
+        Reviewed by Tim Horton.
+
+        * wtf/ExportMacros.h:
+        Removed WTF_TESTING which isn't used.
+
+2014-08-20  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Enable ARM64 disassembler on EFL
+        https://bugs.webkit.org/show_bug.cgi?id=136089
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Platform.h:
+        Enable WTF_USE_ARM64_DISASSEMBLER for EFL as well.
+
+2014-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Platform.h: Remove ENABLE_PURGEABLE_MEMORY define.
+        * wtf/VMTags.h: Remove VM tags used by WebCore for cached resource purgeable memory.
+
+2014-08-19  Magnus Granberg  <zorry@gentoo.org>
+
+        TEXTREL in libjavascriptcoregtk-1.0.so.0.11.0 on x86 (or i586)
+        https://bugs.webkit.org/show_bug.cgi?id=70610
+
+        Reviewed by Darin Adler.
+
+        Add PLT if we're building with PIC.
+
+        * wtf/InlineASM.h:
+
+2014-08-19  Zalan Bujtas  <zalan@apple.com>
+
+        Remove ENABLE(SUBPIXEL_LAYOUT).
+        https://bugs.webkit.org/show_bug.cgi?id=136077
+
+        Reviewed by Simon Fraser.
+
+        Remove compile time flag SUBPIXEL_LAYOUT. All ports have it enabled for a while now.
+
+        * wtf/FeatureDefines.h:
+
+2014-08-18  Maciej Stachowiak  <mjs@apple.com>
+
+        Use NSURLFileTypeMappings directly instead of depending on WebKitSystemInterface wrappers for it
+        https://bugs.webkit.org/show_bug.cgi?id=136035
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h: Define USE(APPLE_INTERNAL_SDK) by default on platforms that have it.
+
+2014-08-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172736.
+        https://bugs.webkit.org/show_bug.cgi?id=136060
+
+        Caused 14% PLT regressions (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Remove PurgeableBuffer since it is not very useful any more"
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+        http://trac.webkit.org/changeset/172736
+
+2014-08-18  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h: Remove ENABLE_PURGEABLE_MEMORY define.
+        * wtf/VMTags.h: Remove VM tags used by WebCore for cached resource purgeable memory.
+
 2014-08-14  Benjamin Poulain  <benjamin@webkit.org>
 
         CSS JIT: compile the :empty pseudo class

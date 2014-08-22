@@ -1,3 +1,159 @@
+2014-08-21  Zalan Bujtas  <zalan@apple.com>
+
+        Enable SATURATED_LAYOUT_ARITHMETIC.
+        https://bugs.webkit.org/show_bug.cgi?id=136106
+
+        Reviewed by Simon Fraser.
+
+        SATURATED_LAYOUT_ARITHMETIC protects LayoutUnit against arithmetic overflow.
+        (No measurable performance regression on Mac.)
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-21  Beth Dakin  <bdakin@apple.com>
+
+        overflow:scroll elements should support rubber-banding
+        https://bugs.webkit.org/show_bug.cgi?id=91655
+
+        Reviewed by Sam Weinig and Darin Adler.
+
+        Disable rubber-banding in overflow areas for now.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Andreas Kling.
+
+        * Misc/WebCache.mm:
+        (+[WebCache statistics]):
+
+2014-08-19  Zalan Bujtas  <zalan@apple.com>
+
+        Remove ENABLE(SUBPIXEL_LAYOUT).
+        https://bugs.webkit.org/show_bug.cgi?id=136077
+
+        Reviewed by Simon Fraser.
+
+        Remove compile time flag SUBPIXEL_LAYOUT. All ports have it enabled for a while now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-18  Maciej Stachowiak  <mjs@apple.com>
+
+        Use NSURLFileTypeMappings directly instead of depending on WebKitSystemInterface wrappers for it
+        https://bugs.webkit.org/show_bug.cgi?id=136035
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebNSViewExtras.m:
+        (-[NSView _web_DragImageForElement:rect:event:pasteboard:source:offset:]): Remove comment
+        reference to obsolete WKSI function.
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Don't initialize the no-longer-used WKGetExtensionsForMIMEType,
+        WKGetPreferredExtensionForMIMEType, or WKGetMIMETypeForExtension
+        * Plugins/WebPluginDatabase.mm:
+        (-[WebPluginDatabase pluginForExtension:]): Include SPI header from WebCore; use
+        NSURLFileTypeMappings directly instead of via WKSI wrapper.
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::objectContentType): ditto
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _imageExistsAtPaths:]): ditto
+        * WebView/WebView.mm:
+        (+[WebView _supportedFileExtensions]): ditto
+        (+[WebView suggestedFileExtensionForMIMEType:]): ditto
+        (+[WebView _MIMETypeForFile:]): ditto
+
+2014-08-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172736.
+        https://bugs.webkit.org/show_bug.cgi?id=136060
+
+        Caused 14% PLT regressions (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Remove PurgeableBuffer since it is not very useful any more"
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+        http://trac.webkit.org/changeset/172736
+
+2014-08-18  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Geoffrey Garen.
+
+        * Misc/WebCache.mm:
+        (+[WebCache statistics]):
+
+2014-08-18  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r167856): adobe.com no longer able to launch Create Cloud app using a URL with a custom scheme
+        https://bugs.webkit.org/show_bug.cgi?id=136010
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebKitVersionChecks.h: Removed WEBKIT_FIRST_VERSION_WITH_NAVIGATION_URL_VALIDATION.
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]): Passed AllowNavigationToInvalidURL::Yes to FrameLoader::loadFrameRequest.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Reverted the linked-on-or-after check added in r170120 since it's no longer necessary.
+
+2014-08-18  Andy Estes  <aestes@apple.com>
+
+        Revert r172697.
+
+        It made several webarchive layout tests flaky and didn't have the correct behavior for non-quick redirects.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-08-15  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r167856): adobe.com no longer able to launch Create Cloud app using a URL with a custom scheme
+        https://bugs.webkit.org/show_bug.cgi?id=136010
+
+        Reviewed by Darin Adler.
+
+        Reverted the linked-on-or-after check added in r170120 since it is no longer necessary.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-08-16  Maciej Stachowiak  <mjs@apple.com>
+
+        Remove the obsolete WebKitEnableCoalescedUpdatesPreferenceKey
+        https://bugs.webkit.org/show_bug.cgi?id=136024
+
+        Reviewed by Filip Pizlo.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView initWithFrame:]): Remove code that respects
+        this key. It was SPI and is no longer used; also it was
+        only relevant for versions of OS X that WebKit no longer supports.
+        * WebView/WebPreferenceKeysPrivate.h: Remove declaration.
+
+2014-08-15  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Teach postprocess-headers.sh to remove code guarded by ENABLE_IOS_GESTURE_EVENTS
+        and ENABLE_TOUCH_EVENTS if applicable
+        https://bugs.webkit.org/show_bug.cgi?id=135993
+
+        Reviewed by Andy Estes.
+
+        Add support infrastructure to remove code from public and private API headers that is
+        guarded by macro define ENABLE_{IOS_GESTURE, TOUCH}_EVENTS when these features are disabled.
+
+        We aren't using this functionality yet, but we will soon.
+
+        * postprocess-headers.sh:
+
 2014-08-13  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         Enable CSS_SCROLL_SNAP for iOS

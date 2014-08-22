@@ -545,11 +545,16 @@ void WebPageProxy::reattachToWebProcess()
     ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
 
     m_isValid = true;
+    m_process->removeWebPage(m_pageID);
 
     if (m_process->context().processModel() == ProcessModelSharedSecondaryProcess)
         m_process = m_process->context().ensureSharedWebProcess();
     else
         m_process = m_process->context().createNewWebProcessRespectingProcessCountLimit();
+
+    ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
+    if (m_process->state() == ChildProcessProxy::State::Running)
+        processDidFinishLaunching();
     m_process->addExistingWebPage(this, m_pageID);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
@@ -579,7 +584,8 @@ uint64_t WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item
 
     if (item && item != m_backForwardList->currentItem())
         m_backForwardList->goToItem(item);
-    
+
+    ASSERT(!isValid());
     reattachToWebProcess();
 
     if (!item)
@@ -1865,6 +1871,11 @@ void WebPageProxy::setCustomTextEncodingName(const String& encodingName)
 
 void WebPageProxy::terminateProcess()
 {
+    // requestTermination() is a no-op for launching processes, so we get into an inconsistent state by calling resetStateAfterProcessExited().
+    // FIXME: A client can terminate the page at any time, so we should do something more meaningful than assert and fall apart in release builds.
+    // See also <https://bugs.webkit.org/show_bug.cgi?id=136012>.
+    ASSERT(m_process->state() != WebProcessProxy::State::Launching);
+
     // NOTE: This uses a check of m_isValid rather than calling isValid() since
     // we want this to run even for pages being closed or that already closed.
     if (!m_isValid)
@@ -2654,13 +2665,17 @@ void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     auto transaction = m_pageLoadState.transaction();
 
-    if (frame->isMainFrame())
+    bool isMainFrame = frame->isMainFrame();
+    if (isMainFrame)
         m_pageLoadState.didFinishLoad(transaction);
 
     frame->didFinishLoad();
 
     m_pageLoadState.commitChanges();
     m_loaderClient->didFinishLoadForFrame(this, frame, navigationID, userData.get());
+
+    if (isMainFrame)
+        m_pageClient.didFinishLoadForMainFrame();
 }
 
 void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const ResourceError& error, IPC::MessageDecoder& decoder)
@@ -2754,6 +2769,9 @@ void WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, IPC:
     MESSAGE_CHECK(frame);
 
     m_loaderClient->didFirstVisuallyNonEmptyLayoutForFrame(this, frame, userData.get());
+
+    if (frame->isMainFrame())
+        m_pageClient.didFirstVisuallyNonEmptyLayoutForMainFrame();
 }
 
 void WebPageProxy::didLayout(uint32_t layoutMilestones, IPC::MessageDecoder& decoder)
@@ -3061,6 +3079,36 @@ void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResult::Data& hitTest
     WebEvent::Modifiers modifiers = static_cast<WebEvent::Modifiers>(opaqueModifiers);
 
     m_uiClient->mouseDidMoveOverElement(this, hitTestResultData, modifiers, userData.get());
+}
+
+void WebPageProxy::didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const WebHitTestResult::Data& hitTestResultData, IPC::MessageDecoder& decoder)
+{
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_uiClient->didBeginTrackingPotentialLongMousePress(this, mouseDownPosition, hitTestResultData, userData.get());
+}
+
+void WebPageProxy::didRecognizeLongMousePress(IPC::MessageDecoder& decoder)
+{
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_uiClient->didRecognizeLongMousePress(this, userData.get());
+}
+
+void WebPageProxy::didCancelTrackingPotentialLongMousePress(IPC::MessageDecoder& decoder)
+{
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_uiClient->didCancelTrackingPotentialLongMousePress(this, userData.get());
 }
 
 void WebPageProxy::connectionWillOpen(IPC::Connection* connection)
@@ -5173,5 +5221,12 @@ void WebPageProxy::willChangeCurrentHistoryItemForMainFrame()
 {
     recordNavigationSnapshot();
 }
+
+#if PLATFORM(MAC)
+void WebPageProxy::removeNavigationGestureSnapshot()
+{
+    m_pageClient.removeNavigationGestureSnapshot();
+}
+#endif
 
 } // namespace WebKit

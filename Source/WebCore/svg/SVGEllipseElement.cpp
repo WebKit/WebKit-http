@@ -110,23 +110,17 @@ void SVGEllipseElement::svgAttributeChanged(const QualifiedName& attrName)
 
     SVGElementInstance::InvalidationGuard invalidationGuard(this);
 
-    bool isLengthAttribute = attrName == SVGNames::cxAttr
-                          || attrName == SVGNames::cyAttr
-                          || attrName == SVGNames::rxAttr
-                          || attrName == SVGNames::ryAttr;
-
-    if (isLengthAttribute)
-        updateRelativeLengthsInformation();
+    if (attrName == SVGNames::cxAttr
+        || attrName == SVGNames::cyAttr
+        || attrName == SVGNames::rxAttr
+        || attrName == SVGNames::ryAttr) {
+        invalidateSVGPresentationAttributeStyle();
+        return;
+    }
 
     RenderSVGShape* renderer = toRenderSVGShape(this->renderer());
     if (!renderer)
         return;
-
-    if (isLengthAttribute) {
-        renderer->setNeedsShapeUpdate();
-        RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
-        return;
-    }
 
     if (SVGLangSpace::isKnownAttribute(attrName) || SVGExternalResourcesRequired::isKnownAttribute(attrName)) {
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
@@ -134,14 +128,6 @@ void SVGEllipseElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     ASSERT_NOT_REACHED();
-}
- 
-bool SVGEllipseElement::selfHasRelativeLengths() const
-{
-    return cx().isRelative()
-        || cy().isRelative()
-        || rx().isRelative()
-        || ry().isRelative();
 }
 
 RenderPtr<RenderElement> SVGEllipseElement::createElementRenderer(PassRef<RenderStyle> style)

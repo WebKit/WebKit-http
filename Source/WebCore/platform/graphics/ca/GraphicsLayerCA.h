@@ -179,7 +179,8 @@ private:
     virtual void platformCALayerLayoutSublayersOfLayer(PlatformCALayer*) override { }
     virtual bool platformCALayerRespondsToLayoutChanges() const override { return false; }
 
-    virtual void platformCALayerAnimationStarted(CFTimeInterval beginTime) override;
+    virtual void platformCALayerAnimationStarted(const String& animationKey, CFTimeInterval beginTime) override;
+    virtual void platformCALayerAnimationEnded(const String& animationKey) override;
     virtual CompositingCoordinatesOrientation platformCALayerContentsOrientation() const override { return contentsOrientation(); }
     virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect& clip) override;
     virtual bool platformCALayerShowDebugBorders() const override { return isShowingDebugBorder(); }
@@ -482,7 +483,8 @@ private:
     
     ContentsLayerPurpose m_contentsLayerPurpose;
     bool m_isPageTiledBackingLayer : 1;
-    
+    bool m_needsFullRepaint : 1;
+
     Color m_contentsSolidColor;
 
     RetainPtr<CGImageRef> m_uncorrectedContentsImage;

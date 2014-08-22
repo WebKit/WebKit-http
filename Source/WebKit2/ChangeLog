@@ -1,3 +1,726 @@
+2014-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Possible RetainPtr misuse in WKScriptMessage.mm - could leak
+        https://bugs.webkit.org/show_bug.cgi?id=136140
+
+        Reviewed by Darin Adler.
+
+        Adopt a copy into a RetainPtr to avoid leaking.
+
+        * UIProcess/API/Cocoa/WKScriptMessage.mm:
+        (-[WKScriptMessage _initWithBody:webView:frameInfo:name:]):
+
+2014-08-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add animationDidEnd callbacks on GraphicsLayer
+        https://bugs.webkit.org/show_bug.cgi?id=136084
+
+        Reviewed by Tim Horton.
+
+        Hook up GraphicsLayerClient::notifyAnimationEnded() so that code using GraphicsLayers directly
+        can add animations, and know when they finish.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::acceleratedAnimationDidEnd):
+        * UIProcess/mac/RemoteLayerTreeHost.h:
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::animationDidEnd):
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::acceleratedAnimationDidEnd):
+        * WebProcess/WebPage/DrawingArea.messages.in:
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (-[WKAnimationDelegate animationDidStop:finished:]):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::animationStarted):
+        (WebKit::PlatformCALayerRemote::animationEnded):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.mm:
+        (WebKit::RemoteLayerTreeContext::layerWillBeDestroyed):
+        (WebKit::RemoteLayerTreeContext::willStartAnimationOnLayer):
+        (WebKit::RemoteLayerTreeContext::animationDidStart):
+        (WebKit::RemoteLayerTreeContext::animationDidEnd):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::acceleratedAnimationDidEnd):
+
+2014-08-21  Zalan Bujtas  <zalan@apple.com>
+
+        Enable SATURATED_LAYOUT_ARITHMETIC.
+        https://bugs.webkit.org/show_bug.cgi?id=136106
+
+        Reviewed by Simon Fraser.
+
+        SATURATED_LAYOUT_ARITHMETIC protects LayoutUnit against arithmetic overflow.
+        (No measurable performance regression on Mac.)
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-21  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GTK] WebkitWebProcess crashing navigating away from ogg video element
+        https://bugs.webkit.org/show_bug.cgi?id=135348
+
+        Reviewed by Philippe Normand.
+
+        When a page is cached, by default doesn't recreate the backing store
+        (an optimization added in r89316).
+
+        Not all the ports uses that optimization. For example IOS port doesn't
+        use it (r161185).
+
+        In the case of the GTK port, the MediaPlayerPrivateGStreamer, not only
+        processes video buffers, also display them, because it is a
+        TextureMapperPlatformLayer too.
+
+        Nevertheless, in r153937, when a page is cached, the player is
+        destroyed. But our player has a backing store and the render tree
+        doesn't know that the player has gone. Hence, when the page is redraw,
+        the TextureMapper tree visits the video element, which doesn't exist
+        anymore, a segmentation fault occurs.
+
+        So, as our media player renders, and as we cannot trust that the
+        player exists when a page is painted, we cannot rely in the r89316
+        optimization.
+
+        Disabling the backing stores optimization fixes the problem.
+
+        Covered by existing tests.
+
+        * WebProcess/soup/WebProcessSoup.cpp:
+        (WebKit::WebProcess::platformSetCacheModel): Enable the backing store
+        clearing when page caching for GTK.
+
+2014-08-20  Alex Christensen  <achristensen@webkit.org>
+
+        Introducing WEBCORE_EXPORT macro.
+        https://bugs.webkit.org/show_bug.cgi?id=136108
+
+        Reviewed by Antti Koivisto.
+
+        * config.h:
+        Added stub definition of WEBCORE_EXPORT defined to nothing to be able to compile with WebCore headers.
+
+2014-08-20  Pratik Solanki  <psolanki@apple.com>
+
+        Move DiskCacheMonitor to WebCore so that WebKit1 clients can use it as well
+        https://bugs.webkit.org/show_bug.cgi?id=135896
+
+        Reviewed by Andreas Kling.
+
+        * NetworkProcess/mac/NetworkDiskCacheMonitor.h:
+            Inherit from WebCore::DiskCacheMonitor which has the bulk of the functionality now.
+        (WebKit::NetworkDiskCacheMonitor::~NetworkDiskCacheMonitor):
+        * NetworkProcess/mac/NetworkDiskCacheMonitor.mm:
+        (WebKit::NetworkDiskCacheMonitor::monitorFileBackingStoreCreation):
+        (WebKit::NetworkDiskCacheMonitor::NetworkDiskCacheMonitor):
+        (WebKit::NetworkDiskCacheMonitor::resourceBecameFileBacked):
+            Override virtual method and send the data to the WebContent process as before.
+
+2014-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Andreas Kling.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::getWebCoreMemoryCacheStatistics):
+
+2014-08-19  Peyton Randolph  <prandolph@apple.com>
+
+        Expose injected bundle SPI to get a node's URL element, get the visible selection range of that
+        element, and snapshot that range
+        https://bugs.webkit.org/show_bug.cgi?id=136076
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.cpp:
+        (WKBundleHitTestResultCopyURLElementHandle): Added.
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp:
+        (WKBundleNodeHandleCopyVisibleRange): Added.
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleRangeHandle.cpp:
+        (WKBundleRangeHandleGetBoundingRectInWindowCoordinates): Added.
+        (WKBundleRangeHandleCopySnapshotWithOptions): Added.
+        * WebProcess/InjectedBundle/API/c/WKBundleRangeHandlePrivate.h:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::visibleRange): Added.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::boundingRectInWindowCoordinates): Added.
+        (WebKit::InjectedBundleRangeHandle::renderedImage): Added.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.h:
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        (WebKit::InjectedBundleHitTestResult::urlElementHandle): Added.
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.h:
+
+2014-08-19  Zalan Bujtas  <zalan@apple.com>
+
+        Remove ENABLE(SUBPIXEL_LAYOUT).
+        https://bugs.webkit.org/show_bug.cgi?id=136077
+
+        Reviewed by Simon Fraser.
+
+        Remove compile time flag SUBPIXEL_LAYOUT. All ports have it enabled for a while now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-19  Peyton Randolph  <prandolph@apple.com>
+
+        Extend injected bundle node snapshotting to support forced white and black text
+        https://bugs.webkit.org/show_bug.cgi?id=136061
+
+        Reviewed by Beth Dakin.
+
+        * Shared/API/c/WKImage.h:
+        Add -ForceBlackText and -ForceWhiteText snapshotting options.
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toSnapshotOptions):
+        Support aforementioned text snapshotting options.
+        * Shared/ImageOptions.h:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::imageForRect):
+        Respect text color snapshotting options by setting appropriate paint behaviors.
+
+2014-08-18  Maciej Stachowiak  <mjs@apple.com>
+
+        Use NSURLFileTypeMappings directly instead of depending on WebKitSystemInterface wrappers for it
+        https://bugs.webkit.org/show_bug.cgi?id=136035
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Don't initialize the no-longer-used WKGetExtensionsForMIMEType,
+        WKGetPreferredExtensionForMIMEType, or WKGetMIMETypeForExtension
+        * mac/WebKit2.order: Remove exports related to above.
+
+2014-08-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172736.
+        https://bugs.webkit.org/show_bug.cgi?id=136060
+
+        Caused 14% PLT regressions (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Remove PurgeableBuffer since it is not very useful any more"
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+        http://trac.webkit.org/changeset/172736
+
+2014-08-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Provide default implementations of all GraphicsLayerClient methods
+        https://bugs.webkit.org/show_bug.cgi?id=136054
+
+        Reviewed by Tim Horton.
+        
+        Remove overrides which are no longer required.
+
+        * WebProcess/WebPage/PageOverlayController.h:
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+
+2014-08-18  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Geoffrey Garen.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::getWebCoreMemoryCacheStatistics):
+
+2014-08-18  Peyton Randolph  <prandolph@apple.com>
+
+        Expose long mouse press WebKit API. Part of 135257 - Add long mouse press gesture
+        https://bugs.webkit.org/show_bug.cgi?id=136048
+
+        Reviewed by Dan Bernstein.
+
+        This patch exposes long mouse press API callbacks in both the injected bundle and on the UI process
+        through their respective page UI clients. The callbacks are modeled off of the mouseDidMoveOverElement
+        callback. Like the mouseDidMoveOverElement callback, these callbacks allow the bundle to pass 
+        information to the UI process via a userData out parameter.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::didBeginTrackingPotentialLongMousePress): Added.
+        (API::UIClient::didRecognizeLongMousePress): Added.
+        (API::UIClient::didCancelTrackingPotentialLongMousePress): Added.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient):
+        * UIProcess/API/C/WKPageUIClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didBeginTrackingPotentialLongMousePress): Added.
+        (WebKit::WebPageProxy::didRecognizeLongMousePress): Added.
+        (WebKit::WebPageProxy::didCancelTrackingPotentialLongMousePress): Added.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageUIClient.h:
+        (API::InjectedBundle::PageUIClient::didBeginTrackingPotentialLongMousePress): Added.
+        (API::InjectedBundle::PageUIClient::didRecognizeLongMousePress): Added.
+        (API::InjectedBundle::PageUIClient::didCancelTrackingPotentialLongMousePress): Added.
+        * WebProcess/InjectedBundle/API/c/WKBundlePageUIClient.h:
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.cpp: Added.
+        (WebKit::InjectedBundlePageUIClient::didBeginTrackingPotentialLongMousePress): Added.
+        (WebKit::InjectedBundlePageUIClient::didRecognizeLongMousePress): Added.
+        (WebKit::InjectedBundlePageUIClient::didCancelTrackingPotentialLongMousePress): Added.
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::didBeginTrackingPotentialLongMousePress): Added.
+        (WebKit::WebChromeClient::didRecognizeLongMousePress): Added.
+        (WebKit::WebChromeClient::didCancelTrackingPotentialLongMousePress): Added.
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+
+2014-08-18  Przemyslaw Kuczynski  <p.kuczynski@samsung.com>
+
+        Fix unintentional integer overflow before widen
+        https://bugs.webkit.org/show_bug.cgi?id=135463
+
+        Reviewed by Oliver Hunt.
+
+        Overflowing expression is evaluated using operands arithmetic but then is used in
+        context which expects an wider integer type. To avoid overflow at least one operand
+        has to be representative of the wider type.
+
+        * WebProcess/soup/WebProcessSoup.cpp:
+        (WebKit::getMemorySize): Added long long literal.
+
+2014-08-18  Przemyslaw Kuczynski  <p.kuczynski@samsung.com>
+
+        Fix resource leak in unclosed file descriptor handles
+        https://bugs.webkit.org/show_bug.cgi?id=135458
+
+        Reviewed by Oliver Hunt.
+
+        Leaving descriptor unclosed will cause the resources associated with the open
+        file description never be freed (they are freed on closing the last descriptor
+        refering to the underlying file).
+
+        * Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp:
+        (WebKit::StdoutDevNullRedirector::StdoutDevNullRedirector): Closed newStdout descriptor.
+        (WebKit::StdoutDevNullRedirector::~StdoutDevNullRedirector): Closed m_savedStdout descriptor.
+
+2014-08-18  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        [EFL] ewk_init() is sufficient to initialize EFL components
+        https://bugs.webkit.org/show_bug.cgi?id=136036
+
+        Reviewed by Gyuyoung Kim.
+
+        Developers do not have to initialize EFL components as ewk_init()
+        already does it.
+
+        * UIProcess/API/efl/ewk_intro.h:
+
+2014-08-16  Pratik Solanki  <psolanki@apple.com>
+
+        Rename DiskCacheMonitor to NetworkDiskCacheMonitor
+        https://bugs.webkit.org/show_bug.cgi?id=135897
+
+        Reviewed by Andreas Kling.
+
+        In preparation for moving DiskCacheMonitor code to WebCore in bug 135896, rename the WebKit2
+        class to NetworkDiskCacheMonitor.
+
+        * NetworkProcess/mac/NetworkDiskCacheMonitor.h: Renamed from Source/WebKit2/NetworkProcess/mac/DiskCacheMonitor.h.
+        (WebKit::NetworkDiskCacheMonitor::resourceRequest):
+        * NetworkProcess/mac/NetworkDiskCacheMonitor.mm: Renamed from Source/WebKit2/NetworkProcess/mac/DiskCacheMonitor.mm.
+        (WebKit::NetworkDiskCacheMonitor::monitorFileBackingStoreCreation):
+        (WebKit::NetworkDiskCacheMonitor::NetworkDiskCacheMonitor):
+        (WebKit::NetworkDiskCacheMonitor::messageSenderConnection):
+        (WebKit::NetworkDiskCacheMonitor::messageSenderDestinationID):
+        * NetworkProcess/mac/NetworkResourceLoaderMac.mm:
+        (WebKit::NetworkResourceLoader::willCacheResponseAsync):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-08-16  Byungseon Shin  <sun.shin@lge.com>
+
+        [GTK] build fails with error: cannot allocate an object of abstract type 'WebKit::PageClientImpl'
+        https://bugs.webkit.org/show_bug.cgi?id=136017 
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame):
+        (WebKit::PageClientImpl::didFinishLoadForMainFrame):
+        * UIProcess/API/gtk/PageClientImpl.h:
+
+2014-08-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Add ewk_intro.h to describe main page of doxygen
+        https://bugs.webkit.org/show_bug.cgi?id=136013
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake:
+        * UIProcess/API/efl/EWebKit2.h.in:
+        * UIProcess/API/efl/ewk_intro.h: Added.
+
+2014-08-15  Zalan Bujtas  <zalan@apple.com>
+
+        Do not use FloatRect::infiniteRect() to flag full repaints.
+        https://bugs.webkit.org/show_bug.cgi?id=135900
+
+        Reviewed by Simon Fraser.
+
+        Converting FloatRect::infiniteRect() to IntRect leads to value overflow
+        and we end up with invalid repaint rectangle. Use a boolean flag to indicate
+        full repaint request.
+
+        Covered by existing tests.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::setNeedsDisplayInRect):
+        (WebKit::PlatformCALayerRemote::setNeedsDisplay):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.h:
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        (WebKit::PlatformCALayerRemoteCustom::setNeedsDisplayInRect):
+        (WebKit::PlatformCALayerRemoteCustom::setNeedsDisplay):
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.cpp:
+        (WebKit::PlatformCALayerRemoteTiledBacking::setNeedsDisplayInRect):
+        (WebKit::PlatformCALayerRemoteTiledBacking::setNeedsDisplay):
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.h:
+
+2014-08-15  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r172660): WebKit2.TerminateTwice asserts
+        https://bugs.webkit.org/show_bug.cgi?id=136012
+
+        * UIProcess/WebPageProxy.cpp: (WebKit::WebPageProxy::terminateProcess):
+        Added bug number to a fixme.
+
+2014-08-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed build fix on the EFL port since r172635
+
+        * UIProcess/WebPageProxy.cpp: Guard removeNavigationGestureSnapshot with PLATFORM(MAC) macro.
+        * UIProcess/WebPageProxy.h: Ditto.
+        * UIProcess/efl/WebViewEfl.h: Added didFirstVisuallyNonEmptyLayoutForMainFrame and didFinishLoadForMainFrame as dummy.
+
+2014-08-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Improve page to process relationship tracking
+        https://bugs.webkit.org/show_bug.cgi?id=135996
+        <rdar://problem/16991213>
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/VisitedLinkProvider.cpp:
+        (WebKit::VisitedLinkProvider::removeAll):
+        (WebKit::VisitedLinkProvider::pendingVisitedLinksTimerFired):
+        (WebKit::VisitedLinkProvider::sendTable):
+        Added assertions for m_processes only having valid entries.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcess): When attaching to a new process,
+        tell the old process that the page is not longer associated with it, avoiding
+        a potential stale pointer.
+        If re-attached to an existing process, make sure that we perform all the same
+        registrations as after having launched a new process. This substantially improves
+        the behavior when the number of open tabs is over process limit.
+        (WebKit::WebPageProxy::reattachToWebProcessWithItem): Added ASSERT(!isValid())
+        to avoid confusion. All other calls to reattachToWebProcess() have this as a
+        runtime check, but reattachToWebProcessWithItem() is only called for valid pages.
+        (WebKit::WebPageProxy::terminateProcess): Added an assertion with a FIXME for
+        something that will need to be fixed another day.
+
+        * UIProcess/WebPageProxy.h: Removed an unimplemented function.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::addExistingWebPage): Added assertions for page map sanity.
+        (WebKit::WebProcessProxy::removeWebPage): Added a check for page state being Terminated
+        already. This avoids an assertion failure that happened under the new call to
+        removeWebPage() in reattachToWebProcess(), as we are now calling it for terminated
+        processes that are not in WebContext::m_processes any more.
+        (WebKit::WebProcessProxy::didFinishLaunching): Added an assertion that page agrees
+        about using this process.
+
+2014-08-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Fix plugin visibility check.
+        https://bugs.webkit.org/show_bug.cgi?id=135991
+
+        D'oh, more unreviewed typo fix. :-(
+
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::visibilityDidChange):
+        (WebKit::PluginControllerProxy::windowVisibilityChanged):
+        (WebKit::PluginControllerProxy::updateVisibilityActivity):
+        (WebKit::PluginControllerProxy::updateVisiblityActivity): Deleted.
+        * PluginProcess/PluginControllerProxy.h:
+
+2014-08-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement snapping behavior for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=135769
+
+        Reviewed by Brent Fulgham.
+
+        Added support for snap points on iOS.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateScrollingNode>::encode): Added snap offset encoding.
+        (ArgumentCoder<ScrollingStateScrollingNode>::decode): Added snap offset decoding.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView scrollViewWillEndDragging:withVelocity:targetContentOffset:]): For mainframe scrolling, retargets the scroll destination to the appropriate snap point.
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h: Added methods to extract relevant information for WKWebView from snap offsets in mainframe scrolling.
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (-[WKOverflowScrollViewDelegate scrollViewWillEndDragging:withVelocity:targetContentOffset:]): For overflow scrolling, retargets the scroll destination to the appropriate snap point.
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren): Sets the deceleration factor to FAST if snap points are active.
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::adjustTargetContentOffsetForSnapping): Used by WKWebView for mainframe scrolling to retarget the scroll destination, if necessary.
+        (WebKit::RemoteScrollingCoordinatorProxy::shouldSetScrollViewDecelerationRateFast): Used by WKWebView for mainframe scrolling to determine whether to set deceleration rate to the fast value.
+        (WebKit::RemoteScrollingCoordinatorProxy::shouldSnapForMainFrameScrolling): Helper method.
+        (WebKit::RemoteScrollingCoordinatorProxy::closestSnapOffsetForMainFrameScrolling): Helper method.
+
+2014-08-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Fix plugin visibility check.
+        https://bugs.webkit.org/show_bug.cgi?id=135991
+
+        Unreviewed typo fix.
+
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::PluginControllerProxy):
+        (WebKit::PluginControllerProxy::visibilityDidChange):
+        (WebKit::PluginControllerProxy::windowVisibilityChanged):
+        (WebKit::PluginControllerProxy::updateVisibilityActivity):
+        * PluginProcess/PluginControllerProxy.h:
+
+2014-08-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Fix plugin visibility check.
+        https://bugs.webkit.org/show_bug.cgi?id=135991
+
+        Reviewed by Andreas Kling.
+
+        We should only take a UserActivity if the plugin is in a visible window,
+        and also is itself visible.
+
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::PluginControllerProxy):
+            - initialize member state.
+        (WebKit::PluginControllerProxy::visibilityDidChange):
+        (WebKit::PluginControllerProxy::windowVisibilityChanged):
+            - update member state & call updateVisibilityActivity.
+        (WebKit::PluginControllerProxy::updateVisibilityActivity):
+            - enable the UserActivity only if both visibilities are true.
+        * PluginProcess/PluginControllerProxy.h:
+            - added m_isVisible, m_isWindowVisible, updateVisibilityActivity.
+
+2014-08-15  Enrica Casucci  <enrica@apple.com>
+
+        [Services with UI] Selections are incorrect when selecting three lines.
+        https://bugs.webkit.org/show_bug.cgi?id=135989
+        <rdar://problem/18032571>
+
+        Reviewed by Tim Horton.
+
+        The stitching algorithm did not handle correctly the case of selections
+        over three lines if the middle line is composed of only one rectangle.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::stitchRects):
+
+2014-08-15  Tim Horton  <timothy_horton@apple.com>
+
+        Service overlays stay fixed when <iframe> scrolls
+        https://bugs.webkit.org/show_bug.cgi?id=135959
+        <rdar://problem/17957716>
+
+        Reviewed by Enrica Casucci.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::highlightsAreEquivalent):
+        Tiny correctness fix; highlights can only be equivalent if their
+        types are equivalent as well.
+
+2014-08-15  Gavin Barraclough  <barraclough@apple.com>
+
+        de-PLATFORM(COCOA) a couple of methods in plugin code
+        https://bugs.webkit.org/show_bug.cgi?id=135987
+
+        Reviewed by Sam Weinig.
+
+        Pass through the visibility & focus on all platforms, to simplify & avoid
+        any weird inconsistencies between platforms.
+
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::windowFocusChanged):
+        (WebKit::PluginControllerProxy::windowVisibilityChanged):
+        * PluginProcess/PluginControllerProxy.h:
+        * PluginProcess/PluginControllerProxy.messages.in:
+        * PluginProcess/mac/PluginControllerProxyMac.mm:
+        (WebKit::PluginControllerProxy::windowFocusChanged): Deleted.
+        (WebKit::PluginControllerProxy::windowVisibilityChanged): Deleted.
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        (WebKit::NetscapePlugin::windowFocusChanged):
+        (WebKit::NetscapePlugin::windowVisibilityChanged):
+        * WebProcess/Plugins/Netscape/NetscapePlugin.h:
+        * WebProcess/Plugins/Plugin.h:
+        * WebProcess/Plugins/PluginProxy.cpp:
+        (WebKit::PluginProxy::windowAndViewFramesChanged):
+        * WebProcess/Plugins/PluginProxy.h:
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::viewStateDidChange):
+        (WebKit::PluginView::platformViewStateDidChange): Deleted.
+        * WebProcess/Plugins/PluginView.h:
+
+2014-08-15  Tim Horton  <timothy_horton@apple.com>
+
+        Service overlays stay fixed when <iframe> scrolls
+        https://bugs.webkit.org/show_bug.cgi?id=135959
+        <rdar://problem/17957716>
+
+        Reviewed by Enrica Casucci.
+
+        * WebProcess/WebPage/PageOverlay.cpp:
+        (WebKit::PageOverlay::didScrollFrame):
+        * WebProcess/WebPage/PageOverlay.h:
+        (WebKit::PageOverlay::Client::didScrollFrame):
+        * WebProcess/WebPage/PageOverlayController.cpp:
+        (WebKit::PageOverlayController::didScrollFrame):
+        Push didScrollFrame down to the overlays.
+
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::Highlight::createForSelection):
+        Hold on to the selection's Range so we can use it to compare Highlights later.
+
+        (WebKit::ServicesOverlayController::Highlight::Highlight):
+        (WebKit::ServicesOverlayController::Highlight::setDDHighlight):
+        Factor the code to set up and paint the highlight out, so that we can
+        set a new DDHighlightRef on a Highlight and the layer moves/reshapes/repaints.
+
+        (WebKit::ServicesOverlayController::buildPhoneNumberHighlights):
+        (WebKit::ServicesOverlayController::buildSelectionHighlight):
+        (WebKit::ServicesOverlayController::replaceHighlightsOfTypePreservingEquivalentHighlights):
+        Factor replaceHighlightsOfTypePreservingEquivalentHighlights out
+        so that we can use it for buildSelectionHighlight as well.
+
+        Steal the DDHighlightRef from the new Highlight when re-using an old one
+        so that the newly computed rects are used instead of the old ones.
+
+        (WebKit::ServicesOverlayController::highlightsAreEquivalent):
+        We will always have a Range now, so we can always check equivalence using it.
+
+        (WebKit::ServicesOverlayController::didScrollFrame):
+        Rebuild all highlights upon subframe scroll, as they might have moved.
+        We could optimize this in the future, but for now it's cheap enough
+        and rare enough that it doesn't matter.
+
+2014-08-15  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (WebKit2 Gestures): White flash when swiping back to cnn.com's homepage from an article
+        https://bugs.webkit.org/show_bug.cgi?id=135951
+        <rdar://problem/18006149>
+
+        Reviewed by Simon Fraser.
+
+        Wait for (the first visually non-empty layout AND the render tree size threshold to be hit),
+        OR didFinishLoadForFrame, whichever comes first. Once we've done the first visually non-empty layout,
+        we'll start the watchdog and tear down the snapshot in three seconds no matter what.
+        Also, force a repaint so we can asynchronously wait for the Web Process to paint and return to us
+        before removing the snapshot, which improves our chances that something is actually on the screen.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _didFirstVisuallyNonEmptyLayoutForMainFrame]):
+        (-[WKView _didFinishLoadForMainFrame]):
+        (-[WKView _removeNavigationGestureSnapshot]):
+        * UIProcess/API/mac/WKViewInternal.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didFinishLoadForFrame):
+        (WebKit::WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame):
+        (WebKit::WebPageProxy::removeNavigationGestureSnapshot):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame):
+        (WebKit::PageClientImpl::didFinishLoadForMainFrame):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame):
+        (WebKit::PageClientImpl::didFinishLoadForMainFrame):
+        (WebKit::PageClientImpl::removeNavigationGestureSnapshot):
+        Plumb didFirstVisuallyNonEmptyLayoutForMainFrame and didFinishLoadForMainFrame
+        through to ViewGestureController from WebPageProxy via the PageClient, etc.
+
+        Ditto for removeNavigationGestureSnapshot, though it is called from a
+        VoidCallback in ViewGestureController instead of from WebFrameLoaderClient and friends.
+
+        * UIProcess/mac/ViewGestureController.h:
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::ViewGestureController):
+        (WebKit::ViewGestureController::endSwipeGesture):
+        When finishing a swipe, we want to wait for both the first visually non-empty layout
+        and the render tree size threshold being hit.
+
+        (WebKit::ViewGestureController::didHitRenderTreeSizeThreshold):
+        (WebKit::ViewGestureController::didFirstVisuallyNonEmptyLayoutForMainFrame):
+        When both of these things have happened, remove the swipe snapshot (after forcing a repaint).
+        For didFirstVisuallyNonEmptyLayoutForMainFrame, we will also start a watchdog
+        ensuring that we remove the snapshot in three seconds.
+
+        (WebKit::ViewGestureController::didFinishLoadForMainFrame):
+        When didFinishLoadForMainFrame happens, remove the swipe snapshot (after forcing a repaint).
+
+        (WebKit::ViewGestureController::swipeSnapshotWatchdogTimerFired):
+        If the watchdog timer fires, remove the swipe snapshot (after forcing a repaint).
+
+        (WebKit::ViewGestureController::removeSwipeSnapshotAfterRepaint):
+        Force a repaint and wait for the async callback before removing the snapshot.
+        It is safe to hold on to the WebPageProxy here because it will always
+        call all of its callbacks before it is destroyed.
+        Avoid enqueuing multiple force-repaints.
+
+        (WebKit::ViewGestureController::removeSwipeSnapshot):
+
+2014-08-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Fix plugin visibility initialization
+        https://bugs.webkit.org/show_bug.cgi?id=135985
+
+        Reviewed by Geoffrey Garen.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::didInitializePlugin):
+            - We're not currently initializing the plugin visibility state,
+              and we're passing the wrong value for window visibility.
+
+2014-08-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Simplify visibility activity accounting for plugins
+        https://bugs.webkit.org/show_bug.cgi?id=135981
+
+        Reviewed by Dan Bernstein.
+
+        Just take one per connection, rather than implementing a counting mechanism.
+
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::PluginControllerProxy):
+        * PluginProcess/PluginControllerProxy.h:
+            - added m_visiblityActivity.
+        * PluginProcess/PluginProcess.cpp:
+        (WebKit::PluginProcess::PluginProcess):
+        (WebKit::PluginProcess::pluginsForWebProcessDidBecomeVisible): Deleted.
+        (WebKit::PluginProcess::pluginsForWebProcessDidBecomeHidden): Deleted.
+        * PluginProcess/PluginProcess.h:
+            - removed pluginsForWebProcessDidBecomeVisible/Hidden.
+        * PluginProcess/WebProcessConnection.cpp:
+        (WebKit::WebProcessConnection::removePluginControllerProxy):
+        (WebKit::WebProcessConnection::pluginDidBecomeVisible): Deleted.
+        (WebKit::WebProcessConnection::pluginDidBecomeHidden): Deleted.
+        * PluginProcess/WebProcessConnection.h:
+            - removed pluginDidBecomeVisible/Hidden.
+        * PluginProcess/mac/PluginControllerProxyMac.mm:
+        (WebKit::PluginControllerProxy::windowVisibilityChanged):
+            - windowVisibilityChanged uses m_visiblityActivity, rather than calling to PluginControllerProxy.
+
 2014-08-15  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update OptionsGTK.cmake and NEWS for 2.5.3 release.

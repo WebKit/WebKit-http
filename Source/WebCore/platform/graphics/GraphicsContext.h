@@ -194,7 +194,7 @@ namespace WebCore {
     };
 
 #if PLATFORM(IOS)
-    void setStrokeAndFillColor(PlatformGraphicsContext*, CGColorRef);
+    WEBCORE_EXPORT void setStrokeAndFillColor(PlatformGraphicsContext*, CGColorRef);
 #endif
 
     struct ImagePaintingOptions {

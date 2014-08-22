@@ -57,7 +57,7 @@ class ResourceLoader : public RefCounted<ResourceLoader>, protected ResourceHand
 public:
     virtual ~ResourceLoader() = 0;
 
-    void cancel();
+    WEBCORE_EXPORT void cancel();
 
     virtual bool init(const ResourceRequest&);
 
@@ -71,12 +71,12 @@ public:
     virtual const ResourceRequest& iOSOriginalRequest() const { return request(); }
 #endif
 
-    FrameLoader* frameLoader() const;
+    WEBCORE_EXPORT FrameLoader* frameLoader() const;
     DocumentLoader* documentLoader() const { return m_documentLoader.get(); }
-    const ResourceRequest& originalRequest() const { return m_originalRequest; }
+    WEBCORE_EXPORT const ResourceRequest& originalRequest() const { return m_originalRequest; }
     
-    void cancel(const ResourceError&);
-    ResourceError cancelledError();
+    WEBCORE_EXPORT void cancel(const ResourceError&);
+    WEBCORE_EXPORT ResourceError cancelledError();
     ResourceError blockedError();
     ResourceError cannotShowURLError();
     
@@ -107,7 +107,7 @@ public:
 
     virtual bool shouldUseCredentialStorage();
     virtual void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
-    void didCancelAuthenticationChallenge(const AuthenticationChallenge&);
+    WEBCORE_EXPORT void didCancelAuthenticationChallenge(const AuthenticationChallenge&);
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     virtual bool canAuthenticateAgainstProtectionSpace(const ProtectionSpace&);
 #endif
@@ -155,6 +155,13 @@ protected:
 
     const ResourceLoaderOptions& options() { return m_options; }
 
+#if PLATFORM(COCOA) && !USE(CFNETWORK)
+    virtual NSCachedURLResponse* willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
+#endif
+#if PLATFORM(COCOA) && USE(CFNETWORK)
+    virtual CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
+#endif
+
     RefPtr<ResourceHandle> m_handle;
     RefPtr<Frame> m_frame;
     RefPtr<DocumentLoader> m_documentLoader;
@@ -186,12 +193,6 @@ private:
     virtual bool canAuthenticateAgainstProtectionSpace(ResourceHandle*, const ProtectionSpace& protectionSpace) override { return canAuthenticateAgainstProtectionSpace(protectionSpace); }
 #endif
     virtual void receivedCancellation(ResourceHandle*, const AuthenticationChallenge& challenge) override { receivedCancellation(challenge); }
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
-    virtual NSCachedURLResponse* willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
-#endif
-#if PLATFORM(COCOA) && USE(CFNETWORK)
-    virtual CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
-#endif
 #if PLATFORM(IOS)
     virtual RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) override;
 #endif

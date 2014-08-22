@@ -92,6 +92,8 @@ static NEVER_INLINE void populateAttributeNameToCSSPropertyIDMap(HashMap<AtomicS
         &color_profileAttr,
         &color_renderingAttr,
         &cursorAttr,
+        &cxAttr,
+        &cyAttr,
         &SVGNames::directionAttr,
         &displayAttr,
         &dominant_baselineAttr,
@@ -124,6 +126,9 @@ static NEVER_INLINE void populateAttributeNameToCSSPropertyIDMap(HashMap<AtomicS
         &overflowAttr,
         &paint_orderAttr,
         &pointer_eventsAttr,
+        &rAttr,
+        &rxAttr,
+        &ryAttr,
         &shape_renderingAttr,
         &stop_colorAttr,
         &stop_opacityAttr,
@@ -244,6 +249,11 @@ static NEVER_INLINE void populateCSSPropertyWithSVGDOMNameToAnimatedPropertyType
     };
 
     static const TableEntry table[] = {
+        { cxAttr, AnimatedLength },
+        { cyAttr, AnimatedLength },
+        { rAttr, AnimatedLength },
+        { rxAttr, AnimatedLength },
+        { ryAttr, AnimatedLength },
         { SVGNames::heightAttr, AnimatedLength },
         { SVGNames::widthAttr, AnimatedLength },
         { xAttr, AnimatedLength },

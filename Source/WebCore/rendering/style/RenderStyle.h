@@ -697,9 +697,9 @@ public:
     EClear clear() const { return noninherited_flags.clear(); }
     ETableLayout tableLayout() const { return noninherited_flags.tableLayout(); }
 
-    const Font& font() const;
-    const FontMetrics& fontMetrics() const;
-    const FontDescription& fontDescription() const;
+    WEBCORE_EXPORT const Font& font() const;
+    WEBCORE_EXPORT const FontMetrics& fontMetrics() const;
+    WEBCORE_EXPORT const FontDescription& fontDescription() const;
     float specifiedFontSize() const;
     float computedFontSize() const;
     int fontSize() const;
@@ -1656,15 +1656,25 @@ public:
     void setStrokePaintColor(const Color& c) { accessSVGStyle().setStrokePaint(SVGPaint::SVG_PAINTTYPE_RGBCOLOR, c, ""); }
     float strokeOpacity() const { return svgStyle().strokeOpacity(); }
     void setStrokeOpacity(float f) { accessSVGStyle().setStrokeOpacity(f); }
-    SVGLength strokeWidth() const { return svgStyle().strokeWidth(); }
-    void setStrokeWidth(SVGLength w) { accessSVGStyle().setStrokeWidth(w); }
+    const Length& strokeWidth() const { return svgStyle().strokeWidth(); }
+    void setStrokeWidth(Length w) { accessSVGStyle().setStrokeWidth(w); }
     Vector<SVGLength> strokeDashArray() const { return svgStyle().strokeDashArray(); }
     void setStrokeDashArray(Vector<SVGLength> array) { accessSVGStyle().setStrokeDashArray(array); }
-    SVGLength strokeDashOffset() const { return svgStyle().strokeDashOffset(); }
-    void setStrokeDashOffset(SVGLength d) { accessSVGStyle().setStrokeDashOffset(d); }
+    const Length& strokeDashOffset() const { return svgStyle().strokeDashOffset(); }
+    void setStrokeDashOffset(Length d) { accessSVGStyle().setStrokeDashOffset(d); }
     float strokeMiterLimit() const { return svgStyle().strokeMiterLimit(); }
     void setStrokeMiterLimit(float f) { accessSVGStyle().setStrokeMiterLimit(f); }
 
+    const Length& cx() const { return svgStyle().cx(); }
+    void setCx(Length cx) { accessSVGStyle().setCx(cx); }
+    const Length& cy() const { return svgStyle().cy(); }
+    void setCy(Length cy) { accessSVGStyle().setCy(cy); }
+    const Length& r() const { return svgStyle().r(); }
+    void setR(Length r) { accessSVGStyle().setR(r); }
+    const Length& rx() const { return svgStyle().rx(); }
+    void setRx(Length rx) { accessSVGStyle().setRx(rx); }
+    const Length& ry() const { return svgStyle().ry(); }
+    void setRy(Length ry) { accessSVGStyle().setRy(ry); }
     const Length& x() const { return svgStyle().x(); }
     void setX(Length x) { accessSVGStyle().setX(x); }
     const Length& y() const { return svgStyle().y(); }
@@ -1747,7 +1757,7 @@ public:
 #endif
 
     StyleDifference diff(const RenderStyle*, unsigned& changedContextSensitiveProperties) const;
-    bool diffRequiresRepaint(const RenderStyle*) const;
+    bool diffRequiresLayerRepaint(const RenderStyle&, bool isComposited) const;
 
     bool isDisplayReplacedType() const { return isDisplayReplacedType(display()); }
     bool isDisplayInlineType() const { return isDisplayInlineType(display()); }
@@ -1779,7 +1789,7 @@ public:
     bool lastChildState() const { return noninherited_flags.lastChildState(); }
     void setLastChildState() { setUnique(); noninherited_flags.setLastChildState(true); }
 
-    Color visitedDependentColor(int colorProperty) const;
+    WEBCORE_EXPORT Color visitedDependentColor(int colorProperty) const;
 
     void setHasExplicitlyInheritedProperties() { noninherited_flags.setHasExplicitlyInheritedProperties(true); }
     bool hasExplicitlyInheritedProperties() const { return noninherited_flags.hasExplicitlyInheritedProperties(); }
@@ -1826,6 +1836,7 @@ public:
     static Length initialPadding() { return Length(Fixed); }
     static Length initialTextIndent() { return Length(Fixed); }
     static Length initialZeroLength() { return Length(Fixed); }
+    static Length initialOneLength() { return Length(1, Fixed); }
 #if ENABLE(CSS3_TEXT)
     static TextIndentLine initialTextIndentLine() { return TextIndentFirstLine; }
     static TextIndentType initialTextIndentType() { return TextIndentNormal; }
@@ -2107,12 +2118,10 @@ inline float adjustFloatForAbsoluteZoom(float value, const RenderStyle* style)
     return value / style->effectiveZoom();
 }
 
-#if ENABLE(SUBPIXEL_LAYOUT)
 inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const RenderStyle& style)
 {
     return value / style.effectiveZoom();
 }
-#endif
 
 inline bool RenderStyle::setZoom(float f)
 {

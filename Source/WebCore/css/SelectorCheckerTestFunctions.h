@@ -73,6 +73,11 @@ ALWAYS_INLINE bool isEnabled(const Element* element)
     return isEnabled;
 }
 
+ALWAYS_INLINE bool isMediaDocument(Element* element)
+{
+    return element->document().isMediaDocument();
+}
+
 ALWAYS_INLINE bool isChecked(Element* element)
 {
     // Even though WinIE allows checked and indeterminate to co-exist, the CSS selector spec says that
@@ -108,6 +113,15 @@ ALWAYS_INLINE bool isOptionalFormControl(const Element* element)
 {
     return element->isOptionalFormControl();
 }
+
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+ALWAYS_INLINE bool isPlaceholderShown(Element* element)
+{
+    if (isHTMLTextFormControlElement(*element))
+        return toHTMLTextFormControlElement(*element).isPlaceholderVisible();
+    return false;
+}
+#endif
 
 ALWAYS_INLINE bool isRequiredFormControl(const Element* element)
 {

@@ -38,7 +38,20 @@ namespace JSC {
 StackVisitor::StackVisitor(CallFrame* startFrame)
 {
     m_frame.m_index = 0;
-    readFrame(startFrame);
+    CallFrame* topFrame;
+    if (startFrame) {
+        m_frame.m_VMEntryFrame = startFrame->vm().topVMEntryFrame;
+        topFrame = startFrame->vm().topCallFrame;
+    } else {
+        m_frame.m_VMEntryFrame = 0;
+        topFrame = 0;
+    }
+    m_frame.m_callerIsVMEntryFrame = false;
+    readFrame(topFrame);
+
+    // Find the frame the caller wants to start unwinding from.
+    while (m_frame.callFrame() && m_frame.callFrame() != startFrame)
+        gotoNextFrame();
 }
 
 void StackVisitor::gotoNextFrame()
@@ -56,7 +69,6 @@ void StackVisitor::gotoNextFrame()
 
 void StackVisitor::readFrame(CallFrame* callFrame)
 {
-    ASSERT(!callFrame->isVMEntrySentinel());
     if (!callFrame) {
         m_frame.setToEnd();
         return;
@@ -104,7 +116,9 @@ void StackVisitor::readNonInlinedFrame(CallFrame* callFrame, CodeOrigin* codeOri
 {
     m_frame.m_callFrame = callFrame;
     m_frame.m_argumentCountIncludingThis = callFrame->argumentCountIncludingThis();
-    m_frame.m_callerFrame = callFrame->callerFrameSkippingVMEntrySentinel();
+    VMEntryFrame* currentVMEntryFrame = m_frame.m_VMEntryFrame;
+    m_frame.m_callerFrame = callFrame->callerFrame(m_frame.m_VMEntryFrame);
+    m_frame.m_callerIsVMEntryFrame = currentVMEntryFrame != m_frame.m_VMEntryFrame;
     m_frame.m_callee = callFrame->callee();
     m_frame.m_scope = callFrame->scope();
     m_frame.m_codeBlock = callFrame->codeBlock();
@@ -127,7 +141,6 @@ static int inlinedFrameOffset(CodeOrigin* codeOrigin)
 void StackVisitor::readInlinedFrame(CallFrame* callFrame, CodeOrigin* codeOrigin)
 {
     ASSERT(codeOrigin);
-    ASSERT(!callFrame->isVMEntrySentinel());
 
     int frameOffset = inlinedFrameOffset(codeOrigin);
     bool isInlined = !!frameOffset;
@@ -380,7 +393,6 @@ void StackVisitor::Frame::print(int indentLevel)
 
     printif(i, "   name '%s'\n", functionName().utf8().data());
     printif(i, "   sourceURL '%s'\n", sourceURL().utf8().data());
-    printif(i, "   isVMEntrySentinel %d\n", callerFrame->isVMEntrySentinel());
 
 #if ENABLE(DFG_JIT)
     printif(i, "   isInlinedFrame %d\n", isInlinedFrame());

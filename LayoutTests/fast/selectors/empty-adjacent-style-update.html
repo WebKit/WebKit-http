@@ -6,7 +6,7 @@
 target {
     background-color: white;
 }
-testcase:empty+target {
+testcase:empty + target {
     background-color: rgb(1, 2, 3);
 }
 </style>
@@ -27,7 +27,7 @@ description('Test the style with a :empty pseudo class used for a sibling of the
 var testCaseWithRender = document.getElementById("with-renderer");
 var testCaseWithoutRenderer = document.getElementById("without-renderer");
 
-debug("Initial state is emtpy.");
+debug("Initial state is empty.");
 shouldBeEqualToString('getComputedStyle(document.getElementById("target-with-renderer")).backgroundColor', 'rgb(1, 2, 3)');
 shouldBeEqualToString('getComputedStyle(document.getElementById("target-without-renderer")).backgroundColor', 'rgb(1, 2, 3)');
 

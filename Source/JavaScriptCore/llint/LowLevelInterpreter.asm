@@ -33,14 +33,17 @@ end
 # These declarations must match interpreter/JSStack.h.
 
 if JSVALUE64
-const PtrSize = 8
-const CallFrameHeaderSlots = 6
+    const PtrSize = 8
+    const CallFrameHeaderSlots = 6
 else
-const PtrSize = 4
-const CallFrameHeaderSlots = 5
-const CallFrameAlignSlots = 1
+    const PtrSize = 4
+    const CallFrameHeaderSlots = 5
+    const CallFrameAlignSlots = 1
 end
 const SlotSize = 8
+
+const StackAlignment = 16
+const StackAlignmentMask = StackAlignment - 1
 
 const CallerFrameAndPCSize = 2 * PtrSize
 
@@ -55,37 +58,37 @@ const CallFrameHeaderSize = ThisArgumentOffset
 
 # Some value representation constants.
 if JSVALUE64
-const TagBitTypeOther = 0x2
-const TagBitBool      = 0x4
-const TagBitUndefined = 0x8
-const ValueEmpty      = 0x0
-const ValueFalse      = TagBitTypeOther | TagBitBool
-const ValueTrue       = TagBitTypeOther | TagBitBool | 1
-const ValueUndefined  = TagBitTypeOther | TagBitUndefined
-const ValueNull       = TagBitTypeOther
+    const TagBitTypeOther = 0x2
+    const TagBitBool      = 0x4
+    const TagBitUndefined = 0x8
+    const ValueEmpty      = 0x0
+    const ValueFalse      = TagBitTypeOther | TagBitBool
+    const ValueTrue       = TagBitTypeOther | TagBitBool | 1
+    const ValueUndefined  = TagBitTypeOther | TagBitUndefined
+    const ValueNull       = TagBitTypeOther
 else
-const Int32Tag = -1
-const BooleanTag = -2
-const NullTag = -3
-const UndefinedTag = -4
-const CellTag = -5
-const EmptyValueTag = -6
-const DeletedValueTag = -7
-const LowestTag = DeletedValueTag
+    const Int32Tag = -1
+    const BooleanTag = -2
+    const NullTag = -3
+    const UndefinedTag = -4
+    const CellTag = -5
+    const EmptyValueTag = -6
+    const DeletedValueTag = -7
+    const LowestTag = DeletedValueTag
 end
 
 const CallOpCodeSize = 9
 
 if X86_64 or ARM64 or C_LOOP
-const maxFrameExtentForSlowPathCall = 0
+    const maxFrameExtentForSlowPathCall = 0
 elsif ARM or ARMv7_TRADITIONAL or ARMv7 or SH4
-const maxFrameExtentForSlowPathCall = 24
+    const maxFrameExtentForSlowPathCall = 24
 elsif X86 or X86_WIN
-const maxFrameExtentForSlowPathCall = 40
+    const maxFrameExtentForSlowPathCall = 40
 elsif MIPS
-const maxFrameExtentForSlowPathCall = 40
+    const maxFrameExtentForSlowPathCall = 40
 elsif X86_64_WIN
-const maxFrameExtentForSlowPathCall = 64
+    const maxFrameExtentForSlowPathCall = 64
 end
 
 # Watchpoint states
@@ -235,9 +238,9 @@ macro checkStackPointerAlignment(tempReg, location)
         if ARM or ARMv7 or ARMv7_TRADITIONAL
             # ARM can't do logical ops with the sp as a source
             move sp, tempReg
-            andp 0xf, tempReg
+            andp StackAlignmentMask, tempReg
         else
-            andp sp, 0xf, tempReg
+            andp sp, StackAlignmentMask, tempReg
         end
         btpz tempReg, .stackPointerOkay
         move location, tempReg
@@ -245,6 +248,26 @@ macro checkStackPointerAlignment(tempReg, location)
     .stackPointerOkay:
     end
 end
+
+if C_LOOP
+    const CalleeSaveRegisterCount = 0
+elsif ARM or ARMv7_TRADITIONAL or ARMv7
+    const CalleeSaveRegisterCount = 7
+elsif ARM64 or MIPS
+    const CalleeSaveRegisterCount = 10
+elsif SH4 or X86_64
+    const CalleeSaveRegisterCount = 5
+elsif X86 or X86_WIN
+    const CalleeSaveRegisterCount = 3
+elsif X86_64_WIN
+    const CalleeSaveRegisterCount = 7
+end
+
+const CalleeRegisterSaveSize = CalleeSaveRegisterCount * PtrSize
+
+# VMEntryTotalFrameSize includes the space for struct VMEntryRecord and the
+# callee save registers rounded up to keep the stack aligned
+const VMEntryTotalFrameSize = (CalleeRegisterSaveSize + sizeof VMEntryRecord + StackAlignment - 1) & ~StackAlignmentMask
 
 macro pushCalleeSaves()
     if C_LOOP
@@ -417,73 +440,8 @@ macro functionEpilogue()
     end
 end
 
-macro callToJavaScriptPrologue()
-    if X86_64 or X86_64_WIN
-        push cfr
-        push t0
-    elsif X86 or X86_WIN
-        push cfr
-    elsif ARM64
-        push cfr, lr
-    elsif C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
-        push lr
-        push cfr
-    end
-    pushCalleeSaves()
-    if X86
-        subp 12, sp
-    elsif X86_WIN
-        subp 16, sp
-        move sp, t4
-        move t4, t0
-        move t4, t2
-        andp 0xf, t2
-        andp 0xfffffff0, t0
-        move t0, sp
-        storep t4, [sp]
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
-        subp 4, sp
-        move sp, t4
-        clrbp t4, 0xf, t5
-        move t5, sp
-        storep t4, [sp]
-    end
-end
-
-macro callToJavaScriptEpilogue()
-    if ARMv7
-        addp CallFrameHeaderSlots * 8, cfr, t4
-        move t4, sp
-    else
-        addp CallFrameHeaderSlots * 8, cfr, sp
-    end
-
-    loadp CallerFrame[cfr], cfr
-
-    if X86
-        addp 12, sp
-    elsif X86_WIN
-        pop t4
-        move t4, sp
-        addp 16, sp
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
-        pop t4
-        move t4, sp
-        addp 4, sp
-    end
-
-    popCalleeSaves()
-    if X86_64 or X86_64_WIN
-        pop t2
-        pop cfr
-    elsif X86 or X86_WIN
-        pop cfr
-    elsif ARM64
-        pop lr, cfr
-    elsif C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
-        pop cfr
-        pop lr
-    end
+macro vmEntryRecord(entryFramePointer, resultReg)
+    subp entryFramePointer, VMEntryTotalFrameSize, resultReg
 end
 
 macro moveStackPointerForCodeBlock(codeBlock, scratch)
@@ -610,34 +568,33 @@ macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
         addp maxFrameExtentForSlowPathCall, sp
     end
     codeBlockGetter(t1)
-if C_LOOP
-else
-    baddis 5, CodeBlock::m_llintExecuteCounter + BaselineExecutionCounter::m_counter[t1], .continue
-    if JSVALUE64
-        cCall2(osrSlowPath, cfr, PC)
-    else
-        # We are after the function prologue, but before we have set up sp from the CodeBlock.
-        # Temporarily align stack pointer for this call.
-        subp 8, sp
-        cCall2(osrSlowPath, cfr, PC)
-        addp 8, sp
+    if not C_LOOP
+        baddis 5, CodeBlock::m_llintExecuteCounter + BaselineExecutionCounter::m_counter[t1], .continue
+        if JSVALUE64
+            cCall2(osrSlowPath, cfr, PC)
+        else
+            # We are after the function prologue, but before we have set up sp from the CodeBlock.
+            # Temporarily align stack pointer for this call.
+            subp 8, sp
+            cCall2(osrSlowPath, cfr, PC)
+            addp 8, sp
+        end
+        btpz t0, .recover
+        move cfr, sp # restore the previous sp
+        # pop the callerFrame since we will jump to a function that wants to save it
+        if ARM64
+            pop lr, cfr
+        elsif ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+            pop cfr
+            pop lr
+        else
+            pop cfr
+        end
+        jmp t0
+    .recover:
+        codeBlockGetter(t1)
+    .continue:
     end
-    btpz t0, .recover
-    move cfr, sp # restore the previous sp
-    # pop the callerFrame since we will jump to a function that wants to save it
-    if ARM64
-        pop lr, cfr
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
-        pop cfr
-        pop lr
-    else
-        pop cfr
-    end
-    jmp t0
-.recover:
-    codeBlockGetter(t1)
-.continue:
-end
 
     codeBlockSetter(t1)
     
@@ -701,25 +658,21 @@ macro functionInitialization(profileArgSkip)
 end
 
 macro allocateJSObject(allocator, structure, result, scratch1, slowCase)
-    if ALWAYS_ALLOCATE_SLOW
-        jmp slowCase
-    else
-        const offsetOfFirstFreeCell = 
-            MarkedAllocator::m_freeList + 
-            MarkedBlock::FreeList::head
+    const offsetOfFirstFreeCell = 
+        MarkedAllocator::m_freeList + 
+        MarkedBlock::FreeList::head
 
-        # Get the object from the free list.   
-        loadp offsetOfFirstFreeCell[allocator], result
-        btpz result, slowCase
-        
-        # Remove the object from the free list.
-        loadp [result], scratch1
-        storep scratch1, offsetOfFirstFreeCell[allocator]
+    # Get the object from the free list.   
+    loadp offsetOfFirstFreeCell[allocator], result
+    btpz result, slowCase
     
-        # Initialize the object.
-        storep 0, JSObject::m_butterfly[result]
-        storeStructureWithTypeInfo(result, structure, scratch1)
-    end
+    # Remove the object from the free list.
+    loadp [result], scratch1
+    storep scratch1, offsetOfFirstFreeCell[allocator]
+
+    # Initialize the object.
+    storep 0, JSObject::m_butterfly[result]
+    storeStructureWithTypeInfo(result, structure, scratch1)
 end
 
 macro doReturn()
@@ -728,102 +681,121 @@ macro doReturn()
 end
 
 # stub to call into JavaScript or Native functions
-# EncodedJSValue callToJavaScript(void* code, ExecState** vmTopCallFrame, ProtoCallFrame* protoFrame)
-# EncodedJSValue callToNativeFunction(void* code, ExecState** vmTopCallFrame, ProtoCallFrame* protoFrame)
+# EncodedJSValue vmEntryToJavaScript(void* code, VM* vm, ProtoCallFrame* protoFrame)
+# EncodedJSValue vmEntryToNativeFunction(void* code, VM* vm, ProtoCallFrame* protoFrame)
 
 if C_LOOP
-_llint_call_to_javascript:
+    _llint_vm_entry_to_javascript:
 else
-global _callToJavaScript
-_callToJavaScript:
+    global _vmEntryToJavaScript
+    _vmEntryToJavaScript:
 end
-    doCallToJavaScript(makeJavaScriptCall)
+    doVMEntry(makeJavaScriptCall)
 
 
 if C_LOOP
-_llint_call_to_native_function:
+    _llint_vm_entry_to_native:
 else
-global _callToNativeFunction
-_callToNativeFunction:
+    global _vmEntryToNative
+    _vmEntryToNative:
 end
-    doCallToJavaScript(makeHostFunctionCall)
+    doVMEntry(makeHostFunctionCall)
 
+
+if not C_LOOP
+    # void sanitizeStackForVMImpl(VM* vm)
+    global _sanitizeStackForVMImpl
+    _sanitizeStackForVMImpl:
+        if X86_64
+            const vm = t4
+            const address = t1
+            const zeroValue = t0
+        elsif X86_64_WIN
+            const vm = t2
+            const address = t1
+            const zeroValue = t0
+        elsif X86 or X86_WIN
+            const vm = t2
+            const address = t1
+            const zeroValue = t0
+        else
+            const vm = a0
+            const address = t1
+            const zeroValue = t2
+        end
+    
+        if X86 or X86_WIN
+            loadp 4[sp], vm
+        end
+    
+        loadp VM::m_lastStackTop[vm], address
+        bpbeq sp, address, .zeroFillDone
+    
+        move 0, zeroValue
+    .zeroFillLoop:
+        storep zeroValue, [address]
+        addp PtrSize, address
+        bpa sp, address, .zeroFillLoop
+    
+    .zeroFillDone:
+        move sp, address
+        storep address, VM::m_lastStackTop[vm]
+        ret
+    
+    # VMEntryRecord* vmEntryRecord(const VMEntryFrame* entryFrame)
+    global _vmEntryRecord
+    _vmEntryRecord:
+        if X86_64
+            const entryFrame = t4
+            const result = t0
+        elsif X86 or X86_WIN
+            const entryFrame = t2
+            const result = t0
+        else
+            const entryFrame = a0
+            const result = t0
+        end
+    
+        if X86 or X86_WIN
+            loadp 4[sp], entryFrame
+        end
+    
+        vmEntryRecord(entryFrame, result)
+        ret
+end
 
 if C_LOOP
-else
-# void sanitizeStackForVMImpl(VM* vm)
-global _sanitizeStackForVMImpl
-_sanitizeStackForVMImpl:
-    if X86_64
-        const vm = t4
-        const address = t1
-        const zeroValue = t0
-    elsif X86_64_WIN
-        const vm = t2
-        const address = t1
-        const zeroValue = t0
-    elsif X86 or X86_WIN
-        const vm = t2
-        const address = t1
-        const zeroValue = t0
+    # Dummy entry point the C Loop uses to initialize.
+    _llint_entry:
+        crash()
     else
-        const vm = a0
-        const address = t1
-        const zeroValue = t2
-    end
-
-    if X86 or X86_WIN
-        loadp 4[sp], vm
-    end
-
-    loadp VM::m_lastStackTop[vm], address
-    bpbeq sp, address, .zeroFillDone
-
-    move 0, zeroValue
-.zeroFillLoop:
-    storep zeroValue, [address]
-    addp PtrSize, address
-    bpa sp, address, .zeroFillLoop
-
-.zeroFillDone:
-    move sp, address
-    storep address, VM::m_lastStackTop[vm]
-    ret
-end
-
-
-if C_LOOP
-# Dummy entry point the C Loop uses to initialize.
-_llint_entry:
-    crash()
-else
-macro initPCRelative(pcBase)
-    if X86_64 or X86_64_WIN
-        call _relativePCBase
-    _relativePCBase:
-        pop pcBase
-    elsif X86 or X86_WIN
-        call _relativePCBase
-    _relativePCBase:
-        pop pcBase
-        loadp 20[sp], t4
-    elsif ARM64
-    elsif ARMv7
-    _relativePCBase:
-        move pc, pcBase
-        subp 3, pcBase   # Need to back up the PC and set the Thumb2 bit
-    elsif ARM or ARMv7_TRADITIONAL
-    _relativePCBase:
-        move pc, pcBase
-        subp 8, pcBase
-    elsif MIPS
-        crash()  # Need to replace with any initialization steps needed to step up PC relative address calculation
-    elsif SH4
-        mova _relativePCBase, t0
-        move t0, pcBase
-        alignformova
-    _relativePCBase:
-    end
+    macro initPCRelative(pcBase)
+        if X86_64 or X86_64_WIN
+            call _relativePCBase
+        _relativePCBase:
+            pop pcBase
+        elsif X86 or X86_WIN
+            call _relativePCBase
+        _relativePCBase:
+            pop pcBase
+            loadp 20[sp], t4
+        elsif ARM64
+        elsif ARMv7
+        _relativePCBase:
+            move pc, pcBase
+            subp 3, pcBase   # Need to back up the PC and set the Thumb2 bit
+        elsif ARM or ARMv7_TRADITIONAL
+        _relativePCBase:
+            move pc, pcBase
+            subp 8, pcBase
+        elsif MIPS
+            crash()  # Need to replace with any initialization steps needed to step up PC relative address calculation
+        elsif SH4
+            mova _relativePCBase, t0
+            move t0, pcBase
+            alignformova
+        _relativePCBase:
+        end
 end
 
 macro setEntryAddress(index, label)
@@ -1380,6 +1352,6 @@ end
 _llint_op_init_global_const_nop:
     dispatch(5)
 
-_llint_op_profile_types_with_high_fidelity:
-    callSlowPath(_slow_path_profile_types_with_high_fidelity)
+_llint_op_profile_type:
+    callSlowPath(_slow_path_profile_type)
     dispatch(6)

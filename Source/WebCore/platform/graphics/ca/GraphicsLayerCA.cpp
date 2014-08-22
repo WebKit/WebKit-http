@@ -342,6 +342,7 @@ GraphicsLayerCA::GraphicsLayerCA(GraphicsLayerClient& client)
     : GraphicsLayer(client)
     , m_contentsLayerPurpose(NoContentsLayer)
     , m_isPageTiledBackingLayer(false)
+    , m_needsFullRepaint(false)
     , m_uncommittedChanges(0)
     , m_isCommittingChanges(false)
 {
@@ -709,12 +710,21 @@ void GraphicsLayerCA::setBlendMode(BlendMode blendMode)
 
 void GraphicsLayerCA::setNeedsDisplay()
 {
-    setNeedsDisplayInRect(FloatRect::infiniteRect());
+    if (!drawsContent())
+        return;
+
+    m_needsFullRepaint = true;
+    m_dirtyRects.clear();
+    noteLayerPropertyChanged(DirtyRectsChanged);
+    addRepaintRect(FloatRect(FloatPoint(), m_size));
 }
 
 void GraphicsLayerCA::setNeedsDisplayInRect(const FloatRect& r, ShouldClipToLayer shouldClip)
 {
     if (!drawsContent())
+        return;
+
+    if (m_needsFullRepaint)
         return;
 
     FloatRect rect(r);
@@ -833,9 +843,14 @@ void GraphicsLayerCA::removeAnimation(const String& animationName)
     noteLayerPropertyChanged(AnimationChanged);
 }
 
-void GraphicsLayerCA::platformCALayerAnimationStarted(CFTimeInterval startTime)
+void GraphicsLayerCA::platformCALayerAnimationStarted(const String& animationKey, CFTimeInterval startTime)
 {
-    client().notifyAnimationStarted(this, startTime);
+    client().notifyAnimationStarted(this, animationKey, startTime);
+}
+
+void GraphicsLayerCA::platformCALayerAnimationEnded(const String& animationKey)
+{
+    client().notifyAnimationEnded(this, animationKey);
 }
 
 void GraphicsLayerCA::setContentsToSolidColor(const Color& color)
@@ -2270,11 +2285,18 @@ void GraphicsLayerCA::pauseCAAnimationOnLayer(AnimatedPropertyID property, const
 
 void GraphicsLayerCA::repaintLayerDirtyRects()
 {
+    if (m_needsFullRepaint) {
+        ASSERT(!m_dirtyRects.size());
+        m_layer->setNeedsDisplay();
+        m_needsFullRepaint = false;
+        return;
+    }
+
     if (!m_dirtyRects.size())
         return;
 
     for (size_t i = 0; i < m_dirtyRects.size(); ++i)
-        m_layer->setNeedsDisplay(&(m_dirtyRects[i]));
+        m_layer->setNeedsDisplayInRect(m_dirtyRects[i]);
     
     m_dirtyRects.clear();
 }

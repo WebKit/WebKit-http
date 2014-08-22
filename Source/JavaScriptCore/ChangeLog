@@ -1,3 +1,1380 @@
+2014-08-21  Mark Lam  <mark.lam@apple.com>
+
+        r171362 accidentally increased the size of InlineCallFrame.
+        <https://webkit.org/b/136141>
+
+        Reviewed by Filip Pizlo.
+
+        r171362 increased the size of InlineCallFrame::kind to 2 bits.  This increased
+        the size of InlineCallFrame from 72 to 80 though not intentionally.  The fix
+        is to reduce the size of InlineCallFrame::stackOffset to 29 bits.
+
+        Also added an assert to ensure that we never set a value that exceeds the size
+        of InlineCallFrame::stackOffset.
+
+        * bytecode/CodeOrigin.h:
+        (JSC::InlineCallFrame::setStackOffset):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+
+2014-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: RetainPtr misuse, CFRunLoopSource leak
+        https://bugs.webkit.org/show_bug.cgi?id=136143
+
+        Reviewed by Timothy Hatcher.
+
+        Adopt a Create into the RetainPtr to avoid leaking.
+
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorDebuggableConnection::setupRunLoop):
+
+2014-08-21  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION(r172808): It made 6 different tests fail on 32 bit platforms.
+        <https://webkit.org/b/136123>
+
+        Reviewed by Filip Pizlo.
+
+        The original patch in r172808 removed the code to skip the top scope in
+        the 64-bit port of JIT::emitResolveClosure() but not in the 32-bit port.
+        This patch fixes that and achieves parity.
+
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitResolveClosure):
+
+2014-08-21  Zalan Bujtas  <zalan@apple.com>
+
+        Enable SATURATED_LAYOUT_ARITHMETIC.
+        https://bugs.webkit.org/show_bug.cgi?id=136106
+
+        Reviewed by Simon Fraser.
+
+        SATURATED_LAYOUT_ARITHMETIC protects LayoutUnit against arithmetic overflow.
+        (No measurable performance regression on Mac.)
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-20  Saam Barati  <sbarati@apple.com>
+
+        Fix how CodeBlock dumps the opcode op_profile_type
+        https://bugs.webkit.org/show_bug.cgi?id=136088
+
+        Reviewed by Filip Pizlo.
+
+        op_profile_type was modified to receive two extra arguments,
+        but its dump in CodeBlock::dumpBytecode wasn't changed to 
+        account for this, so it broke CodeBlock::dumpBytecode when
+        op_profile_type was in the stream of bytecode instructions.
+        CodeBlock::dumpBytecode now accounts for the change in 
+        op_profile_type's arity.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+
+2014-08-20  Saam Barati  <sbarati@apple.com>
+
+        Rename HighFidelityTypeProfiling variables for more clarity
+        https://bugs.webkit.org/show_bug.cgi?id=135899
+
+        Reviewed by Geoffrey Garen.
+
+        Many names that are used in the type profiling infrastructure
+        prefix themselves with "HighFidelity" or include the words "high"
+        and/or "fidelity" in some way. But the words "high" and "fidelity" don't 
+        add anything descriptive to the names surrounding type profiling. 
+        So this patch removes all uses of "HighFidelity" and its variants.
+
+        Most renamings change "HighFidelity*" to "TypeProfiler*" or simply 
+        drop the prefix "HighFidelity" all together. Now, almost all names 
+        in relation to type profiling contain in them "TypeProfiler" or 
+        "TypeProfiling" or some combination of the words "type" and "profile".
+
+        This patch also changes how we check if type profiling is enabled:
+        We no longer call vm::isProfilingTypesWithHighFidelity. We now just 
+        check that vm::typeProfiler is not null.
+
+        This patch also changes all calls to TypeProfilerLog::processLogEntries
+        to use ASCIILiteral to form WTFStrings instead of vanilla C string literals.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/TypeLocation.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset):
+        (JSC::UnlinkedCodeBlock::addTypeProfilerExpressionInfo):
+        (JSC::UnlinkedCodeBlock::highFidelityTypeProfileExpressionInfoForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addHighFidelityTypeProfileExpressionInfo): Deleted.
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedFunctionExecutable::typeProfilingStartOffset):
+        (JSC::UnlinkedFunctionExecutable::typeProfilingEndOffset):
+        (JSC::UnlinkedFunctionExecutable::highFidelityTypeProfilingStartOffset): Deleted.
+        (JSC::UnlinkedFunctionExecutable::highFidelityTypeProfilingEndOffset): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitMove):
+        (JSC::BytecodeGenerator::emitTypeProfilerExpressionInfo):
+        (JSC::BytecodeGenerator::emitProfileType):
+        (JSC::BytecodeGenerator::emitHighFidelityTypeProfilingExpressionInfo): Deleted.
+        (JSC::BytecodeGenerator::emitProfileTypesWithHighFidelity): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::isProfilingTypesWithHighFidelity): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ThisNode::emitBytecode):
+        (JSC::ResolveNode::emitBytecode):
+        (JSC::BracketAccessorNode::emitBytecode):
+        (JSC::DotAccessorNode::emitBytecode):
+        (JSC::FunctionCallValueNode::emitBytecode):
+        (JSC::FunctionCallResolveNode::emitBytecode):
+        (JSC::FunctionCallBracketNode::emitBytecode):
+        (JSC::FunctionCallDotNode::emitBytecode):
+        (JSC::CallFunctionCallDotNode::emitBytecode):
+        (JSC::ApplyFunctionCallDotNode::emitBytecode):
+        (JSC::PostfixNode::emitResolve):
+        (JSC::PostfixNode::emitBracket):
+        (JSC::PostfixNode::emitDot):
+        (JSC::PrefixNode::emitResolve):
+        (JSC::PrefixNode::emitBracket):
+        (JSC::PrefixNode::emitDot):
+        (JSC::ReadModifyResolveNode::emitBytecode):
+        (JSC::AssignResolveNode::emitBytecode):
+        (JSC::AssignDotNode::emitBytecode):
+        (JSC::ReadModifyDotNode::emitBytecode):
+        (JSC::AssignBracketNode::emitBytecode):
+        (JSC::ReadModifyBracketNode::emitBytecode):
+        (JSC::ConstDeclNode::emitCodeSingle):
+        (JSC::EmptyVarExpression::emitBytecode):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::FunctionBodyNode::emitBytecode):
+        * heap/Heap.cpp:
+        (JSC::Heap::collect):
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        (Inspector::recompileAllJSFunctionsForTypeProfiling):
+        (Inspector::InspectorRuntimeAgent::willDestroyFrontendAndBackend):
+        (Inspector::InspectorRuntimeAgent::enableTypeProfiler):
+        (Inspector::InspectorRuntimeAgent::disableTypeProfiler):
+        (Inspector::InspectorRuntimeAgent::setTypeProfilerEnabledState):
+        (Inspector::InspectorRuntimeAgent::enableHighFidelityTypeProfiling): Deleted.
+        (Inspector::InspectorRuntimeAgent::disableHighFidelityTypeProfiling): Deleted.
+        (Inspector::InspectorRuntimeAgent::setHighFidelityTypeProfilingEnabledState): Deleted.
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/protocol/Runtime.json:
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompile):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_profile_type):
+        (JSC::JIT::emit_op_profile_types_with_high_fidelity): Deleted.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_profile_type):
+        (JSC::JIT::emit_op_profile_types_with_high_fidelity): Deleted.
+        * jit/JITOperations.cpp:
+        * jsc.cpp:
+        (functionDumpTypesForAllVariables):
+        * llint/LLIntSlowPaths.cpp:
+        * llint/LowLevelInterpreter.asm:
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::ScriptExecutable):
+        (JSC::ProgramExecutable::ProgramExecutable):
+        (JSC::FunctionExecutable::FunctionExecutable):
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        * runtime/Executable.h:
+        (JSC::ScriptExecutable::typeProfilingStartOffset):
+        (JSC::ScriptExecutable::typeProfilingEndOffset):
+        (JSC::ScriptExecutable::highFidelityTypeProfilingStartOffset): Deleted.
+        (JSC::ScriptExecutable::highFidelityTypeProfilingEndOffset): Deleted.
+        * runtime/HighFidelityLog.cpp: Removed.
+        * runtime/HighFidelityLog.h: Removed.
+        * runtime/HighFidelityTypeProfiler.cpp: Removed.
+        * runtime/HighFidelityTypeProfiler.h: Removed.
+        * runtime/Options.h:
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::prepareForTypeProfiling):
+        (JSC::SymbolTable::uniqueIDForVariable):
+        (JSC::SymbolTable::uniqueIDForRegister):
+        (JSC::SymbolTable::prepareForHighFidelityTypeProfiling): Deleted.
+        * runtime/SymbolTable.h:
+        * runtime/TypeProfiler.cpp: Added.
+        (JSC::TypeProfiler::logTypesForTypeLocation):
+        (JSC::TypeProfiler::insertNewLocation):
+        (JSC::TypeProfiler::getTypesForVariableAtOffsetForInspector):
+        (JSC::descriptorMatchesTypeLocation):
+        (JSC::TypeProfiler::findLocation):
+        * runtime/TypeProfiler.h: Added.
+        (JSC::QueryKey::QueryKey):
+        (JSC::QueryKey::isHashTableDeletedValue):
+        (JSC::QueryKey::operator==):
+        (JSC::QueryKey::hash):
+        (JSC::QueryKeyHash::hash):
+        (JSC::QueryKeyHash::equal):
+        (JSC::TypeProfiler::functionHasExecutedCache):
+        (JSC::TypeProfiler::typeLocationCache):
+        * runtime/TypeProfilerLog.cpp: Added.
+        (JSC::TypeProfilerLog::initializeLog):
+        (JSC::TypeProfilerLog::~TypeProfilerLog):
+        (JSC::TypeProfilerLog::processLogEntries):
+        * runtime/TypeProfilerLog.h: Added.
+        (JSC::TypeProfilerLog::LogEntry::structureIDOffset):
+        (JSC::TypeProfilerLog::LogEntry::valueOffset):
+        (JSC::TypeProfilerLog::LogEntry::locationOffset):
+        (JSC::TypeProfilerLog::TypeProfilerLog):
+        (JSC::TypeProfilerLog::recordTypeInformationForLocation):
+        (JSC::TypeProfilerLog::logEndPtr):
+        (JSC::TypeProfilerLog::logStartOffset):
+        (JSC::TypeProfilerLog::currentLogEntryOffset):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::enableTypeProfiler):
+        (JSC::VM::disableTypeProfiler):
+        (JSC::VM::dumpTypeProfilerData):
+        (JSC::VM::enableHighFidelityTypeProfiling): Deleted.
+        (JSC::VM::disableHighFidelityTypeProfiling): Deleted.
+        (JSC::VM::dumpHighFidelityProfilingTypes): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::typeProfilerLog):
+        (JSC::VM::typeProfiler):
+        (JSC::VM::isProfilingTypesWithHighFidelity): Deleted.
+        (JSC::VM::highFidelityLog): Deleted.
+        (JSC::VM::highFidelityTypeProfiler): Deleted.
+
+2014-08-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r172799.
+
+        * disassembler/ARM64/A64DOpcode.cpp:
+        * disassembler/ARM64Disassembler.cpp:
+
+2014-08-20  Oliver Hunt  <oliver@apple.com>
+
+        Stop implicitly skipping a function's own activation when walking the scope chain
+        https://bugs.webkit.org/show_bug.cgi?id=136118
+
+        Reviewed by Geoffrey Garen.
+
+        Remove the current logic that implicitly skips a function's
+        own activation when walking the scope chain. This is ground
+        work for ensuring that all closed variable access is made
+        through the function's activation. This leads to a further
+        10% regression on earley, but we're already tracking the
+        overall performance regression.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getScope):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitResolveClosure):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSScope.cpp:
+        (JSC::JSScope::abstractResolve):
+        * runtime/JSScope.h:
+
+2014-08-20  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION: Web Inspector crashes when reloading apple.com with Timeline recording active
+        https://bugs.webkit.org/show_bug.cgi?id=136034
+
+        Reviewed by Mark Lam.
+
+        DebuggerCallFrame::positionForCallFrame is trying to unwind starting somewhere in the middle
+        of the stack.  Hardened StackVisitor to skip over the frames between the current top frame
+        and the requested start frame.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::StackVisitor):
+
+2014-08-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] JavaScriptCore.dll is missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=136105
+        <rdar://problem/18075852>
+
+        Reviewed by Dean Jackson.
+
+        * JavaScriptCore.vcxproj/JavaScriptCorePreBuild.cmd: Add missing step to generate
+        version information for intermediary build path.
+
+2014-08-20  Saam Barati  <sbarati@apple.com>
+
+        Fix a memory leak in TypeSet
+        https://bugs.webkit.org/show_bug.cgi?id=135913
+
+        Reviewed by Filip Pizlo.
+
+        Currently, TypeSet unconditionally allocates memory for its member
+        variable m_structureHistory, but never deallocates it. Change this 
+        from being a pointer that is unconditionally allocated to a member 
+        variable that will be deallocated when TypeSet itself is deallocated.
+
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::TypeSet):
+        (JSC::TypeSet::addTypeInformation):
+        (JSC::TypeSet::seenTypes):
+        (JSC::TypeSet::displayName):
+        (JSC::TypeSet::allStructureRepresentations):
+        (JSC::StructureShape::leastCommonAncestor):
+        * runtime/TypeSet.h:
+
+2014-08-20  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Assertion fails when running JSC stress tests.
+        https://bugs.webkit.org/show_bug.cgi?id=136103
+
+        Reviewed by Darin Adler.
+
+        Use unsigned bitfield member instead of enum bitfield member to avoid negative values.
+
+        * bytecode/CodeOrigin.h: Use unsigned bitfield member.
+        (JSC::InlineCallFrame::specializationKind): Compile fix.
+
+2014-08-20  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Enable ARM64 disassembler on EFL
+        https://bugs.webkit.org/show_bug.cgi?id=136089
+
+        Reviewed by Filip Pizlo.
+
+        * CMakeLists.txt:
+        Added disassembler/ARM64Disassembler.cpp and
+        disassembler/ARM64/A64DOpcode.cpp to JavaScriptCore_SOURCES.
+
+        * disassembler/ARM64/A64DOpcode.cpp:
+        Added USE(ARM64_DISASSEMBLER) guard around implementation.
+
+        * disassembler/ARM64/A64DOpcode.h:
+        (JSC::ARM64Disassembler::A64DOpcode::appendUnsignedImmediate64):
+        (JSC::ARM64Disassembler::A64DOpcode::appendPCRelativeOffset):
+        Made format strings portable by changing "%llx" to "%" PRIx64 for
+        uint64_t arguments.
+
+2014-08-19  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r172401): for-in optimization no longer works at all
+        https://bugs.webkit.org/show_bug.cgi?id=136056
+
+        Reviewed by Geoffrey Garen.
+        
+        Roll this back in, along with a fix to make proxies work. Previously, for-in over proxies
+        would instacrash every time.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetByVal):
+        (JSC::BytecodeGenerator::pushIndexedForInScope):
+        (JSC::BytecodeGenerator::pushStructureForInScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::ForInContext::ForInContext):
+        (JSC::StructureForInContext::StructureForInContext):
+        (JSC::IndexedForInContext::IndexedForInContext):
+        (JSC::ForInContext::base): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::emitMultiLoopBytecode):
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::getStructurePropertyNames):
+        (JSC::JSProxy::getGenericPropertyNames):
+        * tests/stress/for-in-base-reassigned-later-and-change-structure.js: Added.
+        (foo):
+        * tests/stress/for-in-base-reassigned-later.js: Added.
+        (foo):
+        * tests/stress/for-in-base-reassigned.js: Added.
+        (foo):
+        * tests/stress/for-in-proxy-target-changed-structure.js: Added.
+        (deleteAll):
+        (foo):
+        * tests/stress/for-in-proxy.js: Added.
+        (foo):
+
+2014-08-19  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        Unreviewed, fix EFL build after r17275
+
+        Fix error: ignoring #pragma clang diagnostic [-Werror=unknown-pragmas]
+
+        * runtime/JSDataViewPrototype.cpp:
+        Add #if COMPILER(CLANG) and #endif.
+
+2014-08-19  Michael Saboff  <msaboff@apple.com>
+
+        Crash in jsc-layout-tests.yaml/js/script-tests/reentrant-caching.js
+        https://bugs.webkit.org/show_bug.cgi?id=136080
+
+        Reviewed by Mark Lam.
+
+        Update VM::topVMEntryFrame via NativeCallFrameTracer() when we pass the caller's frame
+        to NativeCallFrameTracer() as the callee's frame may be the first callee from an entry
+        frame.  In that case, the caller will have the prior VM entry frame.
+
+        The new NativeCallFrameTracer with a VMEntryFrame parameter should be used when throwing
+        an exception from a caller frame.  The value to use for the VMEntryFrame should be a
+        value possibly modified by CallFrame::callerFrame(&*VMEntryFrame) used to find the caller.
+
+        * interpreter/Interpreter.h:
+        (JSC::NativeCallFrameTracer::NativeCallFrameTracer): Added a new constructor that takes a
+        VMEntryFrame.  Added an ASSERT to both constructors to check that the updated topCallFrame
+        is below the current vmEntryFrame.
+
+        * jit/JITOperations.cpp:
+        (JSC::operationThrowStackOverflowError):
+        (JSC::operationCallArityCheck):
+        (JSC::operationConstructArityCheck):
+        Set VM::topVMEntryFrame to the possibly updated VMEntryFrame after getting the caller's frame.
+
+2014-08-19  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Offline Assembler build phase fails when $BUILT_PRODUCTS_DIR contains spaces
+        https://bugs.webkit.org/show_bug.cgi?id=136086
+
+        Reviewed by Filip Pizlo.
+
+        Enclosed arguments to asm.rb containing $BUILT_PRODUCTS_DIR in double quotes so that they don't get split on
+        whitespace. Also let Xcode have its way with an unrelated part of the project file.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2014-08-19  Filip Pizlo  <fpizlo@apple.com>
+
+        LLInt build should be way faster
+        https://bugs.webkit.org/show_bug.cgi?id=136085
+
+        Reviewed by Geoffrey Garen.
+        
+        This does three things to improve the LLInt build performance. One of them is only for
+        Xcode for now while the others should benefit all platforms:
+        
+        - Don't exponentially build settings combinations that correspond to being on two backends
+          simultaneously. This is by far the biggest win.
+        
+        - Don't generate offset extraction code for backends that aren't supported by the current
+          port. This currently only works on Xcode-based ports. This is a relatively small win.
+        
+        - Remove the ALWAYS_ALLOCATE_SLOW option. Each option increases build time, and we haven't
+          used this one in a long time. Anyway, setting this option could be emulated by just
+          directly hacking the code.
+        
+        This is an enormous speed-up in the LLInt build.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Prune the set of backends that we should consider on Xcode-based platforms.
+        * llint/LLIntOfflineAsmConfig.h: Remove ALWAYS_ALLOCATE_SLOW
+        * llint/LowLevelInterpreter.asm: Remove ALWAYS_ALLOCATE_SLOW
+        * offlineasm/backends.rb: Add infrastructure for reasoning about valid backends.
+        * offlineasm/generate_offset_extractor.rb: Allow the client to specify a filtered set of valid backends.
+        * offlineasm/settings.rb: Improve the construction of settings combinations so that it doesn't traverse the enourmous set of obviously invalid multi-backend combinations. Also glue into support for valid backends.
+
+2014-08-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix indentation and style in LowLevelInterpreter.asm
+        https://bugs.webkit.org/show_bug.cgi?id=136083
+
+        Reviewed by Mark Lam.
+
+        * llint/LowLevelInterpreter.asm:
+
+2014-08-19  Magnus Granberg  <zorry@gentoo.org>
+
+        TEXTREL in libjavascriptcoregtk-1.0.so.0.11.0 on x86 (or i586)
+        https://bugs.webkit.org/show_bug.cgi?id=70610
+
+        Reviewed by Darin Adler.
+
+        Setup %ebx so we can use the plt.
+
+        * jit/ThunkGenerators.cpp:
+
+2014-08-19  Zalan Bujtas  <zalan@apple.com>
+
+        Remove ENABLE(SUBPIXEL_LAYOUT).
+        https://bugs.webkit.org/show_bug.cgi?id=136077
+
+        Reviewed by Simon Fraser.
+
+        Remove compile time flag SUBPIXEL_LAYOUT. All ports have it enabled for a while now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-19  Alex Christensen  <achristensen@webkit.org>
+
+        [CMake] Generate LLInt assembly correctly on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=135888
+
+        Reviewed by Oliver Hunt.
+
+        * CMakeLists.txt:
+        Generate LowLevelInterpreterWin.asm instead of LLIntAssembly.h on Windows like the existing build system.
+        * PlatformWin.cmake:
+        Don't build JSGlobalObjectInspectorController.cpp on Windows.
+        * offlineasm/x86.rb:
+        Detect non-cygwin ruby installations correctly.
+
+2014-08-19  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r163179): It broke the build on ARM Thumb2 with GCC
+        https://bugs.webkit.org/show_bug.cgi?id=136028
+
+        Reviewed by Oliver Hunt.
+
+        Added back ARMv7 conditionals around three op addp and subp since ARM Thumb2 spec says that
+        the behavior for those ops are undefined.  This was originally done in changeset 163179.
+
+        * llint/LowLevelInterpreter32_64.asm:
+
+2014-08-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172741.
+        https://bugs.webkit.org/show_bug.cgi?id=136058
+
+        This change is breaking PLT. (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r172401): for-in optimization no longer works at
+        all"
+        https://bugs.webkit.org/show_bug.cgi?id=136056
+        http://trac.webkit.org/changeset/172741
+
+2014-08-18  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r172401): for-in optimization no longer works at all
+        https://bugs.webkit.org/show_bug.cgi?id=136056
+
+        Reviewed by Mark Hahnenberg.
+        
+        This is a partial roll-out of r172401. It turns out that the fix wasn't actually fixing a
+        real bug (since it's fine to use op_get_direct_pname on the wrong base because it has a
+        structure check) and it was actually breaking the entire for-in optimization (since there is
+        no way that we can statically prove that the base matches, because the base we see is a
+        newly created temporary, and anyway doing it right would be really hard in our bytecode
+        because it's 3AC form).
+        
+        But, I added a new test for the problem, and kept the original test. Both the old test and
+        the new test prove that r172401 wasn't fixing what it thought it was fixing. To the extent
+        that it resolved crashes it was because it just disabled the for-in optimization entirely.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetByVal):
+        (JSC::BytecodeGenerator::pushIndexedForInScope):
+        (JSC::BytecodeGenerator::pushStructureForInScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::ForInContext::ForInContext):
+        (JSC::StructureForInContext::StructureForInContext):
+        (JSC::IndexedForInContext::IndexedForInContext):
+        (JSC::ForInContext::base): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::emitMultiLoopBytecode):
+        * tests/stress/for-in-base-reassigned.js: Added.
+        * tests/stress/for-in-base-reassigned-later.js: Added.
+        * tests/stress/for-in-base-reassigned-later-and-change-structure.js: Added.
+
+2014-08-18  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: build fix for non-Mac builds after r172737.
+        https://bugs.webkit.org/show_bug.cgi?id=135750
+
+        Not reviewed.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+
+2014-08-18  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r172129): ftlopt branch merge made performance tests flakey crash
+        https://bugs.webkit.org/show_bug.cgi?id=135750
+
+        Reviewed by Mark Lam.
+        
+        This was caused by a rather embarrassing oversight in how the DFG tracks structures: we
+        could sometimes perform an optimization that requires a structure to be alive but forget to
+        ensure that the structure is actually kept alive. In particular, any watchpoint-based
+        optimizations involve setting watchpoints even if the code that got optimized is eventually
+        deleted because it is unreachable. All such optimizations would leave behind something in
+        the IR to tell us that we are interested in the structure and that therefore it should be
+        kept alive. But, IR can be deleted if it is unreachable.
+        
+        The solution is to ensure that as soon as the DFG is made aware of a structure, it adds it
+        to the set of weak references.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::setOSREntryValue):
+        (JSC::DFG::AbstractValue::set):
+        (JSC::DFG::AbstractValue::normalizeClarity):
+        (JSC::DFG::AbstractValue::assertIsRegistered):
+        (JSC::DFG::AbstractValue::assertIsWatched): Deleted.
+        * dfg/DFGAbstractValue.h:
+        (JSC::DFG::AbstractValue::assertIsRegistered):
+        (JSC::DFG::AbstractValue::assertIsWatched): Deleted.
+        * dfg/DFGCommon.h:
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::addStructureTransitionCheck):
+        * dfg/DFGDesiredWeakReferences.cpp:
+        (JSC::DFG::DesiredWeakReferences::addLazily):
+        (JSC::DFG::DesiredWeakReferences::contains):
+        (JSC::DFG::DesiredWeakReferences::reallyAdd):
+        (JSC::DFG::DesiredWeakReferences::visitChildren):
+        * dfg/DFGDesiredWeakReferences.h:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::canOptimizeStringObjectAccess):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        (JSC::DFG::Graph::registerFrozenValues):
+        (JSC::DFG::Graph::convertToConstant):
+        (JSC::DFG::Graph::registerStructure):
+        (JSC::DFG::Graph::assertIsRegistered):
+        (JSC::DFG::Graph::assertIsWatched): Deleted.
+        * dfg/DFGGraph.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGStructureAbstractValue.cpp:
+        (JSC::DFG::StructureAbstractValue::assertIsRegistered):
+        (JSC::DFG::StructureAbstractValue::assertIsWatched): Deleted.
+        * dfg/DFGStructureAbstractValue.h:
+        (JSC::DFG::StructureAbstractValue::assertIsRegistered):
+        (JSC::DFG::StructureAbstractValue::assertIsWatched): Deleted.
+        * dfg/DFGStructureRegistrationPhase.cpp: Copied from Source/JavaScriptCore/dfg/DFGWatchableStructureWatchingPhase.cpp.
+        (JSC::DFG::StructureRegistrationPhase::StructureRegistrationPhase):
+        (JSC::DFG::StructureRegistrationPhase::run):
+        (JSC::DFG::StructureRegistrationPhase::registerStructures):
+        (JSC::DFG::StructureRegistrationPhase::registerStructure):
+        (JSC::DFG::performStructureRegistration):
+        (JSC::DFG::WatchableStructureWatchingPhase::WatchableStructureWatchingPhase): Deleted.
+        (JSC::DFG::WatchableStructureWatchingPhase::run): Deleted.
+        (JSC::DFG::WatchableStructureWatchingPhase::tryWatch): Deleted.
+        (JSC::DFG::performWatchableStructureWatching): Deleted.
+        * dfg/DFGStructureRegistrationPhase.h: Copied from Source/JavaScriptCore/dfg/DFGWatchableStructureWatchingPhase.h.
+        * dfg/DFGWatchableStructureWatchingPhase.cpp: Removed.
+        * dfg/DFGWatchableStructureWatchingPhase.h: Removed.
+
+2014-08-18  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Fix ASSERT in ARM64's JSC::GPRInfo::debugName
+        https://bugs.webkit.org/show_bug.cgi?id=136050
+
+        Reviewed by Darin Adler.
+
+        Remove cast of GPRReg to unsigned to prevent signed/unsigned comparison
+        error.
+
+        * jit/GPRInfo.h:
+        (JSC::GPRInfo::debugName):
+
+2014-08-18  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r168256): JSString can get 8-bit flag wrong when re-using AtomicStrings.
+        <https://webkit.org/b/133574>
+        <rdar://problem/18051847>
+
+        The optimization that resolves JSRopeStrings into an existing
+        AtomicString (to save time and memory by avoiding StringImpl allocation)
+        had a bug that it wasn't copying the 8-bit flag from the AtomicString.
+
+        This could lead to a situation where a 16-bit StringImpl containing
+        only 8-bit characters is sitting in the AtomicString table, is found
+        by the rope resolution optimization, and gives you a rope that thinks
+        it's all 8-bit, but has a fiber with 16-bit characters.
+
+        Resolving that rope will then yield incorrect results.
+
+        This was all caught by an assertion, but very hard to reproduce.
+
+        Test: js/dopey-rope-with-16-bit-propertyname.html
+
+        Reviewed by Darin Adler.
+
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeToAtomicString):
+        (JSC::JSRopeString::resolveRopeToExistingAtomicString):
+        * runtime/JSString.h:
+        (JSC::JSString::setIs8Bit):
+        (JSC::JSString::toExistingAtomicString):
+
+2014-08-18  Matthew Mirman  <mmirman@apple.com>
+
+        Merges the two native inlining passes from the build.
+        Also adds the AvailableExternallyLinkage assertion to linked 
+        functions to allow unused and duplicate ones to be removed.
+        https://bugs.webkit.org/show_bug.cgi?id=135526
+
+        Reviewed by Filip Pizlo.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: 
+        Removed second generation of llvm binary files.
+        Fixed the flags on the first pass. 
+        * build-symbol-table-index.py: Modified some paths.
+        * build-symbol-table-index.sh: Removed.
+        * copy-llvm-ir-to-derived-sources.sh: Now calls build-symbol-table-index directly.
+        * ftl/FTLLowerDFGToLLVM.cpp: Added LLVMAvailableExternallyLinkage assertion.
+        (JSC::FTL::LowerDFGToLLVM::getModuleByPathForSymbol): 
+        * runtime/ArrayPrototype.cpp: Removed static declarations. 
+        * runtime/DateConstructor.cpp: ditto.
+        (JSC::dateParse):
+        (JSC::dateNow):
+        (JSC::dateUTC):
+        * runtime/DatePrototype.cpp: ditto.
+        * runtime/JSDataViewPrototype.cpp: ditto on both.
+        (JSC::dataViewProtoFuncGetInt8):
+        (JSC::dataViewProtoFuncGetInt16):
+        (JSC::dataViewProtoFuncGetInt32):
+        (JSC::dataViewProtoFuncGetUint8):
+        (JSC::dataViewProtoFuncGetUint16):
+        (JSC::dataViewProtoFuncGetUint32):
+        (JSC::dataViewProtoFuncGetFloat32):
+        (JSC::dataViewProtoFuncGetFloat64):
+        (JSC::dataViewProtoFuncSetInt8):
+        (JSC::dataViewProtoFuncSetInt16):
+        (JSC::dataViewProtoFuncSetInt32):
+        (JSC::dataViewProtoFuncSetUint8):
+        (JSC::dataViewProtoFuncSetUint16):
+        (JSC::dataViewProtoFuncSetUint32):
+        (JSC::dataViewProtoFuncSetFloat32):
+        (JSC::dataViewProtoFuncSetFloat64):
+        * runtime/JSONObject.cpp: ditto.
+        * runtime/ObjectConstructor.cpp: ditto.
+        * runtime/StringPrototype.cpp: ditto.
+
+2014-08-18  Saam Barati  <sbarati@apple.com>
+
+        The parser should generate AST nodes the var declarations with no initializers
+        https://bugs.webkit.org/show_bug.cgi?id=135545
+
+        Reviewed by Geoffrey Garen.
+
+        Currently, JSC's parser ignores variable declarations
+        that have no assignment initializer value because all 
+        variables are implicitly assigned to undefined. But, 
+        type profiling needs an AST node to be generated for these 
+        empty variable declarations because it needs to be able to 
+        profile their text locations and to see that their type 
+        is undefined.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::EmptyVarExpression::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createVarStatement):
+        (JSC::ASTBuilder::createEmptyVarExpression):
+        * parser/NodeConstructors.h:
+        (JSC::EmptyVarExpression::EmptyVarExpression):
+        * parser/Nodes.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVarDeclarationList):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createEmptyVarExpression):
+
+2014-08-18  Diego Pino Garcia  <dpino@igalia.com>
+
+        Completed iterator can be revived by adding more than one new entry to the target object
+        https://bugs.webkit.org/show_bug.cgi?id=129993
+
+        Reviewed by Oliver Hunt.
+
+        When iterator reaches end, finish iterator.
+
+        * runtime/JSMapIterator.h:
+        (JSC::JSMapIterator::finish):
+        * runtime/JSSetIterator.h:
+        (JSC::JSSetIterator::finish):
+        * runtime/MapData.h:
+        (JSC::MapData::const_iterator::finish): set index of iterator to max
+        Int32.
+        * runtime/MapIteratorPrototype.cpp:
+        (JSC::MapIteratorPrototypeFuncNext):
+        * runtime/SetIteratorPrototype.cpp:
+        (JSC::SetIteratorPrototypeFuncNext):
+
+2014-08-15  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: rewrite CodeGeneratorInspector to be modular and testable
+        https://bugs.webkit.org/show_bug.cgi?id=131596
+
+        Unreviewed gardening to rebaseline inspector generator tests after addressing review comments.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2014-08-15  Brian J. Burg  <burg@cs.washington.edu>
+
+        Unreviewed build fix for some GTK bots after r172655.
+
+        Some bots use Python 2.6, which lacks the 'flags' named parameter for re.sub.
+
+        * inspector/scripts/codegen/generator.py:
+        (Generator.stylized_name_for_enum_value): Do things the old-school way.
+
+2014-08-15  Michael Saboff  <msaboff@apple.com>
+
+        Change callToJavaScript and callToNativeFunction so their callFrames match the native calling conventions
+        https://bugs.webkit.org/show_bug.cgi?id=131578
+
+        Reviewed by Geoffrey Garen.
+
+        Renamed callToJavaScript and callToNativeFunction to vmEntryToJavaScript and vmEntryToNative,
+        respectively.  Eliminated the sentinel frame and replaced it with the structure VMEntryRecord
+        that appears in the "locals" area of a VM entry stack frame.  Changed the order that
+        vmEntryToJavaScript and vmEntryToNative creates their stack frames to be native calling
+        convention compliant.  That is to save prior frame pointer, save callee save registers, then
+        allocate and populate the VMEntryRecord, and finally allocate a CallFrame for the JS function
+        that vmEntryToJavaScript will invoke.  The top most vm entry frame pointer is saved in
+        VM::topVMEntryFrame.  The vmEntry functions save prior contents of VM::topVMEntryFrame
+        along with the VM and VM::topCallFrame in the VMEntryRecord it places on the stack.  Starting
+        at VM::topCallFrame, the stack can be walked using these VMEntryRecords.
+
+        Arbitrary stack unwinding is now handled either iteratively by loading VM::topVMEntryFrame
+        into a local variable and using CallFrame::callerFrame(VMEntryFrame*&) or by using StackVisitor.
+        Given that the stack is effectively a singly linked list, general stack unwinding needs to use
+        one of these two methods.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Addition of VMEntryRecord.h
+
+        * bytecode/BytecodeList.json:
+        Renaming of llint helper opcodes due to renaming callToJavaScript and callToNativeFunction.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::stepOutOfFunction):
+        (JSC::Debugger::returnEvent):
+        (JSC::Debugger::didExecuteProgram):
+        * jsc.cpp:
+        (functionDumpCallFrame):
+        * jit/JITOperations.cpp:
+        Changed unwinding to use CallFrame::callerFrame(VMEntryFrame*&).
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::RecursionCheckFunctor::RecursionCheckFunctor):
+        (JSC::RecursionCheckFunctor::operator()):
+        (JSC::RecursionCheckFunctor::didRecurse):
+        (JSC::CodeBlock::noticeIncomingCall):
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::FindCallerMidStackFunctor::FindCallerMidStackFunctor):
+        (JSC::FindCallerMidStackFunctor::operator()):
+        (JSC::FindCallerMidStackFunctor::getCallerFrame):
+        (JSC::DebuggerCallFrame::callerFrame):
+        * interpreter/VMInspector.cpp:
+        (JSC::CountFramesFunctor::CountFramesFunctor):
+        (JSC::CountFramesFunctor::operator()):
+        (JSC::CountFramesFunctor::count):
+        (JSC::VMInspector::countFrames):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::FindFirstCallerFrameWithCodeblockFunctor):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::operator()):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::foundCallFrame):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::index):
+        (JSC::VM::throwException):
+        Changed unwinding to use StackVisitor including added functor classes.
+
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::callerFrame):
+        Added new flavor of callerFrame() that can iteratively unwind the stack.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::callerFrame): Changed callerFrame() to use private common helper.
+        (JSC::ExecState::callerFrameOrVMEntryFrame): Deleted.
+        (JSC::ExecState::isVMEntrySentinel): Deleted.
+        (JSC::ExecState::vmEntrySentinelCallerFrame): Deleted.
+        (JSC::ExecState::initializeVMEntrySentinelFrame): Deleted.
+        (JSC::ExecState::callerFrameSkippingVMEntrySentinel): Deleted.
+        (JSC::ExecState::vmEntrySentinelCodeBlock): Deleted.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::init):
+        (JSC::ExecState::topOfFrame):
+        (JSC::ExecState::currentVPC):
+        (JSC::ExecState::setCurrentVPC):
+        Eliminated unneded checking of sentinel frame.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::unwindCallFrame):
+        (JSC::Interpreter::getStackTrace): Updated for unwidning changes.
+        (JSC::Interpreter::unwind): Eliminated unneeded sentinel frame check.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        * jit/JITStubs.h:
+        * llint/LLIntThunks.cpp:
+        (JSC::callToJavaScript): Deleted.
+        (JSC::callToNativetion): Deleted.
+        (JSC::vmEntryToJavaScript):
+        (JSC::vmEntryToNative):
+        * llint/LLIntThunks.h:
+        Updated for vmEntryToJavaScript and vmEntryToNative name changes.
+
+        * interpreter/Interpreter.h:
+        (JSC::TopCallFrameSetter::TopCallFrameSetter):
+        (JSC::TopCallFrameSetter::~TopCallFrameSetter):
+        Eliminated unneeded sentinel frame check.
+
+        * interpreter/Interpreter.h:
+        (JSC::NativeCallFrameTracer::NativeCallFrameTracer):
+        Removed sentinel specific constructor.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::StackVisitor):
+        (JSC::StackVisitor::readFrame):
+        (JSC::StackVisitor::readNonInlinedFrame):
+        (JSC::StackVisitor::readInlinedFrame):
+        (JSC::StackVisitor::Frame::print):
+        * interpreter/StackVisitor.h:
+        (JSC::StackVisitor::Frame::callerIsVMEntry):
+        Changes for unwinding using CallFrame::callerFrame(VMEntryFrame*&).  Also added field that
+        indicates when about to step over a VM entry frame.
+
+        * interpreter/VMEntryRecord.h: Added.
+        (JSC::VMEntryRecord::prevTopCallFrame):
+        (JSC::VMEntryRecord::prevTopVMEntryFrame):
+        New struct to record prior state of VM's notion of VM entry and top call frames.
+
+        * jit/JITCode.cpp:
+        (JSC::JITCode::execute):
+        Use new vmEntryToJavaScript and vmEntryToNative name.
+
+        * llint/LLIntOffsetsExtractor.cpp: Added include for VMEntryRecord.h.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Offline assembly implementation of creating stack frame with VMEntryRecord and well as restoring 
+        relevent VM fields when exiting the VM.  Added a helper that returns a VMEntryRecord given
+        a pointer to the VM entry frame.
+
+        * llint/LLIntThunks.cpp:
+        (JSC::vmEntryRecord):
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+        C Loop changes to mirror the assembly changes.
+
+        * runtime/VM.h:
+        Added topVMEntryFrame field.
+
+2014-08-15  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: rewrite CodeGeneratorInspector to be modular and testable
+        https://bugs.webkit.org/show_bug.cgi?id=131596
+
+        Reviewed by Joseph Pecoraro.
+
+        Replace CodeGeneratorInspector.py with generate-inspector-protocol-bindings.py.
+        The new generator decouples parsing and typechecking a model of the protocol from
+        code generation. Each generated file is created by a different subclass of Generator.
+        Helper methods to compute various type signatures are shared among generators.
+
+        This patch introduces a test harness and a test suite that covers all functionality.
+
+        Aside from hooking up the new inspector bindings generator to the build system,
+        there are a few comingled changes that would be painful to split from the main
+        patch:
+
+        Convert protocol enumeration types from struct-namespaced enums to C++ scoped enums.
+
+        Move all runtimeCast(), assertValueHasExpectedType(), and RuntimeCastHelper methods to static
+        methods of BindingTraits specializations.
+
+        Together, these changes reduce duplication and make it possible to forward-declare
+        all protocol enum and object types, reducing weird ordering dependencies between domains.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.vcxproj/copy-files.cmd:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: Add inspector scripts to solution filters.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/ConsoleMessage.cpp: Convert to scoped enums.
+        (Inspector::messageSourceValue):
+        (Inspector::messageTypeValue):
+        (Inspector::messageLevelValue):
+        * inspector/InjectedScript.cpp: Convert to scoped enums and BindingTraits.
+        (Inspector::InjectedScript::getFunctionDetails):
+        (Inspector::InjectedScript::getProperties):
+        (Inspector::InjectedScript::getInternalProperties):
+        (Inspector::InjectedScript::wrapCallFrames):
+        (Inspector::InjectedScript::wrapObject):
+        (Inspector::InjectedScript::wrapTable):
+        * inspector/InjectedScriptBase.cpp: Convert InspectorValue::Type to a scoped enum.
+        (Inspector::InjectedScriptBase::makeEvalCall):
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::injectedScriptForObjectId):
+        * inspector/InspectorTypeBuilder.h:
+        (Inspector::TypeBuilder::Array::create):
+        (Inspector::TypeBuilder::StructItemTraits::pushRefPtr):
+        (Inspector::TypeBuilder::ArrayItemHelper<String>::Traits::pushRaw):
+        (Inspector::TypeBuilder::ArrayItemHelper<int>::Traits::pushRaw):
+        (Inspector::TypeBuilder::ArrayItemHelper<double>::Traits::pushRaw):
+        (Inspector::TypeBuilder::ArrayItemHelper<bool>::Traits::pushRaw):
+        (Inspector::TypeBuilder::ArrayItemHelper<InspectorValue>::Traits::pushRefPtr):
+        (Inspector::TypeBuilder::ArrayItemHelper<InspectorObject>::Traits::pushRefPtr):
+        (Inspector::TypeBuilder::ArrayItemHelper<InspectorArray>::Traits::pushRefPtr):
+        (Inspector::TypeBuilder::PrimitiveBindingTraits::assertValueHasExpectedType):
+        (Inspector::TypeBuilder::BindingTraits<TypeBuilder::Array<T>>::runtimeCast):
+        (Inspector::TypeBuilder::BindingTraits<TypeBuilder::Array<T>>::assertValueHasExpectedType):
+        (Inspector::TypeBuilder::BindingTraits<InspectorValue>::assertValueHasExpectedType):
+        (Inspector::TypeBuilder::BindingTraits<int>::assertValueHasExpectedType):
+        (Inspector::TypeBuilder::ExactlyInt::ExactlyInt): Deleted. It was not used.
+        (Inspector::TypeBuilder::ExactlyInt::operator int): Deleted.
+        (Inspector::TypeBuilder::ExactlyInt::cast_to_int): Deleted.
+        (Inspector::TypeBuilder::ExactlyInt::cast_to_int<int>): Deleted.
+        (Inspector::TypeBuilder::int>): Deleted.
+        (Inspector::TypeBuilder::RuntimeCastHelper::assertType): Deleted.
+        (Inspector::TypeBuilder::RuntimeCastHelper::assertAny): Deleted.
+        (Inspector::TypeBuilder::RuntimeCastHelper::assertInt): Deleted.
+        (Inspector::TypeBuilder::Array::runtimeCast): Deleted.
+        (Inspector::TypeBuilder::Array::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::StructItemTraits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<String>::Traits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<int>::Traits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<double>::Traits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<bool>::Traits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<InspectorValue>::Traits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<InspectorObject>::Traits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<InspectorArray>::Traits::assertCorrectValue): Deleted.
+        (Inspector::TypeBuilder::ArrayItemHelper<TypeBuilder::Array<T>>::Traits::assertCorrectValue): Deleted.
+
+        * inspector/InspectorValues.cpp: Convert InspectorValue::Type to a scoped enum.
+        (Inspector::InspectorValue::writeJSON):
+        (Inspector::InspectorBasicValue::asBoolean):
+        (Inspector::InspectorBasicValue::asNumber):
+        (Inspector::InspectorBasicValue::writeJSON):
+        (Inspector::InspectorString::writeJSON):
+        (Inspector::InspectorObjectBase::InspectorObjectBase):
+        (Inspector::InspectorObjectBase::setArray): Take InspectorArrayBase.
+        (Inspector::InspectorObjectBase::setObject): Take InspectorObjectBase.
+        (Inspector::InspectorArrayBase::InspectorArrayBase):
+        * inspector/InspectorValues.h:
+
+        * inspector/agents/InspectorDebuggerAgent.cpp: Convert to scoped enums.
+        (Inspector::InspectorDebuggerAgent::schedulePauseOnNextStatement):
+        (Inspector::InspectorDebuggerAgent::breakProgram):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::parse):
+        * inspector/agents/InspectorRuntimeAgent.h:
+
+        * inspector/scripts/CodeGeneratorInspector.py: Removed.
+        * inspector/scripts/codegen/__init__.py: Added.
+        * inspector/scripts/codegen/generate_backend_commands.py: Added.
+        (BackendCommandsGenerator):
+        (BackendCommandsGenerator.__init__):
+        (BackendCommandsGenerator.model):
+        (BackendCommandsGenerator.output_filename):
+        (BackendCommandsGenerator.generate_license):
+        (BackendCommandsGenerator.generate_output):
+        (BackendCommandsGenerator.generate_domain):
+        (BackendCommandsGenerator.generate_domain.is_anonymous_enum_member):
+        (BackendCommandsGenerator.generate_domain.generate_parameter_object):
+        * inspector/scripts/codegen/generate_backend_dispatcher_header.py: Added.
+        (BackendDispatcherHeaderGenerator):
+        (BackendDispatcherHeaderGenerator.__init__):
+        (BackendDispatcherHeaderGenerator.model):
+        (BackendDispatcherHeaderGenerator.output_filename):
+        (BackendDispatcherHeaderGenerator.generate_license):
+        (BackendDispatcherHeaderGenerator.generate_output):
+        (BackendDispatcherHeaderGenerator.generate_output.for):
+        (BackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        (BackendDispatcherHeaderGenerator._generate_anonymous_enum_for_parameter):
+        (BackendDispatcherHeaderGenerator._generate_handler_declaration_for_command):
+        (BackendDispatcherHeaderGenerator._generate_async_handler_declaration_for_command):
+        (BackendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        (BackendDispatcherHeaderGenerator._generate_dispatcher_declaration_for_command):
+        * inspector/scripts/codegen/generate_backend_dispatcher_implementation.py: Added.
+        (BackendDispatcherImplementationGenerator):
+        (BackendDispatcherImplementationGenerator.__init__):
+        (BackendDispatcherImplementationGenerator.model):
+        (BackendDispatcherImplementationGenerator.output_filename):
+        (BackendDispatcherImplementationGenerator.generate_license):
+        (BackendDispatcherImplementationGenerator.generate_output):
+        (BackendDispatcherImplementationGenerator._generate_handler_class_destructor_for_domain):
+        (BackendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        (BackendDispatcherImplementationGenerator._generate_small_dispatcher_switch_implementation_for_domain):
+        (BackendDispatcherImplementationGenerator._generate_large_dispatcher_switch_implementation_for_domain):
+        (BackendDispatcherImplementationGenerator._generate_async_dispatcher_class_for_domain):
+        (BackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_header.py: Added.
+        (FrontendDispatcherHeaderGenerator):
+        (FrontendDispatcherHeaderGenerator.__init__):
+        (FrontendDispatcherHeaderGenerator.model):
+        (FrontendDispatcherHeaderGenerator.output_filename):
+        (FrontendDispatcherHeaderGenerator.generate_license):
+        (FrontendDispatcherHeaderGenerator.generate_output):
+        (FrontendDispatcherHeaderGenerator._generate_anonymous_enum_for_parameter):
+        (FrontendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        (FrontendDispatcherHeaderGenerator._generate_dispatcher_declaration_for_event):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_implementation.py: Added.
+        (FrontendDispatcherImplementationGenerator):
+        (FrontendDispatcherImplementationGenerator.__init__):
+        (FrontendDispatcherImplementationGenerator.model):
+        (FrontendDispatcherImplementationGenerator.output_filename):
+        (FrontendDispatcherImplementationGenerator.generate_license):
+        (FrontendDispatcherImplementationGenerator.generate_output):
+        (FrontendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        (FrontendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_event):
+        * inspector/scripts/codegen/generate_type_builder_header.py: Added.
+        (TypeBuilderHeaderGenerator):
+        (TypeBuilderHeaderGenerator.__init__):
+        (TypeBuilderHeaderGenerator.model):
+        (TypeBuilderHeaderGenerator.output_filename):
+        (TypeBuilderHeaderGenerator.generate_license):
+        (TypeBuilderHeaderGenerator.generate_output):
+        (TypeBuilderHeaderGenerator._generate_forward_declarations):
+        (_generate_typedefs):
+        (_generate_typedefs_for_domain):
+        (_generate_builders_for_domain):
+        (_generate_class_for_object_declaration):
+        (_generate_struct_for_enum_declaration):
+        (_generate_struct_for_anonymous_enum_member):
+        (_generate_struct_for_anonymous_enum_member.apply_indentation):
+        (_generate_struct_for_enum_type):
+        (_generate_builder_state_enum):
+        (_generate_builder_setter_for_member):
+        (_generate_unchecked_setter_for_member):
+        (_generate_forward_declarations_for_binding_traits):
+        * inspector/scripts/codegen/generate_type_builder_implementation.py: Added.
+        (TypeBuilderImplementationGenerator):
+        (TypeBuilderImplementationGenerator.__init__):
+        (TypeBuilderImplementationGenerator.model):
+        (TypeBuilderImplementationGenerator.output_filename):
+        (TypeBuilderImplementationGenerator.generate_license):
+        (TypeBuilderImplementationGenerator.generate_output):
+        (TypeBuilderImplementationGenerator._generate_enum_mapping):
+        (TypeBuilderImplementationGenerator._generate_open_field_names):
+        (TypeBuilderImplementationGenerator._generate_builders_for_domain):
+        (TypeBuilderImplementationGenerator._generate_runtime_cast_for_object_declaration):
+        (TypeBuilderImplementationGenerator._generate_assertion_for_object_declaration):
+        (TypeBuilderImplementationGenerator._generate_assertion_for_enum):
+        * inspector/scripts/codegen/generator.py: Added.
+        (ucfirst):
+        (Generator):
+        (Generator.__init__):
+        (Generator.model):
+        (Generator.generate_license):
+        (Generator.domains_to_generate):
+        (Generator.generate_output):
+        (Generator.output_filename):
+        (Generator.encoding_for_enum_value):
+        (Generator.assigned_enum_values):
+        (Generator.type_needs_runtime_casts):
+        (Generator.type_has_open_fields):
+        (Generator.type_needs_shape_assertions):
+        (Generator.calculate_types_requiring_shape_assertions):
+        (Generator.calculate_types_requiring_shape_assertions.gather_transitively_referenced_types):
+        (Generator._traverse_and_assign_enum_values):
+        (Generator._assign_encoding_for_enum_value):
+        (Generator.wrap_with_guard_for_domain):
+        (Generator.stylized_name_for_enum_value):
+        (Generator.stylized_name_for_enum_value.replaceCallback):
+        (Generator.keyed_get_method_for_type):
+        (Generator.keyed_set_method_for_type):
+        (Generator.type_builder_string_for_type):
+        (Generator.type_builder_string_for_type_member):
+        (Generator.type_string_for_unchecked_formal_in_parameter):
+        (Generator.type_string_for_checked_formal_event_parameter):
+        (Generator.type_string_for_type_member):
+        (Generator.type_string_for_type_with_name):
+        (Generator.type_string_for_formal_out_parameter):
+        (Generator.type_string_for_formal_async_parameter):
+        (Generator.type_string_for_stack_in_parameter):
+        (Generator.type_string_for_stack_out_parameter):
+        (Generator.assertion_method_for_type_member):
+        (Generator.assertion_method_for_type_member.assertion_method_for_type):
+        (Generator.cpp_name_for_primitive_type):
+        (Generator.js_name_for_parameter_type):
+        (Generator.should_use_wrapper_for_return_type):
+        (Generator.should_pass_by_copy_for_return_type):
+        * inspector/scripts/codegen/generator_templates.py: Added.
+        (GeneratorTemplates):
+        (void):
+        (HashMap):
+        (Builder):
+        (Inspector):
+        * inspector/scripts/codegen/models.py: Added.
+        (ucfirst):
+        (ParseException):
+        (TypecheckException):
+        (Framework):
+        (Framework.__init__):
+        (Framework.setting):
+        (Framework.fromString):
+        (Frameworks):
+        (TypeReference):
+        (TypeReference.__init__):
+        (TypeReference.referenced_name):
+        (Type):
+        (Type.__init__):
+        (Type.__eq__):
+        (Type.__hash__):
+        (Type.raw_name):
+        (Type.is_enum):
+        (Type.type_domain):
+        (Type.qualified_name):
+        (Type.resolve_type_references):
+        (PrimitiveType):
+        (PrimitiveType.__init__):
+        (PrimitiveType.__repr__):
+        (PrimitiveType.type_domain):
+        (PrimitiveType.qualified_name):
+        (AliasedType):
+        (AliasedType.__init__):
+        (AliasedType.__repr__):
+        (AliasedType.is_enum):
+        (AliasedType.type_domain):
+        (AliasedType.qualified_name):
+        (AliasedType.resolve_type_references):
+        (EnumType):
+        (EnumType.__init__):
+        (EnumType.__repr__):
+        (EnumType.is_enum):
+        (EnumType.type_domain):
+        (EnumType.enum_values):
+        (EnumType.qualified_name):
+        (EnumType.resolve_type_references):
+        (ArrayType):
+        (ArrayType.__init__):
+        (ArrayType.__repr__):
+        (ArrayType.type_domain):
+        (ArrayType.qualified_name):
+        (ArrayType.resolve_type_references):
+        (ObjectType):
+        (ObjectType.__init__):
+        (ObjectType.__repr__):
+        (ObjectType.type_domain):
+        (ObjectType.qualified_name):
+        (check_for_required_properties):
+        (Protocol):
+        (Protocol.__init__):
+        (Protocol.parse_specification):
+        (Protocol.parse_domain):
+        (Protocol.parse_type_declaration):
+        (Protocol.parse_type_member):
+        (Protocol.parse_command):
+        (Protocol.parse_event):
+        (Protocol.parse_call_or_return_parameter):
+        (Protocol.resolve_types):
+        (Protocol.lookup_type_for_declaration):
+        (Protocol.lookup_type_reference):
+        (Domain):
+        (Domain.__init__):
+        (Domain.resolve_type_references):
+        (Domains):
+        (TypeDeclaration):
+        (TypeDeclaration.__init__):
+        (TypeDeclaration.resolve_type_references):
+        (TypeMember):
+        (TypeMember.__init__):
+        (TypeMember.resolve_type_references):
+        (Parameter):
+        (Parameter.__init__):
+        (Parameter.resolve_type_references):
+        (Command):
+        (Command.__init__):
+        (Command.resolve_type_references):
+        (Event):
+        (Event.__init__):
+        (Event.resolve_type_references):
+        * inspector/scripts/generate-inspector-protocol-bindings.py: Added.
+        (IncrementalFileWriter):
+        (IncrementalFileWriter.__init__):
+        (IncrementalFileWriter.write):
+        (IncrementalFileWriter.close):
+        (generate_from_specification):
+        (generate_from_specification.load_specification):
+        * inspector/scripts/tests/commands-with-async-attribute.json: Added.
+        * inspector/scripts/tests/commands-with-optional-call-return-parameters.json: Added.
+        * inspector/scripts/tests/domains-with-varying-command-sizes.json: Added.
+        * inspector/scripts/tests/events-with-optional-parameters.json: Added.
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result: Added.
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result: Added.
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result: Added.
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result: Added.
+        * inspector/scripts/tests/fail-on-duplicate-type-declarations.json-error: Added.
+        * inspector/scripts/tests/fail-on-enum-with-no-values.json-error: Added.
+        * inspector/scripts/tests/fail-on-type-declaration-using-type-reference.json-error: Added.
+        * inspector/scripts/tests/fail-on-type-with-lowercase-name.json-error: Added.
+        * inspector/scripts/tests/fail-on-unknown-type-reference-in-type-declaration.json-error: Added.
+        * inspector/scripts/tests/fail-on-unknown-type-reference-in-type-member.json-error: Added.
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result: Added.
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result: Added.
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result: Added.
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result: Added.
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result: Added.
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result: Added.
+        * inspector/scripts/tests/fail-on-duplicate-type-declarations.json: Added.
+        * inspector/scripts/tests/fail-on-enum-with-no-values.json: Added.
+        * inspector/scripts/tests/fail-on-type-declaration-using-type-reference.json: Added.
+        * inspector/scripts/tests/fail-on-type-with-lowercase-name.json: Added.
+        * inspector/scripts/tests/fail-on-unknown-type-reference-in-type-declaration.json: Added.
+        * inspector/scripts/tests/fail-on-unknown-type-reference-in-type-member.json: Added.
+        * inspector/scripts/tests/same-type-id-different-domain.json: Added.
+        * inspector/scripts/tests/type-declaration-aliased-primitive-type.json: Added.
+        * inspector/scripts/tests/type-declaration-array-type.json: Added.
+        * inspector/scripts/tests/type-declaration-enum-type.json: Added.
+        * inspector/scripts/tests/type-declaration-object-type.json: Added.
+        * inspector/scripts/tests/type-requiring-runtime-casts.json: Added.
+
+2014-08-15  Matthew Mirman  <mmirman@apple.com>
+
+        Made native inlining errors not segfault. 
+        https://bugs.webkit.org/show_bug.cgi?id=135988
+        
+        Reviewed by Geoffrey Garen.
+
+        * ftl/FTLAbbreviations.h:
+        (JSC::FTL::disposeMessage): Added.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compilePutById): 
+        abstracted out Options::verboseCompilation as was the case in the rest of the file.
+        (JSC::FTL::LowerDFGToLLVM::compileNativeCallOrConstruct):
+        (JSC::FTL::LowerDFGToLLVM::getModuleByPathForSymbol): 
+        added output error messages for llvm module loading.
+
 2014-08-14  Andreas Kling  <akling@apple.com>
 
         Allocate the whole RegExpMatchesArray backing store up front.

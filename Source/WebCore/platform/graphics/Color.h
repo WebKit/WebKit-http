@@ -56,11 +56,11 @@ class Color;
 
 typedef unsigned RGBA32;        // RGBA quadruplet
 
-RGBA32 makeRGB(int r, int g, int b);
-RGBA32 makeRGBA(int r, int g, int b, int a);
+WEBCORE_EXPORT RGBA32 makeRGB(int r, int g, int b);
+WEBCORE_EXPORT RGBA32 makeRGBA(int r, int g, int b, int a);
 
-RGBA32 colorWithOverrideAlpha(RGBA32 color, float overrideAlpha);
-RGBA32 makeRGBA32FromFloats(float r, float g, float b, float a);
+WEBCORE_EXPORT RGBA32 colorWithOverrideAlpha(RGBA32 color, float overrideAlpha);
+WEBCORE_EXPORT RGBA32 makeRGBA32FromFloats(float r, float g, float b, float a);
 RGBA32 makeRGBAFromHSLA(double h, double s, double l, double a);
 RGBA32 makeRGBAFromCMYKA(float c, float m, float y, float k, float a);
 
@@ -82,7 +82,7 @@ public:
     Color(float r, float g, float b, float a) : m_color(makeRGBA32FromFloats(r, g, b, a)), m_valid(true) { }
     // Creates a new color from the specific CMYK and alpha values.
     Color(float c, float m, float y, float k, float a) : m_color(makeRGBAFromCMYKA(c, m, y, k, a)), m_valid(true) { }
-    explicit Color(const String&);
+    WEBCORE_EXPORT explicit Color(const String&);
     explicit Color(const char*);
 
     static Color createUnchecked(int r, int g, int b)
@@ -98,7 +98,7 @@ public:
 
     // Returns the color serialized according to HTML5
     // - http://www.whatwg.org/specs/web-apps/current-work/#serialization-of-a-color
-    String serialized() const;
+    WEBCORE_EXPORT String serialized() const;
 
     // Returns the color serialized as either #RRGGBB or #RRGGBBAA
     // The latter format is not a valid CSS color, and should only be seen in DRT dumps.
@@ -118,8 +118,8 @@ public:
     RGBA32 rgb() const { return m_color; } // Preserve the alpha.
     void setRGB(int r, int g, int b) { m_color = makeRGB(r, g, b); m_valid = true; }
     void setRGB(RGBA32 rgb) { m_color = rgb; m_valid = true; }
-    void getRGBA(float& r, float& g, float& b, float& a) const;
-    void getRGBA(double& r, double& g, double& b, double& a) const;
+    WEBCORE_EXPORT void getRGBA(float& r, float& g, float& b, float& a) const;
+    WEBCORE_EXPORT void getRGBA(double& r, double& g, double& b, double& a) const;
     void getHSL(double& h, double& s, double& l) const;
 
     Color light() const;
@@ -141,7 +141,7 @@ public:
 #endif
 
 #if USE(CG)
-    Color(CGColorRef);
+    WEBCORE_EXPORT Color(CGColorRef);
 #endif
 
 #if PLATFORM(HAIKU)
@@ -154,11 +154,11 @@ public:
     static bool parseHexColor(const UChar*, unsigned, RGBA32&);
 
     static const RGBA32 black = 0xFF000000;
-    static const RGBA32 white = 0xFFFFFFFF;
+    WEBCORE_EXPORT static const RGBA32 white = 0xFFFFFFFF;
     static const RGBA32 darkGray = 0xFF808080;
     static const RGBA32 gray = 0xFFA0A0A0;
     static const RGBA32 lightGray = 0xFFC0C0C0;
-    static const RGBA32 transparent = 0x00000000;
+    WEBCORE_EXPORT static const RGBA32 transparent = 0x00000000;
     static const RGBA32 cyan = 0xFF00FFFF;
 
 #if PLATFORM(IOS)
@@ -197,9 +197,9 @@ inline uint16_t fastDivideBy255(uint16_t value)
 }
 
 #if USE(CG)
-CGColorRef cachedCGColor(const Color&, ColorSpace);
+WEBCORE_EXPORT CGColorRef cachedCGColor(const Color&, ColorSpace);
 #if PLATFORM(IOS)
-CGColorRef createCGColorWithDeviceWhite(CGFloat white, CGFloat alpha);
+WEBCORE_EXPORT CGColorRef createCGColorWithDeviceWhite(CGFloat white, CGFloat alpha);
 #endif // PLATFORM(IOS)
 #endif
 

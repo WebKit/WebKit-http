@@ -452,6 +452,7 @@
     <ClCompile Include="..\dfg\DFGStoreBarrierElisionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStrengthReductionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStructureAbstractValue.cpp" />
+    <ClCompile Include="..\dfg\DFGStructureRegistrationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGThreadData.cpp" />
     <ClCompile Include="..\dfg\DFGThunks.cpp" />
     <ClCompile Include="..\dfg\DFGTierUpCheckInjectionPhase.cpp" />
@@ -470,7 +471,6 @@
     <ClCompile Include="..\dfg\DFGVariableEventStream.cpp" />
     <ClCompile Include="..\dfg\DFGVirtualRegisterAllocationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGWatchpointCollectionPhase.cpp" />
-    <ClCompile Include="..\dfg\DFGWatchableStructureWatchingPhase.cpp" />
     <ClCompile Include="..\dfg\DFGWorklist.cpp" />
     <ClCompile Include="..\disassembler\Disassembler.cpp" />
     <ClCompile Include="..\disassembler\LLVMDisassembler.cpp" />
@@ -689,8 +689,6 @@
     <ClCompile Include="..\runtime\FunctionHasExecutedCache.cpp" />
     <ClCompile Include="..\runtime\FunctionPrototype.cpp" />
     <ClCompile Include="..\runtime\GetterSetter.cpp" />
-    <ClCompile Include="..\runtime\HighFidelityLog.cpp" />
-    <ClCompile Include="..\runtime\HighFidelityTypeProfiler.cpp" />
     <ClCompile Include="..\runtime\Identifier.cpp" />
     <ClCompile Include="..\runtime\IndexingType.cpp" />
     <ClCompile Include="..\runtime\InitializeThreading.cpp" />
@@ -799,6 +797,8 @@
     <ClCompile Include="..\runtime\TypedArrayController.cpp" />
     <ClCompile Include="..\runtime\TypedArrayType.cpp" />
     <ClCompile Include="..\runtime\TypeLocationCache.cpp" />
+    <ClCompile Include="..\runtime\TypeProfiler.cpp" />
+    <ClCompile Include="..\runtime\TypeProfilerLog.cpp" />
     <ClCompile Include="..\runtime\TypeSet.cpp" />
     <ClCompile Include="..\runtime\VM.cpp" />
     <ClCompile Include="..\runtime\VMEntryScope.cpp" />
@@ -1093,6 +1093,7 @@
     <ClInclude Include="..\dfg\DFGStrengthReductionPhase.h" />
     <ClInclude Include="..\dfg\DFGStructureAbstractValue.h" />
     <ClInclude Include="..\dfg\DFGStructureClobberState.h" />
+    <ClInclude Include="..\dfg\DFGStructureRegistrationPhase.h" />
     <ClInclude Include="..\dfg\DFGThreadData.h" />
     <ClInclude Include="..\dfg\DFGThunks.h" />
     <ClInclude Include="..\dfg\DFGTierUpCheckInjectionPhase.h" />
@@ -1112,7 +1113,6 @@
     <ClInclude Include="..\dfg\DFGVariableEventStream.h" />
     <ClInclude Include="..\dfg\DFGVariadicFunction.h" />
     <ClInclude Include="..\dfg\DFGVirtualRegisterAllocationPhase.h" />
-    <ClInclude Include="..\dfg\DFGWatchableStructureWatchingPhase.h" />
     <ClInclude Include="..\dfg\DFGWatchpointCollectionPhase.h" />
     <ClInclude Include="..\dfg\DFGWorklist.h" />
     <ClInclude Include="..\disassembler\Disassembler.h" />
@@ -1271,6 +1271,7 @@
     <ClInclude Include="..\interpreter\CallFrame.h" />
     <ClInclude Include="..\interpreter\CallFrameInlines.h" />
     <ClInclude Include="..\interpreter\CallFrameClosure.h" />
+    <ClInclude Include="..\interpreter\VMEntryRecord.h" />
     <ClInclude Include="..\interpreter\Interpreter.h" />
     <ClInclude Include="..\interpreter\JSStack.h" />
     <ClInclude Include="..\interpreter\JSStackInlines.h" />
@@ -1424,8 +1425,6 @@
     <ClInclude Include="..\runtime\GenericTypedArrayView.h" />
     <ClInclude Include="..\runtime\GenericTypedArrayViewInlines.h" />
     <ClInclude Include="..\runtime\GetterSetter.h" />
-    <ClInclude Include="..\runtime\HighFidelityLog.h" />
-    <ClInclude Include="..\runtime\HighFidelityTypeProfiler.h" />
     <ClInclude Include="..\runtime\Identifier.h" />
     <ClInclude Include="..\runtime\IndexingHeader.h" />
     <ClInclude Include="..\runtime\IndexingHeaderInlines.h" />
@@ -1583,6 +1582,8 @@
     <ClInclude Include="..\runtime\TypedArrayInlines.h" />
     <ClInclude Include="..\runtime\TypedArrayType.h" />
     <ClInclude Include="..\runtime\TypeLocationCache.h" />
+    <ClInclude Include="..\runtime\TypeProfiler.h" />
+    <ClInclude Include="..\runtime\TypeProfilerLog.h" />
     <ClInclude Include="..\runtime\TypeSet.h" />
     <ClInclude Include="..\runtime\TypedArrays.h" />
     <ClInclude Include="..\runtime\Uint16Array.h" />
@@ -1614,6 +1615,61 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\bytecode\BytecodeList.json" />
+    <None Include="..\inspector\scripts\codegen\generate_backend_commands.py" />
+    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_header.py" />
+    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_implementation.py" />
+    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_header.py" />
+    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_implementation.py" />
+    <None Include="..\inspector\scripts\codegen\generate_type_builder_header.py" />
+    <None Include="..\inspector\scripts\codegen\generate_type_builder_implementation.py" />
+    <None Include="..\inspector\scripts\codegen\generator.py" />
+    <None Include="..\inspector\scripts\codegen\generator_templates.py" />
+    <None Include="..\inspector\scripts\codegen\models.py" />
+    <None Include="..\inspector\scripts\codegen\__init__.py" />
+    <None Include="..\inspector\scripts\cssmin.py" />
+    <None Include="..\inspector\scripts\generate-combined-inspector-json.py" />
+    <None Include="..\inspector\scripts\generate-inspector-protocol-bindings.py" />
+    <None Include="..\inspector\scripts\inline-and-minify-stylesheets-and-scripts.py" />
+    <None Include="..\inspector\scripts\jsmin.py" />
+    <None Include="..\inspector\scripts\tests\commands-with-async-attribute.json" />
+    <None Include="..\inspector\scripts\tests\commands-with-optional-call-return-parameters.json" />
+    <None Include="..\inspector\scripts\tests\domains-with-varying-command-sizes.json" />
+    <None Include="..\inspector\scripts\tests\events-with-optional-parameters.json" />
+    <None Include="..\inspector\scripts\tests\expected\commands-with-async-attribute.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\commands-with-optional-call-return-parameters.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\domains-with-varying-command-sizes.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\events-with-optional-parameters.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-duplicate-type-declarations.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-enum-with-no-values.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-string-typed-optional-parameter-flag.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-string-typed-optional-type-member.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-type-declaration-using-type-reference.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-type-with-lowercase-name.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-unknown-type-reference-in-type-declaration.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\fail-on-unknown-type-reference-in-type-member.json-error" />
+    <None Include="..\inspector\scripts\tests\expected\same-type-id-different-domain.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\shadowed-optional-type-setters.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\type-declaration-aliased-primitive-type.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\type-declaration-array-type.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\type-declaration-enum-type.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\type-declaration-object-type.json-result" />
+    <None Include="..\inspector\scripts\tests\expected\type-requiring-runtime-casts.json-result" />
+    <None Include="..\inspector\scripts\tests\fail-on-duplicate-type-declarations.json" />
+    <None Include="..\inspector\scripts\tests\fail-on-enum-with-no-values.json" />
+    <None Include="..\inspector\scripts\tests\fail-on-string-typed-optional-parameter-flag.json" />
+    <None Include="..\inspector\scripts\tests\fail-on-string-typed-optional-type-member.json" />
+    <None Include="..\inspector\scripts\tests\fail-on-type-declaration-using-type-reference.json" />
+    <None Include="..\inspector\scripts\tests\fail-on-type-with-lowercase-name.json" />
+    <None Include="..\inspector\scripts\tests\fail-on-unknown-type-reference-in-type-declaration.json" />
+    <None Include="..\inspector\scripts\tests\fail-on-unknown-type-reference-in-type-member.json" />
+    <None Include="..\inspector\scripts\tests\same-type-id-different-domain.json" />
+    <None Include="..\inspector\scripts\tests\shadowed-optional-type-setters.json" />
+    <None Include="..\inspector\scripts\tests\type-declaration-aliased-primitive-type.json" />
+    <None Include="..\inspector\scripts\tests\type-declaration-array-type.json" />
+    <None Include="..\inspector\scripts\tests\type-declaration-enum-type.json" />
+    <None Include="..\inspector\scripts\tests\type-declaration-object-type.json" />
+    <None Include="..\inspector\scripts\tests\type-requiring-runtime-casts.json" />
+    <None Include="..\inspector\scripts\xxd.pl" />
     <None Include="JavaScriptCorePostBuild.cmd">
       <FileType>Document</FileType>
     </None>

@@ -47,6 +47,7 @@
 #include "ThunkGenerators.h"
 #include "TypedArrayController.h"
 #include "TypeLocation.h"
+#include "VMEntryRecord.h"
 #include "Watchdog.h"
 #include "Watchpoint.h"
 #include "WeakRandom.h"
@@ -76,8 +77,8 @@ namespace JSC {
     class CommonIdentifiers;
     class ExecState;
     class HandleStack;
-    class HighFidelityTypeProfiler;
-    class HighFidelityLog;
+    class TypeProfiler;
+    class TypeProfilerLog;
     class Identifier;
     class Interpreter;
     class JSGlobalObject;
@@ -235,6 +236,7 @@ namespace JSC {
 
         VMType vmType;
         ClientData* clientData;
+        VMEntryFrame* topVMEntryFrame;
         ExecState* topCallFrame;
         std::unique_ptr<Watchdog> watchdog;
 
@@ -495,13 +497,12 @@ namespace JSC {
         
         BuiltinExecutables* builtinExecutables() { return m_builtinExecutables.get(); }
 
-        bool isProfilingTypesWithHighFidelity() { return !!m_highFidelityTypeProfiler; }
-        bool enableHighFidelityTypeProfiling();
-        bool disableHighFidelityTypeProfiling();
-        HighFidelityLog* highFidelityLog() { return m_highFidelityLog.get(); }
-        HighFidelityTypeProfiler* highFidelityTypeProfiler() { return m_highFidelityTypeProfiler.get(); }
+        bool enableTypeProfiler();
+        bool disableTypeProfiler();
+        TypeProfilerLog* typeProfilerLog() { return m_typeProfilerLog.get(); }
+        TypeProfiler* typeProfiler() { return m_typeProfiler.get(); }
         TypeLocation* nextTypeLocation();
-        JS_EXPORT_PRIVATE void dumpHighFidelityProfilingTypes();
+        JS_EXPORT_PRIVATE void dumpTypeProfilerData();
         GlobalVariableID getNextUniqueVariableID() { return m_nextUniqueVariableID++; }
 
     private:
@@ -552,10 +553,10 @@ namespace JSC {
         OwnPtr<BuiltinExecutables> m_builtinExecutables;
         RefCountedArray<StackFrame> m_exceptionStack;
         HashMap<String, RefPtr<WatchpointSet>> m_impurePropertyWatchpointSets;
-        std::unique_ptr<HighFidelityTypeProfiler> m_highFidelityTypeProfiler;
-        std::unique_ptr<HighFidelityLog> m_highFidelityLog;
+        std::unique_ptr<TypeProfiler> m_typeProfiler;
+        std::unique_ptr<TypeProfilerLog> m_typeProfilerLog;
         GlobalVariableID m_nextUniqueVariableID;
-        unsigned m_highFidelityTypeProfilingEnabledCount;
+        unsigned m_typeProfilerEnabledCount;
         std::unique_ptr<Bag<TypeLocation>> m_typeLocationInfo;
     };
 

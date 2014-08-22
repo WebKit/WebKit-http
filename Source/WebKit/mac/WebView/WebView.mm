@@ -148,6 +148,7 @@
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MemoryPressureHandler.h>
+#import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/NodeList.h>
 #import <WebCore/Notification.h>
 #import <WebCore/NotificationController.h>
@@ -1098,7 +1099,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     NSEnumerator *enumerator = [MIMETypes objectEnumerator];
     NSString *MIMEType;
     while ((MIMEType = [enumerator nextObject]) != nil) {
-        NSArray *extensionsForType = WKGetExtensionsForMIMEType(MIMEType);
+        NSArray *extensionsForType = [[NSURLFileTypeMappings sharedMappings] extensionsForMIMEType:MIMEType];
         if (extensionsForType) {
             [extensions addObjectsFromArray:extensionsForType];
         }
@@ -1495,7 +1496,7 @@ static NSMutableSet *knownPluginMIMETypes()
 #if !PLATFORM(IOS)
 + (NSString *)suggestedFileExtensionForMIMEType:(NSString *)type
 {
-    return WKGetPreferredExtensionForMIMEType(type);
+    return [[NSURLFileTypeMappings sharedMappings] preferredExtensionForMIMEType:type];
 }
 #endif
 
@@ -1572,9 +1573,8 @@ static NSMutableSet *knownPluginMIMETypes()
     _private->mainViewIsScrollingOrZooming = NO;
     [self setDefersCallbacks:NO];
     [[self mainFrame] setTimeoutsPaused:NO];
-    FrameView* view = [self _mainCoreFrame]->view();
-    if (view && view->renderView())
-        view->renderView()->resumePausedImageAnimationsIfNeeded();
+    if (FrameView* view = [self _mainCoreFrame]->view())
+        view->resumeVisibleImageAnimationsIncludingSubframes();
 }
 
 - (void)_setResourceLoadSchedulerSuspended:(BOOL)suspend
@@ -1798,7 +1798,7 @@ static bool fastDocumentTeardownEnabled()
 #if !PLATFORM(IOS)
     // Get the MIME type from the extension.
     if ([extension length] != 0) {
-        MIMEType = WKGetMIMETypeForExtension(extension);
+        MIMEType = [[NSURLFileTypeMappings sharedMappings] MIMETypeForExtension:extension];
     }
 #endif
 
@@ -2302,6 +2302,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
 #endif
 
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=136131
+    settings.setRubberBandingForOverflowScrollEnabled(false);
+
 #if PLATFORM(IOS)
     settings.setStandalone([preferences _standalone]);
     settings.setTelephoneNumberParsingEnabled([preferences _telephoneNumberParsingEnabled]);
@@ -2327,8 +2330,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     settings.setMinimumZoomFontSize([preferences _minimumZoomFontSize]);
 #endif
-
-    settings.setAllowNavigationToInvalidURL(!WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_NAVIGATION_URL_VALIDATION));
 #endif // PLATFORM(IOS)
 
 #if PLATFORM(MAC)

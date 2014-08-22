@@ -51,7 +51,8 @@ public:
 
     void recursiveBuildTransaction(RemoteLayerTreeContext&, RemoteLayerTreeTransaction&);
 
-    virtual void setNeedsDisplay(const WebCore::FloatRect* dirtyRect = 0) override;
+    virtual void setNeedsDisplayInRect(const WebCore::FloatRect& dirtyRect) override;
+    virtual void setNeedsDisplay() override;
 
     virtual void copyContentsFromLayer(PlatformCALayer*) override;
 
@@ -69,6 +70,7 @@ public:
     virtual void removeAnimationForKey(const String& key) override;
     virtual PassRefPtr<WebCore::PlatformCAAnimation> animationForKey(const String& key) override;
     virtual void animationStarted(const String& key, CFTimeInterval beginTime) override;
+    virtual void animationEnded(const String& key) override;
 
     virtual void setMask(WebCore::PlatformCALayer*) override;
 

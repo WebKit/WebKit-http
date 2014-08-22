@@ -40,7 +40,6 @@
 #include "ErrorHandlingScope.h"
 #include "ExceptionFuzz.h"
 #include "GetterSetter.h"
-#include "HighFidelityLog.h"
 #include "HostCallReturnValue.h"
 #include "JIT.h"
 #include "JITToDFGDeferredCompilationCallback.h"
@@ -54,6 +53,7 @@
 #include "Repatch.h"
 #include "RepatchBuffer.h"
 #include "TestRunnerUtils.h"
+#include "TypeProfilerLog.h"
 #include <wtf/InlineASM.h>
 
 namespace JSC {
@@ -80,11 +80,13 @@ void JIT_OPERATION operationThrowStackOverflowError(ExecState* exec, CodeBlock* 
 {
     // We pass in our own code block, because the callframe hasn't been populated.
     VM* vm = codeBlock->vm();
-    CallFrame* callerFrame = exec->callerFrameSkippingVMEntrySentinel();
+
+    VMEntryFrame* vmEntryFrame = vm->topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
     if (!callerFrame)
         callerFrame = exec;
 
-    NativeCallFrameTracer tracer(vm, callerFrame);
+    NativeCallFrameTracer tracer(vm, vmEntryFrame, callerFrame);
     ErrorHandlingScope errorScope(*vm);
     vm->throwException(callerFrame, createStackOverflowError(callerFrame));
 }
@@ -92,14 +94,16 @@ void JIT_OPERATION operationThrowStackOverflowError(ExecState* exec, CodeBlock* 
 int32_t JIT_OPERATION operationCallArityCheck(ExecState* exec)
 {
     VM* vm = &exec->vm();
-    CallFrame* callerFrame = exec->callerFrameSkippingVMEntrySentinel();
-    NativeCallFrameTracer tracer(vm, callerFrame);
+    VMEntryFrame* vmEntryFrame = vm->topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
 
     JSStack& stack = vm->interpreter->stack();
 
     int32_t missingArgCount = CommonSlowPaths::arityCheckFor(exec, &stack, CodeForCall);
-    if (missingArgCount < 0)
+    if (missingArgCount < 0) {
+        NativeCallFrameTracer tracer(vm, vmEntryFrame, callerFrame);
         throwStackOverflowError(callerFrame);
+    }
 
     return missingArgCount;
 }
@@ -107,14 +111,16 @@ int32_t JIT_OPERATION operationCallArityCheck(ExecState* exec)
 int32_t JIT_OPERATION operationConstructArityCheck(ExecState* exec)
 {
     VM* vm = &exec->vm();
-    CallFrame* callerFrame = exec->callerFrameSkippingVMEntrySentinel();
-    NativeCallFrameTracer tracer(vm, callerFrame);
+    VMEntryFrame* vmEntryFrame = vm->topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
 
     JSStack& stack = vm->interpreter->stack();
 
     int32_t missingArgCount = CommonSlowPaths::arityCheckFor(exec, &stack, CodeForConstruct);
-    if (missingArgCount < 0)
+    if (missingArgCount < 0) {
+        NativeCallFrameTracer tracer(vm, vmEntryFrame, callerFrame);
         throwStackOverflowError(callerFrame);
+    }
 
     return missingArgCount;
 }
@@ -1823,7 +1829,7 @@ void JIT_OPERATION operationInitGlobalConst(ExecState* exec, Instruction* pc)
 
 void JIT_OPERATION lookupExceptionHandler(VM* vm, ExecState* exec)
 {
-    NativeCallFrameTracer tracer(vm, exec, NativeCallFrameTracer::VMEntrySentinelOK);
+    NativeCallFrameTracer tracer(vm, exec);
 
     JSValue exceptionValue = vm->exception();
     ASSERT(exceptionValue);
@@ -1837,7 +1843,6 @@ void JIT_OPERATION operationVMHandleException(ExecState* exec)
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
 
-    ASSERT(!exec->isVMEntrySentinel());
     genericUnwind(vm, exec, vm->exception());
 }
 
@@ -1924,7 +1929,7 @@ JSCell* JIT_OPERATION operationToIndexString(ExecState* exec, int32_t index)
 
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState* exec)
 {
-    exec->vm().highFidelityLog()->processHighFidelityLog(ASCIILiteral("Log Full, called from inside baseline JIT"));
+    exec->vm().typeProfilerLog()->processLogEntries(ASCIILiteral("Log Full, called from inside baseline JIT"));
 }
 
 } // extern "C"

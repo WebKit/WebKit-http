@@ -115,7 +115,7 @@ ParserError BytecodeGenerator::generate()
 
     m_codeBlock->shrinkToFit();
 
-    if (m_codeBlock->symbolTable() && !m_codeBlock->vm()->isProfilingTypesWithHighFidelity())
+    if (m_codeBlock->symbolTable() && !m_codeBlock->vm()->typeProfiler())
         m_codeBlock->setSymbolTable(m_codeBlock->symbolTable()->cloneCapturedNames(*m_codeBlock->vm()));
 
     if (m_expressionTooDeep)
@@ -339,7 +339,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
 
     m_symbolTable->setCaptureEnd(virtualRegisterForLocal(codeBlock->m_numVars).offset());
 
-    bool canLazilyCreateFunctions = !functionBody->needsActivationForMoreThanVariables() && !m_shouldEmitDebugHooks && !isProfilingTypesWithHighFidelity();
+    bool canLazilyCreateFunctions = !functionBody->needsActivationForMoreThanVariables() && !m_shouldEmitDebugHooks && !m_vm->typeProfiler();
     m_firstLazyFunction = codeBlock->m_numVars;
     for (size_t i = 0; i < functionStack.size(); ++i) {
         FunctionBodyNode* function = functionStack[i];
@@ -1006,8 +1006,8 @@ RegisterID* BytecodeGenerator::emitMove(RegisterID* dst, CaptureMode captureMode
     if (captureMode == IsCaptured)
         instructions().append(watchableVariable(dst->index()));
 
-    if (!dst->isTemporary() && isProfilingTypesWithHighFidelity())
-        emitProfileTypesWithHighFidelity(dst, ProfileTypesBytecodeHasGlobalID, nullptr);
+    if (!dst->isTemporary() && vm()->typeProfiler())
+        emitProfileType(dst, ProfileTypeBytecodeHasGlobalID, nullptr);
 
     return dst;
 }
@@ -1118,21 +1118,21 @@ RegisterID* BytecodeGenerator::emitEqualityOp(OpcodeID opcodeID, RegisterID* dst
     return dst;
 }
 
-void BytecodeGenerator::emitHighFidelityTypeProfilingExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot)
+void BytecodeGenerator::emitTypeProfilerExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot)
 {
     unsigned start = startDivot.offset; // Ranges are inclusive of their endpoints, AND 0 indexed.
     unsigned end = endDivot.offset - 1; // End Ranges already go one past the inclusive range, so subtract 1.
     unsigned instructionOffset = instructions().size() - 1;
-    m_codeBlock->addHighFidelityTypeProfileExpressionInfo(instructionOffset, start, end);
+    m_codeBlock->addTypeProfilerExpressionInfo(instructionOffset, start, end);
 }
 
-void BytecodeGenerator::emitProfileTypesWithHighFidelity(RegisterID* registerToProfile, ProfileTypesWithHighFidelityBytecodeFlag flag, const Identifier* identifier)
+void BytecodeGenerator::emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag flag, const Identifier* identifier)
 {
-    if (flag == ProfileTypesBytecodeGetFromScope || flag == ProfileTypesBytecodePutToScope)
+    if (flag == ProfileTypeBytecodeGetFromScope || flag == ProfileTypeBytecodePutToScope)
         RELEASE_ASSERT(identifier);
 
-    // The format of this instruction is: op_profile_types_with_high_fidelity regToProfile, TypeLocation*, flag, identifier?, resolveType?
-    emitOpcode(op_profile_types_with_high_fidelity);
+    // The format of this instruction is: op_profile_type regToProfile, TypeLocation*, flag, identifier?, resolveType?
+    emitOpcode(op_profile_type);
     instructions().append(registerToProfile->index());
     instructions().append(0);
     instructions().append(flag);
@@ -1422,9 +1422,6 @@ RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, R
 {
     for (size_t i = m_forInContextStack.size(); i > 0; i--) {
         ForInContext* context = m_forInContextStack[i - 1].get();
-        if (context->base() != base)
-            continue;
-
         if (context->local() != property)
             continue;
 
@@ -2586,11 +2583,11 @@ RegisterID* BytecodeGenerator::emitToIndexString(RegisterID* dst, RegisterID* in
     return dst;
 }
 
-void BytecodeGenerator::pushIndexedForInScope(RegisterID* baseRegister, RegisterID* localRegister, RegisterID* indexRegister)
+void BytecodeGenerator::pushIndexedForInScope(RegisterID* localRegister, RegisterID* indexRegister)
 {
     if (!localRegister)
         return;
-    m_forInContextStack.append(std::make_unique<IndexedForInContext>(baseRegister, localRegister, indexRegister));
+    m_forInContextStack.append(std::make_unique<IndexedForInContext>(localRegister, indexRegister));
 }
 
 void BytecodeGenerator::popIndexedForInScope(RegisterID* localRegister)
@@ -2600,11 +2597,11 @@ void BytecodeGenerator::popIndexedForInScope(RegisterID* localRegister)
     m_forInContextStack.removeLast();
 }
 
-void BytecodeGenerator::pushStructureForInScope(RegisterID* baseRegister, RegisterID* localRegister, RegisterID* indexRegister, RegisterID* propertyRegister, RegisterID* enumeratorRegister)
+void BytecodeGenerator::pushStructureForInScope(RegisterID* localRegister, RegisterID* indexRegister, RegisterID* propertyRegister, RegisterID* enumeratorRegister)
 {
     if (!localRegister)
         return;
-    m_forInContextStack.append(std::make_unique<StructureForInContext>(baseRegister, localRegister, indexRegister, propertyRegister, enumeratorRegister));
+    m_forInContextStack.append(std::make_unique<StructureForInContext>(localRegister, indexRegister, propertyRegister, enumeratorRegister));
 }
 
 void BytecodeGenerator::popStructureForInScope(RegisterID* localRegister)

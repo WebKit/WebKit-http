@@ -74,7 +74,7 @@ static uint64_t getMemorySize()
     if (physPages == -1)
         return kDefaultMemorySize;
 
-    return ((pageSize / 1024) * physPages) / 1024;
+    return ((pageSize / 1024LL) * physPages) / 1024LL;
 #else
     // Fallback to default for other platforms.
     return kDefaultMemorySize;
@@ -109,6 +109,10 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     WebCore::memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     WebCore::memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     WebCore::pageCache()->setCapacity(pageCacheCapacity);
+
+#if PLATFORM(GTK)
+    WebCore::pageCache()->setShouldClearBackingStores(true);
+#endif
 
     if (!usesNetworkProcess()) {
         if (urlCacheDiskCapacity > soup_cache_get_max_size(cache))

@@ -56,8 +56,8 @@ public:
     CachedImage(const URL&, Image*, CacheBehaviorType, SessionID);
     virtual ~CachedImage();
 
-    Image* image(); // Returns the nullImage() if the image is not available yet.
-    Image* imageForRenderer(const RenderObject*); // Returns the nullImage() if the image is not available yet.
+    WEBCORE_EXPORT Image* image(); // Returns the nullImage() if the image is not available yet.
+    WEBCORE_EXPORT Image* imageForRenderer(const RenderObject*); // Returns the nullImage() if the image is not available yet.
     bool hasImage() const { return m_image.get(); }
     bool currentFrameKnownToBeOpaque(const RenderElement*);
 
@@ -101,7 +101,6 @@ private:
     void clearImage();
     // If not null, changeRect is the changed part of the image.
     void notifyObservers(const IntRect* changeRect = 0);
-    virtual PurgePriority purgePriority() const override { return PurgeFirst; }
     void checkShouldPaintBrokenImage();
 
     virtual void switchClientsToRevalidatedResource() override;

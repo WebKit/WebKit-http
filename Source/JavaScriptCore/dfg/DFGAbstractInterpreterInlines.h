@@ -1386,7 +1386,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case GetScope: // FIXME: We could get rid of these if we know that the JSFunction is a constant. https://bugs.webkit.org/show_bug.cgi?id=106202
     case GetMyScope:
-    case SkipTopScope:
         forNode(node).setType(SpecObjectOther);
         break;
 
@@ -1773,7 +1772,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                         transitions.append(
                             Transition(
                                 variant.oldStructureForTransition(), variant.newStructure()));
-                        m_graph.watchpoints().consider(variant.newStructure());
+                        m_graph.registerStructure(variant.newStructure());
                         newSet.add(variant.newStructure());
                     } else {
                         ASSERT(variant.kind() == PutByIdVariant::Replace);

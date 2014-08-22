@@ -1,3 +1,201 @@
+2014-08-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a button to enable paint flashing in the web inspector
+        https://bugs.webkit.org/show_bug.cgi?id=136133
+
+        Reviewed by Tim Hatcher.
+        
+        Add a button to the right of the layer borders button to turn on paint flashing.
+        Future patches will actually enable this feature.
+
+        * Localizations/en.lproj/localizedStrings.js: Tooltip strings.
+        * UserInterface/Images/PaintFlashing.svg: Added. "Paintbrush" icon.
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        (WebInspector.DOMTreeContentView.prototype.get navigationItems):
+        (WebInspector.DOMTreeContentView.prototype._togglePaintFlashing):
+
+2014-08-20  Saam Barati  <sbarati@apple.com>
+
+        Rename HighFidelityTypeProfiling variables for more clarity
+        https://bugs.webkit.org/show_bug.cgi?id=135899
+
+        Reviewed by Geoffrey Garen.
+
+        Change a reference in a comment to a JavaScriptCore file to its 
+        newly renamed variant.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+
+2014-08-18  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: Introduce an inspector Abstract Syntax Tree.
+        https://bugs.webkit.org/show_bug.cgi?id=135763
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch adds an Abstract Syntax Tree to the Web inspector. 
+        This syntax tree is modeled off the Esprima.js syntax tree
+        which complies with the Mozilla Parser API:
+        https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Parser_API
+        Script is the owner of the Web Inspector syntax tree, and has an API
+        for accessing its syntax tree property.
+
+        * UserInterface/External/Esprima/esprima.js:
+        * UserInterface/Main.html:
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script):
+        (WebInspector.Script.prototype.requestScriptSyntaxTree.makeSyntaxTreeAndCallCallback):
+        (WebInspector.Script.prototype._resolveResource):
+        (WebInspector.Script.prototype._makeSyntaxTree):
+        * UserInterface/Models/ScriptSyntaxTree.js: Added.
+        (WebInspector.ScriptSyntaxTree):
+        (WebInspector.ScriptSyntaxTree.prototype.get parsedSuccessfully):
+        (WebInspector.ScriptSyntaxTree.prototype.forEachNode):
+        (WebInspector.ScriptSyntaxTree.prototype.):
+        (WebInspector.ScriptSyntaxTree.prototype.filter):
+        (WebInspector.ScriptSyntaxTree.prototype.filterForNodesInRange):
+        (WebInspector.ScriptSyntaxTree.prototype.filterByRange):
+        (WebInspector.ScriptSyntaxTree.prototype.containsNonEmptyReturnStatement.removeFunctionsFilter):
+        (WebInspector.ScriptSyntaxTree.prototype.containsNonEmptyReturnStatement):
+        (WebInspector.ScriptSyntaxTree.prototype.updateTypes):
+        (WebInspector.ScriptSyntaxTree.prototype._defaultParserState):
+        (WebInspector.ScriptSyntaxTree.prototype._recurse):
+        (WebInspector.ScriptSyntaxTree.prototype._recurseArray):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+
+2014-08-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve performance of selection range changes viewing Scripts timeline
+        https://bugs.webkit.org/show_bug.cgi?id=136015
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        (clamp):
+        Helper function to clamp a value between a min and max.
+
+        * UserInterface/Models/ProfileNode.js:
+        (WebInspector.ProfileNode.prototype.get startTime):
+        (WebInspector.ProfileNode.prototype.get endTime):
+        These can be quickly calculated, so avoid full calculation to grab the values.
+
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.updateLayout):
+        Update ranges with a smart helper, instead of blindly doing it and needing refresh.
+
+        * UserInterface/Views/ProfileNodeDataGridNode.js:
+        (WebInspector.ProfileNodeDataGridNode.prototype.get rangeEndTime):
+        (WebInspector.ProfileNodeDataGridNode.prototype.get data):
+        (WebInspector.ProfileNodeDataGridNode.prototype.updateRangeTimes):
+        (WebInspector.ProfileNodeDataGridNode.prototype.set rangeStartTime): Deleted.
+        (WebInspector.ProfileNodeDataGridNode.prototype.set rangeEndTime): Deleted.
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.updateRangeTimes):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.set rangeStartTime): Deleted.
+        (WebInspector.ScriptTimelineDataGridNode.prototype.set rangeEndTime): Deleted.
+        When updating the range selection, compare to the last range selection
+        on this DataGridNode. If the visible portion of this node's time range
+        changes, we need a refresh. Otherwise, we don't need a refresh.
+
+2014-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update Scripts/update-LegacyInspectorBackendCommands.rb for the new generator
+        https://bugs.webkit.org/show_bug.cgi?id=136006
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/update-LegacyInspectorBackendCommands.rb:
+        Use the new generator and pass the appropriate flags.
+
+        * UserInterface/Protocol/Legacy/6.0/InspectorWebBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorWebBackendCommands.js:
+        Newly generated files using the new generator.
+
+        * Versions/Inspector-iOS-6.0.json:
+        Remove unsupported features.
+
+2014-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove forced layouts during recording caused by striped background element resizing
+        https://bugs.webkit.org/show_bug.cgi?id=136009
+
+        Reviewed by Timothy Hatcher.
+
+        We used to manually resize and a custom striped background behind
+        the timeline tree outline content area. This can happen frequently
+        during timeline recordings causing forced layouts. We can eliminate
+        the hack and instead put the stripe background on the tree outline.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.updateCustomContentOverflow): Deleted.
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .content .item > .status > .status-button):
+        (.sidebar > .panel.navigation.timeline > .content > .stripe-background): Deleted.
+        (.sidebar > .panel.navigation.timeline.timeline-content-view-showing > .content > .stripe-background): Deleted.
+        Eliminate the striped background element.
+
+        * UserInterface/Views/TimelineView.css:
+        (.panel.navigation.timeline > .content > .navigation-sidebar-panel-content-tree-outline):
+        (.panel.navigation.timeline.timeline-content-view-showing > .content > .navigation-sidebar-panel-content-tree-outline):
+        Give the timeline content tree outlines the striped background.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._updateContentOverflowShadowVisibility):
+        (WebInspector.NavigationSidebarPanel.prototype.updateCustomContentOverflow): Deleted.
+        Remove the now unused updateCustomContentOverflow method.
+
+2014-08-15  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Inspect Element doesn't always highlight the correct element when inspector is closed before inspecting
+        https://bugs.webkit.org/show_bug.cgi?id=135995
+
+        Reviewed by Joseph Pecoraro.
+
+        Change so if an element is inspected via the Inspect Element context menu, selected
+        node restoration is disallowed until the main resource in the main frame changes.
+        This way an attempt by a sub-frame will not change the highlighted element in the
+        Main Frame's DOM tree unexpectedly.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager):
+        (WebInspector.DOMTreeManager.prototype._mainResourceDidChange):
+        (WebInspector.DOMTreeManager.prototype.inspectElement):
+
+2014-08-15  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: rewrite CodeGeneratorInspector to be modular and testable
+        https://bugs.webkit.org/show_bug.cgi?id=131596
+
+        Reviewed by Joseph Pecoraro.
+
+        Also apply type extraction refactorings to old protocol versions for consistency.
+
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+
+2014-08-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Probe details sidebar data grids do not show data
+        https://bugs.webkit.org/show_bug.cgi?id=135992
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ProbeSetDataGrid.js:
+        (WebInspector.ProbeSetDataGrid): Make the DataGrid be inline to show the data correctly.
+
+2014-08-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Legacy Mac toolbar appearance looks wrong
+        https://bugs.webkit.org/show_bug.cgi?id=135962
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/Toolbar.css:
+        (body.mac-platform.legacy .toolbar): Don't draw a gradient background when not docked.
+        Move border-bottom-color from body.mac-platform.legacy.docked .toolbar to here so it
+        applies all the time as it should have.
+
 2014-08-14  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Dragging Undocked inspector by window title has broken behavior

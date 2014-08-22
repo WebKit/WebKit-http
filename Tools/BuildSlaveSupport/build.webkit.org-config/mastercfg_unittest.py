@@ -118,87 +118,70 @@ class RunJavaScriptCoreTestsTest(unittest.TestCase):
     0 tests fixed.
     OK.""")
 
+    def test_no_failure_new_output(self):
+        self.assertResults(SUCCESS, ["jscore-test"], 0, """Results for JSC stress tests:
+    0 failures found.
+    OK.""")
+
     def test_mozilla_failure_old_output(self):
         self.assertResults(FAILURE, ["jscore-test", '1 failing Mozilla test '], 1, """Results for Mozilla tests:
     1 regression found.
     0 tests fixed.""")
 
-    def test_mozilla_failure_new_output(self):
-        self.assertResults(FAILURE, ["jscore-test", '1 failing Mozilla test '], 1, """Results for Mozilla tests:
-    1 regression found.
-    0 tests fixed.
-
-Results for LayoutTests/js tests:
-    0 failures found.
-    0 crashes found.
-    OK.""")
-
-    def test_layout_failure_new_output(self):
-        self.assertResults(FAILURE, ["jscore-test", '469 failing js tests '], 1,  """Results for Mozilla tests:
-    0 regressions found.
-    0 tests fixed.
-    OK.
-
-Results for LayoutTests/js tests:
-    469 failures found.
-    0 crashes found.
-
-Results for JSC stress tests:
-    0 failures found.
-    OK.""")
-
-    def test_layout_crash_new_output(self):
-        self.assertResults(FAILURE, ["jscore-test", '1 crashing js test '], 1,  """Results for Mozilla tests:
-    0 regressions found.
-    0 tests fixed.
-    OK.
-
-Results for LayoutTests/js tests:
-    0 failures found.
-    1 crashes found.
-
-Results for JSC stress tests:
-    0 failures found.
-    OK.""")
-
-    def test_mozilla_and_layout_failure_new_output(self):
-        self.assertResults(FAILURE, ["jscore-test", '1 failing Mozilla test ', '469 failing js tests '], 1,  """Results for Mozilla tests:
-    1 regression found.
-    0 tests fixed.
-
-Results for LayoutTests/js tests:
-    469 failures found.
-    0 crashes found.
-
-Results for JSC stress tests:
-    0 failures found.
-    OK.""")
+    def test_mozilla_failures_old_output(self):
+        self.assertResults(FAILURE, ["jscore-test", '2 failing Mozilla tests '], 1, """Results for Mozilla tests:
+    2 regressions found.
+    0 tests fixed.""")
 
     def test_jsc_stress_failure_new_output(self):
-        self.assertResults(FAILURE, ["jscore-test", '1 failing JSC stress test '], 1,  """Results for Mozilla tests:
-    0 regression found.
-    0 tests fixed.
+        self.assertResults(FAILURE, ["jscore-test", '1 failing JSC stress test '], 1,  """Results for JSC stress tests:
+    1 failure found.""")
 
-Results for LayoutTests/js tests:
-    0 failures found.
-    0 crashes found.
+    def test_jsc_stress_failures_new_output(self):
+        self.assertResults(FAILURE, ["jscore-test", '5 failing JSC stress tests '], 1,  """Results for JSC stress tests:
+    5 failures found.""")
 
-Results for JSC stress tests:
-    1 failures found.
-    OK.""")
 
-    def test_js_crashes_and_jsc_stress_failures_new_output(self):
-        self.assertResults(FAILURE, ["jscore-test", '25 crashing js tests ', '284 failing JSC stress tests '], 1,  """Results for Mozilla tests:
-    0 regression found.
-    0 tests fixed.
+class RunLLINTCLoopTestsTest(unittest.TestCase):
+    def assertResults(self, expected_result, expected_text, rc, stdio):
+        cmd = StubRemoteCommand(rc, stdio)
+        step = RunLLINTCLoopTests()
+        step.commandComplete(cmd)
+        actual_results = step.evaluateCommand(cmd)
+        actual_text = step.getText2(cmd, actual_results)
 
-Results for LayoutTests/js tests:
-    0 failures found.
-    25 crashes found.
+        self.assertEqual(expected_result, actual_results)
+        self.assertEqual(actual_text, expected_text)
 
-Results for JSC stress tests:
-    284 failures found.
-    OK.""")
+    def test_failures(self):
+        self.assertResults(FAILURE, ['5 regressions found.'], 1,  '5 regressions found.')
+
+    def test_failure(self):
+        self.assertResults(FAILURE, ['1 regressions found.'], 1,  '1 regression found.')
+
+    def test_no_failure(self):
+        self.assertResults(SUCCESS, ['webkit-jsc-cloop-test'], 0,  '0 regressions found.')
+
+
+class Run32bitJSCTestsTest(unittest.TestCase):
+    def assertResults(self, expected_result, expected_text, rc, stdio):
+        cmd = StubRemoteCommand(rc, stdio)
+        step = Run32bitJSCTests()
+        step.commandComplete(cmd)
+        actual_results = step.evaluateCommand(cmd)
+        actual_text = step.getText2(cmd, actual_results)
+
+        self.assertEqual(expected_result, actual_results)
+        self.assertEqual(actual_text, expected_text)
+
+    def test_failures(self):
+        self.assertResults(FAILURE, ['5 regressions found.'], 1,  '5 failures found.')
+
+    def test_failure(self):
+        self.assertResults(FAILURE, ['1 regressions found.'], 1,  '1 failure found.')
+
+    def test_no_failure(self):
+        self.assertResults(SUCCESS, ['webkit-32bit-jsc-test'], 0,  '0 failures found.')
 
 
 class RunUnitTestsTest(unittest.TestCase):
@@ -425,6 +408,36 @@ New API detected in GObject DOM bindings
     def test_success(self):
         self.assertResults(expected_missing=False, expected_new=False, stdio="")
 
+
+class RunAndUploadPerfTestsTest(unittest.TestCase):
+    def assertResults(self, rc, expected_text):
+        cmd = StubRemoteCommand(rc, expected_text)
+        step = RunAndUploadPerfTests()
+        step.commandComplete(cmd)
+        actual_results = step.evaluateCommand(cmd)
+        actual_text = str(step.getText2(cmd, actual_results)[0])
+        self.assertEqual(expected_text, actual_text)
+
+    def test_success(self):
+        self.assertResults(0, "perf-test")
+
+    def test_tests_failed(self):
+        self.assertResults(5, "5 perf tests failed")
+
+    def test_build_bad_build(self):
+        self.assertResults(255, "build not up to date")
+
+    def test_build_bad_source_json(self):
+        self.assertResults(254, "slave config JSON error")
+
+    def test_build_bad_marge(self):
+        self.assertResults(253, "output JSON merge error")
+
+    def test_build_bad_failed_uploading(self):
+        self.assertResults(252, "upload error")
+
+    def test_build_bad_preparation(self):
+        self.assertResults(251, "system dependency error")
 
 # FIXME: We should run this file as part of test-webkitpy.
 # Unfortunately test-webkitpy currently requires that unittests

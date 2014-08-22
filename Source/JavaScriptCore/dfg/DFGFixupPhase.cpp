@@ -853,7 +853,6 @@ private:
         }
 
         case GetClosureRegisters:
-        case SkipTopScope:
         case SkipScope:
         case GetScope:
         case GetGetter:
@@ -1393,7 +1392,7 @@ private:
         
         JSObject* stringPrototypeObject = asObject(stringObjectStructure->storedPrototype());
         Structure* stringPrototypeStructure = stringPrototypeObject->structure();
-        if (!m_graph.watchpoints().consider(stringPrototypeStructure))
+        if (m_graph.registerStructure(stringPrototypeStructure) != StructureRegisteredAndWatched)
             return false;
         
         if (stringPrototypeStructure->isDictionary())
