@@ -63,7 +63,8 @@ void initializeMainThreadPlatform()
 	mainThreadHandler = new MainThreadHandler();
 	// initializeMainThreadPlatform() needs to be called on a valid BLooper thread.
 	mainThreadLooper = BLooper::LooperForThread(find_thread(0));
-	ASSERT(mainThreadLooper);
+    if (!mainThreadLooper)
+        mainThreadLooper = be_app;
 	mainThreadLooper->AddHandler(mainThreadHandler);
 }
 
