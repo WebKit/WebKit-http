@@ -1,3 +1,126 @@
+2014-08-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] JHBuild module gst-plugins-base fails to build on x86 with GCC 4.9
+        https://bugs.webkit.org/show_bug.cgi?id=136152
+
+        Reviewed by Philippe Normand.
+
+        * gtk/jhbuild.modules: Apply gst-plugins-base-fix-build-gcc-4.9-x86.patch.
+        * gtk/patches/gst-plugins-base-fix-build-gcc-4.9-x86.patch: Added.
+        Cherry pick upstream patches daa194 and 4e3d101.
+
+2014-08-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        GenericHashTraits::peek() is producing copies of passed-in temporary values
+        https://bugs.webkit.org/show_bug.cgi?id=131461
+
+        Reviewed by Darin Adler.
+
+        Add a test case that checks the number of copies and moves of the mapped objects
+        when calling HashMap::get(). Exactly one copy of the mapped value should be
+        performed when there exists a value that is mapped to the specified key, and
+        exactly one move and no copies of the empty value should be performed when there
+        isn't any mapped value for the specified key.
+
+        * TestWebKitAPI/Tests/WTF/CopyMoveCounter.h: Added.
+        (CopyMoveCounter::TestingScope::TestingScope):
+        (CopyMoveCounter::CopyMoveCounter):
+        (CopyMoveCounter::operator=):
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+
+2014-08-24  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Introduce DEVELOPER_MODE
+        https://bugs.webkit.org/show_bug.cgi?id=135884
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitdirs.pm: Turn on DEVELOPER_MODE for the EFL port.
+        (generateBuildSystemFromCMakeProject):
+
+2014-08-24  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard unnecessarily loads results of hidden queues
+        https://bugs.webkit.org/show_bug.cgi?id=136195
+
+        Reviewed by Tim Horton.
+
+        This patch also makes it possible to avoid any automatic loading, as needed for metrics view.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueue.js:
+        Don't start an update just because a queue object was created. Periodic updates
+        are triggered by views, so it only makes sense to do the same for the initial update.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        Now that Trac object doesn't auto-load, start loading here.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/QueueView.js:
+        (QueueView): Calling _updateHiddenState right away was wrong, because it accesses
+        a data member added by subclasses later. With this.platform being undefined, it
+        always looked like this queue was not hidden.
+        (QueueView.prototype._updateHiddenState): Start an immediate update, too.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac): Don't load anything here, the client may choose to load a custom date range.
+        (Trac.prototype.startPeriodicUpdates): Added a function to start automatic loading.
+
+2014-08-23  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Further improve Trac loading
+        https://bugs.webkit.org/show_bug.cgi?id=136174
+
+        Reviewed by Timothy Hatcher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype._xmlTimelineURL): Passing -1 as "max" resulted in an off by one
+        error, the oldest commit within the range wasn't returned. The correct argument for
+        "no limit" is 0.
+        (Trac.prototype.load): Added a function to load a specific time range.
+        (Trac.prototype._loaded): Updated to support loading revisions that are arbitrarily
+        positioned with regards to ones that were already known.
+
+2014-08-23  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Make it possible to pull historic data from Buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=136182
+
+        Reviewed by Timothy Hatcher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        Make it possible to create a complete BuildbotIteration object with JSON, not only by
+        loading data from the network.
+
+        An iteration has three states:
+        1. Just created, it only knows the revision, and whether it's already finished.
+        BuildbotIteration constructor used to create these.
+        2. A complete JSON report loaded from buildbot. The new constructor form creates these.
+        3. Data about tests is fetched.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        Make it possible to pull all data from a buildbot queue. This needs to be better
+        optimized eventually, as it's somewhat slow.
+
+2014-08-22  Renato Nagy  <nagy.renato@stud.u-szeged.hu>
+
+        Remove LevelDB.
+        https://bugs.webkit.org/show_bug.cgi?id=136170
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitpy/common/config/watchlist:
+        * Scripts/webkitpy/style/checker.py:
+
+2014-08-22  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] install-dependencies don't installs Xvfb that is needed for the tests.
+        https://bugs.webkit.org/show_bug.cgi?id=136153
+
+        Reviewed by Martin Robinson.
+
+        * gtk/install-dependencies: Add Xvfb package to the list of dependencies necessary for running tests.
+
 2014-08-21  Alex Christensen  <achristensen@webkit.org>
 
         [Win] Another unreviewed build fix.

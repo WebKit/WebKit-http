@@ -1,3 +1,110 @@
+2014-08-24  Brian J. Burg  <burg@cs.washington.edu>
+
+        Remove unused method declarations replaced by WebPage::setViewState
+        https://bugs.webkit.org/show_bug.cgi?id=136180
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebPage/WebPage.h:
+        Remove setFocused, setActive, setViewIsVisible. No longer used.
+
+2014-08-23  Byungseon Shin  <sun.shin@lge.com>
+ 
+        Unify GraphicsLayer::setContentsToMedia and setContentsToCanvas
+        https://bugs.webkit.org/show_bug.cgi?id=109658
+ 
+        Reviewed by Martin Robinson.
+ 
+        Based on patch originally written by Tim Horton.
+        Merge setContentsToMedia and setContentsToCanvas into setContentsToPlatformLayer.
+ 
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (IPC::ArgumentCoder<CoordinatedGraphicsLayerState>::encode):
+        (IPC::ArgumentCoder<CoordinatedGraphicsLayerState>::decode):
+        Rename canvas -> platformLayer.
+
+2014-08-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172866.
+        https://bugs.webkit.org/show_bug.cgi?id=136177
+
+        Broke iOS build (Requested by othermaciej on #webkit).
+
+        Reverted changeset:
+
+        "Replace use of WKCopyCFLocalizationPreferredName with
+        NSLocale public API"
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+        http://trac.webkit.org/changeset/172866
+
+2014-08-19  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace use of WKCopyCFLocalizationPreferredName with NSLocale public API
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::connectToService): Remove accidental leftover retrieval
+        of the localization.
+        (WebKit::createProcess): Get current localization name from
+        CFBundle API instead of using SPI.
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Remove mention of WKCopyCFLocalizationPreferredName
+        * mac/WebKit2.order: ditto
+
+2014-08-22  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Disable ENABLE_IOS_{GESTURE, TOUCH}_EVENTS, and temporarily disable ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT when building with the iOS public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=135945
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig: Disable ENABLE_IOS_{GESTURE, TOUCH}_EVENTS, ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT when building with the public SDK.
+        * Shared/WebEventConversion.h: Write preprocessor logic in terms of ENABLE(IOS_TOUCH_EVENTS).
+        * WebProcess/WebPage/WebPage.h: Ditto.
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement paint flashing via GraphicsLayers in the WK2 inspector overlay
+        https://bugs.webkit.org/show_bug.cgi?id=136136
+
+        Reviewed by Sam Weinig, Joseph Pecoraro.
+        
+        Allow InspectorClient to have a custom implementation of showPaintRect(). For
+        WebKit2's WebInspectorClient, implement this by creating a set of GraphicsLayers
+        which are parented in a document overlay, with 0.25s fade-out animations.
+        
+        Also change InspectorInstrumentation::didPaintImpl() to no longer take a GraphicsContext;
+        it makes no sense to paint the paint rects directly into the context of the web page.
+        Now that the paint rects are painted into an overlay, the rectangles need to be converted
+        to root document coordinates, which is done in InspectorInstrumentation::didPaintImpl().
+        
+        Remove the generic InspectorOverlay::drawOutline()-based indicators; they will
+        be reimplemented in a later patch.
+
+        * WebProcess/WebCoreSupport/WebInspectorClient.cpp:
+        (WebKit::RepaintIndicatorLayerClient::RepaintIndicatorLayerClient):
+        (WebKit::RepaintIndicatorLayerClient::~RepaintIndicatorLayerClient):
+        (WebKit::RepaintIndicatorLayerClient::notifyAnimationEnded):
+        (WebKit::WebInspectorClient::WebInspectorClient):
+        (WebKit::WebInspectorClient::~WebInspectorClient):
+        (WebKit::WebInspectorClient::showPaintRect):
+        (WebKit::WebInspectorClient::animationEndedForLayer):
+        * WebProcess/WebCoreSupport/WebInspectorClient.h:
+        (WebKit::WebInspectorClient::WebInspectorClient): Deleted.
+
+2014-08-22  Jon Lee  <jonlee@apple.com>
+
+        Fix iOS build due to r172832 and move RUBBER_BANDING out of FeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=136157
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE(RUBBER_BANDING).
+
 2014-08-21  Joseph Pecoraro  <pecoraro@apple.com>
 
         Possible RetainPtr misuse in WKScriptMessage.mm - could leak

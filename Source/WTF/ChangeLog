@@ -1,3 +1,75 @@
+2014-08-25  Tomas Popela  <tpopela@redhat.com>
+
+        Add support for little-endian PowerPC64
+        https://bugs.webkit.org/show_bug.cgi?id=135647
+
+        Reviewed by Oliver Hunt.
+
+        * wtf/Platform.h:
+        * wtf/dtoa/utils.h:
+
+2014-08-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        GenericHashTraits::peek() is producing copies of passed-in temporary values
+        https://bugs.webkit.org/show_bug.cgi?id=131461
+
+        Reviewed by Darin Adler.
+
+        * wtf/HashTraits.h:
+        (WTF::GenericHashTraits::peek): Make this method a template that passes through
+        the passed-in value without copying, achieved by using universal references and
+        std::forward<>().
+
+2014-08-22  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Disable ENABLE_IOS_{GESTURE, TOUCH}_EVENTS, and temporarily disable ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT when building with the iOS public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=135945
+
+        Reviewed by Andy Estes.
+
+        * wtf/FeatureDefines.h:
+
+2014-08-22  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Enable fixed executable allocator for any ARM64 target.
+        https://bugs.webkit.org/show_bug.cgi?id=136162
+
+        Reviewed by Michael Saboff.
+
+        The ARM64 macro assembler relies on near calls being implemented by BL
+        instructions, which have only 128MB offset range from PC. The
+        on-demand executable allocator cannot ensure that any two locations in
+        memory allocated for the JIT-compiled code are within this range. 
+        However, the fixed executable allocator has a fixed 16MB memory pool for
+        ARM64.
+
+        * wtf/Platform.h:
+        Define ENABLE_EXECUTABLE_ALLOCATOR_FIXED if CPU(ARM64), and update
+        attached comment.
+
+2014-08-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172844.
+        https://bugs.webkit.org/show_bug.cgi?id=136164
+
+        re-applying WEBCORE_EXPORTS patch (Requested by
+        alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Revert r172831, it broke the Windows build."
+        http://trac.webkit.org/changeset/172844
+
+2014-08-22  Jon Lee  <jonlee@apple.com>
+
+        Fix iOS build due to r172832 and move RUBBER_BANDING out of FeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=136157
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h: Remove ENABLE(RUBBER_BANDING) logic for Mac platform.
+
 2014-08-21  Tim Horton  <timothy_horton@apple.com>
 
         Revert r172831, it broke the Windows build.

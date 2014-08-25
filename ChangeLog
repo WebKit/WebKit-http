@@ -1,3 +1,56 @@
+2014-08-24  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Move Efl specific code from Source/CMakeLists.txt
+        https://bugs.webkit.org/show_bug.cgi?id=136206
+
+        Reviewed by Gyuyoung Kim.
+
+        WebKit/Efl only uses ENABLE_WERROR so it can be moved into OptionsEfl.cmake.
+        Inaddition, renamed ADDITIONAL_FLAGS to ADDITIONAL_COMPILER_FLAGS.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-08-24  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Introduce DEVELOPER_MODE
+        https://bugs.webkit.org/show_bug.cgi?id=135884
+
+        Reviewed by Gyuyoung Kim.
+
+        Like GTK port, DEVELOPER_MODE can be good solution for developing, debugging and testing
+        instead of SHARED_CORE.
+        SHARED_CORE can reduce link time and memory consumption but it is slightly different
+        from release binary.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitHelpers.cmake:
+        Moved fvisibility=hidden to OptionsEfl.cmake
+
+2014-08-22  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] Turn on ENABLE_GAMEPAD_DEPRECATED option.
+        https://bugs.webkit.org/show_bug.cgi?id=136110
+
+        Reviewed by Gyuyoung Kim.
+
+        Turn on ENABLE_GAMEPAD_DEPRECATED option for the WK2 Efl.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-08-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Apply eflsymbols.filter to WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=136148
+
+        Reviewed by Csaba Osztrogonác.
+
+        eflsymbol filter hasn't been applied to WK2 port. Additionally clean up WK1 symbol
+        in the eflsymbols.filter.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/eflsymbols.filter:
+
 2014-08-21  Zalan Bujtas  <zalan@apple.com>
 
         Enable SATURATED_LAYOUT_ARITHMETIC.

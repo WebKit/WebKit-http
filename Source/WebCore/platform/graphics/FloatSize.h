@@ -59,7 +59,7 @@ class FloatSize {
 public:
     FloatSize() : m_width(0), m_height(0) { }
     FloatSize(float width, float height) : m_width(width), m_height(height) { }
-    FloatSize(const IntSize&);
+    WEBCORE_EXPORT FloatSize(const IntSize&);
 
     static FloatSize narrowPrecision(double width, double height);
 
@@ -70,7 +70,7 @@ public:
     void setHeight(float height) { m_height = height; }
 
     bool isEmpty() const { return m_width <= 0 || m_height <= 0; }
-    bool isZero() const;
+    WEBCORE_EXPORT bool isZero() const;
     bool isExpressibleAsIntSize() const;
 
     float aspectRatio() const { return m_width / m_height; }
@@ -101,7 +101,7 @@ public:
            m_height < other.m_height ? m_height : other.m_height);
     }
 
-    float diagonalLength() const;
+    WEBCORE_EXPORT float diagonalLength() const;
     float diagonalLengthSquared() const
     {
         return m_width * m_width + m_height * m_height;
@@ -118,12 +118,12 @@ public:
 #endif
 
 #if USE(CG)
-    explicit FloatSize(const CGSize&); // don't do this implicitly since it's lossy
-    operator CGSize() const;
+    WEBCORE_EXPORT explicit FloatSize(const CGSize&); // don't do this implicitly since it's lossy
+    WEBCORE_EXPORT operator CGSize() const;
 #endif
 
 #if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
-    explicit FloatSize(const NSSize &); // don't do this implicitly since it's lossy
+    WEBCORE_EXPORT explicit FloatSize(const NSSize &); // don't do this implicitly since it's lossy
     operator NSSize() const;
 #endif
 

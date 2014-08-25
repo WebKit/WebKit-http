@@ -536,11 +536,6 @@ public:
 
     String engineDescription() const;
 
-#if PLATFORM(IOS)
-    void attributeChanged(const String& name, const String& value);
-    bool readyForPlayback() const;
-#endif
-
     CachedResourceLoader* cachedResourceLoader();
 
 #if ENABLE(VIDEO_TRACK)
@@ -640,7 +635,7 @@ typedef void (*MediaEngineRegister)(MediaEngineRegistrar);
 
 class MediaPlayerFactorySupport {
 public:
-    static void callRegisterMediaEngine(MediaEngineRegister);
+    WEBCORE_EXPORT static void callRegisterMediaEngine(MediaEngineRegister);
 };
 
 }

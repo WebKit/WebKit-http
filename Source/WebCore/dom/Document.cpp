@@ -403,7 +403,7 @@ HashSet<Document*>& Document::allDocuments()
 Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsigned constructionFlags)
     : ContainerNode(*this, CreateDocument)
     , TreeScope(*this)
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
     , m_handlingTouchEvent(false)
     , m_touchEventRegionsDirty(false)
     , m_touchEventsChangedTimer(this, &Document::touchEventsChangedTimerFired)
@@ -2051,7 +2051,7 @@ void Document::prepareForDestruction()
     if (m_hasPreparedForDestruction)
         return;
 
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
     clearTouchEventListeners();
 #endif
 
@@ -2102,7 +2102,7 @@ void Document::removeAllEventListeners()
 
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
     clearTouchEventListeners();
 #endif
     for (Node* node = firstChild(); node; node = NodeTraversal::next(node))
@@ -6144,8 +6144,14 @@ bool Document::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t
 
 static inline bool nodeOrItsAncestorNeedsStyleRecalc(const Node& node)
 {
-    for (const Node* n = &node; n; n = n->parentOrShadowHostNode()) {
-        if (n->needsStyleRecalc())
+    if (node.needsStyleRecalc())
+        return true;
+
+    for (const Element* ancestor = node.parentOrShadowHostElement(); ancestor; ancestor = ancestor->parentOrShadowHostElement()) {
+        if (ancestor->needsStyleRecalc())
+            return true;
+
+        if (ancestor->directChildNeedsStyleRecalc() && (ancestor->childrenAffectedByDirectAdjacentRules() || ancestor->childrenAffectedByForwardPositionalRules()))
             return true;
     }
     return false;

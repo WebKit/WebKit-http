@@ -1,3 +1,100 @@
+2014-08-22  Sergio Villar Senin  <svillar@igalia.com>
+
+        ASSERTION FAILED: !trackSizes.isEmpty() in WebCore::createGridTrackList
+        https://bugs.webkit.org/show_bug.cgi?id=136149
+
+        Reviewed by Darin Adler.
+
+        Added 3 new test cases to check invalid syntax in the repeat() function.
+
+        Also fixed a bug in the testInvalidSyntax() function. We were
+        using style.gridColumns instead of
+        style.webkitGridTemplateColumns, so the tests were working fine
+        because there were no such property.
+
+        * fast/css-grid-layout/grid-element-repeat-get-set-expected.txt:
+        * fast/css-grid-layout/grid-element-repeat-get-set.html:
+
+2014-08-24  Alexey Proskuryakov  <ap@apple.com>
+
+        ASSERT(extractable()) when storing a non-extractable key in IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=136202
+        rdar://problem/17993967
+
+        Reviewed by Darin Adler.
+
+        * crypto/subtle/rsa-indexeddb-non-exportable-expected.txt: Added.
+        * crypto/subtle/rsa-indexeddb-non-exportable.html: Added.
+
+2014-08-22  Zoltan Horvath  <zoltan@webkit.org>
+
+        [EFL][WK2] Remove fast/css3-text/css3-text-align-last/text-align-last-with-text-align-justify.html from skipped list
+        https://bugs.webkit.org/show_bug.cgi?id=128732
+
+        Reviewed by Gyuyoung Kim.
+
+        * css3/shapes/shape-outside/supported-shapes/polygon/shape-outside-polygon-012.html:
+        * platform/efl/TestExpectations:
+
+2014-08-22  Benjamin Poulain  <benjamin@webkit.org>
+
+        Style invalidation does not work for adjacent node updates
+        https://bugs.webkit.org/show_bug.cgi?id=136145
+
+        Reviewed by Antti Koivisto.
+
+        Add tests covering the basic cases: classes and attributes.
+
+        First-child covers the basic positional updates.
+
+        The tests have a version without any indirect adjacent ("~") because the marking
+        used for those is much more generic and having them hide some bugs.
+
+        Some tests are still failing. That is due to the style resolver not handling
+        direct siblings ("+") correctly when there are multiple of them. I will address
+        that separately.
+
+        * fast/selectors/attribute-direct-adjacent-style-update-expected.txt: Added.
+        * fast/selectors/attribute-direct-adjacent-style-update.html: Added.
+        * fast/selectors/attribute-sibling-style-update-expected.txt: Added.
+        * fast/selectors/attribute-sibling-style-update.html: Added.
+        * fast/selectors/class-direct-adjacent-style-update-expected.txt: Added.
+        * fast/selectors/class-direct-adjacent-style-update.html: Added.
+        * fast/selectors/class-sibling-style-update-expected.txt: Added.
+        * fast/selectors/class-sibling-style-update.html: Added.
+        * fast/selectors/first-child-direct-adjacent-style-update.html: Added.
+        * fast/selectors/first-child-sibling-style-update-expected.txt: Added.
+        * fast/selectors/first-child-sibling-style-update.html: Added.
+        * fast/selectors/placeholder-shown-sibling-style-update-expected.txt:
+
+2014-08-22  David Hyatt  <hyatt@apple.com>
+
+        Add proper support for letter-spacing to bopomofo Ruby
+        https://bugs.webkit.org/show_bug.cgi?id=136171
+
+        Reviewed by Sam Weinig.
+
+        * fast/ruby/bopomofo-letter-spacing.html: Added.
+        * platform/mac/fast/ruby/bopomofo-expected.png:
+        * platform/mac/fast/ruby/bopomofo-expected.txt:
+        * platform/mac/fast/ruby/bopomofo-letter-spacing-expected.png: Added.
+        * platform/mac/fast/ruby/bopomofo-letter-spacing-expected.txt: Added.
+
+2014-08-21  David Hyatt  <hyatt@apple.com>
+
+        Implement rudimentary Bopomofo Ruby support (ruby-position:inter-character)
+        https://bugs.webkit.org/show_bug.cgi?id=136137
+        <rdar://problem/12567545>
+
+        Reviewed by Sam Weinig.
+
+        * fast/ruby/bopomofo-rl.html: Added.
+        * fast/ruby/bopomofo.html: Added.
+        * platform/mac/fast/ruby/bopomofo-expected.png: Added.
+        * platform/mac/fast/ruby/bopomofo-expected.txt: Added.
+        * platform/mac/fast/ruby/bopomofo-rl-expected.png: Added.
+        * platform/mac/fast/ruby/bopomofo-rl-expected.txt: Added.
+
 2014-08-21  Antti Koivisto  <antti@apple.com>
 
         Animated GIFs scrolled out of view still cause titlebar blur to update, on tumblr.com page

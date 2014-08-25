@@ -652,9 +652,11 @@ void InspectorPageAgent::setShowPaintRects(ErrorString*, bool show)
 {
     m_showPaintRects = show;
     m_client->setShowPaintRects(show);
+    
+    if (m_client->overridesShowPaintRects())
+        return;
 
-    if (!show && mainFrame() && mainFrame()->view())
-        mainFrame()->view()->invalidate();
+    m_overlay->setShowingPaintRects(show);
 }
 
 void InspectorPageAgent::canShowDebugBorders(ErrorString*, bool* outParam)
@@ -880,21 +882,26 @@ void InspectorPageAgent::didRunJavaScriptDialog()
     m_frontendDispatcher->javascriptDialogClosed();
 }
 
-void InspectorPageAgent::didPaint(GraphicsContext* context, const LayoutRect& rect)
+void InspectorPageAgent::didPaint(RenderObject* renderer, const LayoutRect& rect)
 {
-    if (!m_enabled || m_client->overridesShowPaintRects() || !m_showPaintRects)
+    if (!m_enabled || !m_showPaintRects)
         return;
 
-    static int colorSelector = 0;
-    const Color colors[] = {
-        Color(0xFF, 0, 0, 0x3F),
-        Color(0xFF, 0, 0xFF, 0x3F),
-        Color(0, 0, 0xFF, 0x3F),
-    };
+    LayoutRect absoluteRect = LayoutRect(renderer->localToAbsoluteQuad(FloatRect(rect)).boundingBox());
+    FrameView* view = renderer->document().view();
+    
+    LayoutRect rootRect = absoluteRect;
+    if (!view->frame().isMainFrame()) {
+        IntRect rootViewRect = view->contentsToRootView(pixelSnappedIntRect(absoluteRect));
+        rootRect = view->frame().mainFrame().view()->rootViewToContents(rootViewRect);
+    }
+    
+    if (m_client->overridesShowPaintRects()) {
+        m_client->showPaintRect(rootRect);
+        return;
+    }
 
-    LayoutRect inflatedRect(rect);
-    inflatedRect.inflate(-1);
-    m_overlay->drawOutline(context, inflatedRect, colors[colorSelector++ % WTF_ARRAY_LENGTH(colors)]);
+    m_overlay->showPaintRect(rootRect);
 }
 
 void InspectorPageAgent::didLayout()

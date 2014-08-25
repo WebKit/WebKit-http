@@ -1,3 +1,824 @@
+2014-08-25  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Web Core: Fix unused parameter build warning.
+        https://bugs.webkit.org/show_bug.cgi?id=136208
+
+        Reviewed by Darin Adler.
+
+        Fix unused build warning by removing parameter, which is not used.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::setContentsToPlatformLayer):
+
+2014-08-22  Sergio Villar Senin  <svillar@igalia.com>
+
+        ASSERTION FAILED: !trackSizes.isEmpty() in WebCore::createGridTrackList
+        https://bugs.webkit.org/show_bug.cgi?id=136149
+
+        Reviewed by Darin Adler.
+
+        The second argument of the repeat() function is a <track-list>
+        that must have at least one <track-size>. Should it not be found,
+        the declaration must be invalidated.
+
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::parseGridTrackRepeatFunction):
+
+2014-08-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        Move WebCore storage code to C++11 lambdas, std::function
+        https://bugs.webkit.org/show_bug.cgi?id=126435
+
+        Reviewed by Darin Adler.
+
+        Use C++11 lambdas instead of WTF::bind and std::function<void ()>
+        instead of WTF::Function<void ()> in StorageAreaSync, StorageSyncManager,
+        StorageThread and StorageTracker classes.
+
+        * storage/StorageAreaSync.cpp:
+        (WebCore::StorageAreaSync::StorageAreaSync):
+        (WebCore::StorageAreaSync::scheduleFinalSync):
+        (WebCore::StorageAreaSync::syncTimerFired):
+        * storage/StorageSyncManager.cpp:
+        (WebCore::StorageSyncManager::dispatch):
+        * storage/StorageSyncManager.h:
+        * storage/StorageThread.cpp:
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        (WebCore::StorageThread::releaseFastMallocFreeMemoryInAllThreads):
+        * storage/StorageThread.h:
+        * storage/StorageTracker.cpp:
+        (WebCore::StorageTracker::importOriginIdentifiers):
+        (WebCore::StorageTracker::syncImportOriginIdentifiers):
+        (WebCore::StorageTracker::syncFileSystemAndTrackerDatabase):
+        (WebCore::StorageTracker::setOriginDetails):
+        (WebCore::StorageTracker::deleteAllOrigins):
+        (WebCore::StorageTracker::deleteOrigin):
+
+2014-08-24  Alexey Proskuryakov  <ap@apple.com>
+
+        ASSERT(extractable()) when storing a non-extractable key in IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=136202
+        rdar://problem/17993967
+
+        Reviewed by Darin Adler.
+
+        Test: crypto/subtle/rsa-indexeddb-non-exportable.html
+
+        Removed the obsolete assertion.
+
+        * crypto/keys/CryptoKeyAES.cpp: (WebCore::CryptoKeyAES::exportData):
+        * crypto/keys/CryptoKeyHMAC.cpp: (WebCore::CryptoKeyHMAC::exportData):
+        * crypto/mac/CryptoKeyRSAMac.cpp: (WebCore::CryptoKeyRSA::exportData):
+
+2014-08-24  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: Rename DOM.RGBA and remove workarounds in the bindings generator
+        https://bugs.webkit.org/show_bug.cgi?id=136025
+
+        Reviewed by Joseph Pecoraro.
+
+        Rename DOM.RGBA to DOM.RGBAColor to avoid name clashes with headers on Windows CE.
+        This workaround used to be special-cased in the bindings generator.
+
+        Type names are not used in protocol messages, so this does not introduce legacy issues.
+
+        * inspector/protocol/DOM.json:
+
+2014-08-24  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Toggle buttons visually broken with GTK+ 3.13.7
+        https://bugs.webkit.org/show_bug.cgi?id=136130
+
+        Reviewed by Martin Robinson.
+
+        No new tests. Hopefully covered by existing tests, and our tests only
+        run with GTK+ 3.6 anyway.
+
+        * platform/gtk/RenderThemeGtk3.cpp:
+        (WebCore::paintToggle): use GTK_STATE_FLAG_CHECKED when compiling for
+        GTK+ 3.13.7 and above to ensure toggle buttons display as toggled.
+
+2014-08-23  Brady Eidson  <beidson@apple.com>
+
+        Random Gamepad cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=136193
+
+        Reviewed by Sam Weinig.
+
+        No new tests (Not tested yet, and no change in behavior anyways)
+
+        - Use DOMWindow WeakPtrs when iterating
+        - More references instead of pointers
+
+        * Modules/gamepad/GamepadEvent.cpp:
+        (WebCore::GamepadEvent::GamepadEvent):
+        * Modules/gamepad/GamepadEvent.h:
+        (WebCore::GamepadEvent::create):
+
+        * Modules/gamepad/GamepadManager.cpp:
+        (WebCore::GamepadManager::platformGamepadDisconnected):
+        (WebCore::GamepadManager::makeGamepadVisible):
+        * Modules/gamepad/NavigatorGamepad.cpp:
+        (WebCore::NavigatorGamepad::gamepadFromPlatformGamepad):
+        (WebCore::NavigatorGamepad::gamepadAtIndex): Deleted.
+        * Modules/gamepad/NavigatorGamepad.h:
+
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::DOMWindow):
+        * page/DOMWindow.h:
+
+2014-08-23  Byungseon Shin  <sun.shin@lge.com>
+
+        Unify GraphicsLayer::setContentsToMedia and setContentsToCanvas
+        https://bugs.webkit.org/show_bug.cgi?id=109658
+
+        Reviewed by Martin Robinson.
+ 
+        Based on patch originally written by Tim Horton.
+        Merge setContentsToMedia and setContentsToCanvas into setContentsToPlatformLayer.
+ 
+        * WebCore.exp.in:
+        Adjust exports.
+ 
+        * platform/graphics/GraphicsLayer.h:
+        Move ContentsLayerPurpose enum up out of GraphicsLayer platform implmentations
+        and into GraphicsLayer, so we can use it as a parameter.
+        Add ContentsLayerForPlugin.
+ 
+        (WebCore::GraphicsLayer::setContentsToPlatformLayer):
+        Remove setContentsToMedia and setContentsToCanvas, and replace them
+        with setContentsToPlatformLayer, which previously existed but was unused
+        and simply called setContentsToMedia.
+        setContentsToPlatformLayer takes a ContentsLayerPurpose, primarily
+        so that GraphicsLayerCA can know whether it needs to setNeedsDisplay
+        the layer when parenting it (canvas) or not (everything else).
+ 
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::setContentsToPlatformLayer):
+        Rename function setContentsToMedia -> setContentsToPlatformLayer.
+        Rename argument mediaLayer -> platformLayer.
+        Store the passed-in ContentsLayerPurpose.
+        Remove setContentsToCanvas.
+ 
+        (WebCore::GraphicsLayerCA::commitLayerChangesBeforeSublayers):
+        (WebCore::GraphicsLayerCA::updateContentsPlatformLayer):
+        Remove updateContentsMediaLayer and updateContentsCanvas layer,
+        add updateContentsPlatformLayer.
+ 
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        Do the same to the LayerChange enum.
+ 
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.cpp:
+        (WebCore::GraphicsLayerTextureMapper::setContentsToImage):
+        (WebCore::GraphicsLayerTextureMapper::setContentsToPlatformLayer):
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::CoordinatedGraphicsLayer):
+        (WebCore::CoordinatedGraphicsLayer::setContentsNeedsDisplay):
+        (WebCore::CoordinatedGraphicsLayer::setContentsToPlatformLayer):
+        (WebCore::CoordinatedGraphicsLayer::syncPlatformLayer):
+        (WebCore::CoordinatedGraphicsLayer::destroyPlatformLayerIfNeeded):
+        (WebCore::CoordinatedGraphicsLayer::createPlatformLayerIfNeeded):
+        (WebCore::CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly):
+        Fold these together in the same way as elsewhere.
+ 
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        Do the same to the LayerChange enum.
+ 
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsScene.cpp:
+        (WebCore::CoordinatedGraphicsScene::createPlatformLayerIfNeeded):
+        (WebCore::CoordinatedGraphicsScene::syncPlatformLayerIfNeeded):
+        (WebCore::CoordinatedGraphicsScene::destroyPlatformLayerIfNeeded):
+        (WebCore::CoordinatedGraphicsScene::setLayerState):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsScene.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        (WebCore::CoordinatedGraphicsLayerState::CoordinatedGraphicsLayerState):
+        Rename canvasLayer -> platformLayer.
+ 
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateConfiguration):
+        Use the new setContentsToPlatformLayer, passing in the relevant ContentsLayerPurpose.
+
+2014-08-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not copy large module source strings
+        https://bugs.webkit.org/show_bug.cgi?id=136191
+
+        Reviewed by Benjamin Poulain.
+
+        * inspector/CommandLineAPIModule.cpp:
+        (WebCore::CommandLineAPIModule::source):
+
+2014-08-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove uses of CrossThreadTask in ThreadableWebSocketChannelClientWrapper, WorkerThreadableWebSocketChannel
+        https://bugs.webkit.org/show_bug.cgi?id=133954
+
+        Reviewed by Darin Adler.
+
+        Replace uses of CrossThreadTask with C++11 lambdas in the ThreadableWebSocketChannelClientWrapper
+        and WorkerThreadableWebSocketChannel classes.
+
+        * Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp:
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didConnect):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didReceiveMessage):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didReceiveBinaryData):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didUpdateBufferedAmount):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didStartClosingHandshake):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didClose):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didReceiveMessageError):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::processPendingTasks):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::processPendingTasksCallback): Deleted.
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didConnectCallback): Deleted.
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didReceiveMessageCallback): Deleted.
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didReceiveBinaryDataCallback): Deleted.
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didUpdateBufferedAmountCallback): Deleted.
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didStartClosingHandshakeCallback): Deleted.
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didCloseCallback): Deleted.
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didReceiveMessageErrorCallback): Deleted.
+        * Modules/websockets/ThreadableWebSocketChannelClientWrapper.h:
+        * Modules/websockets/WorkerThreadableWebSocketChannel.cpp:
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::send):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::bufferedAmount):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didConnect):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didReceiveMessage):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didReceiveBinaryData):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didUpdateBufferedAmount):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didStartClosingHandshake):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didClose):
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didReceiveMessageError):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::mainThreadInitialize):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::connect):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::send):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::bufferedAmount):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::close):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::fail):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::disconnect):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::suspend):
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::resume):
+        (WebCore::workerGlobalScopeDidSend): Deleted.
+        (WebCore::workerGlobalScopeDidGetBufferedAmount): Deleted.
+        (WebCore::workerGlobalScopeDidConnect): Deleted.
+        (WebCore::workerGlobalScopeDidReceiveMessage): Deleted.
+        (WebCore::workerGlobalScopeDidReceiveBinaryData): Deleted.
+        (WebCore::workerGlobalScopeDidUpdateBufferedAmount): Deleted.
+        (WebCore::workerGlobalScopeDidStartClosingHandshake): Deleted.
+        (WebCore::workerGlobalScopeDidClose): Deleted.
+        (WebCore::workerGlobalScopeDidReceiveMessageError): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadConnect): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadSend): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadSendArrayBuffer): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadSendBlob): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadBufferedAmount): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadClose): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadFail): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadDestroy): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadSuspend): Deleted.
+        (WebCore::WorkerThreadableWebSocketChannel::mainThreadResume): Deleted.
+        * Modules/websockets/WorkerThreadableWebSocketChannel.h:
+
+2014-08-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Clean up build warnings: control reaches end of non-void function
+        https://bugs.webkit.org/show_bug.cgi?id=135889
+
+        Reviewed by Alexey Proskuryakov.
+
+        * bindings/js/JSCryptoAlgorithmDictionary.cpp:
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForEncrypt):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDecrypt):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForSign):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForVerify):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDigest):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForGenerateKey):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDeriveKey):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForDeriveBits):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForImportKey):
+        (WebCore::JSCryptoAlgorithmDictionary::createParametersForExportKey):
+        * crypto/CryptoKey.cpp:
+        (WebCore::CryptoKey::type):
+
+2014-08-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [TexMap] Only notify of a required flush on the first layer property change
+        https://bugs.webkit.org/show_bug.cgi?id=136104
+
+        Reviewed by Martin Robinson.
+
+        The GraphicsLayer's client should only be notified that a flush is required
+        when the first change of one of the layer's properties is initiated, instead
+        of requesting the flush on every such change.
+
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.cpp:
+        (WebCore::GraphicsLayerTextureMapper::notifyChange):
+
+2014-08-22  Dan Bernstein  <mitz@apple.com>
+
+        Try to fix the Mac build using the internal SDK.
+
+        * bindings/objc/PublicDOMInterfaces.h:
+
+2014-08-22  Renato Nagy  <nagy.renato@stud.u-szeged.hu>
+
+        Remove LevelDB.
+        https://bugs.webkit.org/show_bug.cgi?id=136170
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+        * Modules/indexeddb/IDBObjectStore.cpp:
+        (WebCore::IDBObjectStore::createIndex):
+        * Modules/indexeddb/IDBTransactionCoordinator.cpp:
+        (WebCore::IDBTransactionCoordinator::canRunTransaction):
+        (WebCore::doScopesOverlap): Deleted.
+        * Modules/indexeddb/leveldb/IDBBackingStoreCursorLevelDB.cpp: Removed.
+        * Modules/indexeddb/leveldb/IDBBackingStoreCursorLevelDB.h: Removed.
+        * Modules/indexeddb/leveldb/IDBBackingStoreLevelDB.cpp: Removed.
+        * Modules/indexeddb/leveldb/IDBBackingStoreLevelDB.h: Removed.
+        * Modules/indexeddb/leveldb/IDBBackingStoreTransactionLevelDB.cpp: Removed.
+        * Modules/indexeddb/leveldb/IDBBackingStoreTransactionLevelDB.h: Removed.
+        * Modules/indexeddb/leveldb/IDBFactoryBackendLevelDB.cpp: Removed.
+        * Modules/indexeddb/leveldb/IDBFactoryBackendLevelDB.h: Removed.
+        * Modules/indexeddb/leveldb/IDBIndexWriterLevelDB.cpp: Removed.
+        * Modules/indexeddb/leveldb/IDBIndexWriterLevelDB.h: Removed.
+        * Modules/indexeddb/leveldb/IDBLevelDBCoding.cpp: Removed.
+        * Modules/indexeddb/leveldb/IDBLevelDBCoding.h: Removed.
+        * Modules/indexeddb/leveldb/IDBServerConnectionLevelDB.cpp: Removed.
+        * Modules/indexeddb/leveldb/IDBServerConnectionLevelDB.h: Removed.
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/DatabaseStrategy.cpp:
+        (WebCore::DatabaseStrategy::createIDBFactoryBackend):
+        * platform/leveldb/LevelDBComparator.h: Removed.
+        * platform/leveldb/LevelDBDatabase.cpp: Removed.
+        * platform/leveldb/LevelDBDatabase.h: Removed.
+        * platform/leveldb/LevelDBIterator.h: Removed.
+        * platform/leveldb/LevelDBSlice.h: Removed.
+        * platform/leveldb/LevelDBTransaction.cpp: Removed.
+        * platform/leveldb/LevelDBTransaction.h: Removed.
+        * platform/leveldb/LevelDBWriteBatch.cpp: Removed.
+        * platform/leveldb/LevelDBWriteBatch.h: Removed.
+
+2014-08-22  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] Fix build break caused by ENABLE_GAMEPAD_DEPRECATED.
+        https://bugs.webkit.org/show_bug.cgi?id=136110
+
+        Reviewed by Gyuyoung Kim.
+
+        WebCore_INCLUDE_DIRECTORY for gamepad was removed from WK2 Efl in order to fix build break when ENABLE_GAMEPAD_DEPRECATED is on.
+
+        No new tests because no functional changes.
+
+        * PlatformEfl.cmake:
+
+2014-08-22  Benjamin Poulain  <benjamin@webkit.org>
+
+        Style invalidation does not work for adjacent node updates
+        https://bugs.webkit.org/show_bug.cgi?id=136145
+
+        Reviewed by Antti Koivisto.
+
+        There were a bunch of cases in which the style would be in an inconsistent
+        state until the style resolver kicks in for the entire document.
+
+        For example, let's take the selector "foo.bar + target". When the class "bar"
+        changes, the element foo is invalidated. The element target is untouched.
+
+        Now, if the style of "target" is accessed, nodeOrItsAncestorNeedsStyleRecalc()
+        returns false and the old style is accessed.
+
+        At some point, when the style of the entire document is resolved, the node
+        "foo" is styled, and "target" is invalidated.
+
+
+        To fix the issue, this patch adds an extra flag keeping track of subtrees that
+        have any node needing style recalc: DirectChildNeedsStyleRecalcFlag.
+
+        When invalidating the node "foo", its parent is marked with
+        DirectChildNeedsStyleRecalcFlag to note that one of the child nodes has an invalid style.
+
+        When verifying the style state in nodeOrItsAncestorNeedsStyleRecalc(), we check that flag
+        in addition to the siblings dependencies to find if the node is part of a subtree that may
+        be invalid due to sibling selectors.
+
+        Similarly, in the style resolver, we use the flag to clear the style on all elements
+        that could potentially be invalid.
+
+
+        This patch removes the changes introduced by r172721
+        (The style is not updated correctly when the pseudo class :empty is applied on anything but the rightmost element).
+        That bug was just a special case of what is solved here.
+
+
+        Tests: fast/selectors/attribute-direct-adjacent-style-update.html
+               fast/selectors/attribute-sibling-style-update.html
+               fast/selectors/class-direct-adjacent-style-update.html
+               fast/selectors/class-sibling-style-update.html
+               fast/selectors/first-child-direct-adjacent-style-update.html
+               fast/selectors/first-child-sibling-style-update.html
+
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::checkOne):
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsEmpty):
+        (WebCore::SelectorCompiler::setStyleOfSiblingsAffectedByEmpty): Deleted.
+        * dom/ContainerNode.h:
+        (WebCore::ContainerNode::directChildNeedsStyleRecalc):
+        (WebCore::ContainerNode::setDirectChildNeedsStyleRecalc):
+        Remove the special case for :empty.
+
+        * dom/Document.cpp:
+        (WebCore::nodeOrItsAncestorNeedsStyleRecalc):
+        * dom/Element.cpp:
+        (WebCore::checkForEmptyStyleChange):
+        (WebCore::checkForSiblingStyleChanges):
+        (WebCore::Element::setStyleOfSiblingsAffectedByEmpty): Deleted.
+        (WebCore::Element::rareDataStyleOfSiblingsAffectedByEmpty): Deleted.
+        * dom/Element.h:
+        (WebCore::Element::styleOfSiblingsAffectedByEmpty): Deleted.
+        * dom/ElementRareData.h:
+        (WebCore::ElementRareData::ElementRareData):
+        (WebCore::ElementRareData::styleOfSiblingsAffectedByEmpty): Deleted.
+        (WebCore::ElementRareData::setStyleOfSiblingsAffectedByEmpty): Deleted.
+        * dom/Node.cpp:
+        (WebCore::markAncestorsWithChildNeedsStyleRecalc):
+        (WebCore::Node::setNeedsStyleRecalc):
+        (WebCore::Node::markAncestorsWithChildNeedsStyleRecalc): Deleted.
+        * dom/Node.h:
+        (WebCore::Node::clearChildNeedsStyleRecalc):
+        * style/StyleResolveTree.cpp:
+        (WebCore::Style::resetStyleForNonRenderedDescendants):
+
+2014-08-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused legacy InspectorFrontendHost methods
+        https://bugs.webkit.org/show_bug.cgi?id=136186
+
+        Reviewed by Andreas Kling.
+
+        * bindings/js/JSInspectorFrontendHostCustom.cpp:
+        (WebCore::JSInspectorFrontendHost::recordActionTaken): Deleted.
+        (WebCore::JSInspectorFrontendHost::recordPanelShown): Deleted.
+        (WebCore::JSInspectorFrontendHost::recordSettingChanged): Deleted.
+        * inspector/InspectorFrontendHost.idl:
+
+2014-08-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unnecessary WTFString creation in Dictionary getter
+        https://bugs.webkit.org/show_bug.cgi?id=136184
+
+        Reviewed by Benjamin Poulain.
+
+        * bindings/js/Dictionary.cpp:
+        (WebCore::Dictionary::getWithUndefinedOrNullCheck):
+        * bindings/js/Dictionary.h:
+        * bindings/js/JSDictionary.cpp:
+        (WebCore::JSDictionary::getWithUndefinedOrNullCheck):
+        * bindings/js/JSDictionary.h:
+
+2014-08-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172866.
+        https://bugs.webkit.org/show_bug.cgi?id=136177
+
+        Broke iOS build (Requested by othermaciej on #webkit).
+
+        Reverted changeset:
+
+        "Replace use of WKCopyCFLocalizationPreferredName with
+        NSLocale public API"
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+        http://trac.webkit.org/changeset/172866
+
+2014-08-22  David Hyatt  <hyatt@apple.com>
+
+        Add proper support for letter-spacing to bopomofo Ruby
+        https://bugs.webkit.org/show_bug.cgi?id=136171
+
+        Reviewed by Sam Weinig.
+
+        Added fast/ruby/bopomofo-letter-spacing.html
+
+        * rendering/RenderRubyRun.cpp:
+        (WebCore::RenderRubyRun::layout):
+        Alter the layout of bopomofo ruby so that the distance between the base characters is the max of
+        the letter-spacing between the characters and the minimum required width to hold two rows of
+        Ruby.
+
+        Push the bopomofo ruby into the letter-spacing to ensure that it comes right after the base character
+        and not after all the letter-spacing.
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix showing paint rects when selecting lines in the timeline
+        https://bugs.webkit.org/show_bug.cgi?id=136173
+
+        Reviewed by Joseph Pecoraro.
+
+        Fix the condition used to decide when to show the overlay.
+
+        * inspector/InspectorOverlay.cpp:
+        (WebCore::InspectorOverlay::shouldShowOverlay):
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Use the correct rect for paint flashing
+        https://bugs.webkit.org/show_bug.cgi?id=136169
+
+        Reviewed by Sam Weinig.
+
+        Use the rect we've converted to root document coordinates for paint flashing.
+
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::didPaint):
+
+2014-08-22  Dean Jackson  <dino@apple.com>
+
+        Google Canvas2D maps are too slow and uncontrollable with Safari with full screen mode
+        https://bugs.webkit.org/show_bug.cgi?id=136168
+
+        Reviewed by Tim Horton.
+
+        When Google maps are using their 2D "lite" fallback and you're drawing in a huge
+        window such as fullscreen 4K, we would drop back to unaccelerated mode, thinking
+        that we'd exceeded the maximum IOSurface size.
+
+        Remove the hardcoded limit on IOSurface sizes, and instead ask the system
+        what it believe the maximum to be. This was significantly higher than our
+        limit on the systems I tested.
+
+        * platform/graphics/cg/ImageBufferCG.cpp:
+        (WebCore::ImageBuffer::ImageBuffer): Include our IOSurface wrapper, which
+        has a query for maximum size, and use that instead.
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Maybe fix Windows.
+
+        * inspector/InspectorOverlay.cpp:
+        (WebCore::InspectorOverlay::showPaintRect):
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement paint flashing in the WK1 InspectorOverlay page
+        https://bugs.webkit.org/show_bug.cgi?id=136138
+
+        Reviewed by Sam Weinig, Joseph Pecoraro.
+
+        Implement paint flashing for the WebKit1 InspectorOverlay via a second canvas in the overlay page.
+        We avoid allocating backing store for this canvas until we have paint rects.
+        
+        Because this overlay page is weird and doesn't know how to paint itself, InspectorOverlay manages
+        an array of rects, and pushes them to the page when they change, before forcing a paint.
+        
+        Because iOS doesn't use the InspectorOverlay page, stub out setShowPaintRects on its
+        WebKit WebInspectorClient, but don't yet implement paint flashing there.
+
+        * inspector/InspectorOverlay.cpp:
+        (WebCore::InspectorOverlay::InspectorOverlay):
+        (WebCore::InspectorOverlay::shouldShowOverlay):
+        (WebCore::InspectorOverlay::update):
+        (WebCore::buildObjectForRect):
+        (WebCore::InspectorOverlay::setShowingPaintRects):
+        (WebCore::InspectorOverlay::showPaintRect):
+        (WebCore::InspectorOverlay::updatePaintRectsTimerFired):
+        (WebCore::InspectorOverlay::drawPaintRects):
+        (WebCore::InspectorOverlay::forcePaint):
+        (WebCore::quadToPath): Deleted.
+        (WebCore::drawOutlinedQuad): Deleted.
+        (WebCore::InspectorOverlay::drawOutline): Deleted.
+        * inspector/InspectorOverlay.h:
+        * inspector/InspectorOverlayPage.html:
+        * inspector/InspectorOverlayPage.js:
+        (updatePaintRects):
+        (reset):
+        (_drawShapeHighlight):
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::setShowPaintRects):
+        (WebCore::InspectorPageAgent::didPaint):
+
+2014-08-22  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Cleanup media code
+        https://bugs.webkit.org/show_bug.cgi?id=136163
+
+        Reviewed by Jer Noble.
+
+        No new tests, no functionality was changed.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::HTMLMediaElement): Don't initialize m_requestingPlay.
+        (WebCore::HTMLMediaElement::parseMediaPlayerAttribute): Deleted.
+        (WebCore::HTMLMediaElement::parseAttribute): Don't call parseMediaPlayerAttribute.
+        (WebCore::HTMLMediaElement::playInternal): m_requestingPlay is dead, Jim.
+        (WebCore::HTMLMediaElement::updatePlayState): Ditto.
+        (WebCore::HTMLMediaElement::updatePlayState): Remove obsolete FIXME.
+        * html/HTMLMediaElement.h:
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::attributeChanged): Deleted.
+        (WebCore::MediaPlayer::readyForPlayback): Deleted.
+        * platform/graphics/MediaPlayer.h:
+        * platform/graphics/MediaPlayerPrivate.h:
+        (WebCore::MediaPlayerPrivateInterface::attributeChanged): Deleted.
+        (WebCore::MediaPlayerPrivateInterface::readyForPlayback): Deleted.
+
+2014-08-20  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace use of WKCopyCFLocalizationPreferredName with NSLocale public API
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac/Language.mm:
+        (WebCore::httpStyleLanguageCode): Replace use of WKCopyCFLocalizationPreferredName
+        with new WebCoreNSStringExtras helper.
+        * platform/mac/WebCoreNSStringExtras.mm: Replacements for the aspects of
+        WKCopyCFLocalizationPreferredName.
+        (preferredBundleLocalizationName): New helper - most preferred localization available
+        in the main bundle, canonicalized the way we like it.
+        (canonicalLocalizationName): Convert a lcalization name to a string with language and
+        country code, using default if necessary (e.g. "en" maps to "en_US").
+        * WebCore.order: Remove mention of WKCopyCFLocalizationPreferredName.
+        * WebCore.exp.in: ditto; also export preferredBundleLocalizationName for WebKit(2).
+        * platform/ios/WebCoreSystemInterfaceIOS.mm: ditto
+        * platform/mac/WebCoreSystemInterface.h: ditto
+        * platform/mac/WebCoreSystemInterface.mm: ditto
+
+2014-08-22  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Disable ENABLE_IOS_{GESTURE, TOUCH}_EVENTS, and temporarily disable ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT when building with the iOS public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=135945
+
+        Reviewed by Andy Estes.
+
+        Towards bringing up the iOS WebKit port using the iOS public SDK, disable the proprietary
+        iOS gesture and touch event code. For now we also temporarily disable ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT while we focus to get the rest of the port built using the public SDK. We'll
+        look to enable these features once we stabilize the build.
+
+        * Configurations/FeatureDefines.xcconfig: Disable ENABLE_IOS_{GESTURE, TOUCH}_EVENTS, ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT when building with the public SDK.
+        * Configurations/WebCore.xcconfig:
+        * DerivedSources.make: Conditionally generate derived sources for touch and gesture events as applicable and pass
+        define WTF_USE_APPLE_INTERNAL_SDK when generating bindings (if applicable). Make the logic for determining
+        whether WTF_PLATFORM_IOS is defined consistent with logic for determining whether WTF_USE_APPLE_INTERNAL_SDK and
+        ENABLE_ORIENTATION_EVENTS are defined. We should look to further cleanup this code.
+        * bindings/js/ios/TouchConstructors.cpp: Substitute ENABLE(IOS_TOUCH_EVENTS) for macro expression "PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)".
+        * bindings/objc/DOMEvents.h: Write preprocessor logic in terms of ENABLE_TOUCH_EVENTS and ENABLE_IOS_GESTURE_EVENTS.
+        * bindings/objc/PublicDOMInterfaces.h: Include private header <WebKitAdditions/PublicDOMInterfacesIOS.h> when
+        it exists as opposed to assuming it exists when building for iOS.
+        * dom/Document.cpp:
+        (WebCore::Document::Document): Substitute ENABLE(IOS_TOUCH_EVENTS) for macro expression "ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)".
+        (WebCore::Document::prepareForDestruction): Ditto.
+        (WebCore::Document::removeAllEventListeners): Ditto.
+        * dom/Document.h: Write preprocessor logic in terms of ENABLE_IOS_TOUCH_EVENTS and ENABLE_TOUCH_EVENTS.
+        * dom/Document.idl: Ditto.
+        * dom/Touch.h: Substitute ENABLE(IOS_TOUCH_EVENTS) for PLATFORM(IOS)..
+        * dom/TouchEvent.h: Ditto.
+        * dom/TouchList.h: Ditto.
+        * dom/ios/TouchEvents.cpp: Substitute ENABLE(IOS_TOUCH_EVENTS) for macro expression "PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)".
+        * history/CachedFrame.cpp: Add PLATFORM(IOS) guard.
+        * html/shadow/SliderThumbElement.cpp:
+        (WebCore::SliderThumbElement::SliderThumbElement): Substitute ENABLE(IOS_TOUCH_EVENTS) for ENABLE(TOUCH_EVENTS).
+        (WebCore::SliderThumbElement::willDetachRenderers): Ditto.
+        * html/shadow/SliderThumbElement.h: Ditto.
+        * loader/EmptyClients.h: Ditto.
+        * platform/ios/PlatformEventFactoryIOS.h: Write preprocessor logic in terms of ENABLE_IOS_TOUCH_EVENTS and ENABLE_TOUCH_EVENTS.
+        Only include header <WebKitAdditions/PlatformTouchEventIOS.h> when building with ENABLE_TOUCH_EVENTS enabled.
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement paint flashing via GraphicsLayers in the WK2 inspector overlay
+        https://bugs.webkit.org/show_bug.cgi?id=136136
+
+        Reviewed by Sam Weinig, Joseph Pecoraro.
+
+        Allow InspectorClient to have a custom implementation of showPaintRect(). For
+        WebKit2's WebInspectorClient, implement this by creating a set of GraphicsLayers
+        which are parented in a document overlay, with 0.25s fade-out animations.
+        
+        Also change InspectorInstrumentation::didPaintImpl() to no longer take a GraphicsContext;
+        it makes no sense to paint the paint rects directly into the context of the web page.
+        Now that the paint rects are painted into an overlay, the rectangles need to be converted
+        to root document coordinates, which is done in InspectorInstrumentation::didPaintImpl().
+        
+        Remove the generic InspectorOverlay::drawOutline()-based indicators; they will
+        be reimplemented in a later patch.
+
+        * WebCore.exp.in:
+        * inspector/InspectorClient.h:
+        (WebCore::InspectorClient::showPaintRect):
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::didPaintImpl):
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::didPaint):
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::didPaint):
+        * inspector/InspectorPageAgent.h:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::didPaintContents):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::paintContents):
+
+2014-08-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172844.
+        https://bugs.webkit.org/show_bug.cgi?id=136164
+
+        re-applying WEBCORE_EXPORTS patch (Requested by
+        alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Revert r172831, it broke the Windows build."
+        http://trac.webkit.org/changeset/172844
+
+2014-08-21  David Hyatt  <hyatt@apple.com>
+
+        Implement rudimentary Bopomofo Ruby support (ruby-position:inter-character)
+        https://bugs.webkit.org/show_bug.cgi?id=136137
+        <rdar://problem/12567545>
+
+        Reviewed by Sam Weinig.
+
+        Added fast/ruby/bopomofo.html and fast/ruby/bopomofo-rl.html.
+
+        * css/CSSParser.cpp:
+        (WebCore::isValidKeywordPropertyAndValue):
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        (WebCore::CSSPrimitiveValue::operator RubyPosition):
+        * css/CSSPropertyNames.in:
+        * css/CSSValueKeywords.in:
+        Add support for the new inter-character value for ruby-position and also
+        add support for a new font-size keyword, -webkit-ruby-text, that is used
+        to set a smart initial font size based off the type of ruby being presented.
+
+        * css/DeprecatedStyleBuilder.cpp:
+        (WebCore::ApplyPropertyFontSize::determineRubyTextSizeMultiplier):
+        (WebCore::ApplyPropertyFontSize::applyValue):
+        Determine the Ruby text size multiplier when -webkit-ruby-text is specified
+        as the font size. For ruby-position of before/after, we use 50% of the parent
+        font size. For inter-character ruby, we default to 25% instead. If inter-character
+        Ruby is nested, we assume it's to display tone marks, and we use 100% to ensure
+        the tone mark is the same size and does not get smaller.
+
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustStyleForInterCharacterRuby):
+        (WebCore::StyleResolver::applyMatchedProperties):
+        * css/StyleResolver.h:
+        ruby-position is now the highest priority CSS property, and it is resolved
+        before all other properties to ensure that its value can be checked when
+        determining a smart default font size. adjustStyleForInterCharacterRuby is a new
+        function called to auto-adjust inter-character ruby text to be vertical writing mode when
+        encountered inside horizontal documents.
+
+        * css/html.css:
+        (ruby > rt):
+        Change the font-size from 50% to -webkit-ruby-text to allow us to customize it as
+        needed depending on what kind of Ruby we want to show.
+
+        * rendering/RenderRubyRun.cpp:
+        (WebCore::RenderRubyRun::layout):
+        * rendering/RenderRubyRun.h:
+        Add layout code to properly position vertical ruby text relative to a horizontal base.
+
+        * rendering/style/RenderStyleConstants.h:
+        Add the new inter-character constant for ruby-position.
+
+        * rendering/style/StyleRareInheritedData.h:
+        Increase the number of storage bits for RubyPosition from 1 to 2 now that we support 3 values.
+
+2014-08-22  Jon Lee  <jonlee@apple.com>
+
+        Fix iOS build due to r172832 and move RUBBER_BANDING out of FeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=136157
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE(RUBBER_BANDING).
+
+2014-08-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add the Wayland protocol extension
+        https://bugs.webkit.org/show_bug.cgi?id=136102
+
+        Reviewed by Martin Robinson.
+
+        Add the Wayland protocol extension that allows mapping GtkWidget
+        objects (via an ID that's unique to that GtkWidget) to the
+        corresponding Wayland surface objects. This way the nested
+        compositor has the proper information about what GtkWidget has
+        to be updated when surfaces are committed by the LayerTreeHost.
+
+        * PlatformGTK.cmake:
+        * platform/graphics/wayland: Added.
+        * platform/graphics/wayland/WebKitGtkWaylandClientProtocol.xml: Added.
+
 2014-08-21  Antti Koivisto  <antti@apple.com>
 
         Animated GIFs scrolled out of view still cause titlebar blur to update, on tumblr.com page
