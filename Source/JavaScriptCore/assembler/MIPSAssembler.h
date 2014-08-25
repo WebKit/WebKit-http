@@ -733,35 +733,6 @@ public:
     // writable region of memory; to modify the code in an execute-only execuable
     // pool the 'repatch' and 'relink' methods should be used.
 
-    static size_t linkDirectJump(void* code, void* to)
-    {
-        MIPSWord* insn = reinterpret_cast<MIPSWord*>(reinterpret_cast<intptr_t>(code));
-        size_t ops = 0;
-        int32_t slotAddr = reinterpret_cast<int>(insn) + 4;
-        int32_t toAddr = reinterpret_cast<int>(to);
-
-        if ((slotAddr & 0xf0000000) != (toAddr & 0xf0000000)) {
-            // lui
-            *insn = 0x3c000000 | (MIPSRegisters::t9 << OP_SH_RT) | ((toAddr >> 16) & 0xffff);
-            ++insn;
-            // ori
-            *insn = 0x34000000 | (MIPSRegisters::t9 << OP_SH_RT) | (MIPSRegisters::t9 << OP_SH_RS) | (toAddr & 0xffff);
-            ++insn;
-            // jr
-            *insn = 0x00000008 | (MIPSRegisters::t9 << OP_SH_RS);
-            ++insn;
-            ops = 4 * sizeof(MIPSWord);
-        } else {
-            // j
-            *insn = 0x08000000 | ((toAddr & 0x0fffffff) >> 2);
-            ++insn;
-            ops = 2 * sizeof(MIPSWord);
-        }
-        // nop
-        *insn = 0x00000000;
-        return ops;
-    }
-
     void linkJump(AssemblerLabel from, AssemblerLabel to)
     {
         ASSERT(to.isSet());
@@ -881,34 +852,42 @@ public:
 
     static ptrdiff_t maxJumpReplacementSize()
     {
-        return sizeof(MIPSWord) * 4;
+        return sizeof(MIPSWord) * 2;
     }
 
     static void revertJumpToMove(void* instructionStart, RegisterID rt, int imm)
     {
         MIPSWord* insn = static_cast<MIPSWord*>(instructionStart);
-        size_t codeSize = 2 * sizeof(MIPSWord);
 
         // lui
         *insn = 0x3c000000 | (rt << OP_SH_RT) | ((imm >> 16) & 0xffff);
         ++insn;
         // ori
         *insn = 0x34000000 | (rt << OP_SH_RS) | (rt << OP_SH_RT) | (imm & 0xffff);
-        ++insn;
-        // if jr $t9
-        if (*insn == 0x03200008) {
-            *insn = 0x00000000;
-            codeSize += sizeof(MIPSWord);
-        }
-        cacheFlush(insn, codeSize);
+        cacheFlush(insn, 2 * sizeof(MIPSWord));
+    }
+
+    static bool canJumpWithJ(void* instructionStart, void* to)
+    {
+        intptr_t slotAddr = reinterpret_cast<intptr_t>(instructionStart) + 4;
+        intptr_t toAddr = reinterpret_cast<intptr_t>(to);
+        return (slotAddr & 0xf0000000) == (toAddr & 0xf0000000);
     }
 
     static void replaceWithJump(void* instructionStart, void* to)
     {
         ASSERT(!(bitwise_cast<uintptr_t>(instructionStart) & 3));
         ASSERT(!(bitwise_cast<uintptr_t>(to) & 3));
-        size_t ops = linkDirectJump(instructionStart, to);
-        cacheFlush(instructionStart, ops);
+        ASSERT(canJumpWithJ(instructionStart, to));
+        MIPSWord* insn = reinterpret_cast<MIPSWord*>(instructionStart);
+        int32_t toAddr = reinterpret_cast<int32_t>(to);
+
+        // j <to>
+        *insn = 0x08000000 | ((toAddr & 0x0fffffff) >> 2);
+        ++insn;
+        // nop
+        *insn = 0x00000000;
+        cacheFlush(instructionStart, 2 * sizeof(MIPSWord));
     }
 
     static void replaceWithLoad(void* instructionStart)

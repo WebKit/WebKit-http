@@ -35,17 +35,53 @@
 
 namespace WTF {
 
+#if CPU(MIPS)
+static bool isWithin256MB(const void* ptr, size_t length)
+{
+    const intptr_t start = reinterpret_cast<intptr_t>(ptr);
+    const intptr_t end = start + length - 1;
+    return (start & 0xf0000000) == (end & 0xf0000000);
+}
+#endif // CPU(MIPS)
+
 void* OSAllocator::reserveUncommitted(size_t bytes, Usage usage, bool writable, bool executable, bool includesGuardPages)
 {
 #if OS(LINUX)
     UNUSED_PARAM(usage);
     UNUSED_PARAM(writable);
+#if !CPU(MIPS)
     UNUSED_PARAM(executable);
+#endif
     UNUSED_PARAM(includesGuardPages);
 
     void* result = mmap(0, bytes, PROT_NONE, MAP_NORESERVE | MAP_PRIVATE | MAP_ANON, -1, 0);
     if (result == MAP_FAILED)
         CRASH();
+#if CPU(MIPS)
+    // On MIPS we can use shorter j <address> jump instructions if the executable
+    // memory resides entirely within a single 256MB page (e.g. 0x3000.0000 to 0x3fff.ffff).
+    // Usually this is true for the small buffers we allocate, but we test, and upon failure
+    // we reallocate a double-size region, choose a valid region, and unmap the remainder.
+    if (executable && UNLIKELY(!isWithin256MB(result, bytes))) {
+        // Not in 256MB region, try to map double size.
+        if (munmap(result, bytes))
+            CRASH();
+        result = mmap(0, 2 * bytes, PROT_NONE, MAP_NORESERVE | MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (result == MAP_FAILED)
+            CRASH();
+        if (isWithin256MB(result, bytes)) {
+            // 1st half is good, release 2nd half.
+            if (munmap(reinterpret_cast<int8_t*>(result) + bytes, bytes))
+                CRASH();
+        } else if (isWithin256MB(reinterpret_cast<int8_t*>(result) + bytes, bytes)) {
+            // 2nd half is good, release 1st half.
+            if (munmap(result, bytes))
+                CRASH();
+        } else
+            ASSERT_NOT_REACHED();
+    }
+#endif // CPU(MIPS)
+
     madvise(result, bytes, MADV_DONTNEED);
 #else
     void* result = reserveAndCommit(bytes, usage, writable, executable, includesGuardPages);
