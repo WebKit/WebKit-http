@@ -26,13 +26,15 @@
 #include "config.h"
 #include "RunLoop.h"
 
+#include <Application.h>
 #include <stdio.h>
 
 namespace WTF {
 
 RunLoop::RunLoop()
 {
-    puts("FIXME RunLoop");
+    // It's up to the application to create BApplication (with the correct
+    // signature). However, we run it here.
 }
 
 RunLoop::~RunLoop()
@@ -41,17 +43,17 @@ RunLoop::~RunLoop()
 
 void RunLoop::run()
 {
-    puts("FIXME RunLoop");
+    be_app->Run();
 }
 
 void RunLoop::stop()
 {
-    puts("FIXME RunLoop");
+    be_app->PostMessage(B_QUIT_REQUESTED);
 }
 
 void RunLoop::wakeUp()
 {
-    puts("FIXME RunLoop");
+    puts("FIXME RunLoop wake");
 }
 
 RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
@@ -66,17 +68,18 @@ RunLoop::TimerBase::~TimerBase()
 
 void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
 {
-    puts("FIXME RunLoop");
+    puts("FIXME TimerBase start");
 }
 
 bool RunLoop::TimerBase::isActive() const
 {
-    puts("FIXME RunLoop");
+    puts("FIXME TimerrBase isActive");
+    return false;
 }
 
 void RunLoop::TimerBase::stop()
 {
-    puts("FIXME RunLoop");
+    puts("FIXME TimerBase stop");
 }
 
 }

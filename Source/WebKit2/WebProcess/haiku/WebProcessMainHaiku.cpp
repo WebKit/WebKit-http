@@ -30,6 +30,8 @@
 #include "NotImplemented.h"
 #include "WebProcess.h"
 
+#include <Application.h>
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -38,6 +40,7 @@ class WebProcessMain final: public ChildProcessMainBase {
 public:
     bool platformInitialize() override
     {
+        new BApplication("application/x-vnd.haiku-webkit.webprocess");
         notImplemented();
         return true;
     }
@@ -45,6 +48,7 @@ public:
     void platformFinalize() override
     {
         notImplemented();
+        delete be_app;
     }
 };
 
