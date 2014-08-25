@@ -20,9 +20,10 @@
 #include "config.h"
 #include "TestController.h"
 
+#include <Application.h>
 #include "NotImplemented.h"
 #include "PlatformWebView.h"
-#include <View.h>
+#include "WebView.h"
 
 namespace WTR {
 
@@ -38,10 +39,13 @@ void TestController::platformInitialize()
         m_useWaitToDumpWatchdogTimer = false;
         m_forceNoTimeout = true;
     }
+
+    new BApplication("application/x-vnd.haiku-webkit.testrunner");
 }
 
 void TestController::platformDestroy()
 {
+    delete be_app;
 }
 
 void TestController::platformWillRunTest(const TestInvocation&)
@@ -50,7 +54,10 @@ void TestController::platformWillRunTest(const TestInvocation&)
 
 void TestController::platformRunUntil(bool& condition, double timeout)
 {
+    // FIXME condition (?), timeout (via BMessageRunnner)
     notImplemented();
+
+    be_app->Run();
 }
 
 static const char* getEnvironmentVariableOrExit(const char* variableName)

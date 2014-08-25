@@ -46,9 +46,9 @@ typedef GtkWidget* PlatformWindow;
 typedef Evas_Object* PlatformWKView;
 typedef Ecore_Evas* PlatformWindow;
 #elif PLATFORM(HAIKU)
-class BView;
+class BWebView;
 class BWindow;
-typedef BView* PlatformWKView;
+typedef BWebView* PlatformWKView;
 typedef BWindow* PlatformWindow;
 #endif
 
@@ -97,7 +97,7 @@ private:
     PlatformWindow m_window;
     bool m_windowIsKey;
     WKRetainPtr<WKDictionaryRef> m_options;
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(HAIKU)
     bool m_usingFixedLayout;
 #endif
 };

@@ -22,22 +22,40 @@
 #include "PlatformWebView.h"
 
 #include "NotImplemented.h"
-#include <View.h>
+#include <WebView.h>
 #include <Window.h>
 
 using namespace WebKit;
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKPageRef /* relatedPage */, WKDictionaryRef options)
+PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup,
+    WKPageRef /* relatedPage */, WKDictionaryRef options)
 {
-    notImplemented();
+    WKRetainPtr<WKStringRef> useFixedLayoutKey(AdoptWK,
+        WKStringCreateWithUTF8CString("UseFixedLayout"));
+    m_usingFixedLayout = options ? WKBooleanGetValue(static_cast<WKBooleanRef>(
+        WKDictionaryGetItemForKey(options, useFixedLayoutKey.get()))) : false;
+
+    m_window = new BWindow(BRect(0, 0, 800, 600), "WebKitTestRunner",
+        B_DOCUMENT_WINDOW, 0);
+
+    // TODO create m_view
+    m_view = new BWebView(context, pageGroup);
+    WKPageSetUseFixedLayout(WKViewGetPage(m_view->GetWKView()),
+        m_usingFixedLayout);
+
+    m_window->AddChild(m_view);
+
+    if (m_usingFixedLayout)
+        resizeTo(800, 600);
+
+    m_windowIsKey = false;
 }
 
 PlatformWebView::~PlatformWebView()
 {
-    delete m_view;
-    delete m_window;
+    delete m_window; // The window owns the view
 }
 
 void PlatformWebView::resizeTo(unsigned width, unsigned height)
@@ -47,7 +65,7 @@ void PlatformWebView::resizeTo(unsigned width, unsigned height)
 
 WKPageRef PlatformWebView::page()
 {
-    notImplemented();
+    return WKViewGetPage(m_view->GetWKView());
 }
 
 void PlatformWebView::focus()

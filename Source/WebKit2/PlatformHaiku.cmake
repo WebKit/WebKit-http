@@ -30,9 +30,11 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/DefaultUndoController.cpp
 
-    UIProcess/API/C/CoordinatedGraphics/WKView.cpp
+    UIProcess/API/C/haiku/WKView.cpp
 
     UIProcess/API/CoordinatedGraphics/WKCoordinatedScene.cpp
+
+    UIProcess/API/haiku/WebView.cpp
 
     UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.cpp
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp
@@ -55,6 +57,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/haiku/WebPageProxyHaiku.cpp
     UIProcess/haiku/WebPreferencesHaiku.cpp
     UIProcess/haiku/WebProcessProxyHaiku.cpp
+    UIProcess/haiku/WebView.cpp
 
     WebProcess/Cookies/haiku/WebCookieManagerHaiku.cpp
 
@@ -95,6 +98,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/unix"
     "${WEBKIT2_DIR}/UIProcess/API/C/CoordinatedGraphics"
     "${WEBKIT2_DIR}/UIProcess/API/C/haiku"
+    "${WEBKIT2_DIR}/UIProcess/API/haiku"
+    "${WEBKIT2_DIR}/UIProcess/haiku"
     "${WEBKIT2_DIR}/UIProcess/CoordinatedGraphics"
     "${WEBKIT2_DIR}/WebProcess/unix"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/haiku"

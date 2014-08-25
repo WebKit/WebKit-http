@@ -15,6 +15,10 @@ list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_WEBCORE_DIR}
     ${DERIVED_SOURCES_WEBCORE_DIR}/include
     ${DERIVED_SOURCES_WEBKIT2_DIR}/include
+
+    ${WEBKIT2_DIR}/UIProcess/API/cpp
+    ${WEBKIT2_DIR}/UIProcess/API/haiku
+    ${WEBKIT2_DIR}/UIProcess/API/C/haiku
 )
 
 list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
