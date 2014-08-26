@@ -225,28 +225,9 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
 
     if (textureMapper->accelerationMode() == TextureMapper::OpenGLMode) {
         TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-#if USE(GRAPHICS_SURFACE)
-        ASSERT(m_graphicsSurface);
-        // CGL only provides us the context, but not the view the context is currently bound to.
-        // To make sure the context is bound the the right surface we have to do a makeCurrent through QOpenGL again.
-        // FIXME: Remove this code as soon as GraphicsSurfaceMac makes use of NSOpenGL.
-        QOpenGLContext* currentContext = QOpenGLContext::currentContext();
-        QSurface* currentSurface = currentContext->surface();
-        makeCurrentIfNeeded();
-
-        m_graphicsSurface->copyFromTexture(m_context->m_texture, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
-
-        // CGL only provides us the context, but not the view the context is currently bound to.
-        // To make sure the context is bound the the right surface we have to do a makeCurrent through QOpenGL again.
-        // FIXME: Remove this code as soon as GraphicsSurfaceMac makes use of NSOpenGL.
-        currentContext->makeCurrent(currentSurface);
-
-        m_graphicsSurface->paintToTextureMapper(texmapGL, targetRect, matrix, opacity);
-#else
         TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
         IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
         texmapGL->drawTexture(m_context->m_texture, flags, textureSize, targetRect, matrix, opacity);
-#endif
         return;
     }
 
@@ -263,6 +244,7 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
     QImage offscreenImage(width, height, QImage::Format_ARGB32);
     quint32* imagePixels = reinterpret_cast<quint32*>(offscreenImage.bits());
 
+    painter->beginNativePainting();
     makeCurrentIfNeeded();
     glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_fbo);
     glReadPixels(/* x */ 0, /* y */ 0, width, height, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, imagePixels);
@@ -289,6 +271,7 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
             ++pixelsSrc;
         }
     }
+    painter->endNativePainting();
 
     painter->drawImage(targetRect, offscreenImage);
     painter->restore();
