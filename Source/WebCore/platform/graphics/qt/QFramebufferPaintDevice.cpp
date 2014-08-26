@@ -39,27 +39,6 @@ void QFramebufferPaintDevice::ensureActiveTarget()
     m_framebufferObject.bind();
 }
 
-static QImage qt_gl_read_framebuffer(const QSize &size)
-{
-    QImage img(size, QImage::Format_ARGB32_Premultiplied);
-    int w = size.width();
-    int h = size.height();
-
-#ifdef QT_OPENGL_ES
-    GLint fmt = GL_BGRA_EXT;
-#else
-    GLint fmt = GL_BGRA;
-#endif
-    // FIXME: Check for BGRA support before trying it.
-    while (glGetError());
-    glReadPixels(0, 0, w, h, fmt, GL_UNSIGNED_BYTE, img.bits());
-    if (glGetError()) {
-        img = QImage(size, QImage::Format_RGBA8888_Premultiplied);
-        glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-    }
-    return img;
-}
-
 QImage QFramebufferPaintDevice::toImage() const
 {
     QOpenGLContext* currentContext = QOpenGLContext::currentContext();
@@ -67,12 +46,7 @@ QImage QFramebufferPaintDevice::toImage() const
 
     context()->makeCurrent(m_surface);
 
-    bool wasBound = m_framebufferObject.isBound();
-    if (!wasBound)
-        const_cast<QFramebufferPaintDevice*>(this)->bind();
-    QImage image = qt_gl_read_framebuffer(size());
-    if (!wasBound)
-        const_cast<QFramebufferPaintDevice*>(this)->release();
+    QImage image = m_framebufferObject.toImage(false);
 
     if (currentContext)
         currentContext->makeCurrent(currentSurface);
