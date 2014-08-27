@@ -46,6 +46,10 @@
 
 #if USE(3D_GRAPHICS)
 
+QT_BEGIN_NAMESPACE
+extern Q_GUI_EXPORT QImage qt_gl_read_framebuffer(const QSize &size, bool alpha_format, bool include_alpha);
+QT_END_NAMESPACE
+
 namespace WebCore {
 
 #if !defined(GLchar)
@@ -212,11 +216,6 @@ GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
     m_surfaceOwner = 0;
 }
 
-static inline quint32 swapBgrToRgb(quint32 pixel)
-{
-    return (((pixel << 16) | (pixel >> 16)) & 0x00ff00ff) | (pixel & 0xff00ff00);
-}
-
 #if USE(ACCELERATED_COMPOSITING)
 void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
@@ -231,6 +230,7 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
         return;
     }
 
+    // Alternatively read pixels to a memory buffer.
     GraphicsContext* context = textureMapper->graphicsContext();
     QPainter* painter = context->platformContext();
     painter->save();
@@ -240,37 +240,12 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
     const int height = m_context->m_currentHeight;
     const int width = m_context->m_currentWidth;
 
-    // Alternatively read pixels to a memory buffer.
-    QImage offscreenImage(width, height, QImage::Format_ARGB32);
-    quint32* imagePixels = reinterpret_cast<quint32*>(offscreenImage.bits());
-
     painter->beginNativePainting();
     makeCurrentIfNeeded();
     glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_fbo);
-    glReadPixels(/* x */ 0, /* y */ 0, width, height, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, imagePixels);
+    QImage offscreenImage = qt_gl_read_framebuffer(QSize(width, height), true, true);
     glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_state.boundFBO);
 
-    // OpenGL gives us ABGR on 32 bits, and with the origin at the bottom left
-    // We need RGB32 or ARGB32_PM, with the origin at the top left.
-    quint32* pixelsSrc = imagePixels;
-    const int halfHeight = height / 2;
-    for (int row = 0; row < halfHeight; ++row) {
-        const int targetIdx = (height - 1 - row) * width;
-        quint32* pixelsDst = imagePixels + targetIdx;
-        for (int column = 0; column < width; ++column) {
-            quint32 tempPixel = *pixelsSrc;
-            *pixelsSrc = swapBgrToRgb(*pixelsDst);
-            *pixelsDst = swapBgrToRgb(tempPixel);
-            ++pixelsSrc;
-            ++pixelsDst;
-        }
-    }
-    if (static_cast<int>(height) % 2) {
-        for (int column = 0; column < width; ++column) {
-            *pixelsSrc = swapBgrToRgb(*pixelsSrc);
-            ++pixelsSrc;
-        }
-    }
     painter->endNativePainting();
 
     painter->drawImage(targetRect, offscreenImage);
