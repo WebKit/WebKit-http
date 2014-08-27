@@ -376,7 +376,7 @@ static void compactRectsWithGapRects(Vector<LayoutRect>& rects, const Vector<Gap
 
 void ServicesOverlayController::selectionRectsDidChange(const Vector<LayoutRect>& rects, const Vector<GapRects>& gapRects, bool isTextOnly)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED > 1090
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1090
     m_currentSelectionRects = rects;
     m_isTextOnly = isTextOnly;
 
@@ -392,6 +392,8 @@ void ServicesOverlayController::selectionRectsDidChange(const Vector<LayoutRect>
     buildSelectionHighlight();
 #else
     UNUSED_PARAM(rects);
+    UNUSED_PARAM(gapRects);
+    UNUSED_PARAM(isTextOnly);
 #endif
 }
 
@@ -400,8 +402,6 @@ void ServicesOverlayController::selectedTelephoneNumberRangesChanged()
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1090
     LOG(Services, "ServicesOverlayController - Telephone number ranges changed\n");
     buildPhoneNumberHighlights();
-#else
-    UNUSED_PARAM(ranges);
 #endif
 }
 
@@ -475,6 +475,9 @@ void ServicesOverlayController::removeAllPotentialHighlightsOfType(Highlight::Ty
 
 void ServicesOverlayController::buildPhoneNumberHighlights()
 {
+    if (!DataDetectorsLibrary())
+        return;
+
     HashSet<RefPtr<Highlight>> newPotentialHighlights;
 
     Frame* mainFrame = m_webPage.mainFrame();
@@ -510,6 +513,9 @@ void ServicesOverlayController::buildPhoneNumberHighlights()
 
 void ServicesOverlayController::buildSelectionHighlight()
 {
+    if (!DataDetectorsLibrary())
+        return;
+
     HashSet<RefPtr<Highlight>> newPotentialHighlights;
 
     Vector<CGRect> cgRects;

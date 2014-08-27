@@ -26,7 +26,7 @@
 #include "config.h"
 #include "TypeProfiler.h"
 
-#include "InspectorJSTypeBuilders.h"
+#include "InspectorJSProtocolTypes.h"
 #include "TypeLocation.h"
 
 namespace JSC {
@@ -65,7 +65,7 @@ void TypeProfiler::insertNewLocation(TypeLocation* location)
     bucket.append(location);
 }
 
-void TypeProfiler::getTypesForVariableAtOffsetForInspector(TypeProfilerSearchDescriptor descriptor, unsigned divot, intptr_t sourceID, RefPtr<Inspector::TypeBuilder::Runtime::TypeDescription>& description)
+void TypeProfiler::getTypesForVariableAtOffsetForInspector(TypeProfilerSearchDescriptor descriptor, unsigned divot, intptr_t sourceID, RefPtr<Inspector::Protocol::Runtime::TypeDescription>& description)
 {
     TypeLocation* location = findLocation(divot, sourceID, descriptor);
     if (!location)
@@ -80,17 +80,6 @@ void TypeProfiler::getTypesForVariableAtOffsetForInspector(TypeProfilerSearchDes
 
     description->setLocalPrimitiveTypeNames(location->m_instructionTypeSet->allPrimitiveTypeNames());
     description->setLocalStructures(location->m_instructionTypeSet->allStructureRepresentations());
-}
-
-static bool descriptorMatchesTypeLocation(TypeProfilerSearchDescriptor descriptor, TypeLocation* location)
-{
-    if (descriptor == TypeProfilerSearchDescriptorFunctionReturn && location->m_globalVariableID == TypeProfilerReturnStatement)  
-        return true;
-
-    if (descriptor == TypeProfilerSearchDescriptorNormal && location->m_globalVariableID != TypeProfilerReturnStatement)  
-        return true;
-
-    return false;
 }
 
 TypeLocation* TypeProfiler::findLocation(unsigned divot, intptr_t sourceID, TypeProfilerSearchDescriptor descriptor)
@@ -110,10 +99,12 @@ TypeLocation* TypeProfiler::findLocation(unsigned divot, intptr_t sourceID, Type
     unsigned distance = UINT_MAX; // Because assignments may be nested, make sure we find the closest enclosing assignment to this character offset.
     for (size_t i = 0, size = bucket.size(); i < size; i++) {
         TypeLocation* location = bucket.at(i);
-        if (descriptor == TypeProfilerSearchDescriptorFunctionReturn && descriptorMatchesTypeLocation(descriptor, location) && location->m_divotForFunctionOffsetIfReturnStatement == divot)
+        // We found the type location that correlates to the convergence of all return statements in a function.
+        // This text offset is the offset of the opening brace in a function declaration.
+        if (descriptor == TypeProfilerSearchDescriptorFunctionReturn && location->m_globalVariableID == TypeProfilerReturnStatement && location->m_divotForFunctionOffsetIfReturnStatement == divot)
             return location;
 
-        if (location->m_divotStart <= divot && divot <= location->m_divotEnd && location->m_divotEnd - location->m_divotStart <= distance && descriptorMatchesTypeLocation(descriptor, location)) {
+        if (descriptor != TypeProfilerSearchDescriptorFunctionReturn && location->m_divotStart <= divot && divot <= location->m_divotEnd && location->m_divotEnd - location->m_divotStart <= distance) {
             distance = location->m_divotEnd - location->m_divotStart;
             bestMatch = location;
         }

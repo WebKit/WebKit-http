@@ -1,3 +1,134 @@
+2014-08-27  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Share fast/speechsynthesis/ with other ports
+        https://bugs.webkit.org/show_bug.cgi?id=136224
+
+        Reviewed by Chris Fleizach.
+
+        Share fast/speechsynthesis tests with EFL after r172956.
+        Skipped them for GTK and Win.
+
+        * fast/speechsynthesis/speech-synthesis-boundary-events-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-boundary-events-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-boundary-events.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-boundary-events.html.
+        * fast/speechsynthesis/speech-synthesis-cancel-crash-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-cancel-crash-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-cancel-crash.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-cancel-crash.html.
+        * fast/speechsynthesis/speech-synthesis-cancel-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-cancel-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-cancel.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-cancel.html.
+        * fast/speechsynthesis/speech-synthesis-crash-on-bad-utterance-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-crash-on-bad-utterance-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-crash-on-bad-utterance.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-crash-on-bad-utterance.html.
+        * fast/speechsynthesis/speech-synthesis-elapsed-time-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-elapsed-time-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-elapsed-time.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-elapsed-time.html.
+        * fast/speechsynthesis/speech-synthesis-gc-utterance-crash-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-gc-utterance-crash-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-gc-utterance-crash.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-gc-utterance-crash.html.
+        * fast/speechsynthesis/speech-synthesis-pause-resume-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-pause-resume-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-pause-resume.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-pause-resume.html.
+        * fast/speechsynthesis/speech-synthesis-speak-empty-string-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-speak-empty-string-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-speak-empty-string.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-speak-empty-string.html.
+        * fast/speechsynthesis/speech-synthesis-speak-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-speak-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-speak.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-speak.html.
+        * fast/speechsynthesis/speech-synthesis-utterance-uses-voice-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-utterance-uses-voice-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-utterance-uses-voice.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-utterance-uses-voice.html.
+        * fast/speechsynthesis/speech-synthesis-voices-expected.txt: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-voices-expected.txt.
+        * fast/speechsynthesis/speech-synthesis-voices.html: Renamed from LayoutTests/platform/mac/fast/speechsynthesis/speech-synthesis-voices.html.
+        * platform/gtk/TestExpectations: Skipped for GTK
+        * platform/win/TestExpectations: Skipped for Win
+
+2014-08-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Unskip compositing test
+        https://bugs.webkit.org/show_bug.cgi?id=136151
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/efl/TestExpectations: Unskip compositing tests.
+
+2014-08-26  Vivek Galatage  <vivek.vg@samsung.com>
+
+        Canvas direction should reflect change in dir attribute and also across save/restore operations
+        https://bugs.webkit.org/show_bug.cgi?id=136098
+
+        Reviewed by Darin Adler.
+
+        * fast/canvas/canvas-direction-expected.txt:
+        * fast/canvas/canvas-direction.html:
+
+2014-08-26  Shivakumar JM  <shiva.jm@samsung.com>
+
+        [EFL] FileApi Layout Tests passed in latest build.
+        https://bugs.webkit.org/show_bug.cgi?id=136250
+
+        Unreviewed gardening.
+
+        FileApi Layout Tests passed in latest build 172953.
+
+        * platform/efl/TestExpectations:
+
+2014-08-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failures after r136159, r172826 and r172835.
+        * platform/gtk/fast/ruby/bopomofo-expected.txt: Added. Add baseline after r172861 and r172874.
+        * platform/gtk/fast/ruby/bopomofo-letter-spacing-expected.txt: Added. Add baseline after r172861 and r172874.
+        * platform/gtk/fast/ruby/bopomofo-rl-expected.txt: Added. Add baseline after r172861 and r172874.
+        * platform/gtk/fast/ruby/ruby-base-merge-block-children-crash-2-expected.png: Removed. Rebaseline (use default baseline) after r172835 and r172847.
+        * platform/gtk/fast/ruby/ruby-base-merge-block-children-crash-2-expected.txt: Removed. Rebaseline (use default baseline) after r172835 and r172847.
+
+2014-08-26  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Positioned polygon reftests failing
+        https://bugs.webkit.org/show_bug.cgi?id=135925
+
+        Reviewed by David Hyatt.
+
+        * TestExpectations: Remove passing tests.
+        * css3/shapes/shape-outside/supported-shapes/polygon/shape-outside-polygon-012.html: Fix test behavior.
+
+2014-08-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172940.
+        https://bugs.webkit.org/show_bug.cgi?id=136256
+
+        Caused assertions on fast/storage/serialized-script-
+        value.html, and possibly flakiness on more tests (Requested by
+        ap on #webkit).
+
+        Reverted changeset:
+
+        "FTL should be able to do polymorphic call inlining"
+        https://bugs.webkit.org/show_bug.cgi?id=135145
+        http://trac.webkit.org/changeset/172940
+
+2014-08-23  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should be able to do polymorphic call inlining
+        https://bugs.webkit.org/show_bug.cgi?id=135145
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/script-tests/simple-poly-call-nested.js: Added.
+        * js/regress/script-tests/simple-poly-call.js: Added.
+        * js/regress/simple-poly-call-expected.txt: Added.
+        * js/regress/simple-poly-call-nested-expected.txt: Added.
+        * js/regress/simple-poly-call-nested.html: Added.
+        * js/regress/simple-poly-call.html: Added.
+
+2014-08-25  Alexey Proskuryakov  <ap@apple.com>
+
+        ASSERT(extractable()) when storing a non-extractable key in IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=136202
+        rdar://problem/17993967
+
+        * platform/mac-wk1/TestExpectations: Skip the test, IndexedDB is not supported
+        with WebKit1.
+
+2014-08-25  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        * platform/efl/TestExpectations: Added test expecations for failing and crashing tests.
+        * platform/efl/scrollbars/scrollbar-selectors-expected.txt: Rebaseline after r172220.
+
 2014-08-22  Sergio Villar Senin  <svillar@igalia.com>
 
         ASSERTION FAILED: !trackSizes.isEmpty() in WebCore::createGridTrackList

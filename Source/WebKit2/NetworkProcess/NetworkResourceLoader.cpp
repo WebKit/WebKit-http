@@ -63,7 +63,6 @@ NetworkResourceLoader::NetworkResourceLoader(const NetworkResourceLoadParameters
     , m_webFrameID(parameters.webFrameID)
     , m_sessionID(parameters.sessionID)
     , m_request(parameters.request)
-    , m_priority(parameters.priority)
     , m_contentSniffingPolicy(parameters.contentSniffingPolicy)
     , m_allowStoredCredentials(parameters.allowStoredCredentials)
     , m_clientCredentialPolicy(parameters.clientCredentialPolicy)
@@ -113,7 +112,6 @@ NetworkResourceLoader::~NetworkResourceLoader()
 {
     ASSERT(RunLoop::isMain());
     ASSERT(!m_handle);
-    ASSERT(!m_hostRecord);
 }
 
 bool NetworkResourceLoader::isSynchronous() const
@@ -161,7 +159,7 @@ void NetworkResourceLoader::cleanup()
     invalidateSandboxExtensions();
 
     // Tell the scheduler about this finished loader soon so it can start more network requests.
-    NetworkProcess::shared().networkResourceLoadScheduler().scheduleRemoveLoader(this);
+    NetworkProcess::shared().networkResourceLoadScheduler().removeLoader(this);
 
     if (m_handle) {
         // Explicit deref() balanced by a ref() in NetworkResourceLoader::start()
@@ -268,8 +266,6 @@ void NetworkResourceLoader::continueWillSendRequest(const ResourceRequest& newRe
     // FIXME: Implement ResourceRequest::updateFromDelegatePreservingOldProperties. See https://bugs.webkit.org/show_bug.cgi?id=126127.
     m_suggestedRequestForWillSendRequest.updateFromDelegatePreservingOldProperties(newRequest);
 #endif
-
-    RunLoop::main().dispatch(bind(&NetworkResourceLoadScheduler::receivedRedirect, &NetworkProcess::shared().networkResourceLoadScheduler(), this, m_suggestedRequestForWillSendRequest.url()));
 
     m_request = m_suggestedRequestForWillSendRequest;
     m_suggestedRequestForWillSendRequest = ResourceRequest();

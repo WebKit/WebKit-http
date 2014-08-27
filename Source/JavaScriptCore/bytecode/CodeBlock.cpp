@@ -1706,7 +1706,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     , m_osrExitCounter(0)
     , m_optimizationDelayCounter(0)
     , m_reoptimizationRetryCounter(0)
-    , m_returnStatementTypeSet(nullptr)
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
 #endif
@@ -2043,11 +2042,15 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
                 break;
             }
             case ProfileTypeBytecodeFunctionReturnStatement: {
-                globalTypeSet = returnStatementTypeSet();
+                RELEASE_ASSERT(ownerExecutable->isFunctionExecutable());
+                globalTypeSet = jsCast<FunctionExecutable*>(ownerExecutable)->returnStatementTypeSet();
                 globalVariableID = TypeProfilerReturnStatement;
                 if (!shouldAnalyze) {
-                    // Because some return statements are added implicitly (to return undefined at the end of a function), and these nodes don't emit expression ranges, give them some range.
-                    // Currently, this divot is on the open brace of the function. 
+                    // Because a return statement can be added implicitly to return undefined at the end of a function,
+                    // and these nodes don't emit expression ranges because they aren't in the actual source text of
+                    // the user's program, give the type profiler some range to identify these return statements.
+                    // Currently, the text offset that is used as identification is on the open brace of the function 
+                    // and is stored on TypeLocation's m_divotForFunctionOffsetIfReturnStatement member variable.
                     divotStart = divotEnd = m_sourceOffset;
                     shouldAnalyze = true;
                 }
@@ -2060,7 +2063,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             TypeLocation* location = locationPair.first;
             bool isNewLocation = locationPair.second;
 
-            if (ProfileTypeBytecodeFunctionReturnStatement)
+            if (flag == ProfileTypeBytecodeFunctionReturnStatement)
                 location->m_divotForFunctionOffsetIfReturnStatement = m_sourceOffset;
 
             if (shouldAnalyze && isNewLocation)

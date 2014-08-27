@@ -1,3 +1,405 @@
+2014-08-26  Matt Lilek  <mrl@apple.com>
+
+        Add WebKit SPI to control the navigator.standalone property
+        https://bugs.webkit.org/show_bug.cgi?id=136189
+
+        Reviewed by Andy Estes.
+
+        Add a property to WKPreferences that allows toggling this setting.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _isStandalone]):
+        (-[WKPreferences _setStandalone:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2014-08-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        FileReader cannot read files selected with <input type="file"> in iOS 8
+        https://bugs.webkit.org/show_bug.cgi?id=136117
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+        Correct an overzealous deny that was accidentally denying all
+        com.apple.app-sandbox.read extensions instead of just the ones
+        in Application bundles it was trying to deny.
+
+2014-08-26  Tim Horton  <timothy_horton@apple.com>
+
+        Crashes in ViewGestureController::beginSwipeGesture when swiping in rapid succession
+        https://bugs.webkit.org/show_bug.cgi?id=136271
+        <rdar://problem/17923694>
+
+        Reviewed by Simon Fraser.
+
+        It was possible to get into trackSwipeGesture while another swipe was still
+        occurring, because the guard against this happening depended on m_pendingSwipeReason
+        never being set while a swipe was occurring. However, if the very first scroll event
+        had sufficient magnitude, we would still set m_pendingSwipeReason to InsufficientMagnitude,
+        and then *never clear it*, leading to a path around the guard against multiple live swipes.
+        This in turn allowed stale layers in m_liveSwipeLayers, which lead to the crash.
+
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::handleScrollWheelEvent):
+        Don't unset m_pendingSwipeReason before calling trackSwipeGesture;
+        trackSwipeGesture will do it itself.
+
+        Don't set m_pendingSwipeReason to InsufficientMagnitude
+        if the event actually *has* sufficient magnitude to start a swipe.
+
+        (WebKit::ViewGestureController::trackSwipeGesture):
+        Assert that we don't have an active gesture while starting a swipe.
+
+        Reset m_pendingSwipeReason, because the swipe is no longer pending!
+
+2014-08-26  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Some projects are incorrectly installed to $BUILT_PRODUCTS_DIR
+        https://bugs.webkit.org/show_bug.cgi?id=136267
+
+        Reviewed by Dan Bernstein.
+
+        INSTALL_PATH was set to $BUILT_PRODUCTS_DIR for engineering configurations in r20225 as part of a build fix.
+        Not only is this no longer necessary to build, but it causes built products to be incorrectly installed in
+        engineering configurations.
+
+        Remove the setting of INSTALL_PATH from the pbxproj file so that the value specified in the xcconfig files is
+        used instead.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-08-25  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace use of WKCopyCFLocalizationPreferredName with NSLocale public API
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::connectToService): Remove accidental leftover retrieval
+        of the localization.
+        (WebKit::createProcess): Get current localization name from
+        CFBundle API instead of using SPI.
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Remove mention of WKCopyCFLocalizationPreferredName
+        * mac/WebKit2.order: ditto
+
+2014-08-26  Dana Burkart  <dburkart@apple.com>
+
+        The UNUSED_PARAM macros in ServicesOverlayController.mm are causing ASan build failures.
+        https://bugs.webkit.org/show_bug.cgi?id=136262
+
+        Reviewed by David Kilzer.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::selectionRectsDidChange):
+        (WebKit::ServicesOverlayController::selectedTelephoneNumberRangesChanged):
+
+2014-08-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] URTBF after r172966.
+
+        * UIProcess/efl/WebViewEfl.h:
+
+2014-08-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r172966) [GTK] Build broken.
+
+        Unreviewed build fix after r172966.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::didSameDocumentNavigationForMainFrame):
+        * UIProcess/API/gtk/PageClientImpl.h:
+
+2014-08-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Crashes in hit testing under WebPage::determinePrimarySnapshottedPlugIn()
+        https://bugs.webkit.org/show_bug.cgi?id=136240
+        rdar://problem/17231462
+
+        Reviewed by Darin Adler.
+        
+        determinePrimarySnapshottedPlugIn() does render tree hit testing, so needs
+        to ensure that layout is up-to-date.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+
+2014-08-26  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r172771): Amazon product page becomes unresponsive after swiping back to it
+        https://bugs.webkit.org/show_bug.cgi?id=136260
+        <rdar://problem/18107826>
+
+        Reviewed by Dan Bernstein.
+
+        Previously, when a swipe ended up performing a same-document navigation,
+        we would never get didFinishLoadForMainFrame nor didFirstVisuallyNonEmptyLayoutForMainFrame
+        nor would we even get didHitRenderTreeSizeThreshold in all cases, so we would never
+        remove the swipe snapshot. Previous implementations removed the snapshot on
+        didSameDocumentNavigation for the main frame if the navigation type was Replace or Pop,
+        so we will match that behavior.
+
+        Also, reinstate the watchdog that starts at swipe-end which would have prevented
+        this bug from forever breaking the view it was associated with.
+
+        Also, defend against removing the snapshot before the swipe has finished (before
+        we have even caused the navigation that we're watching for the effects of).
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _didSameDocumentNavigationForMainFrame:]):
+        * UIProcess/API/mac/WKViewInternal.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didSameDocumentNavigationForFrame):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didSameDocumentNavigationForMainFrame):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::didSameDocumentNavigationForMainFrame):
+        Plumb main-frame same-document navigation notification from WebPageProxy
+        to ViewGestureControllerMac via PageClient and WKView.
+
+        * UIProcess/mac/ViewGestureController.h:
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::ViewGestureController):
+        (WebKit::ViewGestureController::beginSwipeGesture):
+        (WebKit::ViewGestureController::endSwipeGesture):
+        Keep track of whether a swipe is currently occurring. We can't use
+        activeGestureType for this because the swipe currently remains the "active"
+        gesture until the snapshot is removed.
+
+        Reintroduce the old swipeWatchdogTimer (and rename the shorter timer that starts
+        when we get a visually non-empty layout) so that we will always remove the
+        snapshot after 5 seconds, even if we haven't committed the load.
+        This could lead to flashing back to the old content if we fail to get a single
+        byte for 5 seconds, but that is a rare case and should eventually get additional
+        special treatment (dropping the tiles until we do get content, or some such).
+
+        (WebKit::ViewGestureController::didHitRenderTreeSizeThreshold):
+        If a swipe is still in progress, we haven't done our navigation and thus
+        don't care about render tree size changes.
+
+        (WebKit::ViewGestureController::didFirstVisuallyNonEmptyLayoutForMainFrame):
+        If a swipe is still in progress, we haven't done our navigation and thus
+        don't care about layouts.
+
+        Stop the 5 second overall watchdog if we start the 3 second after-visuallyNonEmptyLayout
+        watchdog. This means that the snapshot could stay up for a maximum of 8 seconds
+        for a very, very slow load.
+
+        (WebKit::ViewGestureController::didFinishLoadForMainFrame):
+        If a swipe is still in progress, we haven't done our navigation and thus
+        don't care about loads that complete.
+
+        (WebKit::ViewGestureController::didSameDocumentNavigationForMainFrame):
+        Remove the swipe snapshot after painting if we do replaceState or popState.
+
+        (WebKit::ViewGestureController::removeSwipeSnapshotAfterRepaint):
+        If a swipe is still in progress, we shouldn't remove the snapshot yet.
+
+2014-08-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Translations are not initialized in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=136249
+
+        Reviewed by Philippe Normand.
+
+        This is breaking things like webkitContextMenuActionGetForContextMenuItem()
+        for non English locales in the cases where we use the action title to guess the
+        action, because the action title we get from the web process is translated while
+        the one in the UI process is in English.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (createDefaultWebContext): Initialize gettext right before
+        creating the default web context.
+
+2014-08-26  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Remove dead code in WebPageEfl.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=136246
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebProcess/WebPage/efl/WebPageEfl.cpp:
+        (WebKit::scroll): Deleted.
+
+2014-08-26  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Build break using clang
+        https://bugs.webkit.org/show_bug.cgi?id=136245
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: defines GTEST_HAS_RTTI=0
+
+2014-08-25  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: remove roundedLayoutPoint/roundedLayoutSize functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136236
+
+        Reviewed by Simon Fraser.
+
+        These functions simply call LayoutPoint/LayoutSize c'tors. They don't round the input value at all.
+
+        Non change in functionality.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::computeCustomFixedPositionRect):
+
+2014-08-25  Antti Koivisto  <antti@apple.com>
+
+        Don't pass priority as parameter to ResourceLoadScheduler
+        https://bugs.webkit.org/show_bug.cgi?id=136232
+
+        Reviewed by Sam Weinig.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::NetworkResourceLoader):
+        * NetworkProcess/NetworkResourceLoader.h:
+        (WebKit::NetworkResourceLoader::priority): Deleted.
+        * Shared/Network/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::NetworkResourceLoadParameters):
+        (WebKit::NetworkResourceLoadParameters::encode):
+        (WebKit::NetworkResourceLoadParameters::decode):
+        * Shared/Network/NetworkResourceLoadParameters.h:
+        * WebProcess/Network/WebResourceLoadScheduler.cpp:
+        (WebKit::WebResourceLoadScheduler::scheduleSubresourceLoad):
+        (WebKit::WebResourceLoadScheduler::schedulePluginStreamLoad):
+        (WebKit::WebResourceLoadScheduler::scheduleLoad):
+        * WebProcess/Network/WebResourceLoadScheduler.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::loadResourceSynchronously):
+
+2014-08-25  Brady Eidson  <beidson@apple.com>
+
+        Don't crash when the DataDetectors framework is unavailable.
+        <rdar://problem/18106066> and https://bugs.webkit.org/show_bug.cgi?id=136234
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        (WebKit::ServicesOverlayController::buildPhoneNumberHighlights): Bail if DD.framework didn’t soft link.
+        (WebKit::ServicesOverlayController::buildSelectionHighlight): Ditto.
+
+2014-08-25  Antti Koivisto  <antti@apple.com>
+
+        Remove load scheduling code from network process
+        https://bugs.webkit.org/show_bug.cgi?id=136199
+
+        Reviewed by Darin Adler.
+
+        Most platforms just flush resource loads directly to the networking layer by
+        making the parallel load count large. Also we always pass ResourceLoadPriorityHighest
+        to the scheduler so no actual scheduling happens. This is effectively dead code.
+
+        Keep basic support for serializing loads. This is only used for testing.
+
+        * NetworkProcess/HostRecord.cpp: Removed.
+        * NetworkProcess/HostRecord.h: Removed.
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::servePendingRequests):
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::getNetworkProcessStatistics):
+        * NetworkProcess/NetworkResourceLoadScheduler.cpp:
+        (WebKit::NetworkResourceLoadScheduler::NetworkResourceLoadScheduler):
+        (WebKit::NetworkResourceLoadScheduler::scheduleLoader):
+        (WebKit::NetworkResourceLoadScheduler::removeLoader):
+        (WebKit::NetworkResourceLoadScheduler::loadsPendingCount):
+        (WebKit::NetworkResourceLoadScheduler::loadsActiveCount):
+        (WebKit::NetworkResourceLoadScheduler::scheduleServePendingRequests): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::requestTimerFired): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::hostForURL): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::receivedRedirect): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::servePendingRequests): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::removeScheduledLoaders): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::scheduleRemoveLoader): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::hostsPendingCount): Deleted.
+        (WebKit::NetworkResourceLoadScheduler::hostsActiveCount): Deleted.
+        * NetworkProcess/NetworkResourceLoadScheduler.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::~NetworkResourceLoader):
+        (WebKit::NetworkResourceLoader::cleanup):
+        (WebKit::NetworkResourceLoader::continueWillSendRequest):
+        * NetworkProcess/NetworkResourceLoader.h:
+        (WebKit::NetworkResourceLoader::isLoadingMainResource):
+        (WebKit::NetworkResourceLoader::setHostRecord): Deleted.
+        (WebKit::NetworkResourceLoader::hostRecord): Deleted.
+        * NetworkProcess/mac/NetworkResourceLoadSchedulerMac.mm:
+        (WebKit::NetworkResourceLoadScheduler::platformInitializeNetworkSettings):
+        (WebKit::NetworkResourceLoadScheduler::platformInitializeMaximumHTTPConnectionCountPerHost): Deleted.
+        * NetworkProcess/soup/NetworkResourceLoadSchedulerSoup.cpp:
+        (WebKit::NetworkResourceLoadScheduler::platformInitializeNetworkSettings):
+        (WebKit::NetworkResourceLoadScheduler::platformInitializeMaximumHTTPConnectionCountPerHost): Deleted.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-08-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Older versions of WebKit should use the plugins cache in read only mode
+        https://bugs.webkit.org/show_bug.cgi?id=136215
+
+        Reviewed by Philippe Normand.
+
+        Now that WebKitGTK+ 2.4 and 2.5 are parallel installable, since
+        they use different versions of the plugins cache, apps using 2.4
+        might override the plugins cache file. We should prevent this from
+        happening by making older versions use the plugin cache, but not
+        downgrade it.
+
+        * UIProcess/Plugins/gtk/PluginInfoCache.cpp:
+        (WebKit::PluginInfoCache::PluginInfoCache):
+        (WebKit::PluginInfoCache::updatePluginInfo):
+        * UIProcess/Plugins/gtk/PluginInfoCache.h:
+
+2014-08-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Should check if a plugin mixes GTK+ symbols earlier
+        https://bugs.webkit.org/show_bug.cgi?id=136214
+
+        Reviewed by Philippe Normand.
+
+        We are currently checking if the plugin module and the plugin
+        process mix GTK symbols after the plugin has been loaded and
+        initialized. This is too late in many cases, since plugins can use
+        GTK methods in the NP_Initialize implementation. This is causing
+        the apps using WebKitGTK+ 2.4 to freeze when the plugin process
+        scans the plugins and there's a plugin using GTK+3 installed. We
+        should move the check earlier, once the module is loaded but
+        before calling NP_Initialize.
+
+        * Shared/Plugins/Netscape/NetscapePluginModule.cpp:
+        (WebKit::moduleMixesGtkSymbols):
+        (WebKit::NetscapePluginModule::tryLoad):
+        * WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp:
+        (WebKit::NetscapePlugin::platformPostInitialize):
+
+2014-08-25  Zan Dobersek  <zdobersek@igalia.com>
+
+        Improve virtual method declarations in LayerTreeHostGtk
+        https://bugs.webkit.org/show_bug.cgi?id=136210
+
+        Reviewed by Carlos Garcia Campos.
+
+        Mark the LayerTreeHostGtk class as final in the virtual inheritance hierarchy.
+
+        Order the public and private virtual method overrides from the LayerTreeHost
+        and GraphicsLayerClient interfaces. Explicitly mark them as overriding the
+        base class methods.
+
+        Remove the overriding notifyAnimationStarted() and notifyFlushRequired()
+        methods since they are identical to the methods in the base class.
+
+        De-virtualize flushPendingLayerChanges(). It's not inherited and is not
+        overriden by anything (and nothing can inherit from LayerTreeHostGtk from
+        now on due to the final specifier).
+
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::notifyAnimationStarted): Deleted.
+        (WebKit::LayerTreeHostGtk::notifyFlushRequired): Deleted.
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.h:
+        (WebKit::LayerTreeHostGtk::didCommitChangesForLayer): Deleted.
+
 2014-08-24  Brian J. Burg  <burg@cs.washington.edu>
 
         Remove unused method declarations replaced by WebPage::setViewState

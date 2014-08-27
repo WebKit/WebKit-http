@@ -1410,7 +1410,7 @@ void RenderObject::computeFloatRectForRepaint(const RenderLayerModelObject*, Flo
 
 #ifndef NDEBUG
 
-void RenderObject::showTreeForThis() const
+void RenderObject::showNodeTreeForThis() const
 {
     if (node())
         node()->showTreeForThis();
@@ -1647,10 +1647,10 @@ void RenderObject::mapLocalToContainer(const RenderLayerModelObject* repaintCont
         return;
 
     // FIXME: this should call offsetFromContainer to share code, but I'm not sure it's ever called.
-    LayoutPoint centerPoint = roundedLayoutPoint(transformState.mappedPoint());
+    LayoutPoint centerPoint(transformState.mappedPoint());
     if (mode & ApplyContainerFlip && o->isBox()) {
         if (o->style().isFlippedBlocksWritingMode())
-            transformState.move(toRenderBox(o)->flipForWritingMode(roundedLayoutPoint(transformState.mappedPoint())) - centerPoint);
+            transformState.move(toRenderBox(o)->flipForWritingMode(LayoutPoint(transformState.mappedPoint())) - centerPoint);
         mode &= ~ApplyContainerFlip;
     }
 
@@ -2510,10 +2510,10 @@ RenderNamedFlowFragment* RenderObject::currentRenderNamedFlowFragment() const
 
 #ifndef NDEBUG
 
-void showTree(const WebCore::RenderObject* object)
+void showNodeTree(const WebCore::RenderObject* object)
 {
     if (object)
-        object->showTreeForThis();
+        object->showNodeTreeForThis();
 }
 
 void showLineTree(const WebCore::RenderObject* object)

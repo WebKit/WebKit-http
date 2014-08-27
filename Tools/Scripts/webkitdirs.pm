@@ -1946,7 +1946,6 @@ sub generateBuildSystemFromCMakeProject
     push @args, "-DPORT=\"$port\"";
     push @args, "-DCMAKE_INSTALL_PREFIX=\"$prefixPath\"" if $prefixPath;
     push @args, "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" if isGtk();
-    push @args, "-DSHARED_CORE=ON" if (isEfl() || isHaiku()) && $ENV{"ENABLE_DRT"};
     if ($config =~ /release/i) {
         push @args, "-DCMAKE_BUILD_TYPE=Release";
     } elsif ($config =~ /debug/i) {
@@ -2559,7 +2558,7 @@ sub runSvnUpdateAndResolveChangeLogs(@)
 
     if (@conflictedChangeLogs) {
         print "Attempting to merge conflicted ChangeLogs.\n";
-        my $resolveChangeLogsPath = File::Spec->catfile(dirname($0), "resolve-ChangeLogs");
+        my $resolveChangeLogsPath = File::Spec->catfile(sourceDir(), "Tools", "Scripts", "resolve-ChangeLogs");
         (system($resolveChangeLogsPath, "--no-warnings", @conflictedChangeLogs) == 0)
             or die "Could not open resolve-ChangeLogs script: $!.\n";
     }

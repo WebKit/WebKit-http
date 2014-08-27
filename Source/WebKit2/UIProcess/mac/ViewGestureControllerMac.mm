@@ -77,7 +77,8 @@ static const CGFloat minimumHorizontalSwipeDistance = 15;
 static const float minimumScrollEventRatioForSwipe = 0.5;
 
 static const float swipeSnapshotRemovalRenderTreeSizeTargetFraction = 0.5;
-static const std::chrono::seconds swipeSnapshotRemovalWatchdogDuration = 3_s;
+static const std::chrono::seconds swipeSnapshotRemovalWatchdogDuration = 5_s;
+static const std::chrono::seconds swipeSnapshotRemovalWatchdogAfterFirstVisuallyNonEmptyLayoutDuration = 3_s;
 
 @interface WKSwipeCancellationTracker : NSObject {
 @private
@@ -98,6 +99,7 @@ ViewGestureController::ViewGestureController(WebPageProxy& webPageProxy)
     : m_webPageProxy(webPageProxy)
     , m_activeGestureType(ViewGestureType::None)
     , m_swipeWatchdogTimer(RunLoop::main(), this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
+    , m_swipeWatchdogAfterFirstVisuallyNonEmptyLayoutTimer(RunLoop::main(), this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
     , m_lastMagnificationGestureWasSmartMagnification(false)
     , m_visibleContentRectIsValid(false)
     , m_frameHandlesMagnificationGesture(false)
@@ -108,6 +110,7 @@ ViewGestureController::ViewGestureController(WebPageProxy& webPageProxy)
     , m_swipeWaitingForVisuallyNonEmptyLayout(false)
     , m_swipeWaitingForRenderTreeSizeThreshold(false)
     , m_swipeWaitingForRepaint(false)
+    , m_swipeInProgress(false)
 {
     m_webPageProxy.process().addMessageReceiver(Messages::ViewGestureController::messageReceiverName(), m_webPageProxy.pageID(), *this);
 }
@@ -321,7 +324,6 @@ bool ViewGestureController::handleScrollWheelEvent(NSEvent *event)
 
     if (m_pendingSwipeReason == PendingSwipeReason::InsufficientMagnitude) {
         if (deltaIsSufficientToBeginSwipe(event)) {
-            m_pendingSwipeReason = PendingSwipeReason::None;
             trackSwipeGesture(event, m_pendingSwipeDirection);
             return true;
         }
@@ -340,8 +342,8 @@ bool ViewGestureController::handleScrollWheelEvent(NSEvent *event)
         return false;
     }
 
-    m_pendingSwipeReason = PendingSwipeReason::InsufficientMagnitude;
     if (!deltaIsSufficientToBeginSwipe(event)) {
+        m_pendingSwipeReason = PendingSwipeReason::InsufficientMagnitude;
         m_pendingSwipeDirection = direction;
         return true;
     }
@@ -372,6 +374,9 @@ void ViewGestureController::wheelEventWasNotHandledByWebCore(NSEvent *event)
 
 void ViewGestureController::trackSwipeGesture(NSEvent *event, SwipeDirection direction)
 {
+    ASSERT(m_activeGestureType == ViewGestureType::None);
+    m_pendingSwipeReason = PendingSwipeReason::None;
+
     m_webPageProxy.recordNavigationSnapshot();
 
     CGFloat maxProgress = (direction == SwipeDirection::Left) ? 1 : 0;
@@ -505,6 +510,7 @@ void ViewGestureController::beginSwipeGesture(WebBackForwardListItem* targetItem
     m_webPageProxy.navigationGestureDidBegin();
 
     m_activeGestureType = ViewGestureType::Swipe;
+    m_swipeInProgress = true;
 
     CALayer *rootContentLayer = m_webPageProxy.acceleratedCompositingRootLayer();
 
@@ -627,6 +633,8 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
 
     m_swipeCancellationTracker = nullptr;
 
+    m_swipeInProgress = false;
+
     CALayer *rootLayer = m_webPageProxy.acceleratedCompositingRootLayer();
 
     [rootLayer setShadowOpacity:0];
@@ -649,11 +657,13 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
 
     m_webPageProxy.navigationGestureDidEnd(true, *targetItem);
     m_webPageProxy.goToBackForwardItem(targetItem);
+
+    m_swipeWatchdogTimer.startOneShot(swipeSnapshotRemovalWatchdogDuration.count());
 }
 
 void ViewGestureController::didHitRenderTreeSizeThreshold()
 {
-    if (m_activeGestureType != ViewGestureType::Swipe)
+    if (m_activeGestureType != ViewGestureType::Swipe || m_swipeInProgress)
         return;
 
     m_swipeWaitingForRenderTreeSizeThreshold = false;
@@ -664,20 +674,27 @@ void ViewGestureController::didHitRenderTreeSizeThreshold()
 
 void ViewGestureController::didFirstVisuallyNonEmptyLayoutForMainFrame()
 {
-    if (m_activeGestureType != ViewGestureType::Swipe)
+    if (m_activeGestureType != ViewGestureType::Swipe || m_swipeInProgress)
         return;
 
     m_swipeWaitingForVisuallyNonEmptyLayout = false;
 
     if (!m_swipeWaitingForRenderTreeSizeThreshold)
         removeSwipeSnapshotAfterRepaint();
-    else
-        m_swipeWatchdogTimer.startOneShot(swipeSnapshotRemovalWatchdogDuration.count());
+    else {
+        m_swipeWatchdogAfterFirstVisuallyNonEmptyLayoutTimer.startOneShot(swipeSnapshotRemovalWatchdogAfterFirstVisuallyNonEmptyLayoutDuration.count());
+        m_swipeWatchdogTimer.stop();
+    }
 }
 
 void ViewGestureController::didFinishLoadForMainFrame()
 {
-    if (m_activeGestureType != ViewGestureType::Swipe)
+    removeSwipeSnapshotAfterRepaint();
+}
+
+void ViewGestureController::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)
+{
+    if (type != SameDocumentNavigationSessionStateReplace && type != SameDocumentNavigationSessionStatePop)
         return;
 
     removeSwipeSnapshotAfterRepaint();
@@ -690,7 +707,7 @@ void ViewGestureController::swipeSnapshotWatchdogTimerFired()
 
 void ViewGestureController::removeSwipeSnapshotAfterRepaint()
 {
-    if (m_activeGestureType != ViewGestureType::Swipe)
+    if (m_activeGestureType != ViewGestureType::Swipe || m_swipeInProgress)
         return;
 
     if (m_swipeWaitingForRepaint)
@@ -709,6 +726,7 @@ void ViewGestureController::removeSwipeSnapshot()
     m_swipeWaitingForRepaint = false;
 
     m_swipeWatchdogTimer.stop();
+    m_swipeWatchdogAfterFirstVisuallyNonEmptyLayoutTimer.stop();
 
     if (m_activeGestureType != ViewGestureType::Swipe)
         return;

@@ -71,7 +71,7 @@ InspectorBackend.registerEvent("Database.didExecuteNoOptionalParameters", ["colu
 
 #if ENABLE(INSPECTOR)
 
-#include "InspectorTestTypeBuilders.h"
+#include "InspectorTestProtocolTypes.h"
 #include <inspector/InspectorBackendDispatcher.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
@@ -173,7 +173,7 @@ namespace Inspector {
 
 #if ENABLE(INSPECTOR)
 
-#include "InspectorTestTypeBuilders.h"
+#include "InspectorTestProtocolTypes.h"
 #include <inspector/InspectorFrontendChannel.h>
 #include <inspector/InspectorValues.h>
 #include <wtf/PassRefPtr.h>
@@ -183,16 +183,14 @@ namespace Inspector {
 
 
 
-#if ENABLE(SQL_DATABASE)
 class InspectorDatabaseFrontendDispatcher {
 public:
     InspectorDatabaseFrontendDispatcher(InspectorFrontendChannel* inspectorFrontendChannel) : m_inspectorFrontendChannel(inspectorFrontendChannel) { }
-    void didExecuteOptionalParameters(PassRefPtr<Inspector::TypeBuilder::Array<String>> columnNames, const String* const notes, const double* const timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::TypeBuilder::Database::Error> sqlError, const Inspector::TypeBuilder::Database::PrimaryColors* const screenColor, const String* const printColor);
-    void didExecuteNoOptionalParameters(PassRefPtr<Inspector::TypeBuilder::Array<String>> columnNames, const String& notes, double timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::TypeBuilder::Database::Error> sqlError, const Inspector::TypeBuilder::Database::PrimaryColors& screenColor, const String& printColor);
+    void didExecuteOptionalParameters(PassRefPtr<Inspector::Protocol::Array<String>> columnNames, const String* const notes, const double* const timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors* const screenColor, const String* const printColor);
+    void didExecuteNoOptionalParameters(PassRefPtr<Inspector::Protocol::Array<String>> columnNames, const String& notes, double timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors& screenColor, const String& printColor);
 private:
     InspectorFrontendChannel* m_inspectorFrontendChannel;
 };
-#endif // ENABLE(SQL_DATABASE)
 
 } // namespace Inspector
 
@@ -241,8 +239,7 @@ private:
 
 namespace Inspector {
 
-#if ENABLE(SQL_DATABASE)
-void InspectorDatabaseFrontendDispatcher::didExecuteOptionalParameters(PassRefPtr<Inspector::TypeBuilder::Array<String>> columnNames, const String* const notes, const double* const timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::TypeBuilder::Database::Error> sqlError, const Inspector::TypeBuilder::Database::PrimaryColors* const screenColor, const String* const printColor)
+void InspectorDatabaseFrontendDispatcher::didExecuteOptionalParameters(PassRefPtr<Inspector::Protocol::Array<String>> columnNames, const String* const notes, const double* const timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors* const screenColor, const String* const printColor)
 {
     RefPtr<InspectorObject> jsonMessage = InspectorObject::create();
     jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteOptionalParameters"));
@@ -268,7 +265,7 @@ void InspectorDatabaseFrontendDispatcher::didExecuteOptionalParameters(PassRefPt
     m_inspectorFrontendChannel->sendMessageToFrontend(jsonMessage->toJSONString());
 }
 
-void InspectorDatabaseFrontendDispatcher::didExecuteNoOptionalParameters(PassRefPtr<Inspector::TypeBuilder::Array<String>> columnNames, const String& notes, double timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::TypeBuilder::Database::Error> sqlError, const Inspector::TypeBuilder::Database::PrimaryColors& screenColor, const String& printColor)
+void InspectorDatabaseFrontendDispatcher::didExecuteNoOptionalParameters(PassRefPtr<Inspector::Protocol::Array<String>> columnNames, const String& notes, double timestamp, PassRefPtr<Inspector::InspectorObject> values, PassRefPtr<Inspector::InspectorValue> payload, PassRefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors& screenColor, const String& printColor)
 {
     RefPtr<InspectorObject> jsonMessage = InspectorObject::create();
     jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteNoOptionalParameters"));
@@ -285,7 +282,6 @@ void InspectorDatabaseFrontendDispatcher::didExecuteNoOptionalParameters(PassRef
 
     m_inspectorFrontendChannel->sendMessageToFrontend(jsonMessage->toJSONString());
 }
-#endif // ENABLE(SQL_DATABASE)
 
 } // namespace Inspector
 
@@ -293,7 +289,7 @@ void InspectorDatabaseFrontendDispatcher::didExecuteNoOptionalParameters(PassRef
 
 ### End File: InspectorTestFrontendDispatchers.cpp
 
-### Begin File: InspectorTestTypeBuilders.h
+### Begin File: InspectorTestProtocolTypes.h
 /*
  * Copyright (C) 2013 Google Inc. All rights reserved.
  * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
@@ -324,13 +320,13 @@ void InspectorDatabaseFrontendDispatcher::didExecuteNoOptionalParameters(PassRef
 // DO NOT EDIT THIS FILE. It is automatically generated from events-with-optional-parameters.json
 // by the script: Source/JavaScriptCore/inspector/scripts/generate-inspector-protocol-bindings.py
 
-#ifndef InspectorTestTypeBuilders_h
-#define InspectorTestTypeBuilders_h
+#ifndef InspectorTestProtocolTypes_h
+#define InspectorTestProtocolTypes_h
 
 #if ENABLE(INSPECTOR)
 
-#include <inspector/InspectorJSTypeBuilders.h>
-#include <inspector/InspectorTypeBuilder.h>
+#include <inspector/InspectorJSProtocolTypes.h>
+#include <inspector/InspectorProtocolTypes.h>
 #include <wtf/Assertions.h>
 #include <wtf/PassRefPtr.h>
 
@@ -338,26 +334,22 @@ namespace Inspector {
 
 
 
-namespace TypeBuilder {
+namespace Protocol {
 
 // Forward declarations.
-#if ENABLE(SQL_DATABASE)
 namespace Database {
 class Error;
 } // Database
-#endif // ENABLE(SQL_DATABASE)
 // End of forward declarations.
 
 
 // Typedefs.
-#if ENABLE(SQL_DATABASE)
 namespace Database {
 /* Unique identifier of Database object. */
 typedef String DatabaseId;
 
 typedef String PrimaryColors;
 } // Database
-#endif // ENABLE(SQL_DATABASE)
 // End of typedefs.
 
 String getTestEnumConstantValue(int code);
@@ -367,7 +359,6 @@ template<typename T> String getTestEnumConstantValue(T enumValue)
     return getTestEnumConstantValue(static_cast<int>(enumValue));
 }
 
-#if ENABLE(SQL_DATABASE)
 namespace Database {
 /* Database error. */
 class Error : public Inspector::InspectorObjectBase {
@@ -434,24 +425,23 @@ public:
     {
         return Builder<NoFieldsSet>(Inspector::InspectorObject::create());
     }
-    typedef Inspector::TypeBuilder::StructItemTraits ItemTraits;
+    typedef Inspector::Protocol::StructItemTraits ItemTraits;
 };
 
 } // Database
-#endif // ENABLE(SQL_DATABASE)
 
 
 
-} // namespace TypeBuilder
+} // namespace Protocol
 
 } // namespace Inspector
 
 #endif // ENABLE(INSPECTOR)
 
-#endif // !defined(InspectorTestTypeBuilders_h)
-### End File: InspectorTestTypeBuilders.h
+#endif // !defined(InspectorTestProtocolTypes_h)
+### End File: InspectorTestProtocolTypes.h
 
-### Begin File: InspectorTestTypeBuilders.cpp
+### Begin File: InspectorTestProtocolTypes.cpp
 /*
  * Copyright (C) 2013 Google Inc. All rights reserved.
  * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
@@ -483,7 +473,7 @@ public:
 // by the script: Source/JavaScriptCore/inspector/scripts/generate-inspector-protocol-bindings.py
 
 #include "config.h"
-#include "InspectorTestTypeBuilders.h"
+#include "InspectorTestProtocolTypes.h"
 
 #if ENABLE(INSPECTOR)
 
@@ -491,7 +481,7 @@ public:
 
 namespace Inspector {
 
-namespace TypeBuilder {
+namespace Protocol {
 
 static const char* const enum_constant_values[] = {
 };
@@ -502,10 +492,10 @@ String getTestEnumConstantValue(int code) {
 
 
 
-} // namespace TypeBuilder
+} // namespace Protocol
 
 } // namespace Inspector
 
 #endif // ENABLE(INSPECTOR)
 
-### End File: InspectorTestTypeBuilders.cpp
+### End File: InspectorTestProtocolTypes.cpp

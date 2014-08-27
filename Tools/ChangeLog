@@ -1,3 +1,243 @@
+2014-08-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove networkinfo watch category in watchlist
+        https://bugs.webkit.org/show_bug.cgi?id=136279
+
+        Reviewed by Alexey Proskuryakov.
+
+        Network info was removed. So, it is not needed anymore.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-08-26  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Poor performance when there are broken builds at initial load time
+        https://bugs.webkit.org/show_bug.cgi?id=136281
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        Track and expose whether the itertion is being loaded. Made update() a no-op if
+        the iteration is already being loaded.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotBuilderQueueView.js:
+        (BuildbotBuilderQueueView.prototype.update.appendBuilderQueueStatus): Instead of
+        loading everything at once, ask the queue to load a little more. We can always repeat
+        if we still don't have enough data.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.loadMoreHistoricalIterations): Added a function that loads
+        10 more iterations intelligently.
+
+2014-08-26  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard raises an exception when Trac RSS fails to load
+        https://bugs.webkit.org/show_bug.cgi?id=136283
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        Don't.
+
+2014-08-26  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard raises an exception after a hidden platform is removed
+        https://bugs.webkit.org/show_bug.cgi?id=136282
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (updateHiddenPlatforms): Check that the platform is still valid.
+
+2014-08-26  Matt Lilek  <mrl@apple.com>
+
+        Add WebKit SPI to control the navigator.standalone property
+        https://bugs.webkit.org/show_bug.cgi?id=136189
+
+        Reviewed by Andy Estes.
+
+        Add API test for WKPreferences
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Preferences.mm:
+        (TEST):
+
+2014-08-26  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove ENABLE_DRT environment variable to enable SHARED_CORE
+        https://bugs.webkit.org/show_bug.cgi?id=136205
+
+        Reviewed by Andrei Bucur.
+
+        EFL port doesn't need to enable SHARED_CORE since r172894. Thus, we don't need to
+        use ENABLE_DRT enviroment variable, which enables SHARED_CORE.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+
+2014-08-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Version stamp should include package-level version
+        https://bugs.webkit.org/show_bug.cgi?id=136266
+        <rdar://problem/18134138>
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitperl/auto-version_unittest/autoVersionTests.pl: Add
+        tests for the full 3+ digit version.
+        * Scripts/webkitperl/auto-version_unittest/versionStampTests.pl:
+        Confirm that the final output DLL uses the 3+ digit version.
+
+2014-08-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WebKit IDL incorrectly passes HWND as OLE_HANDLE
+        https://bugs.webkit.org/show_bug.cgi?id=136258
+        <rdar://problem/18134138>
+
+        Reviewed by Tim Horton.
+
+        Avoid 32/64-bit truncation by preventing 64-bit HWND (and other)
+        values from passing through the 32-bit OLE_HANDLE data type.
+
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (AccessibilityController::rootElement):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebViewToConsistentStateBeforeTesting):
+        (runTest):
+        (createWebViewAndOffscreenWindow):
+        * DumpRenderTree/win/FrameLoadDelegate.h:
+        (FrameLoadDelegate::didReceiveIcon):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setWindowIsKey):
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (UIDelegate::trackCustomPopupMenu):
+        (UIDelegate::drawHeaderInRect):
+        (UIDelegate::drawFooterInRect):
+        (UIDelegate::webViewClose):
+        (UIDelegate::webViewFocus):
+        (UIDelegate::webViewSetCursor):
+        (UIDelegate::drawBackground):
+        * DumpRenderTree/win/UIDelegate.h:
+        (UIDelegate::webViewFirstResponder):
+        (UIDelegate::makeFirstResponder):
+        (UIDelegate::contextMenuItemsForElement):
+        (UIDelegate::addCustomMenuDrawingData):
+        (UIDelegate::cleanUpCustomMenuDrawingData):
+        (UIDelegate::webViewLostFocus):
+        * TestWebKitAPI/Tests/WebKit/win/WebViewDestruction.cpp:
+        (TestWebKitAPI::WebViewDestructionWithHostWindow::SetUp):
+        * WinLauncher/PrintWebUIDelegate.cpp:
+        (PrintWebUIDelegate::drawHeaderInRect):
+        (PrintWebUIDelegate::drawFooterInRect):
+        * WinLauncher/PrintWebUIDelegate.h:
+        (PrintWebUIDelegate::webViewFirstResponder):
+        (PrintWebUIDelegate::makeFirstResponder):
+        (PrintWebUIDelegate::contextMenuItemsForElement):
+        (PrintWebUIDelegate::trackCustomPopupMenu):
+        (PrintWebUIDelegate::addCustomMenuDrawingData):
+        (PrintWebUIDelegate::cleanUpCustomMenuDrawingData):
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::prepareViews):
+        * WinLauncher/WinLauncherWebHost.h:
+        (WinLauncherWebHost::didReceiveIcon):
+
+2014-08-26  Daniel Bates  <dabates@apple.com>
+
+        Only define WEBCORE_EXPORT when building DumpRenderTree for Windows and iOS
+
+        Rubber-stamped by Tim Horton.
+
+        The Windows and iOS ports are the only ports that make use of WebCore headers
+        in DumpRenderTree.
+
+        * DumpRenderTree/config.h:
+
+2014-08-26  Dan Bernstein  <mitz@apple.com>
+
+        runSvnUpdateAndResolveChangeLogs() doesn’t work when invoked from a script outside Tools/Scripts
+        https://bugs.webkit.org/show_bug.cgi?id=136254
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitdirs.pm:
+        (runSvnUpdateAndResolveChangeLogs): Locate resolve-ChangeLogs relative to the source tree,
+        not the invoking script.
+
+2014-08-26  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Utilize espeak as a synthesizer back-end for WebSpeech
+        https://bugs.webkit.org/show_bug.cgi?id=136127
+
+        Reviewed by Gyuyoung Kim.
+
+        Add espeak dependency.
+
+        * efl/install-dependencies:
+
+2014-08-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove a little more accidentally landed code from r172891.
+
+        iteration.branch also wasn't meant to be landed.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData):
+
+2014-08-25  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r172891): Internal dashboard is broken.
+
+        Removing some accidentally landed code - I needed "changes" for another patch, but
+        not here, and then I decided to not use it anyway.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData):
+
+2014-08-25  Daniel Bates  <dabates@apple.com>
+
+        Fix the iOS DumpRenderTree build after <http://trac.webkit.org/changeset/172814/>
+        (https://bugs.webkit.org/show_bug.cgi?id=136108)
+
+        Use a similar approach as in TestWebKitAPI/config.h and define a stub for the macro define WEBCORE_EXPORT
+        so that we can compile DumpRenderTree for iOS.
+
+        * DumpRenderTree/config.h:
+
+2014-08-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Make build.webkit.org/dashboard work with changeset_show_files=location
+        https://bugs.webkit.org/show_bug.cgi?id=136237
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype._convertCommitInfoElementToObject): Remove location information
+        from description before getting title, and also actually parse the location into
+        result object when available.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Utilities.js:
+        (String.prototype.startsWith): Added.
+
+2014-08-25  Tanay C  <tanay.c@samsung.com>
+
+        [EFL][WK2] Minibrowser : Enhance application to be able to support history list navigation
+        https://bugs.webkit.org/show_bug.cgi?id=135795
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c: Adding functionality for long press history list navigation
+        (history_list_hide): Hiding and dereferencing the history list and items
+        (on_key_down):
+        (on_mouse_down):
+        (on_back_button_clicked): Early return for longpress 
+        (on_forward_button_clicked): Early return for longpress 
+        (list_item_label_get): Populate item labels
+        (on_list_item_select): Navigates on selection from history list
+        (navigation_button_longpress_process): Populates the history list and displays it
+        (on_forward_button_longpress):
+        (on_back_button_longpress):
+        (window_create): Add the widget for history list
+
 2014-08-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [GTK] JHBuild module gst-plugins-base fails to build on x86 with GCC 4.9

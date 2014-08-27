@@ -27,13 +27,13 @@
 #define TypeSet_h
 
 #include "StructureIDTable.h"
-#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Vector.h>
 
 namespace Inspector {
-namespace TypeBuilder  {
+namespace Protocol  {
 template<typename T> class Array;
 
 namespace Runtime {
@@ -70,7 +70,7 @@ public:
     void markAsFinal();
     void addProperty(RefPtr<StringImpl>);
     String stringRepresentation();
-    PassRefPtr<Inspector::TypeBuilder::Runtime::StructureDescription> inspectorRepresentation();
+    PassRefPtr<Inspector::Protocol::Runtime::StructureDescription> inspectorRepresentation();
     void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? "Object" : name); }
     String constructorName() { return m_constructorName; }
     void setProto(PassRefPtr<StructureShape> shape) { m_proto = shape; }
@@ -92,10 +92,11 @@ public:
     TypeSet();
     void addTypeInformation(RuntimeType, PassRefPtr<StructureShape>, StructureID);
     static RuntimeType getRuntimeTypeForValue(JSValue);
+    void invalidateCache();
     JS_EXPORT_PRIVATE String seenTypes() const;
     String displayName() const;
-    PassRefPtr<Inspector::TypeBuilder::Array<String>> allPrimitiveTypeNames() const;
-    PassRefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Runtime::StructureDescription>> allStructureRepresentations() const;
+    PassRefPtr<Inspector::Protocol::Array<String>> allPrimitiveTypeNames() const;
+    PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::StructureDescription>> allStructureRepresentations() const;
 
 private:
     String leastCommonAncestor() const;
@@ -104,7 +105,7 @@ private:
 
     uint32_t m_seenTypes;
     Vector<RefPtr<StructureShape>> m_structureHistory;
-    HashMap<StructureID, uint8_t> m_structureIDHistory;
+    HashSet<StructureID> m_structureIDCache;
 };
 
 } //namespace JSC

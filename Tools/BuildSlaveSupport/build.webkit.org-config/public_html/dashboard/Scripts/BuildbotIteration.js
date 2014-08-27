@@ -40,6 +40,7 @@ BuildbotIteration = function(queue, dataOrID, finished)
     this.id = dataOrID;
 
     this.loaded = false;
+    this.isLoading = false;
 
     this.openSourceRevision = null;
     this.internalRevision = null;
@@ -238,13 +239,6 @@ BuildbotIteration.prototype = {
         var internalRevisionProperty = data.properties.findFirst(function(property) { return property[0] === "internal_got_revision" || isMultiCodebaseGotRevisionProperty(property); });
         this.internalRevision = parseRevisionProperty(internalRevisionProperty, "Internal");
 
-        this.branch = data.properties.findFirst(function(property) { return property[0] === "branch" })[1];
-
-        this.changes = [];
-        var changes = data.sourceStamp.changes;
-        for (var i = 0; i < changes.length; ++i)
-            this.changes[i] = { revisionNumber: parseInt(changes[i].revision, 10) }
-
         this.startTime = new Date(data.times[0] * 1000);
         this.endTime = new Date(data.times[1] * 1000);
 
@@ -302,7 +296,13 @@ BuildbotIteration.prototype = {
         if (this.queue.buildbot.needsAuthentication && this.queue.buildbot.authenticationStatus === Buildbot.AuthenticationStatus.InvalidCredentials)
             return;
 
+        if (this.isLoading)
+            return;
+
+        this.isLoading = true;
+
         JSON.load(this.queue.baseURL + "/builds/" + this.id, function(data) {
+            this.isLoading = false;
             this.queue.buildbot.isAuthenticated = true;
             if (!data || !data.properties)
                 return;
@@ -310,6 +310,7 @@ BuildbotIteration.prototype = {
             this._updateWithData(data);
         }.bind(this),
         function(data) {
+            this.isLoading = false;
             if (data.errorType === JSON.LoadError && data.errorHTTPCode === 401) {
                 this.queue.buildbot.isAuthenticated = false;
                 this.dispatchEventToListeners(BuildbotIteration.Event.UnauthorizedAccess);

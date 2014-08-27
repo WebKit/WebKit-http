@@ -314,7 +314,7 @@ void CachedResource::load(CachedResourceLoader* cachedResourceLoader, const Reso
         m_fragmentIdentifierForRequest = String();
     }
 
-    m_loader = platformStrategies()->loaderStrategy()->resourceLoadScheduler()->scheduleSubresourceLoad(cachedResourceLoader->frame(), this, request, request.priority(), options);
+    m_loader = platformStrategies()->loaderStrategy()->resourceLoadScheduler()->scheduleSubresourceLoad(cachedResourceLoader->frame(), this, request, options);
     if (!m_loader) {
         failBeforeStarting();
         return;
@@ -793,11 +793,7 @@ void CachedResource::setLoadPriority(ResourceLoadPriority loadPriority)
 {
     if (loadPriority == ResourceLoadPriorityUnresolved)
         loadPriority = defaultPriorityForResourceType(type());
-    if (loadPriority == m_loadPriority)
-        return;
     m_loadPriority = loadPriority;
-    if (m_loader)
-        m_loader->didChangePriority(loadPriority);
 }
 
 CachedResource::CachedResourceCallback::CachedResourceCallback(CachedResource* resource, CachedResourceClient* client)

@@ -898,7 +898,7 @@ void EventHandler::updateSelectionForMouseDrag()
 
 static VisiblePosition selectionExtentRespectingEditingBoundary(const VisibleSelection& selection, const LayoutPoint& localPoint, Node* targetNode)
 {
-    LayoutPoint selectionEndPoint = localPoint;
+    FloatPoint selectionEndPoint = localPoint;
     Element* editableElement = selection.rootEditableElement();
 
     if (!targetNode->renderer())
@@ -909,11 +909,11 @@ static VisiblePosition selectionExtentRespectingEditingBoundary(const VisibleSel
             return VisiblePosition();
 
         FloatPoint absolutePoint = targetNode->renderer()->localToAbsolute(FloatPoint(selectionEndPoint));
-        selectionEndPoint = roundedLayoutPoint(editableElement->renderer()->absoluteToLocal(absolutePoint));
+        selectionEndPoint = editableElement->renderer()->absoluteToLocal(absolutePoint);
         targetNode = editableElement;
     }
 
-    return targetNode->renderer()->positionForPoint(selectionEndPoint, nullptr);
+    return targetNode->renderer()->positionForPoint(LayoutPoint(selectionEndPoint), nullptr);
 }
 
 void EventHandler::updateSelectionForMouseDrag(const HitTestResult& hitTestResult)
@@ -1135,6 +1135,8 @@ HitTestResult EventHandler::hitTestResultAtPoint(const LayoutPoint& point, HitTe
     if (!m_frame.contentRenderer())
         return result;
 
+    m_frame.document()->updateLayout();
+    
     // hitTestResultAtPoint is specifically used to hitTest into all frames, thus it always allows child frame content.
     HitTestRequest request(hitType | HitTestRequest::AllowChildFrameContent);
     m_frame.contentRenderer()->hitTest(request, result);
