@@ -1130,11 +1130,13 @@ void BWebPage::handleMouseEvent(const BMessage* message)
                         event.globalPosition().y() + 2);
                     BMenuItem* item = platformMenu->Go(screenLocation, false,
                         true);
-                    BMessage* message = item->Message();
-                    ContextMenuItem* itemHandle;
-                    message->FindPointer("ContextMenuItem", (void**)&itemHandle);
-                    fPage->contextMenuController().contextMenuItemSelected(
-                        itemHandle);
+                    if (item) {
+                        BMessage* message = item->Message();
+                        ContextMenuItem* itemHandle;
+                        message->FindPointer("ContextMenuItem", (void**)&itemHandle);
+                        fPage->contextMenuController().contextMenuItemSelected(
+                            itemHandle);
+                    }
                 }
             }
         }
