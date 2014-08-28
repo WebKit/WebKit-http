@@ -2,7 +2,7 @@
 *.pbxuser
 *.perspective*
 *.pyc
-.DS_Store
+*.DS_Store
 .directory
 build/
 /WebKitBuild/
