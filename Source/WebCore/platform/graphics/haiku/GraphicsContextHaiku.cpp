@@ -395,7 +395,6 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
         notImplemented();
     else if (m_state.fillGradient) {
         BGradient* gradient = m_state.fillGradient->platformGradient();
-//      gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
         m_data->view()->FillRect(rect, *gradient);
     } else if (fillColor().alpha())
         m_data->view()->FillRect(rect);
@@ -429,7 +428,6 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
             notImplemented();
         else if (m_state.fillGradient) {
             BGradient* gradient = m_state.fillGradient->platformGradient();
-//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
             m_data->view()->FillEllipse(rect, *gradient);
         } else
             m_data->view()->FillEllipse(rect);
@@ -466,7 +464,6 @@ void GraphicsContext::strokePath(const Path& path)
     else if (m_state.strokeGradient) {
         notImplemented();
 //      BGradient* gradient = m_state.strokeGradient->platformGradient();
-//      gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
 //      m_data->view()->StrokeShape(m_data->shape(), *gradient);
     } else if(strokeColor().alpha()) {
         drawing_mode mode = m_data->view()->DrawingMode();
@@ -623,7 +620,6 @@ void GraphicsContext::fillPath(const Path& path)
     else if (m_state.fillGradient) {
         view->SetDrawingMode(B_OP_ALPHA);
         BGradient* gradient = m_state.fillGradient->platformGradient();
-//      gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
         view->FillShape(path.platformPath(), *gradient);
     } else if (fillColor().alpha()) {
         drawing_mode mode = view->DrawingMode();
@@ -922,9 +918,13 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled())
         return;
 
+#if 0
     BAffineTransform current = m_data->view()->Transform();
     current.TranslateBy(x, y);
     m_data->view()->SetTransform(current);
+#endif
+
+    m_data->view()->SetOrigin(x, y);
 }
 
 void GraphicsContext::rotate(float radians)
