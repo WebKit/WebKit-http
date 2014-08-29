@@ -759,7 +759,9 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
     if (paintingDisabled())
         return;
 
-    m_data->pushLayer(opacity);
+	// FIXME this leads to not drawing anything at all, which is not what we 
+	// want. Let's go with opaque instead until we know what's broken...
+    //m_data->pushLayer(opacity);
 }
 
 void GraphicsContext::endPlatformTransparencyLayer()
@@ -767,7 +769,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
     if (paintingDisabled())
         return;
 
-    m_data->popLayer();
+    //m_data->popLayer();
 }
 
 bool GraphicsContext::supportsTransparencyLayers()
@@ -867,7 +869,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
         // Use the default above
         break;
     case CompositeSourceOver:
-        mode = B_OP_OVER;
+        mode = B_OP_ALPHA;
         break;
     case CompositePlusLighter:
         mode = B_OP_ADD;
@@ -918,13 +920,15 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled())
         return;
 
-#if 0
-    BAffineTransform current = m_data->view()->Transform();
-    current.TranslateBy(x, y);
-    m_data->view()->SetTransform(current);
-#endif
-
-    m_data->view()->SetOrigin(x, y);
+	if (x != 0 && y != 0) {
+		// Translation in both directions is not scrolling.
+    	BAffineTransform current = m_data->view()->Transform();
+    	current.TranslateBy(x, y);
+    	m_data->view()->SetTransform(current);
+	} else {
+		// Most likely plain old scrolling.
+    	m_data->view()->SetOrigin(x, y);
+	}
 }
 
 void GraphicsContext::rotate(float radians)
