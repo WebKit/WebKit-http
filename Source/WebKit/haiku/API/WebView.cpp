@@ -258,6 +258,7 @@ void BWebView::Draw(BRect rect)
 
     GraphicsContext g(this);
 
+#if USE(TEXTURE_MAPPER)
     // Draw the scrollbars for the main frame (they are not part of the back
     // buffer)
     ScrollableArea* area = fWebPage->MainFrame()->Frame()->view();
@@ -268,6 +269,7 @@ void BWebView::Draw(BRect rect)
     bar = area->horizontalScrollbar();
     if(bar)
         bar->paint(&g, IntRect(rect));
+#endif
 
     // Draw some stuff for the web inspector
 #if ENABLE(INSPECTOR)
