@@ -5,6 +5,15 @@ For more information, please visit the [project's wiki and issue tracker](http:/
 
 ## Quick build instructions ##
 
+### Cloning the repository ###
+
+This repository is *huge* (about 5 gigabytes). If you are only interested in building
+the latest version of WebKit, remember to use the --depth option to git clone.
+This can be used to download only a limited part of the history and will reduce the
+checkout to about 600MB. Note that WebKit uses SVN and they have the changelog inside the tree in "Changelog"
+files, which you can still use as a primitive way to browse the history. You
+can also use github for that, or download parts of the history later.
+
 ### Requirements ###
 
 - You need a recent version of Haiku with the GCC 4 development tools
@@ -13,11 +22,11 @@ For more information, please visit the [project's wiki and issue tracker](http:/
 
 Dependencies can be installed (for a gcc2hybrid version) via:
 
-    $ pkgman install cmake gperf sqlite_x86_devel libxml2_x86_devel libxslt_x86_devel icu_x86_devel icu_devel perl python ruby
+    $ pkgman install cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_x86_devel icu_x86_devel icu_devel perl python ruby libexecinfo_x86_devel
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
-    AddHaikuImagePackages cmake gperf sqlite_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby ;
+    AddHaikuImagePackages cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby libexecinfo_x86_devel ;
 
 Packages for other flavors of Haiku may or may not be available. Use [haikuporter](http://haikuports.org) to build them if needed.
 
@@ -76,11 +85,8 @@ To use Ninja, perform the following steps:
 
 * First install Ninja:
     $ pkgman install ninja_x86
-* Tell CMake to use Ninja instead of make when invoking build-webkit
-    $ .../build-webkit ... --cmakeargs="-GNinja"
-* Use Ninja when building:
-    $ cd WebKitBuild/Release
-    $ ninja -j4
+
+The build-webkit script then detects and uses Ninja automatically.
 
 ### Speeding up the build with distcc ###
 
