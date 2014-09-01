@@ -1,3 +1,263 @@
+2014-08-30  Filip Pizlo  <fpizlo@apple.com>
+
+        [RJST] eager-no-cjit should really mean eager
+        https://bugs.webkit.org/show_bug.cgi?id=136407
+
+        Reviewed by Mark Hahnenberg.
+        
+        At some point we made NO_CJIT_OPTIONS force threshold settings to something reasonable
+        and well-known. But the way we appended options was such that NO_CJIT_OPTIONS came in
+        after EAGER_OPTIONS. The whole point of "eager" was to use eager tier-up thresholds. This
+        all meant that NO_CJIT_OPTIONS was overriding the eagerness of EAGER_OPTIONS, for the one
+        threshold setting that NO_CJIT_OPTIONS was currently setting
+        (thresholdForJITAfterWarmUp). The solution is to make sure that we always append
+        NO_CJIT_OPTIONS before we append EAGER_OPTIONS.
+        
+        Luckily, no tests regressed during the time that we lost eager-no-cjit coverage.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-08-29  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Configure Xcode to build a command line tool for the iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=136388
+
+        Reviewed by David Kilzer.
+
+        Add a script, called configure-xcode-for-ios-development, to configure Xcode to
+        support building a command line tool for the iOS Simulator. You must run this
+        script as root.
+
+        The script uses the xcspec files in the OS X SDK to create xcspec files in the
+        iOS Simulator SDK with the product- and package- type definitions to build a
+        command line tool, if applicable.
+
+        * Scripts/configure-xcode-for-ios-development: Added.
+
+2014-08-29  Tim Horton  <timothy_horton@apple.com>
+
+        Remove Windows WebKit2 code from TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=136385
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/PlatformUtilities.h:
+        * TestWebKitAPI/PlatformWebView.h:
+        (TestWebKitAPI::PlatformWebView::setParentWindowMessageObserver): Deleted.
+        * TestWebKitAPI/Tests/WebKit2/MouseMoveAfterCrash.cpp:
+        (TestWebKitAPI::TEST): Deleted.
+        * TestWebKitAPI/Tests/WebKit2/SpacebarScrolling.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/WKPreferences.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/win/AltKeyGeneratesWMSysCommand.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/win/DoNotCopyANullCFURLResponse.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/win/HideFindIndicator.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/win/ResizeViewWhileHidden.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/win/TranslateMessageGeneratesWMChar.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/win/WMCloseCallsUIClientClose.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/win/WMPrint.cpp: Removed.
+
+2014-08-29  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [JSC] Some JSC tests are dependent on the machine time zone.
+        https://bugs.webkit.org/show_bug.cgi?id=136363
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-javascriptcore-tests: Export TZ environment variable to US/Pacific.
+        Unskip the tests that were skipped on r99580.
+
+2014-08-29  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Remove non Coordinated Graphics code path from cmake build system after r142169
+        https://bugs.webkit.org/show_bug.cgi?id=135560
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitperl/FeatureList.pm: Removed TILED_BACKING_STORE guard.
+
+2014-08-28  Daniel Bates  <dabates@apple.com>
+
+        [Win] update-webkit should update auxiliary libs by default
+
+        Reviewed by Dan Bernstein.
+
+        The change set <http://trac.webkit.org/changeset/172795> inadvertently prevented update-webkit
+        from updating the Windows auxiliary libs by default. We should make update-webkit update the
+        Windows auxiliary libs by default. This will make its behavior match its usage text.
+
+        * Scripts/update-webkit:
+
+2014-08-28  Brian J. Burg  <burg@cs.washington.edu>
+
+        build-webkit --inspector-frontend tries to copy files from old inspector path
+        https://bugs.webkit.org/show_bug.cgi?id=136346
+
+        Reviewed by Timothy Hatcher.
+
+        Remove the old code path for copying inspector resources. It doesn't work.
+        Complain if this option is passed to CMake-based builds.
+
+        * Scripts/build-webkit:
+        * Scripts/webkitdirs.pm:
+        (copyInspectorFrontendFiles): Deleted.
+
+2014-08-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Dashboard metrics page could show longest stretch of red
+        https://bugs.webkit.org/show_bug.cgi?id=136334
+
+        Reviewed by Sam Weinig.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._updateStretchOfRedCounters):
+        (Analyzer.prototype._countPercentageOfGreen):
+        When counting percentage of green, also keep track of how long the page was red.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsView.js:
+        (MetricsView.prototype._update.addDivider):
+        (MetricsView.prototype._update.appendQueueResults):
+        Show it in aggregate queues (can't think of a reason to have it in individual ones).
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Metrics.css:
+        Changed to use an explicit divider element between green time and performance groups,
+        as there are too many combinations to easily express in CSS.
+
+2014-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add webkit_uri_response_get_http_headers to WebKit2 GTK+ API
+        https://bugs.webkit.org/show_bug.cgi?id=136248
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add new test case for webkit_uri_response_get_http_headers().
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestLoaderClient.cpp:
+        (testURIResponseHTTPHeaders):
+        (serverCallback):
+        (beforeAll):
+
+2014-08-27  Alexey Proskuryakov  <ap@apple.com>
+
+        EWS status link at build.webkit.org/dashboard is incorrect until EWS pop-up is opened
+        https://bugs.webkit.org/show_bug.cgi?id=131668
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueue.js:
+        (EWSQueue.prototype.loadDetailedStatus): Fixed a typo in assertion.
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Cleanup snapSizeToPixel/snapSizeToDevicePixel.
+        https://bugs.webkit.org/show_bug.cgi?id=136264
+
+        Reviewed by Simon Fraser.
+        
+        1. Align snapSizeToPixel()/snapSizeToDevicePixel() function names with the rest of snapping
+        functions. ->snappedIntSize()/snapSizeToDevicePixel().
+        2. Operate on LayoutSize/LayoutPoint instead of LayoutUnit/LayoutUnit to reflect functionality.
+
+        Covered by existing tests.
+
+        * TestWebKitAPI/Tests/WebCore/LayoutUnit.cpp:
+        (TestWebKitAPI::TEST): Deleted.
+
+2014-08-27  Alexey Proskuryakov  <ap@apple.com>
+
+        EWS status link at build.webkit.org/dashboard is incorrect until EWS pop-up is opened
+        https://bugs.webkit.org/show_bug.cgi?id=131668
+
+        Reviewed by Daniel Bates.
+
+        We used to fetch the URL from EWS detailed status JSON, but there isn't much reason
+        to not just hardcode.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWS.js:
+        (EWS.prototype.queueStatusURL): Added.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueue.js:
+        (EWSQueue.prototype.get statusPageURL): Use the above function.
+        (EWSQueue.prototype.loadDetailedStatus): Changed assignment to an assertion.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueueView.js:
+        (EWSQueueView.prototype.update): While at it, made a popover show up even if there
+        are no patches in the queue. The popover has other useful information, such as charts
+        link and bot status.
+
+2014-08-27  Alexey Proskuryakov  <ap@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=136317
+        Dashboard metrics page sometimes shows 0 for best time
+
+        Reviewed by Tim Horton.
+
+        This also affects regular dashboard display in a good way - iterations that failed
+        due to infrastructure misbehavior will more reliably show up as yellow and not red.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration): Added a list of steps that we actually care about. It will need to be
+        updated if we rename steps.
+        (BuildbotIteration.prototype.get productive): Now that computation is more involved,
+        do it once.
+        (BuildbotIteration.prototype._parseData): Tweak computation of "productive" - builds
+        that failed e.g. at downloading built archive step are not productive.
+
+2014-08-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * win/AssembleBuildLogs/AssembleLogs.cmd: Add some missing build logs to the set
+        of logs assembled into the final build output.
+
+2014-08-27  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Add a metrics page with overall bot performance results
+        https://bugs.webkit.org/show_bug.cgi?id=136196
+
+        Reviewed by Timothy Hatcher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External/daterangepicker.css: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External/jquery-1.11.1.min.js: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External/jquery.daterangepicker.js: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External/moment.min.js: Added.
+        A date range picker control with dependencies.
+        There are a few modifications from upstream at <https://github.com/longbill/jquery-date-range-picker>:
+        - Fixed a bug where selected dates were not at midnight the first time a range was chosen
+        (it didn't happen again upon re-opening the picker).
+        - Made made style tweaks to match Dashboard UI.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Initialization.js:
+        Don't create objects that are not needed by the given app, and thus are not loaded at all.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js: Added.
+        Math to count all the things. Only supports open source tree and trunk at the moment,
+        but written with internal tree and branches in mind.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsMain.js: Added.
+        Like dashboard Main.js, draws the UI and creates all necessary objects.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsView.js: Added.
+        A view for table cells.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Settings.js:
+        (Settings.prototype.toggleSettingsDisplay): Added an event for entering settings.
+        Metrics page has individual platforms initially scrolled away form the view, so 
+        it needs to scroll down to reveal what's being configured.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Utilities.js:
+        Added Array.prototype.average and Array.prototype.median.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        Made gear icon fixed instead of absolute, so that it's visible on metrics page when
+        in settings mode.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Metrics.css:
+        Additional style rules.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/metrics.html:
+        The metrics page.
+
 2014-08-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Remove networkinfo watch category in watchlist

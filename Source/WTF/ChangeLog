@@ -1,3 +1,85 @@
+2014-08-26  Maciej Stachowiak  <mjs@apple.com>
+
+        Use RetainPtr::autorelease in some places where it seems appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=136280
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/mac/StringImplMac.mm:
+        (WTF::StringImpl::operator NSString *): Use autorelease() instead of
+        CFBridgingRelease(leakRef())
+
+2014-08-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JavaScriptCore: Use ASCIILiteral where possible
+        https://bugs.webkit.org/show_bug.cgi?id=136179
+
+        Reviewed by Michael Saboff.
+
+        * wtf/text/WTFString.cpp:
+        (asciiDebug):
+
+2014-08-27  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should compute immediate dominators using the O(n log n) form of Lengauer and Tarjan's "A Fast Algorithm for Finding Dominators in a Flowgraph"
+        https://bugs.webkit.org/show_bug.cgi?id=93361
+
+        Reviewed by Mark Hahnenberg.
+        
+        Make BitVector operations return the previous value of the bit you're changing. This is
+        useful for the kinds of set operations that are commonplace in compiler graph searches.
+
+        * wtf/BitVector.h:
+        (WTF::BitVector::quickSet):
+        (WTF::BitVector::quickClear):
+        (WTF::BitVector::set):
+        (WTF::BitVector::ensureSizeAndSet):
+        (WTF::BitVector::clear):
+
+2014-08-27  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should be able to do polymorphic call inlining
+        https://bugs.webkit.org/show_bug.cgi?id=135145
+
+        Reviewed by Geoffrey Garen.
+        
+        Add some power that I need for call edge profiling.
+
+        * wtf/OwnPtr.h:
+        (WTF::OwnPtr<T>::createTransactionally):
+        * wtf/Spectrum.h:
+        (WTF::Spectrum::add):
+        (WTF::Spectrum::addAll):
+        (WTF::Spectrum::get):
+        (WTF::Spectrum::size):
+        (WTF::Spectrum::KeyAndCount::KeyAndCount):
+        (WTF::Spectrum::clear):
+        (WTF::Spectrum::removeIf):
+
+2014-08-27  Nico Weber  <thakis@chromium.org>
+
+        Delete a MSVS2010 workaround.
+        https://bugs.webkit.org/show_bug.cgi?id=136321
+
+        Reviewed by Benjamin Poulain.
+
+        Ports https://codereview.chromium.org/512923004/ by the talented
+        Nico Weber from Blink. No intended behavior change.
+
+        * wtf/Vector.h:
+        (WTF::=):
+
+2014-08-27  Mark Rowe  <mrowe@apple.com>
+
+        JavaScriptCore is missing debug info for WTF because libWTF.a is stripped.
+        <https://webkit.org/b/136320> / <rdar://problem/18148776>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/WTF.xcconfig: Set STRIP_INSTALLED_PRODUCT = NO for the target
+        that produces libWTF.a so that the debug symbols will be linked into JavaScriptCore
+        and end up in its dSYM file.
+
 2014-08-26  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r172940.

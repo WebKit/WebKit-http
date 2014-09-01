@@ -1,3 +1,83 @@
+2014-08-29  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: Fix how Popover animates
+        https://bugs.webkit.org/show_bug.cgi?id=136353
+
+        Reviewed by Timothy Hatcher.
+
+        Popovers currently don't animate properly because they use 
+        window.requestAnimationFrame which won't fire its callback 
+        while the inspector is paused in the debugger. This patches
+        switches the callback mechanism to setTimeout and also changes
+        how a Popover's anchor animates to prevent visual glitches.
+
+        Popover also has a new function that allows a new target
+        frame and new content to be set simultaneously and to
+        animate to show the new content while changing the 
+        location of the popover frame.
+
+        SourceCodeTextEditor uses Popover's new API for animating
+        between popovers when paused in the debugger. SourceCodeTextEditor 
+        also now ensures proper balancing of popover tracking event 
+        listeners.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype.present):
+        (WebInspector.Popover.prototype.presentNewContentWithFrame):
+        (WebInspector.Popover.prototype.dismiss):
+        (WebInspector.Popover.prototype._update):
+        (WebInspector.Popover.prototype.drawBackground):
+        (WebInspector.Popover.prototype._animateFrame):
+        (WebInspector.Popover.prototype._drawFrame):
+        (WebInspector.Popover.prototype._addListenersIfNeeded):
+        (WebInspector.Popover.prototype._animateFrame.drawBackground): Deleted.
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._showPopover):
+        (WebInspector.SourceCodeTextEditor.prototype._dismissPopover):
+        (WebInspector.SourceCodeTextEditor.prototype._trackPopoverEvents):
+
+2014-08-28  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: Write tests for ScriptSyntaxTree and fix bugs in the data structure
+        https://bugs.webkit.org/show_bug.cgi?id=136272
+
+        Reviewed by Joseph Pecoraro.
+
+        Include the necessary files in Test.html to test ScriptSyntaxTree.
+        Also, ScriptSyntaxTree had a couple of errors for two of its nodes
+        where they simply ignored one of the properties on the node.
+        These errors were found while writing the tests and are fixed
+        in this patch.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        * UserInterface/Test.html:
+
+2014-08-27  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: Layout issues for popover on not legacy OS
+        https://bugs.webkit.org/show_bug.cgi?id=136268
+
+        Reviewed by Joseph Pecoraro.
+
+        On the latest OS, popovers invade the title bar's space which will
+        cause layout issues because the title bar will render above
+        the popover. Fix this by providing some padding for popovers on 
+        not legacy OSs.
+
+        * UserInterface/Views/Popover.js:
+
+2014-08-27  Timothy Hatcher  <timothy@apple.com>
+
+        REGRESSION: Web Inspector: Legacy toolbar has two different colors in unfocused windowed mode
+        https://bugs.webkit.org/show_bug.cgi?id=136289
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/Toolbar.css:
+        (body.mac-platform.legacy .toolbar): Override the background-color as transparent. Non-legacy
+        uses a solid color instead of a gradient for window-inactive.
+
 2014-08-26  Saam Barati  <sbarati@apple.com>
 
         Web Inspector: Fix CodeMirrorTokenTrackingController::_startTracking assertion

@@ -646,6 +646,11 @@ bool RenderLayerCompositor::hasAnyAdditionalCompositedLayers(const RenderLayer& 
     return m_compositedLayerCount > (rootLayer.isComposited() ? 1 : 0);
 }
 
+void RenderLayerCompositor::cancelCompositingLayerUpdate()
+{
+    m_updateCompositingLayersTimer.stop();
+}
+
 void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
 {
     m_updateCompositingLayersTimer.stop();
@@ -1033,7 +1038,7 @@ void RenderLayerCompositor::addToOverlapMap(OverlapMap& overlapMap, RenderLayer&
         boundsComputed = true;
     }
 
-    IntRect clipRect = pixelSnappedIntRect(layer.backgroundClipRect(RenderLayer::ClipRectsContext(&rootRenderLayer(), AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
+    IntRect clipRect = snappedIntRect(layer.backgroundClipRect(RenderLayer::ClipRectsContext(&rootRenderLayer(), AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
 
     // On iOS, pageScaleFactor() is not applied by RenderView, so we should not scale here.
     // FIXME: Set Settings::delegatesPageScaling to true for iOS.
@@ -2457,7 +2462,7 @@ bool RenderLayerCompositor::requiresCompositingForPlugin(RenderLayerModelObject&
         return pluginRenderer.hasLayer() && pluginRenderer.layer()->isComposited();
 
     // Don't go into compositing mode if height or width are zero, or size is 1x1.
-    IntRect contentBox = pixelSnappedIntRect(pluginRenderer.contentBoxRect());
+    IntRect contentBox = snappedIntRect(pluginRenderer.contentBoxRect());
     return contentBox.height() * contentBox.width() > 1;
 }
 
@@ -2482,7 +2487,7 @@ bool RenderLayerCompositor::requiresCompositingForFrame(RenderLayerModelObject& 
         return frameRenderer.hasLayer() && frameRenderer.layer()->isComposited();
     
     // Don't go into compositing mode if height or width are zero.
-    return !pixelSnappedIntRect(frameRenderer.contentBoxRect()).isEmpty();
+    return !snappedIntRect(frameRenderer.contentBoxRect()).isEmpty();
 }
 
 bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObject& renderer) const
@@ -2735,7 +2740,7 @@ static void paintScrollbar(Scrollbar* scrollbar, GraphicsContext& context, const
 
 void RenderLayerCompositor::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip)
 {
-    IntRect pixelSnappedRectForIntegralPositionedItems = pixelSnappedIntRect(LayoutRect(clip));
+    IntRect pixelSnappedRectForIntegralPositionedItems = snappedIntRect(LayoutRect(clip));
     if (graphicsLayer == layerForHorizontalScrollbar())
         paintScrollbar(m_renderView.frameView().horizontalScrollbar(), context, pixelSnappedRectForIntegralPositionedItems);
     else if (graphicsLayer == layerForVerticalScrollbar())
@@ -3236,7 +3241,7 @@ void RenderLayerCompositor::ensureRootLayer()
 #ifndef NDEBUG
         m_rootContentLayer->setName("content root");
 #endif
-        IntRect overflowRect = m_renderView.pixelSnappedLayoutOverflowRect();
+        IntRect overflowRect = snappedIntRect(m_renderView.layoutOverflowRect());
         m_rootContentLayer->setSize(FloatSize(overflowRect.maxX(), overflowRect.maxY()));
         m_rootContentLayer->setPosition(FloatPoint());
 

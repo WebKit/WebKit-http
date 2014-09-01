@@ -104,14 +104,6 @@ CGColorSpaceRef sRGBColorSpaceRef()
 #endif // PLATFORM(IOS)
 }
 
-#if PLATFORM(IOS)
-void setStrokeAndFillColor(CGContextRef context, CGColorRef color)
-{
-    CGContextSetStrokeColorWithColor(context, color);
-    CGContextSetFillColorWithColor(context, color);
-}
-#endif // PLATFORM(IOS)
-
 #if PLATFORM(WIN) || PLATFORM(IOS)
 CGColorSpaceRef linearRGBColorSpaceRef()
 {
@@ -120,23 +112,15 @@ CGColorSpaceRef linearRGBColorSpaceRef()
 }
 #endif
 
-void GraphicsContext::platformInit(CGContextRef cgContext, bool shouldUseContextColors)
+void GraphicsContext::platformInit(CGContextRef cgContext)
 {
     m_data = new GraphicsContextPlatformPrivate(cgContext);
     setPaintingDisabled(!cgContext);
     if (cgContext) {
-#if PLATFORM(IOS)
-        m_state.shouldUseContextColors = shouldUseContextColors;
-        if (shouldUseContextColors) {
-#else
-        UNUSED_PARAM(shouldUseContextColors);
-#endif
         // Make sure the context starts in sync with our state.
         setPlatformFillColor(fillColor(), fillColorSpace());
         setPlatformStrokeColor(strokeColor(), strokeColorSpace());
-#if PLATFORM(IOS)
-        }
-#endif
+        setPlatformStrokeThickness(strokeThickness());
     }
 }
 
@@ -456,8 +440,7 @@ void GraphicsContext::drawJoinedLines(CGPoint points[], unsigned count, bool ant
 }
 #endif
 
-// This method is only used to draw the little circles used in lists.
-void GraphicsContext::drawEllipse(const IntRect& rect)
+void GraphicsContext::drawEllipse(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
@@ -466,31 +449,6 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
     path.addEllipse(rect);
     drawPath(path);
 }
-
-#if PLATFORM(IOS)
-void GraphicsContext::drawEllipse(const FloatRect& rect)
-{
-    if (paintingDisabled())
-        return;
-
-    CGContextRef context(platformContext());
-
-    CGContextSaveGState(context);
-
-    setCGFillColor(context, fillColor(), fillColorSpace());
-    setCGStrokeColor(context, strokeColor(), strokeColorSpace());
-
-    CGContextSetLineWidth(context, strokeThickness());
-    
-    CGContextBeginPath(context);
-    CGContextAddEllipseInRect(context, rect);
-
-    CGContextFillPath(context);
-    CGContextStrokePath(context);
-    
-    CGContextRestoreGState(context);
-}
-#endif
 
 static void addConvexPolygonToPath(Path& path, size_t numberOfPoints, const FloatPoint* points)
 {
@@ -1395,19 +1353,13 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
             dashBounds.append(CGRectMake(bounds.x() + widths[i], bounds.y() + 2 * bounds.height(), widths[i+1] - widths[i], bounds.height()));
     }
 
-#if PLATFORM(IOS)
-    if (m_state.shouldUseContextColors)
-#endif
-        if (fillColorIsNotEqualToStrokeColor)
-            setCGFillColor(platformContext(), localStrokeColor, strokeColorSpace());
+    if (fillColorIsNotEqualToStrokeColor)
+        setCGFillColor(platformContext(), localStrokeColor, strokeColorSpace());
 
     CGContextFillRects(platformContext(), dashBounds.data(), dashBounds.size());
 
-#if PLATFORM(IOS)
-    if (m_state.shouldUseContextColors)
-#endif
-        if (fillColorIsNotEqualToStrokeColor)
-            setCGFillColor(platformContext(), fillColor(), fillColorSpace());
+    if (fillColorIsNotEqualToStrokeColor)
+        setCGFillColor(platformContext(), fillColor(), fillColorSpace());
 }
 
 void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)

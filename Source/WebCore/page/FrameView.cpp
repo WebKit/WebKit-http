@@ -1791,7 +1791,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
             return false;
         }
 #endif
-        IntRect updateRect = pixelSnappedIntRect(layer->repaintRectIncludingNonCompositingDescendants());
+        IntRect updateRect = snappedIntRect(layer->repaintRectIncludingNonCompositingDescendants());
         updateRect = contentsToRootView(updateRect);
         if (!isCompositedContentLayer && clipsRepaints())
             updateRect.intersect(rectToScroll);
@@ -2723,11 +2723,11 @@ IntRect FrameView::extendedBackgroundRectForPainting() const
     
     LayoutRect extendedRect = renderView->unextendedBackgroundRect(renderView);
     if (!tiledBacking->hasMargins())
-        return pixelSnappedIntRect(extendedRect);
+        return snappedIntRect(extendedRect);
     
     extendedRect.moveBy(LayoutPoint(-tiledBacking->leftMarginWidth(), -tiledBacking->topMarginHeight()));
     extendedRect.expand(LayoutSize(tiledBacking->leftMarginWidth() + tiledBacking->rightMarginWidth(), tiledBacking->topMarginHeight() + tiledBacking->bottomMarginHeight()));
-    return pixelSnappedIntRect(extendedRect);
+    return snappedIntRect(extendedRect);
 }
 
 bool FrameView::shouldUpdateWhileOffscreen() const
@@ -3180,9 +3180,9 @@ IntRect FrameView::windowClipRectForFrameOwner(const HTMLFrameOwnerElement* owne
     // Apply the clip from the layer.
     IntRect clipRect;
     if (clipToLayerContents)
-        clipRect = pixelSnappedIntRect(enclosingLayer->childrenClipRect());
+        clipRect = snappedIntRect(enclosingLayer->childrenClipRect());
     else
-        clipRect = pixelSnappedIntRect(enclosingLayer->selfClipRect());
+        clipRect = snappedIntRect(enclosingLayer->selfClipRect());
     clipRect = contentsToWindow(clipRect); 
     return intersection(clipRect, windowClipRect());
 }
@@ -3217,6 +3217,45 @@ void FrameView::scrollTo(const IntSize& newOffset)
     if (offset != scrollOffset())
         scrollPositionChanged(oldPosition, scrollPosition());
     frame().loader().client().didChangeScrollOffset();
+}
+
+float FrameView::adjustScrollStepForFixedContent(float step, ScrollbarOrientation orientation, ScrollGranularity granularity)
+{
+    if (granularity != ScrollByPage || orientation == HorizontalScrollbar)
+        return step;
+
+    TrackedRendererListHashSet* positionedObjects = nullptr;
+    if (RenderView* root = m_frame->contentRenderer()) {
+        if (!root->hasPositionedObjects())
+            return step;
+        positionedObjects = root->positionedObjects();
+    }
+
+    FloatRect unobscuredContentRect = this->unobscuredContentRect();
+    float topObscuredArea = 0;
+    float bottomObscuredArea = 0;
+    for (const auto& positionedObject : *positionedObjects) {
+        const RenderStyle& style = positionedObject->style();
+        if (style.position() != FixedPosition || style.visibility() == HIDDEN || !style.opacity())
+            continue;
+
+        FloatQuad contentQuad = positionedObject->absoluteContentQuad();
+        if (!contentQuad.isRectilinear())
+            continue;
+
+        FloatRect contentBoundingBox = contentQuad.boundingBox();
+        FloatRect fixedRectInView = intersection(unobscuredContentRect, contentBoundingBox);
+
+        if (fixedRectInView.width() < unobscuredContentRect.width())
+            continue;
+
+        if (fixedRectInView.y() == unobscuredContentRect.y())
+            topObscuredArea = std::max(topObscuredArea, fixedRectInView.height());
+        else if (fixedRectInView.maxY() == unobscuredContentRect.maxY())
+            bottomObscuredArea = std::max(bottomObscuredArea, fixedRectInView.height());
+    }
+
+    return Scrollbar::pageStep(unobscuredContentRect.height(), unobscuredContentRect.height() - topObscuredArea - bottomObscuredArea);
 }
 
 void FrameView::invalidateScrollbarRect(Scrollbar* scrollbar, const IntRect& rect)
@@ -3265,7 +3304,7 @@ IntRect FrameView::scrollableAreaBoundingBox() const
     return ownerRenderer->absoluteContentQuad().enclosingBoundingBox();
 }
 
-bool FrameView::isScrollable()
+bool FrameView::isScrollable(Scrollability definitionOfScrollable)
 {
     // Check for:
     // 1) If there an actual overflow.
@@ -3273,11 +3312,18 @@ bool FrameView::isScrollable()
     // 3) overflow{-x,-y}: hidden;
     // 4) scrolling: no;
 
+    bool requiresActualOverflowToBeConsideredScrollable = !frame().isMainFrame() || definitionOfScrollable != Scrollability::ScrollableOrRubberbandable;
+#if !ENABLE(RUBBER_BANDING)
+    requiresActualOverflowToBeConsideredScrollable = true;
+#endif
+
     // Covers #1
-    IntSize totalContentsSize = this->totalContentsSize();
-    IntSize visibleContentSize = visibleContentRect(LegacyIOSDocumentVisibleRect).size();
-    if ((totalContentsSize.height() <= visibleContentSize.height() && totalContentsSize.width() <= visibleContentSize.width()))
-        return false;
+    if (requiresActualOverflowToBeConsideredScrollable) {
+        IntSize totalContentsSize = this->totalContentsSize();
+        IntSize visibleContentSize = visibleContentRect(LegacyIOSDocumentVisibleRect).size();
+        if (totalContentsSize.height() <= visibleContentSize.height() && totalContentsSize.width() <= visibleContentSize.width())
+            return false;
+    }
 
     // Covers #2.
     HTMLFrameOwnerElement* owner = frame().ownerElement();
@@ -3292,6 +3338,23 @@ bool FrameView::isScrollable()
         return false;
 
     return true;
+}
+
+bool FrameView::hasScrollableOrRubberbandableAncestor()
+{
+    if (frame().isMainFrame())
+        return isScrollable(Scrollability::ScrollableOrRubberbandable);
+
+    FrameView* parentFrameView = this->parentFrameView();
+    if (!parentFrameView)
+        return false;
+
+    RenderView* parentRenderView = parentFrameView->renderView();
+    if (!parentRenderView)
+        return false;
+
+    RenderLayer* enclosingLayer = parentRenderView->enclosingLayer();
+    return enclosingLayer && enclosingLayer->hasScrollableOrRubberbandableAncestor();
 }
 
 void FrameView::updateScrollableAreaSet()
@@ -3847,7 +3910,7 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
 
     // Require the document to grow a bit.
     static const int documentHeightThreshold = 200;
-    if (documentElement->renderBox()->layoutOverflowRect().pixelSnappedHeight() < documentHeightThreshold)
+    if (documentElement->renderBox()->layoutOverflowRect().pixelSnappedSize().height() < documentHeightThreshold)
         return false;
 
     // The first few hundred characters rarely contain the interesting content of the page.
@@ -3973,7 +4036,7 @@ void FrameView::adjustPageHeightDeprecated(float *newBottom, float oldTop, float
 
 IntRect FrameView::convertFromRendererToContainingView(const RenderElement* renderer, const IntRect& rendererRect) const
 {
-    IntRect rect = pixelSnappedIntRect(enclosingLayoutRect(renderer->localToAbsoluteQuad(FloatRect(rendererRect)).boundingBox()));
+    IntRect rect = snappedIntRect(enclosingLayoutRect(renderer->localToAbsoluteQuad(FloatRect(rendererRect)).boundingBox()));
 
     // Convert from page ("absolute") to FrameView coordinates.
     if (!delegatesScrolling())

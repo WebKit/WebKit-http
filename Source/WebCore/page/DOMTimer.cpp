@@ -49,18 +49,16 @@ static const int maxIntervalForUserGestureForwarding = 1000; // One second match
 static const int maxTimerNestingLevel = 5;
 static const double oneMillisecond = 0.001;
 
-static int timerNestingLevel = 0;
-    
 static inline bool shouldForwardUserGesture(int interval, int nestingLevel)
 {
     return UserGestureIndicator::processingUserGesture()
         && interval <= maxIntervalForUserGestureForwarding
-        && nestingLevel == 1; // Gestures should not be forwarded to nested timers.
+        && !nestingLevel; // Gestures should not be forwarded to nested timers.
 }
 
 DOMTimer::DOMTimer(ScriptExecutionContext* context, std::unique_ptr<ScheduledAction> action, int interval, bool singleShot)
     : SuspendableTimer(context)
-    , m_nestingLevel(timerNestingLevel + 1)
+    , m_nestingLevel(context->timerNestingLevel())
     , m_action(WTF::move(action))
     , m_originalInterval(interval)
     , m_shouldForwardUserGesture(shouldForwardUserGesture(interval, m_nestingLevel))
@@ -130,7 +128,8 @@ void DOMTimer::fired()
         ASSERT(!document->frame()->timersPaused());
     }
 #endif
-    timerNestingLevel = m_nestingLevel;
+    context->setTimerNestingLevel(std::min(m_nestingLevel + 1, maxTimerNestingLevel));
+
     ASSERT(!isSuspended());
     ASSERT(!context->activeDOMObjectsAreSuspended());
     UserGestureIndicator gestureIndicator(m_shouldForwardUserGesture ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
@@ -141,11 +140,14 @@ void DOMTimer::fired()
 
     // Simple case for non-one-shot timers.
     if (isActive()) {
-        double minimumInterval = context->minimumTimerInterval();
-        if (repeatInterval() && repeatInterval() < minimumInterval) {
+        if (m_nestingLevel < maxTimerNestingLevel) {
             m_nestingLevel++;
-            if (m_nestingLevel >= maxTimerNestingLevel)
-                augmentRepeatInterval(minimumInterval - repeatInterval());
+
+            double minimumInterval = context->minimumTimerInterval();
+            if (repeatInterval() && repeatInterval() < minimumInterval) {
+                if (m_nestingLevel == maxTimerNestingLevel)
+                    augmentRepeatInterval(minimumInterval - repeatInterval());
+            }
         }
 
         m_action->execute(context);
@@ -188,7 +190,7 @@ void DOMTimer::fired()
 
     InspectorInstrumentation::didFireTimer(cookie);
 
-    timerNestingLevel = 0;
+    context->setTimerNestingLevel(0);
 }
 
 void DOMTimer::didStop()
@@ -201,6 +203,7 @@ void DOMTimer::didStop()
 
 void DOMTimer::adjustMinimumTimerInterval(double oldMinimumTimerInterval)
 {
+    ASSERT(m_nestingLevel <= maxTimerNestingLevel);
     if (m_nestingLevel < maxTimerNestingLevel)
         return;
 
@@ -218,6 +221,8 @@ void DOMTimer::adjustMinimumTimerInterval(double oldMinimumTimerInterval)
 
 double DOMTimer::intervalClampedToMinimum(int timeout, double minimumTimerInterval) const
 {
+    ASSERT(m_nestingLevel <= maxTimerNestingLevel);
+
     double intervalMilliseconds = std::max(oneMillisecond, timeout * oneMillisecond);
 
     if (intervalMilliseconds < minimumTimerInterval && m_nestingLevel >= maxTimerNestingLevel)

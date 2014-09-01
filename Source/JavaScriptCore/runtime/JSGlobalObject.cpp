@@ -45,6 +45,7 @@
 #include "DateConstructor.h"
 #include "DatePrototype.h"
 #include "Debugger.h"
+#include "DebuggerScope.h"
 #include "Error.h"
 #include "ErrorConstructor.h"
 #include "ErrorPrototype.h"
@@ -318,8 +319,9 @@ void JSGlobalObject::reset(JSValue prototype)
     m_typedArrays[toIndex(TypeDataView)].structure.set(vm, this, JSDataView::createStructure(vm, this, m_typedArrays[toIndex(TypeDataView)].prototype.get()));
 
     m_nameScopeStructure.set(vm, this, JSNameScope::createStructure(vm, this, jsNull()));
-    m_activationStructure.set(vm, this, JSActivation::createStructure(vm, this, jsNull()));
+    m_activationStructure.set(vm, this, JSActivation::createStructure(vm, this));
     m_strictEvalActivationStructure.set(vm, this, StrictEvalActivation::createStructure(vm, this, jsNull()));
+    m_debuggerScopeStructure.set(m_vm, this, DebuggerScope::createStructure(m_vm, this));
     m_withScopeStructure.set(vm, this, JSWithScope::createStructure(vm, this, jsNull()));
 
     m_nullPrototypeObjectStructure.set(vm, this, JSFinalObject::createStructure(vm, this, jsNull(), JSFinalObject::defaultInlineCapacity()));
@@ -438,16 +440,16 @@ void JSGlobalObject::reset(JSValue prototype)
     putDirectWithoutTransition(vm, vm.propertyNames->Math, MathObject::create(vm, this, MathObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
     
     std::array<InternalFunction*, NUMBER_OF_TYPED_ARRAY_TYPES> typedArrayConstructors;
-    typedArrayConstructors[toIndex(TypeInt8)] = JSInt8ArrayConstructor::create(vm, JSInt8ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeInt8)].prototype.get(), "Int8Array");
-    typedArrayConstructors[toIndex(TypeInt16)] = JSInt16ArrayConstructor::create(vm, JSInt16ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeInt16)].prototype.get(), "Int16Array");
-    typedArrayConstructors[toIndex(TypeInt32)] = JSInt32ArrayConstructor::create(vm, JSInt32ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeInt32)].prototype.get(), "Int32Array");
-    typedArrayConstructors[toIndex(TypeUint8)] = JSUint8ArrayConstructor::create(vm, JSUint8ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint8)].prototype.get(), "Uint8Array");
-    typedArrayConstructors[toIndex(TypeUint8Clamped)] = JSUint8ClampedArrayConstructor::create(vm, JSUint8ClampedArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint8Clamped)].prototype.get(), "Uint8ClampedArray");
-    typedArrayConstructors[toIndex(TypeUint16)] = JSUint16ArrayConstructor::create(vm, JSUint16ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint16)].prototype.get(), "Uint16Array");
-    typedArrayConstructors[toIndex(TypeUint32)] = JSUint32ArrayConstructor::create(vm, JSUint32ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint32)].prototype.get(), "Uint32Array");
-    typedArrayConstructors[toIndex(TypeFloat32)] = JSFloat32ArrayConstructor::create(vm, JSFloat32ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeFloat32)].prototype.get(), "Float32Array");
-    typedArrayConstructors[toIndex(TypeFloat64)] = JSFloat64ArrayConstructor::create(vm, JSFloat64ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeFloat64)].prototype.get(), "Float64Array");
-    typedArrayConstructors[toIndex(TypeDataView)] = JSDataViewConstructor::create(vm, JSDataViewConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeDataView)].prototype.get(), "DataView");
+    typedArrayConstructors[toIndex(TypeInt8)] = JSInt8ArrayConstructor::create(vm, JSInt8ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeInt8)].prototype.get(), ASCIILiteral("Int8Array"));
+    typedArrayConstructors[toIndex(TypeInt16)] = JSInt16ArrayConstructor::create(vm, JSInt16ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeInt16)].prototype.get(), ASCIILiteral("Int16Array"));
+    typedArrayConstructors[toIndex(TypeInt32)] = JSInt32ArrayConstructor::create(vm, JSInt32ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeInt32)].prototype.get(), ASCIILiteral("Int32Array"));
+    typedArrayConstructors[toIndex(TypeUint8)] = JSUint8ArrayConstructor::create(vm, JSUint8ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint8)].prototype.get(), ASCIILiteral("Uint8Array"));
+    typedArrayConstructors[toIndex(TypeUint8Clamped)] = JSUint8ClampedArrayConstructor::create(vm, JSUint8ClampedArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint8Clamped)].prototype.get(), ASCIILiteral("Uint8ClampedArray"));
+    typedArrayConstructors[toIndex(TypeUint16)] = JSUint16ArrayConstructor::create(vm, JSUint16ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint16)].prototype.get(), ASCIILiteral("Uint16Array"));
+    typedArrayConstructors[toIndex(TypeUint32)] = JSUint32ArrayConstructor::create(vm, JSUint32ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeUint32)].prototype.get(), ASCIILiteral("Uint32Array"));
+    typedArrayConstructors[toIndex(TypeFloat32)] = JSFloat32ArrayConstructor::create(vm, JSFloat32ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeFloat32)].prototype.get(), ASCIILiteral("Float32Array"));
+    typedArrayConstructors[toIndex(TypeFloat64)] = JSFloat64ArrayConstructor::create(vm, JSFloat64ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeFloat64)].prototype.get(), ASCIILiteral("Float64Array"));
+    typedArrayConstructors[toIndex(TypeDataView)] = JSDataViewConstructor::create(vm, JSDataViewConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeDataView)].prototype.get(), ASCIILiteral("DataView"));
 
     for (unsigned typedArrayIndex = NUMBER_OF_TYPED_ARRAY_TYPES; typedArrayIndex--;) {
         m_typedArrays[typedArrayIndex].prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, typedArrayConstructors[typedArrayIndex], DontEnum);
@@ -662,6 +664,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_promisePrototype);
 #endif
 
+    visitor.append(&thisObject->m_debuggerScopeStructure);
     visitor.append(&thisObject->m_withScopeStructure);
     visitor.append(&thisObject->m_strictEvalActivationStructure);
     visitor.append(&thisObject->m_activationStructure);

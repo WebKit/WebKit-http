@@ -2165,7 +2165,7 @@ void RenderBlockFlow::clipOutFloatingObjects(RenderBlock& rootBlock, const Paint
                 floatingObject->renderer().width(), floatingObject->renderer().height());
             rootBlock.flipForWritingMode(floatBox);
             floatBox.move(rootBlockPhysicalPosition.x(), rootBlockPhysicalPosition.y());
-            paintInfo->context->clipOut(pixelSnappedIntRect(floatBox));
+            paintInfo->context->clipOut(snappedIntRect(floatBox));
         }
     }
 }
@@ -3336,7 +3336,7 @@ void RenderBlockFlow::addFocusRingRectsForInlineChildren(Vector<IntRect>& rects,
         LayoutUnit bottom = std::min<LayoutUnit>(curr->lineBottom(), curr->top() + curr->height());
         LayoutRect rect(additionalOffset.x() + curr->x(), additionalOffset.y() + top, curr->width(), bottom - top);
         if (!rect.isEmpty())
-            rects.append(pixelSnappedIntRect(rect));
+            rects.append(snappedIntRect(rect));
     }
 }
 
@@ -3475,11 +3475,10 @@ void RenderBlockFlow::ensureLineBoxes()
 }
 
 #ifndef NDEBUG
-void RenderBlockFlow::showLineTreeAndMark(const InlineBox* markedBox1, const char* markedLabel1, const InlineBox* markedBox2, const char* markedLabel2, const RenderObject* obj) const
+void RenderBlockFlow::showLineTreeAndMark(const InlineBox* markedBox, int depth) const
 {
-    RenderBlock::showLineTreeAndMark(markedBox1, markedLabel1, markedBox2, markedLabel2, obj);
     for (const RootInlineBox* root = firstRootBox(); root; root = root->nextRootBox())
-        root->showLineTreeAndMark(markedBox1, markedLabel1, markedBox2, markedLabel2, obj, 1);
+        root->showLineTreeAndMark(markedBox, depth);
 }
 #endif
 

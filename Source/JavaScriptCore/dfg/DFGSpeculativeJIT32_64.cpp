@@ -276,8 +276,7 @@ void SpeculativeJIT::nonSpeculativeNonPeepholeCompareNull(Edge operand, bool inv
         notCell.link(&m_jit);
         // null or undefined?
         COMPILE_ASSERT((JSValue::UndefinedTag | 1) == JSValue::NullTag, UndefinedTag_OR_1_EQUALS_NullTag);
-        m_jit.move(argTagGPR, resultPayloadGPR);
-        m_jit.or32(TrustedImm32(1), resultPayloadGPR);
+        m_jit.or32(TrustedImm32(1), argTagGPR, resultPayloadGPR);
         m_jit.compare32(invert ? JITCompiler::NotEqual : JITCompiler::Equal, resultPayloadGPR, TrustedImm32(JSValue::NullTag), resultPayloadGPR);
 
         done.link(&m_jit);
@@ -340,8 +339,7 @@ void SpeculativeJIT::nonSpeculativePeepholeBranchNull(Edge operand, Node* branch
         notCell.link(&m_jit);
         // null or undefined?
         COMPILE_ASSERT((JSValue::UndefinedTag | 1) == JSValue::NullTag, UndefinedTag_OR_1_EQUALS_NullTag);
-        m_jit.move(argTagGPR, resultGPR);
-        m_jit.or32(TrustedImm32(1), resultGPR);
+        m_jit.or32(TrustedImm32(1), argTagGPR, resultGPR);
         branch32(invert ? JITCompiler::NotEqual : JITCompiler::Equal, resultGPR, JITCompiler::TrustedImm32(JSValue::NullTag), taken);
     }
     
@@ -640,9 +638,9 @@ void SpeculativeJIT::compileMiscStrictEq(Node* node)
 
 void SpeculativeJIT::emitCall(Node* node)
 {
-    bool isCall = node->op() == Call;
+    bool isCall = node->op() == Call || node->op() == ProfiledCall;
     if (!isCall)
-        ASSERT(node->op() == Construct);
+        ASSERT(node->op() == Construct || node->op() == ProfiledConstruct);
 
     // For constructors, the this argument is not passed but we have to make space
     // for it.
@@ -689,6 +687,13 @@ void SpeculativeJIT::emitCall(Node* node)
 
     m_jit.emitStoreCodeOrigin(node->origin.semantic);
     
+    CallLinkInfo* info = m_jit.codeBlock()->addCallLinkInfo();
+
+    if (node->op() == ProfiledCall || node->op() == ProfiledConstruct) {
+        m_jit.vm()->callEdgeLog->emitLogCode(
+            m_jit, info->callEdgeProfile, callee.jsValueRegs());
+    }
+    
     slowPath.append(branchNotCell(callee.jsValueRegs()));
     slowPath.append(m_jit.branchPtrWithPatch(MacroAssembler::NotEqual, calleePayloadGPR, targetToCheck));
     m_jit.loadPtr(MacroAssembler::Address(calleePayloadGPR, OBJECT_OFFSETOF(JSFunction, m_scope)), resultPayloadGPR);
@@ -713,7 +718,6 @@ void SpeculativeJIT::emitCall(Node* node)
         m_jit.move(calleePayloadGPR, GPRInfo::regT0);
         m_jit.move(calleeTagGPR, GPRInfo::regT1);
     }
-    CallLinkInfo* info = m_jit.codeBlock()->addCallLinkInfo();
     m_jit.move(MacroAssembler::TrustedImmPtr(info), GPRInfo::regT2);
     JITCompiler::Call slowCall = m_jit.nearCall();
 
@@ -1179,8 +1183,7 @@ void SpeculativeJIT::compileObjectToObjectOrOtherEquality(Edge leftChild, Edge r
     // We know that within this branch, rightChild must not be a cell. Check if that is enough to
     // prove that it is either null or undefined.
     if (needsTypeCheck(rightChild, SpecCell | SpecOther)) {
-        m_jit.move(op2TagGPR, resultGPR);
-        m_jit.or32(TrustedImm32(1), resultGPR);
+        m_jit.or32(TrustedImm32(1), op2TagGPR, resultGPR);
         
         typeCheck(
             JSValueRegs(op2TagGPR, op2PayloadGPR), rightChild, SpecCell | SpecOther,
@@ -1274,8 +1277,7 @@ void SpeculativeJIT::compilePeepHoleObjectToObjectOrOtherEquality(Edge leftChild
         jump(notTaken, ForceJump);
         
         rightNotCell.link(&m_jit);
-        m_jit.move(op2TagGPR, resultGPR);
-        m_jit.or32(TrustedImm32(1), resultGPR);
+        m_jit.or32(TrustedImm32(1), op2TagGPR, resultGPR);
         
         typeCheck(
             JSValueRegs(op2TagGPR, op2PayloadGPR), rightChild, SpecCell | SpecOther,
@@ -1373,8 +1375,7 @@ void SpeculativeJIT::compileObjectOrOtherLogicalNot(Edge nodeUse)
  
     COMPILE_ASSERT((JSValue::UndefinedTag | 1) == JSValue::NullTag, UndefinedTag_OR_1_EQUALS_NullTag);
     if (needsTypeCheck(nodeUse, SpecCell | SpecOther)) {
-        m_jit.move(valueTagGPR, resultPayloadGPR);
-        m_jit.or32(TrustedImm32(1), resultPayloadGPR);
+        m_jit.or32(TrustedImm32(1), valueTagGPR, resultPayloadGPR);
         typeCheck(
             JSValueRegs(valueTagGPR, valuePayloadGPR), nodeUse, SpecCell | SpecOther,
             m_jit.branch32(
@@ -1501,8 +1502,7 @@ void SpeculativeJIT::emitObjectOrOtherBranch(Edge nodeUse, BasicBlock* taken, Ba
     
     COMPILE_ASSERT((JSValue::UndefinedTag | 1) == JSValue::NullTag, UndefinedTag_OR_1_EQUALS_NullTag);
     if (needsTypeCheck(nodeUse, SpecCell | SpecOther)) {
-        m_jit.move(valueTagGPR, scratchGPR);
-        m_jit.or32(TrustedImm32(1), scratchGPR);
+        m_jit.or32(TrustedImm32(1), valueTagGPR, scratchGPR);
         typeCheck(
             JSValueRegs(valueTagGPR, valuePayloadGPR), nodeUse, SpecCell | SpecOther,
             m_jit.branch32(MacroAssembler::NotEqual, scratchGPR, TrustedImm32(JSValue::NullTag)));
@@ -3675,18 +3675,21 @@ void SpeculativeJIT::compile(Node* node)
         compileGetArrayLength(node);
         break;
         
-    case CheckFunction: {
-        SpeculateCellOperand function(this, node->child1());
-        speculationCheck(BadFunction, JSValueSource::unboxedCell(function.gpr()), node->child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, function.gpr(), node->function()->value().asCell()));
+    case CheckCell: {
+        SpeculateCellOperand cell(this, node->child1());
+        speculationCheck(BadCell, JSValueSource::unboxedCell(cell.gpr()), node->child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, cell.gpr(), node->cellOperand()->value().asCell()));
         noResult(node);
         break;
     }
 
-    case CheckExecutable: {
+    case GetExecutable: {
         SpeculateCellOperand function(this, node->child1());
-        speculateCellType(node->child1(), function.gpr(), SpecFunction, JSFunctionType);
-        speculationCheck(BadExecutable, JSValueSource::unboxedCell(function.gpr()), node->child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, JITCompiler::Address(function.gpr(), JSFunction::offsetOfExecutable()), node->executable()));
-        noResult(node);
+        GPRTemporary result(this, Reuse, function);
+        GPRReg functionGPR = function.gpr();
+        GPRReg resultGPR = result.gpr();
+        speculateCellType(node->child1(), functionGPR, SpecFunction, JSFunctionType);
+        m_jit.loadPtr(JITCompiler::Address(functionGPR, JSFunction::offsetOfExecutable()), resultGPR);
+        cellResult(resultGPR, node);
         break;
     }
         
@@ -4156,6 +4159,8 @@ void SpeculativeJIT::compile(Node* node)
 
     case Call:
     case Construct:
+    case ProfiledCall:
+    case ProfiledConstruct:
         emitCall(node);
         break;
 
@@ -4901,6 +4906,8 @@ void SpeculativeJIT::compile(Node* node)
     case MultiPutByOffset:
     case NativeCall:
     case NativeConstruct:
+    case CheckBadCell:
+    case BottomValue:
         RELEASE_ASSERT_NOT_REACHED();
         break;
     }
@@ -4954,8 +4961,7 @@ JITCompiler::Jump SpeculativeJIT::branchNotCell(JSValueRegs regs)
 
 JITCompiler::Jump SpeculativeJIT::branchIsOther(JSValueRegs regs, GPRReg tempGPR)
 {
-    m_jit.move(regs.tagGPR(), tempGPR);
-    m_jit.or32(TrustedImm32(1), tempGPR);
+    m_jit.or32(TrustedImm32(1), regs.tagGPR(), tempGPR);
     return m_jit.branch32(
         MacroAssembler::Equal, tempGPR,
         MacroAssembler::TrustedImm32(JSValue::NullTag));
@@ -4963,8 +4969,7 @@ JITCompiler::Jump SpeculativeJIT::branchIsOther(JSValueRegs regs, GPRReg tempGPR
 
 JITCompiler::Jump SpeculativeJIT::branchNotOther(JSValueRegs regs, GPRReg tempGPR)
 {
-    m_jit.move(regs.tagGPR(), tempGPR);
-    m_jit.or32(TrustedImm32(1), tempGPR);
+    m_jit.or32(TrustedImm32(1), regs.tagGPR(), tempGPR);
     return m_jit.branch32(
         MacroAssembler::NotEqual, tempGPR,
         MacroAssembler::TrustedImm32(JSValue::NullTag));

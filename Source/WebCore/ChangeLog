@@ -1,3 +1,1473 @@
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove GraphicsContext constructor that takes shouldUseContextColors
+        https://bugs.webkit.org/show_bug.cgi?id=136421
+
+        Reviewed by Dan Bernstein.
+
+        * WebCore.exp.in:
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::GraphicsContext):
+        * platform/graphics/GraphicsContext.h:
+        (WebCore::GraphicsContextState::GraphicsContextState):
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::platformInit):
+        (WebCore::GraphicsContext::drawLinesForText):
+        As far as I can tell, the last user of this constructor died with WebNSStringDrawing.
+        Adjust all code to assume shouldUseContextColors=true.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused ARMv6-specific #if branches in WebCore::canHyphenate
+        https://bugs.webkit.org/show_bug.cgi?id=136420
+
+        Reviewed by Dan Bernstein.
+
+        * platform/text/cf/HyphenationCF.cpp:
+        (WebCore::AtomicStringKeyedMRUCache<RetainPtr<CFLocaleRef>>::createValueForNullKey):
+        Use kCFAllocatorDefault instead of 0.
+
+        (WebCore::canHyphenate):
+        Remove ARMv6-specific code.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unnecessary (and unnecessarily iOS-specific) setStrokeAndFillColor
+        https://bugs.webkit.org/show_bug.cgi?id=136416
+
+        Reviewed by Dan Bernstein.
+
+        * WebCore.exp.in:
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::setStrokeAndFillColor): Deleted.
+        Remove.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove duplicate implementation of drawEllipse and some related PLATFORM(IOS) ifdefs
+        https://bugs.webkit.org/show_bug.cgi?id=136413
+
+        Reviewed by Dan Bernstein.
+
+        No new tests, just cleanup.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::drawRaisedEllipse):
+        There's nothing iOS specific about this function.
+
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawEllipse):
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::drawEllipse):
+        Un-ifdef drawRaisedEllipse; delete the reimplementation of drawEllipse that takes
+        a FloatRect and make the normal one take a FloatRect instead.
+
+        (WebCore::GraphicsContext::platformInit):
+        Make sure that the CGContext's line width starts out in sync with GraphicsContext's.
+        By default, CGContext has a line width of 1 and GraphicsContext 0, so they could previously
+        have been out of sync until someone set the width explicitly.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Fix a harmless mismerge in BitmapImage::destroyDecodedDataIfNecessary
+        https://bugs.webkit.org/show_bug.cgi?id=136412
+
+        Reviewed by Alexey Proskuryakov.
+
+        No new tests, just cleanup.
+
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::destroyDecodedDataIfNecessary):
+        Drop the leading 'c' and the 'static' on the cutoff parameter.
+        Remove the duplicated early return (seems like it happened in the merge).
+        Remove reference to the exact size in the comment, since it's different on iOS.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Use SinkDocument instead of PDFDocument; get rid of PDFDocument
+        https://bugs.webkit.org/show_bug.cgi?id=136414
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * loader/DocumentWriter.cpp:
+        (WebCore::DocumentWriter::createDocument):
+        * pdf/ios/PDFDocument.cpp: Removed.
+        * pdf/ios/PDFDocument.h: Removed.
+        Use the generic SinkDocument, which ignores all incoming data just like PDFDocument.
+        Delete the unnecessary and iOS-specific PDFDocument.cpp/h
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Adjust an antique comment in Image::drawPattern
+        https://bugs.webkit.org/show_bug.cgi?id=136411
+
+        Reviewed by Dan Bernstein.
+
+        * platform/graphics/cg/ImageCG.cpp:
+        (WebCore::Image::drawPattern):
+        Reword the comment.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        SVGImage::drawPatternForContainer creates a buffer without respecting the destination's acceleration setting
+        https://bugs.webkit.org/show_bug.cgi?id=136408
+        <rdar://problem/12013317>
+
+        Reviewed by Dan Bernstein.
+
+        No new tests required, just a performance improvement.
+
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::drawPatternForContainer):
+        Use ImageBuffer::createCompatibleBuffer, which passes the destination's
+        acceleration setting through to the ImageBuffer constructor.
+
+        I didn't use GraphicsContext::createCompatibleBuffer because adjusting
+        how this function applies the destination's CTM is outside the scope of this patch.
+
+2014-08-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Convert string literals to character literals in makeString usage
+        https://bugs.webkit.org/show_bug.cgi?id=136394
+
+        Reviewed by Sam Weinig.
+
+        * inspector/InspectorOverlay.cpp:
+        (WebCore::InspectorOverlay::evaluateInOverlay):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::setOriginalURLForDownloadRequest):
+        * loader/MixedContentChecker.cpp:
+        (WebCore::MixedContentChecker::logWarning):
+        * page/ContentSecurityPolicy.cpp:
+        (WebCore::CSPDirectiveList::checkMediaTypeAndReportViolation):
+        (WebCore::ContentSecurityPolicy::reportUnsupportedDirective):
+        (WebCore::ContentSecurityPolicy::reportInvalidPathCharacter):
+        Also reorder some code to ensure single string creation.
+
+2014-08-26  Maciej Stachowiak  <mjs@apple.com>
+
+        Use RetainPtr::autorelease in some places where it seems appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=136280
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/URLMac.mm:
+        (WebCore::URL::operator NSURL *): Use autorelease() instead of
+        CFBridgingRelease(leakRef())
+
+2014-08-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS: Refactor :visited handling in SelectorChecker
+        https://bugs.webkit.org/show_bug.cgi?id=135639
+
+        Reviewed by Benjamin Poulain.
+
+        :visited is specially handled in the SelectorChecker and style resolution
+        because of security issues. That is nested links and adjacent combinators.
+        Since we propagate linkState from the ancestors,
+
+            1. linkStates of ancestors from the target node are only used to calculate
+            the linkState of the current node.
+            This is why adjacent combinators disable :visited.
+
+            2. linkState is overrides by the closest link element in the ancestors.
+            This is why :visited is effective on the closest link element.
+
+        In this patch, we fix 3 things.
+
+            1. Simplify SelectorChecker. Move m_mode to CheckingContext and it makes
+            CheckingContext more similar to SelectorCompiler::CheckingContext in CSS JIT.
+            And hide visitedMatchType parameter from the caller of SelectorChecker.
+
+            2. Disable :visited inside :-webkit-any. Currently, :-webkit-any provides MatchAll
+            link match type. So considering visited match type in the matching phase of :visited
+            provides inconsistency. In this patch, :-webkit-any(:visited) never matches.
+            And :-webkit-any(:link) acts like a :-webkit-any(:any-link). This behavior represents
+            that visited match type is always considered as disabled inside :-webkit-any.
+            This behavior may be changed when Selector Level4 is implemented.
+
+            3. Fix the issue when traversing the descendant element,
+            first encountered link check is missing.
+
+        Tests: fast/history/link-inside-any.html
+               fast/history/link-inside-not.html
+               fast/history/nested-visited-test-override.html
+               fast/history/visited-inside-any.html
+               fast/history/visited-inside-not.html
+
+        * css/ElementRuleCollector.cpp:
+        (WebCore::ElementRuleCollector::ruleMatches):
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::SelectorChecker):
+        (WebCore::SelectorChecker::match):
+        (WebCore::hasScrollbarPseudoElement):
+        (WebCore::checkingContextForParent):
+        (WebCore::SelectorChecker::matchRecursively):
+        (WebCore::SelectorChecker::checkOne):
+        * css/SelectorChecker.h:
+        (WebCore::SelectorChecker::SelectorCheckingContext::SelectorCheckingContext):
+        * css/StyleResolver.h:
+        (WebCore::checkRegionSelector):
+        * dom/SelectorQuery.cpp:
+        (WebCore::SelectorDataList::selectorMatches):
+
+2014-08-29  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Remove LayoutUnit's kEffectiveFixedPointDenominator.
+        https://bugs.webkit.org/show_bug.cgi?id=136383.
+
+        Reviewed by Simon Fraser.
+
+        There's only one subpixel denominator now.
+
+        No change in functionality.
+
+        * platform/LayoutUnit.h:
+        (WebCore::LayoutUnit::LayoutUnit):
+        (WebCore::LayoutUnit::fromFloatCeil):
+        (WebCore::LayoutUnit::fromFloatFloor):
+        (WebCore::LayoutUnit::toInt):
+        (WebCore::LayoutUnit::toFloat):
+        (WebCore::LayoutUnit::toDouble):
+        (WebCore::LayoutUnit::operator++):
+        (WebCore::LayoutUnit::ceil):
+        (WebCore::LayoutUnit::round):
+        (WebCore::LayoutUnit::floor):
+        (WebCore::LayoutUnit::ceilToFloat):
+        (WebCore::LayoutUnit::fraction):
+        (WebCore::LayoutUnit::epsilon):
+        (WebCore::LayoutUnit::nearlyMax):
+        (WebCore::LayoutUnit::nearlyMin):
+        (WebCore::LayoutUnit::isInBounds):
+        (WebCore::LayoutUnit::setValue):
+        (WebCore::boundedMultiply):
+        (WebCore::operator*):
+        (WebCore::operator/):
+        (WebCore::operator%):
+        (WebCore::roundToDevicePixel):
+        (WebCore::floorToDevicePixel):
+        (WebCore::ceilToDevicePixel):
+
+2014-08-29  Zalan Bujtas  <zalan@apple.com>
+
+        Rename updatePreferredWidth to make it more explicit.
+        https://bugs.webkit.org/show_bug.cgi?id=136389
+
+        Reviewed by Simon Fraser.
+
+        No change in functionality.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::preferredWidth):
+        (WebCore::RenderBlock::computeInlinePreferredLogicalWidths):
+        (WebCore::updatePreferredWidth): Deleted.
+
+2014-08-29  Gavin Barraclough  <barraclough@apple.com>
+
+        Make timerNestingLevel threadsafe
+        https://bugs.webkit.org/show_bug.cgi?id=136401
+
+        Reviewed by Tim Horton.
+
+        timerNestingLevel, used by DOMTimer to determine whether a timer is 'nested'
+        (repeating, possible due to a timer rescheduling itself) is a global. Since
+        worker threads can set timers too this is not thread safe.
+
+        * dom/ScriptExecutionContext.cpp:
+        (WebCore::ScriptExecutionContext::ScriptExecutionContext):
+            - added initialize m_timerNestingLevel
+        * dom/ScriptExecutionContext.h:
+        (WebCore::ScriptExecutionContext::timerNestingLevel):
+        (WebCore::ScriptExecutionContext::setTimerNestingLevel):
+            - added accessors
+        * page/DOMTimer.cpp:
+        (WebCore::DOMTimer::DOMTimer):
+        (WebCore::DOMTimer::fired):
+            - move timerNestingLevel to the context
+
+2014-08-29  Gavin Barraclough  <barraclough@apple.com>
+
+        DOMTimer::m_nestingLevel is prone to overflow
+        https://bugs.webkit.org/show_bug.cgi?id=136399
+
+        Reviewed by Alexey Proskuryakov.
+
+        Since this would happen after the 2 billionth timer fire this is unlikely,
+        and consequences aren't severe (breaks throttling).
+
+        This change has the following consequences.
+
+            - m_nestingLevel saturates to its max value.
+            - unnested timers are indicated by a nesting level of 0.
+            - repeat timers update m_nestingLevel on every fire,
+              not just those that should have been throttled.
+
+        The last point is subtle, but ultimately should be inconsequential. Timers
+        whose requested timeout is less that the minimum interval will saturate quickly
+        anyway; timers with an original interval greater than the minimum previously
+        wouldn't have incremented m_nestingLevel, but doing so now doesn't hurt since
+        they won't be throttled when they hit the threshold. This simplifies things
+        conceptually a little & reduces the test performed on each timer fire.
+
+        * page/DOMTimer.cpp:
+        (WebCore::shouldForwardUserGesture):
+            - unnested timers are indicated by a nesting level of 0
+        (WebCore::DOMTimer::DOMTimer):
+            - don't increment nesting level on construction
+        (WebCore::DOMTimer::fired):
+            - saturating increments
+        (WebCore::DOMTimer::adjustMinimumTimerInterval):
+        (WebCore::DOMTimer::intervalClampedToMinimum):
+            - added ASSERTs
+
+2014-08-29  Zalan Bujtas  <zalan@apple.com>
+
+        Improve showRenderTree() output.
+        https://bugs.webkit.org/show_bug.cgi?id=136244
+
+        Reviewed by Darin Adler.
+
+        Add more debugging information to showRenderTree().
+
+        Not testable.
+
+        * rendering/InlineBox.cpp:
+        (WebCore::InlineBox::showLineTreeForThis):
+        (WebCore::InlineBox::showLineTreeAndMark):
+        (WebCore::InlineBox::showLineBox):
+        (showNodeTree):
+        (showLineTree):
+        (WebCore::InlineBox::showBox): Deleted.
+        * rendering/InlineBox.h:
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::showLineTreeAndMark):
+        * rendering/InlineFlowBox.h:
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::showLineBox):
+        (WebCore::InlineTextBox::showBox): Deleted.
+        * rendering/InlineTextBox.h:
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::showLineTreeAndMark): Deleted.
+        * rendering/RenderBlock.h:
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::showLineTreeAndMark):
+        * rendering/RenderBlockFlow.h:
+        * rendering/RenderObject.cpp:
+        (WebCore::showRenderTreeLegend):
+        (WebCore::RenderObject::showNodeTreeForThis):
+        (WebCore::RenderObject::showRenderTreeForThis):
+        (WebCore::RenderObject::showLineTreeForThis):
+        (WebCore::RenderObject::showRegionsInformation):
+        (WebCore::RenderObject::showRenderObject):
+        (WebCore::RenderObject::showRenderSubTreeAndMark):
+        (showNodeTree):
+        (showLineTree):
+        (showRenderTree):
+        (WebCore::RenderObject::showRenderTreeAndMark): Deleted.
+        * rendering/RenderObject.h:
+        * rendering/RootInlineBox.h:
+
+2014-08-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviwed, remove empty directories.
+
+        * Modules/networkinfo: Removed.
+        * inspector/front-end: Removed.
+        * inspector/front-end/Images: Removed.
+        * inspector/front-end/UglifyJS: Removed.
+        * inspector/front-end/ace: Removed.
+        * inspector/front-end/cm: Removed.
+        * platform/audio/ffmpeg: Removed.
+        * platform/audio/ipp: Removed.
+        * platform/graphics/gpu/opencl: Removed.
+
+2014-08-29  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Remove non Coordinated Graphics code path from cmake build system after r142169
+        https://bugs.webkit.org/show_bug.cgi?id=135560
+
+        Reviewed by Gyuyoung Kim.
+
+        No new tests required, no new functionality.
+
+        * PlatformEfl.cmake: Removed TEXTURE_MAPPER and 3D_GRAPHICS guards.
+        * platform/graphics/efl/GraphicsContext3DEfl.cpp: Removed TEXTURE_MAPPER_GL and GRAPHICS_SURFACE guards.
+        (WebCore::GraphicsContext3D::platformLayer):
+        (WebCore::GraphicsContext3D::createGraphicsSurfaces):
+        * platform/graphics/efl/GraphicsContext3DPrivate.cpp: Removed TEXTURE_MAPPER_GL and GRAPHICS_SURFACE guards.
+        (WebCore::GraphicsContext3DPrivate::initialize):
+        (WebCore::GraphicsContext3DPrivate::releaseResources):
+        (WebCore::GraphicsContext3DPrivate::paintToTextureMapper):
+        (WebCore::GraphicsContext3DPrivate::graphicsSurfaceFlags):
+        * platform/graphics/efl/GraphicsContext3DPrivate.h: Removed TEXTURE_MAPPER_GL and GRAPHICS_SURFACE guards.
+        * platform/graphics/surfaces/efl/GraphicsSurfaceCommon.cpp: Removed GRAPHICS_SURFACE guard.
+
+2014-08-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        RenderThemeGtk depends on classes outside of platform
+        https://bugs.webkit.org/show_bug.cgi?id=22176
+
+        Reviewed by Martin Robinson.
+
+        Move RenderThemeGtk.cpp from platform to rendering.
+
+        * PlatformGTK.cmake:
+        * rendering/RenderThemeGtk.cpp: Renamed from Source/WebCore/platform/gtk/RenderThemeGtk.cpp.
+
+2014-08-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] ScrollbarThemeGtk should not depend on RenderThemeGtk
+        https://bugs.webkit.org/show_bug.cgi?id=136338
+
+        Reviewed by Philippe Normand.
+
+        Remove the dependency by creating the GtkStyleContext for the
+        scrollbars in ScrollbarThemeGtk.
+
+        * platform/gtk/RenderThemeGtk.cpp:
+        (WebCore::gtkStyleChangedCallback): Call ScrollbarThemeGtk::themeChanged().
+        (WebCore::getStyleContext): Remove the scrollbar style context support.
+        * platform/gtk/RenderThemeGtk.h: Remove gtkScrollbarStyle().
+        * platform/gtk/ScrollbarThemeGtk.cpp:
+        (WebCore::ScrollbarStyleContext::ScrollbarStyleContext): Helper
+        class to create the global GtkStyleContext for scrollbars.
+        (WebCore::ScrollbarStyleContext::~ScrollbarStyleContext):
+        (WebCore::ScrollbarStyleContext::context):
+        (WebCore::gtkScrollbarStyleContext):
+        (WebCore::ScrollbarThemeGtk::ScrollbarThemeGtk): Remove m_context initialization.
+        (WebCore::ScrollbarThemeGtk::themeChanged): Invalidate the
+        GtkStylecontext and call updateThemeProperties().
+        (WebCore::ScrollbarThemeGtk::updateThemeProperties): Use the
+        global style context.
+        (WebCore::ScrollbarThemeGtk::paintTrackBackground): Ditto.
+        (WebCore::ScrollbarThemeGtk::paintScrollbarBackground): Ditto.
+        (WebCore::ScrollbarThemeGtk::paintThumb): Ditto.
+        (WebCore::ScrollbarThemeGtk::paintButton): Ditto.
+        * platform/gtk/ScrollbarThemeGtk.h:
+
+2014-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Merge RenderThemeGtk3.cpp into RenderThemeGtk.cpp and ScrollbarThemeGtk3.cpp intoScrollbarThemeGtk.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=136336
+
+        Reviewed by Philippe Normand.
+
+        There's no reason to have two files now that there's no GTK+2
+        support. Also fix coding style issues and compile warnings.
+
+        * PlatformGTK.cmake:
+        * platform/gtk/RenderThemeGtk.cpp:
+        * platform/gtk/RenderThemeGtk.h:
+        * platform/gtk/RenderThemeGtk3.cpp: Removed.
+        * platform/gtk/ScrollbarThemeGtk.cpp:
+        * platform/gtk/ScrollbarThemeGtk3.cpp: Removed.
+
+2014-08-28  Mark Lam  <mark.lam@apple.com>
+
+        DebuggerCallFrame::scope() should return a DebuggerScope.
+        <https://webkit.org/b/134420>
+
+        Reviewed by Geoffrey Garen.
+
+        No new tests.
+
+        Rolling back in r170680 with the fix for <https://webkit.org/b/135656>.
+
+        * bindings/js/ScriptController.cpp:
+        (WebCore::ScriptController::attachDebugger):
+        - We should acquire the JSLock before modifying a JS global object.
+
+2014-08-28  Enrica Casucci  <enrica@apple.com>
+
+        Can't hit tab key more than 3 times continuously.
+        https://bugs.webkit.org/show_bug.cgi?id=136357
+        rdar://problem/17927266
+
+        Reviewed by Dean Jackson.
+
+        Test: fast/css/multiple-tabs.html
+
+        When computing the tabWidth disregard increments of less than half the size of the space character
+        for the given font.
+
+        * platform/graphics/Font.h:
+        (WebCore::Font::tabWidth):
+
+2014-08-28  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Clients that include WebCoreThread.h fail to build after <http://trac.webkit.org/changeset/172814/>
+        (https://bugs.webkit.org/show_bug.cgi?id=136108)
+
+        Define WEBCORE_EXPORT (if its not already defined) in WebCoreThread.h so as to fix the
+        build for clients that include this header.
+
+        * platform/ios/wak/WebCoreThread.h:
+
+2014-08-28  Pratik Solanki  <psolanki@apple.com>
+
+        WebContent hangs under SharedBuffer::duplicateDataBufferIfNecessary() while browsing some websites
+        https://bugs.webkit.org/show_bug.cgi?id=136347
+        <rdar://problem/18073745>
+
+        Reviewed by Andreas Kling.
+
+        When passing data to ImageIO, we create a copy if we have to reallocate the buffer. We would
+        set the size of the new buffer to be the size of the SharedBuffer data. This causes memory
+        churn since we would create a new buffer for every data chunk we get. Fix this by at least
+        doubling the capacity of the buffer when we duplicate it.
+
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::duplicateDataBufferIfNecessary):
+
+2014-08-28  Dan Bernstein  <mitz@apple.com>
+
+        iOS build fix.
+
+        * WebCore.exp.in: Updated symbol.
+
+2014-08-28  Benjamin Poulain  <bpoulain@apple.com>
+
+        Scrolling with spacebar on a page with fixed header breaks reading flow
+        https://bugs.webkit.org/show_bug.cgi?id=135506
+
+        Reviewed by Simon Fraser.
+
+        When scrolling by page, find the height of any bar that is obscuring the top or bottom of the page,
+        and substract that height from the step to scroll.
+
+        Tests: scrollbars/scrolling-backward-by-page-accounting-bottom-fixed-elements-on-keyboard-spacebar.html
+               scrollbars/scrolling-backward-by-page-on-keyboard-spacebar.html
+               scrollbars/scrolling-by-page-accounting-oversized-fixed-elements-on-keyboard-spacebar.html
+               scrollbars/scrolling-by-page-accounting-top-fixed-elements-on-keyboard-spacebar.html
+               scrollbars/scrolling-by-page-accounting-top-fixed-elements-with-negative-top-on-keyboard-spacebar.html
+               scrollbars/scrolling-by-page-ignoring-hidden-fixed-elements-on-keyboard-spacebar.html
+               scrollbars/scrolling-by-page-ignoring-transparent-fixed-elements-on-keyboard-spacebar.html
+               scrollbars/scrolling-by-page-on-keyboard-spacebar.html
+
+        * WebCore.exp.in:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::adjustScrollStepForFixedContent):
+        * page/FrameView.h:
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::adjustScrollStepForFixedContent):
+        (WebCore::ScrollableArea::scroll):
+        * platform/ScrollableArea.h:
+
+2014-08-28  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Remove unused pixel snapping functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136341
+
+        Reviewed by Simon Fraser.
+
+        Let's not encourage integral snapping by having these functions around.
+        
+        No change in functionality.
+
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::pixelSnappedElementRect): Deleted.
+        (WebCore::AccessibilityObject::pixelSnappedSize): Deleted.
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:]):
+        * html/HTMLImageElement.cpp:
+        (WebCore::HTMLImageElement::width):
+        (WebCore::HTMLImageElement::height):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::qualifiesAsVisuallyNonEmpty):
+        * platform/graphics/LayoutPoint.h:
+        (WebCore::snappedIntSize):
+        (WebCore::snapSizeToDevicePixel):
+        * platform/graphics/LayoutRect.h:
+        (WebCore::LayoutRect::pixelSnappedLocation): Deleted.
+        (WebCore::LayoutRect::pixelSnappedX): Deleted.
+        (WebCore::LayoutRect::pixelSnappedY): Deleted.
+        (WebCore::LayoutRect::pixelSnappedWidth): Deleted.
+        (WebCore::LayoutRect::pixelSnappedHeight): Deleted.
+        (WebCore::LayoutRect::pixelSnappedMaxX): Deleted.
+        (WebCore::LayoutRect::pixelSnappedMaxY): Deleted.
+        (WebCore::snappedIntRectFromEdges): Deleted.
+        * rendering/RenderBlockFlow.h:
+        (WebCore::RenderBlockFlow::pixelSnappedLogicalTopForFloat): Deleted.
+        (WebCore::RenderBlockFlow::pixelSnappedLogicalBottomForFloat): Deleted.
+        (WebCore::RenderBlockFlow::pixelSnappedLogicalLeftForFloat): Deleted.
+        (WebCore::RenderBlockFlow::pixelSnappedLogicalRightForFloat): Deleted.
+        * rendering/RenderBox.h:
+        (WebCore::RenderBox::pixelSnappedLogicalHeight):
+        (WebCore::RenderBox::pixelSnappedLogicalWidth):
+        (WebCore::RenderBox::pixelSnappedBorderBoxRect):
+        (WebCore::RenderBox::pixelSnappedWidth): Deleted.
+        (WebCore::RenderBox::pixelSnappedHeight): Deleted.
+        (WebCore::RenderBox::pixelSnappedFrameRect): Deleted.
+        * rendering/RenderFileUploadControl.cpp:
+        (WebCore::nodeWidth):
+        (WebCore::nodeHeight):
+        (WebCore::RenderFileUploadControl::maxFilenameWidth):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateLayerPosition):
+        (WebCore::RenderLayer::isPointInResizeControl):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::ensureRootLayer):
+        * rendering/RenderMediaControls.cpp:
+        (WebCore::RenderMediaControls::volumeSliderOffsetFromMuteButton):
+        * rendering/RenderMultiColumnSet.cpp:
+        (WebCore::RenderMultiColumnSet::paintColumnRules):
+        * rendering/RenderScrollbar.cpp:
+        (WebCore::RenderScrollbar::buttonRect):
+        * rendering/RenderView.h:
+
+2014-08-27  Enrica Casucci  <enrica@apple.com>
+
+        textStylingAtPosition returns incorrect values after executing toggleBold, toggleItalic and toggleUnderline.
+        https://bugs.webkit.org/show_bug.cgi?id=136323
+        rdar://problem/18141964
+
+        Reviewed by Antti Koivisto.
+
+        For underline style we need to check typingStyle first and use that information to populate
+        the dictionary. If there is no typing style we can use the render style.
+
+        * WebCore.exp.in:
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::fontAttributesForSelectionStart):
+
+2014-08-28  Iago Toral  <itoral@igalia.com> and Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add WaylandEventSource
+        https://bugs.webkit.org/show_bug.cgi?id=136213
+
+        Reviewed by Martin Robinson.
+
+        Add the WaylandEventSource class. Its static method, createEventSource(),
+        creates a new GSource object that is attached to the main context and
+        enables handling Wayland display events through the GLib's main loop.
+
+        The method will be called by the nested Wayland compositor during its
+        initialization, which will also take the control over the ownership and
+        will be tasked with properly removing the GSource from the main context.
+
+        GLibSource is a GSource-based struct that additionally holds a GPollFD object
+        and the pointer to the wl_display object whose event loop we'll be
+        dispatching during the GSource dispatch. This is the type that g_source_new
+        uses when allocating the new GSource object.
+
+        The GSource is assigned the default priorty, can recurse, and is attached
+        to the main context.
+
+        * PlatformGTK.cmake:
+        * platform/graphics/wayland/WaylandEventSource.cpp: Added.
+        (WebCore::GLibSource::initialize):
+        (WebCore::GLibSource::check):
+        (WebCore::GLibSource::dispatch):
+        (WebCore::prepareCallback):
+        (WebCore::checkCallback):
+        (WebCore::dispatchCallback):
+        (WebCore::WaylandEventSource::createDisplayEventSource):
+        * platform/graphics/wayland/WaylandEventSource.h: Added.
+
+2014-08-28  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Safari at com.apple.WebCore: WebCore::AXObjectCache::clearTextMarkerNodesInUse
+        https://bugs.webkit.org/show_bug.cgi?id=136333
+
+        Reviewed by David Kilzer.
+
+        If a Node is asked for it's Document when it's not actually in a document, it can lead to an assert/crash.
+        We can avoid this by checking that the node is in a document before asking for its document.
+
+        I was not able to make a test case.      
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::clearTextMarkerNodesInUse):
+
+2014-08-28  Andreas Kling  <akling@apple.com>
+
+        ASSERTION FAILED: !m_renderView.document().inPageCache() in compositing/iframes/resources/page-cache-helper.html
+        <https://webkit.org/b/136329>
+
+        Cancel any pending compositing layer updates when moving a document
+        into the page cache.
+
+        Reviewed by Zalan Bujtas.
+
+        * dom/Document.cpp:
+        (WebCore::Document::documentWillSuspendForPageCache):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::cancelCompositingLayerUpdate):
+        * rendering/RenderLayerCompositor.h:
+
+2014-08-28  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Incorrect selection clearing on a document without regions
+        https://bugs.webkit.org/show_bug.cgi?id=134901
+
+        Reviewed by David Hyatt.
+
+        When we select all the content of document with named flows but without regions,
+        the start and end points of selection is cached in RenderView. However, since
+        the document has named flows, the selection is split between the subtrees. During the split,
+        it is possible that the cached end-points of the original selection are not included
+        in any of the resulting subtree selection and they are not marked accordingly.
+        In order to process the selection clearing correctly, we have to take the original
+        selection end-points into account.
+
+        Test: fast/regions/selection/select-all-without-regions.html
+
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::isSelectionBorder):
+
+2014-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add webkit_uri_response_get_http_headers to WebKit2 GTK+ API
+        https://bugs.webkit.org/show_bug.cgi?id=136248
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Move the code to update the SoupMessageHeaders to a new public
+        method.
+
+        * platform/network/soup/ResourceResponse.h:
+        * platform/network/soup/ResourceResponseSoup.cpp:
+        (WebCore::ResourceResponse::updateSoupMessageHeaders):
+        (WebCore::ResourceResponse::toSoupMessage):
+
+2014-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove support for GTK+2 theme rendering
+        https://bugs.webkit.org/show_bug.cgi?id=136285
+
+        Reviewed by Philippe Normand.
+
+        GTK+2 is only used by the plugin process that doesn't need to
+        render html controls themed. Since the theme files are still
+        built for WebCorePlatformGTK2, we need to provide dummy
+        implementations for the pure virtual methods when
+        GTK_API_VERSION_2 is defined.
+
+        * PlatformGTK.cmake: Remove deleted files from compilation.
+        * platform/gtk/RenderThemeGtk.cpp:
+        (WebCore::RenderThemeGtk::create):
+        (WebCore::RenderTheme::themeForPage):
+        (WebCore::getScreenDPI):
+        (WebCore::RenderThemeGtk::systemFont):
+        (WebCore::RenderThemeGtk::sliderTickSize):
+        (WebCore::RenderThemeGtk::sliderTickOffsetFromTrackCenter):
+        (WebCore::RenderThemeGtk::getScreenDPI): Deleted.
+        * platform/gtk/RenderThemeGtk.h:
+        * platform/gtk/RenderThemeGtk2.cpp: Removed.
+        * platform/gtk/RenderThemeGtk3.cpp:
+        * platform/gtk/ScrollbarThemeGtk.cpp:
+        (WebCore::ScrollbarThemeGtk::hasThumb):
+        (WebCore::ScrollbarThemeGtk::backButtonRect):
+        (WebCore::ScrollbarThemeGtk::forwardButtonRect):
+        (WebCore::ScrollbarThemeGtk::trackRect):
+        (WebCore::ScrollbarThemeGtk::registerScrollbar):
+        (WebCore::ScrollbarThemeGtk::unregisterScrollbar):
+        (WebCore::ScrollbarThemeGtk::updateScrollbarsFrameThickness):
+        * platform/gtk/ScrollbarThemeGtk.h:
+        * platform/gtk/ScrollbarThemeGtk2.cpp: Removed.
+        * platform/gtk/WidgetRenderingContext.cpp: Removed.
+        * platform/gtk/WidgetRenderingContext.h: Removed.
+
+2014-08-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix for the Wayland windowing target after r173052.
+
+        * platform/graphics/wayland/WaylandSurface.cpp: Include the IntSize header.
+        * platform/graphics/wayland/WaylandSurface.h: Forward-declare IntSize.
+
+2014-08-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        One more URTBF after r173047.
+
+        * accessibility/atk/WebKitAccessibleInterfaceComponent.cpp:
+        (webkitAccessibleComponentGetExtents):
+
+2014-08-27  Iago Toral  <itoral@igalia.com> and Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add WaylandSurface
+        https://bugs.webkit.org/show_bug.cgi?id=136220
+
+        Reviewed by Martin Robinson.
+
+        Add the WaylandSurface class. An objects of this type is meant to be used
+        by the LayerTreeHostGtk in the WebProcess and is constructed via the
+        WaylandDisplay::createSurface() method.
+
+        LayerTreeHostGtk uses such object to perform frame requests to the nested
+        Wayland compositor in the UIProcess, and to create the GLContextEGL object
+        that's used during the layer flushing and compositing.
+
+        The resize() method is called whenever LayerTreeHostGtk is being resized,
+        and basically only wraps the wl_egL_window_resize() call.
+
+        * PlatformGTK.cmake:
+        * platform/graphics/wayland/WaylandSurface.cpp: Added.
+        (WebCore::frameCallback):
+        (WebCore::WaylandSurface::WaylandSurface):
+        (WebCore::WaylandSurface::~WaylandSurface):
+        (WebCore::WaylandSurface::resize):
+        (WebCore::WaylandSurface::createGLContext):
+        (WebCore::WaylandSurface::requestFrame):
+        * platform/graphics/wayland/WaylandSurface.h: Added.
+        (WebCore::WaylandSurface::surface):
+        (WebCore::WaylandSurface::nativeWindowHandle):
+
+2014-08-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r173047.
+
+        * accessibility/atk/WebKitAccessibleInterfaceImage.cpp:
+        (webkitAccessibleImageGetImagePosition):
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Cleanup snapSizeToPixel/snapSizeToDevicePixel.
+        https://bugs.webkit.org/show_bug.cgi?id=136264
+
+        Reviewed by Simon Fraser.
+        
+        1. Align snapSizeToPixel()/snapSizeToDevicePixel() function names with the rest of snapping
+        functions. ->snappedIntSize()/snapSizeToDevicePixel().
+        2. Operate on LayoutSize/LayoutPoint instead of LayoutUnit/LayoutUnit to reflect functionality.
+
+        Covered by existing tests.
+
+        * platform/LayoutUnit.h:
+        (WebCore::snapSizeToPixel): Deleted.
+        (WebCore::snapSizeToDevicePixel): Deleted.
+        * platform/graphics/LayoutPoint.h:
+        (WebCore::snappedIntSize):
+        (WebCore::snapSizeToDevicePixel):
+        (WebCore::pixelSnappedIntSize): Deleted.
+        * platform/graphics/LayoutRect.h:
+        (WebCore::LayoutRect::pixelSnappedSize):
+        (WebCore::LayoutRect::pixelSnappedWidth):
+        (WebCore::LayoutRect::pixelSnappedHeight):
+        (WebCore::pixelSnappedIntRect):
+        (WebCore::pixelSnappedIntRectFromEdges):
+        (WebCore::pixelSnappedForPainting):
+        (WebCore::directionalPixelSnappedForPainting):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::pixelSnappedClientWidth):
+        (WebCore::RenderBox::pixelSnappedClientHeight):
+        (WebCore::RenderBox::pixelSnappedOffsetWidth):
+        (WebCore::RenderBox::pixelSnappedOffsetHeight):
+        (WebCore::RenderBox::scrollWidth):
+        (WebCore::RenderBox::scrollHeight):
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::pixelSnappedOffsetWidth):
+        (WebCore::RenderBoxModelObject::pixelSnappedOffsetHeight):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateLayerPosition):
+        (WebCore::RenderLayer::scrollWidth):
+        (WebCore::RenderLayer::scrollHeight):
+        * rendering/RenderTreeAsText.cpp:
+        (WebCore::writeLayers):
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Rename LayoutRect's device pixel snapping functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136319
+
+        Reviewed by Simon Fraser.
+
+        From pixelSnappedForPainting() to snapRectToDevicePixels() and 
+        pixelSnappedIntRect*() to snappedIntRect*().
+
+        No change in functionality.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::boundingBoxForQuads):
+        (WebCore::AccessibilityObject::isOnscreen):
+        (WebCore::AccessibilityObject::scrollToMakeVisible):
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::pixelSnappedBoundingBoxRect):
+        (WebCore::AccessibilityObject::pixelSnappedElementRect):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::isOffScreen):
+        (WebCore::AccessibilityRenderObject::boundsForVisiblePositionRange):
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityActivationPoint]):
+        (-[WebAccessibilityObjectWrapper accessibilityFrame]):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper position]):
+        (-[WebAccessibilityObjectWrapper accessibilityShowContextMenu]):
+        * bindings/objc/DOMUIKitExtensions.mm:
+        (-[DOMHTMLAreaElement boundingBoxWithOwner:]):
+        (-[DOMHTMLAreaElement absoluteQuadWithOwner:]):
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::computedTransform):
+        * dom/Node.h:
+        (WebCore::Node::pixelSnappedBoundingBox):
+        (WebCore::Node::pixelSnappedRenderRect):
+        * editing/RenderedPosition.cpp:
+        (WebCore::RenderedPosition::absoluteRect):
+        * editing/mac/FrameSelectionMac.mm:
+        (WebCore::FrameSelection::notifyAccessibilityForSelectionChange):
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::paint):
+        * inspector/InspectorOverlay.cpp:
+        (WebCore::buildObjectForElementInfo):
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::didPaint):
+        * page/FrameSnapshotting.cpp:
+        (WebCore::snapshotNode):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollContentsFastPath):
+        (WebCore::FrameView::extendedBackgroundRectForPainting):
+        (WebCore::FrameView::windowClipRectForFrameOwner):
+        (WebCore::FrameView::convertFromRendererToContainingView):
+        * page/Page.cpp:
+        (WebCore::Page::addRelevantRepaintedObject):
+        (WebCore::Page::addRelevantUnpaintedObject):
+        * page/ios/FrameIOS.mm:
+        (WebCore::ancestorRespondingToClickEvents):
+        * platform/DragImage.cpp:
+        (WebCore::createDragImageForImage):
+        * platform/graphics/LayoutRect.cpp:
+        (WebCore::enclosingRectToDevicePixels):
+        (WebCore::enclosingRectForPainting): Deleted.
+        * platform/graphics/LayoutRect.h:
+        (WebCore::snappedIntRect):
+        (WebCore::snappedIntRectFromEdges):
+        (WebCore::snapRectToDevicePixels):
+        (WebCore::snapRectToDevicePixelsWithWritingDirection):
+        (WebCore::pixelSnappedIntRect): Deleted.
+        (WebCore::pixelSnappedIntRectFromEdges): Deleted.
+        (WebCore::pixelSnappedForPainting): Deleted.
+        (WebCore::directionalPixelSnappedForPainting): Deleted.
+        * platform/graphics/RoundedRect.cpp:
+        (WebCore::RoundedRect::pixelSnappedRoundedRectForPainting):
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::computePixelAlignment):
+        * platform/text/TextStream.cpp:
+        (WebCore::TextStream::operator<<):
+        * rendering/EllipsisBox.cpp:
+        (WebCore::EllipsisBox::paintSelection):
+        * rendering/FilterEffectRenderer.cpp:
+        (WebCore::FilterEffectRendererHelper::applyFilterEffect):
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::paint):
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::paintSelection):
+        (WebCore::InlineTextBox::paintCompositionBackground):
+        (WebCore::InlineTextBox::paintTextMatchMarker):
+        (WebCore::InlineTextBox::positionForOffset):
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::addVisualOverflowFromTheme):
+        (WebCore::RenderBlock::paint):
+        (WebCore::RenderBlock::blockSelectionGap):
+        (WebCore::RenderBlock::logicalLeftSelectionGap):
+        (WebCore::RenderBlock::logicalRightSelectionGap):
+        (WebCore::RenderBlock::absoluteRects):
+        (WebCore::RenderBlock::addFocusRingRects):
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::clipOutFloatingObjects):
+        (WebCore::RenderBlockFlow::addFocusRingRectsForInlineChildren):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::absoluteRects):
+        (WebCore::RenderBox::absoluteContentBox):
+        (WebCore::RenderBox::outlineBoundsForRepaint):
+        (WebCore::RenderBox::addFocusRingRects):
+        (WebCore::RenderBox::getBackgroundPaintedExtent):
+        (WebCore::RenderBox::pushContentsClip):
+        (WebCore::RenderBox::computeRectForRepaint):
+        * rendering/RenderBox.h:
+        (WebCore::RenderBox::pixelSnappedFrameRect):
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::paintFillLayerExtended):
+        (WebCore::RenderBoxModelObject::pixelSnapBackgroundImageGeometryForPainting):
+        (WebCore::RenderBoxModelObject::paintNinePieceImage):
+        (WebCore::RenderBoxModelObject::paintBorder):
+        (WebCore::RenderBoxModelObject::drawBoxSideFromPath):
+        (WebCore::RenderBoxModelObject::paintBoxShadow):
+        * rendering/RenderDetailsMarker.cpp:
+        (WebCore::RenderDetailsMarker::paint):
+        * rendering/RenderEmbeddedObject.cpp:
+        (WebCore::RenderEmbeddedObject::paintSnapshotImage):
+        (WebCore::RenderEmbeddedObject::isReplacementObscured):
+        * rendering/RenderFieldset.cpp:
+        (WebCore::RenderFieldset::paintBoxDecorations):
+        * rendering/RenderFlowThread.cpp:
+        (WebCore::RenderFlowThread::addRegionsVisualOverflowFromTheme):
+        * rendering/RenderFrameSet.cpp:
+        (WebCore::RenderFrameSet::paint):
+        (WebCore::RenderFrameSet::layout):
+        (WebCore::RenderFrameSet::positionFramesWithFlattening):
+        * rendering/RenderHTMLCanvas.cpp:
+        (WebCore::RenderHTMLCanvas::paintReplaced):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::paintReplaced):
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::paintOutlineForLine):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateTransform):
+        (WebCore::RenderLayer::currentTransform):
+        (WebCore::RenderLayer::beginTransparencyLayers):
+        (WebCore::RenderLayer::scrollRectToVisible):
+        (WebCore::RenderLayer::scrollCornerRect):
+        (WebCore::RenderLayer::drawPlatformResizerImage):
+        (WebCore::RenderLayer::paintResizer):
+        (WebCore::RenderLayer::hitTestOverflowControls):
+        (WebCore::RenderLayer::clipToRect):
+        (WebCore::RenderLayer::paintLayerByApplyingTransform):
+        (WebCore::RenderLayer::paintOverflowControlsForFragments):
+        (WebCore::RenderLayer::hitTestResizerInFragments):
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateTransform):
+        (WebCore::RenderLayerBacking::updateGeometry):
+        (WebCore::RenderLayerBacking::resetContentsRect):
+        (WebCore::RenderLayerBacking::updateImageContents):
+        (WebCore::RenderLayerBacking::backgroundBoxForPainting):
+        (WebCore::RenderLayerBacking::setContentsNeedDisplayInRect):
+        (WebCore::RenderLayerBacking::paintContents):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::addToOverlapMap):
+        (WebCore::RenderLayerCompositor::requiresCompositingForPlugin):
+        (WebCore::RenderLayerCompositor::requiresCompositingForFrame):
+        (WebCore::RenderLayerCompositor::paintContents):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::addFocusRingRects):
+        (WebCore::RenderListBox::paintScrollbar):
+        (WebCore::RenderListBox::paintItemBackground):
+        * rendering/RenderListMarker.cpp:
+        (WebCore::RenderListMarker::paint):
+        * rendering/RenderMeter.cpp:
+        (WebCore::RenderMeter::updateLogicalWidth):
+        (WebCore::RenderMeter::computeLogicalHeight):
+        * rendering/RenderMultiColumnSet.cpp:
+        (WebCore::RenderMultiColumnSet::paintColumnRules):
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::drawLineForBoxSide):
+        (WebCore::RenderObject::addPDFURLRect):
+        (WebCore::RenderObject::paintOutline):
+        (WebCore::RenderObject::absoluteBoundingBoxRect):
+        (WebCore::RenderObject::repaintUsingContainer):
+        (WebCore::RenderObject::repaintSlowRepaintObject):
+        (WebCore::RenderObject::pixelSnappedAbsoluteClippedOverflowRect):
+        * rendering/RenderProgress.cpp:
+        (WebCore::RenderProgress::computeLogicalHeight):
+        * rendering/RenderReplaced.cpp:
+        (WebCore::RenderReplaced::paint):
+        * rendering/RenderScrollbarPart.cpp:
+        (WebCore::RenderScrollbarPart::paintIntoRect):
+        * rendering/RenderSearchField.cpp:
+        (WebCore::RenderSearchField::showPopup):
+        * rendering/RenderSnapshottedPlugIn.cpp:
+        (WebCore::RenderSnapshottedPlugIn::paintSnapshot):
+        * rendering/RenderTableCell.cpp:
+        (WebCore::RenderTableCell::paintCollapsedBorders):
+        * rendering/RenderTextControl.cpp:
+        (WebCore::RenderTextControl::addFocusRingRects):
+        * rendering/RenderTextControlSingleLine.cpp:
+        (WebCore::RenderTextControlSingleLine::paint):
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::paint):
+        (WebCore::RenderTheme::paintBorderOnly):
+        (WebCore::RenderTheme::paintDecorations):
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::paintSnapshottedPluginOverlay):
+        * rendering/RenderTreeAsText.cpp:
+        (WebCore::write):
+        * rendering/RenderVideo.cpp:
+        (WebCore::RenderVideo::videoBox):
+        (WebCore::RenderVideo::paintReplaced):
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::repaintViewRectangle):
+        (WebCore::RenderView::computeRectForRepaint):
+        (WebCore::RenderView::absoluteRects):
+        (WebCore::RenderView::selectionBounds):
+        (WebCore::RenderView::unscaledDocumentRect):
+        * rendering/RenderView.h:
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::paintContents):
+        (WebCore::RenderWidget::paint):
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::paintDebugBorders):
+        * rendering/shapes/Shape.cpp:
+        (WebCore::Shape::createRasterShape):
+        * rendering/svg/RenderSVGModelObject.cpp:
+        (WebCore::RenderSVGModelObject::outlineBoundsForRepaint):
+        * rendering/svg/RenderSVGRoot.cpp:
+        (WebCore::RenderSVGRoot::paintReplaced):
+        * rendering/svg/SVGInlineTextBox.cpp:
+        (WebCore::SVGInlineTextBox::selectionRectForTextFragment):
+
+2014-08-27  Daniel Bates  <dabates@apple.com>
+
+        Scrollbar corner can be drawn outside containing frame
+        https://bugs.webkit.org/show_bug.cgi?id=133131
+        <rdar://problem/16382769>
+
+        Reviewed by Simon Fraser.
+
+        Merged from Blink (patch by Levi Weintraub):
+        <https://src.chromium.org/viewvc/blink?revision=170625&view=revision>
+
+        Fixes an issue where the scroll corner may be painted outside the rectangle of
+        its associated frame by setting a clip rectangle before painting the scroll bar(s)
+        and scroll corner.
+
+        Test: scrollbars/custom-scrollbars-paint-outside-iframe.html
+
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::paint):
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Rename FloatPoint/FloatRect device pixel snapping functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136314
+
+        Reviewed by Simon Fraser.
+
+        From *edToDevicePixels() to *PointToDevicePixels() (* = floor/round/ceil)
+
+        EnclosedIntRect -> enclosingIntRect() changes functionality for InspectorOverlay painting,
+        but currently untestable.
+
+        * WebCore.exp.in:
+        * inspector/InspectorOverlay.cpp:
+        (WebCore::InspectorOverlay::showPaintRect):
+        * platform/graphics/FloatPoint.h:
+        (WebCore::flooredIntSize):
+        (WebCore::floorPointToDevicePixels):
+        (WebCore::ceilPointToDevicePixels):
+        (WebCore::flooredToDevicePixels): Deleted.
+        (WebCore::ceiledToDevicePixels): Deleted.
+        * platform/graphics/FloatRect.cpp:
+        (WebCore::enclosingRectToDevicePixels):
+        (WebCore::enclosingRectExtendedToDevicePixels): Deleted. Renamed.
+        (WebCore::enclosedIntRect): Deleted. Not needed.
+        * platform/graphics/FloatRect.h:
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Rename LayoutPoint's device pixel snapping functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136306
+
+        Reviewed by Simon Fraser.
+
+        From *edForPainting() to *PointToDevicePixels() (* = floor/round/ceil)
+
+        No change in functionality.
+
+        * platform/graphics/LayoutPoint.h:
+        (WebCore::roundPointToDevicePixels):
+        (WebCore::floorPointToDevicePixels):
+        (WebCore::ceilPointToDevicePixels):
+        (WebCore::roundedForPainting): Deleted.
+        (WebCore::flooredForPainting): Deleted.
+        (WebCore::ceiledForPainting): Deleted.
+        * platform/graphics/LayoutRect.cpp:
+        (WebCore::enclosingRectForPainting):
+        * platform/graphics/LayoutRect.h:
+        (WebCore::directionalPixelSnappedForPainting):
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::pixelSnapBackgroundImageGeometryForPainting):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::paintLayerByApplyingTransform):
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateGeometry):
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Rename LayoutSize's device pixel snapping functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136310
+
+        Reviewed by Simon Fraser.
+
+        From *edForPainting() to *SizeToDevicePixels() (* = floor/round/ceil)
+
+        No change in functionality.
+
+         * platform/graphics/LayoutSize.h:
+        (WebCore::floorSizeToDevicePixels):
+        (WebCore::flooredForPainting): Deleted.
+        * rendering/style/StyleGeneratedImage.cpp:
+        (WebCore::StyleGeneratedImage::computeIntrinsicDimensions):
+
+2014-08-27  Brian J. Burg  <burg@cs.washington.edu>
+
+        Enums in ScrollTypes and PlatformWheelEvent should not use uint64_t storage
+        https://bugs.webkit.org/show_bug.cgi?id=136318
+
+        Reviewed by Simon Fraser.
+
+        This regressed in a replay-related patch. Revert back to uint8_t storage size.
+
+        * platform/PlatformWheelEvent.h:
+        * platform/ScrollTypes.h:
+        * replay/WebInputs.json:
+
+2014-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Speling is hard.
+
+        Reviewed by Tim Horton.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMousePressEvent):
+        (WebCore::EventHandler::handleMouseDoubleClickEvent):
+        (WebCore::EventHandler::handleMouseMoveEvent):
+        (WebCore::EventHandler::handleMouseReleaseEvent):
+        (WebCore::EventHandler::handlePasteGlobalSelection):
+        (WebCore::EventHandler::updateMouseEventTargetNode):
+        (WebCore::EventHandler::dispatchMouseEvent):
+        (WebCore::EventHandler::sendContextMenuEventForKey):
+        (WebCore::EventHandler::dispatchSyntheticTouchEventIfEnabled):
+
+2014-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the iOS build.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMousePressEvent):
+
+2014-08-27  Andreas Kling  <akling@apple.com>
+
+        Drawing text in an SVG font causes load events to be fired.
+        <https://webkit.org/b/136269>
+        <rdar://problem/15724915>
+
+        Don't flush pending load events in Document::implicitClose() for frameless documents.
+        This is a targeted fix for an issue where parsing SVG fonts during layout would cause
+        event dispatch to happen in the main document, leading to arbitrary JS execution.
+
+        Note that the testcase only works in DRT/WTR, since once the SVG font is in cached
+        by WebCore, we won't reparse it again. Caches are cleared between tests, so it will
+        correctly fail if this should regress.
+
+        Longer-term, we should clean this up and get rid of the global dispatch entirely.
+
+        Reviewed by Simon Fraser.
+
+        Test: fast/text/svg-font-trigger-load-event.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::implicitClose):
+
+2014-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Some EventHandler naming cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=136303
+
+        Reviewed by Beth Dakin.
+        
+        Rename "mev" variables to "mouseEvent".
+        
+        No behavior change.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMousePressEvent):
+        (WebCore::EventHandler::handleMouseDoubleClickEvent):
+        (WebCore::EventHandler::handleMouseMoveEvent):
+        (WebCore::EventHandler::handleMouseReleaseEvent):
+        (WebCore::EventHandler::updateDragAndDrop):
+        (WebCore::EventHandler::prepareMouseEvent):
+        (WebCore::EventHandler::sendContextMenuEvent):
+        (WebCore::EventHandler::passMousePressEventToScrollbar):
+        (WebCore::EventHandler::dispatchSyntheticTouchEventIfEnabled):
+
+2014-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Some EventHandler naming cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=136303
+
+        Reviewed by Beth Dakin.
+
+        Rename PlatformMouseEvent variables from "mouseEvent" to "platformMouseEvent"
+        so that a later patch can rename "mev" to "mouseEvent".
+        
+        0 => nullptr.
+        
+        No behavior change.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::clear):
+        (WebCore::EventHandler::handleMousePressEvent):
+        (WebCore::EventHandler::handleMouseDoubleClickEvent):
+        (WebCore::EventHandler::handleMouseMoveEvent):
+        (WebCore::EventHandler::invalidateClick):
+        (WebCore::EventHandler::handleMouseReleaseEvent):
+        (WebCore::EventHandler::handlePasteGlobalSelection):
+        (WebCore::EventHandler::updateMouseEventTargetNode):
+        (WebCore::EventHandler::dispatchMouseEvent):
+        (WebCore::EventHandler::sendContextMenuEventForKey):
+        (WebCore::EventHandler::dispatchSyntheticTouchEventIfEnabled):
+
+2014-08-27  Beth Dakin  <bdakin@apple.com>
+
+        Make isScrollableOrRubberbandable() a virtual function on RenderLayerModelObject
+        https://bugs.webkit.org/show_bug.cgi?id=136307
+
+        Reviewed by Simon Fraser.
+
+        Remove extra parentheses. 
+        * page/FrameView.cpp:
+        (WebCore::FrameView::isScrollable):
+
+        Mark isScrollableOrRubberbandable() as override now that the root implementation 
+        is moving to RenderLayerModelObject. It can also be private now.
+        * rendering/RenderBox.h:
+
+        isBox() check and cast are no longer necessary.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::hasScrollableOrRubberbandableAncestor):
+
+        Base implementation should return false.
+        * rendering/RenderLayerModelObject.h:
+        (WebCore::RenderLayerModelObject::isScrollableOrRubberbandable):
+
+        Mark as override.
+        * rendering/RenderView.h:
+
+2014-08-27  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r172946): Plugin tests asserting on Yosemite debug bot
+        https://bugs.webkit.org/show_bug.cgi?id=136301
+
+        Reviewed by Alexey Proskuryakov.
+
+        Don't pull the priority from the platform request if it is not defined.
+
+        * platform/network/cf/ResourceRequestCFNet.cpp:
+        (WebCore::ResourceRequest::doUpdateResourceRequest):
+        * platform/network/cocoa/ResourceRequestCocoa.mm:
+        (WebCore::ResourceRequest::doUpdateResourceRequest):
+
+2014-08-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Crash when you open Web Inspector in a private window (due to IndexedDB)
+        https://bugs.webkit.org/show_bug.cgi?id=136293
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/InspectorIndexedDBAgent.cpp:
+        (WebCore::InspectorIndexedDBAgent::requestDatabaseNames): Null check idbRequest from
+        IDBFactory::getDatabaseNames, which can return null now after r172603 in private browsing.
+
+2014-08-27  Beth Dakin  <bdakin@apple.com>
+
+        overflow:scroll elements should not latch to the body if the body is 
+        overflow:hidden
+        https://bugs.webkit.org/show_bug.cgi?id=136273
+
+        Reviewed by Darin Adler.
+
+        This patch adds an optional parameter to isScrollable(). The Scrollability 
+        parameter that allows the caller to define what they mean by 'scrollable.' Most 
+        callers are interested in the default value, Scrollability::Scrollable, which 
+        means that there is actually content to scroll to, and a scrollbar that will allow 
+        you to access it. In some cases, such as this latching case, callers want to know 
+        if the FrameView is allowed to rubber-band, which the main frame might be allowed 
+        to do even if there is no content to scroll to. In that case, callers use 
+        Scrollability::ScrollableOrRubberbandable.
+        * page/FrameView.cpp:
+        (WebCore::FrameView::isScrollable):
+        (WebCore::FrameView::hasScrollableOrRubberbandableAncestor):
+
+        New virtual function on ScrollableArea answers whether a ScrollableArea has any 
+        scrollable or rubber-bandable ancestor.
+        * page/FrameView.h:
+        * platform/ScrollableArea.h:
+
+        Events should only be allowed to prevent stretching if there is some ancestor 
+        ScrollableArea that will be able to make use of the event. 
+        * platform/mac/ScrollAnimatorMac.mm:
+        (WebCore::ScrollAnimatorMac::allowsVerticalStretching):
+        (WebCore::ScrollAnimatorMac::allowsHorizontalStretching):
+
+        New ScrollableArea virtual function.
+        * platform/win/PopupMenuWin.h:
+
+        New RenderBox isScrollableOrRubberbandable() returns just 
+        canBeScrolledAndHasScrollableArea() for most RenderBox, but will be overridden by 
+        RenderView.
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::isScrollableOrRubberbandable):
+        * rendering/RenderBox.h:
+
+        Recurse up the parent chain to find out if anything is scrollable or just rubber-
+        bandable.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::hasScrollableOrRubberbandableAncestor):
+        * rendering/RenderLayer.h:
+
+        Call into RenderLayer.
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::hasScrollableOrRubberbandableAncestor):
+        * rendering/RenderListBox.h:
+
+        Override isScrollableOrRubberbandable() to handle the main frame case where the 
+        main frame is typically allowed to rubber-band even if there is no content to 
+        scroll to.
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::isScrollableOrRubberbandable):
+        * rendering/RenderView.h:
+
+2014-08-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        Updating attributes on HTML elements do not invalidate the style correctly unless the attribute name is lowercase in the stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=136270
+
+        Reviewed by Andreas Kling.
+
+        In HTML, WebKit treats every attribute name lowercase to implement case-insensitive matching.
+        When invalidating style, the StyleResolver was ignoring HTML and always using the XML names.
+
+        This patch split the names on RuleFeatureSet in two sets: one for XML, one for HTML.
+        In StyleResolver, the name used depends on the type of the element being updated.
+
+        This patch also adds nodeNeedsStyleRecalc() to Internals to test the optimization and various cases
+        of style update.
+
+        Tests: fast/css/attribute-for-content-property-style-update-html.html
+               fast/css/attribute-for-content-property-style-update-xhtml.xhtml
+               fast/css/attribute-style-invalidation-optimization-html.html
+               fast/css/attribute-style-invalidation-optimization-xhtml.xhtml
+               fast/css/attribute-style-update-html.html
+               fast/selectors/attribute-style-update-html.html
+               fast/selectors/attribute-style-update-svg-in-html.html
+               fast/selectors/attribute-style-update-xhtml.xhtml
+
+        * css/RuleFeature.cpp:
+        (WebCore::RuleFeatureSet::collectFeaturesFromSelector):
+        (WebCore::RuleFeatureSet::add):
+        (WebCore::RuleFeatureSet::clear):
+        * css/RuleFeature.h:
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::applyProperty):
+        * css/StyleResolver.h:
+        (WebCore::StyleResolver::hasSelectorForAttribute):
+        * dom/Element.cpp:
+        (WebCore::Element::willModifyAttribute):
+        * testing/Internals.cpp:
+        (WebCore::Internals::address):
+        (WebCore::Internals::nodeNeedsStyleRecalc):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2014-08-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        Update the CSS Grammar selector names to get closer to the latest terminology
+        https://bugs.webkit.org/show_bug.cgi?id=136277
+
+        Reviewed by Andreas Kling.
+
+        CSS Selector Level 4 gives useful definitions for various parts of a selector
+        (see http://dev.w3.org/csswg/selectors4/#structure). This patch updates our names to be closer
+        to that spec.
+
+        Stricto sensu, our definition of "simple selector list" is wrong. I did not attempt to fix this
+        because updates of CSS Selector Level 4 and WebVTT will eventually make that whole concept useless.
+
+        * css/CSSGrammar.y.in:
+
 2014-08-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         [EFL] Unskip compositing test
@@ -1525,7 +2995,7 @@
 
         * Configurations/FeatureDefines.xcconfig: Add ENABLE(RUBBER_BANDING).
 
-2014-08-22  Zan Dobersek  <zdobersek@igalia.com>
+2014-08-22  Iago Toral  <itoral@igalia.com> and Zan Dobersek  <zdobersek@igalia.com>
 
         [GTK] Add the Wayland protocol extension
         https://bugs.webkit.org/show_bug.cgi?id=136102

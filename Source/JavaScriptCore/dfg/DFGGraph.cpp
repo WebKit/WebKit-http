@@ -31,6 +31,7 @@
 #include "BytecodeLivenessAnalysisInlines.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
+#include "DFGBlockWorklist.h"
 #include "DFGClobberSet.h"
 #include "DFGJITCode.h"
 #include "DFGVariableAccessDataDump.h"
@@ -222,24 +223,23 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, inContext(*node->structure(), context));
     if (node->hasTransition())
         out.print(comma, pointerDumpInContext(node->transition(), context));
-    if (node->hasFunction()) {
-        out.print(comma, "function(", pointerDump(node->function()), ", ");
-        if (node->function()->value().isCell()
-            && node->function()->value().asCell()->inherits(JSFunction::info())) {
-            JSFunction* function = jsCast<JSFunction*>(node->function()->value().asCell());
-            if (function->isHostFunction())
-                out.print("<host function>");
-            else
-                out.print(FunctionExecutableDump(function->jsExecutable()));
-        } else
-            out.print("<not JSFunction>");
-        out.print(")");
-    }
-    if (node->hasExecutable()) {
-        if (node->executable()->inherits(FunctionExecutable::info()))
-            out.print(comma, "executable(", FunctionExecutableDump(jsCast<FunctionExecutable*>(node->executable())), ")");
-        else
-            out.print(comma, "executable(not function: ", RawPointer(node->executable()), ")");
+    if (node->hasCellOperand()) {
+        if (!node->cellOperand()->value() || !node->cellOperand()->value().isCell())
+            out.print(comma, "invalid cell operand: ", node->cellOperand()->value());
+        else {
+            out.print(comma, pointerDump(node->cellOperand()->value().asCell()));
+            if (node->cellOperand()->value().isCell()) {
+                CallVariant variant(node->cellOperand()->value().asCell());
+                if (ExecutableBase* executable = variant.executable()) {
+                    if (executable->isHostFunction())
+                        out.print(comma, "<host function>");
+                    else if (FunctionExecutable* functionExecutable = jsDynamicCast<FunctionExecutable*>(executable))
+                        out.print(comma, FunctionExecutableDump(functionExecutable));
+                    else
+                        out.print(comma, "<non-function executable>");
+                }
+            }
+        }
     }
     if (node->hasFunctionDeclIndex()) {
         FunctionExecutable* executable = m_codeBlock->functionDecl(node->functionDeclIndex());
@@ -371,14 +371,18 @@ void Graph::dumpBlockHeader(PrintStream& out, const char* prefix, BasicBlock* bl
     if (m_dominators.isValid()) {
         out.print(prefix, "  Dominated by:");
         for (size_t i = 0; i < m_blocks.size(); ++i) {
-            if (!m_dominators.dominates(i, block->index))
+            if (!this->block(i))
+                continue;
+            if (!m_dominators.dominates(this->block(i), block))
                 continue;
             out.print(" #", i);
         }
         out.print("\n");
         out.print(prefix, "  Dominates:");
         for (size_t i = 0; i < m_blocks.size(); ++i) {
-            if (!m_dominators.dominates(block->index, i))
+            if (!this->block(i))
+                continue;
+            if (!m_dominators.dominates(block, this->block(i)))
                 continue;
             out.print(" #", i);
         }
@@ -636,73 +640,30 @@ void Graph::substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, Va
     }
 }
 
-// Utilities for pre- and post-order traversals.
-namespace {
-
-inline void addForPreOrder(Vector<BasicBlock*>& result, Vector<BasicBlock*, 16>& worklist, BitVector& seen, BasicBlock* block)
-{
-    if (seen.get(block->index))
-        return;
-    
-    result.append(block);
-    worklist.append(block);
-    seen.set(block->index);
-}
-
-enum PostOrderTaskKind {
-    PostOrderFirstVisit,
-    PostOrderAddToResult
-};
-
-struct PostOrderTask {
-    PostOrderTask(BasicBlock* block = nullptr, PostOrderTaskKind kind = PostOrderFirstVisit)
-        : m_block(block)
-        , m_kind(kind)
-    {
-    }
-    
-    BasicBlock* m_block;
-    PostOrderTaskKind m_kind;
-};
-
-inline void addForPostOrder(Vector<PostOrderTask, 16>& worklist, BitVector& seen, BasicBlock* block)
-{
-    if (seen.get(block->index))
-        return;
-    
-    worklist.append(PostOrderTask(block, PostOrderFirstVisit));
-    seen.set(block->index);
-}
-
-} // anonymous namespace
-
 void Graph::getBlocksInPreOrder(Vector<BasicBlock*>& result)
 {
-    Vector<BasicBlock*, 16> worklist;
-    BitVector seen;
-    addForPreOrder(result, worklist, seen, block(0));
-    while (!worklist.isEmpty()) {
-        BasicBlock* block = worklist.takeLast();
+    BlockWorklist worklist;
+    worklist.push(block(0));
+    while (BasicBlock* block = worklist.pop()) {
+        result.append(block);
         for (unsigned i = block->numSuccessors(); i--;)
-            addForPreOrder(result, worklist, seen, block->successor(i));
+            worklist.push(block->successor(i));
     }
 }
 
 void Graph::getBlocksInPostOrder(Vector<BasicBlock*>& result)
 {
-    Vector<PostOrderTask, 16> worklist;
-    BitVector seen;
-    addForPostOrder(worklist, seen, block(0));
-    while (!worklist.isEmpty()) {
-        PostOrderTask task = worklist.takeLast();
-        switch (task.m_kind) {
-        case PostOrderFirstVisit:
-            worklist.append(PostOrderTask(task.m_block, PostOrderAddToResult));
-            for (unsigned i = task.m_block->numSuccessors(); i--;)
-                addForPostOrder(worklist, seen, task.m_block->successor(i));
+    PostOrderBlockWorklist worklist;
+    worklist.push(block(0));
+    while (BlockWithOrder item = worklist.pop()) {
+        switch (item.order) {
+        case PreOrder:
+            worklist.pushPost(item.block);
+            for (unsigned i = item.block->numSuccessors(); i--;)
+                worklist.push(item.block->successor(i));
             break;
-        case PostOrderAddToResult:
-            result.append(task.m_block);
+        case PostOrder:
+            result.append(item.block);
             break;
         }
     }
@@ -985,10 +946,6 @@ void Graph::visitChildren(SlotVisitor& visitor)
             Node* node = block->at(nodeIndex);
             
             switch (node->op()) {
-            case CheckExecutable:
-                visitor.appendUnbarrieredReadOnlyPointer(node->executable());
-                break;
-                
             case CheckStructure:
                 for (unsigned i = node->structureSet().size(); i--;)
                     visitor.appendUnbarrieredReadOnlyPointer(node->structureSet()[i]);

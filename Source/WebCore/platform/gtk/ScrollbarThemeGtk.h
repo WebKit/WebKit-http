@@ -34,7 +34,6 @@ class Scrollbar;
 
 class ScrollbarThemeGtk : public ScrollbarThemeComposite {
 public:
-    ScrollbarThemeGtk();
     virtual ~ScrollbarThemeGtk();
 
     virtual bool hasButtons(ScrollbarThemeClient*) { return true; }
@@ -42,6 +41,10 @@ public:
     virtual IntRect backButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool);
     virtual IntRect forwardButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool);
     virtual IntRect trackRect(ScrollbarThemeClient*, bool);
+
+#ifndef GTK_API_VERSION_2
+    ScrollbarThemeGtk();
+
     IntRect thumbRect(ScrollbarThemeClient*, const IntRect& unconstrainedTrackRect);
     bool paint(ScrollbarThemeClient*, GraphicsContext*, const IntRect& damageRect);
     void paintScrollbarBackground(GraphicsContext*, ScrollbarThemeClient*);
@@ -56,15 +59,14 @@ public:
     // TODO: These are the default GTK+ values. At some point we should pull these from the theme itself.
     virtual double initialAutoscrollTimerDelay() { return 0.20; }
     virtual double autoscrollTimerDelay() { return 0.02; }
-    void updateThemeProperties();
+    void themeChanged();
     void updateScrollbarsFrameThickness();
     void registerScrollbar(ScrollbarThemeClient*);
     void unregisterScrollbar(ScrollbarThemeClient*);
 
 protected:
-#ifndef GTK_API_VERSION_2
-    GtkStyleContext* m_context;
-#endif
+    void updateThemeProperties();
+
     int m_thumbFatness;
     int m_troughBorderWidth;
     int m_stepperSize;
@@ -75,7 +77,9 @@ protected:
     gboolean m_hasForwardButtonEndPart;
     gboolean m_hasBackButtonStartPart;
     gboolean m_hasBackButtonEndPart;
+#endif // GTK_API_VERSION_2
 };
 
 }
+
 #endif

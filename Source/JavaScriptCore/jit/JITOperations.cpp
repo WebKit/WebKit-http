@@ -480,7 +480,7 @@ static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue s
         PutPropertySlot slot(baseObject, callFrame->codeBlock()->isStrictMode());
         baseObject->putDirect(callFrame->vm(), jsCast<NameInstance*>(subscript.asCell())->privateName(), value, slot);
     } else {
-        Identifier property(callFrame, subscript.toString(callFrame)->value(callFrame));
+        Identifier property = subscript.toString(callFrame)->toIdentifier(callFrame);
         if (!callFrame->vm().exception()) { // Don't put to an object if toString threw an exception.
             PutPropertySlot slot(baseObject, callFrame->codeBlock()->isStrictMode());
             baseObject->putDirect(callFrame->vm(), property, value, slot);
@@ -611,6 +611,7 @@ EncodedJSValue JIT_OPERATION operationCallEval(ExecState* exec, ExecState* execC
 
     execCallee->setScope(exec->scope());
     execCallee->setCodeBlock(0);
+    execCallee->setCallerFrame(exec);
 
     if (!isHostFunction(execCallee->calleeAsValue(), globalFuncEval))
         return JSValue::encode(JSValue());
@@ -919,7 +920,7 @@ size_t JIT_OPERATION operationCompareStringEq(ExecState* exec, JSCell* left, JSC
 
 size_t JIT_OPERATION operationHasProperty(ExecState* exec, JSObject* base, JSString* property)
 {
-    int result = base->hasProperty(exec, Identifier(exec, property->value(exec)));
+    int result = base->hasProperty(exec, property->toIdentifier(exec));
     return result;
 }
     
@@ -968,7 +969,7 @@ EncodedJSValue JIT_OPERATION operationNewRegexp(ExecState* exec, void* regexpPtr
     NativeCallFrameTracer tracer(&vm, exec);
     RegExp* regexp = static_cast<RegExp*>(regexpPtr);
     if (!regexp->isValid()) {
-        vm.throwException(exec, createSyntaxError(exec, "Invalid flags supplied to RegExp constructor."));
+        vm.throwException(exec, createSyntaxError(exec, ASCIILiteral("Invalid flags supplied to RegExp constructor.")));
         return JSValue::encode(jsUndefined());
     }
 
@@ -1614,7 +1615,7 @@ EncodedJSValue JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue
     bool couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, exec, *identifier);
     JSValue result = jsBoolean(couldDelete);
     if (!couldDelete && exec->codeBlock()->isStrictMode())
-        vm.throwException(exec, createTypeError(exec, "Unable to delete property."));
+        vm.throwException(exec, createTypeError(exec, ASCIILiteral("Unable to delete property.")));
     return JSValue::encode(result);
 }
 

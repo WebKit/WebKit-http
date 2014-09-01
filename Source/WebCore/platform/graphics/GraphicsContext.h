@@ -135,7 +135,6 @@ namespace WebCore {
             , blendMode(BlendModeNormal)
 #if PLATFORM(IOS)
             , emojiDrawingEnabled(true)
-            , shouldUseContextColors(true)
 #endif
             , shouldAntialias(true)
             , shouldSmoothFonts(true)
@@ -180,7 +179,6 @@ namespace WebCore {
 
 #if PLATFORM(IOS)
         bool emojiDrawingEnabled : 1;
-        bool shouldUseContextColors : 1;
 #endif
         bool shouldAntialias : 1;
         bool shouldSmoothFonts : 1;
@@ -192,10 +190,6 @@ namespace WebCore {
 #endif
         bool drawLuminanceMask : 1;
     };
-
-#if PLATFORM(IOS)
-    WEBCORE_EXPORT void setStrokeAndFillColor(PlatformGraphicsContext*, CGColorRef);
-#endif
 
     struct ImagePaintingOptions {
         ImagePaintingOptions(CompositeOperator compositeOperator = CompositeSourceOver, BlendMode blendMode = BlendModeNormal, ImageOrientationDescription orientationDescription = ImageOrientationDescription(), bool useLowQualityScale = false)
@@ -231,11 +225,7 @@ namespace WebCore {
     class GraphicsContext {
         WTF_MAKE_NONCOPYABLE(GraphicsContext); WTF_MAKE_FAST_ALLOCATED;
     public:
-#if !PLATFORM(IOS)
         WEBCORE_EXPORT GraphicsContext(PlatformGraphicsContext*);
-#else
-        WEBCORE_EXPORT GraphicsContext(PlatformGraphicsContext*, bool shouldUseContextColors = true);
-#endif
         WEBCORE_EXPORT ~GraphicsContext();
 
         WEBCORE_EXPORT PlatformGraphicsContext* platformContext() const;
@@ -313,11 +303,8 @@ namespace WebCore {
         void drawJoinedLines(CGPoint points[], unsigned count, bool antialias, CGLineCap = kCGLineCapButt);
 #endif
 
-        void drawEllipse(const IntRect&);
-#if PLATFORM(IOS)
         void drawEllipse(const FloatRect&);
         void drawRaisedEllipse(const FloatRect&, const Color& ellipseColor, ColorSpace ellipseColorSpace, const Color& shadowColor, ColorSpace shadowColorSpace);
-#endif
         void drawConvexPolygon(size_t numPoints, const FloatPoint*, bool shouldAntialias = false);
 
         WEBCORE_EXPORT void fillPath(const Path&);
@@ -561,7 +548,7 @@ namespace WebCore {
         static void adjustLineToPixelBoundaries(FloatPoint& p1, FloatPoint& p2, float strokeWidth, StrokeStyle);
 
     private:
-        void platformInit(PlatformGraphicsContext*, bool shouldUseContextColors = false);
+        void platformInit(PlatformGraphicsContext*);
         void platformDestroy();
 
 #if PLATFORM(WIN) && !USE(WINGDI)

@@ -489,7 +489,7 @@ void InspectorOverlay::showPaintRect(const FloatRect& rect)
     if (!m_showingPaintRects)
         return;
 
-    IntRect rootRect = m_page.mainFrame().view()->contentsToRootView(enclosedIntRect(rect));
+    IntRect rootRect = m_page.mainFrame().view()->contentsToRootView(enclosingIntRect(rect));
 
     const std::chrono::milliseconds removeDelay = std::chrono::milliseconds(250);
 
@@ -704,7 +704,7 @@ static PassRefPtr<InspectorObject> buildObjectForElementInfo(Node* node)
     RenderElement* renderer = element->renderer();
     Frame* containingFrame = node->document().frame();
     FrameView* containingView = containingFrame->view();
-    IntRect boundingBox = pixelSnappedIntRect(containingView->contentsToRootView(renderer->absoluteBoundingBoxRect()));
+    IntRect boundingBox = snappedIntRect(containingView->contentsToRootView(renderer->absoluteBoundingBoxRect()));
     RenderBoxModelObject* modelObject = renderer->isBoxModelObject() ? toRenderBoxModelObject(renderer) : nullptr;
     elementInfo->setString("nodeWidth", String::number(modelObject ? adjustForAbsoluteZoom(modelObject->pixelSnappedOffsetWidth(), *modelObject) : boundingBox.width()));
     elementInfo->setString("nodeHeight", String::number(modelObject ? adjustForAbsoluteZoom(modelObject->pixelSnappedOffsetHeight(), *modelObject) : boundingBox.height()));
@@ -869,7 +869,7 @@ void InspectorOverlay::evaluateInOverlay(const String& method)
 {
     RefPtr<InspectorArray> command = InspectorArray::create();
     command->pushString(method);
-    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ")")));
+    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ')')));
 }
 
 void InspectorOverlay::evaluateInOverlay(const String& method, const String& argument)
@@ -877,7 +877,7 @@ void InspectorOverlay::evaluateInOverlay(const String& method, const String& arg
     RefPtr<InspectorArray> command = InspectorArray::create();
     command->pushString(method);
     command->pushString(argument);
-    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ")")));
+    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ')')));
 }
 
 void InspectorOverlay::evaluateInOverlay(const String& method, PassRefPtr<InspectorValue> argument)
@@ -885,7 +885,7 @@ void InspectorOverlay::evaluateInOverlay(const String& method, PassRefPtr<Inspec
     RefPtr<InspectorArray> command = InspectorArray::create();
     command->pushString(method);
     command->pushValue(argument);
-    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ")")));
+    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ')')));
 }
 
 void InspectorOverlay::freePage()

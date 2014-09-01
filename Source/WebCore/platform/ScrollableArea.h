@@ -207,6 +207,8 @@ public:
     // Note that this only returns scrollable areas that can actually be scrolled.
     virtual ScrollableArea* enclosingScrollableArea() const = 0;
 
+    virtual bool hasScrollableOrRubberbandableAncestor() = 0;
+
     // Returns the bounding box of this scrollable area, in the coordinate system of the enclosing scroll view.
     virtual IntRect scrollableAreaBoundingBox() const = 0;
 
@@ -259,6 +261,7 @@ protected:
     void setScrollOrigin(const IntPoint&);
     void resetScrollOriginChanged() { m_scrollOriginChanged = false; }
 
+    virtual float adjustScrollStepForFixedContent(float step, ScrollbarOrientation, ScrollGranularity);
     virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) = 0;
     virtual void invalidateScrollCornerRect(const IntRect&) = 0;
 

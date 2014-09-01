@@ -587,10 +587,10 @@ static void write(TextStream& ts, RenderLayer& l,
                   const LayoutRect& layerBounds, const LayoutRect& backgroundClipRect, const LayoutRect& clipRect, const LayoutRect& outlineClipRect,
                   LayerPaintPhase paintPhase = LayerPaintPhaseAll, int indent = 0, RenderAsTextBehavior behavior = RenderAsTextBehaviorNormal)
 {
-    IntRect adjustedLayoutBounds = pixelSnappedIntRect(layerBounds);
-    IntRect adjustedBackgroundClipRect = pixelSnappedIntRect(backgroundClipRect);
-    IntRect adjustedClipRect = pixelSnappedIntRect(clipRect);
-    IntRect adjustedOutlineClipRect = pixelSnappedIntRect(outlineClipRect);
+    IntRect adjustedLayoutBounds = snappedIntRect(layerBounds);
+    IntRect adjustedBackgroundClipRect = snappedIntRect(backgroundClipRect);
+    IntRect adjustedClipRect = snappedIntRect(clipRect);
+    IntRect adjustedOutlineClipRect = snappedIntRect(outlineClipRect);
 
     writeIndent(ts, indent);
 
@@ -735,7 +735,7 @@ static void writeLayers(TextStream& ts, const RenderLayer* rootLayer, RenderLaye
     if (rootLayer == l) {
         paintDirtyRect.setWidth(std::max<LayoutUnit>(paintDirtyRect.width(), rootLayer->renderBox()->layoutOverflowRect().maxX()));
         paintDirtyRect.setHeight(std::max<LayoutUnit>(paintDirtyRect.height(), rootLayer->renderBox()->layoutOverflowRect().maxY()));
-        l->setSize(l->size().expandedTo(pixelSnappedIntSize(maxLayoutOverflow(l->renderBox()), LayoutPoint(0, 0))));
+        l->setSize(l->size().expandedTo(snappedIntSize(maxLayoutOverflow(l->renderBox()), LayoutPoint(0, 0))));
     }
     
     // Calculate the clip rects we should use.

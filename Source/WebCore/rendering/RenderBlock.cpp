@@ -1174,7 +1174,7 @@ void RenderBlock::addVisualOverflowFromTheme()
 
     FloatRect inflatedRect = borderBoxRect();
     theme().adjustRepaintRect(*this, inflatedRect);
-    addVisualOverflow(pixelSnappedIntRect(LayoutRect(inflatedRect)));
+    addVisualOverflow(snappedIntRect(LayoutRect(inflatedRect)));
 
     if (RenderFlowThread* flowThread = flowThreadContainingBlock())
         flowThread->addRegionsVisualOverflowFromTheme(this);
@@ -1527,7 +1527,7 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     // z-index.  We paint after we painted the background/border, so that the scrollbars will
     // sit above the background/border.
     if (hasOverflowClip() && style().visibility() == VISIBLE && (phase == PaintPhaseBlockBackground || phase == PaintPhaseChildBlockBackground) && paintInfo.shouldPaintWithinRoot(*this) && !paintInfo.paintRootBackgroundOnly())
-        layer()->paintOverflowControls(paintInfo.context, roundedIntPoint(adjustedPaintOffset), pixelSnappedIntRect(paintInfo.rect));
+        layer()->paintOverflowControls(paintInfo.context, roundedIntPoint(adjustedPaintOffset), snappedIntRect(paintInfo.rect));
 }
 
 void RenderBlock::paintContents(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -2066,7 +2066,7 @@ LayoutRect RenderBlock::blockSelectionGap(RenderBlock& rootBlock, const LayoutPo
 
     LayoutRect gapRect = rootBlock.logicalRectToPhysicalRect(rootBlockPhysicalPosition, LayoutRect(logicalLeft, logicalTop, logicalWidth, logicalHeight));
     if (paintInfo)
-        paintInfo->context->fillRect(pixelSnappedForPainting(gapRect, document().deviceScaleFactor()), selectionBackgroundColor(), style().colorSpace());
+        paintInfo->context->fillRect(snapRectToDevicePixels(gapRect, document().deviceScaleFactor()), selectionBackgroundColor(), style().colorSpace());
     return gapRect;
 }
 
@@ -2083,7 +2083,7 @@ LayoutRect RenderBlock::logicalLeftSelectionGap(RenderBlock& rootBlock, const La
 
     LayoutRect gapRect = rootBlock.logicalRectToPhysicalRect(rootBlockPhysicalPosition, LayoutRect(rootBlockLogicalLeft, rootBlockLogicalTop, rootBlockLogicalWidth, logicalHeight));
     if (paintInfo)
-        paintInfo->context->fillRect(pixelSnappedForPainting(gapRect, document().deviceScaleFactor()), selObj->selectionBackgroundColor(), selObj->style().colorSpace());
+        paintInfo->context->fillRect(snapRectToDevicePixels(gapRect, document().deviceScaleFactor()), selObj->selectionBackgroundColor(), selObj->style().colorSpace());
     return gapRect;
 }
 
@@ -2100,7 +2100,7 @@ LayoutRect RenderBlock::logicalRightSelectionGap(RenderBlock& rootBlock, const L
 
     LayoutRect gapRect = rootBlock.logicalRectToPhysicalRect(rootBlockPhysicalPosition, LayoutRect(rootBlockLogicalLeft, rootBlockLogicalTop, rootBlockLogicalWidth, logicalHeight));
     if (paintInfo)
-        paintInfo->context->fillRect(pixelSnappedForPainting(gapRect, document().deviceScaleFactor()), selObj->selectionBackgroundColor(), selObj->style().colorSpace());
+        paintInfo->context->fillRect(snapRectToDevicePixels(gapRect, document().deviceScaleFactor()), selObj->selectionBackgroundColor(), selObj->style().colorSpace());
     return gapRect;
 }
 
@@ -2897,9 +2897,9 @@ static inline void stripTrailingSpace(float& inlineMax, float& inlineMin,
     }
 }
 
-static inline void updatePreferredWidth(LayoutUnit& preferredWidth, float& result)
+static inline LayoutUnit preferredWidth(LayoutUnit preferredWidth, float result)
 {
-    preferredWidth = std::max(LayoutUnit::fromFloatCeil(result), preferredWidth);
+    return std::max(preferredWidth, LayoutUnit::fromFloatCeil(result));
 }
 
 void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth)
@@ -2981,7 +2981,7 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
 
             if (!child->isText()) {
                 if (child->isLineBreakOpportunity()) {
-                    updatePreferredWidth(minLogicalWidth, inlineMin);
+                    minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                     inlineMin = 0;
                     continue;
                 }
@@ -3029,13 +3029,13 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
 
                 bool canBreakReplacedElement = !child->isImage() || allowImagesToBreak;
                 if ((canBreakReplacedElement && (autoWrap || oldAutoWrap) && (!isPrevChildInlineFlow || shouldBreakLineAfterText)) || clearPreviousFloat) {
-                    updatePreferredWidth(minLogicalWidth, inlineMin);
+                    minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                     inlineMin = 0;
                 }
 
                 // If we're supposed to clear the previous float, then terminate maxwidth as well.
                 if (clearPreviousFloat) {
-                    updatePreferredWidth(maxLogicalWidth, inlineMax);
+                    maxLogicalWidth = preferredWidth(maxLogicalWidth, inlineMax);
                     inlineMax = 0;
                 }
 
@@ -3056,19 +3056,19 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
 
                 if (!autoWrap || !canBreakReplacedElement || (isPrevChildInlineFlow && !shouldBreakLineAfterText)) {
                     if (child->isFloating())
-                        updatePreferredWidth(minLogicalWidth, childMin);
+                        minLogicalWidth = preferredWidth(minLogicalWidth, childMin);
                     else
                         inlineMin += childMin;
                 } else {
                     // Now check our line.
-                    updatePreferredWidth(minLogicalWidth, childMin);
+                    minLogicalWidth = preferredWidth(minLogicalWidth, childMin);
 
                     // Now start a new line.
                     inlineMin = 0;
                 }
 
                 if (autoWrap && canBreakReplacedElement && isPrevChildInlineFlow) {
-                    updatePreferredWidth(minLogicalWidth, inlineMin);
+                    minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                     inlineMin = 0;
                 }
 
@@ -3101,7 +3101,7 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
                 // This text object will not be rendered, but it may still provide a breaking opportunity.
                 if (!hasBreak && childMax == 0) {
                     if (autoWrap && (beginWS || endWS)) {
-                        updatePreferredWidth(minLogicalWidth, inlineMin);
+                        minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                         inlineMin = 0;
                     }
                     continue;
@@ -3144,10 +3144,10 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
                     // we start and end with whitespace.
                     if (beginWS)
                         // Go ahead and end the current line.
-                        updatePreferredWidth(minLogicalWidth, inlineMin);
+                        minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                     else {
                         inlineMin += beginMin;
-                        updatePreferredWidth(minLogicalWidth, inlineMin);
+                        minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                         childMin -= ti;
                     }
 
@@ -3156,11 +3156,11 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
                     if (endWS) {
                         // We end in whitespace, which means we can go ahead
                         // and end our current line.
-                        updatePreferredWidth(minLogicalWidth, inlineMin);
+                        minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                         inlineMin = 0;
                         shouldBreakLineAfterText = false;
                     } else {
-                        updatePreferredWidth(minLogicalWidth, inlineMin);
+                        minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                         inlineMin = endMin;
                         shouldBreakLineAfterText = true;
                     }
@@ -3168,8 +3168,8 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
 
                 if (hasBreak) {
                     inlineMax += beginMax;
-                    updatePreferredWidth(maxLogicalWidth, inlineMax);
-                    updatePreferredWidth(maxLogicalWidth, childMax);
+                    maxLogicalWidth = preferredWidth(maxLogicalWidth, inlineMax);
+                    maxLogicalWidth = preferredWidth(maxLogicalWidth, childMax);
                     inlineMax = endMax;
                     addedTextIndent = true;
                 } else
@@ -3180,8 +3180,8 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
             if (child->isListMarker())
                 stripFrontSpaces = true;
         } else {
-            updatePreferredWidth(minLogicalWidth, inlineMin);
-            updatePreferredWidth(maxLogicalWidth, inlineMax);
+            minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
+            maxLogicalWidth = preferredWidth(maxLogicalWidth, inlineMax);
             inlineMin = inlineMax = 0;
             stripFrontSpaces = true;
             trailingSpaceChild = 0;
@@ -3199,8 +3199,8 @@ void RenderBlock::computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidt
     if (styleToUse.collapseWhiteSpace())
         stripTrailingSpace(inlineMax, inlineMin, trailingSpaceChild);
 
-    updatePreferredWidth(minLogicalWidth, inlineMin);
-    updatePreferredWidth(maxLogicalWidth, inlineMax);
+    minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
+    maxLogicalWidth = preferredWidth(maxLogicalWidth, inlineMax);
 }
 
 void RenderBlock::computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
@@ -3733,12 +3733,12 @@ void RenderBlock::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accum
     if (isAnonymousBlockContinuation()) {
         // FIXME: This is wrong for block-flows that are horizontal.
         // https://bugs.webkit.org/show_bug.cgi?id=46781
-        rects.append(pixelSnappedIntRect(accumulatedOffset.x(), accumulatedOffset.y() - collapsedMarginBefore(),
+        rects.append(snappedIntRect(accumulatedOffset.x(), accumulatedOffset.y() - collapsedMarginBefore(),
                                 width(), height() + collapsedMarginBefore() + collapsedMarginAfter()));
         continuation()->absoluteRects(rects, accumulatedOffset - toLayoutSize(location() +
                 inlineElementContinuation()->containingBlock()->location()));
     } else
-        rects.append(pixelSnappedIntRect(accumulatedOffset, size()));
+        rects.append(snappedIntRect(accumulatedOffset, size()));
 }
 
 void RenderBlock::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
@@ -3842,9 +3842,9 @@ void RenderBlock::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& a
         float bottomMargin = nextInlineHasLineBox ? collapsedMarginAfter() : LayoutUnit();
         LayoutRect rect(additionalOffset.x(), additionalOffset.y() - topMargin, width(), height() + topMargin + bottomMargin);
         if (!rect.isEmpty())
-            rects.append(pixelSnappedIntRect(rect));
+            rects.append(snappedIntRect(rect));
     } else if (width() && height())
-        rects.append(pixelSnappedIntRect(additionalOffset, size()));
+        rects.append(snappedIntRect(additionalOffset, size()));
 
     if (!hasOverflowClip() && !hasControlClip()) {
         if (childrenInline())
@@ -4186,11 +4186,6 @@ void RenderBlock::checkPositionedObjectsNeedLayout()
         RenderBox* currBox = *it;
         ASSERT(!currBox->needsLayout());
     }
-}
-
-void RenderBlock::showLineTreeAndMark(const InlineBox*, const char*, const InlineBox*, const char*, const RenderObject*) const
-{
-    showRenderObject();
 }
 
 #endif

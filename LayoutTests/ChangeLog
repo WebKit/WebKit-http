@@ -1,3 +1,349 @@
+2014-08-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Mark some compositing tests as "failure" since r172999
+
+        * platform/efl/TestExpectations:
+
+2014-08-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS: Refactor :visited handling in SelectorChecker
+        https://bugs.webkit.org/show_bug.cgi?id=135639
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/history/link-inside-any-expected.txt: Added.
+        * fast/history/link-inside-any.html: Added.
+        * fast/history/link-inside-not-expected.txt: Added.
+        * fast/history/link-inside-not.html: Added.
+        * fast/history/nested-visited-test-override-expected.txt: Added.
+        * fast/history/nested-visited-test-override.html: Added.
+        * fast/history/visited-inside-any-expected.txt: Added.
+        * fast/history/visited-inside-any.html: Added.
+        * fast/history/visited-inside-not-expected.txt: Added.
+        * fast/history/visited-inside-not.html: Added.
+
+2014-08-28  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: Write tests for ScriptSyntaxTree and fix bugs in the data structure
+        https://bugs.webkit.org/show_bug.cgi?id=136272
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch tests all nodes in the WebInspecor's Abstract Syntax Tree.
+        These tests don't test every aspect of the data structure, but focus
+        on having it parse all JavaScript expressions successfully and to also
+        make sure nodes in the tree are of the correct type.
+
+        * inspector/model: Added.
+        * inspector/model/parse-script-syntax-tree-expected.txt: Added.
+        * inspector/model/parse-script-syntax-tree.html: Added.
+
+2014-08-28  Enrica Casucci  <enrica@apple.com>
+
+        Can't hit tab key more than 3 times continuously.
+        https://bugs.webkit.org/show_bug.cgi?id=136357
+        rdar://problem/17927266
+
+        Reviewed by Dean Jackson.
+
+        * fast/css/multiple-tabs-expected.html: Added.
+        * fast/css/multiple-tabs.html: Added.
+
+2014-08-28  Benjamin Poulain  <bpoulain@apple.com>
+
+        Scrolling with spacebar on a page with fixed header breaks reading flow
+        https://bugs.webkit.org/show_bug.cgi?id=135506
+
+        Reviewed by Simon Fraser.
+
+        There was pretty much no test coverage for scrolling by page, add some tests.
+
+        * fast/events/scrollbar-double-click-expected.txt:
+        * platform/mac-wk1/TestExpectations:
+        * scrollbars/scrolling-backward-by-page-accounting-bottom-fixed-elements-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-backward-by-page-accounting-bottom-fixed-elements-on-keyboard-spacebar.html: Added.
+        * scrollbars/scrolling-backward-by-page-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-backward-by-page-on-keyboard-spacebar.html: Added.
+        * scrollbars/scrolling-by-page-accounting-oversized-fixed-elements-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-by-page-accounting-oversized-fixed-elements-on-keyboard-spacebar.html: Added.
+        * scrollbars/scrolling-by-page-accounting-top-fixed-elements-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-by-page-accounting-top-fixed-elements-on-keyboard-spacebar.html: Added.
+        * scrollbars/scrolling-by-page-accounting-top-fixed-elements-with-negative-top-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-by-page-accounting-top-fixed-elements-with-negative-top-on-keyboard-spacebar.html: Added.
+        * scrollbars/scrolling-by-page-ignoring-hidden-fixed-elements-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-by-page-ignoring-hidden-fixed-elements-on-keyboard-spacebar.html: Added.
+        * scrollbars/scrolling-by-page-ignoring-transparent-fixed-elements-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-by-page-ignoring-transparent-fixed-elements-on-keyboard-spacebar.html: Added.
+        * scrollbars/scrolling-by-page-on-keyboard-spacebar-expected.txt: Added.
+        * scrollbars/scrolling-by-page-on-keyboard-spacebar.html: Added.
+
+2014-08-27  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should be able to do polymorphic call inlining
+        https://bugs.webkit.org/show_bug.cgi?id=135145
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/script-tests/simple-poly-call-nested.js: Added.
+        * js/regress/script-tests/simple-poly-call.js: Added.
+        * js/regress/simple-poly-call-expected.txt: Added.
+        * js/regress/simple-poly-call-nested-expected.txt: Added.
+        * js/regress/simple-poly-call-nested.html: Added.
+        * js/regress/simple-poly-call.html: Added.
+
+2014-08-28  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Incorrect selection clearing on a document without regions
+        https://bugs.webkit.org/show_bug.cgi?id=134901
+
+        Reviewed by David Hyatt.
+
+        * fast/regions/selection/select-all-without-regions-expected.txt: Added.
+        * fast/regions/selection/select-all-without-regions.html: Added.
+
+2014-08-28  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Move positioning tests into fast/regions/positioning
+        https://bugs.webkit.org/show_bug.cgi?id=136302
+
+        Reviewed by Andrei Bucur.
+
+        Moved tests, clean up tests, adjust TestExpectations files where needed.
+
+        * fast/regions/positioned-objects-block-static-in-regions-expected.html: Removed.
+        * fast/regions/positioned-objects-block-static-in-regions.html: Removed.
+        * fast/regions/positioned-objects-block-static-in-rtl-regions-expected.html: Removed.
+        * fast/regions/positioned-objects-block-static-in-rtl-regions.html: Removed.
+        * fast/regions/positioned-objects-clipped-spanning-regions-expected.html: Removed.
+        * fast/regions/positioned-objects-in-regions.html: Removed.
+        * fast/regions/positioned-objects-inline-static-spanning-regions-expected.html: Removed.
+        * fast/regions/positioning/fixed-element-transformed-parent-expected.txt: Renamed from LayoutTests/fast/regions/fixed-element-transformed-parent-expected.txt.
+        * fast/regions/positioning/fixed-element-transformed-parent.html: Renamed from LayoutTests/fast/regions/fixed-element-transformed-parent.html.
+        * fast/regions/positioning/fixed-in-named-flow-position-changed-expected.html: Renamed from LayoutTests/fast/regions/fixed-in-named-flow-position-changed-expected.html.
+        * fast/regions/positioning/fixed-in-named-flow-position-changed.html: Renamed from LayoutTests/fast/regions/fixed-in-named-flow-position-changed.html.
+        * fast/regions/positioning/fixed-inside-fixed-in-named-flow-expected.html: Renamed from LayoutTests/fast/regions/fixed-inside-fixed-in-named-flow-expected.html.
+        * fast/regions/positioning/fixed-inside-fixed-in-named-flow.html: Renamed from LayoutTests/fast/regions/fixed-inside-fixed-in-named-flow.html.
+        * fast/regions/positioning/fixed-inside-named-flow-zIndex-expected.html: Renamed from LayoutTests/fast/regions/fixed-inside-named-flow-zIndex-expected.html.
+        * fast/regions/positioning/fixed-inside-named-flow-zIndex.html: Renamed from LayoutTests/fast/regions/fixed-inside-named-flow-zIndex.html.
+        * fast/regions/positioning/fixed-pos-content-fragmented-expected.html: Renamed from LayoutTests/fast/regions/fixed-pos-content-fragmented-expected.html.
+        * fast/regions/positioning/fixed-pos-content-fragmented.html: Renamed from LayoutTests/fast/regions/fixed-pos-content-fragmented.html.
+        * fast/regions/positioning/fixed-pos-elem-in-named-flow-expected.txt: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-named-flow-expected.txt.
+        * fast/regions/positioning/fixed-pos-elem-in-named-flow.html: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-named-flow.html.
+        * fast/regions/positioning/fixed-pos-elem-in-named-flow2-expected.txt: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-named-flow2-expected.txt.
+        * fast/regions/positioning/fixed-pos-elem-in-named-flow2.html: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-named-flow2.html.
+        * fast/regions/positioning/fixed-pos-elem-in-namedflow-noregions-expected.html: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-namedflow-noregions-expected.html.
+        * fast/regions/positioning/fixed-pos-elem-in-namedflow-noregions.html: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-namedflow-noregions.html.
+        * fast/regions/positioning/fixed-pos-elem-in-region-expected.html: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-region-expected.html.
+        * fast/regions/positioning/fixed-pos-elem-in-region.html: Renamed from LayoutTests/fast/regions/fixed-pos-elem-in-region.html.
+        * fast/regions/positioning/fixed-pos-region-in-nested-flow-expected.html: Renamed from LayoutTests/fast/regions/fixed-pos-region-in-nested-flow-expected.html.
+        * fast/regions/positioning/fixed-pos-region-in-nested-flow.html: Renamed from LayoutTests/fast/regions/fixed-pos-region-in-nested-flow.html.
+        * fast/regions/positioning/fixed-pos-region-overflow-content-expected.html: Renamed from LayoutTests/fast/regions/fixed-pos-region-overflow-content-expected.html.
+        * fast/regions/positioning/fixed-pos-region-overflow-content.html: Renamed from LayoutTests/fast/regions/fixed-pos-region-overflow-content.html.
+        * fast/regions/positioning/positioned-fragmented-content-expected.html: Renamed from LayoutTests/fast/regions/positioned-fragmented-content-expected.html.
+        * fast/regions/positioning/positioned-fragmented-content.html: Renamed from LayoutTests/fast/regions/positioned-fragmented-content.html.
+        * fast/regions/positioning/positioned-object-inline-cb-crash-expected.txt: Renamed from LayoutTests/fast/regions/positioned-object-inline-cb-crash-expected.txt.
+        * fast/regions/positioning/positioned-object-inline-cb-crash.html: Renamed from LayoutTests/fast/regions/positioned-object-inline-cb-crash.html.
+        * fast/regions/positioning/positioned-objects-block-static-in-regions-expected.html: Added.
+        * fast/regions/positioning/positioned-objects-block-static-in-regions.html: Added.
+        * fast/regions/positioning/positioned-objects-block-static-in-rtl-regions-expected.html: Added.
+        * fast/regions/positioning/positioned-objects-block-static-in-rtl-regions.html: Added.
+        * fast/regions/positioning/positioned-objects-block-static-spanning-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-block-static-spanning-regions-expected.html.
+        * fast/regions/positioning/positioned-objects-block-static-spanning-regions-rtl-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-block-static-spanning-regions-rtl-expected.html.
+        * fast/regions/positioning/positioned-objects-block-static-spanning-regions-rtl.html: Renamed from LayoutTests/fast/regions/positioned-objects-block-static-spanning-regions-rtl.html.
+        * fast/regions/positioning/positioned-objects-block-static-spanning-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-block-static-spanning-regions.html.
+        * fast/regions/positioning/positioned-objects-clipped-spanning-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-in-regions-expected.html.
+        * fast/regions/positioning/positioned-objects-clipped-spanning-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-clipped-spanning-regions.html.
+        * fast/regions/positioning/positioned-objects-in-regions-expected.html: Added.
+        * fast/regions/positioning/positioned-objects-in-regions.html: Added.
+        * fast/regions/positioning/positioned-objects-in-rtl-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-in-rtl-regions-expected.html.
+        * fast/regions/positioning/positioned-objects-in-rtl-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-in-rtl-regions.html.
+        * fast/regions/positioning/positioned-objects-inline-static-in-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-inline-static-in-regions-expected.html.
+        * fast/regions/positioning/positioned-objects-inline-static-in-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-inline-static-in-regions.html.
+        * fast/regions/positioning/positioned-objects-inline-static-in-rtl-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-inline-static-in-rtl-regions-expected.html.
+        * fast/regions/positioning/positioned-objects-inline-static-in-rtl-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-inline-static-in-rtl-regions.html.
+        * fast/regions/positioning/positioned-objects-inline-static-spanning-regions-expected.html: Added.
+        * fast/regions/positioning/positioned-objects-inline-static-spanning-regions-rtl-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-inline-static-spanning-regions-rtl-expected.html.
+        * fast/regions/positioning/positioned-objects-inline-static-spanning-regions-rtl.html: Renamed from LayoutTests/fast/regions/positioned-objects-inline-static-spanning-regions-rtl.html.
+        * fast/regions/positioning/positioned-objects-inline-static-spanning-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-inline-static-spanning-regions.html.
+        * fast/regions/positioning/positioned-objects-perpendicular-flows-in-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-perpendicular-flows-in-regions-expected.html.
+        * fast/regions/positioning/positioned-objects-perpendicular-flows-in-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-perpendicular-flows-in-regions.html.
+        * fast/regions/positioning/positioned-objects-spanning-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-objects-spanning-regions-expected.html.
+        * fast/regions/positioning/positioned-objects-spanning-regions.html: Renamed from LayoutTests/fast/regions/positioned-objects-spanning-regions.html.
+        * fast/regions/positioning/positioned-slider-in-regions-expected.html: Renamed from LayoutTests/fast/regions/positioned-slider-in-regions-expected.html.
+        * fast/regions/positioning/positioned-slider-in-regions.html: Renamed from LayoutTests/fast/regions/positioned-slider-in-regions.html.
+        * fast/regions/positioning/positioned-vrl-in-named-flow-expected.txt: Renamed from LayoutTests/fast/regions/positioned-vrl-in-named-flow-expected.txt.
+        * fast/regions/positioning/positioned-vrl-in-named-flow.html: Renamed from LayoutTests/fast/regions/positioned-vrl-in-named-flow.html.
+        * fast/regions/positioning/positioned-vrl-in-parent-named-flow-expected.txt: Renamed from LayoutTests/fast/regions/positioned-vrl-in-parent-named-flow-expected.txt.
+        * fast/regions/positioning/positioned-vrl-in-parent-named-flow.html: Renamed from LayoutTests/fast/regions/positioned-vrl-in-parent-named-flow.html.
+        * fast/regions/positioning/positioned-with-vrl-parent-in-named-flow-expected.txt: Renamed from LayoutTests/fast/regions/positioned-with-vrl-parent-in-named-flow-expected.txt.
+        * fast/regions/positioning/positioned-with-vrl-parent-in-named-flow.html: Renamed from LayoutTests/fast/regions/positioned-with-vrl-parent-in-named-flow.html.
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+
+2014-08-27  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Move writing mode tests into fast/regions/writing-mode
+        https://bugs.webkit.org/show_bug.cgi?id=136298
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/writing-mode/changing-writing-mode-2-expected.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-2-expected.html.
+        * fast/regions/writing-mode/changing-writing-mode-2.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-2.html.
+        * fast/regions/writing-mode/changing-writing-mode-3-expected.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-3-expected.html.
+        * fast/regions/writing-mode/changing-writing-mode-3.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-3.html.
+        * fast/regions/writing-mode/changing-writing-mode-4-expected.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-4-expected.html.
+        * fast/regions/writing-mode/changing-writing-mode-4.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-4.html.
+        * fast/regions/writing-mode/changing-writing-mode-5-expected.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-5-expected.html.
+        * fast/regions/writing-mode/changing-writing-mode-5.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-5.html.
+        * fast/regions/writing-mode/changing-writing-mode-expected.html: Renamed from LayoutTests/fast/regions/changing-writing-mode-expected.html.
+        * fast/regions/writing-mode/changing-writing-mode.html: Renamed from LayoutTests/fast/regions/changing-writing-mode.html.
+        * fast/regions/writing-mode/invalid-first-region-with-writing-mode-2-expected.html: Renamed from LayoutTests/fast/regions/invalid-first-region-with-writing-mode-2-expected.html.
+        * fast/regions/writing-mode/invalid-first-region-with-writing-mode-2.html: Renamed from LayoutTests/fast/regions/invalid-first-region-with-writing-mode-2.html.
+        * fast/regions/writing-mode/invalid-first-region-with-writing-mode-expected.html: Renamed from LayoutTests/fast/regions/invalid-first-region-with-writing-mode-expected.html.
+        * fast/regions/writing-mode/invalid-first-region-with-writing-mode.html: Renamed from LayoutTests/fast/regions/invalid-first-region-with-writing-mode.html.
+
+2014-08-27  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Move more multicol tests in fast/regions/multicol
+        https://bugs.webkit.org/show_bug.cgi?id=136295
+
+        Reviewed by Andrei Bucur.
+
+        * fast/regions/multicol/regions-in-multicol-bt-expected.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-bt-expected.html.
+        * fast/regions/multicol/regions-in-multicol-bt.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-bt.html.
+        * fast/regions/multicol/regions-in-multicol-expected.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-expected.html.
+        * fast/regions/multicol/regions-in-multicol-hover-expected.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-hover-expected.html.
+        * fast/regions/multicol/regions-in-multicol-hover-overflow-expected.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-hover-overflow-expected.html.
+        * fast/regions/multicol/regions-in-multicol-hover-overflow.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-hover-overflow.html.
+        * fast/regions/multicol/regions-in-multicol-hover.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-hover.html.
+        * fast/regions/multicol/regions-in-multicol-lr-expected.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-lr-expected.html.
+        * fast/regions/multicol/regions-in-multicol-lr.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-lr.html.
+        * fast/regions/multicol/regions-in-multicol-rl-expected.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-rl-expected.html.
+        * fast/regions/multicol/regions-in-multicol-rl.html: Renamed from LayoutTests/fast/regions/regions-in-multicol-rl.html.
+        * fast/regions/multicol/regions-in-multicol.html: Renamed from LayoutTests/fast/regions/regions-in-multicol.html.
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Cleanup snapSizeToPixel/snapSizeToDevicePixel.
+        https://bugs.webkit.org/show_bug.cgi?id=136264
+
+        Reviewed by Simon Fraser.
+        
+        1. Align snapSizeToPixel()/snapSizeToDevicePixel() function names with the rest of snapping
+        functions. ->snappedIntSize()/snapSizeToDevicePixel().
+        2. Operate on LayoutSize/LayoutPoint instead of LayoutUnit/LayoutUnit to reflect functionality.
+
+        Covered by existing tests.
+
+        * cssom/subpixel-offsetleft-top-width-height-values-expected.txt:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-center-expected.txt:
+
+2014-08-27  Daniel Bates  <dabates@apple.com>
+
+        Scrollbar corner can be drawn outside containing frame
+        https://bugs.webkit.org/show_bug.cgi?id=133131
+        <rdar://problem/16382769>
+
+        Reviewed by Simon Fraser.
+
+        Add DRT test that was derived from the test included in
+        <https://src.chromium.org/viewvc/blink?revision=170625&view=revision>.
+
+        * scrollbars/custom-scrollbars-paint-outside-iframe-expected.html: Added.
+        * scrollbars/custom-scrollbars-paint-outside-iframe.html: Added.
+
+2014-08-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        Update placeholder-shown-basics.html for GTK
+
+        GTK does not support the color input type. This was causing placeholder-shown-basics.html
+        to fail when testing the non-support of placeholder by input[type=color].
+
+        Since this is a minor part of the test, it is more valuable getting the test running everywhere
+        than skipping it. I removed the subtest causing troubles.
+
+        * fast/css/placeholder-shown-basics-expected.html:
+        * fast/css/placeholder-shown-basics.html:
+        * platform/gtk/TestExpectations:
+
+2014-08-27  Andreas Kling  <akling@apple.com>
+
+        Drawing text in an SVG font causes load events to be fired.
+        <https://webkit.org/b/136269>
+        <rdar://problem/15724915>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/svg-font-trigger-load-event-expected.txt: Added.
+        * fast/text/svg-font-trigger-load-event.html: Added.
+
+2014-08-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        Updating attributes on HTML elements do not invalidate the style correctly unless the attribute name is lowercase in the stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=136270
+        rdar://problem/16190617
+
+        Reviewed by Andreas Kling.
+
+        The test coverage for attribute update was abysmal. This adds the basic cases for HTML and XML.
+
+        * fast/css/attribute-for-content-property-style-update-html-expected.html: Added.
+        * fast/css/attribute-for-content-property-style-update-html.html: Added.
+        * fast/css/attribute-for-content-property-style-update-xhtml-expected.html: Added.
+        * fast/css/attribute-for-content-property-style-update-xhtml.xhtml: Added.
+        * fast/css/attribute-style-invalidation-optimization-html-expected.txt: Added.
+        * fast/css/attribute-style-invalidation-optimization-html.html: Added.
+        * fast/css/attribute-style-invalidation-optimization-xhtml-expected.txt: Added.
+        * fast/css/attribute-style-invalidation-optimization-xhtml.xhtml: Added.
+        * fast/css/attribute-style-update-html-expected.html: Added.
+        * fast/css/attribute-style-update-html.html: Added.
+        * fast/selectors/attribute-style-update-html-expected.txt: Added.
+        * fast/selectors/attribute-style-update-html.html: Added.
+        * fast/selectors/attribute-style-update-svg-in-html-expected.txt: Added.
+        * fast/selectors/attribute-style-update-svg-in-html.html: Added.
+        * fast/selectors/attribute-style-update-xhtml-expected.txt: Added.
+        * fast/selectors/attribute-style-update-xhtml.xhtml: Added.
+
+2014-08-27  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Move generated content tests into fast/regions/generated-content
+        https://bugs.webkit.org/show_bug.cgi?id=136288
+
+        Reviewed by Andrei Bucur.
+
+        Move related tests into generated-content folder and adjust paths.
+
+        * fast/regions/generated-content/firstletter-inside-flowthread-expected.html: Renamed from LayoutTests/fast/regions/firstletter-inside-flowthread-expected.html.
+        * fast/regions/generated-content/firstletter-inside-flowthread.html: Renamed from LayoutTests/fast/regions/firstletter-inside-flowthread.html.
+        * fast/regions/generated-content/pseudo-after-content-node-expected.txt: Renamed from LayoutTests/fast/regions/pseudo-after-content-node-expected.txt.
+        * fast/regions/generated-content/pseudo-after-content-node.html: Renamed from LayoutTests/fast/regions/pseudo-after-content-node.html.
+        * fast/regions/generated-content/pseudo-before-content-node-expected.txt: Renamed from LayoutTests/fast/regions/pseudo-before-content-node-expected.txt.
+        * fast/regions/generated-content/pseudo-before-content-node.html: Renamed from LayoutTests/fast/regions/pseudo-before-content-node.html.
+        * fast/regions/generated-content/pseudo-first-letter-content-node-expected.txt: Renamed from LayoutTests/fast/regions/pseudo-first-letter-content-node-expected.txt.
+        * fast/regions/generated-content/pseudo-first-letter-content-node.html: Renamed from LayoutTests/fast/regions/pseudo-first-letter-content-node.html.
+        * fast/regions/generated-content/pseudo-first-line-content-node-expected.txt: Renamed from LayoutTests/fast/regions/pseudo-first-line-content-node-expected.txt.
+        * fast/regions/generated-content/pseudo-first-line-content-node.html: Renamed from LayoutTests/fast/regions/pseudo-first-line-content-node.html.
+
+2014-08-27  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        * platform/efl/TestExpectations: Add test expectations for failing and crashin tests.
+        * platform/efl/fast/css/viewport-units-dynamic-expected.txt: Added after r171567.
+        * platform/efl/fast/multicol/pagination/RightToLeft-max-width-expected.txt: Added after r171609.
+        * platform/efl/fast/ruby/bopomofo-expected.txt: Added after r172874.
+        * platform/efl/fast/ruby/bopomofo-letter-spacing-expected.txt: Ditto.
+        * platform/efl/fast/ruby/bopomofo-rl-expected.txt: Added after r172861.
+
+2014-08-27  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Add expectations for flaky svg layout test.
+        https://bugs.webkit.org/show_bug.cgi?id=130592
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
 2014-08-27  Krzysztof Czech  <k.czech@samsung.com>
 
         [EFL] Share fast/speechsynthesis/ with other ports

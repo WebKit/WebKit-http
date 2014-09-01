@@ -218,8 +218,6 @@ public:
     void removeRenderCounter() { ASSERT(m_renderCounterCount > 0); m_renderCounterCount--; }
     bool hasRenderCounters() { return m_renderCounterCount; }
     
-    IntRect pixelSnappedLayoutOverflowRect() const { return pixelSnappedIntRect(layoutOverflowRect()); }
-
     ImageQualityController& imageQualityController();
 
 #if ENABLE(CSS_FILTERS)
@@ -302,6 +300,8 @@ private:
     
     friend class LayoutStateMaintainer;
     friend class LayoutStateDisabler;
+
+    virtual bool isScrollableOrRubberbandable() const override;
 
     void splitSelectionBetweenSubtrees(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode blockRepaintMode);
     void clearSubtreeSelection(const SelectionSubtreeRoot&, SelectionRepaintMode, OldSelectionData&);

@@ -65,8 +65,11 @@ set(JavaScriptCore_SOURCES
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
     bytecode/BytecodeLivenessAnalysis.cpp
+    bytecode/CallEdge.cpp
+    bytecode/CallEdgeProfile.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
+    bytecode/CallVariant.cpp
     bytecode/CodeBlock.cpp
     bytecode/CodeBlockHash.cpp
     bytecode/CodeBlockJettisoningWatchpoint.cpp
@@ -123,6 +126,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGBasicBlock.cpp
     dfg/DFGBinarySwitch.cpp
     dfg/DFGBlockInsertionSet.cpp
+    dfg/DFGBlockWorklist.cpp
     dfg/DFGByteCodeParser.cpp
     dfg/DFGCFAPhase.cpp
     dfg/DFGCFGSimplificationPhase.cpp
@@ -172,6 +176,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMayExit.cpp
     dfg/DFGMinifiedNode.cpp
+    dfg/DFGNaiveDominators.cpp
     dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
     dfg/DFGNodeFlags.cpp

@@ -238,12 +238,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/PlatformScreenGtk.cpp
     platform/gtk/PlatformWheelEventGtk.cpp
     platform/gtk/RedirectedXCompositeWindow.cpp
-    platform/gtk/RenderThemeGtk.cpp
-    platform/gtk/RenderThemeGtk2.cpp
-    platform/gtk/RenderThemeGtk3.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
-    platform/gtk/ScrollbarThemeGtk2.cpp
-    platform/gtk/ScrollbarThemeGtk3.cpp
     platform/gtk/SharedBufferGtk.cpp
     platform/gtk/SharedTimerGtk.cpp
     platform/gtk/SoundGtk.cpp
@@ -252,7 +247,8 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/WebKitAuthenticationWidget.cpp
     platform/gtk/WidgetBackingStoreGtkX11.cpp
     platform/gtk/WidgetGtk.cpp
-    platform/gtk/WidgetRenderingContext.cpp
+
+    rendering/RenderThemeGtk.cpp
 )
 
 if (WTF_USE_GEOCLUE2)
@@ -434,6 +430,9 @@ add_custom_command(
 
 if (ENABLE_WAYLAND_TARGET)
     list(APPEND WebCorePlatformGTK_SOURCES
+        platform/graphics/wayland/WaylandEventSource.cpp
+        platform/graphics/wayland/WaylandSurface.cpp
+
         ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitGtkWaylandClientProtocol.c
     )
 endif ()

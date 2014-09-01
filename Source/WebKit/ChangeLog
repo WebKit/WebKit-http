@@ -1,3 +1,39 @@
+2014-08-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviwed, remove empty directories.
+
+        * efl: Removed.
+        * efl/DefaultTheme: Removed.
+        * efl/DefaultTheme/widget: Removed.
+        * efl/WebCoreSupport: Removed.
+        * efl/ewk: Removed.
+        * efl/tests: Removed.
+        * efl/tests/UnitTestUtils: Removed.
+        * efl/tests/resources: Removed.
+        * gtk: Removed.
+        * gtk/WebCoreSupport: Removed.
+        * gtk/docs: Removed.
+        * gtk/gdom: Removed.
+        * gtk/resources: Removed.
+        * gtk/webkit: Removed.
+
+2014-08-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Adjust build order to reduce flakiness.
+
+        * WebKit.vcxproj/WebKit.sln: Make sure WebCoreGenerated doesn't
+          start until the last JSC tool has finished building.
+
+2014-08-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed Build 'fix' after r173018.
+
+        The new launcher applications were not getting build when driven
+        by WebKit.sln. This adds the missing project links and dependencies.
+
+        * WebKit.vcxproj/WebKit.sln: Update to include jscLauncher,
+        testapiLauncher, and testRegExpLauncher.
+
 2014-08-26  Andy Estes  <aestes@apple.com>
 
         [Cocoa] Some projects are incorrectly installed to $BUILT_PRODUCTS_DIR
