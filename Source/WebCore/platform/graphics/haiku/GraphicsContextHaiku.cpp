@@ -303,25 +303,35 @@ public:
         Layer* layer = m_currentLayer;
         m_currentLayer = layer->previous;
         if (layer->opacity > 0) {
-            // Post process the bitmap in order to apply global alpha...
             layer->view->Sync();
 
             BView* target = m_currentLayer->view;
             target->PushState();
-            target->SetDrawingMode(B_OP_ALPHA);
 
+            // We use a clipping picture which covers the current target bounds
+            // and is filled with white at the right opacity. The effect is
+            // compositing this opacity with the layer bitmap one as it is
+            // blended onto the target, giving us the correct result even if
+            // the bitmap itself has some partially transparent areas.
+            // TODO this relies on the compositing operation to do the right
+            // thing with the alpha channel, but right now it doesn't really
+            // work.
             BPicture picture;
             target->BeginPicture(&picture);
-            target->SetHighColor(make_color(0, 0, 0, layer->opacity));
+
+            target->SetDrawingMode(B_OP_COPY);
+            target->SetHighColor(make_color(255, 255, 255, layer->opacity));
             target->FillRect(target->Bounds());
+
             target->EndPicture();
             target->ClipToPicture(&picture);
+
+            target->SetDrawingMode(B_OP_ALPHA);
 
             BPoint bitmapLocation(layer->locationInParent);
             bitmapLocation -= m_currentLayer->accumulatedOrigin;
 
             target->DrawBitmap(layer->bitmap, bitmapLocation);
-
             target->PopState();
         }
         delete layer;
@@ -759,9 +769,7 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
     if (paintingDisabled())
         return;
 
-	// FIXME this leads to not drawing anything at all, which is not what we 
-	// want. Let's go with opaque instead until we know what's broken...
-    //m_data->pushLayer(opacity);
+    m_data->pushLayer(opacity);
 }
 
 void GraphicsContext::endPlatformTransparencyLayer()
@@ -769,7 +777,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
     if (paintingDisabled())
         return;
 
-    //m_data->popLayer();
+    m_data->popLayer();
 }
 
 bool GraphicsContext::supportsTransparencyLayers()
@@ -917,10 +925,10 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 
 void GraphicsContext::translate(float x, float y)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || (x == 0.f && y == 0.f))
         return;
 
-	if (x != 0 && y != 0) {
+	if (x != 0.f && y != 0.f) {
 		// Translation in both directions is not scrolling.
     	BAffineTransform current = m_data->view()->Transform();
     	current.TranslateBy(x, y);
@@ -933,7 +941,7 @@ void GraphicsContext::translate(float x, float y)
 
 void GraphicsContext::rotate(float radians)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || radians == 0.f)
         return;
 
     BAffineTransform current = m_data->view()->Transform();
