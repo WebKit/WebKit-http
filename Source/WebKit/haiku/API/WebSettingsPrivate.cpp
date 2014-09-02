@@ -102,11 +102,6 @@ void WebSettingsPrivate::apply()
         }
         settings->setFTPDirectoryTemplatePath(path);
 
-#if USE(TEXTURE_MAPPER)
-        settings->setAcceleratedCompositingEnabled(true);
-        settings->setForceCompositingMode(true);
-#endif
-
 //      settings->setShowDebugBorders(true);
 
 	    // Apply local or global settings

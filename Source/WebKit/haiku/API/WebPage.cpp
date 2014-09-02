@@ -667,33 +667,29 @@ void BWebPage::paint(BRect rect, bool immediate)
     // we avoid recursion using fLayoutingView to abort the nested paint
     // calls early
     fLayoutingView = true;
-    if (view->needsLayout())
-        view->layout(true);
+    view->layout(true);
     fLayoutingView = false;
 
-    if (!fWebView->IsComposited())
-    {
-        if (!fWebView->LockLooper())
-            return;
-        BView* offscreenView = fWebView->OffscreenView();
+    if (!fWebView->LockLooper())
+        return;
+    BView* offscreenView = fWebView->OffscreenView();
 
-        // Lock the offscreen bitmap while we still have the
-        // window locked. This cannot deadlock and makes sure
-        // the window is not deleting the offscreen view right
-        // after we unlock it and before locking the bitmap.
-        if (!offscreenView->LockLooper()) {
-            fWebView->UnlockLooper();
-            return;
-        }
+    // Lock the offscreen bitmap while we still have the
+    // window locked. This cannot deadlock and makes sure
+    // the window is not deleting the offscreen view right
+    // after we unlock it and before locking the bitmap.
+    if (!offscreenView->LockLooper()) {
         fWebView->UnlockLooper();
-
-        BRegion region(rect);
-        internalPaint(offscreenView, view, &region);
-        MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
-
-        offscreenView->Sync();
-        offscreenView->UnlockLooper();
+        return;
     }
+    fWebView->UnlockLooper();
+
+    BRegion region(rect);
+    internalPaint(offscreenView, view, &region);
+    MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
+
+    offscreenView->Sync();
+    offscreenView->UnlockLooper();
 
     // Notify the window that it can now pull the bitmap in its own thread
     fWebView->SetOffscreenViewClean(rect, immediate);
