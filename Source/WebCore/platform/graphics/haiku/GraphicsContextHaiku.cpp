@@ -112,7 +112,7 @@ public:
             view->SetViewColor(previous->view->ViewColor());
             view->SetDrawingMode(previous->view->DrawingMode());
             view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
-            view->SetOrigin(previous->accumulatedOrigin + accumulatedOrigin);
+            view->SetOrigin(accumulatedOrigin);
             view->SetPenSize(previous->view->PenSize());
         }
         ~Layer()
@@ -294,6 +294,7 @@ public:
     {
         m_currentLayer = new Layer(m_currentLayer);
         m_currentLayer->opacity = (uint8)(opacity * 255.0);
+        m_currentLayer->view->SetOrigin(m_currentLayer->accumulatedOrigin + m_scrollPos);
     }
 
     void popLayer()
@@ -316,11 +317,14 @@ public:
             // TODO this relies on the compositing operation to do the right
             // thing with the alpha channel, but right now it doesn't really
             // work.
+            BPoint bitmapLocation(layer->locationInParent);
+
             BPicture picture;
             target->BeginPicture(&picture);
 
             target->SetDrawingMode(B_OP_COPY);
             target->SetHighColor(make_color(255, 255, 255, layer->opacity));
+
             target->FillRect(target->Bounds());
 
             target->EndPicture();
@@ -328,10 +332,7 @@ public:
 
             target->SetDrawingMode(B_OP_ALPHA);
 
-            BPoint bitmapLocation(layer->locationInParent);
-            bitmapLocation -= m_currentLayer->accumulatedOrigin;
-
-            target->DrawBitmap(layer->bitmap, bitmapLocation);
+            target->DrawBitmap(layer->bitmap, bitmapLocation - m_scrollPos);
             target->PopState();
         }
         delete layer;
@@ -346,6 +347,7 @@ public:
     CustomGraphicsState* m_graphicsState;
     ShadowBlur blur;
     pattern m_strokeStyle;
+    BPoint m_scrollPos;
 };
 
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
@@ -915,7 +917,7 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
     // TODO: Maybe this needs to use the accumulated transform?
     BAffineTransform t = m_data->view()->Transform();
     AffineTransform matrix(t.sx, t.shy, t.shx, t.sy, t.tx, t.ty);
-    
+
     // TODO the translation would better be handled directly in the matrix?
     BPoint origin = m_data->view()->Origin();
     matrix.translate(origin.x, origin.y);
@@ -928,15 +930,16 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled() || (x == 0.f && y == 0.f))
         return;
 
-	if (x != 0.f && y != 0.f) {
-		// Translation in both directions is not scrolling.
-    	BAffineTransform current = m_data->view()->Transform();
-    	current.TranslateBy(x, y);
-    	m_data->view()->SetTransform(current);
-	} else {
-		// Most likely plain old scrolling.
-    	m_data->view()->SetOrigin(x, y);
-	}
+    if (x != 0.f && y != 0.f) {
+        // Translation in both directions is not scrolling.
+        BAffineTransform current = m_data->view()->Transform();
+        current.TranslateBy(x, y);
+        m_data->view()->SetTransform(current);
+    } else {
+        m_data->m_scrollPos = BPoint(x, y);
+        // Most likely plain old scrolling.
+        m_data->view()->SetOrigin(x, y);
+    }
 }
 
 void GraphicsContext::rotate(float radians)
