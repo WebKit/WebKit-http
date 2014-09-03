@@ -87,6 +87,7 @@ LauncherWindow::LauncherWindow(BRect frame, BWebView* webView,
 
 LauncherWindow::~LauncherWindow()
 {
+    delete m_saveFilePanel;
 }
 
 void LauncherWindow::DispatchMessage(BMessage* message, BHandler* target)
@@ -135,6 +136,11 @@ void LauncherWindow::MessageReceived(BMessage* message)
 		BMessage* message = new BMessage(B_SAVE_REQUESTED);
 		message->AddPointer("page", CurrentWebView()->WebPage());
         
+        if (m_saveFilePanel == NULL) {
+	        m_saveFilePanel = new BFilePanel(B_SAVE_PANEL, NULL, NULL,
+                B_DIRECTORY_NODE, false);
+        }
+
         m_saveFilePanel->SetSaveText(CurrentWebView()->WebPage()->MainFrameTitle());
         m_saveFilePanel->SetMessage(message);
 		m_saveFilePanel->Show();
@@ -420,10 +426,9 @@ void LauncherWindow::init(BWebView* webView, ToolbarPolicy toolbarPolicy)
         );
     }
 
-    AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
+    m_saveFilePanel = 0;
 
-	m_saveFilePanel = new BFilePanel(B_SAVE_PANEL, NULL, NULL,
-        B_DIRECTORY_NODE, false);
+    AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
 
     be_app->PostMessage(WINDOW_OPENED);
 }
