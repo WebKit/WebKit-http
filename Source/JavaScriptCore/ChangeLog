@@ -1,3 +1,248 @@
+2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        LegacyProfiler: remove redundant ProfileNode members and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=136380
+
+        Reviewed by Timothy Hatcher.
+
+        ProfileNode's selfTime and totalTime members are redundant and only used
+        for dumping profile data from debug-only code. Remove the members and compute
+        the same data on-demand when necessary using a postorder traversal functor.
+
+        Remove ProfileNode.head since it is only used to calculate percentages for
+        dumped profile data. This can be explicitly passed around when needed.
+
+        Rename Profile.head to Profile.rootNode, and other various renamings.
+
+        Rearrange some header includes so that touching LegacyProfiler-related headers
+        will no longer cause a full rebuild.
+
+        * inspector/JSConsoleClient.cpp: Add header include.
+        * inspector/agents/InspectorProfilerAgent.cpp:
+        (Inspector::InspectorProfilerAgent::buildProfileInspectorObject):
+        * inspector/protocol/Profiler.json: Remove unused Profile.idleTime member.
+        * jit/JIT.h: Remove header include.
+        * jit/JITCode.h: Remove header include.
+        * jit/JITOperations.cpp: Sort and add header include.
+        * llint/LLIntSlowPaths.cpp: Sort and add header include.
+        * profiler/Profile.cpp: Rename the debug dumping functions. Move the node
+        postorder traversal code to ProfileNode so we can traverse any subtree.
+        (JSC::Profile::Profile):
+        (JSC::Profile::debugPrint):
+        (JSC::Profile::debugPrintSampleStyle):
+        (JSC::Profile::forEach): Deleted.
+        (JSC::Profile::debugPrintData): Deleted.
+        (JSC::Profile::debugPrintDataSampleStyle): Deleted.
+        * profiler/Profile.h:
+        * profiler/ProfileGenerator.cpp:
+        (JSC::ProfileGenerator::ProfileGenerator):
+        (JSC::AddParentForConsoleStartFunctor::AddParentForConsoleStartFunctor):
+        (JSC::AddParentForConsoleStartFunctor::operator()):
+        (JSC::ProfileGenerator::addParentForConsoleStart):
+        (JSC::ProfileGenerator::didExecute):
+        (JSC::StopProfilingFunctor::operator()):
+        (JSC::ProfileGenerator::stopProfiling):
+        (JSC::ProfileGenerator::removeProfileStart):
+        (JSC::ProfileGenerator::removeProfileEnd):
+        * profiler/ProfileGenerator.h:
+        * profiler/ProfileNode.cpp:
+        (JSC::ProfileNode::ProfileNode):
+        (JSC::ProfileNode::willExecute):
+        (JSC::ProfileNode::removeChild):
+        (JSC::ProfileNode::stopProfiling):
+        (JSC::ProfileNode::endAndRecordCall):
+        (JSC::ProfileNode::debugPrint):
+        (JSC::ProfileNode::debugPrintSampleStyle):
+        (JSC::ProfileNode::debugPrintRecursively):
+        (JSC::ProfileNode::debugPrintSampleStyleRecursively):
+        (JSC::ProfileNode::debugPrintData): Deleted.
+        (JSC::ProfileNode::debugPrintDataSampleStyle): Deleted.
+        * profiler/ProfileNode.h: Calculate per-node self and total times using a postorder traversal.
+        The forEachNodePostorder functor traverses the subtree rooted at |this|.
+        (JSC::ProfileNode::create):
+        (JSC::ProfileNode::calls):
+        (JSC::ProfileNode::forEachNodePostorder):
+        (JSC::CalculateProfileSubtreeDataFunctor::returnValue):
+        (JSC::CalculateProfileSubtreeDataFunctor::operator()):
+        (JSC::ProfileNode::head): Deleted.
+        (JSC::ProfileNode::setHead): Deleted.
+        (JSC::ProfileNode::totalTime): Deleted.
+        (JSC::ProfileNode::setTotalTime): Deleted.
+        (JSC::ProfileNode::selfTime): Deleted.
+        (JSC::ProfileNode::setSelfTime): Deleted.
+        (JSC::ProfileNode::totalPercent): Deleted.
+        (JSC::ProfileNode::selfPercent): Deleted.
+        * runtime/ConsoleClient.h: Remove header include.
+
+2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove ProfilerAgent and legacy profiler files in the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=136462
+
+        Reviewed by Timothy Hatcher.
+
+        It's not used by the frontend anymore.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+        * inspector/JSConsoleClient.cpp:
+        (Inspector::JSConsoleClient::JSConsoleClient): Stub out console.profile/profileEnd
+        methods since they didn't work for JSContexts anyway.
+        (Inspector::JSConsoleClient::profile):
+        (Inspector::JSConsoleClient::profileEnd):
+        * inspector/JSConsoleClient.h:
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        * inspector/agents/InspectorProfilerAgent.cpp: Removed.
+        * inspector/agents/InspectorProfilerAgent.h: Removed.
+        * inspector/agents/JSGlobalObjectProfilerAgent.cpp: Removed.
+        * inspector/agents/JSGlobalObjectProfilerAgent.h: Removed.
+        * inspector/protocol/Profiler.json: Removed.
+
+2014-09-02  Andreas Kling  <akling@apple.com>
+
+        Optimize own property GetByVals with rope string subscripts.
+        <https://webkit.org/b/136458>
+
+        For simple JSObjects that don't override getOwnPropertySlot to implement
+        custom properties, we have a fast path that grabs directly at the object
+        property storage.
+
+        Make this fast path even faster when the property name is an unresolved
+        rope string by using JSString::toExistingAtomicString(). This is faster
+        because it avoids allocating a new StringImpl if the string is already
+        a known Identifier, which is guaranteed to be the case if it's present
+        as an own property on the object.)
+
+        ~10% speed-up on Dromaeo/dom-attr.html
+
+        Reviewed by Geoffrey Garen.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+
+            When using the fastGetOwnProperty() optimization, get the String
+            out of JSString by using toExistingAtomicString(). This avoids
+            StringImpl allocation and lets us bypass the PropertyTable lookup
+            entirely if no AtomicString is found.
+
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::fastGetOwnProperty):
+
+            Make fastGetOwnProperty() take a PropertyName instead of a String.
+            This avoids churning the ref count, since we don't need to create
+            a temporary wrapper around the AtomicStringImpl* found in GetByVal.
+
+        * runtime/PropertyName.h:
+        (JSC::PropertyName::PropertyName):
+
+            Add constructor: PropertyName(AtomicStringImpl*)
+
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::get):
+        (JSC::PropertyTable::findWithString): Deleted.
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::get):
+
+            Remove code for querying a PropertyTable with an unhashed string key
+            since the only client is now gone.
+
+2014-09-02  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        [ARM] MacroAssembler generating incorrect code on ARM32 Traditional
+        https://bugs.webkit.org/show_bug.cgi?id=136429
+
+        Reviewed by Csaba Osztrogonác.
+
+        Changed test32 to use tst to check if reg is zero, instead of cmp.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::test32):
+
+2014-09-02  Michael Saboff  <msaboff@apple.com>
+
+        Out of bounds write in vmEntryToJavaScript / JSC::JITCode::execute
+        https://bugs.webkit.org/show_bug.cgi?id=136305
+
+        Reviewed by Filip Pizlo.
+
+        While preparing the callee's CallFrame, ProtoCallFrame fixes any arity mismatch
+        and then JITCode::execute() calls the normal entrypoint.  This is incompatible
+        with the expectation of FTL generated functions.  Changed ProtoCallFrame to not 
+        perform the arity fix, but just flag an arity mismatch.  now JITCode::execute()
+        uses that arity mismatch condition to select the normal or arity check
+        entrypoint.  The entrypoint selection is only done for functions, programs
+        and eval always have one parameter.
+
+        * interpreter/ProtoCallFrame.cpp:
+        (JSC::ProtoCallFrame::init): Changed to flag arity mismatch instead of fixing it.
+        * interpreter/ProtoCallFrame.h:
+        (JSC::ProtoCallFrame::needArityCheck): New boolean to signify what entrypoint
+        should be called.
+        * jit/JITCode.cpp:
+        (JSC::JITCode::execute): Select normal or arity check entrypoint as appropriate.
+
+2014-09-02  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] testapi.exe is not built.
+        https://bugs.webkit.org/show_bug.cgi?id=136369
+
+        Reviewed by Alex Christensen.
+
+        The testapi project should be of type Application.
+
+        * JavaScriptCore.vcxproj/jsc/jscLauncher.vcxproj: Change project type to Application.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncher.vcxproj: Ditto.
+        * JavaScriptCore.vcxproj/testapi/testapiCommonCFLite.props: Compile and link fix.
+        * JavaScriptCore.vcxproj/testapi/testapiLauncher.vcxproj: Change project type to Application.
+
+2014-09-01  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        [CMAKE] Add missing offlineasm dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=136437
+
+        Reviewed by Csaba Osztrogonác.
+
+        Add the ARM64, MIPS and SH4 backends to the dependencies.
+
+        * CMakeLists.txt:
+
+2014-09-01  Brian J. Burg  <burg@cs.washington.edu>
+
+        Provide column numbers to DTrace willExecute/didExecute probes
+        https://bugs.webkit.org/show_bug.cgi?id=136434
+
+        Reviewed by Antti Koivisto.
+
+        Provide the columnNumber and update stubs for !HAVE(DTRACE).
+
+        * profiler/ProfileGenerator.cpp:
+        (JSC::ProfileGenerator::willExecute):
+        (JSC::ProfileGenerator::didExecute):
+        * runtime/Tracing.d:
+        * runtime/Tracing.h:
+
+2014-09-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMAKE] Build warning by INTERFACE_LINK_LIBRARIES
+        https://bugs.webkit.org/show_bug.cgi?id=136194
+
+        Reviewed by Csaba Osztrogonác.
+
+        Set the LINK_INTERFACE_LIBRARIES target property on the top level CMakeLists.txt.
+
+        * CMakeLists.txt:
+
 2014-08-26  Maciej Stachowiak  <mjs@apple.com>
 
         Use RetainPtr::autorelease in some places where it seems appropriate

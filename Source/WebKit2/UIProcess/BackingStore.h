@@ -49,7 +49,7 @@ class BackingStore {
     WTF_MAKE_NONCOPYABLE(BackingStore);
 
 public:
-    BackingStore(const WebCore::IntSize&, float deviceScaleFactor, WebPageProxy*);
+    BackingStore(const WebCore::IntSize&, float deviceScaleFactor, WebPageProxy&);
     ~BackingStore();
 
     const WebCore::IntSize& size() const { return m_size; }
@@ -71,7 +71,7 @@ private:
 
     WebCore::IntSize m_size;
     float m_deviceScaleFactor;
-    WebPageProxy* m_webPageProxy;
+    WebPageProxy& m_webPageProxy;
 
 #if USE(CAIRO)
     OwnPtr<WebCore::WidgetBackingStore> m_backingStore;

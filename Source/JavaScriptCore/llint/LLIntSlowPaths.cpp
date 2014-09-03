@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "LLIntSlowPaths.h"
+
 #include "Arguments.h"
 #include "ArrayConstructor.h"
 #include "CallFrame.h"
@@ -38,6 +39,7 @@
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JSActivation.h"
+#include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSNameScope.h"
@@ -46,9 +48,9 @@
 #include "JSWithScope.h"
 #include "LLIntCommon.h"
 #include "LLIntExceptions.h"
+#include "LegacyProfiler.h"
 #include "LowLevelInterpreter.h"
 #include "ObjectConstructor.h"
-#include "JSCInlines.h"
 #include "ProtoCallFrame.h"
 #include "StructureRareDataInlines.h"
 #include <wtf/StringPrintStream.h>
@@ -725,8 +727,10 @@ inline JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript)
         VM& vm = exec->vm();
         Structure& structure = *baseValue.asCell()->structure(vm);
         if (JSCell::canUseFastGetOwnProperty(structure)) {
-            if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, asString(subscript)->value(exec)))
-                return result;
+            if (AtomicStringImpl* existingAtomicString = asString(subscript)->toExistingAtomicString(exec)) {
+                if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, existingAtomicString))
+                    return result;
+            }
         }
     }
     

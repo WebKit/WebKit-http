@@ -6316,10 +6316,13 @@ bool RenderLayer::isVisuallyNonEmpty() const
 {
     ASSERT(!m_visibleDescendantStatusDirty);
 
-    if (hasVisibleContent() && hasNonEmptyChildRenderers())
+    if (!hasVisibleContent())
+        return false;
+
+    if (hasNonEmptyChildRenderers())
         return true;
 
-    if (renderer().isReplaced() || renderer().hasMask())
+    if (renderer().isReplaced())
         return true;
 
     if (hasVisibleBoxDecorations())

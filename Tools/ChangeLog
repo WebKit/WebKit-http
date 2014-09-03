@@ -1,3 +1,80 @@
+2014-09-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Make sure WK1 prefs are initialized in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=136465
+
+        Reviewed by Tim Horton.
+        
+        Call -didChangeSettings from -awakeFromNib for WK1 windows just as we do
+        for WK2 windows, to make sure that WebPreferences are updated (to get
+        layer borders to work consistently).
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController awakeFromNib]):
+
+2014-09-02  Renato Nagy  <rnagy@inf.u-szeged.hu>
+
+        check-webkit-style should complain about C++ comments in Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=133802
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_platformh_comments):
+        (_process_lines):
+        (CppChecker):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_platformh_comment):
+
+2014-09-02  Brendan Long  <self@brendanlong.com>
+
+        [Gtk] Make install-dependencies work on Arch Linux
+        https://bugs.webkit.org/show_bug.cgi?id=136374
+
+        Reviewed by Philippe Normand.
+
+        * gtk/install-dependencies: Add dependencies for pacman (Arch Linux).
+
+2014-09-01  Brian J. Burg  <burg@cs.washington.edu>
+
+        Provide column numbers to DTrace willExecute/didExecute probes
+        https://bugs.webkit.org/show_bug.cgi?id=136434
+
+        Reviewed by Antti Koivisto.
+
+        Create a directory for DTrace scripts. Add an example script that
+        shows how to use static probes provided by JavaScriptCore's profiler.
+
+        * Scripts/dtrace/jsc-trace-profiler-events.d: Added.
+
+2014-09-01  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [JHBuild] Cyclic dependency between cairo and librsvg.
+        https://bugs.webkit.org/show_bug.cgi?id=136431
+
+        Reviewed by Martin Robinson.
+
+        * gtk/jhbuild.modules: Disable cairo SVG testsuite.
+        Add missing dependencies for librsvg (glib and cairo).
+
+2014-09-01  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] install-dependencies don't installs dbus-launch that is needed for the API tests.
+        https://bugs.webkit.org/show_bug.cgi?id=136425
+
+        Reviewed by Martin Robinson.
+
+        * gtk/install-dependencies: Add dbus-x11 to the list of packages needed for running the tests.
+
+2014-09-01  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Update my list of email addresses in contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=136424
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2014-08-30  Filip Pizlo  <fpizlo@apple.com>
 
         [RJST] eager-no-cjit should really mean eager

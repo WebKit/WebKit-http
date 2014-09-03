@@ -1,3 +1,98 @@
+2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        LegacyProfiler: remove redundant ProfileNode members and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=136380
+
+        Reviewed by Timothy Hatcher.
+
+        Renamed Profile.head to Profile.rootNode.
+
+        * fast/profiler/resources/profiler-test-JS-resources.js:
+        (printHeavyProfilesDataWithoutTime):
+        (printProfilesDataWithoutTime):
+
+2014-09-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid backing store allocation with some combinations of replaced elements, masking and visibility:hidden
+        https://bugs.webkit.org/show_bug.cgi?id=136400
+
+        Reviewed by Tim Horton.
+
+        * compositing/backing/masked-child-no-backing-expected.txt: Added.
+        * compositing/backing/masked-child-no-backing.html: Added.
+        * compositing/backing/replaced-child-no-backing-expected.txt: Added.
+        * compositing/backing/replaced-child-no-backing.html: Added.
+
+2014-09-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Non-composited child RenderLayers cause allocation of unncessary backing store
+        https://bugs.webkit.org/show_bug.cgi?id=136375
+
+        Reviewed by David Hyatt.
+        
+        Test with a composited div with various configurations of non-composited child layers.
+
+        * compositing/backing/child-layer-no-backing-expected.txt: Added.
+        * compositing/backing/child-layer-no-backing.html: Added.
+
+2014-09-02  Michael Saboff  <msaboff@apple.com>
+
+        Out of bounds write in vmEntryToJavaScript / JSC::JITCode::execute
+        https://bugs.webkit.org/show_bug.cgi?id=136305
+
+        Reviewed by Filip Pizlo.
+
+        * js/arity-mismatch-at-vmentry-expected.txt: Added.
+        * js/arity-mismatch-at-vmentry.html: Added.
+
+2014-09-02  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        CachedResourceLoader should check redirections to reuse or not cached resources
+        https://bugs.webkit.org/show_bug.cgi?id=131757
+
+        Reviewed by Antti Koivisto.
+
+        Added test checks that fresh redirections allow reuse of cached resoure and expired or not cacheable redirections trigger reloading of resources.
+
+        * http/tests/cache/cache-redirections-expected.txt: Added.
+        * http/tests/cache/cache-redirections.html: Added.
+        * http/tests/cache/resources/cache-control-redirect.php: Added.
+        * http/tests/cache/resources/cacheable-random-text.php: Added.
+
+2014-09-02  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Test coverage for first-line pseudo-element
+        https://bugs.webkit.org/show_bug.cgi?id=135770
+
+        Reviewed by Zoltan Horvath.
+
+        According to the spec the ::first-line pseudo-element do not apply to
+        grid containers.
+
+        This was already working as expected but we were missing some tests
+        checking it, so we are adding new tests to have coverage.
+
+        * fast/css-grid-layout/grid-container-ignore-first-line-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-ignore-first-line.html: Added.
+        * fast/css-grid-layout/grid-item-first-line-valid-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-first-line-valid.html: Added.
+
+2014-08-29  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Resolved value of grid-template-* must include every track listed
+        https://bugs.webkit.org/show_bug.cgi?id=136362
+
+        Reviewed by Darin Adler.
+
+        Added new test cases to verify that both explicit and implicit
+        tracks are listed in grid-template-* resolved values. Also
+        refactored a testing function to improve the readability of the test.
+
+        * fast/css-grid-layout/grid-auto-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-auto-columns-rows-get-set.html:
+        * fast/css-grid-layout/resources/grid-definitions-parsing-utils.js:
+        (testGridAutoDefinitionsValues):
+
 2014-08-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Unreviewed EFL gardening. Mark some compositing tests as "failure" since r172999

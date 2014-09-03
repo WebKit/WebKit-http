@@ -300,11 +300,9 @@ set(JavaScriptCore_SOURCES
     inspector/agents/InspectorAgent.cpp
     inspector/agents/InspectorConsoleAgent.cpp
     inspector/agents/InspectorDebuggerAgent.cpp
-    inspector/agents/InspectorProfilerAgent.cpp
     inspector/agents/InspectorRuntimeAgent.cpp
     inspector/agents/JSGlobalObjectConsoleAgent.cpp
     inspector/agents/JSGlobalObjectDebuggerAgent.cpp
-    inspector/agents/JSGlobalObjectProfilerAgent.cpp
     inspector/agents/JSGlobalObjectRuntimeAgent.cpp
 
     interpreter/AbstractPC.cpp
@@ -625,11 +623,13 @@ set(LLINT_ASM
 
 set(OFFLINE_ASM
     offlineasm/arm.rb
+    offlineasm/arm64.rb
     offlineasm/ast.rb
     offlineasm/backends.rb
     offlineasm/cloop.rb
     offlineasm/config.rb
     offlineasm/instructions.rb
+    offlineasm/mips.rb
     offlineasm/offsets.rb
     offlineasm/opt.rb
     offlineasm/parser.rb
@@ -637,6 +637,7 @@ set(OFFLINE_ASM
     offlineasm/risc.rb
     offlineasm/self_hash.rb
     offlineasm/settings.rb
+    offlineasm/sh4.rb
     offlineasm/transform.rb
     offlineasm/x86.rb
 )
@@ -953,7 +954,6 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Debugger.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/GenericTypes.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/InspectorDomain.json
-    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Profiler.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
 )
 
@@ -1096,7 +1096,6 @@ add_library(JavaScriptCore ${JavaScriptCore_LIBRARY_TYPE} ${JavaScriptCore_HEADE
 target_link_libraries(JavaScriptCore ${JavaScriptCore_LIBRARIES})
 set_target_properties(JavaScriptCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_JavaScriptCore")
 set_target_properties(JavaScriptCore PROPERTIES FOLDER "JavaScriptCore")
-set_target_properties(JavaScriptCore PROPERTIES LINK_INTERFACE_LIBRARIES "")
 
 if (JavaScriptCore_OUTPUT_NAME)
     set_target_properties(JavaScriptCore PROPERTIES OUTPUT_NAME ${JavaScriptCore_OUTPUT_NAME})

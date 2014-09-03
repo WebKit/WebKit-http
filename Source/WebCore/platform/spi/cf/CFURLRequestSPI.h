@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,33 +20,19 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
-#include "PageProfilerAgent.h"
+#ifndef CFURLRequestSPI_h
+#define CFURLRequestSPI_h
 
-#if ENABLE(INSPECTOR)
+#if USE(APPLE_INTERNAL_SDK)
+#include <CFNetwork/CFURLRequest.h>
+#else
+#include <CoreFoundation/CFBase.h>
+typedef const struct _CFURLRequest *CFURLRequestRef;
+#endif
 
-#include "JSDOMWindow.h"
-#include "MainFrame.h"
-#include "Page.h"
+extern "C" void CFURLRequestSetShouldStartSynchronously(CFURLRequestRef, Boolean);
 
-using namespace Inspector;
-
-namespace WebCore {
-
-PageProfilerAgent::PageProfilerAgent(InstrumentingAgents* instrumentingAgents, Page* page)
-    : WebProfilerAgent(instrumentingAgents)
-    , m_inspectedPage(page)
-{
-}
-
-JSC::ExecState* PageProfilerAgent::profilingGlobalExecState() const
-{
-    return toJSDOMWindow(&m_inspectedPage->mainFrame(), debuggerWorld())->globalExec();
-}
-
-} // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)
+#endif

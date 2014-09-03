@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,35 +20,20 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WorkerProfilerAgent_h
-#define WorkerProfilerAgent_h
+#ifndef CFNetworkConnectionCacheSPI_h
+#define CFNetworkConnectionCacheSPI_h
 
-#if ENABLE(INSPECTOR)
-
-#include "WebProfilerAgent.h"
-
-namespace WebCore {
-
-class WorkerGlobalScope;
-
-class WorkerProfilerAgent final : public WebProfilerAgent {
-    WTF_MAKE_NONCOPYABLE(WorkerProfilerAgent);
-    WTF_MAKE_FAST_ALLOCATED;
-public:
-    WorkerProfilerAgent(InstrumentingAgents*, WorkerGlobalScope*);
-    virtual ~WorkerProfilerAgent() { }
-
-private:
-    virtual JSC::ExecState* profilingGlobalExecState() const override;
-
-    WorkerGlobalScope* m_workerGlobalScope;
+#if USE(APPLE_INTERNAL_SDK)
+#include <CFNetwork/CFNetworkConnectionCachePriv.h>
+#else
+enum HTTPConnectionCacheLimitKeys {
+    kHTTPNumFastLanes = 4,
 };
+#endif
 
-} // namespace WebCore
+extern "C" void _CFNetworkHTTPConnectionCacheSetLimit(HTTPConnectionCacheLimitKeys, int);
 
-#endif // ENABLE(INSPECTOR)
-
-#endif // !defined(WorkerProfilerAgent_h)
+#endif

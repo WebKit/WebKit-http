@@ -32,7 +32,6 @@
 
 #if PLATFORM(IOS)
 #include "RuntimeApplicationChecksIOS.h"
-#include <CoreFoundation/CFPriv.h>
 #endif
 
 namespace WebCore {

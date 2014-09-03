@@ -1,3 +1,170 @@
+2014-09-02  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Pass the resource identifier in willSendRequest callback.
+        https://bugs.webkit.org/show_bug.cgi?id=136325
+
+        Reviewed by Dan Bernstein.
+
+        Add two new delegate methods webProcessPlugInBrowserContextController:frame:willSendRequestForResource:request:redirectResponse:
+        and webProcessPlugInBrowserContextController:frame:didInitiateLoadForResource:request:pageIsProvisionallyLoading:. We will remove
+        the old willSendRequest and didInitiateLoadForResource when clients adopt the new methods.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInLoadDelegate.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (willSendRequestForFrame):
+        (didInitiateLoadForResource):
+
+2014-09-02  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK build fix after r173163.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::createDrawingAreaProxy):
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        (WebKit::DrawingAreaProxyImpl::DrawingAreaProxyImpl):
+        (WebKit::DrawingAreaProxyImpl::update):
+        (WebKit::DrawingAreaProxyImpl::didUpdateBackingStoreState):
+        (WebKit::DrawingAreaProxyImpl::incorporateUpdate):
+        (WebKit::DrawingAreaProxyImpl::sendUpdateBackingStoreState):
+        (WebKit::DrawingAreaProxyImpl::waitForAndDispatchDidUpdateBackingStoreState):
+        (WebKit::DrawingAreaProxyImpl::enterAcceleratedCompositingMode):
+        (WebKit::DrawingAreaProxyImpl::exitAcceleratedCompositingMode):
+        (WebKit::DrawingAreaProxyImpl::updateAcceleratedCompositingMode):
+        * UIProcess/DrawingAreaProxyImpl.h:
+
+2014-09-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the iOS build.
+
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _createDrawingAreaProxy]):
+        Whoops.
+
+2014-09-01  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        Build break on the EFL port since r173163
+        https://bugs.webkit.org/show_bug.cgi?id=136443
+
+        Unreviewed build fix.
+
+        * UIProcess/BackingStore.cpp:
+        (WebKit::BackingStore::BackingStore):
+        * UIProcess/BackingStore.h:
+        * UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.cpp:
+        (WebKit::CoordinatedDrawingAreaProxy::CoordinatedDrawingAreaProxy):
+        (WebKit::CoordinatedDrawingAreaProxy::updateViewport):
+        (WebKit::CoordinatedDrawingAreaProxy::contentsRect):
+        (WebKit::CoordinatedDrawingAreaProxy::update):
+        (WebKit::CoordinatedDrawingAreaProxy::didUpdateBackingStoreState):
+        (WebKit::CoordinatedDrawingAreaProxy::incorporateUpdate):
+        (WebKit::CoordinatedDrawingAreaProxy::sendUpdateBackingStoreState):
+        (WebKit::CoordinatedDrawingAreaProxy::waitForAndDispatchDidUpdateBackingStoreState):
+        (WebKit::CoordinatedDrawingAreaProxy::enterAcceleratedCompositingMode):
+        (WebKit::CoordinatedDrawingAreaProxy::exitAcceleratedCompositingMode):
+        (WebKit::CoordinatedDrawingAreaProxy::updateAcceleratedCompositingMode):
+        * UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.h:
+        (WebKit::CoordinatedDrawingAreaProxy::page):
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp:
+        (WebKit::CoordinatedLayerTreeHostProxy::CoordinatedLayerTreeHostProxy):
+        (WebKit::CoordinatedLayerTreeHostProxy::~CoordinatedLayerTreeHostProxy):
+        (WebKit::CoordinatedLayerTreeHostProxy::commitCoordinatedGraphicsState):
+        (WebKit::CoordinatedLayerTreeHostProxy::setVisibleContentsRect):
+        (WebKit::CoordinatedLayerTreeHostProxy::renderNextFrame):
+        (WebKit::CoordinatedLayerTreeHostProxy::purgeBackingStores):
+        (WebKit::CoordinatedLayerTreeHostProxy::commitScrollOffset):
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::createDrawingAreaProxy):
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::BackingStore::incorporateUpdate):
+
+2014-09-01  Tim Horton  <timothy_horton@apple.com>
+
+        Remove two unused WebKit2 PDF-related preferences
+        https://bugs.webkit.org/show_bug.cgi?id=136441
+
+        Reviewed by Dan Bernstein.
+
+        * Shared/WebPreferencesDefinitions.h:
+        Move the macro arguments comment down near where the macros are being used.
+        No need to check both PLATFORM(IOS) and PLATFORM(IOS_SIMULATOR); the second can't be true without the first.
+        These two PDF preferences are long-unused; if we bring back their functionality,
+        we'll bring back the preferences.
+
+2014-09-01  Tim Horton  <timothy_horton@apple.com>
+
+        DrawingAreaProxy and friends can hold on to WebPageProxy by reference
+        https://bugs.webkit.org/show_bug.cgi?id=136440
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _createDrawingAreaProxy]):
+        * UIProcess/DrawingAreaProxy.cpp:
+        (WebKit::DrawingAreaProxy::DrawingAreaProxy):
+        (WebKit::DrawingAreaProxy::~DrawingAreaProxy):
+        (WebKit::DrawingAreaProxy::setExposedRect):
+        (WebKit::DrawingAreaProxy::exposedRectChangedTimerFired):
+        * UIProcess/DrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::~RemoteLayerTreeDrawingAreaProxy):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::sizeDidChange):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::deviceScaleFactorDidChange):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::scaledExposedRect):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::sendUpdateGeometry):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::acceleratedAnimationDidStart):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::acceleratedAnimationDidEnd):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::indicatorLocation):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::indicatorScale):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateViewState):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::dispatchAfterEnsuringDrawing):
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.h:
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm:
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::TiledCoreAnimationDrawingAreaProxy):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::deviceScaleFactorDidChange):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::sizeDidChange):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::waitForPossibleGeometryUpdate):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::colorSpaceDidChange):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::minimumLayoutSizeDidChange):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::enterAcceleratedCompositingMode):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::updateAcceleratedCompositingMode):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::didUpdateGeometry):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::waitForDidUpdateViewState):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::intrinsicContentSizeDidChange):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::sendUpdateGeometry):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::adjustTransientZoom):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::commitTransientZoom):
+
+2014-09-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMAKE] Build warning by INTERFACE_LINK_LIBRARIES
+        https://bugs.webkit.org/show_bug.cgi?id=136194
+
+        Reviewed by Csaba Osztrogonác.
+
+        Set the LINK_INTERFACE_LIBRARIES target property on the top level CMakeLists.txt.
+
+        * CMakeLists.txt:
+
+2014-09-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] WebKitDownload cannot overwrite existing file
+        https://bugs.webkit.org/show_bug.cgi?id=136322
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/Downloads/soup/DownloadSoup.cpp:
+        (WebKit::DownloadClient::didReceiveResponse): pass a member variable
+        to Download::decideDestinationWithSuggestedFilename instead of a
+        temporary bool, so we can use the result in didFinishLoading.
+        (WebKit::DownloadClient::didFinishLoading): overwrite the destination
+        if Download::decideDestinationWithSuggestedFilename determined we
+        should do so.
+
 2014-08-31  Tim Horton  <timothy_horton@apple.com>
 
         Occasional crashes (null deref) under ViewGestureController::endMagnificationGesture

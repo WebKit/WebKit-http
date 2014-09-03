@@ -1,3 +1,556 @@
+2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        LegacyProfiler: remove redundant ProfileNode members and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=136380
+
+        Reviewed by Timothy Hatcher.
+
+        Remove Profile.idleTime, rename head to rootNode, and remove ProfileNode members.
+
+        Covered by existing tests.
+
+        * inspector/ScriptProfile.idl:
+        * inspector/ScriptProfileNode.idl:
+        * inspector/TimelineRecordFactory.cpp:
+
+2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove ProfilerAgent and legacy profiler files in the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=136462
+
+        Reviewed by Timothy Hatcher.
+
+        It's not used by the frontend anymore.
+
+        No new tests, no behavior changed.
+
+        * CMakeLists.txt:
+        * ForwardingHeaders/inspector/agents/InspectorProfilerAgent.h: Removed.
+        * WebCore.order:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * WebCore.xcodeproj/project.pbxproj:
+        * inspector/InspectorAllInOne.cpp:
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        * inspector/InspectorController.h:
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::didCommitLoadImpl):
+        * inspector/InstrumentingAgents.cpp:
+        (WebCore::InstrumentingAgents::InstrumentingAgents):
+        (WebCore::InstrumentingAgents::reset):
+        * inspector/InstrumentingAgents.h:
+        (WebCore::InstrumentingAgents::inspectorProfilerAgent): Deleted.
+        (WebCore::InstrumentingAgents::setInspectorProfilerAgent): Deleted.
+        * inspector/PageProfilerAgent.cpp: Removed.
+        * inspector/PageProfilerAgent.h: Removed.
+        * inspector/TimelineRecordFactory.cpp: Moved these builders to their only callsite.
+        (WebCore::buildInspectorObject):
+        (WebCore::buildProfileInspectorObject):
+        (WebCore::TimelineRecordFactory::appendProfile):
+        * inspector/WebProfilerAgent.cpp: Removed.
+        * inspector/WebProfilerAgent.h: Removed.
+        * inspector/WorkerInspectorController.cpp:
+        (WebCore::WorkerInspectorController::WorkerInspectorController):
+        * inspector/WorkerProfilerAgent.cpp: Removed.
+        * inspector/WorkerProfilerAgent.h: Removed.
+        * inspector/protocol/Timeline.json:
+
+2014-09-02  Jer Noble  <jer.noble@apple.com>
+
+        [EME][Mac] Refactor CDMPrivateMediaSourceAVFObjC to allow sessions to be created without being attached to an AVStreamDataParser.
+        https://bugs.webkit.org/show_bug.cgi?id=136016
+
+        Reviewed by Eric Carlson.
+
+        The CDMPrivateMediaPlayer class will delegate creation of CDMSession instances to the current MediaPlayer. This
+        of course requires the MediaKeys object owning the CDM to be attached to a HTMLMediaElement, and specifically to
+        one with a valid src attribute or source node which has sucessfully begun loading. For certain CDM operations,
+        it would be better if a given MediaKeys could create a session without actually being connected to a
+        HTMLMediaElement (yet).
+
+        To facilitate this for CDMSessionPrivateMediaSourceAVFObjC, add a new class, CDMPrivateMediaSourceAVFObjC, which
+        is the primary factory for CDMSessionPrivateMediaSOurceAVFObjC. Disclaim responsibility for creating these sessions
+        in MediaPlayerPrivateMediaSourceAVFObjC by not passing the "supportsKeySystem" method when registering itself.
+
+        Add methods to CDMSessionPrivateMediaSourceAVFObjC to allow SourceBuffers to be added and removed from the session,
+        to support adding the session to the HTMLMediaElement after the session has been created.
+
+        Since MediaPlayerPrivate instance and  CDMSession instances must be able to communicate with one another, add a type()
+        enum and virtual method to allow CDMSession instnaces to be distinguisted from (and casted to) one another.
+
+        * Modules/encryptedmedia/CDM.cpp:
+        (WebCore::installedCDMFactories): Register CDMPrivateMediaSourceAVFObjC.
+        (WebCore::CDM::createSession): Notify the MediaPlayer of the new CDMSession.
+        * Modules/encryptedmedia/MediaKeySession.h:
+        * Modules/encryptedmedia/MediaKeys.cpp:
+        (WebCore::MediaKeys::setMediaElement): Notify the HTMLMediaElement of any existing sessions.
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/CDMSession.h:
+        (WebCore::CDMSession::type): Added.
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::setCDMSession): Pass through to the MediaPlayerPrivate.
+        * platform/graphics/MediaPlayer.h:
+        * platform/graphics/MediaPlayerPrivate.h:
+        (WebCore::MediaPlayerPrivateInterface::setCDMSession): Added. Default no-op.
+        * platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.h: Added.
+        (WebCore::CDMPrivateMediaSourceAVFObjC::CDMPrivateMediaSourceAVFObjC): Simple constructor.
+        (WebCore::CDMPrivateMediaSourceAVFObjC::~CDMPrivateMediaSourceAVFObjC): Simple destructor.
+        (WebCore::CDMPrivateMediaSourceAVFObjC::create): Simple factory.
+        (WebCore::CDMPrivateMediaSourceAVFObjC::cdm): Simple accessor.
+        * platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm: 
+        (WebCore::CDMPrivateMediaSourceAVFObjC::supportsKeySystem): Moved from MediaPlayerPrivateMediaSourceAVFObjC.
+        (WebCore::CDMPrivateMediaSourceAVFObjC::supportsKeySystemAndMimeType): Ditto.
+        (WebCore::CDMPrivateMediaSourceAVFObjC::supportsMIMEType): Ditto.
+        (WebCore::CDMPrivateMediaSourceAVFObjC::createSession): Returns new CDMSessionMediaSourceAVFObjC.
+        * platform/graphics/avfoundation/objc/CDMSessionAVFoundationObjC.h:
+        (WebCore::CDMSessionAVFoundationObjC::type): Added.
+        * platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.h:
+        (WebCore::CDMSessionMediaSourceAVFObjC::type): Added.
+        (WebCore::toCDMSessionMediaSourceAVFObjC): Throw assertion if type() is not correct.
+        * platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.mm:
+        (WebCore::CDMSessionMediaSourceAVFObjC::CDMSessionMediaSourceAVFObjC): Removed m_parent ivar.
+        (WebCore::CDMSessionMediaSourceAVFObjC::~CDMSessionMediaSourceAVFObjC): Ditto.
+        (WebCore::CDMSessionMediaSourceAVFObjC::update): Determing which SourceBuffer is protected.
+        (WebCore::CDMSessionMediaSourceAVFObjC::addSourceBuffer): Added.
+        (WebCore::CDMSessionMediaSourceAVFObjC::removeSourceBuffer): Added.
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine): Remove supportsKeyType parameter.
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::supportsType): Remove keyType check.
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession): Tell the CDMSession about outstanding SourceBuffers.
+        * platform/graphics/avfoundation/objc/MediaSourcePrivateAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaSourcePrivateAVFObjC.mm:
+
+2014-09-02  Daniel Bates  <dabates@apple.com>
+
+        [Win] Attempt to fix the Windows build after <http://trac.webkit.org/changeset/173192>
+        (https://bugs.webkit.org/show_bug.cgi?id=136467)
+
+        Declare ResourceHandleClient::connectionProperties() when building for iOS or when USE(CFNETWORK).
+
+        * platform/network/ResourceHandleClient.h:
+
+2014-09-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Support using Foundation networking code
+        https://bugs.webkit.org/show_bug.cgi?id=136467
+
+        Reviewed by Pratik Solanki.
+
+        We should support building iOS WebKit with the Foundation networking code
+        (i.e. !USE(CFNETWORK)).
+
+        Additionally, disable USE(CFNETWORK) and use the Foundation networking code
+        by default when building iOS WebKit without the Apple Internal SDK.
+
+        * Configurations/WebCore.xcconfig: Remove file WebCoreURLResponse.mm from the list of excluded files
+        so that we compile an implementation for function WebCore::synthesizeRedirectResponseIfNecessary when
+        building without USE(CFNETWORK).
+        * WebCore.exp.in: Add symbols for WebCore::synthesizeRedirectResponseIfNecessary() and WebCore::ResourceHandleClient::willCacheResponseAsync().
+        * WebCore.xcodeproj/project.pbxproj: Add new files CFNetworkConnectionCacheSPI.h and CFURLRequestSPI.h.
+        Also move group platform/spi such that it appears in alphabetical order in the platform group.
+        * platform/cf/URLCF.cpp: Remove unnecessary header <CoreFoundation/CFPriv.h>.
+        * platform/network/ResourceHandle.h: Declare iOS-specific variant of ResourceHandle::createNSURLConnection().
+        * platform/network/ResourceHandleClient.h: Always include header <wtf/RetainPtr.h> when building for iOS.
+        (WebCore::ResourceHandleClient::connectionProperties): Add PLATFORM(IOS)-guard around declaration.
+        * platform/network/cf/ResourceRequestCFNet.cpp: Substitute header CFNetworkConnectionCacheSPI.h for
+        <CFNetwork/CFNetworkConnectionCachePriv.h>.
+        * platform/network/mac/CredentialStorageMac.mm:
+        (WebCore::CredentialStorage::saveToPersistentStorage): Use Credential::nsCredential() and ProtectionSpace::nsSpace()
+        instead of WebCore::mac(const {Credential, ProtectionSpace}&) as the latter were removed in <http://trac.webkit.org/changeset/171801>
+        and <http://trac.webkit.org/changeset/171540>, respectively.
+        * platform/network/mac/ResourceErrorMac.mm: Add USE(CFNETWORK)-guard around <CFNetwork/CFSocketStreamPriv.h>.
+        * platform/network/mac/ResourceHandleMac.mm: Substitute header CFURLRequestSPI.h for <CFNetwork/CFURLRequest.h>.
+        (WebCore::ResourceHandle::start): Modified to use ResourceHandle::makeDelegate() instead of d->m_proxy, which 
+        was removed in <http://trac.webkit.org/changeset/147476>.
+        (WebCore::ResourceHandle::platformLoadResourceSynchronously): Ditto.
+        * platform/network/mac/WebCoreURLResponse.mm:
+        (WebCore::synthesizeRedirectResponseIfNecessary): Add !USE(CFNETWORK)- and PLATFORM(IOS)- guards.
+        * platform/spi/cf/CFNetworkConnectionCacheSPI.h: Added.
+        * platform/spi/cf/CFURLRequestSPI.h: Added.
+
+2014-09-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use references in public EventSender functions
+        https://bugs.webkit.org/show_bug.cgi?id=136463
+
+        Reviewed by Dan Bates.
+
+        Passing nullptr to EventSender shouldn't be allowed.
+
+        No new tests because there is no behavior change.
+
+        * dom/EventSender.h:
+        (WebCore::EventSender::hasPendingEvents):
+        (WebCore::EventSender<T>::dispatchEventSoon):
+        (WebCore::EventSender<T>::cancelEvent):
+        (WebCore::EventSender<T>::dispatchPendingEvents):
+        * html/HTMLLinkElement.cpp:
+        (WebCore::HTMLLinkElement::~HTMLLinkElement):
+        (WebCore::HTMLLinkElement::notifyLoadedSheetAndAllCriticalSubresources):
+        * html/HTMLStyleElement.cpp:
+        (WebCore::HTMLStyleElement::~HTMLStyleElement):
+        (WebCore::HTMLStyleElement::notifyLoadedSheetAndAllCriticalSubresources):
+        * loader/ImageLoader.cpp:
+        (WebCore::ImageLoader::~ImageLoader):
+        (WebCore::ImageLoader::setImageWithoutConsideringPendingLoadEvent):
+        (WebCore::ImageLoader::updateFromElement):
+        (WebCore::ImageLoader::notifyFinished):
+        (WebCore::ImageLoader::dispatchPendingBeforeLoadEvent):
+
+2014-09-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Exclude touch and gesture files when building without ENABLE_TOUCH_EVENTS
+        and ENABLE_IOS_GESTURE_EVENTS, respectively
+        https://bugs.webkit.org/show_bug.cgi?id=136456
+
+        Reviewed by Andy Estes.
+
+        It's sufficient to exclude the touch and gesture files when building without
+        ENABLE_TOUCH_EVENTS and ENABLE_IOS_GESTURE_EVENTS, respectively. Currently we
+        exclude these files when building without the Apple Internal SDK, which is
+        heavy handed.
+
+        * Configurations/WebCore.xcconfig:
+
+2014-09-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix an assertion sometimes seen under RenderLayerCompositor::detachRootLayer()
+        https://bugs.webkit.org/show_bug.cgi?id=136464
+
+        Reviewed by Tim Horton.
+
+        Don't try to call RenderLayer::isVisuallyNonEmpty() under RenderLayerCompositor::detachRootLayer()
+        when layout might be stale; there's not point trying to update the backing store state
+        when detaching, only when attaching.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::rootLayerAttachmentChanged):
+
+2014-09-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid backing store allocation with some combinations of replaced elements, masking and visibility:hidden
+        https://bugs.webkit.org/show_bug.cgi?id=136400
+
+        Reviewed by Tim Horton.
+        
+        RenderLayer::isVisuallyNonEmpty() would return true for replaced elements (e.g. images)
+        with visibility:hidden, and for layers with a mask, and both would cause additional
+        backing store in some cases.
+        
+        We can move the hasVisibleContent() to the top of the function, since visibility:hidden
+        will always hide any content of this layer. The hasMask() check can also be removed;
+        a mask can only mask content that is already visible; it never contributes additional
+        pixels.
+
+        Tests: compositing/backing/masked-child-no-backing.html
+               compositing/backing/replaced-child-no-backing.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects):
+
+2014-09-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Use jsNontrivialString for strings we know are more than a single character
+        https://bugs.webkit.org/show_bug.cgi?id=136393
+
+        Reviewed by Geoffrey Garen.
+
+        * bindings/js/JSCryptoKeySerializationJWK.cpp:
+        (WebCore::addUsagesToJSON):
+
+2014-09-02  Alex Christensen  <achristensen@webkit.org>
+
+        Fix bindings tests after r173176.
+        https://bugs.webkit.org/show_bug.cgi?id=136460
+
+        Reviewed by Simon Fraser.
+
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.cpp:
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.h:
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.cpp:
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.h:
+        * bindings/scripts/test/JS/JSTestEventConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestEventConstructor.h:
+        * bindings/scripts/test/JS/JSTestEventTarget.cpp:
+        * bindings/scripts/test/JS/JSTestEventTarget.h:
+        * bindings/scripts/test/JS/JSTestException.cpp:
+        * bindings/scripts/test/JS/JSTestException.h:
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.cpp:
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.h:
+        * bindings/scripts/test/JS/JSTestInterface.cpp:
+        * bindings/scripts/test/JS/JSTestInterface.h:
+        * bindings/scripts/test/JS/JSTestMediaQueryListListener.cpp:
+        * bindings/scripts/test/JS/JSTestMediaQueryListListener.h:
+        * bindings/scripts/test/JS/JSTestNamedConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestNamedConstructor.h:
+        * bindings/scripts/test/JS/JSTestNode.cpp:
+        * bindings/scripts/test/JS/JSTestNondeterministic.cpp:
+        * bindings/scripts/test/JS/JSTestNondeterministic.h:
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        * bindings/scripts/test/JS/JSTestObj.h:
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.cpp:
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.h:
+        * bindings/scripts/test/JS/JSTestSerializedScriptValueInterface.cpp:
+        * bindings/scripts/test/JS/JSTestSerializedScriptValueInterface.h:
+        * bindings/scripts/test/JS/JSTestTypedefs.cpp:
+        * bindings/scripts/test/JS/JSTestTypedefs.h:
+        * bindings/scripts/test/JS/JSattribute.cpp:
+        * bindings/scripts/test/JS/JSattribute.h:
+        * bindings/scripts/test/JS/JSreadonly.cpp:
+        * bindings/scripts/test/JS/JSreadonly.h:
+        * bindings/scripts/test/ObjC/DOMFloat64ArrayInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestActiveDOMObjectInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestCallbackInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestCustomNamedGetterInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestEventConstructorInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestEventTargetInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestExceptionInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestGenerateIsReachableInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestInterfaceInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestMediaQueryListListenerInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestNamedConstructorInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestNodeInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestNondeterministicInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestObjInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestOverloadedConstructorsInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestSerializedScriptValueInterfaceInternal.h:
+        * bindings/scripts/test/ObjC/DOMTestTypedefsInternal.h:
+        * bindings/scripts/test/ObjC/DOMattributeInternal.h:
+        * bindings/scripts/test/ObjC/DOMreadonlyInternal.h:
+        Added new WEBCORE_EXPORT macros.
+
+2014-09-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Non-composited child RenderLayers cause allocation of unncessary backing store
+        https://bugs.webkit.org/show_bug.cgi?id=136375
+
+        Reviewed by David Hyatt.
+        
+        A composited element that has non-composited descendant elements that fall into
+        RenderLayers was getting backing store when none was required. descendentLayerPaintsIntoAncestor()
+        was simply checking the "visibility:visible" bit on descendant non-composited layers,
+        instead of actually asking them if they have any visual content.
+        
+        Added a couple of FIXME comments.
+
+        Test: compositing/backing/child-layer-no-backing.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::descendentLayerPaintsIntoAncestor):
+
+2014-09-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173175.
+        https://bugs.webkit.org/show_bug.cgi?id=136454
+
+        it broke debug builds (Requested by jessieberlin on #webkit).
+
+        Reverted changeset:
+
+        "Introduce CSS_BASIC_TYPE_CASTS, and use it"
+        https://bugs.webkit.org/show_bug.cgi?id=136403
+        http://trac.webkit.org/changeset/173175
+
+2014-09-02  Alex Christensen  <achristensen@webkit.org>
+
+        More use of WEBCORE_EXPORT.
+
+        Reviewed by Darin Adler.
+
+        These changes from a patch attached to https://bugs.webkit.org/show_bug.cgi?id=136172
+        contain more deployment of the WEBCORE_EXPORT macro. As of this writing, the macro is
+        defined to do nothing, so landing these is a harmless way to get closer to be the point
+        where we can throw the switch to use these instead of explicit export files on OS X,
+        iOS, and Windows.
+
+        * bindings/js/JSDOMBinding.h:
+        * bindings/js/JSDOMGlobalObject.h:
+        * bindings/js/JSDOMWindowBase.h:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        (GenerateImplementation):
+        * bindings/scripts/CodeGeneratorObjC.pm:
+        (GenerateHeader):
+        * bridge/runtime_method.cpp:
+        * bridge/runtime_object.cpp:
+        * dom/Document.h:
+        * dom/Element.h:
+        * dom/Position.h:
+        * dom/Range.h:
+        * dom/StaticNodeList.h:
+        * dom/make_names.pl:
+        (printInit):
+        (printNamesCppFile):
+        * editing/Editor.h:
+        * editing/FrameSelection.h:
+        * editing/TextIterator.h:
+        * inspector/InspectorFrontendClient.h:
+        * inspector/InspectorFrontendClientLocal.h:
+        * loader/DocumentLoader.h:
+        * loader/FrameLoader.h:
+        * loader/cache/MemoryCache.h:
+        * loader/cocoa/DiskCacheMonitorCocoa.h:
+        * loader/mac/LoaderNSURLExtras.h:
+        * page/Page.h:
+        * page/PageGroup.h:
+        * page/SecurityPolicy.h:
+        * page/Settings.h:
+        * page/make_settings.pl:
+        (printGetterAndSetter):
+        * page/scrolling/ScrollingStateScrollingNode.h:
+        * platform/CrossThreadCopier.h:
+        * platform/LocalizedStrings.h:
+        * platform/MemoryPressureHandler.cpp:
+        * platform/PlatformScreen.h:
+        * platform/PublicSuffix.h:
+        * platform/graphics/Gradient.h:
+        * platform/graphics/cocoa/WebActionDisablingCALayerDelegate.h:
+        * platform/graphics/filters/FilterOperation.h:
+        * platform/ios/WebVideoFullscreenControllerAVKit.h:
+        * platform/mac/PlatformEventFactoryMac.h:
+        * platform/mac/WebCoreFullScreenPlaceholderView.h:
+        * platform/mac/WebCoreFullScreenWindow.h:
+        * platform/mac/WebCoreNSStringExtras.h:
+        * platform/mac/WebCoreObjCExtras.h:
+        * platform/mac/WebFontCache.h:
+        * platform/mac/WebVideoFullscreenController.h:
+        * platform/mac/WebWindowAnimation.h:
+        * platform/network/BlobRegistryImpl.h:
+        * platform/network/CredentialStorage.h:
+        * platform/network/PlatformCookieJar.h:
+        * platform/network/ProxyServer.h:
+        * platform/sql/SQLiteStatement.h:
+        * platform/text/TextEncoding.h:
+        * rendering/HitTestResult.h:
+        * rendering/RenderTreeAsText.h:
+        * testing/Internals.h:
+        Add many more correct uses of WEBCORE_EXPORT; remove a few incorrect ones.
+
+2014-09-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Introduce CSS_BASIC_TYPE_CASTS, and use it
+        https://bugs.webkit.org/show_bug.cgi?id=136403
+
+        Reviewed by Darin Adler.
+
+        toCSSBasicFoo() will help to detect wrong type casting. So this patch generates it, and use it
+        instead of static_cast<const CSSBasicFoo*>().
+
+        No new tests no behavior changes.
+
+        * css/BasicShapeFunctions.cpp:
+        (WebCore::basicShapeForValue):
+        * css/CSSBasicShapes.cpp:
+        (WebCore::CSSBasicShapeCircle::equals):
+        (WebCore::CSSBasicShapeEllipse::equals):
+        (WebCore::CSSBasicShapePolygon::equals):
+        (WebCore::CSSBasicShapeInset::equals):
+        * css/CSSBasicShapes.h:
+
+2014-09-02  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        CachedResourceLoader should check redirections to reuse or not cached resources
+        https://bugs.webkit.org/show_bug.cgi?id=131757
+
+        Reviewed by Antti Koivisto.
+
+        Added cache-control redirection check to properly determine revalidation policy.
+        Tightened redirection cache-control header check by testing for no-cache and must-revalidate directives.
+        Added redirection freshness check.
+
+        Test: http/tests/cache/cache-redirections.html
+
+        * loader/cache/CachedRawResource.cpp:
+        (WebCore::CachedRawResource::canReuse): Removed redirection check (now handled by CachedResource::redirectChainAllowsReuse).
+        * loader/cache/CachedResource.cpp:
+        (WebCore::currentAge): Moved from WebCore::CachedResource::currentAge method to static function. Added response and responseTimestamp as parameters.
+        (WebCore::CachedResource::CachedResource): Initialized redirection chain status (no redirection and expiracy date set to never).
+        (WebCore::CachedResource::isExpired): Updated according new currentAge/freshnessLifetime method parameters.
+        (WebCore::CachedResource::freshnessLifetime): Added response as parameter.
+        (WebCore::CachedResource::willSendRequest): Computes whether a redirection can be cached, and if cached for how long it will remain fresh.
+        (WebCore::CachedResource::redirectChainAllowsReuse): Return false if any of the redirection in the redirection chain cannot be cached or expired. 
+        * loader/cache/CachedResource.h: Added cache chain member that stores whether the redirection chain can be cached and if so when it will be expired.
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::determineRevalidationPolicy): Added check of the redirection chain.
+
+2014-09-02  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        Prevent decoded images from being destroyed when they're in use.
+        https://bugs.webkit.org/show_bug.cgi?id=136259.
+
+        Reviewed by Darin Adler.
+
+        Try to fix a regression introduced by r172790. Before the patch,
+        CachedImage does not release its Image object if it still has clients.
+        However this behavior was changed due to removal of CachedResource::isSafeToMakePurgeable(),
+        which implied a call to CachedResource::hasClients(). This patch restores
+        the behavior by adding a check to hasClients() in CachedImage::destroyDecodedData().
+
+        * loader/cache/CachedImage.cpp:
+        (WebCore::CachedImage::destroyDecodedData):
+
+2014-09-01  Tim Horton  <timothy_horton@apple.com>
+
+        RenderThemeMac::paintProgressBar creates a buffer without respecting the destination's acceleration setting
+        https://bugs.webkit.org/show_bug.cgi?id=136427
+
+        Reviewed by Dan Bernstein.
+
+        No new tests, just a performance improvement.
+
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::paintProgressBar):
+
+2014-09-01  Tim Horton  <timothy_horton@apple.com>
+
+        Remove an unnecessary local in GraphicsLayerCA::ensureStructuralLayer
+        https://bugs.webkit.org/show_bug.cgi?id=136426
+
+        Reviewed by Dan Bernstein.
+
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::ensureStructuralLayer):
+        This was here so that we could call PlatformCALayerClient::platformLayerChanged,
+        but that no longer exists!
+
+2014-08-29  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Resolved value of grid-template-* must include every track listed
+        https://bugs.webkit.org/show_bug.cgi?id=136362
+
+        Reviewed by Darin Adler.
+
+        Section 5.1.5 of the specs clearly states that the resolved value
+        for grid-template-* must include every listed track, whether
+        explicitly or implicitly created. We were only listing the
+        explicit grid tracks.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::valueForGridTrackList):
+
+2014-09-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMAKE] Build warning by INTERFACE_LINK_LIBRARIES
+        https://bugs.webkit.org/show_bug.cgi?id=136194
+
+        Reviewed by Csaba Osztrogonác.
+
+        Set the LINK_INTERFACE_LIBRARIES target property on the top level CMakeLists.txt.
+
+        * CMakeLists.txt:
+
+2014-08-31  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, fix build break on EFL and GTK since r173152.
+
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::platformInit): Remove a bool parameter because it was removed from function's declaration.
+
 2014-08-31  Tim Horton  <timothy_horton@apple.com>
 
         Remove GraphicsContext constructor that takes shouldUseContextColors
@@ -372,7 +925,7 @@
 
 2014-08-29  Csaba Osztrogonác  <ossy@webkit.org>
 
-        Unreviwed, remove empty directories.
+        Unreviewed, remove empty directories.
 
         * Modules/networkinfo: Removed.
         * inspector/front-end: Removed.

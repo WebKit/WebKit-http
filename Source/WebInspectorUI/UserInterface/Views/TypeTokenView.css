@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,46 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-.recording-profile-view {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-
-    display: -webkit-flex;
-    -webkit-flex-flow: row nowrap;
-    -webkit-justify-content: center;
-    -webkit-align-content: center;
-    -webkit-align-items: center;
-    
-    background-color: rgb(232, 232, 232);
+.type-token {
+    display: inline;
+    border-radius: 10px;
+    border-color: transparent;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 1px;
+    color: white;
+    font-size: 10px;
+    opacity: 0.85;
 }
 
-.recording-profile-view > .indeterminate-progress-spinner {
-    position: static;
-    margin: 0;
+.type-token-left-spacing {
+    margin-left: 5px;
 }
 
-.recording-profile-view > span {
-    font-size: 14px;
+.type-token-right-spacing {
+    margin-right: 5px;
+}
 
-    text-shadow: rgba(255, 255, 255, 0.5) 0 1px 0;
-    color: rgb(60, 60, 60);
+.type-token-function, .type-token-boolean {
+    background-color: rgb(204, 59, 191);
+}
 
-    padding-left: 10px;
+.type-token-number {
+    background-color: rgb(59, 112, 226);
+}
 
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.type-token-string {
+    background-color: rgb(223, 53, 46);
+}
+
+.type-token-default {
+    background-color: rgb(118, 174, 29);
+}
+
+.type-token-empty {
+    background-color: rgb(126, 126, 126);
+}
+
+.type-token-many {
+    background-color: rgb(237, 132, 0);
 }

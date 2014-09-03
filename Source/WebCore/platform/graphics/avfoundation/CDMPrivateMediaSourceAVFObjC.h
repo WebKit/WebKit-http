@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,39 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.LegacyJavaScriptProfileObject = function(title, id, recording)
-{
-    WebInspector.LegacyProfileObject.call(this, WebInspector.LegacyJavaScriptProfileType.TypeId, title, id, recording);
+#ifndef CDMPrivateMediaSourceAVFObjC_h
+#define CDMPrivateMediaSourceAVFObjC_h
+
+#if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+
+#include "CDMPrivate.h"
+
+namespace WebCore {
+
+class CDM;
+
+class CDMPrivateMediaSourceAVFObjC : public CDMPrivateInterface {
+public:
+    explicit CDMPrivateMediaSourceAVFObjC(CDM* cdm)
+        : m_cdm(cdm)
+    { }
+    virtual ~CDMPrivateMediaSourceAVFObjC() { }
+
+    static std::unique_ptr<CDMPrivateInterface> create(CDM* cdm) { return std::make_unique<CDMPrivateMediaSourceAVFObjC>(cdm); }
+    static bool supportsKeySystem(const String&);
+    static bool supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType);
+
+    virtual bool supportsMIMEType(const String& mimeType) override;
+    virtual std::unique_ptr<CDMSession> createSession() override;
+
+    CDM* cdm() const { return m_cdm; }
+
+protected:
+    CDM* m_cdm;
 };
 
-WebInspector.LegacyJavaScriptProfileObject.prototype = {
-    constructor: WebInspector.LegacyJavaScriptProfileObject
-};
+}
 
-WebInspector.LegacyJavaScriptProfileObject.prototype.__proto__ = WebInspector.LegacyProfileObject.prototype;
+#endif // ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+
+#endif // CDMPrivateMediaSourceAVFObjC_h

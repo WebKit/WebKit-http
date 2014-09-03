@@ -43,13 +43,14 @@
 #include "HostCallReturnValue.h"
 #include "JIT.h"
 #include "JITToDFGDeferredCompilationCallback.h"
+#include "JSCInlines.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSNameScope.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSStackInlines.h"
 #include "JSWithScope.h"
+#include "LegacyProfiler.h"
 #include "ObjectConstructor.h"
-#include "JSCInlines.h"
 #include "Repatch.h"
 #include "RepatchBuffer.h"
 #include "TestRunnerUtils.h"
@@ -1423,8 +1424,10 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, R
         VM& vm = exec->vm();
         Structure& structure = *baseValue.asCell()->structure(vm);
         if (JSCell::canUseFastGetOwnProperty(structure)) {
-            if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, asString(subscript)->value(exec)))
-                return result;
+            if (AtomicStringImpl* existingAtomicString = asString(subscript)->toExistingAtomicString(exec)) {
+                if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, existingAtomicString))
+                    return result;
+            }
         }
     }
 
