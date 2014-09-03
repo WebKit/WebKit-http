@@ -408,7 +408,7 @@ void FrameLoaderClientHaiku::dispatchDidCommitLoad()
     // This properly resets the title when we navigate to a URI without a title.
     BMessage titleMessage(TITLE_CHANGED);
     titleMessage.AddString("title", "");
-    dispatchMessage(message);
+    dispatchMessage(titleMessage);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError& error)
