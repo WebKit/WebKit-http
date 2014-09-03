@@ -149,9 +149,12 @@ void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, con
         context->platformContext()->SetDrawingMode(B_OP_ALPHA);
     else
         context->platformContext()->SetDrawingMode(B_OP_COPY);
+
     context->clip(enclosingIntRect(dstRect));
     float currentW = phase.x();
     BRect bTileRect(tileRect);
+    // FIXME app_server doesn't support B_TILE_BITMAP in DrawBitmap calls. This
+    // would be much faster (#11196)
     while (currentW < dstRect.x() + dstRect.width()) {
         float currentH = phase.y();
         while (currentH < dstRect.y() + dstRect.height()) {
