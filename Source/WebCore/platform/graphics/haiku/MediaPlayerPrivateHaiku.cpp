@@ -210,7 +210,7 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
                 *(buffer + i) = 0xff;
             }
 
-            player->m_player->repaint();
+            player->Looper()->PostMessage('rfsh', player);
         }
     }
 }
@@ -409,6 +409,9 @@ void MediaPlayerPrivate::MessageReceived(BMessage* message)
 
             m_player->networkStateChanged();
 
+            return;
+        case 'rfsh':
+            m_player->repaint();
             return;
         default:
             BUrlProtocolAsynchronousListener::MessageReceived(message);
