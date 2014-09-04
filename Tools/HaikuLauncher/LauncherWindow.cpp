@@ -282,6 +282,11 @@ void LauncherWindow::LoadFailed(const BString& url, BWebView* view)
 
 void LauncherWindow::LoadFinished(const BString& url, BWebView* view)
 {
+    // Update the URL again to handle cases where LoadCommitted is not called
+    // (for example when navigating to anchors in the same page).
+    if (m_url)
+        m_url->SetText(url.String());
+
     BString status(url);
     status << " finished.";
     StatusChanged(status, view);

@@ -83,9 +83,13 @@ void BWebWindow::MessageReceived(BMessage* message)
         // one more time.
         LoadProgress(100, _WebViewForMessage(message));
         break;
-    case LOAD_DOC_COMPLETED:
+    case LOAD_DOC_COMPLETED: {
         // NOTE: This events means the DOM document is ready.
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            LoadFinished(url, _WebViewForMessage(message));
         break;
+    }
     case JAVASCRIPT_WINDOW_OBJECT_CLEARED:
         // NOTE: No idea what this event actually means.
         break;
@@ -161,9 +165,6 @@ void BWebWindow::MessageReceived(BMessage* message)
         break;
     }
     case LOAD_FINISHED: {
-        BString url;
-        if (message->FindString("url", &url) == B_OK)
-            LoadFinished(url, _WebViewForMessage(message));
         break;
     }
     case MAIN_DOCUMENT_ERROR: { 
