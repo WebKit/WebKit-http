@@ -36,16 +36,22 @@ public:
     {
     }
 
-    ResourceResponse(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName, const String& filename)
-        : ResourceResponseBase(url, mimeType, expectedLength, textEncodingName, filename)
+    ResourceResponse(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName)
+        : ResourceResponseBase(url, mimeType, expectedLength, textEncodingName)
     {
+        m_resourceName = url.lastPathComponent();
     }
+
+    void setSuggestedFilename(String name) { m_resourceName = name;}
+    String platformSuggestedFilename() const { return m_resourceName; }
 
 private:
     friend class ResourceResponseBase;
 
     PassOwnPtr<CrossThreadResourceResponseData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceResponseData> data) const { return data; }
     void doPlatformAdopt(PassOwnPtr<CrossThreadResourceResponseData>) { }
+
+    String m_resourceName;
 };
 
 struct CrossThreadResourceResponseData : public CrossThreadResourceResponseDataBase {

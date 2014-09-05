@@ -116,7 +116,7 @@ void ProfileGenerator::beginCallEntry(ProfileNode* node, double startTime)
 {
     ASSERT_ARG(node, node);
 
-    if (isnan(startTime))
+    if (std::isnan(startTime))
         startTime = currentTime();
     node->appendCall(ProfileNode::Call(startTime));
 }

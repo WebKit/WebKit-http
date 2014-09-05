@@ -404,9 +404,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     URL url(m_request->Url());
 
-    ResourceResponse response(url, mimeType, contentLength, encoding, url.lastPathComponent());
-
-    response.setSuggestedFilename(url.lastPathComponent());
+    ResourceResponse response(url, mimeType, contentLength, encoding);
 
     if (!httpRequest) {
         // For protocols other than http, we don't have more information to add.

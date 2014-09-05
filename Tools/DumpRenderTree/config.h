@@ -24,7 +24,7 @@
 #include "cmakeconfig.h"
 #endif
 
-#include <WebCore/PlatformExportMacros.h>
+#include <WebCore/platform/PlatformExportMacros.h>
 #include <runtime/JSExportMacros.h>
 
 #ifdef __cplusplus
