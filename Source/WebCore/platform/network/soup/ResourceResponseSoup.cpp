@@ -99,7 +99,12 @@ void ResourceResponse::updateFromSoupMessageHeaders(const SoupMessageHeaders* me
     setTextEncodingName(extractCharsetFromMediaType(contentType));
 
     setExpectedContentLength(soup_message_headers_get_content_length(headers));
-    setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition)));}
+}
+
+String ResourceResponse::platformSuggestedFilename() const
+{
+    return String();
+}
 
 }
 

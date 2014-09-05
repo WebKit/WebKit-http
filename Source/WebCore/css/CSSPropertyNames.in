@@ -292,9 +292,7 @@ z-index
 mix-blend-mode
 isolation
 #endif
-#if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
 -webkit-filter
-#endif
 -webkit-align-content
 -webkit-align-items
 -webkit-align-self
@@ -331,6 +329,7 @@ isolation
 -webkit-hyphenate-limit-lines [Inherited]
 -webkit-hyphens [Inherited]
 -epub-hyphens = -webkit-hyphens
+-webkit-initial-letter
 -webkit-line-box-contain [Inherited]
 -webkit-line-align [Inherited]
 -webkit-line-break [Inherited]

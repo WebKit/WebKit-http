@@ -1,3 +1,141 @@
+2014-09-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Beef up the DFG's CFG analyses to include iterated dominance frontiers and more user-friendly BlockSets
+        https://bugs.webkit.org/show_bug.cgi?id=136520
+
+        Fix bug found in Geoff's review but not landed in previous commit.
+
+        * wtf/BitVector.cpp:
+        (WTF::BitVector::equalsSlowCaseFast): return true.
+
+2014-09-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Beef up the DFG's CFG analyses to include iterated dominance frontiers and more user-friendly BlockSets
+        https://bugs.webkit.org/show_bug.cgi?id=136520
+
+        Reviewed by Geoffrey Garen.
+        
+        Give BitVector a way to quickly find the next set (or unset) bit. Make BitVector equality
+        faster. Fix a minor closure goof in Spectrum.
+
+        * wtf/BitVector.cpp:
+        (WTF::BitVector::equalsSlowCase):
+        (WTF::BitVector::equalsSlowCaseFast):
+        (WTF::BitVector::equalsSlowCaseSimple):
+        * wtf/BitVector.h:
+        (WTF::BitVector::findBit):
+        (WTF::BitVector::findBitFast):
+        (WTF::BitVector::findBitSimple):
+        (WTF::BitVector::findBitInWord):
+        * wtf/Spectrum.h:
+        (WTF::Spectrum::removeIf):
+
+2014-09-04  Anders Carlsson  <andersca@apple.com>
+
+        Make hash table classes final
+        https://bugs.webkit.org/show_bug.cgi?id=136540
+
+        Reviewed by Antti Koivisto.
+
+        We don't want anybody inheriting from these classes, so make them final.
+
+        * wtf/HashCountedSet.h:
+        * wtf/HashMap.h:
+        * wtf/HashSet.h:
+
+2014-09-04  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove CSS_FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136529
+
+        Reviewed by Dirk Schulze.
+
+        * wtf/FeatureDefines.h:
+
+2014-09-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173201.
+        https://bugs.webkit.org/show_bug.cgi?id=136538
+
+        Improves the situation but also introduces additional crashes.
+        (Requested by zdobersek on #webkit).
+
+        Reverted changeset:
+
+        "GMainLoopSource is exposed to race conditions"
+        https://bugs.webkit.org/show_bug.cgi?id=135800
+        http://trac.webkit.org/changeset/173201
+
+2014-09-04  Pratik Solanki  <psolanki@apple.com>
+
+        Remove iOS specific disk image cache
+        https://bugs.webkit.org/show_bug.cgi?id=136517
+
+        Reviewed by Antti Koivisto.
+
+        Disk image cache code unnecessarily complicates SharedBuffer implementation. We can remove
+        this now since we don't enable it in WebKit2 on iOS.
+
+        * wtf/FeatureDefines.h:
+
+2014-09-03  Dan Bernstein  <mitz@apple.com>
+
+        Get rid of HIGH_DPI_CANVAS leftovers
+        https://bugs.webkit.org/show_bug.cgi?id=136491
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/FeatureDefines.h: Removed definition of ENABLE_HIGH_DPI_CANVAS.
+
+2014-09-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        GMainLoopSource is exposed to race conditions
+        https://bugs.webkit.org/show_bug.cgi?id=135800
+
+        Reviewed by Carlos Garcia Campos.
+
+        GMainLoopSource objects can be dispatching tasks on one thread
+        while having a new task scheduled on a different thread. This
+        can for instance occur in WebKitVideoSink, where the timeout
+        callback can be called on main thread while at the same time
+        it is being rescheduled on a different thread (created through
+        GStreamer).
+
+        The initial solution is to use GMutex to prevent parallel data
+        access from different threads. In the future I plan to add better
+        assertions, some meaningful comments and look at the possibility
+        of creating thread-specific GMainLoopSource objects that wouldn't
+        require the use of GMutex.
+
+        GSource, GCancellable and std::function<> objects are now packed
+        into an internal Context structure. Using the C++11 move semantics
+        it's simple to, at the time of dispatch, move the current context
+        out of the GMainLoopSource object in case the dispatch causes a
+        rescheduling on that same object.
+
+        All the schedule*() methods and the cancelInternal() method callers
+        now lock the GMutex to ensure no one else is accessing the data at
+        that moment. Similar goes for the dispatch methods, but those do
+        the dispatch and possible destruction duties with the mutex unlocked.
+        The dispatch can cause rescheduling on the same GMainLoopSource object,
+        which must not be done with a locked mutex.
+
+        * wtf/gobject/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::GMainLoopSource):
+        (WTF::GMainLoopSource::~GMainLoopSource):
+        (WTF::GMainLoopSource::cancel):
+        (WTF::GMainLoopSource::cancelInternal):
+        (WTF::GMainLoopSource::scheduleIdleSource):
+        (WTF::GMainLoopSource::schedule):
+        (WTF::GMainLoopSource::scheduleTimeoutSource):
+        (WTF::GMainLoopSource::scheduleAfterDelay):
+        (WTF::GMainLoopSource::voidCallback):
+        (WTF::GMainLoopSource::boolCallback):
+        (WTF::GMainLoopSource::socketCallback):
+        (WTF::GMainLoopSource::destroy):
+        (WTF::GMainLoopSource::reset): Deleted.
+        * wtf/gobject/GMainLoopSource.h:
+
 2014-09-02  Daniel Bates  <dabates@apple.com>
 
         [iOS] Support using Foundation networking code

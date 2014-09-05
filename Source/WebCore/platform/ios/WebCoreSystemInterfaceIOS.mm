@@ -32,25 +32,12 @@ WEBCORE_EXPORT CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef
 WEBCORE_EXPORT void (*wkCGContextResetClip)(CGContextRef);
 WEBCORE_EXPORT void (*wkClearGlyphVector)(void* glyphs);
 WEBCORE_EXPORT OSStatus (*wkConvertCharToGlyphs)(void* styleGroup, const UniChar*, unsigned numCharacters, void* glyphs);
-WEBCORE_EXPORT NSString* (*wkGetMIMETypeForExtension)(NSString*);
 WEBCORE_EXPORT NSDate *(*wkGetNSURLResponseLastModifiedDate)(NSURLResponse *response);
 WEBCORE_EXPORT void (*wkSetBaseCTM)(CGContextRef, CGAffineTransform);
 WEBCORE_EXPORT void (*wkSetPatternPhaseInUserSpace)(CGContextRef, CGPoint point);
 WEBCORE_EXPORT CGAffineTransform (*wkGetUserToBaseCTM)(CGContextRef);
 WEBCORE_EXPORT bool (*wkCGContextIsPDFContext)(CGContextRef);
 WEBCORE_EXPORT void (*wkSetUpFontCache)();
-WEBCORE_EXPORT void (*wkSignalCFReadStreamEnd)(CFReadStreamRef stream);
-WEBCORE_EXPORT void (*wkSignalCFReadStreamHasBytes)(CFReadStreamRef stream);
-WEBCORE_EXPORT void (*wkSignalCFReadStreamError)(CFReadStreamRef stream, CFStreamError *error);
-WEBCORE_EXPORT CFReadStreamRef (*wkCreateCustomCFReadStream)(void *(*formCreate)(CFReadStreamRef, void *),
-    void (*formFinalize)(CFReadStreamRef, void *), 
-    Boolean (*formOpen)(CFReadStreamRef, CFStreamError *, Boolean *, void *), 
-    CFIndex (*formRead)(CFReadStreamRef, UInt8 *, CFIndex, CFStreamError *, Boolean *, void *), 
-    Boolean (*formCanRead)(CFReadStreamRef, void *), 
-    void (*formClose)(CFReadStreamRef, void *), 
-    void (*formSchedule)(CFReadStreamRef, CFRunLoopRef, CFStringRef, void *), 
-    void (*formUnschedule)(CFReadStreamRef, CFRunLoopRef, CFStringRef, void *),
-    void *context);
 WEBCORE_EXPORT NSString* (*wkCopyNSURLResponseStatusLine)(NSURLResponse*);
 WEBCORE_EXPORT void (*wkSetNSURLConnectionDefersCallbacks)(NSURLConnection *, BOOL);
 WEBCORE_EXPORT void (*wkSetNSURLRequestShouldContentSniff)(NSMutableURLRequest *, BOOL);
@@ -96,10 +83,6 @@ WEBCORE_EXPORT CTTypesetterRef (*wkCreateCTTypesetterWithUniCharProviderAndOptio
 WEBCORE_EXPORT CGContextRef (*wkIOSurfaceContextCreate)(IOSurfaceRef surface, unsigned width, unsigned height, CGColorSpaceRef colorSpace);
 WEBCORE_EXPORT CGImageRef (*wkIOSurfaceContextCreateImage)(CGContextRef context);
 #endif // !PLATFORM(IOS_SIMULATOR)
-
-#if PLATFORM(IOS_SIMULATOR)
-WEBCORE_EXPORT void (*wkSetCrashReportApplicationSpecificInformation)(CFStringRef);
-#endif
 
 WEBCORE_EXPORT CFURLStorageSessionRef (*wkCreatePrivateStorageSession)(CFStringRef);
 WEBCORE_EXPORT NSURLRequest* (*wkCopyRequestWithStorageSession)(CFURLStorageSessionRef, NSURLRequest*);

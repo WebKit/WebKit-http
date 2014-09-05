@@ -1,3 +1,158 @@
+2014-09-04  Pratik Solanki  <psolanki@apple.com>
+
+        Bring back [WebPreferences setDiskImageCacheEnabled:] for backwards compatibility
+        https://bugs.webkit.org/show_bug.cgi?id=136560
+
+        Reviewed by Joseph Pecoraro.
+
+        I removed the disk image caching code in r173265. However, we still have clients that call
+        setDiskImageCacheEnabled. Add in a stub method until we can wean the clients off this call.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences setDiskImageCacheEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2014-09-03  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Some WebKitLegacy headers migrated from WebCore incorrectly contain WEBCORE_EXPORT
+        https://bugs.webkit.org/show_bug.cgi?id=136521
+
+        Reviewed by Anders Carlsson.
+
+        Taught MigrateHeaders.make to remove WEBCORE_EXPORT from headers using this sed expression:
+
+            s/(^ *)WEBCORE_EXPORT /\1/g
+
+        This removes WEBCORE_EXPORT and a single following space character but preserves preceeding spaces.
+
+        * MigrateHeaders.make:
+
+2014-09-04  Maciej Stachowiak  <mjs@apple.com>
+
+        Remove WebCoreSystemInterface glue for otherwise unused WKSI calls
+        https://bugs.webkit.org/show_bug.cgi?id=136527
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2014-09-04  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove CSS_FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136529
+
+        Reviewed by Dirk Schulze.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-04  Pratik Solanki  <psolanki@apple.com>
+
+        Remove iOS specific disk image cache
+        https://bugs.webkit.org/show_bug.cgi?id=136517
+
+        Reviewed by Antti Koivisto.
+
+        Disk image cache code unnecessarily complicates SharedBuffer implementation. We can remove
+        this now since we don't enable it in WebKit2 on iOS.
+
+        * Misc/WebCache.mm:
+        (+[WebCache statistics]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _setAllowToBeMemoryMapped]):
+        (-[WebDataSource setDataSourceDelegate:]):
+        (-[WebDataSource dataSourceDelegate]):
+        (-[WebDataSource dealloc]):
+        (BufferMemoryMapped): Deleted.
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences diskImageCacheEnabled]): Deleted.
+        (-[WebPreferences setDiskImageCacheEnabled:]): Deleted.
+        (-[WebPreferences diskImageCacheMinimumImageSize]): Deleted.
+        (-[WebPreferences setDiskImageCacheMinimumImageSize:]): Deleted.
+        (-[WebPreferences diskImageCacheMaximumCacheSize]): Deleted.
+        (-[WebPreferences setDiskImageCacheMaximumCacheSize:]): Deleted.
+        (-[WebPreferences _diskImageCacheSavedCacheDirectory]): Deleted.
+        (-[WebPreferences _setDiskImageCacheSavedCacheDirectory:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (+[WebView _handleMemoryWarning]):
+        (-[WebView _preferencesChanged:]):
+
+2014-09-04  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make iOS build when ENABLE_TOUCH_EVENT and ENABLE_IOS_TOUCH_EVENTS disabled
+        https://bugs.webkit.org/show_bug.cgi?id=136494
+
+        Reviewed by Andy Estes.
+
+        * MigrateHeaders.make: Migrate header WebEventRegion.h only when ENABLE_IOS_TOUCH_EVENTS is defined.
+        * WebView/WebView.mm: Substitute ENABLE(IOS_TOUCH_EVENTS) for ENABLE(TOUCH_EVENTS).
+
+2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: fix prefixes for subclasses of JSC::ConsoleClient
+        https://bugs.webkit.org/show_bug.cgi?id=136476
+
+        Reviewed by Timothy Hatcher.
+
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics shouldPrintExceptions]):
+        (+[WebCoreStatistics setShouldPrintExceptions:]):
+
+2014-09-03  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 1).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2014-09-02  Maciej Stachowiak  <mjs@apple.com>
+
+        Clean up naming for and slightly refactor legacy video fullscreen support
+        https://bugs.webkit.org/show_bug.cgi?id=136446
+
+        Reviewed by Jer Noble.
+
+        Key changes:
+        supportsFullscreenForNode(Node*) --> supportsVideoFullscreen()
+        enterFullscreenForNode(Node*) --> enterVideoFullscreenForVideoElement(HTMLVideoElement*)
+        exitFullscreenForNode(Node*) --> exitVideoFullscreen()
+        
+        The old versions had unnecessary parameters, did not clearly distinguish their purpose
+        from enterFullscreenForElement and friends, and wrongly claimed generality to all Nodes.
+        Also changed many other places to use HTMLVideoElement* instead of Node* or 
+        HTMLMediaElement* when they were in fact only used for video elements and would only
+        work for such.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::supportsVideoFullscreen): Adjust for main refactoring.
+        Also no more need to check for video elementness.
+        (WebChromeClient::enterVideoFullscreenForVideoElement): Adjust for main refactoring.
+        (WebChromeClient::exitVideoFullscreen): ditto
+        * WebView/WebView.mm:
+        (-[WebView _enterVideoFullscreenForVideoElement:]): Adjust for main
+        refactoring.
+        (-[WebView _exitVideoFullscreen]): ditto
+        (-[WebView _close]): ditto
+        * WebView/WebViewInternal.h:
+
+2014-09-03  Dan Bernstein  <mitz@apple.com>
+
+        Get rid of HIGH_DPI_CANVAS leftovers
+        https://bugs.webkit.org/show_bug.cgi?id=136491
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig: Removed definition of ENABLE_HIGH_DPI_CANVAS
+        and removed it from FEATURE_DEFINES.
+
 2014-08-31  Tim Horton  <timothy_horton@apple.com>
 
         Remove unnecessary (and unnecessarily iOS-specific) setStrokeAndFillColor

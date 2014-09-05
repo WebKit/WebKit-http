@@ -65,7 +65,7 @@
 #include "MediaList.h"
 #include "MediaQueryExp.h"
 #include "Page.h"
-#include "PageConsole.h"
+#include "PageConsoleClient.h"
 #include "Pair.h"
 #include "Rect.h"
 #include "RenderTheme.h"
@@ -78,6 +78,7 @@
 #include "StyleRuleImport.h"
 #include "StyleSheetContents.h"
 #include "TextEncoding.h"
+#include "WebKitCSSFilterValue.h"
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
@@ -98,10 +99,6 @@
 
 #if ENABLE(CSS_IMAGE_SET)
 #include "CSSImageSetValue.h"
-#endif
-
-#if ENABLE(CSS_FILTERS)
-#include "WebKitCSSFilterValue.h"
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -2414,6 +2411,30 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
             return false;
         }
         break;
+    case CSSPropertyWebkitInitialLetter: {
+        if (id == CSSValueNormal)
+            validPrimitive = true;
+        else {
+            if (num != 1 && num != 2)
+                return false;
+            validPrimitive = validUnit(value, FPositiveInteger);
+            if (!validPrimitive)
+                return false;
+            RefPtr<CSSPrimitiveValue> parsedValue1 = createPrimitiveNumericValue(value);
+            RefPtr<CSSPrimitiveValue> parsedValue2;
+            if (num == 2) {
+                value = m_valueList->next();
+                validPrimitive = validUnit(value, FPositiveInteger);
+                if (!validPrimitive)
+                    return false;
+                parsedValue2 = createPrimitiveNumericValue(value);
+            } else
+                parsedValue2 = parsedValue1;
+            addProperty(propId, createPrimitiveValuePair(parsedValue1.release(), parsedValue2.release()), important);
+            return true;
+        }
+        break;
+    }
     case CSSPropertyWebkitBoxReflect:
         if (id == CSSValueNone)
             validPrimitive = true;
@@ -2432,7 +2453,6 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitBoxOrdinalGroup:
         validPrimitive = validUnit(value, FInteger | FNonNeg, CSSStrictMode) && value->fValue;
         break;
-#if ENABLE(CSS_FILTERS)
     case CSSPropertyWebkitFilter:
         if (id == CSSValueNone)
             validPrimitive = true;
@@ -2444,7 +2464,6 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
             return true;
         }
         break;
-#endif
 #if ENABLE(CSS_COMPOSITING)
     case CSSPropertyMixBlendMode:
         if (cssCompositingEnabled())
@@ -8685,15 +8704,12 @@ bool CSSParser::parseGeneratedImage(CSSParserValueList* valueList, RefPtr<CSSVal
     if (equalIgnoringCase(val->function->name, "-webkit-cross-fade("))
         return parseCrossfade(valueList, value);
 
-#if ENABLE(CSS_FILTERS)
     if (equalIgnoringCase(val->function->name, "-webkit-filter("))
         return parseFilterImage(valueList, value);
-#endif
 
     return false;
 }
 
-#if ENABLE(CSS_FILTERS)
 bool CSSParser::parseFilterImage(CSSParserValueList* valueList, RefPtr<CSSValue>& filter)
 {
     RefPtr<CSSFilterImageValue> result;
@@ -8734,7 +8750,6 @@ bool CSSParser::parseFilterImage(CSSParserValueList* valueList, RefPtr<CSSValue>
 
     return true;
 }
-#endif
 
 bool CSSParser::parseCrossfade(CSSParserValueList* valueList, RefPtr<CSSValue>& crossfade)
 {
@@ -9243,8 +9258,6 @@ bool CSSParser::isCompositeOperator(CSSValueID valueID)
     return valueID >= CSSValueClear && valueID <= CSSValueXor;
 }
 
-#if ENABLE(CSS_FILTERS)
-
 static void filterInfoForName(const CSSParserString& name, WebKitCSSFilterValue::FilterOperationType& filterType, unsigned& maximumArgumentCount)
 {
     if (equalIgnoringCase(name, "grayscale("))
@@ -9406,7 +9419,6 @@ bool CSSParser::parseFilter(CSSParserValueList* valueList, RefPtr<CSSValue>& res
 
     return true;
 }
-#endif
 
 #if ENABLE(CSS_REGIONS)
 static bool validFlowName(const String& flowName)
@@ -9836,6 +9848,10 @@ bool CSSParser::parseLineBoxContain(bool important)
             if (lineBoxContain & LineBoxContainInlineBox)
                 return false;
             lineBoxContain |= LineBoxContainInlineBox;
+        } else if (value->id == CSSValueInitialLetter) {
+            if (lineBoxContain & LineBoxContainInitialLetter)
+                return false;
+            lineBoxContain |= LineBoxContainInitialLetter;
         } else
             return false;
     }
@@ -11661,7 +11677,7 @@ bool CSSParser::isLoggingErrors()
 void CSSParser::logError(const String& message, int lineNumber)
 {
     // FIXME: <http://webkit.org/b/114313> CSS parser console message errors should include column numbers.
-    PageConsole& console = m_styleSheet->singleOwnerDocument()->page()->console();
+    PageConsoleClient& console = m_styleSheet->singleOwnerDocument()->page()->console();
     console.addMessage(MessageSource::CSS, MessageLevel::Warning, message, m_styleSheet->baseURL().string(), lineNumber + 1, 0);
 }
 

@@ -134,8 +134,8 @@
 #import <WebCore/GCController.h>
 #import <WebCore/GeolocationController.h>
 #import <WebCore/GeolocationError.h>
-#import <WebCore/HTMLMediaElement.h>
 #import <WebCore/HTMLNames.h>
+#import <WebCore/HTMLVideoElement.h>
 #import <WebCore/HistoryController.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/IconDatabase.h>
@@ -254,11 +254,6 @@
 #import <WebKitLegacy/WebDashboardRegion.h>
 #endif
 
-#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
-#import "WebDiskImageCacheClientIOS.h"
-#import <WebCore/DiskImageCacheIOS.h>
-#endif
-
 #if ENABLE(REMOTE_INSPECTOR)
 #import <JavaScriptCore/RemoteInspector.h>
 #if PLATFORM(IOS)
@@ -274,13 +269,8 @@
 #include <WebCore/QuickLook.h>
 #endif
 
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 #import <WebCore/WebEventRegion.h>
-#endif
-
-#if ENABLE(DISK_IMAGE_CACHE)
-#import "WebDiskImageCacheClientIOS.h"
-#import <WebCore/DiskImageCacheIOS.h>
 #endif
 
 #if ENABLE(GAMEPAD)
@@ -903,9 +893,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
         WebKitInitializeStorageIfNecessary();
         WebKitInitializeApplicationCachePathIfNecessary();
-#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
-        WebKitInitializeWebDiskImageCache();
-#endif
 #if ENABLE(GAMEPAD)
         WebKitInitializeGamepadProviderIfNecessary();
 #endif
@@ -1229,13 +1216,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         return;
 
     tileControllerMemoryHandler().trimUnparentedTilesToTarget(0);
-
-#if ENABLE(DISK_IMAGE_CACHE)
-    {
-        WebKit::MemoryMeasure measurer("Memory warning: flushing images to disk.");
-        WebCore::memoryCache()->flushCachedImagesToDisk();
-    }
-#endif
 
     [WebStorageManager closeIdleLocalStorageDatabases];
 
@@ -1699,7 +1679,7 @@ static bool fastDocumentTeardownEnabled()
     }
 
 #if ENABLE(VIDEO) && !PLATFORM(IOS)
-    [self _exitFullscreen];
+    [self _exitVideoFullscreen];
 #endif
 
 #if PLATFORM(IOS)
@@ -2408,13 +2388,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     BOOL zoomsTextOnly = [preferences zoomsTextOnly];
     if (_private->zoomsTextOnly != zoomsTextOnly)
         [self _setZoomMultiplier:_private->zoomMultiplier isTextOnly:zoomsTextOnly];
-
-#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
-    DiskImageCache& diskImageCache = WebCore::diskImageCache();
-    diskImageCache.setEnabled([preferences diskImageCacheEnabled]);
-    diskImageCache.setMinimumImageSize([preferences diskImageCacheMinimumImageSize]);
-    diskImageCache.setMaximumCacheSize([preferences diskImageCacheMaximumCacheSize]);
-#endif
 
 #if PLATFORM(IOS)
     [[self window] setTileBordersVisible:[preferences showDebugBorders]];
@@ -8388,28 +8361,25 @@ bool LayerFlushController::flushLayers()
 #endif
 
 #if ENABLE(VIDEO)
-- (void)_enterFullscreenForNode:(WebCore::Node*)node
+- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement
 {
-    ASSERT(isHTMLVideoElement(node));
-    HTMLMediaElement* videoElement = toHTMLMediaElement(node);
-
     if (_private->fullscreenController) {
-        if ([_private->fullscreenController mediaElement] == videoElement) {
+        if ([_private->fullscreenController videoElement] == videoElement) {
             // The backend may just warn us that the underlaying plaftormMovie()
             // has changed. Just force an update.
-            [_private->fullscreenController setMediaElement:videoElement];
+            [_private->fullscreenController setVideoElement:videoElement];
             return; // No more to do.
         }
 
-        // First exit Fullscreen for the old mediaElement.
-        [_private->fullscreenController mediaElement]->exitFullscreen();
+        // First exit Fullscreen for the old videoElement.
+        [_private->fullscreenController videoElement]->exitFullscreen();
         // This previous call has to trigger _exitFullscreen,
         // which has to clear _private->fullscreenController.
         ASSERT(!_private->fullscreenController);
     }
     if (!_private->fullscreenController) {
         _private->fullscreenController = [[WebVideoFullscreenController alloc] init];
-        [_private->fullscreenController setMediaElement:videoElement];
+        [_private->fullscreenController setVideoElement:videoElement];
 #if PLATFORM(IOS)
         [_private->fullscreenController enterFullscreen:(UIView *)[[[self window] hostLayer] delegate]];
 #else
@@ -8417,10 +8387,10 @@ bool LayerFlushController::flushLayers()
 #endif
     }
     else
-        [_private->fullscreenController setMediaElement:videoElement];
+        [_private->fullscreenController setVideoElement:videoElement];
 }
 
-- (void)_exitFullscreen
+- (void)_exitVideoFullscreen
 {
     if (!_private->fullscreenController)
         return;

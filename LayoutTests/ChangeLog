@@ -1,3 +1,398 @@
+2014-09-04  Alexey Proskuryakov  <ap@apple.com>
+
+        platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=136554
+
+        * platform/mac-wk2/TestExpectations: Marking it as such.
+
+2014-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Rebaseline three blending tests which no longer need backing store.
+
+        * css3/blending/blend-mode-blended-element-overlapping-composited-sibling-should-have-compositing-layer-expected.txt:
+        * css3/blending/blend-mode-parent-of-composited-blended-has-layer-expected.txt:
+        * css3/blending/blend-mode-with-composited-descendant-should-have-layer-expected.txt:
+
+2014-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        border-radius should not force layer backing store
+        https://bugs.webkit.org/show_bug.cgi?id=136555
+
+        Reviewed by Dean Jackson.
+        
+        Test that dumps layers on some composited elements with border-radius
+
+        * compositing/backing/border-radius-no-backing-expected.txt: Added.
+        * compositing/backing/border-radius-no-backing.html: Added.
+
+2014-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        CSS filter on a compositing layer should not cause unncessary backing store allocation
+        https://bugs.webkit.org/show_bug.cgi?id=136557
+
+        Reviewed by Dean Jackson.
+        
+        Dump the layer tree on some layer configs with filters.
+        
+        * compositing/backing/filter-no-backing-expected.txt: Added.
+        * compositing/backing/filter-no-backing.html: Added.
+
+2014-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the logic for compositing backing store avoidance
+        https://bugs.webkit.org/show_bug.cgi?id=136556
+
+        Reviewed by Dean Jackson.
+        
+        Tests that dump the layer tree (showing backing store) for various combinations
+        of child renderers and whitespace.
+
+        * compositing/backing/inline-block-no-backing-expected.txt: Added.
+        * compositing/backing/inline-block-no-backing.html: Added.
+        * compositing/backing/whitespace-nodes-no-backing-expected.txt: Added.
+        * compositing/backing/whitespace-nodes-no-backing.html: Added.
+
+2014-09-04  Beth Dakin  <bdakin@apple.com>
+
+        Another speculative fix for the bots.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/root-overflow-with-mousewheel.html:
+
+2014-09-04  Beth Dakin  <bdakin@apple.com>
+
+        Speculative fix for a test failing on the bot.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/root-overflow-with-mousewheel.html:
+
+2014-09-03  David Hyatt  <hyatt@apple.com>
+
+        Initial letters should clear one another.
+        https://bugs.webkit.org/show_bug.cgi?id=136514
+
+        Reviewed by Simon Fraser.
+
+        * fast/css-generated-content/initial-letter-clearance.html: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-clearance-expected.png: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-clearance-expected.txt: Added.
+
+2014-09-04  Beth Dakin  <bdakin@apple.com>
+
+        REGRESSION (r172832): Poor 2-finger scrolling performance at theverge.com articles 
+        (all tiles repaint)
+        https://bugs.webkit.org/show_bug.cgi?id=136433
+        -and corresponding-
+        rdar://problem/18193942
+
+        Reviewed by Tim Horton.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/root-overflow-with-mousewheel-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/root-overflow-with-mousewheel.html: Added.
+
+2014-09-04  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove CSS_FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136529
+
+        Reviewed by Dirk Schulze.
+
+        * platform/efl/TestExpectations:
+
+2014-09-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        XMLHttpRequest always defaults Content-Type to application/xml, while it should depend on data type
+        https://bugs.webkit.org/show_bug.cgi?id=11049
+
+        Reviewed by Darin Adler.
+
+        * http/tests/xmlhttprequest/methods-lower-case-expected.txt: Rebaseline (application/xml -> text/plain;charset=UTF-8).
+        * http/tests/xmlhttprequest/post-content-type-document.html: New test to cover default mime type for XML and HTML document data types.
+        * http/tests/xmlhttprequest/post-content-type-document-expected.txt: Ditto.
+        * http/tests/xmlhttprequest/post-content-type-expected.txt: Rebaseline (application/xml -> text/plain;charset=UTF-8).
+        * http/tests/xmlhttprequest/post-content-type.html: Ditto.
+        * http/tests/xmlhttprequest/request-encoding2.html: Ditto.
+        * platform/gtk/http/tests/xmlhttprequest/methods-async-expected.txt: Ditto.
+        * platform/gtk/http/tests/xmlhttprequest/methods-expected.txt: Ditto.
+        * platform/gtk/http/tests/xmlhttprequest/workers/methods-async-expected.txt: Ditto.
+        * platform/gtk/http/tests/xmlhttprequest/workers/methods-expected.txt: Ditto.
+        * platform/gtk/http/tests/xmlhttprequest/workers/shared-worker-methods-async-expected.txt: Ditto.
+        * platform/gtk/http/tests/xmlhttprequest/workers/shared-worker-methods-expected.txt: Ditto.
+
+2014-09-03  Shivakumar JM  <shiva.jm@samsung.com>
+
+        [EFL] Websocket Layout Tests passed in latest build.
+        https://bugs.webkit.org/show_bug.cgi?id=136278
+
+        Unreviewed gardening.
+ 
+        Websocket Layout Tests passed in latest build, possibly because r172438.
+
+        * platform/efl/TestExpectations:
+
+2014-09-03  Jeffrey Pfau  <jpfau@apple.com>
+
+        Unreviewed, mark test as crashing
+
+        * platform/wk2/TestExpectations:
+
+2014-09-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Text caret changes to color of text in Mail and Notes
+        https://bugs.webkit.org/show_bug.cgi?id=135904
+
+        Reviewed by Simon Fraser.
+
+        Make sure the caret is the correct color.
+
+        * editing/caret/color-span-inside-editable-expected.html: Added.
+        * editing/caret/color-span-inside-editable.html: Added.
+
+2014-09-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Mark a number of passing tests.
+
+        * platform/win/TestExpectations: Update expectations based on passes
+        on multiple test bots.
+
+2014-09-03  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix style invalidation of elements with multiple siblings dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=136472
+
+        Reviewed by Andreas Kling.
+
+        The test coverage was pretty bad. :(
+        I tried to cover the most obvious problems.
+
+        * fast/css/direct-adjacent-style-update-optimization-expected.txt: Added.
+        * fast/css/direct-adjacent-style-update-optimization.html: Added.
+        * fast/css/indirect-adjacent-style-update-optimization-expected.txt: Added.
+        * fast/css/indirect-adjacent-style-update-optimization.html: Added.
+        * fast/css/non-matching-adjacent-style-update-expected.txt: Added.
+        * fast/css/non-matching-adjacent-style-update.html: Added.
+        * fast/selectors/attribute-direct-adjacent-style-update-expected.txt:
+        * fast/selectors/class-direct-adjacent-style-update-expected.txt:
+        * fast/selectors/first-child-direct-adjacent-style-update-expected.txt:
+        * fast/selectors/first-of-type-direct-adjacent-style-update-expected.txt: Copied from LayoutTests/fast/selectors/attribute-direct-adjacent-style-update-expected.txt.
+        * fast/selectors/first-of-type-direct-adjacent-style-update.html: Added.
+        * fast/selectors/first-of-type-sibling-style-update-expected.txt: Added.
+        * fast/selectors/first-of-type-sibling-style-update.html: Added.
+        * fast/selectors/id-direct-adjacent-style-update-expected.txt: Copied from LayoutTests/fast/selectors/attribute-direct-adjacent-style-update-expected.txt.
+        * fast/selectors/id-direct-adjacent-style-update.html: Added.
+        * fast/selectors/id-sibling-style-update-expected.txt: Added.
+        * fast/selectors/id-sibling-style-update.html: Added.
+        * fast/selectors/nth-child-as-first-simple-selector-style-update-expected.txt: Added.
+        * fast/selectors/nth-child-as-first-simple-selector-style-update.html: Added.
+        * fast/selectors/nth-child-direct-adjacent-style-update-expected.txt: Copied from LayoutTests/fast/selectors/attribute-direct-adjacent-style-update-expected.txt.
+        * fast/selectors/nth-child-direct-adjacent-style-update.html: Added.
+        * fast/selectors/nth-child-style-update-expected.txt: Added.
+        * fast/selectors/nth-child-style-update.html: Added.
+
+2014-09-03  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add a test case for Element.matches() with :scope
+        https://bugs.webkit.org/show_bug.cgi?id=136475
+
+        Reviewed by Andreas Kling.
+
+        There was not test for this use case. Looks like everything works fine.
+
+        * fast/selectors/matches-scope-expected.txt: Added.
+        * fast/selectors/matches-scope.html: Added.
+
+2014-09-03  David Hyatt  <hyatt@apple.com>
+
+        Add support for the initial-letter CSS property to first-letter
+        https://bugs.webkit.org/show_bug.cgi?id=136484
+
+        Reviewed by Dean Jackson.
+
+        * fast/css-generated-content/initial-letter-basic.html: Added.
+        * fast/css-generated-content/initial-letter-border-padding.html: Added.
+        * fast/css-generated-content/initial-letter-descender.html: Added.
+        * fast/css-generated-content/initial-letter-raised.html: Added.
+        * fast/css-generated-content/initial-letter-sunken.html: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-basic-expected.png: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-basic-expected.txt: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-border-padding-expected.png: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-border-padding-expected.txt: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-descender-expected.png: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-descender-expected.txt: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-raised-expected.png: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-raised-expected.txt: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-sunken-expected.png: Added.
+        * platform/mac/fast/css-generated-content/initial-letter-sunken-expected.txt: Added.
+
+2014-09-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening.
+
+        Remove abandoned results for tests that had been converted to reftest.
+        Also resolve warnings in TestExpectation file.
+
+        * platform/win/TestExpectations: 
+        * platform/win/ietestcenter/css3/flexbox: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-baseline-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-baseline-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-center-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-center-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-center-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-center-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-end-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-end-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-start-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-start-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-stretch-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-align-stretch-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-direction-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-direction-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-004-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-004-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-005-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-flex-005-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-004-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-groups-004-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-layout-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-layout-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-layout-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-layout-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-layout-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-layout-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-ordinal-group-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-center-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-center-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-end-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-end-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-justify-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-justify-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-start-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/flexbox/flexbox-pack-start-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid: Removed.
+        * platform/win/ietestcenter/css3/grid/display-grid-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/display-grid-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/display-grid-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/display-grid-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-column-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-column-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-column-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-column-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-column-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-column-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-columns-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-columns-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-004-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-004-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-005-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/grid/grid-items-005-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-block-formatting-context-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-block-formatting-context-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-containing-block-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-containing-block-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-containing-block-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-containing-block-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-containing-block-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-containing-block-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-filling-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-filling-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-002-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-002-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-004-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-004-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-005-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-005-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-006-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-006-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-007-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-007-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-008-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-008-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-009-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-009-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-010-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-010-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-012-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-012-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-013-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-013-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-014-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-014-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-015-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-applies-to-015-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-negative-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-negative-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-percentage-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/multicolumn/column-width-percentage-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/declaring-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/declaring-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/prefix-008-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/prefix-008-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/prefix-009-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/prefix-009-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/qualifiedNames-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/qualifiedNames-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/scope-003-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/scope-003-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-016-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-016-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-017-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-017-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-018-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-018-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-019-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-019-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-020-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-020-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-021-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-021-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-022-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-022-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-023-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/syntax-023-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/terminology-001-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/namespaces/terminology-001-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/valuesandunits: Removed.
+        * platform/win/ietestcenter/css3/valuesandunits/units-000-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/valuesandunits/units-010-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/valuesandunits/units-010-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/valuesandunits/units-020-expected-expected.txt: Removed.
+        * platform/win/ietestcenter/css3/valuesandunits/units-020-expected.txt: Removed.
+
+2014-09-03  Bear Travis  <betravis@adobe.com>
+
+        [CSS Font Loading] Enable Page Caching
+        https://bugs.webkit.org/show_bug.cgi?id=136044
+
+        Reviewed by Andreas Kling.
+
+        Adding test that loads a font then navigates away and back.
+        Test must also be disabled while feature is turned off.
+
+        * TestExpectations: Skip test.
+        * fast/css/fontloader-page-cache-expected.txt: Added.
+        * fast/css/fontloader-page-cache.html: Added.
+
 2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
 
         LegacyProfiler: remove redundant ProfileNode members and other cleanup

@@ -55,6 +55,7 @@
 #include "StyleBackgroundData.h"
 #include "StyleBoxData.h"
 #include "StyleDeprecatedFlexibleBoxData.h"
+#include "StyleFilterData.h"
 #include "StyleFlexibleBoxData.h"
 #include "StyleMarqueeData.h"
 #include "StyleMultiColData.h"
@@ -73,10 +74,6 @@
 #include <wtf/RefCounted.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
-
-#if ENABLE(CSS_FILTERS)
-#include "StyleFilterData.h"
-#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "StyleGridData.h"
@@ -107,10 +104,7 @@ template<typename T, typename U> inline bool compareEqual(const T& t, const U& u
 
 namespace WebCore {
 
-#if ENABLE(CSS_FILTERS)
 class FilterOperations;
-#endif
-
 class BorderData;
 class CounterContent;
 class CursorList;
@@ -568,10 +562,8 @@ public:
         return imageOutsets(maskBoxImage());
     }
 
-#if ENABLE(CSS_FILTERS)
     bool hasFilterOutsets() const { return hasFilter() && filter().hasOutsets(); }
     FilterOutsets filterOutsets() const { return hasFilter() ? filter().outsets() : FilterOutsets(); }
-#endif
 
     Order rtlOrdering() const { return static_cast<Order>(inherited_flags.m_rtlOrdering); }
     void setRTLOrdering(Order o) { inherited_flags.m_rtlOrdering = o; }
@@ -1082,6 +1074,10 @@ public:
 
     LineBoxContain lineBoxContain() const { return rareInheritedData->m_lineBoxContain; }
     const LineClampValue& lineClamp() const { return rareNonInheritedData->lineClamp; }
+    const IntSize& initialLetter() const { return rareNonInheritedData->m_initialLetter; }
+    int initialLetterDrop() const { return initialLetter().width(); }
+    int initialLetterHeight() const { return initialLetter().height(); }
+
 #if ENABLE(CSS_SCROLL_SNAP)
     ScrollSnapType scrollSnapType() const { return static_cast<ScrollSnapType>(rareNonInheritedData->m_scrollSnapType); }
     Vector<Length> scrollSnapOffsetsX() const { return rareNonInheritedData->m_scrollSnapPoints->offsetsX; }
@@ -1130,13 +1126,9 @@ public:
     
     ESpeak speak() const { return static_cast<ESpeak>(rareInheritedData->speak); }
 
-#if ENABLE(CSS_FILTERS)
     FilterOperations& mutableFilter() { return rareNonInheritedData.access()->m_filter.access()->m_operations; }
     const FilterOperations& filter() const { return rareNonInheritedData->m_filter->m_operations; }
     bool hasFilter() const { return !rareNonInheritedData->m_filter->m_operations.operations().isEmpty(); }
-#else
-    bool hasFilter() const { return false; }
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return static_cast<BlendMode>(rareNonInheritedData->m_effectiveBlendMode); }
@@ -1565,9 +1557,7 @@ public:
 
     void setRubyPosition(RubyPosition position) { SET_VAR(rareInheritedData, m_rubyPosition, position); }
 
-#if ENABLE(CSS_FILTERS)
     void setFilter(const FilterOperations& ops) { SET_VAR(rareNonInheritedData.access()->m_filter, m_operations, ops); }
-#endif
 
     void setTabSize(unsigned size) { SET_VAR(rareInheritedData, m_tabSize, size); }
 
@@ -1612,6 +1602,9 @@ public:
 
     void setLineBoxContain(LineBoxContain c) { SET_VAR(rareInheritedData, m_lineBoxContain, c); }
     void setLineClamp(LineClampValue c) { SET_VAR(rareNonInheritedData, lineClamp, c); }
+    
+    void setInitialLetter(const IntSize& size) { SET_VAR(rareNonInheritedData, m_initialLetter, size); }
+    
 #if ENABLE(CSS_SCROLL_SNAP)
     void setScrollSnapType(ScrollSnapType type) { SET_VAR(rareNonInheritedData, m_scrollSnapType, type); }
     void setScrollSnapOffsetsX(Vector<Length>& offsets) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, offsetsX, offsets); }
@@ -1982,6 +1975,7 @@ public:
     static RegionFragment initialRegionFragment() { return AutoRegionFragment; }
 
     // Keep these at the end.
+    static IntSize initialInitialLetter() { return IntSize(); }
     static LineClampValue initialLineClamp() { return LineClampValue(); }
     static ETextSecurity initialTextSecurity() { return TSNONE; }
 #if ENABLE(IOS_TEXT_AUTOSIZING)
@@ -2001,9 +1995,7 @@ public:
     static const Vector<StyleDashboardRegion>& initialDashboardRegions();
     static const Vector<StyleDashboardRegion>& noneDashboardRegions();
 #endif
-#if ENABLE(CSS_FILTERS)
     static const FilterOperations& initialFilter() { DEPRECATED_DEFINE_STATIC_LOCAL(FilterOperations, ops, ()); return ops; }
-#endif
 #if ENABLE(CSS_COMPOSITING)
     static BlendMode initialBlendMode() { return BlendModeNormal; }
     static Isolation initialIsolation() { return IsolationAuto; }

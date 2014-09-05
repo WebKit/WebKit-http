@@ -1,3 +1,251 @@
+2014-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Add some logging to help diagnose assertions in dumpWebViewAsPixelsAndCompareWithExpected() on bots
+        https://bugs.webkit.org/show_bug.cgi?id=136561
+
+        Reviewed by Tim Horton.
+        
+        Log for calloc() and CGBitmapContextCreate() failures.
+
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (createBitmapContext):
+        (createBitmapContextFromWebView):
+
+2014-09-04  Andy Estes  <aestes@apple.com>
+
+        Fix the Mac Production build after r173283.
+
+        * WebKitTestRunner/config.h: Reverted to defining WEBCORE_EXPORT for now.
+
+2014-09-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] webkitpy test suite frequently fails to complete
+        https://bugs.webkit.org/show_bug.cgi?id=136546
+
+        Reviewed by Daniel Bates.
+
+        Properly convert the ASCII crash log produced by ntsd into
+        a unicode string as early as possible so that we handle it
+        properly when generating our logs and other test support output.
+
+        We were mixing ASCII/unicode strings under Windows, which was
+        causing test system failures when we processed some crash logs.
+
+        Also do a better job of handling garbage pid entries in the
+        Cygwin lock files.
+
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs._find_newest_log_win): The ntsd '.logopen' command
+        creates an ASCII file. Decode it as ASCII, not 'utf-8', and
+        handle the strings as unicode from that point on.
+        * Scripts/webkitpy/port/http_lock.py:
+        (HttpLock._current_lock_pid): Add logging and handle case of
+        the current_pid failing to cleanly convert to 'int'.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort): Add 64-bit architecture as a known target for the
+        Windows build.
+
+2014-09-04  Andy Estes  <aestes@apple.com>
+
+        Address additional review feedback after landing r173283.
+
+        Reviewed by Daniel Bates.
+
+        * DumpRenderTree/config.h: Removed redundant includes.
+        * TestWebKitAPI/config.h: Ditto.
+        * WebKitTestRunner/config.h: Ditto.
+
+2014-09-03  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Some WebKitLegacy headers migrated from WebCore incorrectly contain WEBCORE_EXPORT
+        https://bugs.webkit.org/show_bug.cgi?id=136521
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/config.h: Included <WebCore/PlatformExportMacros.h> instead of defining WEBCORE_EXPORT.
+        * TestWebKitAPI/config.h: Ditto.
+        * WebKitTestRunner/config.h: Ditto.
+
+2014-09-04  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: Dashboard metrics page aggregation counts performance bots
+        https://bugs.webkit.org/show_bug.cgi?id=136539
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsMain.js:
+
+2014-09-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Perl test fix.
+
+        * Scripts/webkitperl/auto-version_unittest/versionStampTests.pl: Correct test to check for
+        VersionStamp.exe tool, not just the driver script.
+
+2014-09-04  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove CSS_FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136529
+
+        Reviewed by Dirk Schulze.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-09-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173201.
+        https://bugs.webkit.org/show_bug.cgi?id=136538
+
+        Improves the situation but also introduces additional crashes.
+        (Requested by zdobersek on #webkit).
+
+        Reverted changeset:
+
+        "GMainLoopSource is exposed to race conditions"
+        https://bugs.webkit.org/show_bug.cgi?id=135800
+        http://trac.webkit.org/changeset/173201
+
+2014-09-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Buildbot metrics page gives wrong results after a new bot gets added
+        https://bugs.webkit.org/show_bug.cgi?id=136516
+
+        Part 1: Fix red/green counters. Dashboard is considered green at a given time
+        if all the bots that ever had results before this time are green.
+
+        This doesn't (and cannot) address situations where the bot gets removed and then
+        re-added. It also gives wrong results after a bot gets removed, because it doesn't
+        know that it was ever displayed on the dashboard.
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._dashboardIsAllGreen):
+        (Analyzer.prototype._updateStretchOfRedCounters):
+        (Analyzer.prototype._countPercentageOfGreen):
+        (Analyzer.prototype._allQueuesAreSuccessful): Deleted.
+
+2014-09-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test fix.
+
+        * Scripts/webkitperl/auto-version_unittest/versionStampTests.pl: Don't fail
+        test if user doesn't have the VersionStamp.exe program.
+
+2014-09-03  Dana Burkart  <dburkart@apple.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-09-03  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard performance popover is unstyled
+        https://bugs.webkit.org/show_bug.cgi?id=136499
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/QueueView.css:
+        (.performance-popover):
+        (.performance-popover .dashboard-link):
+
+2014-09-03  Saam Barati  <saambarati1@gmail.com>
+
+        Create tests for type profiling
+        https://bugs.webkit.org/show_bug.cgi?id=136161
+
+        Reviewed by Geoffrey Garen.
+
+        Have run-javascriptcore-tests run the newly created
+        tests for the type profiler.
+
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/run-jsc-stress-tests:
+
+2014-09-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Revise test environment for Windows build.
+        https://bugs.webkit.org/show_bug.cgi?id=136486
+
+        Reviewed by David Kilzer.
+
+        The various calls to get the Safari path really only have
+        meaning on the Mac. Other ports get access to the build
+        and test environment separately, so remove the various
+        checks in the Safari-specific code to simplify things.
+
+        Remove some 64-bit hacks used on Windows now that the
+        various tools know how to find the 64-bit runtime environment.
+
+        * Scripts/run-javascriptcore-tests: 
+        * Scripts/webkitdirs.pm:
+        (safariPathFromSafariBundle): Revise to expect Mac.
+        (installedSafariPath): Ditto.
+        (safariPath): Ditto.
+        (appleApplicationSupportPath): Get rid of 64-bit Windows hack.
+        (setPathForRunningWebKitApp): Get rid of unused SafariPath
+        argument for Windows runs.
+
+2014-09-03  Dana Burkart  <dburkart@apple.com>
+
+        Dashboard should show performance bots.
+        https://bugs.webkit.org/show_bug.cgi?id=136386
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData.collectPerfTestResults):
+        (BuildbotIteration.prototype._parseData):
+        Support possible performance failures.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotPerformanceQueueView.js:
+        New QueueView to manage the way we present performance data.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue):
+        Support new 'performance' and 'performanceTestName' keys.
+
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        Add performance column to the main page.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (body):
+        Make sure everything fits on 13 inch screens.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/index.html:
+
+2014-09-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        GMainLoopSource is exposed to race conditions
+        https://bugs.webkit.org/show_bug.cgi?id=135800
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a unit test for GMainLoopSource that tests different
+        types of rescheduling tasks on already-active sources.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WTF/gobject/GMainLoopSource.cpp: Added.
+        (GMainLoopSourceTest::GMainLoopSourceTest):
+        (GMainLoopSourceTest::~GMainLoopSourceTest):
+        (GMainLoopSourceTest::runLoop):
+        (GMainLoopSourceTest::finish):
+        (GMainLoopSourceTest::source):
+        (testGMainLoopSourceBasicRescheduling):
+        (testGMainLoopSourceReentrantRescheduling):
+        (testGMainLoopSourceDifferentThreadRescheduling):
+        (beforeAll):
+        (afterAll):
+        (TestWebKitAPI::GMainLoopSourceTest::GMainLoopSourceTest):
+        (TestWebKitAPI::GMainLoopSourceTest::~GMainLoopSourceTest):
+        (TestWebKitAPI::GMainLoopSourceTest::runLoop):
+        (TestWebKitAPI::GMainLoopSourceTest::finish):
+        (TestWebKitAPI::GMainLoopSourceTest::source):
+        (TestWebKitAPI::TEST):
+
 2014-09-02  Simon Fraser  <simon.fraser@apple.com>
 
         Make sure WK1 prefs are initialized in MiniBrowser

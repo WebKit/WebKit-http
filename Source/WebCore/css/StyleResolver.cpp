@@ -66,6 +66,7 @@
 #include "DeprecatedStyleBuilder.h"
 #include "DocumentStyleSheetCollection.h"
 #include "ElementRuleCollector.h"
+#include "FilterOperation.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
@@ -128,6 +129,7 @@
 #include "UserAgentStyleSheets.h"
 #include "ViewportStyleResolver.h"
 #include "VisitedLinkState.h"
+#include "WebKitCSSFilterValue.h"
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
@@ -137,11 +139,6 @@
 #include <bitset>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
-
-#if ENABLE(CSS_FILTERS)
-#include "FilterOperation.h"
-#include "WebKitCSSFilterValue.h"
-#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSGridLineNamesValue.h"
@@ -236,9 +233,7 @@ inline void StyleResolver::State::clear()
     m_parentStyle = nullptr;
     m_regionForStyling = nullptr;
     m_pendingImageProperties.clear();
-#if ENABLE(CSS_FILTERS)
     m_filtersWithPendingSVGDocuments.clear();
-#endif
     m_cssToLengthConversionData = CSSToLengthConversionData();
 }
 
@@ -623,6 +618,8 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     if (!sharingCandidateHasIdenticalStyleAffectingAttributes(element))
         return false;
     if (element->additionalPresentationAttributeStyle() != state.styledElement()->additionalPresentationAttributeStyle())
+        return false;
+    if (element->affectsNextSiblingElementStyle() || element->styleIsAffectedByPreviousSibling())
         return false;
 
     if (element->hasID() && m_ruleSets.features().idsInRules.contains(element->idForStyleResolution().impl()))
@@ -2668,7 +2665,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         return;
     }
 
-#if ENABLE(CSS_FILTERS)
     case CSSPropertyWebkitFilter: {
         HANDLE_INHERIT_AND_INITIAL(filter, Filter);
         FilterOperations operations;
@@ -2676,7 +2672,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             state.style()->setFilter(operations);
         return;
     }
-#endif
+
 #if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridAutoColumns: {
         HANDLE_INHERIT_AND_INITIAL(gridAutoColumns, GridAutoColumns);
@@ -2944,6 +2940,25 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         state.style()->setScrollSnapCoordinates(coordinates);
         return;
     }
+    case CSSPropertyWebkitInitialLetter: {
+        HANDLE_INHERIT_AND_INITIAL(initialLetter, InitialLetter)
+        if (!value->isPrimitiveValue())
+            return;
+        
+        if (primitiveValue->getValueID() == CSSValueNormal) {
+            state.style()->setInitialLetter(IntSize());
+            return;
+        }
+            
+        CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
+        Pair* pair = primitiveValue->getPairValue();
+        if (!pair || !pair->first() || !pair->second())
+            return;
+
+        state.style()->setInitialLetter(IntSize(pair->first()->getIntValue(), pair->second()->getIntValue()));
+        return;
+    }
+    
 #endif
     // These properties are aliased and DeprecatedStyleBuilder already applied the property on the prefixed version.
     case CSSPropertyTransitionDelay:
@@ -3253,12 +3268,11 @@ PassRefPtr<StyleImage> StyleResolver::cachedOrPendingFromValue(CSSPropertyID pro
 
 PassRefPtr<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID property, CSSImageGeneratorValue& value)
 {
-#if ENABLE(CSS_FILTERS)
     if (value.isFilterImageValue()) {
         // FilterImage needs to calculate FilterOperations.
         toCSSFilterImageValue(value).createFilterOperations(this);
     }
-#endif
+
     if (value.isPending()) {
         m_state.pendingImageProperties().set(property, &value);
         return StylePendingImage::create(&value);
@@ -3464,7 +3478,6 @@ bool StyleResolver::hasMediaQueriesAffectedByViewportChange() const
     return false;
 }
 
-#if ENABLE(CSS_FILTERS)
 static FilterOperation::OperationType filterOperationForType(WebKitCSSFilterValue::FilterOperationType type)
 {
     switch (type) {
@@ -3654,8 +3667,6 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, FilterOperations& 
     return true;
 }
 
-#endif
-
 PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage, const ResourceLoaderOptions& options)
 {
     if (auto imageValue = pendingImage.cssImageValue())
@@ -3816,10 +3827,8 @@ void StyleResolver::loadPendingResources()
     // Start loading images referenced by this style.
     loadPendingImages();
 
-#if ENABLE(CSS_FILTERS)
     // Start loading the SVG Documents referenced by this style.
     loadPendingSVGDocuments();
-#endif
 
 #ifndef NDEBUG
     inLoadPendingResources = false;

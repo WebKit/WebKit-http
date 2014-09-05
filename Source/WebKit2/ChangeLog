@@ -1,3 +1,220 @@
+2014-09-04  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, speculative build fix on GTK port since r173305.
+
+        * UIProcess/API/gtk/WebKitURISchemeRequest.cpp:
+        (webkitURISchemeRequestReadCallback):
+
+2014-09-03  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Some WebKitLegacy headers migrated from WebCore incorrectly contain WEBCORE_EXPORT
+        https://bugs.webkit.org/show_bug.cgi?id=136521
+
+        Reviewed by Anders Carlsson.
+
+        * config.h: Included <WebCore/PlatformExportMacros.h> instead of defining WEBCORE_EXPORT.
+
+2014-09-04  Maciej Stachowiak  <mjs@apple.com>
+
+        Remove WebCoreSystemInterface glue for otherwise unused WKSI calls
+        https://bugs.webkit.org/show_bug.cgi?id=136527
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2014-09-04  Antti Koivisto  <antti@apple.com>
+
+        Remove ResourceResponse::m_suggestedFilename
+        https://bugs.webkit.org/show_bug.cgi?id=136534
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceResponse>::encode):
+        (IPC::ArgumentCoder<ResourceResponse>::decode):
+
+            No more m_suggestedFilename.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::addArchiveResource):
+
+            Fake the suggested filename by using the Content-Disposition header.
+
+2014-09-04  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove CSS_FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136529
+
+        Reviewed by Dirk Schulze.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (IPC::ArgumentCoder<WebCore::FilterOperations>::decode):
+        (IPC::ArgumentCoder<GraphicsLayerAnimation>::encode):
+        (IPC::ArgumentCoder<GraphicsLayerAnimation>::decode):
+        (IPC::ArgumentCoder<CoordinatedGraphicsLayerState>::encode):
+        (IPC::ArgumentCoder<CoordinatedGraphicsLayerState>::decode):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.h:
+        * Shared/WebCoreArgumentCoders.cpp:
+        * Shared/WebCoreArgumentCoders.h:
+        * WebProcess/WebPage/mac/GraphicsLayerCARemote.cpp:
+        (WebKit::GraphicsLayerCARemote::filtersCanBeComposited):
+        * WebProcess/WebPage/mac/GraphicsLayerCARemote.h:
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.h:
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (WebKit::PlatformCAAnimationRemote::setFromValue):
+        (WebKit::PlatformCAAnimationRemote::setToValue):
+        (WebKit::PlatformCAAnimationRemote::setValues):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::updateClonedLayerProperties):
+        (WebKit::PlatformCALayerRemote::filtersCanBeComposited):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+
+2014-09-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173245.
+        https://bugs.webkit.org/show_bug.cgi?id=136533
+
+        Broke JSC tests. (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "JavaScriptCore should build with newer clang"
+        https://bugs.webkit.org/show_bug.cgi?id=136002
+        http://trac.webkit.org/changeset/173245
+
+2014-09-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Initialize m_usesNetworkProcess earlier in WebProcess::initializeWebProcess()
+        https://bugs.webkit.org/show_bug.cgi?id=136478
+
+        Reviewed by Alexey Proskuryakov.
+
+        The soup network backend uses WebProcess::usesNetworkProcess()
+        from WebProcess::platformSetCacheModel() and
+        WebProcess::platformInitializeWebProcess(), both called before the
+        m_usesNetworkProcess member has been initialized.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess): Move the
+        m_usesNetworkProcess initialization at the beginning right before
+        calling platformInitializeWebProcess().
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformSetCacheModel): Remove the early
+        return when using the network process, since this was dead code
+        before this change, and not really needed now that
+        usesNetworkProcess() will return true.
+        (WebKit::WebProcess::platformInitializeWebProcess): Remove comment
+        that is not accurate since r171156.
+
+2014-09-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] Race condition when downloading a file due to the intermediate temporary file
+        https://bugs.webkit.org/show_bug.cgi?id=136423
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/Downloads/soup/DownloadSoup.cpp:
+        (WebKit::DownloadClient::DownloadClient): Replace m_destinationURI with
+        m_destinationFile and add m_createdDestination.
+        (WebKit::DownloadClient::deleteFilesIfNeeded): Added.
+        (WebKit::DownloadClient::downloadFailed): Call deleteFilesIfNeeded.
+        (WebKit::DownloadClient::didReceiveResponse): Attempt to create the
+        destination file before the intermediate file. Fail here if the file
+        exists and overwrite is not allowed, so we don't erroneously fire the
+        didCreateDestination event or waste time downloading the file when we
+        know the download will fail.
+        (WebKit::DownloadClient::didFinishLoading): Unconditionally overwrite
+        the empty destination file.
+        (WebKit::DownloadClient::cancel): Call deleteFilesIfNeeded.
+        (WebKit::DownloadClient::deleteIntermediateFileInNeeded): Deleted.
+
+2014-09-03  David Kilzer  <ddkilzer@apple.com>
+
+        JavaScriptCore should build with newer clang
+        <http://webkit.org/b/136002>
+        <rdar://problem/18020616>
+
+        Reviewed by Geoffrey Garen.
+
+        * Shared/API/c/WKString.cpp:
+        (WKStringCreateWithJSString): Add NULL check to prevent
+        WebKitTestRunner crashes that relied on the previous |this|
+        behavior where NULL values were allowed.
+
+2014-09-03  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 1).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/WebEditCommandProxy.cpp:
+        (WebKit::WebEditCommandProxy::nameForEditAction):
+
+2014-09-03  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=136395
+        Need a way to get userAgent from WKWebView.
+
+        Add _userAgent property to return user agent string from WKWebView.
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _userAgent]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2014-09-02  Maciej Stachowiak  <mjs@apple.com>
+
+        Clean up naming for and slightly refactor legacy video fullscreen support
+        https://bugs.webkit.org/show_bug.cgi?id=136446
+
+        Reviewed by Jer Noble.
+
+        Key changes:
+        supportsFullscreenForNode(Node*) --> supportsVideoFullscreen()
+        enterFullscreenForNode(Node*) --> enterVideoFullscreenForVideoElement(HTMLVideoElement*)
+        exitFullscreenForNode(Node*) --> exitVideoFullscreen()
+        
+        The old versions had unnecessary parameters, did not clearly distinguish their purpose
+        from enterFullscreenForElement and friends, and wrongly claimed generality to all Nodes.
+        Also changed many other places to use HTMLVideoElement* instead of Node* or 
+        HTMLMediaElement* when they were in fact only used for video elements and would only
+        work for such.
+
+        Legacy video fullscreen in WebKit2 is only supported on iOS (for other ports that support
+        it, it's WK1 only).
+        
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::supportsVideoFullscreen): Adjust for renames as
+        mentioned.
+        (WebKit::WebChromeClient::enterVideoFullscreenForVideoElement): ditto
+        (WebKit::WebChromeClient::exitVideoFullscreen): ditto
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/ios/WebVideoFullscreenManager.h:
+        * WebProcess/ios/WebVideoFullscreenManager.mm:
+        (WebKit::clientRectForElement): No need to be generic to node.
+        (WebKit::WebVideoFullscreenManager::supportsVideoFullscreen): Adjust for the
+        main refactoring. Also change m_node to m_videoElement with appropriate type change.
+        (WebKit::WebVideoFullscreenManager::enterVideoFullscreenForVideoElement): ditto
+        (WebKit::WebVideoFullscreenManager::exitVideoFullscreen): ditto
+        (WebKit::WebVideoFullscreenManager::didEnterFullscreen): ditto 
+        (WebKit::WebVideoFullscreenManager::didExitFullscreen): ditto
+        (WebKit::WebVideoFullscreenManager::didCleanupFullscreen): ditto
+
+2014-09-03  Dan Bernstein  <mitz@apple.com>
+
+        Get rid of HIGH_DPI_CANVAS leftovers
+        https://bugs.webkit.org/show_bug.cgi?id=136491
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig: Removed definition of ENABLE_HIGH_DPI_CANVAS
+        and removed it from FEATURE_DEFINES.
+
 2014-09-02  Yongjun Zhang  <yongjun_zhang@apple.com>
 
         Pass the resource identifier in willSendRequest callback.

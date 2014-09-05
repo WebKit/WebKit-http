@@ -52,6 +52,9 @@
 #include "DocumentEventQueue.h"
 #include "Element.h"
 #include "EventHandler.h"
+#include "FEColorMatrix.h"
+#include "FEMerge.h"
+#include "FilterEffectRenderer.h"
 #include "FloatConversion.h"
 #include "FloatPoint3D.h"
 #include "FloatRect.h"
@@ -83,6 +86,7 @@
 #include "RenderIterator.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLayerFilterInfo.h"
 #include "RenderMarquee.h"
 #include "RenderMultiColumnFlowThread.h"
 #include "RenderNamedFlowFragment.h"
@@ -94,6 +98,7 @@
 #include "RenderScrollbarPart.h"
 #include "RenderTableCell.h"
 #include "RenderTableRow.h"
+#include "RenderText.h"
 #include "RenderTheme.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
@@ -114,13 +119,6 @@
 #include <stdio.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
-
-#if ENABLE(CSS_FILTERS)
-#include "FEColorMatrix.h"
-#include "FEMerge.h"
-#include "FilterEffectRenderer.h"
-#include "RenderLayerFilterInfo.h"
-#endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
 #include "AxisScrollSnapOffsets.h"
@@ -176,7 +174,11 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     , m_viewportConstrainedNotCompositedReason(NoNotCompositedReason)
 #if PLATFORM(IOS)
     , m_adjustForIOSCaretWhenScrolling(false)
+#endif
+#if PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
     , m_registeredAsTouchEventListenerForScrolling(false)
+#endif
     , m_inUserScroll(false)
     , m_requiresScrollBoundsOriginUpdate(false)
 #endif
@@ -185,9 +187,7 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
 #if !ASSERT_DISABLED
     , m_layerListMutationAllowed(true)
 #endif
-#if ENABLE(CSS_FILTERS)
     , m_hasFilterInfo(false)
-#endif
 #if ENABLE(CSS_COMPOSITING)
     , m_blendMode(BlendModeNormal)
     , m_hasNotIsolatedCompositedBlendingDescendants(false)
@@ -235,7 +235,7 @@ RenderLayer::~RenderLayer()
     renderer().view().frameView().removeScrollableArea(this);
 
     if (!renderer().documentBeingDestroyed()) {
-#if PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
         unregisterAsTouchEventListenerForScrolling();
 #endif
         if (Element* element = renderer().element())
@@ -252,10 +252,8 @@ RenderLayer::~RenderLayer()
 
     if (m_reflection)
         removeReflection();
-    
-#if ENABLE(CSS_FILTERS)
+
     FilterInfo::remove(*this);
-#endif
 
     // Child layers will be deleted by their corresponding render objects, so
     // we don't need to delete them ourselves.
@@ -314,8 +312,6 @@ bool RenderLayer::canRender3DTransforms() const
     return compositor().canRender3DTransforms();
 }
 
-#if ENABLE(CSS_FILTERS)
-
 bool RenderLayer::paintsWithFilters() const
 {
     // FIXME: Eventually there will be cases where we paint with filters even without accelerated compositing,
@@ -346,8 +342,6 @@ FilterEffectRenderer* RenderLayer::filterRenderer() const
     FilterInfo* filterInfo = FilterInfo::getIfExists(*this);
     return filterInfo ? filterInfo->renderer() : 0;
 }
-
-#endif
 
 void RenderLayer::updateLayerPositionsAfterLayout(const RenderLayer* rootLayer, UpdateLayerPositionsFlags flags)
 {
@@ -1452,8 +1446,6 @@ RenderLayer* RenderLayer::enclosingCompositingLayerForRepaint(IncludeSelfOrNot i
     return 0;
 }
 
-#if ENABLE(CSS_FILTERS)
-
 RenderLayer* RenderLayer::enclosingFilterLayer(IncludeSelfOrNot includeSelf) const
 {
     const RenderLayer* curr = (includeSelf == IncludeSelf) ? this : parent();
@@ -1521,8 +1513,6 @@ bool RenderLayer::hasAncestorWithFilterOutsets() const
     }
     return false;
 }
-
-#endif
 
 RenderLayer* RenderLayer::clippingRootForPainting() const
 {
@@ -1655,9 +1645,7 @@ static LayoutRect transparencyClipBox(const RenderLayer& layer, const RenderLaye
         // paints unfragmented.
         LayoutRect clipRect = layer.boundingBox(&layer);
         expandClipRectForDescendantsAndReflection(clipRect, layer, &layer, transparencyBehavior, paintBehavior);
-#if ENABLE(CSS_FILTERS)
         layer.renderer().style().filterOutsets().expandRect(clipRect);
-#endif
         LayoutRect result = transform.mapRect(clipRect);
         if (!paginationLayer)
             return result;
@@ -1673,9 +1661,8 @@ static LayoutRect transparencyClipBox(const RenderLayer& layer, const RenderLaye
     
     LayoutRect clipRect = layer.boundingBox(rootLayer, layer.offsetFromAncestor(rootLayer), transparencyBehavior == HitTestingTransparencyClipBox ? RenderLayer::UseFragmentBoxesIncludingCompositing : RenderLayer::UseFragmentBoxesExcludingCompositing);
     expandClipRectForDescendantsAndReflection(clipRect, layer, rootLayer, transparencyBehavior, paintBehavior);
-#if ENABLE(CSS_FILTERS)
     layer.renderer().style().filterOutsets().expandRect(clipRect);
-#endif
+
     return clipRect;
 }
 
@@ -2065,7 +2052,9 @@ bool RenderLayer::handleTouchEvent(const PlatformTouchEvent& touchEvent)
     return ScrollableArea::handleTouchEvent(touchEvent);
 }
 #endif
+#endif // PLATFORM(IOS)
 
+#if ENABLE(IOS_TOUCH_EVENTS)
 void RenderLayer::registerAsTouchEventListenerForScrolling()
 {
     if (!renderer().element() || m_registeredAsTouchEventListenerForScrolling)
@@ -2083,7 +2072,7 @@ void RenderLayer::unregisterAsTouchEventListenerForScrolling()
     renderer().document().removeTouchEventListener(renderer().element());
     m_registeredAsTouchEventListenerForScrolling = false;
 }
-#endif // PLATFORM(IOS)
+#endif // ENABLE(IOS_TOUCH_EVENTS)
 
 bool RenderLayer::usesCompositedScrolling() const
 {
@@ -3003,7 +2992,8 @@ void RenderLayer::setHasHorizontalScrollbar(bool hasScrollbar)
     if (hasScrollbar) {
         m_hBar = createScrollbar(HorizontalScrollbar);
 #if ENABLE(RUBBER_BANDING)
-        ScrollableArea::setHorizontalScrollElasticity(renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone);
+        ScrollElasticity elasticity = scrollsOverflow() && renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone;
+        ScrollableArea::setHorizontalScrollElasticity(elasticity);
 #endif
     } else {
         destroyScrollbar(HorizontalScrollbar);
@@ -3033,7 +3023,8 @@ void RenderLayer::setHasVerticalScrollbar(bool hasScrollbar)
     if (hasScrollbar) {
         m_vBar = createScrollbar(VerticalScrollbar);
 #if ENABLE(RUBBER_BANDING)
-        ScrollableArea::setVerticalScrollElasticity((renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone));
+        ScrollElasticity elasticity = scrollsOverflow() && renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone;
+        ScrollableArea::setVerticalScrollElasticity(elasticity);
 #endif
     } else {
         destroyScrollbar(VerticalScrollbar);
@@ -3945,8 +3936,6 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
     return false;
 }
 
-#if ENABLE(CSS_FILTERS)
-
 std::unique_ptr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsContext* context, LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
 {
     if (context->paintingDisabled())
@@ -4003,8 +3992,6 @@ GraphicsContext* RenderLayer::applyFilters(FilterEffectRendererHelper* filterPai
     restoreClip(originalContext, paintingInfo.paintDirtyRect, backgroundRect);
     return originalContext;
 }
-
-#endif
 
 // Helper for the sorting of layers by z-index.
 static inline bool compareZIndex(RenderLayer* first, RenderLayer* second)
@@ -4089,7 +4076,6 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     LayerPaintingInfo localPaintingInfo(paintingInfo);
 
     GraphicsContext* transparencyLayerContext = context;
-#if ENABLE(CSS_FILTERS)
     std::unique_ptr<FilterEffectRendererHelper> filterPainter = setupFilters(context, localPaintingInfo, paintFlags, offsetFromRoot, rootRelativeBounds, rootRelativeBoundsComputed);
     if (filterPainter) {
         context = filterPainter->filterContext();
@@ -4098,7 +4084,6 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
             beginTransparencyLayers(transparencyLayerContext, localPaintingInfo, paintingInfo.paintDirtyRect);
         }
     }
-#endif
 
     // If this layer's renderer is a child of the subtreePaintRoot, we render unconditionally, which
     // is done by passing a nil subtreePaintRoot down to our renderer (as if no subtreePaintRoot was ever set).
@@ -4174,12 +4159,10 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     if (isPaintingOverlayScrollbars)
         paintOverflowControlsForFragments(layerFragments, context, localPaintingInfo);
 
-#if ENABLE(CSS_FILTERS)
     if (filterPainter) {
         context = applyFilters(filterPainter.get(), transparencyLayerContext, localPaintingInfo, layerFragments);
         filterPainter = nullptr;
     }
-#endif
     
     // Make sure that we now use the original transparency context.
     ASSERT(transparencyLayerContext == context);
@@ -5795,14 +5778,12 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
             }
         }
     }
-    
-#if ENABLE(CSS_FILTERS)
+
     // FIXME: We can optimize the size of the composited layers, by not enlarging
     // filtered areas with the outsets if we know that the filter is going to render in hardware.
     // https://bugs.webkit.org/show_bug.cgi?id=81239
     if (flags & IncludeLayerFilterOutsets)
         renderer().style().filterOutsets().expandRect(unionBounds);
-#endif
 
     if ((flags & IncludeSelfTransform) && paintsWithTransform(PaintBehaviorNormal)) {
         TransformationMatrix* affineTrans = transform();
@@ -5843,9 +5824,7 @@ RenderLayerBacking* RenderLayer::ensureBacking()
         m_backing = std::make_unique<RenderLayerBacking>(*this);
         compositor().layerBecameComposited(*this);
 
-#if ENABLE(CSS_FILTERS)
         updateOrRemoveFilterEffectRenderer();
-#endif
     }
     return m_backing.get();
 }
@@ -5856,12 +5835,8 @@ void RenderLayer::clearBacking(bool layerBeingDestroyed)
         compositor().layerBecameNonComposited(*this);
     m_backing = nullptr;
 
-#if ENABLE(CSS_FILTERS)
     if (!layerBeingDestroyed)
         updateOrRemoveFilterEffectRenderer();
-#else
-    UNUSED_PARAM(layerBeingDestroyed);
-#endif
 }
 
 bool RenderLayer::hasCompositedMask() const
@@ -5908,10 +5883,8 @@ bool RenderLayer::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect)
     if (renderer().style().visibility() != VISIBLE)
         return false;
 
-#if ENABLE(CSS_FILTERS)
     if (paintsWithFilters() && renderer().style().filter().hasFilterThatAffectsOpacity())
         return false;
-#endif
 
     // FIXME: Handle simple transforms.
     if (paintsWithTransform(PaintBehaviorNormal))
@@ -6230,9 +6203,7 @@ bool RenderLayer::shouldBeNormalFlowOnly() const
         && !renderer().isPositioned()
         && !renderer().hasTransform()
         && !renderer().hasClipPath()
-#if ENABLE(CSS_FILTERS)
         && !renderer().hasFilter()
-#endif
 #if PLATFORM(IOS)
         && !hasAcceleratedTouchScrolling()
 #endif
@@ -6275,33 +6246,60 @@ void RenderLayer::updateSelfPaintingLayer()
         parent()->dirtyAncestorChainHasSelfPaintingLayerDescendantStatus();
 }
 
-bool RenderLayer::hasNonEmptyChildRenderers() const
+static bool hasBoxDecorationsOrBackground(const RenderElement& renderer)
 {
-    // Some HTML can cause whitespace text nodes to have renderers, like:
-    // <div>
-    // <img src=...>
-    // </div>
-    // so test for 0x0 RenderTexts here
-    for (RenderObject* child = renderer().firstChild(); child; child = child->nextSibling()) {
-        if (!child->hasLayer()) {
-            if (child->isRenderInline() || !child->isBox())
-                return true;
+    return renderer.hasBoxDecorations() || renderer.style().hasOutline();
+}
+
+// Constrain the depth and breadth of the search for performance.
+static const int maxDescendentDepth = 3;
+static const int maxSiblingCount = 20;
+
+static bool hasPaintingNonLayerDescendants(const RenderElement& renderer, int depth)
+{
+    if (depth > maxDescendentDepth)
+        return true;
+    
+    int siblingCount = 0;
+    for (const auto& child : childrenOfType<RenderObject>(renderer)) {
+        if (++siblingCount > maxSiblingCount)
+            return true;
         
-            if (toRenderBox(child)->width() > 0 || toRenderBox(child)->height() > 0)
+        if (child.isText()) {
+            bool isSelectable = renderer.style().userSelect() != SELECT_NONE;
+            if (isSelectable || !toRenderText(child).isAllCollapsibleWhitespace())
                 return true;
         }
+        
+        if (!child.isRenderElement())
+            continue;
+        
+        const RenderElement& renderElementChild = toRenderElement(child);
+
+        if (renderElementChild.isRenderLayerModelObject() && toRenderLayerModelObject(renderElementChild).hasSelfPaintingLayer())
+            continue;
+
+        if (hasBoxDecorationsOrBackground(renderElementChild))
+            return true;
+        
+        if (renderElementChild.isRenderReplaced())
+            return true;
+
+        if (hasPaintingNonLayerDescendants(renderElementChild, depth + 1))
+            return true;
     }
+
     return false;
 }
 
-static bool hasBoxDecorations(const RenderStyle& style)
+bool RenderLayer::hasNonEmptyChildRenderers() const
 {
-    return style.hasBorder() || style.hasBorderRadius() || style.hasOutline() || style.hasAppearance() || style.boxShadow() || style.hasFilter();
+    return hasPaintingNonLayerDescendants(renderer(), 0);
 }
 
 bool RenderLayer::hasBoxDecorationsOrBackground() const
 {
-    return hasBoxDecorations(renderer().style()) || renderer().hasBackground();
+    return WebCore::hasBoxDecorationsOrBackground(renderer());
 }
 
 bool RenderLayer::hasVisibleBoxDecorations() const
@@ -6319,13 +6317,13 @@ bool RenderLayer::isVisuallyNonEmpty() const
     if (!hasVisibleContent())
         return false;
 
+    if (renderer().isRenderReplaced() || hasOverflowControls())
+        return true;
+
+    if (hasBoxDecorationsOrBackground())
+        return true;
+    
     if (hasNonEmptyChildRenderers())
-        return true;
-
-    if (renderer().isReplaced())
-        return true;
-
-    if (hasVisibleBoxDecorations())
         return true;
 
     return false;
@@ -6396,8 +6394,8 @@ void RenderLayer::updateScrollbarsAfterStyleChange(const RenderStyle* oldStyle)
     EOverflow overflowY = box->style().overflowY();
 
     // To avoid doing a relayout in updateScrollbarsAfterLayout, we try to keep any automatic scrollbar that was already present.
-    bool needsHorizontalScrollbar = (hasHorizontalScrollbar() && overflowDefinesAutomaticScrollbar(overflowX)) || overflowRequiresScrollbar(overflowX);
-    bool needsVerticalScrollbar = (hasVerticalScrollbar() && overflowDefinesAutomaticScrollbar(overflowY)) || overflowRequiresScrollbar(overflowY);
+    bool needsHorizontalScrollbar = box->hasOverflowClip() && ((hasHorizontalScrollbar() && overflowDefinesAutomaticScrollbar(overflowX)) || overflowRequiresScrollbar(overflowX));
+    bool needsVerticalScrollbar = box->hasOverflowClip() && ((hasVerticalScrollbar() && overflowDefinesAutomaticScrollbar(overflowY)) || overflowRequiresScrollbar(overflowY));
     setHasHorizontalScrollbar(needsHorizontalScrollbar);
     setHasVerticalScrollbar(needsVerticalScrollbar);
 
@@ -6511,9 +6509,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
 #if ENABLE(CSS_COMPOSITING)
     updateBlendMode();
 #endif
-#if ENABLE(CSS_FILTERS)
     updateOrRemoveFilterClients();
-#endif
 
     updateNeedsCompositedScrolling();
 
@@ -6547,7 +6543,6 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     UNUSED_PARAM(diff);
 #endif
 
-#if ENABLE(CSS_FILTERS)
     updateOrRemoveFilterEffectRenderer();
     bool backingDidCompositeLayers = isComposited() && backing()->canCompositeFilters();
     if (isComposited() && backingDidCompositeLayers && !backing()->canCompositeFilters()) {
@@ -6555,7 +6550,6 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
         // Fallback to drawing them in software.
         setBackingNeedsRepaint();
     }
-#endif
 }
 
 void RenderLayer::updateScrollableAreaSet(bool hasOverflow)
@@ -6576,7 +6570,7 @@ void RenderLayer::updateScrollableAreaSet(bool hasOverflow)
     if (addedOrRemoved)
         updateNeedsCompositedScrolling();
 
-#if PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
     if (addedOrRemoved) {
         if (isScrollable && !hasAcceleratedTouchScrolling())
             registerAsTouchEventListenerForScrolling();
@@ -6684,8 +6678,6 @@ PassRef<RenderStyle> RenderLayer::createReflectionStyle()
     return newStyle;
 }
 
-#if ENABLE(CSS_FILTERS)
-
 void RenderLayer::updateOrRemoveFilterClients()
 {
     if (!hasFilter()) {
@@ -6745,8 +6737,6 @@ void RenderLayer::filterNeedsRepaint()
         element->setNeedsStyleRecalc(SyntheticStyleChange);
     renderer().repaint();
 }
-
-#endif
 
 void RenderLayer::paintNamedFlowThreadInsideRegion(GraphicsContext* context, RenderNamedFlowFragment* region, LayoutRect paintDirtyRect, LayoutPoint paintOffset, PaintBehavior paintBehavior, PaintLayerFlags paintFlags)
 {

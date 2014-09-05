@@ -699,7 +699,6 @@ void ArgumentCoder<ResourceResponse>::encode(ArgumentEncoder& encoder, const Res
         encoder << resourceResponse.textEncodingName();
         encoder << static_cast<int64_t>(resourceResponse.expectedContentLength());
         encoder << resourceResponse.httpStatusText();
-        encoder << resourceResponse.suggestedFilename();
     }
     
 #if ENABLE(WEB_TIMING)
@@ -773,11 +772,6 @@ bool ArgumentCoder<ResourceResponse>::decode(ArgumentDecoder& decoder, ResourceR
         if (!decoder.decode(httpStatusText))
             return false;
         response.setHTTPStatusText(httpStatusText);
-
-        String suggestedFilename;
-        if (!decoder.decode(suggestedFilename))
-            return false;
-        response.setSuggestedFilename(suggestedFilename);
     }
     
 #if ENABLE(WEB_TIMING)
@@ -1576,7 +1570,7 @@ bool ArgumentCoder<StickyPositionViewportConstraints>::decode(ArgumentDecoder& d
     return true;
 }
 
-#if ENABLE(CSS_FILTERS) && !USE(COORDINATED_GRAPHICS)
+#if !USE(COORDINATED_GRAPHICS)
 void ArgumentCoder<FilterOperation>::encode(ArgumentEncoder& encoder, const FilterOperation& filter)
 {
     encoder.encodeEnum(filter.type());
@@ -1707,7 +1701,7 @@ bool ArgumentCoder<FilterOperations>::decode(ArgumentDecoder& decoder, FilterOpe
 
     return true;
 }
-#endif // ENABLE(CSS_FILTERS) && !USE(COORDINATED_GRAPHICS)
+#endif // !USE(COORDINATED_GRAPHICS)
 
 #if ENABLE(INDEXED_DATABASE)
 void ArgumentCoder<IDBDatabaseMetadata>::encode(ArgumentEncoder& encoder, const IDBDatabaseMetadata& metadata)

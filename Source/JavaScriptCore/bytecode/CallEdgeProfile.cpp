@@ -95,17 +95,23 @@ bool CallEdgeProfile::worthDespecifying()
     if (m_closuresAreDespecified)
         return false;
     
-    if (!!m_primaryCallee && !JSC::worthDespecifying(m_primaryCallee))
-        return false;
+    bool didSeeEntry = false;
+    
+    if (!!m_primaryCallee) {
+        didSeeEntry = true;
+        if (!JSC::worthDespecifying(m_primaryCallee))
+            return false;
+    }
     
     if (m_otherCallees) {
         for (unsigned i = m_otherCallees->m_processed.size(); i--;) {
+            didSeeEntry = true;
             if (!JSC::worthDespecifying(m_otherCallees->m_processed[i].callee()))
                 return false;
         }
     }
     
-    return true;
+    return didSeeEntry;
 }
 
 void CallEdgeProfile::visitWeak()
@@ -131,15 +137,21 @@ void CallEdgeProfile::visitWeak()
         }
         
         Vector<CallSpectrum::KeyAndCount> list = newSpectrum.buildList();
-        ASSERT(list.size());
+        RELEASE_ASSERT(list.size());
         m_primaryCallee = list.last().key;
         m_numCallsToPrimary = list.last().count;
         
-        ASSERT(!!m_otherCallees == (list.size() >= 2));
         if (m_otherCallees) {
             m_otherCallees->m_processed.clear();
-            for (unsigned i = list.size() - 1; i--;)
-                m_otherCallees->m_processed.append(CallEdge(list[i].key, list[i].count));
+
+            // We could have a situation where the GC clears the primary and then log processing
+            // reinstates it without ever doing an addSlow and subsequent mergeBack. In such a case
+            // the primary could duplicate an entry in otherCallees, which means that even though we
+            // had an otherCallees object, the list size is just 1.
+            if (list.size() >= 2) {
+                for (unsigned i = list.size() - 1; i--;)
+                    m_otherCallees->m_processed.append(CallEdge(list[i].key, list[i].count));
+            }
         }
         
         m_closuresAreDespecified = true;
@@ -201,8 +213,8 @@ void CallEdgeProfile::mergeBack()
 {
     ConcurrentJITLocker locker(m_lock);
     
-    ASSERT(m_otherCallees);
-    ASSERT(m_otherCallees->m_temporarySpectrum);
+    RELEASE_ASSERT(m_otherCallees);
+    RELEASE_ASSERT(m_otherCallees->m_temporarySpectrum);
     
     if (!!m_primaryCallee)
         m_otherCallees->m_temporarySpectrum->add(m_primaryCallee, m_numCallsToPrimary);
