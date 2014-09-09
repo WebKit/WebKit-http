@@ -21,6 +21,7 @@
 #ifndef SVGFilter_h
 #define SVGFilter_h
 
+#if ENABLE(FILTERS)
 #include "AffineTransform.h"
 #include "Filter.h"
 #include "FilterEffect.h"
@@ -61,5 +62,7 @@ private:
 FILTER_TYPE_CASTS(SVGFilter, isSVGFilter())
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // SVGFilter_h

@@ -22,23 +22,22 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+ 
 #ifndef ProfileGenerator_h
 #define ProfileGenerator_h
 
+#include "Profile.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
 
 namespace JSC {
 
-    class DebuggerCallFrame;
     class ExecState;
     class JSGlobalObject;
     class Profile;
     class ProfileNode;
-    struct CallIdentifier;
+    struct CallIdentifier;    
 
     class ProfileGenerator : public RefCounted<ProfileGenerator>  {
     public:
@@ -50,13 +49,13 @@ namespace JSC {
         JSGlobalObject* origin() const { return m_origin; }
         unsigned profileGroup() const { return m_profileGroup; }
 
+        // Collecting
         void willExecute(ExecState* callerCallFrame, const CallIdentifier&);
         void didExecute(ExecState* callerCallFrame, const CallIdentifier&);
+
         void exceptionUnwind(ExecState* handlerCallFrame, const CallIdentifier&);
 
-        void didPause(PassRefPtr<DebuggerCallFrame>, const CallIdentifier&) { m_debuggerPaused = true; }
-        void didContinue(PassRefPtr<DebuggerCallFrame>, const CallIdentifier&) { m_debuggerPaused = false; }
-
+        // Stopping Profiling
         void stopProfiling();
 
         typedef void (ProfileGenerator::*ProfileFunction)(ExecState* callerOrHandlerCallFrame, const CallIdentifier& callIdentifier);
@@ -68,16 +67,12 @@ namespace JSC {
         void removeProfileStart();
         void removeProfileEnd();
 
-        void beginCallEntry(ProfileNode*, double startTime = NAN);
-        void endCallEntry(ProfileNode*);
-
         RefPtr<Profile> m_profile;
         JSGlobalObject* m_origin;
         unsigned m_profileGroup;
-        RefPtr<ProfileNode> m_rootNode;
+        RefPtr<ProfileNode> m_head;
         RefPtr<ProfileNode> m_currentNode;
         bool m_foundConsoleStartParent;
-        bool m_debuggerPaused;
     };
 
 } // namespace JSC

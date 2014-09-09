@@ -30,7 +30,6 @@
 #include "MediaPlayerPrivateAVFoundation.h"
 
 #include "DocumentLoader.h"
-#include "FloatConversion.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
@@ -58,9 +57,12 @@ MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* play
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_preload(MediaPlayer::Auto)
-    , m_cachedDuration(MediaTime::invalidTime())
-    , m_reportedDuration(MediaTime::invalidTime())
-    , m_maxTimeLoadedAtLastDidLoadingProgress(MediaTime::invalidTime())
+    , m_cachedMaxTimeLoaded(0)
+    , m_cachedMaxTimeSeekable(0)
+    , m_cachedMinTimeSeekable(0)
+    , m_cachedDuration(MediaPlayer::invalidTime())
+    , m_reportedDuration(MediaPlayer::invalidTime())
+    , m_maxTimeLoadedAtLastDidLoadingProgress(MediaPlayer::invalidTime())
     , m_requestedRate(1)
     , m_delayCallbacks(0)
     , m_delayCharacteristicsChangedNotification(0)
@@ -242,29 +244,27 @@ void MediaPlayerPrivateAVFoundation::pause()
     platformPause();
 }
 
-MediaTime MediaPlayerPrivateAVFoundation::durationMediaTime() const
+float MediaPlayerPrivateAVFoundation::duration() const
 {
-    if (m_cachedDuration.isValid())
+    if (m_cachedDuration != MediaPlayer::invalidTime())
         return m_cachedDuration;
 
-    MediaTime duration = platformDuration();
-    if (!duration || duration.isInvalid())
-        return MediaTime::zeroTime();
+    float duration = platformDuration();
+    if (!duration || duration == MediaPlayer::invalidTime())
+        return 0;
 
     m_cachedDuration = duration;
-    LOG(Media, "MediaPlayerPrivateAVFoundation::duration(%p) - caching %s", this, toString(m_cachedDuration).utf8().data());
+    LOG(Media, "MediaPlayerPrivateAVFoundation::duration(%p) - caching %f", this, m_cachedDuration);
     return m_cachedDuration;
 }
 
-void MediaPlayerPrivateAVFoundation::seek(const MediaTime& time)
+void MediaPlayerPrivateAVFoundation::seek(float time)
 {
-    seekWithTolerance(time, MediaTime::zeroTime(), MediaTime::zeroTime());
+    seekWithTolerance(time, 0, 0);
 }
 
-void MediaPlayerPrivateAVFoundation::seekWithTolerance(const MediaTime& mediaTime, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)
+void MediaPlayerPrivateAVFoundation::seekWithTolerance(double time, double negativeTolerance, double positiveTolerance)
 {
-    MediaTime time = mediaTime;
-
     if (m_seeking) {
         LOG(Media, "MediaPlayerPrivateAVFoundation::seekWithTolerance(%p) - save pending seek", this);
         m_pendingSeek = [this, time, negativeTolerance, positiveTolerance]() {
@@ -277,16 +277,16 @@ void MediaPlayerPrivateAVFoundation::seekWithTolerance(const MediaTime& mediaTim
     if (!metaDataAvailable())
         return;
 
-    if (time > durationMediaTime())
-        time = durationMediaTime();
+    if (time > duration())
+        time = duration();
 
-    if (currentMediaTime() == time)
+    if (currentTime() == time)
         return;
 
     if (currentTextTrack())
         currentTextTrack()->beginSeeking();
 
-    LOG(Media, "MediaPlayerPrivateAVFoundation::seek(%p) - seeking to %s", this, toString(time).utf8().data());
+    LOG(Media, "MediaPlayerPrivateAVFoundation::seek(%p) - seeking to %f", this, time);
 
     seekToTime(time, negativeTolerance, positiveTolerance);
 }
@@ -396,34 +396,34 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateAVFoundation::buffered() c
     return PlatformTimeRanges::create(*m_cachedLoadedTimeRanges);
 }
 
-MediaTime MediaPlayerPrivateAVFoundation::maxMediaTimeSeekable() const
+double MediaPlayerPrivateAVFoundation::maxTimeSeekableDouble() const
 {
     if (!metaDataAvailable())
-        return MediaTime::zeroTime();
+        return 0;
 
     if (!m_cachedMaxTimeSeekable)
         m_cachedMaxTimeSeekable = platformMaxTimeSeekable();
 
-    LOG(Media, "MediaPlayerPrivateAVFoundation::maxTimeSeekable(%p) - returning %s", this, toString(m_cachedMaxTimeSeekable).utf8().data());
+    LOG(Media, "MediaPlayerPrivateAVFoundation::maxTimeSeekable(%p) - returning %f", this, m_cachedMaxTimeSeekable);
     return m_cachedMaxTimeSeekable;   
 }
 
-MediaTime MediaPlayerPrivateAVFoundation::minMediaTimeSeekable() const
+double MediaPlayerPrivateAVFoundation::minTimeSeekable() const
 {
     if (!metaDataAvailable())
-        return MediaTime::zeroTime();
+        return 0;
 
     if (!m_cachedMinTimeSeekable)
         m_cachedMinTimeSeekable = platformMinTimeSeekable();
 
-    LOG(Media, "MediaPlayerPrivateAVFoundation::minTimeSeekable(%p) - returning %s", this, toString(m_cachedMinTimeSeekable).utf8().data());
+    LOG(Media, "MediaPlayerPrivateAVFoundation::minTimeSeekable(%p) - returning %f", this, m_cachedMinTimeSeekable);
     return m_cachedMinTimeSeekable;
 }
 
-MediaTime MediaPlayerPrivateAVFoundation::maxTimeLoaded() const
+float MediaPlayerPrivateAVFoundation::maxTimeLoaded() const
 {
     if (!metaDataAvailable())
-        return MediaTime::zeroTime();
+        return 0;
 
     if (!m_cachedMaxTimeLoaded)
         m_cachedMaxTimeLoaded = platformMaxTimeLoaded();
@@ -435,7 +435,7 @@ bool MediaPlayerPrivateAVFoundation::didLoadingProgress() const
 {
     if (!duration() || !totalBytes())
         return false;
-    MediaTime currentMaxTimeLoaded = maxTimeLoaded();
+    float currentMaxTimeLoaded = maxTimeLoaded();
     bool didLoadingProgress = currentMaxTimeLoaded != m_maxTimeLoadedAtLastDidLoadingProgress;
     m_maxTimeLoadedAtLastDidLoadingProgress = currentMaxTimeLoaded;
 
@@ -534,7 +534,7 @@ void MediaPlayerPrivateAVFoundation::updateStates()
                 FALLTHROUGH;
 
             case MediaPlayerAVPlayerItemStatusPlaybackBufferEmpty:
-                if (maxTimeLoaded() > currentMediaTime())
+                if (maxTimeLoaded() > currentTime())
                     m_readyState = MediaPlayer::HaveFutureData;
                 else
                     m_readyState = MediaPlayer::HaveCurrentData;
@@ -546,7 +546,7 @@ void MediaPlayerPrivateAVFoundation::updateStates()
             else if (itemStatus == MediaPlayerAVPlayerItemStatusFailed)
                 m_networkState = MediaPlayer::DecodeError;
             else if (itemStatus != MediaPlayerAVPlayerItemStatusPlaybackBufferFull && itemStatus >= MediaPlayerAVPlayerItemStatusReadyToPlay)
-                m_networkState = (maxTimeLoaded() == durationMediaTime()) ? MediaPlayer::Loaded : MediaPlayer::Loading;
+                m_networkState = (maxTimeLoaded() == duration()) ? MediaPlayer::Loaded : MediaPlayer::Loading;
         }
     }
 
@@ -629,19 +629,19 @@ void MediaPlayerPrivateAVFoundation::rateChanged()
 void MediaPlayerPrivateAVFoundation::loadedTimeRangesChanged()
 {
     m_cachedLoadedTimeRanges = nullptr;
-    m_cachedMaxTimeLoaded = MediaTime::zeroTime();
+    m_cachedMaxTimeLoaded = 0;
     invalidateCachedDuration();
 }
 
 void MediaPlayerPrivateAVFoundation::seekableTimeRangesChanged()
 {
-    m_cachedMaxTimeSeekable = MediaTime::zeroTime();
-    m_cachedMinTimeSeekable = MediaTime::zeroTime();
+    m_cachedMaxTimeSeekable = 0;
+    m_cachedMinTimeSeekable = 0;
 }
 
-void MediaPlayerPrivateAVFoundation::timeChanged(const MediaTime& time)
+void MediaPlayerPrivateAVFoundation::timeChanged(double time)
 {
-    LOG(Media, "MediaPlayerPrivateAVFoundation::timeChanged(%p) - time = %s", this, toString(time).utf8().data());
+    LOG(Media, "MediaPlayerPrivateAVFoundation::timeChanged(%p) - time = %f", this, time);
     UNUSED_PARAM(time);
 }
 
@@ -672,8 +672,8 @@ void MediaPlayerPrivateAVFoundation::didEnd()
 {
     // Hang onto the current time and use it as duration from now on since we are definitely at
     // the end of the movie. Do this because the initial duration is sometimes an estimate.
-    MediaTime now = currentMediaTime();
-    if (now > MediaTime::zeroTime())
+    float now = currentTime();
+    if (now > 0)
         m_cachedDuration = now;
 
     updateStates();
@@ -684,13 +684,13 @@ void MediaPlayerPrivateAVFoundation::invalidateCachedDuration()
 {
     LOG(Media, "MediaPlayerPrivateAVFoundation::invalidateCachedDuration(%p)", this);
     
-    m_cachedDuration = MediaTime::invalidTime();
+    m_cachedDuration = MediaPlayer::invalidTime();
 
     // For some media files, reported duration is estimated and updated as media is loaded
     // so report duration changed when the estimate is upated.
-    MediaTime duration = this->durationMediaTime();
+    float duration = this->duration();
     if (duration != m_reportedDuration) {
-        if (m_reportedDuration.isValid())
+        if (m_reportedDuration != MediaPlayer::invalidTime())
             m_player->durationChanged();
         m_reportedDuration = duration;
     }
@@ -761,7 +761,7 @@ void MediaPlayerPrivateAVFoundation::clearMainThreadPendingFlag()
     m_mainThreadCallPending = false;
 }
 
-void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification::Type type, const MediaTime& time)
+void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification::Type type, double time)
 {
     scheduleMainThreadNotification(Notification(type, time));
 }
@@ -948,11 +948,11 @@ void MediaPlayerPrivateAVFoundation::trackModeChanged()
 
 size_t MediaPlayerPrivateAVFoundation::extraMemoryCost() const
 {
-    MediaTime duration = this->durationMediaTime();
+    double duration = this->duration();
     if (!duration)
         return 0;
 
-    unsigned long long extra = totalBytes() * buffered()->totalDuration().toDouble() / duration.toDouble();
+    unsigned long long extra = totalBytes() * buffered()->totalDuration().toDouble() / duration;
     return static_cast<unsigned>(extra);
 }
 

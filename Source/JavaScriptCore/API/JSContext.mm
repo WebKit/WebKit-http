@@ -192,7 +192,7 @@
     if (!name)
         return nil;
 
-    return (NSString *)adoptCF(JSStringCopyCFString(kCFAllocatorDefault, name)).autorelease();
+    return [(NSString *)JSStringCopyCFString(kCFAllocatorDefault, name) autorelease];
 }
 
 - (void)setName:(NSString *)name

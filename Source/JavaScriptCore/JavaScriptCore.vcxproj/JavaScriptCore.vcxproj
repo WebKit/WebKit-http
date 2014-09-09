@@ -314,17 +314,13 @@
     <ClCompile Include="..\bytecode\ArrayProfile.cpp" />
     <ClCompile Include="..\bytecode\BytecodeBasicBlock.cpp" />
     <ClCompile Include="..\bytecode\BytecodeLivenessAnalysis.cpp" />
-    <ClCompile Include="..\bytecode\CallEdge.cpp" />
-    <ClCompile Include="..\bytecode\CallEdgeProfile.cpp" />
     <ClCompile Include="..\bytecode\CallLinkInfo.cpp" />
     <ClCompile Include="..\bytecode\CallLinkStatus.cpp" />
-    <ClCompile Include="..\bytecode\CallVariant.cpp" />
     <ClCompile Include="..\bytecode\CodeBlock.cpp" />
     <ClCompile Include="..\bytecode\CodeBlockHash.cpp" />
     <ClCompile Include="..\bytecode\CodeBlockJettisoningWatchpoint.cpp" />
     <ClCompile Include="..\bytecode\CodeOrigin.cpp" />
     <ClCompile Include="..\bytecode\CodeType.cpp" />
-    <ClCompile Include="..\bytecode\ComplexGetStatus.cpp" />
     <ClCompile Include="..\bytecode\ConstantStructureCheck.cpp" />
     <ClCompile Include="..\bytecode\DeferredCompilationCallback.cpp" />
     <ClCompile Include="..\bytecode\DFGExitProfile.cpp" />
@@ -340,6 +336,7 @@
     <ClCompile Include="..\bytecode\Opcode.cpp" />
     <ClCompile Include="..\bytecode\PolymorphicGetByIdList.cpp" />
     <ClCompile Include="..\bytecode\PolymorphicPutByIdList.cpp" />
+    <ClCompile Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.cpp" />
     <ClCompile Include="..\bytecode\PreciseJumpTargets.cpp" />
     <ClCompile Include="..\bytecode\PutByIdStatus.cpp" />
     <ClCompile Include="..\bytecode\PutByIdVariant.cpp" />
@@ -354,7 +351,6 @@
     <ClCompile Include="..\bytecode\UnlinkedCodeBlock.cpp" />
     <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp" />
     <ClCompile Include="..\bytecode\ValueRecovery.cpp" />
-    <ClCompile Include="..\bytecode\VariableWatchpointSet.cpp" />
     <ClCompile Include="..\bytecode\Watchpoint.cpp" />
     <ClCompile Include="..\bytecompiler\BytecodeGenerator.cpp" />
     <ClCompile Include="..\bytecompiler\NodesCodegen.cpp" />
@@ -372,8 +368,6 @@
     <ClCompile Include="..\dfg\DFGBasicBlock.cpp" />
     <ClCompile Include="..\dfg\DFGBinarySwitch.cpp" />
     <ClCompile Include="..\dfg\DFGBlockInsertionSet.cpp" />
-    <ClCompile Include="..\dfg\DFGBlockSet.cpp" />
-    <ClCompile Include="..\dfg\DFGBlockWorklist.cpp" />
     <ClCompile Include="..\dfg\DFGByteCodeParser.cpp" />
     <ClCompile Include="..\dfg\DFGCapabilities.cpp" />
     <ClCompile Include="..\dfg\DFGCFAPhase.cpp" />
@@ -408,7 +402,6 @@
     <ClCompile Include="..\dfg\DFGFunctionWhitelist.cpp" />
     <ClCompile Include="..\dfg\DFGGraph.cpp" />
     <ClCompile Include="..\dfg\DFGGraphSafepoint.cpp" />
-    <ClCompile Include="..\dfg\DFGHeapLocation.cpp" />
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp" />
     <ClCompile Include="..\dfg\DFGIntegerCheckCombiningPhase.cpp" />
     <ClCompile Include="..\dfg\DFGInvalidationPointInjectionPhase.cpp" />
@@ -423,7 +416,6 @@
     <ClCompile Include="..\dfg\DFGLoopPreHeaderCreationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGMayExit.cpp" />
     <ClCompile Include="..\dfg\DFGMinifiedNode.cpp" />
-    <ClCompile Include="..\dfg\DFGNaiveDominators.cpp" />
     <ClCompile Include="..\dfg\DFGNaturalLoops.cpp" />
     <ClCompile Include="..\dfg\DFGNode.cpp" />
     <ClCompile Include="..\dfg\DFGNodeFlags.cpp" />
@@ -439,19 +431,15 @@
     <ClCompile Include="..\dfg\DFGOSRExitCompilerCommon.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitJumpPlaceholder.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitPreparation.cpp" />
-    <ClCompile Include="..\dfg\DFGPhantomCanonicalizationPhase.cpp" />
-    <ClCompile Include="..\dfg\DFGPhantomRemovalPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPlan.cpp" />
     <ClCompile Include="..\dfg\DFGPredictionInjectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPredictionPropagationPhase.cpp" />
-    <ClCompile Include="..\dfg\DFGPureValue.cpp" />
     <ClCompile Include="..\dfg\DFGResurrectionForValidationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGSafepoint.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT32_64.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT64.cpp" />
-    <ClCompile Include="..\dfg\DFGSSACalculator.cpp" />
     <ClCompile Include="..\dfg\DFGSSAConversionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGSSALoweringPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStackLayoutPhase.cpp" />
@@ -459,7 +447,6 @@
     <ClCompile Include="..\dfg\DFGStoreBarrierElisionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStrengthReductionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGStructureAbstractValue.cpp" />
-    <ClCompile Include="..\dfg\DFGStructureRegistrationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGThreadData.cpp" />
     <ClCompile Include="..\dfg\DFGThunks.cpp" />
     <ClCompile Include="..\dfg\DFGTierUpCheckInjectionPhase.cpp" />
@@ -478,6 +465,7 @@
     <ClCompile Include="..\dfg\DFGVariableEventStream.cpp" />
     <ClCompile Include="..\dfg\DFGVirtualRegisterAllocationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGWatchpointCollectionPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGWatchableStructureWatchingPhase.cpp" />
     <ClCompile Include="..\dfg\DFGWorklist.cpp" />
     <ClCompile Include="..\disassembler\Disassembler.cpp" />
     <ClCompile Include="..\disassembler\LLVMDisassembler.cpp" />
@@ -576,6 +564,7 @@
     <ClCompile Include="..\inspector\agents\InspectorAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorConsoleAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorDebuggerAgent.cpp" />
+    <ClCompile Include="..\inspector\agents\InspectorProfilerAgent.cpp" />
     <ClCompile Include="..\inspector\agents\InspectorRuntimeAgent.cpp" />
     <ClCompile Include="..\interpreter\AbstractPC.cpp" />
     <ClCompile Include="..\interpreter\CallFrame.cpp" />
@@ -692,9 +681,10 @@
     <ClCompile Include="..\runtime\Executable.cpp" />
     <ClCompile Include="..\runtime\FunctionConstructor.cpp" />
     <ClCompile Include="..\runtime\FunctionExecutableDump.cpp" />
-    <ClCompile Include="..\runtime\FunctionHasExecutedCache.cpp" />
     <ClCompile Include="..\runtime\FunctionPrototype.cpp" />
     <ClCompile Include="..\runtime\GetterSetter.cpp" />
+    <ClCompile Include="..\runtime\HighFidelityLog.cpp" />
+    <ClCompile Include="..\runtime\HighFidelityTypeProfiler.cpp" />
     <ClCompile Include="..\runtime\Identifier.cpp" />
     <ClCompile Include="..\runtime\IndexingType.cpp" />
     <ClCompile Include="..\runtime\InitializeThreading.cpp" />
@@ -732,7 +722,7 @@
     <ClCompile Include="..\runtime\JSPromiseFunctions.cpp" />
     <ClCompile Include="..\runtime\JSPromiseReaction.cpp" />
     <ClCompile Include="..\runtime\JSPromisePrototype.cpp" />
-    <ClCompile Include="..\runtime\JSPropertyNameEnumerator.cpp" />
+    <ClCompile Include="..\runtime\JSPropertyNameIterator.cpp" />
     <ClCompile Include="..\runtime\JSProxy.cpp" />
     <ClCompile Include="..\runtime\JSScope.cpp" />
     <ClCompile Include="..\runtime\JSSegmentedVariableObject.cpp" />
@@ -802,9 +792,6 @@
     <ClCompile Include="..\runtime\TestRunnerUtils.cpp" />
     <ClCompile Include="..\runtime\TypedArrayController.cpp" />
     <ClCompile Include="..\runtime\TypedArrayType.cpp" />
-    <ClCompile Include="..\runtime\TypeLocationCache.cpp" />
-    <ClCompile Include="..\runtime\TypeProfiler.cpp" />
-    <ClCompile Include="..\runtime\TypeProfilerLog.cpp" />
     <ClCompile Include="..\runtime\TypeSet.cpp" />
     <ClCompile Include="..\runtime\VM.cpp" />
     <ClCompile Include="..\runtime\VMEntryScope.cpp" />
@@ -823,7 +810,7 @@
     <ClCompile Include="..\yarr\YarrSyntaxChecker.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSBackendDispatchers.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSFrontendDispatchers.cpp" />
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSProtocolTypes.cpp" />
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSTypeBuilders.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCBuiltins.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -837,7 +824,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InjectedScriptSource.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSBackendDispatchers.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSFrontendDispatchers.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSProtocolTypes.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSTypeBuilders.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataViewPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSGlobalObject.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSONObject.lut.h" />
@@ -911,13 +898,9 @@
     <ClInclude Include="..\bytecode\BytecodeBasicBlock.h" />
     <ClInclude Include="..\bytecode\BytecodeLivenessAnalysis.h" />
     <ClInclude Include="..\bytecode\BytecodeUseDef.h" />
-    <ClInclude Include="..\bytecode\CallEdge.h" />
-    <ClInclude Include="..\bytecode\CallEdgeProfile.h" />
-    <ClInclude Include="..\bytecode\CallEdgeProfileInlines.h" />
     <ClInclude Include="..\bytecode\CallLinkInfo.h" />
     <ClInclude Include="..\bytecode\CallLinkStatus.h" />
     <ClInclude Include="..\bytecode\CallReturnOffsetToBytecodeOffset.h" />
-    <ClInclude Include="..\bytecode\CallVariant.h" />
     <ClInclude Include="..\bytecode\CodeBlock.h" />
     <ClInclude Include="..\bytecode\CodeBlockHash.h" />
     <ClInclude Include="..\bytecode\CodeBlockJettisoningWatchpoint.h" />
@@ -925,7 +908,6 @@
     <ClInclude Include="..\bytecode\CodeOrigin.h" />
     <ClInclude Include="..\bytecode\CodeType.h" />
     <ClInclude Include="..\bytecode\Comment.h" />
-    <ClInclude Include="..\bytecode\ComplexGetStatus.h" />
     <ClInclude Include="..\bytecode\ConstantStructureCheck.h" />
     <ClInclude Include="..\bytecode\DataFormat.h" />
     <ClInclude Include="..\bytecode\DeferredCompilationCallback.h" />
@@ -947,6 +929,7 @@
     <ClInclude Include="..\bytecode\Operands.h" />
     <ClInclude Include="..\bytecode\PolymorphicGetByIdList.h" />
     <ClInclude Include="..\bytecode\PolymorphicPutByIdList.h" />
+    <ClInclude Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.h" />
     <ClInclude Include="..\bytecode\PreciseJumpTargets.h" />
     <ClInclude Include="..\bytecode\PutByIdStatus.h" />
     <ClInclude Include="..\bytecode\PutByIdVariant.h" />
@@ -975,7 +958,6 @@
     <ClInclude Include="..\debugger\Breakpoint.h" />
     <ClInclude Include="..\debugger\Debugger.h" />
     <ClInclude Include="..\debugger\DebuggerCallFrame.h" />
-    <ClInclude Include="..\debugger\DebuggerEvalEnabler.h" />
     <ClInclude Include="..\debugger\DebuggerPrimitives.h" />
     <ClInclude Include="..\debugger\DebuggerScope.h" />
     <ClInclude Include="..\dfg\DFGAbstractHeap.h" />
@@ -997,11 +979,6 @@
     <ClInclude Include="..\dfg\DFGBasicBlockInlines.h" />
     <ClInclude Include="..\dfg\DFGBinarySwitch.h" />
     <ClInclude Include="..\dfg\DFGBlockInsertionSet.h" />
-    <ClInclude Include="..\dfg\DFGBlockMap.h" />
-    <ClInclude Include="..\dfg\DFGBlockMapInlines.h" />
-    <ClInclude Include="..\dfg\DFGBlockWorklist.h" />
-    <ClInclude Include="..\dfg\DFGBlockSet.h" />
-    <ClInclude Include="..\dfg\DFGBlockSetInlines.h" />
     <ClInclude Include="..\dfg\DFGBranchDirection.h" />
     <ClInclude Include="..\dfg\DFGByteCodeParser.h" />
     <ClInclude Include="..\dfg\DFGCallArrayAllocatorSlowPathGenerator.h" />
@@ -1046,7 +1023,6 @@
     <ClInclude Include="..\dfg\DFGGPRInfo.h" />
     <ClInclude Include="..\dfg\DFGGraph.h" />
     <ClInclude Include="..\dfg\DFGGraphSafepoint.h" />
-    <ClInclude Include="..\dfg\DFGHeapLocation.h" />
     <ClInclude Include="..\dfg\DFGInPlaceAbstractState.h" />
     <ClInclude Include="..\dfg\DFGInsertionSet.h" />
     <ClInclude Include="..\dfg\DFGIntegerCheckCombiningPhase.h" />
@@ -1065,7 +1041,6 @@
     <ClInclude Include="..\dfg\DFGMinifiedGraph.h" />
     <ClInclude Include="..\dfg\DFGMinifiedID.h" />
     <ClInclude Include="..\dfg\DFGMinifiedNode.h" />
-    <ClInclude Include="..\dfg\DFGNaiveDominators.h" />
     <ClInclude Include="..\dfg\DFGNaturalLoops.h" />
     <ClInclude Include="..\dfg\DFGNode.h" />
     <ClInclude Include="..\dfg\DFGNodeAllocator.h" />
@@ -1083,13 +1058,10 @@
     <ClInclude Include="..\dfg\DFGOSRExitCompilerCommon.h" />
     <ClInclude Include="..\dfg\DFGOSRExitJumpPlaceholder.h" />
     <ClInclude Include="..\dfg\DFGOSRExitPreparation.h" />
-    <ClInclude Include="..\dfg\DFGPhantomCanonicalizationPhase.h" />
-    <ClInclude Include="..\dfg\DFGPhantomRemovalPhase.h" />
     <ClInclude Include="..\dfg\DFGPhase.h" />
     <ClInclude Include="..\dfg\DFGPlan.h" />
     <ClInclude Include="..\dfg\DFGPredictionInjectionPhase.h" />
     <ClInclude Include="..\dfg\DFGPredictionPropagationPhase.h" />
-    <ClInclude Include="..\dfg\DFGPureValue.h" />
     <ClInclude Include="..\dfg\DFGRegisterBank.h" />
     <ClInclude Include="..\dfg\DFGRegisterSet.h" />
     <ClInclude Include="..\dfg\DFGResurrectionForValidationPhase.h" />
@@ -1102,7 +1074,6 @@
     <ClInclude Include="..\dfg\DFGSilentRegisterSavePlan.h" />
     <ClInclude Include="..\dfg\DFGSlowPathGenerator.h" />
     <ClInclude Include="..\dfg\DFGSpeculativeJIT.h" />
-    <ClInclude Include="..\dfg\DFGSSACalculator.h" />
     <ClInclude Include="..\dfg\DFGSSAConversionPhase.h" />
     <ClInclude Include="..\dfg\DFGSSALoweringPhase.h" />
     <ClInclude Include="..\dfg\DFGStackLayoutPhase.h" />
@@ -1111,7 +1082,6 @@
     <ClInclude Include="..\dfg\DFGStrengthReductionPhase.h" />
     <ClInclude Include="..\dfg\DFGStructureAbstractValue.h" />
     <ClInclude Include="..\dfg\DFGStructureClobberState.h" />
-    <ClInclude Include="..\dfg\DFGStructureRegistrationPhase.h" />
     <ClInclude Include="..\dfg\DFGThreadData.h" />
     <ClInclude Include="..\dfg\DFGThunks.h" />
     <ClInclude Include="..\dfg\DFGTierUpCheckInjectionPhase.h" />
@@ -1131,6 +1101,7 @@
     <ClInclude Include="..\dfg\DFGVariableEventStream.h" />
     <ClInclude Include="..\dfg\DFGVariadicFunction.h" />
     <ClInclude Include="..\dfg\DFGVirtualRegisterAllocationPhase.h" />
+    <ClInclude Include="..\dfg\DFGWatchableStructureWatchingPhase.h" />
     <ClInclude Include="..\dfg\DFGWatchpointCollectionPhase.h" />
     <ClInclude Include="..\dfg\DFGWorklist.h" />
     <ClInclude Include="..\disassembler\Disassembler.h" />
@@ -1265,7 +1236,7 @@
     <ClInclude Include="..\inspector\InspectorBackendDispatcher.h" />
     <ClInclude Include="..\inspector\InspectorEnvironment.h" />
     <ClInclude Include="..\inspector\InspectorFrontendChannel.h" />
-    <ClInclude Include="..\inspector\InspectorProtocolTypes.h" />
+    <ClInclude Include="..\inspector\InspectorTypeBuilder.h" />
     <ClInclude Include="..\inspector\InspectorValues.h" />
     <ClInclude Include="..\inspector\JSInjectedScriptHost.h" />
     <ClInclude Include="..\inspector\JSInjectedScriptHostPrototype.h" />
@@ -1282,13 +1253,13 @@
     <ClInclude Include="..\inspector\agents\InspectorAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorConsoleAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorDebuggerAgent.h" />
+    <ClInclude Include="..\inspector\agents\InspectorProfilerAgent.h" />
     <ClInclude Include="..\inspector\agents\InspectorRuntimeAgent.h" />
     <ClInclude Include="..\interpreter\AbstractPC.h" />
     <ClInclude Include="..\interpreter\CachedCall.h" />
     <ClInclude Include="..\interpreter\CallFrame.h" />
     <ClInclude Include="..\interpreter\CallFrameInlines.h" />
     <ClInclude Include="..\interpreter\CallFrameClosure.h" />
-    <ClInclude Include="..\interpreter\VMEntryRecord.h" />
     <ClInclude Include="..\interpreter\Interpreter.h" />
     <ClInclude Include="..\interpreter\JSStack.h" />
     <ClInclude Include="..\interpreter\JSStackInlines.h" />
@@ -1424,7 +1395,6 @@
     <ClInclude Include="..\runtime\DateInstanceCache.h" />
     <ClInclude Include="..\runtime\DatePrototype.h" />
     <ClInclude Include="..\runtime\DumpContext.h" />
-    <ClInclude Include="..\runtime\EnumerationMode.h" />
     <ClInclude Include="..\runtime\Error.h" />
     <ClInclude Include="..\runtime\ErrorConstructor.h" />
     <ClInclude Include="..\runtime\ErrorHandlingScope.h" />
@@ -1437,11 +1407,12 @@
     <ClInclude Include="..\runtime\Float64Array.h" />
     <ClInclude Include="..\runtime\FunctionConstructor.h" />
     <ClInclude Include="..\runtime\FunctionExecutableDump.h" />
-    <ClInclude Include="..\runtime\FunctionHasExecutedCache.h" />
     <ClInclude Include="..\runtime\FunctionPrototype.h" />
     <ClInclude Include="..\runtime\GenericTypedArrayView.h" />
     <ClInclude Include="..\runtime\GenericTypedArrayViewInlines.h" />
     <ClInclude Include="..\runtime\GetterSetter.h" />
+    <ClInclude Include="..\runtime\HighFidelityLog.h" />
+    <ClInclude Include="..\runtime\HighFidelityTypeProfiler.h" />
     <ClInclude Include="..\runtime\Identifier.h" />
     <ClInclude Include="..\runtime\IndexingHeader.h" />
     <ClInclude Include="..\runtime\IndexingHeaderInlines.h" />
@@ -1501,7 +1472,7 @@
     <ClInclude Include="..\runtime\JSPromiseFunctions.h" />
     <ClInclude Include="..\runtime\JSPromiseReaction.h" />
     <ClInclude Include="..\runtime\JSPromisePrototype.h" />
-    <ClInclude Include="..\runtime\JSPropertyNameEnumerator.h" />
+    <ClInclude Include="..\runtime\JSPropertyNameIterator.h" />
     <ClInclude Include="..\runtime\JSProxy.h" />
     <ClInclude Include="..\runtime\JSScope.h" />
     <ClInclude Include="..\runtime\JSSegmentedVariableObject.h" />
@@ -1598,9 +1569,6 @@
     <ClInclude Include="..\runtime\TypedArrayController.h" />
     <ClInclude Include="..\runtime\TypedArrayInlines.h" />
     <ClInclude Include="..\runtime\TypedArrayType.h" />
-    <ClInclude Include="..\runtime\TypeLocationCache.h" />
-    <ClInclude Include="..\runtime\TypeProfiler.h" />
-    <ClInclude Include="..\runtime\TypeProfilerLog.h" />
     <ClInclude Include="..\runtime\TypeSet.h" />
     <ClInclude Include="..\runtime\TypedArrays.h" />
     <ClInclude Include="..\runtime\Uint16Array.h" />
@@ -1632,61 +1600,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\bytecode\BytecodeList.json" />
-    <None Include="..\inspector\scripts\codegen\generate_backend_commands.py" />
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_header.py" />
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_implementation.py" />
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_header.py" />
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_implementation.py" />
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_header.py" />
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_implementation.py" />
-    <None Include="..\inspector\scripts\codegen\generator.py" />
-    <None Include="..\inspector\scripts\codegen\generator_templates.py" />
-    <None Include="..\inspector\scripts\codegen\models.py" />
-    <None Include="..\inspector\scripts\codegen\__init__.py" />
-    <None Include="..\inspector\scripts\cssmin.py" />
-    <None Include="..\inspector\scripts\generate-combined-inspector-json.py" />
-    <None Include="..\inspector\scripts\generate-inspector-protocol-bindings.py" />
-    <None Include="..\inspector\scripts\inline-and-minify-stylesheets-and-scripts.py" />
-    <None Include="..\inspector\scripts\jsmin.py" />
-    <None Include="..\inspector\scripts\tests\commands-with-async-attribute.json" />
-    <None Include="..\inspector\scripts\tests\commands-with-optional-call-return-parameters.json" />
-    <None Include="..\inspector\scripts\tests\domains-with-varying-command-sizes.json" />
-    <None Include="..\inspector\scripts\tests\events-with-optional-parameters.json" />
-    <None Include="..\inspector\scripts\tests\expected\commands-with-async-attribute.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\commands-with-optional-call-return-parameters.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\domains-with-varying-command-sizes.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\events-with-optional-parameters.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-duplicate-type-declarations.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-enum-with-no-values.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-string-typed-optional-parameter-flag.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-string-typed-optional-type-member.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-type-declaration-using-type-reference.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-type-with-lowercase-name.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-unknown-type-reference-in-type-declaration.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\fail-on-unknown-type-reference-in-type-member.json-error" />
-    <None Include="..\inspector\scripts\tests\expected\same-type-id-different-domain.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\shadowed-optional-type-setters.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-aliased-primitive-type.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-array-type.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-enum-type.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-object-type.json-result" />
-    <None Include="..\inspector\scripts\tests\expected\type-requiring-runtime-casts.json-result" />
-    <None Include="..\inspector\scripts\tests\fail-on-duplicate-type-declarations.json" />
-    <None Include="..\inspector\scripts\tests\fail-on-enum-with-no-values.json" />
-    <None Include="..\inspector\scripts\tests\fail-on-string-typed-optional-parameter-flag.json" />
-    <None Include="..\inspector\scripts\tests\fail-on-string-typed-optional-type-member.json" />
-    <None Include="..\inspector\scripts\tests\fail-on-type-declaration-using-type-reference.json" />
-    <None Include="..\inspector\scripts\tests\fail-on-type-with-lowercase-name.json" />
-    <None Include="..\inspector\scripts\tests\fail-on-unknown-type-reference-in-type-declaration.json" />
-    <None Include="..\inspector\scripts\tests\fail-on-unknown-type-reference-in-type-member.json" />
-    <None Include="..\inspector\scripts\tests\same-type-id-different-domain.json" />
-    <None Include="..\inspector\scripts\tests\shadowed-optional-type-setters.json" />
-    <None Include="..\inspector\scripts\tests\type-declaration-aliased-primitive-type.json" />
-    <None Include="..\inspector\scripts\tests\type-declaration-array-type.json" />
-    <None Include="..\inspector\scripts\tests\type-declaration-enum-type.json" />
-    <None Include="..\inspector\scripts\tests\type-declaration-object-type.json" />
-    <None Include="..\inspector\scripts\tests\type-requiring-runtime-casts.json" />
-    <None Include="..\inspector\scripts\xxd.pl" />
     <None Include="JavaScriptCorePostBuild.cmd">
       <FileType>Document</FileType>
     </None>

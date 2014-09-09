@@ -166,68 +166,6 @@ void generateICFastPath(
     }
 }
 
-static void generateCheckInICFastPath(
-    State& state, CodeBlock* codeBlock, GeneratedFunction generatedFunction,
-    StackMaps::RecordMap& recordMap, CheckInDescriptor& ic, size_t sizeOfIC)
-{
-    VM& vm = state.graph.m_vm;
-
-    StackMaps::RecordMap::iterator iter = recordMap.find(ic.stackmapID());
-    if (iter == recordMap.end()) {
-        // It was optimized out.
-        return;
-    }
-    
-    Vector<StackMaps::Record>& records = iter->value;
-    
-    RELEASE_ASSERT(records.size() == ic.m_generators.size());
-
-    for (unsigned i = records.size(); i--;) {
-        StackMaps::Record& record = records[i];
-        auto generator = ic.m_generators[i];
-
-        StructureStubInfo& stubInfo = *generator.m_stub;
-        auto call = generator.m_slowCall;
-        auto slowPathBegin = generator.m_beginLabel;
-
-        CCallHelpers fastPathJIT(&vm, codeBlock);
-        
-        auto jump = fastPathJIT.patchableJump();
-        auto done = fastPathJIT.label();
-
-        char* startOfIC =
-            bitwise_cast<char*>(generatedFunction) + record.instructionOffset;
-        
-        LinkBuffer fastPath(vm, fastPathJIT, startOfIC, sizeOfIC);
-        LinkBuffer& slowPath = *state.finalizer->sideCodeLinkBuffer;
-        // Note: we could handle the !isValid() case. We just don't appear to have a
-        // reason to do so, yet.
-        RELEASE_ASSERT(fastPath.isValid());
-
-        MacroAssembler::AssemblerType_T::fillNops(
-            startOfIC + fastPath.size(), sizeOfIC - fastPath.size());
-        
-        state.finalizer->sideCodeLinkBuffer->link(
-            ic.m_slowPathDone[i], CodeLocationLabel(startOfIC + sizeOfIC));
-        
-        CodeLocationLabel slowPathBeginLoc = slowPath.locationOf(slowPathBegin);
-        fastPath.link(jump, slowPathBeginLoc);
-
-        CodeLocationCall callReturnLocation = slowPath.locationOf(call);
-
-        stubInfo.patch.deltaCallToDone = MacroAssembler::differenceBetweenCodePtr(
-            callReturnLocation, fastPath.locationOf(done));
-
-        stubInfo.patch.deltaCallToJump = MacroAssembler::differenceBetweenCodePtr(
-            callReturnLocation, fastPath.locationOf(jump));
-        stubInfo.callReturnLocation = callReturnLocation;
-        stubInfo.patch.deltaCallToSlowCase = MacroAssembler::differenceBetweenCodePtr(
-            callReturnLocation, slowPathBeginLoc);
-        
-    }
-}
-
-
 static RegisterSet usedRegistersFor(const StackMaps::Record& record)
 {
     if (Options::assumeAllRegsInFTLICAreLive())
@@ -285,28 +223,24 @@ static void fixFunctionBasedOnStackMaps(
         
         // At this point it's perfectly fair to just blow away all state and restore the
         // JS JIT view of the universe.
+        checkJIT.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+
+        MacroAssembler::Label exceptionContinueArg1Set = checkJIT.label();
         checkJIT.move(MacroAssembler::TrustedImm64(TagTypeNumber), GPRInfo::tagTypeNumberRegister);
         checkJIT.move(MacroAssembler::TrustedImm64(TagMask), GPRInfo::tagMaskRegister);
 
         checkJIT.move(MacroAssembler::TrustedImmPtr(&vm), GPRInfo::argumentGPR0);
-        checkJIT.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-        MacroAssembler::Call callLookupExceptionHandler = checkJIT.call();
+        MacroAssembler::Call call = checkJIT.call();
         checkJIT.jumpToExceptionHandler();
 
         stackOverflowException = checkJIT.label();
-        checkJIT.move(MacroAssembler::TrustedImm64(TagTypeNumber), GPRInfo::tagTypeNumberRegister);
-        checkJIT.move(MacroAssembler::TrustedImm64(TagMask), GPRInfo::tagMaskRegister);
-
-        checkJIT.move(MacroAssembler::TrustedImmPtr(&vm), GPRInfo::argumentGPR0);
-        checkJIT.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-        MacroAssembler::Call callLookupExceptionHandlerFromCallerFrame = checkJIT.call();
-        checkJIT.jumpToExceptionHandler();
+        checkJIT.emitGetCallerFrameFromCallFrameHeaderPtr(GPRInfo::argumentGPR1);
+        checkJIT.jump(exceptionContinueArg1Set);
 
         OwnPtr<LinkBuffer> linkBuffer = adoptPtr(new LinkBuffer(
             vm, checkJIT, codeBlock, JITCompilationMustSucceed));
-        linkBuffer->link(callLookupExceptionHandler, FunctionPtr(lookupExceptionHandler));
-        linkBuffer->link(callLookupExceptionHandlerFromCallerFrame, FunctionPtr(lookupExceptionHandlerFromCallerFrame));
-
+        linkBuffer->link(call, FunctionPtr(lookupExceptionHandler));
+        
         state.finalizer->handleExceptionsLinkBuffer = linkBuffer.release();
     }
 
@@ -356,7 +290,7 @@ static void fixFunctionBasedOnStackMaps(
         state.finalizer->exitThunksLinkBuffer = linkBuffer.release();
     }
 
-    if (!state.getByIds.isEmpty() || !state.putByIds.isEmpty() || !state.checkIns.isEmpty()) {
+    if (!state.getByIds.isEmpty() || !state.putByIds.isEmpty()) {
         CCallHelpers slowPathJIT(&vm, codeBlock);
         
         CCallHelpers::JumpList exceptionTarget;
@@ -386,13 +320,13 @@ static void fixFunctionBasedOnStackMaps(
                     JSValueRegs(result), NeedToSpill);
                 
                 MacroAssembler::Label begin = slowPathJIT.label();
-
+                
                 MacroAssembler::Call call = callOperation(
                     state, usedRegisters, slowPathJIT, getById.codeOrigin(), &exceptionTarget,
                     operationGetByIdOptimize, result, gen.stubInfo(), base, getById.uid());
-
+                
                 gen.reportSlowPathCall(begin, call);
-
+                
                 getById.m_slowPathDone.append(slowPathJIT.jump());
                 getById.m_generators.append(gen);
             }
@@ -435,44 +369,6 @@ static void fixFunctionBasedOnStackMaps(
                 putById.m_generators.append(gen);
             }
         }
-
-
-        for (unsigned i = state.checkIns.size(); i--;) {
-            CheckInDescriptor& checkIn = state.checkIns[i];
-            
-            if (verboseCompilationEnabled())
-                dataLog("Handling checkIn stackmap #", checkIn.stackmapID(), "\n");
-            
-            iter = recordMap.find(checkIn.stackmapID());
-            if (iter == recordMap.end()) {
-                // It was optimized out.
-                continue;
-            }
-            
-            for (unsigned i = 0; i < iter->value.size(); ++i) {
-                StackMaps::Record& record = iter->value[i];
-                RegisterSet usedRegisters = usedRegistersFor(record);
-                GPRReg result = record.locations[0].directGPR();
-                GPRReg obj = record.locations[1].directGPR();
-                StructureStubInfo* stubInfo = codeBlock->addStubInfo(); 
-                stubInfo->codeOrigin = checkIn.codeOrigin();
-                stubInfo->patch.baseGPR = static_cast<int8_t>(obj);
-                stubInfo->patch.valueGPR = static_cast<int8_t>(result);
-                stubInfo->patch.usedRegisters = usedRegisters;
-                stubInfo->patch.spillMode = NeedToSpill;
-
-                MacroAssembler::Label begin = slowPathJIT.label();
-
-                MacroAssembler::Call slowCall = callOperation(
-                    state, usedRegisters, slowPathJIT, checkIn.codeOrigin(), &exceptionTarget,
-                    operationInOptimize, result, stubInfo, obj, checkIn.m_id);
-
-                checkIn.m_slowPathDone.append(slowPathJIT.jump());
-                
-                checkIn.m_generators.append(CheckInGenerator(stubInfo, slowCall, begin));
-            }
-        }
-
         
         exceptionTarget.link(&slowPathJIT);
         MacroAssembler::Jump exceptionJump = slowPathJIT.jump();
@@ -492,12 +388,6 @@ static void fixFunctionBasedOnStackMaps(
                 state, codeBlock, generatedFunction, recordMap, state.putByIds[i],
                 sizeOfPutById());
         }
-
-        for (unsigned i = state.checkIns.size(); i--;) {
-            generateCheckInICFastPath(
-                state, codeBlock, generatedFunction, recordMap, state.checkIns[i],
-                sizeOfCheckIn()); 
-        } 
     }
     
     // Handling JS calls is weird: we need to ensure that we sort them by the PC in LLVM

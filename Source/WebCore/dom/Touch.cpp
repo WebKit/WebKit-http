@@ -70,7 +70,9 @@ Touch::Touch(Frame* frame, EventTarget* target, unsigned identifier, int screenX
     , m_force(force)
 {
     float scaleFactor = frame->pageZoomFactor() * frame->frameScaleFactor();
-    m_absoluteLocation = LayoutPoint(pageX * scaleFactor, pageY * scaleFactor);
+    float x = pageX * scaleFactor;
+    float y = pageY * scaleFactor;
+    m_absoluteLocation = roundedLayoutPoint(FloatPoint(x, y));
 }
 
 Touch::Touch(EventTarget* target, unsigned identifier, int clientX, int clientY, int screenX, int screenY, int pageX, int pageY, int radiusX, int radiusY, float rotationAngle, float force, LayoutPoint absoluteLocation)

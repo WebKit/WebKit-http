@@ -24,6 +24,7 @@
 #ifndef LightSource_h
 #define LightSource_h
 
+#if ENABLE(FILTERS)
 #include "FloatPoint3D.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -89,5 +90,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // LightSource_h

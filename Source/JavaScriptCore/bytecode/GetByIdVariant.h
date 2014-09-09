@@ -42,7 +42,8 @@ struct DumpContext;
 class GetByIdVariant {
 public:
     GetByIdVariant(
-        const StructureSet& structureSet = StructureSet(), PropertyOffset offset = invalidOffset,
+        const StructureSet& structureSet = StructureSet(),
+        PropertyOffset offset = invalidOffset, JSValue specificValue = JSValue(),
         const IntendedStructureChain* chain = nullptr,
         std::unique_ptr<CallLinkStatus> callLinkStatus = nullptr);
     
@@ -57,7 +58,7 @@ public:
     StructureSet& structureSet() { return m_structureSet; }
     const ConstantStructureCheckVector& constantChecks() const { return m_constantChecks; }
     JSObject* alternateBase() const { return m_alternateBase; }
-    StructureSet baseStructure() const;
+    JSValue specificValue() const { return m_specificValue; }
     PropertyOffset offset() const { return m_offset; }
     CallLinkStatus* callLinkStatus() const { return m_callLinkStatus.get(); }
     
@@ -72,6 +73,7 @@ private:
     StructureSet m_structureSet;
     ConstantStructureCheckVector m_constantChecks;
     JSObject* m_alternateBase;
+    JSValue m_specificValue;
     PropertyOffset m_offset;
     std::unique_ptr<CallLinkStatus> m_callLinkStatus;
 };

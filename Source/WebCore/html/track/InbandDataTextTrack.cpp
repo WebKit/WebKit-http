@@ -52,14 +52,14 @@ InbandDataTextTrack::~InbandDataTextTrack()
 {
 }
 
-void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, const void* data, unsigned length)
+void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, double start, double end, const void* data, unsigned length)
 {
     RefPtr<DataCue> cue = DataCue::create(*scriptExecutionContext(), start, end, data, length);
     addCue(cue.release(), ASSERT_NO_EXCEPTION);
 }
 
 #if ENABLE(DATACUE_VALUE)
-void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue, const String& type)
+void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, double start, double end, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue, const String& type)
 {
     RefPtr<SerializedPlatformRepresentation> platformValue = prpPlatformValue;
     if (m_incompleteCueMap.find(platformValue.get()) != m_incompleteCueMap.end())
@@ -67,22 +67,20 @@ void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, const MediaTime& s
 
     RefPtr<DataCue> cue = DataCue::create(*scriptExecutionContext(), start, end, platformValue, type);
     if (hasCue(cue.get(), TextTrackCue::IgnoreDuration)) {
-        LOG(Media, "InbandDataTextTrack::addDataCue ignoring already added cue: start=%s, end=%s\n", toString(cue->startTime()).utf8().data(), toString(cue->endTime()).utf8().data());
+        LOG(Media, "InbandDataTextTrack::addDataCue ignoring already added cue: start=%.2f, end=%.2f\n", cue->startTime(), cue->endTime());
         return;
     }
 
-    if (end.isPositiveInfinite() && mediaElement()) {
-        cue->setEndTime(mediaElement()->durationMediaTime());
+    if (std::isinf(end) && mediaElement()) {
+        cue->setEndTime(mediaElement()->duration(), IGNORE_EXCEPTION);
         m_incompleteCueMap.add(platformValue, cue);
     }
 
     addCue(cue.release(), ASSERT_NO_EXCEPTION);
 }
 
-void InbandDataTextTrack::updateDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& inEnd, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue)
+void InbandDataTextTrack::updateDataCue(InbandTextTrackPrivate*, double start, double end, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue)
 {
-    MediaTime end = inEnd;
-
     RefPtr<SerializedPlatformRepresentation> platformValue = prpPlatformValue;
     auto iter = m_incompleteCueMap.find(platformValue.get());
     if (iter == m_incompleteCueMap.end())
@@ -94,20 +92,20 @@ void InbandDataTextTrack::updateDataCue(InbandTextTrackPrivate*, const MediaTime
 
     cue->willChange();
 
-    if (end.isPositiveInfinite() && mediaElement())
-        end = mediaElement()->durationMediaTime();
+    if (std::isinf(end) && mediaElement())
+        end = mediaElement()->duration();
     else
         m_incompleteCueMap.remove(platformValue.get());
 
-    LOG(Media, "InbandDataTextTrack::updateDataCue: was start=%s, end=%s, will be start=%s, end=%s\n", toString(cue->startTime()).utf8().data(), toString(cue->endTime()).utf8().data(), toString(start).utf8().data(), toString(end).utf8().data());
+    LOG(Media, "InbandDataTextTrack::updateDataCue: was start=%.2f, end=%.2f, will be start=%.2f, end=%.2f\n", cue->startTime(), cue->endTime(), start, end);
 
-    cue->setStartTime(start);
-    cue->setEndTime(end);
+    cue->setStartTime(start, IGNORE_EXCEPTION);
+    cue->setEndTime(end, IGNORE_EXCEPTION);
 
     cue->didChange();
 }
 
-void InbandDataTextTrack::removeDataCue(InbandTextTrackPrivate*, const MediaTime&, const MediaTime&, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue)
+void InbandDataTextTrack::removeDataCue(InbandTextTrackPrivate*, double, double, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue)
 {
     RefPtr<SerializedPlatformRepresentation> platformValue = prpPlatformValue;
     auto iter = m_incompleteCueMap.find(platformValue.get());
@@ -116,7 +114,7 @@ void InbandDataTextTrack::removeDataCue(InbandTextTrackPrivate*, const MediaTime
 
     RefPtr<DataCue> cue = iter->value;
     if (cue) {
-        LOG(Media, "InbandDataTextTrack::removeDataCue removing cue: start=%s, end=%s\n", toString(cue->startTime()).utf8().data(), toString(cue->endTime()).utf8().data());
+        LOG(Media, "InbandDataTextTrack::removeDataCue removing cue: start=%.2f, end=%.2f\n", cue->startTime(), cue->endTime());
         removeCue(cue.get(), IGNORE_EXCEPTION);
     }
 }

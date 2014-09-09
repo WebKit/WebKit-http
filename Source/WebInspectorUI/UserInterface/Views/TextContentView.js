@@ -39,23 +39,11 @@ WebInspector.TextContentView = function(string, mimeType)
     this._textEditor.mimeType = mimeType;
     this._textEditor.string = string;
 
-    var curleyBracesImage;
-    if (WebInspector.Platform.isLegacyMacOS)
-        curleyBracesImage = {src: "Images/Legacy/NavigationItemCurleyBraces.svg", width: 16, height: 16};
-    else
-        curleyBracesImage = {src: "Images/NavigationItemCurleyBraces.svg", width: 13, height: 13};
-
     var toolTip = WebInspector.UIString("Pretty print");
     var activatedToolTip = WebInspector.UIString("Original formatting");
-    this._prettyPrintButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("pretty-print", toolTip, activatedToolTip, curleyBracesImage.src, curleyBracesImage.width, curleyBracesImage.height);
+    this._prettyPrintButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("pretty-print", toolTip, activatedToolTip, "Images/NavigationItemCurleyBraces.svg", 16, 16);
     this._prettyPrintButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._togglePrettyPrint, this);
     this._prettyPrintButtonNavigationItem.enabled = this._textEditor.canBeFormatted();
-
-    var showTypesImageSize = WebInspector.Platform.isLegacyMacOS ? 15 : 16;
-    var toolTipTypes = WebInspector.UIString("Show type information");
-    var activatedToolTipTypes = WebInspector.UIString("Hide type information");
-    this._showTypesButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("show-types", toolTipTypes, activatedToolTipTypes, "Images/NavigationItemTypes.svg", showTypesImageSize, showTypesImageSize);
-    this._showTypesButtonNavigationItem.enabled = false;
 };
 
 WebInspector.TextContentView.StyleClassName = "text";
@@ -72,7 +60,7 @@ WebInspector.TextContentView.prototype = {
 
     get navigationItems()
     {
-        return [this._prettyPrintButtonNavigationItem, this._showTypesButtonNavigationItem];
+        return [this._prettyPrintButtonNavigationItem];
     },
 
     revealPosition: function(position, textRangeToSelect, forceUnformatted)

@@ -91,11 +91,12 @@ bool doesGC(Graph& graph, Node* node)
     case PutByIdFlush:
     case PutByIdDirect:
     case CheckStructure:
-    case GetExecutable:
+    case CheckExecutable:
     case GetButterfly:
     case CheckArray:
     case GetScope:
     case GetMyScope:
+    case SkipTopScope:
     case SkipScope:
     case GetClosureRegisters:
     case GetClosureVar:
@@ -104,7 +105,7 @@ bool doesGC(Graph& graph, Node* node)
     case PutGlobalVar:
     case VariableWatchpoint:
     case VarInjectionWatchpoint:
-    case CheckCell:
+    case CheckFunction:
     case AllocationProfileWatchpoint:
     case RegExpExec:
     case RegExpTest:
@@ -119,8 +120,6 @@ bool doesGC(Graph& graph, Node* node)
     case Construct:
     case NativeCall:
     case NativeConstruct:
-    case ProfiledCall:
-    case ProfiledConstruct:
     case Breakpoint:
     case ProfileWillCall:
     case ProfileDidCall:
@@ -190,15 +189,8 @@ bool doesGC(Graph& graph, Node* node)
     case GetByOffset:
     case GetGetterSetterByOffset:
     case PutByOffset:
-    case GetEnumerableLength:
-    case HasGenericProperty:
-    case HasStructureProperty:
-    case HasIndexedProperty:
-    case GetDirectPname:
     case FiatInt52:
     case BooleanToNumber:
-    case CheckBadCell:
-    case BottomValue:
         return false;
 
     case CreateActivation:
@@ -221,10 +213,6 @@ bool doesGC(Graph& graph, Node* node)
     case NewFunctionExpression:
     case NewTypedArray:
     case ThrowReferenceError:
-    case GetStructurePropertyEnumerator:
-    case GetGenericPropertyEnumerator:
-    case GetEnumeratorPname:
-    case ToIndexString:
         return true;
         
     case MultiPutByOffset:

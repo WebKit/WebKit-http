@@ -33,12 +33,6 @@
 
 namespace WebCore {
 
-void ResourceResponse::updateSoupMessageHeaders(SoupMessageHeaders* soupHeaders) const
-{
-    for (const auto& header : httpHeaderFields())
-        soup_message_headers_append(soupHeaders, header.key.utf8().data(), header.value.utf8().data());
-}
-
 SoupMessage* ResourceResponse::toSoupMessage() const
 {
     // This GET here is just because SoupMessage wants it, we dn't really know.
@@ -48,7 +42,13 @@ SoupMessage* ResourceResponse::toSoupMessage() const
 
     soupMessage->status_code = httpStatusCode();
 
-    updateSoupMessageHeaders(soupMessage->response_headers);
+    const HTTPHeaderMap& headers = httpHeaderFields();
+    SoupMessageHeaders* soupHeaders = soupMessage->response_headers;
+    if (!headers.isEmpty()) {
+        HTTPHeaderMap::const_iterator end = headers.end();
+        for (HTTPHeaderMap::const_iterator it = headers.begin(); it != end; ++it)
+            soup_message_headers_append(soupHeaders, it->key.utf8().data(), it->value.utf8().data());
+    }
 
     soup_message_set_flags(soupMessage, m_soupFlags);
 
@@ -99,17 +99,7 @@ void ResourceResponse::updateFromSoupMessageHeaders(const SoupMessageHeaders* me
     setTextEncodingName(extractCharsetFromMediaType(contentType));
 
     setExpectedContentLength(soup_message_headers_get_content_length(headers));
-}
-
-CertificateInfo ResourceResponse::platformCertificateInfo() const
-{
-    return CertificateInfo(m_certificate.get(), m_tlsErrors);
-}
-
-String ResourceResponse::platformSuggestedFilename() const
-{
-    return filenameFromHTTPContentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition));
-}
+    setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition)));}
 
 }
 

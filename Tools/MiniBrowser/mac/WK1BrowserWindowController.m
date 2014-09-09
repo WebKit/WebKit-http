@@ -51,8 +51,6 @@
     [[WebPreferences standardPreferences] setFullScreenEnabled:YES];
     [[WebPreferences standardPreferences] setDeveloperExtrasEnabled:YES];
 
-    [self didChangeSettings];
-
     [containerView addSubview:_webView];
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,17 +28,14 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
+#include "HostRecord.h"
 #include "MessageSender.h"
 #include "NetworkConnectionToWebProcessMessages.h"
-#include "NetworkResourceLoadParameters.h"
 #include "ShareableResource.h"
-#include <WebCore/ResourceError.h>
 #include <WebCore/ResourceHandleClient.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
-#include <WebCore/ResourceResponse.h>
 #include <WebCore/SessionID.h>
-#include <WebCore/Timer.h>
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
 
@@ -54,6 +51,7 @@ class ResourceRequest;
 namespace WebKit {
 
 class NetworkConnectionToWebProcess;
+class NetworkLoaderClient;
 class NetworkResourceLoadParameters;
 class RemoteNetworkingContext;
 class SandboxExtension;
@@ -73,6 +71,7 @@ public:
 
     NetworkConnectionToWebProcess* connectionToWebProcess() const { return m_connection.get(); }
 
+    WebCore::ResourceLoadPriority priority() { return m_priority; }
     WebCore::ResourceRequest& request() { return m_request; }
     WebCore::SessionID sessionID() const { return m_sessionID; }
 
@@ -130,6 +129,9 @@ public:
 
     bool isSynchronous() const;
     bool isLoadingMainResource() const { return m_isLoadingMainResource; }
+    
+    void setHostRecord(HostRecord* hostRecord) { ASSERT(RunLoop::isMain()); m_hostRecord = hostRecord; }
+    HostRecord* hostRecord() const { ASSERT(RunLoop::isMain()); return m_hostRecord.get(); }
 
     template<typename T>
     bool sendAbortingOnFailure(T&& message, unsigned messageSendFlags = 0)
@@ -147,8 +149,6 @@ public:
 
     WebCore::SharedBuffer* bufferedData() const { return m_bufferedData.get(); }
 
-    struct SynchronousLoadData;
-
 private:
     NetworkResourceLoader(const NetworkResourceLoadParameters&, NetworkConnectionToWebProcess*, PassRefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>);
 
@@ -162,10 +162,6 @@ private:
     
     void platformDidReceiveResponse(const WebCore::ResourceResponse&);
 
-    void startBufferingTimerIfNeeded();
-    void bufferingTimerFired(WebCore::Timer<NetworkResourceLoader>&);
-    void sendBuffer(WebCore::SharedBuffer*, int encodedDataLength);
-
     void consumeSandboxExtensions();
     void invalidateSandboxExtensions();
 
@@ -178,8 +174,7 @@ private:
     uint64_t m_bytesReceived;
 
     bool m_handleConvertedToDownload;
-
-    std::unique_ptr<SynchronousLoadData> m_synchronousLoadData;
+    std::unique_ptr<NetworkLoaderClient> m_networkLoaderClient;
 
     ResourceLoadIdentifier m_identifier;
     uint64_t m_webPageID;
@@ -187,16 +182,13 @@ private:
     WebCore::SessionID m_sessionID;
     WebCore::ResourceRequest m_request;
     WebCore::ResourceRequest m_deferredRequest;
+    WebCore::ResourceLoadPriority m_priority;
     WebCore::ContentSniffingPolicy m_contentSniffingPolicy;
     WebCore::StoredCredentials m_allowStoredCredentials;
     WebCore::ClientCredentialPolicy m_clientCredentialPolicy;
     bool m_shouldClearReferrerOnHTTPSToHTTPRedirect;
     bool m_isLoadingMainResource;
     bool m_defersLoading;
-    bool m_needsCertificateInfo;
-    const std::chrono::milliseconds m_maximumBufferingTime;
-
-    WebCore::Timer<NetworkResourceLoader> m_bufferingTimer;
 
     Vector<RefPtr<SandboxExtension>> m_requestBodySandboxExtensions;
     Vector<RefPtr<SandboxExtension>> m_resourceSandboxExtensions;
@@ -205,8 +197,8 @@ private:
 
     RefPtr<NetworkConnectionToWebProcess> m_connection;
     
+    RefPtr<HostRecord> m_hostRecord;
     RefPtr<WebCore::SharedBuffer> m_bufferedData;
-    size_t m_bufferedDataEncodedDataLength;
 };
 
 } // namespace WebKit

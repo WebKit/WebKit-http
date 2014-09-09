@@ -40,6 +40,7 @@
 #include "CustomGetterSetter.h"
 #include "DFGLongLivedState.h"
 #include "DFGWorklist.h"
+#include "DebuggerScope.h"
 #include "ErrorInstance.h"
 #include "FTLThunks.h"
 #include "FunctionConstructor.h"
@@ -47,6 +48,8 @@
 #include "GetterSetter.h"
 #include "Heap.h"
 #include "HeapIterationScope.h"
+#include "HighFidelityTypeProfiler.h"
+#include "HighFidelityLog.h"
 #include "HostCallReturnValue.h"
 #include "Identifier.h"
 #include "IncrementalSweeper.h"
@@ -63,7 +66,7 @@
 #include "JSNotAnObject.h"
 #include "JSPromiseDeferred.h"
 #include "JSPromiseReaction.h"
-#include "JSPropertyNameEnumerator.h"
+#include "JSPropertyNameIterator.h"
 #include "JSWithScope.h"
 #include "Lexer.h"
 #include "Lookup.h"
@@ -77,12 +80,9 @@
 #include "RegExpObject.h"
 #include "SimpleTypedArrayController.h"
 #include "SourceProviderCache.h"
-#include "StackVisitor.h"
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
 #include "StructureInlines.h"
-#include "TypeProfiler.h"
-#include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
 #include "WeakMapData.h"
 #include <wtf/ProcessID.h>
@@ -149,7 +149,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , heap(this, heapType)
     , vmType(vmType)
     , clientData(0)
-    , topVMEntryFrame(nullptr)
     , topCallFrame(CallFrame::noCaller())
     , m_atomicStringTable(vmType == Default ? wtfThreadData().atomicStringTable() : new AtomicStringTable)
     , propertyNames(nullptr)
@@ -192,7 +191,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , m_enabledProfiler(nullptr)
     , m_builtinExecutables(BuiltinExecutables::create(*this))
     , m_nextUniqueVariableID(1)
-    , m_typeProfilerEnabledCount(0)
 {
     interpreter = new Interpreter(*this);
     StackBounds stack = wtfThreadData().stack();
@@ -208,10 +206,11 @@ VM::VM(VMType vmType, HeapType heapType)
     propertyNames = new CommonIdentifiers(this);
     structureStructure.set(*this, Structure::createStructure(*this));
     structureRareDataStructure.set(*this, StructureRareData::createStructure(*this, 0, jsNull()));
+    debuggerScopeStructure.set(*this, DebuggerScope::createStructure(*this, 0, jsNull()));
     terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, 0, jsNull()));
     stringStructure.set(*this, JSString::createStructure(*this, 0, jsNull()));
     notAnObjectStructure.set(*this, JSNotAnObject::createStructure(*this, 0, jsNull()));
-    propertyNameEnumeratorStructure.set(*this, JSPropertyNameEnumerator::createStructure(*this, 0, jsNull()));
+    propertyNameIteratorStructure.set(*this, JSPropertyNameIterator::createStructure(*this, 0, jsNull()));
     getterSetterStructure.set(*this, GetterSetter::createStructure(*this, 0, jsNull()));
     customGetterSetterStructure.set(*this, CustomGetterSetter::createStructure(*this, 0, jsNull()));
     apiWrapperStructure.set(*this, JSAPIValueWrapper::createStructure(*this, 0, jsNull()));
@@ -284,8 +283,11 @@ VM::VM(VMType vmType, HeapType heapType)
     // won't use this.
     m_typedArrayController = adoptRef(new SimpleTypedArrayController());
 
-    if (Options::enableTypeProfiler())
-        enableTypeProfiler();
+    // FIXME: conditionally allocate this stuff based on whether or not the inspector is running OR this flag is enabled (not just if the flag is enabled).
+    if (Options::profileTypesWithHighFidelity()) {
+        m_highFidelityTypeProfiler = std::make_unique<HighFidelityTypeProfiler>();
+        m_highFidelityLog = std::make_unique<HighFidelityLog>();
+    }
 }
 
 VM::~VM()
@@ -371,13 +373,6 @@ VM*& VM::sharedInstanceInternal()
     return sharedInstance;
 }
 
-CallEdgeLog& VM::ensureCallEdgeLog()
-{
-    if (!callEdgeLog)
-        callEdgeLog = std::make_unique<CallEdgeLog>();
-    return *callEdgeLog;
-}
-
 #if ENABLE(JIT)
 static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
 {
@@ -459,11 +454,8 @@ void VM::stopSampling()
     interpreter->stopSampling();
 }
 
-void VM::prepareToDiscardCode()
+void VM::waitForCompilationsToComplete()
 {
-    if (callEdgeLog)
-        callEdgeLog->processLog();
-    
 #if ENABLE(DFG_JIT)
     for (unsigned i = DFG::numberOfWorklists(); i--;) {
         if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
@@ -474,7 +466,7 @@ void VM::prepareToDiscardCode()
 
 void VM::discardAllCode()
 {
-    prepareToDiscardCode();
+    waitForCompilationsToComplete();
     m_codeCache->clear();
     m_regExpCache->invalidateCode();
     heap.deleteAllCompiledCode();
@@ -518,7 +510,7 @@ struct StackPreservingRecompiler : public MarkedBlock::VoidFunctor {
 
 void VM::releaseExecutableMemory()
 {
-    prepareToDiscardCode();
+    waitForCompilationsToComplete();
     
     if (entryScope) {
         StackPreservingRecompiler recompiler;
@@ -603,42 +595,7 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
     
     exception->putDirect(*vm, vm->propertyNames->message, jsString(vm, message));
 }
-
-class FindFirstCallerFrameWithCodeblockFunctor {
-public:
-    FindFirstCallerFrameWithCodeblockFunctor(CallFrame* startCallFrame)
-        : m_startCallFrame(startCallFrame)
-        , m_foundCallFrame(nullptr)
-        , m_foundStartCallFrame(false)
-        , m_index(0)
-    { }
-
-    StackVisitor::Status operator()(StackVisitor& visitor)
-    {
-        if (!m_foundStartCallFrame && (visitor->callFrame() == m_startCallFrame))
-            m_foundStartCallFrame = true;
-
-        if (m_foundStartCallFrame) {
-            if (visitor->callFrame()->codeBlock()) {
-                m_foundCallFrame = visitor->callFrame();
-                return StackVisitor::Done;
-            }
-            m_index++;
-        }
-
-        return StackVisitor::Continue;
-    }
-
-    CallFrame* foundCallFrame() const { return m_foundCallFrame; }
-    unsigned index() const { return m_index; }
-
-private:
-    CallFrame* m_startCallFrame;
-    CallFrame* m_foundCallFrame;
-    bool m_foundStartCallFrame;
-    unsigned m_index;
-};
-
+    
 JSValue VM::throwException(ExecState* exec, JSValue error)
 {
     if (Options::breakOnThrow()) {
@@ -676,11 +633,12 @@ JSValue VM::throwException(ExecState* exec, JSValue error)
             exception->putDirect(*this, Identifier(this, "sourceURL"), jsString(this, stackFrame.sourceURL), ReadOnly | DontDelete);
     }
     if (exception->isErrorInstance() && static_cast<ErrorInstance*>(exception)->appendSourceToMessage()) {
-        FindFirstCallerFrameWithCodeblockFunctor functor(exec);
-        topCallFrame->iterate(functor);
-        CallFrame* callFrame = functor.foundCallFrame();
-        unsigned stackIndex = functor.index();
-
+        unsigned stackIndex = 0;
+        CallFrame* callFrame;
+        for (callFrame = exec; callFrame && !callFrame->codeBlock(); ) {
+            stackIndex++;
+            callFrame = callFrame->callerFrameSkippingVMEntrySentinel();
+        }
         if (callFrame && callFrame->codeBlock()) {
             stackFrame = stackTrace.at(stackIndex);
             bytecodeOffset = stackFrame.bytecodeOffset;
@@ -877,7 +835,7 @@ void VM::registerWatchpointForImpureProperty(const Identifier& propertyName, Wat
 void VM::addImpureProperty(const String& propertyName)
 {
     if (RefPtr<WatchpointSet> watchpointSet = m_impurePropertyWatchpointSets.take(propertyName))
-        watchpointSet->fireAll("Impure property added");
+        watchpointSet->fireAll();
 }
 
 class SetEnabledProfilerFunctor {
@@ -894,71 +852,49 @@ void VM::setEnabledProfiler(LegacyProfiler* profiler)
 {
     m_enabledProfiler = profiler;
     if (m_enabledProfiler) {
-        prepareToDiscardCode();
+        waitForCompilationsToComplete();
         SetEnabledProfilerFunctor functor;
         heap.forEachCodeBlock(functor);
     }
 }
 
-TypeLocation* VM::nextTypeLocation() 
-{ 
-    RELEASE_ASSERT(!!m_typeLocationInfo);
+String VM::getTypesForVariableInRange(unsigned startLine, unsigned startColumn, unsigned endLine, unsigned endColumn, const String& variableName, const String& sourceIDAsString)
+{
+    if (!isProfilingTypesWithHighFidelity())
+        return "(Not Profiling)";
 
-    return m_typeLocationInfo->add(); 
+    bool okay;
+    intptr_t sourceID = sourceIDAsString.toIntPtrStrict(&okay);
+    if (!okay)
+        CRASH();
+
+    updateHighFidelityTypeProfileState();
+    return m_highFidelityTypeProfiler->getTypesForVariableInRange(startLine, startColumn, endLine, endColumn, variableName, sourceID);
 }
 
-bool VM::enableTypeProfiler()
+void VM::updateHighFidelityTypeProfileState()
 {
-    bool needsToRecompile = false;
-    if (!m_typeProfilerEnabledCount) {
-        m_typeProfiler = std::make_unique<TypeProfiler>();
-        m_typeProfilerLog = std::make_unique<TypeProfilerLog>();
-        m_typeLocationInfo = std::make_unique<Bag<TypeLocation>>();
-        needsToRecompile = true;
-    }
-    m_typeProfilerEnabledCount++;
-
-    return needsToRecompile;
-}
-
-bool VM::disableTypeProfiler()
-{
-    RELEASE_ASSERT(m_typeProfilerEnabledCount > 0);
-
-    bool needsToRecompile = false;
-    m_typeProfilerEnabledCount--;
-    if (!m_typeProfilerEnabledCount) {
-        m_typeProfiler.reset(nullptr);
-        m_typeProfilerLog.reset(nullptr);
-        m_typeLocationInfo.reset(nullptr);
-        needsToRecompile = true;
-    }
-
-    return needsToRecompile;
-}
-
-void VM::dumpTypeProfilerData()
-{
-    if (!typeProfiler())
+    if (!isProfilingTypesWithHighFidelity())
         return;
 
-    typeProfilerLog()->processLogEntries(ASCIILiteral("VM Dump Types"));
-    TypeProfiler* profiler = m_typeProfiler.get();
-    for (Bag<TypeLocation>::iterator iter = m_typeLocationInfo->begin(); !!iter; ++iter) {
-        TypeLocation* location = *iter;
-        profiler->logTypesForTypeLocation(location);
-    }
+    highFidelityLog()->processHighFidelityLog(false, "VM Update");
 }
 
-void VM::invalidateTypeSetCache()
+void VM::dumpHighFidelityProfilingTypes()
 {
-    RELEASE_ASSERT(typeProfiler());
+    if (!isProfilingTypesWithHighFidelity())
+        return;
 
-    for (Bag<TypeLocation>::iterator iter = m_typeLocationInfo->begin(); !!iter; ++iter) {
+    updateHighFidelityTypeProfileState();
+    HighFidelityTypeProfiler* profiler = m_highFidelityTypeProfiler.get();
+    for (Bag<TypeLocation>::iterator iter = m_locationInfo.begin(); !!iter; ++iter) {
         TypeLocation* location = *iter;
-        location->m_instructionTypeSet->invalidateCache();
-        if (location->m_globalTypeSet)
-            location->m_globalTypeSet->invalidateCache();
+        dataLogF("[Line, Column]::[%u, %u] ", location->m_line, location->m_column);
+        dataLog("\n\t\t#Local#\n\t\t",
+                profiler->getLocalTypesForVariableInRange(location->m_line, location->m_column, location->m_line, location->m_column, "", location->m_sourceID).replace("\n", "\n\t\t"),
+                "\n\t\t#Global#\n\t\t",
+                profiler->getGlobalTypesForVariableInRange(location->m_line, location->m_column, location->m_line, location->m_column, "", location->m_sourceID).replace("\n", "\n\t\t"),
+                "\n");
     }
 }
 

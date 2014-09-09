@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGBlockSetInlines.h"
 #include "DFGClobberize.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
@@ -51,7 +50,7 @@ public:
     {
         ASSERT(m_graph.m_form != SSA);
         
-        BlockSet blocksThatNeedInvalidationPoints;
+        BitVector blocksThatNeedInvalidationPoints;
         
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
             BasicBlock* block = m_graph.block(blockIndex);
@@ -64,13 +63,17 @@ public:
             // Note: this assumes that control flow occurs at bytecode instruction boundaries.
             if (m_originThatHadFire.isSet()) {
                 for (unsigned i = block->numSuccessors(); i--;)
-                    blocksThatNeedInvalidationPoints.add(block->successor(i));
+                    blocksThatNeedInvalidationPoints.set(block->successor(i)->index);
             }
             
             m_insertionSet.execute(block);
         }
-
-        for (BasicBlock* block : blocksThatNeedInvalidationPoints.iterable(m_graph)) {
+        
+        for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+            if (!blocksThatNeedInvalidationPoints.get(blockIndex))
+                continue;
+            
+            BasicBlock* block = m_graph.block(blockIndex);
             insertInvalidationCheck(0, block->at(0));
             m_insertionSet.execute(block);
         }

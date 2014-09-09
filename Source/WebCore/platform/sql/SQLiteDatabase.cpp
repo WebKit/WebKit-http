@@ -39,14 +39,14 @@
 
 namespace WebCore {
 
-WEBCORE_EXPORT const int SQLResultDone = SQLITE_DONE;
+const int SQLResultDone = SQLITE_DONE;
 const int SQLResultError = SQLITE_ERROR;
-WEBCORE_EXPORT const int SQLResultOk = SQLITE_OK;
-WEBCORE_EXPORT const int SQLResultRow = SQLITE_ROW;
+const int SQLResultOk = SQLITE_OK;
+const int SQLResultRow = SQLITE_ROW;
 const int SQLResultSchema = SQLITE_SCHEMA;
 const int SQLResultFull = SQLITE_FULL;
 const int SQLResultInterrupt = SQLITE_INTERRUPT;
-WEBCORE_EXPORT const int SQLResultConstraint = SQLITE_CONSTRAINT;
+const int SQLResultConstraint = SQLITE_CONSTRAINT;
 
 static const char notOpenErrorMessage[] = "database is not open";
 

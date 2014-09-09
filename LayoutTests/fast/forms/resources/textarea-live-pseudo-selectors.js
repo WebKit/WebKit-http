@@ -23,6 +23,7 @@ var elBackground = 'backgroundOf(el)';
 var invalidColor = 'rgb(255, 0, 0)';
 var normalColor = 'rgb(255, 255, 255)';
 var disabledColor = 'rgb(0, 0, 0)';
+var readOnlyColor = 'rgb(0, 255, 0)'
 var validColor = 'rgb(0, 0, 255)';
 
 // --------------------------------
@@ -49,7 +50,7 @@ shouldBe(elBackground, 'invalidColor');
 debug('Change readOnly:');
 el = makeInvalid();
 el.readOnly = true;
-shouldBe(elBackground, 'normalColor');
+shouldBe(elBackground, 'readOnlyColor');
 el.readOnly = false;
 shouldBe(elBackground, 'invalidColor');
 

@@ -584,9 +584,6 @@ void SVGAnimationElement::startedActiveInterval()
     String by = byValue();
     if (animationMode == NoAnimation)
         return;
-    if ((animationMode == FromToAnimation || animationMode == FromByAnimation || animationMode == ToAnimation || animationMode == ByAnimation)
-        && (fastHasAttribute(SVGNames::keyPointsAttr) && fastHasAttribute(SVGNames::keyTimesAttr) && (m_keyTimes.size() < 2 || m_keyTimes.size() != m_keyPoints.size())))
-        return;
     if (animationMode == FromToAnimation)
         m_animationValid = calculateFromAndToValues(from, to);
     else if (animationMode == ToAnimation) {

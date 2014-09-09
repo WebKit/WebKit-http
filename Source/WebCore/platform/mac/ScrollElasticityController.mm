@@ -235,7 +235,7 @@ bool ScrollElasticityController::handleWheelEvent(const PlatformWheelEvent& whee
                 m_client->immediateScrollBy(FloatSize(deltaX, 0));
             }
         } else {
-            if (!m_client->allowsHorizontalStretching(wheelEvent)) {
+            if (!m_client->allowsHorizontalStretching()) {
                 deltaX = 0;
                 eventCoalescedDeltaX = 0;
             } else if ((deltaX != 0) && !isHorizontallyStretched && !m_client->pinnedInDirection(FloatSize(deltaX, 0))) {
@@ -245,7 +245,7 @@ bool ScrollElasticityController::handleWheelEvent(const PlatformWheelEvent& whee
                 deltaX = 0;
             }
 
-            if (!m_client->allowsVerticalStretching(wheelEvent)) {
+            if (!m_client->allowsVerticalStretching()) {
                 deltaY = 0;
                 eventCoalescedDeltaY = 0;
             } else if ((deltaY != 0) && !isVerticallyStretched && !m_client->pinnedInDirection(FloatSize(0, deltaY))) {

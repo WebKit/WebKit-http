@@ -32,10 +32,6 @@
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
-namespace WTF {
-class PrintStream;
-}
-
 namespace WebCore {
 
 class PlatformTimeRanges {
@@ -72,8 +68,6 @@ public:
     MediaTime nearest(const MediaTime&) const;
 
     MediaTime totalDuration() const;
-
-    void dump(WTF::PrintStream&) const;
 
 private:
     PlatformTimeRanges& copy(const PlatformTimeRanges&);

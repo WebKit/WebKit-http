@@ -193,7 +193,11 @@ all : \
 
 ifneq ($(filter iphoneos iphonesimulator, $(PLATFORM_NAME)), )
 all : \
+    $(PRIVATE_HEADERS_DIR)/DOMGestureEvent.h \
     $(PRIVATE_HEADERS_DIR)/DOMHTMLTextAreaElementPrivate.h \
+    $(PRIVATE_HEADERS_DIR)/DOMTouch.h \
+    $(PRIVATE_HEADERS_DIR)/DOMTouchEvent.h \
+    $(PRIVATE_HEADERS_DIR)/DOMTouchList.h \
     $(PRIVATE_HEADERS_DIR)/DOMUIKitExtensions.h \
     $(PRIVATE_HEADERS_DIR)/KeyEventCodesIOS.h \
     $(PRIVATE_HEADERS_DIR)/MediaPlayerProxy.h \
@@ -215,7 +219,9 @@ all : \
     $(PRIVATE_HEADERS_DIR)/WebCoreThread.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadMessage.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadRun.h \
-    $(PRIVATE_HEADERS_DIR)/WebEvent.h
+    $(PRIVATE_HEADERS_DIR)/WebEvent.h \
+    $(PRIVATE_HEADERS_DIR)/WebEventRegion.h
+
 
 # Special case WAKScrollView.h, which contains the protocol named
 # <WebCoreFrameScrollView> and shouldn't be changed by the default rule.
@@ -224,25 +230,8 @@ $(PRIVATE_HEADERS_DIR)/WAKScrollView.h : WAKScrollView.h MigrateHeaders.make
 
 endif
 
-ifneq ($(filter ENABLE_IOS_TOUCH_EVENTS ENABLE_TOUCH_EVENTS, $(FEATURE_DEFINES)), )
-all : \
-    $(PRIVATE_HEADERS_DIR)/DOMTouch.h \
-    $(PRIVATE_HEADERS_DIR)/DOMTouchEvent.h \
-    $(PRIVATE_HEADERS_DIR)/DOMTouchList.h
-endif
-
-ifeq ($(findstring ENABLE_IOS_TOUCH_EVENTS, $(FEATURE_DEFINES)), ENABLE_IOS_TOUCH_EVENTS)
-all : \
-    $(PRIVATE_HEADERS_DIR)/WebEventRegion.h
-endif
-
-ifeq ($(findstring ENABLE_IOS_GESTURE_EVENTS, $(FEATURE_DEFINES)), ENABLE_IOS_GESTURE_EVENTS)
-all : \
-    $(PRIVATE_HEADERS_DIR)/DOMGestureEvent.h
-endif
-
-WEBCORE_HEADER_REPLACE_RULES = -e s/\<WebCore/\<WebKitLegacy/ -e s/DOMDOMImplementation/DOMImplementation/ -e "s/(^ *)WEBCORE_EXPORT /\1/"
-WEBCORE_HEADER_MIGRATE_CMD = sed -E $(WEBCORE_HEADER_REPLACE_RULES) $< > $@
+WEBCORE_HEADER_REPLACE_RULES = -e s/\<WebCore/\<WebKitLegacy/ -e s/DOMDOMImplementation/DOMImplementation/
+WEBCORE_HEADER_MIGRATE_CMD = sed $(WEBCORE_HEADER_REPLACE_RULES) $< > $@
 
 $(PRIVATE_HEADERS_DIR)/DOM% : DOMDOM% MigrateHeaders.make
 	$(WEBCORE_HEADER_MIGRATE_CMD)

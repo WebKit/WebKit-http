@@ -38,10 +38,9 @@ namespace JSC { namespace DFG {
 
 class Validate {
 public:
-    Validate(Graph& graph, GraphDumpMode graphDumpMode, CString graphDumpBeforePhase)
+    Validate(Graph& graph, GraphDumpMode graphDumpMode)
         : m_graph(graph)
         , m_graphDumpMode(graphDumpMode)
-        , m_graphDumpBeforePhase(graphDumpBeforePhase)
     {
     }
     
@@ -201,8 +200,7 @@ public:
                 
                 VALIDATE((node), !mayExit(m_graph, node) || node->origin.forExit.isSet());
                 VALIDATE((node), !node->hasStructure() || !!node->structure());
-                VALIDATE((node), !node->hasCellOperand() || node->cellOperand()->value().isCell());
-                VALIDATE((node), !node->hasCellOperand() || !!node->cellOperand()->value());
+                VALIDATE((node), !node->hasFunction() || node->function()->value().isFunction());
                  
                 if (!(node->flags() & NodeHasVarArgs)) {
                     if (!node->child2())
@@ -267,7 +265,6 @@ public:
 private:
     Graph& m_graph;
     GraphDumpMode m_graphDumpMode;
-    CString m_graphDumpBeforePhase;
     
     HashMap<Node*, unsigned> m_myRefCounts;
     HashSet<Node*> m_acceptableNodes;
@@ -566,19 +563,14 @@ private:
     {
         if (m_graphDumpMode == DontDumpGraph)
             return;
-        dataLog("\n");
-        if (!m_graphDumpBeforePhase.isNull()) {
-            dataLog("Before phase:\n");
-            dataLog(m_graphDumpBeforePhase);
-        }
         dataLog("At time of failure:\n");
         m_graph.dump();
     }
 };
 
-void validate(Graph& graph, GraphDumpMode graphDumpMode, CString graphDumpBeforePhase)
+void validate(Graph& graph, GraphDumpMode graphDumpMode)
 {
-    Validate validationObject(graph, graphDumpMode, graphDumpBeforePhase);
+    Validate validationObject(graph, graphDumpMode);
     validationObject.validate();
 }
 

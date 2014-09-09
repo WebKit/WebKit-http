@@ -27,122 +27,88 @@
 #include <wtf/Vector.h>
 
 namespace JSC {
+    
+    class Structure;
+    class StructureChain;
 
-class JSPropertyNameEnumerator;
-class Structure;
-class StructureChain;
+    // FIXME: Rename to PropertyNameArray.
+    class PropertyNameArrayData : public RefCounted<PropertyNameArrayData> {
+    public:
+        typedef Vector<Identifier, 20> PropertyNameVector;
 
-class RefCountedIdentifierSet : public RefCounted<RefCountedIdentifierSet> {
-public:
-    typedef HashSet<StringImpl*, PtrHash<StringImpl*>> Set;
+        static PassRefPtr<PropertyNameArrayData> create() { return adoptRef(new PropertyNameArrayData); }
 
-    bool contains(StringImpl* impl) const { return m_set.contains(impl); }
-    size_t size() const  { return m_set.size(); }
-    Set::AddResult add(StringImpl* impl) { return m_set.add(impl); }
+        PropertyNameVector& propertyNameVector() { return m_propertyNameVector; }
 
-private:
-    Set m_set;
-};
+    private:
+        PropertyNameArrayData()
+        {
+        }
 
-// FIXME: Rename to PropertyNameArray.
-class PropertyNameArrayData : public RefCounted<PropertyNameArrayData> {
-public:
-    typedef Vector<Identifier, 20> PropertyNameVector;
+        PropertyNameVector m_propertyNameVector;
+    };
 
-    static PassRefPtr<PropertyNameArrayData> create() { return adoptRef(new PropertyNameArrayData); }
+    // FIXME: Rename to PropertyNameArrayBuilder.
+    class PropertyNameArray {
+    public:
+        PropertyNameArray(VM* vm)
+            : m_data(PropertyNameArrayData::create())
+            , m_vm(vm)
+            , m_numCacheableSlots(0)
+            , m_baseObject(0)
+        {
+        }
 
-    PropertyNameVector& propertyNameVector() { return m_propertyNameVector; }
+        PropertyNameArray(ExecState* exec)
+            : m_data(PropertyNameArrayData::create())
+            , m_vm(&exec->vm())
+            , m_numCacheableSlots(0)
+            , m_baseObject(0)
+        {
+        }
 
-private:
-    PropertyNameArrayData()
-    {
-    }
+        VM* vm() { return m_vm; }
 
-    PropertyNameVector m_propertyNameVector;
-};
+        void add(const Identifier& identifier) { add(identifier.impl()); }
+        JS_EXPORT_PRIVATE void add(StringImpl*);
+        void addKnownUnique(StringImpl* identifier) { m_data->propertyNameVector().append(Identifier(m_vm, identifier)); }
 
-// FIXME: Rename to PropertyNameArrayBuilder.
-class PropertyNameArray {
-public:
-    PropertyNameArray(VM* vm)
-        : m_data(PropertyNameArrayData::create())
-        , m_set(adoptRef(new RefCountedIdentifierSet))
-        , m_vm(vm)
-        , m_numCacheableSlots(0)
-        , m_baseObject(0)
-        , m_previouslyEnumeratedLength(0)
-    {
-    }
+        Identifier& operator[](unsigned i) { return m_data->propertyNameVector()[i]; }
+        const Identifier& operator[](unsigned i) const { return m_data->propertyNameVector()[i]; }
 
-    PropertyNameArray(ExecState* exec)
-        : m_data(PropertyNameArrayData::create())
-        , m_set(adoptRef(new RefCountedIdentifierSet))
-        , m_vm(&exec->vm())
-        , m_numCacheableSlots(0)
-        , m_baseObject(0)
-        , m_previouslyEnumeratedLength(0)
-    {
-    }
+        void setData(PassRefPtr<PropertyNameArrayData> data) { m_data = data; }
+        PropertyNameArrayData* data() { return m_data.get(); }
+        PassRefPtr<PropertyNameArrayData> releaseData() { return m_data.release(); }
 
-    VM* vm() { return m_vm; }
+        // FIXME: Remove these functions.
+        typedef PropertyNameArrayData::PropertyNameVector::const_iterator const_iterator;
+        size_t size() const { return m_data->propertyNameVector().size(); }
+        const_iterator begin() const { return m_data->propertyNameVector().begin(); }
+        const_iterator end() const { return m_data->propertyNameVector().end(); }
 
-    void add(uint32_t index)
-    {
-        if (index < m_previouslyEnumeratedLength)
-            return;
-        add(Identifier::from(m_vm, index));
-    }
+        size_t numCacheableSlots() const { return m_numCacheableSlots; }
+        void setNumCacheableSlotsForObject(JSObject* object, size_t numCacheableSlots)
+        {
+            if (object != m_baseObject)
+                return;
+            m_numCacheableSlots = numCacheableSlots;
+        }
+        void setBaseObject(JSObject* object)
+        {
+            if (m_baseObject)
+                return;
+            m_baseObject = object;
+        }
 
-    void add(const Identifier& identifier) { add(identifier.impl()); }
-    JS_EXPORT_PRIVATE void add(StringImpl*);
-    void addKnownUnique(StringImpl* identifier)
-    {
-        m_set->add(identifier);
-        m_data->propertyNameVector().append(Identifier(m_vm, identifier));
-    }
+    private:
+        typedef HashSet<StringImpl*, PtrHash<StringImpl*>> IdentifierSet;
 
-    Identifier& operator[](unsigned i) { return m_data->propertyNameVector()[i]; }
-    const Identifier& operator[](unsigned i) const { return m_data->propertyNameVector()[i]; }
-
-    void setData(PassRefPtr<PropertyNameArrayData> data) { m_data = data; }
-    PropertyNameArrayData* data() { return m_data.get(); }
-    PassRefPtr<PropertyNameArrayData> releaseData() { return m_data.release(); }
-
-    RefCountedIdentifierSet* identifierSet() const { return m_set.get(); }
-
-    // FIXME: Remove these functions.
-    bool canAddKnownUniqueForStructure() const { return !m_set->size() && (!m_alternateSet || !m_alternateSet->size()); }
-    typedef PropertyNameArrayData::PropertyNameVector::const_iterator const_iterator;
-    size_t size() const { return m_data->propertyNameVector().size(); }
-    const_iterator begin() const { return m_data->propertyNameVector().begin(); }
-    const_iterator end() const { return m_data->propertyNameVector().end(); }
-
-    size_t numCacheableSlots() const { return m_numCacheableSlots; }
-    void setNumCacheableSlotsForObject(JSObject* object, size_t numCacheableSlots)
-    {
-        if (object != m_baseObject)
-            return;
-        m_numCacheableSlots = numCacheableSlots;
-    }
-    void setBaseObject(JSObject* object)
-    {
-        if (m_baseObject)
-            return;
-        m_baseObject = object;
-    }
-
-    void setPreviouslyEnumeratedLength(uint32_t length) { m_previouslyEnumeratedLength = length; }
-    void setPreviouslyEnumeratedProperties(const JSPropertyNameEnumerator*);
-
-private:
-    RefPtr<PropertyNameArrayData> m_data;
-    RefPtr<RefCountedIdentifierSet> m_set;
-    RefPtr<RefCountedIdentifierSet> m_alternateSet;
-    VM* m_vm;
-    size_t m_numCacheableSlots;
-    JSObject* m_baseObject;
-    uint32_t m_previouslyEnumeratedLength;
-};
+        RefPtr<PropertyNameArrayData> m_data;
+        IdentifierSet m_set;
+        VM* m_vm;
+        size_t m_numCacheableSlots;
+        JSObject* m_baseObject;
+    };
 
 } // namespace JSC
 

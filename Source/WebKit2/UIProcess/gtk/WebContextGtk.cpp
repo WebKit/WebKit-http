@@ -61,7 +61,7 @@ static void initInspectorServer()
         unsigned short port = 2999;
 
         Vector<String> result;
-        serverAddress.split(':', result);
+        serverAddress.split(":", result);
 
         if (result.size() == 2) {
             bindAddress = result[0];
@@ -143,6 +143,24 @@ String WebContext::platformDefaultDiskCacheDirectory() const
 }
 
 String WebContext::platformDefaultCookieStorageDirectory() const
+{
+    notImplemented();
+    return String();
+}
+
+String WebContext::platformDefaultOpenGLCacheDirectory() const
+{
+    notImplemented();
+    return String();
+}
+
+String WebContext::containerTemporaryDirectory() const
+{
+    notImplemented();
+    return String();
+}
+
+String WebContext::platformDefaultNetworkingHSTSDatabasePath() const
 {
     notImplemented();
     return String();

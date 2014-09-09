@@ -40,8 +40,7 @@ private:
 
     virtual WebCore::TiledBacking* tiledBacking() override { return m_tileController.get(); }
 
-    virtual void setNeedsDisplayInRect(const WebCore::FloatRect& dirtyRect) override;
-    virtual void setNeedsDisplay() override;
+    virtual void setNeedsDisplay(const WebCore::FloatRect* dirtyRect = 0) override;
 
     virtual const WebCore::PlatformCALayerList* customSublayers() const override;
 

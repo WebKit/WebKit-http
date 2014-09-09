@@ -21,6 +21,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "FEColorMatrix.h"
 
 #include "Filter.h"
@@ -223,3 +225,5 @@ TextStream& FEColorMatrix::externalRepresentation(TextStream& ts, int indent) co
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

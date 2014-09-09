@@ -216,19 +216,19 @@ void WebInspector::didAppend(const String& url)
 void WebInspector::attachedBottom()
 {
     if (m_frontendClient)
-        m_frontendClient->setAttachedWindow(InspectorFrontendClient::DockSide::Bottom);
+        m_frontendClient->setAttachedWindow(InspectorFrontendClient::DOCKED_TO_BOTTOM);
 }
 
 void WebInspector::attachedRight()
 {
     if (m_frontendClient)
-        m_frontendClient->setAttachedWindow(InspectorFrontendClient::DockSide::Right);
+        m_frontendClient->setAttachedWindow(InspectorFrontendClient::DOCKED_TO_RIGHT);
 }
 
 void WebInspector::detached()
 {
     if (m_frontendClient)
-        m_frontendClient->setAttachedWindow(InspectorFrontendClient::DockSide::Undocked);
+        m_frontendClient->setAttachedWindow(InspectorFrontendClient::UNDOCKED);
 }
 
 void WebInspector::evaluateScriptForTest(const String& script)

@@ -23,9 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageBufferDataCairo_h
-#define ImageBufferDataCairo_h
-
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
 
@@ -57,5 +54,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // ImageBufferDataCairo_h

@@ -93,7 +93,6 @@ public:
     NaturalLoops();
     ~NaturalLoops();
     
-    void computeDependencies(Graph&);
     void compute(Graph&);
     
     unsigned numLoops() const

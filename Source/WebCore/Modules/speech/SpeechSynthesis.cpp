@@ -243,4 +243,4 @@ void SpeechSynthesis::speakingErrorOccurred(PassRefPtr<PlatformSpeechSynthesisUt
 
 } // namespace WebCore
 
-#endif // ENABLE(SPEECH_SYNTHESIS)
+#endif // ENABLE(INPUT_SPEECH)

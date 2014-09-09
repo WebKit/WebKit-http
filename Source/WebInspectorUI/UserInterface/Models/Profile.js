@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Profile = function(topDownRootNodes)
+WebInspector.Profile = function(topDownRootNodes, idleTime)
 {
     WebInspector.Object.call(this);
 
@@ -33,6 +33,7 @@ WebInspector.Profile = function(topDownRootNodes)
     console.assert(topDownRootNodes.reduce(function(previousValue, node) { return previousValue && node instanceof WebInspector.ProfileNode; }, true));
 
     this._topDownRootNodes = topDownRootNodes;
+    this._idleTime = idleTime || 0;
 };
 
 WebInspector.Profile.prototype = {
@@ -40,6 +41,11 @@ WebInspector.Profile.prototype = {
     __proto__: WebInspector.Object.prototype,
 
     // Public
+
+    get idleTime()
+    {
+        return this._idleTime;
+    },
 
     get topDownRootNodes()
     {

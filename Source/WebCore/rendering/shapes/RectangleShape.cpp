@@ -12,7 +12,7 @@
  *    copyright notice, this list of conditions and the following
  *    disclaimer in the documentation and/or other materials
  *    provided with the distribution.
- *
+ * 
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -53,17 +53,17 @@ FloatRect RectangleShape::shapeMarginBounds() const
     return FloatRect(boundsX, boundsY, boundsWidth, boundsHeight);
 }
 
-LineSegment RectangleShape::getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const
+void RectangleShape::getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHeight, SegmentList& result) const
 {
     const FloatRect& bounds = shapeMarginBounds();
     if (bounds.isEmpty())
-        return LineSegment();
+        return;
 
     float y1 = logicalTop;
     float y2 = logicalTop + logicalHeight;
 
     if (y2 < bounds.y() || y1 >= bounds.maxY())
-        return LineSegment();
+        return;
 
     float x1 = bounds.x();
     float x2 = bounds.maxX();
@@ -85,7 +85,7 @@ LineSegment RectangleShape::getExcludedInterval(LayoutUnit logicalTop, LayoutUni
         }
     }
 
-    return LineSegment(x1, x2);
+    result.append(LineSegment(x1, x2));
 }
 
 void RectangleShape::buildDisplayPaths(DisplayPaths& paths) const

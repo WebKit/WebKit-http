@@ -174,7 +174,6 @@ WebProcess::WebProcess()
 #if ENABLE(SERVICE_CONTROLS)
     , m_hasImageServices(false)
     , m_hasSelectionServices(false)
-    , m_hasRichContentServices(false)
 #endif
     , m_nonVisibleProcessCleanupTimer(this, &WebProcess::nonVisibleProcessCleanupTimerFired)
 {
@@ -271,10 +270,6 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
 {
     ASSERT(m_pageMap.isEmpty());
 
-#if ENABLE(NETWORK_PROCESS)
-    m_usesNetworkProcess = parameters.usesNetworkProcess;
-#endif
-
     platformInitializeWebProcess(parameters, decoder);
 
     WTF::setCurrentThreadIsUserInitiated();
@@ -352,6 +347,7 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
         NetworkStorageSession::switchToNewTestingSession();
 
 #if ENABLE(NETWORK_PROCESS)
+    m_usesNetworkProcess = parameters.usesNetworkProcess;
     ensureNetworkProcessConnection();
 
 #if PLATFORM(COCOA)
@@ -368,7 +364,7 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     setMemoryCacheDisabled(parameters.memoryCacheDisabled);
 
 #if ENABLE(SERVICE_CONTROLS)
-    setEnabledServices(parameters.hasImageServices, parameters.hasSelectionServices, parameters.hasRichContentServices);
+    setEnabledServices(parameters.hasImageServices, parameters.hasSelectionServices);
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -888,6 +884,20 @@ static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t>>& r
     decodedSizes.set(xslString, memoryCacheStatistics.xslStyleSheets.decodedSize);
     decodedSizes.set(javaScriptString, memoryCacheStatistics.scripts.decodedSize);
     result.append(decodedSizes);
+    
+    HashMap<String, uint64_t> purgeableSizes;
+    purgeableSizes.set(imagesString, memoryCacheStatistics.images.purgeableSize);
+    purgeableSizes.set(cssString, memoryCacheStatistics.cssStyleSheets.purgeableSize);
+    purgeableSizes.set(xslString, memoryCacheStatistics.xslStyleSheets.purgeableSize);
+    purgeableSizes.set(javaScriptString, memoryCacheStatistics.scripts.purgeableSize);
+    result.append(purgeableSizes);
+    
+    HashMap<String, uint64_t> purgedSizes;
+    purgedSizes.set(imagesString, memoryCacheStatistics.images.purgedSize);
+    purgedSizes.set(cssString, memoryCacheStatistics.cssStyleSheets.purgedSize);
+    purgedSizes.set(xslString, memoryCacheStatistics.xslStyleSheets.purgedSize);
+    purgedSizes.set(javaScriptString, memoryCacheStatistics.scripts.purgedSize);
+    result.append(purgedSizes);
 }
 
 void WebProcess::getWebCoreStatistics(uint64_t callbackID)
@@ -1241,11 +1251,10 @@ void WebProcess::setMemoryCacheDisabled(bool disabled)
 }
 
 #if ENABLE(SERVICE_CONTROLS)
-void WebProcess::setEnabledServices(bool hasImageServices, bool hasSelectionServices, bool hasRichContentServices)
+void WebProcess::setEnabledServices(bool hasImageServices, bool hasSelectionServices)
 {
     m_hasImageServices = hasImageServices;
     m_hasSelectionServices = hasSelectionServices;
-    m_hasRichContentServices = hasRichContentServices;
 }
 #endif
 

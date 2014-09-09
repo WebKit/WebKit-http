@@ -32,12 +32,12 @@ namespace bmalloc {
 
 class BeginTag : public BoundaryTag {
 public:
-    bool isInFreeList(const Range&);
+    bool isInFreeList(size_t);
 };
 
-inline bool BeginTag::isInFreeList(const Range& range)
+inline bool BeginTag::isInFreeList(size_t size)
 {
-    return isFree() && !isEnd() && this->size() == range.size() && this->compactBegin() == compactBegin(range);
+    return isFree() && !isEnd() && this->size() == size;
 }
 
 } // namespace bmalloc

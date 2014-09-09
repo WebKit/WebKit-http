@@ -24,8 +24,6 @@
  */
 
 #include "config.h"
-
-#if USE(3D_GRAPHICS)
 #include "GLPlatformSurface.h"
 
 #if USE(GLX)
@@ -133,5 +131,3 @@ GLPlatformSurface::SurfaceAttributes GLPlatformSurface::attributes() const
 }
 
 }
-
-#endif

@@ -26,9 +26,6 @@
 var settings = new Settings;
 var buildbots = [ new WebKitBuildbot ];
 var webkitTrac = new Trac("http://trac.webkit.org/");
-if (typeof Bugzilla !== "undefined")
-    var bugzilla = new Bugzilla;
-if (typeof EWS !== "undefined")
-    var ews = new EWS;
-if (typeof TestHistory !== "undefined")
-    var testHistory = new TestHistory;
+var bugzilla = new Bugzilla;
+var ews = new EWS;
+var testHistory = new TestHistory;

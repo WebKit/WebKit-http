@@ -31,12 +31,13 @@
 
     background-color: white;
     border-top: 1px solid rgb(190, 190, 190);
-    padding: 3px 0 4px;
+    padding: 3px 0;
 
     outline: none;
     overflow: hidden;
 
     font-family: Menlo, monospace;
+    font-size: 11px;
 }
 
 body.mac-platform.legacy .quick-console {

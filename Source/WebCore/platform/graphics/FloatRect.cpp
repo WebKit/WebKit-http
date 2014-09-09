@@ -206,10 +206,10 @@ void FloatRect::fitToPoints(const FloatPoint& p0, const FloatPoint& p1, const Fl
     setLocationAndSizeFromEdges(left, top, right, bottom);
 }
 
-FloatRect encloseRectToDevicePixels(const FloatRect& rect, float deviceScaleFactor)
+FloatRect enclosingRectExtendedToDevicePixels(const FloatRect& rect, float deviceScaleFactor)
 {
-    FloatPoint location = floorPointToDevicePixels(rect.minXMinYCorner(), deviceScaleFactor);
-    FloatPoint maxPoint = ceilPointToDevicePixels(rect.maxXMaxYCorner(), deviceScaleFactor);
+    FloatPoint location = flooredToDevicePixels(rect.minXMinYCorner(), deviceScaleFactor);
+    FloatPoint maxPoint = ceiledToDevicePixels(rect.maxXMaxYCorner(), deviceScaleFactor);
     return FloatRect(location, maxPoint - location);
 }
 
@@ -219,6 +219,16 @@ IntRect enclosingIntRect(const FloatRect& rect)
     IntPoint maxPoint = ceiledIntPoint(rect.maxXMaxYCorner());
 
     return IntRect(location, maxPoint - location);
+}
+
+IntRect enclosedIntRect(const FloatRect& rect)
+{
+    IntPoint location = ceiledIntPoint(rect.minXMinYCorner());
+    IntPoint maxPoint = flooredIntPoint(rect.maxXMaxYCorner());
+    IntSize size = maxPoint - location;
+    size.clampNegativeToZero();
+
+    return IntRect(location, size);
 }
 
 IntRect roundedIntRect(const FloatRect& rect)

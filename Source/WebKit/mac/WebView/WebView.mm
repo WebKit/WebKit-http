@@ -134,8 +134,8 @@
 #import <WebCore/GCController.h>
 #import <WebCore/GeolocationController.h>
 #import <WebCore/GeolocationError.h>
+#import <WebCore/HTMLMediaElement.h>
 #import <WebCore/HTMLNames.h>
-#import <WebCore/HTMLVideoElement.h>
 #import <WebCore/HistoryController.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/IconDatabase.h>
@@ -148,7 +148,6 @@
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MemoryPressureHandler.h>
-#import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/NodeList.h>
 #import <WebCore/Notification.h>
 #import <WebCore/NotificationController.h>
@@ -254,6 +253,11 @@
 #import <WebKitLegacy/WebDashboardRegion.h>
 #endif
 
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+#import "WebDiskImageCacheClientIOS.h"
+#import <WebCore/DiskImageCacheIOS.h>
+#endif
+
 #if ENABLE(REMOTE_INSPECTOR)
 #import <JavaScriptCore/RemoteInspector.h>
 #if PLATFORM(IOS)
@@ -269,8 +273,13 @@
 #include <WebCore/QuickLook.h>
 #endif
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS)
 #import <WebCore/WebEventRegion.h>
+#endif
+
+#if ENABLE(DISK_IMAGE_CACHE)
+#import "WebDiskImageCacheClientIOS.h"
+#import <WebCore/DiskImageCacheIOS.h>
 #endif
 
 #if ENABLE(GAMEPAD)
@@ -893,6 +902,9 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
         WebKitInitializeStorageIfNecessary();
         WebKitInitializeApplicationCachePathIfNecessary();
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+        WebKitInitializeWebDiskImageCache();
+#endif
 #if ENABLE(GAMEPAD)
         WebKitInitializeGamepadProviderIfNecessary();
 #endif
@@ -1086,7 +1098,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     NSEnumerator *enumerator = [MIMETypes objectEnumerator];
     NSString *MIMEType;
     while ((MIMEType = [enumerator nextObject]) != nil) {
-        NSArray *extensionsForType = [[NSURLFileTypeMappings sharedMappings] extensionsForMIMEType:MIMEType];
+        NSArray *extensionsForType = WKGetExtensionsForMIMEType(MIMEType);
         if (extensionsForType) {
             [extensions addObjectsFromArray:extensionsForType];
         }
@@ -1216,6 +1228,13 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         return;
 
     tileControllerMemoryHandler().trimUnparentedTilesToTarget(0);
+
+#if ENABLE(DISK_IMAGE_CACHE)
+    {
+        WebKit::MemoryMeasure measurer("Memory warning: flushing images to disk.");
+        WebCore::memoryCache()->flushCachedImagesToDisk();
+    }
+#endif
 
     [WebStorageManager closeIdleLocalStorageDatabases];
 
@@ -1476,7 +1495,7 @@ static NSMutableSet *knownPluginMIMETypes()
 #if !PLATFORM(IOS)
 + (NSString *)suggestedFileExtensionForMIMEType:(NSString *)type
 {
-    return [[NSURLFileTypeMappings sharedMappings] preferredExtensionForMIMEType:type];
+    return WKGetPreferredExtensionForMIMEType(type);
 }
 #endif
 
@@ -1553,8 +1572,9 @@ static NSMutableSet *knownPluginMIMETypes()
     _private->mainViewIsScrollingOrZooming = NO;
     [self setDefersCallbacks:NO];
     [[self mainFrame] setTimeoutsPaused:NO];
-    if (FrameView* view = [self _mainCoreFrame]->view())
-        view->resumeVisibleImageAnimationsIncludingSubframes();
+    FrameView* view = [self _mainCoreFrame]->view();
+    if (view && view->renderView())
+        view->renderView()->resumePausedImageAnimationsIfNeeded();
 }
 
 - (void)_setResourceLoadSchedulerSuspended:(BOOL)suspend
@@ -1679,7 +1699,7 @@ static bool fastDocumentTeardownEnabled()
     }
 
 #if ENABLE(VIDEO) && !PLATFORM(IOS)
-    [self _exitVideoFullscreen];
+    [self _exitFullscreen];
 #endif
 
 #if PLATFORM(IOS)
@@ -1778,7 +1798,7 @@ static bool fastDocumentTeardownEnabled()
 #if !PLATFORM(IOS)
     // Get the MIME type from the extension.
     if ([extension length] != 0) {
-        MIMEType = [[NSURLFileTypeMappings sharedMappings] MIMETypeForExtension:extension];
+        MIMEType = WKGetMIMETypeForExtension(extension);
     }
 #endif
 
@@ -2282,11 +2302,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
 #endif
 
-#if ENABLE(RUBBER_BANDING)
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=136131
-    settings.setRubberBandingForOverflowScrollEnabled(false);
-#endif
-
 #if PLATFORM(IOS)
     settings.setStandalone([preferences _standalone]);
     settings.setTelephoneNumberParsingEnabled([preferences _telephoneNumberParsingEnabled]);
@@ -2312,6 +2327,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     settings.setMinimumZoomFontSize([preferences _minimumZoomFontSize]);
 #endif
+
+    settings.setAllowNavigationToInvalidURL(!WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_NAVIGATION_URL_VALIDATION));
 #endif // PLATFORM(IOS)
 
 #if PLATFORM(MAC)
@@ -2388,6 +2405,13 @@ static bool needsSelfRetainWhileLoadingQuirk()
     BOOL zoomsTextOnly = [preferences zoomsTextOnly];
     if (_private->zoomsTextOnly != zoomsTextOnly)
         [self _setZoomMultiplier:_private->zoomMultiplier isTextOnly:zoomsTextOnly];
+
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+    DiskImageCache& diskImageCache = WebCore::diskImageCache();
+    diskImageCache.setEnabled([preferences diskImageCacheEnabled]);
+    diskImageCache.setMinimumImageSize([preferences diskImageCacheMinimumImageSize]);
+    diskImageCache.setMaximumCacheSize([preferences diskImageCacheMaximumCacheSize]);
+#endif
 
 #if PLATFORM(IOS)
     [[self window] setTileBordersVisible:[preferences showDebugBorders]];
@@ -3033,7 +3057,7 @@ static inline IMP getMethod(id o, SEL s)
             [regionValues release];
         }
 
-        WebDashboardRegion *webRegion = [[WebDashboardRegion alloc] initWithRect:snappedIntRect(region.bounds) clip:snappedIntRect(region.clip) type:type];
+        WebDashboardRegion *webRegion = [[WebDashboardRegion alloc] initWithRect:pixelSnappedIntRect(region.bounds) clip:pixelSnappedIntRect(region.clip) type:type];
         [regionValues addObject:webRegion];
         [webRegion release];
     }
@@ -3416,7 +3440,7 @@ static inline IMP getMethod(id o, SEL s)
             continue;
         
         if (layerForWidget->contentsLayerForMedia() != layer) {
-            layerForWidget->setContentsToPlatformLayer(layer, GraphicsLayer::ContentsLayerForMedia);
+            layerForWidget->setContentsToMedia(layer);
             // We need to make sure the layer hierachy change is applied immediately.
             if (mainCoreFrame->view())
                 mainCoreFrame->view()->flushCompositingStateIncludingSubframes();
@@ -3886,7 +3910,7 @@ static inline IMP getMethod(id o, SEL s)
     NSMutableArray* rectsArray = [[NSMutableArray alloc] initWithCapacity:repaintRects.size()];
     
     for (unsigned i = 0; i < repaintRects.size(); ++i)
-        [rectsArray addObject:[NSValue valueWithRect:snappedIntRect(LayoutRect(repaintRects[i]))]];
+        [rectsArray addObject:[NSValue valueWithRect:pixelSnappedIntRect(LayoutRect(repaintRects[i]))]];
 
     return [rectsArray autorelease];
 }
@@ -8361,25 +8385,28 @@ bool LayerFlushController::flushLayers()
 #endif
 
 #if ENABLE(VIDEO)
-- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement
+- (void)_enterFullscreenForNode:(WebCore::Node*)node
 {
+    ASSERT(isHTMLVideoElement(node));
+    HTMLMediaElement* videoElement = toHTMLMediaElement(node);
+
     if (_private->fullscreenController) {
-        if ([_private->fullscreenController videoElement] == videoElement) {
+        if ([_private->fullscreenController mediaElement] == videoElement) {
             // The backend may just warn us that the underlaying plaftormMovie()
             // has changed. Just force an update.
-            [_private->fullscreenController setVideoElement:videoElement];
+            [_private->fullscreenController setMediaElement:videoElement];
             return; // No more to do.
         }
 
-        // First exit Fullscreen for the old videoElement.
-        [_private->fullscreenController videoElement]->exitFullscreen();
+        // First exit Fullscreen for the old mediaElement.
+        [_private->fullscreenController mediaElement]->exitFullscreen();
         // This previous call has to trigger _exitFullscreen,
         // which has to clear _private->fullscreenController.
         ASSERT(!_private->fullscreenController);
     }
     if (!_private->fullscreenController) {
         _private->fullscreenController = [[WebVideoFullscreenController alloc] init];
-        [_private->fullscreenController setVideoElement:videoElement];
+        [_private->fullscreenController setMediaElement:videoElement];
 #if PLATFORM(IOS)
         [_private->fullscreenController enterFullscreen:(UIView *)[[[self window] hostLayer] delegate]];
 #else
@@ -8387,10 +8414,10 @@ bool LayerFlushController::flushLayers()
 #endif
     }
     else
-        [_private->fullscreenController setVideoElement:videoElement];
+        [_private->fullscreenController setMediaElement:videoElement];
 }
 
-- (void)_exitVideoFullscreen
+- (void)_exitFullscreen
 {
     if (!_private->fullscreenController)
         return;

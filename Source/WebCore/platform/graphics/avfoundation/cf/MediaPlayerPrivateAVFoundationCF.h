@@ -73,14 +73,14 @@ private:
     virtual void platformSetVisible(bool);
     virtual void platformPlay();
     virtual void platformPause();
-    virtual MediaTime currentMediaTime() const override;
+    virtual float currentTime() const;
     virtual void setVolume(float);
     virtual void setClosedCaptionsVisible(bool);
     virtual void paint(GraphicsContext*, const IntRect&);
     virtual void paintCurrentFrameInContext(GraphicsContext*, const IntRect&);
     virtual PlatformLayer* platformLayer() const;
     virtual bool supportsAcceleratedRendering() const { return true; }
-    virtual MediaTime mediaTimeForTimeValue(const MediaTime&) const;
+    virtual float mediaTimeForTimeValue(float) const;
 
     virtual void createAVPlayer();
     virtual void createAVPlayerItem();
@@ -91,13 +91,13 @@ private:
     virtual void checkPlayability();
     virtual void updateRate();
     virtual float rate() const;
-    virtual void seekToTime(const MediaTime&, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance);
+    virtual void seekToTime(double time, double negativeTolerance, double positiveTolerance);
     virtual unsigned long long totalBytes() const;
     virtual std::unique_ptr<PlatformTimeRanges> platformBufferedTimeRanges() const;
-    virtual MediaTime platformMinTimeSeekable() const;
-    virtual MediaTime platformMaxTimeSeekable() const;
-    virtual MediaTime platformDuration() const;
-    virtual MediaTime platformMaxTimeLoaded() const;
+    virtual double platformMinTimeSeekable() const;
+    virtual double platformMaxTimeSeekable() const;
+    virtual float platformDuration() const;
+    virtual float platformMaxTimeLoaded() const;
     virtual void beginLoadingMetadata();
     virtual void sizeChanged();
     virtual bool requiresImmediateCompositing() const override;

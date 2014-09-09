@@ -139,9 +139,6 @@ static bool hasDoubleValue(CSSPrimitiveValue::UnitTypes type)
     case CSSPrimitiveValue::CSS_COUNTER_NAME:
     case CSSPrimitiveValue::CSS_SHAPE:
     case CSSPrimitiveValue::CSS_QUAD:
-#if ENABLE(CSS_SCROLL_SNAP)
-    case CSSPrimitiveValue::CSS_LENGTH_REPEAT:
-#endif
     case CSSPrimitiveValue::CSS_CALC:
     case CSSPrimitiveValue::CSS_CALC_PERCENTAGE_WITH_NUMBER:
     case CSSPrimitiveValue::CSS_CALC_PERCENTAGE_WITH_LENGTH:
@@ -159,7 +156,7 @@ static bool hasDoubleValue(CSSPrimitiveValue::UnitTypes type)
 static String buildCssText(const String& expression)
 {
     StringBuilder result;
-    result.appendLiteral("calc");
+    result.append("calc");
     bool expressionHasSingleTerm = expression[0] != '(';
     if (expressionHasSingleTerm)
         result.append('(');

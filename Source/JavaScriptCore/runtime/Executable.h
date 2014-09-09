@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2010, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,7 +40,6 @@
 #include "RegisterPreservationMode.h"
 #include "SamplingTool.h"
 #include "SourceCode.h"
-#include "TypeSet.h"
 #include "UnlinkedCodeBlock.h"
 #include <wtf/PassOwnPtr.h>
 
@@ -87,9 +86,11 @@ protected:
 public:
     typedef JSCell Base;
 
+#if ENABLE(JIT)
     static const bool needsDestruction = true;
     static const bool hasImmortalStructure = true;
     static void destroy(JSCell*);
+#endif
         
     CodeBlockHash hashFor(CodeSpecializationKind) const;
 
@@ -297,7 +298,9 @@ public:
         return executable;
     }
 
+#if ENABLE(JIT)
     static void destroy(JSCell*);
+#endif
 
     CodeBlockHash hashFor(CodeSpecializationKind) const;
 
@@ -353,9 +356,29 @@ class ScriptExecutable : public ExecutableBase {
 public:
     typedef ExecutableBase Base;
 
-    ScriptExecutable(Structure* structure, VM& vm, const SourceCode& source, bool isInStrictContext);
+    ScriptExecutable(Structure* structure, VM& vm, const SourceCode& source, bool isInStrictContext)
+        : ExecutableBase(vm, structure, NUM_PARAMETERS_NOT_COMPILED)
+        , m_source(source)
+        , m_features(isInStrictContext ? StrictModeFeature : 0)
+        , m_neverInline(false)
+        , m_startColumn(UINT_MAX)
+        , m_endColumn(UINT_MAX)
+    {
+    }
 
+    ScriptExecutable(Structure* structure, ExecState* exec, const SourceCode& source, bool isInStrictContext)
+        : ExecutableBase(exec->vm(), structure, NUM_PARAMETERS_NOT_COMPILED)
+        , m_source(source)
+        , m_features(isInStrictContext ? StrictModeFeature : 0)
+        , m_neverInline(false)
+        , m_startColumn(UINT_MAX)
+        , m_endColumn(UINT_MAX)
+    {
+    }
+
+#if ENABLE(JIT)
     static void destroy(JSCell*);
+#endif
         
     CodeBlockHash hashFor(CodeSpecializationKind) const;
 
@@ -366,8 +389,6 @@ public:
     int lastLine() const { return m_lastLine; }
     unsigned startColumn() const { return m_startColumn; }
     unsigned endColumn() const { return m_endColumn; }
-    unsigned typeProfilingStartOffset() const { return m_typeProfilingStartOffset; }
-    unsigned typeProfilingEndOffset() const { return m_typeProfilingEndOffset; }
 
     bool usesEval() const { return m_features & EvalFeature; }
     bool usesArguments() const { return m_features & ArgumentsFeature; }
@@ -376,12 +397,8 @@ public:
     ECMAMode ecmaMode() const { return isStrictMode() ? StrictMode : NotStrictMode; }
         
     void setNeverInline(bool value) { m_neverInline = value; }
-    void setDidTryToEnterInLoop(bool value) { m_didTryToEnterInLoop = value; }
     bool neverInline() const { return m_neverInline; }
-    bool didTryToEnterInLoop() const { return m_didTryToEnterInLoop; }
     bool isInliningCandidate() const { return !neverInline(); }
-    
-    bool* addressOfDidTryToEnterInLoop() { return &m_didTryToEnterInLoop; }
 
     void unlinkCalls();
         
@@ -433,13 +450,10 @@ protected:
     CodeFeatures m_features;
     bool m_hasCapturedVariables;
     bool m_neverInline;
-    bool m_didTryToEnterInLoop;
     int m_firstLine;
     int m_lastLine;
     unsigned m_startColumn;
     unsigned m_endColumn;
-    unsigned m_typeProfilingStartOffset;
-    unsigned m_typeProfilingEndOffset;
 };
 
 class EvalExecutable : public ScriptExecutable {
@@ -613,14 +627,6 @@ public:
     {
         return baselineCodeBlockFor(kind);
     }
-
-    RefPtr<TypeSet> returnStatementTypeSet() 
-    {
-        if (!m_returnStatementTypeSet)
-            m_returnStatementTypeSet = TypeSet::create();
-
-        return m_returnStatementTypeSet;
-    }
         
     FunctionMode functionMode() { return m_unlinkedExecutable->functionMode(); }
     bool isBuiltinFunction() const { return m_unlinkedExecutable->isBuiltinFunction(); }
@@ -668,7 +674,6 @@ private:
     RefPtr<FunctionCodeBlock> m_codeBlockForConstruct;
     bool m_bodyIncludesBraces;
     bool m_didParseForTheFirstTime;
-    RefPtr<TypeSet> m_returnStatementTypeSet;
 };
 
 inline void ExecutableBase::clearCodeVirtual(ExecutableBase* executable)

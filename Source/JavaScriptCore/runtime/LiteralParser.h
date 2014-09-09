@@ -98,9 +98,9 @@ public:
     String getErrorMessage()
     { 
         if (!m_lexer.getErrorMessage().isEmpty())
-            return String::format("JSON Parse error: %s", m_lexer.getErrorMessage().ascii().data());
+            return String::format("JSON Parse error: %s", m_lexer.getErrorMessage().ascii().data()).impl();
         if (!m_parseErrorMessage.isEmpty())
-            return String::format("JSON Parse error: %s", m_parseErrorMessage.ascii().data());
+            return String::format("JSON Parse error: %s", m_parseErrorMessage.ascii().data()).impl();
         return ASCIILiteral("JSON Parse error: Unable to parse JSON string");
     }
     

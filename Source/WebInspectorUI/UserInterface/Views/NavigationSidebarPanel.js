@@ -147,11 +147,6 @@ WebInspector.NavigationSidebarPanel.prototype = {
         return this._contentTreeOutline;
     },
 
-    get visibleContentTreeOutlines()
-    {
-        return this._visibleContentTreeOutlines;
-    },
-
     get hasSelectedElement()
     {
         return !!this._contentTreeOutline.selectedTreeElement;
@@ -266,7 +261,7 @@ WebInspector.NavigationSidebarPanel.prototype = {
     {
         console.assert(message);
 
-        if (this._emptyContentPlaceholderElement.parentNode && this._emptyContentPlaceholderMessageElement.textContent === message)
+        if (this._emptyContentPlaceholderMessageElement.parentNode && this._emptyContentPlaceholderMessageElement.textContent === message)
             return;
 
         this._emptyContentPlaceholderMessageElement.textContent = message;
@@ -300,6 +295,11 @@ WebInspector.NavigationSidebarPanel.prototype = {
             // There are tree elements, and not all of them are hidden by the filter.
             this.hideEmptyContentPlaceholder();
         }
+    },
+
+    updateCustomContentOverflow: function()
+    {
+        // Implemented by subclasses if needed.
     },
 
     updateFilter: function()
@@ -441,6 +441,8 @@ WebInspector.NavigationSidebarPanel.prototype = {
     {
         delete this._updateContentOverflowShadowVisibilityIdentifier;
 
+        this.updateCustomContentOverflow();
+
         var scrollHeight = this._contentElement.scrollHeight;
         var offsetHeight = this._contentElement.offsetHeight;
 
@@ -451,11 +453,7 @@ WebInspector.NavigationSidebarPanel.prototype = {
             return;
         }
 
-        if (WebInspector.Platform.isLegacyMacOS)
-            const edgeThreshold = 10;
-        else
-            const edgeThreshold = 1;
-
+        const edgeThreshold = 10;
         var scrollTop = this._contentElement.scrollTop;
 
         var topCoverage = Math.min(scrollTop, edgeThreshold);
@@ -538,9 +536,7 @@ WebInspector.NavigationSidebarPanel.prototype = {
 
         this._checkForEmptyFilterResults();
         this._updateContentOverflowShadowVisibilitySoon();
-
-        if (this.selected)
-            this._checkElementsForPendingViewStateCookie(treeElement);
+        this._checkElementsForPendingViewStateCookie(treeElement);
     },
 
     _treeElementExpandedOrCollapsed: function(treeElement)
@@ -583,32 +579,21 @@ WebInspector.NavigationSidebarPanel.prototype = {
         WebInspector.NavigationSidebarPanel._generatedDisclosureTriangles = true;
 
         var specifications = {};
+        specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleNormalCanvasIdentifierSuffix] = {
+            fillColor: [112, 126, 139],
+            shadowColor: [255, 255, 255, 0.8],
+            shadowOffsetX: 0,
+            shadowOffsetY: 1,
+            shadowBlur: 0
+        };
 
-        if (WebInspector.Platform.isLegacyMacOS) {
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleNormalCanvasIdentifierSuffix] = {
-                fillColor: [112, 126, 139],
-                shadowColor: [255, 255, 255, 0.8],
-                shadowOffsetX: 0,
-                shadowOffsetY: 1,
-                shadowBlur: 0
-            };
-
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleSelectedCanvasIdentifierSuffix] = {
-                fillColor: [255, 255, 255],
-                shadowColor: [61, 91, 110, 0.8],
-                shadowOffsetX: 0,
-                shadowOffsetY: 1,
-                shadowBlur: 2
-            };
-        } else {
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleNormalCanvasIdentifierSuffix] = {
-                fillColor: [140, 140, 140]
-            };
-
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleSelectedCanvasIdentifierSuffix] = {
-                fillColor: [255, 255, 255]
-            };
-        }
+        specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleSelectedCanvasIdentifierSuffix] = {
+            fillColor: [255, 255, 255],
+            shadowColor: [61, 91, 110, 0.8],
+            shadowOffsetX: 0,
+            shadowOffsetY: 1,
+            shadowBlur: 2
+        };
 
         generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.svg", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleOpenCanvasIdentifier);
         generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.svg", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleClosedCanvasIdentifier);
@@ -698,8 +683,7 @@ WebInspector.NavigationSidebarPanel.prototype = {
             if (representedObject.saveIdentityToCookie)
                 representedObject.saveIdentityToCookie(candidateObjectCookie);
 
-            var candidateCookieKeys = Object.keys(candidateObjectCookie);
-            return candidateCookieKeys.length && candidateCookieKeys.every(function valuesMatchForKey(key) {
+            return Object.keys(candidateObjectCookie).every(function valuesMatchForKey(key) {
                 return candidateObjectCookie[key] === cookie[key];
             });
         }
@@ -716,7 +700,7 @@ WebInspector.NavigationSidebarPanel.prototype = {
         }, this);
 
         if (matchedElement) {
-            matchedElement.revealAndSelect();
+            matchedElement.revealAndSelect(true, false);
 
             delete this._pendingViewStateCookie;
 

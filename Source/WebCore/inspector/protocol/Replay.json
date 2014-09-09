@@ -1,7 +1,6 @@
 {
     "domain": "Replay",
     "description": "Controls web replay, and manages recording sessions and segments.",
-    "featureGuard": "ENABLE(WEB_REPLAY)",
     "types": [
         {
             "id": "SessionIdentifier", "description": "Unique replay session identifier.",
@@ -35,6 +34,7 @@
             "properties": [
                 { "name": "type", "type": "string", "description": "Input type." },
                 { "name": "offset", "type": "integer", "description": "Offset of this input in its respective queue."},
+                { "name": "timestamp", "type": "number", "optional": true, "description": "The timestamp of this input." },
                 { "name": "data", "type": "object", "description": "Per-input payload." }
             ]
         },

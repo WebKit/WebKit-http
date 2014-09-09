@@ -90,8 +90,8 @@ inline void* wrapperContext(DOMWrapperWorld& world, readonly*)
     return &world;
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, readonly*);
-WEBCORE_EXPORT readonly* toreadonly(JSC::JSValue);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, readonly*);
+readonly* toreadonly(JSC::JSValue);
 
 
 } // namespace WebCore

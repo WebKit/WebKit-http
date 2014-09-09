@@ -88,7 +88,6 @@ private:
     virtual WebCore::FloatRect exposedRect() const override { return m_scrolledExposedRect; }
 
     virtual void acceleratedAnimationDidStart(uint64_t layerID, const String& key, double startTime) override;
-    virtual void acceleratedAnimationDidEnd(uint64_t layerID, const String& key) override;
 
 #if PLATFORM(IOS)
     virtual void setExposedContentRect(const WebCore::FloatRect&) override;
@@ -105,6 +104,11 @@ private:
     virtual void viewStateDidChange(WebCore::ViewState::Flags changed, bool wantsDidUpdateViewState) override;
 
     virtual bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) override;
+
+    // GraphicsLayerClient
+    virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) override { }
+    virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) override { }
+    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& inClip) override { }
 
     void updateScrolledExposedRect();
 

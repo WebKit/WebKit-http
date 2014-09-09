@@ -397,7 +397,6 @@ list(INSERT WebKit2_INCLUDE_DIRECTORIES 0
 )
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${WEBKIT2_DIR}/PluginProcess/unix"
     "${WEBCORE_DIR}/platform/cairo"
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/cairo"
@@ -531,6 +530,12 @@ if (ENABLE_ICONDATABASE)
     )
 endif ()
 
+if (ENABLE_INPUT_SPEECH)
+    list(APPEND WebKit2Resources
+        "        <file alias=\"images/inputSpeech\">inputSpeech.png</file>\n"
+    )
+endif ()
+
 if (ENABLE_WEB_AUDIO)
     list(APPEND WebKit2Resources
         "        <file alias=\"audio/Composite\">Composite.wav</file>\n"
@@ -566,8 +571,13 @@ set(WEBKIT2_EXTRA_DEPENDENCIES
      webkit2gtk-forwarding-headers
 )
 
-if (ENABLE_PLUGIN_PROCESS_GTK2)
+if (ENABLE_PLUGIN_PROCESS)
     set(PluginProcessGTK2_EXECUTABLE_NAME WebKitPluginProcess2)
+    list(APPEND PluginProcessGTK2_INCLUDE_DIRECTORIES
+        "${WEBKIT2_DIR}/PluginProcess/unix"
+    )
+
+    include_directories(${PluginProcessGTK2_INCLUDE_DIRECTORIES})
 
     # FIXME: We should figure out a way to avoid compiling files that are common between the plugin
     # process and WebKit2 only once instead of recompiling them for the plugin process.
@@ -700,12 +710,13 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
     add_dependencies(WebKitPluginProcess2 WebKit2)
 
     install(TARGETS WebKitPluginProcess2 DESTINATION "${LIBEXEC_INSTALL_DIR}")
-endif () # ENABLE_PLUGIN_PROCESS_GTK2
 
-# GTK3 PluginProcess
-list(APPEND PluginProcess_SOURCES
-    PluginProcess/EntryPoint/unix/PluginProcessMain.cpp
-)
+    # GTK3 PluginProcess
+    list(APPEND PluginProcess_SOURCES
+        PluginProcess/EntryPoint/unix/PluginProcessMain.cpp
+    )
+
+endif () # ENABLE_PLUGIN_PROCESS
 
 # Commands for building the built-in injected bundle.
 include_directories(

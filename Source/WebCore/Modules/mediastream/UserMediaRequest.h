@@ -60,11 +60,11 @@ public:
     static PassRefPtr<UserMediaRequest> create(ScriptExecutionContext*, UserMediaController*, const Dictionary& options, PassRefPtr<NavigatorUserMediaSuccessCallback>, PassRefPtr<NavigatorUserMediaErrorCallback>, ExceptionCode&);
     ~UserMediaRequest();
 
-    WEBCORE_EXPORT SecurityOrigin* securityOrigin() const;
+    SecurityOrigin* securityOrigin() const;
 
     void start();
-    WEBCORE_EXPORT void userMediaAccessGranted();
-    WEBCORE_EXPORT void userMediaAccessDenied();
+    void userMediaAccessGranted();
+    void userMediaAccessDenied();
 
 private:
     UserMediaRequest(ScriptExecutionContext*, UserMediaController*, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints, PassRefPtr<NavigatorUserMediaSuccessCallback>, PassRefPtr<NavigatorUserMediaErrorCallback>);

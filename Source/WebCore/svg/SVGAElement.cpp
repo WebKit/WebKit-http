@@ -248,9 +248,8 @@ bool SVGAElement::childShouldCreateRenderer(const Node& child) const
     // The 'a' element may contain any element that its parent may contain, except itself.
     if (child.hasTagName(SVGNames::aTag))
         return false;
-
-    if (parentElement() && parentElement()->isSVGElement())
-        return parentElement()->childShouldCreateRenderer(child);
+    if (parentNode() && parentNode()->isSVGElement())
+        return parentNode()->childShouldCreateRenderer(child);
 
     return SVGElement::childShouldCreateRenderer(child);
 }

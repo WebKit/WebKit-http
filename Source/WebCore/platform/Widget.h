@@ -93,11 +93,11 @@ enum WidgetNotification { WillPaintFlattened, DidPaintFlattened };
 //
 class Widget : public RefCounted<Widget> {
 public:
-    WEBCORE_EXPORT explicit Widget(PlatformWidget = nullptr);
-    WEBCORE_EXPORT virtual ~Widget();
+    explicit Widget(PlatformWidget = 0);
+    virtual ~Widget();
 
-    WEBCORE_EXPORT PlatformWidget platformWidget() const;
-    WEBCORE_EXPORT void setPlatformWidget(PlatformWidget);
+    PlatformWidget platformWidget() const;
+    void setPlatformWidget(PlatformWidget);
 
     int x() const { return frameRect().x(); }
     int y() const { return frameRect().y(); }
@@ -106,8 +106,8 @@ public:
     IntSize size() const { return frameRect().size(); }
     IntPoint location() const { return frameRect().location(); }
 
-    WEBCORE_EXPORT virtual void setFrameRect(const IntRect&);
-    WEBCORE_EXPORT IntRect frameRect() const;
+    virtual void setFrameRect(const IntRect&);
+    IntRect frameRect() const;
     IntRect boundsRect() const { return IntRect(0, 0, width(),  height()); }
 
     void resize(int w, int h) { setFrameRect(IntRect(x(), y(), w, h)); }
@@ -115,16 +115,16 @@ public:
     void move(int x, int y) { setFrameRect(IntRect(x, y, width(), height())); }
     void move(const IntPoint& p) { setFrameRect(IntRect(p, size())); }
 
-    WEBCORE_EXPORT virtual void paint(GraphicsContext*, const IntRect&);
+    virtual void paint(GraphicsContext*, const IntRect&);
     void invalidate() { invalidateRect(boundsRect()); }
     virtual void invalidateRect(const IntRect&) = 0;
 
-    WEBCORE_EXPORT virtual void setFocus(bool);
+    virtual void setFocus(bool);
 
     void setCursor(const Cursor&);
 
-    WEBCORE_EXPORT virtual void show();
-    WEBCORE_EXPORT virtual void hide();
+    virtual void show();
+    virtual void hide();
     bool isSelfVisible() const { return m_selfVisible; } // Whether or not we have been explicitly marked as visible or not.
     bool isParentVisible() const { return m_parentVisible; } // Whether or not our parent is visible.
     bool isVisible() const { return m_selfVisible && m_parentVisible; } // Whether or not we are actually visible.
@@ -140,8 +140,8 @@ public:
     virtual bool isScrollbar() const { return false; }
     virtual bool isScrollView() const { return false; }
 
-    WEBCORE_EXPORT void removeFromParent();
-    WEBCORE_EXPORT virtual void setParent(ScrollView* view);
+    void removeFromParent();
+    virtual void setParent(ScrollView* view);
     ScrollView* parent() const { return m_parent; }
     ScrollView* root() const;
 
@@ -159,10 +159,10 @@ public:
     // that tries to convert the location of a rect using the point-based convertFromContainingWindow will end
     // up with an inaccurate rect.  Always make sure to use the rect-based convertFromContainingWindow method
     // when converting window rects.
-    WEBCORE_EXPORT IntRect convertToContainingWindow(const IntRect&) const;
+    IntRect convertToContainingWindow(const IntRect&) const;
     IntRect convertFromContainingWindow(const IntRect&) const;
 
-    WEBCORE_EXPORT IntPoint convertToContainingWindow(const IntPoint&) const;
+    IntPoint convertToContainingWindow(const IntPoint&) const;
     IntPoint convertFromContainingWindow(const IntPoint&) const;
 
     virtual void frameRectsChanged() { }
@@ -184,10 +184,10 @@ public:
 #endif
 
     // Virtual methods to convert points to/from the containing ScrollView
-    WEBCORE_EXPORT virtual IntRect convertToContainingView(const IntRect&) const;
-    WEBCORE_EXPORT virtual IntRect convertFromContainingView(const IntRect&) const;
-    WEBCORE_EXPORT virtual IntPoint convertToContainingView(const IntPoint&) const;
-    WEBCORE_EXPORT virtual IntPoint convertFromContainingView(const IntPoint&) const;
+    virtual IntRect convertToContainingView(const IntRect&) const;
+    virtual IntRect convertFromContainingView(const IntRect&) const;
+    virtual IntPoint convertToContainingView(const IntPoint&) const;
+    virtual IntPoint convertFromContainingView(const IntPoint&) const;
 
 private:
     void init(PlatformWidget); // Must be called by all Widget constructors to initialize cross-platform data.

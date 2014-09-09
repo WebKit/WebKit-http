@@ -35,8 +35,6 @@
 #include "ReplayingInputCursor.h"
 #include "SegmentedInputStorage.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -57,6 +55,23 @@ ReplaySessionSegment::ReplaySessionSegment()
 
 ReplaySessionSegment::~ReplaySessionSegment()
 {
+}
+
+PassRefPtr<CapturingInputCursor> ReplaySessionSegment::createCapturingCursor(Page&)
+{
+    ASSERT(m_canCapture);
+    m_canCapture = false;
+    return CapturingInputCursor::create(*m_storage);
+}
+
+PassRefPtr<ReplayingInputCursor> ReplaySessionSegment::createReplayingCursor(Page& page, EventLoopInputDispatcherClient* client)
+{
+    return ReplayingInputCursor::create(*m_storage, page, client);
+}
+
+PassRefPtr<FunctorInputCursor> ReplaySessionSegment::createFunctorCursor()
+{
+    return FunctorInputCursor::create(*m_storage);
 }
 
 } // namespace WebCore

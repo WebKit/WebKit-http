@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2014 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2006-2013 Apple, Inc.  All rights reserved.
  * Copyright (C) 2009, 2010, 2011 Appcelerator, Inc. All rights reserved.
  * Copyright (C) 2011 Brent Fulgham. All rights reserved.
  *
@@ -101,8 +101,8 @@
 #include <WebCore/GeolocationController.h>
 #include <WebCore/GeolocationError.h>
 #include <WebCore/GraphicsContext.h>
+#include <WebCore/HTMLMediaElement.h>
 #include <WebCore/HTMLNames.h>
-#include <WebCore/HTMLVideoElement.h>
 #include <WebCore/HWndDC.h>
 #include <WebCore/HistoryController.h>
 #include <WebCore/HistoryItem.h>
@@ -162,9 +162,7 @@
 #if USE(CFNETWORK)
 #include <CFNetwork/CFURLCachePriv.h>
 #include <CFNetwork/CFURLProtocolPriv.h>
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
-#elif USE(CURL)
-#include <WebCore/CurlCacheManager.h>
+#include <WebKitSystemInterface/WebKitSystemInterface.h> 
 #endif
 
 #if USE(CA)
@@ -485,12 +483,10 @@ void WebView::removeFromAllWebViewsSet()
 
 void WebView::setCacheModel(WebCacheModel cacheModel)
 {
+#if USE(CFNETWORK)
     if (s_didSetCacheModel && cacheModel == s_cacheModel)
         return;
 
-    String cacheDirectory;
-
-#if USE(CFNETWORK)
     RetainPtr<CFURLCacheRef> cfurlCache = adoptCF(CFURLCacheCopySharedURLCache());
     RetainPtr<CFStringRef> cfurlCacheDirectory = adoptCF(wkCopyFoundationCacheDirectory(0));
     if (!cfurlCacheDirectory) {
@@ -500,19 +496,11 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         else
             cfurlCacheDirectory = WebCore::localUserSpecificStorageDirectory().createCFString();
     }
-    cacheDirectory = String(cfurlCacheDirectory);
-    CFIndex cacheMemoryCapacity = 0;
-    CFIndex cacheDiskCapacity = 0;
-#elif USE(CURL)
-    cacheDirectory = CurlCacheManager::getInstance().cacheDirectory();
-    long cacheMemoryCapacity = 0;
-    long cacheDiskCapacity = 0;
-#endif
 
     // As a fudge factor, use 1000 instead of 1024, in case the reported byte 
     // count doesn't align exactly to a megabyte boundary.
     unsigned long long memSize = WebMemorySize() / 1024 / 1000;
-    unsigned long long diskFreeSize = WebVolumeFreeSize(cacheDirectory) / 1024 / 1000;
+    unsigned long long diskFreeSize = WebVolumeFreeSize(cfurlCacheDirectory.get()) / 1024 / 1000;
 
     unsigned cacheTotalCapacity = 0;
     unsigned cacheMinDeadCapacity = 0;
@@ -521,6 +509,8 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
 
     unsigned pageCacheCapacity = 0;
 
+    CFIndex cfurlCacheMemoryCapacity = 0;
+    CFIndex cfurlCacheDiskCapacity = 0;
 
     switch (cacheModel) {
     case WebCacheModelDocumentViewer: {
@@ -540,13 +530,12 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         cacheMinDeadCapacity = 0;
         cacheMaxDeadCapacity = 0;
 
-        // Memory cache capacity (in bytes)
-        cacheMemoryCapacity = 0;
+        // Foundation memory cache capacity (in bytes)
+        cfurlCacheMemoryCapacity = 0;
 
-#if USE(CFNETWORK)
         // Foundation disk cache capacity (in bytes)
-        cacheDiskCapacity = CFURLCacheDiskCapacity(cfurlCache.get());
-#endif
+        cfurlCacheDiskCapacity = CFURLCacheDiskCapacity(cfurlCache.get());
+
         break;
     }
     case WebCacheModelDocumentBrowser: {
@@ -573,25 +562,25 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         cacheMinDeadCapacity = cacheTotalCapacity / 8;
         cacheMaxDeadCapacity = cacheTotalCapacity / 4;
 
-        // Memory cache capacity (in bytes)
+        // Foundation memory cache capacity (in bytes)
         if (memSize >= 2048)
-            cacheMemoryCapacity = 4 * 1024 * 1024;
+            cfurlCacheMemoryCapacity = 4 * 1024 * 1024;
         else if (memSize >= 1024)
-            cacheMemoryCapacity = 2 * 1024 * 1024;
+            cfurlCacheMemoryCapacity = 2 * 1024 * 1024;
         else if (memSize >= 512)
-            cacheMemoryCapacity = 1 * 1024 * 1024;
+            cfurlCacheMemoryCapacity = 1 * 1024 * 1024;
         else
-            cacheMemoryCapacity =      512 * 1024; 
+            cfurlCacheMemoryCapacity =      512 * 1024; 
 
-        // Disk cache capacity (in bytes)
+        // Foundation disk cache capacity (in bytes)
         if (diskFreeSize >= 16384)
-            cacheDiskCapacity = 50 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 50 * 1024 * 1024;
         else if (diskFreeSize >= 8192)
-            cacheDiskCapacity = 40 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 40 * 1024 * 1024;
         else if (diskFreeSize >= 4096)
-            cacheDiskCapacity = 30 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 30 * 1024 * 1024;
         else
-            cacheDiskCapacity = 20 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 20 * 1024 * 1024;
 
         break;
     }
@@ -631,30 +620,30 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
 
         deadDecodedDataDeletionInterval = std::chrono::seconds { 60 };
 
-        // Memory cache capacity (in bytes)
+        // Foundation memory cache capacity (in bytes)
         // (These values are small because WebCore does most caching itself.)
         if (memSize >= 1024)
-            cacheMemoryCapacity = 4 * 1024 * 1024;
+            cfurlCacheMemoryCapacity = 4 * 1024 * 1024;
         else if (memSize >= 512)
-            cacheMemoryCapacity = 2 * 1024 * 1024;
+            cfurlCacheMemoryCapacity = 2 * 1024 * 1024;
         else if (memSize >= 256)
-            cacheMemoryCapacity = 1 * 1024 * 1024;
+            cfurlCacheMemoryCapacity = 1 * 1024 * 1024;
         else
-            cacheMemoryCapacity =      512 * 1024; 
+            cfurlCacheMemoryCapacity =      512 * 1024; 
 
-        // Disk cache capacity (in bytes)
+        // Foundation disk cache capacity (in bytes)
         if (diskFreeSize >= 16384)
-            cacheDiskCapacity = 175 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 175 * 1024 * 1024;
         else if (diskFreeSize >= 8192)
-            cacheDiskCapacity = 150 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 150 * 1024 * 1024;
         else if (diskFreeSize >= 4096)
-            cacheDiskCapacity = 125 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 125 * 1024 * 1024;
         else if (diskFreeSize >= 2048)
-            cacheDiskCapacity = 100 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 100 * 1024 * 1024;
         else if (diskFreeSize >= 1024)
-            cacheDiskCapacity = 75 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 75 * 1024 * 1024;
         else
-            cacheDiskCapacity = 50 * 1024 * 1024;
+            cfurlCacheDiskCapacity = 50 * 1024 * 1024;
 
         break;
     }
@@ -662,23 +651,20 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         ASSERT_NOT_REACHED();
     }
 
+    // Don't shrink a big disk cache, since that would cause churn.
+    cfurlCacheDiskCapacity = max(cfurlCacheDiskCapacity, CFURLCacheDiskCapacity(cfurlCache.get()));
+
     memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     pageCache()->setCapacity(pageCacheCapacity);
 
-#if USE(CFNETWORK)
-    // Don't shrink a big disk cache, since that would cause churn.
-    cacheDiskCapacity = max(cacheDiskCapacity, CFURLCacheDiskCapacity(cfurlCache.get()));
-
-    CFURLCacheSetMemoryCapacity(cfurlCache.get(), cacheMemoryCapacity);
-    CFURLCacheSetDiskCapacity(cfurlCache.get(), cacheDiskCapacity);
-#elif USE(CURL)
-    CurlCacheManager::getInstance().setStorageSizeLimit(cacheDiskCapacity);
-#endif
+    CFURLCacheSetMemoryCapacity(cfurlCache.get(), cfurlCacheMemoryCapacity);
+    CFURLCacheSetDiskCapacity(cfurlCache.get(), cfurlCacheDiskCapacity);
 
     s_didSetCacheModel = true;
     s_cacheModel = cacheModel;
     return;
+#endif
 }
 
 WebCacheModel WebView::cacheModel()
@@ -1198,7 +1184,7 @@ void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const In
 
     COMPtr<IWebUIDelegatePrivate2> uiPrivate(Query, m_uiDelegate);
     if (uiPrivate)
-        uiPrivate->drawBackground(this, bitmapDC, &rect);
+        uiPrivate->drawBackground(this, reinterpret_cast<OLE_HANDLE>(bitmapDC), &rect);
 
     if (frameView && frameView->frame().contentRenderer()) {
         gc.clip(dirtyRect);
@@ -1406,7 +1392,7 @@ bool WebView::handleContextMenuEvent(WPARAM wParam, LPARAM lParam)
         m_uiDelegate->hasCustomMenuImplementation(&hasCustomMenus);
 
     if (hasCustomMenus)
-        m_uiDelegate->trackCustomPopupMenu((IWebView*)this, coreMenu->platformContextMenu(), &point);
+        m_uiDelegate->trackCustomPopupMenu((IWebView*)this, (OLE_HANDLE)(ULONG64)coreMenu->platformContextMenu(), &point);
     else {
         // Surprisingly, TPM_RIGHTBUTTON means that items are selectable with either the right OR left mouse button
         UINT flags = TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_VERPOSANIMATION | TPM_HORIZONTAL
@@ -1459,7 +1445,7 @@ bool WebView::onInitMenuPopup(WPARAM wParam, LPARAM /*lParam*/)
     if (!hasCustomMenus)
         return false;
 
-    m_uiDelegate->addCustomMenuDrawingData((IWebView*)this, menu);
+    m_uiDelegate->addCustomMenuDrawingData((IWebView*)this, (OLE_HANDLE)(ULONG64)menu);
     return true;
 }
 
@@ -1477,7 +1463,7 @@ bool WebView::onUninitMenuPopup(WPARAM wParam, LPARAM /*lParam*/)
     if (!hasCustomMenus)
         return false;
 
-    m_uiDelegate->cleanUpCustomMenuDrawingData((IWebView*)this, menu);
+    m_uiDelegate->cleanUpCustomMenuDrawingData((IWebView*)this, (OLE_HANDLE)(ULONG64)menu);
     return true;
 }
 
@@ -2326,7 +2312,7 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
             HWND newFocusWnd = reinterpret_cast<HWND>(wParam);
             if (SUCCEEDED(webView->uiDelegate(&uiDelegate)) && uiDelegate
                 && SUCCEEDED(uiDelegate->QueryInterface(IID_IWebUIDelegatePrivate, (void**) &uiDelegatePrivate)) && uiDelegatePrivate)
-                uiDelegatePrivate->webViewLostFocus(webView, newFocusWnd);
+                uiDelegatePrivate->webViewLostFocus(webView, (OLE_HANDLE)(ULONG64)newFocusWnd);
 
             FocusController& focusController = webView->page()->focusController();
             Frame& frame = focusController.focusedOrMainFrame();
@@ -2934,7 +2920,7 @@ void WebView::dispatchDidReceiveIconFromWebFrame(WebFrame* frame)
             icon->getHBITMAPOfSize(hBitmap, &sz);
         }
 
-        HRESULT hr = m_frameLoadDelegate->didReceiveIcon(this, hBitmap, frame);
+        HRESULT hr = m_frameLoadDelegate->didReceiveIcon(this, (OLE_HANDLE)hBitmap, frame);
         if (hr == E_NOTIMPL)
             DeleteObject(hBitmap);
     }
@@ -3459,8 +3445,10 @@ void WebView::cancelDeleteBackingStoreSoon()
     KillTimer(m_viewWindow, DeleteBackingStoreTimer);
 }
 
-HRESULT WebView::setHostWindow(/* [in] */ HWND window)
+HRESULT STDMETHODCALLTYPE WebView::setHostWindow( 
+    /* [in] */ OLE_HANDLE oleWindow)
 {
+    HWND window = (HWND)(ULONG64)oleWindow;
     if (m_viewWindow) {
         if (window)
             SetParent(m_viewWindow, window);
@@ -3480,9 +3468,10 @@ HRESULT WebView::setHostWindow(/* [in] */ HWND window)
     return S_OK;
 }
 
-HRESULT WebView::hostWindow(/* [retval][out] */ HWND* window)
+HRESULT STDMETHODCALLTYPE WebView::hostWindow( 
+    /* [retval][out] */ OLE_HANDLE* window)
 {
-    *window = m_hostWindow;
+    *window = (OLE_HANDLE)(ULONG64)m_hostWindow;
     return S_OK;
 }
 
@@ -3605,14 +3594,14 @@ HRESULT STDMETHODCALLTYPE WebView::rectsForTextMatches(
     return createMatchEnumerator(&allRects, pmatches);
 }
 
-HRESULT STDMETHODCALLTYPE WebView::generateSelectionImage(BOOL forceWhiteText, HBITMAP* hBitmap)
+HRESULT STDMETHODCALLTYPE WebView::generateSelectionImage(BOOL forceWhiteText, OLE_HANDLE* hBitmap)
 {
     *hBitmap = 0;
 
     WebCore::Frame& frame = m_page->focusController().focusedOrMainFrame();
 
     auto bitmap = imageFromSelection(&frame, forceWhiteText ? TRUE : FALSE);
-    *hBitmap = bitmap.leak();
+    *hBitmap = static_cast<OLE_HANDLE>(reinterpret_cast<ULONG64>(bitmap.leak()));
 
     return S_OK;
 }
@@ -3867,7 +3856,8 @@ HRESULT STDMETHODCALLTYPE WebView::mainFrameTitle(
     return E_NOTIMPL;
 }
     
-HRESULT WebView::mainFrameIcon(/* [retval][out] */ HBITMAP* /*hBitmap*/)
+HRESULT STDMETHODCALLTYPE WebView::mainFrameIcon( 
+        /* [retval][out] */ OLE_HANDLE* /*hBitmap*/)
 {
     ASSERT_NOT_REACHED();
     return E_NOTIMPL;
@@ -5138,9 +5128,10 @@ HRESULT STDMETHODCALLTYPE WebView::inViewSourceMode(
     return E_NOTIMPL;
 }
 
-HRESULT WebView::viewWindow(/* [retval][out] */ HWND* window)
+HRESULT STDMETHODCALLTYPE WebView::viewWindow( 
+        /* [retval][out] */ OLE_HANDLE *window)
 {
-    *window = m_viewWindow;
+    *window = (OLE_HANDLE)(ULONG64)m_viewWindow;
     return S_OK;
 }
 
@@ -5916,7 +5907,9 @@ HRESULT STDMETHODCALLTYPE WebView::windowAncestryDidChange()
     return S_OK;
 }
 
-HRESULT WebView::paintDocumentRectToContext(RECT rect, HDC deviceContext)
+HRESULT STDMETHODCALLTYPE WebView::paintDocumentRectToContext(
+    /* [in] */ RECT rect,
+    /* [in] */ OLE_HANDLE deviceContext)
 {
     if (!deviceContext)
         return E_POINTER;
@@ -5927,7 +5920,10 @@ HRESULT WebView::paintDocumentRectToContext(RECT rect, HDC deviceContext)
     return m_mainFrame->paintDocumentRectToContext(rect, deviceContext);
 }
 
-HRESULT WebView::paintScrollViewRectToContextAtPoint(RECT rect, POINT pt, HDC deviceContext)
+HRESULT STDMETHODCALLTYPE WebView::paintScrollViewRectToContextAtPoint(
+    /* [in] */ RECT rect,
+    /* [in] */ POINT pt,
+    /* [in] */ OLE_HANDLE deviceContext)
 {
     if (!deviceContext)
         return E_POINTER;
@@ -5996,13 +5992,14 @@ HRESULT STDMETHODCALLTYPE WebView::setCustomHTMLTokenizerChunkSize(
     return E_FAIL;
 }
 
-HRESULT WebView::backingStore(/* [out, retval] */ HBITMAP* hBitmap)
+HRESULT STDMETHODCALLTYPE WebView::backingStore(
+    /* [out, retval] */ OLE_HANDLE* hBitmap)
 {
     if (!hBitmap)
         return E_POINTER;
     if (!m_backingStoreBitmap)
         return E_FAIL;
-    *hBitmap = m_backingStoreBitmap->get();
+    *hBitmap = reinterpret_cast<OLE_HANDLE>(m_backingStoreBitmap->get());
     return S_OK;
 }
 
@@ -6281,31 +6278,38 @@ HRESULT WebView::setCanStartPlugins(BOOL canStartPlugins)
     return S_OK;
 }
 
-void WebView::enterVideoFullscreenForVideoElement(HTMLVideoElement* videoElement)
+void WebView::enterFullscreenForNode(Node* node)
 {
 #if ENABLE(VIDEO) && !USE(GSTREAMER) && !USE(MEDIA_FOUNDATION)
+    if (!isHTMLVideoElement(node) || !node->isElementNode())
+        return;
+
+    if (!toElement(node)->isMediaElement())
+        return;
+    HTMLMediaElement* videoElement = toHTMLMediaElement(node);
+
     if (m_fullScreenVideoController) {
-        if (m_fullScreenVideoController->videoElement() == videoElement) {
+        if (m_fullScreenVideoController->mediaElement() == videoElement) {
             // The backend may just warn us that the underlaying plaftormMovie()
             // has changed. Just force an update.
-            m_fullScreenVideoController->setVideoElement(videoElement);
+            m_fullScreenVideoController->setMediaElement(videoElement);
             return; // No more to do.
         }
 
-        // First exit Fullscreen for the old videoElement.
-        m_fullScreenVideoController->videoElement()->exitFullscreen();
+        // First exit Fullscreen for the old mediaElement.
+        m_fullScreenVideoController->mediaElement()->exitFullscreen();
         // This previous call has to trigger exitFullscreen,
         // which has to clear m_fullScreenVideoController.
         ASSERT(!m_fullScreenVideoController);
     }
 
     m_fullScreenVideoController = std::make_unique<FullscreenVideoController>();
-    m_fullScreenVideoController->setVideoElement(videoElement);
+    m_fullScreenVideoController->setMediaElement(videoElement);
     m_fullScreenVideoController->enterFullscreen();
 #endif
 }
 
-void WebView::exitVideoFullscreen()
+void WebView::exitFullscreen()
 {
 #if ENABLE(VIDEO) && !USE(GSTREAMER) && !USE(MEDIA_FOUNDATION)
     if (!m_fullScreenVideoController)
@@ -6923,7 +6927,7 @@ HWND WebView::fullScreenClientParentWindow() const
 
 void WebView::fullScreenClientSetParentWindow(HWND hostWindow)
 {
-    setHostWindow(hostWindow);
+    setHostWindow(reinterpret_cast<OLE_HANDLE>(hostWindow));
 }
 
 void WebView::fullScreenClientWillEnterFullScreen()

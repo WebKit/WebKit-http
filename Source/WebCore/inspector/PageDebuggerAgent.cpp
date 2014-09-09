@@ -38,7 +38,7 @@
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
 #include "Page.h"
-#include "PageConsoleClient.h"
+#include "PageConsole.h"
 #include "PageScriptDebugServer.h"
 #include "ScriptState.h"
 #include <inspector/InjectedScript.h>
@@ -108,12 +108,12 @@ PageScriptDebugServer& PageDebuggerAgent::scriptDebugServer()
 
 void PageDebuggerAgent::muteConsole()
 {
-    PageConsoleClient::mute();
+    PageConsole::mute();
 }
 
 void PageDebuggerAgent::unmuteConsole()
 {
-    PageConsoleClient::unmute();
+    PageConsole::unmute();
 }
 
 void PageDebuggerAgent::breakpointActionLog(JSC::ExecState* exec, const String& message)

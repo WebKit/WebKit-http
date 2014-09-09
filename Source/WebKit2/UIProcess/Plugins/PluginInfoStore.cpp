@@ -156,8 +156,8 @@ static inline String pathExtension(const URL& url)
     String extension;
     String filename = url.lastPathComponent();
     if (!filename.endsWith('/')) {
-        size_t extensionPos = filename.reverseFind('.');
-        if (extensionPos != notFound)
+        int extensionPos = filename.reverseFind('.');
+        if (extensionPos != -1)
             extension = filename.substring(extensionPos + 1);
     }
     

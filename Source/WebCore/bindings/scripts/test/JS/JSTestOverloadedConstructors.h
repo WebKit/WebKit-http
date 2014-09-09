@@ -90,8 +90,8 @@ inline void* wrapperContext(DOMWrapperWorld& world, TestOverloadedConstructors*)
     return &world;
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverloadedConstructors*);
-WEBCORE_EXPORT TestOverloadedConstructors* toTestOverloadedConstructors(JSC::JSValue);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverloadedConstructors*);
+TestOverloadedConstructors* toTestOverloadedConstructors(JSC::JSValue);
 
 
 } // namespace WebCore

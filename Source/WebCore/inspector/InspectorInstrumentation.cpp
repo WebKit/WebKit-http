@@ -70,6 +70,7 @@
 #include <inspector/ScriptArguments.h>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/agents/InspectorDebuggerAgent.h>
+#include <inspector/agents/InspectorProfilerAgent.h>
 #include <profiler/Profile.h>
 #include <runtime/ConsoleTypes.h>
 #include <wtf/StdLibExtras.h>
@@ -484,13 +485,12 @@ void InspectorInstrumentation::willPaintImpl(InstrumentingAgents* instrumentingA
         timelineAgent->willPaint(&renderer->frame());
 }
 
-void InspectorInstrumentation::didPaintImpl(InstrumentingAgents* instrumentingAgents, RenderObject* renderer, const LayoutRect& rect)
+void InspectorInstrumentation::didPaintImpl(InstrumentingAgents*  instrumentingAgents, RenderObject* renderer, GraphicsContext* context, const LayoutRect& rect)
 {
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents->inspectorTimelineAgent())
         timelineAgent->didPaint(renderer, rect);
-
     if (InspectorPageAgent* pageAgent = instrumentingAgents->inspectorPageAgent())
-        pageAgent->didPaint(renderer, rect);
+        pageAgent->didPaint(context, rect);
 }
 
 void InspectorInstrumentation::willScrollLayerImpl(InstrumentingAgents* instrumentingAgents, Frame* frame)
@@ -767,6 +767,9 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents* instrument
 
         if (InspectorResourceAgent* resourceAgent = instrumentingAgents->inspectorResourceAgent())
             resourceAgent->mainFrameNavigated(loader);
+
+        if (InspectorProfilerAgent* profilerAgent = instrumentingAgents->inspectorProfilerAgent())
+            profilerAgent->reset();
 
         if (InspectorCSSAgent* cssAgent = instrumentingAgents->inspectorCSSAgent())
             cssAgent->reset();

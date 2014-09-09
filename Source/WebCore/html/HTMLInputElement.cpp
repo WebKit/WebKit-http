@@ -205,6 +205,13 @@ HTMLElement* HTMLInputElement::cancelButtonElement() const
     return m_inputType->cancelButtonElement();
 }
 
+#if ENABLE(INPUT_SPEECH)
+HTMLElement* HTMLInputElement::speechButtonElement() const
+{
+    return m_inputType->speechButtonElement();
+}
+#endif
+
 HTMLElement* HTMLInputElement::sliderThumbElement() const
 {
     return m_inputType->sliderThumbElement();
@@ -636,7 +643,7 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         }
         // We only need to setChanged if the form is looking at the default value right now.
         if (!hasDirtyValue()) {
-            updatePlaceholderVisibility();
+            updatePlaceholderVisibility(false);
             setNeedsStyleRecalc();
         }
         setFormControlValueMatchesRenderer(false);
@@ -707,6 +714,21 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
             listAttributeTargetChanged();
         }
     }
+#endif
+#if ENABLE(INPUT_SPEECH)
+    else if (name == webkitspeechAttr) {
+        m_inputType->destroyShadowSubtree();
+        m_inputType->createShadowSubtree();
+        updateInnerTextElementEditability();
+
+        // This renderer and its children have quite different layouts and styles depending on
+        // whether the speech button is visible or not. So we reset the whole thing and recreate
+        // to get the right styles and layout.
+        setNeedsStyleRecalc(ReconstructRenderTree);
+
+        setFormControlValueMatchesRenderer(false);
+    } else if (name == onwebkitspeechchangeAttr)
+        setAttributeEventListener(eventNames().webkitspeechchangeEvent, name, value);
 #endif
     else
         HTMLTextFormControlElement::parseAttribute(name, value);
@@ -928,6 +950,21 @@ void HTMLInputElement::setValueForUser(const String& value)
     setValue(value, DispatchChangeEvent);
 }
 
+const String& HTMLInputElement::suggestedValue() const
+{
+    return m_suggestedValue;
+}
+
+void HTMLInputElement::setSuggestedValue(const String& value)
+{
+    if (!m_inputType->canSetSuggestedValue())
+        return;
+    setFormControlValueMatchesRenderer(false);
+    m_suggestedValue = sanitizeValue(value);
+    setNeedsStyleRecalc();
+    m_inputType->updateInnerTextValue();
+}
+
 void HTMLInputElement::setEditingValue(const String& value)
 {
     if (!renderer() || !isTextField())
@@ -965,6 +1002,7 @@ void HTMLInputElement::setValue(const String& value, TextFieldEventBehavior even
 
     setLastChangeWasNotUserEdit();
     setFormControlValueMatchesRenderer(false);
+    m_suggestedValue = String(); // Prevent TextFieldInputType::setValue from using the suggested value.
     m_inputType->setValue(sanitizedValue, valueChanged, eventBehavior);
 
     if (!valueChanged)
@@ -1006,6 +1044,8 @@ void HTMLInputElement::setValueFromRenderer(const String& value)
 {
     // File upload controls will never use this.
     ASSERT(!isFileUpload());
+
+    m_suggestedValue = String();
 
     // Renderer and our event handler are responsible for sanitizing values.
     ASSERT(value == sanitizeValue(value) || sanitizeValue(value).isEmpty());
@@ -1368,6 +1408,11 @@ bool HTMLInputElement::isRequiredFormControl() const
     return m_inputType->supportsRequired() && isRequired();
 }
 
+bool HTMLInputElement::matchesReadOnlyPseudoClass() const
+{
+    return m_inputType->supportsReadOnly() && isReadOnly();
+}
+
 bool HTMLInputElement::matchesReadWritePseudoClass() const
 {
     return m_inputType->supportsReadOnly() && !isDisabledOrReadOnly();
@@ -1547,6 +1592,16 @@ bool HTMLInputElement::isSteppable() const
 {
     return m_inputType->isSteppable();
 }
+
+#if ENABLE(INPUT_SPEECH)
+
+bool HTMLInputElement::isSpeechEnabled() const
+{
+    // FIXME: Add support for RANGE, EMAIL, URL, COLOR and DATE/TIME input types.
+    return m_inputType->shouldRespectSpeechAttribute() && RuntimeEnabledFeatures::sharedFeatures().speechInputEnabled() && hasAttribute(webkitspeechAttr);
+}
+
+#endif
 
 #if PLATFORM(IOS)
 DateComponents::Type HTMLInputElement::dateType() const

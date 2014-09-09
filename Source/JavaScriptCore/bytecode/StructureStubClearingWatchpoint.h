@@ -68,7 +68,7 @@ public:
         OwnPtr<StructureStubClearingWatchpoint>& head);
 
 protected:
-    virtual void fireInternal(const FireDetail&) override;
+    virtual void fireInternal() override;
 
 private:
     WatchpointsOnStructureStubInfo& m_holder;

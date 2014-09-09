@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-WEBCORE_EXPORT NSString *createTemporaryDirectory(NSString *directoryPrefix);
+NSString *createTemporaryDirectory(NSString *directoryPrefix);
 NSString *createTemporaryFile(NSString *directoryPath, NSString *filePrefix);
 
 } // namespace WebCore

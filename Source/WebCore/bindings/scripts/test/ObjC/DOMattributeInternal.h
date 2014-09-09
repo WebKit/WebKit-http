@@ -30,5 +30,5 @@ namespace WebCore {
 class attribute;
 }
 
-WEBCORE_EXPORT WebCore::attribute* core(DOMattribute *);
-WEBCORE_EXPORT DOMattribute *kit(WebCore::attribute*);
+WebCore::attribute* core(DOMattribute *);
+DOMattribute *kit(WebCore::attribute*);

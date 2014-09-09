@@ -27,6 +27,7 @@
 #ifndef FELighting_h
 #define FELighting_h
 
+#if ENABLE(FILTERS)
 #include "Color.h"
 #include "Filter.h"
 #include "FilterEffect.h"
@@ -119,5 +120,7 @@ protected:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // FELighting_h

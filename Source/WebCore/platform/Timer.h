@@ -46,17 +46,17 @@ class TimerBase {
     WTF_MAKE_NONCOPYABLE(TimerBase);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT TimerBase();
-    WEBCORE_EXPORT virtual ~TimerBase();
+    TimerBase();
+    virtual ~TimerBase();
 
-    WEBCORE_EXPORT void start(double nextFireInterval, double repeatInterval);
+    void start(double nextFireInterval, double repeatInterval);
 
     void startRepeating(double repeatInterval) { start(repeatInterval, repeatInterval); }
     void startRepeating(std::chrono::milliseconds repeatInterval) { startRepeating(repeatInterval.count() * 0.001); }
     void startOneShot(double interval) { start(interval, 0); }
     void startOneShot(std::chrono::milliseconds interval) { startOneShot(interval.count() * 0.001); }
 
-    WEBCORE_EXPORT void stop();
+    void stop();
     bool isActive() const;
 
     double nextFireInterval() const;

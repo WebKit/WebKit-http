@@ -19,6 +19,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEGaussianBlurElement.h"
 
 #include "Attribute.h"
@@ -158,3 +160,5 @@ PassRefPtr<FilterEffect> SVGFEGaussianBlurElement::build(SVGFilterBuilder* filte
 }
 
 }
+
+#endif

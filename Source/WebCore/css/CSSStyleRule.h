@@ -57,8 +57,6 @@ private:
     RefPtr<StyleRuleCSSStyleDeclaration> m_propertiesCSSOMWrapper;
 };
 
-CSS_RULE_TYPE_CASTS(CSSStyleRule, CSSRule::STYLE_RULE)
-
 } // namespace WebCore
 
 #endif // CSSStyleRule_h

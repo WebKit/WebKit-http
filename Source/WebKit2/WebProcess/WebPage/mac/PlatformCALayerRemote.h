@@ -51,8 +51,7 @@ public:
 
     void recursiveBuildTransaction(RemoteLayerTreeContext&, RemoteLayerTreeTransaction&);
 
-    virtual void setNeedsDisplayInRect(const WebCore::FloatRect& dirtyRect) override;
-    virtual void setNeedsDisplay() override;
+    virtual void setNeedsDisplay(const WebCore::FloatRect* dirtyRect = 0) override;
 
     virtual void copyContentsFromLayer(PlatformCALayer*) override;
 
@@ -70,7 +69,6 @@ public:
     virtual void removeAnimationForKey(const String& key) override;
     virtual PassRefPtr<WebCore::PlatformCAAnimation> animationForKey(const String& key) override;
     virtual void animationStarted(const String& key, CFTimeInterval beginTime) override;
-    virtual void animationEnded(const String& key) override;
 
     virtual void setMask(WebCore::PlatformCALayer*) override;
 
@@ -122,9 +120,11 @@ public:
     virtual float opacity() const override;
     virtual void setOpacity(float) override;
 
+#if ENABLE(CSS_FILTERS)
     virtual void setFilters(const WebCore::FilterOperations&) override;
     static bool filtersCanBeComposited(const WebCore::FilterOperations&);
     virtual void copyFiltersFrom(const WebCore::PlatformCALayer*) override;
+#endif
 
 #if ENABLE(CSS_COMPOSITING)
     virtual void setBlendMode(WebCore::BlendMode) override;

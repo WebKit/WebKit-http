@@ -299,11 +299,6 @@ bool CSSParser::parseSVGValue(CSSPropertyID propId, bool important)
         m_implicitShorthand = false;
         return true;
     }
-    case CSSPropertyCx:
-    case CSSPropertyCy:
-    case CSSPropertyR:
-    case CSSPropertyRx:
-    case CSSPropertyRy:
     case CSSPropertyX:
     case CSSPropertyY:
         valid_primitive = (!id && validUnit(value, FLength | FPercent));
@@ -324,8 +319,12 @@ bool CSSParser::parseSVGValue(CSSPropertyID propId, bool important)
             parsedValue = CSSPrimitiveValue::create(value->fValue, (CSSPrimitiveValue::UnitTypes) value->unit);
         else if (value->unit >= CSSParserValue::Q_EMS)
             parsedValue = CSSPrimitiveValue::createAllowingMarginQuirk(value->fValue, CSSPrimitiveValue::CSS_EMS);
-        if (isCalculation(value))
-            parsedValue = CSSPrimitiveValue::create(m_parsedCalculation.release());
+        if (isCalculation(value)) {
+            // FIXME calc() http://webkit.org/b/16662 : actually create a CSSPrimitiveValue here, ie
+            // parsedValue = CSSPrimitiveValue::create(m_parsedCalculation.release());
+            m_parsedCalculation.release();
+            parsedValue = 0;
+        }
         m_valueList->next();
     }
     if (!parsedValue || (m_valueList->current() && !inShorthand()))
@@ -403,17 +402,17 @@ PassRefPtr<CSSValue> CSSParser::parsePaintOrder()
     case CSSValueFill:
         FALLTHROUGH;
     case CSSValueStroke:
-        paintOrderList->append(firstPaintOrderType == CSSValueFill ? fill.releaseNonNull() : stroke.releaseNonNull());
+        paintOrderList->append(firstPaintOrderType == CSSValueFill ? fill.release() : stroke.release());
         if (paintTypeList.size() > 1) {
             if (paintTypeList.at(1) == CSSValueMarkers)
-                paintOrderList->append(markers.releaseNonNull());
+                paintOrderList->append(markers.release());
         }
         break;
     case CSSValueMarkers:
-        paintOrderList->append(markers.releaseNonNull());
+        paintOrderList->append(markers.release());
         if (paintTypeList.size() > 1) {
             if (paintTypeList.at(1) == CSSValueStroke)
-                paintOrderList->append(stroke.releaseNonNull());
+                paintOrderList->append(stroke.release());
         }
         break;
     default:

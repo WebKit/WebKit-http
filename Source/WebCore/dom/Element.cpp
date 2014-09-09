@@ -261,6 +261,9 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
 
 bool Element::dispatchWheelEvent(const PlatformWheelEvent& event)
 {
+    if (!(event.deltaX() || event.deltaY()))
+        return true;
+
     RefPtr<WheelEvent> wheelEvent = WheelEvent::create(event, document().defaultView());
     return EventDispatcher::dispatchEvent(this, wheelEvent) && !wheelEvent->defaultHandled();
 }
@@ -431,15 +434,18 @@ bool Element::isFocusable() const
     if (!inDocument() || !supportsFocus())
         return false;
 
+    // Elements in canvas fallback content are not rendered, but they are allowed to be
+    // focusable as long as their canvas is displayed and visible.
+    if (isInCanvasSubtree()) {
+        ASSERT(lineageOfType<HTMLCanvasElement>(*this).first());
+        auto& canvas = *lineageOfType<HTMLCanvasElement>(*this).first();
+        return canvas.renderer() && canvas.renderer()->style().visibility() == VISIBLE;
+    }
+
     if (!renderer()) {
         // If the node is in a display:none tree it might say it needs style recalc but
         // the whole document is actually up to date.
         ASSERT(!needsStyleRecalc() || !document().childNeedsStyleRecalc());
-
-        // Elements in canvas fallback content are not rendered, but they are allowed to be
-        // focusable as long as their canvas is displayed and visible.
-        if (auto* canvas = ancestorsOfType<HTMLCanvasElement>(*this).first())
-            return canvas->renderer() && canvas->renderer()->style().visibility() == VISIBLE;
     }
 
     // FIXME: Even if we are not visible, we might have a child that is visible.
@@ -643,7 +649,14 @@ static double adjustForLocalZoom(LayoutUnit value, const RenderElement& renderer
     zoomFactor = localZoomForRenderer(renderer);
     if (zoomFactor == 1)
         return value.toDouble();
+#if ENABLE(SUBPIXEL_LAYOUT)
     return value.toDouble() / zoomFactor;
+#else
+    // Needed because computeLengthInt truncates (rather than rounds) when scaling up.
+    if (zoomFactor > 1)
+        ++value;
+    return value.toDouble() / zoomFactor;
+#endif
 }
 
 enum LegacyCSSOMElementMetricsRoundingStrategy { Round, Floor };
@@ -686,8 +699,12 @@ double Element::offsetWidth()
 {
     document().updateLayoutIgnorePendingStylesheets();
     if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
+#if ENABLE(SUBPIXEL_LAYOUT)
         LayoutUnit offsetWidth = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetWidth() : LayoutUnit(renderer->pixelSnappedOffsetWidth());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(offsetWidth, *renderer).toDouble(), renderer->document());
+#else
+        return adjustForAbsoluteZoom(renderer->offsetWidth(), *renderer);
+#endif
     }
     return 0;
 }
@@ -696,8 +713,12 @@ double Element::offsetHeight()
 {
     document().updateLayoutIgnorePendingStylesheets();
     if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
+#if ENABLE(SUBPIXEL_LAYOUT)
         LayoutUnit offsetHeight = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetHeight() : LayoutUnit(renderer->pixelSnappedOffsetHeight());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(offsetHeight, *renderer).toDouble(), renderer->document());
+#else
+        return adjustForAbsoluteZoom(renderer->offsetHeight(), *renderer);
+#endif
     }
     return 0;
 }
@@ -727,8 +748,12 @@ double Element::clientLeft()
     document().updateLayoutIgnorePendingStylesheets();
 
     if (RenderBox* renderer = renderBox()) {
+#if ENABLE(SUBPIXEL_LAYOUT)
         LayoutUnit clientLeft = subpixelMetricsEnabled(renderer->document()) ? renderer->clientLeft() : LayoutUnit(roundToInt(renderer->clientLeft()));
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(clientLeft, *renderer).toDouble(), renderer->document());
+#else
+        return adjustForAbsoluteZoom(renderer->clientLeft(), *renderer);
+#endif
     }
     return 0;
 }
@@ -738,8 +763,12 @@ double Element::clientTop()
     document().updateLayoutIgnorePendingStylesheets();
 
     if (RenderBox* renderer = renderBox()) {
+#if ENABLE(SUBPIXEL_LAYOUT)
         LayoutUnit clientTop = subpixelMetricsEnabled(renderer->document()) ? renderer->clientTop() : LayoutUnit(roundToInt(renderer->clientTop()));
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(clientTop, *renderer).toDouble(), renderer->document());
+#else
+        return adjustForAbsoluteZoom(renderer->clientTop(), *renderer);
+#endif
     }
     return 0;
 }
@@ -759,8 +788,12 @@ double Element::clientWidth()
         return adjustForAbsoluteZoom(renderView.frameView().layoutWidth(), renderView);
     
     if (RenderBox* renderer = renderBox()) {
+#if ENABLE(SUBPIXEL_LAYOUT)
         LayoutUnit clientWidth = subpixelMetricsEnabled(renderer->document()) ? renderer->clientWidth() : LayoutUnit(renderer->pixelSnappedClientWidth());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(clientWidth, *renderer).toDouble(), renderer->document());
+#else
+        return adjustForAbsoluteZoom(renderer->clientWidth(), *renderer);
+#endif
     }
     return 0;
 }
@@ -780,8 +813,12 @@ double Element::clientHeight()
         return adjustForAbsoluteZoom(renderView.frameView().layoutHeight(), renderView);
 
     if (RenderBox* renderer = renderBox()) {
+#if ENABLE(SUBPIXEL_LAYOUT)
         LayoutUnit clientHeight = subpixelMetricsEnabled(renderer->document()) ? renderer->clientHeight() : LayoutUnit(renderer->pixelSnappedClientHeight());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(clientHeight, *renderer).toDouble(), renderer->document());
+#else
+        return adjustForAbsoluteZoom(renderer->clientHeight(), *renderer);
+#endif
     }
     return 0;
 }
@@ -1540,8 +1577,8 @@ static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkT
 {
     // :empty selector.
     checkForEmptyStyleChange(*parent);
-
-    if (parent->styleChangeType() >= FullStyleChange)
+    
+    if (parent->needsStyleRecalc() && parent->childrenAffectedByPositionalRules())
         return;
 
     // :first-child.  In the parser callback case, we don't have to check anything, since we were right the first time.
@@ -1588,26 +1625,20 @@ static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkT
         }
     }
 
-    if (elementAfterChange) {
-        if (elementAfterChange->styleIsAffectedByPreviousSibling())
-            elementAfterChange->setNeedsStyleRecalc();
-        else if (elementAfterChange->affectsNextSiblingElementStyle()) {
-            Element* elementToInvalidate = elementAfterChange;
-            do {
-                elementToInvalidate = elementToInvalidate->nextElementSibling();
-            } while (elementToInvalidate && !elementToInvalidate->styleIsAffectedByPreviousSibling());
+    // The + selector.  We need to invalidate the first element following the insertion point.  It is the only possible element
+    // that could be affected by this DOM change.
+    if (parent->childrenAffectedByDirectAdjacentRules() && elementAfterChange)
+        elementAfterChange->setNeedsStyleRecalc();
 
-            if (elementToInvalidate)
-                elementToInvalidate->setNeedsStyleRecalc();
-        }
-    }
-
+    // Forward positional selectors include the ~ selector, nth-child, nth-of-type, first-of-type and only-of-type.
     // Backward positional selectors include nth-last-child, nth-last-of-type, last-of-type and only-of-type.
     // We have to invalidate everything following the insertion point in the forward case, and everything before the insertion point in the
     // backward case.
     // |afterChange| is 0 in the parser callback case, so we won't do any work for the forward case if we don't have to.
     // For performance reasons we just mark the parent node as changed, since we don't want to make childrenChanged O(n^2) by crawling all our kids
     // here.  recalcStyle will then force a walk of the children when it sees that this has happened.
+    if (parent->childrenAffectedByForwardPositionalRules() && elementAfterChange)
+        parent->setNeedsStyleRecalc();
     if (parent->childrenAffectedByBackwardPositionalRules() && elementBeforeChange)
         parent->setNeedsStyleRecalc();
 }
@@ -2114,6 +2145,11 @@ void Element::setChildrenAffectedByDrag()
     ensureElementRareData().setChildrenAffectedByDrag(true);
 }
 
+void Element::setChildrenAffectedByForwardPositionalRules(Element* element)
+{
+    element->ensureElementRareData().setChildrenAffectedByForwardPositionalRules(true);
+}
+
 void Element::setChildrenAffectedByBackwardPositionalRules()
 {
     ensureElementRareData().setChildrenAffectedByBackwardPositionalRules(true);
@@ -2129,13 +2165,14 @@ void Element::setChildIndex(unsigned index)
 
 bool Element::hasFlagsSetDuringStylingOfChildren() const
 {
-    if (childrenAffectedByHover() || childrenAffectedByFirstChildRules() || childrenAffectedByLastChildRules())
+    if (childrenAffectedByHover() || childrenAffectedByFirstChildRules() || childrenAffectedByLastChildRules() || childrenAffectedByDirectAdjacentRules())
         return true;
 
     if (!hasRareData())
         return false;
     return rareDataChildrenAffectedByActive()
         || rareDataChildrenAffectedByDrag()
+        || rareDataChildrenAffectedByForwardPositionalRules()
         || rareDataChildrenAffectedByBackwardPositionalRules();
 }
 
@@ -2157,6 +2194,12 @@ bool Element::rareDataChildrenAffectedByDrag() const
     return elementRareData()->childrenAffectedByDrag();
 }
 
+bool Element::rareDataChildrenAffectedByForwardPositionalRules() const
+{
+    ASSERT(hasRareData());
+    return elementRareData()->childrenAffectedByForwardPositionalRules();
+}
+
 bool Element::rareDataChildrenAffectedByBackwardPositionalRules() const
 {
     ASSERT(hasRareData());
@@ -2167,6 +2210,16 @@ unsigned Element::rareDataChildIndex() const
 {
     ASSERT(hasRareData());
     return elementRareData()->childIndex();
+}
+
+void Element::setIsInCanvasSubtree(bool isInCanvasSubtree)
+{
+    ensureElementRareData().setIsInCanvasSubtree(isInCanvasSubtree);
+}
+
+bool Element::isInCanvasSubtree() const
+{
+    return hasRareData() && elementRareData()->isInCanvasSubtree();
 }
 
 void Element::setRegionOversetState(RegionOversetState state)
@@ -2304,6 +2357,11 @@ unsigned Element::childElementCount() const
     return count;
 }
 
+bool Element::matchesReadOnlyPseudoClass() const
+{
+    return false;
+}
+
 bool Element::matchesReadWritePseudoClass() const
 {
     return false;
@@ -2400,7 +2458,7 @@ bool Element::childShouldCreateRenderer(const Node& child) const
         ASSERT(!isSVGElement());
         return child.hasTagName(SVGNames::svgTag) && toSVGElement(child).isValid();
     }
-    return true;
+    return ContainerNode::childShouldCreateRenderer(child);
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -2696,7 +2754,7 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
 
     if (oldValue != newValue) {
         auto styleResolver = document().styleResolverIfExists();
-        if (styleResolver && styleResolver->hasSelectorForAttribute(*this, name.localName()))
+        if (styleResolver && styleResolver->hasSelectorForAttribute(name.localName()))
             setNeedsStyleRecalc();
     }
 
@@ -2816,17 +2874,11 @@ void Element::resetComputedStyle()
 {
     if (!hasRareData() || !elementRareData()->computedStyle())
         return;
-
-    auto reset = [](Element& element) {
-        if (!element.hasRareData() || !element.elementRareData()->computedStyle())
-            return;
-        if (element.hasCustomStyleResolveCallbacks())
-            element.willResetComputedStyle();
-        element.elementRareData()->resetComputedStyle();
-    };
-    reset(*this);
-    for (auto& child : descendantsOfType<Element>(*this))
-        reset(child);
+    elementRareData()->resetComputedStyle();
+    for (auto& child : descendantsOfType<Element>(*this)) {
+        if (child.hasRareData())
+            child.elementRareData()->resetComputedStyle();
+    }
 }
 
 void Element::clearStyleDerivedDataBeforeDetachingRenderer()
@@ -2838,6 +2890,7 @@ void Element::clearStyleDerivedDataBeforeDetachingRenderer()
     if (!hasRareData())
         return;
     ElementRareData* data = elementRareData();
+    data->setIsInCanvasSubtree(false);
     data->resetComputedStyle();
     data->resetDynamicRestyleObservations();
 }
@@ -2860,11 +2913,6 @@ bool Element::willRecalcStyle(Style::Change)
 }
 
 void Element::didRecalcStyle(Style::Change)
-{
-    ASSERT(hasCustomStyleResolveCallbacks());
-}
-
-void Element::willResetComputedStyle()
 {
     ASSERT(hasCustomStyleResolveCallbacks());
 }

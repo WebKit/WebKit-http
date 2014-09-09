@@ -210,7 +210,7 @@ void RenderEmbeddedObject::paintSnapshotImage(PaintInfo& paintInfo, const Layout
     contentLocation.move(borderLeft() + paddingLeft(), borderTop() + paddingTop());
 
     LayoutRect rect(contentLocation, contentSize);
-    IntRect alignedRect = snappedIntRect(rect);
+    IntRect alignedRect = pixelSnappedIntRect(rect);
     if (alignedRect.width() <= 0 || alignedRect.height() <= 0)
         return;
 
@@ -423,7 +423,7 @@ bool RenderEmbeddedObject::isReplacementObscured() const
     if (!rootRenderView)
         return true;
 
-    IntRect rootViewRect = view().frameView().convertToRootView(snappedIntRect(rect));
+    IntRect rootViewRect = view().frameView().convertToRootView(pixelSnappedIntRect(rect));
     
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent | HitTestRequest::AllowChildFrameContent);
     HitTestResult result;
@@ -578,7 +578,7 @@ bool RenderEmbeddedObject::logicalScroll(ScrollLogicalDirection direction, Scrol
 }
 
 
-bool RenderEmbeddedObject::isInUnavailablePluginIndicator(const FloatPoint& point) const
+bool RenderEmbeddedObject::isInUnavailablePluginIndicator(const LayoutPoint& point) const
 {
     FloatRect contentRect;
     FloatRect indicatorRect;
@@ -593,7 +593,7 @@ bool RenderEmbeddedObject::isInUnavailablePluginIndicator(const FloatPoint& poin
 
 bool RenderEmbeddedObject::isInUnavailablePluginIndicator(MouseEvent* event) const
 {
-    return isInUnavailablePluginIndicator(absoluteToLocal(event->absoluteLocation(), UseTransforms));
+    return isInUnavailablePluginIndicator(roundedLayoutPoint(absoluteToLocal(event->absoluteLocation(), UseTransforms)));
 }
 
 void RenderEmbeddedObject::handleUnavailablePluginIndicatorEvent(Event* event)

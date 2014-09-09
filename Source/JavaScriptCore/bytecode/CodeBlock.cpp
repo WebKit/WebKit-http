@@ -39,7 +39,7 @@
 #include "DFGJITCode.h"
 #include "DFGWorklist.h"
 #include "Debugger.h"
-#include "FunctionExecutableDump.h"
+#include "HighFidelityTypeProfiler.h"
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITStubs.h"
@@ -48,6 +48,7 @@
 #include "JSFunction.h"
 #include "JSNameScope.h"
 #include "LLIntEntrypoint.h"
+#include "TypeLocation.h"
 #include "LowLevelInterpreter.h"
 #include "JSCInlines.h"
 #include "PolymorphicGetByIdList.h"
@@ -57,9 +58,6 @@
 #include "Repatch.h"
 #include "RepatchBuffer.h"
 #include "SlotVisitorInlines.h"
-#include "StackVisitor.h"
-#include "TypeLocationCache.h"
-#include "TypeProfiler.h"
 #include "UnlinkedInstructionStream.h"
 #include <wtf/BagToHashMap.h>
 #include <wtf/CommaPrinter.h>
@@ -152,11 +150,9 @@ void CodeBlock::dumpAssumingJITType(PrintStream& out, JITCode::JITType jitType) 
         out.print(specializationKind());
     out.print(", ", instructionCount());
     if (this->jitType() == JITCode::BaselineJIT && m_shouldAlwaysBeInlined)
-        out.print(" (ShouldAlwaysBeInlined)");
+        out.print(" (SABI)");
     if (ownerExecutable()->neverInline())
         out.print(" (NeverInline)");
-    if (ownerExecutable()->didTryToEnterInLoop())
-        out.print(" (DidTryToEnterInLoop)");
     if (ownerExecutable()->isStrictMode())
         out.print(" (StrictMode)");
     if (this->jitType() == JITCode::BaselineJIT && m_didFailFTLCompilation)
@@ -279,9 +275,7 @@ void CodeBlock::printGetByIdOp(PrintStream& out, ExecState* exec, int location, 
         break;
     default:
         RELEASE_ASSERT_NOT_REACHED();
-#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         op = 0;
-#endif
     }
     int r0 = (++it)->u.operand;
     int r1 = (++it)->u.operand;
@@ -841,13 +835,11 @@ void CodeBlock::dumpBytecode(
             ++it;
             break;
         }
-        case op_profile_type: {
+        case op_profile_types_with_high_fidelity: {
             int r0 = (++it)->u.operand;
             ++it;
             ++it;
-            ++it;
-            ++it;
-            printLocationAndOp(out, exec, location, it, "op_profile_type");
+            printLocationAndOp(out, exec, location, it, "op_profile_types_with_high_fidelity");
             out.printf("%s", registerName(r0).data());
             break;
         }
@@ -1114,6 +1106,17 @@ void CodeBlock::dumpBytecode(
             dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
+        case op_get_by_pname: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            int r4 = (++it)->u.operand;
+            int r5 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "get_by_pname");
+            out.printf("%s, %s, %s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data(), registerName(r4).data(), registerName(r5).data());
+            break;
+        }
         case op_put_by_val: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
@@ -1360,89 +1363,27 @@ void CodeBlock::dumpBytecode(
             out.printf("%s, %s", registerName(r0).data(), registerName(r1).data());
             break;
         }
-        case op_get_enumerable_length: {
-            int dst = it[1].u.operand;
+        case op_get_pnames: {
+            int r0 = it[1].u.operand;
+            int r1 = it[2].u.operand;
+            int r2 = it[3].u.operand;
+            int r3 = it[4].u.operand;
+            int offset = it[5].u.operand;
+            printLocationAndOp(out, exec, location, it, "get_pnames");
+            out.printf("%s, %s, %s, %s, %d(->%d)", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data(), offset, location + offset);
+            it += OPCODE_LENGTH(op_get_pnames) - 1;
+            break;
+        }
+        case op_next_pname: {
+            int dest = it[1].u.operand;
             int base = it[2].u.operand;
-            printLocationAndOp(out, exec, location, it, "op_get_enumerable_length");
-            out.printf("%s, %s", registerName(dst).data(), registerName(base).data());
-            it += OPCODE_LENGTH(op_get_enumerable_length) - 1;
-            break;
-        }
-        case op_has_indexed_property: {
-            int dst = it[1].u.operand;
-            int base = it[2].u.operand;
-            int propertyName = it[3].u.operand;
-            ArrayProfile* arrayProfile = it[4].u.arrayProfile;
-            printLocationAndOp(out, exec, location, it, "op_has_indexed_property");
-            out.printf("%s, %s, %s, %p", registerName(dst).data(), registerName(base).data(), registerName(propertyName).data(), arrayProfile);
-            it += OPCODE_LENGTH(op_has_indexed_property) - 1;
-            break;
-        }
-        case op_has_structure_property: {
-            int dst = it[1].u.operand;
-            int base = it[2].u.operand;
-            int propertyName = it[3].u.operand;
-            int enumerator = it[4].u.operand;
-            printLocationAndOp(out, exec, location, it, "op_has_structure_property");
-            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(base).data(), registerName(propertyName).data(), registerName(enumerator).data());
-            it += OPCODE_LENGTH(op_has_structure_property) - 1;
-            break;
-        }
-        case op_has_generic_property: {
-            int dst = it[1].u.operand;
-            int base = it[2].u.operand;
-            int propertyName = it[3].u.operand;
-            printLocationAndOp(out, exec, location, it, "op_has_generic_property");
-            out.printf("%s, %s, %s", registerName(dst).data(), registerName(base).data(), registerName(propertyName).data());
-            it += OPCODE_LENGTH(op_has_generic_property) - 1;
-            break;
-        }
-        case op_get_direct_pname: {
-            int dst = it[1].u.operand;
-            int base = it[2].u.operand;
-            int propertyName = it[3].u.operand;
-            int index = it[4].u.operand;
-            int enumerator = it[5].u.operand;
-            ValueProfile* profile = it[6].u.profile;
-            printLocationAndOp(out, exec, location, it, "op_get_direct_pname");
-            out.printf("%s, %s, %s, %s, %s, %p", registerName(dst).data(), registerName(base).data(), registerName(propertyName).data(), registerName(index).data(), registerName(enumerator).data(), profile);
-            it += OPCODE_LENGTH(op_get_direct_pname) - 1;
-            break;
-
-        }
-        case op_get_structure_property_enumerator: {
-            int dst = it[1].u.operand;
-            int base = it[2].u.operand;
-            printLocationAndOp(out, exec, location, it, "op_get_structure_property_enumerator");
-            out.printf("%s, %s", registerName(dst).data(), registerName(base).data());
-            it += OPCODE_LENGTH(op_get_structure_property_enumerator) - 1;
-            break;
-        }
-        case op_get_generic_property_enumerator: {
-            int dst = it[1].u.operand;
-            int base = it[2].u.operand;
-            int length = it[3].u.operand;
-            int structureEnumerator = it[4].u.operand;
-            printLocationAndOp(out, exec, location, it, "op_get_generic_property_enumerator");
-            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(base).data(), registerName(length).data(), registerName(structureEnumerator).data());
-            it += OPCODE_LENGTH(op_get_generic_property_enumerator) - 1;
-            break;
-        }
-        case op_next_enumerator_pname: {
-            int dst = it[1].u.operand;
-            int enumerator = it[2].u.operand;
-            int index = it[3].u.operand;
-            printLocationAndOp(out, exec, location, it, "op_next_enumerator_pname");
-            out.printf("%s, %s, %s", registerName(dst).data(), registerName(enumerator).data(), registerName(index).data());
-            it += OPCODE_LENGTH(op_next_enumerator_pname) - 1;
-            break;
-        }
-        case op_to_index_string: {
-            int dst = it[1].u.operand;
-            int index = it[2].u.operand;
-            printLocationAndOp(out, exec, location, it, "op_to_index_string");
-            out.printf("%s, %s", registerName(dst).data(), registerName(index).data());
-            it += OPCODE_LENGTH(op_to_index_string) - 1;
+            int i = it[3].u.operand;
+            int size = it[4].u.operand;
+            int iter = it[5].u.operand;
+            int offset = it[6].u.operand;
+            printLocationAndOp(out, exec, location, it, "next_pname");
+            out.printf("%s, %s, %s, %s, %s, %d(->%d)", registerName(dest).data(), registerName(base).data(), registerName(i).data(), registerName(size).data(), registerName(iter).data(), offset, location + offset);
+            it += OPCODE_LENGTH(op_next_pname) - 1;
             break;
         }
         case op_push_with_scope: {
@@ -1528,6 +1469,7 @@ void CodeBlock::dumpBytecode(
                 operand);
             break;
         }
+        case op_put_to_scope_with_profile:
         case op_put_to_scope: {
             int r0 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
@@ -1536,6 +1478,8 @@ void CodeBlock::dumpBytecode(
             ++it; // Structure
             int operand = (++it)->u.operand; // Operand
             printLocationAndOp(out, exec, location, it, "put_to_scope");
+            if (opcode == op_put_to_scope_with_profile)
+                ++it;
             out.printf("%s, %s, %s, %u<%s|%s>, <structure>, %d",
                 registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data(),
                 modeAndType.operand(), resolveModeName(modeAndType.mode()), resolveTypeName(modeAndType.type()),
@@ -1596,28 +1540,6 @@ static size_t sizeInBytes(const Vector<T>& vector)
 {
     return vector.capacity() * sizeof(T);
 }
-
-namespace {
-
-class PutToScopeFireDetail : public FireDetail {
-public:
-    PutToScopeFireDetail(CodeBlock* codeBlock, const Identifier& ident)
-        : m_codeBlock(codeBlock)
-        , m_ident(ident)
-    {
-    }
-    
-    virtual void dump(PrintStream& out) const override
-    {
-        out.print("Linking put_to_scope in ", FunctionExecutableDump(jsCast<FunctionExecutable*>(m_codeBlock->ownerExecutable())), " for ", m_ident);
-    }
-    
-private:
-    CodeBlock* m_codeBlock;
-    const Identifier& m_ident;
-};
-
-} // anonymous namespace
 
 CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     : m_globalObject(other.m_globalObject)
@@ -1717,11 +1639,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     bool didCloneSymbolTable = false;
     
     if (SymbolTable* symbolTable = unlinkedCodeBlock->symbolTable()) {
-        if (m_vm->typeProfiler()) {
-            ConcurrentJITLocker locker(symbolTable->m_lock);
-            symbolTable->prepareForTypeProfiling(locker);
-        }
-
         if (codeType() == FunctionCode && symbolTable->captureCount()) {
             m_symbolTable.set(*m_vm, m_ownerExecutable.get(), symbolTable->cloneCapturedNames(*m_vm));
             didCloneSymbolTable = true;
@@ -1732,17 +1649,12 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     ASSERT(m_source);
     setNumParameters(unlinkedCodeBlock->numParameters());
 
-    if (vm()->typeProfiler())
-        vm()->typeProfiler()->functionHasExecutedCache()->removeUnexecutedRange(m_ownerExecutable->sourceID(), m_ownerExecutable->typeProfilingStartOffset(), m_ownerExecutable->typeProfilingEndOffset());
-
     setConstantRegisters(unlinkedCodeBlock->constantRegisters());
     if (unlinkedCodeBlock->usesGlobalObject())
         m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().toConstantIndex()].set(*m_vm, ownerExecutable, m_globalObject.get());
     m_functionDecls.resizeToFit(unlinkedCodeBlock->numberOfFunctionDecls());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionDecls(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
-        if (vm()->typeProfiler())
-            vm()->typeProfiler()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
         unsigned lineCount = unlinkedExecutable->lineCount();
         unsigned firstLine = ownerExecutable->lineNo() + unlinkedExecutable->firstLineOffset();
         bool startColumnIsOnOwnerStartLine = !unlinkedExecutable->firstLineOffset();
@@ -1759,8 +1671,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     m_functionExprs.resizeToFit(unlinkedCodeBlock->numberOfFunctionExprs());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionExprs(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionExpr(i);
-        if (vm()->typeProfiler())
-            vm()->typeProfiler()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
         unsigned lineCount = unlinkedExecutable->lineCount();
         unsigned firstLine = ownerExecutable->lineNo() + unlinkedExecutable->firstLineOffset();
         bool startColumnIsOnOwnerStartLine = !unlinkedExecutable->firstLineOffset();
@@ -1851,13 +1761,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             instructions[i + j].u.operand = pc[j].u.operand;
         }
         switch (pc[0].u.opcode) {
-        case op_has_indexed_property: {
-            int arrayProfileIndex = pc[opLength - 1].u.operand;
-            m_arrayProfiles[arrayProfileIndex] = ArrayProfile(i);
-
-            instructions[i + opLength - 1] = &m_arrayProfiles[arrayProfileIndex];
-            break;
-        }
         case op_call_varargs:
         case op_construct_varargs:
         case op_get_by_val:
@@ -1868,7 +1771,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             instructions[i + opLength - 2] = &m_arrayProfiles[arrayProfileIndex];
             FALLTHROUGH;
         }
-        case op_get_direct_pname:
         case op_get_by_id: {
             ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
             ASSERT(profile->m_bytecodeOffset == -1);
@@ -1947,7 +1849,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             const Identifier& ident = identifier(pc[2].u.operand);
             ResolveType type = static_cast<ResolveType>(pc[3].u.operand);
 
-            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), needsActivation(), scope, ident, Get, type);
+            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), scope, ident, Get, type);
             instructions[i + 3].u.operand = op.type;
             instructions[i + 4].u.operand = op.depth;
             if (op.activation)
@@ -1964,7 +1866,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             // get_from_scope dst, scope, id, ResolveModeAndType, Structure, Operand
             const Identifier& ident = identifier(pc[3].u.operand);
             ResolveModeAndType modeAndType = ResolveModeAndType(pc[4].u.operand);
-            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), needsActivation(), scope, ident, Get, modeAndType.type());
+            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), scope, ident, Get, modeAndType.type());
 
             instructions[i + 4].u.operand = ResolveModeAndType(modeAndType.mode(), op.type).operand();
             if (op.type == GlobalVar || op.type == GlobalVarWithVarInjectionChecks)
@@ -1972,108 +1874,86 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             else if (op.structure)
                 instructions[i + 5].u.structure.set(*vm(), ownerExecutable, op.structure);
             instructions[i + 6].u.pointer = reinterpret_cast<void*>(op.operand);
-
             break;
         }
 
+        case op_put_to_scope_with_profile:
         case op_put_to_scope: {
             // put_to_scope scope, id, value, ResolveModeAndType, Structure, Operand
             const Identifier& ident = identifier(pc[2].u.operand);
             ResolveModeAndType modeAndType = ResolveModeAndType(pc[4].u.operand);
-            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), needsActivation(), scope, ident, Put, modeAndType.type());
+            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), scope, ident, Put, modeAndType.type());
 
             instructions[i + 4].u.operand = ResolveModeAndType(modeAndType.mode(), op.type).operand();
             if (op.type == GlobalVar || op.type == GlobalVarWithVarInjectionChecks)
                 instructions[i + 5].u.watchpointSet = op.watchpointSet;
             else if (op.type == ClosureVar || op.type == ClosureVarWithVarInjectionChecks) {
                 if (op.watchpointSet)
-                    op.watchpointSet->invalidate(PutToScopeFireDetail(this, ident));
+                    op.watchpointSet->invalidate();
             } else if (op.structure)
                 instructions[i + 5].u.structure.set(*vm(), ownerExecutable, op.structure);
             instructions[i + 6].u.pointer = reinterpret_cast<void*>(op.operand);
 
-            break;
-        }
+            if (pc[0].u.opcode == op_put_to_scope_with_profile) {
+                // The format of this instruction is: put_to_scope_with_profile scope, id, value, ResolveModeAndType, Structure, Operand, TypeLocation*
+                TypeLocation* location = vm()->nextLocation();
+                size_t instructionOffset = i + opLength - 1;
+                int divot, startOffset, endOffset; 
+                unsigned line = 0, column = 0;
+                expressionRangeForBytecodeOffset(instructionOffset, divot, startOffset, endOffset, line, column);
 
-        case op_profile_type: {
-            // The format of this instruction is: op_profile_type regToProfile, TypeLocation*, flag, identifier?, resolveType?
-            size_t instructionOffset = i + opLength - 1;
-            unsigned divotStart, divotEnd;
-            GlobalVariableID globalVariableID;
-            RefPtr<TypeSet> globalTypeSet;
-            bool shouldAnalyze = m_unlinkedCode->typeProfilerExpressionInfoForBytecodeOffset(instructionOffset, divotStart, divotEnd);
-            VirtualRegister profileRegister(pc[1].u.operand);
-            ProfileTypeBytecodeFlag flag = static_cast<ProfileTypeBytecodeFlag>(pc[3].u.operand);
-            SymbolTable* symbolTable = nullptr;
-
-            switch (flag) {
-            case ProfileTypeBytecodePutToScope:
-            case ProfileTypeBytecodeGetFromScope: {
-                const Identifier& ident = identifier(pc[4].u.operand);
-                ResolveType type = static_cast<ResolveType>(pc[5].u.operand);
-                ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), needsActivation(), scope, ident, (flag == ProfileTypeBytecodeGetFromScope ? Get : Put), type);
+                location->m_line = line;
+                location->m_column = column;
+                location->m_sourceID = m_ownerExecutable->sourceID();
 
                 // FIXME: handle other values for op.type here, and also consider what to do when we can't statically determine the globalID
-                // https://bugs.webkit.org/show_bug.cgi?id=135184
-                if (op.type == ClosureVar)
+                SymbolTable* symbolTable = 0;
+                if (op.type == ClosureVar) 
                     symbolTable = op.activation->symbolTable();
                 else if (op.type == GlobalVar)
                     symbolTable = m_globalObject.get()->symbolTable();
                 
                 if (symbolTable) {
                     ConcurrentJITLocker locker(symbolTable->m_lock);
-                    // If our parent scope was created while profiling was disabled, it will not have prepared for profiling yet.
-                    symbolTable->prepareForTypeProfiling(locker);
-                    globalVariableID = symbolTable->uniqueIDForVariable(locker, ident.impl(), *vm());
-                    globalTypeSet = symbolTable->globalTypeSetForVariable(locker, ident.impl(), *vm());
+                    location->m_globalVariableID = symbolTable->uniqueIDForVariable(locker, ident.impl(), *vm());
+                    location->m_globalTypeSet =symbolTable->globalTypeSetForVariable(locker, ident.impl(), *vm());
                 } else
-                    globalVariableID = TypeProfilerNoGlobalIDExists;
+                    location->m_globalVariableID = HighFidelityNoGlobalIDExists;
 
-                break;
+                vm()->highFidelityTypeProfiler()->insertNewLocation(location);
+                instructions[i + 7].u.location = location;
             }
-            case ProfileTypeBytecodeHasGlobalID: {
-                symbolTable = m_symbolTable.get();
+            break;
+        }
+
+        case op_profile_types_with_high_fidelity: {
+
+            VirtualRegister virtualRegister(pc[1].u.operand);
+            SymbolTable* symbolTable = m_symbolTable.get();
+            TypeLocation* location = vm()->nextLocation();
+            size_t instructionOffset = i + opLength - 1;
+            int divot, startOffset, endOffset; 
+            unsigned line = 0, column = 0;
+            expressionRangeForBytecodeOffset(instructionOffset, divot, startOffset, endOffset, line, column);
+
+            int hasGlobalIDFlag = pc[3].u.operand;
+            if (hasGlobalIDFlag) {
                 ConcurrentJITLocker locker(symbolTable->m_lock);
-                globalVariableID = symbolTable->uniqueIDForRegister(locker, profileRegister.offset(), *vm());
-                globalTypeSet = symbolTable->globalTypeSetForRegister(locker, profileRegister.offset(), *vm());
-                break;
-            }
-            case ProfileTypeBytecodeDoesNotHaveGlobalID: 
-            case ProfileTypeBytecodeFunctionArgument: {
-                globalVariableID = TypeProfilerNoGlobalIDExists;
-                break;
-            }
-            case ProfileTypeBytecodeFunctionReturnStatement: {
-                RELEASE_ASSERT(ownerExecutable->isFunctionExecutable());
-                globalTypeSet = jsCast<FunctionExecutable*>(ownerExecutable)->returnStatementTypeSet();
-                globalVariableID = TypeProfilerReturnStatement;
-                if (!shouldAnalyze) {
-                    // Because a return statement can be added implicitly to return undefined at the end of a function,
-                    // and these nodes don't emit expression ranges because they aren't in the actual source text of
-                    // the user's program, give the type profiler some range to identify these return statements.
-                    // Currently, the text offset that is used as identification is on the open brace of the function 
-                    // and is stored on TypeLocation's m_divotForFunctionOffsetIfReturnStatement member variable.
-                    divotStart = divotEnd = m_sourceOffset;
-                    shouldAnalyze = true;
-                }
-                break;
-            }
-            }
+                location->m_globalVariableID = symbolTable->uniqueIDForRegister(locker, virtualRegister.offset(), *vm());
+                location->m_globalTypeSet = symbolTable->globalTypeSetForRegister(locker, virtualRegister.offset(), *vm());
+            } else
+                location->m_globalVariableID = HighFidelityNoGlobalIDExists;
+            
 
-            std::pair<TypeLocation*, bool> locationPair = vm()->typeProfiler()->typeLocationCache()->getTypeLocation(globalVariableID,
-                m_ownerExecutable->sourceID(), divotStart, divotEnd, globalTypeSet, vm());
-            TypeLocation* location = locationPair.first;
-            bool isNewLocation = locationPair.second;
+            location->m_line = line;
+            location->m_column = column;
+            location->m_sourceID = m_ownerExecutable->sourceID();
 
-            if (flag == ProfileTypeBytecodeFunctionReturnStatement)
-                location->m_divotForFunctionOffsetIfReturnStatement = m_sourceOffset;
-
-            if (shouldAnalyze && isNewLocation)
-                vm()->typeProfiler()->insertNewLocation(location);
-
+            vm()->highFidelityTypeProfiler()->insertNewLocation(location);
             instructions[i + 2].u.location = location;
             break;
         }
+
 
         case op_captured_mov:
         case op_new_captured_func: {
@@ -2305,19 +2185,6 @@ bool CodeBlock::isKnownToBeLiveDuringGC()
 #endif
 }
 
-#if ENABLE(DFG_JIT)
-static bool shouldMarkTransition(DFG::WeakReferenceTransition& transition)
-{
-    if (transition.m_codeOrigin && !Heap::isMarked(transition.m_codeOrigin.get()))
-        return false;
-    
-    if (!Heap::isMarked(transition.m_from.get()))
-        return false;
-    
-    return true;
-}
-#endif // ENABLE(DFG_JIT)
-
 void CodeBlock::propagateTransitions(SlotVisitor& visitor)
 {
     UNUSED_PARAM(visitor);
@@ -2394,28 +2261,21 @@ void CodeBlock::propagateTransitions(SlotVisitor& visitor)
 #if ENABLE(DFG_JIT)
     if (JITCode::isOptimizingJIT(jitType())) {
         DFG::CommonData* dfgCommon = m_jitCode->dfgCommon();
-        
         for (unsigned i = 0; i < dfgCommon->transitions.size(); ++i) {
-            if (shouldMarkTransition(dfgCommon->transitions[i])) {
+            if ((!dfgCommon->transitions[i].m_codeOrigin
+                 || Heap::isMarked(dfgCommon->transitions[i].m_codeOrigin.get()))
+                && Heap::isMarked(dfgCommon->transitions[i].m_from.get())) {
                 // If the following three things are live, then the target of the
                 // transition is also live:
-                //
                 // - This code block. We know it's live already because otherwise
                 //   we wouldn't be scanning ourselves.
-                //
                 // - The code origin of the transition. Transitions may arise from
                 //   code that was inlined. They are not relevant if the user's
                 //   object that is required for the inlinee to run is no longer
                 //   live.
-                //
                 // - The source of the transition. The transition checks if some
                 //   heap location holds the source, and if so, stores the target.
                 //   Hence the source must be live for the transition to be live.
-                //
-                // We also short-circuit the liveness if the structure is harmless
-                // to mark (i.e. its global object and prototype are both already
-                // live).
-                
                 visitor.append(&dfgCommon->transitions[i].m_to);
             } else
                 allAreMarkedSoFar = false;
@@ -2448,14 +2308,6 @@ void CodeBlock::determineLiveness(SlotVisitor& visitor)
         if (!Heap::isMarked(dfgCommon->weakReferences[i].get())) {
             allAreLiveSoFar = false;
             break;
-        }
-    }
-    if (allAreLiveSoFar) {
-        for (unsigned i = 0; i < dfgCommon->weakStructureReferences.size(); ++i) {
-            if (!Heap::isMarked(dfgCommon->weakStructureReferences[i].get())) {
-                allAreLiveSoFar = false;
-                break;
-            }
         }
     }
     
@@ -2543,6 +2395,7 @@ void CodeBlock::finalizeUnconditionally()
                 break;
             }
             case op_get_from_scope:
+            case op_put_to_scope_with_profile:
             case op_put_to_scope: {
                 ResolveModeAndType modeAndType =
                     ResolveModeAndType(curInstruction[4].u.operand);
@@ -2772,9 +2625,6 @@ void CodeBlock::stronglyVisitWeakReferences(SlotVisitor& visitor)
     
     for (unsigned i = 0; i < dfgCommon->weakReferences.size(); ++i)
         visitor.append(&dfgCommon->weakReferences[i]);
-
-    for (unsigned i = 0; i < dfgCommon->weakStructureReferences.size(); ++i)
-        visitor.append(&dfgCommon->weakStructureReferences[i]);
 #endif    
 }
 
@@ -3095,7 +2945,7 @@ DFG::CapabilityLevel FunctionCodeBlock::capabilityLevelInternal()
 }
 #endif
 
-void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mode, const FireDetail* detail)
+void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mode)
 {
     RELEASE_ASSERT(reason != Profiler::NotJettisoned);
     
@@ -3104,17 +2954,14 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         dataLog("Jettisoning ", *this);
         if (mode == CountReoptimization)
             dataLog(" and counting reoptimization");
-        dataLog(" due to ", reason);
-        if (detail)
-            dataLog(", ", *detail);
-        dataLog(".\n");
+        dataLog(" due to ", reason, ".\n");
     }
     
     DeferGCForAWhile deferGC(*m_heap);
     RELEASE_ASSERT(JITCode::isOptimizingJIT(jitType()));
     
     if (Profiler::Compilation* compilation = jitCode()->dfgCommon()->compilation.get())
-        compilation->setJettisonReason(reason, detail);
+        compilation->setJettisonReason(reason);
     
     // We want to accomplish two things here:
     // 1) Make sure that if this CodeBlock is on the stack right now, then if we return to it
@@ -3155,7 +3002,6 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         dataLog("    Did install baseline version of ", *this, "\n");
 #else // ENABLE(DFG_JIT)
     UNUSED_PARAM(mode);
-    UNUSED_PARAM(detail);
     UNREACHABLE_FOR_PLATFORM();
 #endif // ENABLE(DFG_JIT)
 }
@@ -3166,46 +3012,6 @@ JSGlobalObject* CodeBlock::globalObjectFor(CodeOrigin codeOrigin)
         return globalObject();
     return jsCast<FunctionExecutable*>(codeOrigin.inlineCallFrame->executable.get())->eitherCodeBlock()->globalObject();
 }
-
-class RecursionCheckFunctor {
-public:
-    RecursionCheckFunctor(CallFrame* startCallFrame, CodeBlock* codeBlock, unsigned depthToCheck)
-        : m_startCallFrame(startCallFrame)
-        , m_codeBlock(codeBlock)
-        , m_depthToCheck(depthToCheck)
-        , m_foundStartCallFrame(false)
-        , m_didRecurse(false)
-    { }
-
-    StackVisitor::Status operator()(StackVisitor& visitor)
-    {
-        CallFrame* currentCallFrame = visitor->callFrame();
-
-        if (currentCallFrame == m_startCallFrame)
-            m_foundStartCallFrame = true;
-
-        if (m_foundStartCallFrame) {
-            if (visitor->callFrame()->codeBlock() == m_codeBlock) {
-                m_didRecurse = true;
-                return StackVisitor::Done;
-            }
-
-            if (!m_depthToCheck--)
-                return StackVisitor::Done;
-        }
-
-        return StackVisitor::Continue;
-    }
-
-    bool didRecurse() const { return m_didRecurse; }
-
-private:
-    CallFrame* m_startCallFrame;
-    CodeBlock* m_codeBlock;
-    unsigned m_depthToCheck;
-    bool m_foundStartCallFrame;
-    bool m_didRecurse;
-};
 
 void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
 {
@@ -3254,18 +3060,20 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
             dataLog("    Clearing SABI because caller is not a function.\n");
         return;
     }
-
-    // Recursive calls won't be inlined.
-    RecursionCheckFunctor functor(callerFrame, this, Options::maximumInliningDepth());
-    vm()->topCallFrame->iterate(functor);
-
-    if (functor.didRecurse()) {
-        if (Options::verboseCallLink())
-            dataLog("    Clearing SABI because recursion was detected.\n");
-        m_shouldAlwaysBeInlined = false;
-        return;
+    
+    ExecState* frame = callerFrame;
+    for (unsigned i = Options::maximumInliningDepth(); i--; frame = frame->callerFrame()) {
+        if (frame->isVMEntrySentinel())
+            break;
+        if (frame->codeBlock() == this) {
+            // Recursive calls won't be inlined.
+            if (Options::verboseCallLink())
+                dataLog("    Clearing SABI because recursion was detected.\n");
+            m_shouldAlwaysBeInlined = false;
+            return;
+        }
     }
-
+    
     RELEASE_ASSERT(callerCodeBlock->m_capabilityLevelState != DFG::CapabilityLevelNotSet);
     
     if (canCompile(callerCodeBlock->m_capabilityLevelState))
@@ -3847,7 +3655,7 @@ String CodeBlock::nameForRegister(VirtualRegister virtualRegister)
             return ASCIILiteral("real arguments");
     }
     if (virtualRegister.isArgument())
-        return String::format("arguments[%3d]", virtualRegister.toArgument());
+        return String::format("arguments[%3d]", virtualRegister.toArgument()).impl();
 
     return "";
 }

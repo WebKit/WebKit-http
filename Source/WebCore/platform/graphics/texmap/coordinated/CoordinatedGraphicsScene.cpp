@@ -165,37 +165,37 @@ void CoordinatedGraphicsScene::adjustPositionForFixedLayers()
 }
 
 #if USE(GRAPHICS_SURFACE)
-void CoordinatedGraphicsScene::createPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+void CoordinatedGraphicsScene::createCanvasIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
 {
-    if (!state.platformLayerToken.isValid())
+    if (!state.canvasToken.isValid())
         return;
 
-    RefPtr<TextureMapperSurfaceBackingStore> platformLayerBackingStore(TextureMapperSurfaceBackingStore::create());
-    m_surfaceBackingStores.set(layer, platformLayerBackingStore);
-    platformLayerBackingStore->setGraphicsSurface(GraphicsSurface::create(state.platformLayerSize, state.platformLayerSurfaceFlags, state.platformLayerToken));
-    layer->setContentsLayer(platformLayerBackingStore.get());
+    RefPtr<TextureMapperSurfaceBackingStore> canvasBackingStore(TextureMapperSurfaceBackingStore::create());
+    m_surfaceBackingStores.set(layer, canvasBackingStore);
+    canvasBackingStore->setGraphicsSurface(GraphicsSurface::create(state.canvasSize, state.canvasSurfaceFlags, state.canvasToken));
+    layer->setContentsLayer(canvasBackingStore.get());
 }
 
-void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+void CoordinatedGraphicsScene::syncCanvasIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
 {
     ASSERT(m_textureMapper);
 
-    if (state.platformLayerChanged) {
-        destroyPlatformLayerIfNeeded(layer, state);
-        createPlatformLayerIfNeeded(layer, state);
+    if (state.canvasChanged) {
+        destroyCanvasIfNeeded(layer, state);
+        createCanvasIfNeeded(layer, state);
     }
 
-    if (state.platformLayerShouldSwapBuffers) {
+    if (state.canvasShouldSwapBuffers) {
         ASSERT(m_surfaceBackingStores.contains(layer));
         SurfaceBackingStoreMap::iterator it = m_surfaceBackingStores.find(layer);
-        RefPtr<TextureMapperSurfaceBackingStore> platformLayerBackingStore = it->value;
-        platformLayerBackingStore->swapBuffersIfNeeded(state.platformLayerFrontBuffer);
+        RefPtr<TextureMapperSurfaceBackingStore> canvasBackingStore = it->value;
+        canvasBackingStore->swapBuffersIfNeeded(state.canvasFrontBuffer);
     }
 }
 
-void CoordinatedGraphicsScene::destroyPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+void CoordinatedGraphicsScene::destroyCanvasIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
 {
-    if (state.platformLayerToken.isValid())
+    if (state.canvasToken.isValid())
         return;
 
     m_surfaceBackingStores.remove(layer);
@@ -226,6 +226,7 @@ void CoordinatedGraphicsScene::setLayerChildrenIfNeeded(TextureMapperLayer* laye
     layer->setChildren(children);
 }
 
+#if ENABLE(CSS_FILTERS)
 void CoordinatedGraphicsScene::setLayerFiltersIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
 {
     if (!state.filtersChanged)
@@ -233,6 +234,7 @@ void CoordinatedGraphicsScene::setLayerFiltersIfNeeded(TextureMapperLayer* layer
 
     layer->setFilters(state.filters);
 }
+#endif
 
 void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const CoordinatedGraphicsLayerState& layerState)
 {
@@ -312,10 +314,12 @@ void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const Coordi
     createTilesIfNeeded(layer, layerState);
     removeTilesIfNeeded(layer, layerState);
     updateTilesIfNeeded(layer, layerState);
+#if ENABLE(CSS_FILTERS)
     setLayerFiltersIfNeeded(layer, layerState);
+#endif
     setLayerAnimationsIfNeeded(layer, layerState);
 #if USE(GRAPHICS_SURFACE)
-    syncPlatformLayerIfNeeded(layer, layerState);
+    syncCanvasIfNeeded(layer, layerState);
 #endif
     setLayerRepaintCountIfNeeded(layer, layerState);
 }

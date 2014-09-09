@@ -21,6 +21,7 @@
 #ifndef SVGFETurbulenceElement_h
 #define SVGFETurbulenceElement_h
 
+#if ENABLE(FILTERS)
 #include "FETurbulence.h"
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedInteger.h"
@@ -121,4 +122,5 @@ private:
 
 } // namespace WebCore
 
+#endif // ENABLE(FILTERS)
 #endif

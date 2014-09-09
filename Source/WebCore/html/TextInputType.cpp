@@ -44,4 +44,9 @@ const AtomicString& TextInputType::formControlType() const
     return InputTypeNames::text();
 }
 
+bool TextInputType::shouldRespectSpeechAttribute()
+{
+    return true;
+}
+
 } // namespace WebCore

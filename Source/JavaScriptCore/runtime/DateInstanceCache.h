@@ -35,59 +35,59 @@
 
 namespace JSC {
 
-class DateInstanceData : public RefCounted<DateInstanceData> {
-public:
-    static PassRefPtr<DateInstanceData> create() { return adoptRef(new DateInstanceData); }
+    class DateInstanceData : public RefCounted<DateInstanceData> {
+    public:
+        static PassRefPtr<DateInstanceData> create() { return adoptRef(new DateInstanceData); }
 
-    double m_gregorianDateTimeCachedForMS;
-    GregorianDateTime m_cachedGregorianDateTime;
-    double m_gregorianDateTimeUTCCachedForMS;
-    GregorianDateTime m_cachedGregorianDateTimeUTC;
+        double m_gregorianDateTimeCachedForMS;
+        GregorianDateTime m_cachedGregorianDateTime;
+        double m_gregorianDateTimeUTCCachedForMS;
+        GregorianDateTime m_cachedGregorianDateTimeUTC;
 
-private:
-    DateInstanceData()
-        : m_gregorianDateTimeCachedForMS(PNaN)
-        , m_gregorianDateTimeUTCCachedForMS(PNaN)
-    {
-    }
-};
-
-class DateInstanceCache {
-public:
-    DateInstanceCache()
-    {
-        reset();
-    }
-
-    void reset()
-    {
-        for (size_t i = 0; i < cacheSize; ++i)
-            m_cache[i].key = PNaN;
-    }
-
-    DateInstanceData* add(double d)
-    {
-        CacheEntry& entry = lookup(d);
-        if (d == entry.key)
-            return entry.value.get();
-
-        entry.key = d;
-        entry.value = DateInstanceData::create();
-        return entry.value.get();
-    }
-
-private:
-    static const size_t cacheSize = 16;
-
-    struct CacheEntry {
-        double key;
-        RefPtr<DateInstanceData> value;
+    private:
+        DateInstanceData()
+            : m_gregorianDateTimeCachedForMS(PNaN)
+            , m_gregorianDateTimeUTCCachedForMS(PNaN)
+        {
+        }
     };
 
-    CacheEntry& lookup(double d) { return m_cache[WTF::FloatHash<double>::hash(d) & (cacheSize - 1)]; }
+    class DateInstanceCache {
+    public:
+        DateInstanceCache()
+        {
+            reset();
+        }
+        
+        void reset()
+        {
+            for (size_t i = 0; i < cacheSize; ++i)
+                m_cache[i].key = PNaN;
+        }
+        
+        DateInstanceData* add(double d)
+        {
+            CacheEntry& entry = lookup(d);
+            if (d == entry.key)
+                return entry.value.get();
 
-    std::array<CacheEntry, cacheSize> m_cache;
-};
+            entry.key = d;
+            entry.value = DateInstanceData::create();
+            return entry.value.get();
+        }
+
+    private:
+        static const size_t cacheSize = 16;
+
+        struct CacheEntry {
+            double key;
+            RefPtr<DateInstanceData> value;
+        };
+
+        CacheEntry& lookup(double d) { return m_cache[WTF::FloatHash<double>::hash(d) & (cacheSize - 1)]; }
+
+        std::array<CacheEntry, cacheSize> m_cache;
+    };
 
 } // namespace JSC
 

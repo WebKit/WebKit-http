@@ -46,12 +46,7 @@
 #define WEBKIT_EXPORTDATA WTF_IMPORT
 #endif
 
-// FIXME: This should be WTF_EXPORT once WEBCORE_EXPORT is used instead of WebCore.exp.in.
-#define WEBCORE_EXPORT
-
 #else // !USE(EXPORT_MACROS)
-
-#define WEBCORE_EXPORT
 
 #if OS(WINDOWS) && !COMPILER(GCC)
 
@@ -68,5 +63,19 @@
 #endif // !PLATFORM...
 
 #endif // USE(EXPORT_MACROS)
+
+#if USE(EXPORT_MACROS_FOR_TESTING)
+
+#if defined(WEBCORE_IS_LINKED_IN_SAME_BINARY)
+#define WEBCORE_TESTING WTF_EXPORT_DECLARATION
+#else
+#define WEBCORE_TESTING WTF_IMPORT_DECLARATION
+#endif
+
+#else // USE(EXPORT_MACROS_FOR_TESTING)
+
+#define WEBCORE_TESTING
+
+#endif // USE(EXPORT_MACROS_FOR_TESTING)
 
 #endif // PlatformExportMacros_h

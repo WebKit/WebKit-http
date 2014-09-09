@@ -51,10 +51,6 @@
 #include <wtf/RunLoopTimer.h>
 #endif
 
-#if USE(QUICK_LOOK)
-#include "QuickLook.h"
-#endif
-
 namespace WebCore {
 
     class ApplicationCacheHost;
@@ -83,41 +79,41 @@ namespace WebCore {
         {
             return adoptRef(new DocumentLoader(request, data));
         }
-        WEBCORE_EXPORT virtual ~DocumentLoader();
+        virtual ~DocumentLoader();
 
-        WEBCORE_EXPORT void setFrame(Frame*);
+        void setFrame(Frame*);
         Frame* frame() const { return m_frame; }
 
-        WEBCORE_EXPORT virtual void attachToFrame();
-        WEBCORE_EXPORT virtual void detachFromFrame();
+        virtual void attachToFrame();
+        virtual void detachFromFrame();
 
-        WEBCORE_EXPORT FrameLoader* frameLoader() const;
-        WEBCORE_EXPORT ResourceLoader* mainResourceLoader() const;
-        WEBCORE_EXPORT PassRefPtr<ResourceBuffer> mainResourceData() const;
+        FrameLoader* frameLoader() const;
+        ResourceLoader* mainResourceLoader() const;
+        PassRefPtr<ResourceBuffer> mainResourceData() const;
         
         DocumentWriter& writer() const { return m_writer; }
 
-        WEBCORE_EXPORT const ResourceRequest& originalRequest() const;
-        WEBCORE_EXPORT const ResourceRequest& originalRequestCopy() const;
+        const ResourceRequest& originalRequest() const;
+        const ResourceRequest& originalRequestCopy() const;
 
-        WEBCORE_EXPORT const ResourceRequest& request() const;
-        WEBCORE_EXPORT ResourceRequest& request();
+        const ResourceRequest& request() const;
+        ResourceRequest& request();
 
         CachedResourceLoader& cachedResourceLoader() { return m_cachedResourceLoader.get(); }
 
         const SubstituteData& substituteData() const { return m_substituteData; }
 
         // FIXME: This is the same as requestURL(). We should remove one of them.
-        WEBCORE_EXPORT const URL& url() const;
-        WEBCORE_EXPORT const URL& unreachableURL() const;
+        const URL& url() const;
+        const URL& unreachableURL() const;
 
         const URL& originalURL() const;
-        WEBCORE_EXPORT const URL& requestURL() const;
-        WEBCORE_EXPORT const URL& responseURL() const;
-        WEBCORE_EXPORT const String& responseMIMEType() const;
+        const URL& requestURL() const;
+        const URL& responseURL() const;
+        const String& responseMIMEType() const;
 #if PLATFORM(IOS)
         // FIXME: This method seems to violate the encapsulation of this class.
-        WEBCORE_EXPORT void setResponseMIMEType(const String&);
+        void setResponseMIMEType(const String&);
 #endif
 
         void replaceRequestURLForSameDocumentNavigation(const URL&);
@@ -125,7 +121,7 @@ namespace WebCore {
         void stopLoading();
         void setCommitted(bool committed) { m_committed = committed; }
         bool isCommitted() const { return m_committed; }
-        WEBCORE_EXPORT bool isLoading() const;
+        bool isLoading() const;
 
         const ResourceError& mainDocumentError() const { return m_mainDocumentError; }
 
@@ -139,8 +135,8 @@ namespace WebCore {
         void setIsClientRedirect(bool isClientRedirect) { m_isClientRedirect = isClientRedirect; }
         void handledOnloadEvents();
         bool wasOnloadHandled() { return m_wasOnloadHandled; }
-        WEBCORE_EXPORT bool isLoadingInAPISense() const;
-        WEBCORE_EXPORT void setTitle(const StringWithDirection&);
+        bool isLoadingInAPISense() const;
+        void setTitle(const StringWithDirection&);
         const String& overrideEncoding() const { return m_overrideEncoding; }
 
 #if PLATFORM(MAC)
@@ -150,23 +146,23 @@ namespace WebCore {
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
         void setArchive(PassRefPtr<Archive>);
-        WEBCORE_EXPORT void addAllArchiveResources(Archive*);
-        WEBCORE_EXPORT void addArchiveResource(PassRefPtr<ArchiveResource>);
+        void addAllArchiveResources(Archive*);
+        void addArchiveResource(PassRefPtr<ArchiveResource>);
         PassRefPtr<Archive> popArchiveForSubframe(const String& frameName, const URL&);
-        WEBCORE_EXPORT SharedBuffer* parsedArchiveData() const;
+        SharedBuffer* parsedArchiveData() const;
 
-        WEBCORE_EXPORT bool scheduleArchiveLoad(ResourceLoader*, const ResourceRequest&);
+        bool scheduleArchiveLoad(ResourceLoader*, const ResourceRequest&);
 #endif
 
         // Return the ArchiveResource for the URL only when loading an Archive
         ArchiveResource* archiveResourceForURL(const URL&) const;
 
-        WEBCORE_EXPORT PassRefPtr<ArchiveResource> mainResource() const;
+        PassRefPtr<ArchiveResource> mainResource() const;
 
         // Return an ArchiveResource for the URL, either creating from live data or
         // pulling from the ArchiveResourceCollection
-        WEBCORE_EXPORT PassRefPtr<ArchiveResource> subresource(const URL&) const;
-        WEBCORE_EXPORT Vector<RefPtr<ArchiveResource>> subresources() const;
+        PassRefPtr<ArchiveResource> subresource(const URL&) const;
+        Vector<RefPtr<ArchiveResource>> subresources() const;
 
 #ifndef NDEBUG
         bool isSubstituteLoadPending(ResourceLoader*) const;
@@ -185,8 +181,8 @@ namespace WebCore {
         void stopRecordingResponses();
         const StringWithDirection& title() const { return m_pageTitle; }
 
-        WEBCORE_EXPORT URL urlForHistory() const;
-        WEBCORE_EXPORT bool urlForHistoryReflectsFailure() const;
+        URL urlForHistory() const;
+        bool urlForHistoryReflectsFailure() const;
 
         // These accessors accommodate WebCore's somewhat fickle custom of creating history
         // items for redirects, but only sometimes. For "source" and "destination",
@@ -209,7 +205,7 @@ namespace WebCore {
         void setMainResourceDataBufferingPolicy(DataBufferingPolicy);
 
         void startLoadingMainResource();
-        WEBCORE_EXPORT void cancelMainResourceLoad(const ResourceError&);
+        void cancelMainResourceLoad(const ResourceError&);
         
         // Support iconDatabase in synchronous mode.
         void iconLoadDecisionAvailable();
@@ -227,8 +223,8 @@ namespace WebCore {
 
         void addSubresourceLoader(ResourceLoader*);
         void removeSubresourceLoader(ResourceLoader*);
-        WEBCORE_EXPORT void addPlugInStreamLoader(ResourceLoader*);
-        WEBCORE_EXPORT void removePlugInStreamLoader(ResourceLoader*);
+        void addPlugInStreamLoader(ResourceLoader*);
+        void removePlugInStreamLoader(ResourceLoader*);
 
         void subresourceLoaderFinishedLoadingOnePart(ResourceLoader*);
 
@@ -254,7 +250,7 @@ namespace WebCore {
 
         // The WebKit layer calls this function when it's ready for the data to
         // actually be added to the document.
-        WEBCORE_EXPORT void commitData(const char* bytes, size_t length);
+        void commitData(const char* bytes, size_t length);
 
         ApplicationCacheHost* applicationCacheHost() const { return m_applicationCacheHost.get(); }
 
@@ -263,13 +259,8 @@ namespace WebCore {
         // The URL of the document resulting from this DocumentLoader.
         URL documentURL() const;
 
-#if USE(QUICK_LOOK)
-        void setQuickLookHandle(std::unique_ptr<QuickLookHandle> quickLookHandle) { m_quickLookHandle = WTF::move(quickLookHandle); }
-        QuickLookHandle* quickLookHandle() const { return m_quickLookHandle.get(); }
-#endif
-
     protected:
-        WEBCORE_EXPORT DocumentLoader(const ResourceRequest&, const SubstituteData&);
+        DocumentLoader(const ResourceRequest&, const SubstituteData&);
 
         bool m_deferMainResourceDataLoad;
 
@@ -294,10 +285,10 @@ namespace WebCore {
         void willSendRequest(ResourceRequest&, const ResourceResponse&);
         void finishedLoading(double finishTime);
         void mainReceivedError(const ResourceError&);
-        WEBCORE_EXPORT virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
-        WEBCORE_EXPORT virtual void responseReceived(CachedResource*, const ResourceResponse&) override;
-        WEBCORE_EXPORT virtual void dataReceived(CachedResource*, const char* data, int length) override;
-        WEBCORE_EXPORT virtual void notifyFinished(CachedResource*) override;
+        virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
+        virtual void responseReceived(CachedResource*, const ResourceResponse&) override;
+        virtual void dataReceived(CachedResource*, const char* data, int length) override;
+        virtual void notifyFinished(CachedResource*) override;
 
         bool maybeLoadEmpty();
 
@@ -420,10 +411,6 @@ namespace WebCore {
 
 #if ENABLE(CONTENT_FILTERING)
         std::unique_ptr<ContentFilter> m_contentFilter;
-#endif
-
-#if USE(QUICK_LOOK)
-        std::unique_ptr<QuickLookHandle> m_quickLookHandle;
 #endif
     };
 

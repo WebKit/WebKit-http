@@ -107,6 +107,7 @@ private:
 
     virtual PassRefPtr<ViewSnapshot> takeViewSnapshot() override;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
+    virtual void clearCustomSwipeViews() override;
 
     virtual void commitPotentialTapFailed() override;
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) override;
@@ -174,10 +175,6 @@ private:
     virtual void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&) override;
     virtual void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&) override;
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
-
-    virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
-    virtual void didFinishLoadForMainFrame() override;
-    virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
 
     WKContentView *m_contentView;
     WKWebView *m_webView;

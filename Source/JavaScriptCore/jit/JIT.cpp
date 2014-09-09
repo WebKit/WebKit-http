@@ -52,7 +52,6 @@ JSC::MacroAssemblerX86Common::SSE2CheckState JSC::MacroAssemblerX86Common::s_sse
 #include "SamplingTool.h"
 #include "SlowPathCall.h"
 #include "StackAlignment.h"
-#include "TypeProfilerLog.h"
 #include <wtf/CryptographicallyRandomNumber.h>
 
 using namespace std;
@@ -224,6 +223,8 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_get_arguments_length)
         DEFINE_OP(op_get_by_val)
         DEFINE_OP(op_get_argument_by_val)
+        DEFINE_OP(op_get_by_pname)
+        DEFINE_OP(op_get_pnames)
         DEFINE_OP(op_check_has_instance)
         DEFINE_OP(op_instanceof)
         DEFINE_OP(op_is_undefined)
@@ -261,6 +262,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_new_func_exp)
         DEFINE_OP(op_new_object)
         DEFINE_OP(op_new_regexp)
+        DEFINE_OP(op_next_pname)
         DEFINE_OP(op_not)
         DEFINE_OP(op_nstricteq)
         DEFINE_OP(op_pop_scope)
@@ -268,7 +270,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_inc)
         DEFINE_OP(op_profile_did_call)
         DEFINE_OP(op_profile_will_call)
-        DEFINE_OP(op_profile_type)
         DEFINE_OP(op_push_name_scope)
         DEFINE_OP(op_push_with_scope)
         case op_put_by_id_out_of_line:
@@ -306,16 +307,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_resolve_scope)
         DEFINE_OP(op_get_from_scope)
         DEFINE_OP(op_put_to_scope)
-
-        DEFINE_OP(op_get_enumerable_length)
-        DEFINE_OP(op_has_generic_property)
-        DEFINE_OP(op_has_structure_property)
-        DEFINE_OP(op_has_indexed_property)
-        DEFINE_OP(op_get_direct_pname)
-        DEFINE_OP(op_get_structure_property_enumerator)
-        DEFINE_OP(op_get_generic_property_enumerator)
-        DEFINE_OP(op_next_enumerator_pname)
-        DEFINE_OP(op_to_index_string)
         default:
             RELEASE_ASSERT_NOT_REACHED();
         }
@@ -394,6 +385,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_get_arguments_length)
         DEFINE_SLOWCASE_OP(op_get_by_val)
         DEFINE_SLOWCASE_OP(op_get_argument_by_val)
+        DEFINE_SLOWCASE_OP(op_get_by_pname)
         DEFINE_SLOWCASE_OP(op_check_has_instance)
         DEFINE_SLOWCASE_OP(op_instanceof)
         DEFINE_SLOWCASE_OP(op_jfalse)
@@ -432,9 +424,6 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_sub)
         DEFINE_SLOWCASE_OP(op_to_number)
         DEFINE_SLOWCASE_OP(op_to_primitive)
-        DEFINE_SLOWCASE_OP(op_has_indexed_property)
-        DEFINE_SLOWCASE_OP(op_has_structure_property)
-        DEFINE_SLOWCASE_OP(op_get_direct_pname)
 
         DEFINE_SLOWCASE_OP(op_resolve_scope)
         DEFINE_SLOWCASE_OP(op_get_from_scope)
@@ -500,10 +489,6 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
         m_codeBlock->m_shouldAlwaysBeInlined &= canInline(level) && DFG::mightInlineFunction(m_codeBlock);
         break;
     }
-
-    // This ensures that we have the most up to date type information when performing typecheck optimizations for op_profile_type.
-    if (m_vm->typeProfiler())
-        m_vm->typeProfilerLog()->processLogEntries(ASCIILiteral("Preparing for JIT compilation."));
     
     if (Options::showDisassembly() || m_vm->m_perBytecodeProfiler)
         m_disassembler = adoptPtr(new JITDisassembler(m_codeBlock));
@@ -722,38 +707,35 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
 
 void JIT::privateCompileExceptionHandlers()
 {
+    if (m_exceptionChecks.empty() && m_exceptionChecksWithCallFrameRollback.empty())
+        return;
+
+    Jump doLookup;
+
     if (!m_exceptionChecksWithCallFrameRollback.empty()) {
         m_exceptionChecksWithCallFrameRollback.link(this);
-
-        // lookupExceptionHandlerFromCallerFrame is passed two arguments, the VM and the exec (the CallFrame*).
-
-        move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
-        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-
-#if CPU(X86)
-        // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
-        poke(GPRInfo::argumentGPR0);
-        poke(GPRInfo::argumentGPR1, 1);
-#endif
-        m_calls.append(CallRecord(call(), (unsigned)-1, FunctionPtr(lookupExceptionHandlerFromCallerFrame).value()));
-        jumpToExceptionHandler();
+        emitGetCallerFrameFromCallFrameHeaderPtr(GPRInfo::argumentGPR1);
+        doLookup = jump();
     }
 
-    if (!m_exceptionChecks.empty()) {
+    if (!m_exceptionChecks.empty())
         m_exceptionChecks.link(this);
+    
+    // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
+    move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
 
-        // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
-        move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
-        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+    if (doLookup.isSet())
+        doLookup.link(this);
+
+    move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
 
 #if CPU(X86)
-        // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
-        poke(GPRInfo::argumentGPR0);
-        poke(GPRInfo::argumentGPR1, 1);
+    // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
+    poke(GPRInfo::argumentGPR0);
+    poke(GPRInfo::argumentGPR1, 1);
 #endif
-        m_calls.append(CallRecord(call(), (unsigned)-1, FunctionPtr(lookupExceptionHandler).value()));
-        jumpToExceptionHandler();
-    }
+    m_calls.append(CallRecord(call(), (unsigned)-1, FunctionPtr(lookupExceptionHandler).value()));
+    jumpToExceptionHandler();
 }
 
 unsigned JIT::frameRegisterCountFor(CodeBlock* codeBlock)

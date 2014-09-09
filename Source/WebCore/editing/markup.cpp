@@ -858,11 +858,11 @@ String createFullMarkup(const Range& range)
 String urlToMarkup(const URL& url, const String& title)
 {
     StringBuilder markup;
-    markup.appendLiteral("<a href=\"");
+    markup.append("<a href=\"");
     markup.append(url.string());
-    markup.appendLiteral("\">");
+    markup.append("\">");
     MarkupAccumulator::appendCharactersReplacingEntities(markup, title, 0, title.length(), EntityMaskInPCDATA);
-    markup.appendLiteral("</a>");
+    markup.append("</a>");
     return markup.toString();
 }
 

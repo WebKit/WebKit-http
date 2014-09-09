@@ -192,7 +192,7 @@ public:
 #endif
 
 #if PLATFORM(IOS)
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS)
     virtual void didPreventDefaultForEvent() override { }
 #endif
     virtual void didReceiveMobileDocType(bool) override { }

@@ -51,10 +51,6 @@
 #include "DashboardRegion.h"
 #endif
 
-#if ENABLE(CSS_SCROLL_SNAP)
-#include "LengthRepeat.h"
-#endif
-
 using namespace WTF;
 
 namespace WebCore {
@@ -123,9 +119,6 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue::CSS_PARSER_OPERATOR:
     case CSSPrimitiveValue::CSS_RECT:
     case CSSPrimitiveValue::CSS_QUAD:
-#if ENABLE(CSS_SCROLL_SNAP)
-    case CSSPrimitiveValue::CSS_LENGTH_REPEAT:
-#endif
     case CSSPrimitiveValue::CSS_RGBCOLOR:
     case CSSPrimitiveValue::CSS_SHAPE:
     case CSSPrimitiveValue::CSS_STRING:
@@ -405,15 +398,6 @@ void CSSPrimitiveValue::init(PassRefPtr<Quad> quad)
     m_value.quad = quad.leakRef();
 }
 
-#if ENABLE(CSS_SCROLL_SNAP)
-void CSSPrimitiveValue::init(PassRefPtr<LengthRepeat> lengthRepeat)
-{
-    m_primitiveUnitType = CSS_LENGTH_REPEAT;
-    m_hasCachedCSSText = false;
-    m_value.lengthRepeat = lengthRepeat.leakRef();
-}
-#endif
-
 #if ENABLE(DASHBOARD_SUPPORT)
 void CSSPrimitiveValue::init(PassRefPtr<DashboardRegion> r)
 {
@@ -469,11 +453,6 @@ void CSSPrimitiveValue::cleanup()
     case CSS_QUAD:
         m_value.quad->deref();
         break;
-#if ENABLE(CSS_SCROLL_SNAP)
-    case CSS_LENGTH_REPEAT:
-        m_value.lengthRepeat->deref();
-        break;
-#endif
     case CSS_PAIR:
         m_value.pair->deref();
         break;
@@ -569,7 +548,11 @@ template<> unsigned CSSPrimitiveValue::computeLength(const CSSToLengthConversion
 
 template<> Length CSSPrimitiveValue::computeLength(const CSSToLengthConversionData& conversionData) const
 {
+#if ENABLE(SUBPIXEL_LAYOUT)
     return Length(clampTo<float>(computeLengthDouble(conversionData), minValueForCssLength, maxValueForCssLength), Fixed);
+#else
+    return Length(clampTo<float>(roundForImpreciseConversion<float>(computeLengthDouble(conversionData)), minValueForCssLength, maxValueForCssLength), Fixed);
+#endif
 }
 
 template<> short CSSPrimitiveValue::computeLength(const CSSToLengthConversionData& conversionData) const
@@ -915,19 +898,6 @@ Quad* CSSPrimitiveValue::getQuadValue(ExceptionCode& ec) const
     return m_value.quad;
 }
 
-#if ENABLE(CSS_SCROLL_SNAP)
-LengthRepeat* CSSPrimitiveValue::getLengthRepeatValue(ExceptionCode& ec) const
-{
-    ec = 0;
-    if (m_primitiveUnitType != CSS_LENGTH_REPEAT) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-
-    return m_value.lengthRepeat;
-}
-#endif
-
 PassRefPtr<RGBColor> CSSPrimitiveValue::getRGBColorValue(ExceptionCode& ec) const
 {
     ec = 0;
@@ -1077,10 +1047,6 @@ ALWAYS_INLINE String CSSPrimitiveValue::formatNumberForcustomCSSText() const
         return getRectValue()->cssText();
     case CSS_QUAD:
         return getQuadValue()->cssText();
-#if ENABLE(CSS_SCROLL_SNAP)
-    case CSS_LENGTH_REPEAT:
-        return getLengthRepeatValue()->cssText();
-#endif
     case CSS_RGBCOLOR:
     case CSS_PARSER_HEXCOLOR: {
         RGBA32 rgbColor = m_value.rgbcolor;
@@ -1220,11 +1186,6 @@ PassRefPtr<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
     case CSS_QUAD:
         result = CSSPrimitiveValue::create(m_value.quad->cloneForCSSOM());
         break;
-#if ENABLE(CSS_SCROLL_SNAP)
-    case CSS_LENGTH_REPEAT:
-        result = CSSPrimitiveValue::create(m_value.lengthRepeat->cloneForCSSOM());
-        break;
-#endif
     case CSS_PAIR:
         // Pair is not exposed to the CSSOM, no need for a deep clone.
         result = CSSPrimitiveValue::create(m_value.pair);
@@ -1355,10 +1316,6 @@ bool CSSPrimitiveValue::equals(const CSSPrimitiveValue& other) const
         return m_value.rect && other.m_value.rect && m_value.rect->equals(*other.m_value.rect);
     case CSS_QUAD:
         return m_value.quad && other.m_value.quad && m_value.quad->equals(*other.m_value.quad);
-#if ENABLE(CSS_SCROLL_SNAP)
-    case CSS_LENGTH_REPEAT:
-        return m_value.lengthRepeat && other.m_value.lengthRepeat && m_value.lengthRepeat->equals(*other.m_value.lengthRepeat);
-#endif
     case CSS_RGBCOLOR:
         return m_value.rgbcolor == other.m_value.rgbcolor;
     case CSS_PAIR:

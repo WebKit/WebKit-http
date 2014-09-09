@@ -83,11 +83,6 @@ WebInspector.CSSCompletions.requestCSSNameCompletions = function()
 
         WebInspector.CSSCompletions.cssNameCompletions = new WebInspector.CSSCompletions(names, false);
 
-        // CodeMirror is not included by tests so we shouldn't assume it always exists.
-        // If it isn't available we skip MIME type associations.
-        if (!window.CodeMirror)
-            return;
-
         var propertyNamesForCodeMirror = {};
         var valueKeywordsForCodeMirror = {"inherit": true, "initial": true};
         var colorKeywordsForCodeMirror = {};

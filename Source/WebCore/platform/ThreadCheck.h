@@ -39,8 +39,8 @@ namespace WebCore {
         ThreadViolationRoundTwo,
         MaximumThreadViolationRound
     };
-    WEBCORE_EXPORT void setDefaultThreadViolationBehavior(ThreadViolationBehavior, ThreadViolationRound);
-    WEBCORE_EXPORT void reportThreadViolation(const char* function, ThreadViolationRound);
+    void setDefaultThreadViolationBehavior(ThreadViolationBehavior, ThreadViolationRound);
+    void reportThreadViolation(const char* function, ThreadViolationRound);
 }
 
 extern "C" void WebCoreReportThreadViolation(const char* function, WebCore::ThreadViolationRound);

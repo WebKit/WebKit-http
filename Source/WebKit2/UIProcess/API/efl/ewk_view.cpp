@@ -25,8 +25,8 @@
 #include "EwkView.h"
 #include "ewk_back_forward_list_private.h"
 #include "ewk_context_private.h"
-#include "ewk_main_private.h"
 #include "ewk_page_group_private.h"
+#include "ewk_private.h"
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <WebKit/WKAPICast.h>
 #include <WebKit/WKData.h>
@@ -79,16 +79,11 @@ Eina_Bool ewk_view_smart_class_set(Ewk_View_Smart_Class* api)
 
 Evas_Object* EWKViewCreate(WKContextRef context, WKPageGroupRef pageGroup, Evas* canvas, Evas_Smart* smart)
 {
-    if (!EwkMain::shared().isInitialized()) {
-        EINA_LOG_CRIT("EWebKit has not been initialized. You must call ewk_init() before creating view.");
-        return nullptr;
-    }
-
     WKRetainPtr<WKViewRef> wkView = adoptWK(WKViewCreate(context, pageGroup));
     if (EwkView* ewkView = EwkView::create(wkView.get(), canvas, smart))
         return ewkView->evasObject();
 
-    return nullptr;
+    return 0;
 }
 
 WKViewRef EWKViewGetWKView(Evas_Object* ewkView)
@@ -366,21 +361,6 @@ Eina_Bool ewk_view_user_agent_set(Evas_Object* ewkView, const char* userAgent)
     impl->setUserAgent(userAgent);
 
     return true;
-}
-
-Eina_Bool ewk_view_application_name_for_user_agent_set(Evas_Object* ewkView, const char* applicationName)
-{
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, false);
-
-    impl->setApplicationNameForUserAgent(applicationName);
-    return true;
-}
-
-const char* ewk_view_application_name_for_user_agent_get(const Evas_Object* ewkView)
-{
-    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, nullptr);
-
-    return impl->applicationNameForUserAgent();
 }
 
 inline WKFindOptions toWKFindOptions(Ewk_Find_Options options)

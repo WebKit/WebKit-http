@@ -26,6 +26,8 @@
 #ifndef PlatformCAFilters_h
 #define PlatformCAFilters_h
 
+#if ENABLE(CSS_FILTERS)
+
 #include "FilterOperations.h"
 #include "GraphicsTypes.h"
 #include "PlatformLayer.h"
@@ -45,13 +47,13 @@ class PlatformCALayer;
 
 class PlatformCAFilters {
 public:
-    WEBCORE_EXPORT static void setFiltersOnLayer(PlatformLayer*, const FilterOperations&);
-    WEBCORE_EXPORT static void setBlendingFiltersOnLayer(PlatformLayer*, const BlendMode);
+    static void setFiltersOnLayer(PlatformLayer*, const FilterOperations&);
+    static void setBlendingFiltersOnLayer(PlatformLayer*, const BlendMode);
     static int numAnimatedFilterProperties(FilterOperation::OperationType);
     static const char* animatedFilterPropertyName(FilterOperation::OperationType, int internalFilterPropertyIndex);
 
 #if PLATFORM(COCOA)
-    WEBCORE_EXPORT static RetainPtr<NSValue> filterValueForOperation(const FilterOperation*, int internalFilterPropertyIndex);
+    static RetainPtr<NSValue> filterValueForOperation(const FilterOperation*, int internalFilterPropertyIndex);
 #endif
 
 #ifdef USE_CA_FILTERS
@@ -61,5 +63,7 @@ public:
 };
 
 }
+
+#endif // ENABLE(CSS_FILTERS)
 
 #endif // PlatformCAFilters_h

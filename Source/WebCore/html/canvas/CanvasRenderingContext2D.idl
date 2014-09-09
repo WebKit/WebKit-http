@@ -97,7 +97,6 @@ interface CanvasRenderingContext2D : CanvasRenderingContext {
     attribute DOMString font;
     attribute DOMString textAlign;
     attribute DOMString textBaseline;
-    attribute DOMString direction;
 
     TextMetrics measureText(DOMString text);
 

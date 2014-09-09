@@ -45,7 +45,7 @@
 
 namespace WebCore {
 
-WEBCORE_EXPORT bool MemoryPressureHandler::ReliefLogger::s_loggingEnabled = false;
+bool MemoryPressureHandler::ReliefLogger::s_loggingEnabled = false;
 
 MemoryPressureHandler& memoryPressureHandler()
 {

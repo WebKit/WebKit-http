@@ -494,14 +494,12 @@ LayoutUnit RenderBoxModelObject::offsetTop() const
 
 int RenderBoxModelObject::pixelSnappedOffsetWidth() const
 {
-    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
-    return roundToInt(offsetWidth());
+    return snapSizeToPixel(offsetWidth(), offsetLeft());
 }
 
 int RenderBoxModelObject::pixelSnappedOffsetHeight() const
 {
-    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
-    return roundToInt(offsetHeight());
+    return snapSizeToPixel(offsetHeight(), offsetTop());
 }
 
 LayoutUnit RenderBoxModelObject::computedCSSPadding(const Length& padding) const
@@ -669,7 +667,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
 
     bool colorVisible = bgColor.isValid() && bgColor.alpha();
     float deviceScaleFactor = document().deviceScaleFactor();
-    FloatRect pixelSnappedRect = snapRectToDevicePixels(rect, deviceScaleFactor);
+    FloatRect pixelSnappedRect = pixelSnappedForPainting(rect, deviceScaleFactor);
 
     // Fast path for drawing simple color backgrounds.
     if (!isRoot && !clippedWithLocalScrolling && !shouldPaintBackgroundImage && isBorderFill && !bgLayer->next()) {
@@ -752,8 +750,8 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
         // We have to draw our text into a mask that can then be used to clip background drawing.
         // First figure out how big the mask has to be.  It should be no bigger than what we need
         // to actually render, so we should intersect the dirty rect with the border box of the background.
-        maskRect = snappedIntRect(rect);
-        maskRect.intersect(snappedIntRect(paintInfo.rect));
+        maskRect = pixelSnappedIntRect(rect);
+        maskRect.intersect(pixelSnappedIntRect(paintInfo.rect));
 
         // Now create the mask.
         maskImage = context->createCompatibleBuffer(maskRect.size());
@@ -818,7 +816,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
             if (boxShadowShouldBeAppliedToBackground)
                 applyBoxShadowForBackground(context, &style());
 
-            FloatRect backgroundRectForPainting = snapRectToDevicePixels(backgroundRect, deviceScaleFactor);
+            FloatRect backgroundRectForPainting = pixelSnappedForPainting(backgroundRect, deviceScaleFactor);
             if (baseColor.alpha()) {
                 if (!baseBgColorOnly && bgColor.alpha())
                     baseColor = baseColor.blend(bgColor);
@@ -1074,11 +1072,11 @@ void RenderBoxModelObject::pixelSnapBackgroundImageGeometryForPainting(Backgroun
 {
     float deviceScaleFactor = document().deviceScaleFactor();
     // FIXME: We need a better rounding strategy to round/space out tiles.
-    geometry.setTileSize(LayoutSize(snapRectToDevicePixels(LayoutRect(geometry.destRect().location(), geometry.tileSize()), deviceScaleFactor).size()));
-    geometry.setSpaceSize(LayoutSize(snapRectToDevicePixels(LayoutRect(LayoutPoint(), geometry.spaceSize()), deviceScaleFactor).size()));
-    geometry.setDestOrigin(LayoutPoint(roundPointToDevicePixels(geometry.destOrigin(), deviceScaleFactor)));
-    geometry.setDestRect(LayoutRect(snapRectToDevicePixels(geometry.destRect(), deviceScaleFactor)));
-    geometry.setPhase(LayoutPoint(roundPointToDevicePixels(geometry.phase(), deviceScaleFactor)));
+    geometry.setTileSize(LayoutSize(pixelSnappedForPainting(LayoutRect(geometry.destRect().location(), geometry.tileSize()), deviceScaleFactor).size()));
+    geometry.setSpaceSize(LayoutSize(pixelSnappedForPainting(LayoutRect(LayoutPoint(), geometry.spaceSize()), deviceScaleFactor).size()));
+    geometry.setDestOrigin(LayoutPoint(roundedForPainting(geometry.destOrigin(), deviceScaleFactor)));
+    geometry.setDestRect(LayoutRect(pixelSnappedForPainting(geometry.destRect(), deviceScaleFactor)));
+    geometry.setPhase(LayoutPoint(roundedForPainting(geometry.phase(), deviceScaleFactor)));
 }
 
 void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerModelObject* paintContainer, const FillLayer* fillLayer, const LayoutRect& paintRect,
@@ -1129,13 +1127,11 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerMod
         if (frame().settings().fixedBackgroundsPaintRelativeToDocument())
             viewportRect = view().unscaledDocumentRect();
         else {
-            viewportRect.setSize(view().frameView().unscaledVisibleContentSizeIncludingObscuredArea());
+            viewportRect = view().viewRect();
             if (fixedBackgroundPaintsInLocalCoordinates())
                 viewportRect.setLocation(LayoutPoint());
-            else {
-                viewportRect.setLocation(toLayoutPoint(view().frameView().documentScrollOffsetRelativeToViewOrigin()));
-                top += view().frameView().topContentInset(ScrollView::TopContentInsetType::WebCoreOrPlatformContentInset);
-            }
+            else
+                viewportRect.setLocation(toLayoutPoint(view().frameView().scrollOffsetForFixedPosition()));
         }
         
         if (paintContainer)
@@ -1266,7 +1262,7 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext* graphicsContext,
     float deviceScaleFactor = document().deviceScaleFactor();
     LayoutRect rectWithOutsets = rect;
     rectWithOutsets.expand(style.imageOutsets(ninePieceImage));
-    LayoutRect borderImageRect = LayoutRect(snapRectToDevicePixels(rectWithOutsets, deviceScaleFactor));
+    LayoutRect borderImageRect = LayoutRect(pixelSnappedForPainting(rectWithOutsets, deviceScaleFactor));
 
     LayoutSize imageSize = calculateImageIntrinsicDimensions(styleImage, borderImageRect.size(), DoNotScaleByEffectiveZoom);
 
@@ -1333,20 +1329,20 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext* graphicsContext,
         // The top left corner rect is (tx, ty, leftWidth, topWidth)
         // The rect to use from within the image is obtained from our slice, and is (0, 0, leftSlice, topSlice)
         if (drawTop)
-            graphicsContext->drawImage(image.get(), colorSpace, snapRectToDevicePixels(x, y, leftWidth, topWidth, deviceScaleFactor),
-                snapRectToDevicePixels(0, 0, leftSlice, topSlice, deviceScaleFactor), op);
+            graphicsContext->drawImage(image.get(), colorSpace, pixelSnappedForPainting(x, y, leftWidth, topWidth, deviceScaleFactor),
+                pixelSnappedForPainting(0, 0, leftSlice, topSlice, deviceScaleFactor), op);
 
         // The bottom left corner rect is (tx, ty + h - bottomWidth, leftWidth, bottomWidth)
         // The rect to use from within the image is (0, imageHeight - bottomSlice, leftSlice, botomSlice)
         if (drawBottom)
-            graphicsContext->drawImage(image.get(), colorSpace, snapRectToDevicePixels(x, borderImageRect.maxY() - bottomWidth, leftWidth, bottomWidth, deviceScaleFactor),
-                snapRectToDevicePixels(0, imageHeight - bottomSlice, leftSlice, bottomSlice, deviceScaleFactor), op);
+            graphicsContext->drawImage(image.get(), colorSpace, pixelSnappedForPainting(x, borderImageRect.maxY() - bottomWidth, leftWidth, bottomWidth, deviceScaleFactor),
+                pixelSnappedForPainting(0, imageHeight - bottomSlice, leftSlice, bottomSlice, deviceScaleFactor), op);
 
         // Paint the left edge.
         // Have to scale and tile into the border rect.
         if (sourceHeight > 0)
-            graphicsContext->drawTiledImage(image.get(), colorSpace, snapRectToDevicePixels(x, y + topWidth, leftWidth, destinationHeight, deviceScaleFactor),
-                snapRectToDevicePixels(0, topSlice, leftSlice, sourceHeight, deviceScaleFactor), FloatSize(leftSideScale, leftSideScale), Image::StretchTile, (Image::TileRule)vRule, op);
+            graphicsContext->drawTiledImage(image.get(), colorSpace, pixelSnappedForPainting(x, y + topWidth, leftWidth, destinationHeight, deviceScaleFactor),
+                pixelSnappedForPainting(0, topSlice, leftSlice, sourceHeight, deviceScaleFactor), FloatSize(leftSideScale, leftSideScale), Image::StretchTile, (Image::TileRule)vRule, op);
     }
 
     if (drawRight) {
@@ -1354,32 +1350,32 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext* graphicsContext,
         // The top right corner rect is (tx + w - rightWidth, ty, rightWidth, topWidth)
         // The rect to use from within the image is obtained from our slice, and is (imageWidth - rightSlice, 0, rightSlice, topSlice)
         if (drawTop)
-            graphicsContext->drawImage(image.get(), colorSpace, snapRectToDevicePixels(borderImageRect.maxX() - rightWidth, y, rightWidth, topWidth, deviceScaleFactor),
-                snapRectToDevicePixels(imageWidth - rightSlice, 0, rightSlice, topSlice, deviceScaleFactor), op);
+            graphicsContext->drawImage(image.get(), colorSpace, pixelSnappedForPainting(borderImageRect.maxX() - rightWidth, y, rightWidth, topWidth, deviceScaleFactor),
+                pixelSnappedForPainting(imageWidth - rightSlice, 0, rightSlice, topSlice, deviceScaleFactor), op);
 
         // The bottom right corner rect is (tx + w - rightWidth, ty + h - bottomWidth, rightWidth, bottomWidth)
         // The rect to use from within the image is (imageWidth - rightSlice, imageHeight - bottomSlice, rightSlice, bottomSlice)
         if (drawBottom)
-            graphicsContext->drawImage(image.get(), colorSpace, snapRectToDevicePixels(borderImageRect.maxX() - rightWidth, borderImageRect.maxY() - bottomWidth,
-                rightWidth, bottomWidth, deviceScaleFactor), snapRectToDevicePixels(imageWidth - rightSlice, imageHeight - bottomSlice, rightSlice, bottomSlice, deviceScaleFactor),
+            graphicsContext->drawImage(image.get(), colorSpace, pixelSnappedForPainting(borderImageRect.maxX() - rightWidth, borderImageRect.maxY() - bottomWidth,
+                rightWidth, bottomWidth, deviceScaleFactor), pixelSnappedForPainting(imageWidth - rightSlice, imageHeight - bottomSlice, rightSlice, bottomSlice, deviceScaleFactor),
                 op);
 
         // Paint the right edge.
         if (sourceHeight > 0)
-            graphicsContext->drawTiledImage(image.get(), colorSpace, snapRectToDevicePixels(borderImageRect.maxX() - rightWidth, y + topWidth, rightWidth, destinationHeight, deviceScaleFactor),
-                snapRectToDevicePixels(imageWidth - rightSlice, topSlice, rightSlice, sourceHeight, deviceScaleFactor), FloatSize(rightSideScale, rightSideScale),
+            graphicsContext->drawTiledImage(image.get(), colorSpace, pixelSnappedForPainting(borderImageRect.maxX() - rightWidth, y + topWidth, rightWidth, destinationHeight, deviceScaleFactor),
+                pixelSnappedForPainting(imageWidth - rightSlice, topSlice, rightSlice, sourceHeight, deviceScaleFactor), FloatSize(rightSideScale, rightSideScale),
                 Image::StretchTile, (Image::TileRule)vRule, op);
     }
 
     // Paint the top edge.
     if (drawTop && sourceWidth > 0)
-        graphicsContext->drawTiledImage(image.get(), colorSpace, snapRectToDevicePixels(x + leftWidth, y, destinationWidth, topWidth, deviceScaleFactor),
-            snapRectToDevicePixels(leftSlice, 0, sourceWidth, topSlice, deviceScaleFactor), FloatSize(topSideScale, topSideScale), (Image::TileRule)hRule, Image::StretchTile, op);
+        graphicsContext->drawTiledImage(image.get(), colorSpace, pixelSnappedForPainting(x + leftWidth, y, destinationWidth, topWidth, deviceScaleFactor),
+            pixelSnappedForPainting(leftSlice, 0, sourceWidth, topSlice, deviceScaleFactor), FloatSize(topSideScale, topSideScale), (Image::TileRule)hRule, Image::StretchTile, op);
 
     // Paint the bottom edge.
     if (drawBottom && sourceWidth > 0)
-        graphicsContext->drawTiledImage(image.get(), colorSpace, snapRectToDevicePixels(x + leftWidth, borderImageRect.maxY() - bottomWidth, destinationWidth, bottomWidth, deviceScaleFactor),
-            snapRectToDevicePixels(leftSlice, imageHeight - bottomSlice, sourceWidth, bottomSlice, deviceScaleFactor), FloatSize(bottomSideScale, bottomSideScale),
+        graphicsContext->drawTiledImage(image.get(), colorSpace, pixelSnappedForPainting(x + leftWidth, borderImageRect.maxY() - bottomWidth, destinationWidth, bottomWidth, deviceScaleFactor),
+            pixelSnappedForPainting(leftSlice, imageHeight - bottomSlice, sourceWidth, bottomSlice, deviceScaleFactor), FloatSize(bottomSideScale, bottomSideScale),
             (Image::TileRule)hRule, Image::StretchTile, op);
 
     // Paint the middle.
@@ -1405,8 +1401,8 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext* graphicsContext,
             middleScaleFactor.setHeight(destinationHeight / sourceHeight);
         
         graphicsContext->drawTiledImage(image.get(), colorSpace,
-            snapRectToDevicePixels(x + leftWidth, y + topWidth, destinationWidth, destinationHeight, deviceScaleFactor),
-            snapRectToDevicePixels(leftSlice, topSlice, sourceWidth, sourceHeight, deviceScaleFactor),
+            pixelSnappedForPainting(x + leftWidth, y + topWidth, destinationWidth, destinationHeight, deviceScaleFactor),
+            pixelSnappedForPainting(leftSlice, topSlice, sourceWidth, sourceHeight, deviceScaleFactor),
             middleScaleFactor, (Image::TileRule)hRule, (Image::TileRule)vRule, op);
     }
 
@@ -1824,7 +1820,7 @@ void RenderBoxModelObject::paintBorder(const PaintInfo& info, const LayoutRect& 
                 }
 
                 FloatRoundedRect pixelSnappedOuterThird = outerBorder.pixelSnappedRoundedRectForPainting(deviceScaleFactor);
-                pixelSnappedOuterThird.setRect(snapRectToDevicePixels(outerThirdRect, deviceScaleFactor));
+                pixelSnappedOuterThird.setRect(pixelSnappedForPainting(outerThirdRect, deviceScaleFactor));
 
                 if (pixelSnappedOuterThird.isRounded() && bleedAvoidance != BackgroundBleedUseTransparencyLayer)
                     path.addRoundedRect(pixelSnappedOuterThird);
@@ -1832,7 +1828,7 @@ void RenderBoxModelObject::paintBorder(const PaintInfo& info, const LayoutRect& 
                     path.addRect(pixelSnappedOuterThird.rect());
 
                 FloatRoundedRect pixelSnappedInnerThird = innerBorder.pixelSnappedRoundedRectForPainting(deviceScaleFactor);
-                pixelSnappedInnerThird.setRect(snapRectToDevicePixels(innerThirdRect, deviceScaleFactor));
+                pixelSnappedInnerThird.setRect(pixelSnappedForPainting(innerThirdRect, deviceScaleFactor));
                 if (pixelSnappedInnerThird.isRounded() && bleedAvoidance != BackgroundBleedUseTransparencyLayer)
                     path.addRoundedRect(pixelSnappedInnerThird);
                 else
@@ -2040,7 +2036,7 @@ void RenderBoxModelObject::drawBoxSideFromPath(GraphicsContext* graphicsContext,
 
     graphicsContext->setStrokeStyle(NoStroke);
     graphicsContext->setFillColor(color, style.colorSpace());
-    graphicsContext->drawRect(snapRectToDevicePixels(borderRect, document().deviceScaleFactor()));
+    graphicsContext->drawRect(pixelSnappedForPainting(borderRect, document().deviceScaleFactor()));
 }
 
 static void findInnerVertex(const FloatPoint& outerCorner, const FloatPoint& innerCorner, const FloatPoint& centerPoint, FloatPoint& result)
@@ -2409,7 +2405,7 @@ void RenderBoxModelObject::paintBoxShadow(const PaintInfo& info, const LayoutRec
             if (fillRect.isEmpty())
                 continue;
 
-            FloatRect pixelSnappedShadowRect = snapRectToDevicePixels(border.rect(), deviceScaleFactor);
+            FloatRect pixelSnappedShadowRect = pixelSnappedForPainting(border.rect(), deviceScaleFactor);
             pixelSnappedShadowRect.inflate(shadowPaintingExtent + shadowSpread);
             pixelSnappedShadowRect.move(shadowOffset);
 
@@ -2499,7 +2495,7 @@ void RenderBoxModelObject::paintBoxShadow(const PaintInfo& info, const LayoutRec
 
             Color fillColor(shadowColor.red(), shadowColor.green(), shadowColor.blue(), 255);
 
-            FloatRect pixelSnappedOuterRect = snapRectToDevicePixels(areaCastingShadowInHole(LayoutRect(pixelSnappedBorderRect.rect()), shadowPaintingExtent, shadowSpread, shadowOffset), deviceScaleFactor);
+            FloatRect pixelSnappedOuterRect = pixelSnappedForPainting(areaCastingShadowInHole(LayoutRect(pixelSnappedBorderRect.rect()), shadowPaintingExtent, shadowSpread, shadowOffset), deviceScaleFactor);
             FloatRoundedRect pixelSnappedRoundedHole = FloatRoundedRect(pixelSnappedHoleRect, pixelSnappedBorderRect.radii());
 
             GraphicsContextStateSaver stateSaver(*context);

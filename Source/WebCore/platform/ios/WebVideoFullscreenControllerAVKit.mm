@@ -31,7 +31,7 @@
 
 #import "Logging.h"
 #import "WebVideoFullscreenInterfaceAVKit.h"
-#import "WebVideoFullscreenModelVideoElement.h"
+#import "WebVideoFullscreenModelMediaElement.h"
 #import <QuartzCore/CoreAnimation.h>
 #import <WebCore/WebCoreThreadRun.h>
 
@@ -40,12 +40,12 @@ using namespace WebCore;
 #if __IPHONE_OS_VERSION_MIN_REQUIRED < 80000
 
 @implementation WebVideoFullscreenController
-- (void)setVideoElement:(WebCore::HTMLVideoElement*)videoElement
+- (void)setMediaElement:(WebCore::HTMLMediaElement*)mediaElement
 {
-    UNUSED_PARAM(videoElement);
+    UNUSED_PARAM(mediaElement);
 }
 
-- (WebCore::HTMLVideoElement*)videoElement
+- (WebCore::HTMLMediaElement*)mediaElement
 {
     return nullptr;
 }
@@ -81,9 +81,9 @@ public:
 
 @implementation WebVideoFullscreenController
 {
-    RefPtr<HTMLVideoElement> _videoElement;
+    RefPtr<HTMLMediaElement> _mediaElement;
     RefPtr<WebVideoFullscreenInterfaceAVKit> _interface;
-    RefPtr<WebVideoFullscreenModelVideoElement> _model;
+    RefPtr<WebVideoFullscreenModelMediaElement> _model;
     WebVideoFullscreenControllerChangeObserver _changeObserver;
     RetainPtr<PlatformLayer> _videoFullscreenLayer;
 }
@@ -100,18 +100,18 @@ public:
 
 - (void)dealloc
 {
-    _videoElement = nullptr;
+    _mediaElement = nullptr;
     [super dealloc];
 }
 
-- (void)setVideoElement:(HTMLVideoElement*)videoElement
+- (void)setMediaElement:(HTMLMediaElement*)mediaElement
 {
-    _videoElement = videoElement;
+    _mediaElement = mediaElement;
 }
 
-- (HTMLVideoElement*)videoElement
+- (HTMLMediaElement*)mediaElement
 {
-    return _videoElement.get();
+    return _mediaElement.get();
 }
 
 - (void)enterFullscreen:(UIView *)view
@@ -120,17 +120,17 @@ public:
     
     _interface = adoptRef(new WebVideoFullscreenInterfaceAVKit);
     _interface->setWebVideoFullscreenChangeObserver(&_changeObserver);
-    _model = adoptRef(new WebVideoFullscreenModelVideoElement);
+    _model = adoptRef(new WebVideoFullscreenModelMediaElement);
     _model->setWebVideoFullscreenInterface(_interface.get());
     _interface->setWebVideoFullscreenModel(_model.get());
-    _model->setVideoElement(_videoElement.get());
+    _model->setMediaElement(_mediaElement.get());
     _videoFullscreenLayer = [CALayer layer];
-    _interface->setupFullscreen(*_videoFullscreenLayer.get(), _videoElement->clientRect(), view);
+    _interface->setupFullscreen(*_videoFullscreenLayer.get(), _mediaElement->clientRect(), view);
 }
 
 - (void)exitFullscreen
 {
-    _interface->exitFullscreen(_videoElement->screenRect());
+    _interface->exitFullscreen(_mediaElement->screenRect());
 }
 
 - (void)requestHideAndExitFullscreen
@@ -163,7 +163,7 @@ public:
         _model->setVideoFullscreenLayer(nil);
         _interface->setWebVideoFullscreenModel(nullptr);
         _model->setWebVideoFullscreenInterface(nullptr);
-        _model->setVideoElement(nullptr);
+        _model->setMediaElement(nullptr);
         _interface->setWebVideoFullscreenChangeObserver(nullptr);
         _model = nullptr;
         _interface = nullptr;

@@ -119,8 +119,8 @@ inline void* wrapperContext(DOMWrapperWorld& world, TestInterface*)
     return &world;
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestInterface*);
-WEBCORE_EXPORT TestInterface* toTestInterface(JSC::JSValue);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestInterface*);
+TestInterface* toTestInterface(JSC::JSValue);
 
 
 } // namespace WebCore

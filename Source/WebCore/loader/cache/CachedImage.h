@@ -56,10 +56,10 @@ public:
     CachedImage(const URL&, Image*, CacheBehaviorType, SessionID);
     virtual ~CachedImage();
 
-    WEBCORE_EXPORT Image* image(); // Returns the nullImage() if the image is not available yet.
-    WEBCORE_EXPORT Image* imageForRenderer(const RenderObject*); // Returns the nullImage() if the image is not available yet.
+    Image* image(); // Returns the nullImage() if the image is not available yet.
+    Image* imageForRenderer(const RenderObject*); // Returns the nullImage() if the image is not available yet.
     bool hasImage() const { return m_image.get(); }
-    bool currentFrameKnownToBeOpaque(const RenderElement*);
+    bool currentFrameKnownToBeOpaque(const RenderElement*); // Side effect: ensures decoded image is in cache, therefore should only be called when about to draw the image.
 
     std::pair<Image*, float> brokenImage(float deviceScaleFactor) const; // Returns an image and the image's resolution scale factor.
     bool willPaintBrokenImage() const; 
@@ -85,6 +85,11 @@ public:
     bool isManuallyCached() const { return m_isManuallyCached; }
     virtual bool mustRevalidateDueToCacheHeaders(CachePolicy) const;
 
+#if ENABLE(DISK_IMAGE_CACHE)
+    virtual bool canUseDiskImageCache() const override;
+    virtual void useDiskImageCache() override;
+#endif
+
     bool isOriginClean(SecurityOrigin*);
 
 private:
@@ -96,6 +101,7 @@ private:
     void clearImage();
     // If not null, changeRect is the changed part of the image.
     void notifyObservers(const IntRect* changeRect = 0);
+    virtual PurgePriority purgePriority() const override { return PurgeFirst; }
     void checkShouldPaintBrokenImage();
 
     virtual void switchClientsToRevalidatedResource() override;

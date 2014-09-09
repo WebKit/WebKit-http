@@ -340,11 +340,7 @@ InspectorBackend.Command.create = function(backend, commandName, callSignature, 
     var instance = new InspectorBackend.Command(backend, commandName, callSignature, replySignature);
 
     function callable() {
-        // If the last argument to the command is not a function, return a result promise.
-        if (!arguments.length || typeof arguments[arguments.length - 1] !== "function")
-            return instance.promise.apply(instance, arguments);
-
-        return instance._invokeWithArguments.apply(instance, arguments);
+        instance._invokeWithArguments.apply(instance, arguments);
     }
     callable._instance = instance;
     callable.__proto__ = InspectorBackend.Command.prototype;

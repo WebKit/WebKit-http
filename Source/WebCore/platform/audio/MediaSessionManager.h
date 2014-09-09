@@ -40,20 +40,33 @@ class HTMLMediaElement;
 class MediaSession;
 class RemoteCommandListener;
 
+class MediaSessionManagerClient {
+public:
+    virtual ~MediaSessionManagerClient() { }
+
+    virtual bool isListeningForRemoteControlCommands() = 0;
+    virtual void startListeningForRemoteControlCommands() = 0;
+    virtual void stopListeningForRemoteControlCommands() = 0;
+    virtual void didBeginPlayback() = 0;
+
+protected:
+    MediaSessionManagerClient() { }
+};
+
 class MediaSessionManager : private RemoteCommandListenerClient, private SystemSleepListener::Client, private AudioHardwareListener::Client {
 public:
-    WEBCORE_EXPORT static MediaSessionManager& sharedManager();
+    static MediaSessionManager& sharedManager();
     virtual ~MediaSessionManager() { }
 
     bool has(MediaSession::MediaType) const;
     int count(MediaSession::MediaType) const;
     bool activeAudioSessionRequired() const;
 
-    WEBCORE_EXPORT void beginInterruption(MediaSession::InterruptionType);
-    WEBCORE_EXPORT void endInterruption(MediaSession::EndInterruptionFlags);
+    void beginInterruption(MediaSession::InterruptionType);
+    void endInterruption(MediaSession::EndInterruptionFlags);
 
-    WEBCORE_EXPORT void applicationWillEnterForeground() const;
-    WEBCORE_EXPORT void applicationWillEnterBackground() const;
+    void applicationWillEnterForeground() const;
+    void applicationWillEnterBackground() const;
     void wirelessRoutesAvailableChanged();
 
     enum SessionRestrictionFlags {
@@ -66,9 +79,9 @@ public:
     };
     typedef unsigned SessionRestrictions;
     
-    WEBCORE_EXPORT void addRestriction(MediaSession::MediaType, SessionRestrictions);
-    WEBCORE_EXPORT void removeRestriction(MediaSession::MediaType, SessionRestrictions);
-    WEBCORE_EXPORT SessionRestrictions restrictions(MediaSession::MediaType);
+    void addRestriction(MediaSession::MediaType, SessionRestrictions);
+    void removeRestriction(MediaSession::MediaType, SessionRestrictions);
+    SessionRestrictions restrictions(MediaSession::MediaType);
     virtual void resetRestrictions();
 
     virtual void sessionWillBeginPlayback(MediaSession&);
@@ -81,6 +94,9 @@ public:
     virtual void startMonitoringAirPlayRoutes() { }
     virtual void stopMonitoringAirPlayRoutes() { }
 #endif
+
+    void addClient(MediaSessionManagerClient*);
+    void removeClient(MediaSessionManagerClient*);
 
 protected:
     friend class MediaSession;
@@ -97,8 +113,9 @@ private:
 
     void updateSessionState();
 
+
     // RemoteCommandListenerClient
-    WEBCORE_EXPORT virtual void didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType) override;
+    virtual void didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType) override;
 
     // AudioHardwareListenerClient
     virtual void audioHardwareDidBecomeActive() override { }
@@ -112,6 +129,7 @@ private:
     SessionRestrictions m_restrictions[MediaSession::WebAudio + 1];
 
     Vector<MediaSession*> m_sessions;
+    Vector<MediaSessionManagerClient*> m_clients;
     std::unique_ptr<RemoteCommandListener> m_remoteCommandListener;
     std::unique_ptr<SystemSleepListener> m_systemSleepListener;
     RefPtr<AudioHardwareListener> m_audioHardwareListener;

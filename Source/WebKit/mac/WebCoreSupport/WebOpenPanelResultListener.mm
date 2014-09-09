@@ -83,9 +83,9 @@ using namespace WebCore;
     ASSERT(_chooser);
     if (!_chooser)
         return;
-    NSUInteger count = [filenames count];
+    int count = [filenames count]; 
     Vector<String> names(count);
-    for (NSUInteger i = 0; i < count; i++)
+    for (int i = 0; i < count; i++)
         names[i] = [filenames objectAtIndex:i];
     _chooser->chooseFiles(names);
     _chooser->deref();

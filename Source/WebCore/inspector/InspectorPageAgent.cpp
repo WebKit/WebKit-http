@@ -112,6 +112,17 @@ static bool prepareCachedResourceBuffer(CachedResource* cachedResource, bool* ha
         return true;
     }
 
+    if (cachedResource->isPurgeable()) {
+        // If the resource is purgeable then make it unpurgeable to get
+        // get its data. This might fail, in which case we return an
+        // empty String.
+        // FIXME: should we do something else in the case of a purged
+        // resource that informs the user why there is no data in the
+        // inspector?
+        if (!cachedResource->makePurgeable(false))
+            return false;
+    }
+
     return true;
 }
 
@@ -276,27 +287,27 @@ CachedResource* InspectorPageAgent::cachedResource(Frame* frame, const URL& url)
     return cachedResource;
 }
 
-Inspector::Protocol::Page::ResourceType InspectorPageAgent::resourceTypeJson(InspectorPageAgent::ResourceType resourceType)
+Inspector::TypeBuilder::Page::ResourceType::Enum InspectorPageAgent::resourceTypeJson(InspectorPageAgent::ResourceType resourceType)
 {
     switch (resourceType) {
     case DocumentResource:
-        return Inspector::Protocol::Page::ResourceType::Document;
+        return Inspector::TypeBuilder::Page::ResourceType::Document;
     case ImageResource:
-        return Inspector::Protocol::Page::ResourceType::Image;
+        return Inspector::TypeBuilder::Page::ResourceType::Image;
     case FontResource:
-        return Inspector::Protocol::Page::ResourceType::Font;
+        return Inspector::TypeBuilder::Page::ResourceType::Font;
     case StylesheetResource:
-        return Inspector::Protocol::Page::ResourceType::Stylesheet;
+        return Inspector::TypeBuilder::Page::ResourceType::Stylesheet;
     case ScriptResource:
-        return Inspector::Protocol::Page::ResourceType::Script;
+        return Inspector::TypeBuilder::Page::ResourceType::Script;
     case XHRResource:
-        return Inspector::Protocol::Page::ResourceType::XHR;
+        return Inspector::TypeBuilder::Page::ResourceType::XHR;
     case WebSocketResource:
-        return Inspector::Protocol::Page::ResourceType::WebSocket;
+        return Inspector::TypeBuilder::Page::ResourceType::WebSocket;
     case OtherResource:
-        return Inspector::Protocol::Page::ResourceType::Other;
+        return Inspector::TypeBuilder::Page::ResourceType::Other;
     }
-    return Inspector::Protocol::Page::ResourceType::Other;
+    return Inspector::TypeBuilder::Page::ResourceType::Other;
 }
 
 InspectorPageAgent::ResourceType InspectorPageAgent::cachedResourceType(const CachedResource& cachedResource)
@@ -324,7 +335,7 @@ InspectorPageAgent::ResourceType InspectorPageAgent::cachedResourceType(const Ca
     return InspectorPageAgent::OtherResource;
 }
 
-Inspector::Protocol::Page::ResourceType InspectorPageAgent::cachedResourceTypeJson(const CachedResource& cachedResource)
+Inspector::TypeBuilder::Page::ResourceType::Enum InspectorPageAgent::cachedResourceTypeJson(const CachedResource& cachedResource)
 {
     return resourceTypeJson(cachedResourceType(cachedResource));
 }
@@ -421,9 +432,9 @@ void InspectorPageAgent::navigate(ErrorString*, const String& url)
     frame.loader().changeLocation(frame.document()->securityOrigin(), frame.document()->completeURL(url), "", LockHistory::No, LockBackForwardList::No);
 }
 
-static PassRefPtr<Inspector::Protocol::Page::Cookie> buildObjectForCookie(const Cookie& cookie)
+static PassRefPtr<Inspector::TypeBuilder::Page::Cookie> buildObjectForCookie(const Cookie& cookie)
 {
-    return Inspector::Protocol::Page::Cookie::create()
+    return Inspector::TypeBuilder::Page::Cookie::create()
         .setName(cookie.name)
         .setValue(cookie.value)
         .setDomain(cookie.domain)
@@ -436,9 +447,9 @@ static PassRefPtr<Inspector::Protocol::Page::Cookie> buildObjectForCookie(const 
         .release();
 }
 
-static PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>> buildArrayForCookies(ListHashSet<Cookie>& cookiesList)
+static PassRefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::Cookie>> buildArrayForCookies(ListHashSet<Cookie>& cookiesList)
 {
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>> cookies = Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>::create();
+    RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::Cookie>> cookies = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::Cookie>::create();
 
     for (auto& cookie : cookiesList)
         cookies->addItem(buildObjectForCookie(cookie));
@@ -486,7 +497,7 @@ static Vector<URL> allResourcesURLsForFrame(Frame* frame)
     return result;
 }
 
-void InspectorPageAgent::getCookies(ErrorString*, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>>& cookies)
+void InspectorPageAgent::getCookies(ErrorString*, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::Cookie>>& cookies)
 {
     // If we can get raw cookies.
     ListHashSet<Cookie> rawCookiesList;
@@ -525,7 +536,7 @@ void InspectorPageAgent::getCookies(ErrorString*, RefPtr<Inspector::Protocol::Ar
     if (rawCookiesImplemented)
         cookies = buildArrayForCookies(rawCookiesList);
     else
-        cookies = Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>::create();
+        cookies = Inspector::TypeBuilder::Array<TypeBuilder::Page::Cookie>::create();
 }
 
 void InspectorPageAgent::deleteCookie(ErrorString*, const String& cookieName, const String& url)
@@ -535,7 +546,7 @@ void InspectorPageAgent::deleteCookie(ErrorString*, const String& cookieName, co
         WebCore::deleteCookie(frame->document(), parsedURL, cookieName);
 }
 
-void InspectorPageAgent::getResourceTree(ErrorString*, RefPtr<Inspector::Protocol::Page::FrameResourceTree>& object)
+void InspectorPageAgent::getResourceTree(ErrorString*, RefPtr<Inspector::TypeBuilder::Page::FrameResourceTree>& object)
 {
     object = buildObjectForFrameTree(&m_page->mainFrame());
 }
@@ -562,9 +573,9 @@ static bool textContentForCachedResource(CachedResource* cachedResource, String*
     return false;
 }
 
-void InspectorPageAgent::searchInResource(ErrorString*, const String& frameId, const String& url, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>& results)
+void InspectorPageAgent::searchInResource(ErrorString*, const String& frameId, const String& url, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::GenericTypes::SearchMatch>>& results)
 {
-    results = Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>::create();
+    results = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::GenericTypes::SearchMatch>::create();
 
     bool isRegex = optionalIsRegex ? *optionalIsRegex : false;
     bool caseSensitive = optionalCaseSensitive ? *optionalCaseSensitive : false;
@@ -596,18 +607,18 @@ void InspectorPageAgent::searchInResource(ErrorString*, const String& frameId, c
     results = ContentSearchUtilities::searchInTextByLines(content, query, caseSensitive, isRegex);
 }
 
-static PassRefPtr<Inspector::Protocol::Page::SearchResult> buildObjectForSearchResult(const String& frameId, const String& url, int matchesCount)
+static PassRefPtr<Inspector::TypeBuilder::Page::SearchResult> buildObjectForSearchResult(const String& frameId, const String& url, int matchesCount)
 {
-    return Inspector::Protocol::Page::SearchResult::create()
+    return Inspector::TypeBuilder::Page::SearchResult::create()
         .setUrl(url)
         .setFrameId(frameId)
         .setMatchesCount(matchesCount)
         .release();
 }
 
-void InspectorPageAgent::searchInResources(ErrorString*, const String& text, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>>& results)
+void InspectorPageAgent::searchInResources(ErrorString*, const String& text, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::SearchResult>>& results)
 {
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>> searchResults = Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>::create();
+    RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::SearchResult>> searchResults = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::SearchResult>::create();
 
     bool isRegex = optionalIsRegex ? *optionalIsRegex : false;
     bool caseSensitive = optionalCaseSensitive ? *optionalCaseSensitive : false;
@@ -652,11 +663,9 @@ void InspectorPageAgent::setShowPaintRects(ErrorString*, bool show)
 {
     m_showPaintRects = show;
     m_client->setShowPaintRects(show);
-    
-    if (m_client->overridesShowPaintRects())
-        return;
 
-    m_overlay->setShowingPaintRects(show);
+    if (!show && mainFrame() && mainFrame()->view())
+        mainFrame()->view()->invalidate();
 }
 
 void InspectorPageAgent::canShowDebugBorders(ErrorString*, bool* outParam)
@@ -697,7 +706,7 @@ void InspectorPageAgent::setContinuousPaintingEnabled(ErrorString*, bool enabled
         mainFrame()->view()->invalidate();
 }
 
-void InspectorPageAgent::getScriptExecutionStatus(ErrorString*, InspectorPageBackendDispatcherHandler::Result* status)
+void InspectorPageAgent::getScriptExecutionStatus(ErrorString*, InspectorPageBackendDispatcherHandler::Result::Enum* status)
 {
     bool disabledByScriptController = false;
     bool disabledInSettings = false;
@@ -882,26 +891,21 @@ void InspectorPageAgent::didRunJavaScriptDialog()
     m_frontendDispatcher->javascriptDialogClosed();
 }
 
-void InspectorPageAgent::didPaint(RenderObject* renderer, const LayoutRect& rect)
+void InspectorPageAgent::didPaint(GraphicsContext* context, const LayoutRect& rect)
 {
-    if (!m_enabled || !m_showPaintRects)
+    if (!m_enabled || m_client->overridesShowPaintRects() || !m_showPaintRects)
         return;
 
-    LayoutRect absoluteRect = LayoutRect(renderer->localToAbsoluteQuad(FloatRect(rect)).boundingBox());
-    FrameView* view = renderer->document().view();
-    
-    LayoutRect rootRect = absoluteRect;
-    if (!view->frame().isMainFrame()) {
-        IntRect rootViewRect = view->contentsToRootView(snappedIntRect(absoluteRect));
-        rootRect = view->frame().mainFrame().view()->rootViewToContents(rootViewRect);
-    }
-    
-    if (m_client->overridesShowPaintRects()) {
-        m_client->showPaintRect(rootRect);
-        return;
-    }
+    static int colorSelector = 0;
+    const Color colors[] = {
+        Color(0xFF, 0, 0, 0x3F),
+        Color(0xFF, 0, 0xFF, 0x3F),
+        Color(0, 0, 0xFF, 0x3F),
+    };
 
-    m_overlay->showPaintRect(rootRect);
+    LayoutRect inflatedRect(rect);
+    inflatedRect.inflate(-1);
+    m_overlay->drawOutline(context, inflatedRect, colors[colorSelector++ % WTF_ARRAY_LENGTH(colors)]);
 }
 
 void InspectorPageAgent::didLayout()
@@ -936,9 +940,9 @@ void InspectorPageAgent::scriptsEnabled(bool isEnabled)
     m_frontendDispatcher->scriptsEnabled(isEnabled);
 }
 
-PassRefPtr<Inspector::Protocol::Page::Frame> InspectorPageAgent::buildObjectForFrame(Frame* frame)
+PassRefPtr<Inspector::TypeBuilder::Page::Frame> InspectorPageAgent::buildObjectForFrame(Frame* frame)
 {
-    RefPtr<Inspector::Protocol::Page::Frame> frameObject = Inspector::Protocol::Page::Frame::create()
+    RefPtr<Inspector::TypeBuilder::Page::Frame> frameObject = Inspector::TypeBuilder::Page::Frame::create()
         .setId(frameId(frame))
         .setLoaderId(loaderId(frame->loader().documentLoader()))
         .setUrl(frame->document()->url().string())
@@ -956,16 +960,16 @@ PassRefPtr<Inspector::Protocol::Page::Frame> InspectorPageAgent::buildObjectForF
     return frameObject;
 }
 
-PassRefPtr<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjectForFrameTree(Frame* frame)
+PassRefPtr<Inspector::TypeBuilder::Page::FrameResourceTree> InspectorPageAgent::buildObjectForFrameTree(Frame* frame)
 {
-    RefPtr<Inspector::Protocol::Page::Frame> frameObject = buildObjectForFrame(frame);
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResource>> subresources = Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResource>::create();
-    RefPtr<Inspector::Protocol::Page::FrameResourceTree> result = Inspector::Protocol::Page::FrameResourceTree::create()
+    RefPtr<Inspector::TypeBuilder::Page::Frame> frameObject = buildObjectForFrame(frame);
+    RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResourceTree::Resources>> subresources = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResourceTree::Resources>::create();
+    RefPtr<Inspector::TypeBuilder::Page::FrameResourceTree> result = Inspector::TypeBuilder::Page::FrameResourceTree::create()
          .setFrame(frameObject)
          .setResources(subresources);
 
     for (auto* cachedResource : cachedResourcesForFrame(frame)) {
-        RefPtr<Inspector::Protocol::Page::FrameResource> resourceObject = Inspector::Protocol::Page::FrameResource::create()
+        RefPtr<Inspector::TypeBuilder::Page::FrameResourceTree::Resources> resourceObject = Inspector::TypeBuilder::Page::FrameResourceTree::Resources::create()
             .setUrl(cachedResource->url())
             .setType(cachedResourceTypeJson(*cachedResource))
             .setMimeType(cachedResource->response().mimeType());
@@ -979,10 +983,10 @@ PassRefPtr<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::bui
         subresources->addItem(resourceObject);
     }
 
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResourceTree>> childrenArray;
+    RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResourceTree>> childrenArray;
     for (Frame* child = frame->tree().firstChild(); child; child = child->tree().nextSibling()) {
         if (!childrenArray) {
-            childrenArray = Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResourceTree>::create();
+            childrenArray = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Page::FrameResourceTree>::create();
             result->setChildFrames(childrenArray);
         }
         childrenArray->addItem(buildObjectForFrameTree(child));

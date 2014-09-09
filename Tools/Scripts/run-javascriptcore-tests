@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright (C) 2005, 2013-2014 Apple Inc.  All rights reserved.
+# Copyright (C) 2005, 2013 Apple Inc.  All rights reserved.
 # Copyright (C) 2007 Eric Seidel <eric@webkit.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,11 @@ my @testsToSkip = (
     # ecma_3/Date/15.9.5.7.js fails on Mac (but not Windows) https://bugs.webkit.org/show_bug.cgi?id=25161
     "ecma_3/Date/15.9.5.6.js",
     "ecma_3/Date/15.9.5.7.js",
+    # These three fail on Linux in certain time zones, at certain times
+    # of the year (!): https://bugs.webkit.org/show_bug.cgi?id=71371
+    "ecma/Date/15.9.5.14.js",
+    "ecma/Date/15.9.5.31-1.js",
+    "ecma/Date/15.9.5.34-1.js",
 );
 
 my $jsDriverArgs = "-L " . join(" ", @testsToSkip);
@@ -143,8 +148,7 @@ if (!defined($root) && $buildJSC) {
 
 my $productDir = jscProductDir();
 $ENV{DYLD_FRAMEWORK_PATH} = $productDir;
-$ENV{JSC_timeout} = 60 unless $ENV{JSC_timeout}; # Set a 60 second timeout on all jsc tests (if environment variable not defined already).
-$ENV{TZ}="US/Pacific"; # Some tests fail if the time zone is not set to US/Pacific (<https://webkit.org/b/136363>)
+$ENV{JSC_timeout} = 60; # Set a 60 second timeout on all jsc tests.
 setPathForRunningWebKitApp(\%ENV) if isCygwin();
 
 sub testapiPath($)
@@ -165,9 +169,7 @@ if ($runTestAPI) {
     # Use an "indirect object" so that system() won't get confused if the path
     # contains spaces (see perldoc -f exec).
     my $testapiResult = system { $command[0] } @command;
-    my $exitStatus = exitStatus($testapiResult);
-    print "testAPI completed with rc=$testapiResult ($exitStatus)\n";
-    exit exitStatus($testapiResult) if $testapiResult;
+    exit exitStatus($testapiResult)  if $testapiResult;
 }
 
 # Find JavaScriptCore directory
@@ -242,8 +244,7 @@ if ($runJSCStress) {
         "Source/JavaScriptCore/tests/stress",
         "LayoutTests/js/regress/script-tests",
         "PerformanceTests/SunSpider/profiler-test.yaml",
-        "LayoutTests/jsc-layout-tests.yaml",
-        "Source/JavaScriptCore/tests/typeProfiler.yaml"
+        "LayoutTests/jsc-layout-tests.yaml"
     );
     if ($enableFTL) {
         push(@jscStressDriverCmd, "--ftl-jit");

@@ -27,7 +27,7 @@
 #ifndef TouchEvent_h
 #define TouchEvent_h
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if PLATFORM(IOS)
 #include <WebKitAdditions/TouchEventIOS.h>
 #elif ENABLE(TOUCH_EVENTS)
 

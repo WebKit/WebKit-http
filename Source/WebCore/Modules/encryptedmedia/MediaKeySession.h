@@ -51,7 +51,6 @@ public:
     ~MediaKeySession();
 
     const String& keySystem() const { return m_keySystem; }
-    CDMSession* session() { return m_session.get(); }
     const String& sessionId() const;
 
     void setError(MediaKeyError*);

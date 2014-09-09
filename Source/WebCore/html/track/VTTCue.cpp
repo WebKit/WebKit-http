@@ -58,9 +58,6 @@
 
 namespace WebCore {
 
-// This constant should correspond with the percentage returned by CaptionUserPreferences::captionFontSizeScaleAndImportance.
-const static double DEFAULTCAPTIONFONTSIZEPERCENTAGE = 5;
-
 static const int undefinedPosition = -1;
 
 static const CSSValueID displayWritingModeMap[] = {
@@ -141,7 +138,7 @@ VTTCue* VTTCueBox::getCue() const
     return &m_cue;
 }
 
-void VTTCueBox::applyCSSProperties(const IntSize& videoSize)
+void VTTCueBox::applyCSSProperties(const IntSize&)
 {
     // FIXME: Apply all the initial CSS positioning properties. http://wkb.ug/79916
 #if ENABLE(WEBVTT_REGIONS)
@@ -173,35 +170,15 @@ void VTTCueBox::applyCSSProperties(const IntSize& videoSize)
     // the 'left' property must be set to left
     setInlineStyleProperty(CSSPropertyLeft, static_cast<double>(position.first), CSSPrimitiveValue::CSS_PERCENTAGE);
 
-    double authorFontSize = std::min(videoSize.width(), videoSize.height()) * DEFAULTCAPTIONFONTSIZEPERCENTAGE / 100.0;
-    double multiplier = 1.0;
-    if (authorFontSize)
-        multiplier = m_fontSizeFromCaptionUserPrefs / authorFontSize;
-
-    double textPosition = m_cue.position();
-    double maxSize = 100.0;
-    CSSValueID alignment = m_cue.getCSSAlignment();
-    if (alignment == CSSValueEnd || alignment == CSSValueRight)
-        maxSize = textPosition;
-    else if (alignment == CSSValueStart || alignment == CSSValueLeft)
-        maxSize = 100.0 - textPosition;
-
-    double newCueSize = std::min(m_cue.getCSSSize() * multiplier, 100.0);
     // the 'width' property must be set to width, and the 'height' property  must be set to height
     if (m_cue.vertical() == horizontalKeyword()) {
-        setInlineStyleProperty(CSSPropertyWidth, newCueSize, CSSPrimitiveValue::CSS_PERCENTAGE);
+        setInlineStyleProperty(CSSPropertyWidth, static_cast<double>(m_cue.getCSSSize()), CSSPrimitiveValue::CSS_PERCENTAGE);
         setInlineStyleProperty(CSSPropertyHeight, CSSValueAuto);
         setInlineStyleProperty(CSSPropertyMinWidth, "-webkit-min-content");
-        setInlineStyleProperty(CSSPropertyMaxWidth, maxSize, CSSPrimitiveValue::CSS_PERCENTAGE);
-        if ((alignment == CSSValueMiddle || alignment == CSSValueCenter) && multiplier != 1.0)
-            setInlineStyleProperty(CSSPropertyLeft, static_cast<double>(position.first - (newCueSize - m_cue.getCSSSize()) / 2), CSSPrimitiveValue::CSS_PERCENTAGE);
     } else {
         setInlineStyleProperty(CSSPropertyWidth, CSSValueAuto);
-        setInlineStyleProperty(CSSPropertyHeight, newCueSize, CSSPrimitiveValue::CSS_PERCENTAGE);
+        setInlineStyleProperty(CSSPropertyHeight, static_cast<double>(m_cue.getCSSSize()),  CSSPrimitiveValue::CSS_PERCENTAGE);
         setInlineStyleProperty(CSSPropertyMinHeight, "-webkit-min-content");
-        setInlineStyleProperty(CSSPropertyMaxHeight, maxSize, CSSPrimitiveValue::CSS_PERCENTAGE);
-        if ((alignment == CSSValueMiddle || alignment == CSSValueCenter) && multiplier != 1.0)
-            setInlineStyleProperty(CSSPropertyTop, static_cast<double>(position.second - (newCueSize - m_cue.getCSSSize()) / 2), CSSPrimitiveValue::CSS_PERCENTAGE);
     }
 
     // The 'text-align' property on the (root) List of WebVTT Node Objects must
@@ -209,7 +186,7 @@ void VTTCueBox::applyCSSProperties(const IntSize& videoSize)
     // whose first cell is the value of the corresponding cue's text track cue
     // alignment:
     setInlineStyleProperty(CSSPropertyTextAlign, m_cue.getCSSAlignment());
-    
+
     if (!m_cue.snapToLines()) {
         // 10.13.1 Set up x and y:
         // Note: x and y are set through the CSS left and top above.
@@ -247,12 +224,17 @@ const AtomicString& VTTCue::cueBackdropShadowPseudoId()
     return cueBackdropShadowPseudoId;
 }
 
+PassRefPtr<VTTCue> VTTCue::create(ScriptExecutionContext& context, double start, double end, const String& content)
+{
+    return adoptRef(new VTTCue(context, start, end, content));
+}
+
 PassRefPtr<VTTCue> VTTCue::create(ScriptExecutionContext& context, const WebVTTCueData& data)
 {
     return adoptRef(new VTTCue(context, data));
 }
 
-VTTCue::VTTCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)
+VTTCue::VTTCue(ScriptExecutionContext& context, double start, double end, const String& content)
     : TextTrackCue(context, start, end)
     , m_content(content)
 {
@@ -260,12 +242,12 @@ VTTCue::VTTCue(ScriptExecutionContext& context, const MediaTime& start, const Me
 }
 
 VTTCue::VTTCue(ScriptExecutionContext& context, const WebVTTCueData& cueData)
-    : TextTrackCue(context, MediaTime::zeroTime(), MediaTime::zeroTime())
+    : TextTrackCue(context, 0, 0)
 {
     initialize(context);
     setText(cueData.content());
-    setStartTime(cueData.startTime());
-    setEndTime(cueData.endTime());
+    setStartTime(cueData.startTime(), IGNORE_EXCEPTION);
+    setEndTime(cueData.endTime(), IGNORE_EXCEPTION);
     setId(cueData.id());
     setCueSettings(cueData.settings());
     m_originalStartTime = cueData.originalStartTime();
@@ -295,7 +277,7 @@ void VTTCue::initialize(ScriptExecutionContext& context)
     m_snapToLines = true;
     m_displayTreeShouldChange = true;
     m_notifyRegion = true;
-    m_originalStartTime = MediaTime::zeroTime();
+    m_originalStartTime = 0;
 }
 
 PassRefPtr<VTTCueBox> VTTCue::createDisplayTree()
@@ -746,18 +728,18 @@ void VTTCue::calculateDisplayParameters()
         m_displayPosition.first = m_computedLinePosition;
 }
     
-void VTTCue::markFutureAndPastNodes(ContainerNode* root, const MediaTime& previousTimestamp, const MediaTime& movieTime)
+void VTTCue::markFutureAndPastNodes(ContainerNode* root, double previousTimestamp, double movieTime)
 {
     DEPRECATED_DEFINE_STATIC_LOCAL(const String, timestampTag, (ASCIILiteral("timestamp")));
     
     bool isPastNode = true;
-    MediaTime currentTimestamp = previousTimestamp;
+    double currentTimestamp = previousTimestamp;
     if (currentTimestamp > movieTime)
         isPastNode = false;
     
     for (Node* child = root->firstChild(); child; child = NodeTraversal::next(child, root)) {
         if (child->nodeName() == timestampTag) {
-            MediaTime currentTimestamp;
+            double currentTimestamp;
             bool check = WebVTTParser::collectTimeStamp(child->nodeValue(), currentTimestamp);
             ASSERT_UNUSED(check, check);
             
@@ -775,7 +757,7 @@ void VTTCue::markFutureAndPastNodes(ContainerNode* root, const MediaTime& previo
     }
 }
 
-void VTTCue::updateDisplayTree(const MediaTime& movieTime)
+void VTTCue::updateDisplayTree(double movieTime)
 {
     // The display tree may contain WebVTT timestamp objects representing
     // timestamps (processing instructions), along with displayable nodes.
@@ -791,11 +773,11 @@ void VTTCue::updateDisplayTree(const MediaTime& movieTime)
     if (!referenceTree)
         return;
 
-    markFutureAndPastNodes(referenceTree.get(), startMediaTime(), movieTime);
+    markFutureAndPastNodes(referenceTree.get(), startTime(), movieTime);
     m_cueHighlightBox->appendChild(referenceTree);
 }
 
-VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize, int fontSize)
+VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize)
 {
     RefPtr<VTTCueBox> displayTree = displayTreeInternal();
     if (!m_displayTreeShouldChange || !track()->isRendered())
@@ -826,7 +808,13 @@ VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize, int fontSize)
     // WebVTT Ruby Text Objects must be wrapped in anonymous boxes whose
     // 'display' property has the value 'ruby-base'.
 
-    displayTree->setFontSizeFromCaptionUserPrefs(fontSize);
+    // FIXME(BUG 79916): Text runs must be wrapped according to the CSS
+    // line-wrapping rules, except that additionally, regardless of the value of
+    // the 'white-space' property, lines must be wrapped at the edge of their
+    // containing blocks, even if doing so requires splitting a word where there
+    // is no line breaking opportunity. (Thus, normally text wraps as needed,
+    // but if there is a particularly long word, it does not overflow as it
+    // normally would in CSS, it is instead forcibly wrapped at the box's edge.)
     displayTree->applyCSSProperties(videoSize);
 
     m_displayTreeShouldChange = false;
@@ -1155,7 +1143,6 @@ void VTTCue::setFontSize(int fontSize, const IntSize&, bool important)
     
     LOG(Media, "TextTrackCue::setFontSize - setting cue font size to %i", fontSize);
 
-    m_displayTreeShouldChange = true;
     displayTreeInternal()->setInlineStyleProperty(CSSPropertyFontSize, fontSize, CSSPrimitiveValue::CSS_PX, important);
 }
 

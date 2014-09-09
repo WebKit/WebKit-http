@@ -18,6 +18,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEConvolveMatrixElement.h"
 
 #include "Attr.h"
@@ -344,3 +346,5 @@ PassRefPtr<FilterEffect> SVGFEConvolveMatrixElement::build(SVGFilterBuilder* fil
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

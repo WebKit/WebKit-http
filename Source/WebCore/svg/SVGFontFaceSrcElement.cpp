@@ -55,7 +55,7 @@ PassRefPtr<CSSValueList> SVGFontFaceSrcElement::srcValue() const
         else if (isSVGFontFaceNameElement(child))
             srcValue = toSVGFontFaceNameElement(child).srcValue();
         if (srcValue && srcValue->resource().length())
-            list->append(srcValue.releaseNonNull());
+            list->append(srcValue.release());
     }
     return list;
 }

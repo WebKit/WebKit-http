@@ -30,5 +30,5 @@ namespace WebCore {
 class TestSerializedScriptValueInterface;
 }
 
-WEBCORE_EXPORT WebCore::TestSerializedScriptValueInterface* core(DOMTestSerializedScriptValueInterface *);
-WEBCORE_EXPORT DOMTestSerializedScriptValueInterface *kit(WebCore::TestSerializedScriptValueInterface*);
+WebCore::TestSerializedScriptValueInterface* core(DOMTestSerializedScriptValueInterface *);
+DOMTestSerializedScriptValueInterface *kit(WebCore::TestSerializedScriptValueInterface*);

@@ -61,6 +61,22 @@ struct SecurityOriginHash;
 // -------|-----+++++++++++++++|
 // -------|-----+++++++++++++++|+++++
 
+// The behavior of the cache changes in the following way if shouldMakeResourcePurgeableOnEviction
+// returns true.
+//
+// 1. Dead resources in the cache are kept in non-purgeable memory.
+// 2. When we prune dead resources, instead of freeing them, we mark their memory as purgeable and
+//    keep the resources until the kernel reclaims the purgeable memory.
+//
+// By leaving the in-cache dead resources in dirty resident memory, we decrease the likelihood of
+// the kernel claiming that memory and forcing us to refetch the resource (for example when a user
+// presses back).
+//
+// And by having an unbounded number of resource objects using purgeable memory, we can use as much
+// memory as is available on the machine. The trade-off here is that the CachedResource object (and
+// its member variables) are allocated in non-purgeable TC-malloc'd memory so we would see slightly
+// more memory use due to this.
+
 class MemoryCache {
     WTF_MAKE_NONCOPYABLE(MemoryCache); WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -85,15 +101,14 @@ public:
         int size;
         int liveSize;
         int decodedSize;
-
-        TypeStatistic()
-            : count(0)
-            , size(0)
-            , liveSize(0)
-            , decodedSize(0)
-        { 
-        }
-
+        int purgeableSize;
+        int purgedSize;
+#if ENABLE(DISK_IMAGE_CACHE)
+        int mappedSize;
+        TypeStatistic() : count(0), size(0), liveSize(0), decodedSize(0), purgeableSize(0), purgedSize(0), mappedSize(0) { }
+#else
+        TypeStatistic() : count(0), size(0), liveSize(0), decodedSize(0), purgeableSize(0), purgedSize(0) { }
+#endif
         void addResource(CachedResource*);
     };
     
@@ -105,9 +120,9 @@ public:
         TypeStatistic fonts;
     };
 
-    WEBCORE_EXPORT CachedResource* resourceForURL(const URL&);
-    WEBCORE_EXPORT CachedResource* resourceForURL(const URL&, SessionID);
-    WEBCORE_EXPORT CachedResource* resourceForRequest(const ResourceRequest&, SessionID);
+    CachedResource* resourceForURL(const URL&);
+    CachedResource* resourceForURL(const URL&, SessionID);
+    CachedResource* resourceForRequest(const ResourceRequest&, SessionID);
 
     bool add(CachedResource*);
     void remove(CachedResource* resource) { evict(resource); }
@@ -122,14 +137,14 @@ public:
     //  - minDeadBytes: The maximum number of bytes that dead resources should consume when the cache is under pressure.
     //  - maxDeadBytes: The maximum number of bytes that dead resources should consume when the cache is not under pressure.
     //  - totalBytes: The maximum number of bytes that the cache should consume overall.
-    WEBCORE_EXPORT void setCapacities(unsigned minDeadBytes, unsigned maxDeadBytes, unsigned totalBytes);
+    void setCapacities(unsigned minDeadBytes, unsigned maxDeadBytes, unsigned totalBytes);
 
     // Turn the cache on and off.  Disabling the cache will remove all resources from the cache.  They may
     // still live on if they are referenced by some Web page though.
-    WEBCORE_EXPORT void setDisabled(bool);
+    void setDisabled(bool);
     bool disabled() const { return m_disabled; }
 
-    WEBCORE_EXPORT void evictResources();
+    void evictResources();
     
     void setPruneEnabled(bool enabled) { m_pruneEnabled = enabled; }
     void prune();
@@ -152,18 +167,24 @@ public:
     void addToLiveResourcesSize(CachedResource*);
     void removeFromLiveResourcesSize(CachedResource*);
 
+    static bool shouldMakeResourcePurgeableOnEviction();
+
+#if ENABLE(DISK_IMAGE_CACHE)
+    void flushCachedImagesToDisk(); // Flush encoded data from resources still referenced by web pages.
+#endif
+
     static void removeUrlFromCache(ScriptExecutionContext*, const String& urlString, SessionID);
     static void removeRequestFromCache(ScriptExecutionContext*, const ResourceRequest&, SessionID);
     static void removeRequestFromSessionCaches(ScriptExecutionContext*, const ResourceRequest&);
 
     // Function to collect cache statistics for the caches window in the Safari Debug menu.
-    WEBCORE_EXPORT Statistics getStatistics();
+    Statistics getStatistics();
     
     void resourceAccessed(CachedResource*);
 
     typedef HashSet<RefPtr<SecurityOrigin>> SecurityOriginSet;
-    WEBCORE_EXPORT void removeResourcesWithOrigin(SecurityOrigin*);
-    WEBCORE_EXPORT void getOriginsWithCache(SecurityOriginSet& origins);
+    void removeResourcesWithOrigin(SecurityOrigin*);
+    void getOriginsWithCache(SecurityOriginSet& origins);
 
     unsigned minDeadCapacity() const { return m_minDeadCapacity; }
     unsigned maxDeadCapacity() const { return m_maxDeadCapacity; }
@@ -174,14 +195,14 @@ public:
 #if USE(CG)
     // FIXME: Remove the USE(CG) once we either make NativeImagePtr a smart pointer on all platforms or
     // remove the usage of CFRetain() in MemoryCache::addImageToCache() so as to make the code platform-independent.
-    WEBCORE_EXPORT bool addImageToCache(NativeImagePtr, const URL&, const String& cachePartition);
-    WEBCORE_EXPORT void removeImageFromCache(const URL&, const String& cachePartition);
+    bool addImageToCache(NativeImagePtr, const URL&, const String& cachePartition);
+    void removeImageFromCache(const URL&, const String& cachePartition);
 #endif
 
     // pruneDead*() - Flush decoded and encoded data from resources not referenced by Web pages.
     // pruneLive*() - Flush decoded data from resources still referenced by Web pages.
-    WEBCORE_EXPORT void pruneDeadResources(); // Automatically decide how much to prune.
-    WEBCORE_EXPORT void pruneLiveResources(bool shouldDestroyDecodedDataForAllLiveResources = false);
+    void pruneDeadResources(); // Automatically decide how much to prune.
+    void pruneLiveResources(bool shouldDestroyDecodedDataForAllLiveResources = false);
 
 private:
     void pruneDeadResourcesToPercentage(float prunePercentage); // Prune to % current size
@@ -201,9 +222,10 @@ private:
     unsigned liveCapacity() const;
     unsigned deadCapacity() const;
 
+    bool makeResourcePurgeable(CachedResource*);
     void evict(CachedResource*);
 
-    WEBCORE_EXPORT CachedResource* resourceForRequestImpl(const ResourceRequest&, CachedResourceMap&);
+    CachedResource* resourceForRequestImpl(const ResourceRequest&, CachedResourceMap&);
     static void removeRequestFromCacheImpl(ScriptExecutionContext*, const ResourceRequest&, SessionID);
     static void removeRequestFromSessionCachesImpl(ScriptExecutionContext*, const ResourceRequest&);
     static void crossThreadRemoveRequestFromCache(ScriptExecutionContext&, PassOwnPtr<CrossThreadResourceRequestData>, SessionID);
@@ -236,8 +258,17 @@ private:
     SessionCachedResourceMap m_sessionResources;
 };
 
+inline bool MemoryCache::shouldMakeResourcePurgeableOnEviction()
+{
+#if PLATFORM(IOS)
+    return true;
+#else
+    return false;
+#endif
+}
+
 // Function to obtain the global cache.
-WEBCORE_EXPORT MemoryCache* memoryCache();
+MemoryCache* memoryCache();
 
 }
 

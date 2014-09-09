@@ -47,8 +47,8 @@ class ScrollingTreeScrollingNode;
 
 class ScrollingTree : public ThreadSafeRefCounted<ScrollingTree> {
 public:
-    WEBCORE_EXPORT ScrollingTree();
-    WEBCORE_EXPORT virtual ~ScrollingTree();
+    ScrollingTree();
+    virtual ~ScrollingTree();
 
     enum EventResult {
         DidNotHandleEvent,
@@ -61,13 +61,13 @@ public:
     virtual bool isScrollingTreeIOS() const { return false; }
 
     virtual EventResult tryToHandleWheelEvent(const PlatformWheelEvent&) = 0;
-    WEBCORE_EXPORT bool shouldHandleWheelEventSynchronously(const PlatformWheelEvent&);
+    bool shouldHandleWheelEventSynchronously(const PlatformWheelEvent&);
     
     void setMainFrameIsRubberBanding(bool);
     bool isRubberBandInProgress();
 
     virtual void invalidate() { }
-    WEBCORE_EXPORT virtual void commitNewTreeState(PassOwnPtr<ScrollingStateTree>);
+    virtual void commitNewTreeState(PassOwnPtr<ScrollingStateTree>);
 
     void setMainFramePinState(bool pinnedToTheLeft, bool pinnedToTheRight, bool pinnedToTheTop, bool pinnedToTheBottom);
 
@@ -82,11 +82,11 @@ public:
 
     // Delegated scrolling/zooming has caused the viewport to change, so update viewport-constrained layers
     // (but don't cause scroll events to be fired).
-    WEBCORE_EXPORT virtual void viewportChangedViaDelegatedScrolling(ScrollingNodeID, const WebCore::FloatRect& fixedPositionRect, double scale);
+    virtual void viewportChangedViaDelegatedScrolling(ScrollingNodeID, const WebCore::FloatRect& fixedPositionRect, double scale);
 
     // Delegated scrolling has scrolled a node. Update layer positions on descendant tree nodes,
     // and call scrollingTreeNodeDidScroll().
-    WEBCORE_EXPORT virtual void scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, bool inUserInteration);
+    virtual void scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, bool inUserInteration);
 
     FloatPoint mainFrameScrollPosition();
     
@@ -97,14 +97,14 @@ public:
     virtual void scrollingTreeNodeDidEndScroll() { }
 #endif
 
-    WEBCORE_EXPORT bool isPointInNonFastScrollableRegion(IntPoint);
+    bool isPointInNonFastScrollableRegion(IntPoint);
     
 #if PLATFORM(MAC)
     virtual void handleWheelEventPhase(PlatformWheelEventPhase) = 0;
 #endif
 
     // Can be called from any thread. Will update what edges allow rubber-banding.
-    WEBCORE_EXPORT void setCanRubberBandState(bool canRubberBandAtLeft, bool canRubberBandAtRight, bool canRubberBandAtTop, bool canRubberBandAtBottom);
+    void setCanRubberBandState(bool canRubberBandAtLeft, bool canRubberBandAtRight, bool canRubberBandAtTop, bool canRubberBandAtBottom);
 
     bool rubberBandsAtLeft();
     bool rubberBandsAtRight();
@@ -115,9 +115,9 @@ public:
     void setScrollPinningBehavior(ScrollPinningBehavior);
     ScrollPinningBehavior scrollPinningBehavior();
 
-    WEBCORE_EXPORT bool willWheelEventStartSwipeGesture(const PlatformWheelEvent&);
+    bool willWheelEventStartSwipeGesture(const PlatformWheelEvent&);
 
-    WEBCORE_EXPORT void setScrollingPerformanceLoggingEnabled(bool flag);
+    void setScrollingPerformanceLoggingEnabled(bool flag);
     bool scrollingPerformanceLoggingEnabled();
 
     ScrollingTreeNode* rootNode() const { return m_rootNode.get(); }
@@ -139,7 +139,7 @@ public:
     
 protected:
     void setMainFrameScrollPosition(FloatPoint);
-    WEBCORE_EXPORT virtual void handleWheelEvent(const PlatformWheelEvent&);
+    virtual void handleWheelEvent(const PlatformWheelEvent&);
 
 private:
     void removeDestroyedNodes(const ScrollingStateTree&);

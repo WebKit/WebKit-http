@@ -31,6 +31,7 @@
 #include "Disassembler.h"
 #include "JITStubs.h"
 #include "JSCJSValue.h"
+#include "LegacyProfiler.h"
 #include "MacroAssemblerCodeRef.h"
 #include "RegisterPreservationMode.h"
 

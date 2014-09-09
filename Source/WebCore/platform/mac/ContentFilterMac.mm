@@ -124,23 +124,13 @@ ContentFilter::~ContentFilter()
 #endif
 }
 
-bool ContentFilter::canHandleResponse(const ResourceResponse& response)
+bool ContentFilter::isEnabled()
 {
-    if (!response.url().protocolIsInHTTPFamily())
-        return false;
-
-    if ([getWebFilterEvaluatorClass() isManagedSession]) {
-#if PLATFORM(MAC)
-        if (response.url().protocolIs("https"))
-#endif
-            return true;
-    }
-
+    return [getWebFilterEvaluatorClass() isManagedSession]
 #if HAVE(NE_FILTER_SOURCE)
-    return [getNEFilterSourceClass() filterRequired];
-#else
-    return false;
+        || [getNEFilterSourceClass() filterRequired]
 #endif
+    ;
 }
 
 void ContentFilter::addData(const char* data, int length)

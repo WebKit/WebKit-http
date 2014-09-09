@@ -125,7 +125,7 @@ using namespace WebCore;
 // mostly lifted from NSTextView_KeyBinding.m
 - (void)_placePopupWindow:(NSPoint)topLeft
 {
-    NSUInteger numberToShow = [_completions count];
+    int numberToShow = [_completions count];
     if (numberToShow > 20)
         numberToShow = 20;
 
@@ -140,7 +140,8 @@ using namespace WebCore;
     NSDictionary *attributes = [NSDictionary dictionaryWithObjectsAndKeys:[NSFont systemFontOfSize:12.0f], NSFontAttributeName, nil];
     CGFloat maxWidth = 0;
     int maxIndex = -1;
-    for (NSUInteger i = 0; i < numberToShow; i++) {
+    int i;
+    for (i = 0; i < numberToShow; i++) {
         float width = ceilf([[_completions objectAtIndex:i] sizeWithAttributes:attributes].width);
         if (width > maxWidth) {
             maxWidth = width;

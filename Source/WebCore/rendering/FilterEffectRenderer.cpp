@@ -26,6 +26,8 @@
 
 #include "config.h"
 
+#if ENABLE(CSS_FILTERS)
+
 #include "FilterEffectRenderer.h"
 
 #include "CachedSVGDocument.h"
@@ -436,9 +438,11 @@ void FilterEffectRendererHelper::applyFilterEffect(GraphicsContext* destinationC
     destRect.move(m_paintOffset.x(), m_paintOffset.y());
 
     destinationContext->drawImageBuffer(filter->output(), m_renderLayer->renderer().style().colorSpace(),
-        snapRectToDevicePixels(destRect, m_renderLayer->renderer().document().deviceScaleFactor()));
+        pixelSnappedForPainting(destRect, m_renderLayer->renderer().document().deviceScaleFactor()));
 
     filter->clearIntermediateResults();
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)

@@ -25,7 +25,6 @@
 
 #include "config.h"
 
-#include "CopyMoveCounter.h"
 #include "MoveOnly.h"
 #include <string>
 #include <wtf/HashMap.h>
@@ -147,28 +146,6 @@ TEST(WTF_HashMap, InitializerList)
     EXPECT_EQ("three", map.get(3));
     EXPECT_EQ("four", map.get(4));
     EXPECT_EQ(std::string(), map.get(5));
-}
-
-TEST(WTF_HashMap, EfficientGetter)
-{
-    HashMap<unsigned, CopyMoveCounter> map;
-    map.set(1, CopyMoveCounter());
-
-    {
-        CopyMoveCounter::TestingScope scope;
-        map.get(1);
-        EXPECT_EQ(0U, CopyMoveCounter::constructionCount);
-        EXPECT_EQ(1U, CopyMoveCounter::copyCount);
-        EXPECT_EQ(0U, CopyMoveCounter::moveCount);
-    }
-
-    {
-        CopyMoveCounter::TestingScope scope;
-        map.get(2);
-        EXPECT_EQ(1U, CopyMoveCounter::constructionCount);
-        EXPECT_EQ(0U, CopyMoveCounter::copyCount);
-        EXPECT_EQ(1U, CopyMoveCounter::moveCount);
-    }
 }
 
 } // namespace TestWebKitAPI

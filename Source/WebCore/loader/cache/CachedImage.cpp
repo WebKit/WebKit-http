@@ -56,6 +56,10 @@
 #include "PDFDocumentImage.h"
 #endif
 
+#if ENABLE(DISK_IMAGE_CACHE)
+#include "DiskImageCacheIOS.h"
+#endif
+
 namespace WebCore {
 
 CachedImage::CachedImage(const ResourceRequest& resourceRequest, SessionID sessionID)
@@ -188,6 +192,8 @@ bool CachedImage::willPaintBrokenImage() const
 
 Image* CachedImage::image()
 {
+    ASSERT(!isPurgeable());
+
     if (errorOccurred() && m_shouldPaintBrokenImage) {
         // Returning the 1x broken image is non-ideal, but we cannot reliably access the appropriate
         // deviceScaleFactor from here. It is critical that callers use CachedImage::brokenImage() 
@@ -203,6 +209,8 @@ Image* CachedImage::image()
 
 Image* CachedImage::imageForRenderer(const RenderObject* renderer)
 {
+    ASSERT(!isPurgeable());
+
     if (errorOccurred() && m_shouldPaintBrokenImage) {
         // Returning the 1x broken image is non-ideal, but we cannot reliably access the appropriate
         // deviceScaleFactor from here. It is critical that callers use CachedImage::brokenImage() 
@@ -266,6 +274,8 @@ bool CachedImage::imageHasRelativeHeight() const
 
 LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float multiplier, SizeType sizeType)
 {
+    ASSERT(!isPurgeable());
+
     if (!m_image)
         return LayoutSize();
 
@@ -279,7 +289,16 @@ LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float
     }
 #else
     if (m_image->isBitmapImage() && (renderer && renderer->shouldRespectImageOrientation() == RespectImageOrientation))
+#if !PLATFORM(IOS)
         imageSize = LayoutSize(toBitmapImage(m_image.get())->sizeRespectingOrientation());
+#else
+    {
+        // On iOS, the image may have been subsampled to accommodate our size restrictions. However
+        // we should tell the renderer what the original size was.
+        imageSize = LayoutSize(toBitmapImage(m_image.get())->originalSizeRespectingOrientation());
+    } else if (m_image->isBitmapImage())
+        imageSize = LayoutSize(toBitmapImage(m_image.get())->originalSize());
+#endif // !PLATFORM(IOS)
 #endif // ENABLE(CSS_IMAGE_ORIENTATION)
 
     else if (m_image->isSVGImage() && sizeType == UsedSize) {
@@ -333,7 +352,6 @@ inline void CachedImage::createImage()
     // Create the image if it doesn't yet exist.
     if (m_image)
         return;
-
 #if USE(CG) && !USE(WEBKIT_IMAGE_DECODERS)
     else if (m_response.mimeType() == "application/pdf")
         m_image = PDFDocumentImage::create(this);
@@ -342,10 +360,8 @@ inline void CachedImage::createImage()
         RefPtr<SVGImage> svgImage = SVGImage::create(this);
         m_svgImageCache = std::make_unique<SVGImageCache>(svgImage.get());
         m_image = svgImage.release();
-    } else {
+    } else
         m_image = BitmapImage::create(this);
-        toBitmapImage(m_image.get())->setAllowSubsampling(m_loader && m_loader->frameLoader()->frame().settings().imageSubsamplingEnabled());
-    }
 
     if (m_image) {
         // Send queued container size requests.
@@ -452,9 +468,13 @@ void CachedImage::responseReceived(const ResourceResponse& response)
 void CachedImage::destroyDecodedData()
 {
     bool canDeleteImage = !m_image || (m_image->hasOneRef() && m_image->isBitmapImage());
-    if (canDeleteImage && !isLoading() && !hasClients()) {
+    if (isSafeToMakePurgeable() && canDeleteImage && !isLoading()) {
+        // Image refs the data buffer so we should not make it purgeable while the image is alive. 
+        // Invoking addClient() will reconstruct the image object.
         m_image = 0;
         setDecodedSize(0);
+        if (!MemoryCache::shouldMakeResourcePurgeableOnEviction())
+            makePurgeable(true);
     } else if (m_image && !errorOccurred())
         m_image->destroyDecodedData();
 }
@@ -498,8 +518,47 @@ void CachedImage::changedInRect(const Image* image, const IntRect& rect)
 bool CachedImage::currentFrameKnownToBeOpaque(const RenderElement* renderer)
 {
     Image* image = imageForRenderer(renderer);
+    if (image->isBitmapImage())
+        image->nativeImageForCurrentFrame(); // force decode
     return image->currentFrameKnownToBeOpaque();
 }
+
+#if ENABLE(DISK_IMAGE_CACHE)
+bool CachedImage::canUseDiskImageCache() const
+{
+    if (isLoading() || errorOccurred())
+        return false;
+
+    if (!m_data)
+        return false;
+
+    if (isPurgeable())
+        return false;
+
+    if (m_data->size() < diskImageCache().minimumImageSize())
+        return false;
+
+    // "Cache-Control: no-store" resources may be marked as such because they may
+    // contain sensitive information. We should not write these resources to disk.
+    if (m_response.cacheControlContainsNoStore())
+        return false;
+
+    // Testing shows that PDF images did not work when memory mapped.
+    // However, SVG images and Bitmap images were fine. See:
+    // <rdar://problem/8591834> Disk Image Cache should support PDF Images
+    if (m_response.mimeType() == "application/pdf")
+        return false;
+
+    return true;
+}
+
+void CachedImage::useDiskImageCache()
+{
+    ASSERT(canUseDiskImageCache());
+    ASSERT(!isUsingDiskImageCache());
+    m_data->sharedBuffer()->allowToBeMemoryMapped();
+}
+#endif
 
 bool CachedImage::isOriginClean(SecurityOrigin* securityOrigin)
 {

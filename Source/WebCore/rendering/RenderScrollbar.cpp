@@ -269,27 +269,27 @@ IntRect RenderScrollbar::buttonRect(ScrollbarPart partType)
     partRenderer->layout();
     
     bool isHorizontal = orientation() == HorizontalScrollbar;
-    IntSize pixelSnappedIntSize = partRenderer->pixelSnappedSize();
     if (partType == BackButtonStartPart)
-        return IntRect(location(), IntSize(isHorizontal ? pixelSnappedIntSize.width() : width(), isHorizontal ? height() : pixelSnappedIntSize.height()));
+        return IntRect(location(), IntSize(isHorizontal ? partRenderer->pixelSnappedWidth() : width(), isHorizontal ? height() : partRenderer->pixelSnappedHeight()));
     if (partType == ForwardButtonEndPart)
-        return IntRect(isHorizontal ? x() + width() - pixelSnappedIntSize.width() : x(), isHorizontal ? y() : y() + height() - pixelSnappedIntSize.height(),
-                       isHorizontal ? pixelSnappedIntSize.width() : width(),
-                       isHorizontal ? height() : pixelSnappedIntSize.height());
+        return IntRect(isHorizontal ? x() + width() - partRenderer->pixelSnappedWidth() : x(),
+                       isHorizontal ? y() : y() + height() - partRenderer->pixelSnappedHeight(),
+                       isHorizontal ? partRenderer->pixelSnappedWidth() : width(),
+                       isHorizontal ? height() : partRenderer->pixelSnappedHeight());
     
     if (partType == ForwardButtonStartPart) {
         IntRect previousButton = buttonRect(BackButtonStartPart);
         return IntRect(isHorizontal ? x() + previousButton.width() : x(),
                        isHorizontal ? y() : y() + previousButton.height(),
-                       isHorizontal ? pixelSnappedIntSize.width() : width(),
-                       isHorizontal ? height() : pixelSnappedIntSize.height());
+                       isHorizontal ? partRenderer->pixelSnappedWidth() : width(),
+                       isHorizontal ? height() : partRenderer->pixelSnappedHeight());
     }
     
     IntRect followingButton = buttonRect(ForwardButtonEndPart);
-    return IntRect(isHorizontal ? x() + width() - followingButton.width() - pixelSnappedIntSize.width() : x(),
-                   isHorizontal ? y() : y() + height() - followingButton.height() - pixelSnappedIntSize.height(),
-                   isHorizontal ? pixelSnappedIntSize.width() : width(),
-                   isHorizontal ? height() : pixelSnappedIntSize.height());
+    return IntRect(isHorizontal ? x() + width() - followingButton.width() - partRenderer->pixelSnappedWidth() : x(),
+                   isHorizontal ? y() : y() + height() - followingButton.height() - partRenderer->pixelSnappedHeight(),
+                   isHorizontal ? partRenderer->pixelSnappedWidth() : width(),
+                   isHorizontal ? height() : partRenderer->pixelSnappedHeight());
 }
 
 IntRect RenderScrollbar::trackRect(int startLength, int endLength)

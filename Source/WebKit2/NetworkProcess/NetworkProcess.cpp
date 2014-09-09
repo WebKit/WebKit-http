@@ -258,6 +258,8 @@ void NetworkProcess::getNetworkProcessStatistics(uint64_t callbackID)
 
     StatisticsData data;
 
+    data.statisticsNumbers.set("HostsPendingCount", scheduler.hostsPendingCount());
+    data.statisticsNumbers.set("HostsActiveCount", scheduler.hostsActiveCount());
     data.statisticsNumbers.set("LoadsPendingCount", scheduler.loadsPendingCount());
     data.statisticsNumbers.set("LoadsActiveCount", scheduler.loadsActiveCount());
     data.statisticsNumbers.set("DownloadsActiveCount", shared().downloadManager().activeDownloadCount());

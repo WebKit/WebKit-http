@@ -93,8 +93,10 @@ public:
     bool isWebKitCSSTransformValue() const { return m_classType == WebKitCSSTransformClass; }
     bool isLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
     bool isCalcValue() const {return m_classType == CalculationClass; }
+#if ENABLE(CSS_FILTERS)
     bool isFilterImageValue() const { return m_classType == FilterImageClass; }
     bool isWebKitCSSFilterValue() const { return m_classType == WebKitCSSFilterClass; }
+#endif // ENABLE(CSS_FILTERS)
 #if ENABLE(CSS_GRID_LAYOUT)
     bool isGridTemplateAreasValue() const { return m_classType == GridTemplateAreasClass; }
     bool isGridLineNamesValue() const { return m_classType == GridLineNamesClass; }
@@ -132,7 +134,9 @@ protected:
         // Image generator classes.
         CanvasClass,
         CrossfadeClass,
+#if ENABLE(CSS_FILTERS)
         FilterImageClass,
+#endif
         LinearGradientClass,
         RadialGradientClass,
 
@@ -167,7 +171,9 @@ protected:
 #if ENABLE(CSS_IMAGE_SET)
         ImageSetClass,
 #endif
+#if ENABLE(CSS_FILTERS)
         WebKitCSSFilterClass,
+#endif
         WebKitCSSTransformClass,
 #if ENABLE(CSS_GRID_LAYOUT)
         GridLineNamesClass,
@@ -201,7 +207,7 @@ protected:
     ~CSSValue() { }
 
 private:
-    WEBCORE_EXPORT void destroy();
+    void destroy();
 
 protected:
     unsigned m_isCSSOMSafe : 1;

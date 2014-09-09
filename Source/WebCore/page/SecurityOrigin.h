@@ -50,17 +50,17 @@ public:
         BlockAllStorage
     };
 
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> create(const URL&);
+    static PassRefPtr<SecurityOrigin> create(const URL&);
     static PassRefPtr<SecurityOrigin> createUnique();
 
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> createFromDatabaseIdentifier(const String&);
+    static PassRefPtr<SecurityOrigin> createFromDatabaseIdentifier(const String&);
     // Alternate form of createFromDatabaseIdentifier that returns a nullptr on failure, instead of an empty origin.
     // FIXME: Many users of createFromDatabaseIdentifier seem to expect maybeCreateFromDatabaseIdentifier behavior,
     // but they aren't getting it so they might be buggy.
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
+    static PassRefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
 
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> createFromString(const String&);
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> create(const String& protocol, const String& host, int port);
+    static PassRefPtr<SecurityOrigin> createFromString(const String&);
+    static PassRefPtr<SecurityOrigin> create(const String& protocol, const String& host, int port);
 
     // Some URL schemes use nested URLs for their security context. For example,
     // filesystem URLs look like the following:
@@ -77,7 +77,7 @@ public:
 
     // Create a deep copy of this SecurityOrigin. This method is useful
     // when marshalling a SecurityOrigin to another thread.
-    WEBCORE_EXPORT PassRefPtr<SecurityOrigin> isolatedCopy() const;
+    PassRefPtr<SecurityOrigin> isolatedCopy() const;
 
     // Set the domain property of this security origin to newDomain. This
     // function does not check whether newDomain is a suffix of the current
@@ -99,7 +99,7 @@ public:
     // SecurityOrigin. For example, call this function before allowing
     // script from one security origin to read or write objects from
     // another SecurityOrigin.
-    WEBCORE_EXPORT bool canAccess(const SecurityOrigin*) const;
+    bool canAccess(const SecurityOrigin*) const;
 
     // Returns true if this SecurityOrigin can read content retrieved from
     // the given URL. For example, call this function before issuing
@@ -119,7 +119,7 @@ public:
     // Returns true if |document| can display content from the given URL (e.g.,
     // in an iframe or as an image). For example, web sites generally cannot
     // display content from the user's files system.
-    WEBCORE_EXPORT bool canDisplay(const URL&) const;
+    bool canDisplay(const URL&) const;
 
     // Returns true if this SecurityOrigin can load local resources, such
     // as images, iframes, and style sheets, and can link to local URLs.
@@ -147,7 +147,7 @@ public:
     void setStorageBlockingPolicy(StorageBlockingPolicy policy) { m_storageBlockingPolicy = policy; }
 
 #if ENABLE(CACHE_PARTITIONING)
-    WEBCORE_EXPORT String cachePartition() const;
+    String cachePartition() const;
 #endif
 
     bool canAccessDatabase(const SecurityOrigin* topOrigin = 0) const { return canAccessStorage(topOrigin); };
@@ -189,26 +189,26 @@ public:
     // this SecurityOrigin might have come from a sandboxed iframe, the
     // SecurityOrigin might be empty, or we might have explicitly decided that
     // we shouldTreatURLSchemeAsNoAccess.
-    WEBCORE_EXPORT String toString() const;
+    String toString() const;
 
     // Similar to toString(), but does not take into account any factors that
     // could make the string return "null".
-    WEBCORE_EXPORT String toRawString() const;
+    String toRawString() const;
 
     // Serialize the security origin to a string that could be used as part of
     // file names. This format should be used in storage APIs only.
-    WEBCORE_EXPORT String databaseIdentifier() const;
+    String databaseIdentifier() const;
 
     // This method checks for equality between SecurityOrigins, not whether
     // one origin can access another. It is used for hash table keys.
     // For access checks, use canAccess().
     // FIXME: If this method is really only useful for hash table keys, it
     // should be refactored into SecurityOriginHash.
-    WEBCORE_EXPORT bool equal(const SecurityOrigin*) const;
+    bool equal(const SecurityOrigin*) const;
 
     // This method checks for equality, ignoring the value of document.domain
     // (and whether it was set) but considering the host. It is used for postMessage.
-    WEBCORE_EXPORT bool isSameSchemeHostPort(const SecurityOrigin*) const;
+    bool isSameSchemeHostPort(const SecurityOrigin*) const;
 
     static URL urlWithUniqueSecurityOrigin();
 
@@ -226,7 +226,7 @@ private:
     bool isHTTPFamily() const { return m_protocol == "http" || m_protocol == "https"; }
     
     enum ShouldAllowFromThirdParty { AlwaysAllowFromThirdParty, MaybeAllowFromThirdParty };
-    WEBCORE_EXPORT bool canAccessStorage(const SecurityOrigin*, ShouldAllowFromThirdParty = MaybeAllowFromThirdParty) const;
+    bool canAccessStorage(const SecurityOrigin*, ShouldAllowFromThirdParty = MaybeAllowFromThirdParty) const;
 
     String m_protocol;
     String m_host;

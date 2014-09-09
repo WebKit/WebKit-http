@@ -146,7 +146,7 @@ static LayoutRect getShapeImageMarginRect(const RenderBox& renderBox, const Layo
 
 std::unique_ptr<Shape> ShapeOutsideInfo::createShapeForImage(StyleImage* styleImage, float shapeImageThreshold, WritingMode writingMode, float margin) const
 {
-    const LayoutSize& imageSize = m_renderer.calculateImageIntrinsicDimensions(styleImage, m_referenceBoxLogicalSize, RenderImage::ScaleByEffectiveZoom);
+    const LayoutSize& imageSize = m_renderer.calculateImageIntrinsicDimensions(styleImage, roundedLayoutSize(m_referenceBoxLogicalSize), RenderImage::ScaleByEffectiveZoom);
     styleImage->setContainerSizeForRenderer(&m_renderer, imageSize, m_renderer.style().effectiveZoom());
 
     const LayoutRect& marginRect = getShapeImageMarginRect(m_renderer, m_referenceBoxLogicalSize);
@@ -282,7 +282,7 @@ LayoutUnit ShapeOutsideInfo::logicalLeftOffset() const
     case ViewBox: break;
     case BoxMissing: break;
     }
-
+    
     ASSERT_NOT_REACHED();
     return LayoutUnit();
 }
@@ -303,39 +303,55 @@ bool ShapeOutsideInfo::isEnabledFor(const RenderBox& box)
     return false;
 }
 
-ShapeOutsideDeltas ShapeOutsideInfo::computeDeltasForContainingBlockLine(const RenderBlockFlow& containingBlock, const FloatingObject& floatingObject, LayoutUnit lineTop, LayoutUnit lineHeight)
+SegmentList ShapeOutsideInfo::computeSegmentsForLine(LayoutUnit lineTop, LayoutUnit lineHeight) const
 {
     ASSERT(lineHeight >= 0);
+    SegmentList segments;
+
+    computedShape().getExcludedIntervals((lineTop - logicalTopOffset()), std::min(lineHeight, shapeLogicalBottom() - lineTop), segments);
+
+    for (size_t i = 0; i < segments.size(); i++) {
+        segments[i].logicalLeft += logicalLeftOffset();
+        segments[i].logicalRight += logicalLeftOffset();
+    }
+    
+    return segments;
+}
+
+void ShapeOutsideInfo::updateDeltasForContainingBlockLine(const RenderBlockFlow& containingBlock, const FloatingObject& floatingObject, LayoutUnit lineTop, LayoutUnit lineHeight)
+{
     LayoutUnit borderBoxTop = containingBlock.logicalTopForFloat(&floatingObject) + containingBlock.marginBeforeForChild(m_renderer);
     LayoutUnit borderBoxLineTop = lineTop - borderBoxTop;
 
-    if (isShapeDirty() || !m_shapeOutsideDeltas.isForLine(borderBoxLineTop, lineHeight)) {
-        LayoutUnit referenceBoxLineTop = borderBoxLineTop - logicalTopOffset();
+    if (isShapeDirty() || m_borderBoxLineTop != borderBoxLineTop || m_lineHeight != lineHeight) {
+        m_borderBoxLineTop = borderBoxLineTop;
+        m_referenceBoxLineTop = borderBoxLineTop - logicalTopOffset();
+        m_lineHeight = lineHeight;
+
         LayoutUnit floatMarginBoxWidth = containingBlock.logicalWidthForFloat(&floatingObject);
 
-        if (computedShape().lineOverlapsShapeMarginBounds(referenceBoxLineTop, lineHeight)) {
-            LineSegment segment = computedShape().getExcludedInterval((borderBoxLineTop - logicalTopOffset()), std::min(lineHeight, shapeLogicalBottom() - borderBoxLineTop));
-            if (segment.isValid) {
+        if (computedShape().lineOverlapsShapeMarginBounds(m_referenceBoxLineTop, m_lineHeight)) {
+            SegmentList segments = computeSegmentsForLine(borderBoxLineTop, lineHeight);
+            if (segments.size()) {
                 LayoutUnit logicalLeftMargin = containingBlock.style().isLeftToRightDirection() ? containingBlock.marginStartForChild(m_renderer) : containingBlock.marginEndForChild(m_renderer);
-                LayoutUnit rawLeftMarginBoxDelta = segment.logicalLeft + logicalLeftOffset() + logicalLeftMargin;
-                LayoutUnit leftMarginBoxDelta = clampTo<LayoutUnit>(rawLeftMarginBoxDelta, LayoutUnit(), floatMarginBoxWidth);
+                LayoutUnit rawLeftMarginBoxDelta = segments.first().logicalLeft + logicalLeftMargin;
+                m_leftMarginBoxDelta = clampTo<LayoutUnit>(rawLeftMarginBoxDelta, LayoutUnit(), floatMarginBoxWidth);
 
                 LayoutUnit logicalRightMargin = containingBlock.style().isLeftToRightDirection() ? containingBlock.marginEndForChild(m_renderer) : containingBlock.marginStartForChild(m_renderer);
-                LayoutUnit rawRightMarginBoxDelta = segment.logicalRight + logicalLeftOffset() - containingBlock.logicalWidthForChild(m_renderer) - logicalRightMargin;
-                LayoutUnit rightMarginBoxDelta = clampTo<LayoutUnit>(rawRightMarginBoxDelta, -floatMarginBoxWidth, LayoutUnit());
-
-                m_shapeOutsideDeltas = ShapeOutsideDeltas(leftMarginBoxDelta, rightMarginBoxDelta, true, borderBoxLineTop, lineHeight);
-                return m_shapeOutsideDeltas;
+                LayoutUnit rawRightMarginBoxDelta = segments.last().logicalRight - containingBlock.logicalWidthForChild(m_renderer) - logicalRightMargin;
+                m_rightMarginBoxDelta = clampTo<LayoutUnit>(rawRightMarginBoxDelta, -floatMarginBoxWidth, LayoutUnit());
+                m_lineOverlapsShape = true;
+                return;
             }
         }
 
         // Lines that do not overlap the shape should act as if the float
         // wasn't there for layout purposes. So we set the deltas to remove the
         // entire width of the float
-        m_shapeOutsideDeltas = ShapeOutsideDeltas(floatMarginBoxWidth, -floatMarginBoxWidth, false, borderBoxLineTop, lineHeight);
+        m_leftMarginBoxDelta = floatMarginBoxWidth;
+        m_rightMarginBoxDelta = -floatMarginBoxWidth;
+        m_lineOverlapsShape = false;
     }
-
-    return m_shapeOutsideDeltas;
 }
 
 }

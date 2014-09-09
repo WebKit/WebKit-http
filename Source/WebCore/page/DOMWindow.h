@@ -34,7 +34,6 @@
 #include "Supplementable.h"
 #include <functional>
 #include <memory>
-#include <wtf/WeakPtr.h>
 
 namespace Inspector {
 class ScriptCallStack;
@@ -67,7 +66,7 @@ namespace WebCore {
     class Navigator;
     class Node;
     class Page;
-    class PageConsoleClient;
+    class PageConsole;
     class Performance;
     class PostMessageTimer;
     class ScheduledAction;
@@ -125,10 +124,10 @@ namespace WebCore {
 
         PassRefPtr<MediaQueryList> matchMedia(const String&);
 
-        WEBCORE_EXPORT unsigned pendingUnloadEventListeners() const;
+        unsigned pendingUnloadEventListeners() const;
 
-        WEBCORE_EXPORT static bool dispatchAllPendingBeforeUnloadEvents();
-        WEBCORE_EXPORT static void dispatchAllPendingUnloadEvents();
+        static bool dispatchAllPendingBeforeUnloadEvents();
+        static void dispatchAllPendingUnloadEvents();
 
         static FloatRect adjustWindowRect(Page*, const FloatRect& pendingChanges);
 
@@ -161,11 +160,11 @@ namespace WebCore {
 
         void focus(ScriptExecutionContext* = 0);
         void blur();
-        WEBCORE_EXPORT void close(ScriptExecutionContext* = 0);
+        void close(ScriptExecutionContext* = 0);
         void print();
         void stop();
 
-        WEBCORE_EXPORT PassRefPtr<DOMWindow> open(const String& urlString, const AtomicString& frameName, const String& windowFeaturesString,
+        PassRefPtr<DOMWindow> open(const String& urlString, const AtomicString& frameName, const String& windowFeaturesString,
             DOMWindow& activeWindow, DOMWindow& firstWindow);
 
         void showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, std::function<void (DOMWindow&)> prepareDialogFunction);
@@ -217,7 +216,7 @@ namespace WebCore {
 
         // DOM Level 2 AbstractView Interface
 
-        WEBCORE_EXPORT Document* document() const;
+        Document* document() const;
 
         // CSSOM View Module
 
@@ -235,7 +234,7 @@ namespace WebCore {
         PassRefPtr<WebKitPoint> webkitConvertPointFromPageToNode(Node*, const WebKitPoint*) const;
         PassRefPtr<WebKitPoint> webkitConvertPointFromNodeToPage(Node*, const WebKitPoint*) const;
 
-        PageConsoleClient* console() const;
+        PageConsole* pageConsole() const;
 
         void printErrorMessage(const String&);
         String crossDomainAccessErrorMessage(const DOMWindow& activeWindow);
@@ -446,8 +445,6 @@ namespace WebCore {
         void enableSuddenTermination();
         void disableSuddenTermination();
 
-        WeakPtr<DOMWindow> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
     private:
         explicit DOMWindow(Document*);
 
@@ -496,8 +493,6 @@ namespace WebCore {
 
         enum PageStatus { PageStatusNone, PageStatusShown, PageStatusHidden };
         PageStatus m_lastPageStatus;
-
-        WeakPtrFactory<DOMWindow> m_weakPtrFactory;
 
 #if PLATFORM(IOS)
         unsigned m_scrollEventListenerCount;

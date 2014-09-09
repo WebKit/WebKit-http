@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)
 
 #include <WebKitAdditions/DocumentIOS.cpp>
 #include <WebKitAdditions/GestureEvent.cpp>

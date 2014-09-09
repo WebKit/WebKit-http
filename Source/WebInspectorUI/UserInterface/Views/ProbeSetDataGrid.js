@@ -34,10 +34,7 @@ WebInspector.ProbeSetDataGrid = function(probeSet)
         var probeTitle = probe.expression || WebInspector.UIString("(uninitialized)");
         columnsData[probe.id] = { title: probeTitle };
     }
-
     WebInspector.DataGrid.call(this, columnsData);
-
-    this.element.classList.add("inline");
 
     this._frameNodes = new Map;
     this._nodesSinceLastNavigation = [];

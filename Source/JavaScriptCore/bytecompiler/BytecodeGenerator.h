@@ -97,76 +97,11 @@ namespace JSC {
         FinallyContext finallyContext;
     };
 
-    class ForInContext {
-    public:
-        ForInContext(RegisterID* localRegister)
-            : m_localRegister(localRegister)
-            , m_isValid(true)
-        {
-        }
-
-        virtual ~ForInContext()
-        {
-        }
-
-        bool isValid() const { return m_isValid; }
-        void invalidate() { m_isValid = false; }
-
-        enum ForInContextType {
-            StructureForInContextType,
-            IndexedForInContextType
-        };
-        virtual ForInContextType type() const = 0;
-
-        RegisterID* local() const { return m_localRegister.get(); }
-
-    private:
-        RefPtr<RegisterID> m_localRegister;
-        bool m_isValid;
-    };
-
-    class StructureForInContext : public ForInContext {
-    public:
-        StructureForInContext(RegisterID* localRegister, RegisterID* indexRegister, RegisterID* propertyRegister, RegisterID* enumeratorRegister)
-            : ForInContext(localRegister)
-            , m_indexRegister(indexRegister)
-            , m_propertyRegister(propertyRegister)
-            , m_enumeratorRegister(enumeratorRegister)
-        {
-        }
-
-        virtual ForInContextType type() const
-        {
-            return StructureForInContextType;
-        }
-
-        RegisterID* index() const { return m_indexRegister.get(); }
-        RegisterID* property() const { return m_propertyRegister.get(); }
-        RegisterID* enumerator() const { return m_enumeratorRegister.get(); }
-
-    private:
-        RefPtr<RegisterID> m_indexRegister;
-        RefPtr<RegisterID> m_propertyRegister;
-        RefPtr<RegisterID> m_enumeratorRegister;
-    };
-
-    class IndexedForInContext : public ForInContext {
-    public:
-        IndexedForInContext(RegisterID* localRegister, RegisterID* indexRegister)
-            : ForInContext(localRegister)
-            , m_indexRegister(indexRegister)
-        {
-        }
-
-        virtual ForInContextType type() const
-        {
-            return IndexedForInContextType;
-        }
-
-        RegisterID* index() const { return m_indexRegister.get(); }
-
-    private:
-        RefPtr<RegisterID> m_indexRegister;
+    struct ForInContext {
+        RefPtr<RegisterID> expectedSubscriptRegister;
+        RefPtr<RegisterID> iterRegister;
+        RefPtr<RegisterID> indexRegister;
+        RefPtr<RegisterID> propertyRegister;
     };
 
     struct TryData {
@@ -218,15 +153,6 @@ namespace JSC {
         RefPtr<Label> start;
         RefPtr<Label> end;
         TryData* tryData;
-    };
-
-    enum ProfileTypeBytecodeFlag {
-        ProfileTypeBytecodePutToScope,
-        ProfileTypeBytecodeGetFromScope,
-        ProfileTypeBytecodeHasGlobalID,
-        ProfileTypeBytecodeDoesNotHaveGlobalID,
-        ProfileTypeBytecodeFunctionArgument,
-        ProfileTypeBytecodeFunctionReturnStatement
     };
 
     class BytecodeGenerator {
@@ -390,7 +316,6 @@ namespace JSC {
                 m_codeBlock->addExpressionInfo(instructionOffset, divotOffset, startOffset, endOffset, line, column);
         }
 
-
         ALWAYS_INLINE bool leftHandSideNeedsCopy(bool rightHasAssignments, bool rightIsPure)
         {
             return (m_codeType != FunctionCode || m_codeBlock->needsFullScopeChain() || rightHasAssignments) && !rightIsPure;
@@ -407,8 +332,7 @@ namespace JSC {
             return emitNode(n);
         }
 
-        void emitTypeProfilerExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot);
-        void emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag, const Identifier*);
+        void emitProfileTypesWithHighFidelity(RegisterID* dst, bool);
 
         RegisterID* emitLoad(RegisterID* dst, bool);
         RegisterID* emitLoad(RegisterID* dst, double);
@@ -486,14 +410,8 @@ namespace JSC {
         PassRefPtr<Label> emitJumpIfNotFunctionApply(RegisterID* cond, Label* target);
         void emitPopScopes(int targetScopeDepth);
 
-        RegisterID* emitHasIndexedProperty(RegisterID* dst, RegisterID* base, RegisterID* propertyName);
-        RegisterID* emitHasStructureProperty(RegisterID* dst, RegisterID* base, RegisterID* propertyName, RegisterID* enumerator);
-        RegisterID* emitHasGenericProperty(RegisterID* dst, RegisterID* base, RegisterID* propertyName);
-        RegisterID* emitGetEnumerableLength(RegisterID* dst, RegisterID* base);
-        RegisterID* emitGetStructurePropertyEnumerator(RegisterID* dst, RegisterID* base, RegisterID* length);
-        RegisterID* emitGetGenericPropertyEnumerator(RegisterID* dst, RegisterID* base, RegisterID* length, RegisterID* structureEnumerator);
-        RegisterID* emitNextEnumeratorPropertyName(RegisterID* dst, RegisterID* enumerator, RegisterID* index);
-        RegisterID* emitToIndexString(RegisterID* dst, RegisterID* index);
+        RegisterID* emitGetPropertyNames(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, Label* breakTarget);
+        RegisterID* emitNextPropertyName(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, RegisterID* iter, Label* target);
 
         void emitReadOnlyExceptionIfNeeded();
 
@@ -524,11 +442,16 @@ namespace JSC {
         void pushFinallyContext(StatementNode* finallyBlock);
         void popFinallyContext();
 
-        void pushIndexedForInScope(RegisterID* local, RegisterID* index);
-        void popIndexedForInScope(RegisterID* local);
-        void pushStructureForInScope(RegisterID* local, RegisterID* index, RegisterID* property, RegisterID* enumerator);
-        void popStructureForInScope(RegisterID* local);
-        void invalidateForInContextForLocal(RegisterID* local);
+        void pushOptimisedForIn(RegisterID* expectedSubscript, RegisterID* iter, RegisterID* index, RegisterID* propertyRegister)
+        {
+            ForInContext context = { expectedSubscript, iter, index, propertyRegister };
+            m_forInContextStack.append(context);
+        }
+
+        void popOptimisedForIn()
+        {
+            m_forInContextStack.removeLast();
+        }
 
         LabelScopePtr breakTarget(const Identifier&);
         LabelScopePtr continueTarget(const Identifier&);
@@ -674,6 +597,7 @@ namespace JSC {
         RegisterID* emitThrowExpressionTooDeepException();
 
         void createArgumentsIfNecessary();
+        void createActivationIfNecessary();
         RegisterID* createLazyRegisterIfNecessary(RegisterID*);
         
         unsigned watchableVariable(int operand)
@@ -726,7 +650,7 @@ namespace JSC {
 
         Vector<ControlFlowContext, 0, UnsafeVectorOverflow> m_scopeContextStack;
         Vector<SwitchInfo> m_switchContextStack;
-        Vector<std::unique_ptr<ForInContext>> m_forInContextStack;
+        Vector<ForInContext> m_forInContextStack;
         Vector<TryContext> m_tryContextStack;
         Vector<std::pair<RefPtr<RegisterID>, const DeconstructionPatternNode*>> m_deconstructedParameters;
         
@@ -754,6 +678,8 @@ namespace JSC {
         StaticPropertyAnalyzer m_staticPropertyAnalyzer;
 
         VM* m_vm;
+
+        bool isProfilingTypesWithHighFidelity() { return vm()->isProfilingTypesWithHighFidelity(); }
 
         OpcodeID m_lastOpcodeID;
 #ifndef NDEBUG

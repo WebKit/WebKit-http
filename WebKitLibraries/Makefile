@@ -3,13 +3,9 @@ SCRIPTS_PATH = ../Tools/Scripts
 ifeq ($(shell sw_vers -productVersion | cut -d. -f-2), 10.10)
 libs:
 	@true
-cleanlibs:
-	@true
 else
 libs:
 	perl $(SCRIPTS_PATH)/copy-webkitlibraries-to-product-directory --wksi --llvm
-cleanlibs:
-	perl $(SCRIPTS_PATH)/copy-webkitlibraries-to-product-directory --clean
 endif
 
 all: libs
@@ -25,6 +21,3 @@ release r:
 analyze:
 	$(SCRIPTS_PATH)/set-webkit-configuration --release
 	@$(MAKE) libs
-
-clean:
-	@$(MAKE) cleanlibs

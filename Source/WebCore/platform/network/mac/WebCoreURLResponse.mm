@@ -37,7 +37,6 @@
 
 namespace WebCore {
 
-#if PLATFORM(MAC)
 // <rdar://problem/7007389> CoreTypes UTI map is missing 100+ file extensions that GateKeeper knew about
 // When we disabled content sniffing for file URLs we caused problems with these 100+ extensions that CoreTypes
 // doesn't know about.
@@ -323,12 +322,10 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse)
     if (result != originalResult)
         wkSetCFURLResponseMIMEType(cfResponse, result.get());
 }
-#endif
 
-#if !USE(CFNETWORK)
 NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLConnection *connection, NSURLRequest *newRequest, NSURLResponse *redirectResponse)
 {
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     if (redirectResponse)
         return redirectResponse;
 
@@ -345,6 +342,5 @@ NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLConnection *connection
     return redirectResponse;
 #endif
 }
-#endif
 
 }

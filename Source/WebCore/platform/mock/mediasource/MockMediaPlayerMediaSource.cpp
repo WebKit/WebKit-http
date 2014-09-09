@@ -159,9 +159,9 @@ MediaPlayer::ReadyState MockMediaPlayerMediaSource::readyState() const
     return m_readyState;
 }
 
-MediaTime MockMediaPlayerMediaSource::maxMediaTimeSeekable() const
+double MockMediaPlayerMediaSource::maxTimeSeekableDouble() const
 {
-    return m_duration;
+    return m_duration.toDouble();
 }
 
 std::unique_ptr<PlatformTimeRanges> MockMediaPlayerMediaSource::buffered() const
@@ -185,23 +185,23 @@ void MockMediaPlayerMediaSource::paint(GraphicsContext*, const IntRect&)
 {
 }
 
-MediaTime MockMediaPlayerMediaSource::currentMediaTime() const
+double MockMediaPlayerMediaSource::currentTimeDouble() const
 {
-    return m_currentTime;
+    return m_currentTime.toDouble();
 }
 
-MediaTime MockMediaPlayerMediaSource::durationMediaTime() const
+double MockMediaPlayerMediaSource::durationDouble() const
 {
-    return m_mediaSourcePrivate ? m_mediaSourcePrivate->duration() : MediaTime::zeroTime();
+    return m_mediaSourcePrivate ? m_mediaSourcePrivate->duration() : 0;
 }
 
-void MockMediaPlayerMediaSource::seekWithTolerance(const MediaTime& time, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)
+void MockMediaPlayerMediaSource::seekWithTolerance(double time, double negativeTolerance, double positiveTolerance)
 {
     if (!negativeTolerance && !positiveTolerance) {
-        m_currentTime = time;
-        m_mediaSourcePrivate->seekToTime(time);
+        m_currentTime = MediaTime::createWithDouble(time);
+        m_mediaSourcePrivate->seekToTime(MediaTime::createWithDouble(time));
     } else
-        m_currentTime = m_mediaSourcePrivate->seekToTime(time, negativeTolerance, positiveTolerance);
+        m_currentTime = m_mediaSourcePrivate->seekToTime(MediaTime::createWithDouble(time), MediaTime::createWithDouble(negativeTolerance), MediaTime::createWithDouble(positiveTolerance));
 
     if (m_seekCompleted) {
         m_player->timeChanged();
@@ -285,9 +285,9 @@ unsigned long MockMediaPlayerMediaSource::corruptedVideoFrames()
     return m_mediaSourcePrivate ? m_mediaSourcePrivate->corruptedVideoFrames() : 0;
 }
 
-MediaTime MockMediaPlayerMediaSource::totalFrameDelay()
+double MockMediaPlayerMediaSource::totalFrameDelay()
 {
-    return m_mediaSourcePrivate ? m_mediaSourcePrivate->totalFrameDelay() : MediaTime::zeroTime();
+    return m_mediaSourcePrivate ? m_mediaSourcePrivate->totalFrameDelay() : 0;
 }
 
 }

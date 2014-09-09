@@ -59,6 +59,8 @@
 #include "htmlediting.h"
 #include "markup.h"
 
+#if PLATFORM(IOS)
+
 SOFT_LINK_FRAMEWORK(AppSupport)
 SOFT_LINK(AppSupport, CPSharedResourcesDirectory, CFStringRef, (void), ())
 
@@ -261,16 +263,10 @@ NSDictionary* Editor::fontAttributesForSelectionStart() const
     CTFontRef font = style->font().primaryFont()->getCTFont();
     if (font)
         [result setObject:(id)font forKey:NSFontAttributeName];
-
-    RefPtr<EditingStyle> typingStyle = m_frame.selection().typingStyle();
-    if (typingStyle && typingStyle->style()) {
-        String value = typingStyle->style()->getPropertyValue(CSSPropertyWebkitTextDecorationsInEffect);
-        if (value.contains("underline"))
-            [result setObject:[NSNumber numberWithInt:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
-    } else {
-        if (style->textDecorationsInEffect() & TextDecorationUnderline)
-            [result setObject:[NSNumber numberWithInt:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
-    }
+    
+    if (style->textDecorationsInEffect() & TextDecorationUnderline)
+        [result setObject:[NSNumber numberWithInt:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
+    
     if (nodeToRemove)
         nodeToRemove->remove(ASSERT_NO_EXCEPTION);
     
@@ -628,3 +624,5 @@ PassRefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResourc
 }
 
 } // namespace WebCore
+
+#endif // PLATFORM(IOS)

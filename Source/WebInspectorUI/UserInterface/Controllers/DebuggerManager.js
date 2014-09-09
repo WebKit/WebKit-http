@@ -67,10 +67,8 @@ WebInspector.DebuggerManager = function()
     this._updateBreakOnExceptionsState();
 
     function restoreBreakpointsSoon() {
-        this._restoringBreakpoints = true;
         for (var cookie of this._breakpointsSetting.value)
             this.addBreakpoint(new WebInspector.Breakpoint(cookie));
-        delete this._restoringBreakpoints;
     }
 
     // Ensure that all managers learn about restored breakpoints,
@@ -103,12 +101,18 @@ WebInspector.DebuggerManager.prototype = {
 
     set breakpointsEnabled(enabled)
     {
-        if (this._breakpointsEnabledSetting.value === enabled)
+        if (this._breakpointsEnabled === enabled)
             return;
 
         this._breakpointsEnabledSetting.value = enabled;
 
         this.dispatchEventToListeners(WebInspector.DebuggerManager.Event.BreakpointsEnabledDidChange);
+
+        this._allExceptionsBreakpoint.dispatchEventToListeners(WebInspector.Breakpoint.Event.ResolvedStateDidChange);
+        this._allUncaughtExceptionsBreakpoint.dispatchEventToListeners(WebInspector.Breakpoint.Event.ResolvedStateDidChange);
+
+        for (var i = 0; i < this._breakpoints.length; ++i)
+            this._breakpoints[i].dispatchEventToListeners(WebInspector.Breakpoint.Event.ResolvedStateDidChange);
 
         DebuggerAgent.setBreakpointsActive(enabled);
 
@@ -142,107 +146,27 @@ WebInspector.DebuggerManager.prototype = {
 
     pause: function()
     {
-        if (this._paused)
-            return Promise.resolve();
-
-        var listener = new WebInspector.EventListener(this, true);
-
-        var managerResult = new Promise(function(resolve, reject) {
-            listener.connect(WebInspector.debuggerManager, WebInspector.DebuggerManager.Event.Paused, resolve);
-        });
-
-        var protocolResult = DebuggerAgent.pause()
-            .catch(function(error) {
-                listener.disconnect();
-                console.error("DebuggerManager.pause failed: ", error);
-                throw error;
-            });
-
-        return Promise.all([managerResult, protocolResult]);
+        DebuggerAgent.pause();
     },
 
     resume: function()
     {
-        if (!this._paused)
-            return Promise.resolve();
-
-        var listener = new WebInspector.EventListener(this, true);
-
-        var managerResult = new Promise(function(resolve, reject) {
-            listener.connect(WebInspector.debuggerManager, WebInspector.DebuggerManager.Event.Resumed, resolve);
-        });
-
-        var protocolResult = DebuggerAgent.resume()
-            .catch(function(error) {
-                listener.disconnect();
-                console.error("DebuggerManager.resume failed: ", error);
-                throw error;
-            });
-
-        return Promise.all([managerResult, protocolResult]);
+        DebuggerAgent.resume();
     },
 
     stepOver: function()
     {
-        if (!this._paused)
-            return Promise.reject(new Error("Cannot step over because debugger is not paused."));
-
-        var listener = new WebInspector.EventListener(this, true);
-
-        var managerResult = new Promise(function(resolve, reject) {
-            listener.connect(WebInspector.debuggerManager, WebInspector.DebuggerManager.Event.ActiveCallFrameDidChange, resolve);
-        });
-
-        var protocolResult = DebuggerAgent.stepOver()
-            .catch(function(error) {
-                listener.disconnect();
-                console.error("DebuggerManager.stepOver failed: ", error);
-                throw error;
-            });
-
-        return Promise.all([managerResult, protocolResult]);
+        DebuggerAgent.stepOver();
     },
 
     stepInto: function()
     {
-        if (!this._paused)
-            return Promise.reject(new Error("Cannot step into because debugger is not paused."));
-
-        var listener = new WebInspector.EventListener(this, true);
-
-        var managerResult = new Promise(function(resolve, reject) {
-            listener.connect(WebInspector.debuggerManager, WebInspector.DebuggerManager.Event.ActiveCallFrameDidChange, resolve);
-        });
-
-        var protocolResult = DebuggerAgent.stepInto()
-            .catch(function(error) {
-                listener.disconnect();
-                console.error("DebuggerManager.stepInto failed: ", error);
-                throw error;
-            });
-
-        return Promise.all([managerResult, protocolResult]);
+        DebuggerAgent.stepInto();
     },
 
     stepOut: function()
     {
-        if (!this._paused)
-            return Promise.reject(new Error("Cannot step out because debugger is not paused."));
-
-        var listener = new WebInspector.EventListener(this, true);
-
-        var managerResult = new Promise(function(resolve, reject) {
-            listener.connect(WebInspector.debuggerManager, WebInspector.DebuggerManager.Event.ActiveCallFrameDidChange, resolve);
-        });
-
-        var protocolResult = DebuggerAgent.stepOut()
-            .catch(function(error) {
-                listener.disconnect();
-                console.error("DebuggerManager.stepOut failed: ", error);
-                throw error;
-            });
-
-        return Promise.all([managerResult, protocolResult]);
+        DebuggerAgent.stepOut();
     },
 
     get allExceptionsBreakpoint()
@@ -386,11 +310,6 @@ WebInspector.DebuggerManager.prototype = {
             return;
 
         console.assert(breakpoint.identifier === breakpointIdentifier);
-
-        if (!breakpoint.sourceCodeLocation.sourceCode) {
-            var sourceCodeLocation = this._sourceCodeLocationFromPayload(location);
-            breakpoint.sourceCodeLocation.sourceCode = sourceCodeLocation.sourceCode;
-        }
 
         breakpoint.resolved = true;
     },
@@ -605,11 +524,9 @@ WebInspector.DebuggerManager.prototype = {
         if (breakpoint.identifier || breakpoint.disabled)
             return;
 
-        if (!this._restoringBreakpoints) {
-            // Enable breakpoints since a breakpoint is being set. This eliminates
-            // a multi-step process for the user that can be confusing.
-            this.breakpointsEnabled = true;
-        }
+        // Enable breakpoints since a breakpoint is being set. This eliminates
+        // a multi-step process for the user that can be confusing.
+        this.breakpointsEnabled = true;
 
         function didSetBreakpoint(error, breakpointIdentifier, locations)
         {

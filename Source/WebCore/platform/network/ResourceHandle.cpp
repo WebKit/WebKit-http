@@ -239,4 +239,9 @@ void ResourceHandle::setDefersLoading(bool defers)
     platformSetDefersLoading(defers);
 }
 
+void ResourceHandle::didChangePriority(ResourceLoadPriority)
+{
+    // Optionally implemented by platform.
+}
+
 } // namespace WebCore

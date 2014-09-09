@@ -44,16 +44,16 @@ enum class DominantScrollGestureDirection {
 
 class WheelEventDeltaTracker {
 public:
-    WEBCORE_EXPORT WheelEventDeltaTracker();
+    WheelEventDeltaTracker();
     virtual ~WheelEventDeltaTracker();
 
-    WEBCORE_EXPORT void beginTrackingDeltas();
-    WEBCORE_EXPORT void endTrackingDeltas();
+    void beginTrackingDeltas();
+    void endTrackingDeltas();
 
     bool isTrackingDeltas() const { return m_isTrackingDeltas; }
 
-    WEBCORE_EXPORT void recordWheelEventDelta(const PlatformWheelEvent&);
-    WEBCORE_EXPORT DominantScrollGestureDirection dominantScrollGestureDirection() const;
+    void recordWheelEventDelta(const PlatformWheelEvent&);
+    DominantScrollGestureDirection dominantScrollGestureDirection() const;
 
 private:
     Deque<FloatSize> m_recentWheelEventDeltas;

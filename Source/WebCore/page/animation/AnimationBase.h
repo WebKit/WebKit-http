@@ -185,7 +185,9 @@ public:
 
     // FIXME: rename this using the "lists match" terminology.
     bool isTransformFunctionListValid() const { return m_transformFunctionListValid; }
+#if ENABLE(CSS_FILTERS)
     bool filterFunctionListsMatch() const { return m_filterFunctionListsMatch; }
+#endif
 
     // Freeze the animation; used by DumpRenderTree.
     void freezeAtTime(double t);
@@ -240,7 +242,9 @@ protected:
 
     bool m_isAccelerated;
     bool m_transformFunctionListValid;
+#if ENABLE(CSS_FILTERS)
     bool m_filterFunctionListsMatch;
+#endif
     double m_startTime;
     double m_pauseTime;
     double m_requestedStartTime;

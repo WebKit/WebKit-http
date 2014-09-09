@@ -28,19 +28,19 @@
 
 namespace WebCore {
 
-WEBCORE_EXPORT bool applicationIsAOLInstantMessenger();
-WEBCORE_EXPORT bool applicationIsAdobeInstaller();
-WEBCORE_EXPORT bool applicationIsAperture();
-WEBCORE_EXPORT bool applicationIsAppleMail();
+bool applicationIsAOLInstantMessenger();
+bool applicationIsAdobeInstaller();
+bool applicationIsAperture();
+bool applicationIsAppleMail();
 bool applicationIsITunes();
-WEBCORE_EXPORT bool applicationIsMicrosoftMessenger();
-WEBCORE_EXPORT bool applicationIsMicrosoftMyDay();
-WEBCORE_EXPORT bool applicationIsMicrosoftOutlook();
+bool applicationIsMicrosoftMessenger();
+bool applicationIsMicrosoftMyDay();
+bool applicationIsMicrosoftOutlook();
 bool applicationIsQuickenEssentials();
-WEBCORE_EXPORT bool applicationIsSafari();
+bool applicationIsSafari();
 bool applicationIsSolidStateNetworksDownloader();
-WEBCORE_EXPORT bool applicationIsVersions();
-WEBCORE_EXPORT bool applicationIsHRBlock();
+bool applicationIsVersions();
+bool applicationIsHRBlock();
 
 } // namespace WebCore
 

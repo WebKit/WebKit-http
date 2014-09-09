@@ -665,6 +665,11 @@ String InputType::defaultValue() const
     return String();
 }
 
+bool InputType::canSetSuggestedValue()
+{
+    return false;
+}
+
 bool InputType::shouldSendChangeEventAfterCheckedChanged()
 {
     return true;
@@ -750,6 +755,11 @@ bool InputType::shouldResetOnDocumentActivation()
 }
 
 bool InputType::shouldRespectListAttribute()
+{
+    return false;
+}
+
+bool InputType::shouldRespectSpeechAttribute()
 {
     return false;
 }

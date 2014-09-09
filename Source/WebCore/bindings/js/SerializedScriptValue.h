@@ -67,9 +67,9 @@ class SerializedScriptValue :
     public RefCounted<SerializedScriptValue> {
 #endif
 public:
-    WEBCORE_EXPORT static PassRefPtr<SerializedScriptValue> create(JSC::ExecState*, JSC::JSValue, MessagePortArray*, ArrayBufferArray*, SerializationErrorMode = Throwing);
+    static PassRefPtr<SerializedScriptValue> create(JSC::ExecState*, JSC::JSValue, MessagePortArray*, ArrayBufferArray*, SerializationErrorMode = Throwing);
 
-    WEBCORE_EXPORT static PassRefPtr<SerializedScriptValue> create(const String&);
+    static PassRefPtr<SerializedScriptValue> create(const String&);
     static PassRefPtr<SerializedScriptValue> adopt(Vector<uint8_t>& buffer)
     {
         return adoptRef(new SerializedScriptValue(buffer));
@@ -77,15 +77,15 @@ public:
 
     static PassRefPtr<SerializedScriptValue> nullValue();
 
-    WEBCORE_EXPORT JSC::JSValue deserialize(JSC::ExecState*, JSC::JSGlobalObject*, MessagePortArray*, SerializationErrorMode = Throwing);
+    JSC::JSValue deserialize(JSC::ExecState*, JSC::JSGlobalObject*, MessagePortArray*, SerializationErrorMode = Throwing);
 
     static uint32_t wireFormatVersion();
 
     String toString();
 
     // API implementation helpers. These don't expose special behavior for ArrayBuffers or MessagePorts.
-    WEBCORE_EXPORT static PassRefPtr<SerializedScriptValue> create(JSContextRef, JSValueRef, JSValueRef* exception);
-    WEBCORE_EXPORT JSValueRef deserialize(JSContextRef, JSValueRef* exception);
+    static PassRefPtr<SerializedScriptValue> create(JSContextRef, JSValueRef, JSValueRef* exception);
+    JSValueRef deserialize(JSContextRef, JSValueRef* exception);
 
     const Vector<uint8_t>& data() const { return m_data; }
     bool hasBlobURLs() const { return !m_blobURLs.isEmpty(); }
@@ -103,7 +103,7 @@ public:
     }
     const Vector<uint8_t>& toWireBytes() const { return m_data; }
 
-    WEBCORE_EXPORT ~SerializedScriptValue();
+    ~SerializedScriptValue();
 
 private:
     typedef Vector<JSC::ArrayBufferContents> ArrayBufferContentsArray;
@@ -113,7 +113,7 @@ private:
     void addBlobURL(const String&);
 
     SerializedScriptValue(const Vector<unsigned char>&);
-    WEBCORE_EXPORT SerializedScriptValue(Vector<unsigned char>&);
+    SerializedScriptValue(Vector<unsigned char>&);
     SerializedScriptValue(Vector<unsigned char>&, Vector<String>& blobURLs);
     SerializedScriptValue(Vector<unsigned char>&, Vector<String>& blobURLs, PassOwnPtr<ArrayBufferContentsArray>);
 

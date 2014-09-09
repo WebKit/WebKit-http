@@ -45,8 +45,8 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSONObject);
 
-EncodedJSValue JSC_HOST_CALL JSONProtoFuncParse(ExecState*);
-EncodedJSValue JSC_HOST_CALL JSONProtoFuncStringify(ExecState*);
+static EncodedJSValue JSC_HOST_CALL JSONProtoFuncParse(ExecState*);
+static EncodedJSValue JSC_HOST_CALL JSONProtoFuncStringify(ExecState*);
 
 }
 
@@ -228,7 +228,7 @@ Stringifier::Stringifier(ExecState* exec, const Local<Unknown>& replacer, const 
                     continue;
             }
 
-            m_arrayReplacerPropertyNames.add(name.toString(exec)->toIdentifier(exec));
+            m_arrayReplacerPropertyNames.add(Identifier(exec, name.toString(exec)->value(exec)));
         }
         return;
     }

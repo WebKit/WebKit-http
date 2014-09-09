@@ -34,12 +34,15 @@
 #include "Color.h"
 #include "MediaQuery.h"
 #include "SourceSizeList.h"
-#include "WebKitCSSFilterValue.h"
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
+
+#if ENABLE(CSS_FILTERS)
+#include "WebKitCSSFilterValue.h"
+#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSGridTemplateAreasValue.h"
@@ -138,8 +141,9 @@ public:
     bool parseFillProperty(CSSPropertyID propId, CSSPropertyID& propId1, CSSPropertyID& propId2, RefPtr<CSSValue>&, RefPtr<CSSValue>&);
     bool parseFillShorthand(CSSPropertyID, const CSSPropertyID* properties, int numProperties, bool important);
 
-    void addFillValue(RefPtr<CSSValue>& lval, PassRef<CSSValue> rval);
-    void addAnimationValue(RefPtr<CSSValue>& lval, PassRef<CSSValue> rval);
+    void addFillValue(RefPtr<CSSValue>& lval, PassRefPtr<CSSValue> rval);
+
+    void addAnimationValue(RefPtr<CSSValue>& lval, PassRefPtr<CSSValue> rval);
 
     PassRefPtr<CSSValue> parseAnimationDelay();
     PassRefPtr<CSSValue> parseAnimationDirection();
@@ -260,10 +264,12 @@ public:
     PassRefPtr<CSSValue> parseImageSet();
 #endif
 
+#if ENABLE(CSS_FILTERS)
     bool parseFilterImage(CSSParserValueList*, RefPtr<CSSValue>&);
 
     bool parseFilter(CSSParserValueList*, RefPtr<CSSValue>&);
     PassRefPtr<WebKitCSSFilterValue> parseBuiltinFilterArguments(CSSParserValueList*, WebKitCSSFilterValue::FilterOperationType);
+#endif
 
     PassRefPtr<CSSValue> parseClipPath();
 
@@ -407,8 +413,8 @@ public:
     PassRefPtr<StyleRuleBase> createViewportRule();
 #endif
 
-    PassRef<CSSPrimitiveValue> createPrimitiveNumericValue(CSSParserValue*);
-    PassRef<CSSPrimitiveValue> createPrimitiveStringValue(CSSParserValue*);
+    PassRefPtr<CSSPrimitiveValue> createPrimitiveNumericValue(CSSParserValue*);
+    PassRefPtr<CSSPrimitiveValue> createPrimitiveStringValue(CSSParserValue*);
 
     static URL completeURL(const CSSParserContext&, const String& url);
 
@@ -528,12 +534,6 @@ private:
     bool parseSize(CSSPropertyID propId, bool important);
     SizeParameterType parseSizeParameter(CSSValueList* parsedValues, CSSParserValue* value, SizeParameterType prevParamType);
 
-#if ENABLE(CSS_SCROLL_SNAP)
-    bool parseNonElementSnapPoints(CSSPropertyID propId, bool important);
-    bool parseScrollSnapDestination(CSSPropertyID propId, bool important);
-    bool parseScrollSnapCoordinate(CSSPropertyID propId, bool important);
-#endif
-
     bool parseFontFaceSrcURI(CSSValueList*);
     bool parseFontFaceSrcLocal(CSSValueList*);
 
@@ -634,7 +634,9 @@ private:
     double parsedDouble(CSSParserValue*, ReleaseParsedCalcValueCondition releaseCalc = DoNotReleaseParsedCalcValue);
     
     friend class TransformOperationInfo;
+#if ENABLE(CSS_FILTERS)
     friend class FilterOperationInfo;
+#endif
 };
 
 CSSPropertyID cssPropertyID(const CSSParserString&);

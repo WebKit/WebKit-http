@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,14 +29,12 @@
 #if PLATFORM(IOS)
 
 #import "GeolocationPermissionRequestProxy.h"
-#import "WKUIDelegatePrivate.h"
-#import "WKWebView.h"
 #import "WebContext.h"
 #import "WebGeolocationManagerProxy.h"
 #import "WebSecurityOrigin.h"
 #import <WebGeolocationPosition.h>
 #import <WebCore/GeolocationPosition.h>
-#import <WebCore/URL.h>
+#import <WebKit/WKGeolocationPermissionRequest.h>
 #import <wtf/Assertions.h>
 #import <wtf/PassRefPtr.h>
 #import <wtf/RefPtr.h>
@@ -47,7 +45,6 @@
 #import <WebKit/WebGeolocationCoreLocationProvider.h>
 #import <WebKit/WebAllowDenyPolicyListener.h>
 
-using namespace WebCore;
 using namespace WebKit;
 
 #pragma clang diagnostic push
@@ -62,14 +59,14 @@ using namespace WebKit;
 @end
 
 namespace WebKit {
-void decidePolicyForGeolocationRequestFromOrigin(SecurityOrigin*, const String& urlString, id<WebAllowDenyPolicyListener>, UIWindow*);
+void decidePolicyForGeolocationRequestFromOrigin(WebCore::SecurityOrigin*, const String& urlString, id<WebAllowDenyPolicyListener>, UIWindow*);
 };
 
 struct GeolocationRequestData {
-    RefPtr<SecurityOrigin> origin;
+    RefPtr<WebCore::SecurityOrigin> origin;
     RefPtr<WebFrameProxy> frame;
     RefPtr<GeolocationPermissionRequestProxy> permissionRequest;
-    RetainPtr<WKWebView> view;
+    RetainPtr<UIWindow> window;
 };
 
 @implementation WKGeolocationProviderIOS {
@@ -153,14 +150,14 @@ static void setEnableHighAccuracy(WKGeolocationManagerRef geolocationManager, bo
     return self;
 }
 
--(void)decidePolicyForGeolocationRequestFromOrigin:(SecurityOrigin&)origin frame:(WebFrameProxy&)frame request:(GeolocationPermissionRequestProxy&)permissionRequest view:(WKWebView*)contentView
+-(void)decidePolicyForGeolocationRequestFromOrigin:(WKSecurityOriginRef)origin frame:(WKFrameRef)frame request:(WKGeolocationPermissionRequestRef)permissionRequest window:(UIWindow*)window
 {
     // Step 1: ask the user if the app can use Geolocation.
     GeolocationRequestData geolocationRequestData;
-    geolocationRequestData.origin = &origin;
-    geolocationRequestData.frame = &frame;
-    geolocationRequestData.permissionRequest = &permissionRequest;
-    geolocationRequestData.view = contentView;
+    geolocationRequestData.origin = const_cast<WebCore::SecurityOrigin*>(&toImpl(origin)->securityOrigin());
+    geolocationRequestData.frame = toImpl(frame);
+    geolocationRequestData.permissionRequest = toImpl(permissionRequest);
+    geolocationRequestData.window = window;
     _requestsWaitingForCoreLocationAuthorization.append(geolocationRequestData);
     [_coreLocationProvider requestGeolocationAuthorization];
 }
@@ -175,25 +172,8 @@ static void setEnableHighAccuracy(WKGeolocationManagerRef geolocationManager, bo
     // Step 2: ask the user if the this particular page can use gelocation.
     Vector<GeolocationRequestData> requests = WTF::move(_requestsWaitingForCoreLocationAuthorization);
     for (const auto& request : requests) {
-        bool requiresUserAuthorization = true;
-
-        id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([request.view UIDelegate]);
-        if ([uiDelegate respondsToSelector:@selector(_webView:shouldRequestGeolocationAuthorizationForURL:isMainFrame:mainFrameURL:)]) {
-            const WebFrameProxy* mainFrame = request.frame->page()->mainFrame();
-            bool isMainFrame = request.frame == mainFrame;
-            URL requestFrameURL(URL(), request.frame->url());
-            URL mainFrameURL(URL(), mainFrame->url());
-            requiresUserAuthorization = [uiDelegate _webView:request.view.get()
-                 shouldRequestGeolocationAuthorizationForURL:requestFrameURL
-                                                 isMainFrame:isMainFrame
-                                                mainFrameURL:mainFrameURL];
-        }
-
-        if (requiresUserAuthorization) {
-            RetainPtr<WKWebAllowDenyPolicyListener> policyListener = adoptNS([[WKWebAllowDenyPolicyListener alloc] initWithPermissionRequestProxy:request.permissionRequest.get()]);
-            decidePolicyForGeolocationRequestFromOrigin(request.origin.get(), request.frame->url(), policyListener.get(), [request.view window]);
-        } else
-            request.permissionRequest->allow();
+        RetainPtr<WKWebAllowDenyPolicyListener> policyListener = adoptNS([[WKWebAllowDenyPolicyListener alloc] initWithPermissionRequestProxy:request.permissionRequest.get()]);
+        decidePolicyForGeolocationRequestFromOrigin(request.origin.get(), request.frame->url(), policyListener.get(), request.window.get());
     }
 }
 
@@ -204,7 +184,7 @@ static void setEnableHighAccuracy(WKGeolocationManagerRef geolocationManager, bo
         requestData.permissionRequest->deny();
 }
 
-- (void)positionChanged:(GeolocationPosition*)position
+- (void)positionChanged:(WebCore::GeolocationPosition*)position
 {
     _lastActivePosition = WebGeolocationPosition::create(position->timestamp(), position->latitude(), position->longitude(), position->accuracy(), position->canProvideAltitude(), position->altitude(), position->canProvideAltitudeAccuracy(), position->altitudeAccuracy(), position->canProvideHeading(), position->heading(), position->canProvideSpeed(), position->speed());
     _geolocationManager->providerDidChangePosition(_lastActivePosition.get());

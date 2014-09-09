@@ -141,7 +141,7 @@ private:
 template<typename Functor>
 void Debugger::forEachCodeBlock(Functor& functor)
 {
-    m_vm->prepareToDiscardCode();
+    m_vm->waitForCompilationsToComplete();
     m_vm->heap.forEachCodeBlock(functor);
 }
 
@@ -235,7 +235,7 @@ void Debugger::setSteppingMode(SteppingMode mode)
     if (mode == m_steppingMode || !m_vm)
         return;
 
-    m_vm->prepareToDiscardCode();
+    m_vm->waitForCompilationsToComplete();
 
     m_steppingMode = mode;
     SetSteppingModeFunctor functor(this, mode);
@@ -335,17 +335,11 @@ void Debugger::recompileAllJSFunctions(VM* vm)
     // If JavaScript is running, it's not safe to recompile, since we'll end
     // up throwing away code that is live on the stack.
     if (vm->entryScope) {
-        auto listener = [] (VM& vm, JSGlobalObject* globalObject) 
-        {
-            if (Debugger* debugger = globalObject->debugger())
-                debugger->recompileAllJSFunctions(&vm);
-        };
-
-        vm->entryScope->setEntryScopeDidPopListener(this, listener);
+        vm->entryScope->setRecompilationNeeded(true);
         return;
     }
 
-    vm->prepareToDiscardCode();
+    vm->waitForCompilationsToComplete();
 
     Recompiler recompiler(this);
     HeapIterationScope iterationScope(vm->heap);
@@ -607,8 +601,7 @@ void Debugger::stepOutOfFunction()
     if (!m_isPaused)
         return;
 
-    VMEntryFrame* topVMEntryFrame = m_vm->topVMEntryFrame;
-    m_pauseOnCallFrame = m_currentCallFrame ? m_currentCallFrame->callerFrame(topVMEntryFrame) : 0;
+    m_pauseOnCallFrame = m_currentCallFrame ? m_currentCallFrame->callerFrameSkippingVMEntrySentinel() : 0;
     notifyDoneProcessingDebuggerEvents();
 }
 
@@ -724,13 +717,10 @@ void Debugger::returnEvent(CallFrame* callFrame)
         return;
 
     // Treat stepping over a return statement like stepping out.
-    if (m_currentCallFrame == m_pauseOnCallFrame) {
-        VMEntryFrame* topVMEntryFrame = m_vm->topVMEntryFrame;
-        m_pauseOnCallFrame = m_currentCallFrame->callerFrame(topVMEntryFrame);
-    }
+    if (m_currentCallFrame == m_pauseOnCallFrame)
+        m_pauseOnCallFrame = m_currentCallFrame->callerFrameSkippingVMEntrySentinel();
 
-    VMEntryFrame* topVMEntryFrame = m_vm->topVMEntryFrame;
-    m_currentCallFrame = m_currentCallFrame->callerFrame(topVMEntryFrame);
+    m_currentCallFrame = m_currentCallFrame->callerFrameSkippingVMEntrySentinel();
 }
 
 void Debugger::willExecuteProgram(CallFrame* callFrame)
@@ -760,13 +750,11 @@ void Debugger::didExecuteProgram(CallFrame* callFrame)
     if (!m_currentCallFrame)
         return;
     if (m_currentCallFrame == m_pauseOnCallFrame) {
-        VMEntryFrame* topVMEntryFrame = m_vm->topVMEntryFrame;
-        m_pauseOnCallFrame = m_currentCallFrame->callerFrame(topVMEntryFrame);
+        m_pauseOnCallFrame = m_currentCallFrame->callerFrameSkippingVMEntrySentinel();
         if (!m_currentCallFrame)
             return;
     }
-    VMEntryFrame* topVMEntryFrame = m_vm->topVMEntryFrame;
-    m_currentCallFrame = m_currentCallFrame->callerFrame(topVMEntryFrame);
+    m_currentCallFrame = m_currentCallFrame->callerFrameSkippingVMEntrySentinel();
 }
 
 void Debugger::didReachBreakpoint(CallFrame* callFrame)

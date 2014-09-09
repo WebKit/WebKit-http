@@ -22,6 +22,7 @@
 #ifndef SVGFESpecularLightingElement_h
 #define SVGFESpecularLightingElement_h
 
+#if ENABLE(FILTERS)
 #include "FESpecularLighting.h"
 #include "SVGAnimatedNumber.h"
 #include "SVGFELightElement.h"
@@ -58,4 +59,5 @@ private:
 
 } // namespace WebCore
 
+#endif // ENABLE(FILTERS)
 #endif

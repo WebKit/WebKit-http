@@ -71,6 +71,7 @@ void CryptoKeyAES::buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder& 
 
 std::unique_ptr<CryptoKeyData> CryptoKeyAES::exportData() const
 {
+    ASSERT(extractable());
     return CryptoKeyDataOctetSequence::create(m_key);
 }
 

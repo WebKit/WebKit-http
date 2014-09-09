@@ -271,8 +271,17 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)_setMinimumZoomFontSize:(float)size;
 - (float)_minimumZoomFontSize;
 
-// Deprecated. Has no effect.
+- (BOOL)diskImageCacheEnabled;
 - (void)setDiskImageCacheEnabled:(BOOL)enabled;
+
+- (unsigned)diskImageCacheMinimumImageSize;
+- (void)setDiskImageCacheMinimumImageSize:(unsigned)minimumSize;
+
+- (unsigned)diskImageCacheMaximumCacheSize;
+- (void)setDiskImageCacheMaximumCacheSize:(unsigned)maximumSize;
+
+- (NSString *)_diskImageCacheSavedCacheDirectory;
+- (void)_setDiskImageCacheSavedCacheDirectory:(NSString *)path;
 
 - (void)setMediaPlaybackAllowsAirPlay:(BOOL)flag;
 - (BOOL)mediaPlaybackAllowsAirPlay;

@@ -18,10 +18,12 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEDistantLightElement.h"
+#include "SVGNames.h"
 
 #include "DistantLightSource.h"
-#include "SVGNames.h"
 
 namespace WebCore {
 
@@ -42,3 +44,5 @@ PassRefPtr<LightSource> SVGFEDistantLightElement::lightSource() const
 }
 
 }
+
+#endif

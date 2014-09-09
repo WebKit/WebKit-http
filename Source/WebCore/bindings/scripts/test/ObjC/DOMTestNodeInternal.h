@@ -30,5 +30,5 @@ namespace WebCore {
 class TestNode;
 }
 
-WEBCORE_EXPORT WebCore::TestNode* core(DOMTestNode *);
-WEBCORE_EXPORT DOMTestNode *kit(WebCore::TestNode*);
+WebCore::TestNode* core(DOMTestNode *);
+DOMTestNode *kit(WebCore::TestNode*);

@@ -161,7 +161,6 @@ void JSRopeString::resolveRopeToAtomicString(ExecState* exec) const
     if (m_length > maxLengthForOnStackResolve) {
         resolveRope(exec);
         m_value = AtomicString(m_value);
-        setIs8Bit(m_value.impl()->is8Bit());
         return;
     }
 
@@ -169,12 +168,10 @@ void JSRopeString::resolveRopeToAtomicString(ExecState* exec) const
         LChar buffer[maxLengthForOnStackResolve];
         resolveRopeInternal8(buffer);
         m_value = AtomicString(buffer, m_length);
-        setIs8Bit(m_value.impl()->is8Bit());
     } else {
         UChar buffer[maxLengthForOnStackResolve];
         resolveRopeInternal16(buffer);
         m_value = AtomicString(buffer, m_length);
-        setIs8Bit(m_value.impl()->is8Bit());
     }
 
     clearFibers();
@@ -196,7 +193,6 @@ AtomicStringImpl* JSRopeString::resolveRopeToExistingAtomicString(ExecState* exe
         resolveRope(exec);
         if (AtomicStringImpl* existingAtomicString = AtomicString::find(m_value.impl())) {
             m_value = *existingAtomicString;
-            setIs8Bit(m_value.impl()->is8Bit());
             clearFibers();
             return existingAtomicString;
         }
@@ -208,7 +204,6 @@ AtomicStringImpl* JSRopeString::resolveRopeToExistingAtomicString(ExecState* exe
         resolveRopeInternal8(buffer);
         if (AtomicStringImpl* existingAtomicString = AtomicString::find(buffer, m_length)) {
             m_value = *existingAtomicString;
-            setIs8Bit(m_value.impl()->is8Bit());
             clearFibers();
             return existingAtomicString;
         }
@@ -217,7 +212,6 @@ AtomicStringImpl* JSRopeString::resolveRopeToExistingAtomicString(ExecState* exe
         resolveRopeInternal16(buffer);
         if (AtomicStringImpl* existingAtomicString = AtomicString::find(buffer, m_length)) {
             m_value = *existingAtomicString;
-            setIs8Bit(m_value.impl()->is8Bit());
             clearFibers();
             return existingAtomicString;
         }

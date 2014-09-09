@@ -38,6 +38,7 @@ OBJC_CLASS NSData;
 
 namespace WebCore {
 
+class PurgeableBuffer;
 class SharedBuffer;
 
 class ResourceBuffer : public RefCounted<ResourceBuffer> {
@@ -47,13 +48,13 @@ public:
     static PassRefPtr<ResourceBuffer> create(const char* data, unsigned size) { return adoptRef(new ResourceBuffer(data, size)); }
     static PassRefPtr<ResourceBuffer> adoptSharedBuffer(PassRefPtr<SharedBuffer>);
 
-    WEBCORE_EXPORT virtual ~ResourceBuffer();
+    virtual ~ResourceBuffer();
 
-    WEBCORE_EXPORT virtual const char* data() const;
-    WEBCORE_EXPORT virtual unsigned size() const;
-    WEBCORE_EXPORT virtual bool isEmpty() const;
+    virtual const char* data() const;
+    virtual unsigned size() const;
+    virtual bool isEmpty() const;
 
-    WEBCORE_EXPORT void append(const char*, unsigned);
+    void append(const char*, unsigned);
     void append(SharedBuffer*);
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     void append(CFDataRef);
@@ -62,24 +63,38 @@ public:
     
     unsigned getSomeData(const char*& data, unsigned position = 0) const;
     
-    WEBCORE_EXPORT SharedBuffer* sharedBuffer() const;
+    SharedBuffer* sharedBuffer() const;
 #if USE(FOUNDATION)
     void tryReplaceSharedBufferContents(SharedBuffer*);
 #endif
     PassRefPtr<ResourceBuffer> copy() const;
 
+    bool hasPurgeableBuffer() const;
+    void createPurgeableBuffer() const;
+
+#if PLATFORM(IOS)
+    // FIXME: Remove PLATFORM(IOS)-guard once we upstream the iOS changes to SharedBuffer.{cpp, h} and SharedBufferCF.cpp.
+    void setShouldUsePurgeableMemory(bool);
+#endif
+
+    // Ensure this buffer has no other clients before calling this.
+    PassOwnPtr<PurgeableBuffer> releasePurgeableBuffer();
+
 #if USE(FOUNDATION)
-    WEBCORE_EXPORT RetainPtr<NSData> createNSData();
+    RetainPtr<NSData> createNSData();
 #endif
 #if USE(CF)
     RetainPtr<CFDataRef> createCFData();
 #endif
+#if ENABLE(DISK_IMAGE_CACHE)
+    bool isUsingDiskImageCache() const;
+#endif
 
 protected:
-    WEBCORE_EXPORT ResourceBuffer();
+    ResourceBuffer();
 
 private:
-    WEBCORE_EXPORT ResourceBuffer(const char*, unsigned);
+    ResourceBuffer(const char*, unsigned);
     ResourceBuffer(PassRefPtr<SharedBuffer>);
 
     RefPtr<SharedBuffer> m_sharedBuffer;

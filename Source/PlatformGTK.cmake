@@ -8,16 +8,12 @@ if (ENABLE_WEBKIT2)
         WebKit2
         "${CMAKE_SOURCE_DIR}/Source/WebKit2/UIProcess/API/gtk/docs/webkit2gtk-docs.sgml"
         "${CMAKE_SOURCE_DIR}/Source/WebKit2/UIProcess/API/gtk/docs/webkit2gtk-sections.txt"
-        GObjectDOMBindings
     )
 endif ()
 
 if (ENABLE_GTKDOC)
     install(DIRECTORY ${CMAKE_BINARY_DIR}/Documentation/webkit2gtk/html/
-            DESTINATION "${CMAKE_INSTALL_DATADIR}/gtk-doc/html/webkit2gtk-${WEBKITGTK_API_VERSION}"
-    )
-    install(DIRECTORY ${CMAKE_BINARY_DIR}/Documentation/webkitdomgtk/html/
-            DESTINATION "${CMAKE_INSTALL_DATADIR}/gtk-doc/html/webkitdomgtk-${WEBKITGTK_API_VERSION}"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/gtk-doc/html/webkit2gtk
     )
 endif ()
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #include <stdio.h>
 #include <wtf/Assertions.h>
-#include <wtf/DataLog.h>
 #include <wtf/HashFunctions.h>
 #include <wtf/HashTraits.h>
 #include <wtf/PrintStream.h>
@@ -118,31 +117,24 @@ public:
         return !!(bits()[bit / bitsInPointer()] & (static_cast<uintptr_t>(1) << (bit & (bitsInPointer() - 1))));
     }
     
-    bool quickSet(size_t bit)
+    void quickSet(size_t bit)
     {
         ASSERT_WITH_SECURITY_IMPLICATION(bit < size());
-        uintptr_t& word = bits()[bit / bitsInPointer()];
-        uintptr_t mask = static_cast<uintptr_t>(1) << (bit & (bitsInPointer() - 1));
-        bool result = !!(word & mask);
-        word |= mask;
-        return result;
+        bits()[bit / bitsInPointer()] |= (static_cast<uintptr_t>(1) << (bit & (bitsInPointer() - 1)));
     }
     
-    bool quickClear(size_t bit)
+    void quickClear(size_t bit)
     {
         ASSERT_WITH_SECURITY_IMPLICATION(bit < size());
-        uintptr_t& word = bits()[bit / bitsInPointer()];
-        uintptr_t mask = static_cast<uintptr_t>(1) << (bit & (bitsInPointer() - 1));
-        bool result = !!(word & mask);
-        word &= ~mask;
-        return result;
+        bits()[bit / bitsInPointer()] &= ~(static_cast<uintptr_t>(1) << (bit & (bitsInPointer() - 1)));
     }
     
-    bool quickSet(size_t bit, bool value)
+    void quickSet(size_t bit, bool value)
     {
         if (value)
-            return quickSet(bit);
-        return quickClear(bit);
+            quickSet(bit);
+        else
+            quickClear(bit);
     }
     
     bool get(size_t bit) const
@@ -152,30 +144,31 @@ public:
         return quickGet(bit);
     }
     
-    bool set(size_t bit)
+    void set(size_t bit)
     {
         ensureSize(bit + 1);
-        return quickSet(bit);
+        quickSet(bit);
     }
 
-    bool ensureSizeAndSet(size_t bit, size_t size)
+    void ensureSizeAndSet(size_t bit, size_t size)
     {
         ensureSize(size);
-        return quickSet(bit);
+        quickSet(bit);
     }
 
-    bool clear(size_t bit)
+    void clear(size_t bit)
     {
         if (bit >= size())
-            return false;
-        return quickClear(bit);
+            return;
+        quickClear(bit);
     }
     
-    bool set(size_t bit, bool value)
+    void set(size_t bit, bool value)
     {
         if (value)
-            return set(bit);
-        return clear(bit);
+            set(bit);
+        else
+            clear(bit);
     }
     
     void merge(const BitVector& other)
@@ -214,19 +207,6 @@ public:
         if (isInline())
             return bitCount(cleanseInlineBits(m_bitsOrPointer));
         return bitCountSlow();
-    }
-    
-    size_t findBit(size_t index, bool value) const
-    {
-        size_t result = findBitFast(index, value);
-        if (!ASSERT_DISABLED) {
-            size_t expectedResult = findBitSimple(index, value);
-            if (result != expectedResult) {
-                dataLog("findBit(", index, ", ", value, ") on ", *this, " should have gotten ", expectedResult, " but got ", result, "\n");
-                ASSERT_NOT_REACHED();
-            }
-        }
-        return result;
     }
     
     WTF_EXPORT_PRIVATE void dump(PrintStream& out) const;
@@ -303,64 +283,6 @@ private:
         return WTF::bitCount(static_cast<uint64_t>(bits));
     }
     
-    size_t findBitFast(size_t startIndex, bool value) const
-    {
-        if (isInline()) {
-            size_t index = startIndex;
-            findBitInWord(m_bitsOrPointer, index, maxInlineBits(), value);
-            return index;
-        }
-        
-        const OutOfLineBits* bits = outOfLineBits();
-        
-        // value = true: casts to 1, then xors to 0, then negates to 0.
-        // value = false: casts to 0, then xors to 1, then negates to -1 (i.e. all one bits).
-        uintptr_t skipValue = -(static_cast<uintptr_t>(value) ^ 1);
-        size_t numWords = bits->numWords();
-        
-        size_t wordIndex = startIndex / bitsInPointer();
-        size_t startIndexInWord = startIndex - wordIndex * bitsInPointer();
-        
-        while (wordIndex < numWords) {
-            uintptr_t word = bits->bits()[wordIndex];
-            if (word != skipValue) {
-                size_t index = startIndexInWord;
-                if (findBitInWord(word, index, bitsInPointer(), value))
-                    return wordIndex * bitsInPointer() + index;
-            }
-            
-            wordIndex++;
-            startIndexInWord = 0;
-        }
-        
-        return bits->numBits();
-    }
-    
-    size_t findBitSimple(size_t index, bool value) const
-    {
-        while (index < size()) {
-            if (get(index) == value)
-                return index;
-            index++;
-        }
-        return size();
-    }
-    
-    static bool findBitInWord(uintptr_t word, size_t& index, size_t endIndex, bool value)
-    {
-        word >>= index;
-        
-        while (index < endIndex) {
-            if ((word & 1) == static_cast<uintptr_t>(value))
-                return true;
-            index++;
-            word >>= 1;
-        }
-
-        index = endIndex;
-        return false;
-    }
-    
     class OutOfLineBits {
     public:
         size_t numBits() const { return m_numBits; }
@@ -396,8 +318,6 @@ private:
     WTF_EXPORT_PRIVATE size_t bitCountSlow() const;
     
     WTF_EXPORT_PRIVATE bool equalsSlowCase(const BitVector& other) const;
-    bool equalsSlowCaseFast(const BitVector& other) const;
-    bool equalsSlowCaseSimple(const BitVector& other) const;
     WTF_EXPORT_PRIVATE uintptr_t hashSlowCase() const;
     
     uintptr_t* bits()

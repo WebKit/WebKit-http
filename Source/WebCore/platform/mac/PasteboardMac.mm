@@ -139,7 +139,6 @@ PassOwnPtr<Pasteboard> Pasteboard::createPrivate()
     return create(platformStrategies()->pasteboardStrategy()->uniqueName());
 }
 
-#if ENABLE(DRAG_SUPPORT)
 PassOwnPtr<Pasteboard> Pasteboard::createForDragAndDrop()
 {
     return create(NSDragPboard);
@@ -149,7 +148,6 @@ PassOwnPtr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dragData
 {
     return create(dragData.pasteboardName());
 }
-#endif
 
 void Pasteboard::clear()
 {
@@ -637,7 +635,6 @@ Vector<String> Pasteboard::readFilenames()
     return paths;
 }
 
-#if ENABLE(DRAG_SUPPORT)
 void Pasteboard::setDragImage(DragImageRef image, const IntPoint& location)
 {
     // Don't allow setting the drag image if someone kept a pasteboard and is trying to set the image too late.
@@ -655,6 +652,5 @@ void Pasteboard::setDragImage(DragImageRef image, const IntPoint& location)
         modifierFlags:0 timestamp:0 windowNumber:0 context:nil eventNumber:0 clickCount:0 pressure:0];
     [NSApp postEvent:event atStart:YES];
 }
-#endif
 
 }

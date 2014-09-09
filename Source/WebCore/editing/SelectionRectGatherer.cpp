@@ -37,7 +37,6 @@ namespace WebCore {
 
 SelectionRectGatherer::SelectionRectGatherer(RenderView& renderView)
     : m_renderView(renderView)
-    , m_isTextOnly(true)
 {
 }
 
@@ -71,14 +70,13 @@ SelectionRectGatherer::Notifier::Notifier(SelectionRectGatherer& gatherer)
 SelectionRectGatherer::Notifier::~Notifier()
 {
     if (EditorClient* client = m_gatherer.m_renderView.view().frame().editor().client())
-        client->selectionRectsDidChange(m_gatherer.m_rects, m_gatherer.m_gapRects, m_gatherer.isTextOnly());
+        client->selectionRectsDidChange(m_gatherer.m_rects, m_gatherer.m_gapRects);
 }
 
 std::unique_ptr<SelectionRectGatherer::Notifier> SelectionRectGatherer::clearAndCreateNotifier()
 {
     m_rects.clear();
     m_gapRects.clear();
-    m_isTextOnly = true;
 
     return std::make_unique<Notifier>(*this);
 }

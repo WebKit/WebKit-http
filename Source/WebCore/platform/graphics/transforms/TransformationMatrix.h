@@ -144,7 +144,7 @@ public:
 
     // If the matrix has 3D components, the z component of the result is
     // dropped, effectively projecting the rect into the z=0 plane.
-    WEBCORE_EXPORT FloatRect mapRect(const FloatRect&) const;
+    FloatRect mapRect(const FloatRect&) const;
 
     // Rounds the resulting mapped rectangle out. This is helpful for bounding
     // box computations but may not be what is wanted in other contexts.
@@ -219,7 +219,7 @@ public:
     // this = mat * this.
     TransformationMatrix& multiply(const TransformationMatrix&);
 
-    WEBCORE_EXPORT TransformationMatrix& scale(double);
+    TransformationMatrix& scale(double);
     TransformationMatrix& scaleNonUniform(double sx, double sy);
     TransformationMatrix& scale3d(double sx, double sy, double sz);
 
@@ -231,7 +231,7 @@ public:
     // The vector (x,y,z) is normalized if it's not already. A vector of (0,0,0) uses a vector of (0,0,1).
     TransformationMatrix& rotate3d(double x, double y, double z, double angle);
     
-    WEBCORE_EXPORT TransformationMatrix& translate(double tx, double ty);
+    TransformationMatrix& translate(double tx, double ty);
     TransformationMatrix& translate3d(double tx, double ty, double tz);
 
     // translation added with a post-multiply
@@ -254,7 +254,7 @@ public:
 
     // Returns the identity matrix if it is not invertible.
     // Use isInvertible() before calling this if you need to know.
-    WEBCORE_EXPORT TransformationMatrix inverse() const;
+    TransformationMatrix inverse() const;
 
     // Decompose the matrix into its component parts.
     struct Decomposed2Type {
@@ -348,7 +348,7 @@ public:
 
 #if USE(CA)
     TransformationMatrix(const CATransform3D&);
-    WEBCORE_EXPORT operator CATransform3D() const;
+    operator CATransform3D() const;
 #endif
 #if USE(CG)
     TransformationMatrix(const CGAffineTransform&);

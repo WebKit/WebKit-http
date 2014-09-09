@@ -117,20 +117,13 @@ WebInspector.Breakpoint.prototype = {
 
     get resolved()
     {
-        return this._resolved;
+        return this._resolved && WebInspector.debuggerManager.breakpointsEnabled;
     },
 
     set resolved(resolved)
     {
         if (this._resolved === resolved)
             return;
-
-        function isSpecialBreakpoint()
-        {
-            return this._sourceCodeLocation.isEqual(new WebInspector.SourceCodeLocation(null, Infinity, Infinity));
-        }
-
-        console.assert(!resolved || this._sourceCodeLocation.sourceCode || isSpecialBreakpoint.call(this), "Breakpoints must have a SourceCode to be resolved.", this);
 
         this._resolved = resolved || false;
 

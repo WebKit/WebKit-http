@@ -44,8 +44,7 @@ public:
 
     virtual uint32_t hostingContextID() override;
 
-    virtual void setNeedsDisplayInRect(const WebCore::FloatRect& dirtyRect) override;
-    virtual void setNeedsDisplay() override;
+    virtual void setNeedsDisplay(const WebCore::FloatRect* dirtyRect = 0) override;
 
 private:
     PlatformCALayerRemoteCustom(WebCore::PlatformCALayer::LayerType, PlatformLayer *, WebCore::PlatformCALayerClient* owner, RemoteLayerTreeContext&);

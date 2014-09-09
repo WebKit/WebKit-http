@@ -122,7 +122,7 @@ private:
 };
 
 PlatformStrategies* platformStrategies();
-WEBCORE_EXPORT void setPlatformStrategies(PlatformStrategies*);
+void setPlatformStrategies(PlatformStrategies*);
 bool hasPlatformStrategies();
     
 } // namespace WebCore

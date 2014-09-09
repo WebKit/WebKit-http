@@ -64,8 +64,7 @@ enum StyleDifferenceContextSensitiveProperty {
     ContextSensitivePropertyNone = 0,
     ContextSensitivePropertyTransform = (1 << 0),
     ContextSensitivePropertyOpacity = (1 << 1),
-    ContextSensitivePropertyFilter = (1 << 2),
-    ContextSensitivePropertyClipRect = (1 << 3)
+    ContextSensitivePropertyFilter = (1 << 2)
 };
 
 // Static pseudo styles. Dynamic ones are produced on the fly.
@@ -538,7 +537,7 @@ enum LineSnap { LineSnapNone, LineSnapBaseline, LineSnapContain };
 
 enum LineAlign { LineAlignNone, LineAlignEdges };
 
-enum RubyPosition { RubyPositionBefore, RubyPositionAfter, RubyPositionInterCharacter };
+enum RubyPosition { RubyPositionBefore, RubyPositionAfter };
 
 #if ENABLE(CSS_GRID_LAYOUT)
 static const size_t GridAutoFlowBits = 5;
@@ -575,14 +574,6 @@ enum Isolation { IsolationAuto, IsolationIsolate };
 
 // Fill, Stroke, ViewBox are just used for SVG.
 enum CSSBoxType { BoxMissing = 0, MarginBox, BorderBox, PaddingBox, ContentBox, Fill, Stroke, ViewBox };
-
-#if ENABLE(CSS_SCROLL_SNAP)
-enum class ScrollSnapType {
-    None,
-    Proximity,
-    Mandatory
-};
-#endif
 
 } // namespace WebCore
 

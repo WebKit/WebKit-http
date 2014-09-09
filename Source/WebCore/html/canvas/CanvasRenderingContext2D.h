@@ -38,7 +38,6 @@
 #include "ImageBuffer.h"
 #include "Path.h"
 #include "PlatformLayer.h"
-#include "TextDirection.h"
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -199,7 +198,7 @@ public:
 
     void drawFocusIfNeeded(Element*);
 
-    float webkitBackingStorePixelRatio() const { return 1; }
+    float webkitBackingStorePixelRatio() const { return canvas()->deviceScaleFactor(); }
 
     void reset();
 
@@ -211,9 +210,6 @@ public:
 
     String textBaseline() const;
     void setTextBaseline(const String&);
-
-    String direction() const;
-    void setDirection(const String&);
 
     void fillText(const String& text, float x, float y);
     void fillText(const String& text, float x, float y, float maxWidth);
@@ -228,12 +224,6 @@ public:
     void setWebkitImageSmoothingEnabled(bool);
 
 private:
-    enum class Direction {
-        Inherit,
-        RTL,
-        LTR
-    };
-
     struct State : FontSelectorClient {
         State();
         virtual ~State();
@@ -266,7 +256,6 @@ private:
         // Text state.
         TextAlign m_textAlign;
         TextBaseline m_textBaseline;
-        Direction m_direction;
 
         String m_unparsedFont;
         Font m_font;
@@ -345,7 +334,6 @@ private:
     virtual bool isAccelerated() const override;
 
     virtual bool hasInvertibleTransform() const override { return state().m_hasInvertibleTransform; }
-    TextDirection toTextDirection(Direction, RenderStyle** computedStyle = nullptr) const;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
     virtual PlatformLayer* platformLayer() const override;

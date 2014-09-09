@@ -28,7 +28,6 @@ WebInspector.OverviewTimelineView = function(recording)
     WebInspector.TimelineView.call(this, recording);
 
     this.navigationSidebarTreeOutline.onselect = this._treeElementSelected.bind(this);
-    this.navigationSidebarTreeOutline.ondeselect = this._treeElementDeselected.bind(this);
 
     this._recording = recording;
 
@@ -36,7 +35,6 @@ WebInspector.OverviewTimelineView = function(recording)
 
     this._dataGrid = new WebInspector.DataGrid(columns);
     this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
-    this._dataGrid.element.classList.add("no-header");
 
     this._treeOutlineDataGridSynchronizer = new WebInspector.TreeOutlineDataGridSynchronizer(this._contentTreeOutline, this._dataGrid);
 
@@ -107,7 +105,7 @@ WebInspector.OverviewTimelineView.prototype = {
             }
         }
 
-        if (this.currentTime !== oldCurrentTime) {
+        if (!this.currentTime !== oldCurrentTime) {
             var selectedTreeElement = this.navigationSidebarTreeOutline.selectedTreeElement;
             var selectionWasHidden = selectedTreeElement && selectedTreeElement.hidden;
 
@@ -331,12 +329,6 @@ WebInspector.OverviewTimelineView.prototype = {
         this.dispatchEventToListeners(WebInspector.TimelineView.Event.SelectionPathComponentsDidChange);
     },
 
-    _treeElementDeselected: function(treeElement)
-    {
-        if (treeElement.status)
-            treeElement.status = "";
-    },
-
     _treeElementSelected: function(treeElement, selectedByUser)
     {
         if (!WebInspector.timelineSidebarPanel.canShowDifferentContentView())
@@ -347,7 +339,6 @@ WebInspector.OverviewTimelineView.prototype = {
 
         if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
             WebInspector.resourceSidebarPanel.showSourceCode(treeElement.representedObject);
-            this._updateTreeElementWithCloseButton(treeElement);
             return;
         }
 
@@ -362,27 +353,5 @@ WebInspector.OverviewTimelineView.prototype = {
         }
 
         WebInspector.resourceSidebarPanel.showOriginalOrFormattedSourceCodeLocation(treeElement.sourceCodeTimeline.sourceCodeLocation);
-        this._updateTreeElementWithCloseButton(treeElement);
-    },
-
-    _updateTreeElementWithCloseButton: function(treeElement)
-    {
-        if (this._closeStatusButton) {
-            treeElement.status = this._closeStatusButton.element;
-            return;
-        }
-
-        wrappedSVGDocument(platformImagePath("Close.svg"), null, WebInspector.UIString("Close resource view"), function(element) {
-            this._closeStatusButton = new WebInspector.TreeElementStatusButton(element);
-            this._closeStatusButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._closeStatusButtonClicked, this);
-            if (treeElement === this.navigationSidebarTreeOutline.selectedTreeElement)
-                this._updateTreeElementWithCloseButton(treeElement);
-        }.bind(this));
-    },
-
-    _closeStatusButtonClicked: function(event)
-    {
-        this.navigationSidebarTreeOutline.selectedTreeElement.deselect();
-        WebInspector.timelineSidebarPanel.showTimelineOverview();
     }
 };

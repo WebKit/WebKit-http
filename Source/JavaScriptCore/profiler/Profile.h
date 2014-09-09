@@ -41,12 +41,19 @@ public:
     const String& title() const { return m_title; }
     unsigned uid() const { return m_uid; }
 
-    ProfileNode* rootNode() const { return m_rootNode.get(); }
-    void setRootNode(PassRefPtr<ProfileNode> rootNode) { m_rootNode = rootNode; }
+    ProfileNode* head() const { return m_head.get(); }
+    void setHead(PassRefPtr<ProfileNode> head) { m_head = head; }
+
+    double totalTime() const { return m_head->totalTime(); }
+
+    double idleTime() const { return m_idleTime; }
+    void setIdleTime(double idleTime) { m_idleTime = idleTime; }
+
+    void forEach(void (ProfileNode::*)());
 
 #ifndef NDEBUG
-    void debugPrint();
-    void debugPrintSampleStyle();
+    void debugPrintData() const;
+    void debugPrintDataSampleStyle() const;
 #endif
 
 protected:
@@ -57,8 +64,9 @@ private:
     void removeProfileEnd();
 
     String m_title;
-    RefPtr<ProfileNode> m_rootNode;
+    RefPtr<ProfileNode> m_head;
     unsigned m_uid;
+    double m_idleTime;
 };
 
 } // namespace JSC

@@ -84,7 +84,6 @@ public:
     void dispatchEventAsContextMenuEvent(Event*);
 
     bool isUnderTest();
-    void unbufferedLog(const String& message);
 
     void beep();
 

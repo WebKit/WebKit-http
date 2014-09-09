@@ -39,84 +39,80 @@ void printInternal(PrintStream& out, UseKind useKind)
     switch (useKind) {
     case UntypedUse:
         out.print("Untyped");
-        return;
+        break;
     case Int32Use:
         out.print("Int32");
-        return;
+        break;
     case KnownInt32Use:
         out.print("KnownInt32");
-        return;
+        break;
     case Int52RepUse:
         out.print("Int52Rep");
-        return;
+        break;
     case MachineIntUse:
         out.print("MachineInt");
-        return;
+        break;
     case NumberUse:
         out.print("Number");
-        return;
+        break;
     case DoubleRepUse:
         out.print("DoubleRep");
-        return;
+        break;
     case DoubleRepRealUse:
         out.print("DoubleRepReal");
-        return;
+        break;
     case DoubleRepMachineIntUse:
         out.print("DoubleRepMachineInt");
-        return;
+        break;
     case BooleanUse:
         out.print("Boolean");
-        return;
+        break;
     case CellUse:
         out.print("Cell");
-        return;
+        break;
     case KnownCellUse:
         out.print("KnownCell");
-        return;
+        break;
     case ObjectUse:
         out.print("Object");
-        return;
-    case FunctionUse:
-        out.print("Function");
-        return;
+        break;
     case FinalObjectUse:
         out.print("FinalObject");
-        return;
+        break;
     case ObjectOrOtherUse:
         out.print("ObjectOrOther");
-        return;
+        break;
     case StringIdentUse:
         out.print("StringIdent");
-        return;
+        break;
     case StringUse:
         out.print("String");
-        return;
+        break;
     case KnownStringUse:
         out.print("KnownString");
-        return;
+        break;
     case StringObjectUse:
         out.print("StringObject");
-        return;
+        break;
     case StringOrStringObjectUse:
         out.print("StringOrStringObject");
-        return;
+        break;
     case NotStringVarUse:
         out.print("NotStringVar");
-        return;
+        break;
     case NotCellUse:
         out.print("NotCell");
-        return;
+        break;
     case OtherUse:
         out.print("Other");
-        return;
+        break;
     case MiscUse:
         out.print("Misc");
-        return;
-    case LastUseKind:
+        break;
+    default:
         RELEASE_ASSERT_NOT_REACHED();
-        return;
+        break;
     }
-    RELEASE_ASSERT_NOT_REACHED();
 }
 
 } // namespace WTF

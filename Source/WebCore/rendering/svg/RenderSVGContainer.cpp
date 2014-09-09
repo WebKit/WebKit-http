@@ -102,7 +102,7 @@ RenderObject* RenderSVGContainer::removeChild(RenderObject& child)
 
 bool RenderSVGContainer::selfWillPaint()
 {
-    auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*this);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this);
     return resources && resources->filter();
 }
 
@@ -180,14 +180,14 @@ bool RenderSVGContainer::nodeAtFloatPoint(const HitTestRequest& request, HitTest
                 
     for (RenderObject* child = lastChild(); child; child = child->previousSibling()) {
         if (child->nodeAtFloatPoint(request, result, localPoint, hitTestAction)) {
-            updateHitTestResult(result, LayoutPoint(localPoint));
+            updateHitTestResult(result, roundedLayoutPoint(localPoint));
             return true;
         }
     }
 
     // Accessibility wants to return SVG containers, if appropriate.
     if (request.type() & HitTestRequest::AccessibilityHitTest && m_objectBoundingBox.contains(localPoint)) {
-        updateHitTestResult(result, LayoutPoint(localPoint));
+        updateHitTestResult(result, roundedLayoutPoint(localPoint));
         return true;
     }
     

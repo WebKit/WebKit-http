@@ -71,12 +71,8 @@ static const CSSPropertyID editingProperties[] = {
     CSSPropertyWhiteSpace,
     CSSPropertyWidows,
     CSSPropertyWordSpacing,
-#if ENABLE(TOUCH_EVENTS)
-    CSSPropertyWebkitTapHighlightColor,
-#endif
 #if PLATFORM(IOS)
-    // FIXME: CSSPropertyWebkitCompositionFillColor shouldn't be iOS-specific. Once we fix up its usage in InlineTextBox::paintCompositionBackground()
-    // we should remove the PLATFORM(IOS)-guard. See <https://bugs.webkit.org/show_bug.cgi?id=126296>.
+    CSSPropertyWebkitTapHighlightColor,
     CSSPropertyWebkitCompositionFillColor,
 #endif
     CSSPropertyWebkitTextDecorationsInEffect,
@@ -1055,10 +1051,10 @@ static void mergeTextDecorationValues(CSSValueList* mergedValue, const CSSValueL
     RefPtr<CSSPrimitiveValue> lineThrough = cssValuePool().createIdentifierValue(CSSValueLineThrough);
 
     if (valueToMerge->hasValue(underline.get()) && !mergedValue->hasValue(underline.get()))
-        mergedValue->append(underline.releaseNonNull());
+        mergedValue->append(underline.get());
 
     if (valueToMerge->hasValue(lineThrough.get()) && !mergedValue->hasValue(lineThrough.get()))
-        mergedValue->append(lineThrough.releaseNonNull());
+        mergedValue->append(lineThrough.get());
 }
 
 void EditingStyle::mergeStyle(const StyleProperties* style, CSSPropertyOverrideMode mode)

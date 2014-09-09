@@ -20,6 +20,7 @@
 #ifndef SVGFEDisplacementMapElement_h
 #define SVGFEDisplacementMapElement_h
 
+#if ENABLE(FILTERS)
 #include "FEDisplacementMap.h"
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedNumber.h"
@@ -90,4 +91,5 @@ private:
 
 } // namespace WebCore
 
+#endif // ENABLE(FILTERS)
 #endif // SVGFEDisplacementMapElement_h

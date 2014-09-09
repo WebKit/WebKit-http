@@ -158,34 +158,11 @@ void ScrollingTreeFrameScrollingNodeMac::handleWheelEvent(const PlatformWheelEve
     scrollingTree().handleWheelEventPhase(wheelEvent.phase());
 }
 
-// FIXME: We should find a way to share some of the code from newGestureIsStarting(), isAlreadyPinnedInDirectionOfGesture(),
-// allowsVerticalStretching(), and allowsHorizontalStretching() with the implementation in ScrollAnimatorMac.
-static bool newGestureIsStarting(const PlatformWheelEvent& wheelEvent)
-{
-    return wheelEvent.phase() == PlatformWheelEventPhaseMayBegin || wheelEvent.phase() == PlatformWheelEventPhaseBegan;
-}
-
-bool ScrollingTreeFrameScrollingNodeMac::isAlreadyPinnedInDirectionOfGesture(const PlatformWheelEvent& wheelEvent, ScrollEventAxis axis)
-{
-    switch (axis) {
-    case ScrollEventAxis::Vertical:
-        return (wheelEvent.deltaY() > 0 && scrollPosition().y() <= minimumScrollPosition().y()) || (wheelEvent.deltaY() < 0 && scrollPosition().y() >= maximumScrollPosition().y());
-    case ScrollEventAxis::Horizontal:
-        return (wheelEvent.deltaX() > 0 && scrollPosition().x() <= minimumScrollPosition().x()) || (wheelEvent.deltaX() < 0 && scrollPosition().x() >= maximumScrollPosition().x());
-    }
-
-    ASSERT_NOT_REACHED();
-    return false;
-}
-
-bool ScrollingTreeFrameScrollingNodeMac::allowsHorizontalStretching(const PlatformWheelEvent& wheelEvent)
+bool ScrollingTreeFrameScrollingNodeMac::allowsHorizontalStretching()
 {
     switch (horizontalScrollElasticity()) {
-    case ScrollElasticityAutomatic: {
-        bool scrollbarsAllowStretching = hasEnabledHorizontalScrollbar() || !hasEnabledVerticalScrollbar();
-        bool eventPreventsStretching = newGestureIsStarting(wheelEvent) && isAlreadyPinnedInDirectionOfGesture(wheelEvent, ScrollEventAxis::Horizontal);
-        return scrollbarsAllowStretching && !eventPreventsStretching;
-    }
+    case ScrollElasticityAutomatic:
+        return hasEnabledHorizontalScrollbar() || !hasEnabledVerticalScrollbar();
     case ScrollElasticityNone:
         return false;
     case ScrollElasticityAllowed:
@@ -196,14 +173,11 @@ bool ScrollingTreeFrameScrollingNodeMac::allowsHorizontalStretching(const Platfo
     return false;
 }
 
-bool ScrollingTreeFrameScrollingNodeMac::allowsVerticalStretching(const PlatformWheelEvent& wheelEvent)
+bool ScrollingTreeFrameScrollingNodeMac::allowsVerticalStretching()
 {
     switch (verticalScrollElasticity()) {
-    case ScrollElasticityAutomatic: {
-        bool scrollbarsAllowStretching = hasEnabledVerticalScrollbar() || !hasEnabledHorizontalScrollbar();
-        bool eventPreventsStretching = newGestureIsStarting(wheelEvent) && isAlreadyPinnedInDirectionOfGesture(wheelEvent, ScrollEventAxis::Vertical);
-        return scrollbarsAllowStretching && !eventPreventsStretching;
-    }
+    case ScrollElasticityAutomatic:
+        return hasEnabledVerticalScrollbar() || !hasEnabledHorizontalScrollbar();
     case ScrollElasticityNone:
         return false;
     case ScrollElasticityAllowed:
@@ -376,11 +350,11 @@ void ScrollingTreeFrameScrollingNodeMac::setScrollLayerPosition(const FloatPoint
     m_scrollLayer.get().position = CGPointMake(-position.x() + scrollOrigin().x(), -position.y() + scrollOrigin().y());
 
     ScrollBehaviorForFixedElements behaviorForFixed = scrollBehaviorForFixedElements();
-    LayoutPoint scrollOffset = LayoutPoint(position) - toLayoutSize(scrollOrigin());
+    FloatPoint scrollOffset = position - toFloatSize(scrollOrigin());
     FloatRect viewportRect(FloatPoint(), scrollableAreaSize());
     
-    FloatSize scrollOffsetForFixedChildren = FrameView::scrollOffsetForFixedPosition(enclosingLayoutRect(viewportRect), LayoutSize(totalContentsSize()), scrollOffset, scrollOrigin(), frameScaleFactor(),
-        false, behaviorForFixed, headerHeight(), footerHeight());
+    FloatSize scrollOffsetForFixedChildren = FrameView::scrollOffsetForFixedPosition(enclosingLayoutRect(viewportRect),
+        roundedLayoutSize(totalContentsSize()), roundedLayoutPoint(scrollOffset), scrollOrigin(), frameScaleFactor(), false, behaviorForFixed, headerHeight(), footerHeight());
     
     if (m_counterScrollingLayer)
         m_counterScrollingLayer.get().position = FloatPoint(scrollOffsetForFixedChildren);
@@ -400,7 +374,7 @@ void ScrollingTreeFrameScrollingNodeMac::setScrollLayerPosition(const FloatPoint
         // then we should recompute scrollOffsetForFixedChildren for the banner with a scale factor of 1.
         float horizontalScrollOffsetForBanner = scrollOffsetForFixedChildren.width();
         if (frameScaleFactor() != 1)
-            horizontalScrollOffsetForBanner = FrameView::scrollOffsetForFixedPosition(enclosingLayoutRect(viewportRect), LayoutSize(totalContentsSize()), scrollOffset, scrollOrigin(), 1, false, behaviorForFixed, headerHeight(), footerHeight()).width();
+            horizontalScrollOffsetForBanner = FrameView::scrollOffsetForFixedPosition(enclosingLayoutRect(viewportRect), roundedLayoutSize(totalContentsSize()), roundedLayoutPoint(scrollOffset), scrollOrigin(), 1, false, behaviorForFixed, headerHeight(), footerHeight()).width();
 
         if (m_headerLayer)
             m_headerLayer.get().position = FloatPoint(horizontalScrollOffsetForBanner, FrameView::yPositionForHeaderLayer(position, topContentInset));
@@ -517,15 +491,15 @@ static void logThreadedScrollingMode(unsigned synchronousScrollingReasons)
         StringBuilder reasonsDescription;
 
         if (synchronousScrollingReasons & ScrollingCoordinator::ForcedOnMainThread)
-            reasonsDescription.appendLiteral("forced,");
+            reasonsDescription.append("forced,");
         if (synchronousScrollingReasons & ScrollingCoordinator::HasSlowRepaintObjects)
-            reasonsDescription.appendLiteral("slow-repaint objects,");
+            reasonsDescription.append("slow-repaint objects,");
         if (synchronousScrollingReasons & ScrollingCoordinator::HasViewportConstrainedObjectsWithoutSupportingFixedLayers)
-            reasonsDescription.appendLiteral("viewport-constrained objects,");
+            reasonsDescription.append("viewport-constrained objects,");
         if (synchronousScrollingReasons & ScrollingCoordinator::HasNonLayerViewportConstrainedObjects)
-            reasonsDescription.appendLiteral("non-layer viewport-constrained objects,");
+            reasonsDescription.append("non-layer viewport-constrained objects,");
         if (synchronousScrollingReasons & ScrollingCoordinator::IsImageDocument)
-            reasonsDescription.appendLiteral("image document,");
+            reasonsDescription.append("image document,");
 
         // Strip the trailing comma.
         String reasonsDescriptionTrimmed = reasonsDescription.toString().left(reasonsDescription.length() - 1);

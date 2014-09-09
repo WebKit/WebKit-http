@@ -40,6 +40,9 @@ class NSWindow;
 #endif
 typedef WKView *PlatformWKView;
 typedef NSWindow *PlatformWindow;
+#elif defined(WIN32) || defined(_WIN32)
+typedef WKViewRef PlatformWKView;
+typedef HWND PlatformWindow;
 #elif PLATFORM(GTK)
 typedef WKViewRef PlatformWKView;
 typedef GtkWidget *PlatformWindow;
@@ -49,6 +52,10 @@ typedef Ecore_Evas* PlatformWindow;
 #endif
 
 namespace TestWebKitAPI {
+
+#if PLATFORM(WIN)
+class WindowMessageObserver;
+#endif
 
 class PlatformWebView {
 public:
@@ -65,9 +72,23 @@ public:
     void simulateRightClick(unsigned x, unsigned y);
     void simulateMouseMove(unsigned x, unsigned y);
 
+#if PLATFORM(WIN)
+    void simulateAKeyDown();
+    void setParentWindowMessageObserver(WindowMessageObserver* observer) { m_parentWindowMessageObserver = observer; }
+#endif
+
 private:
+#if PLATFORM(WIN)
+    static void registerWindowClass();
+    static LRESULT CALLBACK wndProc(HWND, UINT message, WPARAM, LPARAM);
+#endif
+
     PlatformWKView m_view;
     PlatformWindow m_window;
+
+#if PLATFORM(WIN)
+    WindowMessageObserver* m_parentWindowMessageObserver;
+#endif
 };
 
 } // namespace TestWebKitAPI

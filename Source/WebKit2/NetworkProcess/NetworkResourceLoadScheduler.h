@@ -26,14 +26,21 @@
 #ifndef NetworkResourceLoadScheduler_h
 #define NetworkResourceLoadScheduler_h
 
+#include <WebCore/ResourceLoadPriority.h>
 #include <WebCore/Timer.h>
+#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/text/StringHash.h>
 
 #if ENABLE(NETWORK_PROCESS)
 
+namespace WebCore {
+class URL;
+}
+
 namespace WebKit {
 
+class HostRecord;
 class NetworkResourceLoader;
 
 class NetworkResourceLoadScheduler {
@@ -42,18 +49,56 @@ class NetworkResourceLoadScheduler {
 public:
     NetworkResourceLoadScheduler();
     
+    // Adds the request to the queue for its host.
     void scheduleLoader(PassRefPtr<NetworkResourceLoader>);
+
+    // Called by the WebProcess when a ResourceLoader is being cleaned up.
     void removeLoader(NetworkResourceLoader*);
 
+    // Called within the NetworkProcess on a background thread when a resource load has finished.
+    void scheduleRemoveLoader(NetworkResourceLoader*);
+
+    void receivedRedirect(NetworkResourceLoader*, const WebCore::URL& redirectURL);
+    void servePendingRequests(WebCore::ResourceLoadPriority = WebCore::ResourceLoadPriorityVeryLow);
+
     // For NetworkProcess statistics reporting.
+    uint64_t hostsPendingCount() const;
     uint64_t loadsPendingCount() const;
+    uint64_t hostsActiveCount() const;
     uint64_t loadsActiveCount() const;
 
 private:
-    static void platformInitializeNetworkSettings();
+    enum CreateHostPolicy {
+        CreateIfNotFound,
+        FindOnly
+    };
+    
+    HostRecord* hostForURL(const WebCore::URL&, CreateHostPolicy = FindOnly);
+    
+    void scheduleServePendingRequests();
+    void requestTimerFired(WebCore::Timer<NetworkResourceLoadScheduler>*);
 
-    HashSet<RefPtr<NetworkResourceLoader>> m_activeLoaders;
-    Vector<RefPtr<NetworkResourceLoader>> m_pendingSerialLoaders;
+    void platformInitializeMaximumHTTPConnectionCountPerHost();
+
+    static void removeScheduledLoaders(void* context);
+    void removeScheduledLoaders();
+
+    typedef HashMap<String, RefPtr<HostRecord>, StringHash> HostMap;
+    HostMap m_hosts;
+
+    typedef HashSet<RefPtr<NetworkResourceLoader>> NetworkResourceLoaderSet;
+    NetworkResourceLoaderSet m_loaders;
+
+    RefPtr<HostRecord> m_nonHTTPProtocolHost;
+
+    bool m_isSerialLoadingEnabled;
+
+    WebCore::Timer<NetworkResourceLoadScheduler> m_requestTimer;
+    
+    Mutex m_loadersToRemoveMutex;
+    Vector<RefPtr<NetworkResourceLoader>> m_loadersToRemove;
+
+    unsigned m_maxRequestsInFlightPerHost;
 };
 
 } // namespace WebKit

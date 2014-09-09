@@ -48,22 +48,21 @@ class SelectorChecker {
 public:
     enum VisitedMatchType { VisitedMatchDisabled, VisitedMatchEnabled };
     enum class Mode : unsigned char {
-        ResolvingStyle = 0, CollectingRules, CollectingRulesIgnoringVirtualPseudoElements, QueryingRules
+        ResolvingStyle = 0, CollectingRules, QueryingRules, SharingRules, StyleInvalidation
     };
 
-    SelectorChecker(Document&);
+    SelectorChecker(Document&, Mode);
 
     struct SelectorCheckingContext {
         // Initial selector constructor
-        SelectorCheckingContext(const CSSSelector* selector, Element* element, Mode resolvingMode)
+        SelectorCheckingContext(const CSSSelector* selector, Element* element, VisitedMatchType visitedMatchType)
             : selector(selector)
-            , resolvingMode(resolvingMode)
             , element(element)
-            , scope(nullptr)
-            , visitedMatchType(resolvingMode == Mode::QueryingRules ? VisitedMatchDisabled : VisitedMatchEnabled)
+            , scope(0)
+            , visitedMatchType(visitedMatchType)
             , pseudoId(NOPSEUDO)
-            , elementStyle(nullptr)
-            , scrollbar(nullptr)
+            , elementStyle(0)
+            , scrollbar(0)
             , firstSelectorOfTheFragment(selector)
             , scrollbarPart(NoPart)
             , inFunctionalPseudoClass(false)
@@ -72,7 +71,6 @@ public:
         { }
 
         const CSSSelector* selector;
-        Mode resolvingMode;
         Element* element;
         const ContainerNode* scope;
         VisitedMatchType visitedMatchType;
@@ -100,10 +98,11 @@ private:
     Match matchRecursively(const SelectorCheckingContext&, PseudoId&) const;
     bool checkOne(const SelectorCheckingContext&) const;
 
-    bool checkScrollbarPseudoClass(const SelectorCheckingContext&, const CSSSelector*) const;
+    bool checkScrollbarPseudoClass(const SelectorCheckingContext&, Document*, const CSSSelector*) const;
 
     bool m_strictParsing;
     bool m_documentIsHTML;
+    Mode m_mode;
 };
 
 inline bool SelectorChecker::isCommonPseudoClassSelector(const CSSSelector* selector)

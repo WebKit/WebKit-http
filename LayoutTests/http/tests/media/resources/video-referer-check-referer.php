@@ -1,8 +1,7 @@
 <?php
 
-    $requiredReferer = $_GET["referer"];
-    $referHeader = $_SERVER["HTTP_REFERER"];
-    if (!isset($referHeader) || stripos($referHeader, $requiredReferer) === false)
+    $refer = $_SERVER["HTTP_REFERER"];
+    if (!isset($refer) || stripos($refer, "video-referer.html") === false)
         die;
 
     $fileName = $_GET["name"];

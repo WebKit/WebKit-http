@@ -41,12 +41,12 @@ class UserGestureIndicator {
 public:
     static bool processingUserGesture();
 
-    WEBCORE_EXPORT explicit UserGestureIndicator(ProcessingUserGestureState);
-    WEBCORE_EXPORT ~UserGestureIndicator();
+    explicit UserGestureIndicator(ProcessingUserGestureState);
+    ~UserGestureIndicator();
 
 
 private:
-    WEBCORE_EXPORT static ProcessingUserGestureState s_state;
+    static ProcessingUserGestureState s_state;
     ProcessingUserGestureState m_previousState;
 };
 

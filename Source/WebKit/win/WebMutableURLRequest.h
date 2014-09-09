@@ -155,7 +155,8 @@ public:
 
     // IWebMutableURLRequestPrivate
 
-    virtual HRESULT STDMETHODCALLTYPE setClientCertificate(ULONG_PTR);
+    virtual HRESULT STDMETHODCALLTYPE setClientCertificate(
+        /* [in] */ OLE_HANDLE cert);
 
     virtual /* [local] */ CFURLRequestRef STDMETHODCALLTYPE cfRequest();
 

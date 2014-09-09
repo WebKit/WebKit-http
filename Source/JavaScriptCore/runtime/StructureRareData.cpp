@@ -26,7 +26,7 @@
 #include "config.h"
 #include "StructureRareData.h"
 
-#include "JSPropertyNameEnumerator.h"
+#include "JSPropertyNameIterator.h"
 #include "JSString.h"
 #include "JSCInlines.h"
 
@@ -46,9 +46,11 @@ StructureRareData* StructureRareData::create(VM& vm, Structure* previous)
     return rareData;
 }
 
-void StructureRareData::destroy(JSCell* cell)
+StructureRareData* StructureRareData::clone(VM& vm, const StructureRareData* other)
 {
-    static_cast<StructureRareData*>(cell)->StructureRareData::~StructureRareData();
+    StructureRareData* newRareData = new (NotNull, allocateCell<StructureRareData>(vm.heap)) StructureRareData(vm, other);
+    newRareData->finishCreation(vm);
+    return newRareData;
 }
 
 StructureRareData::StructureRareData(VM& vm, Structure* previous)
@@ -56,6 +58,15 @@ StructureRareData::StructureRareData(VM& vm, Structure* previous)
 {
     if (previous)
         m_previous.set(vm, this, previous);
+}
+
+StructureRareData::StructureRareData(VM& vm, const StructureRareData* other)
+    : JSCell(vm, other->structure())
+{
+    if (other->previousID())
+        m_previous.set(vm, this, other->previousID());
+    if (other->objectToStringValue())
+        m_objectToStringValue.set(vm, this, other->objectToStringValue());
 }
 
 void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -66,28 +77,7 @@ void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSCell::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_previous);
     visitor.append(&thisObject->m_objectToStringValue);
-    visitor.append(&thisObject->m_cachedStructurePropertyNameEnumerator);
-    visitor.append(&thisObject->m_cachedGenericPropertyNameEnumerator);
-}
-
-JSPropertyNameEnumerator* StructureRareData::cachedStructurePropertyNameEnumerator() const
-{
-    return m_cachedStructurePropertyNameEnumerator.get();
-}
-
-void StructureRareData::setCachedStructurePropertyNameEnumerator(VM& vm, JSPropertyNameEnumerator* enumerator)
-{
-    m_cachedStructurePropertyNameEnumerator.set(vm, this, enumerator);
-}
-
-JSPropertyNameEnumerator* StructureRareData::cachedGenericPropertyNameEnumerator() const
-{
-    return m_cachedGenericPropertyNameEnumerator.get();
-}
-
-void StructureRareData::setCachedGenericPropertyNameEnumerator(VM& vm, JSPropertyNameEnumerator* enumerator)
-{
-    m_cachedGenericPropertyNameEnumerator.set(vm, this, enumerator);
+    visitor.append(&thisObject->m_enumerationCache);
 }
 
 } // namespace JSC

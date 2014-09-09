@@ -44,6 +44,7 @@
 #include "JITDisassembler.h"
 #include "JITInlineCacheGenerator.h"
 #include "JSInterfaceJIT.h"
+#include "LegacyProfiler.h"
 #include "Opcode.h"
 #include "ResultType.h"
 #include "SamplingTool.h"
@@ -55,6 +56,7 @@ namespace JSC {
     class CodeBlock;
     class FunctionExecutable;
     class JIT;
+    class JSPropertyNameIterator;
     class Identifier;
     class Interpreter;
     class JSScope;
@@ -197,6 +199,13 @@ namespace JSC {
             return JIT(vm, codeBlock).privateCompile(effort);
         }
         
+        static void compileClosureCall(VM* vm, CallLinkInfo* callLinkInfo, CodeBlock* callerCodeBlock, CodeBlock* calleeCodeBlock, Structure* expectedStructure, ExecutableBase* expectedExecutable, MacroAssemblerCodePtr codePtr)
+        {
+            JIT jit(vm, callerCodeBlock);
+            jit.m_bytecodeOffset = callLinkInfo->codeOrigin.bytecodeIndex;
+            jit.privateCompileClosureCall(callLinkInfo, calleeCodeBlock, expectedStructure, expectedExecutable, codePtr);
+        }
+
         static void compileGetByVal(VM* vm, CodeBlock* codeBlock, ByValInfo* byValInfo, ReturnAddressPtr returnAddress, JITArrayMode arrayMode)
         {
             JIT jit(vm, codeBlock);
@@ -216,13 +225,6 @@ namespace JSC {
             JIT jit(vm, codeBlock);
             jit.m_bytecodeOffset = byValInfo->bytecodeIndex;
             jit.privateCompilePutByVal(byValInfo, returnAddress, arrayMode);
-        }
-
-        static void compileHasIndexedProperty(VM* vm, CodeBlock* codeBlock, ByValInfo* byValInfo, ReturnAddressPtr returnAddress, JITArrayMode arrayMode)
-        {
-            JIT jit(vm, codeBlock);
-            jit.m_bytecodeOffset = byValInfo->bytecodeIndex;
-            jit.privateCompileHasIndexedProperty(byValInfo, returnAddress, arrayMode);
         }
 
         static CodeRef compileCTINativeCall(VM* vm, NativeFunction func)
@@ -245,10 +247,10 @@ namespace JSC {
         void privateCompileSlowCases();
         CompilationResult privateCompile(JITCompilationEffort);
         
+        void privateCompileClosureCall(CallLinkInfo*, CodeBlock* calleeCodeBlock, Structure*, ExecutableBase*, MacroAssemblerCodePtr);
+        
         void privateCompileGetByVal(ByValInfo*, ReturnAddressPtr, JITArrayMode);
         void privateCompilePutByVal(ByValInfo*, ReturnAddressPtr, JITArrayMode);
-
-        void privateCompileHasIndexedProperty(ByValInfo*, ReturnAddressPtr, JITArrayMode);
 
         Label privateCompileCTINativeCall(VM*, bool isConstruct = false);
         CodeRef privateCompileCTINativeCall(VM*, NativeFunction);
@@ -335,12 +337,6 @@ namespace JSC {
         // Property is int-checked and zero extended. Base is cell checked.
         // Structure is already profiled. Returns the slow cases. Fall-through
         // case contains result in regT0, and it is not yet profiled.
-        JumpList emitInt32Load(Instruction* instruction, PatchableJump& badType) { return emitContiguousLoad(instruction, badType, Int32Shape); }
-        JumpList emitDoubleLoad(Instruction*, PatchableJump& badType);
-        JumpList emitContiguousLoad(Instruction*, PatchableJump& badType, IndexingType expectedShape = ContiguousShape);
-        JumpList emitArrayStorageLoad(Instruction*, PatchableJump& badType);
-        JumpList emitLoadForArrayMode(Instruction*, JITArrayMode, PatchableJump& badType);
-
         JumpList emitInt32GetByVal(Instruction* instruction, PatchableJump& badType) { return emitContiguousGetByVal(instruction, badType, Int32Shape); }
         JumpList emitDoubleGetByVal(Instruction*, PatchableJump& badType);
         JumpList emitContiguousGetByVal(Instruction*, PatchableJump& badType, IndexingType expectedShape = ContiguousShape);
@@ -482,6 +478,7 @@ namespace JSC {
         void emit_op_get_arguments_length(Instruction*);
         void emit_op_get_by_val(Instruction*);
         void emit_op_get_argument_by_val(Instruction*);
+        void emit_op_get_by_pname(Instruction*);
         void emit_op_init_lazy_reg(Instruction*);
         void emit_op_check_has_instance(Instruction*);
         void emit_op_instanceof(Instruction*);
@@ -519,6 +516,8 @@ namespace JSC {
         void emit_op_new_func_exp(Instruction*);
         void emit_op_new_object(Instruction*);
         void emit_op_new_regexp(Instruction*);
+        void emit_op_get_pnames(Instruction*);
+        void emit_op_next_pname(Instruction*);
         void emit_op_not(Instruction*);
         void emit_op_nstricteq(Instruction*);
         void emit_op_pop_scope(Instruction*);
@@ -526,7 +525,6 @@ namespace JSC {
         void emit_op_inc(Instruction*);
         void emit_op_profile_did_call(Instruction*);
         void emit_op_profile_will_call(Instruction*);
-        void emit_op_profile_type(Instruction*);
         void emit_op_push_name_scope(Instruction*);
         void emit_op_push_with_scope(Instruction*);
         void emit_op_put_by_id(Instruction*);
@@ -552,15 +550,6 @@ namespace JSC {
         void emit_op_unexpected_load(Instruction*);
         void emit_op_unsigned(Instruction*);
         void emit_op_urshift(Instruction*);
-        void emit_op_get_enumerable_length(Instruction*);
-        void emit_op_has_generic_property(Instruction*);
-        void emit_op_has_structure_property(Instruction*);
-        void emit_op_has_indexed_property(Instruction*);
-        void emit_op_get_direct_pname(Instruction*);
-        void emit_op_get_structure_property_enumerator(Instruction*);
-        void emit_op_get_generic_property_enumerator(Instruction*);
-        void emit_op_next_enumerator_pname(Instruction*);
-        void emit_op_to_index_string(Instruction*);
 
         void emitSlow_op_add(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_bitand(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -581,6 +570,7 @@ namespace JSC {
         void emitSlow_op_get_arguments_length(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_get_by_val(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_get_argument_by_val(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_get_by_pname(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_check_has_instance(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jfalse(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -613,9 +603,6 @@ namespace JSC {
         void emitSlow_op_to_primitive(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_unsigned(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_urshift(Instruction*, Vector<SlowCaseEntry>::iterator&);
-        void emitSlow_op_has_indexed_property(Instruction*, Vector<SlowCaseEntry>::iterator&);
-        void emitSlow_op_has_structure_property(Instruction*, Vector<SlowCaseEntry>::iterator&);
-        void emitSlow_op_get_direct_pname(Instruction*, Vector<SlowCaseEntry>::iterator&);
 
         void emit_op_resolve_scope(Instruction*);
         void emit_op_get_from_scope(Instruction*);
@@ -718,7 +705,6 @@ namespace JSC {
         MacroAssembler::Call callOperation(V_JITOperation_EC, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ECC, RegisterID, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ECICC, RegisterID, const Identifier*, RegisterID, RegisterID);
-        MacroAssembler::Call callOperation(J_JITOperation_EE, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_EIdJZ, const Identifier*, RegisterID, int32_t);
         MacroAssembler::Call callOperation(V_JITOperation_EJ, RegisterID);
 #if USE(JSVALUE64)
@@ -739,6 +725,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(V_JITOperation_EPc, Instruction*);
         MacroAssembler::Call callOperation(V_JITOperation_EZ, int32_t);
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(J_JITOperation_E);
+        MacroAssembler::Call callOperationNoExceptionCheck(J_JITOperation_EE, RegisterID);
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(V_JITOperation_ECb, CodeBlock*);
         MacroAssembler::Call callOperationWithCallFrameRollbackOnException(Z_JITOperation_E);
 #if USE(JSVALUE32_64)

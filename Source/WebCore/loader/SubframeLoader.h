@@ -65,7 +65,7 @@ public:
 
     PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const Vector<String>& paramNames, const Vector<String>& paramValues);
 
-    WEBCORE_EXPORT bool allowPlugins(ReasonForCallingAllowPlugins);
+    bool allowPlugins(ReasonForCallingAllowPlugins);
 
     bool containsPlugins() const { return m_containsPlugins; }
     

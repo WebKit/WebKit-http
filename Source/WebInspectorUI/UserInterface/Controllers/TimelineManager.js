@@ -37,8 +37,6 @@ WebInspector.TimelineManager = function()
 
     this._nextRecordingIdentifier = 1;
 
-    this._boundStopCapturing = this.stopCapturing.bind(this);
-
     function delayedWork()
     {
         this._loadNewRecording();
@@ -88,7 +86,7 @@ WebInspector.TimelineManager.prototype = {
         if (!this._activeRecording || shouldCreateRecording)
             this._loadNewRecording();
 
-        var result = TimelineAgent.start();
+        var result = TimelineAgent.start.promise();
 
         // COMPATIBILITY (iOS 7): recordingStarted event did not exist yet. Start explicitly.
         if (!TimelineAgent.hasEvent("recordingStarted")) {
@@ -400,9 +398,6 @@ WebInspector.TimelineManager.prototype = {
 
     _loadNewRecording: function()
     {
-        if (this._activeRecording && this._activeRecording.isEmpty())
-            return;
-
         var identifier = this._nextRecordingIdentifier++;
         var newRecording = new WebInspector.TimelineRecording(identifier, WebInspector.UIString("Timeline Recording %d").format(identifier));
         this._recordings.push(newRecording);
@@ -483,7 +478,7 @@ WebInspector.TimelineManager.prototype = {
 
         if (this._stopCapturingTimeout)
             clearTimeout(this._stopCapturingTimeout);
-        this._stopCapturingTimeout = setTimeout(this._boundStopCapturing, WebInspector.TimelineManager.MaximumAutoRecordDuration);
+        this._stopCapturingTimeout = setTimeout(this.stopCapturing.bind(this), WebInspector.TimelineManager.MaximumAutoRecordDuration);
 
         return true;
     },
@@ -496,7 +491,7 @@ WebInspector.TimelineManager.prototype = {
 
         if (this._stopCapturingTimeout)
             clearTimeout(this._stopCapturingTimeout);
-        this._stopCapturingTimeout = setTimeout(this._boundStopCapturing, WebInspector.TimelineManager.MaximumAutoRecordDurationAfterLoadEvent);
+        this._stopCapturingTimeout = setTimeout(this.stopCapturing.bind(this), WebInspector.TimelineManager.MaximumAutoRecordDurationAfterLoadEvent);
     },
 
     _resetAutoRecordingDeadTimeTimeout: function()
@@ -507,7 +502,7 @@ WebInspector.TimelineManager.prototype = {
 
         if (this._deadTimeTimeout)
             clearTimeout(this._deadTimeTimeout);
-        this._deadTimeTimeout = setTimeout(this._boundStopCapturing, WebInspector.TimelineManager.DeadTimeRequiredToStopAutoRecordingEarly);
+        this._deadTimeTimeout = setTimeout(this.stopCapturing.bind(this), WebInspector.TimelineManager.DeadTimeRequiredToStopAutoRecordingEarly);
     },
 
     _mainResourceDidChange: function(event)

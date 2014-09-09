@@ -87,9 +87,9 @@ public:
     }
     
 #if ASSERT_DISABLED
-    void assertIsRegistered(Graph&) const { }
+    void assertIsWatched(Graph&) const { }
 #else
-    void assertIsRegistered(Graph&) const;
+    void assertIsWatched(Graph&) const;
 #endif
     
     void clobber();

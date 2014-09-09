@@ -36,12 +36,11 @@
 #import "WebPDFDocumentExtras.h"
 #import "WebPDFView.h"
 #import "WebTypesInternal.h"
+#import <wtf/Assertions.h>
+#import <wtf/ObjcRuntimeExtras.h>
 #import <JavaScriptCore/JSContextRef.h>
 #import <JavaScriptCore/JSStringRef.h>
 #import <JavaScriptCore/JSStringRefCF.h>
-#import <wtf/Assertions.h>
-#import <wtf/ObjcRuntimeExtras.h>
-#import <wtf/RetainPtr.h>
 
 @implementation WebPDFRepresentation
 
@@ -91,22 +90,26 @@
     // http://developer.apple.com/documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/dq_ps_convert/chapter_16_section_1.html
 
     CGPSConverterCallbacks callbacks = { 0, 0, 0, 0, 0, 0, 0, 0 };    
-    RetainPtr<CGPSConverterRef> converter = adoptCF(CGPSConverterCreate(0, &callbacks, 0));
-    ASSERT(converter.get());
+    CGPSConverterRef converter = CGPSConverterCreate(0, &callbacks, 0);
+    ASSERT(converter);
 
-    RetainPtr<CGDataProviderRef> provider = adoptCF(CGDataProviderCreateWithCFData((CFDataRef)data));
-    ASSERT(provider.get());
+    CGDataProviderRef provider = CGDataProviderCreateWithCFData((CFDataRef)data);
+    ASSERT(provider);
 
-    RetainPtr<CFMutableDataRef> result = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
-    ASSERT(result.get());
+    CFMutableDataRef result = CFDataCreateMutable(kCFAllocatorDefault, 0);
+    ASSERT(result);
 
-    RetainPtr<CGDataConsumerRef> consumer = adoptCF(CGDataConsumerCreateWithCFData(result.get()));
-    ASSERT(consumer.get());
+    CGDataConsumerRef consumer = CGDataConsumerCreateWithCFData(result);
+    ASSERT(consumer);
 
     // Error handled by detecting zero-length 'result' in caller
-    CGPSConverterConvert(converter.get(), provider.get(), consumer.get(), 0);
+    CGPSConverterConvert(converter, provider, consumer, 0);
 
-    return (NSData *)result.autorelease();
+    CFRelease(converter);
+    CFRelease(provider);
+    CFRelease(consumer);
+
+    return CFBridgingRelease(result);
 }
 
 - (void)finishedLoadingWithDataSource:(WebDataSource *)dataSource

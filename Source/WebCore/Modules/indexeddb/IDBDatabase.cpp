@@ -308,7 +308,7 @@ void IDBDatabase::onVersionChange(uint64_t oldVersion, uint64_t newVersion, Inde
     if (m_closePending)
         return;
 
-    enqueueEvent(IDBVersionChangeEvent::create(oldVersion, newVersion, newVersionNullness, eventNames().versionchangeEvent));
+    enqueueEvent(IDBVersionChangeEvent::create(oldVersion, newVersion, newVersionNullness));
 }
 
 void IDBDatabase::enqueueEvent(PassRefPtr<Event> event)

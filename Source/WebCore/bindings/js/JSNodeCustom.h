@@ -33,8 +33,8 @@
 
 namespace WebCore {
 
-WEBCORE_EXPORT JSC::JSValue createWrapper(JSC::ExecState*, JSDOMGlobalObject*, Node*);
-WEBCORE_EXPORT JSC::JSObject* getOutOfLineCachedWrapper(JSDOMGlobalObject*, Node*);
+JSC::JSValue createWrapper(JSC::ExecState*, JSDOMGlobalObject*, Node*);
+JSC::JSObject* getOutOfLineCachedWrapper(JSDOMGlobalObject*, Node*);
 
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)
 {

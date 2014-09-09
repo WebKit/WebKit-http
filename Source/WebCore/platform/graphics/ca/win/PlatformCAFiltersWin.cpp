@@ -24,6 +24,9 @@
  */
 
 #include "config.h"
+
+#if ENABLE(CSS_FILTERS)
+
 #include "PlatformCAFilters.h"
 
 using namespace WebCore;
@@ -44,3 +47,5 @@ const char* PlatformCAFilters::animatedFilterPropertyName(FilterOperation::Opera
     // Hardware filter animation not implemented on Windows.
     return "";
 }
+
+#endif // ENABLE(CSS_FILTERS)

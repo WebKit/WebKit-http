@@ -38,7 +38,7 @@ public:
 
     void removeTileController(TileController*);
     void tileControllerGainedUnparentedTiles(TileController*);
-    WEBCORE_EXPORT void trimUnparentedTilesToTarget(int target);
+    void trimUnparentedTilesToTarget(int target);
 
 private:
     TileControllerMemoryHandler() { }
@@ -48,7 +48,7 @@ private:
     TileControllerList m_tileControllers;
 };
 
-WEBCORE_EXPORT TileControllerMemoryHandler& tileControllerMemoryHandler();
+TileControllerMemoryHandler& tileControllerMemoryHandler();
 }
 
 #endif // TileControllerMemoryHandlerIOS_h

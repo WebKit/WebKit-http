@@ -39,6 +39,7 @@
 #include "VM.h"
 #include "JSGlobalObject.h"
 #include "JSObject.h"
+#include "JSPropertyNameIterator.h"
 #include "JSStack.h"
 #include "JSString.h"
 #include "JSTypeInfo.h"
@@ -49,7 +50,6 @@
 #include "ProtoCallFrame.h"
 #include "Structure.h"
 #include "StructureChain.h"
-#include "VMEntryRecord.h"
 #include "ValueProfile.h"
 #include <wtf/text/StringImpl.h>
 

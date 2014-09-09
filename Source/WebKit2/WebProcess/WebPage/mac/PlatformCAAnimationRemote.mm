@@ -81,12 +81,6 @@ static NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplici
 
     _layerTreeHost->animationDidStart(_layerID, animation, startTime);
 }
-
-- (void)animationDidStop:(CAAnimation *)animation finished:(BOOL)finished
-{
-    _layerTreeHost->animationDidEnd(_layerID, animation);
-}
-
 @end
 
 namespace WebKit {
@@ -482,6 +476,7 @@ void PlatformCAAnimationRemote::setFromValue(const Color& value)
     m_properties.keyValues[0] = KeyframeValue(value);
 }
 
+#if ENABLE(CSS_FILTERS)
 void PlatformCAAnimationRemote::setFromValue(const FilterOperation* operation, int internalFilterPropertyIndex)
 {
     if (animationType() != Basic)
@@ -490,6 +485,7 @@ void PlatformCAAnimationRemote::setFromValue(const FilterOperation* operation, i
     m_properties.keyValues.resize(2);
     m_properties.keyValues[0] = KeyframeValue(operation->clone());
 }
+#endif
 
 void PlatformCAAnimationRemote::copyFromValueFrom(const PlatformCAAnimation* value)
 {
@@ -538,6 +534,7 @@ void PlatformCAAnimationRemote::setToValue(const Color& value)
     m_properties.keyValues[1] = KeyframeValue(value);
 }
 
+#if ENABLE(CSS_FILTERS)
 void PlatformCAAnimationRemote::setToValue(const FilterOperation* operation, int internalFilterPropertyIndex)
 {
     if (animationType() != Basic)
@@ -548,6 +545,7 @@ void PlatformCAAnimationRemote::setToValue(const FilterOperation* operation, int
     m_properties.keyValues.resize(2);
     m_properties.keyValues[1] = KeyframeValue(operation->clone());
 }
+#endif
 
 void PlatformCAAnimationRemote::copyToValueFrom(const PlatformCAAnimation* value)
 {
@@ -616,6 +614,7 @@ void PlatformCAAnimationRemote::setValues(const Vector<Color>& values)
     m_properties.keyValues = WTF::move(keyframes);
 }
 
+#if ENABLE(CSS_FILTERS)
 void PlatformCAAnimationRemote::setValues(const Vector<RefPtr<FilterOperation>>& values, int internalFilterPropertyIndex)
 {
     UNUSED_PARAM(internalFilterPropertyIndex);
@@ -631,6 +630,7 @@ void PlatformCAAnimationRemote::setValues(const Vector<RefPtr<FilterOperation>>&
     
     m_properties.keyValues = WTF::move(keyframes);
 }
+#endif
 
 void PlatformCAAnimationRemote::copyValuesFrom(const PlatformCAAnimation* value)
 {

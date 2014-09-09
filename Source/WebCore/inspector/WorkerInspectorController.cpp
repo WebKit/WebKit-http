@@ -48,6 +48,7 @@
 #include "WorkerConsoleAgent.h"
 #include "WorkerDebuggerAgent.h"
 #include "WorkerGlobalScope.h"
+#include "WorkerProfilerAgent.h"
 #include "WorkerReportingProxy.h"
 #include "WorkerRuntimeAgent.h"
 #include "WorkerThread.h"
@@ -93,6 +94,10 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
     auto debuggerAgent = std::make_unique<WorkerDebuggerAgent>(m_injectedScriptManager.get(), m_instrumentingAgents.get(), &workerGlobalScope);
     m_runtimeAgent->setScriptDebugServer(&debuggerAgent->scriptDebugServer());
     m_agents.append(WTF::move(debuggerAgent));
+
+    auto profilerAgent = std::make_unique<WorkerProfilerAgent>(m_instrumentingAgents.get(), &workerGlobalScope);
+    profilerAgent->setScriptDebugServer(&debuggerAgent->scriptDebugServer());
+    m_agents.append(WTF::move(profilerAgent));
 
     m_agents.append(std::make_unique<InspectorTimelineAgent>(m_instrumentingAgents.get(), nullptr, InspectorTimelineAgent::WorkerInspector, nullptr));
     m_agents.append(WTF::move(consoleAgent));

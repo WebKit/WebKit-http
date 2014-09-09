@@ -76,6 +76,8 @@ WebInspector.loaded = function()
         InspectorBackend.registerApplicationCacheDispatcher(new WebInspector.ApplicationCacheObserver);
     if (InspectorBackend.registerTimelineDispatcher)
         InspectorBackend.registerTimelineDispatcher(new WebInspector.TimelineObserver);
+    if (InspectorBackend.registerProfilerDispatcher)
+        InspectorBackend.registerProfilerDispatcher(new WebInspector.LegacyProfilerObserver);
     if (InspectorBackend.registerCSSDispatcher)
         InspectorBackend.registerCSSDispatcher(new WebInspector.CSSObserver);
     if (InspectorBackend.registerLayerTreeDispatcher)
@@ -109,6 +111,7 @@ WebInspector.loaded = function()
     this.runtimeManager = new WebInspector.RuntimeManager;
     this.applicationCacheManager = new WebInspector.ApplicationCacheManager;
     this.timelineManager = new WebInspector.TimelineManager;
+    this.legacyProfileManager = new WebInspector.LegacyProfileManager;
     this.debuggerManager = new WebInspector.DebuggerManager;
     this.sourceMapManager = new WebInspector.SourceMapManager;
     this.layerTreeManager = new WebInspector.LayerTreeManager;
@@ -121,7 +124,6 @@ WebInspector.loaded = function()
         ConsoleAgent.enable();
 
     // Register for events.
-    this.replayManager.addEventListener(WebInspector.ReplayManager.Event.CaptureStarted, this._captureDidStart, this);
     this.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.Paused, this._debuggerDidPause, this);
     this.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.Resumed, this._debuggerDidResume, this);
     this.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.InspectModeStateChanged, this._inspectModeStateChanged, this);
@@ -158,10 +160,6 @@ WebInspector.loaded = function()
 
     this.showShadowDOMSetting = new WebInspector.Setting("show-shadow-dom", false);
     this.showReplayInterfaceSetting = new WebInspector.Setting("show-web-replay", false);
-
-    this.showJavaScriptTypeInformationSetting = new WebInspector.Setting("show-javascript-type-information", false);
-    if (this.showJavaScriptTypeInformationSetting.value)
-        RuntimeAgent.enableTypeProfiler();
 
     this.mouseCoords = {
         x: 0,
@@ -246,10 +244,10 @@ WebInspector.contentLoaded = function()
     this._redoKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "Z", this._redoKeyboardShortcut.bind(this));
     this._undoKeyboardShortcut.implicitlyPreventsDefault = this._redoKeyboardShortcut.implicitlyPreventsDefault = false;
 
-    this.undockButtonNavigationItem = new WebInspector.ToggleControlToolbarItem("undock", WebInspector.UIString("Detach into separate window"), "", platformImagePath("Undock.svg"), "", 16, 14);
+    this.undockButtonNavigationItem = new WebInspector.ToggleControlToolbarItem("undock", WebInspector.UIString("Detach into separate window"), "", "Images/Undock.svg", "", 16, 14);
     this.undockButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._undock, this);
 
-    this.closeButtonNavigationItem = new WebInspector.ControlToolbarItem("dock-close", WebInspector.UIString("Close"), platformImagePath("Close.svg"), 16, 14);
+    this.closeButtonNavigationItem = new WebInspector.ControlToolbarItem("dock-close", WebInspector.UIString("Close"), "Images/Close.svg", 16, 14);
     this.closeButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this.close, this);
 
     this.toolbar.addToolbarItem(this.closeButtonNavigationItem, WebInspector.Toolbar.Section.Control);
@@ -346,8 +344,6 @@ WebInspector.contentLoaded = function()
 
     if (this._showingSplitConsoleSetting.value)
         this.showSplitConsole();
-
-    this._contentLoaded = true;
 }
 
 WebInspector.sidebarPanelForCurrentContentView = function()
@@ -501,6 +497,20 @@ WebInspector.openURL = function(url, frame, alwaysOpenExternally, lineNumber)
         return;
     }
 
+    var parsedURL = parseURL(url);
+    if (parsedURL.scheme === WebInspector.LegacyProfileType.ProfileScheme) {
+        var profileType = parsedURL.host.toUpperCase();
+        var profileTitle = parsedURL.path;
+
+        // The path of of the profile URL starts with a slash, remove it, so
+        // we can get the actual title.
+        console.assert(profileTitle[0] === "/");
+        profileTitle = profileTitle.substring(1);
+
+        this.timelineSidebarPanel.showProfile(profileType, profileTitle);
+        return;
+    }
+
     var searchChildFrames = false;
     if (!frame) {
         frame = this.frameResourceManager.mainFrame;
@@ -612,18 +622,13 @@ WebInspector.showFullHeightConsole = function(scope)
 
     this.consoleContentView.scopeBar.item(scope).selected = true;
 
-    if (!this.contentBrowser.currentContentView || this.contentBrowser.currentContentView !== this.consoleContentView) {
+    if (this.contentBrowser.currentContentView !== this.consoleContentView) {
         this._wasShowingNavigationSidebarBeforeFullHeightConsole = !this.navigationSidebar.collapsed;
 
         // Collapse the sidebar before showing the console view, so the check for the collapsed state in
         // _revealAndSelectRepresentedObjectInNavigationSidebar returns early and does not deselect any
         // tree elements in the current sidebar.
         this.navigationSidebar.collapsed = true;
-
-        // If this is before the content has finished loading update the collapsed value setting
-        // ourselves so that we don't uncollapse the navigation sidebar when it is loaded.
-        if (!this._contentLoaded)
-            this._navigationSidebarCollapsedSetting.value = true;
 
         // Be sure to close any existing log view in the split content browser before showing it in the
         // main content browser. We can only show a content view in one browser at a time.
@@ -652,11 +657,8 @@ WebInspector.toggleConsoleView = function()
     if (this.isShowingConsoleView()) {
         if (this.contentBrowser.canGoBack())
             this.contentBrowser.goBack();
-        else {
-            if (!this.navigationSidebar.selectedSidebarPanel)
-                this.navigationSidebar.selectedSidebarPanel = this.resourceSidebarPanel;
+        else
             this.resourceSidebarPanel.showDefaultContentView();
-        }
 
         if (this._wasShowingNavigationSidebarBeforeFullHeightConsole)
             this.navigationSidebar.collapsed = false;
@@ -740,11 +742,6 @@ WebInspector._dragOver = function(event)
     event.preventDefault();
 }
 
-WebInspector._captureDidStart = function(event)
-{
-    this.dashboardContainer.showDashboardViewForRepresentedObject(this.dashboardManager.dashboards.replay);
-}
-
 WebInspector._debuggerDidPause = function(event)
 {
     this.debuggerSidebarPanel.show();
@@ -772,8 +769,6 @@ WebInspector._mainResourceDidChange = function(event)
     if (!event.target.isMainFrame())
         return;
 
-    this._inProvisionalLoad = false;
-
     this._restoreInspectorViewStateFromCookie(this._lastInspectorViewStateCookieSetting.value, true);
 
     this.updateWindowTitle();
@@ -785,8 +780,6 @@ WebInspector._provisionalLoadStarted = function(event)
         return;
 
     this._updateCookieForInspectorViewState();
-
-    this._inProvisionalLoad = true;
 }
 
 WebInspector._windowFocused = function(event)
@@ -872,7 +865,7 @@ WebInspector._updateDockNavigationItems = function()
     this.undockButtonNavigationItem.hidden = !docked;
 
     if (docked) {
-        this.undockButtonNavigationItem.alternateImage = this._dockSide === "bottom" ? platformImagePath("DockRight.svg") : platformImagePath("DockBottom.svg");
+        this.undockButtonNavigationItem.alternateImage = this._dockSide === "bottom" ? "Images/DockRight.svg" : "Images/DockBottom.svg";
         this.undockButtonNavigationItem.alternateToolTip = this._dockSide === "bottom" ? WebInspector.UIString("Dock to right of window") : WebInspector.UIString("Dock to bottom of window");
     }
 
@@ -907,13 +900,11 @@ WebInspector._revealAndSelectRepresentedObjectInNavigationSidebar = function(rep
     if (!selectedSidebarPanel)
         return;
 
-    // If a tree outline is processing a selection currently then we can assume the selection does not
-    // need to be changed. This is needed to allow breakpoint and call frame tree elements to be selected
-    // without jumping back to selecting the resource tree element.
-    for (var contentTreeOutline of selectedSidebarPanel.visibleContentTreeOutlines) {
-        if (contentTreeOutline.processingSelectionChange)
-            return;
-    }
+    // If the tree outline is processing a selection currently then we can assume the selection does not
+    // need to be changed. This is needed to allow breakpoints tree elements to be selected without jumping
+    // back to selecting the resource tree element.
+    if (selectedSidebarPanel.contentTreeOutline.processingSelectionChange)
+        return;
 
     var treeElement = selectedSidebarPanel.treeElementForRepresentedObject(representedObject);
 
@@ -1001,8 +992,7 @@ WebInspector._sidebarWidthDidChange = function(event)
 
 WebInspector._updateToolbarHeight = function()
 {
-    if (WebInspector.Platform.isLegacyMacOS)
-        InspectorFrontendHost.setToolbarHeight(this.toolbar.element.offsetHeight);
+    InspectorFrontendHost.setToolbarHeight(this.toolbar.element.offsetHeight);
 }
 
 WebInspector._toolbarDisplayModeDidChange = function(event)
@@ -1046,12 +1036,6 @@ WebInspector._updateCookieForInspectorViewState = function()
         this._lastInspectorViewStateCookieSetting.value = cookie;
         return;
     }
-
-    // Ignore saving the sidebar state for provisional loads. The currently selected sidebar
-    // may have been the result of content views closing as a result of a page navigation,
-    // but those content views may come back very soon.
-    if (this._inProvisionalLoad)
-        return;
 
     var selectedSidebarPanel = this.navigationSidebar.selectedSidebarPanel;
     if (!selectedSidebarPanel)
@@ -1325,13 +1309,6 @@ WebInspector._moveWindowMouseDown = function(event)
         !event.target.classList.contains("item-section"))
         return;
 
-    // Ignore dragging on the top of the toolbar on Mac where the inspector content fills the entire window.
-    if (WebInspector.Platform.name === "mac" && WebInspector.Platform.version.release >= 10) {
-        const windowDragHandledTitleBarHeight = 22;
-        if (event.pageY < windowDragHandledTitleBarHeight)
-            return;
-    }
-
     var lastScreenX = event.screenX;
     var lastScreenY = event.screenY;
 
@@ -1457,13 +1434,13 @@ WebInspector._copy = function(event)
 WebInspector._generateDisclosureTriangleImages = function()
 {
     var specifications = {};
-    specifications["normal"] = {fillColor: [140, 140, 140, 1]};
-    specifications["normal-active"] = {fillColor: [128, 128, 128, 1]};
+    specifications["normal"] = {fillColor: [0, 0, 0, 0.5]};
+    specifications["normal-active"] = {fillColor: [0, 0, 0, 0.7]};
 
     generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.svg", specifications, 13, 13, "disclosure-triangle-small-open-");
     generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.svg", specifications, 13, 13, "disclosure-triangle-small-closed-");
 
-    specifications["selected"] = {fillColor: [255, 255, 255, 1]};
+    specifications["selected"] = {fillColor: [255, 255, 255, 0.8]};
 
     generateColoredImagesForCSS("Images/DisclosureTriangleTinyOpen.svg", specifications, 8, 8, "disclosure-triangle-tiny-open-");
     generateColoredImagesForCSS("Images/DisclosureTriangleTinyClosed.svg", specifications, 8, 8, "disclosure-triangle-tiny-closed-");

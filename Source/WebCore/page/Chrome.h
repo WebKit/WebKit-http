@@ -48,7 +48,6 @@ class Element;
 class Frame;
 class Geolocation;
 class HitTestResult;
-class IntPoint;
 class IntRect;
 class NavigationAction;
 class Page;
@@ -116,7 +115,7 @@ public:
     void focusedElementChanged(Element*) const;
     void focusedFrameChanged(Frame*) const;
 
-    WEBCORE_EXPORT Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) const;
+    Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) const;
     void show() const;
 
     bool canRunModal() const;
@@ -145,7 +144,7 @@ public:
     void runJavaScriptAlert(Frame*, const String&);
     bool runJavaScriptConfirm(Frame*, const String&);
     bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result);
-    WEBCORE_EXPORT void setStatusbarText(Frame*, const String&);
+    void setStatusbarText(Frame*, const String&);
     bool shouldInterruptJavaScript();
 
     IntRect windowResizerRect() const;
@@ -154,10 +153,10 @@ public:
 
     void setToolTip(const HitTestResult&);
 
-    WEBCORE_EXPORT void print(Frame*);
+    void print(Frame*);
 
-    WEBCORE_EXPORT void enableSuddenTermination();
-    WEBCORE_EXPORT void disableSuddenTermination();
+    void enableSuddenTermination();
+    void disableSuddenTermination();
 
 #if ENABLE(INPUT_TYPE_COLOR)
     PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color& initialColor);
@@ -175,7 +174,7 @@ public:
     bool requiresFullscreenForVideoPlayback();
 
 #if PLATFORM(COCOA)
-    WEBCORE_EXPORT void focusNSView(NSView*);
+    void focusNSView(NSView*);
 #endif
 
     bool selectItemWritingDirectionIsNatural();
@@ -193,10 +192,6 @@ public:
 
     void registerPopupOpeningObserver(PopupOpeningObserver*);
     void unregisterPopupOpeningObserver(PopupOpeningObserver*);
-
-    void didBeginTrackingPotentialLongMousePress(const IntPoint&, const HitTestResult&);
-    void didRecognizeLongMousePress();
-    void didCancelTrackingPotentialLongMousePress();
 
 private:
     void notifyPopupOpeningObservers() const;

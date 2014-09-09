@@ -353,6 +353,7 @@ void MultipartHandle::didReceiveResponse()
 
         response->setMimeType(mimeType.lower());
         response->setTextEncodingName(extractCharsetFromMediaType(contentType));
+        response->setSuggestedFilename(filenameFromHTTPContentDisposition(response->httpHeaderField(HTTPHeaderName::ContentDisposition)));
 
         d->client()->didReceiveResponse(m_resourceHandle, *response);
         response->setResponseFired(true);

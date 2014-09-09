@@ -1,4 +1,4 @@
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/AspenFamily.xcconfig"
+#include "iOS.xcconfig"
 #include "../../../../../Internal/Configurations/UseInternalSDK.xcconfig"
 
 CLANG_CXX_LANGUAGE_STANDARD = gnu++0x;

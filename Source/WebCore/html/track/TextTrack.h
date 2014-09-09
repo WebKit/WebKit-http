@@ -158,7 +158,7 @@ public:
 
     virtual bool isInband() const { return false; }
 
-    virtual MediaTime startTimeVariance() const { return MediaTime::zeroTime(); }
+    virtual double startTimeVariance() const { return 0; }
 
     using RefCounted<TrackBase>::ref;
     using RefCounted<TrackBase>::deref;

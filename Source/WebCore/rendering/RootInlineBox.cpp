@@ -900,20 +900,6 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
         glyphOverflow->top = std::min(glyphOverflow->top, std::max(0, glyphOverflow->top - boxLineStyle.fontMetrics().ascent(baselineType())));
         glyphOverflow->bottom = std::min(glyphOverflow->bottom, std::max(0, glyphOverflow->bottom - boxLineStyle.fontMetrics().descent(baselineType())));
     }
-    
-    if (includeInitialLetterForBox(box)) {
-        // FIXME: Can't use glyph bounds in vertical writing mode because they are garbage.
-        bool canUseGlyphs = isHorizontal() && glyphOverflow && glyphOverflow->computeBounds;
-        int letterAscent = baselineType() == AlphabeticBaseline ? boxLineStyle.fontMetrics().capHeight() : (canUseGlyphs ? glyphOverflow->top : boxLineStyle.fontMetrics().ascent(baselineType()));
-        int letterDescent = canUseGlyphs ? glyphOverflow->bottom : (box.isRootInlineBox() ? 0 : boxLineStyle.fontMetrics().descent(baselineType()));
-        setAscentAndDescent(ascent, descent, letterAscent, letterDescent, ascentDescentSet);
-        affectsAscent = letterAscent - box.logicalTop() > 0;
-        affectsDescent = letterDescent + box.logicalTop() > 0;
-        if (canUseGlyphs) {
-            glyphOverflow->top = std::min(glyphOverflow->top, std::max(0, glyphOverflow->top - boxLineStyle.fontMetrics().ascent(baselineType())));
-            glyphOverflow->bottom = std::min(glyphOverflow->bottom, std::max(0, glyphOverflow->bottom - boxLineStyle.fontMetrics().descent(baselineType())));
-        }
-    }
 
     if (includeMarginForBox(box)) {
         LayoutUnit ascentWithMargin = boxLineStyle.fontMetrics().ascent(baselineType());
@@ -948,9 +934,9 @@ LayoutUnit RootInlineBox::verticalPositionForBox(InlineBox* box, VerticalPositio
     // Check the cache.
     bool isRenderInline = renderer->isRenderInline();
     if (isRenderInline && !firstLine) {
-        LayoutUnit cachedPosition;
-        if (verticalPositionCache.get(renderer, baselineType(), cachedPosition))
-            return cachedPosition;
+        LayoutUnit verticalPosition = verticalPositionCache.get(renderer, baselineType());
+        if (verticalPosition != PositionUndefined)
+            return verticalPosition;
     }
 
     LayoutUnit verticalPosition = 0;
@@ -1038,18 +1024,6 @@ bool RootInlineBox::includeGlyphsForBox(InlineBox& box) const
     return isHorizontal() && (lineBoxContain & LineBoxContainGlyphs);
 }
 
-bool RootInlineBox::includeInitialLetterForBox(InlineBox& box) const
-{
-    if (box.renderer().isReplaced() || (box.renderer().isTextOrLineBreak() && !box.behavesLikeText()))
-        return false;
-    
-    if (!box.behavesLikeText() && box.isInlineFlowBox() && !toInlineFlowBox(&box)->hasTextChildren())
-        return false;
-
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return (lineBoxContain & LineBoxContainInitialLetter);
-}
-
 bool RootInlineBox::includeMarginForBox(InlineBox& box) const
 {
     if (box.renderer().isReplaced() || (box.renderer().isTextOrLineBreak() && !box.behavesLikeText()))
@@ -1064,7 +1038,7 @@ bool RootInlineBox::fitsToGlyphs() const
 {
     // FIXME: We can't fit to glyphs yet for vertical text, since the bounds returned are garbage.
     LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return isHorizontal() && ((lineBoxContain & LineBoxContainGlyphs) || (lineBoxContain & LineBoxContainInitialLetter));
+    return isHorizontal() && (lineBoxContain & LineBoxContainGlyphs);
 }
 
 bool RootInlineBox::includesRootLineBoxFontOrLeading() const

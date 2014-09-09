@@ -24,6 +24,7 @@
 #ifndef FETurbulence_h
 #define FETurbulence_h
 
+#if ENABLE(FILTERS)
 #include "FilterEffect.h"
 #include "Filter.h"
 
@@ -134,5 +135,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // FETurbulence_h

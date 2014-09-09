@@ -34,8 +34,8 @@ class VM;
 struct ProtoCallFrame;
 
 extern "C" {
-    EncodedJSValue vmEntryToJavaScript(void*, VM*, ProtoCallFrame*);
-    EncodedJSValue vmEntryToNative(void*, VM*, ProtoCallFrame*);
+    EncodedJSValue callToJavaScript(void*, VM*, ProtoCallFrame*);
+    EncodedJSValue callToNativeFunction(void*, VM*, ProtoCallFrame*);
 }
 
 namespace LLInt {

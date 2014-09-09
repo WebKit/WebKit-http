@@ -24,6 +24,7 @@
  */
 
 [
+    Conditional=CSS_FILTERS,
     DoNotCheckConstants,
     ImplementationLacksVTable,
 ] interface WebKitCSSFilterValue : CSSValueList {

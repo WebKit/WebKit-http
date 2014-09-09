@@ -26,71 +26,9 @@
 #include "config.h"
 #include "PutByIdVariant.h"
 
-#include "CallLinkStatus.h"
-#include "JSCInlines.h"
 #include <wtf/ListDump.h>
 
 namespace JSC {
-
-PutByIdVariant::PutByIdVariant(const PutByIdVariant& other)
-    : PutByIdVariant()
-{
-    *this = other;
-}
-
-PutByIdVariant& PutByIdVariant::operator=(const PutByIdVariant& other)
-{
-    m_kind = other.m_kind;
-    m_oldStructure = other.m_oldStructure;
-    m_newStructure = other.m_newStructure;
-    m_constantChecks = other.m_constantChecks;
-    m_alternateBase = other.m_alternateBase;
-    m_offset = other.m_offset;
-    if (other.m_callLinkStatus)
-        m_callLinkStatus = std::make_unique<CallLinkStatus>(*other.m_callLinkStatus);
-    else
-        m_callLinkStatus = nullptr;
-    return *this;
-}
-
-PutByIdVariant PutByIdVariant::replace(const StructureSet& structure, PropertyOffset offset)
-{
-    PutByIdVariant result;
-    result.m_kind = Replace;
-    result.m_oldStructure = structure;
-    result.m_offset = offset;
-    return result;
-}
-
-PutByIdVariant PutByIdVariant::transition(
-    const StructureSet& oldStructure, Structure* newStructure,
-    const IntendedStructureChain* structureChain, PropertyOffset offset)
-{
-    PutByIdVariant result;
-    result.m_kind = Transition;
-    result.m_oldStructure = oldStructure;
-    result.m_newStructure = newStructure;
-    if (structureChain)
-        structureChain->gatherChecks(result.m_constantChecks);
-    result.m_offset = offset;
-    return result;
-}
-
-PutByIdVariant PutByIdVariant::setter(
-    const StructureSet& structure, PropertyOffset offset,
-    IntendedStructureChain* chain, std::unique_ptr<CallLinkStatus> callLinkStatus)
-{
-    PutByIdVariant result;
-    result.m_kind = Setter;
-    result.m_oldStructure = structure;
-    if (chain) {
-        chain->gatherChecks(result.m_constantChecks);
-        result.m_alternateBase = chain->terminalPrototype();
-    }
-    result.m_offset = offset;
-    result.m_callLinkStatus = std::move(callLinkStatus);
-    return result;
-}
 
 Structure* PutByIdVariant::oldStructureForTransition() const
 {
@@ -108,42 +46,18 @@ Structure* PutByIdVariant::oldStructureForTransition() const
 
 bool PutByIdVariant::writesStructures() const
 {
-    switch (kind()) {
-    case Transition:
-    case Setter:
-        return true;
-    default:
-        return false;
-    }
+    return kind() == Transition;
 }
 
 bool PutByIdVariant::reallocatesStorage() const
 {
-    switch (kind()) {
-    case Transition:
-        return oldStructureForTransition()->outOfLineCapacity() != newStructure()->outOfLineCapacity();
-    case Setter:
-        return true;
-    default:
+    if (kind() != Transition)
         return false;
-    }
-}
-
-bool PutByIdVariant::makesCalls() const
-{
-    return kind() == Setter;
-}
-
-StructureSet PutByIdVariant::baseStructure() const
-{
-    ASSERT(kind() == Setter);
     
-    if (!m_alternateBase)
-        return structure();
+    if (oldStructureForTransition()->outOfLineCapacity() == newStructure()->outOfLineCapacity())
+        return false;
     
-    Structure* structure = structureFor(m_constantChecks, m_alternateBase);
-    RELEASE_ASSERT(structure);
-    return structure;
+    return true;
 }
 
 bool PutByIdVariant::attemptToMerge(const PutByIdVariant& other)
@@ -225,25 +139,14 @@ void PutByIdVariant::dumpInContext(PrintStream& out, DumpContext* context) const
         
     case Replace:
         out.print(
-            "<Replace: ", inContext(structure(), context), ", offset = ", offset(), ">");
+            "<Replace: ", inContext(structure(), context), ", ", offset(), ">");
         return;
         
     case Transition:
         out.print(
             "<Transition: ", inContext(oldStructure(), context), " -> ",
             pointerDumpInContext(newStructure(), context), ", [",
-            listDumpInContext(constantChecks(), context), "], offset = ", offset(), ">");
-        return;
-        
-    case Setter:
-        out.print(
-            "<Setter: ", inContext(structure(), context), ", [",
-            listDumpInContext(constantChecks(), context), "]");
-        if (m_alternateBase)
-            out.print(", alternateBase = ", inContext(JSValue(m_alternateBase), context));
-        out.print(", offset = ", m_offset);
-        out.print(", call = ", *m_callLinkStatus);
-        out.print(">");
+            listDumpInContext(constantChecks(), context), "], ", offset(), ">");
         return;
     }
     

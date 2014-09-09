@@ -1090,10 +1090,10 @@ bool ScrollAnimatorMac::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
     // the base class implementation of handleWheelEvent will not accept the
     // wheel event if there is nowhere to scroll.
     if (fabsf(wheelEvent.deltaY()) >= fabsf(wheelEvent.deltaX())) {
-        if (!allowsVerticalStretching(wheelEvent))
+        if (!allowsVerticalStretching())
             return ScrollAnimator::handleWheelEvent(wheelEvent);
     } else {
-        if (!allowsHorizontalStretching(wheelEvent))
+        if (!allowsHorizontalStretching())
             return ScrollAnimator::handleWheelEvent(wheelEvent);
     }
 
@@ -1131,35 +1131,13 @@ bool ScrollAnimatorMac::pinnedInDirection(float deltaX, float deltaY)
     return false;
 }
 
-// FIXME: We should find a way to share some of the code from newGestureIsStarting(), isAlreadyPinnedInDirectionOfGesture(),
-// allowsVerticalStretching(), and allowsHorizontalStretching() with the implementation in ScrollingTreeFrameScrollingNodeMac.
-static bool newGestureIsStarting(const PlatformWheelEvent& wheelEvent)
-{
-    return wheelEvent.phase() == PlatformWheelEventPhaseMayBegin || wheelEvent.phase() == PlatformWheelEventPhaseBegan;
-}
-
-bool ScrollAnimatorMac::isAlreadyPinnedInDirectionOfGesture(const PlatformWheelEvent& wheelEvent, ScrollEventAxis axis)
-{
-    switch (axis) {
-    case ScrollEventAxis::Vertical:
-        return (wheelEvent.deltaY() > 0 && m_scrollableArea->scrolledToTop()) || (wheelEvent.deltaY() < 0 && m_scrollableArea->scrolledToBottom());
-    case ScrollEventAxis::Horizontal:
-        return (wheelEvent.deltaX() > 0 && m_scrollableArea->scrolledToLeft()) || (wheelEvent.deltaX() < 0 && m_scrollableArea->scrolledToRight());
-    }
-
-    ASSERT_NOT_REACHED();
-    return false;
-}
-
-bool ScrollAnimatorMac::allowsVerticalStretching(const PlatformWheelEvent& wheelEvent)
+bool ScrollAnimatorMac::allowsVerticalStretching()
 {
     switch (m_scrollableArea->verticalScrollElasticity()) {
     case ScrollElasticityAutomatic: {
         Scrollbar* hScroller = m_scrollableArea->horizontalScrollbar();
         Scrollbar* vScroller = m_scrollableArea->verticalScrollbar();
-        bool scrollbarsAllowStretching = ((vScroller && vScroller->enabled()) || (!hScroller || !hScroller->enabled()));
-        bool eventPreventsStretching = m_scrollableArea->hasScrollableOrRubberbandableAncestor() && newGestureIsStarting(wheelEvent) && isAlreadyPinnedInDirectionOfGesture(wheelEvent, ScrollEventAxis::Vertical);
-        return scrollbarsAllowStretching && !eventPreventsStretching;
+        return (((vScroller && vScroller->enabled()) || (!hScroller || !hScroller->enabled())));
     }
     case ScrollElasticityNone:
         return false;
@@ -1171,15 +1149,13 @@ bool ScrollAnimatorMac::allowsVerticalStretching(const PlatformWheelEvent& wheel
     return false;
 }
 
-bool ScrollAnimatorMac::allowsHorizontalStretching(const PlatformWheelEvent& wheelEvent)
+bool ScrollAnimatorMac::allowsHorizontalStretching()
 {
     switch (m_scrollableArea->horizontalScrollElasticity()) {
     case ScrollElasticityAutomatic: {
         Scrollbar* hScroller = m_scrollableArea->horizontalScrollbar();
         Scrollbar* vScroller = m_scrollableArea->verticalScrollbar();
-        bool scrollbarsAllowStretching = ((hScroller && hScroller->enabled()) || (!vScroller || !vScroller->enabled()));
-        bool eventPreventsStretching = m_scrollableArea->hasScrollableOrRubberbandableAncestor() && newGestureIsStarting(wheelEvent) && isAlreadyPinnedInDirectionOfGesture(wheelEvent, ScrollEventAxis::Horizontal);
-        return scrollbarsAllowStretching && !eventPreventsStretching;
+        return (((hScroller && hScroller->enabled()) || (!vScroller || !vScroller->enabled())));
     }
     case ScrollElasticityNone:
         return false;

@@ -38,15 +38,15 @@ namespace JSC { namespace DFG {
 //#define SAMPLE(name) SamplingRegion samplingRegion(name)
 
 #if !ASSERT_DISABLED
-void StructureAbstractValue::assertIsRegistered(Graph& graph) const
+void StructureAbstractValue::assertIsWatched(Graph& graph) const
 {
-    SAMPLE("StructureAbstractValue assertIsRegistered");
+    SAMPLE("StructureAbstractValue assertIsWatched");
 
     if (isTop())
         return;
     
     for (unsigned i = size(); i--;)
-        graph.assertIsRegistered(at(i));
+        graph.assertIsWatched(at(i));
 }
 #endif // !ASSERT_DISABLED
 

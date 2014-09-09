@@ -44,7 +44,7 @@ public:
 
     PassRefPtr<HTMLCollection> children();
 
-    WEBCORE_EXPORT virtual String title() const override final;
+    virtual String title() const override final;
 
     virtual short tabIndex() const override;
 
@@ -88,7 +88,7 @@ public:
     bool hasDirectionAuto() const;
     TextDirection directionalityIfhasDirAutoAttribute(bool& isAuto) const;
 
-    virtual bool isHTMLUnknownElement() const { return false; }
+    bool isHTMLUnknownElement() const { return getFlag(IsHTMLUnknownElementFlag); }
     virtual bool isTextControlInnerTextElement() const { return false; }
 
     virtual bool willRespondToMouseMoveEvents() override;

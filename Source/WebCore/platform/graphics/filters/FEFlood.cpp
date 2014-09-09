@@ -21,6 +21,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "FEFlood.h"
 
 #include "Filter.h"
@@ -92,3 +94,5 @@ TextStream& FEFlood::externalRepresentation(TextStream& ts, int indent) const
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

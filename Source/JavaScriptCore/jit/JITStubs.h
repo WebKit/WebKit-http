@@ -41,8 +41,8 @@ struct ProtoCallFrame;
 class VM;
 
 extern "C" {
-    EncodedJSValue vmEntryToJavaScript(void*, VM*, ProtoCallFrame*);
-    EncodedJSValue vmEntryToNative(void*, VM*, ProtoCallFrame*);
+    EncodedJSValue callToJavaScript(void*, VM*, ProtoCallFrame*);
+    EncodedJSValue callToNativeFunction(void*, VM*, ProtoCallFrame*);
 }
 #endif
 

@@ -22,6 +22,7 @@
 #ifndef FESpecularLighting_h
 #define FESpecularLighting_h
 
+#if ENABLE(FILTERS)
 #include "FELighting.h"
 
 namespace WebCore {
@@ -62,5 +63,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // FESpecularLighting_h

@@ -188,6 +188,8 @@ void CryptoKeyRSA::buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder& 
 
 std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
 {
+    ASSERT(extractable());
+
     switch (CCRSAGetKeyType(m_platformKey)) {
     case ccRSAKeyPublic: {
         Vector<uint8_t> modulus;

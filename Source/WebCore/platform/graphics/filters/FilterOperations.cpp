@@ -30,6 +30,8 @@
 #include "IntSize.h"
 #include "LengthFunctions.h"
 
+#if ENABLE(CSS_FILTERS)
+
 namespace WebCore {
 
 static inline IntSize outsetSizeForBlur(float stdDeviation)
@@ -152,3 +154,5 @@ bool FilterOperations::hasFilterThatMovesPixels() const
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)

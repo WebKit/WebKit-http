@@ -32,8 +32,6 @@
 #include "Color.h"
 #include "FloatQuad.h"
 #include "LayoutRect.h"
-#include "Timer.h"
-#include <wtf/Deque.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -112,6 +110,7 @@ public:
 
     void update();
     void paint(GraphicsContext&);
+    void drawOutline(GraphicsContext*, const LayoutRect&, const Color&);
     void getHighlight(Highlight*, CoordinateSystem) const;
 
     void setPausedInDebuggerMessage(const String*);
@@ -119,10 +118,7 @@ public:
     void hideHighlight();
     void highlightNode(Node*, const HighlightConfig&);
     void highlightQuad(std::unique_ptr<FloatQuad>, const HighlightConfig&);
-    
-    void setShowingPaintRects(bool);
-    void showPaintRect(const FloatRect&);
-    
+
     Node* highlightedNode() const;
 
     void didSetSearchingForNode(bool enabled);
@@ -138,12 +134,7 @@ private:
     void drawNodeHighlight();
     void drawQuadHighlight();
     void drawPausedInDebuggerMessage();
-    void drawPaintRects();
-    void updatePaintRectsTimerFired(Timer<InspectorOverlay>&);
-
     Page* overlayPage();
-
-    void forcePaint();
     void reset(const IntSize& viewportSize, const IntSize& frameViewFullSize);
     void evaluateInOverlay(const String& method);
     void evaluateInOverlay(const String& method, const String& argument);
@@ -157,12 +148,7 @@ private:
     std::unique_ptr<FloatQuad> m_highlightQuad;
     std::unique_ptr<Page> m_overlayPage;
     HighlightConfig m_quadHighlightConfig;
-    
-    typedef std::pair<std::chrono::steady_clock::time_point, FloatRect> TimeRectPair;
-    Deque<TimeRectPair> m_paintRects;
-    Timer<InspectorOverlay> m_paintRectUpdateTimer;
     bool m_indicating;
-    bool m_showingPaintRects;
 };
 
 } // namespace WebCore

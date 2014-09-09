@@ -54,12 +54,9 @@ void* prepareOSREntry(
             bytecodeIndex, ".\n");
     }
     
-    if (bytecodeIndex)
-        jsCast<ScriptExecutable*>(executable)->setDidTryToEnterInLoop(true);
-
     if (bytecodeIndex != entryCode->bytecodeIndex()) {
         if (Options::verboseOSR())
-            dataLog("    OSR failed because we don't have an entrypoint for bc#", bytecodeIndex, "; ours is for bc#", entryCode->bytecodeIndex(), "\n");
+            dataLog("    OSR failed because we don't have an entrypoint for bc#", bytecodeIndex, "; ours is for bc#", entryCode->bytecodeIndex());
         return 0;
     }
     

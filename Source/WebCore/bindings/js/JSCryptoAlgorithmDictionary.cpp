@@ -335,8 +335,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForDecrypt(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue value)
@@ -377,8 +375,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForSign(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue value)
@@ -415,8 +411,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForVerify(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue value)
@@ -453,8 +447,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForDigest(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue)
@@ -488,8 +480,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForGenerateKey(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue value)
@@ -525,8 +515,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForDeriveKey(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue)
@@ -557,8 +545,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForDeriveBits(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue)
@@ -589,8 +575,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForImportKey(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue value)
@@ -628,8 +612,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createParametersForExportKey(ExecState* exec, CryptoAlgorithmIdentifier algorithm, JSValue)
@@ -661,8 +643,6 @@ std::unique_ptr<CryptoAlgorithmParameters> JSCryptoAlgorithmDictionary::createPa
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return nullptr;
     }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 }
 
 }

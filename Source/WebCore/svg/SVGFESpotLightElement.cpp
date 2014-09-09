@@ -18,9 +18,11 @@
  */
 
 #include "config.h"
-#include "SVGFESpotLightElement.h"
 
+#if ENABLE(FILTERS)
+#include "SVGFESpotLightElement.h"
 #include "SVGNames.h"
+
 #include "SpotLightSource.h"
 
 namespace WebCore {
@@ -45,3 +47,5 @@ PassRefPtr<LightSource> SVGFESpotLightElement::lightSource() const
 }
 
 }
+
+#endif // ENABLE(FILTERS)

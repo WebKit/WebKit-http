@@ -30,7 +30,7 @@
 #include "Document.h"
 #include "Frame.h"
 #include "Page.h"
-#include "PageConsoleClient.h"
+#include "PageConsole.h"
 #include "ResourceError.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
@@ -79,7 +79,7 @@ void XSLTProcessor::genericErrorFunc(void*, const char*, ...)
 
 void XSLTProcessor::parseErrorFunc(void* userData, xmlError* error)
 {
-    PageConsoleClient* console = static_cast<PageConsoleClient*>(userData);
+    PageConsole* console = static_cast<PageConsole*>(userData);
     if (!console)
         return;
 
@@ -138,7 +138,7 @@ static xmlDocPtr docLoaderFunc(const xmlChar* uri,
             globalCachedResourceLoader->printAccessDeniedMessage(url);
         }
 
-        PageConsoleClient* console = nullptr;
+        PageConsole* console = 0;
         Frame* frame = globalProcessor->xslStylesheet()->ownerDocument()->frame();
         if (frame && frame->page())
             console = &frame->page()->console();

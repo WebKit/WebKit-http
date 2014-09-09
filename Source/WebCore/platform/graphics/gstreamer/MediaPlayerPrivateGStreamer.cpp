@@ -39,7 +39,6 @@
 #include <gst/pbutils/missing-plugins.h>
 #include <limits>
 #include <wtf/HexNumber.h>
-#include <wtf/MediaTime.h>
 #include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
@@ -803,7 +802,7 @@ void MediaPlayerPrivateGStreamer::newTextSample()
 void MediaPlayerPrivateGStreamer::setRate(float rate)
 {
     // Higher rate causes crash.
-    rate = clampTo(rate, -20.0, 20.0);
+    rate = clampTo(rate, -20, 20);
 
     // Avoid useless playback rate update.
     if (m_playbackRate == rate) {
@@ -1092,7 +1091,7 @@ void MediaPlayerPrivateGStreamer::processMpegTsSection(GstMpegtsSection* section
         gsize size;
         const void* bytes = g_bytes_get_data(data.get(), &size);
 
-        track->addDataCue(MediaTime::createWithDouble(currentTimeDouble()), MediaTime::createWithDouble(currentTimeDouble()), bytes, size);
+        track->addDataCue(currentTimeDouble(), currentTimeDouble(), bytes, size);
     }
 }
 #endif
@@ -1125,9 +1124,9 @@ void MediaPlayerPrivateGStreamer::processTableOfContentsEntry(GstTocEntry* entry
     gint64 start = -1, stop = -1;
     gst_toc_entry_get_start_stop_times(entry, &start, &stop);
     if (start != -1)
-        cue->setStartTime(MediaTime(start, GST_SECOND));
+        cue->setStartTime(static_cast<double>(start) / GST_SECOND);
     if (stop != -1)
-        cue->setEndTime(MediaTime(stop, GST_SECOND));
+        cue->setEndTime(static_cast<double>(stop) / GST_SECOND);
 
     GstTagList* tags = gst_toc_entry_get_tags(entry);
     if (tags) {

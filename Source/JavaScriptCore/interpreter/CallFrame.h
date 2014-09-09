@@ -29,7 +29,6 @@
 #include "MacroAssemblerCodeRef.h"
 #include "Register.h"
 #include "StackVisitor.h"
-#include "VMEntryRecord.h"
 
 namespace JSC  {
 
@@ -95,10 +94,7 @@ namespace JSC  {
 
         CallFrame& operator=(const Register& r) { *static_cast<Register*>(this) = r; return *this; }
 
-        CallFrame* callerFrame() const { return static_cast<CallFrame*>(callerFrameOrVMEntryFrame()); }
-
-        JS_EXPORT_PRIVATE CallFrame* callerFrame(VMEntryFrame*&);
-
+        CallFrame* callerFrame() const { return callerFrameAndPC().callerFrame; }
         static ptrdiff_t callerFrameOffset() { return OBJECT_OFFSETOF(CallerFrameAndPC, callerFrame); }
 
         ReturnAddressPtr returnPC() const { return ReturnAddressPtr(callerFrameAndPC().pc); }
@@ -165,7 +161,7 @@ namespace JSC  {
 
         Register* topOfFrame()
         {
-            if (!codeBlock())
+            if (isVMEntrySentinel() || !codeBlock())
                 return registers();
             return topOfFrameInternal();
         }
@@ -173,10 +169,12 @@ namespace JSC  {
 #if USE(JSVALUE32_64)
         Instruction* currentVPC() const
         {
+            ASSERT(!isVMEntrySentinel());
             return bitwise_cast<Instruction*>(this[JSStack::ArgumentCount].tag());
         }
         void setCurrentVPC(Instruction* vpc)
         {
+            ASSERT(!isVMEntrySentinel());
             this[JSStack::ArgumentCount].tag() = bitwise_cast<int32_t>(vpc);
         }
 #else
@@ -191,7 +189,7 @@ namespace JSC  {
         ALWAYS_INLINE void init(CodeBlock* codeBlock, Instruction* vPC, JSScope* scope,
             CallFrame* callerFrame, int argc, JSObject* callee)
         {
-            ASSERT(callerFrame == noCaller() || callerFrame->stack()->containsAddress(this));
+            ASSERT(callerFrame == noCaller() || callerFrame->isVMEntrySentinel() || callerFrame->stack()->containsAddress(this));
 
             setCodeBlock(codeBlock);
             setScope(scope);
@@ -247,6 +245,35 @@ namespace JSC  {
 
         static CallFrame* noCaller() { return 0; }
 
+        bool isVMEntrySentinel() const
+        {
+            return !!this && codeBlock() == vmEntrySentinelCodeBlock();
+        }
+
+        CallFrame* vmEntrySentinelCallerFrame() const
+        {
+            ASSERT(isVMEntrySentinel());
+            return this[JSStack::ScopeChain].callFrame();
+        }
+
+        void initializeVMEntrySentinelFrame(CallFrame* callFrame)
+        {
+            setCallerFrame(noCaller());
+            setReturnPC(0);
+            setCodeBlock(vmEntrySentinelCodeBlock());
+            static_cast<Register*>(this)[JSStack::ScopeChain] = callFrame;
+            setCallee(0);
+            setArgumentCountIncludingThis(0);
+        }
+
+        CallFrame* callerFrameSkippingVMEntrySentinel()
+        {
+            CallFrame* caller = callerFrame();
+            if (caller->isVMEntrySentinel())
+                return caller->vmEntrySentinelCallerFrame();
+            return caller;
+        }
+
         void setArgumentCountIncludingThis(int count) { static_cast<Register*>(this)[JSStack::ArgumentCount].payload() = count; }
         void setCallee(JSObject* callee) { static_cast<Register*>(this)[JSStack::Callee] = Register::withCallee(callee); }
         void setCodeBlock(CodeBlock* codeBlock) { static_cast<Register*>(this)[JSStack::CodeBlock] = codeBlock; }
@@ -264,6 +291,7 @@ namespace JSC  {
         JS_EXPORT_PRIVATE const char* describeFrame();
 
     private:
+        static const intptr_t s_VMEntrySentinel = 1;
 
 #ifndef NDEBUG
         JSStack* stack();
@@ -302,10 +330,10 @@ namespace JSC  {
             return this[argumentOffset(argIndex)].jsValue();
         }
 
-        void* callerFrameOrVMEntryFrame() const { return callerFrameAndPC().callerFrame; }
-
         CallerFrameAndPC& callerFrameAndPC() { return *reinterpret_cast<CallerFrameAndPC*>(this); }
         const CallerFrameAndPC& callerFrameAndPC() const { return *reinterpret_cast<const CallerFrameAndPC*>(this); }
+
+        static CodeBlock* vmEntrySentinelCodeBlock() { return reinterpret_cast<CodeBlock*>(s_VMEntrySentinel); }
 
         friend class JSStack;
         friend class VMInspector;

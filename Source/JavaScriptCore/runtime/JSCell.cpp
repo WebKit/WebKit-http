@@ -236,20 +236,4 @@ PassRefPtr<ArrayBufferView> JSCell::getTypedArrayImpl(JSArrayBufferView*)
     return 0;
 }
 
-uint32_t JSCell::getEnumerableLength(ExecState*, JSObject*)
-{
-    RELEASE_ASSERT_NOT_REACHED();
-    return 0;
-}
-
-void JSCell::getStructurePropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode)
-{
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-void JSCell::getGenericPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode)
-{
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
 } // namespace JSC

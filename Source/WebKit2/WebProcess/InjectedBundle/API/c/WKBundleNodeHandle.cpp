@@ -28,7 +28,6 @@
 #include "WKBundleNodeHandlePrivate.h"
 
 #include "InjectedBundleNodeHandle.h"
-#include "InjectedBundleRangeHandle.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
 #include "WebFrame.h"
@@ -62,12 +61,6 @@ WKImageRef WKBundleNodeHandleCopySnapshotWithOptions(WKBundleNodeHandleRef nodeH
 {
     RefPtr<WebImage> image = toImpl(nodeHandleRef)->renderedImage(toSnapshotOptions(options));
     return toAPI(image.release().leakRef());
-}
-
-WKBundleRangeHandleRef WKBundleNodeHandleCopyVisibleRange(WKBundleNodeHandleRef nodeHandleRef)
-{
-    RefPtr<InjectedBundleRangeHandle> rangeHandle = toImpl(nodeHandleRef)->visibleRange();
-    return toAPI(rangeHandle.release().leakRef());
 }
 
 WKRect WKBundleNodeHandleGetElementBounds(WKBundleNodeHandleRef elementHandleRef)

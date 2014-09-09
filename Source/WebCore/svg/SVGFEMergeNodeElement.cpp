@@ -19,6 +19,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEMergeNodeElement.h"
 
 #include "Attribute.h"
@@ -92,3 +94,5 @@ void SVGFEMergeNodeElement::svgAttributeChanged(const QualifiedName& attrName)
 }
 
 }
+
+#endif // ENABLE(FILTERS)

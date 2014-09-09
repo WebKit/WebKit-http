@@ -160,19 +160,16 @@ void PlatformCALayerWinInternal::internalSetNeedsDisplay(const FloatRect* dirtyR
         CACFLayerSetNeedsDisplay(owner()->platformLayer(), 0);
 }
 
-void PlatformCALayerWinInternal::setNeedsDisplay()
-{
-    internalSetNeedsDisplay(0);
-}
-
-void PlatformCALayerWinInternal::setNeedsDisplayInRect(const FloatRect& dirtyRect)
+void PlatformCALayerWinInternal::setNeedsDisplay(const FloatRect* dirtyRect)
 {
     if (layerTypeIsTiled(m_owner->layerType())) {
         // FIXME: Only setNeedsDisplay for tiles that are currently visible
         int numTileLayers = tileCount();
-        CGRect rect = dirtyRect;
+        CGRect rect;
+        if (dirtyRect)
+            rect = *dirtyRect;
         for (int i = 0; i < numTileLayers; ++i)
-            CACFLayerSetNeedsDisplay(tileAtIndex(i), &rect);
+            CACFLayerSetNeedsDisplay(tileAtIndex(i), dirtyRect ? &rect : 0);
 
         if (m_owner->owner() && m_owner->owner()->platformCALayerShowRepaintCounter(m_owner)) {
             CGRect layerBounds = m_owner->bounds();
@@ -192,15 +189,15 @@ void PlatformCALayerWinInternal::setNeedsDisplayInRect(const FloatRect& dirtyRec
                     repaintCounterRect.setY(layerBounds.height() - (layerBounds.y() + repaintCounterRect.height()));
                 internalSetNeedsDisplay(&repaintCounterRect);
             }
-            if (owner()->owner()->platformCALayerContentsOrientation() == WebCore::GraphicsLayer::CompositingCoordinatesTopDown) {
-                FloatRect flippedDirtyRect = dirtyRect;
+            if (dirtyRect && owner()->owner()->platformCALayerContentsOrientation() == WebCore::GraphicsLayer::CompositingCoordinatesTopDown) {
+                FloatRect flippedDirtyRect = *dirtyRect;
                 flippedDirtyRect.setY(owner()->bounds().height() - (flippedDirtyRect.y() + flippedDirtyRect.height()));
                 internalSetNeedsDisplay(&flippedDirtyRect);
                 return;
             }
         }
 
-        internalSetNeedsDisplay(&dirtyRect);
+        internalSetNeedsDisplay(dirtyRect);
     }
     owner()->setNeedsCommit();
 }

@@ -387,11 +387,13 @@ void PlatformCAAnimationMac::setFromValue(const WebCore::Color& value)
     [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:array];
 }
 
+#if ENABLE(CSS_FILTERS)
 void PlatformCAAnimationMac::setFromValue(const FilterOperation* operation, int internalFilterPropertyIndex)
 {
     RetainPtr<id> value = PlatformCAFilters::filterValueForOperation(operation, internalFilterPropertyIndex);
     [static_cast<CABasicAnimation*>(m_animation.get()) setFromValue:value.get()];
 }
+#endif
 
 void PlatformCAAnimationMac::copyFromValueFrom(const PlatformCAAnimation* value)
 {
@@ -444,11 +446,13 @@ void PlatformCAAnimationMac::setToValue(const WebCore::Color& value)
     [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:array];
 }
 
+#if ENABLE(CSS_FILTERS)
 void PlatformCAAnimationMac::setToValue(const FilterOperation* operation, int internalFilterPropertyIndex)
 {
     RetainPtr<id> value = PlatformCAFilters::filterValueForOperation(operation, internalFilterPropertyIndex);
     [static_cast<CABasicAnimation*>(m_animation.get()) setToValue:value.get()];
 }
+#endif
 
 void PlatformCAAnimationMac::copyToValueFrom(const PlatformCAAnimation* value)
 {
@@ -522,6 +526,7 @@ void PlatformCAAnimationMac::setValues(const Vector<WebCore::Color>& value)
     [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:array];
 }
 
+#if ENABLE(CSS_FILTERS)
 void PlatformCAAnimationMac::setValues(const Vector<RefPtr<FilterOperation>>& values, int internalFilterPropertyIndex)
 {
     if (animationType() != Keyframe)
@@ -535,6 +540,7 @@ void PlatformCAAnimationMac::setValues(const Vector<RefPtr<FilterOperation>>& va
     }
     [static_cast<CAKeyframeAnimation*>(m_animation.get()) setValues:array];
 }
+#endif
 
 void PlatformCAAnimationMac::copyValuesFrom(const PlatformCAAnimation* value)
 {

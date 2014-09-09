@@ -30,5 +30,5 @@ namespace WebCore {
 class TestObj;
 }
 
-WEBCORE_EXPORT WebCore::TestObj* core(DOMTestObj *);
-WEBCORE_EXPORT DOMTestObj *kit(WebCore::TestObj*);
+WebCore::TestObj* core(DOMTestObj *);
+DOMTestObj *kit(WebCore::TestObj*);

@@ -39,10 +39,10 @@ public:
     {
         return adoptRef(new DOMWrapperWorld(vm, isNormal));
     }
-    WEBCORE_EXPORT ~DOMWrapperWorld();
+    ~DOMWrapperWorld();
 
     // Free as much memory held onto by this world as possible.
-    WEBCORE_EXPORT void clearWrappers();
+    void clearWrappers();
 
     void didCreateWindowShell(ScriptController* scriptController) { m_scriptControllersWithWindowShells.add(scriptController); }
     void didDestroyWindowShell(ScriptController* scriptController) { m_scriptControllersWithWindowShells.remove(scriptController); }
@@ -65,7 +65,7 @@ private:
 };
 
 DOMWrapperWorld& normalWorld(JSC::VM&);
-WEBCORE_EXPORT DOMWrapperWorld& mainThreadNormalWorld();
+DOMWrapperWorld& mainThreadNormalWorld();
 inline DOMWrapperWorld& debuggerWorld() { return mainThreadNormalWorld(); }
 inline DOMWrapperWorld& pluginWorld() { return mainThreadNormalWorld(); }
 

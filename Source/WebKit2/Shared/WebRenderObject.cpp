@@ -87,7 +87,7 @@ WebRenderObject::WebRenderObject(RenderObject* renderer, bool shouldIncludeDesce
     m_absolutePosition = flooredIntPoint(renderer->localToAbsolute());
 
     if (renderer->isBox())
-        m_frameRect = snappedIntRect(toRenderBox(renderer)->frameRect());
+        m_frameRect = toRenderBox(renderer)->pixelSnappedFrameRect();
     else if (renderer->isText()) {
         m_frameRect = toRenderText(renderer)->linesBoundingBox();
         m_frameRect.setLocation(toRenderText(renderer)->firstRunLocation());

@@ -150,11 +150,13 @@ void TextureMapperImageBuffer::drawNumber(int /* number */, const Color&, const 
     notImplemented();
 }
 
+#if ENABLE(CSS_FILTERS)
 PassRefPtr<BitmapTexture> BitmapTextureImageBuffer::applyFilters(TextureMapper*, const FilterOperations&)
 {
     ASSERT_NOT_REACHED();
     return this;
 }
+#endif
 
 }
 #endif

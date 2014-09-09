@@ -59,20 +59,6 @@ void AsyncScrollingCoordinator::scrollingStateTreePropertiesChanged()
     scheduleTreeStateCommit();
 }
 
-static inline void setStateScrollingNodeSnapOffsetsAsFloat(ScrollingStateScrollingNode& node, ScrollEventAxis axis, const Vector<LayoutUnit>& snapOffsets, float deviceScaleFactor)
-{
-    // FIXME: Incorporate current page scale factor in snapping to device pixel. Perhaps we should just convert to float here and let UI process do the pixel snapping?
-    Vector<float> snapOffsetsAsFloat;
-    snapOffsetsAsFloat.reserveInitialCapacity(snapOffsets.size());
-    for (size_t i = 0; i < snapOffsets.size(); ++i)
-        snapOffsetsAsFloat.append(roundToDevicePixel(snapOffsets[i], deviceScaleFactor, false));
-
-    if (axis == ScrollEventAxis::Horizontal)
-        node.setHorizontalSnapOffsets(snapOffsetsAsFloat);
-    else
-        node.setVerticalSnapOffsets(snapOffsetsAsFloat);
-}
-
 void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView* frameView)
 {
     ASSERT(isMainThread());
@@ -111,15 +97,6 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView* frameView)
     node->setTotalContentsSize(frameView->totalContentsSize());
     node->setReachableContentsSize(frameView->totalContentsSize());
 
-#if ENABLE(CSS_SCROLL_SNAP)
-    frameView->updateSnapOffsets();
-    if (const Vector<LayoutUnit>* horizontalSnapOffsets = frameView->horizontalSnapOffsets())
-        setStateScrollingNodeSnapOffsetsAsFloat(*node, ScrollEventAxis::Horizontal, *horizontalSnapOffsets, frameView->frame().document()->deviceScaleFactor());
-
-    if (const Vector<LayoutUnit>* verticalSnapOffsets = frameView->verticalSnapOffsets())
-        setStateScrollingNodeSnapOffsetsAsFloat(*node, ScrollEventAxis::Vertical, *verticalSnapOffsets, frameView->frame().document()->deviceScaleFactor());
-#endif
-
     ScrollableAreaParameters scrollParameters;
     scrollParameters.horizontalScrollElasticity = frameView->horizontalScrollElasticity();
     scrollParameters.verticalScrollElasticity = frameView->verticalScrollElasticity();
@@ -131,12 +108,13 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView* frameView)
     node->setScrollableAreaParameters(scrollParameters);
 }
 
-void AsyncScrollingCoordinator::frameViewNonFastScrollableRegionChanged(FrameView*)
+void AsyncScrollingCoordinator::frameViewNonFastScrollableRegionChanged(FrameView* frameView)
 {
     if (!m_scrollingStateTree->rootStateNode())
         return;
 
-    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(&m_page->mainFrame(), IntPoint()));
+    if (frameView->frame().isMainFrame())
+        m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(&frameView->frame(), IntPoint()));
 }
 
 void AsyncScrollingCoordinator::frameViewRootLayerDidChange(FrameView* frameView)
@@ -422,10 +400,6 @@ void AsyncScrollingCoordinator::updateOverflowScrollingNode(ScrollingNodeID node
         node->setTotalContentsSize(scrollingGeometry->contentSize);
         node->setReachableContentsSize(scrollingGeometry->reachableContentSize);
         node->setScrollableAreaSize(scrollingGeometry->scrollableAreaSize);
-#if ENABLE(CSS_SCROLL_SNAP)
-        setStateScrollingNodeSnapOffsetsAsFloat(*node, ScrollEventAxis::Horizontal, scrollingGeometry->horizontalSnapOffsets, scrolledContentsLayer->deviceScaleFactor());
-        setStateScrollingNodeSnapOffsetsAsFloat(*node, ScrollEventAxis::Vertical, scrollingGeometry->verticalSnapOffsets, scrolledContentsLayer->deviceScaleFactor());
-#endif
     }
 }
 

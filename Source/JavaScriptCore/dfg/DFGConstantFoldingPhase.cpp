@@ -86,7 +86,6 @@ private:
             
             Node* node = block->at(indexInBlock);
 
-            bool alreadyHandled = false;
             bool eliminated = false;
                     
             switch (node->op()) {
@@ -142,8 +141,8 @@ private:
                 break;
             }
                 
-            case CheckCell: {
-                if (m_state.forNode(node->child1()).value() != node->cellOperand()->value())
+            case CheckFunction: {
+                if (m_state.forNode(node->child1()).value() != node->function()->value())
                     break;
                 node->convertToPhantom();
                 eliminated = true;
@@ -174,7 +173,7 @@ private:
                 AbstractValue baseValue = m_state.forNode(base);
                 
                 m_interpreter.execute(indexInBlock); // Push CFA over this node after we get the state before.
-                alreadyHandled = true; // Don't allow the default constant folder to do things to this.
+                eliminated = true; // Don't allow the default constant folder to do things to this.
                 
                 for (unsigned i = 0; i < data.variants.size(); ++i) {
                     GetByIdVariant& variant = data.variants[i];
@@ -182,7 +181,6 @@ private:
                     if (variant.structureSet().isEmpty()) {
                         data.variants[i--] = data.variants.last();
                         data.variants.removeLast();
-                        changed = true;
                     }
                 }
                 
@@ -191,7 +189,6 @@ private:
                 
                 emitGetByOffset(
                     indexInBlock, node, baseValue, data.variants[0], data.identifierNumber);
-                changed = true;
                 break;
             }
                 
@@ -203,7 +200,7 @@ private:
                 AbstractValue baseValue = m_state.forNode(base);
 
                 m_interpreter.execute(indexInBlock); // Push CFA over this node after we get the state before.
-                alreadyHandled = true; // Don't allow the default constant folder to do things to this.
+                eliminated = true; // Don't allow the default constant folder to do things to this.
                 
 
                 for (unsigned i = 0; i < data.variants.size(); ++i) {
@@ -213,7 +210,6 @@ private:
                     if (variant.oldStructure().isEmpty()) {
                         data.variants[i--] = data.variants.last();
                         data.variants.removeLast();
-                        changed = true;
                         continue;
                     }
                     
@@ -222,7 +218,6 @@ private:
                         variant = PutByIdVariant::replace(
                             variant.oldStructure(),
                             variant.offset());
-                        changed = true;
                     }
                 }
 
@@ -231,7 +226,6 @@ private:
                 
                 emitPutByOffset(
                     indexInBlock, node, baseValue, data.variants[0], data.identifierNumber);
-                changed = true;
                 break;
             }
         
@@ -244,7 +238,7 @@ private:
                 AbstractValue baseValue = m_state.forNode(child);
 
                 m_interpreter.execute(indexInBlock); // Push CFA over this node after we get the state before.
-                alreadyHandled = true; // Don't allow the default constant folder to do things to this.
+                eliminated = true; // Don't allow the default constant folder to do things to this.
 
                 if (baseValue.m_structure.isTop() || baseValue.m_structure.isClobbered()
                     || (node->child1().useKind() == UntypedUse || (baseValue.m_type & ~SpecCell)))
@@ -266,7 +260,6 @@ private:
                 
                 if (status.numVariants() == 1) {
                     emitGetByOffset(indexInBlock, node, baseValue, status[0], identifierNumber);
-                    changed = true;
                     break;
                 }
                 
@@ -277,7 +270,6 @@ private:
                 data->variants = status.variants();
                 data->identifierNumber = identifierNumber;
                 node->convertToMultiGetByOffset(data);
-                changed = true;
                 break;
             }
                 
@@ -294,7 +286,7 @@ private:
                 AbstractValue baseValue = m_state.forNode(child);
 
                 m_interpreter.execute(indexInBlock); // Push CFA over this node after we get the state before.
-                alreadyHandled = true; // Don't allow the default constant folder to do things to this.
+                eliminated = true; // Don't allow the default constant folder to do things to this.
 
                 if (baseValue.m_structure.isTop() || baseValue.m_structure.isClobbered())
                     break;
@@ -309,13 +301,6 @@ private:
                 if (!status.isSimple())
                     break;
                 
-                ASSERT(status.numVariants());
-                
-                if (status.numVariants() > 1 && !isFTL(m_graph.m_plan.mode))
-                    break;
-                
-                changed = true;
-                
                 for (unsigned i = status.numVariants(); i--;)
                     addChecks(origin, indexInBlock, status[i].constantChecks());
                 
@@ -324,7 +309,8 @@ private:
                     break;
                 }
                 
-                ASSERT(isFTL(m_graph.m_plan.mode));
+                if (!isFTL(m_graph.m_plan.mode))
+                    break;
 
                 MultiPutByOffsetData* data = m_graph.m_multiPutByOffsetData.add();
                 data->variants = status.variants();
@@ -338,7 +324,6 @@ private:
                     break;
                 
                 node->convertToIdentity();
-                changed = true;
                 break;
             }
                 
@@ -369,48 +354,16 @@ private:
                 
                 break;
             }
-                
-            case Check: {
-                alreadyHandled = true;
-                m_interpreter.execute(indexInBlock);
-                for (unsigned i = 0; i < AdjacencyList::Size; ++i) {
-                    Edge edge = node->children.child(i);
-                    if (!edge)
-                        break;
-                    if (edge.isProved() || edge.willNotHaveCheck()) {
-                        node->children.removeEdge(i--);
-                        changed = true;
-                    }
-                }
-                break;
-            }
-                
-            case ProfiledCall:
-            case ProfiledConstruct: {
-                if (!m_state.forNode(m_graph.varArgChild(node, 0)).m_value)
-                    break;
-                
-                // If we were able to prove that the callee is a constant then the normal call
-                // inline cache will record this callee. This means that there is no need to do any
-                // additional profiling.
-                m_interpreter.execute(indexInBlock);
-                node->setOp(node->op() == ProfiledCall ? Call : Construct);
-                eliminated = true;
-                break;
-            }
 
             default:
                 break;
             }
-            
+                
             if (eliminated) {
                 changed = true;
                 continue;
             }
                 
-            if (alreadyHandled)
-                continue;
-            
             m_interpreter.execute(indexInBlock);
             if (!m_state.isValid()) {
                 // If we invalidated then we shouldn't attempt to constant-fold. Here's an
@@ -461,13 +414,8 @@ private:
 
         addBaseCheck(indexInBlock, node, baseValue, variant.structureSet());
         
-        JSValue baseForLoad;
-        if (variant.alternateBase())
-            baseForLoad = variant.alternateBase();
-        else
-            baseForLoad = baseValue.m_value;
-        if (JSValue value = m_graph.tryGetConstantProperty(baseForLoad, variant.baseStructure(), variant.offset())) {
-            m_graph.convertToConstant(node, m_graph.freeze(value));
+        if (variant.specificValue()) {
+            m_graph.convertToConstant(node, m_graph.freeze(variant.specificValue()));
             return;
         }
         
@@ -585,10 +533,8 @@ private:
 
     void addStructureTransitionCheck(NodeOrigin origin, unsigned indexInBlock, JSCell* cell, Structure* structure)
     {
-        if (m_graph.registerStructure(cell->structure()) == StructureRegisteredAndWatched)
+        if (m_graph.watchpoints().consider(cell->structure()))
             return;
-        
-        m_graph.registerStructure(structure);
 
         Node* weakConstant = m_insertionSet.insertNode(
             indexInBlock, speculationFromValue(cell), JSConstant, origin,

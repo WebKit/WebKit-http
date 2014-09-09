@@ -59,10 +59,6 @@ void storeCodeOrigin(State&, CCallHelpers&, CodeOrigin);
 
 MacroAssembler::Call callOperation(
     State&, const RegisterSet&, CCallHelpers&, CodeOrigin, CCallHelpers::JumpList*,
-    J_JITOperation_ESsiCI, GPRReg, StructureStubInfo*, GPRReg,
-    const StringImpl*);
-MacroAssembler::Call callOperation(
-    State&, const RegisterSet&, CCallHelpers&, CodeOrigin, CCallHelpers::JumpList*,
     J_JITOperation_ESsiJI, GPRReg result, StructureStubInfo*, GPRReg object,
     StringImpl* uid);
 MacroAssembler::Call callOperation(

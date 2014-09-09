@@ -369,7 +369,7 @@ def emitARM64MoveImmediate(value, target)
     [48, 32, 16, 0].each {
         | shift |
         currentValue = (value >> shift) & 0xffff
-        next if currentValue == (isNegative ? 0xffff : 0) and (shift != 0 or !first)
+        next if currentValue == (isNegative ? 0xffff : 0) and shift != 0
         if first
             if isNegative
                 $asm.puts "movn #{target.arm64Operand(:ptr)}, \##{(~currentValue) & 0xffff}, lsl \##{shift}"
@@ -586,6 +586,22 @@ class Instruction
                 | ops |
                 $asm.puts "stp #{ops[0].arm64Operand(:ptr)}, #{ops[1].arm64Operand(:ptr)}, [sp, #-16]!"
             }
+        when "popLRAndFP"
+            $asm.puts "ldp x29, x30, [sp], #16"
+        when "pushLRAndFP"
+            $asm.puts "stp x29, x30, [sp, #-16]!"
+        when "popCalleeSaves"
+            $asm.puts "ldp x28, x27, [sp], #16"
+            $asm.puts "ldp x26, x25, [sp], #16"
+            $asm.puts "ldp x24, x23, [sp], #16"
+            $asm.puts "ldp x22, x21, [sp], #16"
+            $asm.puts "ldp x20, x19, [sp], #16"
+        when "pushCalleeSaves"
+            $asm.puts "stp x20, x19, [sp, #-16]!"
+            $asm.puts "stp x22, x21, [sp, #-16]!"
+            $asm.puts "stp x24, x23, [sp, #-16]!"
+            $asm.puts "stp x26, x25, [sp, #-16]!"
+            $asm.puts "stp x28, x27, [sp, #-16]!"
         when "move"
             if operands[0].immediate?
                 emitARM64MoveImmediate(operands[0].value, operands[1])

@@ -25,6 +25,8 @@
 
 #include "config.h"
 
+#if ENABLE(CSS_FILTERS)
+
 #import "PlatformCAFilters.h"
 #import "BlockExceptions.h"
 #import "FloatConversion.h"
@@ -667,3 +669,5 @@ const char* PlatformCAFilters::animatedFilterPropertyName(FilterOperation::Opera
     }
 #endif
 }
+
+#endif // ENABLE(CSS_FILTERS)

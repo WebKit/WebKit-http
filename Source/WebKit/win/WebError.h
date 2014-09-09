@@ -82,7 +82,8 @@ public:
         /* [retval][out] */ BOOL *result);
 
     // IWebErrorPrivate
-    virtual HRESULT STDMETHODCALLTYPE sslPeerCertificate(/* [retval][out] */ ULONG_PTR* result);
+    virtual HRESULT STDMETHODCALLTYPE sslPeerCertificate( 
+        /* [retval][out] */ OLE_HANDLE *result);
 
     const WebCore::ResourceError& resourceError() const;
 

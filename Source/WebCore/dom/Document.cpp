@@ -105,7 +105,7 @@
 #include "NodeIterator.h"
 #include "NodeRareData.h"
 #include "NodeWithIndex.h"
-#include "PageConsoleClient.h"
+#include "PageConsole.h"
 #include "PageGroup.h"
 #include "PageTransitionEvent.h"
 #include "PlatformLocale.h"
@@ -403,7 +403,7 @@ HashSet<Document*>& Document::allDocuments()
 Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsigned constructionFlags)
     : ContainerNode(*this, CreateDocument)
     , TreeScope(*this)
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     , m_handlingTouchEvent(false)
     , m_touchEventRegionsDirty(false)
     , m_touchEventsChangedTimer(this, &Document::touchEventsChangedTimerFired)
@@ -1851,7 +1851,7 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
 
     updateLayout();
 
-    if (runPostLayoutTasks == RunPostLayoutTasks::Synchronously && view())
+    if (runPostLayoutTasks == RunPostLayoutTasksSynchronously && view())
         view()->flushAnyPendingPostLayoutTasks();
 
     m_ignorePendingStylesheets = oldIgnore;
@@ -2051,7 +2051,7 @@ void Document::prepareForDestruction()
     if (m_hasPreparedForDestruction)
         return;
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     clearTouchEventListeners();
 #endif
 
@@ -2102,7 +2102,7 @@ void Document::removeAllEventListeners()
 
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     clearTouchEventListeners();
 #endif
     for (Node* node = firstChild(); node; node = NodeTraversal::next(node))
@@ -2380,16 +2380,14 @@ void Document::implicitClose()
     if (f) {
         f->loader().icon().startLoader();
         f->animation().startAnimationsIfNotSuspended(this);
-
-        // FIXME: We shouldn't be dispatching pending events globally on all Documents here.
-        // For now, only do this when there is a Frame, otherwise this could cause JS reentrancy
-        // below SVG font parsing, for example. <https://webkit.org/b/136269>
-        ImageLoader::dispatchPendingBeforeLoadEvents();
-        ImageLoader::dispatchPendingLoadEvents();
-        ImageLoader::dispatchPendingErrorEvents();
-        HTMLLinkElement::dispatchPendingLoadEvents();
-        HTMLStyleElement::dispatchPendingLoadEvents();
     }
+
+    ImageLoader::dispatchPendingBeforeLoadEvents();
+    ImageLoader::dispatchPendingLoadEvents();
+    ImageLoader::dispatchPendingErrorEvents();
+
+    HTMLLinkElement::dispatchPendingLoadEvents();
+    HTMLStyleElement::dispatchPendingLoadEvents();
 
     // To align the HTML load event and the SVGLoad event for the outermost <svg> element, fire it from
     // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
@@ -3522,6 +3520,9 @@ void Document::unregisterCollection(HTMLCollection& collection)
     if (!collection.isRootedAtDocument())
         return;
 
+    ASSERT(m_inInvalidateNodeListAndCollectionCaches
+        ? m_collectionsInvalidatedAtDocument.isEmpty()
+        : m_collectionsInvalidatedAtDocument.contains(&collection));
     m_collectionsInvalidatedAtDocument.remove(&collection);
 }
 
@@ -4139,11 +4140,6 @@ void Document::documentWillSuspendForPageCache()
     // is dispatched, after the document is restored from the page cache.
     m_didDispatchViewportPropertiesChanged = false;
 #endif
-
-    if (RenderView* view = renderView()) {
-        if (view->usesCompositing())
-            view->compositor().cancelCompositingLayerUpdate();
-    }
 }
 
 void Document::documentDidResumeFromPageCache() 
@@ -4923,7 +4919,7 @@ void Document::postTask(Task task)
             return;
 
         Page* page = document->page();
-        if ((page && page->defersLoading() && document->activeDOMObjectsAreSuspended()) || !document->m_pendingTasks.isEmpty())
+        if ((page && page->defersLoading()) || !document->m_pendingTasks.isEmpty())
             document->m_pendingTasks.append(WTF::move(*task.release()));
         else
             task->performTask(*document);
@@ -5418,17 +5414,9 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     // the exiting document.
     bool eventTargetQueuesEmpty = m_fullScreenChangeEventTargetQueue.isEmpty() && m_fullScreenErrorEventTargetQueue.isEmpty();
     Document& exitingDocument = eventTargetQueuesEmpty ? topDocument() : *this;
-
-    // FIXME(136605): Remove this quirk once YouTube moves to relative widths and heights for
-    // fullscreen mode.
-    String host = url().host();
-    if (settings() && settings()->needsSiteSpecificQuirks() && (host.endsWith(".youtube.com", false) || equalIgnoringCase("youtube.com", host)))
-        exitingDocument.fullScreenChangeDelayTimerFired(exitingDocument.m_fullScreenChangeDelayTimer);
-    else
-        exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0);
-
+    exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0);
 }
-
+    
 void Document::setFullScreenRenderer(RenderFullScreen* renderer)
 {
     if (renderer == m_fullScreenRenderer)
@@ -6159,20 +6147,9 @@ bool Document::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t
 
 static inline bool nodeOrItsAncestorNeedsStyleRecalc(const Node& node)
 {
-    if (node.needsStyleRecalc())
-        return true;
-
-    const Node* currentNode = &node;
-    const Element* ancestor = currentNode->parentOrShadowHostElement();
-    while (ancestor) {
-        if (ancestor->needsStyleRecalc())
+    for (const Node* n = &node; n; n = n->parentOrShadowHostNode()) {
+        if (n->needsStyleRecalc())
             return true;
-
-        if (ancestor->directChildNeedsStyleRecalc() && currentNode->styleIsAffectedByPreviousSibling())
-            return true;
-
-        currentNode = ancestor;
-        ancestor = currentNode->parentOrShadowHostElement();
     }
     return false;
 }

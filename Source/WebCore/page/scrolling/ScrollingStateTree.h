@@ -46,23 +46,23 @@ class ScrollingStateTree {
     friend class ScrollingStateNode;
 public:
     
-    WEBCORE_EXPORT static PassOwnPtr<ScrollingStateTree> create(AsyncScrollingCoordinator* = 0);
-    WEBCORE_EXPORT ~ScrollingStateTree();
+    static PassOwnPtr<ScrollingStateTree> create(AsyncScrollingCoordinator* = 0);
+    ~ScrollingStateTree();
 
     ScrollingStateFrameScrollingNode* rootStateNode() const { return m_rootStateNode.get(); }
-    WEBCORE_EXPORT ScrollingStateNode* stateNodeForID(ScrollingNodeID);
+    ScrollingStateNode* stateNodeForID(ScrollingNodeID);
 
-    WEBCORE_EXPORT ScrollingNodeID attachNode(ScrollingNodeType, ScrollingNodeID, ScrollingNodeID parentID);
+    ScrollingNodeID attachNode(ScrollingNodeType, ScrollingNodeID, ScrollingNodeID parentID);
     void detachNode(ScrollingNodeID);
     void clear();
     
     const HashSet<ScrollingNodeID>& removedNodes() const { return m_nodesRemovedSinceLastCommit; }
-    WEBCORE_EXPORT void setRemovedNodes(HashSet<ScrollingNodeID>);
+    void setRemovedNodes(HashSet<ScrollingNodeID>);
 
     // Copies the current tree state and clears the changed properties mask in the original.
-    WEBCORE_EXPORT PassOwnPtr<ScrollingStateTree> commit(LayerRepresentation::Type preferredLayerRepresentation);
+    PassOwnPtr<ScrollingStateTree> commit(LayerRepresentation::Type preferredLayerRepresentation);
 
-    WEBCORE_EXPORT void setHasChangedProperties(bool = true);
+    void setHasChangedProperties(bool = true);
     bool hasChangedProperties() const { return m_hasChangedProperties; }
 
     bool hasNewRootStateNode() const { return m_hasNewRootStateNode; }

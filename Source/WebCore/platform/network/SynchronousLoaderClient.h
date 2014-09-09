@@ -47,7 +47,7 @@ public:
     const ResourceError& error() const { return m_error; }
     bool isDone() { return m_isDone; }
 
-    WEBCORE_EXPORT static ResourceError platformBadResponseError();
+    static ResourceError platformBadResponseError();
 
 private:
     SynchronousLoaderClient()

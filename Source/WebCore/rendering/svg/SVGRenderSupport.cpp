@@ -190,7 +190,7 @@ const RenderSVGRoot& SVGRenderSupport::findTreeRootObject(const RenderElement& s
 static inline void invalidateResourcesOfChildren(RenderElement& renderer)
 {
     ASSERT(!renderer.needsLayout());
-    if (auto* resources = SVGResourcesCache::cachedResourcesForRenderer(renderer))
+    if (SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(renderer))
         resources->removeClientFromCache(renderer, false);
 
     for (auto& child : childrenOfType<RenderElement>(renderer))
@@ -359,12 +359,14 @@ void SVGRenderSupport::intersectRepaintRectWithShadows(const RenderElement& rend
 
 void SVGRenderSupport::intersectRepaintRectWithResources(const RenderElement& renderer, FloatRect& repaintRect)
 {
-    auto* resources = SVGResourcesCache::cachedResourcesForRenderer(renderer);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(renderer);
     if (!resources)
         return;
 
+#if ENABLE(FILTERS)
     if (RenderSVGResourceFilter* filter = resources->filter())
         repaintRect = filter->resourceBoundingBox(renderer);
+#endif
 
     if (RenderSVGResourceClipper* clipper = resources->clipper())
         repaintRect.intersect(clipper->resourceBoundingBox(renderer));
@@ -380,7 +382,7 @@ bool SVGRenderSupport::filtersForceContainerLayout(const RenderElement& renderer
     if (!renderer.normalChildNeedsLayout())
         return false;
 
-    auto* resources = SVGResourcesCache::cachedResourcesForRenderer(renderer);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(renderer);
     if (!resources || !resources->filter())
         return false;
 
@@ -391,7 +393,7 @@ bool SVGRenderSupport::pointInClippingArea(const RenderElement& renderer, const 
 {
     // We just take clippers into account to determine if a point is on the node. The Specification may
     // change later and we also need to check maskers.
-    auto* resources = SVGResourcesCache::cachedResourcesForRenderer(renderer);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(renderer);
     if (!resources)
         return true;
 
@@ -410,7 +412,7 @@ void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
     SVGLengthContext lengthContext(toSVGElement(renderer.element()));
-    context->setStrokeThickness(lengthContext.valueForLength(svgStyle.strokeWidth()));
+    context->setStrokeThickness(svgStyle.strokeWidth().value(lengthContext));
     context->setLineCap(svgStyle.capStyle());
     context->setLineJoin(svgStyle.joinStyle());
     if (svgStyle.joinStyle() == MiterJoin)
@@ -425,7 +427,7 @@ void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const
         for (auto& dash : dashes)
             dashArray.uncheckedAppend(dash.value(lengthContext));
 
-        context->setLineDash(dashArray, lengthContext.valueForLength(svgStyle.strokeDashOffset()));
+        context->setLineDash(dashArray, svgStyle.strokeDashOffset().value(lengthContext));
     }
 }
 

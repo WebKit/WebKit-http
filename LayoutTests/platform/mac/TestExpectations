@@ -173,6 +173,12 @@ gamepad/
 # X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
 http/tests/security/contentTypeOptions
 
+# Speech input is not yet enabled.
+fast/speech
+
+# Speech JavaScript API is not yet enabled.
+fast/events/constructors/speech-recognition-event-constructor.html
+
 # Media Stream API is not yet enabled.
 fast/mediastream
 fast/events/constructors/media-stream-event-constructor.html
@@ -636,6 +642,15 @@ platform/mac/editing/spelling/delete-autocorrected-word-2.html
 # Mac does not have global selections.
 editing/pasteboard/paste-global-selection.html
 
+# Known WebGL conformance test failures, fails on Intel and AMD hardware
+webgl/1.0.1/conformance/textures/texture-size.html [ Pass Failure ]
+webgl/1.0.1/conformance/limits/gl-max-texture-dimensions.html [ Pass Failure ]
+webgl/1.0.2/conformance/textures/texture-size.html [ Pass Failure ]
+webgl/1.0.2/conformance/limits/gl-max-texture-dimensions.html [ Pass Failure ]
+
+# Test is faulty, skipping for now
+webgl/1.0.2/conformance/ogles/GL/build/build_009_to_016.html [ Failure ]
+
 # Skipping all webgl conformance tests on trunk
 webgl/conformance
 
@@ -648,9 +663,20 @@ webgl/1.0.1/conformance/glsl/misc/shader-with-functional-scoping.html [ Failure 
 webgl/1.0.1/conformance/glsl/samplers/glsl-function-texture2dlod.html [ Failure ]
 webgl/1.0.1/conformance/glsl/samplers/glsl-function-texture2dproj.html [ Failure ]
 webgl/1.0.1/conformance/textures/origin-clean-conformance.html [ Skip ]
-webgl/1.0.1/conformance/context/context-lost-restored.html [Failure]
+webgl/1.0.1/conformance/context/context-lost-restored.html [ Failure ]
+webgl/1.0.1/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Pass Failure ]
+webgl/1.0.1/conformance/glsl/variables/gl-pointcoord.html [ Pass Failure ]
 webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Failure Timeout ]
 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Failure Timeout ]
+webgl/1.0.2/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Pass Failure ]
+webgl/1.0.2/conformance/glsl/variables/gl-pointcoord.html [ Pass Failure ]
+webgl/1.0.2/conformance/ogles/GL/operators/operators_009_to_016.html [ Pass Failure ]
+webgl/1.0.2/conformance/ogles/GL/control_flow/control_flow_009_to_010.html [ Crash Pass Failure ]
+webgl/1.0.2/conformance/ogles/GL/faceforward/faceforward_001_to_006.html [ Pass Failure ]
+webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html [ Failure Pass ]
+webgl/1.0.2/conformance/state/gl-object-get-calls.html [ Failure Pass ]
+webgl/1.0.2/conformance/uniforms/gl-uniform-arrays.html [ Failure Pass ]
+webgl/1.0.2/conformance/context/context-attribute-preserve-drawing-buffer.html [ Pass Failure ]
 http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
 
 # Sending the mouse down event to the scrollbar starts a nested run loop which causes a hang.
@@ -721,7 +747,7 @@ webkit.org/b/89052 fast/css/image-orientation
 
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
-webkit.org/b/99945 fast/css3-text/css3-text-justify [ Skip ]
+webkit.org/b/99945 fast/css3-text/css3-text-justify [ Failure ]
 webkit.org/b/112755 fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
 webkit.org/b/58491 editing/pasteboard/insert-text-decoration.html [ Skip ]
 
@@ -1169,6 +1195,8 @@ webkit.org/b/123489 [ Mavericks ] inspector-protocol/debugger/setBreakpoint-opti
 
 webkit.org/b/123490 [ Mavericks ] webaudio/oscillator-sawtooth.html [ Failure ]
 
+webkit.org/b/123498 [ Mavericks ] media/track/track-in-band-cues-added-once.html [ Failure ]
+
 webkit.org/b/123522 [ Mavericks ] media/track/track-in-band-legacy-api.html [ Pass Failure ]
 
 # Audio and video tracks aren't supported on mac
@@ -1381,11 +1409,3 @@ webkit.org/b/135133 [ MountainLion ] fast/layers/no-clipping-overflow-hidden-add
 
 webkit.org/b/135160 media/track/track-in-band-subtitles-too-large.html [ Pass Failure ]
 webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Failure ]
-
-webkit.org/b/136532 [ MountainLion ] media/audio-data-url.html [ Failure ]
-webkit.org/b/136532 [ MountainLion ] media/sources-fallback-codecs.html [ Failure ]
-webkit.org/b/136532 [ MountainLion ] media/video-seek-past-end-playing.html [ Pass Failure ]
-
-# Mac doesn't support YUV 420/422 colorspace
-media/video-colorspace-yuv420.html [ Skip ]
-media/video-colorspace-yuv422.html [ Skip ]

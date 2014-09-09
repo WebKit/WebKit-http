@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,37 +27,10 @@
 #define Watchpoint_h
 
 #include <wtf/Atomics.h>
-#include <wtf/PrintStream.h>
 #include <wtf/SentinelLinkedList.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace JSC {
-
-class FireDetail {
-public:
-    FireDetail()
-    {
-    }
-    
-    virtual ~FireDetail()
-    {
-    }
-    
-    virtual void dump(PrintStream&) const = 0;
-};
-
-class StringFireDetail : public FireDetail {
-public:
-    StringFireDetail(const char* string)
-        : m_string(string)
-    {
-    }
-    
-    virtual void dump(PrintStream& out) const override;
-
-private:
-    const char* m_string;
-};
 
 class Watchpoint : public BasicRawSentinelNode<Watchpoint> {
 public:
@@ -67,10 +40,10 @@ public:
     
     virtual ~Watchpoint();
 
-    void fire(const FireDetail& detail) { fireInternal(detail); }
+    void fire() { fireInternal(); }
     
 protected:
-    virtual void fireInternal(const FireDetail&) = 0;
+    virtual void fireInternal() = 0;
 };
 
 enum WatchpointState {
@@ -129,43 +102,35 @@ public:
         m_state = IsWatched;
     }
     
-    void fireAll(const FireDetail& detail)
+    void fireAll()
     {
-        if (LIKELY(state() != IsWatched))
+        if (state() != IsWatched)
             return;
-        fireAllSlow(detail);
+        fireAllSlow();
     }
     
-    void fireAll(const char* reason)
-    {
-        if (LIKELY(state() != IsWatched))
-            return;
-        fireAllSlow(reason);
-    }
-    
-    void touch(const FireDetail& detail)
+    void touch()
     {
         if (state() == ClearWatchpoint)
             startWatching();
         else
-            fireAll(detail);
+            fireAll();
     }
     
-    void invalidate(const FireDetail& detail)
+    void invalidate()
     {
         if (state() == IsWatched)
-            fireAll(detail);
+            fireAll();
         m_state = IsInvalidated;
     }
 
     int8_t* addressOfState() { return &m_state; }
     int8_t* addressOfSetIsNotEmpty() { return &m_setIsNotEmpty; }
     
-    JS_EXPORT_PRIVATE void fireAllSlow(const FireDetail&); // Call only if you've checked isWatched.
-    JS_EXPORT_PRIVATE void fireAllSlow(const char* reason); // Ditto.
+    JS_EXPORT_PRIVATE void fireAllSlow(); // Call only if you've checked isWatched.
     
 private:
-    void fireAllWatchpoints(const FireDetail&);
+    void fireAllWatchpoints();
     
     friend class InlineWatchpointSet;
 
@@ -241,10 +206,10 @@ public:
         m_data = encodeState(IsWatched);
     }
     
-    void fireAll(const FireDetail& detail)
+    void fireAll()
     {
         if (isFat()) {
-            fat()->fireAll(detail);
+            fat()->fireAll();
             return;
         }
         if (decodeState(m_data) == ClearWatchpoint)
@@ -253,12 +218,10 @@ public:
         WTF::storeStoreFence();
     }
     
-    JS_EXPORT_PRIVATE void fireAll(const char* reason);
-    
-    void touch(const FireDetail& detail)
+    void touch()
     {
         if (isFat()) {
-            fat()->touch(detail);
+            fat()->touch();
             return;
         }
         if (decodeState(m_data) == ClearWatchpoint)
@@ -266,11 +229,6 @@ public:
         else
             m_data = encodeState(IsInvalidated);
         WTF::storeStoreFence();
-    }
-    
-    void touch(const char* reason)
-    {
-        touch(StringFireDetail(reason));
     }
     
 private:

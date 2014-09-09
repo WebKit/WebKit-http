@@ -157,11 +157,13 @@ namespace JSC {
             : vm(currentVM)
             , oldCallFrame(currentVM.topCallFrame) 
         {
+            ASSERT(!callFrame->isVMEntrySentinel());
             currentVM.topCallFrame = callFrame;
         }
         
         ~TopCallFrameSetter() 
         {
+            ASSERT(!oldCallFrame->isVMEntrySentinel());
             vm.topCallFrame = oldCallFrame;
         }
     private:
@@ -175,33 +177,18 @@ namespace JSC {
         {
             ASSERT(vm);
             ASSERT(callFrame);
+            ASSERT(!callFrame->isVMEntrySentinel());
             vm->topCallFrame = callFrame;
         }
-    };
-
-    class NativeCallFrameTracerWithRestore {
-    public:
-        ALWAYS_INLINE NativeCallFrameTracerWithRestore(VM* vm, VMEntryFrame* vmEntryFrame, CallFrame* callFrame)
-            : m_vm(vm)
+        
+        enum VMEntrySentinelOKTag { VMEntrySentinelOK };
+        ALWAYS_INLINE NativeCallFrameTracer(VM* vm, CallFrame* callFrame, VMEntrySentinelOKTag)
         {
             ASSERT(vm);
             ASSERT(callFrame);
-            m_savedTopVMEntryFrame = vm->topVMEntryFrame;
-            m_savedTopCallFrame = vm->topCallFrame;
-            vm->topVMEntryFrame = vmEntryFrame;
-            vm->topCallFrame = callFrame;
+            if (!callFrame->isVMEntrySentinel())
+                vm->topCallFrame = callFrame;
         }
-
-        ALWAYS_INLINE ~NativeCallFrameTracerWithRestore()
-        {
-            m_vm->topVMEntryFrame = m_savedTopVMEntryFrame;
-            m_vm->topCallFrame = m_savedTopCallFrame;
-        }
-
-    private:
-        VM* m_vm;
-        VMEntryFrame* m_savedTopVMEntryFrame;
-        CallFrame* m_savedTopCallFrame;
     };
 
     class Interpreter {
@@ -251,7 +238,7 @@ namespace JSC {
         
         SamplingTool* sampler() { return m_sampler.get(); }
 
-        NEVER_INLINE HandlerInfo* unwind(VMEntryFrame*&, CallFrame*&, JSValue&);
+        NEVER_INLINE HandlerInfo* unwind(CallFrame*&, JSValue&);
         NEVER_INLINE void debug(CallFrame*, DebugHookID);
         JSString* stackTraceAsString(ExecState*, Vector<StackFrame>);
 

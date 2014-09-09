@@ -35,6 +35,8 @@ EWSQueue = function(ews, id, info)
     this.title = info.title || "\xa0";
 
     this.platform = info.platform.name || "unknown";
+
+    this.update();
 };
 
 BaseObject.addConstructorFunctions(EWSQueue);
@@ -49,7 +51,7 @@ EWSQueue.prototype = {
 
     get statusPageURL()
     {
-        return this.ews.queueStatusURL(this.id);
+        return this._statusPageURL;
     },
 
     get chartsPageURL()
@@ -132,7 +134,7 @@ EWSQueue.prototype = {
                 });
             }
 
-            console.assert(this.statusPageURL === data.status_page);
+            this._statusPageURL = data.status_page;
             this._chartsPageURL = data.charts_page;
 
             this._loadedDetailedStatus = true;

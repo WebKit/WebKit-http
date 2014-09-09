@@ -27,7 +27,6 @@
 #include "PlatformTimeRanges.h"
 
 #include <math.h>
-#include <wtf/PrintStream.h>
 
 namespace WebCore {
 
@@ -253,19 +252,11 @@ MediaTime PlatformTimeRanges::nearest(const MediaTime& time) const
 MediaTime PlatformTimeRanges::totalDuration() const
 {
     MediaTime total = MediaTime::zeroTime();
+    bool ignoreInvalid;
 
     for (unsigned n = 0; n < length(); n++)
-        total += abs(end(n) - start(n));
+        total += abs(end(n, ignoreInvalid) - start(n, ignoreInvalid));
     return total;
-}
-
-void PlatformTimeRanges::dump(PrintStream& out) const
-{
-    if (!length())
-        return;
-
-    for (size_t i = 0; i < length(); ++i)
-        out.print("[", start(i), "..", end(i), "] ");
 }
 
 }

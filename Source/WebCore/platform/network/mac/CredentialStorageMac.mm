@@ -45,9 +45,9 @@ void CredentialStorage::saveToPersistentStorage(const ProtectionSpace& protectio
 {
     if (credential.persistence() == CredentialPersistenceNone) {
         Credential sessionCredential(credential, CredentialPersistenceForSession);
-        [[NSURLCredentialStorage sharedCredentialStorage] setDefaultCredential:sessionCredential.nsCredential() forProtectionSpace:protectionSpace.nsSpace()];
+        [[NSURLCredentialStorage sharedCredentialStorage] setDefaultCredential:mac(sessionCredential) forProtectionSpace:mac(protectionSpace)];
     } else
-        [[NSURLCredentialStorage sharedCredentialStorage] setDefaultCredential:credential.nsCredential() forProtectionSpace:protectionSpace.nsSpace()];
+        [[NSURLCredentialStorage sharedCredentialStorage] setDefaultCredential:mac(credential) forProtectionSpace:mac(protectionSpace)];
 }
 #endif
 

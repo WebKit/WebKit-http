@@ -30,5 +30,5 @@ namespace WebCore {
 class TestTypedefs;
 }
 
-WEBCORE_EXPORT WebCore::TestTypedefs* core(DOMTestTypedefs *);
-WEBCORE_EXPORT DOMTestTypedefs *kit(WebCore::TestTypedefs*);
+WebCore::TestTypedefs* core(DOMTestTypedefs *);
+DOMTestTypedefs *kit(WebCore::TestTypedefs*);

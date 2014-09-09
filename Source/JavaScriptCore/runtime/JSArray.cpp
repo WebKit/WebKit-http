@@ -108,7 +108,7 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
         unsigned newLen = descriptor.value().toUInt32(exec);
         // d. If newLen is not equal to ToNumber( Desc.[[Value]]), throw a RangeError exception.
         if (newLen != descriptor.value().toNumber(exec)) {
-            exec->vm().throwException(exec, createRangeError(exec, ASCIILiteral("Invalid array length")));
+            exec->vm().throwException(exec, createRangeError(exec, "Invalid array length"));
             return false;
         }
 
@@ -227,7 +227,7 @@ void JSArray::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, Pro
 {
     JSArray* thisObject = jsCast<JSArray*>(object);
 
-    if (shouldIncludeDontEnumProperties(mode))
+    if (mode == IncludeDontEnumProperties)
         propertyNames.add(exec->propertyNames().length);
 
     JSObject::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
@@ -523,7 +523,7 @@ JSValue JSArray::pop(ExecState* exec)
         return jsUndefined();
     // Call the [[Delete]] internal method of O with arguments indx and true.
     if (!deletePropertyByIndex(this, exec, index)) {
-        throwTypeError(exec, ASCIILiteral("Unable to delete property."));
+        throwTypeError(exec, "Unable to delete property.");
         return jsUndefined();
     }
     // Call the [[Put]] internal method of O with arguments "length", indx, and true.
@@ -567,7 +567,7 @@ void JSArray::push(ExecState* exec, JSValue value)
         if (length > MAX_ARRAY_INDEX) {
             methodTable(exec->vm())->putByIndex(this, exec, length, value, true);
             if (!exec->hadException())
-                exec->vm().throwException(exec, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                exec->vm().throwException(exec, createRangeError(exec, "Invalid array length"));
             return;
         }
         
@@ -587,7 +587,7 @@ void JSArray::push(ExecState* exec, JSValue value)
         if (length > MAX_ARRAY_INDEX) {
             methodTable(exec->vm())->putByIndex(this, exec, length, value, true);
             if (!exec->hadException())
-                exec->vm().throwException(exec, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                exec->vm().throwException(exec, createRangeError(exec, "Invalid array length"));
             return;
         }
         
@@ -619,7 +619,7 @@ void JSArray::push(ExecState* exec, JSValue value)
         if (length > MAX_ARRAY_INDEX) {
             methodTable(exec->vm())->putByIndex(this, exec, length, value, true);
             if (!exec->hadException())
-                exec->vm().throwException(exec, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                exec->vm().throwException(exec, createRangeError(exec, "Invalid array length"));
             return;
         }
         
@@ -654,7 +654,7 @@ void JSArray::push(ExecState* exec, JSValue value)
             methodTable(exec->vm())->putByIndex(this, exec, storage->length(), value, true);
             // Per ES5.1 15.4.4.7 step 6 & 15.4.5.1 step 3.d.
             if (!exec->hadException())
-                exec->vm().throwException(exec, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                exec->vm().throwException(exec, createRangeError(exec, "Invalid array length"));
             return;
         }
 
@@ -1553,11 +1553,9 @@ void JSArray::fillArgList(ExecState* exec, MarkedArgumentBuffer& args)
         
     default:
         CRASH();
-#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         vector = 0;
         vectorEnd = 0;
         break;
-#endif
     }
     
     for (; i < vectorEnd; ++i) {
@@ -1617,11 +1615,9 @@ void JSArray::copyToArguments(ExecState* exec, CallFrame* callFrame, uint32_t co
         
     default:
         CRASH();
-#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         vector = 0;
         vectorEnd = 0;
         break;
-#endif
     }
     
     for (; i < vectorEnd; ++i) {

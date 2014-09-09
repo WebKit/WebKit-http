@@ -12,7 +12,7 @@
  *    copyright notice, this list of conditions and the following
  *    disclaimer in the documentation and/or other materials
  *    provided with the distribution.
- *
+ * 
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -71,7 +71,7 @@ RoundedRect computeRoundedRectForBoxShape(CSSBoxType box, const RenderBox& rende
             return RoundedRect(renderer.marginBoxRect(), RoundedRect::Radii());
 
         LayoutRect marginBox = renderer.marginBoxRect();
-        RoundedRect::Radii radii = computeMarginBoxShapeRadii(style.getRoundedBorderFor(renderer.borderBoxRect()).radii(), renderer);
+        RoundedRect::Radii radii = computeMarginBoxShapeRadii(style.getRoundedBorderFor(renderer.borderBoxRect(), &(renderer.view())).radii(), renderer);
         radii.scale(calcBorderRadiiConstraintScaleFor(marginBox, radii));
         return RoundedRect(marginBox, radii);
     }
@@ -87,11 +87,11 @@ RoundedRect computeRoundedRectForBoxShape(CSSBoxType box, const RenderBox& rende
     case Stroke:
     case ViewBox:
     case BoxMissing:
-        return style.getRoundedBorderFor(renderer.borderBoxRect());
+        return style.getRoundedBorderFor(renderer.borderBoxRect(), &(renderer.view()));
     }
 
     ASSERT_NOT_REACHED();
-    return style.getRoundedBorderFor(renderer.borderBoxRect());
+    return style.getRoundedBorderFor(renderer.borderBoxRect(), &(renderer.view()));
 }
 
 LayoutRect BoxShape::shapeMarginLogicalBoundingBox() const
@@ -112,24 +112,28 @@ FloatRoundedRect BoxShape::shapeMarginBounds() const
     return marginBounds;
 }
 
-LineSegment BoxShape::getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const
+void BoxShape::getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHeight, SegmentList& result) const
 {
     const FloatRoundedRect& marginBounds = shapeMarginBounds();
     if (marginBounds.isEmpty() || !lineOverlapsShapeMarginBounds(logicalTop, logicalHeight))
-        return LineSegment();
+        return;
 
     float y1 = logicalTop;
     float y2 = logicalTop + logicalHeight;
     const FloatRect& rect = marginBounds.rect();
 
-    if (!marginBounds.isRounded())
-        return LineSegment(rect.x(), rect.maxX());
+    if (!marginBounds.isRounded()) {
+        result.append(LineSegment(rect.x(), rect.maxX()));
+        return;
+    }
 
     float topCornerMaxY = std::max<float>(marginBounds.topLeftCorner().maxY(), marginBounds.topRightCorner().maxY());
     float bottomCornerMinY = std::min<float>(marginBounds.bottomLeftCorner().y(), marginBounds.bottomRightCorner().y());
 
-    if (topCornerMaxY <= bottomCornerMinY && y1 <= topCornerMaxY && y2 >= bottomCornerMinY)
-        return LineSegment(rect.x(), rect.maxX());
+    if (topCornerMaxY <= bottomCornerMinY && y1 <= topCornerMaxY && y2 >= bottomCornerMinY) {
+        result.append(LineSegment(rect.x(), rect.maxX()));
+        return;
+    }
 
     float x1 = rect.maxX();
     float x2 = rect.x();
@@ -153,7 +157,7 @@ LineSegment BoxShape::getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logi
     }
 
     ASSERT(x2 >= x1);
-    return LineSegment(x1, x2);
+    result.append(LineSegment(x1, x2));
 }
 
 void BoxShape::buildDisplayPaths(DisplayPaths& paths) const

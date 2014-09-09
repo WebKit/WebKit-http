@@ -181,7 +181,9 @@ void ImplicitAnimation::reset(RenderStyle* to)
         
     // set the transform animation list
     validateTransformFunctionList();
+#if ENABLE(CSS_FILTERS)
     checkForMatchingFilterFunctionLists();
+#endif
 }
 
 void ImplicitAnimation::setOverridden(bool b)
@@ -242,6 +244,7 @@ void ImplicitAnimation::validateTransformFunctionList()
     m_transformFunctionListValid = true;
 }
 
+#if ENABLE(CSS_FILTERS)
 void ImplicitAnimation::checkForMatchingFilterFunctionLists()
 {
     m_filterFunctionListsMatch = false;
@@ -265,6 +268,7 @@ void ImplicitAnimation::checkForMatchingFilterFunctionLists()
     // Filter lists match.
     m_filterFunctionListsMatch = true;
 }
+#endif
 
 double ImplicitAnimation::timeToNextService()
 {

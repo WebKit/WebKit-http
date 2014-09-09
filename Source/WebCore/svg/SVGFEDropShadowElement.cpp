@@ -18,6 +18,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEDropShadowElement.h"
 
 #include "Attribute.h"
@@ -172,3 +174,5 @@ PassRefPtr<FilterEffect> SVGFEDropShadowElement::build(SVGFilterBuilder* filterB
 }
 
 }
+
+#endif

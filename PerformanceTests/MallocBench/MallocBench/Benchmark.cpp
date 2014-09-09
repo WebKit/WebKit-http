@@ -35,7 +35,6 @@
 #include "medium.h"
 #include "message.h"
 #include "reddit.h"
-#include "stress.h"
 #include "theverge.h"
 #include "tree.h"
 #include <dispatch/dispatch.h>
@@ -58,27 +57,26 @@ struct BenchmarkPair {
 };
 
 static const BenchmarkPair benchmarkPairs[] = {
-    { "balloon", benchmark_balloon },
-    { "big", benchmark_big },
     { "churn", benchmark_churn },
-    { "facebook", benchmark_facebook },
-    { "flickr", benchmark_flickr },
-    { "flickr_memory_warning", benchmark_flickr_memory_warning },
-    { "fragment", benchmark_fragment },
-    { "fragment_iterate", benchmark_fragment_iterate },
     { "list_allocate", benchmark_list_allocate },
     { "list_traverse", benchmark_list_traverse },
-    { "medium", benchmark_medium },
-    { "message_many", benchmark_message_many },
-    { "message_one", benchmark_message_one },
-    { "reddit", benchmark_reddit },
-    { "reddit_memory_warning", benchmark_reddit_memory_warning },
-    { "stress", benchmark_stress },
-    { "theverge", benchmark_theverge },
-    { "theverge_memory_warning", benchmark_theverge_memory_warning },
     { "tree_allocate", benchmark_tree_allocate },
-    { "tree_churn", benchmark_tree_churn },
     { "tree_traverse", benchmark_tree_traverse },
+    { "tree_churn", benchmark_tree_churn },
+    { "fragment", benchmark_fragment },
+    { "fragment_iterate", benchmark_fragment_iterate },
+    { "message_one", benchmark_message_one },
+    { "message_many", benchmark_message_many },
+    { "medium", benchmark_medium },
+    { "big", benchmark_big },
+    { "facebook", benchmark_facebook },
+    { "balloon", benchmark_balloon },
+    { "flickr", benchmark_flickr },
+    { "reddit", benchmark_reddit },
+    { "theverge", benchmark_theverge },
+    { "flickr_memory_warning", benchmark_flickr_memory_warning },
+    { "reddit_memory_warning", benchmark_reddit_memory_warning },
+    { "theverge_memory_warning", benchmark_theverge_memory_warning },
 };
 
 static const size_t benchmarksPairsCount = sizeof(benchmarkPairs) / sizeof(BenchmarkPair);

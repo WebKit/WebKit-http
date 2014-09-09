@@ -62,7 +62,6 @@ struct BasicBlock : RefCounted<BasicBlock> {
     Node*& operator[](size_t i) { return at(i); }
     Node* operator[](size_t i) const { return at(i); }
     Node* last() const { return at(size() - 1); }
-    Node* takeLast() { return m_nodes.takeLast(); }
     void resize(size_t size) { m_nodes.resize(size); }
     void grow(size_t size) { m_nodes.grow(size); }
     
@@ -106,13 +105,6 @@ struct BasicBlock : RefCounted<BasicBlock> {
     Node* appendNonTerminal(Graph&, SpeculatedType, Params...);
     
     void dump(PrintStream& out) const;
-    
-    void didLink()
-    {
-#if !ASSERT_DISABLED
-        isLinked = true;
-#endif
-    }
     
     // This value is used internally for block linking and OSR entry. It is mostly meaningless
     // for other purposes due to inlining.
@@ -179,14 +171,12 @@ struct BasicBlock : RefCounted<BasicBlock> {
         SSAData(BasicBlock*);
         ~SSAData();
     };
-    std::unique_ptr<SSAData> ssa;
-    
+    OwnPtr<SSAData> ssa;
+
 private:
     friend class InsertionSet;
     Vector<Node*, 8> m_nodes;
 };
-
-typedef Vector<BasicBlock*, 5> BlockList;
 
 struct UnlinkedBlock {
     BasicBlock* m_block;

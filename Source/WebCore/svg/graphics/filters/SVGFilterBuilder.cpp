@@ -18,6 +18,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFilterBuilder.h"
 
 #include "FilterEffect.h"
@@ -104,3 +106,5 @@ void SVGFilterBuilder::clearResultsRecursive(FilterEffect* effect)
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

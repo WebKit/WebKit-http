@@ -70,27 +70,32 @@ static String collectFraction(const LChar* input, unsigned length, unsigned& pos
     return digits.toString();
 }
 
+double MediaFragmentURIParser::invalidTimeValue()
+{
+    return MediaPlayer::invalidTime();
+}
+
 MediaFragmentURIParser::MediaFragmentURIParser(const URL& url)
     : m_url(url)
     , m_timeFormat(None)
-    , m_startTime(MediaTime::invalidTime())
-    , m_endTime(MediaTime::invalidTime())
+    , m_startTime(MediaPlayer::invalidTime())
+    , m_endTime(MediaPlayer::invalidTime())
 {
 }
 
-MediaTime MediaFragmentURIParser::startTime()
+double MediaFragmentURIParser::startTime()
 {
     if (!m_url.isValid())
-        return MediaTime::invalidTime();
+        return MediaPlayer::invalidTime();
     if (m_timeFormat == None)
         parseTimeFragment();
     return m_startTime;
 }
 
-MediaTime MediaFragmentURIParser::endTime()
+double MediaFragmentURIParser::endTime()
 {
     if (!m_url.isValid())
-        return MediaTime::invalidTime();
+        return MediaPlayer::invalidTime();
     if (m_timeFormat == None)
         parseTimeFragment();
     return m_endTime;
@@ -179,8 +184,8 @@ void MediaFragmentURIParser::parseTimeFragment()
         // in the same format. The format is specified by name, followed by a colon (:), with npt: being
         // the default.
         
-        MediaTime start = MediaTime::invalidTime();
-        MediaTime end = MediaTime::invalidTime();
+        double start = MediaPlayer::invalidTime();
+        double end = MediaPlayer::invalidTime();
         if (parseNPTFragment(fragment.second.characters8(), fragment.second.length(), start, end)) {
             m_startTime = start;
             m_endTime = end;
@@ -197,7 +202,7 @@ void MediaFragmentURIParser::parseTimeFragment()
     m_fragments.clear();
 }
 
-bool MediaFragmentURIParser::parseNPTFragment(const LChar* timeString, unsigned length, MediaTime& startTime, MediaTime& endTime)
+bool MediaFragmentURIParser::parseNPTFragment(const LChar* timeString, unsigned length, double& startTime, double& endTime)
 {
     unsigned offset = 0;
     if (length >= nptIdentiferLength && timeString[0] == 'n' && timeString[1] == 'p' && timeString[2] == 't' && timeString[3] == ':')
@@ -210,7 +215,7 @@ bool MediaFragmentURIParser::parseNPTFragment(const LChar* timeString, unsigned 
     // If a single number only is given, this corresponds to the begin time except if it is preceded
     // by a comma that would in this case indicate the end time.
     if (timeString[offset] == ',')
-        startTime = MediaTime::zeroTime();
+        startTime = 0;
     else {
         if (!parseNPTTime(timeString, length, offset, startTime))
             return false;
@@ -236,7 +241,7 @@ bool MediaFragmentURIParser::parseNPTFragment(const LChar* timeString, unsigned 
     return true;
 }
 
-bool MediaFragmentURIParser::parseNPTTime(const LChar* timeString, unsigned length, unsigned& offset, MediaTime& time)
+bool MediaFragmentURIParser::parseNPTTime(const LChar* timeString, unsigned length, unsigned& offset, double& time)
 {
     enum Mode { minutes, hours };
     Mode mode = minutes;
@@ -266,17 +271,17 @@ bool MediaFragmentURIParser::parseNPTTime(const LChar* timeString, unsigned leng
     String digits1 = collectDigits(timeString, length, offset);
     int value1 = digits1.toInt();
     if (offset >= length || timeString[offset] == ',') {
-        time = MediaTime::createWithDouble(value1);
+        time = value1;
         return true;
     }
 
-    MediaTime fraction;
+    double fraction = 0;
     if (timeString[offset] == '.') {
         if (offset == length)
             return true;
         String digits = collectFraction(timeString, length, offset);
-        fraction = MediaTime::createWithDouble(digits.toDouble());
-        time = MediaTime::createWithDouble(value1) + fraction;
+        fraction = digits.toDouble();
+        time = value1 + fraction;
         return true;
     }
     
@@ -313,9 +318,9 @@ bool MediaFragmentURIParser::parseNPTTime(const LChar* timeString, unsigned leng
     }
 
     if (offset < length && timeString[offset] == '.')
-        fraction = MediaTime::createWithDouble(collectFraction(timeString, length, offset).toDouble());
+        fraction = collectFraction(timeString, length, offset).toDouble();
     
-    time = MediaTime::createWithDouble((value1 * secondsPerHour) + (value2 * secondsPerMinute) + value3) + fraction;
+    time = (value1 * secondsPerHour) + (value2 * secondsPerMinute) + value3 + fraction;
     return true;
 }
 

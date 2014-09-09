@@ -30,5 +30,5 @@ namespace WebCore {
 class TestCustomNamedGetter;
 }
 
-WEBCORE_EXPORT WebCore::TestCustomNamedGetter* core(DOMTestCustomNamedGetter *);
-WEBCORE_EXPORT DOMTestCustomNamedGetter *kit(WebCore::TestCustomNamedGetter*);
+WebCore::TestCustomNamedGetter* core(DOMTestCustomNamedGetter *);
+DOMTestCustomNamedGetter *kit(WebCore::TestCustomNamedGetter*);

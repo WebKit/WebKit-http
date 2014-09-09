@@ -54,8 +54,6 @@ WebUserContentControllerProxy::WebUserContentControllerProxy()
 
 WebUserContentControllerProxy::~WebUserContentControllerProxy()
 {
-    for (WebProcessProxy* process : m_processes)
-        process->didDestroyWebUserContentControllerProxy(*this);
 }
 
 void WebUserContentControllerProxy::addProcess(WebProcessProxy& webProcessProxy)
@@ -80,40 +78,40 @@ void WebUserContentControllerProxy::removeProcess(WebProcessProxy& webProcessPro
 {
     ASSERT(m_processes.contains(&webProcessProxy));
 
-    m_processes.remove(&webProcessProxy);
-    webProcessProxy.removeMessageReceiver(Messages::WebUserContentControllerProxy::messageReceiverName(), m_identifier);
+    if (m_processes.remove(&webProcessProxy))
+        webProcessProxy.removeMessageReceiver(Messages::WebUserContentControllerProxy::messageReceiverName(), m_identifier);
 }
 
 void WebUserContentControllerProxy::addUserScript(WebCore::UserScript userScript)
 {
     m_userScripts.append(WTF::move(userScript));
 
-    for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::AddUserScripts({ m_userScripts.last() }), m_identifier);
+    for (auto& processAndCount : m_processes)
+        processAndCount.key->connection()->send(Messages::WebUserContentController::AddUserScripts({ m_userScripts.last() }), m_identifier);
 }
 
 void WebUserContentControllerProxy::removeAllUserScripts()
 {
     m_userScripts.clear();
 
-    for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::RemoveAllUserScripts(), m_identifier);
+    for (auto& processAndCount : m_processes)
+        processAndCount.key->connection()->send(Messages::WebUserContentController::RemoveAllUserScripts(), m_identifier);
 }
 
 void WebUserContentControllerProxy::addUserStyleSheet(WebCore::UserStyleSheet userStyleSheet)
 {
     m_userStyleSheets.append(WTF::move(userStyleSheet));
 
-    for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::AddUserStyleSheets({ m_userStyleSheets.last() }), m_identifier);
+    for (auto& processAndCount : m_processes)
+        processAndCount.key->connection()->send(Messages::WebUserContentController::AddUserStyleSheets({ m_userStyleSheets.last() }), m_identifier);
 }
 
 void WebUserContentControllerProxy::removeAllUserStyleSheets()
 {
     m_userStyleSheets.clear();
 
-    for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::RemoveAllUserStyleSheets(), m_identifier);
+    for (auto& processAndCount : m_processes)
+        processAndCount.key->connection()->send(Messages::WebUserContentController::RemoveAllUserStyleSheets(), m_identifier);
 }
 
 bool WebUserContentControllerProxy::addUserScriptMessageHandler(WebScriptMessageHandler* handler)
@@ -125,8 +123,8 @@ bool WebUserContentControllerProxy::addUserScriptMessageHandler(WebScriptMessage
 
     m_scriptMessageHandlers.add(handler->identifier(), handler);
 
-    for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::AddUserScriptMessageHandlers({ handler->handle() }), m_identifier);
+    for (auto& processAndCount : m_processes)
+        processAndCount.key->connection()->send(Messages::WebUserContentController::AddUserScriptMessageHandlers({ handler->handle() }), m_identifier);
     
     return true;
 }
@@ -135,8 +133,8 @@ void WebUserContentControllerProxy::removeUserMessageHandlerForName(const String
 {
     for (auto it = m_scriptMessageHandlers.begin(), end = m_scriptMessageHandlers.end(); it != end; ++it) {
         if (it->value->name() == name) {
-            for (WebProcessProxy* process : m_processes)
-                process->connection()->send(Messages::WebUserContentController::RemoveUserScriptMessageHandler(it->value->identifier()), m_identifier);
+            for (auto& processAndCount : m_processes)
+                processAndCount.key->connection()->send(Messages::WebUserContentController::RemoveUserScriptMessageHandler(it->value->identifier()), m_identifier);
             m_scriptMessageHandlers.remove(it);
             return;
         }

@@ -20,6 +20,7 @@
 #ifndef SourceAlpha_h
 #define SourceAlpha_h
 
+#if ENABLE(FILTERS)
 #include "FilterEffect.h"
 #include "Filter.h"
 
@@ -51,5 +52,7 @@ private:
 };
 
 } //namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // SourceAlpha_h

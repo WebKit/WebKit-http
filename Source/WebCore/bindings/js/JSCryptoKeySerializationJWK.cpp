@@ -658,21 +658,21 @@ static void addUsagesToJSON(ExecState* exec, JSObject* json, CryptoKeyUsage usag
 
     unsigned index = 0;
     if (usages & CryptoKeyUsageSign)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("sign")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("sign")));
     if (usages & CryptoKeyUsageVerify)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("verify")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("verify")));
     if (usages & CryptoKeyUsageEncrypt)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("encrypt")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("encrypt")));
     if (usages & CryptoKeyUsageDecrypt)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("decrypt")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("decrypt")));
     if (usages & CryptoKeyUsageWrapKey)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("wrapKey")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("wrapKey")));
     if (usages & CryptoKeyUsageUnwrapKey)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("unwrapKey")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("unwrapKey")));
     if (usages & CryptoKeyUsageDeriveKey)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("deriveKey")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("deriveKey")));
     if (usages & CryptoKeyUsageDeriveBits)
-        keyOps->putDirectIndex(exec, index++, jsNontrivialString(exec, ASCIILiteral("deriveBits")));
+        keyOps->putDirectIndex(exec, index++, jsString(exec, ASCIILiteral("deriveBits")));
 
     json->putDirect(exec->vm(), Identifier(exec, "key_ops"), keyOps);
 }

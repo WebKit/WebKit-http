@@ -33,7 +33,6 @@
 #import "AuthenticationChallenge.h"
 #import "BlockExceptions.h"
 #import "CDMSessionAVFoundationObjC.h"
-#import "Cookie.h"
 #import "ExceptionCodePlaceholder.h"
 #import "FloatConversion.h"
 #import "FloatConversion.h"
@@ -46,7 +45,7 @@
 #import "OutOfBandTextTrackPrivateAVF.h"
 #import "URL.h"
 #import "Logging.h"
-#import "MediaTimeAVFoundation.h"
+#import "MediaTimeMac.h"
 #import "PlatformTimeRanges.h"
 #import "SecurityOrigin.h"
 #import "SerializedPlatformRepresentationMac.h"
@@ -55,7 +54,6 @@
 #import "UUID.h"
 #import "VideoTrackPrivateAVFObjC.h"
 #import "WebCoreAVFResourceLoader.h"
-#import "WebCoreCALayerExtras.h"
 #import "WebCoreSystemInterface.h"
 #import <objc/runtime.h>
 #import <runtime/DataView.h>
@@ -229,7 +227,6 @@ SOFT_LINK_POINTER(AVFoundation, AVPlayerItemLegibleOutputTextStylingResolutionSo
 #endif
 
 #if ENABLE(AVF_CAPTIONS)
-SOFT_LINK_POINTER(AVFoundation, AVURLAssetHTTPCookiesKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVURLAssetOutOfBandAlternateTracksKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackDisplayNameKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackExtendedLanguageTagKey, NSString*)
@@ -240,7 +237,6 @@ SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackSourceKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicDescribesMusicAndSoundForAccessibility, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicTranscribesSpokenDialogForAccessibility, NSString*)
 
-#define AVURLAssetHTTPCookiesKey getAVURLAssetHTTPCookiesKey()
 #define AVURLAssetOutOfBandAlternateTracksKey getAVURLAssetOutOfBandAlternateTracksKey()
 #define AVOutOfBandAlternateTrackDisplayNameKey getAVOutOfBandAlternateTrackDisplayNameKey()
 #define AVOutOfBandAlternateTrackExtendedLanguageTagKey getAVOutOfBandAlternateTrackExtendedLanguageTagKey()
@@ -399,6 +395,7 @@ MediaPlayerPrivateAVFoundationObjC::MediaPlayerPrivateAVFoundationObjC(MediaPlay
     , m_loaderDelegate(adoptNS([[WebCoreAVFLoaderDelegate alloc] initWithCallback:this]))
 #endif
     , m_currentTextTrack(0)
+    , m_cachedDuration(MediaPlayer::invalidTime())
     , m_cachedRate(0)
     , m_cachedTotalBytes(0)
     , m_pendingStatusChanges(0)
@@ -493,7 +490,7 @@ void MediaPlayerPrivateAVFoundationObjC::cancelLoad()
     m_cachedLoadedRanges = nullptr;
     m_cachedHasEnabledAudio = false;
     m_cachedPresentationSize = FloatSize();
-    m_cachedDuration = MediaTime::zeroTime();
+    m_cachedDuration = 0;
 
     for (AVPlayerItemTrack *track in m_cachedTracks.get())
         [track removeObserver:m_objcObserver.get() forKeyPath:@"enabled"];
@@ -598,7 +595,6 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoLayer(%p) - returning %p", this, m_videoLayer.get());
 
 #if PLATFORM(IOS)
-    [m_videoLayer web_disableAllActions];
     m_videoInlineLayer = adoptNS([[WebVideoContainerLayer alloc] init]);
     [m_videoInlineLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
     if (m_videoFullscreenLayer) {
@@ -714,26 +710,6 @@ static NSURL *canonicalURL(const String& url)
     return [canonicalRequest URL];
 }
 
-#if PLATFORM(IOS)
-static NSHTTPCookie* toNSHTTPCookie(const Cookie& cookie)
-{
-    RetainPtr<NSMutableDictionary> properties = adoptNS([[NSMutableDictionary alloc] init]);
-    [properties setDictionary:@{
-        NSHTTPCookieName: cookie.name,
-        NSHTTPCookieValue: cookie.value,
-        NSHTTPCookieDomain: cookie.domain,
-        NSHTTPCookiePath: cookie.path,
-        NSHTTPCookieExpires: [NSDate dateWithTimeIntervalSince1970:(cookie.expires / 1000)],
-    }];
-    if (cookie.secure)
-        [properties setObject:@YES forKey:NSHTTPCookieSecure];
-    if (cookie.session)
-        [properties setObject:@YES forKey:NSHTTPCookieDiscard];
-
-    return [NSHTTPCookie cookieWithProperties:properties.get()];
-}
-#endif
-
 void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
 {
     if (m_avAsset)
@@ -794,17 +770,6 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
     String networkInterfaceName = player()->mediaPlayerNetworkInterfaceName();
     if (!networkInterfaceName.isEmpty())
         [options setObject:networkInterfaceName forKey:AVURLAssetBoundNetworkInterfaceName];
-#endif
-
-#if PLATFORM(IOS)
-    Vector<Cookie> cookies;
-    if (player()->getRawCookies(URL(ParsedURLString, url), cookies)) {
-        RetainPtr<NSMutableArray> nsCookies = adoptNS([[NSMutableArray alloc] initWithCapacity:cookies.size()]);
-        for (auto& cookie : cookies)
-            [nsCookies addObject:toNSHTTPCookie(cookie)];
-
-        [options setObject:nsCookies.get() forKey:AVURLAssetHTTPCookiesKey];
-    }
 #endif
 
     NSURL *cocoaURL = canonicalURL(url);
@@ -1038,11 +1003,10 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenFrame(FloatRect frame
         return;
 
     if (m_videoLayer) {
-        [m_videoLayer setStyle:nil]; // This enables actions, i.e. implicit animations.
         [CATransaction begin];
+        [CATransaction setDisableActions:YES];
         [m_videoLayer setFrame:CGRectMake(0, 0, frame.width(), frame.height())];
         [CATransaction commit];
-        [m_videoLayer web_disableAllActions];
     }
     syncTextTrackBounds();
 }
@@ -1129,12 +1093,12 @@ void MediaPlayerPrivateAVFoundationObjC::platformPause()
     setDelayCallbacks(false);
 }
 
-MediaTime MediaPlayerPrivateAVFoundationObjC::platformDuration() const
+float MediaPlayerPrivateAVFoundationObjC::platformDuration() const
 {
     // Do not ask the asset for duration before it has been loaded or it will fetch the
     // answer synchronously.
     if (!m_avAsset || assetStatus() < MediaPlayerAVAssetStatusLoaded)
-        return MediaTime::invalidTime();
+         return MediaPlayer::invalidTime();
     
     CMTime cmDuration;
     
@@ -1142,31 +1106,32 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::platformDuration() const
     if (m_avPlayerItem && playerItemStatus() >= MediaPlayerAVPlayerItemStatusReadyToPlay)
         cmDuration = [m_avPlayerItem.get() duration];
     else
-        cmDuration = [m_avAsset.get() duration];
+        cmDuration= [m_avAsset.get() duration];
 
     if (CMTIME_IS_NUMERIC(cmDuration))
-        return toMediaTime(cmDuration);
+        return narrowPrecisionToFloat(CMTimeGetSeconds(cmDuration));
 
-    if (CMTIME_IS_INDEFINITE(cmDuration))
-        return MediaTime::positiveInfiniteTime();
+    if (CMTIME_IS_INDEFINITE(cmDuration)) {
+        return std::numeric_limits<float>::infinity();
+    }
 
-    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::platformDuration(%p) - invalid duration, returning %.0f", this, toString(MediaTime::invalidTime()).utf8().data());
-    return MediaTime::invalidTime();
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::platformDuration(%p) - invalid duration, returning %.0f", this, MediaPlayer::invalidTime());
+    return MediaPlayer::invalidTime();
 }
 
-MediaTime MediaPlayerPrivateAVFoundationObjC::currentMediaTime() const
+float MediaPlayerPrivateAVFoundationObjC::currentTime() const
 {
     if (!metaDataAvailable() || !m_avPlayerItem)
-        return MediaTime::zeroTime();
+        return 0;
 
     CMTime itemTime = [m_avPlayerItem.get() currentTime];
     if (CMTIME_IS_NUMERIC(itemTime))
-        return std::max(toMediaTime(itemTime), MediaTime::zeroTime());
+        return std::max(narrowPrecisionToFloat(CMTimeGetSeconds(itemTime)), 0.0f);
 
-    return MediaTime::zeroTime();
+    return 0;
 }
 
-void MediaPlayerPrivateAVFoundationObjC::seekToTime(const MediaTime& time, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)
+void MediaPlayerPrivateAVFoundationObjC::seekToTime(double time, double negativeTolerance, double positiveTolerance)
 {
     // setCurrentTime generates several event callbacks, update afterwards.
     setDelayCallbacks(true);
@@ -1174,9 +1139,9 @@ void MediaPlayerPrivateAVFoundationObjC::seekToTime(const MediaTime& time, const
     if (m_metadataTrack)
         m_metadataTrack->flushPartialCues();
 
-    CMTime cmTime = toCMTime(time);
-    CMTime cmBefore = toCMTime(negativeTolerance);
-    CMTime cmAfter = toCMTime(positiveTolerance);
+    CMTime cmTime = CMTimeMakeWithSeconds(time, 600);
+    CMTime cmBefore = CMTimeMakeWithSeconds(negativeTolerance, 600);
+    CMTime cmAfter = CMTimeMakeWithSeconds(positiveTolerance, 600);
 
     auto weakThis = createWeakPtr();
 
@@ -1247,12 +1212,12 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateAVFoundationObjC::platform
     return timeRanges;
 }
 
-MediaTime MediaPlayerPrivateAVFoundationObjC::platformMinTimeSeekable() const
+double MediaPlayerPrivateAVFoundationObjC::platformMinTimeSeekable() const
 {
     if (!m_cachedSeekableRanges || ![m_cachedSeekableRanges count])
-        return MediaTime::zeroTime();
+        return 0;
 
-    MediaTime minTimeSeekable = MediaTime::positiveInfiniteTime();
+    double minTimeSeekable = std::numeric_limits<double>::infinity();
     bool hasValidRange = false;
     for (NSValue *thisRangeValue in m_cachedSeekableRanges.get()) {
         CMTimeRange timeRange = [thisRangeValue CMTimeRangeValue];
@@ -1260,32 +1225,32 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::platformMinTimeSeekable() const
             continue;
 
         hasValidRange = true;
-        MediaTime startOfRange = toMediaTime(timeRange.start);
+        double startOfRange = CMTimeGetSeconds(timeRange.start);
         if (minTimeSeekable > startOfRange)
             minTimeSeekable = startOfRange;
     }
-    return hasValidRange ? minTimeSeekable : MediaTime::zeroTime();
+    return hasValidRange ? minTimeSeekable : 0;
 }
 
-MediaTime MediaPlayerPrivateAVFoundationObjC::platformMaxTimeSeekable() const
+double MediaPlayerPrivateAVFoundationObjC::platformMaxTimeSeekable() const
 {
     if (!m_cachedSeekableRanges)
         m_cachedSeekableRanges = [m_avPlayerItem seekableTimeRanges];
 
-    MediaTime maxTimeSeekable;
+    double maxTimeSeekable = 0;
     for (NSValue *thisRangeValue in m_cachedSeekableRanges.get()) {
         CMTimeRange timeRange = [thisRangeValue CMTimeRangeValue];
         if (!CMTIMERANGE_IS_VALID(timeRange) || CMTIMERANGE_IS_EMPTY(timeRange))
             continue;
         
-        MediaTime endOfRange = toMediaTime(CMTimeRangeGetEnd(timeRange));
+        double endOfRange = CMTimeGetSeconds(CMTimeRangeGetEnd(timeRange));
         if (maxTimeSeekable < endOfRange)
             maxTimeSeekable = endOfRange;
     }
     return maxTimeSeekable;
 }
 
-MediaTime MediaPlayerPrivateAVFoundationObjC::platformMaxTimeLoaded() const
+float MediaPlayerPrivateAVFoundationObjC::platformMaxTimeLoaded() const
 {
 #if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
     // AVFoundation on Mountain Lion will occasionally not send a KVO notification
@@ -1296,15 +1261,15 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::platformMaxTimeLoaded() const
 #endif
 
     if (!m_cachedLoadedRanges)
-        return MediaTime::zeroTime();
+        return 0;
 
-    MediaTime maxTimeLoaded;
+    float maxTimeLoaded = 0;
     for (NSValue *thisRangeValue in m_cachedLoadedRanges.get()) {
         CMTimeRange timeRange = [thisRangeValue CMTimeRangeValue];
         if (!CMTIMERANGE_IS_VALID(timeRange) || CMTIMERANGE_IS_EMPTY(timeRange))
             continue;
         
-        MediaTime endOfRange = toMediaTime(CMTimeRangeGetEnd(timeRange));
+        float endOfRange = narrowPrecisionToFloat(CMTimeGetSeconds(CMTimeRangeGetEnd(timeRange)));
         if (maxTimeLoaded < endOfRange)
             maxTimeLoaded = endOfRange;
     }
@@ -1590,7 +1555,7 @@ bool MediaPlayerPrivateAVFoundationObjC::isAvailable()
     return AVFoundationLibrary() && CoreMediaLibrary();
 }
 
-MediaTime MediaPlayerPrivateAVFoundationObjC::mediaTimeForTimeValue(const MediaTime& timeValue) const
+float MediaPlayerPrivateAVFoundationObjC::mediaTimeForTimeValue(float timeValue) const
 {
     if (!metaDataAvailable())
         return timeValue;
@@ -2247,7 +2212,7 @@ void MediaPlayerPrivateAVFoundationObjC::processMetadataTrack()
     player()->addTextTrack(m_metadataTrack);
 }
 
-void MediaPlayerPrivateAVFoundationObjC::processCue(NSArray *attributedStrings, NSArray *nativeSamples, const MediaTime& time)
+void MediaPlayerPrivateAVFoundationObjC::processCue(NSArray *attributedStrings, NSArray *nativeSamples, double time)
 {
     if (!m_currentTextTrack)
         return;
@@ -2337,7 +2302,7 @@ String MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack() const
     return m_languageOfPrimaryAudioTrack;
 }
 
-#if ENABLE(IOS_AIRPLAY) && PLATFORM(IOS)
+#if ENABLE(IOS_AIRPLAY)
 bool MediaPlayerPrivateAVFoundationObjC::isCurrentPlaybackTargetWireless() const
 {
     if (!m_avPlayer)
@@ -2524,11 +2489,11 @@ static const AtomicString& metadataType(NSString *avMetadataKeySpace)
 }
 #endif
 
-void MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(RetainPtr<NSArray> metadata, const MediaTime& mediaTime)
+void MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(RetainPtr<NSArray> metadata, double mediaTime)
 {
     m_currentMetaData = metadata && ![metadata isKindOfClass:[NSNull class]] ? metadata : nil;
 
-    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(%p) - adding %i cues at time %s", this, m_currentMetaData ? static_cast<int>([m_currentMetaData.get() count]) : 0, toString(mediaTime).utf8().data());
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(%p) - adding %i cues at time %.2f", this, m_currentMetaData ? static_cast<int>([m_currentMetaData.get() count]) : 0, mediaTime);
 
 #if ENABLE(DATACUE_VALUE)
     if (seeking())
@@ -2543,19 +2508,19 @@ void MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(RetainPtr<NSArray> me
         processMetadataTrack();
 
     // Set the duration of all incomplete cues before adding new ones.
-    MediaTime earliestStartTime = MediaTime::positiveInfiniteTime();
+    double earliesStartTime = std::numeric_limits<double>::infinity();
     for (AVMetadataItemType *item in m_currentMetaData.get()) {
-        MediaTime start = toMediaTime(item.time);
-        if (start < earliestStartTime)
-            earliestStartTime = start;
+        double start = CMTimeGetSeconds(item.time);
+        if (start < earliesStartTime)
+            earliesStartTime = start;
     }
-    m_metadataTrack->updatePendingCueEndTimes(earliestStartTime);
+    m_metadataTrack->updatePendingCueEndTimes(earliesStartTime);
 
     for (AVMetadataItemType *item in m_currentMetaData.get()) {
-        MediaTime start = toMediaTime(item.time);
-        MediaTime end = MediaTime::positiveInfiniteTime();
+        double start = CMTimeGetSeconds(item.time);
+        double end = std::numeric_limits<double>::infinity();
         if (CMTIME_IS_VALID(item.duration))
-            end = start + toMediaTime(item.duration);
+            end = start + CMTimeGetSeconds(item.duration);
 
         AtomicString type = nullAtom;
         if (item.keySpace)
@@ -2597,7 +2562,7 @@ void MediaPlayerPrivateAVFoundationObjC::presentationSizeDidChange(FloatSize siz
     updateStates();
 }
 
-void MediaPlayerPrivateAVFoundationObjC::durationDidChange(const MediaTime& duration)
+void MediaPlayerPrivateAVFoundationObjC::durationDidChange(double duration)
 {
     m_cachedDuration = duration;
 
@@ -2766,12 +2731,12 @@ NSArray* assetTrackMetadataKeyNames()
         else if ([keyPath isEqualToString:@"presentationSize"])
             function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::presentationSizeDidChange, m_callback, FloatSize([newValue sizeValue]));
         else if ([keyPath isEqualToString:@"duration"])
-            function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::durationDidChange, m_callback, toMediaTime([newValue CMTimeValue]));
+            function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::durationDidChange, m_callback, CMTimeGetSeconds([newValue CMTimeValue]));
         else if ([keyPath isEqualToString:@"timedMetadata"] && newValue) {
-            MediaTime now;
+            double now = 0;
             CMTime itemTime = [(AVPlayerItemType *)object currentTime];
             if (CMTIME_IS_NUMERIC(itemTime))
-                now = std::max(toMediaTime(itemTime), MediaTime::zeroTime());
+                now = std::max(narrowPrecisionToFloat(CMTimeGetSeconds(itemTime)), 0.0f);
             function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::metadataDidArrive, m_callback, RetainPtr<NSArray>(newValue), now);
         } else if ([keyPath isEqualToString:@"canPlayFastReverse"])
             function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::canPlayFastReverseDidChange, m_callback, [newValue boolValue]);
@@ -2818,7 +2783,7 @@ NSArray* assetTrackMetadataKeyNames()
         MediaPlayerPrivateAVFoundationObjC* callback = strongSelf->m_callback;
         if (!callback)
             return;
-        callback->processCue(strongStrings.get(), strongSamples.get(), toMediaTime(itemTime));
+        callback->processCue(strongStrings.get(), strongSamples.get(), CMTimeGetSeconds(itemTime));
     });
 }
 

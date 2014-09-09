@@ -37,6 +37,11 @@
 
 namespace WebCore {
 
+PassOwnPtr<MutationObserverRegistration> MutationObserverRegistration::create(PassRefPtr<MutationObserver> observer, Node* registrationNode, MutationObserverOptions options, const HashSet<AtomicString>& attributeFilter)
+{
+    return adoptPtr(new MutationObserverRegistration(observer, registrationNode, options, attributeFilter));
+}
+
 MutationObserverRegistration::MutationObserverRegistration(PassRefPtr<MutationObserver> observer, Node* registrationNode, MutationObserverOptions options, const HashSet<AtomicString>& attributeFilter)
     : m_observer(observer)
     , m_registrationNode(registrationNode)

@@ -19,8 +19,9 @@
  */
 
 #include "config.h"
-#include "SVGFEFuncRElement.h"
 
+#if ENABLE(FILTERS)
+#include "SVGFEFuncRElement.h"
 #include "SVGNames.h"
 
 namespace WebCore {
@@ -37,3 +38,5 @@ PassRefPtr<SVGFEFuncRElement> SVGFEFuncRElement::create(const QualifiedName& tag
 }
 
 }
+
+#endif // ENABLE(FILTERS)
