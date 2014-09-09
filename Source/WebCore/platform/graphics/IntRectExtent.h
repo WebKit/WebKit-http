@@ -30,6 +30,8 @@
 #ifndef IntRectExtent_h
 #define IntRectExtent_h
 
+#if ENABLE(CSS_FILTERS)
+
 #include "LayoutRect.h"
 
 namespace WebCore {
@@ -104,5 +106,7 @@ inline void operator+=(IntRectExtent& a, const IntRectExtent& b)
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)
 
 #endif // IntRectExtent_h

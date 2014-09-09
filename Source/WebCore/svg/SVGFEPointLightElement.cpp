@@ -18,6 +18,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEPointLightElement.h"
 #include "SVGNames.h"
 
@@ -42,3 +44,5 @@ PassRefPtr<LightSource> SVGFEPointLightElement::lightSource() const
 }
 
 }
+
+#endif // ENABLE(FILTERS)

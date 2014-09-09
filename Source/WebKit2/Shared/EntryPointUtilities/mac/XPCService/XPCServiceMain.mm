@@ -23,11 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "config.h"
-
 #import <CoreFoundation/CoreFoundation.h>
-#import <wtf/OSObjectPtr.h>
-#import <xpc/xpc.h>
+#import "XPCPtr.h"
 
 namespace WebKit {
 
@@ -55,7 +52,7 @@ static void XPCServiceEventHandler(xpc_connection_t peer)
                     exit(EXIT_FAILURE);
                 }
 
-                auto reply = adoptOSObject(xpc_dictionary_create_reply(event));
+                auto reply = IPC::adoptXPC(xpc_dictionary_create_reply(event));
                 xpc_dictionary_set_string(reply.get(), "message-name", "process-finished-launching");
                 xpc_connection_send_message(xpc_dictionary_get_remote_connection(event), reply.get());
 

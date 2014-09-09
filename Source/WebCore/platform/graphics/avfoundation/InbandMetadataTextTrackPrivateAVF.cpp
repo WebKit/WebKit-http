@@ -47,6 +47,7 @@ InbandMetadataTextTrackPrivateAVF::InbandMetadataTextTrackPrivateAVF(InbandTextT
     : InbandTextTrackPrivate(cueFormat)
     , m_kind(kind)
     , m_id(id)
+    , m_currentCueStartTime(0)
 {
 }
 
@@ -55,7 +56,7 @@ InbandMetadataTextTrackPrivateAVF::~InbandMetadataTextTrackPrivateAVF()
 }
 
 #if ENABLE(DATACUE_VALUE)
-void InbandMetadataTextTrackPrivateAVF::addDataCue(const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation> prpCueData, const String& type)
+void InbandMetadataTextTrackPrivateAVF::addDataCue(double start, double end, PassRefPtr<SerializedPlatformRepresentation> prpCueData, const String& type)
 {
     ASSERT(cueFormat() == Data);
     if (!client())
@@ -63,42 +64,42 @@ void InbandMetadataTextTrackPrivateAVF::addDataCue(const MediaTime& start, const
 
     RefPtr<SerializedPlatformRepresentation> cueData = prpCueData;
     m_currentCueStartTime = start;
-    if (end.isPositiveInfinite())
+    if (end == std::numeric_limits<double>::infinity())
         m_incompleteCues.append(new IncompleteMetaDataCue(start, cueData));
     client()->addDataCue(this, start, end, cueData, type);
 }
 
-void InbandMetadataTextTrackPrivateAVF::updatePendingCueEndTimes(const MediaTime& time)
+void InbandMetadataTextTrackPrivateAVF::updatePendingCueEndTimes(double time)
 {
     if (time >= m_currentCueStartTime) {
         for (size_t i = 0; i < m_incompleteCues.size(); i++) {
             IncompleteMetaDataCue* partialCue = m_incompleteCues[i];
 
-            LOG(Media, "InbandMetadataTextTrackPrivateAVF::addDataCue(%p) - updating cue: start=%s, end=%s", this, toString(partialCue->startTime()).utf8().data(), toString(time).utf8().data());
+            LOG(Media, "InbandMetadataTextTrackPrivateAVF::addDataCue(%p) - updating cue: start=%.2f, end=%.2f", this, partialCue->startTime(), time);
             client()->updateDataCue(this, partialCue->startTime(), time, partialCue->cueData());
         }
     } else
-        LOG(Media, "InbandMetadataTextTrackPrivateAVF::addDataCue negative length cue(s) ignored: start=%s, end=%s\n", toString(m_currentCueStartTime).utf8().data(), toString(time).utf8().data());
+        LOG(Media, "InbandMetadataTextTrackPrivateAVF::addDataCue negative length cue(s) ignored: start=%.2f, end=%.2f\n", m_currentCueStartTime, time);
 
     m_incompleteCues.resize(0);
-    m_currentCueStartTime = MediaTime::zeroTime();
+    m_currentCueStartTime = 0;
 }
 #endif
 
 void InbandMetadataTextTrackPrivateAVF::flushPartialCues()
 {
     if (m_currentCueStartTime && m_incompleteCues.size())
-        LOG(Media, "InbandMetadataTextTrackPrivateAVF::resetCueValues flushing incomplete data for cues: start=%s\n", toString(m_currentCueStartTime).utf8().data());
+        LOG(Media, "InbandMetadataTextTrackPrivateAVF::resetCueValues flushing incomplete data for cues: start=%.2f\n", m_currentCueStartTime);
 
     if (client()) {
         for (size_t i = 0; i < m_incompleteCues.size(); i++) {
             IncompleteMetaDataCue* partialCue = m_incompleteCues[i];
-            client()->removeDataCue(this, partialCue->startTime(), MediaTime::positiveInfiniteTime(), partialCue->cueData());
+            client()->removeDataCue(this, partialCue->startTime(), std::numeric_limits<double>::infinity(), partialCue->cueData());
         }
     }
 
     m_incompleteCues.resize(0);
-    m_currentCueStartTime = MediaTime::zeroTime();
+    m_currentCueStartTime = 0;
 }
 
 } // namespace WebCore

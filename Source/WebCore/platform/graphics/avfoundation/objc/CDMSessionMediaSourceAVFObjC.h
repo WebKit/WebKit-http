@@ -33,16 +33,13 @@
 
 #if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
 
-OBJC_CLASS AVStreamSession;
-
 namespace WebCore {
 
 class CDMSessionMediaSourceAVFObjC : public CDMSession, public SourceBufferPrivateAVFObjCErrorClient {
 public:
-    CDMSessionMediaSourceAVFObjC();
+    CDMSessionMediaSourceAVFObjC(SourceBufferPrivateAVFObjC* parent);
     virtual ~CDMSessionMediaSourceAVFObjC();
 
-    virtual CDMSessionType type() { return CDMSessionTypeMediaSourceAVFObjC; }
     virtual void setClient(CDMSessionClient* client) override { m_client = client; }
     virtual const String& sessionId() const override { return m_sessionId; }
     virtual PassRefPtr<Uint8Array> generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode) override;
@@ -52,24 +49,13 @@ public:
     virtual void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *);
     virtual void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *);
 
-    void addSourceBuffer(SourceBufferPrivateAVFObjC*);
-    void removeSourceBuffer(SourceBufferPrivateAVFObjC*);
-
 protected:
-    Vector<RefPtr<SourceBufferPrivateAVFObjC>> m_sourceBuffers;
+    RefPtr<SourceBufferPrivateAVFObjC> m_parent;
     CDMSessionClient* m_client;
-    RetainPtr<AVStreamSession> m_streamSession;
     RefPtr<Uint8Array> m_initData;
     RefPtr<Uint8Array> m_certificate;
     String m_sessionId;
 };
-
-inline CDMSessionMediaSourceAVFObjC* toCDMSessionMediaSourceAVFObjC(CDMSession* session)
-{
-    if (!session || session->type() != CDMSessionTypeMediaSourceAVFObjC)
-        return nullptr;
-    return static_cast<CDMSessionMediaSourceAVFObjC*>(session);
-}
 
 }
 

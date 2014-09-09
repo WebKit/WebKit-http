@@ -116,39 +116,35 @@ void JITCompiler::compileBody()
 
 void JITCompiler::compileExceptionHandlers()
 {
+    if (m_exceptionChecks.empty() && m_exceptionChecksWithCallFrameRollback.empty())
+        return;
+
+    Jump doLookup;
+
     if (!m_exceptionChecksWithCallFrameRollback.empty()) {
         m_exceptionChecksWithCallFrameRollback.link(this);
-
-        // lookupExceptionHandlerFromCallerFrame is passed two arguments, the VM and the exec (the CallFrame*).
-        move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
-        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-
-#if CPU(X86)
-        // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
-        poke(GPRInfo::argumentGPR0);
-        poke(GPRInfo::argumentGPR1, 1);
-#endif
-        m_calls.append(CallLinkRecord(call(), lookupExceptionHandlerFromCallerFrame));
-
-        jumpToExceptionHandler();
+        emitGetCallerFrameFromCallFrameHeaderPtr(GPRInfo::argumentGPR1);
+        doLookup = jump();
     }
 
-    if (!m_exceptionChecks.empty()) {
+    if (!m_exceptionChecks.empty())
         m_exceptionChecks.link(this);
 
-        // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
-        move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
-        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+    // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
+    move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+
+    if (doLookup.isSet())
+        doLookup.link(this);
+
+    move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
 
 #if CPU(X86)
-        // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
-        poke(GPRInfo::argumentGPR0);
-        poke(GPRInfo::argumentGPR1, 1);
+    // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
+    poke(GPRInfo::argumentGPR0);
+    poke(GPRInfo::argumentGPR1, 1);
 #endif
-        m_calls.append(CallLinkRecord(call(), lookupExceptionHandler));
-
-        jumpToExceptionHandler();
-    }
+    m_calls.append(CallLinkRecord(call(), lookupExceptionHandler));
+    jumpToExceptionHandler();
 }
 
 void JITCompiler::link(LinkBuffer& linkBuffer)
@@ -188,7 +184,7 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
             table.ctiOffsets[j] = table.ctiDefault;
         for (unsigned j = data.cases.size(); j--;) {
             SwitchCase& myCase = data.cases[j];
-            table.ctiOffsets[myCase.value.switchLookupValue(data.kind) - table.min] =
+            table.ctiOffsets[myCase.value.switchLookupValue() - table.min] =
                 linkBuffer.locationOf(m_blockHeads[myCase.target.block->index]);
         }
     }

@@ -34,8 +34,6 @@
 
 namespace WebCore {
 
-const double kClientDataBufferingTimerThrottleDelay = 0.1;
-
 #if !LOG_DISABLED
 static const char* stateName(MediaSession::State state)
 {
@@ -59,7 +57,6 @@ std::unique_ptr<MediaSession> MediaSession::create(MediaSessionClient& client)
 
 MediaSession::MediaSession(MediaSessionClient& client)
     : m_client(client)
-    , m_clientDataBufferingTimer(this, &MediaSession::clientDataBufferingTimerFired)
     , m_state(Idle)
     , m_stateToRestore(Idle)
     , m_notifyingClient(false)
@@ -128,8 +125,7 @@ bool MediaSession::clientWillPausePlayback()
     
     setState(Paused);
     MediaSessionManager::sharedManager().sessionWillEndPlayback(*this);
-    if (!m_clientDataBufferingTimer.isActive())
-        m_clientDataBufferingTimer.startOneShot(kClientDataBufferingTimerThrottleDelay);
+    updateClientDataBuffering();
     return true;
 }
 
@@ -176,20 +172,11 @@ void MediaSession::didReceiveRemoteControlCommand(RemoteControlCommandType comma
 
 void MediaSession::visibilityChanged()
 {
-    if (!m_clientDataBufferingTimer.isActive())
-        m_clientDataBufferingTimer.startOneShot(kClientDataBufferingTimerThrottleDelay);
-}
-
-void MediaSession::clientDataBufferingTimerFired(Timer<WebCore::MediaSession> &)
-{
     updateClientDataBuffering();
 }
 
 void MediaSession::updateClientDataBuffering()
 {
-    if (m_clientDataBufferingTimer.isActive())
-        m_clientDataBufferingTimer.stop();
-
     bool shouldBuffer = m_state == Playing || !m_client.elementIsHidden();
     m_client.setShouldBufferData(shouldBuffer);
 }

@@ -79,13 +79,13 @@ void WebInspectorFrontendClient::append(const String& filename, const String& co
 void WebInspectorFrontendClient::attachWindow(DockSide dockSide)
 {
     switch (dockSide) {
-    case InspectorFrontendClient::DockSide::Undocked:
+    case InspectorFrontendClient::UNDOCKED:
         ASSERT_NOT_REACHED();
         break;
-    case InspectorFrontendClient::DockSide::Bottom:
+    case InspectorFrontendClient::DOCKED_TO_BOTTOM:
         m_page->inspector()->attachBottom();
         break;
-    case InspectorFrontendClient::DockSide::Right:
+    case InspectorFrontendClient::DOCKED_TO_RIGHT:
         m_page->inspector()->attachRight();
         break;
     }

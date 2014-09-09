@@ -30,55 +30,23 @@
 
 #import "WebContext.h"
 #import "WebProcessMessages.h"
-#import <AppKit/NSSharingService.h>
 #import <wtf/NeverDestroyed.h>
 
 #if __has_include(<AppKit/NSSharingService_Private.h>)
 #import <AppKit/NSSharingService_Private.h>
 #else
-typedef NS_ENUM(NSInteger, NSSharingServicePickerStyle) {
+typedef enum {
     NSSharingServicePickerStyleMenu = 0,
     NSSharingServicePickerStyleRollover = 1,
     NSSharingServicePickerStyleTextSelection = 2,
     NSSharingServicePickerStyleDataDetector = 3
-} NS_ENUM_AVAILABLE_MAC(10_10);
+} NSSharingServicePickerStyle;
 
-typedef NS_ENUM(NSInteger, NSSharingServiceType) {
-    NSSharingServiceTypeShare = 0,
-    NSSharingServiceTypeViewer = 1,
-    NSSharingServiceTypeEditor = 2
-} NS_ENUM_AVAILABLE_MAC(10_10);
-
-typedef NS_OPTIONS(NSUInteger, NSSharingServiceMask) {
-    NSSharingServiceMaskShare = (1 << NSSharingServiceTypeShare),
-    NSSharingServiceMaskViewer = (1 << NSSharingServiceTypeViewer),
-    NSSharingServiceMaskEditor = (1 << NSSharingServiceTypeEditor),
-
-    NSSharingServiceMaskAllTypes = 0xFFFF
-} NS_ENUM_AVAILABLE_MAC(10_10);
-#endif
-
-@interface NSSharingServicePicker (WKDetails)
+@interface NSSharingServicePicker (Details)
 @property NSSharingServicePickerStyle style;
 - (NSMenu *)menu;
 @end
-
-@interface NSSharingService (WKDetails)
-+ (NSArray *)sharingServicesForItems:(NSArray *)items mask:(NSSharingServiceMask)maskForFiltering;
-@end
-
-#ifdef __LP64__
-#if __has_include(<Foundation/NSExtension.h>)
-#import <Foundation/NSExtension.h>
-#else
-@interface NSExtension
-@end
 #endif
-
-@interface NSExtension (WKDetails)
-+ (id)beginMatchingExtensionsWithAttributes:(NSDictionary *)attributes completion:(void (^)(NSArray *matchingExtensions, NSError *error))handler;
-@end
-#endif // __LP64__
 
 namespace WebKit {
 
@@ -90,71 +58,54 @@ ServicesController& ServicesController::shared()
 
 ServicesController::ServicesController()
     : m_refreshQueue(dispatch_queue_create("com.apple.WebKit.ServicesController", DISPATCH_QUEUE_SERIAL))
-    , m_hasPendingRefresh(false)
+    , m_isRefreshing(false)
     , m_hasImageServices(false)
     , m_hasSelectionServices(false)
-    , m_hasRichContentServices(false)
 {
     refreshExistingServices();
-
-#ifdef __LP64__
-    auto refreshCallback = [this](NSArray *, NSError *) {
-        // We coalese refreshes from the notification callbacks because they can come in small batches.
-        refreshExistingServices(false);
-    };
-
-    auto extensionAttributes = @{ @"NSExtensionPointName" : @"com.apple.services" };
-    m_extensionWatcher = [NSExtension beginMatchingExtensionsWithAttributes:extensionAttributes completion:refreshCallback];
-    auto uiExtensionAttributes = @{ @"NSExtensionPointName" : @"com.apple.ui-services" };
-    m_uiExtensionWatcher = [NSExtension beginMatchingExtensionsWithAttributes:uiExtensionAttributes completion:refreshCallback];
-#endif // __LP64__
 }
 
-static bool hasCompatibleServicesForItems(NSArray *items)
+void ServicesController::refreshExistingServices(WebContext* context)
 {
-    return [NSSharingService sharingServicesForItems:items mask:NSSharingServiceMaskViewer | NSSharingServiceMaskEditor].count;
+    ASSERT_ARG(context, context);
+    ASSERT([NSThread isMainThread]);
+
+    m_contextsToNotify.add(context);
+    refreshExistingServices();
 }
 
-void ServicesController::refreshExistingServices(bool refreshImmediately)
+void ServicesController::refreshExistingServices()
 {
-    if (m_hasPendingRefresh)
+    if (m_isRefreshing)
         return;
 
-    m_hasPendingRefresh = true;
-
-    auto refreshTime = dispatch_time(DISPATCH_TIME_NOW, refreshImmediately ? 0 : (int64_t)(1 * NSEC_PER_SEC));
-    dispatch_after(refreshTime, m_refreshQueue, ^{
+    m_isRefreshing = true;
+    dispatch_async(m_refreshQueue, ^{
         static NeverDestroyed<NSImage *> image([[NSImage alloc] init]);
-        bool hasImageServices = hasCompatibleServicesForItems(@[ image ]);
+        RetainPtr<NSSharingServicePicker>  picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ image ]]);
+        [picker setStyle:NSSharingServicePickerStyleRollover];
+
+        bool hasImageServices = picker.get().menu;
 
         static NeverDestroyed<NSAttributedString *> attributedString([[NSAttributedString alloc] initWithString:@"a"]);
-        bool hasSelectionServices = hasCompatibleServicesForItems(@[ attributedString ]);
+        picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ attributedString ]]);
+        [picker setStyle:NSSharingServicePickerStyleTextSelection];
 
-        static NSAttributedString *attributedStringWithRichContent;
-        if (!attributedStringWithRichContent) {
-            NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
-            NSTextAttachmentCell *cell = [[NSTextAttachmentCell alloc] initImageCell:image.get()];
-            [attachment setAttachmentCell:cell];
-            NSMutableAttributedString *richString = (NSMutableAttributedString *)[NSMutableAttributedString attributedStringWithAttachment:attachment];
-            [richString appendAttributedString: attributedString];
-            attributedStringWithRichContent = [richString retain];
-        }
+        bool hasSelectionServices = picker.get().menu;
 
-        bool hasRichContentServices = hasCompatibleServicesForItems(@[ attributedStringWithRichContent ]);
-        
         dispatch_async(dispatch_get_main_queue(), ^{
-            bool availableServicesChanged = (hasImageServices != m_hasImageServices) || (hasSelectionServices != m_hasSelectionServices) || (hasRichContentServices != m_hasRichContentServices);
-
+            bool notifyContexts = (hasImageServices != m_hasImageServices) || (hasSelectionServices != m_hasSelectionServices);
             m_hasSelectionServices = hasSelectionServices;
             m_hasImageServices = hasImageServices;
-            m_hasRichContentServices = hasRichContentServices;
 
-            if (availableServicesChanged) {
-                for (auto& context : WebContext::allContexts())
-                    context->sendToAllProcesses(Messages::WebProcess::SetEnabledServices(m_hasImageServices, m_hasSelectionServices, m_hasRichContentServices));
+            if (notifyContexts) {
+                for (const RefPtr<WebContext>& context : m_contextsToNotify)
+                    context->sendToAllProcesses(Messages::WebProcess::SetEnabledServices(m_hasImageServices, m_hasSelectionServices));
             }
 
-            m_hasPendingRefresh = false;
+            m_contextsToNotify.clear();
+
+            m_isRefreshing = false;
         });
     });
 }

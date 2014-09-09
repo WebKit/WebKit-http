@@ -37,7 +37,7 @@ public:
     virtual bool isDisabledFormControl() const override;
     HTMLSelectElement* ownerSelectElement() const;
     
-    WEBCORE_EXPORT String groupLabelText() const;
+    String groupLabelText() const;
 
 private:
     HTMLOptGroupElement(const QualifiedName&, Document&);
@@ -46,12 +46,21 @@ private:
     virtual bool isFocusable() const override;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    virtual void didAttachRenderers() override;
+    virtual void willDetachRenderers() override;
 
     virtual void childrenChanged(const ChildChange&) override;
 
     virtual void accessKeyAction(bool sendMouseEvents) override;
 
+    // <optgroup> never has a renderer so we manually manage a cached style.
+    void updateNonRenderStyle(RenderStyle& parentStyle);
+    virtual RenderStyle* nonRendererStyle() const override;
+    virtual PassRefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle) override;
+
     void recalcSelectOptions();
+
+    RefPtr<RenderStyle> m_style;
 };
 
 NODE_TYPE_CASTS(HTMLOptGroupElement)

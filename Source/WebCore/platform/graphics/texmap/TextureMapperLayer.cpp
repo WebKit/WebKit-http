@@ -237,10 +237,12 @@ TransformationMatrix TextureMapperLayer::replicaTransform()
     return TransformationMatrix(m_state.replicaLayer->m_currentTransform.combined()).multiply(m_currentTransform.combined().inverse());
 }
 
+#if ENABLE(CSS_FILTERS)
 void TextureMapperLayer::setAnimatedFilters(const FilterOperations& filters)
 {
     m_currentFilters = filters;
 }
+#endif
 
 static void resolveOverlaps(Region newRegion, Region& overlapRegion, Region& nonOverlapRegion)
 {
@@ -263,6 +265,7 @@ void TextureMapperLayer::computeOverlapRegions(Region& overlapRegion, Region& no
     else if (m_contentsLayer || m_state.solidColor.alpha())
         boundingRect = m_state.contentsRect;
 
+#if ENABLE(CSS_FILTERS)
     if (m_currentFilters.hasOutsets()) {
         FilterOutsets outsets = m_currentFilters.outsets();
         IntRect unfilteredTargetRect(boundingRect);
@@ -270,6 +273,7 @@ void TextureMapperLayer::computeOverlapRegions(Region& overlapRegion, Region& no
         boundingRect.expand(outsets.left() + outsets.right(), outsets.top() + outsets.bottom());
         boundingRect.unite(unfilteredTargetRect);
     }
+#endif
 
     TransformationMatrix replicaMatrix;
     if (m_state.replicaLayer) {
@@ -383,7 +387,9 @@ PassRefPtr<BitmapTexture> TextureMapperLayer::paintIntoSurface(const TextureMapp
     paintSelfAndChildren(paintOptions);
     if (m_state.maskLayer)
         m_state.maskLayer->applyMask(options);
+#if ENABLE(CSS_FILTERS)
     surface = surface->applyFilters(options.textureMapper, m_currentFilters);
+#endif
     options.textureMapper->bindSurface(surface.get());
     return surface;
 }
@@ -599,10 +605,12 @@ void TextureMapperLayer::setSolidColor(const Color& color)
     m_state.solidColor = color;
 }
 
+#if ENABLE(CSS_FILTERS)
 void TextureMapperLayer::setFilters(const FilterOperations& filters)
 {
     m_state.filters = filters;
 }
+#endif
 
 void TextureMapperLayer::setDebugVisuals(bool showDebugBorders, const Color& debugBorderColor, float debugBorderWidth, bool showRepaintCounter)
 {
@@ -665,8 +673,10 @@ void TextureMapperLayer::syncAnimations()
     if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity))
         m_currentOpacity = m_state.opacity;
 
+#if ENABLE(CSS_FILTERS)
     if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyWebkitFilter))
         m_currentFilters = m_state.filters;
+#endif
 }
 
 bool TextureMapperLayer::isAncestorFixedToViewport() const

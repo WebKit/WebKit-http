@@ -32,7 +32,6 @@
 #include "CallFrame.h"
 #include "CodeBlock.h"
 #include "CommonIdentifiers.h"
-#include "DebuggerCallFrame.h"
 #include "InternalFunction.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
@@ -115,11 +114,11 @@ void LegacyProfiler::stopProfiling(JSGlobalObject* origin)
     }
 }
 
-static inline void callFunctionForProfilesWithGroup(std::function<void(ProfileGenerator*)> callback, const Vector<RefPtr<ProfileGenerator>>& profiles, unsigned targetProfileGroup)
+static inline void dispatchFunctionToProfiles(ExecState* callerOrHandlerCallFrame, const Vector<RefPtr<ProfileGenerator>>& profiles, ProfileGenerator::ProfileFunction function, const CallIdentifier& callIdentifier, unsigned currentProfileTargetGroup)
 {
-    for (const RefPtr<ProfileGenerator>& profile : profiles) {
-        if (profile->profileGroup() == targetProfileGroup || !profile->origin())
-            callback(profile.get());
+    for (size_t i = 0; i < profiles.size(); ++i) {
+        if (profiles[i]->profileGroup() == currentProfileTargetGroup || !profiles[i]->origin())
+            (profiles[i].get()->*function)(callerOrHandlerCallFrame, callIdentifier);
     }
 }
 
@@ -127,9 +126,7 @@ void LegacyProfiler::willExecute(ExecState* callerCallFrame, JSValue function)
 {
     ASSERT(!m_currentProfiles.isEmpty());
 
-    CallIdentifier callIdentifier = createCallIdentifier(callerCallFrame, function, StringImpl::empty(), 0, 0);
-
-    callFunctionForProfilesWithGroup(std::bind(&ProfileGenerator::willExecute, std::placeholders::_1, callerCallFrame, callIdentifier), m_currentProfiles, callerCallFrame->lexicalGlobalObject()->profileGroup());
+    dispatchFunctionToProfiles(callerCallFrame, m_currentProfiles, &ProfileGenerator::willExecute, createCallIdentifier(callerCallFrame, function, StringImpl::empty(), 0, 0), callerCallFrame->lexicalGlobalObject()->profileGroup());
 }
 
 void LegacyProfiler::willExecute(ExecState* callerCallFrame, const String& sourceURL, unsigned startingLineNumber, unsigned startingColumnNumber)
@@ -138,56 +135,28 @@ void LegacyProfiler::willExecute(ExecState* callerCallFrame, const String& sourc
 
     CallIdentifier callIdentifier = createCallIdentifier(callerCallFrame, JSValue(), sourceURL, startingLineNumber, startingColumnNumber);
 
-    callFunctionForProfilesWithGroup(std::bind(&ProfileGenerator::willExecute, std::placeholders::_1, callerCallFrame, callIdentifier), m_currentProfiles, callerCallFrame->lexicalGlobalObject()->profileGroup());
+    dispatchFunctionToProfiles(callerCallFrame, m_currentProfiles, &ProfileGenerator::willExecute, callIdentifier, callerCallFrame->lexicalGlobalObject()->profileGroup());
 }
 
 void LegacyProfiler::didExecute(ExecState* callerCallFrame, JSValue function)
 {
     ASSERT(!m_currentProfiles.isEmpty());
 
-    CallIdentifier callIdentifier = createCallIdentifier(callerCallFrame, function, StringImpl::empty(), 0, 0);
-
-    callFunctionForProfilesWithGroup(std::bind(&ProfileGenerator::didExecute, std::placeholders::_1, callerCallFrame, callIdentifier), m_currentProfiles, callerCallFrame->lexicalGlobalObject()->profileGroup());
+    dispatchFunctionToProfiles(callerCallFrame, m_currentProfiles, &ProfileGenerator::didExecute, createCallIdentifier(callerCallFrame, function, StringImpl::empty(), 0, 0), callerCallFrame->lexicalGlobalObject()->profileGroup());
 }
 
 void LegacyProfiler::didExecute(ExecState* callerCallFrame, const String& sourceURL, unsigned startingLineNumber, unsigned startingColumnNumber)
 {
     ASSERT(!m_currentProfiles.isEmpty());
 
-    CallIdentifier callIdentifier = createCallIdentifier(callerCallFrame, JSValue(), sourceURL, startingLineNumber, startingColumnNumber);
-
-    callFunctionForProfilesWithGroup(std::bind(&ProfileGenerator::didExecute, std::placeholders::_1, callerCallFrame, callIdentifier), m_currentProfiles, callerCallFrame->lexicalGlobalObject()->profileGroup());
+    dispatchFunctionToProfiles(callerCallFrame, m_currentProfiles, &ProfileGenerator::didExecute, createCallIdentifier(callerCallFrame, JSValue(), sourceURL, startingLineNumber, startingColumnNumber), callerCallFrame->lexicalGlobalObject()->profileGroup());
 }
 
 void LegacyProfiler::exceptionUnwind(ExecState* handlerCallFrame)
 {
     ASSERT(!m_currentProfiles.isEmpty());
 
-    CallIdentifier callIdentifier = createCallIdentifier(handlerCallFrame, JSValue(), StringImpl::empty(), 0, 0);
-
-    callFunctionForProfilesWithGroup(std::bind(&ProfileGenerator::exceptionUnwind, std::placeholders::_1, handlerCallFrame, callIdentifier), m_currentProfiles, handlerCallFrame->lexicalGlobalObject()->profileGroup());
-}
-
-void LegacyProfiler::didPause(PassRefPtr<DebuggerCallFrame> prpCallFrame)
-{
-    if (m_currentProfiles.isEmpty())
-        return;
-
-    RefPtr<DebuggerCallFrame> callFrame = prpCallFrame;
-    CallIdentifier callIdentifier = createCallIdentifier(callFrame->exec(), JSValue(), StringImpl::empty(), 0, 0);
-
-    callFunctionForProfilesWithGroup(std::bind(&ProfileGenerator::didPause, std::placeholders::_1, callFrame, callIdentifier), m_currentProfiles, callFrame->vmEntryGlobalObject()->profileGroup());
-}
-
-void LegacyProfiler::didContinue(PassRefPtr<DebuggerCallFrame> prpCallFrame)
-{
-    if (m_currentProfiles.isEmpty())
-        return;
-
-    RefPtr<DebuggerCallFrame> callFrame = prpCallFrame;
-    CallIdentifier callIdentifier = createCallIdentifier(callFrame->exec(), JSValue(), StringImpl::empty(), 0, 0);
-
-    callFunctionForProfilesWithGroup(std::bind(&ProfileGenerator::didContinue, std::placeholders::_1, callFrame, callIdentifier), m_currentProfiles, callFrame->vmEntryGlobalObject()->profileGroup());
+    dispatchFunctionToProfiles(handlerCallFrame, m_currentProfiles, &ProfileGenerator::exceptionUnwind, createCallIdentifier(handlerCallFrame, JSValue(), StringImpl::empty(), 0, 0), handlerCallFrame->lexicalGlobalObject()->profileGroup());
 }
 
 CallIdentifier LegacyProfiler::createCallIdentifier(ExecState* exec, JSValue functionValue, const String& defaultSourceURL, unsigned defaultLineNumber, unsigned defaultColumnNumber)

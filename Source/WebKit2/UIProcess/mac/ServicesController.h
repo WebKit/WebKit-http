@@ -28,9 +28,10 @@
 
 #if ENABLE(SERVICE_CONTROLS)
 
-#include <wtf/Forward.h>
+#include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/RetainPtr.h>
+#include <wtf/RefPtr.h>
+#include <wtf/RunLoop.h>
 
 namespace WebKit {
 
@@ -44,22 +45,21 @@ public:
 
     bool hasImageServices() const { return m_hasImageServices; }
     bool hasSelectionServices() const { return m_hasSelectionServices; }
-    bool hasRichContentServices() const { return m_hasRichContentServices; }
 
-    void refreshExistingServices(bool refreshImmediately = true);
+    void refreshExistingServices(WebContext*);
 
 private:
     ServicesController();
 
+    void refreshExistingServices();
+
     dispatch_queue_t m_refreshQueue;
-    std::atomic_bool m_hasPendingRefresh;
+    bool m_isRefreshing;
 
     bool m_hasImageServices;
     bool m_hasSelectionServices;
-    bool m_hasRichContentServices;
 
-    RetainPtr<id> m_extensionWatcher;
-    RetainPtr<id> m_uiExtensionWatcher;
+    HashSet<RefPtr<WebContext>> m_contextsToNotify;
 };
 
 } // namespace WebKit

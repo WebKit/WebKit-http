@@ -59,28 +59,28 @@ namespace WebCore {
         // Gets a copy of the data suitable for passing to another thread.
         PassOwnPtr<CrossThreadResourceRequestData> copyData() const;
 
-        WEBCORE_EXPORT bool isNull() const;
-        WEBCORE_EXPORT bool isEmpty() const;
+        bool isNull() const;
+        bool isEmpty() const;
 
-        WEBCORE_EXPORT const URL& url() const;
-        WEBCORE_EXPORT void setURL(const URL& url);
+        const URL& url() const;
+        void setURL(const URL& url);
 
         void removeCredentials();
 
         ResourceRequestCachePolicy cachePolicy() const;
-        WEBCORE_EXPORT void setCachePolicy(ResourceRequestCachePolicy cachePolicy);
+        void setCachePolicy(ResourceRequestCachePolicy cachePolicy);
         
         double timeoutInterval() const; // May return 0 when using platform default.
         void setTimeoutInterval(double timeoutInterval);
         
-        WEBCORE_EXPORT const URL& firstPartyForCookies() const;
+        const URL& firstPartyForCookies() const;
         void setFirstPartyForCookies(const URL& firstPartyForCookies);
         
-        WEBCORE_EXPORT const String& httpMethod() const;
-        WEBCORE_EXPORT void setHTTPMethod(const String& httpMethod);
+        const String& httpMethod() const;
+        void setHTTPMethod(const String& httpMethod);
         
         const HTTPHeaderMap& httpHeaderFields() const;
-        WEBCORE_EXPORT void setHTTPHeaderFields(HTTPHeaderMap);
+        void setHTTPHeaderFields(HTTPHeaderMap);
 
         String httpHeaderField(const String& name) const;
         String httpHeaderField(HTTPHeaderName) const;
@@ -95,12 +95,12 @@ namespace WebCore {
 
         void clearHTTPAuthorization();
 
-        WEBCORE_EXPORT String httpContentType() const;
-        WEBCORE_EXPORT void setHTTPContentType(const String&);
+        String httpContentType() const;
+        void setHTTPContentType(const String&);
         void clearHTTPContentType();
 
         String httpReferrer() const;
-        WEBCORE_EXPORT void setHTTPReferrer(const String&);
+        void setHTTPReferrer(const String&);
         void clearHTTPReferrer();
         
         String httpOrigin() const;
@@ -116,10 +116,10 @@ namespace WebCore {
         void clearHTTPAccept();
 
         const Vector<String>& responseContentDispositionEncodingFallbackArray() const { return m_responseContentDispositionEncodingFallbackArray; }
-        WEBCORE_EXPORT void setResponseContentDispositionEncodingFallbackArray(const String& encoding1, const String& encoding2 = String(), const String& encoding3 = String());
+        void setResponseContentDispositionEncodingFallbackArray(const String& encoding1, const String& encoding2 = String(), const String& encoding3 = String());
 
-        WEBCORE_EXPORT FormData* httpBody() const;
-        WEBCORE_EXPORT void setHTTPBody(PassRefPtr<FormData> httpBody);
+        FormData* httpBody() const;
+        void setHTTPBody(PassRefPtr<FormData> httpBody);
         
         bool allowCookies() const;
         void setAllowCookies(bool allowCookies);
@@ -155,12 +155,12 @@ namespace WebCore {
         template<class Encoder> void encodeWithoutPlatformData(Encoder&) const;
         template<class Decoder> bool decodeWithoutPlatformData(Decoder&);
 
-        WEBCORE_EXPORT static double defaultTimeoutInterval(); // May return 0 when using platform default.
-        WEBCORE_EXPORT static void setDefaultTimeoutInterval(double);
+        static double defaultTimeoutInterval(); // May return 0 when using platform default.
+        static void setDefaultTimeoutInterval(double);
 
 #if PLATFORM(IOS)
-        WEBCORE_EXPORT static bool defaultAllowCookies();
-        WEBCORE_EXPORT static void setDefaultAllowCookies(bool);
+        static bool defaultAllowCookies();
+        static void setDefaultAllowCookies(bool);
 #endif
 
         static bool compare(const ResourceRequest&, const ResourceRequest&);
@@ -236,7 +236,7 @@ namespace WebCore {
     private:
         const ResourceRequest& asResourceRequest() const;
 
-        WEBCORE_EXPORT static double s_defaultTimeoutInterval;
+        static double s_defaultTimeoutInterval;
 #if PLATFORM(IOS)
         static bool s_defaultAllowCookies;
 #endif
@@ -267,7 +267,7 @@ namespace WebCore {
     
     unsigned initializeMaximumHTTPConnectionCountPerHost();
 #if PLATFORM(IOS)
-    WEBCORE_EXPORT void initializeHTTPConnectionSettingsOnStartup();
+    void initializeHTTPConnectionSettingsOnStartup();
 #endif
 
 template<class Encoder>

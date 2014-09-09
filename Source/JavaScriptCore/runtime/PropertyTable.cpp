@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -82,8 +82,10 @@ PropertyTable::PropertyTable(VM& vm, const PropertyTable& other)
     memcpy(m_index, other.m_index, dataSize());
 
     iterator end = this->end();
-    for (iterator iter = begin(); iter != end; ++iter)
+    for (iterator iter = begin(); iter != end; ++iter) {
         iter->key->ref();
+        vm.heap.writeBarrier(this, iter->specificValue.get());
+    }
 
     // Copy the m_deletedOffsets vector.
     Vector<PropertyOffset>* otherDeletedOffsets = other.m_deletedOffsets.get();
@@ -107,6 +109,7 @@ PropertyTable::PropertyTable(VM& vm, unsigned initialCapacity, const PropertyTab
         ASSERT(canInsert());
         reinsert(*iter);
         iter->key->ref();
+        vm.heap.writeBarrier(this, iter->specificValue.get());
     }
 
     // Copy the m_deletedOffsets vector.
@@ -129,5 +132,16 @@ PropertyTable::~PropertyTable()
     fastFree(m_index);
 }
 
-} // namespace JSC
+void PropertyTable::visitChildren(JSCell* cell, SlotVisitor& visitor)
+{
+    PropertyTable* thisObject = jsCast<PropertyTable*>(cell);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
+    JSCell::visitChildren(thisObject, visitor);
+
+    PropertyTable::iterator end = thisObject->end();
+    for (PropertyTable::iterator ptr = thisObject->begin(); ptr != end; ++ptr)
+        visitor.append(&ptr->specificValue);
+}
+
+}

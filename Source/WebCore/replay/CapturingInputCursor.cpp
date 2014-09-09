@@ -30,16 +30,13 @@
 
 #if ENABLE(WEB_REPLAY)
 
-#include "EventLoopInput.h"
 #include "Logging.h"
-#include "ReplaySessionSegment.h"
 #include "SegmentedInputStorage.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
-CapturingInputCursor::CapturingInputCursor(PassRefPtr<ReplaySessionSegment> segment)
-    : m_segment(segment)
+CapturingInputCursor::CapturingInputCursor(SegmentedInputStorage& storage)
+    : m_storage(storage)
     , m_withinEventLoopInputExtent(false)
 {
     LOG(WebReplay, "%-30sCreated capture cursor=%p.\n", "[ReplayController]", this);
@@ -50,22 +47,15 @@ CapturingInputCursor::~CapturingInputCursor()
     LOG(WebReplay, "%-30sDestroyed capture cursor=%p.\n", "[ReplayController]", this);
 }
 
-PassRefPtr<CapturingInputCursor> CapturingInputCursor::create(PassRefPtr<ReplaySessionSegment> segment)
+PassRefPtr<CapturingInputCursor> CapturingInputCursor::create(SegmentedInputStorage& storage)
 {
-    return adoptRef(new CapturingInputCursor(segment));
+    return adoptRef(new CapturingInputCursor(storage));
 }
 
 void CapturingInputCursor::storeInput(std::unique_ptr<NondeterministicInputBase> input)
 {
-    ASSERT_ARG(input, input);
-
-    if (input->queue() == InputQueue::EventLoopInput) {
-        // FIXME: rewrite this (and related dispatch code) to use std::chrono.
-        double now = monotonicallyIncreasingTime();
-        m_segment->eventLoopTimings().append(now);
-    }
-
-    m_segment->storage().store(WTF::move(input));
+    ASSERT(input);
+    m_storage.store(WTF::move(input));
 }
 
 NondeterministicInputBase* CapturingInputCursor::loadInput(InputQueue, const AtomicString&)

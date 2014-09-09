@@ -89,6 +89,8 @@ WebVTTParser::WebVTTParser(WebVTTParserClient* client, ScriptExecutionContext* c
     : m_scriptExecutionContext(context)
     , m_state(Initial)
     , m_decoder(TextResourceDecoder::create("text/plain", UTF8Encoding()))
+    , m_currentStartTime(0)
+    , m_currentEndTime(0)
     , m_client(client)
 {
 }
@@ -126,15 +128,15 @@ void WebVTTParser::parseCueData(const ISOWebVTTCue& data)
 {
     RefPtr<WebVTTCueData> cue = WebVTTCueData::create();
 
-    MediaTime startTime = data.presentationTime();
+    double startTime = data.presentationTime().toDouble();
     cue->setStartTime(startTime);
-    cue->setEndTime(startTime + data.duration());
+    cue->setEndTime(startTime + data.duration().toDouble());
 
     cue->setContent(data.cueText());
     cue->setId(data.id());
     cue->setSettings(data.settings());
 
-    MediaTime originalStartTime;
+    double originalStartTime;
     if (WebVTTParser::collectTimeStamp(data.originalStartTime(), originalStartTime))
         cue->setOriginalStartTime(originalStartTime);
 
@@ -347,7 +349,7 @@ WebVTTParser::ParseState WebVTTParser::collectCueText(const String& line)
         return recoverCue(line);
     }
     if (!m_currentContent.isEmpty())
-        m_currentContent.append('\n');
+        m_currentContent.append("\n");
     m_currentContent.append(line);
 
     return CueText;
@@ -435,8 +437,8 @@ void WebVTTParser::resetCueValues()
 {
     m_currentId = emptyString();
     m_currentSettings = emptyString();
-    m_currentStartTime = MediaTime::zeroTime();
-    m_currentEndTime = MediaTime::zeroTime();
+    m_currentStartTime = 0;
+    m_currentEndTime = 0;
     m_currentContent.clear();
 }
 
@@ -463,7 +465,7 @@ void WebVTTParser::createNewRegion(const String& headerValue)
 }
 #endif
 
-bool WebVTTParser::collectTimeStamp(const String& line, MediaTime& timeStamp)
+bool WebVTTParser::collectTimeStamp(const String& line, double& timeStamp)
 {
     if (line.isEmpty())
         return false;
@@ -472,7 +474,7 @@ bool WebVTTParser::collectTimeStamp(const String& line, MediaTime& timeStamp)
     return collectTimeStamp(input, timeStamp);
 }
 
-bool WebVTTParser::collectTimeStamp(VTTScanner& input, MediaTime& timeStamp)
+bool WebVTTParser::collectTimeStamp(VTTScanner& input, double& timeStamp)
 {
     // Collect a WebVTT timestamp (5.3 WebVTT cue timings and settings parsing.)
     // Steps 1 - 4 - Initial checks, let most significant units be minutes.
@@ -512,7 +514,7 @@ bool WebVTTParser::collectTimeStamp(VTTScanner& input, MediaTime& timeStamp)
         return false;
 
     // Steps 18 - 19 - Calculate result.
-    timeStamp = MediaTime::createWithDouble((value1 * secondsPerHour) + (value2 * secondsPerMinute) + value3 + (value4 * secondsPerMillisecond));
+    timeStamp = (value1 * secondsPerHour) + (value2 * secondsPerMinute) + value3 + (value4 * secondsPerMillisecond);
     return true;
 }
 
@@ -609,7 +611,7 @@ void WebVTTTreeBuilder::constructTreeFromToken(Document& document)
     }
     case WebVTTTokenTypes::TimestampTag: {
         String charactersString = m_token.characters();
-        MediaTime parsedTimeStamp;
+        double parsedTimeStamp;
         if (WebVTTParser::collectTimeStamp(charactersString, parsedTimeStamp))
             m_currentNode->parserAppendChild(ProcessingInstruction::create(document, "timestamp", charactersString));
         break;

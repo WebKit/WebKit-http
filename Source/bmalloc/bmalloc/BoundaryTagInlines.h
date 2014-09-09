@@ -64,7 +64,7 @@ static inline void validatePrev(EndTag* prev, void* object)
 
 static inline void validateNext(BeginTag* next, const Range& range)
 {
-    if (next->size() == largeMin && !next->compactBegin() && !next->isFree()) // Right sentinel tag.
+    if (next->size() == largeMin && !next->isFree()) // Right sentinel tag.
         return;
 
     void* nextObject = range.end();
@@ -84,7 +84,7 @@ inline Range BoundaryTag::init(LargeChunk* chunk)
     Range range(chunk->begin(), chunk->end() - chunk->begin());
 
     BeginTag* beginTag = LargeChunk::beginTag(range.begin());
-    beginTag->setRange(range);
+    beginTag->setSize(range.size());
     beginTag->setFree(true);
     beginTag->setHasPhysicalPages(false);
 
@@ -97,12 +97,12 @@ inline Range BoundaryTag::init(LargeChunk* chunk)
     
     EndTag* leftSentinel = beginTag->prev();
     BASSERT(leftSentinel >= static_cast<void*>(chunk));
-    leftSentinel->setRange(Range(nullptr, largeMin));
+    leftSentinel->setSize(largeMin);
     leftSentinel->setFree(false);
 
     BeginTag* rightSentinel = endTag->next();
     BASSERT(rightSentinel < static_cast<void*>(range.begin()));
-    rightSentinel->setRange(Range(nullptr, largeMin));
+    rightSentinel->setSize(largeMin);
     rightSentinel->setFree(false);
     
     return range;
@@ -150,7 +150,7 @@ INLINE void BoundaryTag::mergeLarge(BeginTag*& beginTag, EndTag*& endTag, Range&
     if (next->isFree())
         mergeLargeRight(endTag, next, range, hasPhysicalPages);
 
-    beginTag->setRange(range);
+    beginTag->setSize(range.size());
     beginTag->setFree(true);
     beginTag->setHasPhysicalPages(hasPhysicalPages);
 
@@ -175,26 +175,25 @@ inline Range BoundaryTag::deallocate(void* object)
 
 INLINE void BoundaryTag::splitLarge(BeginTag* beginTag, size_t size, EndTag*& endTag, Range& range, Range& leftover)
 {
-    leftover = Range(range.begin() + size, range.size() - size);
-    range = Range(range.begin(), size);
-
-    beginTag->setRange(range);
+    beginTag->setSize(size);
 
     EndTag* splitEndTag = LargeChunk::endTag(range.begin(), size);
     if (splitEndTag != static_cast<BoundaryTag*>(beginTag))
         *splitEndTag = *beginTag;
 
+    leftover = Range(range.begin() + size, range.size() - size);
     BASSERT(leftover.size() >= largeMin);
     BeginTag* leftoverBeginTag = LargeChunk::beginTag(leftover.begin());
     *leftoverBeginTag = *beginTag;
-    leftoverBeginTag->setRange(leftover);
+    leftoverBeginTag->setSize(leftover.size());
 
     if (leftoverBeginTag != static_cast<BoundaryTag*>(endTag))
         *endTag = *leftoverBeginTag;
 
-    validate(beginTag->prev(), range, leftoverBeginTag);
+    validate(beginTag->prev(), Range(range.begin(), size), leftoverBeginTag);
     validate(leftoverBeginTag->prev(), leftover, endTag->next());
 
+    range = Range(range.begin(), size);
     endTag = splitEndTag;
 }
 

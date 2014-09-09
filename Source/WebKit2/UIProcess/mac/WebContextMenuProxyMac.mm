@@ -31,7 +31,6 @@
 #import "DataReference.h"
 #import "MenuUtilities.h"
 #import "PageClientImpl.h"
-#import "ServicesController.h"
 #import "ShareableBitmap.h"
 #import "StringUtilities.h"
 #import "WebContext.h"
@@ -54,21 +53,11 @@ typedef enum {
     NSSharingServicePickerStyleRollover = 1,
     NSSharingServicePickerStyleTextSelection = 2
 } NSSharingServicePickerStyle;
-
-typedef enum {
-    NSSharingServiceTypeEditor = 2
-} NSSharingServiceType;
-
-typedef NSUInteger NSSharingServiceMask;
 #endif
 
 @interface NSSharingServicePicker (Details)
 @property NSSharingServicePickerStyle style;
 - (NSMenu *)menu;
-@end
-
-@interface NSSharingService (Private)
-@property (readonly) NSSharingServiceType type;
 @end
 
 #endif // ENABLE(SERVICE_CONTROLS)
@@ -381,10 +370,10 @@ static Vector<RetainPtr<NSMenuItem>> nsMenuItemVector(const Vector<WebContextMen
 
 void WebContextMenuProxyMac::setupServicesMenu(const ContextMenuContextData& context)
 {
+    RetainPtr<NSSharingServicePicker> picker;
     bool includeEditorServices = context.controlledDataIsEditable();
-    bool hasControlledImage = !context.controlledImageHandle().isNull();
     NSArray *items = nil;
-    if (hasControlledImage) {
+    if (!context.controlledImageHandle().isNull()) {
         RefPtr<ShareableBitmap> image = ShareableBitmap::create(context.controlledImageHandle());
         if (!image)
             return;
@@ -402,44 +391,29 @@ void WebContextMenuProxyMac::setupServicesMenu(const ContextMenuContextData& con
         return;
     }
 
-    RetainPtr<NSSharingServicePicker> picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:items]);
-    [picker setStyle:hasControlledImage ? NSSharingServicePickerStyleRollover : NSSharingServicePickerStyleTextSelection];
+    picker = adoptNS([[NSSharingServicePicker alloc] initWithItems:items]);
+    [picker setStyle:NSSharingServicePickerStyleRollover];
     [picker setDelegate:[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate]];
     [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setPicker:picker.get()];
     [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setIncludeEditorServices:includeEditorServices];
 
-    m_servicesMenu = adoptNS([[picker menu] copy]);
-
-    if (!hasControlledImage)
-        [m_servicesMenu setShowsStateColumn:YES];
+    m_servicesMenu = [picker menu];
 
     // Explicitly add a menu item for each telephone number that is in the selection.
     const Vector<String>& selectedTelephoneNumbers = context.selectedTelephoneNumbers();
-    Vector<RetainPtr<NSMenuItem>> telephoneNumberMenuItems;
-    for (auto& telephoneNumber : selectedTelephoneNumbers) {
-        if (NSMenuItem *item = menuItemForTelephoneNumber(telephoneNumber)) {
-            [item setIndentationLevel:1];
-            telephoneNumberMenuItems.append(item);
+    if (!selectedTelephoneNumbers.isEmpty()) {
+        [m_servicesMenu.get() addItem:[NSMenuItem separatorItem]];
+        for (auto& telephoneNumber : selectedTelephoneNumbers) {
+            if (NSMenuItem *item = menuItemForTelephoneNumber(telephoneNumber))
+                [m_servicesMenu.get() addItem:item];
         }
     }
 
-    if (!telephoneNumberMenuItems.isEmpty()) {
-        if (m_servicesMenu)
-            [m_servicesMenu insertItem:[NSMenuItem separatorItem] atIndex:0];
-        else
-            m_servicesMenu = adoptNS([[NSMenu alloc] init]);
-        int itemPosition = 0;
-        NSMenuItem *groupEntry = [[NSMenuItem alloc] initWithTitle:menuItemTitleForTelephoneNumberGroup() action:nil keyEquivalent:@""];
-        [groupEntry setEnabled:NO];
-        [m_servicesMenu insertItem:groupEntry atIndex:itemPosition++];
-        for (auto& menuItem : telephoneNumberMenuItems)
-            [m_servicesMenu insertItem:menuItem.get() atIndex:itemPosition++];
-    }
-
-    // If there is no services menu, then the existing services on the system have changed, so refresh that list of services.
-    // If <rdar://problem/17954709> is resolved then we can more accurately keep the list up to date without this call.
+    // If there is no services menu, then the existing services on the system have changed.
+    // Ask the UIProcess to refresh that list of services.
+    // If <rdar://problem/16776831> is resolved then we can more accurately keep the list up to date without this call.
     if (!m_servicesMenu)
-        ServicesController::shared().refreshExistingServices();
+        m_page->process().context().refreshExistingServices();
 }
 
 void WebContextMenuProxyMac::clearServicesMenu()

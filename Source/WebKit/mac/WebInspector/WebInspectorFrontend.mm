@@ -43,7 +43,7 @@ using namespace WebCore;
 
 - (void)attach
 {
-    m_frontendClient->attachWindow(InspectorFrontendClient::DockSide::Bottom);
+    m_frontendClient->attachWindow(InspectorFrontendClient::DOCKED_TO_BOTTOM);
 }
 
 - (void)detach

@@ -23,9 +23,11 @@
  */
 
 #include "config.h"
-#include "FEBlend.h"
 
+#if ENABLE(FILTERS)
+#include "FEBlend.h"
 #include "FEBlendNEON.h"
+
 #include "Filter.h"
 #include "FloatPoint.h"
 #include "GraphicsContext.h"
@@ -96,3 +98,5 @@ TextStream& FEBlend::externalRepresentation(TextStream& ts, int indent) const
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

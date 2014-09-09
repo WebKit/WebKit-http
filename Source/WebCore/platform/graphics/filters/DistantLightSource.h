@@ -23,6 +23,7 @@
 #ifndef DistantLightSource_h
 #define DistantLightSource_h
 
+#if ENABLE(FILTERS)
 #include "LightSource.h"
 
 namespace WebCore {
@@ -58,5 +59,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // DistantLightSource_h

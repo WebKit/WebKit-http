@@ -505,6 +505,16 @@ void PluginView::webPageDestroyed()
 
 void PluginView::viewStateDidChange(ViewState::Flags changed)
 {
+#if PLATFORM(COCOA)
+    platformViewStateDidChange(changed);
+#else
+    UNUSED_PARAM(changed);
+#endif
+}
+
+#if PLATFORM(COCOA)
+void PluginView::platformViewStateDidChange(ViewState::Flags changed)
+{
     if (!m_plugin || !m_isInitialized)
         return;
 
@@ -514,7 +524,6 @@ void PluginView::viewStateDidChange(ViewState::Flags changed)
         m_plugin->windowFocusChanged(m_webPage->windowIsFocused());
 }
 
-#if PLATFORM(COCOA)
 void PluginView::setDeviceScaleFactor(float scaleFactor)
 {
     if (!m_isInitialized || !m_plugin)
@@ -638,8 +647,7 @@ void PluginView::didInitializePlugin()
             m_pluginElement->dispatchPendingMouseClick();
     }
 
-    m_plugin->visibilityDidChange(isVisible());
-    m_plugin->windowVisibilityChanged(m_webPage->isVisibleOrOccluded());
+    m_plugin->windowVisibilityChanged(m_webPage->isVisible());
     m_plugin->windowFocusChanged(m_webPage->windowIsFocused());
 #endif
 

@@ -60,7 +60,6 @@ public:
     LayerAnimationDelegateMap& animationDelegates() { return m_animationDelegates; }
 
     void animationDidStart(WebCore::GraphicsLayer::PlatformLayerID, CAAnimation *, double startTime);
-    void animationDidEnd(WebCore::GraphicsLayer::PlatformLayerID, CAAnimation *);
 
     void clearLayers();
 

@@ -44,7 +44,6 @@
 #import <WebCore/AudioSession.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/ResourceHandle.h>
-#import <WebCore/TextEncodingRegistry.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
@@ -564,6 +563,11 @@ public:
 #endif
 #if ENABLE(IOS_TEXT_AUTOSIZING)
         [NSNumber numberWithFloat:WKGetMinimumZoomFontSize()], WebKitMinimumZoomFontSizePreferenceKey,
+#endif
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+        [NSNumber numberWithBool:YES], WebKitDiskImageCacheEnabledPreferenceKey,
+        [NSNumber numberWithUnsignedInt:(100 * 1024)], WebKitDiskImageCacheMinimumImageSizePreferenceKey,
+        [NSNumber numberWithUnsignedInt:(100 * 1024 * 1024)], WebKitDiskImageCacheMaximumCacheSizePreferenceKey,
 #endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
@@ -1711,8 +1715,16 @@ public:
 
 + (void)_setInitialDefaultTextEncodingToSystemEncoding
 {
+    NSString *systemEncodingName = (NSString *)CFStringConvertEncodingToIANACharSetName([self _systemCFStringEncoding]);
+
+    // CFStringConvertEncodingToIANACharSetName() returns cp949 for kTextEncodingDOSKorean AKA "extended EUC-KR" AKA windows-949.
+    // ICU uses this name for a different encoding, so we need to change the name to a value that actually gives us windows-949.
+    // In addition, this value must match what is used in Safari, see <rdar://problem/5579292>.
+    // On some OS versions, the result is CP949 (uppercase).
+    if ([systemEncodingName _webkit_isCaseInsensitiveEqualToString:@"cp949"])
+        systemEncodingName = @"ks_c_5601-1987";
     [[NSUserDefaults standardUserDefaults] registerDefaults:
-        [NSDictionary dictionaryWithObject:defaultTextEncodingNameForSystemLanguage() forKey:WebKitDefaultTextEncodingNamePreferenceKey]];
+        [NSDictionary dictionaryWithObject:systemEncodingName forKey:WebKitDefaultTextEncodingNamePreferenceKey]];
 }
 
 static NSString *classIBCreatorID = nil;
@@ -1904,10 +1916,47 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitAccelerated2dCanvasEnabledPreferenceKey];
 }
 
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+- (BOOL)diskImageCacheEnabled
+{
+    return [self _boolValueForKey:WebKitDiskImageCacheEnabledPreferenceKey];
+}
+
 - (void)setDiskImageCacheEnabled:(BOOL)enabled
 {
-    // Staging. Can be removed once there are no more callers.
+    [self _setBoolValue:enabled forKey:WebKitDiskImageCacheEnabledPreferenceKey];
 }
+
+- (unsigned)diskImageCacheMinimumImageSize
+{
+    return [self _integerValueForKey:WebKitDiskImageCacheMinimumImageSizePreferenceKey];
+}
+
+- (void)setDiskImageCacheMinimumImageSize:(unsigned)minimumSize
+{
+    [self _setIntegerValue:minimumSize forKey:WebKitDiskImageCacheMinimumImageSizePreferenceKey];
+}
+
+- (unsigned)diskImageCacheMaximumCacheSize
+{
+    return [self _integerValueForKey:WebKitDiskImageCacheMaximumCacheSizePreferenceKey];
+}
+
+- (void)setDiskImageCacheMaximumCacheSize:(unsigned)maximumSize
+{
+    [self _setIntegerValue:maximumSize forKey:WebKitDiskImageCacheMaximumCacheSizePreferenceKey];
+}
+
+- (NSString *)_diskImageCacheSavedCacheDirectory
+{
+    return [[self _stringValueForKey:WebKitDiskImageCacheSavedCacheDirectoryKey] stringByStandardizingPath];
+}
+
+- (void)_setDiskImageCacheSavedCacheDirectory:(NSString *)path
+{
+    [self _setStringValue:[path stringByStandardizingPath] forKey:WebKitDiskImageCacheSavedCacheDirectoryKey];
+}
+#endif // ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
 
 - (BOOL)isFrameFlatteningEnabled
 {

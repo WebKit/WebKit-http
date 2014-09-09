@@ -76,7 +76,7 @@
 #include "MessageEvent.h"
 #include "Navigator.h"
 #include "Page.h"
-#include "PageConsoleClient.h"
+#include "PageConsole.h"
 #include "PageGroup.h"
 #include "PageTransitionEvent.h"
 #include "Performance.h"
@@ -393,7 +393,6 @@ DOMWindow::DOMWindow(Document* document)
     , m_shouldPrintWhenFinishedLoading(false)
     , m_suspendedForPageCache(false)
     , m_lastPageStatus(PageStatusNone)
-    , m_weakPtrFactory(this)
 #if PLATFORM(IOS)
     , m_scrollEventListenerCount(0)
 #endif
@@ -702,11 +701,11 @@ BarProp* DOMWindow::toolbar() const
     return m_toolbar.get();
 }
 
-PageConsoleClient* DOMWindow::console() const
+PageConsole* DOMWindow::pageConsole() const
 {
     if (!isCurrentlyDisplayedInFrame())
-        return nullptr;
-    return m_frame->page() ? &m_frame->page()->console() : nullptr;
+        return 0;
+    return m_frame->page() ? &m_frame->page()->console() : 0;
 }
 
 DOMApplicationCache* DOMWindow::applicationCache() const
@@ -937,7 +936,7 @@ void DOMWindow::dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTarg
         if (!intendedTargetOrigin->isSameSchemeHostPort(document()->securityOrigin())) {
             String message = "Unable to post message to " + intendedTargetOrigin->toString() +
                              ". Recipient has origin " + document()->securityOrigin()->toString() + ".\n";
-            console()->addMessage(MessageSource::Security, MessageLevel::Error, message, stackTrace);
+            pageConsole()->addMessage(MessageSource::Security, MessageLevel::Error, message, stackTrace);
             return;
         }
     }
@@ -1036,7 +1035,7 @@ void DOMWindow::close(ScriptExecutionContext* context)
     bool allowScriptsToCloseWindows = m_frame->settings().allowScriptsToCloseWindows();
 
     if (!(page->openedByDOM() || page->backForward().count() <= 1 || allowScriptsToCloseWindows)) {
-        console()->addMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Can't close the window since it was not opened by JavaScript"));
+        pageConsole()->addMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Can't close the window since it was not opened by JavaScript"));
         return;
     }
 
@@ -2008,8 +2007,8 @@ void DOMWindow::printErrorMessage(const String& message)
     if (message.isEmpty())
         return;
 
-    if (PageConsoleClient* pageConsole = console())
-        pageConsole->addMessage(MessageSource::JS, MessageLevel::Error, message);
+    if (PageConsole* console = pageConsole())
+        console->addMessage(MessageSource::JS, MessageLevel::Error, message);
 }
 
 String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow)

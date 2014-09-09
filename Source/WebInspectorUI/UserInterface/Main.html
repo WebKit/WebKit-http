@@ -90,6 +90,8 @@
     <link rel="stylesheet" href="Views/LayerTreeSidebarPanel.css">
     <link rel="stylesheet" href="Views/LayoutTimelineOverviewGraph.css">
     <link rel="stylesheet" href="Views/LayoutTimelineView.css">
+    <link rel="stylesheet" href="Views/LegacyJavaScriptProfileView.css">
+    <link rel="stylesheet" href="Views/LegacyProfileView.css">
     <link rel="stylesheet" href="Views/LogContentView.css">
     <link rel="stylesheet" href="Views/LogIcon.css">
     <link rel="stylesheet" href="Views/Main.css">
@@ -104,7 +106,6 @@
     <link rel="stylesheet" href="Views/ProbeSetDataGrid.css">
     <link rel="stylesheet" href="Views/QuickConsole.css">
     <link rel="stylesheet" href="Views/RadioButtonNavigationItem.css">
-    <link rel="stylesheet" href="Views/ReplayDashboardView.css">
     <link rel="stylesheet" href="Views/ResourceIcons.css">
     <link rel="stylesheet" href="Views/ResourceSidebarPanel.css">
     <link rel="stylesheet" href="Views/ResourceTreeElement.css">
@@ -134,7 +135,6 @@
     <link rel="stylesheet" href="Views/TimelineView.css">
     <link rel="stylesheet" href="Views/Toolbar.css">
     <link rel="stylesheet" href="Views/TreeElementStatusButton.css">
-    <link rel="stylesheet" href="Views/TypeTokenView.css">
 
     <link rel="stylesheet" href="Controllers/CodeMirrorCompletionController.css">
     <link rel="stylesheet" href="Controllers/CodeMirrorDragToAdjustNumberController.css">
@@ -165,7 +165,6 @@
     <script src="Base/Object.js"></script>
 
     <script src="Base/DOMUtilities.js"></script>
-    <script src="Base/EventListener.js"></script>
     <script src="Base/EventListenerSet.js"></script>
     <script src="Base/ImageUtilities.js"></script>
     <script src="Base/LoadLocalizedStrings.js"></script>
@@ -187,6 +186,7 @@
     <script src="Protocol/InspectorFrontendHostStub.js"></script>
     <script src="Protocol/InspectorObserver.js"></script>
     <script src="Protocol/LayerTreeObserver.js"></script>
+    <script src="Protocol/LegacyProfilerObserver.js"></script>
     <script src="Protocol/LoadInspectorBackendCommands.js"></script>
     <script src="Protocol/MessageDispatcher.js"></script>
     <script src="Protocol/NetworkObserver.js"></script>
@@ -248,7 +248,6 @@
     <script src="Models/Profile.js"></script>
     <script src="Models/ProfileNode.js"></script>
     <script src="Models/ProfileNodeCall.js"></script>
-    <script src="Models/ReplayDashboard.js"></script>
     <script src="Models/ReplaySession.js"></script>
     <script src="Models/ReplaySessionSegment.js"></script>
     <script src="Models/Resource.js"></script>
@@ -258,7 +257,6 @@
     <script src="Models/Revision.js"></script>
     <script src="Models/ScopeChainNode.js"></script>
     <script src="Models/Script.js"></script>
-    <script src="Models/ScriptSyntaxTree.js"></script>
     <script src="Models/ScriptTimelineRecord.js"></script>
     <script src="Models/Setting.js"></script>
     <script src="Models/SourceCodePosition.js"></script>
@@ -278,6 +276,10 @@
     <script src="Views/DataGrid.js"></script>
     <script src="Views/DetailsSectionRow.js"></script>
     <script src="Views/HierarchicalPathComponent.js"></script>
+    <script src="Views/LegacyProfileDataGridTree.js"></script>
+    <script src="Views/LegacyProfileObject.js"></script>
+    <script src="Views/LegacyProfileType.js"></script>
+    <script src="Views/LegacyProfileView.js"></script>
     <script src="Views/NavigationItem.js"></script>
     <script src="Views/Section.js"></script>
     <script src="Views/SidebarPanel.js"></script>
@@ -394,6 +396,11 @@
     <script src="Views/LayoutTimelineDataGridNode.js"></script>
     <script src="Views/LayoutTimelineOverviewGraph.js"></script>
     <script src="Views/LayoutTimelineView.js"></script>
+    <script src="Views/LegacyBottomUpProfileDataGridTree.js"></script>
+    <script src="Views/LegacyJavaScriptProfileObject.js"></script>
+    <script src="Views/LegacyJavaScriptProfileType.js"></script>
+    <script src="Views/LegacyJavaScriptProfileView.js"></script>
+    <script src="Views/LegacyTopDownProfileDataGridTree.js"></script>
     <script src="Views/LogContentView.js"></script>
     <script src="Views/LogTreeElement.js"></script>
     <script src="Views/MetricsStyleDetailsPanel.js"></script>
@@ -412,7 +419,6 @@
     <script src="Views/QuickConsole.js"></script>
     <script src="Views/QuickConsoleNavigationBar.js"></script>
     <script src="Views/RadioButtonNavigationItem.js"></script>
-    <script src="Views/ReplayDashboardView.js"></script>
     <script src="Views/ResourceClusterContentView.js"></script>
     <script src="Views/ResourceDetailsSidebarPanel.js"></script>
     <script src="Views/ResourceSidebarPanel.js"></script>
@@ -450,8 +456,6 @@
     <script src="Views/Toolbar.js"></script>
     <script src="Views/TreeElementStatusButton.js"></script>
     <script src="Views/TreeOutlineDataGridSynchronizer.js"></script>
-    <script src="Views/TypePropertiesSection.js"></script>
-    <script src="Views/TypeTokenView.js"></script>
 
     <script src="Controllers/CodeMirrorEditingController.js"></script>
 
@@ -475,6 +479,7 @@
     <script src="Controllers/JavaScriptLogViewController.js"></script>
     <script src="Controllers/JavaScriptRuntimeCompletionProvider.js"></script>
     <script src="Controllers/LayerTreeManager.js"></script>
+    <script src="Controllers/LegacyProfileManager.js"></script>
     <script src="Controllers/LogManager.js"></script>
     <script src="Controllers/ProbeManager.js"></script>
     <script src="Controllers/ReplayManager.js"></script>
@@ -482,7 +487,6 @@
     <script src="Controllers/SourceMapManager.js"></script>
     <script src="Controllers/StorageManager.js"></script>
     <script src="Controllers/TimelineManager.js"></script>
-    <script src="Controllers/TypeTokenAnnotator.js"></script>
 
     <script src="Base/Main.js"></script>
 

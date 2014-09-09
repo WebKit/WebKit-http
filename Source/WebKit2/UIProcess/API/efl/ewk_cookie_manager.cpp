@@ -32,6 +32,7 @@
 #include "WKEinaSharedString.h"
 #include "WKString.h"
 #include "ewk_cookie_manager_private.h"
+#include "ewk_private.h"
 #include <wtf/Assertions.h>
 
 using namespace WebKit;

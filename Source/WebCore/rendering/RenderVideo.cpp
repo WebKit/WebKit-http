@@ -148,7 +148,7 @@ IntRect RenderVideo::videoBox() const
     if (videoElement().shouldDisplayPosterImage())
         intrinsicSize = m_cachedImageSize;
 
-    return snappedIntRect(replacedContentRect(intrinsicSize));
+    return pixelSnappedIntRect(replacedContentRect(intrinsicSize));
 }
 
 bool RenderVideo::shouldDisplayVideo() const
@@ -191,9 +191,9 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     if (displayingPoster)
         paintIntoRect(context, rect);
     else if (view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers)
-        mediaPlayer->paintCurrentFrameInContext(context, snappedIntRect(rect));
+        mediaPlayer->paintCurrentFrameInContext(context, pixelSnappedIntRect(rect));
     else
-        mediaPlayer->paint(context, snappedIntRect(rect));
+        mediaPlayer->paint(context, pixelSnappedIntRect(rect));
 }
 
 void RenderVideo::layout()

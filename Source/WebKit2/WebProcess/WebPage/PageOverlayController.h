@@ -57,7 +57,6 @@ public:
     void setPageOverlayNeedsDisplay(PageOverlay&, const WebCore::IntRect&);
     void setPageOverlayOpacity(PageOverlay&, float);
     void clearPageOverlay(PageOverlay&);
-    WebCore::GraphicsLayer* layerForOverlay(PageOverlay&) const;
 
     void didChangeViewSize();
     void didChangeDocumentSize();
@@ -82,9 +81,11 @@ private:
     void updateForceSynchronousScrollLayerPositionUpdates();
 
     // WebCore::GraphicsLayerClient
+    virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double) override { }
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) override;
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect) override;
     virtual float deviceScaleFactor() const override;
+    virtual void didCommitChangesForLayer(const WebCore::GraphicsLayer*) const override { }
     virtual bool shouldSkipLayerInDump(const WebCore::GraphicsLayer*) const override { return true; }
 
     std::unique_ptr<WebCore::GraphicsLayer> m_documentOverlayRootLayer;

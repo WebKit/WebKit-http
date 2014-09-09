@@ -81,7 +81,8 @@ public:
         /* [retval][out] */ BOOL *attachment);
 
     // IWebURLResponsePrivate
-    virtual HRESULT STDMETHODCALLTYPE sslPeerCertificate(/* [retval][out] */ ULONG_PTR* result);
+    virtual HRESULT STDMETHODCALLTYPE sslPeerCertificate( 
+        /* [retval][out] */ OLE_HANDLE *result);
     
     const WebCore::ResourceResponse& resourceResponse() const;
 

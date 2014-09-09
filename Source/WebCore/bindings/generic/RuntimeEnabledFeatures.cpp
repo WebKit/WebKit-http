@@ -51,6 +51,7 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
     , m_isTouchEnabled(true)
     , m_isDeviceMotionEnabled(true)
     , m_isDeviceOrientationEnabled(true)
+    , m_isSpeechInputEnabled(true)
     , m_isCSSShapesEnabled(true)
     , m_isCSSRegionsEnabled(false)
     , m_isCSSCompositingEnabled(false)
@@ -59,6 +60,9 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
     , m_isPluginReplacementEnabled(true)
 #else
     , m_isPluginReplacementEnabled(false)
+#endif
+#if ENABLE(SCRIPTED_SPEECH)
+    , m_isScriptedSpeechEnabled(false)
 #endif
 #if ENABLE(MEDIA_STREAM)
     , m_isMediaStreamEnabled(true)

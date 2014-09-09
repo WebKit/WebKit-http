@@ -51,7 +51,7 @@
 {
     NSMutableArray *URLStrings;
     NSMutableArray *titlesOrEmptyStrings;
-    NSUInteger index, count;
+    unsigned index, count;
 
     count = [URLs count];
     if (count == 0) {

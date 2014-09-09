@@ -47,6 +47,7 @@ private:
     virtual bool shouldUseInputMethod() const override;
     virtual bool shouldResetOnDocumentActivation() override;
     virtual bool shouldRespectListAttribute() override;
+    virtual bool shouldRespectSpeechAttribute() override;
     virtual bool isPasswordField() const override;
 };
 

@@ -101,10 +101,8 @@ large
 x-large
 xx-large
 -webkit-xxx-large
--webkit-ruby-text
 smaller
 larger
-
 //
 // CSS_PROP_FONT_STRETCH:
 //
@@ -685,6 +683,7 @@ button
 button-bevel
 default-button
 inner-spin-button
+-webkit-input-speech-button
 listbox
 listitem
 media-enter-fullscreen-button
@@ -936,7 +935,6 @@ horizontal-bt
 // -webkit-ruby-position
 after
 before
-inter-character
 
 // -webkit-text-emphasis-position
 over
@@ -971,7 +969,6 @@ vertical-right
 font
 glyphs
 inline-box
-initial-letter
 replaced
 
 // -webkit-font-feature-settings
@@ -991,16 +988,6 @@ evenodd
 at
 // closest-side
 // farthest-side
-
-#if defined(ENABLE_CSS_SCROLL_SNAP)
-// -webkit-scroll-snap-points-x
-// -webkit-scroll-snap-points-y
-elements
-
-// -webkit-scroll-snap-type
-mandatory
-proximity
-#endif
 
 // -webkit-region-fragment
 // auto

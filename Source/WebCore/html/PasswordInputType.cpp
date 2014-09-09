@@ -79,6 +79,11 @@ bool PasswordInputType::shouldRespectListAttribute()
     return false;
 }
 
+bool PasswordInputType::shouldRespectSpeechAttribute()
+{
+    return true;
+}
+
 bool PasswordInputType::isPasswordField() const
 {
     return true;

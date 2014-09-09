@@ -36,7 +36,7 @@
 #include <WebCore/IconDatabase.h>
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/PageCache.h>
-#include <WebCore/PageConsoleClient.h>
+#include <WebCore/PageConsole.h>
 #include <WebCore/RenderView.h>
 #include <WebCore/SharedBuffer.h>
 
@@ -268,14 +268,14 @@ HRESULT WebCoreStatistics::shouldPrintExceptions(BOOL* shouldPrint)
         return E_POINTER;
 
     JSLockHolder lock(JSDOMWindow::commonVM());
-    *shouldPrint = PageConsoleClient::shouldPrintExceptions();
+    *shouldPrint = PageConsole::shouldPrintExceptions();
     return S_OK;
 }
 
 HRESULT WebCoreStatistics::setShouldPrintExceptions(BOOL print)
 {
     JSLockHolder lock(JSDOMWindow::commonVM());
-    PageConsoleClient::setShouldPrintExceptions(print);
+    PageConsole::setShouldPrintExceptions(print);
     return S_OK;
 }
 

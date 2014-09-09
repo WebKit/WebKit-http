@@ -268,8 +268,8 @@ static void writeStyle(TextStream& ts, const RenderElement& renderer)
             writeSVGPaintingResource(ts, strokePaintingResource);
 
             SVGLengthContext lengthContext(&shape.graphicsElement());
-            double dashOffset = lengthContext.valueForLength(svgStyle.strokeDashOffset());
-            double strokeWidth = lengthContext.valueForLength(svgStyle.strokeWidth());
+            double dashOffset = svgStyle.strokeDashOffset().value(lengthContext);
+            double strokeWidth = svgStyle.strokeWidth().value(lengthContext);
             const Vector<SVGLength>& dashes = svgStyle.strokeDashArray();
 
             DashArray dashArray;
@@ -479,6 +479,7 @@ void writeSVGResourceContainer(TextStream& ts, const RenderSVGResourceContainer&
         writeNameValuePair(ts, "maskUnits", masker.maskUnits());
         writeNameValuePair(ts, "maskContentUnits", masker.maskContentUnits());
         ts << "\n";
+#if ENABLE(FILTERS)
     } else if (resource.resourceType() == FilterResourceType) {
         const auto& filter = static_cast<const RenderSVGResourceFilter&>(resource);
         writeNameValuePair(ts, "filterUnits", filter.filterUnits());
@@ -491,6 +492,7 @@ void writeSVGResourceContainer(TextStream& ts, const RenderSVGResourceContainer&
             if (FilterEffect* lastEffect = builder->lastEffect())
                 lastEffect->externalRepresentation(ts, indent + 1);
         }
+#endif
     } else if (resource.resourceType() == ClipperResourceType) {
         const auto& clipper = static_cast<const RenderSVGResourceClipper&>(resource);
         writeNameValuePair(ts, "clipPathUnits", clipper.clipPathUnits());
@@ -634,6 +636,7 @@ void writeResources(TextStream& ts, const RenderObject& renderer, int indent)
             ts << " " << clipper->resourceBoundingBox(renderer) << "\n";
         }
     }
+#if ENABLE(FILTERS)
     if (!svgStyle.filterResource().isEmpty()) {
         if (RenderSVGResourceFilter* filter = getRenderSVGResourceById<RenderSVGResourceFilter>(renderer.document(), svgStyle.filterResource())) {
             writeIndent(ts, indent);
@@ -644,6 +647,7 @@ void writeResources(TextStream& ts, const RenderObject& renderer, int indent)
             ts << " " << filter->resourceBoundingBox(renderer) << "\n";
         }
     }
+#endif
 }
 
 } // namespace WebCore

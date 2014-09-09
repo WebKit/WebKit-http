@@ -108,10 +108,10 @@ GlyphToPathTranslator::GlyphUnderlineType computeUnderlineType(const TextRun&, c
 
 class Font {
 public:
-    WEBCORE_EXPORT Font();
-    WEBCORE_EXPORT Font(const FontDescription&, float letterSpacing, float wordSpacing);
+    Font();
+    Font(const FontDescription&, float letterSpacing, float wordSpacing);
     // This constructor is only used if the platform wants to start with a native font.
-    WEBCORE_EXPORT Font(const FontPlatformData&, bool isPrinting, FontSmoothingMode = AutoSmoothing);
+    Font(const FontPlatformData&, bool isPrinting, FontSmoothingMode = AutoSmoothing);
 
     // FIXME: We should make this constructor platform-independent.
 #if PLATFORM(IOS)
@@ -120,9 +120,9 @@ public:
     ~Font();
 
     Font(const Font&);
-    WEBCORE_EXPORT Font& operator=(const Font&);
+    Font& operator=(const Font&);
 
-    WEBCORE_EXPORT bool operator==(const Font& other) const;
+    bool operator==(const Font& other) const;
     bool operator!=(const Font& other) const { return !(*this == other); }
 
     const FontDescription& fontDescription() const { return m_fontDescription; }
@@ -133,13 +133,13 @@ public:
     void update(PassRefPtr<FontSelector>) const;
 
     enum CustomFontNotReadyAction { DoNotPaintIfFontNotReady, UseFallbackIfFontNotReady };
-    WEBCORE_EXPORT float drawText(GraphicsContext*, const TextRun&, const FloatPoint&, int from = 0, int to = -1, CustomFontNotReadyAction = DoNotPaintIfFontNotReady) const;
+    float drawText(GraphicsContext*, const TextRun&, const FloatPoint&, int from = 0, int to = -1, CustomFontNotReadyAction = DoNotPaintIfFontNotReady) const;
     void drawGlyphs(GraphicsContext*, const SimpleFontData*, const GlyphBuffer&, int from, int numGlyphs, const FloatPoint&) const;
     void drawEmphasisMarks(GraphicsContext*, const TextRun&, const AtomicString& mark, const FloatPoint&, int from = 0, int to = -1) const;
 
     DashArray dashesForIntersectionsWithRect(const TextRun&, const FloatPoint& textOrigin, const FloatRect& lineExtents) const;
 
-    WEBCORE_EXPORT float width(const TextRun&, HashSet<const SimpleFontData*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
+    float width(const TextRun&, HashSet<const SimpleFontData*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
     float width(const TextRun&, int& charsConsumed, String& glyphName) const;
 
     PassOwnPtr<TextLayout> createLayout(RenderText*, float xPos, bool collapseWhiteSpace) const;
@@ -204,8 +204,8 @@ public:
     static unsigned expansionOpportunityCount(const LChar*, size_t length, TextDirection, bool& isAfterExpansion);
     static unsigned expansionOpportunityCount(const UChar*, size_t length, TextDirection, bool& isAfterExpansion);
 
-    WEBCORE_EXPORT static void setShouldUseSmoothing(bool);
-    WEBCORE_EXPORT static bool shouldUseSmoothing();
+    static void setShouldUseSmoothing(bool);
+    static bool shouldUseSmoothing();
 
     enum CodePath { Auto, Simple, Complex, SimpleWithGlyphOverflow };
     CodePath codePath(const TextRun&) const;
@@ -254,11 +254,11 @@ public:
 #endif
 
     // Useful for debugging the different font rendering code paths.
-    WEBCORE_EXPORT static void setCodePath(CodePath);
+    static void setCodePath(CodePath);
     static CodePath codePath();
     static CodePath s_codePath;
 
-    WEBCORE_EXPORT static void setDefaultTypesettingFeatures(TypesettingFeatures);
+    static void setDefaultTypesettingFeatures(TypesettingFeatures);
     static TypesettingFeatures defaultTypesettingFeatures();
 
     static const uint8_t s_roundingHackCharacterTable[256];
@@ -268,9 +268,9 @@ public:
     }
 
     FontSelector* fontSelector() const;
-    static inline bool treatAsSpace(UChar c) { return c == ' ' || c == '\t' || c == '\n' || c == noBreakSpace; }
-    static inline bool treatAsZeroWidthSpace(UChar c) { return treatAsZeroWidthSpaceInComplexScript(c) || c == 0x200c || c == 0x200d; }
-    static inline bool treatAsZeroWidthSpaceInComplexScript(UChar c) { return c < 0x20 || (c >= 0x7F && c < 0xA0) || c == softHyphen || c == zeroWidthSpace || (c >= 0x200e && c <= 0x200f) || (c >= 0x202a && c <= 0x202e) || c == zeroWidthNoBreakSpace || c == objectReplacementCharacter; }
+    static bool treatAsSpace(UChar c) { return c == ' ' || c == '\t' || c == '\n' || c == noBreakSpace; }
+    static bool treatAsZeroWidthSpace(UChar c) { return treatAsZeroWidthSpaceInComplexScript(c) || c == 0x200c || c == 0x200d; }
+    static bool treatAsZeroWidthSpaceInComplexScript(UChar c) { return c < 0x20 || (c >= 0x7F && c < 0xA0) || c == softHyphen || c == zeroWidthSpace || (c >= 0x200e && c <= 0x200f) || (c >= 0x202a && c <= 0x202e) || c == zeroWidthNoBreakSpace || c == objectReplacementCharacter; }
     static bool canReceiveTextEmphasis(UChar32 c);
 
     static inline UChar normalizeSpaces(UChar character)
@@ -384,8 +384,7 @@ inline float Font::tabWidth(const SimpleFontData& fontData, unsigned tabSize, fl
     if (!tabSize)
         return letterSpacing();
     float tabWidth = tabSize * fontData.spaceWidth() + letterSpacing();
-    float tabDeltaWidth = tabWidth - fmodf(position, tabWidth);
-    return (tabDeltaWidth < fontData.spaceWidth() / 2) ? tabWidth : tabDeltaWidth;
+    return tabWidth - fmodf(position, tabWidth);
 }
 
 }

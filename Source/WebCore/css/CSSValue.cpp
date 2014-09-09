@@ -135,8 +135,10 @@ bool CSSValue::hasFailedOrCanceledSubresources() const
         return toCSSImageValue(this)->hasFailedOrCanceledSubresources();
     if (classType() == CrossfadeClass)
         return toCSSCrossfadeValue(this)->hasFailedOrCanceledSubresources();
+#if ENABLE(CSS_FILTERS)
     if (classType() == FilterImageClass)
         return toCSSFilterImageValue(this)->hasFailedOrCanceledSubresources();
+#endif
 #if ENABLE(CSS_IMAGE_SET)
     if (classType() == ImageSetClass)
         return toCSSImageSetValue(this)->hasFailedOrCanceledSubresources();
@@ -167,8 +169,10 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSCanvasValue>(*this, other);
         case CursorImageClass:
             return compareCSSValues<CSSCursorImageValue>(*this, other);
+#if ENABLE(CSS_FILTERS)
         case FilterImageClass:
             return compareCSSValues<CSSFilterImageValue>(*this, other);
+#endif
         case FontClass:
             return compareCSSValues<CSSFontValue>(*this, other);
         case FontFaceSrcClass:
@@ -219,8 +223,10 @@ bool CSSValue::equals(const CSSValue& other) const
         case ImageSetClass:
             return compareCSSValues<CSSImageSetValue>(*this, other);
 #endif
+#if ENABLE(CSS_FILTERS)
         case WebKitCSSFilterClass:
             return compareCSSValues<WebKitCSSFilterValue>(*this, other);
+#endif
         case SVGColorClass:
             return compareCSSValues<SVGColor>(*this, other);
         case SVGPaintClass:
@@ -253,8 +259,10 @@ String CSSValue::cssText() const
         return toCSSCanvasValue(this)->customCSSText();
     case CursorImageClass:
         return toCSSCursorImageValue(this)->customCSSText();
+#if ENABLE(CSS_FILTERS)
     case FilterImageClass:
         return toCSSFilterImageValue(this)->customCSSText();
+#endif
     case FontClass:
         return toCSSFontValue(this)->customCSSText();
     case FontFaceSrcClass:
@@ -305,8 +313,10 @@ String CSSValue::cssText() const
     case ImageSetClass:
         return toCSSImageSetValue(this)->customCSSText();
 #endif
+#if ENABLE(CSS_FILTERS)
     case WebKitCSSFilterClass:
         return toWebKitCSSFilterValue(this)->customCSSText();
+#endif
     case SVGColorClass:
         return toSVGColor(this)->customCSSText();
     case SVGPaintClass:
@@ -411,12 +421,14 @@ void CSSValue::destroy()
         delete toCSSImageSetValue(this);
         return;
 #endif
+#if ENABLE(CSS_FILTERS)
     case FilterImageClass:
         delete toCSSFilterImageValue(this);
         return;
     case WebKitCSSFilterClass:
         delete toWebKitCSSFilterValue(this);
         return;
+#endif
     case SVGColorClass:
         delete toSVGColor(this);
         return;
@@ -437,8 +449,10 @@ PassRefPtr<CSSValue> CSSValue::cloneForCSSOM() const
     case ImageClass:
     case CursorImageClass:
         return toCSSImageValue(this)->cloneForCSSOM();
+#if ENABLE(CSS_FILTERS)
     case WebKitCSSFilterClass:
         return toWebKitCSSFilterValue(this)->cloneForCSSOM();
+#endif
     case WebKitCSSTransformClass:
         return toWebKitCSSTransformValue(this)->cloneForCSSOM();
 #if ENABLE(CSS_IMAGE_SET)

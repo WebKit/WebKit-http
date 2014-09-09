@@ -32,9 +32,9 @@
 */
 
 // WebKit Modifications:
-// - The only edit made to this file is the use 'WebInspector.Esprima' as the 'exports' object for esprima. 
-//   The code that determines the context esprima is loaded in (node.js, the browser, etc.) has been replaced with a reference to 'WebInspector.Esprima'.
-WebInspector.Esprima = {};
+// - The only edit made to this file is the use 'WebInspector._esprima' as the 'exports' object for esprima. 
+//   The code that determines the context esprima is loaded in (node.js, the browser, etc.) has been replaced with a reference to 'WebInspector._esprima'.
+WebInspector._esprima = {};
 
 (function (exports) {
     'use strict';
@@ -3732,4 +3732,4 @@ WebInspector.Esprima = {};
         return types;
     }());
 
-})(WebInspector.Esprima);
+})(WebInspector._esprima);

@@ -23,6 +23,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "FEGaussianBlur.h"
 
 #include "FEGaussianBlurNEON.h"
@@ -474,3 +476,5 @@ TextStream& FEGaussianBlur::externalRepresentation(TextStream& ts, int indent) c
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

@@ -42,7 +42,6 @@
 #include "VTTRegion.h"
 #include "WebVTTTokenizer.h"
 #include <memory>
-#include <wtf/MediaTime.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -70,11 +69,11 @@ public:
     static PassRefPtr<WebVTTCueData> create() { return adoptRef(new WebVTTCueData()); }
     virtual ~WebVTTCueData() { }
 
-    MediaTime startTime() const { return m_startTime; }
-    void setStartTime(const MediaTime& startTime) { m_startTime = startTime; }
+    double startTime() const { return m_startTime; }
+    void setStartTime(double startTime) { m_startTime = startTime; }
 
-    MediaTime endTime() const { return m_endTime; }
-    void setEndTime(const MediaTime& endTime) { m_endTime = endTime; }
+    double endTime() const { return m_endTime; }
+    void setEndTime(double endTime) { m_endTime = endTime; }
 
     String id() const { return m_id; }
     void setId(String id) { m_id = id; }
@@ -85,15 +84,20 @@ public:
     String settings() const { return m_settings; }
     void setSettings(String settings) { m_settings = settings; }
 
-    MediaTime originalStartTime() const { return m_originalStartTime; }
-    void setOriginalStartTime(const MediaTime& time) { m_originalStartTime = time; }
+    double originalStartTime() const { return m_originalStartTime; }
+    void setOriginalStartTime(double time) { m_originalStartTime = time; }
 
 private:
-    WebVTTCueData() { }
+    WebVTTCueData()
+        : m_startTime(0)
+        , m_endTime(0)
+        , m_originalStartTime(0)
+    {
+    }
 
-    MediaTime m_startTime;
-    MediaTime m_endTime;
-    MediaTime m_originalStartTime;
+    double m_startTime;
+    double m_endTime;
+    double m_originalStartTime;
     String m_id;
     String m_content;
     String m_settings;
@@ -133,7 +137,7 @@ public:
         // U+0020 SPACE characters or U+0009 CHARACTER TABULATION (tab) characters.
         return c == ' ' || c == '\t';
     }
-    static bool collectTimeStamp(const String&, MediaTime&);
+    static bool collectTimeStamp(const String&, double&);
 
     // Useful functions for parsing percentage settings.
     static bool parseFloatPercentageValue(VTTScanner& valueScanner, float&);
@@ -179,13 +183,13 @@ private:
     void createNewRegion(const String& headerValue);
 #endif
 
-    static bool collectTimeStamp(VTTScanner& input, MediaTime& timeStamp);
+    static bool collectTimeStamp(VTTScanner& input, double& timeStamp);
 
     BufferedLineReader m_lineReader;
     RefPtr<TextResourceDecoder> m_decoder;
     String m_currentId;
-    MediaTime m_currentStartTime;
-    MediaTime m_currentEndTime;
+    double m_currentStartTime;
+    double m_currentEndTime;
     StringBuilder m_currentContent;
     String m_currentSettings;
 

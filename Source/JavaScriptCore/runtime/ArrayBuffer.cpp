@@ -57,7 +57,7 @@ bool ArrayBuffer::transfer(ArrayBufferContents& result)
         if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(cell))
             view->neuter();
         else if (ArrayBufferNeuteringWatchpoint* watchpoint = jsDynamicCast<ArrayBufferNeuteringWatchpoint*>(cell))
-            watchpoint->fireAll();
+            watchpoint->set()->fireAll();
     }
     return true;
 }

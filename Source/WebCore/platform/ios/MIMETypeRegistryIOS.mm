@@ -26,13 +26,13 @@
 #include "config.h"
 #include "MIMETypeRegistry.h"
 
-#include "NSURLFileTypeMappingsSPI.h"
+#include "WebCoreSystemInterface.h"
 
 namespace WebCore 
 {
-String MIMETypeRegistry::getMIMETypeForExtension(const String& extension)
+String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
 {
-    return [[NSURLFileTypeMappings sharedMappings] MIMETypeForExtension:(NSString *)extension];
+    return wkGetMIMETypeForExtension(ext);
 }
 
 Vector<String> MIMETypeRegistry::getExtensionsForMIMEType(const String& /*type*/)

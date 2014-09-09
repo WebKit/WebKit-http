@@ -43,13 +43,7 @@ WebInspector.TimelineContentView = function(recording)
     this._viewContainer.classList.add(WebInspector.TimelineContentView.ViewContainerStyleClassName);
     this.element.appendChild(this._viewContainer);
 
-    var trashImage;
-    if (WebInspector.Platform.isLegacyMacOS)
-        trashImage = {src: "Images/Legacy/NavigationItemTrash.svg", width: 16, height: 16};
-    else
-        trashImage = {src: "Images/NavigationItemTrash.svg", width: 15, height: 15};
-
-    this._clearTimelineNavigationItem = new WebInspector.ButtonNavigationItem("clear-timeline", WebInspector.UIString("Clear Timeline"), trashImage.src, trashImage.width, trashImage.height);
+    this._clearTimelineNavigationItem = new WebInspector.ButtonNavigationItem("clear-timeline", WebInspector.UIString("Clear Timeline"), "Images/NavigationItemTrash.svg", 16, 16);
     this._clearTimelineNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._clearTimeline, this);
 
     this._overviewTimelineView = new WebInspector.OverviewTimelineView(recording);
@@ -93,7 +87,6 @@ WebInspector.TimelineContentView = function(recording)
     this._startTimeNeedsReset = true;
 
     recording.addEventListener(WebInspector.TimelineRecording.Event.Reset, this._recordingReset, this);
-    recording.addEventListener(WebInspector.TimelineRecording.Event.Unloaded, this._recordingUnloaded, this);
 
     WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.CapturingStarted, this._capturingStarted, this);
     WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.CapturingStopped, this._capturingStopped, this);
@@ -276,7 +269,6 @@ WebInspector.TimelineContentView.prototype = {
     _showTimelineView: function(timelineView)
     {
         console.assert(timelineView instanceof WebInspector.TimelineView);
-        console.assert(timelineView.representedObject === this._recording || this._recording.timelines.has(timelineView.representedObject.type));
 
         // If the content view is shown and then hidden, we must reattach the content tree outline and timeline view.
         if (timelineView.visible && timelineView === this._currentTimelineView)
@@ -372,7 +364,6 @@ WebInspector.TimelineContentView.prototype = {
         if (!isNaN(this._currentTime)) {
             // We have a current time already, so we likely need to jump into the future to a better current time.
             // This happens when you stop and later restart recording.
-            console.assert(!this._waitingToResetCurrentTime);
             this._waitingToResetCurrentTime = true;
             this._recording.addEventListener(WebInspector.TimelineRecording.Event.TimesUpdated, this._recordingTimesUpdated, this);
         }
@@ -389,12 +380,6 @@ WebInspector.TimelineContentView.prototype = {
     {
         console.assert(this._updating);
         this._updating = false;
-
-        if (this._waitingToResetCurrentTime) {
-            // Did not get any event while waiting for the current time, but we should stop waiting.
-            this._recording.removeEventListener(WebInspector.TimelineRecording.Event.TimesUpdated, this._recordingTimesUpdated, this);
-            this._waitingToResetCurrentTime = false;            
-        }
     },
 
     _capturingStarted: function(event)
@@ -425,7 +410,7 @@ WebInspector.TimelineContentView.prototype = {
         }
 
         this._recording.removeEventListener(WebInspector.TimelineRecording.Event.TimesUpdated, this._recordingTimesUpdated, this);
-        this._waitingToResetCurrentTime = false;
+        delete this._waitingToResetCurrentTime;
     },
 
     _clearTimeline: function(event)
@@ -447,7 +432,7 @@ WebInspector.TimelineContentView.prototype = {
         this._startTimeNeedsReset = true;
 
         this._recording.removeEventListener(WebInspector.TimelineRecording.Event.TimesUpdated, this._recordingTimesUpdated, this);
-        this._waitingToResetCurrentTime = false;
+        delete this._waitingToResetCurrentTime;
 
         this._overviewTimelineView.reset();
         for (var timelineView of this._discreteTimelineViewMap.values())
@@ -455,14 +440,6 @@ WebInspector.TimelineContentView.prototype = {
 
         for (var timelineOverviewGraph of this._discreteTimelineOverviewGraphMap.values())
             timelineOverviewGraph.reset();
-    },
-
-    _recordingUnloaded: function(event)
-    {
-        console.assert(!this._updating);
-
-        WebInspector.timelineManager.removeEventListener(WebInspector.TimelineManager.Event.CapturingStarted, this._capturingStarted, this);
-        WebInspector.timelineManager.removeEventListener(WebInspector.TimelineManager.Event.CapturingStopped, this._capturingStopped, this);
     },
 
     _timeRangeSelectionChanged: function(event)

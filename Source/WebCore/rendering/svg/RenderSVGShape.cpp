@@ -218,7 +218,7 @@ bool RenderSVGShape::shouldGenerateMarkerPositions() const
     if (!graphicsElement().supportsMarkers())
         return false;
 
-    auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*this);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this);
     if (!resources)
         return false;
 
@@ -346,7 +346,7 @@ bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
             fillRule = svgStyle.clipRule();
         if ((hitRules.canHitStroke && (svgStyle.hasStroke() || !hitRules.requireStroke) && strokeContains(localPoint, hitRules.requireStroke))
             || (hitRules.canHitFill && (svgStyle.hasFill() || !hitRules.requireFill) && fillContains(localPoint, hitRules.requireFill, fillRule))) {
-            updateHitTestResult(result, LayoutPoint(localPoint));
+            updateHitTestResult(result, roundedLayoutPoint(localPoint));
             return true;
         }
     }
@@ -372,7 +372,7 @@ FloatRect RenderSVGShape::markerRect(float strokeWidth) const
 {
     ASSERT(!m_markerPositions.isEmpty());
 
-    auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*this);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this);
     ASSERT(resources);
 
     RenderSVGResourceMarker* markerStart = resources->markerStart();
@@ -432,7 +432,7 @@ void RenderSVGShape::updateRepaintBoundingBox()
 float RenderSVGShape::strokeWidth() const
 {
     SVGLengthContext lengthContext(&graphicsElement());
-    return lengthContext.valueForLength(style().svgStyle().strokeWidth());
+    return style().svgStyle().strokeWidth().value(lengthContext);
 }
 
 bool RenderSVGShape::hasSmoothStroke() const
@@ -448,7 +448,7 @@ void RenderSVGShape::drawMarkers(PaintInfo& paintInfo)
 {
     ASSERT(!m_markerPositions.isEmpty());
 
-    auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*this);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this);
     if (!resources)
         return;
 

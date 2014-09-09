@@ -34,9 +34,8 @@
 
 namespace WebCore {
 
-class FloatRect;
-class Frame;
 class InspectorController;
+class Frame;
 class Page;
 
 class InspectorClient {
@@ -61,9 +60,8 @@ public:
     virtual bool canClearBrowserCookies() { return false; }
     virtual void clearBrowserCookies() { }
 
-    virtual bool overridesShowPaintRects() const { return false; }
+    virtual bool overridesShowPaintRects() { return false; }
     virtual void setShowPaintRects(bool) { }
-    virtual void showPaintRect(const FloatRect&) { }
 
     virtual bool canShowDebugBorders() { return false; }
     virtual void setShowDebugBorders(bool) { }
@@ -78,7 +76,7 @@ public:
 
     virtual bool handleJavaScriptDialog(bool, const String*) { return false; }
 
-    WEBCORE_EXPORT static bool doDispatchMessageOnFrontendPage(Page* frontendPage, const String& message);
+    static bool doDispatchMessageOnFrontendPage(Page* frontendPage, const String& message);
 };
 
 } // namespace WebCore

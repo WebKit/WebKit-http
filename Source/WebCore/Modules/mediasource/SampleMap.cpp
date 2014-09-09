@@ -113,11 +113,9 @@ void SampleMap::addSample(PassRefPtr<MediaSample> prpSample)
     RefPtr<MediaSample> sample = prpSample;
     ASSERT(sample);
 
-    MediaTime presentationTime = sample->presentationTime();
+    presentationOrder().m_samples.insert(PresentationOrderSampleMap::MapType::value_type(sample->presentationTime(), sample));
 
-    presentationOrder().m_samples.insert(PresentationOrderSampleMap::MapType::value_type(presentationTime, sample));
-
-    auto decodeKey = DecodeOrderSampleMap::KeyType(sample->decodeTime(), presentationTime);
+    auto decodeKey = DecodeOrderSampleMap::KeyType(sample->decodeTime(), sample->presentationTime());
     decodeOrder().m_samples.insert(DecodeOrderSampleMap::MapType::value_type(decodeKey, sample));
 
     m_totalSize += sample->sizeInBytes();
@@ -126,11 +124,9 @@ void SampleMap::addSample(PassRefPtr<MediaSample> prpSample)
 void SampleMap::removeSample(MediaSample* sample)
 {
     ASSERT(sample);
-    MediaTime presentationTime = sample->presentationTime();
+    presentationOrder().m_samples.erase(sample->presentationTime());
 
-    presentationOrder().m_samples.erase(presentationTime);
-
-    auto decodeKey = DecodeOrderSampleMap::KeyType(sample->decodeTime(), presentationTime);
+    auto decodeKey = DecodeOrderSampleMap::KeyType(sample->decodeTime(), sample->presentationTime());
     decodeOrder().m_samples.erase(decodeKey);
 
     m_totalSize -= sample->sizeInBytes();

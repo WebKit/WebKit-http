@@ -12,7 +12,7 @@
  *    copyright notice, this list of conditions and the following
  *    disclaimer in the documentation and/or other materials
  *    provided with the distribution.
- *
+ * 
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -149,17 +149,17 @@ const RasterShapeIntervals& RasterShape::marginIntervals() const
     return *m_marginIntervals;
 }
 
-LineSegment RasterShape::getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const
+void RasterShape::getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHeight, SegmentList& result) const
 {
     const RasterShapeIntervals& intervals = marginIntervals();
     if (intervals.isEmpty())
-        return LineSegment();
+        return;
 
     int y1 = logicalTop;
     int y2 = logicalTop + logicalHeight;
     ASSERT(y2 >= y1);
     if (y2 < intervals.bounds().y() || y1 >= intervals.bounds().maxY())
-        return LineSegment();
+        return;
 
     y1 = std::max(y1, intervals.bounds().y());
     y2 = std::min(y2, intervals.bounds().maxY());
@@ -172,7 +172,7 @@ LineSegment RasterShape::getExcludedInterval(LayoutUnit logicalTop, LayoutUnit l
             excludedInterval.unite(intervals.intervalAt(y));
     }
 
-    return LineSegment(excludedInterval.x1(), excludedInterval.x2());
+    result.append(LineSegment(excludedInterval.x1(), excludedInterval.x2()));
 }
 
 } // namespace WebCore

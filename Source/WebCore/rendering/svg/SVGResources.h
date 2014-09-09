@@ -53,8 +53,10 @@ public:
 
     RenderSVGResourceFilter* filter() const
     {
+#if ENABLE(FILTERS)
         if (m_clipperFilterMaskerData)
             return m_clipperFilterMaskerData->filter;
+#endif
         return 0;
     }
 
@@ -80,7 +82,9 @@ private:
 
     // Only used by SVGResourcesCache cycle detection logic
     void resetClipper();
+#if ENABLE(FILTERS)
     void resetFilter();
+#endif
     void resetMarkerStart();
     void resetMarkerMid();
     void resetMarkerEnd();
@@ -91,7 +95,9 @@ private:
 
 private:
     bool setClipper(RenderSVGResourceClipper*);
+#if ENABLE(FILTERS)
     bool setFilter(RenderSVGResourceFilter*);
+#endif
     bool setMarkerStart(RenderSVGResourceMarker*);
     bool setMarkerMid(RenderSVGResourceMarker*);
     bool setMarkerEnd(RenderSVGResourceMarker*);
@@ -110,13 +116,17 @@ private:
     public:
         ClipperFilterMaskerData()
             : clipper(0)
+#if ENABLE(FILTERS)
             , filter(0)
+#endif
             , masker(0)
         {
         }
 
         RenderSVGResourceClipper* clipper;
+#if ENABLE(FILTERS)
         RenderSVGResourceFilter* filter;
+#endif
         RenderSVGResourceMasker* masker;
     };
 

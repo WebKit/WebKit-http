@@ -34,6 +34,8 @@
 #include "QualifiedName.h"
 #include "TagNodeList.h"
 #include <wtf/HashSet.h>
+#include <wtf/OwnPtr.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/StringHash.h>
 
@@ -58,12 +60,6 @@ template <> struct NodeListTypeIdentifier<LabelsNodeList> { static int value() {
 class NodeListsNodeData {
     WTF_MAKE_NONCOPYABLE(NodeListsNodeData); WTF_MAKE_FAST_ALLOCATED;
 public:
-    NodeListsNodeData()
-        : m_childNodeList(nullptr)
-        , m_emptyChildNodeList(nullptr)
-    {
-    }
-
     void clearChildNodeListCache()
     {
         if (m_childNodeList)
@@ -222,6 +218,11 @@ public:
         m_cachedCollections.remove(namedCollectionKey(collection->type(), name));
     }
 
+    static PassOwnPtr<NodeListsNodeData> create()
+    {
+        return adoptPtr(new NodeListsNodeData);
+    }
+
     void invalidateCaches(const QualifiedName* attrName = 0);
     bool isEmpty() const
     {
@@ -257,6 +258,12 @@ public:
     }
 
 private:
+    NodeListsNodeData()
+        : m_childNodeList(nullptr)
+        , m_emptyChildNodeList(nullptr)
+    {
+    }
+
     std::pair<unsigned char, AtomicString> namedCollectionKey(CollectionType type, const AtomicString& name)
     {
         return std::pair<unsigned char, AtomicString>(type, name);
@@ -283,26 +290,26 @@ private:
 class NodeMutationObserverData {
     WTF_MAKE_NONCOPYABLE(NodeMutationObserverData); WTF_MAKE_FAST_ALLOCATED;
 public:
-    Vector<std::unique_ptr<MutationObserverRegistration>> registry;
+    Vector<OwnPtr<MutationObserverRegistration>> registry;
     HashSet<MutationObserverRegistration*> transientRegistry;
 
+    static PassOwnPtr<NodeMutationObserverData> create() { return adoptPtr(new NodeMutationObserverData); }
+
+private:
     NodeMutationObserverData() { }
 };
 
 class NodeRareData : public NodeRareDataBase {
     WTF_MAKE_NONCOPYABLE(NodeRareData); WTF_MAKE_FAST_ALLOCATED;
 public:
-    NodeRareData(RenderObject* renderer)
-        : NodeRareDataBase(renderer)
-        , m_connectedFrameCount(0)
-    { }
+    static PassOwnPtr<NodeRareData> create(RenderObject* renderer) { return adoptPtr(new NodeRareData(renderer)); }
 
-    void clearNodeLists() { m_nodeLists = nullptr; }
+    void clearNodeLists() { m_nodeLists.clear(); }
     NodeListsNodeData* nodeLists() const { return m_nodeLists.get(); }
     NodeListsNodeData& ensureNodeLists()
     {
         if (!m_nodeLists)
-            m_nodeLists = std::make_unique<NodeListsNodeData>();
+            m_nodeLists = NodeListsNodeData::create();
         return *m_nodeLists;
     }
 
@@ -310,7 +317,7 @@ public:
     NodeMutationObserverData& ensureMutationObserverData()
     {
         if (!m_mutationObserverData)
-            m_mutationObserverData = std::make_unique<NodeMutationObserverData>();
+            m_mutationObserverData = NodeMutationObserverData::create();
         return *m_mutationObserverData;
     }
 
@@ -326,11 +333,17 @@ public:
         m_connectedFrameCount -= amount;
     }
 
+protected:
+    NodeRareData(RenderObject* renderer)
+        : NodeRareDataBase(renderer)
+        , m_connectedFrameCount(0)
+    { }
+
 private:
     unsigned m_connectedFrameCount : 10; // Must fit Page::maxNumberOfFrames.
 
-    std::unique_ptr<NodeListsNodeData> m_nodeLists;
-    std::unique_ptr<NodeMutationObserverData> m_mutationObserverData;
+    OwnPtr<NodeListsNodeData> m_nodeLists;
+    OwnPtr<NodeMutationObserverData> m_mutationObserverData;
 };
 
 inline bool NodeListsNodeData::deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(Node& ownerNode)
@@ -357,7 +370,7 @@ inline NodeRareData& Node::ensureRareData()
 }
 
 // Ensure the 10 bits reserved for the m_connectedFrameCount cannot overflow
-static_assert(Page::maxNumberOfFrames < 1024, "Frame limit should fit in rare data count");
+COMPILE_ASSERT(Page::maxNumberOfFrames < 1024, Frame_limit_should_fit_in_rare_data_count);
 
 } // namespace WebCore
 

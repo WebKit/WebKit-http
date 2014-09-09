@@ -39,7 +39,6 @@ function installDependenciesWithApt {
         libc++abi-dev \
         libdbus-1-dev \
         libenchant-dev \
-        libespeak-dev \
         libfaad-dev \
         libffi-dev \
         libfreetype6-dev \

@@ -45,7 +45,7 @@ public:
     }
     
 protected:
-    virtual void fireInternal(const FireDetail&) override;
+    virtual void fireInternal() override;
 
 private:
     CodeBlock* m_codeBlock;

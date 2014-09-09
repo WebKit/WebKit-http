@@ -69,11 +69,11 @@ WebResourceLoadScheduler::~WebResourceLoadScheduler()
 {
 }
 
-PassRefPtr<SubresourceLoader> WebResourceLoadScheduler::scheduleSubresourceLoad(Frame* frame, CachedResource* resource, const ResourceRequest& request, const ResourceLoaderOptions& options)
+PassRefPtr<SubresourceLoader> WebResourceLoadScheduler::scheduleSubresourceLoad(Frame* frame, CachedResource* resource, const ResourceRequest& request, ResourceLoadPriority priority, const ResourceLoaderOptions& options)
 {
     RefPtr<SubresourceLoader> loader = SubresourceLoader::create(frame, resource, request, options);
     if (loader)
-        scheduleLoad(loader.get(), resource, frame->document()->referrerPolicy() == ReferrerPolicyDefault);
+        scheduleLoad(loader.get(), resource, priority, frame->document()->referrerPolicy() == ReferrerPolicyDefault);
     return loader.release();
 }
 
@@ -81,45 +81,15 @@ PassRefPtr<NetscapePlugInStreamLoader> WebResourceLoadScheduler::schedulePluginS
 {
     RefPtr<NetscapePlugInStreamLoader> loader = NetscapePlugInStreamLoader::create(frame, client, request);
     if (loader)
-        scheduleLoad(loader.get(), 0, frame->document()->referrerPolicy() == ReferrerPolicyDefault);
+        scheduleLoad(loader.get(), 0, ResourceLoadPriorityLow, frame->document()->referrerPolicy() == ReferrerPolicyDefault);
     return loader.release();
 }
 
-static std::chrono::milliseconds maximumBufferingTime(CachedResource* resource)
-{
-    if (!resource)
-        return 0_ms;
-
-    switch (resource->type()) {
-    case CachedResource::CSSStyleSheet:
-    case CachedResource::Script:
-    case CachedResource::FontResource:
-        return std::chrono::milliseconds::max();
-    case CachedResource::ImageResource:
-        return 500_ms;
-    case CachedResource::MainResource:
-    case CachedResource::RawResource:
-    case CachedResource::SVGDocumentResource:
-#if ENABLE(LINK_PREFETCH)
-    case CachedResource::LinkPrefetch:
-    case CachedResource::LinkSubresource:
-#endif
-#if ENABLE(VIDEO_TRACK)
-    case CachedResource::TextTrackResource:
-#endif
-#if ENABLE(XSLT)
-    case CachedResource::XSLStyleSheet:
-#endif
-        return 0_ms;
-    }
-
-    ASSERT_NOT_REACHED();
-    return 0_ms;
-}
-
-void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, CachedResource* resource, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
+void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, CachedResource* resource, ResourceLoadPriority priority, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
 {
     ASSERT(resourceLoader);
+    ASSERT(priority != ResourceLoadPriorityUnresolved);
+    priority = ResourceLoadPriorityHighest;
 
     ResourceLoadIdentifier identifier = resourceLoader->identifier();
     ASSERT(identifier);
@@ -148,7 +118,7 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Cach
     }
 #endif
 
-    LOG(NetworkScheduling, "(WebProcess) WebResourceLoadScheduler::scheduleLoad, url '%s' will be scheduled with the NetworkProcess with priority %i", resourceLoader->url().string().utf8().data(), resourceLoader->request().priority());
+    LOG(NetworkScheduling, "(WebProcess) WebResourceLoadScheduler::scheduleLoad, url '%s' will be scheduled with the NetworkProcess with priority %i", resourceLoader->url().string().utf8().data(), priority);
 
     ContentSniffingPolicy contentSniffingPolicy = resourceLoader->shouldSniffContent() ? SniffContent : DoNotSniffContent;
     StoredCredentials allowStoredCredentials = resourceLoader->shouldUseCredentialStorage() ? AllowStoredCredentials : DoNotAllowStoredCredentials;
@@ -166,6 +136,7 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Cach
     loadParameters.webFrameID = webFrame ? webFrame->frameID() : 0;
     loadParameters.sessionID = webPage ? webPage->sessionID() : SessionID::defaultSessionID();
     loadParameters.request = resourceLoader->request();
+    loadParameters.priority = priority;
     loadParameters.contentSniffingPolicy = contentSniffingPolicy;
     loadParameters.allowStoredCredentials = allowStoredCredentials;
     // If there is no WebFrame then this resource cannot be authenticated with the client.
@@ -173,8 +144,7 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Cach
     loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect = shouldClearReferrerOnHTTPSToHTTPRedirect;
     loadParameters.isMainResource = resource && resource->type() == CachedResource::MainResource;
     loadParameters.defersLoading = resourceLoader->defersLoading();
-    loadParameters.needsCertificateInfo = loadParameters.isMainResource;
-    loadParameters.maximumBufferingTime = maximumBufferingTime(resource);
+    loadParameters.shouldBufferResource = resource && (resource->type() == CachedResource::CSSStyleSheet || resource->type() == CachedResource::Script);
 
     ASSERT((loadParameters.webPageID && loadParameters.webFrameID) || loadParameters.clientCredentialPolicy == DoNotAskClientForAnyCredentials);
 

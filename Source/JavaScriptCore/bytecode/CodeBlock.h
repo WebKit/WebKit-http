@@ -82,7 +82,6 @@ namespace JSC {
 class ExecState;
 class LLIntOffsetsExtractor;
 class RepatchBuffer;
-class TypeLocation;
 
 inline VirtualRegister unmodifiedArgumentsRegister(VirtualRegister argumentsRegister) { return VirtualRegister(argumentsRegister.offset() + 1); }
 
@@ -311,7 +310,7 @@ public:
     bool hasOptimizedReplacement(); // the typeToReplace is my JITType
 #endif
 
-    void jettison(Profiler::JettisonReason, ReoptimizationMode = DontCountReoptimization, const FireDetail* = nullptr);
+    void jettison(Profiler::JettisonReason, ReoptimizationMode = DontCountReoptimization);
     
     ScriptExecutable* ownerExecutable() const { return m_ownerExecutable.get(); }
 
@@ -1011,7 +1010,7 @@ private:
         if (!m_rareData)
             m_rareData = adoptPtr(new RareData);
     }
-
+    
 #if ENABLE(JIT)
     void resetStubInternal(RepatchBuffer&, StructureStubInfo&);
     void resetStubDuringGCInternal(RepatchBuffer&, StructureStubInfo&);

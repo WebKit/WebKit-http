@@ -24,6 +24,7 @@
  */
 
 [
+    Conditional=FILTERS,
     DoNotCheckConstants
 ] interface SVGComponentTransferFunctionElement : SVGElement {
     // Component Transfer Types

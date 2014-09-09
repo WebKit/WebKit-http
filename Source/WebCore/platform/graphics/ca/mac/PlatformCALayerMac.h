@@ -40,14 +40,13 @@ public:
     // is defined differently for Obj C and C++. This allows callers from both languages.
     static PassRefPtr<PlatformCALayer> create(void* platformLayer, PlatformCALayerClient*);
 
-    WEBCORE_EXPORT static LayerType layerTypeForPlatformLayer(PlatformLayer*);
+    static LayerType layerTypeForPlatformLayer(PlatformLayer*);
 
     ~PlatformCALayerMac();
 
     virtual void setOwner(PlatformCALayerClient*) override;
 
-    virtual void setNeedsDisplay() override;
-    virtual void setNeedsDisplayInRect(const FloatRect& dirtyRect) override;
+    virtual void setNeedsDisplay(const FloatRect* dirtyRect = 0) override;
 
     virtual void copyContentsFromLayer(PlatformCALayer*) override;
 
@@ -65,7 +64,6 @@ public:
     virtual void removeAnimationForKey(const String& key) override;
     virtual PassRefPtr<PlatformCAAnimation> animationForKey(const String& key) override;
     virtual void animationStarted(const String& key, CFTimeInterval beginTime) override;
-    virtual void animationEnded(const String& key) override;
 
     virtual void setMask(PlatformCALayer*) override;
 
@@ -89,7 +87,7 @@ public:
 
     virtual void setHidden(bool) override;
 
-    WEBCORE_EXPORT virtual void setGeometryFlipped(bool) override;
+    virtual void setGeometryFlipped(bool) override;
 
     virtual bool isDoubleSided() const override;
     virtual void setDoubleSided(bool) override;
@@ -117,9 +115,12 @@ public:
 
     virtual float opacity() const override;
     virtual void setOpacity(float) override;
+
+#if ENABLE(CSS_FILTERS)
     virtual void setFilters(const FilterOperations&) override;
-    WEBCORE_EXPORT static bool filtersCanBeComposited(const FilterOperations&);
+    static bool filtersCanBeComposited(const FilterOperations&);
     virtual void copyFiltersFrom(const PlatformCALayer*) override;
+#endif
 
 #if ENABLE(CSS_COMPOSITING)
     virtual void setBlendMode(BlendMode) override;

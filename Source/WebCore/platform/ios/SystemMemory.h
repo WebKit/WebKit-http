@@ -32,8 +32,8 @@
 #if TARGET_OS_IPHONE
 
 namespace WebCore {
-WEBCORE_EXPORT int systemMemoryLevel(); // In [0, 100]
-WEBCORE_EXPORT size_t systemTotalMemory();
+int systemMemoryLevel(); // In [0, 100]
+size_t systemTotalMemory();
 }
 
 #endif

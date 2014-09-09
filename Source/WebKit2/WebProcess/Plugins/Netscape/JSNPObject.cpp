@@ -90,6 +90,7 @@ void JSNPObject::destroy(JSCell* cell)
 void JSNPObject::invalidate()
 {
     ASSERT(m_npObject);
+    ASSERT_GC_OBJECT_INHERITS(this, info());
 
     releaseNPObject(m_npObject);
     m_npObject = 0;

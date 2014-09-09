@@ -23,25 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-BuildbotIteration = function(queue, dataOrID, finished)
+BuildbotIteration = function(queue, id, finished)
 {
     BaseObject.call(this);
 
     console.assert(queue);
 
     this.queue = queue;
-
-    if (typeof dataOrID === "object") {
-        this._parseData(dataOrID);
-        return;
-    }
-
-    console.assert(typeof dataOrID === "number");
-    this.id = dataOrID;
+    this.id = id;
 
     this.loaded = false;
-    this.isLoading = false;
-    this._productive = false;
 
     this.openSourceRevision = null;
     this.internalRevision = null;
@@ -66,24 +57,6 @@ BuildbotIteration.FAILURE = 2;
 BuildbotIteration.SKIPPED = 3;
 BuildbotIteration.EXCEPTION = 4;
 BuildbotIteration.RETRY = 5;
-
-// If none of these steps ran, then we didn't get any real results, and the iteration was not productive.
-BuildbotIteration.ProductiveSteps = {
-    "compile-webkit": 1,
-    "build archive": 1,
-    "Build" : 1,
-    "layout-test": 1,
-    "jscore-test": 1,
-    "run-api-tests": 1,
-    "API tests": 1,
-    "webkitpy-test": 1,
-    "webkitperl-test": 1,
-    "bindings-generation-tests": 1,
-    "run Membuster OS Memory": 1,
-    "run scrollperf": 1,
-    "run PLT3": 1,
-    "perf-test": 1
-};
 
 BuildbotIteration.Event = {
     Updated: "updated",
@@ -125,7 +98,7 @@ BuildbotIteration.prototype = {
 
     get productive()
     {
-        return this._productive;
+        return this.loaded && this._finished && this._result !== BuildbotIteration.EXCEPTION && this._result !== BuildbotIteration.RETRY;
     },
 
     // It is not a real failure if Buildbot itself failed with codes like EXCEPTION or RETRY.
@@ -180,8 +153,14 @@ BuildbotIteration.prototype = {
         return null;
     },
 
-    _parseData: function(data)
+    update: function()
     {
+        if (this.loaded && this._finished)
+            return;
+
+        if (this.queue.buildbot.needsAuthentication && this.queue.buildbot.authenticationStatus === Buildbot.AuthenticationStatus.InvalidCredentials)
+            return;
+
         function collectTestResults(data, stepName)
         {
             var testStep = data.steps.findFirst(function(step) { return step.name === stepName; });
@@ -191,14 +170,14 @@ BuildbotIteration.prototype = {
             var testResults = {};
 
             if (!testStep.isFinished) {
-                // The step never even ran, or hasn't finished running.
+                // The step never even ran, or hasn't finish running.
                 testResults.finished = false;
                 return testResults;
             }
 
             testResults.finished = true;
 
-            if (!testStep.results || testStep.results[0] === BuildbotIteration.SUCCESS) {
+            if (!testStep.results || !testStep.results[0]) {
                 // All tests passed.
                 testResults.allPassed = true;
                 return testResults;
@@ -235,140 +214,70 @@ BuildbotIteration.prototype = {
             return testResults;
         }
 
-        console.assert(!this.id || this.id === data.number);
-        this.id = data.number;
-
-        // The property got_revision may have the following forms:
-        //
-        // ["got_revision",{"Internal":"1357","WebKitOpenSource":"2468"},"Source"]
-        // OR
-        // ["got_revision","2468_1357","Source"]
-        // OR
-        // ["got_revision","2468","Source"]
-        //
-        // When extracting the OpenSource revision from property got_revision we don't need to check whether the
-        // value of got_revision is a dictionary (represents multiple codebases) or a string literal because we
-        // assume that got_revision contains the OpenSource revision. However, it may not have the Internal
-        // revision. Therefore, we only look at got_revision to extract the Internal revision when it's
-        // a dictionary.
-
-        var openSourceRevisionProperty = data.properties.findFirst(function(property) { return property[0] === "got_revision" || property[0] === "revision" || property[0] === "opensource_got_revision"; });
-        this.openSourceRevision = parseRevisionProperty(openSourceRevisionProperty, "WebKit");
-
-        var internalRevisionProperty = data.properties.findFirst(function(property) { return property[0] === "internal_got_revision" || isMultiCodebaseGotRevisionProperty(property); });
-        this.internalRevision = parseRevisionProperty(internalRevisionProperty, "Internal");
-
-        function sourceStampChanges(sourceStamp) {
-            var result = [];
-            var changes = sourceStamp.changes;
-            for (var i = 0; i < changes.length; ++i) {
-                var change = { revisionNumber: parseInt(changes[i].revision, 10) }
-                if (changes[i].repository)
-                    change.repository = changes[i].repository;
-                if (changes[i].branch)
-                    change.branch = changes[i].branch;
-                // There is also a timestamp, but it's not accurate.
-                result.push(change);
-            }
-            return result;
-        }
-
-        // The changes array is generally meaningful for svn triggered queues (such as builders),
-        // but not for internally triggered ones (such as testers), due to coalescing.
-        this.changes = [];
-        if (data.sourceStamp)
-            this.changes = sourceStampChanges(data.sourceStamp);
-        else for (var i = 0; i < data.sourceStamps.length; ++i)
-            this.changes = this.changes.concat(sourceStampChanges(data.sourceStamps[i]));
-
-        this.startTime = new Date(data.times[0] * 1000);
-        this.endTime = new Date(data.times[1] * 1000);
-
-        var layoutTestResults = collectTestResults.call(this, data, "layout-test");
-        this.layoutTestResults = layoutTestResults ? new BuildbotTestResults(this, layoutTestResults) : null;
-
-        var javascriptTestResults = collectTestResults.call(this, data, "jscore-test");
-        this.javascriptTestResults = javascriptTestResults ? new BuildbotTestResults(this, javascriptTestResults) : null;
-
-        var apiTestResults = collectTestResults.call(this, data, "run-api-tests");
-        this.apiTestResults = apiTestResults ? new BuildbotTestResults(this, apiTestResults) : null;
-
-        var platformAPITestResults = collectTestResults.call(this, data, "API tests");
-        this.platformAPITestResults = platformAPITestResults ? new BuildbotTestResults(this, platformAPITestResults) : null;
-
-        var pythonTestResults = collectTestResults.call(this, data, "webkitpy-test");
-        this.pythonTestResults = pythonTestResults ? new BuildbotTestResults(this, pythonTestResults) : null;
-
-        var perlTestResults = collectTestResults.call(this, data, "webkitperl-test");
-        this.perlTestResults = perlTestResults ? new BuildbotTestResults(this, perlTestResults) : null;
-
-        var bindingTestResults = collectTestResults.call(this, data, "bindings-generation-tests");
-        this.bindingTestResults = bindingTestResults ? new BuildbotTestResults(this, bindingTestResults) : null;
-
-        this.loaded = true;
-
-        this._firstFailedStep = data.steps.findFirst(function(step) { return step.results[0] === BuildbotIteration.FAILURE; });
-
-        console.assert(data.results === null || typeof data.results === "number");
-        this._result = data.results;
-
-        this.text = data.text.join(" ");
-
-        if (!data.currentStep)
-            this.finished = true;
-
-        this._productive = this._finished && this._result !== BuildbotIteration.EXCEPTION && this._result !== BuildbotIteration.RETRY;
-        if (this._productive) {
-            var finishedAnyProductiveStep = false;
-            for (var i = 0; i < data.steps.length; ++i) {
-                var step = data.steps[i];
-                if (!step.isFinished)
-                    break;
-                if (step.name in BuildbotIteration.ProductiveSteps) {
-                    finishedAnyProductiveStep = true;
-                    break;
-                }
-            }
-            this._productive = finishedAnyProductiveStep;
-        }
-    },
-
-    _updateWithData: function(data)
-    {
-        if (this.loaded && this._finished)
-            return;
-
-        this._parseData(data);
-
-        // Update the sorting since it is based on the revision numbers that just became known.
-        this.queue.sortIterations();
-
-        this.dispatchEventToListeners(BuildbotIteration.Event.Updated);
-    },
-
-    update: function()
-    {
-        if (this.loaded && this._finished)
-            return;
-
-        if (this.queue.buildbot.needsAuthentication && this.queue.buildbot.authenticationStatus === Buildbot.AuthenticationStatus.InvalidCredentials)
-            return;
-
-        if (this.isLoading)
-            return;
-
-        this.isLoading = true;
-
         JSON.load(this.queue.baseURL + "/builds/" + this.id, function(data) {
-            this.isLoading = false;
             this.queue.buildbot.isAuthenticated = true;
             if (!data || !data.properties)
                 return;
 
-            this._updateWithData(data);
+            // The property got_revision may have the following forms:
+            //
+            // ["got_revision",{"Internal":"1357","WebKitOpenSource":"2468"},"Source"]
+            // OR
+            // ["got_revision","2468_1357","Source"]
+            // OR
+            // ["got_revision","2468","Source"]
+            //
+            // When extracting the OpenSource revision from property got_revision we don't need to check whether the
+            // value of got_revision is a dictionary (represents multiple codebases) or a string literal because we
+            // assume that got_revision contains the OpenSource revision. However, it may not have the Internal
+            // revision. Therefore, we only look at got_revision to extract the Internal revision when it's
+            // a dictionary.
+
+            var openSourceRevisionProperty = data.properties.findFirst(function(property) { return property[0] === "got_revision" || property[0] === "revision" || property[0] === "opensource_got_revision"; });
+            this.openSourceRevision = parseRevisionProperty(openSourceRevisionProperty, "WebKit");
+
+            var internalRevisionProperty = data.properties.findFirst(function(property) { return property[0] === "internal_got_revision" || isMultiCodebaseGotRevisionProperty(property); });
+            this.internalRevision = parseRevisionProperty(internalRevisionProperty, "Internal");
+
+            var layoutTestResults = collectTestResults.call(this, data, "layout-test");
+            this.layoutTestResults = layoutTestResults ? new BuildbotTestResults(this, layoutTestResults) : null;
+
+            var javascriptTestResults = collectTestResults.call(this, data, "jscore-test");
+            this.javascriptTestResults = javascriptTestResults ? new BuildbotTestResults(this, javascriptTestResults) : null;
+
+            var apiTestResults = collectTestResults.call(this, data, "run-api-tests");
+            this.apiTestResults = apiTestResults ? new BuildbotTestResults(this, apiTestResults) : null;
+
+            var platformAPITestResults = collectTestResults.call(this, data, "API tests");
+            this.platformAPITestResults = platformAPITestResults ? new BuildbotTestResults(this, platformAPITestResults) : null;
+
+            var pythonTestResults = collectTestResults.call(this, data, "webkitpy-test");
+            this.pythonTestResults = pythonTestResults ? new BuildbotTestResults(this, pythonTestResults) : null;
+
+            var perlTestResults = collectTestResults.call(this, data, "webkitperl-test");
+            this.perlTestResults = perlTestResults ? new BuildbotTestResults(this, perlTestResults) : null;
+
+            var bindingTestResults = collectTestResults.call(this, data, "bindings-generation-tests");
+            this.bindingTestResults = bindingTestResults ? new BuildbotTestResults(this, bindingTestResults) : null;
+
+            this.loaded = true;
+
+            this._firstFailedStep = data.steps.findFirst(function(step) { return step.results[0] === BuildbotIteration.FAILURE; });
+
+            console.assert(data.results === null || typeof data.results === "number");
+            this._result = data.results;
+
+            this.text = data.text.join(" ");
+
+            if (!data.currentStep)
+                this.finished = true;
+
+            // Update the sorting since it is based on the revisions we just loaded.
+            this.queue.sortIterations();
+
+            this.dispatchEventToListeners(BuildbotIteration.Event.Updated);
         }.bind(this),
         function(data) {
-            this.isLoading = false;
             if (data.errorType === JSON.LoadError && data.errorHTTPCode === 401) {
                 this.queue.buildbot.isAuthenticated = false;
                 this.dispatchEventToListeners(BuildbotIteration.Event.UnauthorizedAccess);

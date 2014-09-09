@@ -29,25 +29,12 @@ WebInspector.DOMTreeContentView = function(representedObject)
 
     WebInspector.ContentView.call(this, representedObject);
 
-    var layerBordersImage, shadowDOMImage;
-    if (WebInspector.Platform.isLegacyMacOS) {
-        layerBordersImage = {src: "Images/Legacy/LayerBorders.svg", width: 16, height: 16};
-        shadowDOMImage = {src: "Images/Legacy/ShadowDOM.svg", width: 16, height: 16};
-    } else {
-        layerBordersImage = {src: "Images/LayerBorders.svg", width: 13, height: 13};
-        shadowDOMImage = {src: "Images/ShadowDOM.svg", width: 13, height: 13};
-    }
-
-    this._compositingBordersButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("layer-borders", WebInspector.UIString("Show compositing borders"), WebInspector.UIString("Hide compositing borders"), layerBordersImage.src, layerBordersImage.width, layerBordersImage.height);
+    this._compositingBordersButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("layer-borders", WebInspector.UIString("Show compositing borders"), WebInspector.UIString("Hide compositing borders"), "Images/LayerBorders.svg", 16, 16);
     this._compositingBordersButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleCompositingBorders, this);
     this._compositingBordersButtonNavigationItem.enabled = !!PageAgent.getCompositingBordersVisible;
 
-    this._paintFlashingButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("paint-flashing", WebInspector.UIString("Enable paint flashing"), WebInspector.UIString("Disable paint flashing"), "Images/PaintFlashing.svg", 16, 16);
-    this._paintFlashingButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._togglePaintFlashing, this);
-    this._paintFlashingButtonNavigationItem.enabled = true;
-
     WebInspector.showShadowDOMSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showShadowDOMSettingChanged, this);
-    this._showsShadowDOMButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("shows-shadow-DOM", WebInspector.UIString("Show shadow DOM nodes"), WebInspector.UIString("Hide shadow DOM nodes"), shadowDOMImage.src, shadowDOMImage.width, shadowDOMImage.height);
+    this._showsShadowDOMButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("shows-shadow-DOM", WebInspector.UIString("Show shadow DOM nodes"), WebInspector.UIString("Hide shadow DOM nodes"), "Images/ShadowDOM.svg", 16, 16);
     this._showsShadowDOMButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleShowsShadowDOMSetting, this);
     this._showShadowDOMSettingChanged();
 
@@ -78,7 +65,7 @@ WebInspector.DOMTreeContentView.prototype = {
 
     get navigationItems()
     {
-        return [this._showsShadowDOMButtonNavigationItem, this._compositingBordersButtonNavigationItem, this._paintFlashingButtonNavigationItem];
+        return [this._showsShadowDOMButtonNavigationItem, this._compositingBordersButtonNavigationItem];
     },
 
     get domTreeOutline()
@@ -416,15 +403,6 @@ WebInspector.DOMTreeContentView.prototype = {
         var activated = !this._compositingBordersButtonNavigationItem.activated;
         this._compositingBordersButtonNavigationItem.activated = activated;
         PageAgent.setCompositingBordersVisible(activated);
-    },
-
-    _togglePaintFlashing: function(event)
-    {
-        console.assert(PageAgent.setShowPaintRects);
-
-        var activated = !this._paintFlashingButtonNavigationItem.activated;
-        this._paintFlashingButtonNavigationItem.activated = activated;
-        PageAgent.setShowPaintRects(activated);
     },
 
     _updateCompositingBordersButtonToMatchPageSettings: function()

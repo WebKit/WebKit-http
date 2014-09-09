@@ -41,7 +41,15 @@ TEST(WebKit2, WKPreferencesBasic)
 
 TEST(WebKit2, WKPreferencesDefaults)
 {
-#if PLATFORM(MAC)
+#if PLATFORM(WIN)
+    static const char* expectedStandardFontFamily = "Times New Roman";
+    static const char* expectedFixedFontFamily = "Courier New";
+    static const char* expectedSerifFontFamily = "Times New Roman";
+    static const char* expectedSansSerifFontFamily = "Arial";
+    static const char* expectedCursiveFontFamily = "Comic Sans MS";
+    static const char* expectedFantasyFontFamily = "Comic Sans MS";
+    static const char* expectedPictographFontFamily = "Times New Roman";
+#elif PLATFORM(MAC)
     static const char* expectedStandardFontFamily = "Times";
     static const char* expectedFixedFontFamily = "Courier";
     static const char* expectedSerifFontFamily = "Times";
@@ -91,7 +99,11 @@ TEST(WebKit2, WKPreferencesDefaults)
     EXPECT_FALSE(WKPreferencesGetDeveloperExtrasEnabled(preference));
     EXPECT_TRUE(WKPreferencesGetTextAreasAreResizable(preference));
 
+#if PLATFORM(WIN)
+    EXPECT_EQ(kWKFontSmoothingLevelWindows, WKPreferencesGetFontSmoothingLevel(preference));
+#else
     EXPECT_EQ(kWKFontSmoothingLevelMedium, WKPreferencesGetFontSmoothingLevel(preference));
+#endif
 
     EXPECT_TRUE(WKPreferencesGetAcceleratedCompositingEnabled(preference));
     EXPECT_FALSE(WKPreferencesGetCompositingBordersVisible(preference));

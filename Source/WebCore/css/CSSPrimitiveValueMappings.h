@@ -606,6 +606,11 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ControlPart e)
         m_value.valueID = CSSValueImageControlsButton;
         break;
 #endif
+    case InputSpeechButtonPart:
+#if ENABLE(INPUT_SPEECH)
+        m_value.valueID = CSSValueWebkitInputSpeechButton;
+#endif
+        break;
     }
 }
 
@@ -3256,9 +3261,6 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(RubyPosition position)
     case RubyPositionAfter:
         m_value.valueID = CSSValueAfter;
         break;
-    case RubyPositionInterCharacter:
-        m_value.valueID = CSSValueInterCharacter;
-        break;
     }
 }
 
@@ -3271,8 +3273,6 @@ template<> inline CSSPrimitiveValue::operator RubyPosition() const
         return RubyPositionBefore;
     case CSSValueAfter:
         return RubyPositionAfter;
-    case CSSValueInterCharacter:
-        return RubyPositionInterCharacter;
     default:
         break;
     }
@@ -5182,43 +5182,6 @@ template<> inline CSSPrimitiveValue::operator EJustifySelfOverflowAlignment() co
     ASSERT_NOT_REACHED();
     return JustifySelfOverflowAlignmentTrue;
 }
-
-
-#if ENABLE(CSS_SCROLL_SNAP)
-template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ScrollSnapType e)
-    : CSSValue(PrimitiveClass)
-{
-    m_primitiveUnitType = CSS_VALUE_ID;
-    switch (e) {
-    case ScrollSnapType::None:
-        m_value.valueID = CSSValueNone;
-        break;
-    case ScrollSnapType::Proximity:
-        m_value.valueID = CSSValueProximity;
-        break;
-    case ScrollSnapType::Mandatory:
-        m_value.valueID = CSSValueMandatory;
-        break;
-    }
-}
-
-template<> inline CSSPrimitiveValue::operator ScrollSnapType() const
-{
-    ASSERT(isValueID());
-    switch (m_value.valueID) {
-    case CSSValueNone:
-        return ScrollSnapType::None;
-    case CSSValueProximity:
-        return ScrollSnapType::Proximity;
-    case CSSValueMandatory:
-        return ScrollSnapType::Mandatory;
-    default:
-        break;
-    }
-    ASSERT_NOT_REACHED();
-    return ScrollSnapType::None;
-}
-#endif
 
 }
 

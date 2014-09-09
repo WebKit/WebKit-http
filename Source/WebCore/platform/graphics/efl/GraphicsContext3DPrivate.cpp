@@ -68,7 +68,9 @@ bool GraphicsContext3DPrivate::initialize()
 
         if (!makeContextCurrent())
             return false;
+#if USE(GRAPHICS_SURFACE)
         m_surfaceOperation = CreateSurface;
+#endif
     }
 
     return true;
@@ -85,6 +87,7 @@ void GraphicsContext3DPrivate::releaseResources()
         return;
 
     // Release the current context and drawable only after destroying any associated gl resources.
+#if USE(GRAPHICS_SURFACE)
     if (m_previousGraphicsSurface)
         m_previousGraphicsSurface = nullptr;
 
@@ -92,6 +95,7 @@ void GraphicsContext3DPrivate::releaseResources()
         m_graphicsSurface = nullptr;
 
     m_surfaceHandle = GraphicsSurfaceToken();
+#endif
     if (m_offScreenSurface)
         m_offScreenSurface->destroy();
 
@@ -159,11 +163,14 @@ bool GraphicsContext3DPrivate::prepareBuffer() const
     return true;
 }
 
+#if USE(TEXTURE_MAPPER_GL)
 void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper*, const FloatRect& /* target */, const TransformationMatrix&, float /* opacity */)
 {
     notImplemented();
 }
+#endif
 
+#if USE(GRAPHICS_SURFACE)
 void GraphicsContext3DPrivate::createGraphicsSurface()
 {
     static PendingSurfaceOperation pendingOperation = DeletePreviousSurface | Resize | CreateSurface;
@@ -257,5 +264,6 @@ GraphicsSurface::Flags GraphicsContext3DPrivate::graphicsSurfaceFlags() const
 
     return TextureMapperPlatformLayer::graphicsSurfaceFlags();
 }
+#endif
 
 } // namespace WebCore

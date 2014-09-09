@@ -30,7 +30,6 @@
 #if USE(COORDINATED_GRAPHICS)
 
 #include "Color.h"
-#include "FilterOperations.h"
 #include "FloatRect.h"
 #include "FloatSize.h"
 #include "GraphicsLayerAnimation.h"
@@ -38,6 +37,10 @@
 #include "IntSize.h"
 #include "SurfaceUpdateInfo.h"
 #include "TransformationMatrix.h"
+
+#if ENABLE(CSS_FILTERS)
+#include "FilterOperations.h"
+#endif
 
 #if USE(GRAPHICS_SURFACE)
 #include "GraphicsSurface.h"
@@ -86,8 +89,8 @@ struct CoordinatedGraphicsLayerState {
             bool filtersChanged: 1;
             bool childrenChanged: 1;
             bool repaintCountChanged : 1;
-            bool platformLayerChanged: 1;
-            bool platformLayerShouldSwapBuffers: 1;
+            bool canvasChanged: 1;
+            bool canvasShouldSwapBuffers: 1;
             bool isScrollableChanged: 1;
             bool committedScrollOffsetChanged: 1;
             bool contentsTilingChanged: 1;
@@ -128,7 +131,7 @@ struct CoordinatedGraphicsLayerState {
         , mask(InvalidCoordinatedLayerID)
         , imageID(InvalidCoordinatedImageBackingID)
 #if USE(GRAPHICS_SURFACE)
-        , platformLayerFrontBuffer(0)
+        , canvasFrontBuffer(0)
 #endif
     {
     }
@@ -145,7 +148,9 @@ struct CoordinatedGraphicsLayerState {
     Color solidColor;
     Color debugBorderColor;
     float debugBorderWidth;
+#if ENABLE(CSS_FILTERS)
     FilterOperations filters;
+#endif
     GraphicsLayerAnimations animations;
     Vector<uint32_t> children;
     Vector<TileCreationInfo> tilesToCreate;
@@ -158,10 +163,10 @@ struct CoordinatedGraphicsLayerState {
     Vector<TileUpdateInfo> tilesToUpdate;
 
 #if USE(GRAPHICS_SURFACE)
-    IntSize platformLayerSize;
-    GraphicsSurfaceToken platformLayerToken;
-    uint32_t platformLayerFrontBuffer;
-    GraphicsSurface::Flags platformLayerSurfaceFlags;
+    IntSize canvasSize;
+    GraphicsSurfaceToken canvasToken;
+    uint32_t canvasFrontBuffer;
+    GraphicsSurface::Flags canvasSurfaceFlags;
 #endif
 
     IntSize committedScrollOffset;

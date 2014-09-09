@@ -26,6 +26,8 @@
 #ifndef StyleFilterData_h
 #define StyleFilterData_h
 
+#if ENABLE(CSS_FILTERS)
+
 #include "FilterOperations.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -51,5 +53,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)
 
 #endif // StyleFilterData_h

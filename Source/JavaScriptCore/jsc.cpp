@@ -37,7 +37,6 @@
 #include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSLock.h"
-#include "JSONObject.h"
 #include "JSProxy.h"
 #include "JSString.h"
 #include "ProfilerDatabase.h"
@@ -46,7 +45,6 @@
 #include "StructureInlines.h"
 #include "StructureRareDataInlines.h"
 #include "TestRunnerUtils.h"
-#include "TypeProfilerLog.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -181,7 +179,7 @@ public:
 
     static Masquerader* create(VM& vm, JSGlobalObject* globalObject)
     {
-        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll("Masquerading object allocated");
+        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll();
         Structure* structure = createStructure(vm, globalObject, jsNull());
         Masquerader* result = new (NotNull, allocateCell<Masquerader>(vm.heap, sizeof(Masquerader))) Masquerader(vm, structure);
         result->finishCreation(vm);
@@ -363,7 +361,7 @@ public:
     static NO_RETURN_DUE_TO_CRASH bool deleteProperty(JSCell*, ExecState*, PropertyName)
     {
         RELEASE_ASSERT_NOT_REACHED();
-#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
+#if !COMPILER(CLANG) && !COMPILER(MSVC)
         return true;
 #endif
     }
@@ -478,9 +476,7 @@ static EncodedJSValue JSC_HOST_CALL functionEffectful42(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionIdentity(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionMakeMasquerader(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionHasCustomProperties(ExecState*);
-static EncodedJSValue JSC_HOST_CALL functionDumpTypesForAllVariables(ExecState*);
-static EncodedJSValue JSC_HOST_CALL functionFindTypeForExpression(ExecState*);
-static EncodedJSValue JSC_HOST_CALL functionReturnTypeFor(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionDumpTypesForAllVariables (ExecState*);
 
 #if ENABLE(SAMPLING_FLAGS)
 static EncodedJSValue JSC_HOST_CALL functionSetSamplingFlags(ExecState*);
@@ -631,10 +627,7 @@ protected:
 
         addFunction(vm, "createImpureGetter", functionCreateImpureGetter, 1);
         addFunction(vm, "setImpureGetterDelegate", functionSetImpureGetterDelegate, 2);
-
-        addFunction(vm, "dumpTypesForAllVariables", functionDumpTypesForAllVariables , 0);
-        addFunction(vm, "findTypeForExpression", functionFindTypeForExpression, 2);
-        addFunction(vm, "returnTypeFor", functionReturnTypeFor, 1);
+        addFunction(vm, "dumpTypesForAllVariables", functionDumpTypesForAllVariables , 4);
         
         JSArray* array = constructEmptyArray(globalExec(), 0);
         for (size_t i = 0; i < arguments.size(); ++i)
@@ -668,7 +661,20 @@ GlobalObject::GlobalObject(VM& vm, Structure* structure)
 
 static inline String stringFromUTF(const char* utf8)
 {
-    return String::fromUTF8WithLatin1Fallback(utf8, strlen(utf8));
+    // Find the the first non-ascii character, or nul.
+    const char* pos = utf8;
+    while (*pos > 0)
+        pos++;
+    size_t asciiLength = pos - utf8;
+    
+    // Fast case - string is all ascii.
+    if (!*pos)
+        return String(utf8, asciiLength);
+    
+    // Slow case - contains non-ascii characters, use fromUTF8WithLatin1Fallback.
+    ASSERT(*pos < 0);
+    ASSERT(strlen(utf8) == asciiLength + strlen(pos));
+    return String::fromUTF8WithLatin1Fallback(utf8, asciiLength + strlen(pos));
 }
 
 static inline SourceCode jscSource(const char* utf8, const String& filename)
@@ -694,10 +700,8 @@ EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
 #ifndef NDEBUG
 EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState* exec)
 {
-    VMEntryFrame* topVMEntryFrame = exec->vm().topVMEntryFrame;
-    ExecState* callerFrame = exec->callerFrame(topVMEntryFrame);
-    if (callerFrame)
-        exec->vm().interpreter->dumpCallFrame(callerFrame);
+    if (!exec->callerFrame()->isVMEntrySentinel())
+        exec->vm().interpreter->dumpCallFrame(exec->callerFrame());
     return JSValue::encode(jsUndefined());
 }
 #endif
@@ -721,8 +725,8 @@ EncodedJSValue JSC_HOST_CALL functionDescribeArray(ExecState* exec)
         return JSValue::encode(jsUndefined());
     JSObject* object = jsDynamicCast<JSObject*>(exec->argument(0));
     if (!object)
-        return JSValue::encode(jsNontrivialString(exec, ASCIILiteral("<not object>")));
-    return JSValue::encode(jsNontrivialString(exec, toString("<Public length: ", object->getArrayLength(), "; vector length: ", object->getVectorLength(), ">")));
+        return JSValue::encode(jsString(exec, "<not object>"));
+    return JSValue::encode(jsString(exec, toString("<Public length: ", object->getArrayLength(), "; vector length: ", object->getVectorLength(), ">")));
 }
 
 class FunctionJSCStackFunctor {
@@ -876,7 +880,7 @@ EncodedJSValue JSC_HOST_CALL functionRun(ExecState* exec)
     String fileName = exec->argument(0).toString(exec)->value(exec);
     Vector<char> script;
     if (!fillBufferWithContentsOfFile(fileName, script))
-        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Could not open file."))));
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, "Could not open file.")));
 
     GlobalObject* globalObject = GlobalObject::create(exec->vm(), GlobalObject::createStructure(exec->vm(), jsNull()), Vector<String>());
 
@@ -905,7 +909,7 @@ EncodedJSValue JSC_HOST_CALL functionLoad(ExecState* exec)
     String fileName = exec->argument(0).toString(exec)->value(exec);
     Vector<char> script;
     if (!fillBufferWithContentsOfFile(fileName, script))
-        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Could not open file."))));
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, "Could not open file.")));
 
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     
@@ -921,7 +925,7 @@ EncodedJSValue JSC_HOST_CALL functionReadFile(ExecState* exec)
     String fileName = exec->argument(0).toString(exec)->value(exec);
     Vector<char> script;
     if (!fillBufferWithContentsOfFile(fileName, script))
-        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Could not open file."))));
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, "Could not open file.")));
 
     return JSValue::encode(jsString(exec, stringFromUTF(script.data())));
 }
@@ -931,7 +935,7 @@ EncodedJSValue JSC_HOST_CALL functionCheckSyntax(ExecState* exec)
     String fileName = exec->argument(0).toString(exec)->value(exec);
     Vector<char> script;
     if (!fillBufferWithContentsOfFile(fileName, script))
-        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Could not open file."))));
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, "Could not open file.")));
 
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
 
@@ -1018,11 +1022,11 @@ EncodedJSValue JSC_HOST_CALL functionReoptimizationRetryCount(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL functionTransferArrayBuffer(ExecState* exec)
 {
     if (exec->argumentCount() < 1)
-        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Not enough arguments"))));
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, "Not enough arguments")));
     
     JSArrayBuffer* buffer = jsDynamicCast<JSArrayBuffer*>(exec->argument(0));
     if (!buffer)
-        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Expected an array buffer"))));
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, "Expected an array buffer")));
     
     ArrayBufferContents dummyContents;
     buffer->impl()->transfer(dummyContents);
@@ -1068,40 +1072,8 @@ EncodedJSValue JSC_HOST_CALL functionHasCustomProperties(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL functionDumpTypesForAllVariables(ExecState* exec)
 {
-    exec->vm().dumpTypeProfilerData();
+    exec->vm().dumpHighFidelityProfilingTypes();
     return JSValue::encode(jsUndefined());
-}
-
-EncodedJSValue JSC_HOST_CALL functionFindTypeForExpression(ExecState* exec)
-{
-    RELEASE_ASSERT(exec->vm().typeProfiler());
-    exec->vm().typeProfilerLog()->processLogEntries(ASCIILiteral("jsc Testing API: functionFindTypeForExpression"));
-
-    JSValue functionValue = exec->argument(0);
-    RELEASE_ASSERT(functionValue.isFunction());
-    FunctionExecutable* executable = (jsDynamicCast<JSFunction*>(functionValue.asCell()->getObject()))->jsExecutable();
-
-    RELEASE_ASSERT(exec->argument(1).isString());
-    String substring = exec->argument(1).getString(exec);
-    String sourceCodeText = executable->source().toString();
-    unsigned offset = static_cast<unsigned>(sourceCodeText.find(substring) + executable->source().startOffset());
-    
-    String jsonString = exec->vm().typeProfiler()->typeInformationForExpressionAtOffset(TypeProfilerSearchDescriptorNormal, offset, executable->sourceID());
-    return JSValue::encode(JSONParse(exec, jsonString));
-}
-
-EncodedJSValue JSC_HOST_CALL functionReturnTypeFor(ExecState* exec)
-{
-    RELEASE_ASSERT(exec->vm().typeProfiler());
-    exec->vm().typeProfilerLog()->processLogEntries(ASCIILiteral("jsc Testing API: functionReturnTypeFor"));
-
-    JSValue functionValue = exec->argument(0);
-    RELEASE_ASSERT(functionValue.isFunction());
-    FunctionExecutable* executable = (jsDynamicCast<JSFunction*>(functionValue.asCell()->getObject()))->jsExecutable();
-
-    unsigned offset = executable->source().startOffset();
-    String jsonString = exec->vm().typeProfiler()->typeInformationForExpressionAtOffset(TypeProfilerSearchDescriptorFunctionReturn, offset, executable->sourceID());
-    return JSValue::encode(JSONParse(exec, jsonString));
 }
 
 // Use SEH for Release builds only to get rid of the crash report dialog
@@ -1225,7 +1197,7 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
             script = scriptBuffer.data();
         } else {
             script = scripts[i].argument;
-            fileName = ASCIILiteral("[Command Line]");
+            fileName = "[Command Line]";
         }
 
         vm.startSampling();
@@ -1267,7 +1239,7 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
 
 static void runInteractive(GlobalObject* globalObject)
 {
-    String interpreterName(ASCIILiteral("Interpreter"));
+    String interpreterName("Interpreter");
     
     bool shouldQuit = false;
     while (!shouldQuit) {
@@ -1499,10 +1471,3 @@ static bool fillBufferWithContentsOfFile(const String& fileName, Vector<char>& b
 
     return true;
 }
-
-#if OS(WINDOWS)
-extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, const char* argv[])
-{
-    return main(argc, const_cast<char**>(argv));
-}
-#endif

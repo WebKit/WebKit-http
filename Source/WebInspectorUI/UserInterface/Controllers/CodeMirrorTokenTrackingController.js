@@ -49,7 +49,6 @@ WebInspector.CodeMirrorTokenTrackingController.Mode = {
     None: "none",
     NonSymbolTokens: "non-symbol-tokens",
     JavaScriptExpression: "javascript-expression",
-    JavaScriptTypeInformation: "javascript-type-information",
     MarkedTokens: "marked-tokens"
 }
 
@@ -262,8 +261,7 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
 
     _mouseEntered: function(event)
     {
-        if (!this._tracking)
-            this._startTracking();
+        this._startTracking();
     },
 
     _mouseLeft: function(event)
@@ -391,7 +389,6 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
             this._candidate = this._processNonSymbolToken();
             break;
         case WebInspector.CodeMirrorTokenTrackingController.Mode.JavaScriptExpression:
-        case WebInspector.CodeMirrorTokenTrackingController.Mode.JavaScriptTypeInformation:
             this._candidate = this._processJavaScriptExpression();
             break;
         case WebInspector.CodeMirrorTokenTrackingController.Mode.MarkedTokens:

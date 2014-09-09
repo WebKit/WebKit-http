@@ -30,7 +30,6 @@
 #import <Foundation/Foundation.h>
 
 @class WKFrameInfo;
-@class WKNavigationAction;
 @class WKWebViewConfiguration;
 @class WKWindowFeatures;
 

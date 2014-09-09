@@ -20,6 +20,7 @@
 #ifndef SVGFEDistantLightElement_h
 #define SVGFEDistantLightElement_h
 
+#if ENABLE(FILTERS)
 #include "SVGFELightElement.h"
 
 namespace WebCore {
@@ -38,4 +39,5 @@ NODE_TYPE_CASTS(SVGFEDistantLightElement)
 
 } // namespace WebCore
 
+#endif // ENABLE(FILTERS)
 #endif

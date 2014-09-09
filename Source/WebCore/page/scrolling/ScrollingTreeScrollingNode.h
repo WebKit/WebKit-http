@@ -43,30 +43,25 @@ class ScrollingTreeScrollingNode : public ScrollingTreeNode {
 public:
     virtual ~ScrollingTreeScrollingNode();
 
-    WEBCORE_EXPORT virtual void updateBeforeChildren(const ScrollingStateNode&) override;
-    WEBCORE_EXPORT virtual void updateAfterChildren(const ScrollingStateNode&) override;
+    virtual void updateBeforeChildren(const ScrollingStateNode&) override;
+    virtual void updateAfterChildren(const ScrollingStateNode&) override;
 
-    WEBCORE_EXPORT virtual void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) override;
+    virtual void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) override;
 
     virtual void handleWheelEvent(const PlatformWheelEvent&) = 0;
-    WEBCORE_EXPORT virtual void setScrollPosition(const FloatPoint&);
-    WEBCORE_EXPORT virtual void setScrollPositionWithoutContentEdgeConstraints(const FloatPoint&);
+    virtual void setScrollPosition(const FloatPoint&);
+    virtual void setScrollPositionWithoutContentEdgeConstraints(const FloatPoint&);
 
     virtual void updateLayersAfterViewportChange(const FloatRect& fixedPositionRect, double scale) = 0;
     virtual void updateLayersAfterDelegatedScroll(const FloatPoint&) { }
 
     virtual FloatPoint scrollPosition() const = 0;
 
-#if ENABLE(CSS_SCROLL_SNAP)
-    const Vector<float>& horizontalSnapOffsets() const { return m_horizontalSnapOffsets; }
-    const Vector<float>& verticalSnapOffsets() const { return m_verticalSnapOffsets; }
-#endif
-
 protected:
     ScrollingTreeScrollingNode(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
 
-    WEBCORE_EXPORT virtual FloatPoint minimumScrollPosition() const;
-    WEBCORE_EXPORT virtual FloatPoint maximumScrollPosition() const;
+    virtual FloatPoint minimumScrollPosition() const;
+    virtual FloatPoint maximumScrollPosition() const;
 
     virtual void setScrollLayerPosition(const FloatPoint&) = 0;
 
@@ -97,10 +92,7 @@ private:
     FloatSize m_reachableContentsSize;
     FloatPoint m_lastCommittedScrollPosition;
     IntPoint m_scrollOrigin;
-#if ENABLE(CSS_SCROLL_SNAP)
-    Vector<float> m_horizontalSnapOffsets;
-    Vector<float> m_verticalSnapOffsets;
-#endif
+    
     ScrollableAreaParameters m_scrollableAreaParameters;
 };
 

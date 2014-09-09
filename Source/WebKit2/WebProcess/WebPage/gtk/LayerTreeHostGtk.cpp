@@ -263,6 +263,14 @@ void LayerTreeHostGtk::setPageOverlayNeedsDisplay(PageOverlay* pageOverlay, cons
     scheduleLayerFlush();
 }
 
+void LayerTreeHostGtk::notifyAnimationStarted(const WebCore::GraphicsLayer*, double /* time */)
+{
+}
+
+void LayerTreeHostGtk::notifyFlushRequired(const WebCore::GraphicsLayer*)
+{
+}
+
 void LayerTreeHostGtk::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect& clipRect)
 {
     if (graphicsLayer == m_nonCompositedContentLayer.get()) {

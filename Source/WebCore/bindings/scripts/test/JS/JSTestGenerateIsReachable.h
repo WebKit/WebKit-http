@@ -90,8 +90,8 @@ inline void* wrapperContext(DOMWrapperWorld& world, TestGenerateIsReachable*)
     return &world;
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestGenerateIsReachable*);
-WEBCORE_EXPORT TestGenerateIsReachable* toTestGenerateIsReachable(JSC::JSValue);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestGenerateIsReachable*);
+TestGenerateIsReachable* toTestGenerateIsReachable(JSC::JSValue);
 
 
 } // namespace WebCore

@@ -117,7 +117,9 @@ void RenderLayerModelObject::styleWillChange(StyleDifference diff, const RenderS
                     || oldStyle->hasClip() != newStyle.hasClip()
                     || oldStyle->opacity() != newStyle.opacity()
                     || oldStyle->transform() != newStyle.transform()
+#if ENABLE(CSS_FILTERS)
                     || oldStyle->filter() != newStyle.filter()
+#endif
                     )
                 layer()->repaintIncludingDescendants();
             } else if (newStyle.hasTransform() || newStyle.opacity() < 1 || newStyle.hasFilter()) {

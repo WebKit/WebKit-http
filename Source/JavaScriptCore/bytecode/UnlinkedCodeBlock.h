@@ -125,8 +125,6 @@ public:
     unsigned unlinkedBodyEndColumn() const { return m_unlinkedBodyEndColumn; }
     unsigned startOffset() const { return m_startOffset; }
     unsigned sourceLength() { return m_sourceLength; }
-    unsigned typeProfilingStartOffset() const { return m_typeProfilingStartOffset; }
-    unsigned typeProfilingEndOffset() const { return m_typeProfilingEndOffset; }
 
     String paramString() const;
 
@@ -187,8 +185,6 @@ private:
     unsigned m_unlinkedBodyEndColumn;
     unsigned m_startOffset;
     unsigned m_sourceLength;
-    unsigned m_typeProfilingStartOffset;
-    unsigned m_typeProfilingEndOffset;
 
     CodeFeatures m_features;
 
@@ -275,8 +271,6 @@ public:
 
     void addExpressionInfo(unsigned instructionOffset, int divot,
         int startOffset, int endOffset, unsigned line, unsigned column);
-
-    void addTypeProfilerExpressionInfo(unsigned instructionOffset, unsigned startDivot, unsigned endDivot);
 
     bool hasExpressionInfo() { return m_expressionInfo.size(); }
 
@@ -470,8 +464,6 @@ public:
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
         int& startOffset, int& endOffset, unsigned& line, unsigned& column);
 
-    bool typeProfilerExpressionInfoForBytecodeOffset(unsigned bytecodeOffset, unsigned& startDivot, unsigned& endDivot);
-
     void recordParse(CodeFeatures features, bool hasCapturedVariables, unsigned firstLine, unsigned lineCount, unsigned endColumn)
     {
         m_features = features;
@@ -583,11 +575,6 @@ public:
 private:
     OwnPtr<RareData> m_rareData;
     Vector<ExpressionRangeInfo> m_expressionInfo;
-    struct TypeProfilerExpressionRange {
-        unsigned m_startDivot;
-        unsigned m_endDivot;
-    };
-    HashMap<unsigned, TypeProfilerExpressionRange> m_typeProfilerInfoMap;
 
 protected:
 

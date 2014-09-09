@@ -185,11 +185,8 @@ private:
         case GetMyArgumentByValSafe:
         case GetByOffset:
         case MultiGetByOffset:
-        case GetDirectPname:
         case Call:
         case Construct:
-        case ProfiledCall:
-        case ProfiledConstruct:
         case NativeCall:
         case NativeConstruct:
         case GetGlobalVar:
@@ -198,8 +195,7 @@ private:
             break;
         }
             
-        case GetGetterSetterByOffset:
-        case GetExecutable: {
+        case GetGetterSetterByOffset: {
             changed |= setPrediction(SpecCellOther);
             break;
         }
@@ -463,6 +459,7 @@ private:
         }
             
         case GetMyScope:
+        case SkipTopScope:
         case SkipScope: {
             changed |= setPrediction(SpecObjectOther);
             break;
@@ -587,39 +584,6 @@ private:
             changed |= setPrediction(SpecBoolean);
             break;
 
-        case GetEnumerableLength: {
-            changed |= setPrediction(SpecInt32);
-            break;
-        }
-        case HasGenericProperty: {
-            changed |= setPrediction(SpecBoolean);
-            break;
-        }
-        case HasStructureProperty: {
-            changed |= setPrediction(SpecBoolean);
-            break;
-        }
-        case HasIndexedProperty: {
-            changed |= setPrediction(SpecBoolean);
-            break;
-        }
-        case GetStructurePropertyEnumerator: {
-            changed |= setPrediction(SpecCell);
-            break;
-        }
-        case GetGenericPropertyEnumerator: {
-            changed |= setPrediction(SpecCell);
-            break;
-        }
-        case GetEnumeratorPname: {
-            changed |= setPrediction(SpecCell | SpecOther);
-            break;
-        }
-        case ToIndexString: {
-            changed |= setPrediction(SpecString);
-            break;
-        }
-
 #ifndef NDEBUG
         // These get ignored because they don't return anything.
         case StoreBarrier:
@@ -645,8 +609,8 @@ private:
         case ForceOSRExit:
         case SetArgument:
         case CheckStructure:
-        case CheckCell:
-        case CheckBadCell:
+        case CheckExecutable:
+        case CheckFunction:
         case PutStructure:
         case TearOffActivation:
         case TearOffArguments:
@@ -666,10 +630,6 @@ private:
         case ConstantStoragePointer:
         case MovHint:
         case ZombieHint:
-            break;
-            
-        // This gets ignored because it only pretends to produce a value.
-        case BottomValue:
             break;
             
         // This gets ignored because it already has a prediction.

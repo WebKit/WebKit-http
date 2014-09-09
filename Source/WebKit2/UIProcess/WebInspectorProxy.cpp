@@ -163,6 +163,8 @@ void WebInspectorProxy::invalidate()
 
     m_page->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_page->pageID());
 
+    m_page->close();
+
     didClose();
 
     m_page = 0;

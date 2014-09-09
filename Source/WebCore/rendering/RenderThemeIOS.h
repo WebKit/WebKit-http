@@ -47,7 +47,7 @@ public:
 
     static CFStringRef contentSizeCategory();
 
-    WEBCORE_EXPORT static void setContentSizeCategory(const String&);
+    static void setContentSizeCategory(const String&);
 
 protected:
     virtual int baselinePosition(const RenderObject&) const override;

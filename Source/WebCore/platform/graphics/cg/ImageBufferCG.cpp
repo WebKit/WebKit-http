@@ -48,7 +48,6 @@
 #endif
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
-#include "IOSurface.h"
 #include <IOSurface/IOSurface.h>
 #endif
 
@@ -58,6 +57,11 @@
 namespace WebCore {
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
+#if PLATFORM(IOS)
+static const int maxIOSurfaceDimension = 2048;
+#else
+static const int maxIOSurfaceDimension = 4096;
+#endif
 
 // FIXME: Adopt WebCore::IOSurface.
 static RetainPtr<IOSurfaceRef> createIOSurface(const IntSize& size)
@@ -152,8 +156,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
         return;
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
-    IntSize maxSize = IOSurface::maximumSize();
-    if (width.unsafeGet() > maxSize.width() || height.unsafeGet() > maxSize.height())
+    if (width.unsafeGet() > maxIOSurfaceDimension || height.unsafeGet() > maxIOSurfaceDimension)
         accelerateRendering = false;
 #else
     ASSERT(renderingMode == Unaccelerated);
@@ -298,7 +301,7 @@ void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace,
 
     FloatRect adjustedSrcRect = srcRect;
     adjustedSrcRect.scale(m_resolutionScale, m_resolutionScale);
-    destContext->drawNativeImage(image.get(), m_data.m_backingStoreSize, colorSpace, destRect, adjustedSrcRect, op, blendMode);
+    destContext->drawNativeImage(image.get(), m_data.m_backingStoreSize, colorSpace, destRect, adjustedSrcRect, 1, op, blendMode);
 }
 
 void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)

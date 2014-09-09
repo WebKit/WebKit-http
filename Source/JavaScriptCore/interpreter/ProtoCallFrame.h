@@ -37,7 +37,6 @@ struct ProtoCallFrame {
     Register argCountAndCodeOriginValue;
     Register thisArg;
     uint32_t paddedArgCount;
-    bool arityMissMatch;
     JSValue *args;
 
     void init(CodeBlock*, JSScope*, JSObject*, JSValue, int, JSValue* otherArgs = 0);
@@ -60,8 +59,6 @@ struct ProtoCallFrame {
     
     JSValue thisValue() const { return thisArg.Register::jsValue(); }
     void setThisValue(JSValue value) { thisArg = value; }
-
-    bool needArityCheck() { return arityMissMatch; }
 
     JSValue argument(size_t argumentIndex)
     {

@@ -229,7 +229,12 @@ public:
     virtual HTMLElement* sliderTrackElement() const { return nullptr; }
     virtual HTMLElement* placeholderElement() const;
 
+#if ENABLE(INPUT_SPEECH)
+    virtual HTMLElement* speechButtonElement() const { return nullptr; }
+#endif
+
     // Miscellaneous functions
+
     virtual bool rendererIsNeeded();
     virtual RenderPtr<RenderElement> createInputRenderer(PassRef<RenderStyle>);
     virtual void addSearchResult();
@@ -252,12 +257,15 @@ public:
     virtual String displayString() const;
 #endif
 
+    // Should return true if the corresponding renderer for a type can display a suggested value.
+    virtual bool canSetSuggestedValue();
     virtual bool shouldSendChangeEventAfterCheckedChanged();
     virtual bool canSetValue(const String&);
     virtual bool storesValueSeparateFromAttribute();
     virtual void setValue(const String&, bool valueChanged, TextFieldEventBehavior);
     virtual bool shouldResetOnDocumentActivation();
     virtual bool shouldRespectListAttribute();
+    virtual bool shouldRespectSpeechAttribute();
     virtual bool isEnumeratable();
     virtual bool isCheckable();
     virtual bool isSteppable() const;

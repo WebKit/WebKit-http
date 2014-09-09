@@ -24,26 +24,25 @@
 #include "ErrorPrototype.h"
 
 namespace JSC {
+    class NativeErrorConstructor;
 
-class NativeErrorConstructor;
+    class NativeErrorPrototype : public ErrorPrototype {
+    private:
+        NativeErrorPrototype(VM&, Structure*);
+    
+    public:
+        typedef ErrorPrototype Base;
 
-class NativeErrorPrototype : public ErrorPrototype {
-private:
-    NativeErrorPrototype(VM&, Structure*);
+        static NativeErrorPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure, const String& name, NativeErrorConstructor* constructor)
+        {
+            NativeErrorPrototype* prototype = new (NotNull, allocateCell<NativeErrorPrototype>(vm.heap)) NativeErrorPrototype(vm, structure);
+            prototype->finishCreation(vm, globalObject, name, constructor);
+            return prototype;
+        }
 
-public:
-    typedef ErrorPrototype Base;
-
-    static NativeErrorPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure, const String& name, NativeErrorConstructor* constructor)
-    {
-        NativeErrorPrototype* prototype = new (NotNull, allocateCell<NativeErrorPrototype>(vm.heap)) NativeErrorPrototype(vm, structure);
-        prototype->finishCreation(vm, globalObject, name, constructor);
-        return prototype;
-    }
-
-protected:
-    void finishCreation(VM&, JSGlobalObject*, const String& nameAndMessage, NativeErrorConstructor*);
-};
+    protected:
+        void finishCreation(VM&, JSGlobalObject*, const String& nameAndMessage, NativeErrorConstructor*);
+    };
 
 } // namespace JSC
 

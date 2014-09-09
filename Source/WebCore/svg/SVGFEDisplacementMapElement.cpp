@@ -18,6 +18,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEDisplacementMapElement.h"
 
 #include "Attribute.h"
@@ -164,3 +166,5 @@ PassRefPtr<FilterEffect> SVGFEDisplacementMapElement::build(SVGFilterBuilder* fi
 }
 
 }
+
+#endif // ENABLE(FILTERS)

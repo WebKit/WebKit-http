@@ -132,8 +132,10 @@ void PlatformCALayerRemote::updateClonedLayerProperties(PlatformCALayerRemote& c
     clone.setOpaque(isOpaque());
     clone.setBackgroundColor(backgroundColor());
     clone.setContentsScale(contentsScale());
+#if ENABLE(CSS_FILTERS)
     if (m_properties.filters)
         clone.copyFiltersFrom(this);
+#endif
     clone.updateCustomAppearance(customAppearance());
 }
 
@@ -201,19 +203,17 @@ void PlatformCALayerRemote::updateBackingStore()
     m_properties.backingStore->ensureBackingStore(m_properties.bounds.size(), m_properties.contentsScale, m_acceleratesDrawing, m_properties.opaque);
 }
 
-void PlatformCALayerRemote::setNeedsDisplayInRect(const FloatRect& rect)
+void PlatformCALayerRemote::setNeedsDisplay(const FloatRect* rect)
 {
     ensureBackingStore();
+
+    if (!rect) {
+        m_properties.backingStore->setNeedsDisplay();
+        return;
+    }
 
     // FIXME: Need to map this through contentsRect/etc.
-    m_properties.backingStore->setNeedsDisplay(enclosingIntRect(rect));
-}
-
-void PlatformCALayerRemote::setNeedsDisplay()
-{
-    ensureBackingStore();
-
-    m_properties.backingStore->setNeedsDisplay();
+    m_properties.backingStore->setNeedsDisplay(enclosingIntRect(*rect));
 }
 
 void PlatformCALayerRemote::copyContentsFromLayer(PlatformCALayer* layer)
@@ -367,13 +367,7 @@ void PlatformCALayerRemote::animationStarted(const String& key, CFTimeInterval b
         toPlatformCAAnimationRemote(it->value.get())->didStart(beginTime);
     
     if (m_owner)
-        m_owner->platformCALayerAnimationStarted(key, beginTime);
-}
-
-void PlatformCALayerRemote::animationEnded(const String& key)
-{
-    if (m_owner)
-        m_owner->platformCALayerAnimationEnded(key);
+        m_owner->platformCALayerAnimationStarted(beginTime);
 }
 
 void PlatformCALayerRemote::setMask(PlatformCALayer* layer)
@@ -596,6 +590,7 @@ void PlatformCALayerRemote::setOpacity(float value)
     m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::OpacityChanged);
 }
 
+#if ENABLE(CSS_FILTERS)
 void PlatformCALayerRemote::setFilters(const FilterOperations& filters)
 {
     m_properties.filters = std::make_unique<FilterOperations>(filters);
@@ -624,6 +619,7 @@ bool PlatformCALayerRemote::filtersCanBeComposited(const FilterOperations& filte
 {
     return PlatformCALayerMac::filtersCanBeComposited(filters);
 }
+#endif
 
 void PlatformCALayerRemote::setName(const String& value)
 {

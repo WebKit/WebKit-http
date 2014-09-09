@@ -49,7 +49,7 @@ URL::operator NSURL *() const
 {
     // Creating a toll-free bridged CFURL, because a real NSURL would not preserve the original string.
     // We'll need fidelity when round-tripping via CFURLGetBytes().
-    return (NSURL *)createCFURL().autorelease();
+    return CFBridgingRelease(createCFURL().leakRef());
 }
 
 RetainPtr<CFURLRef> URL::createCFURL() const

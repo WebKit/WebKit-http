@@ -43,23 +43,17 @@ CSSValueList::CSSValueList(CSSParserValueList& parserValues)
 {
     m_valueListSeparator = SpaceSeparator;
     m_values.reserveInitialCapacity(parserValues.size());
-    for (unsigned i = 0, size = parserValues.size(); i < size; ++i) {
-        RefPtr<CSSValue> value = parserValues.valueAt(i)->createCSSValue();
-        ASSERT(value);
-        m_values.uncheckedAppend(value.releaseNonNull());
-    }
+    for (unsigned i = 0, size = parserValues.size(); i < size; ++i)
+        m_values.uncheckedAppend(parserValues.valueAt(i)->createCSSValue());
 }
 
 bool CSSValueList::removeAll(CSSValue* val)
 {
-    // FIXME: Why even take a pointer?
-    if (!val)
-        return false;
-
     bool found = false;
-    for (unsigned i = 0; i < m_values.size(); ++i) {
-        if (m_values[i].get().equals(*val)) {
-            m_values.remove(i);
+    for (size_t index = 0; index < m_values.size(); index++) {
+        RefPtr<CSSValue>& value = m_values.at(index);
+        if (value && val && value->equals(*val)) {
+            m_values.remove(index);
             found = true;
         }
     }
@@ -69,12 +63,9 @@ bool CSSValueList::removeAll(CSSValue* val)
 
 bool CSSValueList::hasValue(CSSValue* val) const
 {
-    // FIXME: Why even take a pointer?
-    if (!val)
-        return false;
-
-    for (unsigned i = 0, size = m_values.size(); i < size; ++i) {
-        if (m_values[i].get().equals(*val))
+    for (size_t index = 0; index < m_values.size(); index++) {
+        const RefPtr<CSSValue>& value = m_values.at(index);
+        if (value && val && value->equals(*val))
             return true;
     }
     return false;
@@ -96,8 +87,8 @@ PassRefPtr<CSSValueList> CSSValueList::copy()
     default:
         ASSERT_NOT_REACHED();
     }
-    for (unsigned i = 0, size = m_values.size(); i < size; ++i)
-        newList->append(m_values[i].get());
+    for (size_t index = 0; index < m_values.size(); index++)
+        newList->append(m_values[index]);
     return newList.release();
 }
 
@@ -119,10 +110,11 @@ String CSSValueList::customCSSText() const
         ASSERT_NOT_REACHED();
     }
 
-    for (unsigned i = 0, size = m_values.size(); i < size; i++) {
+    unsigned size = m_values.size();
+    for (unsigned i = 0; i < size; i++) {
         if (!result.isEmpty())
             result.append(separator);
-        result.append(m_values[i].get().cssText());
+        result.append(m_values[i]->cssText());
     }
 
     return result.toString();
@@ -130,17 +122,7 @@ String CSSValueList::customCSSText() const
 
 bool CSSValueList::equals(const CSSValueList& other) const
 {
-    if (m_valueListSeparator != other.m_valueListSeparator)
-        return false;
-
-    if (m_values.size() != other.m_values.size())
-        return false;
-
-    for (unsigned i = 0, size = m_values.size(); i < size; ++i) {
-        if (!m_values[i].get().equals(other.m_values[i].get()))
-            return false;
-    }
-    return true;
+    return m_valueListSeparator == other.m_valueListSeparator && compareCSSValueVector<CSSValue>(m_values, other.m_values);
 }
 
 bool CSSValueList::equals(const CSSValue& other) const
@@ -148,19 +130,21 @@ bool CSSValueList::equals(const CSSValue& other) const
     if (m_values.size() != 1)
         return false;
 
-    return m_values[0].get().equals(other);
+    const RefPtr<CSSValue>& value = m_values[0];
+    return value && value->equals(other);
 }
 
 void CSSValueList::addSubresourceStyleURLs(ListHashSet<URL>& urls, const StyleSheetContents* styleSheet) const
 {
-    for (unsigned i = 0, size = m_values.size(); i < size; ++i)
-        m_values[i].get().addSubresourceStyleURLs(urls, styleSheet);
+    size_t size = m_values.size();
+    for (size_t i = 0; i < size; ++i)
+        m_values[i]->addSubresourceStyleURLs(urls, styleSheet);
 }
 
 bool CSSValueList::hasFailedOrCanceledSubresources() const
 {
     for (unsigned i = 0; i < m_values.size(); ++i) {
-        if (m_values[i].get().hasFailedOrCanceledSubresources())
+        if (m_values[i]->hasFailedOrCanceledSubresources())
             return true;
     }
     return false;
@@ -170,9 +154,9 @@ CSSValueList::CSSValueList(const CSSValueList& cloneFrom)
     : CSSValue(cloneFrom.classType(), /* isCSSOMSafe */ true)
 {
     m_valueListSeparator = cloneFrom.m_valueListSeparator;
-    m_values.reserveInitialCapacity(cloneFrom.m_values.size());
-    for (unsigned i = 0, size = cloneFrom.m_values.size(); i < size; ++i)
-        m_values.uncheckedAppend(*cloneFrom.m_values[i]->cloneForCSSOM());
+    m_values.resize(cloneFrom.m_values.size());
+    for (unsigned i = 0; i < m_values.size(); ++i)
+        m_values[i] = cloneFrom.m_values[i]->cloneForCSSOM();
 }
 
 PassRefPtr<CSSValueList> CSSValueList::cloneForCSSOM() const

@@ -424,7 +424,7 @@ bool InlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
     return false;
 }
 
-FloatSize InlineTextBox::applyShadowToGraphicsContext(GraphicsContext* context, const ShadowData* shadow, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal, bool& didSaveContext)
+FloatSize InlineTextBox::applyShadowToGraphicsContext(GraphicsContext* context, const ShadowData* shadow, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal)
 {
     if (!shadow)
         return FloatSize();
@@ -445,7 +445,6 @@ FloatSize InlineTextBox::applyShadowToGraphicsContext(GraphicsContext* context, 
 
         extraOffset = FloatSize(0, 2 * textRect.height() + std::max(0.0f, shadowOffset.height()) + shadowRadius);
         shadowOffset -= extraOffset;
-        didSaveContext = true;
     }
 
     context->setShadow(shadowOffset, shadowRadius, shadowColor, context->fillColorSpace());
@@ -754,7 +753,7 @@ void InlineTextBox::paintSelection(GraphicsContext* context, const FloatPoint& b
 
     LayoutRect selectionRect = LayoutRect(boxOrigin.x(), boxOrigin.y() - deltaY, m_logicalWidth, selectionHeight);
     font.adjustSelectionRectForText(textRun, selectionRect, sPos, ePos);
-    context->fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), c, style.colorSpace());
+    context->fillRect(directionalPixelSnappedForPainting(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), c, style.colorSpace());
 #else
     UNUSED_PARAM(context);
     UNUSED_PARAM(boxOrigin);
@@ -789,7 +788,7 @@ void InlineTextBox::paintCompositionBackground(GraphicsContext* context, const F
     LayoutRect selectionRect = LayoutRect(boxOrigin.x(), boxOrigin.y() - deltaY, 0, selectionHeight());
     TextRun textRun = constructTextRun(style, font);
     font.adjustSelectionRectForText(textRun, selectionRect, sPos, ePos);
-    context->fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), c, style.colorSpace());
+    context->fillRect(directionalPixelSnappedForPainting(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), c, style.colorSpace());
 }
 
 static StrokeStyle textDecorationStyleToStrokeStyle(TextDecorationStyle decorationStyle)
@@ -1190,7 +1189,7 @@ void InlineTextBox::paintTextMatchMarker(GraphicsContext* context, const FloatPo
         LayoutUnit deltaY = renderer().style().isFlippedLinesWritingMode() ? selectionBottom() - logicalBottom() : logicalTop() - selectionTop();
         LayoutRect selectionRect = LayoutRect(boxOrigin.x(), boxOrigin.y() - deltaY, 0, selectionHeight);
         font.adjustSelectionRectForText(run, selectionRect, sPos, ePos);
-        context->fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), run.ltr()), color, style.colorSpace());
+        context->fillRect(directionalPixelSnappedForPainting(selectionRect, renderer().document().deviceScaleFactor(), run.ltr()), color, style.colorSpace());
     }
 }
 
@@ -1391,7 +1390,7 @@ float InlineTextBox::positionForOffset(int offset) const
     LayoutRect selectionRect = LayoutRect(logicalLeft(), 0, 0, 0);
     TextRun run = constructTextRun(lineStyle, font);
     font.adjustSelectionRectForText(run, selectionRect, from, to);
-    return snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), run.ltr()).maxX();
+    return directionalPixelSnappedForPainting(selectionRect, renderer().document().deviceScaleFactor(), run.ltr()).maxX();
 }
 
 TextRun InlineTextBox::constructTextRun(const RenderStyle& style, const Font& font, String* hyphenatedStringBuffer) const
@@ -1439,23 +1438,20 @@ const char* InlineTextBox::boxName() const
     return "InlineTextBox";
 }
 
-void InlineTextBox::showLineBox(bool mark, int depth) const
+void InlineTextBox::showBox(int printedCharacters) const
 {
-    fprintf(stderr, "------- --");
-
-    int printedCharacters = 0;
-    if (mark) {
-        fprintf(stderr, "*");
-        ++printedCharacters;
-    }
-    while (++printedCharacters <= depth * 2)
-        fputc(' ', stderr);
-
     String value = renderer().text();
     value = value.substring(start(), len());
     value.replaceWithLiteral('\\', "\\\\");
     value.replaceWithLiteral('\n', "\\n");
-    fprintf(stderr, "%s  (%.2f, %.2f) (%.2f, %.2f) (%p) run(%d, %d) \"%s\"\n", boxName(), x(), y(), width(), height(), this, start(), start() + len(), value.utf8().data());
+    printedCharacters += fprintf(stderr, "%s\t%p", boxName(), this);
+    for (; printedCharacters < showTreeCharacterOffset; printedCharacters++)
+        fputc(' ', stderr);
+    printedCharacters = fprintf(stderr, "\t%s %p", renderer().renderName(), &renderer());
+    const int rendererCharacterOffset = 24;
+    for (; printedCharacters < rendererCharacterOffset; printedCharacters++)
+        fputc(' ', stderr);
+    fprintf(stderr, "(%d,%d) \"%s\"\n", start(), start() + len(), value.utf8().data());
 }
 
 #endif

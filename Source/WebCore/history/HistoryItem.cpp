@@ -53,7 +53,7 @@ static void defaultNotifyHistoryItemChanged(HistoryItem*)
 {
 }
 
-WEBCORE_EXPORT void (*notifyHistoryItemChanged)(HistoryItem*) = defaultNotifyHistoryItemChanged;
+void (*notifyHistoryItemChanged)(HistoryItem*) = defaultNotifyHistoryItemChanged;
 
 HistoryItem::HistoryItem()
     : m_pageScaleFactor(0)

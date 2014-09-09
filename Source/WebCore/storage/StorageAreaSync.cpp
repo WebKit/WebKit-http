@@ -38,6 +38,7 @@
 #include "StorageSyncManager.h"
 #include "StorageTracker.h"
 #include "SuddenTermination.h"
+#include <wtf/Functional.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
 
@@ -71,10 +72,7 @@ inline StorageAreaSync::StorageAreaSync(PassRefPtr<StorageSyncManager> storageSy
 
     // FIXME: If it can't import, then the default WebKit behavior should be that of private browsing,
     // not silently ignoring it. https://bugs.webkit.org/show_bug.cgi?id=25894
-    RefPtr<StorageAreaSync> protector(this);
-    m_syncManager->dispatch([protector] {
-        protector->performImport();
-    });
+    m_syncManager->dispatch(bind(&StorageAreaSync::performImport, this));
 }
 
 PassRefPtr<StorageAreaSync> StorageAreaSync::create(PassRefPtr<StorageSyncManager> storageSyncManager, PassRefPtr<StorageAreaImpl> storageArea, const String& databaseIdentifier)
@@ -110,10 +108,7 @@ void StorageAreaSync::scheduleFinalSync()
     m_finalSyncScheduled = true;
     syncTimerFired(&m_syncTimer);
 
-    RefPtr<StorageAreaSync> protector(this);
-    m_syncManager->dispatch([protector] {
-        protector->deleteEmptyDatabase();
-    });
+    m_syncManager->dispatch(bind(&StorageAreaSync::deleteEmptyDatabase, this));
 }
 
 void StorageAreaSync::scheduleItemForSync(const String& key, const String& value)
@@ -215,10 +210,7 @@ void StorageAreaSync::syncTimerFired(Timer<StorageAreaSync>*)
             // performSync function.
             disableSuddenTermination();
 
-            RefPtr<StorageAreaSync> protector(this);
-            m_syncManager->dispatch([protector] {
-                protector->performSync();
-            });
+            m_syncManager->dispatch(bind(&StorageAreaSync::performSync, this));
         }
     }
 

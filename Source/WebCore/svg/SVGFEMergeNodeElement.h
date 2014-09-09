@@ -21,6 +21,7 @@
 #ifndef SVGFEMergeNodeElement_h
 #define SVGFEMergeNodeElement_h
 
+#if ENABLE(FILTERS)
 #include "SVGAnimatedString.h"
 #include "SVGElement.h"
 
@@ -48,4 +49,5 @@ NODE_TYPE_CASTS(SVGFEMergeNodeElement)
 
 } // namespace WebCore
 
+#endif // ENABLE(FILTERS)
 #endif

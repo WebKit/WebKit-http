@@ -37,6 +37,7 @@
 #include "ewk_cookie_manager_private.h"
 #include "ewk_database_manager_private.h"
 #include "ewk_favicon_database_private.h"
+#include "ewk_private.h"
 #include "ewk_storage_manager_private.h"
 #include "ewk_url_scheme_request_private.h"
 #include <JavaScriptCore/JSContextRef.h>

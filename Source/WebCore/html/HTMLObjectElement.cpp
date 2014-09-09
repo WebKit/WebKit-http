@@ -86,7 +86,7 @@ RenderWidget* HTMLObjectElement::renderWidgetForJSBindings() const
     // Needs to load the plugin immediatedly because this function is called
     // when JavaScript code accesses the plugin.
     // FIXME: <rdar://16893708> Check if dispatching events here is safe.
-    document().updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks::Synchronously);
+    document().updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasksSynchronously);
     return renderWidget(); // This will return 0 if the renderer is not a RenderWidget.
 }
 
@@ -180,7 +180,7 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
         // FIXME: serviceType calculation does not belong in this function.
         if (serviceType.isEmpty() && equalIgnoringCase(name, "type")) {
             serviceType = param.value();
-            size_t pos = serviceType.find(';');
+            size_t pos = serviceType.find(";");
             if (pos != notFound)
                 serviceType = serviceType.left(pos);
         }

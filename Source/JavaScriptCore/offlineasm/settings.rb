@@ -54,28 +54,7 @@ def computeSettingsCombinations(ast)
         settingsCombinator(settingsCombinations, newMap, remaining[1..-1])
     end
     
-    nonBackendSettings = ast.filter(Setting).uniq.collect{ |v| v.name }
-    nonBackendSettings.delete_if {
-        | setting |
-        isBackend? setting
-    }
-    
-    allBackendsFalse = {}
-    BACKENDS.each {
-        | backend |
-        allBackendsFalse[backend] = false
-    }
-    
-    # This will create entries for invalid backends. That's fine. It's necessary
-    # because it ensures that generate_offsets_extractor (which knows about valid
-    # backends) has settings indices that are compatible with what asm will see
-    # (asm doesn't know about valid backends).
-    BACKENDS.each {
-        | backend |
-        map = allBackendsFalse.clone
-        map[backend] = true
-        settingsCombinator(settingsCombinations, map, nonBackendSettings)
-    }
+    settingsCombinator(settingsCombinations, {}, (ast.filter(Setting).uniq.collect{|v| v.name} + BACKENDS).uniq)
     
     settingsCombinations
 end
@@ -94,13 +73,15 @@ def forSettings(concreteSettings, ast)
     selectedBackend = nil
     BACKENDS.each {
         | backend |
-        if concreteSettings[backend]
-            raise if selectedBackend
+        isSupported = concreteSettings[backend]
+        raise unless isSupported != nil
+        numClaimedBackends += if isSupported then 1 else 0 end
+        if isSupported
             selectedBackend = backend
         end
     }
     
-    return unless isValidBackend? selectedBackend
+    return if numClaimedBackends > 1
     
     # Resolve the AST down to a low-level form (no macros or conditionals).
     lowLevelAST = ast.resolveSettings(concreteSettings)

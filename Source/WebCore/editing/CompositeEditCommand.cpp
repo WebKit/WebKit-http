@@ -28,7 +28,6 @@
 
 #include "AppendNodeCommand.h"
 #include "ApplyStyleCommand.h"
-#include "BreakBlockquoteCommand.h"
 #include "DeleteFromTextNodeCommand.h"
 #include "DeleteSelectionCommand.h"
 #include "Document.h"
@@ -73,6 +72,9 @@
 #include "DeleteButtonController.h"
 #endif
 
+#if PLATFORM(IOS)
+#include "BreakBlockquoteCommand.h"
+#endif
 
 namespace WebCore {
 
@@ -200,8 +202,10 @@ void CompositeEditCommand::apply()
         case EditActionSetWritingDirection:
         case EditActionCut:
         case EditActionUnspecified:
+#if PLATFORM(IOS)
         case EditActionDelete:
         case EditActionDictation:
+#endif
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -498,6 +502,7 @@ void CompositeEditCommand::splitTextNodeContainingElement(PassRefPtr<Text> text,
     applyCommandToComposite(SplitTextNodeContainingElementCommand::create(text, offset));
 }
 
+#if PLATFORM(IOS)
 void CompositeEditCommand::inputText(const String& text, bool selectInsertedText)
 {
     unsigned offset = 0;
@@ -538,6 +543,7 @@ void CompositeEditCommand::inputText(const String& text, bool selectInsertedText
     if (selectInsertedText)
         setEndingSelection(VisibleSelection(visiblePositionForIndex(startIndex, scope.get()), visiblePositionForIndex(startIndex + length, scope.get())));
 }
+#endif
 
 void CompositeEditCommand::insertTextIntoNode(PassRefPtr<Text> node, unsigned offset, const String& text)
 {

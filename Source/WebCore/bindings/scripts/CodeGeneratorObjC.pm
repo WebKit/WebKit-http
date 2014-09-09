@@ -27,8 +27,6 @@
 package CodeGeneratorObjC;
 
 use constant FileNamePrefix => "DOM";
-use File::Basename;
-use FindBin;
 
 sub ConditionalIsEnabled(\%$);
 
@@ -248,8 +246,7 @@ sub ReadPublicInterfaces
     push(@args, "-I" . $ENV{BUILT_PRODUCTS_DIR} . "/usr/local/include") if $ENV{BUILT_PRODUCTS_DIR};
     push(@args, "-isysroot", $ENV{SDKROOT}) if $ENV{SDKROOT};
 
-    my $bindingsDir = dirname($FindBin::Bin);
-    my $fileName = "$bindingsDir/objc/PublicDOMInterfaces.h";
+    my $fileName = "WebCore/bindings/objc/PublicDOMInterfaces.h";
     my $gccLocation = "";
     if ($ENV{CC}) {
         $gccLocation = $ENV{CC};
@@ -380,10 +377,7 @@ sub GenerateInterface
         $fatalError = 1;
     }
 
-    # FIXME: This should not need to be an exception.
-    # ObjCCustomImplementation doesn't work with CMake right now.
-    # https://bugs.webkit.org/show_bug.cgi?id=135860
-    die if $fatalError && $className ne "DOMAbstractView";
+    die if $fatalError;
 }
 
 sub GetClassName
@@ -420,6 +414,7 @@ sub GetImplClassName
 {
     my $name = shift;
 
+    return "DOMImplementationFront" if $name eq "DOMImplementation";
     return "DOMWindow" if $name eq "AbstractView";
     return $name;
 }
@@ -676,6 +671,12 @@ sub AddIncludesForType
     if ($type eq "DOMWindow") {
         $implIncludes{"DOMAbstractViewInternal.h"} = 1;
         $implIncludes{"DOMWindow.h"} = 1;
+        return;
+    }
+
+    if ($type eq "DOMImplementation") {
+        $implIncludes{"DOMDOMImplementationInternal.h"} = 1;
+        $implIncludes{"DOMImplementationFront.h"} = 1;
         return;
     }
 
@@ -1094,8 +1095,7 @@ sub GenerateHeader
             @internalHeaderContent = split("\r", $implementationLicenseTemplate);
         }
 
-        my $classHeaderName = GetClassHeaderName($className);
-        push(@internalHeaderContent, "\n#import <WebCore/$classHeaderName.h>\n\n");
+        push(@internalHeaderContent, "\n#import <WebCore/$className.h>\n\n");
 
         if ($interfaceName eq "Node") {
             push(@internalHeaderContent, "\@protocol DOMEventTarget;\n\n");
@@ -1112,8 +1112,8 @@ sub GenerateHeader
         }
         push(@internalHeaderContent, "}\n\n");
 
-        push(@internalHeaderContent, "WEBCORE_EXPORT $implType* core($className *);\n");
-        push(@internalHeaderContent, "WEBCORE_EXPORT $className *kit($implType*);\n");
+        push(@internalHeaderContent, "$implType* core($className *);\n");
+        push(@internalHeaderContent, "$className *kit($implType*);\n");
 
         if ($interface->extendedAttributes->{"ObjCPolymorphic"}) {
             push(@internalHeaderContent, "Class kitClass($implType*);\n");
@@ -1297,7 +1297,11 @@ sub GenerateImplementation
 
             # Special cases
             my @customGetterContent = (); 
-            if ($attributeName =~ /(\w+)DisplayString$/) {
+            if ($attributeTypeSansPtr eq "DOMImplementation") {
+                # FIXME: We have to special case DOMImplementation until DOMImplementationFront is removed
+                $getterContentHead = "kit(implementationFront(IMPL";
+                $getterContentTail .= ")";
+            } elsif ($attributeName =~ /(\w+)DisplayString$/) {
                 my $attributeToDisplay = $1;
                 $getterContentHead = "WebCore::displayString(IMPL->$attributeToDisplay(), core(self)";
                 $implIncludes{"HitTestResult.h"} = 1;

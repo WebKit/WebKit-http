@@ -162,6 +162,9 @@
         "Editing": {
             "filename": r"Source/WebCore/editing/",
         },
+        "NetworkInfo": {
+            "filename": r"Source/WebCore/Modules/networkinfo",
+        },
         "Battery": {
             "filename": r"Source/WebCore/Modules/battery",
         },
@@ -259,6 +262,7 @@
             "filename": r"Source/WebCore/Modules/indexeddb"
                         r"|Source/WebCore/bindings/.*IDB.*\.(h|cpp)"
                         r"|Source/WebCore/bindings/.*SerializedScriptValue.*\.(h|cpp)"
+                        r"|Source/WebCore/platform/leveldb"
                         r"|LayoutTests/storage/indexeddb"
                         r"|LayoutTests/platform/.*/storage/indexeddb",
         },
@@ -350,6 +354,7 @@
         "MSEEME": [ "eric.carlson@apple.com", "calvaris@igalia.com" ],
         "Track": [ "eric.carlson@apple.com", "philipj@opera.com", "calvaris@igalia.com" ],
         "MediaStream": [ "tommyw@google.com", "hta@google.com", "sergio.correia@openbossa.org" ],
+        "NetworkInfo": [ "gyuyoung.kim@webkit.org", "dchris@gmail.com" ],
         "OpenGL" : [ "noam@webkit.org", "dino@apple.com", "kondapallykalyan@gmail.com", "roger_fong@apple.com" ],
         "PerformanceTests": [ "rniwa@webkit.org" ],
         "RegionsDevelopment|RegionsExpectationsMore|RegionsExpectationsLess|RegionsUsage": [ "WebkitBugTracker@adobe.com" ],

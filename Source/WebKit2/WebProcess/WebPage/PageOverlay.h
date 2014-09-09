@@ -34,14 +34,11 @@
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
-class Frame;
 class GraphicsContext;
-class GraphicsLayer;
 }
 
 namespace WebKit {
 
-class WebFrame;
 class WebMouseEvent;
 class WebPage;
 
@@ -57,7 +54,6 @@ public:
         virtual void didMoveToWebPage(PageOverlay*, WebPage*) = 0;
         virtual void drawRect(PageOverlay*, WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect) = 0;
         virtual bool mouseEvent(PageOverlay*, const WebMouseEvent&) = 0;
-        virtual void didScrollFrame(PageOverlay*, WebCore::Frame*) { }
 
         virtual WKTypeRef copyAccessibilityAttributeValue(PageOverlay*, WKStringRef /* attribute */, WKTypeRef /* parameter */) { return 0; }
         virtual WKArrayRef copyAccessibilityAttributeNames(PageOverlay*, bool /* parameterizedNames */) { return 0; }
@@ -77,7 +73,6 @@ public:
 
     void drawRect(WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect);
     bool mouseEvent(const WebMouseEvent&);
-    void didScrollFrame(WebCore::Frame*);
 
     WKTypeRef copyAccessibilityAttributeValue(WKStringRef attribute, WKTypeRef parameter);
     WKArrayRef copyAccessibilityAttributeNames(bool parameterizedNames);
@@ -100,8 +95,6 @@ public:
 
     WebCore::RGBA32 backgroundColor() const { return m_backgroundColor; }
     void setBackgroundColor(WebCore::RGBA32);
-
-    WebCore::GraphicsLayer* layer();
     
 protected:
     explicit PageOverlay(Client*, OverlayType);

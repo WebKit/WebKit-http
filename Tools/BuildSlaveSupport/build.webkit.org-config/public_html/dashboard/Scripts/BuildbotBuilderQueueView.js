@@ -108,7 +108,9 @@ BuildbotBuilderQueueView.prototype = {
 
                 if (firstRecentUnsuccessfulIteration) {
                     // We have a failed iteration but no successful. It might be further back in time.
-                    queue.loadMoreHistoricalIterations();
+                    // Update all the iterations so we get more history.
+                    // FIXME: It can be very time consuming to load all iterations, we should load progressively.
+                    queue.iterations.forEach(function(iteration) { iteration.update(); });
                 }
             }
         }

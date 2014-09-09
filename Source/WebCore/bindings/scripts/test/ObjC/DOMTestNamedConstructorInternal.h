@@ -30,5 +30,5 @@ namespace WebCore {
 class TestNamedConstructor;
 }
 
-WEBCORE_EXPORT WebCore::TestNamedConstructor* core(DOMTestNamedConstructor *);
-WEBCORE_EXPORT DOMTestNamedConstructor *kit(WebCore::TestNamedConstructor*);
+WebCore::TestNamedConstructor* core(DOMTestNamedConstructor *);
+DOMTestNamedConstructor *kit(WebCore::TestNamedConstructor*);

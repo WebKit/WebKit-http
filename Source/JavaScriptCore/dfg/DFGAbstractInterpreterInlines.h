@@ -30,7 +30,6 @@
 
 #include "DFGAbstractInterpreter.h"
 #include "GetByIdStatus.h"
-#include "GetterSetter.h"
 #include "Operations.h"
 #include "PutByIdStatus.h"
 #include "StringObject.h"
@@ -1355,37 +1354,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case GetCallee:
+    case GetGetter:
+    case GetSetter:
         forNode(node).setType(SpecFunction);
         break;
         
-    case GetGetter: {
-        JSValue base = forNode(node->child1()).m_value;
-        if (base) {
-            if (JSObject* getter = jsCast<GetterSetter*>(base)->getterConcurrently()) {
-                setConstant(node, *m_graph.freeze(getter));
-                break;
-            }
-        }
-        
-        forNode(node).setType(SpecObject);
-        break;
-    }
-        
-    case GetSetter: {
-        JSValue base = forNode(node->child1()).m_value;
-        if (base) {
-            if (JSObject* setter = jsCast<GetterSetter*>(base)->setterConcurrently()) {
-                setConstant(node, *m_graph.freeze(setter));
-                break;
-            }
-        }
-        
-        forNode(node).setType(SpecObject);
-        break;
-    }
-        
     case GetScope: // FIXME: We could get rid of these if we know that the JSFunction is a constant. https://bugs.webkit.org/show_bug.cgi?id=106202
     case GetMyScope:
+    case SkipTopScope:
         forNode(node).setType(SpecObjectOther);
         break;
 
@@ -1429,17 +1405,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 // something more subtle?
                 AbstractValue result;
                 for (unsigned i = status.numVariants(); i--;) {
-                    DFG_ASSERT(m_graph, node, !status[i].alternateBase());
-                    JSValue constantResult =
-                        m_graph.tryGetConstantProperty(value, status[i].offset());
-                    if (!constantResult) {
+                    if (!status[i].specificValue()) {
                         result.makeHeapTop();
                         break;
                     }
                     
                     AbstractValue thisResult;
                     thisResult.set(
-                        m_graph, *m_graph.freeze(constantResult),
+                        m_graph, *m_graph.freeze(status[i].specificValue()),
                         m_state.structureClobberState());
                     result.merge(thisResult);
                 }
@@ -1459,6 +1432,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(SpecInt32);
         break;
         
+    case CheckExecutable: {
+        // FIXME: We could track executables in AbstractValue, which would allow us to get rid of these checks
+        // more thoroughly. https://bugs.webkit.org/show_bug.cgi?id=106200
+        // FIXME: We could eliminate these entirely if we know the exact value that flows into this.
+        // https://bugs.webkit.org/show_bug.cgi?id=106201
+        break;
+    }
+
     case CheckStructure: {
         // FIXME: We should be able to propagate the structure sets of constants (i.e. prototypes).
         AbstractValue& value = forNode(node->child1());
@@ -1606,25 +1587,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
         
     case GetByOffset: {
-        StorageAccessData data = m_graph.m_storageAccessData[node->storageAccessDataIndex()];
-        JSValue result = m_graph.tryGetConstantProperty(forNode(node->child2()), data.offset);
-        if (result) {
-            setConstant(node, *m_graph.freeze(result));
-            break;
-        }
-        
         forNode(node).makeHeapTop();
         break;
     }
         
     case GetGetterSetterByOffset: {
-        StorageAccessData data = m_graph.m_storageAccessData[node->storageAccessDataIndex()];
-        JSValue result = m_graph.tryGetConstantProperty(forNode(node->child2()), data.offset);
-        if (result && jsDynamicCast<GetterSetter*>(result)) {
-            setConstant(node, *m_graph.freeze(result));
-            break;
-        }
-        
         forNode(node).set(m_graph, m_graph.m_vm.getterSetterStructure.get());
         break;
     }
@@ -1653,23 +1620,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             if (set.isEmpty())
                 continue;
             baseSet.merge(set);
-            
-            JSValue baseForLoad;
-            if (variant.alternateBase())
-                baseForLoad = variant.alternateBase();
-            else
-                baseForLoad = base.m_value;
-            JSValue constantResult =
-                m_graph.tryGetConstantProperty(
-                    baseForLoad, variant.baseStructure(), variant.offset());
-            if (!constantResult) {
+            if (!variant.specificValue()) {
                 result.makeHeapTop();
                 continue;
             }
             AbstractValue thisResult;
             thisResult.set(
                 m_graph,
-                *m_graph.freeze(constantResult),
+                *m_graph.freeze(variant.specificValue()),
                 m_state.structureClobberState());
             result.merge(thisResult);
         }
@@ -1718,29 +1676,16 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             m_state.setIsValid(false);
         break;
     }
-        
-    case GetExecutable: {
-        JSValue value = forNode(node->child1()).value();
-        if (value) {
-            JSFunction* function = jsDynamicCast<JSFunction*>(value);
-            if (function) {
-                setConstant(node, *m_graph.freeze(function->executable()));
-                break;
-            }
-        }
-        forNode(node).setType(SpecCellOther);
-        break;
-    }
     
-    case CheckCell: {
+    case CheckFunction: {
         JSValue value = forNode(node->child1()).value();
-        if (value == node->cellOperand()->value()) {
+        if (value == node->function()->value()) {
             m_state.setFoundConstants(true);
             ASSERT(value);
             break;
         }
         
-        filterByValue(node->child1(), *node->cellOperand());
+        filterByValue(node->child1(), *node->function());
         break;
     }
         
@@ -1777,7 +1722,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                         transitions.append(
                             Transition(
                                 variant.oldStructureForTransition(), variant.newStructure()));
-                        m_graph.registerStructure(variant.newStructure());
+                        m_graph.watchpoints().consider(variant.newStructure());
                         newSet.add(variant.newStructure());
                     } else {
                         ASSERT(variant.kind() == PutByIdVariant::Replace);
@@ -1799,71 +1744,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
-    case In: {
+    case In:
         // FIXME: We can determine when the property definitely exists based on abstract
         // value information.
         clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).setType(SpecBoolean);
         break;
-    }
             
-    case GetEnumerableLength: {
-        forNode(node).setType(SpecInt32);
-        break;
-    }
-    case HasGenericProperty: {
-        forNode(node).setType(SpecBoolean);
-        break;
-    }
-    case HasStructureProperty: {
-        forNode(node).setType(SpecBoolean);
-        break;
-    }
-    case HasIndexedProperty: {
-        ArrayMode mode = node->arrayMode();
-        switch (mode.type()) {
-        case Array::Int32:
-        case Array::Double:
-        case Array::Contiguous:
-        case Array::ArrayStorage: {
-            break;
-        }
-        default: {
-            clobberWorld(node->origin.semantic, clobberLimit);
-            break;
-        }
-        }
-        forNode(node).setType(SpecBoolean);
-        break;
-    }
-    case GetDirectPname: {
-        clobberWorld(node->origin.semantic, clobberLimit);
-        forNode(node).makeHeapTop();
-        break;
-    }
-    case GetStructurePropertyEnumerator: {
-        forNode(node).setType(SpecCell);
-        break;
-    }
-    case GetGenericPropertyEnumerator: {
-        forNode(node).setType(SpecCell);
-        break;
-    }
-    case GetEnumeratorPname: {
-        forNode(node).setType(SpecString | SpecOther);
-        break;
-    }
-    case ToIndexString: {
-        forNode(node).setType(SpecString);
-        break;
-    }
-
     case GetGlobalVar:
         forNode(node).makeHeapTop();
         break;
         
     case VariableWatchpoint:
     case VarInjectionWatchpoint:
+        break;
+            
     case PutGlobalVar:
     case NotifyWrite:
         break;
@@ -1903,16 +1798,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).makeHeapTop();
         break;
 
-    case ProfiledCall:
-    case ProfiledConstruct:
-        if (forNode(m_graph.varArgChild(node, 0)).m_value)
-            m_state.setFoundConstants(true);
-        clobberWorld(node->origin.semantic, clobberLimit);
-        forNode(node).makeHeapTop();
-        break;
-
     case ForceOSRExit:
-    case CheckBadCell:
         m_state.setIsValid(false);
         break;
         
@@ -1929,24 +1815,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ProfileDidCall:
     case Phantom:
     case HardPhantom:
+    case Check:
     case CountExecution:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
         break;
-
-    case Check: {
-        // Simplify out checks that don't actually do checking.
-        for (unsigned i = 0; i < AdjacencyList::Size; ++i) {
-            Edge edge = node->children.child(i);
-            if (!edge)
-                break;
-            if (edge.isProved() || edge.willNotHaveCheck()) {
-                m_state.setFoundConstants(true);
-                break;
-            }
-        }
-        break;
-    }
 
     case StoreBarrier: {
         filter(node->child1(), SpecCell);
@@ -1967,8 +1840,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case LastNodeType:
     case ArithIMul:
     case FiatInt52:
-    case BottomValue:
-        DFG_CRASH(m_graph, node, "Unexpected node type");
+        RELEASE_ASSERT_NOT_REACHED();
         break;
     }
     

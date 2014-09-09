@@ -64,9 +64,6 @@ public:
             refGPtr(ptr);
     }
 
-    GRefPtr(GRefPtr&& o) : m_ptr(o.leakRef()) { }
-    template <typename U> GRefPtr(GRefPtr<U>&& o) : m_ptr(o.leakRef()) { }
-
     ~GRefPtr()
     {
         if (T* ptr = m_ptr)
@@ -109,7 +106,6 @@ public:
     operator UnspecifiedBoolType() const { return m_ptr ? &GRefPtr::m_ptr : 0; }
 
     GRefPtr& operator=(const GRefPtr&);
-    GRefPtr& operator=(GRefPtr&&);
     GRefPtr& operator=(T*);
     template <typename U> GRefPtr& operator=(const GRefPtr<U>&);
 
@@ -133,13 +129,6 @@ template <typename T> inline GRefPtr<T>& GRefPtr<T>::operator=(const GRefPtr<T>&
     m_ptr = optr;
     if (ptr)
         derefGPtr(ptr);
-    return *this;
-}
-
-template <typename T> inline GRefPtr<T>& GRefPtr<T>::operator=(GRefPtr<T>&& o)
-{
-    GRefPtr ptr = WTF::move(o);
-    swap(ptr);
     return *this;
 }
 

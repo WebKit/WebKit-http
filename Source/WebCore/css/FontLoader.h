@@ -45,7 +45,6 @@ class Dictionary;
 class Document;
 class Event;
 class Font;
-class LoadFontCallback;
 class ScriptExecutionContext;
 
 class FontLoader : public RefCounted<FontLoader>, public ActiveDOMObject, public EventTarget {
@@ -64,11 +63,9 @@ public:
 
     bool checkFont(const String&, const String&);
     void loadFont(const Dictionary&);
-    void loadFontDone(const LoadFontCallback&);
-
     void notifyWhenFontsReady(PassRefPtr<VoidCallback>);
 
-    bool loading() const { return m_numLoadingFromCSS > 0; }
+    bool loading() const { return m_loadingCount > 0; }
 
     virtual ScriptExecutionContext* scriptExecutionContext() const;
     virtual EventTargetInterface eventTargetInterface() const;
@@ -84,8 +81,6 @@ public:
     void loadError(CSSFontFaceRule*, CSSFontFaceSource*);
     void loadingDone();
 
-    virtual bool canSuspend() const override { return !m_numLoadingFromCSS && !m_numLoadingFromJS; }
-
 private:
     FontLoader(Document*);
 
@@ -100,8 +95,7 @@ private:
 
     Document* m_document;
     EventTargetData m_eventTargetData;
-    unsigned m_numLoadingFromCSS;
-    unsigned m_numLoadingFromJS;
+    unsigned m_loadingCount;
     Vector<RefPtr<Event>> m_pendingEvents;
     Vector<RefPtr<VoidCallback>> m_callbacks;
     RefPtr<Event> m_loadingDoneEvent;

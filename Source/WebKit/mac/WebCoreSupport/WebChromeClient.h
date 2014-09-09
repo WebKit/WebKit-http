@@ -180,9 +180,9 @@ public:
     }
 
 #if ENABLE(VIDEO)
-    virtual bool supportsVideoFullscreen() override;
-    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement*) override;
-    virtual void exitVideoFullscreen() override;
+    virtual bool supportsFullscreenForNode(const WebCore::Node*) override;
+    virtual void enterFullscreenForNode(WebCore::Node*) override;
+    virtual void exitFullscreenForNode(WebCore::Node*) override;
 #endif
     
 #if ENABLE(FULLSCREEN_API)

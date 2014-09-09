@@ -43,8 +43,6 @@ for (var i = 0; i < buildbots.length; ++i) {
             categoryName = "builders";
         } else if (queue.tester) {
             categoryName = queue.testCategory;
-        } else if (queue.performance) {
-            categoryName = "performance";
         } else {
             console.assert("Unknown queue type.");
             continue;
@@ -111,11 +109,8 @@ function updateHiddenPlatforms()
     for (var i = 0; i < platformRows.length; ++i)
         platformRows[i].classList.remove("hidden");
 
-    for (var i = 0; i < hiddenPlatforms.length; ++i) {
-        var platformRow = document.querySelector("tr.platform." + hiddenPlatforms[i]);
-        if (platformRow)
-            platformRow.classList.add("hidden");
-    }
+    for (var i = 0; i < hiddenPlatforms.length; ++i)
+        document.querySelector("tr.platform." + hiddenPlatforms[i]).classList.add("hidden");
 
     var unhideButton = document.querySelector("div.cellButton.unhide");
     if (hiddenPlatforms.length)
@@ -149,10 +144,6 @@ function documentReady()
         header.textContent = testNames[Buildbot.TestCategory[testerKey]];
         row.appendChild(header);
     }
-
-    var header = document.createElement("th");
-    header.textContent = "Performance";
-    row.appendChild(header);
 
     if (hasEWS) {
         var header = document.createElement("th");
@@ -212,14 +203,6 @@ function documentReady()
             row.appendChild(cell);
         }
 
-        var cell = document.createElement("td");
-        if (platformQueues.performance && platformQueues.performance.release) {
-            var view = new BuildbotPerformanceQueueView(platformQueues.performance.release);
-            cell.appendChild(view.element);
-        }
-
-        row.appendChild(cell);
-
         if (hasEWS) {
             var cell = document.createElement("td");
 
@@ -246,9 +229,5 @@ function documentReady()
         settings.addSettingListener("hiddenPlatforms", updateHiddenPlatforms);
     }
 }
-
-webkitTrac.startPeriodicUpdates();
-if (typeof internalTrac !== "undefined")
-    internalTrac.startPeriodicUpdates();
 
 document.addEventListener("DOMContentLoaded", documentReady);

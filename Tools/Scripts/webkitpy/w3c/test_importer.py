@@ -61,8 +61,9 @@
      - Upon completion, script outputs the total number tests imported, broken down by test type
 
      - Also upon completion, each directory where files are imported will have w3c-import.log written
-       with a timestamp, the list of CSS properties used that require prefixes, the list of imported files,
-       and guidance for future test modification and maintenance.
+       with a timestamp, the W3C Mercurial changeset if available, the list of CSS properties used that
+       require prefixes, the list of imported files, and guidance for future test modification and
+       maintenance.
 
      - On subsequent imports, this file is read to determine if files have been removed in the newer changesets.
        The script removes these files accordingly.
@@ -92,13 +93,22 @@ _log = logging.getLogger(__name__)
 def main(_argv, _stdout, _stderr):
     options, args = parse_args()
     import_dir = args[0]
+    if len(args) == 1:
+        repo_dir = import_dir
+    else:
+        repo_dir = args[1]
 
     if not os.path.exists(import_dir):
         sys.exit('Source directory %s not found!' % import_dir)
 
+    if not os.path.exists(repo_dir):
+        sys.exit('Repository directory %s not found!' % repo_dir)
+    if not repo_dir in import_dir:
+        sys.exit('Repository directory %s must be a parent of %s' % (repo_dir, import_dir))
+
     configure_logging()
 
-    test_importer = TestImporter(Host(), import_dir, options)
+    test_importer = TestImporter(Host(), import_dir, repo_dir, options)
     test_importer.do_import()
 
 
@@ -119,25 +129,23 @@ def configure_logging():
 
 
 def parse_args():
-    parser = optparse.OptionParser(usage='usage: %prog [options] w3c_test_directory')
+    parser = optparse.OptionParser(usage='usage: %prog [options] w3c_test_directory [repo_directory]')
     parser.add_option('-n', '--no-overwrite', dest='overwrite', action='store_false', default=True,
         help='Flag to prevent duplicate test files from overwriting existing tests. By default, they will be overwritten')
     parser.add_option('-a', '--all', action='store_true', default=False,
         help='Import all tests including reftests, JS tests, and manual/pixel tests. By default, only reftests and JS tests are imported')
     parser.add_option('-d', '--dest-dir', dest='destination', default='w3c',
         help='Import into a specified directory relative to the LayoutTests root. By default, imports into w3c')
-    parser.add_option('-t', '--test-path', action='append', dest='test_paths', default=[],
-        help='Import only tests in the supplied subdirectory of the w3c_test_directory. Can be supplied multiple times to give multiple paths')
 
     options, args = parser.parse_args()
-    if len(args) != 1:
+    if len(args) not in (1, 2):
         parser.error('Incorrect number of arguments')
     return options, args
 
 
 class TestImporter(object):
 
-    def __init__(self, host, source_directory, options):
+    def __init__(self, host, source_directory, repo_dir, options):
         self.host = host
         self.source_directory = source_directory
         self.options = options
@@ -146,23 +154,25 @@ class TestImporter(object):
 
         webkit_finder = WebKitFinder(self.filesystem)
         self._webkit_root = webkit_finder.webkit_base()
+        self.repo_dir = repo_dir
 
         self.destination_directory = webkit_finder.path_from_webkit_base("LayoutTests", options.destination)
+
+        self.changeset = CHANGESET_NOT_AVAILABLE
 
         self.import_list = []
 
     def do_import(self):
-        if len(self.options.test_paths) == 0:
-            self.find_importable_tests(self.source_directory)
-        else:
-            for test_path in self.options.test_paths:
-                self.find_importable_tests(os.path.join(self.source_directory, test_path))
+        self.find_importable_tests(self.source_directory)
+        self.load_changeset()
         self.import_tests()
 
-    def should_keep_subdir(self, root, subdir):
-        DIRS_TO_SKIP = ('work-in-progress', 'tools', 'support')
-        should_skip = subdir.startswith('.') or (root == self.source_directory and subdir in DIRS_TO_SKIP)
-        return not should_skip
+    def load_changeset(self):
+        """Returns the current changeset from mercurial or "Not Available"."""
+        try:
+            self.changeset = self.host.executive.run_command(['hg', 'tip']).split('changeset:')[1]
+        except (OSError, ScriptError):
+            self.changeset = CHANGESET_NOT_AVAILABLE
 
     def find_importable_tests(self, directory):
         # FIXME: use filesystem
@@ -172,7 +182,10 @@ class TestImporter(object):
             reftests = 0
             jstests = 0
 
-            dirs[:] = [subdir for subdir in dirs if self.should_keep_subdir(root, subdir)]
+            DIRS_TO_SKIP = ('.git', '.hg', 'work-in-progress', 'tools', 'support')
+            for d in DIRS_TO_SKIP:
+                if d in dirs:
+                    dirs.remove(d)
 
             copy_list = []
 
@@ -185,7 +198,7 @@ class TestImporter(object):
                 fullpath = os.path.join(root, filename)
 
                 mimetype = mimetypes.guess_type(fullpath)
-                if not 'html' in str(mimetype[0]) and not 'application/xhtml+xml' in str(mimetype[0]) and not 'application/xml' in str(mimetype[0]):
+                if not 'html' in str(mimetype[0]) and not 'xml' in str(mimetype[0]):
                     copy_list.append({'src': fullpath, 'dest': filename})
                     continue
 
@@ -260,7 +273,7 @@ class TestImporter(object):
 
             orig_path = dir_to_copy['dirname']
 
-            subpath = os.path.relpath(orig_path, self.source_directory)
+            subpath = os.path.relpath(orig_path, self.repo_dir)
             new_path = os.path.join(self.destination_directory, subpath)
 
             if not(os.path.exists(new_path)):
@@ -338,6 +351,18 @@ class TestImporter(object):
         for prefixed_property in sorted(total_prefixed_properties, key=lambda p: total_prefixed_properties[p]):
             _log.info('  %s: %s', prefixed_property, total_prefixed_properties[prefixed_property])
 
+    def setup_destination_directory(self):
+        """ Creates a destination directory that mirrors that of the source directory """
+
+        new_subpath = self.source_directory[len(self.repo_dir):]
+
+        destination_directory = os.path.join(self.destination_directory, new_subpath)
+
+        if not os.path.exists(destination_directory):
+            os.makedirs(destination_directory)
+
+        _log.info('Tests will be imported into: %s', destination_directory)
+
     def remove_deleted_files(self, import_directory, new_file_list):
         """ Reads an import log in |import_directory|, compares it to the |new_file_list|, and removes files not in the new list."""
 
@@ -369,15 +394,13 @@ class TestImporter(object):
 
         import_log = open(os.path.join(import_directory, 'w3c-import.log'), 'w')
         import_log.write('The tests in this directory were imported from the W3C repository.\n')
-        import_log.write('Do NOT modify these tests directly in Webkit.\n')
-        import_log.write('Instead, push changes to the W3C CSS repo:\n')
-        import_log.write('\thttp://hg.csswg.org/test\n')
-        import_log.write('Or create a pull request on the W3C CSS github:\n')
-        import_log.write('\thttps://github.com/w3c/csswg-test\n\n')
+        import_log.write('Do NOT modify these tests directly in Webkit. Instead, push changes to the W3C CSS repo:\n\n')
+        import_log.write('http://hg.csswg.org/test\n\n')
         import_log.write('Then run the Tools/Scripts/import-w3c-tests in Webkit to reimport\n\n')
         import_log.write('Do NOT modify or remove this file\n\n')
         import_log.write('------------------------------------------------------------------------\n')
         import_log.write('Last Import: ' + now.strftime('%Y-%m-%d %H:%M') + '\n')
+        import_log.write('W3C Mercurial changeset: ' + self.changeset + '\n')
         import_log.write('------------------------------------------------------------------------\n')
         import_log.write('Properties requiring vendor prefixes:\n')
         if prop_list:

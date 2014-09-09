@@ -2794,9 +2794,9 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy
 {
     if ([[[NSUserDefaults standardUserDefaults] objectForKey:@"WebKit2UseRemoteLayerTreeDrawingArea"] boolValue])
-        return std::make_unique<RemoteLayerTreeDrawingAreaProxy>(*_data->_page);
+        return std::make_unique<RemoteLayerTreeDrawingAreaProxy>(_data->_page.get());
 
-    return std::make_unique<TiledCoreAnimationDrawingAreaProxy>(*_data->_page);
+    return std::make_unique<TiledCoreAnimationDrawingAreaProxy>(_data->_page.get());
 }
 
 - (BOOL)_isFocused
@@ -3598,30 +3598,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 #endif
 
-- (void)_didFirstVisuallyNonEmptyLayoutForMainFrame
-{
-    if (_data->_gestureController)
-        _data->_gestureController->didFirstVisuallyNonEmptyLayoutForMainFrame();
-}
-
-- (void)_didFinishLoadForMainFrame
-{
-    if (_data->_gestureController)
-        _data->_gestureController->didFinishLoadForMainFrame();
-}
-
-- (void)_didSameDocumentNavigationForMainFrame:(SameDocumentNavigationType)type
-{
-    if (_data->_gestureController)
-        _data->_gestureController->didSameDocumentNavigationForMainFrame(type);
-}
-
-- (void)_removeNavigationGestureSnapshot
-{
-    if (_data->_gestureController)
-        _data->_gestureController->removeSwipeSnapshot();
-}
-
 @end
 
 @implementation WKView (Private)
@@ -4078,15 +4054,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_gestureController->setShouldIgnorePinnedState(wasIgnoringPinnedState);
 
     return handledEvent;
-}
-
-- (void)_setDidMoveSwipeSnapshotCallback:(void(^)(CGRect))callback
-{
-    if (!_data->_allowsBackForwardNavigationGestures)
-        return;
-
-    [self _ensureGestureController];
-    _data->_gestureController->setDidMoveSwipeSnapshotCallback(callback);
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

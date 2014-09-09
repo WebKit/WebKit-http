@@ -47,6 +47,7 @@
 #include "JSBoundFunction.h"
 #include "JSNameScope.h"
 #include "JSNotAnObject.h"
+#include "JSPropertyNameIterator.h"
 #include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
@@ -479,7 +480,8 @@ static bool unwindCallFrame(StackVisitor& visitor)
         }
     }
 
-    return !visitor->callerIsVMEntryFrame();
+    CallFrame* callerFrame = callFrame->callerFrame();
+    return !callerFrame->isVMEntrySentinel();
 }
 
 static StackFrameCodeType getStackFrameCodeType(StackVisitor& visitor)
@@ -596,6 +598,7 @@ private:
 void Interpreter::getStackTrace(Vector<StackFrame>& results, size_t maxStackSize)
 {
     VM& vm = m_vm;
+    ASSERT(!vm.topCallFrame->isVMEntrySentinel());
     CallFrame* callFrame = vm.topCallFrame;
     if (!callFrame)
         return;
@@ -645,9 +648,8 @@ private:
 
 class UnwindFunctor {
 public:
-    UnwindFunctor(VMEntryFrame*& vmEntryFrame, CallFrame*& callFrame, bool isTermination, CodeBlock*& codeBlock, HandlerInfo*& handler)
-        : m_vmEntryFrame(vmEntryFrame)
-        , m_callFrame(callFrame)
+    UnwindFunctor(CallFrame*& callFrame, bool isTermination, CodeBlock*& codeBlock, HandlerInfo*& handler)
+        : m_callFrame(callFrame)
         , m_isTermination(isTermination)
         , m_codeBlock(codeBlock)
         , m_handler(handler)
@@ -657,7 +659,6 @@ public:
     StackVisitor::Status operator()(StackVisitor& visitor)
     {
         VM& vm = m_callFrame->vm();
-        m_vmEntryFrame = visitor->vmEntryFrame();
         m_callFrame = visitor->callFrame();
         m_codeBlock = visitor->codeBlock();
         unsigned bytecodeOffset = visitor->bytecodeOffset();
@@ -675,15 +676,23 @@ public:
     }
 
 private:
-    VMEntryFrame*& m_vmEntryFrame;
     CallFrame*& m_callFrame;
     bool m_isTermination;
     CodeBlock*& m_codeBlock;
     HandlerInfo*& m_handler;
 };
 
-NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallFrame*& callFrame, JSValue& exceptionValue)
+NEVER_INLINE HandlerInfo* Interpreter::unwind(CallFrame*& callFrame, JSValue& exceptionValue)
 {
+    if (callFrame->isVMEntrySentinel()) {
+        // This happens when we throw stack overflow in a function that is called
+        // directly from callToJavaScript. Stack overflow throws the exception in the
+        // context of the caller. In that case the caller is the sentinel frame. The
+        // right thing to do is to pretend that the exception is uncaught so that we
+        // go to the uncaught exception handler, which returns through callToJavaScript.
+        return 0;
+    }
+    
     CodeBlock* codeBlock = callFrame->codeBlock();
     ASSERT(codeBlock);
     bool isTermination = false;
@@ -727,7 +736,7 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallF
     HandlerInfo* handler = 0;
     VM& vm = callFrame->vm();
     ASSERT(callFrame == vm.topCallFrame);
-    UnwindFunctor functor(vmEntryFrame, callFrame, isTermination, codeBlock, handler);
+    UnwindFunctor functor(callFrame, isTermination, codeBlock, handler);
     callFrame->iterate(functor);
     if (!handler)
         return 0;
@@ -988,7 +997,7 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
         if (isJSCall)
             result = callData.js.functionExecutable->generatedJITCodeForCall()->execute(&vm, &protoCallFrame);
         else {
-            result = JSValue::decode(vmEntryToNative(reinterpret_cast<void*>(callData.native.function), &vm, &protoCallFrame));
+            result = JSValue::decode(callToNativeFunction(reinterpret_cast<void*>(callData.native.function), &vm, &protoCallFrame));
             if (callFrame->hadException())
                 result = jsNull();
         }
@@ -1056,7 +1065,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
         if (isJSConstruct)
             result = constructData.js.functionExecutable->generatedJITCodeForConstruct()->execute(&vm, &protoCallFrame);
         else {
-            result = JSValue::decode(vmEntryToNative(reinterpret_cast<void*>(constructData.native.function), &vm, &protoCallFrame));
+            result = JSValue::decode(callToNativeFunction(reinterpret_cast<void*>(constructData.native.function), &vm, &protoCallFrame));
 
             if (!callFrame->hadException())
                 RELEASE_ASSERT(result.isObject());
@@ -1172,7 +1181,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     if (numVariables || numFunctions) {
         BatchedTransitionOptimizer optimizer(vm, variableObject);
         if (variableObject->next())
-            variableObject->globalObject()->varInjectionWatchpoint()->fireAll("Executed eval, fired VarInjection watchpoint");
+            variableObject->globalObject()->varInjectionWatchpoint()->fireAll();
 
         for (unsigned i = 0; i < numVariables; ++i) {
             const Identifier& ident = codeBlock->variable(i);

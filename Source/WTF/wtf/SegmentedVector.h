@@ -157,10 +157,9 @@ namespace WTF {
             segmentFor(m_size - 1)->uncheckedAppend(std::forward<U>(value));
         }
 
-        template<typename... Args>
-        T& alloc(Args... args)
+        T& alloc()
         {
-            append<T>(T(args...));
+            append<T>(T());
             return last();
         }
 

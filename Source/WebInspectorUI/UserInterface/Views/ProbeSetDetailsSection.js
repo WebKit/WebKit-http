@@ -91,11 +91,11 @@ WebInspector.ProbeSetDetailsSection.prototype = {
     {
         var breakpoint = this._probeSet.breakpoint;
         var titleElement = null;
-        if (breakpoint.sourceCodeLocation.sourceCode)
+        if (breakpoint.resolved)
             titleElement = WebInspector.createSourceCodeLocationLink(breakpoint.sourceCodeLocation);
         else {
             // Fallback for when we can't create a live source link.
-            console.assert(!breakpoint.resolved);
+            console.assert(!breakpoint.sourceCodeLocation.sourceCode);
 
             var location = breakpoint.sourceCodeLocation;
             titleElement = WebInspector.linkifyLocation(breakpoint.url, location.displayLineNumber, location.displayColumnNumber);

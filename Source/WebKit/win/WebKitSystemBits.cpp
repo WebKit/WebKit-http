@@ -29,7 +29,9 @@
 #include "config.h"
 #include "WebKitSystemBits.h"
 
+#include <CoreFoundation/CoreFoundation.h>
 #include <windows.h>
+#include <wtf/text/WTFString.h>
 
 unsigned long long WebMemorySize()
 {
@@ -39,8 +41,9 @@ unsigned long long WebMemorySize()
     return statex.ullTotalPhys;
 }
 
-unsigned long long WebVolumeFreeSize(const String& path)
+unsigned long long WebVolumeFreeSize(CFStringRef cfstringPath)
 {
+    WTF::String path(cfstringPath);
     ULARGE_INTEGER freeBytesToCaller;
     BOOL result = GetDiskFreeSpaceExW((LPCWSTR)path.charactersWithNullTermination().data(), &freeBytesToCaller, 0, 0);
     if (!result)

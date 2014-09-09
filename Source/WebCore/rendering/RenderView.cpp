@@ -110,7 +110,9 @@ RenderView::RenderView(Document& document, PassRef<RenderStyle> style)
     , m_renderQuoteHead(0)
     , m_renderCounterCount(0)
     , m_selectionWasCaret(false)
+#if ENABLE(CSS_FILTERS)
     , m_hasSoftwareFilters(false)
+#endif
 #if ENABLE(SERVICE_CONTROLS)
     , m_selectionRectGatherer(*this)
 #endif
@@ -521,9 +523,6 @@ static inline bool rendererObscuresBackground(RenderElement* rootObject)
     if (rootObject->rendererForRootBackground().style().backgroundClip() == TextFillBox)
         return false;
 
-    if (style.hasBorderRadius())
-        return false;
-
     return true;
 }
 
@@ -633,7 +632,7 @@ void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
         return;
     }
 
-    frameView().addTrackedRepaintRect(snapRectToDevicePixels(repaintRect, document().deviceScaleFactor()));
+    frameView().addTrackedRepaintRect(pixelSnappedForPainting(repaintRect, document().deviceScaleFactor()));
 
     // FIXME: convert all repaint rect dependencies to FloatRect.
     IntRect enclosingRect = enclosingIntRect(repaintRect);
@@ -705,20 +704,12 @@ void RenderView::computeRectForRepaint(const RenderLayerModelObject* repaintCont
         
     // Apply our transform if we have one (because of full page zooming).
     if (!repaintContainer && layer() && layer()->transform())
-        rect = LayoutRect(layer()->transform()->mapRect(snapRectToDevicePixels(rect, document().deviceScaleFactor())));
-}
-
-bool RenderView::isScrollableOrRubberbandableBox() const
-{
-    // The main frame might be allowed to rubber-band even if there is no content to scroll to. This is unique to
-    // the main frame; subframes and overflow areas have to have content that can be scrolled to in order to rubber-band.
-    FrameView::Scrollability defineScrollable = frame().ownerElement() ? FrameView::Scrollability::Scrollable : FrameView::Scrollability::ScrollableOrRubberbandable;
-    return frameView().isScrollable(defineScrollable);
+        rect = LayoutRect(layer()->transform()->mapRect(pixelSnappedForPainting(rect, document().deviceScaleFactor())));
 }
 
 void RenderView::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accumulatedOffset) const
 {
-    rects.append(snappedIntRect(accumulatedOffset, layer()->size()));
+    rects.append(pixelSnappedIntRect(accumulatedOffset, layer()->size()));
 }
 
 void RenderView::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
@@ -748,7 +739,7 @@ IntRect RenderView::selectionBounds(bool clipToVisibleContent) const
         }
     }
 
-    return snappedIntRect(selRect);
+    return pixelSnappedIntRect(selRect);
 }
 
 LayoutRect RenderView::subtreeSelectionBounds(const SelectionSubtreeRoot& root, bool clipToVisibleContent) const
@@ -840,6 +831,12 @@ void RenderView::setMaximalOutlineSize(int o)
 
 void RenderView::setSelection(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode blockRepaintMode)
 {
+#if ENABLE(SERVICE_CONTROLS)
+    // Clear the current rects and create a notifier for the new rects we are about to gather.
+    // The Notifier updates the Editor when it goes out of scope and is destroyed.
+    std::unique_ptr<SelectionRectGatherer::Notifier> rectNotifier = m_selectionRectGatherer.clearAndCreateNotifier();
+#endif // ENABLE(SERVICE_CONTROLS)
+
     // Make sure both our start and end objects are defined.
     // Check www.msnbc.com and try clicking around to find the case where this happened.
     if ((start && !end) || (end && !start))
@@ -853,11 +850,6 @@ void RenderView::setSelection(RenderObject* start, int startPos, RenderObject* e
         return;
     }
 
-#if ENABLE(SERVICE_CONTROLS)
-    // Clear the current rects and create a notifier for the new rects we are about to gather.
-    // The Notifier updates the Editor when it goes out of scope and is destroyed.
-    std::unique_ptr<SelectionRectGatherer::Notifier> rectNotifier = m_selectionRectGatherer.clearAndCreateNotifier();
-#endif // ENABLE(SERVICE_CONTROLS)
     // Set global positions for new selection.
     m_selectionUnsplitStart = start;
     m_selectionUnsplitStartPos = startPos;
@@ -1022,8 +1014,6 @@ void RenderView::applySubtreeSelection(SelectionSubtreeRoot& root, RenderObject*
 #if ENABLE(SERVICE_CONTROLS)
             for (auto& rect : selectionInfo->collectedSelectionRects())
                 m_selectionRectGatherer.addRect(selectionInfo->repaintContainer(), rect);
-            if (!o->isTextOrLineBreak())
-                m_selectionRectGatherer.setTextOnly(false);
 #endif
 
             newSelectedObjects.set(o, WTF::move(selectionInfo));
@@ -1128,7 +1118,7 @@ IntRect RenderView::unscaledDocumentRect() const
 {
     LayoutRect overflowRect(layoutOverflowRect());
     flipForWritingMode(overflowRect);
-    return snappedIntRect(overflowRect);
+    return pixelSnappedIntRect(overflowRect);
 }
 
 bool RenderView::rootBackgroundIsEntirelyFixed() const
@@ -1367,7 +1357,7 @@ void RenderView::removeRendererWithPausedImageAnimations(RenderElement& renderer
 
 void RenderView::resumePausedImageAnimationsIfNeeded()
 {
-    auto visibleRect = frameView().windowToContents(frameView().windowClipRect());
+    auto visibleRect = frameView().visibleContentRect();
     Vector<RenderElement*, 10> toRemove;
     for (auto* renderer : m_renderersWithPausedImageAnimation) {
         if (renderer->repaintForPausedImageAnimationsIfNeeded(visibleRect))

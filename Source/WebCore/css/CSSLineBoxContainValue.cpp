@@ -67,11 +67,6 @@ String CSSLineBoxContainValue::customCSSText() const
             text.append(' ');
         text.appendLiteral("inline-box");
     }
-    if (m_value & LineBoxContainInitialLetter) {
-        if (!text.isEmpty())
-            text.append(' ');
-        text.appendLiteral("initial-letter");
-    }
 
     return text.toString();
 }

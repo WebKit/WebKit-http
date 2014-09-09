@@ -99,7 +99,7 @@ public:
     }
 
     static SVGLength fromCSSPrimitiveValue(CSSPrimitiveValue*);
-    static PassRef<CSSPrimitiveValue> toCSSPrimitiveValue(const SVGLength&);
+    static PassRefPtr<CSSPrimitiveValue> toCSSPrimitiveValue(const SVGLength&);
     static SVGLengthMode lengthModeForAnimatedLengthAttribute(const QualifiedName&);
 
     SVGLength blend(const SVGLength& from, float progress) const

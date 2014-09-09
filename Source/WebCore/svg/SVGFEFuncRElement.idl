@@ -23,6 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-interface SVGFEFuncRElement : SVGComponentTransferFunctionElement {
+[
+    Conditional=FILTERS
+] interface SVGFEFuncRElement : SVGComponentTransferFunctionElement {
 };
 

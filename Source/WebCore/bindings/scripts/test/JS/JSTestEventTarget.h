@@ -31,7 +31,7 @@ public:
     typedef JSDOMWrapper Base;
     static JSTestEventTarget* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, PassRefPtr<TestEventTarget> impl)
     {
-        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll("Allocated masquerading object");
+        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll();
         JSTestEventTarget* ptr = new (NotNull, JSC::allocateCell<JSTestEventTarget>(globalObject->vm().heap)) JSTestEventTarget(structure, globalObject, impl);
         ptr->finishCreation(globalObject->vm());
         return ptr;
@@ -100,8 +100,8 @@ inline void* wrapperContext(DOMWrapperWorld& world, TestEventTarget*)
     return &world;
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestEventTarget*);
-WEBCORE_EXPORT TestEventTarget* toTestEventTarget(JSC::JSValue);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestEventTarget*);
+TestEventTarget* toTestEventTarget(JSC::JSValue);
 
 
 } // namespace WebCore

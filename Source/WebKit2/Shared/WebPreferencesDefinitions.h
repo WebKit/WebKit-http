@@ -26,6 +26,8 @@
 #ifndef WebPreferencesDefinitions_h
 #define WebPreferencesDefinitions_h
 
+// macro(KeyUpper, KeyLower, TypeNameUpper, TypeName, DefaultValue) 
+
 #if PLATFORM(GTK)
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED true
 #else
@@ -78,15 +80,13 @@
 #define DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED true
 #endif
 
-#if PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS) && PLATFORM(IOS_SIMULATOR)
 #define DEFAULT_ACCELERATED_DRAWING_ENABLED false
 #define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING false
 #else
 #define DEFAULT_ACCELERATED_DRAWING_ENABLED true
 #define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING true
 #endif
-
-// macro(KeyUpper, KeyLower, TypeNameUpper, TypeName, DefaultValue)
 
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
     macro(JavaScriptEnabled, javaScriptEnabled, Bool, bool, true) \
@@ -204,9 +204,9 @@
     macro(EnableInheritURIQueryComponent, enableInheritURIQueryComponent, Bool, bool, false) \
     macro(ServiceControlsEnabled, serviceControlsEnabled, Bool, bool, false) \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, false) \
-    macro(LongMousePressEnabled, longMousePressEnabled, Bool, bool, false) \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
+    macro(PDFScaleFactor, pdfScaleFactor, Double, double, 0) \
     macro(IncrementalRenderingSuppressionTimeout, incrementalRenderingSuppressionTimeout, Double, double, 5) \
     macro(MinimumFontSize, minimumFontSize, Double, double, 0) \
     macro(MinimumLogicalFontSize, minimumLogicalFontSize, Double, double, 9) \
@@ -223,6 +223,7 @@
     macro(LayoutFallbackWidth, layoutFallbackWidth, UInt32, uint32_t, 980) \
     macro(DeviceWidth, deviceWidth, UInt32, uint32_t, 0) \
     macro(DeviceHeight, deviceHeight, UInt32, uint32_t, 0) \
+    macro(PDFDisplayMode, pdfDisplayMode, UInt32, uint32_t, 1) \
     macro(EditableLinkBehavior, editableLinkBehavior, UInt32, uint32_t, WebCore::EditableLinkNeverLive) \
     macro(InspectorAttachedHeight, inspectorAttachedHeight, UInt32, uint32_t, 300) \
     macro(InspectorAttachedWidth, inspectorAttachedWidth, UInt32, uint32_t, 750) \
@@ -274,7 +275,7 @@
 
 #define FOR_EACH_WEBKIT_STRING_PREFERENCE(macro) \
     FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
-    macro(DefaultTextEncodingName, defaultTextEncodingName, String, String, defaultTextEncodingNameForSystemLanguage()) \
+    macro(DefaultTextEncodingName, defaultTextEncodingName, String, String, "ISO-8859-1") \
     macro(FTPDirectoryTemplatePath, ftpDirectoryTemplatePath, String, String, "") \
     \
 

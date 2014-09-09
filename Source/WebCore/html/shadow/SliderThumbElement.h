@@ -52,7 +52,7 @@ public:
     HTMLInputElement* hostInput() const;
     void setPositionFromPoint(const LayoutPoint&);
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     void handleTouchEvent(TouchEvent*);
 
     void disabledAttributeChanged();
@@ -64,6 +64,7 @@ private:
     virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren() override;
     virtual bool isDisabledFormControl() const override;
+    virtual bool matchesReadOnlyPseudoClass() const override;
     virtual bool matchesReadWritePseudoClass() const override;
     virtual Element* focusDelegate() override;
 #if !PLATFORM(IOS)
@@ -72,7 +73,7 @@ private:
     virtual bool willRespondToMouseClickEvents() override;
 #endif
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     virtual void didAttachRenderers() override;
 #endif
     virtual void willDetachRenderers() override;
@@ -82,7 +83,7 @@ private:
     void startDragging();
     void stopDragging();
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     unsigned exclusiveTouchIdentifier() const;
     void setExclusiveTouchIdentifier(unsigned);
     void clearExclusiveTouchIdentifier();
@@ -98,7 +99,7 @@ private:
 
     bool m_inDragMode;
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
     // FIXME: Currently it is safe to use 0, but this may need to change
     // if touch identifers change in the future and can be 0.
     static const unsigned NoIdentifier = 0;

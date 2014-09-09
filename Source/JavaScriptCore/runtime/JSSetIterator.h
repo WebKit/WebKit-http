@@ -68,11 +68,6 @@ public:
         return true;
     }
 
-    void finish()
-    {
-        m_iterator.finish();
-    }
-
 private:
     JSSetIterator(VM& vm, Structure* structure, JSSet* iteratedObject, SetIterationKind kind)
         : Base(vm, structure)

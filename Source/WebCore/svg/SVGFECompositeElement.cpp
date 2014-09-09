@@ -19,6 +19,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFECompositeElement.h"
 
 #include "Attribute.h"
@@ -187,3 +189,5 @@ PassRefPtr<FilterEffect> SVGFECompositeElement::build(SVGFilterBuilder* filterBu
 }
 
 }
+
+#endif

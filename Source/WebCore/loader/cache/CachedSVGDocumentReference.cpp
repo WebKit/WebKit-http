@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CachedSVGDocumentReference.h"
 
+#if ENABLE(CSS_FILTERS)
 #include "CachedResourceHandle.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
@@ -63,3 +64,5 @@ void CachedSVGDocumentReference::load(CachedResourceLoader* loader)
 }
 
 }
+
+#endif

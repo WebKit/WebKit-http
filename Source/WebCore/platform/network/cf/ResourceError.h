@@ -56,10 +56,10 @@ public:
     {
     }
 
-    WEBCORE_EXPORT ResourceError(CFErrorRef error);
+    ResourceError(CFErrorRef error);
 
-    WEBCORE_EXPORT CFErrorRef cfError() const;
-    WEBCORE_EXPORT operator CFErrorRef() const;
+    CFErrorRef cfError() const;
+    operator CFErrorRef() const;
 
 #if USE(CFNETWORK)
 #if PLATFORM(WIN)
@@ -73,9 +73,9 @@ public:
 #endif
 
 #if PLATFORM(COCOA)
-    WEBCORE_EXPORT ResourceError(NSError *);
-    WEBCORE_EXPORT NSError *nsError() const;
-    WEBCORE_EXPORT operator NSError *() const;
+    ResourceError(NSError *);
+    NSError *nsError() const;
+    operator NSError *() const;
 #endif
 
     static bool platformCompare(const ResourceError& a, const ResourceError& b);

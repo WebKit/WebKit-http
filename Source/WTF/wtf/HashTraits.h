@@ -66,7 +66,8 @@ template<typename T> struct GenericHashTraits : GenericHashTraitsBase<std::is_in
 
     // Type for return value of functions that do not transfer ownership, such as get.
     typedef T PeekType;
-    template<typename U> static U&& peek(U&& value) { return std::forward<U>(value); }
+    static PeekType peek(const T& value) { return value; }
+    static T& peek(T& value) { return value; } // Overloaded to avoid copying of non-temporary values.
 };
 
 template<typename T> struct HashTraits : GenericHashTraits<T> { };

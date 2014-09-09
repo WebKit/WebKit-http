@@ -41,7 +41,6 @@ public:
     virtual ~MediaDocument();
 
     void mediaElementSawUnsupportedTracks();
-    String outgoingReferrer() const { return m_outgoingReferrer; }
 
 private:
     MediaDocument(Frame*, const URL&);
@@ -53,7 +52,6 @@ private:
     void replaceMediaElementTimerFired(Timer<MediaDocument>&);
 
     Timer<MediaDocument> m_replaceMediaElementTimer;
-    String m_outgoingReferrer;
 };
 
 inline bool isMediaDocument(const Document& document) { return document.isMediaDocument(); }

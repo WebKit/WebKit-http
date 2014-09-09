@@ -37,7 +37,7 @@
 #include "MainFrame.h"
 #include "NP_jsobject.h"
 #include "Page.h"
-#include "PageConsoleClient.h"
+#include "PageConsole.h"
 #include "PageGroup.h"
 #include "PluginView.h"
 #include "ScriptSourceCode.h"
@@ -307,7 +307,6 @@ void ScriptController::attachDebugger(JSDOMWindowShell* shell, JSC::Debugger* de
         return;
 
     JSDOMWindow* globalObject = shell->window();
-    JSLockHolder lock(globalObject->vm());
     if (debugger)
         debugger->attach(globalObject);
     else if (JSC::Debugger* currentDebugger = globalObject->debugger())

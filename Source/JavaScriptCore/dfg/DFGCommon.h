@@ -63,13 +63,6 @@ enum RefNodeMode {
     DontRefNode
 };
 
-enum SwitchKind {
-    SwitchImm,
-    SwitchChar,
-    SwitchString,
-    SwitchCell
-};
-
 inline bool verboseCompilationEnabled(CompilationMode mode = DFGMode)
 {
     return Options::verboseCompilation() || Options::dumpGraphAtEachPhase() || (isFTL(mode) && Options::verboseFTLCompilation());
@@ -153,9 +146,7 @@ enum PredictionPass {
     FixupPass
 };
 
-enum StructureRegistrationState { HaveNotStartedRegistering, AllStructuresAreRegistered };
-
-enum StructureRegistrationResult { StructureRegisteredNormally, StructureRegisteredAndWatched };
+enum StructureWatchpointState { HaveNotStartedWatching, WatchingAllWatchableStructures };
 
 enum OptimizationFixpointState { BeforeFixpoint, FixpointNotConverged, FixpointConverged };
 

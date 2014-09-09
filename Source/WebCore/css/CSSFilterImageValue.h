@@ -27,6 +27,8 @@
 #ifndef CSSFilterImageValue_h
 #define CSSFilterImageValue_h
 
+#if ENABLE(CSS_FILTERS)
+
 #include "CSSImageGeneratorValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CachedImageClient.h"
@@ -120,5 +122,7 @@ private:
 CSS_VALUE_TYPE_CASTS(CSSFilterImageValue, isFilterImageValue())
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)
 
 #endif // CSSFilterImageValue_h

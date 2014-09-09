@@ -65,11 +65,11 @@ public:
     static void setIsCurrentlyDrawingIntoLayer(bool);
 
 #if ENABLE(RUBBER_BANDING)
-    WEBCORE_EXPORT static void setUpOverhangAreaBackground(CALayer *, const Color& customBackgroundColor = Color());
-    WEBCORE_EXPORT static void removeOverhangAreaBackground(CALayer *);
+    static void setUpOverhangAreaBackground(CALayer *, const Color& customBackgroundColor = Color());
+    static void removeOverhangAreaBackground(CALayer *);
 
-    WEBCORE_EXPORT static void setUpOverhangAreaShadow(CALayer *);
-    WEBCORE_EXPORT static void removeOverhangAreaShadow(CALayer *);
+    static void setUpOverhangAreaShadow(CALayer *);
+    static void removeOverhangAreaShadow(CALayer *);
 #endif
 
 protected:

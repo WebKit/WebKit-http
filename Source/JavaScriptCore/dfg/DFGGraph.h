@@ -125,7 +125,7 @@ public:
             return;
         
         // Check if there is any replacement.
-        Node* replacement = child->replacement;
+        Node* replacement = child->misc.replacement;
         if (!replacement)
             return;
         
@@ -133,7 +133,7 @@ public:
         
         // There is definitely a replacement. Assert that the replacement does not
         // have a replacement.
-        ASSERT(!child->replacement);
+        ASSERT(!child->misc.replacement);
     }
     
     template<typename... Params>
@@ -154,8 +154,7 @@ public:
     void convertToConstant(Node* node, JSValue value);
     void convertToStrongConstant(Node* node, JSValue value);
     
-    StructureRegistrationResult registerStructure(Structure* structure);
-    void assertIsRegistered(Structure* structure);
+    void assertIsWatched(Structure* structure);
     
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
     void dump(PrintStream& = WTF::dataFile(), DumpContext* = 0);
@@ -676,8 +675,7 @@ public:
     void clearReplacements();
     void initializeNodeOwners();
     
-    BlockList blocksInPreOrder();
-    BlockList blocksInPostOrder();
+    void getBlocksInDepthFirstOrder(Vector<BasicBlock*>& result);
     
     Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
     
@@ -692,11 +690,6 @@ public:
     unsigned stackPointerOffset();
     unsigned requiredRegisterCountForExit();
     unsigned requiredRegisterCountForExecutionAndExit();
-    
-    JSValue tryGetConstantProperty(JSValue base, const StructureSet&, PropertyOffset);
-    JSValue tryGetConstantProperty(JSValue base, Structure*, PropertyOffset);
-    JSValue tryGetConstantProperty(JSValue base, const StructureAbstractValue&, PropertyOffset);
-    JSValue tryGetConstantProperty(const AbstractValue&, PropertyOffset);
     
     JSActivation* tryGetActivation(Node*);
     WriteBarrierBase<Unknown>* tryGetRegisters(Node*);
@@ -758,13 +751,14 @@ public:
 #endif
     
     OptimizationFixpointState m_fixpointState;
-    StructureRegistrationState m_structureRegistrationState;
+    StructureWatchpointState m_structureWatchpointState;
     GraphForm m_form;
     UnificationState m_unificationState;
     RefCountState m_refCountState;
 private:
     
     void handleSuccessor(Vector<BasicBlock*, 16>& worklist, BasicBlock*, BasicBlock* successor);
+    void addForDepthFirstSort(Vector<BasicBlock*>& result, Vector<BasicBlock*, 16>& worklist, HashSet<BasicBlock*>& seen, BasicBlock*);
     
     AddSpeculationMode addImmediateShouldSpeculateInt32(Node* add, bool variableShouldSpeculateInt32, Node* immediate, RareCaseProfilingSource source)
     {

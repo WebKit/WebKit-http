@@ -140,7 +140,7 @@ static float frameScaleFactor(const UIEvent* event)
 void MouseRelatedEvent::computePageLocation()
 {
     float scaleFactor = pageZoomFactor(this) * frameScaleFactor(this);
-    setAbsoluteLocation(LayoutPoint(pageX() * scaleFactor, pageY() * scaleFactor));
+    setAbsoluteLocation(roundedLayoutPoint(FloatPoint(pageX() * scaleFactor, pageY() * scaleFactor)));
 }
 
 void MouseRelatedEvent::receivedTarget()
@@ -163,7 +163,8 @@ void MouseRelatedEvent::computeRelativePosition()
 
     // Adjust offsetLocation to be relative to the target's position.
     if (RenderObject* r = targetNode->renderer()) {
-        m_offsetLocation = LayoutPoint(r->absoluteToLocal(absoluteLocation(), UseTransforms));
+        FloatPoint localPos = r->absoluteToLocal(absoluteLocation(), UseTransforms);
+        m_offsetLocation = roundedLayoutPoint(localPos);
         float scaleFactor = 1 / (pageZoomFactor(this) * frameScaleFactor(this));
         if (scaleFactor != 1.0f)
             m_offsetLocation.scale(scaleFactor, scaleFactor);

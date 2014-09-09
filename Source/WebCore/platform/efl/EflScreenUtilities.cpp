@@ -19,12 +19,6 @@
 #include "config.h"
 #include "EflScreenUtilities.h"
 
-#include "Image.h"
-#include "IntPoint.h"
-#include "IntSize.h"
-#include "RefPtrCairo.h"
-#include <cairo.h>
-
 #ifdef HAVE_ECORE_X
 #include <Ecore_Evas.h>
 #include <Ecore_X.h>
@@ -107,10 +101,14 @@ int getEcoreCursor(const String& cursorString)
 
     return cursorStringMap.cursor(cursorString);
 }
+#endif
 
-void applyCursorFromEcoreX(Ecore_X_Window window, const char* cursorString)
+void applyFallbackCursor(Ecore_Evas* ecoreEvas, const char* cursorString)
 {
-    ASSERT(window);
+#ifdef HAVE_ECORE_X
+    Ecore_X_Window window = getEcoreXWindow(ecoreEvas);
+    if (!window)
+        return;
 
     int shape = getEcoreCursor(cursorString);
     if (shape < ECORE_X_CURSOR_X || shape > ECORE_X_CURSOR_XTERM) {
@@ -121,17 +119,7 @@ void applyCursorFromEcoreX(Ecore_X_Window window, const char* cursorString)
 
     Ecore_X_Cursor cursor = ecore_x_cursor_shape_get(shape);
     ecore_x_window_cursor_set(window, cursor);
-}
-
-Ecore_X_Cursor createCustomCursor(Ecore_X_Window window, Image* image, const IntSize& cursorSize, const IntPoint& hotSpot)
-{
-    RefPtr<cairo_surface_t> surface = image->nativeImageForCurrentFrame();
-    if (!surface)
-        return 0;
-
-    unsigned char* buffer = cairo_image_surface_get_data(surface.get());
-
-    return ecore_x_cursor_new(window, (int*)(buffer), cursorSize.width(), cursorSize.height(), hotSpot.x(), hotSpot.y());
+#endif
 }
 
 Ecore_X_Window getEcoreXWindow(Ecore_Evas* ecoreEvas)
@@ -146,6 +134,5 @@ Ecore_X_Window getEcoreXWindow(Ecore_Evas* ecoreEvas)
 
     return 0;
 }
-#endif
 
 } // namespace WebCore

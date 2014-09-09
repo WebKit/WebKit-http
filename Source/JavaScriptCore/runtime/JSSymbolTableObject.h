@@ -36,8 +36,6 @@
 
 namespace JSC {
 
-class JSSymbolTableObject;
-
 class JSSymbolTableObject : public JSScope {
 public:
     typedef JSScope Base;
@@ -145,7 +143,7 @@ inline bool symbolTablePut(
         if (VariableWatchpointSet* set = iter->value.watchpointSet()) {
             // FIXME: It's strange that we're doing this while holding the symbol table's lock.
             // https://bugs.webkit.org/show_bug.cgi?id=134601
-            set->notifyWrite(vm, value, object, propertyName);
+            set->notifyWrite(vm, value);
         }
         reg = &object->registerAt(fastEntry.getIndex());
     }
@@ -173,7 +171,7 @@ inline bool symbolTablePutWithAttributes(
         SymbolTableEntry& entry = iter->value;
         ASSERT(!entry.isNull());
         if (VariableWatchpointSet* set = entry.watchpointSet())
-            set->notifyWrite(vm, value, object, propertyName);
+            set->notifyWrite(vm, value);
         entry.setAttributes(attributes);
         reg = &object->registerAt(entry.getIndex());
     }

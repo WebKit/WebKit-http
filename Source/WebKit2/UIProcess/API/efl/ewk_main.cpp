@@ -1,6 +1,6 @@
 /*
     Copyright (C) 2009-2010 ProFUSION embedded systems
-    Copyright (C) 2009-2011, 2014 Samsung Electronics
+    Copyright (C) 2009-2011 Samsung Electronics
     Copyright (C) 2012 Intel Corporation
 
     This library is free software; you can redistribute it and/or
@@ -22,8 +22,7 @@
 #include "config.h"
 #include "ewk_main.h"
 
-#include "EwkDebug.h"
-#include "ewk_main_private.h"
+#include "ewk_private.h"
 #include <Ecore.h>
 #include <Ecore_Evas.h>
 #include <Ecore_IMF.h>
@@ -31,101 +30,70 @@
 #include <Efreet.h>
 #include <Eina.h>
 #include <Evas.h>
+#include <glib-object.h>
+#include <glib.h>
 
 #ifdef HAVE_ECORE_X
 #include <Ecore_X.h>
 #endif
 
-namespace WebKit {
+static int _ewkInitCount = 0;
 
-enum class EFLModuleInitFailure {
-    EinaLog,
-    Evas,
-    Ecore,
-    EcoreEvas,
-    EcoreImf,
-    Efreet,
-    EcoreX,
-    Edje
-};
+/**
+ * \var     _ewk_log_dom
+ * @brief   the log domain identifier that is used with EINA's macros
+ */
+int _ewk_log_dom = -1;
 
-EwkMain::EwkMain()
-    : m_initCount(0)
-    , m_logDomainId(-1)
+int ewk_init(void)
 {
-}
+    if (_ewkInitCount)
+        return ++_ewkInitCount;
 
-EwkMain& EwkMain::shared()
-{
-    static EwkMain instance;
-    return instance;
-}
+    if (!eina_init())
+        goto error_eina;
 
-EwkMain::~EwkMain()
-{
-    if (m_initCount > 0)
-        WARN("EWebkit has not been destroyed. You should call ewk_shutdown().");
-}
-
-int EwkMain::initialize()
-{
-    if (m_initCount)
-        return ++m_initCount;
-
-    if (!eina_init()) {
-        EINA_LOG_CRIT("could not init eina.");
-        return 0;
-    }
-
-    m_logDomainId = eina_log_domain_register("ewebkit2", EINA_COLOR_ORANGE);
-    if (m_logDomainId < 0) {
+    _ewk_log_dom = eina_log_domain_register("ewebkit2", EINA_COLOR_ORANGE);
+    if (_ewk_log_dom < 0) {
         EINA_LOG_CRIT("could not register log domain 'ewebkit2'");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::EinaLog);
-        return 0;
+        goto error_log_domain;
     }
 
     if (!evas_init()) {
         CRITICAL("could not init evas.");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::Evas);
-        return 0;
+        goto error_evas;
     }
 
     if (!ecore_init()) {
         CRITICAL("could not init ecore.");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::Ecore);
-        return 0;
+        goto error_ecore;
     }
 
     if (!ecore_evas_init()) {
         CRITICAL("could not init ecore_evas.");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::EcoreEvas);
-        return 0;
+        goto error_ecore_evas;
     }
 
     if (!ecore_imf_init()) {
         CRITICAL("could not init ecore_imf.");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::EcoreImf);
-        return 0;
+        goto error_ecore_imf;
     }
 
     if (!efreet_init()) {
         CRITICAL("could not init efreet.");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::Efreet);
-        return 0;
+        goto error_efreet;
     }
 
 #ifdef HAVE_ECORE_X
     if (!ecore_x_init(0)) {
         CRITICAL("could not init ecore_x.");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::EcoreX);
-        return 0;
+        goto error_ecore_x;
     }
 #endif
 
     if (!edje_init()) {
         CRITICAL("Could not init edje.");
-        shutdownInitializedEFLModules(EFLModuleInitFailure::Edje);
-        return 0;
+        goto error_edje;
     }
 
     if (!ecore_main_loop_glib_integrate()) {
@@ -133,13 +101,36 @@ int EwkMain::initialize()
             "work (ie: Adobe Flash)");
     }
 
-    return ++m_initCount;
+    return ++_ewkInitCount;
+
+error_edje:
+#ifdef HAVE_ECORE_X
+    ecore_x_shutdown();
+error_ecore_x:
+#else
+    efreet_shutdown();
+#endif
+error_efreet:
+    ecore_imf_shutdown();
+error_ecore_imf:
+    ecore_evas_shutdown();
+error_ecore_evas:
+    ecore_shutdown();
+error_ecore:
+    evas_shutdown();
+error_evas:
+    eina_log_domain_unregister(_ewk_log_dom);
+    _ewk_log_dom = -1;
+error_log_domain:
+    eina_shutdown();
+error_eina:
+    return 0;
 }
 
-int EwkMain::finalize()
+int ewk_shutdown(void)
 {
-    if (--m_initCount)
-        return m_initCount;
+    if (--_ewkInitCount)
+        return _ewkInitCount;
 
     edje_shutdown();
 #ifdef HAVE_ECORE_X
@@ -150,48 +141,9 @@ int EwkMain::finalize()
     ecore_evas_shutdown();
     ecore_shutdown();
     evas_shutdown();
-    eina_log_domain_unregister(m_logDomainId);
-    m_logDomainId = -1;
+    eina_log_domain_unregister(_ewk_log_dom);
+    _ewk_log_dom = -1;
     eina_shutdown();
 
     return 0;
-}
-
-void EwkMain::shutdownInitializedEFLModules(EFLModuleInitFailure module)
-{
-    switch (module) {
-    case EFLModuleInitFailure::Edje:
-#ifdef HAVE_ECORE_X
-        ecore_x_shutdown();
-#endif
-    case EFLModuleInitFailure::EcoreX:
-        efreet_shutdown();
-    case EFLModuleInitFailure::Efreet:
-        ecore_imf_shutdown();
-    case EFLModuleInitFailure::EcoreImf:
-        ecore_evas_shutdown();
-    case EFLModuleInitFailure::EcoreEvas:
-        ecore_shutdown();
-    case EFLModuleInitFailure::Ecore:
-        evas_shutdown();
-    case EFLModuleInitFailure::Evas:
-        eina_log_domain_unregister(m_logDomainId);
-        m_logDomainId = -1;
-    case EFLModuleInitFailure::EinaLog:
-        eina_shutdown();
-    }
-}
-
-} // namespace WebKit
-
-using namespace WebKit;
-
-int ewk_init()
-{
-    return EwkMain::shared().initialize();
-}
-
-int ewk_shutdown()
-{
-    return EwkMain::shared().finalize();
 }

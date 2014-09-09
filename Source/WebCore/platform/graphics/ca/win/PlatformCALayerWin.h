@@ -37,8 +37,7 @@ public:
     
     ~PlatformCALayerWin();
 
-    virtual void setNeedsDisplayInRect(const FloatRect& dirtyRect) override;
-    virtual void setNeedsDisplay() override;
+    virtual void setNeedsDisplay(const FloatRect* dirtyRect = 0) override;
 
     virtual void copyContentsFromLayer(PlatformCALayer*) override;
 
@@ -56,7 +55,6 @@ public:
     virtual void removeAnimationForKey(const String& key) override;
     virtual PassRefPtr<PlatformCAAnimation> animationForKey(const String& key) override;
     virtual void animationStarted(const String& key, CFTimeInterval beginTime) override;
-    virtual void animationEnded(const String& key) override;
 
     virtual void setMask(PlatformCALayer*) override;
 
@@ -109,9 +107,11 @@ public:
     virtual float opacity() const override;
     virtual void setOpacity(float) override;
 
+#if ENABLE(CSS_FILTERS)
     virtual void setFilters(const FilterOperations&) override;
     static bool filtersCanBeComposited(const FilterOperations&) { return false; }
     virtual void copyFiltersFrom(const PlatformCALayer*) override;
+#endif
 
     virtual void setName(const String&) override;
 

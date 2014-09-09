@@ -39,8 +39,7 @@ public:
     virtual void platformCALayerLayoutSublayersOfLayer(PlatformCALayer*) { }
     virtual bool platformCALayerRespondsToLayoutChanges() const { return false; }
 
-    virtual void platformCALayerAnimationStarted(const String& /*animationKey*/, CFTimeInterval) { }
-    virtual void platformCALayerAnimationEnded(const String& /*animationKey*/) { }
+    virtual void platformCALayerAnimationStarted(CFTimeInterval) { }
     virtual GraphicsLayer::CompositingCoordinatesOrientation platformCALayerContentsOrientation() const { return GraphicsLayer::CompositingCoordinatesTopDown; }
     virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect& inClip) = 0;
     virtual bool platformCALayerShowDebugBorders() const { return false; }

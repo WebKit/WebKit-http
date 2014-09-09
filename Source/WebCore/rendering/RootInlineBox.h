@@ -187,7 +187,7 @@ public:
     Node* getLogicalEndBoxWithNode(InlineBox*&) const;
 
 #ifndef NDEBUG
-    virtual const char* boxName() const override final;
+    virtual const char* boxName() const override;
 #endif
 private:
     virtual bool isRootInlineBox() const override final { return true; }
@@ -195,7 +195,6 @@ private:
     bool includeLeadingForBox(InlineBox&) const;
     bool includeFontForBox(InlineBox&) const;
     bool includeGlyphsForBox(InlineBox&) const;
-    bool includeInitialLetterForBox(InlineBox&) const;
     bool includeMarginForBox(InlineBox&) const;
 
     LayoutUnit lineSnapAdjustment(LayoutUnit delta = 0) const;

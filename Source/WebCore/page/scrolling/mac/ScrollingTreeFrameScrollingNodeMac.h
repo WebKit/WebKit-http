@@ -39,7 +39,7 @@ namespace WebCore {
 
 class ScrollingTreeFrameScrollingNodeMac : public ScrollingTreeFrameScrollingNode, private ScrollElasticityControllerClient {
 public:
-    WEBCORE_EXPORT static PassRefPtr<ScrollingTreeFrameScrollingNode> create(ScrollingTree&, ScrollingNodeID);
+    static PassRefPtr<ScrollingTreeFrameScrollingNode> create(ScrollingTree&, ScrollingNodeID);
     virtual ~ScrollingTreeFrameScrollingNodeMac();
 
 private:
@@ -51,8 +51,8 @@ private:
     virtual void handleWheelEvent(const PlatformWheelEvent&) override;
 
     // ScrollElasticityController member functions.
-    virtual bool allowsHorizontalStretching(const PlatformWheelEvent&) override;
-    virtual bool allowsVerticalStretching(const PlatformWheelEvent&) override;
+    virtual bool allowsHorizontalStretching() override;
+    virtual bool allowsVerticalStretching() override;
     virtual IntSize stretchAmount() override;
     virtual bool pinnedInDirection(const FloatSize&) override;
     virtual bool canScrollHorizontally() override;
@@ -77,8 +77,6 @@ private:
     virtual FloatPoint maximumScrollPosition() const override;
 
     void updateMainFramePinState(const FloatPoint& scrollPosition);
-
-    bool isAlreadyPinnedInDirectionOfGesture(const PlatformWheelEvent&, ScrollEventAxis);
 
     void logExposedUnfilledArea();
 

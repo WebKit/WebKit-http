@@ -18,6 +18,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SourceAlpha.h"
 
 #include "Color.h"
@@ -75,3 +77,5 @@ TextStream& SourceAlpha::externalRepresentation(TextStream& ts, int indent) cons
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

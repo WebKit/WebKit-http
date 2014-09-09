@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2014 Apple Inc.  All rights reserved.
  * Copyright (c) 2010, Google Inc. All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -114,7 +113,7 @@ bool ScrollAnimator::handleWheelEvent(const PlatformWheelEvent& e)
         if (deltaY) {
             if (e.granularity() == ScrollByPageWheelEvent) {
                 bool negative = deltaY < 0;
-                deltaY = Scrollbar::pageStepDelta(m_scrollableArea->visibleHeight());
+                deltaY = std::max(std::max(static_cast<float>(m_scrollableArea->visibleHeight()) * Scrollbar::minFractionToStepWhenPaging(), static_cast<float>(m_scrollableArea->visibleHeight() - Scrollbar::maxOverlapBetweenPages())), 1.0f);
                 if (negative)
                     deltaY = -deltaY;
             }
@@ -124,7 +123,7 @@ bool ScrollAnimator::handleWheelEvent(const PlatformWheelEvent& e)
         if (deltaX) {
             if (e.granularity() == ScrollByPageWheelEvent) {
                 bool negative = deltaX < 0;
-                deltaX = Scrollbar::pageStepDelta(m_scrollableArea->visibleWidth());
+                deltaX = std::max(std::max(static_cast<float>(m_scrollableArea->visibleWidth()) * Scrollbar::minFractionToStepWhenPaging(), static_cast<float>(m_scrollableArea->visibleWidth() - Scrollbar::maxOverlapBetweenPages())), 1.0f);
                 if (negative)
                     deltaX = -deltaX;
             }

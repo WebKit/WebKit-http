@@ -179,8 +179,6 @@ public:
         return WTF::find(characters16(), length(), character, start);
     }
 
-    bool contains(UChar c) const { return find(c) != notFound; }
-
 #if USE(CF)
     // This function converts null strings to empty strings.
     WTF_EXPORT_STRING_API RetainPtr<CFStringRef> createCFStringWithoutCopying() const;

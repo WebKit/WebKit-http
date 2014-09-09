@@ -60,7 +60,7 @@ namespace WebCore {
         WorkerReportingProxy& workerReportingProxy() const { return m_workerReportingProxy; }
 
         // Number of active worker threads.
-        WEBCORE_EXPORT static unsigned workerThreadCount();
+        static unsigned workerThreadCount();
         static void releaseFastMallocFreeMemoryInAllThreads();
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)

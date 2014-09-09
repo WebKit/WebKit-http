@@ -32,7 +32,7 @@
 
 #if ENABLE(WEB_AUDIO)
 
-#if OS(DARWIN)
+#if OS(DARWIN) && !USE(WEBAUDIO_FFMPEG)
 
 #include "FFTFrame.h"
 
@@ -188,6 +188,6 @@ float* FFTFrame::imagData() const
 
 } // namespace WebCore
 
-#endif // #if OS(DARWIN)
+#endif // #if OS(DARWIN) && !USE(WEBAUDIO_FFMPEG)
 
 #endif // ENABLE(WEB_AUDIO)

@@ -158,21 +158,11 @@ void PageOverlay::drawRect(GraphicsContext& graphicsContext, const IntRect& dirt
     
 bool PageOverlay::mouseEvent(const WebMouseEvent& mouseEvent)
 {
-    IntPoint mousePositionInOverlayCoordinates(mouseEvent.position());
-
-    if (m_overlayType == PageOverlay::OverlayType::Document)
-        mousePositionInOverlayCoordinates = m_webPage->corePage()->mainFrame().view()->rootViewToContents(mousePositionInOverlayCoordinates);
-
     // Ignore events outside the bounds.
-    if (!bounds().contains(mousePositionInOverlayCoordinates))
+    if (!bounds().contains(mouseEvent.position()))
         return false;
 
     return m_client->mouseEvent(this, mouseEvent);
-}
-
-void PageOverlay::didScrollFrame(Frame* frame)
-{
-    m_client->didScrollFrame(this, frame);
 }
 
 WKTypeRef PageOverlay::copyAccessibilityAttributeValue(WKStringRef attribute, WKTypeRef parameter)
@@ -241,11 +231,6 @@ void PageOverlay::fadeAnimationTimerFired()
 void PageOverlay::clear()
 {
     m_webPage->pageOverlayController().clearPageOverlay(*this);
-}
-
-WebCore::GraphicsLayer* PageOverlay::layer()
-{
-    return m_webPage->pageOverlayController().layerForOverlay(*this);
 }
 
 } // namespace WebKit

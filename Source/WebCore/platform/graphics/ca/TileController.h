@@ -53,28 +53,28 @@ class TileController final : public TiledBacking {
     friend class TileCoverageMap;
     friend class TileGrid;
 public:
-    WEBCORE_EXPORT static PassOwnPtr<TileController> create(PlatformCALayer*);
+    static PassOwnPtr<TileController> create(PlatformCALayer*);
     ~TileController();
 
-    WEBCORE_EXPORT void tileCacheLayerBoundsChanged();
+    void tileCacheLayerBoundsChanged();
 
-    WEBCORE_EXPORT void setNeedsDisplay();
-    WEBCORE_EXPORT void setNeedsDisplayInRect(const IntRect&);
+    void setNeedsDisplay();
+    void setNeedsDisplayInRect(const IntRect&);
 
-    WEBCORE_EXPORT void setContentsScale(float);
-    WEBCORE_EXPORT float contentsScale() const;
+    void setContentsScale(float);
+    float contentsScale() const;
 
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
-    WEBCORE_EXPORT void setAcceleratesDrawing(bool);
+    void setAcceleratesDrawing(bool);
 
-    WEBCORE_EXPORT void setTilesOpaque(bool);
+    void setTilesOpaque(bool);
     bool tilesAreOpaque() const { return m_tilesAreOpaque; }
 
     PlatformCALayer& rootLayer() { return *m_tileCacheLayer; }
     const PlatformCALayer& rootLayer() const { return *m_tileCacheLayer; }
 
-    WEBCORE_EXPORT void setTileDebugBorderWidth(float);
-    WEBCORE_EXPORT void setTileDebugBorderColor(Color);
+    void setTileDebugBorderWidth(float);
+    void setTileDebugBorderColor(Color);
 
     virtual FloatRect visibleRect() const override { return m_visibleRect; }
 
@@ -122,7 +122,7 @@ public:
 
     const TileGrid& tileGrid() const { return *m_tileGrid; }
 
-    WEBCORE_EXPORT Vector<RefPtr<PlatformCALayer>> containerLayers();
+    Vector<RefPtr<PlatformCALayer>> containerLayers();
 
 protected:
     void scheduleTileRevalidation(double interval);

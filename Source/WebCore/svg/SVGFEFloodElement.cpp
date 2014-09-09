@@ -19,6 +19,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFEFloodElement.h"
 
 #include "Attribute.h"
@@ -71,3 +73,5 @@ PassRefPtr<FilterEffect> SVGFEFloodElement::build(SVGFilterBuilder*, Filter* fil
 }
 
 }
+
+#endif // ENABLE(FILTERS)

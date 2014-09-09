@@ -30,5 +30,5 @@ namespace WebCore {
 class TestCallback;
 }
 
-WEBCORE_EXPORT WebCore::TestCallback* core(DOMTestCallback *);
-WEBCORE_EXPORT DOMTestCallback *kit(WebCore::TestCallback*);
+WebCore::TestCallback* core(DOMTestCallback *);
+DOMTestCallback *kit(WebCore::TestCallback*);

@@ -54,6 +54,9 @@ public:
 
     static void setGlobalException(const String&);
     
+    void pluginDidBecomeVisible(unsigned pluginInstanceID);
+    void pluginDidBecomeHidden(unsigned pluginInstanceID);
+
     void audioHardwareDidBecomeActive();
     void audioHardwareDidBecomeInactive();
 
@@ -84,6 +87,7 @@ private:
     HashMap<uint64_t, std::unique_ptr<PluginControllerProxy>> m_pluginControllers;
     RefPtr<NPRemoteObjectMap> m_npRemoteObjectMap;
     HashSet<uint64_t> m_asynchronousInstanceIDsToIgnore;
+    HashSet<uint64_t> m_visiblePluginInstanceIDs;
 };
 
 } // namespace WebKit

@@ -16,8 +16,7 @@ WEBKIT_WEB_VIEW_BASE_GET_CLASS
 webkit_web_view_base_get_type
 WebKitWebViewBasePrivate
 WEBKIT_API
-WEBKIT_DEPRECATED
-WEBKIT_DEPRECATED_FOR
+WEBKIT_OBSOLETE_API
 </SECTION>
 
 <SECTION>
@@ -77,24 +76,17 @@ webkit_web_context_get_type
 <FILE>WebKitUserContent</FILE>
 <TITLE>WebKitUserContent</TITLE>
 WebKitUserStyleSheet
-WebKitUserScript
 WebKitUserContentInjectedFrames
 WebKitUserStyleLevel
-WebKitUserScriptInjectionTime
 webkit_user_style_sheet_ref
 webkit_user_style_sheet_unref
 webkit_user_style_sheet_new
-webkit_user_script_ref
-webkit_user_script_unref
-webkit_user_script_new
 
 <SUBSECTION Standard>
 WEBKIT_TYPE_USER_STYLE_SHEET
-WEBKIT_TYPE_USER_SCRIPT
 
 <SUBSECTION Private>
 webkit_user_style_sheet_get_type
-webkit_user_script_get_type
 </SECTION>
 
 <SECTION>
@@ -104,8 +96,6 @@ WebKitUserContentManager
 webkit_user_content_manager_new
 webkit_user_content_manager_add_style_sheet
 webkit_user_content_manager_remove_all_style_sheets
-webkit_user_content_manager_add_script
-webkit_user_content_manager_remove_all_scripts
 
 <SUBSECTION Standard>
 WEBKIT_IS_USER_CONTENT_MANAGER
@@ -468,7 +458,6 @@ webkit_uri_response_get_status_code
 webkit_uri_response_get_content_length
 webkit_uri_response_get_mime_type
 webkit_uri_response_get_suggested_filename
-webkit_uri_response_get_http_headers
 
 <SUBSECTION Standard>
 WebKitURIResponseClass
@@ -615,7 +604,6 @@ webkit_policy_decision_get_type
 <FILE>WebKitNavigationPolicyDecision</FILE>
 WebKitNavigationPolicyDecision
 WebKitNavigationType
-webkit_navigation_policy_decision_get_navigation_action
 webkit_navigation_policy_decision_get_frame_name
 webkit_navigation_policy_decision_get_modifiers
 webkit_navigation_policy_decision_get_mouse_button

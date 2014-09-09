@@ -579,13 +579,13 @@ String InspectorValue::toJSONString() const
 
 void InspectorValue::writeJSON(StringBuilder* output) const
 {
-    ASSERT(m_type == Type::Null);
+    ASSERT(m_type == TypeNull);
     output->append(nullString, 4);
 }
 
 bool InspectorBasicValue::asBoolean(bool* output) const
 {
-    if (type() != Type::Boolean)
+    if (type() != TypeBoolean)
         return false;
     *output = m_boolValue;
     return true;
@@ -593,7 +593,7 @@ bool InspectorBasicValue::asBoolean(bool* output) const
 
 bool InspectorBasicValue::asNumber(double* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = m_doubleValue;
     return true;
@@ -601,7 +601,7 @@ bool InspectorBasicValue::asNumber(double* output) const
 
 bool InspectorBasicValue::asNumber(float* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = static_cast<float>(m_doubleValue);
     return true;
@@ -609,7 +609,7 @@ bool InspectorBasicValue::asNumber(float* output) const
 
 bool InspectorBasicValue::asNumber(int* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = static_cast<int>(m_doubleValue);
     return true;
@@ -617,7 +617,7 @@ bool InspectorBasicValue::asNumber(int* output) const
 
 bool InspectorBasicValue::asNumber(unsigned* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = static_cast<unsigned>(m_doubleValue);
     return true;
@@ -625,7 +625,7 @@ bool InspectorBasicValue::asNumber(unsigned* output) const
 
 bool InspectorBasicValue::asNumber(long* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = static_cast<long>(m_doubleValue);
     return true;
@@ -633,7 +633,7 @@ bool InspectorBasicValue::asNumber(long* output) const
 
 bool InspectorBasicValue::asNumber(long long* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = static_cast<long long>(m_doubleValue);
     return true;
@@ -641,7 +641,7 @@ bool InspectorBasicValue::asNumber(long long* output) const
 
 bool InspectorBasicValue::asNumber(unsigned long* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = static_cast<unsigned long>(m_doubleValue);
     return true;
@@ -649,7 +649,7 @@ bool InspectorBasicValue::asNumber(unsigned long* output) const
 
 bool InspectorBasicValue::asNumber(unsigned long long* output) const
 {
-    if (type() != Type::Number)
+    if (type() != TypeNumber)
         return false;
     *output = static_cast<unsigned long long>(m_doubleValue);
     return true;
@@ -657,13 +657,13 @@ bool InspectorBasicValue::asNumber(unsigned long long* output) const
 
 void InspectorBasicValue::writeJSON(StringBuilder* output) const
 {
-    ASSERT(type() == Type::Boolean || type() == Type::Number);
-    if (type() == Type::Boolean) {
+    ASSERT(type() == TypeBoolean || type() == TypeNumber);
+    if (type() == TypeBoolean) {
         if (m_boolValue)
             output->append(trueString, 4);
         else
             output->append(falseString, 5);
-    } else if (type() == Type::Number) {
+    } else if (type() == TypeNumber) {
         NumberToLStringBuffer buffer;
         if (!std::isfinite(m_doubleValue)) {
             output->append(nullString, 4);
@@ -693,7 +693,7 @@ bool InspectorString::asString(String* output) const
 
 void InspectorString::writeJSON(StringBuilder* output) const
 {
-    ASSERT(type() == Type::String);
+    ASSERT(type() == TypeString);
     doubleQuoteString(m_stringValue, output);
 }
 
@@ -786,7 +786,7 @@ void InspectorObjectBase::writeJSON(StringBuilder* output) const
 }
 
 InspectorObjectBase::InspectorObjectBase()
-    : InspectorValue(Type::Object)
+    : InspectorValue(TypeObject)
     , m_data()
     , m_order()
 {
@@ -821,7 +821,7 @@ void InspectorArrayBase::writeJSON(StringBuilder* output) const
 }
 
 InspectorArrayBase::InspectorArrayBase()
-    : InspectorValue(Type::Array)
+    : InspectorValue(TypeArray)
     , m_data()
 {
 }

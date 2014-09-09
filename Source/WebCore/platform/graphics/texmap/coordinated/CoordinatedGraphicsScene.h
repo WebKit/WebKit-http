@@ -95,12 +95,14 @@ private:
     void updateTilesIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
     void createTilesIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
     void removeTilesIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+#if ENABLE(CSS_FILTERS)
     void setLayerFiltersIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+#endif
     void setLayerAnimationsIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 #if USE(GRAPHICS_SURFACE)
-    void createPlatformLayerIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
-    void syncPlatformLayerIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
-    void destroyPlatformLayerIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void createCanvasIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void syncCanvasIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void destroyCanvasIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 #endif
     void setLayerRepaintCountIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 

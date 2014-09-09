@@ -20,6 +20,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFESpecularLightingElement.h"
 
 #include "Attribute.h"
@@ -236,3 +238,5 @@ PassRefPtr<FilterEffect> SVGFESpecularLightingElement::build(SVGFilterBuilder* f
 }
 
 }
+
+#endif // ENABLE(FILTERS)

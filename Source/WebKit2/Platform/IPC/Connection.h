@@ -41,9 +41,8 @@
 #include <wtf/text/CString.h>
 
 #if OS(DARWIN)
+#include "XPCPtr.h"
 #include <mach/mach_port.h>
-#include <xpc/xpc.h>
-#include <wtf/OSObjectPtr.h>
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(EFL)
@@ -111,14 +110,14 @@ public:
         {
         }
 
-        Identifier(mach_port_t port, OSObjectPtr<xpc_connection_t> xpcConnection)
+        Identifier(mach_port_t port, XPCPtr<xpc_connection_t> xpcConnection)
             : port(port)
             , xpcConnection(WTF::move(xpcConnection))
         {
         }
 
         mach_port_t port;
-        OSObjectPtr<xpc_connection_t> xpcConnection;
+        XPCPtr<xpc_connection_t> xpcConnection;
     };
     static bool identifierIsNull(Identifier identifier) { return identifier.port == MACH_PORT_NULL; }
     xpc_connection_t xpcConnection() { return m_xpcConnection.get(); }
@@ -320,7 +319,7 @@ private:
     dispatch_source_t m_exceptionPortDataAvailableSource;
 #endif
 
-    OSObjectPtr<xpc_connection_t> m_xpcConnection;
+    XPCPtr<xpc_connection_t> m_xpcConnection;
 
 #elif USE(UNIX_DOMAIN_SOCKETS)
     // Called on the connection queue.

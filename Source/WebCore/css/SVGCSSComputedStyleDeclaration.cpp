@@ -40,25 +40,25 @@ static PassRefPtr<CSSValue> paintOrder(PaintOrder paintOrder)
     case PaintOrderNormal:
         return CSSPrimitiveValue::createIdentifier(CSSValueNormal);
     case PaintOrderFill:
-        paintOrderList->append(fill.releaseNonNull());
+        paintOrderList->append(fill.release());
         break;
     case PaintOrderFillMarkers:
-        paintOrderList->append(fill.releaseNonNull());
-        paintOrderList->append(markers.releaseNonNull());
+        paintOrderList->append(fill.release());
+        paintOrderList->append(markers.release());
         break;
     case PaintOrderStroke:
-        paintOrderList->append(stroke.releaseNonNull());
+        paintOrderList->append(stroke.release());
         break;
     case PaintOrderStrokeMarkers:
-        paintOrderList->append(stroke.releaseNonNull());
-        paintOrderList->append(markers.releaseNonNull());
+        paintOrderList->append(stroke.release());
+        paintOrderList->append(markers.release());
         break;
     case PaintOrderMarkers:
-        paintOrderList->append(markers.releaseNonNull());
+        paintOrderList->append(markers.release());
         break;
     case PaintOrderMarkersStroke:
-        paintOrderList->append(markers.releaseNonNull());
-        paintOrderList->append(stroke.releaseNonNull());
+        paintOrderList->append(markers.release());
+        paintOrderList->append(stroke.release());
         break;
     }
     return paintOrderList.release();
@@ -190,6 +190,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::svgPropertyValue(CSSPropertyID prop
             return adjustSVGPaintForCurrentColor(SVGPaint::create(svgStyle.strokePaintType(), svgStyle.strokePaintUri(), svgStyle.strokePaintColor()), style);
         case CSSPropertyStrokeDasharray:
             return strokeDashArrayToCSSValueList(svgStyle.strokeDashArray());
+        case CSSPropertyStrokeDashoffset:
+            return SVGLength::toCSSPrimitiveValue(svgStyle.strokeDashOffset());
+        case CSSPropertyStrokeWidth:
+            return SVGLength::toCSSPrimitiveValue(svgStyle.strokeWidth());
         case CSSPropertyBaselineShift: {
             switch (svgStyle.baselineShift()) {
                 case BS_BASELINE:

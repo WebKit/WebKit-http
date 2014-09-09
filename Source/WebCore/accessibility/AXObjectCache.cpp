@@ -58,11 +58,9 @@
 #include "AccessibilityTableRow.h"
 #include "Document.h"
 #include "Editor.h"
-#include "ElementIterator.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "HTMLAreaElement.h"
-#include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLLabelElement.h"
@@ -381,8 +379,8 @@ AccessibilityObject* AXObjectCache::getOrCreate(Node* node)
     
     // It's only allowed to create an AccessibilityObject from a Node if it's in a canvas subtree.
     // Or if it's a hidden element, but we still want to expose it because of other ARIA attributes.
-    bool inCanvasSubtree = lineageOfType<HTMLCanvasElement>(*node->parentElement()).first();
-    bool isHidden = isNodeAriaVisible(node);
+    bool inCanvasSubtree = node->parentElement()->isInCanvasSubtree();
+    bool isHidden = !node->renderer() && isNodeAriaVisible(node);
 
     bool insideMeterElement = false;
 #if ENABLE(METER_ELEMENT)
@@ -1042,18 +1040,20 @@ const Element* AXObjectCache::rootAXEditableElement(const Node* node)
 
 void AXObjectCache::clearTextMarkerNodesInUse(Document* document)
 {
-    if (!document)
-        return;
-    
-    // Check each node to see if it's inside the document being deleted, of if it no longer belongs to a document.
+    HashSet<Node*>::iterator it = m_textMarkerNodes.begin();
+    HashSet<Node*>::iterator end = m_textMarkerNodes.end();
+
+    // Check each node to see if it's inside the document being deleted.
     HashSet<Node*> nodesToDelete;
-    for (const auto& node : m_textMarkerNodes) {
-        if (!node->inDocument() || &(node)->document() == document)
-            nodesToDelete.add(node);
+    for (; it != end; ++it) {
+        if (&(*it)->document() == document)
+            nodesToDelete.add(*it);
     }
     
-    for (const auto& node : nodesToDelete)
-        m_textMarkerNodes.remove(node);
+    it = nodesToDelete.begin();
+    end = nodesToDelete.end();
+    for (; it != end; ++it)
+        m_textMarkerNodes.remove(*it);
 }
     
 bool AXObjectCache::nodeIsTextControl(const Node* node)

@@ -35,7 +35,7 @@ namespace WebCore {
 #if ENABLE(DATACUE_VALUE)
 class IncompleteMetaDataCue {
 public:
-    IncompleteMetaDataCue(const MediaTime& time, PassRefPtr<SerializedPlatformRepresentation> cueData)
+    IncompleteMetaDataCue(double time, PassRefPtr<SerializedPlatformRepresentation> cueData)
         : m_cueData(cueData)
         , m_startTime(time)
     {
@@ -43,11 +43,11 @@ public:
     ~IncompleteMetaDataCue() { }
 
     RefPtr<SerializedPlatformRepresentation> cueData() const { return m_cueData; }
-    MediaTime startTime() const { return m_startTime; }
+    double startTime() const { return m_startTime; }
 
 private:
     RefPtr<SerializedPlatformRepresentation> m_cueData;
-    MediaTime m_startTime;
+    double m_startTime;
 };
 #endif
 
@@ -63,8 +63,8 @@ public:
     void setInBandMetadataTrackDispatchType(const AtomicString& value) { m_inBandMetadataTrackDispatchType = value; }
 
 #if ENABLE(DATACUE_VALUE)
-    void addDataCue(const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation>, const String&);
-    void updatePendingCueEndTimes(const MediaTime&);
+    void addDataCue(double start, double end, PassRefPtr<SerializedPlatformRepresentation>, const String&);
+    void updatePendingCueEndTimes(double);
 #endif
 
     void flushPartialCues();
@@ -75,7 +75,7 @@ private:
     Kind m_kind;
     AtomicString m_id;
     AtomicString m_inBandMetadataTrackDispatchType;
-    MediaTime m_currentCueStartTime;
+    double m_currentCueStartTime;
 #if ENABLE(DATACUE_VALUE)
     Vector<IncompleteMetaDataCue*> m_incompleteCues;
 #endif

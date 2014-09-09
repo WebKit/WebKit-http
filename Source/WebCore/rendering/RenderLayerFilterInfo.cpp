@@ -30,6 +30,7 @@
 
 #include "config.h"
 
+#if ENABLE(CSS_FILTERS)
 #include "RenderLayerFilterInfo.h"
 
 #include "CachedSVGDocument.h"
@@ -138,3 +139,5 @@ void RenderLayer::FilterInfo::removeReferenceFilterClients()
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)

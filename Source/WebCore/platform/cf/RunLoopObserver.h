@@ -38,12 +38,12 @@ class RunLoopObserver {
 public:
     typedef std::function<void ()> RunLoopObserverCallback;
 
-    WEBCORE_EXPORT static std::unique_ptr<RunLoopObserver> create(CFIndex order, RunLoopObserverCallback callback);
+    static std::unique_ptr<RunLoopObserver> create(CFIndex order, RunLoopObserverCallback callback);
 
-    WEBCORE_EXPORT ~RunLoopObserver();
+    ~RunLoopObserver();
 
-    WEBCORE_EXPORT void schedule(CFRunLoopRef = nullptr);
-    WEBCORE_EXPORT void invalidate();
+    void schedule(CFRunLoopRef = nullptr);
+    void invalidate();
 
     bool isScheduled() const { return m_runLoopObserver; }
 

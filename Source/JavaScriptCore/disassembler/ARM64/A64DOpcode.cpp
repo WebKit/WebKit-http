@@ -23,11 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define __STDC_FORMAT_MACROS
 #include "config.h"
-
-#if USE(ARM64_DISASSEMBLER)
-
 #include "A64DOpcode.h"
 
 #include <stdarg.h>
@@ -1198,5 +1194,3 @@ const char* A64DOpcodeUnconditionalBranchRegister::format()
 }
 
 } } // namespace JSC::ARM64Disassembler
-
-#endif // USE(ARM64_DISASSEMBLER)

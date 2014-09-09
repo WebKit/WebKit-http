@@ -44,7 +44,7 @@ StructureStubClearingWatchpoint* StructureStubClearingWatchpoint::push(
     return head.get();
 }
 
-void StructureStubClearingWatchpoint::fireInternal(const FireDetail&)
+void StructureStubClearingWatchpoint::fireInternal()
 {
     // This will implicitly cause my own demise: stub reset removes all watchpoints.
     // That works, because deleting a watchpoint removes it from the set's list, and

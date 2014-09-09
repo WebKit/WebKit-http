@@ -29,7 +29,7 @@
 
 #import "PlatformClockCM.h"
 
-#import "MediaTimeAVFoundation.h"
+#import "MediaTimeMac.h"
 #import "SoftLinking.h"
 #if PLATFORM(IOS)
 #import <CoreMedia/CMAudioClock.h>

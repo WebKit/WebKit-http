@@ -30,6 +30,7 @@
 ] interface ScriptProfile {
     readonly attribute DOMString title;
     readonly attribute unsigned long uid;
-    readonly attribute ScriptProfileNode rootNode;
+    readonly attribute ScriptProfileNode head;
+    readonly attribute unrestricted double idleTime;
 };
 

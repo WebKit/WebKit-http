@@ -32,51 +32,6 @@
 
 namespace JSC {
 
-#if USE(JSVALUE64)
-inline MacroAssembler::JumpList JIT::emitDoubleGetByVal(Instruction* instruction, PatchableJump& badType)
-{
-    JumpList slowCases = emitDoubleLoad(instruction, badType);
-    moveDoubleTo64(fpRegT0, regT0);
-    sub64(tagTypeNumberRegister, regT0);
-    return slowCases;
-}
-#else
-inline MacroAssembler::JumpList JIT::emitDoubleGetByVal(Instruction* instruction, PatchableJump& badType)
-{
-    JumpList slowCases = emitDoubleLoad(instruction, badType);
-    moveDoubleToInts(fpRegT0, regT0, regT1);
-    return slowCases;
-}
-#endif // USE(JSVALUE64)
-
-ALWAYS_INLINE MacroAssembler::JumpList JIT::emitLoadForArrayMode(Instruction* currentInstruction, JITArrayMode arrayMode, PatchableJump& badType)
-{
-    switch (arrayMode) {
-    case JITInt32:
-        return emitInt32Load(currentInstruction, badType);
-    case JITDouble:
-        return emitDoubleLoad(currentInstruction, badType);
-    case JITContiguous:
-        return emitContiguousLoad(currentInstruction, badType);
-    case JITArrayStorage:
-        return emitArrayStorageLoad(currentInstruction, badType);
-    default:
-        break;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return MacroAssembler::JumpList();
-}
-
-inline MacroAssembler::JumpList JIT::emitContiguousGetByVal(Instruction* instruction, PatchableJump& badType, IndexingType expectedShape)
-{
-    return emitContiguousLoad(instruction, badType, expectedShape);
-}
-
-inline MacroAssembler::JumpList JIT::emitArrayStorageGetByVal(Instruction* instruction, PatchableJump& badType)
-{
-    return emitArrayStorageLoad(instruction, badType);
-}
-
 ALWAYS_INLINE bool JIT::isOperandConstantImmediateDouble(int src)
 {
     return m_codeBlock->isConstantRegisterIndex(src) && getConstantOperand(src).isDouble();
@@ -317,13 +272,6 @@ ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(V_JITOperation_ECC operati
     return appendCallWithExceptionCheck(operation);
 }
 
-ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EE operation, RegisterID regOp)
-{
-    setupArgumentsWithExecState(regOp);
-    updateTopCallFrame();
-    return appendCallWithExceptionCheck(operation);
-}
-
 ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(V_JITOperation_EPc operation, Instruction* bytecodePC)
 {
     setupArgumentsWithExecState(TrustedImmPtr(bytecodePC));
@@ -340,6 +288,13 @@ ALWAYS_INLINE MacroAssembler::Call JIT::callOperationWithCallFrameRollbackOnExce
 {
     setupArgumentsExecState();
     return appendCallWithCallFrameRollbackOnException(operation);
+}
+
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperationNoExceptionCheck(J_JITOperation_EE operation, RegisterID regOp)
+{
+    setupArgumentsWithExecState(regOp);
+    updateTopCallFrame();
+    return appendCall(operation);
 }
 
 ALWAYS_INLINE MacroAssembler::Call JIT::callOperationWithCallFrameRollbackOnException(V_JITOperation_ECb operation, CodeBlock* pointer)

@@ -43,9 +43,11 @@ void NetworkProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) con
     encoder << diskCacheDirectory;
     encoder << diskCacheDirectoryExtensionHandle;
     encoder << cookieStorageDirectory;
-#if PLATFORM(IOS)
     encoder << cookieStorageDirectoryExtensionHandle;
+#if PLATFORM(IOS)
+    encoder << hstsDatabasePath;
     encoder << hstsDatabasePathExtensionHandle;
+    encoder << parentBundleDirectory;
     encoder << parentBundleDirectoryExtensionHandle;
 #endif
     encoder << shouldUseTestingNetworkSession;
@@ -81,10 +83,14 @@ bool NetworkProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, Net
         return false;
     if (!decoder.decode(result.cookieStorageDirectory))
         return false;
-#if PLATFORM(IOS)
     if (!decoder.decode(result.cookieStorageDirectoryExtensionHandle))
         return false;
+#if PLATFORM(IOS)
+    if (!decoder.decode(result.hstsDatabasePath))
+        return false;
     if (!decoder.decode(result.hstsDatabasePathExtensionHandle))
+        return false;
+    if (!decoder.decode(result.parentBundleDirectory))
         return false;
     if (!decoder.decode(result.parentBundleDirectoryExtensionHandle))
         return false;

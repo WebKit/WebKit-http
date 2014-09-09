@@ -60,15 +60,10 @@ static const int invalidCueIndex = -1;
 
 PassRefPtr<TextTrackCue> TextTrackCue::create(ScriptExecutionContext& context, double start, double end, const String& content)
 {
-    return create(context, MediaTime::createWithDouble(start), MediaTime::createWithDouble(end), content);
-}
-
-PassRefPtr<TextTrackCue> TextTrackCue::create(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)
-{
     return VTTCue::create(context, start, end, content);
 }
 
-TextTrackCue::TextTrackCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end)
+TextTrackCue::TextTrackCue(ScriptExecutionContext& context, double start, double end)
     : m_startTime(start)
     , m_endTime(end)
     , m_cueIndex(invalidCueIndex)
@@ -133,14 +128,9 @@ void TextTrackCue::setStartTime(double value, ExceptionCode& ec)
     }
     
     // TODO(93143): Add spec-compliant behavior for negative time values.
-    if (m_startTime.toDouble() == value || value < 0)
+    if (m_startTime == value || value < 0)
         return;
 
-    setStartTime(MediaTime::createWithDouble(value));
-}
-
-void TextTrackCue::setStartTime(const MediaTime& value)
-{
     willChange();
     m_startTime = value;
     didChange();
@@ -155,14 +145,9 @@ void TextTrackCue::setEndTime(double value, ExceptionCode& ec)
     }
 
     // TODO(93143): Add spec-compliant behavior for negative time values.
-    if (m_endTime.toDouble() == value || value < 0)
+    if (m_endTime == value || value < 0)
         return;
 
-    setEndTime(MediaTime::createWithDouble(value));
-}
-
-void TextTrackCue::setEndTime(const MediaTime& value)
-{
     willChange();
     m_endTime = value;
     didChange();
@@ -214,7 +199,7 @@ void TextTrackCue::setIsActive(bool active)
 
 bool TextTrackCue::isOrderedBefore(const TextTrackCue* other) const
 {
-    return startMediaTime() < other->startMediaTime() || (startMediaTime() == other->startMediaTime() && endMediaTime() > other->endMediaTime());
+    return startTime() < other->startTime() || (startTime() == other->startTime() && endTime() > other->endTime());
 }
 
 bool TextTrackCue::cueContentsMatch(const TextTrackCue& cue) const
@@ -233,7 +218,7 @@ bool TextTrackCue::isEqual(const TextTrackCue& cue, TextTrackCue::CueMatchRules 
     if (cueType() != cue.cueType())
         return false;
 
-    if (match != IgnoreDuration && endMediaTime() != cue.endMediaTime())
+    if (match != IgnoreDuration && endTime() != cue.endTime())
         return false;
     if (!hasEquivalentStartTime(cue))
         return false;
@@ -245,13 +230,13 @@ bool TextTrackCue::isEqual(const TextTrackCue& cue, TextTrackCue::CueMatchRules 
 
 bool TextTrackCue::hasEquivalentStartTime(const TextTrackCue& cue) const
 {
-    MediaTime startTimeVariance = MediaTime::zeroTime();
+    double startTimeVariance = 0;
     if (track())
         startTimeVariance = track()->startTimeVariance();
     else if (cue.track())
         startTimeVariance = cue.track()->startTimeVariance();
 
-    return abs(abs(startMediaTime()) - abs(cue.startMediaTime())) <= startTimeVariance;
+    return std::abs(std::abs(startTime()) - std::abs(cue.startTime())) <= startTimeVariance;
 }
 
 bool TextTrackCue::doesExtendCue(const TextTrackCue& cue) const
@@ -259,7 +244,7 @@ bool TextTrackCue::doesExtendCue(const TextTrackCue& cue) const
     if (!cueContentsMatch(cue))
         return false;
 
-    if (endMediaTime() != cue.startMediaTime())
+    if (endTime() != cue.startTime())
         return false;
     
     return true;

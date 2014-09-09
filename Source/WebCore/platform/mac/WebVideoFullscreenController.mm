@@ -35,7 +35,7 @@
 #import <Carbon/Carbon.h>
 #import <QTKit/QTKit.h>
 #import <WebCore/DisplaySleepDisabler.h>
-#import <WebCore/HTMLVideoElement.h>
+#import <WebCore/HTMLMediaElement.h>
 #import <WebCore/SoftLinking.h>
 #import <objc/runtime.h>
 
@@ -114,21 +114,21 @@ SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidChangeScreenParameters:) name:NSApplicationDidChangeScreenParametersNotification object:NSApp];
 }
 
-- (HTMLVideoElement*)videoElement
+- (HTMLMediaElement*)mediaElement
 {
-    return _videoElement.get();
+    return _mediaElement.get();
 }
 
-- (void)setVideoElement:(HTMLVideoElement*)videoElement
+- (void)setMediaElement:(HTMLMediaElement*)mediaElement
 {
-    _videoElement = videoElement;
+    _mediaElement = mediaElement;
 
-    if (!_videoElement)
+    if (!_mediaElement)
         return;
 
     if ([self isWindowLoaded]) {
-        if (_videoElement->platformMedia().type == PlatformMedia::QTMovieType) {
-            QTMovie *movie = _videoElement->platformMedia().media.qtMovie;
+        if (_mediaElement->platformMedia().type == PlatformMedia::QTMovieType) {
+            QTMovie *movie = _mediaElement->platformMedia().media.qtMovie;
             QTMovieLayer *layer = [[getQTMovieLayerClass() alloc] init];
             [layer setMovie:movie];
             [self setupVideoOverlay:layer];
@@ -138,8 +138,8 @@ SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
                                                          name:QTMovieRateDidChangeNotification
                                                        object:movie];
 
-        } else if (_videoElement->platformMedia().type == PlatformMedia::AVFoundationMediaPlayerType) {
-            AVPlayer *player = _videoElement->platformMedia().media.avfMediaPlayer;
+        } else if (_mediaElement->platformMedia().type == PlatformMedia::AVFoundationMediaPlayerType) {
+            AVPlayer *player = _mediaElement->platformMedia().media.avfMediaPlayer;
             AVPlayerLayer *layer = [[getAVPlayerLayerClass() alloc] init];
             [self setupVideoOverlay:layer];
             [layer setPlayer:player];
@@ -207,9 +207,9 @@ SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
     [_hudController fadeWindowIn];
 }
 
-- (NSRect)videoElementRect
+- (NSRect)mediaElementRect
 {
-    return _videoElement->screenRect();
+    return _mediaElement->screenRect();
 }
 
 - (void)applicationDidResignActive:(NSNotification*)notification
@@ -276,7 +276,7 @@ static NSWindow *createBackgroundFullscreenWindow(NSRect frame, int level)
     if (!screen)
         screen = [NSScreen mainScreen];
 
-    NSRect frame = [self videoElementRect];
+    NSRect frame = [self mediaElementRect];
     NSRect endFrame = [screen frame];
     constrainFrameToRatioOfFrame(&endFrame, &frame);
 
@@ -303,7 +303,7 @@ static NSWindow *createBackgroundFullscreenWindow(NSRect frame, int level)
     _isEndingFullscreen = YES;
     [_hudController closeWindow];
 
-    NSRect endFrame = [self videoElementRect];
+    NSRect endFrame = [self mediaElementRect];
 
     [self setupFadeAnimationIfNeededAndFadeIn:NO];
     if (_forceDisableAnimation) {
@@ -358,8 +358,8 @@ static NSWindow *createBackgroundFullscreenWindow(NSRect frame, int level)
 - (void)updatePowerAssertions
 {
     float rate = 0;
-    if (_videoElement && _videoElement->platformMedia().type == PlatformMedia::QTMovieType)
-        rate = [_videoElement->platformMedia().media.qtMovie rate];
+    if (_mediaElement && _mediaElement->platformMedia().type == PlatformMedia::QTMovieType)
+        rate = [_mediaElement->platformMedia().media.qtMovie rate];
     
     if (rate && !_isEndingFullscreen) {
         if (!_displaySleepDisabler)
@@ -373,8 +373,8 @@ static NSWindow *createBackgroundFullscreenWindow(NSRect frame, int level)
 
 - (void)_requestExit
 {
-    if (_videoElement)
-        _videoElement->exitFullscreen();
+    if (_mediaElement)
+        _mediaElement->exitFullscreen();
     _forceDisableAnimation = NO;
 }
 

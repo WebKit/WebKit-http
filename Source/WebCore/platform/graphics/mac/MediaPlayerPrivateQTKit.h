@@ -56,7 +56,7 @@ namespace WebCore {
 class MediaPlayerPrivateQTKit : public MediaPlayerPrivateInterface {
 public:
     ~MediaPlayerPrivateQTKit();
-    WEBCORE_EXPORT static void registerMediaEngine(MediaEngineRegistrar);
+    static void registerMediaEngine(MediaEngineRegistrar);
 
     void repaint();
     void loadStateChanged();
@@ -104,9 +104,9 @@ private:
     bool paused() const;
     bool seeking() const;
     
-    virtual MediaTime durationMediaTime() const override;
-    virtual MediaTime currentMediaTime() const override;
-    virtual void seek(const MediaTime&) override;
+    float duration() const;
+    float currentTime() const;
+    void seek(float time);
     
     void setRate(float);
     void setVolume(float);
@@ -121,7 +121,7 @@ private:
     MediaPlayer::ReadyState readyState() const { return m_readyState; }
     
     std::unique_ptr<PlatformTimeRanges> buffered() const;
-    MediaTime maxMediaTimeSeekable() const;
+    float maxTimeSeekable() const;
     bool didLoadingProgress() const;
     unsigned totalBytes() const;
     
@@ -161,11 +161,13 @@ private:
     void createQTMovieLayer();
     void destroyQTMovieLayer();
 
+    QTTime createQTTime(float time) const;
+    
     void updateStates();
     void doSeek();
     void cancelSeek();
     void seekTimerFired(Timer<MediaPlayerPrivateQTKit>&);
-    MediaTime maxMediaTimeLoaded() const;
+    float maxTimeLoaded() const;
     void disableUnsupportedTracks();
     
     void sawUnsupportedTracks();
@@ -173,6 +175,8 @@ private:
     bool metaDataAvailable() const { return m_qtMovie && m_readyState >= MediaPlayer::HaveMetadata; }
 
     bool isReadyForVideoSetup() const;
+    
+    virtual float mediaTimeForTimeValue(float) const;
 
     virtual double maximumDurationToCacheMediaTime() const { return 5; }
 
@@ -188,7 +192,7 @@ private:
     RetainPtr<QTVideoRendererWebKitOnly> m_qtVideoRenderer;
     RetainPtr<WebCoreMovieObserver> m_objcObserver;
     String m_movieURL;
-    MediaTime m_seekTo;
+    float m_seekTo;
     Timer<MediaPlayerPrivateQTKit> m_seekTimer;
     MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
@@ -196,9 +200,9 @@ private:
     FloatSize m_scaleFactor;
     unsigned m_enabledTrackCount;
     unsigned m_totalTrackCount;
-    MediaTime m_reportedDuration;
-    MediaTime m_cachedDuration;
-    MediaTime m_timeToRestore;
+    float m_reportedDuration;
+    float m_cachedDuration;
+    float m_timeToRestore;
     RetainPtr<QTMovieLayer> m_qtVideoLayer;
     MediaPlayer::Preload m_preload;
     bool m_startedPlaying;
@@ -208,11 +212,11 @@ private:
     bool m_videoFrameHasDrawn;
     bool m_isAllowedToRender;
     bool m_privateBrowsing;
-    mutable MediaTime m_maxTimeLoadedAtLastDidLoadingProgress;
+    mutable float m_maxTimeLoadedAtLastDidLoadingProgress;
 #if DRAW_FRAME_RATE
     int  m_frameCountWhilePlaying;
-    MediaTime m_timeStartedPlaying;
-    MediaTime m_timeStoppedPlaying;
+    double m_timeStartedPlaying;
+    double m_timeStoppedPlaying;
 #endif
     mutable FloatSize m_cachedNaturalSize;
 };

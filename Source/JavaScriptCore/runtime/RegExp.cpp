@@ -273,10 +273,8 @@ void RegExp::compile(VM* vm, Yarr::YarrCharSize charSize)
     Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), &m_constructionError);
     if (m_constructionError) {
         RELEASE_ASSERT_NOT_REACHED();
-#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         m_state = ParseError;
         return;
-#endif
     }
     ASSERT(m_numSubpatterns == pattern.m_numSubpatterns);
 
@@ -398,10 +396,8 @@ void RegExp::compileMatchOnly(VM* vm, Yarr::YarrCharSize charSize)
     Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), &m_constructionError);
     if (m_constructionError) {
         RELEASE_ASSERT_NOT_REACHED();
-#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         m_state = ParseError;
         return;
-#endif
     }
     ASSERT(m_numSubpatterns == pattern.m_numSubpatterns);
 

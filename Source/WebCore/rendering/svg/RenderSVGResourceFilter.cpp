@@ -22,6 +22,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "RenderSVGResourceFilter.h"
 
 #include "ElementChildIterator.h"
@@ -330,3 +332,4 @@ FloatRect RenderSVGResourceFilter::drawingRegion(RenderObject* object) const
 }
 
 }
+#endif

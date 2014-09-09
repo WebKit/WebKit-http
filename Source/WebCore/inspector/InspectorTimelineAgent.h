@@ -245,9 +245,6 @@ private:
         TimelineRecordType type;
     };
 
-    void internalStart(const int* maxCallStackDepth = nullptr);
-    void internalStop();
-
     void sendEvent(PassRefPtr<Inspector::InspectorObject>);
     void appendRecord(PassRefPtr<Inspector::InspectorObject> data, TimelineRecordType, bool captureCallStack, Frame*);
     void pushCurrentRecord(PassRefPtr<Inspector::InspectorObject>, TimelineRecordType, bool captureCallStack, Frame*);
@@ -287,7 +284,6 @@ private:
 
     int m_recordingProfileDepth;
     bool m_enabled;
-    bool m_enabledFromFrontend;
 };
 
 } // namespace WebCore

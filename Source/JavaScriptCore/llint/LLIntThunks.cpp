@@ -37,7 +37,6 @@
 #include "LinkBuffer.h"
 #include "LowLevelInterpreter.h"
 #include "ProtoCallFrame.h"
-#include "StackAlignment.h"
 #include "VM.h"
 
 namespace JSC {
@@ -94,26 +93,17 @@ MacroAssemblerCodeRef programEntryThunkGenerator(VM* vm)
 
 // Non-JIT (i.e. C Loop LLINT) case:
 
-EncodedJSValue vmEntryToJavaScript(void* executableAddress, VM* vm, ProtoCallFrame* protoCallFrame)
+EncodedJSValue callToJavaScript(void* executableAddress, VM* vm, ProtoCallFrame* protoCallFrame)
 {
-    JSValue result = CLoop::execute(llint_vm_entry_to_javascript, executableAddress, vm, protoCallFrame);
+    JSValue result = CLoop::execute(llint_call_to_javascript, executableAddress, vm, protoCallFrame);
     return JSValue::encode(result);
 }
 
-EncodedJSValue vmEntryToNative(void* executableAddress, VM* vm, ProtoCallFrame* protoCallFrame)
+EncodedJSValue callToNativeFunction(void* executableAddress, VM* vm, ProtoCallFrame* protoCallFrame)
 {
-    JSValue result = CLoop::execute(llint_vm_entry_to_native, executableAddress, vm, protoCallFrame);
+    JSValue result = CLoop::execute(llint_call_to_native_function, executableAddress, vm, protoCallFrame);
     return JSValue::encode(result);
 }
-
-extern "C" VMEntryRecord* vmEntryRecord(VMEntryFrame* entryFrame)
-{
-    // The C Loop doesn't have any callee save registers, so the VMEntryRecord is allocated at the base of the frame.
-    intptr_t stackAlignment = stackAlignmentBytes();
-    intptr_t VMEntryTotalFrameSize = (sizeof(VMEntryRecord) + (stackAlignment - 1)) & ~(stackAlignment - 1);
-    return reinterpret_cast<VMEntryRecord*>(static_cast<char*>(entryFrame) - VMEntryTotalFrameSize);
-}
-
 
 #endif // ENABLE(JIT)
 

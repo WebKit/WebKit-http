@@ -41,32 +41,29 @@
 namespace Inspector {
 
 class InspectorArray;
-class InspectorArrayBase;
 class InspectorObject;
-class InspectorObjectBase;
 
 class JS_EXPORT_PRIVATE InspectorValue : public RefCounted<InspectorValue> {
 public:
     static const int maxDepth = 1000;
 
-    InspectorValue()
-        : m_type(Type::Null) { }
+    InspectorValue() : m_type(TypeNull) { }
     virtual ~InspectorValue() { }
 
     static PassRefPtr<InspectorValue> null();
 
-    enum class Type {
-        Null = 0,
-        Boolean,
-        Number,
-        String,
-        Object,
-        Array
-    };
+    typedef enum {
+        TypeNull = 0,
+        TypeBoolean,
+        TypeNumber,
+        TypeString,
+        TypeObject,
+        TypeArray
+    } Type;
 
     Type type() const { return m_type; }
 
-    bool isNull() const { return m_type == Type::Null; }
+    bool isNull() const { return m_type == TypeNull; }
 
     virtual bool asBoolean(bool* output) const;
     virtual bool asNumber(double* output) const;
@@ -116,17 +113,9 @@ public:
     virtual void writeJSON(StringBuilder* output) const override;
 
 private:
-    explicit InspectorBasicValue(bool value)
-        : InspectorValue(Type::Boolean)
-        , m_boolValue(value) { }
-
-    explicit InspectorBasicValue(int value)
-        : InspectorValue(Type::Number)
-        , m_doubleValue(static_cast<double>(value)) { }
-
-    explicit InspectorBasicValue(double value)
-        : InspectorValue(Type::Number)
-        , m_doubleValue(value) { }
+    explicit InspectorBasicValue(bool value) : InspectorValue(TypeBoolean), m_boolValue(value) { }
+    explicit InspectorBasicValue(int value) : InspectorValue(TypeNumber), m_doubleValue((double)value) { }
+    explicit InspectorBasicValue(double value) : InspectorValue(TypeNumber), m_doubleValue(value) { }
 
     union {
         bool m_boolValue;
@@ -144,13 +133,8 @@ public:
     virtual void writeJSON(StringBuilder* output) const override;
 
 private:
-    explicit InspectorString(const String& value)
-        : InspectorValue(Type::String)
-        , m_stringValue(value) { }
-
-    explicit InspectorString(const char* value)
-        : InspectorValue(Type::String)
-        , m_stringValue(value) { }
+    explicit InspectorString(const String& value) : InspectorValue(TypeString), m_stringValue(value) { }
+    explicit InspectorString(const char* value) : InspectorValue(TypeString), m_stringValue(value) { }
 
     String m_stringValue;
 };
@@ -175,8 +159,8 @@ protected:
     void setNumber(const String& name, double);
     void setString(const String& name, const String&);
     void setValue(const String& name, PassRefPtr<InspectorValue>);
-    void setObject(const String& name, PassRefPtr<InspectorObjectBase>);
-    void setArray(const String& name, PassRefPtr<InspectorArrayBase>);
+    void setObject(const String& name, PassRefPtr<InspectorObject>);
+    void setArray(const String& name, PassRefPtr<InspectorArray>);
 
     iterator find(const String& name);
     const_iterator find(const String& name) const;
@@ -333,14 +317,14 @@ inline void InspectorObjectBase::setValue(const String& name, PassRefPtr<Inspect
         m_order.append(name);
 }
 
-inline void InspectorObjectBase::setObject(const String& name, PassRefPtr<InspectorObjectBase> value)
+inline void InspectorObjectBase::setObject(const String& name, PassRefPtr<InspectorObject> value)
 {
     ASSERT(value);
     if (m_data.set(name, value).isNewEntry)
         m_order.append(name);
 }
 
-inline void InspectorObjectBase::setArray(const String& name, PassRefPtr<InspectorArrayBase> value)
+inline void InspectorObjectBase::setArray(const String& name, PassRefPtr<InspectorArray> value)
 {
     ASSERT(value);
     if (m_data.set(name, value).isNewEntry)

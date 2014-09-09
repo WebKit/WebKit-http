@@ -219,11 +219,10 @@ private:
     virtual unsigned countFindMatches(const String&, WebCore::FindOptions, unsigned maxMatchCount) override;
     virtual bool findString(const String&, WebCore::FindOptions, unsigned maxMatchCount) override;
 
-    virtual void windowFocusChanged(bool);
-    virtual void windowVisibilityChanged(bool);
-
 #if PLATFORM(COCOA)
+    virtual void windowFocusChanged(bool);
     virtual void windowAndViewFramesChanged(const WebCore::IntRect& windowFrameInScreenCoordinates, const WebCore::IntRect& viewFrameInWindowCoordinates);
+    virtual void windowVisibilityChanged(bool);
 
     virtual uint64_t pluginComplexTextInputIdentifier() const;
     virtual void sendComplexTextInput(const String& textInput);

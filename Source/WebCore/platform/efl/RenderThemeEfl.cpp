@@ -1027,14 +1027,14 @@ bool RenderThemeEfl::paintProgressBar(const RenderObject& object, const PaintInf
 #if ENABLE(VIDEO)
 String RenderThemeEfl::mediaControlsStyleSheet()
 {
-    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
+    return ASCIILiteral(mediaControlsAppleUserAgentStyleSheet);
 }
 
 String RenderThemeEfl::mediaControlsScript()
 {
     StringBuilder scriptBuilder;
     scriptBuilder.append(mediaControlsLocalizedStringsJavaScript, sizeof(mediaControlsLocalizedStringsJavaScript));
-    scriptBuilder.append(mediaControlsBaseJavaScript, sizeof(mediaControlsBaseJavaScript));
+    scriptBuilder.append(mediaControlsAppleJavaScript, sizeof(mediaControlsAppleJavaScript));
     return scriptBuilder.toString();
 }
 #endif

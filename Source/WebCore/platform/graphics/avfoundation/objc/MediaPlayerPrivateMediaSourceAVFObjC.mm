@@ -28,11 +28,11 @@
 
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
-#import "CDMSessionMediaSourceAVFObjC.h"
+#import "CDMSession.h"
 #import "Logging.h"
 #import "MediaSourcePrivateAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
-#import "MediaTimeAVFoundation.h"
+#import "MediaTimeMac.h"
 #import "PlatformClockCM.h"
 #import "SoftLinking.h"
 #import "WebCoreSystemInterface.h"
@@ -136,7 +136,6 @@ MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(Media
     , m_weakPtrFactory(this)
     , m_synchronizer(adoptNS([[getAVSampleBufferRenderSynchronizerClass() alloc] init]))
     , m_seekTimer(this, &MediaPlayerPrivateMediaSourceAVFObjC::seekTimerFired)
-    , m_session(nullptr)
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_rate(1)
@@ -195,7 +194,7 @@ MediaPlayerPrivateMediaSourceAVFObjC::~MediaPlayerPrivateMediaSourceAVFObjC()
 void MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-        registrar(create, getSupportedTypes, supportsType, 0, 0, 0, 0);
+        registrar(create, getSupportedTypes, supportsType, 0, 0, 0, supportsKeySystem);
 }
 
 PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateMediaSourceAVFObjC::create(MediaPlayer* player)
@@ -234,8 +233,20 @@ void MediaPlayerPrivateMediaSourceAVFObjC::getSupportedTypes(HashSet<String>& ty
     types = mimeTypeCache();
 }
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+static bool keySystemIsSupported(const String& keySystem)
+{
+    return equalIgnoringCase(keySystem, "com.apple.fps.2_0");
+}
+#endif
+
 MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(const MediaEngineSupportParameters& parameters)
 {
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    if (!parameters.keySystem.isEmpty() && !keySystemIsSupported(parameters.keySystem))
+            return MediaPlayer::IsNotSupported;
+#endif
+
     // This engine does not support non-media-source sources.
     if (!parameters.isMediaSource)
         return MediaPlayer::IsNotSupported;
@@ -250,6 +261,28 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(con
 
     NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)parameters.type, (NSString *)parameters.codecs];
     return [getAVURLAssetClass() isPlayableExtendedMIMEType:typeString] ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;;
+}
+
+bool MediaPlayerPrivateMediaSourceAVFObjC::supportsKeySystem(const String& keySystem, const String& mimeType)
+{
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    if (!wkQueryDecoderAvailability())
+        return false;
+
+    if (!keySystem.isEmpty()) {
+        if (!keySystemIsSupported(keySystem))
+            return false;
+
+        if (!mimeType.isEmpty() && !mimeTypeCache().contains(mimeType))
+            return false;
+
+        return true;
+    }
+#else
+    UNUSED_PARAM(keySystem);
+    UNUSED_PARAM(mimeType);
+#endif
+    return false;
 }
 
 #pragma mark -
@@ -377,37 +410,37 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setVisible(bool)
     // No-op.
 }
 
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::durationMediaTime() const
+double MediaPlayerPrivateMediaSourceAVFObjC::durationDouble() const
 {
-    return m_mediaSourcePrivate ? m_mediaSourcePrivate->duration() : MediaTime::zeroTime();
+    return m_mediaSourcePrivate ? m_mediaSourcePrivate->duration().toDouble() : 0;
 }
 
 MediaTime MediaPlayerPrivateMediaSourceAVFObjC::currentMediaTime() const
 {
-    MediaTime synchronizerTime = toMediaTime(CMTimebaseGetTime([m_synchronizer timebase]));
-    if (synchronizerTime < MediaTime::zeroTime())
-        return MediaTime::zeroTime();
-    if (synchronizerTime < m_lastSeekTime)
-        return m_lastSeekTime;
-    return synchronizerTime;
+    return std::max(MediaTime::zeroTime(), toMediaTime(CMTimebaseGetTime([m_synchronizer timebase])));
 }
 
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::startTime() const
+double MediaPlayerPrivateMediaSourceAVFObjC::currentTimeDouble() const
 {
-    return MediaTime::zeroTime();
+    return currentMediaTime().toDouble();
 }
 
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::initialTime() const
+double MediaPlayerPrivateMediaSourceAVFObjC::startTimeDouble() const
 {
-    return MediaTime::zeroTime();
+    return 0;
 }
 
-void MediaPlayerPrivateMediaSourceAVFObjC::seekWithTolerance(const MediaTime& time, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold)
+double MediaPlayerPrivateMediaSourceAVFObjC::initialTime() const
+{
+    return 0;
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::seekWithTolerance(double time, double negativeThreshold, double positiveThreshold)
 {
     LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekWithTolerance(%p) - time(%s), negativeThreshold(%s), positiveThreshold(%s)", this, toString(time).utf8().data(), toString(negativeThreshold).utf8().data(), toString(positiveThreshold).utf8().data());
     m_seeking = true;
     auto weakThis = createWeakPtr();
-    m_pendingSeek = std::make_unique<PendingSeek>(time, negativeThreshold, positiveThreshold);
+    m_pendingSeek = std::make_unique<PendingSeek>(MediaTime::createWithDouble(time), MediaTime::createWithDouble(negativeThreshold), MediaTime::createWithDouble(positiveThreshold));
 
     if (m_seekTimer.isActive())
         m_seekTimer.stop();
@@ -430,15 +463,16 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekInternal()
     if (!m_mediaSourcePrivate)
         return;
 
-    if (!pendingSeek->negativeThreshold && !pendingSeek->positiveThreshold)
-        m_lastSeekTime = pendingSeek->targetTime;
+    MediaTime seekTime;
+    if (pendingSeek->negativeThreshold == MediaTime::zeroTime() && pendingSeek->positiveThreshold == MediaTime::zeroTime())
+        seekTime = pendingSeek->targetTime;
     else
-        m_lastSeekTime = m_mediaSourcePrivate->fastSeekTimeForMediaTime(pendingSeek->targetTime, pendingSeek->positiveThreshold, pendingSeek->negativeThreshold);
+        seekTime = m_mediaSourcePrivate->fastSeekTimeForMediaTime(pendingSeek->targetTime, pendingSeek->positiveThreshold, pendingSeek->negativeThreshold);
 
-    LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekInternal(%p) - seekTime(%s)", this, toString(m_lastSeekTime).utf8().data());
+    LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekInternal(%p) - seekTime(%s)", this, toString(seekTime).utf8().data());
 
-    [m_synchronizer setRate:0 time:toCMTime(m_lastSeekTime)];
-    m_mediaSourcePrivate->seekToTime(m_lastSeekTime);
+    [m_synchronizer setRate:0 time:toCMTime(seekTime)];
+    m_mediaSourcePrivate->seekToTime(seekTime);
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::waitForSeekCompleted()
@@ -485,17 +519,17 @@ MediaPlayer::ReadyState MediaPlayerPrivateMediaSourceAVFObjC::readyState() const
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateMediaSourceAVFObjC::seekable() const
 {
-    return PlatformTimeRanges::create(minMediaTimeSeekable(), maxMediaTimeSeekable());
+    return PlatformTimeRanges::create(MediaTime::createWithDouble(minTimeSeekable()), MediaTime::createWithDouble(maxTimeSeekableDouble()));
 }
 
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::maxMediaTimeSeekable() const
+double MediaPlayerPrivateMediaSourceAVFObjC::maxTimeSeekableDouble() const
 {
-    return durationMediaTime();
+    return durationDouble();
 }
 
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::minMediaTimeSeekable() const
+double MediaPlayerPrivateMediaSourceAVFObjC::minTimeSeekable() const
 {
-    return startTime();
+    return startTimeDouble();
 }
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateMediaSourceAVFObjC::buffered() const
@@ -585,9 +619,9 @@ unsigned long MediaPlayerPrivateMediaSourceAVFObjC::corruptedVideoFrames()
     return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] numberOfCorruptedVideoFrames];
 }
 
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::totalFrameDelay()
+double MediaPlayerPrivateMediaSourceAVFObjC::totalFrameDelay()
 {
-    return MediaTime::createWithDouble([[m_sampleBufferDisplayLayer videoPerformanceMetrics] totalFrameDelay]);
+    return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] totalFrameDelay];
 }
 
 #pragma mark -
@@ -654,20 +688,12 @@ void MediaPlayerPrivateMediaSourceAVFObjC::sizeChanged()
 }
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
-void MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession(CDMSession* session)
+std::unique_ptr<CDMSession> MediaPlayerPrivateMediaSourceAVFObjC::createSession(const String& keySystem)
 {
-    if (m_session) {
-        for (auto& sourceBuffer : m_mediaSourcePrivate->sourceBuffers())
-            m_session->removeSourceBuffer(sourceBuffer.get());
-        m_session = nullptr;
-    }
+    if (!m_mediaSourcePrivate)
+        return nullptr;
 
-    m_session = toCDMSessionMediaSourceAVFObjC(session);
-
-    if (m_session) {
-        for (auto& sourceBuffer : m_mediaSourcePrivate->sourceBuffers())
-            m_session->addSourceBuffer(sourceBuffer.get());
-    }
+    return m_mediaSourcePrivate->createSession(keySystem);
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::keyNeeded(Uint8Array* initData)

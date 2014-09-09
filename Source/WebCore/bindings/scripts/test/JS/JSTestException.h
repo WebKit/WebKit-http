@@ -93,8 +93,8 @@ inline void* wrapperContext(DOMWrapperWorld& world, TestException*)
     return &world;
 }
 
-WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestException*);
-WEBCORE_EXPORT TestException* toTestException(JSC::JSValue);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestException*);
+TestException* toTestException(JSC::JSValue);
 
 
 } // namespace WebCore

@@ -84,7 +84,7 @@ void RenderTextControlSingleLine::paint(PaintInfo& paintInfo, const LayoutPoint&
 
         // Convert the rect into the coords used for painting the content
         contentsRect.moveBy(paintOffset + location());
-        theme().paintCapsLockIndicator(*this, paintInfo, snappedIntRect(contentsRect));
+        theme().paintCapsLockIndicator(*this, paintInfo, pixelSnappedIntRect(contentsRect));
     }
 }
 
@@ -333,7 +333,7 @@ LayoutUnit RenderTextControlSingleLine::preferredContentLogicalWidth(float charW
     if (factor <= 0)
         factor = 20;
 
-    LayoutUnit result = LayoutUnit::fromFloatCeil(charWidth * factor);
+    LayoutUnit result = ceiledLayoutUnit(charWidth * factor);
 
     float maxCharWidth = 0.f;
 

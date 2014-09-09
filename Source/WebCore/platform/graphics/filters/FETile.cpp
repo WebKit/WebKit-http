@@ -19,6 +19,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "FETile.h"
 
 #include "AffineTransform.h"
@@ -97,3 +99,5 @@ TextStream& FETile::externalRepresentation(TextStream& ts, int indent) const
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)

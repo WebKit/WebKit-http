@@ -155,14 +155,16 @@ macro callSlowPath(slowPath)
     move t0, PC
 end
 
-macro doVMEntry(makeCall)
+macro doCallToJavaScript(makeCall)
     if X86 or X86_WIN
         const entry = t4
         const vm = t3
         const protoCallFrame = t5
 
-        const temp1 = t0
-        const temp2 = t1
+        const previousCFR = t0
+        const previousPC = t1
+        const temp1 = t0 # Same as previousCFR
+        const temp2 = t1 # Same as previousPC
         const temp3 = t2
         const temp4 = t3 # same as vm
     elsif ARM or ARMv7 or ARMv7_TRADITIONAL or C_LOOP
@@ -170,7 +172,9 @@ macro doVMEntry(makeCall)
         const vm = a1
         const protoCallFrame = a2
 
-        const temp1 = t3
+        const previousCFR = t3
+        const previousPC = lr
+        const temp1 = t3 # Same as previousCFR
         const temp2 = t4
         const temp3 = t5
         const temp4 = t4 # Same as temp2
@@ -180,6 +184,8 @@ macro doVMEntry(makeCall)
         const protoCallFrame = a2
         const topOfStack = a3
 
+        const previousCFR = t2
+        const previousPC = lr
         const temp1 = t3
         const temp2 = t5
         const temp3 = t4
@@ -189,62 +195,70 @@ macro doVMEntry(makeCall)
         const vm = a1
         const protoCallFrame = a2
 
-        const temp1 = t3
+        const previousCFR = t3
+        const previousPC = lr
+        const temp1 = t3 # Same as previousCFR
         const temp2 = a3
         const temp3 = t8
         const temp4 = t9
     end
 
-    functionPrologue()
-    pushCalleeSaves()
+    callToJavaScriptPrologue()
 
-    if X86 or X86_WIN
-        loadp 12[cfr], vm
-        loadp 8[cfr], entry
-    end
-
-    if ARMv7
-        vmEntryRecord(cfr, temp1)
-        move temp1, sp
+    if X86
+        loadp 36[sp], vm
+        loadp 32[sp], entry
+    elsif X86_WIN
+        loadp 40[sp, temp3], vm
+        loadp 36[sp, temp3], entry
     else
-        vmEntryRecord(cfr, sp)
+        move cfr, previousCFR
     end
 
-    storep vm, VMEntryRecord::m_vm[sp]
+    checkStackPointerAlignment(temp2, 0xbad0dc01)
+
+    # The stack reserved zone ensures that we have adequate space for the
+    # VMEntrySentinelFrame. Proceed with allocating and initializing the
+    # sentinel frame.
+    move sp, cfr
+    subp CallFrameHeaderSlots * 8, cfr
+    storep 0, ArgumentCount[cfr]
+    storep vm, Callee[cfr]
     loadp VM::topCallFrame[vm], temp2
-    storep temp2, VMEntryRecord::m_prevTopCallFrame[sp]
-    loadp VM::topVMEntryFrame[vm], temp2
-    storep temp2, VMEntryRecord::m_prevTopVMEntryFrame[sp]
-
-    # Align stack pointer
-    if X86_WIN
-        addp CallFrameAlignSlots * SlotSize, sp, temp1
-        andp ~StackAlignmentMask, temp1
-        subp temp1, CallFrameAlignSlots * SlotSize, sp
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
-        addp CallFrameAlignSlots * SlotSize, sp, temp1
-        clrbp temp1, StackAlignmentMask, temp1
-        if ARMv7
-            subp temp1, CallFrameAlignSlots * SlotSize, temp1
-            move temp1, sp
-        else
-            subp temp1, CallFrameAlignSlots * SlotSize, sp
-        end
+    storep temp2, ScopeChain[cfr]
+    storep 1, CodeBlock[cfr]
+    if X86
+        loadp 28[sp], previousPC
+        loadp 24[sp], previousCFR
+    elsif X86_WIN
+        loadp 32[sp, temp3], previousPC
+        loadp 28[sp, temp3], previousCFR
     end
+    storep previousPC, ReturnPC[cfr]
+    storep previousCFR, CallerFrame[cfr]
 
-    if X86 or X86_WIN
-        loadp 16[cfr], protoCallFrame
+    if X86
+        loadp 40[sp], protoCallFrame
+    elsif X86_WIN
+        loadp 44[sp, temp3], protoCallFrame
     end
 
     loadi ProtoCallFrame::paddedArgCount[protoCallFrame], temp2
     addp CallFrameHeaderSlots, temp2, temp2
     lshiftp 3, temp2
-    subp sp, temp2, temp1
+    subp cfr, temp2, temp1
 
     # Ensure that we have enough additional stack capacity for the incoming args,
     # and the frame for the JS code we're executing. We need to do this check
     # before we start copying the args from the protoCallFrame below.
     bpaeq temp1, VM::m_jsStackLimit[vm], .stackHeightOK
+
+    if ARMv7
+        subp cfr, 8, temp2
+        move temp2, sp
+    else
+        subp cfr, 8, sp
+    end
 
     if C_LOOP
         move entry, temp2
@@ -261,29 +275,7 @@ macro doVMEntry(makeCall)
     end
 
     cCall2(_llint_throw_stack_overflow_error, vm, protoCallFrame)
-
-    if ARMv7
-        vmEntryRecord(cfr, temp1)
-        move temp1, sp
-    else
-        vmEntryRecord(cfr, sp)
-    end
-
-    loadp VMEntryRecord::m_vm[sp], temp3
-    loadp VMEntryRecord::m_prevTopCallFrame[sp], temp4
-    storep temp4, VM::topCallFrame[temp3]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], temp4
-    storep temp4, VM::topVMEntryFrame[temp3]
-
-    if ARMv7
-        subp cfr, CalleeRegisterSaveSize, temp3
-        move temp3, sp
-    else
-        subp cfr, CalleeRegisterSaveSize, sp
-    end
-
-    popCalleeSaves()
-    functionEpilogue()
+    callToJavaScriptEpilogue()
     ret
 
 .stackHeightOK:
@@ -324,32 +316,18 @@ macro doVMEntry(makeCall)
 
 .copyArgsDone:
     storep sp, VM::topCallFrame[vm]
-    storep cfr, VM::topVMEntryFrame[vm]
 
     makeCall(entry, temp1, temp2)
 
-    if ARMv7
-        vmEntryRecord(cfr, temp1)
-        move temp1, sp
-    else
-        vmEntryRecord(cfr, sp)
-    end
+    bpeq CodeBlock[cfr], 1, .calleeFramePopped
+    loadp CallerFrame[cfr], cfr
 
-    loadp VMEntryRecord::m_vm[sp], temp3
-    loadp VMEntryRecord::m_prevTopCallFrame[sp], temp4
+.calleeFramePopped:
+    loadp Callee[cfr], temp3 # VM
+    loadp ScopeChain[cfr], temp4 # previous topCallFrame
     storep temp4, VM::topCallFrame[temp3]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], temp4
-    storep temp4, VM::topVMEntryFrame[temp3]
 
-    if ARMv7
-        subp cfr, CalleeRegisterSaveSize, temp3
-        move temp3, sp
-    else
-        subp cfr, CalleeRegisterSaveSize, sp
-    end
-
-    popCalleeSaves()
-    functionEpilogue()
+    callToJavaScriptEpilogue()
     ret
 end
 
@@ -367,23 +345,30 @@ end
 
 macro makeHostFunctionCall(entry, temp1, temp2)
     move entry, temp1
-    storep cfr, [sp]
     if C_LOOP
         move sp, a0
+        storep cfr, [sp]
         storep lr, PtrSize[sp]
         cloopCallNative temp1
-    elsif X86 or X86_WIN
-        # Put callee frame pointer on stack as arg0, also put it in ecx for "fastcall" targets
-        move 0, temp2
-        move temp2, 4[sp] # put 0 in ReturnPC
-        move sp, t2 # t2 is ecx
-        push temp2 # Push dummy arg1
-        push t2
-        call temp1
-        addp 8, sp
     else
-        move sp, a0
+        if X86 or X86_WIN
+            # Put callee frame pointer on stack as arg0, also put it in ecx for "fastcall" targets
+            move 0, temp2
+            move temp2, 4[sp] # put 0 in ReturnPC
+            move cfr, [sp] # put caller frame pointer into callee frame since callee prologue can't
+            move sp, t2 # t2 is ecx
+            push temp2 # Push dummy arg1
+            push t2
+        else
+            move sp, a0
+            addp CallerFrameAndPCSize, sp
+        end
         call temp1
+        if X86 or X86_WIN
+            addp 8, sp
+        else
+            subp CallerFrameAndPCSize, sp
+        end
     end
 end
 
@@ -393,30 +378,19 @@ _handleUncaughtException:
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
     loadp VM::callFrameForThrow[t3], cfr
 
+    # So far, we've unwound the stack to the frame just below the sentinel frame, except
+    # in the case of stack overflow in the first function called from callToJavaScript.
+    # Check if we need to pop to the sentinel frame and do the necessary clean up for
+    # returning to the caller C frame.
+    bpeq CodeBlock[cfr], 1, .handleUncaughtExceptionAlreadyIsSentinel
     loadp CallerFrame + PayloadOffset[cfr], cfr
+.handleUncaughtExceptionAlreadyIsSentinel:
 
-    if ARMv7
-        vmEntryRecord(cfr, t3)
-        move t3, sp
-    else
-        vmEntryRecord(cfr, sp)
-    end
-
-    loadp VMEntryRecord::m_vm[sp], t3
-    loadp VMEntryRecord::m_prevTopCallFrame[sp], t5
+    loadp Callee + PayloadOffset[cfr], t3 # VM
+    loadp ScopeChain + PayloadOffset[cfr], t5 # previous topCallFrame
     storep t5, VM::topCallFrame[t3]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], t5
-    storep t5, VM::topVMEntryFrame[t3]
 
-    if ARMv7
-        subp cfr, CalleeRegisterSaveSize, t3
-        move t3, sp
-    else
-        subp cfr, CalleeRegisterSaveSize, sp
-    end
-
-    popCalleeSaves()
-    functionEpilogue()
+    callToJavaScriptEpilogue()
     ret
 
 macro doReturnFromHostFunction(extraStackSpace)
@@ -723,7 +697,9 @@ _llint_op_enter:
 _llint_op_create_activation:
     traceExecution()
     loadi 4[PC], t0
+    bineq TagOffset[cfr, t0, 8], EmptyValueTag, .opCreateActivationDone
     callSlowPath(_llint_slow_path_create_activation)
+.opCreateActivationDone:
     dispatch(2)
 
 
@@ -1637,6 +1613,37 @@ _llint_op_get_argument_by_val:
     dispatch(6)
 
 
+_llint_op_get_by_pname:
+    traceExecution()
+    loadi 12[PC], t0
+    loadConstantOrVariablePayload(t0, CellTag, t1, .opGetByPnameSlow)
+    loadi 16[PC], t0
+    bpneq t1, PayloadOffset[cfr, t0, 8], .opGetByPnameSlow
+    loadi 8[PC], t0
+    loadConstantOrVariablePayload(t0, CellTag, t2, .opGetByPnameSlow)
+    loadi 20[PC], t0
+    loadi PayloadOffset[cfr, t0, 8], t3
+    loadp JSCell::m_structureID[t2], t0
+    bpneq t0, JSPropertyNameIterator::m_cachedStructure[t3], .opGetByPnameSlow
+    loadi 24[PC], t0
+    loadi [cfr, t0, 8], t0
+    subi 1, t0
+    biaeq t0, JSPropertyNameIterator::m_numCacheableSlots[t3], .opGetByPnameSlow
+    bilt t0, JSPropertyNameIterator::m_cachedStructureInlineCapacity[t3], .opGetByPnameInlineProperty
+    addi firstOutOfLineOffset, t0
+    subi JSPropertyNameIterator::m_cachedStructureInlineCapacity[t3], t0
+.opGetByPnameInlineProperty:
+    loadPropertyAtVariableOffset(t0, t2, t1, t3)
+    loadi 4[PC], t0
+    storei t1, TagOffset[cfr, t0, 8]
+    storei t3, PayloadOffset[cfr, t0, 8]
+    dispatch(7)
+
+.opGetByPnameSlow:
+    callSlowPath(_llint_slow_path_get_by_pname)
+    dispatch(7)
+
+
 macro contiguousPutByVal(storeCallback)
     biaeq t3, -sizeof IndexingHeader + IndexingHeader::u.lengths.publicLength[t0], .outOfBounds
 .storeResult:
@@ -2031,6 +2038,46 @@ _llint_op_to_primitive:
     dispatch(3)
 
 
+_llint_op_next_pname:
+    traceExecution()
+    loadi 12[PC], t1
+    loadi 16[PC], t2
+    loadi PayloadOffset[cfr, t1, 8], t0
+    bieq t0, PayloadOffset[cfr, t2, 8], .opNextPnameEnd
+    loadi 20[PC], t2
+    loadi PayloadOffset[cfr, t2, 8], t2
+    loadp JSPropertyNameIterator::m_jsStrings[t2], t3
+    loadi [t3, t0, 8], t3
+    addi 1, t0
+    storei t0, PayloadOffset[cfr, t1, 8]
+    loadi 4[PC], t1
+    storei CellTag, TagOffset[cfr, t1, 8]
+    storei t3, PayloadOffset[cfr, t1, 8]
+    loadi 8[PC], t3
+    loadi PayloadOffset[cfr, t3, 8], t3
+    loadp JSCell::m_structureID[t3], t1
+    bpneq t1, JSPropertyNameIterator::m_cachedStructure[t2], .opNextPnameSlow
+    loadp JSPropertyNameIterator::m_cachedPrototypeChain[t2], t0
+    loadp StructureChain::m_vector[t0], t0
+    btpz [t0], .opNextPnameTarget
+.opNextPnameCheckPrototypeLoop:
+    bieq Structure::m_prototype + TagOffset[t1], NullTag, .opNextPnameSlow
+    loadp Structure::m_prototype + PayloadOffset[t1], t2
+    loadp JSCell::m_structureID[t2], t1
+    bpneq t1, [t0], .opNextPnameSlow
+    addp 4, t0
+    btpnz [t0], .opNextPnameCheckPrototypeLoop
+.opNextPnameTarget:
+    dispatchBranch(24[PC])
+
+.opNextPnameEnd:
+    dispatch(7)
+
+.opNextPnameSlow:
+    callSlowPath(_llint_slow_path_next_pname) # This either keeps the PC where it was (causing us to loop) or sets it to target.
+    dispatch(0)
+
+
 _llint_op_catch:
     # This is where we end up from the JIT's throw trampoline (because the
     # machine code return address will be set to _llint_op_catch), and from
@@ -2041,8 +2088,6 @@ _llint_op_catch:
     andp MarkedBlockMask, t3
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
     loadp VM::callFrameForThrow[t3], cfr
-    loadp VM::vmEntryFrameForThrow[t3], t0
-    storep t0, VM::topVMEntryFrame[t3]
     restoreStackPointerAfterCall()
 
     loadi VM::targetInterpreterPCForThrow[t3], PC
@@ -2196,7 +2241,12 @@ end
 macro resolveScope()
     loadp CodeBlock[cfr], t0
     loadisFromInstruction(4, t2)
+    btbz CodeBlock::m_needsActivation[t0], .resolveScopeAfterActivationCheck
+    loadis CodeBlock::m_activationRegister[t0], t1
+    btpz PayloadOffset[cfr, t1, 8], .resolveScopeAfterActivationCheck
+    addi 1, t2
 
+.resolveScopeAfterActivationCheck:
     loadp ScopeChain[cfr], t0
     btiz t2, .resolveScopeLoopEnd
 

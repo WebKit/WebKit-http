@@ -99,20 +99,6 @@ void InspectorTimelineAgent::willDestroyFrontendAndBackend(InspectorDisconnectRe
 
 void InspectorTimelineAgent::start(ErrorString*, const int* maxCallStackDepth)
 {
-    m_enabledFromFrontend = true;
-
-    internalStart(maxCallStackDepth);
-}
-
-void InspectorTimelineAgent::stop(ErrorString*)
-{
-    internalStop();
-
-    m_enabledFromFrontend = false;
-}
-
-void InspectorTimelineAgent::internalStart(const int* maxCallStackDepth)
-{
     if (maxCallStackDepth && *maxCallStackDepth > 0)
         m_maxCallStackDepth = *maxCallStackDepth;
     else
@@ -131,7 +117,7 @@ void InspectorTimelineAgent::internalStart(const int* maxCallStackDepth)
         m_frontendDispatcher->recordingStarted();
 }
 
-void InspectorTimelineAgent::internalStop()
+void InspectorTimelineAgent::stop(ErrorString*)
 {
     if (!m_enabled)
         return;
@@ -190,8 +176,8 @@ void InspectorTimelineAgent::startFromConsole(JSC::ExecState* exec, const String
         }
     }
 
-    if (!m_enabled && m_pendingConsoleProfileRecords.isEmpty())
-        internalStart();
+    if (m_pendingConsoleProfileRecords.isEmpty())
+        start();
 
     startProfiling(exec, title);
 
@@ -217,8 +203,8 @@ PassRefPtr<JSC::Profile> InspectorTimelineAgent::stopFromConsole(JSC::ExecState*
 
             m_pendingConsoleProfileRecords.remove(i);
 
-            if (!m_enabledFromFrontend && m_pendingConsoleProfileRecords.isEmpty())
-                internalStop();
+            if (m_pendingConsoleProfileRecords.isEmpty())
+                stop();
 
             return profile.release();
         }
@@ -554,99 +540,99 @@ void InspectorTimelineAgent::breakpointActionProbe(JSC::ExecState* exec, const I
     appendRecord(TimelineRecordFactory::createProbeSampleData(action, hitCount), TimelineRecordType::ProbeSample, false, frameFromExecState(exec));
 }
 
-static Inspector::Protocol::Timeline::EventType toProtocol(TimelineRecordType type)
+static Inspector::TypeBuilder::Timeline::EventType::Enum toProtocol(TimelineRecordType type)
 {
     switch (type) {
     case TimelineRecordType::EventDispatch:
-        return Inspector::Protocol::Timeline::EventType::EventDispatch;
+        return Inspector::TypeBuilder::Timeline::EventType::EventDispatch;
     case TimelineRecordType::ScheduleStyleRecalculation:
-        return Inspector::Protocol::Timeline::EventType::ScheduleStyleRecalculation;
+        return Inspector::TypeBuilder::Timeline::EventType::ScheduleStyleRecalculation;
     case TimelineRecordType::RecalculateStyles:
-        return Inspector::Protocol::Timeline::EventType::RecalculateStyles;
+        return Inspector::TypeBuilder::Timeline::EventType::RecalculateStyles;
     case TimelineRecordType::InvalidateLayout:
-        return Inspector::Protocol::Timeline::EventType::InvalidateLayout;
+        return Inspector::TypeBuilder::Timeline::EventType::InvalidateLayout;
     case TimelineRecordType::Layout:
-        return Inspector::Protocol::Timeline::EventType::Layout;
+        return Inspector::TypeBuilder::Timeline::EventType::Layout;
     case TimelineRecordType::Paint:
-        return Inspector::Protocol::Timeline::EventType::Paint;
+        return Inspector::TypeBuilder::Timeline::EventType::Paint;
     case TimelineRecordType::ScrollLayer:
-        return Inspector::Protocol::Timeline::EventType::ScrollLayer;
+        return Inspector::TypeBuilder::Timeline::EventType::ScrollLayer;
     case TimelineRecordType::ResizeImage:
-        return Inspector::Protocol::Timeline::EventType::ResizeImage;
+        return Inspector::TypeBuilder::Timeline::EventType::ResizeImage;
 
     case TimelineRecordType::ParseHTML:
-        return Inspector::Protocol::Timeline::EventType::ParseHTML;
+        return Inspector::TypeBuilder::Timeline::EventType::ParseHTML;
 
     case TimelineRecordType::TimerInstall:
-        return Inspector::Protocol::Timeline::EventType::TimerInstall;
+        return Inspector::TypeBuilder::Timeline::EventType::TimerInstall;
     case TimelineRecordType::TimerRemove:
-        return Inspector::Protocol::Timeline::EventType::TimerRemove;
+        return Inspector::TypeBuilder::Timeline::EventType::TimerRemove;
     case TimelineRecordType::TimerFire:
-        return Inspector::Protocol::Timeline::EventType::TimerFire;
+        return Inspector::TypeBuilder::Timeline::EventType::TimerFire;
 
     case TimelineRecordType::EvaluateScript:
-        return Inspector::Protocol::Timeline::EventType::EvaluateScript;
+        return Inspector::TypeBuilder::Timeline::EventType::EvaluateScript;
 
     case TimelineRecordType::MarkLoad:
-        return Inspector::Protocol::Timeline::EventType::MarkLoad;
+        return Inspector::TypeBuilder::Timeline::EventType::MarkLoad;
     case TimelineRecordType::MarkDOMContent:
-        return Inspector::Protocol::Timeline::EventType::MarkDOMContent;
+        return Inspector::TypeBuilder::Timeline::EventType::MarkDOMContent;
 
     case TimelineRecordType::TimeStamp:
-        return Inspector::Protocol::Timeline::EventType::TimeStamp;
+        return Inspector::TypeBuilder::Timeline::EventType::TimeStamp;
     case TimelineRecordType::Time:
-        return Inspector::Protocol::Timeline::EventType::Time;
+        return Inspector::TypeBuilder::Timeline::EventType::Time;
     case TimelineRecordType::TimeEnd:
-        return Inspector::Protocol::Timeline::EventType::TimeEnd;
+        return Inspector::TypeBuilder::Timeline::EventType::TimeEnd;
 
     case TimelineRecordType::ScheduleResourceRequest:
-        return Inspector::Protocol::Timeline::EventType::ScheduleResourceRequest;
+        return Inspector::TypeBuilder::Timeline::EventType::ScheduleResourceRequest;
     case TimelineRecordType::ResourceSendRequest:
-        return Inspector::Protocol::Timeline::EventType::ResourceSendRequest;
+        return Inspector::TypeBuilder::Timeline::EventType::ResourceSendRequest;
     case TimelineRecordType::ResourceReceiveResponse:
-        return Inspector::Protocol::Timeline::EventType::ResourceReceiveResponse;
+        return Inspector::TypeBuilder::Timeline::EventType::ResourceReceiveResponse;
     case TimelineRecordType::ResourceReceivedData:
-        return Inspector::Protocol::Timeline::EventType::ResourceReceivedData;
+        return Inspector::TypeBuilder::Timeline::EventType::ResourceReceivedData;
     case TimelineRecordType::ResourceFinish:
-        return Inspector::Protocol::Timeline::EventType::ResourceFinish;
+        return Inspector::TypeBuilder::Timeline::EventType::ResourceFinish;
 
     case TimelineRecordType::XHRReadyStateChange:
-        return Inspector::Protocol::Timeline::EventType::XHRReadyStateChange;
+        return Inspector::TypeBuilder::Timeline::EventType::XHRReadyStateChange;
     case TimelineRecordType::XHRLoad:
-        return Inspector::Protocol::Timeline::EventType::XHRLoad;
+        return Inspector::TypeBuilder::Timeline::EventType::XHRLoad;
 
     case TimelineRecordType::FunctionCall:
-        return Inspector::Protocol::Timeline::EventType::FunctionCall;
+        return Inspector::TypeBuilder::Timeline::EventType::FunctionCall;
     case TimelineRecordType::ProbeSample:
-        return Inspector::Protocol::Timeline::EventType::ProbeSample;
+        return Inspector::TypeBuilder::Timeline::EventType::ProbeSample;
     case TimelineRecordType::ConsoleProfile:
-        return Inspector::Protocol::Timeline::EventType::ConsoleProfile;
+        return Inspector::TypeBuilder::Timeline::EventType::ConsoleProfile;
 
     case TimelineRecordType::RequestAnimationFrame:
-        return Inspector::Protocol::Timeline::EventType::RequestAnimationFrame;
+        return Inspector::TypeBuilder::Timeline::EventType::RequestAnimationFrame;
     case TimelineRecordType::CancelAnimationFrame:
-        return Inspector::Protocol::Timeline::EventType::CancelAnimationFrame;
+        return Inspector::TypeBuilder::Timeline::EventType::CancelAnimationFrame;
     case TimelineRecordType::FireAnimationFrame:
-        return Inspector::Protocol::Timeline::EventType::FireAnimationFrame;
+        return Inspector::TypeBuilder::Timeline::EventType::FireAnimationFrame;
 
     case TimelineRecordType::WebSocketCreate:
-        return Inspector::Protocol::Timeline::EventType::WebSocketCreate;
+        return Inspector::TypeBuilder::Timeline::EventType::WebSocketCreate;
     case TimelineRecordType::WebSocketSendHandshakeRequest:
-        return Inspector::Protocol::Timeline::EventType::WebSocketSendHandshakeRequest;
+        return Inspector::TypeBuilder::Timeline::EventType::WebSocketSendHandshakeRequest;
     case TimelineRecordType::WebSocketReceiveHandshakeResponse:
-        return Inspector::Protocol::Timeline::EventType::WebSocketReceiveHandshakeResponse;
+        return Inspector::TypeBuilder::Timeline::EventType::WebSocketReceiveHandshakeResponse;
     case TimelineRecordType::WebSocketDestroy:
-        return Inspector::Protocol::Timeline::EventType::WebSocketDestroy;
+        return Inspector::TypeBuilder::Timeline::EventType::WebSocketDestroy;
     }
 
-    return Inspector::Protocol::Timeline::EventType::TimeStamp;
+    return Inspector::TypeBuilder::Timeline::EventType::TimeStamp;
 }
 
 void InspectorTimelineAgent::addRecordToTimeline(PassRefPtr<InspectorObject> prpRecord, TimelineRecordType type)
 {
-    prpRecord->setString("type", Inspector::Protocol::getWebEnumConstantValue(toProtocol(type)));
+    prpRecord->setString("type", Inspector::TypeBuilder::getWebEnumConstantValue(toProtocol(type)));
 
-    RefPtr<Inspector::Protocol::Timeline::TimelineEvent> record = BindingTraits<Inspector::Protocol::Timeline::TimelineEvent>::runtimeCast(prpRecord);
+    RefPtr<Inspector::TypeBuilder::Timeline::TimelineEvent> record = Inspector::TypeBuilder::Timeline::TimelineEvent::runtimeCast(prpRecord);
 
     if (m_recordStack.isEmpty())
         sendEvent(record.release());
@@ -696,7 +682,6 @@ InspectorTimelineAgent::InspectorTimelineAgent(InstrumentingAgents* instrumentin
     , m_client(client)
     , m_recordingProfileDepth(0)
     , m_enabled(false)
-    , m_enabledFromFrontend(false)
 {
 }
 
@@ -714,7 +699,7 @@ void InspectorTimelineAgent::sendEvent(PassRefPtr<InspectorObject> event)
         return;
 
     // FIXME: runtimeCast is a hack. We do it because we can't build TimelineEvent directly now.
-    RefPtr<Inspector::Protocol::Timeline::TimelineEvent> recordChecked = BindingTraits<Inspector::Protocol::Timeline::TimelineEvent>::runtimeCast(event);
+    RefPtr<Inspector::TypeBuilder::Timeline::TimelineEvent> recordChecked = Inspector::TypeBuilder::Timeline::TimelineEvent::runtimeCast(event);
     m_frontendDispatcher->eventRecorded(recordChecked.release());
 }
 

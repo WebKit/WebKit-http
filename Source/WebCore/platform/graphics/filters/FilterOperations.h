@@ -26,6 +26,8 @@
 #ifndef FilterOperations_h
 #define FilterOperations_h
 
+#if ENABLE(CSS_FILTERS)
+
 #include "FilterOperation.h"
 #include "IntRectExtent.h"
 #include <wtf/RefPtr.h>
@@ -38,10 +40,10 @@ typedef IntRectExtent FilterOutsets;
 class FilterOperations {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT FilterOperations();
+    FilterOperations();
     FilterOperations(const FilterOperations& other) { *this = other; }
     
-    WEBCORE_EXPORT FilterOperations& operator=(const FilterOperations&);
+    FilterOperations& operator=(const FilterOperations&);
     
     bool operator==(const FilterOperations&) const;
     bool operator!=(const FilterOperations& o) const
@@ -75,5 +77,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)
 
 #endif // FilterOperations_h

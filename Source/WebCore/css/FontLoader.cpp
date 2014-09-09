@@ -48,12 +48,12 @@ static const char* const defaultFontFamily = "sans-serif";
 
 class LoadFontCallback : public CSSSegmentedFontFace::LoadFontCallback {
 public:
-    static PassRefPtr<LoadFontCallback> create(int numLoading, FontLoader& fontLoader, PassRefPtr<VoidCallback> loadCallback, PassRefPtr<VoidCallback> errorCallback)
+    static PassRefPtr<LoadFontCallback> create(int numLoading, PassRefPtr<VoidCallback> loadCallback, PassRefPtr<VoidCallback> errorCallback)
     {
-        return adoptRef<LoadFontCallback>(new LoadFontCallback(numLoading, fontLoader, loadCallback, errorCallback));
+        return adoptRef<LoadFontCallback>(new LoadFontCallback(numLoading, loadCallback, errorCallback));
     }
 
-    static PassRefPtr<LoadFontCallback> createFromParams(const Dictionary& params, FontLoader& fontLoader, const Font& font)
+    static PassRefPtr<LoadFontCallback> createFromParams(const Dictionary& params, const Font& font)
     {
         RefPtr<VoidCallback> onsuccess;
         RefPtr<VoidCallback> onerror;
@@ -62,29 +62,23 @@ public:
         if (!onsuccess && !onerror)
             return 0;
         int numFamilies = font.familyCount();
-        return LoadFontCallback::create(numFamilies, fontLoader, onsuccess, onerror);
+        return LoadFontCallback::create(numFamilies, onsuccess, onerror);
     }
 
     virtual void notifyLoaded() override;
     virtual void notifyError() override;
     virtual ~LoadFontCallback() { };
 
-    int familyCount() const { return m_familyCount; }
-
 private:
-    LoadFontCallback(int numLoading, FontLoader& fontLoader, PassRefPtr<VoidCallback> loadCallback, PassRefPtr<VoidCallback> errorCallback)
-        : m_familyCount(numLoading)
-        , m_numLoading(numLoading)
+    LoadFontCallback(int numLoading, PassRefPtr<VoidCallback> loadCallback, PassRefPtr<VoidCallback> errorCallback)
+        : m_numLoading(numLoading)
         , m_errorOccured(false)
-        , m_fontLoader(fontLoader)
         , m_loadCallback(loadCallback)
         , m_errorCallback(errorCallback)
     { }
 
-    int m_familyCount;
     int m_numLoading;
     bool m_errorOccured;
-    FontLoader& m_fontLoader;
     RefPtr<VoidCallback> m_loadCallback;
     RefPtr<VoidCallback> m_errorCallback;
 };
@@ -102,7 +96,6 @@ void LoadFontCallback::notifyLoaded()
         if (m_loadCallback)
             m_loadCallback->handleEvent();
     }
-    m_fontLoader.loadFontDone(*this);
 }
 
 void LoadFontCallback::notifyError() 
@@ -111,16 +104,10 @@ void LoadFontCallback::notifyError()
     notifyLoaded();
 }
 
-void FontLoader::loadFontDone(const LoadFontCallback& callback)
-{
-    m_numLoadingFromJS -= callback.familyCount();
-}
-
 FontLoader::FontLoader(Document* document)
     : ActiveDOMObject(document)
     , m_document(document)
-    , m_numLoadingFromCSS(0)
-    , m_numLoadingFromJS(0)
+    , m_loadingCount(0)
 {
     suspendIfNeeded();
 }
@@ -180,31 +167,31 @@ void FontLoader::firePendingEvents()
 
 void FontLoader::beginFontLoading(CSSFontFaceRule* rule)
 {
-    ++m_numLoadingFromCSS;
-    if (m_numLoadingFromCSS == 1 && !m_loadingDoneEvent)
+    ++m_loadingCount;
+    if (m_loadingCount == 1 && !m_loadingDoneEvent)
         scheduleEvent(CSSFontFaceLoadEvent::createForFontFaceRule(eventNames().loadingEvent, rule));
     scheduleEvent(CSSFontFaceLoadEvent::createForFontFaceRule(eventNames().loadstartEvent, rule));
 }
 
 void FontLoader::fontLoaded(CSSFontFaceRule* rule)
 {
-    ASSERT(m_numLoadingFromCSS > 0);
+    ASSERT(m_loadingCount > 0);
     scheduleEvent(CSSFontFaceLoadEvent::createForFontFaceRule(eventNames().loadEvent, rule));
 
-    --m_numLoadingFromCSS;
-    if (!m_numLoadingFromCSS)
+    --m_loadingCount;
+    if (!m_loadingCount)
         m_loadingDoneEvent = CSSFontFaceLoadEvent::createForFontFaceRule(eventNames().loadingdoneEvent, rule);
 }
 
 void FontLoader::loadError(CSSFontFaceRule* rule, CSSFontFaceSource* source)
 {
-    ASSERT(m_numLoadingFromCSS > 0);
+    ASSERT(m_loadingCount > 0);
 
     // FIXME: We should report NetworkError in case of timeout, etc.
     String errorName = (source && source->isDecodeError()) ? "InvalidFontDataError" : ExceptionCodeDescription(NOT_FOUND_ERR).name;
     scheduleEvent(CSSFontFaceLoadEvent::createForError(rule, DOMError::create(errorName)));
-    --m_numLoadingFromCSS;
-    if (!m_numLoadingFromCSS)
+    --m_loadingCount;
+    if (!m_loadingCount)
         m_loadingDoneEvent = CSSFontFaceLoadEvent::createForFontFaceRule(eventNames().loadingdoneEvent, rule);
 }
 
@@ -249,9 +236,8 @@ void FontLoader::loadFont(const Dictionary& params)
     Font font;
     if (!resolveFontStyle(fontString, font))
         return;
-    RefPtr<LoadFontCallback> callback = LoadFontCallback::createFromParams(params, *this, font);
-    m_numLoadingFromJS += callback->familyCount();
-
+    RefPtr<LoadFontCallback> callback = LoadFontCallback::createFromParams(params, font);
+    
     for (unsigned i = 0; i < font.familyCount(); i++) {
         CSSSegmentedFontFace* face = m_document->ensureStyleResolver().fontSelector()->getFontFace(font.fontDescription(), font.familyAt(i));
         if (!face) {

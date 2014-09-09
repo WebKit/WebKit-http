@@ -34,7 +34,6 @@
 
 #if ENABLE(INSPECTOR)
 
-#include "DebuggerEvalEnabler.h"
 #include "InspectorValues.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
@@ -82,12 +81,18 @@ Deprecated::ScriptValue InjectedScriptBase::callFunctionWithEvalEnabled(Deprecat
         m_environment->willCallInjectedScriptFunction(m_injectedScriptObject.scriptState(), name(), 1);
 
     JSC::ExecState* scriptState = m_injectedScriptObject.scriptState();
-    Deprecated::ScriptValue resultValue;
-
-    {
-        JSC::DebuggerEvalEnabler evalEnabler(scriptState);
-        resultValue = function.call(hadException);
+    bool evalIsDisabled = false;
+    if (scriptState) {
+        evalIsDisabled = !scriptState->lexicalGlobalObject()->evalEnabled();
+        // Temporarily enable allow evals for inspector.
+        if (evalIsDisabled)
+            scriptState->lexicalGlobalObject()->setEvalEnabled(true);
     }
+
+    Deprecated::ScriptValue resultValue = function.call(hadException);
+
+    if (evalIsDisabled)
+        scriptState->lexicalGlobalObject()->setEvalEnabled(false);
 
     if (m_environment)
         m_environment->didCallInjectedScriptFunction(m_injectedScriptObject.scriptState());
@@ -114,7 +119,7 @@ void InjectedScriptBase::makeCall(Deprecated::ScriptFunctionCall& function, RefP
         *result = InspectorString::create("Exception while making a call.");
 }
 
-void InjectedScriptBase::makeEvalCall(ErrorString* errorString, Deprecated::ScriptFunctionCall& function, RefPtr<Protocol::Runtime::RemoteObject>* objectResult, Protocol::OptOutput<bool>* wasThrown)
+void InjectedScriptBase::makeEvalCall(ErrorString* errorString, Deprecated::ScriptFunctionCall& function, RefPtr<TypeBuilder::Runtime::RemoteObject>* objectResult, TypeBuilder::OptOutput<bool>* wasThrown)
 {
     RefPtr<InspectorValue> result;
     makeCall(function, &result);
@@ -123,7 +128,7 @@ void InjectedScriptBase::makeEvalCall(ErrorString* errorString, Deprecated::Scri
         return;
     }
 
-    if (result->type() == InspectorValue::Type::String) {
+    if (result->type() == InspectorValue::TypeString) {
         result->asString(errorString);
         ASSERT(errorString->length());
         return;
@@ -142,7 +147,7 @@ void InjectedScriptBase::makeEvalCall(ErrorString* errorString, Deprecated::Scri
         return;
     }
 
-    *objectResult = BindingTraits<Protocol::Runtime::RemoteObject>::runtimeCast(resultObj);
+    *objectResult = TypeBuilder::Runtime::RemoteObject::runtimeCast(resultObj);
     *wasThrown = wasThrownVal;
 }
 

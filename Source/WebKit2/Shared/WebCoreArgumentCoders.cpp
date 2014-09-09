@@ -632,6 +632,22 @@ bool ArgumentCoder<Cursor>::decode(ArgumentDecoder& decoder, Cursor& cursor)
 
 void ArgumentCoder<ResourceRequest>::encode(ArgumentEncoder& encoder, const ResourceRequest& resourceRequest)
 {
+    if (kShouldSerializeWebCoreData) {
+        encoder << resourceRequest.url().string();
+        encoder << resourceRequest.httpMethod();
+        encoder << resourceRequest.httpHeaderFields();
+
+        // FIXME: Do not encode HTTP message body.
+        // 1. It can be large and thus costly to send across.
+        // 2. It is misleading to provide a body with some requests, while others use body streams, which cannot be serialized at all.
+        FormData* httpBody = resourceRequest.httpBody();
+        encoder << static_cast<bool>(httpBody);
+        if (httpBody)
+            encoder << httpBody->flattenToString();
+
+        encoder << resourceRequest.firstPartyForCookies().string();
+    }
+
 #if ENABLE(CACHE_PARTITIONING)
     encoder << resourceRequest.cachePartition();
 #endif
@@ -651,6 +667,42 @@ void ArgumentCoder<ResourceRequest>::encode(ArgumentEncoder& encoder, const Reso
 
 bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRequest& resourceRequest)
 {
+    if (kShouldSerializeWebCoreData) {
+        ResourceRequest request;
+
+        String url;
+        if (!decoder.decode(url))
+            return false;
+        request.setURL(URL(URL(), url));
+
+        String httpMethod;
+        if (!decoder.decode(httpMethod))
+            return false;
+        request.setHTTPMethod(httpMethod);
+
+        HTTPHeaderMap headers;
+        if (!decoder.decode(headers))
+            return false;
+        request.setHTTPHeaderFields(WTF::move(headers));
+
+        bool hasHTTPBody;
+        if (!decoder.decode(hasHTTPBody))
+            return false;
+        if (hasHTTPBody) {
+            String httpBody;
+            if (!decoder.decode(httpBody))
+                return false;
+            request.setHTTPBody(FormData::create(httpBody.utf8()));
+        }
+
+        String firstPartyForCookies;
+        if (!decoder.decode(firstPartyForCookies))
+            return false;
+        request.setFirstPartyForCookies(URL(URL(), firstPartyForCookies));
+
+        resourceRequest = request;
+    }
+
 #if ENABLE(CACHE_PARTITIONING)
     String cachePartition;
     if (!decoder.decode(cachePartition))
@@ -674,13 +726,188 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
     return resourceRequest.decodeWithoutPlatformData(decoder);
 }
 
+void ArgumentCoder<ResourceResponse>::encode(ArgumentEncoder& encoder, const ResourceResponse& resourceResponse)
+{
+#if PLATFORM(COCOA)
+    bool shouldSerializeWebCoreData = !resourceResponse.platformResponseIsUpToDate();
+    encoder << shouldSerializeWebCoreData;
+#else
+    bool shouldSerializeWebCoreData = true;
+#endif
+
+    encodePlatformData(encoder, resourceResponse);
+
+    if (shouldSerializeWebCoreData) {
+        bool responseIsNull = resourceResponse.isNull();
+        encoder << responseIsNull;
+        if (responseIsNull)
+            return;
+
+        encoder << resourceResponse.url().string();
+        encoder << static_cast<int32_t>(resourceResponse.httpStatusCode());
+        encoder << resourceResponse.httpHeaderFields();
+
+        encoder << resourceResponse.mimeType();
+        encoder << resourceResponse.textEncodingName();
+        encoder << static_cast<int64_t>(resourceResponse.expectedContentLength());
+        encoder << resourceResponse.httpStatusText();
+        encoder << resourceResponse.suggestedFilename();
+    }
+    
+#if ENABLE(WEB_TIMING)
+    const ResourceLoadTiming& timing = resourceResponse.resourceLoadTiming();
+    encoder << timing.domainLookupStart;
+    encoder << timing.domainLookupEnd;
+    encoder << timing.connectStart;
+    encoder << timing.connectEnd;
+    encoder << timing.requestStart;
+    encoder << timing.responseStart;
+    encoder << timing.secureConnectionStart;
+#endif
+}
+
+bool ArgumentCoder<ResourceResponse>::decode(ArgumentDecoder& decoder, ResourceResponse& resourceResponse)
+{
+#if PLATFORM(COCOA)
+    bool hasSerializedWebCoreData;
+    if (!decoder.decode(hasSerializedWebCoreData))
+        return false;
+#else
+    bool hasSerializedWebCoreData = true;
+#endif
+
+    ResourceResponse response;
+
+    if (!decodePlatformData(decoder, response))
+        return false;
+
+    if (hasSerializedWebCoreData) {
+        bool responseIsNull;
+        if (!decoder.decode(responseIsNull))
+            return false;
+        if (responseIsNull) {
+            resourceResponse = ResourceResponse();
+            return true;
+        }
+
+        String url;
+        if (!decoder.decode(url))
+            return false;
+        response.setURL(URL(URL(), url));
+
+        int32_t httpStatusCode;
+        if (!decoder.decode(httpStatusCode))
+            return false;
+        response.setHTTPStatusCode(httpStatusCode);
+
+        HTTPHeaderMap headers;
+        if (!decoder.decode(headers))
+            return false;
+        for (HTTPHeaderMap::const_iterator it = headers.begin(), end = headers.end(); it != end; ++it)
+            response.setHTTPHeaderField(it->key, it->value);
+
+        String mimeType;
+        if (!decoder.decode(mimeType))
+            return false;
+        response.setMimeType(mimeType);
+
+        String textEncodingName;
+        if (!decoder.decode(textEncodingName))
+            return false;
+        response.setTextEncodingName(textEncodingName);
+
+        int64_t contentLength;
+        if (!decoder.decode(contentLength))
+            return false;
+        response.setExpectedContentLength(contentLength);
+
+        String httpStatusText;
+        if (!decoder.decode(httpStatusText))
+            return false;
+        response.setHTTPStatusText(httpStatusText);
+
+        String suggestedFilename;
+        if (!decoder.decode(suggestedFilename))
+            return false;
+        response.setSuggestedFilename(suggestedFilename);
+    }
+    
+#if ENABLE(WEB_TIMING)
+    ResourceLoadTiming& timing = response.resourceLoadTiming();
+    if (!decoder.decode(timing.domainLookupStart)
+        || !decoder.decode(timing.domainLookupEnd)
+        || !decoder.decode(timing.connectStart)
+        || !decoder.decode(timing.connectEnd)
+        || !decoder.decode(timing.requestStart)
+        || !decoder.decode(timing.responseStart)
+        || !decoder.decode(timing.secureConnectionStart))
+        return false;
+#endif
+
+    resourceResponse = response;
+
+    return true;
+}
+
 void ArgumentCoder<ResourceError>::encode(ArgumentEncoder& encoder, const ResourceError& resourceError)
 {
+    if (kShouldSerializeWebCoreData) {
+        bool errorIsNull = resourceError.isNull();
+        encoder << errorIsNull;
+        if (errorIsNull)
+            return;
+
+        encoder << resourceError.domain();
+        encoder << resourceError.errorCode();
+        encoder << resourceError.failingURL();
+        encoder << resourceError.localizedDescription();
+        encoder << resourceError.isCancellation();
+        encoder << resourceError.isTimeout();
+    }
+
     encodePlatformData(encoder, resourceError);
 }
 
 bool ArgumentCoder<ResourceError>::decode(ArgumentDecoder& decoder, ResourceError& resourceError)
 {
+    if (kShouldSerializeWebCoreData) {
+        bool errorIsNull;
+        if (!decoder.decode(errorIsNull))
+            return false;
+        if (errorIsNull) {
+            resourceError = ResourceError();
+            return true;
+        }
+
+        String domain;
+        if (!decoder.decode(domain))
+            return false;
+
+        int errorCode;
+        if (!decoder.decode(errorCode))
+            return false;
+
+        String failingURL;
+        if (!decoder.decode(failingURL))
+            return false;
+
+        String localizedDescription;
+        if (!decoder.decode(localizedDescription))
+            return false;
+
+        bool isCancellation;
+        if (!decoder.decode(isCancellation))
+            return false;
+
+        bool isTimeout;
+        if (!decoder.decode(isTimeout))
+            return false;
+
+        resourceError = ResourceError(domain, errorCode, failingURL, localizedDescription);
+        resourceError.setIsCancellation(isCancellation);
+        resourceError.setIsTimeout(isTimeout);
+    }
+
     return decodePlatformData(decoder, resourceError);
 }
 
@@ -1453,7 +1680,7 @@ bool ArgumentCoder<StickyPositionViewportConstraints>::decode(ArgumentDecoder& d
     return true;
 }
 
-#if !USE(COORDINATED_GRAPHICS)
+#if ENABLE(CSS_FILTERS) && !USE(COORDINATED_GRAPHICS)
 void ArgumentCoder<FilterOperation>::encode(ArgumentEncoder& encoder, const FilterOperation& filter)
 {
     encoder.encodeEnum(filter.type());
@@ -1584,7 +1811,7 @@ bool ArgumentCoder<FilterOperations>::decode(ArgumentDecoder& decoder, FilterOpe
 
     return true;
 }
-#endif // !USE(COORDINATED_GRAPHICS)
+#endif // ENABLE(CSS_FILTERS) && !USE(COORDINATED_GRAPHICS)
 
 #if ENABLE(INDEXED_DATABASE)
 void ArgumentCoder<IDBDatabaseMetadata>::encode(ArgumentEncoder& encoder, const IDBDatabaseMetadata& metadata)

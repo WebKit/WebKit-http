@@ -34,7 +34,6 @@
 #define EventListenerMap_h
 
 #include "RegisteredEventListener.h"
-#include <atomic>
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/text/AtomicString.h>
@@ -50,7 +49,7 @@ public:
     EventListenerMap();
 
     bool isEmpty() const { return m_entries.isEmpty(); }
-    WEBCORE_EXPORT bool contains(const AtomicString& eventType) const;
+    bool contains(const AtomicString& eventType) const;
     bool containsCapturing(const AtomicString& eventType) const;
 
     void clear();
@@ -70,7 +69,7 @@ private:
     Vector<std::pair<AtomicString, std::unique_ptr<EventListenerVector>>, 2> m_entries;
 
 #ifndef NDEBUG
-    std::atomic<int> m_activeIteratorCount { 0 };
+    int m_activeIteratorCount;
 #endif
 };
 

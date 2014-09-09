@@ -23,49 +23,49 @@
 #if USE(GLIB)
 
 #include <glib.h>
+
+#include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 
-namespace WTF {
+namespace WebCore {
 
 class GMutexLocker {
-    WTF_MAKE_NONCOPYABLE(GMutexLocker);
+    WTF_MAKE_NONCOPYABLE(GMutexLocker); WTF_MAKE_FAST_ALLOCATED;
+
 public:
-    explicit GMutexLocker(GMutex& mutex)
+    inline explicit GMutexLocker(GMutex* mutex)
         : m_mutex(mutex)
-        , m_locked(false)
+        , m_val(0)
     {
         lock();
     }
 
-    ~GMutexLocker()
-    {
-        unlock();
-    }
+    inline ~GMutexLocker() { unlock(); }
 
-    void lock()
+    inline void lock()
     {
-        if (!m_locked) {
-            g_mutex_lock(&m_mutex);
-            m_locked = true;
+        if (m_mutex && !m_val) {
+            g_mutex_lock(m_mutex);
+            m_val = 1;
         }
     }
 
-    void unlock()
+    inline void unlock()
     {
-        if (m_locked) {
-            m_locked = false;
-            g_mutex_unlock(&m_mutex);
+        if (m_mutex && m_val) {
+            m_val = 0;
+            g_mutex_unlock(m_mutex);
         }
     }
+
+    inline GMutex* mutex() const { return m_mutex; }
 
 private:
-    GMutex& m_mutex;
-    bool m_locked;
+    GMutex* m_mutex;
+    uint8_t m_val;
 };
 
-} // namespace WTF
-
-using WTF::GMutexLocker;
+}
 
 #endif // USE(GLIB)
 

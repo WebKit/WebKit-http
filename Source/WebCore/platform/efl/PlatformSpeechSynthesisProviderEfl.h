@@ -28,10 +28,8 @@
 
 #if ENABLE(SPEECH_SYNTHESIS)
 
-#include <speak_lib.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -41,14 +39,6 @@ class PlatformSpeechSynthesisVoice;
 
 class PlatformSpeechSynthesisProviderEfl {
 public:
-    enum SpeechEvent {
-        SpeechError,
-        SpeechCancel,
-        SpeechPause,
-        SpeechResume,
-        SpeechStart
-    };
-
     explicit PlatformSpeechSynthesisProviderEfl(PlatformSpeechSynthesizer*);
     ~PlatformSpeechSynthesisProviderEfl();
 
@@ -58,19 +48,7 @@ public:
     void speak(PassRefPtr<PlatformSpeechSynthesisUtterance>);
     void cancel();
 private:
-    bool engineInit();
-
-    int convertRateToEspeakValue(float) const;
-    int convertVolumeToEspeakValue(float) const;
-    int convertPitchToEspeakValue(float) const;
-
-    espeak_VOICE* currentVoice() const;
-    String voiceName(PassRefPtr<PlatformSpeechSynthesisUtterance>) const;
-    void fireSpeechEvent(SpeechEvent);
-
-    bool m_isEngineStarted;
     PlatformSpeechSynthesizer* m_platformSpeechSynthesizer;
-    RefPtr<PlatformSpeechSynthesisUtterance> m_utterance;
 };
 
 } // namespace WebCore

@@ -42,7 +42,6 @@
 #else
 #include "InbandTextTrackPrivateLegacyAVCF.h"
 #endif
-#include "MediaTimeAVFoundation.h"
 #include "URL.h"
 #include "Logging.h"
 #include "PlatformCALayerWin.h"
@@ -107,7 +106,7 @@ public:
 
     void createImageGenerator();
     void destroyImageGenerator();
-    RetainPtr<CGImageRef> createImageForTimeInRect(const MediaTime&, const IntRect&);
+    RetainPtr<CGImageRef> createImageForTimeInRect(float, const IntRect&);
 
     void createAssetForURL(const String& url, bool inheritURI);
     void setAsset(AVCFURLAssetRef);
@@ -118,7 +117,7 @@ public:
     void checkPlayability();
     void beginLoadingMetadata();
     
-    void seekToTime(const MediaTime&, const MediaTime&, const MediaTime&);
+    void seekToTime(double, double, double);
     void updateVideoLayerGravity();
 
     void setCurrentTextTrack(InbandTextTrackPrivateAVF*);
@@ -570,10 +569,10 @@ void MediaPlayerPrivateAVFoundationCF::platformPause()
     setDelayCallbacks(false);
 }
 
-MediaTime MediaPlayerPrivateAVFoundationCF::platformDuration() const
+float MediaPlayerPrivateAVFoundationCF::platformDuration() const
 {
     if (!metaDataAvailable() || !avAsset(m_avfWrapper))
-        return MediaTime::zeroTime();
+        return 0;
 
     CMTime cmDuration;
 
@@ -584,28 +583,28 @@ MediaTime MediaPlayerPrivateAVFoundationCF::platformDuration() const
         cmDuration = AVCFAssetGetDuration(avAsset(m_avfWrapper));
 
     if (CMTIME_IS_NUMERIC(cmDuration))
-        return toMediaTime(cmDuration);
+        return narrowPrecisionToFloat(CMTimeGetSeconds(cmDuration));
 
     if (CMTIME_IS_INDEFINITE(cmDuration))
-        return MediaTime::positiveInfiniteTime();
+        return numeric_limits<float>::infinity();
 
-    LOG(Media, "MediaPlayerPrivateAVFoundationCF::platformDuration(%p) - invalid duration, returning %s", this, toString(MediaTime::invalidTime()).utf8().data());
-    return MediaTime::invalidTime();
+    LOG(Media, "MediaPlayerPrivateAVFoundationCF::platformDuration(%p) - invalid duration, returning %.0f", this, static_cast<float>(MediaPlayer::invalidTime()));
+    return static_cast<float>(MediaPlayer::invalidTime());
 }
 
-MediaTime MediaPlayerPrivateAVFoundationCF::currentMediaTime() const
+float MediaPlayerPrivateAVFoundationCF::currentTime() const
 {
     if (!metaDataAvailable() || !avPlayerItem(m_avfWrapper))
-        return MediaTime::zeroTime();
+        return 0;
 
     CMTime itemTime = AVCFPlayerItemGetCurrentTime(avPlayerItem(m_avfWrapper));
     if (CMTIME_IS_NUMERIC(itemTime))
-        return max(toMediaTime(itemTime), MediaTime::zeroTime());
+        return max(narrowPrecisionToFloat(CMTimeGetSeconds(itemTime)), 0.0f);
 
-    return MediaTime::zeroTime();
+    return 0;
 }
 
-void MediaPlayerPrivateAVFoundationCF::seekToTime(const MediaTime& time, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)
+void MediaPlayerPrivateAVFoundationCF::seekToTime(double time, double negativeTolerance, double positiveTolerance)
 {
     if (!m_avfWrapper)
         return;
@@ -686,22 +685,22 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateAVFoundationCF::platformBu
         CMTime duration = CMTimeMakeFromDictionary(static_cast<CFDictionaryRef>(CFDictionaryGetValue(range, CMTimeRangeDurationKey())));
         
         if (timeRangeIsValidAndNotEmpty(start, duration)) {
-            MediaTime rangeStart = toMediaTime(start);
-            MediaTime rangeEnd = rangeStart + toMediaTime(duration);
-            timeRanges->add(rangeStart, rangeEnd);
+            double rangeStart = CMTimeGetSeconds(start);
+            double rangeEnd = rangeStart + CMTimeGetSeconds(duration);
+            timeRanges->add(MediaTime::createWithDouble(rangeStart), MediaTime::createWithDouble(rangeEnd));
         }
     }
 
     return timeRanges;
 }
 
-MediaTime MediaPlayerPrivateAVFoundationCF::platformMinTimeSeekable() const 
+double MediaPlayerPrivateAVFoundationCF::platformMinTimeSeekable() const 
 { 
     RetainPtr<CFArrayRef> seekableRanges = adoptCF(AVCFPlayerItemCopySeekableTimeRanges(avPlayerItem(m_avfWrapper)));
     if (!seekableRanges) 
-        return MediaTime::zeroTime(); 
+        return 0; 
 
-    MediaTime minTimeSeekable = MediaTime::positiveInfiniteTime();
+    double minTimeSeekable = std::numeric_limits<double>::infinity(); 
     bool hasValidRange = false; 
     CFIndex rangeCount = CFArrayGetCount(seekableRanges.get());
     for (CFIndex i = 0; i < rangeCount; i++) {
@@ -712,23 +711,23 @@ MediaTime MediaPlayerPrivateAVFoundationCF::platformMinTimeSeekable() const
             continue;
 
         hasValidRange = true; 
-        MediaTime startOfRange = toMediaTime(start); 
+        double startOfRange = CMTimeGetSeconds(start); 
         if (minTimeSeekable > startOfRange) 
             minTimeSeekable = startOfRange; 
     } 
-    return hasValidRange ? minTimeSeekable : MediaTime::zeroTime(); 
+    return hasValidRange ? minTimeSeekable : 0; 
 } 
 
-MediaTime MediaPlayerPrivateAVFoundationCF::platformMaxTimeSeekable() const
+double MediaPlayerPrivateAVFoundationCF::platformMaxTimeSeekable() const
 {
     if (!avPlayerItem(m_avfWrapper))
-        return MediaTime::zeroTime();
+        return 0;
 
     RetainPtr<CFArrayRef> seekableRanges = adoptCF(AVCFPlayerItemCopySeekableTimeRanges(avPlayerItem(m_avfWrapper)));
     if (!seekableRanges)
-        return MediaTime::zeroTime();
+        return 0;
 
-    MediaTime maxTimeSeekable;
+    double maxTimeSeekable = 0;
     CFIndex rangeCount = CFArrayGetCount(seekableRanges.get());
     for (CFIndex i = 0; i < rangeCount; i++) {
         CFDictionaryRef range = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(seekableRanges.get(), i));
@@ -737,7 +736,7 @@ MediaTime MediaPlayerPrivateAVFoundationCF::platformMaxTimeSeekable() const
         if (!timeRangeIsValidAndNotEmpty(start, duration))
             continue;
         
-        MediaTime endOfRange = toMediaTime(CMTimeAdd(start, duration));
+        double endOfRange = CMTimeGetSeconds(CMTimeAdd(start, duration));
         if (maxTimeSeekable < endOfRange)
             maxTimeSeekable = endOfRange;
     }
@@ -745,16 +744,16 @@ MediaTime MediaPlayerPrivateAVFoundationCF::platformMaxTimeSeekable() const
     return maxTimeSeekable;   
 }
 
-MediaTime MediaPlayerPrivateAVFoundationCF::platformMaxTimeLoaded() const
+float MediaPlayerPrivateAVFoundationCF::platformMaxTimeLoaded() const
 {
     if (!avPlayerItem(m_avfWrapper))
-        return MediaTime::zeroTime();
+        return 0;
 
     RetainPtr<CFArrayRef> loadedRanges = adoptCF(AVCFPlayerItemCopyLoadedTimeRanges(avPlayerItem(m_avfWrapper)));
     if (!loadedRanges)
-        return MediaTime::zeroTime();
+        return 0;
 
-    MediaTime maxTimeLoaded;
+    float maxTimeLoaded = 0;
     CFIndex rangeCount = CFArrayGetCount(loadedRanges.get());
     for (CFIndex i = 0; i < rangeCount; i++) {
         CFDictionaryRef range = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(loadedRanges.get(), i));
@@ -763,7 +762,7 @@ MediaTime MediaPlayerPrivateAVFoundationCF::platformMaxTimeLoaded() const
         if (!timeRangeIsValidAndNotEmpty(start, duration))
             continue;
         
-        MediaTime endOfRange = toMediaTime(CMTimeAdd(start, duration));
+        float endOfRange = narrowPrecisionToFloat(CMTimeGetSeconds(CMTimeAdd(start, duration)));
         if (maxTimeLoaded < endOfRange)
             maxTimeLoaded = endOfRange;
     }
@@ -848,7 +847,7 @@ void MediaPlayerPrivateAVFoundationCF::paint(GraphicsContext* context, const Int
     LOG(Media, "MediaPlayerPrivateAVFoundationCF::paint(%p)", this);
 
     setDelayCallbacks(true);
-    RetainPtr<CGImageRef> image = m_avfWrapper->createImageForTimeInRect(currentMediaTime(), rect);
+    RetainPtr<CGImageRef> image = m_avfWrapper->createImageForTimeInRect(currentTime(), rect);
     if (image) {
         context->save();
         context->translate(rect.x(), rect.y() + rect.height());
@@ -931,7 +930,7 @@ void MediaPlayerPrivateAVFoundationCF::didStopLoadingRequest(AVCFAssetResourceLo
 }
 #endif
 
-MediaTime MediaPlayerPrivateAVFoundationCF::mediaTimeForTimeValue(const MediaTime& timeValue) const
+float MediaPlayerPrivateAVFoundationCF::mediaTimeForTimeValue(float timeValue) const
 {
     if (!metaDataAvailable())
         return timeValue;
@@ -1436,8 +1435,8 @@ void AVFWrapper::createAssetForURL(const String& url, bool inheritURI)
     loaderCallbacks.context = callbackContext();
     loaderCallbacks.resourceLoaderShouldWaitForLoadingOfRequestedResource = AVFWrapper::resourceLoaderShouldWaitForLoadingOfRequestedResource;
 
-    AVCFAssetResourceLoaderRef resourceLoader = AVCFURLAssetGetResourceLoader(m_avAsset.get());
-    AVCFAssetResourceLoaderSetCallbacks(resourceLoader, &loaderCallbacks, globalLoaderDelegateQueue());
+    RetainPtr<AVCFAssetResourceLoaderRef> resourceLoader = adoptCF(AVCFURLAssetGetResourceLoader(m_avAsset.get()));
+    AVCFAssetResourceLoaderSetCallbacks(resourceLoader.get(), &loaderCallbacks, globalLoaderDelegateQueue());
 #endif
 }
 
@@ -1693,12 +1692,12 @@ void AVFWrapper::seekCompletedCallback(AVCFPlayerItemRef, Boolean finished, void
     self->m_owner->scheduleMainThreadNotification(MediaPlayerPrivateAVFoundation::Notification::SeekCompleted, static_cast<bool>(finished));
 }
 
-void AVFWrapper::seekToTime(const MediaTime& time, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)
+void AVFWrapper::seekToTime(double time, double negativeTolerance, double positiveTolerance)
 {
     ASSERT(avPlayerItem());
-    CMTime cmTime = toCMTime(time);
-    CMTime cmBefore = toCMTime(negativeTolerance);
-    CMTime cmAfter = toCMTime(positiveTolerance);
+    CMTime cmTime = CMTimeMakeWithSeconds(time, 600);
+    CMTime cmBefore = CMTimeMakeWithSeconds(negativeTolerance, 600);
+    CMTime cmAfter = CMTimeMakeWithSeconds(positiveTolerance, 600);
     AVCFPlayerItemSeekToTimeWithToleranceAndCompletionCallback(avPlayerItem(), cmTime, cmBefore, cmAfter, &seekCompletedCallback, callbackContext());
 }
 
@@ -1706,10 +1705,10 @@ void AVFWrapper::seekToTime(const MediaTime& time, const MediaTime& negativeTole
 struct LegibleOutputData {
     RetainPtr<CFArrayRef> m_attributedStrings;
     RetainPtr<CFArrayRef> m_samples;
-    MediaTime m_time;
+    double m_time;
     void* m_context;
 
-    LegibleOutputData(CFArrayRef strings, CFArrayRef samples, const MediaTime &time, void* context)
+    LegibleOutputData(CFArrayRef strings, CFArrayRef samples, double time, void* context)
         : m_attributedStrings(strings), m_samples(samples), m_time(time), m_context(context)
     {
     }
@@ -1752,7 +1751,7 @@ void AVFWrapper::legibleOutputCallback(void* context, AVCFPlayerItemLegibleOutpu
 
     ASSERT(legibleOutput == self->m_legibleOutput);
 
-    auto legibleOutputData = std::make_unique<LegibleOutputData>(attributedStrings, nativeSampleBuffers, toMediaTime(itemTime), context);
+    auto legibleOutputData = std::make_unique<LegibleOutputData>(attributedStrings, nativeSampleBuffers, CMTimeGetSeconds(itemTime), context);
 
     dispatch_async_f(dispatch_get_main_queue(), legibleOutputData.release(), processCue);
 }
@@ -1855,7 +1854,7 @@ void AVFWrapper::setAsset(AVCFURLAssetRef asset)
         return;
 
     AVCFAssetCancelLoading(avAsset());
-    m_avAsset = asset;
+    m_avAsset = adoptCF(asset);
 }
 
 PlatformLayer* AVFWrapper::platformLayer()
@@ -1949,7 +1948,7 @@ void AVFWrapper::destroyImageGenerator()
     m_imageGenerator = 0;
 }
 
-RetainPtr<CGImageRef> AVFWrapper::createImageForTimeInRect(const MediaTime& time, const IntRect& rect)
+RetainPtr<CGImageRef> AVFWrapper::createImageForTimeInRect(float time, const IntRect& rect)
 {
     if (!m_imageGenerator)
         return 0;
@@ -1959,7 +1958,7 @@ RetainPtr<CGImageRef> AVFWrapper::createImageForTimeInRect(const MediaTime& time
 #endif
 
     AVCFAssetImageGeneratorSetMaximumSize(m_imageGenerator.get(), CGSize(rect.size()));
-    RetainPtr<CGImageRef> rawimage = adoptCF(AVCFAssetImageGeneratorCopyCGImageAtTime(m_imageGenerator.get(), toCMTime(time), 0, 0));
+    RetainPtr<CGImageRef> rawimage = adoptCF(AVCFAssetImageGeneratorCopyCGImageAtTime(m_imageGenerator.get(), CMTimeMakeWithSeconds(time, 600), 0, 0));
     RetainPtr<CGImageRef> image = adoptCF(CGImageCreateCopyWithColorSpace(rawimage.get(), adoptCF(CGColorSpaceCreateDeviceRGB()).get()));
 
 #if !LOG_DISABLED

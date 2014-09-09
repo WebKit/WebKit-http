@@ -37,12 +37,12 @@ namespace WebCore {
 
 #if USE(DICTATION_ALTERNATIVES)
 struct TextAlternativeWithRange {
-    WEBCORE_EXPORT TextAlternativeWithRange(NSTextAlternatives* anAlternatives, NSRange aRange);
+    TextAlternativeWithRange(NSTextAlternatives* anAlternatives, NSRange aRange);
     NSRange range;
     RetainPtr<NSTextAlternatives> alternatives;
 };
 
-WEBCORE_EXPORT void collectDictationTextAlternatives(NSAttributedString*, Vector<TextAlternativeWithRange>& alternatives);
+void collectDictationTextAlternatives(NSAttributedString*, Vector<TextAlternativeWithRange>& alternatives);
 
 #else
 struct TextAlternativeWithRange { };

@@ -22,6 +22,7 @@
 #ifndef FEColorMatrix_h
 #define FEColorMatrix_h
 
+#if ENABLE(FILTERS)
 #include "FilterEffect.h"
 
 #include "Filter.h"
@@ -95,5 +96,7 @@ inline void FEColorMatrix::calculateHueRotateComponents(float* components, float
 
 
 } // namespace WebCore
+
+#endif // ENABLE(FILTERS)
 
 #endif // FEColorMatrix_h

@@ -122,23 +122,10 @@ WebInspector.Popover.prototype = {
         if (!this._content)
             return;
 
-        this._addListenersIfNeeded();
+        window.addEventListener("mousedown", this, true);
+        window.addEventListener("scroll", this, true);
 
         this._update();
-    },
-
-    presentNewContentWithFrame: function(content, targetFrame, preferredEdges)
-    {
-        this._content = content;
-        this._contentNeedsUpdate = true;
-
-        this._targetFrame = targetFrame;
-        this._preferredEdges = preferredEdges;
-
-        this._addListenersIfNeeded();
-
-        var shouldAnimate = this.visible;
-        this._update(shouldAnimate);
     },
 
     dismiss: function()
@@ -146,8 +133,6 @@ WebInspector.Popover.prototype = {
         if (this._element.parentNode !== document.body)
             return;
 
-        console.assert(this._isListeningForPopoverEvents);
-        this._isListeningForPopoverEvents = false;
         window.removeEventListener("mousedown", this, true);
         window.removeEventListener("scroll", this, true);
 
@@ -211,9 +196,8 @@ WebInspector.Popover.prototype = {
             this._preferredSize = new WebInspector.Size(Math.ceil(popoverBounds.width), Math.ceil(popoverBounds.height));
         }
 
-        const titleBarOffset = WebInspector.Platform.name === "mac" && !WebInspector.Platform.isLegacyMacOS ? 22 : 0;
-        var containerFrame = new WebInspector.Rect(0, titleBarOffset, window.innerWidth, window.innerHeight - titleBarOffset);
         // The frame of the window with a little inset to make sure we have room for shadows.
+        var containerFrame = new WebInspector.Rect(0, 0, window.innerWidth, window.innerHeight);
         containerFrame = containerFrame.inset(WebInspector.Popover.ShadowEdgeInsets);
 
         // Work out the metrics for all edges.
@@ -274,7 +258,7 @@ WebInspector.Popover.prototype = {
             this._element.classList.add(this._cssClassNameForEdge());
 
             if (shouldAnimate && this._edge === previousEdge)
-                this._animateFrame(bestFrame, anchorPoint);
+                this._animateFrame(bestFrame);
             else {
                  this.frame = bestFrame;
                  this._setAnchorPoint(anchorPoint);
@@ -320,7 +304,7 @@ WebInspector.Popover.prototype = {
         this._anchorPoint = anchorPoint;
     },
 
-    _animateFrame: function(toFrame, toAnchor)
+    _animateFrame: function(toFrame)
     {
         var startTime = Date.now();
         var duration = 350;
@@ -328,7 +312,11 @@ WebInspector.Popover.prototype = {
         var spline = new WebInspector.UnitBezier(0.25, 0.1, 0.25, 1);
 
         var fromFrame = this._frame.copy();
-        var fromAnchor = this._anchorPoint.copy();
+
+        var absoluteAnchorPoint = new WebInspector.Point(
+            fromFrame.minX() + this._anchorPoint.x,
+            fromFrame.minY() + this._anchorPoint.y
+        );
 
         function animatedValue(from, to, progress)
         {
@@ -347,19 +335,14 @@ WebInspector.Popover.prototype = {
             ).round();
 
             this._setAnchorPoint(new WebInspector.Point(
-                animatedValue(fromAnchor.x, toAnchor.x, progress),
-                animatedValue(fromAnchor.y, toAnchor.y, progress)
+                absoluteAnchorPoint.x - this._frame.minX(),
+                absoluteAnchorPoint.y - this._frame.minY()
             ));
 
             this._drawBackground();
 
-            if (progress < 1) {
-                // FIXME: Revert to using window.requestAnimationFrame when Inspector is out of process.
-                // It can't currently use window.requestAnimationFrame because the callback passed into
-                // it won't fire while paused in the debugger inside the Inspector.
-                const animationRate60FPS = 17;
-                setTimeout(drawBackground.bind(this), animationRate60FPS);
-            }
+            if (progress < 1)
+                window.requestAnimationFrame(drawBackground.bind(this));
         }
 
         drawBackground.call(this);
@@ -550,16 +533,8 @@ WebInspector.Popover.prototype = {
             break;
         }
         ctx.closePath();
-    },
-
-    _addListenersIfNeeded: function()
-    {
-        if (!this._isListeningForPopoverEvents) {
-            this._isListeningForPopoverEvents = true;
-            window.addEventListener("mousedown", this, true);
-            window.addEventListener("scroll", this, true);
-        }
     }
+
 };
 
 WebInspector.Popover.prototype.__proto__ = WebInspector.Object.prototype;

@@ -30,11 +30,13 @@
 #include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/PlatformWheelEvent.h>
 
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS)
+#if PLATFORM(IOS)
 #include <WebKitAdditions/PlatformTouchEventIOS.h>
-#elif ENABLE(TOUCH_EVENTS)
+#else
 #include <WebCore/PlatformTouchEvent.h>
 #include <WebCore/PlatformTouchPoint.h>
+#endif
 #endif
 
 namespace WebKit {
@@ -54,7 +56,7 @@ WebCore::PlatformKeyboardEvent platform(const WebKeyboardEvent&);
 
 #if ENABLE(TOUCH_EVENTS)
 WebCore::PlatformTouchEvent platform(const WebTouchEvent&);
-#if !ENABLE(IOS_TOUCH_EVENTS)
+#if !PLATFORM(IOS)
 WebCore::PlatformTouchPoint platform(const WebTouchPoint&);
 #endif
 #endif

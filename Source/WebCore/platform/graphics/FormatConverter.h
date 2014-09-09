@@ -25,6 +25,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#include "config.h"
+
 #if USE(3D_GRAPHICS)
 
 #include "GraphicsContext3D.h"

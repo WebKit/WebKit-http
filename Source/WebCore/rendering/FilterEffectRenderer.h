@@ -26,6 +26,8 @@
 #ifndef FilterEffectRenderer_h
 #define FilterEffectRenderer_h
 
+#if ENABLE(CSS_FILTERS)
+
 #include "Filter.h"
 #include "FilterEffect.h"
 #include "FilterOperations.h"
@@ -149,5 +151,7 @@ private:
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(CSS_FILTERS)
 
 #endif // FilterEffectRenderer_h

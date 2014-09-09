@@ -106,7 +106,10 @@ bool FunctionWhitelist::contains(CodeBlock* codeBlock) const
     if (m_entries.contains(hash))
         return true;
 
-    return m_entries.contains(name + '#' + hash);
+    String nameAndHash = name;
+    nameAndHash.append('#');
+    nameAndHash.append(hash);
+    return m_entries.contains(nameAndHash);
 }
 
 } } // namespace JSC::DFG

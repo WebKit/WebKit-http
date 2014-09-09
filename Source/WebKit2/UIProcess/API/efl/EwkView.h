@@ -38,10 +38,6 @@
 #include "ewk_touch.h"
 #endif
 
-#ifdef HAVE_ECORE_X
-#include <Ecore_X.h>
-#endif
-
 typedef struct _cairo_surface cairo_surface_t;
 
 namespace WebKit {
@@ -121,8 +117,6 @@ public:
     void setCustomTextEncodingName(const char* customEncoding);
     const char* userAgent() const { return m_userAgent; }
     void setUserAgent(const char* userAgent);
-    const char* applicationNameForUserAgent() const { return m_applicationNameForUserAgent; }
-    void setApplicationNameForUserAgent(const char* applicationNameForUserAgent);
 
     bool mouseEventsEnabled() const { return m_mouseEventsEnabled; }
     void setMouseEventsEnabled(bool enabled);
@@ -133,9 +127,7 @@ public:
     void doneWithTouchEvent(WKTouchEventRef, bool);
 #endif
 
-#ifdef HAVE_ECORE_X
-    void updateCursor(Ecore_X_Window);
-#endif
+    void updateCursor();
     void setCursor(const WebCore::Cursor& cursor);
 
     void scheduleUpdateDisplay();
@@ -267,11 +259,6 @@ private:
 #endif
     std::unique_ptr<EwkBackForwardList> m_backForwardList;
     RefPtr<EwkWindowFeatures> m_windowFeatures;
-
-#ifdef HAVE_ECORE_X
-    Ecore_X_Cursor m_customCursor;
-#endif
-
     union CursorIdentifier {
         CursorIdentifier()
             : image(nullptr)
@@ -280,13 +267,13 @@ private:
         WebCore::Image* image;
         const char* group;
     } m_cursorIdentifier;
+    bool m_useCustomCursor;
 
     WKEinaSharedString m_url;
     mutable WKEinaSharedString m_title;
     WKEinaSharedString m_theme;
     WKEinaSharedString m_customEncoding;
     WKEinaSharedString m_userAgent;
-    WKEinaSharedString m_applicationNameForUserAgent;
     bool m_mouseEventsEnabled;
 #if ENABLE(TOUCH_EVENTS)
     bool m_touchEventsEnabled;

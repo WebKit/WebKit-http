@@ -208,7 +208,8 @@ HRESULT STDMETHODCALLTYPE WebError::isPolicyChangeError(
     return S_OK;
 }
 
-HRESULT WebError::sslPeerCertificate(/* [retval][out] */ ULONG_PTR* result)
+HRESULT STDMETHODCALLTYPE WebError::sslPeerCertificate( 
+    /* [retval][out] */ OLE_HANDLE* result)
 {
     if (!result)
         return E_POINTER;
@@ -227,7 +228,7 @@ HRESULT WebError::sslPeerCertificate(/* [retval][out] */ ULONG_PTR* result)
     void* data = wkGetSSLPeerCertificateDataBytePtr(m_cfErrorUserInfoDict.get());
     if (!data)
         return E_FAIL;
-    *result = reinterpret_cast<ULONG_PTR>(data);
+    *result = (OLE_HANDLE)(ULONG64)data;
 #endif
     return *result ? S_OK : E_FAIL;
 }

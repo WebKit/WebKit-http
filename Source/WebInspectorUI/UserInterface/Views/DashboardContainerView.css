@@ -31,10 +31,7 @@
     border-radius: 4px;
     background-color: rgb(252, 252, 252);
 
-    border: 1px solid transparent;
-    border-top-color: white;
-
-    box-shadow: rgba(0, 0, 0, 0.15) 0 1px 0;
+    box-shadow: rgba(0, 0, 0, 0.15) 0 1px 0, inset white 0 1px 0;
 
     margin: 4px 10px;
     overflow: hidden;
@@ -95,6 +92,9 @@ body.mac-platform.legacy.window-inactive .toolbar .dashboard-container {
     right: 0;
 
     padding: 0 10px 0 5px;
+
+    background-color: rgb(252, 252, 252);
+    box-shadow: inset white 0 1px 0;
 
     -webkit-animation-duration: 0.4s;
 }
@@ -175,10 +175,6 @@ body.mac-platform.legacy.window-inactive .toolbar .dashboard {
 
     transition-property: opacity;
     transition-duration: 0.2s;
-}
-
-body.mac-platform.legacy .dashboard-container .advance-arrow {
-    background-image: url(../Images/Legacy/UpDownArrows.svg);
 }
 
 .dashboard-container .advance-arrow:hover {

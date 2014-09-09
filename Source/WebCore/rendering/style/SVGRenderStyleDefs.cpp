@@ -76,8 +76,8 @@ bool StyleFillData::operator==(const StyleFillData& other) const
 StyleStrokeData::StyleStrokeData()
     : opacity(SVGRenderStyle::initialStrokeOpacity())
     , miterLimit(SVGRenderStyle::initialStrokeMiterLimit())
-    , width(RenderStyle::initialOneLength())
-    , dashOffset(RenderStyle::initialZeroLength())
+    , width(SVGRenderStyle::initialStrokeWidth())
+    , dashOffset(SVGRenderStyle::initialStrokeDashOffset())
     , dashArray(SVGRenderStyle::initialStrokeDashArray())
     , paintType(SVGRenderStyle::initialStrokePaintType())
     , paintColor(SVGRenderStyle::initialStrokePaintColor())
@@ -278,23 +278,13 @@ bool StyleInheritedResourceData::operator==(const StyleInheritedResourceData& ot
 }
 
 StyleLayoutData::StyleLayoutData()
-    : cx(RenderStyle::initialZeroLength())
-    , cy(RenderStyle::initialZeroLength())
-    , r(RenderStyle::initialZeroLength())
-    , rx(RenderStyle::initialZeroLength())
-    , ry(RenderStyle::initialZeroLength())
-    , x(RenderStyle::initialZeroLength())
+    : x(RenderStyle::initialZeroLength())
     , y(RenderStyle::initialZeroLength())
 {
 }
 
 inline StyleLayoutData::StyleLayoutData(const StyleLayoutData& other)
     : RefCounted<StyleLayoutData>()
-    , cx(other.cx)
-    , cy(other.cy)
-    , r(other.r)
-    , rx(other.rx)
-    , ry(other.ry)
     , x(other.x)
     , y(other.y)
 {
@@ -307,12 +297,7 @@ PassRef<StyleLayoutData> StyleLayoutData::copy() const
 
 bool StyleLayoutData::operator==(const StyleLayoutData& other) const
 {
-    return cx == other.cx
-        && cy == other.cy
-        && r == other.r
-        && rx == other.rx
-        && ry == other.ry
-        && x == other.x
+    return x == other.x
         && y == other.y;
 }
 

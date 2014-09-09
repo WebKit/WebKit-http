@@ -28,7 +28,6 @@
 
 #include "Animation.h"
 #include "Color.h"
-#include "FilterOperations.h"
 #include "FloatPoint.h"
 #include "FloatPoint3D.h"
 #include "FloatRect.h"
@@ -39,6 +38,10 @@
 #include "TransformOperations.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
+
+#if ENABLE(CSS_FILTERS)
+#include "FilterOperations.h"
+#endif
 
 #if ENABLE(CSS_COMPOSITING)
 #include "GraphicsTypes.h"
@@ -142,6 +145,7 @@ private:
     TransformOperations m_value;
 };
 
+#if ENABLE(CSS_FILTERS)
 // Used to store one filter value in a keyframe list.
 // FIXME: Should be moved to its own header file.
 class FilterAnimationValue : public AnimationValue {
@@ -167,6 +171,7 @@ private:
 
     FilterOperations m_value;
 };
+#endif
 
 // Used to store a series of values in a keyframe list.
 // Values will all be of the same type, which can be inferred from the property.
@@ -221,9 +226,9 @@ protected:
 class GraphicsLayer {
     WTF_MAKE_NONCOPYABLE(GraphicsLayer); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT static std::unique_ptr<GraphicsLayer> create(GraphicsLayerFactory*, GraphicsLayerClient&);
+    static std::unique_ptr<GraphicsLayer> create(GraphicsLayerFactory*, GraphicsLayerClient&);
     
-    WEBCORE_EXPORT virtual ~GraphicsLayer();
+    virtual ~GraphicsLayer();
 
     virtual void initialize() { }
 
@@ -244,26 +249,17 @@ public:
     
     const Vector<GraphicsLayer*>& children() const { return m_children; }
     // Returns true if the child list changed.
-    WEBCORE_EXPORT virtual bool setChildren(const Vector<GraphicsLayer*>&);
-
-    enum ContentsLayerPurpose {
-        NoContentsLayer = 0,
-        ContentsLayerForImage,
-        ContentsLayerForMedia,
-        ContentsLayerForCanvas,
-        ContentsLayerForBackgroundColor,
-        ContentsLayerForPlugin
-    };
+    virtual bool setChildren(const Vector<GraphicsLayer*>&);
 
     // Add child layers. If the child is already parented, it will be removed from its old parent.
-    WEBCORE_EXPORT virtual void addChild(GraphicsLayer*);
-    WEBCORE_EXPORT virtual void addChildAtIndex(GraphicsLayer*, int index);
-    WEBCORE_EXPORT virtual void addChildAbove(GraphicsLayer*, GraphicsLayer* sibling);
-    WEBCORE_EXPORT virtual void addChildBelow(GraphicsLayer*, GraphicsLayer* sibling);
-    WEBCORE_EXPORT virtual bool replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChild);
+    virtual void addChild(GraphicsLayer*);
+    virtual void addChildAtIndex(GraphicsLayer*, int index);
+    virtual void addChildAbove(GraphicsLayer* layer, GraphicsLayer* sibling);
+    virtual void addChildBelow(GraphicsLayer* layer, GraphicsLayer* sibling);
+    virtual bool replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChild);
 
-    WEBCORE_EXPORT void removeAllChildren();
-    WEBCORE_EXPORT virtual void removeFromParent();
+    void removeAllChildren();
+    virtual void removeFromParent();
 
     // The parent() of a maskLayer is set to the layer being masked.
     GraphicsLayer* maskLayer() const { return m_maskLayer; }
@@ -273,7 +269,7 @@ public:
     bool isMaskLayer() const { return m_isMaskLayer; }
     
     // The given layer will replicate this layer and its children; the replica renders behind this layer.
-    WEBCORE_EXPORT virtual void setReplicatedByLayer(GraphicsLayer*);
+    virtual void setReplicatedByLayer(GraphicsLayer*);
     // Whether this layer is being replicated by another layer.
     bool isReplicated() const { return m_replicaLayer; }
     // The layer that replicates this layer (if any).
@@ -305,7 +301,7 @@ public:
 
     // The size of the layer.
     const FloatSize& size() const { return m_size; }
-    WEBCORE_EXPORT virtual void setSize(const FloatSize&);
+    virtual void setSize(const FloatSize&);
 
     // The boundOrigin affects the offset at which content is rendered, and sublayers are positioned.
     const FloatPoint& boundsOrigin() const { return m_boundsOrigin; }
@@ -339,7 +335,7 @@ public:
     // Note that this covers the entire layer. Use setContentsToSolidColor() if the color should
     // only cover the contentsRect.
     const Color& backgroundColor() const { return m_backgroundColor; }
-    WEBCORE_EXPORT virtual void setBackgroundColor(const Color&);
+    virtual void setBackgroundColor(const Color&);
 
     // opaque means that we know the layer contents have no alpha
     bool contentsOpaque() const { return m_contentsOpaque; }
@@ -351,10 +347,12 @@ public:
     float opacity() const { return m_opacity; }
     virtual void setOpacity(float opacity) { m_opacity = opacity; }
 
+#if ENABLE(CSS_FILTERS)
     const FilterOperations& filters() const { return m_filters; }
     
     // Returns true if filter can be rendered by the compositor
     virtual bool setFilters(const FilterOperations& filters) { m_filters = filters; return true; }
+#endif
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return m_blendMode; }
@@ -401,18 +399,22 @@ public:
     virtual void pauseAnimation(const String& /*animationName*/, double /*timeOffset*/) { }
     virtual void removeAnimation(const String& /*animationName*/) { }
 
-    WEBCORE_EXPORT virtual void suspendAnimations(double time);
-    WEBCORE_EXPORT virtual void resumeAnimations();
+    virtual void suspendAnimations(double time);
+    virtual void resumeAnimations();
     
     // Layer contents
     virtual void setContentsToImage(Image*) { }
     virtual bool shouldDirectlyCompositeImage(Image*) const { return true; }
+    virtual void setContentsToMedia(PlatformLayer*) { } // video or plug-in
 #if PLATFORM(IOS)
     virtual PlatformLayer* contentsLayerForMedia() const { return 0; }
 #endif
     // Pass an invalid color to remove the contents layer.
     virtual void setContentsToSolidColor(const Color&) { }
-    virtual void setContentsToPlatformLayer(PlatformLayer*, ContentsLayerPurpose) { }
+    virtual void setContentsToCanvas(PlatformLayer*) { }
+    // FIXME: webkit.org/b/109658
+    // Should unify setContentsToMedia and setContentsToCanvas
+    virtual void setContentsToPlatformLayer(PlatformLayer* layer) { setContentsToMedia(layer); }
     virtual bool usesContentsLayer() const { return false; }
 
     // Callback from the underlying graphics system to draw layer contents.
@@ -452,10 +454,10 @@ public:
 
     // z-position is the z-equivalent of position(). It's only used for debugging purposes.
     virtual float zPosition() const { return m_zPosition; }
-    WEBCORE_EXPORT virtual void setZPosition(float);
+    virtual void setZPosition(float);
 
-    WEBCORE_EXPORT virtual void distributeOpacity(float);
-    WEBCORE_EXPORT virtual float accumulatedOpacity() const;
+    virtual void distributeOpacity(float);
+    virtual float accumulatedOpacity() const;
 
 #if PLATFORM(IOS)
     bool hasFlattenedPerspectiveTransform() const { return !preserves3D() && m_childrenTransform.hasPerspective(); }
@@ -469,7 +471,7 @@ public:
     float deviceScaleFactor() const { return m_client.deviceScaleFactor(); }
 
     virtual void deviceOrPageScaleFactorChanged() { }
-    WEBCORE_EXPORT void noteDeviceOrPageScaleFactorChangedIncludingDescendants();
+    void noteDeviceOrPageScaleFactorChangedIncludingDescendants();
 
     // Some compositing systems may do internal batching to synchronize compositing updates
     // with updates drawn into the window. These methods flush internal batched state on this layer
@@ -486,7 +488,7 @@ public:
     String layerTreeAsText(LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
 
     // Return an estimate of the backing store memory cost (in bytes). May be incorrect for tiled layers.
-    WEBCORE_EXPORT virtual double backingStoreMemoryEstimate() const;
+    virtual double backingStoreMemoryEstimate() const;
 
     bool usingTiledBacking() const { return m_usingTiledBacking; }
     virtual TiledBacking* tiledBacking() const { return 0; }
@@ -522,8 +524,9 @@ public:
 
 protected:
     // Should be called from derived class destructors. Should call willBeDestroyed() on super.
-    WEBCORE_EXPORT virtual void willBeDestroyed();
+    virtual void willBeDestroyed();
 
+#if ENABLE(CSS_FILTERS)
     // This method is used by platform GraphicsLayer classes to clear the filters
     // when compositing is not done in hardware. It is not virtual, so the caller
     // needs to notifiy the change to the platform layer as needed.
@@ -531,6 +534,7 @@ protected:
 
     // Given a KeyframeValueList containing filterOperations, return true if the operations are valid.
     static int validateFilterOperations(const KeyframeValueList&);
+#endif
 
     // Given a list of TransformAnimationValues, see if all the operations for each keyframe match. If so
     // return the index of the KeyframeValueList entry that has that list of operations (it may not be
@@ -547,12 +551,12 @@ protected:
     GraphicsLayer* replicatedLayer() const { return m_replicatedLayer; }
     virtual void setReplicatedLayer(GraphicsLayer* layer) { m_replicatedLayer = layer; }
 
-    WEBCORE_EXPORT explicit GraphicsLayer(GraphicsLayerClient&);
+    explicit GraphicsLayer(GraphicsLayerClient&);
 
     void dumpProperties(TextStream&, int indent, LayerTreeAsTextBehavior) const;
     virtual void dumpAdditionalProperties(TextStream&, int /*indent*/, LayerTreeAsTextBehavior) const { }
 
-    WEBCORE_EXPORT virtual void getDebugBorderInfo(Color&, float& width) const;
+    virtual void getDebugBorderInfo(Color&, float& width) const;
 
     GraphicsLayerClient& m_client;
     String m_name;
@@ -573,7 +577,9 @@ protected:
     float m_opacity;
     float m_zPosition;
     
+#if ENABLE(CSS_FILTERS)
     FilterOperations m_filters;
+#endif
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode m_blendMode;

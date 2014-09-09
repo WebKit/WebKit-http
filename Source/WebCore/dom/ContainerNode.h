@@ -84,20 +84,16 @@ public:
     virtual ~ContainerNode();
 
     Node* firstChild() const { return m_firstChild; }
-    static ptrdiff_t firstChildMemoryOffset() { return OBJECT_OFFSETOF(ContainerNode, m_firstChild); }
     Node* lastChild() const { return m_lastChild; }
     bool hasChildNodes() const { return m_firstChild; }
 
-    bool directChildNeedsStyleRecalc() const { return getFlag(DirectChildNeedsStyleRecalcFlag); }
-    void setDirectChildNeedsStyleRecalc() { setFlag(DirectChildNeedsStyleRecalcFlag); }
-
-    WEBCORE_EXPORT unsigned childNodeCount() const;
-    WEBCORE_EXPORT Node* childNode(unsigned index) const;
+    unsigned childNodeCount() const;
+    Node* childNode(unsigned index) const;
 
     bool insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
     bool replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT bool removeChild(Node* child, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT bool appendChild(PassRefPtr<Node> newChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    bool removeChild(Node* child, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    bool appendChild(PassRefPtr<Node> newChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
 
     // These methods are only used during parsing.
     // They don't send DOM mutation events or handle reparenting.
@@ -124,6 +120,8 @@ public:
     virtual void childrenChanged(const ChildChange&);
 
     void disconnectDescendantFrames();
+
+    virtual bool childShouldCreateRenderer(const Node&) const { return true; }
 
     using Node::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);

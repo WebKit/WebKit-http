@@ -115,7 +115,7 @@ ParserError BytecodeGenerator::generate()
 
     m_codeBlock->shrinkToFit();
 
-    if (m_codeBlock->symbolTable() && !m_codeBlock->vm()->typeProfiler())
+    if (m_codeBlock->symbolTable())
         m_codeBlock->setSymbolTable(m_codeBlock->symbolTable()->cloneCapturedNames(*m_codeBlock->vm()));
 
     if (m_expressionTooDeep)
@@ -248,8 +248,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
         m_activationRegister = addVar();
         emitInitLazyRegister(m_activationRegister);
         m_codeBlock->setActivationRegister(m_activationRegister->virtualRegister());
-        emitOpcode(op_create_activation);
-        instructions().append(m_activationRegister->index());
     }
 
     m_symbolTable->setCaptureStart(virtualRegisterForLocal(m_codeBlock->m_numVars).offset());
@@ -339,7 +337,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
 
     m_symbolTable->setCaptureEnd(virtualRegisterForLocal(codeBlock->m_numVars).offset());
 
-    bool canLazilyCreateFunctions = !functionBody->needsActivationForMoreThanVariables() && !m_shouldEmitDebugHooks && !m_vm->typeProfiler();
+    bool canLazilyCreateFunctions = !functionBody->needsActivationForMoreThanVariables() && !m_shouldEmitDebugHooks;
     m_firstLazyFunction = codeBlock->m_numVars;
     for (size_t i = 0; i < functionStack.size(); ++i) {
         FunctionBodyNode* function = functionStack[i];
@@ -1006,8 +1004,8 @@ RegisterID* BytecodeGenerator::emitMove(RegisterID* dst, CaptureMode captureMode
     if (captureMode == IsCaptured)
         instructions().append(watchableVariable(dst->index()));
 
-    if (!dst->isTemporary() && vm()->typeProfiler())
-        emitProfileType(dst, ProfileTypeBytecodeHasGlobalID, nullptr);
+    if (!dst->isTemporary() && isProfilingTypesWithHighFidelity())
+        emitProfileTypesWithHighFidelity(dst, true);
 
     return dst;
 }
@@ -1118,26 +1116,16 @@ RegisterID* BytecodeGenerator::emitEqualityOp(OpcodeID opcodeID, RegisterID* dst
     return dst;
 }
 
-void BytecodeGenerator::emitTypeProfilerExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot)
+void BytecodeGenerator::emitProfileTypesWithHighFidelity(RegisterID* registerToProfile, bool hasGlobalID)
 {
-    unsigned start = startDivot.offset; // Ranges are inclusive of their endpoints, AND 0 indexed.
-    unsigned end = endDivot.offset - 1; // End Ranges already go one past the inclusive range, so subtract 1.
-    unsigned instructionOffset = instructions().size() - 1;
-    m_codeBlock->addTypeProfilerExpressionInfo(instructionOffset, start, end);
-}
-
-void BytecodeGenerator::emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag flag, const Identifier* identifier)
-{
-    if (flag == ProfileTypeBytecodeGetFromScope || flag == ProfileTypeBytecodePutToScope)
-        RELEASE_ASSERT(identifier);
-
-    // The format of this instruction is: op_profile_type regToProfile, TypeLocation*, flag, identifier?, resolveType?
-    emitOpcode(op_profile_type);
+    emitOpcode(op_profile_types_with_high_fidelity);
     instructions().append(registerToProfile->index());
-    instructions().append(0);
-    instructions().append(flag);
-    instructions().append(identifier ? addConstant(*identifier) : 0);
-    instructions().append(resolveType());
+    instructions().append(0); // placeholder for TypeLocation
+    // This is a flag indicating whether we should track this value to its globalID or not.
+    if (hasGlobalID)
+        instructions().append(1);
+    else
+        instructions().append(0);
 }
 
 RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, bool b)
@@ -1284,13 +1272,18 @@ RegisterID* BytecodeGenerator::emitPutToScope(RegisterID* scope, const Identifie
     m_codeBlock->addPropertyAccessInstruction(instructions().size());
 
     // put_to_scope scope, id, value, ResolveModeAndType, Structure, Operand
-    emitOpcode(op_put_to_scope);
+    if (isProfilingTypesWithHighFidelity())
+        emitOpcode(op_put_to_scope_with_profile);
+    else
+        emitOpcode(op_put_to_scope);
     instructions().append(scope->index());
     instructions().append(addConstant(identifier));
     instructions().append(value->index());
     instructions().append(ResolveModeAndType(resolveMode, resolveType()).operand());
     instructions().append(0);
     instructions().append(0);
+    if (isProfilingTypesWithHighFidelity())
+        instructions().append(0);
     return value;
 }
 
@@ -1358,6 +1351,9 @@ RegisterID* BytecodeGenerator::emitPutById(RegisterID* base, const Identifier& p
     instructions().append(0);
     instructions().append(0);
 
+    if (isProfilingTypesWithHighFidelity())
+        emitProfileTypesWithHighFidelity(value, false);
+
     return value;
 }
 
@@ -1421,30 +1417,18 @@ RegisterID* BytecodeGenerator::emitGetArgumentByVal(RegisterID* dst, RegisterID*
 RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, RegisterID* property)
 {
     for (size_t i = m_forInContextStack.size(); i > 0; i--) {
-        ForInContext* context = m_forInContextStack[i - 1].get();
-        if (context->local() != property)
-            continue;
-
-        if (!context->isValid())
-            break;
-
-        if (context->type() == ForInContext::IndexedForInContextType) {
-            property = static_cast<IndexedForInContext*>(context)->index();
-            break;
+        ForInContext& context = m_forInContextStack[i - 1];
+        if (context.propertyRegister == property) {
+            emitOpcode(op_get_by_pname);
+            instructions().append(dst->index());
+            instructions().append(base->index());
+            instructions().append(property->index());
+            instructions().append(context.expectedSubscriptRegister->index());
+            instructions().append(context.iterRegister->index());
+            instructions().append(context.indexRegister->index());
+            return dst;
         }
-
-        ASSERT(context->type() == ForInContext::StructureForInContextType);
-        StructureForInContext* structureContext = static_cast<StructureForInContext*>(context);
-        UnlinkedValueProfile profile = emitProfiledOpcode(op_get_direct_pname);
-        instructions().append(kill(dst));
-        instructions().append(base->index());
-        instructions().append(property->index());
-        instructions().append(structureContext->index()->index());
-        instructions().append(structureContext->enumerator()->index());
-        instructions().append(profile);
-        return dst;
     }
-
     UnlinkedArrayProfile arrayProfile = newArrayProfile();
     UnlinkedValueProfile profile = emitProfiledOpcode(op_get_by_val);
     instructions().append(kill(dst));
@@ -1466,6 +1450,9 @@ RegisterID* BytecodeGenerator::emitPutByVal(RegisterID* base, RegisterID* proper
     instructions().append(property->index());
     instructions().append(value->index());
     instructions().append(arrayProfile);
+
+    if (isProfilingTypesWithHighFidelity())
+        emitProfileTypesWithHighFidelity(value, false);
 
     return value;
 }
@@ -1616,6 +1603,7 @@ RegisterID* BytecodeGenerator::emitLazyNewFunction(RegisterID* dst, FunctionBody
 
 RegisterID* BytecodeGenerator::emitNewFunctionInternal(RegisterID* dst, CaptureMode captureMode, unsigned index, bool doNullCheck)
 {
+    createActivationIfNecessary();
     emitOpcode(captureMode == IsCaptured ? op_new_captured_func : op_new_func);
     instructions().append(dst->index());
     instructions().append(index);
@@ -1639,7 +1627,8 @@ RegisterID* BytecodeGenerator::emitNewFunctionExpression(RegisterID* r0, FuncExp
 {
     FunctionBodyNode* function = n->body();
     unsigned index = m_codeBlock->addFunctionExpr(makeFunction(function));
-
+    
+    createActivationIfNecessary();
     emitOpcode(op_new_func_exp);
     instructions().append(r0->index());
     instructions().append(index);
@@ -1667,8 +1656,17 @@ void BytecodeGenerator::createArgumentsIfNecessary()
     ASSERT(!hasWatchableVariable(m_codeBlock->argumentsRegister().offset()));
 }
 
+void BytecodeGenerator::createActivationIfNecessary()
+{
+    if (!m_activationRegister)
+        return;
+    emitOpcode(op_create_activation);
+    instructions().append(m_activationRegister->index());
+}
+
 RegisterID* BytecodeGenerator::emitCallEval(RegisterID* dst, RegisterID* func, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
+    createActivationIfNecessary();
     return emitCall(op_call_eval, dst, func, NoExpectedFunction, callArguments, divot, divotStart, divotEnd);
 }
 
@@ -1973,6 +1971,7 @@ RegisterID* BytecodeGenerator::emitPushWithScope(RegisterID* scope)
     m_scopeContextStack.append(context);
     m_localScopeDepth++;
 
+    createActivationIfNecessary();
     return emitUnaryNoDstOp(op_push_with_scope, scope);
 }
 
@@ -2138,7 +2137,7 @@ void BytecodeGenerator::emitComplexPopScopes(ControlFlowContext* topScope, Contr
         
         Vector<ControlFlowContext> savedScopeContextStack;
         Vector<SwitchInfo> savedSwitchContextStack;
-        Vector<std::unique_ptr<ForInContext>> savedForInContextStack;
+        Vector<ForInContext> savedForInContextStack;
         Vector<TryContext> poppedTryContexts;
         LabelScopeStore savedLabelScopes;
         while (topScope > bottomScope && topScope->isFinallyBlock) {
@@ -2165,7 +2164,7 @@ void BytecodeGenerator::emitComplexPopScopes(ControlFlowContext* topScope, Contr
                 m_switchContextStack.shrink(finallyContext.switchContextStackSize);
             }
             if (flipForIns) {
-                savedForInContextStack.swap(m_forInContextStack);
+                savedForInContextStack = m_forInContextStack;
                 m_forInContextStack.shrink(finallyContext.forInContextStackSize);
             }
             if (flipTries) {
@@ -2205,7 +2204,7 @@ void BytecodeGenerator::emitComplexPopScopes(ControlFlowContext* topScope, Contr
             if (flipSwitches)
                 m_switchContextStack = savedSwitchContextStack;
             if (flipForIns)
-                m_forInContextStack.swap(savedForInContextStack);
+                m_forInContextStack = savedForInContextStack;
             if (flipTries) {
                 ASSERT(m_tryContextStack.size() == finallyContext.tryContextStackSize);
                 for (unsigned i = poppedTryContexts.size(); i--;) {
@@ -2241,6 +2240,33 @@ void BytecodeGenerator::emitPopScopes(int targetScopeDepth)
     }
 
     emitComplexPopScopes(&m_scopeContextStack.last(), &m_scopeContextStack.last() - scopeDelta);
+}
+
+RegisterID* BytecodeGenerator::emitGetPropertyNames(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, Label* breakTarget)
+{
+    size_t begin = instructions().size();
+
+    emitOpcode(op_get_pnames);
+    instructions().append(dst->index());
+    instructions().append(base->index());
+    instructions().append(i->index());
+    instructions().append(size->index());
+    instructions().append(breakTarget->bind(begin, instructions().size()));
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitNextPropertyName(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, RegisterID* iter, Label* target)
+{
+    size_t begin = instructions().size();
+
+    emitOpcode(op_next_pname);
+    instructions().append(dst->index());
+    instructions().append(base->index());
+    instructions().append(i->index());
+    instructions().append(size->index());
+    instructions().append(iter->index());
+    instructions().append(target->bind(begin, instructions().size()));
+    return dst;
 }
 
 TryData* BytecodeGenerator::pushTry(Label* start)
@@ -2298,6 +2324,8 @@ void BytecodeGenerator::emitPushFunctionNameScope(const Identifier& property, Re
 
 void BytecodeGenerator::emitPushCatchScope(const Identifier& property, RegisterID* value, unsigned attributes)
 {
+    createActivationIfNecessary();
+
     ControlFlowContext context;
     context.isFinallyBlock = false;
     m_scopeContextStack.append(context);
@@ -2507,130 +2535,6 @@ void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, Expressio
     RefPtr<RegisterID> result = newTemporary();
     emitJumpIfFalse(emitEqualityOp(op_stricteq, result.get(), value.get(), emitLoad(0, JSValue(vm()->iterationTerminator.get()))), loopStart.get());
     emitLabel(scope->breakTarget());
-}
-
-RegisterID* BytecodeGenerator::emitGetEnumerableLength(RegisterID* dst, RegisterID* base)
-{
-    emitOpcode(op_get_enumerable_length);
-    instructions().append(dst->index());
-    instructions().append(base->index());
-    return dst;
-}
-
-RegisterID* BytecodeGenerator::emitHasGenericProperty(RegisterID* dst, RegisterID* base, RegisterID* propertyName)
-{
-    emitOpcode(op_has_generic_property);
-    instructions().append(dst->index());
-    instructions().append(base->index());
-    instructions().append(propertyName->index());
-    return dst;
-}
-
-RegisterID* BytecodeGenerator::emitHasIndexedProperty(RegisterID* dst, RegisterID* base, RegisterID* propertyName)
-{
-    UnlinkedArrayProfile arrayProfile = newArrayProfile();
-    emitOpcode(op_has_indexed_property);
-    instructions().append(dst->index());
-    instructions().append(base->index());
-    instructions().append(propertyName->index());
-    instructions().append(arrayProfile);
-    return dst;
-}
-
-RegisterID* BytecodeGenerator::emitHasStructureProperty(RegisterID* dst, RegisterID* base, RegisterID* propertyName, RegisterID* enumerator)
-{
-    emitOpcode(op_has_structure_property);
-    instructions().append(dst->index());
-    instructions().append(base->index());
-    instructions().append(propertyName->index());
-    instructions().append(enumerator->index());
-    return dst;
-}
-
-RegisterID* BytecodeGenerator::emitGetStructurePropertyEnumerator(RegisterID* dst, RegisterID* base, RegisterID* length)
-{
-    emitOpcode(op_get_structure_property_enumerator);
-    instructions().append(dst->index());
-    instructions().append(base->index());
-    instructions().append(length->index());
-    return dst;
-}
-
-RegisterID* BytecodeGenerator::emitGetGenericPropertyEnumerator(RegisterID* dst, RegisterID* base, RegisterID* length, RegisterID* structureEnumerator)
-{
-    emitOpcode(op_get_generic_property_enumerator);
-    instructions().append(dst->index());
-    instructions().append(base->index());
-    instructions().append(length->index());
-    instructions().append(structureEnumerator->index());
-    return dst;
-}
-
-RegisterID* BytecodeGenerator::emitNextEnumeratorPropertyName(RegisterID* dst, RegisterID* enumerator, RegisterID* index)
-{
-    emitOpcode(op_next_enumerator_pname);
-    instructions().append(dst->index());
-    instructions().append(enumerator->index());
-    instructions().append(index->index());
-    return dst;
-}
-
-RegisterID* BytecodeGenerator::emitToIndexString(RegisterID* dst, RegisterID* index)
-{
-    emitOpcode(op_to_index_string);
-    instructions().append(dst->index());
-    instructions().append(index->index());
-    return dst;
-}
-
-void BytecodeGenerator::pushIndexedForInScope(RegisterID* localRegister, RegisterID* indexRegister)
-{
-    if (!localRegister)
-        return;
-    m_forInContextStack.append(std::make_unique<IndexedForInContext>(localRegister, indexRegister));
-}
-
-void BytecodeGenerator::popIndexedForInScope(RegisterID* localRegister)
-{
-    if (!localRegister)
-        return;
-    m_forInContextStack.removeLast();
-}
-
-void BytecodeGenerator::pushStructureForInScope(RegisterID* localRegister, RegisterID* indexRegister, RegisterID* propertyRegister, RegisterID* enumeratorRegister)
-{
-    if (!localRegister)
-        return;
-    m_forInContextStack.append(std::make_unique<StructureForInContext>(localRegister, indexRegister, propertyRegister, enumeratorRegister));
-}
-
-void BytecodeGenerator::popStructureForInScope(RegisterID* localRegister)
-{
-    if (!localRegister)
-        return;
-    m_forInContextStack.removeLast();
-}
-
-void BytecodeGenerator::invalidateForInContextForLocal(RegisterID* localRegister)
-{
-    // Lexically invalidating ForInContexts is kind of weak sauce, but it only occurs if 
-    // either of the following conditions is true:
-    // 
-    // (1) The loop iteration variable is re-assigned within the body of the loop.
-    // (2) The loop iteration variable is captured in the lexical scope of the function.
-    //
-    // These two situations occur sufficiently rarely that it's okay to use this style of 
-    // "analysis" to make iteration faster. If we didn't want to do this, we would either have 
-    // to perform some flow-sensitive analysis to see if/when the loop iteration variable was 
-    // reassigned, or we'd have to resort to runtime checks to see if the variable had been 
-    // reassigned from its original value.
-    for (size_t i = m_forInContextStack.size(); i > 0; i--) {
-        ForInContext* context = m_forInContextStack[i - 1].get();
-        if (context->local() != localRegister)
-            continue;
-        context->invalidate();
-        break;
-    }
 }
 
 } // namespace JSC

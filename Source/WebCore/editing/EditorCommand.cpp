@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2009 Igalia S.L.
  *
@@ -142,7 +142,7 @@ static bool executeToggleStyleInList(Frame& frame, EditorCommandSource source, E
     if (selectedCSSValue->isValueList()) {
         RefPtr<CSSValueList> selectedCSSValueList = toCSSValueList(selectedCSSValue.get());
         if (!selectedCSSValueList->removeAll(value))
-            selectedCSSValueList->append(*value);
+            selectedCSSValueList->append(value);
         if (selectedCSSValueList->length())
             newStyle = selectedCSSValueList->cssText();
 
@@ -258,7 +258,7 @@ static unsigned verticalScrollDistance(Frame& frame)
     if (!(style.overflowY() == OSCROLL || style.overflowY() == OAUTO || focusedElement->hasEditableStyle()))
         return 0;
     int height = std::min<int>(toRenderBox(renderer)->clientHeight(), frame.view()->visibleHeight());
-    return static_cast<unsigned>(Scrollbar::pageStep(height));
+    return static_cast<unsigned>(std::max(std::max<int>(height * Scrollbar::minFractionToStepWhenPaging(), height - Scrollbar::maxOverlapBetweenPages()), 1));
 }
 
 static RefPtr<Range> unionDOMRanges(Range* a, Range* b)
@@ -302,11 +302,13 @@ static bool executeCut(Frame& frame, Event*, EditorCommandSource source, const S
     return true;
 }
 
+#if PLATFORM(IOS)
 static bool executeClearText(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     frame.editor().clearText();
     return true;
 }
+#endif
 
 static bool executeDefaultParagraphSeparator(Frame& frame, Event*, EditorCommandSource, const String& value)
 {
@@ -1243,19 +1245,29 @@ static bool enableCaretInEditableText(Frame& frame, Event* event, EditorCommandS
 
 static bool enabledCopy(Frame& frame, Event*, EditorCommandSource)
 {
+#if !PLATFORM(IOS)
     return frame.editor().canDHTMLCopy() || frame.editor().canCopy();
+#else
+    return frame.editor().canCopy();
+#endif
 }
 
 static bool enabledCut(Frame& frame, Event*, EditorCommandSource)
 {
+#if !PLATFORM(IOS)
     return frame.editor().canDHTMLCut() || frame.editor().canCut();
+#else
+    return frame.editor().canCut();
+#endif
 }
 
+#if PLATFORM(IOS)
 static bool enabledClearText(Frame& frame, Event*, EditorCommandSource)
 {
     UNUSED_PARAM(frame);
     return false;
 }
+#endif
 
 static bool enabledInEditableText(Frame& frame, Event* event, EditorCommandSource)
 {
@@ -1480,7 +1492,6 @@ static const CommandMap& createCommandMap()
         { "AlignRight", { executeJustifyRight, supportedFromMenuOrKeyBinding, enabledInRichlyEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "BackColor", { executeBackColor, supported, enabledInRichlyEditableText, stateNone, valueBackColor, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "Bold", { executeToggleBold, supported, enabledInRichlyEditableText, stateBold, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
-        { "ClearText", { executeClearText, supported, enabledClearText, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
         { "Copy", { executeCopy, supportedCopyCut, enabledCopy, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
         { "CreateLink", { executeCreateLink, supported, enabledInRichlyEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "Cut", { executeCut, supportedCopyCut, enabledCut, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
@@ -1618,6 +1629,9 @@ static const CommandMap& createCommandMap()
 
 #if PLATFORM(MAC)
         { "TakeFindStringFromSelection", { executeTakeFindStringFromSelection, supportedFromMenuOrKeyBinding, enabledTakeFindStringFromSelection, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
+#endif
+#if PLATFORM(IOS)
+        { "ClearText", { executeClearText, supported, enabledClearText, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
 #endif
     };
 

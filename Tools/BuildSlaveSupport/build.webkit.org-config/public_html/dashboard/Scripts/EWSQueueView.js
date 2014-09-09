@@ -67,7 +67,8 @@ EWSQueueView.prototype = {
             var status = new StatusLineView(message, StatusLineView.Status.Neutral, null, patchCount || "0");
             this.element.appendChild(status.element);
 
-            new PopoverTracker(status.statusBubbleElement, this._presentPopoverForEWSQueue.bind(this), queue);
+            if (patchCount > 0)
+                new PopoverTracker(status.statusBubbleElement, this._presentPopoverForEWSQueue.bind(this), queue);
         }
 
         this.queues.forEach(function(queue) {

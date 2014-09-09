@@ -55,12 +55,12 @@ public:
 #endif
     };
 
-    WEBCORE_EXPORT explicit UserActivity(const char* description);
+    explicit UserActivity(const char* description);
 
 private:
     friend class HysteresisActivity<UserActivity>;
 
-    WEBCORE_EXPORT void started();
+    void started();
     void stopped();
 
     Impl m_impl;

@@ -41,6 +41,7 @@
 namespace Inspector {
 class InspectorAgent;
 class InspectorDebuggerAgent;
+class InspectorProfilerAgent;
 }
 
 namespace WebCore {
@@ -132,6 +133,9 @@ public:
     InspectorDOMDebuggerAgent* inspectorDOMDebuggerAgent() const { return m_inspectorDOMDebuggerAgent; }
     void setInspectorDOMDebuggerAgent(InspectorDOMDebuggerAgent* agent) { m_inspectorDOMDebuggerAgent = agent; }
 
+    Inspector::InspectorProfilerAgent* inspectorProfilerAgent() const { return m_inspectorProfilerAgent; }
+    void setInspectorProfilerAgent(Inspector::InspectorProfilerAgent* agent) { m_inspectorProfilerAgent = agent; }
+
     InspectorWorkerAgent* inspectorWorkerAgent() const { return m_inspectorWorkerAgent; }
     void setInspectorWorkerAgent(InspectorWorkerAgent* agent) { m_inspectorWorkerAgent = agent; }
 
@@ -165,10 +169,11 @@ private:
     Inspector::InspectorDebuggerAgent* m_inspectorDebuggerAgent;
     PageDebuggerAgent* m_pageDebuggerAgent;
     InspectorDOMDebuggerAgent* m_inspectorDOMDebuggerAgent;
+    Inspector::InspectorProfilerAgent* m_inspectorProfilerAgent;
     InspectorWorkerAgent* m_inspectorWorkerAgent;
 };
 
-WEBCORE_EXPORT InstrumentingAgents* instrumentationForPage(Page*);
+InstrumentingAgents* instrumentationForPage(Page*);
 InstrumentingAgents* instrumentationForWorkerGlobalScope(WorkerGlobalScope*);
 
 }

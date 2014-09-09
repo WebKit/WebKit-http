@@ -929,7 +929,7 @@ bool CSPDirectiveList::checkMediaTypeAndReportViolation(MediaListDirective* dire
     if (checkMediaType(directive, type, typeAttribute))
         return true;
 
-    String message = makeString(consoleMessage, '\'', directive->text(), "\'.");
+    String message = makeString(consoleMessage, "\'", directive->text(), "\'.");
     if (typeAttribute.isEmpty())
         message = message + " When enforcing the 'plugin-types' directive, the plugin's media type must be explicitly declared with a 'type' attribute on the containing element (e.g. '<object type=\"[TYPE GOES HERE]\" ...>').";
 
@@ -1682,15 +1682,13 @@ void ContentSecurityPolicy::reportUnsupportedDirective(const String& name) const
     DEPRECATED_DEFINE_STATIC_LOCAL(String, optionsMessage, (ASCIILiteral("The 'options' directive has been replaced with 'unsafe-inline' and 'unsafe-eval' source expressions for the 'script-src' and 'style-src' directives. Please use those directives instead, as 'options' has no effect.")));
     DEPRECATED_DEFINE_STATIC_LOCAL(String, policyURIMessage, (ASCIILiteral("The 'policy-uri' directive has been removed from the specification. Please specify a complete policy via the Content-Security-Policy header.")));
 
-    String message;
+    String message = makeString("Unrecognized Content-Security-Policy directive '", name, "'.\n");
     if (equalIgnoringCase(name, allow))
         message = allowMessage;
     else if (equalIgnoringCase(name, options))
         message = optionsMessage;
     else if (equalIgnoringCase(name, policyURI))
         message = policyURIMessage;
-    else
-        message = makeString("Unrecognized Content-Security-Policy directive '", name, "'.\n");
 
     logToConsole(message);
 }
@@ -1737,12 +1735,9 @@ void ContentSecurityPolicy::reportInvalidPathCharacter(const String& directiveNa
 {
     ASSERT(invalidChar == '#' || invalidChar == '?');
 
-    String ignoring;
+    String ignoring = "The fragment identifier, including the '#', will be ignored.";
     if (invalidChar == '?')
         ignoring = "The query component, including the '?', will be ignored.";
-    else
-        ignoring = "The fragment identifier, including the '#', will be ignored.";
-
     String message = makeString("The source list for Content Security Policy directive '", directiveName, "' contains a source with an invalid path: '", value, "'. ", ignoring);
     logToConsole(message);
 }

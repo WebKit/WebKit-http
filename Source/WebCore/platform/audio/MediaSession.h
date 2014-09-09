@@ -26,7 +26,6 @@
 #ifndef MediaSession_h
 #define MediaSession_h
 
-#include "Timer.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
@@ -103,11 +102,9 @@ protected:
     MediaSessionClient& client() const { return m_client; }
 
 private:
-    void clientDataBufferingTimerFired(Timer<MediaSession>&);
     void updateClientDataBuffering();
 
     MediaSessionClient& m_client;
-    Timer<MediaSession> m_clientDataBufferingTimer;
     State m_state;
     State m_stateToRestore;
     bool m_notifyingClient;

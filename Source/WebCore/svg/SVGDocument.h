@@ -47,6 +47,8 @@ public:
 private:
     SVGDocument(Frame*, const URL&);
 
+    virtual bool childShouldCreateRenderer(const Node&) const override;
+
     virtual PassRefPtr<Document> cloneDocumentWithoutChildren() const override;
 
     FloatPoint m_translate;

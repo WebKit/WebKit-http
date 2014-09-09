@@ -40,11 +40,11 @@ namespace WebCore {
 #if USE(APPKIT)
     // These functions assume NSColors are in DeviceRGB colorspace
     Color colorFromNSColor(NSColor *);
-    WEBCORE_EXPORT NSColor *nsColor(const Color&);
+    NSColor *nsColor(const Color&);
 #endif
 
-    WEBCORE_EXPORT bool usesTestModeFocusRingColor();
-    WEBCORE_EXPORT void setUsesTestModeFocusRingColor(bool);
+    bool usesTestModeFocusRingColor();
+    void setUsesTestModeFocusRingColor(bool);
     
     // Focus ring color used for testing purposes.
     RGBA32 oldAquaFocusRingColor();

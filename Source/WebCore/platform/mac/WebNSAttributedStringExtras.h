@@ -25,6 +25,6 @@
 
 namespace WebCore {
 
-WEBCORE_EXPORT NSAttributedString *attributedStringByStrippingAttachmentCharacters(NSAttributedString *);
+NSAttributedString *attributedStringByStrippingAttachmentCharacters(NSAttributedString *);
 
 }

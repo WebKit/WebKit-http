@@ -141,7 +141,8 @@ void JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
 
     for (; ; obj = asObject(prototype)) {
         unsigned attributes;
-        PropertyOffset offset = obj->structure()->get(vm, propertyName, attributes);
+        JSCell* specificValue;
+        PropertyOffset offset = obj->structure()->get(vm, propertyName, attributes, specificValue);
         if (offset != invalidOffset) {
             if (attributes & ReadOnly) {
                 if (slot.isStrictMode())

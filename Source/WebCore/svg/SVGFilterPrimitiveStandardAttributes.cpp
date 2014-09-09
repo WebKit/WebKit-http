@@ -20,6 +20,8 @@
  */
 
 #include "config.h"
+
+#if ENABLE(FILTERS)
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
 #include "Attribute.h"
@@ -172,3 +174,5 @@ void invalidateFilterPrimitiveParent(SVGElement* element)
 }
 
 }
+
+#endif

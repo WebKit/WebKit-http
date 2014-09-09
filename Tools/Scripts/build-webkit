@@ -100,7 +100,7 @@ Usage: $programName [options] [options to pass to build system]
   --wincairo                        Build using Cairo (rather than CoreGraphics) on Windows
   --wince                           Build the WinCE port
 
-  --inspector-frontend              Copy Web Inspector user interface resources to the build directory
+  --inspector-frontend              Copy changes to the inspector front-end files to the build directory
 
   --prefix=<path>                   Set installation prefix to the given path (Gtk/Efl only)
   --makeargs=<arguments>            Optional Makefile flags
@@ -195,6 +195,18 @@ if (isAppleMacWebKit()) {
         push @options, $option unless $option eq "";
     }
 
+    if (isIOSWebKit()) {
+        # FIXME: Remove the inclusion of both WebKit System Interface and WebKit Additions projects
+        # once the iOS build is stable.
+
+        # WebKitSystemInterface should always be built just before WebKit.
+        my $webKitIndex = first { $projects[$_] eq "Source/WebKit" } 0..$#projects;
+        splice(@projects, $webKitIndex, 0, "../Internal/WebKitSystemInterface");
+
+        # WebKitAdditions must come before WebCore
+        splice(@projects, 0, 0, "../Internal/WebKitAdditions");
+    }
+
     # ANGLE must come before WebCore
     splice @projects, 0, 0, "Source/ThirdParty/ANGLE";
 
@@ -241,7 +253,8 @@ if (isAppleMacWebKit()) {
 my $result = 0;
 
 if (isInspectorFrontend()) {
-    die "The --inspector-frontend option is not supported for CMake-based builds." if isCMakeBuild();
+    $result = copyInspectorFrontendFiles();
+    exit exitStatus($result) if exitStatus($result);
     @projects = ("Source/WebInspectorUI");
 }
 

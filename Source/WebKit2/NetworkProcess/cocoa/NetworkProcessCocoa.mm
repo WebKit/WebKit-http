@@ -60,8 +60,8 @@ void NetworkProcess::platformLowMemoryHandler(bool)
 
 void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters& parameters)
 {
-#if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
+#if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.hstsDatabasePathExtensionHandle);
     SandboxExtension::consumePermanently(parameters.parentBundleDirectoryExtensionHandle);
 #endif

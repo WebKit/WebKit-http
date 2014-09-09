@@ -91,32 +91,37 @@ const char* InlineBox::boxName() const
     return "InlineBox";
 }
 
-void InlineBox::showNodeTreeForThis() const
+void InlineBox::showTreeForThis() const
 {
-    m_renderer.showNodeTreeForThis();
+    m_renderer.showTreeForThis();
 }
 
 void InlineBox::showLineTreeForThis() const
 {
-    m_renderer.containingBlock()->showLineTreeForThis();
+    m_renderer.containingBlock()->showLineTreeAndMark(this, "*");
 }
 
-void InlineBox::showLineTreeAndMark(const InlineBox* markedBox, int depth) const
+void InlineBox::showLineTreeAndMark(const InlineBox* markedBox1, const char* markedLabel1, const InlineBox* markedBox2, const char* markedLabel2, const RenderObject* obj, int depth) const
 {
-    showLineBox(markedBox == this, depth);
-}
-
-void InlineBox::showLineBox(bool mark, int depth) const
-{
-    fprintf(stderr, "------- --");
     int printedCharacters = 0;
-    if (mark) {
-        fprintf(stderr, "*");
-        ++printedCharacters;
-    }
-    while (++printedCharacters <= depth * 2)
+    if (this == markedBox1)
+        printedCharacters += fprintf(stderr, "%s", markedLabel1);
+    if (this == markedBox2)
+        printedCharacters += fprintf(stderr, "%s", markedLabel2);
+    if (&m_renderer == obj)
+        printedCharacters += fprintf(stderr, "*");
+    for (; printedCharacters < depth * 2; printedCharacters++)
         fputc(' ', stderr);
-    fprintf(stderr, "%s  (%.2f, %.2f) (%.2f, %.2f) (%p)\n", boxName(), x(), y(), width(), height(), this);
+
+    showBox(printedCharacters);
+}
+
+void InlineBox::showBox(int printedCharacters) const
+{
+    printedCharacters += fprintf(stderr, "%s\t%p", boxName(), this);
+    for (; printedCharacters < showTreeCharacterOffset; printedCharacters++)
+        fputc(' ', stderr);
+    fprintf(stderr, "\t%s %p\n", renderer().renderName(), &renderer());
 }
 
 #endif
@@ -329,18 +334,16 @@ LayoutPoint InlineBox::flipForWritingMode(const LayoutPoint& point)
 
 #ifndef NDEBUG
 
-void showNodeTree(const WebCore::InlineBox* inlineBox)
+void showTree(const WebCore::InlineBox* b)
 {
-    if (!inlineBox)
-        return;
-    inlineBox->showNodeTreeForThis();
+    if (b)
+        b->showTreeForThis();
 }
 
-void showLineTree(const WebCore::InlineBox* inlineBox)
+void showLineTree(const WebCore::InlineBox* b)
 {
-    if (!inlineBox)
-        return;
-    inlineBox->showLineTreeForThis();
+    if (b)
+        b->showLineTreeForThis();
 }
 
 #endif

@@ -50,12 +50,12 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static IntRect clientRectForElement(HTMLElement* element)
+static IntRect clientRectForNode(Node* node)
 {
-    if (!element)
+    if (!node || !node->isElementNode())
         return IntRect();
 
-    return element->clientRect();
+    return toElement(node)->clientRect();
 }
 
 PassRefPtr<WebVideoFullscreenManager> WebVideoFullscreenManager::create(PassRefPtr<WebPage> page)
@@ -78,38 +78,38 @@ WebVideoFullscreenManager::~WebVideoFullscreenManager()
     WebProcess::shared().removeMessageReceiver(Messages::WebVideoFullscreenManager::messageReceiverName(), m_page->pageID());
 }
 
-bool WebVideoFullscreenManager::supportsVideoFullscreen() const
+bool WebVideoFullscreenManager::supportsFullscreen(const Node* node) const
 {
-    return Settings::avKitEnabled();
+    return Settings::avKitEnabled() && isHTMLVideoElement(node);
 }
 
-void WebVideoFullscreenManager::enterVideoFullscreenForVideoElement(HTMLVideoElement* videoElement)
+void WebVideoFullscreenManager::enterFullscreenForNode(Node* node)
 {
-    m_videoElement = videoElement;
-
+    ASSERT(node);
+    m_node = node;
     m_targetIsFullscreen = true;
 
     if (m_isAnimating)
         return;
 
     m_isAnimating = true;
-    setVideoElement(videoElement);
+    setMediaElement(toHTMLMediaElement(node));
 
     m_layerHostingContext = LayerHostingContext::createForExternalHostingProcess();
     
-    m_page->send(Messages::WebVideoFullscreenManagerProxy::SetupFullscreenWithID(m_layerHostingContext->contextID(), clientRectForElement(videoElement)), m_page->pageID());
+    m_page->send(Messages::WebVideoFullscreenManagerProxy::SetupFullscreenWithID(m_layerHostingContext->contextID(), clientRectForNode(node)), m_page->pageID());
 }
 
-void WebVideoFullscreenManager::exitVideoFullscreen()
+void WebVideoFullscreenManager::exitFullscreenForNode(Node* node)
 {
-    RefPtr<HTMLVideoElement> videoElement = m_videoElement.release();
+    m_node.clear();
     m_targetIsFullscreen = false;
 
     if (m_isAnimating)
         return;
 
     m_isAnimating = true;
-    m_page->send(Messages::WebVideoFullscreenManagerProxy::ExitFullscreen(clientRectForElement(videoElement.get())), m_page->pageID());
+    m_page->send(Messages::WebVideoFullscreenManagerProxy::ExitFullscreen(clientRectForNode(node)), m_page->pageID());
 }
 
 void WebVideoFullscreenManager::setDuration(double duration)
@@ -191,9 +191,9 @@ void WebVideoFullscreenManager::didEnterFullscreen()
         return;
 
     // exit fullscreen now if it was previously requested during an animation.
-    __block RefPtr<WebVideoFullscreenModelVideoElement> protect(this);
+    __block RefPtr<WebVideoFullscreenModelMediaElement> protect(this);
     WebThreadRun(^ {
-        exitVideoFullscreen();
+        exitFullscreenForNode(m_node.get());
         protect.clear();
     });
 }
@@ -201,7 +201,7 @@ void WebVideoFullscreenManager::didEnterFullscreen()
 void WebVideoFullscreenManager::didExitFullscreen()
 {
     setVideoFullscreenLayer(nil);
-    __block RefPtr<WebVideoFullscreenModelVideoElement> protect(this);
+    __block RefPtr<WebVideoFullscreenModelMediaElement> protect(this);
 
     dispatch_async(dispatch_get_main_queue(), ^{
         m_layerHostingContext->setRootLayer(nullptr);
@@ -216,15 +216,15 @@ void WebVideoFullscreenManager::didCleanupFullscreen()
     m_isAnimating = false;
     m_isFullscreen = false;
     
-    setVideoElement(nullptr);
+    setMediaElement(nullptr);
 
     if (!m_targetIsFullscreen)
         return;
 
     // enter fullscreen now if it was previously requested during an animation.
-    __block RefPtr<WebVideoFullscreenModelVideoElement> protect(this);
+    __block RefPtr<WebVideoFullscreenModelMediaElement> protect(this);
     WebThreadRun(^ {
-        enterVideoFullscreenForVideoElement(m_videoElement.get());
+        enterFullscreenForNode(m_node.get());
         protect.clear();
     });
 }

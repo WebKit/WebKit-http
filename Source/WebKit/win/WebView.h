@@ -55,7 +55,6 @@ namespace WebCore {
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     struct GraphicsDeviceAdapter;
 #endif
-    class HTMLVideoElement;
 }
 
 namespace WebCore {
@@ -246,9 +245,11 @@ public:
     virtual HRESULT STDMETHODCALLTYPE preferencesIdentifier( 
         /* [retval][out] */ BSTR *anIdentifier);
     
-    virtual HRESULT STDMETHODCALLTYPE setHostWindow(HWND);
+    virtual HRESULT STDMETHODCALLTYPE setHostWindow( 
+        /* [in] */ OLE_HANDLE window);
     
-    virtual HRESULT STDMETHODCALLTYPE hostWindow(HWND*);
+    virtual HRESULT STDMETHODCALLTYPE hostWindow( 
+        /* [retval][out] */ OLE_HANDLE *window);
     
     virtual HRESULT STDMETHODCALLTYPE searchFor( 
         /* [in] */ BSTR str,
@@ -325,7 +326,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE mainFrameTitle( 
         /* [retval][out] */ BSTR *title);
     
-    virtual HRESULT STDMETHODCALLTYPE mainFrameIcon(/* [retval][out] */ HBITMAP* hBitmap);
+    virtual HRESULT STDMETHODCALLTYPE mainFrameIcon( 
+        /* [retval][out] */ OLE_HANDLE *hBitmap);
 
     virtual HRESULT STDMETHODCALLTYPE registerURLSchemeAsLocal( 
         /* [in] */ BSTR scheme);
@@ -621,7 +623,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE inViewSourceMode( 
         /* [retval][out] */ BOOL* flag);
 
-    virtual HRESULT STDMETHODCALLTYPE viewWindow(/* [retval][out] */ HWND* window);
+    virtual HRESULT STDMETHODCALLTYPE viewWindow( 
+        /* [retval][out] */ OLE_HANDLE *window);
 
     virtual HRESULT STDMETHODCALLTYPE setFormDelegate( 
         /* [in] */ IWebFormDelegate *formDelegate);
@@ -658,7 +661,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE rectsForTextMatches(
         IEnumTextMatches** pmatches);
 
-    virtual HRESULT STDMETHODCALLTYPE generateSelectionImage(BOOL forceWhiteText, HBITMAP* hBitmap);
+    virtual HRESULT STDMETHODCALLTYPE generateSelectionImage(
+        BOOL forceWhiteText, OLE_HANDLE* hBitmap);
 
     virtual HRESULT STDMETHODCALLTYPE selectionRect(
         RECT* rc);
@@ -714,9 +718,14 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE windowAncestryDidChange();
 
-    virtual HRESULT STDMETHODCALLTYPE paintDocumentRectToContext(RECT, HDC);
+    virtual HRESULT STDMETHODCALLTYPE paintDocumentRectToContext(
+        /* [in] */ RECT rect,
+        /* [in] */ OLE_HANDLE dc);
 
-    virtual HRESULT STDMETHODCALLTYPE paintScrollViewRectToContextAtPoint(RECT, POINT, HDC);
+    virtual HRESULT STDMETHODCALLTYPE paintScrollViewRectToContextAtPoint(
+        /* [in] */ RECT rect,
+        /* [in] */ POINT pt,
+        /* [in] */ OLE_HANDLE dc);
 
     virtual HRESULT STDMETHODCALLTYPE reportException(
         /* [in] */ JSContextRef context,
@@ -733,7 +742,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setCustomHTMLTokenizerChunkSize(
         /* [in] */ int chunkSize);
 
-    virtual HRESULT STDMETHODCALLTYPE backingStore(/* [out, retval] */ HBITMAP* hBitmap);
+    virtual HRESULT STDMETHODCALLTYPE backingStore(
+        /* [out, retval] */ OLE_HANDLE* hBitmap);
 
     virtual HRESULT STDMETHODCALLTYPE setTransparent(
         /* [in] */ BOOL transparent);
@@ -941,8 +951,8 @@ public:
     WebCore::GraphicsDeviceAdapter* graphicsDeviceAdapter() const;
 #endif
 
-    void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement*);
-    void exitVideoFullscreen();
+    void enterFullscreenForNode(WebCore::Node*);
+    void exitFullscreen();
 
     void setLastCursor(HCURSOR cursor) { m_lastSetCursor = cursor; }
 

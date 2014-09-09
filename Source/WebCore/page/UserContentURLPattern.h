@@ -45,7 +45,7 @@ public:
 
     bool isValid() const { return !m_invalid; }
 
-    WEBCORE_EXPORT bool matches(const URL&) const;
+    bool matches(const URL&) const;
 
     const String& scheme() const { return m_scheme; }
     const String& host() const { return m_host; }
@@ -56,7 +56,7 @@ public:
     static bool matchesPatterns(const URL&, const Vector<String>& whitelist, const Vector<String>& blacklist);
 
 private:
-    WEBCORE_EXPORT bool parse(const String& pattern);
+    bool parse(const String& pattern);
 
     bool matchesHost(const URL&) const;
     bool matchesPath(const URL&) const;

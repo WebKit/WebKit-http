@@ -98,7 +98,7 @@ bool ScrollingCoordinator::coordinatesScrollingForFrameView(FrameView* frameView
 
 Region ScrollingCoordinator::computeNonFastScrollableRegion(const Frame* frame, const IntPoint& frameLocation) const
 {
-#if ENABLE(IOS_TOUCH_EVENTS)
+#if PLATFORM(IOS)
     // On iOS, we use nonFastScrollableRegion to represent the region covered by elements with touch event handlers.
     ASSERT(frame->isMainFrame());
     UNUSED_PARAM(frameLocation);
@@ -395,15 +395,15 @@ String ScrollingCoordinator::synchronousScrollingReasonsAsText(SynchronousScroll
     StringBuilder stringBuilder;
 
     if (reasons & ScrollingCoordinator::ForcedOnMainThread)
-        stringBuilder.appendLiteral("Forced on main thread, ");
+        stringBuilder.append("Forced on main thread, ");
     if (reasons & ScrollingCoordinator::HasSlowRepaintObjects)
-        stringBuilder.appendLiteral("Has slow repaint objects, ");
+        stringBuilder.append("Has slow repaint objects, ");
     if (reasons & ScrollingCoordinator::HasViewportConstrainedObjectsWithoutSupportingFixedLayers)
-        stringBuilder.appendLiteral("Has viewport constrained objects without supporting fixed layers, ");
+        stringBuilder.append("Has viewport constrained objects without supporting fixed layers, ");
     if (reasons & ScrollingCoordinator::HasNonLayerViewportConstrainedObjects)
-        stringBuilder.appendLiteral("Has non-layer viewport-constrained objects, ");
+        stringBuilder.append("Has non-layer viewport-constrained objects, ");
     if (reasons & ScrollingCoordinator::IsImageDocument)
-        stringBuilder.appendLiteral("Is image document, ");
+        stringBuilder.append("Is image document, ");
 
     if (stringBuilder.length())
         stringBuilder.resize(stringBuilder.length() - 2);

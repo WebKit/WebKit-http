@@ -46,9 +46,10 @@ struct CallLinkInfo;
 class CallLinkStatus {
 public:
     CallLinkStatus()
-        : m_couldTakeSlowPath(false)
+        : m_executable(0)
+        , m_structure(0)
+        , m_couldTakeSlowPath(false)
         , m_isProved(false)
-        , m_canTrustCounts(false)
     {
     }
     
@@ -61,12 +62,13 @@ public:
     
     explicit CallLinkStatus(JSValue);
     
-    CallLinkStatus(CallVariant variant)
-        : m_edges(1, CallEdge(variant, 1))
+    CallLinkStatus(ExecutableBase* executable, Structure* structure)
+        : m_executable(executable)
+        , m_structure(structure)
         , m_couldTakeSlowPath(false)
         , m_isProved(false)
-        , m_canTrustCounts(false)
     {
+        ASSERT(!!executable == !!structure);
     }
     
     CallLinkStatus& setIsProved(bool isProved)
@@ -93,9 +95,8 @@ public:
 #if ENABLE(JIT)
     // Computes the status assuming that we never took slow path and never previously
     // exited.
-    static CallLinkStatus computeFor(const ConcurrentJITLocker&, CodeBlock*, CallLinkInfo&);
-    static CallLinkStatus computeFor(
-        const ConcurrentJITLocker&, CodeBlock*, CallLinkInfo&, ExitSiteData);
+    static CallLinkStatus computeFor(const ConcurrentJITLocker&, CallLinkInfo&);
+    static CallLinkStatus computeFor(const ConcurrentJITLocker&, CallLinkInfo&, ExitSiteData);
 #endif
     
     typedef HashMap<CodeOrigin, CallLinkStatus, CodeOriginApproximateHash> ContextMap;
@@ -109,38 +110,39 @@ public:
     static CallLinkStatus computeFor(
         CodeBlock*, CodeOrigin, const CallLinkInfoMap&, const ContextMap&);
     
-    bool isSet() const { return !m_edges.isEmpty() || m_couldTakeSlowPath; }
+    bool isSet() const { return m_callTarget || m_executable || m_couldTakeSlowPath; }
     
     bool operator!() const { return !isSet(); }
     
     bool couldTakeSlowPath() const { return m_couldTakeSlowPath; }
+    bool isClosureCall() const { return m_executable && !m_callTarget; }
     
-    CallEdgeList edges() const { return m_edges; }
-    unsigned size() const { return m_edges.size(); }
-    CallEdge at(unsigned i) const { return m_edges[i]; }
-    CallEdge operator[](unsigned i) const { return at(i); }
+    JSValue callTarget() const { return m_callTarget; }
+    JSFunction* function() const;
+    InternalFunction* internalFunction() const;
+    Intrinsic intrinsicFor(CodeSpecializationKind) const;
+    ExecutableBase* executable() const { return m_executable; }
+    Structure* structure() const { return m_structure; }
     bool isProved() const { return m_isProved; }
-    bool canOptimize() const { return !m_edges.isEmpty(); }
-    bool canTrustCounts() const { return m_canTrustCounts; }
-    
-    bool isClosureCall() const; // Returns true if any callee is a closure call.
+    bool canOptimize() const { return (m_callTarget || m_executable) && !m_couldTakeSlowPath; }
     
     void dump(PrintStream&) const;
     
 private:
-    void makeClosureCall();
+    void makeClosureCall()
+    {
+        ASSERT(!m_isProved);
+        // Turn this into a closure call.
+        m_callTarget = JSValue();
+    }
     
     static CallLinkStatus computeFromLLInt(const ConcurrentJITLocker&, CodeBlock*, unsigned bytecodeIndex);
-#if ENABLE(JIT)
-    static CallLinkStatus computeFromCallEdgeProfile(CallEdgeProfile*);
-    static CallLinkStatus computeFromCallLinkInfo(
-        const ConcurrentJITLocker&, CallLinkInfo&);
-#endif
     
-    CallEdgeList m_edges;
+    JSValue m_callTarget;
+    ExecutableBase* m_executable;
+    Structure* m_structure;
     bool m_couldTakeSlowPath;
     bool m_isProved;
-    bool m_canTrustCounts;
 };
 
 } // namespace JSC

@@ -35,6 +35,7 @@
 #include "HeapIterationScope.h"
 #include "HeapRootVisitor.h"
 #include "HeapStatistics.h"
+#include "HighFidelityLog.h"
 #include "IncrementalSweeper.h"
 #include "Interpreter.h"
 #include "JSGlobalObject.h"
@@ -44,7 +45,6 @@
 #include "JSVirtualMachineInternal.h"
 #include "RecursiveAllocationScope.h"
 #include "Tracing.h"
-#include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
 #include "VM.h"
 #include "WeakSetInlines.h"
@@ -970,6 +970,8 @@ void Heap::collect(HeapOperation collectionType)
 #if ENABLE(ALLOCATION_LOGGING)
     dataLogF("JSC GC starting collection.\n");
 #endif
+    if (vm()->isProfilingTypesWithHighFidelity())
+        vm()->highFidelityLog()->processHighFidelityLog(false, "GC");
     
     double before = 0;
     if (Options::logGC()) {
@@ -978,17 +980,6 @@ void Heap::collect(HeapOperation collectionType)
     }
     
     SamplingRegion samplingRegion("Garbage Collection");
-    
-    if (vm()->typeProfiler()) {
-        DeferGCForAWhile awhile(*this);
-        vm()->typeProfilerLog()->processLogEntries(ASCIILiteral("GC"));
-        vm()->invalidateTypeSetCache();
-    }
-    
-    if (vm()->callEdgeLog) {
-        DeferGCForAWhile awhile(*this);
-        vm()->callEdgeLog->processLog();
-    }
     
     RELEASE_ASSERT(!m_deferralDepth);
     ASSERT(vm()->currentThreadIsHoldingAPILock());

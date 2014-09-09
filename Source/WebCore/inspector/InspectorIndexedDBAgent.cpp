@@ -67,14 +67,14 @@
 #include <inspector/InspectorValues.h>
 #include <wtf/Vector.h>
 
-using Inspector::Protocol::Array;
-using Inspector::Protocol::IndexedDB::DatabaseWithObjectStores;
-using Inspector::Protocol::IndexedDB::DataEntry;
-using Inspector::Protocol::IndexedDB::Key;
-using Inspector::Protocol::IndexedDB::KeyPath;
-using Inspector::Protocol::IndexedDB::KeyRange;
-using Inspector::Protocol::IndexedDB::ObjectStore;
-using Inspector::Protocol::IndexedDB::ObjectStoreIndex;
+using Inspector::TypeBuilder::Array;
+using Inspector::TypeBuilder::IndexedDB::DatabaseWithObjectStores;
+using Inspector::TypeBuilder::IndexedDB::DataEntry;
+using Inspector::TypeBuilder::IndexedDB::Key;
+using Inspector::TypeBuilder::IndexedDB::KeyPath;
+using Inspector::TypeBuilder::IndexedDB::KeyRange;
+using Inspector::TypeBuilder::IndexedDB::ObjectStore;
+using Inspector::TypeBuilder::IndexedDB::ObjectStoreIndex;
 
 typedef Inspector::InspectorBackendDispatcher::CallbackBase RequestCallback;
 typedef Inspector::InspectorIndexedDBBackendDispatcherHandler::RequestDatabaseNamesCallback RequestDatabaseNamesCallback;
@@ -125,7 +125,7 @@ public:
         }
 
         RefPtr<DOMStringList> databaseNamesList = requestResult->domStringList();
-        RefPtr<Inspector::Protocol::Array<String>> databaseNames = Inspector::Protocol::Array<String>::create();
+        RefPtr<Inspector::TypeBuilder::Array<String>> databaseNames = Inspector::TypeBuilder::Array<String>::create();
         for (size_t i = 0; i < databaseNamesList->length(); ++i)
             databaseNames->addItem(databaseNamesList->item(i));
         m_requestCallback->sendSuccess(databaseNames.release());
@@ -251,7 +251,7 @@ static PassRefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
         break;
     case IDBKeyPath::ArrayType: {
         keyPath = KeyPath::create().setType(KeyPath::Type::Array);
-        RefPtr<Inspector::Protocol::Array<String>> array = Inspector::Protocol::Array<String>::create();
+        RefPtr<Inspector::TypeBuilder::Array<String>> array = Inspector::TypeBuilder::Array<String>::create();
         const Vector<String>& stringArray = idbKeyPath.array();
         for (size_t i = 0; i < stringArray.size(); ++i)
             array->addItem(stringArray[i]);
@@ -282,10 +282,10 @@ public:
 
         const IDBDatabaseMetadata databaseMetadata = idbDatabase->metadata();
 
-        RefPtr<Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStore>> objectStores = Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStore>::create();
+        RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::IndexedDB::ObjectStore>> objectStores = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::IndexedDB::ObjectStore>::create();
 
         for (const IDBObjectStoreMetadata& objectStoreMetadata : databaseMetadata.objectStores.values()) {
-            RefPtr<Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStoreIndex>> indexes = Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStoreIndex>::create();
+            RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::IndexedDB::ObjectStoreIndex>> indexes = Inspector::TypeBuilder::Array<Inspector::TypeBuilder::IndexedDB::ObjectStoreIndex>::create();
 
             for (const IDBIndexMetadata& indexMetadata : objectStoreMetadata.indexes.values()) {
                 RefPtr<ObjectStoreIndex> objectStoreIndex = ObjectStoreIndex::create()
@@ -583,8 +583,10 @@ void InspectorIndexedDBAgent::disable(ErrorString*)
 static Document* assertDocument(ErrorString* errorString, Frame* frame)
 {
     Document* document = frame ? frame->document() : nullptr;
+
     if (!document)
         *errorString = "No document for given frame found";
+
     return document;
 }
 
@@ -595,8 +597,8 @@ static IDBFactory* assertIDBFactory(ErrorString* errorString, Document* document
         *errorString = "No IndexedDB factory for given frame found";
         return nullptr;
     }
-
     IDBFactory* idbFactory = DOMWindowIndexedDatabase::indexedDB(domWindow);
+
     if (!idbFactory)
         *errorString = "No IndexedDB factory for given frame found";
 
@@ -609,18 +611,16 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString* errorString, con
     Document* document = assertDocument(errorString, frame);
     if (!document)
         return;
-
     IDBFactory* idbFactory = assertIDBFactory(errorString, document);
     if (!idbFactory)
         return;
 
     ExceptionCode ec = 0;
     RefPtr<IDBRequest> idbRequest = idbFactory->getDatabaseNames(document, ec);
-    if (!idbRequest || ec) {
+    if (ec) {
         requestCallback->sendFailure("Could not obtain database names.");
         return;
     }
-
     idbRequest->addEventListener(eventNames().successEvent, GetDatabaseNamesCallback::create(requestCallback, document->securityOrigin()->toRawString()), false);
 }
 
@@ -630,7 +630,6 @@ void InspectorIndexedDBAgent::requestDatabase(ErrorString* errorString, const St
     Document* document = assertDocument(errorString, frame);
     if (!document)
         return;
-
     IDBFactory* idbFactory = assertIDBFactory(errorString, document);
     if (!idbFactory)
         return;
@@ -645,7 +644,6 @@ void InspectorIndexedDBAgent::requestData(ErrorString* errorString, const String
     Document* document = assertDocument(errorString, frame);
     if (!document)
         return;
-
     IDBFactory* idbFactory = assertIDBFactory(errorString, document);
     if (!idbFactory)
         return;

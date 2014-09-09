@@ -89,6 +89,14 @@
 #define APPKIT_PRIVATE_CLASS
 #endif
 
+#if __has_include(<AppKit/NSServicesRolloverButtonCell.h>)
+#import <AppKit/NSServicesRolloverButtonCell.h>
+#endif
+
+@interface NSServicesRolloverButtonCell (Details)
++ (NSServicesRolloverButtonCell *)serviceRolloverButtonCellForStyle:(NSSharingServicePickerStyle)style;
+@end
+
 #if __has_include(<AppKit/NSSharingService_Private.h>)
 #import <AppKit/NSSharingService_Private.h>
 #else
@@ -96,18 +104,6 @@ typedef enum {
     NSSharingServicePickerStyleRollover = 1
 } NSSharingServicePickerStyle;
 #endif
-
-#if __has_include(<AppKit/NSServicesRolloverButtonCell.h>)
-#import <AppKit/NSServicesRolloverButtonCell.h>
-#else
-@interface NSServicesRolloverButtonCell : NSButtonCell
-@end
-#endif
-
-@interface NSServicesRolloverButtonCell (Details)
-+ (NSServicesRolloverButtonCell *)serviceRolloverButtonCellForStyle:(NSSharingServicePickerStyle)style;
-- (NSRect)rectForBounds:(NSRect)bounds preferredEdge:(NSRectEdge)preferredEdge;
-@end
 
 #endif // ENABLE(SERVICE_CONTROLS)
 
@@ -1134,7 +1130,7 @@ bool RenderThemeMac::paintProgressBar(const RenderObject& renderObject, const Pa
     trackInfo.reserved = 0;
     trackInfo.filler1 = 0;
 
-    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::createCompatibleBuffer(inflatedRect.size(), deviceScaleFactor, ColorSpaceDeviceRGB, paintInfo.context, true);
+    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(inflatedRect.size(), deviceScaleFactor);
     if (!imageBuffer)
         return true;
 
@@ -1688,6 +1684,16 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderObject& o, const P
     float zoomLevel = o.style().effectiveZoom();
 
     FloatRect localBounds = [search cancelButtonRectForBounds:NSRect(input->renderBox()->pixelSnappedBorderBoxRect())];
+
+#if ENABLE(INPUT_SPEECH)
+    // Take care of cases where the cancel button was not aligned with the right border of the input element (for e.g.
+    // when speech input is enabled for the input element.
+    IntRect absBoundingBox = input->renderer()->absoluteBoundingBoxRect();
+    int absRight = absBoundingBox.x() + absBoundingBox.width() - input->renderBox()->paddingRight() - input->renderBox()->borderRight();
+    int spaceToRightOfCancelButton = absRight - (r.x() + r.width());
+    localBounds.setX(localBounds.x() - spaceToRightOfCancelButton);
+#endif
+
     localBounds = convertToPaintingRect(*input->renderer(), o, localBounds, r);
 
     FloatRect unzoomedRect(localBounds);
@@ -1838,7 +1844,7 @@ bool RenderThemeMac::paintSnapshottedPluginOverlay(const RenderObject& o, const 
     contentLocation.move(renderBlock.borderLeft() + renderBlock.paddingLeft(), renderBlock.borderTop() + renderBlock.paddingTop());
 
     LayoutRect rect(contentLocation, contentSize);
-    IntRect alignedRect = snappedIntRect(rect);
+    IntRect alignedRect = pixelSnappedIntRect(rect);
     if (alignedRect.width() <= 0 || alignedRect.height() <= 0)
         return true;
 
@@ -1884,7 +1890,7 @@ bool RenderThemeMac::paintSnapshottedPluginOverlay(const RenderObject& o, const 
 
     LayoutSize pluginSize(plugInRenderer->contentWidth(), plugInRenderer->contentHeight());
     LayoutRect pluginRect(snapshotAbsPos, pluginSize);
-    IntRect alignedPluginRect = snappedIntRect(pluginRect);
+    IntRect alignedPluginRect = pixelSnappedIntRect(pluginRect);
 
     if (alignedPluginRect.width() <= 0 || alignedPluginRect.height() <= 0)
         return true;

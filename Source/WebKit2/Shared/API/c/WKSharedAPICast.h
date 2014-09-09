@@ -891,10 +891,6 @@ inline SnapshotOptions toSnapshotOptions(WKSnapshotOptions wkSnapshotOptions)
         snapshotOptions |= SnapshotOptionsInViewCoordinates;
     if (wkSnapshotOptions & kWKSnapshotOptionsPaintSelectionRectangle)
         snapshotOptions |= SnapshotOptionsPaintSelectionRectangle;
-    if (wkSnapshotOptions & kWKSnapshotOptionsForceBlackText)
-        snapshotOptions |= SnapshotOptionsForceBlackText;
-    if (wkSnapshotOptions & kWKSnapshotOptionsForceWhiteText)
-        snapshotOptions |= SnapshotOptionsForceWhiteText;
 
     return snapshotOptions;
 }

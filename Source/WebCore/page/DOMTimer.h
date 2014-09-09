@@ -29,39 +29,43 @@
 
 #include "SuspendableTimer.h"
 #include <memory>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
     class ScheduledAction;
 
-    class DOMTimer final : public RefCounted<DOMTimer>, public SuspendableTimer {
-        WTF_MAKE_NONCOPYABLE(DOMTimer);
-        WTF_MAKE_FAST_ALLOCATED;
+    class DOMTimer final : public SuspendableTimer {
     public:
+        virtual ~DOMTimer();
         // Creates a new timer owned by specified ScriptExecutionContext, starts it
         // and returns its Id.
         static int install(ScriptExecutionContext*, std::unique_ptr<ScheduledAction>, int timeout, bool singleShot);
         static void removeById(ScriptExecutionContext*, int timeoutId);
 
-        // Notify that the interval may need updating (e.g. because the minimum interval
-        // setting for the context has changed).
-        void updateTimerIntervalIfNecessary();
+        // Adjust to a change in the ScriptExecutionContext's minimum timer interval.
+        // This allows the minimum allowable interval time to be changed in response
+        // to events like moving a tab to the background.
+        void adjustMinimumTimerInterval(double oldMinimumTimerInterval);
 
     private:
         DOMTimer(ScriptExecutionContext*, std::unique_ptr<ScheduledAction>, int interval, bool singleShot);
-        double intervalClampedToMinimum() const;
+        virtual void fired() override;
+
+        // ActiveDOMObject
+        virtual void contextDestroyed() override;
 
         // SuspendableTimer
-        virtual void fired() override;
         virtual void didStop() override;
+
+        double intervalClampedToMinimum(int timeout, double minimumTimerInterval) const;
+
+        // Retuns timer fire time rounded to the next multiple of timer alignment interval.
         virtual double alignedFireTime(double) const override;
 
         int m_timeoutId;
         int m_nestingLevel;
         std::unique_ptr<ScheduledAction> m_action;
         int m_originalInterval;
-        double m_currentTimerInterval;
         bool m_shouldForwardUserGesture;
     };
 

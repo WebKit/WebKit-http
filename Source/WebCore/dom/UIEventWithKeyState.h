@@ -71,7 +71,7 @@ namespace WebCore {
         bool m_metaKey : 1;
     };
 
-    WEBCORE_EXPORT UIEventWithKeyState* findEventWithKeyState(Event*);
+    UIEventWithKeyState* findEventWithKeyState(Event*);
 
 } // namespace WebCore
 

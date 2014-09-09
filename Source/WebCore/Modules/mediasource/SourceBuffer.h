@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2013 Google Inc. All rights reserved.
- * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -75,7 +74,6 @@ public:
     void appendBuffer(PassRefPtr<ArrayBufferView> data, ExceptionCode&);
     void abort(ExceptionCode&);
     void remove(double start, double end, ExceptionCode&);
-    void remove(const MediaTime&, const MediaTime&, ExceptionCode&);
 
     void abortIfUpdating();
     void removedFromMediaSource();
@@ -92,9 +90,6 @@ public:
     bool hasFutureTime() const;
     bool canPlayThrough();
 
-    bool hasVideo() const;
-    bool hasAudio() const;
-
     bool active() const { return m_active; }
 
     // ActiveDOMObject interface
@@ -107,10 +102,6 @@ public:
 
     using RefCounted<SourceBuffer>::ref;
     using RefCounted<SourceBuffer>::deref;
-
-    struct TrackBuffer;
-
-    Document& document() const;
 
 protected:
     // EventTarget interface
@@ -158,18 +149,16 @@ private:
 
     bool validateInitializationSegment(const InitializationSegment&);
 
+    struct TrackBuffer;
     void reenqueueMediaForTime(TrackBuffer&, AtomicString trackID, const MediaTime&);
     void provideMediaData(TrackBuffer&, AtomicString trackID);
     void didDropSample();
-    void evictCodedFrames(size_t newDataSize);
-    size_t maximumBufferSize() const;
 
     void monitorBufferingRate();
 
     void removeTimerFired(Timer<SourceBuffer>*);
     void removeCodedFrames(const MediaTime& start, const MediaTime& end);
 
-    size_t extraMemoryCost() const;
     void reportExtraMemoryCost();
 
     std::unique_ptr<PlatformTimeRanges> bufferedAccountingForEndOfStream() const;
@@ -181,6 +170,8 @@ private:
     Ref<SourceBufferPrivate> m_private;
     MediaSource* m_source;
     GenericEventQueue m_asyncEventQueue;
+
+    bool m_updating;
 
     Vector<unsigned char> m_pendingAppendData;
     Timer<SourceBuffer> m_appendBufferTimer;
@@ -197,7 +188,9 @@ private:
     MediaTime m_highestPresentationEndTimestamp;
 
     HashMap<AtomicString, TrackBuffer> m_trackBufferMap;
+    bool m_receivedFirstInitializationSegment;
     RefPtr<TimeRanges> m_buffered;
+    bool m_active;
 
     enum AppendStateType { WaitingForSegment, ParsingInitSegment, ParsingMediaSegment };
     AppendStateType m_appendState;
@@ -211,11 +204,6 @@ private:
     MediaTime m_pendingRemoveStart;
     MediaTime m_pendingRemoveEnd;
     Timer<SourceBuffer> m_removeTimer;
-
-    bool m_updating;
-    bool m_receivedFirstInitializationSegment;
-    bool m_active;
-    bool m_bufferFull;
 };
 
 } // namespace WebCore

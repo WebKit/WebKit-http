@@ -510,41 +510,36 @@ std::unique_ptr<CDMSession> MediaPlayer::createSession(const String& keySystem)
 {
     return m_private->createSession(keySystem);
 }
-
-void MediaPlayer::setCDMSession(CDMSession* session)
-{
-    m_private->setCDMSession(session);
-}
 #endif
     
-MediaTime MediaPlayer::duration() const
+double MediaPlayer::duration() const
 {
-    return m_private->durationMediaTime();
+    return m_private->durationDouble();
 }
 
-MediaTime MediaPlayer::startTime() const
+double MediaPlayer::startTime() const
 {
-    return m_private->startTime();
+    return m_private->startTimeDouble();
 }
 
-MediaTime MediaPlayer::initialTime() const
+double MediaPlayer::initialTime() const
 {
     return m_private->initialTime();
 }
 
-MediaTime MediaPlayer::currentTime() const
+double MediaPlayer::currentTime() const
 {
-    return m_private->currentMediaTime();
+    return m_private->currentTimeDouble();
 }
 
-void MediaPlayer::seekWithTolerance(const MediaTime& time, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)
+void MediaPlayer::seekWithTolerance(double time, double negativeTolerance, double positiveTolerance)
 {
     m_private->seekWithTolerance(time, negativeTolerance, positiveTolerance);
 }
 
-void MediaPlayer::seek(const MediaTime& time)
+void MediaPlayer::seek(double time)
 {
-    m_private->seek(time);
+    m_private->seekDouble(time);
 }
 
 bool MediaPlayer::paused() const
@@ -722,14 +717,14 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayer::seekable()
     return m_private->seekable();
 }
 
-MediaTime MediaPlayer::maxTimeSeekable()
+double MediaPlayer::maxTimeSeekable()
 {
-    return m_private->maxMediaTimeSeekable();
+    return m_private->maxTimeSeekableDouble();
 }
 
-MediaTime MediaPlayer::minTimeSeekable()
+double MediaPlayer::minTimeSeekable()
 {
-    return m_private->minMediaTimeSeekable();
+    return m_private->minTimeSeekable();
 }
 
 bool MediaPlayer::didLoadingProgress()
@@ -950,9 +945,9 @@ MediaPlayer::MovieLoadType MediaPlayer::movieLoadType() const
     return m_private->movieLoadType();
 }
 
-MediaTime MediaPlayer::mediaTimeForTimeValue(const MediaTime& timeValue) const
+double MediaPlayer::mediaTimeForTimeValue(double timeValue) const
 {
-    return m_private->mediaTimeForTimeValue(timeValue);
+    return m_private->mediaTimeForTimeValueDouble(timeValue);
 }
 
 double MediaPlayer::maximumDurationToCacheMediaTime() const
@@ -1033,6 +1028,18 @@ void MediaPlayer::setPrivateBrowsingMode(bool privateBrowsingMode)
     m_privateBrowsing = privateBrowsingMode;
     m_private->setPrivateBrowsingMode(m_privateBrowsing);
 }
+
+#if PLATFORM(IOS)
+void MediaPlayer::attributeChanged(const String& name, const String& value) 
+{
+    m_private->attributeChanged(name, value);
+}
+
+bool MediaPlayer::readyForPlayback() const
+{
+    return m_private->readyForPlayback();
+}
+#endif
 
 // Client callbacks.
 void MediaPlayer::networkStateChanged()
@@ -1367,10 +1374,10 @@ unsigned long MediaPlayer::corruptedVideoFrames()
     return m_private->corruptedVideoFrames();
 }
 
-MediaTime MediaPlayer::totalFrameDelay()
+double MediaPlayer::totalFrameDelay()
 {
     if (!m_private)
-        return MediaTime::zeroTime();
+        return 0;
 
     return m_private->totalFrameDelay();
 }
@@ -1420,14 +1427,6 @@ String MediaPlayer::mediaPlayerNetworkInterfaceName() const
         return emptyString();
 
     return m_mediaPlayerClient->mediaPlayerNetworkInterfaceName();
-}
-
-bool MediaPlayer::getRawCookies(const URL& url, Vector<Cookie>& cookies) const
-{
-    if (!m_mediaPlayerClient)
-        return false;
-
-    return m_mediaPlayerClient->mediaPlayerGetRawCookies(url, cookies);
 }
 #endif
 

@@ -165,8 +165,6 @@ def lex(str, fileName)
             result << Token.new(CodeOrigin.new(fileName, lineNumber), $&)
         when /\A[:,\(\)\[\]=\+\-~\|&^*]/
             result << Token.new(CodeOrigin.new(fileName, lineNumber), $&)
-        when /\A".*"/
-            result << Token.new(CodeOrigin.new(fileName, lineNumber), $&)
         else
             raise "Lexer error at #{CodeOrigin.new(fileName, lineNumber).to_s}, unexpected sequence #{str[0..20].inspect}"
         end
@@ -212,10 +210,6 @@ end
 
 def isInteger(token)
     token =~ /\A[0-9]/
-end
-
-def isString(token)
-    token =~ /\A".*"/
 end
 
 #
@@ -403,10 +397,6 @@ class Parser
             result = Immediate.new(@tokens[@idx].codeOrigin, @tokens[@idx].string.to_i)
             @idx += 1
             result
-        elsif isString @tokens[@idx]
-            result = StringLiteral.new(@tokens[@idx].codeOrigin, @tokens[@idx].string)
-            @idx += 1
-            result
         elsif isIdentifier @tokens[@idx]
             codeOrigin, names = parseColonColon
             if names.size > 1
@@ -448,7 +438,7 @@ class Parser
     end
     
     def couldBeExpression
-        @tokens[@idx] == "-" or @tokens[@idx] == "~" or @tokens[@idx] == "sizeof" or isInteger(@tokens[@idx]) or isString(@tokens[@idx]) or isVariable(@tokens[@idx]) or @tokens[@idx] == "("
+        @tokens[@idx] == "-" or @tokens[@idx] == "~" or @tokens[@idx] == "sizeof" or isInteger(@tokens[@idx]) or isVariable(@tokens[@idx]) or @tokens[@idx] == "("
     end
     
     def parseExpressionAdd

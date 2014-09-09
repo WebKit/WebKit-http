@@ -489,7 +489,7 @@ void WebChromeClient::scroll(const IntSize& delta, const IntRect& scrollViewRect
 IntRect WebChromeClient::rootViewToScreen(const IntRect& rect) const
 {
     HWND viewWindow;
-    if (FAILED(m_webView->viewWindow(&viewWindow)))
+    if (FAILED(m_webView->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))))
         return rect;
 
     // Find the top left corner of the Widget's containing window in screen coords,
@@ -507,7 +507,7 @@ IntPoint WebChromeClient::screenToRootView(const IntPoint& point) const
     POINT result = point;
 
     HWND viewWindow;
-    if (FAILED(m_webView->viewWindow(&viewWindow)))
+    if (FAILED(m_webView->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))))
         return point;
 
     ::ScreenToClient(viewWindow, &result);
@@ -518,7 +518,7 @@ IntPoint WebChromeClient::screenToRootView(const IntPoint& point) const
 PlatformPageClient WebChromeClient::platformPageClient() const
 {
     HWND viewWindow;
-    if (FAILED(m_webView->viewWindow(&viewWindow)))
+    if (FAILED(m_webView->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))))
         return 0;
     return viewWindow;
 }
@@ -654,7 +654,7 @@ void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> prpFileChoose
     RefPtr<FileChooser> fileChooser = prpFileChooser;
 
     HWND viewWindow;
-    if (FAILED(m_webView->viewWindow(&viewWindow)))
+    if (FAILED(m_webView->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))))
         return;
 
     bool multiFile = fileChooser->settings().allowsMultipleFiles;
@@ -726,7 +726,7 @@ void WebChromeClient::setCursor(const Cursor& cursor)
     if (COMPtr<IWebUIDelegate> delegate = uiDelegate()) {
         COMPtr<IWebUIDelegatePrivate> delegatePrivate(Query, delegate);
         if (delegatePrivate) {
-            if (SUCCEEDED(delegatePrivate->webViewSetCursor(m_webView, platformCursor)))
+            if (SUCCEEDED(delegatePrivate->webViewSetCursor(m_webView, reinterpret_cast<OLE_HANDLE>(platformCursor))))
                 shouldSetCursor = false;
         }
     }
@@ -773,19 +773,19 @@ COMPtr<IWebUIDelegate> WebChromeClient::uiDelegate()
 
 #if ENABLE(VIDEO)
 
-bool WebChromeClient::supportsVideoFullscreen()
+bool WebChromeClient::supportsFullscreenForNode(const Node* node)
 {
-    return true;
+    return isHTMLVideoElement(node);
 }
 
-void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement* videoElement)
+void WebChromeClient::enterFullscreenForNode(Node* node)
 {
-    m_webView->enterVideoFullscreenForVideoElement(videoElement);
+    m_webView->enterFullscreenForNode(node);
 }
 
-void WebChromeClient::exitVideoFullscreen()
+void WebChromeClient::exitFullscreenForNode(Node*)
 {
-    m_webView->exitVideoFullscreen();
+    m_webView->exitFullscreen();
 }
 
 #endif

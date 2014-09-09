@@ -27,7 +27,6 @@
 #define ViewGestureController_h
 
 #include "MessageReceiver.h"
-#include "SameDocumentNavigationType.h"
 #include "WeakObjCPtr.h"
 #include <WebCore/FloatRect.h>
 #include <wtf/RetainPtr.h>
@@ -100,16 +99,11 @@ public:
     void setCustomSwipeViews(Vector<RetainPtr<NSView>> views) { m_customSwipeViews = WTF::move(views); }
     void setCustomSwipeViewsTopContentInset(float topContentInset) { m_customSwipeViewsTopContentInset = topContentInset; }
     WebCore::FloatRect windowRelativeBoundsForCustomSwipeViews() const;
-    void setDidMoveSwipeSnapshotCallback(void(^)(CGRect));
 
     void endActiveGesture();
 
     bool shouldIgnorePinnedState() { return m_shouldIgnorePinnedState; }
     void setShouldIgnorePinnedState(bool ignore) { m_shouldIgnorePinnedState = ignore; }
-
-    void didFirstVisuallyNonEmptyLayoutForMainFrame();
-    void didFinishLoadForMainFrame();
-    void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType);
 #else
     void installSwipeHandler(UIView *gestureRecognizerView, UIView *swipingView);
     void setAlternateBackForwardListSourceView(WKWebView *);
@@ -120,12 +114,11 @@ public:
     void setRenderTreeSize(uint64_t);
 #endif
 
-    void removeSwipeSnapshot();
-
 private:
     // IPC::MessageReceiver.
     virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
-
+    
+    void removeSwipeSnapshot();
     void swipeSnapshotWatchdogTimerFired();
 
 #if PLATFORM(MAC)
@@ -133,7 +126,6 @@ private:
     void didCollectGeometryForMagnificationGesture(WebCore::FloatRect visibleContentBounds, bool frameHandlesMagnificationGesture);
     void didCollectGeometryForSmartMagnificationGesture(WebCore::FloatPoint origin, WebCore::FloatRect renderRect, WebCore::FloatRect visibleContentBounds, bool isReplacedElement, double viewportMinimumScale, double viewportMaximumScale);
     void didHitRenderTreeSizeThreshold();
-    void removeSwipeSnapshotAfterRepaint();
 
     void endMagnificationGesture();
     WebCore::FloatPoint scaledMagnificationOrigin(WebCore::FloatPoint origin, double scale);
@@ -149,12 +141,11 @@ private:
     CALayer *determineSnapshotLayerParent() const;
     CALayer *determineLayerAdjacentToSnapshotForParent(SwipeDirection, CALayer *snapshotLayerParent) const;
     void applyDebuggingPropertiesToSwipeViews();
-    void didMoveSwipeSnapshotLayer();
 #endif
 
     WebPageProxy& m_webPageProxy;
     ViewGestureType m_activeGestureType;
-
+    
     RunLoop::Timer<ViewGestureController> m_swipeWatchdogTimer;
 
 #if USE(IOSURFACE)
@@ -162,8 +153,6 @@ private:
 #endif
 
 #if PLATFORM(MAC)
-    RunLoop::Timer<ViewGestureController> m_swipeWatchdogAfterFirstVisuallyNonEmptyLayoutTimer;
-
     double m_magnification;
     WebCore::FloatPoint m_magnificationOrigin;
 
@@ -191,14 +180,7 @@ private:
     SwipeDirection m_pendingSwipeDirection;
     WebCore::FloatSize m_cumulativeDeltaForPendingSwipe;
 
-    void (^m_didMoveSwipeSnapshotCallback)(CGRect);
-
     bool m_shouldIgnorePinnedState;
-
-    bool m_swipeWaitingForVisuallyNonEmptyLayout;
-    bool m_swipeWaitingForRenderTreeSizeThreshold;
-    bool m_swipeWaitingForRepaint;
-    bool m_swipeInProgress;
 #else    
     UIView *m_liveSwipeView;
     RetainPtr<UIView> m_liveSwipeViewClippingView;

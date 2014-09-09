@@ -226,8 +226,7 @@ WebInspector.SourceCodeLocation.prototype = {
         element.title = prefix + this.tooltipString();
 
         this.addEventListener(WebInspector.SourceCodeLocation.Event.DisplayLocationChanged, function(event) {
-            if (this.sourceCode)
-                element.title = prefix + this.tooltipString();
+            element.title = prefix + this.tooltipString();
         }, this);
     },
 
@@ -259,8 +258,7 @@ WebInspector.SourceCodeLocation.prototype = {
         updateDisplayString.call(this, false);
 
         this.addEventListener(WebInspector.SourceCodeLocation.Event.DisplayLocationChanged, function(event) {
-            if (this.sourceCode)
-                updateDisplayString.call(this, currentDisplay, true);
+            updateDisplayString.call(this, currentDisplay, true);
         }, this);
 
         var boundMouseOverOrMove = mouseOverOrMove.bind(this);

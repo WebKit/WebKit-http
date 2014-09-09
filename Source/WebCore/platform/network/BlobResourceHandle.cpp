@@ -596,7 +596,8 @@ void BlobResourceHandle::notifyResponseOnSuccess()
     ASSERT(isMainThread());
 
     bool isRangeRequest = m_rangeOffset != positionNotSpecified;
-    ResourceResponse response(firstRequest().url(), m_blobData->contentType(), m_totalRemainingSize, String());
+    ResourceResponse response(firstRequest().url(), m_blobData->contentType(), m_totalRemainingSize, String(), String());
+    response.setExpectedContentLength(m_totalRemainingSize);
     response.setHTTPStatusCode(isRangeRequest ? httpPartialContent : httpOK);
     response.setHTTPStatusText(isRangeRequest ? httpPartialContentText : httpOKText);
     // FIXME: If a resource identified with a blob: URL is a File object, user agents must use that file's name attribute,
@@ -616,7 +617,7 @@ void BlobResourceHandle::notifyResponseOnError()
 {
     ASSERT(m_errorCode);
 
-    ResourceResponse response(firstRequest().url(), "text/plain", 0, String());
+    ResourceResponse response(firstRequest().url(), "text/plain", 0, String(), String());
     switch (m_errorCode) {
     case rangeError:
         response.setHTTPStatusCode(httpRequestedRangeNotSatisfiable);

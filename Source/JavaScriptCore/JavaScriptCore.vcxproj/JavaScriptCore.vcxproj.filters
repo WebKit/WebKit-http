@@ -67,18 +67,6 @@
     <Filter Include="llvm">
       <UniqueIdentifier>{852e9415-245c-4012-aeb8-38ca9efb73b8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="inspector\scripts">
-      <UniqueIdentifier>{a29d27c0-2c34-482b-87cc-21e7ef290c88}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="inspector\scripts\codegen">
-      <UniqueIdentifier>{17e304e8-c0e8-4b18-88fa-62b86eba9959}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="inspector\scripts\tests">
-      <UniqueIdentifier>{0a034c97-3947-47c4-8085-2ddc8aa1ade0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="inspector\scripts\tests\expected">
-      <UniqueIdentifier>{6be9d367-0091-4ebb-b96c-4ef83790362b}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\API\JSBase.cpp">
@@ -342,6 +330,9 @@
     <ClCompile Include="..\inspector\agents\InspectorDebuggerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
+    <ClCompile Include="..\inspector\agents\InspectorProfilerAgent.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
     <ClCompile Include="..\inspector\agents\InspectorRuntimeAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -600,9 +591,6 @@
     <ClCompile Include="..\runtime\FunctionConstructor.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\FunctionHasExecutedCache.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
     <ClCompile Include="..\runtime\FunctionPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -669,7 +657,7 @@
     <ClCompile Include="..\runtime\JSONObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\JSPropertyNameEnumerator.cpp">
+    <ClCompile Include="..\runtime\JSPropertyNameIterator.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSProxy.cpp">
@@ -841,18 +829,6 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\SymbolTable.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\TypeLocationCache.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\TypeProfiler.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\TypeProfilerLog.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\TypeSet.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\Watchdog.cpp">
@@ -1080,6 +1056,9 @@
     <ClCompile Include="..\dfg\DFGDesiredIdentifiers.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
+    <ClCompile Include="..\dfg\DFGDesiredStructureChains.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
     <ClCompile Include="..\dfg\DFGDesiredTransitions.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
@@ -1201,9 +1180,6 @@
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGOSRExitPreparation.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGPhantomCanonicalizationPhase.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGPhase.cpp">
@@ -1362,6 +1338,9 @@
     <ClCompile Include="..\bytecode\CodeBlockJettisoningWatchpoint.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
+    <ClCompile Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
     <ClCompile Include="..\bindings\ScriptValue.cpp">
       <Filter>bindings</Filter>
     </ClCompile>
@@ -1386,7 +1365,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSFrontendDispatchers.cpp">
       <Filter>Derived Sources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSProtocolTypes.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSTypeBuilders.cpp">
       <Filter>Derived Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\jit\ArityCheckFailReturnThunks.cpp">
@@ -1629,54 +1608,6 @@
     <ClCompile Include="..\runtime\MemoryStatistics.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\bytecode\ComplexGetStatus.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bytecode\ConstantStructureCheck.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGDoesGC.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGFrozenValue.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGHeapLocation.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGMayExit.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGPhantomRemovalPhase.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGPureValue.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGStructureAbstractValue.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGStructureRegistrationPhase.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGTransition.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dfg\DFGValueStrength.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\ExceptionFuzz.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bytecode\StructureSet.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bytecode\ToThisStatus.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bytecode\VariableWatchpointSet.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\API\APICallbackFunction.h">
@@ -1916,9 +1847,6 @@
     <ClInclude Include="..\bytecode\StructureStubInfo.h">
       <Filter>bytecode</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\TypeLocation.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
     <ClInclude Include="..\bytecode\UnlinkedCodeBlock.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -1956,9 +1884,6 @@
       <Filter>debugger</Filter>
     </ClInclude>
     <ClInclude Include="..\debugger\DebuggerCallFrame.h">
-      <Filter>debugger</Filter>
-    </ClInclude>
-    <ClInclude Include="..\debugger\DebuggerEvalEnabler.h">
       <Filter>debugger</Filter>
     </ClInclude>
     <ClInclude Include="..\debugger\DebuggerPrimitives.h">
@@ -2180,7 +2105,7 @@
     <ClInclude Include="..\inspector\InspectorFrontendChannel.h">
       <Filter>inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\inspector\InspectorProtocolTypes.h">
+    <ClInclude Include="..\inspector\InspectorTypeBuilder.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorValues.h">
@@ -2190,6 +2115,9 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\agents\InspectorDebuggerAgent.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\agents\InspectorProfilerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\agents\InspectorRuntimeAgent.h">
@@ -2208,9 +2136,6 @@
       <Filter>interpreter</Filter>
     </ClInclude>
     <ClInclude Include="..\interpreter\CallFrameClosure.h">
-      <Filter>interpreter</Filter>
-    </ClInclude>
-    <ClInclude Include="..\interpreter\VMEntryRecord.h">
       <Filter>interpreter</Filter>
     </ClInclude>
     <ClInclude Include="..\interpreter\Interpreter.h">
@@ -2519,9 +2444,6 @@
     <ClInclude Include="..\runtime\DatePrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\EnumerationMode.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
     <ClInclude Include="..\runtime\Error.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2544,9 +2466,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\FunctionConstructor.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\FunctionHasExecutedCache.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\FunctionPrototype.h">
@@ -2627,7 +2546,7 @@
     <ClInclude Include="..\runtime\JSONObject.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\JSPropertyNameEnumerator.h">
+    <ClInclude Include="..\runtime\JSPropertyNameIterator.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSProxy.h">
@@ -2822,18 +2741,6 @@
     <ClInclude Include="..\runtime\Tracing.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\TypeLocationCache.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\TypeProfiler.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\TypeProfilerLog.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\TypeSet.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
     <ClInclude Include="..\runtime\Uint16WithFraction.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2931,7 +2838,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSFrontendDispatchers.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSProtocolTypes.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorJSTypeBuilders.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSGlobalObject.lut.h">
@@ -3318,6 +3225,9 @@
     <ClInclude Include="..\dfg\DFGDesiredIdentifiers.h">
       <Filter>dfg</Filter>
     </ClInclude>
+    <ClInclude Include="..\dfg\DFGDesiredStructureChains.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
     <ClInclude Include="..\dfg\DFGDesiredTransitions.h">
       <Filter>dfg</Filter>
     </ClInclude>
@@ -3472,9 +3382,6 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGOSRExitPreparation.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGPhantomCanonicalizationPhase.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGPhase.h">
@@ -3679,6 +3586,9 @@
       <Filter>bytecode</Filter>
     </ClInclude>
     <ClInclude Include="..\bytecode\CodeBlockJettisoningWatchpoint.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bytecode\ProfiledCodeBlockJettisoningWatchpoint.h">
       <Filter>bytecode</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\StackAlignment.h">
@@ -4003,48 +3913,6 @@
     <ClInclude Include="..\runtime\MemoryStatistics.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\ComplexGetStatus.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bytecode\ConstantStructureCheck.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGDoesGC.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGFrozenValue.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGHeapLocation.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGMayExit.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGPhantomRemovalPhase.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGPureValue.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGStructureClobberState.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGStructureRegistrationPhase.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGTransition.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dfg\DFGValueStrength.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\ExceptionFuzz.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bytecode\ToThisStatus.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="JavaScriptCorePreLink.cmd" />
@@ -4052,171 +3920,6 @@
     <None Include="JavaScriptCorePreBuild.cmd" />
     <None Include="..\bytecode\BytecodeList.json">
       <Filter>bytecode</Filter>
-    </None>
-    <None Include="..\inspector\scripts\cssmin.py">
-      <Filter>inspector\scripts</Filter>
-    </None>
-    <None Include="..\inspector\scripts\generate-combined-inspector-json.py">
-      <Filter>inspector\scripts</Filter>
-    </None>
-    <None Include="..\inspector\scripts\generate-inspector-protocol-bindings.py">
-      <Filter>inspector\scripts</Filter>
-    </None>
-    <None Include="..\inspector\scripts\inline-and-minify-stylesheets-and-scripts.py">
-      <Filter>inspector\scripts</Filter>
-    </None>
-    <None Include="..\inspector\scripts\jsmin.py">
-      <Filter>inspector\scripts</Filter>
-    </None>
-    <None Include="..\inspector\scripts\xxd.pl">
-      <Filter>inspector\scripts</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\__init__.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generate_backend_commands.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_header.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_implementation.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_header.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_implementation.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_header.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_implementation.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generator.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\generator_templates.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\codegen\models.py">
-      <Filter>inspector\scripts\codegen</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\commands-with-async-attribute.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\commands-with-optional-call-return-parameters.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\domains-with-varying-command-sizes.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\events-with-optional-parameters.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-duplicate-type-declarations.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-enum-with-no-values.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-string-typed-optional-parameter-flag.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-string-typed-optional-type-member.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-type-declaration-using-type-reference.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-type-with-lowercase-name.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-unknown-type-reference-in-type-declaration.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\fail-on-unknown-type-reference-in-type-member.json-error">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\same-type-id-different-domain.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\shadowed-optional-type-setters.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-aliased-primitive-type.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-array-type.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-enum-type.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\type-declaration-object-type.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\expected\type-requiring-runtime-casts.json-result">
-      <Filter>inspector\scripts\tests\expected</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\commands-with-async-attribute.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\commands-with-optional-call-return-parameters.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\domains-with-varying-command-sizes.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\events-with-optional-parameters.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-duplicate-type-declarations.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-enum-with-no-values.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-string-typed-optional-parameter-flag.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-string-typed-optional-type-member.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-type-declaration-using-type-reference.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-type-with-lowercase-name.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-unknown-type-reference-in-type-declaration.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\fail-on-unknown-type-reference-in-type-member.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\same-type-id-different-domain.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\shadowed-optional-type-setters.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\type-declaration-aliased-primitive-type.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\type-declaration-array-type.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\type-declaration-enum-type.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\type-declaration-object-type.json">
-      <Filter>inspector\scripts\tests</Filter>
-    </None>
-    <None Include="..\inspector\scripts\tests\type-requiring-runtime-casts.json">
-      <Filter>inspector\scripts\tests</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

@@ -136,14 +136,17 @@ void JIT::compileLoadVarargs(Instruction* instruction)
 void JIT::compileCallEval(Instruction* instruction)
 {
     addPtr(TrustedImm32(-static_cast<ptrdiff_t>(sizeof(CallerFrameAndPC))), stackPointerRegister, regT1);
-    storePtr(callFrameRegister, Address(regT1, CallFrame::callerFrameOffset()));
+    callOperationNoExceptionCheck(operationCallEval, regT1);
+
+    Jump noException = emitExceptionCheck(InvertedExceptionCheck);
+    addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, stackPointerRegister);    
+    exceptionCheck(jump());
+
+    noException.link(this);
+    addSlowCase(branch64(Equal, regT0, TrustedImm64(JSValue::encode(JSValue()))));
 
     addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
-
-    callOperation(operationCallEval, regT1);
-
-    addSlowCase(branch64(Equal, regT0, TrustedImm64(JSValue::encode(JSValue()))));
 
     sampleCodeBlock(m_codeBlock);
     
@@ -153,9 +156,6 @@ void JIT::compileCallEval(Instruction* instruction)
 void JIT::compileCallEvalSlowCase(Instruction* instruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkSlowCase(iter);
-    int registerOffset = -instruction[4].u.operand;
-
-    addPtr(TrustedImm32(registerOffset * sizeof(Register) + sizeof(CallerFrameAndPC)), callFrameRegister, stackPointerRegister);
 
     load64(Address(stackPointerRegister, sizeof(Register) * JSStack::Callee - sizeof(CallerFrameAndPC)), regT0);
     move(TrustedImmPtr(&CallLinkInfo::dummy()), regT2);
@@ -212,12 +212,6 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
     emitGetVirtualRegister(callee, regT0); // regT0 holds callee.
 
     store64(regT0, Address(stackPointerRegister, JSStack::Callee * static_cast<int>(sizeof(Register)) - sizeof(CallerFrameAndPC)));
-    
-    CallLinkInfo* info = m_codeBlock->addCallLinkInfo();
-
-    if (CallEdgeLog::isEnabled() && shouldEmitProfiling()
-        && Options::baselineDoesCallEdgeProfiling())
-        m_vm->ensureCallEdgeLog().emitLogCode(*this, info->callEdgeProfile, JSValueRegs(regT0));
 
     if (opcodeID == op_call_eval) {
         compileCallEval(instruction);
@@ -229,6 +223,7 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
     addSlowCase(slowCase);
 
     ASSERT(m_callCompilationInfo.size() == callLinkInfoIndex);
+    CallLinkInfo* info = m_codeBlock->addCallLinkInfo();
     info->callType = CallLinkInfo::callTypeFor(opcodeID);
     info->codeOrigin = CodeOrigin(m_bytecodeOffset);
     info->calleeGPR = regT0;
@@ -271,6 +266,52 @@ void JIT::compileOpCallSlowCase(OpcodeID opcodeID, Instruction* instruction, Vec
     sampleCodeBlock(m_codeBlock);
     
     emitPutCallResult(instruction);
+}
+
+void JIT::privateCompileClosureCall(CallLinkInfo* callLinkInfo, CodeBlock* calleeCodeBlock, Structure* expectedStructure, ExecutableBase* expectedExecutable, MacroAssemblerCodePtr codePtr)
+{
+    JumpList slowCases;
+
+    slowCases.append(branchTestPtr(NonZero, regT0, tagMaskRegister));
+    slowCases.append(branchStructure(NotEqual, Address(regT0, JSCell::structureIDOffset()), expectedStructure));
+    slowCases.append(branchPtr(NotEqual, Address(regT0, JSFunction::offsetOfExecutable()), TrustedImmPtr(expectedExecutable)));
+    
+    loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT1);
+    emitPutToCallFrameHeader(regT1, JSStack::ScopeChain);
+    
+    Call call = nearCall();
+    Jump done = jump();
+    
+    slowCases.link(this);
+    move(TrustedImmPtr(callLinkInfo->callReturnLocation.executableAddress()), regT2);
+    restoreReturnAddressBeforeReturn(regT2);
+    Jump slow = jump();
+    
+    LinkBuffer patchBuffer(*m_vm, *this, m_codeBlock);
+    
+    patchBuffer.link(call, FunctionPtr(codePtr.executableAddress()));
+    patchBuffer.link(done, callLinkInfo->hotPathOther.labelAtOffset(0));
+    patchBuffer.link(slow, CodeLocationLabel(m_vm->getCTIStub(virtualCallThunkGenerator).code()));
+    
+    RefPtr<ClosureCallStubRoutine> stubRoutine = adoptRef(new ClosureCallStubRoutine(
+        FINALIZE_CODE(
+            patchBuffer,
+            ("Baseline closure call stub for %s, return point %p, target %p (%s)",
+                toCString(*m_codeBlock).data(),
+                callLinkInfo->hotPathOther.labelAtOffset(0).executableAddress(),
+                codePtr.executableAddress(),
+                toCString(pointerDump(calleeCodeBlock)).data())),
+        *m_vm, m_codeBlock->ownerExecutable(), expectedStructure, expectedExecutable,
+        callLinkInfo->codeOrigin));
+    
+    RepatchBuffer repatchBuffer(m_codeBlock);
+    
+    repatchBuffer.replaceWithJump(
+        RepatchBuffer::startOfBranchPtrWithPatchOnRegister(callLinkInfo->hotPathBegin),
+        CodeLocationLabel(stubRoutine->code().code()));
+    repatchBuffer.relink(callLinkInfo->callReturnLocation, m_vm->getCTIStub(virtualCallThunkGenerator).code());
+
+    callLinkInfo->stub = stubRoutine.release();
 }
 
 void JIT::emit_op_call(Instruction* currentInstruction)

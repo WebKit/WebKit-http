@@ -10,12 +10,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/freetype"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
-    "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/surfaces"
-    "${WEBCORE_DIR}/platform/graphics/surfaces/efl"
-    "${WEBCORE_DIR}/platform/graphics/surfaces/glx"
-    "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/gstreamer"
@@ -106,12 +101,10 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
-    platform/graphics/ImageSource.cpp
     platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
-    platform/graphics/cairo/DrawingBufferCairo.cpp
     platform/graphics/cairo/FontCairo.cpp
     platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
     platform/graphics/cairo/GradientCairo.cpp
@@ -128,10 +121,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/TransformationMatrixCairo.cpp
 
     platform/graphics/efl/CairoUtilitiesEfl.cpp
-    platform/graphics/efl/EvasGLContext.cpp
-    platform/graphics/efl/EvasGLSurface.cpp
-    platform/graphics/efl/GraphicsContext3DEfl.cpp
-    platform/graphics/efl/GraphicsContext3DPrivate.cpp
     platform/graphics/efl/IconEfl.cpp
     platform/graphics/efl/ImageEfl.cpp
     platform/graphics/efl/IntPointEfl.cpp
@@ -164,24 +153,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp
 
-    platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
-    platform/graphics/opengl/GLPlatformContext.cpp
-    platform/graphics/opengl/GLPlatformSurface.cpp
-    platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
-    platform/graphics/opengl/TemporaryOpenGLSetting.cpp
-
     platform/graphics/opentype/OpenTypeVerticalData.cpp
-
-    platform/graphics/surfaces/GLTransportSurface.cpp
-    platform/graphics/surfaces/GraphicsSurface.cpp
-
-    platform/graphics/surfaces/efl/GraphicsSurfaceCommon.cpp
-
-    platform/graphics/surfaces/glx/X11Helper.cpp
-
-    platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
-    platform/graphics/texmap/TextureMapperGL.cpp
-    platform/graphics/texmap/TextureMapperShaderProgram.cpp
 
     platform/graphics/texmap/coordinated/AreaAllocator.cpp
     platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
@@ -193,23 +165,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/coordinated/CoordinatedTile.cpp
     platform/graphics/texmap/coordinated/UpdateAtlas.cpp
 
-    platform/image-decoders/ImageDecoder.cpp
-
-    platform/image-decoders/bmp/BMPImageDecoder.cpp
-    platform/image-decoders/bmp/BMPImageReader.cpp
-
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
-
-    platform/image-decoders/gif/GIFImageDecoder.cpp
-    platform/image-decoders/gif/GIFImageReader.cpp
-
-    platform/image-decoders/ico/ICOImageDecoder.cpp
-
-    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-
-    platform/image-decoders/png/PNGImageDecoder.cpp
-
-    platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/linux/GamepadDeviceLinux.cpp
 
@@ -270,20 +226,19 @@ if (ENABLE_BATTERY_STATUS OR (EFL_REQUIRED_VERSION VERSION_LESS 1.8))
     list(APPEND WebCore_LIBRARIES ${E_DBUS_EUKIT_LIBRARIES})
 endif ()
 
-if (ENABLE_GAMEPAD_DEPRECATED)
-    # FIXME: GAMEPAD_DEPRECATED is legacy implementation. Need to be removed.
-    list(REMOVE_ITEM WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/Modules/gamepad"
+list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.css
+)
+
+if (WTF_USE_TEXTURE_MAPPER)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
     )
 endif ()
 
-list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
-    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.css
-)
-
 set(WebCore_USER_AGENT_SCRIPTS
     ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
-    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js
 )
 
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/efl/RenderThemeEfl.cpp)
@@ -312,7 +267,6 @@ list(APPEND WebCore_LIBRARIES
     ${LIBXSLT_LIBRARIES}
     ${PNG_LIBRARIES}
     ${SQLITE_LIBRARIES}
-    ${X11_X11_LIB}
     ${ZLIB_LIBRARIES}
 )
 
@@ -368,63 +322,92 @@ if (ENABLE_VIDEO)
         ${GSTREAMER_TAG_LIBRARIES}
         ${GSTREAMER_VIDEO_LIBRARIES}
     )
+endif ()
 
-    if (USE_GSTREAMER_MPEGTS)
+if (WTF_USE_3D_GRAPHICS)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/opengl"
+        "${WEBCORE_DIR}/platform/graphics/surfaces"
+        "${WEBCORE_DIR}/platform/graphics/surfaces/efl"
+        "${WEBCORE_DIR}/platform/graphics/surfaces/glx"
+        "${WEBCORE_DIR}/platform/graphics/texmap"
+    )
+
+    if (WTF_USE_EGL)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
-            ${GSTREAMER_MPEGTS_INCLUDE_DIRS}
-        )
+            ${EGL_INCLUDE_DIR}
+            "${WEBCORE_DIR}/platform/graphics/surfaces/egl"
+    )
+    endif ()
 
-        list(APPEND WebCore_LIBRARIES
-            ${GSTREAMER_MPEGTS_LIBRARIES}
+    list(APPEND WebCore_SOURCES
+        platform/graphics/cairo/DrawingBufferCairo.cpp
+
+        platform/graphics/efl/EvasGLContext.cpp
+        platform/graphics/efl/EvasGLSurface.cpp
+        platform/graphics/efl/GraphicsContext3DEfl.cpp
+        platform/graphics/efl/GraphicsContext3DPrivate.cpp
+
+        platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
+        platform/graphics/opengl/GLPlatformContext.cpp
+        platform/graphics/opengl/GLPlatformSurface.cpp
+        platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+        platform/graphics/opengl/TemporaryOpenGLSetting.cpp
+
+        platform/graphics/surfaces/GLTransportSurface.cpp
+        platform/graphics/surfaces/GraphicsSurface.cpp
+
+        platform/graphics/surfaces/efl/GraphicsSurfaceCommon.cpp
+
+        platform/graphics/surfaces/glx/X11Helper.cpp
+
+        platform/graphics/texmap/TextureMapperGL.cpp
+        platform/graphics/texmap/TextureMapperShaderProgram.cpp
+    )
+
+    if (WTF_USE_EGL)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/surfaces/egl/EGLConfigSelector.cpp
+            platform/graphics/surfaces/egl/EGLContext.cpp
+            platform/graphics/surfaces/egl/EGLHelper.cpp
+            platform/graphics/surfaces/egl/EGLSurface.cpp
+            platform/graphics/surfaces/egl/EGLXSurface.cpp
+        )
+    else ()
+        list(APPEND WebCore_SOURCES
+            platform/graphics/surfaces/glx/GLXContext.cpp
+            platform/graphics/surfaces/glx/GLXSurface.cpp
         )
     endif ()
-endif ()
 
-if (WTF_USE_EGL)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${EGL_INCLUDE_DIR}
-        "${WEBCORE_DIR}/platform/graphics/surfaces/egl"
-    )
-endif ()
+    if (WTF_USE_OPENGL_ES_2)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/opengl/Extensions3DOpenGLES.cpp
+            platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
+        )
+    else ()
+        list(APPEND WebCore_SOURCES
+            platform/graphics/OpenGLShims.cpp
 
-if (WTF_USE_EGL)
-    list(APPEND WebCore_SOURCES
-        platform/graphics/surfaces/egl/EGLConfigSelector.cpp
-        platform/graphics/surfaces/egl/EGLContext.cpp
-        platform/graphics/surfaces/egl/EGLHelper.cpp
-        platform/graphics/surfaces/egl/EGLSurface.cpp
-        platform/graphics/surfaces/egl/EGLXSurface.cpp
-    )
-else ()
-    list(APPEND WebCore_SOURCES
-        platform/graphics/surfaces/glx/GLXContext.cpp
-        platform/graphics/surfaces/glx/GLXSurface.cpp
-    )
-endif ()
+            platform/graphics/opengl/Extensions3DOpenGL.cpp
+            platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
+        )
+    endif ()
 
-if (WTF_USE_OPENGL_ES_2)
-    list(APPEND WebCore_SOURCES
-        platform/graphics/opengl/Extensions3DOpenGLES.cpp
-        platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
-    )
-else ()
-    list(APPEND WebCore_SOURCES
-        platform/graphics/OpenGLShims.cpp
-
-        platform/graphics/opengl/Extensions3DOpenGL.cpp
-        platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
-    )
-endif ()
-
-if (WTF_USE_EGL)
     list(APPEND WebCore_LIBRARIES
-        ${EGL_LIBRARY}
+        ${X11_X11_LIB}
     )
-elseif (X11_Xcomposite_FOUND AND X11_Xrender_FOUND)
-    list(APPEND WebCore_LIBRARIES
-        ${X11_Xcomposite_LIB}
-        ${X11_Xrender_LIB}
-    )
+
+    if (WTF_USE_EGL)
+        list(APPEND WebCore_LIBRARIES
+            ${EGL_LIBRARY}
+        )
+    elseif (X11_Xcomposite_FOUND AND X11_Xrender_FOUND)
+        list(APPEND WebCore_LIBRARIES
+            ${X11_Xcomposite_LIB}
+            ${X11_Xrender_LIB}
+        )
+    endif ()
 endif ()
 
 if (ENABLE_WEB_AUDIO)
@@ -464,12 +447,6 @@ if (ENABLE_ACCESSIBILITY)
 endif ()
 
 if (ENABLE_SPEECH_SYNTHESIS)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${ESPEAK_INCLUDE_DIRS}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${ESPEAK_LIBRARIES}
-    )
     list(APPEND WebCore_SOURCES
         platform/efl/PlatformSpeechSynthesizerEfl.cpp
         platform/efl/PlatformSpeechSynthesisProviderEfl.cpp

@@ -53,8 +53,7 @@ PassRefPtr<VisitedLinkProvider> VisitedLinkProvider::create()
 
 VisitedLinkProvider::~VisitedLinkProvider()
 {
-    for (WebProcessProxy* process : m_processes)
-        process->didDestroyVisitedLinkProvider(*this);
+    ASSERT(m_processes.isEmpty());
 }
 
 VisitedLinkProvider::VisitedLinkProvider()
@@ -86,8 +85,8 @@ void VisitedLinkProvider::removeProcess(WebProcessProxy& process)
 {
     ASSERT(m_processes.contains(&process));
 
-    m_processes.remove(&process);
-    process.removeMessageReceiver(Messages::VisitedLinkProvider::messageReceiverName(), m_identifier);
+    if (m_processes.remove(&process))
+        process.removeMessageReceiver(Messages::VisitedLinkProvider::messageReceiverName(), m_identifier);
 }
 
 void VisitedLinkProvider::removeAll()
@@ -98,10 +97,8 @@ void VisitedLinkProvider::removeAll()
     m_tableSize = 0;
     m_table.clear();
 
-    for (WebProcessProxy* process : m_processes) {
-        ASSERT(process->context().processes().contains(process));
-        process->connection()->send(Messages::VisitedLinkTableController::RemoveAllVisitedLinks(), m_identifier);
-    }
+    for (auto& processAndCount : m_processes)
+        processAndCount.key->connection()->send(Messages::VisitedLinkTableController::RemoveAllVisitedLinks(), m_identifier);
 }
 
 void VisitedLinkProvider::addVisitedLinkHash(LinkHash linkHash)
@@ -177,13 +174,11 @@ void VisitedLinkProvider::pendingVisitedLinksTimerFired()
     if (addedVisitedLinks.isEmpty())
         return;
 
-    for (WebProcessProxy* process : m_processes) {
-        ASSERT(process->context().processes().contains(process));
-
+    for (auto& processAndCount : m_processes) {
         if (addedVisitedLinks.size() > 20)
-            process->connection()->send(Messages::VisitedLinkTableController::AllVisitedLinkStateChanged(), m_identifier);
+            processAndCount.key->connection()->send(Messages::VisitedLinkTableController::AllVisitedLinkStateChanged(), m_identifier);
         else
-            process->connection()->send(Messages::VisitedLinkTableController::VisitedLinkStateChanged(addedVisitedLinks), m_identifier);
+            processAndCount.key->connection()->send(Messages::VisitedLinkTableController::VisitedLinkStateChanged(addedVisitedLinks), m_identifier);
     }
 }
 
@@ -228,14 +223,12 @@ void VisitedLinkProvider::resizeTable(unsigned newTableSize)
     }
     m_pendingVisitedLinks.clear();
 
-    for (WebProcessProxy* process : m_processes)
-        sendTable(*process);
+    for (auto& processAndCount : m_processes)
+        sendTable(*processAndCount.key);
 }
 
 void VisitedLinkProvider::sendTable(WebProcessProxy& process)
 {
-    ASSERT(process.context().processes().contains(&process));
-
     SharedMemory::Handle handle;
     if (!m_table.sharedMemory()->createHandle(handle, SharedMemory::ReadOnly))
         return;

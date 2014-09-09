@@ -225,7 +225,7 @@ WebURLResponse* WebURLResponse::createInstance()
 {
     WebURLResponse* instance = new WebURLResponse();
     // fake an http response - so it has the IWebHTTPURLResponse interface
-    instance->m_response = ResourceResponse(WebCore::URL(ParsedURLString, "http://"), String(), 0, String());
+    instance->m_response = ResourceResponse(WebCore::URL(ParsedURLString, "http://"), String(), 0, String(), String());
     instance->AddRef();
     return instance;
 }
@@ -293,7 +293,7 @@ HRESULT STDMETHODCALLTYPE WebURLResponse::initWithURL(
     /* [in] */ int expectedContentLength,
     /* [in] */ BSTR textEncodingName)
 {
-    m_response = ResourceResponse(MarshallingHelpers::BSTRToKURL(url), String(mimeType), expectedContentLength, String(textEncodingName));
+    m_response = ResourceResponse(MarshallingHelpers::BSTRToKURL(url), String(mimeType), expectedContentLength, String(textEncodingName), String());
     return S_OK;
 }
 
@@ -400,7 +400,8 @@ HRESULT STDMETHODCALLTYPE WebURLResponse::isAttachment(
 }
 
 
-HRESULT WebURLResponse::sslPeerCertificate(/* [retval][out] */ ULONG_PTR* result)
+HRESULT STDMETHODCALLTYPE WebURLResponse::sslPeerCertificate( 
+    /* [retval][out] */ OLE_HANDLE* result)
 {
     if (!result)
         return E_POINTER;
@@ -413,7 +414,7 @@ HRESULT WebURLResponse::sslPeerCertificate(/* [retval][out] */ ULONG_PTR* result
     void* data = wkGetSSLPeerCertificateDataBytePtr(dict);
     if (!data)
         return E_FAIL;
-    *result = reinterpret_cast<ULONG_PTR>(data);
+    *result = (OLE_HANDLE)(ULONG64)data;
 #endif
 
     return *result ? S_OK : E_FAIL;

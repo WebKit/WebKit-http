@@ -38,7 +38,7 @@
 #include <wtf/Vector.h>
 
 #if ENABLE(INSPECTOR)
-#include "InspectorJSProtocolTypes.h"
+#include "InspectorJSTypeBuilders.h"
 #endif
 
 namespace Inspector {
@@ -62,7 +62,7 @@ public:
     bool isEqual(ScriptCallStack*) const;
 
 #if ENABLE(INSPECTOR)
-    PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::Console::CallFrame>> buildInspectorArray() const;
+    PassRefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Console::CallFrame>> buildInspectorArray() const;
 #endif
 
 private:

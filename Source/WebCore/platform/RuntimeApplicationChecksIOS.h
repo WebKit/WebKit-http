@@ -30,18 +30,18 @@
 namespace WebCore {
 
 bool applicationIsAdSheet();
-WEBCORE_EXPORT bool applicationIsMobileMail();
-WEBCORE_EXPORT bool applicationIsMobileSafari();
+bool applicationIsMobileMail();
+bool applicationIsMobileSafari();
 bool applicationIsDumpRenderTree();
 bool applicationIsMobileStore();
-WEBCORE_EXPORT bool applicationIsWebApp();
-WEBCORE_EXPORT bool applicationIsOkCupid();
-WEBCORE_EXPORT bool applicationIsFacebook();
+bool applicationIsWebApp();
+bool applicationIsOkCupid();
+bool applicationIsFacebook();
 bool applicationIsEpicurious();
-WEBCORE_EXPORT bool applicationIsDaijisenDictionary();
+bool applicationIsDaijisenDictionary();
 bool applicationIsNASAHD();
 bool applicationIsMASH();
-WEBCORE_EXPORT bool applicationIsTheEconomistOnIPhone();
+bool applicationIsTheEconomistOnIPhone();
 bool applicationIsWebProcess();
 bool applicationIsIBooksOnIOS();
 

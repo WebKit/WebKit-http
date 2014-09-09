@@ -50,7 +50,7 @@
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(IOS) || ENABLE(TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS)
 #include "Chrome.h"
 #include "ChromeClient.h"
 #endif

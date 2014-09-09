@@ -242,7 +242,7 @@ FloatRoundedRect RoundedRect::pixelSnappedRoundedRectForPainting(float deviceSca
     if (originalRect.isEmpty())
         return FloatRoundedRect(originalRect, radii());
 
-    FloatRect pixelSnappedRect = snapRectToDevicePixels(originalRect, deviceScaleFactor);
+    FloatRect pixelSnappedRect = pixelSnappedForPainting(originalRect, deviceScaleFactor);
 
     if (!isRenderable())
         return FloatRoundedRect(pixelSnappedRect, radii());

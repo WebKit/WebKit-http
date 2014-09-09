@@ -42,7 +42,6 @@
 #import "WebPluginPackage.h"
 #import "WebViewPrivate.h"
 #import "WebViewInternal.h"
-#import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebKitSystemInterface.h>
 #import <wtf/Assertions.h>
 
@@ -176,7 +175,7 @@ struct PluginPackageCandidates {
         // If no plug-in was found from the extension, attempt to map from the extension to a MIME type
         // and find the a plug-in from the MIME type. This is done in case the plug-in has not fully specified
         // an extension <-> MIME type mapping.
-        NSString *MIMEType = [[NSURLFileTypeMappings sharedMappings] MIMETypeForExtension:extension];
+        NSString *MIMEType = WKGetMIMETypeForExtension(extension);
         if ([MIMEType length] > 0)
             plugin = [self pluginForMIMEType:MIMEType];
     }
@@ -348,7 +347,12 @@ static NSArray *additionalWebPlugInPaths;
 
     NSView <WebDocumentView> *documentView = [[webFrame frameView] documentView]; 
     if ([documentView isKindOfClass:[WebHTMLView class]]) {
-        for (NSView *subview in [documentView subviews]) {
+        NSArray *subviews = [documentView subviews]; 
+        unsigned int subviewCount = [subviews count]; 
+        unsigned int subviewIndex; 
+        
+        for (subviewIndex = 0; subviewIndex < subviewCount; subviewIndex++) { 
+            NSView *subview = [subviews objectAtIndex:subviewIndex]; 
 #if ENABLE(NETSCAPE_PLUGIN_API)
             if ([subview isKindOfClass:[WebBaseNetscapePluginView class]] || [WebPluginController isPlugInView:subview])
 #else

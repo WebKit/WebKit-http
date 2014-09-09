@@ -95,6 +95,10 @@ public:
             return false;
         }
 
+#if !GLIB_CHECK_VERSION(2, 35, 0)
+        g_type_init();
+#endif
+
         if (!ecore_main_loop_glib_integrate())
             return false;
 

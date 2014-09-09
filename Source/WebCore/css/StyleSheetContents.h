@@ -54,14 +54,14 @@ public:
         return adoptRef(*new StyleSheetContents(ownerRule, originalURL, context));
     }
 
-    WEBCORE_EXPORT ~StyleSheetContents();
+    ~StyleSheetContents();
     
     const CSSParserContext& parserContext() const { return m_parserContext; }
 
     const AtomicString& determineNamespace(const AtomicString& prefix);
 
     void parseAuthorStyleSheet(const CachedCSSStyleSheet*, const SecurityOrigin*);
-    WEBCORE_EXPORT bool parseString(const String&);
+    bool parseString(const String&);
     bool parseStringAtLine(const String&, int startLineNumber, bool);
 
     bool isCacheable() const;
@@ -139,7 +139,7 @@ public:
     void shrinkToFit();
 
 private:
-    WEBCORE_EXPORT StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext&);
+    StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext&);
     StyleSheetContents(const StyleSheetContents&);
 
     void clearCharsetRule();

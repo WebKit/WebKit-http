@@ -26,9 +26,6 @@
 #ifndef ResourceResponse_h
 #define ResourceResponse_h
 
-#include "HTTPHeaderNames.h"
-#include "HTTPParsers.h"
-
 #include "ResourceResponseBase.h"
 
 typedef struct _CFURLResponse* CFURLResponseRef;
@@ -42,8 +39,8 @@ public:
     {
     }
 
-    ResourceResponse(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName)
-        : ResourceResponseBase(url, mimeType, expectedLength, textEncodingName),
+    ResourceResponse(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName, const String& filename)
+        : ResourceResponseBase(url, mimeType, expectedLength, textEncodingName, filename),
           m_responseFired(false)
     {
     }
@@ -61,10 +58,6 @@ private:
 
     PassOwnPtr<CrossThreadResourceResponseData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceResponseData> data) const { return data; }
     void doPlatformAdopt(PassOwnPtr<CrossThreadResourceResponseData>) { }
-    String platformSuggestedFilename() const
-    {
-        return filenameFromHTTPContentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition));
-    }
 
     bool m_responseFired;
 };

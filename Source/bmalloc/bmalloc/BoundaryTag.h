@@ -27,7 +27,6 @@
 #define BoundaryTag_h
 
 #include "BAssert.h"
-#include "Range.h"
 #include "Sizes.h"
 
 namespace bmalloc {
@@ -42,7 +41,6 @@ public:
     static Range init(LargeChunk*);
     static Range deallocate(void*);
     static void allocate(size_t, Range&, Range& leftover, bool& hasPhysicalPages);
-    static unsigned compactBegin(const Range&);
 
     bool isXLarge() { return m_size == xLargeMarker; }
     void setXLarge() { m_size = xLargeMarker; }
@@ -60,21 +58,17 @@ public:
     void clear() { memset(this, 0, sizeof(*this)); }
     
     size_t size() { return m_size; }
-    unsigned compactBegin() { return m_compactBegin; }
-
-    void setRange(const Range&);
+    void setSize(size_t);
     
     EndTag* prev();
     BeginTag* next();
 
 private:
     static const size_t flagBits = 3;
-    static const size_t compactBeginBits = 5;
-    static const size_t sizeBits = bitCount<unsigned>() - flagBits - compactBeginBits;
+    static const size_t sizeBits = bitCount<unsigned>() - flagBits;
     static const size_t xLargeMarker = 1; // This size is unused because our minimum object size is greater than it.
 
     static_assert(largeMin > xLargeMarker, "largeMin must provide enough umbrella to fit xLargeMarker.");
-    static_assert((1 << compactBeginBits) - 1 >= largeMin / largeAlignment, "compactBegin must be encodable in a BoundaryTag.");
     static_assert((1 << sizeBits) - 1 >= largeMax, "largeMax must be encodable in a BoundaryTag.");
 
     static void splitLarge(BeginTag*, size_t size, EndTag*& endTag, Range&, Range& leftover);
@@ -85,23 +79,13 @@ private:
     bool m_isFree: 1;
     bool m_isEnd: 1;
     bool m_hasPhysicalPages: 1;
-    unsigned m_compactBegin: compactBeginBits;
     unsigned m_size: sizeBits;
 };
 
-inline unsigned BoundaryTag::compactBegin(const Range& range)
+inline void BoundaryTag::setSize(size_t size)
 {
-    return static_cast<unsigned>(
-        reinterpret_cast<uintptr_t>(
-            rightShift(
-                mask(range.begin(), largeMin - 1), largeAlignmentShift)));
-}
-
-inline void BoundaryTag::setRange(const Range& range)
-{
-    m_compactBegin = compactBegin(range);
-    m_size = static_cast<unsigned>(range.size());
-    BASSERT(this->size() == range.size());
+    m_size = static_cast<unsigned>(size);
+    BASSERT(this->size() == size);
     BASSERT(!isXLarge());
 }
 

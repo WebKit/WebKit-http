@@ -26,6 +26,7 @@ __Z26InitWebCoreSystemInterfacev
 +[WebView _shouldAutomaticDashSubstitutionBeEnabled]
 +[WebView _shouldAutomaticTextReplacementBeEnabled]
 +[WebView _shouldAutomaticSpellingCorrectionBeEnabled]
+_WKCopyCFLocalizationPreferredName
 +[WebView(WebPrivate) _setDomainRelaxationForbidden:forURLScheme:]
 +[WebView(WebPrivate) _registerURLSchemeAsAllowingLocalStorageAccessInPrivateBrowsing:]
 +[WebView(WebPrivate) _registerURLSchemeAsAllowingDatabaseAccessInPrivateBrowsing:]
@@ -502,6 +503,7 @@ __ZN20WebFrameLoaderClient32postProgressFinishedNotificationEv
 __ZN20WebDocumentLoaderMacD0Ev
 -[WebView _windowChangedKeyState]
 -[WebHTMLView windowDidBecomeKey:]
+_WKMouseMovedNotification
 -[WebHTMLView(WebNSTextInputSupport) _updateSecureInputState]
 -[WebView _windowWillOrderOnScreen:]
 -[WebHTMLView windowWillOrderOnScreen:]
@@ -847,6 +849,7 @@ __ZN3WTF6VectorINS_6StringELm0ENS_15CrashOnOverflowEEC2ERKS3_
 __ZN7WebCore13MimeClassInfoD2Ev
 -[WebBasePluginPackage isNativeLibraryData:]
 -[WebBasePluginPackage pListForPath:createFile:]
++[WebBasePluginPackage preferredLocalizationName]
 -[WebPluginDatabase(Internal) _addPlugin:]
 -[WebBasePluginPackage path]
 -[WebBasePluginPackage wasAddedToPluginDatabase:]

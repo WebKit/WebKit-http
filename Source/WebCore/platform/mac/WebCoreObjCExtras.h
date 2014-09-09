@@ -33,11 +33,11 @@
 extern "C" {
 #endif
 
-WEBCORE_EXPORT void WebCoreObjCFinalizeOnMainThread(Class cls);
+void WebCoreObjCFinalizeOnMainThread(Class cls);
 
 // The 'Class' that should be passed in here is the class of the
 // object that implements the dealloc method that this function is called from.
-WEBCORE_EXPORT bool WebCoreObjCScheduleDeallocateOnMainThread(Class cls, id);
+bool WebCoreObjCScheduleDeallocateOnMainThread(Class cls, id object);
 
 #ifdef __cplusplus
 }

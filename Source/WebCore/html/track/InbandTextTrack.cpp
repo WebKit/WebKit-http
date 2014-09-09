@@ -213,10 +213,10 @@ void InbandTextTrack::updateKindFromPrivate()
     }
 }
 
-MediaTime InbandTextTrack::startTimeVariance() const
+double InbandTextTrack::startTimeVariance() const
 {
     if (!m_private)
-        return MediaTime::zeroTime();
+        return false;
     
     return m_private->startTimeVariance();
 }
