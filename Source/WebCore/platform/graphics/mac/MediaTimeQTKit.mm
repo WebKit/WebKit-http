@@ -23,83 +23,42 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef XPCPtr_h
-#define XPCPtr_h
+#include "config.h"
+#include "MediaTimeQTKit.h"
 
-#include <xpc/xpc.h>
+#if PLATFORM(MAC)
 
-namespace IPC {
+#import "SoftLinking.h"
+#import <QTKit/QTTime.h>
 
-struct AdoptXPC { };
+SOFT_LINK_FRAMEWORK(QTKit);
+SOFT_LINK_CONSTANT(QTKit, QTIndefiniteTime, QTTime);
+SOFT_LINK_CONSTANT(QTKit, QTZeroTime, QTTime);
+SOFT_LINK(QTKit, QTTimeCompare, NSComparisonResult, (QTTime time, QTTime otherTime), (time, otherTime));
+SOFT_LINK(QTKit, QTMakeTime, QTTime, (long long timeValue, long timeScale), (timeValue, timeScale));
 
-template<typename T> class XPCPtr {
-public:
-    XPCPtr()
-        : m_ptr(nullptr)
-    {
-    }
+namespace WebCore {
 
-    XPCPtr(AdoptXPC, T ptr)
-        : m_ptr(ptr)
-    {
-    }
-
-    ~XPCPtr()
-    {
-        if (m_ptr)
-            xpc_release(m_ptr);
-    }
-
-    T get() const { return m_ptr; }
-
-    explicit operator bool() const { return m_ptr; }
-    bool operator!() const { return !m_ptr; }
-
-    XPCPtr(const XPCPtr& other)
-        : m_ptr(other.m_ptr)
-    {
-        if (m_ptr)
-            xpc_retain(m_ptr);
-    }
-
-    XPCPtr(XPCPtr&& other)
-        : m_ptr(other.m_ptr)
-    {
-        other.m_ptr = nullptr;
-    }
-
-    XPCPtr& operator=(const XPCPtr& other)
-    {
-        T optr = other.get();
-        if (optr)
-            xpc_retain(optr);
-
-        T ptr = m_ptr;
-        m_ptr = optr;
-
-        if (ptr)
-            xpc_release(ptr);
-
-        return *this;
-    }
-
-    XPCPtr& operator=(std::nullptr_t)
-    {
-        if (m_ptr)
-            xpc_release(m_ptr);
-        m_ptr = nullptr;
-
-        return *this;
-    }
-private:
-    T m_ptr;
-};
-
-template<typename T> inline XPCPtr<T> adoptXPC(T ptr)
+MediaTime toMediaTime(const QTTime& qtTime)
 {
-    return XPCPtr<T>(AdoptXPC { }, ptr);
+    if (qtTime.flags & kQTTimeIsIndefinite)
+        return MediaTime::indefiniteTime();
+    return MediaTime(qtTime.timeValue, qtTime.timeScale);
 }
 
-} // namespace IPC
+QTTime toQTTime(const MediaTime& mediaTime)
+{
+    if (mediaTime.isIndefinite() || mediaTime.isInvalid())
+        return getQTIndefiniteTime();
+    if (!mediaTime)
+        return getQTZeroTime();
 
-#endif // XPCPtr_h
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    return QTMakeTime(mediaTime.timeValue(), mediaTime.timeScale());
+#pragma clang diagnostic pop
+}
+
+}
+
+#endif

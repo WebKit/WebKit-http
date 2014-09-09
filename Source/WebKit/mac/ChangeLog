@@ -1,3 +1,244 @@
+2014-09-08  Maciej Stachowiak  <mjs@apple.com>
+
+        Fix 32-bit Mac build for new warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136624
+
+        Reviewed by Darin Adler.
+        
+        (Jessie already fixed this but my version with typedefs seems a tiny bit cleaner.)
+
+        * Carbon/HIViewAdapter.m:
+        (+[HIViewAdapter bindHIViewToNSView:nsView:]): Need to use explicit casting now.
+
+2014-09-08  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136571
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-08  Jessie Berlin  <jberlin@apple.com>
+
+        32-bit build fix after r173364.
+
+        * Carbon/HIViewAdapter.m:
+        (+[HIViewAdapter bindHIViewToNSView:nsView:]):
+
+2014-09-08  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        Added back SPI that is still in use.
+
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _webkit_URLByRemovingFragment]):
+
+2014-09-08  Dan Bernstein  <mitz@apple.com>
+
+        iOS Simulator build fix.
+
+        * Misc/WebKitSystemBits.m:
+        (WebMemorySize):
+
+2014-09-07  Darin Adler  <darin@apple.com>
+
+        Fix build failure seen on Mountain Lion buildbot.
+
+        * Misc/WebNSDataExtras.h: Make WEB_GUESS_MIME_TYPE_PEEK_LENGTH an unsigned instead
+        of an int, to avoid warning about mixing signs.
+
+2014-09-06  Darin Adler  <darin@apple.com>
+
+        Make updates suggested by new version of Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=136603
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/Base.xcconfig: Added CLANG_WARN_UNREACHABLE_CODE, COMBINE_HIDPI_IMAGES,
+        and ENABLE_STRICT_OBJC_MSGSEND as suggested by Xcode upgrade check.
+
+        * History/WebURLsWithTitles.m:
+        (+[WebURLsWithTitles writeURLs:andTitles:toPasteboard:]): Use NSUInteger instead of
+        unsigned for correctness, and to quiet the 32-to-64-bit compiler warning (which is
+        not turned on because it gives us too many false positives).
+        * Misc/WebElementDictionary.mm:
+        (-[WebElementDictionary objectForKey:]): Ditto.
+        * Misc/WebNSDataExtras.m:
+        (-[NSData _webkit_guessedMIMETypeForXML]): Ditto.
+        (-[NSData _webkit_guessedMIMEType]): Ditto.
+        (-[NSData _webkit_parseRFC822HeaderFields]): Ditto.
+        (-[NSData _web_locationAfterFirstBlankLine]): Ditto.
+
+        * Misc/WebNSURLExtras.h: Removed unused _web_URLWithLowercasedScheme, _web_hostData,
+        _webkit_URLByRemovingFragment, _webkit_URLByRemovingResourceSpecifier, _webkit_isFTPDirectoryURL,
+        _webkit_shouldLoadAsEmptyDocument, _web_hostNameNeedsDecodingWithRange:,
+        _web_hostNameNeedsEncodingWithRange:, _web_decodeHostNameWithRange:, _web_encodeHostNameWithRange:,
+        and _webkit_URLFragment methods.
+
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _web_URLByTruncatingOneCharacterBeforeComponent:]): Deleted.
+        (-[NSURL _webkit_URLByRemovingFragment]): Deleted.
+        (-[NSURL _webkit_URLByRemovingResourceSpecifier]): Deleted.
+        (-[NSURL _webkit_isFTPDirectoryURL]): Deleted.
+        (-[NSURL _webkit_shouldLoadAsEmptyDocument]): Deleted.
+        (-[NSURL _web_URLWithLowercasedScheme]): Deleted.
+        (-[NSString _webkit_isFTPDirectoryURL]): Deleted.
+        (-[NSString _web_hostNameNeedsDecodingWithRange:]): Deleted.
+        (-[NSString _web_hostNameNeedsEncodingWithRange:]): Deleted.
+        (-[NSString _web_decodeHostNameWithRange:]): Deleted.
+        (-[NSString _web_encodeHostNameWithRange:]): Deleted.
+        (-[NSString _webkit_URLFragment]): Deleted.
+
+        * Plugins/WebPluginDatabase.mm:
+        (-[WebPluginDatabase removePluginInstanceViewsFor:]): Use a modern for loop
+        to iterate an array instead of a loop using the type "unsigned int".
+
+        * WebCoreSupport/WebOpenPanelResultListener.mm:
+        (-[WebOpenPanelResultListener chooseFilenames:]): Use NSUInteger instead of int.
+
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallDelegate): Use wtfCallIMP in one overload that was instead just calling the
+        directly without a proper type for the function pointer. This might have been causing
+        an actual problem on 64-bit systems, and it was different from all the other CallDelegate
+        functions that were already doing this correctly.
+
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController _placePopupWindow:]): Use NSUInteger instead of int.
+
+2014-09-06  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: convert DockSide to an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=136601
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::frontendLoaded):
+        (-[WebInspectorWindowController attachWindow:]):
+        (-[WebInspectorWindowController attach]):
+        (-[WebInspectorWindowController detach]):
+        * WebInspector/WebInspectorFrontend.mm:
+        (-[WebInspectorFrontend attach]):
+
+2014-09-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173340 and r173342.
+        https://bugs.webkit.org/show_bug.cgi?id=136596
+
+        Broke many tests (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Remove PLATFORM(IOS) from WebCore/editing (Part 3)."
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+        http://trac.webkit.org/changeset/173340
+
+        "Build fix after r173340."
+        http://trac.webkit.org/changeset/173342
+
+2014-09-05  Enrica Casucci  <enrica@apple.com>
+
+        Build fix after r173340.
+
+        * WebCoreSupport/WebEditorClient.h:
+        (kit):
+        (core):
+
+2014-09-05  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 3).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Benjamin Poulain.
+
+        This patch removes the use of PLATFORM(IOS) from TextAffinity.h
+        and removes the assumption that EAffinity values match NSSelectionAffinity
+        values. It also removes the includes in TextAffinity.h, creating the need to
+        include explicitly the files when necessary. It also removes the unnecessary
+        use of platform specific types, replacing them with WebCore types.
+
+        * WebCoreSupport/WebEditorClient.h: Added kit and core for EAffinity.
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _scrollToBeginningOfDocument]):
+        (-[WebFrameView _scrollToEndOfDocument]):
+
+2014-09-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Another attempt to fix the iOS build after <http://trac.webkit.org/changeset/173309>
+        (https://bugs.webkit.org/show_bug.cgi?id=136564)
+
+        Move #endif inside -viewDidMoveToWindow up one line such that the closing brace ('}') is after it.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView viewDidMoveToWindow]):
+
+2014-09-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Another attempt to fix the iOS build after <http://trac.webkit.org/changeset/173309>
+        (https://bugs.webkit.org/show_bug.cgi?id=136564)
+
+        Add !PLATFORM(IOS)-guard in -viewDidMoveToWindow around code that references WebHTMLViewPrivate.flagsChangedEventMonitor.
+        The instance variable WebHTMLViewPrivate.flagsChangedEventMonitor is guarded by !PLATFORM(IOS).
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView viewDidMoveToWindow]):
+
+2014-09-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Fix the iOS build after <http://trac.webkit.org/changeset/173309>
+        (https://bugs.webkit.org/show_bug.cgi?id=136564)
+
+        Include more code inside the !PLATFORM(IOS)-guarded section in -setDataSource:.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView setDataSource:]):
+
+2014-09-04  Maciej Stachowiak  <mjs@apple.com>
+
+        Use tracking areas instead of (SPI) mouse moved notifications, and follow flags changes with an event monitor
+        https://bugs.webkit.org/show_bug.cgi?id=136564
+
+        Reviewed by Dan Bernstein.
+        
+        WebKit1 depended on mouse moved event notifications to track mouse
+        moves, and on being specially called by Safari to track flags
+        changes. WebKit2 does both these things better - it uses a tracking area
+        and event monitors. Copy those approaches.
+
+        * WebKit.order: Remove reference to obsolete call.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLViewPrivate dealloc]): No need to deallocate tracking
+        area, since we now just always have one.
+        (-[WebHTMLViewPrivate clear]): ditto
+        (-[WebHTMLView _postFakeMouseMovedEventForFlagsChangedEvent:]):
+        New method that posts a fake mouse move event in response to
+        a flags change event, for use by the event monitor.
+        (+[WebHTMLView _postFlagsChangedEvent:]): Empty this old call,
+        still kept around for benefit of older Safari.
+        (-[WebHTMLView _updateMouseoverWithEvent:]): Handle Dashboard's
+        special mouseover mode (previously handled in a weird way).
+        (-[WebHTMLView close]): No more need to mess with mouse moved observer.
+        (-[WebHTMLView viewWillMoveToWindow:]): ditto
+        (-[WebHTMLView viewDidMoveToWindow]): ditto; but now hook up a flags
+        changed monitor.
+        (-[WebHTMLView windowDidBecomeKey:]): No need to handle non-key window
+        tracking area or mouse moved observer.
+        (-[WebHTMLView windowDidResignKey:]): ditto
+        (-[WebHTMLView windowWillOrderOnScreen:]): No need to mess with mouse
+        moved observer.
+        (-[WebHTMLView windowWillOrderOffScreen:]): ditto
+        (-[WebHTMLView mouseMoved:]): Converted from the old mouseMovedNotification:
+        (-[WebHTMLView setDataSource:]): Change if around body to early return. Hook
+        up tracking area - we have to do it here, because before this point, the
+        WebHTMLView does not know its WebView, which is where dashboard settings
+        live.
+        (-[WebHTMLView _removeMouseMovedObserverUnconditionally]): Deleted.
+        (-[WebHTMLView addMouseMovedObserver]): Deleted.
+        (-[WebHTMLView removeMouseMovedObserver]): Deleted.
+
 2014-09-04  Pratik Solanki  <psolanki@apple.com>
 
         Bring back [WebPreferences setDiskImageCacheEnabled:] for backwards compatibility

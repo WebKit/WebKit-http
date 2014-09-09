@@ -1,3 +1,188 @@
+2014-09-07  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should have a reusable SSA builder
+        https://bugs.webkit.org/show_bug.cgi?id=136331
+
+        Reviewed by Oliver Hunt.
+        
+        Update the alloc() method to use variadic templates. This makes it more natural to use.
+
+        * wtf/SegmentedVector.h:
+        (WTF::SegmentedVector::alloc):
+
+2014-09-08  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136571
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
+2014-09-08  Dan Bernstein  <mitz@apple.com>
+
+        HAVE(VOUCHERS) is not available outside of WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=136637
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h: Moved the definition of HAVE_VOUCHERS from WebKit2’s config.h here.
+
+2014-09-08  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the build after r173383, part 2.
+
+        * wtf/OSObjectPtr.h:
+
+2014-09-08  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the build after r173383.
+
+        * wtf/OSObjectPtr.h:
+
+2014-09-07  Sam Weinig  <sam@webkit.org>
+
+        Make OSObjectPtr a bit more like RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=136613
+
+        Reviewed by Darin Adler.
+
+        Address some of Darin's feedback by:
+        - Making the adopting constructor private and friending adoptOSObject().
+        - Implementing the assignment operator using swap.
+        - Adding a move assignment operator.
+
+        * wtf/OSObjectPtr.h:
+        (WTF::OSObjectPtr::operator=):
+        (WTF::OSObjectPtr::swap):
+        (WTF::OSObjectPtr::OSObjectPtr):
+
+2014-09-08  Jessie Berlin  <jberlin@apple.com>
+
+        More build fixes after r173374.
+
+        * wtf/dtoa/strtod.cc:
+
+2014-09-08  Jessie Berlin  <jberlin@apple.com>
+
+        Build fix after r173374.
+
+        * wtf/dtoa/strtod.cc:
+
+2014-09-08  Jessie Berlin  <jberlin@apple.com>
+
+        Speculative build fix after r173364.
+
+        * wtf/dtoa/strtod.cc:
+
+2014-09-07  Maciej Stachowiak  <mjs@apple.com>
+
+        Introduce COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE) and use it
+        https://bugs.webkit.org/show_bug.cgi?id=136616
+
+        Reviewed by Darin Adler.
+
+        * wtf/Compiler.h: Define the quirk for all compilers but clang.
+
+2014-09-06  Sam Weinig  <sam@webkit.org>
+
+        XPCPtr should be converted into an all purpose smart pointer for os_objects
+        https://bugs.webkit.org/show_bug.cgi?id=136602
+
+        Reviewed by Darin Adler.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/OSObjectPtr.h: Copied from Source/WebKit2/Platform/IPC/mac/XPCPtr.h.
+        (WTF::retainOSObject):
+        (WTF::releaseOSObject):
+        (WTF::OSObjectPtr::OSObjectPtr):
+        (WTF::OSObjectPtr::~OSObjectPtr):
+        (WTF::OSObjectPtr::operator=):
+        (WTF::adoptOSObject):
+        (IPC::XPCPtr::XPCPtr): Deleted.
+        (IPC::XPCPtr::~XPCPtr): Deleted.
+        (IPC::XPCPtr::operator=): Deleted.
+        (IPC::adoptXPC): Deleted.
+        Rename/move XPCPtr to OSObjectPtr and make it work with any os_object.
+
+2014-09-06  Darin Adler  <darin@apple.com>
+
+        Make updates suggested by new version of Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=136603
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/Base.xcconfig: Added CLANG_WARN_UNREACHABLE_CODE,
+        COMBINE_HIDPI_IMAGES, and ENABLE_STRICT_OBJC_MSGSEND as suggested by
+        Xcode upgrade check.
+
+        * WTF.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+2014-09-05  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should honor the FastMalloc statistics API
+        https://bugs.webkit.org/show_bug.cgi?id=136592
+
+        Reviewed by Gavin Barraclough.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMallocStatistics):
+
+2014-09-05  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should honor the FastMalloc scavenging API
+        https://bugs.webkit.org/show_bug.cgi?id=136588
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::releaseFastMallocFreeMemory):
+
+2014-09-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled out <http://trac.webkit.org/changeset/173313>.
+
+        It seems to have broken the PLT bot.
+
+                Do the bmalloc.
+                https://bugs.webkit.org/show_bug.cgi?id=132629
+
+                * wtf/FastMalloc.cpp:
+
+2014-06-06  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: make MediaTime the primary time type for audiovisual times.
+        https://bugs.webkit.org/show_bug.cgi?id=133579
+
+        Reviewed by Eric Carlson.
+
+        Add a unary minus operator, and add unimplemented private casting operators, to make
+        unintentional double->MediaTime and MediaTime->double casts hard errors.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::operator-):
+        * wtf/MediaTime.h:
+
+2014-09-04  Geoffrey Garen  <ggaren@apple.com>
+
+        Do the bmalloc.
+        https://bugs.webkit.org/show_bug.cgi?id=132629
+
+        Reviewed by Michael Saboff.
+
+        64-bit only for now, just to try it out.
+
+        * wtf/FastMalloc.cpp:
+
+2014-09-05  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Enable GenGC on ARM Traditional
+        https://bugs.webkit.org/show_bug.cgi?id=136567
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h:
+
 2014-09-04  Filip Pizlo  <fpizlo@apple.com>
 
         Beef up the DFG's CFG analyses to include iterated dominance frontiers and more user-friendly BlockSets

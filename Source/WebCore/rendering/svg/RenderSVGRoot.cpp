@@ -36,6 +36,7 @@
 #include "RenderNamedFlowFragment.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceContainer.h"
+#include "RenderSVGResourceFilter.h"
 #include "RenderView.h"
 #include "SVGImage.h"
 #include "SVGLength.h"
@@ -46,10 +47,6 @@
 #include "SVGViewSpec.h"
 #include "TransformState.h"
 #include <wtf/StackStats.h>
-
-#if ENABLE(FILTERS)
-#include "RenderSVGResourceFilter.h"
-#endif
 
 namespace WebCore {
 
@@ -247,7 +244,7 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
 
     // Don't paint if we don't have kids, except if we have filters we should paint those.
     if (!firstChild()) {
-        SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this);
+        auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*this);
         if (!resources || !resources->filter()) {
             if (page && paintInfo.phase == PaintPhaseForeground)
                 page->addRelevantUnpaintedObject(this, visualOverflowRect());

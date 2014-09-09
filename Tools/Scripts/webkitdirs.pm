@@ -1421,14 +1421,12 @@ sub launcherPath()
 
 sub launcherName()
 {
-    if (isGtk()) {
+    if (isGtk() || isEfl()) {
         return "MiniBrowser";
     } elsif (isAppleMacWebKit()) {
         return "Safari";
     } elsif (isAppleWinWebKit()) {
         return "WinLauncher";
-    } elsif (isEfl()) {
-        return "EWebLauncher/MiniBrowser";
     } elsif (isHaiku()) {
         return "HaikuLauncher";
     } elsif (isWinCE()) {

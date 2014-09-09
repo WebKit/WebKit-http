@@ -45,7 +45,7 @@ namespace WebCore {
 
 void ResourceResponse::initNSURLResponse() const
 {
-    if (!m_httpStatusCode) {
+    if (!m_httpStatusCode || !m_url.protocolIsInHTTPFamily()) {
         // Work around a mistake in the NSURLResponse class - <rdar://problem/6875219>.
         // The init function takes an NSInteger, even though the accessor returns a long long.
         // For values that won't fit in an NSInteger, pass -1 instead.
@@ -55,9 +55,12 @@ void ResourceResponse::initNSURLResponse() const
         else
             expectedContentLength = static_cast<NSInteger>(m_expectedContentLength);
 
-        m_nsResponse = adoptNS([[NSURLResponse alloc] initWithURL:m_url MIMEType:m_mimeType expectedContentLength:-1 textEncodingName:m_textEncodingName]);
+        NSString* encodingNSString = nsStringNilIfEmpty(m_textEncodingName);
+        m_nsResponse = adoptNS([[NSURLResponse alloc] initWithURL:m_url MIMEType:m_mimeType expectedContentLength:expectedContentLength textEncodingName:encodingNSString]);
         return;
     }
+
+    // FIXME: We lose the status text and the HTTP version here.
     NSMutableDictionary* headerDictionary = [NSMutableDictionary dictionary];
     for (auto& header : m_httpHeaderFields)
         [headerDictionary setObject:(NSString *)header.value forKey:(NSString *)header.key];
@@ -185,7 +188,7 @@ bool ResourceResponse::platformCompare(const ResourceResponse& a, const Resource
 
 void ResourceResponse::setCertificateChain(CFArrayRef certificateChain)
 {
-    ASSERT(!wkCopyNSURLResponseCertificateChain(nsURLResponse()));
+    ASSERT(!m_nsResponse || !wkCopyNSURLResponseCertificateChain(m_nsResponse.get()));
     m_externalCertificateChain = certificateChain;
 }
 

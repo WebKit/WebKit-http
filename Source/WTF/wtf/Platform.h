@@ -793,7 +793,7 @@
 
 /* Generational collector for JSC */
 #if !defined(ENABLE_GGC)
-#if CPU(X86_64) || CPU(X86) || CPU(ARM_THUMB2) || CPU(ARM64)
+#if CPU(X86_64) || CPU(X86) || CPU(ARM64) || CPU(ARM)
 #define ENABLE_GGC 1
 #else
 #define ENABLE_GGC 0
@@ -1035,6 +1035,12 @@
 #ifndef HAVE_QOS_CLASSES
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000)
 #define HAVE_QOS_CLASSES 1
+#endif
+#endif
+
+#ifndef HAVE_VOUCHERS
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000)
+#define HAVE_VOUCHERS 1
 #endif
 #endif
 

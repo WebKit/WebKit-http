@@ -53,6 +53,9 @@ WebInspector.loaded = function()
     // Enable agents.
     InspectorAgent.enable();
 
+    // Perform one-time tasks.
+    WebInspector.CSSCompletions.requestCSSNameCompletions();
+
     // Establish communication with the InspectorBackend.
     InspectorFrontendHost.loaded();
 }
@@ -214,7 +217,7 @@ InspectorTest.reloadPage = function(shouldIgnoreCache)
             this._testPageIsReloading = true;
 
             return Promise.resolve(null);
-        });
+        }.bind(this));
 }
 
 InspectorTest.reportUncaughtException = function(message, url, lineNumber)

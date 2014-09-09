@@ -41,7 +41,7 @@ public:
         return adoptRef(new OutOfBandTextTrackPrivateAVF(player, selection));
     }
     
-    virtual void processCue(CFArrayRef, CFArrayRef, double) override { }
+    virtual void processCue(CFArrayRef, CFArrayRef, const MediaTime&) override { }
     virtual void resetCueValues() override { }
     
     virtual Category textTrackCategory() const override { return OutOfBand; }

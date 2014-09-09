@@ -1,3 +1,436 @@
+2014-09-08  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should have a reusable SSA builder
+        https://bugs.webkit.org/show_bug.cgi?id=136331
+
+        Reviewed by Oliver Hunt.
+        
+        We want to implement sophisticated SSA transformations like object allocation sinking
+        (https://bugs.webkit.org/show_bug.cgi?id=136330), but to do that, we need to be able to do
+        updates to SSA that require inserting new Phi's. This requires calculating where Phis go.
+        Previously, our Phi calculation was based on Aycock and Horspool's algorithm, and our
+        implementation of this algorithm only worked when doing CPS->SSA conversion. The code
+        could not be reused for cases where some phase happens to know that it introduced a few
+        defs in some blocks and it wants to figure out where the Phis should go. Moreover, even
+        the general algorithm of Aycock and Horspool is not well suited to such targetted SSA
+        updates, since it requires first inserting maximal Phis. That scales well when the Phis
+        were already there (like in our CPS form) but otherwise it's quite unnatural and may be
+        difficult to make efficient.
+        
+        The usual way of handling both SSA conversion and SSA update is to use Cytron et al's
+        algorithm based on dominance frontiers. For a while now, I've been working on creating a
+        Cytron-based SSA calculator that can be used both as a replacement for our current SSA
+        converter and as a reusable tool for any phase that needs to do SSA update. I previously
+        optimized our dominator calculation and representation to use dominator trees computed
+        using Lengauer and Tarjan's algorithm - mainly to make it more scalable to enumerate over
+        the set of blocks that dominate you or vice-versa, and then I implemented a dominance
+        frontier calculator. This patch implements the final step towards making SSA update
+        available to all SSA phases: it implements an SSACalculator that can tell you where Phis
+        go when given an arbitrary set of Defs. To keep things simple, and to ensure that we have
+        good test coverage for this SSACalculator, this patch replaces the old Aycock-Horspool
+        SSA converter with one based on the SSACalculator.
+        
+        This has no observable impact. It does reduce the amount of code in SSAConversionPhase.
+        But even better, it makes SSAConversionPhase have significantly less tricky logic. It
+        mostly just relies on SSACalculator to do the tricky stuff, and SSAConversionPhase mostly
+        just reasons about the weirdnesses unique to the ThreadedCPS form that it sees as input.
+        In fact, using the Cytron et al approach means that there isn't really any "smoke and
+        mirrors" trickyness related to SSA. SSACalculator's only "tricks" are using the pruned
+        iterated dominance frontier to place Phi's and using the dom tree to find reaching defs.
+        The complexity is mostly confined to Dominators, which computes various dominator-related
+        properties over the control flow graph. That class can be difficult to understand, but at
+        least it follows well-known graph theory wisdom.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGAnalysis.h:
+        * dfg/DFGCSEPhase.cpp:
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        * dfg/DFGDominators.h:
+        (JSC::DFG::Dominators::immediateDominatorOf):
+        (JSC::DFG::Dominators::forAllBlocksInIteratedDominanceFrontierOf):
+        (JSC::DFG::Dominators::forAllBlocksInPrunedIteratedDominanceFrontierOf):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::blocksInPreOrder):
+        (JSC::DFG::Graph::blocksInPostOrder):
+        (JSC::DFG::Graph::getBlocksInPreOrder): Deleted.
+        (JSC::DFG::Graph::getBlocksInPostOrder): Deleted.
+        * dfg/DFGGraph.h:
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::run):
+        * dfg/DFGNodeFlags.h:
+        * dfg/DFGPhase.cpp:
+        (JSC::DFG::Phase::beginPhase):
+        (JSC::DFG::Phase::endPhase):
+        * dfg/DFGPhase.h:
+        * dfg/DFGSSACalculator.cpp: Added.
+        (JSC::DFG::SSACalculator::Variable::dump):
+        (JSC::DFG::SSACalculator::Variable::dumpVerbose):
+        (JSC::DFG::SSACalculator::Def::dump):
+        (JSC::DFG::SSACalculator::SSACalculator):
+        (JSC::DFG::SSACalculator::~SSACalculator):
+        (JSC::DFG::SSACalculator::newVariable):
+        (JSC::DFG::SSACalculator::newDef):
+        (JSC::DFG::SSACalculator::nonLocalReachingDef):
+        (JSC::DFG::SSACalculator::reachingDefAtTail):
+        (JSC::DFG::SSACalculator::dump):
+        * dfg/DFGSSACalculator.h: Added.
+        (JSC::DFG::SSACalculator::Variable::index):
+        (JSC::DFG::SSACalculator::Variable::Variable):
+        (JSC::DFG::SSACalculator::Def::variable):
+        (JSC::DFG::SSACalculator::Def::block):
+        (JSC::DFG::SSACalculator::Def::value):
+        (JSC::DFG::SSACalculator::Def::Def):
+        (JSC::DFG::SSACalculator::variable):
+        (JSC::DFG::SSACalculator::computePhis):
+        (JSC::DFG::SSACalculator::phisForBlock):
+        (JSC::DFG::SSACalculator::reachingDefAtHead):
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::SSAConversionPhase):
+        (JSC::DFG::SSAConversionPhase::run):
+        (JSC::DFG::SSAConversionPhase::forwardPhiChildren): Deleted.
+        (JSC::DFG::SSAConversionPhase::forwardPhi): Deleted.
+        (JSC::DFG::SSAConversionPhase::forwardPhiEdge): Deleted.
+        (JSC::DFG::SSAConversionPhase::deduplicateChildren): Deleted.
+        * dfg/DFGSSAConversionPhase.h:
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::Validate):
+        (JSC::DFG::Validate::dumpGraphIfAppropriate):
+        (JSC::DFG::validate):
+        * dfg/DFGValidate.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::lower):
+        * runtime/Options.h:
+
+2014-09-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173402.
+        https://bugs.webkit.org/show_bug.cgi?id=136649
+
+        Breaking buildw with error "unable to restore file position to
+        0x00000c60 for section __DWARF.__debug_info (errno = 9)"
+        (Requested by mlam_ on #webkit).
+
+        Reverted changeset:
+
+        "Move CallFrame and Register inlines functions out of
+        JSScope.h."
+        https://bugs.webkit.org/show_bug.cgi?id=136579
+        http://trac.webkit.org/changeset/173402
+
+2014-09-08  Mark Lam  <mark.lam@apple.com>
+
+        Move CallFrame and Register inlines functions out of JSScope.h.
+        <https://webkit.org/b/136579>
+
+        Reviewed by Geoffrey Garen.
+
+        This include fixing up some files to #include JSCInlines.h to pick up
+        these inline functions.  I also added JSCellInlines.h to JSCInlines.h
+        since it is included from many of the affected .cpp files.
+
+        * API/ObjCCallbackFunction.mm:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bindings/ScriptValue.cpp:
+        * inspector/InjectedScriptHost.cpp:
+        * inspector/InjectedScriptManager.cpp:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        * inspector/ScriptDebugServer.cpp:
+        * interpreter/CallFrameInlines.h:
+        (JSC::CallFrame::vm):
+        (JSC::CallFrame::lexicalGlobalObject):
+        (JSC::CallFrame::globalThisValue):
+        * interpreter/RegisterInlines.h: Added.
+        (JSC::Register::operator=):
+        (JSC::Register::scope):
+        * runtime/ArgumentsIteratorConstructor.cpp:
+        * runtime/JSArrayIterator.cpp:
+        * runtime/JSCInlines.h:
+        * runtime/JSCJSValue.cpp:
+        * runtime/JSMapIterator.cpp:
+        * runtime/JSPromiseConstructor.cpp:
+        * runtime/JSPromiseDeferred.cpp:
+        * runtime/JSPromiseFunctions.cpp:
+        * runtime/JSPromisePrototype.cpp:
+        * runtime/JSPromiseReaction.cpp:
+        * runtime/JSScope.h:
+        (JSC::Register::operator=): Deleted.
+        (JSC::Register::scope): Deleted.
+        (JSC::ExecState::vm): Deleted.
+        (JSC::ExecState::lexicalGlobalObject): Deleted.
+        (JSC::ExecState::globalThisValue): Deleted.
+        * runtime/JSSetIterator.cpp:
+        * runtime/MapConstructor.cpp:
+        * runtime/MapData.cpp:
+        * runtime/MapIteratorPrototype.cpp:
+        * runtime/MapPrototype.cpp:
+        * runtime/SetConstructor.cpp:
+        * runtime/SetIteratorPrototype.cpp:
+        * runtime/SetPrototype.cpp:
+        * runtime/WeakMapConstructor.cpp:
+        * runtime/WeakMapPrototype.cpp:
+
+2014-09-08  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136571
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-08  Saam Barati  <saambarati1@gmail.com>
+
+        Merge StructureShapes that share the same prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=136549
+
+        Reviewed by Filip Pizlo.
+
+        Instead of keeping track of many discrete StructureShapes that share
+        the same prototype chain, TypeSet should merge StructureShapes that 
+        have the same prototype chain and provide a new member variable for 
+        optional structure fields. This provides a cleaner and more concise
+        interface for dealing with StructureShapes within TypeSet. Instead
+        of having many discrete shapes that are almost identical, almost 
+        identical shapes will be merged together with an interface for 
+        understanding what fields the shapes being merged together differ in.
+
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::addTypeInformation):
+        (JSC::StructureShape::addProperty):
+        (JSC::StructureShape::toJSONString):
+        (JSC::StructureShape::inspectorRepresentation):
+        (JSC::StructureShape::hasSamePrototypeChain):
+        (JSC::StructureShape::merge):
+        * runtime/TypeSet.h:
+        * tests/typeProfiler/optional-fields.js: Added.
+        (wrapper.func):
+        (wrapper):
+
+2014-09-08  Jessie Berlin  <jberlin@apple.com>
+
+        More 32-bit Release build fixes after r173364.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2014-09-07  Maciej Stachowiak  <mjs@apple.com>
+
+        Fix typos in last patch to fix build.
+
+        Unreviewed build fix.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::silentSavePlanForGPR):
+        (JSC::DFG::SpeculativeJIT::jumpSlowForUnwantedArrayMode):
+
+2014-09-07  Maciej Stachowiak  <mjs@apple.com>
+
+        Introduce COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE) and use it
+        https://bugs.webkit.org/show_bug.cgi?id=136616
+
+        Reviewed by Darin Adler.
+        
+        Many compilers will analyze unrechable code paths (e.g. after an
+        unreachable code path), so sometimes they need dead code initializations.
+        But clang with suitable warnings will complain about unreachable code. So
+        use the quirk to include it conditionally.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::printGetByIdOp):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::handleExitCounts):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThread):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::silentSavePlanForGPR):
+        * jsc.cpp:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::fillArgList):
+        (JSC::JSArray::copyToArguments):
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+
+2014-09-06  Darin Adler  <darin@apple.com>
+
+        Make updates suggested by new version of Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=136603
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/Base.xcconfig: Added CLANG_WARN_UNREACHABLE_CODE, COMBINE_HIDPI_IMAGES,
+        and ENABLE_STRICT_OBJC_MSGSEND as suggested by Xcode upgrade check.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Update LastUpgradeCheck.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::jumpSlowForUnwantedArrayMode): Compile out unreachable code
+        for clang, since it understands the code is unreachable.
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::fillArgList): Ditto.
+        (JSC::JSArray::copyToArguments): Ditto.
+
+2014-09-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: breakpoint actions should work regardless of Content Security Policy
+        https://bugs.webkit.org/show_bug.cgi?id=136542
+
+        Reviewed by Mark Lam.
+
+        Added JSC::DebuggerEvalEnabler, an RAII object which enables eval on a 
+        JSGlobalObject for the duration of a scope, returning the eval enabled state to its
+        original value when the scope exits. Used by JSC::DebuggerCallFrame::evaluate 
+        to allow breakpoint actions to execute JS in pages with a Content Security Policy
+        that would normally prohibit this (such as Inspector's Main.html).
+
+        Refactored Inspector::InjectedScriptBase to use the RAII object instead of manually
+        setting eval enabled and then resetting the original eval enabled state.
+
+        NOTE: The JS::DebuggerEvalEnabler constructor checks the passed in ExecState pointer
+        for null to be equivalent with the original code in Inspector::InjectedScriptBase.
+        InjectedScriptBase is getting the ExecState from ScriptObject::scriptState(), which
+        can currently be null.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::evaluate):
+        * debugger/DebuggerEvalEnabler.h: Added.
+        (JSC::DebuggerEvalEnabler::DebuggerEvalEnabler):
+        (JSC::DebuggerEvalEnabler::~DebuggerEvalEnabler):
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::callFunctionWithEvalEnabled):
+
+2014-09-05  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] jsc.exe won't run.
+        https://bugs.webkit.org/show_bug.cgi?id=136481
+
+        Reviewed by Alex Christensen.
+        
+        We need to define WIN_CAIRO to avoid looking for the AAS folder.
+
+        * JavaScriptCore.vcxproj/jsc/DLLLauncherWinCairo.props: Added.
+        * JavaScriptCore.vcxproj/jsc/jscLauncher.vcxproj:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncher.vcxproj:
+        * JavaScriptCore.vcxproj/testapi/testapiCommonCFLite.props:
+        * JavaScriptCore.vcxproj/testapi/testapiLauncher.vcxproj:
+
+2014-09-05  David Kilzer  <ddkilzer@apple.com>
+
+        JavaScriptCore should build with newer clang
+        <http://webkit.org/b/136002>
+        <rdar://problem/18020616>
+
+        Reviewed by Geoffrey Garen.
+
+        Other than the JSC::SourceProvider::asID() change (which simply
+        removes code that the optimizing compiler would have discarded
+        in Release builds), we move the |this| checks in OpaqueJSString
+        to NULL checks in to JSBase, JSObjectRef, JSScriptRef,
+        JSStringRef{CF} and JSValueRef.
+
+        Note that the following function arguments are _not_ NULL-checked
+        since doing so would just cover up bugs (and were not needed to
+        prevent any tests from failing):
+        - |script| in JSEvaluateScript(), JSCheckScriptSyntax();
+        - |body| in JSObjectMakeFunction();
+        - |source| in JSScriptCreateReferencingImmortalASCIIText()
+          (which is a const char* anyway);
+        - |source| in JSScriptCreateFromString().
+
+        * API/JSBase.cpp:
+        (JSEvaluateScript): Add NULL check for |sourceURL|.
+        (JSCheckScriptSyntax): Ditto.
+        * API/JSObjectRef.cpp:
+        (JSObjectMakeFunction): Ditto.
+        * API/JSScriptRef.cpp:
+        (JSScriptCreateReferencingImmortalASCIIText): Ditto.
+        (JSScriptCreateFromString): Add NULL check for |url|.
+        * API/JSStringRef.cpp:
+        (JSStringGetLength): Return early if NULL pointer is passed in.
+        (JSStringGetCharactersPtr): Ditto.
+        (JSStringGetUTF8CString): Ditto.  Also check |buffer| parameter.
+        * API/JSStringRefCF.cpp:
+        (JSStringCopyCFString): Ditto.
+        * API/JSValueRef.cpp:
+        (JSValueMakeString): Add NULL check for |string|.
+
+        * API/OpaqueJSString.cpp:
+        (OpaqueJSString::string): Remove code that checks |this|.
+        (OpaqueJSString::identifier): Ditto.
+        (OpaqueJSString::characters): Ditto.
+        * API/OpaqueJSString.h:
+        (OpaqueJSString::is8Bit): Remove code that checks |this|.
+        (OpaqueJSString::characters8): Ditto.
+        (OpaqueJSString::characters16): Ditto.
+        (OpaqueJSString::length): Ditto.
+
+        * parser/SourceProvider.h:
+        (JSC::SourceProvider::asID): Remove code that checks |this|.
+
+2014-06-06  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: make MediaTime the primary time type for audiovisual times.
+        https://bugs.webkit.org/show_bug.cgi?id=133579
+
+        Reviewed by Eric Carlson.
+
+        Add a utility function which converts a MediaTime to a JSNumber.
+
+        * runtime/JSCJSValue.h:
+        (JSC::jsNumber):
+
+2014-09-04  Michael Saboff  <msaboff@apple.com>
+
+        ARM: Add more coverage to ARMv7 disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=136565
+
+        Reviewed by Mark Lam.
+
+        Added ARMV7 disassembler support for Push/Pop multiple and floating point instructions
+        VCMP, VCVT[R] between floating point and integer, and VLDR.
+
+        * disassembler/ARMv7/ARMv7DOpcode.cpp:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeDataPushPopMultiple::appendRegisterList):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeDataPopMultiple::format):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeDataPushMultiple::format):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::format):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::format):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::format):
+        * disassembler/ARMv7/ARMv7DOpcode.h:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeDataPushPopMultiple::registerList):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeDataPushPopMultiple::condition):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::condition):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::dBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::vd):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::szBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::eBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::mBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCMP::vm):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::condition):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::dBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::op2):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::vd):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::szBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::op):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::mBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVCVTBetweenFPAndInt::vm):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::condition):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::uBit):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::rn):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::vd):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::doubleReg):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::immediate8):
+
 2014-09-04  Mark Lam  <mark.lam@apple.com>
 
         Move PropertySlot's inline functions back to PropertySlot.h.

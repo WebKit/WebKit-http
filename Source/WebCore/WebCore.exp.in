@@ -1837,6 +1837,7 @@ __ZNK7WebCore20ResourceResponseBase17suggestedFilenameEv
 __ZNK7WebCore20ResourceResponseBase21expectedContentLengthEv
 __ZNK7WebCore20ResourceResponseBase3urlEv
 __ZNK7WebCore20ResourceResponseBase6isHTTPEv
+__ZNK7WebCore20ResourceResponseBase8lazyInitENS0_9InitLevelE
 __ZNK7WebCore20ResourceResponseBase8mimeTypeEv
 __ZNK7WebCore20TransformationMatrix7inverseEv
 __ZNK7WebCore20TransformationMatrix7mapRectERKNS_7IntRectE
@@ -2809,14 +2810,6 @@ _wkSetLayerContentsScale
 
 #if PLATFORM(IOS) && USE(CFNETWORK)
 __ZN7WebCore20ResourceHandleClient22willCacheResponseAsyncEPNS_14ResourceHandleEPK20_CFCachedURLResponse
-#endif
-
-#if PLATFORM(IOS) && defined(__LP64__) && __LP64__
-__ZN7WebCore28createCGColorWithDeviceWhiteEdd
-#endif
-
-#if PLATFORM(IOS) && !(defined(__LP64__) && __LP64__)
-__ZN7WebCore28createCGColorWithDeviceWhiteEff
 #endif
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090

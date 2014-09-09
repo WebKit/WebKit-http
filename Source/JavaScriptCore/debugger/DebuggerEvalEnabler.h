@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,24 +20,44 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaTimeMac_h
-#define MediaTimeMac_h
+#ifndef DebuggerEvalEnabler_h
+#define DebuggerEvalEnabler_h
 
-#if USE(COREMEDIA)
+#include "CallFrame.h"
+#include "JSGlobalObject.h"
 
-#include <CoreMedia/CMTime.h>
-#include <wtf/MediaTime.h>
+namespace JSC {
 
-namespace WebCore {
+class DebuggerEvalEnabler {
+public:
+    explicit DebuggerEvalEnabler(const ExecState* exec)
+        : m_exec(exec)
+        , m_evalWasDisabled(false)
+    {
+        if (exec) {
+            JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+            m_evalWasDisabled = !globalObject->evalEnabled();
+            if (m_evalWasDisabled)
+                globalObject->setEvalEnabled(true, globalObject->evalDisabledErrorMessage());
+        }
+    }
 
-CMTime toCMTime(const MediaTime&);
-MediaTime toMediaTime(const CMTime&);
+    ~DebuggerEvalEnabler()
+    {
+        if (m_evalWasDisabled) {
+            JSGlobalObject* globalObject = m_exec->lexicalGlobalObject();
+            globalObject->setEvalEnabled(false, globalObject->evalDisabledErrorMessage());
+        }
+    }
 
-}
+private:
+    const ExecState* m_exec;
+    bool m_evalWasDisabled;
+};
 
-#endif
+} // namespace JSC
 
-#endif
+#endif // DebuggerEvalEnabler_h

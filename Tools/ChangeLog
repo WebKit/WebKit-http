@@ -1,3 +1,140 @@
+2014-09-08  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Enable fixed layout by default
+        https://bugs.webkit.org/show_bug.cgi?id=136607
+
+        Reviewed by Csaba Osztrogonác.
+
+        Fixed layout is being used by Tizen platform by default. However, the feature
+        has still many defects now. So, we need to enable it by default, then should fix
+        those bugs. 
+
+        * MiniBrowser/efl/main.c:
+
+2014-09-08  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136571
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2014-09-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Dashboard metrics should ignore commits that didn't trigger builds
+        https://bugs.webkit.org/show_bug.cgi?id=136618
+
+        Reviewed by Darin Adler.
+
+        Commits that didn't trigger builds are ones like ChangeLog updates, patches for
+        other platforms etc. It does not make sense to count wait time for these, as it
+        can be arbitrarily long.
+
+        The new algorithm is much slower asymptotically, but it's OK, computers are fast.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData): Record changes that triggered the iteration.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        We used to walk the timeline to see which revisions are fully tested, but that's not
+        correct. A revision that's only tested by a subset of queues finishes independently
+        of another that's tested by another subset. Now, we just search for the answer for
+        each revision individually.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsView.js:
+        (MetricsView.prototype._update.appendQueueResults): Added worst revision number, which
+        the analyzer now reports. Removed best time, which is more confusing than meaningful.
+
+2014-09-08  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove EWebLauncher from webkitdirs.pm
+        https://bugs.webkit.org/show_bug.cgi?id=136622
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/webkitdirs.pm:
+        (launcherName):
+
+2014-09-06  Sam Weinig  <sam@webkit.org>
+
+        XPCPtr should be converted into an all purpose smart pointer for os_objects
+        https://bugs.webkit.org/show_bug.cgi?id=136602
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/darwin: Added.
+        * TestWebKitAPI/Tests/WTF/darwin/OSObjectPtr.cpp: Added.
+        Add basic unit tests for OSObjectPtr.
+
+2014-09-06  Saam Barati  <saambarati1@gmail.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-09-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL build fix when SHARED_CORE is on.
+
+        * TestWebKitAPI/PlatformEfl.cmake:
+
+2014-09-05  Lucas Forschler  <lforschler@apple.com>
+
+        <https://webkit.org/b/136586> Add bots to Apple build/test queues
+        
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2014-09-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Buildbot metrics page gives wrong results after a new bot gets added
+        https://bugs.webkit.org/show_bug.cgi?id=136516
+
+        Reviewed by Tim Horton.
+
+        Part 2: Fix elapsed times.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._countTimes): Made lastTestedRevisionByQueue contain undefined values
+        until the first build in a queue. This happens to work as needed with _fullyTestedRevisionNumber().
+
+2014-09-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [SOUP] Implement ResourceResponse::platformSuggestedFilename() when USE(SOUP) is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=136562
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Remove failure expectations for tests that now pass.
+
+2014-09-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Dashboard metrics page wastes a lot of time sorting iterations
+        https://bugs.webkit.org/show_bug.cgi?id=136559
+
+        Reviewed by Tim Horton.
+
+        Also fixes comments here and there, and adds a missing "var".
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData):
+        (BuildbotIteration.prototype._updateWithData):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.loadAll):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._countTimes):
+
+2014-09-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Skip tests failing since r173272.
+
 2014-09-04  Simon Fraser  <simon.fraser@apple.com>
 
         Add some logging to help diagnose assertions in dumpWebViewAsPixelsAndCompareWithExpected() on bots

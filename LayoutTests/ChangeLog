@@ -1,3 +1,232 @@
+2014-09-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION (r172153): Text drawn with wrong color when second text shadow has zero offset and blur (breaks buttons at aws.amazon.com)
+        https://bugs.webkit.org/show_bug.cgi?id=136612
+
+        Reviewed by Darin Adler.
+
+        Make sure that text is drawn with correct color when second text shadow has zero offset and blur
+
+        * fast/text/empty-shadow-with-color-expected.html: Added.
+        * fast/text/empty-shadow-with-color.html: Added.
+
+2014-09-08  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. More webgl conformance test gardening.
+
+        * platform/mac/TestExpectations:
+
+2014-09-08  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Skip some WebGL conformance tests that may be passing on the bots now.
+
+        * platform/mac/TestExpectations:
+
+2014-09-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add layout test for lowercase CSSProperty names
+        https://bugs.webkit.org/show_bug.cgi?id=135961
+
+        Reviewed by Joseph Pecoraro.
+
+        Added test to check that property names in matched CSS rules are returned in lowercase
+        when specified with upper or mixed case in the original CSS source.
+
+        * inspector/css/matched-style-properties-expected.txt: Added.
+        * inspector/css/matched-style-properties.html: Added.
+
+2014-09-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Fixes to layout test infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=136360
+
+        Reviewed by Joseph Pecoraro.
+
+        Updated expected results to reflect breakpoint resolution changes in r171784.
+
+        * inspector/debugger/probe-manager-add-remove-actions-expected.txt:
+
+2014-09-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Investigate test failures on ML caused by MediaTime refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=136532
+
+        Added another test that appears to have been affected by this refactoring.
+
+        * platform/mac/TestExpectations:
+
+2014-09-06  Antti Koivisto  <antti@apple.com>
+
+        Serialize ResourceResponses using WebKit types
+        https://bugs.webkit.org/show_bug.cgi?id=136545
+
+        Reviewed by Alexey Proskuryakov.
+
+        Remove failure expectations for tests fixed by this patch.
+
+        http/tests/xmlhttprequest/web-apps/012.html
+        http/tests/xmlhttprequest/web-apps/013.html
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-09-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173335.
+        https://bugs.webkit.org/show_bug.cgi?id=136597
+
+        Broke webgl/1.0.2/conformance/glsl/misc/shader-varying-
+        packing-restrictions.html (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove statically used varyings from packing restrictions
+        check."
+        https://bugs.webkit.org/show_bug.cgi?id=136585
+        http://trac.webkit.org/changeset/173335
+
+2014-09-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Change this test not to use a percentage width, and to use a non-blurred
+        shadow to avoid different results on Retina display systems.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/fixed-inside-frame-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/fixed-inside-frame.html:
+
+2014-09-05  Jeffrey Pfau  <jpfau@apple.com>
+
+        Unreviewed, skip tests for a feature that isn't supported
+
+        * platform/mac/TestExpectations:
+
+2014-09-05  Jeffrey Pfau  <jpfau@apple.com>
+
+        Add test after r173324
+
+        Rubber-stamped by Simon Fraser.
+
+        * storage/indexeddb/version-change-event-expected.txt: Added.
+        * storage/indexeddb/version-change-event.html: Added.
+
+2014-09-05  Brady Eidson  <beidson@apple.com>
+
+        Allow pages with unload handlers in the page cache
+        <rdar://problem/11084669> and https://bugs.webkit.org/show_bug.cgi?id=136535
+
+        Reviewed by Oliver Hunt.
+
+        * fast/frames/frame-crash-with-page-cache-expected.txt:
+        * fast/frames/resources/cached-page-1.html:
+
+2014-09-05  Roger Fong  <roger_fong@apple.com>
+
+        Remove statically used varyings from packing restrictions check.
+        https://bugs.webkit.org/show_bug.cgi?id=136585.
+        <rdar://problem/16308409>
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/TestExpectations: Unskip build_009_to_016.html conformance test.
+
+2014-09-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: breakpoint actions should work regardless of Content Security Policy
+        https://bugs.webkit.org/show_bug.cgi?id=136542
+
+        Reviewed by Mark Lam.
+
+        Added test for "Evaluate JavaScript" breakpoint actions for breakpoints set on
+        pages with a CSP that does not allow 'unsafe-eval'.
+
+        * inspector/debugger/breakpoint-action-eval-expected.txt: Added.
+        * inspector/debugger/breakpoint-action-eval.html: Added.
+
+2014-09-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [SOUP] Implement ResourceResponse::platformSuggestedFilename() when USE(SOUP) is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=136562
+
+        Reviewed by Martin Robinson.
+
+        * platform/gtk/TestExpectations: Remove failure expectations for tests that now pass.
+
+2014-09-04  Michael Saboff  <msaboff@apple.com>
+
+        ARM32 iOS: JSC Test math.js fails
+        https://bugs.webkit.org/show_bug.cgi?id=136261
+
+        Reviewed by Geoffrey Garen.
+
+        Split out the failing tests to a new test script math-denorm.js.  Added check
+        at the top of the new file to skip the tests when running on ARM for iOS.
+
+        * js/math-denorm-expected.txt: Added.
+        * js/math-expected.txt:
+        * js/script-tests/math-denorm.js: Added.
+        * js/script-tests/math.js:
+
+2014-09-05  Benjamin Poulain  <benjamin@webkit.org>
+
+        Update the current matching of :read-only and :read-write to the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=136566
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/readonly-pseudoclass-opera-005.html:
+        This was one of the original test.
+        With the new definition, input[type=radio] is always :read-only.
+
+        * fast/forms/input-live-pseudo-selectors-expected.txt:
+        * fast/forms/resources/input-live-pseudo-selectors.js:
+        * fast/forms/resources/live-pseudo-selectors.css:
+        (:read-only): Deleted.
+        * fast/forms/resources/select-live-pseudo-selectors.js:
+        * fast/forms/resources/textarea-live-pseudo-selectors.js:
+        * fast/forms/textarea-live-pseudo-selectors-expected.txt:
+        Those various tests were mostly testing form validation. The selectors
+        for :read-only and :read-write were in the way of testing.
+
+        They were only 3 cases tested and they are covered by the new tests.
+
+        * fast/css/read-only-read-write-input-basics-expected.html: Added.
+        * fast/css/read-only-read-write-input-basics.html: Added.
+        * fast/css/read-only-read-write-textarea-basics-expected.html: Added.
+        * fast/css/read-only-read-write-textarea-basics.html: Added.
+        * fast/selectors/read-only-read-write-input-basics-expected.txt: Added.
+        * fast/selectors/read-only-read-write-input-basics.html: Added.
+        * fast/selectors/read-only-read-write-input-in-fieldset-expected.txt: Added.
+        * fast/selectors/read-only-read-write-input-in-fieldset.html: Added.
+        * fast/selectors/read-only-read-write-textarea-basics-expected.txt: Added.
+        * fast/selectors/read-only-read-write-textarea-basics.html: Added.
+        * fast/selectors/read-only-read-write-textarea-in-fieldset-expected.txt: Added.
+        * fast/selectors/read-only-read-write-textarea-in-fieldset.html: Added.
+        New tests covering basic features for <input> and <textarea>. The definition for
+        other editable content is ignored for now.
+
+2014-09-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failures after r173049 and r173272.
+        Update some expectations for new cases.
+        * platform/gtk/fast/css/vertical-text-overflow-ellipsis-text-align-center-expected.txt: Rebaseline after r173049.
+
+2014-06-10  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: make MediaTime the primary time type for audiovisual times.
+        https://bugs.webkit.org/show_bug.cgi?id=133579
+
+        Reviewed by Eric Carlson.
+
+        Update the http/media tests to use byte-ranges, and update our byte-range CGI script
+        to return correct headers. Remove the platform expected results for media/video-seek-past-end-paused.html
+        now that we pass.
+
+        * http/tests/media/reload-after-dialog.html:
+        * http/tests/media/video-error-abort.html:
+        * http/tests/media/video-throttled-load.cgi:
+        * platform/mac/media/video-seek-past-end-paused-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+
 2014-09-04  Alexey Proskuryakov  <ap@apple.com>
 
         platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html is flakey
