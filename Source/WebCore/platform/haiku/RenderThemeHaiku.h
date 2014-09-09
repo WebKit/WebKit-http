@@ -48,6 +48,8 @@ public:
     Color platformActiveSelectionForegroundColor() const override;
     Color platformInactiveSelectionForegroundColor() const override;
 
+    Color platformFocusRingColor() const override;
+
     // System fonts.
     void systemFont(CSSValueID propId, FontDescription&) const override;
 
@@ -56,6 +58,8 @@ public:
     String mediaControlsScript() override;
 #endif
 protected:
+#if USE(NEW_THEME)
+#else
     bool paintCheckbox(const RenderObject&, const PaintInfo&, const IntRect&) override;
     void setCheckboxSize(RenderStyle&) const override;
 
@@ -63,6 +67,7 @@ protected:
     void setRadioSize(RenderStyle&) const override;
 
     bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
+#endif
 
     void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element&) const override;
     bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
@@ -75,6 +80,13 @@ protected:
 
     void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const override;
 
+#if ENABLE(DATALIST_ELEMENT)
+    // Returns size of one slider tick mark for a horizontal track.
+    // For vertical tracks we rotate it and use it. i.e. Width is always length along the track.
+    IntSize sliderTickSize() const override { return IntSize(0, 0); }
+    // Returns the distance of slider tick origin from the slider track center.
+    int sliderTickOffsetFromTrackCenter() const override { return 0; }
+#endif
 private:
 	unsigned flagsForObject(const RenderObject&) const;
 };

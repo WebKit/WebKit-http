@@ -122,7 +122,7 @@ list(APPEND WebCore_SOURCES
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
-    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.css
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.css
 )
 
 if (WTF_USE_COORDINATED_GRAPHICS)
@@ -145,7 +145,7 @@ endif ()
 
 set(WebCore_USER_AGENT_SCRIPTS
     ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
-    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
 )
 
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/haiku/RenderThemeHaiku.cpp)

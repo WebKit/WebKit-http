@@ -98,6 +98,11 @@ Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
     return Color(0, 0, 0, 255);
 }
 
+Color RenderThemeHaiku::platformFocusRingColor() const
+{
+    return ui_color(B_NAVIGATION_BASE_COLOR);
+}
+
 void RenderThemeHaiku::systemFont(CSSValueID, FontDescription& fontDescription) const
 {
     fontDescription.setOneFamily("Sans");
@@ -111,18 +116,19 @@ void RenderThemeHaiku::systemFont(CSSValueID, FontDescription& fontDescription) 
 #if ENABLE(VIDEO)
 String RenderThemeHaiku::mediaControlsStyleSheet()
 {
-    return ASCIILiteral(mediaControlsAppleUserAgentStyleSheet);
+    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
 }
 
 String RenderThemeHaiku::mediaControlsScript()
 {
     StringBuilder scriptBuilder;
     scriptBuilder.append(mediaControlsLocalizedStringsJavaScript, sizeof(mediaControlsLocalizedStringsJavaScript));
-    scriptBuilder.append(mediaControlsAppleJavaScript, sizeof(mediaControlsAppleJavaScript));
+    scriptBuilder.append(mediaControlsBaseJavaScript, sizeof(mediaControlsBaseJavaScript));
     return scriptBuilder.toString();
 }
 #endif
 
+#if !USE(NEW_THEME)
 bool RenderThemeHaiku::paintCheckbox(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
@@ -209,6 +215,7 @@ bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& 
     view->PopState();
     return false;
 }
+#endif
 
 void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
 {
