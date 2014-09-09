@@ -30,6 +30,7 @@
 
 #include <wtf/Platform.h>
 
+#include <WebCore/PlatformExportMacros.h>
 #include <runtime/JSExportMacros.h>
 #include <wtf/DisallowCType.h>
 #include <wtf/ExportMacros.h>
@@ -83,12 +84,6 @@
 #ifndef HAVE_WINDOW_SERVER_OCCLUSION_NOTIFICATIONS
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 #define HAVE_WINDOW_SERVER_OCCLUSION_NOTIFICATIONS 1
-#endif
-#endif
-
-#ifndef HAVE_VOUCHERS
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000)
-#define HAVE_VOUCHERS 1
 #endif
 #endif
 

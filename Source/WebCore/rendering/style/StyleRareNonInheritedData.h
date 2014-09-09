@@ -43,9 +43,7 @@ namespace WebCore {
 class AnimationList;
 class ShadowData;
 class StyleDeprecatedFlexibleBoxData;
-#if ENABLE(CSS_FILTERS)
 class StyleFilterData;
-#endif
 class StyleFlexibleBoxData;
 #if ENABLE(CSS_GRID_LAYOUT)
 class StyleGridData;
@@ -56,6 +54,9 @@ class StyleMultiColData;
 class StyleReflection;
 class StyleResolver;
 class StyleTransformData;
+#if ENABLE(CSS_SCROLL_SNAP)
+class StyleScrollSnapPoints;
+#endif
 
 class ContentData;
 struct LengthSize;
@@ -105,6 +106,9 @@ public:
     Length m_perspectiveOriginY;
 
     LineClampValue lineClamp; // An Apple extension.
+    
+    IntSize m_initialLetter;
+
 #if ENABLE(DASHBOARD_SUPPORT)
     Vector<StyleDashboardRegion> m_dashboardRegions;
 #endif
@@ -114,14 +118,15 @@ public:
     DataRef<StyleMarqueeData> m_marquee; // Marquee properties
     DataRef<StyleMultiColData> m_multiCol; //  CSS3 multicol properties
     DataRef<StyleTransformData> m_transform; // Transform properties (rotate, scale, skew, etc.)
-
-#if ENABLE(CSS_FILTERS)
     DataRef<StyleFilterData> m_filter; // Filter operations (url, sepia, blur, etc.)
-#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
     DataRef<StyleGridData> m_grid;
     DataRef<StyleGridItemData> m_gridItem;
+#endif
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    DataRef<StyleScrollSnapPoints> m_scrollSnapPoints;
 #endif
 
     std::unique_ptr<ContentData> m_content;
@@ -161,6 +166,11 @@ public:
 
     AtomicString m_flowThread;
     AtomicString m_regionThread;
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    ScrollSnapType m_scrollSnapType; // ScrollSnapType
+#endif
+
     unsigned m_regionFragment : 1; // RegionFragment
 
     unsigned m_regionBreakAfter : 2; // EPageBreak

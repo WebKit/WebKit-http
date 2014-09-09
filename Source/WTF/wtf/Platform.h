@@ -101,22 +101,36 @@
 #endif /* MIPS */
 
 /* CPU(PPC) - PowerPC 32-bit */
-#if   defined(__ppc__)     \
-    || defined(__PPC__)     \
-    || defined(__powerpc__) \
-    || defined(__powerpc)   \
-    || defined(__POWERPC__) \
-    || defined(_M_PPC)      \
-    || defined(__PPC)
+#if (  defined(__ppc__)        \
+    || defined(__PPC__)        \
+    || defined(__powerpc__)    \
+    || defined(__powerpc)      \
+    || defined(__POWERPC__)    \
+    || defined(_M_PPC)         \
+    || defined(__PPC))         \
+    && defined(__BYTE_ORDER__) \
+    && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 #define WTF_CPU_PPC 1
 #define WTF_CPU_BIG_ENDIAN 1
 #endif
 
-/* CPU(PPC64) - PowerPC 64-bit */
-#if   defined(__ppc64__) \
-    || defined(__PPC64__)
+/* CPU(PPC64) - PowerPC 64-bit Big Endian */
+#if (  defined(__ppc64__)      \
+    || defined(__PPC64__))     \
+    && defined(__BYTE_ORDER__) \
+    && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 #define WTF_CPU_PPC64 1
 #define WTF_CPU_BIG_ENDIAN 1
+#endif
+
+/* CPU(PPC64) - PowerPC 64-bit Little Endian */
+#if (   defined(__ppc64__)     \
+    || defined(__PPC64__)      \
+    || defined(__ppc64le__)    \
+    || defined(__PPC64LE__))   \
+    && defined(__BYTE_ORDER__) \
+    && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#define WTF_CPU_PPC64LE 1
 #endif
 
 /* CPU(SH4) - SuperH SH-4 */
@@ -437,6 +451,12 @@
 #define WTF_PLATFORM_COCOA 1
 #endif
 
+#if PLATFORM(COCOA)
+#if defined __has_include && __has_include(<CoreFoundation/CFPriv.h>)
+#define WTF_USE_APPLE_INTERNAL_SDK 1
+#endif
+#endif
+
 /* Graphics engines */
 
 /* USE(CG) and PLATFORM(CI) */
@@ -465,12 +485,10 @@
 
 #define WTF_USE_CF 1
 #define WTF_USE_FOUNDATION 1
+#define WTF_USE_NETWORK_CFDATA_ARRAY_CALLBACK 1
 #define ENABLE_USER_MESSAGE_HANDLERS 1
-
-#endif
-
-#if PLATFORM(COCOA)
 #define HAVE_OUT_OF_PROCESS_LAYER_HOSTING 1
+
 #endif
 
 #if PLATFORM(MAC)
@@ -492,16 +510,13 @@
 
 #endif /* PLATFORM(MAC) */
 
-#if OS(DARWIN) && !PLATFORM(GTK)
-#define ENABLE_PURGEABLE_MEMORY 1
-#endif
-
 #if PLATFORM(IOS)
 
 #define DONT_FINALIZE_ON_MAIN_THREAD 1
 #define HAVE_READLINE 1
+#if USE(APPLE_INTERNAL_SDK)
 #define WTF_USE_CFNETWORK 1
-#define WTF_USE_NETWORK_CFDATA_ARRAY_CALLBACK 1
+#endif
 #define WTF_USE_UIKIT_EDITING 1
 #define WTF_USE_WEB_THREAD 1
 #define WTF_USE_QUICK_LOOK 1
@@ -629,7 +644,8 @@
     || CPU(ALPHA) \
     || CPU(ARM64) \
     || CPU(S390X) \
-    || CPU(PPC64)
+    || CPU(PPC64) \
+    || CPU(PPC64LE)
 #define WTF_USE_JSVALUE64 1
 #else
 #define WTF_USE_JSVALUE32_64 1
@@ -683,7 +699,7 @@
 #define ENABLE_DISASSEMBLER 1
 #endif
 
-#if !defined(WTF_USE_ARM64_DISASSEMBLER) && ENABLE(JIT) && PLATFORM(IOS) && CPU(ARM64) && !USE(LLVM_DISASSEMBLER)
+#if !defined(WTF_USE_ARM64_DISASSEMBLER) && ENABLE(JIT) && (PLATFORM(IOS) || PLATFORM(EFL)) && CPU(ARM64) && !USE(LLVM_DISASSEMBLER)
 #define WTF_USE_ARM64_DISASSEMBLER 1
 #endif
 
@@ -732,10 +748,17 @@
 #define ENABLE_FTL_JIT 0
 #endif
 
+#if !defined(ENABLE_FTL_NATIVE_CALL_INLINING)
+#if COMPILER(CLANG)
+#define ENABLE_FTL_NATIVE_CALL_INLINING 1
+#else
+#define ENABLE_FTL_NATIVE_CALL_INLINING 0
+#endif // COMPILER(CLANG)
+#endif // !defined(ENABLE_FTL_NATIVE_CALL_INLINING)
 
 /* Generational collector for JSC */
 #if !defined(ENABLE_GGC)
-#if CPU(X86_64) || CPU(X86) || CPU(ARM_THUMB2) || CPU(ARM64)
+#if CPU(X86_64) || CPU(X86) || CPU(ARM64) || CPU(ARM)
 #define ENABLE_GGC 1
 #else
 #define ENABLE_GGC 0
@@ -820,9 +843,9 @@
 #endif
 
 /* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
-   On x86-64 we use a single fixed mmap, on other platforms we mmap on demand. */
+   On non-Windows x86-64, iOS, and ARM64 we use a single fixed mmap, on other platforms we mmap on demand. */
 #if ENABLE(ASSEMBLER)
-#if CPU(X86_64) && !OS(WINDOWS) || PLATFORM(IOS)
+#if CPU(X86_64) && !OS(WINDOWS) || PLATFORM(IOS) || CPU(ARM64)
 #define ENABLE_EXECUTABLE_ALLOCATOR_FIXED 1
 #else
 #define ENABLE_EXECUTABLE_ALLOCATOR_DEMAND 1
@@ -977,6 +1000,12 @@
 #ifndef HAVE_QOS_CLASSES
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000)
 #define HAVE_QOS_CLASSES 1
+#endif
+#endif
+
+#ifndef HAVE_VOUCHERS
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000)
+#define HAVE_VOUCHERS 1
 #endif
 #endif
 

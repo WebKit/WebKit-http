@@ -45,12 +45,12 @@ class ResourceHandleClient;
 class ResourceRequest;
 
 // BlobRegistryImpl is not thread-safe. It should only be called from main thread.
-class BlobRegistryImpl final : public BlobRegistry {
+class WEBCORE_EXPORT BlobRegistryImpl final : public BlobRegistry {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     virtual ~BlobRegistryImpl();
 
-    BlobData* getBlobDataFromURL(const URL&) const;
+    WEBCORE_EXPORT BlobData* getBlobDataFromURL(const URL&) const;
 
     PassRefPtr<ResourceHandle> createResourceHandle(const ResourceRequest&, ResourceHandleClient*);
 

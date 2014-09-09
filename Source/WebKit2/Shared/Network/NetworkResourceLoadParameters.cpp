@@ -41,14 +41,14 @@ NetworkResourceLoadParameters::NetworkResourceLoadParameters()
     , webPageID(0)
     , webFrameID(0)
     , sessionID(SessionID::emptySessionID())
-    , priority(ResourceLoadPriorityVeryLow)
     , contentSniffingPolicy(SniffContent)
     , allowStoredCredentials(DoNotAllowStoredCredentials)
     , clientCredentialPolicy(DoNotAskClientForAnyCredentials)
     , shouldClearReferrerOnHTTPSToHTTPRedirect(true)
     , isMainResource(false)
     , defersLoading(false)
-    , shouldBufferResource(false)
+    , needsCertificateInfo(false)
+    , maximumBufferingTime(0_ms)
 {
 }
 
@@ -90,14 +90,14 @@ void NetworkResourceLoadParameters::encode(IPC::ArgumentEncoder& encoder) const
         encoder << requestSandboxExtension;
     }
 
-    encoder.encodeEnum(priority);
     encoder.encodeEnum(contentSniffingPolicy);
     encoder.encodeEnum(allowStoredCredentials);
     encoder.encodeEnum(clientCredentialPolicy);
     encoder << shouldClearReferrerOnHTTPSToHTTPRedirect;
     encoder << isMainResource;
     encoder << defersLoading;
-    encoder << shouldBufferResource;
+    encoder << needsCertificateInfo;
+    encoder << maximumBufferingTime;
 }
 
 bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, NetworkResourceLoadParameters& result)
@@ -136,8 +136,6 @@ bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, Networ
             return false;
     }
 
-    if (!decoder.decodeEnum(result.priority))
-        return false;
     if (!decoder.decodeEnum(result.contentSniffingPolicy))
         return false;
     if (!decoder.decodeEnum(result.allowStoredCredentials))
@@ -150,7 +148,9 @@ bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, Networ
         return false;
     if (!decoder.decode(result.defersLoading))
         return false;
-    if (!decoder.decode(result.shouldBufferResource))
+    if (!decoder.decode(result.needsCertificateInfo))
+        return false;
+    if (!decoder.decode(result.maximumBufferingTime))
         return false;
 
     return true;

@@ -191,7 +191,7 @@ bool RenderSVGImage::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
 
         if (hitRules.canHitFill) {
             if (m_objectBoundingBox.contains(localPoint)) {
-                updateHitTestResult(result, roundedLayoutPoint(localPoint));
+                updateHitTestResult(result, LayoutPoint(localPoint));
                 return true;
             }
         }
@@ -204,7 +204,7 @@ void RenderSVGImage::imageChanged(WrappedImagePtr, const IntRect*)
 {
     // The image resource defaults to nullImage until the resource arrives.
     // This empty image may be cached by SVG resources which must be invalidated.
-    if (SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this))
+    if (auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*this))
         resources->removeClientFromCache(*this);
 
     // Eventually notify parent resources, that we've changed.

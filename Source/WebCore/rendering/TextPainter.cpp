@@ -60,6 +60,13 @@ static void drawTextOrEmphasisMarks(GraphicsContext& context, const Font& font, 
         context.drawEmphasisMarks(font, textRun, emphasisMark, point + IntSize(0, emphasisMarkOffset), from, to);
 }
 
+static bool isEmptyShadow(const ShadowData* shadow)
+{
+    if (!shadow)
+        return false;
+    return shadow->location() == IntPoint() && !shadow->radius();
+}
+
 static void paintTextWithShadows(GraphicsContext* context, const Font& font, const TextRun& textRun, const AtomicString& emphasisMark,
     int emphasisMarkOffset, int startOffset, int endOffset, int truncationPoint, const FloatPoint& textOrigin, const FloatRect& boxRect,
     const ShadowData* shadow, bool stroked, bool horizontal)
@@ -71,9 +78,15 @@ static void paintTextWithShadows(GraphicsContext* context, const Font& font, con
         context->setFillColor(Color::black, fillColorSpace);
 
     do {
+        if (isEmptyShadow(shadow)) {
+            shadow = shadow->next();
+            continue;
+        }
+
         IntSize extraOffset;
+        bool didSaveContext = false;
         if (shadow)
-            extraOffset = roundedIntSize(InlineTextBox::applyShadowToGraphicsContext(context, shadow, boxRect, stroked, opaque, horizontal));
+            extraOffset = roundedIntSize(InlineTextBox::applyShadowToGraphicsContext(context, shadow, boxRect, stroked, opaque, horizontal, didSaveContext));
         else if (!opaque)
             context->setFillColor(fillColor, fillColorSpace);
 
@@ -89,7 +102,7 @@ static void paintTextWithShadows(GraphicsContext* context, const Font& font, con
         if (!shadow)
             break;
 
-        if (shadow->next() || stroked || !opaque)
+        if (didSaveContext)
             context->restore();
         else
             context->clearShadow();
@@ -158,22 +171,6 @@ void TextPainter::paintText()
                 m_savedDrawingStateForMask.m_context->concatCTM(rotation(m_boxRect, Counterclockwise));
         }
     }
-}
-
-void TextPainter::paintTextInContext(GraphicsContext& context, float amountToIncreaseStrokeWidthBy)
-{
-    SavedDrawingStateForMask savedDrawingStateForMask = m_savedDrawingStateForMask;
-    
-    ASSERT(m_savedDrawingStateForMask.m_textPaintStyle);
-    ASSERT(m_savedDrawingStateForMask.m_selectionPaintStyle);
-    m_savedDrawingStateForMask.m_context = &context;
-    m_savedDrawingStateForMask.m_textPaintStyle->strokeWidth += amountToIncreaseStrokeWidthBy;
-    m_savedDrawingStateForMask.m_selectionPaintStyle->strokeWidth += amountToIncreaseStrokeWidthBy;
-    m_savedDrawingStateForMask.m_textShadow = nullptr;
-    m_savedDrawingStateForMask.m_selectionShadow = nullptr;
-    paintText();
-
-    m_savedDrawingStateForMask = savedDrawingStateForMask;
 }
 
 #if ENABLE(CSS3_TEXT_DECORATION_SKIP_INK)

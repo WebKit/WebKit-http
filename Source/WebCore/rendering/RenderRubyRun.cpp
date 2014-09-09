@@ -41,6 +41,8 @@
 
 namespace WebCore {
 
+using namespace std;
+
 RenderRubyRun::RenderRubyRun(Document& document, PassRef<RenderStyle> style)
     : RenderBlockFlow(document, WTF::move(style))
 {
@@ -248,8 +250,28 @@ void RenderRubyRun::layout()
         firstLineRubyTextTop = rt->firstRootBox()->logicalTopLayoutOverflow();
         lastLineRubyTextBottom = rootBox->logicalBottomLayoutOverflow();
     }
-
-    if (style().isFlippedLinesWritingMode() == (style().rubyPosition() == RubyPositionAfter)) {
+    
+    if (isHorizontalWritingMode() && rt->style().rubyPosition() == RubyPositionInterCharacter) {
+        // Bopomofo. We need to move the RenderRubyText over to the right side and center it
+        // vertically relative to the base.
+        const Font& font = style().font();
+        float distanceBetweenBase = max(font.letterSpacing(), 2.0f * rt->style().font().fontMetrics().height());
+        setWidth(width() + distanceBetweenBase - font.letterSpacing());
+        if (RenderRubyBase* rb = rubyBase()) {
+            LayoutUnit firstLineTop = 0;
+            LayoutUnit lastLineBottom = logicalHeight();
+            RootInlineBox* rootBox = rb->firstRootBox();
+            if (rootBox)
+                firstLineTop = rootBox->logicalTopLayoutOverflow();
+            firstLineTop += rb->logicalTop();
+            if (rootBox)
+                lastLineBottom = rootBox->logicalBottomLayoutOverflow();
+            lastLineBottom += rb->logicalTop();
+            rt->setX(rb->x() + rb->width() - font.letterSpacing());
+            LayoutUnit extent = lastLineBottom - firstLineTop;
+            rt->setY(firstLineTop + (extent - rt->height()) / 2);
+        }
+    } else if (style().isFlippedLinesWritingMode() == (style().rubyPosition() == RubyPositionAfter)) {
         LayoutUnit firstLineTop = 0;
         if (RenderRubyBase* rb = rubyBase()) {
             RootInlineBox* rootBox = rb->firstRootBox();

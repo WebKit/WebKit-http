@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,6 +47,7 @@
 #include "Element.h"
 #include "EventHandler.h"
 #include "ExceptionCode.h"
+#include "FontCache.h"
 #include "FormController.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
@@ -346,10 +347,17 @@ unsigned Internals::workerThreadCount() const
 
 String Internals::address(Node* node)
 {
-    char buf[32];
-    sprintf(buf, "%p", node);
+    return String::format("%p", node);
+}
 
-    return String(buf);
+bool Internals::nodeNeedsStyleRecalc(Node* node, ExceptionCode& exception)
+{
+    if (!node) {
+        exception = INVALID_ACCESS_ERR;
+        return false;
+    }
+
+    return node->needsStyleRecalc();
 }
 
 String Internals::description(Deprecated::ScriptValue value)
@@ -616,8 +624,11 @@ void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionC
 String Internals::visiblePlaceholder(Element* element)
 {
     if (element && isHTMLTextFormControlElement(*element)) {
-        if (toHTMLTextFormControlElement(*element).placeholderShouldBeVisible())
-            return toHTMLTextFormControlElement(*element).placeholderElement()->textContent();
+        const HTMLTextFormControlElement& textFormControlElement = toHTMLTextFormControlElement(*element);
+        if (!textFormControlElement.isPlaceholderVisible())
+            return String();
+        if (HTMLElement* placeholderElement = textFormControlElement.placeholderElement())
+            return placeholderElement->textContent();
     }
 
     return String();
@@ -818,6 +829,11 @@ void Internals::setMarkedTextMatchesAreHighlighted(bool flag, ExceptionCode& ec)
     document->frame()->editor().setMarkedTextMatchesAreHighlighted(flag);
 }
 
+void Internals::invalidateFontCache()
+{
+    fontCache().invalidate();
+}
+
 void Internals::setScrollViewPosition(long x, long y, ExceptionCode& ec)
 {
     Document* document = contextDocument();
@@ -916,38 +932,6 @@ bool Internals::elementShouldAutoComplete(Element* element, ExceptionCode& ec)
 
     ec = INVALID_NODE_TYPE_ERR;
     return false;
-}
-
-String Internals::suggestedValue(Element* element, ExceptionCode& ec)
-{
-    if (!element) {
-        ec = INVALID_ACCESS_ERR;
-        return String();
-    }
-
-    HTMLInputElement* inputElement = element->toInputElement();
-    if (!inputElement) {
-        ec = INVALID_NODE_TYPE_ERR;
-        return String();
-    }
-
-    return inputElement->suggestedValue();
-}
-
-void Internals::setSuggestedValue(Element* element, const String& value, ExceptionCode& ec)
-{
-    if (!element) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    HTMLInputElement* inputElement = element->toInputElement();
-    if (!inputElement) {
-        ec = INVALID_NODE_TYPE_ERR;
-        return;
-    }
-
-    inputElement->setSuggestedValue(value);
 }
 
 void Internals::setEditingValue(Element* element, const String& value, ExceptionCode& ec)
@@ -1138,7 +1122,7 @@ PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int centerX, i
     document->updateLayoutIgnorePendingStylesheets();
 
     float zoomFactor = frame->pageZoomFactor();
-    LayoutPoint point = roundedLayoutPoint(FloatPoint(centerX * zoomFactor + frameView->scrollX(), centerY * zoomFactor + frameView->scrollY()));
+    LayoutPoint point(centerX * zoomFactor + frameView->scrollX(), centerY * zoomFactor + frameView->scrollY());
 
     HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active;
     if (ignoreClipping)
@@ -1229,25 +1213,25 @@ String Internals::parserMetaData(Deprecated::ScriptValue value)
     if (executable->isFunctionExecutable()) {
         FunctionExecutable* funcExecutable = reinterpret_cast<FunctionExecutable*>(executable);
         String inferredName = funcExecutable->inferredName().string();
-        result.append("function \"");
+        result.appendLiteral("function \"");
         result.append(inferredName);
-        result.append("\"");
+        result.append('"');
     } else if (executable->isEvalExecutable())
-        result.append("eval");
+        result.appendLiteral("eval");
     else {
         ASSERT(executable->isProgramExecutable());
-        result.append("program");
+        result.appendLiteral("program");
     }
 
-    result.append(" { ");
+    result.appendLiteral(" { ");
     result.appendNumber(startLine);
-    result.append(":");
+    result.append(':');
     result.appendNumber(startColumn);
-    result.append(" - ");
+    result.appendLiteral(" - ");
     result.appendNumber(endLine);
-    result.append(":");
+    result.append(':');
     result.appendNumber(endColumn);
-    result.append(" }");
+    result.appendLiteral(" }");
 
     return result.toString();
 }
@@ -1942,7 +1926,7 @@ void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node* 
         return;
     }
 
-    document->updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasksSynchronously);
+    document->updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks::Synchronously);
 }
 
 #if !PLATFORM(IOS)
@@ -2012,22 +1996,22 @@ String Internals::getCurrentCursorInfo(ExceptionCode& ec)
     Cursor cursor = document->frame()->eventHandler().currentMouseCursor();
 
     StringBuilder result;
-    result.append("type=");
+    result.appendLiteral("type=");
     result.append(cursorTypeToString(cursor.type()));
-    result.append(" hotSpot=");
+    result.appendLiteral(" hotSpot=");
     result.appendNumber(cursor.hotSpot().x());
-    result.append(",");
+    result.append(',');
     result.appendNumber(cursor.hotSpot().y());
     if (cursor.image()) {
         FloatSize size = cursor.image()->size();
-        result.append(" image=");
+        result.appendLiteral(" image=");
         result.appendNumber(size.width());
-        result.append("x");
+        result.append('x');
         result.appendNumber(size.height());
     }
 #if ENABLE(MOUSE_CURSOR_SCALE)
     if (cursor.imageScaleFactor() != 1) {
-        result.append(" scale=");
+        result.appendLiteral(" scale=");
         NumberToStringBuffer buffer;
         result.append(numberToFixedPrecisionString(cursor.imageScaleFactor(), 8, buffer, true));
     }

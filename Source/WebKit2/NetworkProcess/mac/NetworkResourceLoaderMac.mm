@@ -28,7 +28,7 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
-#import "DiskCacheMonitor.h"
+#import "NetworkDiskCacheMonitor.h"
 #import "ShareableResource.h"
 #import <WebCore/ResourceHandle.h>
 #import <WebCore/SharedBuffer.h>
@@ -93,14 +93,14 @@ void NetworkResourceLoader::tryGetShareableHandleFromSharedBuffer(ShareableResou
     if (!cache)
         return;
 
-    if (!buffer->hasPlatformData())
+    CFDataRef data = buffer->existingCFData();
+    if (!data)
         return;
 
-    RetainPtr<CFDataRef> data = buffer->createCFData();
-    if (_CFURLCacheIsResponseDataMemMapped(cache, data.get()) == kCFBooleanFalse)
+    if (_CFURLCacheIsResponseDataMemMapped(cache, data) == kCFBooleanFalse)
         return;
 
-    tryGetShareableHandleFromCFData(handle, data.get());
+    tryGetShareableHandleFromCFData(handle, data);
 }
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 
@@ -115,7 +115,7 @@ void NetworkResourceLoader::willCacheResponseAsync(ResourceHandle* handle, CFCac
     ASSERT_UNUSED(handle, handle == m_handle);
 
     if (m_bytesReceived >= fileBackedResourceMinimumSize())
-        DiskCacheMonitor::monitorFileBackingStoreCreation(cfResponse, this);
+        NetworkDiskCacheMonitor::monitorFileBackingStoreCreation(cfResponse, this);
 
     m_handle->continueWillCacheResponse(cfResponse);
 }
@@ -128,7 +128,7 @@ void NetworkResourceLoader::willCacheResponseAsync(ResourceHandle* handle, NSCac
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     if (m_bytesReceived >= fileBackedResourceMinimumSize())
-        DiskCacheMonitor::monitorFileBackingStoreCreation([nsResponse _CFCachedURLResponse], this);
+        NetworkDiskCacheMonitor::monitorFileBackingStoreCreation([nsResponse _CFCachedURLResponse], this);
 #endif
 
     m_handle->continueWillCacheResponse(nsResponse);

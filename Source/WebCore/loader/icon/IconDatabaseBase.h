@@ -175,7 +175,7 @@ public:
 
     // Synchronous calls used internally by WebCore.
     // Usage should be replaced by asynchronous calls.
-    virtual String synchronousIconURLForPageURL(const String&);
+    WEBCORE_EXPORT virtual String synchronousIconURLForPageURL(const String&);
     virtual bool synchronousIconDataKnownForIconURL(const String&) { return false; }
     virtual IconLoadDecision synchronousLoadDecisionForIconURL(const String&, DocumentLoader*) { return IconLoadNo; }
     virtual Image* synchronousIconForPageURL(const String&, const IntSize&) { return 0; }
@@ -200,7 +200,7 @@ public:
 
     virtual bool shouldStopThreadActivity() const { return true; }
 
-    virtual bool open(const String& directory, const String& filename);
+    WEBCORE_EXPORT virtual bool open(const String& directory, const String& filename);
     virtual void close() { }
     virtual void removeAllIcons() { }
 
@@ -208,13 +208,13 @@ public:
     virtual void setClient(IconDatabaseClient*) { }
     
     virtual bool isOpen() const { return false; }
-    virtual String databasePath() const;
+    WEBCORE_EXPORT virtual String databasePath() const;
 
 };
 
 // Functions to get/set the global icon database.
-IconDatabaseBase& iconDatabase();
-void setGlobalIconDatabase(IconDatabaseBase*);
+WEBCORE_EXPORT IconDatabaseBase& iconDatabase();
+WEBCORE_EXPORT void setGlobalIconDatabase(IconDatabaseBase*);
 bool documentCanHaveIcon(const String&);
 
 } // namespace WebCore

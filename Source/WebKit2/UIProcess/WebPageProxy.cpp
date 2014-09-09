@@ -373,8 +373,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 {
     if (m_process->state() == WebProcessProxy::State::Running) {
         if (m_userContentController)
-            m_userContentController->addProcess(m_process.get());
-        m_visitedLinkProvider->addProcess(m_process.get());
+            m_process->addWebUserContentControllerProxy(*m_userContentController);
+        m_process->addVisitedLinkProvider(m_visitedLinkProvider.get());
     }
 
     updateViewState();
@@ -425,6 +425,12 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
 WebPageProxy::~WebPageProxy()
 {
+    ASSERT(m_process->webPage(m_pageID) != this);
+#if !ASSERT_DISABLED
+    for (WebPageProxy* page : m_process->pages())
+        ASSERT(page != this);
+#endif
+
     if (!m_isClosed)
         close();
 
@@ -545,11 +551,17 @@ void WebPageProxy::reattachToWebProcess()
     ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
 
     m_isValid = true;
+    m_process->removeWebPage(m_pageID);
+    m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
     if (m_process->context().processModel() == ProcessModelSharedSecondaryProcess)
         m_process = m_process->context().ensureSharedWebProcess();
     else
         m_process = m_process->context().createNewWebProcessRespectingProcessCountLimit();
+
+    ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
+    if (m_process->state() == ChildProcessProxy::State::Running)
+        processDidFinishLaunching();
     m_process->addExistingWebPage(this, m_pageID);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
@@ -579,7 +591,8 @@ uint64_t WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item
 
     if (item && item != m_backForwardList->currentItem())
         m_backForwardList->goToItem(item);
-    
+
+    ASSERT(!isValid());
     reattachToWebProcess();
 
     if (!item)
@@ -644,16 +657,10 @@ bool WebPageProxy::isProcessSuppressible() const
 
 void WebPageProxy::close()
 {
-    if (!isValid())
+    if (m_isClosed)
         return;
 
     m_isClosed = true;
-
-    if (m_process->state() == WebProcessProxy::State::Running) {
-        if (m_userContentController)
-            m_userContentController->removeProcess(m_process.get());
-        m_visitedLinkProvider->removeProcess(m_process.get());
-    }
 
     m_backForwardList->pageClosed();
     m_pageClient.pageClosed();
@@ -962,10 +969,6 @@ void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vecto
 
     m_pageLoadState.setCanGoBack(transaction, m_backForwardList->backItem());
     m_pageLoadState.setCanGoForward(transaction, m_backForwardList->forwardItem());
-
-#if PLATFORM(MAC)
-    m_pageClient.clearCustomSwipeViews();
-#endif
 }
 
 void WebPageProxy::willGoToBackForwardListItem(uint64_t itemID, IPC::MessageDecoder& decoder)
@@ -1365,6 +1368,10 @@ void WebPageProxy::performDragControllerAction(DragControllerAction action, Drag
     UNUSED_PARAM(dragStorageName);
     UNUSED_PARAM(sandboxExtensionHandle);
     UNUSED_PARAM(sandboxExtensionsForUpload);
+
+    String url = dragData.asURL(nullptr);
+    if (!url.isEmpty())
+        m_process->assumeReadAccessToBaseURL(url);
     m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData), m_pageID);
 #else
     m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData.clientPosition(), dragData.globalPosition(), dragData.draggingSourceOperationMask(), dragStorageName, dragData.flags(), sandboxExtensionHandle, sandboxExtensionsForUpload), m_pageID);
@@ -1865,6 +1872,11 @@ void WebPageProxy::setCustomTextEncodingName(const String& encodingName)
 
 void WebPageProxy::terminateProcess()
 {
+    // requestTermination() is a no-op for launching processes, so we get into an inconsistent state by calling resetStateAfterProcessExited().
+    // FIXME: A client can terminate the page at any time, so we should do something more meaningful than assert and fall apart in release builds.
+    // See also <https://bugs.webkit.org/show_bug.cgi?id=136012>.
+    ASSERT(m_process->state() != WebProcessProxy::State::Launching);
+
     // NOTE: This uses a check of m_isValid rather than calling isValid() since
     // we want this to run even for pages being closed or that already closed.
     if (!m_isValid)
@@ -2654,13 +2666,17 @@ void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     auto transaction = m_pageLoadState.transaction();
 
-    if (frame->isMainFrame())
+    bool isMainFrame = frame->isMainFrame();
+    if (isMainFrame)
         m_pageLoadState.didFinishLoad(transaction);
 
     frame->didFinishLoad();
 
     m_pageLoadState.commitChanges();
     m_loaderClient->didFinishLoadForFrame(this, frame, navigationID, userData.get());
+
+    if (isMainFrame)
+        m_pageClient.didFinishLoadForMainFrame();
 }
 
 void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const ResourceError& error, IPC::MessageDecoder& decoder)
@@ -2699,14 +2715,20 @@ void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t 
 
     auto transaction = m_pageLoadState.transaction();
 
-    if (frame->isMainFrame())
+    bool isMainFrame = frame->isMainFrame();
+    if (isMainFrame)
         m_pageLoadState.didSameDocumentNavigation(transaction, url);
 
     m_pageLoadState.clearPendingAPIRequestURL(transaction);
     frame->didSameDocumentNavigation(url);
 
     m_pageLoadState.commitChanges();
-    m_loaderClient->didSameDocumentNavigationForFrame(this, frame, navigationID, static_cast<SameDocumentNavigationType>(opaqueSameDocumentNavigationType), userData.get());
+
+    SameDocumentNavigationType navigationType = static_cast<SameDocumentNavigationType>(opaqueSameDocumentNavigationType);
+    m_loaderClient->didSameDocumentNavigationForFrame(this, frame, navigationID, navigationType, userData.get());
+
+    if (isMainFrame)
+        m_pageClient.didSameDocumentNavigationForMainFrame(navigationType);
 }
 
 void WebPageProxy::didReceiveTitleForFrame(uint64_t frameID, const String& title, IPC::MessageDecoder& decoder)
@@ -2754,6 +2776,9 @@ void WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, IPC:
     MESSAGE_CHECK(frame);
 
     m_loaderClient->didFirstVisuallyNonEmptyLayoutForFrame(this, frame, userData.get());
+
+    if (frame->isMainFrame())
+        m_pageClient.didFirstVisuallyNonEmptyLayoutForMainFrame();
 }
 
 void WebPageProxy::didLayout(uint32_t layoutMilestones, IPC::MessageDecoder& decoder)
@@ -3063,6 +3088,36 @@ void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResult::Data& hitTest
     m_uiClient->mouseDidMoveOverElement(this, hitTestResultData, modifiers, userData.get());
 }
 
+void WebPageProxy::didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const WebHitTestResult::Data& hitTestResultData, IPC::MessageDecoder& decoder)
+{
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_uiClient->didBeginTrackingPotentialLongMousePress(this, mouseDownPosition, hitTestResultData, userData.get());
+}
+
+void WebPageProxy::didRecognizeLongMousePress(IPC::MessageDecoder& decoder)
+{
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_uiClient->didRecognizeLongMousePress(this, userData.get());
+}
+
+void WebPageProxy::didCancelTrackingPotentialLongMousePress(IPC::MessageDecoder& decoder)
+{
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_uiClient->didCancelTrackingPotentialLongMousePress(this, userData.get());
+}
+
 void WebPageProxy::connectionWillOpen(IPC::Connection* connection)
 {
     ASSERT(connection == m_process->connection());
@@ -3079,9 +3134,11 @@ void WebPageProxy::connectionWillClose(IPC::Connection* connection)
 
 void WebPageProxy::processDidFinishLaunching()
 {
+    ASSERT(m_process->state() == WebProcessProxy::State::Running);
+
     if (m_userContentController)
-        m_userContentController->addProcess(m_process.get());
-    m_visitedLinkProvider->addProcess(m_process.get());
+        m_process->addWebUserContentControllerProxy(*m_userContentController);
+    m_process->addVisitedLinkProvider(m_visitedLinkProvider.get());
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -4399,14 +4456,6 @@ void WebPageProxy::resetStateAfterProcessExited()
     // FIXME: It's weird that resetStateAfterProcessExited() is called even though the process is launching.
     ASSERT(m_process->state() == WebProcessProxy::State::Launching || m_process->state() == WebProcessProxy::State::Terminated);
 
-    if (m_process->state() == WebProcessProxy::State::Terminated) {
-        if (m_userContentController)
-            m_userContentController->removeProcess(m_process.get());
-        m_visitedLinkProvider->removeProcess(m_process.get());
-    }
-
-    m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
-
 #if PLATFORM(IOS)
     m_activityToken = nullptr;
 #endif
@@ -5173,5 +5222,12 @@ void WebPageProxy::willChangeCurrentHistoryItemForMainFrame()
 {
     recordNavigationSnapshot();
 }
+
+#if PLATFORM(MAC)
+void WebPageProxy::removeNavigationGestureSnapshot()
+{
+    m_pageClient.removeNavigationGestureSnapshot();
+}
+#endif
 
 } // namespace WebKit

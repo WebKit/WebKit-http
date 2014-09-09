@@ -1818,7 +1818,7 @@ static void WebTransformCGPathToNSBezierPath(void *info, const CGPathElement *el
 
 - (NSValue *)position
 {
-    IntRect rect = pixelSnappedIntRect(m_object->elementRect());
+    IntRect rect = snappedIntRect(m_object->elementRect());
     
     // The Cocoa accessibility API wants the lower-left corner.
     FloatPoint floatPoint = FloatPoint(rect.x(), rect.maxY());
@@ -2494,7 +2494,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         return [NSNumber numberWithBool: m_object->isEnabled()];
     
     if ([attributeName isEqualToString: NSAccessibilitySizeAttribute]) {
-        IntSize s = m_object->pixelSnappedSize();
+        IntSize s = m_object->elementRect().pixelSnappedSize();
         return [NSValue valueWithSize: NSMakeSize(s.width(), s.height())];
     }
     
@@ -3189,7 +3189,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if (!page)
         return;
     
-    IntRect rect = pixelSnappedIntRect(m_object->elementRect());
+    IntRect rect = snappedIntRect(m_object->elementRect());
     FrameView* frameView = m_object->documentFrameView();
     
     // On WK2, we need to account for the scroll position.

@@ -57,32 +57,25 @@ void InitWebCoreSystemInterface(void)
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     INIT(CTFontTransformGlyphs);
 #endif
-    INIT(CopyCFLocalizationPreferredName);
     INIT(CopyCONNECTProxyResponse);
     INIT(CopyNSURLResponseStatusLine);
     INIT(CopyNSURLResponseCertificateChain);
-    INIT(CreateCustomCFReadStream);
 #if !PLATFORM(IOS)
     INIT(DrawCapsLockIndicator);
     INIT(DrawBezeledTextArea);
-    INIT(DrawBezeledTextFieldCell);
     INIT(DrawFocusRing);
     INIT(DrawFocusRingAtTime);
     INIT(DrawCellFocusRingWithFrameAtTime);
     INIT(DrawMediaUIPart);
     INIT(DrawMediaSliderTrack);
-    INIT(DrawTextFieldCellFocusRing);
-    INIT(GetExtensionsForMIMEType);
     INIT(GetFontInLanguageForCharacter);
     INIT(GetFontInLanguageForRange);
-    INIT(GetGlyphTransformedAdvances);
 #endif
     INIT(GetHTTPRequestPriority);
-    INIT(GetMIMETypeForExtension);
     INIT(GetNSURLResponseLastModifiedDate);
+    INIT(GetWebDefaultCFStringEncoding);
 #if !PLATFORM(IOS)
     INIT(SignedPublicKeyAndChallengeString);
-    INIT(GetPreferredExtensionForMIMEType);
     INIT(GetWheelEventDeltas);
     INIT(GetNSEventKeyChar);
     INIT(HitTestMediaUIPart);
@@ -95,7 +88,6 @@ void InitWebCoreSystemInterface(void)
     INIT(WindowSetAlpha);
     INIT(WindowSetScaledFrame);
     INIT(PopupMenu);
-    INIT(PopupMenuWithSize);
     INIT(SetCGFontRenderingMode);
 #endif
     INIT(SetBaseCTM);
@@ -114,12 +106,8 @@ void InitWebCoreSystemInterface(void)
     INIT(CGContextIsPDFContext);
     INIT(GetUserToBaseCTM);
     INIT(SetUpFontCache);
-    INIT(SignalCFReadStreamEnd);
-    INIT(SignalCFReadStreamError);
-    INIT(SignalCFReadStreamHasBytes);
 #if ENABLE(VIDEO) && !PLATFORM(IOS)
     INIT(QTIncludeOnlyModernMediaFileTypes);
-    INIT(QTMovieDataRate);
     INIT(QTMovieDisableComponent);
     INIT(QTMovieMaxTimeLoaded);
     INIT(QTMovieMaxTimeLoadedChangeNotification);
@@ -156,9 +144,6 @@ void InitWebCoreSystemInterface(void)
 #endif
     INIT(CreateCTTypesetterWithUniCharProviderAndOptions);
     INIT(CTRunGetInitialAdvance);
-#if PLATFORM(MAC) || PLATFORM(IOS_SIMULATOR)
-    INIT(SetCrashReportApplicationSpecificInformation);
-#endif
 #if !PLATFORM(IOS)
     INIT(RecommendedScrollerStyle);
     INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);

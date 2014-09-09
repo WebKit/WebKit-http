@@ -80,12 +80,10 @@
 #import "WebPageMessages.h"
 #endif
 
-#if ENABLE(TOUCH_EVENTS)
-#if PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/PlatformTouchEventIOS.h>
-#else
+#elif ENABLE(TOUCH_EVENTS)
 #include <WebCore/PlatformTouchEvent.h>
-#endif
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
@@ -904,9 +902,6 @@ private:
     void goBack(uint64_t navigationID, uint64_t);
     void goToBackForwardItem(uint64_t navigationID, uint64_t);
     void tryRestoreScrollPosition();
-    void setActive(bool);
-    void setFocused(bool);
-    void setViewIsVisible(bool);
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
     void setWindowResizerSize(const WebCore::IntSize&);
     void updateIsInWindow(bool isInitialState = false);

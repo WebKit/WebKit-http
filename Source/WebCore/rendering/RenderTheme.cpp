@@ -51,10 +51,6 @@
 #include "RenderMeter.h"
 #endif
 
-#if ENABLE(INPUT_SPEECH)
-#include "RenderInputSpeech.h"
-#endif
-
 #if ENABLE(DATALIST_ELEMENT)
 #include "HTMLCollection.h"
 #include "HTMLDataListElement.h"
@@ -248,10 +244,6 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
     case RatingLevelIndicatorPart:
         return adjustMeterStyle(styleResolver, style, e);
 #endif
-#if ENABLE(INPUT_SPEECH)
-    case InputSpeechButtonPart:
-        return adjustInputFieldSpeechButtonStyle(styleResolver, style, e);
-#endif
 #if ENABLE(SERVICE_CONTROLS)
     case ImageControlsButtonPart:
         break;
@@ -275,8 +267,8 @@ bool RenderTheme::paint(const RenderObject& o, ControlStates* controlStates, con
         return false;
 
     ControlPart part = o.style().appearance();
-    IntRect integralSnappedRect = pixelSnappedIntRect(r);
-    FloatRect devicePixelSnappedRect = pixelSnappedForPainting(r, o.document().deviceScaleFactor());
+    IntRect integralSnappedRect = snappedIntRect(r);
+    FloatRect devicePixelSnappedRect = snapRectToDevicePixels(r, o.document().deviceScaleFactor());
 
 #if USE(NEW_THEME)
     switch (part) {
@@ -388,10 +380,6 @@ bool RenderTheme::paint(const RenderObject& o, ControlStates* controlStates, con
         return paintSearchFieldResultsButton(o, paintInfo, integralSnappedRect);
     case SnapshottedPluginOverlayPart:
         return paintSnapshottedPluginOverlay(o, paintInfo, integralSnappedRect);
-#if ENABLE(INPUT_SPEECH)
-    case InputSpeechButtonPart:
-        return paintInputFieldSpeechButton(o, paintInfo, integralSnappedRect);
-#endif
 #if ENABLE(SERVICE_CONTROLS)
     case ImageControlsButtonPart:
         return paintImageControlsButton(o, paintInfo, integralSnappedRect);
@@ -412,7 +400,7 @@ bool RenderTheme::paintBorderOnly(const RenderObject& o, const PaintInfo& paintI
     UNUSED_PARAM(r);
     return o.style().appearance() != NoControlPart;
 #else
-    FloatRect devicePixelSnappedRect = pixelSnappedForPainting(r, o.document().deviceScaleFactor());
+    FloatRect devicePixelSnappedRect = snapRectToDevicePixels(r, o.document().deviceScaleFactor());
     // Call the appropriate paint method based off the appearance value.
     switch (o.style().appearance()) {
     case TextFieldPart:
@@ -446,9 +434,6 @@ bool RenderTheme::paintBorderOnly(const RenderObject& o, const PaintInfo& paintI
     case SearchFieldDecorationPart:
     case SearchFieldResultsDecorationPart:
     case SearchFieldResultsButtonPart:
-#if ENABLE(INPUT_SPEECH)
-    case InputSpeechButtonPart:
-#endif
 #if ENABLE(SERVICE_CONTROLS)
     case ImageControlsButtonPart:
 #endif
@@ -465,8 +450,8 @@ bool RenderTheme::paintDecorations(const RenderObject& renderer, const PaintInfo
     if (paintInfo.context->paintingDisabled())
         return false;
 
-    IntRect integralSnappedRect = pixelSnappedIntRect(rect);
-    FloatRect devicePixelSnappedRect = pixelSnappedForPainting(rect, renderer.document().deviceScaleFactor());
+    IntRect integralSnappedRect = snappedIntRect(rect);
+    FloatRect devicePixelSnappedRect = snapRectToDevicePixels(rect, renderer.document().deviceScaleFactor());
 
     // Call the appropriate paint method based off the appearance value.
     switch (renderer.style().appearance()) {
@@ -509,9 +494,6 @@ bool RenderTheme::paintDecorations(const RenderObject& renderer, const PaintInfo
     case SearchFieldDecorationPart:
     case SearchFieldResultsDecorationPart:
     case SearchFieldResultsButtonPart:
-#if ENABLE(INPUT_SPEECH)
-    case InputSpeechButtonPart:
-#endif
 #if ENABLE(SERVICE_CONTROLS)
     case ImageControlsButtonPart:
 #endif
@@ -865,7 +847,7 @@ bool RenderTheme::isReadOnlyControl(const RenderObject& o) const
     Node* node = o.node();
     if (!node || !node->isElementNode())
         return false;
-    return toElement(node)->matchesReadOnlyPseudoClass();
+    return !toElement(node)->matchesReadWritePseudoClass();
 }
 
 bool RenderTheme::isHovered(const RenderObject& o) const
@@ -960,18 +942,6 @@ void RenderTheme::adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element&) co
 void RenderTheme::adjustMenuListStyle(StyleResolver&, RenderStyle&, Element&) const
 {
 }
-
-#if ENABLE(INPUT_SPEECH)
-void RenderTheme::adjustInputFieldSpeechButtonStyle(StyleResolver& styleResolver, RenderStyle& style, Element& element) const
-{
-    RenderInputSpeech::adjustInputFieldSpeechButtonStyle(styleResolver, style, element);
-}
-
-bool RenderTheme::paintInputFieldSpeechButton(const RenderObject& object, const PaintInfo& paintInfo, const IntRect& rect)
-{
-    return RenderInputSpeech::paintInputFieldSpeechButton(object, paintInfo, rect);
-}
-#endif
 
 #if ENABLE(METER_ELEMENT)
 void RenderTheme::adjustMeterStyle(StyleResolver&, RenderStyle& style, Element&) const

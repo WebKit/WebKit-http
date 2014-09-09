@@ -30,6 +30,7 @@ require "set"
 
 MACRO_INSTRUCTIONS =
     [
+     "emit",
      "addi",
      "andi",
      "lshifti",
@@ -248,8 +249,6 @@ MACRO_INSTRUCTIONS =
      "bnz",
      "leai",
      "leap",
-     "pushCalleeSaves",
-     "popCalleeSaves",
      "memfence"
     ]
 
@@ -267,9 +266,7 @@ ARM_INSTRUCTIONS =
 
 ARM64_INSTRUCTIONS =
     [
-     "pcrtoaddr",    # Address from PC relative offset - adr instruction
-     "popLRAndFP",   # ARM64 requires registers to be pushed and popped in pairs,
-     "pushLRAndFP"   # therefore we do LR (link register) and FP (frame pointer) together.
+     "pcrtoaddr"    # Address from PC relative offset - adr instruction
     ]
 
 RISC_INSTRUCTIONS =
@@ -283,12 +280,12 @@ RISC_INSTRUCTIONS =
 
 MIPS_INSTRUCTIONS =
     [
+    "la",
     "movz",
     "movn",
     "slt",
     "sltu",
-    "pichdr",
-    "pichdrra"
+    "pichdr"
     ]
 
 SH4_INSTRUCTIONS =

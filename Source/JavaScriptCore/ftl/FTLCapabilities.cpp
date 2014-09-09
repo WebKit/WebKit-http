@@ -104,7 +104,8 @@ inline CapabilityLevel canCompile(Node* node)
     case PutClosureVar:
     case InvalidationPoint:
     case StringCharAt:
-    case CheckFunction:
+    case CheckCell:
+    case CheckBadCell:
     case StringCharCodeAt:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
@@ -126,7 +127,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ConstantStoragePointer:
     case Check:
     case CountExecution:
-    case CheckExecutable:
+    case GetExecutable:
     case GetScope:
     case AllocationProfileWatchpoint:
     case CheckArgumentsNotCreated:
@@ -158,7 +159,21 @@ inline CapabilityLevel canCompile(Node* node)
     case DoubleConstant:
     case Int52Constant:
     case BooleanToNumber:
+    case HasGenericProperty:
+    case HasStructureProperty:
+    case GetDirectPname:
+    case GetEnumerableLength:
+    case GetStructurePropertyEnumerator:
+    case GetGenericPropertyEnumerator:
+    case GetEnumeratorPname:
+    case ToIndexString:
+    case BottomValue:
         // These are OK.
+        break;
+    case ProfiledCall:
+    case ProfiledConstruct:
+        // These are OK not because the FTL can support them, but because if the DFG sees one of
+        // these then the FTL will see a normal Call/Construct.
         break;
     case Identity:
         // No backend handles this because it will be optimized out. But we may check
@@ -166,6 +181,10 @@ inline CapabilityLevel canCompile(Node* node)
         // case because it would prevent us from catching bugs where the FTL backend
         // pipeline failed to optimize out an Identity.
         break;
+    case In:
+        if (node->child2().useKind() == CellUse)
+            break;
+        return CannotCompile;
     case PutByIdDirect:
     case PutById:
         if (node->child1().useKind() == CellUse)
@@ -199,6 +218,17 @@ inline CapabilityLevel canCompile(Node* node)
         default:
             if (isTypedView(node->arrayMode().typedArrayType()))
                 break;
+            return CannotCompile;
+        }
+        break;
+    case HasIndexedProperty:
+        switch (node->arrayMode().type()) {
+        case Array::ForceExit:
+        case Array::Int32:
+        case Array::Double:
+        case Array::Contiguous:
+            break;
+        default:
             return CannotCompile;
         }
         break;
@@ -303,6 +333,7 @@ inline CapabilityLevel canCompile(Node* node)
         switch (node->switchData()->kind) {
         case SwitchImm:
         case SwitchChar:
+        case SwitchCell:
             break;
         default:
             return CannotCompile;
@@ -370,6 +401,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case CellUse:
                 case KnownCellUse:
                 case ObjectUse:
+                case FunctionUse:
                 case ObjectOrOtherUse:
                 case StringUse:
                 case KnownStringUse:

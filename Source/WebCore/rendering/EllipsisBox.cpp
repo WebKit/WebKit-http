@@ -137,12 +137,12 @@ void EllipsisBox::paintSelection(GraphicsContext* context, const LayoutPoint& pa
     LayoutRect selectionRect = LayoutRect(x() + paintOffset.x(), y() + paintOffset.y() + rootBox.selectionTop(), 0, rootBox.selectionHeight());
     TextRun run = RenderBlock::constructTextRun(&blockFlow(), font, m_str, style, TextRun::AllowTrailingExpansion);
     font.adjustSelectionRectForText(run, selectionRect, 0, -1);
-    context->fillRect(directionalPixelSnappedForPainting(selectionRect, renderer().document().deviceScaleFactor(), run.ltr()), c, style.colorSpace());
+    context->fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), run.ltr()), c, style.colorSpace());
 }
 
 bool EllipsisBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom)
 {
-    LayoutPoint adjustedLocation = accumulatedOffset + roundedLayoutPoint(topLeft());
+    LayoutPoint adjustedLocation = accumulatedOffset + LayoutPoint(topLeft());
 
     // Hit test the markup box.
     if (InlineBox* markupBox = this->markupBox()) {

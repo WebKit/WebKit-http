@@ -646,6 +646,11 @@ bool RenderLayerCompositor::hasAnyAdditionalCompositedLayers(const RenderLayer& 
     return m_compositedLayerCount > (rootLayer.isComposited() ? 1 : 0);
 }
 
+void RenderLayerCompositor::cancelCompositingLayerUpdate()
+{
+    m_updateCompositingLayersTimer.stop();
+}
+
 void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
 {
     m_updateCompositingLayersTimer.stop();
@@ -1033,7 +1038,7 @@ void RenderLayerCompositor::addToOverlapMap(OverlapMap& overlapMap, RenderLayer&
         boundsComputed = true;
     }
 
-    IntRect clipRect = pixelSnappedIntRect(layer.backgroundClipRect(RenderLayer::ClipRectsContext(&rootRenderLayer(), AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
+    IntRect clipRect = snappedIntRect(layer.backgroundClipRect(RenderLayer::ClipRectsContext(&rootRenderLayer(), AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
 
     // On iOS, pageScaleFactor() is not applied by RenderView, so we should not scale here.
     // FIXME: Set Settings::delegatesPageScaling to true for iOS.
@@ -2392,7 +2397,18 @@ bool RenderLayerCompositor::requiresCompositingForBackfaceVisibility(RenderLayer
     if (!(m_compositingTriggers & ChromeClient::ThreeDTransformTrigger))
         return false;
 
-    return renderer.style().backfaceVisibility() == BackfaceVisibilityHidden && renderer.layer()->has3DTransformedAncestor();
+    if (renderer.style().backfaceVisibility() != BackfaceVisibilityHidden)
+        return false;
+        
+    if (renderer.layer()->has3DTransformedAncestor())
+        return true;
+    
+    // FIXME: workaround for webkit.org/b/132801
+    RenderLayer* stackingContext = renderer.layer()->stackingContainer();
+    if (stackingContext && stackingContext->renderer().style().transformStyle3D() == TransformStyle3DPreserve3D)
+        return true;
+
+    return false;
 }
 
 bool RenderLayerCompositor::requiresCompositingForVideo(RenderLayerModelObject& renderer) const
@@ -2446,7 +2462,7 @@ bool RenderLayerCompositor::requiresCompositingForPlugin(RenderLayerModelObject&
         return pluginRenderer.hasLayer() && pluginRenderer.layer()->isComposited();
 
     // Don't go into compositing mode if height or width are zero, or size is 1x1.
-    IntRect contentBox = pixelSnappedIntRect(pluginRenderer.contentBoxRect());
+    IntRect contentBox = snappedIntRect(pluginRenderer.contentBoxRect());
     return contentBox.height() * contentBox.width() > 1;
 }
 
@@ -2471,7 +2487,7 @@ bool RenderLayerCompositor::requiresCompositingForFrame(RenderLayerModelObject& 
         return frameRenderer.hasLayer() && frameRenderer.layer()->isComposited();
     
     // Don't go into compositing mode if height or width are zero.
-    return !pixelSnappedIntRect(frameRenderer.contentBoxRect()).isEmpty();
+    return !snappedIntRect(frameRenderer.contentBoxRect()).isEmpty();
 }
 
 bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObject& renderer) const
@@ -2483,9 +2499,7 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
     AnimationController& animController = renderer.animation();
     return (animController.isRunningAnimationOnRenderer(&renderer, CSSPropertyOpacity, activeAnimationState)
             && (inCompositingMode() || (m_compositingTriggers & ChromeClient::AnimatedOpacityTrigger)))
-#if ENABLE(CSS_FILTERS)
             || animController.isRunningAnimationOnRenderer(&renderer, CSSPropertyWebkitFilter, activeAnimationState)
-#endif // CSS_FILTERS
             || animController.isRunningAnimationOnRenderer(&renderer, CSSPropertyWebkitTransform, activeAnimationState);
 }
 
@@ -2520,15 +2534,10 @@ bool RenderLayerCompositor::requiresCompositingForIndirectReason(RenderLayerMode
 
 bool RenderLayerCompositor::requiresCompositingForFilters(RenderLayerModelObject& renderer) const
 {
-#if ENABLE(CSS_FILTERS)
     if (!(m_compositingTriggers & ChromeClient::FilterTrigger))
         return false;
 
     return renderer.hasFilter();
-#else
-    UNUSED_PARAM(renderer);
-    return false;
-#endif
 }
 
 bool RenderLayerCompositor::isAsyncScrollableStickyLayer(const RenderLayer& layer, const RenderLayer** enclosingAcceleratedOverflowLayer) const
@@ -2724,7 +2733,7 @@ static void paintScrollbar(Scrollbar* scrollbar, GraphicsContext& context, const
 
 void RenderLayerCompositor::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip)
 {
-    IntRect pixelSnappedRectForIntegralPositionedItems = pixelSnappedIntRect(LayoutRect(clip));
+    IntRect pixelSnappedRectForIntegralPositionedItems = snappedIntRect(LayoutRect(clip));
     if (graphicsLayer == layerForHorizontalScrollbar())
         paintScrollbar(m_renderView.frameView().horizontalScrollbar(), context, pixelSnappedRectForIntegralPositionedItems);
     else if (graphicsLayer == layerForVerticalScrollbar())
@@ -3225,7 +3234,7 @@ void RenderLayerCompositor::ensureRootLayer()
 #ifndef NDEBUG
         m_rootContentLayer->setName("content root");
 #endif
-        IntRect overflowRect = m_renderView.pixelSnappedLayoutOverflowRect();
+        IntRect overflowRect = snappedIntRect(m_renderView.layoutOverflowRect());
         m_rootContentLayer->setSize(FloatSize(overflowRect.maxX(), overflowRect.maxY()));
         m_rootContentLayer->setPosition(FloatPoint());
 
@@ -3418,11 +3427,25 @@ void RenderLayerCompositor::updateRootLayerAttachment()
 
 void RenderLayerCompositor::rootLayerAttachmentChanged()
 {
+    // The document-relative page overlay layer (which is pinned to the main frame's layer tree)
+    // is moved between different RenderLayerCompositors' layer trees, and needs to be
+    // reattached whenever we swap in a new RenderLayerCompositor.
+    if (m_rootLayerAttachment == RootLayerUnattached)
+        return;
+
+    Frame& frame = m_renderView.frameView().frame();
+    Page* page = frame.page();
+    if (!page)
+        return;
+
     // The attachment can affect whether the RenderView layer's paintsIntoWindow() behavior,
     // so call updateDrawsContent() to update that.
     RenderLayer* layer = m_renderView.layer();
-    if (RenderLayerBacking* backing = layer ? layer->backing() : 0)
+    if (RenderLayerBacking* backing = layer ? layer->backing() : nullptr)
         backing->updateDrawsContent();
+
+    if (GraphicsLayer* overlayLayer = page->chrome().client().documentOverlayLayerForFrame(frame))
+        m_rootContentLayer->addChild(overlayLayer);
 }
 
 // IFrames are special, because we hook compositing layers together across iframe boundaries
@@ -3745,6 +3768,12 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
             scrollingGeometry.scrollableAreaSize = layer.visibleSize();
             scrollingGeometry.contentSize = layer.contentsSize();
             scrollingGeometry.reachableContentSize = layer.scrollableContentsSize();
+#if ENABLE(CSS_SCROLL_SNAP)
+            if (const Vector<LayoutUnit>* offsets = layer.horizontalSnapOffsets())
+                scrollingGeometry.horizontalSnapOffsets = *offsets;
+            if (const Vector<LayoutUnit>* offsets = layer.verticalSnapOffsets())
+                scrollingGeometry.verticalSnapOffsets = *offsets;
+#endif
             scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), &scrollingGeometry);
         }
     }

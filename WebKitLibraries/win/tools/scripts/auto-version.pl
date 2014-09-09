@@ -62,15 +62,11 @@ my $OUTPUT_FILE = File::Spec->catfile($OUTPUT_DIR, 'autoversion.h');
 
 # Take the initial version number from RC_ProjectSourceVersion if it
 # exists, otherwise fall back to the version number stored in the source.
-my $ENVIRONMENT_VERSION = $ENV{'RC_ProjectSourceVersion'};
-if (!defined $ENVIRONMENT_VERSION) {
-    $ENVIRONMENT_VERSION = $ENV{'RC_PROJECTSOURCEVERSION'};
-}
-
-my $PROPOSED_VERSION = (defined $ENVIRONMENT_VERSION) ? $ENVIRONMENT_VERSION : $FALLBACK_VERSION;
+my $ENVIRONMENT_VERSION = $ENV{'RC_ProjectSourceVersion'} || $ENV{'RC_PROJECTSOURCEVERSION'};
+my $PROPOSED_VERSION = $ENVIRONMENT_VERSION || $FALLBACK_VERSION;
 chomp($PROPOSED_VERSION);
 
-my ($BUILD_MAJOR_VERSION, $BUILD_MINOR_VERSION, $BUILD_TINY_VERSION, $BUILD_VARIANT_VERSION, $ADJUSTED_PROPOSED_VERSION) = splitVersion($PROPOSED_VERSION);
+my ($BUILD_MAJOR_VERSION, $BUILD_MINOR_VERSION, $BUILD_TINY_VERSION, $BUILD_VARIANT_VERSION, $ADJUSTED_PROPOSED_VERSION, $FULL_BUILD_MAJOR_VERSION) = splitVersion($PROPOSED_VERSION);
 
 my $TINY_VERSION = $BUILD_TINY_VERSION;
 my $VERSION_TEXT = $ADJUSTED_PROPOSED_VERSION;
@@ -107,6 +103,7 @@ print OUTPUT_FILE <<EOF;
 #define __BUILD_NUMBER_MINOR__ $BUILD_MINOR_VERSION
 #define __BUILD_NUMBER_VARIANT__ $BUILD_TINY_VERSION
 #define __SVN_REVISION__ $SVN_REVISION
+#define __FULL_BUILD_MAJOR_VERSION__  $FULL_BUILD_MAJOR_VERSION
 EOF
 
 if (defined $COPYRIGHT_END_YEAR) {
@@ -153,7 +150,7 @@ sub splitVersion($)
         $BUILD_MICRO_VERSION = $components[3];
     }
 
-    my $RETURN_NANO_VERSION = $BUILD_MICRO_VERSION;
+    my $RETURN_NANO_VERSION = $ENV{'RC_ProjectBuildVersion'} || $ENV{'RC_PROJECTBUILDVERSION'} || $BUILD_MICRO_VERSION;
     if ($componentCount > 4) {
         $BUILD_NANO_VERSION = $components[4];
         $RETURN_NANO_VERSION = $BUILD_NANO_VERSION;
@@ -163,12 +160,12 @@ sub splitVersion($)
     # extra leading digits, then adjust the major version portion of the
     # version string to match.
     my $originalLength = length($BUILD_MAJOR_VERSION);
+    my $FULL_BUILD_MAJOR_VERSION = $BUILD_MAJOR_VERSION;
     $BUILD_MAJOR_VERSION =~ s/^.*(\d\d\d)$/$1/;
 
     my $charactersToRemove = $originalLength - length($BUILD_MAJOR_VERSION);
 
     $PROPOSED_VERSION = substr($PROPOSED_VERSION, $charactersToRemove);
 
-    return ($BUILD_MAJOR_VERSION, packTwoValues($BUILD_MINOR_VERSION, $BUILD_TINY_VERSION), packTwoValues($BUILD_MICRO_VERSION, $BUILD_NANO_VERSION), $RETURN_NANO_VERSION, $PROPOSED_VERSION);
+    return ($BUILD_MAJOR_VERSION, packTwoValues($BUILD_MINOR_VERSION, $BUILD_TINY_VERSION), packTwoValues($BUILD_MICRO_VERSION, $BUILD_NANO_VERSION), $RETURN_NANO_VERSION, $PROPOSED_VERSION, $FULL_BUILD_MAJOR_VERSION);
 }
-

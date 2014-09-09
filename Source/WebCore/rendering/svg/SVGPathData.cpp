@@ -40,26 +40,36 @@ namespace WebCore {
 static void updatePathFromCircleElement(SVGElement* element, Path& path)
 {
     ASSERT(isSVGCircleElement(element));
-    SVGCircleElement* circle = toSVGCircleElement(element);
 
     SVGLengthContext lengthContext(element);
-    float r = circle->r().value(lengthContext);
-    if (r > 0)
-        path.addEllipse(FloatRect(circle->cx().value(lengthContext) - r, circle->cy().value(lengthContext) - r, r * 2, r * 2));
+    RenderElement* renderer = element->renderer();
+    if (!renderer)
+        return;
+    RenderStyle& style = renderer->style();
+    float r = lengthContext.valueForLength(style.svgStyle().r());
+    if (r > 0) {
+        float cx = lengthContext.valueForLength(style.svgStyle().cx(), LengthModeWidth);
+        float cy = lengthContext.valueForLength(style.svgStyle().cy(), LengthModeHeight);
+        path.addEllipse(FloatRect(cx - r, cy - r, r * 2, r * 2));
+    }
 }
 
 static void updatePathFromEllipseElement(SVGElement* element, Path& path)
 {
-    SVGEllipseElement* ellipse = toSVGEllipseElement(element);
-
+    RenderElement* renderer = element->renderer();
+    if (!renderer)
+        return;
+    RenderStyle& style = renderer->style();
     SVGLengthContext lengthContext(element);
-    float rx = ellipse->rx().value(lengthContext);
+    float rx = lengthContext.valueForLength(style.svgStyle().rx(), LengthModeWidth);
     if (rx <= 0)
         return;
-    float ry = ellipse->ry().value(lengthContext);
+    float ry = lengthContext.valueForLength(style.svgStyle().ry(), LengthModeHeight);
     if (ry <= 0)
         return;
-    path.addEllipse(FloatRect(ellipse->cx().value(lengthContext) - rx, ellipse->cy().value(lengthContext) - ry, rx * 2, ry * 2));
+    float cx = lengthContext.valueForLength(style.svgStyle().cx(), LengthModeWidth);
+    float cy = lengthContext.valueForLength(style.svgStyle().cy(), LengthModeHeight);
+    path.addEllipse(FloatRect(cx - rx, cy - ry, rx * 2, ry * 2));
 }
 
 static void updatePathFromLineElement(SVGElement* element, Path& path)
@@ -106,8 +116,7 @@ static void updatePathFromPolylineElement(SVGElement* element, Path& path)
 
 static void updatePathFromRectElement(SVGElement* element, Path& path)
 {
-    SVGRectElement* rect = toSVGRectElement(element);
-    RenderElement* renderer = rect->renderer();
+    RenderElement* renderer = element->renderer();
     if (!renderer)
         return;
 
@@ -121,8 +130,8 @@ static void updatePathFromRectElement(SVGElement* element, Path& path)
         return;
     float x = lengthContext.valueForLength(style.svgStyle().x(), LengthModeWidth);
     float y = lengthContext.valueForLength(style.svgStyle().y(), LengthModeHeight);
-    float rx = rect->rx().value(lengthContext);
-    float ry = rect->ry().value(lengthContext);
+    float rx = lengthContext.valueForLength(style.svgStyle().rx(), LengthModeWidth);
+    float ry = lengthContext.valueForLength(style.svgStyle().ry(), LengthModeHeight);
     bool hasRx = rx > 0;
     bool hasRy = ry > 0;
     if (hasRx || hasRy) {

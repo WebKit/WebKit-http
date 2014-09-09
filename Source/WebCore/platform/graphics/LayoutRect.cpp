@@ -138,20 +138,16 @@ IntRect enclosingIntRect(const LayoutRect& rect)
 
 LayoutRect enclosingLayoutRect(const FloatRect& rect)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
     LayoutPoint location = flooredLayoutPoint(rect.minXMinYCorner());
     LayoutPoint maxPoint = ceiledLayoutPoint(rect.maxXMaxYCorner());
 
     return LayoutRect(location, maxPoint - location);
-#else
-    return enclosingIntRect(rect);
-#endif
 }
 
-FloatRect enclosingRectForPainting(const LayoutRect& rect, float pixelSnappingFactor)
+FloatRect encloseRectToDevicePixels(const LayoutRect& rect, float pixelSnappingFactor)
 {
-    FloatPoint location = flooredForPainting(rect.minXMinYCorner(), pixelSnappingFactor);
-    FloatPoint maxPoint = ceiledForPainting(rect.maxXMaxYCorner(), pixelSnappingFactor);
+    FloatPoint location = floorPointToDevicePixels(rect.minXMinYCorner(), pixelSnappingFactor);
+    FloatPoint maxPoint = ceilPointToDevicePixels(rect.maxXMaxYCorner(), pixelSnappingFactor);
 
     return FloatRect(location, maxPoint - location);
 }

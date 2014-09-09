@@ -221,7 +221,7 @@ void Arguments::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyN
             continue;
         propertyNames.add(Identifier::from(exec, i));
     }
-    if (mode == IncludeDontEnumProperties) {
+    if (shouldIncludeDontEnumProperties(mode)) {
         propertyNames.add(exec->propertyNames().callee);
         propertyNames.add(exec->propertyNames().length);
     }
@@ -435,7 +435,7 @@ EncodedJSValue JSC_HOST_CALL argumentsFuncIterator(ExecState* exec)
     JSObject* thisObj = exec->thisValue().toThis(exec, StrictMode).toObject(exec);
     Arguments* arguments = jsDynamicCast<Arguments*>(thisObj);
     if (!arguments)
-        return JSValue::encode(throwTypeError(exec, "Attempted to use Arguments iterator on non-Arguments object"));
+        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Attempted to use Arguments iterator on non-Arguments object")));
     return JSValue::encode(JSArgumentsIterator::create(exec->vm(), exec->callee()->globalObject()->argumentsIteratorStructure(), arguments));
 }
 

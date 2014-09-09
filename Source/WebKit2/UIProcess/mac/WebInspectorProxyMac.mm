@@ -56,16 +56,22 @@ SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 using namespace WebCore;
 using namespace WebKit;
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
 // The height needed to match a typical NSToolbar.
 static const CGFloat windowContentBorderThickness = 55;
+#endif
 
 // The margin from the top and right of the dock button (same as the full screen button).
 static const CGFloat dockButtonMargin = 3;
 
 // The spacing between the dock buttons.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+static const CGFloat dockButtonSpacing = 1;
+static const NSUInteger windowStyleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask | NSFullSizeContentViewWindowMask;
+#else
 static const CGFloat dockButtonSpacing = dockButtonMargin * 2;
-
 static const NSUInteger windowStyleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask | NSTexturedBackgroundWindowMask;
+#endif
 
 // WKWebInspectorProxyObjCAdapter is a helper ObjC object used as a delegate or notification observer
 // for the sole purpose of getting back into the C++ code from an ObjC caller.
@@ -298,9 +304,13 @@ void WebInspectorProxy::createInspectorWindow()
     [window setDelegate:m_inspectorProxyObjCAdapter.get()];
     [window setMinSize:NSMakeSize(minimumWindowWidth, minimumWindowHeight)];
     [window setReleasedWhenClosed:NO];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    window.titlebarAppearsTransparent = YES;
+#else
     [window setAutorecalculatesContentBorderThickness:NO forEdge:NSMaxYEdge];
     [window setContentBorderThickness:windowContentBorderThickness forEdge:NSMaxYEdge];
-    WKNSWindowMakeBottomCornersSquare(window);
+#endif
 
     m_inspectorWindow = adoptNS(window);
 
@@ -309,8 +319,18 @@ void WebInspectorProxy::createInspectorWindow()
     static const int32_t firstVersionOfSafariWithDockToRightSupport = 0x02181d0d; // 536.29.13
     static bool supportsDockToRight = NSVersionOfLinkTimeLibrary("Safari") >= firstVersionOfSafariWithDockToRightSupport;
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     m_dockBottomButton = adoptNS(createDockButton(@"DockBottom"));
     m_dockRightButton = adoptNS(createDockButton(@"DockRight"));
+
+    m_dockBottomButton.get().alphaValue = 0.55;
+    m_dockRightButton.get().alphaValue = supportsDockToRight ? 0.55 : 0.25;
+#else
+    m_dockBottomButton = adoptNS(createDockButton(@"DockBottomLegacy"));
+    m_dockRightButton = adoptNS(createDockButton(@"DockRightLegacy"));
+
+    m_dockRightButton.get().alphaValue = supportsDockToRight ? 1 : 0.5;
+#endif
 
     m_dockBottomButton.get().target = m_inspectorProxyObjCAdapter.get();
     m_dockBottomButton.get().action = @selector(attachBottom:);
@@ -318,7 +338,6 @@ void WebInspectorProxy::createInspectorWindow()
     m_dockRightButton.get().target = m_inspectorProxyObjCAdapter.get();
     m_dockRightButton.get().action = @selector(attachRight:);
     m_dockRightButton.get().enabled = supportsDockToRight;
-    m_dockRightButton.get().alphaValue = supportsDockToRight ? 1 : 0.5;
 
     // Store the dock buttons on the window too so it can check its visibility.
     window->_dockBottomButton = m_dockBottomButton;
@@ -402,7 +421,9 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
     m_inspectorView = adoptNS([[WKWebInspectorWKView alloc] initWithFrame:initialRect contextRef:toAPI(&page()->process().context()) pageGroupRef:toAPI(inspectorPageGroup()) relatedToPage:toAPI(m_page)]);
     ASSERT(m_inspectorView);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
     [m_inspectorView setDrawsBackground:NO];
+#endif
 
     m_inspectorProxyObjCAdapter = adoptNS([[WKWebInspectorProxyObjCAdapter alloc] initWithWebInspectorProxy:this]);
 
@@ -752,7 +773,9 @@ void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned width)
 
 void WebInspectorProxy::platformSetToolbarHeight(unsigned height)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
     [m_inspectorWindow setContentBorderThickness:height forEdge:NSMaxYEdge];
+#endif
 }
 
 String WebInspectorProxy::inspectorPageURL() const

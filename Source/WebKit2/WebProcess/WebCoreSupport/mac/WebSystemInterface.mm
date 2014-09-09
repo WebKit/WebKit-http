@@ -40,7 +40,6 @@ void InitWebCoreSystemInterface(void)
         INIT(AdvanceDefaultButtonPulseAnimation);
 #endif
         INIT(CALayerEnumerateRectsBeingDrawnWithBlock);
-        INIT(CopyCFLocalizationPreferredName);
         INIT(CGContextGetShouldSmoothFonts);
         INIT(CGPatternCreateWithImageAndTransform);
         INIT(CGContextResetClip);
@@ -54,32 +53,26 @@ void InitWebCoreSystemInterface(void)
         INIT(CopyNSURLResponseStatusLine);
         INIT(CopyNSURLResponseCertificateChain);
         INIT(CreateCTLineWithUniCharProvider);
-        INIT(CreateCustomCFReadStream);
 #if !PLATFORM(IOS)
         INIT(DrawBezeledTextArea);
-        INIT(DrawBezeledTextFieldCell);
         INIT(DrawCapsLockIndicator);
         INIT(DrawFocusRing);
         INIT(DrawFocusRingAtTime);
         INIT(DrawCellFocusRingWithFrameAtTime);
         INIT(DrawMediaSliderTrack);
         INIT(DrawMediaUIPart);
-        INIT(DrawTextFieldCellFocusRing);
-        INIT(GetExtensionsForMIMEType);
         INIT(GetFontInLanguageForCharacter);
         INIT(GetFontInLanguageForRange);
-        INIT(GetGlyphTransformedAdvances);
         INIT(GetGlyphsForCharacters);
 #endif
         INIT(GetVerticalGlyphsForCharacters);
         INIT(GetHTTPRequestPriority);
-        INIT(GetMIMETypeForExtension);
         INIT(GetNSURLResponseLastModifiedDate);
 #if !PLATFORM(IOS)
         INIT(SignedPublicKeyAndChallengeString);
-        INIT(GetPreferredExtensionForMIMEType);
 #endif
         INIT(GetUserToBaseCTM);
+        INIT(GetWebDefaultCFStringEncoding);
         INIT(CGContextIsPDFContext);
 #if !PLATFORM(IOS)
         INIT(GetWheelEventDeltas);
@@ -91,9 +84,7 @@ void InitWebCoreSystemInterface(void)
 #if !PLATFORM(IOS)
         INIT(MeasureMediaUIPart);
         INIT(PopupMenu);
-        INIT(PopupMenuWithSize);
         INIT(QTIncludeOnlyModernMediaFileTypes);
-        INIT(QTMovieDataRate);
         INIT(QTMovieDisableComponent);
         INIT(QTMovieGetType);
         INIT(QTMovieHasClosedCaptions);
@@ -122,9 +113,6 @@ void InitWebCoreSystemInterface(void)
         INIT(SetNSURLRequestShouldContentSniff);
         INIT(SetPatternPhaseInUserSpace);
         INIT(SetUpFontCache);
-        INIT(SignalCFReadStreamEnd);
-        INIT(SignalCFReadStreamError);
-        INIT(SignalCFReadStreamHasBytes);
         INIT(CreatePrivateStorageSession);
         INIT(CopyRequestWithStorageSession);
         INIT(CopyHTTPCookieStorage);
@@ -146,9 +134,6 @@ void InitWebCoreSystemInterface(void)
 #endif // !PLATFORM(IOS_SIMULATOR)
         INIT(CreateCTTypesetterWithUniCharProviderAndOptions);
         INIT(CTRunGetInitialAdvance);
-#if PLATFORM(MAC) || PLATFORM(IOS_SIMULATOR)
-        INIT(SetCrashReportApplicationSpecificInformation);
-#endif
 #if !PLATFORM(IOS)
         INIT(RecommendedScrollerStyle);
         INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);

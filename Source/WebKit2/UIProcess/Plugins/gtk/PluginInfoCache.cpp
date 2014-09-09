@@ -44,17 +44,26 @@ PluginInfoCache& PluginInfoCache::shared()
 
 PluginInfoCache::PluginInfoCache()
     : m_cacheFile(g_key_file_new())
-    , m_cachePath(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "plugins", nullptr))
+    , m_readOnlyMode(false)
 {
-    g_key_file_load_from_file(m_cacheFile.get(), m_cachePath.get(), G_KEY_FILE_NONE, nullptr);
+    GUniquePtr<char> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", nullptr));
+    if (WebCore::makeAllDirectories(cacheDirectory.get())) {
+        m_cachePath.reset(g_build_filename(cacheDirectory.get(), "plugins", nullptr));
+        g_key_file_load_from_file(m_cacheFile.get(), m_cachePath.get(), G_KEY_FILE_NONE, nullptr);
+    }
 
     if (g_key_file_has_group(m_cacheFile.get(), "schema")) {
         unsigned schemaVersion = static_cast<unsigned>(g_key_file_get_integer(m_cacheFile.get(), "schema", "version", nullptr));
-        if (schemaVersion == gSchemaVersion)
+        if (schemaVersion < gSchemaVersion) {
+            // Cache file using an old schema, create a new empty file.
+            m_cacheFile.reset(g_key_file_new());
+        } else if (schemaVersion > gSchemaVersion) {
+            // Cache file using a newer schema, use the cache in read only mode.
+            m_readOnlyMode = true;
+        } else {
+            // Same schema version, we don't need to update it.
             return;
-
-        // Cache file using an old schema, create a new empty file.
-        m_cacheFile.reset(g_key_file_new());
+        }
     }
 
     g_key_file_set_integer(m_cacheFile.get(), "schema", "version", static_cast<unsigned>(gSchemaVersion));
@@ -130,13 +139,15 @@ void PluginInfoCache::updatePluginInfo(const String& pluginPath, const PluginMod
 
     g_key_file_set_boolean(m_cacheFile.get(), pluginGroup.data(), "requires-gtk2", plugin.requiresGtk2);
 
-    // Save the cache file in an idle to make sure it happens in the main thread and
-    // it's done only once when this is called multiple times in a very short time.
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_saveToFileIdle.isScheduled())
-        return;
+    if (m_cachePath && !m_readOnlyMode) {
+        // Save the cache file in an idle to make sure it happens in the main thread and
+        // it's done only once when this is called multiple times in a very short time.
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_saveToFileIdle.isScheduled())
+            return;
 
-    m_saveToFileIdle.schedule("[WebKit] PluginInfoCache::saveToFile", std::bind(&PluginInfoCache::saveToFile, this), G_PRIORITY_DEFAULT_IDLE);
+        m_saveToFileIdle.schedule("[WebKit] PluginInfoCache::saveToFile", std::bind(&PluginInfoCache::saveToFile, this), G_PRIORITY_DEFAULT_IDLE);
+    }
 }
 
 } // namespace WebKit

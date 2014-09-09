@@ -97,12 +97,14 @@ static void repatchCall(CodeBlock* codeblock, CodeLocationCall call, FunctionPtr
     repatchCall(repatchBuffer, call, newCalleeFunction);
 }
 
-static void repatchByIdSelfAccess(VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, Structure* structure, const Identifier& propertyName, PropertyOffset offset,
-    const FunctionPtr &slowPathFunction, bool compact)
+static void repatchByIdSelfAccess(
+    VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, Structure* structure,
+    const Identifier& propertyName, PropertyOffset offset, const FunctionPtr &slowPathFunction,
+    bool compact)
 {
     if (structure->typeInfo().newImpurePropertyFiresWatchpoints())
         vm.registerWatchpointForImpureProperty(propertyName, stubInfo.addWatchpoint(codeBlock));
-
+    
     RepatchBuffer repatchBuffer(codeBlock);
 
     // Only optimize once!
@@ -355,8 +357,10 @@ static void generateByIdStub(
                 failureCases, scratchGPR);
             currStructure = it->get();
         }
+        ASSERT(protoObject->structure() == currStructure);
     }
     
+    currStructure->startWatchingPropertyForReplacements(*vm, offset);
     GPRReg baseForAccessGPR;
     if (chain) {
         // We could have clobbered scratchGPR earlier, so we have to reload from baseGPR to get the target.
@@ -743,9 +747,10 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
         && slot.isCacheableValue()
         && !slot.watchpointSet()
         && MacroAssembler::isCompactPtrAlignedAddressOffset(maxOffsetRelativeToPatchedStorage(slot.cachedOffset()))) {
-            repatchByIdSelfAccess(*vm, codeBlock, stubInfo, structure, propertyName, slot.cachedOffset(), operationGetByIdBuildList, true);
-            stubInfo.initGetByIdSelf(*vm, codeBlock->ownerExecutable(), structure);
-            return RetryCacheLater;
+        structure->startWatchingPropertyForReplacements(*vm, slot.cachedOffset());
+        repatchByIdSelfAccess(*vm, codeBlock, stubInfo, structure, propertyName, slot.cachedOffset(), operationGetByIdBuildList, true);
+        stubInfo.initGetByIdSelf(*vm, codeBlock->ownerExecutable(), structure);
+        return RetryCacheLater;
     }
 
     repatchCall(codeBlock, stubInfo.callReturnLocation, operationGetByIdBuildList);
@@ -1231,6 +1236,7 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, con
         if (!MacroAssembler::isPtrAlignedAddressOffset(offsetRelativeToPatchedStorage(slot.cachedOffset())))
             return GiveUpOnCache;
 
+        structure->didCachePropertyReplacement(*vm, slot.cachedOffset());
         repatchByIdSelfAccess(*vm, codeBlock, stubInfo, structure, ident, slot.cachedOffset(), appropriateListBuildingPutByIdFunction(slot, putKind), false);
         stubInfo.initPutByIdReplace(*vm, codeBlock->ownerExecutable(), structure);
         return RetryCacheLater;
@@ -1262,7 +1268,7 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, con
         list->addAccess(PutByIdAccess::setter(
             *vm, codeBlock->ownerExecutable(),
             slot.isCacheableSetter() ? PutByIdAccess::Setter : PutByIdAccess::CustomSetter,
-            structure, prototypeChain, slot.customSetter(), stubRoutine));
+            structure, prototypeChain, count, slot.customSetter(), stubRoutine));
 
         RepatchBuffer repatchBuffer(codeBlock);
         repatchBuffer.relink(stubInfo.callReturnLocation.jumpAtOffset(stubInfo.patch.deltaCallToJump), CodeLocationLabel(stubRoutine->code().code()));
@@ -1347,6 +1353,8 @@ static InlineCacheAction tryBuildPutByIdList(ExecState* exec, JSValue baseValue,
             if (list->isFull())
                 return GiveUpOnCache; // Will get here due to recursion.
             
+            structure->didCachePropertyReplacement(*vm, slot.cachedOffset());
+            
             // We're now committed to creating the stub. Mogrify the meta-data accordingly.
             emitPutReplaceStub(
                 exec, baseValue, propertyName, slot, stubInfo, putKind,
@@ -1393,7 +1401,7 @@ static InlineCacheAction tryBuildPutByIdList(ExecState* exec, JSValue baseValue,
         list->addAccess(PutByIdAccess::setter(
             *vm, codeBlock->ownerExecutable(),
             slot.isCacheableSetter() ? PutByIdAccess::Setter : PutByIdAccess::CustomSetter,
-            structure, prototypeChain, slot.customSetter(), stubRoutine));
+            structure, prototypeChain, count, slot.customSetter(), stubRoutine));
 
         RepatchBuffer repatchBuffer(codeBlock);
         repatchBuffer.relink(stubInfo.callReturnLocation.jumpAtOffset(stubInfo.patch.deltaCallToJump), CodeLocationLabel(stubRoutine->code().code()));
@@ -1599,8 +1607,8 @@ void linkSlowFor(
 }
 
 void linkClosureCall(
-    ExecState* exec, CallLinkInfo& callLinkInfo, CodeBlock* calleeCodeBlock,
-    Structure* structure, ExecutableBase* executable, MacroAssemblerCodePtr codePtr,
+    ExecState* exec, CallLinkInfo& callLinkInfo, CodeBlock* calleeCodeBlock, 
+    ExecutableBase* executable, MacroAssemblerCodePtr codePtr,
     RegisterPreservationMode registers)
 {
     ASSERT(!callLinkInfo.stub);
@@ -1634,10 +1642,10 @@ void linkClosureCall(
 #endif
     
     slowPath.append(
-        branchStructure(stubJit,
+        stubJit.branch8(
             CCallHelpers::NotEqual,
-            CCallHelpers::Address(calleeGPR, JSCell::structureIDOffset()),
-            structure));
+            CCallHelpers::Address(calleeGPR, JSCell::typeInfoTypeOffset()),
+            CCallHelpers::TrustedImm32(JSFunctionType)));
     
     slowPath.append(
         stubJit.branchPtr(
@@ -1691,7 +1699,7 @@ void linkClosureCall(
             ("Closure call stub for %s, return point %p, target %p (%s)",
                 toCString(*callerCodeBlock).data(), callLinkInfo.callReturnLocation.labelAtOffset(0).executableAddress(),
                 codePtr.executableAddress(), toCString(pointerDump(calleeCodeBlock)).data())),
-        *vm, callerCodeBlock->ownerExecutable(), structure, executable, callLinkInfo.codeOrigin));
+        *vm, callerCodeBlock->ownerExecutable(), executable, callLinkInfo.codeOrigin));
     
     RepatchBuffer repatchBuffer(callerCodeBlock);
     

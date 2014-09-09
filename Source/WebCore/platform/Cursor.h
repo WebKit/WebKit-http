@@ -126,7 +126,7 @@ namespace WebCore {
             Custom
         };
 
-        static const Cursor& fromType(Cursor::Type);
+        WEBCORE_EXPORT static const Cursor& fromType(Cursor::Type);
 
         Cursor()
 #if !PLATFORM(IOS)
@@ -138,16 +138,16 @@ namespace WebCore {
         }
 
 #if !PLATFORM(IOS)
-        Cursor(Image*, const IntPoint& hotSpot);
-        Cursor(const Cursor&);
+        WEBCORE_EXPORT Cursor(Image*, const IntPoint& hotSpot);
+        WEBCORE_EXPORT Cursor(const Cursor&);
 
 #if ENABLE(MOUSE_CURSOR_SCALE)
         // Hot spot is in image pixels.
         Cursor(Image*, const IntPoint& hotSpot, float imageScaleFactor);
 #endif
 
-        ~Cursor();
-        Cursor& operator=(const Cursor&);
+        WEBCORE_EXPORT ~Cursor();
+        WEBCORE_EXPORT Cursor& operator=(const Cursor&);
 
         explicit Cursor(Type);
         Type type() const
@@ -161,7 +161,7 @@ namespace WebCore {
         // Image scale in image pixels per logical (UI) pixel.
         float imageScaleFactor() const { return m_imageScaleFactor; }
 #endif
-        PlatformCursor platformCursor() const;
+        WEBCORE_EXPORT PlatformCursor platformCursor() const;
 
      private:
         void ensurePlatformCursor() const;
@@ -183,11 +183,11 @@ namespace WebCore {
 
     IntPoint determineHotSpot(Image*, const IntPoint& specifiedHotSpot);
     
-    const Cursor& pointerCursor();
+    WEBCORE_EXPORT const Cursor& pointerCursor();
     const Cursor& crossCursor();
-    const Cursor& handCursor();
+    WEBCORE_EXPORT const Cursor& handCursor();
     const Cursor& moveCursor();
-    const Cursor& iBeamCursor();
+    WEBCORE_EXPORT const Cursor& iBeamCursor();
     const Cursor& waitCursor();
     const Cursor& helpCursor();
     const Cursor& eastResizeCursor();

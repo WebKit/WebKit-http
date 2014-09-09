@@ -181,7 +181,7 @@ GraphicsContext::GraphicsContext(cairo_t* cr)
     m_data = new GraphicsContextPlatformPrivateToplevel(new PlatformContextCairo(cr));
 }
 
-void GraphicsContext::platformInit(PlatformContextCairo* platformContext, bool)
+void GraphicsContext::platformInit(PlatformContextCairo* platformContext)
 {
     m_data = new GraphicsContextPlatformPrivate(platformContext);
     if (platformContext)
@@ -344,7 +344,7 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
 }
 
 // This method is only used to draw the little circles used in lists.
-void GraphicsContext::drawEllipse(const IntRect& rect)
+void GraphicsContext::drawEllipse(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;

@@ -1,12 +1,12 @@
 set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
+    "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/gamepad"
     "${WEBCORE_DIR}/Modules/gamepad/deprecated"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
-    "${WEBCORE_DIR}/Modules/indexeddb/leveldb"
     "${WEBCORE_DIR}/Modules/indieui"
     "${WEBCORE_DIR}/Modules/mediacontrols/"
     "${WEBCORE_DIR}/Modules/mediasource"
@@ -29,7 +29,9 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/c"
     "${WEBCORE_DIR}/bridge/jsc"
     "${WEBCORE_DIR}/crypto"
+    "${WEBCORE_DIR}/crypto/algorithms"
     "${WEBCORE_DIR}/crypto/keys"
+    "${WEBCORE_DIR}/crypto/parameters"
     "${WEBCORE_DIR}/css"
     "${WEBCORE_DIR}/cssjit"
     "${WEBCORE_DIR}/dom"
@@ -74,7 +76,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/image-decoders/jpeg"
     "${WEBCORE_DIR}/platform/image-decoders/png"
     "${WEBCORE_DIR}/platform/image-decoders/webp"
-    "${WEBCORE_DIR}/platform/leveldb"
     "${WEBCORE_DIR}/platform/mediastream"
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/platform/network"
@@ -118,6 +119,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/runtime"
     "${JAVASCRIPTCORE_DIR}/yarr"
     "${WTF_DIR}"
+    "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
@@ -127,6 +129,7 @@ set(WebCore_INCLUDE_DIRECTORIES
 )
 
 set(WebCore_IDL_INCLUDES
+    Modules/airplay
     Modules/battery
     Modules/encryptedmedia
     Modules/gamepad
@@ -162,14 +165,18 @@ set(WebCore_IDL_INCLUDES
     xml
 )
 
-set(WebCore_IDL_FILES
+set(WebCore_NON_SVG_IDL_FILES
+    Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl
+
     Modules/battery/BatteryManager.idl
     Modules/battery/NavigatorBattery.idl
 
-    Modules/gamepad/Gamepad.idl
-    Modules/gamepad/GamepadButton.idl
-    Modules/gamepad/GamepadEvent.idl
-    Modules/gamepad/NavigatorGamepad.idl
+# FIXME: These were causing name conflicts on Mac, and the Gamepad API is not finished yet.
+# https://bugs.webkit.org/show_bug.cgi?id=135858
+#   Modules/gamepad/Gamepad.idl
+#   Modules/gamepad/GamepadButton.idl
+#   Modules/gamepad/GamepadEvent.idl
+#   Modules/gamepad/NavigatorGamepad.idl
 
     Modules/gamepad/deprecated/Gamepad.idl
     Modules/gamepad/deprecated/GamepadList.idl
@@ -197,6 +204,8 @@ set(WebCore_IDL_FILES
     Modules/indexeddb/IDBTransaction.idl
     Modules/indexeddb/IDBVersionChangeEvent.idl
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
+
+    Modules/indieui/UIRequestEvent.idl
 
     Modules/mediacontrols/MediaControlsHost.idl
 
@@ -326,6 +335,7 @@ set(WebCore_IDL_FILES
     css/CSSStyleRule.idl
     css/CSSStyleSheet.idl
     css/CSSSupportsRule.idl
+    css/CSSUnknownRule.idl
     css/CSSValue.idl
     css/CSSValueList.idl
     css/Counter.idl
@@ -578,9 +588,6 @@ set(WebCore_IDL_FILES
     page/PerformanceResourceTiming.idl
     page/PerformanceTiming.idl
     page/Screen.idl
-    page/SpeechInputEvent.idl
-    page/SpeechInputResult.idl
-    page/SpeechInputResultList.idl
     page/WebKitPoint.idl
     page/WebKitNamespace.idl
     page/UserMessageHandlersNamespace.idl
@@ -597,6 +604,29 @@ set(WebCore_IDL_FILES
     storage/Storage.idl
     storage/StorageEvent.idl
 
+    workers/AbstractWorker.idl
+    workers/DedicatedWorkerGlobalScope.idl
+    workers/SharedWorker.idl
+    workers/SharedWorkerGlobalScope.idl
+    workers/Worker.idl
+    workers/WorkerGlobalScope.idl
+    workers/WorkerLocation.idl
+
+    xml/DOMParser.idl
+    xml/XMLHttpRequest.idl
+    xml/XMLHttpRequestException.idl
+    xml/XMLHttpRequestProgressEvent.idl
+    xml/XMLHttpRequestUpload.idl
+    xml/XMLSerializer.idl
+    xml/XPathEvaluator.idl
+    xml/XPathException.idl
+    xml/XPathExpression.idl
+    xml/XPathNSResolver.idl
+    xml/XPathResult.idl
+    xml/XSLTProcessor.idl
+)
+
+set(WebCore_SVG_IDL_FILES
     svg/SVGAElement.idl
     svg/SVGAltGlyphDefElement.idl
     svg/SVGAltGlyphElement.idl
@@ -746,30 +776,29 @@ set(WebCore_IDL_FILES
     svg/SVGViewSpec.idl
     svg/SVGZoomAndPan.idl
     svg/SVGZoomEvent.idl
+)
 
-    workers/AbstractWorker.idl
-    workers/DedicatedWorkerGlobalScope.idl
-    workers/SharedWorker.idl
-    workers/SharedWorkerGlobalScope.idl
-    workers/Worker.idl
-    workers/WorkerGlobalScope.idl
-    workers/WorkerLocation.idl
-
-    xml/DOMParser.idl
-    xml/XMLHttpRequest.idl
-    xml/XMLHttpRequestException.idl
-    xml/XMLHttpRequestProgressEvent.idl
-    xml/XMLHttpRequestUpload.idl
-    xml/XMLSerializer.idl
-    xml/XPathEvaluator.idl
-    xml/XPathException.idl
-    xml/XPathExpression.idl
-    xml/XPathNSResolver.idl
-    xml/XPathResult.idl
-    xml/XSLTProcessor.idl
+set(WebCore_IDL_FILES
+    ${WebCore_NON_SVG_IDL_FILES}
+    ${WebCore_SVG_IDL_FILES}
 )
 
 set(WebCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
+
+set(WebCore_INSPECTOR_PROTOCOL_SCRIPTS
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/generate-inspector-protocol-bindings.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generate_backend_commands.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generate_backend_dispatcher_header.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generate_backend_dispatcher_implementation.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generate_frontend_dispatcher_header.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generate_frontend_dispatcher_implementation.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generate_protocol_types_header.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generate_protocol_types_implementation.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generator.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/generator_templates.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/__init__.py
+    ${WebCore_INSPECTOR_SCRIPTS_DIR}/codegen/models.py
+)
 
 set(WebCore_INSPECTOR_DOMAINS
     ${WEBCORE_DIR}/inspector/protocol/ApplicationCache.json
@@ -786,6 +815,8 @@ set(WebCore_INSPECTOR_DOMAINS
 )
 
 set(WebCore_SOURCES
+    Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.cpp
+
     Modules/battery/BatteryController.cpp
     Modules/battery/BatteryManager.cpp
     Modules/battery/BatteryStatus.cpp
@@ -831,14 +862,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/PageGroupIndexedDatabase.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
-
-    Modules/indexeddb/leveldb/IDBBackingStoreCursorLevelDB.cpp
-    Modules/indexeddb/leveldb/IDBBackingStoreLevelDB.cpp
-    Modules/indexeddb/leveldb/IDBBackingStoreTransactionLevelDB.cpp
-    Modules/indexeddb/leveldb/IDBFactoryBackendLevelDB.cpp
-    Modules/indexeddb/leveldb/IDBIndexWriterLevelDB.cpp
-    Modules/indexeddb/leveldb/IDBLevelDBCoding.cpp
-    Modules/indexeddb/leveldb/IDBServerConnectionLevelDB.cpp
 
     Modules/mediacontrols/MediaControlsHost.cpp
 
@@ -1783,7 +1806,6 @@ set(WebCore_SOURCES
     inspector/NetworkResourcesData.cpp
     inspector/PageConsoleAgent.cpp
     inspector/PageDebuggerAgent.cpp
-    inspector/PageProfilerAgent.cpp
     inspector/PageRuntimeAgent.cpp
     inspector/PageScriptDebugServer.cpp
     inspector/TimelineRecordFactory.cpp
@@ -1791,11 +1813,9 @@ set(WebCore_SOURCES
     inspector/WebDebuggerAgent.cpp
     inspector/WebInjectedScriptHost.cpp
     inspector/WebInjectedScriptManager.cpp
-    inspector/WebProfilerAgent.cpp
     inspector/WorkerConsoleAgent.cpp
     inspector/WorkerDebuggerAgent.cpp
     inspector/WorkerInspectorController.cpp
-    inspector/WorkerProfilerAgent.cpp
     inspector/WorkerRuntimeAgent.cpp
 
     loader/CookieJar.cpp
@@ -1918,7 +1938,7 @@ set(WebCore_SOURCES
     page/OriginAccessEntry.cpp
     page/Page.cpp
     page/PageActivityAssertionToken.cpp
-    page/PageConsole.cpp
+    page/PageConsoleClient.cpp
     page/PageGroup.cpp
     page/PageGroupLoadDeferrer.cpp
     page/PageSerializer.cpp
@@ -1937,10 +1957,6 @@ set(WebCore_SOURCES
     page/SecurityPolicy.cpp
     page/Settings.cpp
     page/SpatialNavigation.cpp
-    page/SpeechInput.cpp
-    page/SpeechInputEvent.cpp
-    page/SpeechInputResult.cpp
-    page/SpeechInputResultList.cpp
     page/SuspendableTimer.cpp
     page/UserContentController.cpp
     page/UserContentURLPattern.cpp
@@ -2091,7 +2107,6 @@ set(WebCore_SOURCES
     platform/graphics/Image.cpp
     platform/graphics/ImageBuffer.cpp
     platform/graphics/ImageOrientation.cpp
-    platform/graphics/ImageSource.cpp
     platform/graphics/IntPoint.cpp
     platform/graphics/IntRect.cpp
     platform/graphics/IntSize.cpp
@@ -2165,26 +2180,6 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformState.cpp
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
-
-    platform/image-decoders/ImageDecoder.cpp
-
-    platform/image-decoders/bmp/BMPImageDecoder.cpp
-    platform/image-decoders/bmp/BMPImageReader.cpp
-
-    platform/image-decoders/gif/GIFImageDecoder.cpp
-    platform/image-decoders/gif/GIFImageReader.cpp
-
-    platform/image-decoders/ico/ICOImageDecoder.cpp
-
-    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-
-    platform/image-decoders/png/PNGImageDecoder.cpp
-
-    platform/image-decoders/webp/WEBPImageDecoder.cpp
-
-    platform/leveldb/LevelDBDatabase.cpp
-    platform/leveldb/LevelDBTransaction.cpp
-    platform/leveldb/LevelDBWriteBatch.cpp
 
     platform/mediastream/MediaStreamCenter.cpp
     platform/mediastream/MediaStreamPrivate.cpp
@@ -2319,7 +2314,6 @@ set(WebCore_SOURCES
     rendering/RenderImageResource.cpp
     rendering/RenderImageResourceStyleImage.cpp
     rendering/RenderInline.cpp
-    rendering/RenderInputSpeech.cpp
     rendering/RenderLayer.cpp
     rendering/RenderLayerBacking.cpp
     rendering/RenderLayerCompositor.cpp
@@ -2442,6 +2436,7 @@ set(WebCore_SOURCES
     rendering/style/StyleMultiColData.cpp
     rendering/style/StyleRareInheritedData.cpp
     rendering/style/StyleRareNonInheritedData.cpp
+    rendering/style/StyleScrollSnapPoints.cpp
     rendering/style/StyleSurroundData.cpp
     rendering/style/StyleTransformData.cpp
     rendering/style/StyleVisualData.cpp
@@ -2984,58 +2979,6 @@ list(APPEND WebCore_LIBRARIES
     ${ICU_LIBRARIES}
 )
 
-if (WTF_USE_LEVELDB)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${THIRDPARTY_DIR}/leveldb/include"
-        "${THIRDPARTY_DIR}/leveldb"
-    )
-    list(APPEND LEVELDB_SOURCES
-        ${THIRDPARTY_DIR}/leveldb/db/builder.cc
-        ${THIRDPARTY_DIR}/leveldb/db/c.cc
-        ${THIRDPARTY_DIR}/leveldb/db/db_impl.cc
-        ${THIRDPARTY_DIR}/leveldb/db/db_iter.cc
-        ${THIRDPARTY_DIR}/leveldb/db/dbformat.cc
-        ${THIRDPARTY_DIR}/leveldb/db/filename.cc
-        ${THIRDPARTY_DIR}/leveldb/db/log_reader.cc
-        ${THIRDPARTY_DIR}/leveldb/db/log_writer.cc
-        ${THIRDPARTY_DIR}/leveldb/db/memtable.cc
-        ${THIRDPARTY_DIR}/leveldb/db/repair.cc
-        ${THIRDPARTY_DIR}/leveldb/db/table_cache.cc
-        ${THIRDPARTY_DIR}/leveldb/db/version_edit.cc
-        ${THIRDPARTY_DIR}/leveldb/db/version_set.cc
-        ${THIRDPARTY_DIR}/leveldb/db/write_batch.cc
-
-        ${THIRDPARTY_DIR}/leveldb/helpers/memenv/memenv.cc
-
-        ${THIRDPARTY_DIR}/leveldb/port/port_posix.cc
-
-        ${THIRDPARTY_DIR}/leveldb/table/block.cc
-        ${THIRDPARTY_DIR}/leveldb/table/block_builder.cc
-        ${THIRDPARTY_DIR}/leveldb/table/filter_block.cc
-        ${THIRDPARTY_DIR}/leveldb/table/format.cc
-        ${THIRDPARTY_DIR}/leveldb/table/iterator.cc
-        ${THIRDPARTY_DIR}/leveldb/table/merger.cc
-        ${THIRDPARTY_DIR}/leveldb/table/table.cc
-        ${THIRDPARTY_DIR}/leveldb/table/table_builder.cc
-        ${THIRDPARTY_DIR}/leveldb/table/two_level_iterator.cc
-
-        ${THIRDPARTY_DIR}/leveldb/util/arena.cc
-        ${THIRDPARTY_DIR}/leveldb/util/bloom.cc
-        ${THIRDPARTY_DIR}/leveldb/util/cache.cc
-        ${THIRDPARTY_DIR}/leveldb/util/coding.cc
-        ${THIRDPARTY_DIR}/leveldb/util/comparator.cc
-        ${THIRDPARTY_DIR}/leveldb/util/crc32c.cc
-        ${THIRDPARTY_DIR}/leveldb/util/env.cc
-        ${THIRDPARTY_DIR}/leveldb/util/env_posix.cc
-        ${THIRDPARTY_DIR}/leveldb/util/filter_policy.cc
-        ${THIRDPARTY_DIR}/leveldb/util/hash.cc
-        ${THIRDPARTY_DIR}/leveldb/util/histogram.cc
-        ${THIRDPARTY_DIR}/leveldb/util/logging.cc
-        ${THIRDPARTY_DIR}/leveldb/util/options.cc
-        ${THIRDPARTY_DIR}/leveldb/util/status.cc
-    )
-endif ()
-
 if (WTF_USE_3D_GRAPHICS)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${THIRDPARTY_DIR}/ANGLE/src"
@@ -3267,27 +3210,25 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/generate-combined-inspector-json.py ${WebCore_INSPECTOR_DOMAINS} > ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json
     VERBATIM)
 
-# All Web Inspector generated files are created with this one call to CodeGeneratorInspector.pm
+# All Web Inspector generated files are created with this one call to generate-inspector-protocol-bindings.py
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendDispatchers.cpp
            ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendDispatchers.h
            ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebFrontendDispatchers.cpp
            ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebFrontendDispatchers.h
-           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebTypeBuilders.cpp
-           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebTypeBuilders.h
+           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebProtocolTypes.cpp
+           ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebProtocolTypes.h
            ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorWebBackendCommands.js
     MAIN_DEPENDENCY ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json
-    DEPENDS ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py
-            ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspectorStrings.py
+    DEPENDS ${WebCore_INSPECTOR_PROTOCOL_SCRIPTS}
             ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json
-            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorJSTypeBuilders.h
-    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/CodeGeneratorInspector.py ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json --output_h_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_cpp_dir "${DERIVED_SOURCES_WEBCORE_DIR}" --output_js_dir "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol" --output_type Web --write_always
+    COMMAND ${PYTHON_EXECUTABLE} ${WebCore_INSPECTOR_SCRIPTS_DIR}/generate-inspector-protocol-bindings.py --outputDir "${DERIVED_SOURCES_WEBCORE_DIR}" --framework WebCore ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWeb.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorJS.json && cp ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendCommands.js ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol
     VERBATIM)
 
 list(APPEND WebCore_SOURCES
     ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebBackendDispatchers.cpp
     ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebFrontendDispatchers.cpp
-    ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebTypeBuilders.cpp
+    ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorWebProtocolTypes.cpp
 )
 
 
@@ -3486,7 +3427,7 @@ GENERATE_BINDINGS(WebCore_SOURCES
     "${WEBCORE_DIR}"
     "${IDL_INCLUDES}"
     "${FEATURE_DEFINES_JAVASCRIPT}"
-    ${DERIVED_SOURCES_WEBCORE_DIR} JS JS
+    ${DERIVED_SOURCES_WEBCORE_DIR} JS JS cpp
     ${IDL_ATTRIBUTES_FILE}
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
     ${WINDOW_CONSTRUCTORS_FILE}
@@ -3499,7 +3440,7 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
     "${WEBCORE_DIR}"
     "${IDL_INCLUDES}"
     "${FEATURE_DEFINES_JAVASCRIPT}"
-    ${DERIVED_SOURCES_WEBCORE_DIR} JS JS
+    ${DERIVED_SOURCES_WEBCORE_DIR} JS JS cpp
     ${IDL_ATTRIBUTES_FILE}
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
     ${WINDOW_CONSTRUCTORS_FILE}
@@ -3543,9 +3484,6 @@ endif ()
 
 # SVG extra defines need to map to a numerical value for correct preprocessing of svgtags.in.
 set(SVG_EXTRA_DEFINES "")
-if (ENABLE_FILTERS)
-    list(APPEND SVG_EXTRA_DEFINES "ENABLE_FILTERS=1")
-endif ()
 if (ENABLE_SVG_FONTS)
     list(APPEND SVG_EXTRA_DEFINES "ENABLE_SVG_FONTS=1")
 endif ()
@@ -3584,7 +3522,6 @@ include_directories(${WebCore_INCLUDE_DIRECTORIES} ${WebCoreTestSupport_INCLUDE_
 add_library(WebCore ${WebCore_LIBRARY_TYPE} ${WebCore_SOURCES})
 set_target_properties(WebCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_WebCore")
 set_target_properties(WebCore PROPERTIES FOLDER "WebCore")
-set_target_properties(WebCore PROPERTIES LINK_INTERFACE_LIBRARIES "")
 
 if (WebCore_OUTPUT_NAME)
     set_target_properties(WebCore PROPERTIES OUTPUT_NAME ${WebCore_OUTPUT_NAME})
@@ -3598,18 +3535,15 @@ if (WebCoreTestSupport_OUTPUT_NAME)
     set_target_properties(WebCoreTestSupport PROPERTIES OUTPUT_NAME ${WebCoreTestSupport_OUTPUT_NAME})
 endif ()
 
-if (WTF_USE_LEVELDB)
-    add_library(leveldb STATIC ${LEVELDB_SOURCES})
-    target_link_libraries(leveldb ${CMAKE_THREAD_LIBS_INIT})
-    set_target_properties(leveldb PROPERTIES COMPILE_DEFINITIONS "LEVELDB_PLATFORM_POSIX=1 OS_LINUX=1")
-    list(APPEND WebCore_LIBRARIES leveldb)
-    WEBKIT_SET_EXTRA_COMPILER_FLAGS(leveldb IGNORECXX_WARNINGS)
-endif ()
-
 if (WTF_USE_3D_GRAPHICS)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
     set_target_properties(ANGLESupport PROPERTIES FOLDER "WebCore")
-    target_include_directories(ANGLESupport PRIVATE "${THIRDPARTY_DIR}/ANGLE/include")
+    set_property(
+        TARGET ANGLESupport
+        APPEND
+        PROPERTY INCLUDE_DIRECTORIES
+            "${THIRDPARTY_DIR}/ANGLE/include"
+    )
     list(APPEND WebCore_LIBRARIES ANGLESupport)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)
 endif ()

@@ -59,8 +59,11 @@ GraphicsLayerTextureMapper::GraphicsLayerTextureMapper(GraphicsLayerClient& clie
 
 void GraphicsLayerTextureMapper::notifyChange(ChangeMask changeMask)
 {
+    bool flushRequired = m_changeMask == NoChanges;
     m_changeMask |= changeMask;
-    client().notifyFlushRequired(this);
+
+    if (flushRequired)
+        client().notifyFlushRequired(this);
 }
 
 void GraphicsLayerTextureMapper::setName(const String& name)
@@ -368,17 +371,17 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
         m_compositedImage = 0;
     }
 
-    setContentsToMedia(m_compositedImage.get());
+    setContentsToPlatformLayer(m_compositedImage.get(), ContentsLayerForImage);
     notifyChange(ContentChange);
     GraphicsLayer::setContentsToImage(image);
 }
 
-void GraphicsLayerTextureMapper::setContentsToMedia(TextureMapperPlatformLayer* media)
+void GraphicsLayerTextureMapper::setContentsToPlatformLayer(TextureMapperPlatformLayer* media, ContentsLayerPurpose purpose)
 {
     if (media == m_contentsLayer)
         return;
 
-    GraphicsLayer::setContentsToMedia(media);
+    GraphicsLayer::setContentsToPlatformLayer(media, purpose);
     notifyChange(ContentChange);
 
     if (m_contentsLayer)
@@ -537,10 +540,8 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     if (m_changeMask & BackgroundColorChange)
         m_layer->setSolidColor(solidColor());
 
-#if ENABLE(CSS_FILTERS)
     if (m_changeMask & FilterChange)
         m_layer->setFilters(filters());
-#endif
 
     if (m_changeMask & BackingStoreChange)
         m_layer->setBackingStore(m_backingStore);
@@ -558,7 +559,7 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
         m_layer->setAnimations(m_animations);
 
     if (m_changeMask & AnimationStarted)
-        client().notifyAnimationStarted(this, m_animationStartTime);
+        client().notifyAnimationStarted(this, "", m_animationStartTime);
 
     if (m_changeMask & FixedToViewporChange)
         m_layer->setFixedToViewport(fixedToViewport());
@@ -662,7 +663,6 @@ void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
     m_animations.remove(animationName);
 }
 
-#if ENABLE(CSS_FILTERS)
 bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
 {
     TextureMapper* textureMapper = m_layer->textureMapper();
@@ -672,7 +672,6 @@ bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
     notifyChange(FilterChange);
     return GraphicsLayer::setFilters(filters);
 }
-#endif
 
 void GraphicsLayerTextureMapper::setFixedToViewport(bool fixed)
 {

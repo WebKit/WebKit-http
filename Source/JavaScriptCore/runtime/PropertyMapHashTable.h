@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2014 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -82,13 +82,11 @@ struct PropertyMapEntry {
     StringImpl* key;
     PropertyOffset offset;
     unsigned attributes;
-    WriteBarrier<JSCell> specificValue;
 
-    PropertyMapEntry(VM& vm, JSCell* owner, StringImpl* key, PropertyOffset offset, unsigned attributes, JSCell* specificValue)
+    PropertyMapEntry(StringImpl* key, PropertyOffset offset, unsigned attributes)
         : key(key)
         , offset(offset)
         , attributes(attributes)
-        , specificValue(vm, owner, specificValue, WriteBarrier<JSCell>::MayBeNull)
     {
     }
 };
@@ -147,8 +145,6 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
     }
 
-    static void visitChildren(JSCell*, SlotVisitor&);
-
     typedef StringImpl* KeyType;
     typedef PropertyMapEntry ValueType;
 
@@ -175,7 +171,6 @@ public:
 
     // Find a value in the table.
     find_iterator find(const KeyType&);
-    find_iterator findWithString(const KeyType&);
     ValueType* get(const KeyType&);
     // Add a value to the table
     enum EffectOnPropertyOffset { PropertyOffsetMayChange, PropertyOffsetMustNotChange };
@@ -342,35 +337,6 @@ inline PropertyTable::ValueType* PropertyTable::get(const KeyType& key)
             return nullptr;
         if (key == table()[entryIndex - 1].key)
             return &table()[entryIndex - 1];
-
-#if DUMP_PROPERTYMAP_STATS
-        ++propertyMapHashTableStats->numLookupProbing;
-#endif
-
-        if (!step)
-            step = WTF::doubleHash(key->existingHash()) | 1;
-        hash += step;
-    }
-}
-
-inline PropertyTable::find_iterator PropertyTable::findWithString(const KeyType& key)
-{
-    ASSERT(key);
-    ASSERT(!key->isAtomic() && !key->hasHash());
-    unsigned hash = key->hash();
-    unsigned step = 0;
-
-#if DUMP_PROPERTYMAP_STATS
-    ++propertyMapHashTableStats->numLookups;
-#endif
-
-    while (true) {
-        unsigned entryIndex = m_index[hash & m_indexMask];
-        if (entryIndex == EmptyEntryIndex)
-            return std::make_pair((ValueType*)0, hash & m_indexMask);
-        const KeyType& keyInMap = table()[entryIndex - 1].key;
-        if (equal(key, keyInMap) && keyInMap->isAtomic())
-            return std::make_pair(&table()[entryIndex - 1], hash & m_indexMask);
 
 #if DUMP_PROPERTYMAP_STATS
         ++propertyMapHashTableStats->numLookupProbing;

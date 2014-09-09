@@ -1,3 +1,72 @@
+2014-09-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove some PLATFORM(IOS) code in Color.h/cpp
+        https://bugs.webkit.org/show_bug.cgi?id=136582
+
+        Reviewed by Dan Bates.
+        
+        createCGColorWithDeviceWhite() is only used here so make it a local static function.
+
+        * WebView/WebPDFViewIOS.mm:
+        (createCGColorWithDeviceWhite):
+
+2014-09-04  Pratik Solanki  <psolanki@apple.com>
+
+        Remove iOS specific disk image cache
+        https://bugs.webkit.org/show_bug.cgi?id=136517
+
+        Reviewed by Antti Koivisto.
+
+        Disk image cache code unnecessarily complicates SharedBuffer implementation. We can remove
+        this now since we don't enable it in WebKit2 on iOS.
+
+        * WebCoreSupport/WebDiskImageCacheClientIOS.h: Removed.
+        * WebCoreSupport/WebDiskImageCacheClientIOS.mm: Removed.
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder finishedLoadingWithDataSource:]):
+        (-[WebPDFViewPlaceholder dataSourceMemoryMapped]): Deleted.
+        (-[WebPDFViewPlaceholder dataSourceMemoryMapFailed]): Deleted.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unnecessary (and unnecessarily iOS-specific) setStrokeAndFillColor
+        https://bugs.webkit.org/show_bug.cgi?id=136416
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebPDFViewIOS.mm:
+        (-[WebPDFView drawPage:]):
+        (-[WebPDFView drawRect:]):
+        * WebView/WebPlainWhiteView.mm:
+        We only end up filling, so only set the fill color.
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement paint flashing in the WK1 InspectorOverlay page
+        https://bugs.webkit.org/show_bug.cgi?id=136138
+
+        Reviewed by Sam Weinig, Joseph Pecoraro.
+
+        Implement paint flashing for the WebKit1 InspectorOverlay via a second canvas in the overlay page.
+        We avoid allocating backing store for this canvas until we have paint rects.
+        
+        Because this overlay page is weird and doesn't know how to paint itself, InspectorOverlay manages
+        an array of rects, and pushes them to the page when they change, before forcing a paint.
+        
+        Because iOS doesn't use the InspectorOverlay page, stub out setShowPaintRects on its
+        WebKit WebInspectorClient, but don't yet implement paint flashing there.
+
+        * WebCoreSupport/WebInspectorClientIOS.mm:
+        (WebInspectorClient::setShowPaintRects):
+        (WebInspectorClient::showPaintRect):
+
+2014-08-18  Andy Estes  <aestes@apple.com>
+
+        Fix the iOS build after  r172709.
+
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder simulateClickOnLinkToURL:]):
+
 2014-07-03  Daniel Bates  <dabates@apple.com>
 
         Add WTF::move()

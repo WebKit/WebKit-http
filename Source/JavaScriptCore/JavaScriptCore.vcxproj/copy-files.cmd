@@ -64,15 +64,17 @@ for %%d in (
 echo Copying Inspector scripts as if they were private headers...
 for %%d in (
     inspector\scripts
+	inspector\scripts\codegen
 ) do (
     xcopy /y /d ..\%%d\* "%PrivateHeadersDirectory%" >NUL
 )
 
 echo Copying Inspector generated files as if they were private headers...
 xcopy /y "%DerivedSourcesDirectory%\InspectorJS.json" "%PrivateHeadersDirectory%" >NUL
-xcopy /y "%DerivedSourcesDirectory%\InspectorJSTypeBuilders.h" "%PrivateHeadersDirectory%" >NUL
+xcopy /y "%DerivedSourcesDirectory%\InspectorJSProtocolTypes.h" "%PrivateHeadersDirectory%" >NUL
 xcopy /y "%DerivedSourcesDirectory%\InspectorJSBackendDispatchers.h" "%PrivateHeadersDirectory%" >NUL
 xcopy /y "%DerivedSourcesDirectory%\InspectorJSFrontendDispatchers.h" "%PrivateHeadersDirectory%" >NUL
+xcopy /y "%DerivedSourcesDirectory%\InspectorJSBackendCommands.js" "%PrivateHeadersDirectory%" >NUL
 
 echo Copying Web Replay scripts as if they were private headers...
 for %%d in (

@@ -339,9 +339,9 @@ public:
     virtual GraphicsDeviceAdapter* graphicsDeviceAdapter() const { return 0; }
 #endif
 
-    virtual bool supportsFullscreenForNode(const Node*) { return false; }
-    virtual void enterFullscreenForNode(Node*) { }
-    virtual void exitFullscreenForNode(Node*) { }
+    virtual bool supportsVideoFullscreen() { return false; }
+    virtual void enterVideoFullscreenForVideoElement(HTMLVideoElement*) { }
+    virtual void exitVideoFullscreen() { }
     virtual bool requiresFullscreenForVideoPlayback() { return false; } 
 
 #if ENABLE(FULLSCREEN_API)
@@ -409,6 +409,10 @@ public:
     virtual void requestPointerUnlock() { }
     virtual bool isPointerLocked() { return false; }
 #endif
+
+    virtual void didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const HitTestResult&) { UNUSED_PARAM(mouseDownPosition); }
+    virtual void didRecognizeLongMousePress() { }
+    virtual void didCancelTrackingPotentialLongMousePress() { }
 
     virtual void logDiagnosticMessage(const String& message, const String& description, const String& status) { UNUSED_PARAM(message); UNUSED_PARAM(description); UNUSED_PARAM(status); }
 

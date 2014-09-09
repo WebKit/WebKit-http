@@ -41,6 +41,7 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
     platform/graphics/GraphicsContext3DPrivate.cpp
+    platform/graphics/ImageSource.cpp
     platform/graphics/OpenGLShims.cpp
     platform/graphics/WOFFFileFormat.cpp
 
@@ -100,7 +101,23 @@ list(APPEND WebCore_SOURCES
 
     platform/gtk/GamepadsGtk.cpp
 
+    platform/image-decoders/ImageDecoder.cpp
+
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
+
+    platform/image-decoders/gif/GIFImageDecoder.cpp
+    platform/image-decoders/gif/GIFImageReader.cpp
+
+    platform/image-decoders/ico/ICOImageDecoder.cpp
+
+    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
+
+    platform/image-decoders/bmp/BMPImageDecoder.cpp
+    platform/image-decoders/bmp/BMPImageReader.cpp
+
+    platform/image-decoders/png/PNGImageDecoder.cpp
+
+    platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/linux/GamepadDeviceLinux.cpp
 
@@ -220,15 +237,8 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/PlatformMouseEventGtk.cpp
     platform/gtk/PlatformScreenGtk.cpp
     platform/gtk/PlatformWheelEventGtk.cpp
-    platform/gtk/PopupMenuGtk.cpp
     platform/gtk/RedirectedXCompositeWindow.cpp
-    platform/gtk/RenderThemeGtk.cpp
-    platform/gtk/RenderThemeGtk2.cpp
-    platform/gtk/RenderThemeGtk3.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
-    platform/gtk/ScrollbarThemeGtk2.cpp
-    platform/gtk/ScrollbarThemeGtk3.cpp
-    platform/gtk/SearchPopupMenuGtk.cpp
     platform/gtk/SharedBufferGtk.cpp
     platform/gtk/SharedTimerGtk.cpp
     platform/gtk/SoundGtk.cpp
@@ -237,7 +247,8 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/WebKitAuthenticationWidget.cpp
     platform/gtk/WidgetBackingStoreGtkX11.cpp
     platform/gtk/WidgetGtk.cpp
-    platform/gtk/WidgetRenderingContext.cpp
+
+    rendering/RenderThemeGtk.cpp
 )
 
 if (WTF_USE_GEOCLUE2)
@@ -257,7 +268,7 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
 
 set(WebCore_USER_AGENT_SCRIPTS
     ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
-    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsApple.js
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsGtk.js
 )
 
@@ -382,8 +393,8 @@ if (WTF_USE_EGL)
     )
 endif ()
 
-if (ENABLE_WEBKIT2)
-    # WebKit2 needs a version of WebCore compiled against GTK+2, so we've isolated all the GTK+
+if (ENABLE_PLUGIN_PROCESS_GTK2)
+    # WebKitPluginProcess2 needs a version of WebCore compiled against GTK+2, so we've isolated all the GTK+
     # dependent files into a separate library which can be used to construct a GTK+2 WebCore
     # for the plugin process.
     add_library(WebCorePlatformGTK2 ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
@@ -405,6 +416,24 @@ if (ENABLE_WEBKIT2)
          ${WebCore_LIBRARIES}
          ${GTK2_LIBRARIES}
          ${GDK2_LIBRARIES}
+    )
+endif ()
+
+# Wayland protocol extension.
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitGtkWaylandClientProtocol.c
+    DEPENDS ${WEBCORE_DIR}/platform/graphics/wayland/WebKitGtkWaylandClientProtocol.xml
+    COMMAND wayland-scanner server-header < ${WEBCORE_DIR}/platform/graphics/wayland/WebKitGtkWaylandClientProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitGtkWaylandServerProtocol.h
+    COMMAND wayland-scanner client-header < ${WEBCORE_DIR}/platform/graphics/wayland/WebKitGtkWaylandClientProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitGtkWaylandClientProtocol.h
+    COMMAND wayland-scanner code < ${WEBCORE_DIR}/platform/graphics/wayland/WebKitGtkWaylandClientProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitGtkWaylandClientProtocol.c
+)
+
+if (ENABLE_WAYLAND_TARGET)
+    list(APPEND WebCorePlatformGTK_SOURCES
+        platform/graphics/wayland/WaylandEventSource.cpp
+        platform/graphics/wayland/WaylandSurface.cpp
+
+        ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitGtkWaylandClientProtocol.c
     )
 endif ()
 
@@ -713,7 +742,7 @@ GENERATE_BINDINGS(GObjectDOMBindings_SOURCES
     "${IDL_INCLUDES}"
     "${GOBJECT_DOM_BINDINGS_FEATURES_DEFINES}"
     ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}
-    WebKitDOM GObject
+    WebKitDOM GObject cpp
     ${IDL_ATTRIBUTES_FILE}
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
     ${WINDOW_CONSTRUCTORS_FILE}
@@ -768,3 +797,48 @@ list(REMOVE_ITEM GObjectDOMBindings_GIR_HEADERS
 
 # Propagate this variable to the parent scope, so that it can be used in other parts of the build.
 set(GObjectDOMBindings_GIR_HEADERS ${GObjectDOMBindings_GIR_HEADERS} PARENT_SCOPE)
+
+if (ENABLE_SUBTLE_CRYPTO)
+    list(APPEND WebCore_SOURCES
+        crypto/CryptoAlgorithm.cpp
+        crypto/CryptoAlgorithmDescriptionBuilder.cpp
+        crypto/CryptoAlgorithmRegistry.cpp
+        crypto/CryptoKey.cpp
+        crypto/CryptoKeyPair.cpp
+        crypto/SubtleCrypto.cpp
+        crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
+        crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+        crypto/algorithms/CryptoAlgorithmHMAC.cpp
+        crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
+        crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmSHA1.cpp
+        crypto/algorithms/CryptoAlgorithmSHA224.cpp
+        crypto/algorithms/CryptoAlgorithmSHA256.cpp
+        crypto/algorithms/CryptoAlgorithmSHA384.cpp
+        crypto/algorithms/CryptoAlgorithmSHA512.cpp
+        crypto/keys/CryptoKeyAES.cpp
+        crypto/keys/CryptoKeyDataOctetSequence.cpp
+        crypto/keys/CryptoKeyDataRSAComponents.cpp
+        crypto/keys/CryptoKeyHMAC.cpp
+        crypto/keys/CryptoKeySerializationRaw.cpp
+
+        crypto/gtk/CryptoAlgorithmRegistryGtk.cpp
+        crypto/gtk/CryptoAlgorithmAES_CBCGtk.cpp
+        crypto/gtk/CryptoAlgorithmAES_KWGtk.cpp
+        crypto/gtk/CryptoAlgorithmHMACGtk.cpp
+        crypto/gtk/CryptoAlgorithmRSAES_PKCS1_v1_5Gtk.cpp
+        crypto/gtk/CryptoAlgorithmRSA_OAEPGtk.cpp
+        crypto/gtk/CryptoAlgorithmRSASSA_PKCS1_v1_5Gtk.cpp
+        crypto/gtk/CryptoDigestGtk.cpp
+        crypto/gtk/CryptoKeyRSAGtk.cpp
+        crypto/gtk/SerializedCryptoKeyWrapGtk.cpp
+    )
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${GNUTLS_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${GNUTLS_LIBRARIES}
+    )
+endif ()

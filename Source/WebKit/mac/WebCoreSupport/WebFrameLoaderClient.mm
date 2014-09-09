@@ -109,6 +109,7 @@
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MouseEvent.h>
+#import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/PluginViewBase.h>
 #import <WebCore/ProtectionSpace.h>
@@ -345,6 +346,7 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsig
 
     NSURLRequest *currentURLRequest = request.nsURLRequest(UpdateHTTPBody);
     NSURLRequest *newURLRequest = currentURLRequest;
+    ResourceLoadPriority priority = request.priority();
 #if ENABLE(INSPECTOR)
     bool isHiddenFromInspector = request.hiddenFromInspector();
 #endif
@@ -365,6 +367,7 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsig
 #if PLATFORM(IOS)
     request.deprecatedSetMainResourceRequest(isMainResourceRequest);
 #endif
+    request.setPriority(priority);
 }
 
 bool WebFrameLoaderClient::shouldUseCredentialStorage(DocumentLoader* loader, unsigned long identifier)
@@ -1620,7 +1623,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
         NSURL *URL = url;
         NSString *extension = [[URL path] pathExtension];
         if ([extension length] > 0) {
-            type = WKGetMIMETypeForExtension(extension);
+            type = [[NSURLFileTypeMappings sharedMappings] MIMETypeForExtension:extension];
             if (type.isEmpty()) {
                 // If no MIME type is specified, use a plug-in if we have one that can handle the extension.
                 if (WebBasePluginPackage *package = [getWebView(m_webFrame.get()) _pluginForExtension:extension]) {

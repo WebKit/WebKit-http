@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 #include "ContextDestructionObserver.h"
 #include "ExceptionCodePlaceholder.h"
 #include "NodeList.h"
-#include "PageConsole.h"
+#include "PageConsoleClient.h"
 #include <bindings/ScriptValue.h>
 #include <runtime/ArrayBuffer.h>
 #include <runtime/Float32Array.h>
@@ -75,6 +75,7 @@ public:
     String elementRenderTreeAsText(Element*, ExceptionCode&);
 
     String address(Node*);
+    bool nodeNeedsStyleRecalc(Node*, ExceptionCode&);
     String description(Deprecated::ScriptValue);
 
     bool isPreloaded(const String& url);
@@ -107,10 +108,6 @@ public:
 
     Node* treeScopeRootNode(Node*, ExceptionCode&);
     Node* parentTreeScope(Node*, ExceptionCode&);
-    bool hasSelectorForIdInShadow(Element* host, const String& idValue, ExceptionCode&);
-    bool hasSelectorForClassInShadow(Element* host, const String& className, ExceptionCode&);
-    bool hasSelectorForAttributeInShadow(Element* host, const String& attributeName, ExceptionCode&);
-    bool hasSelectorForPseudoClassInShadow(Element* host, const String& pseudoClass, ExceptionCode&);
 
     bool attached(Node*, ExceptionCode&);
 
@@ -134,6 +131,8 @@ public:
     void addTextMatchMarker(const Range*, bool isActive);
     void setMarkedTextMatchesAreHighlighted(bool, ExceptionCode&);
 
+    void invalidateFontCache();
+
     void setScrollViewPosition(long x, long y, ExceptionCode&);
     void setPagination(const String& mode, int gap, ExceptionCode& ec) { setPagination(mode, gap, 0, ec); }
     void setPagination(const String& mode, int gap, int pageLength, ExceptionCode&);
@@ -141,8 +140,6 @@ public:
 
     bool wasLastChangeUserEdit(Element* textField, ExceptionCode&);
     bool elementShouldAutoComplete(Element* inputElement, ExceptionCode&);
-    String suggestedValue(Element* inputElement, ExceptionCode&);
-    void setSuggestedValue(Element* inputElement, const String&, ExceptionCode&);
     void setEditingValue(Element* inputElement, const String&, ExceptionCode&);
     void setAutofilled(Element*, bool enabled, ExceptionCode&);
     void scrollElementToRect(Element*, long x, long y, long w, long h, ExceptionCode&);

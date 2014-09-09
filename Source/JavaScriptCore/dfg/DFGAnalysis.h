@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,6 +53,8 @@ public:
     {
         if (m_valid)
             return;
+        // It's best to run dependent analyses from this method.
+        static_cast<T*>(this)->computeDependencies(graph);
         // Set to true early, since the analysis may choose to call its own methods in
         // compute() and it may want to ASSERT() validity in those methods.
         m_valid = true;
@@ -60,6 +62,12 @@ public:
     }
     
     bool isValid() const { return m_valid; }
+
+    // Override this to compute any dependent analyses. See
+    // NaturalLoops::computeDependencies(Graph&) for an example. This isn't strictly necessary but
+    // it makes debug dumps in cases of error work a bit better because this analysis wouldn't yet
+    // be pretending to be valid.
+    void computeDependencies(Graph&) { }
 
 private:
     bool m_valid;

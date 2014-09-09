@@ -234,7 +234,7 @@ void WebInspectorFrontendClient::frontendLoaded()
                               @selector(webView:didClearInspectorWindowObject:forFrame:), [frame windowObject], frame);
 
     bool attached = [m_windowController.get() attached];
-    setAttachedWindow(attached ? DOCKED_TO_BOTTOM : UNDOCKED);
+    setAttachedWindow(attached ? DockSide::Bottom : DockSide::Undocked);
 }
 
 String WebInspectorFrontendClient::localizedStringsURL()
@@ -295,7 +295,9 @@ void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned)
 
 void WebInspectorFrontendClient::setToolbarHeight(unsigned height)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
     [[m_windowController window] setContentBorderThickness:height forEdge:NSMaxYEdge];
+#endif
 }
 
 void WebInspectorFrontendClient::inspectedURLChanged(const String& newURL)
@@ -408,10 +410,13 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
     _webView = [[WebView alloc] init];
     [_webView setPreferences:preferences];
-    [_webView setDrawsBackground:NO];
     [_webView setProhibitsMainFrameScrolling:YES];
     [_webView setUIDelegate:self];
     [_webView setPolicyDelegate:self];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
+    [_webView setDrawsBackground:NO];
+#endif
 
     [preferences release];
 
@@ -479,13 +484,22 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     if (window)
         return window;
 
-    NSUInteger styleMask = (NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask | NSTexturedBackgroundWindowMask);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    NSUInteger styleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask | NSFullSizeContentViewWindowMask;
+#else
+    NSUInteger styleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask | NSTexturedBackgroundWindowMask;
+#endif
+
     window = [[WebInspectorWindow alloc] initWithContentRect:NSMakeRect(60.0, 200.0, 750.0, 650.0) styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
     [window setDelegate:self];
     [window setMinSize:NSMakeSize(400.0, 400.0)];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    window.titlebarAppearsTransparent = YES;
+#else
     [window setAutorecalculatesContentBorderThickness:NO forEdge:NSMaxYEdge];
     [window setContentBorderThickness:55. forEdge:NSMaxYEdge];
-    WKNSWindowMakeBottomCornersSquare(window);
+#endif
 
     // Create a full screen button so we can turn it into a dock button.
     _dockButton = [NSWindow standardWindowButton:NSWindowFullScreenButton forStyleMask:styleMask];
@@ -496,7 +510,14 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     window->_dockButton = _dockButton;
 
     // Get the dock image and make it a template so the button cell effects will apply.
-    NSImage *dockImage = [[NSBundle bundleForClass:[self class]] imageForResource:@"Dock"];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    NSString *dockImageName = @"Dock";
+    _dockButton.get().alphaValue = 0.55;
+#else
+    NSString *dockImageName = @"DockLegacy";
+#endif
+
+    NSImage *dockImage = [[NSBundle bundleForClass:[self class]] imageForResource:dockImageName];
     [dockImage setTemplate:YES];
 
     // Set the dock image on the button cell.
@@ -583,7 +604,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (IBAction)attachWindow:(id)sender
 {
-    _frontendClient->attachWindow(InspectorFrontendClient::DOCKED_TO_BOTTOM);
+    _frontendClient->attachWindow(InspectorFrontendClient::DockSide::Bottom);
 }
 
 - (IBAction)showWindow:(id)sender
@@ -630,7 +651,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
         return;
 
     _inspectorClient->setInspectorStartsAttached(true);
-    _frontendClient->setAttachedWindow(InspectorFrontendClient::DOCKED_TO_BOTTOM);
+    _frontendClient->setAttachedWindow(InspectorFrontendClient::DockSide::Bottom);
 
     [self close];
     [self showWindow:nil];
@@ -642,7 +663,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
         return;
 
     _inspectorClient->setInspectorStartsAttached(false);
-    _frontendClient->setAttachedWindow(InspectorFrontendClient::UNDOCKED);
+    _frontendClient->setAttachedWindow(InspectorFrontendClient::DockSide::Undocked);
 
     [self close];
     [self showWindow:nil];

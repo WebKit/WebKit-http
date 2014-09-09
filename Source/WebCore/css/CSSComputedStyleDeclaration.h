@@ -58,9 +58,7 @@ public:
     bool useFixedFontDefaultSize() const;
     bool propertyMatches(CSSPropertyID, const CSSValue*) const;
 
-#if ENABLE(CSS_FILTERS)
     static PassRef<CSSValue> valueForFilter(const RenderStyle*, const FilterOperations&, AdjustPixelValuesForComputedStyle = AdjustPixelValues);
-#endif
 
 private:
     // The styled node is either the node passed into computedPropertyValue, or the
@@ -72,7 +70,7 @@ private:
     PassRefPtr<CSSValue> svgPropertyValue(CSSPropertyID, EUpdateLayout) const;
     PassRefPtr<SVGPaint> adjustSVGPaintForCurrentColor(PassRefPtr<SVGPaint>, RenderStyle*) const;
 
-    static PassRefPtr<CSSValue> valueForShadow(const ShadowData*, CSSPropertyID, const RenderStyle*, AdjustPixelValuesForComputedStyle = AdjustPixelValues);
+    static PassRef<CSSValue> valueForShadow(const ShadowData*, CSSPropertyID, const RenderStyle*, AdjustPixelValuesForComputedStyle = AdjustPixelValues);
     PassRefPtr<CSSPrimitiveValue> currentColorOrValidColor(RenderStyle*, const Color&) const;
 
     PassRefPtr<CSSValueList> getCSSPropertyValuesForShorthandProperties(const StylePropertyShorthand&) const;
@@ -99,7 +97,7 @@ public:
     String getPropertyValue(CSSPropertyID) const;
 
 private:
-    CSSComputedStyleDeclaration(PassRefPtr<Node>, bool allowVisitedStyle, const String&);
+    WEBCORE_EXPORT CSSComputedStyleDeclaration(PassRefPtr<Node>, bool allowVisitedStyle, const String&);
 
     // CSSOM functions. Don't make these public.
     virtual CSSRule* parentRule() const override;

@@ -46,17 +46,17 @@ public:
         PluginBlockedByContentSecurityPolicy,
         InsecurePluginVersion,
     };
-    void setPluginUnavailabilityReason(PluginUnavailabilityReason);
-    void setPluginUnavailabilityReasonWithDescription(PluginUnavailabilityReason, const String& description);
+    WEBCORE_EXPORT void setPluginUnavailabilityReason(PluginUnavailabilityReason);
+    WEBCORE_EXPORT void setPluginUnavailabilityReasonWithDescription(PluginUnavailabilityReason, const String& description);
 
     bool isPluginUnavailable() const { return m_isPluginUnavailable; }
     bool showsUnavailablePluginIndicator() const { return isPluginUnavailable() && !m_isUnavailablePluginIndicatorHidden; }
 
-    void setUnavailablePluginIndicatorIsHidden(bool);
+    WEBCORE_EXPORT void setUnavailablePluginIndicatorIsHidden(bool);
 
     void handleUnavailablePluginIndicatorEvent(Event*);
 
-    bool isReplacementObscured() const;
+    WEBCORE_EXPORT bool isReplacementObscured() const;
 
     bool allowsAcceleratedCompositing() const;
 
@@ -85,7 +85,7 @@ private:
 
     void setUnavailablePluginIndicatorIsPressed(bool);
     bool isInUnavailablePluginIndicator(MouseEvent*) const;
-    bool isInUnavailablePluginIndicator(const LayoutPoint&) const;
+    bool isInUnavailablePluginIndicator(const FloatPoint&) const;
     bool getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, FloatRect& indicatorRect, FloatRect& replacementTextRect, FloatRect& arrowRect, Font&, TextRun&, float& textWidth) const;
     LayoutRect unavailablePluginIndicatorBounds(const LayoutPoint&) const;
 

@@ -94,8 +94,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_volumeSignalHandler(0)
     , m_muteSignalHandler(0)
 {
-    m_bufferMutex = new GMutex;
-    g_mutex_init(m_bufferMutex);
+    g_mutex_init(&m_bufferMutex);
 }
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
@@ -105,8 +104,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
         m_repaintHandler = 0;
     }
 
-    g_mutex_clear(m_bufferMutex);
-    delete m_bufferMutex;
+    g_mutex_clear(&m_bufferMutex);
 
     if (m_buffer)
         gst_buffer_unref(m_buffer);
@@ -123,6 +121,11 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
         g_signal_handler_disconnect(m_volumeElement.get(), m_muteSignalHandler);
         m_muteSignalHandler = 0;
     }
+
+#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+    if (client())
+        client()->platformLayerWillBeDestroyed();
+#endif
 }
 
 // Returns the size of the video

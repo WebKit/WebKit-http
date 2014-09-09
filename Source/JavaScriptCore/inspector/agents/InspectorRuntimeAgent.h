@@ -57,17 +57,21 @@ class JS_EXPORT_PRIVATE InspectorRuntimeAgent : public InspectorAgentBase, publi
 public:
     virtual ~InspectorRuntimeAgent();
 
+    virtual void willDestroyFrontendAndBackend(InspectorDisconnectReason) override;
+
     virtual void enable(ErrorString*) override { m_enabled = true; }
     virtual void disable(ErrorString*) override { m_enabled = false; }
-    virtual void parse(ErrorString*, const String& expression, Inspector::TypeBuilder::Runtime::SyntaxErrorType::Enum* result, Inspector::TypeBuilder::OptOutput<String>* message, RefPtr<Inspector::TypeBuilder::Runtime::ErrorRange>&) override final;
-    virtual void evaluate(ErrorString*, const String& expression, const String* objectGroup, const bool* includeCommandLineAPI, const bool* doNotPauseOnExceptionsAndMuteConsole, const int* executionContextId, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result, Inspector::TypeBuilder::OptOutput<bool>* wasThrown) override final;
-    virtual void callFunctionOn(ErrorString*, const String& objectId, const String& expression, const RefPtr<Inspector::InspectorArray>* optionalArguments, const bool* doNotPauseOnExceptionsAndMuteConsole, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::TypeBuilder::Runtime::RemoteObject>& result, Inspector::TypeBuilder::OptOutput<bool>* wasThrown) override final;
+    virtual void parse(ErrorString*, const String& expression, Inspector::Protocol::Runtime::SyntaxErrorType* result, Inspector::Protocol::OptOutput<String>* message, RefPtr<Inspector::Protocol::Runtime::ErrorRange>&) override final;
+    virtual void evaluate(ErrorString*, const String& expression, const String* objectGroup, const bool* includeCommandLineAPI, const bool* doNotPauseOnExceptionsAndMuteConsole, const int* executionContextId, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result, Inspector::Protocol::OptOutput<bool>* wasThrown) override final;
+    virtual void callFunctionOn(ErrorString*, const String& objectId, const String& expression, const RefPtr<Inspector::InspectorArray>* optionalArguments, const bool* doNotPauseOnExceptionsAndMuteConsole, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result, Inspector::Protocol::OptOutput<bool>* wasThrown) override final;
     virtual void releaseObject(ErrorString*, const ErrorString& objectId) override final;
-    virtual void getProperties(ErrorString*, const String& objectId, const bool* ownProperties, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::TypeBuilder::Array<Inspector::TypeBuilder::Runtime::InternalPropertyDescriptor>>& internalProperties) override final;
+    virtual void getProperties(ErrorString*, const String& objectId, const bool* ownProperties, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties) override final;
     virtual void releaseObjectGroup(ErrorString*, const String& objectGroup) override final;
     virtual void run(ErrorString*) override;
-    virtual void getRuntimeTypeForVariableInTextRange(ErrorString*, const String& in_variableName, const String& in_id, int in_startLine, int in_startColumn, int in_endLine, int in_endColumn, String* out_types) override;
-
+    virtual void getRuntimeTypesForVariablesAtOffsets(ErrorString*, const RefPtr<Inspector::InspectorArray>& locations, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::TypeDescription>>&) override;
+    virtual void enableTypeProfiler(ErrorString*) override;
+    virtual void disableTypeProfiler(ErrorString*) override;
+    
     void setScriptDebugServer(ScriptDebugServer* scriptDebugServer) { m_scriptDebugServer = scriptDebugServer; }
 
     bool enabled() const { return m_enabled; }
@@ -84,9 +88,12 @@ protected:
     virtual void unmuteConsole() = 0;
 
 private:
+    void setTypeProfilerEnabledState(bool);
+
     InjectedScriptManager* m_injectedScriptManager;
     ScriptDebugServer* m_scriptDebugServer;
     bool m_enabled;
+    bool m_isTypeProfilingEnabled;
 };
 
 } // namespace Inspector

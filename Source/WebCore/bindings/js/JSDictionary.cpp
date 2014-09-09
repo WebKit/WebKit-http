@@ -52,10 +52,6 @@
 #include "JSMediaStreamTrack.h"
 #endif
 
-#if ENABLE(SCRIPTED_SPEECH)
-#include "JSSpeechRecognitionResultList.h"
-#endif
-
 #if ENABLE(GAMEPAD)
 #include "JSGamepad.h"
 #endif
@@ -262,13 +258,6 @@ void JSDictionary::convertValue(JSC::ExecState* exec, JSC::JSValue value, RefPtr
 }
 #endif
 
-#if ENABLE(SCRIPTED_SPEECH)
-void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<SpeechRecognitionResultList>& result)
-{
-    result = toSpeechRecognitionResultList(value);
-}
-#endif
-
 #if ENABLE(GAMEPAD)
 void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Gamepad>& result)
 {
@@ -276,11 +265,11 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Game
 }
 #endif
 
-bool JSDictionary::getWithUndefinedOrNullCheck(const String& propertyName, String& result) const
+bool JSDictionary::getWithUndefinedOrNullCheck(const char* propertyName, String& result) const
 {
     ASSERT(isValid());
     JSValue value;
-    if (tryGetProperty(propertyName.utf8().data(), value) != PropertyFound || value.isUndefinedOrNull())
+    if (tryGetProperty(propertyName, value) != PropertyFound || value.isUndefinedOrNull())
         return false;
 
     result = value.toWTFString(m_exec);

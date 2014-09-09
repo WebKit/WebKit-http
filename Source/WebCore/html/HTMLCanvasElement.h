@@ -81,7 +81,7 @@ public:
 
     void setSize(const IntSize& newSize)
     { 
-        if (newSize == size() && targetDeviceScaleFactor() == m_deviceScaleFactor)
+        if (newSize == size())
             return;
         m_ignoreReset = true; 
         setWidth(newSize.width());
@@ -135,21 +135,16 @@ public:
 
     bool shouldAccelerate(const IntSize&) const;
 
-    float deviceScaleFactor() const { return m_deviceScaleFactor; }
-
 private:
     HTMLCanvasElement(const QualifiedName&, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
-    virtual void willAttachRenderers() override;
 
     virtual bool canContainRangeEndPoint() const override;
     virtual bool canStartSelection() const override;
 
     void reset();
-
-    float targetDeviceScaleFactor() const;
 
     void createImageBuffer() const;
     void clearImageBuffer() const;
@@ -173,7 +168,6 @@ private:
     bool m_ignoreReset;
     FloatRect m_dirtyRect;
 
-    float m_deviceScaleFactor;
     bool m_originClean;
 
     // m_createdImageBuffer means we tried to malloc the buffer.  We didn't necessarily get it.

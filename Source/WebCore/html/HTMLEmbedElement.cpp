@@ -75,7 +75,7 @@ RenderWidget* HTMLEmbedElement::renderWidgetForJSBindings() const
         // Needs to load the plugin immediatedly because this function is called
         // when JavaScript code accesses the plugin.
         // FIXME: <rdar://16893708> Check if dispatching events here is safe.
-        document().updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasksSynchronously);
+        document().updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks::Synchronously);
     }
     return findWidgetRenderer(this);
 }
@@ -101,7 +101,7 @@ void HTMLEmbedElement::collectStyleForPresentationAttribute(const QualifiedName&
 void HTMLEmbedElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == typeAttr) {
-        m_serviceType = value.string().left(value.find(";")).lower();
+        m_serviceType = value.string().left(value.find(';')).lower();
         // FIXME: The only difference between this and HTMLObjectElement's corresponding
         // code is that HTMLObjectElement does setNeedsWidgetUpdate(true). Consider moving
         // this up to the HTMLPlugInImageElement to be shared.

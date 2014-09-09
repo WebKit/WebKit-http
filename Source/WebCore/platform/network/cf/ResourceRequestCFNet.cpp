@@ -38,9 +38,10 @@
 #include "FormDataStreamCFNet.h"
 #include <CFNetwork/CFURLRequestPriv.h>
 #include <wtf/text/CString.h>
-#if PLATFORM(IOS)
-#include <CFNetwork/CFNetworkConnectionCachePriv.h>
 #endif
+
+#if PLATFORM(IOS)
+#include "CFNetworkConnectionCacheSPI.h"
 #endif
 
 #if PLATFORM(COCOA)
@@ -229,6 +230,7 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
 
 void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest)
 {
+    ResourceLoadPriority oldPriority = priority();
     RefPtr<FormData> oldHTTPBody = httpBody();
 #if ENABLE(INSPECTOR)
     bool isHiddenFromInspector = hiddenFromInspector();
@@ -236,6 +238,7 @@ void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRe
 
     *this = delegateProvidedRequest;
 
+    setPriority(oldPriority);
     setHTTPBody(oldHTTPBody.release());
 #if ENABLE(INSPECTOR)
     setHiddenFromInspector(isHiddenFromInspector);
@@ -275,8 +278,11 @@ void ResourceRequest::doUpdateResourceRequest()
     }
     m_allowCookies = CFURLRequestShouldHandleHTTPCookies(m_cfRequest.get());
 
-    if (resourcePrioritiesEnabled())
-        m_priority = toResourceLoadPriority(wkGetHTTPRequestPriority(m_cfRequest.get()));
+    if (resourcePrioritiesEnabled()) {
+        auto priority = toResourceLoadPriority(wkGetHTTPRequestPriority(m_cfRequest.get()));
+        if (priority > ResourceLoadPriorityUnresolved)
+            m_priority = priority;
+    }
 
     m_httpHeaderFields.clear();
     if (CFDictionaryRef headers = CFURLRequestCopyAllHTTPHeaderFields(m_cfRequest.get())) {

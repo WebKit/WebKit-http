@@ -37,19 +37,19 @@
 
 namespace JSC {
 
-static EncodedJSValue JSC_HOST_CALL objectConstructorGetPrototypeOf(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyNames(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorKeys(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperty(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperties(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorCreate(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorSeal(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorFreeze(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorPreventExtensions(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorIsSealed(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorIsFrozen(ExecState*);
-static EncodedJSValue JSC_HOST_CALL objectConstructorIsExtensible(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorGetPrototypeOf(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyNames(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorKeys(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperty(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperties(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorCreate(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorSeal(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorFreeze(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorPreventExtensions(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorIsSealed(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorIsFrozen(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorIsExtensible(ExecState*);
 
 }
 
@@ -173,12 +173,12 @@ EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState
 {
     if (!exec->argument(0).isObject())
         return throwVMError(exec, createTypeError(exec, ASCIILiteral("Requested property descriptor of a value that is not an object.")));
-    String propertyName = exec->argument(1).toString(exec)->value(exec);
+    Identifier propertyName = exec->argument(1).toString(exec)->toIdentifier(exec);
     if (exec->hadException())
         return JSValue::encode(jsNull());
     JSObject* object = asObject(exec->argument(0));
     PropertyDescriptor descriptor;
-    if (!object->getOwnPropertyDescriptor(exec, Identifier(exec, propertyName), descriptor))
+    if (!object->getOwnPropertyDescriptor(exec, propertyName, descriptor))
         return JSValue::encode(jsUndefined());
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
@@ -316,7 +316,7 @@ EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperty(ExecState* exec)
     if (!exec->argument(0).isObject())
         return throwVMError(exec, createTypeError(exec, ASCIILiteral("Properties can only be defined on Objects.")));
     JSObject* O = asObject(exec->argument(0));
-    String propertyName = exec->argument(1).toString(exec)->value(exec);
+    Identifier propertyName = exec->argument(1).toString(exec)->toIdentifier(exec);
     if (exec->hadException())
         return JSValue::encode(jsNull());
     PropertyDescriptor descriptor;
@@ -324,7 +324,7 @@ EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperty(ExecState* exec)
         return JSValue::encode(jsNull());
     ASSERT((descriptor.attributes() & Accessor) || (!descriptor.isAccessorDescriptor()));
     ASSERT(!exec->hadException());
-    O->methodTable(exec->vm())->defineOwnProperty(O, exec, Identifier(exec, propertyName), descriptor, true);
+    O->methodTable(exec->vm())->defineOwnProperty(O, exec, propertyName, descriptor, true);
     return JSValue::encode(O);
 }
 

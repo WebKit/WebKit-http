@@ -27,6 +27,7 @@
 #include "Profile.h"
 
 #include "ProfileNode.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
 
 namespace JSC {
@@ -39,38 +40,26 @@ PassRefPtr<Profile> Profile::create(const String& title, unsigned uid)
 Profile::Profile(const String& title, unsigned uid)
     : m_title(title)
     , m_uid(uid)
-    , m_idleTime(0)
 {
     // FIXME: When multi-threading is supported this will be a vector and calls
     // into the profiler will need to know which thread it is executing on.
-    m_head = ProfileNode::create(0, CallIdentifier("Thread_1", String(), 0, 0), 0, 0);
+    m_rootNode = ProfileNode::create(nullptr, CallIdentifier(ASCIILiteral("Thread_1"), String(), 0, 0), nullptr);
+    m_rootNode->appendCall(ProfileNode::Call(currentTime()));
 }
 
 Profile::~Profile()
 {
 }
 
-void Profile::forEach(void (ProfileNode::*function)())
-{
-    ProfileNode* currentNode = m_head->firstChild();
-    for (ProfileNode* nextNode = currentNode; nextNode; nextNode = nextNode->firstChild())
-        currentNode = nextNode;
-
-    if (!currentNode)
-        currentNode = m_head.get();
-
-    ProfileNode* endNode = m_head->traverseNextNodePostOrder();
-    while (currentNode && currentNode != endNode) {
-        (currentNode->*function)();
-        currentNode = currentNode->traverseNextNodePostOrder();
-    } 
-}
-
 #ifndef NDEBUG
-void Profile::debugPrintData() const
+void Profile::debugPrint()
 {
+    CalculateProfileSubtreeDataFunctor functor;
+    m_rootNode->forEachNodePostorder(functor);
+    ProfileNode::ProfileSubtreeData data = functor.returnValue();
+
     dataLogF("Call graph:\n");
-    m_head->debugPrintData(0);
+    m_rootNode->debugPrintRecursively(0, data);
 }
 
 typedef WTF::KeyValuePair<FunctionCallHashCount::ValueType, unsigned> NameCountPair;
@@ -80,13 +69,17 @@ static inline bool functionNameCountPairComparator(const NameCountPair& a, const
     return a.value > b.value;
 }
 
-void Profile::debugPrintDataSampleStyle() const
+void Profile::debugPrintSampleStyle()
 {
     typedef Vector<NameCountPair> NameCountPairVector;
 
+    CalculateProfileSubtreeDataFunctor functor;
+    m_rootNode->forEachNodePostorder(functor);
+    ProfileNode::ProfileSubtreeData data = functor.returnValue();
+
     FunctionCallHashCount countedFunctions;
     dataLogF("Call graph:\n");
-    m_head->debugPrintDataSampleStyle(0, countedFunctions);
+    m_rootNode->debugPrintSampleStyleRecursively(0, countedFunctions, data);
 
     dataLogF("\nTotal number in stack:\n");
     NameCountPairVector sortedFunctions(countedFunctions.size());

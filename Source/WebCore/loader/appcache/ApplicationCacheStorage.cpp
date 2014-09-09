@@ -587,7 +587,9 @@ void ApplicationCacheStorage::verifySchemaVersion()
     if (version == schemaVersion)
         return;
 
-    deleteTables();
+    // Version will be 0 if we just created an empty file. Trying to delete tables would cause errors, because they don't exist yet.
+    if (version)
+        deleteTables();
 
     // Update user version.
     SQLiteTransaction setDatabaseVersion(m_database);
@@ -1159,7 +1161,7 @@ PassRefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storage
         String mimeType = cacheStatement.getColumnText(3);
         String textEncodingName = cacheStatement.getColumnText(4);
         
-        ResourceResponse response(url, mimeType, size, textEncodingName, "");
+        ResourceResponse response(url, mimeType, size, textEncodingName);
         response.setHTTPStatusCode(httpStatusCode);
 
         String headers = cacheStatement.getColumnText(5);

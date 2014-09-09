@@ -42,7 +42,6 @@ namespace WebCore {
     M(Archives) \
     M(BackForward) \
     M(Compositing) \
-    M(DiskImageCache) \
     M(Editing) \
     M(Events) \
     M(FTP) \
@@ -83,7 +82,7 @@ WEBCORE_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 
     String logLevelString();
     bool isLogChannelEnabled(const String& name);
-    void initializeLoggingChannelsIfNecessary();
+    WEBCORE_EXPORT void initializeLoggingChannelsIfNecessary();
 }
 
 #endif // !LOG_DISABLED

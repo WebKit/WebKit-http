@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,24 +29,24 @@
 #include "ClassInfo.h"
 #include "JSCell.h"
 #include "JSTypeInfo.h"
+#include "PropertyOffset.h"
 
 namespace JSC {
 
-class JSPropertyNameIterator;
+class JSPropertyNameEnumerator;
 class Structure;
 
 class StructureRareData : public JSCell {
-    friend class Structure;
 public:
     static StructureRareData* create(VM&, Structure*);
-    static StructureRareData* clone(VM&, const StructureRareData* other);
+
+    static const bool needsDestruction = true;
+    static const bool hasImmortalStructure = true;
+    static void destroy(JSCell*);
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
-
-    // Returns true if this StructureRareData should also be cloned when cloning the owner Structure.
-    bool needsCloning() const { return false; }
 
     Structure* previousID() const;
     void setPreviousID(VM&, Structure*);
@@ -55,20 +55,27 @@ public:
     JSString* objectToStringValue() const;
     void setObjectToStringValue(VM&, JSString* value);
 
-    JSPropertyNameIterator* enumerationCache();
-    void setEnumerationCache(VM&, JSPropertyNameIterator* value);
+    JSPropertyNameEnumerator* cachedStructurePropertyNameEnumerator() const;
+    JSPropertyNameEnumerator* cachedGenericPropertyNameEnumerator() const;
+    void setCachedStructurePropertyNameEnumerator(VM&, JSPropertyNameEnumerator*);
+    void setCachedGenericPropertyNameEnumerator(VM&, JSPropertyNameEnumerator*);
 
     DECLARE_EXPORT_INFO;
 
 private:
+    friend class Structure;
+    
     StructureRareData(VM&, Structure*);
-    StructureRareData(VM&, const StructureRareData*);
 
     static const unsigned StructureFlags = JSCell::StructureFlags;
 
     WriteBarrier<Structure> m_previous;
     WriteBarrier<JSString> m_objectToStringValue;
-    WriteBarrier<JSPropertyNameIterator> m_enumerationCache;
+    WriteBarrier<JSPropertyNameEnumerator> m_cachedStructurePropertyNameEnumerator;
+    WriteBarrier<JSPropertyNameEnumerator> m_cachedGenericPropertyNameEnumerator;
+    
+    typedef HashMap<PropertyOffset, RefPtr<WatchpointSet>, WTF::IntHash<PropertyOffset>, WTF::UnsignedWithZeroKeyHashTraits<PropertyOffset>> PropertyWatchpointMap;
+    std::unique_ptr<PropertyWatchpointMap> m_replacementWatchpointSets;
 };
 
 } // namespace JSC

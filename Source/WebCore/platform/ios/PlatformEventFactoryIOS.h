@@ -29,7 +29,10 @@
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
 #include "PlatformWheelEvent.h"
+
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/PlatformTouchEventIOS.h>
+#endif
 
 @class WebEvent;
 
@@ -37,15 +40,15 @@ namespace WebCore {
 
 class PlatformEventFactory {
 public:
-    static PlatformMouseEvent createPlatformMouseEvent(WebEvent *);
-    static PlatformWheelEvent createPlatformWheelEvent(WebEvent *);
-    static PlatformKeyboardEvent createPlatformKeyboardEvent(WebEvent *);
-#if ENABLE(TOUCH_EVENTS)
+    WEBCORE_EXPORT static PlatformMouseEvent createPlatformMouseEvent(WebEvent *);
+    WEBCORE_EXPORT static PlatformWheelEvent createPlatformWheelEvent(WebEvent *);
+    WEBCORE_EXPORT static PlatformKeyboardEvent createPlatformKeyboardEvent(WebEvent *);
+#if ENABLE(TOUCH_EVENTS) || ENABLE(IOS_TOUCH_EVENTS)
     static PlatformTouchEvent createPlatformTouchEvent(WebEvent *);
 #endif
 };
 
-String keyIdentifierForKeyEvent(WebEvent *);
+WEBCORE_EXPORT String keyIdentifierForKeyEvent(WebEvent *);
 
 } // namespace WebCore
 

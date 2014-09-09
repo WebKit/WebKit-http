@@ -612,11 +612,6 @@ bool PageClientImpl::executeSavedCommandBySelector(const String& selectorString)
     return [m_wkView _executeSavedCommandBySelector:NSSelectorFromString(selectorString)];
 }
 
-void PageClientImpl::clearCustomSwipeViews()
-{
-    return [m_wkView _setCustomSwipeViews:@[]];
-}
-
 #if USE(DICTATION_ALTERNATIVES)
 uint64_t PageClientImpl::addDictationAlternatives(const RetainPtr<NSTextAlternatives>& alternatives)
 {
@@ -725,6 +720,34 @@ void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem& item)
 #else
     UNUSED_PARAM(item);
 #endif
+}
+
+void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
+{
+    [m_wkView _didFirstVisuallyNonEmptyLayoutForMainFrame];
+}
+
+void PageClientImpl::didFinishLoadForMainFrame()
+{
+    [m_wkView _didFinishLoadForMainFrame];
+}
+
+void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)
+{
+    [m_wkView _didSameDocumentNavigationForMainFrame:type];
+}
+
+void PageClientImpl::removeNavigationGestureSnapshot()
+{
+    [m_wkView _removeNavigationGestureSnapshot];
+}
+
+CGRect PageClientImpl::boundsOfLayerInLayerBackedWindowCoordinates(CALayer *layer) const
+{
+    CALayer *windowContentLayer = static_cast<NSView *>(m_wkView.window.contentView).layer;
+    ASSERT(windowContentLayer);
+
+    return [windowContentLayer convertRect:layer.bounds fromLayer:layer];
 }
 
 } // namespace WebKit

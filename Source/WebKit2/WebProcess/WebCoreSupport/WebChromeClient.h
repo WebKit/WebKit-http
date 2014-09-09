@@ -130,7 +130,11 @@ private:
 
     virtual void scrollbarsModeDidChange() const override;
     virtual void mouseDidMoveOverElement(const WebCore::HitTestResult&, unsigned modifierFlags) override;
-    
+
+    virtual void didBeginTrackingPotentialLongMousePress(const WebCore::IntPoint& mouseDownPosition, const WebCore::HitTestResult&) override;
+    virtual void didRecognizeLongMousePress() override;
+    virtual void didCancelTrackingPotentialLongMousePress() override;
+
     virtual void setToolTip(const String&, WebCore::TextDirection) override;
     
     virtual void print(WebCore::Frame*) override;
@@ -249,9 +253,9 @@ private:
 #endif
 
 #if PLATFORM(IOS)
-    virtual bool supportsFullscreenForNode(const WebCore::Node*);
-    virtual void enterFullscreenForNode(WebCore::Node*);
-    virtual void exitFullscreenForNode(WebCore::Node*);
+    virtual bool supportsVideoFullscreen();
+    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement*);
+    virtual void exitVideoFullscreen();
 #endif
 
 #if ENABLE(FULLSCREEN_API)

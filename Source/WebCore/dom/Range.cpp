@@ -109,14 +109,12 @@ PassRefPtr<Range> Range::create(ScriptExecutionContext& context)
     return adoptRef(new Range(toDocument(context)));
 }
 
-#if PLATFORM(IOS)
 PassRefPtr<Range> Range::create(Document& ownerDocument, const VisiblePosition& visibleStart, const VisiblePosition& visibleEnd)
 {
     Position start = visibleStart.deepEquivalent().parentAnchoredEquivalent();
     Position end = visibleEnd.deepEquivalent().parentAnchoredEquivalent();
     return adoptRef(new Range(ownerDocument, start.anchorNode(), start.deprecatedEditingOffset(), end.anchorNode(), end.deprecatedEditingOffset()));
 }
-#endif
 
 Range::~Range()
 {
@@ -2024,24 +2022,6 @@ PassRefPtr<Range> rangeOfContents(Node& node)
     int exception = 0;
     range->selectNodeContents(&node, exception);
     return range.release();
-}
-
-int Range::maxStartOffset() const
-{
-    if (!m_start.container())
-        return 0;
-    if (!m_start.container()->offsetInCharacters())
-        return m_start.container()->childNodeCount();
-    return m_start.container()->maxCharacterOffset();
-}
-
-int Range::maxEndOffset() const
-{
-    if (!m_end.container())
-        return 0;
-    if (!m_end.container()->offsetInCharacters())
-        return m_end.container()->childNodeCount();
-    return m_end.container()->maxCharacterOffset();
 }
 
 static inline void boundaryNodeChildrenChanged(RangeBoundaryPoint& boundary, ContainerNode& container)

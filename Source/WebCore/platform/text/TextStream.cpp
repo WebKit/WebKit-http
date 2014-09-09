@@ -91,13 +91,13 @@ TextStream& TextStream::operator<<(unsigned long long i)
 
 TextStream& TextStream::operator<<(float f)
 {
-    m_text.append(String::numberToStringFixedWidth(f, 2));
+    m_text.appendFixedWidthNumber(f, 2);
     return *this;
 }
 
 TextStream& TextStream::operator<<(double d)
 {
-    m_text.append(String::numberToStringFixedWidth(d, 2));
+    m_text.appendFixedWidthNumber(d, 2);
     return *this;
 }
 
@@ -165,7 +165,7 @@ TextStream& TextStream::operator<<(const LayoutPoint& p)
 TextStream& TextStream::operator<<(const LayoutRect& r)
 {
     // FIXME: These should be printed as floats. Keeping them ints for consistency with previous test expectations.
-    return *this << pixelSnappedIntRect(r);
+    return *this << snappedIntRect(r);
 }
 
 String TextStream::release()

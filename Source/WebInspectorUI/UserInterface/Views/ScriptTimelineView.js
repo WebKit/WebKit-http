@@ -30,6 +30,7 @@ WebInspector.ScriptTimelineView = function(timeline)
     console.assert(timeline.type === WebInspector.TimelineRecord.Type.Script);
 
     this.navigationSidebarTreeOutline.onselect = this._treeElementSelected.bind(this);
+    this.navigationSidebarTreeOutline.ondeselect = this._treeElementDeselected.bind(this);
     this.navigationSidebarTreeOutline.element.classList.add(WebInspector.ScriptTimelineView.TreeOutlineStyleClassName);
 
     var columns = {location: {}, callCount: {}, startTime: {}, totalTime: {}, selfTime: {}, averageTime: {}};
@@ -111,8 +112,7 @@ WebInspector.ScriptTimelineView.prototype = {
         if (this.startTime !== this._oldStartTime || this.endTime !== this._oldEndTime) {
             var dataGridNode = this._dataGrid.children[0];
             while (dataGridNode) {
-                dataGridNode.rangeStartTime = this.startTime;
-                dataGridNode.rangeEndTime = this.endTime;
+                dataGridNode.updateRangeTimes(this.startTime, this.endTime);
                 if (dataGridNode.revealed)
                     dataGridNode.refreshIfNeeded();
                 dataGridNode = dataGridNode.traverseNextNode(false, null, true);
@@ -205,12 +205,6 @@ WebInspector.ScriptTimelineView.prototype = {
             if (scriptTimelineRecord.profile) {
                 // FIXME: Support using the bottom-up tree once it is implemented.
                 rootNodes = scriptTimelineRecord.profile.topDownRootNodes;
-
-                // If there is only one node, promote its children. The TimelineRecordTreeElement already reflects the root
-                // node in this case (e.g. a "Load Event Dispatched" record with an "onload" root profile node).
-                // FIXME: Only do this for the top-down mode. Doing this for bottom-up would be incorrect.
-                if (rootNodes.length === 1)
-                    rootNodes = rootNodes[0].childNodes;
             }
 
             var zeroTime = this.zeroTime;
@@ -252,6 +246,12 @@ WebInspector.ScriptTimelineView.prototype = {
         this.dispatchEventToListeners(WebInspector.TimelineView.Event.SelectionPathComponentsDidChange);
     },
 
+    _treeElementDeselected: function(treeElement)
+    {
+        if (treeElement.status)
+            treeElement.status = "";
+    },
+
     _treeElementSelected: function(treeElement, selectedByUser)
     {
         if (this._dataGrid.shouldIgnoreSelectionEvent())
@@ -277,5 +277,27 @@ WebInspector.ScriptTimelineView.prototype = {
         }
 
         WebInspector.resourceSidebarPanel.showOriginalOrFormattedSourceCodeLocation(sourceCodeLocation);
+        this._updateTreeElementWithCloseButton(treeElement);
+    },
+
+    _updateTreeElementWithCloseButton: function(treeElement)
+    {
+        if (this._closeStatusButton) {
+            treeElement.status = this._closeStatusButton.element;
+            return;
+        }
+
+        wrappedSVGDocument(platformImagePath("Close.svg"), null, WebInspector.UIString("Close resource view"), function(element) {
+            this._closeStatusButton = new WebInspector.TreeElementStatusButton(element);
+            this._closeStatusButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._closeStatusButtonClicked, this);
+            if (treeElement === this.navigationSidebarTreeOutline.selectedTreeElement)
+                this._updateTreeElementWithCloseButton(treeElement);
+        }.bind(this));
+    },
+
+    _closeStatusButtonClicked: function(event)
+    {
+        this.navigationSidebarTreeOutline.selectedTreeElement.deselect();
+        WebInspector.timelineSidebarPanel.showTimelineViewForType(WebInspector.TimelineRecord.Type.Script);
     }
 };

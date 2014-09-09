@@ -157,12 +157,6 @@ struct SwitchCase {
     BranchTarget target;
 };
 
-enum SwitchKind {
-    SwitchImm,
-    SwitchChar,
-    SwitchString
-};
-
 struct SwitchData {
     // Initializes most fields to obviously invalid values. Anyone
     // constructing this should make sure to initialize everything they
@@ -185,6 +179,7 @@ struct SwitchData {
 // distinguishes an immediate value (typically an index into a CodeBlock data structure - 
 // a constant index, argument, or identifier) from a Node*.
 struct OpInfo {
+    OpInfo() : m_value(0) { }
     explicit OpInfo(int32_t value) : m_value(static_cast<uintptr_t>(value)) { }
     explicit OpInfo(uint32_t value) : m_value(static_cast<uintptr_t>(value)) { }
 #if OS(DARWIN) || USE(JSVALUE64)
@@ -208,8 +203,9 @@ struct Node {
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
         , m_prediction(SpecNone)
+        , replacement(nullptr)
+        , owner(nullptr)
     {
-        misc.replacement = 0;
         setOpAndDefaultFlags(op);
     }
     
@@ -222,8 +218,9 @@ struct Node {
         , m_prediction(SpecNone)
         , m_opInfo(0)
         , m_opInfo2(0)
+        , replacement(nullptr)
+        , owner(nullptr)
     {
-        misc.replacement = 0;
         setOpAndDefaultFlags(op);
         ASSERT(!(m_flags & NodeHasVarArgs));
     }
@@ -237,8 +234,9 @@ struct Node {
         , m_prediction(SpecNone)
         , m_opInfo(0)
         , m_opInfo2(0)
+        , replacement(nullptr)
+        , owner(nullptr)
     {
-        misc.replacement = 0;
         setOpAndDefaultFlags(op);
         setResult(result);
         ASSERT(!(m_flags & NodeHasVarArgs));
@@ -253,8 +251,9 @@ struct Node {
         , m_prediction(SpecNone)
         , m_opInfo(imm.m_value)
         , m_opInfo2(0)
+        , replacement(nullptr)
+        , owner(nullptr)
     {
-        misc.replacement = 0;
         setOpAndDefaultFlags(op);
         ASSERT(!(m_flags & NodeHasVarArgs));
     }
@@ -268,8 +267,9 @@ struct Node {
         , m_prediction(SpecNone)
         , m_opInfo(imm.m_value)
         , m_opInfo2(0)
+        , replacement(nullptr)
+        , owner(nullptr)
     {
-        misc.replacement = 0;
         setOpAndDefaultFlags(op);
         setResult(result);
         ASSERT(!(m_flags & NodeHasVarArgs));
@@ -284,8 +284,9 @@ struct Node {
         , m_prediction(SpecNone)
         , m_opInfo(imm1.m_value)
         , m_opInfo2(imm2.m_value)
+        , replacement(nullptr)
+        , owner(nullptr)
     {
-        misc.replacement = 0;
         setOpAndDefaultFlags(op);
         ASSERT(!(m_flags & NodeHasVarArgs));
     }
@@ -299,8 +300,9 @@ struct Node {
         , m_prediction(SpecNone)
         , m_opInfo(imm1.m_value)
         , m_opInfo2(imm2.m_value)
+        , replacement(nullptr)
+        , owner(nullptr)
     {
-        misc.replacement = 0;
         setOpAndDefaultFlags(op);
         ASSERT(m_flags & NodeHasVarArgs);
     }
@@ -366,10 +368,16 @@ struct Node {
     {
         setOpAndDefaultFlags(Phantom);
     }
-
-    void convertToPhantomUnchecked()
+    
+    void convertToCheck()
     {
-        setOpAndDefaultFlags(Phantom);
+        setOpAndDefaultFlags(Check);
+    }
+    
+    void replaceWith(Node* other)
+    {
+        convertToPhantom();
+        replacement = other;
     }
 
     void convertToIdentity();
@@ -436,6 +444,7 @@ struct Node {
         ASSERT(op() == GetIndexedPropertyStorage);
         m_op = ConstantStoragePointer;
         m_opInfo = bitwise_cast<uintptr_t>(pointer);
+        children.reset();
     }
     
     void convertToGetLocalUnlinked(VirtualRegister local)
@@ -987,6 +996,7 @@ struct Node {
     bool hasHeapPrediction()
     {
         switch (op()) {
+        case GetDirectPname:
         case GetById:
         case GetByIdFlush:
         case GetByVal:
@@ -994,6 +1004,8 @@ struct Node {
         case GetMyArgumentByValSafe:
         case Call:
         case Construct:
+        case ProfiledCall:
+        case ProfiledConstruct:
         case NativeCall:
         case NativeConstruct:
         case GetByOffset:
@@ -1029,65 +1041,29 @@ struct Node {
         m_opInfo2 = prediction;
     }
     
-    bool canBeKnownFunction()
+    bool hasCellOperand()
     {
         switch (op()) {
-        case NativeConstruct:
-        case NativeCall:
-            return true;
-        default:
-            return false;
-        }
-    }
-
-    bool hasKnownFunction()
-    {
-        switch (op()) {
-        case NativeConstruct:
-        case NativeCall:
-            return (bool)m_opInfo;
-        default:
-            return false;
-        }
-    }
-    
-    JSFunction* knownFunction()
-    {
-        ASSERT(canBeKnownFunction());
-        return bitwise_cast<JSFunction*>(m_opInfo);
-    }
-
-    void giveKnownFunction(JSFunction* callData) 
-    {
-        ASSERT(canBeKnownFunction());
-        m_opInfo = bitwise_cast<uintptr_t>(callData);
-    }
-
-    bool hasFunction()
-    {
-        switch (op()) {
-        case CheckFunction:
         case AllocationProfileWatchpoint:
+        case CheckCell:
+        case NativeConstruct:
+        case NativeCall:
             return true;
         default:
             return false;
         }
     }
 
-    FrozenValue* function()
+    FrozenValue* cellOperand()
     {
-        ASSERT(hasFunction());
+        ASSERT(hasCellOperand());
         return reinterpret_cast<FrozenValue*>(m_opInfo);
     }
     
-    bool hasExecutable()
+    void setCellOperand(FrozenValue* value)
     {
-        return op() == CheckExecutable;
-    }
-    
-    ExecutableBase* executable()
-    {
-        return jsCast<ExecutableBase*>(reinterpret_cast<JSCell*>(m_opInfo));
+        ASSERT(hasCellOperand());
+        m_opInfo = bitwise_cast<uintptr_t>(value);
     }
     
     bool hasVariableWatchpointSet()
@@ -1253,6 +1229,7 @@ struct Node {
         case ArrayifyToStructure:
         case ArrayPush:
         case ArrayPop:
+        case HasIndexedProperty:
             return true;
         default:
             return false;
@@ -1760,19 +1737,17 @@ public:
     AbstractValue value;
     
     // Miscellaneous data that is usually meaningless, but can hold some analysis results
-    // if you ask right. For example, if you do Graph::initializeNodeOwners(), misc.owner
+    // if you ask right. For example, if you do Graph::initializeNodeOwners(), Node::owner
     // will tell you which basic block a node belongs to. You cannot rely on this persisting
     // across transformations unless you do the maintenance work yourself. Other phases use
-    // misc.replacement, but they do so manually: first you do Graph::clearReplacements()
+    // Node::replacement, but they do so manually: first you do Graph::clearReplacements()
     // and then you set, and use, replacement's yourself.
     //
     // Bottom line: don't use these fields unless you initialize them yourself, or by
     // calling some appropriate methods that initialize them the way you want. Otherwise,
     // these fields are meaningless.
-    union {
-        Node* replacement;
-        BasicBlock* owner;
-    } misc;
+    Node* replacement;
+    BasicBlock* owner;
 };
 
 inline bool nodeComparator(Node* a, Node* b)

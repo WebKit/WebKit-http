@@ -1212,6 +1212,17 @@ namespace JSC {
         ExpressionNode* m_expr;
     };
 
+    class EmptyVarExpression : public ExpressionNode {
+    public:
+        EmptyVarExpression(const JSTokenLocation&, const Identifier&);
+
+    private:
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        const Identifier& m_ident;
+    };
+
+
     class IfElseNode : public StatementNode {
     public:
         IfElseNode(const JSTokenLocation&, ExpressionNode* condition, StatementNode* ifBlock, StatementNode* elseBlock);
@@ -1280,6 +1291,10 @@ namespace JSC {
         ForInNode(VM*, const JSTokenLocation&, DeconstructionPatternNode*, ExpressionNode*, StatementNode*);
 
     private:
+        RegisterID* tryGetBoundLocal(BytecodeGenerator&);
+        void emitLoopHeader(BytecodeGenerator&, RegisterID* propertyName);
+        void emitMultiLoopBytecode(BytecodeGenerator&, RegisterID* dst);
+
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
     };
     

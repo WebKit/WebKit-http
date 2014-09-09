@@ -1,3 +1,184 @@
+2014-09-06  Darin Adler  <darin@apple.com>
+
+        Make updates suggested by new version of Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=136603
+
+        Reviewed by Mark Rowe.
+
+        * WebKit.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+2014-09-04  Pratik Solanki  <psolanki@apple.com>
+
+        Remove iOS specific disk image cache
+        https://bugs.webkit.org/show_bug.cgi?id=136517
+
+        Reviewed by Antti Koivisto.
+
+        Disk image cache code unnecessarily complicates SharedBuffer implementation. We can remove
+        this now since we don't enable it in WebKit2 on iOS.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-08-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviwed, remove empty directories.
+
+        * efl: Removed.
+        * efl/DefaultTheme: Removed.
+        * efl/DefaultTheme/widget: Removed.
+        * efl/WebCoreSupport: Removed.
+        * efl/ewk: Removed.
+        * efl/tests: Removed.
+        * efl/tests/UnitTestUtils: Removed.
+        * efl/tests/resources: Removed.
+        * gtk: Removed.
+        * gtk/WebCoreSupport: Removed.
+        * gtk/docs: Removed.
+        * gtk/gdom: Removed.
+        * gtk/resources: Removed.
+        * gtk/webkit: Removed.
+
+2014-08-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Adjust build order to reduce flakiness.
+
+        * WebKit.vcxproj/WebKit.sln: Make sure WebCoreGenerated doesn't
+          start until the last JSC tool has finished building.
+
+2014-08-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed Build 'fix' after r173018.
+
+        The new launcher applications were not getting build when driven
+        by WebKit.sln. This adds the missing project links and dependencies.
+
+        * WebKit.vcxproj/WebKit.sln: Update to include jscLauncher,
+        testapiLauncher, and testRegExpLauncher.
+
+2014-08-26  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Some projects are incorrectly installed to $BUILT_PRODUCTS_DIR
+        https://bugs.webkit.org/show_bug.cgi?id=136267
+
+        Reviewed by Dan Bernstein.
+
+        INSTALL_PATH was set to $BUILT_PRODUCTS_DIR for engineering configurations in r20225 as part of a build fix.
+        Not only is this no longer necessary to build, but it causes built products to be incorrectly installed in
+        engineering configurations.
+
+        Remove the setting of INSTALL_PATH from the pbxproj file so that the value specified in the xcconfig files is
+        used instead.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-08-20  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove HTMLInputElement's suggestedValue
+        https://bugs.webkit.org/show_bug.cgi?id=136094
+
+        Reviewed by Darin Adler.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-08-20  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/136119> WebKit1 plug-in test failures in production builds after r172595
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.xcodeproj/project.pbxproj: Add the symlinks at the top level of WebKitLegacy.framework
+        even in Production builds. Add the symlinks in the right locations too.
+
+2014-08-15  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add migrate-headers.sh and postprocess-headers.sh to WebKit.xcodeproj
+        https://bugs.webkit.org/show_bug.cgi?id=135984
+
+        Reviewed by Daniel Bates.
+
+        It's nice to be able to look at these files in Xcode.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-08-15  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/135979> WebKit1 Plug-in test failures in clean builds after r172595
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj: Add a WebKitPluginHost.app symlink at the top level of
+        WebKitLegacy.framework that points into Versions/Current. This enables -[NSBundle pathForAuxiliaryExecutable:]
+        to work correctly. Adding this symlink requires deleting any content that may already exist
+        at that path, since prior to r172595 it may have contained either a symlink or an
+        application bundle.
+
+2014-08-13  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/135909> Move helper applications out of the root of the framework.
+
+        As described in <https://developer.apple.com/library/mac/technotes/tn2206/>, for bundles containing
+        a Versions directory there may be no other content at the top level of the bundle other than symlinks.
+        Upcoming changes to code signing will prevent bundles that violate this rule from being signed.
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj: Add the symlink to WebKitPluginHost.app in the Versions/A
+        directory of the framework rather than at the top level.
+
+2014-08-14  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed.  Removing empty directories.
+
+        * qt: Removed.
+        * qt/declarative: Removed.
+        * qt/docs: Removed.
+        * qt/docs/webkitsnippets: Removed.
+        * qt/examples: Removed.
+        * qt/tests: Removed.
+        * qt/tests/MIMESniffing: Removed.
+        * qt/tests/benchmarks: Removed.
+        * qt/tests/qgraphicswebview: Removed.
+        * qt/tests/qwebelement: Removed.
+        * qt/tests/qwebframe: Removed.
+        * qt/tests/qwebhistory: Removed.
+        * qt/tests/qwebpage: Removed.
+        * qt/tests/qwebsecurityorigin: Removed.
+        * qt/tests/qwebview: Removed.
+
+2014-08-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r172504
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing
+        symbol exports.
+
+2014-08-11  Andy Estes  <aestes@apple.com>
+
+        [iOS] Get rid of iOS.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=135809
+
+        Reviewed by Joseph Pecoraro.
+
+        All iOS.xcconfig did was include AspenFamily.xcconfig, so there's no need for the indirection.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-08-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * WebKit.vcxproj/WebKit/WebKitCommon.props: Add $(DebugSuffix) to libraries so
+        that the DebugSuffix target works properly.
+
+2014-08-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Update glyphs to be more like Xcode 6
+        https://bugs.webkit.org/show_bug.cgi?id=135705
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebKit.xcodeproj/project.pbxproj: Added new images.
+
 2014-07-31  Andreas Kling  <akling@apple.com>
 
         Speculative Windows build fixery, part II.

@@ -204,6 +204,11 @@ public:
         m_offset = offset;
     }
 
+    void setThisValue(JSValue thisValue)
+    {
+        m_thisValue = thisValue;
+    }
+
     void setUndefined()
     {
         m_data.value = JSValue::encode(jsUndefined());
@@ -235,11 +240,29 @@ private:
 
     PropertyType m_propertyType;
     PropertyOffset m_offset;
-    const JSValue m_thisValue;
+    JSValue m_thisValue;
     JSObject* m_slotBase;
     WatchpointSet* m_watchpointSet;
     CacheabilityType m_cacheability;
 };
+
+ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, PropertyName propertyName) const
+{
+    if (m_propertyType == TypeValue)
+        return JSValue::decode(m_data.value);
+    if (m_propertyType == TypeGetter)
+        return functionGetter(exec);
+    return JSValue::decode(m_data.custom.getValue(exec, slotBase(), JSValue::encode(m_thisValue), propertyName));
+}
+
+ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, unsigned propertyName) const
+{
+    if (m_propertyType == TypeValue)
+        return JSValue::decode(m_data.value);
+    if (m_propertyType == TypeGetter)
+        return functionGetter(exec);
+    return JSValue::decode(m_data.custom.getValue(exec, slotBase(), JSValue::encode(m_thisValue), Identifier::from(exec, propertyName)));
+}
 
 } // namespace JSC
 

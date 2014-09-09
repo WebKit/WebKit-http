@@ -128,6 +128,7 @@ typedef const char* optionString;
     v(bool, printEachOSRExit, false) \
     v(bool, validateGraph, false) \
     v(bool, validateGraphAtEachPhase, false) \
+    v(bool, verboseValidationFailure, false) \
     v(bool, verboseOSR, false) \
     v(bool, verboseFTLOSRExit, false) \
     v(bool, verboseCallLink, false) \
@@ -167,6 +168,13 @@ typedef const char* optionString;
     v(bool, enableAccessInlining, true) \
     v(bool, enablePolyvariantDevirtualization, true) \
     v(bool, enablePolymorphicAccessInlining, true) \
+    v(bool, enablePolymorphicCallInlining, true) \
+    v(bool, callStatusShouldUseCallEdgeProfile, true) \
+    v(bool, callEdgeProfileReallyProcessesLog, true) \
+    v(bool, baselineDoesCallEdgeProfiling, false) \
+    v(bool, dfgDoesCallEdgeProfiling, true) \
+    v(bool, enableCallEdgeProfiling, true) \
+    v(unsigned, frequentCallThreshold, 2) \
     v(bool, optimizeNativeCalls, false) \
     \
     v(bool, enableConcurrentJIT, true) \
@@ -274,7 +282,7 @@ typedef const char* optionString;
     v(unsigned, gcMaxHeapSize, 0) \
     v(bool, recordGCPauseTimes, false) \
     v(bool, logHeapStatisticsAtExit, false) \
-    v(bool, profileTypesWithHighFidelity, false) \
+    v(bool, enableTypeProfiler, false) \
     \
     v(bool, enableExceptionFuzz, false) \
     v(unsigned, fireExceptionFuzzAt, 0)

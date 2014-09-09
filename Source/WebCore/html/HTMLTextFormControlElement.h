@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2014 Apple Inc. All rights reserved.
  * Copyright (C) 2009, 2010, 2011 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -50,14 +50,14 @@ public:
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
 
     // The derived class should return true if placeholder processing is needed.
+    bool isPlaceholderVisible() const { return m_isPlaceholderVisible; }
     virtual bool supportsPlaceholder() const = 0;
     String strippedPlaceholder() const;
-    bool placeholderShouldBeVisible() const;
     virtual HTMLElement* placeholderElement() const = 0;
-    void updatePlaceholderVisibility(bool);
+    void updatePlaceholderVisibility();
 
     int indexForVisiblePosition(const VisiblePosition&) const;
-    VisiblePosition visiblePositionForIndex(int index) const;
+    WEBCORE_EXPORT VisiblePosition visiblePositionForIndex(int index) const;
     int selectionStart() const;
     int selectionEnd() const;
     const AtomicString& selectionDirection() const;
@@ -80,7 +80,7 @@ public:
     virtual TextControlInnerTextElement* innerTextElement() const = 0;
 
     void selectionChanged(bool shouldFireSelectEvent);
-    bool lastChangeWasUserEdit() const;
+    WEBCORE_EXPORT bool lastChangeWasUserEdit() const;
     void setInnerTextValue(const String&);
     String innerTextValue() const;
 
@@ -88,8 +88,8 @@ public:
 
     void setTextAsOfLastFormControlChangeEvent(const String& text) { m_textAsOfLastFormControlChangeEvent = text; }
 #if PLATFORM(IOS)
-    void hidePlaceholder();
-    void showPlaceholderIfNecessary();
+    WEBCORE_EXPORT void hidePlaceholder();
+    WEBCORE_EXPORT void showPlaceholderIfNecessary();
 #endif
 
 protected:
@@ -120,6 +120,8 @@ protected:
     String valueWithHardLineBreaks() const;
 
 private:
+    TextFieldSelectionDirection cachedSelectionDirection() const { return static_cast<TextFieldSelectionDirection>(m_cachedSelectionDirection); }
+
     int computeSelectionStart() const;
     int computeSelectionEnd() const;
     TextFieldSelectionDirection computeSelectionDirection() const;
@@ -132,19 +134,21 @@ private:
 
     // Returns true if user-editable value is empty. Used to check placeholder visibility.
     virtual bool isEmptyValue() const = 0;
-    // Returns true if suggested value is empty. Used to check placeholder visibility.
-    virtual bool isEmptySuggestedValue() const { return true; }
     // Called in dispatchFocusEvent(), after placeholder process, before calling parent's dispatchFocusEvent().
     virtual void handleFocusEvent(Node* /* oldFocusedNode */, FocusDirection) { }
     // Called in dispatchBlurEvent(), after placeholder process, before calling parent's dispatchBlurEvent().
     virtual void handleBlurEvent() { }
 
+    bool placeholderShouldBeVisible() const;
+
     String m_textAsOfLastFormControlChangeEvent;
-    bool m_lastChangeWasUserEdit;
-    
+
     int m_cachedSelectionStart;
     int m_cachedSelectionEnd;
-    TextFieldSelectionDirection m_cachedSelectionDirection;
+
+    unsigned char m_cachedSelectionDirection : 2;
+    unsigned char m_lastChangeWasUserEdit : 1;
+    unsigned char m_isPlaceholderVisible : 1;
 };
 
 void isHTMLTextFormControlElement(const HTMLTextFormControlElement&); // Catch unnecessary runtime check of type known at compile time.

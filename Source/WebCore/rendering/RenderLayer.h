@@ -439,6 +439,11 @@ public:
     virtual Scrollbar* horizontalScrollbar() const override { return m_hBar.get(); }
     virtual Scrollbar* verticalScrollbar() const override { return m_vBar.get(); }
     virtual ScrollableArea* enclosingScrollableArea() const override;
+    virtual bool isScrollableOrRubberbandable() override;
+    virtual bool hasScrollableOrRubberbandableAncestor() override;
+#if ENABLE(CSS_SCROLL_SNAP)
+    virtual void updateSnapOffsets() override;
+#endif
 
 #if PLATFORM(IOS)
 #if ENABLE(TOUCH_EVENTS)
@@ -628,12 +633,10 @@ public:
     // Ancestor compositing layer, excluding this.
     RenderLayer* ancestorCompositingLayer() const { return enclosingCompositingLayer(ExcludeSelf); }
 
-#if ENABLE(CSS_FILTERS)
     RenderLayer* enclosingFilterLayer(IncludeSelfOrNot = IncludeSelf) const;
     RenderLayer* enclosingFilterRepaintLayer() const;
     void setFilterBackendNeedsRepaintingInRect(const LayoutRect&);
     bool hasAncestorWithFilterOutsets() const;
-#endif
 
     bool canUseConvertToLayerCoords() const
     {
@@ -736,20 +739,16 @@ public:
     // Bounding box in the coordinates of this layer.
     LayoutRect localBoundingBox(CalculateLayerBoundsFlags = 0) const;
     // Deprecated: Pixel snapped bounding box relative to the root.
-    IntRect absoluteBoundingBox() const;
+    WEBCORE_EXPORT IntRect absoluteBoundingBox() const;
     // Device pixel snapped bounding box relative to the root. absoluteBoundingBox() callers will be directed to this.
     FloatRect absoluteBoundingBoxForPainting() const;
 
     // Bounds used for layer overlap testing in RenderLayerCompositor.
     LayoutRect overlapBounds() const { return overlapBoundsIncludeChildren() ? calculateLayerBounds(this, LayoutSize()) : localBoundingBox(); }
 
-#if ENABLE(CSS_FILTERS)
     // If true, this layer's children are included in its bounds for overlap testing.
     // We can't rely on the children's positions if this layer has a filter that could have moved the children's pixels around.
     bool overlapBoundsIncludeChildren() const { return hasFilter() && renderer().style().filter().hasFilterThatMovesPixels(); }
-#else
-    bool overlapBoundsIncludeChildren() const { return false; }
-#endif
 
     // Can pass offsetFromRoot if known.
     LayoutRect calculateLayerBounds(const RenderLayer* ancestorLayer, const LayoutSize& offsetFromRoot, CalculateLayerBoundsFlags = DefaultCalculateLayerBoundsFlags) const;
@@ -788,12 +787,8 @@ public:
     bool preserves3D() const { return renderer().style().transformStyle3D() == TransformStyle3DPreserve3D; }
     bool has3DTransform() const { return m_transform && !m_transform->isAffine(); }
 
-#if ENABLE(CSS_FILTERS)
     virtual void filterNeedsRepaint();
     bool hasFilter() const { return renderer().hasFilter(); }
-#else
-    bool hasFilter() const { return false; }
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
     bool hasBlendMode() const { return renderer().hasBlendMode(); }
@@ -829,7 +824,7 @@ public:
     virtual GraphicsLayer* layerForVerticalScrollbar() const override;
     virtual GraphicsLayer* layerForScrollCorner() const override;
     virtual bool usesCompositedScrolling() const override;
-    bool needsCompositedScrolling() const;
+    WEBCORE_EXPORT bool needsCompositedScrolling() const;
     bool needsCompositingLayersRebuiltForClip(const RenderStyle* oldStyle, const RenderStyle* newStyle) const;
     bool needsCompositingLayersRebuiltForOverflow(const RenderStyle* oldStyle, const RenderStyle* newStyle) const;
 
@@ -847,11 +842,9 @@ public:
     bool containsDirtyOverlayScrollbars() const { return m_containsDirtyOverlayScrollbars; }
     void setContainsDirtyOverlayScrollbars(bool dirtyScrollbars) { m_containsDirtyOverlayScrollbars = dirtyScrollbars; }
 
-#if ENABLE(CSS_FILTERS)
     bool paintsWithFilters() const;
     bool requiresFullLayerImageForFilters() const;
     FilterEffectRenderer* filterRenderer() const;
-#endif
 
 #if !ASSERT_DISABLED
     bool layerListMutationAllowed() const { return m_layerListMutationAllowed; }
@@ -983,10 +976,9 @@ private:
 
     bool setupFontSubpixelQuantization(GraphicsContext*, bool& didQuantizeFonts);
     bool setupClipPath(GraphicsContext*, const LayerPaintingInfo&, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed);
-#if ENABLE(CSS_FILTERS)
+
     std::unique_ptr<FilterEffectRendererHelper> setupFilters(GraphicsContext*, LayerPaintingInfo&, PaintLayerFlags, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed);
     GraphicsContext* applyFilters(FilterEffectRendererHelper*, GraphicsContext* originalContext, LayerPaintingInfo&, LayerFragments&);
-#endif
 
     void paintLayer(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
     void paintFixedLayersInNamedFlows(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
@@ -1124,10 +1116,8 @@ private:
     bool paintingInsideReflection() const { return m_paintingInsideReflection; }
     void setPaintingInsideReflection(bool b) { m_paintingInsideReflection = b; }
 
-#if ENABLE(CSS_FILTERS)
     void updateOrRemoveFilterClients();
     void updateOrRemoveFilterEffectRenderer();
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
     void updateAncestorChainHasBlendingDescendants();
@@ -1253,7 +1243,9 @@ private:
 
 #if PLATFORM(IOS)
     bool m_adjustForIOSCaretWhenScrolling : 1;
+#if ENABLE(IOS_TOUCH_EVENTS)
     bool m_registeredAsTouchEventListenerForScrolling : 1;
+#endif
     bool m_inUserScroll : 1;
     bool m_requiresScrollBoundsOriginUpdate : 1;
 #endif
@@ -1265,9 +1257,7 @@ private:
     bool m_layerListMutationAllowed : 1;
 #endif
 
-#if ENABLE(CSS_FILTERS)
     bool m_hasFilterInfo : 1;
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
     unsigned m_blendMode : 5;

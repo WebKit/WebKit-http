@@ -49,6 +49,9 @@
 #include "MediaStream.h"
 #endif
 
+#ifndef NDEBUG
+#include <wtf/StringPrintStream.h>
+#endif
 
 namespace WebCore {
 
@@ -72,6 +75,7 @@ class MediaKeys;
 #endif
 #if ENABLE(MEDIA_SOURCE)
 class MediaSource;
+class SourceBuffer;
 class VideoPlaybackQuality;
 #endif
 
@@ -83,7 +87,7 @@ class TextTrackList;
 class VideoTrackList;
 class VideoTrackPrivate;
 
-typedef PODIntervalTree<double, TextTrackCue*> CueIntervalTree;
+typedef PODIntervalTree<MediaTime, TextTrackCue*> CueIntervalTree;
 typedef CueIntervalTree::IntervalType CueInterval;
 typedef Vector<CueInterval> CueList;
 #endif
@@ -108,7 +112,7 @@ public:
     virtual bool hasAudio() const override;
 
     void rewind(double timeDelta);
-    virtual void returnToRealtime() override;
+    WEBCORE_EXPORT virtual void returnToRealtime() override;
 
     // Eventually overloaded in HTMLVideoElement
     virtual bool supportsFullscreen() const override { return false; };
@@ -118,7 +122,7 @@ public:
     
     virtual bool doesHaveAttribute(const AtomicString&, AtomicString* value = nullptr) const override;
 
-    PlatformMedia platformMedia() const;
+    WEBCORE_EXPORT PlatformMedia platformMedia() const;
     PlatformLayer* platformLayer() const;
 #if PLATFORM(IOS)
     void setVideoFullscreenLayer(PlatformLayer*);
@@ -166,26 +170,33 @@ public:
     bool seeking() const;
 
 // playback state
-    virtual double currentTime() const override;
+    WEBCORE_EXPORT virtual double currentTime() const override;
     virtual void setCurrentTime(double) override;
     virtual void setCurrentTime(double, ExceptionCode&);
-    virtual double duration() const override;
-    virtual bool paused() const override;
+    WEBCORE_EXPORT virtual double duration() const override;
+    WEBCORE_EXPORT virtual bool paused() const override;
     virtual double defaultPlaybackRate() const override;
     virtual void setDefaultPlaybackRate(double) override;
-    virtual double playbackRate() const override;
+    WEBCORE_EXPORT virtual double playbackRate() const override;
     virtual void setPlaybackRate(double) override;
+
+// MediaTime versions of playback state
+    MediaTime currentMediaTime() const;
+    void setCurrentTime(const MediaTime&);
+    MediaTime durationMediaTime() const;
+    void fastSeek(const MediaTime&);
+
     void updatePlaybackRate();
     bool webkitPreservesPitch() const;
     void setWebkitPreservesPitch(bool);
     virtual PassRefPtr<TimeRanges> played() override;
     virtual PassRefPtr<TimeRanges> seekable() const override;
-    bool ended() const;
+    WEBCORE_EXPORT bool ended() const;
     bool autoplay() const;
     bool loop() const;    
     void setLoop(bool b);
-    virtual void play() override;
-    virtual void pause() override;
+    WEBCORE_EXPORT virtual void play() override;
+    WEBCORE_EXPORT virtual void pause() override;
     virtual void setShouldBufferData(bool) override;
     void fastSeek(double);
     double minFastReverseRate() const;
@@ -208,6 +219,7 @@ public:
 //  Media Source.
     void closeMediaSource();
     void incrementDroppedFrameCount() { ++m_droppedVideoFrames; }
+    size_t maximumSourceBufferSize(const SourceBuffer&) const;
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -233,20 +245,20 @@ public:
 // controls
     bool controls() const;
     void setControls(bool);
-    virtual double volume() const override;
+    WEBCORE_EXPORT virtual double volume() const override;
     virtual void setVolume(double, ExceptionCode&) override;
-    virtual bool muted() const override;
-    virtual void setMuted(bool) override;
+    WEBCORE_EXPORT virtual bool muted() const override;
+    WEBCORE_EXPORT virtual void setMuted(bool) override;
 
-    void togglePlayState();
-    virtual void beginScrubbing() override;
-    virtual void endScrubbing() override;
+    WEBCORE_EXPORT void togglePlayState();
+    WEBCORE_EXPORT virtual void beginScrubbing() override;
+    WEBCORE_EXPORT virtual void endScrubbing() override;
 
     virtual void beginScanning(ScanDirection) override;
     virtual void endScanning() override;
     double nextScanRate();
 
-    virtual bool canPlay() const override;
+    WEBCORE_EXPORT virtual bool canPlay() const override;
 
     double percentLoaded() const;
 
@@ -375,10 +387,10 @@ public:
 
     bool hasSingleSecurityOrigin() const { return !m_player || m_player->hasSingleSecurityOrigin(); }
     
-    virtual bool isFullscreen() const override;
+    WEBCORE_EXPORT virtual bool isFullscreen() const override;
     void toggleFullscreenState();
     virtual void enterFullscreen() override;
-    void exitFullscreen();
+    WEBCORE_EXPORT void exitFullscreen();
 
     virtual bool hasClosedCaptions() const override;
     virtual bool closedCaptionsVisible() const override;
@@ -392,9 +404,9 @@ public:
     virtual void privateBrowsingStateDidChange() override;
 
     // Media cache management.
-    static void getSitesInMediaCache(Vector<String>&);
-    static void clearMediaCache();
-    static void clearMediaCacheForSite(const String&);
+    WEBCORE_EXPORT static void getSitesInMediaCache(Vector<String>&);
+    WEBCORE_EXPORT static void clearMediaCache();
+    WEBCORE_EXPORT static void clearMediaCacheForSite(const String&);
     static void resetMediaEngines();
 
     bool isPlaying() const { return m_playing; }
@@ -572,6 +584,7 @@ private:
 
 #if PLATFORM(IOS)
     virtual String mediaPlayerNetworkInterfaceName() const;
+    virtual bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const override;
 #endif
 
     void loadTimerFired(Timer<HTMLMediaElement>&);
@@ -583,12 +596,12 @@ private:
     void startProgressEventTimer();
     void stopPeriodicTimers();
 
-    void seek(double time);
-    void seekInternal(double time);
-    void seekWithTolerance(double time, double negativeTolerance, double positiveTolerance, bool fromDOM);
+    void seek(const MediaTime&);
+    void seekInternal(const MediaTime&);
+    void seekWithTolerance(const MediaTime&, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance, bool fromDOM);
     void finishSeek();
     void checkIfSeekNeeded();
-    void addPlayedRange(double start, double end);
+    void addPlayedRange(const MediaTime& start, const MediaTime& end);
     
     void scheduleTimeupdateEvent(bool periodicEvent);
     void scheduleEvent(const AtomicString& eventName);
@@ -609,7 +622,7 @@ private:
     URL selectNextSourceChild(ContentType*, String* keySystem, InvalidURLAction);
 
 #if ENABLE(VIDEO_TRACK)
-    void updateActiveTextTrackCues(double);
+    void updateActiveTextTrackCues(const MediaTime&);
     HTMLTrackElement* showingTrackWithSameKind(HTMLTrackElement*) const;
 
     enum ReconfigureMode {
@@ -640,12 +653,8 @@ private:
     bool pausedForUserInteraction() const;
     bool couldPlayIfEnoughData() const;
 
-    double minTimeSeekable() const;
-    double maxTimeSeekable() const;
-
-#if PLATFORM(IOS)
-    bool parseMediaPlayerAttribute(const QualifiedName&, const AtomicString&);
-#endif
+    MediaTime minTimeSeekable() const;
+    MediaTime maxTimeSeekable() const;
 
     // Pauses playback without changing any states or generating events
     void setPausedInternal(bool);
@@ -721,23 +730,23 @@ private:
     RefPtr<MediaError> m_error;
 
     struct PendingSeek {
-        PendingSeek(double now, double targetTime, double negativeTolerance, double positiveTolerance)
+        PendingSeek(const MediaTime& now, const MediaTime& targetTime, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)
             : now(now)
             , targetTime(targetTime)
             , negativeTolerance(negativeTolerance)
             , positiveTolerance(positiveTolerance)
         {
         }
-        double now;
-        double targetTime;
-        double negativeTolerance;
-        double positiveTolerance;
+        MediaTime now;
+        MediaTime targetTime;
+        MediaTime negativeTolerance;
+        MediaTime positiveTolerance;
     };
     std::unique_ptr<PendingSeek> m_pendingSeek;
 
     double m_volume;
     bool m_volumeInitialized;
-    double m_lastSeekTime;
+    MediaTime m_lastSeekTime;
     
     unsigned m_previousProgress;
     double m_previousProgressTime;
@@ -746,7 +755,7 @@ private:
     double m_clockTimeAtLastUpdateEvent;
 
     // The last time a timeupdate event was sent in movie time.
-    double m_lastTimeUpdateEventMovieTime;
+    MediaTime m_lastTimeUpdateEventMovieTime;
     
     // Loading state.
     enum LoadState { WaitingForSource, LoadingFromSrcAttr, LoadingFromSourceElement };
@@ -775,12 +784,12 @@ private:
     unsigned long m_droppedVideoFrames;
 #endif
 
-    mutable double m_cachedTime;
+    mutable MediaTime m_cachedTime;
     mutable double m_clockTimeAtLastCachedTimeUpdate;
     mutable double m_minimumClockTimeToUpdateCachedTime;
 
-    double m_fragmentStartTime;
-    double m_fragmentEndTime;
+    MediaTime m_fragmentStartTime;
+    MediaTime m_fragmentEndTime;
 
     typedef unsigned PendingActionFlags;
     PendingActionFlags m_pendingActionFlags;
@@ -817,17 +826,13 @@ private:
     // support progress events so setting m_sendProgressEvents disables them 
     bool m_sendProgressEvents : 1;
 
-    bool m_isFullscreen : 1;
+    bool m_isInVideoFullscreen : 1;
     bool m_closedCaptionsVisible : 1;
     bool m_webkitLegacyClosedCaptionOverride : 1;
     bool m_completelyLoaded : 1;
     bool m_havePreparedToPlay : 1;
     bool m_parsingInProgress : 1;
     bool m_elementIsHidden : 1;
-
-#if PLATFORM(IOS)
-    bool m_requestingPlay : 1;
-#endif
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool m_mediaControlsDependOnPageScaleFactor : 1;
@@ -839,7 +844,7 @@ private:
     bool m_processingPreferenceChange : 1;
 
     String m_subtitleTrackLanguage;
-    float m_lastTextTrackUpdateTime;
+    MediaTime m_lastTextTrackUpdateTime;
 
     CaptionUserPreferences::CaptionDisplayMode m_captionDisplayMode;
 
@@ -902,7 +907,7 @@ struct ValueToString<TextTrackCue*> {
         String text;
         if (cue->isRenderable())
             text = toVTTCue(cue)->text();
-        return String::format("%p id=%s interval=%f-->%f cue=%s)", cue, cue->id().utf8().data(), cue->startTime(), cue->endTime(), text.utf8().data());
+        return String::format("%p id=%s interval=%s-->%s cue=%s)", cue, cue->id().utf8().data(), toString(cue->startTime()).utf8().data(), toString(cue->endTime()).utf8().data(), text.utf8().data());
     }
 };
 #endif
@@ -914,6 +919,16 @@ inline bool isHTMLMediaElement(const Node& node) { return node.isElementNode() &
 template <> inline bool isElementOfType<const HTMLMediaElement>(const Element& element) { return element.isMediaElement(); }
 
 NODE_TYPE_CASTS(HTMLMediaElement)
+
+#ifndef NDEBUG
+template<>
+struct ValueToString<MediaTime> {
+    static String string(const MediaTime& time)
+    {
+        return toString(time);
+    }
+};
+#endif
 
 } //namespace
 

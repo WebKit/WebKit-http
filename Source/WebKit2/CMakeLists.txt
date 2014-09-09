@@ -145,14 +145,11 @@ if (WTF_USE_3D_GRAPHICS)
 endif ()
 
 set(WebKit2_SOURCES
-    NetworkProcess/AsynchronousNetworkLoaderClient.cpp
-    NetworkProcess/HostRecord.cpp
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
     NetworkProcess/NetworkResourceLoadScheduler.cpp
     NetworkProcess/NetworkResourceLoader.cpp
-    NetworkProcess/SynchronousNetworkLoaderClient.cpp
 
     NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
@@ -653,8 +650,6 @@ set(WebKit2_MESSAGES_IN_FILES
 )
 
 set(WebProcess_LIBRARIES
-    JavaScriptCore
-    WebCore
     WebKit2
 )
 
@@ -664,7 +659,6 @@ set(NetworkProcess_LIBRARIES
 
 set(WebKit2_LIBRARIES
     JavaScriptCore
-    WTF
     WebCore
 )
 
@@ -702,7 +696,10 @@ add_dependencies(WebKit2 ${WEBKIT2_EXTRA_DEPENDENCIES})
 add_webkit2_prefix_header(WebKit2)
 target_link_libraries(WebKit2 ${WebKit2_LIBRARIES})
 set_target_properties(WebKit2 PROPERTIES FOLDER "WebKit")
-set_target_properties(WebKit2 PROPERTIES LINK_INTERFACE_LIBRARIES "")
+
+if (WebKit2_VERSION_SCRIPT)
+    ADD_TARGET_PROPERTIES(WebKit2 LINK_FLAGS "${WebKit2_VERSION_SCRIPT}")
+endif ()
 
 if (WebKit2_OUTPUT_NAME)
     set_target_properties(WebKit2 PROPERTIES OUTPUT_NAME ${WebKit2_OUTPUT_NAME})

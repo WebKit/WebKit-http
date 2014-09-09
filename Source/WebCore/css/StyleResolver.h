@@ -214,7 +214,7 @@ public:
 
     bool hasSelectorForId(const AtomicString&) const;
     bool hasSelectorForClass(const AtomicString&) const;
-    bool hasSelectorForAttribute(const AtomicString&) const;
+    bool hasSelectorForAttribute(const Element&, const AtomicString&) const;
 
     CSSFontSelector* fontSelector() const { return m_fontSelector.get(); }
 #if ENABLE(CSS_DEVICE_ADAPTATION)
@@ -238,10 +238,8 @@ public:
 
     void clearCachedPropertiesAffectedByViewportUnits();
 
-#if ENABLE(CSS_FILTERS)
     bool createFilterOperations(CSSValue* inValue, FilterOperations& outOperations);
     void loadPendingSVGDocuments();
-#endif // ENABLE(CSS_FILTERS)
 
     void loadPendingResources();
 
@@ -301,7 +299,9 @@ private:
 #if ENABLE(CSS_GRID_LAYOUT)
     std::unique_ptr<GridPosition> adjustNamedGridItemPosition(const NamedGridAreaMap&, const NamedGridLinesMap&, const GridPosition&, GridPositionSide) const;
 #endif
-
+    
+    void adjustStyleForInterCharacterRuby();
+    
     bool fastRejectSelector(const RuleData&) const;
 
     enum ShouldUseMatchedPropertiesCache { DoNotUseMatchedPropertiesCache = 0, UseMatchedPropertiesCache };
@@ -380,9 +380,8 @@ public:
         bool applyPropertyToRegularStyle() const { return m_applyPropertyToRegularStyle; }
         bool applyPropertyToVisitedLinkStyle() const { return m_applyPropertyToVisitedLinkStyle; }
         PendingImagePropertyMap& pendingImageProperties() { return m_pendingImageProperties; }
-#if ENABLE(CSS_FILTERS)
+
         Vector<RefPtr<ReferenceFilterOperation>>& filtersWithPendingSVGDocuments() { return m_filtersWithPendingSVGDocuments; }
-#endif
 
         void setLineHeightValue(CSSValue* value) { m_lineHeightValue = value; }
         CSSValue* lineHeightValue() { return m_lineHeightValue; }
@@ -429,9 +428,9 @@ public:
         bool m_applyPropertyToVisitedLinkStyle;
 
         PendingImagePropertyMap m_pendingImageProperties;
-#if ENABLE(CSS_FILTERS)
+
         Vector<RefPtr<ReferenceFilterOperation>> m_filtersWithPendingSVGDocuments;
-#endif
+
         CSSValue* m_lineHeightValue;
         bool m_fontDirty;
         bool m_fontSizeHasViewportUnits;
@@ -545,10 +544,12 @@ private:
     friend bool operator!=(const MatchRanges&, const MatchRanges&);
 };
 
-inline bool StyleResolver::hasSelectorForAttribute(const AtomicString &attributeName) const
+inline bool StyleResolver::hasSelectorForAttribute(const Element& element, const AtomicString &attributeName) const
 {
     ASSERT(!attributeName.isEmpty());
-    return m_ruleSets.features().attrsInRules.contains(attributeName.impl());
+    if (element.isHTMLElement())
+        return m_ruleSets.features().attributeCanonicalLocalNamesInRules.contains(attributeName.impl());
+    return m_ruleSets.features().attributeLocalNamesInRules.contains(attributeName.impl());
 }
 
 inline bool StyleResolver::hasSelectorForClass(const AtomicString& classValue) const
@@ -568,9 +569,9 @@ inline bool checkRegionSelector(const CSSSelector* regionSelector, Element* regi
     if (!regionSelector || !regionElement)
         return false;
 
-    SelectorChecker selectorChecker(regionElement->document(), SelectorChecker::Mode::QueryingRules);
+    SelectorChecker selectorChecker(regionElement->document());
     for (const CSSSelector* s = regionSelector; s; s = CSSSelectorList::next(s)) {
-        SelectorChecker::SelectorCheckingContext selectorCheckingContext(s, regionElement, SelectorChecker::VisitedMatchDisabled);
+        SelectorChecker::SelectorCheckingContext selectorCheckingContext(s, regionElement, SelectorChecker::Mode::QueryingRules);
         if (selectorChecker.match(selectorCheckingContext))
             return true;
     }

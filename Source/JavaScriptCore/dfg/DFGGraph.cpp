@@ -31,6 +31,7 @@
 #include "BytecodeLivenessAnalysisInlines.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
+#include "DFGBlockWorklist.h"
 #include "DFGClobberSet.h"
 #include "DFGJITCode.h"
 #include "DFGVariableAccessDataDump.h"
@@ -65,7 +66,7 @@ Graph::Graph(VM& vm, Plan& plan, LongLivedState& longLivedState)
     , m_nextMachineLocal(0)
     , m_machineCaptureStart(std::numeric_limits<int>::max())
     , m_fixpointState(BeforeFixpoint)
-    , m_structureWatchpointState(HaveNotStartedWatching)
+    , m_structureRegistrationState(HaveNotStartedRegistering)
     , m_form(LoadStore)
     , m_unificationState(LocallyUnified)
     , m_refCountState(EverythingIsLive)
@@ -157,7 +158,6 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     NodeType op = node->op();
 
     unsigned refCount = node->refCount();
-    bool skipped = !refCount;
     bool mustGenerate = node->mustGenerate();
     if (mustGenerate)
         --refCount;
@@ -181,8 +181,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     //         arg# - an argument number.
     //         id#  - the index in the CodeBlock of an identifier { if codeBlock is passed to dump(), the string representation is displayed }.
     //         var# - the index of a var on the global object, used by GetGlobalVar/PutGlobalVar operations.
-    out.printf("% 4d:%s<%c%u:", (int)node->index(), skipped ? "  skipped  " : "           ", mustGenerate ? '!' : ' ', refCount);
-    if (node->hasResult() && !skipped && node->hasVirtualRegister())
+    out.printf("% 4d:<%c%u:", (int)node->index(), mustGenerate ? '!' : ' ', refCount);
+    if (node->hasResult() && node->hasVirtualRegister() && node->virtualRegister().isValid())
         out.print(node->virtualRegister());
     else
         out.print("-");
@@ -223,24 +223,23 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, inContext(*node->structure(), context));
     if (node->hasTransition())
         out.print(comma, pointerDumpInContext(node->transition(), context));
-    if (node->hasFunction()) {
-        out.print(comma, "function(", pointerDump(node->function()), ", ");
-        if (node->function()->value().isCell()
-            && node->function()->value().asCell()->inherits(JSFunction::info())) {
-            JSFunction* function = jsCast<JSFunction*>(node->function()->value().asCell());
-            if (function->isHostFunction())
-                out.print("<host function>");
-            else
-                out.print(FunctionExecutableDump(function->jsExecutable()));
-        } else
-            out.print("<not JSFunction>");
-        out.print(")");
-    }
-    if (node->hasExecutable()) {
-        if (node->executable()->inherits(FunctionExecutable::info()))
-            out.print(comma, "executable(", FunctionExecutableDump(jsCast<FunctionExecutable*>(node->executable())), ")");
-        else
-            out.print(comma, "executable(not function: ", RawPointer(node->executable()), ")");
+    if (node->hasCellOperand()) {
+        if (!node->cellOperand()->value() || !node->cellOperand()->value().isCell())
+            out.print(comma, "invalid cell operand: ", node->cellOperand()->value());
+        else {
+            out.print(comma, pointerDump(node->cellOperand()->value().asCell()));
+            if (node->cellOperand()->value().isCell()) {
+                CallVariant variant(node->cellOperand()->value().asCell());
+                if (ExecutableBase* executable = variant.executable()) {
+                    if (executable->isHostFunction())
+                        out.print(comma, "<host function>");
+                    else if (FunctionExecutable* functionExecutable = jsDynamicCast<FunctionExecutable*>(executable))
+                        out.print(comma, FunctionExecutableDump(functionExecutable));
+                    else
+                        out.print(comma, "<non-function executable>");
+                }
+            }
+        }
     }
     if (node->hasFunctionDeclIndex()) {
         FunctionExecutable* executable = m_codeBlock->functionDecl(node->functionDeclIndex());
@@ -352,12 +351,10 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     
     out.print(")");
 
-    if (!skipped) {
-        if (node->hasVariableAccessData(*this) && node->tryGetVariableAccessData())
-            out.print("  predicting ", SpeculationDump(node->tryGetVariableAccessData()->prediction()));
-        else if (node->hasHeapPrediction())
-            out.print("  predicting ", SpeculationDump(node->getHeapPrediction()));
-    }
+    if (node->hasVariableAccessData(*this) && node->tryGetVariableAccessData())
+        out.print("  predicting ", SpeculationDump(node->tryGetVariableAccessData()->prediction()));
+    else if (node->hasHeapPrediction())
+        out.print("  predicting ", SpeculationDump(node->getHeapPrediction()));
     
     out.print("\n");
 }
@@ -372,20 +369,10 @@ void Graph::dumpBlockHeader(PrintStream& out, const char* prefix, BasicBlock* bl
         out.print(" ", *block->predecessors[i]);
     out.print("\n");
     if (m_dominators.isValid()) {
-        out.print(prefix, "  Dominated by:");
-        for (size_t i = 0; i < m_blocks.size(); ++i) {
-            if (!m_dominators.dominates(i, block->index))
-                continue;
-            out.print(" #", i);
-        }
-        out.print("\n");
-        out.print(prefix, "  Dominates:");
-        for (size_t i = 0; i < m_blocks.size(); ++i) {
-            if (!m_dominators.dominates(block->index, i))
-                continue;
-            out.print(" #", i);
-        }
-        out.print("\n");
+        out.print(prefix, "  Dominated by: ", m_dominators.dominatorsOf(block), "\n");
+        out.print(prefix, "  Dominates: ", m_dominators.blocksDominatedBy(block), "\n");
+        out.print(prefix, "  Dominance Frontier: ", m_dominators.dominanceFrontierOf(block), "\n");
+        out.print(prefix, "  Iterated Dominance Frontier: ", m_dominators.iteratedDominanceFrontierOf(BlockList(1, block)), "\n");
     }
     if (m_naturalLoops.isValid()) {
         if (const NaturalLoop* loop = m_naturalLoops.headerOf(block)) {
@@ -436,10 +423,10 @@ void Graph::dump(PrintStream& out, DumpContext* context)
     if (!context)
         context = &myContext;
     
-    dataLog("\n");
-    dataLog("DFG for ", CodeBlockWithJITType(m_codeBlock, JITCode::DFGJIT), ":\n");
-    dataLog("  Fixpoint state: ", m_fixpointState, "; Form: ", m_form, "; Unification state: ", m_unificationState, "; Ref count state: ", m_refCountState, "\n");
-    dataLog("\n");
+    out.print("\n");
+    out.print("DFG for ", CodeBlockWithJITType(m_codeBlock, JITCode::DFGJIT), ":\n");
+    out.print("  Fixpoint state: ", m_fixpointState, "; Form: ", m_form, "; Unification state: ", m_unificationState, "; Ref count state: ", m_refCountState, "\n");
+    out.print("\n");
     
     Node* lastNode = 0;
     for (size_t b = 0; b < m_blocks.size(); ++b) {
@@ -508,12 +495,12 @@ void Graph::dump(PrintStream& out, DumpContext* context)
             out.print("  Values: ", nodeMapDump(block->ssa->valuesAtTail, context), "\n");
             break;
         } }
-        dataLog("\n");
+        out.print("\n");
     }
     
     if (!myContext.isEmpty()) {
-        myContext.dump(WTF::dataFile());
-        dataLog("\n");
+        myContext.dump(out);
+        out.print("\n");
     }
 }
 
@@ -639,26 +626,37 @@ void Graph::substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, Va
     }
 }
 
-void Graph::addForDepthFirstSort(Vector<BasicBlock*>& result, Vector<BasicBlock*, 16>& worklist, HashSet<BasicBlock*>& seen, BasicBlock* block)
+BlockList Graph::blocksInPreOrder()
 {
-    if (seen.contains(block))
-        return;
-    
-    result.append(block);
-    worklist.append(block);
-    seen.add(block);
+    BlockList result;
+    BlockWorklist worklist;
+    worklist.push(block(0));
+    while (BasicBlock* block = worklist.pop()) {
+        result.append(block);
+        for (unsigned i = block->numSuccessors(); i--;)
+            worklist.push(block->successor(i));
+    }
+    return result;
 }
 
-void Graph::getBlocksInDepthFirstOrder(Vector<BasicBlock*>& result)
+BlockList Graph::blocksInPostOrder()
 {
-    Vector<BasicBlock*, 16> worklist;
-    HashSet<BasicBlock*> seen;
-    addForDepthFirstSort(result, worklist, seen, block(0));
-    while (!worklist.isEmpty()) {
-        BasicBlock* block = worklist.takeLast();
-        for (unsigned i = block->numSuccessors(); i--;)
-            addForDepthFirstSort(result, worklist, seen, block->successor(i));
+    BlockList result;
+    PostOrderBlockWorklist worklist;
+    worklist.push(block(0));
+    while (BlockWithOrder item = worklist.pop()) {
+        switch (item.order) {
+        case PreOrder:
+            worklist.pushPost(item.block);
+            for (unsigned i = item.block->numSuccessors(); i--;)
+                worklist.push(item.block->successor(i));
+            break;
+        case PostOrder:
+            result.append(item.block);
+            break;
+        }
     }
+    return result;
 }
 
 void Graph::clearReplacements()
@@ -668,9 +666,9 @@ void Graph::clearReplacements()
         if (!block)
             continue;
         for (unsigned phiIndex = block->phis.size(); phiIndex--;)
-            block->phis[phiIndex]->misc.replacement = 0;
+            block->phis[phiIndex]->replacement = 0;
         for (unsigned nodeIndex = block->size(); nodeIndex--;)
-            block->at(nodeIndex)->misc.replacement = 0;
+            block->at(nodeIndex)->replacement = 0;
     }
 }
 
@@ -681,9 +679,9 @@ void Graph::initializeNodeOwners()
         if (!block)
             continue;
         for (unsigned phiIndex = block->phis.size(); phiIndex--;)
-            block->phis[phiIndex]->misc.owner = block;
+            block->phis[phiIndex]->owner = block;
         for (unsigned nodeIndex = block->size(); nodeIndex--;)
-            block->at(nodeIndex)->misc.owner = block;
+            block->at(nodeIndex)->owner = block;
     }
 }
 
@@ -789,6 +787,71 @@ unsigned Graph::requiredRegisterCountForExecutionAndExit()
     return std::max(frameRegisterCount(), requiredRegisterCountForExit());
 }
 
+JSValue Graph::tryGetConstantProperty(
+    JSValue base, const StructureSet& structureSet, PropertyOffset offset)
+{
+    if (!base || !base.isObject())
+        return JSValue();
+    
+    JSObject* object = asObject(base);
+    
+    for (unsigned i = structureSet.size(); i--;) {
+        Structure* structure = structureSet[i];
+        WatchpointSet* set = structure->propertyReplacementWatchpointSet(offset);
+        if (!set || !set->isStillValid())
+            return JSValue();
+        
+        ASSERT(structure->isValidOffset(offset));
+        ASSERT(!structure->isUncacheableDictionary());
+        
+        watchpoints().addLazily(set);
+    }
+    
+    // What follows may require some extra thought. We need this load to load a valid JSValue. If
+    // our profiling makes sense and we're still on track to generate code that won't be
+    // invalidated, then we have nothing to worry about. We do, however, have to worry about
+    // loading - and then using - an invalid JSValue in the case that unbeknownst to us our code
+    // is doomed.
+    //
+    // One argument in favor of this code is that it should definitely work because the butterfly
+    // is always set before the structure. However, we don't currently have a fence between those
+    // stores. It's not clear if this matters, however. We don't ever shrink the property storage.
+    // So, for this to fail, you'd need an access on a constant object pointer such that the inline
+    // caches told us that the object had a structure that it did not *yet* have, and then later,
+    // the object transitioned to that structure that the inline caches had alraedy seen. And then
+    // the processor reordered the stores. Seems unlikely and difficult to test. I believe that
+    // this is worth revisiting but it isn't worth losing sleep over. Filed:
+    // https://bugs.webkit.org/show_bug.cgi?id=134641
+    //
+    // For now, we just do the minimal thing: defend against the structure right now being
+    // incompatible with the getDirect we're trying to do. The easiest way to do that is to
+    // determine if the structure belongs to the proven set.
+    
+    if (!structureSet.contains(object->structure()))
+        return JSValue();
+    
+    return object->getDirect(offset);
+}
+
+JSValue Graph::tryGetConstantProperty(JSValue base, Structure* structure, PropertyOffset offset)
+{
+    return tryGetConstantProperty(base, StructureSet(structure), offset);
+}
+
+JSValue Graph::tryGetConstantProperty(
+    JSValue base, const StructureAbstractValue& structure, PropertyOffset offset)
+{
+    if (structure.isTop() || structure.isClobbered())
+        return JSValue();
+    
+    return tryGetConstantProperty(base, structure.set(), offset);
+}
+
+JSValue Graph::tryGetConstantProperty(const AbstractValue& base, PropertyOffset offset)
+{
+    return tryGetConstantProperty(base.m_value, base.m_structure, offset);
+}
+
 JSActivation* Graph::tryGetActivation(Node* node)
 {
     return node->dynamicCastConstant<JSActivation*>();
@@ -831,8 +894,8 @@ void Graph::registerFrozenValues()
 {
     m_codeBlock->constants().resize(0);
     for (FrozenValue* value : m_frozenValues) {
-        if (value->structure() && value->structure()->dfgShouldWatch())
-            m_plan.weakReferences.addLazily(value->structure());
+        if (value->structure())
+            ASSERT(m_plan.weakReferences.contains(value->structure()));
         
         switch (value->strength()) {
         case FragileValue: {
@@ -873,10 +936,6 @@ void Graph::visitChildren(SlotVisitor& visitor)
             Node* node = block->at(nodeIndex);
             
             switch (node->op()) {
-            case CheckExecutable:
-                visitor.appendUnbarrieredReadOnlyPointer(node->executable());
-                break;
-                
             case CheckStructure:
                 for (unsigned i = node->structureSet().size(); i--;)
                     visitor.appendUnbarrieredReadOnlyPointer(node->structureSet()[i]);
@@ -900,7 +959,6 @@ void Graph::visitChildren(SlotVisitor& visitor)
             case MultiGetByOffset:
                 for (unsigned i = node->multiGetByOffsetData().variants.size(); i--;) {
                     GetByIdVariant& variant = node->multiGetByOffsetData().variants[i];
-                    visitor.appendUnbarrieredReadOnlyValue(variant.specificValue());
                     const StructureSet& set = variant.structureSet();
                     for (unsigned j = set.size(); j--;)
                         visitor.appendUnbarrieredReadOnlyPointer(set[j]);
@@ -960,7 +1018,7 @@ FrozenValue* Graph::freezeStrong(JSValue value)
 void Graph::convertToConstant(Node* node, FrozenValue* value)
 {
     if (value->structure())
-        assertIsWatched(value->structure());
+        assertIsRegistered(value->structure());
     if (m_form == ThreadedCPS) {
         if (node->op() == GetLocal)
             dethread();
@@ -980,10 +1038,20 @@ void Graph::convertToStrongConstant(Node* node, JSValue value)
     convertToConstant(node, freezeStrong(value));
 }
 
-void Graph::assertIsWatched(Structure* structure)
+StructureRegistrationResult Graph::registerStructure(Structure* structure)
 {
-    if (m_structureWatchpointState == HaveNotStartedWatching)
+    m_plan.weakReferences.addLazily(structure);
+    if (m_plan.watchpoints.consider(structure))
+        return StructureRegisteredAndWatched;
+    return StructureRegisteredNormally;
+}
+
+void Graph::assertIsRegistered(Structure* structure)
+{
+    if (m_structureRegistrationState == HaveNotStartedRegistering)
         return;
+    
+    DFG_ASSERT(*this, nullptr, m_plan.weakReferences.contains(structure));
     
     if (!structure->dfgShouldWatch())
         return;

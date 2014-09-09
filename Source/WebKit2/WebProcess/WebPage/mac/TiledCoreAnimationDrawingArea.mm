@@ -324,8 +324,8 @@ void TiledCoreAnimationDrawingArea::suspendPainting()
     ASSERT(!m_isPaintingSuspended);
     m_isPaintingSuspended = true;
 
-    [m_hostingLayer setValue:@YES forKey:@"NSCAViewRenderPaused"];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidPauseNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
+//    [m_hostingLayer setValue:@YES forKey:@"NSCAViewRenderPaused"];
+//    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidPauseNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
 }
 
 void TiledCoreAnimationDrawingArea::resumePainting()
@@ -337,8 +337,8 @@ void TiledCoreAnimationDrawingArea::resumePainting()
     }
     m_isPaintingSuspended = false;
 
-    [m_hostingLayer setValue:@NO forKey:@"NSCAViewRenderPaused"];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
+//    [m_hostingLayer setValue:@NO forKey:@"NSCAViewRenderPaused"];
+//    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
 }
 
 void TiledCoreAnimationDrawingArea::setExposedRect(const FloatRect& exposedRect)
@@ -637,14 +637,17 @@ void TiledCoreAnimationDrawingArea::commitTransientZoom(double scale, FloatPoint
     if (PlatformCALayer* shadowLayer = shadowLayerForTransientZoom())
         shadowCALayer = shadowLayer->platformLayer();
 
-    PlatformCALayer* zoomLayer = layerForTransientZoom();
+    RefPtr<PlatformCALayer> zoomLayer = layerForTransientZoom();
+    RefPtr<WebPage> page = &m_webPage;
 
     [CATransaction begin];
-    [CATransaction setCompletionBlock:^(void) {
+    [CATransaction setCompletionBlock:[zoomLayer, shadowCALayer, page, scale, origin] () {
         zoomLayer->removeAnimationForKey("transientZoomCommit");
         if (shadowCALayer)
             [shadowCALayer removeAllAnimations];
-        applyTransientZoomToPage(scale, origin);
+
+        if (TiledCoreAnimationDrawingArea* drawingArea = static_cast<TiledCoreAnimationDrawingArea*>(page->drawingArea()))
+            drawingArea->applyTransientZoomToPage(scale, origin);
     }];
 
     zoomLayer->addAnimationForKey("transientZoomCommit", renderViewAnimation.get());

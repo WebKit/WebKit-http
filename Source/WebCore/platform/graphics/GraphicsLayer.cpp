@@ -440,7 +440,6 @@ void GraphicsLayer::distributeOpacity(float accumulatedOpacity)
     }
 }
 
-#if ENABLE(CSS_FILTERS)
 static inline const FilterOperations& filterOperationsAt(const KeyframeValueList& valueList, size_t index)
 {
     return static_cast<const FilterAnimationValue&>(valueList.at(index)).value();
@@ -478,7 +477,6 @@ int GraphicsLayer::validateFilterOperations(const KeyframeValueList& valueList)
     
     return firstIndex;
 }
-#endif
 
 // An "invalid" list is one whose functions don't match, and therefore has to be animated as a Matrix
 // The hasBigRotation flag will always return false if isValid is false. Otherwise hasBigRotation is 
@@ -571,18 +569,19 @@ void GraphicsLayer::resetTrackedRepaints()
 
 void GraphicsLayer::addRepaintRect(const FloatRect& repaintRect)
 {
-    if (m_client.isTrackingRepaints()) {
-        FloatRect largestRepaintRect(FloatPoint(), m_size);
-        largestRepaintRect.intersect(repaintRect);
-        RepaintMap::iterator repaintIt = repaintRectMap().find(this);
-        if (repaintIt == repaintRectMap().end()) {
-            Vector<FloatRect> repaintRects;
-            repaintRects.append(largestRepaintRect);
-            repaintRectMap().set(this, repaintRects);
-        } else {
-            Vector<FloatRect>& repaintRects = repaintIt->value;
-            repaintRects.append(largestRepaintRect);
-        }
+    if (!m_client.isTrackingRepaints())
+        return;
+
+    FloatRect largestRepaintRect(FloatPoint(), m_size);
+    largestRepaintRect.intersect(repaintRect);
+    RepaintMap::iterator repaintIt = repaintRectMap().find(this);
+    if (repaintIt == repaintRectMap().end()) {
+        Vector<FloatRect> repaintRects;
+        repaintRects.append(largestRepaintRect);
+        repaintRectMap().set(this, repaintRects);
+    } else {
+        Vector<FloatRect>& repaintRects = repaintIt->value;
+        repaintRects.append(largestRepaintRect);
     }
 }
 

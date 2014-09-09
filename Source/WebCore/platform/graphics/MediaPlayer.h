@@ -76,6 +76,7 @@ class MediaSourcePrivateClient;
 #endif
 class MediaPlayerPrivateInterface;
 class TextTrackRepresentation;
+struct Cookie;
 
 // Structure that will hold every native
 // types supported by the current media player.
@@ -264,6 +265,7 @@ public:
 
 #if PLATFORM(IOS)
     virtual String mediaPlayerNetworkInterfaceName() const { return String(); }
+    virtual bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const { return false; }
 #endif
     
     virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) { return false; }
@@ -357,20 +359,20 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String& keySystem);
+    void setCDMSession(CDMSession*);
 #endif
 
     bool paused() const;
     bool seeking() const;
 
     static double invalidTime() { return -1.0;}
-    double duration() const;
-    double currentTime() const;
-    void seek(double time);
-    void seekWithTolerance(double time, double negativeTolerance, double positiveTolerance);
+    MediaTime duration() const;
+    MediaTime currentTime() const;
+    void seek(const MediaTime&);
+    void seekWithTolerance(const MediaTime&, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance);
 
-    double startTime() const;
-
-    double initialTime() const;
+    MediaTime startTime() const;
+    MediaTime initialTime() const;
 
     double rate() const;
     void setRate(double);
@@ -380,8 +382,8 @@ public:
 
     std::unique_ptr<PlatformTimeRanges> buffered();
     std::unique_ptr<PlatformTimeRanges> seekable();
-    double minTimeSeekable();
-    double maxTimeSeekable();
+    MediaTime minTimeSeekable();
+    MediaTime maxTimeSeekable();
 
     bool didLoadingProgress();
 
@@ -503,7 +505,7 @@ public:
 
     bool didPassCORSAccessCheck() const;
 
-    double mediaTimeForTimeValue(double) const;
+    MediaTime mediaTimeForTimeValue(const MediaTime&) const;
 
     double maximumDurationToCacheMediaTime() const;
 
@@ -534,11 +536,6 @@ public:
 
     String engineDescription() const;
 
-#if PLATFORM(IOS)
-    void attributeChanged(const String& name, const String& value);
-    bool readyForPlayback() const;
-#endif
-
     CachedResourceLoader* cachedResourceLoader();
 
 #if ENABLE(VIDEO_TRACK)
@@ -560,6 +557,7 @@ public:
 
 #if PLATFORM(IOS)
     String mediaPlayerNetworkInterfaceName() const;
+    bool getRawCookies(const URL&, Vector<Cookie>&) const;
 #endif
 
     static void resetMediaEngines();
@@ -583,7 +581,7 @@ public:
     unsigned long totalVideoFrames();
     unsigned long droppedVideoFrames();
     unsigned long corruptedVideoFrames();
-    double totalFrameDelay();
+    MediaTime totalFrameDelay();
 #endif
 
     bool shouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&);
@@ -637,7 +635,7 @@ typedef void (*MediaEngineRegister)(MediaEngineRegistrar);
 
 class MediaPlayerFactorySupport {
 public:
-    static void callRegisterMediaEngine(MediaEngineRegister);
+    WEBCORE_EXPORT static void callRegisterMediaEngine(MediaEngineRegister);
 };
 
 }

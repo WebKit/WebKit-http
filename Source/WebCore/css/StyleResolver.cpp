@@ -66,6 +66,7 @@
 #include "DeprecatedStyleBuilder.h"
 #include "DocumentStyleSheetCollection.h"
 #include "ElementRuleCollector.h"
+#include "FilterOperation.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
@@ -128,6 +129,7 @@
 #include "UserAgentStyleSheets.h"
 #include "ViewportStyleResolver.h"
 #include "VisitedLinkState.h"
+#include "WebKitCSSFilterValue.h"
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
@@ -137,11 +139,6 @@
 #include <bitset>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
-
-#if ENABLE(CSS_FILTERS)
-#include "FilterOperation.h"
-#include "WebKitCSSFilterValue.h"
-#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSGridLineNamesValue.h"
@@ -159,6 +156,10 @@
 
 #if ENABLE(VIDEO_TRACK)
 #include "WebVTTElement.h"
+#endif
+
+#if ENABLE(CSS_SCROLL_SNAP)
+#include "LengthRepeat.h"
 #endif
 
 namespace WebCore {
@@ -232,9 +233,7 @@ inline void StyleResolver::State::clear()
     m_parentStyle = nullptr;
     m_regionForStyling = nullptr;
     m_pendingImageProperties.clear();
-#if ENABLE(CSS_FILTERS)
     m_filtersWithPendingSVGDocuments.clear();
-#endif
     m_cssToLengthConversionData = CSSToLengthConversionData();
 }
 
@@ -620,14 +619,10 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
         return false;
     if (element->additionalPresentationAttributeStyle() != state.styledElement()->additionalPresentationAttributeStyle())
         return false;
-
-    if (element->hasID() && m_ruleSets.features().idsInRules.contains(element->idForStyleResolution().impl()))
+    if (element->affectsNextSiblingElementStyle() || element->styleIsAffectedByPreviousSibling())
         return false;
 
-    // FIXME: We should share style for option and optgroup whenever possible.
-    // Before doing so, we need to resolve issues in HTMLSelectElement::recalcListItems
-    // and RenderMenuList::setText. See also https://bugs.webkit.org/show_bug.cgi?id=88405
-    if (isHTMLOptionElement(element) || isHTMLOptGroupElement(element))
+    if (element->hasID() && m_ruleSets.features().idsInRules.contains(element->idForStyleResolution().impl()))
         return false;
 
     bool isControl = element->isFormControlElement();
@@ -1147,6 +1142,16 @@ static bool isScrollableOverflow(EOverflow overflow)
     return overflow == OSCROLL || overflow == OAUTO || overflow == OOVERLAY;
 }
 #endif
+
+void StyleResolver::adjustStyleForInterCharacterRuby()
+{
+    RenderStyle* style = m_state.style();
+    if (style->rubyPosition() != RubyPositionInterCharacter || !m_state.element() || !m_state.element()->hasTagName(rtTag))
+        return;
+    style->setTextAlign(CENTER);
+    if (style->isHorizontalWritingMode())
+        style->setWritingMode(LeftToRightWritingMode);
+}
 
 void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& parentStyle, Element *e)
 {
@@ -1698,7 +1703,12 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
             || !cascade.addMatches(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly))
             return applyMatchedProperties(matchResult, element, DoNotUseMatchedPropertiesCache);
 
+        applyCascadedProperties(cascade, CSSPropertyWebkitRubyPosition, CSSPropertyWebkitRubyPosition);
+        adjustStyleForInterCharacterRuby();
+
+        // Start by applying properties that other properties may depend on.
         applyCascadedProperties(cascade, firstCSSProperty, CSSPropertyLineHeight);
+    
         updateFont();
         applyCascadedProperties(cascade, CSSPropertyBackground, lastCSSProperty);
 
@@ -1713,6 +1723,11 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         return applyMatchedProperties(matchResult, element, DoNotUseMatchedPropertiesCache);
 
     state.setLineHeightValue(nullptr);
+
+    applyCascadedProperties(cascade, CSSPropertyWebkitRubyPosition, CSSPropertyWebkitRubyPosition);
+    
+    // Adjust the font size to be smaller if ruby-position is inter-character.
+    adjustStyleForInterCharacterRuby();
 
     // Start by applying properties that other properties may depend on.
     applyCascadedProperties(cascade, firstCSSProperty, CSSPropertyLineHeight);
@@ -2129,7 +2144,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
                     state.style()->setContent(value.isNull() ? emptyAtom : value.impl(), didSet);
                     didSet = true;
                     // Register the fact that the attribute value affects the style.
-                    m_ruleSets.features().attrsInRules.add(attr.localName().impl());
+                    m_ruleSets.features().attributeCanonicalLocalNamesInRules.add(attr.localName().impl());
+                    m_ruleSets.features().attributeLocalNamesInRules.add(attr.localName().impl());
                 } else if (contentValue->isCounter()) {
                     Counter* counterValue = contentValue->getCounterValue();
                     EListStyleType listStyleType = NoneListStyle;
@@ -2184,7 +2200,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
                 state.style()->setContentAltText(value.isNull() ? emptyAtom : value.impl());
                 didSet = true;
                 // Register the fact that the attribute value affects the style.
-                m_ruleSets.features().attrsInRules.add(attr.localName().impl());
+                m_ruleSets.features().attributeCanonicalLocalNamesInRules.add(attr.localName().impl());
+                m_ruleSets.features().attributeLocalNamesInRules.add(attr.localName().impl());
             }
             if (!didSet)
                 state.style()->setContentAltText(emptyAtom);
@@ -2648,7 +2665,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         return;
     }
 
-#if ENABLE(CSS_FILTERS)
     case CSSPropertyWebkitFilter: {
         HANDLE_INHERIT_AND_INITIAL(filter, Filter);
         FilterOperations operations;
@@ -2656,7 +2672,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             state.style()->setFilter(operations);
         return;
     }
-#endif
+
 #if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridAutoColumns: {
         HANDLE_INHERIT_AND_INITIAL(gridAutoColumns, GridAutoColumns);
@@ -2843,6 +2859,107 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             state.style()->setJustifySelf(*primitiveValue);
         return;
     }
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    case CSSPropertyWebkitScrollSnapType: {
+        state.style()->setScrollSnapType(*primitiveValue);
+        return;
+    }
+    case CSSPropertyWebkitScrollSnapPointsX:
+    case CSSPropertyWebkitScrollSnapPointsY: {
+        RenderStyle* renderStyle = state.style();
+        if (id == CSSPropertyWebkitScrollSnapPointsX)
+            renderStyle->setScrollSnapHasRepeatX(false);
+        else
+            renderStyle->setScrollSnapHasRepeatY(false);
+
+        if (primitiveValue && primitiveValue->getValueID() == CSSValueElements) {
+            if (id == CSSPropertyWebkitScrollSnapPointsX)
+                renderStyle->setScrollSnapUsesElementsX(true);
+            else
+                renderStyle->setScrollSnapUsesElementsY(true);
+            return;
+        }
+        if (id == CSSPropertyWebkitScrollSnapPointsX)
+            renderStyle->setScrollSnapUsesElementsX(false);
+        else
+            renderStyle->setScrollSnapUsesElementsY(false);
+
+        Vector<Length> offsets;
+        for (CSSValueListIterator it(value); it.hasMore(); it.advance()) {
+            RefPtr<CSSValue> rawItemValue = it.value();
+            CSSPrimitiveValue* primitiveItemValue = toCSSPrimitiveValue(rawItemValue.get());
+            if (primitiveItemValue->isLengthRepeat()) {
+                LengthRepeat* lengthRepeat = primitiveItemValue->getLengthRepeatValue();
+                if (lengthRepeat && lengthRepeat->interval()) {
+                    if (id == CSSPropertyWebkitScrollSnapPointsX) {
+                        renderStyle->setScrollSnapRepeatOffsetX(lengthRepeat->interval()->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(state.cssToLengthConversionData()));
+                        renderStyle->setScrollSnapHasRepeatX(true);
+                    } else {
+                        renderStyle->setScrollSnapRepeatOffsetY(lengthRepeat->interval()->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(state.cssToLengthConversionData()));
+                        renderStyle->setScrollSnapHasRepeatY(true);
+                    }
+                    break;
+                }
+            } else
+                offsets.append(primitiveItemValue->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(state.cssToLengthConversionData()));
+        }
+        if (id == CSSPropertyWebkitScrollSnapPointsX)
+            renderStyle->setScrollSnapOffsetsX(offsets);
+        else
+            renderStyle->setScrollSnapOffsetsY(offsets);
+        return;
+    }
+    case CSSPropertyWebkitScrollSnapDestination: {
+        CSSValueList& position = toCSSValueList(*value);
+        RefPtr<CSSValue> xCoordinate = position.item(0);
+        RefPtr<CSSPrimitiveValue> xCoordinateValue = toCSSPrimitiveValue(xCoordinate.get());
+        state.style()->setScrollSnapDestinationX(xCoordinateValue->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(state.cssToLengthConversionData()));
+
+        RefPtr<CSSValue> yCoordinate = position.item(1);
+        RefPtr<CSSPrimitiveValue> yCoordinateValue = toCSSPrimitiveValue(yCoordinate.get());
+        state.style()->setScrollSnapDestinationY(yCoordinateValue->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(state.cssToLengthConversionData()));
+        return;
+    }
+    case CSSPropertyWebkitScrollSnapCoordinate: {
+        Vector<SnapCoordinate> coordinates;
+        CSSValueList& valueList = toCSSValueList(*value);
+        size_t pointCount = valueList.length();
+        // Every x must be followed by a y.
+        if (pointCount % 2)
+            return;
+        pointCount /= 2;
+        coordinates.reserveCapacity(pointCount);
+        for (size_t i = 0; i < pointCount; i++) {
+            RefPtr<CSSValue> xCoordinate = valueList.item(i * 2);
+            RefPtr<CSSValue> yCoordinate = valueList.item((i * 2) + 1);
+            RefPtr<CSSPrimitiveValue> xCoordinateValue = toCSSPrimitiveValue(xCoordinate.get());
+            RefPtr<CSSPrimitiveValue> yCoordinateValue = toCSSPrimitiveValue(yCoordinate.get());
+            coordinates.append(SnapCoordinate(xCoordinateValue->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(state.cssToLengthConversionData()), yCoordinateValue->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(state.cssToLengthConversionData())));
+        }
+        state.style()->setScrollSnapCoordinates(coordinates);
+        return;
+    }
+    case CSSPropertyWebkitInitialLetter: {
+        HANDLE_INHERIT_AND_INITIAL(initialLetter, InitialLetter)
+        if (!value->isPrimitiveValue())
+            return;
+        
+        if (primitiveValue->getValueID() == CSSValueNormal) {
+            state.style()->setInitialLetter(IntSize());
+            return;
+        }
+            
+        CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
+        Pair* pair = primitiveValue->getPairValue();
+        if (!pair || !pair->first() || !pair->second())
+            return;
+
+        state.style()->setInitialLetter(IntSize(pair->first()->getIntValue(), pair->second()->getIntValue()));
+        return;
+    }
+    
+#endif
     // These properties are aliased and DeprecatedStyleBuilder already applied the property on the prefixed version.
     case CSSPropertyTransitionDelay:
     case CSSPropertyTransitionDuration:
@@ -3151,12 +3268,11 @@ PassRefPtr<StyleImage> StyleResolver::cachedOrPendingFromValue(CSSPropertyID pro
 
 PassRefPtr<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID property, CSSImageGeneratorValue& value)
 {
-#if ENABLE(CSS_FILTERS)
     if (value.isFilterImageValue()) {
         // FilterImage needs to calculate FilterOperations.
         toCSSFilterImageValue(value).createFilterOperations(this);
     }
-#endif
+
     if (value.isPending()) {
         m_state.pendingImageProperties().set(property, &value);
         return StylePendingImage::create(&value);
@@ -3362,7 +3478,6 @@ bool StyleResolver::hasMediaQueriesAffectedByViewportChange() const
     return false;
 }
 
-#if ENABLE(CSS_FILTERS)
 static FilterOperation::OperationType filterOperationForType(WebKitCSSFilterValue::FilterOperationType type)
 {
     switch (type) {
@@ -3552,8 +3667,6 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, FilterOperations& 
     return true;
 }
 
-#endif
-
 PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage, const ResourceLoaderOptions& options)
 {
     if (auto imageValue = pendingImage.cssImageValue())
@@ -3714,10 +3827,8 @@ void StyleResolver::loadPendingResources()
     // Start loading images referenced by this style.
     loadPendingImages();
 
-#if ENABLE(CSS_FILTERS)
     // Start loading the SVG Documents referenced by this style.
     loadPendingSVGDocuments();
-#endif
 
 #ifndef NDEBUG
     inLoadPendingResources = false;

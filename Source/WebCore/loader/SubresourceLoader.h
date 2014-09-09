@@ -44,7 +44,7 @@ class ResourceRequest;
 
 class SubresourceLoader final : public ResourceLoader {
 public:
-    static PassRefPtr<SubresourceLoader> create(Frame*, CachedResource*, const ResourceRequest&, const ResourceLoaderOptions&);
+    WEBCORE_EXPORT static PassRefPtr<SubresourceLoader> create(Frame*, CachedResource*, const ResourceRequest&, const ResourceLoaderOptions&);
 
     virtual ~SubresourceLoader();
 
@@ -73,6 +73,13 @@ private:
     virtual void didFail(const ResourceError&) override;
     virtual void willCancel(const ResourceError&) override;
     virtual void didCancel(const ResourceError&) override;
+
+#if PLATFORM(COCOA) && !USE(CFNETWORK)
+    virtual NSCachedURLResponse *willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
+#endif
+#if PLATFORM(COCOA) && USE(CFNETWORK)
+    virtual CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
+#endif
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     virtual bool supportsDataArray() override { return true; }

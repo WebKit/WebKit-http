@@ -176,6 +176,7 @@ CanvasRenderingContext2D::State::State()
     , m_imageSmoothingEnabled(true)
     , m_textAlign(StartTextAlign)
     , m_textBaseline(AlphabeticTextBaseline)
+    , m_direction(Direction::Inherit)
     , m_unparsedFont(defaultFont)
     , m_realizedFont(false)
 {
@@ -203,6 +204,7 @@ CanvasRenderingContext2D::State::State(const State& other)
     , m_imageSmoothingEnabled(other.m_imageSmoothingEnabled)
     , m_textAlign(other.m_textAlign)
     , m_textBaseline(other.m_textBaseline)
+    , m_direction(other.m_direction)
     , m_unparsedFont(other.m_unparsedFont)
     , m_font(other.m_font)
     , m_realizedFont(other.m_realizedFont)
@@ -238,6 +240,7 @@ CanvasRenderingContext2D::State& CanvasRenderingContext2D::State::operator=(cons
     m_imageSmoothingEnabled = other.m_imageSmoothingEnabled;
     m_textAlign = other.m_textAlign;
     m_textBaseline = other.m_textBaseline;
+    m_direction = other.m_direction;
     m_unparsedFont = other.m_unparsedFont;
     m_font = other.m_font;
     m_realizedFont = other.m_realizedFont;
@@ -2020,11 +2023,6 @@ void CanvasRenderingContext2D::putImageData(ImageData* data, ImageBuffer::Coordi
 
     buffer->putByteArray(Unmultiplied, data->data(), IntSize(data->width(), data->height()), sourceRect, IntPoint(destOffset), coordinateSystem);
 
-    if (coordinateSystem == ImageBuffer::BackingStoreCoordinateSystem) {
-        FloatRect dirtyRect = destRect;
-        dirtyRect.scale(1 / canvas()->deviceScaleFactor());
-        destRect = enclosingIntRect(dirtyRect);
-    }
     didDraw(destRect, CanvasDidDrawApplyNone); // ignore transform, shadow and clip
 }
 
@@ -2152,6 +2150,49 @@ void CanvasRenderingContext2D::setTextBaseline(const String& s)
     modifiableState().m_textBaseline = baseline;
 }
 
+inline TextDirection CanvasRenderingContext2D::toTextDirection(Direction direction, RenderStyle** computedStyle) const
+{
+    RenderStyle* style = (computedStyle || direction == Direction::Inherit) ? canvas()->computedStyle() : nullptr;
+    if (computedStyle)
+        *computedStyle = style;
+    switch (direction) {
+    case Direction::Inherit:
+        return style ? style->direction() : LTR;
+    case Direction::RTL:
+        return RTL;
+    case Direction::LTR:
+        return LTR;
+    }
+    ASSERT_NOT_REACHED();
+    return LTR;
+}
+
+String CanvasRenderingContext2D::direction() const
+{
+    if (state().m_direction == Direction::Inherit)
+        canvas()->document().updateStyleIfNeeded();
+    return toTextDirection(state().m_direction) == RTL ? ASCIILiteral("rtl") : ASCIILiteral("ltr");
+}
+
+void CanvasRenderingContext2D::setDirection(const String& directionString)
+{
+    Direction direction;
+    if (directionString == "inherit")
+        direction = Direction::Inherit;
+    else if (directionString == "rtl")
+        direction = Direction::RTL;
+    else if (directionString == "ltr")
+        direction = Direction::LTR;
+    else
+        return;
+
+    if (state().m_direction == direction)
+        return;
+
+    realizeSaves();
+    modifiableState().m_direction = direction;
+}
+
 void CanvasRenderingContext2D::fillText(const String& text, float x, float y)
 {
     drawTextInternal(text, x, y, true);
@@ -2248,8 +2289,9 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
 
     // FIXME: Need to turn off font smoothing.
 
-    RenderStyle* computedStyle = canvas()->computedStyle();
-    TextDirection direction = computedStyle ? computedStyle->direction() : LTR;
+    RenderStyle* computedStyle;
+    canvas()->document().updateStyleIfNeeded();
+    TextDirection direction = toTextDirection(state().m_direction, &computedStyle);
     bool isRTL = direction == RTL;
     bool override = computedStyle ? isOverride(computedStyle->unicodeBidi()) : false;
 

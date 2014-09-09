@@ -185,7 +185,7 @@ public:
     bool hasUnpositionedOverflowControlsLayers() const;
 
     bool usingTiledBacking() const { return m_usingTiledCacheLayer; }
-    TiledBacking* tiledBacking() const;
+    WEBCORE_EXPORT TiledBacking* tiledBacking() const;
     void adjustTiledBackingCoverage();
     void setTiledBackingHasMargins(bool hasExtendedBackgroundOnLeftAndRight, bool hasExtendedBackgroundOnTopAndBottom);
     
@@ -194,7 +194,7 @@ public:
     // GraphicsLayerClient interface
     virtual bool shouldUseTiledBacking(const GraphicsLayer*) const override;
     virtual void tiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/) override;
-    virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime) override;
+    virtual void notifyAnimationStarted(const GraphicsLayer*, const String& animationKey, double startTime) override;
     virtual void notifyFlushRequired(const GraphicsLayer*) override;
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) override;
 
@@ -222,18 +222,16 @@ public:
     virtual void verifyNotPainting();
 #endif
 
-    LayoutRect contentsBox() const;
+    WEBCORE_EXPORT LayoutRect contentsBox() const;
     
     // For informative purposes only.
-    CompositingLayerType compositingLayerType() const;
+    WEBCORE_EXPORT CompositingLayerType compositingLayerType() const;
     
     GraphicsLayer* layerForHorizontalScrollbar() const { return m_layerForHorizontalScrollbar.get(); }
     GraphicsLayer* layerForVerticalScrollbar() const { return m_layerForVerticalScrollbar.get(); }
     GraphicsLayer* layerForScrollCorner() const { return m_layerForScrollCorner.get(); }
 
-#if ENABLE(CSS_FILTERS)
     bool canCompositeFilters() const { return m_canCompositeFilters; }
-#endif
 
     // Return an estimate of the backing store area (in pixels) allocated by this object's GraphicsLayers.
     double backingStoreMemoryEstimate() const;
@@ -280,9 +278,7 @@ private:
 
     void updateOpacity(const RenderStyle&);
     void updateTransform(const RenderStyle&);
-#if ENABLE(CSS_FILTERS)
     void updateFilters(const RenderStyle&);
-#endif
 #if ENABLE(CSS_COMPOSITING)
     void updateBlendMode(const RenderStyle&);
 #endif
@@ -351,9 +347,7 @@ private:
     bool m_isMainFrameRenderViewLayer;
     bool m_usingTiledCacheLayer;
     bool m_requiresOwnBackingStore;
-#if ENABLE(CSS_FILTERS)
     bool m_canCompositeFilters;
-#endif
     bool m_backgroundLayerPaintsFixedRootBackground;
 
     static bool m_creatingPrimaryGraphicsLayer;

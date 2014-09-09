@@ -56,67 +56,51 @@ while (0)
 #endif
 
 static const int kFixedPointDenominator = 64;
-
-#if ENABLE(SUBPIXEL_LAYOUT)
-static const int kEffectiveFixedPointDenominator = kFixedPointDenominator;
-#else
-static const int kEffectiveFixedPointDenominator = 1;
-#endif
-const int intMaxForLayoutUnit = INT_MAX / kEffectiveFixedPointDenominator;
-const int intMinForLayoutUnit = INT_MIN / kEffectiveFixedPointDenominator;
+const int intMaxForLayoutUnit = INT_MAX / kFixedPointDenominator;
+const int intMinForLayoutUnit = INT_MIN / kFixedPointDenominator;
 
 class LayoutUnit {
 public:
     LayoutUnit() : m_value(0) { }
-#if ENABLE(SUBPIXEL_LAYOUT)
     LayoutUnit(int value) { setValue(value); }
     LayoutUnit(unsigned short value) { setValue(value); }
     LayoutUnit(unsigned value) { setValue(value); }
     LayoutUnit(unsigned long value)
     {
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        m_value = clampTo<int>(value * kEffectiveFixedPointDenominator);
+        m_value = clampTo<int>(value * kFixedPointDenominator);
 #else
         REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value)));
-        m_value = value * kEffectiveFixedPointDenominator;
+        m_value = value * kFixedPointDenominator;
 #endif
     }
     LayoutUnit(unsigned long long value)
     {
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        m_value = clampTo<int>(value * kEffectiveFixedPointDenominator);
+        m_value = clampTo<int>(value * kFixedPointDenominator);
 #else
         REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value)));
-        m_value = static_cast<int>(value * kEffectiveFixedPointDenominator);
+        m_value = static_cast<int>(value * kFixedPointDenominator);
 #endif
     }
     LayoutUnit(float value)
     {
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        m_value = clampTo<float>(value * kEffectiveFixedPointDenominator, static_cast<float>(INT_MIN), static_cast<float>(INT_MAX));
+        m_value = clampTo<float>(value * kFixedPointDenominator, static_cast<float>(INT_MIN), static_cast<float>(INT_MAX));
 #else
         REPORT_OVERFLOW(isInBounds(value));
-        m_value = value * kEffectiveFixedPointDenominator;
+        m_value = value * kFixedPointDenominator;
 #endif
     }
     LayoutUnit(double value)
     {
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        m_value = clampTo<double>(value * kEffectiveFixedPointDenominator, static_cast<double>(INT_MIN), static_cast<double>(INT_MAX));
+        m_value = clampTo<double>(value * kFixedPointDenominator, static_cast<double>(INT_MIN), static_cast<double>(INT_MAX));
 #else
         REPORT_OVERFLOW(isInBounds(value));
-        m_value = value * kEffectiveFixedPointDenominator;
+        m_value = value * kFixedPointDenominator;
 #endif
     }
-#else
-    LayoutUnit(int value) { REPORT_OVERFLOW(isInBounds(value)); m_value = value; }
-    LayoutUnit(unsigned short value) { REPORT_OVERFLOW(isInBounds(value)); m_value = value; }
-    LayoutUnit(unsigned value) { REPORT_OVERFLOW(isInBounds(value)); m_value = clampTo<int>(value); }
-    LayoutUnit(unsigned long long value) { REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value))); m_value = clampTo<int>(value); }
-    LayoutUnit(unsigned long value) { REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value))); m_value = clampTo<int>(value); }
-    LayoutUnit(float value) { REPORT_OVERFLOW(isInBounds(value)); m_value = clampTo<int>(value); }
-    LayoutUnit(double value) { REPORT_OVERFLOW(isInBounds(value)); m_value = clampTo<int>(value); }
-#endif
 
     static LayoutUnit fromPixel(int value)
     {
@@ -127,10 +111,10 @@ public:
     {
         LayoutUnit v;
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        v.m_value = clampToInteger(ceilf(value * kEffectiveFixedPointDenominator));
+        v.m_value = clampToInteger(ceilf(value * kFixedPointDenominator));
 #else
         REPORT_OVERFLOW(isInBounds(value));
-        v.m_value = ceilf(value * kEffectiveFixedPointDenominator);
+        v.m_value = ceilf(value * kFixedPointDenominator);
 #endif
         return v;
     }
@@ -139,10 +123,10 @@ public:
     {
         LayoutUnit v;
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        v.m_value = clampToInteger(floorf(value * kEffectiveFixedPointDenominator));
+        v.m_value = clampToInteger(floorf(value * kFixedPointDenominator));
 #else
         REPORT_OVERFLOW(isInBounds(value));
-        v.m_value = floorf(value * kEffectiveFixedPointDenominator);
+        v.m_value = floorf(value * kFixedPointDenominator);
 #endif
         return v;
     }
@@ -163,25 +147,9 @@ public:
 #endif
     }
 
-#if ENABLE(SUBPIXEL_LAYOUT)
-    int toInt() const { return m_value / kEffectiveFixedPointDenominator; }
-    float toFloat() const { return static_cast<float>(m_value) / kEffectiveFixedPointDenominator; }
-    double toDouble() const { return static_cast<double>(m_value) / kEffectiveFixedPointDenominator; }
-    float ceilToFloat() const
-    {
-        float floatValue = toFloat();
-        if (static_cast<int>(floatValue * kEffectiveFixedPointDenominator) == m_value)
-            return floatValue;
-        if (floatValue > 0)
-            return nextafterf(floatValue, std::numeric_limits<float>::max());
-        return nextafterf(floatValue, std::numeric_limits<float>::min());
-    }
-#else
-    int toInt() const { return m_value; }
-    float toFloat() const { return static_cast<float>(m_value); }
-    double toDouble() const { return static_cast<double>(m_value); }
-    float ceilToFloat() const { return toFloat(); }
-#endif
+    int toInt() const { return m_value / kFixedPointDenominator; }
+    float toFloat() const { return static_cast<float>(m_value) / kFixedPointDenominator; }
+    double toDouble() const { return static_cast<double>(m_value) / kFixedPointDenominator; }
     unsigned toUnsigned() const { REPORT_OVERFLOW(m_value >= 0); return toInt(); }
 
     operator int() const { return toInt(); }
@@ -192,7 +160,7 @@ public:
 
     LayoutUnit& operator++()
     {
-        m_value += kEffectiveFixedPointDenominator;
+        m_value += kFixedPointDenominator;
         return *this;
     }
 
@@ -216,46 +184,47 @@ public:
     int ceil() const
 #endif
     {
-#if ENABLE(SUBPIXEL_LAYOUT)
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        if (UNLIKELY(m_value >= INT_MAX - kEffectiveFixedPointDenominator + 1))
+        if (UNLIKELY(m_value >= INT_MAX - kFixedPointDenominator + 1))
             return intMaxForLayoutUnit;
 #endif
         if (m_value >= 0)
-            return (m_value + kEffectiveFixedPointDenominator - 1) / kEffectiveFixedPointDenominator;
+            return (m_value + kFixedPointDenominator - 1) / kFixedPointDenominator;
         return toInt();
-#else
-        return m_value;
-#endif
     }
+
     int round() const
     {
-#if ENABLE(SUBPIXEL_LAYOUT) && ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+#if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
         if (m_value > 0)
-            return saturatedAddition(rawValue(), kEffectiveFixedPointDenominator / 2) / kEffectiveFixedPointDenominator;
-        return saturatedSubtraction(rawValue(), (kEffectiveFixedPointDenominator / 2) - 1) / kEffectiveFixedPointDenominator;
-#elif ENABLE(SUBPIXEL_LAYOUT)
-        if (m_value > 0)
-            return (m_value + (kEffectiveFixedPointDenominator / 2)) / kEffectiveFixedPointDenominator;
-        return (m_value - ((kEffectiveFixedPointDenominator / 2) - 1)) / kEffectiveFixedPointDenominator;
+            return saturatedAddition(rawValue(), kFixedPointDenominator / 2) / kFixedPointDenominator;
+        return saturatedSubtraction(rawValue(), (kFixedPointDenominator / 2) - 1) / kFixedPointDenominator;
 #else
-        return m_value;
+        if (m_value > 0)
+            return (m_value + (kFixedPointDenominator / 2)) / kFixedPointDenominator;
+        return (m_value - ((kFixedPointDenominator / 2) - 1)) / kFixedPointDenominator;
 #endif
     }
 
     int floor() const
     {
-#if ENABLE(SUBPIXEL_LAYOUT)
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-        if (UNLIKELY(m_value <= INT_MIN + kEffectiveFixedPointDenominator - 1))
+        if (UNLIKELY(m_value <= INT_MIN + kFixedPointDenominator - 1))
             return intMinForLayoutUnit;
 #endif
         if (m_value >= 0)
             return toInt();
-        return (m_value - kEffectiveFixedPointDenominator + 1) / kEffectiveFixedPointDenominator;
-#else
-        return m_value;
-#endif
+        return (m_value - kFixedPointDenominator + 1) / kFixedPointDenominator;
+    }
+
+    float ceilToFloat() const
+    {
+        float floatValue = toFloat();
+        if (static_cast<int>(floatValue * kFixedPointDenominator) == m_value)
+            return floatValue;
+        if (floatValue > 0)
+            return nextafterf(floatValue, std::numeric_limits<float>::max());
+        return nextafterf(floatValue, std::numeric_limits<float>::min());
     }
 
     LayoutUnit fraction() const
@@ -263,21 +232,18 @@ public:
         // Add the fraction to the size (as opposed to the full location) to avoid overflows.
         // Compute fraction using the mod operator to preserve the sign of the value as it may affect rounding.
         LayoutUnit fraction;
-        fraction.setRawValue(rawValue() % kEffectiveFixedPointDenominator);
+        fraction.setRawValue(rawValue() % kFixedPointDenominator);
         return fraction;
     }
 
-#if ENABLE(SUBPIXEL_LAYOUT)
     bool mightBeSaturated() const
     {
         return rawValue() == std::numeric_limits<int>::max()
             || rawValue() == std::numeric_limits<int>::min();
     }
 
-    static float epsilon() { return 1.0f / kEffectiveFixedPointDenominator; }
-#else
-    static int epsilon() { return 0; }
-#endif
+    static float epsilon() { return 1.0f / kFixedPointDenominator; }
+
     static const LayoutUnit max()
     {
         LayoutUnit m;
@@ -295,13 +261,13 @@ public:
     static const LayoutUnit nearlyMax()
     {
         LayoutUnit m;
-        m.m_value = std::numeric_limits<int>::max() - kEffectiveFixedPointDenominator / 2;
+        m.m_value = std::numeric_limits<int>::max() - kFixedPointDenominator / 2;
         return m;
     }
     static const LayoutUnit nearlyMin()
     {
         LayoutUnit m;
-        m.m_value = std::numeric_limits<int>::min() + kEffectiveFixedPointDenominator / 2;
+        m.m_value = std::numeric_limits<int>::min() + kFixedPointDenominator / 2;
         return m;
     }
     
@@ -313,15 +279,15 @@ public:
 private:
     static bool isInBounds(int value)
     {
-        return ::abs(value) <= std::numeric_limits<int>::max() / kEffectiveFixedPointDenominator;
+        return ::abs(value) <= std::numeric_limits<int>::max() / kFixedPointDenominator;
     }
     static bool isInBounds(unsigned value)
     {
-        return value <= static_cast<unsigned>(std::numeric_limits<int>::max()) / kEffectiveFixedPointDenominator;
+        return value <= static_cast<unsigned>(std::numeric_limits<int>::max()) / kFixedPointDenominator;
     }
     static bool isInBounds(double value)
     {
-        return ::fabs(value) <= std::numeric_limits<int>::max() / kEffectiveFixedPointDenominator;
+        return ::fabs(value) <= std::numeric_limits<int>::max() / kFixedPointDenominator;
     }
     
     inline void setValue(int value)
@@ -332,10 +298,10 @@ private:
         else if (value < intMinForLayoutUnit)
             m_value = std::numeric_limits<int>::min();
         else
-            m_value = value * kEffectiveFixedPointDenominator;
+            m_value = value * kFixedPointDenominator;
 #else
         REPORT_OVERFLOW(isInBounds(value));
-        m_value = value * kEffectiveFixedPointDenominator;
+        m_value = value * kFixedPointDenominator;
 #endif
     }
     inline void setValue(unsigned value)
@@ -344,10 +310,10 @@ private:
         if (value >= static_cast<unsigned>(intMaxForLayoutUnit))
             m_value = std::numeric_limits<int>::max();
         else
-            m_value = value * kEffectiveFixedPointDenominator;
+            m_value = value * kFixedPointDenominator;
 #else
         REPORT_OVERFLOW(isInBounds(value));
-        m_value = value * kEffectiveFixedPointDenominator;
+        m_value = value * kFixedPointDenominator;
 #endif
     }
 
@@ -517,8 +483,7 @@ inline bool operator==(const float a, const LayoutUnit& b)
 // For multiplication that's prone to overflow, this bounds it to LayoutUnit::max() and ::min()
 inline LayoutUnit boundedMultiply(const LayoutUnit& a, const LayoutUnit& b)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
-    int64_t result = static_cast<int64_t>(a.rawValue()) * static_cast<int64_t>(b.rawValue()) / kEffectiveFixedPointDenominator;
+    int64_t result = static_cast<int64_t>(a.rawValue()) * static_cast<int64_t>(b.rawValue()) / kFixedPointDenominator;
     int32_t high = static_cast<int32_t>(result >> 32);
     int32_t low = static_cast<int32_t>(result);
     uint32_t saturated = (static_cast<uint32_t>(a.rawValue() ^ b.rawValue()) >> 31) + std::numeric_limits<int>::max();
@@ -529,23 +494,17 @@ inline LayoutUnit boundedMultiply(const LayoutUnit& a, const LayoutUnit& b)
     LayoutUnit returnVal;
     returnVal.setRawValue(static_cast<int>(result));
     return returnVal;
-#else
-    // FIXME: Should be bounded even in the non-subpixel case.
-    return a.rawValue() * b.rawValue();
-#endif
 }
 
 inline LayoutUnit operator*(const LayoutUnit& a, const LayoutUnit& b)
 {
-#if ENABLE(SUBPIXEL_LAYOUT) && ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+#if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
     return boundedMultiply(a, b);
-#elif ENABLE(SUBPIXEL_LAYOUT)
+#else
     LayoutUnit returnVal;
-    long long rawVal = static_cast<long long>(a.rawValue()) * b.rawValue() / kEffectiveFixedPointDenominator;
+    long long rawVal = static_cast<long long>(a.rawValue()) * b.rawValue() / kFixedPointDenominator;
     returnVal.setRawValue(rawVal);
     return returnVal;
-#else
-    return a.rawValue() * b.rawValue();
 #endif
 }    
 
@@ -621,19 +580,15 @@ inline double operator*(const double a, const LayoutUnit& b)
 
 inline LayoutUnit operator/(const LayoutUnit& a, const LayoutUnit& b)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
     LayoutUnit returnVal;
-    long long rawVal = static_cast<long long>(kEffectiveFixedPointDenominator) * a.rawValue() / b.rawValue();
+    long long rawVal = static_cast<long long>(kFixedPointDenominator) * a.rawValue() / b.rawValue();
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
     returnVal.setRawValue(clampTo<int>(rawVal));
 #else
     returnVal.setRawValue(rawVal);
 #endif
     return returnVal;
-#else
-    return a.rawValue() / b.rawValue();
-#endif
-}    
+}
 
 inline float operator/(const LayoutUnit& a, float b)
 {
@@ -792,27 +747,19 @@ inline LayoutUnit operator-(const LayoutUnit& a)
 // For returning the remainder after a division with integer results.
 inline LayoutUnit intMod(const LayoutUnit& a, const LayoutUnit& b)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
     // This calculates the modulo so that: a = static_cast<int>(a / b) * b + intMod(a, b).
     LayoutUnit returnVal;
     returnVal.setRawValue(a.rawValue() % b.rawValue());
     return returnVal;
-#else
-    return a.rawValue() % b.rawValue();
-#endif
 }
 
 inline LayoutUnit operator%(const LayoutUnit& a, const LayoutUnit& b)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
     // This calculates the modulo so that: a = (a / b) * b + a % b.
     LayoutUnit returnVal;
-    long long rawVal = (static_cast<long long>(kEffectiveFixedPointDenominator) * a.rawValue()) % b.rawValue();
-    returnVal.setRawValue(rawVal / kEffectiveFixedPointDenominator);
+    long long rawVal = (static_cast<long long>(kFixedPointDenominator) * a.rawValue()) % b.rawValue();
+    returnVal.setRawValue(rawVal / kFixedPointDenominator);
     return returnVal;
-#else
-    return a.rawValue() % b.rawValue();
-#endif
 }
 
 inline LayoutUnit operator%(const LayoutUnit& a, int b)
@@ -919,12 +866,6 @@ inline float& operator/=(float& a, const LayoutUnit& b)
     return a;
 }
 
-inline int snapSizeToPixel(LayoutUnit size, LayoutUnit location) 
-{
-    LayoutUnit fraction = location.fraction();
-    return (fraction + size).round() - fraction.round();
-}
-
 inline int roundToInt(LayoutUnit value)
 {
     return value.round();
@@ -937,7 +878,7 @@ inline int floorToInt(LayoutUnit value)
 
 inline float roundToDevicePixel(LayoutUnit value, const float pixelSnappingFactor, bool needsDirectionalRounding = false)
 {
-    auto roundInternal = [&] (float valueToRound) { return roundf((valueToRound * pixelSnappingFactor) / kEffectiveFixedPointDenominator) / pixelSnappingFactor; };
+    auto roundInternal = [&] (float valueToRound) { return roundf((valueToRound * pixelSnappingFactor) / kFixedPointDenominator) / pixelSnappingFactor; };
 
     float adjustedValue = value.rawValue() - (needsDirectionalRounding ? LayoutUnit::epsilon() / 2.0f : 0);
     if (adjustedValue >= 0)
@@ -946,41 +887,17 @@ inline float roundToDevicePixel(LayoutUnit value, const float pixelSnappingFacto
     // This adjusts directional rounding on negative halfway values. It produces the same direction for both negative and positive values.
     // It helps snapping relative negative coordinates to the same position as if they were positive absolute coordinates.
     float translateOrigin = fabsf(adjustedValue - LayoutUnit::fromPixel(1));
-    return roundInternal(adjustedValue + (translateOrigin * kEffectiveFixedPointDenominator)) - translateOrigin;
+    return roundInternal(adjustedValue + (translateOrigin * kFixedPointDenominator)) - translateOrigin;
 }
 
 inline float floorToDevicePixel(LayoutUnit value, float pixelSnappingFactor)
 {
-    return floorf((value.rawValue() * pixelSnappingFactor) / kEffectiveFixedPointDenominator) / pixelSnappingFactor;
+    return floorf((value.rawValue() * pixelSnappingFactor) / kFixedPointDenominator) / pixelSnappingFactor;
 }
 
 inline float ceilToDevicePixel(LayoutUnit value, float pixelSnappingFactor)
 {
-    return ceilf((value.rawValue() * pixelSnappingFactor) / kEffectiveFixedPointDenominator) / pixelSnappingFactor;
-}
-
-inline float snapSizeToDevicePixel(LayoutUnit size, LayoutUnit location, float pixelSnappingFactor)
-{
-    LayoutUnit fraction = location.fraction();
-    return roundToDevicePixel(fraction + size, pixelSnappingFactor) - roundToDevicePixel(fraction, pixelSnappingFactor);
-}
-
-inline LayoutUnit roundedLayoutUnit(float value)
-{
-#if ENABLE(SUBPIXEL_LAYOUT)
-    return LayoutUnit::fromFloatRound(value);
-#else
-    return static_cast<int>(lroundf(value));
-#endif
-}
-
-inline LayoutUnit ceiledLayoutUnit(float value)
-{
-#if ENABLE(SUBPIXEL_LAYOUT)
-    return LayoutUnit::fromFloatCeil(value);
-#else
-    return ceilf(value);
-#endif
+    return ceilf((value.rawValue() * pixelSnappingFactor) / kFixedPointDenominator) / pixelSnappingFactor;
 }
 
 inline LayoutUnit absoluteValue(const LayoutUnit& value)

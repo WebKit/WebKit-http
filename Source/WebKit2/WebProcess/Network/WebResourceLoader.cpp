@@ -102,33 +102,23 @@ void WebResourceLoader::didSendData(uint64_t bytesSent, uint64_t totalBytesToBeS
     m_coreLoader->didSendData(bytesSent, totalBytesToBeSent);
 }
 
-void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResponse& response, const CertificateInfo& certificateInfo, bool needsContinueDidReceiveResponseMessage)
+void WebResourceLoader::didReceiveResponse(const ResourceResponse& response, bool needsContinueDidReceiveResponseMessage)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResponseWithCertificateInfo for '%s'. Status %d.", m_coreLoader->url().string().utf8().data(), response.httpStatusCode());
 
     Ref<WebResourceLoader> protect(*this);
 
-    ResourceResponse responseCopy(response);
-
-    // FIXME: This should use CertificateInfo to avoid the platform ifdefs. See https://bugs.webkit.org/show_bug.cgi?id=124724.
-#if PLATFORM(COCOA)
-    responseCopy.setCertificateChain(certificateInfo.certificateChain());
-#elif USE(SOUP)
-    responseCopy.setSoupMessageCertificate(certificateInfo.certificate());
-    responseCopy.setSoupMessageTLSErrors(certificateInfo.tlsErrors());
-#endif
-
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForResponse(m_coreLoader.get(), responseCopy))
+    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForResponse(m_coreLoader.get(), response))
         return;
 
 #if USE(QUICK_LOOK)
     // Refrain from calling didReceiveResponse if QuickLook will convert this response, since the MIME type of the
     // converted resource isn't yet known. WebResourceLoaderQuickLookDelegate will later call didReceiveResponse upon
     // receiving the converted data.
-    m_quickLookHandle = QuickLookHandle::create(resourceLoader(), responseCopy.nsURLResponse());
-    if (!m_quickLookHandle)
+    m_coreLoader->documentLoader()->setQuickLookHandle(QuickLookHandle::create(resourceLoader(), response.nsURLResponse()));
+    if (!m_coreLoader->documentLoader()->quickLookHandle())
 #endif
-        m_coreLoader->didReceiveResponse(responseCopy);
+        m_coreLoader->didReceiveResponse(response);
 
     // If m_coreLoader becomes null as a result of the didReceiveResponse callback, we can't use the send function(). 
     if (!m_coreLoader)
@@ -143,8 +133,8 @@ void WebResourceLoader::didReceiveData(const IPC::DataReference& data, int64_t e
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveData of size %i for '%s'", (int)data.size(), m_coreLoader->url().string().utf8().data());
 
 #if USE(QUICK_LOOK)
-    if (m_quickLookHandle) {
-        if (m_quickLookHandle->didReceiveData(adoptCF(CFDataCreate(kCFAllocatorDefault, data.data(), data.size())).get()))
+    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
+        if (quickLookHandle->didReceiveData(adoptCF(CFDataCreate(kCFAllocatorDefault, data.data(), data.size())).get()))
             return;
     }
 #endif
@@ -156,8 +146,10 @@ void WebResourceLoader::didFinishResourceLoad(double finishTime)
     LOG(Network, "(WebProcess) WebResourceLoader::didFinishResourceLoad for '%s'", m_coreLoader->url().string().utf8().data());
 
 #if USE(QUICK_LOOK)
-    if (m_quickLookHandle && m_quickLookHandle->didFinishLoading())
-        return;
+    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
+        if (quickLookHandle->didFinishLoading())
+            return;
+    }
 #endif
     m_coreLoader->didFinishLoading(finishTime);
 }
@@ -167,8 +159,8 @@ void WebResourceLoader::didFailResourceLoad(const ResourceError& error)
     LOG(Network, "(WebProcess) WebResourceLoader::didFailResourceLoad for '%s'", m_coreLoader->url().string().utf8().data());
     
 #if USE(QUICK_LOOK)
-    if (m_quickLookHandle)
-        m_quickLookHandle->didFail();
+    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle())
+        quickLookHandle->didFail();
 #endif
     if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForError(m_coreLoader.get(), error))
         return;
@@ -181,15 +173,15 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResource for '%s'", m_coreLoader->url().string().utf8().data());
 
 #if USE(QUICK_LOOK)
-    if (m_quickLookHandle) {
+    if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
         RetainPtr<CFDataRef> cfBuffer = handle.tryWrapInCFData();
         if (cfBuffer) {
-            if (m_quickLookHandle->didReceiveData(cfBuffer.get())) {
-                m_quickLookHandle->didFinishLoading();
+            if (quickLookHandle->didReceiveData(cfBuffer.get())) {
+                quickLookHandle->didFinishLoading();
                 return;
             }
         } else
-            m_quickLookHandle->didFail();
+            quickLookHandle->didFail();
     }
 #endif
 

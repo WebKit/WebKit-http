@@ -106,22 +106,16 @@ void SVGCircleElement::svgAttributeChanged(const QualifiedName& attrName)
 
     SVGElementInstance::InvalidationGuard invalidationGuard(this);
 
-    bool isLengthAttribute = attrName == SVGNames::cxAttr
-                          || attrName == SVGNames::cyAttr
-                          || attrName == SVGNames::rAttr;
-
-    if (isLengthAttribute)
-        updateRelativeLengthsInformation();
+    if (attrName == SVGNames::cxAttr
+        || attrName == SVGNames::cyAttr
+        || attrName == SVGNames::rAttr) {
+        invalidateSVGPresentationAttributeStyle();
+        return;
+    }
 
     RenderSVGShape* renderer = toRenderSVGShape(this->renderer());
     if (!renderer)
         return;
-
-    if (isLengthAttribute) {
-        renderer->setNeedsShapeUpdate();
-        RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
-        return;
-    }
 
     if (SVGLangSpace::isKnownAttribute(attrName) || SVGExternalResourcesRequired::isKnownAttribute(attrName)) {
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
@@ -129,13 +123,6 @@ void SVGCircleElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     ASSERT_NOT_REACHED();
-}
-
-bool SVGCircleElement::selfHasRelativeLengths() const
-{
-    return cx().isRelative()
-        || cy().isRelative()
-        || r().isRelative();
 }
 
 RenderPtr<RenderElement> SVGCircleElement::createElementRenderer(PassRef<RenderStyle> style)

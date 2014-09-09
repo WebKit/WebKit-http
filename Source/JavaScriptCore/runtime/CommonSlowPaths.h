@@ -85,10 +85,37 @@ inline bool opIn(ExecState* exec, JSValue propName, JSValue baseVal)
     if (isName(propName))
         return baseObj->hasProperty(exec, jsCast<NameInstance*>(propName.asCell())->privateName());
 
-    Identifier property(exec, propName.toString(exec)->value(exec));
+    Identifier property = propName.toString(exec)->toIdentifier(exec);
     if (exec->vm().exception())
         return false;
     return baseObj->hasProperty(exec, property);
+}
+
+inline void tryCachePutToScopeGlobal(
+    ExecState* exec, CodeBlock* codeBlock, Instruction* pc, JSObject* scope,
+    ResolveModeAndType modeAndType, PutPropertySlot& slot)
+{
+    // Covers implicit globals. Since they don't exist until they first execute, we didn't know how to cache them at compile time.
+    
+    if (modeAndType.type() != GlobalProperty && modeAndType.type() != GlobalPropertyWithVarInjectionChecks)
+        return;
+    
+    if (!slot.isCacheablePut()
+        || slot.base() != scope
+        || !scope->structure()->propertyAccessesAreCacheable())
+        return;
+    
+    if (slot.type() == PutPropertySlot::NewProperty) {
+        // Don't cache if we've done a transition. We want to detect the first replace so that we
+        // can invalidate the watchpoint.
+        return;
+    }
+    
+    scope->structure()->didCachePropertyReplacement(exec->vm(), slot.cachedOffset());
+
+    ConcurrentJITLocker locker(codeBlock->m_lock);
+    pc[5].u.structure.set(exec->vm(), codeBlock->ownerExecutable(), scope->structure());
+    pc[6].u.operand = slot.cachedOffset();
 }
 
 } // namespace CommonSlowPaths
@@ -197,6 +224,16 @@ SLOW_PATH_HIDDEN_DECL(slow_path_in);
 SLOW_PATH_HIDDEN_DECL(slow_path_del_by_val);
 SLOW_PATH_HIDDEN_DECL(slow_path_strcat);
 SLOW_PATH_HIDDEN_DECL(slow_path_to_primitive);
+SLOW_PATH_HIDDEN_DECL(slow_path_get_enumerable_length);
+SLOW_PATH_HIDDEN_DECL(slow_path_has_generic_property);
+SLOW_PATH_HIDDEN_DECL(slow_path_has_structure_property);
+SLOW_PATH_HIDDEN_DECL(slow_path_has_indexed_property);
+SLOW_PATH_HIDDEN_DECL(slow_path_get_direct_pname);
+SLOW_PATH_HIDDEN_DECL(slow_path_get_structure_property_enumerator);
+SLOW_PATH_HIDDEN_DECL(slow_path_get_generic_property_enumerator);
+SLOW_PATH_HIDDEN_DECL(slow_path_next_enumerator_pname);
+SLOW_PATH_HIDDEN_DECL(slow_path_to_index_string);
+SLOW_PATH_HIDDEN_DECL(slow_path_profile_type);
 
 } // namespace JSC
 

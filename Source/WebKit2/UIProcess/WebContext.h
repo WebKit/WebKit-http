@@ -352,10 +352,6 @@ public:
 
     void setMemoryCacheDisabled(bool);
 
-#if ENABLE(SERVICE_CONTROLS)
-    void refreshExistingServices();
-#endif
-
 private:
     void platformInitialize();
 
@@ -427,17 +423,13 @@ private:
     String cookieStorageDirectory() const;
     String platformDefaultCookieStorageDirectory() const;
 
-    String openGLCacheDirectory() const;
-    String platformDefaultOpenGLCacheDirectory() const;
-
-    String networkingHSTSDatabasePath() const;
-    String platformDefaultNetworkingHSTSDatabasePath() const;
-
 #if PLATFORM(IOS)
+    String openGLCacheDirectory() const;
     String parentBundleDirectory() const;
-#endif
-
+    String networkingHSTSDatabasePath() const;
+    String webContentHSTSDatabasePath() const;
     String containerTemporaryDirectory() const;
+#endif
 
 #if PLATFORM(COCOA)
     void registerNotificationObservers();
@@ -534,7 +526,6 @@ private:
     String m_overrideIconDatabasePath;
     String m_overrideDiskCacheDirectory;
     String m_overrideCookieStorageDirectory;
-    String m_overrideOpenGLCacheDirectory;
 
     String m_webSQLDatabaseDirectory;
     String m_indexedDBDatabaseDirectory;

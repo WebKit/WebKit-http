@@ -378,7 +378,7 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
 void JSFunction::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     JSFunction* thisObject = jsCast<JSFunction*>(object);
-    if (!thisObject->isHostOrBuiltinFunction() && (mode == IncludeDontEnumProperties)) {
+    if (!thisObject->isHostOrBuiltinFunction() && shouldIncludeDontEnumProperties(mode)) {
         VM& vm = exec->vm();
         // Make sure prototype has been reified.
         PropertySlot slot(thisObject);
@@ -405,7 +405,7 @@ void JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
         PropertySlot slot(thisObject);
         thisObject->methodTable(exec->vm())->getOwnPropertySlot(thisObject, exec, propertyName, slot);
         thisObject->m_allocationProfile.clear();
-        thisObject->m_allocationProfileWatchpoint.fireAll();
+        thisObject->m_allocationProfileWatchpoint.fireAll("Store to prototype property of a function");
         // Don't allow this to be cached, since a [[Put]] must clear m_allocationProfile.
         PutPropertySlot dontCache(thisObject);
         Base::put(thisObject, exec, propertyName, value, dontCache);
@@ -452,7 +452,7 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
         PropertySlot slot(thisObject);
         thisObject->methodTable(exec->vm())->getOwnPropertySlot(thisObject, exec, propertyName, slot);
         thisObject->m_allocationProfile.clear();
-        thisObject->m_allocationProfileWatchpoint.fireAll();
+        thisObject->m_allocationProfileWatchpoint.fireAll("Store to prototype property of a function");
         return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
     }
 

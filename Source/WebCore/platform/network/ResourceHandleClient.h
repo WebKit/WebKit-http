@@ -32,6 +32,9 @@
 #if USE(CFNETWORK)
 #include <CFNetwork/CFURLCachePriv.h>
 #include <CFNetwork/CFURLResponsePriv.h>
+#endif
+
+#if PLATFORM(IOS) || USE(CFNETWORK)
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -62,8 +65,8 @@ namespace WebCore {
     
     class ResourceHandleClient {
     public:
-        ResourceHandleClient();
-        virtual ~ResourceHandleClient();
+        WEBCORE_EXPORT ResourceHandleClient();
+        WEBCORE_EXPORT virtual ~ResourceHandleClient();
 
         // Request may be modified.
         virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse& /*redirectResponse*/) { }
@@ -72,7 +75,7 @@ namespace WebCore {
         virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&) { }
         
         virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int /*encodedDataLength*/) { }
-        virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int encodedDataLength);
+        WEBCORE_EXPORT virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int encodedDataLength);
         
         virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/) { }
         virtual void didFail(ResourceHandle*, const ResourceError&) { }
@@ -82,20 +85,20 @@ namespace WebCore {
         virtual bool usesAsyncCallbacks() { return false; }
 
         // Client will pass an updated request using ResourceHandle::continueWillSendRequest() when ready.
-        virtual void willSendRequestAsync(ResourceHandle*, const ResourceRequest&, const ResourceResponse& redirectResponse);
+        WEBCORE_EXPORT virtual void willSendRequestAsync(ResourceHandle*, const ResourceRequest&, const ResourceResponse& redirectResponse);
 
         // Client will call ResourceHandle::continueDidReceiveResponse() when ready.
-        virtual void didReceiveResponseAsync(ResourceHandle*, const ResourceResponse&);
+        WEBCORE_EXPORT virtual void didReceiveResponseAsync(ResourceHandle*, const ResourceResponse&);
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
         // Client will pass an updated request using ResourceHandle::continueCanAuthenticateAgainstProtectionSpace() when ready.
-        virtual void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&);
+        WEBCORE_EXPORT virtual void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&);
 #endif
         // Client will pass an updated request using ResourceHandle::continueWillCacheResponse() when ready.
 #if USE(CFNETWORK)
-        virtual void willCacheResponseAsync(ResourceHandle*, CFCachedURLResponseRef);
+        WEBCORE_EXPORT virtual void willCacheResponseAsync(ResourceHandle*, CFCachedURLResponseRef);
 #elif PLATFORM(COCOA)
-        virtual void willCacheResponseAsync(ResourceHandle*, NSCachedURLResponse *);
+        WEBCORE_EXPORT virtual void willCacheResponseAsync(ResourceHandle*, NSCachedURLResponse *);
 #endif
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
@@ -115,9 +118,12 @@ namespace WebCore {
 #endif
         virtual void receivedCancellation(ResourceHandle*, const AuthenticationChallenge&) { }
 
+#if PLATFORM(IOS) || USE(CFNETWORK)
+        virtual RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) { return nullptr; }
+#endif
+
 #if USE(CFNETWORK)
         virtual CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef response) { return response; }
-        virtual RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) { return nullptr; }
 #if PLATFORM(WIN)
         virtual bool shouldCacheResponse(ResourceHandle*, CFCachedURLResponseRef) { return true; }
 #endif // PLATFORM(WIN)

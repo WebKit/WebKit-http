@@ -49,6 +49,8 @@
 #include "DFGLoopPreHeaderCreationPhase.h"
 #include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "DFGOSREntrypointCreationPhase.h"
+#include "DFGPhantomCanonicalizationPhase.h"
+#include "DFGPhantomRemovalPhase.h"
 #include "DFGPredictionInjectionPhase.h"
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGResurrectionForValidationPhase.h"
@@ -58,12 +60,12 @@
 #include "DFGStaticExecutionCountEstimationPhase.h"
 #include "DFGStoreBarrierElisionPhase.h"
 #include "DFGStrengthReductionPhase.h"
+#include "DFGStructureRegistrationPhase.h"
 #include "DFGTierUpCheckInjectionPhase.h"
 #include "DFGTypeCheckHoistingPhase.h"
 #include "DFGUnificationPhase.h"
 #include "DFGValidate.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
-#include "DFGWatchableStructureWatchingPhase.h"
 #include "DFGWatchpointCollectionPhase.h"
 #include "Debugger.h"
 #include "JSCInlines.h"
@@ -179,7 +181,9 @@ void Plan::compileInThread(LongLivedState& longLivedState, ThreadData* threadDat
             break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
+#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
             pathName = "";
+#endif
             break;
         }
         double now = currentTimeMS();
@@ -235,7 +239,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
     performBackwardsPropagation(dfg);
     performPredictionPropagation(dfg);
     performFixup(dfg);
-    performWatchableStructureWatching(dfg);
+    performStructureRegistration(dfg);
     performInvalidationPointInjection(dfg);
     performTypeCheckHoisting(dfg);
     
@@ -250,18 +254,18 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         validate(dfg);
         
     performStrengthReduction(dfg);
-    performCSE(dfg);
+    performLocalCSE(dfg);
     performArgumentsSimplification(dfg);
     performCPSRethreading(dfg);
     performCFA(dfg);
     performConstantFolding(dfg);
     bool changed = false;
     changed |= performCFGSimplification(dfg);
-    changed |= performCSE(dfg);
+    changed |= performLocalCSE(dfg);
     
     if (validationEnabled())
         validate(dfg);
-
+    
     performCPSRethreading(dfg);
     if (changed) {
         performCFA(dfg);
@@ -282,6 +286,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performTierUpCheckInjection(dfg);
 
         performStoreBarrierElision(dfg);
+        performPhantomRemoval(dfg);
         performCPSRethreading(dfg);
         performDCE(dfg);
         performStackLayout(dfg);
@@ -309,20 +314,17 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
             return FailPath;
         }
         
+        performPhantomRemoval(dfg); // Reduce the graph size a bit.
         performCriticalEdgeBreaking(dfg);
         performLoopPreHeaderCreation(dfg);
         performCPSRethreading(dfg);
         performSSAConversion(dfg);
         performSSALowering(dfg);
-        performCSE(dfg);
-        
-        // At this point we're not allowed to do any further code motion because our reasoning
-        // about code motion assumes that it's OK to insert GC points in random places.
-        
-        performStoreBarrierElision(dfg);
+        performGlobalCSE(dfg);
         performLivenessAnalysis(dfg);
         performCFA(dfg);
         performConstantFolding(dfg);
+        performPhantomCanonicalization(dfg); // Reduce the graph size a lot.
         if (performStrengthReduction(dfg)) {
             // State-at-tail and state-at-head will be invalid if we did strength reduction since
             // it might increase live ranges.
@@ -330,14 +332,16 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
             performCFA(dfg);
         }
         performLICM(dfg);
+        performPhantomCanonicalization(dfg);
         performIntegerCheckCombining(dfg);
-        performCSE(dfg);
+        performGlobalCSE(dfg);
         
         // At this point we're not allowed to do any further code motion because our reasoning
         // about code motion assumes that it's OK to insert GC points in random places.
         dfg.m_fixpointState = FixpointConverged;
         
         performStoreBarrierElision(dfg);
+        performPhantomCanonicalization(dfg);
         performLivenessAnalysis(dfg);
         performCFA(dfg);
         if (Options::validateFTLOSRExitLiveness())

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "InjectedBundleNodeHandle.h"
 
+#include "InjectedBundleRangeHandle.h"
 #include "ShareableBitmap.h"
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
@@ -46,7 +47,10 @@
 #include <WebCore/JSNode.h>
 #include <WebCore/Node.h>
 #include <WebCore/Page.h>
+#include <WebCore/Position.h>
+#include <WebCore/Range.h>
 #include <WebCore/RenderObject.h>
+#include <WebCore/VisiblePosition.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
@@ -144,7 +148,16 @@ static PassRefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& re
     if (options & SnapshotOptionsExcludeSelectionHighlighting)
         shouldPaintSelection = FrameView::ExcludeSelection;
 
+    PaintBehavior paintBehavior = frameView->paintBehavior() | PaintBehaviorFlattenCompositingLayers;
+    if (options & SnapshotOptionsForceBlackText)
+        paintBehavior |= PaintBehaviorForceBlackText;
+    if (options & SnapshotOptionsForceWhiteText)
+        paintBehavior |= PaintBehaviorForceWhiteText;
+
+    PaintBehavior oldPaintBehavior = frameView->paintBehavior();
+    frameView->setPaintBehavior(paintBehavior);
     frameView->paintContentsForSnapshot(graphicsContext.get(), rect, shouldPaintSelection, FrameView::DocumentCoordinates);
+    frameView->setPaintBehavior(oldPaintBehavior);
 
     return snapshot.release();
 }
@@ -166,13 +179,22 @@ PassRefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions opt
         return 0;
 
     LayoutRect topLevelRect;
-    IntRect paintingRect = pixelSnappedIntRect(renderer->paintingRootRect(topLevelRect));
+    IntRect paintingRect = snappedIntRect(renderer->paintingRootRect(topLevelRect));
 
     frameView->setNodeToDraw(m_node.get());
     RefPtr<WebImage> image = imageForRect(frameView, paintingRect, options);
     frameView->setNodeToDraw(0);
 
     return image.release();
+}
+
+PassRefPtr<InjectedBundleRangeHandle> InjectedBundleNodeHandle::visibleRange() const
+{
+    VisiblePosition start = firstPositionInNode(m_node.get());
+    VisiblePosition end = lastPositionInNode(m_node.get());
+
+    RefPtr<Range> range = makeRange(start, end);
+    return InjectedBundleRangeHandle::getOrCreate(range.get());
 }
 
 void InjectedBundleNodeHandle::setHTMLInputElementValueForUser(const String& value)

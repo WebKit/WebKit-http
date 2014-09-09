@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -90,11 +90,6 @@ bool TextFieldInputType::isTextField() const
 bool TextFieldInputType::valueMissing(const String& value) const
 {
     return element().isRequired() && value.isEmpty();
-}
-
-bool TextFieldInputType::canSetSuggestedValue()
-{
-    return true;
 }
 
 void TextFieldInputType::setValue(const String& sanitizedValue, bool valueChanged, TextFieldEventBehavior eventBehavior)
@@ -221,11 +216,7 @@ RenderPtr<RenderElement> TextFieldInputType::createInputRenderer(PassRef<RenderS
 
 bool TextFieldInputType::needsContainer() const
 {
-#if ENABLE(INPUT_SPEECH)
-    return element().isSpeechEnabled();
-#else
     return false;
-#endif
 }
 
 bool TextFieldInputType::shouldHaveSpinButton() const
@@ -262,14 +253,6 @@ void TextFieldInputType::createShadowSubtree()
     m_innerBlock->appendChild(m_innerText, IGNORE_EXCEPTION);
     m_container->appendChild(m_innerBlock, IGNORE_EXCEPTION);
 
-#if ENABLE(INPUT_SPEECH)
-    ASSERT(!m_speechButton);
-    if (element().isSpeechEnabled()) {
-        m_speechButton = InputFieldSpeechButtonElement::create(document);
-        m_container->appendChild(m_speechButton, IGNORE_EXCEPTION);
-    }
-#endif
-
     if (shouldHaveSpinButton) {
         m_innerSpinButton = SpinButtonElement::create(document, *this);
         m_container->appendChild(m_innerSpinButton, IGNORE_EXCEPTION);
@@ -297,13 +280,6 @@ HTMLElement* TextFieldInputType::innerSpinButtonElement() const
     return m_innerSpinButton.get();
 }
 
-#if ENABLE(INPUT_SPEECH)
-HTMLElement* TextFieldInputType::speechButtonElement() const
-{
-    return m_speechButton.get();
-}
-#endif
-
 HTMLElement* TextFieldInputType::placeholderElement() const
 {
     return m_placeholder.get();
@@ -315,9 +291,6 @@ void TextFieldInputType::destroyShadowSubtree()
     m_innerText.clear();
     m_placeholder.clear();
     m_innerBlock.clear();
-#if ENABLE(INPUT_SPEECH)
-    m_speechButton.clear();
-#endif
     if (m_innerSpinButton)
         m_innerSpinButton->removeSpinButtonOwner();
     m_innerSpinButton.clear();
@@ -436,6 +409,7 @@ void TextFieldInputType::updatePlaceholderText()
     if (!m_placeholder) {
         m_placeholder = HTMLDivElement::create(element().document());
         m_placeholder->setPseudo(AtomicString("-webkit-input-placeholder", AtomicString::ConstructFromLiteral));
+        m_placeholder->setInlineStyleProperty(CSSPropertyDisplay, element().isPlaceholderVisible() ? CSSValueBlock : CSSValueNone, true);
         element().userAgentShadowRoot()->insertBefore(m_placeholder, m_container ? m_container.get() : innerTextElement(), ASSERT_NO_EXCEPTION);
     }
     m_placeholder->setInnerText(placeholderText, ASSERT_NO_EXCEPTION);
@@ -465,7 +439,7 @@ void TextFieldInputType::subtreeHasChanged()
     // sanitizeUserInputValue().
     // sanitizeValue() is needed because IME input doesn't dispatch BeforeTextInsertedEvent.
     element().setValueFromRenderer(sanitizeValue(convertFromVisibleValue(element().innerTextValue())));
-    element().updatePlaceholderVisibility(false);
+    element().updatePlaceholderVisibility();
     // Recalc for :invalid change.
     element().setNeedsStyleRecalc();
 
@@ -495,14 +469,11 @@ void TextFieldInputType::spinButtonStepUp()
 
 void TextFieldInputType::updateInnerTextValue()
 {
-    if (!element().suggestedValue().isNull()) {
-        element().setInnerTextValue(element().suggestedValue());
-        element().updatePlaceholderVisibility(false);
-    } else if (!element().formControlValueMatchesRenderer()) {
+    if (!element().formControlValueMatchesRenderer()) {
         // Update the renderer value if the formControlValueMatchesRenderer() flag is false.
         // It protects an unacceptable renderer value from being overwritten with the DOM value.
         element().setInnerTextValue(visibleValue());
-        element().updatePlaceholderVisibility(false);
+        element().updatePlaceholderVisibility();
     }
 }
 

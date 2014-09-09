@@ -41,17 +41,19 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_perspectiveOriginX(RenderStyle::initialPerspectiveOriginX())
     , m_perspectiveOriginY(RenderStyle::initialPerspectiveOriginY())
     , lineClamp(RenderStyle::initialLineClamp())
+    , m_initialLetter(RenderStyle::initialInitialLetter())
     , m_deprecatedFlexibleBox(StyleDeprecatedFlexibleBoxData::create())
     , m_flexibleBox(StyleFlexibleBoxData::create())
     , m_marquee(StyleMarqueeData::create())
     , m_multiCol(StyleMultiColData::create())
     , m_transform(StyleTransformData::create())
-#if ENABLE(CSS_FILTERS)
     , m_filter(StyleFilterData::create())
-#endif
 #if ENABLE(CSS_GRID_LAYOUT)
     , m_grid(StyleGridData::create())
     , m_gridItem(StyleGridItemData::create())
+#endif
+#if ENABLE(CSS_SCROLL_SNAP)
+    , m_scrollSnapPoints(StyleScrollSnapPoints::create())
 #endif
     , m_mask(FillLayer(MaskFillLayer))
     , m_pageSize()
@@ -65,6 +67,9 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_order(RenderStyle::initialOrder())
     , m_flowThread(RenderStyle::initialFlowThread())
     , m_regionThread(RenderStyle::initialRegionThread())
+#if ENABLE(CSS_SCROLL_SNAP)
+    , m_scrollSnapType(RenderStyle::initialScrollSnapType())
+#endif
     , m_regionFragment(RenderStyle::initialRegionFragment())
     , m_regionBreakAfter(RenderStyle::NonInheritedFlags::initialPageBreak())
     , m_regionBreakBefore(RenderStyle::NonInheritedFlags::initialPageBreak())
@@ -106,17 +111,19 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_perspectiveOriginX(o.m_perspectiveOriginX)
     , m_perspectiveOriginY(o.m_perspectiveOriginY)
     , lineClamp(o.lineClamp)
+    , m_initialLetter(o.m_initialLetter)
     , m_deprecatedFlexibleBox(o.m_deprecatedFlexibleBox)
     , m_flexibleBox(o.m_flexibleBox)
     , m_marquee(o.m_marquee)
     , m_multiCol(o.m_multiCol)
     , m_transform(o.m_transform)
-#if ENABLE(CSS_FILTERS)
     , m_filter(o.m_filter)
-#endif
 #if ENABLE(CSS_GRID_LAYOUT)
     , m_grid(o.m_grid)
     , m_gridItem(o.m_gridItem)
+#endif
+#if ENABLE(CSS_SCROLL_SNAP)
+    , m_scrollSnapPoints(o.m_scrollSnapPoints)
 #endif
     , m_content(o.m_content ? o.m_content->clone() : nullptr)
     , m_counterDirectives(o.m_counterDirectives ? clone(*o.m_counterDirectives) : nullptr)
@@ -144,6 +151,9 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_order(o.m_order)
     , m_flowThread(o.m_flowThread)
     , m_regionThread(o.m_regionThread)
+#if ENABLE(CSS_SCROLL_SNAP)
+    , m_scrollSnapType(o.m_scrollSnapType)
+#endif
     , m_regionFragment(o.m_regionFragment)
     , m_regionBreakAfter(o.m_regionBreakAfter)
     , m_regionBreakBefore(o.m_regionBreakBefore)
@@ -193,6 +203,7 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_perspectiveOriginX == o.m_perspectiveOriginX
         && m_perspectiveOriginY == o.m_perspectiveOriginY
         && lineClamp == o.lineClamp
+        && m_initialLetter == o.m_initialLetter
 #if ENABLE(DASHBOARD_SUPPORT)
         && m_dashboardRegions == o.m_dashboardRegions
 #endif
@@ -201,12 +212,13 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_marquee == o.m_marquee
         && m_multiCol == o.m_multiCol
         && m_transform == o.m_transform
-#if ENABLE(CSS_FILTERS)
         && m_filter == o.m_filter
-#endif
 #if ENABLE(CSS_GRID_LAYOUT)
         && m_grid == o.m_grid
         && m_gridItem == o.m_gridItem
+#endif
+#if ENABLE(CSS_SCROLL_SNAP)
+        && m_scrollSnapPoints == o.m_scrollSnapPoints
 #endif
         && contentDataEquivalent(o)
         && counterDataEquivalent(o)
@@ -253,6 +265,9 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_borderFit == o.m_borderFit
         && m_textCombine == o.m_textCombine
         && m_textDecorationStyle == o.m_textDecorationStyle
+#if ENABLE(CSS_SCROLL_SNAP)
+        && m_scrollSnapType == o.m_scrollSnapType
+#endif
         && !m_runningAcceleratedAnimation && !o.m_runningAcceleratedAnimation
 #if ENABLE(CSS_COMPOSITING)
         && m_effectiveBlendMode == o.m_effectiveBlendMode
@@ -327,11 +342,7 @@ bool StyleRareNonInheritedData::transitionDataEquivalent(const StyleRareNonInher
 
 bool StyleRareNonInheritedData::hasFilters() const
 {
-#if ENABLE(CSS_FILTERS)
     return m_filter.get() && !m_filter->m_operations.isEmpty();
-#else
-    return false;
-#endif
 }
 
 } // namespace WebCore

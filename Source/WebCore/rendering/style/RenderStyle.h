@@ -55,6 +55,7 @@
 #include "StyleBackgroundData.h"
 #include "StyleBoxData.h"
 #include "StyleDeprecatedFlexibleBoxData.h"
+#include "StyleFilterData.h"
 #include "StyleFlexibleBoxData.h"
 #include "StyleMarqueeData.h"
 #include "StyleMultiColData.h"
@@ -74,10 +75,6 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
-#if ENABLE(CSS_FILTERS)
-#include "StyleFilterData.h"
-#endif
-
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "StyleGridData.h"
 #include "StyleGridItemData.h"
@@ -85,6 +82,10 @@
 
 #if ENABLE(DASHBOARD_SUPPORT)
 #include "StyleDashboardRegion.h"
+#endif
+
+#if ENABLE(CSS_SCROLL_SNAP)
+#include "StyleScrollSnapPoints.h"
 #endif
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
@@ -103,10 +104,7 @@ template<typename T, typename U> inline bool compareEqual(const T& t, const U& u
 
 namespace WebCore {
 
-#if ENABLE(CSS_FILTERS)
 class FilterOperations;
-#endif
-
 class BorderData;
 class CounterContent;
 class CursorList;
@@ -564,10 +562,8 @@ public:
         return imageOutsets(maskBoxImage());
     }
 
-#if ENABLE(CSS_FILTERS)
     bool hasFilterOutsets() const { return hasFilter() && filter().hasOutsets(); }
     FilterOutsets filterOutsets() const { return hasFilter() ? filter().outsets() : FilterOutsets(); }
-#endif
 
     Order rtlOrdering() const { return static_cast<Order>(inherited_flags.m_rtlOrdering); }
     void setRTLOrdering(Order o) { inherited_flags.m_rtlOrdering = o; }
@@ -693,9 +689,9 @@ public:
     EClear clear() const { return noninherited_flags.clear(); }
     ETableLayout tableLayout() const { return noninherited_flags.tableLayout(); }
 
-    const Font& font() const;
-    const FontMetrics& fontMetrics() const;
-    const FontDescription& fontDescription() const;
+    WEBCORE_EXPORT const Font& font() const;
+    WEBCORE_EXPORT const FontMetrics& fontMetrics() const;
+    WEBCORE_EXPORT const FontDescription& fontDescription() const;
     float specifiedFontSize() const;
     float computedFontSize() const;
     int fontSize() const;
@@ -1078,6 +1074,24 @@ public:
 
     LineBoxContain lineBoxContain() const { return rareInheritedData->m_lineBoxContain; }
     const LineClampValue& lineClamp() const { return rareNonInheritedData->lineClamp; }
+    const IntSize& initialLetter() const { return rareNonInheritedData->m_initialLetter; }
+    int initialLetterDrop() const { return initialLetter().width(); }
+    int initialLetterHeight() const { return initialLetter().height(); }
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    ScrollSnapType scrollSnapType() const { return static_cast<ScrollSnapType>(rareNonInheritedData->m_scrollSnapType); }
+    Vector<Length> scrollSnapOffsetsX() const { return rareNonInheritedData->m_scrollSnapPoints->offsetsX; }
+    Vector<Length> scrollSnapOffsetsY() const { return rareNonInheritedData->m_scrollSnapPoints->offsetsY; }
+    Length scrollSnapRepeatOffsetX() const { return rareNonInheritedData->m_scrollSnapPoints->repeatOffsetX; }
+    Length scrollSnapRepeatOffsetY() const { return rareNonInheritedData->m_scrollSnapPoints->repeatOffsetY; }
+    bool scrollSnapHasRepeatX() const { return rareNonInheritedData->m_scrollSnapPoints->hasRepeatX; }
+    bool scrollSnapHasRepeatY() const { return rareNonInheritedData->m_scrollSnapPoints->hasRepeatY; }
+    Length scrollSnapDestinationX() const { return rareNonInheritedData->m_scrollSnapPoints->destinationX; }
+    Length scrollSnapDestinationY() const { return rareNonInheritedData->m_scrollSnapPoints->destinationY; }
+    Vector<SnapCoordinate> scrollSnapCoordinates() const { return rareNonInheritedData->m_scrollSnapPoints->coordinates; }
+    bool scrollSnapUsesElementsX() const { return rareNonInheritedData->m_scrollSnapPoints->usesElementsX; }
+    bool scrollSnapUsesElementsY() const { return rareNonInheritedData->m_scrollSnapPoints->usesElementsY; }
+#endif
 #if ENABLE(TOUCH_EVENTS)
     Color tapHighlightColor() const { return rareInheritedData->tapHighlightColor; }
 #endif
@@ -1112,13 +1126,9 @@ public:
     
     ESpeak speak() const { return static_cast<ESpeak>(rareInheritedData->speak); }
 
-#if ENABLE(CSS_FILTERS)
     FilterOperations& mutableFilter() { return rareNonInheritedData.access()->m_filter.access()->m_operations; }
     const FilterOperations& filter() const { return rareNonInheritedData->m_filter->m_operations; }
     bool hasFilter() const { return !rareNonInheritedData->m_filter->m_operations.operations().isEmpty(); }
-#else
-    bool hasFilter() const { return false; }
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return static_cast<BlendMode>(rareNonInheritedData->m_effectiveBlendMode); }
@@ -1547,9 +1557,7 @@ public:
 
     void setRubyPosition(RubyPosition position) { SET_VAR(rareInheritedData, m_rubyPosition, position); }
 
-#if ENABLE(CSS_FILTERS)
     void setFilter(const FilterOperations& ops) { SET_VAR(rareNonInheritedData.access()->m_filter, m_operations, ops); }
-#endif
 
     void setTabSize(unsigned size) { SET_VAR(rareInheritedData, m_tabSize, size); }
 
@@ -1594,6 +1602,24 @@ public:
 
     void setLineBoxContain(LineBoxContain c) { SET_VAR(rareInheritedData, m_lineBoxContain, c); }
     void setLineClamp(LineClampValue c) { SET_VAR(rareNonInheritedData, lineClamp, c); }
+    
+    void setInitialLetter(const IntSize& size) { SET_VAR(rareNonInheritedData, m_initialLetter, size); }
+    
+#if ENABLE(CSS_SCROLL_SNAP)
+    void setScrollSnapType(ScrollSnapType type) { SET_VAR(rareNonInheritedData, m_scrollSnapType, type); }
+    void setScrollSnapOffsetsX(Vector<Length>& offsets) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, offsetsX, offsets); }
+    void setScrollSnapOffsetsY(Vector<Length>& offsets) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, offsetsY, offsets); }
+    void setScrollSnapRepeatOffsetX(Length repeatOffset) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, repeatOffsetX, repeatOffset); }
+    void setScrollSnapRepeatOffsetY(Length repeatOffset) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, repeatOffsetY, repeatOffset); }
+    void setScrollSnapHasRepeatX(bool hasRepeat) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, hasRepeatX, hasRepeat); }
+    void setScrollSnapHasRepeatY(bool hasRepeat) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, hasRepeatY, hasRepeat); }
+    void setScrollSnapDestinationX(Length destination) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, destinationX, destination); }
+    void setScrollSnapDestinationY(Length destination) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, destinationY, destination); }
+    void setScrollSnapCoordinates(Vector<SnapCoordinate>& coordinates) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, coordinates, coordinates); }
+    void setScrollSnapUsesElementsX(bool usesElements) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, usesElementsX, usesElements); }
+    void setScrollSnapUsesElementsY(bool usesElements) { SET_VAR(rareNonInheritedData.access()->m_scrollSnapPoints, usesElementsY, usesElements); }
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
     void setTapHighlightColor(const Color& c) { SET_VAR(rareInheritedData, tapHighlightColor, c); }
 #endif
@@ -1623,15 +1649,25 @@ public:
     void setStrokePaintColor(const Color& c) { accessSVGStyle().setStrokePaint(SVGPaint::SVG_PAINTTYPE_RGBCOLOR, c, ""); }
     float strokeOpacity() const { return svgStyle().strokeOpacity(); }
     void setStrokeOpacity(float f) { accessSVGStyle().setStrokeOpacity(f); }
-    SVGLength strokeWidth() const { return svgStyle().strokeWidth(); }
-    void setStrokeWidth(SVGLength w) { accessSVGStyle().setStrokeWidth(w); }
+    const Length& strokeWidth() const { return svgStyle().strokeWidth(); }
+    void setStrokeWidth(Length w) { accessSVGStyle().setStrokeWidth(w); }
     Vector<SVGLength> strokeDashArray() const { return svgStyle().strokeDashArray(); }
     void setStrokeDashArray(Vector<SVGLength> array) { accessSVGStyle().setStrokeDashArray(array); }
-    SVGLength strokeDashOffset() const { return svgStyle().strokeDashOffset(); }
-    void setStrokeDashOffset(SVGLength d) { accessSVGStyle().setStrokeDashOffset(d); }
+    const Length& strokeDashOffset() const { return svgStyle().strokeDashOffset(); }
+    void setStrokeDashOffset(Length d) { accessSVGStyle().setStrokeDashOffset(d); }
     float strokeMiterLimit() const { return svgStyle().strokeMiterLimit(); }
     void setStrokeMiterLimit(float f) { accessSVGStyle().setStrokeMiterLimit(f); }
 
+    const Length& cx() const { return svgStyle().cx(); }
+    void setCx(Length cx) { accessSVGStyle().setCx(cx); }
+    const Length& cy() const { return svgStyle().cy(); }
+    void setCy(Length cy) { accessSVGStyle().setCy(cy); }
+    const Length& r() const { return svgStyle().r(); }
+    void setR(Length r) { accessSVGStyle().setR(r); }
+    const Length& rx() const { return svgStyle().rx(); }
+    void setRx(Length rx) { accessSVGStyle().setRx(rx); }
+    const Length& ry() const { return svgStyle().ry(); }
+    void setRy(Length ry) { accessSVGStyle().setRy(ry); }
     const Length& x() const { return svgStyle().x(); }
     void setX(Length x) { accessSVGStyle().setX(x); }
     const Length& y() const { return svgStyle().y(); }
@@ -1714,7 +1750,7 @@ public:
 #endif
 
     StyleDifference diff(const RenderStyle*, unsigned& changedContextSensitiveProperties) const;
-    bool diffRequiresRepaint(const RenderStyle*) const;
+    bool diffRequiresLayerRepaint(const RenderStyle&, bool isComposited) const;
 
     bool isDisplayReplacedType() const { return isDisplayReplacedType(display()); }
     bool isDisplayInlineType() const { return isDisplayInlineType(display()); }
@@ -1746,7 +1782,7 @@ public:
     bool lastChildState() const { return noninherited_flags.lastChildState(); }
     void setLastChildState() { setUnique(); noninherited_flags.setLastChildState(true); }
 
-    Color visitedDependentColor(int colorProperty) const;
+    WEBCORE_EXPORT Color visitedDependentColor(int colorProperty) const;
 
     void setHasExplicitlyInheritedProperties() { noninherited_flags.setHasExplicitlyInheritedProperties(true); }
     bool hasExplicitlyInheritedProperties() const { return noninherited_flags.hasExplicitlyInheritedProperties(); }
@@ -1793,6 +1829,7 @@ public:
     static Length initialPadding() { return Length(Fixed); }
     static Length initialTextIndent() { return Length(Fixed); }
     static Length initialZeroLength() { return Length(Fixed); }
+    static Length initialOneLength() { return Length(1, Fixed); }
 #if ENABLE(CSS3_TEXT)
     static TextIndentLine initialTextIndentLine() { return TextIndentFirstLine; }
     static TextIndentType initialTextIndentType() { return TextIndentNormal; }
@@ -1897,6 +1934,9 @@ public:
     static StyleImage* initialBorderImageSource() { return 0; }
     static StyleImage* initialMaskBoxImageSource() { return 0; }
     static PrintColorAdjust initialPrintColorAdjust() { return PrintColorAdjustEconomy; }
+#if ENABLE(CSS_SCROLL_SNAP)
+    static ScrollSnapType initialScrollSnapType() { return ScrollSnapType::None; }
+#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
     // The initial value is 'none' for grid tracks.
@@ -1935,6 +1975,7 @@ public:
     static RegionFragment initialRegionFragment() { return AutoRegionFragment; }
 
     // Keep these at the end.
+    static IntSize initialInitialLetter() { return IntSize(); }
     static LineClampValue initialLineClamp() { return LineClampValue(); }
     static ETextSecurity initialTextSecurity() { return TSNONE; }
 #if ENABLE(IOS_TEXT_AUTOSIZING)
@@ -1954,9 +1995,7 @@ public:
     static const Vector<StyleDashboardRegion>& initialDashboardRegions();
     static const Vector<StyleDashboardRegion>& noneDashboardRegions();
 #endif
-#if ENABLE(CSS_FILTERS)
     static const FilterOperations& initialFilter() { DEPRECATED_DEFINE_STATIC_LOCAL(FilterOperations, ops, ()); return ops; }
-#endif
 #if ENABLE(CSS_COMPOSITING)
     static BlendMode initialBlendMode() { return BlendModeNormal; }
     static Isolation initialIsolation() { return IsolationAuto; }
@@ -2071,12 +2110,10 @@ inline float adjustFloatForAbsoluteZoom(float value, const RenderStyle* style)
     return value / style->effectiveZoom();
 }
 
-#if ENABLE(SUBPIXEL_LAYOUT)
 inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const RenderStyle& style)
 {
     return value / style.effectiveZoom();
 }
-#endif
 
 inline bool RenderStyle::setZoom(float f)
 {

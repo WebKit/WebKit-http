@@ -29,6 +29,8 @@
 #define ScriptExecutionContext_h
 
 #include "ActiveDOMObject.h"
+#include "DOMTimer.h"
+#include "ScheduledAction.h"
 #include "SecurityContext.h"
 #include "Supplementable.h"
 #include <runtime/ConsoleTypes.h>
@@ -47,7 +49,6 @@ namespace WebCore {
 
 class CachedScript;
 class DatabaseContext;
-class DOMTimer;
 class EventQueue;
 class EventTarget;
 class MessagePort;
@@ -83,7 +84,7 @@ public:
     PublicURLManager& publicURLManager();
 
     // Active objects are not garbage collected even if inaccessible, e.g. because their activity may result in callbacks being invoked.
-    bool canSuspendActiveDOMObjects();
+    WEBCORE_EXPORT bool canSuspendActiveDOMObjects();
     // Active objects can be asked to suspend even if canSuspendActiveDOMObjects() returns 'false' -
     // step-by-step JS debugging is one example.
     virtual void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension);
@@ -150,11 +151,11 @@ public:
     // Gets the next id in a circular sequence from 1 to 2^31-1.
     int circularSequentialID();
 
-    bool addTimeout(int timeoutId, DOMTimer* timer) { return m_timeouts.add(timeoutId, timer).isNewEntry; }
+    bool addTimeout(int timeoutId, PassRefPtr<DOMTimer> timer) { return m_timeouts.add(timeoutId, timer).isNewEntry; }
     void removeTimeout(int timeoutId) { m_timeouts.remove(timeoutId); }
     DOMTimer* findTimeout(int timeoutId) { return m_timeouts.get(timeoutId); }
 
-    JSC::VM& vm();
+    WEBCORE_EXPORT JSC::VM& vm();
 
     // Interval is in seconds.
     void adjustMinimumTimerInterval(double oldMinimumTimerInterval);
@@ -173,6 +174,9 @@ public:
     virtual bool wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey) = 0;
     virtual bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) = 0;
 #endif
+
+    int timerNestingLevel() const { return m_timerNestingLevel; }
+    void setTimerNestingLevel(int timerNestingLevel) { m_timerNestingLevel = timerNestingLevel; }
 
 protected:
     class AddConsoleMessageTask : public Task {
@@ -205,7 +209,7 @@ private:
     HashSet<ActiveDOMObject*> m_activeDOMObjects;
 
     int m_circularSequentialID;
-    HashMap<int, DOMTimer*> m_timeouts;
+    HashMap<int, RefPtr<DOMTimer>> m_timeouts;
 
     bool m_inDispatchErrorEvent;
     class PendingException;
@@ -222,6 +226,7 @@ private:
 #endif
 
     bool m_activeDOMObjectAdditionForbidden;
+    int m_timerNestingLevel;
 
 #if !ASSERT_DISABLED
     bool m_inScriptExecutionContextDestructor;

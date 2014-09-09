@@ -64,14 +64,14 @@ static PassRefPtr<CSSPrimitiveValue> basicShapeRadiusToCSSValue(const RenderStyl
     return 0;
 }
 
-PassRefPtr<CSSValue> valueForBasicShape(const RenderStyle* style, const BasicShape* basicShape)
+PassRef<CSSValue> valueForBasicShape(const RenderStyle* style, const BasicShape* basicShape)
 {
     CSSValuePool& pool = cssValuePool();
 
     RefPtr<CSSBasicShape> basicShapeValue;
     switch (basicShape->type()) {
     case BasicShape::BasicShapeCircleType: {
-        const BasicShapeCircle* circle = static_cast<const BasicShapeCircle*>(basicShape);
+        const BasicShapeCircle* circle = toBasicShapeCircle(basicShape);
         RefPtr<CSSBasicShapeCircle> circleValue = CSSBasicShapeCircle::create();
 
         circleValue->setCenterX(valueForCenterCoordinate(pool, style, circle->centerX(), HORIZONTAL));
@@ -81,7 +81,7 @@ PassRefPtr<CSSValue> valueForBasicShape(const RenderStyle* style, const BasicSha
         break;
     }
     case BasicShape::BasicShapeEllipseType: {
-        const BasicShapeEllipse* ellipse = static_cast<const BasicShapeEllipse*>(basicShape);
+        const BasicShapeEllipse* ellipse = toBasicShapeEllipse(basicShape);
         RefPtr<CSSBasicShapeEllipse> ellipseValue = CSSBasicShapeEllipse::create();
 
         ellipseValue->setCenterX(valueForCenterCoordinate(pool, style, ellipse->centerX(), HORIZONTAL));
@@ -92,7 +92,7 @@ PassRefPtr<CSSValue> valueForBasicShape(const RenderStyle* style, const BasicSha
         break;
     }
     case BasicShape::BasicShapePolygonType: {
-        const BasicShapePolygon* polygon = static_cast<const BasicShapePolygon*>(basicShape);
+        const BasicShapePolygon* polygon = toBasicShapePolygon(basicShape);
         RefPtr<CSSBasicShapePolygon> polygonValue = CSSBasicShapePolygon::create();
 
         polygonValue->setWindRule(polygon->windRule());
@@ -104,7 +104,7 @@ PassRefPtr<CSSValue> valueForBasicShape(const RenderStyle* style, const BasicSha
         break;
     }
     case BasicShape::BasicShapeInsetType: {
-        const BasicShapeInset* inset = static_cast<const BasicShapeInset*>(basicShape);
+        const BasicShapeInset* inset = toBasicShapeInset(basicShape);
         RefPtr<CSSBasicShapeInset> insetValue = CSSBasicShapeInset::create();
 
         insetValue->setTop(pool.createValue(inset->top(), style));
@@ -205,7 +205,7 @@ PassRefPtr<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conve
 
     switch (basicShapeValue->type()) {
     case CSSBasicShape::CSSBasicShapeCircleType: {
-        const CSSBasicShapeCircle* circleValue = static_cast<const CSSBasicShapeCircle *>(basicShapeValue);
+        const CSSBasicShapeCircle* circleValue = toCSSBasicShapeCircle(basicShapeValue);
         RefPtr<BasicShapeCircle> circle = BasicShapeCircle::create();
 
         circle->setCenterX(convertToCenterCoordinate(conversionData, circleValue->centerX()));
@@ -216,7 +216,7 @@ PassRefPtr<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conve
         break;
     }
     case CSSBasicShape::CSSBasicShapeEllipseType: {
-        const CSSBasicShapeEllipse* ellipseValue = static_cast<const CSSBasicShapeEllipse *>(basicShapeValue);
+        const CSSBasicShapeEllipse* ellipseValue = toCSSBasicShapeEllipse(basicShapeValue);
         RefPtr<BasicShapeEllipse> ellipse = BasicShapeEllipse::create();
 
         ellipse->setCenterX(convertToCenterCoordinate(conversionData, ellipseValue->centerX()));
@@ -229,7 +229,7 @@ PassRefPtr<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conve
         break;
     }
     case CSSBasicShape::CSSBasicShapePolygonType: {
-        const CSSBasicShapePolygon* polygonValue = static_cast<const CSSBasicShapePolygon *>(basicShapeValue);
+        const CSSBasicShapePolygon* polygonValue = toCSSBasicShapePolygon(basicShapeValue);
         RefPtr<BasicShapePolygon> polygon = BasicShapePolygon::create();
 
         polygon->setWindRule(polygonValue->windRule());
@@ -241,7 +241,7 @@ PassRefPtr<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conve
         break;
     }
     case CSSBasicShape::CSSBasicShapeInsetType: {
-        const CSSBasicShapeInset* rectValue = static_cast<const CSSBasicShapeInset* >(basicShapeValue);
+        const CSSBasicShapeInset* rectValue = toCSSBasicShapeInset(basicShapeValue);
         RefPtr<BasicShapeInset> rect = BasicShapeInset::create();
 
         rect->setTop(convertToLength(conversionData, rectValue->top()));

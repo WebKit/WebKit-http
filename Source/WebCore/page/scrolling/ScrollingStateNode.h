@@ -171,8 +171,8 @@ public:
     bool representsPlatformLayerID() const { return m_representation == PlatformLayerIDRepresentation; }
     
 private:
-    void retainPlatformLayer(PlatformLayer*);
-    void releasePlatformLayer(PlatformLayer*);
+    WEBCORE_EXPORT void retainPlatformLayer(PlatformLayer*);
+    WEBCORE_EXPORT void releasePlatformLayer(PlatformLayer*);
 
     union {
         GraphicsLayer* m_graphicsLayer;
@@ -218,7 +218,7 @@ public:
     virtual void syncLayerPositionForViewportRect(const LayoutRect& /*viewportRect*/) { }
 
     const LayerRepresentation& layer() const { return m_layer; }
-    void setLayer(const LayerRepresentation&);
+    WEBCORE_EXPORT void setLayer(const LayerRepresentation&);
 
     ScrollingStateTree& scrollingStateTree() const { return m_scrollingStateTree; }
 

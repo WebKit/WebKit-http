@@ -145,7 +145,7 @@ void ElementRuleCollector::collectMatchingRules(const MatchRequest& matchRequest
 {
     ASSERT(matchRequest.ruleSet);
     ASSERT_WITH_MESSAGE(!(m_mode == SelectorChecker::Mode::ResolvingStyle && !m_style), "When resolving style, the SelectorChecker must have a style to set the pseudo elements and/or to do marking. The SelectorCompiler also rely on that behavior.");
-    ASSERT_WITH_MESSAGE(!((m_mode == SelectorChecker::Mode::StyleInvalidation || m_mode == SelectorChecker::Mode::SharingRules) && m_pseudoStyleRequest.pseudoId != NOPSEUDO), "When in mode StyleInvalidation or SharingRules, SelectorChecker does not try to match the pseudo ID. While ElementRuleCollector supports matching a particular pseudoId in this case, this would indicate a error at the call site since matching a particular element should be unnecessary.");
+    ASSERT_WITH_MESSAGE(!(m_mode == SelectorChecker::Mode::CollectingRulesIgnoringVirtualPseudoElements && m_pseudoStyleRequest.pseudoId != NOPSEUDO), "When in StyleInvalidation or SharingRules, SelectorChecker does not try to match the pseudo ID. While ElementRuleCollector supports matching a particular pseudoId in this case, this would indicate a error at the call site since matching a particular element should be unnecessary.");
 
 #if ENABLE(VIDEO_TRACK)
     if (m_element.isWebVTTElement())
@@ -297,8 +297,8 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData)
 
     if (compiledSelectorChecker) {
         if (ruleData.compilationStatus() == SelectorCompilationStatus::SimpleSelectorChecker) {
-            ASSERT_WITH_MESSAGE(m_pseudoStyleRequest.pseudoId == NOPSEUDO, "When matching pseudo elements, we should never compile a selector checker without context. ElementRuleCollector::collectMatchingRulesForList() should filter out useless rules for pseudo elements.");
             SelectorCompiler::SimpleSelectorChecker selectorChecker = SelectorCompiler::simpleSelectorCheckerFunction(compiledSelectorChecker, ruleData.compilationStatus());
+            ASSERT_WITH_MESSAGE(!selectorChecker(&m_element) || m_pseudoStyleRequest.pseudoId == NOPSEUDO, "When matching pseudo elements, we should never compile a selector checker without context unless it cannot match anything.");
 #if CSS_SELECTOR_JIT_PROFILING
             ruleData.compiledSelectorUsed();
 #endif
@@ -306,24 +306,22 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData)
         }
         ASSERT(ruleData.compilationStatus() == SelectorCompilationStatus::SelectorCheckerWithCheckingContext);
 
-        // FIXME: Currently a compiled selector doesn't support scrollbar / selection's exceptional case.
-        if (!m_pseudoStyleRequest.scrollbar) {
-            SelectorCompiler::SelectorCheckerWithCheckingContext selectorChecker = SelectorCompiler::selectorCheckerFunctionWithCheckingContext(compiledSelectorChecker, ruleData.compilationStatus());
-            SelectorCompiler::CheckingContext context;
-            context.elementStyle = m_style;
-            context.resolvingMode = m_mode;
-            context.pseudoId = m_pseudoStyleRequest.pseudoId;
+        SelectorCompiler::SelectorCheckerWithCheckingContext selectorChecker = SelectorCompiler::selectorCheckerFunctionWithCheckingContext(compiledSelectorChecker, ruleData.compilationStatus());
+        SelectorCompiler::CheckingContext context(m_mode);
+        context.elementStyle = m_style;
+        context.pseudoId = m_pseudoStyleRequest.pseudoId;
+        context.scrollbar = m_pseudoStyleRequest.scrollbar;
+        context.scrollbarPart = m_pseudoStyleRequest.scrollbarPart;
 #if CSS_SELECTOR_JIT_PROFILING
-            ruleData.compiledSelectorUsed();
+        ruleData.compiledSelectorUsed();
 #endif
-            return selectorChecker(&m_element, &context);
-        }
+        return selectorChecker(&m_element, &context);
     }
 #endif // ENABLE(CSS_SELECTOR_JIT)
 
     // Slow path.
-    SelectorChecker selectorChecker(m_element.document(), m_mode);
-    SelectorChecker::SelectorCheckingContext context(ruleData.selector(), &m_element, SelectorChecker::VisitedMatchEnabled);
+    SelectorChecker selectorChecker(m_element.document());
+    SelectorChecker::SelectorCheckingContext context(ruleData.selector(), &m_element, m_mode);
     context.elementStyle = m_style;
     context.pseudoId = m_pseudoStyleRequest.pseudoId;
     context.scrollbar = m_pseudoStyleRequest.scrollbar;
@@ -432,7 +430,7 @@ bool ElementRuleCollector::hasAnyMatchingRules(RuleSet* ruleSet)
 {
     clearMatchedRules();
 
-    m_mode = SelectorChecker::Mode::SharingRules;
+    m_mode = SelectorChecker::Mode::CollectingRulesIgnoringVirtualPseudoElements;
     int firstRuleIndex = -1, lastRuleIndex = -1;
     StyleResolver::RuleRange ruleRange(firstRuleIndex, lastRuleIndex);
     collectMatchingRules(MatchRequest(ruleSet), ruleRange);

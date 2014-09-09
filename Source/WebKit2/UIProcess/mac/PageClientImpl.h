@@ -108,7 +108,9 @@ private:
     virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) = 0;
     virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
 #endif
-        
+
+    CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *layer) const;
+
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled);
 
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*);
@@ -126,7 +128,6 @@ private:
 
     virtual PassRefPtr<ViewSnapshot> takeViewSnapshot() override;
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
-    virtual void clearCustomSwipeViews() override;
 
     virtual void accessibilityWebProcessTokenReceived(const IPC::DataReference&);
 
@@ -179,6 +180,11 @@ private:
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
 
     NSView *activeView() const;
+
+    virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
+    virtual void didFinishLoadForMainFrame() override;
+    virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
+    virtual void removeNavigationGestureSnapshot() override;
 
     WKView *m_wkView;
     WKWebView *m_webView;

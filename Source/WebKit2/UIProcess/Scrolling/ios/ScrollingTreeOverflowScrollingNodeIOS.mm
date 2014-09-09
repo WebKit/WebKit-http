@@ -37,6 +37,10 @@
 #import <UIKit/UIScrollView.h>
 #import <wtf/TemporaryChange.h>
 
+#if ENABLE(CSS_SCROLL_SNAP)
+#import <WebCore/AxisScrollSnapOffsets.h>
+#endif
+
 using namespace WebCore;
 
 @interface WKOverflowScrollViewDelegate : NSObject <UIScrollViewDelegate> {
@@ -72,6 +76,16 @@ using namespace WebCore;
         _scrollingTreeNode->overflowScrollViewWillStartPanGesture();
     _scrollingTreeNode->overflowScrollWillStart();
 }
+
+#if ENABLE(CSS_SCROLL_SNAP)
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset
+{
+    if (!_scrollingTreeNode->horizontalSnapOffsets().isEmpty())
+        targetContentOffset->x = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->horizontalSnapOffsets(), targetContentOffset->x, velocity.x);
+    if (!_scrollingTreeNode->verticalSnapOffsets().isEmpty())
+        targetContentOffset->y = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->verticalSnapOffsets(), targetContentOffset->y, velocity.y);
+}
+#endif
 
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)willDecelerate
 {
@@ -111,7 +125,9 @@ ScrollingTreeOverflowScrollingNodeIOS::~ScrollingTreeOverflowScrollingNodeIOS()
     BEGIN_BLOCK_OBJC_EXCEPTIONS
     if (UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate]) {
         ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
-        scrollView.delegate = nil;
+        // The scrollView may have been adopted by another node, so only clear the delegate if it's ours.
+        if (scrollView.delegate == m_scrollViewDelegate.get())
+            scrollView.delegate = nil;
     }
     END_BLOCK_OBJC_EXCEPTIONS
 }
@@ -186,7 +202,12 @@ void ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren(const ScrollingS
 
             scrollView.contentInset = insets;
         }
-            
+
+#if ENABLE(CSS_SCROLL_SNAP)
+        // FIXME: If only one axis snaps in 2D scrolling, the other axis will decelerate fast as well. Is this what we want?
+        if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::HorizontalSnapOffsets) || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::VerticalSnapOffsets))
+            scrollView.decelerationRate = horizontalSnapOffsets().size() || verticalSnapOffsets().size() ? UIScrollViewDecelerationRateFast : UIScrollViewDecelerationRateNormal;
+#endif
         END_BLOCK_OBJC_EXCEPTIONS
     }
 }

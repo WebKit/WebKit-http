@@ -470,11 +470,18 @@ TryMallocReturnValue tryFastCalloc(size_t numElements, size_t elementSize)
     return fastCalloc(numElements, elementSize);
 }
     
-void releaseFastMallocFreeMemory() { }
+void releaseFastMallocFreeMemory()
+{
+    bmalloc::api::scavenge();
+}
 
 FastMallocStatistics fastMallocStatistics()
 {
-    FastMallocStatistics statistics = { 0, 0, 0 };
+    FastMallocStatistics statistics;
+    statistics.committedVMBytes = bmalloc::api::heapSize();
+    statistics.reservedVMBytes = bmalloc::api::heapCapacity();
+    statistics.freeListBytes = 0; // bmalloc doesn't really have free lists.
+
     return statistics;
 }
 

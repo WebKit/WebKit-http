@@ -168,10 +168,11 @@ class TransformSource;
 struct AnnotatedRegionValue;
 #endif
 
-#if ENABLE(TOUCH_EVENTS)
-#if PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/DocumentIOSForward.h>
-#endif // PLATFORM(IOS)
+#endif
+
+#if ENABLE(TOUCH_EVENTS) || ENABLE(IOS_TOUCH_EVENTS)
 class Touch;
 class TouchList;
 #endif
@@ -299,7 +300,7 @@ public:
 
     void removedLastRef();
 
-    static HashSet<Document*>& allDocuments();
+    WEBCORE_EXPORT static HashSet<Document*>& allDocuments();
 
     MediaQueryMatcher& mediaQueryMatcher();
 
@@ -421,8 +422,8 @@ public:
     bool hasManifest() const;
     
     virtual PassRefPtr<Element> createElement(const AtomicString& tagName, ExceptionCode&);
-    PassRefPtr<DocumentFragment> createDocumentFragment();
-    PassRefPtr<Text> createTextNode(const String& data);
+    WEBCORE_EXPORT PassRefPtr<DocumentFragment> createDocumentFragment();
+    WEBCORE_EXPORT PassRefPtr<Text> createTextNode(const String& data);
     PassRefPtr<Comment> createComment(const String& data);
     PassRefPtr<CDATASection> createCDATASection(const String& data, ExceptionCode&);
     PassRefPtr<ProcessingInstruction> createProcessingInstruction(const String& target, const String& data, ExceptionCode&);
@@ -431,8 +432,8 @@ public:
     PassRefPtr<EntityReference> createEntityReference(const String& name, ExceptionCode&);
     PassRefPtr<Node> importNode(Node* importedNode, ExceptionCode& ec) { return importNode(importedNode, true, ec); }
     PassRefPtr<Node> importNode(Node* importedNode, bool deep, ExceptionCode&);
-    PassRefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
-    PassRefPtr<Element> createElement(const QualifiedName&, bool createdByParser);
+    WEBCORE_EXPORT PassRefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
+    WEBCORE_EXPORT PassRefPtr<Element> createElement(const QualifiedName&, bool createdByParser);
 
     bool cssRegionsEnabled() const;
     bool cssCompositingEnabled() const;
@@ -558,7 +559,7 @@ public:
      * constructed from these which is used to create the a new style selector which collates all of the stylesheets
      * found and is used to calculate the derived styles for all rendering objects.
      */
-    void styleResolverChanged(StyleResolverUpdateFlag);
+    WEBCORE_EXPORT void styleResolverChanged(StyleResolverUpdateFlag);
 
     void scheduleOptimizedStyleSheetUpdate();
 
@@ -568,14 +569,14 @@ public:
     Vector<String> formElementsState() const;
     void setStateForNewFormElements(const Vector<String>&);
 
-    FrameView* view() const; // can be NULL
+    WEBCORE_EXPORT FrameView* view() const; // can be NULL
     Frame* frame() const { return m_frame; } // can be NULL
-    Page* page() const; // can be NULL
-    Settings* settings() const; // can be NULL
+    WEBCORE_EXPORT Page* page() const; // can be NULL
+    WEBCORE_EXPORT Settings* settings() const; // can be NULL
 
     float deviceScaleFactor() const;
 
-    PassRefPtr<Range> createRange();
+    WEBCORE_EXPORT PassRefPtr<Range> createRange();
 
     PassRefPtr<NodeIterator> createNodeIterator(Node* root, unsigned whatToShow,
         PassRefPtr<NodeFilter>, bool expandEntityReferences, ExceptionCode&);
@@ -588,24 +589,29 @@ public:
     PassRefPtr<Text> createEditingTextNode(const String&);
 
     void recalcStyle(Style::Change = Style::NoChange);
-    void updateStyleIfNeeded();
+    WEBCORE_EXPORT void updateStyleIfNeeded();
     bool updateStyleIfNeededForNode(const Node&);
-    void updateLayout();
-    enum RunPostLayoutTasks {
-        RunPostLayoutTasksAsynchronously,
-        RunPostLayoutTasksSynchronously,
+
+    WEBCORE_EXPORT void updateLayout();
+    
+    // updateLayoutIgnorePendingStylesheets() forces layout even if we are waiting for pending stylesheet loads,
+    // so calling this may cause a flash of unstyled content (FOUC).
+    enum class RunPostLayoutTasks {
+        Asynchronously,
+        Synchronously,
     };
-    void updateLayoutIgnorePendingStylesheets(RunPostLayoutTasks = RunPostLayoutTasksAsynchronously);
+    WEBCORE_EXPORT void updateLayoutIgnorePendingStylesheets(RunPostLayoutTasks = RunPostLayoutTasks::Asynchronously);
+
     PassRef<RenderStyle> styleForElementIgnoringPendingStylesheets(Element*);
 
     // Returns true if page box (margin boxes and page borders) is visible.
-    bool isPageBoxVisible(int pageIndex);
+    WEBCORE_EXPORT bool isPageBoxVisible(int pageIndex);
 
     // Returns the preferred page size and margins in pixels, assuming 96
     // pixels per inch. pageSize, marginTop, marginRight, marginBottom,
     // marginLeft must be initialized to the default values that are used if
     // auto is specified.
-    void pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft);
+    WEBCORE_EXPORT void pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft);
 
     CachedResourceLoader* cachedResourceLoader() { return m_cachedResourceLoader.get(); }
 
@@ -625,14 +631,14 @@ public:
     bool hasLivingRenderTree() const { return renderView() && !renderTreeBeingDestroyed(); }
 
     AXObjectCache* existingAXObjectCache() const;
-    AXObjectCache* axObjectCache() const;
+    WEBCORE_EXPORT AXObjectCache* axObjectCache() const;
     void clearAXObjectCache();
 
     // to get visually ordered hebrew and arabic pages right
     void setVisuallyOrdered();
     bool visuallyOrdered() const { return m_visuallyOrdered; }
     
-    DocumentLoader* loader() const;
+    WEBCORE_EXPORT DocumentLoader* loader() const;
 
     void open(Document* ownerDocument = 0);
     void implicitOpen();
@@ -666,7 +672,7 @@ public:
     const String& baseTarget() const { return m_baseTarget; }
     void processBaseElement();
 
-    virtual URL completeURL(const String&) const override final;
+    WEBCORE_EXPORT virtual URL completeURL(const String&) const override final;
     URL completeURL(const String&, const URL& baseURLOverride) const;
 
     virtual String userAgent(const URL&) const override;
@@ -738,7 +744,7 @@ public:
     String selectedStylesheetSet() const;
     void setSelectedStylesheetSet(const String&);
 
-    bool setFocusedElement(PassRefPtr<Element>, FocusDirection = FocusDirectionNone);
+    WEBCORE_EXPORT bool setFocusedElement(PassRefPtr<Element>, FocusDirection = FocusDirectionNone);
     Element* focusedElement() const { return m_focusedElement.get(); }
     UserActionElementSet& userActionElements()  { return m_userActionElements; }
     const UserActionElementSet& userActionElements() const { return m_userActionElements; }
@@ -759,7 +765,7 @@ public:
     Element* cssTarget() const { return m_cssTarget; }
     static ptrdiff_t cssTargetMemoryOffset() { return OBJECT_OFFSETOF(Document, m_cssTarget); }
 
-    void scheduleForcedStyleRecalc();
+    WEBCORE_EXPORT void scheduleForcedStyleRecalc();
     void scheduleStyleRecalc();
     void unscheduleStyleRecalc();
     bool hasPendingStyleRecalc() const;
@@ -806,7 +812,7 @@ public:
     void setWindowAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
     void setWindowAttributeEventListener(const AtomicString& eventType, PassRefPtr<EventListener>);
     EventListener* getWindowAttributeEventListener(const AtomicString& eventType);
-    void dispatchWindowEvent(PassRefPtr<Event>, PassRefPtr<EventTarget> = 0);
+    WEBCORE_EXPORT void dispatchWindowEvent(PassRefPtr<Event>, PassRefPtr<EventTarget> = 0);
     void dispatchWindowLoadEvent();
 
     PassRefPtr<Event> createEvent(const String& eventType, ExceptionCode&);
@@ -882,7 +888,7 @@ public:
 
     String origin() const;
 
-    String domain() const;
+    WEBCORE_EXPORT String domain() const;
     void setDomain(const String& newDomain, ExceptionCode&);
 
     String lastModified() const;
@@ -927,10 +933,10 @@ public:
     static bool hasValidNamespaceForElements(const QualifiedName&);
     static bool hasValidNamespaceForAttributes(const QualifiedName&);
 
-    HTMLElement* body() const;
+    WEBCORE_EXPORT HTMLElement* body() const;
     void setBody(PassRefPtr<HTMLElement>, ExceptionCode&);
 
-    HTMLHeadElement* head();
+    WEBCORE_EXPORT HTMLHeadElement* head();
 
     DocumentMarkerController& markers() const { return *m_markers; }
 
@@ -992,8 +998,8 @@ public:
     bool hasNodesWithPlaceholderStyle() const { return m_hasNodesWithPlaceholderStyle; }
     void setHasNodesWithPlaceholderStyle() { m_hasNodesWithPlaceholderStyle = true; }
 
-    const Vector<IconURL>& shortcutIconURLs();
-    const Vector<IconURL>& iconURLs(int iconTypesMask);
+    WEBCORE_EXPORT const Vector<IconURL>& shortcutIconURLs();
+    WEBCORE_EXPORT const Vector<IconURL>& iconURLs(int iconTypesMask);
     void addIconURL(const String& url, const String& mimeType, const String& size, IconType);
 
     void updateFocusAppearanceSoon(bool restorePreviousSelection);
@@ -1052,13 +1058,13 @@ public:
     void registerForVisibilityStateChangedCallbacks(Element*);
     void unregisterForVisibilityStateChangedCallbacks(Element*);
 
-    void setShouldCreateRenderers(bool);
+    WEBCORE_EXPORT void setShouldCreateRenderers(bool);
     bool shouldCreateRenderers();
 
     void setDecoder(PassRefPtr<TextResourceDecoder>);
     TextResourceDecoder* decoder() const { return m_decoder.get(); }
 
-    String displayStringModifiedByEncoding(const String&) const;
+    WEBCORE_EXPORT String displayStringModifiedByEncoding(const String&) const;
     PassRefPtr<StringImpl> displayStringModifiedByEncoding(PassRefPtr<StringImpl>) const;
     void displayBufferModifiedByEncoding(LChar* buffer, unsigned len) const
     {
@@ -1074,18 +1080,18 @@ public:
     bool frameElementsShouldIgnoreScrolling() const { return m_frameElementsShouldIgnoreScrolling; }
 
 #if ENABLE(DASHBOARD_SUPPORT)
-    void setAnnotatedRegionsDirty(bool f) { m_annotatedRegionsDirty = f; }
+    WEBCORE_EXPORT void setAnnotatedRegionsDirty(bool f) { m_annotatedRegionsDirty = f; }
     bool annotatedRegionsDirty() const { return m_annotatedRegionsDirty; }
     bool hasAnnotatedRegions () const { return m_hasAnnotatedRegions; }
     void setHasAnnotatedRegions(bool f) { m_hasAnnotatedRegions = f; }
-    const Vector<AnnotatedRegionValue>& annotatedRegions() const;
+    WEBCORE_EXPORT const Vector<AnnotatedRegionValue>& annotatedRegions() const;
     void setAnnotatedRegions(const Vector<AnnotatedRegionValue>&);
 #endif
 
     virtual void removeAllEventListeners() override;
 
-    const SVGDocumentExtensions* svgExtensions();
-    SVGDocumentExtensions* accessSVGExtensions();
+    WEBCORE_EXPORT const SVGDocumentExtensions* svgExtensions();
+    WEBCORE_EXPORT SVGDocumentExtensions* accessSVGExtensions();
 
     void initSecurityContext();
     void initContentSecurityPolicy();
@@ -1110,8 +1116,8 @@ public:
     void enqueuePopstateEvent(PassRefPtr<SerializedScriptValue> stateObject);
     virtual DocumentEventQueue& eventQueue() const override { return m_eventQueue; }
 
-    void addMediaCanStartListener(MediaCanStartListener*);
-    void removeMediaCanStartListener(MediaCanStartListener*);
+    WEBCORE_EXPORT void addMediaCanStartListener(MediaCanStartListener*);
+    WEBCORE_EXPORT void removeMediaCanStartListener(MediaCanStartListener*);
     MediaCanStartListener* takeAnyMediaCanStartListener();
 
 #if ENABLE(FULLSCREEN_API)
@@ -1125,12 +1131,12 @@ public:
     };
 
     void requestFullScreenForElement(Element*, unsigned short flags, FullScreenCheckType);
-    void webkitCancelFullScreen();
+    WEBCORE_EXPORT void webkitCancelFullScreen();
     
-    void webkitWillEnterFullScreenForElement(Element*);
-    void webkitDidEnterFullScreenForElement(Element*);
-    void webkitWillExitFullScreenForElement(Element*);
-    void webkitDidExitFullScreenForElement(Element*);
+    WEBCORE_EXPORT void webkitWillEnterFullScreenForElement(Element*);
+    WEBCORE_EXPORT void webkitDidEnterFullScreenForElement(Element*);
+    WEBCORE_EXPORT void webkitWillExitFullScreenForElement(Element*);
+    WEBCORE_EXPORT void webkitDidExitFullScreenForElement(Element*);
     
     void setFullScreenRenderer(RenderFullScreen*);
     RenderFullScreen* fullScreenRenderer() const { return m_fullScreenRenderer; }
@@ -1141,7 +1147,7 @@ public:
     void fullScreenElementRemoved();
     void removeFullScreenElementOfSubtree(Node*, bool amongChildrenOnly = false);
     bool isAnimatingFullScreen() const;
-    void setAnimatingFullScreen(bool);
+    WEBCORE_EXPORT void setAnimatingFullScreen(bool);
 
     // W3C API
     bool webkitFullscreenEnabled() const;
@@ -1159,12 +1165,10 @@ public:
     void decrementLoadEventDelayCount();
     bool isDelayingLoadEvent() const { return m_loadEventDelayCount; }
 
-#if ENABLE(TOUCH_EVENTS)
-#if PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/DocumentIOS.h>
-#else
+#elif ENABLE(TOUCH_EVENTS)
     PassRefPtr<Touch> createTouch(DOMWindow*, EventTarget*, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force, ExceptionCode&) const;
-#endif // PLATFORM(IOS)
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
@@ -1190,8 +1194,8 @@ public:
     void initDNSPrefetch();
 
     unsigned wheelEventHandlerCount() const { return m_wheelEventHandlerCount; }
-    void didAddWheelEventHandler();
-    void didRemoveWheelEventHandler();
+    WEBCORE_EXPORT void didAddWheelEventHandler();
+    WEBCORE_EXPORT void didRemoveWheelEventHandler();
 
     double lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
     void resetLastHandledUserGestureTimestamp();
@@ -1623,8 +1627,8 @@ public:
     //      document if it has the appropriate meta tag.
     //    - isTelephoneNumberParsingEnabled() == isTelephoneNumberParsingAllowed() && page()->settings()->isTelephoneNumberParsingEnabled()
 
-    bool isTelephoneNumberParsingAllowed() const;
-    bool isTelephoneNumberParsingEnabled() const;
+    WEBCORE_EXPORT bool isTelephoneNumberParsingAllowed() const;
+    WEBCORE_EXPORT bool isTelephoneNumberParsingEnabled() const;
 
 private:
     friend void setParserFeature(const String& key, const String& value, Document*, void* userData);

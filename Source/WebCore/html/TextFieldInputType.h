@@ -45,7 +45,6 @@ class TextFieldInputType : public InputType, protected SpinButtonElement::SpinBu
 protected:
     explicit TextFieldInputType(HTMLInputElement&);
     virtual ~TextFieldInputType();
-    virtual bool canSetSuggestedValue() override;
     virtual void handleKeydownEvent(KeyboardEvent*) override;
     void handleKeydownEventForSpinButton(KeyboardEvent*);
 
@@ -53,9 +52,6 @@ protected:
     virtual HTMLElement* innerBlockElement() const override;
     virtual TextControlInnerTextElement* innerTextElement() const override;
     virtual HTMLElement* innerSpinButtonElement() const override;
-#if ENABLE(INPUT_SPEECH)
-    virtual HTMLElement* speechButtonElement() const override;
-#endif
 
 protected:
     virtual bool needsContainer() const;
@@ -111,9 +107,6 @@ private:
     RefPtr<TextControlInnerTextElement> m_innerText;
     RefPtr<HTMLElement> m_placeholder;
     RefPtr<SpinButtonElement> m_innerSpinButton;
-#if ENABLE(INPUT_SPEECH)
-    RefPtr<HTMLElement> m_speechButton;
-#endif
 };
 
 } // namespace WebCore

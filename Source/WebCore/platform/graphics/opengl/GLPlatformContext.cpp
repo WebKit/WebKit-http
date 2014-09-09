@@ -24,6 +24,8 @@
  */
 
 #include "config.h"
+
+#if USE(3D_GRAPHICS)
 #include "GLPlatformContext.h"
 
 #if USE(GLX)
@@ -75,7 +77,7 @@ static std::unique_ptr<GLPlatformContext> createOffScreenContext()
 static HashSet<String> parseExtensions(const String& extensionsString)
 {
     Vector<String> extNames;
-    extensionsString.split(" ", extNames);
+    extensionsString.split(' ', extNames);
     HashSet<String> splitExtNames;
     unsigned size = extNames.size();
     for (unsigned i = 0; i < size; ++i)
@@ -279,3 +281,5 @@ void GLPlatformContext::destroy()
 }
 
 } // namespace WebCore
+
+#endif

@@ -49,14 +49,13 @@ public:
     LayoutRect(const FloatPoint& location, const FloatSize& size)
         : m_location(location), m_size(size) { }
     LayoutRect(const IntRect& rect) : m_location(rect.location()), m_size(rect.size()) { }
-
-    explicit LayoutRect(const FloatRect&); // don't do this implicitly since it's lossy
+    
+    WEBCORE_EXPORT explicit LayoutRect(const FloatRect&); // don't do this implicitly since it's lossy
         
     LayoutPoint location() const { return m_location; }
     LayoutSize size() const { return m_size; }
 
-    IntPoint pixelSnappedLocation() const { return roundedIntPoint(m_location); }
-    IntSize pixelSnappedSize() const { return IntSize(snapSizeToPixel(m_size.width(), m_location.x()), snapSizeToPixel(m_size.height(), m_location.y())); }
+    IntSize pixelSnappedSize() const { return snappedIntSize(m_size, m_location); }
 
     void setLocation(const LayoutPoint& location) { m_location = location; }
     void setSize(const LayoutSize& size) { m_size = size; }
@@ -67,13 +66,6 @@ public:
     LayoutUnit maxY() const { return y() + height(); }
     LayoutUnit width() const { return m_size.width(); }
     LayoutUnit height() const { return m_size.height(); }
-
-    int pixelSnappedX() const { return x().round(); }
-    int pixelSnappedY() const { return y().round(); }
-    int pixelSnappedWidth() const { return snapSizeToPixel(width(), x()); }
-    int pixelSnappedHeight() const { return snapSizeToPixel(height(), y()); }
-    int pixelSnappedMaxX() const { return (m_location.x() + m_size.width()).round(); }
-    int pixelSnappedMaxY() const { return (m_location.y() + m_size.height()).round(); }
 
     void setX(LayoutUnit x) { m_location.setX(x); }
     void setY(LayoutUnit y) { m_location.setY(y); }
@@ -134,7 +126,7 @@ public:
     LayoutPoint maxXMaxYCorner() const { return LayoutPoint(m_location.x() + m_size.width(), m_location.y() + m_size.height()); } // typically bottomRight
     
     bool intersects(const LayoutRect&) const;
-    bool contains(const LayoutRect&) const;
+    WEBCORE_EXPORT bool contains(const LayoutRect&) const;
 
     // This checks to see if the rect contains x,y in the traditional sense.
     // Equivalent to checking if the rect contains a 1x1 rect below and to the right of (px,py).
@@ -143,7 +135,7 @@ public:
     bool contains(const LayoutPoint& point) const { return contains(point.x(), point.y()); }
 
     void intersect(const LayoutRect&);
-    void unite(const LayoutRect&);
+    WEBCORE_EXPORT void unite(const LayoutRect&);
     void uniteIfNonZero(const LayoutRect&);
 
     void inflateX(LayoutUnit dx)
@@ -157,7 +149,7 @@ public:
         m_size.setHeight(m_size.height() + dy + dy);
     }
     void inflate(LayoutUnit d) { inflateX(d); inflateY(d); }
-    void scale(float s);
+    WEBCORE_EXPORT void scale(float s);
     void scale(float xScale, float yScale);
 
     LayoutRect transposedRect() const { return LayoutRect(m_location.transposedPoint(), m_size.transposedSize()); }
@@ -201,63 +193,48 @@ inline bool operator!=(const LayoutRect& a, const LayoutRect& b)
     return a.location() != b.location() || a.size() != b.size();
 }
 
-inline IntRect pixelSnappedIntRect(const LayoutRect& rect)
+// Integral snapping functions.
+inline IntRect snappedIntRect(const LayoutRect& rect)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
-    return IntRect(roundedIntPoint(rect.location()), IntSize(snapSizeToPixel(rect.width(), rect.x()),
-                                                             snapSizeToPixel(rect.height(), rect.y())));
-
-#else
-    return IntRect(rect);
-#endif
+    return IntRect(roundedIntPoint(rect.location()), snappedIntSize(rect.size(), rect.location()));
 }
 
-IntRect enclosingIntRect(const LayoutRect&);
-LayoutRect enclosingLayoutRect(const FloatRect&);
-FloatRect enclosingRectForPainting(const LayoutRect&, float pixelSnappingFactor);
-
-inline IntRect pixelSnappedIntRect(LayoutUnit left, LayoutUnit top, LayoutUnit width, LayoutUnit height)
+inline IntRect snappedIntRect(LayoutUnit left, LayoutUnit top, LayoutUnit width, LayoutUnit height)
 {
-    return IntRect(left.round(), top.round(), snapSizeToPixel(width, left), snapSizeToPixel(height, top));
+    return IntRect(IntPoint(left.round(), top.round()), snappedIntSize(LayoutSize(width, height), LayoutPoint(left, top)));
 }
 
-inline IntRect pixelSnappedIntRectFromEdges(LayoutUnit left, LayoutUnit top, LayoutUnit right, LayoutUnit bottom)
+inline IntRect snappedIntRect(LayoutPoint location, LayoutSize size)
 {
-    return IntRect(left.round(), top.round(), snapSizeToPixel(right - left, left), snapSizeToPixel(bottom - top, top));
+    return IntRect(roundedIntPoint(location), snappedIntSize(size, location));
 }
 
-inline IntRect pixelSnappedIntRect(LayoutPoint location, LayoutSize size)
+WEBCORE_EXPORT IntRect enclosingIntRect(const LayoutRect&);
+WEBCORE_EXPORT LayoutRect enclosingLayoutRect(const FloatRect&);
+
+// Device pixel snapping functions.
+inline FloatRect snapRectToDevicePixels(const LayoutRect& rect, float pixelSnappingFactor)
 {
-    return IntRect(roundedIntPoint(location), pixelSnappedIntSize(size, location));
+    return FloatRect(FloatPoint(roundToDevicePixel(rect.x(), pixelSnappingFactor), roundToDevicePixel(rect.y(), pixelSnappingFactor)), snapSizeToDevicePixel(rect.size(), rect.location(), pixelSnappingFactor));
 }
 
-inline FloatRect pixelSnappedForPainting(const LayoutRect& rect, float pixelSnappingFactor)
+inline FloatRect snapRectToDevicePixels(LayoutUnit x, LayoutUnit y, LayoutUnit width, LayoutUnit height, float pixelSnappingFactor)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
-    return FloatRect(roundToDevicePixel(rect.x(), pixelSnappingFactor), roundToDevicePixel(rect.y(), pixelSnappingFactor),
-        snapSizeToDevicePixel(rect.width(), rect.x(), pixelSnappingFactor), snapSizeToDevicePixel(rect.height(), rect.y(), pixelSnappingFactor));
-#else
-    UNUSED_PARAM(pixelSnappingFactor);
-    return FloatRect(rect);
-#endif
-}
-
-inline FloatRect pixelSnappedForPainting(LayoutUnit x, LayoutUnit y, LayoutUnit width, LayoutUnit height, float pixelSnappingFactor)
-{
-    return pixelSnappedForPainting(LayoutRect(x, y, width, height), pixelSnappingFactor);
+    return snapRectToDevicePixels(LayoutRect(x, y, width, height), pixelSnappingFactor);
 }
 
 // FIXME: This needs to take vertical centering into account too.
-inline FloatRect directionalPixelSnappedForPainting(const LayoutRect& rect, float deviceScaleFactor, bool ltr)
+inline FloatRect snapRectToDevicePixelsWithWritingDirection(const LayoutRect& rect, float deviceScaleFactor, bool ltr)
 {
     if (!ltr) {
-        FloatPoint snappedTopRight = roundedForPainting(rect.maxXMinYCorner(), deviceScaleFactor, ltr);
-        float snappedWidth = snapSizeToDevicePixel(rect.width(), rect.maxX(), deviceScaleFactor);
-        float snappedHeight = snapSizeToDevicePixel(rect.height(), rect.y(), deviceScaleFactor);
-        return FloatRect(snappedTopRight.x() - snappedWidth, snappedTopRight.y(), snappedWidth, snappedHeight);
+        FloatPoint snappedTopRight = roundPointToDevicePixels(rect.maxXMinYCorner(), deviceScaleFactor, ltr);
+        FloatSize snappedSize = snapSizeToDevicePixel(rect.size(), rect.maxXMinYCorner(), deviceScaleFactor);
+        return FloatRect(snappedTopRight.x() - snappedSize.width(), snappedTopRight.y(), snappedSize.width(), snappedSize.height());
     }
-    return pixelSnappedForPainting(rect, deviceScaleFactor);
+    return snapRectToDevicePixels(rect, deviceScaleFactor);
 }
+
+FloatRect encloseRectToDevicePixels(const LayoutRect&, float pixelSnappingFactor);
 
 } // namespace WebCore
 

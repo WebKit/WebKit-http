@@ -39,7 +39,7 @@ public:
     static PassRefPtr<HTMLOptionElement> createForJSConstructor(Document&, const String& data, const String& value,
        bool defaultSelected, bool selected, ExceptionCode&);
 
-    virtual String text() const;
+    WEBCORE_EXPORT virtual String text() const;
     void setText(const String&, ExceptionCode&);
 
     int index() const;
@@ -47,7 +47,7 @@ public:
     String value() const;
     void setValue(const String&);
 
-    bool selected();
+    WEBCORE_EXPORT bool selected();
     void setSelected(bool);
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -71,8 +71,6 @@ private:
 
     virtual bool isFocusable() const override;
     virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
-    virtual void didAttachRenderers() override;
-    virtual void willDetachRenderers() override;
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
 
@@ -81,18 +79,12 @@ private:
 
     virtual void childrenChanged(const ChildChange&) override;
 
-    // <option> never has a renderer so we manually manage a cached style.
-    void updateNonRenderStyle(RenderStyle& parentStyle);
-    virtual RenderStyle* nonRendererStyle() const override;
-    virtual PassRefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle) override;
-
-    virtual void didRecalcStyle(Style::Change) override;
+    virtual void willResetComputedStyle() override;
 
     String collectOptionInnerText() const;
 
     bool m_disabled;
     bool m_isSelected;
-    RefPtr<RenderStyle> m_style;
 };
 
 NODE_TYPE_CASTS(HTMLOptionElement)

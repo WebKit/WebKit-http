@@ -68,25 +68,24 @@
                 ]
             },
             {
+                "id": "FrameResource",
+                "type": "object",
+                "properties": [
+                    { "name": "url", "type": "string", "description": "Resource URL." },
+                    { "name": "type", "$ref": "ResourceType", "description": "Type of this resource." },
+                    { "name": "mimeType", "type": "string", "description": "Resource mimeType as determined by the browser." },
+                    { "name": "failed", "type": "boolean", "optional": true, "description": "True if the resource failed to load." },
+                    { "name": "canceled", "type": "boolean", "optional": true, "description": "True if the resource was canceled during loading." }
+                ]
+            },
+            {
                 "id": "FrameResourceTree",
                 "type": "object",
                 "description": "Information about the Frame hierarchy along with their cached resources.",
                 "properties": [
                     { "name": "frame", "$ref": "Frame", "description": "Frame information for this tree item." },
                     { "name": "childFrames", "type": "array", "optional": true, "items": { "$ref": "FrameResourceTree" }, "description": "Child frames." },
-                    { "name": "resources", "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": [
-                                { "name": "url", "type": "string", "description": "Resource URL." },
-                                { "name": "type", "$ref": "ResourceType", "description": "Type of this resource." },
-                                { "name": "mimeType", "type": "string", "description": "Resource mimeType as determined by the browser." },
-                                { "name": "failed", "type": "boolean", "optional": true, "description": "True if the resource failed to load." },
-                                { "name": "canceled", "type": "boolean", "optional": true, "description": "True if the resource was canceled during loading." }
-                            ]
-                        },
-                        "description": "Information about frame resources."
-                    }
+                    { "name": "resources", "type": "array", "items": { "$ref": "FrameResource" }, "description": "Information about frame resources." }
                 ]
             },
             {
@@ -408,7 +407,7 @@
                 "type": "object",
                 "description": "Console message.",
                 "properties": [
-                    { "name": "source", "type": "string", "enum": ["html", "wml", "xml", "javascript", "network", "console-api", "other"], "description": "Message source." },
+                    { "name": "source", "type": "string", "enum": ["html", "xml", "javascript", "network", "console-api", "other"], "description": "Message source." },
                     { "name": "level", "type": "string", "enum": ["tip", "log", "warning", "error", "debug"], "description": "Message severity." },
                     { "name": "text", "type": "string", "description": "Message text." },
                     { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "trace", "startGroup", "startGroupCollapsed", "endGroup", "assert"], "description": "Console message type." },
@@ -1106,7 +1105,7 @@
                 "description": "DOM interaction is implemented in terms of mirror objects that represent the actual DOM nodes. DOMNode is a base node mirror type."
             },
             {
-                "id": "RGBA",
+                "id": "RGBAColor",
                 "type": "object",
                 "properties": [
                     { "name": "r", "type": "integer", "description": "The red component, in the [0-255] range." },
@@ -1121,10 +1120,10 @@
                 "type": "object",
                 "properties": [
                     { "name": "showInfo", "type": "boolean", "optional": true, "description": "Whether the node info tooltip should be shown (default: false)." },
-                    { "name": "contentColor", "$ref": "RGBA", "optional": true, "description": "The content box highlight fill color (default: transparent)." },
-                    { "name": "paddingColor", "$ref": "RGBA", "optional": true, "description": "The padding highlight fill color (default: transparent)." },
-                    { "name": "borderColor", "$ref": "RGBA", "optional": true, "description": "The border highlight fill color (default: transparent)." },
-                    { "name": "marginColor", "$ref": "RGBA", "optional": true, "description": "The margin highlight fill color (default: transparent)." }
+                    { "name": "contentColor", "$ref": "RGBAColor", "optional": true, "description": "The content box highlight fill color (default: transparent)." },
+                    { "name": "paddingColor", "$ref": "RGBAColor", "optional": true, "description": "The padding highlight fill color (default: transparent)." },
+                    { "name": "borderColor", "$ref": "RGBAColor", "optional": true, "description": "The border highlight fill color (default: transparent)." },
+                    { "name": "marginColor", "$ref": "RGBAColor", "optional": true, "description": "The margin highlight fill color (default: transparent)." }
                 ],
                 "description": "Configuration data for the highlighting of page elements."
             }
@@ -1301,8 +1300,8 @@
                     { "name": "y", "type": "integer", "description": "Y coordinate" },
                     { "name": "width", "type": "integer", "description": "Rectangle width" },
                     { "name": "height", "type": "integer", "description": "Rectangle height" },
-                    { "name": "color", "$ref": "RGBA", "optional": true, "description": "The highlight fill color (default: transparent)." },
-                    { "name": "outlineColor", "$ref": "RGBA", "optional": true, "description": "The highlight outline color (default: transparent)." }
+                    { "name": "color", "$ref": "RGBAColor", "optional": true, "description": "The highlight fill color (default: transparent)." },
+                    { "name": "outlineColor", "$ref": "RGBAColor", "optional": true, "description": "The highlight outline color (default: transparent)." }
                 ],
                 "description": "Highlights given rectangle. Coordinates are absolute with respect to the main frame viewport."
             },
@@ -1322,8 +1321,8 @@
                 "name": "highlightFrame",
                 "parameters": [
                     { "name": "frameId", "$ref": "Network.FrameId", "description": "Identifier of the frame to highlight." },
-                    { "name": "contentColor", "$ref": "RGBA", "optional": true, "description": "The content box highlight fill color (default: transparent)." },
-                    { "name": "contentOutlineColor", "$ref": "RGBA", "optional": true, "description": "The content box highlight outline color (default: transparent)." }
+                    { "name": "contentColor", "$ref": "RGBAColor", "optional": true, "description": "The content box highlight fill color (default: transparent)." },
+                    { "name": "contentOutlineColor", "$ref": "RGBAColor", "optional": true, "description": "The content box highlight outline color (default: transparent)." }
                 ],
                 "description": "Highlights owner element of the frame with given id."
             },
@@ -1587,7 +1586,7 @@
                     { "name": "name", "type": "string", "description": "Computed style property name." },
                     { "name": "value", "type": "string", "description": "Computed style property value." }
                 ]
-            },            
+            },
             {
                 "id": "CSSStyle",
                 "type": "object",
@@ -1603,6 +1602,12 @@
                 "description": "CSS style representation."
             },
             {
+                "id": "CSSPropertyStatus",
+                "type": "string",
+                "enum": ["active", "inactive", "disabled", "style"],
+                "description": "The property status: \"active\" (implied if absent) if the property is effective in the style, \"inactive\" if the property is overridden by a same-named property in this style later on, \"disabled\" if the property is disabled by the user, \"style\" if the property is reported by the browser rather than by the CSS source parser."
+            },
+            {
                 "id": "CSSProperty",
                 "type": "object",
                 "properties": [
@@ -1612,7 +1617,7 @@
                     { "name": "implicit", "type": "boolean", "optional": true, "description": "Whether the property is implicit (implies <code>false</code> if absent)." },
                     { "name": "text", "type": "string", "optional": true, "description": "The full property text as specified in the style." },
                     { "name": "parsedOk", "type": "boolean", "optional": true, "description": "Whether the property is understood by the browser (implies <code>true</code> if absent)." },
-                    { "name": "status", "type": "string", "enum": ["active", "inactive", "disabled", "style"], "optional": true, "description": "The property status: \"active\" (implied if absent) if the property is effective in the style, \"inactive\" if the property is overridden by a same-named property in this style later on, \"disabled\" if the property is disabled by the user, \"style\" if the property is reported by the browser rather than by the CSS source parser." },
+                    { "name": "status", "$ref": "CSSPropertyStatus", "optional": true, "description": "Whether the property is active or disabled." },
                     { "name": "shorthandName", "type": "string", "optional": true, "description": "The related shorthand property name (absent if this property is not a longhand)." },
                     { "name": "range", "$ref": "SourceRange", "optional": true, "description": "The entire property range in the enclosing style declaration (if available)." }
                 ],
@@ -1817,7 +1822,7 @@
             {
                 "id": "EventType",
                 "type": "string",
-                "enum": ["EventDispatch", "Layout", "RecalculateStyles", "Paint", "BeginFrame", "ParseHTML", "TimerInstall", "TimerRemove", "TimerFire", "EvaluateScript", "MarkLoad", "MarkDOMContent", "TimeStamp", "ScheduleResourceRequest", "ResourceSendRequest", "ResourceReceiveResponse", "ResourceReceivedData", "ResourceFinish", "XHRReadyStateChange", "XHRLoad", "FunctionCall", "GCEvent", "RequestAnimationFrame", "CancelAnimationFrame", "FireAnimationFrame"],
+                "enum": ["EventDispatch", "Layout", "RecalculateStyles", "Paint", "ParseHTML", "TimerInstall", "TimerRemove", "TimerFire", "EvaluateScript", "MarkLoad", "MarkDOMContent", "TimeStamp", "ScheduleResourceRequest", "ResourceSendRequest", "ResourceReceiveResponse", "ResourceReceivedData", "ResourceFinish", "XHRReadyStateChange", "XHRLoad", "FunctionCall", "GCEvent", "RequestAnimationFrame", "CancelAnimationFrame", "FireAnimationFrame"],
                 "description": "Timeline record type."
             },
             {
@@ -1842,13 +1847,6 @@
             {
                 "name": "stop",
                 "description": "Stops capturing instrumentation events."
-            },
-            {
-                "name": "setIncludeMemoryDetails",
-                "parameters": [
-                    { "name": "enabled", "type": "boolean", "description": "True to start collecting DOM counters." }
-                ],
-                "description": "Starts calculating various DOM statistics and sending them as part of timeline events."
             }
         ],
         "events": [

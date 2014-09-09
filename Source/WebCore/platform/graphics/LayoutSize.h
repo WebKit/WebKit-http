@@ -183,23 +183,9 @@ inline IntSize roundedIntSize(const LayoutSize& s)
     return IntSize(s.width().round(), s.height().round());
 }
 
-inline LayoutSize roundedLayoutSize(const FloatSize& s)
+inline FloatSize floorSizeToDevicePixels(const LayoutSize& size, float pixelSnappingFactor)
 {
-#if ENABLE(SUBPIXEL_LAYOUT)
-    return LayoutSize(s);
-#else
-    return roundedIntSize(s);
-#endif
-}
-
-inline FloatSize flooredForPainting(const LayoutSize& size, float pixelSnappingFactor)
-{
-#if ENABLE(SUBPIXEL_LAYOUT)
     return FloatSize(floorToDevicePixel(size.width(), pixelSnappingFactor), floorToDevicePixel(size.height(), pixelSnappingFactor));
-#else
-    UNUSED_PARAM(pixelSnappingFactor);
-    return FloatSize(size);
-#endif
 }
 
 } // namespace WebCore

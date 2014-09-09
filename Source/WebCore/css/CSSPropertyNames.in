@@ -38,6 +38,9 @@ zoom
 // line height needs to be right after the above high-priority properties
 line-height [Inherited]
 
+// Keep this in between the highest priority props and the lower ones.
+-webkit-ruby-position [Inherited]
+
 // The remaining properties are listed in alphabetical order
 background
 background-attachment
@@ -289,9 +292,7 @@ z-index
 mix-blend-mode
 isolation
 #endif
-#if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
 -webkit-filter
-#endif
 -webkit-align-content
 -webkit-align-items
 -webkit-align-self
@@ -328,6 +329,7 @@ isolation
 -webkit-hyphenate-limit-lines [Inherited]
 -webkit-hyphens [Inherited]
 -epub-hyphens = -webkit-hyphens
+-webkit-initial-letter
 -webkit-line-box-contain [Inherited]
 -webkit-line-align [Inherited]
 -webkit-line-break [Inherited]
@@ -386,7 +388,13 @@ isolation
 -webkit-perspective-origin-y
 -webkit-print-color-adjust [Inherited]
 -webkit-rtl-ordering [Inherited]
--webkit-ruby-position [Inherited]
+#if defined(ENABLE_CSS_SCROLL_SNAP)
+-webkit-scroll-snap-points-x
+-webkit-scroll-snap-points-y
+-webkit-scroll-snap-type
+-webkit-scroll-snap-destination
+-webkit-scroll-snap-coordinate
+#endif
 -webkit-text-combine [Inherited]
 -epub-text-combine = -webkit-text-combine
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT

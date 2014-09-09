@@ -27,6 +27,7 @@
 #ifndef ResourceResponseBase_h
 #define ResourceResponseBase_h
 
+#include "CertificateInfo.h"
 #include "HTTPHeaderMap.h"
 #include "URL.h"
 #include "ResourceLoadTiming.h"
@@ -53,36 +54,31 @@ public:
     PassOwnPtr<CrossThreadResourceResponseData> copyData() const;
 
     bool isNull() const { return m_isNull; }
-    bool isHTTP() const;
+    WEBCORE_EXPORT bool isHTTP() const;
 
-    const URL& url() const;
-    void setURL(const URL& url);
+    WEBCORE_EXPORT const URL& url() const;
+    WEBCORE_EXPORT void setURL(const URL& url);
 
-    const String& mimeType() const;
-    void setMimeType(const String& mimeType);
+    WEBCORE_EXPORT const String& mimeType() const;
+    WEBCORE_EXPORT void setMimeType(const String& mimeType);
 
-    long long expectedContentLength() const;
-    void setExpectedContentLength(long long expectedContentLength);
+    WEBCORE_EXPORT long long expectedContentLength() const;
+    WEBCORE_EXPORT void setExpectedContentLength(long long expectedContentLength);
 
-    const String& textEncodingName() const;
-    void setTextEncodingName(const String& name);
+    WEBCORE_EXPORT const String& textEncodingName() const;
+    WEBCORE_EXPORT void setTextEncodingName(const String& name);
 
-    // FIXME: Should compute this on the fly.
-    // There should not be a setter exposed, as suggested file name is determined based on other headers in a manner that WebCore does not necessarily know about.
-    const String& suggestedFilename() const;
-    void setSuggestedFilename(const String&);
-
-    int httpStatusCode() const;
-    void setHTTPStatusCode(int);
+    WEBCORE_EXPORT int httpStatusCode() const;
+    WEBCORE_EXPORT void setHTTPStatusCode(int);
     
-    const String& httpStatusText() const;
-    void setHTTPStatusText(const String&);
+    WEBCORE_EXPORT const String& httpStatusText() const;
+    WEBCORE_EXPORT void setHTTPStatusText(const String&);
 
-    const HTTPHeaderMap& httpHeaderFields() const;
+    WEBCORE_EXPORT const HTTPHeaderMap& httpHeaderFields() const;
 
     String httpHeaderField(const String& name) const;
-    String httpHeaderField(HTTPHeaderName) const;
-    void setHTTPHeaderField(const String& name, const String& value);
+    WEBCORE_EXPORT String httpHeaderField(HTTPHeaderName) const;
+    WEBCORE_EXPORT void setHTTPHeaderField(const String& name, const String& value);
     void setHTTPHeaderField(HTTPHeaderName, const String& value);
 
     void addHTTPHeaderField(const String& name, const String& value);
@@ -94,7 +90,11 @@ public:
 
     bool isMultipart() const { return mimeType() == "multipart/x-mixed-replace"; }
 
-    bool isAttachment() const;
+    WEBCORE_EXPORT bool isAttachment() const;
+    WEBCORE_EXPORT String suggestedFilename() const;
+
+    void includeCertificateInfo() const;
+    CertificateInfo certificateInfo() const;
     
     // These functions return parsed values of the corresponding response headers.
     // NaN means that the header was not present or had invalid value.
@@ -106,7 +106,7 @@ public:
     double date() const;
     double age() const;
     double expires() const;
-    double lastModified() const;
+    WEBCORE_EXPORT double lastModified() const;
 
     unsigned connectionID() const;
     void setConnectionID(unsigned);
@@ -128,33 +128,38 @@ public:
 
     static bool compare(const ResourceResponse&, const ResourceResponse&);
 
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static bool decode(Decoder&, ResourceResponseBase&);
+
 protected:
     enum InitLevel {
         Uninitialized,
         CommonFieldsOnly,
-        CommonAndUncommonFields,
         AllFields
     };
 
-    ResourceResponseBase();
-    ResourceResponseBase(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName, const String& filename);
+    WEBCORE_EXPORT ResourceResponseBase();
+    ResourceResponseBase(const URL&, const String& mimeType, long long expectedLength, const String& textEncodingName);
 
     void lazyInit(InitLevel) const;
 
-    // The ResourceResponse subclass may "shadow" this method to lazily initialize platform specific fields
+    // The ResourceResponse subclass should shadow these functions to lazily initialize platform specific fields
     void platformLazyInit(InitLevel) { }
+    CertificateInfo platformCertificateInfo() const { return CertificateInfo(); };
+    String platformSuggestedFileName() const { return String(); }
 
-    // The ResourceResponse subclass may "shadow" this method to compare platform specific fields
     static bool platformCompare(const ResourceResponse&, const ResourceResponse&) { return true; }
 
     URL m_url;
     AtomicString m_mimeType;
     long long m_expectedContentLength;
     AtomicString m_textEncodingName;
-    String m_suggestedFilename;
     AtomicString m_httpStatusText;
     HTTPHeaderMap m_httpHeaderFields;
     mutable ResourceLoadTiming m_resourceLoadTiming;
+
+    mutable bool m_includesCertificateInfo;
+    mutable CertificateInfo m_certificateInfo;
 
     int m_httpStatusCode;
     unsigned m_connectionID;
@@ -191,6 +196,71 @@ private:
 inline bool operator==(const ResourceResponse& a, const ResourceResponse& b) { return ResourceResponseBase::compare(a, b); }
 inline bool operator!=(const ResourceResponse& a, const ResourceResponse& b) { return !(a == b); }
 
+template<class Encoder>
+void ResourceResponseBase::encode(Encoder& encoder) const
+{
+    encoder << m_isNull;
+    if (m_isNull)
+        return;
+    lazyInit(AllFields);
+
+    encoder << m_url.string();
+    encoder << m_mimeType;
+    encoder << static_cast<int64_t>(m_expectedContentLength);
+    encoder << m_textEncodingName;
+    encoder << m_httpStatusText;
+    encoder << m_httpHeaderFields;
+    encoder << m_resourceLoadTiming;
+    encoder << m_httpStatusCode;
+    encoder << m_connectionID;
+    encoder << m_includesCertificateInfo;
+    if (m_includesCertificateInfo)
+        encoder << m_certificateInfo;
+}
+
+template<class Decoder>
+bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& response)
+{
+    ASSERT(response.m_isNull);
+    bool responseIsNull;
+    if (!decoder.decode(responseIsNull))
+        return false;
+    if (responseIsNull)
+        return true;
+
+    String url;
+    if (!decoder.decode(url))
+        return false;
+    response.m_url = URL(URL(), url);
+    if (!decoder.decode(response.m_mimeType))
+        return false;
+    int64_t expectedContentLength;
+    if (!decoder.decode(expectedContentLength))
+        return false;
+    response.m_expectedContentLength = expectedContentLength;
+    if (!decoder.decode(response.m_textEncodingName))
+        return false;
+    if (!decoder.decode(response.m_httpStatusText))
+        return false;
+    if (!decoder.decode(response.m_httpHeaderFields))
+        return false;
+    if (!decoder.decode(response.m_resourceLoadTiming))
+        return false;
+    if (!decoder.decode(response.m_httpStatusCode))
+        return false;
+    if (!decoder.decode(response.m_connectionID))
+        return false;
+    if (!decoder.decode(response.m_includesCertificateInfo))
+        return false;
+    if (response.m_includesCertificateInfo) {
+        if (!decoder.decode(response.m_certificateInfo))
+            return false;
+    }
+    response.m_isNull = false;
+
+    return true;
+}
+
 struct CrossThreadResourceResponseDataBase {
     WTF_MAKE_NONCOPYABLE(CrossThreadResourceResponseDataBase); WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -199,7 +269,6 @@ public:
     String m_mimeType;
     long long m_expectedContentLength;
     String m_textEncodingName;
-    String m_suggestedFilename;
     int m_httpStatusCode;
     String m_httpStatusText;
     std::unique_ptr<CrossThreadHTTPHeaderMapData> m_httpHeaders;

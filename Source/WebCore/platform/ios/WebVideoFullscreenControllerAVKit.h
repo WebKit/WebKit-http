@@ -28,13 +28,13 @@
 
 #if PLATFORM(IOS)
 
-#import <WebCore/HTMLMediaElement.h>
+#import <WebCore/HTMLVideoElement.h>
 
 OBJC_CLASS UIView;
 
-@interface WebVideoFullscreenController : NSObject
-- (void)setMediaElement:(WebCore::HTMLMediaElement*)mediaElement;
-- (WebCore::HTMLMediaElement*)mediaElement;
+WEBCORE_EXPORT @interface WebVideoFullscreenController : NSObject
+- (void)setVideoElement:(WebCore::HTMLVideoElement*)videoElement;
+- (WebCore::HTMLVideoElement*)videoElement;
 - (void)enterFullscreen:(UIView *)view;
 - (void)exitFullscreen;
 - (void)requestHideAndExitFullscreen;

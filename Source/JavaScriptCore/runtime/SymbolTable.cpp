@@ -79,13 +79,13 @@ void SymbolTableEntry::addWatchpoint(Watchpoint* watchpoint)
     fatEntry()->m_watchpoints->add(watchpoint);
 }
 
-void SymbolTableEntry::notifyWriteSlow(VM& vm, JSValue value)
+void SymbolTableEntry::notifyWriteSlow(VM& vm, JSValue value, const FireDetail& detail)
 {
     VariableWatchpointSet* watchpoints = fatEntry()->m_watchpoints.get();
     if (!watchpoints)
         return;
     
-    watchpoints->notifyWrite(vm, value);
+    watchpoints->notifyWrite(vm, value, detail);
 }
 
 SymbolTableEntry::FatEntry* SymbolTableEntry::inflateSlow()
@@ -103,11 +103,6 @@ SymbolTable::SymbolTable(VM& vm)
     , m_captureEnd(0)
     , m_functionEnteredOnce(ClearWatchpoint)
 {
-    if (vm.isProfilingTypesWithHighFidelity()) {
-        m_uniqueIDMap = std::make_unique<UniqueIDMap>();
-        m_registerToVariableMap = std::make_unique<RegisterToVariableMap>();
-        m_uniqueTypeSetMap = std::make_unique<UniqueTypeSetMap>();
-    }
 }
 
 SymbolTable::~SymbolTable() { }
@@ -132,11 +127,12 @@ SymbolTable::WatchpointCleanup::~WatchpointCleanup() { }
 
 void SymbolTable::WatchpointCleanup::finalizeUnconditionally()
 {
+    StringFireDetail detail("Symbol table clean-up during GC");
     Map::iterator iter = m_symbolTable->m_map.begin();
     Map::iterator end = m_symbolTable->m_map.end();
     for (; iter != end; ++iter) {
         if (VariableWatchpointSet* set = iter->value.watchpointSet())
-            set->finalizeUnconditionally();
+            set->finalizeUnconditionally(detail);
     }
 }
 
@@ -163,70 +159,104 @@ SymbolTable* SymbolTable::cloneCapturedNames(VM& vm)
             result->m_slowArguments[i] = m_slowArguments[i];
     }
 
-    if (m_uniqueIDMap && result->m_uniqueIDMap) {
+    if (m_typeProfilingRareData) {
+        result->m_typeProfilingRareData = std::make_unique<TypeProfilingRareData>();
 
         {
-            auto iter = m_uniqueIDMap->begin();
-            auto end = m_uniqueIDMap->end();
+            auto iter = m_typeProfilingRareData->m_uniqueIDMap.begin();
+            auto end = m_typeProfilingRareData->m_uniqueIDMap.end();
             for (; iter != end; ++iter)
-                result->m_uniqueIDMap->set(iter->key, iter->value);
+                result->m_typeProfilingRareData->m_uniqueIDMap.set(iter->key, iter->value);
         }
 
         {
-            auto iter = m_registerToVariableMap->begin();
-            auto end = m_registerToVariableMap->end();
+            auto iter = m_typeProfilingRareData->m_registerToVariableMap.begin();
+            auto end = m_typeProfilingRareData->m_registerToVariableMap.end();
             for (; iter != end; ++iter)
-                result->m_registerToVariableMap->set(iter->key, iter->value);
+                result->m_typeProfilingRareData->m_registerToVariableMap.set(iter->key, iter->value);
         }
 
         {
-            auto iter = m_uniqueTypeSetMap->begin();
-            auto end = m_uniqueTypeSetMap->end();
+            auto iter = m_typeProfilingRareData->m_uniqueTypeSetMap.begin();
+            auto end = m_typeProfilingRareData->m_uniqueTypeSetMap.end();
             for (; iter != end; ++iter)
-                result->m_uniqueTypeSetMap->set(iter->key, iter->value);
+                result->m_typeProfilingRareData->m_uniqueTypeSetMap.set(iter->key, iter->value);
         }
     }
-
     
     return result;
 }
 
-int64_t SymbolTable::uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm)
+void SymbolTable::prepareForTypeProfiling(const ConcurrentJITLocker&)
 {
-    auto iter = m_uniqueIDMap->find(key);
-    auto end = m_uniqueIDMap->end();
-    ASSERT_UNUSED(end, iter != end);
+    if (m_typeProfilingRareData)
+        return;
 
-    int64_t& id = iter->value;
-    if (id == HighFidelityNeedsUniqueIDGeneration) {
-        id = vm.getNextUniqueVariableID();
-        m_uniqueTypeSetMap->set(key, TypeSet::create()); //make a new global typeset for the ID
+    m_typeProfilingRareData = std::make_unique<TypeProfilingRareData>();
+
+    for (auto iter = m_map.begin(), end = m_map.end(); iter != end; ++iter) {
+        m_typeProfilingRareData->m_uniqueIDMap.set(iter->key, TypeProfilerNeedsUniqueIDGeneration);
+        m_typeProfilingRareData->m_registerToVariableMap.set(iter->value.getIndex(), iter->key);
     }
-         
+}
+
+GlobalVariableID SymbolTable::uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm)
+{
+    RELEASE_ASSERT(m_typeProfilingRareData);
+
+    auto iter = m_typeProfilingRareData->m_uniqueIDMap.find(key);
+    auto end = m_typeProfilingRareData->m_uniqueIDMap.end();
+    if (iter == end)
+        return TypeProfilerNoGlobalIDExists;
+
+    GlobalVariableID id = iter->value;
+    if (id == TypeProfilerNeedsUniqueIDGeneration) {
+        id = vm.getNextUniqueVariableID();
+        m_typeProfilingRareData->m_uniqueIDMap.set(key, id);
+        m_typeProfilingRareData->m_uniqueTypeSetMap.set(key, TypeSet::create()); // Make a new global typeset for this corresponding ID.
+    }
+
     return id;
 }
 
-int64_t SymbolTable::uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm)
+GlobalVariableID SymbolTable::uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm)
 {
-    auto iter = m_registerToVariableMap->find(registerIndex);
-    auto end = m_registerToVariableMap->end();
-    ASSERT_UNUSED(end, iter != end);
+    RELEASE_ASSERT(m_typeProfilingRareData);
+
+    auto iter = m_typeProfilingRareData->m_registerToVariableMap.find(registerIndex);
+    auto end = m_typeProfilingRareData->m_registerToVariableMap.end();
+    if (iter == end)
+        return TypeProfilerNoGlobalIDExists;
+
     return uniqueIDForVariable(locker, iter->value.get(), vm);
 }
 
 RefPtr<TypeSet> SymbolTable::globalTypeSetForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm)
 {
-    uniqueIDForRegister(locker, registerIndex, vm); //ensure it's created
-    auto iter = m_registerToVariableMap->find(registerIndex);
-    auto end = m_registerToVariableMap->end();
-    ASSERT_UNUSED(end, iter != end);
+    RELEASE_ASSERT(m_typeProfilingRareData);
+
+    uniqueIDForRegister(locker, registerIndex, vm); // Lazily create the TypeSet if necessary.
+
+    auto iter = m_typeProfilingRareData->m_registerToVariableMap.find(registerIndex);
+    auto end = m_typeProfilingRareData->m_registerToVariableMap.end();
+    if (iter == end)
+        return nullptr;
+
     return globalTypeSetForVariable(locker, iter->value.get(), vm);
 }
 
 RefPtr<TypeSet> SymbolTable::globalTypeSetForVariable(const ConcurrentJITLocker& locker, StringImpl* key, VM& vm)
 {
-    uniqueIDForVariable(locker, key, vm);
-    return m_uniqueTypeSetMap->find(key)->value;
+    RELEASE_ASSERT(m_typeProfilingRareData);
+
+    uniqueIDForVariable(locker, key, vm); // Lazily create the TypeSet if necessary.
+
+    auto iter = m_typeProfilingRareData->m_uniqueTypeSetMap.find(key);
+    auto end = m_typeProfilingRareData->m_uniqueTypeSetMap.end();
+    if (iter == end)
+        return nullptr;
+
+    return iter->value;
 }
 
 } // namespace JSC

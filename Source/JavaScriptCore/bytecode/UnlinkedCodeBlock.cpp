@@ -99,6 +99,8 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_unlinkedBodyEndColumn(m_lineCount ? node->endColumn() : node->endColumn() - node->startColumn())
     , m_startOffset(node->source().startOffset() - source.startOffset())
     , m_sourceLength(node->source().length())
+    , m_typeProfilingStartOffset(node->functionNameStart())
+    , m_typeProfilingEndOffset(node->startStartOffset() + node->source().length() - 1)
     , m_features(node->features())
     , m_functionMode(node->functionMode())
 {
@@ -398,6 +400,32 @@ void UnlinkedCodeBlock::addExpressionInfo(unsigned instructionOffset,
     } // switch
 
     m_expressionInfo.append(info);
+}
+
+bool UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset(unsigned bytecodeOffset, unsigned& startDivot, unsigned& endDivot)
+{
+    static const bool verbose = false;
+    auto iter = m_typeProfilerInfoMap.find(bytecodeOffset);
+    if (iter == m_typeProfilerInfoMap.end()) {
+        if (verbose)
+            dataLogF("Don't have assignment info for offset:%u\n", bytecodeOffset);
+        startDivot = UINT_MAX;
+        endDivot = UINT_MAX;
+        return false;
+    }
+    
+    TypeProfilerExpressionRange& range = iter->value;
+    startDivot = range.m_startDivot;
+    endDivot = range.m_endDivot;
+    return true;
+}
+
+void UnlinkedCodeBlock::addTypeProfilerExpressionInfo(unsigned instructionOffset, unsigned startDivot, unsigned endDivot)
+{
+    TypeProfilerExpressionRange range;
+    range.m_startDivot = startDivot;
+    range.m_endDivot = endDivot;
+    m_typeProfilerInfoMap.set(instructionOffset, range);  
 }
 
 void UnlinkedProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)

@@ -86,6 +86,10 @@ private:
 
     virtual void didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference&) override final;
 
+    virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override final { }
+    virtual void didFinishLoadForMainFrame() override final { }
+    virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override final { }
+
 private:
     EwkView* m_ewkView;
     bool m_hasRequestedFullScreen;

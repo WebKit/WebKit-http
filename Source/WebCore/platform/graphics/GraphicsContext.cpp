@@ -100,21 +100,12 @@ private:
     bool m_interpolationQualityChanged;
 };
 
-#if !PLATFORM(IOS)
 GraphicsContext::GraphicsContext(PlatformGraphicsContext* platformGraphicsContext)
     : m_updatingControlTints(false)
     , m_transparencyCount(0)
 {
     platformInit(platformGraphicsContext);
 }
-#else
-GraphicsContext::GraphicsContext(PlatformGraphicsContext* platformGraphicsContext, bool shouldUseContextColors)
-    : m_updatingControlTints(false)
-    , m_transparencyCount(0)
-{
-    platformInit(platformGraphicsContext, shouldUseContextColors);
-}
-#endif
 
 GraphicsContext::~GraphicsContext()
 {
@@ -148,7 +139,6 @@ void GraphicsContext::restore()
     restorePlatformState();
 }
 
-#if PLATFORM(IOS)
 void GraphicsContext::drawRaisedEllipse(const FloatRect& rect, const Color& ellipseColor, ColorSpace ellipseColorSpace, const Color& shadowColor, ColorSpace shadowColorSpace)
 {
     if (paintingDisabled())
@@ -168,7 +158,6 @@ void GraphicsContext::drawRaisedEllipse(const FloatRect& rect, const Color& elli
 
     restore();
 }
-#endif
 
 void GraphicsContext::setStrokeThickness(float thickness)
 {

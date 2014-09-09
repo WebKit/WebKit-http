@@ -522,22 +522,26 @@ LayoutUnit RenderBox::clientHeight() const
 
 int RenderBox::pixelSnappedClientWidth() const
 {
-    return snapSizeToPixel(clientWidth(), x() + clientLeft());
+    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
+    return roundToInt(clientWidth());
 }
 
 int RenderBox::pixelSnappedClientHeight() const
 {
-    return snapSizeToPixel(clientHeight(), y() + clientTop());
+    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
+    return roundToInt(clientHeight());
 }
 
 int RenderBox::pixelSnappedOffsetWidth() const
 {
-    return snapSizeToPixel(offsetWidth(), x() + clientLeft());
+    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
+    return roundToInt(offsetWidth());
 }
 
 int RenderBox::pixelSnappedOffsetHeight() const
 {
-    return snapSizeToPixel(offsetHeight(), y() + clientTop());
+    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
+    return roundToInt(offsetHeight());
 }
 
 int RenderBox::scrollWidth() const
@@ -546,8 +550,10 @@ int RenderBox::scrollWidth() const
         return layer()->scrollWidth();
     // For objects with visible overflow, this matches IE.
     // FIXME: Need to work right with writing modes.
-    if (style().isLeftToRightDirection())
-        return snapSizeToPixel(std::max(clientWidth(), layoutOverflowRect().maxX() - borderLeft()), x() + clientLeft());
+    if (style().isLeftToRightDirection()) {
+        // FIXME: This should use snappedIntSize() instead with absolute coordinates.
+        return roundToInt(std::max(clientWidth(), layoutOverflowRect().maxX() - borderLeft()));
+    }
     return clientWidth() - std::min<LayoutUnit>(0, layoutOverflowRect().x() - borderLeft());
 }
 
@@ -557,7 +563,8 @@ int RenderBox::scrollHeight() const
         return layer()->scrollHeight();
     // For objects with visible overflow, this matches IE.
     // FIXME: Need to work right with writing modes.
-    return snapSizeToPixel(std::max(clientHeight(), layoutOverflowRect().maxY() - borderTop()), y() + clientTop());
+    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
+    return roundToInt(std::max(clientHeight(), layoutOverflowRect().maxY() - borderTop()));
 }
 
 int RenderBox::scrollLeft() const
@@ -584,7 +591,7 @@ void RenderBox::setScrollTop(int newTop)
 
 void RenderBox::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accumulatedOffset) const
 {
-    rects.append(pixelSnappedIntRect(accumulatedOffset, size()));
+    rects.append(snappedIntRect(accumulatedOffset, size()));
 }
 
 void RenderBox::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
@@ -650,7 +657,7 @@ RoundedRect::Radii RenderBox::borderRadii() const
 IntRect RenderBox::absoluteContentBox() const
 {
     // This is wrong with transforms and flipped writing modes.
-    IntRect rect = pixelSnappedIntRect(contentBoxRect());
+    IntRect rect = snappedIntRect(contentBoxRect());
     FloatPoint absPos = localToAbsolute();
     rect.move(absPos.x(), absPos.y());
     return rect;
@@ -681,37 +688,13 @@ LayoutRect RenderBox::outlineBoundsForRepaint(const RenderLayerModelObject* repa
     // repaint containers. https://bugs.webkit.org/show_bug.cgi?id=23308
     box.move(view().layoutDelta());
 
-    return LayoutRect(pixelSnappedForPainting(box, document().deviceScaleFactor()));
+    return LayoutRect(snapRectToDevicePixels(box, document().deviceScaleFactor()));
 }
 
 void RenderBox::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*)
 {
     if (!size().isEmpty())
-        rects.append(pixelSnappedIntRect(additionalOffset, size()));
-}
-
-LayoutRect RenderBox::reflectionBox() const
-{
-    LayoutRect result;
-    if (!style().boxReflect())
-        return result;
-    LayoutRect box = borderBoxRect();
-    result = box;
-    switch (style().boxReflect()->direction()) {
-        case ReflectionBelow:
-            result.move(0, box.height() + reflectionOffset());
-            break;
-        case ReflectionAbove:
-            result.move(0, -box.height() - reflectionOffset());
-            break;
-        case ReflectionLeft:
-            result.move(-box.width() - reflectionOffset(), 0);
-            break;
-        case ReflectionRight:
-            result.move(box.width() + reflectionOffset(), 0);
-            break;
-    }
-    return result;
+        rects.append(snappedIntRect(additionalOffset, size()));
 }
 
 int RenderBox::reflectionOffset() const
@@ -859,7 +842,12 @@ bool RenderBox::canBeScrolledAndHasScrollableArea() const
 {
     return canBeProgramaticallyScrolled() && (scrollHeight() != clientHeight() || scrollWidth() != clientWidth());
 }
-    
+
+bool RenderBox::isScrollableOrRubberbandableBox() const
+{
+    return canBeScrolledAndHasScrollableArea();
+}
+
 bool RenderBox::canBeProgramaticallyScrolled() const
 {
     if (isRenderView())
@@ -1313,7 +1301,7 @@ void RenderBox::paintBackground(const PaintInfo& paintInfo, const LayoutRect& pa
 bool RenderBox::getBackgroundPaintedExtent(LayoutRect& paintedExtent) const
 {
     ASSERT(hasBackground());
-    LayoutRect backgroundRect = pixelSnappedIntRect(borderBoxRect());
+    LayoutRect backgroundRect = snappedIntRect(borderBoxRect());
 
     Color backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
     if (backgroundColor.isValid() && backgroundColor.alpha()) {
@@ -1711,7 +1699,7 @@ bool RenderBox::pushContentsClip(PaintInfo& paintInfo, const LayoutPoint& accumu
         paintInfo.phase = PaintPhaseChildBlockBackgrounds;
     }
     float deviceScaleFactor = document().deviceScaleFactor();
-    FloatRect clipRect = pixelSnappedForPainting((isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, currentRenderNamedFlowFragment(), IgnoreOverlayScrollbarSize, paintInfo.phase)), deviceScaleFactor);
+    FloatRect clipRect = snapRectToDevicePixels((isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, currentRenderNamedFlowFragment(), IgnoreOverlayScrollbarSize, paintInfo.phase)), deviceScaleFactor);
     paintInfo.context->save();
     if (style().hasBorderRadius())
         paintInfo.context->clipRoundedRect(style().getRoundedInnerBorderFor(LayoutRect(accumulatedOffset, size())).pixelSnappedRoundedRectForPainting(deviceScaleFactor));
@@ -1926,7 +1914,7 @@ void RenderBox::mapLocalToContainer(const RenderLayerModelObject* repaintContain
     if (wasFixed)
         *wasFixed = mode & IsFixed;
     
-    LayoutSize containerOffset = offsetFromContainer(o, roundedLayoutPoint(transformState.mappedPoint()));
+    LayoutSize containerOffset = offsetFromContainer(o, LayoutPoint(transformState.mappedPoint()));
     
     bool preserve3D = mode & UseTransforms && (o->style().preserves3D() || style().preserves3D());
     if (mode & UseTransforms && shouldUseTransformFromContainer(o)) {
@@ -2055,7 +2043,7 @@ void RenderBox::positionLineBox(InlineElementBox& box)
             // our object was inline originally, since otherwise it would have ended up underneath
             // the inlines.
             RootInlineBox& rootBox = box.root();
-            rootBox.blockFlow().setStaticInlinePositionForChild(*this, rootBox.lineTopWithLeading(), roundedLayoutUnit(box.logicalLeft()));
+            rootBox.blockFlow().setStaticInlinePositionForChild(*this, rootBox.lineTopWithLeading(), LayoutUnit::fromFloatRound(box.logicalLeft()));
             if (style().hasStaticInlinePosition(box.isHorizontal()))
                 setChildNeedsLayout(MarkOnlyThis); // Just go ahead and mark the positioned object as needing layout, so it will update its position properly.
         } else {
@@ -2075,7 +2063,7 @@ void RenderBox::positionLineBox(InlineElementBox& box)
     }
 
     if (isReplaced()) {
-        setLocation(roundedLayoutPoint(box.topLeft()));
+        setLocation(LayoutPoint(box.topLeft()));
         setInlineBoxWrapper(&box);
     }
 }
@@ -2140,7 +2128,7 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
         LayoutState* layoutState = view().layoutState();
 
         if (layer() && layer()->transform())
-            rect = LayoutRect(layer()->transform()->mapRect(pixelSnappedForPainting(rect, document().deviceScaleFactor())));
+            rect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(rect), document().deviceScaleFactor()));
 
         // We can't trust the bits on RenderObject, because this might be called while re-resolving style.
         if (styleToUse.hasInFlowPosition() && layer())
@@ -2193,7 +2181,7 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
     // in the parent's coordinate space that encloses us.
     if (hasLayer() && layer()->transform()) {
         fixed = position == FixedPosition;
-        rect = LayoutRect(layer()->transform()->mapRect(pixelSnappedForPainting(rect, document().deviceScaleFactor())));
+        rect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(rect), document().deviceScaleFactor()));
         topLeft = rect.location();
         topLeft.move(locationOffset());
     } else if (position == FixedPosition)

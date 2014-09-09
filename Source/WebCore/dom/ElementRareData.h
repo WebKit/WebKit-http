@@ -36,8 +36,7 @@ namespace WebCore {
 
 class ElementRareData : public NodeRareData {
 public:
-    static PassOwnPtr<ElementRareData> create(RenderElement* renderer) { return adoptPtr(new ElementRareData(renderer)); }
-
+    explicit ElementRareData(RenderElement*);
     ~ElementRareData();
 
     void setBeforePseudoElement(PassRefPtr<PseudoElement>);
@@ -60,9 +59,6 @@ public:
     bool styleAffectedByEmpty() const { return m_styleAffectedByEmpty; }
     void setStyleAffectedByEmpty(bool value) { m_styleAffectedByEmpty = value; }
 
-    bool isInCanvasSubtree() const { return m_isInCanvasSubtree; }
-    void setIsInCanvasSubtree(bool value) { m_isInCanvasSubtree = value; }
-
     RegionOversetState regionOversetState() const { return m_regionOversetState; }
     void setRegionOversetState(RegionOversetState state) { m_regionOversetState = state; }
 
@@ -78,8 +74,6 @@ public:
 
     bool childrenAffectedByLastChildRules() const { return m_childrenAffectedByLastChildRules; }
     void setChildrenAffectedByLastChildRules(bool value) { m_childrenAffectedByLastChildRules = value; }
-    bool childrenAffectedByForwardPositionalRules() const { return m_childrenAffectedByForwardPositionalRules; }
-    void setChildrenAffectedByForwardPositionalRules(bool value) { m_childrenAffectedByForwardPositionalRules = value; }
     bool childrenAffectedByBackwardPositionalRules() const { return m_childrenAffectedByBackwardPositionalRules; }
     void setChildrenAffectedByBackwardPositionalRules(bool value) { m_childrenAffectedByBackwardPositionalRules = value; }
 
@@ -124,7 +118,6 @@ private:
     unsigned m_tabIndexWasSetExplicitly : 1;
     unsigned m_needsFocusAppearanceUpdateSoonAfterAttach : 1;
     unsigned m_styleAffectedByEmpty : 1;
-    unsigned m_isInCanvasSubtree : 1;
 #if ENABLE(FULLSCREEN_API)
     unsigned m_containsFullScreenElement : 1;
 #endif
@@ -136,7 +129,6 @@ private:
     // We optimize for :first-child and :last-child. The other positional child selectors like nth-child or
     // *-child-of-type, we will just give up and re-evaluate whenever children change at all.
     unsigned m_childrenAffectedByLastChildRules : 1;
-    unsigned m_childrenAffectedByForwardPositionalRules : 1;
     unsigned m_childrenAffectedByBackwardPositionalRules : 1;
 
     RegionOversetState m_regionOversetState;
@@ -153,7 +145,6 @@ private:
     RefPtr<PseudoElement> m_beforePseudoElement;
     RefPtr<PseudoElement> m_afterPseudoElement;
 
-    explicit ElementRareData(RenderElement*);
     void releasePseudoElement(PseudoElement*);
 };
 
@@ -169,7 +160,6 @@ inline ElementRareData::ElementRareData(RenderElement* renderer)
     , m_tabIndexWasSetExplicitly(false)
     , m_needsFocusAppearanceUpdateSoonAfterAttach(false)
     , m_styleAffectedByEmpty(false)
-    , m_isInCanvasSubtree(false)
 #if ENABLE(FULLSCREEN_API)
     , m_containsFullScreenElement(false)
 #endif
@@ -178,7 +168,6 @@ inline ElementRareData::ElementRareData(RenderElement* renderer)
     , m_childrenAffectedByActive(false)
     , m_childrenAffectedByDrag(false)
     , m_childrenAffectedByLastChildRules(false)
-    , m_childrenAffectedByForwardPositionalRules(false)
     , m_childrenAffectedByBackwardPositionalRules(false)
     , m_regionOversetState(RegionUndefined)
     , m_minimumSizeForResizing(defaultMinimumSizeForResizing())
@@ -216,7 +205,6 @@ inline void ElementRareData::resetDynamicRestyleObservations()
     setChildrenAffectedByActive(false);
     setChildrenAffectedByDrag(false);
     setChildrenAffectedByLastChildRules(false);
-    setChildrenAffectedByForwardPositionalRules(false);
     setChildrenAffectedByBackwardPositionalRules(false);
 }
 

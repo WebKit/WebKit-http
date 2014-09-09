@@ -243,11 +243,7 @@ static String propertyIdToString(AnimatedPropertyID property)
     case AnimatedPropertyBackgroundColor:
         return "backgroundColor";
     case AnimatedPropertyWebkitFilter:
-#if ENABLE(CSS_FILTERS)
         return "filters";
-#else
-        ASSERT_NOT_REACHED();
-#endif
     case AnimatedPropertyInvalid:
         ASSERT_NOT_REACHED();
     }
@@ -275,7 +271,6 @@ static bool animationHasStepsTimingFunction(const KeyframeValueList& valueList, 
     return false;
 }
 
-#if ENABLE(CSS_FILTERS) || !ASSERT_DISABLED
 static inline bool supportsAcceleratedFilterAnimations()
 {
 // <rdar://problem/10907251> - WebKit2 doesn't support CA animations of CI filters on Lion and below
@@ -285,7 +280,6 @@ static inline bool supportsAcceleratedFilterAnimations()
     return false;
 #endif
 }
-#endif
 
 std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient& client)
 {
@@ -300,7 +294,6 @@ std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* facto
     return graphicsLayer;
 }
 
-#if ENABLE(CSS_FILTERS)
 bool GraphicsLayerCA::filtersCanBeComposited(const FilterOperations& filters)
 {
 #if PLATFORM(COCOA)
@@ -309,7 +302,6 @@ bool GraphicsLayerCA::filtersCanBeComposited(const FilterOperations& filters)
     return PlatformCALayerWin::filtersCanBeComposited(filters);
 #endif
 }
-#endif
     
 PassRefPtr<PlatformCALayer> GraphicsLayerCA::createPlatformCALayer(PlatformCALayer::LayerType layerType, PlatformCALayerClient* owner)
 {
@@ -342,6 +334,7 @@ GraphicsLayerCA::GraphicsLayerCA(GraphicsLayerClient& client)
     : GraphicsLayer(client)
     , m_contentsLayerPurpose(NoContentsLayer)
     , m_isPageTiledBackingLayer(false)
+    , m_needsFullRepaint(false)
     , m_uncommittedChanges(0)
     , m_isCommittingChanges(false)
 {
@@ -577,9 +570,7 @@ void GraphicsLayerCA::moveOrCopyAnimations(MoveOrCopy operation, PlatformCALayer
             
             if (currAnimation.m_property == AnimatedPropertyWebkitTransform || currAnimation.m_property == AnimatedPropertyOpacity
                     || currAnimation.m_property == AnimatedPropertyBackgroundColor
-#if ENABLE(CSS_FILTERS)
                     || currAnimation.m_property == AnimatedPropertyWebkitFilter
-#endif
                 )
                 moveOrCopyLayerAnimation(operation, animationIdentifier(currAnimation.m_name, currAnimation.m_property, currAnimation.m_index, currAnimation.m_subIndex), fromLayer, toLayer);
         }
@@ -672,7 +663,6 @@ void GraphicsLayerCA::setOpacity(float opacity)
     noteLayerPropertyChanged(OpacityChanged);
 }
 
-#if ENABLE(CSS_FILTERS)
 bool GraphicsLayerCA::setFilters(const FilterOperations& filterOperations)
 {
     bool canCompositeFilters = filtersCanBeComposited(filterOperations);
@@ -694,7 +684,6 @@ bool GraphicsLayerCA::setFilters(const FilterOperations& filterOperations)
     }
     return canCompositeFilters;
 }
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
 void GraphicsLayerCA::setBlendMode(BlendMode blendMode)
@@ -709,12 +698,21 @@ void GraphicsLayerCA::setBlendMode(BlendMode blendMode)
 
 void GraphicsLayerCA::setNeedsDisplay()
 {
-    setNeedsDisplayInRect(FloatRect::infiniteRect());
+    if (!drawsContent())
+        return;
+
+    m_needsFullRepaint = true;
+    m_dirtyRects.clear();
+    noteLayerPropertyChanged(DirtyRectsChanged);
+    addRepaintRect(FloatRect(FloatPoint(), m_size));
 }
 
 void GraphicsLayerCA::setNeedsDisplayInRect(const FloatRect& r, ShouldClipToLayer shouldClip)
 {
     if (!drawsContent())
+        return;
+
+    if (m_needsFullRepaint)
         return;
 
     FloatRect rect(r);
@@ -792,12 +790,10 @@ bool GraphicsLayerCA::addAnimation(const KeyframeValueList& valueList, const Flo
     bool createdAnimations = false;
     if (valueList.property() == AnimatedPropertyWebkitTransform)
         createdAnimations = createTransformAnimationsFromKeyframes(valueList, anim, animationName, timeOffset, boxSize);
-#if ENABLE(CSS_FILTERS)
     else if (valueList.property() == AnimatedPropertyWebkitFilter) {
         if (supportsAcceleratedFilterAnimations())
             createdAnimations = createFilterAnimationsFromKeyframes(valueList, anim, animationName, timeOffset);
     }
-#endif
     else
         createdAnimations = createAnimationFromKeyframes(valueList, anim, animationName, timeOffset);
 
@@ -833,9 +829,14 @@ void GraphicsLayerCA::removeAnimation(const String& animationName)
     noteLayerPropertyChanged(AnimationChanged);
 }
 
-void GraphicsLayerCA::platformCALayerAnimationStarted(CFTimeInterval startTime)
+void GraphicsLayerCA::platformCALayerAnimationStarted(const String& animationKey, CFTimeInterval startTime)
 {
-    client().notifyAnimationStarted(this, startTime);
+    client().notifyAnimationStarted(this, animationKey, startTime);
+}
+
+void GraphicsLayerCA::platformCALayerAnimationEnded(const String& animationKey)
+{
+    client().notifyAnimationEnded(this, animationKey);
 }
 
 void GraphicsLayerCA::setContentsToSolidColor(const Color& color)
@@ -908,24 +909,24 @@ void GraphicsLayerCA::setContentsToImage(Image* image)
     noteLayerPropertyChanged(ContentsImageChanged);
 }
 
-void GraphicsLayerCA::setContentsToMedia(PlatformLayer* mediaLayer)
+void GraphicsLayerCA::setContentsToPlatformLayer(PlatformLayer* platformLayer, ContentsLayerPurpose purpose)
 {
-    if (m_contentsLayer && mediaLayer == m_contentsLayer->platformLayer())
+    if (m_contentsLayer && platformLayer == m_contentsLayer->platformLayer())
         return;
-        
-    // FIXME: The passed in layer might be a raw layer or an externally created 
+
+    // FIXME: The passed in layer might be a raw layer or an externally created
     // PlatformCALayer. To determine this we attempt to get the
     // PlatformCALayer pointer. If this returns a null pointer we assume it's
     // raw. This test might be invalid if the raw layer is, for instance, the
     // PlatformCALayer is using a user data pointer in the raw layer, and
     // the creator of the raw layer is using it for some other purpose.
     // For now we don't support such a case.
-    PlatformCALayer* platformCALayer = PlatformCALayer::platformCALayer(mediaLayer);
-    m_contentsLayer = mediaLayer ? (platformCALayer ? platformCALayer : createPlatformCALayer(mediaLayer, this)) : 0;
-    m_contentsLayerPurpose = mediaLayer ? ContentsLayerForMedia : NoContentsLayer;
+    PlatformCALayer* platformCALayer = PlatformCALayer::platformCALayer(platformLayer);
+    m_contentsLayer = platformLayer ? (platformCALayer ? platformCALayer : createPlatformCALayer(platformLayer, this)) : 0;
+    m_contentsLayerPurpose = platformLayer ? purpose : NoContentsLayer;
 
     noteSublayersChanged();
-    noteLayerPropertyChanged(ContentsMediaLayerChanged);
+    noteLayerPropertyChanged(ContentsPlatformLayerChanged);
 }
 
 #if PLATFORM(IOS)
@@ -935,20 +936,6 @@ PlatformLayer* GraphicsLayerCA::contentsLayerForMedia() const
 }
 #endif
 
-void GraphicsLayerCA::setContentsToCanvas(PlatformLayer* canvasLayer)
-{
-    if (m_contentsLayer && canvasLayer == m_contentsLayer->platformLayer())
-        return;
-    
-    // Create the PlatformCALayer to wrap the incoming layer
-    m_contentsLayer = canvasLayer ? createPlatformCALayer(canvasLayer, this) : 0;
-    
-    m_contentsLayerPurpose = canvasLayer ? ContentsLayerForCanvas : NoContentsLayer;
-
-    noteSublayersChanged();
-    noteLayerPropertyChanged(ContentsCanvasLayerChanged);
-}
-    
 void GraphicsLayerCA::layerDidDisplay(PlatformCALayer* layer)
 {
     LayerMap* layerCloneMap;
@@ -1293,11 +1280,8 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
     if (m_uncommittedChanges & ContentsImageChanged) // Needs to happen before ChildrenChanged
         updateContentsImage();
         
-    if (m_uncommittedChanges & ContentsMediaLayerChanged) // Needs to happen before ChildrenChanged
-        updateContentsMediaLayer();
-    
-    if (m_uncommittedChanges & ContentsCanvasLayerChanged) // Needs to happen before ChildrenChanged
-        updateContentsCanvasLayer();
+    if (m_uncommittedChanges & ContentsPlatformLayerChanged) // Needs to happen before ChildrenChanged
+        updateContentsPlatformLayer();
 
     if (m_uncommittedChanges & ContentsColorLayerChanged) // Needs to happen before ChildrenChanged
         updateContentsColorLayer();
@@ -1326,11 +1310,9 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
 
     if (m_uncommittedChanges & OpacityChanged)
         updateOpacityOnLayer();
-    
-#if ENABLE(CSS_FILTERS)
+
     if (m_uncommittedChanges & FiltersChanged)
         updateFilters();
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
     if (m_uncommittedChanges & BlendModeChanged)
@@ -1643,7 +1625,6 @@ void GraphicsLayerCA::updateBackfaceVisibility()
     }
 }
 
-#if ENABLE(CSS_FILTERS)
 void GraphicsLayerCA::updateFilters()
 {
     m_layer->setFilters(m_filters);
@@ -1658,7 +1639,6 @@ void GraphicsLayerCA::updateFilters()
         }
     }
 }
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
 void GraphicsLayerCA::updateBlendMode()
@@ -1689,9 +1669,7 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
         | ChildrenTransformChanged
         | ChildrenChanged
         | BackfaceVisibilityChanged
-#if ENABLE(CSS_FILTERS)
         | FiltersChanged
-#endif
         | OpacityChanged;
 
     if (purpose == NoStructuralLayer) {
@@ -1713,10 +1691,6 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
         }
         return;
     }
-
-#if PLATFORM(IOS)
-    RefPtr<PlatformCALayer> oldPrimaryLayer = m_structuralLayer ? m_structuralLayer.get() : m_layer.get();
-#endif
 
     bool structuralLayerChanged = false;
     
@@ -1926,24 +1900,17 @@ void GraphicsLayerCA::updateContentsImage()
     }
 }
 
-void GraphicsLayerCA::updateContentsMediaLayer()
+void GraphicsLayerCA::updateContentsPlatformLayer()
 {
-    if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForMedia)
+    if (!m_contentsLayer)
         return;
 
-    // Video layer was set as m_contentsLayer, and will get parented in updateSublayerList().
+    // Platform layer was set as m_contentsLayer, and will get parented in updateSublayerList().
     setupContentsLayer(m_contentsLayer.get());
-    updateContentsRects();
-}
 
-void GraphicsLayerCA::updateContentsCanvasLayer()
-{
-    if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForCanvas)
-        return;
+    if (m_contentsLayerPurpose == ContentsLayerForCanvas)
+        m_contentsLayer->setNeedsDisplay();
 
-    // CanvasLayer was set as m_contentsLayer, and will get parented in updateSublayerList().
-    setupContentsLayer(m_contentsLayer.get());
-    m_contentsLayer->setNeedsDisplay();
     updateContentsRects();
 }
 
@@ -2270,11 +2237,18 @@ void GraphicsLayerCA::pauseCAAnimationOnLayer(AnimatedPropertyID property, const
 
 void GraphicsLayerCA::repaintLayerDirtyRects()
 {
+    if (m_needsFullRepaint) {
+        ASSERT(!m_dirtyRects.size());
+        m_layer->setNeedsDisplay();
+        m_needsFullRepaint = false;
+        return;
+    }
+
     if (!m_dirtyRects.size())
         return;
 
     for (size_t i = 0; i < m_dirtyRects.size(); ++i)
-        m_layer->setNeedsDisplay(&(m_dirtyRects[i]));
+        m_layer->setNeedsDisplayInRect(m_dirtyRects[i]);
     
     m_dirtyRects.clear();
 }
@@ -2384,7 +2358,6 @@ bool GraphicsLayerCA::createTransformAnimationsFromKeyframes(const KeyframeValue
     return validMatrices;
 }
 
-#if ENABLE(CSS_FILTERS)
 bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& valueList, const FilterOperation* operation, const Animation* animation, const String& animationName, int animationIndex, double timeOffset)
 {
     bool isKeyframe = valueList.size() > 2;
@@ -2448,7 +2421,6 @@ bool GraphicsLayerCA::createFilterAnimationsFromKeyframes(const KeyframeValueLis
 
     return true;
 }
-#endif
 
 PassRefPtr<PlatformCAAnimation> GraphicsLayerCA::createBasicAnimation(const Animation* anim, const String& keyPath, bool additive)
 {
@@ -2701,7 +2673,6 @@ bool GraphicsLayerCA::setTransformAnimationKeyframes(const KeyframeValueList& va
     return true;
 }
 
-#if ENABLE(CSS_FILTERS)
 bool GraphicsLayerCA::setFilterAnimationEndpoints(const KeyframeValueList& valueList, const Animation* animation, PlatformCAAnimation* basicAnim, int functionIndex, int internalFilterPropertyIndex)
 {
     ASSERT(valueList.size() == 2);
@@ -2774,7 +2745,6 @@ bool GraphicsLayerCA::setFilterAnimationKeyframes(const KeyframeValueList& value
 
     return true;
 }
-#endif
 
 void GraphicsLayerCA::suspendAnimations(double time)
 {
@@ -3335,7 +3305,7 @@ void GraphicsLayerCA::computePixelAlignment(float pageScale, const FloatPoint& p
     // Scale by the page scale factor to compute the screen-relative bounds.
     scaledBounds.scale(contentsScale);
     // Round to integer boundaries.
-    FloatRect alignedBounds = enclosingRectForPainting(LayoutRect(scaledBounds), deviceScaleFactor());
+    FloatRect alignedBounds = encloseRectToDevicePixels(LayoutRect(scaledBounds), deviceScaleFactor());
     
     // Convert back to layer coordinates.
     alignedBounds.scale(1 / contentsScale);

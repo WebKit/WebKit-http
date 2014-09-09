@@ -26,6 +26,7 @@
 #ifndef PerThread_h
 #define PerThread_h
 
+#include "BPlatform.h"
 #include "Inline.h"
 #include <mutex>
 #include <pthread.h>
@@ -54,7 +55,6 @@ class Cache;
 template<typename T> struct PerThreadStorage;
 
 #if defined(__has_include) && __has_include(<System/pthread_machdep.h>)
-
 // For now, we only support PerThread<Cache>. We can expand to other types by
 // using more keys.
 
@@ -71,22 +71,41 @@ template<> struct PerThreadStorage<Cache> {
 #else
 
 template<typename T> struct PerThreadStorage {
+#if BCOMPILER_SUPPORTS(CXX_THREAD_LOCAL)
     static __thread void* object;
+#endif
     static pthread_key_t key;
     static std::once_flag onceFlag;
 
-    static void* get() { return object; }
-    static void init(void* object, void (*destructor)(void*))
+    static void* get()
+    {
+#if BCOMPILER_SUPPORTS(CXX_THREAD_LOCAL)
+        return object;
+#else
+        return pthread_getspecific(key);
+#endif
+    }
+
+    static void initSharedKeyIfNeeded(void (*destructor)(void*))
     {
         std::call_once(onceFlag, [destructor]() {
             pthread_key_create(&key, destructor);
         });
+    }
+
+    static void init(void* object, void (*destructor)(void*))
+    {
+        initSharedKeyIfNeeded(destructor);
         pthread_setspecific(key, object);
+#if BCOMPILER_SUPPORTS(CXX_THREAD_LOCAL)
         PerThreadStorage<Cache>::object = object;
+#endif
     }
 };
 
+#if BCOMPILER_SUPPORTS(CXX_THREAD_LOCAL)
 template<typename T> __thread void* PerThreadStorage<T>::object;
+#endif
 template<typename T> pthread_key_t PerThreadStorage<T>::key;
 template<typename T> std::once_flag PerThreadStorage<T>::onceFlag;
 
@@ -95,6 +114,9 @@ template<typename T> std::once_flag PerThreadStorage<T>::onceFlag;
 template<typename T>
 INLINE T* PerThread<T>::getFastCase()
 {
+#if (!defined(__has_include) || !__has_include(<System/pthread_machdep.h>)) && !BCOMPILER_SUPPORTS(CXX_THREAD_LOCAL)
+    PerThreadStorage<T>::initSharedKeyIfNeeded(destructor);
+#endif
     return static_cast<T*>(PerThreadStorage<T>::get());
 }
 

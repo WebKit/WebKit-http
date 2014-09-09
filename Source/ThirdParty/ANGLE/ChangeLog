@@ -1,3 +1,86 @@
+2014-09-06  Darin Adler  <darin@apple.com>
+
+        Make updates suggested by new version of Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=136603
+
+        Reviewed by Mark Rowe.
+
+        * ANGLE.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+        * Configurations/ANGLE.xcconfig: Added CLANG_WARN_BOOL_CONVERSION,
+        CLANG_WARN_ENUM_CONVERSION, CLANG_WARN_INT_CONVERSION, COMBINE_HIDPI_IMAGES,
+        and ENABLE_STRICT_OBJC_MSGSEND as suggested by Xcode upgrade check.
+
+2014-09-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173335.
+        https://bugs.webkit.org/show_bug.cgi?id=136597
+
+        Broke webgl/1.0.2/conformance/glsl/misc/shader-varying-
+        packing-restrictions.html (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove statically used varyings from packing restrictions
+        check."
+        https://bugs.webkit.org/show_bug.cgi?id=136585
+        http://trac.webkit.org/changeset/173335
+
+2014-09-05  Roger Fong  <roger_fong@apple.com>
+
+        Remove statically used varyings from packing restrictions check.
+        https://bugs.webkit.org/show_bug.cgi?id=136585.
+        <rdar://problem/16308409>
+
+        Reviewed by Dean Jackson.
+
+        * src/compiler/translator/Compiler.cpp:
+        (TCompiler::enforcePackingRestrictions):
+
+2014-08-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviwed, remove empty directories.
+
+        * src/compiler/depgraph: Removed.
+        * src/compiler/timing: Removed.
+        * src/libGLESv2/renderer/shaders: Removed.
+        * src/libGLESv2/renderer/shaders/compiled: Removed.
+
+2014-08-11  Andy Estes  <aestes@apple.com>
+
+        [iOS] Get rid of iOS.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=135809
+
+        Reviewed by Joseph Pecoraro.
+
+        All iOS.xcconfig did was include AspenFamily.xcconfig, so there's no need for the indirection.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/Base.xcconfig:
+        * Configurations/iOS.xcconfig: Removed.
+
+2014-08-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        DebugSuffix targets should use our debugsuffix property sheet, and
+        will therefore build to the proper output location with the proper
+        suffix tags.
+
+        Also, we must use the WebKit_Libraries environment variable, not a set
+        of relative paths to the property sheets.
+
+        * ANGLE.vcxproj/libEGL.vcxproj: Use 'debugsuffix.props' sheet.
+        * ANGLE.vcxproj/libGLESv2.vcxproj: Ditto.
+        * ANGLE.vcxproj/preprocessor.vcxproj: Ditto.
+        * ANGLE.vcxproj/translator_common.vcxproj: Ditto.
+        * ANGLE.vcxproj/translator_glsl.vcxproj: Ditto.
+        * ANGLE.vcxproj/translator_hlsl.vcxproj: Ditto.
+        * ANGLE.vcxproj/libEGLCommon.props: Use $(DebugSuffix) endings.
+        * ANGLE.vcxproj/libGLESv2Common.props: Ditto.
+        * ANGLE.vcxproj/translatorCommon.props: Output to 'lib' folder,
+        not 'bin' folder. These are libraries!
+
 2014-08-02  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Unreviewed build fix.

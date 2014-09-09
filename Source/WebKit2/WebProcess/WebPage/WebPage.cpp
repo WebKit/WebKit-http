@@ -145,6 +145,7 @@
 #include <WebCore/Settings.h>
 #include <WebCore/ShadowRoot.h>
 #include <WebCore/SharedBuffer.h>
+#include <WebCore/StyleProperties.h>
 #include <WebCore/SubframeLoader.h>
 #include <WebCore/SubstituteData.h>
 #include <WebCore/TextIterator.h>
@@ -762,10 +763,17 @@ EditorState WebPage::editorState() const
                 result.typingAttributes |= AttributeBold;
             if (traits & kCTFontTraitItalic)
                 result.typingAttributes |= AttributeItalics;
-            
-            if (style->textDecorationsInEffect() & TextDecorationUnderline)
-                result.typingAttributes |= AttributeUnderline;
-            
+
+            RefPtr<EditingStyle> typingStyle = frame.selection().typingStyle();
+            if (typingStyle && typingStyle->style()) {
+                String value = typingStyle->style()->getPropertyValue(CSSPropertyWebkitTextDecorationsInEffect);
+                if (value.contains("underline"))
+                    result.typingAttributes |= AttributeUnderline;
+            } else {
+                if (style->textDecorationsInEffect() & TextDecorationUnderline)
+                    result.typingAttributes |= AttributeUnderline;
+            }
+
             if (nodeToRemove)
                 nodeToRemove->remove(ASSERT_NO_EXCEPTION);
         }
@@ -1705,7 +1713,7 @@ PassRefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions 
         return nullptr;
 
     LayoutRect topLevelRect;
-    IntRect snapshotRect = pixelSnappedIntRect(node.renderer()->paintingRootRect(topLevelRect));
+    IntRect snapshotRect = snappedIntRect(node.renderer()->paintingRootRect(topLevelRect));
 
     double scaleFactor = 1;
     IntSize snapshotSize = snapshotRect.size();
@@ -2832,6 +2840,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if PLATFORM(IOS)
     settings.setUseImageDocumentForSubframePDF(true);
 #endif
+
+    settings.setLongMousePressEnabled(store.getBoolValueForKey(WebPreferencesKey::longMousePressEnabledKey()));
 
 #if ENABLE(GAMEPAD)
     RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled(store.getBoolValueForKey(WebPreferencesKey::gamepadsEnabledKey()));
@@ -4550,6 +4560,8 @@ void WebPage::determinePrimarySnapshottedPlugIn()
     }
 
     ++m_numberOfPrimarySnapshotDetectionAttempts;
+
+    layoutIfNeeded();
 
     MainFrame& mainFrame = corePage()->mainFrame();
     if (!mainFrame.view())

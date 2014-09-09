@@ -114,6 +114,9 @@ static double mediaTimeToCurrentTime(CFTimeInterval t)
 #if PLATFORM(IOS)
     WebThreadLock();
 #endif
+    if (!m_owner)
+        return;
+
     CFTimeInterval startTime;
     if (hasExplicitBeginTime(animation)) {
         // We don't know what time CA used to commit the animation, so just use the current time
@@ -122,20 +125,42 @@ static double mediaTimeToCurrentTime(CFTimeInterval t)
     } else
         startTime = mediaTimeToCurrentTime([animation beginTime]);
 
-    if (m_owner) {
-        CALayer *layer = m_owner->platformLayer();
+    CALayer *layer = m_owner->platformLayer();
 
-        String animationKey;
-        for (NSString *key in [layer animationKeys]) {
-            if ([layer animationForKey:key] == animation) {
-                animationKey = key;
-                break;
-            }
+    String animationKey;
+    for (NSString *key in [layer animationKeys]) {
+        if ([layer animationForKey:key] == animation) {
+            animationKey = key;
+            break;
         }
-
-        if (!animationKey.isEmpty())
-            m_owner->animationStarted(animationKey, startTime);
     }
+
+    if (!animationKey.isEmpty())
+        m_owner->animationStarted(animationKey, startTime);
+}
+
+- (void)animationDidStop:(CAAnimation *)animation finished:(BOOL)finished
+{
+#if PLATFORM(IOS)
+    WebThreadLock();
+#endif
+    UNUSED_PARAM(finished);
+
+    if (!m_owner)
+        return;
+    
+    CALayer *layer = m_owner->platformLayer();
+
+    String animationKey;
+    for (NSString *key in [layer animationKeys]) {
+        if ([layer animationForKey:key] == animation) {
+            animationKey = key;
+            break;
+        }
+    }
+
+    if (!animationKey.isEmpty())
+        m_owner->animationEnded(animationKey);
 }
 
 - (void)setOwner:(PlatformCALayer*)owner
@@ -295,9 +320,7 @@ PassRefPtr<PlatformCALayer> PlatformCALayerMac::clone(PlatformCALayerClient* own
     newLayer->setOpaque(isOpaque());
     newLayer->setBackgroundColor(backgroundColor());
     newLayer->setContentsScale(contentsScale());
-#if ENABLE(CSS_FILTERS)
     newLayer->copyFiltersFrom(this);
-#endif
     newLayer->updateCustomAppearance(customAppearance());
 
     if (type == LayerTypeAVPlayerLayer) {
@@ -325,19 +348,29 @@ PlatformCALayerMac::~PlatformCALayerMac()
         [static_cast<WebTiledBackingLayer *>(m_layer.get()) invalidate];
 }
 
-void PlatformCALayerMac::animationStarted(const String&, CFTimeInterval beginTime)
+void PlatformCALayerMac::animationStarted(const String& animationKey, CFTimeInterval beginTime)
 {
     if (m_owner)
-        m_owner->platformCALayerAnimationStarted(beginTime);
+        m_owner->platformCALayerAnimationStarted(animationKey, beginTime);
 }
 
-void PlatformCALayerMac::setNeedsDisplay(const FloatRect* dirtyRect)
+void PlatformCALayerMac::animationEnded(const String& animationKey)
+{
+    if (m_owner)
+        m_owner->platformCALayerAnimationEnded(animationKey);
+}
+
+void PlatformCALayerMac::setNeedsDisplay()
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
-    if (dirtyRect)
-        [m_layer.get() setNeedsDisplayInRect:*dirtyRect];
-    else
-        [m_layer.get() setNeedsDisplay];
+    [m_layer.get() setNeedsDisplay];
+    END_BLOCK_OBJC_EXCEPTIONS
+}
+
+void PlatformCALayerMac::setNeedsDisplayInRect(const FloatRect& dirtyRect)
+{
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
+    [m_layer.get() setNeedsDisplayInRect:dirtyRect];
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
@@ -675,7 +708,6 @@ void PlatformCALayerMac::setOpacity(float value)
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
-#if ENABLE(CSS_FILTERS)
 void PlatformCALayerMac::setFilters(const FilterOperations& filters)
 {
     PlatformCAFilters::setFiltersOnLayer(platformLayer(), filters);
@@ -711,7 +743,6 @@ bool PlatformCALayerMac::filtersCanBeComposited(const FilterOperations& filters)
 
     return true;
 }
-#endif
 
 #if ENABLE(CSS_COMPOSITING)
 void PlatformCALayerMac::setBlendMode(BlendMode blendMode)

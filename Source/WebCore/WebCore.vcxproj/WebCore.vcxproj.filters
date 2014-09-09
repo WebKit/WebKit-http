@@ -313,9 +313,6 @@
     <Filter Include="rendering\shapes">
       <UniqueIdentifier>{c1c88449-966f-4628-a88b-16c30f08dd7e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Modules\indexeddb\leveldb">
-      <UniqueIdentifier>{54c889f7-b5e7-491e-9029-65dc7185b9d0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="platform\graphics\texmap">
       <UniqueIdentifier>{984df990-811f-422a-8d2b-f090395f3e4b}</UniqueIdentifier>
     </Filter>
@@ -808,9 +805,6 @@
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\SpatialNavigation.cpp">
-      <Filter>page</Filter>
-    </ClCompile>
-    <ClCompile Include="..\page\SpeechInput.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\SuspendableTimer.cpp">
@@ -2853,6 +2847,9 @@
     <ClCompile Include="..\rendering\style\StyleRareNonInheritedData.cpp">
       <Filter>rendering\style</Filter>
     </ClCompile>
+    <ClCompile Include="..\rendering\style\StyleScrollSnapPoints.cpp">
+      <Filter>rendering\style</Filter>
+    </ClCompile>
     <ClCompile Include="..\rendering\style\StyleSurroundData.cpp">
       <Filter>rendering\style</Filter>
     </ClCompile>
@@ -4839,9 +4836,6 @@
     <ClCompile Include="..\inspector\PageDebuggerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\inspector\PageProfilerAgent.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\PageRuntimeAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -4857,9 +4851,6 @@
     <ClCompile Include="..\inspector\WebDebuggerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\inspector\WebProfilerAgent.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\WebInjectedScriptHost.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -4873,9 +4864,6 @@
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\WorkerInspectorController.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
-    <ClCompile Include="..\inspector\WorkerProfilerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\WorkerRuntimeAgent.cpp">
@@ -4995,7 +4983,7 @@
     <ClCompile Include="..\page\PageActivityAssertionToken.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\PageConsole.cpp">
+    <ClCompile Include="..\page\PageConsoleClient.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\PageGroup.cpp">
@@ -5206,7 +5194,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorWebFrontendDispatchers.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorWebTypeBuilders.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorWebProtocolTypes.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSAbstractWorker.cpp">
@@ -6823,9 +6811,6 @@
     <ClCompile Include="..\rendering\shapes\RectangleShape.cpp">
       <Filter>rendering\shapes</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\leveldb\IDBFactoryBackendLevelDB.cpp">
-      <Filter>Modules\indexeddb\leveldb</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSBeforeUnloadEvent.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -7810,15 +7795,6 @@
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\SpatialNavigation.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\SpeechInput.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\SpeechInputClient.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\SpeechInputListener.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\SuspendableTimer.h">
@@ -9261,6 +9237,9 @@
     <ClInclude Include="..\css\LengthFunctions.h">
       <Filter>css</Filter>
     </ClInclude>
+    <ClInclude Include="..\css\LengthRepeat.h">
+      <Filter>css</Filter>
+    </ClInclude>
     <ClInclude Include="..\css\MediaFeatureNames.h">
       <Filter>css</Filter>
     </ClInclude>
@@ -9907,6 +9886,9 @@
       <Filter>rendering\style</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\style\StyleReflection.h">
+      <Filter>rendering\style</Filter>
+    </ClInclude>
+    <ClInclude Include="..\rendering\style\StyleScrollSnapPoints.h">
       <Filter>rendering\style</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\style\StyleSurroundData.h">
@@ -12318,10 +12300,10 @@
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorJSFrontendDispatchers.h">
       <Filter>ForwardingHeaders\inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\ForwardingHeaders\inspector\InspectorJSTypeBuilders.h">
+    <ClInclude Include="..\ForwardingHeaders\inspector\InspectorJSProtocolTypes.h">
       <Filter>ForwardingHeaders\inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\ForwardingHeaders\inspector\InspectorTypeBuilder.h">
+    <ClInclude Include="..\ForwardingHeaders\inspector\InspectorProtocolTypes.h">
       <Filter>ForwardingHeaders\inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorValues.h">
@@ -12576,9 +12558,6 @@
     <ClInclude Include="..\inspector\PageDebuggerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\inspector\PageProfilerAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
     <ClInclude Include="..\inspector\PageRuntimeAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -12594,9 +12573,6 @@
     <ClInclude Include="..\inspector\WebDebuggerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\inspector\WebProfilerAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
     <ClInclude Include="..\inspector\WebInjectedScriptHost.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -12610,9 +12586,6 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\WorkerInspectorController.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inspector\WorkerProfilerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\WorkerRuntimeAgent.h">
@@ -12958,7 +12931,7 @@
     <ClInclude Include="..\page\OriginAccessEntry.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClInclude Include="..\page\PageConsole.h">
+    <ClInclude Include="..\page\PageConsoleClient.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\PageGroup.h">
@@ -13139,7 +13112,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorWebFrontendDispatchers.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorWebTypeBuilders.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorWebProtocolTypes.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSAbstractWorker.h">

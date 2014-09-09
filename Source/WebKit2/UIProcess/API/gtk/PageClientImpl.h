@@ -127,6 +127,10 @@ private:
     virtual void navigationGestureDidEnd(bool, WebBackForwardListItem&) override;
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
 
+    virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
+    virtual void didFinishLoadForMainFrame() override;
+    virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
+
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
 
     // Members of PageClientImpl class

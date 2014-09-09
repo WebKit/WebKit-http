@@ -60,6 +60,8 @@ public:
     GPRReg tagGPR() const { return InvalidGPRReg; }
     GPRReg payloadGPR() const { return m_gpr; }
     
+    bool uses(GPRReg gpr) const { return m_gpr == gpr; }
+    
 private:
     GPRReg m_gpr;
 };
@@ -169,6 +171,8 @@ public:
         return tagGPR();
     }
 
+    bool uses(GPRReg gpr) const { return m_tagGPR == gpr || m_payloadGPR == gpr; }
+    
 private:
     int8_t m_tagGPR;
     int8_t m_payloadGPR;
@@ -612,7 +616,7 @@ public:
 
     static const char* debugName(GPRReg reg)
     {
-        ASSERT(static_cast<unsigned>(reg) != InvalidGPRReg);
+        ASSERT(reg != InvalidGPRReg);
         ASSERT(static_cast<unsigned>(reg) < 32);
         static const char* nameForRegister[32] = {
             "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",

@@ -154,13 +154,25 @@ struct InlineCallFrame {
         return CodeForCall;
     }
     
+    static bool isNormalCall(Kind kind)
+    {
+        switch (kind) {
+        case Call:
+        case Construct:
+            return true;
+        default:
+            return false;
+        }
+    }
+    
     Vector<ValueRecovery> arguments; // Includes 'this'.
     WriteBarrier<ScriptExecutable> executable;
     ValueRecovery calleeRecovery;
     CodeOrigin caller;
     BitVector capturedVars; // Indexed by the machine call frame's variable numbering.
-    signed stackOffset : 30;
-    Kind kind : 2;
+
+    signed stackOffset : 29;
+    unsigned kind : 2; // real type is Kind
     bool isClosureCall : 1; // If false then we know that callee/scope are constants and the DFG won't treat them as variables, i.e. they have to be recovered manually.
     VirtualRegister argumentsRegister; // This is only set if the code uses arguments. The unmodified arguments register follows the unmodifiedArgumentsRegister() convention (see CodeBlock.h).
     
@@ -174,7 +186,7 @@ struct InlineCallFrame {
     {
     }
     
-    CodeSpecializationKind specializationKind() const { return specializationKindFor(kind); }
+    CodeSpecializationKind specializationKind() const { return specializationKindFor(static_cast<Kind>(kind)); }
 
     JSFunction* calleeConstant() const
     {
@@ -197,6 +209,12 @@ struct InlineCallFrame {
     
     CodeBlock* baselineCodeBlock() const;
     
+    void setStackOffset(signed offset)
+    {
+        stackOffset = offset;
+        RELEASE_ASSERT(static_cast<signed>(stackOffset) == offset);
+    }
+
     ptrdiff_t callerFrameOffset() const { return stackOffset * sizeof(Register) + CallFrame::callerFrameOffset(); }
     ptrdiff_t returnPCOffset() const { return stackOffset * sizeof(Register) + CallFrame::returnPCOffset(); }
 

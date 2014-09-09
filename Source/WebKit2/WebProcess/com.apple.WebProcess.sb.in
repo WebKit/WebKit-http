@@ -60,6 +60,7 @@
        (home-regex #"/Library/Preferences/ByHost/com\.apple\.HIToolbox\.")
        (home-regex #"/Library/Preferences/ByHost/com\.apple\.networkConnect\.")
        (home-literal "/Library/Preferences/com.apple.ATS.plist")
+       (home-literal "/Library/Preferences/com.apple.CoreGraphics.plist")
        (home-literal "/Library/Preferences/com.apple.DownloadAssessment.plist")
        (home-literal "/Library/Preferences/com.apple.HIToolbox.plist")
        (home-literal "/Library/Preferences/com.apple.LaunchServices.plist")
@@ -90,6 +91,10 @@
 ;; On-disk WebKit2 framework location, to account for debug installations outside of /System/Library/Frameworks,
 ;; and to allow issuing extensions.
 (allow-read-directory-and-issue-read-extensions (param "WEBKIT2_FRAMEWORK_DIR"))
+
+;; Allow issuing extensions to system libraries that the Network process can already read.
+;; This is to avoid warnings attempting to create extensions for these resources.
+(allow-read-directory-and-issue-read-extensions "/System/Library/PrivateFrameworks/WebInspectorUI.framework")
 
 ;; Sandbox extensions
 (define (apply-read-and-issue-extension op path-filter)

@@ -150,10 +150,10 @@ public:
     friend class LLIntOffsetsExtractor;
     static size_t offsetOfNext();
 
-    JS_EXPORT_PRIVATE static JSObject* objectAtScope(JSScope*);
+    static JSObject* objectAtScope(JSScope*);
 
     static JSValue resolve(ExecState*, JSScope*, const Identifier&);
-    static ResolveOp abstractResolve(ExecState*, JSScope*, const Identifier&, GetOrPut, ResolveType);
+    static ResolveOp abstractResolve(ExecState*, bool hasTopActivation, JSScope*, const Identifier&, GetOrPut, ResolveType);
 
     static void visitChildren(JSCell*, SlotVisitor&);
 

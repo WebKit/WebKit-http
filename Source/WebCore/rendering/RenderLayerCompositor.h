@@ -140,6 +140,8 @@ public:
     // This is only used when state changes and we do not exepect a style update or layout to happen soon (e.g. when
     // we discover that an iframe is overlapped during painting).
     void scheduleCompositingLayerUpdate();
+    // This is used to cancel any pending update timers when the document goes into page cache.
+    void cancelCompositingLayerUpdate();
 
     // Update the compositing state of the given layer. Returns true if that state changed.
     enum CompositingChangeRepaint { CompositingChangeRepaintNow, CompositingChangeWillRepaintLater };
@@ -178,9 +180,9 @@ public:
     // Returns true if the given layer needs it own backing store.
     bool requiresOwnBackingStore(const RenderLayer&, const RenderLayer* compositingAncestorLayer, const LayoutRect& layerCompositedBoundsInAncestor, const LayoutRect& ancestorCompositedBounds) const;
 
-    RenderLayer& rootRenderLayer() const;
+    WEBCORE_EXPORT RenderLayer& rootRenderLayer() const;
     GraphicsLayer* rootGraphicsLayer() const;
-    GraphicsLayer* scrollLayer() const;
+    WEBCORE_EXPORT GraphicsLayer* scrollLayer() const;
     GraphicsLayer* clipLayer() const;
     GraphicsLayer* rootContentLayer() const;
 
@@ -305,7 +307,6 @@ private:
     class OverlapMap;
 
     // GraphicsLayerClient implementation
-    virtual void notifyAnimationStarted(const GraphicsLayer*, double) override { }
     virtual void notifyFlushRequired(const GraphicsLayer*) override;
     virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect&) override;
     virtual void customPositionForVisibleRectComputation(const GraphicsLayer*, FloatPoint&) const override;

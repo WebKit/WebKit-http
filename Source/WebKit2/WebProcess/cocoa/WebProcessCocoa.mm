@@ -120,14 +120,6 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
 
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
 
-    // FIXME: Once there is no loading being done in the WebProcess, we should remove this,
-    // as calling [NSURLCache sharedURLCache] initializes the cache, which we would rather not do.
-    if (usesNetworkProcess()) {
-        [nsurlCache setMemoryCapacity:0];
-        [nsurlCache setDiskCapacity:0];
-        return;
-    }
-
     [nsurlCache setMemoryCapacity:urlCacheMemoryCapacity];
     [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
@@ -167,13 +159,14 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     SandboxExtension::consumePermanently(parameters.webSQLDatabaseDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
+#if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.openGLCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.containerTemporaryDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.hstsDatabasePathExtensionHandle);
+#endif
 #endif
 
-    // When the network process is enabled, each web process wants a stand-alone
-    // NSURLCache, which it can disable to save memory.
 #if PLATFORM(IOS)
     if (!parameters.uiProcessBundleIdentifier.isNull()) {
         [NSURLCache setSharedURLCache:adoptNS([[NSURLCache alloc]

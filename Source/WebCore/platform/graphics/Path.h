@@ -71,7 +71,7 @@ namespace WebCore {
         PathElementCloseSubpath // The points member will contain no values.
     };
 
-    // The points in the sturcture are the same as those that would be used with the
+    // The points in the structure are the same as those that would be used with the
     // add... method. For example, a line returns the endpoint, while a cubic returns
     // two tangent points and the endpoint.
     struct PathElement {
@@ -84,11 +84,11 @@ namespace WebCore {
     class Path {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        Path();
+        WEBCORE_EXPORT Path();
 #if USE(CG)
         Path(RetainPtr<CGMutablePathRef>);
 #endif
-        ~Path();
+        WEBCORE_EXPORT ~Path();
 
         Path(const Path&);
         Path& operator=(const Path&);
@@ -129,7 +129,7 @@ namespace WebCore {
             PreferBezierRoundedRect
         };
 
-        void addRoundedRect(const FloatRect&, const FloatSize& roundingRadii, RoundedRectStrategy = PreferNativeRoundedRect);
+        WEBCORE_EXPORT void addRoundedRect(const FloatRect&, const FloatSize& roundingRadii, RoundedRectStrategy = PreferNativeRoundedRect);
         void addRoundedRect(const FloatRoundedRect&, RoundedRectStrategy = PreferNativeRoundedRect);
         void addRoundedRect(const RoundedRect&);
 

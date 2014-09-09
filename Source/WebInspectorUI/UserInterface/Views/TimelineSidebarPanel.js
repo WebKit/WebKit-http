@@ -55,10 +55,14 @@ WebInspector.TimelineSidebarPanel = function()
     function createTimelineTreeElement(label, iconClass, identifier)
     {
         var treeElement = new WebInspector.GeneralTreeElement([iconClass, WebInspector.TimelineSidebarPanel.LargeIconStyleClass], label, null, identifier);
-        var closeButton = document.createElement("img");
-        closeButton.classList.add(WebInspector.TimelineSidebarPanel.CloseButtonStyleClass);
-        closeButton.addEventListener("click", this.showTimelineOverview.bind(this));
-        treeElement.status = closeButton;
+
+        const tooltip = WebInspector.UIString("Close %s timeline view").format(label);
+        wrappedSVGDocument(platformImagePath("CloseLarge.svg"), WebInspector.TimelineSidebarPanel.CloseButtonStyleClass, tooltip, function(element) {
+            var button = new WebInspector.TreeElementStatusButton(element);
+            button.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this.showTimelineOverview, this);
+            treeElement.status = button.element;
+        }.bind(this));
+
         return treeElement;
     }
 
@@ -106,9 +110,18 @@ WebInspector.TimelineSidebarPanel = function()
     this._replayCaptureButtonItem.enabled = true;
     this._navigationBar.addNavigationItem(this._replayCaptureButtonItem);
 
+    var pauseImage, resumeImage;
+    if (WebInspector.Platform.isLegacyMacOS) {
+        pauseImage = {src: "Images/Legacy/Pause.svg", width: 16, height: 16};
+        resumeImage = {src: "Images/Legacy/Resume.svg", width: 16, height: 16};
+    } else {
+        pauseImage = {src: "Images/Pause.svg", width: 15, height: 15};
+        resumeImage = {src: "Images/Resume.svg", width: 15, height: 15};
+    }
+
     toolTip = WebInspector.UIString("Start Playback");
     altToolTip = WebInspector.UIString("Pause Playback");
-    this._replayPauseResumeButtonItem = new WebInspector.ToggleButtonNavigationItem("replay-pause-resume", toolTip, altToolTip, "Images/Resume.svg", "Images/Pause.svg", 16, 16, true);
+    this._replayPauseResumeButtonItem = new WebInspector.ToggleButtonNavigationItem("replay-pause-resume", toolTip, altToolTip, resumeImage.src, pauseImage.src, pauseImage.width, pauseImage.height, true);
     this._replayPauseResumeButtonItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._replayPauseResumeButtonClicked, this);
     this._replayPauseResumeButtonItem.enabled = false;
     this._navigationBar.addNavigationItem(this._replayPauseResumeButtonItem);
@@ -122,10 +135,6 @@ WebInspector.TimelineSidebarPanel = function()
 
     WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.RecordingCreated, this._recordingCreated, this);
     WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.RecordingLoaded, this._recordingLoaded, this);
-
-    this._stripeBackgroundElement = document.createElement("div");
-    this._stripeBackgroundElement.className = WebInspector.TimelineSidebarPanel.StripeBackgroundStyleClass;
-    this.contentElement.insertBefore(this._stripeBackgroundElement, this.contentElement.firstChild);
 
     WebInspector.contentBrowser.addEventListener(WebInspector.ContentBrowser.Event.CurrentContentViewDidChange, this._contentBrowserCurrentContentViewDidChange, this);
     WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.CapturingStarted, this._capturingStarted, this);
@@ -142,7 +151,6 @@ WebInspector.TimelineSidebarPanel.TitleBarStyleClass = "title-bar";
 WebInspector.TimelineSidebarPanel.TimelinesTitleBarStyleClass = "timelines";
 WebInspector.TimelineSidebarPanel.TimelineEventsTitleBarStyleClass = "timeline-events";
 WebInspector.TimelineSidebarPanel.TimelinesContentContainerStyleClass = "timelines-content";
-WebInspector.TimelineSidebarPanel.StripeBackgroundStyleClass = "stripe-background";
 WebInspector.TimelineSidebarPanel.CloseButtonStyleClass = "close-button";
 WebInspector.TimelineSidebarPanel.LargeIconStyleClass = "large";
 WebInspector.TimelineSidebarPanel.StopwatchIconStyleClass = "stopwatch-icon";
@@ -275,17 +283,6 @@ WebInspector.TimelineSidebarPanel.prototype = {
 
     // Protected
 
-    updateCustomContentOverflow: function()
-    {
-        if (!this._stripeBackgroundElement)
-            return;
-
-        var contentHeight = this.contentTreeOutline.element.offsetHeight;
-        var currentHeight = parseInt(this._stripeBackgroundElement.style.height);
-        if (currentHeight !== contentHeight)
-            this._stripeBackgroundElement.style.height = contentHeight + "px";
-    },
-
     hasCustomFilters: function()
     {
         return true;
@@ -333,12 +330,13 @@ WebInspector.TimelineSidebarPanel.prototype = {
         this._restoredShowingTimelineContentView = cookie[WebInspector.TimelineSidebarPanel.ShowingTimelineContentViewCookieKey];
 
         var selectedTimelineViewIdentifier = cookie[WebInspector.TimelineSidebarPanel.SelectedTimelineViewIdentifierCookieKey];
-        if (selectedTimelineViewIdentifier === WebInspector.TimelineSidebarPanel.OverviewTimelineIdentifierCookieValue)
+        if (!selectedTimelineViewIdentifier || selectedTimelineViewIdentifier === WebInspector.TimelineSidebarPanel.OverviewTimelineIdentifierCookieValue)
             this.showTimelineOverview();
         else
             this.showTimelineViewForType(selectedTimelineViewIdentifier);
 
-        WebInspector.NavigationSidebarPanel.prototype.restoreStateFromCookie.call(this, cookie, relaxedMatchDelay);
+        // Don't call NavigationSidebarPanel.restoreStateFromCookie, because it tries to match based
+        // on type only as a last resort. This would cause the first recording to be reselected on reload.
     },
 
     // Private
@@ -346,7 +344,7 @@ WebInspector.TimelineSidebarPanel.prototype = {
     _recordingsTreeElementSelected: function(treeElement, selectedByUser)
     {
         console.assert(treeElement.representedObject instanceof WebInspector.TimelineRecording);
-        console.assert(!selectedByUser, "Recording tree elements should be hidden and only programmatically selectable.")
+        console.assert(!selectedByUser, "Recording tree elements should be hidden and only programmatically selectable.");
 
         this._activeContentView = WebInspector.contentBrowser.contentViewForRepresentedObject(treeElement.representedObject);
 
@@ -358,6 +356,8 @@ WebInspector.TimelineSidebarPanel.prototype = {
             this._timelineTreeElementMap.get(currentTimelineView.representedObject.type).select(true, wasSelectedByUser, shouldSuppressOnSelect, true);
         } else if (this._timelinesTreeOutline.selectedTreeElement)
             this._timelinesTreeOutline.selectedTreeElement.deselect();
+
+        this.updateFilter();
     },
 
     _timelinesTreeElementSelected: function(treeElement, selectedByUser)
@@ -417,7 +417,9 @@ WebInspector.TimelineSidebarPanel.prototype = {
     _recordingLoaded: function()
     {
         this._activeContentView = WebInspector.contentBrowser.contentViewForRepresentedObject(WebInspector.timelineManager.activeRecording);
-        WebInspector.contentBrowser.showContentView(this._activeContentView);
+
+        if (this.selected)
+            WebInspector.contentBrowser.showContentView(this._activeContentView);
     },
 
     _recordGlyphMousedOver: function(event)

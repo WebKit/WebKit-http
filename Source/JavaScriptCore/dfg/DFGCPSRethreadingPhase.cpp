@@ -90,8 +90,10 @@ private:
                     node->children.setChild1(Edge());
                     break;
                 case Phantom:
-                    if (!node->child1())
+                    if (!node->child1()) {
+                        m_graph.m_allocator.free(node);
                         continue;
+                    }
                     switch (node->child1()->op()) {
                     case Phi:
                     case SetArgument:
@@ -201,12 +203,12 @@ private:
             
             if (otherNode->op() == GetLocal) {
                 // Replace all references to this GetLocal with otherNode.
-                node->misc.replacement = otherNode;
+                node->replacement = otherNode;
                 return;
             }
             
             ASSERT(otherNode->op() == SetLocal);
-            node->misc.replacement = otherNode->child1().node();
+            node->replacement = otherNode->child1().node();
             return;
         }
         

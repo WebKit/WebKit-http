@@ -138,7 +138,7 @@ macro cCall4(function, arg1, arg2, arg3, arg4)
     end
 end
 
-macro doCallToJavaScript(makeCall)
+macro doVMEntry(makeCall)
     if X86_64
         const entry = t4
         const vm = t5
@@ -171,46 +171,28 @@ macro doCallToJavaScript(makeCall)
         const temp3 = t6
     end
 
-    callToJavaScriptPrologue()
+    functionPrologue()
+    pushCalleeSaves()
 
-    if X86_64
-        loadp 7*8[sp], previousPC
-        move 6*8[sp], previousCFR
-    elsif X86_64_WIN
-        # Win64 pushes two more registers
-        loadp 9*8[sp], previousPC
-        move 8*8[sp], previousCFR
-    elsif ARM64
-        move cfr, previousCFR
-    end
+    vmEntryRecord(cfr, sp)
 
     checkStackPointerAlignment(temp2, 0xbad0dc01)
 
-    # The stack reserved zone ensures that we have adequate space for the
-    # VMEntrySentinelFrame. Proceed with allocating and initializing the
-    # sentinel frame.
-    move sp, cfr
-    subp CallFrameHeaderSlots * 8, cfr
-    storep 0, ArgumentCount[cfr]
-    storep vm, Callee[cfr]
+    storep vm, VMEntryRecord::m_vm[sp]
     loadp VM::topCallFrame[vm], temp2
-    storep temp2, ScopeChain[cfr]
-    storep 1, CodeBlock[cfr]
-
-    storep previousPC, ReturnPC[cfr]
-    storep previousCFR, CallerFrame[cfr]
+    storep temp2, VMEntryRecord::m_prevTopCallFrame[sp]
+    loadp VM::topVMEntryFrame[vm], temp2
+    storep temp2, VMEntryRecord::m_prevTopVMEntryFrame[sp]
 
     loadi ProtoCallFrame::paddedArgCount[protoCallFrame], temp2
     addp CallFrameHeaderSlots, temp2, temp2
     lshiftp 3, temp2
-    subp cfr, temp2, temp1
+    subp sp, temp2, temp1
 
     # Ensure that we have enough additional stack capacity for the incoming args,
     # and the frame for the JS code we're executing. We need to do this check
     # before we start copying the args from the protoCallFrame below.
     bpaeq temp1, VM::m_jsStackLimit[vm], .stackHeightOK
-
-    move cfr, sp
 
     if C_LOOP
         move entry, temp2
@@ -227,7 +209,19 @@ macro doCallToJavaScript(makeCall)
     end
 
     cCall2(_llint_throw_stack_overflow_error, vm, protoCallFrame)
-    callToJavaScriptEpilogue()
+
+    vmEntryRecord(cfr, temp2)
+
+    loadp VMEntryRecord::m_vm[temp2], vm
+    loadp VMEntryRecord::m_prevTopCallFrame[temp2], temp3
+    storep temp3, VM::topCallFrame[vm]
+    loadp VMEntryRecord::m_prevTopVMEntryFrame[temp2], temp3
+    storep temp3, VM::topVMEntryFrame[vm]
+
+    subp cfr, CalleeRegisterSaveSize, sp
+
+    popCalleeSaves()
+    functionEpilogue()
     ret
 
 .stackHeightOK:
@@ -269,6 +263,7 @@ macro doCallToJavaScript(makeCall)
     else
         storep sp, VM::topCallFrame[vm]
     end
+    storep cfr, VM::topVMEntryFrame[vm]
 
     move 0xffff000000000000, csr1
     addp 2, csr1, csr2
@@ -279,20 +274,18 @@ macro doCallToJavaScript(makeCall)
 
     checkStackPointerAlignment(temp3, 0xbad0dc03)
 
-    bpeq CodeBlock[cfr], 1, .calleeFramePopped
-    loadp CallerFrame[cfr], cfr
+    vmEntryRecord(cfr, temp2)
 
-.calleeFramePopped:
-    loadp Callee[cfr], temp2 # VM
-    loadp ScopeChain[cfr], temp3 # previous topCallFrame
-    storep temp3, VM::topCallFrame[temp2]
+    loadp VMEntryRecord::m_vm[temp2], vm
+    loadp VMEntryRecord::m_prevTopCallFrame[temp2], temp3
+    storep temp3, VM::topCallFrame[vm]
+    loadp VMEntryRecord::m_prevTopVMEntryFrame[temp2], temp3
+    storep temp3, VM::topVMEntryFrame[vm]
 
-    checkStackPointerAlignment(temp3, 0xbad0dc04)
+    subp cfr, CalleeRegisterSaveSize, sp
 
-    if X86_64 or X86_64_WIN
-        pop t5
-    end
-    callToJavaScriptEpilogue()
+    popCalleeSaves()
+    functionEpilogue()
 
     ret
 end
@@ -311,6 +304,7 @@ end
 
 macro makeHostFunctionCall(entry, temp)
     move entry, temp
+    storep cfr, [sp]
     if X86_64
         move sp, t4
     elsif X86_64_WIN
@@ -319,23 +313,15 @@ macro makeHostFunctionCall(entry, temp)
         move sp, a0
     end
     if C_LOOP
-        storep cfr, [sp]
         storep lr, 8[sp]
         cloopCallNative temp
     elsif X86_64_WIN
-        # For a host function call, JIT relies on that the CallerFrame (frame pointer) is put on the stack,
-        # On Win64 we need to manually copy the frame pointer to the stack, since MSVC may not maintain a frame pointer on 64-bit.
-        # See http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx where it's stated that rbp MAY be used as a frame pointer.
-        storep cfr, [sp]
-
         # We need to allocate 32 bytes on the stack for the shadow space.
         subp 32, sp
         call temp
         addp 32, sp
     else
-        addp 16, sp
         call temp
-        subp 16, sp
     end
 end
 
@@ -346,19 +332,19 @@ _handleUncaughtException:
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
     loadp VM::callFrameForThrow[t3], cfr
 
-    # So far, we've unwound the stack to the frame just below the sentinel frame, except
-    # in the case of stack overflow in the first function called from callToJavaScript.
-    # Check if we need to pop to the sentinel frame and do the necessary clean up for
-    # returning to the caller C frame.
-    bpeq CodeBlock[cfr], 1, .handleUncaughtExceptionAlreadyIsSentinel
     loadp CallerFrame[cfr], cfr
-.handleUncaughtExceptionAlreadyIsSentinel:
+    vmEntryRecord(cfr, t2)
 
-    loadp Callee[cfr], t3 # VM
-    loadp ScopeChain[cfr], t5 # previous topCallFrame
+    loadp VMEntryRecord::m_vm[t2], t3
+    loadp VMEntryRecord::m_prevTopCallFrame[t2], t5
     storep t5, VM::topCallFrame[t3]
+    loadp VMEntryRecord::m_prevTopVMEntryFrame[t2], t5
+    storep t5, VM::topVMEntryFrame[t3]
 
-    callToJavaScriptEpilogue()
+    subp cfr, CalleeRegisterSaveSize, sp
+
+    popCalleeSaves()
+    functionEpilogue()
     ret
 
 
@@ -624,9 +610,7 @@ _llint_op_enter:
 _llint_op_create_activation:
     traceExecution()
     loadisFromInstruction(1, t0)
-    bqneq [cfr, t0, 8], ValueEmpty, .opCreateActivationDone
     callSlowPath(_llint_slow_path_create_activation)
-.opCreateActivationDone:
     dispatch(2)
 
 
@@ -1510,38 +1494,6 @@ _llint_op_get_argument_by_val:
     dispatch(6)
 
 
-_llint_op_get_by_pname:
-    traceExecution()
-    loadisFromInstruction(3, t1)
-    loadConstantOrVariable(t1, t0)
-    loadisFromInstruction(4, t1)
-    assertNotConstant(t1)
-    bqneq t0, [cfr, t1, 8], .opGetByPnameSlow
-    loadisFromInstruction(2, t2)
-    loadisFromInstruction(5, t3)
-    loadConstantOrVariableCell(t2, t0, .opGetByPnameSlow)
-    assertNotConstant(t3)
-    loadq [cfr, t3, 8], t1
-    loadStructureWithScratch(t0, t2, t3)
-    bpneq t2, JSPropertyNameIterator::m_cachedStructure[t1], .opGetByPnameSlow
-    loadisFromInstruction(6, t3)
-    loadi PayloadOffset[cfr, t3, 8], t3
-    subi 1, t3
-    biaeq t3, JSPropertyNameIterator::m_numCacheableSlots[t1], .opGetByPnameSlow
-    bilt t3, JSPropertyNameIterator::m_cachedStructureInlineCapacity[t1], .opGetByPnameInlineProperty
-    addi firstOutOfLineOffset, t3
-    subi JSPropertyNameIterator::m_cachedStructureInlineCapacity[t1], t3
-.opGetByPnameInlineProperty:
-    loadPropertyAtVariableOffset(t3, t0, t0)
-    loadisFromInstruction(1, t1)
-    storeq t0, [cfr, t1, 8]
-    dispatch(7)
-
-.opGetByPnameSlow:
-    callSlowPath(_llint_slow_path_get_by_pname)
-    dispatch(7)
-
-
 macro contiguousPutByVal(storeCallback)
     biaeq t3, -sizeof IndexingHeader + IndexingHeader::u.lengths.publicLength[t0], .outOfBounds
 .storeResult:
@@ -1934,49 +1886,6 @@ _llint_op_to_primitive:
     dispatch(3)
 
 
-_llint_op_next_pname:
-    traceExecution()
-    loadisFromInstruction(3, t1)
-    loadisFromInstruction(4, t2)
-    assertNotConstant(t1)
-    assertNotConstant(t2)
-    loadi PayloadOffset[cfr, t1, 8], t0
-    bieq t0, PayloadOffset[cfr, t2, 8], .opNextPnameEnd
-    loadisFromInstruction(5, t2)
-    assertNotConstant(t2)
-    loadp [cfr, t2, 8], t2
-    loadp JSPropertyNameIterator::m_jsStrings[t2], t3
-    loadq [t3, t0, 8], t3
-    addi 1, t0
-    storei t0, PayloadOffset[cfr, t1, 8]
-    loadisFromInstruction(1, t1)
-    storeq t3, [cfr, t1, 8]
-    loadisFromInstruction(2, t3)
-    assertNotConstant(t3)
-    loadq [cfr, t3, 8], t3
-    loadStructureWithScratch(t3, t1, t0)
-    bpneq t1, JSPropertyNameIterator::m_cachedStructure[t2], .opNextPnameSlow
-    loadp JSPropertyNameIterator::m_cachedPrototypeChain[t2], t0
-    loadp StructureChain::m_vector[t0], t0
-    btpz [t0], .opNextPnameTarget
-.opNextPnameCheckPrototypeLoop:
-    bqeq Structure::m_prototype[t1], ValueNull, .opNextPnameSlow
-    loadq Structure::m_prototype[t1], t2
-    loadStructureWithScratch(t2, t1, t3)
-    bpneq t1, [t0], .opNextPnameSlow
-    addp 8, t0
-    btpnz [t0], .opNextPnameCheckPrototypeLoop
-.opNextPnameTarget:
-    dispatchIntIndirect(6)
-
-.opNextPnameEnd:
-    dispatch(7)
-
-.opNextPnameSlow:
-    callSlowPath(_llint_slow_path_next_pname) # This either keeps the PC where it was (causing us to loop) or sets it to target.
-    dispatch(0)
-
-
 _llint_op_catch:
     # This is where we end up from the JIT's throw trampoline (because the
     # machine code return address will be set to _llint_op_catch), and from
@@ -1987,6 +1896,8 @@ _llint_op_catch:
     andp MarkedBlockMask, t3
     loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
     loadp VM::callFrameForThrow[t3], cfr
+    loadp VM::vmEntryFrameForThrow[t3], t0
+    storep t0, VM::topVMEntryFrame[t3]
     restoreStackPointerAfterCall()
 
     loadp CodeBlock[cfr], PB
@@ -2118,12 +2029,6 @@ end
 macro resolveScope()
     loadp CodeBlock[cfr], t0
     loadisFromInstruction(4, t2)
-    btbz CodeBlock::m_needsActivation[t0], .resolveScopeAfterActivationCheck
-    loadis CodeBlock::m_activationRegister[t0], t1
-    btpz [cfr, t1, 8], .resolveScopeAfterActivationCheck
-    addi 1, t2
-
-.resolveScopeAfterActivationCheck:
     loadp ScopeChain[cfr], t0
     btiz t2, .resolveScopeLoopEnd
 

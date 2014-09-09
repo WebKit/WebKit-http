@@ -129,7 +129,7 @@ FloatRect SVGInlineTextBox::selectionRectForTextFragment(const SVGTextFragment& 
     LayoutRect selectionRect = LayoutRect(textOrigin, LayoutSize(0, fragment.height * scalingFactor));
     TextRun run = constructTextRun(style, fragment);
     scaledFont.adjustSelectionRectForText(run, selectionRect, startPosition, endPosition);
-    FloatRect snappedSelectionRect = directionalPixelSnappedForPainting(selectionRect, renderer().document().deviceScaleFactor(), run.ltr());
+    FloatRect snappedSelectionRect = snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), run.ltr());
     if (scalingFactor == 1)
         return snappedSelectionRect;
 
@@ -595,8 +595,9 @@ void SVGInlineTextBox::paintTextWithShadows(GraphicsContext* context, RenderStyl
             break;
 
         FloatSize extraOffset;
+        bool didSaveContext = false;
         if (shadow)
-            extraOffset = applyShadowToGraphicsContext(context, shadow, shadowRect, false /* stroked */, true /* opaque */, true /* horizontal */);
+            extraOffset = applyShadowToGraphicsContext(context, shadow, shadowRect, false /* stroked */, true /* opaque */, true /* horizontal */, didSaveContext);
 
         context->save();
         context->scale(FloatSize(1 / scalingFactor, 1 / scalingFactor));
@@ -606,7 +607,7 @@ void SVGInlineTextBox::paintTextWithShadows(GraphicsContext* context, RenderStyl
         context->restore();
 
         if (shadow) {
-            if (shadow->next())
+            if (didSaveContext)
                 context->restore();
             else
                 context->clearShadow();

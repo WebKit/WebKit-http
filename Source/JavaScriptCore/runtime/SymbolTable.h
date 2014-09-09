@@ -230,11 +230,11 @@ struct SymbolTableEntry {
         return fatEntry()->m_watchpoints.get();
     }
     
-    ALWAYS_INLINE void notifyWrite(VM& vm, JSValue value)
+    ALWAYS_INLINE void notifyWrite(VM& vm, JSValue value, const FireDetail& detail)
     {
         if (LIKELY(!isFat()))
             return;
-        notifyWriteSlow(vm, value);
+        notifyWriteSlow(vm, value, detail);
     }
     
 private:
@@ -258,7 +258,7 @@ private:
     };
     
     SymbolTableEntry& copySlow(const SymbolTableEntry&);
-    JS_EXPORT_PRIVATE void notifyWriteSlow(VM&, JSValue);
+    JS_EXPORT_PRIVATE void notifyWriteSlow(VM&, JSValue, const FireDetail&);
     
     bool isFat() const
     {
@@ -337,7 +337,7 @@ public:
     typedef JSCell Base;
 
     typedef HashMap<RefPtr<StringImpl>, SymbolTableEntry, IdentifierRepHash, HashTraits<RefPtr<StringImpl>>, SymbolTableIndexHashTraits> Map;
-    typedef HashMap<RefPtr<StringImpl>, int64_t> UniqueIDMap;
+    typedef HashMap<RefPtr<StringImpl>, GlobalVariableID> UniqueIDMap;
     typedef HashMap<RefPtr<StringImpl>, RefPtr<TypeSet>> UniqueTypeSetMap;
     typedef HashMap<int, RefPtr<StringImpl>, WTF::IntHash<int>, WTF::UnsignedWithZeroKeyHashTraits<int>> RegisterToVariableMap;
 
@@ -417,12 +417,6 @@ public:
     
     Map::AddResult add(const ConcurrentJITLocker&, StringImpl* key, const SymbolTableEntry& entry)
     {
-        if (m_uniqueIDMap) {
-            // Use a flag to indicate that we need to produce a unique ID. Because VM is in charge of creating uniqueIDs, 
-            // when uniqueID() is called, we check this flag to see if uniqueID creation is necessary.
-            m_uniqueIDMap->set(key, HighFidelityNeedsUniqueIDGeneration); 
-            m_registerToVariableMap->set(entry.getIndex(), key);
-        }
         return m_map.add(key, entry);
     }
     
@@ -434,10 +428,6 @@ public:
     
     Map::AddResult set(const ConcurrentJITLocker&, StringImpl* key, const SymbolTableEntry& entry)
     {
-        if (m_uniqueIDMap) {
-            m_uniqueIDMap->set(key, HighFidelityNeedsUniqueIDGeneration); 
-            m_registerToVariableMap->set(entry.getIndex(), key);
-        }
         return m_map.set(key, entry);
     }
     
@@ -458,8 +448,8 @@ public:
         return contains(locker, key);
     }
     
-    int64_t uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm);
-    int64_t uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm);
+    GlobalVariableID uniqueIDForVariable(const ConcurrentJITLocker&, StringImpl* key, VM& vm);
+    GlobalVariableID uniqueIDForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm);
     RefPtr<TypeSet> globalTypeSetForRegister(const ConcurrentJITLocker& locker, int registerIndex, VM& vm);
     RefPtr<TypeSet> globalTypeSetForVariable(const ConcurrentJITLocker& locker, StringImpl* key, VM& vm);
 
@@ -489,6 +479,8 @@ public:
     
     SymbolTable* cloneCapturedNames(VM&);
 
+    void prepareForTypeProfiling(const ConcurrentJITLocker&);
+
     static void visitChildren(JSCell*, SlotVisitor&);
 
     DECLARE_EXPORT_INFO;
@@ -513,9 +505,12 @@ private:
     ~SymbolTable();
 
     Map m_map;
-    std::unique_ptr<UniqueIDMap> m_uniqueIDMap;
-    std::unique_ptr<RegisterToVariableMap> m_registerToVariableMap;
-    std::unique_ptr<UniqueTypeSetMap> m_uniqueTypeSetMap;
+    struct TypeProfilingRareData {
+        UniqueIDMap m_uniqueIDMap;
+        RegisterToVariableMap m_registerToVariableMap;
+        UniqueTypeSetMap m_uniqueTypeSetMap;
+    };
+    std::unique_ptr<TypeProfilingRareData> m_typeProfilingRareData;
 
     int m_parameterCountIncludingThis;
     bool m_usesNonStrictEval;

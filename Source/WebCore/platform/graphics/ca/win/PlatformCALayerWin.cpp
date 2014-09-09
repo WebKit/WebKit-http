@@ -182,9 +182,7 @@ PassRefPtr<PlatformCALayer> PlatformCALayerWin::clone(PlatformCALayerClient* own
     newLayer->setOpaque(isOpaque());
     newLayer->setBackgroundColor(backgroundColor());
     newLayer->setContentsScale(contentsScale());
-#if ENABLE(CSS_FILTERS)
     newLayer->copyFiltersFrom(this);
-#endif
 
     return newLayer;
 }
@@ -195,7 +193,7 @@ PlatformCALayer* PlatformCALayerWin::rootLayer() const
     return host ? host->rootLayer() : 0;
 }
 
-void PlatformCALayerWin::animationStarted(const String&, CFTimeInterval beginTime)
+void PlatformCALayerWin::animationStarted(const String& animationKey, CFTimeInterval beginTime)
 {
     // Update start time for any animation not yet started
     CFTimeInterval cacfBeginTime = currentTimeToMediaTime(beginTime);
@@ -205,14 +203,25 @@ void PlatformCALayerWin::animationStarted(const String&, CFTimeInterval beginTim
         it->value->setActualStartTimeIfNeeded(cacfBeginTime);
 
     if (m_owner)
-        m_owner->platformCALayerAnimationStarted(beginTime);
+        m_owner->platformCALayerAnimationStarted(animationKey, beginTime);
 }
 
-void PlatformCALayerWin::setNeedsDisplay(const FloatRect* dirtyRect)
+void PlatformCALayerWin::animationEnded(const String& animationKey)
 {
-    intern(this)->setNeedsDisplay(dirtyRect);
+    if (m_owner)
+        m_owner->platformCALayerAnimationEnded(animationKey);
 }
-    
+
+void PlatformCALayerWin::setNeedsDisplayInRect(const FloatRect& dirtyRect)
+{
+    intern(this)->setNeedsDisplayInRect(dirtyRect);
+}
+
+void PlatformCALayerWin::setNeedsDisplay()
+{
+    intern(this)->setNeedsDisplay();
+}
+
 void PlatformCALayerWin::setNeedsCommit()
 {
     AbstractCACFLayerTreeHost* host = layerTreeHostForLayer(this);
@@ -534,8 +543,6 @@ void PlatformCALayerWin::setOpacity(float value)
     setNeedsCommit();
 }
 
-#if ENABLE(CSS_FILTERS)
-
 void PlatformCALayerWin::setFilters(const FilterOperations&)
 {
 }
@@ -543,8 +550,6 @@ void PlatformCALayerWin::setFilters(const FilterOperations&)
 void PlatformCALayerWin::copyFiltersFrom(const PlatformCALayer*)
 {
 }
-
-#endif // ENABLE(CSS_FILTERS)
 
 void PlatformCALayerWin::setName(const String& value)
 {

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 2.8.8)
 project(WebKit)
 
 # -----------------------------------------------------------------------------
@@ -33,6 +33,9 @@ if (NOT DEFINED ENABLE_TOOLS AND EXISTS ${TOOLS_DIR})
     set(ENABLE_TOOLS ON)
 endif ()
 
+# Do not create transitive library dependencies by default
+set(CMAKE_LINK_INTERFACE_LIBRARIES "")
+
 include(WebKitMacros)
 include(WebKitFS)
 include(WebKitHelpers)
@@ -55,7 +58,9 @@ string(TOLOWER ${PORT} WEBKIT_PORT_DIR)
 # Find common packages (used by all ports)
 # -----------------------------------------------------------------------------
 find_package(BISON 2.3 REQUIRED)
-find_package(FLEX 2.5.34 REQUIRED)
+if (!APPLE)
+    find_package(FLEX 2.5.34 REQUIRED)
+endif ()
 
 # TODO Enforce version requirement for gperf
 find_package(Gperf 3.0.1 REQUIRED)
@@ -88,6 +93,16 @@ elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(x64|x86_64|amd64)")
     set(WTF_CPU_X86_64 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(i[3-6]86|x86)")
     set(WTF_CPU_X86 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc")
+    set(WTF_CPU_PPC 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64")
+    set(WTF_CPU_PPC64 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+    set(WTF_CPU_PPC64LE 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "s390")
+    set(WTF_CPU_S390 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "s390x")
+    set(WTF_CPU_S390X 1)
 else ()
     message(FATAL_ERROR "Unknown CPU '${LOWERCASE_CMAKE_SYSTEM_PROCESSOR}'")
 endif ()

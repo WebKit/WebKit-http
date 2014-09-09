@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -213,16 +213,6 @@ void MockSourceBufferPrivate::setReadyState(MediaPlayer::ReadyState readyState)
         m_mediaSource->player()->setReadyState(readyState);
 }
 
-void MockSourceBufferPrivate::evictCodedFrames()
-{
-    // No-op.
-}
-
-bool MockSourceBufferPrivate::isFull()
-{
-    return false;
-}
-
 void MockSourceBufferPrivate::setActive(bool isActive)
 {
     if (m_mediaSource)
@@ -248,7 +238,7 @@ void MockSourceBufferPrivate::enqueueSample(PassRefPtr<MediaSample> sample, Atom
     if (box->isDropped())
         m_mediaSource->incrementDroppedFrames();
     if (box->isDelayed())
-        m_mediaSource->incrementTotalFrameDelayBy(1);
+        m_mediaSource->incrementTotalFrameDelayBy(MediaTime(1, 1));
 }
 
 bool MockSourceBufferPrivate::hasVideo() const

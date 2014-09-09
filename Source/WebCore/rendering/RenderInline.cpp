@@ -263,7 +263,7 @@ LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, int, LayoutUnit* e
     LayoutRect caretRect = localCaretRectForEmptyElement(horizontalBorderAndPaddingExtent(), 0);
 
     if (InlineBox* firstBox = firstLineBox())
-        caretRect.moveBy(roundedLayoutPoint(firstBox->topLeft()));
+        caretRect.moveBy(LayoutPoint(firstBox->topLeft()));
 
     return caretRect;
 }
@@ -1234,13 +1234,13 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
 
     if (mode & ApplyContainerFlip && o->isBox()) {
         if (o->style().isFlippedBlocksWritingMode()) {
-            LayoutPoint centerPoint = roundedLayoutPoint(transformState.mappedPoint());
+            LayoutPoint centerPoint(transformState.mappedPoint());
             transformState.move(toRenderBox(o)->flipForWritingMode(centerPoint) - centerPoint);
         }
         mode &= ~ApplyContainerFlip;
     }
 
-    LayoutSize containerOffset = offsetFromContainer(o, roundedLayoutPoint(transformState.mappedPoint()));
+    LayoutSize containerOffset = offsetFromContainer(o, LayoutPoint(transformState.mappedPoint()));
 
     bool preserve3D = mode & UseTransforms && (o->style().preserves3D() || style().preserves3D());
     if (mode & UseTransforms && shouldUseTransformFromContainer(o)) {
@@ -1425,7 +1425,7 @@ LayoutSize RenderInline::offsetForInFlowPositionedInline(const RenderBox* child)
     LayoutUnit inlinePosition;
     LayoutUnit blockPosition;
     if (firstLineBox()) {
-        inlinePosition = roundedLayoutUnit(firstLineBox()->logicalLeft());
+        inlinePosition = LayoutUnit::fromFloatRound(firstLineBox()->logicalLeft());
         blockPosition = firstLineBox()->logicalTop();
     } else {
         inlinePosition = layer()->staticInlinePosition();
@@ -1543,11 +1543,11 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
     LayoutRect box(LayoutPoint(paintOffset.x() + thisline.x() - offset, paintOffset.y() + thisline.y() - offset),
         LayoutSize(thisline.width() + offset, thisline.height() + offset));
 
-    IntRect pixelSnappedBox = pixelSnappedIntRect(box);
+    IntRect pixelSnappedBox = snappedIntRect(box);
     if (pixelSnappedBox.isEmpty())
         return;
-    IntRect pixelSnappedLastLine = pixelSnappedIntRect(paintOffset.x() + lastline.x(), 0, lastline.width(), 0);
-    IntRect pixelSnappedNextLine = pixelSnappedIntRect(paintOffset.x() + nextline.x(), 0, nextline.width(), 0);
+    IntRect pixelSnappedLastLine = snappedIntRect(paintOffset.x() + lastline.x(), 0, lastline.width(), 0);
+    IntRect pixelSnappedNextLine = snappedIntRect(paintOffset.x() + nextline.x(), 0, nextline.width(), 0);
     
     // left edge
     drawLineForBoxSide(graphicsContext,

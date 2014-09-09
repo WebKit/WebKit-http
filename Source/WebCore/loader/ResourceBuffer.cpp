@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ResourceBuffer.h"
 
-#include "PurgeableBuffer.h"
 #include "SharedBuffer.h"
 
 namespace WebCore {
@@ -113,42 +112,10 @@ PassRefPtr<ResourceBuffer> ResourceBuffer::copy() const
     return ResourceBuffer::adoptSharedBuffer(m_sharedBuffer->copy());
 }
 
-bool ResourceBuffer::hasPurgeableBuffer() const
-{
-    return m_sharedBuffer->hasPurgeableBuffer();
-}
-
-#if PLATFORM(IOS)
-void ResourceBuffer::setShouldUsePurgeableMemory(bool shouldUsePurgeableMemory)
-{
-    ASSERT(m_sharedBuffer);
-    sharedBuffer()->shouldUsePurgeableMemory(shouldUsePurgeableMemory);
-}
-#endif
-
-void ResourceBuffer::createPurgeableBuffer() const
-{
-    ASSERT(m_sharedBuffer);
-    sharedBuffer()->createPurgeableBuffer();
-}
-
-PassOwnPtr<PurgeableBuffer> ResourceBuffer::releasePurgeableBuffer()
-{
-    return m_sharedBuffer->releasePurgeableBuffer();
-}
-
 #if USE(CF)
 RetainPtr<CFDataRef> ResourceBuffer::createCFData()
 {
     return m_sharedBuffer->createCFData();
-}
-#endif
-
-#if ENABLE(DISK_IMAGE_CACHE)
-bool ResourceBuffer::isUsingDiskImageCache() const
-{
-    ASSERT(m_sharedBuffer);
-    return m_sharedBuffer && m_sharedBuffer->isAllowedToBeMemoryMapped();
 }
 #endif
 

@@ -187,7 +187,7 @@ public:
 
     virtual RenderBoxModelObject* virtualContinuation() const override final { return continuation(); }
     bool isAnonymousBlockContinuation() const { return isAnonymousBlock() && continuation(); }
-    RenderInline* inlineElementContinuation() const;
+    WEBCORE_EXPORT RenderInline* inlineElementContinuation() const;
     RenderBlock* blockElementContinuation() const;
 
     using RenderBoxModelObject::continuation;
@@ -300,7 +300,6 @@ public:
 
 #ifndef NDEBUG
     void checkPositionedObjectsNeedLayout();
-    virtual void showLineTreeAndMark(const InlineBox* = nullptr, const char* = nullptr, const InlineBox* = nullptr, const char* = nullptr, const RenderObject* = nullptr) const;
 #endif
 
 
@@ -442,8 +441,6 @@ private:
 
     virtual bool isPointInOverflowControl(HitTestResult&, const LayoutPoint& locationInContainer, const LayoutPoint& accumulatedOffset);
 
-    // FIXME: Make this method const so we can remove the const_cast in computeIntrinsicLogicalWidths.
-    void computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth);
     void computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const;
 
     // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline

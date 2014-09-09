@@ -95,8 +95,8 @@ public:
     virtual void dirtyOwnLineBoxes() { dirtyLineBoxes(); }
 
 #ifndef NDEBUG
-    virtual void showBox(int = 0) const;
-    virtual const char* boxName() const;
+    virtual void showLineBox(bool mark, int depth) const override final;
+    virtual const char* boxName() const override final;
 #endif
 
 private:
@@ -155,7 +155,7 @@ public:
     virtual float positionForOffset(int offset) const;
 
     // Needs to be public, so the static paintTextWithShadows() function can use it.
-    static FloatSize applyShadowToGraphicsContext(GraphicsContext*, const ShadowData*, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal);
+    static FloatSize applyShadowToGraphicsContext(GraphicsContext*, const ShadowData*, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal, bool& didSaveContext);
 
 protected:
     void paintCompositionBackground(GraphicsContext*, const FloatPoint& boxOrigin, const RenderStyle&, const Font&, int startPos, int endPos);

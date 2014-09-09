@@ -1666,6 +1666,15 @@ public:
         move(arg4, GPRInfo::argumentGPR3);
     }
 #endif
+    
+    void setupArguments(JSValueRegs arg1)
+    {
+#if USE(JSVALUE64)
+        setupArguments(arg1.gpr());
+#else
+        setupArguments(arg1.payloadGPR(), arg1.tagGPR());
+#endif
+    }
 
     void setupResults(GPRReg destA, GPRReg destB)
     {
@@ -1700,6 +1709,7 @@ public:
     void jumpToExceptionHandler()
     {
         // genericUnwind() leaves the handler CallFrame* in vm->callFrameForThrow,
+        // the topVMEntryFrame for the handler in vm->vmEntryFrameForThrow,
         // and the address of the handler in vm->targetMachinePCForThrow.
         loadPtr(&vm()->targetMachinePCForThrow, GPRInfo::regT1);
         jump(GPRInfo::regT1);

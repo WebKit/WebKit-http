@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
     NoInterfaceObject,
 ] interface Internals {
     DOMString address(Node node);
+    [RaisesException] boolean nodeNeedsStyleRecalc(Node node);
     DOMString description(any value);
 
     [RaisesException] DOMString elementRenderTreeAsText(Element element);
@@ -84,6 +85,8 @@
     void addTextMatchMarker(Range range, boolean isActive);
     [RaisesException] void setMarkedTextMatchesAreHighlighted(boolean flag);
 
+    void invalidateFontCache();
+
     [RaisesException] void setScrollViewPosition(long x, long y);
 
     [RaisesException] void setPagination(DOMString mode, long gap, optional long pageLength);
@@ -96,8 +99,6 @@
 
     [RaisesException] boolean wasLastChangeUserEdit(Element textField);
     [RaisesException] boolean elementShouldAutoComplete(Element inputElement);
-    [RaisesException] DOMString suggestedValue(Element inputElement);
-    [RaisesException] void setSuggestedValue(Element inputElement, DOMString value);
     [RaisesException] void setEditingValue(Element inputElement, DOMString value);
     [RaisesException] void setAutofilled(Element inputElement, boolean enabled);
     [RaisesException] unsigned long countMatchesForText(DOMString text, unsigned long findOptions, DOMString markMatches);

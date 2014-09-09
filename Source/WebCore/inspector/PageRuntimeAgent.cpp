@@ -40,14 +40,14 @@
 #include "JSDOMWindowBase.h"
 #include "MainFrame.h"
 #include "Page.h"
-#include "PageConsole.h"
+#include "PageConsoleClient.h"
 #include "ScriptController.h"
 #include "ScriptState.h"
 #include "SecurityOrigin.h"
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
 
-using Inspector::TypeBuilder::Runtime::ExecutionContextDescription;
+using Inspector::Protocol::Runtime::ExecutionContextDescription;
 
 using namespace Inspector;
 
@@ -67,13 +67,15 @@ void PageRuntimeAgent::didCreateFrontendAndBackend(Inspector::InspectorFrontendC
     m_backendDispatcher = InspectorRuntimeBackendDispatcher::create(backendDispatcher, this);
 }
 
-void PageRuntimeAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
+void PageRuntimeAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason reason)
 {
     m_frontendDispatcher = nullptr;
     m_backendDispatcher.clear();
 
     String errorString;
     disable(&errorString);
+
+    InspectorRuntimeAgent::willDestroyFrontendAndBackend(reason);
 }
 
 void PageRuntimeAgent::enable(ErrorString* errorString)
@@ -144,12 +146,12 @@ InjectedScript PageRuntimeAgent::injectedScriptForEval(ErrorString* errorString,
 
 void PageRuntimeAgent::muteConsole()
 {
-    PageConsole::mute();
+    PageConsoleClient::mute();
 }
 
 void PageRuntimeAgent::unmuteConsole()
 {
-    PageConsole::unmute();
+    PageConsoleClient::unmute();
 }
 
 void PageRuntimeAgent::reportExecutionContextCreation()

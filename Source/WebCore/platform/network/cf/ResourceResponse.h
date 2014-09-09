@@ -40,7 +40,7 @@ namespace WebCore {
 class ResourceResponse : public ResourceResponseBase {
 public:
     ResourceResponse()
-        : m_initLevel(CommonAndUncommonFields)
+        : m_initLevel(AllFields)
         , m_platformResponseIsUpToDate(true)
     {
     }
@@ -54,7 +54,7 @@ public:
         m_isNull = !cfResponse;
     }
 #if PLATFORM(COCOA)
-    ResourceResponse(NSURLResponse *);
+    WEBCORE_EXPORT ResourceResponse(NSURLResponse *);
 #endif
 #else
     ResourceResponse(NSURLResponse *nsResponse)
@@ -66,9 +66,9 @@ public:
     }
 #endif
 
-    ResourceResponse(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName, const String& filename)
-        : ResourceResponseBase(url, mimeType, expectedLength, textEncodingName, filename)
-        , m_initLevel(CommonAndUncommonFields)
+    ResourceResponse(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName)
+        : ResourceResponseBase(url, mimeType, expectedLength, textEncodingName)
+        , m_initLevel(AllFields)
         , m_platformResponseIsUpToDate(false)
     {
     }
@@ -86,15 +86,10 @@ public:
     }
 
 #if USE(CFNETWORK)
-    CFURLResponseRef cfURLResponse() const;
+    WEBCORE_EXPORT CFURLResponseRef cfURLResponse() const;
 #endif
 #if PLATFORM(COCOA)
-    NSURLResponse *nsURLResponse() const;
-#endif
-
-#if PLATFORM(COCOA) || USE(CFNETWORK)
-    void setCertificateChain(CFArrayRef);
-    RetainPtr<CFArrayRef> certificateChain() const;
+    WEBCORE_EXPORT NSURLResponse *nsURLResponse() const;
 #endif
 
     bool platformResponseIsUpToDate() const { return m_platformResponseIsUpToDate; }
@@ -103,6 +98,9 @@ private:
     friend class ResourceResponseBase;
 
     void platformLazyInit(InitLevel);
+    String platformSuggestedFilename() const;
+    CertificateInfo platformCertificateInfo() const;
+
     PassOwnPtr<CrossThreadResourceResponseData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceResponseData> data) const { return data; }
     void doPlatformAdopt(PassOwnPtr<CrossThreadResourceResponseData>) { }
 #if PLATFORM(COCOA)
@@ -119,10 +117,6 @@ private:
 #endif
 #if PLATFORM(COCOA)
     mutable RetainPtr<NSURLResponse> m_nsResponse;
-#endif
-#if PLATFORM(COCOA) || USE(CFNETWORK)
-    // Certificate chain is normally part of NS/CFURLResponse, but there is no way to re-add it to a deserialized response after IPC.
-    RetainPtr<CFArrayRef> m_externalCertificateChain;
 #endif
 };
 

@@ -26,12 +26,19 @@
 #ifndef BPlatform_h
 #define BPlatform_h
 
-#define BPLATFORM(PLATFORM) (defined BPLATFORM_##PLATFORM && PLATFORM_##PLATFORM)
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
+
+#define BPLATFORM(PLATFORM) (defined BPLATFORM_##PLATFORM && BPLATFORM_##PLATFORM)
 
 #if ((defined(TARGET_OS_EMBEDDED) && TARGET_OS_EMBEDDED) \
     || (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) \
     || (defined(TARGET_IPHONE_SIMULATOR) && TARGET_IPHONE_SIMULATOR))
 #define BPLATFORM_IOS 1
 #endif
+
+#define BCOMPILER_SUPPORTS(COMPILER_FEATURE) (defined BCOMPILER_SUPPORTS_##COMPILER_FEATURE && BCOMPILER_SUPPORTS_##COMPILER_FEATURE)
+#define BCOMPILER_SUPPORTS_CXX_THREAD_LOCAL (defined(__has_feature) && __has_feature(cxx_thread_local))
 
 #endif // BPlatform_h

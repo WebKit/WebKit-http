@@ -51,10 +51,7 @@ public:
     const VisibleSelection& startingSelection() const { return m_startingSelection; }
     const VisibleSelection& endingSelection() const { return m_endingSelection; }
 
-#if PLATFORM(IOS)
-    virtual bool isInsertTextCommand() const { return false; }
-#endif
-    
+    virtual bool isInsertTextCommand() const { return false; }    
     virtual bool isSimpleEditCommand() const { return false; }
     virtual bool isCompositeEditCommand() const { return false; }
     virtual bool isEditCommandComposition() const { return false; }
@@ -70,7 +67,7 @@ protected:
     Document& document() { return m_document.get(); }
     CompositeEditCommand* parent() const { return m_parent; }
     void setStartingSelection(const VisibleSelection&);
-    void setEndingSelection(const VisibleSelection&);
+    WEBCORE_EXPORT void setEndingSelection(const VisibleSelection&);
 
 private:
     Ref<Document> m_document;

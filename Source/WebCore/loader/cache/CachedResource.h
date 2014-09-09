@@ -25,7 +25,6 @@
 
 #include "CachePolicy.h"
 #include "FrameLoaderTypes.h"
-#include "PurgePriority.h"
 #include "ResourceError.h"
 #include "ResourceLoadPriority.h"
 #include "ResourceLoaderOptions.h"
@@ -47,7 +46,6 @@ class CachedResourceClient;
 class CachedResourceHandleBase;
 class CachedResourceLoader;
 class InspectorResource;
-class PurgeableBuffer;
 class ResourceBuffer;
 class SecurityOrigin;
 class SharedBuffer;
@@ -90,6 +88,12 @@ public:
         DecodeError
     };
 
+    enum RedirectChainCacheStatus {
+        NoRedirection,
+        NotCachedRedirection,
+        CachedRedirection
+    };
+
     CachedResource(const ResourceRequest&, Type, SessionID);
     virtual ~CachedResource();
 
@@ -118,8 +122,8 @@ public:
     ResourceLoadPriority loadPriority() const { return m_loadPriority; }
     void setLoadPriority(ResourceLoadPriority);
 
-    void addClient(CachedResourceClient*);
-    void removeClient(CachedResourceClient*);
+    WEBCORE_EXPORT void addClient(CachedResourceClient*);
+    WEBCORE_EXPORT void removeClient(CachedResourceClient*);
     bool hasClients() const { return !m_clients.isEmpty() || !m_clientsAwaitingCallback.isEmpty(); }
     bool hasClient(CachedResourceClient* client) { return m_clients.contains(client) || m_clientsAwaitingCallback.contains(client); }
     bool deleteIfPossible();
@@ -188,9 +192,9 @@ public:
     
     void clearLoader();
 
-    ResourceBuffer* resourceBuffer() const { ASSERT(!m_purgeableData); return m_data.get(); }
+    ResourceBuffer* resourceBuffer() const { return m_data.get(); }
 
-    virtual void willSendRequest(ResourceRequest&, const ResourceResponse&) { m_requestedFromNetworkingLayer = true; }
+    virtual void willSendRequest(ResourceRequest&, const ResourceResponse&);
     virtual void responseReceived(const ResourceResponse&);
     void setResponse(const ResourceResponse& response) { m_response = response; }
     const ResourceResponse& response() const { return m_response; }
@@ -222,22 +226,15 @@ public:
     void decreasePreloadCount() { ASSERT(m_preloadCount); --m_preloadCount; }
     
     void registerHandle(CachedResourceHandleBase* h);
-    void unregisterHandle(CachedResourceHandleBase* h);
+    WEBCORE_EXPORT void unregisterHandle(CachedResourceHandleBase* h);
     
     bool canUseCacheValidator() const;
 
     virtual bool mustRevalidateDueToCacheHeaders(CachePolicy) const;
+    bool redirectChainAllowsReuse() const;
 
     bool isCacheValidator() const { return m_resourceToRevalidate; }
     CachedResource* resourceToRevalidate() const { return m_resourceToRevalidate; }
-    
-    bool isPurgeable() const;
-    bool wasPurged() const;
-    
-    // This is used by the archive machinery to get at a purged resource without
-    // triggering a load. We should make it protected again if we can find a
-    // better way to handle the archive case.
-    bool makePurgeable(bool purgeable);
     
     // HTTP revalidation support methods for CachedResourceLoader.
     void setResourceToRevalidate(CachedResource*);
@@ -250,16 +247,10 @@ public:
     void setLoadFinishTime(double finishTime) { m_loadFinishTime = finishTime; }
     double loadFinishTime() const { return m_loadFinishTime; }
 
-#if ENABLE(DISK_IMAGE_CACHE)
-    bool isUsingDiskImageCache() const;
-    virtual bool canUseDiskImageCache() const { return false; }
-    virtual void useDiskImageCache() { ASSERT(canUseDiskImageCache()); }
-#endif
-
     virtual bool canReuse(const ResourceRequest&) const { return true; }
 
 #if USE(FOUNDATION)
-    void tryReplaceEncodedData(PassRefPtr<SharedBuffer>);
+    WEBCORE_EXPORT void tryReplaceEncodedData(PassRefPtr<SharedBuffer>);
 #endif
 
 #if USE(SOUP)
@@ -273,8 +264,6 @@ protected:
     void setDecodedSize(unsigned);
     void didAccessDecodedData(double timeStamp);
 
-    bool isSafeToMakePurgeable() const;
-    
     HashCountedSet<CachedResourceClient*> m_clients;
 
     class CachedResourceCallback {
@@ -302,7 +291,6 @@ protected:
     double m_responseTimestamp;
 
     RefPtr<ResourceBuffer> m_data;
-    OwnPtr<PurgeableBuffer> m_purgeableData;
     DeferrableOneShotTimer m_decodedDataDeletionTimer;
 
 private:
@@ -310,11 +298,9 @@ private:
 
     void decodedDataDeletionTimerFired();
 
-    virtual PurgePriority purgePriority() const { return PurgeDefault; }
     virtual bool mayTryReplaceEncodedData() const { return false; }
 
-    double currentAge() const;
-    double freshnessLifetime() const;
+    double freshnessLifetime(const ResourceResponse&) const;
 
     void addAdditionalRequestHeaders(CachedResourceLoader*);
     void failBeforeStarting();
@@ -369,6 +355,9 @@ private:
 
     // These handles will need to be updated to point to the m_resourceToRevalidate in case we get 304 response.
     HashSet<CachedResourceHandleBase*> m_handlesToRevalidate;
+
+    RedirectChainCacheStatus m_redirectChainCacheStatus;
+    double m_redirectChainEndOfValidity;
 };
 
 #define CACHED_RESOURCE_TYPE_CASTS(ToClassName, FromClassName, CachedResourceType) \

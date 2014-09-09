@@ -40,8 +40,8 @@ TextBreakIterator* cursorMovementIterator(StringView);
 TextBreakIterator* wordBreakIterator(StringView);
 TextBreakIterator* sentenceBreakIterator(StringView);
 
-TextBreakIterator* acquireLineBreakIterator(StringView, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength);
-void releaseLineBreakIterator(TextBreakIterator*);
+WEBCORE_EXPORT TextBreakIterator* acquireLineBreakIterator(StringView, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength);
+WEBCORE_EXPORT void releaseLineBreakIterator(TextBreakIterator*);
 
 int textBreakFirst(TextBreakIterator*);
 int textBreakLast(TextBreakIterator*);
@@ -49,7 +49,7 @@ int textBreakNext(TextBreakIterator*);
 int textBreakPrevious(TextBreakIterator*);
 int textBreakCurrent(TextBreakIterator*);
 int textBreakPreceding(TextBreakIterator*, int);
-int textBreakFollowing(TextBreakIterator*, int);
+WEBCORE_EXPORT int textBreakFollowing(TextBreakIterator*, int);
 bool isTextBreak(TextBreakIterator*, int);
 bool isWordTextBreak(TextBreakIterator*);
 
@@ -168,8 +168,8 @@ private:
 class NonSharedCharacterBreakIterator {
     WTF_MAKE_NONCOPYABLE(NonSharedCharacterBreakIterator);
 public:
-    NonSharedCharacterBreakIterator(StringView);
-    ~NonSharedCharacterBreakIterator();
+    WEBCORE_EXPORT NonSharedCharacterBreakIterator(StringView);
+    WEBCORE_EXPORT ~NonSharedCharacterBreakIterator();
 
     operator TextBreakIterator*() const { return m_iterator; }
 
@@ -183,7 +183,7 @@ private:
 unsigned numGraphemeClusters(const String&);
 // Returns the number of characters which will be less than or equal to
 // the specified grapheme cluster length.
-unsigned numCharactersInGraphemeClusters(const String&, unsigned);
+unsigned numCharactersInGraphemeClusters(const StringView&, unsigned);
 
 }
 

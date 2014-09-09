@@ -48,7 +48,7 @@ public:
     RenderView(Document&, PassRef<RenderStyle>);
     virtual ~RenderView();
 
-    bool hitTest(const HitTestRequest&, HitTestResult&);
+    WEBCORE_EXPORT bool hitTest(const HitTestRequest&, HitTestResult&);
     bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
 
     virtual const char* renderName() const override { return "RenderView"; }
@@ -185,14 +185,14 @@ public:
     // Notification that this view moved into or out of a native window.
     void setIsInWindow(bool);
 
-    RenderLayerCompositor& compositor();
-    bool usesCompositing() const;
+    WEBCORE_EXPORT RenderLayerCompositor& compositor();
+    WEBCORE_EXPORT bool usesCompositing() const;
 
-    IntRect unscaledDocumentRect() const;
+    WEBCORE_EXPORT IntRect unscaledDocumentRect() const;
     LayoutRect unextendedBackgroundRect(RenderBox* backgroundRenderer) const;
     LayoutRect backgroundRect(RenderBox* backgroundRenderer) const;
 
-    IntRect documentRect() const;
+    WEBCORE_EXPORT IntRect documentRect() const;
 
     // Renderer that paints the root background has background-images which all have background-attachment: fixed.
     bool rootBackgroundIsEntirelyFixed() const;
@@ -218,20 +218,16 @@ public:
     void removeRenderCounter() { ASSERT(m_renderCounterCount > 0); m_renderCounterCount--; }
     bool hasRenderCounters() { return m_renderCounterCount; }
     
-    IntRect pixelSnappedLayoutOverflowRect() const { return pixelSnappedIntRect(layoutOverflowRect()); }
-
     ImageQualityController& imageQualityController();
 
-#if ENABLE(CSS_FILTERS)
     void setHasSoftwareFilters(bool hasSoftwareFilters) { m_hasSoftwareFilters = hasSoftwareFilters; }
     bool hasSoftwareFilters() const { return m_hasSoftwareFilters; }
-#endif
 
     uint64_t rendererCount() const { return m_rendererCount; }
     void didCreateRenderer() { ++m_rendererCount; }
     void didDestroyRenderer() { --m_rendererCount; }
 
-    void resumePausedImageAnimationsIfNeeded();
+    WEBCORE_EXPORT void resumePausedImageAnimationsIfNeeded();
     void addRendererWithPausedImageAnimations(RenderElement&);
     void removeRendererWithPausedImageAnimations(RenderElement&);
 
@@ -303,6 +299,8 @@ private:
     friend class LayoutStateMaintainer;
     friend class LayoutStateDisabler;
 
+    virtual bool isScrollableOrRubberbandableBox() const override;
+
     void splitSelectionBetweenSubtrees(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode blockRepaintMode);
     void clearSubtreeSelection(const SelectionSubtreeRoot&, SelectionRepaintMode, OldSelectionData&);
     void updateSelectionForSubtrees(RenderSubtreesMap&, SelectionRepaintMode);
@@ -362,9 +360,7 @@ private:
     unsigned m_renderCounterCount;
 
     bool m_selectionWasCaret;
-#if ENABLE(CSS_FILTERS)
     bool m_hasSoftwareFilters;
-#endif
 
     HashSet<RenderElement*> m_renderersWithPausedImageAnimation;
 

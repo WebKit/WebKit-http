@@ -509,6 +509,7 @@ public:
 
     WKView* wkView() const;
     void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize);
+    CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const;
 #endif
 #endif // PLATFORM(COCOA)
 #if PLATFORM(EFL)
@@ -740,8 +741,6 @@ public:
 
     bool isValid() const;
 
-    PassRefPtr<API::Array> relatedPages() const;
-
     const String& urlAtProcessExit() const { return m_urlAtProcessExit; }
     FrameLoadState::State loadStateAtProcessExit() const { return m_loadStateAtProcessExit; }
 
@@ -911,6 +910,10 @@ public:
 
     bool isShowingNavigationGestureSnapshot() const { return m_isShowingNavigationGestureSnapshot; }
 
+#if PLATFORM(MAC)
+    void removeNavigationGestureSnapshot();
+#endif
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     void platformInitialize();
@@ -992,6 +995,11 @@ private:
     void shouldInterruptJavaScript(bool& result);
     void setStatusText(const String&);
     void mouseDidMoveOverElement(const WebHitTestResult::Data& hitTestResultData, uint32_t modifiers, IPC::MessageDecoder&);
+
+    void didBeginTrackingPotentialLongMousePress(const WebCore::IntPoint& mouseDownPosition, const WebHitTestResult::Data& hitTestResultData, IPC::MessageDecoder&);
+    void didRecognizeLongMousePress(IPC::MessageDecoder&);
+    void didCancelTrackingPotentialLongMousePress(IPC::MessageDecoder&);
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void unavailablePluginButtonClicked(uint32_t opaquePluginUnavailabilityReason, const String& mimeType, const String& pluginURLString, const String& pluginsPageURLString, const String& frameURLString, const String& pageURLString);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)

@@ -156,11 +156,11 @@ void InspectorFrontendHost::requestSetDockSide(const String& side)
     if (!m_client)
         return;
     if (side == "undocked")
-        m_client->requestSetDockSide(InspectorFrontendClient::UNDOCKED);
+        m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Undocked);
     else if (side == "right")
-        m_client->requestSetDockSide(InspectorFrontendClient::DOCKED_TO_RIGHT);
+        m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Right);
     else if (side == "bottom")
-        m_client->requestSetDockSide(InspectorFrontendClient::DOCKED_TO_BOTTOM);
+        m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Bottom);
 }
 
 void InspectorFrontendHost::closeWindow()
@@ -300,6 +300,12 @@ void InspectorFrontendHost::dispatchEventAsContextMenuEvent(Event* event)
 bool InspectorFrontendHost::isUnderTest()
 {
     return m_client && m_client->isUnderTest();
+}
+
+void InspectorFrontendHost::unbufferedLog(const String& message)
+{
+    // This is used only for debugging inspector tests.
+    WTFLogAlways("InspectorTest: %s", message.utf8().data());
 }
 
 void InspectorFrontendHost::beep()

@@ -78,8 +78,11 @@ void ResourceRequest::doUpdateResourceRequest()
         m_httpMethod = method;
     m_allowCookies = [m_nsRequest.get() HTTPShouldHandleCookies];
 
-    if (ResourceRequest::resourcePrioritiesEnabled())
-        m_priority = toResourceLoadPriority(wkGetHTTPRequestPriority([m_nsRequest.get() _CFURLRequest]));
+    if (resourcePrioritiesEnabled()) {
+        auto priority = toResourceLoadPriority(wkGetHTTPRequestPriority([m_nsRequest.get() _CFURLRequest]));
+        if (priority > ResourceLoadPriorityUnresolved)
+            m_priority = priority;
+    }
 
     NSDictionary *headers = [m_nsRequest.get() allHTTPHeaderFields];
     NSEnumerator *e = [headers keyEnumerator];
@@ -216,6 +219,7 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
 
 void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest)
 {
+    ResourceLoadPriority oldPriority = priority();
     RefPtr<FormData> oldHTTPBody = httpBody();
 #if ENABLE(INSPECTOR)
     bool isHiddenFromInspector = hiddenFromInspector();
@@ -223,6 +227,7 @@ void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRe
 
     *this = delegateProvidedRequest;
 
+    setPriority(oldPriority);
     setHTTPBody(oldHTTPBody.release());
 #if ENABLE(INSPECTOR)
     setHiddenFromInspector(isHiddenFromInspector);

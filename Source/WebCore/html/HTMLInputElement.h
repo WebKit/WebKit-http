@@ -70,7 +70,7 @@ public:
 
     virtual HTMLInputElement* toInputElement() override { return this; }
 
-    virtual bool shouldAutocomplete() const override;
+    WEBCORE_EXPORT virtual bool shouldAutocomplete() const override;
 
     // For ValidityState
     virtual bool hasBadInput() const override;
@@ -108,10 +108,10 @@ public:
     bool isTextButton() const;
 
     bool isRadioButton() const;
-    bool isTextField() const;
-    bool isSearchField() const;
+    WEBCORE_EXPORT bool isTextField() const;
+    WEBCORE_EXPORT bool isSearchField() const;
     bool isInputTypeHidden() const;
-    bool isPasswordField() const;
+    WEBCORE_EXPORT bool isPasswordField() const;
     bool isCheckbox() const;
     bool isRangeControl() const;
 
@@ -123,25 +123,21 @@ public:
     // be using a different one. Many input elements behave like text fields, and in addition
     // any unknown input type is treated as text. Consider, for example, isTextField or
     // isTextField && !isPasswordField.
-    bool isText() const;
+    WEBCORE_EXPORT bool isText() const;
 
-    bool isEmailField() const;
+    WEBCORE_EXPORT bool isEmailField() const;
     bool isFileUpload() const;
     bool isImageButton() const;
-    bool isNumberField() const;
+    WEBCORE_EXPORT bool isNumberField() const;
     bool isSubmitButton() const;
-    bool isTelephoneField() const;
-    bool isURLField() const;
-    bool isDateField() const;
-    bool isDateTimeField() const;
-    bool isDateTimeLocalField() const;
-    bool isMonthField() const;
-    bool isTimeField() const;
-    bool isWeekField() const;
-
-#if ENABLE(INPUT_SPEECH)
-    bool isSpeechEnabled() const;
-#endif
+    WEBCORE_EXPORT bool isTelephoneField() const;
+    WEBCORE_EXPORT bool isURLField() const;
+    WEBCORE_EXPORT bool isDateField() const;
+    WEBCORE_EXPORT bool isDateTimeField() const;
+    WEBCORE_EXPORT bool isDateTimeLocalField() const;
+    WEBCORE_EXPORT bool isMonthField() const;
+    WEBCORE_EXPORT bool isTimeField() const;
+    WEBCORE_EXPORT bool isWeekField() const;
 
 #if PLATFORM(IOS)
     DateComponents::Type dateType() const;
@@ -153,9 +149,6 @@ public:
     HTMLElement* innerSpinButtonElement() const;
     HTMLElement* resultsButtonElement() const;
     HTMLElement* cancelButtonElement() const;
-#if ENABLE(INPUT_SPEECH)
-    HTMLElement* speechButtonElement() const;
-#endif
     HTMLElement* sliderThumbElement() const;
     HTMLElement* sliderTrackElement() const;
     virtual HTMLElement* placeholderElement() const override;
@@ -178,8 +171,8 @@ public:
 
     virtual String value() const override;
     void setValue(const String&, ExceptionCode&, TextFieldEventBehavior = DispatchNoEvent);
-    void setValue(const String&, TextFieldEventBehavior = DispatchNoEvent);
-    void setValueForUser(const String&);
+    WEBCORE_EXPORT void setValue(const String&, TextFieldEventBehavior = DispatchNoEvent);
+    WEBCORE_EXPORT void setValueForUser(const String&);
     // Checks if the specified string would be a valid value.
     // We should not call this for types with no string value such as CHECKBOX and RADIO.
     bool isValidValue(const String&) const;
@@ -192,16 +185,13 @@ public:
     // The value which is drawn by a renderer.
     String visibleValue() const;
 
-    const String& suggestedValue() const;
-    void setSuggestedValue(const String&);
-
-    void setEditingValue(const String&);
+    WEBCORE_EXPORT void setEditingValue(const String&);
 
     double valueAsDate() const;
     void setValueAsDate(double, ExceptionCode&);
 
-    double valueAsNumber() const;
-    void setValueAsNumber(double, ExceptionCode&, TextFieldEventBehavior = DispatchNoEvent);
+    WEBCORE_EXPORT double valueAsNumber() const;
+    WEBCORE_EXPORT void setValueAsNumber(double, ExceptionCode&, TextFieldEventBehavior = DispatchNoEvent);
 
     String valueWithDefault() const;
 
@@ -247,7 +237,7 @@ public:
     bool multiple() const;
 
     bool isAutofilled() const { return m_isAutofilled; }
-    void setAutofilled(bool = true);
+    WEBCORE_EXPORT void setAutofilled(bool = true);
 
     FileList* files();
     void setFiles(PassRefPtr<FileList>);
@@ -293,7 +283,7 @@ public:
 
 #if ENABLE(INPUT_TYPE_COLOR)
     // For test purposes.
-    void selectColorInColorChooser(const Color&);
+    WEBCORE_EXPORT void selectColorInColorChooser(const Color&);
 #endif
 
     String defaultToolTip() const;
@@ -318,7 +308,6 @@ public:
 
     static Vector<FileChooserFileInfo> filesFromFileInputFormControlState(const FormControlState&);
 
-    virtual bool matchesReadOnlyPseudoClass() const override;
     virtual bool matchesReadWritePseudoClass() const override;
     virtual void setRangeText(const String& replacement, ExceptionCode&) override;
     virtual void setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode&) override;
@@ -403,7 +392,6 @@ private:
     virtual bool supportsPlaceholder() const override;
     virtual void updatePlaceholderText() override;
     virtual bool isEmptyValue() const override { return innerTextValue().isEmpty(); }
-    virtual bool isEmptySuggestedValue() const override { return suggestedValue().isEmpty(); }
     virtual void handleFocusEvent(Node* oldFocusedNode, FocusDirection) override;
     virtual void handleBlurEvent() override;
 
@@ -429,7 +417,6 @@ private:
 
     AtomicString m_name;
     String m_valueIfDirty;
-    String m_suggestedValue;
     int m_size;
     int m_maxLength;
     short m_maxResults;

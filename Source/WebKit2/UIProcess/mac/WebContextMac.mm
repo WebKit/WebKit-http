@@ -284,24 +284,24 @@ String WebContext::platformDefaultCookieStorageDirectory() const
 #endif
 }
 
-String WebContext::platformDefaultOpenGLCacheDirectory() const
-{
 #if PLATFORM(IOS)
+String WebContext::openGLCacheDirectory() const
+{
     String path = pathForProcessContainer();
     if (path.isEmpty())
         path = NSHomeDirectory();
 
     path = path + "/Library/Caches/com.apple.WebKit.WebContent/com.apple.opengl/";
     return stringByResolvingSymlinksInPath(path);
-#else
-    notImplemented();
-    return [@"" stringByStandardizingPath];
-#endif
 }
 
-String WebContext::platformDefaultNetworkingHSTSDatabasePath() const
+String WebContext::parentBundleDirectory() const
 {
-#if PLATFORM(IOS)
+    return [[[NSBundle mainBundle] bundlePath] stringByStandardizingPath];
+}
+
+String WebContext::networkingHSTSDatabasePath() const
+{
     String path = pathForProcessContainer();
     if (path.isEmpty())
         path = NSHomeDirectory();
@@ -317,24 +317,33 @@ String WebContext::platformDefaultNetworkingHSTSDatabasePath() const
     }
 
     return path + "/HSTS.plist";
-#else
-    notImplemented();
-    return [@"" stringByStandardizingPath];
-#endif
 }
 
-#if PLATFORM(IOS)
-String WebContext::parentBundleDirectory() const
+String WebContext::webContentHSTSDatabasePath() const
 {
-    return [[[NSBundle mainBundle] bundlePath] stringByStandardizingPath];
+    String path = pathForProcessContainer();
+    if (path.isEmpty())
+        path = NSHomeDirectory();
+
+    path = path + "/Library/Caches/com.apple.WebKit.WebContent/";
+    path = stringByResolvingSymlinksInPath(path);
+
+    NSError *error = nil;
+    NSString* nsPath = path;
+    if (![[NSFileManager defaultManager] createDirectoryAtPath:nsPath withIntermediateDirectories:YES attributes:nil error:&error]) {
+        NSLog(@"could not create \"%@\", error %@", nsPath, error);
+        return String();
+    }
+
+    return path + "/HSTS.plist";
 }
-#endif
 
 String WebContext::containerTemporaryDirectory() const
 {
     String path = NSTemporaryDirectory();
     return stringByResolvingSymlinksInPath(path);
 }
+#endif
 
 String WebContext::platformDefaultWebSQLDatabaseDirectory()
 {

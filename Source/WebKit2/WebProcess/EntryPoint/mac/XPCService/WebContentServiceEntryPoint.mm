@@ -52,5 +52,5 @@ void WebContentServiceInitializer(xpc_connection_t connection, xpc_object_t init
     InitWebCoreThreadSystemInterface();
 #endif // PLATFORM(IOS)
 
-    XPCServiceInitializer<WebProcess, XPCServiceInitializerDelegate>(IPC::adoptXPC(connection), initializerMessage);
+    XPCServiceInitializer<WebProcess, XPCServiceInitializerDelegate>(adoptOSObject(connection), initializerMessage);
 }

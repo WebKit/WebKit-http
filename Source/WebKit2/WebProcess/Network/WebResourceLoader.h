@@ -80,7 +80,7 @@ private:
 
     void willSendRequest(const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse);
     void didSendData(uint64_t bytesSent, uint64_t totalBytesToBeSent);
-    void didReceiveResponseWithCertificateInfo(const WebCore::ResourceResponse&, const WebCore::CertificateInfo&, bool needsContinueDidReceiveResponseMessage);
+    void didReceiveResponse(const WebCore::ResourceResponse&, bool needsContinueDidReceiveResponseMessage);
     void didReceiveData(const IPC::DataReference&, int64_t encodedDataLength);
     void didFinishResourceLoad(double finishTime);
     void didFailResourceLoad(const WebCore::ResourceError&);
@@ -90,10 +90,6 @@ private:
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void canAuthenticateAgainstProtectionSpace(const WebCore::ProtectionSpace&);
-#endif
-
-#if USE(QUICK_LOOK)
-    std::unique_ptr<WebCore::QuickLookHandle> m_quickLookHandle;
 #endif
 
     RefPtr<WebCore::ResourceLoader> m_coreLoader;

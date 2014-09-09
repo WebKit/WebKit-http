@@ -472,7 +472,7 @@ void DocumentLoader::handleSubstituteDataLoadNow(DocumentLoaderTimer*)
     URL url = m_substituteData.responseURL();
     if (url.isEmpty())
         url = m_request.url();
-    ResourceResponse response(url, m_substituteData.mimeType(), m_substituteData.content()->size(), m_substituteData.textEncoding(), "");
+    ResourceResponse response(url, m_substituteData.mimeType(), m_substituteData.content()->size(), m_substituteData.textEncoding());
     responseReceived(0, response);
 }
 
@@ -663,7 +663,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-    if (response.url().protocolIsInHTTPFamily() && ContentFilter::isEnabled())
+    if (ContentFilter::canHandleResponse(response))
         m_contentFilter = std::make_unique<ContentFilter>(response);
 #endif
 
@@ -1093,11 +1093,6 @@ PassRefPtr<ArchiveResource> DocumentLoader::subresource(const URL& url) const
     if (resource->type() == CachedResource::MainResource)
         return 0;
 
-    // FIXME: This has the side effect of making the resource non-purgeable.
-    // It would be better if it didn't have this permanent effect.
-    if (!resource->makePurgeable(false))
-        return 0;
-
     ResourceBuffer* data = resource->resourceBuffer();
     if (!data)
         return 0;
@@ -1390,7 +1385,7 @@ bool DocumentLoader::maybeLoadEmpty()
     if (m_request.url().isEmpty() && !frameLoader()->stateMachine().creatingInitialEmptyDocument())
         m_request.setURL(blankURL());
     String mimeType = shouldLoadEmpty ? "text/html" : frameLoader()->client().generatedMIMETypeForURLScheme(m_request.url().protocol());
-    m_response = ResourceResponse(m_request.url(), mimeType, 0, String(), String());
+    m_response = ResourceResponse(m_request.url(), mimeType, 0, String());
     finishedLoading(monotonicallyIncreasingTime());
     return true;
 }

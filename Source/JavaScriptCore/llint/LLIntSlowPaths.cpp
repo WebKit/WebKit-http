@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "LLIntSlowPaths.h"
+
 #include "Arguments.h"
 #include "ArrayConstructor.h"
 #include "CallFrame.h"
@@ -34,23 +35,22 @@
 #include "ExceptionFuzz.h"
 #include "GetterSetter.h"
 #include "HostCallReturnValue.h"
-#include "HighFidelityLog.h"
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JSActivation.h"
+#include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSNameScope.h"
-#include "JSPropertyNameIterator.h"
 #include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
 #include "LLIntCommon.h"
 #include "LLIntExceptions.h"
+#include "LegacyProfiler.h"
 #include "LowLevelInterpreter.h"
 #include "ObjectConstructor.h"
-#include "JSCInlines.h"
 #include "ProtoCallFrame.h"
 #include "StructureRareDataInlines.h"
 #include <wtf/StringPrintStream.h>
@@ -541,15 +541,6 @@ LLINT_SLOW_PATH_DECL(slow_path_new_regexp)
     LLINT_RETURN(RegExpObject::create(vm, exec->lexicalGlobalObject()->regExpStructure(), regExp));
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_profile_types_with_high_fidelity)
-{
-    LLINT_BEGIN();
-    TypeLocation* location = pc[2].u.location;
-    JSValue val = LLINT_OP_C(1).jsValue();
-    vm.highFidelityLog()->recordTypeInformationForLocation(val, location);
-    LLINT_END_IMPL();
-}
-
 LLINT_SLOW_PATH_DECL(slow_path_check_has_instance)
 {
     LLINT_BEGIN();
@@ -701,6 +692,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
                     }
                 }
             } else {
+                structure->didCachePropertyReplacement(vm, slot.cachedOffset());
                 pc[4].u.structure.set(
                     vm, codeBlock->ownerExecutable(), structure);
                 if (isInlineOffset(slot.cachedOffset())) {
@@ -735,8 +727,10 @@ inline JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript)
         VM& vm = exec->vm();
         Structure& structure = *baseValue.asCell()->structure(vm);
         if (JSCell::canUseFastGetOwnProperty(structure)) {
-            if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, asString(subscript)->value(exec)))
-                return result;
+            if (AtomicStringImpl* existingAtomicString = asString(subscript)->toExistingAtomicString(exec)) {
+                if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, existingAtomicString))
+                    return result;
+            }
         }
     }
     
@@ -775,12 +769,6 @@ LLINT_SLOW_PATH_DECL(slow_path_get_argument_by_val)
     LLINT_RETURN_PROFILED(op_get_argument_by_val, getByVal(exec, arguments, LLINT_OP_C(3).jsValue()));
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_get_by_pname)
-{
-    LLINT_BEGIN();
-    LLINT_RETURN(getByVal(exec, LLINT_OP_C(2).jsValue(), LLINT_OP_C(3).jsValue()));
-}
-
 LLINT_SLOW_PATH_DECL(slow_path_put_by_val)
 {
     LLINT_BEGIN();
@@ -809,7 +797,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val)
         LLINT_END();
     }
 
-    Identifier property(exec, subscript.toString(exec)->value(exec));
+    Identifier property = subscript.toString(exec)->toIdentifier(exec);
     LLINT_CHECK_EXCEPTION();
     PutPropertySlot slot(baseValue, exec->codeBlock()->isStrictMode());
     baseValue.put(exec, property, value, slot);
@@ -832,7 +820,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val_direct)
         PutPropertySlot slot(baseObject, exec->codeBlock()->isStrictMode());
         baseObject->putDirect(exec->vm(), jsCast<NameInstance*>(subscript.asCell())->privateName(), value, slot);
     } else {
-        Identifier property(exec, subscript.toString(exec)->value(exec));
+        Identifier property = subscript.toString(exec)->toIdentifier(exec);
         if (!exec->vm().exception()) { // Don't put to an object if toString threw an exception.
             PutPropertySlot slot(baseObject, exec->codeBlock()->isStrictMode());
             baseObject->putDirect(exec->vm(), property, value, slot);
@@ -858,7 +846,7 @@ LLINT_SLOW_PATH_DECL(slow_path_del_by_val)
         couldDelete = baseObject->methodTable()->deleteProperty(baseObject, exec, jsCast<NameInstance*>(subscript.asCell())->privateName());
     else {
         LLINT_CHECK_EXCEPTION();
-        Identifier property(exec, subscript.toString(exec)->value(exec));
+        Identifier property = subscript.toString(exec)->toIdentifier(exec);
         LLINT_CHECK_EXCEPTION();
         couldDelete = baseObject->methodTable()->deleteProperty(baseObject, exec, property);
     }
@@ -1289,42 +1277,6 @@ LLINT_SLOW_PATH_DECL(slow_path_to_primitive)
     LLINT_RETURN(LLINT_OP_C(2).jsValue().toPrimitive(exec));
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_get_pnames)
-{
-    LLINT_BEGIN();
-    JSValue v = LLINT_OP(2).jsValue();
-    if (v.isUndefinedOrNull()) {
-        pc += pc[5].u.operand;
-        LLINT_END();
-    }
-    
-    JSObject* o = v.toObject(exec);
-    Structure* structure = o->structure();
-    JSPropertyNameIterator* jsPropertyNameIterator = structure->enumerationCache();
-    if (!jsPropertyNameIterator || jsPropertyNameIterator->cachedPrototypeChain() != structure->prototypeChain(exec))
-        jsPropertyNameIterator = JSPropertyNameIterator::create(exec, o);
-    
-    LLINT_OP(1) = JSValue(jsPropertyNameIterator);
-    LLINT_OP(2) = JSValue(o);
-    LLINT_OP(3) = Register::withInt(0);
-    LLINT_OP(4) = Register::withInt(jsPropertyNameIterator->size());
-    
-    pc += OPCODE_LENGTH(op_get_pnames);
-    LLINT_END();
-}
-
-LLINT_SLOW_PATH_DECL(slow_path_next_pname)
-{
-    LLINT_BEGIN();
-    JSObject* base = asObject(LLINT_OP(2).jsValue());
-    JSString* property = asString(LLINT_OP(1).jsValue());
-    if (base->hasProperty(exec, Identifier(exec, property->value(exec)))) {
-        // Go to target.
-        pc += pc[6].u.operand;
-    } // Else, don't change the PC, so the interpreter will reloop.
-    LLINT_END();
-}
-
 LLINT_SLOW_PATH_DECL(slow_path_push_with_scope)
 {
     LLINT_BEGIN();
@@ -1420,6 +1372,7 @@ LLINT_SLOW_PATH_DECL(slow_path_resolve_scope)
 LLINT_SLOW_PATH_DECL(slow_path_get_from_scope)
 {
     LLINT_BEGIN();
+
     const Identifier& ident = exec->codeBlock()->identifier(pc[3].u.operand);
     JSObject* scope = jsCast<JSObject*>(LLINT_OP(2).jsValue());
     ResolveModeAndType modeAndType(pc[4].u.operand);
@@ -1435,17 +1388,23 @@ LLINT_SLOW_PATH_DECL(slow_path_get_from_scope)
     if (slot.isCacheableValue() && slot.slotBase() == scope && scope->structure()->propertyAccessesAreCacheable()) {
         if (modeAndType.type() == GlobalProperty || modeAndType.type() == GlobalPropertyWithVarInjectionChecks) {
             CodeBlock* codeBlock = exec->codeBlock();
-            ConcurrentJITLocker locker(codeBlock->m_lock);
-            pc[5].u.structure.set(exec->vm(), codeBlock->ownerExecutable(), scope->structure());
-            pc[6].u.operand = slot.cachedOffset();
+            Structure* structure = scope->structure(vm);
+            {
+                ConcurrentJITLocker locker(codeBlock->m_lock);
+                pc[5].u.structure.set(exec->vm(), codeBlock->ownerExecutable(), structure);
+                pc[6].u.operand = slot.cachedOffset();
+            }
+            structure->startWatchingPropertyForReplacements(vm, slot.cachedOffset());
         }
     }
 
     LLINT_RETURN(slot.getValue(exec, ident));
 }
 
-static JSObject* putToScopeCommon(ExecState* exec, Instruction* pc, VM&)
+LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
 {
+    LLINT_BEGIN();
+
     CodeBlock* codeBlock = exec->codeBlock();
     const Identifier& ident = codeBlock->identifier(pc[2].u.operand);
     JSObject* scope = jsCast<JSObject*>(LLINT_OP(1).jsValue());
@@ -1453,42 +1412,13 @@ static JSObject* putToScopeCommon(ExecState* exec, Instruction* pc, VM&)
     ResolveModeAndType modeAndType = ResolveModeAndType(pc[4].u.operand);
 
     if (modeAndType.mode() == ThrowIfNotFound && !scope->hasProperty(exec, ident))
-        return createUndefinedVariableError(exec, ident);
+        LLINT_THROW(createUndefinedVariableError(exec, ident));
 
     PutPropertySlot slot(scope, codeBlock->isStrictMode());
     scope->methodTable()->put(scope, exec, ident, value, slot);
+    
+    CommonSlowPaths::tryCachePutToScopeGlobal(exec, codeBlock, pc, scope, modeAndType, slot);
 
-    // Covers implicit globals. Since they don't exist until they first execute, we didn't know how to cache them at compile time.
-    if (modeAndType.type() == GlobalProperty || modeAndType.type() == GlobalPropertyWithVarInjectionChecks) {
-        if (slot.isCacheablePut() && slot.base() == scope && scope->structure()->propertyAccessesAreCacheable()) {
-            ConcurrentJITLocker locker(codeBlock->m_lock);
-            pc[5].u.structure.set(exec->vm(), codeBlock->ownerExecutable(), scope->structure());
-            pc[6].u.operand = slot.cachedOffset();
-        }
-    }
-
-    return nullptr;
-}
-
-LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
-{
-    LLINT_BEGIN();
-    JSObject* error = putToScopeCommon(exec, pc, vm);
-    if (error)
-        LLINT_THROW(error);
-    LLINT_END();
-}
-
-LLINT_SLOW_PATH_DECL(slow_path_put_to_scope_with_profile)
-{
-    // The format of this instruction is the same as put_to_scope with a TypeLocation appended: put_to_scope_with_profile scope, id, value, ResolveModeAndType, Structure, Operand, TypeLocation*
-    LLINT_BEGIN();
-    JSObject* error = putToScopeCommon(exec, pc, vm);
-    if (error)
-        LLINT_THROW(error);
-    TypeLocation* location = pc[7].u.location;
-    JSValue val = LLINT_OP_C(3).jsValue();
-    vm.highFidelityLog()->recordTypeInformationForLocation(val, location);
     LLINT_END();
 }
 

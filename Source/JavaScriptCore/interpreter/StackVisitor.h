@@ -26,6 +26,7 @@
 #ifndef StackVisitor_h
 #define StackVisitor_h
 
+#include "VMEntryRecord.h"
 #include <wtf/text/WTFString.h>
 
 namespace JSC {
@@ -56,6 +57,7 @@ public:
 
         size_t index() const { return m_index; }
         size_t argumentCountIncludingThis() const { return m_argumentCountIncludingThis; }
+        bool callerIsVMEntryFrame() const { return m_callerIsVMEntryFrame; }
         CallFrame* callerFrame() const { return m_callerFrame; }
         JSObject* callee() const { return m_callee; }
         JSScope* scope() const { return m_scope; }
@@ -79,6 +81,7 @@ public:
 
         Arguments* createArguments();
         Arguments* existingArguments();
+        VMEntryFrame* vmEntryFrame() const { return m_VMEntryFrame; }
         CallFrame* callFrame() const { return m_callFrame; }
         
 #ifndef NDEBUG
@@ -94,11 +97,14 @@ public:
 
         size_t m_index;
         size_t m_argumentCountIncludingThis;
+        VMEntryFrame* m_VMEntryFrame;
+        VMEntryFrame* m_CallerVMEntryFrame;
         CallFrame* m_callerFrame;
         JSObject* m_callee;
         JSScope* m_scope;
         CodeBlock* m_codeBlock;
         unsigned m_bytecodeOffset;
+        bool m_callerIsVMEntryFrame;
 #if ENABLE(DFG_JIT)
         InlineCallFrame* m_inlineCallFrame;
 #endif

@@ -45,7 +45,7 @@
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
 
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 #include "Document.h"
 #include "Page.h"
 #include "TouchEvent.h"
@@ -197,7 +197,7 @@ void RenderSliderContainer::layout()
 SliderThumbElement::SliderThumbElement(Document& document)
     : HTMLDivElement(HTMLNames::divTag, document)
     , m_inDragMode(false)
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
     , m_exclusiveTouchIdentifier(NoIdentifier)
     , m_isRegisteredAsTouchEventListener(false)
 #endif
@@ -223,12 +223,6 @@ bool SliderThumbElement::isDisabledFormControl() const
 {
     HTMLInputElement* input = hostInput();
     return !input || input->isDisabledFormControl();
-}
-
-bool SliderThumbElement::matchesReadOnlyPseudoClass() const
-{
-    HTMLInputElement* input = hostInput();
-    return input && input->matchesReadOnlyPseudoClass();
 }
 
 bool SliderThumbElement::matchesReadWritePseudoClass() const
@@ -268,7 +262,7 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& absolutePoint)
     bool isVertical = hasVerticalAppearance(input.get());
     bool isLeftToRightDirection = renderBox()->style().isLeftToRightDirection();
     
-    LayoutPoint offset = roundedLayoutPoint(inputRenderer.absoluteToLocal(absolutePoint, UseTransforms));
+    LayoutPoint offset(inputRenderer.absoluteToLocal(absolutePoint, UseTransforms));
     FloatRect trackBoundingBox = trackRenderer.localToContainerQuad(FloatRect(0, 0, trackRenderer.width(), trackRenderer.height()), &inputRenderer).enclosingBoundingBox();
 
     LayoutUnit trackLength;
@@ -402,12 +396,12 @@ void SliderThumbElement::willDetachRenderers()
         if (Frame* frame = document().frame())
             frame->eventHandler().setCapturingMouseEventsElement(nullptr);
     }
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
     unregisterForTouchEvents();
 #endif
 }
 
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#if ENABLE(IOS_TOUCH_EVENTS)
 unsigned SliderThumbElement::exclusiveTouchIdentifier() const
 {
     return m_exclusiveTouchIdentifier;
@@ -555,7 +549,7 @@ void SliderThumbElement::disabledAttributeChanged()
     else
         unregisterForTouchEvents();
 }
-#endif // ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+#endif // ENABLE(IOS_TOUCH_EVENTS)
 
 HTMLInputElement* SliderThumbElement::hostInput() const
 {

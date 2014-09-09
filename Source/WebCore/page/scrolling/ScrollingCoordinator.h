@@ -43,6 +43,10 @@
 #include <wtf/RetainPtr.h>
 #endif
 
+#if ENABLE(CSS_SCROLL_SNAP)
+#include "AxisScrollSnapOffsets.h"
+#endif
+
 namespace WebCore {
 
 typedef unsigned SynchronousScrollingReasons;
@@ -104,7 +108,7 @@ public:
     static PassRefPtr<ScrollingCoordinator> create(Page*);
     virtual ~ScrollingCoordinator();
 
-    virtual void pageDestroyed();
+    WEBCORE_EXPORT virtual void pageDestroyed();
     
     virtual bool isAsyncScrollingCoordinator() const { return false; }
     virtual bool isRemoteScrollingCoordinator() const { return false; }
@@ -146,7 +150,7 @@ public:
 #endif
 
     // Force all scroll layer position updates to happen on the main thread.
-    void setForceSynchronousScrollLayerPositionUpdates(bool);
+    WEBCORE_EXPORT void setForceSynchronousScrollLayerPositionUpdates(bool);
 
     // These virtual functions are currently unique to the threaded scrolling architecture. 
     // Their meaningful implementations are in ScrollingCoordinatorMac.
@@ -164,6 +168,10 @@ public:
         FloatSize reachableContentSize; // Smaller than contentSize when overflow is hidden on one axis.
         FloatPoint scrollPosition;
         IntPoint scrollOrigin;
+#if ENABLE(CSS_SCROLL_SNAP)
+        Vector<LayoutUnit> horizontalSnapOffsets;
+        Vector<LayoutUnit> verticalSnapOffsets;
+#endif
     };
 
     virtual void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/, GraphicsLayer* /*insetClipLayer*/, const ScrollingGeometry* = nullptr) { }

@@ -137,7 +137,7 @@ char* newTypedArrayWithSize(ExecState* exec, Structure* structure, int32_t size)
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
     if (size < 0) {
-        vm.throwException(exec, createRangeError(exec, "Requested length is negative"));
+        vm.throwException(exec, createRangeError(exec, ASCIILiteral("Requested length is negative")));
         return 0;
     }
     return bitwise_cast<char*>(ViewClass::create(exec, structure, size));
@@ -156,7 +156,7 @@ char* newTypedArrayWithOneArgument(
         RefPtr<ArrayBuffer> buffer = jsBuffer->impl();
         
         if (buffer->byteLength() % ViewClass::elementSize) {
-            vm.throwException(exec, createRangeError(exec, "ArrayBuffer length minus the byteOffset is not a multiple of the element size"));
+            vm.throwException(exec, createRangeError(exec, ASCIILiteral("ArrayBuffer length minus the byteOffset is not a multiple of the element size")));
             return 0;
         }
         return bitwise_cast<char*>(
@@ -183,18 +183,18 @@ char* newTypedArrayWithOneArgument(
     if (value.isInt32())
         length = value.asInt32();
     else if (!value.isNumber()) {
-        vm.throwException(exec, createTypeError(exec, "Invalid array length argument"));
+        vm.throwException(exec, createTypeError(exec, ASCIILiteral("Invalid array length argument")));
         return 0;
     } else {
         length = static_cast<int>(value.asNumber());
         if (length != value.asNumber()) {
-            vm.throwException(exec, createTypeError(exec, "Invalid array length argument (fractional lengths not allowed)"));
+            vm.throwException(exec, createTypeError(exec, ASCIILiteral("Invalid array length argument (fractional lengths not allowed)")));
             return 0;
         }
     }
     
     if (length < 0) {
-        vm.throwException(exec, createRangeError(exec, "Requested length is negative"));
+        vm.throwException(exec, createRangeError(exec, ASCIILiteral("Requested length is negative")));
         return 0;
     }
     
@@ -297,8 +297,10 @@ EncodedJSValue JIT_OPERATION operationGetByVal(ExecState* exec, EncodedJSValue e
         } else if (property.isString()) {
             Structure& structure = *base->structure(vm);
             if (JSCell::canUseFastGetOwnProperty(structure)) {
-                if (JSValue result = base->fastGetOwnProperty(vm, structure, asString(property)->value(exec)))
-                    return JSValue::encode(result);
+                if (AtomicStringImpl* existingAtomicString = asString(property)->toExistingAtomicString(exec)) {
+                    if (JSValue result = base->fastGetOwnProperty(vm, structure, existingAtomicString))
+                        return JSValue::encode(result);
+                }
             }
         }
     }
@@ -327,8 +329,10 @@ EncodedJSValue JIT_OPERATION operationGetByValCell(ExecState* exec, JSCell* base
     } else if (property.isString()) {
         Structure& structure = *base->structure(vm);
         if (JSCell::canUseFastGetOwnProperty(structure)) {
-            if (JSValue result = base->fastGetOwnProperty(vm, structure, asString(property)->value(exec)))
-                return JSValue::encode(result);
+            if (AtomicStringImpl* existingAtomicString = asString(property)->toExistingAtomicString(exec)) {
+                if (JSValue result = base->fastGetOwnProperty(vm, structure, existingAtomicString))
+                    return JSValue::encode(result);
+            }
         }
     }
 
@@ -1030,7 +1034,7 @@ void JIT_OPERATION operationNotifyWrite(ExecState* exec, VariableWatchpointSet* 
     NativeCallFrameTracer tracer(&vm, exec);
     JSValue value = JSValue::decode(encodedValue);
 
-    set->notifyWrite(vm, value);
+    set->notifyWrite(vm, value, "Executed NotifyWrite");
 }
 
 double JIT_OPERATION operationFModOnInts(int32_t a, int32_t b)
@@ -1105,7 +1109,7 @@ void JIT_OPERATION debugOperationPrintSpeculationFailure(ExecState* exec, void* 
     dataLog("\n");
 }
 
-extern "C" void JIT_OPERATION triggerReoptimizationNow(CodeBlock* codeBlock)
+extern "C" void JIT_OPERATION triggerReoptimizationNow(CodeBlock* codeBlock, OSRExitBase* exit)
 {
     // It's sort of preferable that we don't GC while in here. Anyways, doing so wouldn't
     // really be profitable.
@@ -1129,13 +1133,21 @@ extern "C" void JIT_OPERATION triggerReoptimizationNow(CodeBlock* codeBlock)
     ASSERT(codeBlock->hasOptimizedReplacement());
     CodeBlock* optimizedCodeBlock = codeBlock->replacement();
     ASSERT(JITCode::isOptimizingJIT(optimizedCodeBlock->jitType()));
+    
+    bool didTryToEnterIntoInlinedLoops = false;
+    for (InlineCallFrame* inlineCallFrame = exit->m_codeOrigin.inlineCallFrame; inlineCallFrame; inlineCallFrame = inlineCallFrame->caller.inlineCallFrame) {
+        if (inlineCallFrame->executable->didTryToEnterInLoop()) {
+            didTryToEnterIntoInlinedLoops = true;
+            break;
+        }
+    }
 
     // In order to trigger reoptimization, one of two things must have happened:
     // 1) We exited more than some number of times.
     // 2) We exited and got stuck in a loop, and now we're exiting again.
     bool didExitABunch = optimizedCodeBlock->shouldReoptimizeNow();
     bool didGetStuckInLoop =
-        codeBlock->checkIfOptimizationThresholdReached()
+        (codeBlock->checkIfOptimizationThresholdReached() || didTryToEnterIntoInlinedLoops)
         && optimizedCodeBlock->shouldReoptimizeFromLoopNow();
     
     if (!didExitABunch && !didGetStuckInLoop) {
@@ -1228,7 +1240,7 @@ char* JIT_OPERATION triggerOSREntryNow(
     
     if (Options::verboseOSR()) {
         dataLog(
-            *codeBlock, ": Entered triggerTierUpNow with executeCounter = ",
+            *codeBlock, ": Entered triggerOSREntryNow with executeCounter = ",
             jitCode->tierUpCounter, "\n");
     }
     

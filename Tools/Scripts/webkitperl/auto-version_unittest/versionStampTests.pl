@@ -35,15 +35,15 @@ my @testCases =
     {
         'RC_ProjectSourceVersion' => '5300.4.3.2.1',
         'RC_PROJECTBUILDVERSION' => undef,
-        expectedVersionResult => '300.4003.2001',
-        expectedBuildVersionResult => 1,
+        'expectedVersionResult' => '5300.4003.2001',
+        'expectedBuildVersionResult' => 1,
     },
 
     {
         'RC_ProjectSourceVersion' => '5300.4.3.2.1',
         'RC_PROJECTBUILDVERSION' => 156,
-        expectedVersionResult => '300.4003.2001',
-        expectedBuildVersionResult => 156,
+        'expectedVersionResult' => '5300.4003.2001',
+        'expectedBuildVersionResult' => 156,
     },
 );
 
@@ -54,12 +54,20 @@ if ($^O ne 'MSWin32' && $^O ne 'cygwin') {
     exit 0;    
 }
 
-my $testCasesCount = scalar(@testCases) * 2;
-plan(tests => $testCasesCount);
-
 my $TOOLS_PATH = $ENV{'WEBKIT_LIBRARIES'};
 my $AUTO_VERSION_SCRIPT = File::Spec->catfile($TOOLS_PATH, 'tools', 'scripts', 'auto-version.pl');
 my $VERSION_STAMP_SCRIPT = File::Spec->catfile($TOOLS_PATH, 'tools', 'scripts', 'version-stamp.pl');
+my $VERSION_STAMP_EXEC = File::Spec->catfile($TOOLS_PATH, 'tools', 'VersionStamper', 'VersionStamper.exe');
+
+# Test can only be run if VersionStamper.exe exists
+unless (-e $VERSION_STAMP_EXEC) {
+    plan(tests => 1);
+    is(1, 1, 'do nothing for Windows builds lacking the VersionStamp.exe utility.');
+    exit 0;    
+}
+
+my $testCasesCount = scalar(@testCases) * 2;
+plan(tests => $testCasesCount);
 
 foreach my $testCase (@testCases) {
     my $testOutputDir = tempdir(CLEANUP => 1);

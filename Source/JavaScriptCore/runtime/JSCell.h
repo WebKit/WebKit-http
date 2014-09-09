@@ -25,6 +25,7 @@
 
 #include "CallData.h"
 #include "ConstructData.h"
+#include "EnumerationMode.h"
 #include "Heap.h"
 #include "IndexingType.h"
 #include "JSLock.h"
@@ -38,6 +39,7 @@ namespace JSC {
 
 class CopyVisitor;
 class ExecState;
+class Identifier;
 class JSArrayBufferView;
 class JSDestructibleObject;
 class JSGlobalObject;
@@ -45,11 +47,6 @@ class LLIntOffsetsExtractor;
 class PropertyDescriptor;
 class PropertyNameArray;
 class Structure;
-
-enum EnumerationMode {
-    ExcludeDontEnumProperties,
-    IncludeDontEnumProperties
-};
 
 template<typename T> void* allocateCell(Heap&);
 template<typename T> void* allocateCell(Heap&, size_t);
@@ -145,7 +142,7 @@ public:
     bool isZapped() const { return !*reinterpret_cast<uintptr_t* const*>(this); }
 
     static bool canUseFastGetOwnProperty(const Structure&);
-    JSValue fastGetOwnProperty(VM&, Structure&, const String&);
+    JSValue fastGetOwnProperty(VM&, Structure&, PropertyName);
 
     enum GCData : uint8_t {
         Marked = 0,
@@ -209,6 +206,11 @@ protected:
     static NO_RETURN_DUE_TO_CRASH void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     static NO_RETURN_DUE_TO_CRASH void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     static NO_RETURN_DUE_TO_CRASH void getPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
+
+    static uint32_t getEnumerableLength(ExecState*, JSObject*);
+    static NO_RETURN_DUE_TO_CRASH void getStructurePropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
+    static NO_RETURN_DUE_TO_CRASH void getGenericPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
+
     static String className(const JSObject*);
     JS_EXPORT_PRIVATE static bool customHasInstance(JSObject*, ExecState*, JSValue);
     static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);

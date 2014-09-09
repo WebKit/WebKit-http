@@ -34,4 +34,8 @@
 #include <wtf/ExportMacros.h>
 #include <runtime/JSExportMacros.h>
 
+// This is needed because we include WebCore's headers.
+// FIXME: We should include <WebCore/PlatformExportMacros.h> instead.
+#define WEBCORE_EXPORT
+
 #endif

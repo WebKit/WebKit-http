@@ -142,9 +142,9 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenerror);
 #endif
 
-    bool hasAttribute(const QualifiedName&) const;
-    const AtomicString& getAttribute(const QualifiedName&) const;
-    void setAttribute(const QualifiedName&, const AtomicString& value);
+    WEBCORE_EXPORT bool hasAttribute(const QualifiedName&) const;
+    WEBCORE_EXPORT const AtomicString& getAttribute(const QualifiedName&) const;
+    WEBCORE_EXPORT void setAttribute(const QualifiedName&, const AtomicString& value);
     void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
     void setSynchronizedLazyAttribute(const QualifiedName&, const AtomicString& value);
     bool removeAttribute(const QualifiedName&);
@@ -160,7 +160,7 @@ public:
     bool fastHasAttribute(const QualifiedName&) const;
     const AtomicString& fastGetAttribute(const QualifiedName&) const;
 #ifndef NDEBUG
-    bool fastAttributeLookupAllowed(const QualifiedName&) const;
+    WEBCORE_EXPORT bool fastAttributeLookupAllowed(const QualifiedName&) const;
 #endif
 
 #ifdef DUMP_NODE_STATISTICS
@@ -171,13 +171,13 @@ public:
     // in style attribute or one of the SVG animation attributes.
     bool hasAttributesWithoutUpdate() const;
 
-    bool hasAttribute(const AtomicString& name) const;
+    WEBCORE_EXPORT bool hasAttribute(const AtomicString& name) const;
     bool hasAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
 
-    const AtomicString& getAttribute(const AtomicString& name) const;
+    WEBCORE_EXPORT const AtomicString& getAttribute(const AtomicString& name) const;
     const AtomicString& getAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
 
-    void setAttribute(const AtomicString& name, const AtomicString& value, ExceptionCode&);
+    WEBCORE_EXPORT void setAttribute(const AtomicString& name, const AtomicString& value, ExceptionCode&);
     static bool parseAttributeName(QualifiedName&, const AtomicString& namespaceURI, const AtomicString& qualifiedName, ExceptionCode&);
     void setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode&);
 
@@ -227,15 +227,15 @@ public:
     virtual int scrollWidth();
     virtual int scrollHeight();
 
-    IntRect boundsInRootViewSpace();
+    WEBCORE_EXPORT IntRect boundsInRootViewSpace();
 
     PassRefPtr<ClientRectList> getClientRects();
     PassRefPtr<ClientRect> getBoundingClientRect();
     
     // Returns the absolute bounding box translated into client coordinates.
-    IntRect clientRect() const;
+    WEBCORE_EXPORT IntRect clientRect() const;
     // Returns the absolute bounding box translated into screen coordinates.
-    IntRect screenRect() const;
+    WEBCORE_EXPORT IntRect screenRect() const;
 
     bool removeAttribute(const AtomicString& name);
     bool removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
@@ -324,8 +324,8 @@ public:
     virtual bool rendererIsNeeded(const RenderStyle&);
     void didAffectSelector(AffectedSelectorMask);
 
-    ShadowRoot* shadowRoot() const;
-    PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
+    WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
+    WEBCORE_EXPORT PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
 
     ShadowRoot* userAgentShadowRoot() const;
     ShadowRoot& ensureUserAgentShadowRoot();
@@ -360,12 +360,10 @@ public:
     bool childrenAffectedByHover() const { return getFlag(ChildrenAffectedByHoverRulesFlag); }
     bool childrenAffectedByActive() const { return hasRareData() && rareDataChildrenAffectedByActive(); }
     bool childrenAffectedByDrag() const { return hasRareData() && rareDataChildrenAffectedByDrag(); }
-    bool childrenAffectedByPositionalRules() const { return hasRareData() && (rareDataChildrenAffectedByForwardPositionalRules() || rareDataChildrenAffectedByBackwardPositionalRules()); }
     bool childrenAffectedByFirstChildRules() const { return getFlag(ChildrenAffectedByFirstChildRulesFlag); }
     bool childrenAffectedByLastChildRules() const { return getFlag(ChildrenAffectedByLastChildRulesFlag); }
-    bool childrenAffectedByDirectAdjacentRules() const { return getFlag(ChildrenAffectedByDirectAdjacentRulesFlag); }
-    bool childrenAffectedByForwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByForwardPositionalRules(); }
     bool childrenAffectedByBackwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByBackwardPositionalRules(); }
+    bool affectsNextSiblingElementStyle() const { return getFlag(AffectsNextSiblingElementStyle); }
     unsigned childIndex() const { return hasRareData() ? rareDataChildIndex() : 0; }
 
     bool hasFlagsSetDuringStylingOfChildren() const;
@@ -376,14 +374,10 @@ public:
     void setChildrenAffectedByDrag();
     void setChildrenAffectedByFirstChildRules() { setFlag(ChildrenAffectedByFirstChildRulesFlag); }
     void setChildrenAffectedByLastChildRules() { setFlag(ChildrenAffectedByLastChildRulesFlag); }
-    void setChildrenAffectedByDirectAdjacentRules() { setFlag(ChildrenAffectedByDirectAdjacentRulesFlag); }
-    static void setChildrenAffectedByForwardPositionalRules(Element*);
-    void setChildrenAffectedByForwardPositionalRules() { setChildrenAffectedByForwardPositionalRules(this); }
     void setChildrenAffectedByBackwardPositionalRules();
+    void setAffectsNextSiblingElementStyle() { setFlag(AffectsNextSiblingElementStyle); }
+    void setStyleIsAffectedByPreviousSibling() { setFlag(StyleIsAffectedByPreviousSibling); }
     void setChildIndex(unsigned);
-
-    void setIsInCanvasSubtree(bool);
-    bool isInCanvasSubtree() const;
 
     void setRegionOversetState(RegionOversetState);
     RegionOversetState regionOversetState() const;
@@ -398,7 +392,7 @@ public:
     virtual String completeURLsInAttributeValue(const URL& base, const Attribute&) const;
     virtual bool isHTMLContentAttribute(const Attribute&) const { return false; }
 
-    URL getURLAttribute(const QualifiedName&) const;
+    WEBCORE_EXPORT URL getURLAttribute(const QualifiedName&) const;
     URL getNonEmptyURLAttribute(const QualifiedName&) const;
 
     virtual const AtomicString& imageSourceURL() const;
@@ -409,13 +403,13 @@ public:
     virtual void updateFocusAppearance(bool restorePreviousSelection);
     virtual void blur();
 
-    String innerText();
+    WEBCORE_EXPORT String innerText();
     String outerText();
  
     virtual String title() const;
 
     const AtomicString& pseudo() const;
-    void setPseudo(const AtomicString&);
+    WEBCORE_EXPORT void setPseudo(const AtomicString&);
 
     LayoutSize minimumSizeForResizing() const;
     void setMinimumSizeForResizing(const LayoutSize&);
@@ -444,8 +438,8 @@ public:
     virtual void finishParsingChildren() override;
     virtual void beginParsingChildren() override final;
 
-    PseudoElement* beforePseudoElement() const;
-    PseudoElement* afterPseudoElement() const;
+    WEBCORE_EXPORT PseudoElement* beforePseudoElement() const;
+    WEBCORE_EXPORT PseudoElement* afterPseudoElement() const;
     bool childNeedsShadowWalker() const;
     void didShadowTreeAwareChildrenChange();
 
@@ -456,7 +450,6 @@ public:
     Element* nextElementSibling() const;
     unsigned childElementCount() const;
 
-    virtual bool matchesReadOnlyPseudoClass() const;
     virtual bool matchesReadWritePseudoClass() const;
     bool matches(const String& selectors, ExceptionCode&);
     virtual bool shouldAppearIndeterminate() const;
@@ -467,10 +460,6 @@ public:
 
 #if ENABLE(VIDEO)
     virtual bool isMediaElement() const { return false; }
-#endif
-
-#if ENABLE(INPUT_SPEECH)
-    virtual bool isInputFieldSpeechButtonElement() const { return false; }
 #endif
 
     virtual bool isFormControlElement() const { return false; }
@@ -492,7 +481,7 @@ public:
     // to event listeners, and prevents DOMActivate events from being sent at all.
     virtual bool isDisabledFormControl() const { return false; }
 
-    virtual bool childShouldCreateRenderer(const Node&) const override;
+    virtual bool childShouldCreateRenderer(const Node&) const;
 
     bool hasPendingResources() const;
     void setHasPendingResources();
@@ -506,7 +495,7 @@ public:
     };
     
     void webkitRequestFullScreen(unsigned short flags);
-    bool containsFullScreenElement() const;
+    WEBCORE_EXPORT bool containsFullScreenElement() const;
     void setContainsFullScreenElement(bool);
     void setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(bool);
 
@@ -553,6 +542,7 @@ public:
 
     virtual bool willRecalcStyle(Style::Change);
     virtual void didRecalcStyle(Style::Change);
+    virtual void willResetComputedStyle();
     virtual void willAttachRenderers();
     virtual void didAttachRenderers();
     virtual void willDetachRenderers();
@@ -567,7 +557,7 @@ public:
     void clearStyleDerivedDataBeforeDetachingRenderer();
     void clearHoverAndActiveStatusBeforeDetachingRenderer();
 
-    URL absoluteLinkURL() const;
+    WEBCORE_EXPORT URL absoluteLinkURL() const;
 
 protected:
     Element(const QualifiedName& tagName, Document& document, ConstructionType type)
@@ -656,7 +646,6 @@ private:
     bool rareDataChildrenAffectedByActive() const;
     bool rareDataChildrenAffectedByDrag() const;
     bool rareDataChildrenAffectedByLastChildRules() const;
-    bool rareDataChildrenAffectedByForwardPositionalRules() const;
     bool rareDataChildrenAffectedByBackwardPositionalRules() const;
     unsigned rareDataChildIndex() const;
 

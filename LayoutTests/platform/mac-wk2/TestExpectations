@@ -289,9 +289,11 @@ webkit.org/b/118925 compositing/geometry/fixed-position-composited-page-scale-sm
 webkit.org/b/118925 compositing/overlap-blending/children-opacity-huge.html  [ Pass ImageOnlyFailure ]
 webkit.org/b/118925 compositing/overlap-blending/children-opacity-no-overlap.html  [ Pass ImageOnlyFailure ]
 webkit.org/b/118925 fast/layers/no-clipping-overflow-hidden-added-after-transition.html  [ Pass ImageOnlyFailure ]
-webkit.org/b/118925 fast/multicol/mixed-opacity-fixed-test.html  [ Pass ImageOnlyFailure ]
-webkit.org/b/118925 fast/regions/fixed-pos-elem-in-region.html  [ Pass ImageOnlyFailure ]
+webkit.org/b/118925 fast/regions/positioning/fixed-pos-elem-in-region.html  [ Pass ImageOnlyFailure ]
 webkit.org/b/118925 svg/repaint/buffered-rendering-static-image.html  [ Pass ImageOnlyFailure ]
+
+webkit.org/b/136109 fast/multicol/mixed-opacity-fixed-test.html  [ ImageOnlyFailure ]
+
 # hidpi subpixel WebKitTestRunner failure. -blurry generated images.
 webkit.org/b/130175 [ MountainLion Debug ] compositing/hidpi-simple-container-layer-on-device-pixel.html [ ImageOnlyFailure ]
 webkit.org/b/130175 [ MountainLion Debug ] compositing/hidpi-transform-with-render-layer-on-fractional-pixel-value.html [ ImageOnlyFailure ]
@@ -351,6 +353,8 @@ webkit.org/b/132100 fast/forms/hidpi-textarea-on-subpixel-position.html [ ImageO
 webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Skip ]
 
 webkit.org/b/133692 platform/mac-wk2/plugins/destroy-during-async-npp-new.html [ Skip ]
+
+webkit.org/b/136554 platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -634,10 +638,6 @@ http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 # <rdar://problem/12829991>
 # PPT: PingLoader is still in WebProcess. As a result, this test fails and also fails to delete its cookie, breaking many other cookie tests.
 [ Mavericks ] http/tests/navigation/ping-cookie.html [ Skip ]
-
-# <rdar://problem/13751647> PPT: Status text not passed over IPC
-[ Mavericks ] http/tests/xmlhttprequest/web-apps/012.html [ Failure ]
-[ Mavericks ] http/tests/xmlhttprequest/web-apps/013.html [ Failure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=133227
 plugins/snapshotting/set-plugin-size-to-tiny.html

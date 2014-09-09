@@ -66,18 +66,18 @@ NSSet *QLPreviewGetSupportedMIMETypesSet();
 NSDictionary *QLFileAttributes();
 NSDictionary *QLDirectoryAttributes();
 
-void addQLPreviewConverterWithFileForURL(NSURL *, id converter, NSString *fileName);
-NSString *qlPreviewConverterFileNameForURL(NSURL *);
-NSString *qlPreviewConverterUTIForURL(NSURL *);
-void removeQLPreviewConverterForURL(NSURL *);
+WEBCORE_EXPORT void addQLPreviewConverterWithFileForURL(NSURL *, id converter, NSString *fileName);
+WEBCORE_EXPORT NSString *qlPreviewConverterFileNameForURL(NSURL *);
+WEBCORE_EXPORT NSString *qlPreviewConverterUTIForURL(NSURL *);
+WEBCORE_EXPORT void removeQLPreviewConverterForURL(NSURL *);
 
-PassOwnPtr<ResourceRequest> registerQLPreviewConverterIfNeeded(NSURL *, NSString *mimeType, NSData *);
+WEBCORE_EXPORT PassOwnPtr<ResourceRequest> registerQLPreviewConverterIfNeeded(NSURL *, NSString *mimeType, NSData *);
 
 const URL safeQLURLForDocumentURLAndResourceURL(const URL& documentURL, const String& resourceURL);
 
 const char* QLPreviewProtocol();
 
-NSString *createTemporaryFileForQuickLook(NSString *fileName);
+WEBCORE_EXPORT NSString *createTemporaryFileForQuickLook(NSString *fileName);
 
 class QuickLookHandle {
     WTF_MAKE_NONCOPYABLE(QuickLookHandle);
@@ -86,25 +86,25 @@ public:
 #if USE(CFNETWORK)
     static std::unique_ptr<QuickLookHandle> create(ResourceHandle*, SynchronousResourceHandleCFURLConnectionDelegate*, CFURLResponseRef);
 #endif
-    static std::unique_ptr<QuickLookHandle> create(ResourceLoader*, NSURLResponse *);
-    ~QuickLookHandle();
+    WEBCORE_EXPORT static std::unique_ptr<QuickLookHandle> create(ResourceLoader*, NSURLResponse *);
+    WEBCORE_EXPORT ~QuickLookHandle();
 
-    bool didReceiveDataArray(CFArrayRef);
+    WEBCORE_EXPORT bool didReceiveDataArray(CFArrayRef);
     bool didReceiveData(CFDataRef);
-    bool didFinishLoading();
-    void didFail();
+    WEBCORE_EXPORT bool didFinishLoading();
+    WEBCORE_EXPORT void didFail();
 
-    NSURLResponse *nsResponse();
+    WEBCORE_EXPORT NSURLResponse *nsResponse();
 #if USE(CFNETWORK)
     CFURLResponseRef cfResponse();
 #endif
 
     void setClient(PassRefPtr<QuickLookHandleClient> client) { m_client = client; }
 
-    String previewFileName() const;
-    String previewUTI() const;
+    WEBCORE_EXPORT String previewFileName() const;
+    WEBCORE_EXPORT String previewUTI() const;
     NSURL *firstRequestURL() const { return m_firstRequestURL.get(); }
-    NSURL *previewRequestURL() const;
+    WEBCORE_EXPORT NSURL *previewRequestURL() const;
     QLPreviewConverter *converter() const { return m_converter.get(); }
 
 private:

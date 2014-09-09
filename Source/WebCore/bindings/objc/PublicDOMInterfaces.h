@@ -1252,6 +1252,8 @@
 - (NSString *)lookupNamespaceURI:(NSString *)prefix;
 @end
 
+#if defined(WTF_USE_APPLE_INTERNAL_SDK) && WTF_USE_APPLE_INTERNAL_SDK
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 #include <WebKitAdditions/PublicDOMInterfacesIOS.h>
+#endif
 #endif

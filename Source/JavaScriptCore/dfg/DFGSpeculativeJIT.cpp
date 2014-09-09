@@ -331,7 +331,9 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spil
     } else if (registerFormat == DataFormatBoolean) {
 #if USE(JSVALUE64)
         RELEASE_ASSERT_NOT_REACHED();
+#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         fillAction = DoNothingForFill;
+#endif
 #elif USE(JSVALUE32_64)
         ASSERT(info.gpr() == source);
         if (node->hasConstant()) {
@@ -367,7 +369,9 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spil
             fillAction = Load64;
         else {
             RELEASE_ASSERT_NOT_REACHED();
+#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
             fillAction = Load64; // Make GCC happy.
+#endif
         }
     } else if (registerFormat == DataFormatStrictInt52) {
         if (node->hasConstant())
@@ -380,7 +384,9 @@ SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spil
             fillAction = Load64;
         else {
             RELEASE_ASSERT_NOT_REACHED();
+#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
             fillAction = Load64; // Make GCC happy.
+#endif
         }
     } else {
         ASSERT(registerFormat & DataFormatJS);
@@ -596,8 +602,10 @@ JITCompiler::Jump SpeculativeJIT::jumpSlowForUnwantedArrayMode(GPRReg tempGPR, A
     switch (arrayMode.arrayClass()) {
     case Array::OriginalArray: {
         CRASH();
+#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         JITCompiler::Jump result; // I already know that VC++ takes unkindly to the expression "return Jump()", so I'm doing it this way in anticipation of someone eventually using VC++ to compile the DFG.
         return result;
+#endif
     }
         
     case Array::Array:
@@ -712,20 +720,14 @@ void SpeculativeJIT::checkArray(Node* node)
         return;
     }
     case Array::Arguments:
-        speculationCheck(BadType, JSValueSource::unboxedCell(baseReg), node,
-            m_jit.branch8(
-                MacroAssembler::NotEqual,
-                MacroAssembler::Address(baseReg, JSCell::typeInfoTypeOffset()),
-                MacroAssembler::TrustedImm32(ArgumentsType)));
+        speculateCellTypeWithoutTypeFiltering(node->child1(), baseReg, ArgumentsType);
 
         noResult(m_currentNode);
         return;
     default:
-        speculationCheck(BadType, JSValueSource::unboxedCell(baseReg), node,
-            m_jit.branch8(
-                MacroAssembler::NotEqual,
-                MacroAssembler::Address(baseReg, JSCell::typeInfoTypeOffset()),
-                MacroAssembler::TrustedImm32(typeForTypedArrayType(node->arrayMode().typedArrayType()))));
+        speculateCellTypeWithoutTypeFiltering(
+            node->child1(), baseReg,
+            typeForTypedArrayType(node->arrayMode().typedArrayType()));
         noResult(m_currentNode);
         return;
     }
@@ -4508,6 +4510,28 @@ void SpeculativeJIT::compileNewTypedArray(Node* node)
     cellResult(resultGPR, node);
 }
 
+void SpeculativeJIT::speculateCellTypeWithoutTypeFiltering(
+    Edge edge, GPRReg cellGPR, JSType jsType)
+{
+    speculationCheck(
+        BadType, JSValueSource::unboxedCell(cellGPR), edge,
+        m_jit.branch8(
+            MacroAssembler::NotEqual,
+            MacroAssembler::Address(cellGPR, JSCell::typeInfoTypeOffset()),
+            MacroAssembler::TrustedImm32(jsType)));
+}
+
+void SpeculativeJIT::speculateCellType(
+    Edge edge, GPRReg cellGPR, SpeculatedType specType, JSType jsType)
+{
+    DFG_TYPE_CHECK(
+        JSValueSource::unboxedCell(cellGPR), edge, specType,
+        m_jit.branch8(
+            MacroAssembler::NotEqual,
+            MacroAssembler::Address(cellGPR, JSCell::typeInfoTypeOffset()),
+            TrustedImm32(jsType)));
+}
+
 void SpeculativeJIT::speculateInt32(Edge edge)
 {
     if (!needsTypeCheck(edge, SpecInt32))
@@ -4581,18 +4605,22 @@ void SpeculativeJIT::speculateObject(Edge edge)
             m_jit.vm()->stringStructure.get()));
 }
 
+void SpeculativeJIT::speculateFunction(Edge edge)
+{
+    if (!needsTypeCheck(edge, SpecFunction))
+        return;
+    
+    SpeculateCellOperand operand(this, edge);
+    speculateCellType(edge, operand.gpr(), SpecFunction, JSFunctionType);
+}
+
 void SpeculativeJIT::speculateFinalObject(Edge edge)
 {
     if (!needsTypeCheck(edge, SpecFinalObject))
         return;
     
     SpeculateCellOperand operand(this, edge);
-    GPRReg gpr = operand.gpr();
-    DFG_TYPE_CHECK(
-        JSValueSource::unboxedCell(gpr), edge, SpecFinalObject, m_jit.branch8(
-            MacroAssembler::NotEqual,
-            MacroAssembler::Address(gpr, JSCell::typeInfoTypeOffset()),
-            TrustedImm32(FinalObjectType)));
+    speculateCellType(edge, operand.gpr(), SpecFinalObject, FinalObjectType);
 }
 
 void SpeculativeJIT::speculateObjectOrOther(Edge edge)
@@ -4835,6 +4863,9 @@ void SpeculativeJIT::speculate(Node*, Edge edge)
         break;
     case ObjectUse:
         speculateObject(edge);
+        break;
+    case FunctionUse:
+        speculateFunction(edge);
         break;
     case FinalObjectUse:
         speculateFinalObject(edge);
@@ -5330,6 +5361,10 @@ void SpeculativeJIT::emitSwitch(Node* node)
     }
     case SwitchString: {
         emitSwitchString(node, data);
+        return;
+    }
+    case SwitchCell: {
+        DFG_CRASH(m_jit.graph(), node, "Bad switch kind");
         return;
     } }
     RELEASE_ASSERT_NOT_REACHED();

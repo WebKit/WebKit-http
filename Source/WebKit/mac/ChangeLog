@@ -1,3 +1,837 @@
+2014-09-08  Maciej Stachowiak  <mjs@apple.com>
+
+        Fix 32-bit Mac build for new warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136624
+
+        Reviewed by Darin Adler.
+        
+        (Jessie already fixed this but my version with typedefs seems a tiny bit cleaner.)
+
+        * Carbon/HIViewAdapter.m:
+        (+[HIViewAdapter bindHIViewToNSView:nsView:]): Need to use explicit casting now.
+
+2014-09-08  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136571
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-08  Jessie Berlin  <jberlin@apple.com>
+
+        32-bit build fix after r173364.
+
+        * Carbon/HIViewAdapter.m:
+        (+[HIViewAdapter bindHIViewToNSView:nsView:]):
+
+2014-09-08  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        Added back SPI that is still in use.
+
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _webkit_URLByRemovingFragment]):
+
+2014-09-08  Dan Bernstein  <mitz@apple.com>
+
+        iOS Simulator build fix.
+
+        * Misc/WebKitSystemBits.m:
+        (WebMemorySize):
+
+2014-09-07  Darin Adler  <darin@apple.com>
+
+        Fix build failure seen on Mountain Lion buildbot.
+
+        * Misc/WebNSDataExtras.h: Make WEB_GUESS_MIME_TYPE_PEEK_LENGTH an unsigned instead
+        of an int, to avoid warning about mixing signs.
+
+2014-09-06  Darin Adler  <darin@apple.com>
+
+        Make updates suggested by new version of Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=136603
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/Base.xcconfig: Added CLANG_WARN_UNREACHABLE_CODE, COMBINE_HIDPI_IMAGES,
+        and ENABLE_STRICT_OBJC_MSGSEND as suggested by Xcode upgrade check.
+
+        * History/WebURLsWithTitles.m:
+        (+[WebURLsWithTitles writeURLs:andTitles:toPasteboard:]): Use NSUInteger instead of
+        unsigned for correctness, and to quiet the 32-to-64-bit compiler warning (which is
+        not turned on because it gives us too many false positives).
+        * Misc/WebElementDictionary.mm:
+        (-[WebElementDictionary objectForKey:]): Ditto.
+        * Misc/WebNSDataExtras.m:
+        (-[NSData _webkit_guessedMIMETypeForXML]): Ditto.
+        (-[NSData _webkit_guessedMIMEType]): Ditto.
+        (-[NSData _webkit_parseRFC822HeaderFields]): Ditto.
+        (-[NSData _web_locationAfterFirstBlankLine]): Ditto.
+
+        * Misc/WebNSURLExtras.h: Removed unused _web_URLWithLowercasedScheme, _web_hostData,
+        _webkit_URLByRemovingFragment, _webkit_URLByRemovingResourceSpecifier, _webkit_isFTPDirectoryURL,
+        _webkit_shouldLoadAsEmptyDocument, _web_hostNameNeedsDecodingWithRange:,
+        _web_hostNameNeedsEncodingWithRange:, _web_decodeHostNameWithRange:, _web_encodeHostNameWithRange:,
+        and _webkit_URLFragment methods.
+
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _web_URLByTruncatingOneCharacterBeforeComponent:]): Deleted.
+        (-[NSURL _webkit_URLByRemovingFragment]): Deleted.
+        (-[NSURL _webkit_URLByRemovingResourceSpecifier]): Deleted.
+        (-[NSURL _webkit_isFTPDirectoryURL]): Deleted.
+        (-[NSURL _webkit_shouldLoadAsEmptyDocument]): Deleted.
+        (-[NSURL _web_URLWithLowercasedScheme]): Deleted.
+        (-[NSString _webkit_isFTPDirectoryURL]): Deleted.
+        (-[NSString _web_hostNameNeedsDecodingWithRange:]): Deleted.
+        (-[NSString _web_hostNameNeedsEncodingWithRange:]): Deleted.
+        (-[NSString _web_decodeHostNameWithRange:]): Deleted.
+        (-[NSString _web_encodeHostNameWithRange:]): Deleted.
+        (-[NSString _webkit_URLFragment]): Deleted.
+
+        * Plugins/WebPluginDatabase.mm:
+        (-[WebPluginDatabase removePluginInstanceViewsFor:]): Use a modern for loop
+        to iterate an array instead of a loop using the type "unsigned int".
+
+        * WebCoreSupport/WebOpenPanelResultListener.mm:
+        (-[WebOpenPanelResultListener chooseFilenames:]): Use NSUInteger instead of int.
+
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallDelegate): Use wtfCallIMP in one overload that was instead just calling the
+        directly without a proper type for the function pointer. This might have been causing
+        an actual problem on 64-bit systems, and it was different from all the other CallDelegate
+        functions that were already doing this correctly.
+
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController _placePopupWindow:]): Use NSUInteger instead of int.
+
+2014-09-06  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: convert DockSide to an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=136601
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::frontendLoaded):
+        (-[WebInspectorWindowController attachWindow:]):
+        (-[WebInspectorWindowController attach]):
+        (-[WebInspectorWindowController detach]):
+        * WebInspector/WebInspectorFrontend.mm:
+        (-[WebInspectorFrontend attach]):
+
+2014-09-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173340 and r173342.
+        https://bugs.webkit.org/show_bug.cgi?id=136596
+
+        Broke many tests (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Remove PLATFORM(IOS) from WebCore/editing (Part 3)."
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+        http://trac.webkit.org/changeset/173340
+
+        "Build fix after r173340."
+        http://trac.webkit.org/changeset/173342
+
+2014-09-05  Enrica Casucci  <enrica@apple.com>
+
+        Build fix after r173340.
+
+        * WebCoreSupport/WebEditorClient.h:
+        (kit):
+        (core):
+
+2014-09-05  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 3).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Benjamin Poulain.
+
+        This patch removes the use of PLATFORM(IOS) from TextAffinity.h
+        and removes the assumption that EAffinity values match NSSelectionAffinity
+        values. It also removes the includes in TextAffinity.h, creating the need to
+        include explicitly the files when necessary. It also removes the unnecessary
+        use of platform specific types, replacing them with WebCore types.
+
+        * WebCoreSupport/WebEditorClient.h: Added kit and core for EAffinity.
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _scrollToBeginningOfDocument]):
+        (-[WebFrameView _scrollToEndOfDocument]):
+
+2014-09-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Another attempt to fix the iOS build after <http://trac.webkit.org/changeset/173309>
+        (https://bugs.webkit.org/show_bug.cgi?id=136564)
+
+        Move #endif inside -viewDidMoveToWindow up one line such that the closing brace ('}') is after it.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView viewDidMoveToWindow]):
+
+2014-09-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Another attempt to fix the iOS build after <http://trac.webkit.org/changeset/173309>
+        (https://bugs.webkit.org/show_bug.cgi?id=136564)
+
+        Add !PLATFORM(IOS)-guard in -viewDidMoveToWindow around code that references WebHTMLViewPrivate.flagsChangedEventMonitor.
+        The instance variable WebHTMLViewPrivate.flagsChangedEventMonitor is guarded by !PLATFORM(IOS).
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView viewDidMoveToWindow]):
+
+2014-09-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Fix the iOS build after <http://trac.webkit.org/changeset/173309>
+        (https://bugs.webkit.org/show_bug.cgi?id=136564)
+
+        Include more code inside the !PLATFORM(IOS)-guarded section in -setDataSource:.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView setDataSource:]):
+
+2014-09-04  Maciej Stachowiak  <mjs@apple.com>
+
+        Use tracking areas instead of (SPI) mouse moved notifications, and follow flags changes with an event monitor
+        https://bugs.webkit.org/show_bug.cgi?id=136564
+
+        Reviewed by Dan Bernstein.
+        
+        WebKit1 depended on mouse moved event notifications to track mouse
+        moves, and on being specially called by Safari to track flags
+        changes. WebKit2 does both these things better - it uses a tracking area
+        and event monitors. Copy those approaches.
+
+        * WebKit.order: Remove reference to obsolete call.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLViewPrivate dealloc]): No need to deallocate tracking
+        area, since we now just always have one.
+        (-[WebHTMLViewPrivate clear]): ditto
+        (-[WebHTMLView _postFakeMouseMovedEventForFlagsChangedEvent:]):
+        New method that posts a fake mouse move event in response to
+        a flags change event, for use by the event monitor.
+        (+[WebHTMLView _postFlagsChangedEvent:]): Empty this old call,
+        still kept around for benefit of older Safari.
+        (-[WebHTMLView _updateMouseoverWithEvent:]): Handle Dashboard's
+        special mouseover mode (previously handled in a weird way).
+        (-[WebHTMLView close]): No more need to mess with mouse moved observer.
+        (-[WebHTMLView viewWillMoveToWindow:]): ditto
+        (-[WebHTMLView viewDidMoveToWindow]): ditto; but now hook up a flags
+        changed monitor.
+        (-[WebHTMLView windowDidBecomeKey:]): No need to handle non-key window
+        tracking area or mouse moved observer.
+        (-[WebHTMLView windowDidResignKey:]): ditto
+        (-[WebHTMLView windowWillOrderOnScreen:]): No need to mess with mouse
+        moved observer.
+        (-[WebHTMLView windowWillOrderOffScreen:]): ditto
+        (-[WebHTMLView mouseMoved:]): Converted from the old mouseMovedNotification:
+        (-[WebHTMLView setDataSource:]): Change if around body to early return. Hook
+        up tracking area - we have to do it here, because before this point, the
+        WebHTMLView does not know its WebView, which is where dashboard settings
+        live.
+        (-[WebHTMLView _removeMouseMovedObserverUnconditionally]): Deleted.
+        (-[WebHTMLView addMouseMovedObserver]): Deleted.
+        (-[WebHTMLView removeMouseMovedObserver]): Deleted.
+
+2014-09-04  Pratik Solanki  <psolanki@apple.com>
+
+        Bring back [WebPreferences setDiskImageCacheEnabled:] for backwards compatibility
+        https://bugs.webkit.org/show_bug.cgi?id=136560
+
+        Reviewed by Joseph Pecoraro.
+
+        I removed the disk image caching code in r173265. However, we still have clients that call
+        setDiskImageCacheEnabled. Add in a stub method until we can wean the clients off this call.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences setDiskImageCacheEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2014-09-03  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Some WebKitLegacy headers migrated from WebCore incorrectly contain WEBCORE_EXPORT
+        https://bugs.webkit.org/show_bug.cgi?id=136521
+
+        Reviewed by Anders Carlsson.
+
+        Taught MigrateHeaders.make to remove WEBCORE_EXPORT from headers using this sed expression:
+
+            s/(^ *)WEBCORE_EXPORT /\1/g
+
+        This removes WEBCORE_EXPORT and a single following space character but preserves preceeding spaces.
+
+        * MigrateHeaders.make:
+
+2014-09-04  Maciej Stachowiak  <mjs@apple.com>
+
+        Remove WebCoreSystemInterface glue for otherwise unused WKSI calls
+        https://bugs.webkit.org/show_bug.cgi?id=136527
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2014-09-04  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove CSS_FILTERS flag
+        https://bugs.webkit.org/show_bug.cgi?id=136529
+
+        Reviewed by Dirk Schulze.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-04  Pratik Solanki  <psolanki@apple.com>
+
+        Remove iOS specific disk image cache
+        https://bugs.webkit.org/show_bug.cgi?id=136517
+
+        Reviewed by Antti Koivisto.
+
+        Disk image cache code unnecessarily complicates SharedBuffer implementation. We can remove
+        this now since we don't enable it in WebKit2 on iOS.
+
+        * Misc/WebCache.mm:
+        (+[WebCache statistics]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _setAllowToBeMemoryMapped]):
+        (-[WebDataSource setDataSourceDelegate:]):
+        (-[WebDataSource dataSourceDelegate]):
+        (-[WebDataSource dealloc]):
+        (BufferMemoryMapped): Deleted.
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences diskImageCacheEnabled]): Deleted.
+        (-[WebPreferences setDiskImageCacheEnabled:]): Deleted.
+        (-[WebPreferences diskImageCacheMinimumImageSize]): Deleted.
+        (-[WebPreferences setDiskImageCacheMinimumImageSize:]): Deleted.
+        (-[WebPreferences diskImageCacheMaximumCacheSize]): Deleted.
+        (-[WebPreferences setDiskImageCacheMaximumCacheSize:]): Deleted.
+        (-[WebPreferences _diskImageCacheSavedCacheDirectory]): Deleted.
+        (-[WebPreferences _setDiskImageCacheSavedCacheDirectory:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (+[WebView _handleMemoryWarning]):
+        (-[WebView _preferencesChanged:]):
+
+2014-09-04  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make iOS build when ENABLE_TOUCH_EVENT and ENABLE_IOS_TOUCH_EVENTS disabled
+        https://bugs.webkit.org/show_bug.cgi?id=136494
+
+        Reviewed by Andy Estes.
+
+        * MigrateHeaders.make: Migrate header WebEventRegion.h only when ENABLE_IOS_TOUCH_EVENTS is defined.
+        * WebView/WebView.mm: Substitute ENABLE(IOS_TOUCH_EVENTS) for ENABLE(TOUCH_EVENTS).
+
+2014-09-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: fix prefixes for subclasses of JSC::ConsoleClient
+        https://bugs.webkit.org/show_bug.cgi?id=136476
+
+        Reviewed by Timothy Hatcher.
+
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics shouldPrintExceptions]):
+        (+[WebCoreStatistics setShouldPrintExceptions:]):
+
+2014-09-03  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 1).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2014-09-02  Maciej Stachowiak  <mjs@apple.com>
+
+        Clean up naming for and slightly refactor legacy video fullscreen support
+        https://bugs.webkit.org/show_bug.cgi?id=136446
+
+        Reviewed by Jer Noble.
+
+        Key changes:
+        supportsFullscreenForNode(Node*) --> supportsVideoFullscreen()
+        enterFullscreenForNode(Node*) --> enterVideoFullscreenForVideoElement(HTMLVideoElement*)
+        exitFullscreenForNode(Node*) --> exitVideoFullscreen()
+        
+        The old versions had unnecessary parameters, did not clearly distinguish their purpose
+        from enterFullscreenForElement and friends, and wrongly claimed generality to all Nodes.
+        Also changed many other places to use HTMLVideoElement* instead of Node* or 
+        HTMLMediaElement* when they were in fact only used for video elements and would only
+        work for such.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::supportsVideoFullscreen): Adjust for main refactoring.
+        Also no more need to check for video elementness.
+        (WebChromeClient::enterVideoFullscreenForVideoElement): Adjust for main refactoring.
+        (WebChromeClient::exitVideoFullscreen): ditto
+        * WebView/WebView.mm:
+        (-[WebView _enterVideoFullscreenForVideoElement:]): Adjust for main
+        refactoring.
+        (-[WebView _exitVideoFullscreen]): ditto
+        (-[WebView _close]): ditto
+        * WebView/WebViewInternal.h:
+
+2014-09-03  Dan Bernstein  <mitz@apple.com>
+
+        Get rid of HIGH_DPI_CANVAS leftovers
+        https://bugs.webkit.org/show_bug.cgi?id=136491
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig: Removed definition of ENABLE_HIGH_DPI_CANVAS
+        and removed it from FEATURE_DEFINES.
+
+2014-08-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unnecessary (and unnecessarily iOS-specific) setStrokeAndFillColor
+        https://bugs.webkit.org/show_bug.cgi?id=136416
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView drawRect:]):
+        We only end up filling, so only set the fill color.
+
+2014-08-26  Maciej Stachowiak  <mjs@apple.com>
+
+        Use RetainPtr::autorelease in some places where it seems appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=136280
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLView.mm:
+        (imageFromRect): Use RetainPtr in this function.
+        * WebView/WebPDFRepresentation.mm:
+        (-[WebPDFRepresentation convertPostScriptDataSourceToPDF:]): Use RetainPtr
+        in this method.
+
+2014-08-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviwed, remove empty directories.
+
+        * ForwardingHeaders/wtf: Removed.
+
+2014-08-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Rename LayoutRect's device pixel snapping functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136319
+
+        Reviewed by Simon Fraser.
+
+        From pixelSnappedForPainting() to snapRectToDevicePixels() and 
+        pixelSnappedIntRect*() to snappedIntRect*().
+
+        No change in functionality.
+
+        * WebView/WebView.mm:
+        (-[WebView _dashboardRegions]):
+        (-[WebView trackedRepaintRects]):
+
+2014-08-25  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace use of WKCopyCFLocalizationPreferredName with NSLocale public API
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::spawnPluginHost): Get current
+        localization name using WebCore helper instead of SPI.
+        * Plugins/WebBasePluginPackage.mm: Fixed the include style for this 
+        file.
+        (-[WebBasePluginPackage getPluginInfoFromPLists]): Get current
+        localization name using WebCore helper instead of SPI.
+        (+[WebBasePluginPackage preferredLocalizationName]): Deleted. This
+        helper no longer pulls its weight.
+        * WebCoreSupport/WebSystemInterface.mm: 
+        (InitWebCoreSystemInterface): Remove mention of
+        WKCopyCFLocalizationPreferredName.
+        * WebKit.order: ditto
+
+2014-08-25  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the iOS build after <http://trac.webkit.org/changeset/172889>
+        (https://bugs.webkit.org/show_bug.cgi?id=109658)
+
+        Substitute GraphicsLayer::setContentsToPlatformLayer(..., GraphicsLayer::ContentsLayerForMedia)
+        for GraphicsLayer::setContentsToMedia(...) because the latter was removed in <http://trac.webkit.org/changeset/172889>.
+
+        * WebView/WebView.mm:
+        (-[WebView _setMediaLayer:forPluginView:]):
+
+2014-08-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172866.
+        https://bugs.webkit.org/show_bug.cgi?id=136177
+
+        Broke iOS build (Requested by othermaciej on #webkit).
+
+        Reverted changeset:
+
+        "Replace use of WKCopyCFLocalizationPreferredName with
+        NSLocale public API"
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+        http://trac.webkit.org/changeset/172866
+
+2014-08-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement paint flashing in the WK1 InspectorOverlay page
+        https://bugs.webkit.org/show_bug.cgi?id=136138
+
+        Reviewed by Sam Weinig, Joseph Pecoraro.
+
+        Implement paint flashing for the WebKit1 InspectorOverlay via a second canvas in the overlay page.
+        We avoid allocating backing store for this canvas until we have paint rects.
+        
+        Because this overlay page is weird and doesn't know how to paint itself, InspectorOverlay manages
+        an array of rects, and pushes them to the page when they change, before forcing a paint.
+        
+        Because iOS doesn't use the InspectorOverlay page, stub out setShowPaintRects on its
+        WebKit WebInspectorClient, but don't yet implement paint flashing there.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorClient::WebInspectorClient):
+
+2014-08-20  Maciej Stachowiak  <mjs@apple.com>
+
+        Replace use of WKCopyCFLocalizationPreferredName with NSLocale public API
+        https://bugs.webkit.org/show_bug.cgi?id=136082
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::spawnPluginHost): Get current
+        localization name using WebCore helper instead of SPI.
+        * Plugins/WebBasePluginPackage.mm: Fixed the include style for this 
+        file.
+        (-[WebBasePluginPackage getPluginInfoFromPLists]): Get current
+        localization name using WebCore helper instead of SPI.
+        (+[WebBasePluginPackage preferredLocalizationName]): Deleted. This
+        helper no longer pulls its weight.
+        * WebCoreSupport/WebSystemInterface.mm: 
+        (InitWebCoreSystemInterface): Remove mention of
+        WKCopyCFLocalizationPreferredName.
+        * WebKit.order: ditto
+
+2014-08-22  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Disable ENABLE_IOS_{GESTURE, TOUCH}_EVENTS, and temporarily disable ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT when building with the iOS public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=135945
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig: Disable ENABLE_IOS_{GESTURE, TOUCH}_EVENTS, ENABLE_TOUCH_EVENTS
+        and ENABLE_XSLT when building with the public SDK.
+        * MigrateHeaders.make: Conditionally migrate headers for touch and gesture events.
+
+2014-08-22  Jon Lee  <jonlee@apple.com>
+
+        Fix iOS build due to r172832 and move RUBBER_BANDING out of FeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=136157
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE(RUBBER_BANDING).
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Wrap in ENABLE(RUBBER_BANDING).
+
+2014-08-21  Zalan Bujtas  <zalan@apple.com>
+
+        Enable SATURATED_LAYOUT_ARITHMETIC.
+        https://bugs.webkit.org/show_bug.cgi?id=136106
+
+        Reviewed by Simon Fraser.
+
+        SATURATED_LAYOUT_ARITHMETIC protects LayoutUnit against arithmetic overflow.
+        (No measurable performance regression on Mac.)
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-21  Beth Dakin  <bdakin@apple.com>
+
+        overflow:scroll elements should support rubber-banding
+        https://bugs.webkit.org/show_bug.cgi?id=91655
+
+        Reviewed by Sam Weinig and Darin Adler.
+
+        Disable rubber-banding in overflow areas for now.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Andreas Kling.
+
+        * Misc/WebCache.mm:
+        (+[WebCache statistics]):
+
+2014-08-19  Zalan Bujtas  <zalan@apple.com>
+
+        Remove ENABLE(SUBPIXEL_LAYOUT).
+        https://bugs.webkit.org/show_bug.cgi?id=136077
+
+        Reviewed by Simon Fraser.
+
+        Remove compile time flag SUBPIXEL_LAYOUT. All ports have it enabled for a while now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-18  Maciej Stachowiak  <mjs@apple.com>
+
+        Use NSURLFileTypeMappings directly instead of depending on WebKitSystemInterface wrappers for it
+        https://bugs.webkit.org/show_bug.cgi?id=136035
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebNSViewExtras.m:
+        (-[NSView _web_DragImageForElement:rect:event:pasteboard:source:offset:]): Remove comment
+        reference to obsolete WKSI function.
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Don't initialize the no-longer-used WKGetExtensionsForMIMEType,
+        WKGetPreferredExtensionForMIMEType, or WKGetMIMETypeForExtension
+        * Plugins/WebPluginDatabase.mm:
+        (-[WebPluginDatabase pluginForExtension:]): Include SPI header from WebCore; use
+        NSURLFileTypeMappings directly instead of via WKSI wrapper.
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::objectContentType): ditto
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _imageExistsAtPaths:]): ditto
+        * WebView/WebView.mm:
+        (+[WebView _supportedFileExtensions]): ditto
+        (+[WebView suggestedFileExtensionForMIMEType:]): ditto
+        (+[WebView _MIMETypeForFile:]): ditto
+
+2014-08-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r172736.
+        https://bugs.webkit.org/show_bug.cgi?id=136060
+
+        Caused 14% PLT regressions (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Remove PurgeableBuffer since it is not very useful any more"
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+        http://trac.webkit.org/changeset/172736
+
+2014-08-18  Pratik Solanki  <psolanki@apple.com>
+
+        Remove PurgeableBuffer since it is not very useful any more
+        https://bugs.webkit.org/show_bug.cgi?id=135939
+
+        Reviewed by Geoffrey Garen.
+
+        * Misc/WebCache.mm:
+        (+[WebCache statistics]):
+
+2014-08-18  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r167856): adobe.com no longer able to launch Create Cloud app using a URL with a custom scheme
+        https://bugs.webkit.org/show_bug.cgi?id=136010
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebKitVersionChecks.h: Removed WEBKIT_FIRST_VERSION_WITH_NAVIGATION_URL_VALIDATION.
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]): Passed AllowNavigationToInvalidURL::Yes to FrameLoader::loadFrameRequest.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Reverted the linked-on-or-after check added in r170120 since it's no longer necessary.
+
+2014-08-18  Andy Estes  <aestes@apple.com>
+
+        Revert r172697.
+
+        It made several webarchive layout tests flaky and didn't have the correct behavior for non-quick redirects.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-08-15  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r167856): adobe.com no longer able to launch Create Cloud app using a URL with a custom scheme
+        https://bugs.webkit.org/show_bug.cgi?id=136010
+
+        Reviewed by Darin Adler.
+
+        Reverted the linked-on-or-after check added in r170120 since it is no longer necessary.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-08-16  Maciej Stachowiak  <mjs@apple.com>
+
+        Remove the obsolete WebKitEnableCoalescedUpdatesPreferenceKey
+        https://bugs.webkit.org/show_bug.cgi?id=136024
+
+        Reviewed by Filip Pizlo.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView initWithFrame:]): Remove code that respects
+        this key. It was SPI and is no longer used; also it was
+        only relevant for versions of OS X that WebKit no longer supports.
+        * WebView/WebPreferenceKeysPrivate.h: Remove declaration.
+
+2014-08-15  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Teach postprocess-headers.sh to remove code guarded by ENABLE_IOS_GESTURE_EVENTS
+        and ENABLE_TOUCH_EVENTS if applicable
+        https://bugs.webkit.org/show_bug.cgi?id=135993
+
+        Reviewed by Andy Estes.
+
+        Add support infrastructure to remove code from public and private API headers that is
+        guarded by macro define ENABLE_{IOS_GESTURE, TOUCH}_EVENTS when these features are disabled.
+
+        We aren't using this functionality yet, but we will soon.
+
+        * postprocess-headers.sh:
+
+2014-08-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Enable CSS_SCROLL_SNAP for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=135915
+
+        Turn on CSS_SCROLL_SNAP for iOS and the iOS simulator.
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-13  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/135911> WebKit should build on Yosemite with the public SDK.
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebSharingServicePickerController.mm: Forward-declare some details related to NSSharingServicePicker.
+
+2014-08-13  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Workaround a NSWindow change to the title bar.
+        https://bugs.webkit.org/show_bug.cgi?id=135880
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::setToolbarHeight): Only call setContentBorderThickness: on 10.9 and earlier.
+        (-[WebInspectorWindowController init]): Only call setDrawsBackground: on 10.9 and earlier.
+        (-[WebInspectorWindowController window]): Set titlebarAppearsTransparent on 10.10.
+        Only call border thickness APIs on 10.9 and earlier.
+
+2014-08-12  Peyton Randolph  <prandolph@apple.com>
+
+        Runtime switch for long mouse press gesture. Part of 135257 - Add long mouse press gesture.           
+        https://bugs.webkit.org/show_bug.cgi?id=135682
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove LONG_MOUSE_PRESS feature flag.
+
+2014-08-11  Andy Estes  <aestes@apple.com>
+
+        [iOS] Get rid of iOS.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=135809
+
+        Reviewed by Joseph Pecoraro.
+
+        All iOS.xcconfig did was include AspenFamily.xcconfig, so there's no need for the indirection.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/iOS.xcconfig: Removed.
+
+2014-08-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: new glyphs are visible on OS X 10.9 builds
+        https://bugs.webkit.org/show_bug.cgi?id=135743
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController window]): Use 10100 instead of 1090 for the version.
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of SCRIPTED_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135729
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Get rid of INPUT_SPEECH
+        https://bugs.webkit.org/show_bug.cgi?id=135672
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Update glyphs to be more like Xcode 6
+        https://bugs.webkit.org/show_bug.cgi?id=135705
+
+        Reviewed by Joseph Pecoraro.
+
+        * Resources/Dock.pdf: Added.
+        * Resources/DockLegacy.pdf: Copied from Source/WebKit/mac/Resources/Dock.pdf.
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController window]): Use new images.
+
+2014-08-06  Dean Jackson  <dino@apple.com>
+
+        ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED is not used anywhere. Remove it.
+        https://bugs.webkit.org/show_bug.cgi?id=135675
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-08-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement parsing for CSS scroll snap points
+        https://bugs.webkit.org/show_bug.cgi?id=134301
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Added ENABLE_CSS_SCROLL_SNAP
+
+2014-08-06  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (WebKit2): iOS Safari default encoding doesn't follow system language
+        https://bugs.webkit.org/show_bug.cgi?id=135667
+        <rdar://problem/17862892>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebPreferences.mm: (+[WebPreferences _setInitialDefaultTextEncodingToSystemEncoding]):
+        Moved implementation to WebCore, so that it can be shared with WebKit2.
+
+        * WebCoreSupport/WebSystemInterface.mm: (InitWebCoreSystemInterface):
+        We now use WKGetWebDefaultCFStringEncoding in WebCore, so it needs to be initialized.
+
 2014-08-05  Peyton Randolph  <prandolph@apple.com>
 
         Rename MAC_LONG_PRESS feature flag to LONG_MOUSE_PRESS.
