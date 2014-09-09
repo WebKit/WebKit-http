@@ -277,11 +277,11 @@ static String getFormatForSkeleton(const char* locale, const String& skeleton)
     if (!patternGenerator)
         return format;
     status = U_ZERO_ERROR;
-    int32_t length = udatpg_getBestPattern(patternGenerator, skeleton.characters(), skeleton.length(), 0, 0, &status);
+    int32_t length = udatpg_getBestPattern(patternGenerator, skeleton.characters16(), skeleton.length(), 0, 0, &status);
     if (status == U_BUFFER_OVERFLOW_ERROR && length) {
         Vector<UChar> buffer(length);
         status = U_ZERO_ERROR;
-        udatpg_getBestPattern(patternGenerator, skeleton.characters(), skeleton.length(), buffer.data(), length, &status);
+        udatpg_getBestPattern(patternGenerator, skeleton.characters16(), skeleton.length(), buffer.data(), length, &status);
         if (U_SUCCESS(status))
             format = String::adopt(buffer);
     }
