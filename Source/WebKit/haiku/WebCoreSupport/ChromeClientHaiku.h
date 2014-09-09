@@ -98,7 +98,9 @@ namespace WebCore {
         bool runJavaScriptConfirm(Frame*, const String&) override;
         bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
         PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
+#if 0
         PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) override;
+#endif
 
         bool shouldInterruptJavaScript() override;
         KeyboardUIMode keyboardUIMode() override;

@@ -291,10 +291,12 @@ PassOwnPtr<ColorChooser> ChromeClientHaiku::createColorChooser(
 }
 
 
+#if 0
 PassRefPtr<DateTimeChooser> ChromeClientHaiku::openDateTimeChooser(
     DateTimeChooserClient*, const DateTimeChooserParameters&)
 {
 }
+#endif
 
 
 void ChromeClientHaiku::setStatusbarText(const String& message)

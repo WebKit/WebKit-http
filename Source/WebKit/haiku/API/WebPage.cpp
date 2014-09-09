@@ -56,6 +56,7 @@
 #include "InspectorClientHaiku.h"
 #include "Logging.h"
 #include "MemoryCache.h"
+#include "NotificationClientHaiku.h"
 #include "loader/archive/mhtml/MHTMLArchive.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -216,7 +217,27 @@ BWebPage::BWebPage(BWebView* webView)
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
     fProgressTracker = new ProgressTrackerClientHaiku(this);
     pageClients.progressTrackerClient = fProgressTracker;
+    //pageClients.alternativeTextClient = new WebAlternativeTextClient(self);
     fPage = new Page(pageClients);
+
+#if ENABLE(GEOLOCATION)
+    WebCore::provideGeolocationTo(fPage, new WebGeolocationClient(this));
+#endif
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    WebCore::provideNotification(fPage, new NotificationClientHaiku(this));
+#endif
+#if ENABLE(DEVICE_ORIENTATION)
+#if !PLATFORM(IOS)
+    WebCore::provideDeviceOrientationTo(fPage, new WebDeviceOrientationClient(this));
+#endif
+#endif
+#if ENABLE(MEDIA_STREAM)
+    WebCore::provideUserMediaTo(fPage, new WebUserMediaClient(this));
+#endif
+
+#if ENABLE(REMOTE_INSPECTOR)
+    fPage->setRemoteInspectionAllowed(true);
+#endif
 
     fSettings = new BWebSettings(&fPage->settings());
 }
