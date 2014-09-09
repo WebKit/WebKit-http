@@ -30,6 +30,7 @@
 #include "config.h"	// WebCore/config.h
 #include "ChromeClientHaiku.h"
 
+#include "ColorChooserHaiku.h"
 #include "FileChooser.h"
 #include "FileIconLoader.h"
 #include "Frame.h"
@@ -281,6 +282,20 @@ bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& /*message*/, c
     notImplemented();
     return false;
 }
+
+
+PassOwnPtr<ColorChooser> ChromeClientHaiku::createColorChooser(
+    ColorChooserClient* client, const Color& color)
+{
+    return adoptPtr(new ColorChooserHaiku(client, color));
+}
+
+
+PassRefPtr<DateTimeChooser> ChromeClientHaiku::openDateTimeChooser(
+    DateTimeChooserClient*, const DateTimeChooserParameters&)
+{
+}
+
 
 void ChromeClientHaiku::setStatusbarText(const String& message)
 {
