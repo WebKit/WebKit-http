@@ -39,6 +39,7 @@
 #include "ContextMenuController.h"
 #include "CookieJar.h"
 #include "Cursor.h"
+#include "DeviceOrientationClientMock.h"
 #include "DOMTimer.h"
 #include "DragClientHaiku.h"
 #include "Editor.h"
@@ -227,9 +228,8 @@ BWebPage::BWebPage(BWebView* webView)
     WebCore::provideNotification(fPage, new NotificationClientHaiku(this));
 #endif
 #if ENABLE(DEVICE_ORIENTATION)
-#if !PLATFORM(IOS)
-    WebCore::provideDeviceOrientationTo(fPage, new WebDeviceOrientationClient(this));
-#endif
+    // No actual support, we only want to get the html5test points...
+    WebCore::provideDeviceOrientationTo(fPage, new DeviceOrientationClientMock());
 #endif
 #if ENABLE(MEDIA_STREAM)
     WebCore::provideUserMediaTo(fPage, new WebUserMediaClient(this));
