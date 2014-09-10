@@ -374,6 +374,11 @@ String AXMenuListActionVerb()
     return String();
 }
 
+String weekFormatInLDML()
+{
+    return "'Week' ww, yyyy";
+}
+
 String missingPluginText()
 {
     return "Missing Plug-in";
