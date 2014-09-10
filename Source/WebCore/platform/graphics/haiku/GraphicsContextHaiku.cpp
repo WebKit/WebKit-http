@@ -708,11 +708,13 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     }
 }
 
-void GraphicsContext::drawFocusRing(const Path& /*path*/, int /*width*/, int /*offset*/, const Color& /*color*/)
+void GraphicsContext::drawFocusRing(const Path& path, int /*width*/, int /*offset*/, const Color& color)
 {
     if (paintingDisabled())
         return;
 
+    setPlatformFillColor(color, ColorSpaceDeviceRGB);
+    //m_data->view()->StrokePath(path, B_SOLID_HIGH);
     notImplemented();
 }
 
@@ -726,12 +728,9 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width *
     // FIXME: maybe we should implement this with BShape?
 
     if (rects.size() > 1) {
-        BRegion    region;
-        for (unsigned i = 0; i < rectCount; ++i)
-            region.Include(BRect(rects[i]));
-
         setPlatformFillColor(color, ColorSpaceDeviceRGB);
-        m_data->view()->StrokeRect(region.Frame(), B_MIXED_COLORS);
+        for (unsigned i = 0; i < rectCount; ++i)
+            m_data->view()->StrokeRect(rects[i], B_SOLID_HIGH);
     }
 }
 
