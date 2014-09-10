@@ -57,6 +57,7 @@
 #include "InspectorClientHaiku.h"
 #include "Logging.h"
 #include "MemoryCache.h"
+#include "WebNavigatorContentUtilsClient.h"
 #include "NotificationClientHaiku.h"
 #include "loader/archive/mhtml/MHTMLArchive.h"
 #include "Page.h"
@@ -233,6 +234,10 @@ BWebPage::BWebPage(BWebView* webView)
 #endif
 #if ENABLE(MEDIA_STREAM)
     WebCore::provideUserMediaTo(fPage, new WebUserMediaClient(this));
+#endif
+#if ENABLE(NAVIGATOR_CONTENT_UTILS)
+    WebCore::provideNavigatorContentUtilsTo(fPage,
+        std::make_unique<WebKit::WebNavigatorContentUtilsClient>());
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
