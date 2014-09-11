@@ -35,7 +35,7 @@ function relativePath(path, basePath)
 {
     console.assert(path.charAt(0) === "/");
     console.assert(basePath.charAt(0) === "/");
-    
+
     var pathComponents = path.split("/");
     var baseComponents = basePath.replace(/\/$/, "").split("/");
     var finalComponents = [];
@@ -202,10 +202,10 @@ WebInspector.displayNameForURL = function(url, urlComponents)
     }
 
     return displayName || WebInspector.displayNameForHost(urlComponents.host) || url;
-}
+};
 
 WebInspector.displayNameForHost = function(host)
 {
     // FIXME <rdar://problem/11237413>: This should decode punycode hostnames.
     return host;
-}
+};

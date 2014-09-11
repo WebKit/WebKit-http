@@ -665,7 +665,7 @@ WebInspector.DOMNodeStyles.prototype = {
                     this._parseStyleDeclarationPayload(payload, styleDeclaration.node, styleDeclaration.inherited, styleDeclaration.type, styleDeclaration.ownerRule);
                 }
 
-                return;
+                return null;
             }
 
             if (!styleDeclaration) {
@@ -692,7 +692,7 @@ WebInspector.DOMNodeStyles.prototype = {
 
         if (previousStyleDeclarationsMap !== this._styleDeclarationsMap) {
             // If the previous and current maps differ then make sure the found styleDeclaration is added to the current map.
-            styleDeclarations = mapKey && mapKey in this._styleDeclarationsMap ? this._styleDeclarationsMap[mapKey] : [] ;
+            styleDeclarations = mapKey && mapKey in this._styleDeclarationsMap ? this._styleDeclarationsMap[mapKey] : [];
 
             if (styleDeclaration && !styleDeclarations.contains(styleDeclaration)) {
                 styleDeclarations.push(styleDeclaration);

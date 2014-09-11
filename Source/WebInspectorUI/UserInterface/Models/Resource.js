@@ -666,9 +666,9 @@ WebInspector.Resource.prototype = {
                 width: image.width,
                 height: image.height
             };
-            
+
             callback(this._imageSize);
-        };
+        }
 
         // Create an <img> element that we'll use to load the image resource
         // so that we can query its intrinsic size.
@@ -684,7 +684,7 @@ WebInspector.Resource.prototype = {
     associateWithScript: function(script)
     {
         if (!this._scripts)
-            this._scripts = []
+            this._scripts = [];
 
         this._scripts.push(script);
 

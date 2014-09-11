@@ -361,7 +361,7 @@ void MediaSource::setDurationInternal(const MediaTime& duration)
 
     // 4. If the new duration is less than old duration, then call remove(new duration, old duration)
     // on all objects in sourceBuffers.
-    if (!oldDuration.isValid() && duration < oldDuration) {
+    if (oldDuration.isValid() && duration < oldDuration) {
         for (auto& sourceBuffer : *m_sourceBuffers)
             sourceBuffer->remove(duration, oldDuration, IGNORE_EXCEPTION);
     }
@@ -814,7 +814,7 @@ void MediaSource::onReadyStateChange(const AtomicString& oldState, const AtomicS
 
 Vector<PlatformTimeRanges> MediaSource::activeRanges() const
 {
-    Vector<PlatformTimeRanges> activeRanges(m_activeSourceBuffers->length());
+    Vector<PlatformTimeRanges> activeRanges;
     for (auto& sourceBuffer : *m_activeSourceBuffers)
         activeRanges.append(sourceBuffer->buffered()->ranges());
     return activeRanges;

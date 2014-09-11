@@ -414,7 +414,7 @@ WebInspector.DataGrid.prototype = {
     },
 
     insertColumn: function(columnIdentifier, columnData, insertionIndex) {
-        if (typeof insertionIndex === "undefined")
+        if (insertionIndex === undefined)
             insertionIndex = this.orderedColumns.length;
         insertionIndex = Number.constrain(insertionIndex, 0, this.orderedColumns.length);
 
@@ -1025,7 +1025,7 @@ WebInspector.DataGrid.prototype = {
     {
         var collapserColumnIdentifier = null;
         for (var [identifier, column] of this.columns) {
-            if (column["collapsesGroup"] == columnGroup) {
+            if (column["collapsesGroup"] === columnGroup) {
                 collapserColumnIdentifier = identifier;
                 break;
             }
@@ -1217,7 +1217,7 @@ WebInspector.DataGrid.prototype = {
 
     get resizeMethod()
     {
-        if (typeof this._resizeMethod === "undefined")
+        if (!this._resizeMethod)
             return WebInspector.DataGrid.ResizeMethod.Nearest;
         return this._resizeMethod;
     },
@@ -1262,9 +1262,9 @@ WebInspector.DataGrid.prototype = {
             leftEdgeOfPreviousColumn += firstRowCells[i].offsetWidth;
 
         // Differences for other resize methods
-        if (this.resizeMethod == WebInspector.DataGrid.ResizeMethod.Last) {
+        if (this.resizeMethod === WebInspector.DataGrid.ResizeMethod.Last) {
             rightCellIndex = this.resizerElements.length;
-        } else if (this.resizeMethod == WebInspector.DataGrid.ResizeMethod.First) {
+        } else if (this.resizeMethod === WebInspector.DataGrid.ResizeMethod.First) {
             leftEdgeOfPreviousColumn += firstRowCells[leftCellIndex].offsetWidth - firstRowCells[0].offsetWidth;
             leftCellIndex = 0;
         }

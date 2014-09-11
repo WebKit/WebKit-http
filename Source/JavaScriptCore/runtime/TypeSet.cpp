@@ -38,6 +38,7 @@ namespace JSC {
 
 TypeSet::TypeSet()
     : m_seenTypes(TypeNothing)
+    , m_isOverflown(false)
 {
 }
 
@@ -94,8 +95,12 @@ void TypeSet::addTypeInformation(RuntimeType type, PassRefPtr<StructureShape> pr
                 }
             }
 
-            if (!found)
-                m_structureHistory.append(newShape);
+            if (!found) {
+                if (m_structureHistory.size() < 100)
+                    m_structureHistory.append(newShape);
+                else if (!m_isOverflown)
+                    m_isOverflown = true;
+            }
         }
     }
 }
@@ -260,6 +265,20 @@ String TypeSet::leastCommonAncestor() const
     return StructureShape::leastCommonAncestor(m_structureHistory);
 }
 
+PassRefPtr<Inspector::Protocol::Runtime::TypeSet> TypeSet::inspectorTypeSet() const
+{
+    return Inspector::Protocol::Runtime::TypeSet::create()
+        .setIsFunction(doesTypeConformTo(TypeFunction))
+        .setIsUndefined(doesTypeConformTo(TypeUndefined))
+        .setIsNull(doesTypeConformTo(TypeNull))
+        .setIsBoolean(doesTypeConformTo(TypeBoolean))
+        .setIsInteger(doesTypeConformTo(TypeMachineInt))
+        .setIsNumber(doesTypeConformTo(TypeNumber))
+        .setIsString(doesTypeConformTo(TypeString))
+        .setIsObject(doesTypeConformTo(TypeObject))
+        .release();
+}
+
 String TypeSet::toJSONString() const
 {
     // This returns a JSON string representing an Object with the following properties:
@@ -341,6 +360,7 @@ StructureShape::StructureShape()
     : m_proto(nullptr)
     , m_propertyHash(nullptr)
     , m_final(false)
+    , m_isInDictionaryMode(false)
 {
 }
 
@@ -386,7 +406,7 @@ String StructureShape::propertyHash()
 String StructureShape::leastCommonAncestor(const Vector<RefPtr<StructureShape>> shapes)
 {
     if (!shapes.size())
-        return "";
+        return emptyString();
 
     RefPtr<StructureShape> origin = shapes.at(0);
     for (size_t i = 1; i < shapes.size(); i++) {
@@ -462,6 +482,13 @@ String StructureShape::toJSONString() const
     json.append("\"");
     json.append(",");
 
+    json.append("\"isInDictionaryMode\":");
+    if (m_isInDictionaryMode)
+        json.append("true");
+    else
+        json.append("false");
+    json.append(",");
+
     json.append("\"fields\":");
     json.append("[");
     bool hasAnItem = false;
@@ -513,13 +540,16 @@ PassRefPtr<Inspector::Protocol::Runtime::StructureDescription> StructureShape::i
 
     while (currentShape) {
         auto fields = Inspector::Protocol::Array<String>::create();
+        auto optionalFields = Inspector::Protocol::Array<String>::create();
         for (auto field : currentShape->m_fields)
             fields->addItem(field.get());
         for (auto field : currentShape->m_optionalFields)
-            fields->addItem(field.get() + String("?"));
+            optionalFields->addItem(field.get());
 
         currentObject->setFields(fields);
+        currentObject->setOptionalFields(optionalFields);
         currentObject->setConstructorName(currentShape->m_constructorName);
+        currentObject->setIsImprecise(currentShape->m_isInDictionaryMode);
 
         if (currentShape->m_proto) {
             RefPtr<Inspector::Protocol::Runtime::StructureDescription> nextObject = Inspector::Protocol::Runtime::StructureDescription::create();
@@ -584,6 +614,11 @@ PassRefPtr<StructureShape> StructureShape::merge(const PassRefPtr<StructureShape
     merged->markAsFinal();
 
     return merged.release();
+}
+
+void StructureShape::enterDictionaryMode()
+{
+    m_isInDictionaryMode = true;
 }
 
 } //namespace JSC

@@ -424,7 +424,7 @@ bool InlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
     return false;
 }
 
-FloatSize InlineTextBox::applyShadowToGraphicsContext(GraphicsContext* context, const ShadowData* shadow, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal, bool& didSaveContext)
+FloatSize InlineTextBox::applyShadowToGraphicsContext(GraphicsContext& context, const ShadowData* shadow, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal, bool& didSaveContext)
 {
     if (!shadow)
         return FloatSize();
@@ -440,15 +440,15 @@ FloatSize InlineTextBox::applyShadowToGraphicsContext(GraphicsContext* context, 
         FloatRect shadowRect(textRect);
         shadowRect.inflate(shadow->paintingExtent());
         shadowRect.move(shadowOffset);
-        context->save();
-        context->clip(shadowRect);
+        context.save();
+        context.clip(shadowRect);
 
         extraOffset = FloatSize(0, 2 * textRect.height() + std::max(0.0f, shadowOffset.height()) + shadowRadius);
         shadowOffset -= extraOffset;
         didSaveContext = true;
     }
 
-    context->setShadow(shadowOffset, shadowRadius, shadowColor, context->fillColorSpace());
+    context.setShadow(shadowOffset, shadowRadius, shadowColor, context.fillColorSpace());
     return extraOffset;
 }
 
@@ -774,22 +774,14 @@ void InlineTextBox::paintCompositionBackground(GraphicsContext* context, const F
         return;
 
     GraphicsContextStateSaver stateSaver(*context);
-
-#if !PLATFORM(IOS)
-    // FIXME: Is this color still applicable as of Mavericks? for non-Mac ports? We should
-    // be able to move this color information to RenderStyle.
-    Color c = Color(225, 221, 85);
-#else
-    Color c = style.compositionFillColor();
-#endif
-    
-    updateGraphicsContext(*context, TextPaintStyle(c, style.colorSpace())); // Don't draw text at all!
+    Color compositionColor = Color::compositionFill;
+    updateGraphicsContext(*context, TextPaintStyle(compositionColor, style.colorSpace())); // Don't draw text at all!
 
     LayoutUnit deltaY = renderer().style().isFlippedLinesWritingMode() ? selectionBottom() - logicalBottom() : logicalTop() - selectionTop();
     LayoutRect selectionRect = LayoutRect(boxOrigin.x(), boxOrigin.y() - deltaY, 0, selectionHeight());
     TextRun textRun = constructTextRun(style, font);
     font.adjustSelectionRectForText(textRun, selectionRect, sPos, ePos);
-    context->fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), c, style.colorSpace());
+    context->fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), compositionColor, style.colorSpace());
 }
 
 static StrokeStyle textDecorationStyleToStrokeStyle(TextDecorationStyle decorationStyle)

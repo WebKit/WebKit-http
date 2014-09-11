@@ -29,7 +29,7 @@ WebInspector.NavigationBar = function(element, navigationItems, role, label) {
     this._element = element || document.createElement("div");
     this._element.classList.add(this.constructor.StyleClassName || WebInspector.NavigationBar.StyleClassName);
     this._element.tabIndex = 0;
-    
+
     if (role)
         this._element.setAttribute("role", role);
     if (label)
@@ -77,7 +77,7 @@ WebInspector.NavigationBar.prototype = {
     {
         console.assert(navigationItem instanceof WebInspector.NavigationItem);
         if (!(navigationItem instanceof WebInspector.NavigationItem))
-            return;
+            return null;
 
         if (navigationItem.parentNavigationBar)
             navigationItem.parentNavigationBar.removeNavigationItem(navigationItem);
@@ -111,7 +111,7 @@ WebInspector.NavigationBar.prototype = {
     {
         var navigationItem = this._findNavigationItem(navigationItemOrIdentifierOrIndex);
         if (!navigationItem)
-            return;
+            return null;
 
         navigationItem._parentNavigationBar = null;
 
@@ -233,7 +233,7 @@ WebInspector.NavigationBar.prototype = {
 
     get minimumWidth()
     {
-        if (typeof this._minimumWidth === "undefined" || this._minimumWidthNeedsRecalculation) {
+        if (this._minimumWidth === undefined || this._minimumWidthNeedsRecalculation) {
             this._minimumWidth = this._calculateMinimumWidth();
             delete this._minimumWidthNeedsRecalculation;
         }

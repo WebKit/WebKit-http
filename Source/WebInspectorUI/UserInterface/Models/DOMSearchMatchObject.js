@@ -56,7 +56,7 @@ WebInspector.DOMSearchMatchObject.prototype = {
 
     get title()
     {
-        return this._title;     
+        return this._title;
     },
 
     get className()
@@ -78,7 +78,7 @@ WebInspector.DOMSearchMatchObject.prototype = {
     },
 
     // Private
-    
+
     _generateClassName: function()
     {
         switch (this._domNode.nodeType()) {
@@ -98,7 +98,7 @@ WebInspector.DOMSearchMatchObject.prototype = {
             return WebInspector.DOMSearchMatchObject.DOMMatchCharacterDataIconStyleClassName;
 
         default:
-            console.error("Unknown DOM node type: ", node.nodeType());
+            console.error("Unknown DOM node type: ", this._domNode.nodeType());
             return WebInspector.DOMSearchMatchObject.DOMMatchNodeIconStyleClassName;
         }
     }
@@ -109,7 +109,7 @@ WebInspector.DOMSearchMatchObject.titleForDOMNode = function(domNode)
     switch (domNode.nodeType()) {
     case Node.ELEMENT_NODE:
         var title = "<" + domNode.nodeNameInCorrectCase();
-        
+
         for (var i = 0; i < domNode.attributes().length; ++i) {
             title += " " + domNode.attributes()[i].name;
             if (domNode.attributes()[i].value.length)
@@ -128,7 +128,7 @@ WebInspector.DOMSearchMatchObject.titleForDOMNode = function(domNode)
         var title = "<!DOCTYPE " + domNode.nodeName();
         if (domNode.publicId) {
             title += " PUBLIC \"" + domNode.publicId + "\"";
-            if (node.systemId)
+            if (domNode.systemId)
                 title += " \"" + domNode.systemId + "\"";
         } else if (domNode.systemId)
             title += " SYSTEM \"" + domNode.systemId + "\"";
@@ -145,6 +145,6 @@ WebInspector.DOMSearchMatchObject.titleForDOMNode = function(domNode)
         console.error("Unknown DOM node type: ", domNode.nodeType());
         return domNode.nodeNameInCorrectCase();
     }
-}
+};
 
 WebInspector.DOMSearchMatchObject.prototype.__proto__ = WebInspector.Object.prototype;

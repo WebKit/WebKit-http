@@ -181,7 +181,7 @@ WebInspector.LayerTreeSidebarPanel.prototype = {
             var item1 = a.layer[sortColumnIdentifier] || 0;
             var item2 = b.layer[sortColumnIdentifier] || 0;
             return item1 - item2;
-        };
+        }
 
         this._dataGrid.sortNodes(comparator);
         this._updatePopoverForSelectedNode();
@@ -272,25 +272,25 @@ WebInspector.LayerTreeSidebarPanel.prototype = {
                 dataGrid.removeChild(node);
                 delete this._dataGridNodesByLayerId[layer.layerId];
             }
-        }.bind(this));
+        }, this);
 
         mutations.additions.forEach(function(layer) {
             var node = this._dataGridNodeForLayer(layer);
             if (node)
                 dataGrid.appendChild(node);
-        }.bind(this));
+        }, this);
 
         mutations.preserved.forEach(function(layer) {
             var node = this._dataGridNodesByLayerId[layer.layerId];
             if (node)
                 node.layer = layer;
-        }.bind(this));
+        }, this);
 
         this._sortDataGrid();
 
         this._childLayersRow.dataGrid = !isEmptyObject(childLayers) ? this._dataGrid : null;
     },
-    
+
     _dataGridNodeForLayer: function(layer)
     {
         var node = new WebInspector.LayerTreeDataGridNode(layer);
@@ -299,7 +299,7 @@ WebInspector.LayerTreeSidebarPanel.prototype = {
 
         return node;
     },
-    
+
     _updateMetrics: function(layerForNode, childLayers)
     {
         var layerCount = 0;
@@ -359,7 +359,7 @@ WebInspector.LayerTreeSidebarPanel.prototype = {
     {
         var content = document.createElement("div");
         content.className = "layer-tree-popover";
-        
+
         content.appendChild(document.createElement("p")).textContent = WebInspector.UIString("Reasons for compositing:");
 
         var list = content.appendChild(document.createElement("ul"));

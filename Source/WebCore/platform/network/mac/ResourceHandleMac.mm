@@ -144,6 +144,10 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
 void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, SchedulingBehavior schedulingBehavior, NSDictionary *connectionProperties)
 #endif
 {
+#if ENABLE(WEB_TIMING)
+    setCollectsTimingData();
+#endif
+
     // Credentials for ftp can only be passed in URL, the connection:didReceiveAuthenticationChallenge: delegate call won't be made.
     if ((!d->m_user.isEmpty() || !d->m_pass.isEmpty()) && !firstRequest().url().protocolIsInHTTPFamily()) {
         URL urlWithCredentials(firstRequest().url());
@@ -221,9 +225,6 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
     const bool usesCache = true;
 #endif
     d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:usesCache maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
-#if ENABLE(WEB_TIMING)
-    [NSURLConnection _setCollectsTimingData:YES];
-#endif
 }
 
 bool ResourceHandle::start()
@@ -753,13 +754,16 @@ void ResourceHandle::getConnectionTimingData(NSDictionary *timingData, ResourceL
     timing.requestStart = requestStart <= 0 ? 0 : (requestStart - referenceStart) * 1000;
     timing.responseStart = responseStart <= 0 ? 0 : (responseStart - referenceStart) * 1000;
 }
-    
-#if USE(CFNETWORK)
-    
+
 void ResourceHandle::setCollectsTimingData()
 {
-    [NSURLConnection _setCollectsTimingData:YES];
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        [NSURLConnection _setCollectsTimingData:YES];
+    });
 }
+
+#if USE(CFNETWORK)
     
 void ResourceHandle::getConnectionTimingData(CFURLConnectionRef connection, ResourceLoadTiming& timing)
 {

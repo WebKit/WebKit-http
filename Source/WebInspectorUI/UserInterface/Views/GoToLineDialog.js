@@ -44,7 +44,7 @@ WebInspector.GoToLineDialog = function()
     this._input.addEventListener("blur", this);
     this._clearIcon.addEventListener("mousedown", this);
     this._clearIcon.addEventListener("click", this);
-}
+};
 
 WebInspector.GoToLineDialog.StyleClassName = "go-to-line-dialog";
 WebInspector.GoToLineDialog.NonEmptyClassName = "non-empty";
@@ -121,7 +121,7 @@ WebInspector.GoToLineDialog.prototype = {
             var valueIsValid = false;
             if (this.delegate && typeof this.delegate.isGoToLineDialogValueValid === "function")
                 valueIsValid = this.delegate.isGoToLineDialogValueValid(this, value);
-            
+
             if (valueIsValid && this.delegate && typeof this.delegate.goToLineDialogValueWasValidated === "function") {
                 this.delegate.goToLineDialogValueWasValidated(this, value);
                 this.dismiss();
@@ -156,4 +156,4 @@ WebInspector.GoToLineDialog.prototype = {
         this._input.value = "";
         this._element.classList.remove(WebInspector.GoToLineDialog.NonEmptyClassName);
     }
-}
+};

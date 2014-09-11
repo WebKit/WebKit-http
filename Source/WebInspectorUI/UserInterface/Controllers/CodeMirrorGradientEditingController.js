@@ -54,7 +54,7 @@ WebInspector.CodeMirrorGradientEditingController = function(codeMirror, marker)
             }
         };
     }
-}
+};
 
 WebInspector.CodeMirrorGradientEditingController.StyleClassName = "gradient-editing-controller";
 WebInspector.CodeMirrorGradientEditingController.EditsColorClassName = "edits-color";
@@ -140,7 +140,7 @@ WebInspector.CodeMirrorGradientEditingController.prototype = {
             this._gradientTypePicker.value = this.value.repeats ? "repeating-linear-gradient" : "linear-gradient";
             this._angleInput.value = this.value.angle + "\u00B0";
         } else
-            this._gradientTypePicker.value = this.value.repeats ? "repeating-radial-gradient" : "radial-gradient"
+            this._gradientTypePicker.value = this.value.repeats ? "repeating-radial-gradient" : "radial-gradient";
 
         this._gradientSlider.delegate = this;
     },
@@ -159,7 +159,7 @@ WebInspector.CodeMirrorGradientEditingController.prototype = {
     {
         this.text = this.value.toString();
     },
-    
+
     gradientSliderStopWasSelected: function(gradientSlider, stop)
     {
         var selectedStop = gradientSlider.selectedStop;
@@ -176,7 +176,7 @@ WebInspector.CodeMirrorGradientEditingController.prototype = {
         // Ensure the angle input is not focused since, if it were, it'd make a scrollbar appear as we
         // animate the popover's frame to fit its new content.
         this._angleInput.blur();
-        
+
         this.popover.update();
     },
 
@@ -238,7 +238,7 @@ WebInspector.CodeMirrorGradientEditingController.prototype = {
         this._gradientSlider.stops = this.value.stops;
         this.text = this.value.toString();
     },
-    
+
     _updateCSSClassForGradientType: function()
     {
         if (this.value instanceof WebInspector.LinearGradient)
@@ -246,4 +246,4 @@ WebInspector.CodeMirrorGradientEditingController.prototype = {
         else
             this._container.classList.add(WebInspector.CodeMirrorGradientEditingController.RadialGradientClassName);
     }
-}
+};

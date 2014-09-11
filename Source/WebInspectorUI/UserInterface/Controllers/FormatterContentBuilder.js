@@ -196,7 +196,7 @@ FormatterContentBuilder.prototype = {
         const maxCacheIndent = 20;
         var max = Math.min(this._indent, maxCacheIndent);
         for (var i = this._indentCache.length; i <= max; ++i)
-            this._indentCache[i] = this._indentCache[i-1] + this._indentString;
+            this._indentCache[i] = this._indentCache[i - 1] + this._indentString;
 
         // Append indents as needed.
         var indent = this._indent;
@@ -226,4 +226,4 @@ FormatterContentBuilder.prototype = {
         console.assert(this._formattedContent.lastValue === "\n");
         this._formattedLineEndings.push(this._formattedContentLength - 1);
     }
-}
+};

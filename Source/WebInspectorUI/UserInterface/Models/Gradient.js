@@ -28,7 +28,7 @@ WebInspector.Gradient = {
         Linear: "linear-gradient",
         Radial: "radial-gradient"
     },
-    
+
     fromString: function(cssString)
     {
         var type;
@@ -48,6 +48,7 @@ WebInspector.Gradient = {
         var currentParam = "";
         var openParentheses = 0;
         var ch = openingParenthesisIndex + 1;
+        var c = null;
         while (c = cssString[ch]) {
             if (c === "(")
                 openParentheses++;
@@ -87,13 +88,13 @@ WebInspector.Gradient = {
             gradient = WebInspector.LinearGradient.linearGradientWithComponents(components);
         else
             gradient = WebInspector.RadialGradient.radialGradientWithComponents(components);
-    
+
         if (gradient)
             gradient.repeats = typeString.indexOf("repeating") === 0;
-    
+
         return gradient;
     },
-    
+
     stopsWithComponents: function(components)
     {
         // FIXME: handle lengths.
@@ -129,7 +130,7 @@ WebInspector.Gradient = {
 
         return stops;
     },
-    
+
     stringFromStops: function(stops)
     {
         var count = stops.length - 1;
@@ -147,7 +148,7 @@ WebInspector.LinearGradient = function(angle, stops)
     this.type = WebInspector.Gradient.Types.Linear;
     this.angle = angle;
     this.stops = stops;
-}
+};
 
 WebInspector.LinearGradient.linearGradientWithComponents = function(components)
 {
@@ -199,7 +200,7 @@ WebInspector.LinearGradient.linearGradientWithComponents = function(components)
         return null;
 
     return new WebInspector.LinearGradient(angle, stops);
-}
+};
 
 WebInspector.LinearGradient.prototype = {
     constructor: WebInspector.LinearGradient,
@@ -237,14 +238,14 @@ WebInspector.LinearGradient.prototype = {
 
         return (this.repeats ? "repeating-" : "") + this.type + "(" + str + ")";
     }
-}
+};
 
 WebInspector.RadialGradient = function(sizing, stops)
 {
     this.type = WebInspector.Gradient.Types.Radial;
     this.sizing = sizing;
     this.stops = stops;
-}
+};
 
 WebInspector.RadialGradient.radialGradientWithComponents = function(components)
 {
@@ -255,7 +256,7 @@ WebInspector.RadialGradient.radialGradientWithComponents = function(components)
         return null;
 
     return new WebInspector.RadialGradient(sizing, stops);
-}
+};
 
 WebInspector.RadialGradient.prototype = {
     constructor: WebInspector.RadialGradient,
@@ -273,7 +274,7 @@ WebInspector.RadialGradient.prototype = {
             str += ", ";
 
         str += WebInspector.Gradient.stringFromStops(this.stops);
-        
+
         return (this.repeats ? "repeating-" : "") + this.type + "(" + str + ")";
     }
-}
+};

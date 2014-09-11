@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,28 +26,14 @@
 #ifndef CertificateInfo_h
 #define CertificateInfo_h
 
-#include <WebCore/ResourceResponse.h>
-#include <wtf/RetainPtr.h>
-
 namespace WebCore {
 
 class CertificateInfo {
 public:
-    WEBCORE_EXPORT CertificateInfo();
-    WEBCORE_EXPORT explicit CertificateInfo(const ResourceResponse&);
-    WEBCORE_EXPORT explicit CertificateInfo(CFArrayRef certificateChain);
+    CertificateInfo() { }
 
-    void setCertificateChain(CFArrayRef certificateChain) { m_certificateChain = certificateChain; }
-    CFArrayRef certificateChain() const { return m_certificateChain.get(); }
-
-#ifndef NDEBUG
-    void dump() const;
-#endif
-
-private:
-    RetainPtr<CFArrayRef> m_certificateChain;
 };
 
-} // namespace WebKit
+}
 
-#endif // CertificateInfo_h
+#endif

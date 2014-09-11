@@ -39,34 +39,6 @@ WebInspector.ConsoleCommand.prototype = {
 
     // Public
 
-    clearHighlight: function()
-    {
-        var highlightedMessage = this._formattedCommand;
-        delete this._formattedCommand;
-        this._formatCommand();
-        this._element.replaceChild(this._formattedCommand, highlightedMessage);
-    },
-
-    highlightSearchResults: function(regexObject)
-    {
-        regexObject.lastIndex = 0;
-        var text = this.command;
-        var match = regexObject.exec(text);
-        var offset = 0;
-        var matchRanges = [];
-        while (match) {
-            matchRanges.push({ offset: match.index, length: match[0].length });
-            match = regexObject.exec(text);
-        }
-        highlightSearchResults(this._formattedCommand, matchRanges);
-        this._element.scrollIntoViewIfNeeded();
-    },
-
-    matchesRegex: function(regexObject)
-    {
-        return regexObject.test(this.command);
-    },
-
     toMessageElement: function()
     {
         if (!this._element) {
@@ -89,7 +61,7 @@ WebInspector.ConsoleCommand.prototype = {
         this._formattedCommand.className = "console-message-text source-code";
         this._formattedCommand.textContent = this.command;
     },
-    
+
     toClipboardString: function(isPrefixOptional)
     {
         return (isPrefixOptional ? "" : "> ") + this.command;

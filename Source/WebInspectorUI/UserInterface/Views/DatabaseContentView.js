@@ -41,7 +41,7 @@ WebInspector.DatabaseContentView = function(representedObject)
     this._promptElement.appendChild(this.prompt.element);
 
     this.element.addEventListener("click", this._messagesClicked.bind(this), true);
-}
+};
 
 WebInspector.DatabaseContentView.Event = {
     SchemaUpdated: "SchemaUpdated"
@@ -133,7 +133,7 @@ WebInspector.DatabaseContentView.prototype = {
     {
         if (error.message)
             var message = error.message;
-        else if (error.code == 2)
+        else if (error.code === 2)
             var message = WebInspector.UIString("Database no longer has expected version.");
         else
             var message = WebInspector.UIString("An unexpected error %s occurred.").format(error.code);
@@ -177,6 +177,6 @@ WebInspector.DatabaseContentView.prototype = {
         element.appendChild(resultElement);
         return resultElement;
     }
-}
+};
 
 WebInspector.DatabaseContentView.prototype.__proto__ = WebInspector.ContentView.prototype;

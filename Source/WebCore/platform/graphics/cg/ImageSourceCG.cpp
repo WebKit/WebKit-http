@@ -106,14 +106,12 @@ void ImageSource::clear(bool destroyAllFrames, size_t, SharedBuffer* data, bool 
         setData(data, allDataReceived);
 }
 
-static CFDictionaryRef createImageSourceOptions(ImageSource::ShouldSkipMetadata skipMetaData, SubsamplingLevel subsamplingLevel)
+static CFDictionaryRef createImageSourceOptions(SubsamplingLevel subsamplingLevel)
 {
-    const CFBooleanRef imageSourceSkipMetadata = (skipMetaData == ImageSource::SkipMetadata) ? kCFBooleanTrue : kCFBooleanFalse;
-    
     if (!subsamplingLevel) {
         const unsigned numOptions = 3;
         const void* keys[numOptions] = { kCGImageSourceShouldCache, kCGImageSourceShouldPreferRGB32, kCGImageSourceSkipMetadata };
-        const void* values[numOptions] = { kCFBooleanTrue, kCFBooleanTrue, imageSourceSkipMetadata };
+        const void* values[numOptions] = { kCFBooleanTrue, kCFBooleanTrue, kCFBooleanTrue };
         return CFDictionaryCreate(nullptr, keys, values, numOptions, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     }
 
@@ -123,16 +121,16 @@ static CFDictionaryRef createImageSourceOptions(ImageSource::ShouldSkipMetadata 
     RetainPtr<CFNumberRef> subsampleNumber = adoptCF(CFNumberCreate(nullptr,  kCFNumberIntType,  &subsampleInt));
     const CFIndex numOptions = 4;
     const void* keys[numOptions] = { kCGImageSourceShouldCache, kCGImageSourceShouldPreferRGB32, kCGImageSourceSkipMetadata, kCGImageSourceSubsampleFactor };
-    const void* values[numOptions] = { kCFBooleanTrue, kCFBooleanTrue, imageSourceSkipMetadata, subsampleNumber.get() };
+    const void* values[numOptions] = { kCFBooleanTrue, kCFBooleanTrue, kCFBooleanTrue, subsampleNumber.get() };
     return CFDictionaryCreate(nullptr, keys, values, numOptions, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 }
 
-static CFDictionaryRef imageSourceOptions(ImageSource::ShouldSkipMetadata skipMetadata = ImageSource::SkipMetadata, SubsamplingLevel subsamplingLevel = 0)
+static CFDictionaryRef imageSourceOptions(SubsamplingLevel subsamplingLevel = 0)
 {
     if (subsamplingLevel)
-        return createImageSourceOptions(skipMetadata, subsamplingLevel);
+        return createImageSourceOptions(subsamplingLevel);
 
-    static CFDictionaryRef options = createImageSourceOptions(skipMetadata, 0);
+    static CFDictionaryRef options = createImageSourceOptions(0);
     return options;
 }
 
@@ -234,7 +232,7 @@ bool ImageSource::allowSubsamplingOfFrameAtIndex(size_t) const
 
 IntSize ImageSource::frameSizeAtIndex(size_t index, SubsamplingLevel subsamplingLevel, ImageOrientationDescription description) const
 {
-    RetainPtr<CFDictionaryRef> properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_decoder, index, imageSourceOptions(SkipMetadata, subsamplingLevel)));
+    RetainPtr<CFDictionaryRef> properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_decoder, index, imageSourceOptions(subsamplingLevel)));
 
     if (!properties)
         return IntSize();
@@ -350,7 +348,7 @@ CGImageRef ImageSource::createFrameAtIndex(size_t index, SubsamplingLevel subsam
     if (!initialized())
         return 0;
 
-    RetainPtr<CGImageRef> image = adoptCF(CGImageSourceCreateImageAtIndex(m_decoder, index, imageSourceOptions(SkipMetadata, subsamplingLevel)));
+    RetainPtr<CGImageRef> image = adoptCF(CGImageSourceCreateImageAtIndex(m_decoder, index, imageSourceOptions(subsamplingLevel)));
 
 #if PLATFORM(IOS)
     // <rdar://problem/7371198> - CoreGraphics changed the default caching behaviour in iOS 4.0 to kCGImageCachingTransient
@@ -384,21 +382,7 @@ CGImageRef ImageSource::createFrameAtIndex(size_t index, SubsamplingLevel subsam
 bool ImageSource::frameIsCompleteAtIndex(size_t index)
 {
     ASSERT(frameCount());
-
-    // CGImageSourceGetStatusAtIndex claims that all frames of a multi-frame image are incomplete
-    // when we've not yet received the complete data for an image that is using an incremental data
-    // source (<rdar://problem/7679174>). We work around this by special-casing all frames except the
-    // last in an image and treating them as complete if they are present and reported as being
-    // incomplete. We do this on the assumption that loading new data can only modify the existing last
-    // frame or append new frames. The last frame is only treated as being complete if the image source
-    // reports it as such. This ensures that it is truly the last frame of the image rather than just
-    // the last that we currently have data for.
-
-    CGImageSourceStatus frameStatus = CGImageSourceGetStatusAtIndex(m_decoder, index);
-    if (index < frameCount() - 1)
-        return frameStatus >= kCGImageStatusIncomplete;
-
-    return frameStatus == kCGImageStatusComplete;
+    return CGImageSourceGetStatusAtIndex(m_decoder, index) == kCGImageStatusComplete;
 }
 
 float ImageSource::frameDurationAtIndex(size_t index)
@@ -407,7 +391,7 @@ float ImageSource::frameDurationAtIndex(size_t index)
         return 0;
 
     float duration = 0;
-    RetainPtr<CFDictionaryRef> properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_decoder, index, imageSourceOptions(SkipMetadata)));
+    RetainPtr<CFDictionaryRef> properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_decoder, index, imageSourceOptions()));
     if (properties) {
         CFDictionaryRef gifProperties = (CFDictionaryRef)CFDictionaryGetValue(properties.get(), kCGImagePropertyGIFDictionary);
         if (gifProperties) {

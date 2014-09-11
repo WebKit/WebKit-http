@@ -37,19 +37,19 @@ WebInspector.CodeMirrorEditingController = function(codeMirror, marker)
     this._value = this.initialValue;
 
     this._keyboardShortcutEsc = new WebInspector.KeyboardShortcut(null, WebInspector.KeyboardShortcut.Key.Escape);
-}
+};
 
 WebInspector.CodeMirrorEditingController.prototype = {
     constructor: WebInspector.CodeMirrorEditingController,
     __proto__: WebInspector.Object.prototype,
-    
+
     // Public
-    
+
     get marker()
     {
         return this._marker;
     },
-    
+
     get range()
     {
         return this._range;
@@ -59,7 +59,7 @@ WebInspector.CodeMirrorEditingController.prototype = {
     {
         return this._value;
     },
-    
+
     set value(value)
     {
         this.text = value.toString();
@@ -82,7 +82,7 @@ WebInspector.CodeMirrorEditingController.prototype = {
         var to = {line: this._range.endLine, ch: this._range.endColumn};
         return this._codeMirror.getRange(from, to);
     },
-    
+
     set text(text)
     {
         var from = {line: this._range.startLine, ch: this._range.startColumn};
@@ -100,13 +100,13 @@ WebInspector.CodeMirrorEditingController.prototype = {
         // Implemented by subclasses.
         return this.text;
     },
-    
+
     get cssClassName()
     {
         // Implemented by subclasses.
         return "";
     },
-    
+
     get popover()
     {
         return this._popover;
@@ -153,7 +153,7 @@ WebInspector.CodeMirrorEditingController.prototype = {
     {
         if (!this._keyboardShortcutEsc.matchesEvent(event) || !this._popover.visible)
             return false;
-        
+
         this.value = this._originalValue;
         this._popover.dismiss();
 
@@ -176,7 +176,7 @@ WebInspector.CodeMirrorEditingController.prototype = {
 
         this._originalValue = this._value.copy();
     },
-    
+
     didDismissPopover: function(popover)
     {
         delete this._popover;
@@ -187,4 +187,4 @@ WebInspector.CodeMirrorEditingController.prototype = {
         if (this._delegate && typeof this._delegate.editingControllerDidFinishEditing === "function")
             this._delegate.editingControllerDidFinishEditing(this);
     }
-}
+};

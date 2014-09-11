@@ -92,7 +92,8 @@ WebInspector.LayerTreeDataGridNode.prototype = {
 
     _makeOutlet: function(name, element)
     {
-        return this._outlets[name] = element;
+        this._outlets[name] = element;
+        return element;
     },
 
     _makeNameCell: function()
@@ -106,7 +107,7 @@ WebInspector.LayerTreeDataGridNode.prototype = {
 
         var label = this._makeOutlet("label", fragment.appendChild(document.createElement("span")));
         label.className = "label";
-    
+
         var nameLabel = this._makeOutlet("nameLabel", label.appendChild(document.createElement("span")));
         nameLabel.className = "name";
 

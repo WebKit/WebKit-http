@@ -36,11 +36,11 @@ WebInspector.DOMTreeElement = function(node, elementCloseTag)
     // The title will be updated in onattach.
     TreeElement.call(this, "", node, hasChildrenOverride);
 
-    if (this.representedObject.nodeType() == Node.ELEMENT_NODE && !elementCloseTag)
+    if (this.representedObject.nodeType() === Node.ELEMENT_NODE && !elementCloseTag)
         this._canAddAttributes = true;
     this._searchQuery = null;
     this._expandedChildrenLimit = WebInspector.DOMTreeElement.InitialChildrenLimit;
-}
+};
 
 WebInspector.DOMTreeElement.InitialChildrenLimit = 500;
 WebInspector.DOMTreeElement.MaximumInlineTextChildLength = 80;
@@ -167,8 +167,9 @@ WebInspector.DOMTreeElement.prototype = {
 
     showChild: function(index)
     {
+        console.assert(!this._elementCloseTag);
         if (this._elementCloseTag)
-            return;
+            return false;
 
         if (index >= this.expandedChildrenLimit) {
             this._expandedChildrenLimit = index + 1;
@@ -373,7 +374,7 @@ WebInspector.DOMTreeElement.prototype = {
         this.adjustCollapsedRange();
 
         var lastChild = this.children.lastValue;
-        if (this.representedObject.nodeType() == Node.ELEMENT_NODE && (!lastChild || !lastChild._elementCloseTag))
+        if (this.representedObject.nodeType() === Node.ELEMENT_NODE && (!lastChild || !lastChild._elementCloseTag))
             this.insertChildElement(this.representedObject, this.children.length, true);
 
         // We want to restore the original selection and tree scroll position after a full refresh, if possible.
@@ -478,7 +479,10 @@ WebInspector.DOMTreeElement.prototype = {
     ondelete: function()
     {
         var startTagTreeElement = this.treeOutline.findTreeElement(this.representedObject);
-        startTagTreeElement ? startTagTreeElement.remove() : this.remove();
+        if (startTagTreeElement)
+            startTagTreeElement.remove();
+        else
+            this.remove();
         return true;
     },
 
@@ -526,7 +530,7 @@ WebInspector.DOMTreeElement.prototype = {
         else {
             var nodeName = tag.textContent.match(/^<(.*?)>$/)[1];
             tag.textContent = "";
-            tag.appendChild(document.createTextNode("<"+nodeName));
+            tag.appendChild(document.createTextNode("<" + nodeName));
             tag.appendChild(node);
             tag.appendChild(document.createTextNode(">"));
         }
@@ -536,10 +540,10 @@ WebInspector.DOMTreeElement.prototype = {
 
     _startEditingTarget: function(eventTarget)
     {
-        if (this.treeOutline.selectedDOMNode() != this.representedObject)
-            return;
+        if (this.treeOutline.selectedDOMNode() !== this.representedObject)
+            return false;
 
-        if (this.representedObject.nodeType() != Node.ELEMENT_NODE && this.representedObject.nodeType() != Node.TEXT_NODE)
+        if (this.representedObject.nodeType() !== Node.ELEMENT_NODE && this.representedObject.nodeType() !== Node.TEXT_NODE)
             return false;
 
         var textNode = eventTarget.enclosingNodeOrSelfWithClass("html-text-node");
@@ -613,7 +617,7 @@ WebInspector.DOMTreeElement.prototype = {
     _startEditing: function()
     {
         if (this.treeOutline.selectedDOMNode() !== this.representedObject)
-            return;
+            return false;
 
         var listItem = this._listItemNode;
 
@@ -629,7 +633,7 @@ WebInspector.DOMTreeElement.prototype = {
             var textNode = listItem.getElementsByClassName("html-text-node")[0];
             if (textNode)
                 return this._startEditingTextNode(textNode);
-            return;
+            return false;
         }
     },
 
@@ -939,7 +943,7 @@ WebInspector.DOMTreeElement.prototype = {
             // We only show text nodes inline in elements if the element only
             // has a single child, and that child is a text node.
             textNode = this.representedObject.firstChild;
-        } else if (this.representedObject.nodeType() == Node.TEXT_NODE)
+        } else if (this.representedObject.nodeType() === Node.TEXT_NODE)
             textNode = this.representedObject;
 
         textNode.setNodeValue(newText, this.updateTitle.bind(this));
@@ -961,14 +965,14 @@ WebInspector.DOMTreeElement.prototype = {
         // in the child element list.
         if (this.expanded) {
             var closers = this._childrenListNode.querySelectorAll(".close");
-            return closers[closers.length-1];
+            return closers[closers.length - 1];
         }
 
         // Remaining cases are single line non-expanded elements with a closing
         // tag, or HTML elements without a closing tag (such as <br>). Return
         // null in the case where there isn't a closing tag.
         var tags = this.listItemElement.getElementsByClassName("html-tag");
-        return (tags.length === 1 ? null : tags[tags.length-1]);
+        return (tags.length === 1 ? null : tags[tags.length - 1]);
     },
 
     updateTitle: function(onlySearchQueryChanged)
@@ -1297,6 +1301,6 @@ WebInspector.DOMTreeElement.prototype = {
         if (event.type === "dragstart" && this._editing)
             event.preventDefault();
     }
-}
+};
 
 WebInspector.DOMTreeElement.prototype.__proto__ = TreeElement.prototype;

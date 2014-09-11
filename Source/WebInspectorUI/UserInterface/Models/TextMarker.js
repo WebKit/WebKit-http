@@ -31,7 +31,7 @@ WebInspector.TextMarker = function(codeMirrorTextMarker, type)
     codeMirrorTextMarker.__webInspectorTextMarker = this;
 
     this._type = type || WebInspector.TextMarker.Type.Plain;
-}
+};
 
 WebInspector.TextMarker.Type = {
     Color: "text-marker-type-color",
@@ -47,7 +47,7 @@ WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker = function(codeMirrorT
 WebInspector.TextMarker.prototype = {
     constructor: WebInspector.TextMarker,
     __proto__: WebInspector.Object.prototype,
-    
+
     // Public
 
     get codeMirrorTextMarker()
@@ -78,7 +78,7 @@ WebInspector.TextMarker.prototype = {
             end: range.to
         });
     },
-    
+
     clear: function()
     {
         this._codeMirrorTextMarker.clear();

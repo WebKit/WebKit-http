@@ -112,6 +112,9 @@ static std::chrono::milliseconds maximumBufferingTime(CachedResource* resource)
 #endif
         return 0_ms;
     }
+
+    ASSERT_NOT_REACHED();
+    return 0_ms;
 }
 
 void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, CachedResource* resource, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
@@ -170,6 +173,7 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Cach
     loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect = shouldClearReferrerOnHTTPSToHTTPRedirect;
     loadParameters.isMainResource = resource && resource->type() == CachedResource::MainResource;
     loadParameters.defersLoading = resourceLoader->defersLoading();
+    loadParameters.needsCertificateInfo = loadParameters.isMainResource;
     loadParameters.maximumBufferingTime = maximumBufferingTime(resource);
 
     ASSERT((loadParameters.webPageID && loadParameters.webFrameID) || loadParameters.clientCredentialPolicy == DoNotAskClientForAnyCredentials);

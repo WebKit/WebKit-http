@@ -1,3 +1,134 @@
+2014-09-10  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [EFL][WK2] Minibrowser : Add tooltip for toolbar buttons in Minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=136284
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+
+2014-09-10  Rebecca Hauck  <rhauck@adobe.com>
+
+        import-w3c-tests doesn't handle relative paths to support files in ref files correctly
+        https://bugs.webkit.org/show_bug.cgi?id=135929
+
+        Reviewed by Bem Jones-Bey.
+
+        The recent refactor of the W3C test repo falsified a bunch of assmumptions that
+        were made when this script was originally written with respect to relative paths
+        in ref files. This patch updates import-w3c-tests to update paths in ref files if
+        they move relative to the test file.
+
+
+        * Scripts/webkitpy/w3c/test_converter.py:
+        (convert_for_webkit):
+        (_W3CTestConverter.__init__):
+        (_W3CTestConverter.convert_reference_relpaths):
+        (_W3CTestConverter.convert_style_data):
+        (_W3CTestConverter.convert_attributes_if_needed):
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.find_importable_tests):
+        (TestImporter.import_tests):
+        * Scripts/webkitpy/w3c/test_parser.py:
+        (TestParser.load_file):
+        (TestParser.analyze_test):
+        (TestParser.support_files):
+
+2014-09-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] allow overwriting destination of download
+        https://bugs.webkit.org/show_bug.cgi?id=136372
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        (downloadLocalFileSuccessfully): Split from testDownloadLocalFile
+        (testDownloadLocalFile): Split off downloadLocalFileSuccessfully
+        (createFileAtDestination): Added
+        (testDownloadOverwriteDestinationAllowed): Added
+        (testDownloadOverwriteDestinationDisallowed): Added
+        (testDownloadLocalFileError): Use new DownloadErrorTest::ExpectedError
+        (testDownloadRemoteFileError): Use new DownloadErrorTest::ExpectedError
+        (beforeAll): New tests
+
+2014-08-05  David Farler  <dfarler@apple.com>
+
+        iOS Simulator: run-webkit-tests chokes on unterminated UTF-8 when writing a test result
+        https://bugs.webkit.org/show_bug.cgi?id=135551
+
+        Reviewed by Daniel Bates.
+
+        Prevent printing invalid Unicode strings going to stderr.
+        Also, make filesystem.py more tolerant about receiving
+        Unicode (encoded as UTF-8) when writing to files, in the
+        rare case that an NSError description will make it to
+        stderr, such as -[LTRelayController createUniqueApp].
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController launchSimulator]): Removed.
+        (-[LTRelayController createUniqueApp]):
+        Don't explicitly try to uninstall the app. It is automatically handled
+        when installing an app with the same bundle identifier.
+        (-[LTRelayController start]):
+        (-[LTRelayController bootDevice]): Removed.
+        The device already boots as a part of starting the simulator. Attempting
+        to boot a second time may cause spurious stderr output.
+        * Scripts/webkitpy/port/driver.py:
+        (IOSSimulatorDriver._setup_environ_for_driver):
+        Explicitly set DEVELOPER_DIR once so xcode-select isn't called.
+        Open the iOS Simulator once instead of the LayoutTestRelay trying
+        to do it.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort._get_crash_log):
+        Make sure stderr is at least an empty string.
+        (IOSSimulatorPort):
+        (IOSSimulatorPort.developer_dir):
+        New property for setting up DEVELOPER_DIR in the driver environment.
+
+2014-09-09  Dan Bernstein  <mitz@apple.com>
+
+        Clean up the MiniBrowser Xcode project
+        https://bugs.webkit.org/show_bug.cgi?id=136684
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/Configurations/Base.xcconfig: Enabled warnings recommended by Xcode 6.
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj: Removed explicit linking against
+        WebKit2.framework. Upgraded project file version.
+
+2014-09-09  Daniel Bates  <dbates@webkit.org>
+
+        svn-{apply, unapply} fails to apply/unapply SVN 1.7 patch that adds new file with property change
+        https://bugs.webkit.org/show_bug.cgi?id=136379
+
+        Reviewed by David Kilzer.
+
+        Fixes an issue where svn-{apply, unapply} fail to apply or unapply, respectively,
+        a patch generated using Subversion 1.7.4 (r1295709) that both adds a new file F
+        and sets a property on F (say, the executable bit).
+
+        * Scripts/svn-apply:
+        (patch): Only add file if the diff has text chunks.
+        * Scripts/svn-unapply:
+        (patch): Only delete added file if the diff has text chunks.
+
+2014-09-09  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Skip TestSSL:webkit2/WebKitWebView/ssl (fails since r173423).
+
+2014-09-09  Christophe Dumez  <cdumez@apple.com>
+
+        Update my email in contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=136671
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2014-09-08  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         [EFL] Enable fixed layout by default

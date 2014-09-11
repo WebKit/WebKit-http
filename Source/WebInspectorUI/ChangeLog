@@ -1,3 +1,586 @@
+2014-09-10  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Modify the type profiler runtime protocol to transfer some computation into the WebInspector
+        https://bugs.webkit.org/show_bug.cgi?id=136500
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch maintains the same UI in the Web Inspector for displaying
+        type information, but now accounts for the new protocol for type profiling.
+        
+        The Inspector now has a TypeSet class that wraps the TypeDescription 
+        protocol object and creates a simple interface for asking protocol objects 
+        about their type.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype._insertTypeTokensForEachNode):
+        * UserInterface/Main.html:
+        * UserInterface/Models/TypeSet.js: Added.
+        (WebInspector.TypeSet):
+        (WebInspector.TypeSet.fromPayload):
+        (WebInspector.TypeSet.prototype.isContainedIn):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptTypeInformation.handler):
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptTypeInformation):
+        * UserInterface/Views/TypePropertiesSection.js:
+        (WebInspector.TypePropertiesSection.prototype.onpopulate):
+        (WebInspector.TypePropertyTreeElement.prototype.onpopulate):
+        * UserInterface/Views/TypeTokenView.js:
+        (WebInspector.TypeTokenView.prototype.update):
+        (WebInspector.TypeTokenView.prototype._shouldShowPopover):
+        (WebInspector.TypeTokenView.prototype._displayTypeName):
+
+2014-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Eliminate typeof "undefined" checks
+        https://bugs.webkit.org/show_bug.cgi?id=136691
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.linkifyURLAsNode):
+        (WebInspector.linkifyStringAsFragment):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Command.prototype._invokeWithArguments):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.get resizeMethod):
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype.get minimumWidth):
+
+2014-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix obscure ESLint warnings and skip directories
+        https://bugs.webkit.org/show_bug.cgi?id=136686
+
+        Reviewed by Timothy Hatcher.
+
+        * .eslintignore: Added.
+        Skip directories we do not want ESLint to process.
+
+        * .eslintrc:
+        Add rules we've seen and sort sections.
+
+        * UserInterface/Controllers/FormatterContentBuilder.js:
+        (FormatterContentBuilder.prototype._appendIndent):
+        * UserInterface/Models/Color.js:
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        * UserInterface/Views/DOMTreeDataGridNode.js:
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.ondelete):
+        (WebInspector.DOMTreeElement.prototype._insertInLastAttributePosition):
+        (WebInspector.DOMTreeElement.prototype._distinctClosingTagElement):
+        * UserInterface/Views/EditingSupport.js:
+        (WebInspector.EditingConfig):
+        * UserInterface/Views/LayerTreeDataGridNode.js:
+        (WebInspector.LayerTreeDataGridNode.prototype._makeOutlet):
+        * UserInterface/Views/TreeOutline.js:
+        (TreeOutline.prototype.appendChild):
+        (TreeOutline.prototype.insertChild):
+        (TreeOutline.prototype.removeChildAtIndex):
+        (TreeOutline.prototype.removeChild):
+        (TreeElement.prototype.expandRecursively):
+        Fix linter issues.
+
+2014-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix ESLint consistent-return warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136682
+
+        Reviewed by Timothy Hatcher.
+
+        * .eslintrc:
+        * UserInterface/Controllers/BranchManager.js:
+        (WebInspector.BranchManager.prototype.createBranch):
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype._addNewResourceToFrame):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WebInspector.BoxModelDetailsSectionRow.prototype._applyUserInput):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.showChild):
+        (WebInspector.DOMTreeElement.prototype._startEditingTarget):
+        (WebInspector.DOMTreeElement.prototype._startEditing):
+        * UserInterface/Views/EditingSupport.js:
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup.prototype._nodeTextOrLink):
+        * UserInterface/Views/FrameContentView.js:
+        (WebInspector.FrameContentView.prototype._showContentViewForIdentifier):
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype.insertNavigationItem):
+        (WebInspector.NavigationBar.prototype.removeNavigationItem):
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole.prototype._insertExecutionContextPathComponentForFrame):
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.addSidebarPanel):
+        (WebInspector.Sidebar.prototype.removeSidebarPanel):
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.addStyleClassToLine):
+        (WebInspector.TextEditor.prototype.removeStyleClassFromLine):
+        (WebInspector.TextEditor.prototype.toggleStyleClassForLine):
+
+2014-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix ESLint no-undef warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136660
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMSearchMatchObject.js:
+        (WebInspector.DOMSearchMatchObject.prototype._generateClassName):
+        (WebInspector.DOMSearchMatchObject.titleForDOMNode):
+        * UserInterface/Models/Gradient.js:
+        (WebInspector.Gradient.fromString):
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/ReplayDashboardView.js:
+        (WebInspector.ReplayDashboardView):
+
+2014-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused Console search highlight methods
+        https://bugs.webkit.org/show_bug.cgi?id=136661
+
+        Reviewed by Timothy Hatcher.
+
+        ESLint's no-undef warning complained about some undefined references
+        in these functions that would have thrown exceptions. Turns out this
+        code is unused, and we do highlighting in the console separately.
+
+        * UserInterface/Views/ConsoleCommand.js:
+        (WebInspector.ConsoleCommand.prototype.clearHighlight): Deleted.
+        (WebInspector.ConsoleCommand.prototype.highlightSearchResults): Deleted.
+        (WebInspector.ConsoleCommand.prototype.matchesRegex): Deleted.
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype.clearHighlight): Deleted.
+        (WebInspector.ConsoleMessageImpl.prototype.highlightSearchResults): Deleted.
+        (WebInspector.ConsoleMessageImpl.prototype.matchesRegex): Deleted.
+
+2014-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix ESLint* no-avoidable-bind warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136690
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.LocalJSONObject.prototype._children):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        * UserInterface/Views/LayerTreeSidebarPanel.js:
+        (WebInspector.LayerTreeSidebarPanel.prototype._updateDataGrid):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._filterMessages):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype.get supplementalRepresentedObjects):
+
+2014-09-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        Disable the "unreachable-code" warning
+        https://bugs.webkit.org/show_bug.cgi?id=136677
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2014-09-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix ESLint no-trailing-spaces warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136657
+
+        Reviewed by Andy Estes.
+
+        * .eslintrc:
+        * UserInterface/Base/DOMUtilities.js:
+        * UserInterface/Base/URLUtilities.js:
+        (relativePath):
+        * UserInterface/Base/Utilities.js:
+        * UserInterface/Controllers/CodeMirrorColorEditingController.js:
+        (WebInspector.CodeMirrorColorEditingController.prototype._colorPickerColorChanged):
+        * UserInterface/Controllers/CodeMirrorDragToAdjustNumberController.js:
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.set enabled):
+        (WebInspector.CodeMirrorDragToAdjustNumberController.prototype.dragToAdjustControllerCanAdjustObjectAtPoint):
+        * UserInterface/Controllers/CodeMirrorEditingController.js:
+        (WebInspector.CodeMirrorEditingController.prototype.handleKeydownEvent):
+        * UserInterface/Controllers/CodeMirrorGradientEditingController.js:
+        (WebInspector.CodeMirrorGradientEditingController.prototype.gradientSliderStopWasSelected):
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._processJavaScriptExpression):
+        * UserInterface/Controllers/DragToAdjustController.js:
+        (WebInspector.DragToAdjustController.prototype.set active):
+        (WebInspector.DragToAdjustController.prototype._setDragging):
+        (WebInspector.DragToAdjustController.prototype._setTracksMouseClickAndDrag):
+        * UserInterface/External/Esprima/esprima.js:
+        * UserInterface/Models/ApplicationCacheFrame.js:
+        (WebInspector.ApplicationCacheFrame):
+        * UserInterface/Models/ApplicationCacheManifest.js:
+        (WebInspector.ApplicationCacheManifest):
+        (WebInspector.ApplicationCacheManifest.prototype.get manifestURL):
+        * UserInterface/Models/CookieStorageObject.js:
+        * UserInterface/Models/DOMSearchMatchObject.js:
+        (WebInspector.DOMSearchMatchObject.prototype.get title):
+        (WebInspector.DOMSearchMatchObject.titleForDOMNode):
+        * UserInterface/Models/DatabaseObject.js:
+        (WebInspector.DatabaseObject.prototype.getTableNames):
+        * UserInterface/Models/DatabaseTableObject.js:
+        (WebInspector.DatabaseTableObject):
+        * UserInterface/Models/Gradient.js:
+        (WebInspector.Gradient.fromString):
+        (WebInspector.RadialGradient.prototype.toString):
+        * UserInterface/Models/IssueMessage.js:
+        (WebInspector.IssueMessage.prototype._formatTextIfNecessary):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.getImageSize.imageDidLoad):
+        (WebInspector.Resource.prototype.getImageSize):
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype._makeSyntaxTree):
+        * UserInterface/Models/SourceCodeLocation.js:
+        (WebInspector.SourceCodeLocation.prototype.hasDifferentDisplayLocation):
+        * UserInterface/Models/TextMarker.js:
+        * UserInterface/Protocol/PageObserver.js:
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        (WebInspector.ApplicationCacheDetailsSidebarPanel.prototype.set applicationCacheFrame):
+        (WebInspector.ApplicationCacheDetailsSidebarPanel.prototype.refresh):
+        (WebInspector.ApplicationCacheDetailsSidebarPanel.prototype._networkStateUpdated):
+        * UserInterface/Views/ApplicationCacheFrameTreeElement.js:
+        (WebInspector.ApplicationCacheFrameTreeElement):
+        * UserInterface/Views/ApplicationCacheManifestTreeElement.js:
+        (WebInspector.ApplicationCacheManifestTreeElement.prototype.get name):
+        (WebInspector.ApplicationCacheManifestTreeElement.prototype.get secondaryName):
+        * UserInterface/Views/ButtonNavigationItem.js:
+        (WebInspector.ButtonNavigationItem):
+        * UserInterface/Views/ColorPicker.js:
+        * UserInterface/Views/ColorWheel.js:
+        (WebInspector.ColorWheel.prototype._draw):
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        (WebInspector.CompletionSuggestionsView.prototype.show):
+        * UserInterface/Views/ConsoleCommand.js:
+        * UserInterface/Views/ConsolePrompt.js:
+        * UserInterface/Views/ContentFlowTreeElement.js:
+        * UserInterface/Views/CookieStorageTreeElement.js:
+        (WebInspector.CookieStorageTreeElement):
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup.prototype._functionTextOrLink):
+        * UserInterface/Views/GeneralTreeElementPathComponent.js:
+        * UserInterface/Views/GoToLineDialog.js:
+        (WebInspector.GoToLineDialog.prototype._handleKeydownEvent):
+        * UserInterface/Views/LayerTreeDataGridNode.js:
+        (WebInspector.LayerTreeDataGridNode.prototype._makeNameCell):
+        * UserInterface/Views/LayerTreeSidebarPanel.js:
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._highlightRanges):
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar):
+        * UserInterface/Views/NavigationItem.js:
+        (WebInspector.NavigationItem):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshImageSizeSection):
+        * UserInterface/Views/ScopeBar.js:
+        * UserInterface/Views/ScopeBarItem.js:
+        (WebInspector.ScopeBarItem):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel):
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.updateRangeTimes):
+        * UserInterface/Views/ScriptTreeElement.js:
+        (WebInspector.ScriptTreeElement):
+        * UserInterface/Views/SearchBar.js:
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.truncateAndHighlightTitle):
+        * UserInterface/Views/Slider.js:
+
+2014-09-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix ESLint eqeqeq warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136658
+
+        Reviewed by Andy Estes.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.mycallback):
+        (WebInspector.DOMTreeManager.prototype.searchResult):
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype.clearActions):
+        * UserInterface/Models/DOMTree.js:
+        (WebInspector.DOMTree.prototype._requestRootDOMNode.rootObjectAvailable):
+        (WebInspector.DOMTree.prototype._requestRootDOMNode.rootDOMNodeAvailable):
+        (WebInspector.DOMTree.prototype._requestRootDOMNode.dispatchCallbacks):
+        (WebInspector.DOMTree.prototype._requestRootDOMNode):
+        * UserInterface/Models/ProbeSet.js:
+        (WebInspector.ProbeSet.prototype.removeProbe):
+        * UserInterface/Models/ProbeSetDataTable.js:
+        (WebInspector.ProbeSetDataTable.prototype.addSampleForProbe):
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._filterCookies):
+        (WebInspector.cookieMatchesResourceURL):
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype._editingCallback):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement):
+        (WebInspector.DOMTreeElement.prototype._updateChildren):
+        (WebInspector.DOMTreeElement.prototype._startEditingTarget):
+        (WebInspector.DOMTreeElement.prototype._textNodeEditingCommitted):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._resizerDragging):
+        * UserInterface/Views/DatabaseContentView.js:
+        (WebInspector.DatabaseContentView.prototype._queryError):
+        * UserInterface/Views/DetailsSectionSimpleRow.js:
+        (.valueElementClicked):
+        (WebInspector.DetailsSectionSimpleRow):
+        * UserInterface/Views/Slider.js:
+        (WebInspector.Slider.prototype.get _maxX):
+        * UserInterface/Views/TreeOutline.js:
+        (TreeElement.prototype.expand):
+
+2014-09-09  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Fix ESLint no-extra-semi
+        https://bugs.webkit.org/show_bug.cgi?id=136666
+
+        Reviewed by Andy Estes.
+
+        Add explicit no-extra-semi rule to .eslintrc. Remove all unnecessary
+        semicolons as identified by ESLint.
+
+        * .eslintrc:
+        * Tools/PrettyPrinting/Formatter.js:
+        (Formatter):
+        * UserInterface/Controllers/Formatter.js:
+        (Formatter):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.getImageSize.imageDidLoad):
+        (WebInspector.Resource.prototype.getImageSize):
+        * UserInterface/Views/LayerTreeSidebarPanel.js:
+        (WebInspector.LayerTreeSidebarPanel.prototype._sortDataGrid.comparator):
+        (WebInspector.LayerTreeSidebarPanel.prototype._sortDataGrid):
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertyTreeElement.prototype.callback):
+        (WebInspector.ObjectPropertyTreeElement.prototype.applyExpression):
+
+2014-09-09  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Fix ESLint semi (missing semicolon)
+        https://bugs.webkit.org/show_bug.cgi?id=136665
+
+        Reviewed by Andy Estes.
+
+        Add missing semicolons as identified by ESLint. Add explicit semi rule to .eslintrc.
+
+        * .eslintrc:
+        * Tools/PrettyPrinting/FormatterContentBuilder.js:
+        * Tools/PrettyPrinting/FormatterDebug.js:
+        (Formatter.prototype.debug):
+        * UserInterface/Base/DOMUtilities.js:
+        * UserInterface/Base/EventListener.js:
+        (WebInspector.EventListener):
+        (WebInspector.EventListener.prototype.this._callback):
+        (WebInspector.EventListener.prototype.connect):
+        * UserInterface/Base/Object.js:
+        (WebInspector.Object):
+        (WebInspector.Object.addConstructorFunctions):
+        (WebInspector.Event):
+        * UserInterface/Base/URLUtilities.js:
+        (WebInspector.displayNameForURL):
+        (WebInspector.displayNameForHost):
+        * UserInterface/Base/Utilities.js:
+        (.):
+        * UserInterface/Controllers/BranchManager.js:
+        (WebInspector.BranchManager):
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager):
+        * UserInterface/Controllers/CodeMirrorColorEditingController.js:
+        (WebInspector.CodeMirrorColorEditingController):
+        * UserInterface/Controllers/CodeMirrorEditingController.js:
+        (WebInspector.CodeMirrorEditingController):
+        * UserInterface/Controllers/CodeMirrorGradientEditingController.js:
+        (WebInspector.CodeMirrorGradientEditingController):
+        (WebInspector.CodeMirrorGradientEditingController.prototype.popoverDidPresent):
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        * UserInterface/Controllers/FormatterContentBuilder.js:
+        * UserInterface/Controllers/FormatterSourceMap.js:
+        (WebInspector.FormatterSourceMap.fromBuilder):
+        * UserInterface/Controllers/IssueManager.js:
+        (WebInspector.IssueManager):
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager):
+        * UserInterface/Models/BreakpointAction.js:
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions):
+        (WebInspector.CSSCompletions.requestCSSNameCompletions):
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.forProperty):
+        (WebInspector.CSSKeywordCompletions.isColorAwareProperty):
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WebInspector.CSSStyleSheet.resetUniqueDisplayNameNumbers):
+        * UserInterface/Models/Color.js:
+        (WebInspector.Color):
+        (WebInspector.Color.fromString):
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode):
+        * UserInterface/Models/DOMSearchMatchObject.js:
+        (WebInspector.DOMSearchMatchObject.titleForDOMNode):
+        * UserInterface/Models/ExecutionContext.js:
+        (WebInspector.ExecutionContext.supported):
+        * UserInterface/Models/Gradient.js:
+        (WebInspector.LinearGradient):
+        (WebInspector.LinearGradient.linearGradientWithComponents):
+        (WebInspector.RadialGradient):
+        (WebInspector.RadialGradient.radialGradientWithComponents):
+        * UserInterface/Models/IssueMessage.js:
+        (WebInspector.IssueMessage):
+        * UserInterface/Models/ReplaySessionSegment.js:
+        (WebInspector.IncompleteSessionSegment):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.associateWithScript):
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.resetUniqueDisplayNameNumbers):
+        * UserInterface/Models/Setting.js:
+        (WebInspector.Setting):
+        * UserInterface/Models/SourceCodePosition.js:
+        (WebInspector.SourceCodePosition):
+        * UserInterface/Models/SourceMap.js:
+        (WebInspector.SourceMap):
+        (WebInspector.SourceMap.StringCharIterator):
+        * UserInterface/Models/TextMarker.js:
+        (WebInspector.TextMarker):
+        * UserInterface/Models/TextRange.js:
+        (WebInspector.TextRange):
+        * UserInterface/Protocol/InspectorFrontendHostStub.js:
+        (.WebInspector.InspectorFrontendHostStub):
+        * UserInterface/Protocol/MessageDispatcher.js:
+        (WebInspector.dispatchNextQueuedMessageFromBackend):
+        (WebInspector.dispatchMessageFromBackend):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPrimitiveValue):
+        (WebInspector.RemoteObject.fromLocalObject):
+        (WebInspector.RemoteObject.resolveNode):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.type):
+        (WebInspector.RemoteObjectProperty):
+        (WebInspector.RemoteObjectProperty.fromPrimitiveValue):
+        (WebInspector.LocalJSONObject):
+        * UserInterface/Protocol/ReplayObserver.js:
+        (WebInspector.ReplayPosition.fromProtocol):
+        * UserInterface/Views/BreakpointActionView.js:
+        (WebInspector.BreakpointActionView.displayStringForType):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.if):
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView.prototype.goBack):
+        (WebInspector.ClusterContentView.prototype.goForward):
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/ColorWheel.js:
+        (WebInspector.ColorWheel):
+        * UserInterface/Views/ConsoleMessage.js:
+        (WebInspector.ConsoleMessage):
+        (WebInspector.ConsoleMessage.create):
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl):
+        * UserInterface/Views/ContextMenu.js:
+        (WebInspector.ContextMenuItem):
+        (WebInspector.ContextSubMenuItem):
+        (WebInspector.ContextMenu):
+        (WebInspector.ContextMenu.Provider):
+        (WebInspector.ContextMenu.registerProvider):
+        (WebInspector.contextMenuItemSelected):
+        (WebInspector.contextMenuCleared):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        * UserInterface/Views/DOMTreeUpdater.js:
+        (WebInspector.DOMTreeUpdater):
+        * UserInterface/Views/DatabaseContentView.js:
+        (WebInspector.DatabaseContentView):
+        * UserInterface/Views/EditingSupport.js:
+        (WebInspector.isBeingEdited):
+        (WebInspector.markBeingEdited):
+        (WebInspector.isEditingAnyField):
+        (WebInspector.isEventTargetAnEditableField):
+        (WebInspector.EditingConfig):
+        (WebInspector.startEditing):
+        * UserInterface/Views/EventListenerSection.js:
+        (WebInspector.EventListenerSection):
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup):
+        * UserInterface/Views/FindBanner.js:
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement):
+        * UserInterface/Views/GoToLineDialog.js:
+        (WebInspector.GoToLineDialog):
+        * UserInterface/Views/IndeterminateProgressSpinner.js:
+        (WebInspector.IndeterminateProgressSpinner):
+        * UserInterface/Views/LayoutTimelineDataGrid.js:
+        (WebInspector.LayoutTimelineDataGrid):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        * UserInterface/Views/NavigationItem.js:
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertiesSection):
+        (WebInspector.ObjectPropertiesSection.CompareProperties):
+        (WebInspector.ObjectPropertyTreeElement):
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        * UserInterface/Views/PropertiesSection.js:
+        (WebInspector.PropertiesSection):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.compareResourceTreeElements):
+        (WebInspector.ResourceTreeElement.compareFolderAndResourceTreeElements):
+        * UserInterface/Views/ScriptTimelineDataGrid.js:
+        (WebInspector.ScriptTimelineDataGrid):
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.truncateAndHighlightTitle):
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler):
+        (WebInspector.TimelineRuler.prototype.get allowsClippedLabels):
+        (WebInspector.TimelineRuler.prototype._handleMouseUp):
+        * UserInterface/Views/Toolbar.js:
+        * UserInterface/Views/TreeOutline.js:
+        (TreeOutline.prototype.appendChild):
+        (TreeOutline.prototype.insertChild):
+        (TreeOutline.prototype.removeChildAtIndex):
+        (TreeOutline.prototype.removeChild):
+        (TreeOutline.prototype.removeChildren):
+        (TreeOutline.prototype.removeChildrenRecursive):
+        (TreeOutline.prototype._rememberTreeElement):
+        (TreeOutline.prototype._forgetTreeElement):
+        (TreeOutline.prototype._forgetChildrenRecursive):
+        (TreeOutline.prototype.getCachedTreeElement):
+        (TreeOutline.prototype.findTreeElement):
+        (TreeOutline.prototype._treeElementDidChange):
+        (TreeOutline.prototype.treeElementFromPoint):
+        (TreeOutline.prototype._treeKeyDown):
+        (TreeOutline.prototype.expand):
+        (TreeOutline.prototype.collapse):
+        (TreeOutline.prototype.revealed):
+        (TreeOutline.prototype.reveal):
+        (TreeOutline.prototype.select):
+        (TreeOutline.prototype.revealAndSelect):
+        (TreeElement.prototype._attach):
+        (TreeElement.prototype._detach):
+        (TreeElement.treeElementMouseDown):
+        (TreeElement.treeElementToggled):
+        (TreeElement.treeElementDoubleClicked):
+        (TreeElement.prototype.collapse):
+        (TreeElement.prototype.collapseRecursively):
+        (TreeElement.prototype.expand):
+        (TreeElement.prototype.expandRecursively):
+        (TreeElement.prototype.hasAncestor):
+        (TreeElement.prototype.reveal):
+        (TreeElement.prototype.revealed):
+        (TreeElement.prototype.selectOnMouseDown):
+        (TreeElement.prototype.select):
+        (TreeElement.prototype.revealAndSelect):
+        (TreeElement.prototype.deselect):
+        (TreeElement.prototype.onpopulate):
+        (TreeElement.prototype.traverseNextTreeElement):
+        (TreeElement.prototype.traversePreviousTreeElement):
+        (TreeElement.prototype.isEventWithinDisclosureTriangle):
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer):
+
 2014-09-08  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Inspector frequently restores wrong view when opened (often Timelines instead of Resource)

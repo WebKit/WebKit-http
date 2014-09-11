@@ -87,7 +87,7 @@ WebInspector.LogContentView = function(representedObject)
     WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.MessageAdded, this._messageAdded, this);
     WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.PreviousMessageRepeatCountUpdated, this._previousMessageRepeatCountUpdated, this);
     WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.ActiveLogCleared, this._activeLogCleared, this);
-}
+};
 
 WebInspector.LogContentView.Scopes = {
     All: "log-all",
@@ -233,7 +233,7 @@ WebInspector.LogContentView.prototype = {
         var index = this._selectedSearchMatch ? this._searchMatches.indexOf(this._selectedSearchMatch) : this._searchMatches.length;
         this._highlightSearchMatchAtIndex(index - 1);
     },
-    
+
     highlightNextSearchMatch: function()
     {
         if (!this.searchInProgress || isEmptyObject(this._searchMatches))
@@ -422,7 +422,7 @@ WebInspector.LogContentView.prototype = {
             this._clearMessagesSelection();
 
             // Focus the prompt. Focusing the prompt needs to happen after the click to work.
-            setTimeout(function () { this.prompt.focus() }.bind(this), 0);
+            setTimeout(function () { this.prompt.focus(); }.bind(this), 0);
         }
 
         delete this._mouseMoveIsRowSelection;
@@ -667,7 +667,7 @@ WebInspector.LogContentView.prototype = {
                 classList.remove(WebInspector.LogContentView.SelectedStyleClassName);
                 classList.add(WebInspector.LogContentView.FilteredOutStyleClassName);
             }
-        }.bind(this));
+        }, this);
 
         this._performSearch();
     },
@@ -858,7 +858,7 @@ WebInspector.LogContentView.prototype = {
     {
         this._performSearch();
     },
-    
+
     _performSearch: function()
     {
         if (!isEmptyObject(this._searchHighlightDOMChanges))
@@ -904,13 +904,13 @@ WebInspector.LogContentView.prototype = {
             delete this._selectedSearchMatch;
         }
     },
-    
+
     _highlightRanges: function(message, matchRanges)
     {
         var highlightedElements = WebInspector.highlightRangesWithStyleClass(message, matchRanges, WebInspector.LogContentView.HighlightedStyleClassName, this._searchHighlightDOMChanges);
 
         console.assert(highlightedElements.length === matchRanges.length);
-        
+
         matchRanges.forEach(function (range, index) {
             this._searchMatches.push({
                 message: message,
@@ -927,7 +927,7 @@ WebInspector.LogContentView.prototype = {
             }
         }, this);
     },
-    
+
     _rangesOverlap: function(range1, range2)
     {
         return range1.offset <= range2.offset + range2.length && range2.offset <= range1.offset + range1.length;
@@ -948,6 +948,6 @@ WebInspector.LogContentView.prototype = {
 
         this._ensureMessageIsVisible(this._selectedSearchMatch.message);
     }
-}
+};
 
 WebInspector.LogContentView.prototype.__proto__ = WebInspector.ContentView.prototype;

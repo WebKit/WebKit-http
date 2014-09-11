@@ -1,3 +1,212 @@
+2014-09-10  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed gardening. Rebaseline failing media/video- tests broken by r156546.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/media/video-controls-captions-trackmenu-localized-expected.txt:
+        * platform/mac/media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles-expected.txt: Added.
+        * platform/mac/media/video-controls-captions-trackmenu-sorted-expected.txt:
+        * platform/mac/media/video-controls-no-scripting-expected.txt: Added.
+        * platform/mac/media/video-controls-rendering-expected.png:
+        * platform/mac/media/video-controls-rendering-expected.txt:
+        * platform/mac/media/video-display-toggle-expected.png:
+        * platform/mac/media/video-display-toggle-expected.txt:
+        * platform/mac/media/video-empty-source-expected.png:
+        * platform/mac/media/video-empty-source-expected.txt:
+        * platform/mac/media/video-volume-slider-expected.png:
+        * platform/mac/media/video-volume-slider-expected.txt:
+        * platform/mac/media/volume-bar-empty-when-muted-expected.txt: Added.
+
+2014-09-10  Jer Noble  <jer.noble@apple.com>
+
+        More unreviewed gardening.
+
+        - Mark tests as WontFix which depend on platform support which will never be added.
+        - Fix http/tests/media/video-auth.html by marking it as failing on MountainLion.
+
+        * platform/mac/TestExpectations:
+
+2014-09-10  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed gardening. Re-skip some obsolete EME tests.
+
+        * platform/mac/TestExpectations:
+
+2014-09-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip some flaky tests that may be affecting subsequent tests.
+
+        * platform/mac/TestExpectations:
+
+2014-09-10  Jer Noble  <jer.noble@apple.com>
+
+        "AVF info: hasOfflineRenderer, board-id check : true" in media/track/track-forced-subtitles-in-band.html
+        https://bugs.webkit.org/show_bug.cgi?id=124219
+
+        Unreviewed gardening. This skip was made unnecessary after selective filtering was added in r160247.
+
+        * platform/mac/TestExpectations:
+
+2014-09-10  Jer Noble  <jer.noble@apple.com>
+
+        More unreviewed gardening of media/ tests; Move tests into the correct sub-groups and add comments
+        to test expectations without attached bugzilla bugs (due to WontFix, etc.).
+
+        * platform/mac/TestExpectations:
+
+2014-09-10  Jer Noble  <jer.noble@apple.com>
+
+        More unreviewed gardening; despite the comment, media/audio-repaint.html is failing on all mac ports, not just on Lion.
+
+        * platform/mac/TestExpectations:
+
+2014-09-10  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Fix a snapshotting test. Test was incorrect as it assumed the wrong window size.
+
+        * platform/mac-wk2/TestExpectations: Remove some duplicate test expectations.
+        * platform/mac-wk2/plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image-expected.txt:
+        * plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html:
+
+2014-09-10  Roger Fong  <roger_fong@apple.com>
+
+        Rollout r173446, the skipped tests still fail only on the bots.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-09-10  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed gardening. Group all the media expectations together logically.
+
+        * platform/mac/TestExpectations:
+
+2014-09-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173446.
+        https://bugs.webkit.org/show_bug.cgi?id=136707
+
+        These two tests fail consistently on Mavericks and ML WK2
+        bots. (Requested by jernoble|laptop on #webkit).
+
+        Reverted changeset:
+
+        "Unskip two snapshotting tests that work for me consistently
+        locally."
+        http://trac.webkit.org/changeset/173446
+
+2014-09-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: aria-labelledby is not honoring sub-node text
+        https://bugs.webkit.org/show_bug.cgi?id=136689
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/aria-labelledby-with-descendants-expected.txt: Added.
+        * accessibility/aria-labelledby-with-descendants.html: Added.
+
+2014-09-09  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate.html failing after r173318
+        https://bugs.webkit.org/show_bug.cgi?id=136676
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+
+2014-09-09  Roger Fong  <roger_fong@apple.com>
+
+        Unskip two snapshotting tests that work for me consistently locally.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-09-09  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Ignore ::first-letter pseudo-element
+        https://bugs.webkit.org/show_bug.cgi?id=136625
+
+        Reviewed by Darin Adler.
+
+        * css3/flexbox/flexbox-ignore-container-firstLetter.html: Modify test,
+        in order to actually check that the ::first-letter in a regular
+        container is ignored in the flexbox.
+        * fast/css-grid-layout/grid-container-ignore-first-letter-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-ignore-first-letter.html: Added.
+        * fast/css-grid-layout/grid-item-first-letter-valid-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-first-letter-valid.html: Added.
+
+2014-09-09  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add support for :read-write/:read-only matching editable content
+        https://bugs.webkit.org/show_bug.cgi?id=136668
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/read-only-read-write-contenteditable-basics-expected.html: Added.
+        * fast/css/read-only-read-write-contenteditable-basics.html: Added.
+        * fast/css/read-only-read-write-designmode-basics-expected.html: Added.
+        * fast/css/read-only-read-write-designmode-basics.html: Added.
+        * fast/css/read-only-read-write-webkit-user-modify-expected.txt: Added.
+        * fast/css/read-only-read-write-webkit-user-modify.html: Added.
+        * fast/selectors/read-only-read-write-contenteditable-basics-expected.txt: Added.
+        * fast/selectors/read-only-read-write-contenteditable-basics.html: Added.
+        * fast/selectors/read-only-read-write-contenteditable-svg-foreignObject-expected.txt: Added.
+        * fast/selectors/read-only-read-write-contenteditable-svg-foreignObject.html: Added.
+        * fast/selectors/read-only-read-write-designmode-basics-expected.txt: Added.
+        * fast/selectors/read-only-read-write-designmode-basics.html: Added.
+        * fast/selectors/read-only-read-write-style-update-expected.txt: Added.
+        * fast/selectors/read-only-read-write-style-update.html: Added.
+
+2014-09-09  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Unreviewed gardening. Mark two media-source tests as failing.
+
+        * platform/mac/TestExpectations:
+
+2014-09-09  Roger Fong  <roger_fong@apple.com>
+
+        Fix syntax on some expected failures.
+
+        * platform/mac/TestExpectations:
+
+2014-09-09  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failures after r173328 and r173418.
+        Update some expectations for new cases.
+
+2014-09-09  Roger Fong  <roger_fong@apple.com>
+
+        Skip some WebGL tests failing on Mavericks and MountainLion bots.
+
+        * platform/mac/TestExpectations:
+
+2014-09-09  Takeshi Kurosawa  <taken.spc@gmail.com>
+
+        AX: HTML5 landmark (and related) elements should not be ignored.
+        https://bugs.webkit.org/show_bug.cgi?id=135116
+
+        Reviewed by Chris Fleizach.
+
+        Make sure following element should not be ignored in computeAccessibilityIsIgnored
+        - header, aside, address, main, nav, article, section
+        - dt, dd
+
+        * platform/mac/accessibility/descriptionlist-not-ignored-expected.txt: Added.
+        * platform/mac/accessibility/descriptionlist-not-ignored.html: Added.
+        * platform/mac/accessibility/landmark-not-ignored-expected.txt: Added.
+        * platform/mac/accessibility/landmark-not-ignored.html: Added.
+
+2014-09-08  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions]Incorrect layout for multicol element transformed into region
+        https://bugs.webkit.org/show_bug.cgi?id=136459
+
+        Reviewed by David Hyatt.
+
+        * fast/regions/multicol/nested-multicol-into-region-dynamic-expected.txt: Added.
+        * fast/regions/multicol/nested-multicol-into-region-dynamic.html: Added.
+
 2014-09-08  Myles C. Maxfield  <mmaxfield@apple.com>
 
         REGRESSION (r172153): Text drawn with wrong color when second text shadow has zero offset and blur (breaks buttons at aws.amazon.com)
