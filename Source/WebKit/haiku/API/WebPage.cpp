@@ -51,6 +51,7 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
+#include "platform/mock/GeolocationClientMock.h"
 #include "GraphicsContext.h"
 #include "IconDatabase.h"
 #include "InitializeThreading.h"
@@ -223,7 +224,7 @@ BWebPage::BWebPage(BWebView* webView)
     fPage = new Page(pageClients);
 
 #if ENABLE(GEOLOCATION)
-    WebCore::provideGeolocationTo(fPage, new WebGeolocationClient(this));
+    WebCore::provideGeolocationTo(fPage, new GeolocationClientMock());
 #endif
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebCore::provideNotification(fPage, new NotificationClientHaiku(this));
