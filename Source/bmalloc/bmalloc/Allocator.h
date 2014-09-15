@@ -56,8 +56,8 @@ private:
     void* allocateLarge(size_t);
     void* allocateXLarge(size_t);
     
-    void log(SmallAllocator&);
-    void log(MediumAllocator&);
+    void retire(SmallAllocator&);
+    void retire(MediumAllocator&);
 
     void processSmallAllocatorLog();
     void processMediumAllocatorLog();
@@ -65,7 +65,7 @@ private:
     Deallocator& m_deallocator;
 
     std::array<SmallAllocator, smallMax / alignment> m_smallAllocators;
-    MediumAllocator m_mediumAllocator;
+    std::array<MediumAllocator, mediumMax / alignment> m_mediumAllocators;
 
     FixedVector<std::pair<SmallLine*, unsigned char>, smallAllocatorLogCapacity> m_smallAllocatorLog;
     FixedVector<std::pair<MediumLine*, unsigned char>, mediumAllocatorLogCapacity> m_mediumAllocatorLog;

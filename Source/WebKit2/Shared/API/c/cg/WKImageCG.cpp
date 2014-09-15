@@ -38,7 +38,7 @@ using namespace WebCore;
 CGImageRef WKImageCreateCGImage(WKImageRef imageRef)
 {
     WebImage* webImage = toImpl(imageRef);
-    if (!webImage->bitmap())
+    if (!webImage || !webImage->bitmap())
         return 0;
 
     return webImage->bitmap()->makeCGImageCopy().leakRef();

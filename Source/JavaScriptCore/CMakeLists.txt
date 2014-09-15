@@ -427,7 +427,7 @@ set(JavaScriptCore_SOURCES
     runtime/IntendedStructureChain.cpp
     runtime/InternalFunction.cpp
     runtime/JSAPIValueWrapper.cpp
-    runtime/JSActivation.cpp
+    runtime/JSLexicalEnvironment.cpp
     runtime/JSArgumentsIterator.cpp
     runtime/JSArray.cpp
     runtime/JSArrayBuffer.cpp
@@ -438,11 +438,13 @@ set(JavaScriptCore_SOURCES
     runtime/JSBoundFunction.cpp
     runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSCJSValue.cpp
+    runtime/JSCallee.cpp
     runtime/JSCell.cpp
     runtime/JSConsole.cpp
     runtime/JSDataView.cpp
     runtime/JSDataViewPrototype.cpp
     runtime/JSDateMath.cpp
+    runtime/JSEnvironmentRecord.cpp
     runtime/JSFunction.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectFunctions.cpp
@@ -471,7 +473,6 @@ set(JavaScriptCore_SOURCES
     runtime/JSTypedArrayConstructors.cpp
     runtime/JSTypedArrayPrototypes.cpp
     runtime/JSTypedArrays.cpp
-    runtime/JSEnvironmentRecord.cpp
     runtime/JSWeakMap.cpp
     runtime/JSWithScope.cpp
     runtime/JSWrapperObject.cpp
@@ -753,7 +754,6 @@ if (ENABLE_FTL_JIT)
     # Added extra items for JavaScriptCore
     list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
         ${LLVM_INCLUDE_DIRS}
-        ${LIBCXXABI_INCLUDE_DIRS}
     )
 
     list(APPEND JavaScriptCore_SOURCES

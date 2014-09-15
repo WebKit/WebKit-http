@@ -1,3 +1,312 @@
+2014-09-15  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        REGRESSION(r170243): [EFL][WK2] Dirty image is shown when new page is loading on fixed layout 
+        https://bugs.webkit.org/show_bug.cgi?id=136568
+
+        Reviewed by Csaba Osztrogonác.
+
+        r170243 landed wrong didCommitNewPage() since it always returns false. It cause that
+        PageViewportControllerClientEfl::didChangeVisibleContents() continues to draw dirty image on 0,0 coordinate.
+        This patch fixes the problem.
+
+        * UIProcess/API/efl/EwkView.h:
+        (EwkView::waitingForNewPage):
+        (EwkView::didCommitNewPage):
+        * UIProcess/efl/PageViewportControllerClientEfl.cpp:
+        (WebKit::PageViewportControllerClientEfl::didChangeVisibleContents):
+
+2014-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Rename Node::childNodeCount() to countChildNodes() and avoid inefficient uses
+        https://bugs.webkit.org/show_bug.cgi?id=136789
+
+        Reviewed by Darin Adler.
+
+        Avoid calling slow Node::countChildNodes().
+
+        * WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp:
+        (WebKit::WebPage::findZoomableAreaForPoint):
+        Replace call to "node->parentNode()->childNodeCount() != 1" by
+        "!node->parentNode()->hasOneChild()" which is equivalent but more
+        efficient.
+
+2014-09-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Re-add the request autocomplete feature
+
+        <https://bugs.webkit.org/show_bug.cgi?id=136730>
+
+        This feature was rolled out in r148731 because it was only used by
+        Chromium. As we consider supporting this feature, roll it back in, but
+        leave it disabled.
+
+        This rolls out r148731 (which removed the feature) with small changes
+        needed to make the code build in ToT, to match modern style, to make
+        the tests run, and to remove unused code.
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::didRequestAutocomplete):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+
+2014-09-12  Tim Horton  <timothy_horton@apple.com>
+
+        Swiping back from a Twitter image to Twitter flashes to the wrong position
+        https://bugs.webkit.org/show_bug.cgi?id=136798
+        <rdar://problem/18324338>
+
+        Reviewed by Darin Adler and Sam Weinig.
+
+        * UIProcess/mac/ViewGestureController.h:
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::ViewGestureController):
+        (WebKit::ViewGestureController::didFinishLoadForMainFrame):
+        (WebKit::ViewGestureController::didSameDocumentNavigationForMainFrame):
+        Add a 250ms repeating timer that we start in didFinishLoadForMainFrame
+        if we are for some reason still loading, and in didSameDocumentNavigationForMainFrame
+        unconditionally, to match behavior of the old swipe implementation.
+
+        Also, do the active gesture check in both of those places so that we don't
+        start the timer if we're in the middle of a live swipe or have already torn
+        down the snapshot (removeSwipeSnapshotAfterRepaint does this as well, so
+        this isn't really a behavior change).
+
+        (WebKit::ViewGestureController::activeLoadMonitoringTimerFired):
+        Every time the timer fires, check if we're still loading; if not,
+        tear down the swipe snapshot (after repainting).
+
+        (WebKit::ViewGestureController::removeSwipeSnapshotAfterRepaint):
+        Stop the active load monitoring timer.
+
+2014-09-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173575.
+        https://bugs.webkit.org/show_bug.cgi?id=136790
+
+        Failing tests (Requested by enrica on #webkit).
+
+        Reverted changeset:
+
+        "Remove PLATFORM(IOS) from WebCore/editing (Part 3)."
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+        http://trac.webkit.org/changeset/173575
+
+2014-09-12  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 3).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Benjamin Poulain.
+
+        This is the updated version of the patch that was landed in r173340.
+        I changed the use of IntPoint to FloatPoint since it was causing tests
+        to fail.
+        This patch removes the use of PLATFORM(IOS) from TextAffinity.h
+        and removes the assumption that EAffinity values match NSSelectionAffinity
+        values. It also removes the includes in TextAffinity.h, creating the need to
+        include explicitly the files when necessary. It also removes the unnecessary
+        use of platform specific types, replacing them with WebCore types.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+        * WebProcess/WebPage/WKAccessibilityWebPageObjectIOS.mm:
+        (-[WKAccessibilityWebPageObject accessibilityHitTest:]):
+
+2014-09-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Message generation scripts should be installed in WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=136771
+
+        Reviewed by Anders Carlsson.
+
+        * DerivedSources.make: Updated for rename of Scripts/webkit2 to Scripts/webkit.
+        * Scripts/generate-message-receiver.py:
+        (main): Updated for rename from webkit2 to webkit.
+        * Scripts/generate-messages-header.py:
+        (main): Ditto.
+        * Scripts/webkit: Renamed from Source/WebKit2/Scripts/webkit2.
+        * Scripts/webkit/messages.py: Updated for rename.
+        * Scripts/webkit/parser.py: Ditto.
+        * WebKit2.xcodeproj/project.pbxproj: Moved the Copy Message Generation Scripts build phase
+        from the WebKit2 target to the WebKit target and changed its destination to
+        WebKit.framework/PrivateHeaders/Scripts/webkit. Removed the Remove Compiled Python Files
+        build phase, since compiled files no longer get copied.
+
+2014-09-12  Tim Horton  <timothy_horton@apple.com>
+
+        Flash of page scrolled to wrong origin before restoring scroll position after swiping back to CNN front page from an article
+        https://bugs.webkit.org/show_bug.cgi?id=136788
+        <rdar://problem/18314597>
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::didHitRenderTreeSizeThreshold):
+        (WebKit::ViewGestureController::didFirstVisuallyNonEmptyLayoutForMainFrame):
+        Always wait until didFinishLoadForMainFrame or didSameDocumentNavigationForMainFrame
+        before removing the snapshot, because otherwise we don't know if the scroll
+        position has been restored yet.
+
+        We should revisit this at some point, because it should be possible to
+        determine if the scroll position has been restored appropriately, but for
+        now it is safest to restore the antique behavior.
+
+2014-09-12  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        Reverted r173564.
+
+        * DerivedSources.make:
+        * Scripts/generate-message-receiver.py:
+        (main):
+        * Scripts/generate-messages-header.py:
+        (main):
+        * Scripts/webkit: Removed.
+        * Scripts/webkit/LegacyMessageReceiver-expected.cpp: Removed.
+        * Scripts/webkit/LegacyMessages-expected.h: Removed.
+        * Scripts/webkit/MessageReceiver-expected.cpp: Removed.
+        * Scripts/webkit/MessageReceiverSuperclass-expected.cpp: Removed.
+        * Scripts/webkit/Messages-expected.h: Removed.
+        * Scripts/webkit/MessagesSuperclass-expected.h: Removed.
+        * Scripts/webkit/__init__.py: Removed.
+        * Scripts/webkit/messages.py: Removed.
+        * Scripts/webkit/messages_unittest.py: Removed.
+        * Scripts/webkit/model.py: Removed.
+        * Scripts/webkit/parser.py: Removed.
+        * Scripts/webkit/test-legacy-messages.in: Removed.
+        * Scripts/webkit/test-messages.in: Removed.
+        * Scripts/webkit/test-superclass-messages.in: Removed.
+        * Scripts/webkit2: Copied from Scripts/webkit2.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-09-11  Andy Estes  <aestes@apple.com>
+
+        [WebKit2] WKImageCreateCGImage crashes when passed a null WKImage
+        https://bugs.webkit.org/show_bug.cgi?id=136768
+
+        Reviewed by Tim Horton.
+
+        WKImageCreateFromCGImage can return null, so it only seems fair that WKImageCreateCGImage should tolerate null.
+
+        * Shared/API/c/cg/WKImageCG.cpp:
+        (WKImageCreateCGImage):
+
+2014-09-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Message generation scripts should be installed in WebKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=136771
+
+        Reviewed by Anders Carlsson.
+
+        * DerivedSources.make: Updated for rename of Scripts/webkit2 to Scripts/webkit.
+        * Scripts/generate-message-receiver.py:
+        (main): Updated for rename from webkit2 to webkit.
+        * Scripts/generate-messages-header.py:
+        (main): Ditto.
+        * Scripts/webkit: Renamed from Source/WebKit2/Scripts/webkit2.
+        * Scripts/webkit/messages.py: Updated for rename.
+        * Scripts/webkit/parser.py: Ditto.
+        * WebKit2.xcodeproj/project.pbxproj: Moved the Copy Message Generation Scripts build phase
+        from the WebKit2 target to the WebKit target and changed its destination to
+        WebKit.framework/PrivateHeaders/Scripts/webkit. Removed the Remove Compiled Python Files
+        build phase, since compiled files no longer get copied.
+
+2014-09-12  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Use a nicer HTTP authentication dialog
+        https://bugs.webkit.org/show_bug.cgi?id=136615
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitAuthenticationDialog.cpp:
+        (webkitAuthenticationDialogInitialize): Use a nicer layout.
+        (packTwoColumnLayoutInBox): Deleted.
+        (createLabel): Deleted.
+        (createEntry): Deleted.
+
+2014-09-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r173423): CertificateInfo is never sent to the UI process when using shared secondary process model
+        https://bugs.webkit.org/show_bug.cgi?id=136669
+
+        Reviewed by Antti Koivisto.
+
+        * WebProcess/Network/WebResourceLoadScheduler.cpp:
+        (WebKit::WebResourceLoadScheduler::scheduleLoad): Use
+        ResourceLoader::shouldIncludeCertificateInfo() to initialize
+        needsCertificateInfo parameter.
+
+2014-09-11  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL][CoordinatedGraphics] Move CoordinatedGraphicsScene and CoordinatedBackingStore to WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=136770
+
+        Reviewed by Gyuyoung Kim.
+
+        CoordinatedGraphicsScene and CoordinatedBackingStore is only for UIProcess.
+        This patch moved them from WebCore to WebKit2/UIProcess/CoordinatedGraphics/.
+
+        * PlatformEfl.cmake:
+        * UIProcess/API/CoordinatedGraphics/WKCoordinatedScene.cpp:
+        * UIProcess/CoordinatedGraphics/CoordinatedBackingStore.cpp: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedBackingStore.cpp.
+        * UIProcess/CoordinatedGraphics/CoordinatedBackingStore.h: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedBackingStore.h.
+        * UIProcess/CoordinatedGraphics/CoordinatedGraphicsScene.cpp: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedGraphicsScene.cpp.
+        * UIProcess/CoordinatedGraphics/CoordinatedGraphicsScene.h: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedGraphicsScene.h.
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.h:
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        * UIProcess/efl/WebViewEfl.cpp:
+
+2014-09-11  Bear Travis  <betravis@adobe.com>
+
+        [CSS Font Loading] Enable CSS Font Loading on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=135473
+
+        Reviewed by Antti Koivisto.
+
+        Enable CSS Font Loading in FeatureDefines.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-11  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [WK2] Authentication dialog is displayed for cross-origin XHR
+        https://bugs.webkit.org/show_bug.cgi?id=131349
+
+        Reviewed by Alexey Proskuryakov.
+
+        Precomputing client credential policy in the Web Process before sending the resource load task to the Network Process.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didReceiveAuthenticationChallenge): Added an ASSERT to ensure that credential policy is never set to DoNotAskClientForCrossOriginCredentials.
+        * WebProcess/Network/WebResourceLoadScheduler.cpp:
+        (WebKit::WebResourceLoadScheduler::scheduleLoad): Precomputing client credential policy to handle the case of cross-origin requests.
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::willSendRequest): Added a TODO to check whether redirections need a specific handling.
+
+2014-09-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Merge WebKitAuthenticationWidget into WebKitAuthenticationDialog
+        https://bugs.webkit.org/show_bug.cgi?id=136700
+
+        Reviewed by Sergio Villar Senin.
+
+        Copy WebKitAuthenticationWidget implementation inside
+        WebKitAuthenticationDialog using a normal GtkBox instead.
+
+        * UIProcess/API/gtk/WebKitAuthenticationDialog.cpp:
+        (okButtonClicked):
+        (cancelButtonClicked):
+        (packTwoColumnLayoutInBox):
+        (createLabel):
+        (createEntry):
+        (webkitAuthenticationDialogInitialize): Remove the
+        CredentialStorageMode parameter since it's now a member.
+        (webkitAuthenticationDialogNew): Initialize the
+        CredentialStorageMode member too.
+        * UIProcess/API/gtk/WebKitAuthenticationDialog.h:
+
 2014-09-10  Antti Koivisto  <antti@apple.com>
 
         NetworkResourceLoader cleanups

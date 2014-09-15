@@ -550,7 +550,6 @@ webgl/1.0.1/conformance/glsl/samplers/glsl-function-texture2dlod.html [ Failure 
 webgl/1.0.1/conformance/glsl/samplers/glsl-function-texture2dproj.html [ Failure ]
 webgl/1.0.1/conformance/textures/origin-clean-conformance.html [ Skip ]
 webgl/1.0.1/conformance/context/context-lost-restored.html [ Failure ]
-webgl/1.0.2/conformance/ogles/GL/build/build_009_to_016.html [ Failure ]
 webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Failure Timeout ]
 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Failure Timeout ]
 http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
@@ -563,7 +562,7 @@ http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
 [ MountainLion ] webgl/1.0.2/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Failure ]
 [ MountainLion ] webgl/1.0.2/conformance/glsl/variables/gl-pointcoord.html [ Failure ]
 [ MountainLion ] webgl/1.0.2/conformance/limits/gl-max-texture-dimensions.html [ Failure ]
-[ MountainLion ] webgl/1.0.2/conformance/ogles/GL/control_flow/control_flow_009_to_010.html [ Failure ]
+[ MountainLion ] webgl/1.0.2/conformance/ogles/GL/control_flow/control_flow_009_to_010.html [ Crash Pass Failure ]
 [ MountainLion ] webgl/1.0.2/conformance/ogles/GL/operators/operators_009_to_016.html [ Failure ]
 [ MountainLion ] webgl/1.0.2/conformance/textures/texture-size.html [ Failure ]
 
@@ -1155,8 +1154,6 @@ webkit.org/b/131787 fast/canvas/canvas-putImageData-zero-alpha.html [ Pass Image
 
 webkit.org/b/135133 [ MountainLion ] fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/136716 fast/forms/submit-to-blank-multiple-times.html [ Skip ]
-
 webkit.org/b/136717 js/dom/string-replace-exception-crash.html [ Skip ]
 
 webkit.org/b/136718 fast/dynamic/layer-no-longer-paginated.html [ Skip ]
@@ -1205,8 +1202,8 @@ media/encrypted-media/encrypted-media-events.html [ WontFix ]
 media/encrypted-media/encrypted-media-not-loaded.html [ WontFix ]
 media/encrypted-media/encrypted-media-syntax.html [ WontFix ]
 
-# Mac doesn't have a toggle for CC any more, it's based on a menu of choices.
-webkit.org/b/101670 media/video-controls-captions.html [ WontFix ]
+# This test requires media engines not purge buffered date before currentTime.
+http/tests/media/video-buffered.html [ WontFix ]
 ## --- End media wontfix tests ---
 
 ## --- Start unimplemented media tests ---
@@ -1257,13 +1254,15 @@ webkit.org/b/40382 [ Mavericks MountainLion ] http/tests/media/video-auth.html [
 ## --- End media tests failing on Mavericks and earlier ---
 
 ## --- Start flaky media tests ---
-webkit.org/b/34331 http/tests/media/video-referer.html [ Failure Pass ]
+webkit.org/b/34331 http/tests/media/video-referer.html [ Pass Failure ]
 webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
 webkit.org/b/82976 media/W3C/video/networkState/networkState_during_progress.html [ Pass Failure ]
 webkit.org/b/85525 media/video-played-reset.html [ Pass Failure ]
 webkit.org/b/90725 media/media-blocked-by-beforeload.html [ Pass Failure ]
+webkit.org/b/112492 media/track/track-language-preference.html [ Pass Failure Timeout ]
+webkit.org/b/112492 media/track/track-prefer-captions.html [ Pass Failure Timeout ]
 webkit.org/b/112533 media/auto-play-in-sandbox-with-allow-scripts.html [ Pass Failure ]
-webkit.org/b/112659 media/video-playing-and-pause.html [ Failure Pass ]
+webkit.org/b/112659 media/video-playing-and-pause.html [ Pass Failure ]
 webkit.org/b/114744 media/video-layer-crash.html [ Pass Failure Timeout ]
 webkit.org/b/115048 media/media-element-play-after-eos.html [ Pass Failure ]
 webkit.org/b/116277 media/video-buffered.html [ Pass Failure ]
@@ -1309,9 +1308,6 @@ webkit.org/b/34287 http/tests/media/video-cookie.html
 # needs enhanced eventSender.contextMenu() return value
 webkit.org/b/116651 media/context-menu-actions.html
 
-# requires video.buffered to be able to return multiple timeranges
-http/tests/media/video-buffered.html [ Skip ]
-
 webkit.org/b/61487 http/tests/media/video-cross-site.html [ Failure ]
 
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
@@ -1349,11 +1345,9 @@ webkit.org/b/131476 media/track/w3c/track/webvtt [ Skip ]
 webkit.org/b/67716 media/media-controls-invalid-url.html [ Failure ]
 
 webkit.org/b/75184 media/W3C/audio/canPlayType/canPlayType_supported_but_no_codecs_parameter_1.html
-webkit.org/b/75184 media/W3C/audio/canPlayType/canPlayType_supported_but_no_codecs_parameter_2.html
 webkit.org/b/75184 media/W3C/video/canPlayType/canPlayType_codecs_order_2.html
 webkit.org/b/75184 media/W3C/video/canPlayType/canPlayType_codecs_order_3.html
 webkit.org/b/75184 media/W3C/video/canPlayType/canPlayType_supported_but_no_codecs_parameter_2.html
-webkit.org/b/75184 media/W3C/video/canPlayType/canPlayType_supported_but_no_codecs_parameter_3.html
 webkit.org/b/75184 media/W3C/video/canPlayType/canPlayType_two_implies_one_3.html
 webkit.org/b/75184 media/W3C/video/canPlayType/canPlayType_two_implies_one_4.html
 webkit.org/b/75184 media/W3C/video/canPlayType/canPlayType_two_implies_one_5.html
@@ -1367,10 +1361,6 @@ media/media-document-audio-repaint.html
 media/video-zoom-controls.html
 
 webkit.org/b/84357 media/audio-repaint.html [ Failure ]
-
-# These two tests often timeout
-webkit.org/b/112492 media/track/track-language-preference.html [ Skip ]
-webkit.org/b/112492 media/track/track-prefer-captions.html [ Skip ]
 
 webkit.org/b/121992 media/media-volume-slider-rendered-below.html [ Failure ]
 webkit.org/b/121992 media/media-volume-slider-rendered-normal.html [ Timeout Failure ]
@@ -1387,3 +1377,13 @@ webkit.org/b/122021 media/video-controls-fullscreen-volume.html
 webkit.org/b/122021 media/video-controls-toggling.html
 webkit.org/b/122021 media/video-controls-visible-exiting-fullscreen.html
 # --- End media tests ---
+
+# CSS Font Loading is only enabled on Mac, and tests are not run by default
+webkit.org/b/135390 fast/css/fontloader-download-error.html [ Pass ]
+webkit.org/b/135390 fast/css/fontloader-events.html [ Pass ]
+webkit.org/b/135390 fast/css/fontloader-loadingdone.html [ Pass ]
+webkit.org/b/135390 fast/css/fontloader-multiple-faces-download-error.html [ Pass ]
+webkit.org/b/135390 fast/css/fontloader-multiple-faces.html [ Pass ]
+webkit.org/b/135390 fast/css/fontloader-multiple-families.html [ Pass ]
+webkit.org/b/135390 fast/css/fontloader-page-cache.html [ Pass ]
+webkit.org/b/135390 http/tests/webfont/fontloader-loading-attribute.html [ Pass ]

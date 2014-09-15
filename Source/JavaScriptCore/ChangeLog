@@ -1,3 +1,477 @@
+2014-09-12  Michael Saboff  <msaboff@apple.com>
+
+        Merge JSGlobalObject::reset() into ::init()
+        https://bugs.webkit.org/show_bug.cgi?id=136800
+
+        Reviewed by Oliver Hunt.
+
+        Moved the contents of reset() into init().
+        Note that the diff shows more changes.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): Moved body of reset() into init.
+        (JSC::JSGlobalObject::put):
+        (JSC::JSGlobalObject::defineOwnProperty):
+        (JSC::JSGlobalObject::addGlobalVar):
+        (JSC::JSGlobalObject::addFunction):
+        (JSC::lastInPrototypeChain):
+        (JSC::JSGlobalObject::reset): Deleted.
+        * runtime/JSGlobalObject.h:
+
+2014-09-12  Michael Saboff  <msaboff@apple.com>
+
+        Add JSCallee to program and eval CallFrames
+        https://bugs.webkit.org/show_bug.cgi?id=136785
+
+        Reviewed by Mark Lam.
+
+        Populated Callee slot for program and call eval CallFrames with a JSCallee objects.
+        Made supporting changes including adding a JSCallee structure to global object and adding
+        JSCallee::create() method.  Added code so that the newly added callee object won't be
+        returned by Function.caller.  Changed null pointer checks of callee to check the if
+        the type is JSFunction* or JSCallee*.
+
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::functionName):
+        (JSC::DebuggerCallFrame::type):
+        * profiler/LegacyProfiler.cpp:
+        (JSC::LegacyProfiler::createCallIdentifier):
+        * interpreter/Interpreter.cpp:
+        (JSC::unwindCallFrame):
+        Changed checks of callee is a JSFunction* or JSCallee* instead of just checking
+        if it is null or not.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute): Create and use JSCallee objects for execute(EvalExecutable, ...)
+        and execute(ProgramExecutable, ...)
+
+        * jit/JITCode.cpp:
+        (JSC::JITCode::execute): Use jsDynamicCast to cast only JSFunctions.
+
+        * runtime/JSCallee.cpp:
+        (JSC::JSCallee::create): Not used, therefore deleted.
+
+        * runtime/JSCallee.h:
+        (JSC::JSCallee::create): Added.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::callerGetter): Added test to return null for JSCallee's that aren't
+        JSFunction's.  This can only be the case when the JSCallee comes from a program or
+        call eval CallFrame.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reset):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::calleeStructure):
+        Added new JSCallee structure.
+
+2014-09-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Re-add the request autocomplete feature
+
+        <https://bugs.webkit.org/show_bug.cgi?id=136730>
+
+        This feature was rolled out in r148731 because it was only used by
+        Chromium. As we consider supporting this feature, roll it back in, but
+        leave it disabled.
+
+        This rolls out r148731 (which removed the feature) with small changes
+        needed to make the code build in ToT, to match modern style, to make
+        the tests run, and to remove unused code.
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-12  Julien Brianceau  <jbriance@cisco.com>
+
+        [x86] moveDoubleToInts() does not clobber its source register anymore
+        https://bugs.webkit.org/show_bug.cgi?id=131690
+
+        Reviewed by Oliver Hunt.
+
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::moveDoubleToInts):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueRep):
+        * jit/SpecializedThunkJIT.h:
+        (JSC::SpecializedThunkJIT::returnDouble):
+
+2014-09-12  Mark Lam  <mark.lam@apple.com>
+
+        Unreviewed build fix for CLOOP build.
+
+        * runtime/JSCallee.h:
+
+2014-09-12  Michael Saboff  <msaboff@apple.com>
+
+        Remove unneeded declarations from JSCallee.h
+        https://bugs.webkit.org/show_bug.cgi?id=136783
+
+        Reviewed by Mark Lam.
+
+        * runtime/JSCallee.h:
+        (JSCallee::name): Deleted.
+        (JSCallee::displayName): Deleted.
+        (JSCallee::calculatedDisplayName): Deleted.
+
+2014-09-11  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: disambiguate double and integer primitive types in the protocol
+        https://bugs.webkit.org/show_bug.cgi?id=136606
+
+        Reviewed by Timothy Hatcher.
+
+        Right now it's really easy to mix up doubles and integers when serializing or deserializing
+        values for the inspector protocol. This patch disambiguates setting/getting doubles and integers
+        so that it is clearer as to which type is intended.
+
+        A new InspectorValue::Type is added for Integer types, and the Number type is renamed to Double.
+        The existing callsites for asNumber/getNumber/setNumber have been fixed.
+
+        Address various integration points to make sure the right type tag is assigned to InspectorValues.
+
+        * bindings/ScriptValue.cpp:
+        (Deprecated::jsToInspectorValue): Make an Integer if the JSValue is Int52 or smaller.
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::injectedScriptForObjectId):
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::InspectorBackendDispatcher::dispatch):
+        (Inspector::InspectorBackendDispatcher::sendResponse):
+        (Inspector::InspectorBackendDispatcher::reportProtocolError):
+        (Inspector::AsMethodBridges::asInteger):
+        (Inspector::AsMethodBridges::asDouble):
+        (Inspector::InspectorBackendDispatcher::getInteger):
+        (Inspector::InspectorBackendDispatcher::getDouble):
+        (Inspector::AsMethodBridges::asInt): Deleted.
+        (Inspector::InspectorBackendDispatcher::getInt): Deleted.
+        * inspector/InspectorBackendDispatcher.h:
+        * inspector/InspectorProtocolTypes.h: Remove the special case for checking int type tags.
+        (Inspector::Protocol::ArrayItemHelper<int>::Traits::pushRaw):
+        (Inspector::Protocol::ArrayItemHelper<double>::Traits::pushRaw):
+        (Inspector::Protocol::BindingTraits<int>::assertValueHasExpectedType): Deleted.
+        * inspector/InspectorValues.cpp: Allow integers and doubles to be convertible using asInteger/asDouble.
+        (Inspector::InspectorValue::asDouble):
+        (Inspector::InspectorValue::asInteger):
+        (Inspector::InspectorBasicValue::asDouble):
+        (Inspector::InspectorBasicValue::asInteger):
+        (Inspector::InspectorBasicValue::writeJSON):
+        (Inspector::InspectorValue::asNumber): Deleted.
+        (Inspector::InspectorBasicValue::asNumber): Deleted.
+        * inspector/InspectorValues.h:
+        (Inspector::InspectorObjectBase::setInteger):
+        (Inspector::InspectorObjectBase::setDouble):
+        (Inspector::InspectorArrayBase::pushInteger):
+        (Inspector::InspectorArrayBase::pushDouble):
+        (Inspector::InspectorObjectBase::setNumber): Deleted.
+        (Inspector::InspectorArrayBase::pushInt): Deleted.
+        (Inspector::InspectorArrayBase::pushNumber): Deleted.
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::buildObjectForBreakpointCookie):
+        (Inspector::InspectorDebuggerAgent::breakpointActionsFromProtocol):
+        (Inspector::parseLocation):
+        (Inspector::InspectorDebuggerAgent::didParseSource):
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        * inspector/scripts/codegen/generator.py: Update emitted code and rebaseline test results.
+        (Generator.keyed_get_method_for_type):
+        (Generator.keyed_set_method_for_type):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        * replay/EncodedValue.cpp:
+        (JSC::EncodedValue::convertTo<double>):
+        (JSC::EncodedValue::convertTo<float>):
+        (JSC::EncodedValue::convertTo<int32_t>):
+        (JSC::EncodedValue::convertTo<int64_t>):
+        (JSC::EncodedValue::convertTo<uint32_t>):
+        (JSC::EncodedValue::convertTo<uint64_t>):
+
+2014-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Occasional ASSERT closing web inspector
+        https://bugs.webkit.org/show_bug.cgi?id=136762
+
+        Reviewed by Timothy Hatcher.
+
+        It is harmless, and indeed possible to have an empty set of listeners
+        now that each Page gets its own PageDebugServer instead of a shared
+        global. So we should replace the null checks with isEmpty checks.
+        Since nobody was ever returning null, convert to references as well.
+
+        * inspector/JSGlobalObjectScriptDebugServer.h:
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionLog):
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionSound):
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionProbe):
+        (Inspector::ScriptDebugServer::sourceParsed):
+        (Inspector::ScriptDebugServer::dispatchFunctionToListeners):
+        (Inspector::ScriptDebugServer::notifyDoneProcessingDebuggerEvents):
+        (Inspector::ScriptDebugServer::handlePause):
+        (Inspector::ScriptDebugServer::needPauseHandling): Deleted.
+        * inspector/ScriptDebugServer.h:
+
+2014-09-10  Michael Saboff  <msaboff@apple.com>
+
+        Move JSScope out of JSFunction into separate JSCallee class
+        https://bugs.webkit.org/show_bug.cgi?id=136725
+
+        Reviewed by Oliver Hunt.
+
+        Created new JSCallee class that contains a JSScope*.  Changed JSFunction to inherit from
+        JSCallee.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Build changes.  Added JSCallee.cpp and JSCallee.h.
+
+        * runtime/JSCallee.cpp: Added.
+        (JSC::JSCallee::create):
+        (JSC::JSCallee::destroy):
+        (JSC::JSCallee::JSCallee):
+        (JSC::JSCallee::finishCreation):
+        (JSC::JSCallee::visitChildren):
+        (JSC::JSCallee::getOwnPropertySlot): Pass through wrapper function.
+        (JSC::JSCallee::getOwnNonIndexPropertyNames): Pass through wrapper function.
+        (JSC::JSCallee::put): Pass through wrapper function.
+        (JSC::JSCallee::deleteProperty): Pass through wrapper function.
+        (JSC::JSCallee::defineOwnProperty): Pass through wrapper function.
+
+        * runtime/JSCallee.h: Added.
+        (JSC::JSCallee::scope):
+        (JSC::JSCallee::scopeUnchecked):
+        (JSC::JSCallee::setScope):
+        (JSC::JSCallee::createStructure):
+        (JSC::JSCallee::offsetOfScopeChain):
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::JSFunction):
+        (JSC::JSFunction::addNameScopeIfNeeded):
+        (JSC::JSFunction::visitChildren):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::scope): Deleted.
+        (JSC::JSFunction::scopeUnchecked): Deleted.
+        (JSC::JSFunction::setScope): Deleted.
+        (JSC::JSFunction::offsetOfScopeChain): Deleted.
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::JSFunction):
+        Changed to reference JSCallee and its methods.
+
+        * runtime/JSType.h: Added JSCallee as a TypeEnum.
+
+2014-09-11  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r172129): Vine pages load as blank
+        https://bugs.webkit.org/show_bug.cgi?id=136655
+        rdar://problem/18281215
+
+        Reviewed by Michael Saboff.
+        
+        If lastNode is something that is subject to DCE, then removing the Phantom's reference to something
+        that lastNode references means that the thing being referenced may no longer be kept alive for OSR.
+        Teach PhantomRemovalPhase that it's only safe to do this if lastNode is a Phantom. That's probably too
+        conservative, but that's fine since this is mainly just an optimization to make the IR sane to read and
+        reasonably compact; it's OK if we miss cases here.
+
+        * dfg/DFGPhantomRemovalPhase.cpp:
+        (JSC::DFG::PhantomRemovalPhase::run):
+        * tests/stress/remove-phantom-after-setlocal.js: Added.
+
+2014-09-11  Bear Travis  <betravis@adobe.com>
+
+        [CSS Font Loading] Enable CSS Font Loading on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=135473
+
+        Reviewed by Antti Koivisto.
+
+        Enable CSS Font Loading in FeatureDefines.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rebaseline of inspector generator test results after r173120.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+
+2014-09-11  Oliver Hunt  <oliver@apple.com>
+
+        Rename activation to be more in line with spec language
+        https://bugs.webkit.org/show_bug.cgi?id=136721
+
+        Reviewed by Michael Saboff.
+
+        Somewhat bigger than the last one, but still just a rename.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.order:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CallVariant.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        (JSC::CodeBlock::isCaptured):
+        (JSC::CodeBlock::nameForRegister):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::setActivationRegister):
+        (JSC::CodeBlock::activationRegister):
+        (JSC::CodeBlock::uncheckedActivationRegister):
+        (JSC::CodeBlock::needsActivation):
+        * bytecode/Instruction.h:
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::setActivationRegister):
+        (JSC::UnlinkedCodeBlock::activationRegister):
+        (JSC::UnlinkedCodeBlock::hasActivationRegister):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitReturn):
+        * bytecompiler/BytecodeGenerator.h:
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::scope):
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::isFunctionOrEvalScope):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::tryGetActivation):
+        (JSC::DFG::Graph::tryGetRegisters):
+        * dfg/DFGGraph.h:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::lexicalEnvironment):
+        (JSC::CallFrame::setActivation):
+        (JSC::CallFrame::activation): Deleted.
+        * interpreter/CallFrame.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::unwindCallFrame):
+        * interpreter/Register.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_tear_off_lexical_environment):
+        (JSC::JIT::emit_op_tear_off_arguments):
+        (JSC::JIT::emit_op_create_lexical_environment):
+        (JSC::JIT::emit_op_tear_off_activation): Deleted.
+        (JSC::JIT::emit_op_create_activation): Deleted.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_tear_off_lexical_environment):
+        (JSC::JIT::emit_op_tear_off_arguments):
+        (JSC::JIT::emit_op_create_lexical_environment):
+        (JSC::JIT::emit_op_tear_off_activation): Deleted.
+        (JSC::JIT::emit_op_create_activation): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::visitChildren):
+        (JSC::Arguments::tearOff):
+        (JSC::Arguments::didTearOffActivation):
+        * runtime/Arguments.h:
+        (JSC::Arguments::offsetOfActivation):
+        (JSC::Arguments::argument):
+        (JSC::Arguments::finishCreation):
+        * runtime/CommonSlowPaths.cpp:
+        * runtime/JSFunction.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::reset):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::activationStructure):
+        * runtime/JSLexicalEnvironment.cpp: Renamed from Source/JavaScriptCore/runtime/JSActivation.cpp.
+        (JSC::JSLexicalEnvironment::visitChildren):
+        (JSC::JSLexicalEnvironment::symbolTableGet):
+        (JSC::JSLexicalEnvironment::symbolTablePut):
+        (JSC::JSLexicalEnvironment::getOwnNonIndexPropertyNames):
+        (JSC::JSLexicalEnvironment::symbolTablePutWithAttributes):
+        (JSC::JSLexicalEnvironment::getOwnPropertySlot):
+        (JSC::JSLexicalEnvironment::put):
+        (JSC::JSLexicalEnvironment::deleteProperty):
+        (JSC::JSLexicalEnvironment::toThis):
+        (JSC::JSLexicalEnvironment::argumentsGetter):
+        * runtime/JSLexicalEnvironment.h: Renamed from Source/JavaScriptCore/runtime/JSActivation.h.
+        (JSC::JSLexicalEnvironment::create):
+        (JSC::JSLexicalEnvironment::createStructure):
+        (JSC::JSLexicalEnvironment::JSLexicalEnvironment):
+        (JSC::asActivation):
+        (JSC::Register::lexicalEnvironment):
+        (JSC::JSLexicalEnvironment::registersOffset):
+        (JSC::JSLexicalEnvironment::tearOff):
+        (JSC::JSLexicalEnvironment::isTornOff):
+        (JSC::JSLexicalEnvironment::storageOffset):
+        (JSC::JSLexicalEnvironment::storage):
+        (JSC::JSLexicalEnvironment::allocationSize):
+        (JSC::JSLexicalEnvironment::isValidIndex):
+        (JSC::JSLexicalEnvironment::isValid):
+        (JSC::JSLexicalEnvironment::registerAt):
+        * runtime/JSObject.h:
+        * runtime/JSScope.cpp:
+        (JSC::abstractAccess):
+        * runtime/JSScope.h:
+        (JSC::ResolveOp::ResolveOp):
+        * runtime/JSSymbolTableObject.cpp:
+        * runtime/StrictEvalActivation.h:
+        (JSC::StrictEvalActivation::create):
+        * runtime/VM.cpp:
+
+2014-09-11  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        [JavaScriptCore] Fix FTL on platform EFL.
+        https://bugs.webkit.org/show_bug.cgi?id=133571
+
+        Reviewed by Filip Pizlo.
+
+        There are no compact_unwind sections on Linux systems so FTL crashes.
+        We have to parse eh_frame in FTLUnwindInfo instead of compact_unwind
+        and get the information for stack unwinding from there.
+
+        * CMakeLists.txt: Revert r169181.
+        * ftl/FTLCompile.cpp:
+        Change section name literals to use SECTION_NAME macro, because of architecture differencies.
+        (JSC::FTL::mmAllocateCodeSection):
+        (JSC::FTL::mmAllocateDataSection):
+        (JSC::FTL::compile):
+        * ftl/FTLJITCode.h:
+        We need the SECTION_NAME macro in FTLCompile and FTLLink, so we define it here.
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * ftl/FTLState.h:
+        * ftl/FTLState.cpp:
+        (JSC::FTL::State::State):
+        * ftl/FTLUnwindInfo.h:
+        * ftl/FTLUnwindInfo.cpp:
+        Lift the eh_frame parsing method from LLVM/libcxxabi project and modify it for our purposes.
+        Parse eh_frame on Linux instead of compact_unwind.
+        (JSC::FTL::UnwindInfo::parse):
+
 2014-09-10  Saam Barati  <saambarati1@gmail.com>
 
         Web Inspector: Modify the type profiler runtime protocol to transfer some computation into the WebInspector

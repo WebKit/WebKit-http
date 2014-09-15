@@ -2374,7 +2374,7 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
             newRect = LayoutRect(box->localToAbsoluteQuad(FloatQuad(FloatRect(localExposeRect)), UseTransforms).boundingBox());
         }
     } else if (!parentLayer && renderer().isBox() && renderBox()->canBeProgramaticallyScrolled()) {
-        Element* ownerElement = renderer().document().ownerElement();
+        HTMLFrameOwnerElement* ownerElement = renderer().document().ownerElement();
 
         if (ownerElement && ownerElement->renderer()) {
             HTMLFrameElementBase* frameElementBase = nullptr;
@@ -2650,7 +2650,7 @@ IntRect RenderLayer::visibleContentRectInternal(VisibleContentRectIncludesScroll
 IntSize RenderLayer::overhangAmount() const
 {
 #if ENABLE(RUBBER_BANDING)
-    if (!renderer().frame().settings().rubberBandingForOverflowScrollEnabled())
+    if (!renderer().frame().settings().rubberBandingForSubScrollableRegionsEnabled())
         return IntSize();
 
     IntSize stretch;
@@ -3005,7 +3005,7 @@ void RenderLayer::setHasHorizontalScrollbar(bool hasScrollbar)
     if (hasScrollbar) {
         m_hBar = createScrollbar(HorizontalScrollbar);
 #if ENABLE(RUBBER_BANDING)
-        ScrollElasticity elasticity = scrollsOverflow() && renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone;
+        ScrollElasticity elasticity = scrollsOverflow() && renderer().frame().settings().rubberBandingForSubScrollableRegionsEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone;
         ScrollableArea::setHorizontalScrollElasticity(elasticity);
 #endif
     } else {
@@ -3036,7 +3036,7 @@ void RenderLayer::setHasVerticalScrollbar(bool hasScrollbar)
     if (hasScrollbar) {
         m_vBar = createScrollbar(VerticalScrollbar);
 #if ENABLE(RUBBER_BANDING)
-        ScrollElasticity elasticity = scrollsOverflow() && renderer().frame().settings().rubberBandingForOverflowScrollEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone;
+        ScrollElasticity elasticity = scrollsOverflow() && renderer().frame().settings().rubberBandingForSubScrollableRegionsEnabled() ? ScrollElasticityAutomatic : ScrollElasticityNone;
         ScrollableArea::setVerticalScrollElasticity(elasticity);
 #endif
     } else {

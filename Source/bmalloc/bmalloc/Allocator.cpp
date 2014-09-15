@@ -38,7 +38,7 @@ namespace bmalloc {
 Allocator::Allocator(Deallocator& deallocator)
     : m_deallocator(deallocator)
     , m_smallAllocators()
-    , m_mediumAllocator()
+    , m_mediumAllocators()
     , m_smallAllocatorLog()
     , m_mediumAllocatorLog()
 {
@@ -53,18 +53,23 @@ Allocator::~Allocator()
 {
     scavenge();
 }
-    
+
 void Allocator::scavenge()
 {
-    for (auto& allocator : m_smallAllocators)
-        log(allocator);
+    for (auto& allocator : m_smallAllocators) {
+        retire(allocator);
+        allocator.clear();
+    }
     processSmallAllocatorLog();
 
-    log(m_mediumAllocator);
+    for (auto& allocator : m_mediumAllocators) {
+        retire(allocator);
+        allocator.clear();
+    }
     processMediumAllocatorLog();
 }
 
-void Allocator::log(SmallAllocator& allocator)
+void Allocator::retire(SmallAllocator& allocator)
 {
     if (m_smallAllocatorLog.size() == m_smallAllocatorLog.capacity())
         processSmallAllocatorLog();
@@ -87,7 +92,7 @@ void Allocator::processSmallAllocatorLog()
     m_smallAllocatorLog.clear();
 }
 
-void Allocator::log(MediumAllocator& allocator)
+void Allocator::retire(MediumAllocator& allocator)
 {
     if (m_mediumAllocatorLog.size() == m_mediumAllocatorLog.capacity())
         processMediumAllocatorLog();
@@ -126,14 +131,14 @@ void* Allocator::allocateXLarge(size_t size)
 
 void* Allocator::allocateMedium(size_t size)
 {
-    MediumAllocator& allocator = m_mediumAllocator;
+    MediumAllocator& allocator = m_mediumAllocators[mediumSizeClassFor(size)];
     size = roundUpToMultipleOf<alignment>(size);
 
     void* object;
     if (allocator.allocate(size, object))
         return object;
 
-    log(allocator);
+    retire(allocator);
     allocator.refill(m_deallocator.allocateMediumLine());
     return allocator.allocate(size);
 }
@@ -147,7 +152,7 @@ IF_DEBUG(
     if (size <= smallMax) {
         size_t smallSizeClass = smallSizeClassFor(size);
         SmallAllocator& allocator = m_smallAllocators[smallSizeClass];
-        log(allocator);
+        retire(allocator);
         allocator.refill(m_deallocator.allocateSmallLine(smallSizeClass));
         return allocator.allocate();
     }

@@ -400,10 +400,6 @@ bool AccessibilityNodeObject::canHaveChildren() const
     case ScrollBarRole:
     case ProgressIndicatorRole:
         return false;
-    case LegendRole:
-        if (Element* element = this->element())
-            return !ancestorsOfType<HTMLFieldSetElement>(*element).first();
-        FALLTHROUGH;
     default:
         return true;
     }
@@ -1465,25 +1461,21 @@ String AccessibilityNodeObject::alternativeTextForWebArea() const
             return ariaLabel;
     }
     
-    Node* owner = document->ownerElement();
-    if (owner) {
+    if (auto* owner = document->ownerElement()) {
         if (owner->hasTagName(frameTag) || owner->hasTagName(iframeTag)) {
-            const AtomicString& title = toElement(owner)->getAttribute(titleAttr);
+            const AtomicString& title = owner->fastGetAttribute(titleAttr);
             if (!title.isEmpty())
                 return title;
-            return toElement(owner)->getNameAttribute();
         }
-        if (owner->isHTMLElement())
-            return toHTMLElement(owner)->getNameAttribute();
+        return owner->getNameAttribute();
     }
     
     String documentTitle = document->title();
     if (!documentTitle.isEmpty())
         return documentTitle;
     
-    owner = document->body();
-    if (owner && owner->isHTMLElement())
-        return toHTMLElement(owner)->getNameAttribute();
+    if (auto* body = document->body())
+        return body->getNameAttribute();
     
     return String();
 }

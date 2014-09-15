@@ -37,12 +37,12 @@ namespace WebCore {
 #if !ASSERT_DISABLED
 static bool isSingleTagNameSelector(const CSSSelector& selector)
 {
-    return selector.isLastInTagHistory() && selector.m_match == CSSSelector::Tag;
+    return selector.isLastInTagHistory() && selector.match() == CSSSelector::Tag;
 }
 
 static bool isSingleClassNameSelector(const CSSSelector& selector)
 {
-    return selector.isLastInTagHistory() && selector.m_match == CSSSelector::Class;
+    return selector.isLastInTagHistory() && selector.match() == CSSSelector::Class;
 }
 #endif
 
@@ -56,7 +56,7 @@ static IdMatchingType findIdMatchingType(const CSSSelector& firstSelector)
 {
     bool inRightmost = true;
     for (const CSSSelector* selector = &firstSelector; selector; selector = selector->tagHistory()) {
-        if (selector->m_match == CSSSelector::Id) {
+        if (selector->match() == CSSSelector::Id) {
             if (inRightmost)
                 return IdMatchingType::Rightmost;
             return IdMatchingType::Filter;
@@ -80,7 +80,7 @@ SelectorDataList::SelectorDataList(const CSSSelectorList& selectorList)
     if (selectorCount == 1) {
         const CSSSelector& selector = *m_selectors.first().selector;
         if (selector.isLastInTagHistory()) {
-            switch (selector.m_match) {
+            switch (selector.match()) {
             case CSSSelector::Tag:
                 m_matchType = TagNameMatch;
                 break;
@@ -108,7 +108,7 @@ SelectorDataList::SelectorDataList(const CSSSelectorList& selectorList)
             }
         }
     } else
-        m_matchType = MultipleSelectorMatch;
+        m_matchType = CompilableMultipleSelectorMatch;
 }
 
 inline bool SelectorDataList::selectorMatches(const SelectorData& selectorData, Element& element, const ContainerNode& rootNode) const
@@ -168,7 +168,7 @@ static const CSSSelector* selectorForIdLookup(const ContainerNode& rootNode, con
         return nullptr;
 
     for (const CSSSelector* selector = &firstSelector; selector; selector = selector->tagHistory()) {
-        if (selector->m_match == CSSSelector::Id)
+        if (selector->match() == CSSSelector::Id)
             return selector;
         if (selector->relation() != CSSSelector::SubSelector)
             break;
@@ -224,7 +224,7 @@ static ContainerNode& filterRootById(ContainerNode& rootNode, const CSSSelector&
     // Thus we can skip the rightmost match.
     const CSSSelector* selector = &firstSelector;
     do {
-        ASSERT(selector->m_match != CSSSelector::Id);
+        ASSERT(selector->match() != CSSSelector::Id);
         if (selector->relation() != CSSSelector::SubSelector)
             break;
         selector = selector->tagHistory();
@@ -232,7 +232,7 @@ static ContainerNode& filterRootById(ContainerNode& rootNode, const CSSSelector&
 
     bool inAdjacentChain = false;
     for (; selector; selector = selector->tagHistory()) {
-        if (selector->m_match == CSSSelector::Id) {
+        if (selector->match() == CSSSelector::Id) {
             const AtomicString& idToMatch = selector->value();
             if (ContainerNode* searchRoot = rootNode.treeScope().getElementById(idToMatch)) {
                 if (LIKELY(!rootNode.treeScope().containsMultipleElementsWithId(idToMatch))) {
@@ -389,6 +389,37 @@ ALWAYS_INLINE void SelectorDataList::executeCompiledSelectorCheckerWithCheckingC
     }
 }
 
+template <typename SelectorQueryTrait>
+ALWAYS_INLINE void SelectorDataList::executeCompiledSingleMultiSelectorData(const ContainerNode& rootNode, typename SelectorQueryTrait::OutputType& output) const
+{
+    SelectorChecker::CheckingContext checkingContext(SelectorChecker::Mode::QueryingRules);
+    checkingContext.scope = rootNode.isDocumentNode() ? nullptr : &rootNode;
+    unsigned selectorCount = m_selectors.size();
+    for (auto& element : elementDescendants(const_cast<ContainerNode&>(rootNode))) {
+        for (unsigned i = 0; i < selectorCount; ++i) {
+#if CSS_SELECTOR_JIT_PROFILING
+            m_selectors[i].compiledSelectorUsed();
+#endif
+            bool matched = false;
+            void* compiledSelectorChecker = m_selectors[i].compiledSelectorCodeRef.code().executableAddress();
+            if (m_selectors[i].compilationStatus == SelectorCompilationStatus::SimpleSelectorChecker) {
+                SelectorCompiler::SimpleSelectorChecker selectorChecker = SelectorCompiler::simpleSelectorCheckerFunction(compiledSelectorChecker, m_selectors[i].compilationStatus);
+                matched = selectorChecker(&element);
+            } else {
+                ASSERT(m_selectors[i].compilationStatus == SelectorCompilationStatus::SelectorCheckerWithCheckingContext);
+                SelectorCompiler::SelectorCheckerWithCheckingContext selectorChecker = SelectorCompiler::selectorCheckerFunctionWithCheckingContext(compiledSelectorChecker, m_selectors[i].compilationStatus);
+                matched = selectorChecker(&element, &checkingContext);
+            }
+            if (matched) {
+                SelectorQueryTrait::appendOutputForElement(output, &element);
+                if (SelectorQueryTrait::shouldOnlyMatchFirstElement)
+                    return;
+                break;
+            }
+        }
+    }
+}
+
 static bool isCompiledSelector(SelectorCompilationStatus compilationStatus)
 {
     return compilationStatus == SelectorCompilationStatus::SimpleSelectorChecker || compilationStatus == SelectorCompilationStatus::SelectorCheckerWithCheckingContext;
@@ -489,7 +520,34 @@ ALWAYS_INLINE void SelectorDataList::execute(ContainerNode& rootNode, typename S
     case ClassNameMatch:
         executeSingleClassNameSelectorData<SelectorQueryTrait>(*searchRootNode, m_selectors.first(), output);
         break;
+    case CompilableMultipleSelectorMatch:
+#if ENABLE(CSS_SELECTOR_JIT)
+        {
+        unsigned selectorCount = m_selectors.size();
+        for (unsigned i = 0; i < selectorCount; ++i) {
+            if (!compileSelector(m_selectors[i], *searchRootNode)) {
+                m_matchType = MultipleSelectorMatch;
+                goto MultipleSelectorMatch;
+            }
+        }
+        m_matchType = CompiledMultipleSelectorMatch;
+        goto CompiledMultipleSelectorMatch;
+        }
+#else
+        FALLTHROUGH;
+#endif // ENABLE(CSS_SELECTOR_JIT)
+    case CompiledMultipleSelectorMatch:
+#if ENABLE(CSS_SELECTOR_JIT)
+        CompiledMultipleSelectorMatch:
+        executeCompiledSingleMultiSelectorData<SelectorQueryTrait>(*searchRootNode, output);
+        break;
+#else
+        FALLTHROUGH;
+#endif // ENABLE(CSS_SELECTOR_JIT)
     case MultipleSelectorMatch:
+#if ENABLE(CSS_SELECTOR_JIT)
+        MultipleSelectorMatch:
+#endif
         executeSingleMultiSelectorData<SelectorQueryTrait>(*searchRootNode, output);
         break;
     }

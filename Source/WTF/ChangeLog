@@ -1,3 +1,69 @@
+2014-09-15  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Make it easier to enable/disable GStreamer.
+        https://bugs.webkit.org/show_bug.cgi?id=135766
+
+        Reviewed by Brent Fulgham.
+
+        Make it possible to enable/disable GStreamer by editing the new user macro ENABLE_GSTREAMER_WINCAIRO.
+
+        * WTF.vcxproj/WTFDebugWinCairo.props: Import GStreamer property file.
+        * WTF.vcxproj/WTFReleaseWinCairo.props: Ditto.
+        * wtf/Platform.h: Enable GStreamer if ENABLE(GSTREAMER_WINCAIRO) is true, otherwise use Media Foundation.
+
+2014-09-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Re-add the request autocomplete feature
+
+        <https://bugs.webkit.org/show_bug.cgi?id=136730>
+
+        This feature was rolled out in r148731 because it was only used by
+        Chromium. As we consider supporting this feature, roll it back in, but
+        leave it disabled.
+
+        This rolls out r148731 (which removed the feature) with small changes
+        needed to make the code build in ToT, to make the tests run, and to
+        remove unused code.
+
+        Reviewed by Andy Estes.
+
+        * wtf/FeatureDefines.h:
+
+2014-09-12  Tim Horton  <timothy_horton@apple.com>
+
+        Swiping back from a Twitter image to Twitter flashes to the wrong position
+        https://bugs.webkit.org/show_bug.cgi?id=136798
+        <rdar://problem/18324338>
+
+        Reviewed by Darin Adler and Sam Weinig.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::TimerBase::startRepeating):
+        Add a std::chrono veresion of RunLoop::TimerBase::startRepeating.
+
+2014-09-12  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled out r173540.
+
+        It broke the Membuster performance bot, and it's still slightly profligate
+        with memory.
+
+            Do the bmalloc.
+            https://bugs.webkit.org/show_bug.cgi?id=132629
+
+        * wtf/FastMalloc.cpp:
+
+2014-09-11  Geoffrey Garen  <ggaren@apple.com>
+
+        Do the bmalloc.
+        https://bugs.webkit.org/show_bug.cgi?id=132629
+
+        Reviewed by Michael Saboff.
+
+        64-bit only for now, just to try it out.
+
+        * wtf/FastMalloc.cpp:
+
 2014-09-09  Benjamin Poulain  <bpoulain@apple.com>
 
         Disable the "unreachable-code" warning

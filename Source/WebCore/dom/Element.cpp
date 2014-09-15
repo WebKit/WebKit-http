@@ -142,6 +142,12 @@ PassRefPtr<Element> Element::create(const QualifiedName& tagName, Document& docu
     return adoptRef(new Element(tagName, document, CreateElement));
 }
 
+Element::Element(const QualifiedName& tagName, Document& document, ConstructionType type)
+    : ContainerNode(document, type)
+    , m_tagName(tagName)
+{
+}
+
 Element::~Element()
 {
 #ifndef NDEBUG
@@ -2927,7 +2933,7 @@ void Element::cloneAttributesFromElement(const Element& other)
     if (other.m_elementData->isUnique()
         && !other.m_elementData->presentationAttributeStyle()
         && (!other.m_elementData->inlineStyle() || !other.m_elementData->inlineStyle()->hasCSSOMWrapper()))
-        const_cast<Element&>(other).m_elementData = static_cast<const UniqueElementData*>(other.m_elementData.get())->makeShareableCopy();
+        const_cast<Element&>(other).m_elementData = toUniqueElementData(other.m_elementData)->makeShareableCopy();
 
     if (!other.m_elementData->isUnique())
         m_elementData = other.m_elementData;
@@ -2948,10 +2954,8 @@ void Element::createUniqueElementData()
 {
     if (!m_elementData)
         m_elementData = UniqueElementData::create();
-    else {
-        ASSERT(!m_elementData->isUnique());
-        m_elementData = static_cast<ShareableElementData*>(m_elementData.get())->makeUniqueCopy();
-    }
+    else
+        m_elementData = toShareableElementData(m_elementData)->makeUniqueCopy();
 }
 
 bool Element::hasPendingResources() const

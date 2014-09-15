@@ -122,9 +122,11 @@ public:
     bool shouldSendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks() == SendCallbacks; }
     void setSendCallbackPolicy(SendCallbackPolicy sendLoadCallbacks) { m_options.setSendLoadCallbacks(sendLoadCallbacks); }
     bool shouldSniffContent() const { return m_options.sniffContent() == SniffContent; }
-    ClientCredentialPolicy clientCredentialPolicy() const { return m_options.clientCredentialPolicy(); }
+    WEBCORE_EXPORT bool isAllowedToAskUserForCredentials() const;
+    bool shouldIncludeCertificateInfo() const { return m_options.certificateInfoPolicy() == IncludeCertificateInfo; }
 
     bool reachedTerminalState() const { return m_reachedTerminalState; }
+
 
     const ResourceRequest& request() const { return m_request; }
 

@@ -33,8 +33,8 @@
 #include "DebuggerEvalEnabler.h"
 #include "DebuggerScope.h"
 #include "Interpreter.h"
-#include "JSActivation.h"
 #include "JSFunction.h"
+#include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "Parser.h"
 #include "StackVisitor.h"
@@ -128,7 +128,7 @@ String DebuggerCallFrame::functionName() const
     ASSERT(isValid());
     if (!isValid())
         return String();
-    JSObject* function = m_callFrame->callee();
+    JSFunction* function = jsDynamicCast<JSFunction*>(m_callFrame->callee());
     if (!function)
         return String();
 
@@ -146,9 +146,9 @@ DebuggerScope* DebuggerCallFrame::scope()
         CodeBlock* codeBlock = m_callFrame->codeBlock();
         if (codeBlock && codeBlock->needsActivation() && !m_callFrame->hasActivation()) {
             ASSERT(!m_callFrame->scope()->isWithScope());
-            JSActivation* activation = JSActivation::create(vm, m_callFrame, codeBlock);
-            m_callFrame->setActivation(activation);
-            m_callFrame->setScope(activation);
+            JSLexicalEnvironment* lexicalEnvironment = JSLexicalEnvironment::create(vm, m_callFrame, codeBlock);
+            m_callFrame->setActivation(lexicalEnvironment);
+            m_callFrame->setScope(lexicalEnvironment);
         }
 
         m_scope.set(vm, DebuggerScope::create(vm, m_callFrame->scope()));
@@ -162,7 +162,7 @@ DebuggerCallFrame::Type DebuggerCallFrame::type() const
     if (!isValid())
         return ProgramType;
 
-    if (m_callFrame->callee())
+    if (jsDynamicCast<JSFunction*>(m_callFrame->callee()))
         return FunctionType;
 
     return ProgramType;

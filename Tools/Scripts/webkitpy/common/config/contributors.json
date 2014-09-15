@@ -415,16 +415,6 @@
             "brettx"
          ]
       },
-      "Brian Burg" : {
-         "emails" : [
-            "burg@cs.washington.edu"
-         ],
-         "expertise" : "Developer Tools, Web Inspector",
-         "nicks" : [
-            "bburg",
-            "brrian"
-         ]
-      },
       "Brian Holt" : {
          "emails" : [
             "brian.holt@samsung.com"
@@ -840,6 +830,16 @@
          "expertise" : "The EFLWebKit Port, Touch and Gesture",
          "nicks" : [
             "eunmi"
+         ]
+      },
+      "Eva Balazsfalvi" : {
+         "emails" : [
+            "evab.u-szeged@partner.samsung.com",
+            "evab@inf.u-szeged.hu",
+            "balazsfalvi.eva@stud.u-szeged.hu"
+         ],
+         "nicks" : [
+            "ebalazsfalvi"
          ]
       },
       "Evan Martin" : {
@@ -2963,15 +2963,6 @@
             "epenner"
          ]
       },
-      "Eva Balazsfalvi" : {
-         "emails" : [
-            "evab.u-szeged@partner.samsung.com",
-            "balazsfalvi.eva@stud.u-szeged.hu"
-         ],
-         "nicks" : [
-            "ebalazsfalvi"
-         ]
-      },
       "Frédéric Wang" : {
          "emails" : [
             "fred.wang@free.fr"
@@ -3599,6 +3590,16 @@
          "expertise" : "The WinCairo Port, WebKit on Windows",
          "nicks" : [
             "bfulgham"
+         ]
+      },
+      "Brian Burg" : {
+         "emails" : [
+            "burg@cs.washington.edu"
+         ],
+         "expertise" : "Developer Tools, Web Inspector",
+         "nicks" : [
+            "bburg",
+            "brrian"
          ]
       },
       "Brian Weinstein" : {

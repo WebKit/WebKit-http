@@ -189,7 +189,7 @@ protected:
     WriteBarrier<Structure> m_debuggerScopeStructure;
     WriteBarrier<Structure> m_withScopeStructure;
     WriteBarrier<Structure> m_strictEvalActivationStructure;
-    WriteBarrier<Structure> m_activationStructure;
+    WriteBarrier<Structure> m_lexicalEnvironmentStructure;
     WriteBarrier<Structure> m_nameScopeStructure;
     WriteBarrier<Structure> m_argumentsStructure;
         
@@ -206,6 +206,7 @@ protected:
     WriteBarrier<Structure> m_objcWrapperObjectStructure;
 #endif
     WriteBarrier<Structure> m_nullPrototypeObjectStructure;
+    WriteBarrier<Structure> m_calleeStructure;
     WriteBarrier<Structure> m_functionStructure;
     WriteBarrier<Structure> m_boundFunctionStructure;
     WriteBarrier<Structure> m_namedFunctionStructure;
@@ -395,7 +396,7 @@ public:
     Structure* debuggerScopeStructure() const { return m_debuggerScopeStructure.get(); }
     Structure* withScopeStructure() const { return m_withScopeStructure.get(); }
     Structure* strictEvalActivationStructure() const { return m_strictEvalActivationStructure.get(); }
-    Structure* activationStructure() const { return m_activationStructure.get(); }
+    Structure* activationStructure() const { return m_lexicalEnvironmentStructure.get(); }
     Structure* nameScopeStructure() const { return m_nameScopeStructure.get(); }
     Structure* argumentsStructure() const { return m_argumentsStructure.get(); }
     Structure* originalArrayStructureForIndexingType(IndexingType indexingType) const
@@ -429,6 +430,7 @@ public:
     Structure* dateStructure() const { return m_dateStructure.get(); }
     Structure* nullPrototypeObjectStructure() const { return m_nullPrototypeObjectStructure.get(); }
     Structure* errorStructure() const { return m_errorStructure.get(); }
+    Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* functionStructure() const { return m_functionStructure.get(); }
     Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
@@ -601,9 +603,7 @@ private:
 
     JS_EXPORT_PRIVATE void setGlobalThis(VM&, JSObject* globalThis);
 
-    // FIXME: Fold reset into init.
     JS_EXPORT_PRIVATE void init();
-    void reset(JSValue prototype);
 
     void createThrowTypeError(VM&);
 

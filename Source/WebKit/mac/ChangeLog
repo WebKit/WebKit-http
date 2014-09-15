@@ -1,3 +1,105 @@
+2014-09-14  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Attempt to fix the iOS build after <http://trac.webkit.org/changeset/173606>
+        (https://bugs.webkit.org/show_bug.cgi?id=136789)
+
+        Substitute Node::countChildNodes() for Node::childNodeCount() in more places.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame focusedNodeHasContent]):
+
+2014-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Rename Node::childNodeCount() to countChildNodes() and avoid inefficient uses
+        https://bugs.webkit.org/show_bug.cgi?id=136789
+
+        Reviewed by Darin Adler.
+
+        Rename childNodeCount() to countChildNodes().
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView attributedString]):
+
+2014-09-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Re-add the request autocomplete feature
+
+        <https://bugs.webkit.org/show_bug.cgi?id=136730>
+
+        This feature was rolled out in r148731 because it was only used by
+        Chromium. As we consider supporting this feature, roll it back in, but
+        leave it disabled.
+
+        This rolls out r148731 (which removed the feature) with small changes
+        needed to make the code build in ToT, to match modern style, to make
+        the tests run, and to remove unused code.
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2014-09-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r173575.
+        https://bugs.webkit.org/show_bug.cgi?id=136790
+
+        Failing tests (Requested by enrica on #webkit).
+
+        Reverted changeset:
+
+        "Remove PLATFORM(IOS) from WebCore/editing (Part 3)."
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+        http://trac.webkit.org/changeset/173575
+
+2014-09-12  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 3).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Benjamin Poulain.
+
+        This is the updated version of the patch that was landed in r173340.
+        I changed the use of IntPoint to FloatPoint since it was causing tests
+        to fail.
+        This patch removes the use of PLATFORM(IOS) from TextAffinity.h
+        and removes the assumption that EAffinity values match NSSelectionAffinity
+        values. It also removes the includes in TextAffinity.h, creating the need to
+        include explicitly the files when necessary. It also removes the unnecessary
+        use of platform specific types, replacing them with WebCore types.
+
+        * WebCoreSupport/WebEditorClient.h:
+        (kit):
+        (core):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _scrollToBeginningOfDocument]):
+        (-[WebFrameView _scrollToEndOfDocument]):
+
+2014-09-11  Bear Travis  <betravis@adobe.com>
+
+        [CSS Font Loading] Enable CSS Font Loading on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=135473
+
+        Reviewed by Antti Koivisto.
+
+        Enable CSS Font Loading in FeatureDefines.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-09-11  Beth Dakin  <bdakin@apple.com>
+
+        Support rubber-banding in sub-frames
+        https://bugs.webkit.org/show_bug.cgi?id=136726
+        -and corresponding-
+        rdar://problem/10011924
+
+        Reviewed by Tim Horton.
+
+        rubberBandingForOverflowScrollEnabled is re-named to
+        rubberBandingForSubScrollableRegionsEnabled
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2014-09-09  Benjamin Poulain  <bpoulain@apple.com>
 
         Disable the "unreachable-code" warning

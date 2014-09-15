@@ -343,9 +343,9 @@ int lastOffsetForEditing(const Node* node)
         return node->maxCharacterOffset();
 
     if (node->hasChildNodes())
-        return node->childNodeCount();
+        return node->countChildNodes();
 
-    // NOTE: This should preempt the childNodeCount for, e.g., select nodes
+    // NOTE: This should preempt the countChildNodes() for, e.g., select nodes (what does this mean)?
     if (editingIgnoresContent(node))
         return 1;
 
@@ -513,7 +513,7 @@ Node* isLastPositionBeforeTable(const VisiblePosition& visiblePosition)
 VisiblePosition visiblePositionBeforeNode(Node* node)
 {
     ASSERT(node);
-    if (node->childNodeCount())
+    if (node->hasChildNodes())
         return VisiblePosition(firstPositionInOrBeforeNode(node), DOWNSTREAM);
     ASSERT(node->parentNode());
     ASSERT(!node->parentNode()->isShadowRoot());
@@ -524,7 +524,7 @@ VisiblePosition visiblePositionBeforeNode(Node* node)
 VisiblePosition visiblePositionAfterNode(Node* node)
 {
     ASSERT(node);
-    if (node->childNodeCount())
+    if (node->hasChildNodes())
         return VisiblePosition(lastPositionInOrAfterNode(node), DOWNSTREAM);
     ASSERT(node->parentNode());
     ASSERT(!node->parentNode()->isShadowRoot());

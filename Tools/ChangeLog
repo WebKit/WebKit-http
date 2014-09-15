@@ -1,3 +1,179 @@
+2014-09-15  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Make it easier to enable/disable GStreamer.
+        https://bugs.webkit.org/show_bug.cgi?id=135766
+
+        Reviewed by Brent Fulgham.
+
+        Make it possible to enable/disable GStreamer by editing the new user macro ENABLE_GSTREAMER_WINCAIRO.
+
+        * WinLauncher/WinMain.cpp: Compile fix when GStreamer is enabled.
+
+2014-09-12  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remind about rebaselining generator test results
+        https://bugs.webkit.org/show_bug.cgi?id=136759
+
+        Reviewed by Joseph Pecoraro.
+
+        For now, we can implement this as a watchlist message. Add watchlist
+        groups and messages for the inspector and web replay generators.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-09-12  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Overlapping text when status is long
+        https://bugs.webkit.org/show_bug.cgi?id=136794
+
+        Reviewed by Timothy Hatcher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/StatusLineView.css:
+        (.status-line): Replaces height with min-height.
+
+2014-09-12  Timothy Hatcher  <timothy@apple.com>
+
+        Make Brian Burg a WebKit reviewer.
+
+        * Scripts/webkitpy/common/config/contributors.json: Move Brian Burg's entry.
+
+2014-09-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Multiple EWS or commit bots can pick up processing of the same patch
+        https://bugs.webkit.org/show_bug.cgi?id=136793
+
+        Reviewed by Ryosuke Niwa.
+
+        Change timeout from one hour to two hours. This will let bots finish, and in the
+        unlikely event of a bot being frozen, will only delay patch processing restart by
+        one hour.
+
+        * QueueStatusServer/app.yaml:
+        * QueueStatusServer/model/activeworkitems.py: (ActiveWorkItems.deactivate_expired):
+
+2014-09-11  Andy Estes  <aestes@apple.com>
+
+        [WebKit2] WKImageCreateCGImage crashes when passed a null WKImage
+        https://bugs.webkit.org/show_bug.cgi?id=136768
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/WKImageCreateCGImageCrash.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2014-09-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r173423): CertificateInfo is never sent to the UI process when using shared secondary process model
+        https://bugs.webkit.org/show_bug.cgi?id=136669
+
+        Reviewed by Antti Koivisto.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Unskip SSL test.
+
+2014-09-12  Eric Carlson  <eric.carlson@apple.com>
+
+        Strip extraneous AVFoundation and CoreMedia logging
+        https://bugs.webkit.org/show_bug.cgi?id=136747
+
+        Reviewed by Jer Noble.
+
+        * Scripts/webkitpy/layout_tests/controllers/single_test_runner.py:
+        (SingleTestRunner._run_compare_test): Allow the port to specify patterns to strip from stderr.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.stderr_patterns_to_strip): Base class, empty list
+
+        * Scripts/webkitpy/port/driver.py:
+        (DriverOutput.strip_stderror_patterns): Strip the specified patterns from stderr.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.stderr_patterns_to_strip): iOS patterns - there are none.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.stderr_patterns_to_strip): CoreMedia and AVFoundation logging we can ignore.
+
+
+2014-09-11  Michael Saboff  <msaboff@apple.com>
+
+        lldb_webkit.py:btjs doesn't work with release builds
+        https://bugs.webkit.org/show_bug.cgi?id=136760
+
+        Reviewed by Jer Noble.
+
+        If we can't get a result calling JSC::ExecState::describeFrame(), try calling the
+        mangled name _ZN3JSC9ExecState13describeFrameEv.  Also cleaned up the handling if
+        we can't get a valid result from trying either call.  In that case, we fallback to
+        just showing the PC.  Also added check for both entry points.  If neither is found,
+        we issue a warning and output the stack trace without JavaScript annotations.
+
+        * lldb/lldb_webkit.py:
+        (btjs):
+
+2014-09-11  Rebecca Hauck  <rhauck@adobe.com>
+
+        webkitpy test failures from import-w3c-tests
+        https://bugs.webkit.org/show_bug.cgi?id=136752
+
+        Reviewed by Bem Jones-Bey.
+
+        This patch fixes a bug in import-w3c-tests where we were appending
+        the wrong set of files to the copy_list. This also updates the tests
+        to clear the failures introduced in the patch for bug 135929.
+
+        * Scripts/webkitpy/w3c/test_converter_unittest.py:
+        (W3CTestConverterTest.test_read_prefixed_property_list):
+        * Scripts/webkitpy/w3c/test_parser.py:
+        (TestParser.analyze_test):
+        (TestParser.support_files):
+        * Scripts/webkitpy/w3c/test_parser_unittest.py:
+
+2014-09-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Blink merge: Speculative fix for windows run-webkit-tests hangs
+        https://bugs.webkit.org/show_bug.cgi?id=136727
+
+        Reviewed by Csaba Osztrogonác.
+
+        Merged from Blink (patch by Dirk Pranke):
+        <https://chromium.googlesource.com/chromium/blink/+/0cdd98d44a20c3951562ccf8b08b1fefba8dac67%5E%21/#F0>
+
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive.kill_process):
+
+2014-09-11  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Added myself as a committer.
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-09-11  László Langó  <llango.u-szeged@partner.samsung.com>
+
+        [JavaScriptCore] Fix FTL on platform EFL.
+        https://bugs.webkit.org/show_bug.cgi?id=133571
+
+        Reviewed by Filip Pizlo.
+
+        * efl/install-dependencies: Revert r169181.
+        * efl/jhbuild.modules: Clone and build a custom branch.
+        This branch contains some fix for FTL of platform EFL.
+        The branch is a fork of llvm r206311.
+
+2014-09-10  Tanay C  <tanay.c@samsung.com>
+
+        [EFL][WK2] Minibrowser : Shift+Scroll navigate to back or forward url's
+        https://bugs.webkit.org/show_bug.cgi?id=136698
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c: Add functionality to support shift + mouse scroll navigation
+        (on_mouse_wheel): Added.
+        (window_free):
+        (window_create):
+
 2014-09-10  Rohit Kumar  <kumar.rohit@samsung.com>
 
         [EFL][WK2] Minibrowser : Add tooltip for toolbar buttons in Minibrowser
