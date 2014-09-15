@@ -32,6 +32,7 @@
 #include "BitmapImage.h"
 #include "DatabaseTracker.h"
 #include "FontPlatformData.h"
+#include "FrameNetworkingContextHaiku.h"
 #include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
@@ -45,6 +46,7 @@
 #include <Font.h>
 #include <Path.h>
 #include <stdio.h>
+#include <UrlContext.h>
 
 enum {
 	HANDLE_SET_PERSISTENT_STORAGE_PATH = 'hspp',
@@ -496,7 +498,11 @@ void BWebSettings::_HandleSetProxyInfo(BMessage* message)
 		|| message->FindString("password", &password) != B_OK)
 		return;
 
-    // TODO handles proxy with services kit
+    // TODO handle SOCKS proxy and authentication
+    // TODO there could be a cleaner way of accessing the default context from here.
+    RefPtr<WebCore::FrameNetworkingContextHaiku> context
+        = WebCore::FrameNetworkingContextHaiku::create(nullptr, nullptr);
+    context->context()->SetProxy(host, port);
 }
 
 void BWebSettings::_HandleApply()
