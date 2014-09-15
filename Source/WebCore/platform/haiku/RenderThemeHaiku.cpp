@@ -217,7 +217,7 @@ bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& 
 }
 #endif
 
-void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
+void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
 {
 }
 
@@ -242,7 +242,7 @@ bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInf
     return false;
 }
 
-void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
+void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
 {
 	adjustTextFieldStyle(selector, style, element);
 }
@@ -252,12 +252,12 @@ bool RenderThemeHaiku::paintTextArea(const RenderObject& object, const PaintInfo
     return paintTextField(object, info, intRect);
 }
 
-void RenderThemeHaiku::adjustMenuListStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
+void RenderThemeHaiku::adjustMenuListStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
 {
     adjustMenuListButtonStyle(selector, style, element);
 }
 
-void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver& selector, RenderStyle& style, Element& element) const
+void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
 {
     style.resetBorder();
     style.resetBorderRadius();

@@ -69,16 +69,16 @@ protected:
     bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 #endif
 
-    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element&) const override;
+    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
     bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element&) const override;
+    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element*) const override;
     bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element&) const override;
+    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element*) const override;
     bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element&) const override;
+    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
 #if ENABLE(DATALIST_ELEMENT)
     // Returns size of one slider tick mark for a horizontal track.
