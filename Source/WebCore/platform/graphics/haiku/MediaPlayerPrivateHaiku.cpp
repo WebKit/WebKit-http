@@ -187,9 +187,8 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
 	if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
     {
         // Notify that we're done playing...
-        player->m_currentTime = player->m_audioTrack->Duration();
-        player->m_soundPlayer->Stop();
-        player->m_player->timeChanged();
+        player->m_currentTime = player->m_audioTrack->Duration() / 1000000.f;
+        player->Looper()->PostMessage('fnsh', player);
     }
 
     if (player->m_videoTrack) {
@@ -258,7 +257,6 @@ float MediaPlayerPrivate::duration() const
     // TODO handle the case where there is a video, but no audio track.
     if (!m_audioTrack)
         return 0;
-
     return m_audioTrack->Duration() / 1000000.f;
 }
 
@@ -413,6 +411,12 @@ void MediaPlayerPrivate::MessageReceived(BMessage* message)
         case 'rfsh':
             m_player->repaint();
             return;
+
+        case 'fnsh':
+            m_soundPlayer->Stop();
+            m_player->timeChanged();
+            return;
+
         default:
             BUrlProtocolAsynchronousListener::MessageReceived(message);
             return;
