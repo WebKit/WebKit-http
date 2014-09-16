@@ -85,7 +85,7 @@ static void paintTextWithShadows(GraphicsContext& context, const Font& font, con
     do {
         if (isEmptyShadow(shadow)) {
             shadow = shadow->next();
-            continue;
+            //continue;
         }
 
         IntSize extraOffset;
