@@ -98,7 +98,7 @@ namespace WebCore {
         bool runJavaScriptConfirm(Frame*, const String&) override;
         bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
         PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
-#if 0
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
         PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) override;
 #endif
 

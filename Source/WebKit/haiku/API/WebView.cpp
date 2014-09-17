@@ -316,6 +316,10 @@ void BWebView::MessageReceived(BMessage* message)
         _DispatchKeyEvent(B_KEY_DOWN);
         break;
 
+    case 'inva':
+        Invalidate(message->FindRect("bounds"));
+        break;
+
     default:
         BView::MessageReceived(message);
         break;

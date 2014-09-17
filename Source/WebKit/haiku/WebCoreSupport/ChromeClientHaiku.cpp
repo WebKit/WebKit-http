@@ -291,10 +291,11 @@ PassOwnPtr<ColorChooser> ChromeClientHaiku::createColorChooser(
 }
 
 
-#if 0
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 PassRefPtr<DateTimeChooser> ChromeClientHaiku::openDateTimeChooser(
     DateTimeChooserClient*, const DateTimeChooserParameters&)
 {
+    notImplemented();
 }
 #endif
 
@@ -323,9 +324,9 @@ IntRect ChromeClientHaiku::windowResizerRect() const
 void ChromeClientHaiku::invalidateRootView(const IntRect& rect)
 {
     // This only invalidates the view, not the backing store.
-    m_webView->LockLooper();
-    m_webView->Invalidate(BRect(rect));
-    m_webView->UnlockLooper();
+    BMessage message('inva');
+    message.AddRect("bounds", BRect(rect));
+    m_webView->Looper()->PostMessage(&message, m_webView);
 }
 
 void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect)
