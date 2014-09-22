@@ -709,6 +709,12 @@ void BWebPage::paint(BRect rect, bool immediate)
         fWebView->UnlockLooper();
         return;
     }
+
+    // FIXME workaround for sometimes badly calculated update rectangle somewhere
+    // in WebCore. In some cases we get asked to redraw only a small part of the
+    // page, instead of everything.
+    rect = fWebView->Bounds();
+
     fWebView->UnlockLooper();
 
     BRegion region(rect);
