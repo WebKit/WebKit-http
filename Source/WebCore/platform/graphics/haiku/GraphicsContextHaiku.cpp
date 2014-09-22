@@ -31,8 +31,6 @@
 
 #include "AffineTransform.h"
 #include "Color.h"
-#include "Font.h"
-#include "FontData.h"
 #include "NotImplemented.h"
 #include "Path.h"
 #include "ShadowBlur.h"
@@ -937,7 +935,8 @@ void GraphicsContext::translate(float x, float y)
     } else {
         m_data->m_scrollPos = BPoint(x, y);
         // Most likely plain old scrolling.
-        m_data->view()->SetOrigin(x, y);
+        BPoint org = m_data->view()->Origin() + m_data->m_scrollPos;
+        m_data->view()->SetOrigin(org);
     }
 }
 
