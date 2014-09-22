@@ -53,6 +53,8 @@ WaylandSurface::WaylandSurface(struct wl_surface* wlSurface, EGLNativeWindowType
 
 WaylandSurface::~WaylandSurface()
 {
+    // The surface couldn't have been created in the first place if WaylandDisplay wasn't properly initialized.
+    ASSERT(WaylandDisplay::instance());
     eglMakeCurrent(WaylandDisplay::instance()->eglDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
     wl_egl_window_destroy(m_nativeWindow);

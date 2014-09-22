@@ -39,34 +39,38 @@ namespace WebCore {
 
 class ClassNodeList final : public CachedLiveNodeList<ClassNodeList> {
 public:
-    static PassRef<ClassNodeList> create(ContainerNode& rootNode, const String& classNames)
-    {
-        return adoptRef(*new ClassNodeList(rootNode, classNames));
-    }
+    static PassRef<ClassNodeList> create(ContainerNode&, const AtomicString& classNames);
 
     virtual ~ClassNodeList();
 
-    virtual bool nodeMatches(Element*) const override;
+    virtual bool elementMatches(Element&) const override;
     virtual bool isRootedAtDocument() const override { return false; }
 
 private:
-    ClassNodeList(ContainerNode& rootNode, const String& classNames);
+    ClassNodeList(ContainerNode& rootNode, const AtomicString& classNames);
 
     SpaceSplitString m_classNames;
-    String m_originalClassNames;
+    AtomicString m_originalClassNames;
 };
 
-inline bool ClassNodeList::nodeMatches(Element* element) const
+inline ClassNodeList::ClassNodeList(ContainerNode& rootNode, const AtomicString& classNames)
+    : CachedLiveNodeList(rootNode, InvalidateOnClassAttrChange)
+    , m_classNames(classNames, document().inQuirksMode())
+    , m_originalClassNames(classNames)
 {
-    if (!element->hasClass())
+}
+
+inline bool ClassNodeList::elementMatches(Element& element) const
+{
+    if (!element.hasClass())
         return false;
     if (!m_classNames.size())
         return false;
     // FIXME: DOM4 allows getElementsByClassName to return non StyledElement.
     // https://bugs.webkit.org/show_bug.cgi?id=94718
-    if (!element->isStyledElement())
+    if (!element.isStyledElement())
         return false;
-    return element->classNames().containsAll(m_classNames);
+    return element.classNames().containsAll(m_classNames);
 }
 
 } // namespace WebCore

@@ -32,7 +32,7 @@
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS CALayer;
-typedef struct __WKCAContextRef *WKCAContextRef;
+OBJC_CLASS CAContext;
 
 namespace WebKit {
 
@@ -57,10 +57,14 @@ public:
 
     void setColorSpace(CGColorSpaceRef);
     CGColorSpaceRef colorSpace() const;
+    
+#if PLATFORM(IOS)
+    void setFencePort(mach_port_t);
+#endif
 
 private:
     LayerHostingMode m_layerHostingMode;
-    RetainPtr<WKCAContextRef> m_context;
+    RetainPtr<CAContext> m_context;
 };
 
 } // namespace WebKit

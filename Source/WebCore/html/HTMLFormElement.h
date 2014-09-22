@@ -114,10 +114,10 @@ public:
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
     enum class AutocompleteResult {
-        AutocompleteResultSuccess,
-        AutocompleteResultErrorDisabled,
-        AutocompleteResultErrorCancel,
-        AutocompleteResultErrorInvalid,
+        Success,
+        ErrorDisabled,
+        ErrorCancel,
+        ErrorInvalid,
     };
 
     void requestAutocomplete();
@@ -200,8 +200,6 @@ private:
     Timer<HTMLFormElement> m_requestAutocompleteTimer;
 #endif
 };
-
-NODE_TYPE_CASTS(HTMLFormElement)
 
 } // namespace WebCore
 

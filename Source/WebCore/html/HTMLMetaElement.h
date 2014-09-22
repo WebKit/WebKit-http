@@ -31,9 +31,9 @@ class HTMLMetaElement final : public HTMLElement {
 public:
     static PassRefPtr<HTMLMetaElement> create(const QualifiedName&, Document&);
 
-    String content() const;
-    String httpEquiv() const;
-    String name() const;
+    const AtomicString& content() const;
+    const AtomicString& httpEquiv() const;
+    const AtomicString& name() const;
 
 private:
     HTMLMetaElement(const QualifiedName&, Document&);
@@ -43,8 +43,6 @@ private:
 
     void process();
 };
-
-NODE_TYPE_CASTS(HTMLMetaElement)
 
 } // namespace WebCore
 

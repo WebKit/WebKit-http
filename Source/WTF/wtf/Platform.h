@@ -783,6 +783,8 @@
 #define ENABLE_FTL_JIT 0
 #endif
 
+#define ENABLE_FTL_NATIVE_CALL_INLINING 0
+
 #if !defined(ENABLE_FTL_NATIVE_CALL_INLINING)
 #if COMPILER(CLANG)
 #define ENABLE_FTL_NATIVE_CALL_INLINING 1
@@ -1118,6 +1120,10 @@
  * in cross-platform the same way as it is used in OS(DARWIN) code. */ 
 #if !defined(TARGET_OS_IPHONE) && !OS(DARWIN)
 #define TARGET_OS_IPHONE 0
+#endif
+
+#if PLATFORM(IOS) || (PLATFORM(COCOA) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
+#define WTF_USE_MEDIATOOLBOX 1
 #endif
 
 #endif /* WTF_Platform_h */

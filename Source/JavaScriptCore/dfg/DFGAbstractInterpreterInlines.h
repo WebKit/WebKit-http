@@ -1422,8 +1422,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         if (!value.m_structure.isTop() && !value.m_structure.isClobbered()
             && (node->child1().useKind() == CellUse || !(value.m_type & ~SpecCell))) {
             GetByIdStatus status = GetByIdStatus::computeFor(
-                m_graph.m_vm, value.m_structure.set(),
-                m_graph.identifiers()[node->identifierNumber()]);
+                value.m_structure.set(), m_graph.identifiers()[node->identifierNumber()]);
             if (status.isSimple()) {
                 // Figure out what the result is going to be - is it TOP, a constant, or maybe
                 // something more subtle?
@@ -1606,7 +1605,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
         
     case GetByOffset: {
-        StorageAccessData data = m_graph.m_storageAccessData[node->storageAccessDataIndex()];
+        StorageAccessData& data = node->storageAccessData();
         JSValue result = m_graph.tryGetConstantProperty(forNode(node->child2()), data.offset);
         if (result) {
             setConstant(node, *m_graph.freeze(result));
@@ -1618,7 +1617,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
         
     case GetGetterSetterByOffset: {
-        StorageAccessData data = m_graph.m_storageAccessData[node->storageAccessDataIndex()];
+        StorageAccessData& data = node->storageAccessData();
         JSValue result = m_graph.tryGetConstantProperty(forNode(node->child2()), data.offset);
         if (result && jsDynamicCast<GetterSetter*>(result)) {
             setConstant(node, *m_graph.freeze(result));
@@ -1761,7 +1760,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         AbstractValue& value = forNode(node->child1());
         if (!value.m_structure.isTop() && !value.m_structure.isClobbered()) {
             PutByIdStatus status = PutByIdStatus::computeFor(
-                m_graph.m_vm,
                 m_graph.globalObjectFor(node->origin.semantic),
                 value.m_structure.set(),
                 m_graph.identifiers()[node->identifierNumber()],

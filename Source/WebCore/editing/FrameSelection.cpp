@@ -616,7 +616,7 @@ void FrameSelection::willBeModified(EAlteration alter, SelectionDirection direct
 
 VisiblePosition FrameSelection::positionForPlatform(bool isGetStart) const
 {
-    if (m_frame && m_frame->settings().editingBehaviorType() == EditingMacBehavior)
+    if (m_frame && (m_frame->settings().editingBehaviorType() == EditingMacBehavior || m_frame->settings().editingBehaviorType() == EditingIOSBehavior))
         return isGetStart ? m_selection.visibleStart() : m_selection.visibleEnd();
     // Linux and Windows always extend selections from the extent endpoint.
     // FIXME: VisibleSelection should be fixed to ensure as an invariant that
@@ -1597,9 +1597,8 @@ bool FrameSelection::contains(const LayoutPoint& point)
     if (!document->renderView()) 
         return false;
     
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
     HitTestResult result(point);
-    document->renderView()->hitTest(request, result);
+    document->renderView()->hitTest(HitTestRequest(), result);
     Node* innerNode = result.innerNode();
     if (!innerNode || !innerNode->renderer())
         return false;
@@ -1654,7 +1653,7 @@ void FrameSelection::selectFrameElementInParentIfFullySelected()
         return;
 
     // Create compute positions before and after the element.
-    unsigned ownerElementNodeIndex = ownerElement->nodeIndex();
+    unsigned ownerElementNodeIndex = ownerElement->computeNodeIndex();
     VisiblePosition beforeOwnerElement(VisiblePosition(Position(ownerElementParent, ownerElementNodeIndex, Position::PositionIsOffsetInAnchor)));
     VisiblePosition afterOwnerElement(VisiblePosition(Position(ownerElementParent, ownerElementNodeIndex + 1, Position::PositionIsOffsetInAnchor), VP_UPSTREAM_IF_POSSIBLE));
 

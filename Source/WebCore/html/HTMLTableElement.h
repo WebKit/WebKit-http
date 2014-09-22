@@ -63,8 +63,8 @@ public:
     PassRefPtr<HTMLCollection> rows();
     PassRefPtr<HTMLCollection> tBodies();
 
-    String rules() const;
-    String summary() const;
+    const AtomicString& rules() const;
+    const AtomicString& summary() const;
 
     const StyleProperties* additionalCellStyle();
     const StyleProperties* additionalGroupStyle(bool rows);
@@ -100,8 +100,6 @@ private:
     unsigned short m_padding;
     RefPtr<StyleProperties> m_sharedCellStyle;
 };
-
-NODE_TYPE_CASTS(HTMLTableElement)
 
 } //namespace
 

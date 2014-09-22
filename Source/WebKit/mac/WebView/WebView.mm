@@ -2333,9 +2333,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setShowsURLsInToolTips([preferences showsURLsInToolTips]);
     settings.setShowsToolTipOverTruncatedText([preferences showsToolTipOverTruncatedText]);
     settings.setQTKitEnabled([preferences isQTKitEnabled]);
-
-    // FIXME: Should we enable this following <rdar://problem/15290404>?
-    settings.setMultithreadedWebGLEnabled([preferences multithreadedWebGLEnabled]);
 #endif // PLATFORM(MAC)
 
 #if ENABLE(SQL_DATABASE)
@@ -8621,7 +8618,7 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 {
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     JSContextRef context = [[self mainFrame] globalContext];
-    WebCore::Notification* notification = toNotification(toJS(toJS(context), jsNotification));
+    WebCore::Notification* notification = JSNotification::toWrapped(toJS(toJS(context), jsNotification));
     return static_cast<WebNotificationClient*>(NotificationController::clientFrom(_private->page))->notificationIDForTesting(notification);
 #else
     return 0;

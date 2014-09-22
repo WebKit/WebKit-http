@@ -106,7 +106,7 @@ private:
     virtual void appendText(StringBuilder&, const Text&) override;
     virtual void appendElement(StringBuilder&, const Element&, Namespaces*) override;
     virtual void appendCustomAttributes(StringBuilder&, const Element&, Namespaces*) override;
-    virtual void appendEndTag(const Node&) override;
+    virtual void appendEndTag(const Element&) override;
 };
 
 SerializerMarkupAccumulator::SerializerMarkupAccumulator(PageSerializer& serializer, Document& document, Vector<Node*>* nodes)
@@ -163,10 +163,10 @@ void SerializerMarkupAccumulator::appendCustomAttributes(StringBuilder& out, con
     appendAttribute(out, element, Attribute(frameOwnerURLAttributeName(frameOwner), url.string()), namespaces);
 }
 
-void SerializerMarkupAccumulator::appendEndTag(const Node& node)
+void SerializerMarkupAccumulator::appendEndTag(const Element& element)
 {
-    if (node.isElementNode() && !shouldIgnoreElement(toElement(node)))
-        MarkupAccumulator::appendEndTag(node);
+    if (!shouldIgnoreElement(element))
+        MarkupAccumulator::appendEndTag(element);
 }
 
 PageSerializer::Resource::Resource()
@@ -232,7 +232,7 @@ void PageSerializer::serializeFrame(Frame* frame)
 
         if (isHTMLImageElement(element)) {
             HTMLImageElement* imageElement = toHTMLImageElement(element);
-            URL url = document->completeURL(imageElement->getAttribute(HTMLNames::srcAttr));
+            URL url = document->completeURL(imageElement->fastGetAttribute(HTMLNames::srcAttr));
             CachedImage* cachedImage = imageElement->cachedImage();
             addImageToResources(cachedImage, imageElement->renderer(), url);
         } else if (element->hasTagName(HTMLNames::linkTag)) {

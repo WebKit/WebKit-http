@@ -1,3 +1,24 @@
+2014-09-17  Renato Nagy  <rnagy@inf.u-szeged.hu>
+
+        [EFL][GTK] Remove WebKit1 related codes
+        https://bugs.webkit.org/show_bug.cgi?id=136853
+
+        Reviewed by Csaba Osztrogonác.
+
+        Gtk and EFL WebKit1 ports no longer exist. Webkit1 related codes were deleted
+        from scripts.
+
+        * Source/PlatformGTK.cmake:
+
+2014-09-16  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Fix FindICU.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=136820
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/FindICU.cmake:
+
 2014-09-15  Zan Dobersek  <zdobersek@igalia.com>
 
         [CMake] Remove FIND_PACKAGE_HANDLE_STANDARD_ARGS call for WAYLAND_EGL in FindWayland.cmake

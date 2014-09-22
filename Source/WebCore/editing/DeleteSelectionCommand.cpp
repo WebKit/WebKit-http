@@ -507,7 +507,7 @@ void DeleteSelectionCommand::handleGeneralDelete()
                 deleteTextFromNode(text, startOffset, text->length() - startOffset);
                 node = NodeTraversal::next(node.get());
             } else {
-                node = startNode->childNode(startOffset);
+                node = startNode->traverseToChildAt(startOffset);
             }
         } else if (startNode == m_upstreamEnd.deprecatedNode() && startNode->isTextNode()) {
             Text* text = toText(m_upstreamEnd.deprecatedNode());
@@ -554,13 +554,13 @@ void DeleteSelectionCommand::handleGeneralDelete()
                 // FIXME: Make m_upstreamStart a position we update as we remove content, then we can
                 // always know which children to remove.
                 } else if (!(startNodeWasDescendantOfEndNode && !m_upstreamStart.anchorNode()->inDocument())) {
-                    int offset = 0;
+                    unsigned offset = 0;
                     if (m_upstreamStart.deprecatedNode()->isDescendantOf(m_downstreamEnd.deprecatedNode())) {
                         Node* n = m_upstreamStart.deprecatedNode();
                         while (n && n->parentNode() != m_downstreamEnd.deprecatedNode())
                             n = n->parentNode();
                         if (n)
-                            offset = n->nodeIndex() + 1;
+                            offset = n->computeNodeIndex() + 1;
                     }
                     removeChildrenInRange(m_downstreamEnd.deprecatedNode(), offset, m_downstreamEnd.deprecatedEditingOffset());
                     m_downstreamEnd = createLegacyEditingPosition(m_downstreamEnd.deprecatedNode(), offset);
@@ -861,24 +861,17 @@ void DeleteSelectionCommand::doApply()
         insertNodeAt(placeholder.get(), m_endingPosition);
     }
 
-#if PLATFORM(IOS)
-    // This checking is due to iphone shows the last entered character momentarily, removing and adding back the 
-    // space when deleting password cause space been showed insecurely.
-    bool isSecure = NO;
-    Node* node = m_endingPosition.deprecatedNode();
-    if (node && node->isTextNode()) {
-        Text* textNode = static_cast<Text*>(node);    
-        if (textNode->length() > 0) {
-            RenderObject* renderer = textNode->renderer();
-            isSecure = renderer->style().textSecurity() != TSNONE;
-        }
+    bool shouldRebalaceWhiteSpace = true;
+    if (!frame().editor().behavior().shouldRebalanceWhiteSpacesInSecureField()) {
+        Node* node = m_endingPosition.deprecatedNode();
+        if (node && node->isTextNode()) {
+            Text* textNode = toText(node);
+            if (textNode->length())
+                shouldRebalaceWhiteSpace = textNode->renderer()->style().textSecurity() == TSNONE;
+        }        
     }
-        
-    if (!isSecure)
+    if (shouldRebalaceWhiteSpace)
         rebalanceWhitespaceAt(m_endingPosition);
-#else
-    rebalanceWhitespaceAt(m_endingPosition);
-#endif
 
     calculateTypingStyleAfterDelete();
 

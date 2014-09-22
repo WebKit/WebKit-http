@@ -287,6 +287,20 @@ void Node::trackForDebugging()
 #endif
 }
 
+Node::Node(Document& document, ConstructionType type)
+    : m_nodeFlags(type)
+    , m_parentNode(nullptr)
+    , m_treeScope(&document)
+    , m_previous(nullptr)
+    , m_next(nullptr)
+{
+    document.incrementReferencingNodeCount();
+
+#if !defined(NDEBUG) || (defined(DUMP_NODE_STATISTICS) && DUMP_NODE_STATISTICS)
+    trackForDebugging();
+#endif
+}
+
 Node::~Node()
 {
 #ifndef NDEBUG
@@ -677,12 +691,11 @@ void Node::setNeedsStyleRecalc(StyleChangeType changeType)
         markAncestorsWithChildNeedsStyleRecalc(*this);
 }
 
-unsigned Node::nodeIndex() const
+unsigned Node::computeNodeIndex() const
 {
-    Node *_tempNode = previousSibling();
-    unsigned count=0;
-    for ( count=0; _tempNode; count++ )
-        _tempNode = _tempNode->previousSibling();
+    unsigned count = 0;
+    for (Node* sibling = previousSibling(); sibling; sibling = sibling->previousSibling())
+        ++count;
     return count;
 }
 
@@ -719,6 +732,7 @@ void Document::invalidateNodeListAndCollectionCaches(const QualifiedName* attrNa
     m_inInvalidateNodeListAndCollectionCaches = true;
 #endif
     HashSet<LiveNodeList*> lists = WTF::move(m_listsInvalidatedAtDocument);
+    m_listsInvalidatedAtDocument.clear();
     for (auto* list : lists)
         list->invalidateCacheForAttribute(attrName);
     HashSet<HTMLCollection*> collections = WTF::move(m_collectionsInvalidatedAtDocument);
@@ -1680,9 +1694,6 @@ void NodeListsNodeData::invalidateCaches(const QualifiedName* attrName)
 {
     for (auto& atomicName : m_atomicNameCaches)
         atomicName.value->invalidateCacheForAttribute(attrName);
-
-    for (auto& name : m_nameCaches)
-        name.value->invalidateCacheForAttribute(attrName);
 
     for (auto& collection : m_cachedCollections)
         collection.value->invalidateCache(attrName);

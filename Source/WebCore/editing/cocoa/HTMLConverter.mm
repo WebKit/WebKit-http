@@ -62,6 +62,8 @@
 
 #if PLATFORM(IOS)
 
+#import "WAKAppKitStubs.h"
+
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIColor)
 
@@ -2567,7 +2569,7 @@ NSAttributedString *editingAttributedStringFromRange(Range& range)
         int endOffset = currentTextRange->endOffset();
         
         if (startContainer == endContainer && (startOffset == endOffset - 1)) {
-            Node* node = startContainer->childNode(startOffset);
+            Node* node = startContainer->traverseToChildAt(startOffset);
             if (node && node->hasTagName(imgTag)) {
                 NSFileWrapper* fileWrapper = fileWrapperForElement(toElement(node));
                 NSTextAttachment* attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper];

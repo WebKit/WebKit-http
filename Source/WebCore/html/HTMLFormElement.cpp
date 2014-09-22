@@ -435,7 +435,7 @@ void HTMLFormElement::requestAutocomplete()
         return;
 
     if (!shouldAutocomplete() || !ScriptController::processingUserGesture()) {
-        finishRequestAutocomplete(AutocompleteResult::AutocompleteResultErrorDisabled);
+        finishRequestAutocomplete(AutocompleteResult::ErrorDisabled);
         return;
     }
 
@@ -450,16 +450,16 @@ void HTMLFormElement::finishRequestAutocomplete(AutocompleteResult result)
 {
     RefPtr<Event> event;
     switch (result) {
-    case AutocompleteResult::AutocompleteResultSuccess:
+    case AutocompleteResult::Success:
         event = Event::create(eventNames().autocompleteEvent, false, false);
         break;
-    case AutocompleteResult::AutocompleteResultErrorDisabled:
+    case AutocompleteResult::ErrorDisabled:
         event = AutocompleteErrorEvent::create("disabled");
         break;
-    case AutocompleteResult::AutocompleteResultErrorCancel:
+    case AutocompleteResult::ErrorCancel:
         event = AutocompleteErrorEvent::create("cancel");
         break;
-    case AutocompleteResult::AutocompleteResultErrorInvalid:
+    case AutocompleteResult::ErrorInvalid:
         event = AutocompleteErrorEvent::create("invalid");
         break;
     }
@@ -660,7 +660,7 @@ bool HTMLFormElement::noValidate() const
 // (Darin Adler) removed this, someone added it back, so I am leaving it in for now.
 String HTMLFormElement::action() const
 {
-    return getAttribute(actionAttr);
+    return fastGetAttribute(actionAttr);
 }
 
 void HTMLFormElement::setAction(const String &value)

@@ -180,6 +180,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     accessibility/atk/WebKitAccessibleWrapperAtk.cpp
 
     editing/atk/FrameSelectionAtk.cpp
+    editing/gtk/EditorGtk.cpp
 
     page/gtk/DragControllerGtk.cpp
     page/gtk/EventHandlerGtk.cpp
@@ -430,6 +431,7 @@ add_custom_command(
 
 if (ENABLE_WAYLAND_TARGET)
     list(APPEND WebCorePlatformGTK_SOURCES
+        platform/graphics/wayland/WaylandDisplay.cpp
         platform/graphics/wayland/WaylandEventSource.cpp
         platform/graphics/wayland/WaylandSurface.cpp
 

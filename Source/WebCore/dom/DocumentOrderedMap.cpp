@@ -69,17 +69,17 @@ inline bool keyMatchesLowercasedUsemap(const AtomicStringImpl& key, const Elemen
 
 inline bool keyMatchesLabelForAttribute(const AtomicStringImpl& key, const Element& element)
 {
-    return isHTMLLabelElement(element) && element.getAttribute(forAttr).impl() == &key;
+    return isHTMLLabelElement(element) && element.fastGetAttribute(forAttr).impl() == &key;
 }
 
 inline bool keyMatchesWindowNamedItem(const AtomicStringImpl& key, const Element& element)
 {
-    return WindowNameCollection::nodeMatches(const_cast<Element*>(&element), &key);
+    return WindowNameCollection::elementMatches(element, &key);
 }
 
 inline bool keyMatchesDocumentNamedItem(const AtomicStringImpl& key, const Element& element)
 {
-    return DocumentNameCollection::nodeMatches(const_cast<Element*>(&element), &key);
+    return DocumentNameCollection::elementMatches(element, &key);
 }
 
 void DocumentOrderedMap::clear()

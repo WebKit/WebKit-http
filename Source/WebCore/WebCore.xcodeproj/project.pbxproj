@@ -2364,6 +2364,8 @@
 		7AA3A6A4194B5C22001CBD24 /* TileCoverageMap.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AA3A6A2194B5C22001CBD24 /* TileCoverageMap.h */; };
 		7AABA25914BC613300AA9A11 /* DOMEditor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AABA25714BC613300AA9A11 /* DOMEditor.cpp */; };
 		7AABA25A14BC613300AA9A11 /* DOMEditor.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AABA25814BC613300AA9A11 /* DOMEditor.h */; };
+		7AAFE8CF19CB8672000F56D8 /* ScrollLatchingState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AAFE8CD19CB8672000F56D8 /* ScrollLatchingState.cpp */; };
+		7AAFE8D019CB8672000F56D8 /* ScrollLatchingState.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AAFE8CE19CB8672000F56D8 /* ScrollLatchingState.h */; };
 		7AB0B1C01211A62200A76940 /* InspectorDatabaseAgent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AB0B1BE1211A62200A76940 /* InspectorDatabaseAgent.cpp */; };
 		7AB0B1C11211A62200A76940 /* InspectorDatabaseAgent.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AB0B1BF1211A62200A76940 /* InspectorDatabaseAgent.h */; };
 		7ACD88D314C08BD60084EDD2 /* InspectorIndexedDBAgent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7ACD88D114C08BD60084EDD2 /* InspectorIndexedDBAgent.cpp */; };
@@ -5631,6 +5633,8 @@
 		CD82030D1395AB6A00F956C6 /* WebVideoFullscreenHUDWindowController.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD8203091395AB6A00F956C6 /* WebVideoFullscreenHUDWindowController.mm */; };
 		CD8203101395ACE700F956C6 /* WebWindowAnimation.h in Headers */ = {isa = PBXBuildFile; fileRef = CD82030E1395ACE700F956C6 /* WebWindowAnimation.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CD8203111395ACE700F956C6 /* WebWindowAnimation.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD82030F1395ACE700F956C6 /* WebWindowAnimation.mm */; };
+		CD8A7BBB197735FE00CBD643 /* AudioSourceProviderAVFObjC.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD8A7BB9197735FE00CBD643 /* AudioSourceProviderAVFObjC.mm */; };
+		CD8A7BBC197735FE00CBD643 /* AudioSourceProviderAVFObjC.h in Headers */ = {isa = PBXBuildFile; fileRef = CD8A7BBA197735FE00CBD643 /* AudioSourceProviderAVFObjC.h */; };
 		CD8B5A42180D149A008B8E65 /* VideoTrackPrivateMediaSourceAVFObjC.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD8B5A40180D149A008B8E65 /* VideoTrackPrivateMediaSourceAVFObjC.mm */; };
 		CD8B5A43180D149A008B8E65 /* VideoTrackPrivateMediaSourceAVFObjC.h in Headers */ = {isa = PBXBuildFile; fileRef = CD8B5A41180D149A008B8E65 /* VideoTrackPrivateMediaSourceAVFObjC.h */; };
 		CD8B5A46180DFF4E008B8E65 /* VideoTrackMediaSource.h in Headers */ = {isa = PBXBuildFile; fileRef = CD8B5A45180DFF4E008B8E65 /* VideoTrackMediaSource.h */; };
@@ -5676,6 +5680,8 @@
 		CDC69DD71632026C007C38DF /* WebCoreFullScreenWarningView.mm in Sources */ = {isa = PBXBuildFile; fileRef = CDC69DD51632026C007C38DF /* WebCoreFullScreenWarningView.mm */; };
 		CDC69DDA16371FD4007C38DF /* WebCoreFullScreenPlaceholderView.h in Headers */ = {isa = PBXBuildFile; fileRef = CDC69DD816371FD3007C38DF /* WebCoreFullScreenPlaceholderView.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CDC69DDB16371FD4007C38DF /* WebCoreFullScreenPlaceholderView.mm in Sources */ = {isa = PBXBuildFile; fileRef = CDC69DD916371FD3007C38DF /* WebCoreFullScreenPlaceholderView.mm */; };
+		CDC734141977896C0046BFC5 /* CARingBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CDC734121977896C0046BFC5 /* CARingBuffer.cpp */; };
+		CDC734151977896D0046BFC5 /* CARingBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = CDC734131977896C0046BFC5 /* CARingBuffer.h */; };
 		CDC8B5A2180463470016E685 /* MediaPlayerPrivateMediaSourceAVFObjC.mm in Sources */ = {isa = PBXBuildFile; fileRef = CDC8B5A0180463470016E685 /* MediaPlayerPrivateMediaSourceAVFObjC.mm */; };
 		CDC8B5A3180463470016E685 /* MediaPlayerPrivateMediaSourceAVFObjC.h in Headers */ = {isa = PBXBuildFile; fileRef = CDC8B5A1180463470016E685 /* MediaPlayerPrivateMediaSourceAVFObjC.h */; };
 		CDC8B5A6180474F70016E685 /* MediaSourcePrivateAVFObjC.mm in Sources */ = {isa = PBXBuildFile; fileRef = CDC8B5A4180474F70016E685 /* MediaSourcePrivateAVFObjC.mm */; };
@@ -9494,6 +9500,8 @@
 		7AA3A6A2194B5C22001CBD24 /* TileCoverageMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TileCoverageMap.h; path = ca/TileCoverageMap.h; sourceTree = "<group>"; };
 		7AABA25714BC613300AA9A11 /* DOMEditor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DOMEditor.cpp; sourceTree = "<group>"; };
 		7AABA25814BC613300AA9A11 /* DOMEditor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DOMEditor.h; sourceTree = "<group>"; };
+		7AAFE8CD19CB8672000F56D8 /* ScrollLatchingState.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ScrollLatchingState.cpp; sourceTree = "<group>"; };
+		7AAFE8CE19CB8672000F56D8 /* ScrollLatchingState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScrollLatchingState.h; sourceTree = "<group>"; };
 		7AB0B1BE1211A62200A76940 /* InspectorDatabaseAgent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorDatabaseAgent.cpp; sourceTree = "<group>"; };
 		7AB0B1BF1211A62200A76940 /* InspectorDatabaseAgent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorDatabaseAgent.h; sourceTree = "<group>"; };
 		7ACD88D114C08BD60084EDD2 /* InspectorIndexedDBAgent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorIndexedDBAgent.cpp; sourceTree = "<group>"; };
@@ -13051,6 +13059,8 @@
 		CD8203091395AB6A00F956C6 /* WebVideoFullscreenHUDWindowController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebVideoFullscreenHUDWindowController.mm; sourceTree = "<group>"; };
 		CD82030E1395ACE700F956C6 /* WebWindowAnimation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebWindowAnimation.h; sourceTree = "<group>"; };
 		CD82030F1395ACE700F956C6 /* WebWindowAnimation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebWindowAnimation.mm; sourceTree = "<group>"; };
+		CD8A7BB9197735FE00CBD643 /* AudioSourceProviderAVFObjC.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AudioSourceProviderAVFObjC.mm; sourceTree = "<group>"; };
+		CD8A7BBA197735FE00CBD643 /* AudioSourceProviderAVFObjC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioSourceProviderAVFObjC.h; sourceTree = "<group>"; };
 		CD8B5A40180D149A008B8E65 /* VideoTrackPrivateMediaSourceAVFObjC.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = VideoTrackPrivateMediaSourceAVFObjC.mm; path = objc/VideoTrackPrivateMediaSourceAVFObjC.mm; sourceTree = "<group>"; };
 		CD8B5A41180D149A008B8E65 /* VideoTrackPrivateMediaSourceAVFObjC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = VideoTrackPrivateMediaSourceAVFObjC.h; path = objc/VideoTrackPrivateMediaSourceAVFObjC.h; sourceTree = "<group>"; };
 		CD8B5A44180DD8D6008B8E65 /* VideoTrackMediaSource.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = VideoTrackMediaSource.idl; sourceTree = "<group>"; };
@@ -13126,6 +13136,8 @@
 		CDC69DD51632026C007C38DF /* WebCoreFullScreenWarningView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebCoreFullScreenWarningView.mm; sourceTree = "<group>"; };
 		CDC69DD816371FD3007C38DF /* WebCoreFullScreenPlaceholderView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebCoreFullScreenPlaceholderView.h; sourceTree = "<group>"; };
 		CDC69DD916371FD3007C38DF /* WebCoreFullScreenPlaceholderView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebCoreFullScreenPlaceholderView.mm; sourceTree = "<group>"; };
+		CDC734121977896C0046BFC5 /* CARingBuffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CARingBuffer.cpp; sourceTree = "<group>"; };
+		CDC734131977896C0046BFC5 /* CARingBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CARingBuffer.h; sourceTree = "<group>"; };
 		CDC8B5A0180463470016E685 /* MediaPlayerPrivateMediaSourceAVFObjC.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = MediaPlayerPrivateMediaSourceAVFObjC.mm; path = objc/MediaPlayerPrivateMediaSourceAVFObjC.mm; sourceTree = "<group>"; };
 		CDC8B5A1180463470016E685 /* MediaPlayerPrivateMediaSourceAVFObjC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MediaPlayerPrivateMediaSourceAVFObjC.h; path = objc/MediaPlayerPrivateMediaSourceAVFObjC.h; sourceTree = "<group>"; };
 		CDC8B5A4180474F70016E685 /* MediaSourcePrivateAVFObjC.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = MediaSourcePrivateAVFObjC.mm; path = objc/MediaSourcePrivateAVFObjC.mm; sourceTree = "<group>"; };
@@ -15076,6 +15088,8 @@
 				1AF62EE214DA22A70041556C /* mac */,
 				0FFD4D5E18651FA300512F6E /* AsyncScrollingCoordinator.cpp */,
 				0FFD4D5F18651FA300512F6E /* AsyncScrollingCoordinator.h */,
+				7AAFE8CD19CB8672000F56D8 /* ScrollLatchingState.cpp */,
+				7AAFE8CE19CB8672000F56D8 /* ScrollLatchingState.h */,
 				0F605AEA15F94848004DF0C0 /* ScrollingConstraints.cpp */,
 				0F605AEB15F94848004DF0C0 /* ScrollingConstraints.h */,
 				1AF62EE414DA22A70041556C /* ScrollingCoordinator.cpp */,
@@ -21591,6 +21605,8 @@
 				CD8B5A40180D149A008B8E65 /* VideoTrackPrivateMediaSourceAVFObjC.mm */,
 				CD7E05201651A84100C1201F /* WebCoreAVFResourceLoader.h */,
 				CD7E05211651A84100C1201F /* WebCoreAVFResourceLoader.mm */,
+				CD8A7BB9197735FE00CBD643 /* AudioSourceProviderAVFObjC.mm */,
+				CD8A7BBA197735FE00CBD643 /* AudioSourceProviderAVFObjC.h */,
 			);
 			name = objc;
 			sourceTree = "<group>";
@@ -23103,6 +23119,8 @@
 				CD54DE4517468B6F005E5B36 /* MediaSessionManagerMac.cpp */,
 				CD2F4A2518D8A3490063746D /* AudioHardwareListenerMac.cpp */,
 				CD2F4A2618D8A3490063746D /* AudioHardwareListenerMac.h */,
+				CDC734121977896C0046BFC5 /* CARingBuffer.cpp */,
+				CDC734131977896C0046BFC5 /* CARingBuffer.h */,
 			);
 			path = mac;
 			sourceTree = "<group>";
@@ -24327,6 +24345,7 @@
 				A8EA79FA0A1916DF00A8EF5F /* HTMLDirectoryElement.h in Headers */,
 				A8EA7CB70A192B9C00A8EF5F /* HTMLDivElement.h in Headers */,
 				A8EA79F70A1916DF00A8EF5F /* HTMLDListElement.h in Headers */,
+				CDC734151977896D0046BFC5 /* CARingBuffer.h in Headers */,
 				93F198E508245E59001E9ABC /* HTMLDocument.h in Headers */,
 				977B3867122883E900B81FF8 /* HTMLDocumentParser.h in Headers */,
 				93309DE8099E64920056E581 /* htmlediting.h in Headers */,
@@ -24900,6 +24919,7 @@
 				BCEC01C30C274DDD009F4EC9 /* JSScreen.h in Headers */,
 				FDA15ECE12B03F61003A583A /* JSScriptProcessorNode.h in Headers */,
 				9FA37EFB1172FDA600C4CD55 /* JSScriptProfile.h in Headers */,
+				7AAFE8D019CB8672000F56D8 /* ScrollLatchingState.h in Headers */,
 				9FA37EFD1172FDA600C4CD55 /* JSScriptProfileNode.h in Headers */,
 				41D07A7F0FF935CA0095EDCE /* JSSharedWorker.h in Headers */,
 				41D1690610238B66009BC827 /* JSSharedWorkerGlobalScope.h in Headers */,
@@ -25014,6 +25034,7 @@
 				B2FA3DA30AB75A6F000E5AC4 /* JSSVGLengthList.h in Headers */,
 				B2FA3DA50AB75A6F000E5AC4 /* JSSVGLinearGradientElement.h in Headers */,
 				B2FA3DA70AB75A6F000E5AC4 /* JSSVGLineElement.h in Headers */,
+				CD8A7BBC197735FE00CBD643 /* AudioSourceProviderAVFObjC.h in Headers */,
 				B2FA3DA90AB75A6F000E5AC4 /* JSSVGMarkerElement.h in Headers */,
 				B2FA3DAB0AB75A6F000E5AC4 /* JSSVGMaskElement.h in Headers */,
 				B2FA3DAD0AB75A6F000E5AC4 /* JSSVGMatrix.h in Headers */,
@@ -28938,6 +28959,7 @@
 				B27535630B053814002CE64F /* PathCG.cpp in Sources */,
 				A88DD4890B4629B000C02990 /* PathTraversalState.cpp in Sources */,
 				A8FA6E5E0E4CFDED00D5CF49 /* Pattern.cpp in Sources */,
+				7AAFE8CF19CB8672000F56D8 /* ScrollLatchingState.cpp in Sources */,
 				A80A38FE0E50CC8200A25EBC /* PatternCG.cpp in Sources */,
 				B27535640B053814002CE64F /* PDFDocumentImage.cpp in Sources */,
 				2D6E468417D660F500ECF8BB /* PDFDocumentImageMac.mm in Sources */,
@@ -29276,6 +29298,7 @@
 				1A4A95520B4EDCFF002D8C3C /* SharedBufferMac.mm in Sources */,
 				E45390460EAFD637003695C8 /* SharedTimerIOS.mm in Sources */,
 				93309EA2099EB78C0056E581 /* SharedTimerMac.mm in Sources */,
+				CD8A7BBB197735FE00CBD643 /* AudioSourceProviderAVFObjC.mm in Sources */,
 				41E1B1D30FF5986900576B3B /* SharedWorker.cpp in Sources */,
 				41D168E710226E89009BC827 /* SharedWorkerGlobalScope.cpp in Sources */,
 				E1B784201639CBBE0007B692 /* SharedWorkerRepository.cpp in Sources */,
@@ -29442,6 +29465,7 @@
 				B22279A40D00BF220071B782 /* SVGComponentTransferFunctionElement.cpp in Sources */,
 				B2227B050D00BFF10071B782 /* SVGCSSComputedStyleDeclaration.cpp in Sources */,
 				B2227B060D00BFF10071B782 /* SVGCSSParser.cpp in Sources */,
+				CDC734141977896C0046BFC5 /* CARingBuffer.cpp in Sources */,
 				B2227B080D00BFF10071B782 /* SVGCSSStyleSelector.cpp in Sources */,
 				B22279A70D00BF220071B782 /* SVGCursorElement.cpp in Sources */,
 				B22279AD0D00BF220071B782 /* SVGDefsElement.cpp in Sources */,

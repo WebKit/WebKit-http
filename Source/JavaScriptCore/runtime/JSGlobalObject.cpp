@@ -199,9 +199,9 @@ void JSGlobalObject::setGlobalThis(VM& vm, JSObject* globalThis)
     m_globalThis.set(vm, this, globalThis);
 }
 
-void JSGlobalObject::init()
+void JSGlobalObject::init(VM& vm)
 {
-    ASSERT(vm().currentThreadIsHoldingAPILock());
+    ASSERT(vm.currentThreadIsHoldingAPILock());
 
     JSGlobalObject::globalExec()->init(0, 0, this, CallFrame::noCaller(), 0, 0);
 
@@ -211,15 +211,18 @@ void JSGlobalObject::init()
     m_inspectorController = std::make_unique<Inspector::JSGlobalObjectInspectorController>(*this);
     m_inspectorDebuggable = std::make_unique<JSGlobalObjectDebuggable>(*this);
     m_inspectorDebuggable->init();
-    m_inspectorDebuggable->setRemoteDebuggingAllowed(true);
     m_consoleClient = m_inspectorController->consoleClient();
 #endif
 
     ExecState* exec = JSGlobalObject::globalExec();
-    VM& vm = exec->vm();
-    
+
     m_functionPrototype.set(vm, this, FunctionPrototype::create(vm, FunctionPrototype::createStructure(vm, this, jsNull()))); // The real prototype will be set once ObjectPrototype is created.
     m_calleeStructure.set(vm, this, JSCallee::createStructure(vm, this, jsNull()));
+
+    // Need to create the callee structure (above) before creating the callee.
+    m_globalCallee.set(vm, this, JSCallee::create(vm, this, this));
+    exec->setCallee(m_globalCallee.get());
+
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_boundFunctionStructure.set(vm, this, JSBoundFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_namedFunctionStructure.set(vm, this, Structure::addPropertyTransition(vm, m_functionStructure.get(), vm.propertyNames->name, DontDelete | ReadOnly | DontEnum, m_functionNameOffset));
@@ -634,6 +637,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     visitor.append(&thisObject->m_globalThis);
 
+    visitor.append(&thisObject->m_globalCallee);
     visitor.append(&thisObject->m_regExpConstructor);
     visitor.append(&thisObject->m_errorConstructor);
     visitor.append(&thisObject->m_evalErrorConstructor);

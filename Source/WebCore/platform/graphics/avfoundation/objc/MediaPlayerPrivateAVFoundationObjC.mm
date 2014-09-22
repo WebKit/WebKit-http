@@ -29,6 +29,7 @@
 #import "MediaPlayerPrivateAVFoundationObjC.h"
 
 #import "AVTrackPrivateAVFObjCImpl.h"
+#import "AudioSourceProviderAVFObjC.h"
 #import "AudioTrackPrivateAVFObjC.h"
 #import "AuthenticationChallenge.h"
 #import "BlockExceptions.h"
@@ -499,6 +500,11 @@ void MediaPlayerPrivateAVFoundationObjC::cancelLoad()
         [track removeObserver:m_objcObserver.get() forKeyPath:@"enabled"];
     m_cachedTracks = nullptr;
 
+#if ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
+    if (m_provider)
+        m_provider->setPlayerItem(nullptr);
+#endif
+
     setIgnoreLoadStateChanges(false);
 }
 
@@ -907,6 +913,11 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerItem()
     [m_legibleOutput.get() setAdvanceIntervalForDelegateInvocation:legibleOutputAdvanceInterval];
     [m_legibleOutput.get() setTextStylingResolution:AVPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly];
     [m_avPlayerItem.get() addOutput:m_legibleOutput.get()];
+#endif
+
+#if ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
+    if (m_provider)
+        m_provider->setPlayerItem(m_avPlayerItem.get());
 #endif
 
     setDelayCallbacks(false);
@@ -1399,6 +1410,8 @@ void MediaPlayerPrivateAVFoundationObjC::paint(GraphicsContext* context, const I
 
 void MediaPlayerPrivateAVFoundationObjC::paintWithImageGenerator(GraphicsContext* context, const IntRect& rect)
 {
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::paintWithImageGenerator(%p)", this);
+
     RetainPtr<CGImageRef> image = createImageForTimeInRect(currentTime(), rect);
     if (image) {
         GraphicsContextStateSaver stateSaver(*context);
@@ -1837,6 +1850,15 @@ void MediaPlayerPrivateAVFoundationObjC::setTextTrackRepresentation(TextTrackRep
 }
 #endif // ENABLE(VIDEO_TRACK)
 
+#if ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
+AudioSourceProvider* MediaPlayerPrivateAVFoundationObjC::audioSourceProvider()
+{
+    if (!m_provider)
+        m_provider = AudioSourceProviderAVFObjC::create(m_avPlayerItem.get());
+    return m_provider.get();
+}
+#endif
+
 void MediaPlayerPrivateAVFoundationObjC::sizeChanged()
 {
     if (!m_avAsset)
@@ -2000,18 +2022,28 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext* c
 {
     updateLastImage();
 
-    if (m_lastImage) {
-        GraphicsContextStateSaver stateSaver(*context);
+    if (!m_lastImage)
+        return;
 
-        IntRect imageRect(0, 0, CGImageGetWidth(m_lastImage.get()), CGImageGetHeight(m_lastImage.get()));
+    AVAssetTrack* firstEnabledVideoTrack = firstEnabledTrack([m_avAsset.get() tracksWithMediaCharacteristic:AVMediaCharacteristicVisual]);
+    if (!firstEnabledVideoTrack)
+        return;
 
-        context->drawNativeImage(m_lastImage.get(), imageRect.size(), ColorSpaceDeviceRGB, outputRect, imageRect);
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(%p)", this);
 
-        // If we have created an AVAssetImageGenerator in the past due to m_videoOutput not having an available
-        // video frame, destroy it now that it is no longer needed.
-        if (m_imageGenerator)
-            destroyImageGenerator();
-    }
+    GraphicsContextStateSaver stateSaver(*context);
+    FloatRect imageRect(0, 0, CGImageGetWidth(m_lastImage.get()), CGImageGetHeight(m_lastImage.get()));
+    AffineTransform videoTransform = [firstEnabledVideoTrack preferredTransform];
+    FloatRect transformedOutputRect = videoTransform.inverse().mapRect(outputRect);
+
+    context->concatCTM(videoTransform);
+    context->drawNativeImage(m_lastImage.get(), imageRect.size(), ColorSpaceDeviceRGB, transformedOutputRect, imageRect);
+
+    // If we have created an AVAssetImageGenerator in the past due to m_videoOutput not having an available
+    // video frame, destroy it now that it is no longer needed.
+    if (m_imageGenerator)
+        destroyImageGenerator();
+
 }
 
 PassNativeImagePtr MediaPlayerPrivateAVFoundationObjC::nativeImageForCurrentTime()

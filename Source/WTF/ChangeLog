@@ -1,3 +1,280 @@
+2014-09-20  Sam Weinig  <sam@webkit.org>
+
+        Make possible HashSet<std::unique_ptr<>>
+        https://bugs.webkit.org/show_bug.cgi?id=136166
+
+        Reviewed by Darin Adler.
+
+        * wtf/GetPtr.h:
+        (WTF::getPtr):
+        (WTF::GetPtrHelper<std::unique_ptr<T>>::getPtr):
+        Make specializing GetPtrHelper a bit cleaner (you don't have to put 
+        IsSmartPtr<T>::value everywhere any more) and add specializations for
+        std::unique_ptr.
+
+        * wtf/HashFunctions.h:
+        (WTF::PtrHash<std::unique_ptr<P>>):
+        Add specialization for PtrHash for std::unique_ptr and set it as the DefaultHash
+        for it as well.
+
+        * wtf/HashMap.h:    
+        * wtf/HashSet.h:
+        Add overloads of find(), contains(), remove(), take() (and get() for HashMap) for "smart pointers" that
+        take the raw pointer type as the parameter. These use SFINAE to make themselves only available
+        when the IsSmartPtr<KeyType>::value is true. 
+
+        * wtf/HashTraits.h:
+        Override constructDeletedValue() and isDeletedValue() in the std::unique_ptr specialization
+        since the default implementation depends on the type having a constructor that takes a HashTableDeletedValue
+        and function named isHashTableDeletedValue().
+
+        * wtf/OwnPtr.h:
+        (WTF::OwnPtr::OwnPtr):
+        (WTF::OwnPtr::isHashTableDeletedValue):
+        (WTF::OwnPtr::hashTableDeletedValue):
+        Add HashTableDeletedValue constructor/functions to allow the constructDeletedValue() and isDeletedValue()
+        hash traits to work.
+
+        (WTF::PtrHash<OwnPtr<P>>::hash):
+        (WTF::PtrHash<OwnPtr<P>>::equal):
+        Add specialization for PtrHash for OwnPtr and set it as the DefaultHash
+        for it as well.
+
+        * wtf/Ref.h:
+        Update for the less verbose GetPtrHelper specialization.
+
+2014-09-19  Chris Dumez  <cdumez@apple.com>
+
+        Allow DOM methods to return references instead of pointers
+        https://bugs.webkit.org/show_bug.cgi?id=136931
+
+        Add support for having WTF::getPtr() transform reference arguments
+        into raw pointers so that DOM methods can now return references when
+        appropriate and so that the generated bindings code can handle this
+        via WTF::getPtr().
+
+        This patch had to alter the way getPtr() was overloaded for smart
+        pointer types so that we don't call &p on smart pointers but p.get().
+        This was needed because the new WTF::getPtr(T&) was being called for
+        RefPtr<T> arguments instead of the getPtr(const RefPtr<T>&) overload.
+        This was addressed using traits and template specialization to
+        distinguish WTF smart pointers from other types.
+
+        Reviewed by Sam Weinig.
+
+        * wtf/GetPtr.h:
+        (WTF::getPtr):
+        * wtf/OwnPtr.h:
+        (WTF::getPtr): Deleted.
+        * wtf/PassOwnPtr.h:
+        (WTF::getPtr): Deleted.
+        * wtf/PassRefPtr.h:
+        (WTF::getPtr): Deleted.
+        * wtf/Ref.h:
+        * wtf/RefPtr.h:
+        (WTF::getPtr): Deleted.
+        * wtf/gobject/GRefPtr.h:
+        (WTF::getPtr): Deleted.
+
+2014-09-19  Daniel Bates  <dabates@apple.com>
+
+        Always assume internal SDK when building configuration Production
+        https://bugs.webkit.org/show_bug.cgi?id=136925
+        <rdar://problem/18362399>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2014-09-19  Diego Pino Garcia  <dpino@igalia.com>
+
+        Simple ES6 feature:String prototype additions
+        https://bugs.webkit.org/show_bug.cgi?id=131704
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::find):
+        (WTF::equalInner): Added.
+        (WTF::StringImpl::startsWith): Add implementation that supports
+        'startOffset' parameter.
+        (WTF::StringImpl::endsWith): Add implementation that supports
+        'endOffset' parameter.
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::contains): Modify current implementation to allow
+        setting a startOffset, 0 by default.
+        (WTF::String::startsWith):
+        (WTF::String::endsWith):
+
+2014-09-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Dot not allow to create delete-on-destroy GMainLoopSources
+        https://bugs.webkit.org/show_bug.cgi?id=136923
+
+        Reviewed by Gustavo Noronha Silva.
+
+        We have several asserts to ensure that delete-on-destroy sources
+        are not misused, like not scheduling socket sources on a
+        delete-on-destroy GMainLoopSource or not allowing to cancel them
+        before they have been dispatched. It's better to ensure all those
+        things at compile time, using static methods to schedule sources
+        creating a delete-on-destroy GMainLoopSource that is not returned
+        to the user.
+
+        * wtf/gobject/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::create): Private static method to create a
+        delete-on-destroy GMainLoopSource.
+        (WTF::GMainLoopSource::cancelWithoutLocking): Return early in case
+        of delete-on-destroy source, since they can't be cancelled.
+        (WTF::GMainLoopSource::schedule): Remove assertion to ensure
+        socket sources are not scheduled on a delete-on-destroy GMainLoopSource.
+        (WTF::GMainLoopSource::scheduleAndDeleteOnDestroy):
+        (WTF::GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy):
+        (WTF::GMainLoopSource::createAndDeleteOnDestroy): Deleted.
+        * wtf/gobject/GMainLoopSource.h:
+        * wtf/gtk/MainThreadGtk.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread): Use GMainLoopSource::scheduleAndDeleteOnDestroy()
+        * wtf/gtk/RunLoopGtk.cpp:
+        (WTF::RunLoop::wakeUp): Ditto.
+
+2014-09-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rollout r173731. Broke multiple builds.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2014-09-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to attach a debugger to a JSContext before anything is executed
+        https://bugs.webkit.org/show_bug.cgi?id=136893
+
+        Reviewed by Timothy Hatcher.
+
+        Currently automatic inspection only happens in processes that have a
+        debugger attached. That condition may change in the future, but this
+        function can stand on its own in WTF. It may be useful in the future
+        to perhaps continue though ASSERTs if you have a debugger attached.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2014-09-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        GMainLoopSource is exposed to race conditions
+        https://bugs.webkit.org/show_bug.cgi?id=135800
+
+        Reviewed by Carlos Garcia Campos.
+
+        GMainLoopSource objects can be dispatching tasks on one thread
+        while having a new task scheduled on a different thread. This
+        can for instance occur in WebKitVideoSink, where the timeout
+        callback can be called on main thread while at the same time
+        it is being rescheduled on a different thread (created through
+        GStreamer).
+
+        The initial solution is to use GMutex to prevent parallel data
+        access from different threads. In the future I plan to look at
+        the possibility of creating thread-specific GMainLoopSource
+        objects that wouldn't require the use of GMutex.
+
+        GSource, GCancellable and std::function<> objects are now packed
+        into an internal Context structure. Using the C++11 move semantics
+        it's simple to, at the time of dispatch, move the current context
+        out of the GMainLoopSource object in case the dispatch causes a
+        rescheduling on that same object.
+
+        Also added in the Context struct is a new GCancellable. The pointer
+        of that object is shared with the GMainLoopSource before the Context
+        is moved out for the callback dispatch. This makes it safe to cancel
+        or even delete the GMainLoopSource during the dispatch and prevents
+        use-after-delete on GMainLoopSource once the dispatch is done in
+        the GMainLoopSource::*Callback() methods.
+
+        All the schedule*() methods and the cancelWithoutLocking() method
+        callers now lock the GMutex to ensure no one else is accessing the
+        data at that moment. Similar goes for the dispatch methods, but those
+        do the dispatch and possible destruction duties with the mutex unlocked.
+        The dispatch can cause rescheduling on the same GMainLoopSource object,
+        which must not be done with a locked mutex.
+
+        * wtf/gobject/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::GMainLoopSource):
+        (WTF::GMainLoopSource::~GMainLoopSource):
+        (WTF::GMainLoopSource::cancel):
+        (WTF::GMainLoopSource::cancelWithoutLocking):
+        (WTF::GMainLoopSource::scheduleIdleSource):
+        (WTF::GMainLoopSource::schedule):
+        (WTF::GMainLoopSource::scheduleTimeoutSource):
+        (WTF::GMainLoopSource::scheduleAfterDelay):
+        (WTF::GMainLoopSource::voidCallback):
+        (WTF::GMainLoopSource::boolCallback):
+        (WTF::GMainLoopSource::socketCallback):
+        (WTF::GMainLoopSource::socketSourceCallback):
+        (WTF::GMainLoopSource::Context::destroySource):
+        (WTF::GMainLoopSource::reset): Deleted.
+        (WTF::GMainLoopSource::destroy): Deleted.
+        * wtf/gobject/GMainLoopSource.h:
+
+2014-09-17  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r173695.
+
+        Broke building third-party Legacy WebKit apps; will
+        investigate offline
+
+        Reverted changeset:
+
+        "[iOS] Make WebCore build with public iOS SDK"
+        https://bugs.webkit.org/show_bug.cgi?id=136487
+        http://trac.webkit.org/changeset/173695
+
+2014-09-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        CSS value in whitespace-separated list attribute selector (~=) mishandles tab/newline/etc.
+        https://bugs.webkit.org/show_bug.cgi?id=136807
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::find):
+
+2014-09-17  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebCore build with public iOS SDK
+        https://bugs.webkit.org/show_bug.cgi?id=136487
+
+        Reviewed by David Kilzer.
+
+        Define convenience macro EXTERN_C that can be used to specify the C linkage convention
+        for a declaration. For example, the declaration "EXTERN_C const int x;" will expand to:
+
+        extern const int x;
+
+        and
+
+        extern "C" const int x;
+
+        when used in a C and C++ file, respectively.
+
+        * wtf/Compiler.h:
+
+2014-09-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, disable native inlining because it causes build failures.
+
+        * wtf/Platform.h:
+
+2014-09-15  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Support audioSourceProvider() in MediaPlayerPrivateAVFoundationObjC
+        https://bugs.webkit.org/show_bug.cgi?id=135042
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h: Add WTF_USE_MEDIATOOLBOX.
+
 2014-09-15  peavo@outlook.com  <peavo@outlook.com>
 
         [WinCairo] Make it easier to enable/disable GStreamer.

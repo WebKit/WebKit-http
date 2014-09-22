@@ -423,7 +423,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     m_page->setViewState(m_viewState);
     if (!isVisible())
         m_page->setIsPrerender();
-    m_page->createPageThrottler();
+    m_page->enablePageThrottler();
 
     updateIsInWindow(true);
 
@@ -1712,6 +1712,8 @@ PassRefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions 
 
     LayoutRect topLevelRect;
     IntRect snapshotRect = snappedIntRect(node.renderer()->paintingRootRect(topLevelRect));
+    if (snapshotRect.isEmpty())
+        return nullptr;
 
     double scaleFactor = 1;
     IntSize snapshotSize = snapshotRect.size();
@@ -1886,8 +1888,7 @@ static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, boo
 
 void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 {
-    ASSERT(m_page->pageThrottler());
-    m_page->pageThrottler()->didReceiveUserInput();
+    m_page->pageThrottler().didReceiveUserInput();
 
 #if ENABLE(CONTEXT_MENUS)
     // Don't try to handle any pending mouse events if a context menu is showing.
@@ -1955,8 +1956,7 @@ static bool handleWheelEvent(const WebWheelEvent& wheelEvent, Page* page)
 
 void WebPage::wheelEvent(const WebWheelEvent& wheelEvent)
 {
-    ASSERT(m_page->pageThrottler());
-    m_page->pageThrottler()->didReceiveUserInput();
+    m_page->pageThrottler().didReceiveUserInput();
 
     bool handled = false;
 
@@ -1990,8 +1990,7 @@ static bool handleKeyEvent(const WebKeyboardEvent& keyboardEvent, Page* page)
 
 void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
 {
-    ASSERT(m_page->pageThrottler());
-    m_page->pageThrottler()->didReceiveUserInput();
+    m_page->pageThrottler().didReceiveUserInput();
 
     bool handled = false;
 
@@ -2703,7 +2702,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCompositingEnabledKey()));
     settings.setWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::webGLEnabledKey()));
-    settings.setMultithreadedWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::multithreadedWebGLEnabledKey()));
     settings.setForceSoftwareWebGLRendering(store.getBoolValueForKey(WebPreferencesKey::forceSoftwareWebGLRenderingKey()));
     settings.setAccelerated2dCanvasEnabled(store.getBoolValueForKey(WebPreferencesKey::accelerated2dCanvasEnabledKey()));
     settings.setMediaPlaybackRequiresUserGesture(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackRequiresUserGestureKey()));
@@ -3383,18 +3381,6 @@ void WebPage::mainFrameDidLayout()
         send(Messages::WebPageProxy::DidChangePageCount(pageCount));
         m_cachedPageCount = pageCount;
     }
-
-#if USE(TILED_BACKING_STORE)
-    if (m_drawingArea && m_drawingArea->layerTreeHost()) {
-        double red, green, blue, alpha;
-        m_mainFrame->getDocumentBackgroundColor(&red, &green, &blue, &alpha);
-        RGBA32 rgba = makeRGBA32FromFloats(red, green, blue, alpha);
-        if (m_backgroundColor.rgb() != rgba) {
-            m_backgroundColor.setRGB(rgba);
-            m_drawingArea->layerTreeHost()->setBackgroundColor(m_backgroundColor);
-        }
-    }
-#endif
 
 #if PLATFORM(MAC)
     m_viewGestureGeometryCollector.mainFrameDidLayout();

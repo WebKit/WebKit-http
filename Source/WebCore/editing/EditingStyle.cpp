@@ -277,12 +277,13 @@ void HTMLAttributeEquivalent::addToStyle(Element* element, EditingStyle* style) 
 PassRefPtr<CSSValue> HTMLAttributeEquivalent::attributeValueAsCSSValue(Element* element) const
 {
     ASSERT(element);
-    if (!element->hasAttribute(m_attrName))
-        return 0;
+    const AtomicString& value = element->getAttribute(m_attrName);
+    if (value.isNull())
+        return nullptr;
     
     RefPtr<MutableStyleProperties> dummyStyle;
     dummyStyle = MutableStyleProperties::create();
-    dummyStyle->setProperty(m_propertyID, element->getAttribute(m_attrName));
+    dummyStyle->setProperty(m_propertyID, value);
     return dummyStyle->getPropertyCSSValue(m_propertyID);
 }
 
@@ -301,11 +302,12 @@ HTMLFontSizeEquivalent::HTMLFontSizeEquivalent()
 PassRefPtr<CSSValue> HTMLFontSizeEquivalent::attributeValueAsCSSValue(Element* element) const
 {
     ASSERT(element);
-    if (!element->hasAttribute(m_attrName))
-        return 0;
+    const AtomicString& value = element->getAttribute(m_attrName);
+    if (value.isNull())
+        return nullptr;
     CSSValueID size;
-    if (!HTMLFontElement::cssValueFromFontSizeNumber(element->getAttribute(m_attrName), size))
-        return 0;
+    if (!HTMLFontElement::cssValueFromFontSizeNumber(value, size))
+        return nullptr;
     return CSSPrimitiveValue::createIdentifier(size);
 }
 

@@ -24,7 +24,7 @@
  */
 
 .toolbar {
-    display: -webkit-flex;
+    display: flex;
 
     white-space: nowrap;
     overflow: hidden;
@@ -109,11 +109,11 @@ body.mac-platform.legacy.window-inactive .toolbar {
 }
 
 .toolbar .control-section {
-    display: -webkit-flex;
+    display: flex;
 
-    -webkit-flex-direction: column;
-    -webkit-align-items: center;
-    -webkit-justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 
     padding-left: 6px;
     padding-right: 6px;
@@ -124,35 +124,35 @@ body.mac-platform.legacy.window-inactive .toolbar {
 .toolbar.icon-and-label-horizontal.small-size .control-section,
 .toolbar.icon-only.small-size .control-section,
 .toolbar.label-only .control-section {
-    -webkit-flex-direction: row;
+    flex-direction: row;
 }
 
 .toolbar .item-section {
-    display: -webkit-flex;
+    display: flex;
     min-width: -webkit-min-content;
 }
 
 .toolbar .item-section:not(.center) {
-    -webkit-flex: 1;
+    flex: 1;
 }
 
 .toolbar .item-section.left {
-    -webkit-justify-content: flex-start;
+    justify-content: flex-start;
     margin-right: 12px;
 }
 
 .toolbar .item-section.center {
-    -webkit-flex: 2;
-    -webkit-justify-content: center;
+    flex: 2;
+    justify-content: center;
 }
 
 .toolbar .item-section.right {
-    -webkit-justify-content: flex-end;
+    justify-content: flex-end;
     margin-left: 12px;
     margin-right: 12px;
 }
 
 .toolbar .item {
-    display: -webkit-flex;
+    display: flex;
     outline: none;
 }

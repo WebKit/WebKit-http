@@ -1,3 +1,451 @@
+2014-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Structure should have a method for concurrently getting all of the property map entries, and this method shouldn't involve copy-paste
+        https://bugs.webkit.org/show_bug.cgi?id=136983
+
+        Reviewed by Mark Hahnenberg.
+
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyMapEntry::PropertyMapEntry): Moved PropertyMapEntry struct to Structure.h so that Structure can refer to it.
+        * runtime/Structure.cpp:
+        (JSC::Structure::getConcurrently): Switch to using the new forEachPropertyConcurrently() method.
+        (JSC::Structure::getPropertiesConcurrently): The subject of this patch. It will be useful for object allocation sinking (bug 136330).
+        (JSC::Structure::dump): Switch to using the new forEachPropertyConcurrently() method.
+        * runtime/Structure.h:
+        (JSC::PropertyMapEntry::PropertyMapEntry): Moved from PropertyMapHashTable.h.
+        * runtime/StructureInlines.h:
+        (JSC::Structure::forEachPropertyConcurrently): Capture this very common concurrent structure iteration pattern into a template method.
+
+2014-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Structure::getConcurrently() doesn't need to take a VM& argument.
+
+        Rubber stamped by Dan Bernstein.
+        
+        Removed the extra argument, and then removed similar arguments from other methods until
+        I could build successfully again. It turned out that many methods took a VM& argument
+        just for calling getConcurrently().
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::dumpStructure):
+        (JSC::dumpChain):
+        (JSC::CodeBlock::printGetByIdCacheStatus):
+        (JSC::CodeBlock::printPutByIdCacheStatus):
+        * bytecode/ComplexGetStatus.cpp:
+        (JSC::ComplexGetStatus::computeFor):
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        (JSC::GetByIdStatus::computeForStubInfo):
+        (JSC::GetByIdStatus::computeFor):
+        * bytecode/GetByIdStatus.h:
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFromLLInt):
+        (JSC::PutByIdStatus::computeForStubInfo):
+        (JSC::PutByIdStatus::computeFor):
+        * bytecode/PutByIdStatus.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::isStringPrototypeMethodSane):
+        * runtime/IntendedStructureChain.cpp:
+        (JSC::IntendedStructureChain::mayInterceptStoreTo):
+        * runtime/IntendedStructureChain.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::getConcurrently):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::getConcurrently):
+
+2014-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL OSRExit construction should be based on methods that return ExitValues rather than methods that add ExitValues to OSRExit
+        https://bugs.webkit.org/show_bug.cgi?id=136978
+
+        Reviewed by Dean Jackson.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::buildExitArguments):
+        (JSC::FTL::LowerDFGToLLVM::exitValueForNode):
+        (JSC::FTL::LowerDFGToLLVM::exitArgument):
+        (JSC::FTL::LowerDFGToLLVM::addExitArgumentForNode): Deleted.
+        (JSC::FTL::LowerDFGToLLVM::tryToSetConstantExitArgument): Deleted.
+        (JSC::FTL::LowerDFGToLLVM::addExitArgument): Deleted.
+
+2014-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL OSR exit should do reboxing and value recovery in the same pass
+        https://bugs.webkit.org/show_bug.cgi?id=136977
+
+        Reviewed by Oliver Hunt.
+        
+        It's conceptually simpler to have all of the logic in one place. After the
+        recover-and-rebox loop is done, all of the exit values are in the form that the baseline
+        JIT would want them to be in; the only remaining task is to move them into the right
+        place on the stack after we do all of the necessary stack adjustments.
+
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+
+2014-09-19  Filip Pizlo  <fpizlo@apple.com>
+
+        StorageAccessData should be referenced in a sensible way
+        https://bugs.webkit.org/show_bug.cgi?id=136963
+
+        Reviewed and rubber stamped by Michael Saboff.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetByOffset):
+        (JSC::DFG::ByteCodeParser::handlePutByOffset):
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::emitGetByOffset):
+        (JSC::DFG::ConstantFoldingPhase::emitPutByOffset):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGGraph.h:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToGetByOffset):
+        (JSC::DFG::Node::convertToPutByOffset):
+        (JSC::DFG::Node::storageAccessData):
+        (JSC::DFG::Node::storageAccessDataIndex): Deleted.
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileGetByOffset):
+        (JSC::FTL::LowerDFGToLLVM::compilePutByOffset):
+
+2014-09-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Leak of mallocs under StructureSet::OutOfLineList::create
+        https://bugs.webkit.org/show_bug.cgi?id=136970
+
+        Reviewed by Filip Pizlo.
+
+        addOutOfLine should free the old list when expanding the capacity.
+
+        * bytecode/StructureSet.cpp:
+        (JSC::StructureSet::addOutOfLine):
+
+2014-09-19  Daniel Bates  <dabates@apple.com>
+
+        Always assume internal SDK when building configuration Production
+        https://bugs.webkit.org/show_bug.cgi?id=136925
+        <rdar://problem/18362399>
+
+        Reviewed by Dan Bernstein.
+
+        As a side effect of this change we will always enable ENABLE_TOUCH_EVENTS, ENABLE_IOS_{GESTURE, TOUCH}_EVENTS,
+        and ENABLE_XSLT when either building configuration Production or building with the Internal SDK.
+
+        * Configurations/Base.xcconfig:
+
+2014-09-19  Diego Pino Garcia  <dpino@igalia.com>
+
+        Simple ES6 feature:String prototype additions
+        https://bugs.webkit.org/show_bug.cgi?id=131704
+
+        Reviewed by Darin Adler.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::stringProtoFuncStartsWith): Added.
+        (JSC::stringProtoFuncEndsWith): Added.
+        (JSC::stringProtoFuncContains): Added.
+
+2014-09-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rollout r173731. Broke multiple builds.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::RemoteInspector):
+        (Inspector::RemoteInspector::setupFailed):
+        (Inspector::RemoteInspector::start):
+        (Inspector::RemoteInspector::stopInternal):
+        (Inspector::RemoteInspector::setupXPCConnectionIfNeeded):
+        (Inspector::RemoteInspector::xpcConnectionReceivedMessage):
+        (Inspector::RemoteInspector::xpcConnectionFailed):
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        (Inspector::globalAutomaticInspectionState): Deleted.
+        (Inspector::RemoteInspector::updateDebuggableAutomaticInspectCandidate): Deleted.
+        (Inspector::RemoteInspector::sendAutomaticInspectionCandidateMessage): Deleted.
+        (Inspector::RemoteInspector::setupSucceeded): Deleted.
+        (Inspector::RemoteInspector::waitingForAutomaticInspection): Deleted.
+        (Inspector::RemoteInspector::receivedAutomaticInspectionConfigurationMessage): Deleted.
+        (Inspector::RemoteInspector::receivedAutomaticInspectionRejectMessage): Deleted.
+        * inspector/remote/RemoteInspectorConstants.h:
+        * inspector/remote/RemoteInspectorDebuggable.cpp:
+        (Inspector::RemoteInspectorDebuggable::setRemoteDebuggingAllowed):
+        (Inspector::RemoteInspectorDebuggable::pauseWaitingForAutomaticInspection): Deleted.
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorDebuggableConnection::setup):
+        * runtime/JSGlobalObjectDebuggable.cpp:
+        (JSC::JSGlobalObjectDebuggable::connect):
+        (JSC::JSGlobalObjectDebuggable::pauseWaitingForAutomaticInspection): Deleted.
+        * runtime/JSGlobalObjectDebuggable.h:
+
+2014-09-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to attach a debugger to a JSContext before anything is executed
+        https://bugs.webkit.org/show_bug.cgi?id=136893
+
+        Reviewed by Timothy Hatcher.
+
+        Adds new remote inspector protocol handling for automatic inspection.
+        Debuggers can signal they have enabled automatic inspection, and
+        when debuggables are created the current application will pause to
+        see if the debugger will inspect or decline to inspect the debuggable.
+
+        * inspector/remote/RemoteInspectorConstants.h:
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::globalAutomaticInspectionState):
+        (Inspector::RemoteInspector::RemoteInspector):
+        (Inspector::RemoteInspector::start):
+        When first starting, check the global "is there an auto-inspect" debugger state.
+        This is necessary so that the current application knows if it should pause or
+        not when a debuggable is created, even without having connected to webinspectord yet.
+
+        (Inspector::RemoteInspector::updateDebuggableAutomaticInspectCandidate):
+        When a debuggable has enabled remote inspection, take this path to propose
+        it as an automatic inspection candidate if there is an auto-inspect debugger.
+
+        (Inspector::RemoteInspector::sendAutomaticInspectionCandidateMessage):
+        Send the automatic inspection candidate message.
+
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        (Inspector::RemoteInspector::setupFailed):
+        (Inspector::RemoteInspector::setupSucceeded):
+        After attempting to open an inspector, unpause if it was for the
+        automatic inspection candidate.
+
+        (Inspector::RemoteInspector::waitingForAutomaticInspection):
+        When running a nested runloop, check if we should remain paused.
+
+        (Inspector::RemoteInspector::setupXPCConnectionIfNeeded):
+        If by the time we connect to webinspectord we have a candidate, then
+        immediately send the candidate message.
+
+        (Inspector::RemoteInspector::stopInternal):
+        (Inspector::RemoteInspector::xpcConnectionFailed):
+        In error cases, clear our state.
+
+        (Inspector::RemoteInspector::xpcConnectionReceivedMessage):
+        (Inspector::RemoteInspector::receivedAutomaticInspectionConfigurationMessage):
+        (Inspector::RemoteInspector::receivedAutomaticInspectionRejectMessage):
+        Update state when receiving new messages.
+
+
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        * inspector/remote/RemoteInspectorDebuggable.cpp:
+        (Inspector::RemoteInspectorDebuggable::setRemoteDebuggingAllowed):
+        Special case when a debuggable is newly allowed to be debuggable.
+
+        (Inspector::RemoteInspectorDebuggable::pauseWaitingForAutomaticInspection):
+        Run a nested run loop while this is an automatic inspection candidate.
+
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        When the inspector starts via automatic inspection automatically pause.
+        We plan on removing this condition by having the frontend signal to the
+        backend when it is completely initialized.
+        
+        * inspector/remote/RemoteInspectorDebuggableConnection.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorDebuggableConnection::setup):
+        Pass on the flag of whether or not this was automatic inspection.
+
+        * runtime/JSGlobalObjectDebuggable.h:
+        * runtime/JSGlobalObjectDebuggable.cpp:
+        (JSC::JSGlobalObjectDebuggable::connect):
+        (JSC::JSGlobalObjectDebuggable::pauseWaitingForAutomaticInspection):
+        When pausing in a JSGlobalObject we need to release the API lock.
+
+2014-09-18  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Fix "Tools/Scripts/build-webkit --efl --no-inspector" build
+        https://bugs.webkit.org/show_bug.cgi?id=136912
+
+        Reviewed by Darin Adler.
+
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::leastCommonAncestor):
+
+2014-09-17  Michael Saboff  <msaboff@apple.com>
+
+        Change CallFrame to use Callee instead of JSScope to implement vm()
+        https://bugs.webkit.org/show_bug.cgi?id=136894
+
+        Reviewed by Geoffrey Garen.
+
+        Added JSCell::vm() method that can be used on any JSObject.  Changed CallFrame::vm() to
+        use JSCell::vm with the Callee.  Made similar changes in the LLInt.
+        In support of this, changed JSGlobalObject::init() to take a VM& parameter, as there is
+        a chicken/egg problem with trying to use the Callee in the global exec before the Callee
+        has been create.  Besides, the vm is readily available in finishCreation(), the caller of
+        init().
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Changed the calculation of CallFrame::VM to use the Callee instead of JSScope.
+
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::vm): New method for getting VM from the pointer.
+        (JSC::ExecState::vm): Moved this method from JSScope.h to here since this file
+        contains the implementation of JSCell::vm(), this file is included by all users
+        of CallFrame::vm, and lastly putting it in CallFrameInlines.h required changing
+        many other .h files and possible the WebCore generator generate-bindings.pl.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::finishCreation):
+        Changed init() to take a VM parameter.
+
+        * runtime/JSScope.h:
+        (JSC::ExecState::vm): Deleted.
+
+2014-09-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, disable native inlining because it causes build failures.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2014-09-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce a bit of churn setting initial remote inspection state
+        https://bugs.webkit.org/show_bug.cgi?id=136875
+
+        Reviewed by Timothy Hatcher.
+
+        * API/JSContextRef.cpp:
+        (JSGlobalContextCreateInGroup):
+        Set the defaultl remote debuggable state at the API boundary.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        Do not set remote debuggable state here. Let clients set it.
+
+2014-09-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Promise: Drop Promise.cast
+        https://bugs.webkit.org/show_bug.cgi?id=136222
+
+        Reviewed by Sam Weinig.
+
+        Promise.cast is dropped and Promise.resolve is replaced with old Promise.cast.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::JSPromiseConstructorFuncResolve):
+        (JSC::JSPromiseConstructorFuncRace):
+        (JSC::JSPromiseConstructorFuncAll):
+        (JSC::JSPromiseConstructorFuncCast): Deleted.
+
+2014-09-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Local OSR availability calculation should be reusable
+        https://bugs.webkit.org/show_bug.cgi?id=136860
+
+        Reviewed by Oliver Hunt.
+        
+        Previously, the FTL lowering repeated some of the logic of the OSR availability analysis
+        phase. Humorously, it actually did this logic a bit differently; for example the phase
+        would claim that a SetLocal makes both the flush and the node available while the FTL
+        only claimed that the flush was available. This different was benign, but still: yuck!
+        
+        Also, previously if you wanted to use availability information then you'd have to repeat
+        some of the logic that both the phase itself and the FTL lowering already had.
+        Presumably, you could get epic style points for finding other benign ways in which to
+        make your copy of the logic different from the other two!
+        
+        This reduces the amount of style points one could conceivably get in the future when
+        hacking JSC, by creating a single reusable thingy for computing local OSR availability.
+
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::OSRAvailabilityAnalysisPhase::run):
+        (JSC::DFG::LocalOSRAvailabilityCalculator::LocalOSRAvailabilityCalculator):
+        (JSC::DFG::LocalOSRAvailabilityCalculator::~LocalOSRAvailabilityCalculator):
+        (JSC::DFG::LocalOSRAvailabilityCalculator::beginBlock):
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGOSRAvailabilityAnalysisPhase.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::LowerDFGToLLVM):
+        (JSC::FTL::LowerDFGToLLVM::compileBlock):
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileSetLocal):
+        (JSC::FTL::LowerDFGToLLVM::compileInvalidationPoint):
+        (JSC::FTL::LowerDFGToLLVM::appendOSRExit):
+        (JSC::FTL::LowerDFGToLLVM::buildExitArguments):
+        (JSC::FTL::LowerDFGToLLVM::availability):
+        (JSC::FTL::LowerDFGToLLVM::compileMovHint): Deleted.
+        (JSC::FTL::LowerDFGToLLVM::compileZombieHint): Deleted.
+        (JSC::FTL::LowerDFGToLLVM::initializeOSRExitStateForBlock): Deleted.
+
+2014-09-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        JSC test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=136823
+
+        Reviewed by Geoffrey Garen.
+
+        * tests/mozilla/mozilla-tests.yaml: Unskip passing tests.
+
+2014-09-15  Michael Saboff  <msaboff@apple.com>
+
+        Create a JSCallee for GlobalExec object
+        https://bugs.webkit.org/show_bug.cgi?id=136840
+
+        Reviewed by Geoffrey Garen.
+
+        Added m_globalCallee, initialized it and then used it to set the globalExec's callee.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+
+2014-09-14  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG ref count calculation should be reusable
+        https://bugs.webkit.org/show_bug.cgi?id=136811
+
+        Reviewed by Oliver Hunt.
+        
+        Henceforth if you call Graph::computeRefCounts(), a nifty O(n) operation, every Node
+        will be able to tell you how many places it is used from. Currently only DCE uses this,
+        but it will be useful for https://bugs.webkit.org/show_bug.cgi?id=136330.
+
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        (JSC::DFG::DCEPhase::findTypeCheckRoot): Deleted.
+        (JSC::DFG::DCEPhase::countNode): Deleted.
+        (JSC::DFG::DCEPhase::countEdge): Deleted.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::computeRefCounts):
+        * dfg/DFGGraph.h:
+
 2014-09-12  Michael Saboff  <msaboff@apple.com>
 
         Merge JSGlobalObject::reset() into ::init()

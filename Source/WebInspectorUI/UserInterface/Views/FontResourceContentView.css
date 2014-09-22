@@ -24,9 +24,9 @@
  */
 
 .content-view.resource.font {
-    display: -webkit-flex;
+    display: flex;
 
-    -webkit-justify-content: center;
+    justify-content: center;
 
     overflow-x: hidden;
     overflow-y: auto;

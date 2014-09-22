@@ -31,6 +31,7 @@
 #include "CodeBlockWithJITType.h"
 #include "DFGAbstractInterpreterInlines.h"
 #include "DFGInPlaceAbstractState.h"
+#include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "FTLAbstractHeapRepository.h"
 #include "FTLAvailableRecovery.h"
 #include "FTLForOSREntryJITCode.h"
@@ -93,7 +94,6 @@ public:
         , m_ftlState(state)
         , m_heaps(state.context)
         , m_out(state.context)
-        , m_availability(OperandsLike, state.graph.block(0)->variablesAtHead)
         , m_state(state.graph)
         , m_interpreter(state.graph, m_state)
         , m_stackmapIDs(0)
@@ -295,7 +295,7 @@ private:
             return;
         }
         
-        initializeOSRExitStateForBlock();
+        m_availabilityCalculator.beginBlock(m_highBlock);
         
         m_state.reset();
         m_state.beginBasicBlock(m_highBlock);
@@ -388,17 +388,11 @@ private:
         case SetLocal:
             compileSetLocal();
             break;
-        case MovHint:
-            compileMovHint();
-            break;
         case GetMyArgumentsLength:
             compileGetMyArgumentsLength();
             break;
         case GetMyArgumentByVal:
             compileGetMyArgumentByVal();
-            break;
-        case ZombieHint:
-            compileZombieHint();
             break;
         case Phantom:
         case HardPhantom:
@@ -739,11 +733,15 @@ private:
         case FunctionReentryWatchpoint:
         case TypedArrayWatchpoint:
         case AllocationProfileWatchpoint:
+        case MovHint:
+        case ZombieHint:
             break;
         default:
             DFG_CRASH(m_graph, m_node, "Unrecognized node in FTL backend");
             break;
         }
+        
+        m_availabilityCalculator.executeNode(m_node);
         
         if (shouldExecuteEffects)
             m_interpreter.executeEffects(nodeIndex);
@@ -1064,22 +1062,6 @@ private:
             DFG_CRASH(m_graph, m_node, "Bad flush format");
             break;
         }
-        
-        m_availability.operand(variable->local()) = Availability(variable->flushedAt());
-    }
-    
-    void compileMovHint()
-    {
-        ASSERT(m_node->containsMovHint());
-        ASSERT(m_node->op() != ZombieHint);
-        
-        VirtualRegister operand = m_node->unlinkedLocal();
-        m_availability.operand(operand) = Availability(m_node->child1().node());
-    }
-    
-    void compileZombieHint()
-    {
-        m_availability.operand(m_node->unlinkedLocal()) = Availability::unavailable();
     }
     
     void compilePhantom()
@@ -3269,8 +3251,7 @@ private:
     
     void compileGetByOffset()
     {
-        StorageAccessData& data =
-            m_graph.m_storageAccessData[m_node->storageAccessDataIndex()];
+        StorageAccessData& data = m_node->storageAccessData();
         
         setJSValue(loadProperty(
             lowStorage(m_node->child1()), data.identifierNumber, data.offset));
@@ -3355,8 +3336,7 @@ private:
     
     void compilePutByOffset()
     {
-        StorageAccessData& data =
-            m_graph.m_storageAccessData[m_node->storageAccessDataIndex()];
+        StorageAccessData& data = m_node->storageAccessData();
         
         storeProperty(
             lowJSValue(m_node->child3()),
@@ -3973,12 +3953,12 @@ private:
     void compileInvalidationPoint()
     {
         if (verboseCompilationEnabled())
-            dataLog("    Invalidation point with availability: ", m_availability, "\n");
+            dataLog("    Invalidation point with availability: ", availability(), "\n");
         
         m_ftlState.jitCode->osrExit.append(OSRExit(
             UncountableInvalidation, InvalidValueFormat, MethodOfGettingAValueProfile(),
             m_codeOriginForExitTarget, m_codeOriginForExitProfile,
-            m_availability.numberOfArguments(), m_availability.numberOfLocals()));
+            availability().numberOfArguments(), availability().numberOfLocals()));
         m_ftlState.finalizer->osrExit.append(OSRExitCompilationInfo());
         
         OSRExit& exit = m_ftlState.jitCode->osrExit.last();
@@ -6360,16 +6340,11 @@ private:
         return m_blocks.get(block);
     }
     
-    void initializeOSRExitStateForBlock()
-    {
-        m_availability = m_highBlock->ssa->availabilityAtHead;
-    }
-    
     void appendOSRExit(
         ExitKind kind, FormattedValue lowValue, Node* highValue, LValue failCondition)
     {
         if (verboseCompilationEnabled()) {
-            dataLog("    OSR exit #", m_ftlState.jitCode->osrExit.size(), " with availability: ", m_availability, "\n");
+            dataLog("    OSR exit #", m_ftlState.jitCode->osrExit.size(), " with availability: ", availability(), "\n");
             if (!m_availableRecoveries.isEmpty())
                 dataLog("        Available recoveries: ", listDump(m_availableRecoveries), "\n");
         }
@@ -6379,7 +6354,7 @@ private:
         m_ftlState.jitCode->osrExit.append(OSRExit(
             kind, lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
             m_codeOriginForExitTarget, m_codeOriginForExitProfile,
-            m_availability.numberOfArguments(), m_availability.numberOfLocals()));
+            availability().numberOfArguments(), availability().numberOfLocals()));
         m_ftlState.finalizer->osrExit.append(OSRExitCompilationInfo());
         
         OSRExit& exit = m_ftlState.jitCode->osrExit.last();
@@ -6427,13 +6402,13 @@ private:
                 continue;
             }
             
-            Availability availability = m_availability[i];
+            Availability availability = this->availability()[i];
             FlushedAt flush = availability.flushedAt();
             switch (flush.format()) {
             case DeadFlush:
             case ConflictingFlush:
                 if (availability.hasNode()) {
-                    addExitArgumentForNode(exit, arguments, i, availability.node());
+                    exit.m_values[i] = exitValueForNode(arguments, availability.node());
                     break;
                 }
                 
@@ -6484,93 +6459,73 @@ private:
         m_out.call(m_out.stackmapIntrinsic(), arguments);
     }
     
-    void addExitArgumentForNode(
-        OSRExit& exit, ExitArgumentList& arguments, unsigned index, Node* node)
+    ExitValue exitValueForNode(ExitArgumentList& arguments, Node* node)
     {
         ASSERT(node->shouldGenerate());
         ASSERT(node->hasResult());
 
-        if (tryToSetConstantExitArgument(exit, index, node))
-            return;
+        if (node) {
+            switch (node->op()) {
+            case JSConstant:
+            case Int52Constant:
+            case DoubleConstant:
+                return ExitValue::constant(node->asJSValue());
+                
+            case PhantomArguments:
+                return ExitValue::argumentsObjectThatWasNotCreated();
+                
+            default:
+                break;
+            }
+        }
         
         for (unsigned i = 0; i < m_availableRecoveries.size(); ++i) {
             AvailableRecovery recovery = m_availableRecoveries[i];
             if (recovery.node() != node)
                 continue;
             
-            exit.m_values[index] = ExitValue::recovery(
+            ExitValue result = ExitValue::recovery(
                 recovery.opcode(), arguments.size(), arguments.size() + 1,
                 recovery.format());
             arguments.append(recovery.left());
             arguments.append(recovery.right());
-            return;
+            return result;
         }
         
         LoweredNodeValue value = m_int32Values.get(node);
-        if (isValid(value)) {
-            addExitArgument(exit, arguments, index, ValueFormatInt32, value.value());
-            return;
-        }
+        if (isValid(value))
+            return exitArgument(arguments, ValueFormatInt32, value.value());
         
         value = m_int52Values.get(node);
-        if (isValid(value)) {
-            addExitArgument(exit, arguments, index, ValueFormatInt52, value.value());
-            return;
-        }
+        if (isValid(value))
+            return exitArgument(arguments, ValueFormatInt52, value.value());
         
         value = m_strictInt52Values.get(node);
-        if (isValid(value)) {
-            addExitArgument(exit, arguments, index, ValueFormatStrictInt52, value.value());
-            return;
-        }
+        if (isValid(value))
+            return exitArgument(arguments, ValueFormatStrictInt52, value.value());
         
         value = m_booleanValues.get(node);
         if (isValid(value)) {
             LValue valueToPass = m_out.zeroExt(value.value(), m_out.int32);
-            addExitArgument(exit, arguments, index, ValueFormatBoolean, valueToPass);
-            return;
+            return exitArgument(arguments, ValueFormatBoolean, valueToPass);
         }
         
         value = m_jsValueValues.get(node);
-        if (isValid(value)) {
-            addExitArgument(exit, arguments, index, ValueFormatJSValue, value.value());
-            return;
-        }
+        if (isValid(value))
+            return exitArgument(arguments, ValueFormatJSValue, value.value());
         
         value = m_doubleValues.get(node);
-        if (isValid(value)) {
-            addExitArgument(exit, arguments, index, ValueFormatDouble, value.value());
-            return;
-        }
+        if (isValid(value))
+            return exitArgument(arguments, ValueFormatDouble, value.value());
 
         DFG_CRASH(m_graph, m_node, toCString("Cannot find value for node: ", node).data());
     }
     
-    bool tryToSetConstantExitArgument(OSRExit& exit, unsigned index, Node* node)
+    ExitValue exitArgument(ExitArgumentList& arguments, ValueFormat format, LValue value)
     {
-        if (!node)
-            return false;
-        
-        switch (node->op()) {
-        case JSConstant:
-        case Int52Constant:
-        case DoubleConstant:
-            exit.m_values[index] = ExitValue::constant(node->asJSValue());
-            return true;
-        case PhantomArguments:
-            exit.m_values[index] = ExitValue::argumentsObjectThatWasNotCreated();
-            return true;
-        default:
-            return false;
-        }
-    }
-    
-    void addExitArgument(
-        OSRExit& exit, ExitArgumentList& arguments, unsigned index, ValueFormat format,
-        LValue value)
-    {
-        exit.m_values[index] = ExitValue::exitArgument(ExitArgument(format, arguments.size()));
+        ExitValue result = ExitValue::exitArgument(ExitArgument(format, arguments.size()));
         arguments.append(value);
+        return result;
     }
     
     bool doesKill(Edge edge)
@@ -6766,6 +6721,8 @@ private:
         m_out.unreachable();
     }
     
+    Operands<Availability>& availability() { return m_availabilityCalculator.m_availability; }
+    
     VM& vm() { return m_graph.m_vm; }
     CodeBlock* codeBlock() { return m_graph.m_codeBlock; }
     
@@ -6795,7 +6752,7 @@ private:
     
     HashMap<Node*, LValue> m_phis;
     
-    Operands<Availability> m_availability;
+    LocalOSRAvailabilityCalculator m_availabilityCalculator;
     
     Vector<AvailableRecovery, 3> m_availableRecoveries;
     

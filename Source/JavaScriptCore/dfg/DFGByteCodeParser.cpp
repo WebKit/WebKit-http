@@ -1984,12 +1984,12 @@ Node* ByteCodeParser::handleGetByOffset(SpeculatedType prediction, Node* base, c
         propertyStorage = base;
     else
         propertyStorage = addToGraph(GetButterfly, base);
-    Node* getByOffset = addToGraph(op, OpInfo(m_graph.m_storageAccessData.size()), OpInfo(prediction), propertyStorage, base);
-
-    StorageAccessData storageAccessData;
-    storageAccessData.offset = offset;
-    storageAccessData.identifierNumber = identifierNumber;
-    m_graph.m_storageAccessData.append(storageAccessData);
+    
+    StorageAccessData* data = m_graph.m_storageAccessData.add();
+    data->offset = offset;
+    data->identifierNumber = identifierNumber;
+    
+    Node* getByOffset = addToGraph(op, OpInfo(data), OpInfo(prediction), propertyStorage, base);
 
     return getByOffset;
 }
@@ -2001,13 +2001,13 @@ Node* ByteCodeParser::handlePutByOffset(Node* base, unsigned identifier, Propert
         propertyStorage = base;
     else
         propertyStorage = addToGraph(GetButterfly, base);
-    Node* result = addToGraph(PutByOffset, OpInfo(m_graph.m_storageAccessData.size()), propertyStorage, base, value);
     
-    StorageAccessData storageAccessData;
-    storageAccessData.offset = offset;
-    storageAccessData.identifierNumber = identifier;
-    m_graph.m_storageAccessData.append(storageAccessData);
-
+    StorageAccessData* data = m_graph.m_storageAccessData.add();
+    data->offset = offset;
+    data->identifierNumber = identifier;
+    
+    Node* result = addToGraph(PutByOffset, OpInfo(data), propertyStorage, base, value);
+    
     return result;
 }
 
@@ -2215,17 +2215,16 @@ void ByteCodeParser::handlePutById(
 
         addToGraph(PutStructure, OpInfo(transition), base);
 
+        StorageAccessData* data = m_graph.m_storageAccessData.add();
+        data->offset = variant.offset();
+        data->identifierNumber = identifierNumber;
+        
         addToGraph(
             PutByOffset,
-            OpInfo(m_graph.m_storageAccessData.size()),
+            OpInfo(data),
             propertyStorage,
             base,
             value);
-
-        StorageAccessData storageAccessData;
-        storageAccessData.offset = variant.offset();
-        storageAccessData.identifierNumber = identifierNumber;
-        m_graph.m_storageAccessData.append(storageAccessData);
 
         if (m_graph.compilation())
             m_graph.compilation()->noticeInlinedPutById();
@@ -3237,7 +3236,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             case GlobalProperty:
             case GlobalPropertyWithVarInjectionChecks: {
                 SpeculatedType prediction = getPrediction();
-                GetByIdStatus status = GetByIdStatus::computeFor(*m_vm, structure, uid);
+                GetByIdStatus status = GetByIdStatus::computeFor(structure, uid);
                 if (status.state() != GetByIdStatus::Simple
                     || status.numVariants() != 1
                     || status[0].structureSet().size() != 1) {
@@ -3321,7 +3320,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             switch (resolveType) {
             case GlobalProperty:
             case GlobalPropertyWithVarInjectionChecks: {
-                PutByIdStatus status = PutByIdStatus::computeFor(*m_vm, globalObject, structure, uid, false);
+                PutByIdStatus status = PutByIdStatus::computeFor(globalObject, structure, uid, false);
                 if (status.numVariants() != 1
                     || status[0].kind() != PutByIdVariant::Replace
                     || status[0].structure().size() != 1) {

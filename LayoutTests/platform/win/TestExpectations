@@ -1196,7 +1196,7 @@ webkit.org/b/42435 http/tests/w3c/webperf [ Failure ]
 webkit.org/b/42435 fast/performance/ [ Failure ]
 
 # Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
-webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1 [ Pass Failure ]
+webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1 [ Timeout Crash Pass Failure ]
 
 # Still working out flakiness issues with the perf tests.
 webkit.org/b/44199 perf/ [ Skip ]
@@ -1367,6 +1367,7 @@ webgl/1.0.2/conformance/reading/read-pixels-test.html
 webgl/1.0.2/conformance/rendering/multisample-corruption.html
 webgl/1.0.2/conformance/textures/texture-npot-video.html
 webgl/1.0.2/conformance/uniforms/uniform-location.html
+webgl/1.0.2/conformance/rendering/more-than-65536-indices.html
 webgl/conformance/context/context-attributes-alpha-depth-stencil-antialias.html
 webgl/conformance/context/context-creation-and-destruction.html
 webgl/conformance/context/context-lost-restored.html
@@ -2742,9 +2743,6 @@ webkit.org/b/128499 svg/clip-path/clip-path-precision-001.svg [ ImageOnlyFailure
 webkit.org/b/129180 svg/clip-path/clip-path-on-svg-001.svg [ ImageOnlyFailure ]
 webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]
 
-# Media tests are unhappy. Disable for now
-media [ Skip ]
-
 # DataCue.value not enabled
 http/tests/media/track-in-band-hls-metadata.html [ Skip ]
 media/track/track-datacue-value.html [ Skip ]
@@ -2763,3 +2761,11 @@ webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
 
 # Missing WebSpeech implementation
 webkit.org/b/136224 fast/speechsynthesis [ Skip ]
+
+# https://bugs.webkit.org/show_bug.cgi?id=136484
+fast/css-generated-content/initial-letter-basic.html [ Failure ]
+fast/css-generated-content/initial-letter-border-padding.html [ Failure ]
+fast/css-generated-content/initial-letter-clearance.html [ Failure ]
+fast/css-generated-content/initial-letter-descender.html [ Failure ]
+fast/css-generated-content/initial-letter-raised.html [ Failure ]
+fast/css-generated-content/initial-letter-sunken.html [ Failure ]

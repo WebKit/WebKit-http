@@ -514,7 +514,6 @@ private:
 
     double effectivePlaybackRate() const;
 
-    virtual Document* mediaPlayerOwningDocument() override;
     virtual void mediaPlayerNetworkStateChanged(MediaPlayer*) override;
     virtual void mediaPlayerReadyStateChanged(MediaPlayer*) override;
     virtual void mediaPlayerTimeChanged(MediaPlayer*) override;
@@ -570,8 +569,6 @@ private:
     virtual bool mediaPlayerPlatformVolumeConfigurationRequired() const override;
     virtual bool mediaPlayerIsPaused() const override;
     virtual bool mediaPlayerIsLooping() const override;
-    virtual HostWindow* mediaPlayerHostWindow() override;
-    virtual IntRect mediaPlayerWindowClipRect() override;
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
@@ -916,7 +913,11 @@ struct ValueToString<TextTrackCue*> {
 void isHTMLMediaElement(const HTMLMediaElement&); // Catch unnecessary runtime check of type known at compile time.
 inline bool isHTMLMediaElement(const Element& element) { return element.isMediaElement(); }
 inline bool isHTMLMediaElement(const Node& node) { return node.isElementNode() && toElement(node).isMediaElement(); }
-template <> inline bool isElementOfType<const HTMLMediaElement>(const Element& element) { return element.isMediaElement(); }
+
+template <typename ArgType>
+struct ElementTypeCastTraits<const HTMLMediaElement, ArgType> {
+    static bool is(ArgType& node) { return isHTMLMediaElement(node); }
+};
 
 NODE_TYPE_CASTS(HTMLMediaElement)
 

@@ -39,7 +39,6 @@
 #include <JavaScriptCore/SourceCode.h>
 #include <JavaScriptCore/Strong.h>
 #include <JavaScriptCore/StrongInlines.h>
-#include <WebCore/AudioHardwareListener.h>
 #include <WebCore/DOMWrapperWorld.h>
 #include <WebCore/Frame.h>
 #include <WebCore/Page.h>
@@ -193,8 +192,8 @@ bool NPRuntimeObjectMap::evaluate(NPObject* npObject, const String& scriptString
 #if PLATFORM(COCOA)
     if (m_pluginView && !m_pluginView->isBeingDestroyed()) {
         if (Page* page = m_pluginView->frame()->page()) {
-            if (m_pluginView->audioHardwareActivity() != WebCore::AudioHardwareActivityType::IsInactive && page->pageThrottler())
-                page->pageThrottler()->pluginDidEvaluateWhileAudioIsPlaying();
+            if (m_pluginView->audioHardwareActivity() != WebCore::AudioHardwareActivityType::IsInactive)
+                page->pageThrottler().pluginDidEvaluateWhileAudioIsPlaying();
         }
     }
 #endif

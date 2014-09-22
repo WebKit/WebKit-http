@@ -37,6 +37,7 @@
 #include "FunctionCall.h"
 #include "HTMLDocument.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "InspectorInstrumentation.h"
 #include "NodeRenderStyle.h"
 #include "QualifiedName.h"
@@ -777,7 +778,7 @@ static FunctionType constructFragments(const CSSSelector* rootSelector, Selector
             break;
         }
         case CSSSelector::List:
-            if (selector->value().contains(' '))
+            if (selector->value().find(isHTMLSpace<UChar>) != notFound)
                 return FunctionType::CannotMatchAnything;
             FALLTHROUGH;
         case CSSSelector::Begin:
@@ -1350,14 +1351,6 @@ static bool shouldMarkStyleIsAffectedByPreviousSibling(const SelectorFragment& f
 
 void SelectorCodeGenerator::generateSelectorChecker()
 {
-    StackAllocator::StackReferenceVector calleeSavedRegisterStackReferences;
-    bool reservedCalleeSavedRegisters = false;
-    unsigned availableRegisterCount = m_registerAllocator.availableRegisterCount();
-    unsigned minimumRegisterCountForAttributes = minimumRegisterRequirements(m_selectorFragments);
-#if CSS_SELECTOR_JIT_DEBUGGING
-    dataLogF("Compiling with minimum required register count %u\n", minimumRegisterCountForAttributes);
-#endif
-
     Assembler::JumpList failureOnFunctionEntry;
     // Test selector's pseudo element equals to requested PseudoId.
     if (m_selectorContext != SelectorContext::QuerySelector && m_functionType == FunctionType::SelectorCheckerWithCheckingContext) {
@@ -1365,12 +1358,20 @@ void SelectorCodeGenerator::generateSelectorChecker()
         generateRequestedPseudoElementEqualsToSelectorPseudoElement(failureOnFunctionEntry, m_selectorFragments.first(), checkingContextRegister);
     }
 
+    unsigned minimumRegisterCount = minimumRegisterRequirements(m_selectorFragments);
+    unsigned availableRegisterCount = m_registerAllocator.reserveCallerSavedRegisters(minimumRegisterCount);
+#if CSS_SELECTOR_JIT_DEBUGGING
+    dataLogF("Compiling with minimum required register count %u\n", minimumRegisterCount);
+#endif
+
     bool needsEpilogue = generatePrologue();
 
-    ASSERT(minimumRegisterCountForAttributes <= maximumRegisterCount);
-    if (availableRegisterCount < minimumRegisterCountForAttributes) {
+    StackAllocator::StackReferenceVector calleeSavedRegisterStackReferences;
+    bool reservedCalleeSavedRegisters = false;
+    ASSERT(minimumRegisterCount <= maximumRegisterCount);
+    if (availableRegisterCount < minimumRegisterCount) {
         reservedCalleeSavedRegisters = true;
-        calleeSavedRegisterStackReferences = m_stackAllocator.push(m_registerAllocator.reserveCalleeSavedRegisters(minimumRegisterCountForAttributes - availableRegisterCount));
+        calleeSavedRegisterStackReferences = m_stackAllocator.push(m_registerAllocator.reserveCalleeSavedRegisters(minimumRegisterCount - availableRegisterCount));
     }
 
     m_registerAllocator.allocateRegister(elementAddressRegister);
@@ -2252,9 +2253,9 @@ static bool attributeValueSpaceSeparetedListContains(const Attribute* attribute,
             foundPos = value.findIgnoringCase(expectedString, startSearchAt);
         if (foundPos == notFound)
             return false;
-        if (!foundPos || value[foundPos - 1] == ' ') {
+        if (!foundPos || isHTMLSpace(value[foundPos - 1])) {
             unsigned endStr = foundPos + expectedString->length();
-            if (endStr == value.length() || value[endStr] == ' ')
+            if (endStr == value.length() || isHTMLSpace(value[endStr]))
                 return true;
         }
         startSearchAt = foundPos + 1;

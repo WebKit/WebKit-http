@@ -36,9 +36,16 @@ set(webkit2_api_harness_SOURCES
     ${TESTWEBKITAPI_DIR}/efl/PlatformWebView.cpp
 )
 
+list(APPEND test_wtf_LIBRARIES
+    WebKit2
+)
+
+list(APPEND test_webcore_LIBRARIES
+    WebKit2
+)
+
 list(APPEND TestJavaScriptCore_LIBRARIES
-    ${ECORE_LIBRARIES}
-    ${EINA_LIBRARIES}
+    WebKit2
 )
 
 # The list below works like a test expectation. Tests in the
@@ -98,6 +105,7 @@ set(test_webkit2_api_BINARIES
     CoordinatedGraphics/WKViewRestoreZoomAndScrollBackForward
     CoordinatedGraphics/WKViewUserViewportToContents
     efl/WKViewClientWebProcessCallbacks
+    efl/WKViewScrollTo
 )
 
 set(test_webkit2_api_fail_BINARIES

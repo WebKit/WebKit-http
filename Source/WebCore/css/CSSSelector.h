@@ -203,7 +203,7 @@ namespace WebCore {
         const QualifiedName& attribute() const;
         const AtomicString& attributeCanonicalLocalName() const;
         const AtomicString& argument() const { return m_hasRareData ? m_data.m_rareData->m_argument : nullAtom; }
-        const CSSSelectorList* selectorList() const { return m_hasRareData ? m_data.m_rareData->m_selectorList.get() : 0; }
+        const CSSSelectorList* selectorList() const { return m_hasRareData ? m_data.m_rareData->m_selectorList.get() : nullptr; }
 
         void setValue(const AtomicString&);
         void setAttribute(const QualifiedName&, bool isCaseInsensitive);
@@ -273,21 +273,19 @@ namespace WebCore {
         bool isLastInTagHistory() const { return m_isLastInTagHistory; }
         void setNotLastInTagHistory() { m_isLastInTagHistory = false; }
 
-        bool isSimple() const;
-
         bool isForPage() const { return m_isForPage; }
         void setForPage() { m_isForPage = true; }
 
     private:
-        unsigned m_relation           : 3; // enum Relation
-        mutable unsigned m_match      : 4; // enum Match
-        mutable unsigned m_pseudoType : 8; // PseudoType
-        mutable bool m_parsedNth      : 1; // Used for :nth-*
-        bool m_isLastInSelectorList   : 1;
-        bool m_isLastInTagHistory     : 1;
-        bool m_hasRareData            : 1;
-        bool m_isForPage              : 1;
-        bool m_tagIsForNamespaceRule  : 1;
+        unsigned m_relation              : 3; // enum Relation.
+        mutable unsigned m_match         : 4; // enum Match.
+        mutable unsigned m_pseudoType    : 8; // PseudoType.
+        mutable unsigned m_parsedNth     : 1; // Used for :nth-*.
+        unsigned m_isLastInSelectorList  : 1;
+        unsigned m_isLastInTagHistory    : 1;
+        unsigned m_hasRareData           : 1;
+        unsigned m_isForPage             : 1;
+        unsigned m_tagIsForNamespaceRule : 1;
 
         unsigned specificityForOneSelector() const;
         unsigned specificityForPage() const;

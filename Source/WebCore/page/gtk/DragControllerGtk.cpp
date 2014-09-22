@@ -26,13 +26,18 @@
 #include "config.h"
 #include "DragController.h"
 
+#include "DataObjectGtk.h"
 #include "DataTransfer.h"
+#include "Document.h"
+#include "DocumentFragment.h"
 #include "DragData.h"
+#include "Editor.h"
 #include "Element.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "Page.h"
 #include "Pasteboard.h"
+#include "markup.h"
 
 namespace WebCore {
 
@@ -53,7 +58,7 @@ bool DragController::isCopyKeyDown(DragData&)
 DragOperation DragController::dragOperation(DragData& dragData)
 {
     // FIXME: This logic is incomplete
-    if (dragData.containsURL(0))
+    if (dragData.containsURL())
         return DragOperationCopy;
 
     return DragOperationNone;
@@ -71,7 +76,17 @@ void DragController::cleanupAfterSystemDrag()
 
 void DragController::declareAndWriteDragImage(DataTransfer& dataTransfer, Element& element, const URL& url, const String& label)
 {
-    dataTransfer.pasteboard().writeImage(element, url, label);
+    Frame* frame = element.document().frame();
+    ASSERT(frame);
+    frame->editor().writeImageToPasteboard(dataTransfer.pasteboard(), element, url, label);
+}
+
+PassRefPtr<DocumentFragment> DragController::createFragmentFromDragData(DragData& dragData, Frame& frame, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)
+{
+    if (!dragData.platformData()->hasMarkup() || !frame.document())
+        return nullptr;
+
+    return createFragmentFromMarkup(*frame.document(), dragData.platformData()->markup(), "");
 }
 
 }

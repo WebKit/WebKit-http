@@ -1,3 +1,492 @@
+2014-09-21  Chris Dumez  <cdumez@apple.com>
+
+        Generate Element casting helper functions
+        https://bugs.webkit.org/show_bug.cgi?id=136839
+
+        Reviewed by Darin Adler.
+
+        Use JSXXX::toWrapped() instead of toXXX() function.
+
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::getOrCreate):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::getOrCreate):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::webNotificationID):
+
+2014-09-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebContent crash in WebKit::WebPage::expandedRangeFromHandle
+        https://bugs.webkit.org/show_bug.cgi?id=136969
+
+        Reviewed by David Kilzer.
+
+        The crash was caused by m_currentBlockSelection and frame.selection().selection().toNormalizedRange()
+        both being null and the subsequent lines of code assuming currentRange to be not null.
+
+        Replace the assertion by an early exit since the range could be null here.
+
+        In the future, we should figure out if there are other things we need to do in addition
+        to checking the nullity when this race condition is hit.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::computeExpandAndShrinkThresholdsForHandle):
+
+2014-09-19  Dean Jackson  <dino@apple.com>
+
+        Multithreaded WebGL is a bad idea - remove it
+        https://bugs.webkit.org/show_bug.cgi?id=136964
+        <rdar://problem/18399858>
+
+        Reviewed by Brent Fulgham.
+
+        Remove the setting to allow multithreaded WebGL.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetMultithreadedWebGLEnabled): Deleted.
+        (WKPreferencesGetMultithreadedWebGLEnabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2014-09-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Provide a default argument for the most commonly used HitTestRequest variant
+        https://bugs.webkit.org/show_bug.cgi?id=136653
+
+        Reviewed by Darin Adler.
+
+        Make the default HitTestRequest flags be ReadOnly | Active | DisallowShadowContent
+        and change call sites using the default flags to use a HitTestRequest temporary.
+
+        * WebProcess/WebPage/ViewGestureGeometryCollector.cpp:
+        (WebKit::ViewGestureGeometryCollector::collectGeometryForSmartMagnificationGesture):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+
+2014-09-19  Daniel Bates  <dabates@apple.com>
+
+        Always assume internal SDK when building configuration Production
+        https://bugs.webkit.org/show_bug.cgi?id=136925
+        <rdar://problem/18362399>
+
+        Reviewed by Dan Bernstein.
+
+        As a side effect of this change we will always enable ENABLE_TOUCH_EVENTS, ENABLE_IOS_{GESTURE, TOUCH}_EVENTS,
+        and ENABLE_XSLT when either building configuration Production or building with the Internal SDK.
+
+        * Configurations/Base.xcconfig:
+
+2014-09-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the Mac Mavericks build. Only iOS cares about fencing.
+
+        * Platform/mac/LayerHostingContext.h:
+        * Platform/mac/LayerHostingContext.mm:
+
+2014-09-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Missing inspector files in the tarball
+        https://bugs.webkit.org/show_bug.cgi?id=136952
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Use APPEND instead of GLOB to add individual
+        and generated files to the list of inspector files.
+
+2014-09-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Webkitgtk 2.5.3: tarball contains APPLE LICENSE file - stating not distributable
+        https://bugs.webkit.org/show_bug.cgi?id=136632
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * PlatformGTK.cmake: Use only the icons from the gtk directory since they are free.
+
+2014-09-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] generate-inspector-gresource-manifest.py should receive the list of files from the makefile
+        https://bugs.webkit.org/show_bug.cgi?id=136943
+
+        Reviewed by Philippe Normand.
+
+        * PlatformGTK.cmake: Fix the inspector file list and pass it to
+        the generate-inspector-gresource-manifest.py script.
+
+2014-09-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Dot not allow to create delete-on-destroy GMainLoopSources
+        https://bugs.webkit.org/show_bug.cgi?id=136923
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Platform/gtk/WorkQueueGtk.cpp:
+        (WorkQueue::dispatch): Use GMainLoopSource::scheduleAndDeleteOnDestroy().
+        (WorkQueue::dispatchAfter): Use GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy().
+
+2014-09-18  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL][CoordinatedGraphics] Remove setBackgroundColor message
+        https://bugs.webkit.org/show_bug.cgi?id=136824
+
+        Reviewed by Gyuyoung Kim.
+
+        CoordinatedGraphics used setBackgroundColor() to draw the background of contents
+        although tiles are not ready.
+
+        This patch removes setBackgroundColor() and uses pageExtendedBackgroundColor()
+        which provides similar functionality.
+
+        * UIProcess/API/efl/EwkView.cpp:
+        Enables or disables WKPageSetBackgroundExtendsBeyondPage to use pageExtendedBackgroundColor()
+        (EwkView::EwkView):
+        (EwkView::setBackgroundColor):
+        * UIProcess/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebCore::CoordinatedGraphicsScene::CoordinatedGraphicsScene):
+        (WebCore::CoordinatedGraphicsScene::paintToCurrentGLContext): Passed pageExtendedBackgroundColor.
+        (WebCore::CoordinatedGraphicsScene::paintToGraphicsContext): Ditto.
+        (WebCore::CoordinatedGraphicsScene::setBackgroundColor): Deleted.
+        * UIProcess/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        (WebCore::CoordinatedGraphicsScene::setDrawsBackground): Deleted.
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp:
+        (WebKit::CoordinatedLayerTreeHostProxy::setBackgroundColor): Deleted.
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.h:
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.messages.in:
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::paintToCurrentGLContext):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::pageExtendedBackgroundColorDidChange):
+        Refactored to use const reference for the Color parameter.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/efl/WebViewEfl.cpp:
+        (WebKit::WebViewEfl::paintToCairoSurface):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::pageExtendedBackgroundColorDidChange):
+        Added PLATFORM(EFL) to pass PageExtendedBackgroundColorDidChange message.
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::setBackgroundColor): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/LayerTreeHost.h:
+        (WebKit::LayerTreeHost::setBackgroundColor): Deleted.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::mainFrameDidLayout):
+
+2014-09-18  Jeremy Jones  <jeremyj@apple.com>
+
+        Improve fullscreen video rotation animation.
+        https://bugs.webkit.org/show_bug.cgi?id=136870
+
+        Reviewed by Simon Fraser.
+
+        Remove WKCAContext from LayerHostingContext and use a fencePort to synchronize animation between processes.
+
+        * Platform/mac/LayerHostingContext.h: add setFencePort. Remove WKCAContext.
+        * Platform/mac/LayerHostingContext.mm:
+        (WebKit::LayerHostingContext::createForPort): Remove WKCAContext.
+        (WebKit::LayerHostingContext::createForExternalHostingProcess): ditto
+        (WebKit::LayerHostingContext::setRootLayer): ditto
+        (WebKit::LayerHostingContext::rootLayer): ditto
+        (WebKit::LayerHostingContext::contextID): ditto
+        (WebKit::LayerHostingContext::invalidate): ditto
+        (WebKit::LayerHostingContext::setColorSpace): ditto
+        (WebKit::LayerHostingContext::colorSpace): ditto
+        (WebKit::LayerHostingContext::setFencePort): added
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::setVideoLayerFrame): 
+        * WebProcess/ios/WebVideoFullscreenManager.h:
+        * WebProcess/ios/WebVideoFullscreenManager.messages.in: add fence port parameter
+        * WebProcess/ios/WebVideoFullscreenManager.mm: ditto
+        (WebKit::WebVideoFullscreenManager::didSetupFullscreen): ditto
+        (WebKit::WebVideoFullscreenManager::setVideoLayerFrameFenced): ditto
+
+2014-09-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid divide by zero when we get an empty rect while snapshotting a node
+        https://bugs.webkit.org/show_bug.cgi?id=136932
+        rdar://problem/18383473
+
+        Reviewed by Dean Jackson.
+        
+        renderer()->paintingRootRect() can return an empty rect for some inline configurations,
+        for example an <a> containing a floated <span>
+        
+        When this occurs, avoid a divide by zero and return a null snapshot image.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::snapshotNode):
+
+2014-09-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Incorrect pending API request URL when loading an HTML string
+        https://bugs.webkit.org/show_bug.cgi?id=136913
+
+        Reviewed by Alexey Proskuryakov.
+
+        Use about:blank as pending API request URL when the given base URL
+        is empty, otherwise use the given base URL.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadHTMLString):
+
+2014-09-18  Tim Horton  <timothy_horton@apple.com>
+
+        Occasional unreproducible crashes in MessageReceiverMap::dispatchMessage
+        https://bugs.webkit.org/show_bug.cgi?id=136909
+        <rdar://problem/17758325>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView dealloc]):
+        We're seeing some messages dispatched on the WebContext that end up
+        attempting to call dispatchMessage on a freed MessageReceiver.
+        The WKRemoteObjectRegistry message receiver is added to the WebContext
+        message receiver map, but never removed, despite the WebContext easily
+        outliving the WKWebView that owns the remote object registry.
+
+2014-09-17  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [EFL][WK2] Use the correct enum for control key in Ewk_Event_Modifiers in ewk_navigation_policy_decision.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=136740
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/efl/ewk_navigation_policy_decision.cpp:
+        (toEwkEventModifiers):
+
+2014-09-17  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r173695.
+
+        Broke building third-party Legacy WebKit apps; will
+        investigate offline
+
+        Reverted changeset:
+
+        "[iOS] Make WebCore build with public iOS SDK"
+        https://bugs.webkit.org/show_bug.cgi?id=136487
+        http://trac.webkit.org/changeset/173695
+
+2014-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix an issue that caused video playback to not always use high resolution streams
+        https://bugs.webkit.org/show_bug.cgi?id=136879
+        rdar://problem/18316542
+
+        Reviewed by Eric Carlson.
+        
+        The underlying video framework expects to be able to use -[CALayer convertRect:toLayer:nil] on
+        the video layer to obtain information about the display resolution of the video,
+        including the device scale factor. This doesn't work for layers in the web process,
+        which are remotely hosted into the UI process.
+        
+        For now, use a workaround which involves putting a scale transform equivalent to
+        the device scale factor on the web process layer, and the inverse scale on the 
+        hosting layer in the UI process.
+        
+        We have to do this in two places, for in-page video, and for fullscreen video.
+
+        * Shared/mac/RemoteLayerTreeTransaction.h: Add hostingDeviceScaleFactor to the LayerCreation
+        properties.
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::LayerCreationProperties::LayerCreationProperties):
+        (WebKit::RemoteLayerTreeTransaction::LayerCreationProperties::encode):
+        (WebKit::RemoteLayerTreeTransaction::LayerCreationProperties::decode):
+        * UIProcess/ios/RemoteLayerTreeHostIOS.mm:
+        (-[WKRemoteView initWithFrame:contextID:hostingDeviceScaleFactor:]): Set the inverse scale
+        transform on the layer.
+        (WebKit::RemoteLayerTreeHost::createLayer):
+        (-[WKRemoteView initWithFrame:contextID:]): Deleted.
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.h:
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.messages.in:
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::setupFullscreenWithID):
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        (WebKit::PlatformCALayerRemoteCustom::PlatformCALayerRemoteCustom):
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.h:
+        (WebKit::RemoteLayerTreeContext::deviceScaleFactor):
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.mm:
+        (WebKit::RemoteLayerTreeContext::layerWasCreated):
+        * WebProcess/ios/WebVideoFullscreenManager.mm:
+        (WebKit::WebVideoFullscreenManager::enterFullscreenForNode):
+        (WebKit::WebVideoFullscreenManager::didSetupFullscreen):
+
+2014-09-17  Gavin Barraclough  <baraclough@apple.com>
+
+        Aways have a PageThrottler (sometimes have a UserActivity::Impl)
+        https://bugs.webkit.org/show_bug.cgi?id=136892
+
+        Reviewed by Geoffrey Garen.
+
+        Some instances of Page have a PageThrottler to track activity on the Page, and some do not.
+        (Specifically, those created from WebPage in WK2 do, those related to WK1, SVG & inspector do not).
+
+        We do this for three reasons:
+            * We do not need to take AppNap assertions on WK1.
+            * Some Pages do not track their visibility correctly, and would always claim to be visible.
+            * Page VisibilityState is not set until after construction, so if we instantiate
+
+        Creating the entire PageThrottler lazily has the drawback that we have to check for its existence at
+        numerous points throughout the code, and we'll miss activity that occurs between the Page being created
+        & the PageThrottler added to it (really a theoretical problem right now, since they're currently always
+        created pretty much back to back).
+
+        Instead, Page should always have a PageThrottler, & instead make the UserActivity::Impl on the
+        PageThrottler be added later.
+
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        (WebKit::NPRuntimeObjectMap::evaluate):
+            - createPageThrottler -> enablePageThrottler
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        (WebKit::WebPage::mouseEvent):
+        (WebKit::WebPage::wheelEvent):
+        (WebKit::WebPage::keyEvent):
+            - Page::pageThrottler now returns a reference rather than a pointer
+
+2014-09-17  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebCore build with public iOS SDK
+        https://bugs.webkit.org/show_bug.cgi?id=136487
+
+        Reviewed by David Kilzer.
+
+        Update WebKit2 source files to include the wrapper SPI headers instead of the corresponding
+        actual SPI header(s).
+
+        * Platform/mac/SharedMemoryMac.cpp:
+        * Shared/ios/NativeWebTouchEventIOS.mm:
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/ios/WKPDFPageNumberIndicator.mm:
+        * UIProcess/ios/WKScrollView.mm:
+        * UIProcess/ios/WebMemoryPressureHandlerIOS.mm:
+        * UIProcess/ios/forms/WKAirPlayRoutePicker.mm:
+        * WebProcess/WebPage/WebPage.cpp:
+
+2014-09-17  Gavin Barraclough  <barraclough@apple.com>
+
+        DOM timer throttling for hidden plugins
+        https://bugs.webkit.org/show_bug.cgi?id=136197
+
+        Reviewed by Geoff Garen & Andreas Kling.
+
+        For non-visible web pages we slow timers (since they can't be driving animations, etc).
+        We should do the same for plugins.
+
+        * PluginProcess/WebProcessConnection.cpp:
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+            - remove now redundant includes.
+        * WebProcess/Plugins/PluginView.h:
+            - audioHardwareActivity is now virtual, override.
+
+2014-09-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebKitWebView::load-failed-with-tls-errors should receive the failing URI instead of a host
+        https://bugs.webkit.org/show_bug.cgi?id=136889
+
+        Reviewed by Gustavo Noronha Silva.
+
+        We were passing a host for two different reasons, first because
+        it's more convenient to add an exception with
+        webkit_web_context_allow_tls_certificate_for_host(), but also
+        because we were assuming the active URI is the failing URI in case
+        of failure. This assumption is correct because our current code
+        does that, but I'm not sure we are doing it on purpose. That
+        behaviour is not documented anywhere and it's not what WebKit2 does
+        internaly.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkit_web_view_class_init):
+        (webkitWebViewLoadFailedWithTLSErrors):
+        * UIProcess/API/gtk/WebKitWebView.h:
+
+2014-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Fix layering violations in PasteboardGtk
+        https://bugs.webkit.org/show_bug.cgi?id=136802
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        (WebKit::WebEditorClient::updateGlobalSelection): Use new API to
+        update the global selection.
+
+2014-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        DragData should not depend on Clipboard, DocumentFragment, and Document
+        https://bugs.webkit.org/show_bug.cgi?id=21358
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::performDragControllerAction): Update to API
+        change in DragData::asURL().
+
+2014-09-16  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add iOS SDK name and version suffix to WebKitSystemInterface debug/release product name
+        https://bugs.webkit.org/show_bug.cgi?id=136862
+
+        Reviewed by David Kilzer.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2014-09-16  Enrica Casucci  <enrica@apple.com>
+
+        Remove PLATFORM(IOS) from WebCore/editing (Part 3).
+        https://bugs.webkit.org/show_bug.cgi?id=136474
+
+        Reviewed by Benjamin Poulain.
+
+        This is the updated version of the patch that was landed in r173340.
+        This patch removes the use of PLATFORM(IOS) from TextAffinity.h
+        and removes the assumption that EAffinity values match NSSelectionAffinity
+        values. It also removes the includes in TextAffinity.h, creating the need to
+        include explicitly the files when necessary.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+        * WebProcess/WebPage/WKAccessibilityWebPageObjectIOS.mm:
+
+2014-09-16  Dan Bernstein  <mitz@apple.com>
+
+        Standardized the return type of a delegate method.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h: Changed a return type from bool to BOOL.
+
+2014-09-16  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Typo in  webkit_security_manager_register_uri_scheme_as_empty_document documentation
+        https://bugs.webkit.org/show_bug.cgi?id=136852
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitSecurityManager.cpp:
+
+2014-09-13  Gavin Barraclough  <baraclough@apple.com>
+
+        Should call [BKSProcessAssertion invalidate]
+        https://bugs.webkit.org/show_bug.cgi?id=136804
+        <rdar://problem/17897780>
+
+        Reviewed by Darin Adler.
+
+        We should invalidate the process assertion before releasing it. Fortunately this is really easy,
+        since there is a simple 1:1 relationship with ProcessAssertion, with their lifetimes matching exactly.
+
+        * UIProcess/ProcessAssertion.cpp:
+        (WebKit::ProcessAssertion::~ProcessAssertion):
+            - no-op implementation.
+        * UIProcess/ProcessAssertion.h:
+            - added destructor.
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (WebKit::ProcessAssertion::~ProcessAssertion):
+            - destructor invalidates the BKSProcessAssertion.
+
 2014-09-15  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         REGRESSION(r170243): [EFL][WK2] Dirty image is shown when new page is loading on fixed layout 

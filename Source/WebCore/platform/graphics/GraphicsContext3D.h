@@ -445,7 +445,6 @@ public:
             , noExtensions(false)
             , shareResources(true)
             , preferDiscreteGPU(false)
-            , multithreaded(false)
             , forceSoftwareRenderer(false)
         {
         }
@@ -459,7 +458,6 @@ public:
         bool noExtensions;
         bool shareResources;
         bool preferDiscreteGPU;
-        bool multithreaded;
         bool forceSoftwareRenderer;
     };
 

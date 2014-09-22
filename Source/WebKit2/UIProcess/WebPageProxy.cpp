@@ -792,8 +792,7 @@ uint64_t WebPageProxy::loadHTMLString(const String& htmlString, const String& ba
 
     auto transaction = m_pageLoadState.transaction();
 
-    String pendingAPIRequestURL = baseURL.isEmpty() ? baseURL : ASCIILiteral("about:blank");
-    m_pageLoadState.setPendingAPIRequestURL(transaction, pendingAPIRequestURL);
+    m_pageLoadState.setPendingAPIRequestURL(transaction, !baseURL.isEmpty() ? baseURL : ASCIILiteral("about:blank"));
 
     if (!isValid())
         reattachToWebProcess();
@@ -1369,7 +1368,7 @@ void WebPageProxy::performDragControllerAction(DragControllerAction action, Drag
     UNUSED_PARAM(sandboxExtensionHandle);
     UNUSED_PARAM(sandboxExtensionsForUpload);
 
-    String url = dragData.asURL(nullptr);
+    String url = dragData.asURL();
     if (!url.isEmpty())
         m_process->assumeReadAccessToBaseURL(url);
     m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData), m_pageID);
@@ -4764,7 +4763,7 @@ void WebPageProxy::didChangePageCount(unsigned pageCount)
     m_pageCount = pageCount;
 }
 
-void WebPageProxy::pageExtendedBackgroundColorDidChange(Color backgroundColor)
+void WebPageProxy::pageExtendedBackgroundColorDidChange(const Color& backgroundColor)
 {
     m_pageExtendedBackgroundColor = backgroundColor;
 }

@@ -1,3 +1,225 @@
+2014-09-21  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: unlocalized 'many' string in type profiler inline bubble
+        https://bugs.webkit.org/show_bug.cgi?id=136980
+
+        Reviewed by Timothy Hatcher.
+
+        Generate the localizable string for the type profiler's "many" inline bubble.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/TypeTokenView.js:
+
+2014-09-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Option+Click on CSS url(...) should jump to resource view
+        https://bugs.webkit.org/show_bug.cgi?id=136965
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        When parsing CSS url(...) tokens, the contents of url(...)
+        are a "string" type, not "atom".
+
+2014-09-19  Daniel Bates  <dabates@apple.com>
+
+        Always assume internal SDK when building configuration Production
+        https://bugs.webkit.org/show_bug.cgi?id=136925
+        <rdar://problem/18362399>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig: Also move #include of HaveInternalSDK.xcconfig from DebugRelease.xcconfig
+        to Base.xcconfig so as to be consistent with the format of other Base.xcconfig/DebugRelease.xcconfig files
+        (e.g. Source/WebCore/Configurations/Base.xcconfig and Source/WebCore/Configurations/DebugRelease.xcconfig).
+
+2014-09-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Webkitgtk 2.5.3: tarball contains APPLE LICENSE file - stating not distributable
+        https://bugs.webkit.org/show_bug.cgi?id=136632
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add free icons for the GTK port. These icons are from the GNOME
+        project, some of them adapted by Andres Gomez for the inspector.
+        This is only a subset of the icons, since we still don't have a
+        free replacement for all of them, but at least it makes the
+        inspector kind of usable.
+
+        * UserInterface/Images/gtk/AUTHORS: Added.
+        * UserInterface/Images/gtk/BackArrow.svg: Added.
+        * UserInterface/Images/gtk/BreakpointActionAdd.svg: Added.
+        * UserInterface/Images/gtk/BreakpointActionRemove.svg: Added.
+        * UserInterface/Images/gtk/BreakpointButton.svg: Added.
+        * UserInterface/Images/gtk/BreakpointInactiveButton.svg: Added.
+        * UserInterface/Images/gtk/Breakpoints.svg: Added.
+        * UserInterface/Images/gtk/COPYING: Added.
+        * UserInterface/Images/gtk/Close.svg: Added.
+        * UserInterface/Images/gtk/CloseWhite.svg: Added.
+        * UserInterface/Images/gtk/ContentFlow.svg: Added.
+        * UserInterface/Images/gtk/Crosshair.svg: Added.
+        * UserInterface/Images/gtk/DOMCharacterData.svg: Added.
+        * UserInterface/Images/gtk/DOMComment.svg: Added.
+        * UserInterface/Images/gtk/DOMDocument.svg: Added.
+        * UserInterface/Images/gtk/DOMDocumentType.svg: Added.
+        * UserInterface/Images/gtk/DOMElement.svg: Added.
+        * UserInterface/Images/gtk/DOMNode.svg: Added.
+        * UserInterface/Images/gtk/DOMTextNode.svg: Added.
+        * UserInterface/Images/gtk/DOMTree.svg: Added.
+        * UserInterface/Images/gtk/DisclosureTriangleSmallClosed.svg: Added.
+        * UserInterface/Images/gtk/DisclosureTriangleSmallOpen.svg: Added.
+        * UserInterface/Images/gtk/DisclosureTriangleTinyClosed.svg: Added.
+        * UserInterface/Images/gtk/DisclosureTriangleTinyOpen.svg: Added.
+        * UserInterface/Images/gtk/DockBottom.svg: Added.
+        * UserInterface/Images/gtk/DockRight.svg: Added.
+        * UserInterface/Images/gtk/DocumentCSS.png: Added.
+        * UserInterface/Images/gtk/DocumentCSS@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentFont.png: Added.
+        * UserInterface/Images/gtk/DocumentFont@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentGeneric.png: Added.
+        * UserInterface/Images/gtk/DocumentGeneric@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentImage.png: Added.
+        * UserInterface/Images/gtk/DocumentImage@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentJS.png: Added.
+        * UserInterface/Images/gtk/DocumentJS@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentMarkup.png: Added.
+        * UserInterface/Images/gtk/DocumentMarkup@2x.png: Added.
+        * UserInterface/Images/gtk/DownloadArrow.svg: Added.
+        * UserInterface/Images/gtk/Error.svg: Added.
+        * UserInterface/Images/gtk/Errors.svg: Added.
+        * UserInterface/Images/gtk/ErrorsEnabled.svg: Added.
+        * UserInterface/Images/gtk/EventListener.svg: Added.
+        * UserInterface/Images/gtk/Exception.svg: Added.
+        * UserInterface/Images/gtk/FilterFieldGlyph.svg: Added.
+        * UserInterface/Images/gtk/FolderGeneric.png: Added.
+        * UserInterface/Images/gtk/FolderGeneric@2x.png: Added.
+        * UserInterface/Images/gtk/ForwardArrow.svg: Added.
+        * UserInterface/Images/gtk/Function.svg: Added.
+        * UserInterface/Images/gtk/GoToArrow.svg: Added.
+        * UserInterface/Images/gtk/Resources.svg: Added.
+        * UserInterface/Images/gtk/SortIndicatorDownArrow.svg: Added.
+        * UserInterface/Images/gtk/SortIndicatorUpArrow.svg: Added.
+        * UserInterface/Images/gtk/UpDownArrows.svg: Added.
+
+2014-09-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unnecessary prefixes in WebInspectorUI CSS
+        https://bugs.webkit.org/show_bug.cgi?id=136905
+
+        Reviewed by Timothy Hatcher.
+
+        Removed vendor prefixes from justify-content and a few lingering
+        occurances with transition, box-shadow, and display.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        * UserInterface/Views/BreakpointTreeElement.css:
+        * UserInterface/Views/ButtonNavigationItem.css:
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        * UserInterface/Views/ControlToolbarItem.css:
+        * UserInterface/Views/DebuggerDashboardView.css:
+        * UserInterface/Views/DefaultDashboardView.css:
+        * UserInterface/Views/FontResourceContentView.css:
+        * UserInterface/Views/ImageResourceContentView.css:
+        * UserInterface/Views/LayerTreeSidebarPanel.css:
+        * UserInterface/Views/Main.css:
+        * UserInterface/Views/NavigationBar.css:
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        * UserInterface/Views/Popover.css:
+        * UserInterface/Views/ReplayDashboardView.css:
+        * UserInterface/Views/Toolbar.css:
+
+2014-09-17  Dean Jackson  <dino@apple.com>
+
+        WebInpector can use unprefixed flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=136899
+
+        Reviewed by Joseph Pecoraro.
+
+        Now the inspector UI itself can use a non-prefixed flexbox. This was
+        a basic search and replace for the following properties:
+        - align-content
+        - align-items
+        - align-self
+        - flex-basis
+        - flex-direction
+        - flex-wrap
+        - flex-grow
+        - flex-shrink
+        - flex
+        - flex-flow
+        - justify
+
+        * UserInterface/Views/ButtonToolbarItem.css:
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        * UserInterface/Views/ContentBrowser.css:
+        * UserInterface/Views/ControlToolbarItem.css:
+        * UserInterface/Views/DebuggerDashboardView.css:
+        * UserInterface/Views/DefaultDashboardView.css:
+        * UserInterface/Views/FilterBar.css:
+        * UserInterface/Views/FlexibleSpaceNavigationItem.css:
+        * UserInterface/Views/FontResourceContentView.css:
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        * UserInterface/Views/ImageResourceContentView.css:
+        * UserInterface/Views/LayerTreeSidebarPanel.css:
+        * UserInterface/Views/LogContentView.css:
+        * UserInterface/Views/Main.css:
+        * UserInterface/Views/NavigationBar.css:
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        * UserInterface/Views/Popover.css:
+        * UserInterface/Views/QuickConsole.css:
+        * UserInterface/Views/ReplayDashboardView.css:
+        * UserInterface/Views/ResourceSidebarPanel.css:
+        * UserInterface/Views/Toolbar.css:
+
+2014-09-16  Dean Jackson  <dino@apple.com>
+
+        Add unprefixed flexbox display values and property names/values
+        https://bugs.webkit.org/show_bug.cgi?id=136880
+        <rdar://problem/18361137>
+
+        Reviewed by Benjamin Poulain with some extra comments by Joseph Pecoraro.
+
+        * UserInterface/Models/CSSKeywordCompletions.js: Switch to all the unprefixed
+        flex properties.
+
+2014-09-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Versioned Inspector protocol JSON files for iOS 8.0
+        https://bugs.webkit.org/show_bug.cgi?id=136873
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/update-LegacyInspectorBackendCommands.rb:
+        * UserInterface/Protocol/Legacy/8.0/InspectorJSBackendCommands.js: Added.
+        * UserInterface/Protocol/Legacy/8.0/InspectorWebBackendCommands.js: Added.
+        * Versions/InspectorJS-iOS-8.0.json: Added.
+        * Versions/InspectorWeb-iOS-8.0.json: Added.
+
+2014-09-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix ESLint no-extra-bind warnings
+        https://bugs.webkit.org/show_bug.cgi?id=136659
+
+        Reviewed by Timothy Hatcher.
+
+        * .eslintrc:
+        * UserInterface/Controllers/LayerTreeManager.js:
+        (WebInspector.LayerTreeManager.prototype.layersForNode):
+
+2014-09-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: mouse drifts away from resizer when resizing docked inspector
+        https://bugs.webkit.org/show_bug.cgi?id=22263
+
+        Reviewed by Joseph Pecoraro.
+
+        Modified the docked resizer dragging logic to record the initial mouse down position relative to the
+        resizer client rectangle. Added check while dragging the resizer to ensure that the cursor is positioned
+        correctly with respect to the resize direction before updating the attached window dimension.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._dockedResizerMouseDown.dockedResizerDrag):
+
 2014-09-11  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Fix assert in QuickConsole - main frame execution context path component

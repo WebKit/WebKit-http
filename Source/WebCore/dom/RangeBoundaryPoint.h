@@ -95,7 +95,7 @@ inline void RangeBoundaryPoint::ensureOffsetIsValid() const
         return;
 
     ASSERT(m_childBeforeBoundary);
-    m_offsetInContainer = m_childBeforeBoundary->nodeIndex() + 1;
+    m_offsetInContainer = m_childBeforeBoundary->computeNodeIndex() + 1;
 }
 
 inline const Position RangeBoundaryPoint::toPosition() const
@@ -121,7 +121,7 @@ inline void RangeBoundaryPoint::set(PassRefPtr<Node> container, int offset, Node
 {
     ASSERT(container);
     ASSERT(offset >= 0);
-    ASSERT(childBefore == (offset ? container->childNode(offset - 1) : 0));
+    ASSERT(childBefore == (offset ? container->traverseToChildAt(offset - 1) : 0));
     m_containerNode = container;
     m_offsetInContainer = offset;
     m_childBeforeBoundary = childBefore;

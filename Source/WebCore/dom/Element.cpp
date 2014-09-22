@@ -1305,7 +1305,7 @@ URL Element::baseURI() const
 
 const AtomicString& Element::imageSourceURL() const
 {
-    return getAttribute(srcAttr);
+    return fastGetAttribute(srcAttr);
 }
 
 bool Element::rendererIsNeeded(const RenderStyle& style)
@@ -2045,7 +2045,7 @@ String Element::title() const
 
 const AtomicString& Element::pseudo() const
 {
-    return getAttribute(pseudoAttr);
+    return fastGetAttribute(pseudoAttr);
 }
 
 void Element::setPseudo(const AtomicString& value)
@@ -2326,20 +2326,20 @@ bool Element::shouldAppearIndeterminate() const
     return false;
 }
 
-DOMTokenList* Element::classList()
+DOMTokenList& Element::classList()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.classList())
         data.setClassList(std::make_unique<ClassList>(*this));
-    return data.classList();
+    return *data.classList();
 }
 
-DatasetDOMStringMap* Element::dataset()
+DatasetDOMStringMap& Element::dataset()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.dataset())
         data.setDataset(std::make_unique<DatasetDOMStringMap>(*this));
-    return data.dataset();
+    return *data.dataset();
 }
 
 URL Element::getURLAttribute(const QualifiedName& name) const
@@ -2455,7 +2455,7 @@ void Element::requestPointerLock()
 
 SpellcheckAttributeState Element::spellcheckAttributeState() const
 {
-    const AtomicString& value = getAttribute(HTMLNames::spellcheckAttr);
+    const AtomicString& value = fastGetAttribute(HTMLNames::spellcheckAttr);
     if (value == nullAtom)
         return SpellcheckAttributeDefault;
     if (equalIgnoringCase(value, "true") || equalIgnoringCase(value, ""))
@@ -2606,16 +2606,16 @@ void Element::updateNameForDocument(HTMLDocument& document, const AtomicString& 
 {
     ASSERT(oldName != newName);
 
-    if (WindowNameCollection::nodeMatchesIfNameAttributeMatch(this)) {
-        const AtomicString& id = WindowNameCollection::nodeMatchesIfIdAttributeMatch(this) ? getIdAttribute() : nullAtom;
+    if (WindowNameCollection::elementMatchesIfNameAttributeMatch(*this)) {
+        const AtomicString& id = WindowNameCollection::elementMatchesIfIdAttributeMatch(*this) ? getIdAttribute() : nullAtom;
         if (!oldName.isEmpty() && oldName != id)
             document.removeWindowNamedItem(*oldName.impl(), *this);
         if (!newName.isEmpty() && newName != id)
             document.addWindowNamedItem(*newName.impl(), *this);
     }
 
-    if (DocumentNameCollection::nodeMatchesIfNameAttributeMatch(this)) {
-        const AtomicString& id = DocumentNameCollection::nodeMatchesIfIdAttributeMatch(this) ? getIdAttribute() : nullAtom;
+    if (DocumentNameCollection::elementMatchesIfNameAttributeMatch(*this)) {
+        const AtomicString& id = DocumentNameCollection::elementMatchesIfIdAttributeMatch(*this) ? getIdAttribute() : nullAtom;
         if (!oldName.isEmpty() && oldName != id)
             document.removeDocumentNamedItem(*oldName.impl(), *this);
         if (!newName.isEmpty() && newName != id)
@@ -2656,16 +2656,16 @@ void Element::updateIdForDocument(HTMLDocument& document, const AtomicString& ol
     ASSERT(inDocument());
     ASSERT(oldId != newId);
 
-    if (WindowNameCollection::nodeMatchesIfIdAttributeMatch(this)) {
-        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && WindowNameCollection::nodeMatchesIfNameAttributeMatch(this) ? getNameAttribute() : nullAtom;
+    if (WindowNameCollection::elementMatchesIfIdAttributeMatch(*this)) {
+        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && WindowNameCollection::elementMatchesIfNameAttributeMatch(*this) ? getNameAttribute() : nullAtom;
         if (!oldId.isEmpty() && oldId != name)
             document.removeWindowNamedItem(*oldId.impl(), *this);
         if (!newId.isEmpty() && newId != name)
             document.addWindowNamedItem(*newId.impl(), *this);
     }
 
-    if (DocumentNameCollection::nodeMatchesIfIdAttributeMatch(this)) {
-        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && DocumentNameCollection::nodeMatchesIfNameAttributeMatch(this) ? getNameAttribute() : nullAtom;
+    if (DocumentNameCollection::elementMatchesIfIdAttributeMatch(*this)) {
+        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && DocumentNameCollection::elementMatchesIfNameAttributeMatch(*this) ? getNameAttribute() : nullAtom;
         if (!oldId.isEmpty() && oldId != name)
             document.removeDocumentNamedItem(*oldId.impl(), *this);
         if (!newId.isEmpty() && newId != name)

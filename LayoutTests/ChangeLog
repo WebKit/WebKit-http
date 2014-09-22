@@ -1,3 +1,381 @@
+2014-09-19  Brent Fulgham  <bfulgham@apple.com>
+
+        Latching in iframes is not working as expected
+        https://bugs.webkit.org/show_bug.cgi?id=136729
+        <rdar://problem/18370549>
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac/fast/scrolling/scroll-iframe-webkit1-latching-bug-expected.txt: Added.
+        * platform/mac/fast/scrolling/scroll-iframe-webkit1-latching-bug.html: Added.
+
+2014-09-19  Jer Noble  <jer.noble@apple.com>
+
+        Videos with controls enabled never receive 'dragstart' events.
+        https://bugs.webkit.org/show_bug.cgi?id=136837
+
+        Reviewed by Sam Weinig.
+
+        * media/video-controls-drag-expected.txt: Added.
+        * media/video-controls-drag.html: Added.
+
+2014-09-19  Diego Pino Garcia  <dpino@igalia.com>
+
+        Simple ES6 feature:String prototype additions
+        https://bugs.webkit.org/show_bug.cgi?id=131704
+
+        Reviewed by Darin Adler.
+
+        Test ES6 functions: string.startsWith(), string.endsWith() and
+        string.contains().
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/string-contains.js: Added.
+        (stringToSearchIn.toString):
+        (startOffset.valueOf):
+        (matchString.toString):
+        (endOffset.valueOf):
+        * js/string-contains-expected.txt: Added.
+        * js/string-contains.html: Added.
+
+2014-09-19  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        WTR and DRT didReceiveAuthenticationChallengeInFrame should print messages consistently
+        https://bugs.webkit.org/show_bug.cgi?id=136847
+
+        Updated WK2 expected.txt files according new logging of didReceiveAuthenticationChallengeInFrame.
+        Factorized efl/gtk platform specific expected files as WK2 expected files. 
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/gtk/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt: Removed.
+        * platform/gtk/http/tests/loading/basic-credentials-sent-automatically-expected.txt: Removed.
+        * platform/gtk/http/tests/media/video-auth-expected.txt: Removed.
+        * platform/gtk/http/tests/misc/401-alternative-content-expected.txt: Removed.
+        * platform/gtk/http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt: Removed.
+        * platform/gtk/http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt: Removed.
+        * platform/gtk/http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt: Removed.
+        * platform/gtk/http/tests/security/401-logout/401-logout-expected.txt: Removed.
+        * platform/gtk/http/tests/xmlhttprequest/failed-auth-expected.txt: Removed.
+        * platform/gtk/http/tests/xmlhttprequest/remember-bad-password-expected.txt: Removed.
+        * platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt:
+        * platform/wk2/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt:
+        * platform/wk2/http/tests/loading/basic-credentials-sent-automatically-expected.txt:
+        * platform/wk2/http/tests/media/video-auth-expected.txt: Renamed from LayoutTests/platform/efl/http/tests/media/video-auth-expected.txt.
+        * platform/wk2/http/tests/misc/401-alternative-content-expected.txt:
+        * platform/wk2/http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt:
+        * platform/wk2/http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt:
+        * platform/wk2/http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt:
+        * platform/wk2/http/tests/security/401-logout/401-logout-expected.txt:
+        * platform/wk2/http/tests/xmlhttprequest/failed-auth-expected.txt:
+        * platform/wk2/http/tests/xmlhttprequest/remember-bad-password-expected.txt:
+
+2014-09-18  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r168921): SVG elements may be unnecessarily rebuilt
+        https://bugs.webkit.org/show_bug.cgi?id=136373
+
+        Reviewed by David Kilzer.
+
+        Add a test to ensure that we don't rebuild a SVG element that will be removed from the document.
+
+        * svg/custom/remove-subtree-including-use-with-child-textpath-that-references-earlier-path-expected.txt: Added.
+        * svg/custom/remove-subtree-including-use-with-child-textpath-that-references-earlier-path.html: Added.
+
+2014-09-18  Benjamin Poulain  <bpoulain@apple.com>
+
+        CSS JIT: The backtracking register can be ignored from the minimumRegisterRequirements
+        https://bugs.webkit.org/show_bug.cgi?id=136906
+        rdar://problem/18368294
+
+        Reviewed by Darin Adler.
+
+        * fast/selectors/nth-child-with-backtracking-expected.txt:
+        * fast/selectors/nth-child-with-backtracking.html:
+        The use case is well covered by existing tests. This is updating the backtracking test
+        with a simpler selector similar to the one in the bug report.
+
+2014-09-18  Roger Fong  <roger_fong@apple.com>
+
+        Don’t skip all the media tests on Windows.
+
+        * platform/win/TestExpectations:
+
+2014-09-18  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Windows rebaselining to account for subpixel layout Part 3.
+
+        * platform/win/css1/box_properties/acid_test-expected.txt: Added.
+        * platform/win/fast/block/margin-collapse: Added.
+        * platform/win/fast/block/margin-collapse/103-expected.txt: Added.
+        * platform/win/fast/css/empty-pseudo-class-expected.txt:
+        * platform/win/fast/css/first-child-pseudo-class-expected.txt:
+        * platform/win/fast/css/last-child-pseudo-class-expected.txt:
+        * platform/win/fast/css/only-child-pseudo-class-expected.txt:
+        * platform/win/fast/forms/basic-inputs-expected.txt: Added.
+        * platform/win/fast/forms/file/file-input-direction-expected.txt:
+        * platform/win/fast/forms/formmove-expected.txt: Added.
+        * platform/win/fast/forms/formmove2-expected.txt: Added.
+        * platform/win/fast/repaint/reflection-redraw-expected.txt:
+        * platform/win/fast/replaced/width100percent-button-expected.txt:
+        * platform/win/fast/ruby/bopomofo-expected.txt: Added.
+        * platform/win/fast/ruby/bopomofo-letter-spacing-expected.txt: Added.
+        * platform/win/fast/ruby/bopomofo-rl-expected.txt: Added.
+        * platform/win/fast/table/multiple-captions-display-expected.txt:
+
+2014-09-17  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed rebaselining of some failing JS tests.
+
+        * platform/win/js/dom/deep-recursion-test-expected.txt: Added.
+        * platform/win/js/dom/global-constructors-attributes-shared-worker-expected.txt:
+
+2014-09-17  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Use a power-of-2 image size instead so that WebGL tests won’t complain.
+
+        * fast/canvas/image-potential-subsample.html:
+        * fast/canvas/resources/image-6400x6400.jpg: Copied from fast/canvas/resources/image-8000x8000.jpg.
+        * fast/canvas/resources/image-8000x8000.jpg: Removed.
+        * fast/canvas/webgl/resources/tex-image-and-sub-image-2d-with-potentially-subsampled-image.js:
+        (.init):
+
+2014-09-17  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Windows rebaselining to account for subpixel layout Part 2.
+
+        * platform/win/editing/apply-style-iframe-crash-expected.txt: Added.
+        * platform/win/editing/selection/move-left-right-expected.txt:
+        * platform/win/fast/table/dynamic-caption-add-remove-before-child-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug4527-expected.txt: Added.
+        * platform/win/tables/mozilla/marvin/body_col-expected.txt:
+        * platform/win/tables/mozilla/marvin/x_th_valign_baseline-expected.txt:
+        * platform/win/tables/mozilla/other/body_col-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/core: Added.
+        * platform/win/tables/mozilla_expected_failures/core/captions1-expected.txt: Added.
+        * platform/win/tables/mozilla_expected_failures/core/captions2-expected.txt: Added.
+
+2014-09-17  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed gardening. Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
+
+        * platform/win/TestExpectations: Tests sometimes crash or timeout in addition to just failing.
+
+2014-09-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add parsing for :nth-child(An+B of selector)
+        https://bugs.webkit.org/show_bug.cgi?id=136845
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/parsing-css-nth-child-of-expected.txt: Added.
+        * fast/css/parsing-css-nth-child-of.html: Added.
+        Two new tests to cover the new syntax.
+
+        * fast/css/css-selector-text-expected.txt:
+        * fast/css/css-selector-text.html:
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+        The usual tests for CSS OM.
+
+2014-09-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        CSS value in whitespace-separated list attribute selector (~=) mishandles tab/newline/etc.
+        https://bugs.webkit.org/show_bug.cgi?id=136807
+
+        Reviewed by Antti Koivisto.
+
+        * fast/selectors/attr-list-01-expected.html: Added.
+        * fast/selectors/attr-list-01.html: Added.
+        This test is from a similar fix from Opera for the blink fork.
+        Review URL: https://chromiumcodereview.appspot.com/14980012
+        No other part of that patch is included.
+
+        * fast/selectors/attribute-list-with-whitespace-in-selector-expected.txt: Added.
+        * fast/selectors/attribute-list-with-whitespace-in-selector.html: Added.
+        Test whitespace characters in the selector itself.
+
+        * fast/selectors/attribute-list-with-whitespace-in-value-expected.txt: Added.
+        * fast/selectors/attribute-list-with-whitespace-in-value.html: Added.
+        Test whitespace characters in the attribute value.
+
+2014-09-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        filterRootById accidentally clears inAdjacentChain flag
+        https://bugs.webkit.org/show_bug.cgi?id=136851
+
+        Reviewed by Benjamin Poulain.
+
+        When SubSelector comes, `inAdjacentChain` flag is cleared to false.
+        So for example, `document.querySelector("span#id + ok")` doesn't work correctly.
+        In this patch, we handles SubSelector relation correctly; don't change `inAdjacentChain` flag
+        to filter the right search root node.
+
+        * fast/selectors/filter-root-node-with-selector-contains-adjacents-expected.txt: Added.
+        * fast/selectors/filter-root-node-with-selector-contains-adjacents.html: Added.
+
+2014-09-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Promise: Drop Promise.cast
+        https://bugs.webkit.org/show_bug.cgi?id=136222
+
+        Reviewed by Sam Weinig.
+
+        Promise.cast is dropped and Promise.resolve is replaced with old Promise.cast.
+
+        * js/dom/Promise-static-cast-expected.txt: Removed.
+        * js/dom/Promise-static-cast.html: Removed.
+        * js/dom/Promise-static-resolve-expected.txt:
+        * js/dom/Promise-static-resolve.html:
+        * js/dom/Promise-types-expected.txt:
+        * js/dom/Promise-types.html:
+
+2014-09-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Make spelling tests more reliable by using a word that is misspelled everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=136865
+
+        Reviewed by Simon Fraser.
+
+        Some platforms recognize "wellcome" as spelled correctly.
+
+        * editing/spelling/context-menu-suggestions.html:
+        * editing/spelling/spelling-with-punctuation-selection-expected.txt:
+        * editing/spelling/spelling-with-punctuation-selection.html:
+
+2014-09-16  Roger Fong  <roger_fong@apple.com>
+
+        [Win] Unreviewed. Skip failing WebGL conformance test.
+
+        * platform/win/TestExpectations:
+
+2014-09-14  Darin Adler  <darin@apple.com>
+
+        Scroll snap properties do not handle inherit and initial properly.
+        https://bugs.webkit.org/show_bug.cgi?id=136643
+
+        Reviewed by Beth Dakin.
+
+        * css3/scroll-snap/scroll-snap-property-computed-style-expected.txt: Added
+        expected passing results from new tests.
+        * css3/scroll-snap/scroll-snap-property-computed-style.js: Added new test
+        cases that cover inherit and initial. Before, these would crash or fail.
+
+        * css3/scroll-snap/scroll-snap-property-parsing-expected.txt: Added expected
+        passing results from new tests, and also updated to expect pass rather than
+        fail for the tests that had incorrect expected results.
+
+        * css3/scroll-snap/scroll-snap-property-parsing.js: Added new test cases that
+        cover inherit and initial. Also updated expected results for certain pixel
+        repeat cases that were incorrect.
+
+        * platform/mac/TestExpectations: Fixed an unrelated syntax error in this file.
+
+2014-09-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [GStreamer] http/tests/media/video-auth.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=126619
+
+        Reviewed by Philippe Normand.
+
+        * platform/efl/TestExpectations: Removed failure expectation for http/tests/media/video-auth.html.
+        * platform/efl/http/tests/media/video-auth-expected.txt: Added.
+        * platform/gtk/TestExpectations: Removed failure expectation for http/tests/media/video-auth.html.
+        * platform/gtk/http/tests/media/video-auth-expected.txt: Added.
+
+2014-09-16  Jinho Bang  <jinho.bang@samsung.com>
+
+        Add version of drawFocusIfNeeded that take a Path2D parameter.
+        https://bugs.webkit.org/show_bug.cgi?id=136846
+
+        Reviewed by Dirk Schulze.
+
+        * fast/canvas/draw-focus-if-needed-expected.txt: Added.
+        * fast/canvas/draw-focus-if-needed-with-path-expected.txt: Added.
+        * fast/canvas/draw-focus-if-needed-with-path.html: Added.
+        * fast/canvas/draw-focus-if-needed.html: Added.
+
+2014-09-15  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed Windows gardening. fast/forms/label test expectations now match Mac platform's expectations.
+
+        * platform/win/fast/forms/label: Removed.
+        * platform/win/fast/forms/label/labelable-elements-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-add-htmlFor-label-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-add-parent-label-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-change-htmlFor-attribute-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-multiple-sibling-labels-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-parent-and-sibling-labels-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-remove-htmlFor-attribute-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-remove-htmlFor-label-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-remove-parent-label-expected.txt: Removed.
+        * platform/win/fast/forms/label/labels-set-htmlFor-attribute-expected.txt: Removed.
+
+2014-09-15  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Web Core: Websocket state should be set to closed in didReceiveMessage call back.
+        https://bugs.webkit.org/show_bug.cgi?id=136219
+
+        Reviewed by Alexey Proskuryakov.
+
+        Added test to check readyState is CLOSED within onerror event.
+
+        * http/tests/websocket/tests/hybi/error-event-ready-state-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/error-event-ready-state.html: Added.
+
+2014-09-15  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Windows rebaselining to account for subpixel layout Part 1.
+
+        * platform/win/editing/selection/move-left-right-expected.txt:
+        * platform/win/editing/selection/vertical-lr-ltr-extend-line-backward-br-expected.txt:
+        * platform/win/editing/selection/vertical-lr-ltr-extend-line-forward-br-expected.txt:
+        * platform/win/editing/selection/vertical-rl-ltr-extend-line-backward-br-expected.txt:
+        * platform/win/editing/selection/vertical-rl-ltr-extend-line-backward-p-expected.txt:
+        * platform/win/editing/selection/vertical-rl-ltr-extend-line-forward-br-expected.txt:
+        * platform/win/editing/selection/vertical-rl-ltr-extend-line-forward-p-expected.txt:
+        * platform/win/editing/selection/vertical-rl-rtl-extend-line-backward-p-expected.txt:
+        * platform/win/editing/selection/vertical-rl-rtl-extend-line-forward-br-expected.txt:
+        * platform/win/editing/selection/vertical-rl-rtl-extend-line-forward-p-expected.txt:
+
+2014-09-15  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Skip initial-letter tests on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=136841
+
+        * platform/win/TestExpectations:
+
+2014-09-15  Roger Fong  <roger_fong@apple.com>
+
+        Change all snapshotting tests to use quicktime.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac-wk2/plugins/snapshotting/autoplay-similar-to-dominant-expected.txt:
+        * plugins/snapshotting/autoplay-dominant-blank-plugin-moved-into-view.html:
+        * plugins/snapshotting/autoplay-dominant.html:
+        * plugins/snapshotting/autoplay-plugin-blocked-by-image.html:
+        * plugins/snapshotting/autoplay-plugin-mostly-blocked-by-image.html:
+        * plugins/snapshotting/autoplay-similar-to-dominant.html:
+        * plugins/snapshotting/plugin-receives-click-event.html:
+        * plugins/snapshotting/restart.html:
+        * plugins/snapshotting/set-plugin-size-to-tiny.html:
+        * plugins/snapshotting/simple.html:
+        * plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html:
+
+2014-08-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Sort items by span when resolving content-based track sizing functions
+        https://bugs.webkit.org/show_bug.cgi?id=135701
+
+        Reviewed by Darin Adler.
+
+        Tests that check that items are sorted by span to resolve content
+        based track sizing functions instead of directly using DOM order.
+
+        * fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution.html: Added.
+
 2014-09-12  Sergio Villar Senin  <svillar@igalia.com>
 
         [CSS Grid Layout] Crash at CSSParser::parseGridTemplateRowsAndAreas
@@ -511,6 +889,23 @@
         * css3/flexbox/csswg/ttwf-reftest-flex-wrap-reverse-expected.html: Added.
         * css3/flexbox/csswg/ttwf-reftest-flex-wrap-reverse.html: Added.
         * css3/flexbox/csswg/ttwf-reftest-flex-wrap.html: Added.
+
+2014-09-12  Roger Fong  <roger_fong@apple.com>
+
+        Switch all snapshotting tests to use quicktime instead of flash.
+
+        * platform/mac-wk2/TestExpectations:
+        * plugins/snapshotting/autoplay-dominant-blank-plugin-moved-into-view.html:
+        * plugins/snapshotting/autoplay-dominant.html:
+        * plugins/snapshotting/autoplay-plugin-blocked-by-image.html:
+        * plugins/snapshotting/autoplay-plugin-mostly-blocked-by-image.html:
+        * plugins/snapshotting/autoplay-similar-to-dominant-after-delay.html:
+        * plugins/snapshotting/autoplay-similar-to-dominant.html:
+        * plugins/snapshotting/plugin-receives-click-event.html:
+        * plugins/snapshotting/restart.html:
+        * plugins/snapshotting/set-plugin-size-to-tiny.html:
+        * plugins/snapshotting/simple.html:
+        * plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html:
 
 2014-09-12  Roger Fong  <roger_fong@apple.com>
 

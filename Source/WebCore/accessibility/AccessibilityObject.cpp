@@ -1139,7 +1139,7 @@ String AccessibilityObject::stringForVisiblePositionRange(const VisiblePositionR
             Node* node = it.range()->startContainer();
             ASSERT(node == it.range()->endContainer());
             int offset = it.range()->startOffset();
-            if (replacedNodeNeedsCharacter(node->childNode(offset)))
+            if (replacedNodeNeedsCharacter(node->traverseToChildAt(offset)))
                 builder.append(objectReplacementCharacter);
         }
     }
@@ -1166,7 +1166,7 @@ int AccessibilityObject::lengthForVisiblePositionRange(const VisiblePositionRang
             ASSERT(node == it.range()->endContainer(exception));
             int offset = it.range()->startOffset(exception);
 
-            if (replacedNodeNeedsCharacter(node->childNode(offset)))
+            if (replacedNodeNeedsCharacter(node->traverseToChildAt(offset)))
                 length++;
         }
     }
@@ -1378,10 +1378,10 @@ bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
     if (!element)
         return false;
     
-    if (!element->hasAttribute(contenteditableAttr))
+    const AtomicString& contentEditableValue = element->fastGetAttribute(contenteditableAttr);
+    if (contentEditableValue.isNull())
         return false;
     
-    const AtomicString& contentEditableValue = element->fastGetAttribute(contenteditableAttr);
     // Both "true" (case-insensitive) and the empty string count as true.
     return contentEditableValue.isEmpty() || equalIgnoringCase(contentEditableValue, "true");
 }
@@ -2057,12 +2057,10 @@ void AccessibilityObject::classList(Vector<String>& classList) const
         return;
     
     Element* element = toElement(node);
-    DOMTokenList* list = element->classList();
-    if (!list)
-        return;
-    unsigned length = list->length();
+    DOMTokenList& list = element->classList();
+    unsigned length = list.length();
     for (unsigned k = 0; k < length; k++)
-        classList.append(list->item(k).string());
+        classList.append(list.item(k).string());
 }
 
     
