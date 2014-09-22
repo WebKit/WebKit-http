@@ -29,6 +29,7 @@
 
 #include "Clipboard.h"
 #include "DragData.h"
+#include "NotImplemented.h"
 #include "Pasteboard.h"
 
 #include <InterfaceDefs.h>
@@ -57,7 +58,7 @@ bool DragController::isCopyKeyDown(DragData& /* dragData */)
 DragOperation DragController::dragOperation(DragData& dragData)
 {
     // FIXME: This logic is incomplete
-    if (dragData.containsURL(0))
+    if (dragData.containsURL())
         return DragOperationCopy;
 
     return DragOperationNone;
@@ -72,10 +73,18 @@ const IntSize& DragController::maxDragImageSize()
 
 void DragController::cleanupAfterSystemDrag()
 {
+    notImplemented();
 }
 
-void DragController::declareAndWriteDragImage(DataTransfer& clipboard, Element& element, const URL& url, const String& label)
+void DragController::declareAndWriteDragImage(DataTransfer& /*clipboard*/, Element&, const URL&, const String& /*label*/)
 {
+    notImplemented();
+}
+
+WTF::PassRefPtr<WebCore::DocumentFragment> 
+DragController::createFragmentFromDragData(DragData&, Frame&, Range&, bool, bool&)
+{
+    notImplemented();
 }
 
 } // namespace WebCore

@@ -50,7 +50,7 @@ namespace WebCore {
 
 const double EventHandler::TextDragDelay = 0.0;
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
 {
     return true;
 }
@@ -82,13 +82,13 @@ bool EventHandler::passWidgetMouseDownEventToWidget(RenderWidget* renderWidget)
     return passMouseDownEventToWidget(renderWidget->widget());
 }
 
-bool EventHandler::passMouseDownEventToWidget(Widget* widget)
+bool EventHandler::passMouseDownEventToWidget(Widget*)
 {
     notImplemented();
     return false;
 }
 
-bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
+bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
 {
     // On Haiku, clicks which activate the window in non focus-follows-mouse mode
     // are not passed to the window, so any event we generate is not the activation

@@ -68,7 +68,7 @@ bool DragData::containsPlainText() const
     return false;
 }
 
-String DragData::asPlainText(Frame* frame) const
+String DragData::asPlainText() const
 {
     notImplemented();
     return String();
@@ -82,25 +82,19 @@ Color DragData::asColor() const
 
 bool DragData::containsCompatibleContent() const
 {
-    return containsColor() || containsURL(0) || containsPlainText();
+    return containsColor() || containsURL() || containsPlainText();
 }
 
-bool DragData::containsURL(Frame*, FilenameConversionPolicy filenamePolicy) const
+bool DragData::containsURL(FilenameConversionPolicy) const
 {
     notImplemented();
     return false;
 }
 
-String DragData::asURL(Frame*, FilenameConversionPolicy filenamePolicy, String*) const
+String DragData::asURL(FilenameConversionPolicy, String*) const
 {
     notImplemented();
     return String();
-}
-
-PassRefPtr<DocumentFragment> DragData::asFragment(Frame* frame, Range&, bool, bool&) const
-{
-    notImplemented();
-    return 0;
 }
 
 } // namespace WebCore

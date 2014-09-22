@@ -75,7 +75,7 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
     char buffer[4];
     BString utf8;
 	float offset = point.x();
-    for (unsigned int i = 0; i < numGlyphs; i++) {
+    for (int i = 0; i < numGlyphs; i++) {
         offsets[i].x = offset;
         offsets[i].y = point.y();
         offset += glyphBuffer.advanceAt(from + i).width();
