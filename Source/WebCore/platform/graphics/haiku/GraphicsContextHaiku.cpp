@@ -927,17 +927,16 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled() || (x == 0.f && y == 0.f))
         return;
 
-    if (x != 0.f && y != 0.f) {
-        // Translation in both directions is not scrolling.
-        BAffineTransform current = m_data->view()->Transform();
-        current.TranslateBy(x, y);
-        m_data->view()->SetTransform(current);
-    } else {
-        m_data->m_scrollPos = BPoint(x, y);
-        // Most likely plain old scrolling.
-        BPoint org = m_data->view()->Origin() + m_data->m_scrollPos;
-        m_data->view()->SetOrigin(org);
-    }
+#if 0
+    // FIXME it would be simpler to use the BAffineTransform here , but it has
+    // clipping problems. For now we avoid this by using SetOrigin instead.
+    BAffineTransform current = m_data->view()->Transform();
+    current.TranslateBy(x, y);
+    m_data->view()->SetTransform(current);
+#endif
+    m_data->m_scrollPos = BPoint(x, y);
+    BPoint org = m_data->view()->Origin() + m_data->m_scrollPos;
+    m_data->view()->SetOrigin(org);
 }
 
 void GraphicsContext::rotate(float radians)
