@@ -443,8 +443,11 @@ public:
 
     NamedFlowCollection& namedFlows();
 
-    Element* elementFromPoint(int x, int y) const;
+    Element* elementFromPoint(int x, int y) { return elementFromPoint(LayoutPoint(x, y)); }
+    Element* elementFromPoint(const LayoutPoint& clientPoint);
+
     PassRefPtr<Range> caretRangeFromPoint(int x, int y);
+    PassRefPtr<Range> caretRangeFromPoint(const LayoutPoint& clientPoint);
 
     String readyState() const;
 
@@ -1091,7 +1094,7 @@ public:
     virtual void removeAllEventListeners() override;
 
     WEBCORE_EXPORT const SVGDocumentExtensions* svgExtensions();
-    WEBCORE_EXPORT SVGDocumentExtensions* accessSVGExtensions();
+    WEBCORE_EXPORT SVGDocumentExtensions& accessSVGExtensions();
 
     void initSecurityContext();
     void initContentSecurityPolicy();
@@ -1254,7 +1257,7 @@ public:
 
 #if ENABLE(TEMPLATE_ELEMENT)
     const Document* templateDocument() const;
-    Document* ensureTemplateDocument();
+    Document& ensureTemplateDocument();
     void setTemplateDocumentHost(Document* templateDocumentHost) { m_templateDocumentHost = templateDocumentHost; }
     Document* templateDocumentHost() { return m_templateDocumentHost; }
 #endif
@@ -1343,6 +1346,8 @@ private:
     void displayBufferModifiedByEncodingInternal(CharacterType*, unsigned) const;
 
     PageVisibilityState pageVisibilityState() const;
+
+    Node* nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint = nullptr);
 
     PassRefPtr<HTMLCollection> ensureCachedCollection(CollectionType);
 

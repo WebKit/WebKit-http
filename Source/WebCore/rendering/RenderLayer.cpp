@@ -3382,6 +3382,10 @@ void RenderLayer::updateScrollInfoAfterLayout()
     // FIXME: Ensure that offsets are also updated in case of programmatic style changes.
     // https://bugs.webkit.org/show_bug.cgi?id=135964
     updateSnapOffsets();
+#if PLATFORM(MAC)
+    if (existingScrollAnimator())
+        scrollAnimator()->updateScrollAnimatorsAndTimers();
+#endif
 #endif
 }
 
@@ -4641,8 +4645,7 @@ bool RenderLayer::hitTest(const HitTestRequest& request, HitTestResult& result)
 bool RenderLayer::hitTest(const HitTestRequest& request, const HitTestLocation& hitTestLocation, HitTestResult& result)
 {
     ASSERT(isSelfPaintingLayer() || hasSelfPaintingLayerDescendant());
-
-    renderer().document().updateLayout();
+    ASSERT(!renderer().view().needsLayout());
 
     LayoutRect hitTestArea = isOutOfFlowRenderFlowThread() ? toRenderFlowThread(&renderer())->visualOverflowRect() : renderer().view().documentRect();
     if (!request.ignoreClipping())
@@ -6539,7 +6542,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     else if (isComposited()) {
         // FIXME: updating geometry here is potentially harmful, because layout is not up-to-date.
         backing()->updateGeometry();
-        backing()->updateAfterDescendents();
+        backing()->updateAfterDescendants();
     }
 
     if (oldStyle) {

@@ -52,15 +52,13 @@ inline void* realloc(void* object, size_t newSize)
     size_t oldSize = 0;
     switch(objectType(object)) {
     case Small: {
-        // We don't have an exact size, but we can calculate a maximum.
-        void* end = roundUpToMultipleOf<smallLineSize>(static_cast<char*>(object) + 1);
-        oldSize = static_cast<char*>(end) - static_cast<char*>(object);
+        SmallPage* page = SmallPage::get(SmallLine::get(object));
+        oldSize = objectSize(page->sizeClass());
         break;
     }
     case Medium: {
-        // We don't have an exact size, but we can calculate a maximum.
-        void* end = roundUpToMultipleOf<mediumLineSize>(static_cast<char*>(object) + 1);
-        oldSize = static_cast<char*>(end) - static_cast<char*>(object);
+        MediumPage* page = MediumPage::get(MediumLine::get(object));
+        oldSize = objectSize(page->sizeClass());
         break;
     }
     case Large: {
@@ -87,18 +85,6 @@ inline void scavenge()
     
     std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
     PerProcess<Heap>::get()->scavenge(lock, std::chrono::milliseconds(0));
-}
-
-inline size_t heapSize()
-{
-    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-    return PerProcess<Heap>::get()->size(lock);
-}
-
-inline size_t heapCapacity()
-{
-    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-    return PerProcess<Heap>::get()->capacity(lock);
 }
 
 } // namespace api

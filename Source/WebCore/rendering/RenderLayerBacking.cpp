@@ -74,7 +74,7 @@ CanvasCompositingStrategy canvasCompositingStrategy(const RenderObject& renderer
 {
     ASSERT(renderer.isCanvas());
     
-    const HTMLCanvasElement* canvas = toHTMLCanvasElement(renderer.node());
+    const HTMLCanvasElement* canvas = downcast<HTMLCanvasElement>(renderer.node());
     CanvasRenderingContext* context = canvas->renderingContext();
     if (!context || !context->isAccelerated())
         return UnacceleratedCanvas;
@@ -300,7 +300,7 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
 
 #if PLATFORM(COCOA) && USE(CA)
     if (!compositor().acceleratedDrawingEnabled() && renderer().isCanvas()) {
-        const HTMLCanvasElement* canvas = toHTMLCanvasElement(renderer().element());
+        const HTMLCanvasElement* canvas = downcast<HTMLCanvasElement>(renderer().element());
         if (canvas->shouldAccelerate(canvas->size()))
             m_graphicsLayer->setAcceleratesDrawing(true);
     }
@@ -436,7 +436,7 @@ void RenderLayerBacking::updateCompositedBounds()
     // If this or an ancestor is transformed, we can't currently compute the correct rect to intersect with.
     // We'd need RenderObject::convertContainerToLocalQuad(), which doesn't yet exist.
     if (shouldClipCompositedBounds()) {
-        RenderView& view = m_owningLayer.renderer().view();
+        RenderView& view = renderer().view();
         RenderLayer* rootLayer = view.layer();
 
         LayoutRect clippingBounds;
@@ -592,7 +592,7 @@ bool RenderLayerBacking::updateConfiguration()
 #endif
 #if ENABLE(WEBGL) || ENABLE(ACCELERATED_2D_CANVAS)
     else if (renderer().isCanvas() && canvasCompositingStrategy(renderer()) == CanvasAsLayerContents) {
-        const HTMLCanvasElement* canvas = toHTMLCanvasElement(renderer().element());
+        const HTMLCanvasElement* canvas = downcast<HTMLCanvasElement>(renderer().element());
         if (CanvasRenderingContext* context = canvas->renderingContext())
             m_graphicsLayer->setContentsToPlatformLayer(context->platformLayer(), GraphicsLayer::ContentsLayerForCanvas);
         layerConfigChanged = true;
@@ -954,7 +954,7 @@ void RenderLayerBacking::updateGeometry()
     compositor().updateScrollCoordinatedStatus(m_owningLayer);
 }
 
-void RenderLayerBacking::updateAfterDescendents()
+void RenderLayerBacking::updateAfterDescendants()
 {
     bool isSimpleContainer = false;
     if (!m_owningLayer.isRootLayer()) {
@@ -1594,7 +1594,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(bool isSimpleCo
     FloatSize tileSize;
 
     RefPtr<Image> image = style.backgroundLayers()->image()->cachedImage()->image();
-    toRenderBox(renderer()).getGeometryForBackgroundImage(&m_owningLayer.renderer(), destRect, phase, tileSize);
+    toRenderBox(renderer()).getGeometryForBackgroundImage(&renderer(), destRect, phase, tileSize);
     m_graphicsLayer->setContentsTileSize(tileSize);
     m_graphicsLayer->setContentsTilePhase(phase);
     m_graphicsLayer->setContentsRect(destRect);
@@ -1704,6 +1704,9 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
         return false;
 
     if (renderer().isRenderNamedFlowFragmentContainer())
+        return false;
+
+    if (renderer().isRoot() && m_owningLayer.isolatesCompositedBlending())
         return false;
 
     if (renderer().isRenderView()) {
@@ -2131,12 +2134,12 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
         paintFlags |= RenderLayer::PaintLayerPaintingSkipRootBackground;
 
 #ifndef NDEBUG
-    RenderElement::SetLayoutNeededForbiddenScope forbidSetNeedsLayout(&m_owningLayer.renderer());
+    RenderElement::SetLayoutNeededForbiddenScope forbidSetNeedsLayout(&renderer());
 #endif
 
     FrameView::PaintingState paintingState;
     if (m_owningLayer.isRootLayer())
-        m_owningLayer.renderer().view().frameView().willPaintContents(context, paintDirtyRect, paintingState);
+        renderer().view().frameView().willPaintContents(context, paintDirtyRect, paintingState);
 
     // FIXME: GraphicsLayers need a way to split for RenderRegions.
     RenderLayer::LayerPaintingInfo paintingInfo(&m_owningLayer, paintDirtyRect, paintBehavior, m_devicePixelFractionFromRenderer);
@@ -2146,7 +2149,7 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
         m_owningLayer.paintLayerContents(context, paintingInfo, paintFlags | RenderLayer::PaintLayerPaintingOverlayScrollbars);
 
     if (m_owningLayer.isRootLayer())
-        m_owningLayer.renderer().view().frameView().didPaintContents(context, paintDirtyRect, paintingState);
+        renderer().view().frameView().didPaintContents(context, paintDirtyRect, paintingState);
 
     compositor().didPaintBacking(this);
 

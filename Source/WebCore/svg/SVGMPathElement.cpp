@@ -66,17 +66,17 @@ void SVGMPathElement::buildPendingResource()
     Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
     if (!target) {
         // Do not register as pending if we are already pending this resource.
-        if (document().accessSVGExtensions()->isPendingResource(this, id))
+        if (document().accessSVGExtensions().isPendingResource(this, id))
             return;
 
         if (!id.isEmpty()) {
-            document().accessSVGExtensions()->addPendingResource(id, this);
+            document().accessSVGExtensions().addPendingResource(id, this);
             ASSERT(hasPendingResources());
         }
     } else if (target->isSVGElement()) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document().accessSVGExtensions()->addElementReferencingTarget(this, toSVGElement(target));
+        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target));
     }
 
     targetPathChanged();
@@ -84,7 +84,7 @@ void SVGMPathElement::buildPendingResource()
 
 void SVGMPathElement::clearResourceReferences()
 {
-    document().accessSVGExtensions()->removeAllTargetReferencesForElement(this);
+    document().accessSVGExtensions().removeAllTargetReferencesForElement(this);
 }
 
 Node::InsertionNotificationRequest SVGMPathElement::insertedInto(ContainerNode& rootParent)
@@ -156,9 +156,9 @@ void SVGMPathElement::svgAttributeChanged(const QualifiedName& attrName)
 SVGPathElement* SVGMPathElement::pathElement()
 {
     Element* target = targetElementFromIRIString(href(), document());
-    if (target && target->hasTagName(SVGNames::pathTag))
-        return toSVGPathElement(target);
-    return 0;
+    if (target && isSVGPathElement(target))
+        return downcast<SVGPathElement>(target);
+    return nullptr;
 }
 
 void SVGMPathElement::targetPathChanged()
@@ -169,7 +169,7 @@ void SVGMPathElement::targetPathChanged()
 void SVGMPathElement::notifyParentOfPathChange(ContainerNode* parent)
 {
     if (parent && isSVGAnimateMotionElement(parent))
-        toSVGAnimateMotionElement(parent)->updateAnimationPath();
+        downcast<SVGAnimateMotionElement>(*parent).updateAnimationPath();
 }
 
 } // namespace WebCore

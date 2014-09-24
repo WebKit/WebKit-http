@@ -912,9 +912,8 @@ bool Internals::wasLastChangeUserEdit(Element* textField, ExceptionCode& ec)
     if (HTMLInputElement* inputElement = textField->toInputElement())
         return inputElement->lastChangeWasUserEdit();
 
-    // FIXME: We should be using hasTagName instead but Windows port doesn't link QualifiedNames properly.
-    if (textField->tagName() == "TEXTAREA")
-        return toHTMLTextAreaElement(textField)->lastChangeWasUserEdit();
+    if (isHTMLTextAreaElement(textField))
+        return downcast<HTMLTextAreaElement>(*textField).lastChangeWasUserEdit();
 
     ec = INVALID_NODE_TYPE_ERR;
     return false;
@@ -1477,7 +1476,8 @@ PassRefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
 
     m_frontendChannel = adoptPtr(new InspectorFrontendChannelDummy(frontendPage));
 
-    page->inspectorController().connectFrontend(m_frontendChannel.get());
+    bool isAutomaticInspection = false;
+    page->inspectorController().connectFrontend(m_frontendChannel.get(), isAutomaticInspection);
 
     return m_frontendWindow;
 }
@@ -1919,8 +1919,8 @@ void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node* 
         document = contextDocument();
     else if (node->isDocumentNode())
         document = toDocument(node);
-    else if (node->hasTagName(HTMLNames::iframeTag))
-        document = toHTMLIFrameElement(node)->contentDocument();
+    else if (isHTMLIFrameElement(node))
+        document = downcast<HTMLIFrameElement>(*node).contentDocument();
     else {
         ec = TypeError;
         return;
@@ -2087,9 +2087,9 @@ bool Internals::isSelectPopupVisible(Node* node)
     if (!isHTMLSelectElement(node))
         return false;
 
-    HTMLSelectElement* select = toHTMLSelectElement(node);
+    HTMLSelectElement& select = downcast<HTMLSelectElement>(*node);
 
-    auto renderer = select->renderer();
+    auto renderer = select.renderer();
     if (!renderer->isMenuList())
         return false;
 

@@ -693,7 +693,7 @@ void Document::removedLastRef()
 void Document::commonTeardown()
 {
     if (svgExtensions())
-        accessSVGExtensions()->pauseAnimations();
+        accessSVGExtensions().pauseAnimations();
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     clearScriptedAnimationController();
@@ -1377,20 +1377,64 @@ String Document::suggestedMIMEType() const
     return String();
 }
 
-Element* Document::elementFromPoint(int x, int y) const
+Node* Document::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint)
+{
+    if (!frame() || !view())
+        return nullptr;
+    
+    Frame& frame = *this->frame();
+    
+    float scaleFactor = frame.pageZoomFactor() * frame.frameScaleFactor();
+
+    LayoutPoint contentsPoint = clientPoint;
+    contentsPoint.scale(scaleFactor, scaleFactor);
+    contentsPoint.moveBy(view()->contentsScrollPosition());
+
+    LayoutRect visibleRect;
+#if PLATFORM(IOS)
+    visibleRect = view()->unobscuredContentRect();
+#else
+    visibleRect = view()->visibleContentRect();
+#endif
+    if (!visibleRect.contains(contentsPoint))
+        return nullptr;
+
+    HitTestResult result(contentsPoint);
+    renderView()->hitTest(HitTestRequest(), result);
+
+    if (localPoint)
+        *localPoint = result.localPoint();
+
+    return result.innerNode();
+}
+
+Element* Document::elementFromPoint(const LayoutPoint& clientPoint)
 {
     if (!hasLivingRenderTree())
         return nullptr;
 
-    return TreeScope::elementFromPoint(x, y);
+    Node* node = nodeFromPoint(clientPoint);
+    while (node && !node->isElementNode())
+        node = node->parentNode();
+
+    if (node)
+        node = ancestorInThisScope(node);
+
+    return toElement(node);
 }
 
 PassRefPtr<Range> Document::caretRangeFromPoint(int x, int y)
 {
+    return caretRangeFromPoint(LayoutPoint(x, y));
+}
+
+PassRefPtr<Range> Document::caretRangeFromPoint(const LayoutPoint& clientPoint)
+{
     if (!hasLivingRenderTree())
         return nullptr;
+
     LayoutPoint localPoint;
-    Node* node = nodeFromPoint(this, x, y, &localPoint);
+    Node* node = nodeFromPoint(clientPoint, &localPoint);
     if (!node)
         return nullptr;
 
@@ -1507,8 +1551,8 @@ void Document::setTitle(const String& title)
     // The DOM API has no method of specifying direction, so assume LTR.
     updateTitle(StringWithDirection(title, LTR));
 
-    if (m_titleElement && isHTMLTitleElement(m_titleElement.get()))
-        toHTMLTitleElement(m_titleElement.get())->setText(title);
+    if (m_titleElement && is<HTMLTitleElement>(*m_titleElement))
+        downcast<HTMLTitleElement>(*m_titleElement).setText(title);
 }
 
 void Document::setTitleElement(const StringWithDirection& title, Element* titleElement)
@@ -2396,7 +2440,7 @@ void Document::implicitClose()
     // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
     // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
     if (svgExtensions())
-        accessSVGExtensions()->dispatchSVGLoadEventToOutermostSVGElements();
+        accessSVGExtensions().dispatchSVGLoadEventToOutermostSVGElements();
 
     dispatchWindowLoadEvent();
     enqueuePageshowEvent(PageshowEventNotPersisted);
@@ -2461,7 +2505,7 @@ void Document::implicitClose()
 #endif
 
     if (svgExtensions())
-        accessSVGExtensions()->startAnimations();
+        accessSVGExtensions().startAnimations();
 }
 
 void Document::setParsing(bool b)
@@ -2837,7 +2881,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         // FIXME: make setCookie work on XML documents too; e.g. in case of <html:meta .....>
         if (isHTMLDocument()) {
             // Exception (for sandboxed documents) ignored.
-            toHTMLDocument(this)->setCookie(content, IGNORE_EXCEPTION);
+            toHTMLDocument(*this).setCookie(content, IGNORE_EXCEPTION);
         }
         break;
 
@@ -4420,11 +4464,11 @@ const SVGDocumentExtensions* Document::svgExtensions()
     return m_svgExtensions.get();
 }
 
-SVGDocumentExtensions* Document::accessSVGExtensions()
+SVGDocumentExtensions& Document::accessSVGExtensions()
 {
     if (!m_svgExtensions)
         m_svgExtensions = std::make_unique<SVGDocumentExtensions>(this);
-    return m_svgExtensions.get();
+    return *m_svgExtensions;
 }
 
 bool Document::hasSVGRootNode() const
@@ -4608,14 +4652,14 @@ const Vector<IconURL>& Document::iconURLs(int iconTypesMask)
         Node* child = children->item(i);
         if (!child->hasTagName(linkTag))
             continue;
-        HTMLLinkElement* linkElement = toHTMLLinkElement(child);
-        if (!(linkElement->iconType() & iconTypesMask))
+        HTMLLinkElement& linkElement = downcast<HTMLLinkElement>(*child);
+        if (!(linkElement.iconType() & iconTypesMask))
             continue;
-        if (linkElement->href().isEmpty())
+        if (linkElement.href().isEmpty())
             continue;
 
         // Put it at the front to ensure that icons seen later take precedence as required by the spec.
-        IconURL newURL(linkElement->href(), linkElement->iconSizes(), linkElement->type(), linkElement->iconType());
+        IconURL newURL(linkElement.href(), linkElement.iconSizes(), linkElement.type(), linkElement.iconType());
         m_iconURLs.append(newURL);
     }
 
@@ -6082,10 +6126,10 @@ Locale& Document::getCachedLocale(const AtomicString& locale)
 }
 
 #if ENABLE(TEMPLATE_ELEMENT)
-Document* Document::ensureTemplateDocument()
+Document& Document::ensureTemplateDocument()
 {
     if (const Document* document = templateDocument())
-        return const_cast<Document*>(document);
+        return const_cast<Document&>(*document);
 
     if (isHTMLDocument())
         m_templateDocument = HTMLDocument::create(nullptr, blankURL());
@@ -6094,7 +6138,7 @@ Document* Document::ensureTemplateDocument()
 
     m_templateDocument->setTemplateDocumentHost(this); // balanced in dtor.
 
-    return m_templateDocument.get();
+    return *m_templateDocument;
 }
 #endif
 

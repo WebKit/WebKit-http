@@ -289,8 +289,8 @@ SVGElement::~SVGElement()
 
         m_svgRareData = nullptr;
     }
-    document().accessSVGExtensions()->rebuildAllElementReferencesForTarget(*this);
-    document().accessSVGExtensions()->removeAllElementReferencesForTarget(this);
+    document().accessSVGExtensions().rebuildAllElementReferencesForTarget(*this);
+    document().accessSVGExtensions().removeAllElementReferencesForTarget(this);
 }
 
 short SVGElement::tabIndex() const
@@ -347,15 +347,15 @@ void SVGElement::reportAttributeParsingError(SVGParsingError error, const Qualif
         return;
 
     String errorString = "<" + tagName() + "> attribute " + name.toString() + "=\"" + value + "\"";
-    SVGDocumentExtensions* extensions = document().accessSVGExtensions();
+    SVGDocumentExtensions& extensions = document().accessSVGExtensions();
 
     if (error == NegativeValueForbiddenError) {
-        extensions->reportError("Invalid negative value for " + errorString);
+        extensions.reportError("Invalid negative value for " + errorString);
         return;
     }
 
     if (error == ParsingAttributeFailedError) {
-        extensions->reportError("Invalid value for " + errorString);
+        extensions.reportError("Invalid value for " + errorString);
         return;
     }
 
@@ -386,45 +386,38 @@ void SVGElement::removedFrom(ContainerNode& rootParent)
     StyledElement::removedFrom(rootParent);
 
     if (wasInDocument) {
-        document().accessSVGExtensions()->clearTargetDependencies(*this);
-        document().accessSVGExtensions()->removeAllElementReferencesForTarget(this);
+        document().accessSVGExtensions().clearTargetDependencies(*this);
+        document().accessSVGExtensions().removeAllElementReferencesForTarget(this);
     }
     SVGElementInstance::invalidateAllInstancesOfElement(this);
 }
 
 SVGSVGElement* SVGElement::ownerSVGElement() const
 {
-    ContainerNode* n = parentOrShadowHostNode();
-    while (n) {
-        if (n->hasTagName(SVGNames::svgTag))
-            return toSVGSVGElement(n);
+    ContainerNode* node = parentOrShadowHostNode();
+    while (node) {
+        if (isSVGSVGElement(node))
+            return downcast<SVGSVGElement>(node);
 
-        n = n->parentOrShadowHostNode();
+        node = node->parentOrShadowHostNode();
     }
 
-    return 0;
+    return nullptr;
 }
 
 SVGElement* SVGElement::viewportElement() const
 {
     // This function needs shadow tree support - as RenderSVGContainer uses this function
     // to determine the "overflow" property. <use> on <symbol> wouldn't work otherwhise.
-    ContainerNode* n = parentOrShadowHostNode();
-    while (n) {
-        if (n->hasTagName(SVGNames::svgTag) || isSVGImageElement(n) || n->hasTagName(SVGNames::symbolTag))
-            return toSVGElement(n);
+    ContainerNode* node = parentOrShadowHostNode();
+    while (node) {
+        if (isSVGSVGElement(node) || isSVGImageElement(node) || node->hasTagName(SVGNames::symbolTag))
+            return downcast<SVGElement>(node);
 
-        n = n->parentOrShadowHostNode();
+        node = node->parentOrShadowHostNode();
     }
 
-    return 0;
-}
-
-SVGDocumentExtensions* SVGElement::accessDocumentSVGExtensions()
-{
-    // This function is provided for use by SVGAnimatedProperty to avoid
-    // global inclusion of Document.h in SVG code.
-    return document().accessSVGExtensions();
+    return nullptr;
 }
  
 void SVGElement::mapInstanceToElement(SVGElementInstance* instance)
@@ -460,7 +453,7 @@ const HashSet<SVGElementInstance*>& SVGElement::instancesForElement() const
 bool SVGElement::getBoundingBox(FloatRect& rect, SVGLocatable::StyleUpdateStrategy styleUpdateStrategy)
 {
     if (isSVGGraphicsElement()) {
-        rect = toSVGGraphicsElement(this)->getBBox(styleUpdateStrategy);
+        rect = toSVGGraphicsElement(*this).getBBox(styleUpdateStrategy);
         return true;
     }
     return false;
@@ -730,7 +723,7 @@ bool SVGElement::childShouldCreateRenderer(const Node& child) const
         invalidTextContent.get().add(SVGNames::tspanTag);
     }
     if (child.isSVGElement()) {
-        const SVGElement& svgChild = toSVGElement(child);
+        const SVGElement& svgChild = downcast<SVGElement>(child);
         if (invalidTextContent.get().contains(svgChild.tagQName()))
             return false;
 
@@ -744,7 +737,7 @@ void SVGElement::attributeChanged(const QualifiedName& name, const AtomicString&
     StyledElement::attributeChanged(name, oldValue, newValue);
 
     if (name == HTMLNames::idAttr)
-        document().accessSVGExtensions()->rebuildAllElementReferencesForTarget(*this);
+        document().accessSVGExtensions().rebuildAllElementReferencesForTarget(*this);
 
     // Changes to the style attribute are processed lazily (see Element::getAttribute() and related methods),
     // so we don't want changes to the style attribute to result in extra work here.
@@ -970,10 +963,10 @@ String SVGElement::title() const
         // that do enable SVG in a shadow tree.
         ASSERT(!shadowHostElement || shadowHostElement->hasTagName(SVGNames::useTag));
         if (shadowHostElement && shadowHostElement->hasTagName(SVGNames::useTag)) {
-            SVGUseElement* useElement = toSVGUseElement(shadowHostElement);
+            SVGUseElement& useElement = downcast<SVGUseElement>(*shadowHostElement);
 
             // If the <use> title is not empty we found the title to use.
-            String useTitle(useElement->title());
+            String useTitle(useElement.title());
             if (!useTitle.isEmpty())
                 return useTitle;
         }
@@ -1081,20 +1074,20 @@ void SVGElement::buildPendingResourcesIfNeeded()
     if (!needsPendingResourceHandling() || !inDocument() || isInShadowTree())
         return;
 
-    SVGDocumentExtensions* extensions = document().accessSVGExtensions();
+    SVGDocumentExtensions& extensions = document().accessSVGExtensions();
     String resourceId = getIdAttribute();
-    if (!extensions->isIdOfPendingResource(resourceId))
+    if (!extensions.isIdOfPendingResource(resourceId))
         return;
 
     // Mark pending resources as pending for removal.
-    extensions->markPendingResourcesForRemoval(resourceId);
+    extensions.markPendingResourcesForRemoval(resourceId);
 
     // Rebuild pending resources for each client of a pending resource that is being removed.
-    while (Element* clientElement = extensions->removeElementFromPendingResourcesForRemovalMap(resourceId)) {
+    while (Element* clientElement = extensions.removeElementFromPendingResourcesForRemovalMap(resourceId)) {
         ASSERT(clientElement->hasPendingResources());
         if (clientElement->hasPendingResources()) {
             clientElement->buildPendingResource();
-            extensions->clearHasPendingResourcesIfPossible(clientElement);
+            extensions.clearHasPendingResourcesIfPossible(clientElement);
         }
     }
 }
@@ -1173,7 +1166,7 @@ void SVGElement::updateRelativeLengthsInformation(bool hasRelativeLengths, SVGEl
             break;
 
         // Register us in the parent element map.
-        toSVGElement(node)->updateRelativeLengthsInformation(hasRelativeLengths, this);
+        downcast<SVGElement>(*node).updateRelativeLengthsInformation(hasRelativeLengths, this);
         break;
     }
 }

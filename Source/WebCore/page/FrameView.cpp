@@ -1961,7 +1961,7 @@ bool FrameView::scrollToAnchor(const String& name)
     frame().document()->setCSSTarget(anchorElement);
 
     if (frame().document()->isSVGDocument()) {
-        if (SVGSVGElement* svg = toSVGDocument(frame().document())->rootElement()) {
+        if (SVGSVGElement* svg = toSVGDocument(*frame().document()).rootElement()) {
             svg->setupInitialView(name, anchorElement);
             if (!anchorElement)
                 return true;
@@ -3126,7 +3126,6 @@ void FrameView::updateOverflowStatus(bool horizontalOverflow, bool verticalOverf
 
         frame().document()->enqueueOverflowEvent(overflowEvent.release());
     }
-    
 }
 
 const Pagination& FrameView::pagination() const

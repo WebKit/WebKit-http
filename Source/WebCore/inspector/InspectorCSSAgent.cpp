@@ -975,9 +975,9 @@ InspectorStyleSheet* InspectorCSSAgent::viaInspectorStyleSheet(Document* documen
 
     CSSStyleSheet* cssStyleSheet = nullptr;
     if (styleElement->isHTMLElement())
-        cssStyleSheet = toHTMLStyleElement(styleElement.get())->sheet();
+        cssStyleSheet = downcast<HTMLStyleElement>(*styleElement).sheet();
     else if (styleElement->isSVGElement())
-        cssStyleSheet = toSVGStyleElement(styleElement.get())->sheet();
+        cssStyleSheet = downcast<SVGStyleElement>(*styleElement).sheet();
 
     if (!cssStyleSheet)
         return nullptr;

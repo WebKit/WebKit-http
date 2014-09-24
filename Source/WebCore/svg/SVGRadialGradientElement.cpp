@@ -155,25 +155,25 @@ static void setGradientAttributes(SVGGradientElement& element, RadialGradientAtt
     }
 
     if (isRadial) {
-        SVGRadialGradientElement* radial = toSVGRadialGradientElement(&element);
+        SVGRadialGradientElement& radial = downcast<SVGRadialGradientElement>(element);
 
         if (!attributes.hasCx() && element.hasAttribute(SVGNames::cxAttr))
-            attributes.setCx(radial->cx());
+            attributes.setCx(radial.cx());
 
         if (!attributes.hasCy() && element.hasAttribute(SVGNames::cyAttr))
-            attributes.setCy(radial->cy());
+            attributes.setCy(radial.cy());
 
         if (!attributes.hasR() && element.hasAttribute(SVGNames::rAttr))
-            attributes.setR(radial->r());
+            attributes.setR(radial.r());
 
         if (!attributes.hasFx() && element.hasAttribute(SVGNames::fxAttr))
-            attributes.setFx(radial->fx());
+            attributes.setFx(radial.fx());
 
         if (!attributes.hasFy() && element.hasAttribute(SVGNames::fyAttr))
-            attributes.setFy(radial->fy());
+            attributes.setFy(radial.fy());
 
         if (!attributes.hasFr() && element.hasAttribute(SVGNames::frAttr))
-            attributes.setFr(radial->fr());
+            attributes.setFr(radial.fr());
     }
 }
 

@@ -1,3 +1,1616 @@
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Add support for is<HTML*Element>() for type checking
+        https://bugs.webkit.org/show_bug.cgi?id=137015
+
+        Reviewed by Benjamin Poulain.
+
+        Add support for is<HTML*Element>() for type checking while keeping
+        support for the legacy toHTML*Element() form until the code base is
+        ported.
+
+        toHTML*Element() helpers are now macros to the new is<HTML*Element>()
+        type checking helpers.
+
+        No new tests, no behavior change.
+
+        * dom/Document.cpp:
+        (WebCore::Document::setTitle):
+        * dom/Element.cpp:
+        (WebCore::Element::childShouldCreateRenderer):
+        * dom/Element.h:
+        (WebCore::is):
+        (WebCore::downcast):
+        (WebCore::isElementOfType): Deleted.
+        * dom/ElementAncestorIterator.h:
+        (WebCore::lineageOfType):
+        * dom/ElementIterator.h:
+        (WebCore::findElementAncestorOfType):
+        * dom/ElementTraversal.h:
+        (WebCore::Traversal<ElementType>::firstChildTemplate):
+        (WebCore::Traversal<ElementType>::lastChildTemplate):
+        (WebCore::Traversal<ElementType>::firstWithinTemplate):
+        (WebCore::Traversal<ElementType>::lastWithinTemplate):
+        (WebCore::Traversal<ElementType>::nextTemplate):
+        (WebCore::Traversal<ElementType>::previous):
+        (WebCore::Traversal<ElementType>::nextSibling):
+        (WebCore::Traversal<ElementType>::previousSibling):
+        (WebCore::Traversal<ElementType>::nextSkippingChildren):
+        * dom/TypedElementDescendantIterator.h:
+        (WebCore::TypedElementDescendantIteratorAdapter<ElementType>::from):
+        (WebCore::TypedElementDescendantConstIteratorAdapter<ElementType>::from):
+        * dom/make_names.pl:
+        (printTypeHelpers):
+
+2014-09-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        The style resolution cache applies properties incorrectly whenever direction != ltr
+        https://bugs.webkit.org/show_bug.cgi?id=137052
+
+        Reviewed by Andreas Kling.
+
+        The optimization r135021 introduced a bug whenever the direction of subtree is not
+        uniform in the whole page.
+
+        When StyleResolver::applyMatchedProperties() resolves the style, some properties are
+        resolved differently based on the writing-mode and the direction.
+
+        In isCacheableInMatchedPropertiesCache(), the cases for writing-mode are already handled
+        by not caching any style with anything else than the default.
+        The direction was ignored, causing the bugs solved here.
+
+        Tests: css3/flexbox/flex-flow-2.html
+               fast/css/style-resolver-cache-direction-1.html
+               fast/css/style-resolver-cache-direction-2.html
+               fast/css/style-resolver-cache-direction-3.html
+
+        * css/StyleResolver.cpp:
+        (WebCore::isCacheableInMatchedPropertiesCache):
+
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Have CSS classes' methods return more references
+        https://bugs.webkit.org/show_bug.cgi?id=137036
+
+        Reviewed by Ryosuke Niwa.
+
+        Have CSS classes' methods return more references instead of pointers
+        when possible.
+
+        No new tests, no behavior change.
+
+        * css/CSSFontFaceRule.cpp:
+        (WebCore::CSSFontFaceRule::style):
+        * css/CSSFontFaceRule.h:
+        * css/CSSGroupingRule.cpp:
+        (WebCore::CSSGroupingRule::cssRules):
+        * css/CSSGroupingRule.h:
+        * css/CSSImportRule.cpp:
+        (WebCore::CSSImportRule::media):
+        * css/CSSImportRule.h:
+        * css/CSSPageRule.cpp:
+        (WebCore::CSSPageRule::style):
+        * css/CSSPageRule.h:
+        * css/CSSStyleRule.cpp:
+        (WebCore::CSSStyleRule::style):
+        * css/CSSStyleRule.h:
+        * css/WebKitCSSKeyframeRule.cpp:
+        (WebCore::WebKitCSSKeyframeRule::style):
+        * css/WebKitCSSKeyframeRule.h:
+        * css/WebKitCSSKeyframesRule.cpp:
+        (WebCore::WebKitCSSKeyframesRule::cssRules):
+        * css/WebKitCSSKeyframesRule.h:
+        * css/WebKitCSSViewportRule.cpp:
+        (WebCore::WebKitCSSViewportRule::style):
+        * css/WebKitCSSViewportRule.h:
+        * inspector/InspectorStyleSheet.cpp:
+        (WebCore::asCSSRuleList):
+        (WebCore::fillMediaListChain):
+        (WebCore::InspectorStyleSheet::setRuleSelector):
+        (WebCore::InspectorStyleSheet::deleteRule):
+        (WebCore::InspectorStyleSheet::buildObjectForSelectorList):
+        (WebCore::InspectorStyleSheet::buildObjectForRule):
+        (WebCore::InspectorStyleSheet::styleForId):
+        (WebCore::InspectorStyleSheet::ruleIndexByStyle):
+        (WebCore::InspectorStyleSheet::ruleId):
+        (WebCore::InspectorStyleSheet::revalidateStyle):
+
+2014-09-23  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Enable CSS Supports Rule on Windows.
+
+        * css/CSSAllInOne.cpp:
+
+2014-09-23  Christophe Dumez  <cdumez@apple.com>
+
+        Unreviewed build fix after r173893.
+
+        Partial revert of r173893 to fix debug builds.
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::text):
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::namedItemGetter):
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+        (WebCore::JSDOMWindow::getOwnPropertySlotByIndex):
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::checkOne):
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::makeContextStyleUniqueIfNecessaryAndTestIsPlaceholderShown):
+        (WebCore::SelectorCompiler::makeElementStyleUniqueIfNecessaryAndTestIsPlaceholderShown):
+        (WebCore::SelectorCompiler::isPlaceholderShown):
+        * dom/Document.cpp:
+        (WebCore::Document::processHttpEquiv):
+        * dom/Element.cpp:
+        (WebCore::Element::insertedInto):
+        (WebCore::Element::removedFrom):
+        (WebCore::Element::updateName):
+        (WebCore::Element::updateId):
+        * editing/Editor.cpp:
+        (WebCore::Editor::selectionForCommand):
+        (WebCore::findFirstMarkable):
+        * editing/FrameSelection.cpp:
+        (WebCore::FrameSelection::selectAll):
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::matchesReadWritePseudoClass):
+        (WebCore::HTMLElement::directionality):
+        * html/HTMLImageElement.cpp:
+        (WebCore::HTMLImageElement::parseAttribute):
+        * html/HTMLObjectElement.cpp:
+        (WebCore::HTMLObjectElement::updateDocNamedItem):
+        * html/HTMLPlugInImageElement.cpp:
+        (WebCore::addPlugInsFromNodeListMatchingPlugInOrigin):
+        * html/HTMLTextFormControlElement.cpp:
+        (WebCore::enclosingTextFormControl):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::addEmbeddedObjectToUpdate):
+        (WebCore::FrameView::updateEmbeddedObject):
+        * rendering/HitTestResult.cpp:
+        (WebCore::HitTestResult::absolutePDFURL):
+        * rendering/RenderEmbeddedObject.cpp:
+        (WebCore::RenderEmbeddedObject::paintContents):
+        (WebCore::RenderEmbeddedObject::layout):
+        * rendering/RenderSnapshottedPlugIn.cpp:
+        (WebCore::RenderSnapshottedPlugIn::plugInImageElement):
+        * rendering/RenderTextControl.cpp:
+        (WebCore::RenderTextControl::textFormControlElement):
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::paintSearchFieldCancelButton):
+        (WebCore::RenderThemeMac::paintSnapshottedPluginOverlay):
+        * testing/Internals.cpp:
+        (WebCore::Internals::visiblePlaceholder):
+
+2014-09-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement snapping behavior for Mac overflow scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=135774
+
+        Reviewed by Beth Dakin.
+
+        Hooks into AxisScrollSnapAnimator to implement overflow scroll snapping on Mac.
+
+        We need to find a way to test this!
+
+        * dom/Element.cpp:
+        (WebCore::Element::dispatchWheelEvent):
+        * page/EventHandler.cpp:
+        (WebCore::handleWheelEventInAppropriateEnclosingBoxForSingleAxis):
+        * platform/ScrollAnimator.cpp:
+        (WebCore::ScrollAnimator::handleWheelEvent):
+        (WebCore::ScrollAnimator::updateScrollAnimatorsAndTimers):
+        (WebCore::ScrollAnimator::scrollOffsetInAxis):
+        (WebCore::ScrollAnimator::immediateScrollInAxis):
+        (WebCore::ScrollAnimator::startScrollSnapTimer):
+        (WebCore::ScrollAnimator::stopScrollSnapTimer):
+        (WebCore::ScrollAnimator::horizontalScrollSnapTimerFired):
+        (WebCore::ScrollAnimator::verticalScrollSnapTimerFired):
+        * platform/ScrollAnimator.h:
+        * platform/mac/AxisScrollSnapAnimator.h:
+        * platform/mac/AxisScrollSnapAnimator.mm:
+        (WebCore::AxisScrollSnapAnimator::AxisScrollSnapAnimator):
+        (WebCore::AxisScrollSnapAnimator::beginScrollSnapAnimation):
+        (WebCore::AxisScrollSnapAnimator::endScrollSnapAnimation):
+        (WebCore::AxisScrollSnapAnimator::initializeGlideParameters):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateScrollInfoAfterLayout):
+
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Use downcast<HTML*Element>() instead of toHTML*Element()
+        https://bugs.webkit.org/show_bug.cgi?id=137007
+
+        Reviewed by Benjamin Poulain.
+
+        Use downcast<HTML*Element>() instead of toHTML*Element() and drop
+        transition macros for toHTML*Element().
+
+        This patch also cleans up the surrounding code.
+
+        No new tests, no behavior change.
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::focusedUIElementForPage):
+        (WebCore::AXObjectCache::labelChanged):
+        * accessibility/AccessibilityListBox.cpp:
+        (WebCore::AccessibilityListBox::canSetSelectedChildrenAttribute):
+        (WebCore::AccessibilityListBox::addChildren):
+        * accessibility/AccessibilityListBoxOption.cpp:
+        (WebCore::AccessibilityListBoxOption::isSelected):
+        (WebCore::AccessibilityListBoxOption::stringValue):
+        (WebCore::AccessibilityListBoxOption::listBoxOptionParentNode):
+        * accessibility/AccessibilityMediaControls.cpp:
+        (WebCore::AccessibilityMediaTimeline::valueDescription):
+        * accessibility/AccessibilityMenuListOption.cpp:
+        (WebCore::AccessibilityMenuListOption::isEnabled):
+        (WebCore::AccessibilityMenuListOption::isSelected):
+        (WebCore::AccessibilityMenuListOption::setSelected):
+        (WebCore::AccessibilityMenuListOption::stringValue):
+        * accessibility/AccessibilityMenuListPopup.cpp:
+        (WebCore::AccessibilityMenuListPopup::addChildren):
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::determineAccessibilityRole):
+        (WebCore::AccessibilityNodeObject::isNativeTextControl):
+        (WebCore::AccessibilityNodeObject::isNativeImage):
+        (WebCore::AccessibilityNodeObject::isInputImage):
+        (WebCore::AccessibilityNodeObject::isMultiSelectable):
+        (WebCore::AccessibilityNodeObject::isReadOnly):
+        (WebCore::AccessibilityNodeObject::valueForRange):
+        (WebCore::AccessibilityNodeObject::maxValueForRange):
+        (WebCore::AccessibilityNodeObject::minValueForRange):
+        (WebCore::isNodeActionElement):
+        (WebCore::AccessibilityNodeObject::alternativeText):
+        (WebCore::AccessibilityNodeObject::visibleText):
+        (WebCore::AccessibilityNodeObject::title):
+        (WebCore::AccessibilityNodeObject::text):
+        (WebCore::AccessibilityNodeObject::stringValue):
+        (WebCore::AccessibilityNodeObject::colorValue):
+        (WebCore::accessibleNameForNode):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::isFileUploadButton):
+        (WebCore::AccessibilityRenderObject::stringValue):
+        (WebCore::AccessibilityRenderObject::labelElementContainer):
+        (WebCore::AccessibilityRenderObject::internalLinkElement):
+        (WebCore::AccessibilityRenderObject::addRadioButtonGroupMembers):
+        (WebCore::AccessibilityRenderObject::url):
+        (WebCore::AccessibilityRenderObject::setValue):
+        (WebCore::AccessibilityRenderObject::getDocumentLinks):
+        (WebCore::AccessibilityRenderObject::accessibilityImageMapHitTest):
+        (WebCore::AccessibilityRenderObject::accessibilityHitTest):
+        (WebCore::AccessibilityRenderObject::determineAccessibilityRole):
+        (WebCore::AccessibilityRenderObject::addTextFieldChildren):
+        (WebCore::AccessibilityRenderObject::stringValueForMSAA):
+        (WebCore::AccessibilityRenderObject::isLinked):
+        * accessibility/AccessibilitySlider.cpp:
+        (WebCore::AccessibilitySlider::inputElement):
+        (WebCore::AccessibilitySliderThumb::elementRect):
+        * accessibility/AccessibilityTable.cpp:
+        (WebCore::AccessibilityTable::tableElement):
+        (WebCore::AccessibilityTable::title):
+        * accessibility/atk/AXObjectCacheAtk.cpp:
+        (WebCore::notifyChildrenSelectionChange):
+        * accessibility/atk/WebKitAccessibleInterfaceSelection.cpp:
+        (optionFromSelection):
+        (webkitAccessibleSelectionGetSelectionCount):
+        * accessibility/atk/WebKitAccessibleInterfaceTable.cpp:
+        (webkitAccessibleTableGetCaption):
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (webkitAccessibleGetDescription):
+        * accessibility/ios/AccessibilityObjectIOS.mm:
+        (WebCore::AccessibilityObject::accessibilityPasswordFieldLength):
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::namedItemGetter):
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+        (WebCore::JSDOMWindow::getOwnPropertySlotByIndex):
+        * bindings/js/JSHTMLDocumentCustom.cpp:
+        (WebCore::JSHTMLDocument::nameGetter):
+        * bindings/js/JSHTMLFrameSetElementCustom.cpp:
+        (WebCore::JSHTMLFrameSetElement::nameGetter):
+        * bindings/js/JSNodeCustom.cpp:
+        (WebCore::isReachableFromDOM):
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::checkOne):
+        * css/SelectorCheckerTestFunctions.h:
+        (WebCore::isChecked):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle):
+        * css/StyleSheetList.cpp:
+        (WebCore::StyleSheetList::getNamedItem):
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::makeContextStyleUniqueIfNecessaryAndTestIsPlaceholderShown):
+        (WebCore::SelectorCompiler::makeElementStyleUniqueIfNecessaryAndTestIsPlaceholderShown):
+        (WebCore::SelectorCompiler::isPlaceholderShown):
+        * dom/CurrentScriptIncrementer.h:
+        (WebCore::CurrentScriptIncrementer::CurrentScriptIncrementer):
+        * dom/DataTransfer.cpp:
+        (WebCore::DataTransfer::setDragImage):
+        * dom/Document.cpp:
+        (WebCore::Document::setTitle):
+        (WebCore::Document::processHttpEquiv):
+        (WebCore::Document::iconURLs):
+        * dom/DocumentOrderedMap.cpp:
+        (WebCore::keyMatchesMapName):
+        (WebCore::keyMatchesLowercasedMapName):
+        (WebCore::keyMatchesLowercasedUsemap):
+        (WebCore::DocumentOrderedMap::getElementByMapName):
+        (WebCore::DocumentOrderedMap::getElementByLowercasedMapName):
+        (WebCore::DocumentOrderedMap::getElementByLowercasedUsemap):
+        (WebCore::DocumentOrderedMap::getElementByLabelForAttribute):
+        * dom/DocumentStyleSheetCollection.cpp:
+        (WebCore::DocumentStyleSheetCollection::collectActiveStyleSheets):
+        * dom/Element.cpp:
+        (WebCore::Element::insertedInto):
+        (WebCore::Element::removedFrom):
+        (WebCore::Element::updateName):
+        (WebCore::Element::updateId):
+        (WebCore::Element::updateLabel):
+        (WebCore::Element::ensureCachedHTMLCollection):
+        * dom/EventDispatcher.cpp:
+        (WebCore::EventDispatcher::dispatchEvent):
+        * dom/ScriptElement.cpp:
+        (WebCore::toScriptElementIfPossible):
+        * dom/VisitedLinkState.cpp:
+        (WebCore::linkHashForElement):
+        (WebCore::VisitedLinkState::determineLinkStateSlowCase):
+        * dom/make_names.pl:
+        (printTypeHelpers):
+        * editing/Editor.cpp:
+        (WebCore::Editor::selectionForCommand):
+        (WebCore::imageElementFromImageDocument):
+        (WebCore::findFirstMarkable):
+        * editing/FrameSelection.cpp:
+        (WebCore::FrameSelection::selectAll):
+        (WebCore::scanForForm):
+        * editing/MarkupAccumulator.cpp:
+        (WebCore::MarkupAccumulator::serializeNodesWithNamespaces):
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::shouldPerformSmartReplace):
+        * editing/VisibleSelection.cpp:
+        (WebCore::VisibleSelection::nonBoundaryShadowTreeRootNode):
+        (WebCore::VisibleSelection::isInPasswordField):
+        * editing/cocoa/HTMLConverter.mm:
+        (HTMLConverter::_processElement):
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::setTextAlignmentForChangedBaseWritingDirection):
+        * editing/markup.cpp:
+        (WebCore::isPlainTextMarkup):
+        * html/ColorInputType.cpp:
+        (WebCore::ColorInputType::suggestions):
+        * html/FTPDirectoryDocument.cpp:
+        (WebCore::FTPDirectoryDocumentParser::loadDocumentTemplate):
+        (WebCore::FTPDirectoryDocumentParser::createBasicDocument):
+        * html/FormAssociatedElement.cpp:
+        (WebCore::FormAssociatedElement::findAssociatedForm):
+        * html/HTMLAnchorElement.cpp:
+        (WebCore::appendServerMapMousePosition):
+        * html/HTMLAreaElement.cpp:
+        (WebCore::HTMLAreaElement::imageElement):
+        * html/HTMLCollection.cpp:
+        (WebCore::isMatchingElement):
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::matchesReadWritePseudoClass):
+        (WebCore::HTMLElement::setInnerHTML):
+        (WebCore::HTMLElement::directionality):
+        * html/HTMLEmbedElement.cpp:
+        (WebCore::HTMLEmbedElement::rendererIsNeeded):
+        * html/HTMLFieldSetElement.cpp:
+        (WebCore::HTMLFieldSetElement::refreshElementsIfNeeded):
+        * html/HTMLFormControlElement.cpp:
+        (WebCore::HTMLFormControlElement::computeIsDisabledByFieldsetAncestor):
+        (WebCore::shouldAutofocus):
+        * html/HTMLFormControlsCollection.cpp:
+        (WebCore::HTMLFormControlsCollection::formControlElements):
+        (WebCore::HTMLFormControlsCollection::formImageElements):
+        * html/HTMLFormElement.cpp:
+        (WebCore::HTMLFormElement::getTextFieldValues):
+        (WebCore::HTMLFormElement::assertItemCanBeInPastNamesMap):
+        * html/HTMLImageElement.cpp:
+        (WebCore::HTMLImageElement::parseAttribute):
+        * html/HTMLImageLoader.cpp:
+        (WebCore::HTMLImageLoader::notifyFinished):
+        * html/HTMLInputElement.cpp:
+        (WebCore::HTMLInputElement::dataList):
+        (WebCore::HTMLInputElement::setupDateTimeChooserParameters):
+        * html/HTMLKeygenElement.cpp:
+        (WebCore::HTMLKeygenElement::shadowSelect):
+        * html/HTMLLegendElement.cpp:
+        (WebCore::HTMLLegendElement::virtualForm):
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::parseAttribute):
+        * html/HTMLNameCollection.cpp:
+        (WebCore::DocumentNameCollection::elementMatchesIfIdAttributeMatch):
+        (WebCore::DocumentNameCollection::elementMatchesIfNameAttributeMatch):
+        (WebCore::DocumentNameCollection::elementMatches):
+        * html/HTMLObjectElement.cpp:
+        (WebCore::HTMLObjectElement::updateDocNamedItem):
+        (WebCore::HTMLObjectElement::containsJavaApplet):
+        * html/HTMLOptGroupElement.cpp:
+        (WebCore::HTMLOptGroupElement::recalcSelectOptions):
+        (WebCore::HTMLOptGroupElement::ownerSelectElement):
+        * html/HTMLOptionElement.cpp:
+        (WebCore::HTMLOptionElement::ownerDataListElement):
+        (WebCore::HTMLOptionElement::ownerSelectElement):
+        * html/HTMLOptionsCollection.cpp:
+        (WebCore::HTMLOptionsCollection::add):
+        * html/HTMLOptionsCollection.h:
+        * html/HTMLPlugInImageElement.cpp:
+        (WebCore::addPlugInsFromNodeListMatchingPlugInOrigin):
+        * html/HTMLSelectElement.cpp:
+        (WebCore::HTMLSelectElement::hasPlaceholderLabelOption):
+        (WebCore::HTMLSelectElement::value):
+        (WebCore::HTMLSelectElement::setValue):
+        (WebCore::HTMLSelectElement::saveLastSelection):
+        (WebCore::HTMLSelectElement::setActiveSelectionAnchorIndex):
+        (WebCore::HTMLSelectElement::updateListBoxSelection):
+        (WebCore::HTMLSelectElement::listBoxOnChange):
+        (WebCore::HTMLSelectElement::recalcListItems):
+        (WebCore::HTMLSelectElement::selectedIndex):
+        (WebCore::HTMLSelectElement::selectOption):
+        (WebCore::HTMLSelectElement::deselectItemsWithoutValidation):
+        (WebCore::HTMLSelectElement::saveFormControlState):
+        (WebCore::HTMLSelectElement::searchOptionsForValue):
+        (WebCore::HTMLSelectElement::restoreFormControlState):
+        (WebCore::HTMLSelectElement::appendFormData):
+        (WebCore::HTMLSelectElement::reset):
+        (WebCore::HTMLSelectElement::updateSelectedState):
+        (WebCore::HTMLSelectElement::lastSelectedListIndex):
+        (WebCore::HTMLSelectElement::optionAtIndex):
+        (WebCore::HTMLSelectElement::accessKeySetSelectedIndex):
+        * html/HTMLSummaryElement.cpp:
+        (WebCore::HTMLSummaryElement::detailsElement):
+        * html/HTMLTableElement.cpp:
+        (WebCore::HTMLTableElement::caption):
+        * html/HTMLTablePartElement.cpp:
+        (WebCore::HTMLTablePartElement::findParentTable):
+        * html/HTMLTableRowElement.cpp:
+        (WebCore::HTMLTableRowElement::rowIndex):
+        * html/HTMLTableRowsCollection.cpp:
+        (WebCore::HTMLTableRowsCollection::rowAfter):
+        (WebCore::HTMLTableRowsCollection::lastRow):
+        (WebCore::HTMLTableRowsCollection::customElementAfter):
+        * html/HTMLTableRowsCollection.h:
+        * html/HTMLTemplateElement.cpp:
+        (WebCore::HTMLTemplateElement::cloneNode):
+        * html/HTMLTextFormControlElement.cpp:
+        (WebCore::enclosingTextFormControl):
+        * html/ImageDocument.cpp:
+        (WebCore::ImageDocument::createDocumentStructure):
+        * html/LabelsNodeList.cpp:
+        (WebCore::LabelsNodeList::elementMatches):
+        * html/MediaDocument.cpp:
+        (WebCore::MediaDocumentParser::createDocumentStructure):
+        (WebCore::descendentVideoElement):
+        (WebCore::ancestorVideoElement):
+        (WebCore::MediaDocument::replaceMediaElementTimerFired):
+        * html/PluginDocument.cpp:
+        (WebCore::PluginDocumentParser::createDocumentStructure):
+        * html/RadioInputType.cpp:
+        (WebCore::RadioInputType::handleKeydownEvent):
+        (WebCore::RadioInputType::isKeyboardFocusable):
+        * html/RadioNodeList.cpp:
+        (WebCore::RadioNodeList::checkElementMatchesRadioNodeListFilter):
+        * html/RangeInputType.cpp:
+        (WebCore::RangeInputType::updateTickMarkValues):
+        * html/parser/HTMLConstructionSite.cpp:
+        (WebCore::insert):
+        (WebCore::HTMLConstructionSite::insertTextNode):
+        (WebCore::HTMLConstructionSite::ownerDocumentForCurrentNode):
+        * html/parser/HTMLTreeBuilder.cpp:
+        (WebCore::HTMLTreeBuilder::HTMLTreeBuilder):
+        * html/shadow/DetailsMarkerControl.cpp:
+        (WebCore::DetailsMarkerControl::rendererIsNeeded):
+        * html/shadow/MediaControlElements.cpp:
+        (WebCore::MediaControlTextTrackContainerElement::updateDisplay):
+        * html/shadow/MeterShadowElement.cpp:
+        (WebCore::MeterShadowElement::meterElement):
+        * html/shadow/ProgressShadowElement.cpp:
+        (WebCore::ProgressShadowElement::progressElement):
+        * html/shadow/TextControlInnerElements.cpp:
+        (WebCore::SearchFieldResultsButtonElement::defaultEventHandler):
+        (WebCore::SearchFieldCancelButtonElement::defaultEventHandler):
+        (WebCore::SearchFieldCancelButtonElement::willRespondToMouseClickEvents):
+        * inspector/InspectorCSSAgent.cpp:
+        (WebCore::InspectorCSSAgent::viaInspectorStyleSheet):
+        * inspector/InspectorDOMAgent.cpp:
+        (WebCore::InspectorDOMAgent::buildObjectForNode):
+        * loader/FormSubmission.cpp:
+        (WebCore::FormSubmission::create):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::handleFallbackContent):
+        * loader/ImageLoader.cpp:
+        (WebCore::ImageLoader::dispatchPendingBeforeLoadEvent):
+        * loader/SubframeLoader.cpp:
+        (WebCore::SubframeLoader::requestObject):
+        * page/Chrome.cpp:
+        (WebCore::Chrome::setToolTip):
+        * page/DragController.cpp:
+        (WebCore::DragController::draggableElement):
+        * page/EventHandler.cpp:
+        (WebCore::isSubmitImage):
+        * page/FocusController.cpp:
+        (WebCore::FocusController::advanceFocusDirectionally):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::addEmbeddedObjectToUpdate):
+        (WebCore::FrameView::updateEmbeddedObject):
+        * page/PageSerializer.cpp:
+        (WebCore::PageSerializer::serializeFrame):
+        * page/SpatialNavigation.cpp:
+        (WebCore::FocusCandidate::FocusCandidate):
+        * page/ios/FrameIOS.mm:
+        (WebCore::ancestorRespondingToClickEvents):
+        * rendering/HitTestResult.cpp:
+        (WebCore::HitTestResult::altDisplayString):
+        (WebCore::HitTestResult::absolutePDFURL):
+        (WebCore::HitTestResult::enterFullscreenForVideo):
+        (WebCore::HitTestResult::mediaControlsEnabled):
+        (WebCore::HitTestResult::isLiveLink):
+        (WebCore::HitTestResult::isContentEditable):
+        * rendering/RenderButton.cpp:
+        (WebCore::RenderButton::updateFromElement):
+        * rendering/RenderCounter.cpp:
+        (WebCore::planCounter):
+        * rendering/RenderEmbeddedObject.cpp:
+        (WebCore::RenderEmbeddedObject::paintContents):
+        (WebCore::RenderEmbeddedObject::layout):
+        * rendering/RenderFieldset.h:
+        * rendering/RenderFileUploadControl.cpp:
+        (WebCore::RenderFileUploadControl::inputElement):
+        (WebCore::RenderFileUploadControl::uploadButton):
+        * rendering/RenderFrame.cpp:
+        (WebCore::RenderFrame::frameElement):
+        * rendering/RenderFrameSet.cpp:
+        (WebCore::RenderFrameSet::frameSetElement):
+        * rendering/RenderHTMLCanvas.cpp:
+        (WebCore::RenderHTMLCanvas::canvasElement):
+        * rendering/RenderIFrame.cpp:
+        (WebCore::RenderIFrame::iframeElement):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::RenderImage):
+        (WebCore::RenderImage::paintAreaElementFocusRing):
+        (WebCore::RenderImage::paintIntoRect):
+        (WebCore::RenderImage::imageMap):
+        (WebCore::RenderImage::updateAltText):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::canvasCompositingStrategy):
+        (WebCore::RenderLayerBacking::createPrimaryGraphicsLayer):
+        (WebCore::RenderLayerBacking::updateConfiguration):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::requiresCompositingForCanvas):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::selectElement):
+        (WebCore::RenderListBox::updateFromElement):
+        (WebCore::RenderListBox::paintItemForeground):
+        (WebCore::RenderListBox::paintItemBackground):
+        * rendering/RenderListItem.cpp:
+        (WebCore::RenderListItem::calcValue):
+        (WebCore::RenderListItem::updateListMarkerNumbers):
+        * rendering/RenderMarquee.cpp:
+        (WebCore::RenderMarquee::marqueeSpeed):
+        * rendering/RenderMenuList.cpp:
+        (WebCore::selectedOptionCount):
+        (RenderMenuList::selectElement):
+        (RenderMenuList::updateOptionsWidth):
+        (RenderMenuList::setTextFromOption):
+        (RenderMenuList::itemText):
+        (RenderMenuList::itemIsSelected):
+        * rendering/RenderMeter.cpp:
+        (WebCore::RenderMeter::meterElement):
+        * rendering/RenderProgress.cpp:
+        (WebCore::RenderProgress::progressElement):
+        * rendering/RenderSlider.cpp:
+        (WebCore::RenderSlider::element):
+        * rendering/RenderSnapshottedPlugIn.cpp:
+        (WebCore::RenderSnapshottedPlugIn::plugInImageElement):
+        * rendering/RenderTextControl.cpp:
+        (WebCore::RenderTextControl::textFormControlElement):
+        * rendering/RenderTextControlMultiLine.cpp:
+        (WebCore::RenderTextControlMultiLine::textAreaElement):
+        * rendering/RenderTextControlSingleLine.cpp:
+        (WebCore::RenderTextControlSingleLine::inputElement):
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::paintSliderTicks):
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::RenderThemeIOS::paintMenuListButtonDecorations):
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::paintSearchFieldCancelButton):
+        (WebCore::RenderThemeMac::paintSnapshottedPluginOverlay):
+        * rendering/RenderVideo.cpp:
+        (WebCore::RenderVideo::videoElement):
+        * svg/graphics/SVGImageCache.cpp:
+        (WebCore::SVGImageCache::imageForRenderer):
+        * svg/svgtags.in:
+        Generate helpers to SVGAElement so that isSVGAElement() can be used
+        instead of hasTagName(SVGNames::aTag). I did such update in this
+        patch.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::visiblePlaceholder):
+        (WebCore::Internals::wasLastChangeUserEdit):
+        (WebCore::Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks):
+        (WebCore::Internals::isSelectPopupVisible):
+        * xml/parser/XMLDocumentParserLibxml2.cpp:
+        (WebCore::XMLDocumentParser::startElementNs):
+
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Have DataTransfer::files() return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=137039
+
+        Reviewed by Ryosuke Niwa.
+
+        Have DataTransfer::files() return a reference instead of a pointer as
+        it can never return null.
+
+        No new tests, no behavior change.
+
+        * dom/DataTransfer.cpp:
+        (WebCore::DataTransfer::files):
+        * dom/DataTransfer.h:
+
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Have NamedNodeMap::element() and DOMStringMap::element() return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=137040
+
+        Reviewed by Ryosuke Niwa.
+
+        Have NamedNodeMap::element() and DOMStringMap::element() return a
+        reference instead of a pointer as they can never return null.
+
+        No new tests, no behavior change.
+
+        * dom/DatasetDOMStringMap.h:
+        * dom/NamedNodeMap.h:
+        (WebCore::NamedNodeMap::element):
+
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Have DOMImplementation::document() and Element::attributes() return references
+        https://bugs.webkit.org/show_bug.cgi?id=137035
+
+        Reviewed by Andreas Kling.
+
+        Have DOMImplementation::document() and Element::attributes() return
+        references instead of pointers as they can never return null.
+
+        No new tests, no behavior change.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateImplementation):
+        Update the JS Bindings code generator to use WTF::getPtr() in a couple
+        more places so that the implementation can return references instead
+        of pointers even when [GenerateIsReachable=xxx] IDL extended attribute
+        is used.
+
+        * dom/DOMImplementation.h:
+        (WebCore::DOMImplementation::document):
+        * dom/Element.cpp:
+        (WebCore::Element::attributes):
+        * dom/Element.h:
+        (WebCore::Node::attributes):
+
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Have Document::ensureTemplateDocument() return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=137033
+
+        Reviewed by Ryosuke Niwa.
+
+        Have Document::ensureTemplateDocument() return a reference instead of
+        a pointer as it can never return null.
+
+        No new tests, no behavior change.
+
+        * dom/Document.cpp:
+        (WebCore::Document::ensureTemplateDocument):
+        * dom/Document.h:
+        * editing/markup.cpp:
+        (WebCore::createFragmentForInnerOuterHTML):
+        * html/HTMLTemplateElement.cpp:
+        (WebCore::HTMLTemplateElement::content):
+        (WebCore::HTMLTemplateElement::didMoveToNewDocument):
+
+2014-09-23  Chris Dumez  <cdumez@apple.com>
+
+        Have Document::accessSVGExtensions() return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=137030
+
+        Reviewed by Ryosuke Niwa.
+
+        Have Document::accessSVGExtensions() return a reference instead of a
+        pointer as it can never return null.
+
+        No new tests, no behavior change.
+
+        * dom/ContainerNode.cpp:
+        (WebCore::ContainerNode::removeChild):
+        (WebCore::ContainerNode::removeChildren):
+        * dom/Document.cpp:
+        (WebCore::Document::commonTeardown):
+        (WebCore::Document::implicitClose):
+        (WebCore::Document::accessSVGExtensions):
+        * dom/Document.h:
+        * dom/Element.cpp:
+        (WebCore::Element::~Element):
+        (WebCore::Element::removedFrom):
+        * editing/markup.cpp:
+        (WebCore::isPlainTextMarkup):
+        * history/CachedFrame.cpp:
+        (WebCore::CachedFrameBase::restore):
+        * rendering/FilterEffectRenderer.cpp:
+        (WebCore::FilterEffectRenderer::buildReferenceFilter):
+        * rendering/svg/RenderSVGResource.cpp:
+        (WebCore::removeFromCacheAndInvalidateDependencies):
+        * rendering/svg/RenderSVGResourceContainer.cpp:
+        (WebCore::svgExtensionsFromElement):
+        * rendering/svg/RenderSVGResourceContainer.h:
+        (WebCore::getRenderSVGResourceContainerById):
+        (WebCore::getRenderSVGResourceById):
+        * rendering/svg/SVGResources.cpp:
+        (WebCore::registerPendingResource):
+        (WebCore::SVGResources::buildCachedResources):
+        * rendering/svg/SVGResourcesCache.cpp:
+        (WebCore::resourcesCacheFromRenderer):
+        (WebCore::SVGResourcesCache::resourceDestroyed):
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::~SVGElement):
+        (WebCore::SVGElement::reportAttributeParsingError):
+        (WebCore::SVGElement::removedFrom):
+        (WebCore::SVGElement::viewportElement):
+        (WebCore::SVGElement::attributeChanged):
+        (WebCore::SVGElement::buildPendingResourcesIfNeeded):
+        (WebCore::SVGElement::accessDocumentSVGExtensions): Deleted.
+        * svg/SVGElement.h:
+        * svg/SVGFEConvolveMatrixElement.cpp:
+        (WebCore::SVGFEConvolveMatrixElement::parseAttribute):
+        * svg/SVGFEGaussianBlurElement.cpp:
+        (WebCore::SVGFEGaussianBlurElement::parseAttribute):
+        * svg/SVGFEImageElement.cpp:
+        (WebCore::SVGFEImageElement::clearResourceReferences):
+        (WebCore::SVGFEImageElement::buildPendingResource):
+        * svg/SVGFitToViewBox.cpp:
+        (WebCore::SVGFitToViewBox::parseViewBox):
+        * svg/SVGFontFaceElement.cpp:
+        (WebCore::SVGFontFaceElement::insertedInto):
+        (WebCore::SVGFontFaceElement::removedFrom):
+        * svg/SVGMPathElement.cpp:
+        (WebCore::SVGMPathElement::buildPendingResource):
+        (WebCore::SVGMPathElement::clearResourceReferences):
+        * svg/SVGPathElement.cpp:
+        (WebCore::SVGPathElement::parseAttribute):
+        (WebCore::SVGPathElement::invalidateMPathDependencies):
+        * svg/SVGPolyElement.cpp:
+        (WebCore::SVGPolyElement::parseAttribute):
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::~SVGSVGElement):
+        (WebCore::SVGSVGElement::insertedInto):
+        (WebCore::SVGSVGElement::removedFrom):
+        * svg/SVGTRefElement.cpp:
+        (WebCore::SVGTRefElement::detachTarget):
+        (WebCore::SVGTRefElement::buildPendingResource):
+        * svg/SVGTextPathElement.cpp:
+        (WebCore::SVGTextPathElement::clearResourceReferences):
+        (WebCore::SVGTextPathElement::buildPendingResource):
+        * svg/SVGUseElement.cpp:
+        (WebCore::SVGUseElement::clearResourceReferences):
+        (WebCore::SVGUseElement::buildPendingResource):
+        (WebCore::SVGUseElement::toClipPath):
+        (WebCore::SVGUseElement::buildInstanceTree):
+        * svg/animation/SVGSMILElement.cpp:
+        (WebCore::SVGSMILElement::clearResourceReferences):
+        (WebCore::SVGSMILElement::buildPendingResource):
+
+2014-09-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to attach a debugger to a JSContext before anything is executed
+        https://bugs.webkit.org/show_bug.cgi?id=136893
+
+        Reviewed by Timothy Hatcher.
+
+        Automatic inspection is currently disabled for web pages.
+        This just updates the interfaces that changed.
+
+        * WebCore.exp.in:
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::connectFrontend):
+        (WebCore::InspectorController::show):
+        * inspector/InspectorController.h:
+        * page/PageDebuggable.cpp:
+        (WebCore::PageDebuggable::connect):
+        * page/PageDebuggable.h:
+        * testing/Internals.cpp:
+        (WebCore::Internals::openDummyInspectorFrontend):
+
+2014-09-23  Eduardo Lima Mitev  <elima@igalia.com>
+
+        [GTK] Adds implementation of subtle crypto HMAC algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=133320
+
+        Reviewed by Philippe Normand.
+
+        Tests are already in place under crypto/subtle/hmac-*.html
+
+        * crypto/gtk/CryptoAlgorithmHMACGtk.cpp:
+        (WebCore::getGnutlsDigestAlgorithm):
+        (WebCore::calculateSignature):
+        (WebCore::CryptoAlgorithmHMAC::platformSign):
+        (WebCore::CryptoAlgorithmHMAC::platformVerify):
+
+2014-09-23  Eduardo Lima Mitev  <elima@igalia.com>
+
+        [GTK] Adds implementation of Subtle Crypto digest algorithms
+        https://bugs.webkit.org/show_bug.cgi?id=133319
+
+        Reviewed by Philippe Normand.
+
+        Tests are already in place under crypto/subtle/sha-*.html
+
+        * crypto/gtk/CryptoDigestGtk.cpp:
+        (WebCore::CryptoDigest::CryptoDigest):
+        (WebCore::CryptoDigest::~CryptoDigest):
+        (WebCore::CryptoDigest::create):
+        (WebCore::CryptoDigest::addBytes):
+        (WebCore::CryptoDigest::computeHash):
+
+2014-09-15  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Do not grow tracks when the growth factor is 0
+        https://bugs.webkit.org/show_bug.cgi?id=136575
+
+        Reviewed by Darin Adler.
+
+        A couple of performance optimizations for the track sizing
+        algorithm. On the one hand we avoid the computation of the
+        available logical space share if the track has no growth potential
+        (the current breadth is the maximum breadth) and on the other
+        hand, we avoid calling RenderGrid::distributeSpaceToTracks() if
+        the available logical space is not greater than 0.
+
+        The combined effect of these two changes is an impressive +16%
+        improvement in auto-grid-lots-of-data.html performance test.
+
+        No new tests as there is no change in the functionality.
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::resolveContentBasedTrackSizingFunctionsForItems):
+        (WebCore::RenderGrid::distributeSpaceToTracks):
+
+2014-09-23  Ion Rosca  <rosca@adobe.com>
+
+        [CSS Blending] The composited layers isolated by the page group should blend with the default white background color.
+        https://bugs.webkit.org/show_bug.cgi?id=136563
+
+        Reviewed by Simon Fraser.
+
+        If a blending layer is not isolated, then it should blend with a white backdrop:
+        http://dev.w3.org/fxtf/compositing-1/#pagebackdrop
+
+        Tests: css3/blending/blend-mode-body-composited-child-background-color.html
+               css3/blending/blend-mode-body-composited-child.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::isSimpleContainerCompositingLayer):
+        If the isolating composited layer is the root renderer, then it should have a backing store
+        into which the initial white backdrop will be painted.
+
+2014-09-22  Christophe Dumez  <cdumez@apple.com>
+
+        Unreviewed build fix after r173859.
+
+        Partial revert to fix debug build after r173859.
+
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::remoteSVGRootElement):
+        * html/HTMLFrameOwnerElement.cpp:
+        (WebCore::HTMLFrameOwnerElement::getSVGDocument):
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMousePressEvent):
+        (WebCore::EventHandler::handleMouseMoveEvent):
+        (WebCore::EventHandler::handleMouseReleaseEvent):
+        * page/Frame.cpp:
+        (WebCore::Frame::setPageAndTextZoomFactors):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollToAnchor):
+        * rendering/svg/RenderSVGBlock.h:
+        (WebCore::RenderSVGBlock::graphicsElement):
+        * rendering/svg/RenderSVGGradientStop.cpp:
+        (WebCore::RenderSVGGradientStop::gradientElement):
+        * rendering/svg/RenderSVGInline.h:
+        (WebCore::RenderSVGInline::graphicsElement):
+        * rendering/svg/RenderSVGResourceClipper.cpp:
+        (WebCore::RenderSVGResourceClipper::pathOnlyClipping):
+        * rendering/svg/RenderSVGResourceContainer.cpp:
+        (WebCore::RenderSVGResourceContainer::transformOnNonScalingStroke):
+        * rendering/svg/RenderSVGShape.h:
+        (WebCore::RenderSVGShape::graphicsElement):
+        * rendering/svg/RenderSVGTransformableContainer.h:
+        * rendering/svg/SVGRenderSupport.cpp:
+        (WebCore::SVGRenderSupport::updateMaskedAncestorShouldIsolateBlending):
+        * rendering/svg/SVGRenderTreeAsText.cpp:
+        (WebCore::operator<<):
+        * rendering/svg/SVGRenderingContext.cpp:
+        (WebCore::SVGRenderingContext::prepareToRenderSVGContent):
+        * rendering/svg/SVGResources.cpp:
+        (WebCore::targetReferenceFromResource):
+        * svg/SVGAElement.cpp:
+        (WebCore::SVGAElement::defaultEventHandler):
+        * svg/SVGAnimateElement.cpp:
+        (WebCore::SVGAnimateElement::calculateAnimatedValue):
+        * svg/SVGAnimationElement.cpp:
+        (WebCore::SVGAnimationElement::currentValuesForValuesAnimation):
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::getBoundingBox):
+        * svg/SVGLinearGradientElement.cpp:
+        (WebCore::SVGLinearGradientElement::collectGradientAttributes):
+        * svg/SVGLocatable.cpp:
+        (WebCore::SVGLocatable::getTransformToElement):
+        * svg/SVGPolyElement.cpp:
+        (WebCore::SVGPolyElement::synchronizePoints):
+        (WebCore::SVGPolyElement::lookupOrCreatePointsWrapper):
+        * svg/SVGRadialGradientElement.cpp:
+        (WebCore::SVGRadialGradientElement::collectGradientAttributes):
+        * svg/SVGTextContentElement.cpp:
+        (WebCore::SVGTextContentElement::synchronizeTextLength):
+        (WebCore::SVGTextContentElement::lookupOrCreateTextLengthWrapper):
+        (WebCore::SVGTextContentElement::elementFromRenderer):
+        * svg/SVGUseElement.cpp:
+        (WebCore::SVGUseElement::toClipPath):
+        * svg/animation/SVGSMILElement.cpp:
+        (WebCore::SVGSMILElement::connectConditions):
+        (WebCore::SVGSMILElement::disconnectConditions):
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::hasSingleSecurityOrigin):
+        (WebCore::SVGImage::setContainerSize):
+        (WebCore::SVGImage::containerSize):
+        (WebCore::SVGImage::embeddedContentBox):
+        (WebCore::SVGImage::hasRelativeWidth):
+        (WebCore::SVGImage::hasRelativeHeight):
+        (WebCore::SVGImage::computeIntrinsicDimensions):
+        (WebCore::SVGImage::startAnimation):
+        (WebCore::SVGImage::stopAnimation):
+
+2014-09-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Ensure that layout is up-to-date before hit-testing via RenderView
+        https://bugs.webkit.org/show_bug.cgi?id=136651
+
+        Reviewed by David Hyatt.
+
+        Ensure that layout is up-to-date before we do hit-testing via the RenderView.
+        Previously, RenderLayer::hitTest() called updateLayout(), but it's better
+        to push that responsibility onto RenderView before entering the RenderLayer
+        tree.
+        
+        Make callers a little more consistent in getting the RenderView via
+        Frame::contentRenderer(), though perhaps we should remove that and just
+        call Document::renderView() everywhere.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::press): Hit test via the RenderView, rather
+        than doing so on the RenderView's layer, to ensure that we updateLayout().
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::accessibilityHitTest): This code calls
+        hitTest() on arbitrary layers, so needs to explicitly update layout.
+        * editing/FrameSelection.cpp:
+        (WebCore::FrameSelection::contains):
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::eventMayStartDrag):
+        (WebCore::EventHandler::updateSelectionForMouseDrag):
+        (WebCore::EventHandler::hitTestResultAtPoint): The explicit updateLayout() is
+        no longer needed.
+        (WebCore::EventHandler::updateCursor):
+        (WebCore::EventHandler::handleWheelEvent):
+        (WebCore::EventHandler::hoverTimerFired):
+        (WebCore::hitTestResultInFrame):
+        * page/Frame.cpp:
+        (WebCore::Frame::contentRenderer):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::hitTest):
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::hitTest): Here's where we ensure that layout is up-to-date.
+
+2014-09-22  Christophe Dumez  <cdumez@apple.com>
+
+        Use downcast<SVG*Element>() instead of toSVG*Element()
+        https://bugs.webkit.org/show_bug.cgi?id=137004
+
+        Reviewed by Benjamin Poulain.
+
+        Use downcast<SVG*Element>() instead of toSVG*Element() for casting SVG
+        Elements and get rid of the transition toSVG*Element() macros.
+
+        Also use downcast<MathML*Element>() instead of toMathML*Element() for
+        casting MathML Elements.
+
+        The HTML Elements casting counterparts will be taken care of in a
+        separate patch.
+
+        No new tests, no behavior change.
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::alternativeText):
+        (WebCore::AccessibilityNodeObject::accessibilityDescription):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::remoteSVGRootElement):
+        * bindings/js/JSElementCustom.cpp:
+        (WebCore::toJSNewlyCreated):
+        * bindings/js/JSNodeCustom.cpp:
+        (WebCore::createWrapperInline):
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::ComputedStyleExtractor::propertyValue):
+        * css/CSSCursorImageValue.cpp:
+        (WebCore::resourceReferencedByCursorElement):
+        (WebCore::CSSCursorImageValue::updateIfSVGCursorIsUsed):
+        * css/ElementRuleCollector.cpp:
+        (WebCore::ElementRuleCollector::matchAllRules):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::locateCousinList):
+        (WebCore::StyleResolver::canShareStyleWithElement):
+        (WebCore::StyleResolver::locateSharedStyle):
+        * dom/DocumentStyleSheetCollection.cpp:
+        (WebCore::DocumentStyleSheetCollection::collectActiveStyleSheets):
+        * dom/Element.cpp:
+        (WebCore::Element::synchronizeAllAttributes):
+        (WebCore::Element::synchronizeAttribute):
+        (WebCore::Element::boundsInRootViewSpace):
+        (WebCore::Element::getBoundingClientRect):
+        (WebCore::Element::childShouldCreateRenderer):
+        (WebCore::Element::fastAttributeLookupAllowed):
+        * dom/EventDispatcher.cpp:
+        (WebCore::eventTargetRespectingTargetRules):
+        * dom/ScriptElement.cpp:
+        (WebCore::toScriptElementIfPossible):
+        * dom/make_names.pl:
+        (printTypeHelpers):
+        * html/HTMLFrameOwnerElement.cpp:
+        (WebCore::HTMLFrameOwnerElement::getSVGDocument):
+        * inspector/InspectorCSSAgent.cpp:
+        (WebCore::InspectorCSSAgent::viaInspectorStyleSheet):
+        * mathml/MathMLElement.cpp:
+        (WebCore::MathMLElement::isPhrasingContent):
+        (WebCore::MathMLElement::childShouldCreateRenderer):
+        (WebCore::MathMLElement::attributeChanged):
+        * mathml/MathMLElement.h:
+        (WebCore::Node::hasTagName):
+        * mathml/MathMLSelectElement.cpp:
+        (WebCore::MathMLSelectElement::getSelectedSemanticsChild):
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMousePressEvent):
+        (WebCore::EventHandler::handleMouseMoveEvent):
+        (WebCore::EventHandler::handleMouseReleaseEvent):
+        (WebCore::instanceAssociatedWithShadowTreeElement):
+        * page/Frame.cpp:
+        (WebCore::Frame::setPageAndTextZoomFactors):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollToAnchor):
+        * rendering/RenderTableCell.cpp:
+        (WebCore::RenderTableCell::parseColSpanFromDOM):
+        (WebCore::RenderTableCell::parseRowSpanFromDOM):
+        (WebCore::RenderTableCell::computePreferredLogicalWidths):
+        * rendering/mathml/RenderMathMLMenclose.cpp:
+        (WebCore::RenderMathMLMenclose::addChild):
+        (WebCore::RenderMathMLMenclose::computePreferredLogicalWidths):
+        (WebCore::RenderMathMLMenclose::updateLogicalHeight):
+        (WebCore::RenderMathMLMenclose::paint):
+        * rendering/svg/RenderSVGBlock.h:
+        (WebCore::RenderSVGBlock::graphicsElement):
+        * rendering/svg/RenderSVGForeignObject.cpp:
+        (WebCore::RenderSVGForeignObject::foreignObjectElement):
+        * rendering/svg/RenderSVGGradientStop.cpp:
+        (WebCore::RenderSVGGradientStop::gradientElement):
+        * rendering/svg/RenderSVGGradientStop.h:
+        * rendering/svg/RenderSVGImage.cpp:
+        (WebCore::RenderSVGImage::imageElement):
+        * rendering/svg/RenderSVGInline.h:
+        (WebCore::RenderSVGInline::graphicsElement):
+        * rendering/svg/RenderSVGModelObject.cpp:
+        (WebCore::getElementCTM):
+        (WebCore::RenderSVGModelObject::checkIntersection):
+        (WebCore::RenderSVGModelObject::checkEnclosure):
+        * rendering/svg/RenderSVGModelObject.h:
+        (WebCore::RenderSVGModelObject::element):
+        * rendering/svg/RenderSVGRect.cpp:
+        (WebCore::RenderSVGRect::rectElement):
+        * rendering/svg/RenderSVGResource.cpp:
+        (WebCore::removeFromCacheAndInvalidateDependencies):
+        * rendering/svg/RenderSVGResourceClipper.cpp:
+        (WebCore::RenderSVGResourceClipper::pathOnlyClipping):
+        (WebCore::RenderSVGResourceClipper::drawContentIntoMaskImage):
+        * rendering/svg/RenderSVGResourceClipper.h:
+        * rendering/svg/RenderSVGResourceContainer.cpp:
+        (WebCore::RenderSVGResourceContainer::transformOnNonScalingStroke):
+        * rendering/svg/RenderSVGResourceFilter.h:
+        * rendering/svg/RenderSVGResourceLinearGradient.h:
+        * rendering/svg/RenderSVGResourceMarker.h:
+        * rendering/svg/RenderSVGResourceMasker.h:
+        * rendering/svg/RenderSVGResourcePattern.cpp:
+        (WebCore::RenderSVGResourcePattern::patternElement):
+        * rendering/svg/RenderSVGResourceRadialGradient.h:
+        * rendering/svg/RenderSVGRoot.cpp:
+        (WebCore::RenderSVGRoot::svgSVGElement):
+        * rendering/svg/RenderSVGShape.h:
+        (WebCore::RenderSVGShape::graphicsElement):
+        * rendering/svg/RenderSVGText.cpp:
+        (WebCore::RenderSVGText::textElement):
+        * rendering/svg/RenderSVGTextPath.cpp:
+        (WebCore::RenderSVGTextPath::textPathElement):
+        (WebCore::RenderSVGTextPath::layoutPath):
+        * rendering/svg/RenderSVGTransformableContainer.cpp:
+        (WebCore::RenderSVGTransformableContainer::calculateLocalTransform):
+        * rendering/svg/RenderSVGTransformableContainer.h:
+        * rendering/svg/RenderSVGViewportContainer.cpp:
+        (WebCore::RenderSVGViewportContainer::svgSVGElement):
+        * rendering/svg/SVGPathData.cpp:
+        (WebCore::updatePathFromLineElement):
+        (WebCore::updatePathFromPathElement):
+        (WebCore::updatePathFromPolygonElement):
+        (WebCore::updatePathFromPolylineElement):
+        * rendering/svg/SVGRenderSupport.cpp:
+        (WebCore::SVGRenderSupport::layoutChildren):
+        (WebCore::SVGRenderSupport::applyStrokeStyleToContext):
+        (WebCore::SVGRenderSupport::updateMaskedAncestorShouldIsolateBlending):
+        * rendering/svg/SVGRenderTreeAsText.cpp:
+        (WebCore::operator<<):
+        * rendering/svg/SVGRenderingContext.cpp:
+        (WebCore::SVGRenderingContext::prepareToRenderSVGContent):
+        * rendering/svg/SVGResources.cpp:
+        (WebCore::targetReferenceFromResource):
+        (WebCore::SVGResources::buildCachedResources):
+        * rendering/svg/SVGTextLayoutEngine.cpp:
+        (WebCore::SVGTextLayoutEngine::layoutTextOnLineOrPath):
+        * svg/SVGAElement.cpp:
+        (WebCore::SVGAElement::createElementRenderer):
+        (WebCore::SVGAElement::defaultEventHandler):
+        * svg/SVGAltGlyphDefElement.cpp:
+        (WebCore::SVGAltGlyphDefElement::hasValidGlyphElements):
+        * svg/SVGAltGlyphElement.cpp:
+        (WebCore::SVGAltGlyphElement::hasValidGlyphElements):
+        * svg/SVGAnimateElement.cpp:
+        (WebCore::SVGAnimateElement::calculateAnimatedValue):
+        * svg/SVGAnimatedTransformList.cpp:
+        (WebCore::SVGAnimatedTransformListAnimator::SVGAnimatedTransformListAnimator):
+        * svg/SVGAnimationElement.cpp:
+        (WebCore::SVGAnimationElement::currentValuesForValuesAnimation):
+        (WebCore::SVGAnimationElement::adjustForInheritance):
+        * svg/SVGDocument.cpp:
+        (WebCore::SVGDocument::rootElement):
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::ownerSVGElement):
+        (WebCore::SVGElement::viewportElement):
+        (WebCore::SVGElement::getBoundingBox):
+        (WebCore::SVGElement::childShouldCreateRenderer):
+        (WebCore::SVGElement::title):
+        (WebCore::SVGElement::updateRelativeLengthsInformation):
+        * svg/SVGElement.h:
+        (WebCore::Node::hasTagName):
+        * svg/SVGFEComponentTransferElement.cpp:
+        (WebCore::SVGFEComponentTransferElement::build):
+        * svg/SVGFEImageElement.cpp:
+        (WebCore::SVGFEImageElement::buildPendingResource):
+        * svg/SVGFilterElement.cpp:
+        (WebCore::SVGFilterElement::childShouldCreateRenderer):
+        * svg/SVGFilterPrimitiveStandardAttributes.h:
+        (WebCore::isSVGFilterPrimitiveStandardAttributes):
+        * svg/SVGFontData.cpp:
+        (WebCore::SVGFontData::applySVGGlyphSelection):
+        * svg/SVGFontElement.cpp:
+        (WebCore::SVGFontElement::ensureGlyphCache):
+        * svg/SVGFontFaceElement.cpp:
+        (WebCore::SVGFontFaceElement::rebuildFontFace):
+        * svg/SVGFontFaceFormatElement.cpp:
+        (WebCore::SVGFontFaceFormatElement::childrenChanged):
+        * svg/SVGFontFaceSrcElement.cpp:
+        (WebCore::SVGFontFaceSrcElement::srcValue):
+        (WebCore::SVGFontFaceSrcElement::childrenChanged):
+        * svg/SVGFontFaceUriElement.cpp:
+        (WebCore::SVGFontFaceUriElement::childrenChanged):
+        * svg/SVGGlyphElement.cpp:
+        (WebCore::SVGGlyphElement::invalidateGlyphCache):
+        * svg/SVGGraphicsElement.h:
+        (WebCore::isSVGGraphicsElement):
+        * svg/SVGHKernElement.cpp:
+        (WebCore::SVGHKernElement::insertedInto):
+        (WebCore::SVGHKernElement::removedFrom):
+        * svg/SVGImageLoader.cpp:
+        (WebCore::SVGImageLoader::dispatchLoadEvent):
+        * svg/SVGLengthContext.cpp:
+        (WebCore::SVGLengthContext::determineViewport):
+        * svg/SVGLinearGradientElement.cpp:
+        (WebCore::setGradientAttributes):
+        (WebCore::SVGLinearGradientElement::collectGradientAttributes):
+        * svg/SVGLocatable.cpp:
+        (WebCore::SVGLocatable::nearestViewportElement):
+        (WebCore::SVGLocatable::farthestViewportElement):
+        (WebCore::SVGLocatable::computeCTM):
+        (WebCore::SVGLocatable::getTransformToElement):
+        * svg/SVGMPathElement.cpp:
+        (WebCore::SVGMPathElement::buildPendingResource):
+        (WebCore::SVGMPathElement::pathElement):
+        (WebCore::SVGMPathElement::notifyParentOfPathChange):
+        * svg/SVGMarkerElement.cpp:
+        (WebCore::SVGMarkerElement::synchronizeOrientType):
+        (WebCore::SVGMarkerElement::lookupOrCreateOrientTypeWrapper):
+        * svg/SVGPathElement.cpp:
+        (WebCore::SVGPathElement::invalidateMPathDependencies):
+        (WebCore::SVGPathElement::lookupOrCreateDWrapper):
+        (WebCore::SVGPathElement::synchronizeD):
+        * svg/SVGPathSegList.cpp:
+        (WebCore::SVGPathSegList::commitChange):
+        * svg/SVGPatternElement.cpp:
+        (WebCore::SVGPatternElement::collectPatternAttributes):
+        * svg/SVGPolyElement.cpp:
+        (WebCore::SVGPolyElement::synchronizePoints):
+        (WebCore::SVGPolyElement::lookupOrCreatePointsWrapper):
+        * svg/SVGRadialGradientElement.cpp:
+        (WebCore::setGradientAttributes):
+        (WebCore::SVGRadialGradientElement::collectGradientAttributes):
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::setupInitialView):
+        * svg/SVGTextContentElement.cpp:
+        (WebCore::SVGTextContentElement::synchronizeTextLength):
+        (WebCore::SVGTextContentElement::lookupOrCreateTextLengthWrapper):
+        (WebCore::SVGTextContentElement::elementFromRenderer):
+        * svg/SVGTextContentElement.h:
+        (WebCore::isSVGTextContentElement):
+        * svg/SVGTextPathElement.cpp:
+        (WebCore::SVGTextPathElement::buildPendingResource):
+        * svg/SVGUseElement.cpp:
+        (WebCore::dumpInstanceTree):
+        (WebCore::SVGUseElement::buildPendingResource):
+        (WebCore::SVGUseElement::toClipPath):
+        (WebCore::SVGUseElement::buildInstanceTree):
+        (WebCore::SVGUseElement::hasCycleUseReferencing):
+        (WebCore::SVGUseElement::expandUseElementsInShadowTree):
+        (WebCore::SVGUseElement::associateInstancesWithShadowTreeElements):
+        * svg/SVGVKernElement.cpp:
+        (WebCore::SVGVKernElement::insertedInto):
+        (WebCore::SVGVKernElement::removedFrom):
+        * svg/SVGViewSpec.cpp:
+        (WebCore::SVGViewSpec::viewTarget):
+        * svg/animation/SVGSMILElement.cpp:
+        (WebCore::SVGSMILElement::buildPendingResource):
+        (WebCore::SVGSMILElement::connectConditions):
+        (WebCore::SVGSMILElement::disconnectConditions):
+        * svg/animation/SVGSMILElement.h:
+        (WebCore::isSVGSMILElement):
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::hasSingleSecurityOrigin):
+        (WebCore::SVGImage::setContainerSize):
+        (WebCore::SVGImage::containerSize):
+        (WebCore::SVGImage::embeddedContentBox):
+        (WebCore::SVGImage::hasRelativeWidth):
+        (WebCore::SVGImage::hasRelativeHeight):
+        (WebCore::SVGImage::computeIntrinsicDimensions):
+        (WebCore::SVGImage::startAnimation):
+        (WebCore::SVGImage::stopAnimation):
+        * svg/graphics/filters/SVGFEImage.cpp:
+        (WebCore::FEImage::platformApplySoftware):
+        * svg/properties/SVGAnimatedPathSegListPropertyTearOff.h:
+        (WebCore::SVGAnimatedPathSegListPropertyTearOff::animValDidChange):
+        * svg/properties/SVGPathSegListPropertyTearOff.cpp:
+        (WebCore::SVGPathSegListPropertyTearOff::contextElement):
+
+2014-09-22  Pratik Solanki  <psolanki@apple.com>
+
+        Follow on fix for [iOS] ASSERTION FAILED: WTF::isMainThread() in WebCore::memoryCache() when using WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=136962
+
+        Rubber-stamped by Simon Fraser.
+
+        Remove the const per review comment. It is not needed.
+
+        * loader/cocoa/DiskCacheMonitorCocoa.mm:
+        (WebCore::DiskCacheMonitor::DiskCacheMonitor):
+
+2014-09-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Move nodeFromPoint() back to Document where it belongs
+        https://bugs.webkit.org/show_bug.cgi?id=137012
+
+        Reviewed by Zalan Bujtas.
+
+        nodeFromPoint() was moved into TreeScope for ShadowDOM work, but now we can move
+        it back to its logical place.
+        
+        Make versions of elementFromPoint and caretRangeFromPoint that take LayoutPoints,
+        and change the current scale/offset code to be in layout units (which results
+        in a small behavior change).
+        
+        elementFromPoint(int, int) and caretRangeFromPoint(int, int) are still required
+        for bindings code.
+
+        * dom/Document.cpp:
+        (WebCore::Document::nodeFromPoint):
+        (WebCore::Document::elementFromPoint):
+        (WebCore::Document::caretRangeFromPoint):
+        * dom/Document.h:
+        (WebCore::Document::elementFromPoint): Move logic from TreeScope::elementFromPoint()
+        here.
+        * dom/TreeScope.cpp:
+        (WebCore::nodeFromPoint): Deleted.
+        (WebCore::TreeScope::elementFromPoint): Deleted.
+        * dom/TreeScope.h:
+
+2014-09-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add the baseline implementation of :nth-child(An+B of selector-list)
+        https://bugs.webkit.org/show_bug.cgi?id=136975
+
+        Reviewed by Darin Adler.
+
+        Tests: fast/css/nth-child-of-classname.html
+               fast/css/nth-child-of-complex-selector.html
+               fast/css/nth-child-of-compound-selector.html
+               fast/css/nth-child-of-tagname.html
+               fast/selectors/nth-child-of-basics.html
+               fast/selectors/nth-child-of-class-style-update.html
+               fast/selectors/nth-child-of-complex-selectors.html
+               fast/selectors/nth-child-of-selector-list.html
+
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::checkOne):
+        Pretty basic:
+        -Go over the previous siblings.
+        -For each sibling, test the selector list. If it matches, increase the count.
+
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::addPseudoClassType):
+        Skip any case of the new selector. This will be implemented separately.
+
+2014-09-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement 'vhea', 'vmtx', and 'kern' tables in SVG -> OTF converter
+        https://bugs.webkit.org/show_bug.cgi?id=136971
+
+        Reviewed by Darin Adler.
+
+        This patch fills in the tables related to vertical metrics and kerning. The vertical metrics tables are
+        fairly straightforward. On the other hand, the 'kern' table has subtables which can be in a variety
+        of formats; however, according to Microsoft, Windows only allows one particular format, which doesn't
+        allow for ranges of glyphs to be described and therefore might lead to a large 'kern' table size. In
+        the interest of platform agnosticism I have implemented this particular format, and have not actually
+        witnessed any extremely large 'kern' tables in any of the fonts that I have looked at.
+
+        I also added basic support for the horiz-origin-x and horiz-origin-y SVG properties, though support
+        might not be perfect based on my testing.
+
+        Regarding testing, after this patch, almost all of our SVG fonts tests pass (barring tiny rebaselining;
+        the platform font system calculates slightly different advances than we did. These differences are tiny
+        and expected from such a dramatic shift in text handling engines.) There are around two dozen failing
+        tests left that look like they are actually indiciative of code problems.
+
+        * svg/SVGFontElement.cpp:
+        (WebCore::SVGFontElement::ensureGlyphCache): Refactor to accept new signature of
+        SVG*KernElement::build*KerningPair().
+        * svg/SVGHKernElement.cpp:
+        (WebCore::SVGHKernElement::buildHorizontalKerningPair): Refactor to allow for intermediate data to be
+        returned, which the SVG -> OTF font converter can use.
+        * svg/SVGHKernElement.h: New signature for buildHorizontalKerningPair().
+        * svg/SVGToOTFFontConversion.cpp:
+        (WebCore::SVGToOTFFontConverter::GlyphData::GlyphData): Save the glyph's vertical advance along with
+        the glyph's horizontal advance.
+        (WebCore::SVGToOTFFontConverter::KerningData::KerningData): This data represents a record in one of
+        the two 'kern' subtables, and as such needs to be sorted.
+        (WebCore::SVGToOTFFontConverter::KerningData::operator<): Sort comparator.
+        (WebCore::SVGToOTFFontConverter::appendHEADTable): Save the unitsPerEm locally to save a conditional.
+        (WebCore::SVGToOTFFontConverter::appendHHEATable): Ditto.
+        (WebCore::SVGToOTFFontConverter::appendHMTXTable): Ditto. Also use the horizontal advance as opposed to
+        the vertical advance.
+        (WebCore::SVGToOTFFontConverter::appendOS2Table): Save the unitsPerEm locally to save a conditional.
+        Also if the average advance isn't found in the font, use the missing glyph's advance. If there is no
+        missing glyph, bail and use the unitsPerEm.
+        (WebCore::SVGToOTFFontConverter::appendVORGTable): If the default vertical origin isn't found in the
+        font, use the missing glyphs's vertical origin. If there is no missing glyph, bail and use 0.
+        (WebCore::SVGToOTFFontConverter::appendVHEATable): Parallel of 'hhea' table, except for vertical info.
+        (WebCore::SVGToOTFFontConverter::appendVMTXTable): Parallel of 'hmtx' table, except for vertical info.
+        (WebCore::SVGToOTFFontConverter::appendKerningHelperFields): Computes and appends 4 fields that font
+        parsers need in order to do a binary search on the kern records.
+        (WebCore::SVGToOTFFontConverter::addCodepointRanges): For each codepoint in the ranges, look up its
+        representative glyph and append it to a set.
+        (WebCore::SVGToOTFFontConverter::addCodepoints): For each codepoint in the range, look up its
+        representative glyph and append it to a set.
+        (WebCore::SVGToOTFFontConverter::addGlyphNames): For each glyph name, look up its representative glyph
+        and append it to a set.
+        (WebCore::SVGToOTFFontConverter::computeKerningData): Call SVG*KernElement::build*KerningPair() and
+        iterate through all the data it returned, building up records into a Vector.
+        (WebCore::SVGToOTFFontConverter::appendKERNTable): Go through the vector that computeKerningData()
+        returned and actually write out the two subtables. One is for horizontal kerning and the other is for
+        vertical kerning.
+        (WebCore::CFFBuilder::CFFBuilder): Use the position of the glyph origin to perform the initial moveto
+        command.
+        (WebCore::transcodeGlyphPaths): Get the glyph's origin and pass it to the CFFBuilder.
+        (WebCore::SVGToOTFFontConverter::appendGlyphData): Templated overloading so that the missing glyph
+        gets a null SVGGlyphElement pointer but the rest of the glyphs get a non-null one.
+        (WebCore::SVGToOTFFontConverter::processGlyphElement): Called on both SVGGlyphElements and
+        SVGMissingGlyphElements, this pulls out information from the element and computs its path information.
+        (WebCore::SVGToOTFFontConverter::SVGToOTFFontConverter): Use the new templated version of
+        processGlyphElement so we can get the same glyph parsing behavior on SVGMissingGlyphElements. In
+        addition, populate two maps for the kerning table creation function to use.
+        (WebCore::SVGToOTFFontConverter::convertSVGToOTFFont): Append new tables.
+        * svg/SVGVKernElement.cpp:
+        (WebCore::SVGVKernElement::buildVerticalKerningPair): Refactor to allow for intermediate data to be
+        returned, which the SVG -> OTF font converter can use.
+        * svg/SVGVKernElement.h: New signature for buildVerticalKerningPair().
+
+2014-09-22  Alexey Proskuryakov  <ap@apple.com>
+
+        WebSocket crash when a connection is closed from server side
+        https://bugs.webkit.org/show_bug.cgi?id=137009
+        rdar://problem/18333977
+        rdar://problem/12708225
+
+        Reviewed by Brady Eidson.
+
+        I don't think that this can be tested with our test server.
+
+        * Modules/websockets/WebSocketChannel.cpp:
+        (WebCore::WebSocketChannel::WebSocketChannel): Added logging.
+        (WebCore::WebSocketChannel::~WebSocketChannel): Ditto.
+        (WebCore::WebSocketChannel::close): Protect self, because startClosingHandshake
+        can release the last reference.
+        (WebCore::WebSocketChannel::fail): Added an assertion that the channel is always
+        closed after this function.
+        (WebCore::WebSocketChannel::startClosingHandshake): Protect self, and don't change
+        the stack from closed back to closing if after failing to send closing handshake.
+        (WebCore::WebSocketChannel::processOutgoingFrameQueue): Protect self.
+
+2014-09-22  David Hyatt  <hyatt@apple.com>
+
+        Bad cast in isValidColumnSpanner.
+        https://bugs.webkit.org/show_bug.cgi?id=133380.
+
+        Reviewed by Simon Fraser.
+
+        Added fast/multicol/multicol-crazy-nesting.html
+
+        * rendering/RenderMultiColumnFlowThread.cpp:
+        (WebCore::isValidColumnSpanner):
+        The crawl up the chain looking for unsplittable objects should use containing blocks
+        and not be casting to parent boxes. You can have an inline in the parent chain, so
+        this was not the right way to walk up the tree.
+
+2014-09-22  David Hyatt  <hyatt@apple.com>
+
+        ASSERT in RenderMultiColumnSet::requiresBalancing.
+        https://bugs.webkit.org/show_bug.cgi?id=136376.
+
+        Reviewed by David Kilzer.
+
+        Added fast/multicol/multicol-selection.html.
+
+        * rendering/RenderMultiColumnFlowThread.cpp:
+        (WebCore::isValidColumnSpanner):
+        Don't allow an object to become a spanner if it does not have the flow
+        thread as its containing block. Otherwise the flow thread won't get notified
+        of spanner placeholder insertions, and so the spanner ends up orphaned.
+
+2014-09-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Implement cap height in SimpleFontDataWin to enable initial-letter support for Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=136841
+
+        Reviewed by David Hyatt.
+
+        * platform/graphics/win/SimpleFontDataCGWin.cpp:
+        (WebCore::SimpleFontData::platformInit): Add missing calls to set up our fonts.
+
+2014-09-22  Eric Carlson  <eric.carlson@apple.com>
+
+        Update HTMLMediaElement logging
+        https://bugs.webkit.org/show_bug.cgi?id=136991
+
+        Reviewed by Alexey Proskuryakov.
+
+        No new tests, only logging was changed.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::HTMLMediaElement):
+        (WebCore::HTMLMediaElement::~HTMLMediaElement):
+        (WebCore::HTMLMediaElement::parseAttribute):
+
+2014-09-22  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        REGRESSION(r173631): It broke the !ENABLE(VIDEO) build
+        https://bugs.webkit.org/show_bug.cgi?id=136946
+
+        Reviewed by Jer Noble.
+
+        No new tests required, no new functionality.
+
+        * page/DragController.cpp:
+        (WebCore::DragController::startDrag):
+
+2014-09-22  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Use nullptr in regions code
+        https://bugs.webkit.org/show_bug.cgi?id=137001
+
+        Reviewed by Andrei Bucur.
+
+        No new tests as no new functionality is introduced.
+
+        * dom/DOMNamedFlowCollection.cpp:
+        (WebCore::DOMNamedFlowCollection::item):
+        (WebCore::DOMNamedFlowCollection::namedItem):
+        * dom/NamedFlowCollection.cpp:
+        (WebCore::NamedFlowCollection::flowByName):
+        * dom/WebKitNamedFlow.cpp:
+        (WebCore::WebKitNamedFlow::WebKitNamedFlow):
+        * rendering/RenderFlowThread.cpp:
+        (WebCore::RenderFlowThread::getLayerListForRegion):
+        (WebCore::RenderFlowThread::regionForCompositedLayer):
+        (WebCore::RenderFlowThread::regionAtBlockOffset):
+        (WebCore::RenderFlowThread::mapFromFlowToRegion):
+        (WebCore::RenderFlowThread::firstRegion):
+        (WebCore::RenderFlowThread::lastRegion):
+        (WebCore::RenderFlowThread::currentActiveRenderBox):
+        * rendering/RenderNamedFlowThread.cpp:
+        (WebCore::RenderNamedFlowThread::nextRendererForElement):
+
+2014-09-17  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Cannot play Vimeo video
+        https://bugs.webkit.org/show_bug.cgi?id=134969
+
+        Reviewed by Sergio Villar Senin.
+
+        Ensure the GStreamer HTTP source element also sends cookies when
+        it's sending its requests. Some streaming platforms such as Vimeo
+        do server-side cookie checks on incoming requests before serving
+        media data.
+
+        Test: http/tests/media/hls/video-cookie.html
+
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webKitWebSrcStart): Set first-party cookie URL to the request so
+        the ResourceLoader properly sets cookies in the HTTP request.
+
+2014-09-22  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        Leverage RenderLayerBacking::renderer() instead of m_owningLayer.renderer()
+        https://bugs.webkit.org/show_bug.cgi?id=136954
+
+        Reviewed by Darin Adler.
+
+        No new tests just refactoring.
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateCompositedBounds):
+        (WebCore::RenderLayerBacking::updateDirectlyCompositedBackgroundImage):
+        (WebCore::RenderLayerBacking::paintIntoLayer):
+
+2014-09-22  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Assertion failure and null dereference crash when using animations and regions
+        https://bugs.webkit.org/show_bug.cgi?id=136918
+
+        Reviewed by Andrei Bucur.
+
+        In some situations, for instance when an image has an attached animation, the style change caused by the animation
+        triggers a geometry update for the backing store associated with the image's layer. This may occur before
+        the layout for the image has finished.
+
+        Moreover, if the image in such situation - having a composited layer - is displayed in a region,
+        sicne the layout did not finish yet, the mappings between the layers of the elements collected in the named flow
+        and the regions associated with the named flow are not updated and cannot be used.
+
+        Therefore in those situations, we have to bail out early and use these mappings only after the layout has finished.
+
+        This patch also changes RenderLayerBacking method updateAfterDescendents -> updateAfterDescendants.
+
+        Test: fast/regions/animated-image-in-region.html
+
+        * rendering/RenderFlowThread.cpp:
+        (WebCore::RenderFlowThread::cachedRegionForCompositedLayer):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateAfterDescendants):
+        * rendering/RenderLayerBacking.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::rebuildCompositingLayerTree):
+        (WebCore::RenderLayerCompositor::updateLayerTreeGeometry):
+        (WebCore::RenderLayerCompositor::updateCompositingDescendantGeometry):
+
 2014-09-21  Chris Dumez  <cdumez@apple.com>
 
         Generate Element casting helper functions
@@ -707,6 +2320,14 @@
 
         * platform/gtk/GtkDragAndDropHelper.cpp:
         (WebCore::GtkDragAndDropHelper::handleDragLeave): Use GMainLoopSource::scheduleAndDeleteOnDestroy().
+
+2014-09-18  Roger Fong  <roger_fong@apple.com>
+
+        Add a move operator and constructor override to HashSet.
+        https://bugs.webkit.org/show_bug.cgi?id=136934.
+
+        * dom/Node.cpp:
+        (WebCore::Document::invalidateNodeListAndCollectionCaches): Remove the now unneeded call to clear the HashSet.
 
 2014-09-18  Roger Fong  <roger_fong@apple.com>
 

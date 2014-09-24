@@ -321,18 +321,18 @@ bool Editor::canCut() const
 static HTMLImageElement* imageElementFromImageDocument(Document& document)
 {
     if (!document.isImageDocument())
-        return 0;
+        return nullptr;
     
     HTMLElement* body = document.body();
     if (!body)
-        return 0;
+        return nullptr;
     
     Node* node = body->firstChild();
     if (!node)
-        return 0;
+        return nullptr;
     if (!isHTMLImageElement(node))
-        return 0;
-    return toHTMLImageElement(node);
+        return nullptr;
+    return downcast<HTMLImageElement>(node);
 }
 
 bool Editor::canCopy() const
@@ -3533,18 +3533,18 @@ static Node* findFirstMarkable(Node* node)
 {
     while (node) {
         if (!node->renderer())
-            return 0;
+            return nullptr;
         if (node->renderer()->isTextOrLineBreak())
             return node;
         if (isHTMLTextFormControlElement(*node))
-            node = toHTMLTextFormControlElement(node)->visiblePositionForIndex(1).deepEquivalent().deprecatedNode();
+            node = toHTMLTextFormControlElement(*node).visiblePositionForIndex(1).deepEquivalent().deprecatedNode();
         else if (node->firstChild())
             node = node->firstChild();
         else
             node = node->nextSibling();
     }
 
-    return 0;
+    return nullptr;
 }
 
 bool Editor::selectionStartHasMarkerFor(DocumentMarker::MarkerType markerType, int from, int length) const

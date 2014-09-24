@@ -1,3 +1,224 @@
+2014-09-23  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] More debugging for the Windows bots.
+
+        * Scripts/webkitpy/common/system/path.py:
+        (_CygPath):
+
+2014-09-23  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Fix for r173899, those tabs should be spaces.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._command_from_driver_input):
+        (Driver): Deleted.
+
+2014-09-23  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Add some logging to debug a problem with the Windows bots that causes layout tests to exit early.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver):
+
+2014-09-23  Jer Noble  <jer.noble@apple.com>
+
+        [Tools] git-commit uses wrong ChangeLog when run from a subdirectory
+        https://bugs.webkit.org/show_bug.cgi?id=137031
+
+        Reviewed by Joseph Pecoraro.
+
+        commit-log-editor is run from the top of the Git checkout, even when git-commit is invoked
+        from a subdirectory, making the parsed locations of ChangeLog files incorrect. Git provides
+        a mapping prefix in the GIT_PREFIX environment variable, so apply this prefix to the parsed
+        ChangeLog locations before passing them to createCommitMessage().
+
+        * Scripts/commit-log-editor:
+
+2014-09-23  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should detect manual and reference tests according their filenames
+        https://bugs.webkit.org/show_bug.cgi?id=133852
+
+        Reviewed by Bem Jones-Bey.
+
+        * Scripts/webkitpy/w3c/test_parser.py:
+        (TestParser.analyze_test): Adding checks based on WPT filename rules.
+        (TestParser.is_wpt_manualtest): Detecting whether the test is a manual test based on its filename.
+        (TestParser):
+        (TestParser.potential_ref_filename): Getting the potential reference filename of a test from its filename.
+        (TestParser.is_wpt_reftest): Detecting whether the test is a ref test based on its filename.
+        * Scripts/webkitpy/w3c/test_parser_unittest.py:
+        (test_analyze_manual_wpt_test): Adding a test for a "-manual.html" file with testharness.js link in it. 
+
+2014-09-23  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Unreviewed, add Rebecca Hauck as a contributor.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-09-23  David Kilzer  <ddkilzer@apple.com>
+
+        Switch build.webkit.org URLs to https
+
+        Reviewed by Lucas Forschler and Alexey Proskuryakov.
+
+        * TestResultServer/app.yaml: Update version to this commit
+        revision.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/LeaksViewer/RecentBuildsLoader.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/garden-o-matic.html:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/builders_unittests.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/config.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/results_unittests.js:
+        (.):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/templates/root.html:
+        * Scripts/webkitpy/common/config/urls.py:
+        * Scripts/webkitpy/common/net/buildbot/buildbot_unittest.py:
+        (test_builder_with_name):
+        * Scripts/webkitpy/tool/commands/queries.py:
+        (TreeStatus):
+        * TestResultServer/generate_builders_json.py:
+        (main):
+        * TestResultServer/generate_builders_json_unittest.py:
+        (GenerateBuildersJsonTest.test_generate_json_data.dummy_fetch_json):
+        (GenerateBuildersJsonTest):
+        (GenerateBuildersJsonTest.test_generate_json_data):
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+        (loadExpectationsLayoutTests):
+        * TestResultServer/static-dashboards/timeline_explorer.js:
+
+2014-09-23  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should copy .htaccess files
+        https://bugs.webkit.org/show_bug.cgi?id=136850
+
+        Reviewed by Bem Jones-Bey.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.should_skip_file): Helper function to check whether to skip file or not. Added ".htaccess" file specific check.
+        (TestImporter):
+        (TestImporter.find_importable_tests): Making use of new helper function.
+
+2014-09-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Trying to revive bot watcher's dashboard after HSTS.
+
+        Unreviewed.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot): It looks like XMLHttpRequest may not like HSTS redirects, let's try to avoid these.
+
+2014-09-23  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Make Tools/BuildSlaveSupport/wait-for-SVN-server.py handle server donwtime
+        https://bugs.webkit.org/show_bug.cgi?id=137026
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/wait-for-SVN-server.py:
+        (getLatestSVNRevision):
+        (waitForSVNRevision):
+
+2014-09-23  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Remove unlinkZeroFiles from build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=137018
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/build-webkit:
+        (unlinkZeroFiles): Deleted.
+
+2014-09-23  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [GTK] Minibrowser : Add keyboard support for stop page load
+        https://bugs.webkit.org/show_bug.cgi?id=136857
+
+        Reviewed by Philippe Normand.
+
+        Keyboard support to stop page load in GTK Minibrowser using F6 and Escape keys.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (stopPageLoad): Callback to stop page load.
+        (browser_window_init):
+
+2014-09-22  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [EFL][WK2] Minibrowser : Add keyboard support for page reload while ignoring cache
+        https://bugs.webkit.org/show_bug.cgi?id=136813
+
+        Reviewed by Gyuyoung Kim.
+
+        Ctrl+r is used for page reload along with F5. Ctrl+Shift+r and Ctrl+F5 is used for page reload while ignoring cache.
+
+        * MiniBrowser/efl/main.c:
+        (on_key_down):
+
+2014-09-22  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa] Add UI delegate callback when window.close() is called
+        https://bugs.webkit.org/show_bug.cgi?id=137008
+        <rdar://problem/17801001>
+
+        Reviewed by Anders Carlsson.
+
+        Add a test to ensure that -[WKUIDelegatePrivate _webViewClose:] is called on window.close()
+        for window opened via JavaScript (i.e. window.open()).
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/open-and-close-window.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/OpenAndCloseWindow.mm: Added.
+
+2014-09-22  Youenn Fablet  <youennf@gmail.com>
+
+        W3C importer should import html files within resources folders
+        https://bugs.webkit.org/show_bug.cgi?id=127548
+
+        Reviewed by Ryosuke Niwa.
+        
+        Import HTML files in any folder named "resources" even if file is not detected as a HTML test file 
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.find_importable_tests):
+
+2014-09-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test /webkit2/WebKitWebView/can-show-mime-type fails if evince browser plugin is installed
+        https://bugs.webkit.org/show_bug.cgi?id=136998
+
+        Reviewed by Philippe Normand.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewCanShowMIMEType): Remove the check of PDF as
+        unsupported MIME type.
+
+2014-09-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WebKitGTKTranslations rule in watchlist.
+
+        In r145081 GTK+ translations were moved from Source/WebKit/gtk/po/
+        to Source/WebCore/platform/gtk/po/ but the rule was not updated.
+
+        * Scripts/webkitpy/common/config/watchlist: Use
+        Source/WebCore/platform/gtk/po/ as directory to watch for
+        WebKitGTKTranslations rule and add berto and myself to the list of
+        watchers.
+
+2014-09-22  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        Fix syntaxError in watchlist since r173594
+        https://bugs.webkit.org/show_bug.cgi?id=136996
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitpy/common/config/watchlist: Removed unnecessary comma.
+
 2014-09-20  Sam Weinig  <sam@webkit.org>
 
         Make possible HashSet<std::unique_ptr<>>

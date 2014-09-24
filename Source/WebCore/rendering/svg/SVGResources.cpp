@@ -142,11 +142,11 @@ static inline String targetReferenceFromResource(SVGElement& element)
 {
     String target;
     if (isSVGPatternElement(element))
-        target = toSVGPatternElement(element).href();
+        target = downcast<SVGPatternElement>(element).href();
     else if (isSVGGradientElement(element))
         target = toSVGGradientElement(element).href();
     else if (isSVGFilterElement(element))
-        target = toSVGFilterElement(element).href();
+        target = downcast<SVGFilterElement>(element).href();
     else
         ASSERT_NOT_REACHED();
 
@@ -172,9 +172,9 @@ static inline RenderSVGResourceContainer* paintingResourceFromSVGPaint(Document&
     return container;
 }
 
-static inline void registerPendingResource(SVGDocumentExtensions* extensions, const AtomicString& id, SVGElement& element)
+static inline void registerPendingResource(SVGDocumentExtensions& extensions, const AtomicString& id, SVGElement& element)
 {
-    extensions->addPendingResource(id, &element);
+    extensions.addPendingResource(id, &element);
 }
 
 bool SVGResources::buildCachedResources(const RenderElement& renderer, const SVGRenderStyle& svgStyle)
@@ -185,12 +185,11 @@ bool SVGResources::buildCachedResources(const RenderElement& renderer, const SVG
     if (!renderer.element())
         return false;
 
-    auto& element = toSVGElement(*renderer.element());
+    auto& element = downcast<SVGElement>(*renderer.element());
 
     Document& document = element.document();
 
-    SVGDocumentExtensions* extensions = document.accessSVGExtensions();
-    ASSERT(extensions);
+    SVGDocumentExtensions& extensions = document.accessSVGExtensions();
 
     const AtomicString& tagName = element.localName();
     if (tagName.isNull())

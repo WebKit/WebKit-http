@@ -238,8 +238,7 @@ void RenderEmbeddedObject::paintContents(PaintInfo& paintInfo, const LayoutPoint
     if (!plugInElement.isPlugInImageElement())
         return;
 
-    Image* snapshot = toHTMLPlugInImageElement(plugInElement).snapshotImage();
-    if (snapshot)
+    if (Image* snapshot = toHTMLPlugInImageElement(plugInElement).snapshotImage())
         paintSnapshotImage(paintInfo, paintOffset, snapshot);
 }
 

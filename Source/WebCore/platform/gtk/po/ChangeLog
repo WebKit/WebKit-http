@@ -1,3 +1,75 @@
+2014-09-22  Shankar Prasad  <svenkate@redhat.com>
+
+        [kn] Kannada Translation for webkit - Updated
+        https://bugs.webkit.org/show_bug.cgi?id=116941
+
+        Reviewed by Philippe Normand.
+
+        * kn.po:
+
+2014-09-22  Sandeep Shedmake  <sandeep.shedmake@gmail.com>
+
+        [l10n] [mr] WebKitGTK+ Marathi Translations
+        https://bugs.webkit.org/show_bug.cgi?id=136979
+
+        Reviewed by Philippe Normand.
+
+        * mr.po:
+
+2014-09-22  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [l10n] Updated Polish translation of WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=136976
+
+        Reviewed by Philippe Normand.
+
+        * pl.po:
+
+2014-09-22  Yosef Or Boczko  <yoseforb@gnome.org>
+
+        [l10n] Updated Hebrew translation of WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=136678
+
+        Reviewed by Philippe Normand.
+
+        * he.po:
+
+2014-09-22  Shantha kumar  <shantha.thamizh@gmail.com>
+
+        Webkit Tamil translations updated
+        https://bugs.webkit.org/show_bug.cgi?id=136816
+
+        Reviewed by Philippe Normand.
+
+        * ta.po:
+
+2014-09-22  Nilamdyuti Goswami  <ngoswami@redhat.com>
+
+        [as] Updated Assamese translations of WebKitGtk+
+        https://bugs.webkit.org/show_bug.cgi?id=136908
+
+        Reviewed by Philippe Normand.
+
+        * as.po:
+
+2014-09-22  Manoj Kumar Giri  <mgiri@redhat.com>
+
+        Odia (or_IN) translation for webkit
+        https://bugs.webkit.org/show_bug.cgi?id=136920
+
+        Reviewed by Philippe Normand.
+
+        * or.po:
+
+2014-09-22  Sweta Kothari  <swkothar@redhat.com>
+
+        Webkit Gujarati Translations
+        https://bugs.webkit.org/show_bug.cgi?id=136525
+
+        Reviewed by Philippe Normand.
+
+        * gu.po:
+
 2014-09-16  Nilamdyuti Goswami  <ngoswami@redhat.com>
 
         [as] Updated Assamese translations of WebKitGtk+

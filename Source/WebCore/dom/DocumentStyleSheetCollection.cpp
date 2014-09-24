@@ -280,13 +280,13 @@ void DocumentStyleSheetCollection::collectActiveStyleSheets(Vector<RefPtr<StyleS
                 return;
             }
 #endif
-        } else if ((node->isHTMLElement() && (toHTMLElement(*node).hasTagName(linkTag) || toHTMLElement(*node).hasTagName(styleTag))) || (node->isSVGElement() && toSVGElement(*node).hasTagName(SVGNames::styleTag))) {
+        } else if ((node->isHTMLElement() && (toHTMLElement(*node).hasTagName(linkTag) || toHTMLElement(*node).hasTagName(styleTag))) || (node->isSVGElement() && downcast<SVGElement>(*node).hasTagName(SVGNames::styleTag))) {
             Element& element = toElement(*node);
             AtomicString title = element.fastGetAttribute(titleAttr);
             bool enabledViaScript = false;
             if (isHTMLLinkElement(element)) {
                 // <LINK> element
-                HTMLLinkElement& linkElement = toHTMLLinkElement(element);
+                HTMLLinkElement& linkElement = downcast<HTMLLinkElement>(element);
                 if (linkElement.isDisabled())
                     continue;
                 enabledViaScript = linkElement.isEnabledViaScript();
@@ -306,11 +306,11 @@ void DocumentStyleSheetCollection::collectActiveStyleSheets(Vector<RefPtr<StyleS
             // Get the current preferred styleset. This is the
             // set of sheets that will be enabled.
             if (isSVGStyleElement(element))
-                sheet = toSVGStyleElement(element).sheet();
+                sheet = downcast<SVGStyleElement>(element).sheet();
             else if (isHTMLLinkElement(element))
-                sheet = toHTMLLinkElement(element).sheet();
+                sheet = downcast<HTMLLinkElement>(element).sheet();
             else
-                sheet = toHTMLStyleElement(element).sheet();
+                sheet = downcast<HTMLStyleElement>(element).sheet();
             // Check to see if this sheet belongs to a styleset
             // (thus making it PREFERRED or ALTERNATE rather than
             // PERSISTENT).

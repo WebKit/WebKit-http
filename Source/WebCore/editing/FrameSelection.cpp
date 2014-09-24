@@ -1589,16 +1589,16 @@ void FrameSelection::debugRenderer(RenderObject* r, bool selected) const
 
 bool FrameSelection::contains(const LayoutPoint& point)
 {
-    Document* document = m_frame->document();
-    
     // Treat a collapsed selection like no selection.
     if (!isRange())
         return false;
-    if (!document->renderView()) 
+    
+    RenderView* renderView = m_frame->contentRenderer();
+    if (!renderView)
         return false;
     
     HitTestResult result(point);
-    document->renderView()->hitTest(HitTestRequest(), result);
+    renderView->hitTest(HitTestRequest(), result);
     Node* innerNode = result.innerNode();
     if (!innerNode || !innerNode->renderer())
         return false;
@@ -1670,16 +1670,16 @@ void FrameSelection::selectAll()
     Document* document = m_frame->document();
 
     Element* focusedElement = document->focusedElement();
-    if (focusedElement && focusedElement->hasTagName(selectTag)) {
-        HTMLSelectElement* selectElement = toHTMLSelectElement(document->focusedElement());
-        if (selectElement->canSelectAll()) {
-            selectElement->selectAll();
+    if (focusedElement && isHTMLSelectElement(focusedElement)) {
+        HTMLSelectElement& selectElement = downcast<HTMLSelectElement>(*focusedElement);
+        if (selectElement.canSelectAll()) {
+            selectElement.selectAll();
             return;
         }
     }
 
-    RefPtr<Node> root = 0;
-    Node* selectStartTarget = 0;
+    RefPtr<Node> root;
+    Node* selectStartTarget = nullptr;
     if (m_selection.isContentEditable()) {
         root = highestEditableRoot(m_selection.start());
         if (Node* shadowRoot = m_selection.nonBoundaryShadowTreeRootNode())
@@ -1689,7 +1689,7 @@ void FrameSelection::selectAll()
     } else {
         if (m_selection.isNone() && focusedElement) {
             if (focusedElement->isTextFormControl()) {
-                toHTMLTextFormControlElement(focusedElement)->select();
+                toHTMLTextFormControlElement(*focusedElement).select();
                 return;
             }
             root = focusedElement->nonBoundaryShadowTreeRootNode();
@@ -2024,7 +2024,7 @@ static HTMLFormElement* scanForForm(Element* start)
     for (auto it = descendants.from(*start), end = descendants.end(); it != end; ++it) {
         HTMLElement& element = *it;
         if (isHTMLFormElement(&element))
-            return toHTMLFormElement(&element);
+            return downcast<HTMLFormElement>(&element);
         if (isHTMLFormControlElement(element))
             return toHTMLFormControlElement(element).form();
         if (isHTMLFrameElementBase(element)) {

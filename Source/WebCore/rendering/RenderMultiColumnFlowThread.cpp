@@ -257,9 +257,14 @@ static bool isValidColumnSpanner(RenderMultiColumnFlowThread* flowThread, Render
         // Needs to be block-level.
         return false;
     }
+    
+    // We need to have the flow thread as the containing block. A spanner cannot break out of the flow thread.
+    RenderFlowThread* enclosingFlowThread = descendant->flowThreadContainingBlock();
+    if (enclosingFlowThread != flowThread)
+        return false;
 
     // This looks like a spanner, but if we're inside something unbreakable, it's not to be treated as one.
-    for (RenderBox* ancestor = toRenderBox(descendant)->parentBox(); ancestor; ancestor = ancestor->parentBox()) {
+    for (RenderBox* ancestor = toRenderBox(descendant)->containingBlock(); ancestor; ancestor = ancestor->containingBlock()) {
         if (ancestor->isRenderFlowThread()) {
             // Don't allow any intervening non-multicol fragmentation contexts. The spec doesn't say
             // anything about disallowing this, but it's just going to be too complicated to

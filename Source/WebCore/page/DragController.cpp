@@ -623,7 +623,7 @@ Element* DragController::draggableElement(const Frame* sourceFrame, Element* sta
 {
     state.type = (sourceFrame->selection().contains(dragOrigin)) ? DragSourceActionSelection : DragSourceActionNone;
     if (!startElement)
-        return 0;
+        return nullptr;
 
     for (auto renderer = startElement->renderer(); renderer; renderer = renderer->parent()) {
         Element* element = renderer->nonPseudoElement();
@@ -646,7 +646,7 @@ Element* DragController::draggableElement(const Frame* sourceFrame, Element* sta
             }
             if ((m_dragSourceAction & DragSourceActionLink)
                 && isHTMLAnchorElement(element)
-                && toHTMLAnchorElement(element)->isLiveLink()) {
+                && downcast<HTMLAnchorElement>(*element).isLiveLink()) {
                 state.type = static_cast<DragSourceAction>(state.type | DragSourceActionLink);
                 return element;
             }
@@ -654,7 +654,7 @@ Element* DragController::draggableElement(const Frame* sourceFrame, Element* sta
     }
 
     // We either have nothing to drag or we have a selection and we're not over a draggable element.
-    return (state.type & DragSourceActionSelection) ? startElement : 0;
+    return (state.type & DragSourceActionSelection) ? startElement : nullptr;
 }
 
 static CachedImage* getCachedImage(Element& element)
@@ -722,7 +722,10 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     HitTestResult hitTestResult = src.eventHandler().hitTestResultAtPoint(dragOrigin, HitTestRequest::ReadOnly | HitTestRequest::Active);
 
     // FIXME(136836): Investigate whether all elements should use the containsIncludingShadowDOM() path here.
-    bool includeShadowDOM = state.source->isMediaElement();
+    bool includeShadowDOM = false;
+#if ENABLE(VIDEO)
+    includeShadowDOM = state.source->isMediaElement();
+#endif
     bool sourceContainsHitNode;
     if (!includeShadowDOM)
         sourceContainsHitNode = state.source->contains(hitTestResult.innerNode());

@@ -28,7 +28,7 @@
 
 #include "BumpAllocator.h"
 #include "FixedVector.h"
-#include "MediumAllocator.h"
+#include "Heap.h"
 #include "Sizes.h"
 #include "SmallLine.h"
 #include <array>
@@ -51,33 +51,29 @@ public:
     void scavenge();
 
 private:
-    typedef FixedVector<SmallLine*, smallLineCacheCapacity> SmallLineCache;
-    typedef FixedVector<MediumLine*, mediumLineCacheCapacity> MediumLineCache;
-
     void* allocateFastCase(BumpAllocator&);
 
     void* allocateMedium(size_t);
     void* allocateLarge(size_t);
     void* allocateXLarge(size_t);
     
-    SmallLine* allocateSmallLine(size_t smallSizeClass);
-    MediumLine* allocateMediumLine();
+    BumpRange allocateSmallBumpRange(size_t sizeClass);
+    BumpRange allocateMediumBumpRange(size_t sizeClass);
     
     Deallocator& m_deallocator;
 
-    std::array<BumpAllocator, smallMax / alignment> m_smallAllocators;
-    std::array<BumpAllocator, mediumMax / alignment> m_mediumAllocators;
+    std::array<BumpAllocator, mediumMax / alignment> m_bumpAllocators;
 
-    std::array<SmallLineCache, smallMax / alignment> m_smallLineCaches;
-    MediumLineCache m_mediumLineCache;
+    std::array<SmallBumpRangeCache, smallMax / alignment> m_smallBumpRangeCaches;
+    std::array<MediumBumpRangeCache, mediumMax / alignment> m_mediumBumpRangeCaches;
 };
 
 inline bool Allocator::allocateFastCase(size_t size, void*& object)
 {
-    if (size > smallMax)
+    if (size > mediumMax)
         return false;
 
-    BumpAllocator& allocator = m_smallAllocators[smallSizeClassFor(size)];
+    BumpAllocator& allocator = m_bumpAllocators[sizeClass(size)];
     if (!allocator.canAllocate())
         return false;
 

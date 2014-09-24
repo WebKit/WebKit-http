@@ -168,7 +168,7 @@ Element::~Element()
         detachAllAttrNodesFromElement();
 
     if (hasPendingResources()) {
-        document().accessSVGExtensions()->removeElementFromPendingResources(this);
+        document().accessSVGExtensions().removeElementFromPendingResources(this);
         ASSERT(!hasPendingResources());
     }
 }
@@ -352,14 +352,14 @@ void Element::setBooleanAttribute(const QualifiedName& name, bool value)
         removeAttribute(name);
 }
 
-NamedNodeMap* Element::attributes() const
+NamedNodeMap& Element::attributes() const
 {
     ElementRareData& rareData = const_cast<Element*>(this)->ensureElementRareData();
     if (NamedNodeMap* attributeMap = rareData.attributeMap())
-        return attributeMap;
+        return *attributeMap;
 
     rareData.setAttributeMap(NamedNodeMap::create(const_cast<Element&>(*this)));
-    return rareData.attributeMap();
+    return *rareData.attributeMap();
 }
 
 Node::NodeType Element::nodeType() const
@@ -383,7 +383,7 @@ void Element::synchronizeAllAttributes() const
 
     if (elementData()->animatedSVGAttributesAreDirty()) {
         ASSERT(isSVGElement());
-        toSVGElement(this)->synchronizeAnimatedSVGAttribute(anyQName());
+        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(anyQName());
     }
 }
 
@@ -399,7 +399,7 @@ ALWAYS_INLINE void Element::synchronizeAttribute(const QualifiedName& name) cons
 
     if (UNLIKELY(elementData()->animatedSVGAttributesAreDirty())) {
         ASSERT(isSVGElement());
-        toSVGElement(this)->synchronizeAnimatedSVGAttribute(name);
+        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(name);
     }
 }
 
@@ -418,7 +418,7 @@ ALWAYS_INLINE void Element::synchronizeAttribute(const AtomicString& localName) 
     if (elementData()->animatedSVGAttributesAreDirty()) {
         // We're not passing a namespace argument on purpose. SVGNames::*Attr are defined w/o namespaces as well.
         ASSERT_WITH_SECURITY_IMPLICATION(isSVGElement());
-        toSVGElement(this)->synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom, localName, nullAtom));
+        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom, localName, nullAtom));
     }
 }
 
@@ -860,9 +860,9 @@ IntRect Element::boundsInRootViewSpace()
 
     if (isSVGElement() && renderer()) {
         // Get the bounding rectangle from the SVG model.
-        SVGElement* svgElement = toSVGElement(this);
+        SVGElement& svgElement = downcast<SVGElement>(*this);
         FloatRect localRect;
-        if (svgElement->getBoundingBox(localRect))
+        if (svgElement.getBoundingBox(localRect))
             quads.append(renderer()->localToAbsoluteQuad(localRect));
     } else {
         // Get the bounding rectangle from the box model.
@@ -905,9 +905,9 @@ PassRefPtr<ClientRect> Element::getBoundingClientRect()
     Vector<FloatQuad> quads;
     if (isSVGElement() && renderer() && !renderer()->isSVGRoot()) {
         // Get the bounding rectangle from the SVG model.
-        SVGElement* svgElement = toSVGElement(this);
+        SVGElement& svgElement = downcast<SVGElement>(*this);
         FloatRect localRect;
-        if (svgElement->getBoundingBox(localRect))
+        if (svgElement.getBoundingBox(localRect))
             quads.append(renderer()->localToAbsoluteQuad(localRect));
     } else {
         // Get the bounding rectangle from the box model.
@@ -1410,7 +1410,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
     ContainerNode::removedFrom(insertionPoint);
 
     if (hasPendingResources())
-        document().accessSVGExtensions()->removeElementFromPendingResources(this);
+        document().accessSVGExtensions().removeElementFromPendingResources(this);
 }
 
 void Element::unregisterNamedFlowContentElement()
@@ -2404,7 +2404,8 @@ bool Element::childShouldCreateRenderer(const Node& child) const
     // Only create renderers for SVG elements whose parents are SVG elements, or for proper <svg xmlns="svgNS"> subdocuments.
     if (child.isSVGElement()) {
         ASSERT(!isSVGElement());
-        return child.hasTagName(SVGNames::svgTag) && toSVGElement(child).isValid();
+        const SVGElement& childElement = downcast<SVGElement>(child);
+        return is<SVGSVGElement>(childElement) && childElement.isValid();
     }
     return true;
 }
@@ -2562,7 +2563,7 @@ bool Element::fastAttributeLookupAllowed(const QualifiedName& name) const
         return false;
 
     if (isSVGElement())
-        return !toSVGElement(this)->isAnimatableAttribute(name);
+        return !downcast<SVGElement>(*this).isAnimatableAttribute(name);
 
     return true;
 }
@@ -2684,9 +2685,9 @@ void Element::updateLabel(TreeScope& scope, const AtomicString& oldForAttributeV
         return;
 
     if (!oldForAttributeValue.isEmpty())
-        scope.removeLabel(*oldForAttributeValue.impl(), *toHTMLLabelElement(this));
+        scope.removeLabel(*oldForAttributeValue.impl(), downcast<HTMLLabelElement>(*this));
     if (!newForAttributeValue.isEmpty())
-        scope.addLabel(*newForAttributeValue.impl(), *toHTMLLabelElement(this));
+        scope.addLabel(*newForAttributeValue.impl(), downcast<HTMLLabelElement>(*this));
 }
 
 void Element::willModifyAttribute(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue)
@@ -2740,11 +2741,10 @@ PassRefPtr<HTMLCollection> Element::ensureCachedHTMLCollection(CollectionType ty
     if (HTMLCollection* collection = cachedHTMLCollection(type))
         return collection;
 
-    RefPtr<HTMLCollection> collection;
     if (type == TableRows) {
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTableRowsCollection>(toHTMLTableElement(*this), type);
+        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTableRowsCollection>(downcast<HTMLTableElement>(*this), type);
     } else if (type == SelectOptions) {
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLOptionsCollection>(toHTMLSelectElement(*this), type);
+        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLOptionsCollection>(downcast<HTMLSelectElement>(*this), type);
     } else if (type == FormControls) {
         ASSERT(hasTagName(formTag) || hasTagName(fieldsetTag));
         return ensureRareData().ensureNodeLists().addCachedCollection<HTMLFormControlsCollection>(*this, type);

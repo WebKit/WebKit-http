@@ -85,7 +85,7 @@ void SVGPolyElement::parseAttribute(const QualifiedName& name, const AtomicStrin
     if (name == SVGNames::pointsAttr) {
         SVGPointList newList;
         if (!pointsListFromSVGData(newList, value))
-            document().accessSVGExtensions()->reportError("Problem parsing points=\"" + value + "\"");
+            document().accessSVGExtensions().reportError("Problem parsing points=\"" + value + "\"");
 
         if (SVGAnimatedProperty* wrapper = SVGAnimatedProperty::lookupWrapper<SVGPolyElement, SVGAnimatedPointList>(this, pointsPropertyInfo()))
             static_cast<SVGAnimatedPointList*>(wrapper)->detachListWrappers(newList.size());
@@ -132,18 +132,18 @@ void SVGPolyElement::svgAttributeChanged(const QualifiedName& attrName)
 void SVGPolyElement::synchronizePoints(SVGElement* contextElement)
 {
     ASSERT(contextElement);
-    SVGPolyElement* ownerType = toSVGPolyElement(contextElement);
-    if (!ownerType->m_points.shouldSynchronize)
+    SVGPolyElement& ownerType = toSVGPolyElement(*contextElement);
+    if (!ownerType.m_points.shouldSynchronize)
         return;
-    ownerType->m_points.synchronize(ownerType, pointsPropertyInfo()->attributeName, ownerType->m_points.value.valueAsString());
+    ownerType.m_points.synchronize(&ownerType, pointsPropertyInfo()->attributeName, ownerType.m_points.value.valueAsString());
 }
 
 PassRefPtr<SVGAnimatedProperty> SVGPolyElement::lookupOrCreatePointsWrapper(SVGElement* contextElement)
 {
     ASSERT(contextElement);
-    SVGPolyElement* ownerType = toSVGPolyElement(contextElement);
+    SVGPolyElement& ownerType = toSVGPolyElement(*contextElement);
     return SVGAnimatedProperty::lookupOrCreateWrapper<SVGPolyElement, SVGAnimatedPointList, SVGPointList>
-           (ownerType, pointsPropertyInfo(), ownerType->m_points.value);
+        (&ownerType, pointsPropertyInfo(), ownerType.m_points.value);
 }
 
 SVGListPropertyTearOff<SVGPointList>* SVGPolyElement::points()

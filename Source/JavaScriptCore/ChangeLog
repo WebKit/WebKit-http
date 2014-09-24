@@ -1,3 +1,200 @@
+2014-09-23  Mark Lam  <mark.lam@apple.com>
+
+        DebuggerCallFrame::invalidate() should invalidate all DebuggerScope chains.
+        <https://webkit.org/b/137045>
+
+        Reviewed by Geoffrey Garen.
+
+        DebuggerCallFrame::invalidate() currently invalidates all DebuggerCallFrames
+        in the debugger stack, but only invalidates the DebuggerScope chain of the
+        top most frame.  We should also invalidate all the DebuggerScope chains of
+        the other frames in the debugger stack.
+
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::invalidate):
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::invalidateChain):
+
+2014-09-23  Mark Lam  <mark.lam@apple.com>
+
+        Renamed DebuggerCallFrameScope to DebuggerPausedScope.
+        <https://webkit.org/b/137042>
+
+        Reviewed by Michael Saboff.
+
+        DebuggerPausedScope is a better name for this data structure because it
+        is meant for tracking the period within which the debugger is paused,
+        and doing clean ups after the pause ends.
+
+        * debugger/Debugger.cpp:
+        (JSC::DebuggerPausedScope::DebuggerPausedScope):
+        (JSC::DebuggerPausedScope::~DebuggerPausedScope):
+        (JSC::Debugger::pauseIfNeeded):
+        (JSC::DebuggerCallFrameScope::DebuggerCallFrameScope): Deleted.
+        (JSC::DebuggerCallFrameScope::~DebuggerCallFrameScope): Deleted.
+        * debugger/Debugger.h:
+        * debugger/DebuggerCallFrame.h:
+
+2014-09-23  Tomas Popela  <tpopela@redhat.com>
+
+        [CLoop] - Fix CLoop on the 32-bit Big-Endians
+        https://bugs.webkit.org/show_bug.cgi?id=137020
+
+        Reviewed by Mark Lam.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+
+2014-09-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to attach a debugger to a JSContext before anything is executed
+        https://bugs.webkit.org/show_bug.cgi?id=136893
+
+        Reviewed by Timothy Hatcher.
+
+        Adds new remote inspector protocol handling for automatic inspection.
+        Debuggers can signal they have enabled automatic inspection, and
+        when debuggables are created the current application will pause to
+        see if the debugger will inspect or decline to inspect the debuggable.
+
+        * inspector/remote/RemoteInspectorConstants.h:
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::globalAutomaticInspectionState):
+        (Inspector::RemoteInspector::RemoteInspector):
+        (Inspector::RemoteInspector::start):
+        When first starting, check the global "is there an auto-inspect" debugger state.
+        This is necessary so that the current application knows if it should pause or
+        not when a debuggable is created, even without having connected to webinspectord yet.
+
+        (Inspector::RemoteInspector::updateDebuggableAutomaticInspectCandidate):
+        When a debuggable has enabled remote inspection, take this path to propose
+        it as an automatic inspection candidate if there is an auto-inspect debugger.
+
+        (Inspector::RemoteInspector::sendAutomaticInspectionCandidateMessage):
+        Send the automatic inspection candidate message.
+
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        (Inspector::RemoteInspector::setupFailed):
+        (Inspector::RemoteInspector::setupSucceeded):
+        After attempting to open an inspector, unpause if it was for the
+        automatic inspection candidate.
+
+        (Inspector::RemoteInspector::waitingForAutomaticInspection):
+        When running a nested runloop, check if we should remain paused.
+
+        (Inspector::RemoteInspector::setupXPCConnectionIfNeeded):
+        If by the time we connect to webinspectord we have a candidate, then
+        immediately send the candidate message.
+
+        (Inspector::RemoteInspector::stopInternal):
+        (Inspector::RemoteInspector::xpcConnectionFailed):
+        In error cases, clear our state.
+
+        (Inspector::RemoteInspector::xpcConnectionReceivedMessage):
+        (Inspector::RemoteInspector::receivedAutomaticInspectionConfigurationMessage):
+        (Inspector::RemoteInspector::receivedAutomaticInspectionRejectMessage):
+        Update state when receiving new messages.
+
+
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        * inspector/remote/RemoteInspectorDebuggable.cpp:
+        (Inspector::RemoteInspectorDebuggable::setRemoteDebuggingAllowed):
+        Special case when a debuggable is newly allowed to be debuggable.
+
+        (Inspector::RemoteInspectorDebuggable::pauseWaitingForAutomaticInspection):
+        Run a nested run loop while this is an automatic inspection candidate.
+
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        When the inspector starts via automatic inspection automatically pause.
+        We plan on removing this condition by having the frontend signal to the
+        backend when it is completely initialized.
+        
+        * inspector/remote/RemoteInspectorDebuggableConnection.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorDebuggableConnection::setup):
+        Pass on the flag of whether or not this was automatic inspection.
+
+        * runtime/JSGlobalObjectDebuggable.h:
+        * runtime/JSGlobalObjectDebuggable.cpp:
+        (JSC::JSGlobalObjectDebuggable::connect):
+        (JSC::JSGlobalObjectDebuggable::pauseWaitingForAutomaticInspection):
+        When pausing in a JSGlobalObject we need to release the API lock.
+
+2014-09-22  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL allocatePropertyStorage code should involve less copy-paste
+        https://bugs.webkit.org/show_bug.cgi?id=137006
+
+        Reviewed by Michael Saboff.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::allocatePropertyStorage):
+        (JSC::FTL::LowerDFGToLLVM::reallocatePropertyStorage):
+        (JSC::FTL::LowerDFGToLLVM::allocatePropertyStorageWithSizeImpl):
+
+2014-09-22  Diego Pino Garcia  <dpino@igalia.com>
+
+        Simple ES6 feature: Number constructor extras
+        https://bugs.webkit.org/show_bug.cgi?id=131707
+
+        Reviewed by Darin Adler.
+
+        * runtime/CommonIdentifiers.h: Added new identifiers.
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::getOwnPropertySlot):
+        (JSC::NumberConstructor::isFunction): Added.
+        (JSC::numberConstructorEpsilonValue): Added.
+        (JSC::numberConstructorNegInfinity): Added.
+        (JSC::numberConstructorPosInfinity): Added.
+        (JSC::numberConstructorMaxValue): Added.
+        (JSC::numberConstructorMinValue): Added.
+        (JSC::numberConstructorMaxSafeInteger): Added.
+        (JSC::numberConstructorMinSafeInteger): Added.
+        (JSC::numberConstructorFuncIsFinite): Added.
+        (JSC::numberConstructorFuncIsInteger): Added.
+        (JSC::numberConstructorFuncIsNaN): Added.
+        (JSC::numberConstructorFuncIsSafeInteger): Added.
+        * runtime/NumberConstructor.h:
+
+2014-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should store the four bytes of the cell header using a 32-bit store rather than four 8-bit stores
+        https://bugs.webkit.org/show_bug.cgi?id=136992
+
+        Reviewed by Sam Weinig.
+        
+        LLVM ought to be able to do this optimization for us given how the code was written, but
+        any such lower-level attempts to optimize this would get into trouble with the weird
+        object materialization logic I'll be introducing in bug 136330. So, this brings the
+        merging of the byte stores into the FTL lowering so that we can control it explicitly.
+
+        * ftl/FTLAbstractHeap.h:
+        (JSC::FTL::AbstractHeap::changeParent):
+        * ftl/FTLAbstractHeapRepository.cpp:
+        (JSC::FTL::AbstractHeapRepository::AbstractHeapRepository):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::allocateCell):
+
+2014-09-21  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: fix TypeSet hierarchy in TypeTokenView
+        https://bugs.webkit.org/show_bug.cgi?id=136982
+
+        Reviewed by Joseph Pecoraro.
+
+        TypeSet was computing the set of type booleans in the Inspector::Protocol::Runtime::TypeSet 
+        object incorrectly because it was calling TypeSet::doesTypeConformTo(T) which checks if the 
+        type set has only been of type T. It now checks '(m_seenTypes & T) != TypeNothing' to see 
+        if type T is in the set of seen types, but not the entire set itself.
+
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::inspectorTypeSet):
+
 2014-09-21  Filip Pizlo  <fpizlo@apple.com>
 
         Structure should have a method for concurrently getting all of the property map entries, and this method shouldn't involve copy-paste

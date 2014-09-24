@@ -107,7 +107,7 @@ SVGSVGElement::~SVGSVGElement()
     document().unregisterForPageCacheSuspensionCallbacks(this);
     // There are cases where removedFromDocument() is not called.
     // see ContainerNode::removeAllChildren, called by its destructor.
-    document().accessSVGExtensions()->removeTimeContainer(this);
+    document().accessSVGExtensions().removeTimeContainer(this);
 }
 
 void SVGSVGElement::didMoveToNewDocument(Document* oldDocument)
@@ -481,7 +481,7 @@ RenderPtr<RenderElement> SVGSVGElement::createElementRenderer(PassRef<RenderStyl
 Node::InsertionNotificationRequest SVGSVGElement::insertedInto(ContainerNode& rootParent)
 {
     if (rootParent.inDocument()) {
-        document().accessSVGExtensions()->addTimeContainer(this);
+        document().accessSVGExtensions().addTimeContainer(this);
 
         // Animations are started at the end of document parsing and after firing the load event,
         // but if we miss that train (deferred programmatic element insertion for example) we need
@@ -495,7 +495,7 @@ Node::InsertionNotificationRequest SVGSVGElement::insertedInto(ContainerNode& ro
 void SVGSVGElement::removedFrom(ContainerNode& rootParent)
 {
     if (rootParent.inDocument())
-        document().accessSVGExtensions()->removeTimeContainer(this);
+        document().accessSVGExtensions().removeTimeContainer(this);
     SVGGraphicsElement::removedFrom(rootParent);
 }
 
@@ -662,15 +662,14 @@ void SVGSVGElement::setupInitialView(const String& fragmentIdentifier, Element* 
     // Any view specification attributes included on the given ‘view’ element override the corresponding view specification
     // attributes on the closest ancestor ‘svg’ element.
     if (anchorNode && isSVGViewElement(anchorNode)) {
-        if (SVGViewElement* viewElement = toSVGViewElement(anchorNode)) {
-            SVGElement* element = SVGLocatable::nearestViewportElement(viewElement);
-            if (element->hasTagName(SVGNames::svgTag)) {
-                SVGSVGElement* svg = toSVGSVGElement(element);
-                svg->inheritViewAttributes(viewElement);
+        SVGViewElement& viewElement = downcast<SVGViewElement>(*anchorNode);
+        SVGElement* element = SVGLocatable::nearestViewportElement(&viewElement);
+        if (isSVGSVGElement(element)) {
+            SVGSVGElement& svg = downcast<SVGSVGElement>(*element);
+            svg.inheritViewAttributes(&viewElement);
 
-                if (RenderElement* renderer = svg->renderer())
-                    RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
-            }
+            if (RenderElement* renderer = svg.renderer())
+                RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
         }
         return;
     }

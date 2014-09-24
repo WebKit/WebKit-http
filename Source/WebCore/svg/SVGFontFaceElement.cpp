@@ -234,12 +234,12 @@ void SVGFontFaceElement::rebuildFontFace()
     RefPtr<CSSValueList> list;
 
     if (describesParentFont) {
-        m_fontElement = toSVGFontElement(parentNode());
+        m_fontElement = downcast<SVGFontElement>(parentNode());
 
         list = CSSValueList::createCommaSeparated();
         list->append(CSSFontFaceSrcValue::createLocal(fontFamily()));
     } else {
-        m_fontElement = 0;
+        m_fontElement = nullptr;
         if (srcElement)
             list = srcElement->srcValue();
     }
@@ -272,7 +272,7 @@ Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNod
         ASSERT(!m_fontElement);
         return InsertionDone;
     }
-    document().accessSVGExtensions()->registerSVGFontFaceElement(this);
+    document().accessSVGExtensions().registerSVGFontFaceElement(this);
 
     rebuildFontFace();
     return InsertionDone;
@@ -284,7 +284,7 @@ void SVGFontFaceElement::removedFrom(ContainerNode& rootParent)
 
     if (rootParent.inDocument()) {
         m_fontElement = 0;
-        document().accessSVGExtensions()->unregisterSVGFontFaceElement(this);
+        document().accessSVGExtensions().unregisterSVGFontFaceElement(this);
         m_fontFaceRule->mutableProperties().clear();
 
         document().styleResolverChanged(DeferRecalcStyle);

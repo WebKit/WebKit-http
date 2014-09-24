@@ -140,7 +140,7 @@ void SVGAElement::svgAttributeChanged(const QualifiedName& attrName)
 
 RenderPtr<RenderElement> SVGAElement::createElementRenderer(PassRef<RenderStyle> style)
 {
-    if (parentNode() && parentNode()->isSVGElement() && toSVGElement(parentNode())->isTextContent())
+    if (parentNode() && parentNode()->isSVGElement() && downcast<SVGElement>(*parentNode()).isTextContent())
         return createRenderer<RenderSVGInline>(*this, WTF::move(style));
 
     return createRenderer<RenderSVGTransformableContainer>(*this, WTF::move(style));
