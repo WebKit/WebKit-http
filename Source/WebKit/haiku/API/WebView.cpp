@@ -36,6 +36,7 @@
 #include "InspectorController.h"
 #include "NotImplemented.h"
 #include "Page.h"
+#include "PointerLockController.h"
 #include "ScrollableArea.h"
 #include "Scrollbar.h"
 #include "WebFrame.h"
@@ -319,6 +320,24 @@ void BWebView::MessageReceived(BMessage* message)
     case 'inva':
         Invalidate(message->FindRect("bounds"));
         break;
+
+    case 'plok':
+    {
+        status_t result = SetEventMask(B_POINTER_EVENTS,
+            B_SUSPEND_VIEW_FOCUS | B_LOCK_WINDOW_FOCUS);
+        if (result == B_OK)
+            WebPage()->page()->pointerLockController().didAcquirePointerLock();
+        else
+            WebPage()->page()->pointerLockController().didNotAcquirePointerLock();
+        break;
+    }
+
+    case 'pulk':
+    {
+        SetEventMask(0, 0);
+        WebPage()->page()->pointerLockController().didLosePointerLock();
+        break;
+    }
 
     default:
         BView::MessageReceived(message);

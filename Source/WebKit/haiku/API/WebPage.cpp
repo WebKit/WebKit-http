@@ -68,6 +68,7 @@
 #include "PlatformMouseEvent.h"
 #include "PlatformStrategiesHaiku.h"
 #include "PlatformWheelEvent.h"
+#include "PointerLockController.h"
 #include "ProgressTrackerClient.h"
 #include "ProgressTrackerHaiku.h"
 #include "ResourceHandle.h"
@@ -803,7 +804,7 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
         internalPaint(offscreenView, view, &repaintRegion);
     }
 
-    offscreenView->Sync();
+    //offscreenView->Sync();
     bitmap->Unlock();
 }
 
@@ -1135,6 +1136,14 @@ void BWebPage::handleMouseEvent(const BMessage* message)
     PlatformMouseEvent event(message);
     switch (message->what) {
     case B_MOUSE_DOWN:
+        if (WebView()->EventMask() & B_POINTER_EVENTS)
+        {
+            // We are in mouse lock mode. Events are redirected to pointer lock.
+           page()->pointerLockController().dispatchLockedMouseEvent(event,
+                eventNames().mousedownEvent);
+           break;
+        }
+
         // Handle context menus, if necessary.
         if (event.button() == RightButton) {
             fPage->contextMenuController().clearContextMenu();
@@ -1173,9 +1182,25 @@ void BWebPage::handleMouseEvent(const BMessage* message)
         frame->eventHandler().handleMousePressEvent(event);
         break;
     case B_MOUSE_UP:
+        if (WebView()->EventMask() & B_POINTER_EVENTS)
+        {
+            // We are in mouse lock mode. Events are redirected to pointer lock.
+           page()->pointerLockController().dispatchLockedMouseEvent(event,
+                eventNames().mouseupEvent);
+           break;
+        }
+
         frame->eventHandler().handleMouseReleaseEvent(event);
         break;
     case B_MOUSE_MOVED:
+        if (WebView()->EventMask() & B_POINTER_EVENTS)
+        {
+            // We are in mouse lock mode. Events are redirected to pointer lock.
+           page()->pointerLockController().dispatchLockedMouseEvent(event,
+                eventNames().mousemoveEvent);
+           break;
+        }
+
     default:
         frame->eventHandler().mouseMoved(event);
         break;

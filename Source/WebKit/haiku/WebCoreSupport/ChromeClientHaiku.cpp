@@ -505,6 +505,24 @@ PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuCl
     return adoptRef(new SearchPopupMenuHaiku(client));
 }
 
+
+#if ENABLE(POINTER_LOCK)
+
+bool ChromeClientHaiku::requestPointerLock() {
+    return m_webView->Looper()->PostMessage('plok', m_webView) == B_OK;
+}
+
+void ChromeClientHaiku::requestPointerUnlock() {
+    m_webView->Looper()->PostMessage('pulk', m_webView);
+}
+
+bool ChromeClientHaiku::isPointerLocked() {
+    return m_webView->EventMask() & B_POINTER_EVENTS;
+}
+
+#endif
+
+
 void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* layer)
 {
     m_webView->SetRootLayer(layer);

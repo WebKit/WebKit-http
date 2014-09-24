@@ -160,6 +160,12 @@ namespace WebCore {
 
         void numWheelEventHandlersChanged(unsigned) override { }
 
+#if ENABLE(POINTER_LOCK)
+        bool requestPointerLock() override;
+        void requestPointerUnlock() override;
+        bool isPointerLocked() override;
+#endif
+
 #if USE(TILED_BACKING_STORE)
         void delegatedScrollRequested(const WebCore::IntPoint& pos) override;
 #endif
