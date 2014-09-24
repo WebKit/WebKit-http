@@ -68,7 +68,7 @@
 #include <unistd.h>
 #endif
 
-#if OS(DARWIN) || (OS(LINUX) && !defined(__UCLIBC__))
+#if OS(DARWIN) || (OS(LINUX) && !defined(__UCLIBC__)) || OS(HAIKU)
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <execinfo.h>
