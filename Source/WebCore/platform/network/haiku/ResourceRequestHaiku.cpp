@@ -35,13 +35,16 @@ BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context)
 {
     BUrlRequest* request = BUrlProtocolRoster::MakeRequest(url());
 
-    if(!request) {
+    if (!request) {
         m_url = blankURL(); // This tells the ResourceLoader we failed.
         return NULL;
     }
 
-    if(context)
+    if (context)
         request->SetContext(context);
+
+    if (timeoutInterval() > 0)
+        request->SetTimeout(timeoutInterval());
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(request);
     if (httpRequest != NULL) {
