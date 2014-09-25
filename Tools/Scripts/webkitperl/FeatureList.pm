@@ -183,7 +183,7 @@ my @features = (
       define => "ENABLE_CSS3_CONDITIONAL_RULES", default => 1, value => \$css3ConditionalRulesSupport },
 
     { option => "css3-text", desc => "Toggle CSS3 Text support",
-      define => "ENABLE_CSS3_TEXT", default => (isEfl() || isGtk()), value => \$css3TextSupport },
+      define => "ENABLE_CSS3_TEXT", default => (isEfl() || isGtk() || isHaiku()), value => \$css3TextSupport },
 
     { option => "css3-text-line-break", desc => "Toggle CSS3 Text Line Break support",
       define => "ENABLE_CSS3_TEXT_LINE_BREAK", default => 0, value => \$css3TextLineBreakSupport },
@@ -222,7 +222,7 @@ my @features = (
       define => "ENABLE_DEVICE_ORIENTATION", default => isIOSWebKit(), value => \$deviceOrientationSupport },
 
     { option => "dom4-events-constructor", desc => "Expose DOM4 Events constructors",
-      define => "ENABLE_DOM4_EVENTS_CONSTRUCTOR", default => (isAppleWebKit() || isGtk() || isEfl()), value => \$dom4EventsConstructor },
+      define => "ENABLE_DOM4_EVENTS_CONSTRUCTOR", default => (isAppleWebKit() || isHaiku() || isGtk() || isEfl()), value => \$dom4EventsConstructor },
 
     { option => "download-attribute", desc => "Toggle Download Attribute support",
       define => "ENABLE_DOWNLOAD_ATTRIBUTE", default => (isEfl() || isHaiku()), value => \$downloadAttributeSupport },
@@ -288,7 +288,7 @@ my @features = (
       define => "ENABLE_LEGACY_WEB_AUDIO", default => 1, value => \$legacyWebAudioSupport },
 
     { option => "link-prefetch", desc => "Toggle Link Prefetch support",
-      define => "ENABLE_LINK_PREFETCH", default => (isGtk() || isEfl()), value => \$linkPrefetchSupport },
+      define => "ENABLE_LINK_PREFETCH", default => (isHaiku() || isGtk() || isEfl()), value => \$linkPrefetchSupport },
 
     { option => "mathml", desc => "Toggle MathML support",
       define => "ENABLE_MATHML", default => 1, value => \$mathmlSupport },
@@ -324,7 +324,7 @@ my @features = (
       define => "ENABLE_NETSCAPE_PLUGIN_API", default => !(isIOSWebKit() || isHaiku()), value => \$netscapePluginAPISupport },
 
     { option => "nosniff", desc => "Toggle support for 'X-Content-Type-Options: nosniff'",
-      define => "ENABLE_NOSNIFF", default => isEfl(), value => \$nosniffSupport },
+      define => "ENABLE_NOSNIFF", default => (isEfl() || isHaiku()), value => \$nosniffSupport },
 
     { option => "notifications", desc => "Toggle Notifications support",
       define => "ENABLE_NOTIFICATIONS", default => isHaiku(), value => \$notificationsSupport },
