@@ -30,6 +30,7 @@
 #include "RenderThemeHaiku.h"
 
 #include "GraphicsContext.h"
+#include "InputTypeNames.h"
 #include "NotImplemented.h"
 #include "PaintInfo.h"
 #include "UserAgentScripts.h"
@@ -41,6 +42,9 @@
 
 
 namespace WebCore {
+
+static const int sliderThumbWidth = 29;
+static const int sliderThumbHeight = 11;
 
 PassRefPtr<RenderTheme> RenderThemeHaiku::create()
 {
@@ -102,6 +106,109 @@ Color RenderThemeHaiku::platformFocusRingColor() const
 {
     return ui_color(B_NAVIGATION_BASE_COLOR);
 }
+
+bool RenderThemeHaiku::paintSliderTrack(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
+{
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    rgb_color background = base;
+    	// TODO: From PaintInfo?
+    BRect rect = intRect;
+    BView* view = info.context->platformContext();
+    unsigned flags = flagsForObject(object);
+    if (isPressed(object))
+    	flags |= BControlLook::B_ACTIVATED;
+    if (isDefault(object))
+    	flags |= BControlLook::B_DEFAULT_BUTTON;
+    be_control_look->DrawSliderBar(view, rect, rect, base, background, flags,
+        object.style().appearance() == SliderHorizontalPart ?
+            B_HORIZONTAL : B_VERTICAL);
+
+#if ENABLE(DATALIST_ELEMENT)
+    paintSliderTicks(object, info, intRect);
+#endif
+
+    return false;
+}
+
+void RenderThemeHaiku::adjustSliderTrackStyle(StyleResolver&, RenderStyle& style, Element*) const
+{
+    style.setBoxShadow(nullptr);
+}
+
+void RenderThemeHaiku::adjustSliderThumbStyle(StyleResolver& styleResolver, RenderStyle& style, Element* element) const
+{
+    RenderTheme::adjustSliderThumbStyle(styleResolver, style, element);
+    style.setBoxShadow(nullptr);
+}
+
+void RenderThemeHaiku::adjustSliderThumbSize(RenderStyle& style, Element*) const
+{
+    ControlPart part = style.appearance();
+    if (part == SliderThumbVerticalPart) {
+        style.setWidth(Length(sliderThumbHeight, Fixed));
+        style.setHeight(Length(sliderThumbWidth, Fixed));
+    } else if (part == SliderThumbHorizontalPart) {
+        style.setWidth(Length(sliderThumbWidth, Fixed));
+        style.setHeight(Length(sliderThumbHeight, Fixed));
+    }
+}
+
+#if ENABLE(DATALIST_ELEMENT)
+IntSize RenderThemeHaiku::sliderTickSize() const
+{
+    return IntSize(1, 6);
+}
+
+int RenderThemeHaiku::sliderTickOffsetFromTrackCenter() const
+{
+    static const int sliderTickOffset = -12;
+
+    return sliderTickOffset;
+}
+
+#if 0
+LayoutUnit RenderThemeHaiku::sliderTickSnappingThreshold() const
+{
+    // The same threshold value as the Chromium port.
+    return 5;
+}
+#endif
+#endif
+
+bool RenderThemeHaiku::supportsDataListUI(const AtomicString& type) const
+{
+#if ENABLE(DATALIST_ELEMENT)
+    // FIXME: We need to support other types.
+    return type == InputTypeNames::email()
+        || type == InputTypeNames::range()
+        || type == InputTypeNames::search()
+        || type == InputTypeNames::url();
+#else
+    UNUSED_PARAM(type);
+    return false;
+#endif
+}
+
+bool RenderThemeHaiku::paintSliderThumb(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
+{
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    BRect rect = intRect;
+    BView* view = info.context->platformContext();
+    unsigned flags = flagsForObject(object);
+    if (isPressed(object))
+    	flags |= BControlLook::B_ACTIVATED;
+    if (isDefault(object))
+    	flags |= BControlLook::B_DEFAULT_BUTTON;
+    be_control_look->DrawSliderThumb(view, rect, rect, base, flags,
+        object.style().appearance() == SliderHorizontalPart ?
+            B_HORIZONTAL : B_VERTICAL);
+
+    view->SetHighColor(ui_color(B_FAILURE_COLOR));
+    view->StrokeRect(rect);
+
+    return false;
+}
+
 
 void RenderThemeHaiku::systemFont(CSSValueID, FontDescription& fontDescription) const
 {

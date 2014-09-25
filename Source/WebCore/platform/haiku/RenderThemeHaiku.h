@@ -39,6 +39,9 @@ private:
 public:
     static PassRefPtr<RenderTheme> create();
 
+    // A method asking if the theme's controls actually care about redrawing when hovered.
+    virtual bool supportsHover(const RenderStyle&) const override { return true; }
+
     // A method asking if the theme is able to draw the focus ring.
     bool supportsFocusRing(const RenderStyle&) const override;
 
@@ -80,13 +83,25 @@ protected:
 
     void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
+    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
+
+    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, Element*) const override;
+
+    void adjustSliderThumbSize(RenderStyle&, Element*) const override;
+
 #if ENABLE(DATALIST_ELEMENT)
     // Returns size of one slider tick mark for a horizontal track.
     // For vertical tracks we rotate it and use it. i.e. Width is always length along the track.
-    IntSize sliderTickSize() const override { return IntSize(0, 0); }
+    IntSize sliderTickSize() const override;
     // Returns the distance of slider tick origin from the slider track center.
-    int sliderTickOffsetFromTrackCenter() const override { return 0; }
+    int sliderTickOffsetFromTrackCenter() const override;
 #endif
+
+    bool supportsDataListUI(const AtomicString&) const override;
+
+    bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
+
 private:
 	unsigned flagsForObject(const RenderObject&) const;
 };
