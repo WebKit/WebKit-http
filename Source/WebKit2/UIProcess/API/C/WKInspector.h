@@ -58,12 +58,6 @@ WK_EXPORT bool WKInspectorIsAttached(WKInspectorRef inspector);
 WK_EXPORT void WKInspectorAttach(WKInspectorRef inspector);
 WK_EXPORT void WKInspectorDetach(WKInspectorRef inspector);
 
-WK_EXPORT bool WKInspectorIsDebuggingJavaScript(WKInspectorRef inspector);
-WK_EXPORT void WKInspectorToggleJavaScriptDebugging(WKInspectorRef inspector);
-
-WK_EXPORT bool WKInspectorIsProfilingJavaScript(WKInspectorRef inspector);
-WK_EXPORT void WKInspectorToggleJavaScriptProfiling(WKInspectorRef inspector);
-
 WK_EXPORT bool WKInspectorIsProfilingPage(WKInspectorRef inspector);
 WK_EXPORT void WKInspectorTogglePageProfiling(WKInspectorRef inspector);
 

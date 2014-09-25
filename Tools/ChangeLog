@@ -1,3 +1,87 @@
+2014-09-23  David Farler  <dfarler@apple.com>
+
+        [iOS] run-webkit-tests should support minor versions under devices and create a testing device under the right runtime
+        https://bugs.webkit.org/show_bug.cgi?id=136895
+
+        Reviewed by David Kilzer.
+
+        Create Device, DeviceType, and Runtime data classes.
+        Create Simulator class represent simctl output.
+
+        Wherever possible, use structured data classes anywhere a raw
+        identifier or UDID string was used for a cleaner implementation
+        and to encapsulate the inherent fragility of scraping simctl output.
+
+        Create a suitably named testing device if one doesn't exist.
+
+        Finally, accurately handle having multiple simulator runtimes (SDKs)
+        installed in the active Xcode.app bundle.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (_set_up_derived_options):
+        * Scripts/webkitpy/port/driver.py:
+        (IOSSimulatorDriver.cmd_line):
+        Construct DeviceType and Runtime objects from identifiers passed at the
+        command line, still providing sensible defaults for 32- and 64-bit testing.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.__init__):
+        (IOSSimulatorPort.setup_test_run):
+        (IOSSimulatorPort):
+        (IOSSimulatorPort.testing_device):
+        Cache the testing device once it is created or found.
+        (IOSSimulatorPort.reset_preferences):
+        Get the device path from the Device object instead of consructing it
+        in the port class.
+        (IOSSimulatorPort.simulator_udid): Deleted.
+        Get the UDID from the testing_device :: Device object itself.
+        * Scripts/webkitpy/xcode/simulator.py:
+        Created Device, DeviceType, Runtime, and Simulator classes.
+        (get_runtimes): Deleted.
+        (get_devices): Deleted.
+        (get_device_types): Deleted.
+        (get_latest_runtime): Deleted.
+
+2014-09-24  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Tentative fix for Windows test bots.
+
+        * Scripts/webkitpy/common/system/path.py:
+        (_CygPath.convert):
+
+2014-09-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Change more build.webkit.org links to https
+        https://bugs.webkit.org/show_bug.cgi?id=137049
+
+        Reviewed by Csaba Osztrogonác.
+
+        Fix appspot, svn.webkit.org and Trac links.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/LeaksViewer/index.html:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/garden-o-matic.html:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/ViewController.js:
+        (ViewController.prototype._domForBuildName):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/checkout.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/config.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/ui.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/ui/results.js:
+        (.):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWS.js:
+        (EWS):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Initialization.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitTestHistory.js:
+        (TestHistory):
+        * BuildSlaveSupport/build.webkit.org-config/templates/root.html:
+
+2014-09-24  Langó László  <llango.u-szeged@partner.samsung.com>
+
+        Update the list of u-szeged contributors.
+
+        Rubber-stamped by Csaba Osztrogonác <ossy@webkit.org>.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2014-09-23  Roger Fong  <roger_fong@apple.com>
 
         [Windows] More debugging for the Windows bots.

@@ -626,9 +626,9 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     if (element->hasID() && m_ruleSets.features().idsInRules.contains(element->idForStyleResolution().impl()))
         return false;
 
-    bool isControl = element->isFormControlElement();
+    bool isControl = is<HTMLFormControlElement>(element);
 
-    if (isControl != state.element()->isFormControlElement())
+    if (isControl != is<HTMLFormControlElement>(state.element()))
         return false;
 
     if (isControl && !canShareStyleWithControl(element))
@@ -1270,7 +1270,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         style.setZIndex(0);
 
     // Textarea considers overflow visible as auto.
-    if (e && isHTMLTextAreaElement(e)) {
+    if (e && is<HTMLTextAreaElement>(e)) {
         style.setOverflowX(style.overflowX() == OVISIBLE ? OAUTO : style.overflowX());
         style.setOverflowY(style.overflowY() == OVISIBLE ? OAUTO : style.overflowY());
     }
@@ -1335,10 +1335,10 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
 
     // Important: Intrinsic margins get added to controls before the theme has adjusted the style, since the theme will
     // alter fonts and heights/widths.
-    if (e && e->isFormControlElement() && style.fontSize() >= 11) {
+    if (e && is<HTMLFormControlElement>(e) && style.fontSize() >= 11) {
         // Don't apply intrinsic margins to image buttons. The designer knows how big the images are,
         // so we have to treat all image buttons as though they were explicitly sized.
-        if (!isHTMLInputElement(e) || !downcast<HTMLInputElement>(*e).isImageButton())
+        if (!is<HTMLInputElement>(e) || !downcast<HTMLInputElement>(*e).isImageButton())
             addIntrinsicMargins(style);
     }
 
@@ -1883,7 +1883,7 @@ bool StyleResolver::useSVGZoomRules()
 // Scale with/height properties on inline SVG root.
 bool StyleResolver::useSVGZoomRulesForLength()
 {
-    return m_state.element() && m_state.element()->isSVGElement() && !(isSVGSVGElement(m_state.element()) && m_state.element()->parentNode());
+    return m_state.element() && m_state.element()->isSVGElement() && !(is<SVGSVGElement>(m_state.element()) && m_state.element()->parentNode());
 }
 
 #if ENABLE(CSS_GRID_LAYOUT)

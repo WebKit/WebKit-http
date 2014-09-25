@@ -637,7 +637,7 @@ String Internals::visiblePlaceholder(Element* element)
 #if ENABLE(INPUT_TYPE_COLOR)
 void Internals::selectColorInColorChooser(Element* element, const String& colorValue)
 {
-    if (!isHTMLInputElement(element))
+    if (!is<HTMLInputElement>(element))
         return;
     HTMLInputElement* inputElement = element->toInputElement();
     if (!inputElement)
@@ -912,7 +912,7 @@ bool Internals::wasLastChangeUserEdit(Element* textField, ExceptionCode& ec)
     if (HTMLInputElement* inputElement = textField->toInputElement())
         return inputElement->lastChangeWasUserEdit();
 
-    if (isHTMLTextAreaElement(textField))
+    if (is<HTMLTextAreaElement>(textField))
         return downcast<HTMLTextAreaElement>(*textField).lastChangeWasUserEdit();
 
     ec = INVALID_NODE_TYPE_ERR;
@@ -1470,13 +1470,11 @@ PassRefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
     Page* frontendPage = m_frontendWindow->document()->page();
     ASSERT(frontendPage);
 
-    auto frontendClient = std::make_unique<InspectorFrontendClientDummy>(&page->inspectorController(), frontendPage);
-
-    frontendPage->inspectorController().setInspectorFrontendClient(WTF::move(frontendClient));
-
-    m_frontendChannel = adoptPtr(new InspectorFrontendChannelDummy(frontendPage));
+    m_frontendClient = std::make_unique<InspectorFrontendClientDummy>(&page->inspectorController(), frontendPage);
+    frontendPage->inspectorController().setInspectorFrontendClient(m_frontendClient.get());
 
     bool isAutomaticInspection = false;
+    m_frontendChannel = std::make_unique<InspectorFrontendChannelDummy>(frontendPage);
     page->inspectorController().connectFrontend(m_frontendChannel.get(), isAutomaticInspection);
 
     return m_frontendWindow;
@@ -1490,10 +1488,11 @@ void Internals::closeDummyInspectorFrontend()
 
     page->inspectorController().disconnectFrontend(InspectorDisconnectReason::InspectorDestroyed);
 
-    m_frontendChannel.release();
+    m_frontendClient = nullptr;
+    m_frontendChannel = nullptr;
 
     m_frontendWindow->close(m_frontendWindow->scriptExecutionContext());
-    m_frontendWindow.release();
+    m_frontendWindow.clear();
 }
 
 void Internals::setJavaScriptProfilingEnabled(bool enabled, ExceptionCode& ec)
@@ -2084,7 +2083,7 @@ void Internals::simulateAudioInterruption(Node* node)
 
 bool Internals::isSelectPopupVisible(Node* node)
 {
-    if (!isHTMLSelectElement(node))
+    if (!is<HTMLSelectElement>(node))
         return false;
 
     HTMLSelectElement& select = downcast<HTMLSelectElement>(*node);

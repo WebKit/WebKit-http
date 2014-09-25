@@ -192,7 +192,7 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
 
     // FIXME: Should this set of hasTagName checks be replaced by a
     // virtual member function?
-    if (isHTMLInputElement(element))
+    if (is<HTMLInputElement>(element))
         return !downcast<HTMLInputElement>(*element).isInputTypeHidden();
     if (element->hasTagName(selectTag))
         return true;
@@ -200,7 +200,7 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
         return true;
     if (element->hasTagName(buttonTag))
         return true;
-    if (isHTMLTextAreaElement(element))
+    if (is<HTMLTextAreaElement>(element))
         return true;
 
     return false;
@@ -508,10 +508,10 @@ void HTMLFormControlElement::setAutocapitalize(const AtomicString& value)
 HTMLFormControlElement* HTMLFormControlElement::enclosingFormControlElement(Node* node)
 {
     for (; node; node = node->parentNode()) {
-        if (node->isElementNode() && toElement(node)->isFormControlElement())
-            return toHTMLFormControlElement(node);
+        if (is<HTMLFormControlElement>(node))
+            return downcast<HTMLFormControlElement>(node);
     }
-    return 0;
+    return nullptr;
 }
 
 } // namespace Webcore

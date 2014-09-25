@@ -1670,7 +1670,7 @@ void FrameSelection::selectAll()
     Document* document = m_frame->document();
 
     Element* focusedElement = document->focusedElement();
-    if (focusedElement && isHTMLSelectElement(focusedElement)) {
+    if (focusedElement && is<HTMLSelectElement>(focusedElement)) {
         HTMLSelectElement& selectElement = downcast<HTMLSelectElement>(*focusedElement);
         if (selectElement.canSelectAll()) {
             selectElement.selectAll();
@@ -2025,8 +2025,8 @@ static HTMLFormElement* scanForForm(Element* start)
         HTMLElement& element = *it;
         if (isHTMLFormElement(&element))
             return downcast<HTMLFormElement>(&element);
-        if (isHTMLFormControlElement(element))
-            return toHTMLFormControlElement(element).form();
+        if (is<HTMLFormControlElement>(element))
+            return downcast<HTMLFormControlElement>(element).form();
         if (isHTMLFrameElementBase(element)) {
             Document* contentDocument = toHTMLFrameElementBase(element).contentDocument();
             if (!contentDocument)

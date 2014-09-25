@@ -843,9 +843,9 @@ bool RenderTheme::isSpinUpButtonPartPressed(const RenderObject& o) const
 bool RenderTheme::isReadOnlyControl(const RenderObject& o) const
 {
     Node* node = o.node();
-    if (!node || !node->isElementNode() || !toElement(node)->isFormControlElement())
+    if (!node || !is<HTMLFormControlElement>(node))
         return false;
-    return !toElement(node)->matchesReadWritePseudoClass();
+    return !toElement(*node).matchesReadWritePseudoClass();
 }
 
 bool RenderTheme::isHovered(const RenderObject& o) const
@@ -1035,7 +1035,7 @@ void RenderTheme::paintSliderTicks(const RenderObject& o, const PaintInfo& paint
     GraphicsContextStateSaver stateSaver(*paintInfo.context);
     paintInfo.context->setFillColor(o.style().visitedDependentColor(CSSPropertyColor), ColorSpaceDeviceRGB);
     for (unsigned i = 0; Node* node = options->item(i); i++) {
-        ASSERT(isHTMLOptionElement(node));
+        ASSERT(is<HTMLOptionElement>(node));
         HTMLOptionElement& optionElement = downcast<HTMLOptionElement>(*node);
         String value = optionElement.value();
         if (!input->isValidValue(value))
@@ -1151,6 +1151,8 @@ Color RenderTheme::systemColor(CSSValueID cssValueId) const
     case CSSValueButtonshadow:
         return 0xFF888888;
     case CSSValueButtontext:
+        return 0xFF000000;
+    case CSSValueActivebuttontext:
         return 0xFF000000;
     case CSSValueCaptiontext:
         return 0xFF000000;

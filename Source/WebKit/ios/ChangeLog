@@ -1,3 +1,58 @@
+2014-09-24  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Another iOS build fix; workaround for CoreLocation
+        https://bugs.webkit.org/show_bug.cgi?id=137104
+        <rdar://problem/18450785>
+
+        Rubber-stamped by Benjamin Poulain.
+
+        Workaround CoreLocation issue by adding a default statement in -[WebGeolocationCoreLocationProvider requestGeolocationAuthorization]
+        and -[WebGeolocationCoreLocationProvider locationManager:didChangeAuthorizationStatus:].
+        We'll remove these default statements once we have the fix for <rdar://problem/18448331>.
+
+        * Misc/WebGeolocationCoreLocationProvider.mm:
+        (-[WebGeolocationCoreLocationProvider requestGeolocationAuthorization]):
+        (-[WebGeolocationCoreLocationProvider locationManager:didChangeAuthorizationStatus:]):
+
+2014-09-24  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Fix the iOS build; add case statements for kCLAuthorizationStatusAuthorized
+        https://bugs.webkit.org/show_bug.cgi?id=137101
+        <rdar://problem/18449815>
+
+        Reviewed by Mark Lam.
+
+        * Misc/WebGeolocationCoreLocationProvider.mm:
+        (-[WebGeolocationCoreLocationProvider requestGeolocationAuthorization]):
+        (-[WebGeolocationCoreLocationProvider locationManager:didChangeAuthorizationStatus:]):
+
+2014-09-24  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<HTML*Element>() instead of isHTML*Element() - Part 1
+        https://bugs.webkit.org/show_bug.cgi?id=137068
+
+        Reviewed by Ryosuke Niwa.
+
+        Start using is<HTML*Element>() instead of isHTML*Element().
+        Remaining usages will be updated in a follow-up patch to
+        reduce the size of the change.
+
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::focusedElementChanged):
+
+2014-09-21  Timothy Hatcher  <timothy@apple.com>
+
+        Make the Web Inspector use a separate web process.
+
+        https://bugs.webkit.org/show_bug.cgi?id=135120
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebInspectorClientIOS.mm:
+        (WebInspectorClient::WebInspectorClient):
+        Removed m_frontendClient initialization since it is
+        now a std::unique_ptr that defaults to nullptr.
+
 2014-09-23  Chris Dumez  <cdumez@apple.com>
 
         Use downcast<HTML*Element>() instead of toHTML*Element()

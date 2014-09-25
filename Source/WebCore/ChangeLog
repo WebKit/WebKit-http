@@ -1,3 +1,601 @@
+2014-09-24  Christophe Dumez  <cdumez@apple.com>
+
+        Use tighter typing for render objects in RenderGeometryMap
+        https://bugs.webkit.org/show_bug.cgi?id=137102
+
+        Reviewed by Ryosuke Niwa.
+
+        Use tighter typing for render objects in RenderGeometryMap for clarity
+        and efficiency.
+
+        In particular, using RenderElement type instead of RenderObject
+        in canMapBetweenRenderers() allows us to call the faster
+        RenderElement::style() instead of RenderObject::style().
+
+        No new tests, no behavior change.
+
+        * rendering/RenderGeometryMap.cpp:
+        (WebCore::canMapBetweenRenderers):
+        (WebCore::RenderGeometryMap::pushMappingsToAncestor):
+
+2014-09-24  Christophe Dumez  <cdumez@apple.com>
+
+        Add initial is<>() / downcast<>() support for any type of Nodes
+        https://bugs.webkit.org/show_bug.cgi?id=137056
+
+        Reviewed by Benjamin Poulain.
+
+        Add initial is<>() / downcast<>() support for any type of Nodes, not
+        just Elements by:
+        - Moving the is<>() / downcast<>() declarations from Element.h to
+          Node.h
+        - Introducing a SPECIALIZE_TYPE_TRAITS_*() macro that generates the
+          needed template specializations for is<>() / downcast<>() to work.
+          This macro will replace NODE_TYPE_CASTS() entirely once the code base
+          is fully ported.
+
+        This patch makes use of SPECIALIZE_TYPE_TRAITS_*() macro for
+        HTMLFormControlElement, that is an HTMLElement for which the template
+        specializations cannot be automatically generated because it requires
+        special handling.
+
+        This patch also makes use of SPECIALIZE_TYPE_TRAITS_*() macro for
+        DocumentFragment to show that it can be used for non-Element Nodes.
+
+        No new tests, no behavior change.
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::isReadOnly):
+        (WebCore::AccessibilityNodeObject::isRequired):
+        (WebCore::AccessibilityNodeObject::isControl):
+        * css/SelectorCheckerTestFunctions.h:
+        (WebCore::isAutofilled):
+        (WebCore::isDisabled):
+        (WebCore::isEnabled):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::canShareStyleWithElement):
+        (WebCore::StyleResolver::adjustRenderStyle):
+        * dom/Document.cpp:
+        (WebCore::Document::importNode):
+        (WebCore::Document::setFocusedElement):
+        * dom/DocumentFragment.h:
+        (WebCore::isDocumentFragment):
+        * dom/Element.cpp:
+        (WebCore::Element::focus):
+        * dom/Element.h:
+        (WebCore::is): Deleted.
+        (WebCore::downcast): Deleted.
+        * dom/Node.h:
+        (WebCore::is):
+        (WebCore::downcast):
+        * dom/make_names.pl:
+        (printTypeHelpers):
+        * editing/FrameSelection.cpp:
+        (WebCore::scanForForm):
+        * editing/TextIterator.cpp:
+        (WebCore::isRendererReplacedElement):
+        * html/FormAssociatedElement.h:
+        * html/HTMLElement.h:
+        * html/HTMLFieldSetElement.cpp:
+        (WebCore::updateFromControlElementsAncestorDisabledStateUnder):
+        (WebCore::HTMLFieldSetElement::refreshElementsIfNeeded):
+        * html/HTMLFormControlElement.cpp:
+        (WebCore::HTMLFormControlElement::enclosingFormControlElement):
+        * html/HTMLFormControlElement.h:
+        (WebCore::isHTMLFormControlElement):
+        * html/HTMLFormElement.cpp:
+        (WebCore::HTMLFormElement::submitImplicitly):
+        (WebCore::submitElementFromEvent):
+        (WebCore::HTMLFormElement::validateInteractively):
+        (WebCore::HTMLFormElement::submit):
+        (WebCore::HTMLFormElement::reset):
+        (WebCore::HTMLFormElement::formElementIndex):
+        (WebCore::HTMLFormElement::defaultButton):
+        (WebCore::HTMLFormElement::checkInvalidControlsAndCollectUnhandled):
+        (WebCore::HTMLFormElement::documentDidResumeFromPageCache):
+        * html/HTMLMediaElement.h:
+        * html/HTMLPlugInImageElement.h:
+        * html/HTMLSummaryElement.cpp:
+        (WebCore::isClickableControl):
+        * html/LabelableElement.h:
+        * html/RadioNodeList.cpp:
+        (WebCore::RadioNodeList::checkElementMatchesRadioNodeListFilter):
+        (WebCore::RadioNodeList::elementMatches):
+        * html/parser/HTMLConstructionSite.cpp:
+        (WebCore::HTMLConstructionSite::findFosterSite):
+        * html/parser/HTMLTreeBuilder.cpp:
+        (WebCore::disallowTelephoneNumberParsing):
+        * loader/FormSubmission.cpp:
+        (WebCore::FormSubmission::create):
+        * mathml/MathMLElement.h:
+        * page/ContextMenuController.cpp:
+        (WebCore::ContextMenuController::populate):
+        * page/Frame.cpp:
+        (WebCore::Frame::searchForLabelsBeforeElement):
+        * rendering/RenderButton.cpp:
+        (WebCore::RenderButton::formControlElement):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::resize):
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::isReadOnlyControl):
+        * svg/SVGElement.h:
+        * svg/SVGFilterPrimitiveStandardAttributes.h:
+        * svg/animation/SVGSMILElement.h:
+
+2014-09-24  Darin Adler  <darin@apple.com>
+
+        Old Turkic characters behave as left-to-right instead of right-to-left, because they are encoded as surrogate pairs.
+        https://bugs.webkit.org/show_bug.cgi?id=70029
+
+        Reviewed by Dan Bernstein.
+
+        Test: fast/text/international/old-turkic-direction.html
+
+        * CMakeLists.txt: Added InlineIterator.cpp.
+        * WebCore.vcxproj/WebCore.vcxproj: Ditto.
+        * WebCore.vcxproj/WebCore.vcxproj.filters: Ditto.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+        * rendering/RenderingAllInOne.cpp: Ditto.
+
+        * rendering/InlineIterator.cpp: Added.
+        (WebCore::InlineIterator::surrogateTextDirection): New function used to compute the direction
+        when a surrogate pair is involved.
+        * rendering/InlineIterator.h: Made the characterAt function private.
+        (WebCore::InlineIterator::previousInSameNode): Took out unneeded range check. A zero will underflow
+        and become a large number and the characterAt function will return 0 in that case.
+        (WebCore::InlineIterator::direction): Added code to check U16_IS_SINGLE before calling
+        u_charDirection, and call surrogateTextDirection instead.
+
+2014-09-24  Christophe Dumez  <cdumez@apple.com>
+
+        Unreviewed build fix after r173941.
+
+        Rename shadow to m_shadow.
+
+        * rendering/TextPainter.h:
+        (WebCore::ShadowApplier::shadowIsCompletelyCoveredByText):
+
+2014-09-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION: Text with a zero offset, zero blur shadow vanishes
+        https://bugs.webkit.org/show_bug.cgi?id=136801
+
+        Reviewed by Darin Adler.
+
+        This patch performs some cleanup regarding TextPainter's shadow logic and handles an
+        additional case of empty shadows. Previously, there was tight coupling between
+        applyShadowToGraphicalContext() and paintTextWithShadows(), as they both used a
+        collection of variables to determine how shadows are to be drawn. This complexity has
+        been moved into a helper class, ShadowApplier, which performs what
+        applyShadowToGraphicsContext() used to do, and cleans up correctly in its destructor.
+        This removes the tight coupling mentioned earlier.
+
+        Test: fast/text/empty-shadow.html
+
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::applyShadowToGraphicsContext): Moved to ShadowApplier.
+        * rendering/InlineTextBox.h: Deleted applyShadowToGraphicsContext signature.
+        * rendering/TextPainter.cpp:
+        (WebCore::ShadowApplier::ShadowApplier): Perform the contents of applyShadowToGraphicsContext()
+        (WebCore::ShadowApplier::~ShadowApplier): Undo the work done previously
+        (WebCore::paintTextWithShadows): Create a ShadowApplier to do the relevant shadow work. In addition,
+        refactor some boolean flags to more meaningful ones with relation to the computation at hand.
+        (WebCore::isEmptyShadow): Moved to TextPainter.h, named shadowIsCompletelyCoveredByText()
+        * rendering/TextPainter.h:
+        (WebCore::ShadowApplier::ShadowApplier): Moved from InlineTextBox::applyShadowToGraphicsContext().
+        (WebCore::ShadowApplier::extraOffset): Getter.
+        (WebCore::ShadowApplier::~ShadowApplier): Moved from TextPainter::paintTextWithShadows().
+        (WebCore::isLastShadowIteration): Helper function.
+        (WebCore::shadowIsCompletelyCoveredByText): Determines whether or not we should not draw the shadow.
+        * rendering/svg/SVGInlineTextBox.cpp:
+        (WebCore::SVGInlineTextBox::paintTextWithShadows): Update to use ShadowApplier.
+
+2014-09-24  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: subtract elapsed time while debugger is paused from profile nodes
+        https://bugs.webkit.org/show_bug.cgi?id=136796
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/TimelineRecordFactory.cpp:
+        (WebCore::buildInspectorObject):
+
+2014-09-24  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<HTML*Element>() instead of isHTML*Element() - Part 1
+        https://bugs.webkit.org/show_bug.cgi?id=137068
+
+        Reviewed by Ryosuke Niwa.
+
+        Start using is<HTML*Element>() instead of isHTML*Element().
+        Remaining usages will be updated in a follow-up patch to
+        reduce the size of the change.
+
+        No new tests, no behavior change.
+
+        * accessibility/AccessibilityListBoxOption.cpp:
+        (WebCore::AccessibilityListBoxOption::isSelected):
+        (WebCore::AccessibilityListBoxOption::canSetSelectedAttribute):
+        (WebCore::AccessibilityListBoxOption::stringValue):
+        (WebCore::AccessibilityListBoxOption::listBoxOptionParentNode):
+        * accessibility/AccessibilityMediaControls.cpp:
+        (WebCore::AccessibilityMediaTimeline::valueDescription):
+        * accessibility/AccessibilityMenuListOption.cpp:
+        (WebCore::AccessibilityMenuListOption::setElement):
+        * accessibility/AccessibilityMenuListPopup.cpp:
+        (WebCore::AccessibilityMenuListPopup::menuListOptionAccessibilityObject):
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::determineAccessibilityRole):
+        (WebCore::AccessibilityNodeObject::isNativeTextControl):
+        (WebCore::AccessibilityNodeObject::isNativeImage):
+        (WebCore::AccessibilityNodeObject::isInputImage):
+        (WebCore::AccessibilityNodeObject::isReadOnly):
+        (WebCore::AccessibilityNodeObject::valueForRange):
+        (WebCore::AccessibilityNodeObject::maxValueForRange):
+        (WebCore::AccessibilityNodeObject::minValueForRange):
+        (WebCore::isNodeActionElement):
+        (WebCore::AccessibilityNodeObject::titleElementText):
+        (WebCore::AccessibilityNodeObject::visibleText):
+        (WebCore::AccessibilityNodeObject::title):
+        (WebCore::AccessibilityNodeObject::colorValue):
+        (WebCore::accessibleNameForNode):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::isFileUploadButton):
+        (WebCore::AccessibilityRenderObject::addRadioButtonGroupMembers):
+        (WebCore::AccessibilityRenderObject::setValue):
+        (WebCore::AccessibilityRenderObject::accessibilityHitTest):
+        (WebCore::AccessibilityRenderObject::determineAccessibilityRole):
+        (WebCore::AccessibilityRenderObject::addTextFieldChildren):
+        * accessibility/atk/AXObjectCacheAtk.cpp:
+        (WebCore::notifyChildrenSelectionChange):
+        * css/SelectorCheckerTestFunctions.h:
+        (WebCore::isDisabled):
+        (WebCore::isEnabled):
+        (WebCore::isChecked):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle):
+        * dom/EventDispatcher.cpp:
+        (WebCore::EventDispatcher::dispatchEvent):
+        * editing/FrameSelection.cpp:
+        (WebCore::FrameSelection::selectAll):
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::shouldPerformSmartReplace):
+        * editing/VisibleSelection.cpp:
+        (WebCore::VisibleSelection::isInPasswordField):
+        * editing/cocoa/HTMLConverter.mm:
+        (HTMLConverter::_processElement):
+        * editing/gtk/EditorGtk.cpp:
+        (WebCore::elementURL):
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::setTextAlignmentForChangedBaseWritingDirection):
+        * editing/markup.cpp:
+        (WebCore::StyledMarkupAccumulator::appendText):
+        (WebCore::isPlainTextMarkup):
+        (WebCore::collectElementsToRemoveFromFragment):
+        * html/HTMLCollection.cpp:
+        (WebCore::isMatchingElement):
+        * html/HTMLEmbedElement.cpp:
+        (WebCore::HTMLEmbedElement::rendererIsNeeded):
+        * html/HTMLFormControlElement.cpp:
+        (WebCore::shouldAutofocus):
+        * html/HTMLFormElement.cpp:
+        (WebCore::HTMLFormElement::getTextFieldValues):
+        (WebCore::HTMLFormElement::formElementIndex):
+        * html/HTMLImageLoader.cpp:
+        (WebCore::HTMLImageLoader::dispatchLoadEvent):
+        (WebCore::HTMLImageLoader::notifyFinished):
+        * html/HTMLNameCollection.cpp:
+        (WebCore::DocumentNameCollection::elementMatchesIfIdAttributeMatch):
+        (WebCore::DocumentNameCollection::elementMatchesIfNameAttributeMatch):
+        (WebCore::DocumentNameCollection::elementMatches):
+        * html/HTMLOptGroupElement.cpp:
+        (WebCore::HTMLOptGroupElement::recalcSelectOptions):
+        (WebCore::HTMLOptGroupElement::ownerSelectElement):
+        * html/HTMLOptionElement.cpp:
+        (WebCore::HTMLOptionElement::index):
+        (WebCore::HTMLOptionElement::ownerSelectElement):
+        * html/HTMLSelectElement.cpp:
+        (WebCore::HTMLSelectElement::add):
+        (WebCore::HTMLSelectElement::value):
+        (WebCore::HTMLSelectElement::setValue):
+        (WebCore::HTMLSelectElement::childShouldCreateRenderer):
+        (WebCore::HTMLSelectElement::setLength):
+        (WebCore::HTMLSelectElement::nextValidIndex):
+        (WebCore::HTMLSelectElement::saveLastSelection):
+        (WebCore::HTMLSelectElement::setActiveSelectionAnchorIndex):
+        (WebCore::HTMLSelectElement::updateListBoxSelection):
+        (WebCore::HTMLSelectElement::listBoxOnChange):
+        (WebCore::HTMLSelectElement::recalcListItems):
+        (WebCore::HTMLSelectElement::selectedIndex):
+        (WebCore::HTMLSelectElement::selectOption):
+        (WebCore::HTMLSelectElement::optionToListIndex):
+        (WebCore::HTMLSelectElement::listToOptionIndex):
+        (WebCore::HTMLSelectElement::deselectItemsWithoutValidation):
+        (WebCore::HTMLSelectElement::saveFormControlState):
+        (WebCore::HTMLSelectElement::searchOptionsForValue):
+        (WebCore::HTMLSelectElement::restoreFormControlState):
+        (WebCore::HTMLSelectElement::appendFormData):
+        (WebCore::HTMLSelectElement::reset):
+        (WebCore::HTMLSelectElement::updateSelectedState):
+        (WebCore::HTMLSelectElement::listBoxDefaultEventHandler):
+        (WebCore::HTMLSelectElement::lastSelectedListIndex):
+        (WebCore::HTMLSelectElement::optionAtIndex):
+        (WebCore::HTMLSelectElement::accessKeySetSelectedIndex):
+        (WebCore::HTMLSelectElement::length):
+        * html/HTMLTagNames.in:
+        * html/RadioInputType.cpp:
+        (WebCore::RadioInputType::handleKeydownEvent):
+        (WebCore::RadioInputType::isKeyboardFocusable):
+        * html/parser/HTMLConstructionSite.cpp:
+        (WebCore::hasImpliedEndTag):
+        * html/parser/HTMLElementStack.cpp:
+        (WebCore::HTMLNames::isSelectScopeMarker):
+        * html/parser/HTMLTreeBuilder.cpp:
+        (WebCore::HTMLTreeBuilder::processStartTagForInBody):
+        (WebCore::HTMLTreeBuilder::processStartTag):
+        (WebCore::HTMLTreeBuilder::processEndTag):
+        * html/shadow/MediaControlElementTypes.cpp:
+        (WebCore::mediaControlElementType):
+        * loader/FormSubmission.cpp:
+        (WebCore::FormSubmission::create):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::handleFallbackContent):
+        * loader/ImageLoader.cpp:
+        (WebCore::ImageLoader::dispatchPendingBeforeLoadEvent):
+        * loader/SubframeLoader.cpp:
+        (WebCore::SubframeLoader::requestObject):
+        * loader/archive/cf/LegacyWebArchive.cpp:
+        (WebCore::LegacyWebArchive::create):
+        * page/Chrome.cpp:
+        (WebCore::Chrome::setToolTip):
+        * page/EventHandler.cpp:
+        (WebCore::isSubmitImage):
+        (WebCore::EventHandler::handleMousePressEvent):
+        * page/FocusController.cpp:
+        (WebCore::clearSelectionIfNeeded):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::addEmbeddedObjectToUpdate):
+        (WebCore::FrameView::updateEmbeddedObject):
+        * page/PageSerializer.cpp:
+        (WebCore::frameOwnerURLAttributeName):
+        * page/SpatialNavigation.cpp:
+        (WebCore::canScrollInDirection):
+        * rendering/HitTestResult.cpp:
+        (WebCore::HitTestResult::altDisplayString):
+        (WebCore::HitTestResult::absoluteImageURL):
+        (WebCore::HitTestResult::absolutePDFURL):
+        (WebCore::HitTestResult::isContentEditable):
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::resizeTextPermitted):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::sizesLogicalWidthToFitContent):
+        * rendering/RenderButton.cpp:
+        (WebCore::RenderButton::updateFromElement):
+        (WebCore::RenderButton::canHaveGeneratedChildren):
+        * rendering/RenderDetailsMarker.cpp:
+        (WebCore::RenderDetailsMarker::isOpen):
+        * rendering/RenderFileUploadControl.cpp:
+        (WebCore::RenderFileUploadControl::uploadButton):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::updateAltText):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::updateFromElement):
+        (WebCore::RenderListBox::addFocusRingRects):
+        (WebCore::RenderListBox::paintItemForeground):
+        (WebCore::RenderListBox::paintItemBackground):
+        * rendering/RenderMenuList.cpp:
+        (WebCore::selectedOptionCount):
+        (RenderMenuList::updateOptionsWidth):
+        (RenderMenuList::setTextFromOption):
+        (RenderMenuList::itemText):
+        (RenderMenuList::itemIsEnabled):
+        (RenderMenuList::itemIsSelected):
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::paintSliderTicks):
+        * testing/Internals.cpp:
+        (WebCore::Internals::selectColorInColorChooser):
+        (WebCore::Internals::wasLastChangeUserEdit):
+        (WebCore::Internals::isSelectPopupVisible):
+        * xml/parser/XMLDocumentParserLibxml2.cpp:
+        (WebCore::XMLDocumentParser::startElementNs):
+
+2014-09-24  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Remove MediaPlayer::setHasPlaybackTargetAvailabilityListeners
+        https://bugs.webkit.org/show_bug.cgi?id=137075
+
+        Reviewed by Dean Jackson.
+
+        No new tests, this just removes unused code.
+
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::setHasPlaybackTargetAvailabilityListeners): Deleted.
+        * platform/graphics/MediaPlayer.h:
+        * platform/graphics/MediaPlayerPrivate.h:
+        (WebCore::MediaPlayerPrivateInterface::setHasPlaybackTargetAvailabilityListeners): Deleted.
+
+2014-09-21  Timothy Hatcher  <timothy@apple.com>
+
+        Make the Web Inspector use a separate web process.
+
+        https://bugs.webkit.org/show_bug.cgi?id=135120
+
+        Reviewed by Anders Carlsson.
+
+        * English.lproj/Localizable.strings: Updated.
+
+        * WebCore.exp.in:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/ScriptGlobalObject.h:
+        * bindings/js/ScriptState.h:
+        * inspector/InspectorFrontendHost.h:
+        * inspector/InspectorPageAgent.h:
+        * page/Chrome.h:
+        Exported a few functions and private headers.
+
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        (WebCore::InspectorController::setInspectorFrontendClient):
+        (WebCore::InspectorController::hasInspectorFrontendClient):
+        (WebCore::InspectorController::show):
+        * inspector/InspectorController.h:
+        Make InspectorFrontendClient a pointer instead of a std::unique_ptr.
+        This makes it easier to implement InspectorFrontendClient as
+        part of an existing object that is externally owned.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::openDummyInspectorFrontend):
+        (WebCore::Internals::closeDummyInspectorFrontend):
+        * testing/Internals.h:
+        Change InspectorFrontendClientDummy from being moved to owned.
+
+2014-09-23  Dean Jackson  <dino@apple.com>
+
+        [Yosemite] Button text doesn't go white while pushing the button, like it does for real buttons
+        https://bugs.webkit.org/show_bug.cgi?id=137054
+        rdar://problem/17559038
+
+        Reviewed by Sam Weinig.
+
+        On Yosemite and above, system buttons paint with white-ish text when they
+        are pressed. Since this isn't exposed by API, I've hardcoded the value
+        into RenderThemeMac.
+
+        The actual state is exposed by adding a :active rule to html.css that
+        uses a new CSSValueKeyword: ActiveButtonText.
+
+        Unfortunately I can't find a way to test this, because the active state isn't
+        testable. We should really expose the Inspector's forcePseudoState function into
+        window.internals.
+
+        * css/CSSValueKeywords.in: Add "activebuttontext".
+        * css/html.css:
+        (input[type="button"]:active, input[type="submit"]:active, input[type="reset"]:active, input[type="file"]::-webkit-file-upload-button:active, button:active): New rule for active
+        button elements.
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::systemColor): Handle CSSValueActivebuttontext as black.
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::systemColor): Handle CSSValueActivebuttontext as
+        white with 75% opacity.
+
+2014-09-24  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<SVG*Element>() instead of isSVG*Element()
+        https://bugs.webkit.org/show_bug.cgi?id=137058
+
+        Reviewed by Dirk Schulze.
+
+        Use is<SVG*Element>() instead of isSVG*Element() and drop support for
+        generated isSVG*Element().
+
+        No new tests, no behavior change.
+
+        * css/CSSCursorImageValue.cpp:
+        (WebCore::resourceReferencedByCursorElement):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::useSVGZoomRulesForLength):
+        * dom/DocumentStyleSheetCollection.cpp:
+        (WebCore::DocumentStyleSheetCollection::collectActiveStyleSheets):
+        * dom/ScriptElement.cpp:
+        (WebCore::toScriptElementIfPossible):
+        * dom/make_names.pl:
+        (printTypeHelpers):
+        * editing/gtk/EditorGtk.cpp:
+        (WebCore::elementURL):
+        * rendering/HitTestResult.cpp:
+        (WebCore::HitTestResult::absoluteImageURL):
+        (WebCore::HitTestResult::isLiveLink):
+        * rendering/svg/RenderSVGEllipse.cpp:
+        (WebCore::RenderSVGEllipse::calculateRadiiAndCenter):
+        * rendering/svg/RenderSVGTransformableContainer.cpp:
+        (WebCore::RenderSVGTransformableContainer::calculateLocalTransform):
+        * rendering/svg/SVGPathData.cpp:
+        (WebCore::updatePathFromCircleElement):
+        * rendering/svg/SVGRenderTreeAsText.cpp:
+        (WebCore::operator<<):
+        * rendering/svg/SVGResources.cpp:
+        (WebCore::targetReferenceFromResource):
+        * svg/SVGAltGlyphDefElement.cpp:
+        (WebCore::SVGAltGlyphDefElement::hasValidGlyphElements):
+        * svg/SVGAltGlyphElement.cpp:
+        (WebCore::SVGAltGlyphElement::hasValidGlyphElements):
+        * svg/SVGAnimateMotionElement.cpp:
+        (WebCore::SVGAnimateMotionElement::hasValidAttributeType):
+        * svg/SVGDocument.cpp:
+        (WebCore::SVGDocument::rootElement):
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::isOutermostSVGSVGElement):
+        (WebCore::SVGElement::ownerSVGElement):
+        (WebCore::SVGElement::viewportElement):
+        * svg/SVGFEComponentTransferElement.cpp:
+        (WebCore::SVGFEComponentTransferElement::build):
+        * svg/SVGFELightElement.cpp:
+        (WebCore::SVGFELightElement::findLightElement):
+        * svg/SVGFontData.cpp:
+        (WebCore::SVGFontData::applySVGGlyphSelection):
+        * svg/SVGFontElement.cpp:
+        (WebCore::SVGFontElement::ensureGlyphCache):
+        * svg/SVGFontFaceElement.cpp:
+        (WebCore::SVGFontFaceElement::associatedFontElement):
+        (WebCore::SVGFontFaceElement::rebuildFontFace):
+        * svg/SVGFontFaceSrcElement.cpp:
+        (WebCore::SVGFontFaceSrcElement::srcValue):
+        (WebCore::SVGFontFaceSrcElement::childrenChanged):
+        * svg/SVGGlyphElement.cpp:
+        (WebCore::SVGGlyphElement::invalidateGlyphCache):
+        * svg/SVGHKernElement.cpp:
+        (WebCore::SVGHKernElement::insertedInto):
+        (WebCore::SVGHKernElement::removedFrom):
+        * svg/SVGLengthContext.cpp:
+        (WebCore::SVGLengthContext::determineViewport):
+        * svg/SVGLocatable.cpp:
+        (WebCore::isViewportElement):
+        * svg/SVGMPathElement.cpp:
+        (WebCore::SVGMPathElement::pathElement):
+        (WebCore::SVGMPathElement::notifyParentOfPathChange):
+        * svg/SVGPathElement.cpp:
+        (WebCore::SVGPathElement::invalidateMPathDependencies):
+        * svg/SVGPatternElement.cpp:
+        (WebCore::SVGPatternElement::collectPatternAttributes):
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::setupInitialView):
+        * svg/SVGUseElement.cpp:
+        (WebCore::dumpInstanceTree):
+        (WebCore::SVGUseElement::expandUseElementsInShadowTree):
+        * svg/SVGVKernElement.cpp:
+        (WebCore::SVGVKernElement::insertedInto):
+        (WebCore::SVGVKernElement::removedFrom):
+
+2014-09-24  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove the style marking from :nth-child()
+        https://bugs.webkit.org/show_bug.cgi?id=137055
+
+        Reviewed by Andreas Kling.
+
+        Previously, :nth-child() had to mark the RenderStyle as unique in order
+        to prevent it from being used for style sharing.
+
+        After r173229, :nth-child() use the more generic element marking
+        "StyleIsAffectedByPreviousSibling".
+
+        In StyleResolver::canShareStyleWithElement(), StyleIsAffectedByPreviousSibling
+        is already used to prevent style sharing of those elements, making the "Unique"
+        flag redundant.
+
+        Since it is now useless, remove the style marking from SelectorChecker and the CSS JIT.
+
+        Tests: fast/css/nth-child-style-sharing-even.html
+               fast/css/nth-child-style-sharing-fixed-integer.html
+               fast/css/nth-child-style-sharing-odd.html
+
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::checkOne):
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsNthChild):
+        (WebCore::SelectorCompiler::setElementChildIndexAndUpdateStyle): Deleted.
+        * rendering/style/RenderStyle.h:
+
 2014-09-23  Chris Dumez  <cdumez@apple.com>
 
         Add support for is<HTML*Element>() for type checking
