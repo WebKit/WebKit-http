@@ -161,18 +161,11 @@ IntSize RenderThemeHaiku::sliderTickSize() const
 
 int RenderThemeHaiku::sliderTickOffsetFromTrackCenter() const
 {
-    static const int sliderTickOffset = -12;
+    static const int sliderTickOffset = -(sliderThumbHeight / 2 + 1);
 
     return sliderTickOffset;
 }
 
-#if 0
-LayoutUnit RenderThemeHaiku::sliderTickSnappingThreshold() const
-{
-    // The same threshold value as the Chromium port.
-    return 5;
-}
-#endif
 #endif
 
 bool RenderThemeHaiku::supportsDataListUI(const AtomicString& type) const
@@ -181,6 +174,7 @@ bool RenderThemeHaiku::supportsDataListUI(const AtomicString& type) const
     // FIXME: We need to support other types.
     return type == InputTypeNames::email()
         || type == InputTypeNames::range()
+        || type == InputTypeNames::color()
         || type == InputTypeNames::search()
         || type == InputTypeNames::url();
 #else

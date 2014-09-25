@@ -30,12 +30,31 @@
 
 #include <Button.h>
 #include <ColorControl.h>
-#include <GridView.h>
+#include <GroupView.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
 #include <Window.h>
 
 namespace WebCore {
+
+class ColorSwatch: public BButton {
+public:
+    ColorSwatch(Color color) 
+        : BButton("swatch", "", NULL) {
+        SetHighColor(color);
+        SetExplicitSize(BSize(16, 16));
+
+        BMessage* message = new BMessage('pick');
+        rgb_color c(color);
+        message->AddData("RGBColor", B_RGB_COLOR_TYPE, &c, sizeof(c));
+        SetMessage(message);
+    }
+
+    void Draw(BRect updateRect) {
+        FillRect(updateRect);
+        // TODO should we add a border?
+    }
+};
 
 class ColorChooserWindow: public BWindow
 {
@@ -47,40 +66,38 @@ public:
         , m_client(client)
     {
         SetLayout(new BGroupLayout(B_VERTICAL));
-#if 0
-        // FIXME when using a datalist, shouldShowSuggestions returns true, but
-        // the suggestions vector is empty. This will have to wait until WebKit
-        // gets working datalist support.
-        if (client.shouldShowSuggestions()) {
-            BGridView* swatches = new BGridView();
+        BGroupView* group = new BGroupView(B_VERTICAL);
+        group->SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
 
+        if (client.shouldShowSuggestions()) {
             Vector<Color> colors = client.suggestions();
 
-            int i = 0;
-            for(Color c: colors) {
-                puts("Adding color");
-                BButton* v = new BButton("swatch", " ", NULL);
-                v->SetViewColor(c);
-                swatches->GridLayout()->AddView(v, 0, i++);
+            if (colors.size() > 0) {
+                BGroupView* swatches = new BGroupView(B_HORIZONTAL);
+
+                for(Color c: colors) {
+                    BButton* v = new ColorSwatch(c);
+                    swatches->AddChild(v);
+                }
+
+                group->AddChild(swatches);
             }
-
-            AddChild(swatches);
         }
-#endif
 
-        control = new BColorControl(B_ORIGIN, B_CELLS_32x8, 8, "picker");
+        control = new BColorControl(B_ORIGIN, B_CELLS_32x8, 8, "picker",
+            new BMessage('chng'));
         control->SetValue(m_client.currentColor());
 
         BButton* ok = new BButton("ok", "Done", new BMessage('done'));
         BButton* cancel = new BButton("cancel", "Cancel", new BMessage('canc'));
 
-        BGroupView* group = new BGroupView(B_VERTICAL);
-        group->SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+        m_preview = new ColorSwatch(m_client.currentColor());
 
         BGroupLayoutBuilder(group)
             .SetInsets(5, 5, 5, 5)
             .Add(control)
             .AddGroup(B_HORIZONTAL)
+                .Add(m_preview)
                 .AddGlue()
                 .Add(cancel)
                 .Add(ok)
@@ -96,6 +113,19 @@ public:
 
     void MessageReceived(BMessage* message) {
         switch(message->what) {
+            case 'pick':
+            {
+                rgb_color* c;
+                message->FindData("RGBColor", B_RGB_COLOR_TYPE, (const void**)&c, NULL);
+                control->SetValue(*c);
+                // fallthrough
+            }
+            case 'chng':
+            {
+                m_preview->SetHighColor(control->ValueAsColor());
+                m_preview->Invalidate();
+                return;
+            }
             case 'done':
                 m_client.didChooseColor(control->ValueAsColor());
                 // fallthrough
@@ -110,6 +140,7 @@ public:
 private:
     ColorChooserClient& m_client;
     BColorControl* control;
+    ColorSwatch* m_preview;
 };
 
 
