@@ -43,8 +43,8 @@
 
 namespace WebCore {
 
-static const int sliderThumbWidth = 29;
-static const int sliderThumbHeight = 11;
+static const int sliderThumbWidth = 15;
+static const int sliderThumbHeight = 17;
 
 PassRefPtr<RenderTheme> RenderThemeHaiku::create()
 {
@@ -196,9 +196,6 @@ bool RenderThemeHaiku::paintSliderThumb(const RenderObject& object, const PaintI
     be_control_look->DrawSliderThumb(view, rect, rect, base, flags,
         object.style().appearance() == SliderHorizontalPart ?
             B_HORIZONTAL : B_VERTICAL);
-
-    view->SetHighColor(ui_color(B_FAILURE_COLOR));
-    view->StrokeRect(rect);
 
     return false;
 }
