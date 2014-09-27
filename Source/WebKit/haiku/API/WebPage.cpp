@@ -1136,6 +1136,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
     PlatformMouseEvent event(message);
     switch (message->what) {
     case B_MOUSE_DOWN:
+#if ENABLE(POINTER_LOCK)
         if (WebView()->EventMask() & B_POINTER_EVENTS)
         {
             // We are in mouse lock mode. Events are redirected to pointer lock.
@@ -1143,6 +1144,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
                 eventNames().mousedownEvent);
            break;
         }
+#endif
 
         // Handle context menus, if necessary.
         if (event.button() == RightButton) {
@@ -1182,6 +1184,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
         frame->eventHandler().handleMousePressEvent(event);
         break;
     case B_MOUSE_UP:
+#if ENABLE(POINTER_LOCK)
         if (WebView()->EventMask() & B_POINTER_EVENTS)
         {
             // We are in mouse lock mode. Events are redirected to pointer lock.
@@ -1189,10 +1192,12 @@ void BWebPage::handleMouseEvent(const BMessage* message)
                 eventNames().mouseupEvent);
            break;
         }
+#endif
 
         frame->eventHandler().handleMouseReleaseEvent(event);
         break;
     case B_MOUSE_MOVED:
+#if ENABLE(POINTER_LOCK)
         if (WebView()->EventMask() & B_POINTER_EVENTS)
         {
             // We are in mouse lock mode. Events are redirected to pointer lock.
@@ -1200,6 +1205,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
                 eventNames().mousemoveEvent);
            break;
         }
+#endif
 
     default:
         frame->eventHandler().mouseMoved(event);
