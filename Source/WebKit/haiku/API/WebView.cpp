@@ -321,6 +321,7 @@ void BWebView::MessageReceived(BMessage* message)
         Invalidate(message->FindRect("bounds"));
         break;
 
+#if ENABLE(POINTER_LOCK)
     case 'plok':
     {
         status_t result = SetEventMask(B_POINTER_EVENTS,
@@ -338,6 +339,7 @@ void BWebView::MessageReceived(BMessage* message)
         WebPage()->page()->pointerLockController().didLosePointerLock();
         break;
     }
+#endif
 
     default:
         BView::MessageReceived(message);
