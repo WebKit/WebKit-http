@@ -21,7 +21,7 @@ WebKitInfo::HaikuWebKitVersion()
 /*static*/ BString
 WebKitInfo::WebKitVersion()
 {
-	return BString() << WEBKIT_MAJOR_VERSION << "." << WEBKIT_MINOR_VERSION;
+	return BString() << WEBKIT_MAJOR_VERSION << "." << WEBKIT_MINOR_VERSION << "." << WEBKIT_TINY_VERSION;
 }
 
 
@@ -36,4 +36,11 @@ WebKitInfo::WebKitMajorVersion()
 WebKitInfo::WebKitMinorVersion()
 {
     return WEBKIT_MINOR_VERSION;
+}
+
+
+/*static*/ int
+WebKitInfo::WebKitTinyVersion()
+{
+    return WEBKIT_TINY_VERSION;
 }

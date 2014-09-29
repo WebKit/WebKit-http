@@ -14,6 +14,7 @@ public:
 	static	BString				WebKitVersion();
 	static	int					WebKitMajorVersion();
 	static	int					WebKitMinorVersion();
+	static	int					WebKitTinyVersion();
 };
 
 
