@@ -34,7 +34,6 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 from handlers.activebots import ActiveBots
-from handlers.dashboard import Dashboard
 from handlers.gc import GC
 from handlers.nextpatch import NextPatch
 from handlers.patch import Patch
@@ -45,6 +44,7 @@ from handlers.queuestatus import QueueStatus
 from handlers.queuestatusjson import QueueStatusJSON
 from handlers.recentstatus import QueuesOverview
 from handlers.releasepatch import ReleasePatch
+from handlers.releaselock import ReleaseLock
 from handlers.showresults import ShowResults
 from handlers.statusbubble import StatusBubble
 from handlers.submittoews import SubmitToEWS
@@ -59,7 +59,6 @@ webapp.template.register_template_library('filters.webkit_extras')
 
 routes = [
     ('/', QueuesOverview),
-    ('/dashboard', Dashboard),
     ('/gc', GC),
     ('/sync-queue-logs', SyncQueueLogs),
     (r'/patch-status/(.*)/(.*)', PatchStatus),
@@ -75,6 +74,7 @@ routes = [
     (r'/queue-status-json/(.*)', QueueStatusJSON),
     (r'/next-patch/(.*)', NextPatch),
     (r'/release-patch', ReleasePatch),
+    (r'/release-lock', ReleaseLock),
     ('/update-status', UpdateStatus),
     ('/update-work-items', UpdateWorkItems),
     ('/update-svn-revision', UpdateSVNRevision),

@@ -1,3 +1,123 @@
+2014-09-26  Timothy Hatcher  <timothy@apple.com>
+
+        Add WKInspector back function stubs that went missing from r173929.
+        My changes to WKDeprecatedFunctions.cpp got lost in the shuffle.
+
+        * Shared/API/c/WKDeprecatedFunctions.cpp:
+        (WKInspectorIsDebuggingJavaScript):
+        (WKInspectorToggleJavaScriptDebugging):
+        (WKInspectorIsProfilingJavaScript):
+        (WKInspectorToggleJavaScriptProfiling):
+
+2014-09-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r173929): Web inspector doesn't work after r173929 when INSPECTOR_SERVER is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=137150
+
+        Reviewed by Timothy Hatcher.
+
+        The inspector doesn't show any information about the inspected
+        page because it's sending messages to a remote frontend that is
+        not running.
+
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::WebInspector): Initialize m_remoteFrontendConnected.
+        (WebKit::WebInspector::sendMessageToFrontend): Send
+        SendMessageToRemoteFrontend message to the UI process when remote
+        frontend is connected, or SendMessageToFrontend message to
+        WebInspectorUI otherwise.
+        (WebKit::WebInspector::remoteFrontendConnected): Set m_remoteFrontendConnected to true.
+        (WebKit::WebInspector::remoteFrontendDisconnected): Set m_remoteFrontendConnected to false.
+        * WebProcess/WebPage/WebInspector.h:
+
+2014-09-26  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Don't include full path names in WebKitEnumTypes.h
+        https://bugs.webkit.org/show_bug.cgi?id=137148
+
+        Reviewed by Carlos Garcia Campos.
+
+        Replace @filename@ with @basename@ in the template, since we don't
+        want to include the full path name in the generated header.
+
+        * UIProcess/API/gtk/WebKitEnumTypes.h.template:
+
+2014-09-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Clean up unused parameter warnings
+        https://bugs.webkit.org/show_bug.cgi?id=137107
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkit/messages.py:
+        (generate_message_handler):
+        Sometimes generated code doesn't use `connection` parameter. So `UNUSED_PARAM(connection)` is necessary.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageIsPlayingAudio):
+
+2014-09-25  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<HTML*Element>() instead of isHTML*Element() - Part 2
+        https://bugs.webkit.org/show_bug.cgi?id=137103
+
+        Reviewed by Benjamin Poulain.
+
+        Use is<HTML*Element>() instead of isHTML*Element().
+
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::htmlIFrameElementContentFrame):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::containsAnyFormElements):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getAssistedNodeInformation):
+
+2014-09-25  Anders Carlsson  <andersca@apple.com>
+
+        Expand WK_MAC_TBA and WK_IOS_TBA to the current deployment target version (or NA).
+        https://bugs.webkit.org/show_bug.cgi?id=137127
+        Part of rdar://problem/17761459.
+
+        Reviewed by Dan Bernstein.
+
+        * mac/rewrite-availability-macros.sh:
+
+2014-09-25  Tim Horton  <timothy_horton@apple.com>
+
+        CommitLayerTree decode fails in 32-bit apps on 64-bit devices (TransformationMatrix alignment differs)
+        https://bugs.webkit.org/show_bug.cgi?id=136444
+        <rdar://problem/17952526>
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<TransformationMatrix>::encode):
+        (IPC::ArgumentCoder<TransformationMatrix>::decode):
+        Stop using SimpleArgumentCoder to encode/decode TransformationMatrix,
+        because the alignment of TransformationMatrix differs between architectures,
+        and there's no guarantee that both sides of a connection are the same architecture.
+
+2014-09-25  Alberto Garcia  <berto@igalia.com>
+
+        Unreviewed typo fix.
+
+        * UIProcess/API/C/soup/WKContextSoup.cpp:
+
+2014-09-25  Shivakumar JM  <shiva.jm@samsung.com>
+
+        [WebKit2] Fix build warning in WebKit2/WebProcess module.
+        https://bugs.webkit.org/show_bug.cgi?id=137105
+
+        Reviewed by Csaba Osztrogonác.
+
+        Fix build warning by removing unused parameter names
+
+        * WebProcess/WebPage/WebInspector.h:
+        (WebKit::WebInspector::didReceiveInvalidMessage):
+        * WebProcess/WebPage/WebInspectorUI.h:
+        (WebKit::WebInspectorUI::didReceiveInvalidMessage):
+
 2014-09-24  Sam Weinig  <sam@webkit.org>
 
         Remove incorrect use of the BKSProcessAssertionAllowSuspendOnSleep flag for process suspension in iOS WebKit2

@@ -23,12 +23,10 @@
  */
 
 // FIXME: This is temporary until all ports switch to using this file.
-#if USE(WINGDI)
-#include "wince/FontPlatformData.h"
+#if PLATFORM(EFL) || PLATFORM(GTK)
+#include "freetype/FontPlatformData.h"
 #elif PLATFORM(HAIKU)
 #include "haiku/FontPlatformData.h"
-#elif PLATFORM(EFL) || PLATFORM(GTK)
-#include "freetype/FontPlatformData.h"
 #else
 
 #ifndef FontPlatformData_h

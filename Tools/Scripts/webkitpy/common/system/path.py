@@ -100,15 +100,15 @@ class _CygPath(object):
     def convert(self, path):
         if not self.is_running():
             self.start()
-        _log.error("Input to convert: %s" % path)
         self._child_process.stdin.write("%s\r\n" % path)
         self._child_process.stdin.flush()
+
         windows_path = self._child_process.stdout.readline().rstrip()
         if windows_path == "":
-            _log.error("First attempt at Windows path was returned empty string")
-            self.close()
+            self._child_process.stdin.close()
+            self._child_process.wait()
             windows_path = self._child_process.stdout.readline().rstrip()
-        _log.error("Windows path: %s" % windows_path)
+            self._child_process = None
         # Some versions of cygpath use lowercase drive letters while others
         # use uppercase. We always convert to uppercase for consistency.
         windows_path = '%s%s' % (windows_path[0].upper(), windows_path[1:])

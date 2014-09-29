@@ -29,6 +29,4 @@
 #include "ImageBufferDataCairo.h"
 #elif PLATFORM(HAIKU)
 #include "ImageBufferDataHaiku.h"
-#elif USE(WINGDI)
-#include "ImageBufferDataWince.h"
 #endif

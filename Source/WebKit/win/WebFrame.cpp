@@ -202,7 +202,7 @@ static HTMLFormElement *formElementFromDOMElement(IDOMElement *element)
         Element* ele;
         hr = elePriv->coreElement((void**)&ele);
         elePriv->Release();
-        if (SUCCEEDED(hr) && ele && isHTMLFormElement(ele))
+        if (SUCCEEDED(hr) && ele && is<HTMLFormElement>(ele))
             return downcast<HTMLFormElement>(ele);
     }
     return nullptr;
@@ -253,7 +253,7 @@ WebFrame::WebFrame()
 {
     WebFrameCount++;
     gClassCount++;
-    gClassNameCount.add("WebFrame");
+    gClassNameCount().add("WebFrame");
 }
 
 WebFrame::~WebFrame()
@@ -261,7 +261,7 @@ WebFrame::~WebFrame()
     delete d;
     WebFrameCount--;
     gClassCount--;
-    gClassNameCount.remove("WebFrame");
+    gClassNameCount().remove("WebFrame");
 }
 
 WebFrame* WebFrame::createInstance()

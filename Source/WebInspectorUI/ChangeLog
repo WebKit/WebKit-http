@@ -1,3 +1,104 @@
+2014-09-26  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Type Token View shows type information on hover when it shouldn't
+        https://bugs.webkit.org/show_bug.cgi?id=137152
+
+        Reviewed by Brian J. Burg.
+
+        TypeTokenView should only show type information when there is 
+        more than one primitive type or more than zero objects types. 
+        This fixes a bug in checking the length of object types.
+
+        * UserInterface/Views/TypeTokenView.js:
+        (WebInspector.TypeTokenView.prototype._shouldShowPopover):
+
+2014-09-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Show type info icon is blurry
+        https://bugs.webkit.org/show_bug.cgi?id=137125
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Images/NavigationItemTypes.svg:
+        * UserInterface/Views/ScriptContentView.js:
+        (WebInspector.ScriptContentView):
+        * UserInterface/Views/TextContentView.js:
+        (WebInspector.TextContentView):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView):
+
+2014-09-25  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: console.assert(bitString) TypeSet:50 
+        https://bugs.webkit.org/show_bug.cgi?id=137051
+
+        Reviewed by Joseph Pecoraro.
+
+        This fixes TypeSet's isContainedIn method by ensuring that 
+        the type bit string isn't zero because the test would trivially 
+        pass if the bit string is zero.
+
+        * UserInterface/Models/TypeSet.js:
+        (WebInspector.TypeSet.prototype.isContainedIn):
+
+2014-09-25  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: FunctionCall timeline records omit profile data if the debugger has paused
+        https://bugs.webkit.org/show_bug.cgi?id=136805
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Test.html: Add missing include for ScopeChainNode.js.
+
+2014-09-25  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: sort probe details sidebar sections by source code location string
+        https://bugs.webkit.org/show_bug.cgi?id=137080
+
+        Reviewed by Timothy Hatcher.
+
+        Probe sections should display in the same order as associated breakpoint tree elements.
+
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        (WebInspector.ProbeDetailsSidebarPanel.prototype.inspect.inspectedProbeSets):
+        (WebInspector.ProbeDetailsSidebarPanel.prototype.inspect):
+
+2014-09-25  Andres Gomez  <agomez@igalia.com>
+
+        Unreviewed. Add more free icons for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/AUTHORS:
+        * UserInterface/Images/gtk/ApplicationCacheManifest.png: Added.
+        * UserInterface/Images/gtk/ApplicationCacheManifest@2x.png: Added.
+        * UserInterface/Images/gtk/COPYING:
+        * UserInterface/Images/gtk/COPYING_LGPL2: Added.
+        * UserInterface/Images/gtk/Cookie.png: Added.
+        * UserInterface/Images/gtk/Cookie@2x.png: Added.
+        * UserInterface/Images/gtk/HoverMenuButton.png: Added.
+        * UserInterface/Images/gtk/HoverMenuButton@2x.png: Added.
+        * UserInterface/Images/gtk/InstructionPointer.png: Added.
+        * UserInterface/Images/gtk/InstructionPointer@2x.png: Added.
+        * UserInterface/Images/gtk/Log.png: Added.
+        * UserInterface/Images/gtk/Log@2x.png: Added.
+        * UserInterface/Images/gtk/Profile.png: Added.
+        * UserInterface/Images/gtk/Profile@2x.png: Added.
+        * UserInterface/Images/gtk/Recording.png: Added.
+        * UserInterface/Images/gtk/Recording@2x.png: Added.
+        * UserInterface/Images/gtk/RecordingHovered.png: Added.
+        * UserInterface/Images/gtk/RecordingHovered@2x.png: Added.
+        * UserInterface/Images/gtk/RecordingStopped.png: Added.
+        * UserInterface/Images/gtk/RecordingStopped@2x.png: Added.
+        * UserInterface/Images/gtk/Script.png: Added.
+        * UserInterface/Images/gtk/Script@2x.png: Added.
+        * UserInterface/Images/gtk/ScriptLarge.png: Added.
+        * UserInterface/Images/gtk/ScriptLarge@2x.png: Added.
+        * UserInterface/Images/gtk/SliderThumb.png: Added.
+        * UserInterface/Images/gtk/SliderThumb@2x.png: Added.
+        * UserInterface/Images/gtk/SliderThumbPressed.png: Added.
+        * UserInterface/Images/gtk/SliderThumbPressed@2x.png: Added.
+        * UserInterface/Images/gtk/Stopwatch.png: Added.
+        * UserInterface/Images/gtk/Stopwatch@2x.png: Added.
+
 2014-09-21  Timothy Hatcher  <timothy@apple.com>
 
         Make the Web Inspector use a separate web process.

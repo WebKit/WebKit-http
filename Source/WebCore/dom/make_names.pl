@@ -640,7 +640,7 @@ class $class;
 template <typename ArgType>
 class NodeTypeCastTraits<const $class, ArgType> {
 public:
-    static bool is(ArgType& node) { return checkTagName(node); }
+    static bool isType(ArgType& node) { return checkTagName(node); }
 private:
 END
        ;
@@ -661,15 +661,7 @@ END
 };
 END
        ;
-       if ($parameters{namespace} eq "HTML") {
-           print F <<END
-// FIXME: Remove these macros once the code has been ported to using
-// is<*Element>().
-#define is$class(x) WebCore::is<WebCore::$class>(x)
-END
-           ;
-        }
-        print F "\n";
+       print F "\n";
     }
 }
 

@@ -1,3 +1,72 @@
+2014-09-24  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should sink object allocations
+        https://bugs.webkit.org/show_bug.cgi?id=136330
+
+        Reviewed by Oliver Hunt.
+        
+        Make it possible to reset a Bag.
+
+        * wtf/Bag.h:
+        (WTF::Bag::Bag):
+        (WTF::Bag::~Bag):
+        (WTF::Bag::clear):
+
+2014-09-25  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed build fix. Ensure that python2.7 is used for Windows builds.
+
+        * WTF.vcxproj/WTFGenerated.make:
+
+2014-09-25  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove WinCE port from trunk
+        https://bugs.webkit.org/show_bug.cgi?id=136951
+
+        Reviewed by Alex Christensen.
+
+        * config.h:
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+        * wtf/CurrentTime.cpp:
+        (WTF::lowResUTCTime):
+        * wtf/DataLog.cpp:
+        * wtf/DateMath.cpp:
+        (WTF::getLocalTime):
+        (WTF::calculateDSTOffset):
+        * wtf/FastMalloc.cpp:
+        * wtf/FeatureDefines.h:
+        * wtf/OSAllocator.h:
+        (WTF::OSAllocator::decommitAndRelease):
+        * wtf/Platform.h:
+        * wtf/PlatformWin.cmake:
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+        * wtf/RandomNumberSeed.h:
+        (WTF::initializeRandomNumberGenerator):
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::initialize):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::isGrowingDownward):
+        * wtf/StdLibExtras.h:
+        (wtf_bsearch): Deleted.
+        * wtf/StringExtras.h:
+        (strnicmp): Deleted.
+        (stricmp): Deleted.
+        (strdup): Deleted.
+        * wtf/ThreadSpecific.h:
+        * wtf/ThreadingWin.cpp:
+        (WTF::createThreadInternal):
+        * wtf/WindowsExtras.h:
+        (WTF::getRegistryValue):
+        (WTF::getWindowPointer):
+        (WTF::setWindowPointer):
+        * wtf/dtoa/utils.h:
+        * wtf/text/WTFString.cpp:
+        (WTF::String::format):
+
 2014-09-24  Geoffrey Garen  <ggaren@apple.com>
 
         Do the bmalloc.

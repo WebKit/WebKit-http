@@ -65,7 +65,6 @@ class AbstractQueue(Command, QueueEngineDelegate):
 
     _pass_status = "Pass"
     _fail_status = "Fail"
-    _retry_status = "Retry"
     _error_status = "Error"
 
     def __init__(self, options=None): # Default values should never be collections (like []) as default values are shared between invocations
@@ -239,14 +238,13 @@ class AbstractPatchQueue(AbstractQueue):
         self._update_status(self._fail_status, patch)
         self._release_work_item(patch)
 
-    def _did_retry(self, patch):
-        self._update_status(self._retry_status, patch)
-        self._release_work_item(patch)
-
     def _did_error(self, patch, reason):
         message = "%s: %s" % (self._error_status, reason)
         self._update_status(message, patch)
         self._release_work_item(patch)
+
+    def _unlock_patch(self, patch):
+        self._tool.status_server.release_lock(self.name, patch)
 
     def work_item_log_path(self, patch):
         return os.path.join(self._log_directory(), "%s.log" % patch.bug_id())
@@ -322,7 +320,8 @@ class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTas
             if task.run():
                 self._did_pass(patch)
                 return True
-            self._did_retry(patch)
+            self._unlock_patch(patch)
+            return False
         except ScriptError, e:
             validator = CommitterValidator(self._tool)
             validator.reject_patch_from_commit_queue(patch.id(), self._error_message_for_bug(task, patch, e))
@@ -330,6 +329,7 @@ class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTas
             if results_archive:
                 self._upload_results_archive_for_patch(patch, results_archive)
             self._did_fail(patch)
+            return False
 
     def _failing_tests_message(self, task, patch):
         results = task.results_from_patch_test_run(patch)
@@ -425,19 +425,10 @@ class AbstractReviewQueue(PatchProcessingQueue, StepSequenceErrorHandler):
         return self._next_patch()
 
     def process_work_item(self, patch):
-        try:
-            if not self.review_patch(patch):
-                return False
+        passed = self.review_patch(patch)
+        if passed:
             self._did_pass(patch)
-            return True
-        except ScriptError, e:
-            if e.exit_code != QueueEngine.handled_error_code:
-                self._did_fail(patch)
-            else:
-                # The subprocess handled the error, but won't have released the patch, so we do.
-                # FIXME: We need to simplify the rules by which _release_work_item is called.
-                self._release_work_item(patch)
-            raise e
+        return passed
 
     def handle_unexpected_error(self, patch, message):
         _log.error(message)
@@ -461,7 +452,11 @@ class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):
             self._did_error(patch, "%s did not process patch." % self.name)
             return False
         try:
-            return task.run()
+            style_check_succeeded = task.run()
+            if not style_check_succeeded:
+                # Caller unlocks when review_patch returns True, so we only need to unlock on transient failure.
+                self._unlock_patch(patch)
+            return style_check_succeeded
         except UnableToApplyPatch, e:
             self._did_error(patch, "%s unable to apply patch." % self.name)
             return False

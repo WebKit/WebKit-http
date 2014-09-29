@@ -1,3 +1,190 @@
+2014-09-26  Roger Fong  <roger_fong@apple.com>
+
+        [Mac] Some inspector tests time out following r173992.
+        https://bugs.webkit.org/show_bug.cgi?id=137157
+
+        * platform/mac/TestExpectations:
+
+2014-09-23  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Fix the handling of infinity in track growth limits
+        https://bugs.webkit.org/show_bug.cgi?id=137019
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-content-sized-columns-resolution-expected.txt: Added.
+        * fast/css-grid-layout/grid-content-sized-columns-resolution.html: Added.
+        * fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution-expected.txt:
+
+2014-09-26  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Fix support for the initial-letter CSS property to first-letter
+        https://bugs.webkit.org/show_bug.cgi?id=137108
+
+        Reviewed by Alejandro G. Castro.
+
+        Add missing GTK test expectation files after http://webkit.org/b/136484
+
+        * platform/gtk/fast/css-generated-content/initial-letter-basic-expected.txt: Added.
+        * platform/gtk/fast/css-generated-content/initial-letter-border-padding-expected.txt: Added.
+        * platform/gtk/fast/css-generated-content/initial-letter-clearance-expected.txt: Added.
+        * platform/gtk/fast/css-generated-content/initial-letter-descender-expected.txt: Added.
+        * platform/gtk/fast/css-generated-content/initial-letter-raised-expected.txt: Added.
+        * platform/gtk/fast/css-generated-content/initial-letter-sunken-expected.txt: Added.
+
+2014-09-26  Brian J. Burg  <burg@cs.washington.edu>
+
+        Unreviewed gardening after r173992. Skip inspector/timelines/.
+
+        * TestExpectations: mark inspector/timelines/ as Skip, since
+        it seems to be running into unexplained nondeterminism similar to
+        inspector/debugger/ tests. These should be investigated together.
+
+2014-09-25  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. Mark SVG 1.1 tests are flaky.
+
+        * platform/efl/TestExpectations:
+
+2014-09-25  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should sink object allocations
+        https://bugs.webkit.org/show_bug.cgi?id=136330
+
+        Reviewed by Oliver Hunt.
+
+        * js/math-denorm.html: Added.
+        * js/regress/elidable-new-object-dag-expected.txt: Added.
+        * js/regress/elidable-new-object-dag.html: Added.
+        * js/regress/elidable-new-object-roflcopter-expected.txt: Added.
+        * js/regress/elidable-new-object-roflcopter.html: Added.
+        * js/regress/elidable-new-object-tree-expected.txt: Added.
+        * js/regress/elidable-new-object-tree.html: Added.
+        * js/regress/obvious-sink-pathology-expected.txt: Added.
+        * js/regress/obvious-sink-pathology-taken-expected.txt: Added.
+        * js/regress/obvious-sink-pathology-taken.html: Added.
+        * js/regress/obvious-sink-pathology.html: Added.
+        * js/regress/obviously-elidable-new-object-expected.txt: Added.
+        * js/regress/obviously-elidable-new-object.html: Added.
+        * js/regress/script-tests/elidable-new-object-dag.js: Added.
+        (sumOfArithSeries):
+        (foo):
+        * js/regress/script-tests/elidable-new-object-roflcopter.js: Added.
+        (sumOfArithSeries):
+        (foo):
+        * js/regress/script-tests/elidable-new-object-tree.js: Added.
+        (sumOfArithSeries):
+        (foo):
+        * js/regress/script-tests/obvious-sink-pathology-taken.js: Added.
+        (sumOfArithSeries):
+        (bar):
+        (foo):
+        * js/regress/script-tests/obvious-sink-pathology.js: Added.
+        (sumOfArithSeries):
+        (bar):
+        (foo):
+        * js/regress/script-tests/obviously-elidable-new-object.js: Added.
+        (sumOfArithSeries):
+        (foo):
+        * js/regress/script-tests/sinkable-new-object-dag.js: Added.
+        (sumOfArithSeries):
+        (verify):
+        (foo):
+        * js/regress/script-tests/sinkable-new-object-taken.js: Added.
+        (sumOfArithSeries):
+        (bar):
+        (foo):
+        * js/regress/script-tests/sinkable-new-object.js: Added.
+        (sumOfArithSeries):
+        (bar):
+        (foo):
+        * js/regress/sinkable-new-object-dag-expected.txt: Added.
+        * js/regress/sinkable-new-object-dag.html: Added.
+        * js/regress/sinkable-new-object-expected.txt: Added.
+        * js/regress/sinkable-new-object-taken-expected.txt: Added.
+        * js/regress/sinkable-new-object-taken.html: Added.
+        * js/regress/sinkable-new-object.html: Added.
+
+2014-09-25  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: FunctionCall timeline records omit profile data if the debugger has paused
+        https://bugs.webkit.org/show_bug.cgi?id=136805
+
+        Reviewed by Timothy Hatcher.
+
+        Add a test to see that script timeline records contain profiles even when
+        the debugger pauses during timeline capturing.
+
+        * inspector/timeline/debugger-paused-while-recording-expected.txt: Added.
+        * inspector/timeline/debugger-paused-while-recording.html: Added.
+        * inspector/timeline/resources/timeline-helper.js: Added.
+        (callFunction):
+        (hook):
+
+2014-09-25  Brian J. Burg  <burg@cs.washington.edu>
+
+        StorageTracker::deleteOrigin being called off the main thread (ASSERTs in inspector/test-harness-trivially-works.html test)
+        https://bugs.webkit.org/show_bug.cgi?id=129642
+
+        Reviewed by Brady Eidson.
+
+        Remove the blanket Skip for all tests in inspector/.
+
+        * TestExpectations: clean up expectations for inspector/ and add new tracking bugs.
+
+2014-09-25  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Unprefix CSS cursor values zoom-in and zoom-out.
+        https://bugs.webkit.org/show_bug.cgi?id=137061
+
+        Reviewed by Benjamin Poulain.
+
+        Add test cases for zoom-in, zoom-out, -webkit-zoom-in, -webkit-zoom-out.
+
+        * fast/css/cursor-parsing-expected.txt:
+        * fast/css/cursor-parsing.html:
+
+2014-09-25  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Skip quicktime-plugin-snapshotted.html 
+
+        Quicktime plugin snapshotting is now covered by all other snapshotting tests 
+        and this test in particular seems to fail only on a few bots.
+
+        * platform/mac/TestExpectations:
+
+2014-09-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rename CSSKeyframesRule insertRule to appendRule (57910)
+        https://bugs.webkit.org/show_bug.cgi?id=57910
+
+        Reviewed by Dean Jackson.
+
+        * animations/change-keyframes.html:
+        -- Ensure both WebKitCSSKeyframesRule methods insertRule() and appendRule() are 
+           both supported.
+
+2014-09-25  Javier Fernandez  <jfernandez@igalia.com>
+
+        ASSERTION FAILED: columnCount in WebCore::CSSParser::parseGridTemplateAreasRow
+        https://bugs.webkit.org/show_bug.cgi?id=136945
+
+        Reviewed by Sergio Villar Senin.
+
+        Testing the different types of white-space only strings for the grid-template-areas
+        property, which is not valid as it does not produce a cell token.
+
+        * fast/css-grid-layout/grid-template-areas-empty-string-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-template-areas-empty-string-crash.html: Added.
+
+2014-09-25  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failures after r173515 and r173582.
+        * platform/gtk/fast/dom/Document/CaretRangeFromPoint/hittest-relative-to-viewport-expected.txt:
+        Update expectations after r173857.
+
 2014-09-24  Darin Adler  <darin@apple.com>
 
         Old Turkic characters behave as left-to-right instead of right-to-left, because they are encoded as surrogate pairs.

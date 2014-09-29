@@ -93,10 +93,6 @@ namespace WebCore {
         RetainPtr<NSMutableArray> m_platformDescription;
 #else
         PlatformMenuDescription m_platformDescription;
-#if OS(WINCE)
-        unsigned m_itemCount;
-#endif
-
 #endif
 
 #endif // USE(CROSS_PLATFORM_CONTEXT_MENUS)

@@ -4888,7 +4888,7 @@ void HTMLMediaElement::enterFullscreen()
     m_isInVideoFullscreen = true;
     if (hasMediaControls())
         mediaControls()->enteredFullscreen();
-    if (document().page() && isHTMLVideoElement(this)) {
+    if (document().page() && is<HTMLVideoElement>(this)) {
         HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
         if (document().page()->chrome().client().supportsVideoFullscreen()) {
             document().page()->chrome().client().enterVideoFullscreenForVideoElement(&asVideo);
@@ -4912,7 +4912,7 @@ void HTMLMediaElement::exitFullscreen()
     m_isInVideoFullscreen = false;
     if (hasMediaControls())
         mediaControls()->exitedFullscreen();
-    if (document().page() && isHTMLVideoElement(this)) {
+    if (document().page() && is<HTMLVideoElement>(this)) {
         if (m_mediaSession->requiresFullscreenForVideoPlayback(*this))
             pauseInternal();
 
@@ -5920,10 +5920,7 @@ MediaSession::MediaType HTMLMediaElement::mediaType() const
     if (m_player && m_readyState >= HAVE_METADATA)
         return hasVideo() ? MediaSession::Video : MediaSession::Audio;
 
-    if (hasTagName(HTMLNames::videoTag))
-        return MediaSession::Video;
-
-    return MediaSession::Audio;
+    return presentationType();
 }
 
 MediaSession::MediaType HTMLMediaElement::presentationType() const

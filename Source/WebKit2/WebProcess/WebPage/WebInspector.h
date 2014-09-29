@@ -54,7 +54,7 @@ public:
 
     // IPC::Connection::Client
     void didClose(IPC::Connection*) { close(); }
-    void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) { close(); }
+    void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference, IPC::StringReference) { close(); }
 
     // Called by WebInspector messages
     void connectionEstablished();
@@ -104,6 +104,9 @@ private:
 
     bool m_attached;
     bool m_previousCanAttach;
+#if ENABLE(INSPECTOR_SERVER)
+    bool m_remoteFrontendConnected;
+#endif
 };
 
 } // namespace WebKit

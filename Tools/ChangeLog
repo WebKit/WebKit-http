@@ -1,3 +1,246 @@
+2014-09-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Mac EWS bots do not keep logs as promised
+        https://bugs.webkit.org/show_bug.cgi?id=137151
+
+        Reviewed by Ryosuke Niwa.
+
+        * EWSTools/start-queue-mac.sh: Actually keep the logs for 14 days.
+
+2014-09-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Get rid of webkit-queues dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=137141
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/app.yaml: Updated version.
+
+        * QueueStatusServer/templates/dashboard.html: Removed.
+        * QueueStatusServer/handlers/dashboard.py: Removed.
+        * QueueStatusServer/main.py:
+        Kill it!
+
+        * QueueStatusServer/stylesheets/common.css: Copied from Tools/QueueStatusServer/stylesheets/dashboard.css.
+        (.status-cell): Deleted.
+        (.status-cell:hover): Deleted.
+        (.status-cell.pass): Deleted.
+        (.status-cell.fail): Deleted.
+        (.status-cell.pending): Deleted.
+        (.status-cell.error): Deleted.
+        * QueueStatusServer/stylesheets/dashboard.css: Removed.
+        * QueueStatusServer/templates/activebots.html:
+        * QueueStatusServer/templates/patch.html:
+        * QueueStatusServer/templates/queuestatus.html:
+        * QueueStatusServer/templates/recentstatus.html:
+        Renamed dashboard.css to common.css, and removed dashboard-only rules.
+
+2014-09-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Get rid of Retry status in webkit-queues
+        https://bugs.webkit.org/show_bug.cgi?id=137135
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/config/messages.py: Removed Retry.
+
+        * QueueStatusServer/handlers/releasepatch.py: This is now straightforward, as it
+        no longer needs to check the latest status. It just always both unlocks the patch
+        and removes it from WorkItems.
+
+        * QueueStatusServer/handlers/submittoews.py: (SubmitToEWS._should_add_to_ews_queue):
+        I don't understand why we even needed to check for retries here, but now that there
+        are no retries, that code can go to /dev/null.
+
+        * QueueStatusServer/loggers/recordpatchevent.py:
+        (RecordPatchEvent.started):
+        (RecordPatchEvent.retrying): Deleted.
+        Fixed retry counting, it should work for all queues now.
+
+        * QueueStatusServer/model/queuestatus.py:
+        (QueueStatus.is_retry_request): Deleted. These are no more.
+
+        * Scripts/webkitpy/common/net/statusserver_mock.py:
+        (MockStatusServer.release_lock):
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        Did whatever it took to keep passing the tests. The particular test doesn't seem
+        quite right, but whatever.
+
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (CommitQueue.process_work_item): Instead of posting a retry status, just unlock
+        and let others pick up. Also, added explicit returns for clarity.
+        (AbstractPatchQueue._did_retry): Deleted.
+
+2014-09-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix the gst-libav build on ARM Thumb2
+        https://bugs.webkit.org/show_bug.cgi?id=137022
+
+        Reviewed by Zoltan Herczeg.
+
+        * efl/jhbuild.modules:
+        * efl/patches/gst-libav.patch: Added.
+
+2014-09-26  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        [EFL] Bump up dependencies not to conflict with the GTK port.
+        https://bugs.webkit.org/show_bug.cgi?id=137143
+
+        Reviewed by Gyuyoung Kim.
+
+        Tools/efl/install-dependencies and Tools/gtk/install-dependencies keep
+        installing and removing different versions of libgnutls-dev, thus
+        hindering the development for both ports on the same machine. GTK is
+        using the newer version of the package, now bumping up EFL to use the 
+        same.
+
+        * efl/install-dependencies:
+
+2014-09-25  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [EFL][WK2] Minibrowser : Fix the 'Escape' button issue to exit fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=136854
+
+        Reviewed by Gyuyoung Kim.
+
+        'Escape' key should exit fullscreen first and then should be used to stop page load.
+
+        * MiniBrowser/efl/main.c:
+        (on_key_down):
+
+2014-09-25  Dean Jackson  <dino@apple.com>
+
+        Add Said to the contributors list so his name completes in bugzilla.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-09-25  Alexey Proskuryakov  <ap@apple.com>
+
+        EWS only repeats its cycle every two hours
+        https://bugs.webkit.org/show_bug.cgi?id=137129
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/app.yaml: Updated version.
+
+        * QueueStatusServer/config/queues.py: Moved timeout from activeworkitems.py to configuration.
+
+        * QueueStatusServer/handlers/releaselock.py: Added. Releases the lock without removing
+        the patch from work items.
+
+        * QueueStatusServer/index.yaml: No real change, just let AppEngine have its way with entry order.
+
+        * QueueStatusServer/main.py: Added release-lock.
+
+        * QueueStatusServer/model/activeworkitems.py:
+        (ActiveWorkItems.deactivate_expired): Use timeout from configuration.
+
+        * QueueStatusServer/model/workitems.py: Added move_to_end. When we unlock a patch,
+        we don't want it to be immediately picked up again, it's better to give other patches
+        a chance.
+
+        * QueueStatusServer/templates/releaselock.html: Added. Not sure why all commands have
+        these interactive versions, but OK.
+
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py: (AbstractEarlyWarningSystem.review_patch):
+        Unlock the patch when a non-final failure occurs (e.g. can't build even without the patch,
+        or svn is down).
+
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (AbstractReviewQueue.process_work_item): Do not try/catch ScriptError around review_patch.
+        Style queue never raises these, and EWS already calls _did_fail, before re-throwing,
+        meaning that these handlers could never do the right thing. We'd either get a duplicate
+        _did_fail, or try to unlock an already unlocked patch.
+        (StyleQueue.review_patch): Unlock the patch on transient failure (such as svn failure),
+        making it eligible for retry immediately.
+
+        * Scripts/webkitpy/common/net/statusserver.py:
+        (StatusServer._post_release_lock):
+        (StatusServer.release_lock):
+        Added a call to release-lock.
+
+2014-09-25  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Followup to r173972. Don’t set child process to none before reading from stdout.
+
+        * Scripts/webkitpy/common/system/path.py:
+        (_CygPath.convert):
+
+2014-09-25  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Close stdin to force a flush to stdout if no test path is read during layout tests.
+
+        * Scripts/webkitpy/common/system/path.py:
+        (_CygPath.convert):
+
+2014-09-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Gtk] build.sh needs a -- before make options when the build command is cmake --build
+        https://bugs.webkit.org/show_bug.cgi?id=136377
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitdirs.pm:
+        (buildCMakeGeneratedProject): Only use the build.sh script if it exists.
+
+2014-09-25  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        [EFL] Split the list of dependencies to make sure that at least the universally available packages get installed
+        https://bugs.webkit.org/show_bug.cgi?id=137117
+
+        Tools/efl/install-dependencies relies on apt-get to install packages.
+        Unfortunately, if a package does not exist (e.g., for a given
+        architecture) then apt-get install is not able to ignore the missing
+        package and install the rest but fails to run entirely (and there
+        seems to be no intent to change this behaviour).
+
+        On ARM64, the luajit package is missing and currently it needs manual
+        editing of install-dependencies to get the script install as much as it
+        can.
+
+        This patch separates the installation of the universally available
+        packages from those which might not be available for all architectures.
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/install-dependencies:
+
+2014-09-25  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove WinCE port from trunk
+        https://bugs.webkit.org/show_bug.cgi?id=136951
+
+        Reviewed by Alex Christensen.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        (_should_file_trigger_build):
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        (ShouldBuildTest):
+        * CMakeLists.txt:
+        * DumpRenderTree/win/DRTDataObject.cpp:
+        (DRTDataObject::CopyMedium):
+        * Scripts/build-webkit:
+        * Scripts/webkit-build-directory:
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration):
+        (builtDylibPathForName):
+        (isAppleWinWebKit):
+        (launcherPath):
+        (launcherName):
+        (shouldRemoveCMakeCache):
+        (cmakeBasedPortArguments):
+        (cmakeBasedPortName):
+        (isCMakeBuild):
+        (isWinCE): Deleted.
+        (determineIsWinCE): Deleted.
+        * Scripts/webkitperl/FeatureList.pm:
+        * Scripts/webkitpy/port/port_testcase.py:
+        (test_apache_config_file_name_for_platform):
+        * TestWebKitAPI/config.h:
+        * WinCELauncher/CMakeLists.txt: Removed.
+        * WinCELauncher/main.cpp: Removed.
+        * gtk/manifest.txt:
+
 2014-09-23  David Farler  <dfarler@apple.com>
 
         [iOS] run-webkit-tests should support minor versions under devices and create a testing device under the right runtime

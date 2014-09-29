@@ -227,6 +227,7 @@ void PDFDocumentImage::createPDFDocument()
 
 void PDFDocumentImage::computeBoundsForCurrentPage()
 {
+    ASSERT(pageCount() > 0);
     CGPDFPageRef cgPage = CGPDFDocumentGetPage(m_document.get(), 1);
     CGRect mediaBox = CGPDFPageGetBoxRect(cgPage, kCGPDFMediaBox);
 

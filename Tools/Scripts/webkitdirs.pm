@@ -106,7 +106,6 @@ my $nmPath;
 my $osXVersion;
 my $generateDsym;
 my $isGtk;
-my $isWinCE;
 my $isWinCairo;
 my $isWin64;
 my $isEfl;
@@ -402,7 +401,6 @@ sub argumentsForConfiguration()
     push(@args, '--efl') if isEfl();
     push(@args, '--haiku') if isHaiku();
     push(@args, '--wincairo') if isWinCairo();
-    push(@args, '--wince') if isWinCE();
     push(@args, '--inspector-frontend') if isInspectorFrontend();
     return @args;
 }
@@ -822,9 +820,6 @@ sub builtDylibPathForName
     if (isEfl()) {
         return "$configurationProductDir/lib/libewebkit2.so";
     }
-    if (isWinCE()) {
-        return "$configurationProductDir/$libraryName";
-    }
     if (isIOSWebKit()) {
         return "$configurationProductDir/$libraryName.framework/$libraryName";
     }
@@ -973,18 +968,6 @@ sub isGtk()
     return $isGtk;
 }
 
-sub isWinCE()
-{
-    determineIsWinCE();
-    return $isWinCE;
-}
-
-sub determineIsWinCE()
-{
-    return if defined($isWinCE);
-    $isWinCE = checkForArgumentAndRemoveFromARGV("--wince");
-}
-
 # Determine if this is debian, ubuntu, linspire, or something similar.
 sub isDebianBased()
 {
@@ -1126,7 +1109,7 @@ sub isAppleMacWebKit()
 
 sub isAppleWinWebKit()
 {
-    return (isCygwin() || isWindows()) && !isWinCairo() && !isGtk() && !isWinCE();
+    return (isCygwin() || isWindows()) && !isWinCairo() && !isGtk();
 }
 
 sub iOSSimulatorDevicesPath
@@ -1359,7 +1342,7 @@ sub relativeScriptsDir()
 sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
-    if (isGtk() || isEfl() || isWinCE() || isHaiku()) {
+    if (isGtk() || isEfl() || isHaiku()) {
         return "$relativeScriptsPath/run-launcher";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
@@ -1376,8 +1359,6 @@ sub launcherName()
         return "WinLauncher";
     } elsif (isHaiku()) {
         return "HaikuLauncher";
-    } elsif (isWinCE()) {
-        return "WinCELauncher";
     }
 }
 
@@ -1718,9 +1699,6 @@ sub cmakeCachePath()
 sub shouldRemoveCMakeCache(@)
 {
     my ($cacheFilePath, @buildArgs) = @_;
-    if (isWinCE()) {
-        return 0;
-    }
 
     if (!isGtk()) {
         return 1;
@@ -1863,8 +1841,8 @@ sub buildCMakeGeneratedProject($)
     my @args = ("--build", $buildPath, "--config", $config);
     push @args, ("--", $makeArgs) if $makeArgs;
 
-    # GTK uses a build script to preserve colors and pretty-printing.
-    if (isGtk()) {
+    # GTK can use a build script to preserve colors and pretty-printing.
+    if (isGtk() && -e "$buildPath/build.sh") {
         chdir "$buildPath" or die;
         $command = "$buildPath/build.sh";
         @args = ($makeArgs);
@@ -1912,7 +1890,6 @@ sub buildCMakeProjectOrExit($$$$@)
 
 sub cmakeBasedPortArguments()
 {
-    return ('-G "Visual Studio 8 2005 STANDARDSDK_500 (ARMV4I)"') if isWinCE();
     return ();
 }
 
@@ -1920,14 +1897,13 @@ sub cmakeBasedPortName()
 {
     return "Efl" if isEfl();
     return "Haiku" if isHaiku();
-    return "WinCE" if isWinCE();
     return "GTK" if isGtk();
     return "";
 }
 
 sub isCMakeBuild()
 {
-    return isEfl() || isWinCE() || isGtk() || isHaiku();
+    return isEfl() || isGtk() || isHaiku();
 }
 
 sub promptUser

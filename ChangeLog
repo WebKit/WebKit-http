@@ -1,3 +1,35 @@
+2014-09-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable CSS_IMAGE_SET in production builds
+        https://bugs.webkit.org/show_bug.cgi?id=137142
+
+        Reviewed by Alejandro G. Castro.
+
+        This is required by the inspector to show some of the icons that
+        has a HiDPI variant.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-09-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Gtk] build.sh needs a -- before make options when the build command is cmake --build
+        https://bugs.webkit.org/show_bug.cgi?id=136377
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsGTK.cmake: Only create the build.sh script
+        for CMake versions less than 3.
+
+2014-09-25  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove WinCE port from trunk
+        https://bugs.webkit.org/show_bug.cgi?id=136951
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsWinCE.cmake: Removed.
+        * Source/cmake/WebKitPackaging.cmake:
+
 2014-09-17  Renato Nagy  <rnagy@inf.u-szeged.hu>
 
         [EFL][GTK] Remove WebKit1 related codes

@@ -337,7 +337,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
             pointerCursorStillValid = false;
 
         // If we haven't reached the body, and we are still paying attention to pointer cursors, and the node has a pointer cursor...
-        if (pointerCursorStillValid && node->renderStyle() && node->renderStyle()->cursor() == CURSOR_POINTER)
+        if (pointerCursorStillValid && node->renderStyle() && node->renderStyle()->cursor() == CursorPointer)
             pointerCursorNode = node;
         // We want the lowest unbroken chain of pointer cursors.
         else if (pointerCursorNode)
@@ -351,7 +351,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
             // If we are interested about the frame, use it.
             if (nodeBounds) {
                 // This is a check to see whether this node is an area element.  The only way this can happen is if this is the first check.
-                if (node == hitTestResult.innerNode() && node != hitTestResult.innerNonSharedNode() && isHTMLAreaElement(node))
+                if (node == hitTestResult.innerNode() && node != hitTestResult.innerNonSharedNode() && is<HTMLAreaElement>(node))
                     *nodeBounds = snappedIntRect(downcast<HTMLAreaElement>(*node).computeRect(hitTestResult.innerNonSharedNode()->renderer()));
                 else if (node && node->renderer())
                     *nodeBounds = node->renderer()->absoluteBoundingBoxRect(true);
