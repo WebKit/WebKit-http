@@ -378,6 +378,12 @@ void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver& selector, Render
     style.setMinHeight(Length(minHeight, Fixed));
 }
 
+bool RenderThemeHaiku::paintMenuListButtonDecorations(const RenderObject& object, const PaintInfo& info, const FloatRect& rect)
+{
+    // FIXME should it look more like a BMenuField instead?
+    return paintButton(object, info, IntRect(rect));
+}
+
 bool RenderThemeHaiku::paintMenuList(const RenderObject& object, const PaintInfo& info, const FloatRect& intRect)
 {
     if (info.context->paintingDisabled())
