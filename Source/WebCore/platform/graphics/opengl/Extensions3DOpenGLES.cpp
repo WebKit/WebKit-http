@@ -201,10 +201,9 @@ void Extensions3DOpenGLES::setEXTContextLostCallback(PassOwnPtr<GraphicsContext3
 void Extensions3DOpenGLES::readnPixelsEXT(int x, int y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, GC3Dsizei bufSize, void *data)
 {
     if (m_glReadnPixelsEXT) {
-        m_context->makeContextCurrent();
         // FIXME: remove the two glFlush calls when the driver bug is fixed, i.e.,
         // all previous rendering calls should be done before reading pixels.
-        ::glFlush();
+        m_context->flush();
 
         // FIXME: If non-BlackBerry platforms use this, they will need to implement
         // their anti-aliasing code here.

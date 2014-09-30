@@ -34,15 +34,11 @@
 #include <GraphicsLayer.h>
 #endif
 
-#if USE(3D_GRAPHICS)
-#include <GraphicsContext3D.h>
-#endif
-
 #include <QPalette>
 #include <QRect>
-#include <QOpenGLContext>
 
 QT_BEGIN_NAMESPACE
+class QOpenGLContext;
 class QStyle;
 class QWindow;
 QT_END_NAMESPACE

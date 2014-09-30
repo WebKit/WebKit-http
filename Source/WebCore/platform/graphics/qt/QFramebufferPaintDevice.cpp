@@ -19,6 +19,7 @@
 
 #include "config.h"
 #include "QFramebufferPaintDevice.h"
+#include <QOpenGLFunctions>
 
 QFramebufferPaintDevice::QFramebufferPaintDevice(const QSize& size)
     : QOpenGLPaintDevice(size)
@@ -27,8 +28,8 @@ QFramebufferPaintDevice::QFramebufferPaintDevice(const QSize& size)
     m_surface = QOpenGLContext::currentContext()->surface();
     setPaintFlipped(true);
     m_framebufferObject.bind();
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    context()->functions()->glClearColor(0, 0, 0, 0);
+    context()->functions()->glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void QFramebufferPaintDevice::ensureActiveTarget()

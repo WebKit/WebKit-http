@@ -4152,15 +4152,15 @@ use?(3D_GRAPHICS) {
 
     INCLUDEPATH += $$PWD/platform/graphics/gpu
 
-    contains(QT_CONFIG, opengl) | contains(QT_CONFIG, opengles2) {
-        !contains(QT_CONFIG, opengles2) {
-            SOURCES += \
-               platform/graphics/opengl/GraphicsContext3DOpenGL.cpp \
-               platform/graphics/opengl/Extensions3DOpenGL.cpp
-        } else {
+    contains(QT_CONFIG, opengl) {
+        contains(QT_CONFIG, opengles2) {
             SOURCES += \
                platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp \
                platform/graphics/opengl/Extensions3DOpenGLES.cpp
+        } else {
+            SOURCES += \
+               platform/graphics/opengl/GraphicsContext3DOpenGL.cpp \
+               platform/graphics/opengl/Extensions3DOpenGL.cpp
         }
 
         HEADERS += platform/graphics/opengl/Extensions3DOpenGL.h
@@ -4172,7 +4172,6 @@ use?(3D_GRAPHICS) {
 
     WEBKIT += angle
 
-    CONFIG += opengl-shims
     INCLUDEPATH += platform/graphics/gpu
 }
 
