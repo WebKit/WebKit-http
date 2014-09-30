@@ -42,7 +42,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/sql"
-    "${WEBCORE_DIR}/platform/text"
     "${WEBCORE_DIR}/plugins"
     "${WEBCORE_DIR}/rendering"
     "${WEBCORE_DIR}/rendering/line"
@@ -82,6 +81,7 @@ SET(WebKit_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform/graphics/transforms"
+    "${WEBCORE_DIR}/platform/text"
     "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/parser"
 )
