@@ -258,7 +258,7 @@ my @features = (
       define => "ENABLE_INPUT_TYPE_COLOR", default => (isEfl() || isHaiku()), value => \$inputTypeColorSupport },
 
     { option => "input-type-date", desc => "Toggle Input Type Date support",
-      define => "ENABLE_INPUT_TYPE_DATE", default => 0, value => \$inputTypeDateSupport },
+      define => "ENABLE_INPUT_TYPE_DATE", default => IsHaiku(), value => \$inputTypeDateSupport },
 
     { option => "input-type-datetime", desc => "Toggle broken Input Type Datetime support",
       define => "ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE", default => 0, value => \$inputTypeDatetimeSupport },
@@ -267,7 +267,7 @@ my @features = (
       define => "ENABLE_INPUT_TYPE_DATETIMELOCAL", default => 0, value => \$inputTypeDatetimelocalSupport },
 
     { option => "input-type-month", desc => "Toggle Input Type Month support",
-      define => "ENABLE_INPUT_TYPE_MONTH", default => 0, value => \$inputTypeMonthSupport },
+      define => "ENABLE_INPUT_TYPE_MONTH", default => IsHaiku(), value => \$inputTypeMonthSupport },
 
     { option => "input-type-time", desc => "Toggle Input Type Time support",
       define => "ENABLE_INPUT_TYPE_TIME", default => 0, value => \$inputTypeTimeSupport },

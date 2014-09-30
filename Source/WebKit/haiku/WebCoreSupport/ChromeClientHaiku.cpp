@@ -31,6 +31,7 @@
 #include "ChromeClientHaiku.h"
 
 #include "ColorChooserHaiku.h"
+#include "DateTimeChooserHaiku.h"
 #include "FileChooser.h"
 #include "FileIconLoader.h"
 #include "Frame.h"
@@ -293,9 +294,9 @@ PassOwnPtr<ColorChooser> ChromeClientHaiku::createColorChooser(
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 PassRefPtr<DateTimeChooser> ChromeClientHaiku::openDateTimeChooser(
-    DateTimeChooserClient*, const DateTimeChooserParameters&)
+    DateTimeChooserClient* client, const DateTimeChooserParameters& params)
 {
-    notImplemented();
+    return adoptRef(new DateTimeChooserHaiku(client, params));
 }
 #endif
 
