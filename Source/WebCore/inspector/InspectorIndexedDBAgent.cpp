@@ -65,6 +65,7 @@
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorValues.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 
 using Inspector::Protocol::Array;
@@ -326,36 +327,36 @@ static PassRefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
     RefPtr<IDBKey> idbKey;
 
     String type;
-    if (!key->getString("type", &type))
+    if (!key->getString("type", type))
         return nullptr;
 
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, number, (ASCIILiteral("number")));
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, string, (ASCIILiteral("string")));
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, date, (ASCIILiteral("date")));
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, array, (ASCIILiteral("array")));
+    NeverDestroyed<const String> numberType(ASCIILiteral("number"));
+    NeverDestroyed<const String> stringType(ASCIILiteral("string"));
+    NeverDestroyed<const String> dateType(ASCIILiteral("date"));
+    NeverDestroyed<const String> arrayType(ASCIILiteral("array"));
 
-    if (type == number) {
+    if (type == numberType) {
         double number;
-        if (!key->getDouble("number", &number))
+        if (!key->getDouble("number", number))
             return nullptr;
         idbKey = IDBKey::createNumber(number);
-    } else if (type == string) {
+    } else if (type == stringType) {
         String string;
-        if (!key->getString("string", &string))
+        if (!key->getString("string", string))
             return nullptr;
         idbKey = IDBKey::createString(string);
-    } else if (type == date) {
+    } else if (type == dateType) {
         double date;
-        if (!key->getDouble("date", &date))
+        if (!key->getDouble("date", date))
             return nullptr;
         idbKey = IDBKey::createDate(date);
-    } else if (type == array) {
+    } else if (type == arrayType) {
         IDBKey::KeyArray keyArray;
         RefPtr<InspectorArray> array = key->getArray("array");
         for (size_t i = 0; i < array->length(); ++i) {
             RefPtr<InspectorValue> value = array->get(i);
             RefPtr<InspectorObject> object;
-            if (!value->asObject(&object))
+            if (!value->asObject(object))
                 return nullptr;
             keyArray.append(idbKeyFromInspectorObject(object.get()));
         }
@@ -379,12 +380,12 @@ static PassRefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(InspectorObject* keyRange
         return nullptr;
 
     bool lowerOpen;
-    if (!keyRange->getBoolean("lowerOpen", &lowerOpen))
+    if (!keyRange->getBoolean("lowerOpen", lowerOpen))
         return nullptr;
     IDBKeyRange::LowerBoundType lowerBoundType = lowerOpen ? IDBKeyRange::LowerBoundOpen : IDBKeyRange::LowerBoundClosed;
 
     bool upperOpen;
-    if (!keyRange->getBoolean("upperOpen", &upperOpen))
+    if (!keyRange->getBoolean("upperOpen", upperOpen))
         return nullptr;
     IDBKeyRange::UpperBoundType upperBoundType = upperOpen ? IDBKeyRange::UpperBoundOpen : IDBKeyRange::UpperBoundClosed;
 
@@ -569,41 +570,42 @@ void InspectorIndexedDBAgent::willDestroyFrontendAndBackend(InspectorDisconnectR
 {
     m_backendDispatcher.clear();
 
-    disable(nullptr);
+    ErrorString unused;
+    disable(unused);
 }
 
-void InspectorIndexedDBAgent::enable(ErrorString*)
+void InspectorIndexedDBAgent::enable(ErrorString&)
 {
 }
 
-void InspectorIndexedDBAgent::disable(ErrorString*)
+void InspectorIndexedDBAgent::disable(ErrorString&)
 {
 }
 
-static Document* assertDocument(ErrorString* errorString, Frame* frame)
+static Document* assertDocument(ErrorString& errorString, Frame* frame)
 {
     Document* document = frame ? frame->document() : nullptr;
     if (!document)
-        *errorString = "No document for given frame found";
+        errorString = ASCIILiteral("No document for given frame found");
     return document;
 }
 
-static IDBFactory* assertIDBFactory(ErrorString* errorString, Document* document)
+static IDBFactory* assertIDBFactory(ErrorString& errorString, Document* document)
 {
     DOMWindow* domWindow = document->domWindow();
     if (!domWindow) {
-        *errorString = "No IndexedDB factory for given frame found";
+        errorString = ASCIILiteral("No IndexedDB factory for given frame found");
         return nullptr;
     }
 
     IDBFactory* idbFactory = DOMWindowIndexedDatabase::indexedDB(domWindow);
     if (!idbFactory)
-        *errorString = "No IndexedDB factory for given frame found";
+        errorString = ASCIILiteral("No IndexedDB factory for given frame found");
 
     return idbFactory;
 }
 
-void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString* errorString, const String& securityOrigin, PassRefPtr<RequestDatabaseNamesCallback> requestCallback)
+void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, const String& securityOrigin, PassRefPtr<RequestDatabaseNamesCallback> requestCallback)
 {
     Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
     Document* document = assertDocument(errorString, frame);
@@ -624,7 +626,7 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString* errorString, con
     idbRequest->addEventListener(eventNames().successEvent, GetDatabaseNamesCallback::create(requestCallback, document->securityOrigin()->toRawString()), false);
 }
 
-void InspectorIndexedDBAgent::requestDatabase(ErrorString* errorString, const String& securityOrigin, const String& databaseName, PassRefPtr<RequestDatabaseCallback> requestCallback)
+void InspectorIndexedDBAgent::requestDatabase(ErrorString& errorString, const String& securityOrigin, const String& databaseName, PassRefPtr<RequestDatabaseCallback> requestCallback)
 {
     Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
     Document* document = assertDocument(errorString, frame);
@@ -639,7 +641,7 @@ void InspectorIndexedDBAgent::requestDatabase(ErrorString* errorString, const St
     databaseLoader->start(idbFactory, document->securityOrigin(), databaseName);
 }
 
-void InspectorIndexedDBAgent::requestData(ErrorString* errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const RefPtr<InspectorObject>* keyRange, PassRefPtr<RequestDataCallback> requestCallback)
+void InspectorIndexedDBAgent::requestData(ErrorString& errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const RefPtr<InspectorObject>* keyRange, PassRefPtr<RequestDataCallback> requestCallback)
 {
     Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
     Document* document = assertDocument(errorString, frame);
@@ -654,7 +656,7 @@ void InspectorIndexedDBAgent::requestData(ErrorString* errorString, const String
 
     RefPtr<IDBKeyRange> idbKeyRange = keyRange ? idbKeyRangeFromKeyRange(keyRange->get()) : nullptr;
     if (keyRange && !idbKeyRange) {
-        *errorString = "Can not parse key range.";
+        errorString = ASCIILiteral("Can not parse key range.");
         return;
     }
 
@@ -745,7 +747,7 @@ private:
     RefPtr<ClearObjectStoreCallback> m_requestCallback;
 };
 
-void InspectorIndexedDBAgent::clearObjectStore(ErrorString* errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, PassRefPtr<ClearObjectStoreCallback> requestCallback)
+void InspectorIndexedDBAgent::clearObjectStore(ErrorString& errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, PassRefPtr<ClearObjectStoreCallback> requestCallback)
 {
     Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
     Document* document = assertDocument(errorString, frame);

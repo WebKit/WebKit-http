@@ -33,13 +33,15 @@
 
 #if ENABLE(INSPECTOR)
 
+#include "InspectorEnvironment.h"
 #include "InspectorValues.h"
 #include "ScriptValue.h"
 
 namespace Inspector {
 
-InspectorAgent::InspectorAgent()
+InspectorAgent::InspectorAgent(InspectorEnvironment& environment)
     : InspectorAgentBase(ASCIILiteral("Inspector"))
+    , m_environment(environment)
     , m_enabled(false)
 {
 }
@@ -61,11 +63,11 @@ void InspectorAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason)
 
     m_pendingEvaluateTestCommands.clear();
 
-    ErrorString error;
-    disable(&error);
+    ErrorString unused;
+    disable(unused);
 }
 
-void InspectorAgent::enable(ErrorString*)
+void InspectorAgent::enable(ErrorString&)
 {
     m_enabled = true;
 
@@ -82,9 +84,14 @@ void InspectorAgent::enable(ErrorString*)
     m_pendingEvaluateTestCommands.clear();
 }
 
-void InspectorAgent::disable(ErrorString*)
+void InspectorAgent::disable(ErrorString&)
 {
     m_enabled = false;
+}
+
+void InspectorAgent::initialized(ErrorString&)
+{
+    m_environment.frontendInitialized();
 }
 
 void InspectorAgent::inspect(PassRefPtr<Protocol::Runtime::RemoteObject> objectToInspect, PassRefPtr<InspectorObject> hints)

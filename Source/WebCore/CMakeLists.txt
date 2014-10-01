@@ -2525,6 +2525,7 @@ set(WebCore_SOURCES
     svg/SVGAltGlyphItemElement.cpp
     svg/SVGAngle.cpp
     svg/SVGAnimateColorElement.cpp
+    svg/SVGAnimateElementBase.cpp
     svg/SVGAnimateElement.cpp
     svg/SVGAnimateMotionElement.cpp
     svg/SVGAnimateTransformElement.cpp
@@ -3132,7 +3133,6 @@ if (ENABLE_WEB_REPLAY)
         replay/ReplayingInputCursor.cpp
         replay/ReplayInputCreationMethods.cpp
         replay/ReplayInputDispatchMethods.cpp
-        replay/ReplayInputTypes.cpp
         replay/ReplaySession.cpp
         replay/ReplaySessionSegment.cpp
         replay/SegmentedInputStorage.cpp

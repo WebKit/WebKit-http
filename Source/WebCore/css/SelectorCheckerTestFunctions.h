@@ -27,8 +27,6 @@
 #define SelectorCheckerTestFunctions_h
 
 #include "FocusController.h"
-#include "HTMLAnchorElement.h"
-#include "HTMLAreaElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLOptionElement.h"
 #include "RenderScrollbar.h"
@@ -58,19 +56,14 @@ ALWAYS_INLINE bool isDefaultButtonForForm(const Element* element)
 
 ALWAYS_INLINE bool isDisabled(const Element* element)
 {
-    if (is<HTMLFormControlElement>(element) || is<HTMLOptionElement>(element) || is<HTMLOptGroupElement>(element))
-        return element->isDisabledFormControl();
-    return false;
+    return (is<HTMLFormControlElement>(element) || is<HTMLOptionElement>(element) || is<HTMLOptGroupElement>(element))
+        && element->isDisabledFormControl();
 }
 
 ALWAYS_INLINE bool isEnabled(const Element* element)
 {
-    bool isEnabled = false;
-    if (is<HTMLFormControlElement>(element) || is<HTMLOptionElement>(element) || is<HTMLOptGroupElement>(element))
-        isEnabled = !element->isDisabledFormControl();
-    else if (element->isLink())
-        isEnabled = is<HTMLAnchorElement>(element) || is<HTMLAreaElement>(element);
-    return isEnabled;
+    return (is<HTMLFormControlElement>(element) || is<HTMLOptionElement>(element) || is<HTMLOptGroupElement>(element))
+        && !element->isDisabledFormControl();
 }
 
 ALWAYS_INLINE bool isMediaDocument(Element* element)
@@ -134,8 +127,8 @@ inline bool matchesLangPseudoClass(const Element* element, AtomicStringImpl* fil
 {
     AtomicString value;
 #if ENABLE(VIDEO_TRACK)
-    if (element->isWebVTTElement())
-        value = toWebVTTElement(element)->language();
+    if (is<WebVTTElement>(element))
+        value = downcast<WebVTTElement>(*element).language();
     else
 #endif
         value = element->computeInheritedLanguage();
@@ -311,12 +304,12 @@ ALWAYS_INLINE bool matchesFullScreenDocumentPseudoClass(const Element* element)
 #if ENABLE(VIDEO_TRACK)
 ALWAYS_INLINE bool matchesFutureCuePseudoClass(const Element* element)
 {
-    return (element->isWebVTTElement() && !toWebVTTElement(element)->isPastNode());
+    return is<WebVTTElement>(element) && !downcast<WebVTTElement>(*element).isPastNode();
 }
 
 ALWAYS_INLINE bool matchesPastCuePseudoClass(const Element* element)
 {
-    return (element->isWebVTTElement() && toWebVTTElement(element)->isPastNode());
+    return is<WebVTTElement>(element) && downcast<WebVTTElement>(*element).isPastNode();
 }
 #endif
 

@@ -106,7 +106,7 @@ PassRefPtr<Range> Range::create(Document& ownerDocument, const Position& start, 
 
 PassRefPtr<Range> Range::create(ScriptExecutionContext& context)
 {
-    return adoptRef(new Range(toDocument(context)));
+    return adoptRef(new Range(downcast<Document>(context)));
 }
 
 PassRefPtr<Range> Range::create(Document& ownerDocument, const VisiblePosition& visibleStart, const VisiblePosition& visibleEnd)
@@ -660,9 +660,8 @@ static inline unsigned lengthOfContentsInNode(Node* node)
     case Node::TEXT_NODE:
     case Node::CDATA_SECTION_NODE:
     case Node::COMMENT_NODE:
-        return toCharacterData(node)->length();
     case Node::PROCESSING_INSTRUCTION_NODE:
-        return toProcessingInstruction(node)->data().length();
+        return downcast<CharacterData>(*node).length();
     case Node::ELEMENT_NODE:
     case Node::ATTRIBUTE_NODE:
     case Node::ENTITY_REFERENCE_NODE:
@@ -809,7 +808,7 @@ PassRefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRef
                 result = c.release();
         }
         if (action == Extract || action == Delete)
-            toCharacterData(container)->deleteData(startOffset, endOffset - startOffset, ec);
+            downcast<CharacterData>(*container).deleteData(startOffset, endOffset - startOffset, ec);
         break;
     case Node::PROCESSING_INSTRUCTION_NODE:
         endOffset = std::min(endOffset, static_cast<ProcessingInstruction*>(container)->data().length());
@@ -824,10 +823,10 @@ PassRefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRef
                 result = c.release();
         }
         if (action == Extract || action == Delete) {
-            ProcessingInstruction* pi = toProcessingInstruction(container);
-            String data(pi->data());
+            ProcessingInstruction& pi = downcast<ProcessingInstruction>(*container);
+            String data(pi.data());
             data.remove(startOffset, endOffset - startOffset);
-            pi->setData(data, ec);
+            pi.setData(data, ec);
         }
         break;
     case Node::ELEMENT_NODE:
@@ -979,7 +978,7 @@ void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
     // does not allow children of the type of newNode or if newNode is an ancestor of the container.
 
     // an extra one here - if a text node is going to split, it must have a parent to insert into
-    bool startIsText = m_start.container()->isTextNode();
+    bool startIsText = is<Text>(m_start.container());
     if (startIsText && !m_start.container()->parentNode()) {
         ec = HIERARCHY_REQUEST_ERR;
         return;
@@ -1041,7 +1040,7 @@ void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
     RefPtr<Node> container;
     if (startIsText) {
         container = m_start.container();
-        RefPtr<Text> newText = toText(container.get())->splitText(m_start.offset(), ec);
+        RefPtr<Text> newText = downcast<Text>(*container).splitText(m_start.offset(), ec);
         if (ec)
             return;
         
@@ -1123,7 +1122,7 @@ PassRefPtr<DocumentFragment> Range::createContextualFragment(const String& marku
         return 0;
     }
 
-    RefPtr<DocumentFragment> fragment = WebCore::createContextualFragment(markup, toHTMLElement(element), AllowScriptingContentAndDoNotMarkAlreadyStarted, ec);
+    RefPtr<DocumentFragment> fragment = WebCore::createContextualFragment(markup, downcast<HTMLElement>(element), AllowScriptingContentAndDoNotMarkAlreadyStarted, ec);
     if (!fragment)
         return 0;
 
@@ -1152,17 +1151,14 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
         case Node::ENTITY_NODE:
         case Node::NOTATION_NODE:
             ec = RangeException::INVALID_NODE_TYPE_ERR;
-            return 0;
+            return nullptr;
         case Node::CDATA_SECTION_NODE:
         case Node::COMMENT_NODE:
         case Node::TEXT_NODE:
-            if (static_cast<unsigned>(offset) > toCharacterData(n)->length())
-                ec = INDEX_SIZE_ERR;
-            return 0;
         case Node::PROCESSING_INSTRUCTION_NODE:
-            if (static_cast<unsigned>(offset) > toProcessingInstruction(n)->data().length())
+            if (static_cast<unsigned>(offset) > downcast<CharacterData>(*n).length())
                 ec = INDEX_SIZE_ERR;
-            return 0;
+            return nullptr;
         case Node::ATTRIBUTE_NODE:
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
@@ -1170,7 +1166,7 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
         case Node::ENTITY_REFERENCE_NODE:
         case Node::XPATH_NAMESPACE_NODE: {
             if (!offset)
-                return 0;
+                return nullptr;
             Node* childBefore = n->traverseToChildAt(offset - 1);
             if (!childBefore)
                 ec = INDEX_SIZE_ERR;
@@ -1178,7 +1174,7 @@ Node* Range::checkNodeWOffset(Node* n, int offset, ExceptionCode& ec) const
         }
     }
     ASSERT_NOT_REACHED();
-    return 0;
+    return nullptr;
 }
 
 void Range::checkNodeBA(Node* n, ExceptionCode& ec) const
@@ -1484,7 +1480,7 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
 
     ec = 0;
     while (Node* n = newParent->firstChild()) {
-        toContainerNode(newParent.get())->removeChild(n, ec);
+        downcast<ContainerNode>(*newParent).removeChild(n, ec);
         if (ec)
             return;
     }
@@ -2228,16 +2224,16 @@ void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads) const
         selectedElementsSet.remove(parent);
 
     for (Node* node = firstNode(); node != stopNode; node = NodeTraversal::next(node)) {
-        if (node->isElementNode() && selectedElementsSet.contains(node) && !selectedElementsSet.contains(node->parentNode())) {
-            if (RenderBoxModelObject* renderBoxModelObject = toElement(node)->renderBoxModelObject()) {
+        if (is<Element>(node) && selectedElementsSet.contains(node) && !selectedElementsSet.contains(node->parentNode())) {
+            if (RenderBoxModelObject* renderBoxModelObject = downcast<Element>(*node).renderBoxModelObject()) {
                 Vector<FloatQuad> elementQuads;
                 renderBoxModelObject->absoluteQuads(elementQuads);
                 ownerDocument().adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(elementQuads, renderBoxModelObject->style());
 
                 quads.appendVector(elementQuads);
             }
-        } else if (node->isTextNode()) {
-            if (RenderObject* renderer = toText(node)->renderer()) {
+        } else if (is<Text>(node)) {
+            if (RenderObject* renderer = downcast<Text>(*node).renderer()) {
                 const RenderText& renderText = toRenderText(*renderer);
                 int startOffset = (node == startContainer) ? m_start.offset() : 0;
                 int endOffset = (node == endContainer) ? m_end.offset() : INT_MAX;

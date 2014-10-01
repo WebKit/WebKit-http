@@ -72,7 +72,12 @@
 #include <inspector/IdentifiersFactory.h>
 #include <inspector/InspectorBackendDispatcher.h>
 #include <inspector/agents/InspectorAgent.h>
+#include <profiler/LegacyProfiler.h>
 #include <runtime/JSLock.h>
+
+#if ENABLE(REMOTE_INSPECTOR)
+#include "PageDebuggable.h"
+#endif
 
 using namespace JSC;
 using namespace Inspector;
@@ -88,13 +93,14 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     , m_inspectorClient(inspectorClient)
     , m_inspectorFrontendClient(nullptr)
     , m_isUnderTest(false)
+    , m_isAutomaticInspection(false)
 #if ENABLE(REMOTE_INSPECTOR)
     , m_hasRemoteFrontend(false)
 #endif
 {
     ASSERT_ARG(inspectorClient, inspectorClient);
 
-    auto inspectorAgentPtr = std::make_unique<InspectorAgent>();
+    auto inspectorAgentPtr = std::make_unique<InspectorAgent>(*this);
     m_inspectorAgent = inspectorAgentPtr.get();
     m_instrumentingAgents->setInspectorAgent(m_inspectorAgent);
     m_agents.append(WTF::move(inspectorAgentPtr));
@@ -231,12 +237,14 @@ void InspectorController::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWo
         m_inspectorFrontendClient->windowObjectCleared();
 }
 
-void InspectorController::connectFrontend(InspectorFrontendChannel* frontendChannel, bool)
+void InspectorController::connectFrontend(InspectorFrontendChannel* frontendChannel, bool isAutomaticInspection)
 {
     ASSERT(frontendChannel);
     ASSERT(m_inspectorClient);
     ASSERT(!m_inspectorFrontendChannel);
     ASSERT(!m_inspectorBackendDispatcher);
+
+    m_isAutomaticInspection = isAutomaticInspection;
 
     m_inspectorFrontendChannel = frontendChannel;
     m_inspectorBackendDispatcher = InspectorBackendDispatcher::create(frontendChannel);
@@ -262,6 +270,8 @@ void InspectorController::disconnectFrontend(InspectorDisconnectReason reason)
     m_inspectorBackendDispatcher->clearFrontend();
     m_inspectorBackendDispatcher.clear();
     m_inspectorFrontendChannel = nullptr;
+
+    m_isAutomaticInspection = false;
 
     // Release overlay page resources.
     m_overlay->freePage();
@@ -353,8 +363,8 @@ void InspectorController::dispatchMessageFromFrontend(const String& message)
 
 void InspectorController::hideHighlight()
 {
-    ErrorString error;
-    m_domAgent->hideHighlight(&error);
+    ErrorString unused;
+    m_domAgent->hideHighlight(unused);
 }
 
 Node* InspectorController::highlightedNode() const
@@ -381,20 +391,22 @@ bool InspectorController::profilerEnabled() const
 
 void InspectorController::setProfilerEnabled(bool enable)
 {
+    ErrorString unused;
+
     if (enable) {
         m_instrumentingAgents->setPersistentInspectorTimelineAgent(m_timelineAgent);
-        m_timelineAgent->start();
+        m_timelineAgent->start(unused);
     } else {
         m_instrumentingAgents->setPersistentInspectorTimelineAgent(nullptr);
-        m_timelineAgent->stop();
+        m_timelineAgent->stop(unused);
     }
 }
 
 void InspectorController::resume()
 {
     if (m_debuggerAgent) {
-        ErrorString error;
-        m_debuggerAgent->resume(&error);
+        ErrorString unused;
+        m_debuggerAgent->resume(unused);
     }
 }
 
@@ -423,19 +435,22 @@ InspectorEvaluateHandler InspectorController::evaluateHandler() const
     return WebCore::evaluateHandlerFromAnyThread;
 }
 
-void InspectorController::willCallInjectedScriptFunction(JSC::ExecState* scriptState, const String& scriptName, int scriptLine)
+void InspectorController::willCallInjectedScriptFunction(JSC::ExecState* scriptState, const String&, int)
 {
-    ScriptExecutionContext* scriptExecutionContext = scriptExecutionContextFromExecState(scriptState);
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willCallFunction(scriptExecutionContext, scriptName, scriptLine);
-    m_injectedScriptInstrumentationCookies.append(cookie);
+    LegacyProfiler::profiler()->suspendProfiling(scriptState);
 }
 
 void InspectorController::didCallInjectedScriptFunction(JSC::ExecState* scriptState)
 {
-    ASSERT(!m_injectedScriptInstrumentationCookies.isEmpty());
-    ScriptExecutionContext* scriptExecutionContext = scriptExecutionContextFromExecState(scriptState);
-    InspectorInstrumentationCookie cookie = m_injectedScriptInstrumentationCookies.takeLast();
-    InspectorInstrumentation::didCallFunction(cookie, scriptExecutionContext);
+    LegacyProfiler::profiler()->unsuspendProfiling(scriptState);
+}
+
+void InspectorController::frontendInitialized()
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    if (m_isAutomaticInspection)
+        m_page.inspectorDebuggable().unpauseForInitializedInspector();
+#endif
 }
 
 } // namespace WebCore

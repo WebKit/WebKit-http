@@ -398,10 +398,10 @@ static bool removingNodeRemovesPosition(Node* node, const Position& position)
     if (position.anchorNode() == node)
         return true;
 
-    if (!node->isElementNode())
+    if (!is<Element>(node))
         return false;
 
-    Element* element = toElement(node);
+    Element* element = downcast<Element>(node);
     return element->containsIncludingShadowDOM(position.anchorNode());
 }
 
@@ -1491,7 +1491,7 @@ void CaretBase::paintCaret(Node* node, GraphicsContext* context, const LayoutPoi
 
     Color caretColor = Color::black;
     ColorSpace colorSpace = ColorSpaceDeviceRGB;
-    Element* element = node->isElementNode() ? toElement(node) : node->parentElement();
+    Element* element = is<Element>(node) ? downcast<Element>(node) : node->parentElement();
     Element* rootEditableElement = node->rootEditableElement();
 
     if (element && element->renderer()) {
@@ -1520,13 +1520,13 @@ void CaretBase::paintCaret(Node* node, GraphicsContext* context, const LayoutPoi
 #endif
 }
 
-void FrameSelection::debugRenderer(RenderObject* r, bool selected) const
+void FrameSelection::debugRenderer(RenderObject* renderer, bool selected) const
 {
-    if (r->node()->isElementNode()) {
-        Element* element = toElement(r->node());
+    if (is<Element>(renderer->node())) {
+        Element* element = downcast<Element>(renderer->node());
         fprintf(stderr, "%s%s\n", selected ? "==> " : "    ", element->localName().string().utf8().data());
-    } else if (r->isText()) {
-        RenderText* textRenderer = toRenderText(r);
+    } else if (renderer->isText()) {
+        RenderText* textRenderer = toRenderText(renderer);
         if (!textRenderer->textLength() || !textRenderer->firstTextBox()) {
             fprintf(stderr, "%s#text (empty)\n", selected ? "==> " : "    ");
             return;
@@ -1537,9 +1537,9 @@ void FrameSelection::debugRenderer(RenderObject* r, bool selected) const
         int textLength = text.length();
         if (selected) {
             int offset = 0;
-            if (r->node() == m_selection.start().containerNode())
+            if (renderer->node() == m_selection.start().containerNode())
                 offset = m_selection.start().computeOffsetInContainerNode();
-            else if (r->node() == m_selection.end().containerNode())
+            else if (renderer->node() == m_selection.end().containerNode())
                 offset = m_selection.end().computeOffsetInContainerNode();
 
             int pos;
@@ -1686,8 +1686,8 @@ void FrameSelection::selectAll()
             selectStartTarget = root.get();
     } else {
         if (m_selection.isNone() && focusedElement) {
-            if (focusedElement->isTextFormControl()) {
-                toHTMLTextFormControlElement(*focusedElement).select();
+            if (is<HTMLTextFormControlElement>(focusedElement)) {
+                downcast<HTMLTextFormControlElement>(*focusedElement).select();
                 return;
             }
             root = focusedElement->nonBoundaryShadowTreeRootNode();
@@ -1806,17 +1806,13 @@ void FrameSelection::updateAppearance()
     // Paint a block cursor instead of a caret in overtype mode unless the caret is at the end of a line (in this case
     // the FrameSelection will paint a blinking caret as usual).
     VisibleSelection oldSelection = selection();
-    VisiblePosition forwardPosition;
-    if (m_shouldShowBlockCursor && oldSelection.isCaret()) {
-        forwardPosition = modifyExtendingForward(CharacterGranularity);
-        m_caretPaint = forwardPosition.isNull();
-    }
 
 #if ENABLE(TEXT_CARET)
+    bool paintBlockCursor = m_shouldShowBlockCursor && m_selection.isCaret() && !isLogicalEndOfLine(m_selection.visibleEnd());
     bool caretRectChangedOrCleared = recomputeCaretRect();
 
     bool caretBrowsing = m_frame->settings().caretBrowsingEnabled();
-    bool shouldBlink = caretIsVisible() && isCaret() && (oldSelection.isContentEditable() || caretBrowsing) && forwardPosition.isNull();
+    bool shouldBlink = !paintBlockCursor && caretIsVisible() && isCaret() && (oldSelection.isContentEditable() || caretBrowsing);
 
     // If the caret moved, stop the blink timer so we can restart with a
     // black caret in the new location.
@@ -1842,7 +1838,12 @@ void FrameSelection::updateAppearance()
 
     // Construct a new VisibleSolution, since m_selection is not necessarily valid, and the following steps
     // assume a valid selection. See <https://bugs.webkit.org/show_bug.cgi?id=69563> and <rdar://problem/10232866>.
-    VisibleSelection selection(oldSelection.visibleStart(), forwardPosition.isNotNull() ? forwardPosition : oldSelection.visibleEnd());
+#if ENABLE(TEXT_CARET)
+    VisiblePosition endVisiblePosition = paintBlockCursor ? modifyExtendingForward(CharacterGranularity) : oldSelection.visibleEnd();
+    VisibleSelection selection(oldSelection.visibleStart(), endVisiblePosition);
+#else
+    VisibleSelection selection(oldSelection.visibleStart(), oldSelection.visibleEnd());
+#endif
 
     if (!selection.isRange()) {
         view->clearSelection();
@@ -2025,8 +2026,8 @@ static HTMLFormElement* scanForForm(Element* start)
             return downcast<HTMLFormElement>(&element);
         if (is<HTMLFormControlElement>(element))
             return downcast<HTMLFormControlElement>(element).form();
-        if (isHTMLFrameElementBase(element)) {
-            Document* contentDocument = toHTMLFrameElementBase(element).contentDocument();
+        if (is<HTMLFrameElementBase>(element)) {
+            Document* contentDocument = downcast<HTMLFrameElementBase>(element).contentDocument();
             if (!contentDocument)
                 continue;
             if (HTMLFormElement* frameResult = scanForForm(contentDocument->documentElement()))

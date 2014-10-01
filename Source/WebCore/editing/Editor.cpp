@@ -209,7 +209,7 @@ VisibleSelection Editor::selectionForCommand(Event* event)
     // If the target is a text control, and the current selection is outside of its shadow tree,
     // then use the saved selection for that text control.
     HTMLTextFormControlElement* textFormControlOfSelectionStart = enclosingTextFormControl(selection.start());
-    HTMLTextFormControlElement* textFromControlOfTarget = isHTMLTextFormControlElement(*event->target()->toNode()) ? toHTMLTextFormControlElement(event->target()->toNode()) : nullptr;
+    HTMLTextFormControlElement* textFromControlOfTarget = is<HTMLTextFormControlElement>(*event->target()->toNode()) ? downcast<HTMLTextFormControlElement>(event->target()->toNode()) : nullptr;
     if (textFromControlOfTarget && (selection.start().isNull() || textFromControlOfTarget != textFormControlOfSelectionStart)) {
         if (RefPtr<Range> range = textFromControlOfTarget->selection())
             return VisibleSelection(range.get(), DOWNSTREAM, selection.isDirectional());
@@ -588,8 +588,8 @@ bool Editor::shouldInsertFragment(PassRefPtr<DocumentFragment> fragment, PassRef
     
     if (fragment) {
         Node* child = fragment->firstChild();
-        if (child && fragment->lastChild() == child && child->isCharacterDataNode())
-            return client()->shouldInsertText(toCharacterData(child)->data(), replacingDOMRange.get(), givenAction);
+        if (child && fragment->lastChild() == child && is<CharacterData>(child))
+            return client()->shouldInsertText(downcast<CharacterData>(*child).data(), replacingDOMRange.get(), givenAction);
     }
 
     return client()->shouldInsertNode(fragment.get(), replacingDOMRange.get(), givenAction);
@@ -1660,10 +1660,10 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
 #endif
         
     Element* focusedElement = document().focusedElement();
-    if (focusedElement && isHTMLTextFormControlElement(*focusedElement)) {
+    if (focusedElement && is<HTMLTextFormControlElement>(*focusedElement)) {
         if (direction == NaturalWritingDirection)
             return;
-        toHTMLElement(focusedElement)->setAttribute(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
+        downcast<HTMLTextFormControlElement>(*focusedElement).setAttribute(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
         focusedElement->dispatchInputEvent();
         document().updateStyleIfNeeded();
         return;
@@ -1865,8 +1865,8 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
         Node* extentNode = extent.deprecatedNode();
         unsigned extentOffset = extent.deprecatedEditingOffset();
 
-        if (baseNode && baseNode == extentNode && baseNode->isTextNode() && baseOffset + text.length() == extentOffset) {
-            m_compositionNode = toText(baseNode);
+        if (baseNode && baseNode == extentNode && is<Text>(baseNode) && baseOffset + text.length() == extentOffset) {
+            m_compositionNode = downcast<Text>(baseNode);
             m_compositionStart = baseOffset;
             m_compositionEnd = extentOffset;
             m_customCompositionUnderlines = underlines;
@@ -2378,7 +2378,7 @@ bool Editor::isSpellCheckingEnabledFor(Node* node) const
 {
     if (!node)
         return false;
-    const Element* focusedElement = node->isElementNode() ? toElement(node) : node->parentElement();
+    const Element* focusedElement = is<Element>(node) ? downcast<Element>(node) : node->parentElement();
     if (!focusedElement)
         return false;
     return focusedElement->isSpellCheckingEnabled();
@@ -2468,7 +2468,7 @@ static bool isAutomaticTextReplacementType(TextCheckingType type)
 
 static void correctSpellcheckingPreservingTextCheckingParagraph(TextCheckingParagraph& paragraph, PassRefPtr<Range> rangeToReplace, const String& replacement, int resultLocation, int resultLength)
 {
-    ContainerNode* scope = toContainerNode(highestAncestor(paragraph.paragraphRange()->startContainer()));
+    ContainerNode* scope = downcast<ContainerNode>(highestAncestor(paragraph.paragraphRange()->startContainer()));
 
     size_t paragraphLocation;
     size_t paragraphLength;
@@ -3100,19 +3100,19 @@ void Editor::applyEditingStyleToBodyElement() const
     RefPtr<NodeList> list = document().getElementsByTagName("body");
     unsigned len = list->length();
     for (unsigned i = 0; i < len; i++)
-        applyEditingStyleToElement(toElement(list->item(i)));
+        applyEditingStyleToElement(downcast<Element>(list->item(i)));
 }
 
 void Editor::applyEditingStyleToElement(Element* element) const
 {
     if (!element)
         return;
-    ASSERT(element->isStyledElement());
-    if (!element->isStyledElement())
+    ASSERT(is<StyledElement>(element));
+    if (!is<StyledElement>(element))
         return;
 
     // Mutate using the CSSOM wrapper so we get the same event behavior as a script.
-    CSSStyleDeclaration* style = toStyledElement(element)->style();
+    CSSStyleDeclaration* style = downcast<StyledElement>(*element).style();
     style->setPropertyInternal(CSSPropertyWordWrap, "break-word", false, IGNORE_EXCEPTION);
     style->setPropertyInternal(CSSPropertyWebkitNbspMode, "space", false, IGNORE_EXCEPTION);
     style->setPropertyInternal(CSSPropertyWebkitLineBreak, "after-white-space", false, IGNORE_EXCEPTION);
@@ -3536,8 +3536,8 @@ static Node* findFirstMarkable(Node* node)
             return nullptr;
         if (node->renderer()->isTextOrLineBreak())
             return node;
-        if (isHTMLTextFormControlElement(*node))
-            node = toHTMLTextFormControlElement(*node).visiblePositionForIndex(1).deepEquivalent().deprecatedNode();
+        if (is<HTMLTextFormControlElement>(*node))
+            node = downcast<HTMLTextFormControlElement>(*node).visiblePositionForIndex(1).deepEquivalent().deprecatedNode();
         else if (node->firstChild())
             node = node->firstChild();
         else

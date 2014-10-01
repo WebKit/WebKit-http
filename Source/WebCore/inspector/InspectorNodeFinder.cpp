@@ -85,13 +85,13 @@ void InspectorNodeFinder::searchUsingDOMTreeTraversal(Node* parentNode)
             break;
         }
         case Node::ELEMENT_NODE: {
-            if (matchesElement(*toElement(node)))
+            if (matchesElement(downcast<Element>(*node)))
                 m_results.add(node);
 
             // Search inside frame elements.
-            if (node->isFrameOwnerElement()) {
-                HTMLFrameOwnerElement* frameOwner = toHTMLFrameOwnerElement(node);
-                if (Document* document = frameOwner->contentDocument())
+            if (is<HTMLFrameOwnerElement>(node)) {
+                HTMLFrameOwnerElement& frameOwner = downcast<HTMLFrameOwnerElement>(*node);
+                if (Document* document = frameOwner.contentDocument())
                     performSearch(document);
             }
 
@@ -146,8 +146,8 @@ void InspectorNodeFinder::searchUsingXPath(Node* parentNode)
         if (ec)
             return;
 
-        if (node->isAttributeNode())
-            node = toAttr(node)->ownerElement();
+        if (is<Attr>(node))
+            node = downcast<Attr>(*node).ownerElement();
 
         // XPath can get out of the context node that we pass as the starting point to evaluate, so we need to filter for just the nodes we care about.
         if (node == parentNode || node->isDescendantOf(parentNode))
@@ -157,11 +157,11 @@ void InspectorNodeFinder::searchUsingXPath(Node* parentNode)
 
 void InspectorNodeFinder::searchUsingCSSSelectors(Node* parentNode)
 {
-    if (!parentNode->isContainerNode())
+    if (!is<ContainerNode>(parentNode))
         return;
 
     ExceptionCode ec = 0;
-    RefPtr<NodeList> nodeList = toContainerNode(parentNode)->querySelectorAll(m_whitespaceTrimmedQuery, ec);
+    RefPtr<NodeList> nodeList = downcast<ContainerNode>(*parentNode).querySelectorAll(m_whitespaceTrimmedQuery, ec);
     if (ec || !nodeList)
         return;
 

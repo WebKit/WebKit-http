@@ -100,16 +100,16 @@ inline void StyledElement::invalidateStyleAttribute()
 inline const StyleProperties* StyledElement::presentationAttributeStyle()
 {
     if (!elementData())
-        return 0;
+        return nullptr;
     if (elementData()->presentationAttributeStyleIsDirty())
         rebuildPresentationAttributeStyle();
     return elementData()->presentationAttributeStyle();
 }
 
-inline bool isStyledElement(const Node& node) { return node.isStyledElement(); }
+} // namespace WebCore
 
-NODE_TYPE_CASTS(StyledElement)
-
-} //namespace
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyledElement)
+    static bool isType(const WebCore::Node& node) { return node.isStyledElement(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

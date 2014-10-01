@@ -161,7 +161,7 @@ public:
     virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t) override { }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
+    virtual std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
 #endif
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES) && !PLATFORM(IOS)
@@ -550,7 +550,7 @@ public:
     virtual void contextMenuDestroyed() override { }
 
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-    virtual PassOwnPtr<ContextMenu> customizeMenu(PassOwnPtr<ContextMenu>) override;
+    virtual std::unique_ptr<ContextMenu> customizeMenu(std::unique_ptr<ContextMenu>) override;
 #else
     virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) override { return 0; }
 #endif

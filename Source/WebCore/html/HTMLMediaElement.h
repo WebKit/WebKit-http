@@ -546,7 +546,6 @@ private:
 
 #if ENABLE(IOS_AIRPLAY)
     virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) override;
-    virtual void mediaPlayerPlaybackTargetAvailabilityChanged(MediaPlayer*) override;
     void enqueuePlaybackTargetAvailabilityChangedEvent();
 #endif
 
@@ -910,17 +909,6 @@ struct ValueToString<TextTrackCue*> {
 #endif
 #endif
 
-void isHTMLMediaElement(const HTMLMediaElement&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isHTMLMediaElement(const Element& element) { return element.isMediaElement(); }
-inline bool isHTMLMediaElement(const Node& node) { return node.isElementNode() && toElement(node).isMediaElement(); }
-
-template <typename ArgType>
-struct NodeTypeCastTraits<const HTMLMediaElement, ArgType> {
-    static bool isType(ArgType& node) { return isHTMLMediaElement(node); }
-};
-
-NODE_TYPE_CASTS(HTMLMediaElement)
-
 #ifndef NDEBUG
 template<>
 struct ValueToString<MediaTime> {
@@ -931,7 +919,12 @@ struct ValueToString<MediaTime> {
 };
 #endif
 
-} //namespace
+} // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLMediaElement)
+    static bool isType(const WebCore::Element& element) { return element.isMediaElement(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif
 #endif

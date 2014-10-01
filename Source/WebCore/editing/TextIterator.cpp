@@ -33,6 +33,7 @@
 #include "Frame.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
+#include "HTMLParagraphElement.h"
 #include "HTMLTextFormControlElement.h"
 #include "InlineTextBox.h"
 #include "NodeTraversal.h"
@@ -254,8 +255,8 @@ bool isRendererReplacedElement(RenderObject* renderer)
     if (renderer->isImage() || renderer->isWidget() || renderer->isMedia())
         return true;
 
-    if (renderer->node() && renderer->node()->isElementNode()) {
-        Element& element = toElement(*renderer->node());
+    if (renderer->node() && is<Element>(renderer->node())) {
+        Element& element = downcast<Element>(*renderer->node());
         if (is<HTMLFormControlElement>(element) || is<HTMLLegendElement>(element) || is<HTMLMeterElement>(element) || is<HTMLProgressElement>(element))
             return true;
         if (equalIgnoringCase(element.fastGetAttribute(roleAttr), "img"))
@@ -500,7 +501,7 @@ static bool hasVisibleTextNode(RenderText& renderer)
 
 bool TextIterator::handleTextNode()
 {
-    Text& textNode = toText(*m_node);
+    Text& textNode = downcast<Text>(*m_node);
 
     if (m_fullyClippedStack.top() && !(m_behavior & TextIteratorIgnoresStyleVisibility))
         return false;
@@ -602,7 +603,7 @@ bool TextIterator::handleTextNode()
 
 void TextIterator::handleTextBox()
 {    
-    Text& textNode = toText(*m_node);
+    Text& textNode = downcast<Text>(*m_node);
 
     auto& renderer = m_firstLetterText ? *m_firstLetterText : *textNode.renderer();
     if (renderer.style().visibility() != VISIBLE && !(m_behavior & TextIteratorIgnoresStyleVisibility)) {
@@ -813,9 +814,9 @@ static bool shouldEmitNewlinesBeforeAndAfterNode(Node& node)
     // a newline both before and after the element.
     auto* renderer = node.renderer();
     if (!renderer) {
-        if (!node.isHTMLElement())
+        if (!is<HTMLElement>(node))
             return false;
-        auto& element = toHTMLElement(node);
+        auto& element = downcast<HTMLElement>(node);
         return hasHeaderTag(element)
             || element.hasTagName(blockquoteTag)
             || element.hasTagName(ddTag)
@@ -884,9 +885,11 @@ static bool shouldEmitExtraNewlineForNode(Node& node)
         return false;
 
     // NOTE: We only do this for a select set of nodes, and WinIE appears not to do this at all.
-    if (!node.isHTMLElement())
+    if (!is<HTMLElement>(node))
         return false;
-    if (!(hasHeaderTag(toHTMLElement(node)) || toHTMLElement(node).hasTagName(pTag)))
+
+    HTMLElement& element = downcast<HTMLElement>(node);
+    if (!hasHeaderTag(element) && !is<HTMLParagraphElement>(element))
         return false;
 
     int bottomMargin = toRenderBox(renderer)->collapsedMarginAfter();
@@ -1260,7 +1263,7 @@ void SimplifiedBackwardsTextIterator::advance()
 
 bool SimplifiedBackwardsTextIterator::handleTextNode()
 {
-    Text& textNode = toText(*m_node);
+    Text& textNode = downcast<Text>(*m_node);
 
     m_lastTextNode = &textNode;
 

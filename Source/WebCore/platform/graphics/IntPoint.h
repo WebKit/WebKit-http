@@ -47,8 +47,6 @@ typedef struct _NSPoint NSPoint;
 #if PLATFORM(WIN)
 typedef struct tagPOINT POINT;
 typedef struct tagPOINTS POINTS;
-#elif PLATFORM(GTK)
-typedef struct _GdkPoint GdkPoint;
 #elif PLATFORM(HAIKU)
 class BPoint;
 #endif
@@ -122,9 +120,6 @@ public:
     operator POINT() const;
     IntPoint(const POINTS&);
     operator POINTS() const;
-#elif PLATFORM(GTK)
-    IntPoint(const GdkPoint&);
-    operator GdkPoint() const;
 #elif PLATFORM(HAIKU)
     explicit IntPoint(const BPoint&);
     operator BPoint() const;

@@ -1760,7 +1760,7 @@ bool EventHandler::handleMousePressEvent(const PlatformMouseEvent& platformMouse
         // If a mouse event handler changes the input element type to one that has a widget associated,
         // we'd like to EventHandler::handleMousePressEvent to pass the event to the widget and thus the
         // event target node can't still be the shadow node.
-        if (mouseEvent.targetNode()->isShadowRoot() && is<HTMLInputElement>(toShadowRoot(mouseEvent.targetNode())->hostElement()))
+        if (is<ShadowRoot>(mouseEvent.targetNode()) && is<HTMLInputElement>(downcast<ShadowRoot>(*mouseEvent.targetNode()).hostElement()))
             mouseEvent = m_frame.document()->prepareMouseEvent(HitTestRequest(), documentPoint, platformMouseEvent);
 
         FrameView* view = m_frame.view();
@@ -2141,14 +2141,10 @@ bool EventHandler::dispatchDragEvent(const AtomicString& eventType, Element& dra
 
 static bool targetIsFrame(Node* target, Frame*& frame)
 {
-    if (!target)
+    if (!target || !is<HTMLFrameElementBase>(target))
         return false;
 
-    if (!target->hasTagName(frameTag) && !target->hasTagName(iframeTag))
-        return false;
-
-    frame = toHTMLFrameElementBase(target)->contentFrame();
-
+    frame = downcast<HTMLFrameElementBase>(*target).contentFrame();
     return true;
 }
 
@@ -2190,7 +2186,7 @@ static bool hasDropZoneType(DataTransfer& dataTransfer, const String& keyword)
 
 static bool findDropZone(Node* target, DataTransfer* dataTransfer)
 {
-    Element* element = target->isElementNode() ? toElement(target) : target->parentElement();
+    Element* element = is<Element>(target) ? downcast<Element>(target) : target->parentElement();
     for (; element; element = element->parentElement()) {
         bool matched = false;
         String dropZoneStr = element->fastGetAttribute(webkitdropzoneAttr);
@@ -2237,10 +2233,10 @@ bool EventHandler::updateDragAndDrop(const PlatformMouseEvent& event, DataTransf
     RefPtr<Element> newTarget;
     if (Node* targetNode = mouseEvent.targetNode()) {
         // Drag events should never go to non-element nodes (following IE, and proper mouseover/out dispatch)
-        if (!targetNode->isElementNode())
+        if (!is<Element>(targetNode))
             newTarget = targetNode->parentOrShadowHostElement();
         else
-            newTarget = toElement(targetNode);
+            newTarget = downcast<Element>(targetNode);
     }
 
     m_autoscrollController->updateDragAndDrop(newTarget.get(), event.position(), event.timestamp());
@@ -2398,10 +2394,10 @@ void EventHandler::updateMouseEventTargetNode(Node* targetNode, const PlatformMo
         targetElement = m_capturingMouseEventsElement.get();
     else if (targetNode) {
         // If the target node is a non-element, dispatch on the parent. <rdar://problem/4196646>
-        if (!targetNode->isElementNode())
+        if (!is<Element>(targetNode))
             targetElement = targetNode->parentOrShadowHostElement();
         else
-            targetElement = toElement(targetNode);
+            targetElement = downcast<Element>(targetNode);
     }
 
     m_elementUnderMouse = targetElement;

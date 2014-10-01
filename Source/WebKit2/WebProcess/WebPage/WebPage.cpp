@@ -102,6 +102,7 @@
 #include <WebCore/ArchiveResource.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/ContextMenuController.h>
+#include <WebCore/DataTransfer.h>
 #include <WebCore/DatabaseManager.h>
 #include <WebCore/DocumentFragment.h>
 #include <WebCore/DocumentLoader.h>
@@ -628,7 +629,7 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
     String pageURLString = m_page->mainFrame().loader().documentLoader()->responseURL().string();
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
-    HTMLPlugInImageElement& pluginImageElement = toHTMLPlugInImageElement(*pluginElement);
+    HTMLPlugInImageElement& pluginImageElement = downcast<HTMLPlugInImageElement>(*pluginElement);
     unsigned pluginArea = 0;
     PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot && !(plugInIsPrimarySize(pluginImageElement, pluginArea) && !plugInIntersectsSearchRect(pluginImageElement)) ? PluginProcessTypeSnapshot : PluginProcessTypeNormal;
 #else
@@ -1095,6 +1096,18 @@ void WebPage::loadWebArchiveData(const IPC::DataReference& webArchiveData, IPC::
 {
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(webArchiveData.data()), webArchiveData.size() * sizeof(uint8_t));
     loadDataImpl(0, sharedBuffer, ASCIILiteral("application/x-webarchive"), ASCIILiteral("utf-16"), blankURL(), URL(), decoder);
+}
+
+void WebPage::navigateToURLWithSimulatedClick(const String& url, IntPoint documentPoint, IntPoint screenPoint)
+{
+    Frame* mainFrame = m_mainFrame->coreFrame();
+    Document* mainFrameDocument = mainFrame->document();
+    if (!mainFrameDocument)
+        return;
+
+    const int singleClick = 1;
+    RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(), false, false, false, false, 0, nullptr, nullptr);
+    mainFrame->loader().urlSelected(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.release(), LockHistory::No, LockBackForwardList::No, ShouldSendReferrer::MaybeSendReferrer);
 }
 
 void WebPage::stopLoadingFrame(uint64_t frameID)
@@ -3688,14 +3701,14 @@ RetainPtr<PDFDocument> WebPage::pdfDocumentForPrintingFrame(Frame* coreFrame)
 {
     Document* document = coreFrame->document();
     if (!document)
-        return 0;
+        return nullptr;
 
-    if (!document->isPluginDocument())
-        return 0;
+    if (!is<PluginDocument>(document))
+        return nullptr;
 
-    PluginView* pluginView = static_cast<PluginView*>(toPluginDocument(document)->pluginWidget());
+    PluginView* pluginView = static_cast<PluginView*>(downcast<PluginDocument>(*document).pluginWidget());
     if (!pluginView)
-        return 0;
+        return nullptr;
 
     return pluginView->pdfDocumentForPrinting();
 }

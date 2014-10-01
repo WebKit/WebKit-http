@@ -196,7 +196,6 @@ sub defaultTagPropertyHash
         'wrapperOnlyIfMediaIsAvailable' => 0,
         'conditional' => 0,
         'runtimeConditional' => 0,
-        'generateTypeHelpers' => 0
     );
 }
 
@@ -629,36 +628,46 @@ sub printTypeHelpers
     my ($F, $namesRef) = @_;
     my %names = %$namesRef;
 
-    for my $name (sort keys %names) {
-        if (!$parsedTags{$name}{generateTypeHelpers}) {
-            next;
-        }
-
+    # Do a first pass to discard classes that map to several tags.
+    my %classToTags = ();
+    for my $name (keys %names) {
         my $class = $parsedTags{$name}{interfaceName};
+        push(@{$classToTags{$class}}, $name) if defined $class;
+    }
+
+    for my $class (sort keys %classToTags) {
+        # Skip classes that map to more than 1 tag.
+        my $tagCount = scalar @{$classToTags{$class}};
+        next if $tagCount > 1;
+        my $name = $classToTags{$class}[0];
         print F <<END
+namespace WebCore {
 class $class;
+}
+namespace WTF {
 template <typename ArgType>
-class NodeTypeCastTraits<const $class, ArgType> {
+class TypeCastTraits<const WebCore::$class, ArgType> {
 public:
-    static bool isType(ArgType& node) { return checkTagName(node); }
+    static bool isOfType(ArgType& node) { return checkTagName(node); }
 private:
 END
        ;
        if ($parameters{namespace} eq "HTML" && $parsedTags{$name}{wrapperOnlyIfMediaIsAvailable}) {
            print F <<END
-    static bool checkTagName(const HTMLElement& element) { return !element.isHTMLUnknownElement() && element.hasTagName($parameters{namespace}Names::${name}Tag); }
-    static bool checkTagName(const Node& node) { return node.isHTMLElement() && checkTagName(toHTMLElement(node)); }
+    static bool checkTagName(const WebCore::HTMLElement& element) { return !element.isHTMLUnknownElement() && element.hasTagName(WebCore::$parameters{namespace}Names::${name}Tag); }
+    static bool checkTagName(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && checkTagName(downcast<WebCore::HTMLElement>(node)); }
 END
            ;
        } else {
            print F <<END
-    static bool checkTagName(const $parameters{namespace}Element& element) { return element.hasTagName($parameters{namespace}Names::${name}Tag); }
-    static bool checkTagName(const Node& node) { return node.hasTagName($parameters{namespace}Names::${name}Tag); }
+    static bool checkTagName(const WebCore::$parameters{namespace}Element& element) { return element.hasTagName(WebCore::$parameters{namespace}Names::${name}Tag); }
+    static bool checkTagName(const WebCore::Node& node) { return node.hasTagName(WebCore::$parameters{namespace}Names::${name}Tag); }
 END
            ;
        }
        print F <<END
 };
+}
 END
        ;
        print F "\n";
@@ -675,11 +684,9 @@ sub printTypeHelpersHeaderFile
     print F "#ifndef ".$parameters{namespace}."ElementTypeHelpers_h\n";
     print F "#define ".$parameters{namespace}."ElementTypeHelpers_h\n\n";
     print F "#include \"".$parameters{namespace}."Names.h\"\n\n";
-    print F "namespace WebCore {\n\n";
 
     printTypeHelpers($F, \%allTags);
 
-    print F "}\n\n";
     print F "#endif\n";
 
     close F;

@@ -129,8 +129,8 @@ void HTMLOptionElement::setText(const String &text, ExceptionCode& ec)
 
     // Handle the common special case where there's exactly 1 child node, and it's a text node.
     Node* child = firstChild();
-    if (child && child->isTextNode() && !child->nextSibling())
-        toText(child)->setData(text, ec);
+    if (child && is<Text>(child) && !child->nextSibling())
+        downcast<Text>(*child).setData(text, ec);
     else {
         removeChildren();
         appendChild(Text::create(document(), text), ec);
@@ -312,11 +312,10 @@ bool HTMLOptionElement::isDisabledFormControl() const
     if (ownElementDisabled())
         return true;
 
-    if (!parentNode() || !parentNode()->isHTMLElement())
+    if (!parentNode() || !is<HTMLOptGroupElement>(parentNode()))
         return false;
 
-    HTMLElement& parentElement = toHTMLElement(*parentNode());
-    return is<HTMLOptGroupElement>(parentElement) && parentElement.isDisabledFormControl();
+    return downcast<HTMLOptGroupElement>(*parentNode()).isDisabledFormControl();
 }
 
 Node::InsertionNotificationRequest HTMLOptionElement::insertedInto(ContainerNode& insertionPoint)
@@ -339,10 +338,10 @@ String HTMLOptionElement::collectOptionInnerText() const
 {
     StringBuilder text;
     for (Node* node = firstChild(); node; ) {
-        if (node->isTextNode())
+        if (is<Text>(node))
             text.append(node->nodeValue());
         // Text nodes inside script elements are not part of the option text.
-        if (node->isElementNode() && toScriptElementIfPossible(toElement(node)))
+        if (is<Element>(node) && toScriptElementIfPossible(downcast<Element>(node)))
             node = NodeTraversal::nextSkippingChildren(node, this);
         else
             node = NodeTraversal::next(node, this);

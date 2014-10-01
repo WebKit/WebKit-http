@@ -545,13 +545,13 @@ bool RenderNamedFlowThread::isChildAllowed(const RenderObject& child, const Rend
     if (!child.node())
         return true;
 
-    ASSERT(child.node()->isElementNode());
+    ASSERT(is<Element>(child.node()));
 
     Node* originalParent = NodeRenderingTraversal::parent(child.node());
-    if (!originalParent || !originalParent->isElementNode() || !originalParent->renderer())
+    if (!originalParent || !is<Element>(originalParent) || !originalParent->renderer())
         return true;
 
-    return toElement(originalParent)->renderer()->isChildAllowed(child, style);
+    return downcast<Element>(*originalParent).renderer()->isChildAllowed(child, style);
 }
 
 void RenderNamedFlowThread::dispatchRegionOversetChangeEventIfNeeded()
@@ -717,7 +717,7 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range>>& rangeObjects, const
                     for (InlineTextBox* box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
                         if (offsetTop + box->logicalBottom() < logicalTopForRegion)
                             continue;
-                        range->setStart(Position(toText(node), box->start()));
+                        range->setStart(Position(downcast<Text>(node), box->start()));
                         startsAboveRegion = false;
                         break;
                     }
@@ -745,7 +745,7 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range>>& rangeObjects, const
                 if (renderer->isText()) {
                     // Text crosses region bottom
                     RenderText* textRenderer = toRenderText(renderer);
-                    InlineTextBox* lastBox = 0;
+                    InlineTextBox* lastBox = nullptr;
                     for (InlineTextBox* box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
                         if ((offsetTop + box->logicalTop()) < logicalBottomForRegion) {
                             lastBox = box;
@@ -753,7 +753,7 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range>>& rangeObjects, const
                         }
                         ASSERT(lastBox);
                         if (lastBox)
-                            range->setEnd(Position(toText(node), lastBox->start() + lastBox->len()));
+                            range->setEnd(Position(downcast<Text>(node), lastBox->start() + lastBox->len()));
                         break;
                     }
                     endsBelowRegion = false;

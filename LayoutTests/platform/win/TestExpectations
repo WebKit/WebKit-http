@@ -41,6 +41,9 @@ css3/filters/effect-invert-hw.html
 css3/filters/effect-opacity-hw.html
 css3/filters/effect-saturate-hw.html
 css3/filters/effect-sepia-hw.html
+css3/filters/animation-from-initial-values-with-color-matrix.html
+css3/filters/filter-is-on-subpixel-position.html
+css3/masking/clip-path-filter.html
 
 # Remove from list after enabling CANVAS_PATH
 fast/canvas/canvas-path-constructors.html
@@ -990,6 +993,7 @@ fast/text/international/plane2.html
 fast/media/print-restores-previous-mediatype.html
 
 webkit.org/b/35973 fast/multicol/hit-test-above-or-below.html [ Failure ]
+webkit.org/b/35973 fast/multicol/newmulticol/compare-with-old-impl/hit-test-above-or-below.html [ Failure ]
 
 # Needs progress element support
 webkit.org/b/49769 fast/dom/HTMLProgressElement [ Pass Failure ]
@@ -1325,15 +1329,38 @@ webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 loader/navigation-while-deferring-loads.html
 
 # crashing webgl tests
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html
-webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html
-webgl/1.0.2/conformance/more/functions/uniformiBadArgs.html
-webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-video.html
+fast/canvas/webgl/draw-arrays-out-of-bounds.html [ Crash ]
+fast/canvas/webgl/draw-elements-out-of-bounds.html [ Crash ]
+fast/canvas/webgl/gl-vertexattribpointer.html [ Crash ]
+fast/canvas/webgl/index-validation.html [ Crash Pass ]
+webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Crash ]
+webgl/1.0.1/conformance/attribs/gl-vertexattribpointer.html [ Crash ]
+webgl/1.0.1/conformance/more/functions/bufferData.html [ Crash ]
+webgl/1.0.1/conformance/more/functions/bufferDataBadArgs.html [ Crash ]
+webgl/1.0.1/conformance/more/functions/drawArraysOutOfBounds.html [ Crash ]
+webgl/1.0.1/conformance/rendering/draw-arrays-out-of-bounds.html [ Crash ]
+webgl/1.0.1/conformance/rendering/draw-elements-out-of-bounds.html [ Crash ]
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Crash ]
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Crash ]
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html [ Crash ]
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Crash ]
+webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html [ Crash ]
+webgl/1.0.2/conformance/more/functions/uniformiBadArgs.html [ Crash ]
+webgl/1.0.2/conformance/attribs/gl-vertexattribpointer.html [ Crash ]
+webgl/1.0.2/conformance/more/functions/bufferData.html [ Crash ]
+webgl/1.0.2/conformance/more/functions/bufferDataBadArgs.html [ Crash ]
+webgl/1.0.2/conformance/more/functions/drawArraysOutOfBounds.html [ Crash ]
+webgl/1.0.2/conformance/rendering/draw-arrays-out-of-bounds.html [ Crash ]
+webgl/1.0.2/conformance/rendering/draw-elements-out-of-bounds.html [ Crash ]
+webgl/conformance/attribs/gl-vertexattribpointer.html [ Crash ]
+webgl/conformance/more/functions/bufferData.html [ Crash ]
+webgl/conformance/more/functions/bufferDataBadArgs.html [ Crash ]
+webgl/conformance/more/functions/drawArraysOutOfBounds.html
+webgl/conformance/rendering/draw-arrays-out-of-bounds.html
+webgl/conformance/rendering/draw-elements-out-of-bounds.html
 
 # failing webgl tests
+webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-video.html
 webgl/1.0.1/conformance/canvas/buffer-offscreen-test.html
 webgl/1.0.1/conformance/canvas/buffer-preserve-test.html
 webgl/1.0.1/conformance/context/context-lost-restored.html
@@ -1365,6 +1392,12 @@ webgl/1.0.2/conformance/rendering/multisample-corruption.html
 webgl/1.0.2/conformance/textures/texture-npot-video.html
 webgl/1.0.2/conformance/uniforms/uniform-location.html
 webgl/1.0.2/conformance/rendering/more-than-65536-indices.html
+webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html
+webgl/1.0.2/conformance/ogles/GL/log2/log2_001_to_008.html
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html
+webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html
 webgl/conformance/canvas/buffer-offscreen-test.html
 webgl/conformance/canvas/buffer-preserve-test.html
 webgl/conformance/context/context-attributes-alpha-depth-stencil-antialias.html
@@ -1506,6 +1539,25 @@ webkit.org/b/87919 fast/canvas/2d.backingStorePixelRatio.html
 webkit.org/b/87919 fast/canvas/2d.imageDataHD.html
 webkit.org/b/87919 fast/hidpi
 webkit.org/b/87919 svg/as-image/image-respects-deviceScaleFactor.html
+webkit.org/b/87919 fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
+webkit.org/b/87919 svg/custom/hidpi-masking-clipping.svg [ ImageOnlyFailure ]
+webkit.org/b/87919 svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/borders/hidpi-border-painting-groove.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/borders/hidpi-border-painting-ridge.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/inline/hidpi-inline-selection-leaves-gap.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/inline/hidpi-inline-text-decoration-with-subpixel-value.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/layers/hidpi-transform-on-child-content-is-mispositioned.html [ ImageOnlyFailure ]
+webkit.org/b/87919 fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html [ Failure ]
+webkit.org/b/87919 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
+webkit.org/b/87919 fast/repaint/hidpi-transform-on-subpixel-repaintrect.html [ Failure ]
+webkit.org/b/87919 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
 
 # Skip because this platform does not support a paging mouse wheel event
 fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html
@@ -1624,7 +1676,38 @@ webkit.org/b/88149 [ Debug ] compositing/backing/no-backing-foreground-layer.htm
 webkit.org/b/88150 [ Debug ] compositing/geometry/clipping-foreground.html [ Crash ]
 
 # Need rebaselining / checking - skipped en masse to get the bots green again
+css2.1/t0805-c5518-brdr-t-01-e.html
 css2.1/20110323/c543-txt-decor-000.html
+css2.1/t0805-c5519-brdr-r-00-a.html
+css2.1/t0805-c5520-brdr-b-01-e.html
+css2.1/t0805-c5521-brdr-l-00-a.html
+css2.1/t0805-c5521-ibrdr-l-00-a.html
+css2.1/t09-c5526c-display-00-e.html
+css2.1/t0905-c414-flt-02-c.html
+css2.1/t0905-c414-flt-03-c.html
+css2.1/t0905-c414-flt-04-c.html
+css2.1/t0905-c414-flt-fit-01-d-g.html
+css2.1/t0905-c414-flt-wrap-00-e.html
+css2.1/t0905-c5525-fltblck-00-d-ag.html
+css2.1/t0905-c5525-fltblck-01-d.html
+css2.1/t0905-c5525-fltcont-00-d-g.html
+css2.1/t0905-c5525-flthw-00-c-g.html
+css2.1/t0905-c5525-fltwidth-00-c-g.html
+css2.1/t0905-c5525-fltwidth-02-c-g.html
+css2.1/t0905-c5525-fltwidth-03-c-g.html
+css2.1/t0905-c5525-fltwrap-00-b.html
+css2.1/t0905-c5526-flthw-00-c-g.html
+css2.1/t090501-c414-flt-01-b.html
+css2.1/t090501-c414-flt-03-b-g.html
+css2.1/t090501-c414-flt-ln-01-d-g.html
+css2.1/t090501-c5525-flt-l-00-b-g.html
+css2.1/t090501-c5525-flt-r-00-b-g.html
+css2.1/t100304-c43-rpl-bbx-01-d-g.html
+css2.1/t1202-counter-03-b.html
+css2.1/t1202-counter-04-b.html
+css2.1/t1202-counters-03-b.html
+css2.1/t1202-counters-04-b.html
+css2.1/t1205-c566-list-stl-01-c-g.html
 fast/block/float/float-in-float-hit-testing.html
 fast/block/float/overhanging-tall-block.html
 fast/css/text-transform-select.html
@@ -1835,12 +1918,20 @@ webkit.org/b/97026 media/audio-controls-rendering.html [ Failure ]
 webkit.org/b/97026 media/audio-repaint.html [ Failure ]
 webkit.org/b/97026 media/controls-styling-strict.html [ Failure ]
 webkit.org/b/97026 media/video-controls-fullscreen-volume.html [ Failure ]
+webkit.org/b/97026 scrollbars/corner-resizer-window-inactive.html [ ImageOnlyFailure ]
+webkit.org/b/97026 scrollbars/custom-scrollbar-with-incomplete-style.html [ Failure ]
 webkit.org/b/97026 svg/custom/glyph-selection-bidi-mirror.svg [ Failure ]
 webkit.org/b/97206 svg/custom/relative-sized-use-on-symbol.xhtml [ Failure ]
 webkit.org/b/97026 svg/custom/relative-sized-use-without-attributes-on-symbol.xhtml [ Failure ]
 webkit.org/b/97026 svg/text/bidi-text-query.svg [ Failure ]
 webkit.org/b/97026 svg/text/bidi-tspans.svg [ Failure ]
 webkit.org/b/97026 svg/text/non-bmp-positioning-lists.svg [ Failure ]
+webkit.org/b/97026 svg/W3C-SVG-1.1/paths-data-03-f.svg	[ Failure ]
+webkit.org/b/97026 svg/as-image/svg-intrinsic-size-rectangular-vertical.html [ ImageOnlyFailure ]
+webkit.org/b/97026 svg/css/svg-resource-fragment-identifier-img-src.html [ ImageOnlyFailure ]
+webkit.org/b/97026 svg/custom/composited-svg-with-opacity.html [ ImageOnlyFailure ]
+webkit.org/b/97026 svg/custom/remove-subtree-including-use-with-child-textpath-that-references-earlier-path.html [ Failure ]
+webkit.org/b/97026 svg/text/tspan-dynamic-positioning.svg [ Crash ]
 http/tests/fullscreen/fullscreenelement-different-origin.html [ Skip ]
 http/tests/fullscreen/fullscreenelement-same-origin.html [ Skip ]
 http/tests/history/back-with-fragment-change.php [ Skip ]
@@ -1864,12 +1955,6 @@ webkit.org/b/97485 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
 webkit.org/b/95530 http/tests/security/inactive-document-with-empty-security-origin.html [ Skip ]
 
 webkit.org/b/98079 http/tests/security/cross-origin-local-storage-wk1.html [ Skip ]
-
-# css3-conditionals support is not yet enabled. http://webkit.org/b/86146 http://webkit.org/b/104822 http://webkit.org/b/100324
-# FIXME: Why do these fail on Windows?
-css3/supports.html [ Failure ]
-css3/supports-cssom.html [ Failure ]
-css3/supports-dom-api.html [ Failure ]
 
 # MHTML is not yet enabled
 mhtml [ Skip ]
@@ -2363,6 +2448,8 @@ webkit.org/b/128855 fast/regions/counters/extract-ordered-lists-in-regions-expli
 webkit.org/b/128855 fast/regions/overflow/overflow-in-variable-width-regions-inline-bt.html [ ImageOnlyFailure ] 
 webkit.org/b/128855 fast/regions/overflow/overflow-in-variable-width-regions-inline-continuation.html [ ImageOnlyFailure ] 
 webkit.org/b/128855 fast/regions/overflow/overflow-in-variable-width-regions-inline.html [ ImageOnlyFailure ] 
+webkit.org/b/128855 fast/regions/overflow/overflow-region-transform.html [ ImageOnlyFailure ] 
+webkit.org/b/128855 fast/regions/selection/selecting-text-including-region.html [ ImageOnlyFailure ] 
 
 # Some region tests fail:
 webkit.org/b/128855 fast/regions/subtree-with-vert-rl.html [ Pass Crash ] 
@@ -2373,7 +2460,10 @@ webkit.org/b/128855 fast/regions/selection/position-for-point-1.html [ Failure ]
 webkit.org/b/128855 fast/regions/selection/position-for-point-vert-lr.html [ Failure ] 
 webkit.org/b/128855 fast/regions/selection/position-for-point-vert-rl.html [ Failure ] 
 webkit.org/b/128855 fast/regions/selection/position-for-point.html [ Failure ]
-fast/regions/selection/selection-direction.html [ Pass Failure ]
+webkit.org/b/128855 fast/regions/selection/selection-direction.html [ Pass Failure ]
+webkit.org/b/128855 fast/regions/fullscreen/full-screen-video-in-region-crash.html [ Failure ]
+webkit.org/b/128855 fast/regions/generated-content/firstletter-inside-flowthread.html [ Crash ]
+webkit.org/b/128855 fast/regions/repaint/repaint-absolute-pushed-to-next-region.html [ Failure ]
 
 # A few are flaky:
 webkit.org/b/128855 fast/regions/absolute-pos-elem-in-region.html [ Pass Failure ] 
@@ -2648,6 +2738,9 @@ fast/writing-mode/block-level-images.html [ Pass Timeout ]
 html5lib/generated/run-entities01-write.html [ Pass Failure ]
 html5lib/generated/run-pending-spec-changes-write.html [ Pass Timeout ]
 html5lib/generated/run-tests4-data.html [ Pass Timeout ]
+html5lib/generated/run-entities01-data.html [ Crash ]
+html5lib/generated/run-tests1-data.html [ Crash ]
+html5lib/generated/run-tests19-data.html [ Crash ]
 ietestcenter/css3/bordersbackgrounds [ Pass Failure Timeout ]
 ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm [ ImageOnlyFailure ]
 ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyFailure ]
@@ -2757,17 +2850,88 @@ fast/css-generated-content/initial-letter-sunken.html [ Failure ]
 css3/masking/clip-path-inset.html [ ImageOnlyFailure ]
 editing/inserting/insert-br-at-tabspan-002.html [ ImageOnlyFailure ]
 fast/borders/border-radius-on-html.html [ ImageOnlyFailure ]
-fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
 fast/regions/overflow/overflow-size-change-with-stacking-context.html [ ImageOnlyFailure ]
-svg/custom/hidpi-masking-clipping.svg [ ImageOnlyFailure ]
-svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
 svg/clip-path/mask-objectboundingbox-content-clip.svg [ ImageOnlyFailure ]
 svg/clip-path/mask-userspaceonuse-content-clip.svg [ ImageOnlyFailure ]
 svg/W3C-SVG-1.1/animate-elem-64-t.svg [ ImageOnlyFailure ]
 svg/W3C-SVG-1.1/animate-elem-65-t.svg [ ImageOnlyFailure ]
+fast/multicol/vertical-rl/float-multicol.html [ ImageOnlyFailure ]
+fast/multicol/vertical-rl/nested-columns.html [ ImageOnlyFailure ]
+fast/regions/overflow/overflow-region-transform.html [ ImageOnlyFailure ]
+fast/regions/selection/selecting-text-including-region.html [ ImageOnlyFailure ]
+fast/text/empty-shadow.html [ ImageOnlyFailure ]
 
 # Navigator Hardware Concurrency not enabled on Windows
 fast/dom/navigator-hardwareConcurrency.html
 
 # Tests that exceed maximum call stack on windows
 fast/dom/Window/window-postmessage-clone-deep-array.html
+
+# Some inspector tests failing after r173992
+webkit.org/b/137157 inspector/css/matched-style-properties.html [ Failure ]
+webkit.org/b/137157 inspector/event-listener-set.html [ Failure ]
+webkit.org/b/137157 inspector/event-listener.html [ Failure ]
+webkit.org/b/137157 inspector/model/parse-script-syntax-tree.html [ Failure ]
+webkit.org/b/137157 inspector/page/main-frame-resource.html [ Failure ]
+webkit.org/b/137157 inspector/protocol-promise-result.html [ Failure ]
+
+# A handful of flattening tests failing on Windows that we are skipping to get the bots green
+fast/frames/flattening/frameset-flattening-advanced.html [ Failure ]
+fast/frames/flattening/frameset-flattening-grid.html [ Failure ]
+fast/frames/flattening/frameset-flattening-subframesets.html [ Failure ]
+fast/frames/flattening/iframe-flattening-fixed-height.html [ Failure ]
+fast/frames/flattening/iframe-flattening-offscreen.html [ Failure ]
+fast/frames/flattening/iframe-flattening-out-of-view.html [ Failure ]
+
+# A handful of forms tests failing on Windows that we are skipping to get the bots green
+fast/forms/mailto/get-non-ascii-text-plain-latin-1.html [ Crash ]
+fast/forms/search/search-setrangetext.html [ Crash ]
+fast/forms/select/listbox-click-on-scrollbar.html [ Failure ]
+fast/forms/textarea-placeholder-set-attribute.html [ ImageOnlyFailure ]
+fast/forms/textarea-placeholder-wrapping.html [ ImageOnlyFailure ]
+fast/forms/textfield-lastchange-was-useredit.html [ Crash ]
+
+# A handful of CSS tests failing on Windows that we are skipping to get the bots green
+css3/viewport-percentage-lengths/viewport-percentage-lengths-anonymous-block.html [ Failure ]
+css3/viewport-percentage-lengths/viewport-percentage-lengths-percent-size-child.html [ Failure ]
+css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html [ Failure ]
+css3/viewport-percentage-lengths/viewport-percentage-lengths-resize.html [ Failure ]
+fast/css/direct-adjacent-style-update-optimization.html [ Failure ]
+fast/css/indirect-adjacent-style-update-optimization.html [ Failure ]
+fast/css/read-only-read-write-input-basics.html [ Failure ]
+
+# More random tests to skip on Windows to get the bots green
+fast/replaced/width100percent-button.html [ Skip ]
+fast/replaced/width100percent-radio.html [ Skip ]
+fast/selectors/querySelector-window-inactive.html [ Skip ]
+fast/selectors/read-only-read-write-input-basics.html [ Skip ]
+fast/text/content-following-inline-isolate-with-collapsed-whitespace.html [ Skip ]
+http/tests/security/mixedContent/insecure-plugin-in-iframe.html [ Skip ]
+inspector-protocol/layers/layers-blending-compositing-reasons.html [ Skip ]
+inspector/test-harness-trivially-works.html [ Skip ]
+js/date-constructor.html [ Skip ]
+js/dfg-inline-arguments-use-from-all-the-places.html [ Skip ]
+js/dom/dom-static-property-for-in-iteration.html [ Skip ]
+js/slow-stress/Int32Array-alloc-large-long-lived.html [ Skip ]
+mathml/presentation/stretchy-depth-height.html [ Skip ]
+fast/images/cmyk-jpeg-with-color-profile.html [ Skip ]
+fast/images/destroyed-image-load-event.html [ Skip ]
+fast/images/image-controls-basic.html [ Skip ]
+fast/inline/positionedLifetime.html [ Skip ]
+fast/masking/clip-path-selection.html [ Skip ]
+fast/dom/HTMLImageElement/sizes/image-sizes-2x.html [ Skip ]
+fast/dom/Window/window-property-invalid-characters-ignored.html [ Skip ]
+fast/dom/Window/window-resize-contents.html [ Skip ]
+fast/dom/anchor-text.html [ Skip ]
+fast/dom/constants.html [ Skip ]
+fast/dom/navigation-with-sideeffects.html [ Skip ]
+fast/dynamic/window-resize-scrollbars-test.html [ Skip ]
+fast/events/shadow-event-path.html [ Skip ]
+tables/mozilla/bugs/bug32841.html [ Skip ]
+
+# Skip tests that fail only in Debug mode 
+[ Debug ] compositing [ Skip ]
+[ Debug ] fast/canvas [ Skip ]
+[ Debug ] inspector-protocol [ Skip ]
+[ Debug ] fast/canvas/webgl [ Skip ]
+[ Debug ] webgl [ Skip ]

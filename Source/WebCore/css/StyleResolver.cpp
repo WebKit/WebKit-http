@@ -385,11 +385,11 @@ inline void StyleResolver::State::updateConversionData()
     m_cssToLengthConversionData = CSSToLengthConversionData(m_style.get(), m_rootElementStyle, m_element ? document().renderView() : nullptr);
 }
 
-inline void StyleResolver::State::initElement(Element* e)
+inline void StyleResolver::State::initElement(Element* element)
 {
-    m_element = e;
-    m_styledElement = e && e->isStyledElement() ? toStyledElement(e) : nullptr;
-    m_elementLinkState = e ? e->document().visitedLinkState().determineLinkState(*e) : NotInsideLink;
+    m_element = element;
+    m_styledElement = element && is<StyledElement>(element) ? downcast<StyledElement>(element) : nullptr;
+    m_elementLinkState = element ? element->document().visitedLinkState().determineLinkState(*element) : NotInsideLink;
     updateConversionData();
 }
 
@@ -409,7 +409,7 @@ inline void StyleResolver::State::initForStyleResolve(Document& document, Elemen
     m_regionForStyling = regionForStyling;
 
     if (e) {
-        bool resetStyleInheritance = hasShadowRootParent(*e) && toShadowRoot(e->parentNode())->resetStyleInheritance();
+        bool resetStyleInheritance = hasShadowRootParent(*e) && downcast<ShadowRoot>(*e->parentNode()).resetStyleInheritance();
         m_parentStyle = resetStyleInheritance ? nullptr : parentStyle;
     } else
         m_parentStyle = parentStyle;
@@ -444,16 +444,16 @@ static inline bool parentElementPreventsSharing(const Element* parentElement)
 Node* StyleResolver::locateCousinList(Element* parent, unsigned& visitedNodeCount) const
 {
     if (visitedNodeCount >= cStyleSearchThreshold * cStyleSearchLevelThreshold)
-        return 0;
-    if (!parent || !parent->isStyledElement())
-        return 0;
-    StyledElement* styledParent = toStyledElement(parent);
+        return nullptr;
+    if (!parent || !is<StyledElement>(parent))
+        return nullptr;
+    StyledElement* styledParent = downcast<StyledElement>(parent);
     if (styledParent->inlineStyle())
-        return 0;
-    if (styledParent->isSVGElement() && downcast<SVGElement>(*styledParent).animatedSMILStyleProperties())
-        return 0;
+        return nullptr;
+    if (is<SVGElement>(styledParent) && downcast<SVGElement>(*styledParent).animatedSMILStyleProperties())
+        return nullptr;
     if (styledParent->hasID() && m_ruleSets.features().idsInRules.contains(styledParent->idForStyleResolution().impl()))
-        return 0;
+        return nullptr;
 
     RenderStyle* parentStyle = styledParent->renderStyle();
     unsigned subcount = 0;
@@ -467,7 +467,7 @@ Node* StyleResolver::locateCousinList(Element* parent, unsigned& visitedNodeCoun
         while (currentNode) {
             ++subcount;
             if (currentNode->renderStyle() == parentStyle && currentNode->lastChild()
-                && currentNode->isElementNode() && !parentElementPreventsSharing(toElement(currentNode))
+                && is<Element>(currentNode) && !parentElementPreventsSharing(downcast<Element>(currentNode))
                 ) {
                 // Adjust for unused reserved tries.
                 visitedNodeCount -= cStyleSearchThreshold - subcount;
@@ -546,7 +546,7 @@ bool StyleResolver::canShareStyleWithControl(StyledElement* element) const
 static inline bool elementHasDirectionAuto(Element* element)
 {
     // FIXME: This line is surprisingly hot, we may wish to inline hasDirectionAuto into StyleResolver.
-    return element->isHTMLElement() && toHTMLElement(element)->hasDirectionAuto();
+    return is<HTMLElement>(element) && downcast<HTMLElement>(*element).hasDirectionAuto();
 }
 
 bool StyleResolver::sharingCandidateHasIdenticalStyleAffectingAttributes(StyledElement* sharingCandidate) const
@@ -650,10 +650,7 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
 
 #if ENABLE(VIDEO_TRACK)
     // Deny sharing styles between WebVTT and non-WebVTT nodes.
-    if (element->isWebVTTElement() != state.element()->isWebVTTElement())
-        return false;
-
-    if (element->isWebVTTElement() && state.element()->isWebVTTElement() && toWebVTTElement(element)->isPastNode() != toWebVTTElement(state.element())->isPastNode())
+    if (is<WebVTTElement>(state.element()))
         return false;
 #endif
 
@@ -667,14 +664,14 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
 inline StyledElement* StyleResolver::findSiblingForStyleSharing(Node* node, unsigned& count) const
 {
     for (; node; node = node->previousSibling()) {
-        if (!node->isStyledElement())
+        if (!is<StyledElement>(node))
             continue;
-        if (canShareStyleWithElement(toStyledElement(node)))
+        if (canShareStyleWithElement(downcast<StyledElement>(node)))
             break;
         if (count++ == cStyleSearchThreshold)
-            return 0;
+            return nullptr;
     }
-    return toStyledElement(node);
+    return downcast<StyledElement>(node);
 }
 
 RenderStyle* StyleResolver::locateSharedStyle()

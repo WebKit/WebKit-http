@@ -192,10 +192,10 @@ void DragController::dragExited(DragData& dragData)
         m_page.mainFrame().eventHandler().cancelDragAndDrop(createMouseEvent(dragData), dataTransfer.get());
         dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb); // Invalidate dataTransfer here for security.
     }
-    mouseMovedIntoDocument(0);
+    mouseMovedIntoDocument(nullptr);
     if (m_fileInputElementUnderMouse)
         m_fileInputElementUnderMouse->setCanReceiveDroppedFiles(false);
-    m_fileInputElementUnderMouse = 0;
+    m_fileInputElementUnderMouse = nullptr;
 }
 
 DragOperation DragController::dragUpdated(DragData& dragData)
@@ -255,7 +255,7 @@ DragOperation DragController::dragEnteredOrUpdated(DragData& dragData)
 
     m_dragDestinationAction = m_client.actionMaskForDrag(dragData);
     if (m_dragDestinationAction == DragDestinationActionNone) {
-        cancelDrag(); // FIXME: Why not call mouseMovedIntoDocument(0)?
+        cancelDrag(); // FIXME: Why not call mouseMovedIntoDocument(nullptr)?
         return DragOperationNone;
     }
 
@@ -273,8 +273,8 @@ static HTMLInputElement* asFileInput(Node* node)
     HTMLInputElement* inputElement = node->toInputElement();
 
     // If this is a button inside of the a file input, move up to the file input.
-    if (inputElement && inputElement->isTextButton() && inputElement->treeScope().rootNode().isShadowRoot())
-        inputElement = toShadowRoot(inputElement->treeScope().rootNode()).hostElement()->toInputElement();
+    if (inputElement && inputElement->isTextButton() && is<ShadowRoot>(inputElement->treeScope().rootNode()))
+        inputElement = downcast<ShadowRoot>(inputElement->treeScope().rootNode()).hostElement()->toInputElement();
 
     return inputElement && inputElement->isFileUpload() ? inputElement : 0;
 }
@@ -289,13 +289,13 @@ static Element* elementUnderMouse(Document* documentUnderMouse, const IntPoint& 
     HitTestResult result(point);
     documentUnderMouse->renderView()->hitTest(HitTestRequest(), result);
 
-    Node* n = result.innerNode();
-    while (n && !n->isElementNode())
-        n = n->parentNode();
-    if (n)
-        n = n->deprecatedShadowAncestorNode();
+    Node* node = result.innerNode();
+    while (node && !is<Element>(node))
+        node = node->parentNode();
+    if (node)
+        node = node->deprecatedShadowAncestorNode();
 
-    return toElement(n);
+    return downcast<Element>(node);
 }
 
 bool DragController::tryDocumentDrag(DragData& dragData, DragDestinationAction actionMask, DragOperation& dragOperation)
@@ -397,8 +397,8 @@ DragOperation DragController::operationForLoad(DragData& dragData)
 
     bool pluginDocumentAcceptsDrags = false;
 
-    if (doc && doc->isPluginDocument()) {
-        const Widget* widget = toPluginDocument(doc)->pluginWidget();
+    if (doc && is<PluginDocument>(doc)) {
+        const Widget* widget = downcast<PluginDocument>(*doc).pluginWidget();
         const PluginViewBase* pluginView = (widget && widget->isPluginViewBase()) ? toPluginViewBase(widget) : nullptr;
 
         if (pluginView)
@@ -552,8 +552,8 @@ bool DragController::canProcessDrag(DragData& dragData)
     if (dragData.containsFiles() && asFileInput(result.innerNonSharedNode()))
         return true;
 
-    if (result.innerNonSharedNode()->isPluginElement()) {
-        if (!toHTMLPlugInElement(result.innerNonSharedNode())->canProcessDrag() && !result.innerNonSharedNode()->hasEditableStyle())
+    if (is<HTMLPlugInElement>(result.innerNonSharedNode())) {
+        if (!downcast<HTMLPlugInElement>(result.innerNonSharedNode())->canProcessDrag() && !result.innerNonSharedNode()->hasEditableStyle())
             return false;
     } else if (!result.innerNonSharedNode()->hasEditableStyle())
         return false;

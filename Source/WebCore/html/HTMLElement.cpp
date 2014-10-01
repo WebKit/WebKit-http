@@ -40,6 +40,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
+#include "HTMLBDIElement.h"
 #include "HTMLBRElement.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
@@ -363,8 +364,8 @@ bool HTMLElement::matchesReadWritePseudoClass() const
 {
     const Element* currentElement = this;
     do {
-        if (currentElement->isHTMLElement()) {
-            switch (contentEditableType(toHTMLElement(*currentElement))) {
+        if (is<HTMLElement>(currentElement)) {
+            switch (contentEditableType(downcast<HTMLElement>(*currentElement))) {
             case ContentEditableType::True:
             case ContentEditableType::PlaintextOnly:
                 return true;
@@ -378,10 +379,8 @@ bool HTMLElement::matchesReadWritePseudoClass() const
     } while (currentElement);
 
     const Document& document = this->document();
-    if (document.isHTMLDocument()) {
-        const HTMLDocument& htmlDocument = toHTMLDocument(document);
-        return htmlDocument.inDesignMode();
-    }
+    if (is<HTMLDocument>(document))
+        return downcast<HTMLDocument>(document).inDesignMode();
     return false;
 }
 
@@ -437,11 +436,11 @@ void HTMLElement::setInnerHTML(const String& html, ExceptionCode& ec)
 static void mergeWithNextTextNode(Text& node, ExceptionCode& ec)
 {
     Node* next = node.nextSibling();
-    if (!next || !next->isTextNode())
+    if (!next || !is<Text>(next))
         return;
 
     Ref<Text> textNode(node);
-    Ref<Text> textNext(toText(*next));
+    Ref<Text> textNext(downcast<Text>(*next));
     textNode->appendData(textNext->data(), ec);
     if (ec)
         return;
@@ -451,11 +450,11 @@ static void mergeWithNextTextNode(Text& node, ExceptionCode& ec)
 void HTMLElement::setOuterHTML(const String& html, ExceptionCode& ec)
 {
     Element* p = parentElement();
-    if (!p || !p->isHTMLElement()) {
+    if (!p || !is<HTMLElement>(p)) {
         ec = NO_MODIFICATION_ALLOWED_ERR;
         return;
     }
-    RefPtr<HTMLElement> parent = toHTMLElement(p);
+    RefPtr<HTMLElement> parent = downcast<HTMLElement>(p);
     RefPtr<Node> prev = previousSibling();
     RefPtr<Node> next = nextSibling();
 
@@ -465,10 +464,10 @@ void HTMLElement::setOuterHTML(const String& html, ExceptionCode& ec)
       
     parent->replaceChild(fragment.release(), this, ec);
     RefPtr<Node> node = next ? next->previousSibling() : nullptr;
-    if (!ec && node && node->isTextNode())
-        mergeWithNextTextNode(toText(*node), ec);
-    if (!ec && prev && prev->isTextNode())
-        mergeWithNextTextNode(toText(*prev), ec);
+    if (!ec && node && is<Text>(*node))
+        mergeWithNextTextNode(downcast<Text>(*node), ec);
+    if (!ec && prev && is<Text>(*prev))
+        mergeWithNextTextNode(downcast<Text>(*prev), ec);
 }
 
 PassRefPtr<DocumentFragment> HTMLElement::textToFragment(const String& text, ExceptionCode& ec)
@@ -598,10 +597,10 @@ void HTMLElement::setOuterText(const String& text, ExceptionCode& ec)
     parent->replaceChild(newChild.release(), this, ec);
 
     RefPtr<Node> node = next ? next->previousSibling() : nullptr;
-    if (!ec && node && node->isTextNode())
-        mergeWithNextTextNode(toText(*node), ec);
-    if (!ec && prev && prev->isTextNode())
-        mergeWithNextTextNode(toText(*prev), ec);
+    if (!ec && node && is<Text>(*node))
+        mergeWithNextTextNode(downcast<Text>(*node), ec);
+    if (!ec && prev && is<Text>(*prev))
+        mergeWithNextTextNode(downcast<Text>(*prev), ec);
 }
 
 Node* HTMLElement::insertAdjacent(const String& where, Node* newChild, ExceptionCode& ec)
@@ -643,8 +642,8 @@ Element* HTMLElement::insertAdjacentElement(const String& where, Element* newChi
     }
 
     Node* returnValue = insertAdjacent(where, newChild, ec);
-    ASSERT_WITH_SECURITY_IMPLICATION(!returnValue || returnValue->isElementNode());
-    return toElement(returnValue); 
+    ASSERT_WITH_SECURITY_IMPLICATION(!returnValue || is<Element>(returnValue));
+    return downcast<Element>(returnValue); 
 }
 
 // Step 3 of http://www.whatwg.org/specs/web-apps/current-work/multipage/apis-in-html-documents.html#insertadjacenthtml()
@@ -652,12 +651,12 @@ static Element* contextElementForInsertion(const String& where, Element* element
 {
     if (equalIgnoringCase(where, "beforeBegin") || equalIgnoringCase(where, "afterEnd")) {
         ContainerNode* parent = element->parentNode();
-        if (parent && !parent->isElementNode()) {
+        if (parent && !is<Element>(parent)) {
             ec = NO_MODIFICATION_ALLOWED_ERR;
             return nullptr;
         }
-        ASSERT_WITH_SECURITY_IMPLICATION(!parent || parent->isElementNode());
-        return toElement(parent);
+        ASSERT_WITH_SECURITY_IMPLICATION(!parent || is<Element>(parent));
+        return downcast<Element>(parent);
     }
     if (equalIgnoringCase(where, "afterBegin") || equalIgnoringCase(where, "beforeEnd"))
         return element;
@@ -868,7 +867,10 @@ HTMLFormElement* HTMLElement::virtualForm() const
 
 static inline bool elementAffectsDirectionality(const Node& node)
 {
-    return node.isHTMLElement() && (toHTMLElement(node).hasTagName(bdiTag) || toHTMLElement(node).fastHasAttribute(dirAttr));
+    if (!is<HTMLElement>(node))
+        return false;
+    const HTMLElement& element = downcast<HTMLElement>(node);
+    return is<HTMLBDIElement>(element) || element.fastHasAttribute(dirAttr);
 }
 
 static void setHasDirAutoFlagRecursively(Node* firstNode, bool flag, Node* lastNode = nullptr)
@@ -919,8 +921,8 @@ TextDirection HTMLElement::directionalityIfhasDirAutoAttribute(bool& isAuto) con
 
 TextDirection HTMLElement::directionality(Node** strongDirectionalityTextNode) const
 {
-    if (isHTMLTextFormControlElement(*this)) {
-        HTMLTextFormControlElement& textElement = toHTMLTextFormControlElement(const_cast<HTMLElement&>(*this));
+    if (is<HTMLTextFormControlElement>(*this)) {
+        HTMLTextFormControlElement& textElement = downcast<HTMLTextFormControlElement>(const_cast<HTMLElement&>(*this));
         bool hasStrongDirectionality;
         UCharDirection textDirection = textElement.value().defaultWritingDirection(&hasStrongDirectionality);
         if (strongDirectionalityTextNode)
@@ -932,14 +934,14 @@ TextDirection HTMLElement::directionality(Node** strongDirectionalityTextNode) c
     while (node) {
         // Skip bdi, script, style and text form controls.
         if (equalIgnoringCase(node->nodeName(), "bdi") || node->hasTagName(scriptTag) || node->hasTagName(styleTag) 
-            || (node->isElementNode() && toElement(node)->isTextFormControl())) {
+            || (is<Element>(node) && downcast<Element>(*node).isTextFormControl())) {
             node = NodeTraversal::nextSkippingChildren(node, this);
             continue;
         }
 
         // Skip elements with valid dir attribute
-        if (node->isElementNode()) {
-            AtomicString dirAttributeValue = toElement(node)->fastGetAttribute(dirAttr);
+        if (is<Element>(node)) {
+            AtomicString dirAttributeValue = downcast<Element>(*node).fastGetAttribute(dirAttr);
             if (isLTROrRTLIgnoringCase(dirAttributeValue) || equalIgnoringCase(dirAttributeValue, "auto")) {
                 node = NodeTraversal::nextSkippingChildren(node, this);
                 continue;
@@ -966,8 +968,8 @@ void HTMLElement::dirAttributeChanged(const AtomicString& value)
 {
     Element* parent = parentElement();
 
-    if (parent && parent->isHTMLElement() && parent->selfOrAncestorHasDirAutoAttribute())
-        toHTMLElement(parent)->adjustDirectionalityIfNeededAfterChildAttributeChanged(this);
+    if (parent && is<HTMLElement>(parent) && parent->selfOrAncestorHasDirAutoAttribute())
+        downcast<HTMLElement>(*parent).adjustDirectionalityIfNeededAfterChildAttributeChanged(this);
 
     if (equalIgnoringCase(value, "auto"))
         calculateAndAdjustDirectionality();

@@ -178,7 +178,7 @@ void ColorInputType::didChooseColor(const Color& color)
 
 void ColorInputType::didEndChooser()
 {
-    m_chooser.clear();
+    m_chooser = nullptr;
 }
 
 void ColorInputType::endColorChooser()
@@ -199,7 +199,7 @@ void ColorInputType::updateColorSwatch()
 HTMLElement* ColorInputType::shadowColorSwatch() const
 {
     ShadowRoot* shadow = element().userAgentShadowRoot();
-    return shadow ? toHTMLElement(shadow->firstChild()->firstChild()) : 0;
+    return shadow ? downcast<HTMLElement>(shadow->firstChild()->firstChild()) : nullptr;
 }
 
 IntRect ColorInputType::elementRectRelativeToRootView() const

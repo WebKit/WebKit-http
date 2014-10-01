@@ -157,17 +157,11 @@ private:
     bool m_plugInDimensionsSpecified;
 };
 
-void isHTMLPlugInImageElement(const HTMLPlugInImageElement&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isHTMLPlugInImageElement(const HTMLPlugInElement& element) { return element.isPlugInImageElement(); }
-inline bool isHTMLPlugInImageElement(const Node& node) { return node.isPluginElement() && toHTMLPlugInElement(node).isPlugInImageElement(); }
-
-template <typename ArgType>
-struct NodeTypeCastTraits<const HTMLPlugInImageElement, ArgType> {
-    static bool isType(ArgType& node) { return isHTMLPlugInImageElement(node); }
-};
-
-NODE_TYPE_CASTS(HTMLPlugInImageElement)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLPlugInImageElement)
+    static bool isType(const WebCore::HTMLPlugInElement& element) { return element.isPlugInImageElement(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLPlugInElement>(node) && isType(downcast<WebCore::HTMLPlugInElement>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // HTMLPlugInImageElement_h

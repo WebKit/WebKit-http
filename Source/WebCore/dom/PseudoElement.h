@@ -77,10 +77,10 @@ inline bool pseudoElementRendererIsNeeded(const RenderStyle* style)
     return style && style->display() != NONE && (style->contentData() || style->hasFlowFrom());
 }
 
-void isPseudoElement(const PseudoElement&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isPseudoElement(const Node& node) { return node.isPseudoElement(); }
-NODE_TYPE_CASTS(PseudoElement)
+} // namespace WebCore
 
-} // namespace
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::PseudoElement)
+    static bool isType(const WebCore::Node& node) { return node.isPseudoElement(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

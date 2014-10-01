@@ -75,13 +75,9 @@ private:
     bool m_hasDistribution;
 };
 
-inline bool isInsertionPoint(const Node& node) { return node.isInsertionPoint(); }
-
-NODE_TYPE_CASTS(InsertionPoint);
-
 inline bool isActiveInsertionPoint(const Node* node)
 {
-    return node && node->isInsertionPoint() && toInsertionPoint(node)->isActive();
+    return node && is<InsertionPoint>(node) && downcast<InsertionPoint>(*node).isActive();
 }
 
 inline Node* parentNodeForDistribution(const Node* node)
@@ -89,22 +85,22 @@ inline Node* parentNodeForDistribution(const Node* node)
     ASSERT(node);
 
     if (Node* parent = node->parentNode()) {
-        if (parent->isInsertionPoint() && toInsertionPoint(parent)->shouldUseFallbackElements())
+        if (is<InsertionPoint>(parent) && downcast<InsertionPoint>(*parent).shouldUseFallbackElements())
             return parent->parentNode();
         return parent;
     }
 
-    return 0;
+    return nullptr;
 }
 
 inline Element* parentElementForDistribution(const Node* node)
 {
     if (Node* parent = parentNodeForDistribution(node)) {
-        if (parent->isElementNode())
-            return toElement(parent);
+        if (is<Element>(parent))
+            return downcast<Element>(parent);
     }
 
-    return 0;
+    return nullptr;
 }
 
 inline ShadowRoot* shadowRootOfParentForDistribution(const Node* node)
@@ -113,7 +109,7 @@ inline ShadowRoot* shadowRootOfParentForDistribution(const Node* node)
     if (Element* parent = parentElementForDistribution(node))
         return parent->shadowRoot();
 
-    return 0;
+    return nullptr;
 }
 
 InsertionPoint* findInsertionPointOf(const Node*);
@@ -126,5 +122,9 @@ inline bool hasShadowRootOrActiveInsertionPointParent(const Node& node)
 }
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::InsertionPoint)
+    static bool isType(const WebCore::Node& node) { return node.isInsertionPoint(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // InsertionPoint_h

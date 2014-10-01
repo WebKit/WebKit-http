@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import unittest2 as unittest
+import unittest
 
 from webkitpy.common.net.layouttestresults import LayoutTestResults
 from webkitpy.common.net.buildbot import BuildBot, Builder, Build
@@ -48,7 +48,7 @@ class BuilderTest(unittest.TestCase):
                 is_green=build_number < 4
             )
             results = [self._mock_test_result(testname) for testname in failure(build_number)]
-            layout_test_results = LayoutTestResults(results)
+            layout_test_results = LayoutTestResults(test_results=results, did_exceed_test_failure_limit=False)
             def mock_layout_test_results():
                 return layout_test_results
             build.layout_test_results = mock_layout_test_results
@@ -61,7 +61,7 @@ class BuilderTest(unittest.TestCase):
         self._install_fetch_build(lambda build_number: ["test1", "test2"])
 
     def test_latest_layout_test_results(self):
-        self.builder.fetch_layout_test_results = lambda results_url: LayoutTestResults([self._mock_test_result(testname) for testname in ["test1", "test2"]])
+        self.builder.fetch_layout_test_results = lambda results_url: LayoutTestResults(test_results=[self._mock_test_result(testname) for testname in ["test1", "test2"]], did_exceed_test_failure_limit=False)
         self.builder.accumulated_results_url = lambda: "http://dummy_url.org"
         self.assertTrue(self.builder.latest_layout_test_results())
 

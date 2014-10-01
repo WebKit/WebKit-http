@@ -297,8 +297,8 @@ Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement& ownerElement, const U
     bool allowsScrolling = true;
     int marginWidth = -1;
     int marginHeight = -1;
-    if (ownerElement.hasTagName(frameTag) || ownerElement.hasTagName(iframeTag)) {
-        HTMLFrameElementBase& frameElementBase = toHTMLFrameElementBase(ownerElement);
+    if (is<HTMLFrameElementBase>(ownerElement)) {
+        HTMLFrameElementBase& frameElementBase = downcast<HTMLFrameElementBase>(ownerElement);
         allowsScrolling = frameElementBase.scrollingMode() != ScrollbarAlwaysOff;
         marginWidth = frameElementBase.marginWidth();
         marginHeight = frameElementBase.marginHeight();
@@ -393,7 +393,7 @@ bool SubframeLoader::loadPlugin(HTMLPlugInImageElement& pluginElement, const URL
     pluginElement.subframeLoaderWillCreatePlugIn(url);
 
     IntSize contentSize = roundedIntSize(LayoutSize(renderer->contentWidth(), renderer->contentHeight()));
-    bool loadManually = document()->isPluginDocument() && !m_containsPlugins && toPluginDocument(document())->shouldLoadPluginManually();
+    bool loadManually = is<PluginDocument>(document()) && !m_containsPlugins && downcast<PluginDocument>(*document()).shouldLoadPluginManually();
 
 #if PLATFORM(IOS)
     // On iOS, we only tell the plugin to be in full page mode if the containing plugin document is the top level document.

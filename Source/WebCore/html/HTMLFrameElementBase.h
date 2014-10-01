@@ -76,12 +76,11 @@ private:
     int m_marginHeight;
 };
 
-void isHTMLFrameElementBase(const HTMLFrameElementBase&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isHTMLFrameElementBase(const HTMLElement& element) { return is<HTMLFrameElement>(element) || is<HTMLIFrameElement>(element); }
-inline bool isHTMLFrameElementBase(const Node& node) { return is<HTMLFrameElement>(node) || is<HTMLIFrameElement>(node); }
-
-NODE_TYPE_CASTS(HTMLFrameElementBase)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLFrameElementBase)
+    static bool isType(const WebCore::HTMLElement& element) { return is<WebCore::HTMLFrameElement>(element) || is<WebCore::HTMLIFrameElement>(element); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // HTMLFrameElementBase_h

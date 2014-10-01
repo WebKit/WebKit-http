@@ -74,10 +74,10 @@ ScheduledAction::ScheduledAction(ExecState* exec, JSValue function, DOMWrapperWo
 
 void ScheduledAction::execute(ScriptExecutionContext* context)
 {
-    if (context->isDocument())
-        execute(toDocument(context));
+    if (is<Document>(context))
+        execute(downcast<Document>(context));
     else
-        execute(toWorkerGlobalScope(context));
+        execute(downcast<WorkerGlobalScope>(context));
 }
 
 void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSValue thisValue, ScriptExecutionContext* context)

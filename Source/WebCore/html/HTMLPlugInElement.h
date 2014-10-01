@@ -51,7 +51,8 @@ public:
 
     PassRefPtr<JSC::Bindings::Instance> getInstance();
 
-    WEBCORE_EXPORT Widget* pluginWidget() const;
+    enum class PluginLoadingPolicy { DoNotLoad, Load };
+    WEBCORE_EXPORT Widget* pluginWidget(PluginLoadingPolicy = PluginLoadingPolicy::Load) const;
 
     enum DisplayState {
         WaitingForSnapshot,
@@ -116,7 +117,8 @@ private:
 
     bool dispatchBeforeLoadEvent(const String& sourceURL); // Not implemented, generates a compile error if subclasses call this by mistake.
 
-    virtual RenderWidget* renderWidgetForJSBindings() const = 0;
+    // This will load the plugin if necessary.
+    virtual RenderWidget* renderWidgetLoadingPlugin() const = 0;
 
     virtual bool supportsFocus() const override;
 
@@ -134,10 +136,10 @@ private:
     DisplayState m_displayState;
 };
 
-void isHTMLPlugInElement(const HTMLPlugInElement&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isHTMLPlugInElement(const Node& node) { return node.isPluginElement(); }
-NODE_TYPE_CASTS(HTMLPlugInElement)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLPlugInElement)
+    static bool isType(const WebCore::Node& node) { return node.isPluginElement(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // HTMLPlugInElement_h

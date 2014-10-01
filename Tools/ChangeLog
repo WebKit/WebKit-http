@@ -1,3 +1,640 @@
+2014-09-30  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove thirdparty/unittest2 from webkitpy
+        https://bugs.webkit.org/show_bug.cgi?id=137251
+
+        Reviewed by Brent Fulgham.
+
+        Additionally ordered imports in related webkitpy files and
+        removed unnecessary shebangs from unittest files.
+
+        * BuildSlaveSupport/build.webkit.org-config/htdigestparser_unittest.py:
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py:
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        * Scripts/webkitpy/common/checkout/commitinfo_unittest.py:
+        * Scripts/webkitpy/common/checkout/diff_parser_unittest.py:
+        * Scripts/webkitpy/common/checkout/scm/detection_unittest.py:
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        * Scripts/webkitpy/common/config/committers_unittest.py:
+        * Scripts/webkitpy/common/config/committervalidator_unittest.py:
+        * Scripts/webkitpy/common/config/contributionareas_unittest.py:
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        * Scripts/webkitpy/common/config/urls_unittest.py:
+        * Scripts/webkitpy/common/editdistance_unittest.py:
+        * Scripts/webkitpy/common/find_files_unittest.py:
+        * Scripts/webkitpy/common/lru_cache_unittest.py:
+        * Scripts/webkitpy/common/memoized_unittest.py:
+        * Scripts/webkitpy/common/net/bugzilla/bug_unittest.py:
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_unittest.py:
+        * Scripts/webkitpy/common/net/buildbot/buildbot_unittest.py:
+        * Scripts/webkitpy/common/net/credentials_unittest.py:
+        * Scripts/webkitpy/common/net/failuremap_unittest.py:
+        * Scripts/webkitpy/common/net/irc/ircproxy_unittest.py:
+        * Scripts/webkitpy/common/net/layouttestresults_unittest.py:
+        * Scripts/webkitpy/common/net/networktransaction_unittest.py:
+        * Scripts/webkitpy/common/net/resultsjsonparser_unittest.py:
+        * Scripts/webkitpy/common/net/statusserver_unittest.py:
+        * Scripts/webkitpy/common/net/unittestresults_unittest.py:
+        * Scripts/webkitpy/common/newstringio_unittest.py:
+        * Scripts/webkitpy/common/prettypatch_unittest.py:
+        * Scripts/webkitpy/common/read_checksum_from_png_unittest.py:
+        * Scripts/webkitpy/common/system/crashlogs_unittest.py:
+        * Scripts/webkitpy/common/system/environment_unittest.py:
+        * Scripts/webkitpy/common/system/executive.py: Ordered imports.
+        * Scripts/webkitpy/common/system/executive_mock.py: Ordered imports.
+        * Scripts/webkitpy/common/system/executive_unittest.py:
+        * Scripts/webkitpy/common/system/file_lock_integrationtest.py:
+        * Scripts/webkitpy/common/system/filesystem_mock_unittest.py:
+        * Scripts/webkitpy/common/system/filesystem_unittest.py:
+        * Scripts/webkitpy/common/system/logtesting.py:
+        * Scripts/webkitpy/common/system/logutils_unittest.py:
+        * Scripts/webkitpy/common/system/outputcapture.py:
+        * Scripts/webkitpy/common/system/outputcapture_unittest.py:
+        * Scripts/webkitpy/common/system/outputtee_unittest.py:
+        * Scripts/webkitpy/common/system/path_unittest.py:
+        * Scripts/webkitpy/common/system/platforminfo_unittest.py:
+        * Scripts/webkitpy/common/system/profiler_unittest.py:
+        * Scripts/webkitpy/common/system/stack_utils_unittest.py:
+        * Scripts/webkitpy/common/system/user_unittest.py:
+        * Scripts/webkitpy/common/system/workspace_unittest.py:
+        * Scripts/webkitpy/common/system/zipfileset_unittest.py:
+        * Scripts/webkitpy/common/thread/messagepump_unittest.py:
+        * Scripts/webkitpy/common/thread/threadedmessagequeue_unittest.py:
+        * Scripts/webkitpy/common/watchlist/amountchangedpattern_unittest.py:
+        * Scripts/webkitpy/common/watchlist/changedlinepattern_unittest.py:
+        * Scripts/webkitpy/common/watchlist/filenamepattern_unittest.py:
+        * Scripts/webkitpy/common/watchlist/watchlist_unittest.py:
+        * Scripts/webkitpy/common/watchlist/watchlistrule_unittest.py:
+        * Scripts/webkitpy/common/webkitunittest.py:
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner_unittest.py:
+        * Scripts/webkitpy/layout_tests/controllers/manager_unittest.py:
+        * Scripts/webkitpy/layout_tests/controllers/test_result_writer_unittest.py:
+        * Scripts/webkitpy/layout_tests/layout_package/json_results_generator_unittest.py:
+        * Scripts/webkitpy/layout_tests/lint_test_expectations_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_configuration_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_expectations_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_failures_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_results_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_run_results_unittest.py:
+        * Scripts/webkitpy/layout_tests/run_webkit_tests_integrationtest.py:
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server_unittest.py:
+        * Scripts/webkitpy/layout_tests/servers/http_server_base_unittest.py:
+        * Scripts/webkitpy/layout_tests/servers/http_server_integrationtest.py:
+        * Scripts/webkitpy/layout_tests/servers/http_server_unittest.py:
+        * Scripts/webkitpy/layout_tests/views/buildbot_results_unittest.py:
+        * Scripts/webkitpy/layout_tests/views/metered_stream_unittest.py:
+        * Scripts/webkitpy/layout_tests/views/printing_unittest.py:
+        * Scripts/webkitpy/performance_tests/perftest_unittest.py:
+        * Scripts/webkitpy/performance_tests/perftestsrunner_integrationtest.py:
+        * Scripts/webkitpy/performance_tests/perftestsrunner_unittest.py:
+        * Scripts/webkitpy/port/base_unittest.py:
+        * Scripts/webkitpy/port/builders_unittest.py:
+        * Scripts/webkitpy/port/config_unittest.py:
+        * Scripts/webkitpy/port/driver_unittest.py:
+        * Scripts/webkitpy/port/efl_unittest.py:
+        * Scripts/webkitpy/port/factory_unittest.py:
+        * Scripts/webkitpy/port/gtk_unittest.py:
+        * Scripts/webkitpy/port/http_lock_unittest.py:
+        * Scripts/webkitpy/port/image_diff_unittest.py:
+        * Scripts/webkitpy/port/leakdetector_unittest.py:
+        * Scripts/webkitpy/port/leakdetector_valgrind_unittest.py:
+        * Scripts/webkitpy/port/linux_get_crash_log_unittest.py:
+        * Scripts/webkitpy/port/mock_drt_unittest.py:
+        * Scripts/webkitpy/port/port_testcase.py:
+        * Scripts/webkitpy/port/server_process_unittest.py:
+        * Scripts/webkitpy/port/westondriver_unittest.py:
+        * Scripts/webkitpy/port/win_unittest.py:
+        * Scripts/webkitpy/port/xvfbdriver_unittest.py:
+        * Scripts/webkitpy/style/checker_unittest.py:
+        * Scripts/webkitpy/style/checkers/changelog_unittest.py:
+        * Scripts/webkitpy/style/checkers/cmake_unittest.py:
+        * Scripts/webkitpy/style/checkers/common_unittest.py:
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        * Scripts/webkitpy/style/checkers/exportfile_unittest.py:
+        * Scripts/webkitpy/style/checkers/js_unittest.py:
+        * Scripts/webkitpy/style/checkers/jsonchecker_unittest.py:
+        * Scripts/webkitpy/style/checkers/messagesin_unittest.py:
+        * Scripts/webkitpy/style/checkers/png_unittest.py:
+        * Scripts/webkitpy/style/checkers/python_unittest.py:
+        * Scripts/webkitpy/style/checkers/test_expectations_unittest.py:
+        * Scripts/webkitpy/style/checkers/text_unittest.py:
+        * Scripts/webkitpy/style/checkers/watchlist_unittest.py:
+        * Scripts/webkitpy/style/checkers/xcodeproj_unittest.py:
+        * Scripts/webkitpy/style/checkers/xml_unittest.py:
+        * Scripts/webkitpy/style/error_handlers_unittest.py:
+        * Scripts/webkitpy/style/filereader_unittest.py:
+        * Scripts/webkitpy/style/filter_unittest.py:
+        * Scripts/webkitpy/style/main_unittest.py:
+        * Scripts/webkitpy/style/optparser_unittest.py:
+        * Scripts/webkitpy/style/patchreader_unittest.py:
+        * Scripts/webkitpy/test/finder_unittest.py:
+        * Scripts/webkitpy/test/main.py: Ordered imports.
+        * Scripts/webkitpy/test/main_unittest.py:
+        * Scripts/webkitpy/test/printer.py: Ordered imports.
+        (Printer.configure):
+        * Scripts/webkitpy/test/runner_unittest.py:
+        * Scripts/webkitpy/test/skip_unittest.py:
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_irc):
+        (AutoinstallImportHook._install_unittest2): Deleted.
+        * Scripts/webkitpy/thirdparty/__init___unittest.py:
+        * Scripts/webkitpy/thirdparty/ordered_dict.py: Removed.
+        * Scripts/webkitpy/to_be_moved/update_webgl_conformance_tests_unittest.py:
+        * Scripts/webkitpy/tool/bot/botinfo_unittest.py:
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        * Scripts/webkitpy/tool/bot/expectedfailures_unittest.py:
+        * Scripts/webkitpy/tool/bot/feeders_unittest.py:
+        * Scripts/webkitpy/tool/bot/flakytestreporter_unittest.py:
+        * Scripts/webkitpy/tool/bot/irc_command_unittest.py:
+        * Scripts/webkitpy/tool/bot/ircbot_unittest.py:
+        * Scripts/webkitpy/tool/bot/layouttestresultsreader_unittest.py:
+        * Scripts/webkitpy/tool/bot/queueengine_unittest.py:
+        * Scripts/webkitpy/tool/bot/sheriff_unittest.py:
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        * Scripts/webkitpy/tool/commands/newcommitbot_unittest.py:
+        * Scripts/webkitpy/tool/commands/perfalizer_unittest.py:
+        * Scripts/webkitpy/tool/commands/queries_unittest.py:
+        * Scripts/webkitpy/tool/commands/queuestest.py:
+        * Scripts/webkitpy/tool/commands/rebaseline_unittest.py:
+        * Scripts/webkitpy/tool/grammar_unittest.py:
+        * Scripts/webkitpy/tool/mocktool_unittest.py:
+        * Scripts/webkitpy/tool/multicommandtool_unittest.py:
+        * Scripts/webkitpy/tool/servers/gardeningserver_unittest.py:
+        * Scripts/webkitpy/tool/servers/rebaselineserver_unittest.py:
+        * Scripts/webkitpy/tool/servers/reflectionhandler_unittest.py:
+        * Scripts/webkitpy/tool/steps/addsvnmimetypeforpng_unittest.py:
+        * Scripts/webkitpy/tool/steps/applywatchlist_unittest.py:
+        * Scripts/webkitpy/tool/steps/cleanworkingdirectory_unittest.py:
+        * Scripts/webkitpy/tool/steps/closebugforlanddiff_unittest.py:
+        * Scripts/webkitpy/tool/steps/commit_unittest.py:
+        * Scripts/webkitpy/tool/steps/discardlocalchanges_unittest.py:
+        * Scripts/webkitpy/tool/steps/haslanded_unittest.py:
+        * Scripts/webkitpy/tool/steps/preparechangelog_unittest.py:
+        * Scripts/webkitpy/tool/steps/preparechangelogforrevert_unittest.py:
+        * Scripts/webkitpy/tool/steps/runtests_unittest.py:
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+        * Scripts/webkitpy/tool/steps/suggestreviewers_unittest.py:
+        * Scripts/webkitpy/tool/steps/update_unittest.py:
+        * Scripts/webkitpy/tool/steps/updatechangelogswithreview_unittest.py:
+        * Scripts/webkitpy/tool/steps/validatechangelogs_unittest.py:
+        * Scripts/webkitpy/w3c/test_converter_unittest.py:
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        * Scripts/webkitpy/w3c/test_parser_unittest.py:
+
+2014-09-30  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        LayoutTestResults and ExpectedFailures should know about the
+        interrupted flag from the json results file
+        https://bugs.webkit.org/show_bug.cgi?id=137229
+
+        Reviewed by Daniel Bates.
+
+        Changes LayoutTestResults to use the interrupted flag instead of
+        counting failures.
+
+        * Scripts/webkitpy/common/net/buildbot/buildbot_unittest.py:
+        (BuilderTest._install_fetch_build._mock_fetch_build):
+        (BuilderTest.test_latest_layout_test_results):
+        * Scripts/webkitpy/common/net/layouttestresults.py:
+        Removes notion of failure_limit_count, and adds
+        did_exceed_test_failure_limit.
+
+        (LayoutTestResults.results_from_string):
+        (LayoutTestResults.__init__):
+        (LayoutTestResults.did_exceed_test_failure_limit):
+        (LayoutTestResults): Deleted.
+        (LayoutTestResults.set_failure_limit_count): Deleted.
+        (LayoutTestResults.failure_limit_count): Deleted.
+        * Scripts/webkitpy/common/net/layouttestresults_unittest.py:
+        Removes unit test for failure_limit_count logic.
+
+        (LayoutTestResultsTest.test_set_failure_limit_count): Deleted.
+        * Scripts/webkitpy/common/net/resultsjsonparser.py:
+        Instead of providing a class method that returns a list of
+        TestResults objects, resultsjsonparser now provides a class
+        ParsedJSONResults that serves as an interface between the results.json
+        file and the rest of webkitpy.
+
+        (ParsedJSONResults):
+        (ParsedJSONResults.__init__):
+        (ParsedJSONResults.did_exceed_test_failure_limit):
+        (ParsedJSONResults.test_results):
+        (ResultsJSONParser): Deleted.
+        (ResultsJSONParser.parse_results_json): Deleted.
+        * Scripts/webkitpy/common/net/resultsjsonparser_unittest.py:
+        Updates the unit test so that it can test the new ResultsJSONParser
+        class.
+
+        (ParsedJSONResultsTest):
+        (test_basic):
+        (ResultsJSONParserTest): Deleted.
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        Updates the unit test to instantiate ResultsJSONParser objects rather
+        than simple lists of TestResult objects.
+
+        (MockCommitQueue.test_results):
+        (FailingTestCommitQueue.test_results):
+        (test_flaky_test_failure):
+        (test_failed_archive):
+        * Scripts/webkitpy/tool/bot/expectedfailures.py:
+        Updates ExpectedFailures to use the did_exceed_test_failure_limit
+        method rather than counting the number of failed tests.
+
+        (ExpectedFailures._should_trust):
+        * Scripts/webkitpy/tool/bot/expectedfailures_unittest.py:
+        Updates MockResults to more closely resemble the updated
+        LayoutTestResults class.
+
+        (MockResults.__init__):
+        (MockResults.did_exceed_test_failure_limit):
+        (ExpectedFailuresTest.test_can_trust_results):
+        (ExpectedFailuresTest.test_unexpected_failures_observed):
+        (ExpectedFailuresTest.test_unexpected_failures_observed_when_tree_is_hosed):
+        (MockResults.failure_limit_count): Deleted.
+        * Scripts/webkitpy/tool/bot/layouttestresultsreader.py:
+        Removes a FIXME regarding the use of the
+        NON_INTERACTIVE_FAILURE_LIMIT_COUNT value.
+
+        (LayoutTestResultsReader.results):
+        * Scripts/webkitpy/tool/bot/layouttestresultsreader_unittest.py:
+        Updates test to not check the now-nonexistant failure_count_limit
+        method.
+
+        (test_missing_unit_test_results_path):
+        (test_layout_test_results):
+        * Scripts/webkitpy/tool/servers/rebaselineserver_unittest.py:
+        Accounts for name change: ResultsJSONParserTest ->
+        ParsedJSONParserTest.
+
+        (RebaselineTestTest.test_gather_baselines):
+
+2014-09-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Rename TEST_THEME_DIR macro
+        https://bugs.webkit.org/show_bug.cgi?id=137244
+
+        Reviewed by Csaba Osztrogonác.
+
+        TEST_THEME_DIR is to get a path for default theme though, it has used TEST_ prefix.
+        DEFAULT_THEME_DIR is better than it.
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+        * TestWebKitAPI/efl/PlatformWebView.cpp:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView):
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::PlatformWebView):
+
+2014-09-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Windows EWS went purple when it failed to build
+        https://bugs.webkit.org/show_bug.cgi?id=137267
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/app.yaml: Update the version.
+
+        * QueueStatusServer/model/attachment.py: (Attachment._calculate_queue_positions):
+        Make it work for style and win-ews queues.
+
+2014-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be fun and easy to run every possible JavaScript benchmark from the command line
+        https://bugs.webkit.org/show_bug.cgi?id=137245
+
+        Reviewed by Oliver Hunt.
+        
+        We previously had Tools/Scripts/bencher.  Then we stopped adding things to it because we
+        weren't sure about the licensing of things like Kraken and Octane.  Various people ended up
+        having their own private scripts for doing benchmark runs, and didn't share them in the open
+        source community, because of fears about the shady licensing of the benchmarks suites that
+        they were running. The dominant version of this was "run-jsc-benchmarks", which has a lot of
+        excellent power - it can run benchmarks through either jsc, DumpRenferTree, or
+        WebKitTestRunner; it can run tests on any number of remote machines; and it has inside
+        knowledge about how to run *a lot* of test suites. Many of those test suites are not public,
+        but some of them are. The non-public tests are exclusively those that were not made by any
+        WebKit contributor, but which JSC/WebKit devs found useful for testing.
+
+        This fixes this weirdness by releasing run-jsc-benchmarks. The paths to the test suites
+        whose licenses are incompatible with WebKit's (to the extent that they cannot be safely
+        checked into WebKit svn at all) can be run by passing the path to them via a configuration
+        file. The default configuration file is ~/.run-jsc-benchmarks. The most important benchmark
+        suites are Octane version 2 and Kraken version 1.1. We should probably check Octane 2 into
+        WebKit eventually because it seems that the license is fine. Kraken, on the other hand, will
+        probably never be checked in because there is no license text anywhere in that benchmark.
+        A valid ~/.run-jsc-benchmarks file will just be something like:
+        
+            {
+                "OctanePath": "/path/to/Octane2",
+                "KrakenPath": "/path/to/Kraken-1.1/tests/kraken-1.1"
+            }
+        
+        If your ~/.run-jsc-benchmarks file omits the directory for any particular test suite, then
+        run-jsc-benchmarks will just gracefully avoid running that test suite.
+        
+        Finally, a word about policy: it is understood that different organizations that do
+        development on JSC may find themselves having internal benchmarks that they cannot share
+        because of weird licensing. It happens - usually because the organization doing JSC
+        development found some test in the wild that is owned by someone else and therefore cannot
+        be shared. So, we should consider it acceptable to write patches against run-jsc-benchmarks
+        that add support for some new kind of benchmark suite even if the suite is not made public
+        as part of the same patch - so long as the patch isn't too invasive. An example of
+        non-invasiveness is the DSPJS suite, which is implemented using some new classes (like
+        DSPJSAmmoJSRegularBenchmark) and some calls to otherwise reusable functions (like
+        emitSelfContainedBenchRunCode). It is obviously super helpful if a benchmark suite can be
+        completely open-sourced and committed to the WebKit repo - but the reality is that this
+        can't always be done safely.
+
+        * Scripts/bencher: Removed.
+        * Scripts/run-jsc-benchmarks: Added.
+
+2014-09-30  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Back to 2 child processes for NRWT on Windows.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_child_processes):
+        Changing the number of processes to 1 did not have an effect on the layout test results. 
+        It does introduce an issue with one of the workers hanging indefinitely and causing the 
+        layout tests to timeout as a whole occasionally, but we should just fix that.
+
+2014-09-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove an accidentally committed line..
+
+        * QueueStatusServer/handlers/statusbubble.py:
+        (StatusBubble._build_bubble):
+
+2014-09-30  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Switch EWS view to using actual retry count
+        https://bugs.webkit.org/show_bug.cgi?id=137240
+
+        Reviewed by Ryosuke Niwa.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueue.js:
+        (EWSQueue.prototype.loadDetailedStatus):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueueView.js:
+        (EWSQueueView.prototype._popoverContentForEWSQueue):
+        Use the new retry_count data member from JSON.
+
+        * QueueStatusServer/app.yaml: Updating the version.
+
+        * QueueStatusServer/handlers/queuestatusjson.py: (QueueStatusJSON._rows_for_work_items):
+        Instead of message_count, produce retry_count.
+
+2014-09-30  Alexey Proskuryakov  <ap@apple.com>
+
+        EWS doesn't need to show all the bubbles when a patch fails to apply
+        https://bugs.webkit.org/show_bug.cgi?id=137256
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/app.yaml: Updated app version.
+
+        * QueueStatusServer/handlers/statusbubble.py:
+        (StatusBubble._build_bubble):
+        (StatusBubble._build_bubbles_for_attachment):
+        (StatusBubble.get):
+        * QueueStatusServer/templates/statusbubble.html:
+        When some queues fail to apply, and no queues had meaningful output (meaning that
+        they will almost certainly fail to apply later), we can show a single bubble
+        telling the user just that.
+
+2014-09-30  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Bump EFL version to 1.11.2
+        https://bugs.webkit.org/show_bug.cgi?id=137118
+
+        Reviewed by Gyuyoung Kim.
+
+        Disable NEON for EFL build because the build system doesn't pass the necessary -mfpu=neon flag to the compiler.
+        Tools/efl/patches/ecore.patch: Removed, because this fix is already in EFL.
+
+        * efl/jhbuild.modules:
+        * efl/patches/ecore.patch: Removed.
+
+2014-09-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r173929): [GTK] TestInspector fails after r173929
+        https://bugs.webkit.org/show_bug.cgi?id=137247
+
+        Reviewed by Philippe Normand.
+
+        Wait until can-attach property changes before trying to attach the
+        inspector after resizing the view.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestInspector.cpp:
+        (testInspectorDefault):
+
+2014-09-30  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Require Python 2.7 version
+        https://bugs.webkit.org/show_bug.cgi?id=137112
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/ensure-valid-python:
+        (checkPythonVersion):
+        * Scripts/webkitpy/common/version_check.py:
+
+2014-09-30  Martin Hock  <mhock@apple.com>
+
+        Skip a JSC test after r174036.
+        https://bugs.webkit.org/show_bug.cgi?id=137236
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-javascriptcore-tests:
+
+2014-09-29  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [EFL] Install TestNetscapePlugin apart from the other libs.
+        https://bugs.webkit.org/show_bug.cgi?id=137212
+
+        This moves TestNetscapePlugin to a new folder (lib/plugins).
+        We should not use the same directory for TestNetscapePlugin and
+        the other libraries, because we end up scanning all the .so in the
+        lib dir for every test.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt: Set LIBRARY_OUTPUT_DIRECTORY to lib/plugins.
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort.setup_environ_for_server): Update plugin path.
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server): Update plugin path.
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt: Update plugin path.
+
+2014-09-29  Alexey Proskuryakov  <ap@apple.com>
+
+        A small change to EWS bubble text. Explain why there are messages for ineligible patches.
+
+        Rubber-stamped by Tim Horton.
+
+        * QueueStatusServer/app.yaml:
+        * QueueStatusServer/handlers/statusbubble.py:
+        (StatusBubble._build_bubble):
+
+2014-09-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Typo fix, suggested by Tim Horton.
+
+        * QueueStatusServer/handlers/statusbubble.py:
+        (StatusBubble._build_message_for_provisional_failure):
+
+2014-09-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Improve Bugzilla status bubbles
+        https://bugs.webkit.org/show_bug.cgi?id=137232
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/app.yaml: Will update again with an actual version when landing.
+
+        * QueueStatusServer/handlers/statusbubble.py: Eliminated yellow color, added
+        blue and orange. Significantly extended tooltips. Made bubbles show up even for queues
+        that are stuck, as it was only confusing that they disappeared after 99.
+
+        * QueueStatusServer/model/attachment.py: Removed functionality that was only used
+        by old bubbles. We need a lot more information to determine color, so the implementation
+        can not be here.
+
+        * QueueStatusServer/templates/statusbubble.html: Updated colors in CSS, made bubbles
+        always have a link for consistency. Added code to convert timestamps in tooltips
+        to local time zone.
+
+2014-09-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174045.
+        https://bugs.webkit.org/show_bug.cgi?id=137231
+
+        Introduced a crash during page loading tests on Mac (Requested
+        by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Replace OSObjectPtr with RetainPtr/adoptOS"
+        https://bugs.webkit.org/show_bug.cgi?id=137158
+        http://trac.webkit.org/changeset/174045
+
+2014-09-29  Tim Horton  <timothy_horton@apple.com>
+
+        Add Jake as a contributor.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-09-29  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Skip a javascriptcore test following r174036.
+
+        * Scripts/run-javascriptcore-tests:
+
+2014-09-29  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Reduce number of processes used by NRWT on Windows to 1.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_child_processes):
+        Reduce number of processes to 1 so we can get a good baseline for what failures
+        we should be expecting to see from the Windows bots.
+
+2014-09-29  Darin Adler  <darin@apple.com>
+
+        Tweak and tighten SVG font converter
+        https://bugs.webkit.org/show_bug.cgi?id=136956
+
+        Reviewed by Myles Maxfield.
+
+        I was investigating behavior of String::toInt, String::toDouble, and
+        String::toFloat for various failure cases, and decided to start some
+        unit tests for those functions here.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST): Addded a first small bit of StringToInt and
+        StringToDouble testing.
+
+2014-09-29  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][CMake] TestWebCore target build sometimes fail
+        https://bugs.webkit.org/show_bug.cgi?id=137207
+
+        Reviewed by Csaba Osztrogon.
+
+        * TestWebKitAPI/PlatformGTK.cmake: Make sure the forwarding
+        headers are generated before the TestWebCore target is built.
+
+2014-09-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove IntPointGtk.cpp and IntRectGtk.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=137209
+
+        Reviewed by Philippe Normand.
+
+        * TestWebKitAPI/PlatformGTK.cmake: Remove unneeded IntRectGtk.cpp
+        from the WebCore test sources.
+
+2014-09-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow webkit-patch upload to respect the --directory argument with git checkouts
+        https://bugs.webkit.org/show_bug.cgi?id=137166
+
+        Reviewed by Darin Adler.
+
+        We simply hadn't plumbed it through.
+
+        * Scripts/webkitpy/common/checkout/scm/detection.py:
+        (SCMDetector.detect_scm_system):
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.__init__):
+        (Git.changed_files):
+
+2014-09-26  Sam Weinig  <sam@webkit.org>
+
+        Replace OSObjectPtr with RetainPtr/adoptOS
+        https://bugs.webkit.org/show_bug.cgi?id=137158
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/darwin/OSObjectPtr.cpp: Removed.
+        * TestWebKitAPI/Tests/WTF/darwin/RetainPtrOSObject.cpp: Copied from Tools/TestWebKitAPI/Tests/WTF/darwin/OSObjectPtr.cpp.
+        Rename and change test to use RetainPtr. Remove now unneeded part testing WTF::retainOSObject/WTF::releaseOSObject.
+
+2014-09-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Disable function.arguments
+        https://bugs.webkit.org/show_bug.cgi?id=137167
+
+        Rubber stamped by Geoffrey Garen
+        
+        Enable the feature by default during tests.
+
+        * Scripts/run-jsc-stress-tests:
+
+2014-09-26  Beth Dakin  <bdakin@apple.com>
+
+        Many platform/mac-wk2/tiled-drawing/ tests fail when run on a retina device
+        https://bugs.webkit.org/show_bug.cgi?id=137089
+
+        Reviewed by Tim Horton.
+
+        This is a little sneaky since updateWindowScaleForTest() should ensure that these 
+        tests run at 1x, but that code does not seem to execute at the right time for 
+        these tests, so if we just ensure we start out at 1x, that appears to fix these 
+        tests and does not break the HiDPI tests either.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+
+2014-09-26  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Decrease default number of child processes used by Windows.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_child_processes):
+        Having too many seems to cause many tests to crash or timeout. 
+        We may even need to make it have only 1 child process if we’re still seeing problems after this.
+
 2014-09-26  Alexey Proskuryakov  <ap@apple.com>
 
         Mac EWS bots do not keep logs as promised

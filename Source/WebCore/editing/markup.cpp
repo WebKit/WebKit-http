@@ -181,10 +181,10 @@ inline StyledMarkupAccumulator::StyledMarkupAccumulator(Vector<Node*>* nodes, EA
 void StyledMarkupAccumulator::wrapWithNode(Node& node, bool convertBlocksToInlines, RangeFullySelectsNode rangeFullySelectsNode)
 {
     StringBuilder markup;
-    if (node.isElementNode())
-        appendElement(markup, toElement(node), convertBlocksToInlines && isBlock(&node), rangeFullySelectsNode);
+    if (is<Element>(node))
+        appendElement(markup, downcast<Element>(node), convertBlocksToInlines && isBlock(&node), rangeFullySelectsNode);
     else
-        appendStartMarkup(markup, node, 0);
+        appendStartMarkup(markup, node, nullptr);
     m_reversedPrecedingMarkup.append(markup.toString());
     appendEndTag(node);
     if (m_nodes)
@@ -263,10 +263,10 @@ void StyledMarkupAccumulator::appendText(StringBuilder& out, const Text& text)
     
 String StyledMarkupAccumulator::renderedText(const Node& node, const Range* range)
 {
-    if (!node.isTextNode())
+    if (!is<Text>(node))
         return String();
 
-    const Text& textNode = toText(node);
+    const Text& textNode = downcast<Text>(node);
     unsigned startOffset = 0;
     unsigned endOffset = textNode.length();
 
@@ -322,12 +322,12 @@ void StyledMarkupAccumulator::appendElement(StringBuilder& out, const Element& e
         } else
             newInlineStyle = EditingStyle::create();
 
-        if (element.isStyledElement() && toStyledElement(element).inlineStyle())
-            newInlineStyle->overrideWithStyle(toStyledElement(element).inlineStyle());
+        if (is<StyledElement>(element) && downcast<StyledElement>(element).inlineStyle())
+            newInlineStyle->overrideWithStyle(downcast<StyledElement>(element).inlineStyle());
 
         if (shouldAnnotateOrForceInline) {
             if (shouldAnnotate())
-                newInlineStyle->mergeStyleFromRulesForSerialization(toHTMLElement(const_cast<Element*>(&element)));
+                newInlineStyle->mergeStyleFromRulesForSerialization(downcast<HTMLElement>(const_cast<Element*>(&element)));
 
             if (addDisplayInline)
                 newInlineStyle->forceInline();
@@ -571,7 +571,7 @@ static String createMarkupInternal(Document& document, const Range& range, const
     document.updateLayoutIgnorePendingStylesheets();
 
     auto* body = enclosingElementWithTag(firstPositionInNode(commonAncestor), bodyTag);
-    Node* fullySelectedRoot = 0;
+    Element* fullySelectedRoot = nullptr;
     // FIXME: Do this for all fully selected blocks, not just the body.
     if (body && VisiblePosition(firstPositionInNode(body)) == VisiblePosition(range.startPosition())
         && VisiblePosition(lastPositionInNode(body)) == VisiblePosition(range.endPosition()))
@@ -608,8 +608,8 @@ static String createMarkupInternal(Document& document, const Range& range, const
                 // Bring the background attribute over, but not as an attribute because a background attribute on a div
                 // appears to have no effect.
                 if ((!fullySelectedRootStyle || !fullySelectedRootStyle->style() || !fullySelectedRootStyle->style()->getPropertyCSSValue(CSSPropertyBackgroundImage))
-                    && toElement(fullySelectedRoot)->hasAttribute(backgroundAttr))
-                    fullySelectedRootStyle->style()->setProperty(CSSPropertyBackgroundImage, "url('" + toElement(fullySelectedRoot)->getAttribute(backgroundAttr) + "')");
+                    && fullySelectedRoot->hasAttribute(backgroundAttr))
+                    fullySelectedRootStyle->style()->setProperty(CSSPropertyBackgroundImage, "url('" + fullySelectedRoot->getAttribute(backgroundAttr) + "')");
 
                 if (fullySelectedRootStyle->style()) {
                     // Reset the CSS properties to avoid an assertion error in addStyleMarkup().
@@ -804,7 +804,7 @@ PassRefPtr<DocumentFragment> createFragmentFromText(Range& context, const String
 
     // Break string into paragraphs. Extra line breaks turn into empty paragraphs.
     Node* blockNode = enclosingBlock(context.firstNode());
-    Element* block = toElement(blockNode);
+    Element* block = downcast<Element>(blockNode);
     bool useClonesOfEnclosingBlock = blockNode
         && blockNode->isElementNode()
         && !block->hasTagName(bodyTag)
@@ -1001,7 +1001,7 @@ void replaceChildrenWithFragment(ContainerNode& container, PassRefPtr<DocumentFr
     }
 
     if (hasOneTextChild(&containerNode.get()) && hasOneTextChild(fragment.get())) {
-        toText(containerNode->firstChild())->setData(toText(fragment->firstChild())->data(), ec);
+        downcast<Text>(*containerNode->firstChild()).setData(downcast<Text>(*fragment->firstChild()).data(), ec);
         return;
     }
 
@@ -1020,7 +1020,7 @@ void replaceChildrenWithText(ContainerNode& container, const String& text, Excep
     ChildListMutationScope mutation(containerNode.get());
 
     if (hasOneTextChild(&containerNode.get())) {
-        toText(containerNode->firstChild())->setData(text, ec);
+        downcast<Text>(*containerNode->firstChild()).setData(text, ec);
         return;
     }
 

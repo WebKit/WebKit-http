@@ -56,12 +56,12 @@ private:
     String m_outgoingReferrer;
 };
 
-inline bool isMediaDocument(const Document& document) { return document.isMediaDocument(); }
-void isMediaDocument(const MediaDocument&); // Catch unnecessary runtime check of type known at compile time.
+} // namespace WebCore
 
-DOCUMENT_TYPE_CASTS(MediaDocument)
-
-}
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::MediaDocument)
+    static bool isType(const WebCore::Document& document) { return document.isMediaDocument(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::Document>(node) && isType(downcast<WebCore::Document>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif
 #endif

@@ -941,7 +941,7 @@ PassRefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCo
     case COMMENT_NODE:
         return createComment(importedNode->nodeValue());
     case ELEMENT_NODE: {
-        Element& oldElement = toElement(*importedNode);
+        Element& oldElement = downcast<Element>(*importedNode);
         // FIXME: The following check might be unnecessary. Is it possible that
         // oldElement has mismatched prefix/namespace?
         if (!hasValidNamespaceForElements(oldElement.tagQName())) {
@@ -966,7 +966,7 @@ PassRefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCo
         return newElement.release();
     }
     case ATTRIBUTE_NODE:
-        return Attr::create(*this, QualifiedName(nullAtom, toAttr(*importedNode).name(), nullAtom), toAttr(*importedNode).value());
+        return Attr::create(*this, QualifiedName(nullAtom, downcast<Attr>(*importedNode).name(), nullAtom), downcast<Attr>(*importedNode).value());
     case DOCUMENT_FRAGMENT_NODE: {
         if (importedNode->isShadowRoot()) {
             // ShadowRoot nodes should not be explicitly importable.
@@ -1025,7 +1025,7 @@ PassRefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
     case ATTRIBUTE_NODE: {                   
-        Attr& attr = toAttr(*source);
+        Attr& attr = downcast<Attr>(*source);
         if (attr.ownerElement())
             attr.ownerElement()->removeAttributeNode(&attr, ec);
         break;
@@ -1036,8 +1036,8 @@ PassRefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
             ec = HIERARCHY_REQUEST_ERR;
             return nullptr;
         }
-        if (source->isFrameOwnerElement()) {
-            HTMLFrameOwnerElement& frameOwnerElement = toHTMLFrameOwnerElement(*source);
+        if (is<HTMLFrameOwnerElement>(*source)) {
+            HTMLFrameOwnerElement& frameOwnerElement = downcast<HTMLFrameOwnerElement>(*source);
             if (frame() && frame()->tree().isDescendantOf(frameOwnerElement.contentFrame())) {
                 ec = HIERARCHY_REQUEST_ERR;
                 return nullptr;
@@ -1414,13 +1414,13 @@ Element* Document::elementFromPoint(const LayoutPoint& clientPoint)
         return nullptr;
 
     Node* node = nodeFromPoint(clientPoint);
-    while (node && !node->isElementNode())
+    while (node && !is<Element>(node))
         node = node->parentNode();
 
     if (node)
         node = ancestorInThisScope(node);
 
-    return toElement(node);
+    return downcast<Element>(node);
 }
 
 PassRefPtr<Range> Document::caretRangeFromPoint(int x, int y)
@@ -2107,8 +2107,8 @@ void Document::prepareForDestruction()
     if (hasLivingRenderTree())
         destroyRenderTree();
 
-    if (isPluginDocument())
-        toPluginDocument(this)->detachFromPluginElement();
+    if (is<PluginDocument>(*this))
+        downcast<PluginDocument>(*this).detachFromPluginElement();
 
 #if ENABLE(POINTER_LOCK)
     if (page())
@@ -2345,7 +2345,7 @@ void Document::setBody(PassRefPtr<HTMLElement> prpNewBody, ExceptionCode& ec)
         if (ec)
             return;
         
-        newBody = toHTMLElement(node.get());
+        newBody = downcast<HTMLElement>(node.get());
     }
 
     HTMLElement* b = body();
@@ -2879,9 +2879,9 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
 
     case HTTPHeaderName::SetCookie:
         // FIXME: make setCookie work on XML documents too; e.g. in case of <html:meta .....>
-        if (isHTMLDocument()) {
+        if (is<HTMLDocument>(*this)) {
             // Exception (for sandboxed documents) ignored.
-            toHTMLDocument(*this).setCookie(content, IGNORE_EXCEPTION);
+            downcast<HTMLDocument>(*this).setCookie(content, IGNORE_EXCEPTION);
         }
         break;
 
@@ -4650,7 +4650,7 @@ const Vector<IconURL>& Document::iconURLs(int iconTypesMask)
     unsigned int length = children->length();
     for (unsigned int i = 0; i < length; ++i) {
         Node* child = children->item(i);
-        if (!child->hasTagName(linkTag))
+        if (!is<HTMLLinkElement>(child))
             continue;
         HTMLLinkElement& linkElement = downcast<HTMLLinkElement>(*child);
         if (!(linkElement.iconType() & iconTypesMask))
@@ -5540,8 +5540,8 @@ void Document::dispatchFullScreenChangeOrErrorEvent(Deque<RefPtr<Node>>& queue, 
             queue.append(documentElement());
 
 #if ENABLE(VIDEO)
-        if (shouldNotifyMediaElement && isHTMLMediaElement(*node))
-            toHTMLMediaElement(*node).enteredOrExitedFullscreen();
+        if (shouldNotifyMediaElement && is<HTMLMediaElement>(*node))
+            downcast<HTMLMediaElement>(*node).enteredOrExitedFullscreen();
 #endif
         node->dispatchEvent(Event::create(eventName, true, false));
     }
@@ -5900,19 +5900,17 @@ IntSize Document::initialViewportSize() const
 }
 #endif
 
-Element* eventTargetElementForDocument(Document* doc)
+Element* eventTargetElementForDocument(Document* document)
 {
-    if (!doc)
+    if (!document)
         return nullptr;
-    Element* element = doc->focusedElement();
-    if (!element && doc->isPluginDocument()) {
-        PluginDocument* pluginDocument = toPluginDocument(doc);
-        element = pluginDocument->pluginElement();
-    }
-    if (!element && doc->isHTMLDocument())
-        element = doc->body();
+    Element* element = document->focusedElement();
+    if (!element && is<PluginDocument>(document))
+        element = downcast<PluginDocument>(*document).pluginElement();
+    if (!element && is<HTMLDocument>(document))
+        element = document->body();
     if (!element)
-        element = doc->documentElement();
+        element = document->documentElement();
     return element;
 }
 
@@ -6073,8 +6071,8 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
                 elementsToRemoveFromChain.append(element);
         }
         // Unset hovered nodes in sub frame documents if the old hovered node was a frame owner.
-        if (oldHoveredElement && oldHoveredElement->isFrameOwnerElement()) {
-            if (Document* contentDocument = toHTMLFrameOwnerElement(*oldHoveredElement).contentDocument())
+        if (oldHoveredElement && is<HTMLFrameOwnerElement>(*oldHoveredElement)) {
+            if (Document* contentDocument = downcast<HTMLFrameOwnerElement>(*oldHoveredElement).contentDocument())
                 contentDocument->updateHoverActiveState(request, nullptr);
         }
     }

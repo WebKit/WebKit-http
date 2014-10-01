@@ -37,23 +37,23 @@ void ChildNodeInsertionNotifier::notifyDescendantInsertedIntoDocument(ContainerN
         // we don't want to tell the rest of our children that they've been
         // inserted into the document because they haven't.
         if (node.inDocument() && child->parentNode() == &node)
-            notifyNodeInsertedIntoDocument(*child.get());
+            notifyNodeInsertedIntoDocument(*child);
     }
 
-    if (!node.isElementNode())
+    if (!is<Element>(node))
         return;
 
-    if (RefPtr<ShadowRoot> root = toElement(node).shadowRoot()) {
+    if (RefPtr<ShadowRoot> root = downcast<Element>(node).shadowRoot()) {
         if (node.inDocument() && root->hostElement() == &node)
-            notifyNodeInsertedIntoDocument(*root.get());
+            notifyNodeInsertedIntoDocument(*root);
     }
 }
 
 void ChildNodeInsertionNotifier::notifyDescendantInsertedIntoTree(ContainerNode& node)
 {
     for (Node* child = node.firstChild(); child; child = child->nextSibling()) {
-        if (child->isContainerNode())
-            notifyNodeInsertedIntoTree(*toContainerNode(child));
+        if (is<ContainerNode>(child))
+            notifyNodeInsertedIntoTree(downcast<ContainerNode>(*child));
     }
 
     if (ShadowRoot* root = node.shadowRoot())
@@ -71,13 +71,13 @@ void ChildNodeRemovalNotifier::notifyDescendantRemovedFromDocument(ContainerNode
             notifyNodeRemovedFromDocument(*child.get());
     }
 
-    if (!node.isElementNode())
+    if (!is<Element>(node))
         return;
 
     if (node.document().cssTarget() == &node)
         node.document().setCSSTarget(0);
 
-    if (RefPtr<ShadowRoot> root = toElement(node).shadowRoot()) {
+    if (RefPtr<ShadowRoot> root = downcast<Element>(node).shadowRoot()) {
         if (!node.inDocument() && root->hostElement() == &node)
             notifyNodeRemovedFromDocument(*root.get());
     }
@@ -86,14 +86,14 @@ void ChildNodeRemovalNotifier::notifyDescendantRemovedFromDocument(ContainerNode
 void ChildNodeRemovalNotifier::notifyDescendantRemovedFromTree(ContainerNode& node)
 {
     for (Node* child = node.firstChild(); child; child = child->nextSibling()) {
-        if (child->isContainerNode())
-            notifyNodeRemovedFromTree(*toContainerNode(child));
+        if (is<ContainerNode>(child))
+            notifyNodeRemovedFromTree(downcast<ContainerNode>(*child));
     }
 
-    if (!node.isElementNode())
+    if (!is<Element>(node))
         return;
 
-    if (RefPtr<ShadowRoot> root = toElement(node).shadowRoot())
+    if (RefPtr<ShadowRoot> root = downcast<Element>(node).shadowRoot())
         notifyNodeRemovedFromTree(*root.get());
 }
 
@@ -102,11 +102,11 @@ static unsigned assertConnectedSubrameCountIsConsistent(ContainerNode& node)
 {
     unsigned count = 0;
 
-    if (node.isElementNode()) {
-        if (node.isFrameOwnerElement() && toHTMLFrameOwnerElement(node).contentFrame())
-            count++;
+    if (is<Element>(node)) {
+        if (is<HTMLFrameOwnerElement>(node) && downcast<HTMLFrameOwnerElement>(node).contentFrame())
+            ++count;
 
-        if (ShadowRoot* root = toElement(node).shadowRoot())
+        if (ShadowRoot* root = downcast<Element>(node).shadowRoot())
             count += assertConnectedSubrameCountIsConsistent(*root);
     }
 
@@ -138,8 +138,8 @@ static void collectFrameOwners(Vector<Ref<HTMLFrameOwnerElement>>& frameOwners, 
             continue;
         }
 
-        if (element.isHTMLElement() && element.isFrameOwnerElement())
-            frameOwners.append(toHTMLFrameOwnerElement(element));
+        if (is<HTMLFrameOwnerElement>(element))
+            frameOwners.append(downcast<HTMLFrameOwnerElement>(element));
 
         if (ShadowRoot* shadowRoot = element.shadowRoot())
             collectFrameOwners(frameOwners, *shadowRoot);
@@ -157,8 +157,8 @@ void disconnectSubframes(ContainerNode& root, SubframeDisconnectPolicy policy)
     Vector<Ref<HTMLFrameOwnerElement>> frameOwners;
 
     if (policy == RootAndDescendants) {
-        if (root.isHTMLElement() && root.isFrameOwnerElement())
-            frameOwners.append(toHTMLFrameOwnerElement(root));
+        if (is<HTMLFrameOwnerElement>(root))
+            frameOwners.append(downcast<HTMLFrameOwnerElement>(root));
     }
 
     collectFrameOwners(frameOwners, root);

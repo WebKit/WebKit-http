@@ -52,7 +52,7 @@ static inline bool nodeCanBeDistributed(const Node* node)
     if (parent->isShadowRoot())
         return false;
 
-    if (parent->isElementNode() && toElement(parent)->shadowRoot())
+    if (is<Element>(parent) && downcast<Element>(*parent).shadowRoot())
         return true;
     
     return false;
@@ -72,8 +72,8 @@ static Node* findFirstEnteringInsertionPoints(const Node* node)
     ASSERT(node);
     if (!isActiveInsertionPoint(node))
         return const_cast<Node*>(node);
-    const InsertionPoint* insertionPoint = toInsertionPoint(node);
-    if (Node* found = findFirstFromDistributedNode(insertionPoint->firstDistributed(), insertionPoint))
+    const InsertionPoint& insertionPoint = downcast<InsertionPoint>(*node);
+    if (Node* found = findFirstFromDistributedNode(insertionPoint.firstDistributed(), &insertionPoint))
         return found;
     return findFirstSiblingEnteringInsertionPoints(node->firstChild());
 }
@@ -101,8 +101,8 @@ static Node* findLastEnteringInsertionPoints(const Node* node)
     ASSERT(node);
     if (!isActiveInsertionPoint(node))
         return const_cast<Node*>(node);
-    const InsertionPoint* insertionPoint = toInsertionPoint(node);
-    if (Node* found = findLastFromDistributedNode(insertionPoint->lastDistributed(), insertionPoint))
+    const InsertionPoint& insertionPoint = downcast<InsertionPoint>(*node);
+    if (Node* found = findLastFromDistributedNode(insertionPoint.lastDistributed(), &insertionPoint))
         return found;
     return findLastSiblingEnteringInsertionPoints(node->lastChild());
 }
@@ -121,7 +121,7 @@ enum ShadowRootCrossing { CrossShadowRoot, DontCrossShadowRoot };
 static ContainerNode* traverseParent(const Node* node, ShadowRootCrossing shadowRootCrossing)
 {
     if (shadowRootCrossing == DontCrossShadowRoot  && node->isShadowRoot())
-        return 0;
+        return nullptr;
 
     if (nodeCanBeDistributed(node)) {
         if (InsertionPoint* insertionPoint = findInsertionPointOf(node))
@@ -132,14 +132,14 @@ static ContainerNode* traverseParent(const Node* node, ShadowRootCrossing shadow
     if (!parent)
         return nullptr;
 
-    if (parent->isShadowRoot())
-        return shadowRootCrossing == CrossShadowRoot ? toShadowRoot(parent)->hostElement() : parent;
+    if (is<ShadowRoot>(parent))
+        return shadowRootCrossing == CrossShadowRoot ? downcast<ShadowRoot>(parent)->hostElement() : parent;
 
-    if (parent->isInsertionPoint()) {
-        const InsertionPoint* insertionPoint = toInsertionPoint(parent);
-        if (insertionPoint->hasDistribution())
+    if (is<InsertionPoint>(parent)) {
+        const InsertionPoint& insertionPoint = downcast<InsertionPoint>(*parent);
+        if (insertionPoint.hasDistribution())
             return nullptr;
-        if (insertionPoint->isActive())
+        if (insertionPoint.isActive())
             return traverseParent(parent, shadowRootCrossing);
     }
     return parent;

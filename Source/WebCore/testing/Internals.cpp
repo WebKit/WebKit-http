@@ -319,13 +319,13 @@ Internals::Internals(Document* document)
 
 Document* Internals::contextDocument() const
 {
-    return toDocument(scriptExecutionContext());
+    return downcast<Document>(scriptExecutionContext());
 }
 
 Frame* Internals::frame() const
 {
     if (!contextDocument())
-        return 0;
+        return nullptr;
     return contextDocument()->frame();
 }
 
@@ -574,19 +574,19 @@ Node* Internals::shadowRoot(Element* host, ExceptionCode& ec)
 {
     if (!host) {
         ec = INVALID_ACCESS_ERR;
-        return 0;
+        return nullptr;
     }
     return host->shadowRoot();
 }
 
 String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
 {
-    if (!root || !root->isShadowRoot()) {
+    if (!root || !is<ShadowRoot>(root)) {
         ec = INVALID_ACCESS_ERR;
         return String();
     }
 
-    switch (toShadowRoot(root)->type()) {
+    switch (downcast<ShadowRoot>(*root).type()) {
     case ShadowRoot::UserAgentShadowRoot:
         return String("UserAgentShadowRoot");
     default:
@@ -598,7 +598,7 @@ String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
 Element* Internals::includerFor(Node*, ExceptionCode& ec)
 {
     ec = INVALID_ACCESS_ERR;
-    return 0;
+    return nullptr;
 }
 
 String Internals::shadowPseudoId(Element* element, ExceptionCode& ec)
@@ -623,8 +623,8 @@ void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionC
 
 String Internals::visiblePlaceholder(Element* element)
 {
-    if (element && isHTMLTextFormControlElement(*element)) {
-        const HTMLTextFormControlElement& textFormControlElement = toHTMLTextFormControlElement(*element);
+    if (element && is<HTMLTextFormControlElement>(*element)) {
+        const HTMLTextFormControlElement& textFormControlElement = downcast<HTMLTextFormControlElement>(*element);
         if (!textFormControlElement.isPlaceholderVisible())
             return String();
         if (HTMLElement* placeholderElement = textFormControlElement.placeholderElement())
@@ -1916,8 +1916,8 @@ void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node* 
     Document* document;
     if (!node)
         document = contextDocument();
-    else if (node->isDocumentNode())
-        document = toDocument(node);
+    else if (is<Document>(node))
+        document = downcast<Document>(node);
     else if (is<HTMLIFrameElement>(node))
         document = downcast<HTMLIFrameElement>(*node).contentDocument();
     else {
@@ -2073,7 +2073,7 @@ String Internals::getImageSourceURL(Element* element, ExceptionCode& ec)
 void Internals::simulateAudioInterruption(Node* node)
 {
 #if USE(GSTREAMER)
-    HTMLMediaElement* element = toHTMLMediaElement(node);
+    HTMLMediaElement* element = downcast<HTMLMediaElement>(node);
     element->player()->simulateAudioInterruption();
 #else
     UNUSED_PARAM(node);
@@ -2232,7 +2232,7 @@ bool Internals::isPluginSnapshotted(Element* element, ExceptionCode& ec)
         ec = INVALID_ACCESS_ERR;
         return false;
     }
-    HTMLPlugInElement* pluginElement = toHTMLPlugInElement(element);
+    HTMLPlugInElement* pluginElement = downcast<HTMLPlugInElement>(element);
     return pluginElement->displayState() <= HTMLPlugInElement::DisplayingSnapshot;
 }
     

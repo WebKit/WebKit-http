@@ -81,7 +81,7 @@ PassRefPtr<HTMLObjectElement> HTMLObjectElement::create(const QualifiedName& tag
     return adoptRef(new HTMLObjectElement(tagName, document, form, createdByParser));
 }
 
-RenderWidget* HTMLObjectElement::renderWidgetForJSBindings() const
+RenderWidget* HTMLObjectElement::renderWidgetLoadingPlugin() const
 {
     // Needs to load the plugin immediatedly because this function is called
     // when JavaScript code accesses the plugin.
@@ -231,10 +231,10 @@ bool HTMLObjectElement::hasFallbackContent() const
 {
     for (Node* child = firstChild(); child; child = child->nextSibling()) {
         // Ignore whitespace-only text, and <param> tags, any other content is fallback content.
-        if (child->isTextNode()) {
-            if (!toText(child)->containsOnlyWhitespace())
+        if (is<Text>(child)) {
+            if (!downcast<Text>(*child).containsOnlyWhitespace())
                 return true;
-        } else if (!child->hasTagName(paramTag))
+        } else if (!is<HTMLParamElement>(child))
             return true;
     }
     return false;
@@ -423,20 +423,20 @@ void HTMLObjectElement::updateDocNamedItem()
     bool isNamedItem = true;
     Node* child = firstChild();
     while (child && isNamedItem) {
-        if (child->isElementNode()) {
-            Element* element = toElement(child);
+        if (is<Element>(child)) {
+            Element& element = downcast<Element>(*child);
             // FIXME: Use of isRecognizedTagName is almost certainly wrong here.
-            if (isRecognizedTagName(element->tagQName()) && !element->hasTagName(paramTag))
+            if (isRecognizedTagName(element.tagQName()) && !element.hasTagName(paramTag))
                 isNamedItem = false;
-        } else if (child->isTextNode()) {
-            if (!toText(child)->containsOnlyWhitespace())
+        } else if (is<Text>(child)) {
+            if (!downcast<Text>(*child).containsOnlyWhitespace())
                 isNamedItem = false;
         } else
             isNamedItem = false;
         child = child->nextSibling();
     }
-    if (isNamedItem != wasNamedItem && inDocument() && document().isHTMLDocument()) {
-        HTMLDocument& document = toHTMLDocument(this->document());
+    if (isNamedItem != wasNamedItem && inDocument() && is<HTMLDocument>(document())) {
+        HTMLDocument& document = downcast<HTMLDocument>(this->document());
 
         const AtomicString& id = getIdAttribute();
         if (!id.isEmpty()) {

@@ -116,7 +116,6 @@ set(TestWebCoreGtk_SOURCES
     ${WEBCORE_DIR}/platform/graphics/IntRect.cpp
     ${WEBCORE_DIR}/platform/graphics/IntSize.cpp
     ${WEBCORE_DIR}/platform/graphics/cairo/IntRectCairo.cpp
-    ${WEBCORE_DIR}/platform/graphics/gtk/IntRectGtk.cpp
     ${WEBCORE_DIR}/platform/gtk/GtkInputMethodFilter.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/gtk/InputMethodFilter.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/gtk/UserAgentQuirks.cpp
@@ -131,6 +130,8 @@ add_executable(TestWebCore
 )
 
 target_link_libraries(TestWebCore ${test_webcore_LIBRARIES})
+add_dependencies(TestWebCore ${ForwardingHeadersForTestWebKitAPI_NAME})
+
 add_test(TestWebCore ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore/TestWebCore)
 set_tests_properties(TestWebCore PROPERTIES TIMEOUT 60)
 set_target_properties(TestWebCore PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore)

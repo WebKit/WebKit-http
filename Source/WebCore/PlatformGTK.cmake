@@ -25,6 +25,25 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_SOURCES
+    accessibility/atk/AXObjectCacheAtk.cpp
+    accessibility/atk/AccessibilityObjectAtk.cpp
+    accessibility/atk/WebKitAccessibleHyperlink.cpp
+    accessibility/atk/WebKitAccessibleInterfaceAction.cpp
+    accessibility/atk/WebKitAccessibleInterfaceComponent.cpp
+    accessibility/atk/WebKitAccessibleInterfaceDocument.cpp
+    accessibility/atk/WebKitAccessibleInterfaceEditableText.cpp
+    accessibility/atk/WebKitAccessibleInterfaceHyperlinkImpl.cpp
+    accessibility/atk/WebKitAccessibleInterfaceHypertext.cpp
+    accessibility/atk/WebKitAccessibleInterfaceImage.cpp
+    accessibility/atk/WebKitAccessibleInterfaceSelection.cpp
+    accessibility/atk/WebKitAccessibleInterfaceTable.cpp
+    accessibility/atk/WebKitAccessibleInterfaceTableCell.cpp
+    accessibility/atk/WebKitAccessibleInterfaceText.cpp
+    accessibility/atk/WebKitAccessibleInterfaceValue.cpp
+    accessibility/atk/WebKitAccessibleUtil.cpp
+    accessibility/atk/WebKitAccessibleWrapperAtk.cpp
+
+    editing/atk/FrameSelectionAtk.cpp
     editing/SmartReplace.cpp
 
     loader/soup/CachedRawResourceSoup.cpp
@@ -32,6 +51,8 @@ list(APPEND WebCore_SOURCES
 
     platform/Cursor.cpp
     platform/PlatformStrategies.cpp
+
+    platform/audio/gtk/AudioBusGtk.cpp
 
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
@@ -54,6 +75,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
     platform/graphics/cairo/GradientCairo.cpp
     platform/graphics/cairo/GraphicsContext3DCairo.cpp
+    platform/graphics/cairo/GraphicsContextCairo.cpp
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
@@ -100,7 +122,16 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/opentype/OpenTypeVerticalData.cpp
 
+    platform/gtk/ErrorsGtk.cpp
+    platform/gtk/EventLoopGtk.cpp
+    platform/gtk/FileSystemGtk.cpp
     platform/gtk/GamepadsGtk.cpp
+    platform/gtk/LanguageGtk.cpp
+    platform/gtk/LoggingGtk.cpp
+    platform/gtk/MIMETypeRegistryGtk.cpp
+    platform/gtk/SharedBufferGtk.cpp
+    platform/gtk/TemporaryLinkStubs.cpp
+    platform/gtk/UserAgentGtk.cpp
 
     platform/image-decoders/ImageDecoder.cpp
 
@@ -161,37 +192,14 @@ list(APPEND WebCore_SOURCES
 )
 
 list(APPEND WebCorePlatformGTK_SOURCES
-    accessibility/atk/AXObjectCacheAtk.cpp
-    accessibility/atk/AccessibilityObjectAtk.cpp
-    accessibility/atk/WebKitAccessibleHyperlink.cpp
-    accessibility/atk/WebKitAccessibleInterfaceAction.cpp
-    accessibility/atk/WebKitAccessibleInterfaceComponent.cpp
-    accessibility/atk/WebKitAccessibleInterfaceDocument.cpp
-    accessibility/atk/WebKitAccessibleInterfaceEditableText.cpp
-    accessibility/atk/WebKitAccessibleInterfaceHyperlinkImpl.cpp
-    accessibility/atk/WebKitAccessibleInterfaceHypertext.cpp
-    accessibility/atk/WebKitAccessibleInterfaceImage.cpp
-    accessibility/atk/WebKitAccessibleInterfaceSelection.cpp
-    accessibility/atk/WebKitAccessibleInterfaceTable.cpp
-    accessibility/atk/WebKitAccessibleInterfaceTableCell.cpp
-    accessibility/atk/WebKitAccessibleInterfaceText.cpp
-    accessibility/atk/WebKitAccessibleInterfaceValue.cpp
-    accessibility/atk/WebKitAccessibleUtil.cpp
-    accessibility/atk/WebKitAccessibleWrapperAtk.cpp
-
-    editing/atk/FrameSelectionAtk.cpp
     editing/gtk/EditorGtk.cpp
 
     page/gtk/DragControllerGtk.cpp
     page/gtk/EventHandlerGtk.cpp
 
-    platform/audio/gtk/AudioBusGtk.cpp
-
     platform/cairo/WidgetBackingStoreCairo.cpp
 
     platform/graphics/GLContext.cpp
-
-    platform/graphics/cairo/GraphicsContextCairo.cpp
 
     platform/graphics/egl/GLContextEGL.cpp
 
@@ -204,8 +212,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/graphics/gtk/IconGtk.cpp
     platform/graphics/gtk/ImageBufferGtk.cpp
     platform/graphics/gtk/ImageGtk.cpp
-    platform/graphics/gtk/IntPointGtk.cpp
-    platform/graphics/gtk/IntRectGtk.cpp
 
     platform/gtk/ClipboardUtilitiesGtk.cpp
     platform/gtk/ContextMenuGtk.cpp
@@ -215,24 +221,15 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/DragDataGtk.cpp
     platform/gtk/DragIcon.cpp
     platform/gtk/DragImageGtk.cpp
-    platform/gtk/ErrorsGtk.cpp
-    platform/gtk/EventLoopGtk.cpp
-    platform/gtk/FileSystemGtk.cpp
     platform/gtk/GRefPtrGtk.cpp
     platform/gtk/GtkClickCounter.cpp
     platform/gtk/GtkDragAndDropHelper.cpp
     platform/gtk/GtkInputMethodFilter.cpp
-    platform/gtk/GtkPluginWidget.cpp
-    platform/gtk/GtkPopupMenu.cpp
     platform/gtk/GtkTouchContextHelper.cpp
     platform/gtk/GtkUtilities.cpp
     platform/gtk/GtkVersioning.c
     platform/gtk/KeyBindingTranslator.cpp
-    platform/gtk/LanguageGtk.cpp
     platform/gtk/LocalizedStringsGtk.cpp
-    platform/gtk/LoggingGtk.cpp
-    platform/gtk/MIMETypeRegistryGtk.cpp
-    platform/gtk/MainFrameScrollbarGtk.cpp
     platform/gtk/PasteboardGtk.cpp
     platform/gtk/PasteboardHelper.cpp
     platform/gtk/PlatformKeyboardEventGtk.cpp
@@ -241,11 +238,8 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/PlatformWheelEventGtk.cpp
     platform/gtk/RedirectedXCompositeWindow.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
-    platform/gtk/SharedBufferGtk.cpp
     platform/gtk/SharedTimerGtk.cpp
     platform/gtk/SoundGtk.cpp
-    platform/gtk/TemporaryLinkStubs.cpp
-    platform/gtk/UserAgentGtk.cpp
     platform/gtk/WidgetBackingStoreGtkX11.cpp
     platform/gtk/WidgetGtk.cpp
 

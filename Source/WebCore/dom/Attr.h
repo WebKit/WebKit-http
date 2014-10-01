@@ -99,11 +99,10 @@ private:
     unsigned m_ignoreChildrenChanged;
 };
 
-inline bool isAttr(const Node& node) { return node.isAttributeNode(); }
-void isAttr(const Attr&); // Catch unnecessary runtime check of type known at compile time.
-
-NODE_TYPE_CASTS(Attr)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Attr)
+    static bool isType(const WebCore::Node& node) { return node.isAttributeNode(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // Attr_h

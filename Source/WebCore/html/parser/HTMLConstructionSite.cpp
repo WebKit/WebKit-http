@@ -158,7 +158,7 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
 
 void HTMLConstructionSite::attachLater(ContainerNode* parent, PassRefPtr<Node> prpChild, bool selfClosing)
 {
-    ASSERT(scriptingContentIsAllowed(m_parserContentPolicy) || !prpChild.get()->isElementNode() || !toScriptElementIfPossible(toElement(prpChild.get())));
+    ASSERT(scriptingContentIsAllowed(m_parserContentPolicy) || !is<Element>(prpChild.get()) || !toScriptElementIfPossible(downcast<Element>(prpChild.get())));
     ASSERT(pluginContentIsAllowed(m_parserContentPolicy) || !prpChild->isPluginElement());
 
     HTMLConstructionSiteTask task(HTMLConstructionSiteTask::Insert);
@@ -547,11 +547,11 @@ void HTMLConstructionSite::insertTextNode(const String& characters, WhitespaceMo
     // for performance, see <https://bugs.webkit.org/show_bug.cgi?id=55898>.
 
     Node* previousChild = task.nextChild ? task.nextChild->previousSibling() : task.parent->lastChild();
-    if (previousChild && previousChild->isTextNode()) {
+    if (previousChild && is<Text>(previousChild)) {
         // FIXME: We're only supposed to append to this text node if it
         // was the last text node inserted by the parser.
-        Text* textNode = toText(previousChild);
-        currentPosition = textNode->parserAppendData(characters, 0, lengthLimit);
+        Text& textNode = downcast<Text>(*previousChild);
+        currentPosition = textNode.parserAppendData(characters, 0, lengthLimit);
     }
 
     while (currentPosition < characters.length()) {

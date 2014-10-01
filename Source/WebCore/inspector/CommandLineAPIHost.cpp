@@ -94,10 +94,15 @@ void CommandLineAPIHost::disconnect()
 
 void CommandLineAPIHost::inspectImpl(PassRefPtr<InspectorValue> object, PassRefPtr<InspectorValue> hints)
 {
-    if (m_inspectorAgent) {
-        RefPtr<Inspector::Protocol::Runtime::RemoteObject> remoteObject = BindingTraits<Inspector::Protocol::Runtime::RemoteObject>::runtimeCast(object);
-        m_inspectorAgent->inspect(remoteObject, hints->asObject());
-    }
+    if (!m_inspectorAgent)
+        return;
+
+    RefPtr<InspectorObject> hintsObject;
+    if (!hints->asObject(hintsObject))
+        return;
+
+    RefPtr<Inspector::Protocol::Runtime::RemoteObject> remoteObject = BindingTraits<Inspector::Protocol::Runtime::RemoteObject>::runtimeCast(object);
+    m_inspectorAgent->inspect(remoteObject.release(), hintsObject.release());
 }
 
 void CommandLineAPIHost::getEventListenersImpl(Node* node, Vector<EventListenerInfo>& listenersArray)
@@ -109,8 +114,8 @@ void CommandLineAPIHost::getEventListenersImpl(Node* node, Vector<EventListenerI
 void CommandLineAPIHost::clearConsoleMessages()
 {
     if (m_consoleAgent) {
-        ErrorString error;
-        m_consoleAgent->clearMessages(&error);
+        ErrorString unused;
+        m_consoleAgent->clearMessages(unused);
     }
 }
 

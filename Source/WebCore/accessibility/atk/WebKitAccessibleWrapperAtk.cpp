@@ -65,10 +65,6 @@
 #include <glib/gprintf.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(GTK)
-#include <gtk/gtk.h>
-#endif
-
 using namespace WebCore;
 
 struct _WebKitAccessiblePrivate {
@@ -141,9 +137,9 @@ static const gchar* webkitAccessibleGetName(AtkObject* object)
 
     if (coreObject->isImage() || coreObject->isInputImage()) {
         Node* node = coreObject->node();
-        if (node && node->isHTMLElement()) {
+        if (node && is<HTMLElement>(node)) {
             // Get the attribute rather than altText String so as not to fall back on title.
-            String alt = toHTMLElement(node)->getAttribute(HTMLNames::altAttr);
+            const AtomicString& alt = downcast<HTMLElement>(*node).getAttribute(HTMLNames::altAttr);
             if (!alt.isEmpty())
                 return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, alt);
         }
@@ -174,7 +170,7 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
     Node* node = nullptr;
     if (coreObject->isAccessibilityRenderObject())
         node = coreObject->node();
-    if (!node || !node->isHTMLElement() || coreObject->ariaRoleAttribute() != UnknownRole || coreObject->isImage())
+    if (!node || !is<HTMLElement>(node) || coreObject->ariaRoleAttribute() != UnknownRole || coreObject->isImage())
         return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, accessibilityDescription(coreObject));
 
     // atk_table_get_summary returns an AtkObject. We have no summary object, so expose summary here.
@@ -186,7 +182,7 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
 
     // The title attribute should be reliably available as the object's descripton.
     // We do not want to fall back on other attributes in its absence. See bug 25524.
-    String title = toHTMLElement(node)->title();
+    String title = downcast<HTMLElement>(*node).title();
     if (!title.isEmpty())
         return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, title);
 
@@ -294,18 +290,6 @@ static AtkObject* atkParentOfRootObject(AtkObject* object)
         Document* document = coreObject->document();
         if (!document)
             return 0;
-
-#if PLATFORM(GTK)
-        HostWindow* hostWindow = document->view()->hostWindow();
-        if (hostWindow) {
-            PlatformPageClient scrollView = hostWindow->platformPageClient();
-            if (scrollView) {
-                GtkWidget* scrollViewParent = gtk_widget_get_parent(scrollView);
-                if (scrollViewParent)
-                    return gtk_widget_get_accessible(scrollViewParent);
-            }
-        }
-#endif // PLATFORM(GTK)
     }
 
     if (!coreParent)
@@ -522,8 +506,8 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     // cannot be done from the UIProcess. Assistive technologies have no need
     // for this information.
     Node* node = coreObject->node();
-    if (node && node->isElementNode()) {
-        String id = toElement(node)->getIdAttribute().string();
+    if (node && is<Element>(node)) {
+        String id = downcast<Element>(*node).getIdAttribute().string();
         if (!id.isEmpty())
             attributeSet = addToAtkAttributeSet(attributeSet, "html-id", id.utf8().data());
     }

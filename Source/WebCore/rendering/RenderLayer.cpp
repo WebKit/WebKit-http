@@ -2380,8 +2380,8 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
         if (ownerElement && ownerElement->renderer()) {
             HTMLFrameElementBase* frameElementBase = nullptr;
 
-            if (ownerElement->hasTagName(frameTag) || ownerElement->hasTagName(iframeTag))
-                frameElementBase = toHTMLFrameElementBase(ownerElement);
+            if (is<HTMLFrameElementBase>(ownerElement))
+                frameElementBase = downcast<HTMLFrameElementBase>(ownerElement);
 
             if (frameElementAndViewPermitScroll(frameElementBase, &frameView)) {
                 LayoutRect viewRect = frameView.visibleContentRect(LegacyIOSDocumentVisibleRect);
@@ -2569,7 +2569,7 @@ void RenderLayer::resize(const PlatformMouseEvent& evt, const LayoutSize& oldOff
     
     LayoutSize difference = (currentSize + newOffset - adjustedOldOffset).expandedTo(minimumSize) - currentSize;
 
-    StyledElement* styledElement = toStyledElement(element);
+    StyledElement* styledElement = downcast<StyledElement>(element);
     bool isBoxSizingBorder = renderer->style().boxSizing() == BORDER_BOX;
 
     EResize resize = renderer->style().resize();
@@ -3089,11 +3089,11 @@ bool RenderLayer::hasScrollableOrRubberbandableAncestor()
 void RenderLayer::updateSnapOffsets()
 {
     // FIXME: Extend support beyond HTMLElements.
-    if (!enclosingElement() || !enclosingElement()->renderBox() || !enclosingElement()->isHTMLElement())
+    if (!enclosingElement() || !enclosingElement()->renderBox() || !is<HTMLElement>(enclosingElement()))
         return;
 
     RenderBox* box = enclosingElement()->renderBox();
-    updateSnapOffsetsForScrollableArea(*this, *toHTMLElement(enclosingElement()), *box, box->style());
+    updateSnapOffsetsForScrollableArea(*this, *downcast<HTMLElement>(enclosingElement()), *box, box->style());
 }
 #endif
 

@@ -71,7 +71,7 @@ unsigned NoEventDispatchAssertion::s_count = 0;
 
 static void collectChildrenAndRemoveFromOldParent(Node& node, NodeVector& nodes, ExceptionCode& ec)
 {
-    if (!node.isDocumentFragment()) {
+    if (!is<DocumentFragment>(node)) {
         nodes.append(node);
         if (ContainerNode* oldParent = node.parentNode())
             oldParent->removeChild(&node, ec);
@@ -79,7 +79,7 @@ static void collectChildrenAndRemoveFromOldParent(Node& node, NodeVector& nodes,
     }
 
     getChildNodes(node, nodes);
-    toContainerNode(node).removeChildren();
+    downcast<DocumentFragment>(node).removeChildren();
 }
 
 // FIXME: This function must get a new name.
@@ -100,10 +100,10 @@ static inline void destroyRenderTreeIfNeeded(Node& child)
     // FIXME: Get rid of the named flow test.
     if (!child.renderer() && !child.isNamedFlowContentNode())
         return;
-    if (child.isElementNode())
-        Style::detachRenderTree(toElement(child));
-    else if (child.isTextNode())
-        Style::detachTextRenderer(toText(child));
+    if (is<Element>(child))
+        Style::detachRenderTree(downcast<Element>(child));
+    else if (is<Text>(child))
+        Style::detachTextRenderer(downcast<Text>(child));
 }
 
 void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
@@ -202,8 +202,8 @@ static inline ExceptionCode checkAcceptChild(ContainerNode* newParent, Node* new
     if (containsConsideringHostElements(newChild, newParent))
         return HIERARCHY_REQUEST_ERR;
 
-    if (oldChild && newParent->isDocumentNode()) {
-        if (!toDocument(newParent)->canReplaceChild(newChild, oldChild))
+    if (oldChild && is<Document>(newParent)) {
+        if (!downcast<Document>(*newParent).canReplaceChild(newChild, oldChild))
             return HIERARCHY_REQUEST_ERR;
     } else if (!isChildTypeAllowed(newParent, newChild))
         return HIERARCHY_REQUEST_ERR;
@@ -347,9 +347,9 @@ void ContainerNode::notifyChildInserted(Node& child, ChildChangeSource source)
 void ContainerNode::notifyChildRemoved(Node& child, Node* previousSibling, Node* nextSibling, ChildChangeSource source)
 {
     ChildChange change;
-    change.type = child.isElementNode() ? ElementRemoved : child.isTextNode() ? TextRemoved : NonContentsChildChanged;
-    change.previousSiblingElement = (!previousSibling || previousSibling->isElementNode()) ? toElement(previousSibling) : ElementTraversal::previousSibling(previousSibling);
-    change.nextSiblingElement = (!nextSibling || nextSibling->isElementNode()) ? toElement(nextSibling) : ElementTraversal::nextSibling(nextSibling);
+    change.type = is<Element>(child) ? ElementRemoved : is<Text>(child) ? TextRemoved : NonContentsChildChanged;
+    change.previousSiblingElement = (!previousSibling || is<Element>(previousSibling)) ? downcast<Element>(previousSibling) : ElementTraversal::previousSibling(previousSibling);
+    change.nextSiblingElement = (!nextSibling || is<Element>(nextSibling)) ? downcast<Element>(nextSibling) : ElementTraversal::nextSibling(nextSibling);
     change.source = source;
 
     childrenChanged(change);
@@ -483,8 +483,8 @@ void ContainerNode::willRemoveChild(Node& child)
         return;
 
     child.document().nodeWillBeRemoved(&child); // e.g. mutation event listener can create a new range.
-    if (child.isContainerNode())
-        disconnectSubframesIfNeeded(toContainerNode(child), RootAndDescendants);
+    if (is<ContainerNode>(child))
+        disconnectSubframesIfNeeded(downcast<ContainerNode>(child), RootAndDescendants);
 }
 
 static void willRemoveChildren(ContainerNode& container)
@@ -786,8 +786,8 @@ inline static void cloneChildNodesAvoidingDeleteButton(ContainerNode* parent, Co
         RefPtr<Node> clonedChild = child->cloneNode(false);
         clonedParent->appendChild(clonedChild, ec);
 
-        if (!ec && child->isContainerNode())
-            cloneChildNodesAvoidingDeleteButton(toContainerNode(child), toContainerNode(clonedChild.get()), deleteButtonContainerElement);
+        if (!ec && is<ContainerNode>(child))
+            cloneChildNodesAvoidingDeleteButton(downcast<ContainerNode>(child), downcast<ContainerNode>(clonedChild.get()), deleteButtonContainerElement);
     }
 }
 

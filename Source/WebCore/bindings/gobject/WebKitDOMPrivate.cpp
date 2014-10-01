@@ -84,13 +84,13 @@ WebKitDOMNode* wrap(Node* node)
 
     switch (node->nodeType()) {
     case Node::ELEMENT_NODE:
-        if (node->isHTMLElement())
-            return WEBKIT_DOM_NODE(wrap(toHTMLElement(node)));
-        return WEBKIT_DOM_NODE(wrapElement(toElement(node)));
+        if (is<HTMLElement>(node))
+            return WEBKIT_DOM_NODE(wrap(downcast<HTMLElement>(node)));
+        return WEBKIT_DOM_NODE(wrapElement(downcast<Element>(node)));
     case Node::ATTRIBUTE_NODE:
         return WEBKIT_DOM_NODE(wrapAttr(static_cast<Attr*>(node)));
     case Node::TEXT_NODE:
-        return WEBKIT_DOM_NODE(wrapText(toText(node)));
+        return WEBKIT_DOM_NODE(wrapText(downcast<Text>(node)));
     case Node::CDATA_SECTION_NODE:
         return WEBKIT_DOM_NODE(wrapCDATASection(static_cast<CDATASection*>(node)));
     case Node::ENTITY_REFERENCE_NODE:
@@ -100,9 +100,9 @@ WebKitDOMNode* wrap(Node* node)
     case Node::COMMENT_NODE:
         return WEBKIT_DOM_NODE(wrapComment(static_cast<Comment*>(node)));
     case Node::DOCUMENT_NODE:
-        if (toDocument(node)->isHTMLDocument())
-            return WEBKIT_DOM_NODE(wrapHTMLDocument(static_cast<HTMLDocument*>(node)));
-        return WEBKIT_DOM_NODE(wrapDocument(toDocument(node)));
+        if (is<HTMLDocument>(node))
+            return WEBKIT_DOM_NODE(wrapHTMLDocument(downcast<HTMLDocument>(node)));
+        return WEBKIT_DOM_NODE(wrapDocument(downcast<Document>(node)));
     case Node::DOCUMENT_TYPE_NODE:
         return WEBKIT_DOM_NODE(wrapDocumentType(static_cast<DocumentType*>(node)));
     case Node::DOCUMENT_FRAGMENT_NODE:

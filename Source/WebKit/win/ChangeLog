@@ -1,3 +1,71 @@
+2014-09-30  Christophe Dumez  <cdumez@apple.com>
+
+        Generalize is<>() / downcast<>() support to all types
+        https://bugs.webkit.org/show_bug.cgi?id=137243
+
+        Reviewed by Benjamin Poulain.
+
+        Generalize is<>() / downcast<>() support to all types, not just Nodes.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::createInstance):
+
+2014-09-30  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Element
+        https://bugs.webkit.org/show_bug.cgi?id=137241
+
+        Reviewed by Andreas Kling.
+
+        Use is<>() / downcast<>() for Element instead of isElementNode() /
+        toElement().
+
+        * DOMEventsClasses.cpp:
+        (DOMMouseEvent::toElement):
+        * DOMEventsClasses.h:
+
+2014-09-29  Christophe Dumez  <cdumez@apple.com>
+
+        Make is<>() / downcast<>() work for HTMLDocument and its subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137169
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for HTMLDocument and its subclasses.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLDocument::URL):
+        (DOMHTMLDocument::body):
+        (DOMHTMLDocument::forms):
+
+2014-09-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr for ContextMenuController
+        https://bugs.webkit.org/show_bug.cgi?id=137178
+
+        Reviewed by Darin Adler.
+
+        Switch to using std::unique_ptr instead of OwnPtr and PassOwnPtr
+        for ContextMenuController class. Inherited class is changed by this use as well.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::customizeMenu):
+        * WebCoreSupport/WebContextMenuClient.h:
+
+2014-09-26  Christophe Dumez  <cdumez@apple.com>
+
+        Stop using legacy NODE_TYPE_CASTS() macro for HTML Elements
+        https://bugs.webkit.org/show_bug.cgi?id=137137
+
+        Reviewed by Benjamin Poulain.
+
+        Use is<>() / downcast<>() where appropriate.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::idName):
+        (DOMHTMLElement::innerText):
+        (DOMHTMLElement::setInnerText):
+
 2014-09-25  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Debug builds of TestWebKitAPI are crashing.

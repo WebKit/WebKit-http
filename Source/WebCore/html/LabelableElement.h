@@ -50,17 +50,11 @@ private:
     virtual bool isLabelable() const override final { return true; }
 };
 
-void isLabelableElement(const LabelableElement&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isLabelableElement(const HTMLElement& element) { return element.isLabelable(); }
-inline bool isLabelableElement(const Node& node) { return node.isHTMLElement() && toHTMLElement(node).isLabelable(); }
-
-template <typename ArgType>
-struct NodeTypeCastTraits<const LabelableElement, ArgType> {
-    static bool isType(ArgType& node) { return isLabelableElement(node); }
-};
-
-NODE_TYPE_CASTS(LabelableElement)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::LabelableElement)
+    static bool isType(const WebCore::HTMLElement& element) { return element.isLabelable(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

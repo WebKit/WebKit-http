@@ -572,8 +572,8 @@ PassRefPtr<Inspector::Protocol::CSS::CSSStyle> InspectorStyle::styleWithProperti
                 HashMap<String, RefPtr<Inspector::Protocol::CSS::CSSProperty>>::iterator activeIt = propertyNameToPreviousActiveProperty.find(canonicalPropertyName);
                 if (activeIt != propertyNameToPreviousActiveProperty.end()) {
                     if (propertyEntry.parsedOk) {
-                        bool successPriority = activeIt->value->getString(Inspector::Protocol::CSS::CSSProperty::Priority, &previousPriority);
-                        bool successStatus = activeIt->value->getString(Inspector::Protocol::CSS::CSSProperty::Status, &previousStatus);
+                        bool successPriority = activeIt->value->getString(Inspector::Protocol::CSS::CSSProperty::Priority, previousPriority);
+                        bool successStatus = activeIt->value->getString(Inspector::Protocol::CSS::CSSProperty::Status, previousStatus);
                         if (successStatus && previousStatus != "inactive") {
                             if (propertyEntry.important || !successPriority) // Priority not set == "not important".
                                 shouldInactivate = true;
@@ -584,7 +584,7 @@ PassRefPtr<Inspector::Protocol::CSS::CSSStyle> InspectorStyle::styleWithProperti
                         }
                     } else {
                         bool previousParsedOk;
-                        bool success = activeIt->value->getBoolean(Inspector::Protocol::CSS::CSSProperty::ParsedOk, &previousParsedOk);
+                        bool success = activeIt->value->getBoolean(Inspector::Protocol::CSS::CSSProperty::ParsedOk, previousParsedOk);
                         if (success && !previousParsedOk)
                             shouldInactivate = true;
                     }
@@ -1378,7 +1378,7 @@ bool InspectorStyleSheet::resourceStyleSheetText(String* result) const
 
     String error;
     bool base64Encoded;
-    InspectorPageAgent::resourceContent(&error, ownerDocument()->frame(), URL(ParsedURLString, m_pageStyleSheet->href()), result, &base64Encoded);
+    InspectorPageAgent::resourceContent(error, ownerDocument()->frame(), URL(ParsedURLString, m_pageStyleSheet->href()), result, &base64Encoded);
     return error.isEmpty() && !base64Encoded;
 }
 
@@ -1388,13 +1388,13 @@ bool InspectorStyleSheet::inlineStyleSheetText(String* result) const
         return false;
 
     Node* ownerNode = m_pageStyleSheet->ownerNode();
-    if (!ownerNode || !ownerNode->isElementNode())
+    if (!ownerNode || !is<Element>(ownerNode))
         return false;
-    Element* ownerElement = toElement(ownerNode);
+    Element& ownerElement = downcast<Element>(*ownerNode);
 
     if (!is<HTMLStyleElement>(ownerElement) && !is<SVGStyleElement>(ownerElement))
         return false;
-    *result = ownerElement->textContent();
+    *result = ownerElement.textContent();
     return true;
 }
 

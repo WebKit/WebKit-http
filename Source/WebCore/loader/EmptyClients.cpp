@@ -101,7 +101,7 @@ PassRefPtr<SearchPopupMenu> EmptyChromeClient::createSearchPopupMenu(PopupMenuCl
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassOwnPtr<ColorChooser> EmptyChromeClient::createColorChooser(ColorChooserClient*, const Color&)
+std::unique_ptr<ColorChooser> EmptyChromeClient::createColorChooser(ColorChooserClient*, const Color&)
 {
     return nullptr;
 }
@@ -177,7 +177,7 @@ void EmptyEditorClient::registerRedoStep(PassRefPtr<UndoStep>)
 
 #if ENABLE(CONTEXT_MENUS)
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-PassOwnPtr<ContextMenu> EmptyContextMenuClient::customizeMenu(PassOwnPtr<ContextMenu>)
+std::unique_ptr<ContextMenu> EmptyContextMenuClient::customizeMenu(std::unique_ptr<ContextMenu>)
 {
     return nullptr;
 }

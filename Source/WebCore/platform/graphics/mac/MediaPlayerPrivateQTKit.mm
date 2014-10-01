@@ -32,7 +32,6 @@
 #import "BlockExceptions.h"
 #import "DocumentLoader.h"
 #import "Frame.h"
-#import "FrameView.h"
 #import "HostWindow.h"
 #import "GraphicsContext.h"
 #import "URL.h"
@@ -47,19 +46,11 @@
 #import <QTKit/QTKit.h>
 #import <objc/runtime.h>
 
-#if DRAW_FRAME_RATE
-#import "Font.h"
-#import "Document.h"
-#import "RenderStyle.h"
-#import "RenderView.h"
-#endif
-
 SOFT_LINK_FRAMEWORK(QTKit)
 
 SOFT_LINK(QTKit, QTMakeTime, QTTime, (long long timeValue, long timeScale), (timeValue, timeScale))
 
 SOFT_LINK_CLASS(QTKit, QTMovie)
-SOFT_LINK_CLASS(QTKit, QTMovieView)
 SOFT_LINK_CLASS(QTKit, QTMovieLayer)
 
 SOFT_LINK_POINTER(QTKit, QTTrackMediaTypeAttribute, NSString *)
@@ -104,7 +95,6 @@ SOFT_LINK_POINTER_OPTIONAL(QTKit, QTSecurityPolicyNoRemoteToLocalSiteAttribute, 
 @end
 
 #define QTMovie getQTMovieClass()
-#define QTMovieView getQTMovieViewClass()
 #define QTMovieLayer getQTMovieLayerClass()
 
 #define QTTrackMediaTypeAttribute getQTTrackMediaTypeAttribute()
@@ -152,21 +142,15 @@ enum {
 };
 #endif
 
-@interface FakeQTMovieView : NSObject
-- (WebCoreMovieObserver *)delegate;
-@end
-
 using namespace WebCore;
 
 @interface WebCoreMovieObserver : NSObject
 {
     MediaPlayerPrivateQTKit* m_callback;
-    NSView* m_view;
     BOOL m_delayCallbacks;
 }
 -(id)initWithCallback:(MediaPlayerPrivateQTKit*)callback;
 -(void)disconnect;
--(void)setView:(NSView*)view;
 -(void)repaint;
 -(void)setDelayCallbacks:(BOOL)shouldDelay;
 -(void)loadStateChanged:(NSNotification *)notification;
@@ -217,11 +201,6 @@ MediaPlayerPrivateQTKit::MediaPlayerPrivateQTKit(MediaPlayer* player)
     , m_videoFrameHasDrawn(false)
     , m_isAllowedToRender(false)
     , m_privateBrowsing(false)
-#if DRAW_FRAME_RATE
-    , m_frameCountWhilePlaying(0)
-    , m_timeStartedPlaying(0)
-    , m_timeStoppedPlaying(0)
-#endif
 {
 }
 
@@ -393,79 +372,10 @@ void MediaPlayerPrivateQTKit::createQTMovie(NSURL *url, NSDictionary *movieAttri
                                                object:m_qtMovie.get()];
 }
 
-static void mainThreadSetNeedsDisplay(id self, SEL)
-{
-    id view = [self superview];
-    ASSERT(!view || [view isKindOfClass:[QTMovieView class]]);
-    if (!view || ![view isKindOfClass:[QTMovieView class]])
-        return;
-
-    FakeQTMovieView *movieView = static_cast<FakeQTMovieView *>(view);
-    WebCoreMovieObserver* delegate = [movieView delegate];
-    ASSERT(!delegate || [delegate isKindOfClass:[WebCoreMovieObserver class]]);
-    if (!delegate || ![delegate isKindOfClass:[WebCoreMovieObserver class]])
-        return;
-
-    [delegate repaint];
-}
-
 static Class QTVideoRendererClass()
 {
      static Class QTVideoRendererWebKitOnlyClass = NSClassFromString(@"QTVideoRendererWebKitOnly");
      return QTVideoRendererWebKitOnlyClass;
-}
-
-void MediaPlayerPrivateQTKit::createQTMovieView()
-{
-    LOG(Media, "MediaPlayerPrivateQTKit::createQTMovieView(%p)", this);
-    detachQTMovieView();
-
-    static bool addedCustomMethods = false;
-    if (!m_player->inMediaDocument() && !addedCustomMethods) {
-        Class QTMovieContentViewClass = NSClassFromString(@"QTMovieContentView");
-        ASSERT(QTMovieContentViewClass);
-
-        Method mainThreadSetNeedsDisplayMethod = class_getInstanceMethod(QTMovieContentViewClass, @selector(_mainThreadSetNeedsDisplay));
-        ASSERT(mainThreadSetNeedsDisplayMethod);
-
-        method_setImplementation(mainThreadSetNeedsDisplayMethod, reinterpret_cast<IMP>(mainThreadSetNeedsDisplay));
-        addedCustomMethods = true;
-    }
-
-    // delay callbacks as we *will* get notifications during setup
-    [m_objcObserver.get() setDelayCallbacks:YES];
-
-    m_qtMovieView = adoptNS([[QTMovieView alloc] init]);
-    setSize(m_player->size());
-    NSView* parentView = 0;
-    parentView = m_player->frameView()->documentView();
-    [parentView addSubview:m_qtMovieView.get()];
-    [m_qtMovieView.get() setDelegate:m_objcObserver.get()];
-    [m_objcObserver.get() setView:m_qtMovieView.get()];
-    [m_qtMovieView.get() setMovie:m_qtMovie.get()];
-    [m_qtMovieView.get() setControllerVisible:NO];
-    [m_qtMovieView.get() setPreservesAspectRatio:NO];
-    // the area not covered by video should be transparent
-    [m_qtMovieView.get() setFillColor:[NSColor clearColor]];
-
-    // If we're in a media document, allow QTMovieView to render in its default mode;
-    // otherwise tell it to draw synchronously.
-    // Note that we expect mainThreadSetNeedsDisplay to be invoked only when synchronous drawing is requested.
-    if (!m_player->inMediaDocument())
-        wkQTMovieViewSetDrawSynchronously(m_qtMovieView.get(), YES);
-
-    [m_objcObserver.get() setDelayCallbacks:NO];
-}
-
-void MediaPlayerPrivateQTKit::detachQTMovieView()
-{
-    LOG(Media, "MediaPlayerPrivateQTKit::detachQTMovieView(%p)", this);
-    if (m_qtMovieView) {
-        [m_objcObserver.get() setView:nil];
-        [m_qtMovieView.get() setDelegate:nil];
-        [m_qtMovieView.get() removeFromSuperview];
-        m_qtMovieView = nil;
-    }
 }
 
 void MediaPlayerPrivateQTKit::createQTVideoRenderer(QTVideoRendererMode rendererMode)
@@ -540,9 +450,6 @@ void MediaPlayerPrivateQTKit::destroyQTMovieLayer()
 
 MediaPlayerPrivateQTKit::MediaRenderingMode MediaPlayerPrivateQTKit::currentRenderingMode() const
 {
-    if (m_qtMovieView)
-        return MediaRenderingMovieView;
-    
     if (m_qtVideoLayer)
         return MediaRenderingMovieLayer;
 
@@ -554,14 +461,14 @@ MediaPlayerPrivateQTKit::MediaRenderingMode MediaPlayerPrivateQTKit::currentRend
 
 MediaPlayerPrivateQTKit::MediaRenderingMode MediaPlayerPrivateQTKit::preferredRenderingMode() const
 {
-    if (!m_player->frameView() || !m_qtMovie)
+    if (!m_qtMovie)
         return MediaRenderingNone;
 
     if (supportsAcceleratedRendering() && m_player->mediaPlayerClient()->mediaPlayerRenderingCanBeAccelerated(m_player))
         return MediaRenderingMovieLayer;
 
     if (!QTVideoRendererClass())
-        return MediaRenderingMovieView;
+        return MediaRenderingNone;
     
     return MediaRenderingSoftwareRenderer;
 }
@@ -581,9 +488,6 @@ void MediaPlayerPrivateQTKit::setUpVideoRendering()
         tearDownVideoRendering();
 
     switch (preferredMode) {
-    case MediaRenderingMovieView:
-        createQTMovieView();
-        break;
     case MediaRenderingNone:
     case MediaRenderingSoftwareRenderer:
         createQTVideoRenderer(QTVideoRendererModeListensForNewImages);
@@ -601,8 +505,6 @@ void MediaPlayerPrivateQTKit::setUpVideoRendering()
 void MediaPlayerPrivateQTKit::tearDownVideoRendering()
 {
     LOG(Media, "MediaPlayerPrivateQTKit::tearDownVideoRendering(%p)", this);
-    if (m_qtMovieView)
-        detachQTMovieView();
     if (m_qtVideoRenderer)
         destroyQTVideoRenderer();
     if (m_qtVideoLayer)
@@ -611,8 +513,7 @@ void MediaPlayerPrivateQTKit::tearDownVideoRendering()
 
 bool MediaPlayerPrivateQTKit::hasSetUpVideoRendering() const
 {
-    return m_qtMovieView
-        || m_qtVideoLayer
+    return m_qtVideoLayer
         || m_qtVideoRenderer;
 }
 
@@ -689,9 +590,6 @@ void MediaPlayerPrivateQTKit::play()
     if (!metaDataAvailable())
         return;
     m_startedPlaying = true;
-#if DRAW_FRAME_RATE
-    m_frameCountWhilePlaying = 0;
-#endif
     [m_objcObserver.get() setDelayCallbacks:YES];
     [m_qtMovie.get() setRate:m_player->rate()];
     [m_objcObserver.get() setDelayCallbacks:NO];
@@ -703,9 +601,6 @@ void MediaPlayerPrivateQTKit::pause()
     if (!metaDataAvailable())
         return;
     m_startedPlaying = false;
-#if DRAW_FRAME_RATE
-    m_timeStoppedPlaying = [NSDate timeIntervalSinceReferenceDate];
-#endif
     [m_objcObserver.get() setDelayCallbacks:YES];
     [m_qtMovie.get() stop];
     [m_objcObserver.get() setDelayCallbacks:NO];
@@ -1217,9 +1112,6 @@ void MediaPlayerPrivateQTKit::didEnd()
         return;
 
     m_startedPlaying = false;
-#if DRAW_FRAME_RATE
-    m_timeStoppedPlaying = [NSDate timeIntervalSinceReferenceDate];
-#endif
 
     // Hang onto the current time and use it as duration from now on since QuickTime is telling us we
     // are at the end. Do this because QuickTime sometimes reports one time for duration and stops
@@ -1240,13 +1132,6 @@ void MediaPlayerPrivateQTKit::layerHostChanged(PlatformLayer* rootLayer)
 
 void MediaPlayerPrivateQTKit::setSize(const IntSize&) 
 { 
-    // Don't resize the view now because [view setFrame] also resizes the movie itself, and because
-    // the renderer calls this function immediately when we report a size change (QTMovieSizeDidChangeNotification)
-    // we can get into a feedback loop observing the size change and resetting the size, and this can cause
-    // QuickTime to miss resetting a movie's size when the media size changes (as happens with an rtsp movie
-    // once the rtsp server sends the track sizes). Instead we remember the size passed to paint() and resize
-    // the view when it changes.
-    // <rdar://problem/6336092> REGRESSION: rtsp movie does not resize correctly
 }
 
 void MediaPlayerPrivateQTKit::setVisible(bool b)
@@ -1279,15 +1164,6 @@ void MediaPlayerPrivateQTKit::repaint()
     if (m_hasUnsupportedTracks)
         return;
 
-#if DRAW_FRAME_RATE
-    if (m_startedPlaying) {
-        m_frameCountWhilePlaying++;
-        // to eliminate preroll costs from our calculation,
-        // our frame rate calculation excludes the first frame drawn after playback starts
-        if (1==m_frameCountWhilePlaying)
-            m_timeStartedPlaying = [NSDate timeIntervalSinceReferenceDate];
-    }
-#endif
     m_videoFrameHasDrawn = true;
     m_player->repaint();
 }
@@ -1310,9 +1186,8 @@ void MediaPlayerPrivateQTKit::paint(GraphicsContext* context, const IntRect& r)
 {
     if (context->paintingDisabled() || m_hasUnsupportedTracks)
         return;
-    NSView *view = m_qtMovieView.get();
     id qtVideoRenderer = m_qtVideoRenderer.get();
-    if (!view && !qtVideoRenderer)
+    if (!qtVideoRenderer)
         return;
 
     [m_objcObserver.get() setDelayCallbacks:YES];
@@ -1328,59 +1203,11 @@ void MediaPlayerPrivateQTKit::paint(GraphicsContext* context, const IntRect& r)
 
     newContext = [NSGraphicsContext graphicsContextWithGraphicsPort:context->platformContext() flipped:NO];
 
-    // draw the current video frame
-    if (qtVideoRenderer) {
-        [NSGraphicsContext saveGraphicsState];
-        [NSGraphicsContext setCurrentContext:newContext];
-        [(id<WebKitVideoRenderingDetails>)qtVideoRenderer drawInRect:paintRect];
-        [NSGraphicsContext restoreGraphicsState];
-    } else {
-        if (m_rect != r) {
-             m_rect = r;
-            if (m_player->inMediaDocument()) {
-                // the QTMovieView needs to be placed in the proper location for document mode
-                [view setFrame:m_rect];
-            }
-            else {
-                // We don't really need the QTMovieView in any specific location so let's just get it out of the way
-                // where it won't intercept events or try to bring up the context menu.
-                IntRect farAwayButCorrectSize(m_rect);
-                farAwayButCorrectSize.move(-1000000, -1000000);
-                [view setFrame:farAwayButCorrectSize];
-            }
-        }
+    [NSGraphicsContext saveGraphicsState];
+    [NSGraphicsContext setCurrentContext:newContext];
+    [(id<WebKitVideoRenderingDetails>)qtVideoRenderer drawInRect:paintRect];
+    [NSGraphicsContext restoreGraphicsState];
 
-        if (m_player->inMediaDocument()) {
-            // If we're using a QTMovieView in a media document, the view may get layer-backed. AppKit won't update
-            // the layer hosting correctly if we call displayRectIgnoringOpacity:inContext:, so use displayRectIgnoringOpacity:
-            // in this case. See <rdar://problem/6702882>.
-            [view displayRectIgnoringOpacity:paintRect];
-        } else
-            [view displayRectIgnoringOpacity:paintRect inContext:newContext];
-    }
-
-#if DRAW_FRAME_RATE
-    // Draw the frame rate only after having played more than 10 frames.
-    if (m_frameCountWhilePlaying > 10) {
-        Frame* frame = m_player->frameView() ? &m_player->frameView()->frame() : nullptr;
-        Document* document = frame ? frame->document() : nullptr;
-        auto renderer = document ? document->renderView() : nullptr;
-        RenderStyle* styleToUse = renderer ? renderer->style() : nullptr;
-        if (styleToUse) {
-            double frameRate = (m_frameCountWhilePlaying - 1) / ( m_startedPlaying ? ([NSDate timeIntervalSinceReferenceDate] - m_timeStartedPlaying) :
-                (m_timeStoppedPlaying - m_timeStartedPlaying) );
-            String text = String::format("%1.2f", frameRate);
-            TextRun textRun(text.characters(), text.length());
-            const Color color(255, 0, 0);
-            context->scale(FloatSize(1.0f, -1.0f));    
-            context->setStrokeColor(color, styleToUse->colorSpace());
-            context->setStrokeStyle(SolidStroke);
-            context->setStrokeThickness(1.0f);
-            context->setFillColor(color, styleToUse->colorSpace());
-            context->drawText(styleToUse->font(), textRun, IntPoint(2, -3));
-        }
-    }
-#endif
     END_BLOCK_OBJC_EXCEPTIONS;
     [m_objcObserver.get() setDelayCallbacks:NO];
 }
@@ -1692,17 +1519,6 @@ void MediaPlayerPrivateQTKit::setPrivateBrowsingMode(bool privateBrowsing)
 {
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     m_callback = 0;
-}
-
--(NSMenu*)menuForEventDelegate:(NSEvent*)theEvent
-{
-    // Get the contextual menu from the QTMovieView's superview, the frame view
-    return [[m_view superview] menuForEvent:theEvent];
-}
-
--(void)setView:(NSView*)view
-{
-    m_view = view;
 }
 
 -(void)repaint

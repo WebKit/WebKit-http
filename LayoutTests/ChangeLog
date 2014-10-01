@@ -1,3 +1,256 @@
+2014-09-30  Roger Fong  <roger_fong@apple.com>
+
+        [ Windows ] More Windows test gardening to get bots green.
+
+        * platform/win/TestExpectations: More indiscriminate mass skipping.
+
+2014-09-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Stack overflow with enormous SVG filter.
+        https://bugs.webkit.org/show_bug.cgi?id=63290.
+
+        Reviewed by Dean Jackson.
+
+        Test if an SVG filter with deeply nested tree of FilterEffects can be loaded
+        with no crash. Make sure other valid filters can still be referenced by SVG 
+        drawing elements. An SVG Filter will be ignored if the number of effects in
+        its map is greater than 200 or the total number of effects connected to its 
+        last effect is greater than 100.
+
+        * svg/filters/svg-deeply-nested-crash-expected.txt: Added.
+        * svg/filters/svg-deeply-nested-crash.html: Added.
+
+2014-09-30  Roger Fong  <roger_fong@apple.com>
+
+        [ Windows ] More Windows test gardening to get bots green.
+
+        * platform/win/TestExpectations:
+        * platform/win/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/nested-columns-expected.txt:
+
+2014-09-30  Beth Dakin  <bdakin@apple.com>
+
+        According to the history, this test has been very flaky. Marking as such.
+
+        * platform/mac/TestExpectations:
+
+2014-09-30  Roger Fong  <roger_fong@apple.com>
+
+        [ Windows ] More Windows test gardening to get bots green.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/dom/navigator-detached-no-crash-expected.txt:
+
+2014-09-30  Roger Fong  <roger_fong@apple.com>
+
+        [Mac] Flaky test marked as failing in r174111 also needs to be marked as passing.
+
+        * platform/mac/TestExpectations:
+
+2014-09-30  Roger Fong  <roger_fong@apple.com>
+
+        [Mac] Mark a flaky webgl conformance test as failing.
+
+        * platform/mac/TestExpectations:
+
+2014-08-01  Sergio Villar Senin  <svillar@igalia.com>
+
+        Caret not shown at the end of line in overtype mode
+        https://bugs.webkit.org/show_bug.cgi?id=135508
+
+        Reviewed by Ryosuke Niwa.
+
+        * editing/selection/block-cursor-overtype-mode-end-of-line-expected.html: Added.
+        * editing/selection/block-cursor-overtype-mode-end-of-line-rtl-expected.html: Added.
+        * editing/selection/block-cursor-overtype-mode-end-of-line-rtl.html: Added.
+        * editing/selection/block-cursor-overtype-mode-end-of-line.html: Added.
+
+2014-09-29  David Hyatt  <hyatt@apple.com>
+
+        REGRESSION (r168046): Confused column spans when combined with dynamic animations
+        https://bugs.webkit.org/show_bug.cgi?id=134048.
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/multicol-fieldset-span-changes-expected.txt: Added.
+        * fast/multicol/multicol-fieldset-span-changes.html: Added.
+
+2014-09-29  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Skip some failing inspector tests following r174020.
+
+        * platform/win/TestExpectations:
+
+2014-09-29  Roger Fong  <roger_fong@apple.com>
+
+        [Mac] Unreviewed. Missing test gardening from r174080.
+
+        * accessibility/roles-computedRoleString-expected.txt:
+        * accessibility/roles-computedRoleString.html:
+
+2014-09-29  Roger Fong  <roger_fong@apple.com>
+
+        [Mac] Unreviewed test gardening.
+
+        These accessibility tests need to be changed following r174074.
+        * accessibility/aria-labelledby-with-descendants-expected.txt:
+        * accessibility/roles-computedRoleString.html:
+        * platform/mac/TestExpectations: Some previously skipped inspector tests crash in debug configuration.
+
+2014-09-29  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: in an aria-labelledby computation, do not traverse into elements whose nameFrom value does not include 'contents'
+        https://bugs.webkit.org/show_bug.cgi?id=136714
+
+        Reviewed by Darin Adler.
+
+        * accessibility/aria-labelledby-with-descendants-expected.txt:
+        * accessibility/aria-labelledby-with-descendants.html:
+        * accessibility/aria-namefrom-author-expected.txt: Added.
+        * accessibility/aria-namefrom-author.html: Added.
+
+2014-09-29  Diego Pino Garcia  <dpino@igalia.com>
+
+        Missing changes from r174049
+        https://bugs.webkit.org/show_bug.cgi?id=137206
+
+        Reviewed by Darin Adler.
+
+        * js/number-constructor-expected.txt:
+        * js/script-tests/number-constructor.js:
+
+2014-09-29  Bruno de Oliveira Abinader  <bruno.d@partner.samsung.com>
+
+        Revert "Support for :enabled selector on Anchor & Area elements"
+        https://bugs.webkit.org/show_bug.cgi?id=134826
+
+        Reviewed by Darin Adler.
+
+        These layout tests are no longer correct after changes to the :enabled
+        CSS selector specification.
+
+        * fast/css/css-selector-enabled-links-expected.txt: Removed.
+        * fast/css/css-selector-enabled-links.html: Removed.
+
+2014-09-02  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Handle percentages of indefinite sizes in minmax() and grid-auto-*
+        https://bugs.webkit.org/show_bug.cgi?id=136453
+
+        Reviewed by Darin Adler.
+
+        Added three new tests, one to verify that we do not assert with
+        percentages inside minmax() and another two to verify that we
+        properly compute the percentage of indefinite size in various
+        situations both in grid-template-* properties and in
+        grid-auto-{column|row} properties.
+
+        Three other tests required minimum adjustments as they were using
+        percentages of indefinite sizes inside minmax functions. In order
+        to keep the original expected behavior some definite sizes were
+        added.
+
+        * fast/css-grid-layout/grid-auto-columns-rows-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-resolution.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-update.html:
+        * fast/css-grid-layout/percent-of-indefinite-track-size-expected.txt: Added.
+        * fast/css-grid-layout/percent-of-indefinite-track-size-in-auto-expected.txt: Added.
+        * fast/css-grid-layout/percent-of-indefinite-track-size-in-auto.html: Added.
+        * fast/css-grid-layout/percent-of-indefinite-track-size-in-minmax-crash-expected.txt: Added.
+        * fast/css-grid-layout/percent-of-indefinite-track-size-in-minmax-crash.html: Added.
+        * fast/css-grid-layout/percent-of-indefinite-track-size.html: Added.
+
+2014-09-28  Diego Pino Garcia  <dpino@igalia.com>
+
+        Simple ES6 feature: Number constructor extras
+        https://bugs.webkit.org/show_bug.cgi?id=131707
+
+        Reviewed by Darin Adler.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/number-constructor-expected.txt: Added.
+        * js/number-constructor.html: Added.
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/number-constructor.js: Added.
+
+2014-09-28  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Fix some minor typos: psuedo -> pseudo
+        https://bugs.webkit.org/show_bug.cgi?id=137192
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/dom/Window/getMatchedCSSRules-with-invalid-pseudo-elements-expected.txt:
+        * fast/dom/Window/getMatchedCSSRules-with-invalid-pseudo-elements.html:
+        * fast/dom/Window/getMatchedCSSRules-with-pseudo-elements-expected.txt:
+        * fast/dom/Window/getMatchedCSSRules-with-pseudo-elements.html:
+        * fast/selectors/159.html:
+        * fast/selectors/160.html:
+        * fast/selectors/166.html:
+        * platform/efl/fast/selectors/166-expected.txt:
+        * platform/gtk/fast/selectors/166-expected.txt:
+        * platform/ios-sim/fast/selectors/166-expected.txt:
+        * platform/mac/fast/selectors/166-expected.txt:
+
+2014-09-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Disable function.arguments
+        https://bugs.webkit.org/show_bug.cgi?id=137167
+
+        Rubber stamped by Geoffrey Garen.
+        
+        Don't remove the tests for this, yet - but mark them as failing. We will rebase these,
+        or remove them entirely, once we know that it's safe to rip out this feature entirely.
+
+        * TestExpectations:
+
+2014-09-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        Chaining multiple :nth-child() does not work properly
+        https://bugs.webkit.org/show_bug.cgi?id=137032
+
+        Reviewed by Gavin Barraclough.
+
+        * fast/selectors/nth-child-chained-expected.txt: Added.
+        * fast/selectors/nth-child-chained.html: Added.
+        * fast/selectors/nth-child-of-chained-expected.txt: Added.
+        * fast/selectors/nth-child-of-chained.html: Added.
+        Those new tests target specifically the register reuse bug fixed by the patch.
+
+        * fast/selectors/nth-child-basics-expected.txt: Added.
+        * fast/selectors/nth-child-basics.html: Added.
+        * fast/selectors/nth-child-of-basics-2-expected.txt: Added.
+        * fast/selectors/nth-child-of-basics-2.html: Added.
+        Those tests add coverage for the examples used by http://nthmaster.com. This is to increase
+        the general test coverage.
+
+        I added nth-child-of-basics-2.html instead of extending nth-child-of-basics.html because
+        of the speed issue in debug without CSS JIT (otherwise the test can timeout).
+
+2014-09-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Mark fast/selectors/nth-child-of-basics as Slow
+        https://bugs.webkit.org/show_bug.cgi?id=137149
+
+        Reviewed by Benjamin Poulain.
+
+        Since there are many tests in fast/selectors/nth-child-of-basics,
+        it takes long time and sometime LayoutTests timeout[1].
+
+        [1]: https://build.webkit.org/builders/GTK%20Linux%2064-bit%20Release%20(Tests)/builds/3042
+
+        * TestExpectations:
+        Mark fast/selectors/nth-child-of-basics as Slow.
+
+2014-09-26  Roger Fong  <roger_fong@apple.com>
+
+        [Win] Unreviewed. More gardening on Windows tests.
+
+        * platform/win/TestExpectations:
+	Enable some css3 conditional tests that are now passing.
+	Disable some failing hidpi tests since we don’t have hidpi test support on Windows.
+
 2014-09-26  Roger Fong  <roger_fong@apple.com>
 
         [Mac] Some inspector tests time out following r173992.

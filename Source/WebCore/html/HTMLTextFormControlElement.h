@@ -151,13 +151,13 @@ private:
     unsigned char m_isPlaceholderVisible : 1;
 };
 
-void isHTMLTextFormControlElement(const HTMLTextFormControlElement&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isHTMLTextFormControlElement(const Element& element) { return element.isTextFormControl(); }
-inline bool isHTMLTextFormControlElement(const Node& node) { return node.isElementNode() && toElement(node).isTextFormControl(); }
-NODE_TYPE_CASTS(HTMLTextFormControlElement)
-
 HTMLTextFormControlElement* enclosingTextFormControl(const Position&);
 
-} // namespace
+} // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLTextFormControlElement)
+    static bool isType(const WebCore::Element& element) { return element.isTextFormControl(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

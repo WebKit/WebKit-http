@@ -41,12 +41,10 @@ private:
     virtual bool childTypeAllowed(NodeType) const override;
 };
 
-inline bool isComment(const Node& node) { return node.nodeType() == Node::COMMENT_NODE; }
-void isComment(const Comment&); // Catch unnecessary runtime check of type known at compile time.
-void isComment(const ContainerNode&); // Catch unnecessary runtime check of type known at compile time.
-
-NODE_TYPE_CASTS(Comment)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Comment)
+    static bool isType(const WebCore::Node& node) { return node.nodeType() == WebCore::Node::COMMENT_NODE; }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // Comment_h

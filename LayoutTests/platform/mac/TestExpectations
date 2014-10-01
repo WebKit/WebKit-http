@@ -551,8 +551,12 @@ webgl/1.0.1/conformance/glsl/samplers/glsl-function-texture2dproj.html [ Failure
 webgl/1.0.1/conformance/textures/origin-clean-conformance.html [ Skip ]
 webgl/1.0.1/conformance/context/context-lost-restored.html [ Failure ]
 webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Failure Timeout ]
+webgl/1.0.2/conformance/ogles/GL/operators/operators_009_to_016.html [ Pass Failure ]
 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Failure Timeout ]
 http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
+
+# https://bugs.webkit.org/show_bug.cgi?id=124935
+webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html [ Failure Pass ]
 
 # Some WebGL tests don't work properly on MountainLion
 [ MountainLion ] webgl/1.0.1/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Failure ]
@@ -1394,9 +1398,9 @@ webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 plugins/snapshotting/quicktime-plugin-snapshotted.html [ Failure ]
 
 # Some inspector tests failing after r173992
-webkit.org/b/137157 inspector/css/matched-style-properties.html [ Failure ]
-webkit.org/b/137157 inspector/event-listener-set.html [ Failure ]
-webkit.org/b/137157 inspector/event-listener.html [ Failure ]
-webkit.org/b/137157 inspector/model/parse-script-syntax-tree.html [ Failure ]
-webkit.org/b/137157 inspector/page/main-frame-resource.html [ Failure ]
-webkit.org/b/137157 inspector/protocol-promise-result.html [ Failure ]
+webkit.org/b/137157 inspector/css/matched-style-properties.html [ Failure Crash ]
+webkit.org/b/137157 inspector/event-listener-set.html [ Failure Crash ]
+webkit.org/b/137157 inspector/event-listener.html [ Failure Crash ]
+webkit.org/b/137157 inspector/model/parse-script-syntax-tree.html [ Failure Crash ]
+webkit.org/b/137157 inspector/page/main-frame-resource.html [ Failure Crash ]
+webkit.org/b/137157 inspector/protocol-promise-result.html [ Failure Crash ]

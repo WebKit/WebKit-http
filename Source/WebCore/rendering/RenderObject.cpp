@@ -1033,13 +1033,13 @@ void RenderObject::addPDFURLRect(PaintInfo& paintInfo, const LayoutPoint& paintO
 
     if (urlRect.isEmpty())
         return;
-    Node* n = node();
-    if (!n || !n->isLink() || !n->isElementNode())
+    Node* node = this->node();
+    if (!node || !node->isLink() || !is<Element>(node))
         return;
-    const AtomicString& href = toElement(n)->getAttribute(hrefAttr);
+    const AtomicString& href = downcast<Element>(*node).getAttribute(hrefAttr);
     if (href.isNull())
         return;
-    paintInfo.context->setURLForRect(n->document().completeURL(href), snappedIntRect(urlRect));
+    paintInfo.context->setURLForRect(node->document().completeURL(href), snappedIntRect(urlRect));
 }
 
 void RenderObject::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRect)
@@ -2141,7 +2141,7 @@ void RenderObject::updateDragState(bool dragOn)
 {
     bool valueChanged = (dragOn != isDragging());
     setIsDragging(dragOn);
-    if (valueChanged && node() && (style().affectedByDrag() || (node()->isElementNode() && toElement(node())->childrenAffectedByDrag())))
+    if (valueChanged && node() && (style().affectedByDrag() || (is<Element>(node()) && downcast<Element>(*node()).childrenAffectedByDrag())))
         node()->setNeedsStyleRecalc();
     for (RenderObject* curr = firstChildSlow(); curr; curr = curr->nextSibling())
         curr->updateDragState(dragOn);
@@ -2225,7 +2225,7 @@ RenderStyle* RenderObject::getCachedPseudoStyle(PseudoId pseudo, RenderStyle* pa
 PassRefPtr<RenderStyle> RenderObject::getUncachedPseudoStyle(const PseudoStyleRequest& pseudoStyleRequest, RenderStyle* parentStyle, RenderStyle* ownStyle) const
 {
     if (pseudoStyleRequest.pseudoId < FIRST_INTERNAL_PSEUDOID && !ownStyle && !style().hasPseudoStyle(pseudoStyleRequest.pseudoId))
-        return 0;
+        return nullptr;
     
     if (!parentStyle) {
         ASSERT(!ownStyle);
@@ -2233,20 +2233,20 @@ PassRefPtr<RenderStyle> RenderObject::getUncachedPseudoStyle(const PseudoStyleRe
     }
 
     // FIXME: This "find nearest element parent" should be a helper function.
-    Node* n = node();
-    while (n && !n->isElementNode())
-        n = n->parentNode();
-    if (!n)
-        return 0;
-    Element* element = toElement(n);
+    Node* node = this->node();
+    while (node && !is<Element>(node))
+        node = node->parentNode();
+    if (!node)
+        return nullptr;
+    Element& element = downcast<Element>(*node);
 
     if (pseudoStyleRequest.pseudoId == FIRST_LINE_INHERITED) {
-        RefPtr<RenderStyle> result = document().ensureStyleResolver().styleForElement(element, parentStyle, DisallowStyleSharing);
+        RefPtr<RenderStyle> result = document().ensureStyleResolver().styleForElement(&element, parentStyle, DisallowStyleSharing);
         result->setStyleType(FIRST_LINE_INHERITED);
         return result.release();
     }
 
-    return document().ensureStyleResolver().pseudoStyleForElement(element, pseudoStyleRequest, parentStyle);
+    return document().ensureStyleResolver().pseudoStyleForElement(&element, pseudoStyleRequest, parentStyle);
 }
 
 static Color decorationColor(RenderStyle* style)
@@ -2444,7 +2444,7 @@ RenderBoxModelObject* RenderObject::offsetParent() const
     auto curr = parent();
     while (curr && (!curr->element() || (!curr->isPositioned() && !curr->isBody())) && !curr->isRenderNamedFlowThread()) {
         Element* element = curr->element();
-        if (!skipTables && element && (is<HTMLTableElement>(*element) || isHTMLTableCellElement(*element)))
+        if (!skipTables && element && (is<HTMLTableElement>(*element) || is<HTMLTableCellElement>(*element)))
             break;
  
         float newZoom = curr->style().effectiveZoom();
@@ -2549,7 +2549,7 @@ bool RenderObject::canHaveGeneratedChildren() const
 
 Node* RenderObject::generatingPseudoHostElement() const
 {
-    return toPseudoElement(node())->hostElement();
+    return downcast<PseudoElement>(*node()).hostElement();
 }
 
 void RenderObject::setNeedsBoundariesUpdate()

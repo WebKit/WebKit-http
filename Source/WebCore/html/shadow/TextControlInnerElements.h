@@ -70,10 +70,6 @@ private:
     virtual bool isTextControlInnerTextElement() const override { return true; }
 };
 
-inline bool isTextControlInnerTextElement(const HTMLElement& element) { return element.isTextControlInnerTextElement(); }
-inline bool isTextControlInnerTextElement(const Node& node) { return node.isHTMLElement() && isTextControlInnerTextElement(toHTMLElement(node)); }
-NODE_TYPE_CASTS(TextControlInnerTextElement)
-
 class SearchFieldResultsButtonElement final : public HTMLDivElement {
 public:
     static PassRefPtr<SearchFieldResultsButtonElement> create(Document&);
@@ -106,6 +102,11 @@ private:
     bool m_capturing;
 };
 
-} // namespace
+} // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::TextControlInnerTextElement)
+    static bool isType(const WebCore::HTMLElement& element) { return element.isTextControlInnerTextElement(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

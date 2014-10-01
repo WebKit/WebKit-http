@@ -1,3 +1,382 @@
+2014-09-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Rename TEST_THEME_DIR macro
+        https://bugs.webkit.org/show_bug.cgi?id=137244
+
+        Reviewed by Csaba Osztrogonác.
+
+        TEST_THEME_DIR is to get a path for default theme though, it has used TEST_ prefix.
+        DEFAULT_THEME_DIR is better than it.
+
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestEnvironment.cpp:
+        (EWK2UnitTest::EWK2UnitTestEnvironment::defaultTheme):
+        (EWK2UnitTest::EWK2UnitTestEnvironment::pathForTheme):
+        * UIProcess/efl/WebInspectorProxyEfl.cpp:
+        (WebKit::WebInspectorProxy::platformCreateInspectorPage):
+
+2014-09-30  Christophe Dumez  <cdumez@apple.com>
+
+        Generalize is<>() / downcast<>() support to all types
+        https://bugs.webkit.org/show_bug.cgi?id=137243
+
+        Reviewed by Benjamin Poulain.
+
+        Generalize is<>() / downcast<>() support to all types, not just Nodes.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMDocument.mm:
+        (-[WKDOMDocument createElement:]):
+        (-[WKDOMDocument createTextNode:]):
+        (-[WKDOMDocument body]):
+        * WebProcess/InjectedBundle/API/mac/WKDOMText.mm:
+        (-[WKDOMText data]):
+        (-[WKDOMText setData:]):
+
+2014-09-30  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Element
+        https://bugs.webkit.org/show_bug.cgi?id=137241
+
+        Reviewed by Andreas Kling.
+
+        Use is<>() / downcast<>() for Element instead of isElementNode() /
+        toElement().
+
+        * Shared/WebRenderObject.cpp:
+        (WebKit::WebRenderObject::WebRenderObject):
+        * WebProcess/InjectedBundle/API/mac/WKDOMElement.mm:
+        (-[WKDOMElement hasAttribute:]):
+        (-[WKDOMElement getAttribute:]):
+        (-[WKDOMElement setAttribute:value:]):
+        (-[WKDOMElement tagName]):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::elementBounds):
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        (WebKit::InjectedBundleHitTestResult::mediaType):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::sendTapHighlightForNodeIfNecessary):
+        (WebKit::WebPage::blurAssistedNode):
+        (WebKit::WebPage::getPositionInformation):
+        (WebKit::nextFocusableElement):
+        (WebKit::WebPage::elementDidFocus):
+
+2014-09-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r173929): [GTK] TestInspector fails after r173929
+        https://bugs.webkit.org/show_bug.cgi?id=137247
+
+        Reviewed by Philippe Normand.
+
+        Add WebKitWebInspector:can-attach property to notify when the
+        inspector attach availability changes.
+
+        * UIProcess/API/C/gtk/WKInspectorClientGtk.h:
+        * UIProcess/API/gtk/WebKitWebInspector.cpp:
+        (webkit_web_inspector_class_init): Add WebKitWebInspector:can-attach property.
+        (didChangeAttachAvailability): Emit notify::can-attach.
+        (webkitWebInspectorCreate): Add implementation for didChangeAttachAvailability.
+        (webkit_web_inspector_get_can_attach): Return whether the inspector can be attached.
+        * UIProcess/API/gtk/WebKitWebInspector.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml: Add index of new symbols in 2.8.
+        * UIProcess/API/gtk/docs/webkit2gtk-sections.txt: Add new symbol.
+        * UIProcess/gtk/WebInspectorClientGtk.cpp:
+        (WebKit::WebInspectorClientGtk::didChangeAttachAvailability):
+        * UIProcess/gtk/WebInspectorClientGtk.h:
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::platformAttachAvailabilityChanged): Notify the client.
+
+2014-09-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] The remote web inspector shows the HTML content as plain text
+        https://bugs.webkit.org/show_bug.cgi?id=137250
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Use GResource API directly to get the resource data, instead of
+        using the GFile API, and use g_content_type_guess() to get the
+        MIME Type.
+
+        * UIProcess/InspectorServer/gtk/WebInspectorServerGtk.cpp:
+        (WebKit::WebInspectorServer::platformResourceForPath):
+
+2014-09-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move GtkPopupMenu implementation to WebPopupMenuProxyGtk
+        https://bugs.webkit.org/show_bug.cgi?id=137193
+
+        Reviewed by Gustavo Noronha Silva.
+
+        GtkPopupMenu was in platform only to have a common implementation to
+        be shared with WebKit1. Now that it's only used by
+        WebPopupMenuProxyGtk in WebKit2, we can simplify the code by
+        merging the implementation directly into WebPopupMenuProxyGtk.
+
+        * UIProcess/gtk/WebPopupMenuProxyGtk.cpp:
+        (WebKit::WebPopupMenuProxyGtk::WebPopupMenuProxyGtk):
+        (WebKit::WebPopupMenuProxyGtk::~WebPopupMenuProxyGtk):
+        (WebKit::WebPopupMenuProxyGtk::populatePopupMenu):
+        (WebKit::WebPopupMenuProxyGtk::showPopupMenu):
+        (WebKit::WebPopupMenuProxyGtk::hidePopupMenu):
+        (WebKit::WebPopupMenuProxyGtk::typeAheadFind):
+        (WebKit::WebPopupMenuProxyGtk::resetTypeAheadFindState):
+        (WebKit::WebPopupMenuProxyGtk::selectItemCallback):
+        (WebKit::WebPopupMenuProxyGtk::keyPressEventCallback):
+        * UIProcess/gtk/WebPopupMenuProxyGtk.h:
+        (WebKit::WebPopupMenuProxyGtk::setCurrentlySelectedMenuItem):
+
+2014-09-29  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Document
+        https://bugs.webkit.org/show_bug.cgi?id=137221
+
+        Reviewed by Andreas Kling.
+
+        Use is<>() / downcast<>() for Document instead of isDocumentNode() /
+        toDocument().
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMDocument.mm:
+        (-[WKDOMDocument createElement:]):
+        (-[WKDOMDocument createTextNode:]):
+        (-[WKDOMDocument body]):
+
+2014-09-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174045.
+        https://bugs.webkit.org/show_bug.cgi?id=137231
+
+        Introduced a crash during page loading tests on Mac (Requested
+        by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Replace OSObjectPtr with RetainPtr/adoptOS"
+        https://bugs.webkit.org/show_bug.cgi?id=137158
+        http://trac.webkit.org/changeset/174045
+
+2014-09-29  Anders Carlsson  <andersca@apple.com>
+
+        Set the TBA versions based on the PLATFORM_NAME
+        https://bugs.webkit.org/show_bug.cgi?id=137226
+        Follow-up fix for <rdar://problem/17761459>.
+
+        Reviewed by Dan Bernstein.
+
+        * mac/rewrite-availability-macros.sh:
+        Turns out that MACOSX_DEPLOYMENT_TARGET is set even for iOS builds,
+        so set the versions based on the PLATFORM_NAME environment variable.
+
+2014-09-29  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::performActionOnElement):
+
+2014-09-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Add basic support for link navigation in WKPDFView
+        https://bugs.webkit.org/show_bug.cgi?id=137182
+
+        Reviewed by Tim Horton.
+
+        Teach WKPDFView to navigate to URLs when PDF link annotations are tapped.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::navigateToURLWithSimulatedClick): Sent Messages::WebPage::NavigateToURLWithSimulatedClick.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKPDFView.h:
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView _clearPages]): Removed self as the UIPDFAnnotationControllerDelegate.
+        (-[WKPDFView _revalidateViews]): Added self as the UIPDFAnnotationControllerDelegate.
+        (-[WKPDFView annotation:wasTouchedAtPoint:controller:]): Retrieved the URL from the touched annotation,
+        computed the touched point relative to the WKPDFView and to the screen, and called
+        navigateToURLWithSimulatedClick() after a 200 ms delay in order to show a soon-to-be-added tap highlight
+        (this value matches the delay in UIWebPDFView).
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::navigateToURLWithSimulatedClick): Created a fake single-click MouseEvent and called
+        FrameLoader::urlSelected(). Creating a mouse event ensures that the navigation appears as a
+        NavigationTypeLinkClicked in navigation policy delegates.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2014-09-29  Christophe Dumez  <cdumez@apple.com>
+
+        Use the new is<>() / downcast<>() for Text Nodes
+        https://bugs.webkit.org/show_bug.cgi?id=137188
+
+        Reviewed by Darin Adler.
+
+        Use the new is<>() / downcast<>() functions for Text Nodes instead of
+        isText() / toText().
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMText.mm:
+        (-[WKDOMText data]):
+        (-[WKDOMText setData:]):
+
+2014-09-29  Christophe Dumez  <cdumez@apple.com>
+
+        Make is<>() / downcast<>() work for HTMLDocument and its subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137169
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for HTMLDocument and its subclasses.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::pdfDocumentForPrintingFrame):
+
+2014-09-29  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Fix !ENABLE(INSPECTOR) build after r173929
+        https://bugs.webkit.org/show_bug.cgi?id=137210
+
+        Reviewed by Timothy Hatcher.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::getLaunchOptions):
+
+2014-09-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r172919): WebKitPluginProcess fails to scan GTK+2 plugins after r172919.
+        https://bugs.webkit.org/show_bug.cgi?id=137191
+
+        Reviewed by Philippe Normand.
+
+        In r172919 I moved the GTK+ symbols mix check earlier, before the
+        plugin is loaded and initialized. That made impossible to use the
+        GTK3 plugin process to scan gtk2 plugins, because we need to load
+        the plugin to get its metadata. But we don't need to initialize
+        the plugin to check if it requires GTK2, so we can do that check
+        in the UI process to decide which plugin process to use.
+
+        * Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp:
+        (WebKit::NetscapePluginModule::getPluginInfoForLoadedPlugin):
+        Remove the requires GTK2 check.
+        (WebKit::NetscapePluginModule::scanPlugin): Don't write
+        requires-gtk2 to stdout.
+        * UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp:
+        (WebKit::pluginRequiresGtk2): Helper function to check if the
+        given plugin path requires GTK2.
+        (WebKit::PluginProcessProxy::scanPlugin): Check if the plugin path
+        requires GTK2 and use WebKitPluginProcess2 in such case, or return
+        early if GTK2 plugins are not enabled. Log error messages when
+        something fails scanning the plugin to make it easiert to debug
+        problems in the future.
+
+2014-09-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Replace wkGetGlyphsForCharacters() with CGFontGetGlyphsForUnichars()
+        https://bugs.webkit.org/show_bug.cgi?id=137197
+
+        Reviewed by Alexey Proskuryakov.
+
+        No new tests because there is no behavior change.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * mac/WebKit2.order:
+
+2014-09-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr for ContextMenuController
+        https://bugs.webkit.org/show_bug.cgi?id=137178
+
+        Reviewed by Darin Adler.
+
+        Switch to using std::unique_ptr instead of OwnPtr and PassOwnPtr
+        for ContextMenuController class. Inherited class is changed by this use as well.
+
+        * WebProcess/WebCoreSupport/WebContextMenuClient.cpp:
+        (WebKit::WebContextMenuClient::customizeMenu):
+        * WebProcess/WebCoreSupport/WebContextMenuClient.h:
+
+2014-09-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Move ColorInputType class to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=137173
+
+        Reviewed by Darin Adler.
+
+        Replace uses of PassOwnPtr in code under ColorInputType class with std::unique_ptr.
+        Child classes follow this change as well.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::createColorChooser):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+
+2014-09-26  Sam Weinig  <sam@webkit.org>
+
+        Replace OSObjectPtr with RetainPtr/adoptOS
+        https://bugs.webkit.org/show_bug.cgi?id=137158
+
+        Reviewed by Dan Bernstein.
+
+        * DatabaseProcess/EntryPoint/mac/XPCService/DatabaseServiceEntryPoint.mm:
+        (DatabaseServiceInitializer):
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkServiceEntryPoint.mm:
+        (WebKit::NetworkServiceInitializerDelegate::NetworkServiceInitializerDelegate):
+        (NetworkServiceInitializer):
+        * Platform/IPC/Connection.h:
+        (IPC::Connection::Identifier::Identifier):
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::ConnectionTerminationWatchdog::createConnectionTerminationWatchdog):
+        (IPC::ConnectionTerminationWatchdog::ConnectionTerminationWatchdog):
+        * PluginProcess/EntryPoint/mac/XPCService/PluginServiceEntryPoint.mm:
+        (WebKit::PluginServiceInitializerDelegate::PluginServiceInitializerDelegate):
+        (PluginServiceInitializer):
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.h:
+        (WebKit::XPCServiceInitializerDelegate::XPCServiceInitializerDelegate):
+        (WebKit::XPCServiceInitializer):
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm:
+        (WebKit::XPCServiceInitializerDelegate::checkEntitlements):
+        (WebKit::XPCServiceInitializerDelegate::hasEntitlement):
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.Development.mm:
+        (WebKit::XPCServiceEventHandler):
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm:
+        (WebKit::XPCServiceEventHandler):
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::connectToService):
+        (WebKit::connectToReExecService):
+        * WebProcess/EntryPoint/mac/XPCService/WebContentServiceEntryPoint.mm:
+        (WebContentServiceInitializer):
+
+2014-09-26  Christophe Dumez  <cdumez@apple.com>
+
+        Stop using legacy NODE_TYPE_CASTS() macro for HTML Elements
+        https://bugs.webkit.org/show_bug.cgi?id=137137
+
+        Reviewed by Benjamin Poulain.
+
+        Use is<>() / downcast<>() where appropriate.
+
+        * WebProcess/Plugins/PDF/PDFPluginTextAnnotation.mm:
+        (WebKit::PDFPluginTextAnnotation::value):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::initializePlugin):
+        (WebKit::PluginView::pluginSnapshotTimerFired):
+        (WebKit::PluginView::pluginDidReceiveUserInteraction):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::createPlugin):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::performActionOnElement):
+
+2014-09-26  Anders Carlsson  <andersca@apple.com>
+
+        Add API for loading local files
+        https://bugs.webkit.org/show_bug.cgi?id=137153
+        rdar://problem/17761459
+
+        Reviewed by Oliver Hunt.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView loadFileURL:allowingReadAccessToURL:]):
+        Load the file, wrapping the navigation ID in a WKNavigation using createLoadRequestNavigation.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadFile):
+        * UIProcess/WebPageProxy.h:
+        Return the navigation ID (or 0 if the navigation failed).
+
 2014-09-26  Timothy Hatcher  <timothy@apple.com>
 
         Add WKInspector back function stubs that went missing from r173929.

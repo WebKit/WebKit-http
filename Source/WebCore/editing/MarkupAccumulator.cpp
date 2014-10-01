@@ -139,9 +139,9 @@ void MarkupAccumulator::serializeNodesWithNamespaces(Node& targetNode, Node* nod
     if (&targetNode == nodeToSkip)
         return;
 
-    if (tagNamesToSkip && targetNode.isElementNode()) {
+    if (tagNamesToSkip && is<Element>(targetNode)) {
         for (auto& name : *tagNamesToSkip) {
-            if (toElement(targetNode).hasTagName(name))
+            if (downcast<Element>(targetNode).hasTagName(name))
                 return;
         }
     }
@@ -553,27 +553,27 @@ void MarkupAccumulator::appendStartMarkup(StringBuilder& result, const Node& nod
 
     switch (node.nodeType()) {
     case Node::TEXT_NODE:
-        appendText(result, toText(node));
+        appendText(result, downcast<Text>(node));
         break;
     case Node::COMMENT_NODE:
-        appendComment(result, toComment(node).data());
+        appendComment(result, downcast<Comment>(node).data());
         break;
     case Node::DOCUMENT_NODE:
-        appendXMLDeclaration(result, toDocument(node));
+        appendXMLDeclaration(result, downcast<Document>(node));
         break;
     case Node::DOCUMENT_FRAGMENT_NODE:
         break;
     case Node::DOCUMENT_TYPE_NODE:
-        appendDocumentType(result, toDocumentType(node));
+        appendDocumentType(result, downcast<DocumentType>(node));
         break;
     case Node::PROCESSING_INSTRUCTION_NODE:
-        appendProcessingInstruction(result, toProcessingInstruction(node).target(), toProcessingInstruction(node).data());
+        appendProcessingInstruction(result, downcast<ProcessingInstruction>(node).target(), downcast<ProcessingInstruction>(node).data());
         break;
     case Node::ELEMENT_NODE:
-        appendElement(result, toElement(node), namespaces);
+        appendElement(result, downcast<Element>(node), namespaces);
         break;
     case Node::CDATA_SECTION_NODE:
-        appendCDATASection(result, toCDATASection(node).data());
+        appendCDATASection(result, downcast<CDATASection>(node).data());
         break;
     case Node::ATTRIBUTE_NODE:
     case Node::ENTITY_NODE:
@@ -603,14 +603,14 @@ bool MarkupAccumulator::shouldSelfClose(const Element& element)
 
 bool MarkupAccumulator::elementCannotHaveEndTag(const Node& node)
 {
-    if (!node.isHTMLElement())
+    if (!is<HTMLElement>(node))
         return false;
 
     // FIXME: ieForbidsInsertHTML may not be the right function to call here
     // ieForbidsInsertHTML is used to disallow setting innerHTML/outerHTML
     // or createContextualFragment.  It does not necessarily align with
     // which elements should be serialized w/o end tags.
-    return toHTMLElement(node).ieForbidsInsertHTML();
+    return downcast<HTMLElement>(node).ieForbidsInsertHTML();
 }
 
 void MarkupAccumulator::appendEndMarkup(StringBuilder& result, const Element& element)

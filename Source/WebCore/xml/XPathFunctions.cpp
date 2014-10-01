@@ -362,8 +362,8 @@ static inline String expandedNameLocalPart(Node* node)
 {
     // The local part of an XPath expanded-name matches DOM local name for most node types, except for namespace nodes and processing instruction nodes.
     ASSERT(node->nodeType() != Node::XPATH_NAMESPACE_NODE); // Not supported yet.
-    if (node->nodeType() == Node::PROCESSING_INSTRUCTION_NODE)
-        return toProcessingInstruction(node)->target();
+    if (is<ProcessingInstruction>(node))
+        return downcast<ProcessingInstruction>(*node).target();
     return node->localName().string();
 }
 
@@ -580,13 +580,13 @@ Value FunLang::evaluate() const
 {
     String lang = argument(0).evaluate().toString();
 
-    const Attribute* languageAttribute = 0;
+    const Attribute* languageAttribute = nullptr;
     Node* node = evaluationContext().node.get();
     while (node) {
-        if (node->isElementNode()) {
-            Element* element = toElement(node);
-            if (element->hasAttributes())
-                languageAttribute = element->findAttributeByName(XMLNames::langAttr);
+        if (is<Element>(node)) {
+            Element& element = downcast<Element>(*node);
+            if (element.hasAttributes())
+                languageAttribute = element.findAttributeByName(XMLNames::langAttr);
         }
         if (languageAttribute)
             break;

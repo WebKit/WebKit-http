@@ -1740,20 +1740,11 @@ inline ScriptExecutionContext* Node::scriptExecutionContext() const
 
 Element* eventTargetElementForDocument(Document*);
 
-SCRIPT_EXECUTION_CONTEXT_TYPE_CASTS(Document)
-
-inline bool isDocument(const Node& node) { return node.isDocumentNode(); }
-void isDocument(const Document&); // Catch unnecessary runtime check of type known at compile time.
-
-NODE_TYPE_CASTS(Document)
-
-#define DOCUMENT_TYPE_CASTS(ToClassName) \
-    TYPE_CASTS_BASE(ToClassName, Document, document, WebCore::is##ToClassName(*document), WebCore::is##ToClassName(document))
-
 } // namespace WebCore
 
-namespace WTF {
-inline WebCore::Document* getPtr(WebCore::Document& p) { return &p; }
-}
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Document)
+    static bool isType(const WebCore::ScriptExecutionContext& context) { return context.isDocument(); }
+    static bool isType(const WebCore::Node& node) { return node.isDocumentNode(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // Document_h

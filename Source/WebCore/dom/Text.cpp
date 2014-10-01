@@ -45,7 +45,7 @@ PassRefPtr<Text> Text::create(Document& document, const String& data)
 
 PassRefPtr<Text> Text::create(ScriptExecutionContext& context, const String& data)
 {
-    return adoptRef(new Text(toDocument(context), data, CreateText));
+    return adoptRef(new Text(downcast<Document>(context), data, CreateText));
 }
 
 PassRefPtr<Text> Text::createEditingText(Document& document, const String& data)
@@ -94,9 +94,9 @@ static const Text* earliestLogicallyAdjacentTextNode(const Text* text)
 {
     const Node* node = text;
     while ((node = node->previousSibling())) {
-        if (!node->isTextNode())
+        if (!is<Text>(node))
             break;
-        text = toText(node);
+        text = downcast<Text>(node);
     }
     return text;
 }
@@ -105,9 +105,9 @@ static const Text* latestLogicallyAdjacentTextNode(const Text* text)
 {
     const Node* node = text;
     while ((node = node->nextSibling())) {
-        if (!node->isTextNode())
+        if (!is<Text>(node))
             break;
-        text = toText(node);
+        text = downcast<Text>(node);
     }
     return text;
 }
@@ -178,7 +178,7 @@ PassRefPtr<Node> Text::cloneNode(bool /*deep*/)
 static bool isSVGShadowText(Text* text)
 {
     Node* parentNode = text->parentNode();
-    return parentNode->isShadowRoot() && toShadowRoot(parentNode)->hostElement()->hasTagName(SVGNames::trefTag);
+    return is<ShadowRoot>(parentNode) && downcast<ShadowRoot>(*parentNode).hostElement()->hasTagName(SVGNames::trefTag);
 }
 
 static bool isSVGText(Text* text)

@@ -1799,11 +1799,11 @@ void HTMLMediaElement::mediaLoadingFailedFatally(MediaPlayer::NetworkState error
     setShouldDelayLoadEvent(false);
 
     // 6 - Abort the overall resource selection algorithm.
-    m_currentSourceNode = 0;
+    m_currentSourceNode = nullptr;
 
 #if PLATFORM(COCOA)
-    if (document().isMediaDocument())
-        toMediaDocument(document()).mediaElementSawUnsupportedTracks();
+    if (is<MediaDocument>(document()))
+        downcast<MediaDocument>(document()).mediaElementSawUnsupportedTracks();
 #endif
 }
 
@@ -4214,8 +4214,8 @@ void HTMLMediaElement::mediaPlayerSawUnsupportedTracks(MediaPlayer*)
     // The MediaPlayer came across content it cannot completely handle.
     // This is normally acceptable except when we are in a standalone
     // MediaDocument. If so, tell the document what has happened.
-    if (document().isMediaDocument())
-        toMediaDocument(document()).mediaElementSawUnsupportedTracks();
+    if (is<MediaDocument>(document()))
+        downcast<MediaDocument>(document()).mediaElementSawUnsupportedTracks();
 }
 
 void HTMLMediaElement::mediaPlayerResourceNotSupported(MediaPlayer*)
@@ -4790,11 +4790,6 @@ void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPl
 {
     LOG(Media, "HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(%p) - webkitCurrentPlaybackTargetIsWireless = %s", this, boolString(webkitCurrentPlaybackTargetIsWireless()));
     scheduleEvent(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
-}
-
-void HTMLMediaElement::mediaPlayerPlaybackTargetAvailabilityChanged(MediaPlayer*)
-{
-    enqueuePlaybackTargetAvailabilityChangedEvent();
 }
 
 bool HTMLMediaElement::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)

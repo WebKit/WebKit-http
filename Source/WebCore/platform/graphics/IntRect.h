@@ -49,10 +49,6 @@ typedef struct _NSRect NSRect;
 
 #if PLATFORM(WIN)
 typedef struct tagRECT RECT;
-#elif PLATFORM(GTK)
-#ifdef GTK_API_VERSION_2
-typedef struct _GdkRectangle GdkRectangle;
-#endif
 #elif PLATFORM(HAIKU)
 class BRect;
 #endif
@@ -173,11 +169,6 @@ public:
 #if PLATFORM(WIN)
     IntRect(const RECT&);
     operator RECT() const;
-#elif PLATFORM(GTK)
-#ifdef GTK_API_VERSION_2
-    IntRect(const GdkRectangle&);
-    operator GdkRectangle() const;
-#endif
 #elif PLATFORM(HAIKU)
     explicit IntRect(const BRect&);
     operator BRect() const;

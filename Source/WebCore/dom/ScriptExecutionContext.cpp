@@ -30,6 +30,7 @@
 
 #include "CachedScript.h"
 #include "DOMTimer.h"
+#include "Document.h"
 #include "ErrorEvent.h"
 #include "MessagePort.h"
 #include "PublicURLManager.h"
@@ -158,16 +159,16 @@ void ScriptExecutionContext::dispatchMessagePortEvents()
 
 void ScriptExecutionContext::createdMessagePort(MessagePort& messagePort)
 {
-    ASSERT((isDocument() && isMainThread())
-        || (isWorkerGlobalScope() && currentThread() == toWorkerGlobalScope(this)->thread().threadID()));
+    ASSERT((is<Document>(*this) && isMainThread())
+        || (is<WorkerGlobalScope>(*this) && currentThread() == downcast<WorkerGlobalScope>(*this).thread().threadID()));
 
     m_messagePorts.add(&messagePort);
 }
 
 void ScriptExecutionContext::destroyedMessagePort(MessagePort& messagePort)
 {
-    ASSERT((isDocument() && isMainThread())
-        || (isWorkerGlobalScope() && currentThread() == toWorkerGlobalScope(this)->thread().threadID()));
+    ASSERT((is<Document>(*this) && isMainThread())
+        || (is<WorkerGlobalScope>(*this) && currentThread() == downcast<WorkerGlobalScope>(*this).thread().threadID()));
 
     m_messagePorts.remove(&messagePort);
 }
@@ -378,8 +379,8 @@ bool ScriptExecutionContext::dispatchErrorEvent(const String& errorMessage, int 
         return false;
 
 #if PLATFORM(IOS)
-    if (target == target->toDOMWindow() && isDocument()) {
-        Settings* settings = toDocument(this)->settings();
+    if (target == target->toDOMWindow() && is<Document>(*this)) {
+        Settings* settings = downcast<Document>(*this).settings();
         if (settings && !settings->shouldDispatchJavaScriptWindowOnErrorEvents())
             return false;
     }
@@ -445,10 +446,10 @@ double ScriptExecutionContext::timerAlignmentInterval() const
 
 JSC::VM& ScriptExecutionContext::vm()
 {
-     if (isDocument())
+    if (is<Document>(*this))
         return JSDOMWindow::commonVM();
 
-    return toWorkerGlobalScope(*this).script()->vm();
+    return downcast<WorkerGlobalScope>(*this).script()->vm();
 }
 
 #if ENABLE(SQL_DATABASE)

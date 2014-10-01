@@ -62,10 +62,11 @@ private:
     virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 };
 
-void isHTMLTableCellElement(const HTMLTableCellElement&); // Catch unnecessary runtime check of type known at compile time.
-inline bool isHTMLTableCellElement(const Node& node) { return node.hasTagName(HTMLNames::tdTag) || node.hasTagName(HTMLNames::thTag); }
-NODE_TYPE_CASTS(HTMLTableCellElement)
+} // namespace WebCore
 
-} // namespace
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLTableCellElement)
+    static bool isType(const WebCore::HTMLElement& element) { return element.hasTagName(WebCore::HTMLNames::tdTag) || element.hasTagName(WebCore::HTMLNames::thTag); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

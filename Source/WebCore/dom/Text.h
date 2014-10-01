@@ -74,12 +74,10 @@ private:
 #endif
 };
 
-inline bool isText(const Node& node) { return node.isTextNode(); }
-void isText(const Text&); // Catch unnecessary runtime check of type known at compile time.
-void isText(const ContainerNode&); // Catch unnecessary runtime check of type known at compile time.
-
-NODE_TYPE_CASTS(Text)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Text)
+    static bool isType(const WebCore::Node& node) { return node.isTextNode(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // Text_h

@@ -42,14 +42,9 @@ class QTTime;
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSMutableDictionary;
 OBJC_CLASS QTMovie;
-OBJC_CLASS QTMovieView;
 OBJC_CLASS QTMovieLayer;
 OBJC_CLASS QTVideoRendererWebKitOnly;
 OBJC_CLASS WebCoreMovieObserver;
-
-#ifndef DRAW_FRAME_RATE
-#define DRAW_FRAME_RATE 0
-#endif
 
 namespace WebCore {
     
@@ -143,16 +138,13 @@ private:
     void createQTMovie(const String& url);
     void createQTMovie(NSURL *, NSDictionary *movieAttributes);
 
-    enum MediaRenderingMode { MediaRenderingNone, MediaRenderingMovieView, MediaRenderingSoftwareRenderer, MediaRenderingMovieLayer };
+    enum MediaRenderingMode { MediaRenderingNone, MediaRenderingSoftwareRenderer, MediaRenderingMovieLayer };
     MediaRenderingMode currentRenderingMode() const;
     MediaRenderingMode preferredRenderingMode() const;
     
     void setUpVideoRendering();
     void tearDownVideoRendering();
     bool hasSetUpVideoRendering() const;
-    
-    void createQTMovieView();
-    void detachQTMovieView();
     
     enum QTVideoRendererMode { QTVideoRendererModeDefault, QTVideoRendererModeListensForNewImages };
     void createQTVideoRenderer(QTVideoRendererMode rendererMode);
@@ -184,7 +176,6 @@ private:
 
     MediaPlayer* m_player;
     RetainPtr<QTMovie> m_qtMovie;
-    RetainPtr<QTMovieView> m_qtMovieView;
     RetainPtr<QTVideoRendererWebKitOnly> m_qtVideoRenderer;
     RetainPtr<WebCoreMovieObserver> m_objcObserver;
     String m_movieURL;
@@ -209,11 +200,6 @@ private:
     bool m_isAllowedToRender;
     bool m_privateBrowsing;
     mutable MediaTime m_maxTimeLoadedAtLastDidLoadingProgress;
-#if DRAW_FRAME_RATE
-    int  m_frameCountWhilePlaying;
-    MediaTime m_timeStartedPlaying;
-    MediaTime m_timeStoppedPlaying;
-#endif
     mutable FloatSize m_cachedNaturalSize;
 };
 

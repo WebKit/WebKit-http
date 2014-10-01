@@ -36,6 +36,8 @@ class SlotVisitor;
 }
 
 #if defined(__OBJC__)
+@class NSMapTable;
+
 @interface JSVirtualMachine(Internal)
 
 JSContextGroupRef getGroupFromVirtualMachine(JSVirtualMachine *);

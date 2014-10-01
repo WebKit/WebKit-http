@@ -1,3 +1,509 @@
+2014-09-30  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: ErrorString should be passed by reference
+        https://bugs.webkit.org/show_bug.cgi?id=137257
+
+        Reviewed by Joseph Pecoraro.
+
+        Pass the leading ErrorString argument by reference, since it is always an out parameter.
+        Clean up callsites where the error message is written.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::evaluate):
+        (Inspector::InjectedScript::callFunctionOn):
+        (Inspector::InjectedScript::evaluateOnCallFrame):
+        (Inspector::InjectedScript::getFunctionDetails):
+        (Inspector::InjectedScript::getProperties):
+        (Inspector::InjectedScript::getInternalProperties):
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeEvalCall):
+        * inspector/InjectedScriptBase.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::willDestroyFrontendAndBackend):
+        (Inspector::InspectorAgent::enable):
+        (Inspector::InspectorAgent::disable):
+        (Inspector::InspectorAgent::initialized):
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::willDestroyFrontendAndBackend):
+        (Inspector::InspectorConsoleAgent::enable):
+        (Inspector::InspectorConsoleAgent::disable):
+        (Inspector::InspectorConsoleAgent::clearMessages):
+        (Inspector::InspectorConsoleAgent::reset):
+        (Inspector::InspectorConsoleAgent::addMessageToConsole):
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::enable):
+        (Inspector::InspectorDebuggerAgent::disable):
+        (Inspector::InspectorDebuggerAgent::setBreakpointsActive):
+        (Inspector::InspectorDebuggerAgent::breakpointActionsFromProtocol):
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::parseLocation):
+        (Inspector::InspectorDebuggerAgent::setBreakpoint):
+        (Inspector::InspectorDebuggerAgent::removeBreakpoint):
+        (Inspector::InspectorDebuggerAgent::continueToLocation):
+        (Inspector::InspectorDebuggerAgent::searchInContent):
+        (Inspector::InspectorDebuggerAgent::getScriptSource):
+        (Inspector::InspectorDebuggerAgent::getFunctionDetails):
+        (Inspector::InspectorDebuggerAgent::pause):
+        (Inspector::InspectorDebuggerAgent::resume):
+        (Inspector::InspectorDebuggerAgent::stepOver):
+        (Inspector::InspectorDebuggerAgent::stepInto):
+        (Inspector::InspectorDebuggerAgent::stepOut):
+        (Inspector::InspectorDebuggerAgent::setPauseOnExceptions):
+        (Inspector::InspectorDebuggerAgent::evaluateOnCallFrame):
+        (Inspector::InspectorDebuggerAgent::setOverlayMessage):
+        (Inspector::InspectorDebuggerAgent::didParseSource):
+        (Inspector::InspectorDebuggerAgent::clearInspectorBreakpointState):
+        (Inspector::InspectorDebuggerAgent::assertPaused):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::parse):
+        (Inspector::InspectorRuntimeAgent::evaluate):
+        (Inspector::InspectorRuntimeAgent::callFunctionOn):
+        (Inspector::InspectorRuntimeAgent::getProperties):
+        (Inspector::InspectorRuntimeAgent::releaseObject):
+        (Inspector::InspectorRuntimeAgent::releaseObjectGroup):
+        (Inspector::InspectorRuntimeAgent::run):
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        (Inspector::InspectorRuntimeAgent::enableTypeProfiler):
+        (Inspector::InspectorRuntimeAgent::disableTypeProfiler):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/JSGlobalObjectConsoleAgent.cpp:
+        (Inspector::JSGlobalObjectConsoleAgent::setMonitoringXHREnabled):
+        (Inspector::JSGlobalObjectConsoleAgent::addInspectedNode):
+        * inspector/agents/JSGlobalObjectConsoleAgent.h:
+        * inspector/agents/JSGlobalObjectDebuggerAgent.cpp:
+        (Inspector::JSGlobalObjectDebuggerAgent::injectedScriptForEval):
+        * inspector/agents/JSGlobalObjectDebuggerAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.cpp:
+        (Inspector::JSGlobalObjectRuntimeAgent::injectedScriptForEval):
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        * inspector/scripts/codegen/generate_backend_dispatcher_header.py:
+        (BackendDispatcherHeaderGenerator._generate_handler_declaration_for_command):
+        (BackendDispatcherHeaderGenerator._generate_async_handler_declaration_for_command):
+        * inspector/scripts/codegen/generate_backend_dispatcher_implementation.py:
+        (BackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+
+2014-09-30  Mark Lam  <mark.lam@apple.com>
+
+        Label some asserts as having security implications.
+        <https://webkit.org/b/137260>
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::handleAssertionFailure):
+        * runtime/JSCell.h:
+        (JSC::jsCast):
+        * runtime/StructureIDTable.h:
+        (JSC::StructureIDTable::get):
+
+2014-09-30  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r174025): Invalid cast in JSC::asString
+        https://bugs.webkit.org/show_bug.cgi?id=137224
+
+        Reviewed by Geoffrey Garen.
+        
+        Store barrier elision in fixup depends on checking the type of the value being stored. It's very important that
+        when we speak of "the value being stored" we are really referring to the right value.
+        
+        The bug here was that the PutClosureVar case was assuming that child2 is the value being stored. It's actually
+        child3. So we were incorrectly removing all barriers from PutClosureVar.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+2014-09-30  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: use static Strings instead of AtomicStrings for replay input type tags
+        https://bugs.webkit.org/show_bug.cgi?id=137086
+
+        Reviewed by Joseph Pecoraro.
+
+        This pattern doesn't work when we want to define some inputs in WebKit2.
+        The ReplayInputTypes class was generated from WebCore inputs only. This
+        patch moves all input traits to use static local Strings as type tags.
+
+        * replay/scripts/CodeGeneratorReplayInputs.py: Remove configuration of how
+        type tags are generated, since all framework targets now generate the same code.
+
+        * replay/NondeterministicInput.h:
+        * replay/scripts/CodeGeneratorReplayInputs.py: Simplify and rebase test results.
+        (Generator.generate_input_trait_implementation):
+        * replay/scripts/CodeGeneratorReplayInputsTemplates.py: Simplify templates.
+
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers-with-guarded-values.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::SavedMouseButton>::type):
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers-with-guarded-values.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::SavedMouseButton>::type):
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-enum-with-guard.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::HandleWheelEvent>::type):
+        * replay/scripts/tests/expected/generate-enum-with-guard.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::FormCombo>::type):
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-input-with-guard.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::GetCurrentTime>::type):
+        (JSC::InputTraits<Test::SetRandomSeed>::type):
+        * replay/scripts/tests/expected/generate-input-with-guard.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-input-with-vector-members.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::ArrayOfThings>::type):
+        (JSC::InputTraits<Test::SavedHistory>::type):
+        * replay/scripts/tests/expected/generate-input-with-vector-members.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-inputs-with-flags.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::ScalarInput1>::type):
+        (JSC::InputTraits<Test::ScalarInput2>::type):
+        * replay/scripts/tests/expected/generate-inputs-with-flags.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-memoized-type-modes.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::ScalarInput>::type):
+        (JSC::InputTraits<Test::MapInput>::type):
+        * replay/scripts/tests/expected/generate-memoized-type-modes.json-TestReplayInputs.h:
+
+2014-09-30  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r172532): JSBase.h declares NSMapTable functions that are SPI
+        https://bugs.webkit.org/show_bug.cgi?id=137170
+        <rdar://problem/18477384>
+
+        Reviewed by Geoffrey Garen.
+
+        Move conditional include of header Foundation/NSMapTablePriv.h and forward declarations
+        of NSMapTable SPI from file JavaScriptCore/API/JSBase.h to WTF/wtf/spi/cocoa/NSMapTableSPI.h.
+
+        * API/JSBase.h:
+        * API/JSManagedValue.mm: Include header WTF/wtf/spi/cocoa/NSMapTableSPI.h.
+        * API/JSVirtualMachine.mm: Ditto.
+        * API/JSVirtualMachineInternal.h: Forward declare class NSMapTable.
+        * API/JSWrapperMap.mm: Include header WTF/wtf/spi/cocoa/NSMapTableSPI.h. Also, order
+        #include directives such that they are sorted in alphabetical order.
+
+2014-09-30  Oliver Hunt  <oliver@apple.com>
+
+        Fix C API header
+        https://bugs.webkit.org/show_bug.cgi?id=137254
+        <rdar://problem/18487528>
+
+        Build fix
+
+        Guard extern "C" behind __cplusplus ifdef
+
+        * API/JSBase.h:
+
+2014-09-29  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: InjectedScripts should not be profiled or displayed in Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=136806
+
+        Reviewed by Timothy Hatcher.
+
+        It doesn't make sense to show profile nodes for injected scripts when profiling user content.
+        For now, omit nodes by suspending profiling before and after executing injected scripts.
+
+        * profiler/LegacyProfiler.cpp:
+        (JSC::LegacyProfiler::suspendProfiling): Added.
+        (JSC::LegacyProfiler::unsuspendProfiling): Added.
+        * profiler/LegacyProfiler.h:
+        * profiler/ProfileGenerator.cpp: Add isSuspended() flag, remove unused typedef.
+        (JSC::ProfileGenerator::ProfileGenerator):
+        (JSC::ProfileGenerator::willExecute):
+        (JSC::ProfileGenerator::didExecute):
+        * profiler/ProfileGenerator.h:
+        (JSC::ProfileGenerator::setIsSuspended): Added.
+
+2014-09-29  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: InspectorValues should use references for out parameters
+        https://bugs.webkit.org/show_bug.cgi?id=137190
+
+        Reviewed by Joseph Pecoraro.
+
+        Use references for out parameters in asType() and getType() methods.
+        Also convert to references in some miscellaneous code where we don't
+        expect or handle null values.
+
+        Remove variants of asObject() and asArray() that return a nullable RefPtr.
+        Now, client code is forced to use out parameters and check for cast failure.
+
+        Iron out control flow in some functions and fix some style issues.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::getFunctionDetails):
+        (Inspector::InjectedScript::wrapObject):
+        (Inspector::InjectedScript::wrapTable):
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeEvalCall):
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::injectedScriptForObjectId): Simplify control flow.
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::InspectorBackendDispatcher::dispatch):
+        (Inspector::getPropertyValue):
+        (Inspector::AsMethodBridges::asInteger):
+        (Inspector::AsMethodBridges::asDouble):
+        (Inspector::AsMethodBridges::asString):
+        (Inspector::AsMethodBridges::asBoolean):
+        (Inspector::AsMethodBridges::asObject):
+        (Inspector::AsMethodBridges::asArray):
+        * inspector/InspectorProtocolTypes.h:
+        (Inspector::Protocol::BindingTraits<Protocol::Array<T>>::runtimeCast):
+        (Inspector::Protocol::BindingTraits<Protocol::Array<T>>::assertValueHasExpectedType):
+        * inspector/InspectorValues.cpp: Use more by-reference out parameters. Add more spacing.
+        (Inspector::InspectorValue::asBoolean):
+        (Inspector::InspectorValue::asDouble):
+        (Inspector::InspectorValue::asInteger):
+        (Inspector::InspectorValue::asString):
+        (Inspector::InspectorValue::asValue):
+        (Inspector::InspectorValue::asObject):
+        (Inspector::InspectorValue::asArray):
+        (Inspector::InspectorValue::parseJSON):
+        (Inspector::InspectorValue::toJSONString):
+        (Inspector::InspectorValue::writeJSON):
+        (Inspector::InspectorBasicValue::asBoolean):
+        (Inspector::InspectorBasicValue::asDouble):
+        (Inspector::InspectorBasicValue::asInteger):
+        (Inspector::InspectorBasicValue::writeJSON):
+        (Inspector::InspectorString::asString):
+        (Inspector::InspectorString::writeJSON):
+        (Inspector::InspectorObjectBase::asObject):
+        (Inspector::InspectorObjectBase::openAccessors):
+        (Inspector::InspectorObjectBase::getBoolean):
+        (Inspector::InspectorObjectBase::getString):
+        (Inspector::InspectorObjectBase::getObject):
+        (Inspector::InspectorObjectBase::getArray):
+        (Inspector::InspectorObjectBase::writeJSON):
+        (Inspector::InspectorArrayBase::asArray):
+        (Inspector::InspectorArrayBase::writeJSON):
+        * inspector/InspectorValues.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::breakpointActionsFromProtocol):
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::parseLocation):
+        (Inspector::InspectorDebuggerAgent::setBreakpoint):
+        (Inspector::InspectorDebuggerAgent::continueToLocation):
+        (Inspector::InspectorDebuggerAgent::didParseSource):
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        * inspector/scripts/codegen/generate_protocol_types_implementation.py:
+        (ProtocolTypesImplementationGenerator):
+        (ProtocolTypesImplementationGenerator._generate_assertion_for_enum):
+        * inspector/scripts/codegen/generator_templates.py:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        * replay/EncodedValue.cpp:
+        (JSC::EncodedValue::asObject):
+        (JSC::EncodedValue::asArray):
+        (JSC::EncodedValue::convertTo<bool>):
+        (JSC::EncodedValue::convertTo<double>):
+        (JSC::EncodedValue::convertTo<float>):
+        (JSC::EncodedValue::convertTo<int32_t>):
+        (JSC::EncodedValue::convertTo<int64_t>):
+        (JSC::EncodedValue::convertTo<uint32_t>):
+        (JSC::EncodedValue::convertTo<uint64_t>):
+        (JSC::EncodedValue::convertTo<String>):
+
+2014-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG HasStructureProperty codegen should use one fewer registers
+        https://bugs.webkit.org/show_bug.cgi?id=137235
+
+        Reviewed by Andreas Kling.
+        
+        This was an obvious source of inefficiency and it was causing us to run out of registers on
+        x86-32.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2014-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't use GPRResult unless you're flushing registers and making a runtime function call
+        https://bugs.webkit.org/show_bug.cgi?id=137234
+
+        Rubber stamped by Andreas Kling.
+
+        Rename GPRResult to GPRFlushedCallResult, in an attempt to dissuade people from using it for results in the
+        general case.
+        
+        Replace GPRResult with GPRTemporary in those places where it was causing bugs: particularly in GetDirectPname it
+        would cause us to spill the register that has the base, and the code was assuming (rightly) that the base and the
+        result were in different registers. That's a valid assumption when using GPRTemporary but not with GPRResult.
+        Also this code wasn't getting any benefit from using GPRResult because it wasn't doing flushRegisters().
+        
+        I don't know how to test this. A test would require setting up a particularly awkward register allocation state.
+        
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIn):
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionNoCheck):
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionExpression):
+        (JSC::DFG::SpeculativeJIT::compileRegExpExec):
+        (JSC::DFG::SpeculativeJIT::compileAllocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileReallocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileToStringOnCell):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::GPRFlushedCallResult::GPRFlushedCallResult):
+        (JSC::DFG::GPRFlushedCallResult2::GPRFlushedCallResult2):
+        (JSC::DFG::GPRResult::GPRResult): Deleted.
+        (JSC::DFG::GPRResult2::GPRResult2): Deleted.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::nonSpeculativePeepholeBranch):
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompare):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::nonSpeculativePeepholeBranch):
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompare):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::speculateDoubleRepMachineInt):
+
+2014-09-29  Diego Pino Garcia  <dpino@igalia.com>
+
+        Missing changes from r174049
+        https://bugs.webkit.org/show_bug.cgi?id=137206
+
+        Reviewed by Darin Adler.
+
+        * runtime/CommonIdentifiers.h:
+
+2014-09-28  Diego Pino Garcia  <dpino@igalia.com>
+
+        Simple ES6 feature: Number constructor extras
+        https://bugs.webkit.org/show_bug.cgi?id=131707
+
+        Reviewed by Darin Adler.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation): Setup constants and
+        functions.
+        (JSC::numberConstructorFuncIsFinite): Added.
+        (JSC::numberConstructorFuncIsInteger): Added.
+        (JSC::numberConstructorFuncIsNaN): Added.
+        (JSC::numberConstructorFuncIsSafeInteger): Added.
+        (JSC::NumberConstructor::getOwnPropertySlot): Deleted.
+        (JSC::numberConstructorNaNValue): Deleted.
+        (JSC::numberConstructorNegInfinity): Deleted.
+        (JSC::numberConstructorPosInfinity): Deleted.
+        (JSC::numberConstructorMaxValue): Deleted.
+        (JSC::numberConstructorMinValue): Deleted.
+        * runtime/NumberConstructor.h:
+
+2014-09-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Disable function.arguments
+        https://bugs.webkit.org/show_bug.cgi?id=137167
+
+        Rubber stamped by Geoffrey Garen.
+        
+        Add an option to disable function.arguments. Add a test for disabling it.
+        
+        Disabling function.arguments means that it returns an Arguments object that claims that
+        there were zero arguments. All other Arguments functionality still works, so any code
+        that tries to inspect this object will still think that it is looking at a perfectly
+        valid Arguments object.
+        
+        This also makes function.arguments disabled by default. Note that the RJST harness will
+        enable them by default, to continue to get test coverage for the code that implements
+        the feature.
+        
+        We will rip out that code once we're confident that it's really safe to remove this
+        feature. Only once we rip out that support will we be able to do optimizations to
+        leverage the lack of this feature. It's important to keep the support code, and the test
+        infrastructure, in place before we are confident. The logic to keep this working touches
+        the entire compiler and a large chunk of the runtime, so reimplementing it - or even
+        merging it back in - would be a nightmare. That's also basically the reason why we want
+        to rip it out if at all possible. It's a lot of terrible code.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::createArguments):
+        * runtime/Arguments.h:
+        (JSC::Arguments::create):
+        (JSC::Arguments::finishCreation):
+        * runtime/Options.h:
+        * tests/stress/disable-function-dot-arguments.js: Added.
+        (foo):
+        (bar):
+
+2014-09-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Automatic Inspection should continue once all breakpoints are loaded
+        https://bugs.webkit.org/show_bug.cgi?id=137038
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new protocol command "Inspector.initialized" that signifies to the backend
+        when the frontend has sent all its initialization messages to the backend. This
+        can include information like breakpoints, which we would want to have loaded
+        before any JavaScript evaluates in the context.
+
+        * inspector/protocol/InspectorDomain.json:
+        New protocol command, Inspector.initialized.
+
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::InspectorAgent):
+        (Inspector::InspectorAgent::initialized):
+        Tell the InspectorEnvironment (the Controller) the frontend has initialized.
+
+        * inspector/InspectorEnvironment.h:
+        Abstract virtual method to handle frontend initialization. To be
+        implemented by all of the InspectorControllers.
+
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        (Inspector::JSGlobalObjectInspectorController::disconnectFrontend):
+        (Inspector::JSGlobalObjectInspectorController::frontendInitialized):
+        When a frontend is initialized, if it was automatic inspection unpause the debuggable.
+
+        * inspector/remote/RemoteInspectorDebuggable.cpp:
+        (Inspector::RemoteInspectorDebuggable::unpauseForInitializedInspector):
+        Complete setup for this debuggable.
+
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorDebuggableConnection::setup):
+        Move the setup complete to later, when the frontend sends an "initialized" message.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::updateDebuggableAutomaticInspectCandidate):
+        Provide a longer timeout now that the frontend must send messages after the connection
+        has established. The longest I have seen in  600ms, but the average tends to be 200ms.
+        So bump the timeout to 800ms for a buffer.
+
+        (Inspector::RemoteInspector::setupSucceeded): Deleted.
+        (Inspector::RemoteInspector::setupCompleted):
+        Rename, as this happens at a slightly different time.
+
+2014-09-26  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG shouldn't insert store barriers when it has it on good authority that we're not storing a cell
+        https://bugs.webkit.org/show_bug.cgi?id=137161
+
+        Reviewed by Mark Hahnenberg.
+        
+        This looks like a 1% Octane speed-up.
+
+        * bytecode/SpeculatedType.h:
+        (JSC::isNotCellSpeculation):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::insertStoreBarrier):
+        (JSC::DFG::FixupPhase::insertCheck):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::shouldSpeculateNotCell):
+
 2014-09-26  Peter Varga  <pvarga@webkit.org>
 
         Fix typo in YARR at BOL check
