@@ -70,7 +70,7 @@ bool CryptoAlgorithmHMAC::keyAlgorithmMatches(const CryptoAlgorithmHmacParams& p
 
 void CryptoAlgorithmHMAC::sign(const CryptoAlgorithmParameters& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback callback, VoidCallback failureCallback, ExceptionCode& ec)
 {
-    const CryptoAlgorithmHmacParams& hmacParameters = toCryptoAlgorithmHmacParams(parameters);
+    const CryptoAlgorithmHmacParams& hmacParameters = downcast<CryptoAlgorithmHmacParams>(parameters);
 
     if (!keyAlgorithmMatches(hmacParameters, key)) {
         ec = NOT_SUPPORTED_ERR;
@@ -82,7 +82,7 @@ void CryptoAlgorithmHMAC::sign(const CryptoAlgorithmParameters& parameters, cons
 
 void CryptoAlgorithmHMAC::verify(const CryptoAlgorithmParameters& parameters, const CryptoKey& key, const CryptoOperationData& expectedSignature, const CryptoOperationData& data, BoolCallback callback, VoidCallback failureCallback, ExceptionCode& ec)
 {
-    const CryptoAlgorithmHmacParams& hmacParameters = toCryptoAlgorithmHmacParams(parameters);
+    const CryptoAlgorithmHmacParams& hmacParameters = downcast<CryptoAlgorithmHmacParams>(parameters);
 
     if (!keyAlgorithmMatches(hmacParameters, key)) {
         ec = NOT_SUPPORTED_ERR;
@@ -94,7 +94,7 @@ void CryptoAlgorithmHMAC::verify(const CryptoAlgorithmParameters& parameters, co
 
 void CryptoAlgorithmHMAC::generateKey(const CryptoAlgorithmParameters& parameters, bool extractable, CryptoKeyUsage usages, KeyOrKeyPairCallback callback, VoidCallback failureCallback, ExceptionCode&)
 {
-    const CryptoAlgorithmHmacKeyParams& hmacParameters = toCryptoAlgorithmHmacKeyParams(parameters);
+    const CryptoAlgorithmHmacKeyParams& hmacParameters = downcast<CryptoAlgorithmHmacKeyParams>(parameters);
 
     RefPtr<CryptoKeyHMAC> result = CryptoKeyHMAC::generate(hmacParameters.hasLength ? hmacParameters.length : 0, hmacParameters.hash, extractable, usages);
     if (!result) {
@@ -107,13 +107,13 @@ void CryptoAlgorithmHMAC::generateKey(const CryptoAlgorithmParameters& parameter
 
 void CryptoAlgorithmHMAC::importKey(const CryptoAlgorithmParameters& parameters, const CryptoKeyData& keyData, bool extractable, CryptoKeyUsage usage, KeyCallback callback, VoidCallback, ExceptionCode& ec)
 {
-    if (keyData.format() != CryptoKeyData::Format::OctetSequence) {
+    if (!is<CryptoKeyDataOctetSequence>(keyData)) {
         ec = NOT_SUPPORTED_ERR;
         return;
     }
-    const CryptoKeyDataOctetSequence& keyDataOctetSequence = toCryptoKeyDataOctetSequence(keyData);
+    const CryptoKeyDataOctetSequence& keyDataOctetSequence = downcast<CryptoKeyDataOctetSequence>(keyData);
 
-    const CryptoAlgorithmHmacParams& hmacParameters = toCryptoAlgorithmHmacParams(parameters);
+    const CryptoAlgorithmHmacParams& hmacParameters = downcast<CryptoAlgorithmHmacParams>(parameters);
 
     RefPtr<CryptoKeyHMAC> result = CryptoKeyHMAC::create(keyDataOctetSequence.octetSequence(), hmacParameters.hash, extractable, usage);
     callback(*result);

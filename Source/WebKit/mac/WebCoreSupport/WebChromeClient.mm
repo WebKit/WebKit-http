@@ -218,8 +218,6 @@ void WebChromeClient::takeFocus(FocusDirection direction)
 
 void WebChromeClient::focusedElementChanged(Element* element)
 {
-    if (!element)
-        return;
     if (!is<HTMLInputElement>(element))
         return;
 
@@ -922,6 +920,11 @@ void WebChromeClient::attachRootGraphicsLayer(Frame* frame, GraphicsLayer* graph
     else
         [webHTMLView detachRootLayer];
     END_BLOCK_OBJC_EXCEPTIONS;
+}
+
+void WebChromeClient::attachViewOverlayGraphicsLayer(Frame*, GraphicsLayer*)
+{
+    // FIXME: If we want view-relative page overlays in Legacy WebKit, this would be the place to hook them up.
 }
 
 void WebChromeClient::setNeedsOneShotDrawingSynchronization()

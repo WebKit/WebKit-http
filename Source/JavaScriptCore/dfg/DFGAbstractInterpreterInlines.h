@@ -109,7 +109,7 @@ void AbstractInterpreter<AbstractStateType>::verifyEdge(Node* node, Edge edge)
     if (!(forNode(edge).m_type & ~typeFilterFor(edge.useKind())))
         return;
     
-    DFG_CRASH(m_graph, node, toCString("Edge verification error: ", node, "->", edge, " was expected to have type ", SpeculationDump(typeFilterFor(edge.useKind())), " but has type ", SpeculationDump(forNode(edge).m_type)).data());
+    DFG_CRASH(m_graph, node, toCString("Edge verification error: ", node, "->", edge, " was expected to have type ", SpeculationDump(typeFilterFor(edge.useKind())), " but has type ", SpeculationDump(forNode(edge).m_type), " (", forNode(edge).m_type, ")").data());
 }
 
 template<typename AbstractStateType>
@@ -183,7 +183,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
-    case SetLocal: {
+    case SetLocal:
+    case PutLocal: {
         m_state.variables().operand(node->local().offset()) = forNode(node->child1());
         break;
     }
@@ -192,6 +193,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // Don't need to do anything. A MovHint only informs us about what would have happened
         // in bytecode, but this code is just concerned with what is actually happening during
         // DFG execution.
+        break;
+    }
+        
+    case KillLocal: {
+        // This is just a hint telling us that the OSR state of the local is no longer inside the
+        // flushed data.
         break;
     }
         
@@ -1292,7 +1299,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).merge(SpecArguments);
         break;
         
-    case TearOffActivation:
     case TearOffArguments:
         // Does nothing that is user-visible.
         break;
@@ -1985,6 +1991,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case Breakpoint:
     case ProfileWillCall:
     case ProfileDidCall:
+    case ProfileType:
     case Phantom:
     case HardPhantom:
     case CountExecution:

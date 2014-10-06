@@ -1245,19 +1245,11 @@ LLINT_SLOW_PATH_DECL(slow_path_call_eval)
     LLINT_CALL_RETURN(exec, execCallee, LLInt::getCodePtr(getHostCallReturnValue));
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_tear_off_lexical_environment)
-{
-    LLINT_BEGIN();
-    ASSERT(exec->codeBlock()->needsActivation());
-    jsCast<JSLexicalEnvironment*>(LLINT_OP(1).jsValue())->tearOff(vm);
-    LLINT_END();
-}
-
 LLINT_SLOW_PATH_DECL(slow_path_tear_off_arguments)
 {
     LLINT_BEGIN();
     ASSERT(exec->codeBlock()->usesArguments());
-    Arguments* arguments = jsCast<Arguments*>(exec->uncheckedR(unmodifiedArgumentsRegister(VirtualRegister(pc[1].u.operand)).offset()).jsValue());
+    Arguments* arguments = jsCast<Arguments*>(exec->uncheckedR(VirtualRegister(pc[1].u.operand).offset()).jsValue());
     if (JSValue activationValue = LLINT_OP_C(2).jsValue())
         arguments->didTearOffActivation(exec, jsCast<JSLexicalEnvironment*>(activationValue));
     else
@@ -1300,7 +1292,8 @@ LLINT_SLOW_PATH_DECL(slow_path_push_name_scope)
 {
     LLINT_BEGIN();
     CodeBlock* codeBlock = exec->codeBlock();
-    JSNameScope* scope = JSNameScope::create(exec, codeBlock->identifier(pc[1].u.operand), LLINT_OP(2).jsValue(), pc[3].u.operand);
+    JSNameScope::Type type = static_cast<JSNameScope::Type>(pc[4].u.operand);
+    JSNameScope* scope = JSNameScope::create(exec, codeBlock->identifier(pc[1].u.operand), LLINT_OP(2).jsValue(), pc[3].u.operand, type);
     exec->setScope(scope);
     LLINT_END();
 }
@@ -1410,6 +1403,13 @@ LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
     JSObject* scope = jsCast<JSObject*>(LLINT_OP(1).jsValue());
     JSValue value = LLINT_OP_C(3).jsValue();
     ResolveModeAndType modeAndType = ResolveModeAndType(pc[4].u.operand);
+    if (modeAndType.type() == LocalClosureVar) {
+        JSLexicalEnvironment* environment = jsCast<JSLexicalEnvironment*>(scope);
+        environment->registerAt(pc[6].u.operand).set(vm, environment, value);
+        if (VariableWatchpointSet* set = pc[5].u.watchpointSet)
+            set->notifyWrite(vm, value, "Executed op_put_scope<LocalClosureVar>");
+        LLINT_END();
+    }
 
     if (modeAndType.mode() == ThrowIfNotFound && !scope->hasProperty(exec, ident))
         LLINT_THROW(createUndefinedVariableError(exec, ident));

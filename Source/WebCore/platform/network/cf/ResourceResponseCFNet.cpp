@@ -33,6 +33,10 @@
 #include <CFNetwork/CFURLResponsePriv.h>
 #include <wtf/RetainPtr.h>
 
+#if PLATFORM(COCOA)
+#include "WebCoreSystemInterface.h"
+#endif
+
 // We would like a better value for a maximum time_t,
 // but there is no way to do that in C with any certainty.
 // INT_MAX should work well enough for our purposes.
@@ -115,11 +119,17 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
 
 CertificateInfo ResourceResponse::platformCertificateInfo() const
 {
+#if PLATFORM(COCOA)
+    return CertificateInfo(adoptCF(wkCopyNSURLResponseCertificateChain(nsURLResponse())));
+#endif
     return CertificateInfo();
 }
 
 String ResourceResponse::platformSuggestedFilename() const
 {
+    if (!m_cfResponse)
+        return String();
+
     RetainPtr<CFStringRef> suggestedFilename = adoptCF(CFURLResponseCopySuggestedFilename(m_cfResponse.get()));
     return suggestedFilename.get();
 }

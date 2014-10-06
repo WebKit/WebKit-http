@@ -53,9 +53,12 @@ namespace JSC { namespace DFG {
     \
     /* Nodes for local variable access. These nodes are linked together using Phi nodes. */\
     /* Any two nodes that are part of the same Phi graph will share the same */\
-    /* VariableAccessData, and thus will share predictions. */\
+    /* VariableAccessData, and thus will share predictions. FIXME: We should come up with */\
+    /* better names for a lot of these. https://bugs.webkit.org/show_bug.cgi?id=137307 */\
     macro(GetLocal, NodeResultJS) \
     macro(SetLocal, 0) \
+    macro(PutLocal, NodeMustGenerate) \
+    macro(KillLocal, NodeMustGenerate) \
     macro(MovHint, 0) \
     macro(ZombieHint, 0) \
     macro(GetArgument, NodeResultJS | NodeMustGenerate) \
@@ -254,12 +257,12 @@ namespace JSC { namespace DFG {
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
     macro(In, NodeResultBoolean | NodeMustGenerate | NodeClobbersWorld) \
+    macro(ProfileType, NodeMustGenerate) \
     \
     /* Nodes used for activations. Activation support works by having it anchored at */\
     /* epilgoues via TearOffActivation, and all CreateActivation nodes kept alive by */\
     /* being threaded with each other. */\
     macro(CreateActivation, NodeResultJS) \
-    macro(TearOffActivation, NodeMustGenerate) \
     \
     /* Nodes used for arguments. Similar to lexical environment support, only it makes even less */\
     /* sense. */\

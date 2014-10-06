@@ -1,3 +1,695 @@
+2014-10-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add a deprecation warning for Element.webkitMatchesSelector
+        https://bugs.webkit.org/show_bug.cgi?id=137417
+
+        Reviewed by Christophe Dumez.
+
+        * jquery/resources/src/sizzle/sizzle.js:
+        This is a great example of library that needs fixing. The old sizzle
+        we have in WebKit used "matchesSelector" instead of "matches".
+
+        * fast/dom/SelectorAPI/attrname-case-insensitive-expected.txt:
+        * fast/dom/SelectorAPI/attrname-case-sensitive-expected.txt:
+        * fast/dom/SelectorAPI/caseID-almost-strict-expected.txt:
+        * fast/dom/SelectorAPI/caseID-expected.txt:
+        * fast/dom/SelectorAPI/caseID-strict-expected.txt:
+        * fast/dom/SelectorAPI/caseTag-expected.txt:
+        * fast/dom/SelectorAPI/caseTagX-expected.txt:
+        * fast/dom/SelectorAPI/detached-element-expected.txt:
+        * fast/dom/SelectorAPI/not-supported-namespace-in-selector-expected.txt:
+        * fast/dom/SelectorAPI/undefined-null-stringify-expected.txt:
+        Update the test results due to the warning.
+
+        * fast/forms/radio/radio-live-validation-style-expected.txt:
+        * fast/forms/radio/radio-live-validation-style.html:
+        That duplicate I added back when I unprefixed Element.matches() is useless.
+
+2014-10-05  Benjamin Poulain  <benjamin@webkit.org>
+
+        Element.matches()'s argument is not supposed to be optional
+        https://bugs.webkit.org/show_bug.cgi?id=137427
+
+        Reviewed by Christophe Dumez.
+
+        * fast/dom/SelectorAPI/matches-definition.html: Added.
+        * fast/dom/SelectorAPI/matches-null-undefined.html: Added.
+        Test for the bug.
+
+        * fast/dom/SelectorAPI/closest-definition.html: Added.
+        * fast/dom/SelectorAPI/closest-null-undefined.html: Added.
+        Similar tests for Element.closest() since those are similar APIs.
+
+2014-10-05  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS8: Crash at -[WebAccessibilityObjectWrapper accessibilityElementAtIndex:]
+        https://bugs.webkit.org/show_bug.cgi?id=137289
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/ios-sim/accessibility/out-of-bounds-child-access-expected.txt: Added.
+        * platform/ios-sim/accessibility/out-of-bounds-child-access.html: Added.
+
+2014-10-04  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Implement Element.closest() API
+        https://bugs.webkit.org/show_bug.cgi?id=137418
+
+        Reviewed by Benjamin Poulain.
+
+        Add test cases for Element.closest() API
+
+        * fast/selectors/closest-general-expected.txt: Added.
+        * fast/selectors/closest-general.html: Added.
+        * fast/selectors/closest-scope-expected.txt: Added.
+        * fast/selectors/closest-scope.html: Added.
+
+2014-10-04  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should sink PutLocals
+        https://bugs.webkit.org/show_bug.cgi?id=137168
+
+        Reviewed by Oliver Hunt.
+
+        * js/regress/elidable-new-object-then-call-expected.txt: Added.
+        * js/regress/elidable-new-object-then-call.html: Added.
+        * js/regress/script-tests/elidable-new-object-then-call.js: Added.
+        (sumOfArithSeries):
+        (bar):
+        (foo):
+
+2014-10-04  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to test page overlays
+        https://bugs.webkit.org/show_bug.cgi?id=137339
+
+        Reviewed by Dan Bernstein.
+
+        * pageoverlay/overlay-installation.html: Added.
+        Add a test which just installs one view-relative and one document-relative
+        overlay, and dumps the layer tree and pixel results. The mock overlay
+        strokes a blue rectangle (inset a little from the overlay bounds) for
+        view-relative overlays, and a green rectangle (inset a bit more) for
+        document-relative overlays.
+        
+        * pageoverlay/overlay-large-document.html: Added.
+        * pageoverlay/overlay-large-document-scrolled.html: Added.
+        Tests that do the same as the -installation test, but with a larger document;
+        the view-relative overlay should be the same size (or slightly smaller,
+        because we have scrollbars now), but the document-relative overlay should
+        be the size of the document. The second test scrolls to maxX, maxY, and
+        the document-relative overlay should scroll along with it, while the
+        view-relative overlay should remain fixed.
+
+        * pageoverlay/overlay-installation-expected.txt: Added.
+        * pageoverlay/overlay-large-document-expected.txt: Added.
+        * pageoverlay/overlay-large-document-scrolled-expected.txt: Added.
+        "Normal" layer tree expectations.
+        
+        * platform/mac-wk1/pageoverlay/overlay-installation-expected.png: Added.
+        * platform/mac-wk1/pageoverlay/overlay-installation-expected.txt: Added.
+        * platform/mac-wk1/pageoverlay/overlay-large-document-expected.png: Added.
+        * platform/mac-wk1/pageoverlay/overlay-large-document-expected.txt: Added.
+        * platform/mac-wk1/pageoverlay/overlay-large-document-scrolled-expected.png: Added.
+        * platform/mac-wk1/pageoverlay/overlay-large-document-scrolled-expected.txt: Added.
+        Expected results for WebKit1 differ for view-relative overlays, because
+        we don't currently hook up view-relative overlays for WebKit1.
+
+        * platform/mac/pageoverlay/overlay-installation-expected.png: Added.
+        * platform/mac/pageoverlay/overlay-large-document-expected.png: Added.
+        * platform/mac/pageoverlay/overlay-large-document-scrolled-expected.png: Added.
+        "Normal" pixel dump expectations.
+
+2014-10-04  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Skip remaining failing media tests after adding audio devices to the bots.
+
+        * platform/win/TestExpectations:
+
+2014-10-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce Promise A+ tests into WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=136878
+
+        Reviewed by Sam Weinig.
+
+        To ensure WebKit Promise stability, introducing Promise A+ tests[1] into WebKit.
+        It's also used to test V8 Promise[2].
+        So the tests guarantee that WebKit Promise's spec validity and interchangeability
+        to the other browser's Promise implementation.
+
+        Promise A+ tests assumes that it works on the Node.js environment. To work it on
+        LayoutTests correctly, we need to transform Node.js styled JavaScript code into
+        browser styled code. In this patch, we use browserify[3] to transform the test code.
+        Through transforming pipeline, some dependent JS code is bundled into the produced code.
+        So added SinonJS[4] and browserify's license files into the test directory.
+
+        And tests assume that it is used with Mocha[5] test runner. So introducing mocha.js and
+        added LICENSE file into this directory.
+
+        And since Promises/A+ 2.3.3 has many tests, it consumes much time (13s in GTK debug build).
+        So mark it as a Slow test.
+
+        [1]: https://github.com/promises-aplus/promises-tests
+        [2]: https://code.google.com/p/v8/source/browse#svn%2Ftrunk%2Ftest%2Fpromises-aplus
+        [3]: http://browserify.org/
+        [4]: http://sinonjs.org/
+        [5]: http://visionmedia.github.io/mocha/
+
+        * TestExpectations:
+        * js/promises-tests/README: Added.
+        * js/promises-tests/browserify-entry-point.js: Added.
+        (.):
+        * js/promises-tests/browserify.LICENSE: Added.
+        * js/promises-tests/mocha.LICENSE: Added.
+        * js/promises-tests/promises-tests-2-1-2-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-1-2.html: Added.
+        * js/promises-tests/promises-tests-2-1-3-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-1-3.html: Added.
+        * js/promises-tests/promises-tests-2-2-1-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-2-1.html: Added.
+        * js/promises-tests/promises-tests-2-2-2-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-2-2.html: Added.
+        * js/promises-tests/promises-tests-2-2-3-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-2-3.html: Added.
+        * js/promises-tests/promises-tests-2-2-4-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-2-4.html: Added.
+        * js/promises-tests/promises-tests-2-2-5-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-2-5.html: Added.
+        * js/promises-tests/promises-tests-2-2-6-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-2-6.html: Added.
+        * js/promises-tests/promises-tests-2-2-7-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-2-7.html: Added.
+        * js/promises-tests/promises-tests-2-3-1-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-3-1.html: Added.
+        * js/promises-tests/promises-tests-2-3-2-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-3-2.html: Added.
+        * js/promises-tests/promises-tests-2-3-3-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-3-3.html: Added.
+        * js/promises-tests/promises-tests-2-3-4-expected.txt: Added.
+        * js/promises-tests/promises-tests-2-3-4.html: Added.
+        * js/promises-tests/promises-tests.LICENSE: Added.
+        * js/promises-tests/promises-tests.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/.gitignore: Added.
+        * js/promises-tests/promises-tests/.jshintrc: Added.
+        * js/promises-tests/promises-tests/.npmignore: Added.
+        * js/promises-tests/promises-tests/LICENSE.txt: Added.
+        * js/promises-tests/promises-tests/README.md: Added.
+        * js/promises-tests/promises-tests/lib/cli.js: Added.
+        (getAdapterFilePath):
+        (adapterObjectFromFilePath):
+        * js/promises-tests/promises-tests/lib/getMochaOpts.js: Added.
+        (module.exports):
+        * js/promises-tests/promises-tests/lib/programmaticRunner.js: Added.
+        (normalizeAdapter.adapter.resolved):
+        (normalizeAdapter.adapter.rejected):
+        (normalizeAdapter):
+        (.cb):
+        (.):
+        (module.exports):
+        (module.exports.mocha):
+        * js/promises-tests/promises-tests/lib/tests/2.1.2.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.1.3.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.2.1.js: Added.
+        * js/promises-tests/promises-tests/lib/tests/2.2.2.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.2.3.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.2.4.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.2.5.js: Added.
+        * js/promises-tests/promises-tests/lib/tests/2.2.6.js: Added.
+        (.return.if):
+        (callbackAggregator):
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.2.7.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.3.1.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/2.3.2.js: Added.
+        (.):
+        (testPromiseResolution):
+        * js/promises-tests/promises-tests/lib/tests/2.3.3.js: Added.
+        (.):
+        (testPromiseResolution):
+        (testCallingResolvePromiseRejectsWith):
+        (testCallingRejectPromiseRejectsWith):
+        (describe):
+        * js/promises-tests/promises-tests/lib/tests/2.3.4.js: Added.
+        (.):
+        * js/promises-tests/promises-tests/lib/tests/helpers/reasons.js: Added.
+        (exports.string_appeared_here):
+        (exports.string_appeared_here.return.then):
+        * js/promises-tests/promises-tests/lib/tests/helpers/testThreeCases.js: Added.
+        (.specify):
+        (.):
+        (exports.testFulfilled):
+        (exports.testRejected):
+        * js/promises-tests/promises-tests/lib/tests/helpers/thenables.js: Added.
+        (exports.fulfilled.string_appeared_here.return.then):
+        (exports.fulfilled.string_appeared_here):
+        (exports.fulfilled.string_appeared_here.):
+        (exports.fulfilled.get string_appeared_here.return.then):
+        (exports.fulfilled.get string_appeared_here):
+        (exports.rejected.string_appeared_here.return.then):
+        (exports.rejected.string_appeared_here):
+        (exports.rejected.string_appeared_here.):
+        (exports.rejected.get string_appeared_here.return.then):
+        (exports.rejected.get string_appeared_here):
+        * js/promises-tests/promises-tests/package.json: Added.
+        * js/promises-tests/promises-tests/test/getMochaOptsTest.js: Added.
+        * js/promises-tests/resources/adapter.js: Added.
+        (LayoutTestsReporter.runner):
+        (window.adapter.resolved):
+        (window.adapter.rejected):
+        (window.adapter.deferred):
+        * js/promises-tests/resources/mocha.js: Added.
+        (.):
+        * js/promises-tests/sinonjs.LICENSE: Added.
+
+2014-10-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174275.
+        https://bugs.webkit.org/show_bug.cgi?id=137408
+
+        Build failures on the internal bots. (Requested by dethbakin
+        on #webkit).
+
+        Reverted changeset:
+
+        "FTL should sink PutLocals"
+        https://bugs.webkit.org/show_bug.cgi?id=137168
+        http://trac.webkit.org/changeset/174275
+
+2014-10-02  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should sink PutLocals
+        https://bugs.webkit.org/show_bug.cgi?id=137168
+
+        Reviewed by Oliver Hunt.
+
+        * js/regress/elidable-new-object-then-call-expected.txt: Added.
+        * js/regress/elidable-new-object-then-call.html: Added.
+        * js/regress/script-tests/elidable-new-object-then-call.js: Added.
+        (sumOfArithSeries):
+        (bar):
+        (foo):
+
+2014-10-03 Bear Travis <betravis@adobe.com>
+
+        Unreviewed. Skipping test failure to unstick the bots until I can fix the
+        underlying issue.
+
+        * platform/mac/TestExpectations
+
+2014-10-03 Bear Travis <betravis@adobe.com>
+
+        REGRESSION (r173531): Use after free in WebCore::RenderStyle::fontMetrics /
+        WebCore::CSSPrimitiveValue::computeLengthDouble
+        https://bugs.webkit.org/show_bug.cgi?id=136864
+
+        Reviewed by Andreas Kling.
+
+        Test that getting the tab index on a body element with
+        font-relative measurements to a local @font-face do not
+        cause a crash.
+
+        * fast/css/fontloader-tab-index-expected.html: Added.
+        * fast/css/fontloader-tab-index.html: Added.
+
+2014-10-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Update test name for bug 136673 after r173418.
+        * platform/gtk/css1/box_properties/clear_float-expected.txt: Rebaseline after r174233.
+        * platform/gtk/css1/box_properties/float_on_text_elements-expected.txt: Rebaseline after r174233.
+        * platform/gtk/css2.1/t0905-c5525-fltcont-00-d-g-expected.txt: Rebaseline after r174233.
+        * platform/gtk/css2.1/t0905-c5525-fltwidth-00-c-g-expected.txt: Rebaseline after r174233.
+        * platform/gtk/css2.1/t1602-c546-txt-align-00-b-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/multicol/float-avoidance-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/multicol/overflow-across-columns-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/multicol/overflow-across-columns-percent-height-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/multicol/overflow-unsplittable-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/multicol/positive-leading-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/multicol/vertical-lr/float-avoidance-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/multicol/vertical-rl/float-avoidance-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/regions/multiple-directionality-changes-in-variable-width-regions-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/regions/repaint/line-flow-with-floats-in-regions-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-1-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-10-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-2-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-3-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-4-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-5-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-6-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-7-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-8-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/repaint/line-flow-with-floats-9-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/text/justified-selection-at-edge-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/text/justify-ideograph-leading-expansion-expected.txt: Rebaseline after r174233.
+        * platform/gtk/fast/text/justify-nbsp-expected.txt: Added. Rebaseline after r174233.
+        * platform/gtk/fast/text/trailing-white-space-2-expected.txt: Rebaseline after r174233.
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_justify-expected.txt: Rebaseline after r174233.
+        * platform/gtk/tables/mozilla/marvin/x_td_align_justify-expected.txt: Rebaseline after r174233.
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_justify-expected.txt: Rebaseline after r174233.
+        * platform/gtk/tables/mozilla/marvin/x_th_align_justify-expected.txt: Rebaseline after r174233.
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_justify-expected.txt: Rebaseline after r174233.
+        * platform/gtk/tables/mozilla/marvin/x_tr_align_justify-expected.txt: Rebaseline after r174233.
+
+2014-10-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS Selectors Level 4: Add parsing for :matches
+        https://bugs.webkit.org/show_bug.cgi?id=137348
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/css/css-selector-text-expected.txt:
+        * fast/css/css-selector-text.html:
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+        Cover CSSOM tests; canonicalizing :matches text representation.
+
+        * fast/css/parsing-css-matches-1-expected.txt: Added.
+        * fast/css/parsing-css-matches-1.html: Added.
+        * fast/css/parsing-css-matches-2-expected.txt: Added.
+        * fast/css/parsing-css-matches-2.html: Added.
+        * fast/css/parsing-css-matches-3-expected.txt: Added.
+        * fast/css/parsing-css-matches-3.html: Added.
+        * fast/css/parsing-css-matches-4-expected.txt: Added.
+        * fast/css/parsing-css-matches-4.html: Added.
+        * fast/css/parsing-css-matches-5-expected.txt: Added.
+        * fast/css/parsing-css-matches-5.html: Added.
+        * fast/css/parsing-css-matches-6-expected.txt: Added.
+        * fast/css/parsing-css-matches-6.html: Added.
+        Valid :matches are tested in the above tests. Selector lists with 1, 2, 3 elements are tested.
+
+        * fast/css/parsing-css-matches-7-expected.txt: Added.
+        * fast/css/parsing-css-matches-7.html: Added.
+        * fast/css/parsing-css-matches-8-expected.txt: Added.
+        * fast/css/parsing-css-matches-8.html: Added.
+        Invalid :matches are tested in the above tests. :matches() etc. are tested.
+
+2014-10-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS JIT: add the initial implementation of :nth-child(An+B of selector)
+        https://bugs.webkit.org/show_bug.cgi?id=137285
+
+        Reviewed by Andreas Kling.
+
+        Those are new tests on top of the existing tests for :nth-child(An+B of selector).
+        They cover mostly areas related to the JIT optimizations.
+
+        The areas with the least test coverage for correctness is multilevel backtracking.
+        I expect we will create more of those tests while extending :not() and adding :matches().
+
+        * fast/selectors/nth-child-of-backtracking-adjacent-expected.txt: Added.
+        * fast/selectors/nth-child-of-backtracking-adjacent-optimized.html: Added.
+        * fast/selectors/nth-child-of-backtracking-adjacent-expected.html: Added.
+        * fast/selectors/nth-child-of-backtracking-adjacent.html: Added.
+        * fast/selectors/nth-child-of-backtracking-adjacent-2-expected.txt: Added.
+        * fast/selectors/nth-child-of-backtracking-adjacent-2.html: Added.
+        Those tests are based on Yusuke's backtracking test suite for adjacent combinators.
+
+        The tests in nth-child-of-backtracking-adjacent.html use :nth-child(of) inside a regular
+        backtracking chain.
+
+        The tests in nth-child-of-backtracking-adjacent-2.html test backtracking inside :nth-chlid(of).
+
+        * fast/selectors/nth-child-of-boundaries-1-expected.txt: Added.
+        * fast/selectors/nth-child-of-boundaries-1.html: Added.
+        * fast/selectors/nth-child-of-boundaries-2-expected.txt: Added.
+        * fast/selectors/nth-child-of-boundaries-2.html: Added.
+        * fast/selectors/nth-child-of-boundaries-3-expected.txt: Added.
+        * fast/selectors/nth-child-of-boundaries-3.html: Added.
+        Test various abuse of :nth-child(of).
+
+        * fast/selectors/nth-child-of-chained-2-expected.txt: Added.
+        * fast/selectors/nth-child-of-chained-2.html: Added.
+        Test that disjoint :nth-child(of) are not agregated, unlike the old :nth-child().
+
+        * fast/selectors/nth-child-of-has-parent-expected.txt: Added.
+        * fast/selectors/nth-child-of-has-parent.html: Added.
+        Make sure we don't optimize out the parent check when skipping filters that always match.
+
+        * fast/selectors/nth-child-of-never-matching-selector-expected.txt: Added.
+        * fast/selectors/nth-child-of-never-matching-selector.html: Added.
+        Test code generation for things that never match.
+
+        * fast/selectors/nth-child-of-with-invalid-An+B-expected.txt: Added.
+        * fast/selectors/nth-child-of-with-invalid-An+B.html: Added.
+        Test for useless variation of An+B that can never match anything.
+
+2014-10-02  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Skip a small handful of tests that fail consistently on Windows bots Part 2.
+
+        * platform/win/TestExpectations: Typo, meant to skip the whole folder on Debug tests.
+
+2014-10-02  Beth Dakin  <bdakin@apple.com>
+
+        Marking flaky on Mavericks.
+
+        * platform/mac/TestExpectations:
+
+2014-10-02  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Skip a small handful of tests that fail consistently on Windows bots.
+
+        * platform/win/TestExpectations:
+
+2014-10-02  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unskip media tests now that audio devices are installed on the bots.
+
+        * platform/win/TestExpectations: There will likely still be a handful of failures left, which we will then skip.
+
+2014-10-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Subpixel] Use floats instead of ints for text justification expansion
+        https://bugs.webkit.org/show_bug.cgi?id=137327
+
+        Reviewed by Zalan Bujtas.
+
+        Rebaselining tests due to subpixel differences.
+
+        * platform/mac/css1/box_properties/clear_float-expected.txt:
+        * platform/mac/css1/box_properties/float_on_text_elements-expected.txt:
+        * platform/mac/css2.1/t0905-c5525-fltcont-00-d-g-expected.txt:
+        * platform/mac/css2.1/t0905-c5525-fltwidth-00-c-g-expected.txt:
+        * platform/mac/css2.1/t1602-c546-txt-align-00-b-expected.txt:
+        * platform/mac/fast/multicol/float-avoidance-expected.txt:
+        * platform/mac/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/mac/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/mac/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/mac/fast/multicol/positive-leading-expected.txt:
+        * platform/mac/fast/multicol/vertical-lr/float-avoidance-expected.txt:
+        * platform/mac/fast/multicol/vertical-rl/float-avoidance-expected.txt:
+        * platform/mac/fast/regions/multiple-directionality-changes-in-variable-width-regions-expected.txt:
+        * platform/mac/fast/regions/repaint/line-flow-with-floats-in-regions-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-1-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-10-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-2-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-3-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-4-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-5-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-6-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-7-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-8-expected.txt:
+        * platform/mac/fast/repaint/line-flow-with-floats-9-expected.txt:
+        * platform/mac/fast/ruby/bopomofo-rl-expected.txt:
+        * platform/mac/fast/text/hyphenate-character-expected.txt:
+        * platform/mac/fast/text/hyphens-expected.txt:
+        * platform/mac/fast/text/justified-selection-at-edge-expected.txt:
+        * platform/mac/fast/text/justify-ideograph-leading-expansion-expected.txt:
+        * platform/mac/fast/text/justify-nbsp-expected.txt: Added.
+        * platform/mac/fast/text/trailing-white-space-2-expected.txt:
+        * platform/mac/fast/text/trailing-white-space-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_td_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_th_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tr_align_justify-expected.txt:
+
+2014-10-02  Beth Dakin  <bdakin@apple.com>
+
+        Marking test as flaky.
+
+        * TestExpectations:
+
+2014-10-02  Roger Fong  <roger_fong@apple.com>
+
+        [ Windows ] More Windows test gardening to get bots green Part 4.
+
+        * platform/win/TestExpectations: Hopefully the last batch of indiscriminate mass skipping.
+
+2014-10-02  Krzysztof Czech  <k.czech@samsung.com>
+
+        AX: Default orientation for aria scrollbars should be vertical
+        https://bugs.webkit.org/show_bug.cgi?id=137341
+
+        Reviewed by Chris Fleizach.
+
+        Update expectation and test for having new test case.
+
+        * accessibility/aria-scrollbar-role-expected.txt:
+        * accessibility/aria-scrollbar-role.html:
+
+2014-10-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening. Rebaseline after r174160.
+
+        * platform/efl/fast/borders/bidi-002-expected.txt:
+        * platform/efl/fast/borders/bidi-009a-expected.txt:
+
+2014-10-02  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening. Add expected results after r174002 and r136484.
+
+        * platform/efl/fast/css-generated-content/initial-letter-basic-expected.txt: Added.
+        * platform/efl/fast/css-generated-content/initial-letter-border-padding-expected.txt: Added.
+        * platform/efl/fast/css-generated-content/initial-letter-clearance-expected.txt: Added.
+        * platform/efl/fast/css-generated-content/initial-letter-descender-expected.txt: Added.
+        * platform/efl/fast/css-generated-content/initial-letter-raised-expected.txt: Added.
+        * platform/efl/fast/css-generated-content/initial-letter-sunken-expected.txt: Added.
+
+2014-10-01  Rik Cabanier  <cabanier@adobe.com>
+
+        Add support for midpoint to CSS gradients
+        https://bugs.webkit.org/show_bug.cgi?id=137171
+
+        Reviewed by Darin Adler.
+
+        Updated the CSS gradient test files so they test the
+        gradient midpoint feature.
+
+        * fast/gradients/unprefixed-color-stops2.html:
+        * fast/gradients/unprefixed-gradient-parsing.html:
+        * fast/gradients/unprefixed-linear-angle-gradients2.html:
+        * fast/gradients/unprefixed-radial-gradients.html:
+        * fast/gradients/unprefixed-radial-gradients2.html:
+        * fast/gradients/unprefixed-repeating-linear-gradient.html:
+        * fast/gradients/unprefixed-repeating-radial-gradients.html:
+
+2014-10-01  Chris Dumez  <cdumez@apple.com>
+
+        Add basic caching for Document.cookie API
+        https://bugs.webkit.org/show_bug.cgi?id=137225
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a layout test to make sure that document.cookie returns updated
+        results after cookies are set via a sync XHR.
+
+        * http/tests/cookies/sync-xhr-set-cookie-invalidates-cache-expected.txt: Added.
+        * http/tests/cookies/sync-xhr-set-cookie-invalidates-cache.html: Added.
+
+2014-10-01  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Mass skip all media tests until bots have audio devices to run them with.
+
+        * platform/win/TestExpectations:
+
+2014-10-01  Roger Fong  <roger_fong@apple.com>
+
+        [ Windows ] More Windows test gardening to get bots green Part 3.
+
+        * platform/win/TestExpectations: More indiscriminate mass skipping.
+
+2014-10-01  Beth Dakin  <bdakin@apple.com>
+
+        This expectation should be MoutainLion-only until we find evidence otherwise.
+
+        * platform/mac/TestExpectations:
+
+2014-10-01  Beth Dakin  <bdakin@apple.com>
+
+        Another flaky-trashy test.
+
+        * platform/mac/TestExpectations:
+
+2014-10-01  Beth Dakin  <bdakin@apple.com>
+
+        Yet another crash-flaky test.
+
+        * TestExpectations:
+
+2014-10-01  Beth Dakin  <bdakin@apple.com>
+
+        Marking this test as CRASHY-flaky since it is.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-10-01  Beth Dakin  <bdakin@apple.com>
+
+        Marking this test as trashy-flaky since it is.
+
+        * platform/mac/TestExpectations:
+
+2014-10-01  Roger Fong  <roger_fong@apple.com>
+
+        [ Windows ] More Windows test gardening to get bots green Part 2.
+
+        * platform/win/TestExpectations: More indiscriminate mass skipping.
+
+2014-10-01  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r172172): Multiple regression tests fail when primary system language is Russian
+        https://bugs.webkit.org/show_bug.cgi?id=136987
+
+        Reviewed by Daniel Bates.
+
+        These test changes are not strictly necessary to fix the issue, as I'm also adding
+        a default to WebKitTestRunner. But it's nice to have tests work identically in WKTR
+        and in a browser, for which it's necessary to have them specify charset.
+
+        * accessibility/table-scope-expected.txt:
+        * accessibility/table-scope.html:
+        * fast/borders/bidi-002.html:
+        * fast/borders/bidi-009a.html:
+        * fast/frames/sandboxed-iframe-attribute-parsing-03-expected.txt:
+        * fast/frames/sandboxed-iframe-attribute-parsing-03.html:
+        * platform/mac/accessibility/table-headers-attribute-expected.txt:
+        * platform/mac/accessibility/table-headers-attribute.html:
+        * platform/mac/accessibility/table-with-zebra-rows-expected.txt:
+        * platform/mac/accessibility/table-with-zebra-rows.html:
+        * platform/mac/fast/borders/bidi-002-expected.png:
+        * platform/mac/fast/borders/bidi-002-expected.txt:
+        * platform/mac/fast/borders/bidi-009a-expected.png:
+        * platform/mac/fast/borders/bidi-009a-expected.txt:
+        * plugins/plugin-remove-subframe-expected.txt:
+        * plugins/plugin-remove-subframe.html:
+        These tests were actually expected to use UTF-8, so we used to be running them in
+        an inconsequentially wrong way. 
+
+        * fast/css/text-transform-select.html:
+        * fast/encoding/high-bit-latin1.html:
+        * fast/encoding/parser-tests-10.html:
+        * fast/encoding/parser-tests-100.html:
+        * fast/encoding/parser-tests-110.html:
+        * fast/encoding/parser-tests-120.html:
+        * fast/encoding/parser-tests-20.html:
+        * fast/encoding/parser-tests-30.html:
+        * fast/encoding/parser-tests-50.html:
+        * fast/encoding/parser-tests-60.html:
+        * fast/encoding/parser-tests-70.html:
+        * fast/encoding/parser-tests-80.html:
+        * fast/encoding/parser-tests-90.html:
+        * fast/encoding/parser-tests.html:
+        * fast/url/anchor.html:
+        * fast/url/file-http-base.html:
+        * fast/url/file.html:
+        * fast/url/query.html:
+        * fast/url/standard-url.html:
+        * http/tests/misc/char-encoding-in-hidden-charset-field-default.html:
+        * js/dom/regexp-overflow.html:
+        * tables/mozilla_expected_failures/bugs/bug47163.html:
+        Specified the encoding, windows-1252 is what we use for Latin1 and ISO-8859-1 alike.
+
 2014-09-30  Roger Fong  <roger_fong@apple.com>
 
         [ Windows ] More Windows test gardening to get bots green.

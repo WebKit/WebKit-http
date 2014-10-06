@@ -34,6 +34,7 @@
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGVariableAccessDataDump.h"
 #include "JSCInlines.h"
+#include "TypeLocation.h"
 
 namespace JSC { namespace DFG {
 
@@ -1018,6 +1019,8 @@ private:
         case CheckStructureImmediate:
         case PutStructureHint:
         case MaterializeNewObject:
+        case PutLocal:
+        case KillLocal:
             // These are just nodes that we don't currently expect to see during fixup.
             // If we ever wanted to insert them prior to fixup, then we just have to create
             // fixup rules for them.
@@ -1033,14 +1036,6 @@ private:
             Node* barrierNode = m_graph.addNode(
                 SpecNone, StoreBarrier, m_currentNode->origin, 
                 Edge(globalObjectNode, KnownCellUse));
-            m_insertionSet.insert(m_indexInBlock, barrierNode);
-            break;
-        }
-
-        case TearOffActivation: {
-            Node* barrierNode = m_graph.addNode(
-                SpecNone, StoreBarrierWithNullCheck, m_currentNode->origin, 
-                Edge(node->child1().node(), UntypedUse));
             m_insertionSet.insert(m_indexInBlock, barrierNode);
             break;
         }
@@ -1110,6 +1105,38 @@ private:
         }
         case ToIndexString: {
             fixEdge<KnownInt32Use>(node->child1());
+            break;
+        }
+        case ProfileType: {
+            // We want to insert type checks based on the instructionTypeSet of the TypeLocation, not the globalTypeSet.
+            // Because the instructionTypeSet is contained in globalTypeSet, if we produce a type check for
+            // type T for the instructionTypeSet, the global type set must also have information for type T.
+            // So if it the type check succeeds for type T in the instructionTypeSet, a type check for type T 
+            // in the globalTypeSet would've also succeeded.
+            // (The other direction does not hold in general).
+
+            RefPtr<TypeSet> typeSet = node->typeLocation()->m_instructionTypeSet;
+            uint32_t seenTypes = typeSet->seenTypes();
+            if (typeSet->doesTypeConformTo(TypeMachineInt)) {
+                node->convertToCheck();
+                if (node->child1()->shouldSpeculateInt32())
+                    fixEdge<Int32Use>(node->child1());
+                else
+                    fixEdge<MachineIntUse>(node->child1());
+            } else if (typeSet->doesTypeConformTo(TypeNumber | TypeMachineInt)) {
+                node->convertToCheck();
+                fixEdge<NumberUse>(node->child1());
+            } else if (typeSet->doesTypeConformTo(TypeString)) {
+                node->convertToCheck();
+                fixEdge<StringUse>(node->child1());
+            } else if (typeSet->doesTypeConformTo(TypeBoolean)) {
+                node->convertToCheck();
+                fixEdge<BooleanUse>(node->child1());
+            } else if (typeSet->doesTypeConformTo(TypeUndefined | TypeNull) && (seenTypes & TypeUndefined) && (seenTypes & TypeNull)) {
+                node->convertToCheck();
+                fixEdge<OtherUse>(node->child1());
+            }
+
             break;
         }
             

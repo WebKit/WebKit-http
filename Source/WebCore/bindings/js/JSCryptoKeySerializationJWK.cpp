@@ -232,11 +232,11 @@ bool JSCryptoKeySerializationJWK::reconcileAlgorithm(std::unique_ptr<CryptoAlgor
         return false;
 
     if (algorithm->identifier() == CryptoAlgorithmIdentifier::HMAC)
-        return toCryptoAlgorithmHmacParams(*parameters).hash == toCryptoAlgorithmHmacParams(*suggestedParameters).hash;
+        return downcast<CryptoAlgorithmHmacParams>(*parameters).hash == downcast<CryptoAlgorithmHmacParams>(*suggestedParameters).hash;
     if (algorithm->identifier() == CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5
         || algorithm->identifier() == CryptoAlgorithmIdentifier::RSA_OAEP) {
-        CryptoAlgorithmRsaKeyParamsWithHash& rsaKeyParameters = toCryptoAlgorithmRsaKeyParamsWithHash(*parameters);
-        CryptoAlgorithmRsaKeyParamsWithHash& suggestedRSAKeyParameters = toCryptoAlgorithmRsaKeyParamsWithHash(*suggestedParameters);
+        CryptoAlgorithmRsaKeyParamsWithHash& rsaKeyParameters = downcast<CryptoAlgorithmRsaKeyParamsWithHash>(*parameters);
+        CryptoAlgorithmRsaKeyParamsWithHash& suggestedRSAKeyParameters = downcast<CryptoAlgorithmRsaKeyParamsWithHash>(*suggestedParameters);
         ASSERT(rsaKeyParameters.hasHash);
         if (suggestedRSAKeyParameters.hasHash)
             return suggestedRSAKeyParameters.hash == rsaKeyParameters.hash;
@@ -698,10 +698,10 @@ String JSCryptoKeySerializationJWK::serialize(ExecState* exec, const CryptoKey& 
     if (exec->hadException())
         return String();
 
-    if (isCryptoKeyDataOctetSequence(*keyData))
-        buildJSONForOctetSequence(exec, toCryptoKeyDataOctetSequence(*keyData).octetSequence(), result);
-    else if (isCryptoKeyDataRSAComponents(*keyData))
-        buildJSONForRSAComponents(exec, toCryptoKeyDataRSAComponents(*keyData), result);
+    if (is<CryptoKeyDataOctetSequence>(*keyData))
+        buildJSONForOctetSequence(exec, downcast<CryptoKeyDataOctetSequence>(*keyData).octetSequence(), result);
+    else if (is<CryptoKeyDataRSAComponents>(*keyData))
+        buildJSONForRSAComponents(exec, downcast<CryptoKeyDataRSAComponents>(*keyData), result);
     else {
         throwTypeError(exec, "Key doesn't support exportKey");
         return String();

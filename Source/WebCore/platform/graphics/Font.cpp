@@ -341,7 +341,7 @@ float Font::drawText(GraphicsContext* context, const TextRun& run, const FloatPo
 
     CodePath codePathToUse = codePath(run);
     // FIXME: Use the fast code path once it handles partial runs with kerning and ligatures. See http://webkit.org/b/100050
-    if (codePathToUse != Complex && typesettingFeatures() && (from || to != run.length()) && !isDrawnWithSVGFont(run))
+    if (codePathToUse != Complex && typesettingFeatures() && (from || static_cast<unsigned>(to) != run.length()) && !isDrawnWithSVGFont(run))
         codePathToUse = Complex;
 
     if (codePathToUse != Complex)
@@ -360,7 +360,7 @@ void Font::drawEmphasisMarks(GraphicsContext* context, const TextRun& run, const
 
     CodePath codePathToUse = codePath(run);
     // FIXME: Use the fast code path once it handles partial runs with kerning and ligatures. See http://webkit.org/b/100050
-    if (codePathToUse != Complex && typesettingFeatures() && (from || to != run.length()) && !isDrawnWithSVGFont(run))
+    if (codePathToUse != Complex && typesettingFeatures() && (from || static_cast<unsigned>(to) != run.length()) && !isDrawnWithSVGFont(run))
         codePathToUse = Complex;
 
     if (codePathToUse != Complex)
@@ -513,7 +513,7 @@ void Font::adjustSelectionRectForText(const TextRun& run, LayoutRect& selectionR
 
     CodePath codePathToUse = codePath(run);
     // FIXME: Use the fast code path once it handles partial runs with kerning and ligatures. See http://webkit.org/b/100050
-    if (codePathToUse != Complex && typesettingFeatures() && (from || to != run.length()) && !isDrawnWithSVGFont(run))
+    if (codePathToUse != Complex && typesettingFeatures() && (from || static_cast<unsigned>(to) != run.length()) && !isDrawnWithSVGFont(run))
         codePathToUse = Complex;
 
     if (codePathToUse != Complex)
@@ -968,7 +968,7 @@ bool Font::isCJKIdeographOrSymbol(UChar32 c)
     return isCJKIdeograph(c);
 }
 
-unsigned Font::expansionOpportunityCount(const LChar* characters, size_t length, TextDirection direction, bool& isAfterExpansion)
+unsigned Font::expansionOpportunityCountInternal(const LChar* characters, size_t length, TextDirection direction, bool& isAfterExpansion)
 {
     unsigned count = 0;
     if (direction == LTR) {
@@ -991,7 +991,7 @@ unsigned Font::expansionOpportunityCount(const LChar* characters, size_t length,
     return count;
 }
 
-unsigned Font::expansionOpportunityCount(const UChar* characters, size_t length, TextDirection direction, bool& isAfterExpansion)
+unsigned Font::expansionOpportunityCountInternal(const UChar* characters, size_t length, TextDirection direction, bool& isAfterExpansion)
 {
     static bool expandAroundIdeographs = canExpandAroundIdeographsInComplexText();
     unsigned count = 0;
@@ -1041,6 +1041,13 @@ unsigned Font::expansionOpportunityCount(const UChar* characters, size_t length,
     return count;
 }
 
+unsigned Font::expansionOpportunityCount(const StringView& stringView, TextDirection direction, bool& isAfterExpansion)
+{
+    if (stringView.is8Bit())
+        return expansionOpportunityCountInternal(stringView.characters8(), stringView.length(), direction, isAfterExpansion);
+    return expansionOpportunityCountInternal(stringView.characters16(), stringView.length(), direction, isAfterExpansion);
+}
+
 bool Font::canReceiveTextEmphasis(UChar32 c)
 {
     if (U_GET_GC_MASK(c) & (U_GC_Z_MASK | U_GC_CN_MASK | U_GC_CC_MASK | U_GC_CF_MASK))
@@ -1059,9 +1066,9 @@ GlyphToPathTranslator::GlyphUnderlineType computeUnderlineType(const TextRun& te
     // In general, we want to skip descenders. However, skipping descenders on CJK characters leads to undesirable renderings,
     // so we want to draw through CJK characters (on a character-by-character basis).
     UChar32 baseCharacter;
-    int offsetInString = glyphBuffer.offsetInString(index);
+    unsigned offsetInString = glyphBuffer.offsetInString(index);
 
-    if (offsetInString == GlyphBuffer::kNoOffset) {
+    if (offsetInString == GlyphBuffer::noOffset) {
         // We have no idea which character spawned this glyph. Bail.
         return GlyphToPathTranslator::GlyphUnderlineType::DrawOverGlyph;
     }

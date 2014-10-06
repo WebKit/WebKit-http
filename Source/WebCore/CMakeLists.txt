@@ -1944,6 +1944,8 @@ set(WebCore_SOURCES
     page/PageConsoleClient.cpp
     page/PageGroup.cpp
     page/PageGroupLoadDeferrer.cpp
+    page/PageOverlay.cpp
+    page/PageOverlayController.cpp
     page/PageSerializer.cpp
     page/PageThrottler.cpp
     page/PageVisibilityState.cpp
@@ -3171,6 +3173,8 @@ set(WebCoreTestSupport_SOURCES
 
     testing/InternalSettings.cpp
     testing/Internals.cpp
+
+    testing/MockPageOverlayClient.cpp
 
     testing/js/WebCoreTestSupport.cpp
 )

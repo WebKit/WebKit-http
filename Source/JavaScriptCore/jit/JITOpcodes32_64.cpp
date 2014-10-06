@@ -42,6 +42,7 @@
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "RepatchBuffer.h"
 #include "SlowPathCall.h"
+#include "TypeProfilerLog.h"
 #include "VirtualRegister.h"
 
 namespace JSC {
@@ -151,16 +152,6 @@ void JIT::emit_op_mov(Instruction* currentInstruction)
         emitLoad(src, regT1, regT0);
         emitStore(dst, regT1, regT0);
     }
-}
-
-void JIT::emit_op_captured_mov(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
-
-    emitLoad(src, regT1, regT0);
-    emitNotifyWrite(regT1, regT0, regT2, currentInstruction[3].u.watchpointSet);
-    emitStore(dst, regT1, regT0);
 }
 
 void JIT::emit_op_end(Instruction* currentInstruction)
@@ -350,22 +341,13 @@ void JIT::emit_op_is_string(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_tear_off_lexical_environment(Instruction* currentInstruction)
-{
-    int lexicalEnvironment = currentInstruction[1].u.operand;
-    Jump activationNotCreated = branch32(Equal, tagFor(lexicalEnvironment), TrustedImm32(JSValue::EmptyValueTag));
-    emitLoadPayload(lexicalEnvironment, regT0);
-    callOperation(operationTearOffActivation, regT0);
-    activationNotCreated.link(this);
-}
-
 void JIT::emit_op_tear_off_arguments(Instruction* currentInstruction)
 {
     VirtualRegister arguments = VirtualRegister(currentInstruction[1].u.operand);
     int lexicalEnvironment = currentInstruction[2].u.operand;
 
-    Jump argsNotCreated = branch32(Equal, tagFor(unmodifiedArgumentsRegister(arguments).offset()), TrustedImm32(JSValue::EmptyValueTag));
-    emitLoadPayload(unmodifiedArgumentsRegister(VirtualRegister(arguments)).offset(), regT0);
+    Jump argsNotCreated = branch32(Equal, tagFor(arguments.offset()), TrustedImm32(JSValue::EmptyValueTag));
+    emitLoadPayload(arguments.offset(), regT0);
     emitLoadPayload(lexicalEnvironment, regT1);
     callOperation(operationTearOffArguments, regT0, regT1);
     argsNotCreated.link(this);
@@ -805,7 +787,7 @@ void JIT::emitSlow_op_to_number(Instruction* currentInstruction, Vector<SlowCase
 void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
     emitLoad(currentInstruction[2].u.operand, regT1, regT0);
-    callOperation(operationPushNameScope, &m_codeBlock->identifier(currentInstruction[1].u.operand), regT1, regT0, currentInstruction[3].u.operand);
+    callOperation(operationPushNameScope, &m_codeBlock->identifier(currentInstruction[1].u.operand), regT1, regT0, currentInstruction[3].u.operand, currentInstruction[4].u.operand);
 }
 
 void JIT::emit_op_catch(Instruction* currentInstruction)
@@ -1310,8 +1292,66 @@ void JIT::emit_op_to_index_string(Instruction* currentInstruction)
 
 void JIT::emit_op_profile_type(Instruction* currentInstruction)
 {
-    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_profile_type);
-    slowPathCall.call();
+    TypeLocation* cachedTypeLocation = currentInstruction[2].u.location;
+    int valueToProfile = currentInstruction[1].u.operand;
+
+    // Load payload in T0. Load tag in T3.
+    emitLoadPayload(valueToProfile, regT0);
+    emitLoadTag(valueToProfile, regT3);
+
+    JumpList jumpToEnd;
+
+    // Compile in a predictive type check, if possible, to see if we can skip writing to the log.
+    // These typechecks are inlined to match those of the 32-bit JSValue type checks.
+    if (cachedTypeLocation->m_lastSeenType == TypeUndefined)
+        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::UndefinedTag)));
+    else if (cachedTypeLocation->m_lastSeenType == TypeNull)
+        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::NullTag)));
+    else if (cachedTypeLocation->m_lastSeenType == TypeBoolean)
+        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::BooleanTag)));
+    else if (cachedTypeLocation->m_lastSeenType == TypeMachineInt)
+        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::Int32Tag)));
+    else if (cachedTypeLocation->m_lastSeenType == TypeNumber) {
+        jumpToEnd.append(branch32(Below, regT3, TrustedImm32(JSValue::LowestTag)));
+        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::Int32Tag)));
+    } else if (cachedTypeLocation->m_lastSeenType == TypeString) {
+        Jump isNotCell = branch32(NotEqual, regT3, TrustedImm32(JSValue::CellTag));
+        jumpToEnd.append(branch8(Equal, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+        isNotCell.link(this);
+    }
+
+    // Load the type profiling log into T2.
+    TypeProfilerLog* cachedTypeProfilerLog = m_vm->typeProfilerLog();
+    move(TrustedImmPtr(cachedTypeProfilerLog), regT2);
+
+    // Load the next log entry into T1.
+    loadPtr(Address(regT2, TypeProfilerLog::currentLogEntryOffset()), regT1);
+
+    // Store the JSValue onto the log entry.
+    store32(regT0, Address(regT1, TypeProfilerLog::LogEntry::valueOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.payload)));
+    store32(regT3, Address(regT1, TypeProfilerLog::LogEntry::valueOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.tag)));
+
+    // Store the structureID of the cell if argument is a cell, otherwise, store 0 on the log entry.
+    Jump notCell = branch32(NotEqual, regT3, TrustedImm32(JSValue::CellTag));
+    load32(Address(regT0, JSCell::structureIDOffset()), regT0);
+    store32(regT0, Address(regT1, TypeProfilerLog::LogEntry::structureIDOffset()));
+    Jump skipNotCell = jump();
+    notCell.link(this);
+    store32(TrustedImm32(0), Address(regT1, TypeProfilerLog::LogEntry::structureIDOffset()));
+    skipNotCell.link(this);
+
+    // Store the typeLocation on the log entry.
+    move(TrustedImmPtr(cachedTypeLocation), regT0);
+    store32(regT0, Address(regT1, TypeProfilerLog::LogEntry::locationOffset()));
+
+    // Increment the current log entry.
+    addPtr(TrustedImm32(sizeof(TypeProfilerLog::LogEntry)), regT1);
+    store32(regT1, Address(regT2, TypeProfilerLog::currentLogEntryOffset()));
+    jumpToEnd.append(branchPtr(NotEqual, regT1, TrustedImmPtr(cachedTypeProfilerLog->logEndPtr())));
+    // Clear the log if we're at the end of the log.
+    callOperation(operationProcessTypeProfilerLog);
+
+    jumpToEnd.link(this);
 }
 
 } // namespace JSC

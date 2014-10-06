@@ -1308,12 +1308,13 @@ void JIT_OPERATION operationPutGetterSetter(ExecState* exec, JSCell* object, Ide
 }
 #endif
 
-void JIT_OPERATION operationPushNameScope(ExecState* exec, Identifier* identifier, EncodedJSValue encodedValue, int32_t attibutes)
+void JIT_OPERATION operationPushNameScope(ExecState* exec, Identifier* identifier, EncodedJSValue encodedValue, int32_t attibutes, int32_t type)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    JSNameScope* scope = JSNameScope::create(exec, *identifier, JSValue::decode(encodedValue), attibutes);
+    JSNameScope::Type scopeType = static_cast<JSNameScope::Type>(type);
+    JSNameScope* scope = JSNameScope::create(exec, *identifier, JSValue::decode(encodedValue), attibutes, scopeType);
 
     exec->setScope(scope);
 }
@@ -1588,15 +1589,6 @@ EncodedJSValue JIT_OPERATION operationGetByValString(ExecState* exec, EncodedJSV
 
     return JSValue::encode(result);
 }
-    
-void JIT_OPERATION operationTearOffActivation(ExecState* exec, JSCell* activationCell)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-
-    ASSERT(exec->codeBlock()->needsActivation());
-    jsCast<JSLexicalEnvironment*>(activationCell)->tearOff(vm);
-}
 
 void JIT_OPERATION operationTearOffArguments(ExecState* exec, JSCell* argumentsCell, JSCell* activationCell)
 {
@@ -1770,7 +1762,13 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
     JSObject* scope = jsCast<JSObject*>(exec->uncheckedR(pc[1].u.operand).jsValue());
     JSValue value = exec->r(pc[3].u.operand).jsValue();
     ResolveModeAndType modeAndType = ResolveModeAndType(pc[4].u.operand);
-
+    if (modeAndType.type() == LocalClosureVar) {
+        JSLexicalEnvironment* environment = jsCast<JSLexicalEnvironment*>(scope);
+        environment->registerAt(pc[6].u.operand).set(vm, environment, value);
+        if (VariableWatchpointSet* set = pc[5].u.watchpointSet)
+            set->notifyWrite(vm, value, "Executed op_put_scope<LocalClosureVar>");
+        return;
+    }
     if (modeAndType.mode() == ThrowIfNotFound && !scope->hasProperty(exec, ident)) {
         exec->vm().throwException(exec, createUndefinedVariableError(exec, ident));
         return;

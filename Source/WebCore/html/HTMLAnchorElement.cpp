@@ -152,13 +152,14 @@ bool HTMLAnchorElement::isKeyboardFocusable(KeyboardEvent* event) const
 
 static void appendServerMapMousePosition(StringBuilder& url, Event* event)
 {
-    if (!event->isMouseEvent())
+    ASSERT(event);
+    if (!is<MouseEvent>(*event))
         return;
 
     ASSERT(event->target());
     Node* target = event->target()->toNode();
     ASSERT(target);
-    if (!is<HTMLImageElement>(target))
+    if (!is<HTMLImageElement>(*target))
         return;
 
     HTMLImageElement& imageElement = downcast<HTMLImageElement>(*target);
@@ -170,7 +171,7 @@ static void appendServerMapMousePosition(StringBuilder& url, Event* event)
     RenderImage& renderer = toRenderImage(*imageElement.renderer());
 
     // FIXME: This should probably pass true for useTransforms.
-    FloatPoint absolutePosition = renderer.absoluteToLocal(FloatPoint(toMouseEvent(event)->pageX(), toMouseEvent(event)->pageY()));
+    FloatPoint absolutePosition = renderer.absoluteToLocal(FloatPoint(downcast<MouseEvent>(*event).pageX(), downcast<MouseEvent>(*event).pageY()));
     int x = absolutePosition.x();
     int y = absolutePosition.y();
     url.append('?');
@@ -196,9 +197,9 @@ void HTMLAnchorElement::defaultEventHandler(Event* event)
         if (hasEditableStyle()) {
             // This keeps track of the editable block that the selection was in (if it was in one) just before the link was clicked
             // for the LiveWhenNotFocused editable link behavior
-            if (event->type() == eventNames().mousedownEvent && event->isMouseEvent() && toMouseEvent(event)->button() != RightButton && document().frame()) {
+            if (event->type() == eventNames().mousedownEvent && is<MouseEvent>(*event) && downcast<MouseEvent>(*event).button() != RightButton && document().frame()) {
                 setRootEditableElementForSelectionOnMouseDown(document().frame()->selection().selection().rootEditableElement());
-                m_wasShiftKeyDownOnMouseDown = toMouseEvent(event)->shiftKey();
+                m_wasShiftKeyDownOnMouseDown = downcast<MouseEvent>(*event).shiftKey();
             } else if (event->type() == eventNames().mouseoverEvent) {
                 // These are cleared on mouseover and not mouseout because their values are needed for drag events,
                 // but drag events happen after mouse out events.
@@ -555,9 +556,10 @@ void HTMLAnchorElement::handleClick(Event* event)
 
 HTMLAnchorElement::EventType HTMLAnchorElement::eventType(Event* event)
 {
-    if (!event->isMouseEvent())
+    ASSERT(event);
+    if (!is<MouseEvent>(*event))
         return NonMouseEvent;
-    return toMouseEvent(event)->shiftKey() ? MouseEventWithShiftKey : MouseEventWithoutShiftKey;
+    return downcast<MouseEvent>(*event).shiftKey() ? MouseEventWithShiftKey : MouseEventWithoutShiftKey;
 }
 
 bool HTMLAnchorElement::treatLinkAsLiveForEventType(EventType eventType) const
@@ -592,12 +594,12 @@ bool HTMLAnchorElement::treatLinkAsLiveForEventType(EventType eventType) const
 
 bool isEnterKeyKeydownEvent(Event* event)
 {
-    return event->type() == eventNames().keydownEvent && event->isKeyboardEvent() && toKeyboardEvent(event)->keyIdentifier() == "Enter";
+    return event->type() == eventNames().keydownEvent && is<KeyboardEvent>(*event) && downcast<KeyboardEvent>(*event).keyIdentifier() == "Enter";
 }
 
 bool isLinkClick(Event* event)
 {
-    return event->type() == eventNames().clickEvent && (!event->isMouseEvent() || toMouseEvent(event)->button() != RightButton);
+    return event->type() == eventNames().clickEvent && (!is<MouseEvent>(*event) || downcast<MouseEvent>(*event).button() != RightButton);
 }
 
 bool shouldProhibitLinks(Element* element)

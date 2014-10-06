@@ -1469,9 +1469,9 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
 
         // ... if the text track has a corresponding track element, to then fire a
         // simple event named cuechange at the track element as well.
-        if (affectedTracks[i]->trackType() == TextTrack::TrackElement) {
+        if (is<LoadableTextTrack>(*affectedTracks[i])) {
             RefPtr<Event> event = Event::create(eventNames().cuechangeEvent, false, false);
-            HTMLTrackElement* trackElement = static_cast<LoadableTextTrack*>(affectedTracks[i])->trackElement();
+            HTMLTrackElement* trackElement = downcast<LoadableTextTrack>(*affectedTracks[i]).trackElement();
             ASSERT(trackElement);
             event->setTarget(trackElement);
             
@@ -4883,7 +4883,7 @@ void HTMLMediaElement::enterFullscreen()
     m_isInVideoFullscreen = true;
     if (hasMediaControls())
         mediaControls()->enteredFullscreen();
-    if (document().page() && is<HTMLVideoElement>(this)) {
+    if (document().page() && is<HTMLVideoElement>(*this)) {
         HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
         if (document().page()->chrome().client().supportsVideoFullscreen()) {
             document().page()->chrome().client().enterVideoFullscreenForVideoElement(&asVideo);
@@ -4907,7 +4907,7 @@ void HTMLMediaElement::exitFullscreen()
     m_isInVideoFullscreen = false;
     if (hasMediaControls())
         mediaControls()->exitedFullscreen();
-    if (document().page() && is<HTMLVideoElement>(this)) {
+    if (document().page() && is<HTMLVideoElement>(*this)) {
         if (m_mediaSession->requiresFullscreenForVideoPlayback(*this))
             pauseInternal();
 

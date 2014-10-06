@@ -427,11 +427,11 @@ private:
 };
 
 // static
-CSSStyleRule* InspectorCSSAgent::asCSSStyleRule(CSSRule* rule)
+CSSStyleRule* InspectorCSSAgent::asCSSStyleRule(CSSRule& rule)
 {
-    if (rule->type() != CSSRule::STYLE_RULE)
+    if (!is<CSSStyleRule>(rule))
         return nullptr;
-    return toCSSStyleRule(rule);
+    return downcast<CSSStyleRule>(&rule);
 }
 
 InspectorCSSAgent::InspectorCSSAgent(InstrumentingAgents* instrumentingAgents, InspectorDOMAgent* domAgent)
@@ -684,8 +684,8 @@ void InspectorCSSAgent::getAllStyleSheets(ErrorString&, RefPtr<Inspector::Protoc
         StyleSheetList& list = (*it)->styleSheets();
         for (unsigned i = 0; i < list.length(); ++i) {
             StyleSheet& styleSheet = *list.item(i);
-            if (styleSheet.isCSSStyleSheet())
-                collectStyleSheets(&toCSSStyleSheet(styleSheet), styleInfos.get());
+            if (is<CSSStyleSheet>(styleSheet))
+                collectStyleSheets(&downcast<CSSStyleSheet>(styleSheet), styleInfos.get());
         }
     }
 }
@@ -896,7 +896,7 @@ Element* InspectorCSSAgent::elementForId(ErrorString& errorString, int nodeId)
         errorString = ASCIILiteral("No node with given id found");
         return nullptr;
     }
-    if (!is<Element>(node)) {
+    if (!is<Element>(*node)) {
         errorString = ASCIILiteral("Not an element node");
         return nullptr;
     }
@@ -918,9 +918,8 @@ void InspectorCSSAgent::collectStyleSheets(CSSStyleSheet* styleSheet, Inspector:
     result->addItem(inspectorStyleSheet->buildObjectForStyleSheetInfo());
     for (unsigned i = 0, size = styleSheet->length(); i < size; ++i) {
         CSSRule* rule = styleSheet->item(i);
-        if (rule->type() == CSSRule::IMPORT_RULE) {
-            CSSStyleSheet* importedStyleSheet = toCSSImportRule(rule)->styleSheet();
-            if (importedStyleSheet)
+        if (is<CSSImportRule>(*rule)) {
+            if (CSSStyleSheet* importedStyleSheet = downcast<CSSImportRule>(*rule).styleSheet())
                 collectStyleSheets(importedStyleSheet, result);
         }
     }
@@ -1046,7 +1045,7 @@ PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> Inspec
         return result.release();
 
     for (unsigned i = 0, size = ruleList->length(); i < size; ++i) {
-        CSSStyleRule* rule = asCSSStyleRule(ruleList->item(i));
+        CSSStyleRule* rule = asCSSStyleRule(*ruleList->item(i));
         RefPtr<Inspector::Protocol::CSS::CSSRule> ruleObject = buildObjectForRule(rule);
         if (!ruleObject)
             continue;
@@ -1086,7 +1085,8 @@ PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> Insp
 
 PassRefPtr<Inspector::Protocol::CSS::CSSStyle> InspectorCSSAgent::buildObjectForAttributesStyle(Element* element)
 {
-    if (!is<StyledElement>(element))
+    ASSERT(element);
+    if (!is<StyledElement>(*element))
         return nullptr;
 
     // FIXME: Ugliness below.

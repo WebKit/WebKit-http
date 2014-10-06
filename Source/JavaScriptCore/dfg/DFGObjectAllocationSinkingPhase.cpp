@@ -145,7 +145,8 @@ private:
         // materializations.
         
         m_sinkCandidates.clear();
-        m_edgeToMaterializationPoint.clear();
+        m_materializationToEscapee.clear();
+        m_materializationSiteToMaterializations.clear();
         
         BlockMap<HashMap<Node*, bool>> materializedAtHead(m_graph);
         BlockMap<HashMap<Node*, bool>> materializedAtTail(m_graph);
@@ -157,6 +158,8 @@ private:
             changed = false;
             for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
                 HashMap<Node*, bool> materialized = materializedAtHead[block];
+                if (verbose)
+                    dataLog("    Looking at block ", pointerDump(block), "\n");
                 for (Node* node : *block) {
                     handleNode(
                         node,
@@ -165,8 +168,11 @@ private:
                         },
                         [&] (Node* escapee) {
                             auto iter = materialized.find(escapee);
-                            if (iter != materialized.end())
+                            if (iter != materialized.end()) {
+                                if (verbose)
+                                    dataLog("    ", escapee, " escapes at ", node, "\n");
                                 iter->value = true;
+                            }
                         });
                 }
                 
@@ -235,7 +241,14 @@ private:
             return;
         
         // A materialization edge exists at any point where a node escapes but hasn't been
-        // materialized yet.
+        // materialized yet. We do this in two parts. First we find all of the nodes that cause
+        // escaping to happen, where the escapee had not yet been materialized. This catches
+        // everything but loops. We then catch loops - as well as weirder control flow constructs -
+        // in a subsequent pass that looks at places in the CFG where an edge exists from a block
+        // that hasn't materialized to a block that has. We insert the materialization along such an
+        // edge, and we rely on the fact that critical edges were already broken so that we actually
+        // either insert the materialization at the head of the successor or the tail of the
+        // predecessor.
         //
         // FIXME: This can create duplicate allocations when we really only needed to perform one.
         // For example:
@@ -254,12 +267,17 @@ private:
         // materialization point right at the top of the then case of "if (rare)". To do this, we can
         // find the LCA of the various materializations in the dom tree.
         // https://bugs.webkit.org/show_bug.cgi?id=137124
+        
+        // First pass: find intra-block materialization points.
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
             HashSet<Node*> materialized;
             for (auto pair : materializedAtHead[block]) {
                 if (pair.value && m_sinkCandidates.contains(pair.key))
                     materialized.add(pair.key);
             }
+            
+            if (verbose)
+                dataLog("Placing materialization points in ", pointerDump(block), " with materialization set ", listDump(materialized), "\n");
             
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
@@ -268,18 +286,74 @@ private:
                     node,
                     [&] () { },
                     [&] (Node* escapee) {
-                        if (!m_sinkCandidates.contains(escapee))
-                            return;
-                        
-                        if (!materialized.add(escapee).isNewEntry)
-                            return;
-                        
-                        Node* materialize = createMaterialize(escapee, node->origin);
                         if (verbose)
-                            dataLog("Adding materialization point: ", node, "->", escapee, " = ", materialize, "\n");
-                        m_edgeToMaterializationPoint.add(
-                            std::make_pair(node, escapee), materialize);
+                            dataLog("Seeing ", escapee, " escape at ", node, "\n");
+                        
+                        if (!m_sinkCandidates.contains(escapee)) {
+                            if (verbose)
+                                dataLog("    It's not a sink candidate.\n");
+                            return;
+                        }
+                        
+                        if (!materialized.add(escapee).isNewEntry) {
+                            if (verbose)
+                                dataLog("   It's already materialized.\n");
+                            return;
+                        }
+                        
+                        createMaterialize(escapee, node);
                     });
+            }
+        }
+        
+        // Second pass: find CFG edge materialization points.
+        for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
+            for (BasicBlock* successorBlock : block->successors()) {
+                for (auto pair : materializedAtHead[successorBlock]) {
+                    Node* allocation = pair.key;
+                    
+                    // We only care if it is materialized in the successor.
+                    if (!pair.value)
+                        continue;
+                    
+                    // We only care about sinking candidates.
+                    if (!m_sinkCandidates.contains(allocation))
+                        continue;
+                    
+                    // We only care if it isn't materialized in the predecessor.
+                    if (materializedAtTail[block].get(allocation))
+                        continue;
+                    
+                    // We need to decide if we put the materialization at the head of the successor,
+                    // or the tail of the predecessor. It needs to be placed so that the allocation
+                    // is never materialized before, and always materialized after.
+                    
+                    // Is it never materialized in any of successor's predecessors? I like to think
+                    // of "successors' predecessors" and "predecessor's successors" as the "shadow",
+                    // because of what it looks like when you draw it.
+                    bool neverMaterializedInShadow = true;
+                    for (BasicBlock* shadowBlock : successorBlock->predecessors) {
+                        if (materializedAtTail[shadowBlock].get(allocation)) {
+                            neverMaterializedInShadow = false;
+                            break;
+                        }
+                    }
+                    
+                    if (neverMaterializedInShadow) {
+                        createMaterialize(allocation, successorBlock->firstOriginNode());
+                        continue;
+                    }
+                    
+                    // Because we had broken critical edges, it must be the case that the
+                    // predecessor's successors all materialize the object. This is because the
+                    // previous case is guaranteed to catch the case where the successor only has
+                    // one predecessor. When critical edges are broken, this is also the only case
+                    // where the predecessor could have had multiple successors. Therefore we have
+                    // already handled the case where the predecessor has multiple successors.
+                    DFG_ASSERT(m_graph, block, block->numSuccessors() == 1);
+                    
+                    createMaterialize(allocation, block->last());
+                }
             }
         }
     }
@@ -288,6 +362,9 @@ private:
     {
         m_ssaCalculator.reset();
         
+        // The "variables" are the object allocations that we are sinking. So, nodeToVariable maps
+        // sink candidates (aka escapees) to the SSACalculator's notion of Variable, and indexToNode
+        // maps in the opposite direction using the SSACalculator::Variable::index() as the key.
         HashMap<Node*, SSACalculator::Variable*> nodeToVariable;
         Vector<Node*> indexToNode;
         
@@ -303,17 +380,11 @@ private:
                 if (SSACalculator::Variable* variable = nodeToVariable.get(node))
                     m_ssaCalculator.newDef(variable, block, node);
                 
-                m_graph.doToChildren(
-                    node,
-                    [&] (Edge edge) {
-                        Node* materialize =
-                            m_edgeToMaterializationPoint.get(std::make_pair(node, edge.node()));
-                        if (!materialize)
-                            return;
-                        
-                        m_ssaCalculator.newDef(
-                            nodeToVariable.get(edge.node()), block, materialize);
-                    });
+                for (Node* materialize : m_materializationSiteToMaterializations.get(node)) {
+                    m_ssaCalculator.newDef(
+                        nodeToVariable.get(m_materializationToEscapee.get(materialize)),
+                        block, materialize);
+                }
             }
         }
         
@@ -361,20 +432,15 @@ private:
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
 
-                m_graph.doToChildren(
-                    node,
-                    [&] (Edge edge) {
-                        Node* materialize = m_edgeToMaterializationPoint.get(
-                            std::make_pair(node, edge.node()));
-                        if (materialize) {
-                            m_insertionSet.insert(nodeIndex, materialize);
-                            insertOSRHintsForUpdate(
-                                m_insertionSet, nodeIndex, node->origin,
-                                availabilityCalculator.m_availability, edge.node(), materialize);
-                            mapping.set(edge.node(), materialize);
-                        }
-                    });
-
+                for (Node* materialize : m_materializationSiteToMaterializations.get(node)) {
+                    Node* escapee = m_materializationToEscapee.get(materialize);
+                    m_insertionSet.insert(nodeIndex, materialize);
+                    insertOSRHintsForUpdate(
+                        m_insertionSet, nodeIndex, node->origin,
+                        availabilityCalculator.m_availability, escapee, materialize);
+                    mapping.set(escapee, materialize);
+                }
+                    
                 availabilityCalculator.executeNode(node);
                 
                 m_graph.doToChildren(
@@ -383,10 +449,21 @@ private:
                         if (Node* materialize = mapping.get(edge.node()))
                             edge.setNode(materialize);
                     });
+                
+                // If you cause an escape, you shouldn't see the original escapee.
+                if (validationEnabled()) {
+                    handleNode(
+                        node,
+                        [&] () { },
+                        [&] (Node* escapee) {
+                            DFG_ASSERT(m_graph, node, !m_sinkCandidates.contains(escapee));
+                        });
+                }
             }
             
             size_t upsilonInsertionPoint = block->size() - 1;
-            NodeOrigin upsilonOrigin = block->last()->origin;
+            Node* upsilonWhere = block->last();
+            NodeOrigin upsilonOrigin = upsilonWhere->origin;
             for (BasicBlock* successorBlock : block->successors()) {
                 for (SSACalculator::Def* phiDef : m_ssaCalculator.phisForBlock(successorBlock)) {
                     Node* phiNode = phiDef->value();
@@ -399,7 +476,7 @@ private:
                         // If we have a Phi that combines materializations with the original
                         // phantom object, then the path with the phantom object must materialize.
                         
-                        incoming = createMaterialize(allocation, upsilonOrigin);
+                        incoming = createMaterialize(allocation, upsilonWhere);
                         m_insertionSet.insert(upsilonInsertionPoint, incoming);
                         insertOSRHintsForUpdate(
                             m_insertionSet, upsilonInsertionPoint, upsilonOrigin,
@@ -407,14 +484,9 @@ private:
                     } else
                         incoming = originalIncoming;
                     
-                    Node* upsilon = m_insertionSet.insertNode(
+                    m_insertionSet.insertNode(
                         upsilonInsertionPoint, SpecNone, Upsilon, upsilonOrigin,
                         OpInfo(phiNode), incoming->defaultEdge());
-                    
-                    if (originalIncoming == allocation) {
-                        m_edgeToMaterializationPoint.add(
-                            std::make_pair(upsilon, allocation), incoming);
-                    }
                 }
             }
             
@@ -502,12 +574,6 @@ private:
     
     void promoteSunkenFields()
     {
-        // Henceforth when we encounter a materialization point, we will want to ask *who* it is
-        // a materialization for. Invert the map to be able to answer such questions.
-        m_materializationPointToEscapee.clear();
-        for (auto pair : m_edgeToMaterializationPoint)
-            m_materializationPointToEscapee.add(pair.value, pair.key.second);
-        
         // Collect the set of heap locations that we will be operating over.
         HashSet<PromotedHeapLocation> locations;
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
@@ -615,7 +681,7 @@ private:
             for (Node* node : *block) {
                 m_graph.performSubstitution(node);
                 
-                if (Node* escapee = m_materializationPointToEscapee.get(node))
+                if (Node* escapee = m_materializationToEscapee.get(node))
                     populateMaterialize(block, node, escapee);
                 
                 promoteHeapAccess(
@@ -717,26 +783,37 @@ private:
         }
     }
     
-    Node* createMaterialize(Node* escapee, const NodeOrigin whereOrigin)
+    Node* createMaterialize(Node* escapee, Node* where)
     {
+        Node* result = nullptr;
+        
         switch (escapee->op()) {
         case NewObject:
         case MaterializeNewObject: {
             ObjectMaterializationData* data = m_graph.m_objectMaterializationData.add();
             
-            Node* result = m_graph.addNode(
+            result = m_graph.addNode(
                 escapee->prediction(), Node::VarArg, MaterializeNewObject,
                 NodeOrigin(
                     escapee->origin.semantic,
-                    whereOrigin.forExit),
+                    where->origin.forExit),
                 OpInfo(data), OpInfo(), 0, 0);
-            return result;
+            break;
         }
             
         default:
             DFG_CRASH(m_graph, escapee, "Bad escapee op");
-            return nullptr;
+            break;
         }
+        
+        if (verbose)
+            dataLog("Creating materialization point at ", where, " for ", escapee, ": ", result, "\n");
+        
+        m_materializationToEscapee.add(result, escapee);
+        m_materializationSiteToMaterializations.add(
+            where, Vector<Node*>()).iterator->value.append(result);
+        
+        return result;
     }
     
     void populateMaterialize(BasicBlock* block, Node* node, Node* escapee)
@@ -791,8 +868,8 @@ private:
     
     SSACalculator m_ssaCalculator;
     HashSet<Node*> m_sinkCandidates;
-    HashMap<std::pair<Node*, Node*>, Node*> m_edgeToMaterializationPoint;
-    HashMap<Node*, Node*> m_materializationPointToEscapee;
+    HashMap<Node*, Node*> m_materializationToEscapee;
+    HashMap<Node*, Vector<Node*>> m_materializationSiteToMaterializations;
     HashMap<Node*, Vector<PromotedHeapLocation>> m_locationsForAllocation;
     HashMap<PromotedHeapLocation, SSACalculator::Variable*> m_locationToVariable;
     Vector<PromotedHeapLocation> m_indexToLocation;

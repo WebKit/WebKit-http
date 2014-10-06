@@ -216,7 +216,7 @@ String SVGFontFaceElement::fontFamily() const
 SVGFontElement* SVGFontFaceElement::associatedFontElement() const
 {
     ASSERT(parentNode() == m_fontElement);
-    ASSERT(!parentNode() || is<SVGFontElement>(parentNode()));
+    ASSERT(!parentNode() || is<SVGFontElement>(*parentNode()));
     return m_fontElement;
 }
 
@@ -230,7 +230,7 @@ void SVGFontFaceElement::rebuildFontFace()
     // we currently ignore all but the first src element, alternatively we could concat them
     auto srcElement = childrenOfType<SVGFontFaceSrcElement>(*this).first();
 
-    bool describesParentFont = is<SVGFontElement>(parentNode());
+    bool describesParentFont = is<SVGFontElement>(*parentNode());
     RefPtr<CSSValueList> list;
 
     if (describesParentFont) {
@@ -253,11 +253,11 @@ void SVGFontFaceElement::rebuildFontFace()
     if (describesParentFont) {    
         // Traverse parsed CSS values and associate CSSFontFaceSrcValue elements with ourselves.
         RefPtr<CSSValue> src = m_fontFaceRule->properties().getPropertyCSSValue(CSSPropertySrc);
-        CSSValueList* srcList = toCSSValueList(src.get());
+        CSSValueList* srcList = downcast<CSSValueList>(src.get());
 
         unsigned srcLength = srcList ? srcList->length() : 0;
-        for (unsigned i = 0; i < srcLength; i++) {
-            if (CSSFontFaceSrcValue* item = toCSSFontFaceSrcValue(srcList->itemWithoutBoundsCheck(i)))
+        for (unsigned i = 0; i < srcLength; ++i) {
+            if (CSSFontFaceSrcValue* item = downcast<CSSFontFaceSrcValue>(srcList->itemWithoutBoundsCheck(i)))
                 item->setSVGFontFaceElement(this);
         }
     }

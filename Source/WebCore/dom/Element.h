@@ -452,6 +452,8 @@ public:
 
     virtual bool matchesReadWritePseudoClass() const;
     bool matches(const String& selectors, ExceptionCode&);
+    bool webkitMatchesSelector(const String& selectors, ExceptionCode&);
+    Element* closest(const String& selectors, ExceptionCode&);
     virtual bool shouldAppearIndeterminate() const;
 
     DOMTokenList& classList();
@@ -679,7 +681,7 @@ inline NamedNodeMap* Node::attributes() const
 inline Element* Node::parentElement() const
 {
     ContainerNode* parent = parentNode();
-    return parent && is<Element>(parent) ? downcast<Element>(parent) : nullptr;
+    return is<Element>(parent) ? downcast<Element>(parent) : nullptr;
 }
 
 inline bool Element::fastHasAttribute(const QualifiedName& name) const

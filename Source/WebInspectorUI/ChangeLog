@@ -1,3 +1,210 @@
+2014-10-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add PrettyPrinter CSS tests
+        https://bugs.webkit.org/show_bug.cgi?id=134005
+
+        Reviewed by Timothy Hatcher.
+
+        Add CSS pretty printing tests. Improve pretty printing of calc()
+        expressions and media-queries with whitespace around operators
+        and keywords. Also fix the debug output in the tool for CSS.
+
+        * Tools/PrettyPrinting/CodeMirrorFormatters.js:
+        * Tools/PrettyPrinting/FormatterContentBuilder.js:
+        (FormatterContentBuilder.prototype._appendIndent):
+        * Tools/PrettyPrinting/FormatterDebug.js:
+        (.debugToken):
+        (Formatter.prototype.debug):
+        * Tools/PrettyPrinting/css-tests/basic-expected.css: Added.
+        * Tools/PrettyPrinting/css-tests/basic.css: Added.
+        * Tools/PrettyPrinting/css-tests/calc-expected.css: Added.
+        * Tools/PrettyPrinting/css-tests/calc.css: Added.
+        * Tools/PrettyPrinting/css-tests/media-query-expected.css: Added.
+        * Tools/PrettyPrinting/css-tests/media-query.css: Added.
+        * Tools/PrettyPrinting/css-tests/selectors-expected.css: Added.
+        * Tools/PrettyPrinting/css-tests/selectors.css: Added.
+        * Tools/PrettyPrinting/index.html:
+        * UserInterface/Views/CodeMirrorFormatters.js:
+
+2014-10-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Unreviewed, rolling out r174319.
+
+        Causes assertions in fast/profiler tests. Needs nontrivial
+        investigation, will take offline.
+
+        Reverted changeset:
+
+        "Web Inspector: timelines should not count time elapsed while
+        paused in the debugger"
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+        http://trac.webkit.org/changeset/174319
+
+2014-10-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: timelines should not count time elapsed while paused in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+
+        Reviewed by Timothy Hatcher.
+
+        Don't update the timeline's current time when the debugger is paused.
+
+        Start and end times for timeline records are now in seconds elapsed since timeline
+        recording started, rather than milliseconds since the epoch. Add a workaround to
+        preserve compatibility with old backends.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.capturingStarted):
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord):
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        * UserInterface/Views/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._debuggerPaused):
+        (WebInspector.TimelineContentView.prototype._debuggerResumed):
+
+2014-10-03  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Move the computation that results in UI strings from JSC to the Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=137295
+
+        Reviewed by Timothy Hatcher.
+
+        The inspector now computes a set of properties that was previously 
+        computed inside JSC. 
+
+        This patch also addresses the weird experience of the 
+        type of an expression claiming to be both a Number and 
+        an Integer. This could be a bit confusing because Number 
+        is supposed to represent Double|Integer and the previous
+        UI implied that Number was equivalent to Double. The new UI only 
+        ever shows either the type of Number or Integer when showing
+        the type information of an expression. It never shows both Number
+        and Integer simultaneously to describe a single expression.
+
+        * UserInterface/Models/TypeSet.js:
+        (WebInspector.TypeSet):
+        (WebInspector.TypeSet.prototype.isContainedIn):
+        (WebInspector.TypeSet.prototype.get primitiveTypeNames):
+        * UserInterface/Views/TypePropertiesSection.js:
+        (WebInspector.TypePropertiesSection):
+        (WebInspector.TypePropertiesSection.prototype.onpopulate):
+        * UserInterface/Views/TypeTokenView.js:
+        (WebInspector.TypeTokenView):
+        (WebInspector.TypeTokenView.prototype.update):
+        (WebInspector.TypeTokenView.prototype._shouldShowPopover):
+        (WebInspector.TypeTokenView.prototype._displayTypeName):
+
+2014-10-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cannot add a new CSS Rule to elements with 3 or more class names
+        https://bugs.webkit.org/show_bug.cgi?id=137375
+
+        Reviewed by Timothy Hatcher.
+
+        Correctly merge all class names with dots instead of just the first two.
+
+        * UserInterface/Models/DOMNode.js:
+
+2014-10-02  Mark Lam  <mark.lam@apple.com>
+
+        Fixed the Inspector to be able to properly distinguish between scope types.
+        <https://webkit.org/b/137279>
+
+        Reviewed by Geoffrey Garen and Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/DebuggerManager.js:
+        * UserInterface/Models/ScopeChainNode.js:
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        - Added handling of the FunctionNameScope case.
+
+2014-10-02  Andres Gomez  <agomez@igalia.com>
+
+        Web Inspector: [GTK] Missing icons and enhancing the proportion and visibility of some icons
+        https://bugs.webkit.org/show_bug.cgi?id=137248
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add more free icons and removed some unused ones for the Web
+        Inspector in GTK+.
+        Also, enhanced the visibility and/or proportion of several of the
+        icons.
+
+        * UserInterface/Images/gtk/AUTHORS:
+        * UserInterface/Images/gtk/COPYING:
+        * UserInterface/Images/gtk/Checkers.svg: Added.
+        * UserInterface/Images/gtk/Circle.svg: Added.
+        * UserInterface/Images/gtk/CloseLarge.svg: Added.
+        * UserInterface/Images/gtk/CloseTimeline.png: Removed.
+        * UserInterface/Images/gtk/CloseTimeline@2x.png: Removed.
+        * UserInterface/Images/gtk/Crosshair.svg:
+        * UserInterface/Images/gtk/DOMCharacterData.svg:
+        * UserInterface/Images/gtk/DOMComment.svg:
+        * UserInterface/Images/gtk/DOMDocument.svg:
+        * UserInterface/Images/gtk/DOMDocumentType.svg:
+        * UserInterface/Images/gtk/DOMElement.svg:
+        * UserInterface/Images/gtk/DOMNode.svg:
+        * UserInterface/Images/gtk/DOMTextNode.svg:
+        * UserInterface/Images/gtk/DOMTree.svg:
+        * UserInterface/Images/gtk/EventListener.svg:
+        * UserInterface/Images/gtk/Exception.svg:
+        * UserInterface/Images/gtk/Function.svg:
+        * UserInterface/Images/gtk/GradientStop.png: Added.
+        * UserInterface/Images/gtk/GradientStop@2x.png: Added.
+        * UserInterface/Images/gtk/GradientStopSelected.png: Added.
+        * UserInterface/Images/gtk/GradientStopSelected@2x.png: Added.
+        * UserInterface/Images/gtk/Issues.svg:
+        * UserInterface/Images/gtk/IssuesEnabled.svg:
+        * UserInterface/Images/gtk/LessColumns.svg: Removed.
+        * UserInterface/Images/gtk/Logs.svg:
+        * UserInterface/Images/gtk/Memory.svg: Removed.
+        * UserInterface/Images/gtk/MoreColumns.svg: Removed.
+        * UserInterface/Images/gtk/Native.svg:
+        * UserInterface/Images/gtk/NavigationItemAngleBrackets.svg:
+        * UserInterface/Images/gtk/NavigationItemBrushAndRuler.svg:
+        * UserInterface/Images/gtk/NavigationItemBug.svg:
+        * UserInterface/Images/gtk/NavigationItemFile.svg:
+        * UserInterface/Images/gtk/NavigationItemLayers.svg:
+        * UserInterface/Images/gtk/NavigationItemMagnifyingGlass.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemProbes.pdf: Added.
+        * UserInterface/Images/gtk/NavigationItemStopwatch.svg:
+        * UserInterface/Images/gtk/NavigationItemTypes.svg: Added.
+        * UserInterface/Images/gtk/PaintFlashing.svg: Added.
+        * UserInterface/Images/gtk/PseudoElement.svg:
+        * UserInterface/Images/gtk/Record.svg: Added.
+        * UserInterface/Images/gtk/Recording.png: Removed.
+        * UserInterface/Images/gtk/Recording@2x.png: Removed.
+        * UserInterface/Images/gtk/RecordingHovered.png: Removed.
+        * UserInterface/Images/gtk/RecordingHovered@2x.png: Removed.
+        * UserInterface/Images/gtk/RecordingStopped.png: Removed.
+        * UserInterface/Images/gtk/RecordingStopped@2x.png: Removed.
+        * UserInterface/Images/gtk/Reflection.svg:
+        * UserInterface/Images/gtk/ReplayPauseButton.svg: Added.
+        * UserInterface/Images/gtk/ReplayPlayButton.svg: Added.
+        * UserInterface/Images/gtk/ReplayRecordingButton.svg: Added.
+        * UserInterface/Images/gtk/Request.svg:
+        * UserInterface/Images/gtk/Resources.svg:
+        * UserInterface/Images/gtk/Response.svg:
+        * UserInterface/Images/gtk/ResultLine.svg:
+        * UserInterface/Images/gtk/SourceCode.svg:
+        * UserInterface/Images/gtk/Stop.svg: Added.
+        * UserInterface/Images/gtk/StyleRuleAuthor.svg:
+        * UserInterface/Images/gtk/StyleRuleInherited.svg:
+        * UserInterface/Images/gtk/StyleRuleInheritedElement.svg:
+        * UserInterface/Images/gtk/StyleRuleInspector.svg:
+        * UserInterface/Images/gtk/StyleRuleUser.svg:
+        * UserInterface/Images/gtk/StyleRuleUserAgent.svg:
+        * UserInterface/Images/gtk/Time.svg:
+        * UserInterface/Images/gtk/TimelineRecordAnimation.svg:
+        * UserInterface/Images/gtk/TimelineRecordConsoleProfile.svg: Added.
+        * UserInterface/Images/gtk/TimelineRecordEvent.svg:
+        * UserInterface/Images/gtk/TimelineRecordLayout.svg:
+        * UserInterface/Images/gtk/TimelineRecordPaint.svg:
+        * UserInterface/Images/gtk/TimelineRecordProbeSampled.svg: Added.
+        * UserInterface/Images/gtk/TimelineRecordScriptEvaluated.svg:
+        * UserInterface/Images/gtk/TimelineRecordStyle.svg:
+        * UserInterface/Images/gtk/TimelineRecordTimer.svg:
+        * UserInterface/Images/gtk/Weight.svg:
+
 2014-09-27  Brian J. Burg  <burg@cs.washington.edu>
 
         Web Replay: Playback position updates should be sent before the next event loop input is dispatched

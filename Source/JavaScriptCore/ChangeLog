@@ -1,3 +1,843 @@
+2014-10-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Unreviewed, rolling out r174319.
+
+        Causes assertions in fast/profiler tests. Needs nontrivial
+        investigation, will take offline.
+
+        Reverted changeset:
+
+        "Web Inspector: timelines should not count time elapsed while
+        paused in the debugger"
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+        http://trac.webkit.org/changeset/174319
+
+2014-10-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: timelines should not count time elapsed while paused in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+
+        Reviewed by Timothy Hatcher.
+
+        Now that we have a stopwatch to provide pause-aware timing data, we can remove the
+        profiler's handling of debugger pause/continue callbacks. The timeline agent accounts
+        for debugger pauses by pausing and resuming the stopwatch.
+
+        * API/JSProfilerPrivate.cpp:
+        (JSStartProfiling): Use a fresh stopwatch when profiling from the JSC API.
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::handlePause):
+        * profiler/LegacyProfiler.cpp:
+        (JSC::LegacyProfiler::profiler): Use nullptr.
+        (JSC::LegacyProfiler::startProfiling): Hand off a stopwatch to the profile generator.
+        (JSC::LegacyProfiler::stopProfiling): Use nullptr.
+        (JSC::LegacyProfiler::didPause): Deleted.
+        (JSC::LegacyProfiler::didContinue): Deleted.
+        * profiler/LegacyProfiler.h:
+        * profiler/ProfileGenerator.cpp: Remove debugger pause/continue callbacks and the
+        timestamp member that was used to track time elapsed by the debugger. Just use the
+        stopwatch's elapsed times to generate start/elapsed times for function calls.
+        (JSC::ProfileGenerator::create):
+        (JSC::ProfileGenerator::ProfileGenerator):
+        (JSC::ProfileGenerator::beginCallEntry):
+        (JSC::ProfileGenerator::endCallEntry):
+        (JSC::ProfileGenerator::didPause): Deleted.
+        (JSC::ProfileGenerator::didContinue): Deleted.
+        * profiler/ProfileGenerator.h:
+
+2014-10-04  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should sink PutLocals
+        https://bugs.webkit.org/show_bug.cgi?id=137168
+
+        Reviewed by Oliver Hunt.
+        
+        We've known for a while that our PutLocal situation was sub-optimal. We emit them anytime we
+        "pass" arguments to an inlined function call, because we need to enable the runtime to grab
+        those arguments when doing foo.arguments where foo is inlined: our engine doesn't deoptimize
+        in that case but rather just relies on the arguments being flushed (i.e. a copy of their
+        values is spilled) at a well-known place in a well-known format.
+        
+        The PutLocals incur two costs: (1) they are store instructions and stores ain't free, and (2)
+        they look like escaping sites and so they inhibit object allocation sinking.
+        
+        But in most cases, the PutLocals are unnecessary because the inlined code never performs any
+        side effect that could transitively lead to function.arguments. Even if the inlined code
+        could do such a side effect, it may be on a rare path so there is no need to penalize the
+        entire function.
+        
+        This patch implements one solution to the PutLocal problem: it aggressively sinks PutLocals
+        to the latest possible point. This is even more aggressive than the object allocation
+        sinking. That sinking algorithm avoids creating situations where an object could be
+        materialized more than one along any path. PutLocal sinking, on the other hand, doesn't avoid
+        this at all - both to make the phase cheaper and simpler and to make it more aggressive.
+        Every PutLocal is sunk no matter what.
+        
+        The upside of this patch is that it eliminates many PutLocals: many of them are sunk "past
+        their death", thus eliminating them completely. Others are sunk to rare paths. This enables a
+        lot of object allocation sinking and it removes a lot of pointless store instructions.
+        
+        It also has downsites. Sinking PutLocals increases register pressure because it increases the
+        live ranges of things like inlined arguments.
+        
+        This patch is a net performance win in its current form: 1% SunSpider regression, 2% OctaneV2
+        progression, 0.6% Kraken regression, 1% AsmBench progression, and 0.5% CompressionBench
+        regression. The biggest win is on Octane/raytrace, which improves by 27%.
+        
+        Relanding after fixing internal builds. We have to be careful about implicit casts from int64
+        to int32.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.h:
+        * bytecode/Operands.h:
+        (JSC::Operands::dump): Deleted.
+        * bytecode/OperandsInlines.h:
+        (JSC::Traits>::dump):
+        * bytecode/VirtualRegister.h:
+        (JSC::VirtualRegister::isHeader):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        * dfg/DFGClobberSet.h:
+        (JSC::DFG::ClobberSetAdd::operator()):
+        (JSC::DFG::ClobberSetOverlaps::operator()):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        (JSC::DFG::NoOpClobberize::operator()):
+        (JSC::DFG::CheckClobberize::operator()):
+        (JSC::DFG::AbstractHeapOverlaps::operator()):
+        (JSC::DFG::ReadMethodClobberize::operator()):
+        (JSC::DFG::WriteMethodClobberize::operator()):
+        (JSC::DFG::DefMethodClobberize::operator()):
+        * dfg/DFGFlushFormat.h:
+        (JSC::DFG::merge):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::capturedVarsFor):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::determineMaterializationPoints):
+        (JSC::DFG::ObjectAllocationSinkingPhase::placeMaterializationPoints):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPreciseLocalClobberize.h: Added.
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::PreciseLocalClobberizeAdaptor):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::read):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::write):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::def):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::callIfAppropriate):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::writeTop):
+        (JSC::DFG::forEachLocalReadByUnwind):
+        (JSC::DFG::preciseLocalClobberize):
+        * dfg/DFGPutLocalSinkingPhase.cpp: Added.
+        (JSC::DFG::performPutLocalSinking):
+        * dfg/DFGPutLocalSinkingPhase.h: Added.
+        * dfg/DFGSSACalculator.h:
+        (JSC::DFG::SSACalculator::computePhis):
+        * dfg/DFGValidate.cpp:
+
+2014-10-03  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r174216): CodeBlock::dumpByteCodes crashes on op_push_name_scope
+        https://bugs.webkit.org/show_bug.cgi?id=137412
+
+        Reviewed by Mark Lam.
+
+        Added support for the JSNameScope::type opcode parameter in dumpBytecode().
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+
+2014-10-03  Saam Barati  <saambarati1@gmail.com>
+
+        Implement op_profile_type in the 32-bit baseline JIT
+        https://bugs.webkit.org/show_bug.cgi?id=137181
+
+        Reviewed by Michael Saboff.
+
+        Generate inline code to write to the TypeProfilerLog inside the 32-bit 
+        baseline JIT instead of unconditionally bailing out to the slow path 
+        for op_profile_type.
+
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_profile_type):
+
+2014-10-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174275.
+        https://bugs.webkit.org/show_bug.cgi?id=137408
+
+        Build failures on the internal bots. (Requested by dethbakin
+        on #webkit).
+
+        Reverted changeset:
+
+        "FTL should sink PutLocals"
+        https://bugs.webkit.org/show_bug.cgi?id=137168
+        http://trac.webkit.org/changeset/174275
+
+2014-10-03  Oliver Hunt  <oliver@apple.com>
+
+        tearoff_arguments should always refer to the unmodified arguments register
+        https://bugs.webkit.org/show_bug.cgi?id=137406
+
+        Reviewed by Michael Saboff.
+
+        To simplify subsequent work, and remove unnecessary work from
+        actual execution this patch simply ensures that tear_off_arguments
+        refers to the actual unmodified arguments register.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitReturn):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_tear_off_arguments):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_tear_off_arguments):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2014-10-03  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Move the computation that results in UI strings from JSC to the Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=137295
+
+        Reviewed by Timothy Hatcher.
+
+        Remove unnecessary functions and properties from JSC that are
+        now being computed inside the Web Inspector. 
+
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        * inspector/protocol/Runtime.json:
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::allPrimitiveTypeNames): Deleted.
+        * runtime/TypeSet.h:
+
+2014-10-02  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should sink PutLocals
+        https://bugs.webkit.org/show_bug.cgi?id=137168
+
+        Reviewed by Oliver Hunt.
+        
+        We've known for a while that our PutLocal situation was sub-optimal. We emit them anytime we
+        "pass" arguments to an inlined function call, because we need to enable the runtime to grab
+        those arguments when doing foo.arguments where foo is inlined: our engine doesn't deoptimize
+        in that case but rather just relies on the arguments being flushed (i.e. a copy of their
+        values is spilled) at a well-known place in a well-known format.
+        
+        The PutLocals incur two costs: (1) they are store instructions and stores ain't free, and (2)
+        they look like escaping sites and so they inhibit object allocation sinking.
+        
+        But in most cases, the PutLocals are unnecessary because the inlined code never performs any
+        side effect that could transitively lead to function.arguments. Even if the inlined code
+        could do such a side effect, it may be on a rare path so there is no need to penalize the
+        entire function.
+        
+        This patch implements one solution to the PutLocal problem: it aggressively sinks PutLocals
+        to the latest possible point. This is even more aggressive than the object allocation
+        sinking. That sinking algorithm avoids creating situations where an object could be
+        materialized more than one along any path. PutLocal sinking, on the other hand, doesn't avoid
+        this at all - both to make the phase cheaper and simpler and to make it more aggressive.
+        Every PutLocal is sunk no matter what.
+        
+        The upside of this patch is that it eliminates many PutLocals: many of them are sunk "past
+        their death", thus eliminating them completely. Others are sunk to rare paths. This enables a
+        lot of object allocation sinking and it removes a lot of pointless store instructions.
+        
+        It also has downsites. Sinking PutLocals increases register pressure because it increases the
+        live ranges of things like inlined arguments.
+        
+        This patch is a net performance win in its current form: 1% SunSpider regression, 2% OctaneV2
+        progression, 0.6% Kraken regression, 1% AsmBench progression, and 0.5% CompressionBench
+        regression. The biggest win is on Octane/raytrace, which improves by 27%.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.h:
+        * bytecode/Operands.h:
+        (JSC::Operands::dump): Deleted.
+        * bytecode/OperandsInlines.h:
+        (JSC::Traits>::dump):
+        * bytecode/VirtualRegister.h:
+        (JSC::VirtualRegister::isHeader):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        * dfg/DFGClobberSet.h:
+        (JSC::DFG::ClobberSetAdd::operator()):
+        (JSC::DFG::ClobberSetOverlaps::operator()):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        (JSC::DFG::NoOpClobberize::operator()):
+        (JSC::DFG::CheckClobberize::operator()):
+        (JSC::DFG::AbstractHeapOverlaps::operator()):
+        (JSC::DFG::ReadMethodClobberize::operator()):
+        (JSC::DFG::WriteMethodClobberize::operator()):
+        (JSC::DFG::DefMethodClobberize::operator()):
+        * dfg/DFGFlushFormat.h:
+        (JSC::DFG::merge):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::capturedVarsFor):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::determineMaterializationPoints):
+        (JSC::DFG::ObjectAllocationSinkingPhase::placeMaterializationPoints):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPreciseLocalClobberize.h: Added.
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::PreciseLocalClobberizeAdaptor):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::read):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::write):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::def):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::callIfAppropriate):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::writeTop):
+        (JSC::DFG::forEachLocalReadByUnwind):
+        (JSC::DFG::preciseLocalClobberize):
+        * dfg/DFGPutLocalSinkingPhase.cpp: Added.
+        (JSC::DFG::performPutLocalSinking):
+        * dfg/DFGPutLocalSinkingPhase.h: Added.
+        * dfg/DFGSSACalculator.h:
+        (JSC::DFG::SSACalculator::computePhis):
+        * dfg/DFGValidate.cpp:
+
+2014-10-03  Saam Barati  <saambarati1@gmail.com>
+
+        Change how 32-bit JSValues check if they are a Boolean
+
+        Rubber stamped by Filip Pizlo.
+
+        32-bit JSValue::isBoolean can simply check if its tag corresponds 
+        to the boolean tag instead of checking if it's either true or false.
+
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::isBoolean):
+
+2014-10-01  Oliver Hunt  <oliver@apple.com>
+
+        Do all closed variable access through the local lexical object
+        https://bugs.webkit.org/show_bug.cgi?id=136869
+
+        Reviewed by Filip Pizlo.
+
+        This patch makes all reads and writes from captured registers
+        go through the lexical record, and by doing so removes the
+        need for record tearoff.
+
+        To keep the patch simple we still number variables as though
+        they are local stack allocated registers, but ::local() will
+        fail. When local fails we perform a generic resolve, and in
+        that resolve we now use a ResolveScopeInfo struct to pass
+        around information about whether a lookup is a statically
+        known captured variable, and its location in the activation.
+        To ensure correct behaviour during codeblock linking we also
+        add a LocalClosureVariable resolution type.
+
+        To ensure correct semantics for the Arguments object, we now
+        have to eagerly create the Arguments object for any function
+        that uses both the Arguments object and requires a lexical
+        record.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeCapturedVariable):
+          During the entry to a function we are not yet in a position
+          to allocate temporaries so we directly use the lexical
+          environment register.
+        (JSC::BytecodeGenerator::resolveCallee):
+        (JSC::BytecodeGenerator::emitMove):
+        (JSC::BytecodeGenerator::local):
+        (JSC::BytecodeGenerator::constLocal):
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitResolveConstantLocal):
+          The two resolve scope operations could technically skip
+          the op_resolve_scope, and simply perform 
+              op_mov dst, recordRegister
+          but for now it seemed best to maintain the same basic
+          behaviour.
+        (JSC::BytecodeGenerator::emitGetFromScope):
+        (JSC::BytecodeGenerator::emitPutToScope):
+        (JSC::BytecodeGenerator::createArgumentsIfNecessary):
+          If we have an environment we've already created Arguments
+          so no need to check again.
+        (JSC::BytecodeGenerator::emitReturn):
+          Don't need to emit tearoff_environment
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::Local::Local):
+        (JSC::Local::operator bool):
+        (JSC::Local::get):
+        (JSC::Local::isReadOnly):
+        (JSC::Local::isSpecial):
+        (JSC::ResolveScopeInfo::ResolveScopeInfo):
+        (JSC::ResolveScopeInfo::isLocal):
+        (JSC::ResolveScopeInfo::localIndex):
+        (JSC::BytecodeGenerator::shouldCreateArgumentsEagerly):
+        (JSC::Local::isCaptured): Deleted.
+        (JSC::Local::captureMode): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ResolveNode::emitBytecode):
+        (JSC::EvalFunctionCallNode::emitBytecode):
+        (JSC::FunctionCallResolveNode::emitBytecode):
+        (JSC::PostfixNode::emitResolve):
+        (JSC::DeleteResolveNode::emitBytecode):
+        (JSC::TypeOfResolveNode::emitBytecode):
+        (JSC::PrefixNode::emitResolve):
+        (JSC::ReadModifyResolveNode::emitBytecode):
+        (JSC::AssignResolveNode::emitBytecode):
+        (JSC::ConstDeclNode::emitCodeSingle):
+        (JSC::EmptyVarExpression::emitBytecode):
+        (JSC::ForInNode::tryGetBoundLocal):
+        (JSC::ForInNode::emitLoopHeader):
+        (JSC::ForOfNode::emitBytecode):
+        (JSC::BindingNode::bindValue):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::tryGetRegisters):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * interpreter/Interpreter.cpp:
+        (JSC::unwindCallFrame):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_captured_mov): Deleted.
+        (JSC::JIT::emit_op_tear_off_lexical_environment): Deleted.
+        (JSC::JIT::emitSlow_op_captured_mov): Deleted.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_captured_mov): Deleted.
+        (JSC::JIT::emit_op_tear_off_lexical_environment): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        (JSC::JIT::emit_op_get_from_scope):
+        (JSC::JIT::emitPutClosureVar):
+        (JSC::JIT::emit_op_put_to_scope):
+        (JSC::JIT::emitSlow_op_put_to_scope):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        (JSC::JIT::emit_op_get_from_scope):
+        (JSC::JIT::emitPutClosureVar):
+        (JSC::JIT::emit_op_put_to_scope):
+        (JSC::JIT::emitSlow_op_put_to_scope):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::tearOff):
+        * runtime/Arguments.h:
+        (JSC::Arguments::argument):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL): Deleted.
+        * runtime/CommonSlowPaths.h:
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::visitChildren):
+        (JSC::JSLexicalEnvironment::symbolTableGet):
+        (JSC::JSLexicalEnvironment::symbolTablePut):
+        (JSC::JSLexicalEnvironment::getOwnNonIndexPropertyNames):
+        (JSC::JSLexicalEnvironment::getOwnPropertySlot):
+        (JSC::JSLexicalEnvironment::argumentsGetter):
+        * runtime/JSLexicalEnvironment.h:
+        (JSC::JSLexicalEnvironment::create):
+        (JSC::JSLexicalEnvironment::JSLexicalEnvironment):
+        (JSC::JSLexicalEnvironment::tearOff): Deleted.
+        (JSC::JSLexicalEnvironment::isTornOff): Deleted.
+        * runtime/JSScope.cpp:
+        (JSC::resolveTypeName):
+        * runtime/JSScope.h:
+        (JSC::makeType):
+        (JSC::needsVarInjectionChecks):
+        * runtime/WriteBarrier.h:
+        (JSC::WriteBarrier<Unknown>::WriteBarrier):
+
+2014-10-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Object allocation sinking should have a sound story for picking materialization points
+        https://bugs.webkit.org/show_bug.cgi?id=137315
+
+        Reviewed by Oliver Hunt.
+        
+        The only missing piece was having the object allocation sinking phase locate materialization
+        points that were at CFG edges.
+        
+        The logic for how and why this "just works" relies on some properties of critical edge
+        breaking, so I was fairly careful in how I did this. Also, this requires inserting things at
+        the "first origin node" of a block - that is the first node in a block that has a NodeOrigin
+        and therefore is allowed to exit. We basically had support for such a notion before, but
+        didn't close the loop on it; this patch does that.
+        
+        Also I added the ability to provide a BasicBlock* as context for a DFG_ASSERT().
+
+        * dfg/DFGBasicBlock.cpp:
+        (JSC::DFG::BasicBlock::firstOriginNode):
+        (JSC::DFG::BasicBlock::firstOrigin):
+        * dfg/DFGBasicBlock.h:
+        * dfg/DFGCriticalEdgeBreakingPhase.cpp:
+        (JSC::DFG::CriticalEdgeBreakingPhase::breakCriticalEdge):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::crash):
+        (JSC::DFG::Graph::handleAssertionFailure):
+        * dfg/DFGGraph.h:
+        * dfg/DFGLoopPreHeaderCreationPhase.cpp:
+        (JSC::DFG::createPreHeader):
+        * dfg/DFGNodeOrigin.h:
+        (JSC::DFG::NodeOrigin::isSet):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::determineMaterializationPoints):
+        (JSC::DFG::ObjectAllocationSinkingPhase::placeMaterializationPoints):
+        (JSC::DFG::ObjectAllocationSinkingPhase::promoteSunkenFields):
+        (JSC::DFG::ObjectAllocationSinkingPhase::createMaterialize):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        * runtime/Options.h:
+
+2014-10-02  Daniel Bates  <dabates@apple.com>
+
+        Clean up: Move XPC forward declarations in JavaScriptCore to WTF SPI wrapper header
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+
+        Reviewed by Alexey Proskuryakov.
+
+        Use wtf/spi/darwin/XPCSPI.h instead of including the corresponding XPC headers/
+        forward declaring XPC functions.
+
+        * inspector/remote/RemoteInspector.mm:
+        * inspector/remote/RemoteInspectorXPCConnection.h:
+        * inspector/remote/RemoteInspectorXPCConnection.mm:
+
+2014-10-01  Anders Carlsson  <andersca@apple.com>
+
+        Use variadic templates for jsMakeNontrivialString
+        https://bugs.webkit.org/show_bug.cgi?id=137325
+
+        Reviewed by Sam Weinig.
+
+        * runtime/JSString.h:
+        (JSC::jsNontrivialString):
+        Add an overload that takes an rvalue reference to a String so we can transfer ownership easily.
+
+        * runtime/JSStringBuilder.h:
+        (JSC::jsMakeNontrivialString):
+        Make this a variadic function template, with a single-parameter version that can steal the string if it's OK to do so.
+
+2014-10-02  Mark Lam  <mark.lam@apple.com>
+
+        Fixed the Inspector to be able to properly distinguish between scope types.
+        <https://webkit.org/b/137279>
+
+        Reviewed by Geoffrey Garen.
+
+        The pre-existing code incorrectly labels Catch Scopes and Function Name Scopes
+        as With Scopes.  This patch will fix this.
+
+        * bytecode/BytecodeList.json:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitPushFunctionNameScope):
+        (JSC::BytecodeGenerator::emitPushCatchScope):
+        - These now passes stores the desired JSNameScope::Type in a bytecode operand.
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::isCatchScope):
+        (JSC::DebuggerScope::isFunctionNameScope):
+        - Added queries to be able to explicitly test if the scope is a CatchScope
+          or FunctionNameScope.  The FunctionNameScope is the case where the
+          NameScope is used to capture the function name of a function expression.
+        * debugger/DebuggerScope.h:
+        * inspector/InjectedScriptSource.js:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::scopeType):
+        * inspector/JSJavaScriptCallFrame.h:
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        (Inspector::JSJavaScriptCallFramePrototype::finishCreation):
+        (Inspector::jsJavaScriptCallFrameConstantFUNCTION_NAME_SCOPE):
+        * inspector/protocol/Debugger.json:
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_push_name_scope):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_push_name_scope):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::addNameScopeIfNeeded):
+        * runtime/JSNameScope.h:
+        (JSC::JSNameScope::create):
+        (JSC::JSNameScope::isFunctionNameScope):
+        (JSC::JSNameScope::isCatchScope):
+        (JSC::JSNameScope::JSNameScope):
+        - Now stores the JSNameScope::Type in a field.
+
+2014-10-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174180, r174183, and r174186.
+        https://bugs.webkit.org/show_bug.cgi?id=137320
+
+        Broke the Mac MountainLion build. Will investigate offline.
+        (Requested by dydz on #webkit).
+
+        Reverted changesets:
+
+        "Clean up: Move XPC forward declarations in JavaScriptCore to
+        WTF SPI wrapper header"
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+        http://trac.webkit.org/changeset/174180
+
+        "Attempt to fix the build after
+        <https://trac.webkit.org/changeset/174180>"
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+        http://trac.webkit.org/changeset/174183
+
+        "Another attempt to fix the Mac build after
+        <https://trac.webkit.org/changeset/174180>"
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+        http://trac.webkit.org/changeset/174186
+
+2014-10-01  Daniel Bates  <dabates@apple.com>
+
+        Clean up: Move XPC forward declarations in JavaScriptCore to WTF SPI wrapper header
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+
+        Reviewed by Alexey Proskuryakov.
+
+        Use wtf/spi/darwin/XPCSPI.h instead of including the corresponding XPC headers/
+        forward declaring XPC functions.
+
+        * inspector/remote/RemoteInspector.mm:
+        * inspector/remote/RemoteInspectorXPCConnection.h:
+        * inspector/remote/RemoteInspectorXPCConnection.mm:
+
+2014-10-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build gardening.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: Show files in the appropriate
+        folders in Visual Studio.
+
+2014-10-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Object allocation sinking is broken for escaping sites in loops
+        https://bugs.webkit.org/show_bug.cgi?id=137310
+
+        Reviewed by Michael Saboff.
+        
+        I tried to do this clever forward-flow based materialization point placement, and I messed up loops. Disabling
+        the phase for now and landing a test to demonstrate what it going on.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * runtime/Options.h:
+        * tests/stress/object-escapes-in-loop.js: Added.
+        (foo):
+        (bar):
+
+2014-10-01  Saam Barati  <saambarati1@gmail.com>
+
+        Support the type profiler in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=136712
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements op_profile_type inside the DFG as the node: ProfileType.
+        The DFG will convert the ProfileType node into a Check node in the cases where
+        passing a type check is equivalent to writing to the TypeProfilerLog. This
+        gives the DFG the potential to optimize out multiple ProfileType nodes into
+        a single Check node.
+
+        When the DFG doesn't convert ProfileType into a Check node, it will generate
+        the same inline code as the baseline JIT does for writing an entry to the
+        TypeProfilerLog.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::typeLocation):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * runtime/TypeProfiler.cpp:
+        (JSC::TypeProfiler::logTypesForTypeLocation):
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::dumpTypes):
+        (JSC::TypeSet::doesTypeConformTo):
+        Make this method public so others can reason about the types a TypeSet has seen.
+        (JSC::TypeSet::seenTypes): Deleted.
+        (JSC::TypeSet::dumpSeenTypes): Deleted.
+        Renamed to dumpTypes so the method seenTypes can be used as a public getter.
+        * runtime/TypeSet.h:
+        (JSC::TypeSet::seenTypes):
+        * tests/typeProfiler/dfg-jit-optimizations.js: Added.
+        (tierUpToDFG):
+        (funcs):
+        (.return):
+
+2014-10-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix 32-bit.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2014-09-30  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG SSA should use PutLocal/KillLocal instead of SetLocal to communicate what is flushed to the stack and when
+        https://bugs.webkit.org/show_bug.cgi?id=137242
+
+        Reviewed by Geoffrey Garen.
+        
+        OSR availability has to do with telling you the various ways that you could go about getting
+        the value of a bytecode variable. It can give you two options: node availability means that
+        there is a node in the DFG IR that has the right value, and flush availability tells you
+        that the value was already stored to the stack. The clients of OSR availability would
+        typically prefer flush over node availability.
+        
+        Previously OSR availability was affected thusly by the various local-related nodes: SetLocal
+        set both the node and flush availability, MovHint set node availability and cleared flush
+        availability, GetArgument set both, and ZombieHint cleared both.
+        
+        A MovHint could be turned into a ZombieHint if its source value was DCEd.
+        
+        The fact that each node affected both node and flush availability caused weirdness. For
+        example it meant that we could not insert MovHints in areas of the CFG where a SetLocal's
+        variable was still live, because then those parts of the code would forget that they had an
+        availability flush. This meant that if a flush was available, we wouldn't insert MovHints,
+        and so we would forget that a node was in fact available. This kind of "either-or" picking
+        was not only hackish but it led to interesting problems for IR transformation: for example
+        if you tried to do any kind of code motion on SetLocals, you had to be super careful because
+        you might violate the rule that "MovHints must exist for a live local if a flush is
+        unavailable".
+        
+        The right thing to do is to have independent nodes for flushing and making nodes available.
+        They shouldn't interact with each other. This patch accomplishes this:
+        
+        - PutLocal means that that a value is to be stored to the stack. It makes a flush available.
+        - KillLocal means that the value stored to the stack is no longer available for the purposes
+          of OSR (i.e. it no longer accurately corresponds to what that actual bytecode variable
+          would have been, so you have to fall back on node availability).
+        - MovHint means that a node is available. It has no effect on flush availability.
+        - ZombieHint means that a node is not available. It has no effect on flush availability.
+        
+        This means that we will see a lot of KillLocals and MovHints right next to each other. It's
+        a bit verbose, but at least it's precise.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAvailability.h:
+        (JSC::DFG::Availability::setFlush):
+        (JSC::DFG::Availability::setNode):
+        (JSC::DFG::Availability::setNodeUnavailable):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::hasVariableAccessData):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasUnlinkedLocal):
+        (JSC::DFG::Node::willHaveCodeGenOrOSR):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compilePutLocal):
+        (JSC::FTL::LowerDFGToLLVM::compileSetLocal): Deleted.
+
+2014-10-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] 32-bit JavaScriptCore should limit itself to the C loop
+        https://bugs.webkit.org/show_bug.cgi?id=137304
+        <rdar://problem/18375370>
+
+        Reviewed by Michael Saboff.
+
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.pl:
+        Use the C loop for 32-bit builds.
+
 2014-09-30  Brian J. Burg  <burg@cs.washington.edu>
 
         Web Inspector: ErrorString should be passed by reference

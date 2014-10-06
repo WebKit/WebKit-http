@@ -32,6 +32,7 @@
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameLoaderClient.h>
+#include <WebCore/MainFrame.h>
 #include <WebCore/RenderText.h>
 #include <WebCore/RenderView.h>
 #include <WebCore/RenderWidget.h>
@@ -66,7 +67,7 @@ WebRenderObject::WebRenderObject(RenderObject* renderer, bool shouldIncludeDesce
     m_name = renderer->renderName();
 
     if (Node* node = renderer->node()) {
-        if (is<Element>(node)) {
+        if (is<Element>(*node)) {
             Element& element = downcast<Element>(*node);
             m_elementTagName = element.tagName();
             m_elementID = element.getIdAttribute();

@@ -1,3 +1,642 @@
+2014-10-05  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for ScrollingCoordinator / ScrollingStateNode subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137440
+
+        Reviewed by Ryosuke Niwa.
+
+        Use is<>() / downcast<>() for ScrollingCoordinator / ScrollingStateNode subclasses.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (WebKit::encodeNodeAndDescendants):
+        (WebKit::RemoteScrollingCoordinatorTransaction::decode):
+        (WebKit::RemoteScrollingTreeTextStream::dump):
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::connectStateNodeLayers):
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::updateBeforeChildren):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren):
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::connectStateNodeLayers):
+        * WebProcess/Scrolling/RemoteScrollingCoordinator.h:
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::addScrollingTreeForPage):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::updatePreferences):
+
+2014-10-05  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL] Introduce EWebKit_Extension
+        https://bugs.webkit.org/show_bug.cgi?id=134921
+
+        Reviewed by Gyuyoung Kim.
+
+        EWebKit2 does not provide the functionality to extend WebProcess.
+        Although there is ewk_context_new_with_injected_bundle_path() in ewebkit2 APIs,
+        application developers can not make bundle object without touching WK APIs
+        which ewebkit2 does not expose.
+
+        This patch introduces EWebKit_Extension, basic structure for the extension of WebProcess.
+
+        * PlatformEfl.cmake:
+        Added files for the EWebKit_Extension and install them properly.
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        (bundlePathForExtension):
+        (EwkContext::create):
+        (EwkContext::getInjectedBundleInitializationUserData):
+        (EwkContext::setMessageFromInjectedBundleCallback):
+        (ewk_context_new_with_extensions_path):
+        Deleted because ewebkit2 does not have a way to make injected bundle.
+        Instead, Ewk_Extension will cover the same functionalities.
+        (ewk_context_new_with_injected_bundle_path): Deleted.
+        * UIProcess/API/efl/ewk_context.h:
+        * UIProcess/API/efl/ewk_context_private.h:
+        (EwkContext::extensionsPath):
+        * UIProcess/API/efl/tests/InjectedBundle/injected_bundle_sample.cpp: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestEnvironment.cpp:
+        (EWK2UnitTest::EWK2UnitTestEnvironment::extensionSample):
+        (EWK2UnitTest::EWK2UnitTestEnvironment::injectedBundleSample): Renamed injectedBundleSample to extensionSample.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestEnvironment.h:
+        * UIProcess/API/efl/tests/extensions/extension_sample.cpp: Copied from Source/WebKit2/UIProcess/API/efl/tests/InjectedBundle/injected_bundle_sample.cpp.
+        * UIProcess/API/efl/tests/test_ewk2_context.cpp: Renamed ewk_context_new_with_injected_bundle_path to ewk_context_new_with_extensions_path.
+        (TEST_F):
+        * WebProcess/InjectedBundle/API/efl/EWebKit_Extension.h: Added.
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.cpp: Added.
+        (EwkExtension::append):
+        (EwkExtension::remove):
+        (ewk_extension_client_add):
+        (ewk_extension_client_del):
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.h: Added.
+        * WebProcess/InjectedBundle/API/efl/ewk_extension_private.h: Added.
+        (EwkExtension::EwkExtension):
+        (EwkExtension::~EwkExtension):
+        * WebProcess/efl/ExtensionManagerEfl.cpp: Added.
+        (WebKit::ExtensionManagerEfl::shared):
+        (WebKit::ExtensionManagerEfl::ExtensionManagerEfl):
+        (WebKit::ExtensionManagerEfl::initialize):
+        * WebProcess/efl/ExtensionManagerEfl.h: Added.
+        * WebProcess/efl/WebInjectedBundleMainEfl.cpp: Added.
+        (WKBundleInitialize):
+        * efl/ewebkit2-extension.pc.in: Added.
+
+2014-10-05  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Fix build when DRAG_SUPPORT is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=137361
+
+        Reviewed by Carlos Garcia Campos.
+
+        Flag out unbuildable code without DRAG_SUPPORT.
+
+        * Shared/gtk/ArgumentCodersGtk.cpp:
+        * Shared/gtk/ArgumentCodersGtk.h:
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseConstructed):
+        * UIProcess/PageClient.h:
+
+2014-10-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] The new web inspector can't be docked again once undocked
+        https://bugs.webkit.org/show_bug.cgi?id=121544
+
+        Reviewed by Martin Robinson.
+
+        Use a GtkHeaderBar for the inspector window to add dock buttons
+        when building with GTK+ >= 3.10.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::WebInspectorProxy):
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::dockButtonClicked):
+        (WebKit::WebInspectorProxy::createInspectorWindow):
+        (WebKit::WebInspectorProxy::updateInspectorWindowTitle):
+        (WebKit::WebInspectorProxy::platformInspectedURLChanged):
+        (WebKit::WebInspectorProxy::platformAttachAvailabilityChanged):
+
+2014-10-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Add missing inspector files to compilation.
+
+        * PlatformGTK.cmake: Add javascript sources in
+        WebInspectorUI/UserInterface/External/Esprima to the list of
+        inspector files.
+
+2014-10-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove a workaround for a bug that's been fixed
+        https://bugs.webkit.org/show_bug.cgi?id=137411
+
+        Reviewed by Dan Bernstein.
+
+        * mac/rewrite-availability-macros.sh:
+
+2014-10-03  Jer Noble  <jer.noble@apple.com>
+
+        Revert an accidental change introduced by r173318.
+
+        Rubber-stamped by Tim Horton.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::suspendPainting):
+        (WebKit::TiledCoreAnimationDrawingArea::resumePainting):
+
+2014-10-03  Tim Horton  <timothy_horton@apple.com>
+
+        WKWebView snapshot of Daring Fireball has the wrong color in the obscured inset
+        https://bugs.webkit.org/show_bug.cgi?id=137383
+        <rdar://problem/18535439>
+
+        Reviewed by Sam Weinig.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::snapshotAtSize):
+        Use documentBackgroundColor instead of baseBackgroundColor if backgroundShouldExtendBeyondPage is set.
+
+2014-10-03  Andy Estes  <aestes@apple.com>
+
+        [iOS] Highlight clicked links in WKPDFView
+        https://bugs.webkit.org/show_bug.cgi?id=137400
+
+        Reviewed by Tim Horton.
+
+        Show a _UIHighlightView on top of clicked links for 200 ms before starting the navigation. This matches the behavior of UIWebPDFView.
+
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView _createHighlightViewWithFrame:]): Created a _UIHighlightView with a color and border radius matching the values used by UIWebPDFView.
+        (-[WKPDFView annotation:wasTouchedAtPoint:controller:]): Displayed the highlight, then removed it after the navigation began.
+
+2014-10-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] URTBF after r174231.
+
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebPage.cpp:
+        (webkit_web_page_get_dom_document):
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::didInstallPageOverlay): Deleted.
+        (WebKit::DrawingAreaImpl::didUninstallPageOverlay): Deleted.
+        (WebKit::DrawingAreaImpl::setPageOverlayNeedsDisplay): Deleted.
+        (WebKit::DrawingAreaImpl::setPageOverlayOpacity): Deleted.
+        * WebProcess/WebPage/DrawingAreaImpl.h:
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::createPageOverlayLayer):
+        (WebKit::LayerTreeHostGtk::destroyPageOverlayLayer):
+        (WebKit::LayerTreeHostGtk::didInstallPageOverlay): Deleted.
+        (WebKit::LayerTreeHostGtk::didUninstallPageOverlay): Deleted.
+        (WebKit::LayerTreeHostGtk::setPageOverlayNeedsDisplay): Deleted.
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.h:
+
+2014-10-03  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Fix build break since r174231 and r174256
+        https://bugs.webkit.org/show_bug.cgi?id=137384
+
+        Unreviewed, EFL build fix.
+
+        r174231 and r174256 didn't consider EFL port and CoordinatedGraphics area.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp:
+        (WebKit::CoordinatedDrawingArea::mainFrameContentSizeChanged):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::setRootCompositingLayer):
+        (WebKit::CoordinatedLayerTreeHost::didFlushRootLayer):
+        (WebKit::CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged):
+        * WebProcess/WebPage/TapHighlightController.cpp:
+        (WebKit::TapHighlightController::highlight):
+        (WebKit::TapHighlightController::hideHighlight):
+        * WebProcess/WebPage/TapHighlightController.h: Add WebCore:: namespace prefix to PageOverlay argument type.
+
+2014-10-02  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r174231 to fix non Apple builds.
+
+        * WebProcess/WebPage/WebPage.h:
+
+2014-10-02  Andy Estes  <aestes@apple.com>
+
+        [iOS] Create an SPI wrapper for _UIHighlightView and use it in WKContentView
+        https://bugs.webkit.org/show_bug.cgi?id=137370
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/ios/WKContentViewInteraction.mm: Included <WebCore/_UIHighlightViewSPI.h> instead of <UIKit/_UIHighlightView.h>.
+
+2014-10-02  Andy Estes  <aestes@apple.com>
+
+        Fix the iOS build.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::blurAssistedNode):
+        (WebKit::WebPage::setAssistedNodeValue):
+        (WebKit::WebPage::setAssistedNodeValueAsNumber):
+        (WebKit::WebPage::setAssistedNodeSelectedIndex):
+
+2014-10-02  Andy Estes  <aestes@apple.com>
+
+        [iOS] Teach WKPDFView to navigate to pageNumber links
+        https://bugs.webkit.org/show_bug.cgi?id=137358
+
+        Reviewed by Tim Horton.
+
+        Treat PDF pageNumber annotations as if they were fragment navigations in an HTML document. For a given page
+        number N, create a fragment called "#pageN" and tell WebKit to navigate to it. By doing this we create history
+        entries for each pageNumber navigation and allow for proper back/forward. When navigating to a page, reset to
+        the initial scale factor and scroll to the beginning of the Nth page.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _zoomToPoint:atScale:animated:]): Added an animated parameter. If animated is NO, use a duration of 0.
+        (-[WKWebView _zoomToRect:atScale:origin:animated:]): Added an animated parameter and passed it to _zoomToPoint:atScale:animated:.
+        (-[WKWebView _zoomOutWithOrigin:animated:]): Ditto.
+        (-[WKWebView _zoomToRect:withOrigin:fitEntireRect:minimumScale:maximumScale:minimumScrollDistance:]): Called _zoomToRect:atScale:origin:animated:,
+        setting animated to YES.
+        (-[WKWebView _didSameDocumentNavigationForMainFrame:]): Called web_didSameDocumentNavigation: on _customContentView.
+        (-[WKWebView _zoomToPoint:atScale:]): Deleted.
+        (-[WKWebView _zoomToRect:atScale:origin:]): Deleted.
+        (-[WKWebView _zoomOutWithOrigin:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/Cocoa/WKWebViewContentProvider.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didSameDocumentNavigationForMainFrame): Called _didSameDocumentNavigationForMainFrame on m_webView.
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _zoomOutWithOrigin:]): Called _zoomOutWithOrigin:animated: on m_webView, setting animated to YES.
+        * UIProcess/ios/WKPDFPageNumberIndicator.h:
+        * UIProcess/ios/WKPDFPageNumberIndicator.mm:
+        (-[WKPDFPageNumberIndicator hide]): Added a method to hide the page number indicator.
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView web_setContentProviderData:suggestedFilename:]): Added a FIXME for restoring scroll position and page scale when loading from the back/forward list.
+        (-[WKPDFView scrollViewDidScroll:]): Stopped showing the page number indicator if a same-document navigation is occurring (to match UIWebPDFView).
+        (-[WKPDFView _updatePageNumberIndicator]): Ditto.
+        (-[WKPDFView web_didSameDocumentNavigation:]):
+        (-[WKPDFView _resetZoomAnimated:]): For same-document navigations of type kWKSameDocumentNavigationSessionStatePop, extracted the page index from the URL fragment
+        identifier, hid the page number indicator, reset the zoom (without an animation to match UIWebPDFView), and scrolled to the beginning of the given page.
+        (-[WKPDFView resetZoom:]): Called _resetZoomAnimated:, setting animated to YES.
+        (-[WKPDFView annotation:wasTouchedAtPoint:controller:]): If there is a non-zero pageNumber in the link annotation, construct a "#pageN" fragment and navigate to it.
+
+2014-10-02  Tim Horton  <timothy_horton@apple.com>
+
+        Move PageOverlay[Controller] to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=137164
+        <rdar://problem/18508258>
+
+        Reviewed by Anders Carlsson.
+
+        * CMakeLists.txt:
+        * WebKit2.xcodeproj/project.pbxproj:
+        Make the appropriate build system changes.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleAPICast.h:
+        Make WKBundlePageOverlayRef map to WebPageOverlay instead of PageOverlay.
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKBundlePageInstallPageOverlay):
+        (WKBundlePageUninstallPageOverlay):
+        (WKBundlePageInstallPageOverlayWithAnimation):
+        (WKBundlePageUninstallPageOverlayWithAnimation):
+        Forward PageOverlay installation/uninstallation to WebCore.
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePageOverlay.cpp:
+        (WKBundlePageOverlayGetTypeID):
+        (WKBundlePageOverlayCreate):
+        (WKBundlePageOverlaySetAccessibilityClient):
+        Use WebPageOverlay instead of PageOverlay, and references instead of pointers.
+        We forward client callbacks through from PageOverlay::Client to WebPageOverlay::Client.
+
+        (PageOverlayClientImpl::copyAccessibilityAttributeValue):
+        (PageOverlayClientImpl::copyAccessibilityAttributeNames):
+        Convert from wtf types to WebKit2 types.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::graphicsLayerFactory):
+        If we don't have a drawing area, don't dereference it!
+
+        (WebKit::WebChromeClient::attachViewOverlayGraphicsLayer):
+        Forward attachViewOverlayGraphicsLayer to the DrawingArea.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+
+        * WebProcess/WebCoreSupport/WebInspectorClient.cpp:
+        * WebProcess/WebCoreSupport/WebInspectorClient.h:
+        * WebProcess/WebPage/FindController.cpp:
+        * WebProcess/WebPage/FindController.h:
+        * WebProcess/WebPage/ios/FindControllerIOS.mm:
+        * WebProcess/WebPage/ios/FindIndicatorOverlayClientIOS.h:
+        * WebProcess/WebPage/mac/ServicesOverlayController.mm:
+        * WebProcess/WebPage/ServicesOverlayController.h:
+        Mechanical changes to adopt to the fact that PageOverlay is in WebCore now.
+
+        * WebProcess/WebPage/LayerTreeHost.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        Remove support for WebKit2-based page overlays.
+        Return MainFrame instead of Frame from mainFrame().
+
+        * WebProcess/WebPage/WebPageOverlay.cpp: Added.
+        * WebProcess/WebPage/WebPageOverlay.h: Added.
+        (WebKit::WebPageOverlay::create):
+        (WebKit::WebPageOverlay::WebPageOverlay):
+        (WebKit::WebPageOverlay::~WebPageOverlay):
+        (WebKit::WebPageOverlay::setNeedsDisplay):
+        (WebKit::WebPageOverlay::clear):
+        (WebKit::WebPageOverlay::pageOverlayDestroyed):
+        (WebKit::WebPageOverlay::willMoveToPage):
+        (WebKit::WebPageOverlay::didMoveToPage):
+        (WebKit::WebPageOverlay::drawRect):
+        (WebKit::WebPageOverlay::mouseEvent):
+        (WebKit::WebPageOverlay::didScrollFrame):
+        (WebKit::WebPageOverlay::copyAccessibilityAttributeStringValueForPoint):
+        (WebKit::WebPageOverlay::copyAccessibilityAttributeBoolValueForPoint):
+        (WebKit::WebPageOverlay::copyAccessibilityAttributeNames):
+        WebPageOverlay exists to be our API object, but forwards everything
+        to its WebCore::PageOverlay, and implements WebCore::PageOverlay::Client, and
+        forwards client callbacks to its WebPageOverlay::Client (which
+        WKBundlePageOverlay implements).
+
+        * WebProcess/WebPage/mac/WKAccessibilityWebPageObjectMac.mm:
+        (-[WKAccessibilityWebPageObject accessibilityParameterizedAttributeNames]):
+        (-[WKAccessibilityWebPageObject accessibilityAttributeValue:forParameter:]):
+        Forward the three AX properties that PageOverlays are ever queried for
+        to the appropriate PageOverlayController function.
+        
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea):
+        (WebKit::RemoteLayerTreeDrawingArea::updateRootLayers):
+        Factor updateRootLayers out of setRootCompositingLayer.
+
+        (WebKit::RemoteLayerTreeDrawingArea::attachViewOverlayGraphicsLayer):
+        If we attach/detach the view-relative page overlay root layer,
+        reattach the root compositing layer's children.
+
+        (WebKit::RemoteLayerTreeDrawingArea::setRootCompositingLayer):
+        Ditto for the root compositing layer.
+
+        (WebKit::RemoteLayerTreeDrawingArea::updateScrolledExposedRect):
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        (WebKit::RemoteLayerTreeDrawingArea::mainFrameContentSizeChanged):
+        Informing PageOverlayController of exposed rect/document size changes is now
+        WebCore's job.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea):
+        (WebKit::TiledCoreAnimationDrawingArea::updateRootLayers):
+        Factor updateRootLayers out of setRootCompositingLayer.
+
+        (WebKit::TiledCoreAnimationDrawingArea::attachViewOverlayGraphicsLayer):
+        (WebKit::TiledCoreAnimationDrawingArea::setRootCompositingLayer):
+        Make use of updateRootLayers when we attach/detach root compositing layer/view overlay layer.
+
+        (WebKit::TiledCoreAnimationDrawingArea::mainFrameContentSizeChanged):
+        (WebKit::TiledCoreAnimationDrawingArea::flushLayers):
+        (WebKit::TiledCoreAnimationDrawingArea::updateScrolledExposedRect):
+        Informing PageOverlayController of exposed rect/document size changes is now
+        WebCore's job.
+
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::attachViewOverlayGraphicsLayer):
+
+        * Shared/WebRenderLayer.cpp:
+        * Shared/WebRenderObject.cpp:
+        * WebProcess/InjectedBundle/API/c/WKBundleAPICast.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        * WebProcess/WebCoreSupport/mac/WebEditorClientMac.mm:
+        * WebProcess/WebProcess.cpp:
+        Include MainFrame.h because WebPage::mainFrame returns a MainFrame now.
+
+2014-10-02  Jeff Miller  <jeffm@apple.com>
+
+        WKDownloadCopyRequest() returns 0 until the download starts
+        https://bugs.webkit.org/show_bug.cgi?id=137322
+
+        Reviewed by Anders Carlsson.
+
+        The m_request ivar in DownloadProxy was only being initialized when didStart() was called after the
+        download starts. Since clients have access to the ResourceRequest when the DownloadProxy is created,
+        there's no reason not to pass that along to DownloadProxy::create() so it can be returned if
+        WKDownloadCopyRequest() is called before didStart().
+
+        * UIProcess/Downloads/DownloadProxy.cpp:
+        (WebKit::DownloadProxy::create):
+        Add ResourceRequest parameter, and pass it to DownloadProxy constructor.
+
+        (WebKit::DownloadProxy::DownloadProxy):
+        Initialize m_request.
+
+        * UIProcess/Downloads/DownloadProxy.h:
+        Add ResourceRequest parameter to create() and constructor.
+
+        * UIProcess/Downloads/DownloadProxyMap.cpp:
+        (WebKit::DownloadProxyMap::createDownloadProxy):
+        Add ResourceRequest parameter and pass it to DownloadProxy::create().
+
+        * UIProcess/Downloads/DownloadProxyMap.h:
+        Add ResourceRequest parameter to createDownloadProxy().
+
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::createDownloadProxy):
+        Add ResourceRequest parameter and pass it to DownloadProxy::create().
+
+        * UIProcess/Network/NetworkProcessProxy.h:
+        Add ResourceRequest parameter to createDownloadProxy().
+
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::download):
+        Pass ResourceRequest to createDownloadProxy().
+
+        (WebKit::WebContext::createDownloadProxy):
+        Add ResourceRequest parameter and pass it to createDownloadProxy() functions.
+
+        * UIProcess/WebContext.h:
+        Add ResourceRequest parameter to createDownloadProxy().
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedPolicyDecision):
+        Pass m_decidePolicyForResponseRequest to WebContext::createDownloadProxy().
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::createDownloadProxy):
+        Add ResourceRequest parameter and pass it to DownloadProxyMap::create().
+
+        * UIProcess/WebProcessProxy.h:
+        Add ResourceRequest parameter to createDownloadProxy().
+
+2014-10-01  Christophe Dumez  <cdumez@apple.com>
+
+        Have is<>(T*) function do a null check on the pointer argument
+        https://bugs.webkit.org/show_bug.cgi?id=137333
+
+        Reviewed by Gavin Barraclough.
+
+        Have is<>(T*) function do a null check on the argument instead of a
+        simple assertion. This makes sense for 2 reasons:
+        1. It is more consistent with downcast<>(T*), which will succeed even
+           if the argument is a nullptr.
+        2. It simplifies the code a bit as it gets rid of a lot of explicit
+           null checks.
+
+        * Shared/WebRenderObject.cpp:
+        (WebKit::WebRenderObject::WebRenderObject):
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        (WebKit::InjectedBundleHitTestResult::mediaType):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::handleEvent):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::focusedElementChanged):
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::textFieldDidBeginEditing):
+        (WebKit::WebEditorClient::textFieldDidEndEditing):
+        (WebKit::WebEditorClient::textDidChangeInTextField):
+        (WebKit::WebEditorClient::textDidChangeInTextArea):
+        (WebKit::WebEditorClient::doTextFieldCommandFromEvent):
+        (WebKit::WebEditorClient::textWillBeDeletedInTextField):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::containsAnyFormElements):
+        (WebKit::WebFrame::containsAnyFormControls):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::pdfDocumentForPrintingFrame):
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::blurAssistedNode):
+        (WebKit::WebPage::setAssistedNodeValue):
+        (WebKit::WebPage::setAssistedNodeValueAsNumber):
+        (WebKit::WebPage::setAssistedNodeSelectedIndex):
+        (WebKit::WebPage::getPositionInformation):
+        (WebKit::WebPage::performActionOnElement):
+        (WebKit::isAssistableNode):
+        (WebKit::WebPage::getAssistedNodeInformation):
+
+2014-10-02  Daniel Bates  <dabates@apple.com>
+
+        Clean up: Move XPC forward declarations in JavaScriptCore to WTF SPI wrapper header
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+
+        Reviewed by Alexey Proskuryakov.
+
+        Use wtf/spi/darwin/XPCSPI.h instead of including the corresponding XPC headers/
+        forward declaring XPC functions.
+
+        * Platform/IPC/Connection.h:
+        * Platform/IPC/mac/ConnectionMac.mm:
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.Development.mm:
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm:
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+
+2014-10-02  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL][WK2] test_ewk2_view is failed
+        https://bugs.webkit.org/show_bug.cgi?id=132983
+
+        Reviewed by Gyuyoung Kim.
+
+        Enable test_ewk2_view because test cases of test_ewk2_view are passed except
+        for few tests related to device_pixel_ratio.
+        This patch adds macro guard for ailed test case to CAIRO_SURFACE_SET_DEVICE_SCALE macro.
+        In addition, fixed some warnings while building with test_ewk2_view.
+
+        * PlatformEfl.cmake: Enables test_ewk2_view.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.cpp: Added const keyword for argument to fix the warnings.
+        (EWK2UnitTest::EWK2UnitTestBase::keyDown):
+        (EWK2UnitTest::EWK2UnitTestBase::keyUp):
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.h:
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp:
+        (TEST_F):
+
+2014-10-02  JinYoung Hur  <hurims@gmail.com>
+
+        Minor bug in UIClient::exceededDatabaseQuota()
+        https://bugs.webkit.org/show_bug.cgi?id=137213
+
+        Reviewed by Anders Carlsson.
+
+        Make sure not to call the completion handler twice if exceededDatabaseQuota is null.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient):
+
+2014-10-01  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/137308> WebKit should build on OS X Yosemite for external users
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig: Use libWebKitSystemInterfaceYosemite.a on Yosemite.
+
+2014-10-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174180, r174183, and r174186.
+        https://bugs.webkit.org/show_bug.cgi?id=137320
+
+        Broke the Mac MountainLion build. Will investigate offline.
+        (Requested by dydz on #webkit).
+
+        Reverted changesets:
+
+        "Clean up: Move XPC forward declarations in JavaScriptCore to
+        WTF SPI wrapper header"
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+        http://trac.webkit.org/changeset/174180
+
+        "Attempt to fix the build after
+        <https://trac.webkit.org/changeset/174180>"
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+        http://trac.webkit.org/changeset/174183
+
+        "Another attempt to fix the Mac build after
+        <https://trac.webkit.org/changeset/174180>"
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+        http://trac.webkit.org/changeset/174186
+
+2014-10-01  Daniel Bates  <dabates@apple.com>
+
+        Clean up: Move XPC forward declarations in JavaScriptCore to WTF SPI wrapper header
+        https://bugs.webkit.org/show_bug.cgi?id=137277
+
+        Reviewed by Alexey Proskuryakov.
+
+        Use wtf/spi/darwin/XPCSPI.h instead of including the corresponding XPC headers/
+        forward declaring XPC functions.
+
+        * Platform/IPC/Connection.h:
+        * Platform/IPC/mac/ConnectionMac.mm:
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.Development.mm:
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm:
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+
+2014-10-01  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Event classes
+        https://bugs.webkit.org/show_bug.cgi?id=137284
+
+        Reviewed by Andreas Kling.
+
+        Use is<>() / downcast<>() for Event classes.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::handleEvent):
+
+2014-10-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] <select> with <optgroup> may change initial selected option when assisted
+        https://bugs.webkit.org/show_bug.cgi?id=137261
+
+        Reviewed by Enrica Casucci.
+
+        The initial assignemnt of _singleSelectionIndex was calculating the
+        item index (ignoring groups) instead of the row index (affected by
+        groups!). Thus if there was N groups we would select the row N
+        before the real selection.
+
+        Also avoid this entirely if this is a multiple selection picker.
+        This logic is only needed for single selection with groups.
+
+        * UIProcess/ios/forms/WKFormSelectPicker.mm:
+        (-[WKMultipleSelectPicker initWithView:]):
+
 2014-09-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         [EFL] Rename TEST_THEME_DIR macro

@@ -1681,7 +1681,7 @@ static bool isRestartedPlugin(RenderObject* renderer)
         return false;
 
     Element* element = downcast<Element>(renderer->node());
-    if (!element || !is<HTMLPlugInElement>(element))
+    if (!is<HTMLPlugInElement>(element))
         return false;
 
     return downcast<HTMLPlugInElement>(*element).isRestartedPlugin();
@@ -2265,7 +2265,7 @@ bool RenderLayerBacking::isTrackingRepaints() const
     return static_cast<GraphicsLayerClient&>(compositor()).isTrackingRepaints();
 }
 
-bool RenderLayerBacking::shouldSkipLayerInDump(const GraphicsLayer* layer) const
+bool RenderLayerBacking::shouldSkipLayerInDump(const GraphicsLayer* layer, LayerTreeAsTextBehavior) const
 {
     // Skip the root tile cache's flattening layer.
     return m_isMainFrameRenderViewLayer && layer && layer == m_childContainmentLayer.get();

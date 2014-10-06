@@ -438,7 +438,7 @@ fast/events/pageshow-pagehide-on-back-cached-with-frames.html
 http/tests/websocket
 
 # Times out:
-webkit.org/b/58654 media/video-controls-in-media-document.html [ Skip ]
+# webkit.org/b/58654 media/video-controls-in-media-document.html [ Skip ]
 
 # Flaky http://webkit.org/b/62561
 animations/animation-direction-normal.html
@@ -830,8 +830,8 @@ editing/text-iterator [ Pass Failure ]
 webkit.org/b/25483 http/tests/navigation/redirect-cycle.html [ Pass Timeout ]
 
 # disable until 25220 is fixed: Loading a .ogv file into Safari downloads the file instead of playing it in a media document, even if XiphQT is installed (25220)
-webkit.org/b/25220 media/video-click-dblckick-standalone.html [ WontFix ]
-webkit.org/b/25220 media/video-document-types.html [ WontFix ]
+# webkit.org/b/25220 media/video-click-dblckick-standalone.html [ WontFix ]
+# webkit.org/b/25220 media/video-document-types.html [ WontFix ]
 
 webkit.org/b/25792 fast/encoding/percent-escaping.html [ Pass Timeout ]
 # Bug 26481: Implement layoutTestController.dispatchPendingLoadRequests <https://bugs.webkit.org/show_bug.cgi?id=26481>
@@ -845,7 +845,7 @@ http/tests/cache/subresource-expiration-2.html [ Pass Failure ]
 # FIXME: File bugs and examine these tests
 http/tests/xmlhttprequest/cache-override.html [ Failure ]
 http/tests/xmlhttprequest/cross-origin-no-authorization.html [ Pass Failure Timeout ]
-media/video-empty-source.html [ Failure ]
+# media/video-empty-source.html [ Failure ]
 
 # <rdar://7127902> http/tests/misc/favicon-loads-with-images-disabled.html crashes on Windows debug
 http/tests/misc/favicon-loads-with-images-disabled.html
@@ -863,10 +863,10 @@ http/tests/notifications
 webkit.org/b/28467 http/tests/loading/preload-img-test.html [ Pass Failure ]
 
 # Failing media tests on windows <http://webkit.org/b/29047>
-webkit.org/b/29047 media/audio-delete-while-step-button-clicked.html [ Failure ]
+# webkit.org/b/29047 media/audio-delete-while-step-button-clicked.html [ Failure ]
 
 # This test requires media controls has a volume slider.
-media/video-volume-slider.html [ Failure ]
+# media/video-volume-slider.html [ Failure ]
 
 # Mixed content tests failing on Windows
 webkit.org/b/29213 http/tests/security/mixedContent [ Failure ]
@@ -884,7 +884,7 @@ http/tests/local/blob/send-sliced-data-blob.html
 # BlodBuilder is not enabled
 http/tests/local/blob/send-data-blob.html
 
-webkit.org/b/112659 media/video-playing-and-pause.html [ Failure Pass ]
+# webkit.org/b/112659 media/video-playing-and-pause.html [ Failure Pass ]
 
 # CSS Device Adaptation is not enabled.
 webkit.org/b/95959 css3/device-adapt
@@ -913,10 +913,10 @@ plugins/reloadplugins-and-pages.html
 plugins/reloadplugins-no-pages.html
 
 # This test requires ogg codecs
-media/media-can-play-ogg.html [ WontFix ]
+# media/media-can-play-ogg.html [ WontFix ]
 
 # This test requires flac codec
-media/media-can-play-flac-audio.html [ WontFix ]
+# media/media-can-play-flac-audio.html [ WontFix ]
 
 # These tests require touch support
 fast/events/touch
@@ -1018,7 +1018,7 @@ fast/overflow/scrollbar-restored-and-then-locked.html
 # Sometimes times out on Windows
 webkit.org/b/37096 http/tests/security/xss-DENIED-iframe-src-alias.html [ Pass Timeout ]
 
-webkit.org/b/38376 media/media-document-audio-size.html [ Failure ]
+# webkit.org/b/38376 media/media-document-audio-size.html [ Failure ]
 
 # New canvas test suite from http://philip.html5.org/tests/canvas/suite/tests/
 webkit.org/b/128981 canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
@@ -1214,7 +1214,7 @@ fullscreen/
 fast/viewport
 
 # needs enhanced eventSender.contextMenu() return value
-webkit.org/b/45021 media/context-menu-actions.html
+# webkit.org/b/45021 media/context-menu-actions.html
 
 # requires video.buffered to be able to return multiple timeranges
 http/tests/media/video-buffered.html
@@ -1328,122 +1328,13 @@ webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 # Unskip after implementing LayoutTestController::setDefersLoading and ::goBack.
 loader/navigation-while-deferring-loads.html
 
-# crashing webgl tests
-fast/canvas/webgl/draw-arrays-out-of-bounds.html [ Crash ]
-fast/canvas/webgl/draw-elements-out-of-bounds.html [ Crash ]
-fast/canvas/webgl/gl-vertexattribpointer.html [ Crash ]
-fast/canvas/webgl/index-validation.html [ Crash Pass ]
-webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Crash ]
-webgl/1.0.1/conformance/attribs/gl-vertexattribpointer.html [ Crash ]
-webgl/1.0.1/conformance/more/functions/bufferData.html [ Crash ]
-webgl/1.0.1/conformance/more/functions/bufferDataBadArgs.html [ Crash ]
-webgl/1.0.1/conformance/more/functions/drawArraysOutOfBounds.html [ Crash ]
-webgl/1.0.1/conformance/rendering/draw-arrays-out-of-bounds.html [ Crash ]
-webgl/1.0.1/conformance/rendering/draw-elements-out-of-bounds.html [ Crash ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Crash ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Crash ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html [ Crash ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Crash ]
-webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html [ Crash ]
-webgl/1.0.2/conformance/more/functions/uniformiBadArgs.html [ Crash ]
-webgl/1.0.2/conformance/attribs/gl-vertexattribpointer.html [ Crash ]
-webgl/1.0.2/conformance/more/functions/bufferData.html [ Crash ]
-webgl/1.0.2/conformance/more/functions/bufferDataBadArgs.html [ Crash ]
-webgl/1.0.2/conformance/more/functions/drawArraysOutOfBounds.html [ Crash ]
-webgl/1.0.2/conformance/rendering/draw-arrays-out-of-bounds.html [ Crash ]
-webgl/1.0.2/conformance/rendering/draw-elements-out-of-bounds.html [ Crash ]
-webgl/conformance/attribs/gl-vertexattribpointer.html [ Crash ]
-webgl/conformance/more/functions/bufferData.html [ Crash ]
-webgl/conformance/more/functions/bufferDataBadArgs.html [ Crash ]
-webgl/conformance/more/functions/drawArraysOutOfBounds.html
-webgl/conformance/rendering/draw-arrays-out-of-bounds.html
-webgl/conformance/rendering/draw-elements-out-of-bounds.html
-
-# failing webgl tests
-webgl/1.0.1/conformance/textures/tex-image-and-sub-image-2d-with-video.html
-webgl/1.0.1/conformance/canvas/buffer-offscreen-test.html
-webgl/1.0.1/conformance/canvas/buffer-preserve-test.html
-webgl/1.0.1/conformance/context/context-lost-restored.html
-webgl/1.0.1/conformance/glsl/misc/shader-with-conditional-scoping.html
-webgl/1.0.1/conformance/glsl/misc/shader-with-do-scoping.html
-webgl/1.0.1/conformance/glsl/misc/shader-with-for-scoping.html
-webgl/1.0.1/conformance/glsl/misc/shader-with-functional-scoping.html
-webgl/1.0.1/conformance/glsl/samplers/glsl-function-texture2dlod.html
-webgl/1.0.1/conformance/glsl/samplers/glsl-function-texture2dproj.html
-webgl/1.0.1/conformance/more/functions/readPixelsBadArgs.html
-webgl/1.0.1/conformance/more/functions/texImage2DHTML.html
-webgl/1.0.1/conformance/more/functions/texSubImage2DHTML.html
-webgl/1.0.1/conformance/reading/read-pixels-pack-alignment.html
-webgl/1.0.1/conformance/reading/read-pixels-test.html
-webgl/1.0.1/conformance/textures/origin-clean-conformance.html
-webgl/1.0.1/conformance/textures/texture-npot-video.html
-webgl/1.0.1/conformance/uniforms/uniform-location.html
-webgl/1.0.2/conformance/canvas/buffer-offscreen-test.html
-webgl/1.0.2/conformance/canvas/buffer-preserve-test.html
-webgl/1.0.2/conformance/context/context-attributes-alpha-depth-stencil-antialias.html
-webgl/1.0.2/conformance/context/context-attribute-preserve-drawing-buffer.html
-webgl/1.0.2/conformance/context/context-creation-and-destruction.html
-webgl/1.0.2/conformance/glsl/misc/large-loop-compile.html
-webgl/1.0.2/conformance/more/functions/uniformfArrayLen1.html
-webgl/1.0.2/conformance/ogles/GL/build/build_009_to_016.html
-webgl/1.0.2/conformance/reading/read-pixels-pack-alignment.html
-webgl/1.0.2/conformance/reading/read-pixels-test.html
-webgl/1.0.2/conformance/rendering/multisample-corruption.html
-webgl/1.0.2/conformance/textures/texture-npot-video.html
-webgl/1.0.2/conformance/uniforms/uniform-location.html
-webgl/1.0.2/conformance/rendering/more-than-65536-indices.html
-webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html
-webgl/1.0.2/conformance/ogles/GL/log2/log2_001_to_008.html
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html
-webgl/conformance/canvas/buffer-offscreen-test.html
-webgl/conformance/canvas/buffer-preserve-test.html
-webgl/conformance/context/context-attributes-alpha-depth-stencil-antialias.html
-webgl/conformance/context/context-attribute-preserve-drawing-buffer.html
-webgl/conformance/context/context-creation-and-destruction.html
-webgl/conformance/context/context-lost-restored.html
-webgl/conformance/extensions/oes-texture-float-with-video.html
-webgl/conformance/more/functions/readPixelsBadArgs.html
-webgl/conformance/more/functions/texImage2DHTML.html
-webgl/conformance/more/functions/texSubImage2DHTML.html
-webgl/conformance/more/functions/uniformfArrayLen1.html
-webgl/conformance/reading/read-pixels-pack-alignment.html
-webgl/conformance/reading/read-pixels-test.html
-webgl/conformance/rendering/more-than-65536-indices.html
-webgl/conformance/rendering/multisample-corruption.html
-webgl/conformance/rendering/point-size.html
-webgl/conformance/textures/origin-clean-conformance.html
-webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html
-webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html
-webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html
-webgl/conformance/textures/tex-image-and-sub-image-2d-with-video.html
-webgl/conformance/textures/texture-npot-video.html
-webgl/conformance/typedarrays/data-view-test.html
-webgl/conformance/uniforms/uniform-location.html
-fast/canvas/webgl/canvas-supports-context.html
-fast/canvas/webgl/context-attributes-alpha-depth-stencil-antialias.html
-fast/canvas/webgl/drawingbuffer-test.html
-fast/canvas/webgl/framebuffer-object-attachment.html
-fast/canvas/webgl/gl-get-calls.html
-fast/canvas/webgl/glsl-conformance.html
-fast/canvas/webgl/oes-element-index-uint.html
-fast/canvas/webgl/oes-texture-half-float-with-video.html
-fast/canvas/webgl/oes-vertex-array-object.html
-fast/canvas/webgl/read-pixels-pack-alignment.html
-fast/canvas/webgl/read-pixels-test.html
-fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgb565.html
-fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba4444.html
-fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html
-fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html
-fast/canvas/webgl/uniform-location.html
-fast/canvas/webgl/webgl-compressed-texture-size-limit.html
-fast/canvas/webgl/webgl-depth-texture.html
-fast/canvas/webgl/webgl-draw-buffers.html
-http/tests/security/webgl-remote-read-remote-image-allowed.html
-http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
-http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
+# Skip all webgl tests on Windows for now since they don't seem to work consistently
+webgl [ Skip ]
+fast/images/webgl-teximage2d.html [ Skip ]
+fast/canvas/webgl [ Skip ]
+http/tests/security/webgl-remote-read-remote-image-allowed.html [ Skip ]
+http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html [ Skip ]
+http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html [ Skip ]
 
 # CSS Grid Layout is not yet enabled.
 webkit.org/b/60731 fast/css-grid-layout
@@ -1490,38 +1381,38 @@ webkit.org/b/86914 webaudio/
 fast/css/draggable-region-parser.html
 
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
-webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html [ Skip ] 
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/12345_timestamps.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/timestamps.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-building.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html [ Skip ] 
+# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/12345_timestamps.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/timestamps.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-building.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html [ Skip ]
+# webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html [ Skip ]
 
 # Tests for MediaSource API. Feature is not yet functional.
 webkit.org/b/64731 http/tests/media/media-source/ [ Skip ]
 
 # Encrypted Media Extensions are not enabled.
-media/encrypted-media/ [ Skip ]
+# media/encrypted-media/ [ Skip ]
 fast/events/constructors/media-key-event-constructor.html [ Skip ]
 
 # Font feature settings is not implemented.
@@ -1591,7 +1482,7 @@ webkit.org/b/62698 batterystatus/
 proximity
 fast/events/constructors/device-proximity-event-constructor.html
 
-webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html
+# webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
 webkit.org/b/85532 fast/sub-pixel
@@ -1620,9 +1511,6 @@ webkit.org/b/86176 [ Debug ] ietestcenter/css3/valuesandunits/units-000.htm [ Cr
 
 # Asserts/crashes in PluginView::didFinishLoading
 [ Debug ] fast/loader/reload-zero-byte-plugin.html [ Crash ]
-[ Debug ] userscripts/user-script-plugin-document.html [ Crash ]
-
-[ Release ] userscripts/user-script-plugin-document.html [ Failure ]
 
 # JavaScript Experiments are not enabled on Windows
 webkit.org/b/87858 js/names.html
@@ -1635,10 +1523,10 @@ webkit.org/b/86443 plugins/npruntime/delete-plugin-within-invoke.html
 webkit.org/b/86443 plugins/npruntime/delete-plugin-within-setProperty.html
 
 # [Win] ASSERT(oldLayoutDelta == view()->layoutDelta()) failed in RenderBlock::layoutBlockChild
-webkit.org/b/87450 [ Debug ] media/media-volume-slider-rendered-below.html [ Crash ]
+# webkit.org/b/87450 [ Debug ] media/media-volume-slider-rendered-below.html [ Crash ]
 
 # Time out
-webkit.org/b/88005 media/media-continues-playing-after-replace-source.html [ Failure Timeout ]
+# webkit.org/b/88005 media/media-continues-playing-after-replace-source.html [ Failure Timeout ]
 
 # Asserts in Interpreter::addStackTraceIfNecessary
 webkit.org/b/84073 plugins/npruntime/object-from-destroyed-plugin-in-subframe.html
@@ -1651,29 +1539,8 @@ webkit.org/b/88107 plugins/crash-restoring-plugin-page-from-page-cache.html [ Sk
 webkit.org/b/88107 plugins/fullscreen-plugins-dont-reload.html [ Skip ]
 webkit.org/b/88107 plugins/netscape-plugin-page-cache-works.html [ Skip ]
 
-# Assert in RenderGeometryMap::absoluteRect
-# https://bugs.webkit.org/show_bug.cgi?id=88128
-webkit.org/b/88128 [ Debug ] compositing/geometry/fixed-position.html [ Crash ]
-webkit.org/b/88128 compositing/geometry/fixed-position-composited-switch.html
-webkit.org/b/88128 [ Debug ] compositing/geometry/limit-layer-bounds-fixed-positioned.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/geometry/video-fixed-scrolling.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/iframes/overlapped-nested-iframes.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/layer-creation/fixed-position-and-transform.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/layer-creation/fixed-position-scroll.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/layer-creation/fixed-position-under-transform.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/overflow/fixed-position-ancestor-clip.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/rtl/rtl-fixed-overflow-scrolled.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/rtl/rtl-fixed-overflow.html [ Crash ]
-webkit.org/b/88128 [ Debug ] compositing/rtl/rtl-fixed.html [ Crash ]
-
 # LAYER_TREE_INCLUDES_VISIBLE_RECTS option to layerTreeAsText is only applicable to Mac.
 compositing/visible-rect
-
-# Asserts in RenderLayerBacking::paintIntoLayer
-webkit.org/b/88149 [ Debug ] compositing/backing/no-backing-foreground-layer.html [ Crash ]
-
-# Asserts in GraphicsContext::platformContext
-webkit.org/b/88150 [ Debug ] compositing/geometry/clipping-foreground.html [ Crash ]
 
 # Need rebaselining / checking - skipped en masse to get the bots green again
 css2.1/t0805-c5518-brdr-t-01-e.html
@@ -1737,12 +1604,12 @@ fast/table/027.html
 fast/table/027-vertical.html
 fast/table/max-width-integer-overflow.html
 fast/writing-mode/fallback-orientation.html
-media/controls-after-reload.html [ Failure ]
-media/controls-strict.html [ Failure ]
-media/controls-without-preload.html [ Failure ]
-media/video-controls-rendering.html [ Failure ]
-media/video-display-toggle.html [ Failure ]
-media/video-pause-immediately.html [ Failure ]
+# media/controls-after-reload.html [ Failure ]
+# media/controls-strict.html [ Failure ]
+# media/controls-without-preload.html [ Failure ]
+# media/video-controls-rendering.html [ Failure ]
+# media/video-display-toggle.html [ Failure ]
+# media/video-pause-immediately.html [ Failure ]
 printing/iframe-print.html
 svg/as-image/img-preserveAspectRatio-support-1.html
 svg/carto.net/tabgroup.svg
@@ -1992,11 +1859,8 @@ compositing/tiling/tile-cache-zoomed.html [ Failure ]
 
 # Inspector Protocol
 webkit.org/b/100846 [ Release ] inspector-protocol/debugger/pause-dedicated-worker.html [ Failure ]
-webkit.org/b/100846 [ Debug ] inspector-protocol/debugger/pause-dedicated-worker.html [ Failure ]
 webkit.org/b/128979 inspector-protocol/debugger/pause-on-assert.html [ Pass Failure ]
 webkit.org/b/100846 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Failure ]
-webkit.org/b/128979 inspector/dom/content-node-region-info.html [ Pass Failure ]
-webkit.org/b/128979 [ Debug ] inspector-protocol/dom/getAccessibilityPropertiesForNode.html [ Crash ]
 webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertiesForNode.html [ Pass Failure ]
 
 # CSS3_TEXT is disabled on Windows
@@ -2741,6 +2605,8 @@ html5lib/generated/run-tests4-data.html [ Pass Timeout ]
 html5lib/generated/run-entities01-data.html [ Crash ]
 html5lib/generated/run-tests1-data.html [ Crash ]
 html5lib/generated/run-tests19-data.html [ Crash ]
+html5lib/generated/run-domjs-unsafe-data.html [ Crash ]
+html5lib/generated/run-tests16-data.html [ Crash ]
 ietestcenter/css3/bordersbackgrounds [ Pass Failure Timeout ]
 ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm [ ImageOnlyFailure ]
 ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyFailure ]
@@ -2755,12 +2621,12 @@ ietestcenter/css3/multicolumn/column-width-applies-to-015.htm [ ImageOnlyFailure
 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
 [ Release ] ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
 ietestcenter/Javascript [ Pass Failure Timeout ]
-inspector-protocol/layers/layers-reflected-content.html [ Pass Timeout ]
-inspector-protocol/debugger/setBreakpoint-actions.html [ Pass Timeout ]
-inspector-protocol/dom/focus.html [ Pass Timeout ]
-inspector-protocol/dom/remove-multiple-nodes.html [ Pass Timeout ]
+[ Release ] inspector-protocol/layers/layers-reflected-content.html [ Pass Timeout ]
+[ Release ] inspector-protocol/debugger/setBreakpoint-actions.html [ Pass Timeout ]
+[ Release ] inspector-protocol/dom/focus.html [ Pass Timeout ]
+[ Release ] inspector-protocol/dom/remove-multiple-nodes.html [ Pass Timeout ]
 js/dfg-to-string-int.html [ Pass Timeout ]
-js/dfg-inline-arguments-use-from-all-the-places.html [ Pass Timeout ]
+js/dfg-inline-arguments-use-from-all-the-places.html [ Pass Timeout Failure ]
 js/dfg-uint8clampedarray-out-of-bounds-put-by-val-alias.html [ Pass Timeout ]
 js/dom/const.html [ Pass Timeout ]
 js/dom/dfg-patchable-get-by-id-after-watchpoint.html [ Pass Timeout ]
@@ -2866,6 +2732,8 @@ fast/dom/navigator-hardwareConcurrency.html
 
 # Tests that exceed maximum call stack on windows
 fast/dom/Window/window-postmessage-clone-deep-array.html
+js/dom/deep-recursion-test.html
+js/dom/global-recursion-on-full-stack.html
 
 # Some inspector tests failing after r173992
 webkit.org/b/137157 inspector/css/matched-style-properties.html [ Failure ]
@@ -2882,6 +2750,7 @@ fast/frames/flattening/frameset-flattening-subframesets.html [ Failure ]
 fast/frames/flattening/iframe-flattening-fixed-height.html [ Failure ]
 fast/frames/flattening/iframe-flattening-offscreen.html [ Failure ]
 fast/frames/flattening/iframe-flattening-out-of-view.html [ Failure ]
+fast/frames/flattening/frameset-flattening-simple.html [ Failure ]
 
 # A handful of forms tests failing on Windows that we are skipping to get the bots green
 fast/forms/mailto/get-non-ascii-text-plain-latin-1.html [ Crash ]
@@ -2898,7 +2767,7 @@ css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.
 css3/viewport-percentage-lengths/viewport-percentage-lengths-resize.html [ Failure ]
 fast/css/direct-adjacent-style-update-optimization.html [ Failure ]
 fast/css/indirect-adjacent-style-update-optimization.html [ Failure ]
-fast/css/read-only-read-write-input-basics.html [ Failure ]
+fast/css/read-only-read-write-input-basics.html [ ImageOnlyFailure ]
 
 # More random tests to skip on Windows to get the bots green
 fast/replaced/width100percent-button.html [ Skip ]
@@ -2910,7 +2779,6 @@ http/tests/security/mixedContent/insecure-plugin-in-iframe.html [ Skip ]
 inspector-protocol/layers/layers-blending-compositing-reasons.html [ Skip ]
 inspector/test-harness-trivially-works.html [ Skip ]
 js/date-constructor.html [ Skip ]
-js/dfg-inline-arguments-use-from-all-the-places.html [ Skip ]
 js/dom/dom-static-property-for-in-iteration.html [ Skip ]
 js/slow-stress/Int32Array-alloc-large-long-lived.html [ Skip ]
 mathml/presentation/stretchy-depth-height.html [ Skip ]
@@ -2928,10 +2796,124 @@ fast/dom/navigation-with-sideeffects.html [ Skip ]
 fast/dynamic/window-resize-scrollbars-test.html [ Skip ]
 fast/events/shadow-event-path.html [ Skip ]
 tables/mozilla/bugs/bug32841.html [ Skip ]
+editing/deleting/delete-start-block.html [ Skip ]
+fast/canvas/draw-focus-if-needed-with-path.html [ Skip ]
+fast/canvas/draw-focus-if-needed.html [ Skip ]
+fast/css/read-only-read-write-input-basics.html [ Skip ]
+fast/forms/checkbox-appearance-change-by-checked.html [ Skip ]
+fast/frames/lots-of-objects.html [ Skip ]
+fast/text/indic.html [ Skip ]
+fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html [ Skip ]
+ietestcenter/Javascript/12.10-2-2.html [ Skip ]
+js/dom/non-object-proto.html [ Skip ]
+storage/domstorage/sessionstorage/delete-removal.html [ Skip ]
+tables/mozilla/bugs/bug133756-1.html [ Skip ]
+fast/forms/textarea-linewrap-dynamic.html [ Crash ]
+fast/forms/week/week-input-type.html [ Crash Failure ]
+fast/events/no-blur-on-enter-button.html [ Crash ]
+fast/css/parsing-invalid-block-recovery.html [ Crash ]
+fast/dom/HTMLDocument/title-get.html [ Crash ]
+fast/regions/fullscreen/full-screen-video-from-region.html [ Crash ]
+fast/regions/writing-mode/invalid-first-region-with-writing-mode-2.html [ Crash ]
+fast/inline/inline-child-height-width-calc-crash.html [ Crash ]
+js/string-from-char-code.html [ Crash ]
+js/date-daysfrom1970-overflow.html [ Crash ]
+mathml/roots-addChild.html [ Crash ]
+fast/borders/bidi-002.html [ Failure ]
+fast/borders/bidi-009a.html [ Failure ]
+fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Failure ]
+fast/text/khmer-lao-font.html [ Failure ]
+mathml/opentype/opentype-stretchy-horizontal.html [ Failure ]
+inspector/dom/content-node-region-info.html [ Crash Pass Failure ]
+fast/overflow/overflow-height-float-not-removed-crash2.html [ Crash Pass ]
+fast/overflow/overflow-height-float-not-removed-crash.html [ Crash Pass ]
+fast/dom/SelectorAPI/dumpNodeList-almost-strict.html [ Crash Pass ]
+fast/regions/subtree-with-vert-lr.html [ Crash Pass ]
+fast/regions/writing-mode/changing-writing-mode.html [ Crash Pass ]
+mathml/presentation/style-changed.html [ Crash Pass ]
+mathml/opentype/opentype-stretchy-horizontal.html [ Crash ]
+fast/dom/HTMLAnchorElement/set-href-attribute-pathname.html [ Crash ]
+ietestcenter/css3/bordersbackgrounds/background-color-applied-to-rounded-inline-element.htm [ Crash ]
+media/controls-styling.html [ Crash ]
+fast/forms/number/number-validity-typemismatch.html [ Crash ]
+fast/flexbox/021-vertical.html [ Crash ]
+ietestcenter/css3/multicolumn/column-filling-001.htm [ Crash ]
+fast/regions/overflow/overflow-3dtransformed-region.html [ Crash Failure ]
+fast/regions/positioning/positioned-objects-block-static-spanning-regions-rtl.html [ Crash ]
+fast/block/margin-collapse/044.html [ Crash ]
+svg/dom/viewspec-parser-5.html [ Crash ]
+svg/dom/viewspec-parser-1.html [ Crash ]
+svg/filters/shadow-on-filter.svg [ Crash ]
+fast/dom/HTMLTableElement/colSpan.html	[ ImageOnlyFailure ]
+fast/forms/week/week-input-type.html [ Failure ]
+js/dom/date-big-constructor.html [ Skip ]
+media/track/track-in-band-legacy-api.html [ Failure ]
+media/track/track-in-band-mode.html [ Failure ]
+plugins/destroy-during-npp-new.html [ Skip ]
+svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ Skip ]
+svg/dynamic-updates/SVGFESpotLightElement-dom-pointsAtX-attr.html [ Skip ]
+svg/custom/object-sizing-explicit-width.xhtml [ ImageOnlyFailure Timeout ]
+svg/dom/SVGPathSegList-xml-dom-synchronization.xhtml [ ImageOnlyFailure Timeout ]
+userscripts/user-script-plugin-document.html [ Crash Failure ]
+tables/mozilla/other/test6.html [ Skip ]
+fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
+fast/repaint/animation-after-layer-scroll.html [ Failure ]
+fast/text/emphasis-combined-text.html [ ImageOnlyFailure ]
+http/tests/media/video-cancel-load.html [ Crash Failure ]
+ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
+js/dom/callback-function-with-handle-event.html [ Failure ]
+fast/repaint/obscured-background-no-repaint.html [ Failure ]
+js/slow-stress/emscripten-memops.html [ Timeout ]
 
 # Skip tests that fail only in Debug mode 
 [ Debug ] compositing [ Skip ]
 [ Debug ] fast/canvas [ Skip ]
 [ Debug ] inspector-protocol [ Skip ]
 [ Debug ] fast/canvas/webgl [ Skip ]
-[ Debug ] webgl [ Skip ]
+[ Debug ] transforms/3d/hit-testing [ Skip ]
+[ Debug ] transforms/3d/point-mapping [ Skip ]
+[ Debug ] js/regress [ Skip ]
+[ Debug ] js/slow-stress [ Skip ]
+
+# Skip remaining failing media tests after adding audio devices to the bots
+media/audio-delete-while-step-button-clicked.html [ Failure ]
+media/audio-only-video-intrinsic-size.html [ Failure ]
+media/audio-play-event.html [ Failure ]
+media/context-menu-actions.html [ Failure ]
+media/controls-after-reload.html [ Failure ]
+media/controls-strict.html [ Failure ]
+media/controls-without-preload.html [ Failure ]
+media/encrypted-media/encrypted-media-can-play-type-webm.html [ Failure ]
+media/encrypted-media/encrypted-media-can-play-type.html [ Failure ]
+media/encrypted-media/encrypted-media-constants.html [ Failure ]
+media/encrypted-media/encrypted-media-events.html [ Failure ]
+media/encrypted-media/encrypted-media-is-type-supported.html [ Failure ]
+media/encrypted-media/encrypted-media-not-loaded.html [ Failure ]
+media/encrypted-media/encrypted-media-session-lifetime.html [ Failure ]
+media/encrypted-media/encrypted-media-syntax.html [ Failure ]
+media/encrypted-media/encrypted-media-v2-events.html [ Failure ]
+media/encrypted-media/encrypted-media-v2-syntax.html [ Failure ]
+media/media-blocked-by-beforeload.html [ Failure ]
+media/media-can-play-flac-audio.html [ Failure ]
+media/media-can-play-ogg.html [ Failure ]
+media/media-captions.html [ Failure ]
+media/media-continues-playing-after-replace-source.html [ Failure ]
+media/media-controls-cancel-events.html [ Failure ]
+media/media-document-audio-controls-visible.html [ Failure ]
+media/media-document-audio-size.html [ Failure ]
+media/media-volume-slider-rendered-below.html [ Failure ]
+media/sources-fallback-codecs.html [ Failure ]
+media/track/track-datacue.html [ Failure ]
+media/track/track-in-band-subtitles-too-large.html [ Failure ]
+media/track/track-long-word-container-sizing.html [ Failure ]
+media/video-canvas-source.html [ Failure ]
+media/video-colorspace-yuv420.html [ Failure ]
+media/video-colorspace-yuv422.html [ Failure ]
+media/video-controls-rendering.html [ Failure ]
+media/video-defaultmuted.html [ Failure ]
+media/video-display-toggle.html [ Failure ]
+media/video-does-not-loop.html [ Failure ]
+media/video-pause-immediately.html [ Failure ]
+media/video-playing-and-pause.html [ Failure ]
+media/video-source-type-params.html [ Failure ]
+media/video-volume-slider.html [ Failure ]

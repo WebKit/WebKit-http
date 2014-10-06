@@ -28,6 +28,7 @@
 
 #if PLATFORM(IOS)
 
+#import "SessionState.h"
 #import "WKPDFPageNumberIndicator.h"
 #import "WKWebViewInternal.h"
 #import "WebPageProxy.h"
@@ -37,6 +38,7 @@
 #import <CorePDF/UIPDFPageView.h>
 #import <UIKit/UIScrollView_Private.h>
 #import <WebCore/FloatRect.h>
+#import <WebCore/_UIHighlightViewSPI.h>
 #import <chrono>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
@@ -57,6 +59,10 @@ typedef struct {
     RetainPtr<UIPDFPage> page;
 } PDFPageInfo;
 
+@interface WKPDFView ()
+- (void)_resetZoomAnimated:(BOOL)animated;
+@end
+
 @implementation WKPDFView {
     RetainPtr<UIPDFDocument> _pdfDocument;
     RetainPtr<NSString> _suggestedFilename;
@@ -72,6 +78,7 @@ typedef struct {
     UIView *_fixedOverlayView;
 
     BOOL _isStartingZoom;
+    BOOL _isPerformingSameDocumentNavigation;
 }
 
 - (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView
@@ -129,6 +136,8 @@ typedef struct {
     RetainPtr<CGPDFDocumentRef> cgPDFDocument = adoptCF(CGPDFDocumentCreateWithProvider(dataProvider.get()));
     _pdfDocument = adoptNS([[UIPDFDocument alloc] initWithCGPDFDocument:cgPDFDocument.get()]);
 
+    // FIXME: restore the scroll position and page scale if navigating from the back/forward list.
+
     [self _computePageAndDocumentFrames];
     [self _revalidateViews];
 }
@@ -147,7 +156,9 @@ typedef struct {
         return;
 
     [self _revalidateViews];
-    [_pageNumberIndicator show];
+
+    if (!_isPerformingSameDocumentNavigation)
+        [_pageNumberIndicator show];
 }
 
 - (void)_revalidateViews
@@ -201,6 +212,9 @@ typedef struct {
 
 - (void)_updatePageNumberIndicator
 {
+    if (_isPerformingSameDocumentNavigation)
+        return;
+
     if (!_pageNumberIndicator)
         _pageNumberIndicator = adoptNS([[WKPDFPageNumberIndicator alloc] initWithFrame:CGRectZero]);
 
@@ -227,6 +241,36 @@ typedef struct {
 
     if (_pageNumberIndicator)
         [_fixedOverlayView addSubview:_pageNumberIndicator.get()];
+}
+
+- (void)web_didSameDocumentNavigation:(WKSameDocumentNavigationType)navigationType
+{
+    // Check for kWKSameDocumentNavigationSessionStatePop instead of kWKSameDocumentNavigationAnchorNavigation since the
+    // latter is only called once when navigating to the same anchor in succession. If the user navigates to a page
+    // then scrolls back and clicks on the same link a second time, we want to scroll again.
+    if (navigationType != kWKSameDocumentNavigationSessionStatePop)
+        return;
+
+    // FIXME: restore the scroll position and page scale if navigating back from a fragment.
+
+    NSString *fragment = _webView.URL.fragment;
+    if (![fragment hasPrefix:@"page"])
+        return;
+
+    NSInteger pageIndex = [[fragment substringFromIndex:4] integerValue] - 1;
+    if (pageIndex < 0 || static_cast<std::size_t>(pageIndex) >= _pages.size())
+        return;
+
+    _isPerformingSameDocumentNavigation = YES;
+
+    [_pageNumberIndicator hide];
+    [self _resetZoomAnimated:NO];
+
+    // Ensure that the page margin is visible below the content inset.
+    const CGFloat verticalOffset = _pages[pageIndex].frame.origin.y - _webView._computedContentInset.top - pdfPageMargin;
+    [_scrollView setContentOffset:CGPointMake(_scrollView.contentOffset.x, verticalOffset) animated:NO];
+
+    _isPerformingSameDocumentNavigation = NO;
 }
 
 - (void)_computePageAndDocumentFrames
@@ -264,6 +308,30 @@ typedef struct {
     [_scrollView setContentSize:newFrame.size];
 }
 
+- (void)_resetZoomAnimated:(BOOL)animated
+{
+    _isStartingZoom = YES;
+
+    CGRect scrollViewBounds = _scrollView.bounds;
+    CGPoint centerOfPageInDocumentCoordinates = [_scrollView convertPoint:CGPointMake(CGRectGetMidX(scrollViewBounds), CGRectGetMidY(scrollViewBounds)) toView:self];
+    [_webView _zoomOutWithOrigin:centerOfPageInDocumentCoordinates animated:animated];
+
+    _isStartingZoom = NO;
+}
+
+- (RetainPtr<_UIHighlightView>)_createHighlightViewWithFrame:(CGRect)frame
+{
+    static const CGFloat highlightBorderRadius = 3;
+    static const CGFloat highlightColorComponent = 26.0 / 255;
+    static UIColor *highlightColor = [[UIColor alloc] initWithRed:highlightColorComponent green:highlightColorComponent blue:highlightColorComponent alpha:0.3];
+
+    RetainPtr<_UIHighlightView> highlightView = adoptNS([[_UIHighlightView alloc] initWithFrame:CGRectInset(frame, -highlightBorderRadius, -highlightBorderRadius)]);
+    [highlightView setOpaque:NO];
+    [highlightView setCornerRadius:highlightBorderRadius];
+    [highlightView setColor:highlightColor];
+    return highlightView;
+}
+
 #pragma mark UIPDFPageViewDelegate
 
 - (void)zoom:(UIPDFPageView *)pageView to:(CGRect)targetRect atPoint:(CGPoint)origin kind:(UIPDFObjectKind)kind
@@ -285,13 +353,7 @@ typedef struct {
 
 - (void)resetZoom:(UIPDFPageView *)pageView
 {
-    _isStartingZoom = YES;
-    
-    CGRect scrollViewBounds = _scrollView.bounds;
-    CGPoint centerOfPageInDocumentCoordinates = [_scrollView convertPoint:CGPointMake(CGRectGetMidX(scrollViewBounds), CGRectGetMidY(scrollViewBounds)) toView:self];
-    [_webView _zoomOutWithOrigin:centerOfPageInDocumentCoordinates];
-
-    _isStartingZoom = NO;
+    [self _resetZoomAnimated:YES];
 }
 
 #pragma mark UIPDFAnnotationControllerDelegate
@@ -304,20 +366,28 @@ typedef struct {
         return;
 
     UIPDFLinkAnnotation *linkAnnotation = (UIPDFLinkAnnotation *)annotation;
-    String urlString = linkAnnotation.url.absoluteString;
+    String urlString;
+    if (NSURL *url = linkAnnotation.url)
+        urlString = url.absoluteString;
+    else if (NSUInteger pageNumber = linkAnnotation.pageNumber) {
+        urlString = ASCIILiteral("#page");
+        urlString.append(String::number(pageNumber));
+    }
+
     if (urlString.isEmpty())
         return;
-
-    // FIXME: Support pageNumber navigations
 
     CGPoint documentPoint = [controller.pageView convertPoint:point toView:self];
     CGPoint screenPoint = [self.window convertPoint:[self convertPoint:documentPoint toView:nil] toWindow:nil];
     static const int64_t dispatchOffset = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::milliseconds(200)).count();
     RetainPtr<WKWebView> retainedWebView = _webView;
 
-    // Call navigateToURLWithSimulatedClick() on a delay so that a tap highlight can be shown.
+    CGRect highlightViewFrame = [self convertRect:[controller.pageView convertRectFromPDFPageSpace:annotation.Rect] fromView:controller.pageView];
+    RetainPtr<_UIHighlightView> highlightView = [self _createHighlightViewWithFrame:highlightViewFrame];
+    [self addSubview:highlightView.get()];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, dispatchOffset), dispatch_get_main_queue(), ^ {
         retainedWebView->_page->navigateToURLWithSimulatedClick(urlString, roundedIntPoint(documentPoint), roundedIntPoint(screenPoint));
+        [highlightView removeFromSuperview];
     });
 }
 

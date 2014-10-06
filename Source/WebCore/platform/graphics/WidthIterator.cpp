@@ -57,7 +57,7 @@ WidthIterator::WidthIterator(const Font* font, const TextRun& run, HashSet<const
         m_expansionPerOpportunity = 0;
     else {
         bool isAfterExpansion = m_isAfterExpansion;
-        unsigned expansionOpportunityCount = m_run.is8Bit() ? Font::expansionOpportunityCount(m_run.characters8(), m_run.length(), m_run.ltr() ? LTR : RTL, isAfterExpansion) : Font::expansionOpportunityCount(m_run.characters16(), m_run.length(), m_run.ltr() ? LTR : RTL, isAfterExpansion);
+        unsigned expansionOpportunityCount = Font::expansionOpportunityCount(m_run.text(), m_run.ltr() ? LTR : RTL, isAfterExpansion);
         if (isAfterExpansion && !m_run.allowsTrailingExpansion())
             expansionOpportunityCount--;
 
@@ -78,6 +78,7 @@ GlyphData WidthIterator::glyphDataForCharacter(UChar32 character, bool mirror, i
 #else
     UNUSED_PARAM(currentCharacter);
     UNUSED_PARAM(advanceLength);
+    UNUSED_PARAM(normalizedSpacesStringCache);
 #endif
 
     return m_font->glyphDataForCharacter(character, mirror);
@@ -297,8 +298,8 @@ inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, Glyph
         } else {
             // Check to see if the next character is a "rounding hack character", if so, adjust
             // width so that the total run width will be on an integer boundary.
-            if ((m_run.applyWordRounding() && textIterator.currentCharacter() < m_run.length() && Font::isRoundingHackCharacter(*(textIterator.characters())))
-                || (m_run.applyRunRounding() && textIterator.currentCharacter() >= m_run.length())) {
+            if ((m_run.applyWordRounding() && static_cast<unsigned>(textIterator.currentCharacter()) < m_run.length() && Font::isRoundingHackCharacter(*(textIterator.characters())))
+                || (m_run.applyRunRounding() && static_cast<unsigned>(textIterator.currentCharacter()) >= m_run.length())) {
                 float totalWidth = widthSinceLastRounding + width;
                 widthSinceLastRounding = ceilf(totalWidth);
                 width += widthSinceLastRounding - totalWidth;

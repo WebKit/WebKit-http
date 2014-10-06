@@ -26,11 +26,22 @@
 #ifndef TypeCasts_h
 #define TypeCasts_h
 
+#include <type_traits>
+
 namespace WTF {
 
 template <typename ExpectedType, typename ArgType>
 struct TypeCastTraits {
-    static bool isOfType(ArgType&);
+    static bool isOfType(ArgType&)
+    {
+        // If you're hitting this assertion, it is likely because you used
+        // is<>() or downcast<>() with a type that doesn't have the needed
+        // TypeCastTraits specialization. Please use the following macro
+        // to add that specialization:
+        // SPECIALIZE_TYPE_TRAITS_BEGIN() / SPECIALIZE_TYPE_TRAITS_END()
+        static_assert(std::is_void<ExpectedType>::value, "Missing TypeCastTraits specialization");
+        return false;
+    }
 };
 
 template <typename ExpectedType>
@@ -49,9 +60,8 @@ inline bool is(ArgType& source)
 template <typename ExpectedType, typename ArgType>
 inline bool is(ArgType* source)
 {
-    ASSERT(source);
     static_assert(!std::is_base_of<ExpectedType, ArgType>::value, "Unnecessary type check");
-    return TypeCastTraits<const ExpectedType, const ArgType>::isOfType(*source);
+    return source && TypeCastTraits<const ExpectedType, const ArgType>::isOfType(*source);
 }
 
 // Safe downcasting functions.

@@ -24,6 +24,7 @@
 #define CSSRule_h
 
 #include <wtf/RefCounted.h>
+#include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -63,7 +64,7 @@ public:
 
     virtual Type type() const = 0;
     virtual String cssText() const = 0;
-    virtual void reattach(StyleRuleBase*) = 0;
+    virtual void reattach(StyleRuleBase&) = 0;
 
     void setParentStyleSheet(CSSStyleSheet* styleSheet)
     {
@@ -112,9 +113,11 @@ private:
     };
 };
 
-#define CSS_RULE_TYPE_CASTS(ToValueTypeName, predicate) \
-    TYPE_CASTS_BASE(ToValueTypeName, CSSRule, rule, rule->type() == predicate, rule.type() == predicate)
-
 } // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_CSS_RULE(ToValueTypeName, predicate) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
+    static bool isType(const WebCore::CSSRule& rule) { return rule.type() == WebCore::predicate; } \
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // CSSRule_h

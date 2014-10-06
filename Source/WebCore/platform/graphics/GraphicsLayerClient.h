@@ -26,6 +26,8 @@
 #ifndef GraphicsLayerClient_h
 #define GraphicsLayerClient_h
 
+#include <wtf/Forward.h>
+
 namespace WebCore {
 
 class FloatPoint;
@@ -53,6 +55,18 @@ enum AnimatedPropertyID {
     AnimatedPropertyBackgroundColor,
     AnimatedPropertyWebkitFilter
 };
+
+enum LayerTreeAsTextBehaviorFlags {
+    LayerTreeAsTextBehaviorNormal = 0,
+    LayerTreeAsTextDebug = 1 << 0, // Dump extra debugging info like layer addresses.
+    LayerTreeAsTextIncludeVisibleRects = 1 << 1,
+    LayerTreeAsTextIncludeTileCaches = 1 << 2,
+    LayerTreeAsTextIncludeRepaintRects = 1 << 3,
+    LayerTreeAsTextIncludePaintingPhases = 1 << 4,
+    LayerTreeAsTextIncludeContentLayers = 1 << 5,
+    LayerTreeAsTextIncludePageOverlayLayers = 1 << 6,
+};
+typedef unsigned LayerTreeAsTextBehavior;
 
 class GraphicsLayerClient {
 public:
@@ -94,7 +108,7 @@ public:
 
     virtual bool isTrackingRepaints() const { return false; }
 
-    virtual bool shouldSkipLayerInDump(const GraphicsLayer*) const { return false; }
+    virtual bool shouldSkipLayerInDump(const GraphicsLayer*, LayerTreeAsTextBehavior) const { return false; }
     virtual bool shouldDumpPropertyForLayer(const GraphicsLayer*, const char*) const { return true; }
 
     virtual bool shouldAggressivelyRetainTiles(const GraphicsLayer*) const { return false; }

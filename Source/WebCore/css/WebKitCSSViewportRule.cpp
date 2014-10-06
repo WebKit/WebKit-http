@@ -40,7 +40,7 @@
 
 namespace WebCore {
 
-WebKitCSSViewportRule::WebKitCSSViewportRule(StyleRuleViewport* viewportRule, CSSStyleSheet* sheet)
+WebKitCSSViewportRule::WebKitCSSViewportRule(StyleRuleViewport& viewportRule, CSSStyleSheet* sheet)
     : CSSRule(sheet)
     , m_viewportRule(viewportRule)
 {
@@ -75,11 +75,10 @@ String WebKitCSSViewportRule::cssText() const
     return result.toString();
 }
 
-void WebKitCSSViewportRule::reattach(StyleRuleBase* rule)
+void WebKitCSSViewportRule::reattach(StyleRuleBase& rule)
 {
-    ASSERT(rule);
-    ASSERT_WITH_SECURITY_IMPLICATION(rule->isViewportRule());
-    m_viewportRule = static_cast<StyleRuleViewport*>(rule);
+    ASSERT_WITH_SECURITY_IMPLICATION(rule.isViewportRule());
+    m_viewportRule = static_cast<StyleRuleViewport&>(rule);
 
     if (m_propertiesCSSOMWrapper)
         m_propertiesCSSOMWrapper->reattach(m_viewportRule->mutableProperties());

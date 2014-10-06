@@ -48,6 +48,7 @@
 #include "PutByIdVariant.h"
 #include "SpeculatedType.h"
 #include "StructureSet.h"
+#include "TypeLocation.h"
 #include "ValueProfile.h"
 #include <wtf/ListDump.h>
 
@@ -683,6 +684,7 @@ struct Node {
         case ExtractOSREntryLocal:
         case MovHint:
         case ZombieHint:
+        case KillLocal:
             return true;
         default:
             return false;
@@ -1390,6 +1392,8 @@ struct Node {
     {
         switch (op()) {
         case SetLocal:
+        case PutLocal:
+        case KillLocal:
         case MovHint:
         case ZombieHint:
         case PhantomArguments:
@@ -1772,6 +1776,11 @@ struct Node {
     bool canSpeculateInt52(PredictionPass pass)
     {
         return canSpeculateInt52(sourceFor(pass));
+    }
+
+    TypeLocation* typeLocation()
+    {
+        return reinterpret_cast<TypeLocation*>(m_opInfo);
     }
     
     void dumpChildren(PrintStream& out)

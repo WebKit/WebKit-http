@@ -273,7 +273,7 @@ void MemoryCache::removeImageFromCache(const URL& url, const String& cachePartit
         return;
 
     // A resource exists and is not a manually cached image, so just remove it.
-    if (!resource->isImage() || !toCachedImage(resource)->isManuallyCached()) {
+    if (!is<CachedImage>(*resource) || !downcast<CachedImage>(*resource).isManuallyCached()) {
         evict(resource);
         return;
     }
@@ -283,7 +283,7 @@ void MemoryCache::removeImageFromCache(const URL& url, const String& cachePartit
     // dead resources are pruned. That might be immediately since
     // removing the last client triggers a MemoryCache::prune, so the
     // resource may be deleted after this call.
-    toCachedImage(resource)->removeClient(&dummyCachedImageClient());
+    downcast<CachedImage>(*resource).removeClient(&dummyCachedImageClient());
 }
 #endif
 
@@ -752,7 +752,8 @@ void MemoryCache::removeUrlFromCache(ScriptExecutionContext* context, const Stri
 
 void MemoryCache::removeRequestFromCache(ScriptExecutionContext* context, const ResourceRequest& request, SessionID sessionID)
 {
-    if (is<WorkerGlobalScope>(context)) {
+    ASSERT(context);
+    if (is<WorkerGlobalScope>(*context)) {
         downcast<WorkerGlobalScope>(*context).thread().workerLoaderProxy().postTaskToLoader(CrossThreadTask(&crossThreadRemoveRequestFromCache, request, sessionID));
         return;
     }
@@ -768,7 +769,8 @@ void MemoryCache::removeRequestFromCacheImpl(ScriptExecutionContext*, const Reso
 
 void MemoryCache::removeRequestFromSessionCaches(ScriptExecutionContext* context, const ResourceRequest& request)
 {
-    if (is<WorkerGlobalScope>(context)) {
+    ASSERT(context);
+    if (is<WorkerGlobalScope>(*context)) {
         downcast<WorkerGlobalScope>(*context).thread().workerLoaderProxy().postTaskToLoader(CrossThreadTask(&crossThreadRemoveRequestFromSessionCaches, request));
         return;
     }

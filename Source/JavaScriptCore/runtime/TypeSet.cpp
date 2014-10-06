@@ -110,7 +110,7 @@ void TypeSet::invalidateCache()
     m_structureIDCache.clear();
 }
 
-String TypeSet::seenTypes() const
+String TypeSet::dumpTypes() const
 {
     if (m_seenTypes == TypeNothing)
         return ASCIILiteral("(Unreached Statement)");
@@ -174,7 +174,7 @@ bool TypeSet::doesTypeConformTo(uint32_t test) const
     // ------ (AND)
     // 0b0010 != seen
 
-    return (m_seenTypes & test) == m_seenTypes;
+    return m_seenTypes != TypeNothing && (m_seenTypes & test) == m_seenTypes;
 }
 
 String TypeSet::displayName() const
@@ -237,25 +237,6 @@ String TypeSet::leastCommonAncestor() const
 }
 
 #if ENABLE(INSPECTOR)
-PassRefPtr<Inspector::Protocol::Array<String>> TypeSet::allPrimitiveTypeNames() const
-{
-    RefPtr<Inspector::Protocol::Array<String>> seen = Inspector::Protocol::Array<String>::create();
-    if (m_seenTypes & TypeUndefined)
-        seen->addItem(ASCIILiteral("Undefined"));
-    if (m_seenTypes & TypeNull)
-        seen->addItem(ASCIILiteral("Null"));
-    if (m_seenTypes & TypeBoolean)
-        seen->addItem(ASCIILiteral("Boolean"));
-    if (m_seenTypes & TypeMachineInt)
-        seen->addItem(ASCIILiteral("Integer"));
-    if (m_seenTypes & TypeNumber)
-        seen->addItem(ASCIILiteral("Number"));
-    if (m_seenTypes & TypeString)
-        seen->addItem(ASCIILiteral("String"));
-
-    return seen.release();
-}
-
 PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::StructureDescription>> TypeSet::allStructureRepresentations() const
 {
     RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::StructureDescription>> description = Inspector::Protocol::Array<Inspector::Protocol::Runtime::StructureDescription>::create();
@@ -351,11 +332,6 @@ String TypeSet::toJSONString() const
 
     json.append("}");
     return json.toString();
-}
-
-void TypeSet::dumpSeenTypes()
-{
-    dataLog(seenTypes(), "\n");
 }
 
 StructureShape::StructureShape()

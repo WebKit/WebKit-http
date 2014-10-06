@@ -1251,6 +1251,7 @@ Bug(jernoble) [ MountainLion ] fast/events/constructors/media-key-event-construc
 ## --- Start media tests failing on Mavericks and earlier ---
 # HTTP Auth in Media is not supported in Mavericks and Mountain Lion
 webkit.org/b/40382 [ Mavericks MountainLion ] http/tests/media/video-auth.html [ WontFix ]
+webkit.org/b/137368 [ Mavericks ] media/video-controls-no-scripting.html [ Pass Failure ]
 
 # Mavericks and prior do not support Media Source.
 [ MountainLion Mavericks ] media/media-source [ WontFix ]
@@ -1295,6 +1296,7 @@ webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/startTime.html [ Pas
 webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/track.html [ Pass Failure ]
 webkit.org/b/135160 media/track/track-in-band-subtitles-too-large.html [ Pass Failure ]
 webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Failure ]
+webkit.org/b/137311 media/video-fullscreeen-only-playback.html [ Pass Failure Crash Timeout ]
 ## --- End flaky media tests
 
 # Skipped while Eric Carlson works on a fix.
@@ -1390,7 +1392,7 @@ webkit.org/b/135390 fast/css/fontloader-multiple-faces-download-error.html [ Pas
 webkit.org/b/135390 fast/css/fontloader-multiple-faces.html [ Pass ]
 webkit.org/b/135390 fast/css/fontloader-multiple-families.html [ Pass ]
 webkit.org/b/135390 fast/css/fontloader-page-cache.html [ Pass ]
-webkit.org/b/135390 http/tests/webfont/fontloader-loading-attribute.html [ Pass ]
+webkit.org/b/135390 http/tests/webfont/fontloader-loading-attribute.html [ Skip ]
 
 webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 
@@ -1404,3 +1406,5 @@ webkit.org/b/137157 inspector/event-listener.html [ Failure Crash ]
 webkit.org/b/137157 inspector/model/parse-script-syntax-tree.html [ Failure Crash ]
 webkit.org/b/137157 inspector/page/main-frame-resource.html [ Failure Crash ]
 webkit.org/b/137157 inspector/protocol-promise-result.html [ Failure Crash ]
+
+[ MountainLion ] webkit.org/b/137319 fast/css/test-setting-canvas-color.html [ Pass Crash Timeout ]

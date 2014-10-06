@@ -38,9 +38,9 @@ namespace WebCore {
 class CSSRule;
 class StyleRuleSupports;
 
-class CSSSupportsRule : public CSSGroupingRule {
+class CSSSupportsRule final : public CSSGroupingRule {
 public:
-    static PassRefPtr<CSSSupportsRule> create(StyleRuleSupports* rule, CSSStyleSheet* sheet)
+    static PassRefPtr<CSSSupportsRule> create(StyleRuleSupports& rule, CSSStyleSheet* sheet)
     {
         return adoptRef(new CSSSupportsRule(rule, sheet));
     }
@@ -53,12 +53,12 @@ public:
     String conditionText() const;
 
 private:
-    CSSSupportsRule(StyleRuleSupports*, CSSStyleSheet*);
+    CSSSupportsRule(StyleRuleSupports&, CSSStyleSheet*);
 };
 
-CSS_RULE_TYPE_CASTS(CSSSupportsRule, CSSRule::SUPPORTS_RULE)
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_CSS_RULE(CSSSupportsRule, CSSRule::SUPPORTS_RULE)
 
 #endif // ENABLE(CSS3_CONDITIONAL_RULES)
 

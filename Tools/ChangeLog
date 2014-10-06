@@ -1,3 +1,535 @@
+2014-10-05  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL] Introduce EWebKit_Extension
+        https://bugs.webkit.org/show_bug.cgi?id=134921
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c: Added x option to test extension path.
+        (window_create):
+        (elm_main):
+        * Scripts/webkitpy/common/config/watchlist:
+        Added Source/WebKit2/WebProcess/InjectedBundle/API/efl/ into EFLWebKit2PublicAPI.
+        * Scripts/webkitpy/style/checker.py:
+        Added Source/WebKit2/WebProcess/InjectedBundle/API/efl/ into EFL exceptions.
+
+2014-10-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [jhbuild] Simplify platform detection in update-webkit-libs-jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=137390
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/update-webkit-libs-jhbuild:
+
+2014-10-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not generate webkit2gtk-tests-resources.gresource unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=137391
+
+        Reviewed by Martin Robinson.
+
+        Add a custom command to only re-generate
+        webkit2gtk-tests-resources.gresource when any of its dependencies changes.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+
+2014-10-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] generate-gtkdoc crashes when generating HTML due to encoding issues
+        https://bugs.webkit.org/show_bug.cgi?id=135502
+
+        Reviewed by Martin Robinson.
+
+        When writing to stdout/stderr fails due to a UnicodeDecodeError
+        exception, try again without encoding the output.
+
+        * gtk/gtkdoc.py:
+        (GTKDoc._run_command):
+
+2014-10-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Bugzilla status bubble displays an exception showing attachment 175738
+        https://bugs.webkit.org/show_bug.cgi?id=137410
+
+        Reviewed by Tim Horton.
+
+        * QueueStatusServer/app.yaml: Update version.
+
+        * QueueStatusServer/handlers/statusbubble.py: (StatusBubble._build_bubble):
+        Don't fail even if expected status message is missing.
+
+        * QueueStatusServer/model/patchlog.py: (PatchLog): Quick unrelated fix - define
+        the field in the same way it's defined in QueueStatus table.
+
+2014-10-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Record latest message in PatchLog for quick access
+        https://bugs.webkit.org/show_bug.cgi?id=137405
+
+        Fixing a typo.
+
+        * QueueStatusServer/app.yaml:
+        * QueueStatusServer/handlers/releasepatch.py:
+
+2014-10-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Record latest message in PatchLog for quick access
+        https://bugs.webkit.org/show_bug.cgi?id=137405
+
+        Reviewed by Ryosuke Niwa.
+
+        It's no SQL...
+
+        * QueueStatusServer/handlers/releasepatch.py:
+        * QueueStatusServer/handlers/updatestatus.py:
+        * QueueStatusServer/loggers/recordpatchevent.py:
+        * QueueStatusServer/model/patchlog.py:
+
+2014-10-02  David Farler  <dfarler@apple.com>
+
+        -asan-blacklist option also renamed to generic -fsanitize-blacklist
+        https://bugs.webkit.org/show_bug.cgi?id=137377
+
+        Reviewed by Daniel Bates.
+
+        * asan/asan.xcconfig:
+        -asan-blacklist -> -fsanitize-blacklist
+
+        http://llvm.org/viewvc/llvm-project?view=revision&revision=212505
+
+2014-10-03  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Include batch size argument to layout tests on Windows.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunWebKitTests.start): 
+        This is a speculative fix for the the inconsistent crashes we are seeing on Windows.
+        These crashes seem to happen on random tests though generally in a spread out fashion.
+        It seems possible that the DRT instance is being clobbered somehow after running too many
+        tests in a row so we will try to mitigate this by just forcing DRT to restart periodically.
+
+2014-10-03  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Settle for 2 chid processes running NRWT on Windows.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_child_processes): 3 child processes reintroduces the sporadic crashing, will settle for 2.
+
+2014-10-03  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        [GTK] Bump up and patch dependencies to allow building for aarch64
+        https://bugs.webkit.org/show_bug.cgi?id=137147
+
+        Reviewed by Martin Robinson.
+
+        The currently used versions of pixman, libffi, librsvg, glib,
+        glib-networking, fontconfig, libxml2, gst-plugins-base fail to configure
+        and/or build for aarch64, so they are bumped up and patched where
+        necessary. Wherever possible, the same versions and patches were used as
+        for the EFL port bump-up
+        (https://bugs.webkit.org/show_bug.cgi?id=135885).
+
+        After the bump-up, a hitherto hidden bug in gst-plugins-good caused a
+        regression by crashing http/tests/media/video-redirect.html . A patch
+        already in upstream fixes that bug.
+
+        This change does not touch xserver, which also needs bumping up, but 
+        will be dealt with later.
+
+        * gtk/jhbuild.modules:
+        Specified versions and patches necessary to correctly build for aarch64.
+        * gtk/patches/gst-events-arent-gstobjects.patch:
+        Added. Patches gst-plugins-good to fix a bug in .mov file demuxing.
+        * gtk/patches/gst-prevent-neon-check-in-configure-from-passing-under-aarch64.patch:
+        Added. Patches gst-plugins-base to configure correctly for aarch64.
+        * gtk/patches/librsvg-2.36.1-bump-up-config.guess-to-support-aarch64.patch:
+        Added. Bumps up config.guess and config.sub in librsvg to recognize
+        aarch64.
+        * gtk/patches/libxml2-2.9.0-dtd.patch:
+        Removed. Not necessary for libxml2 v2.9.1 anymore.
+
+2014-09-28  Sam Weinig  <sam@webkit.org>
+
+        Remove RefPtrHashMap
+        https://bugs.webkit.org/show_bug.cgi?id=137200
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+        Add tests for using a HashMap with RefPtr keys, focusing on ensuring that
+        a minimum of refcount churn occurs.
+
+2014-10-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove workarounds for versions of Python before 2.7
+        https://bugs.webkit.org/show_bug.cgi?id=137338
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/system/autoinstall.py:
+        (AutoInstaller._extract_targz):
+        (AutoInstaller._unzip):
+        (AutoInstaller): Deleted.
+        (AutoInstaller._extract_all): Deleted.
+        * Scripts/webkitpy/common/webkitunittest.py:
+        (TestCase.setUp): Deleted.
+        * Scripts/webkitpy/layout_tests/models/test_configuration.py:
+        (TestConfigurationConverter.collapse_macros):
+        (TestConfigurationConverter.to_specifiers_list.try_collapsing):
+        (TestConfigurationConverter.to_specifiers_list.try_abbreviating):
+        (TestConfigurationConverter):
+        (TestConfigurationConverter.combinations): Deleted.
+        * Scripts/webkitpy/layout_tests/models/test_expectations_unittest.py:
+        * Scripts/webkitpy/port/base.py:
+
+2014-10-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174264.
+        https://bugs.webkit.org/show_bug.cgi?id=137392
+
+        It broke run-webkit-tests (Requested by ebalazsfalvi on
+        #webkit).
+
+        Reverted changeset:
+
+        "Remove workarounds for versions of Python before 2.7"
+        https://bugs.webkit.org/show_bug.cgi?id=137338
+        http://trac.webkit.org/changeset/174264
+
+2014-10-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove workarounds for versions of Python before 2.7
+        https://bugs.webkit.org/show_bug.cgi?id=137338
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/common/system/autoinstall.py:
+        (AutoInstaller._extract_targz):
+        (AutoInstaller._unzip):
+        (AutoInstaller): Deleted.
+        (AutoInstaller._extract_all): Deleted.
+        * Scripts/webkitpy/common/webkitunittest.py:
+        (TestCase.setUp): Deleted.
+        * Scripts/webkitpy/layout_tests/models/test_configuration.py:
+        (TestConfigurationConverter.collapse_macros):
+        (TestConfigurationConverter.to_specifiers_list.try_collapsing):
+        (TestConfigurationConverter.to_specifiers_list.try_abbreviating):
+        (TestConfigurationConverter):
+        (TestConfigurationConverter.combinations): Deleted.
+        * Scripts/webkitpy/layout_tests/models/test_expectations_unittest.py:
+        * Scripts/webkitpy/port/base.py:
+        * Scripts/webkitpy/port/driver.py:
+        (ContentBlock.__init__):
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._reset):
+
+2014-10-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Remove autoinstaller workaround for python 2.6
+        https://bugs.webkit.org/show_bug.cgi?id=137343
+
+        Reviewed by Daniel Bates.
+
+        Reverting <http://trac.webkit.org/changeset/124928>, neither Python
+        2.6, nor Snow Leopard is supported anymore, so the workaround is not
+        needed anymore.
+
+        * Scripts/webkitpy/common/system/autoinstall.py:
+        (AutoInstaller.install):
+        * Scripts/webkitpy/test/main.py:
+        (Tester._run_tests):
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_mechanize):
+        (AutoinstallImportHook._install_pep8):
+        (AutoinstallImportHook._install_pylint):
+        (AutoinstallImportHook._install_buildbot):
+        (AutoinstallImportHook._install_coverage):
+        (AutoinstallImportHook._install_eliza):
+        (AutoinstallImportHook._install_irc):
+        (AutoinstallImportHook._install):
+        (autoinstall_everything):
+
+2014-10-02  Daniel Bates  <dabates@apple.com>
+
+        Use version number 101000 instead of 10100 for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=137372
+
+        Reviewed by Mark Rowe.
+
+        The version number for OS X Yosemite is 101000.
+
+        * DumpRenderTree/mac/TextInputController.m:
+
+2014-10-02  Alexey Proskuryakov  <ap@apple.com>
+
+        update-work-items should never delete items
+        https://bugs.webkit.org/show_bug.cgi?id=137366
+
+        Reviewed by Ryosuke Niwa.
+
+        As we don't just replace the whole list any more, indicate which items are high
+        priority, and which are not. Hight priority ones will be prepended to the queue,
+        others will be appended.
+
+        This creates a bit of unfairness in that high priority item queue becomes a LIFO.
+        But hopefully we will never have many rollouts competing like that.
+
+        * QueueStatusServer/app.yaml: Update version.
+
+        * QueueStatusServer/handlers/updateworkitems.py: Never remove items. Pass high
+        priority and regular items separately. Removed some error handling that used to
+        end up in returning status 500 - an uncaught exception does that automatically.
+
+        * QueueStatusServer/main.py: Removed unnecessary regexps from URL matching code.
+
+        * QueueStatusServer/model/workitems.py: Added a way to add high priority items.
+
+        * QueueStatusServer/templates/updateworkitems.html: Added a field for high
+        priority items.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (BugzillaQueries._parse_attachment_ids_request_query): Removed an annoying log
+        line that complicated testing.
+
+        * Scripts/webkitpy/common/net/statusserver.py: Pass high priority items separately.
+
+        * Scripts/webkitpy/tool/bot/feeders.py: For commit queue, split high and regular
+        priority items into separate lists.
+
+        * Scripts/webkitpy/common/net/statusserver_mock.py:
+        * Scripts/webkitpy/tool/bot/feeders_unittest.py:
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        Updated tests.
+
+2014-10-02  Brendan Long  <b.long@cablelabs.com>
+
+        Annoying build warnings in WTFString API tests
+        https://bugs.webkit.org/show_bug.cgi?id=137360
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST): Change EXPECT_EQ(false, ok) to EXPECT_FALSE(ok) and EXPECT_EQ(true, ok) to EXPECT_TRUE(ok).
+
+2014-10-02  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] The number of processes did not affect the crash inconsistency, increase number of child processes again.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_child_processes): Ambitiously try 3 processes the testers are too slow now.
+
+2014-10-02  David Farler  <dfarler@apple.com>
+
+        Move ASan arguments from LLVM (-mllvm) to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=137365
+
+        Reviewed by David Kilzer.
+
+        * asan/asan.xcconfig:
+        Remove the -mllvm prefix to the asan-blacklist argument, moving it
+        to the clang frontend.
+
+        http://llvm.org/viewvc/llvm-project?view=revision&revision=212505
+
+2014-10-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174120.
+        https://bugs.webkit.org/show_bug.cgi?id=137350
+
+        While number of failures is reasonable with 2 processes, test
+        results seem to be inconsistent between runs (Requested by
+        rfong on #webkit).
+
+        Reverted changeset:
+
+        "[Windows] Back to 2 child processes for NRWT on Windows."
+        http://trac.webkit.org/changeset/174120
+
+2014-10-02  Jeff Miller  <jeffm@apple.com>
+
+        DumpRenderTree and WebKitTestRunner should use WebKitystemInterfaceYosemite when building on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=137347
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        Use WebKitSystemInterfaceYosemite on OS X 10.10.
+
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        Ditto.
+
+2014-10-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [JHBuild] Switch sourceware.org mirror to http.
+
+        Unreviewed.
+
+        The ftp access is recently failing to work as expected, and the
+        bots fail to download the file.
+        The same mirror is available via http and seems to work better.
+
+        * gtk/jhbuild.modules:
+
+2014-10-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174185.
+        https://bugs.webkit.org/show_bug.cgi?id=137334
+
+        Patch that adds logging causes webkitpy failures (Requested by
+        rfong on #webkit).
+
+        Reverted changeset:
+
+        "commitqueuetasks_unittest references a non-existent member
+        variable"
+        https://bugs.webkit.org/show_bug.cgi?id=137303
+        http://trac.webkit.org/changeset/174185
+
+2014-10-01  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        EWS and Commit Queue should know better than to spew 500 failed
+        results in the case of extremely red patches.
+        https://bugs.webkit.org/show_bug.cgi?id=137324
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        Adds a check for did_exceed_test_failure_limit.
+        (AbstractEarlyWarningSystem._failing_tests_message):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        Alters the task mock to respond properly to
+        results_from_patch_test_run(patch)
+        (AbstractEarlyWarningSystemTest.test_failing_tests_message):
+        * Scripts/webkitpy/tool/commands/queues.py:
+        Adds a check for did_exceed_test_failure_limit.
+        (CommitQueue._failing_tests_message):
+
+2014-10-01  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r174192.
+
+        Revert the unit test fix in r174192 since we reverted r174187
+        in r174194 due to correctness issues. See
+        <http://webkit.org/b/137329> for more details.
+
+        Reverted changeset:
+
+        "Test fix after r174187"
+        http://trac.webkit.org/changeset/174192
+
+2014-10-01  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/137308> WebKit should build on OS X Yosemite for external users
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/copy-webkitlibraries-to-product-directory: Copy libWebKitSystemInterfaceYosemite.a
+        into the build directory. Use LLVMIncludesYosemite.tar.bz2 and LLVMLibrariesYosemite.tar.bz2
+        for the LLVM components when on Yosemite.
+
+2014-10-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174187.
+        https://bugs.webkit.org/show_bug.cgi?id=137329
+
+        webkitpy failures, and thorton says the patch is wrong
+        (Requested by dethbakin on #webkit).
+
+        Reverted changeset:
+
+        "[Windows] Increase layout test timeout for Windows following
+        r174162."
+        http://trac.webkit.org/changeset/174187
+
+2014-10-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Test fix after r174187
+
+        * Scripts/webkitpy/port/win_unittest.py:
+        (WinPortTest.test_default_timeout_ms): Expect the new 50000 ms timeout for Windows tests.
+
+2014-10-01  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Increase layout test timeout for Windows following r174162.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_timeout_ms):
+
+2014-10-01  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        commitqueuetasks_unittest references a non-existent member variable
+        when mock-reporting flaky tests.
+        https://bugs.webkit.org/show_bug.cgi?id=137303
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        (MockCommitQueue.report_flaky_tests):
+        Makes the appropriate name change.
+        (test_simple_flaky_test_failure):
+        Adds a unit test to make sure that the code is excercised.
+
+2014-10-01  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        EWS is inconclusively spinning forever on a patch that breaks 500+
+        tests
+        https://bugs.webkit.org/show_bug.cgi?id=137223
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        Checks to see whether the tests have exceeded the failure limit, and
+        only spins off another test if they have not exceeded the limit.
+        (PatchAnalysisTask._test_patch):
+
+2014-10-01  Brian J. Burg  <burg@cs.washington.edu>
+
+        Unreviewed, add Katie Madonna as a contributor.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-10-01  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        commitqueuetasks_unittest does not construct FailingTestCommitQueue
+        objects properly in its test cases.
+        https://bugs.webkit.org/show_bug.cgi?id=137281
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        (FailingTestCommitQueue.test_results):
+        Adds an assert to make FailingTestCommitQueue harder to mis-use.
+        (test_double_flaky_test_failure):
+        Nests the intended test failure strings into one-length lists.
+        (test_red_test_failure):
+        Nests the intended test failure strings into one-length lists.
+
+2014-10-01  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r172172): Multiple regression tests fail when primary system language is Russian
+        https://bugs.webkit.org/show_bug.cgi?id=136987
+
+        Reviewed by Daniel Bates.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::resetPreferencesToConsistentValues):
+        Specify the default encoding for all WebKit developers to get consistent results.
+
+2014-10-01  Alexey Proskuryakov  <ap@apple.com>
+
+        EWS is too eager to say that a patch does not apply to trunk of repository
+        https://bugs.webkit.org/show_bug.cgi?id=137290
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/app.yaml: Updated app version.
+
+        * QueueStatusServer/handlers/statusbubble.py:
+        (StatusBubble._build_bubble):
+        (StatusBubble._build_bubbles_for_attachment):
+        Rewrote to make more sense.
+
 2014-09-30  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
 
         Remove thirdparty/unittest2 from webkitpy
@@ -347,6 +879,15 @@
 
         * Scripts/bencher: Removed.
         * Scripts/run-jsc-benchmarks: Added.
+
+2014-09-30  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Add some logging to webkitpy to debug timeout issues with running NRWT using multiple child processes.
+
+        * Scripts/webkitpy/port/drdiver.py:
+        (Driver.stop):
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.stop):
 
 2014-09-30  Roger Fong  <roger_fong@apple.com>
 

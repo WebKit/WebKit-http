@@ -46,7 +46,7 @@
 
     NSObject<WebPDFViewPlaceholderDelegate> *_delegate;
 
-    BOOL _didFinishLoadAndMemoryMap;
+    BOOL _didFinishLoad;
 
     CGSize _containerSize;
 }
@@ -162,8 +162,6 @@
  the WebPDFViewPlaceholderDelegate will be asked for the document.
  */
 - (CGPDFDocumentRef)cgPDFDocument;
-
-- (void)setBackgroundColor:(UIColor *)backgroundColor;
 
 @end
 

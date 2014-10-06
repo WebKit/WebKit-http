@@ -66,6 +66,7 @@
 #include "MouseEvent.h"
 #include "MouseEventWithHitTestResults.h"
 #include "Page.h"
+#include "PageOverlayController.h"
 #include "PlatformEvent.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformWheelEvent.h"
@@ -759,7 +760,7 @@ bool EventHandler::handleMousePressEvent(const MouseEventWithHitTestResults& eve
     if (event.isOverWidget() && passWidgetMouseDownEventToWidget(event))
         return true;
 
-    if (is<SVGDocument>(m_frame.document()) && downcast<SVGDocument>(*m_frame.document()).zoomAndPanEnabled()) {
+    if (is<SVGDocument>(*m_frame.document()) && downcast<SVGDocument>(*m_frame.document()).zoomAndPanEnabled()) {
         if (event.event().shiftKey() && singleClick) {
             m_svgPan = true;
             downcast<SVGDocument>(*m_frame.document()).startPan(m_frame.view()->windowToContents(event.event().position()));
@@ -1266,7 +1267,7 @@ Frame* EventHandler::subframeForTargetNode(Node* node)
 #if ENABLE(CURSOR_SUPPORT)
 static bool isSubmitImage(Node* node)
 {
-    return node && is<HTMLInputElement>(node) && downcast<HTMLInputElement>(*node).isImageButton();
+    return is<HTMLInputElement>(node) && downcast<HTMLInputElement>(*node).isImageButton();
 }
 
 // Returns true if the node's editable block is not current focused for editing
@@ -1643,6 +1644,9 @@ bool EventHandler::handleMousePressEvent(const PlatformMouseEvent& platformMouse
         return true;
     }
 
+    if (m_frame.mainFrame().pageOverlayController().handleMouseEvent(platformMouseEvent))
+        return true;
+
 #if ENABLE(TOUCH_EVENTS)
     bool defaultPrevented = dispatchSyntheticTouchEventIfEnabled(platformMouseEvent);
     if (defaultPrevented)
@@ -1760,7 +1764,7 @@ bool EventHandler::handleMousePressEvent(const PlatformMouseEvent& platformMouse
         // If a mouse event handler changes the input element type to one that has a widget associated,
         // we'd like to EventHandler::handleMousePressEvent to pass the event to the widget and thus the
         // event target node can't still be the shadow node.
-        if (is<ShadowRoot>(mouseEvent.targetNode()) && is<HTMLInputElement>(downcast<ShadowRoot>(*mouseEvent.targetNode()).hostElement()))
+        if (is<ShadowRoot>(*mouseEvent.targetNode()) && is<HTMLInputElement>(*downcast<ShadowRoot>(*mouseEvent.targetNode()).hostElement()))
             mouseEvent = m_frame.document()->prepareMouseEvent(HitTestRequest(), documentPoint, platformMouseEvent);
 
         FrameView* view = m_frame.view();
@@ -1835,6 +1839,9 @@ bool EventHandler::mouseMoved(const PlatformMouseEvent& event)
 {
     RefPtr<FrameView> protector(m_frame.view());
     MaximumDurationTracker maxDurationTracker(&m_maxMouseMovedDuration);
+
+    if (m_frame.mainFrame().pageOverlayController().handleMouseEvent(event))
+        return true;
 
     HitTestResult hoveredNode = HitTestResult(LayoutPoint());
     bool result = handleMouseMoveEvent(event, &hoveredNode);
@@ -2019,6 +2026,9 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& platformMou
 
     m_frame.selection().setCaretBlinkingSuspended(false);
 
+    if (m_frame.mainFrame().pageOverlayController().handleMouseEvent(platformMouseEvent))
+        return true;
+
 #if ENABLE(TOUCH_EVENTS)
     bool defaultPrevented = dispatchSyntheticTouchEventIfEnabled(platformMouseEvent);
     if (defaultPrevented)
@@ -2141,7 +2151,7 @@ bool EventHandler::dispatchDragEvent(const AtomicString& eventType, Element& dra
 
 static bool targetIsFrame(Node* target, Frame*& frame)
 {
-    if (!target || !is<HTMLFrameElementBase>(target))
+    if (!is<HTMLFrameElementBase>(target))
         return false;
 
     frame = downcast<HTMLFrameElementBase>(*target).contentFrame();
@@ -2186,7 +2196,8 @@ static bool hasDropZoneType(DataTransfer& dataTransfer, const String& keyword)
 
 static bool findDropZone(Node* target, DataTransfer* dataTransfer)
 {
-    Element* element = is<Element>(target) ? downcast<Element>(target) : target->parentElement();
+    ASSERT(target);
+    Element* element = is<Element>(*target) ? downcast<Element>(target) : target->parentElement();
     for (; element; element = element->parentElement()) {
         bool matched = false;
         String dropZoneStr = element->fastGetAttribute(webkitdropzoneAttr);
@@ -2233,7 +2244,7 @@ bool EventHandler::updateDragAndDrop(const PlatformMouseEvent& event, DataTransf
     RefPtr<Element> newTarget;
     if (Node* targetNode = mouseEvent.targetNode()) {
         // Drag events should never go to non-element nodes (following IE, and proper mouseover/out dispatch)
-        if (!is<Element>(targetNode))
+        if (!is<Element>(*targetNode))
             newTarget = targetNode->parentOrShadowHostElement();
         else
             newTarget = downcast<Element>(targetNode);
@@ -2394,7 +2405,7 @@ void EventHandler::updateMouseEventTargetNode(Node* targetNode, const PlatformMo
         targetElement = m_capturingMouseEventsElement.get();
     else if (targetNode) {
         // If the target node is a non-element, dispatch on the parent. <rdar://problem/4196646>
-        if (!is<Element>(targetNode))
+        if (!is<Element>(*targetNode))
             targetElement = targetNode->parentOrShadowHostElement();
         else
             targetElement = downcast<Element>(targetNode);
@@ -3523,7 +3534,7 @@ bool EventHandler::handleTextInputEvent(const String& text, Event* underlyingEve
 {
     // Platforms should differentiate real commands like selectAll from text input in disguise (like insertNewline),
     // and avoid dispatching text input events from keydown default handlers.
-    ASSERT(!underlyingEvent || !underlyingEvent->isKeyboardEvent() || toKeyboardEvent(underlyingEvent)->type() == eventNames().keypressEvent);
+    ASSERT(!is<KeyboardEvent>(underlyingEvent) || downcast<KeyboardEvent>(*underlyingEvent).type() == eventNames().keypressEvent);
 
     EventTarget* target;
     if (underlyingEvent)

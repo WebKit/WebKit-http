@@ -63,15 +63,6 @@ void JIT::emit_op_mov(Instruction* currentInstruction)
     emitPutVirtualRegister(dst);
 }
 
-void JIT::emit_op_captured_mov(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
-
-    emitGetVirtualRegister(src, regT0);
-    emitNotifyWrite(regT0, regT1, currentInstruction[3].u.watchpointSet);
-    emitPutVirtualRegister(dst);
-}
 
 void JIT::emit_op_end(Instruction* currentInstruction)
 {
@@ -233,22 +224,13 @@ void JIT::emit_op_is_string(Instruction* currentInstruction)
     emitPutVirtualRegister(dst);
 }
 
-void JIT::emit_op_tear_off_lexical_environment(Instruction* currentInstruction)
-{
-    int lexicalEnvironment = currentInstruction[1].u.operand;
-    Jump activationNotCreated = branchTest64(Zero, addressFor(lexicalEnvironment));
-    emitGetVirtualRegister(lexicalEnvironment, regT0);
-    callOperation(operationTearOffActivation, regT0);
-    activationNotCreated.link(this);
-}
-
 void JIT::emit_op_tear_off_arguments(Instruction* currentInstruction)
 {
     int arguments = currentInstruction[1].u.operand;
     int lexicalEnvironment = currentInstruction[2].u.operand;
 
-    Jump argsNotCreated = branchTest64(Zero, Address(callFrameRegister, sizeof(Register) * (unmodifiedArgumentsRegister(VirtualRegister(arguments)).offset())));
-    emitGetVirtualRegister(unmodifiedArgumentsRegister(VirtualRegister(arguments)).offset(), regT0);
+    Jump argsNotCreated = branchTest64(Zero, Address(callFrameRegister, sizeof(Register) * (VirtualRegister(arguments).offset())));
+    emitGetVirtualRegister(VirtualRegister(arguments).offset(), regT0);
     emitGetVirtualRegister(lexicalEnvironment, regT1);
     callOperation(operationTearOffArguments, regT0, regT1);
     argsNotCreated.link(this);
@@ -525,7 +507,7 @@ void JIT::emit_op_to_number(Instruction* currentInstruction)
 void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
     emitGetVirtualRegister(currentInstruction[2].u.operand, regT0);
-    callOperation(operationPushNameScope, &m_codeBlock->identifier(currentInstruction[1].u.operand), regT0, currentInstruction[3].u.operand);
+    callOperation(operationPushNameScope, &m_codeBlock->identifier(currentInstruction[1].u.operand), regT0, currentInstruction[3].u.operand, currentInstruction[4].u.operand);
 }
 
 void JIT::emit_op_catch(Instruction* currentInstruction)
@@ -1098,19 +1080,6 @@ void JIT::emit_op_new_array_buffer(Instruction* currentInstruction)
     int size = currentInstruction[3].u.operand;
     const JSValue* values = codeBlock()->constantBuffer(valuesIndex);
     callOperation(operationNewArrayBufferWithProfile, dst, currentInstruction[4].u.arrayAllocationProfile, values, size);
-}
-
-void JIT::emitSlow_op_captured_mov(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    VariableWatchpointSet* set = currentInstruction[3].u.watchpointSet;
-    if (!set || set->state() == IsInvalidated)
-        return;
-#if USE(JSVALUE32_64)
-    linkSlowCase(iter);
-#endif
-    linkSlowCase(iter);
-    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_captured_mov);
-    slowPathCall.call();
 }
 
 #if USE(JSVALUE64)

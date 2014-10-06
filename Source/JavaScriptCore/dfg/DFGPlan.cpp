@@ -54,6 +54,7 @@
 #include "DFGPhantomRemovalPhase.h"
 #include "DFGPredictionInjectionPhase.h"
 #include "DFGPredictionPropagationPhase.h"
+#include "DFGPutLocalSinkingPhase.h"
 #include "DFGResurrectionForValidationPhase.h"
 #include "DFGSSAConversionPhase.h"
 #include "DFGSSALoweringPhase.h"
@@ -322,6 +323,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performCPSRethreading(dfg);
         performSSAConversion(dfg);
         performSSALowering(dfg);
+        performPutLocalSinking(dfg);
         performGlobalCSE(dfg);
         performLivenessAnalysis(dfg);
         performCFA(dfg);
@@ -329,8 +331,10 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performPhantomCanonicalization(dfg); // Reduce the graph size a lot.
         changed = false;
         changed |= performStrengthReduction(dfg);
-        changed |= performCriticalEdgeBreaking(dfg);
-        changed |= performObjectAllocationSinking(dfg);
+        if (Options::enableObjectAllocationSinking()) {
+            changed |= performCriticalEdgeBreaking(dfg);
+            changed |= performObjectAllocationSinking(dfg);
+        }
         if (changed) {
             // State-at-tail and state-at-head will be invalid if we did strength reduction since
             // it might increase live ranges.
@@ -353,7 +357,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performCFA(dfg);
         if (Options::validateFTLOSRExitLiveness())
             performResurrectionForValidation(dfg);
-        performDCE(dfg); // We rely on this to convert dead SetLocals into the appropriate hint, and to kill dead code that won't be recognized as dead by LLVM.
+        performDCE(dfg); // We rely on this to kill dead code that won't be recognized as dead by LLVM.
         performStackLayout(dfg);
         performLivenessAnalysis(dfg);
         performOSRAvailabilityAnalysis(dfg);
