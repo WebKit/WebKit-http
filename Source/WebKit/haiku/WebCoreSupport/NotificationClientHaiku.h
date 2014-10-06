@@ -36,7 +36,7 @@ namespace WebCore {
 
 class NotificationClientHaiku: public NotificationClient {
 public:
-    NotificationClientHaiku(BWebPage* page) {}
+    NotificationClientHaiku(BWebPage*) {}
 
     bool show(Notification* descriptor) override {
         BNotification notification(B_INFORMATION_NOTIFICATION);

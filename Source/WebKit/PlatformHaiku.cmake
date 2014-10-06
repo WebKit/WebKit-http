@@ -58,7 +58,7 @@ LIST(APPEND WebKit_LIBRARIES
     ${PNG_LIBRARY}
     ${JPEG_LIBRARY}
     ${CMAKE_DL_LIBS}
-    be bnetapi translation tracker
+    be bnetapi shared translation tracker
 )
 
 INSTALL(FILES

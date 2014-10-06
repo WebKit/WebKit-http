@@ -43,7 +43,7 @@ public:
     void contextMenuDestroyed() override;
 
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-    PassOwnPtr<ContextMenu> customizeMenu(PassOwnPtr<ContextMenu>) override;
+    std::unique_ptr<ContextMenu> customizeMenu(std::unique_ptr<ContextMenu>) override;
 #else
     PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) override;
 #endif

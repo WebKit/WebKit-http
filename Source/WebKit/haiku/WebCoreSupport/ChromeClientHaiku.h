@@ -97,7 +97,7 @@ namespace WebCore {
         void runJavaScriptAlert(Frame*, const String&) override;
         bool runJavaScriptConfirm(Frame*, const String&) override;
         bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
-        PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
+        std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
         PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) override;
 #endif
@@ -121,6 +121,7 @@ namespace WebCore {
         PlatformPageClient platformPageClient() const override;
         void contentsSizeChanged(Frame*, const IntSize&) const override;
         void scrollRectIntoView(const IntRect&) const override;
+        void attachViewOverlayGraphicsLayer(WebCore::Frame* frame, WebCore::GraphicsLayer* layer) override;
 
         void scrollbarsModeDidChange() const override { }
         void setCursor(const Cursor&) override ;

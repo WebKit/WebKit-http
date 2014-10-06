@@ -55,7 +55,7 @@ void ContextMenuClientHaiku::contextMenuDestroyed()
 }
 
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-PassOwnPtr<ContextMenu> ContextMenuClientHaiku::customizeMenu(PassOwnPtr<ContextMenu> menu)
+std::unique_ptr<ContextMenu> ContextMenuClientHaiku::customizeMenu(std::unique_ptr<ContextMenu> menu)
 {
     // We can add items to the menu here.
     return menu;

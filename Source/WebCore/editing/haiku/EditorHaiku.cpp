@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2014 Haiku, Inc.
  *
  * All rights reserved.
  *
@@ -28,16 +28,22 @@
 #include "config.h"
 #include "Editor.h"
 
-#include "Clipboard.h"
-#include "ClipboardAccessPolicy.h"
-#include "ClipboardHaiku.h"
+#include "DocumentFragment.h"
+#include "NotImplemented.h"
+#include "Pasteboard.h"
+#include <wtf/PassRefPtr.h>
 
 
 namespace WebCore {
 
-PassRefPtr<Clipboard> Editor::newGeneralClipboard(ClipboardAccessPolicy policy, Frame* frame)
+void Editor::pasteWithPasteboard(Pasteboard*, bool, MailBlockquoteHandling)
 {
-    return ClipboardHaiku::create(policy, frame, Clipboard::CopyAndPaste);
+    notImplemented();
+}
+
+PassRefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard&, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)
+{
+    return nullptr;
 }
 
 } // namespace WebCore

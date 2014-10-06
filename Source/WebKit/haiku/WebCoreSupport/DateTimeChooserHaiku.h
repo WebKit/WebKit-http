@@ -33,6 +33,7 @@
 #include <LocaleRoster.h>
 #include <MenuField.h>
 #include <MenuItem.h>
+#include <SeparatorView.h>
 #include <TextControl.h>
 
 namespace WebCore {
@@ -46,12 +47,25 @@ public:
             B_NOT_RESIZABLE | B_NOT_ZOOMABLE | B_AUTO_UPDATE_SIZE_LIMITS)
         , m_client(client)
     {
-        SetLayout(new BGroupLayout(B_HORIZONTAL));
-        BGroupView* group = new BGroupView(B_VERTICAL);
+        BGroupLayout* root = new BGroupLayout(B_VERTICAL);
+        root->SetSpacing(0);
+        SetLayout(root);
+        BGroupView* group = new BGroupView(B_HORIZONTAL);
         group->SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+        group->GroupLayout()->SetInsets(5, 5, 5, 5);
+        AddChild(group);
 
         BButton* ok = new BButton("ok", "Done", new BMessage('done'));
         BButton* cancel = new BButton("cancel", "Cancel", new BMessage('canc'));
+
+        BGroupView* bottomGroup = new BGroupView(B_HORIZONTAL);
+        bottomGroup->SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+        BGroupLayoutBuilder(bottomGroup)
+            .SetInsets(5, 5, 5, 5)
+            .AddGlue()
+            .Add(cancel)
+            .Add(ok);
+        AddChild(bottomGroup);
 
         // TODO handle params.type to decide what to include in the window
         // (may be only a month, or so - but should we use a popup menu in that
@@ -68,44 +82,83 @@ public:
         // TODO we should also handle the list of suggestions from the params
         // (probably as a BMenuField), and the min, max, and step values.
 
-        BMenu* monthMenu = new BMenu("month");
-        m_yearControl = new BTextControl("year", NULL, NULL, new BMessage('yech'));
-        monthMenu->SetLabelFromMarked(true);
+        if (params.type == InputTypeNames::datetime() 
+                || params.type == InputTypeNames::datetimelocal()
+                || params.type == InputTypeNames::date()
+                || params.type == InputTypeNames::week()
+                || params.type == InputTypeNames::month()) {
+            BMenu* monthMenu = new BMenu("month");
+            m_yearControl = new BTextControl("year", NULL, NULL,
+                new BMessage('yech'));
+            monthMenu->SetLabelFromMarked(true);
 
-        BString out;
-        BDateFormat format(*BDateFormat::Default());
-        format.SetDateFormat(B_SHORT_DATE_FORMAT, "LLLL");
+            BString out;
+            BDateFormat format;
+            format.SetDateFormat(B_SHORT_DATE_FORMAT, "LLLL");
 
-        for (int i = 1; i <= 12; i++) {
-            BDate date(1970, i, 1);
-            format.Format(out, date, B_SHORT_DATE_FORMAT);
-            BMessage* message = new BMessage('moch');
-            message->AddInt32("month", i);
-            monthMenu->AddItem(new BMenuItem(out, message));
+            for (int i = 1; i <= 12; i++) {
+                BDate date(1970, i, 1);
+                format.Format(out, date, B_SHORT_DATE_FORMAT);
+                BMessage* message = new BMessage('moch');
+                message->AddInt32("month", i);
+                monthMenu->AddItem(new BMenuItem(out, message));
+            }
+
+            BGroupLayoutBuilder(group)
+                .AddGroup(B_VERTICAL)
+                    .AddGroup(B_HORIZONTAL)
+                        .Add(new BMenuField(NULL, monthMenu))
+                        .Add(m_yearControl)
+                    .End()
+                    .Add(m_calendar = new BPrivate::BCalendarView("Date"))
+                .End()
+            .End();
+
+            format.SetDateFormat(B_LONG_DATE_FORMAT, "YYYY");
+            format.Format(out, m_calendar->Date(), B_LONG_DATE_FORMAT);
+            m_yearControl->SetText(out.String());
+
+            monthMenu->ItemAt(m_calendar->Date().Month() - 1)->SetMarked(true);
         }
 
-        BGroupLayoutBuilder(group)
-            .SetInsets(5, 5, 5, 5)
-            .AddGroup(B_HORIZONTAL)
-                .Add(new BMenuField(NULL, monthMenu))
-                .Add(m_yearControl)
-            .End()
-            .Add(m_calendar = new BPrivate::BCalendarView("Date"))
-            .AddGroup(B_HORIZONTAL)
-                .AddGlue()
-                .Add(cancel)
-                .Add(ok)
-            .End()
-        .End();
-        AddChild(group);
+        if (params.type == InputTypeNames::datetime() 
+                || params.type == InputTypeNames::datetimelocal())
+           group->AddChild(new BSeparatorView(B_VERTICAL));
 
-        format.SetDateFormat(B_LONG_DATE_FORMAT, "YYYY");
-        format.Format(out, m_calendar->Date(), B_LONG_DATE_FORMAT);
-        m_yearControl->SetText(out.String());
+        if (params.type == InputTypeNames::datetime() 
+                || params.type == InputTypeNames::datetimelocal()
+                || params.type == InputTypeNames::time()) {
+            BMenu* hourMenu = new BMenu("hour");
+            hourMenu->SetLabelFromMarked(true);
+            BMenu* minuteMenu = new BMenu("minute");
+            minuteMenu->SetLabelFromMarked(true);
 
-        monthMenu->ItemAt(m_calendar->Date().Month() - 1)->SetMarked(true);
+            for (int i = 0; i <= 24; i++) {
+                BString label;
+                label << i; // TODO we could be more locale safe here
+                hourMenu->AddItem(new BMenuItem(label, NULL));
+            }
+
+            hourMenu->ItemAt(0)->SetMarked(true); // TODO select the right one
+
+            for (int i = 0; i <= 60; i++) {
+                BString label;
+                label << i; // TODO we could be more locale safe here
+                minuteMenu->AddItem(new BMenuItem(label, NULL));
+            }
+
+            minuteMenu->ItemAt(0)->SetMarked(true); // TODO select the right one
+
+            BGroupLayoutBuilder(group)
+                .AddGroup(B_VERTICAL)
+                    .AddGroup(B_HORIZONTAL)
+                        .Add(new BMenuField(NULL, hourMenu))
+                        .Add(new BMenuField(NULL, minuteMenu))
+                        .AddGlue();
+        }
 
         // Now show only the relevant parts of the window depending on the type
+        // and configure the output format
         if (params.type == InputTypeNames::month()) {
             m_format = "YYYY-MM";
             m_calendar->Hide();
@@ -115,7 +168,6 @@ public:
             // TODO week, time, datetime, datetime-local
         }
 
-        //AddChild(new BSeparatorView(B_VERTICAL);
     }
 
     void Hide() override {

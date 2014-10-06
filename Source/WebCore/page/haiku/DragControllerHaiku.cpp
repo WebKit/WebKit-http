@@ -81,11 +81,5 @@ void DragController::declareAndWriteDragImage(DataTransfer& /*clipboard*/, Eleme
     notImplemented();
 }
 
-WTF::PassRefPtr<WebCore::DocumentFragment> 
-DragController::createFragmentFromDragData(DragData&, Frame&, Range&, bool, bool&)
-{
-    notImplemented();
-}
-
 } // namespace WebCore
 

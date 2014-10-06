@@ -285,10 +285,10 @@ bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& /*message*/, c
 }
 
 
-PassOwnPtr<ColorChooser> ChromeClientHaiku::createColorChooser(
+std::unique_ptr<ColorChooser> ChromeClientHaiku::createColorChooser(
     ColorChooserClient* client, const Color& color)
 {
-    return adoptPtr(new ColorChooserHaiku(client, color));
+    return std::make_unique<ColorChooserHaiku>(client, color);
 }
 
 
@@ -335,7 +335,7 @@ void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect)
     m_webPage->draw(BRect(rect));
 }
 
-void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect)
+void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect&)
 {
 	// We can ignore this, since we implement fast scrolling.
 }
@@ -384,7 +384,7 @@ PlatformPageClient ChromeClientHaiku::platformPageClient() const
     return m_webView;
 }
 
-void ChromeClientHaiku::contentsSizeChanged(Frame*, const IntSize& size) const
+void ChromeClientHaiku::contentsSizeChanged(Frame*, const IntSize&) const
 {
 }
 
@@ -527,6 +527,12 @@ bool ChromeClientHaiku::isPointerLocked() {
 void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* layer)
 {
     m_webView->SetRootLayer(layer);
+}
+
+void ChromeClientHaiku::attachViewOverlayGraphicsLayer(Frame*, GraphicsLayer*)
+{
+    // FIXME: If we want view-relative page overlays, this would be the place to hook them up.
+    notImplemented();
 }
 
 void ChromeClientHaiku::setNeedsOneShotDrawingSynchronization()
