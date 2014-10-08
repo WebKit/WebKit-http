@@ -4,12 +4,11 @@
 *.pyc
 .DS_Store
 .directory
-generated
-DerivedSources
+build/
+/WebKitBuild/
 autoinstall.cache.d
 project.xcworkspace
 xcuserdata
-BuildInfo.h
 
 # Ignore auto-generated files by VS2005 and VS2010.
 *.vcproj.*.user
