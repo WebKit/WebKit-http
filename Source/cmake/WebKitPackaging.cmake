@@ -47,7 +47,7 @@ if (NOT DEFINED CPACK_SOURCE_IGNORE_FILES)
         "Makefile"
         # - XCode (Mac)
         "\\\\.xcodeproj"
-        #"\\\\.xcconfig" # We extract the WebKit version from there.
+        "\\\\.xcconfig"
         # - GYP
         "\\\\.gyp"
         # - QMake (Qt)

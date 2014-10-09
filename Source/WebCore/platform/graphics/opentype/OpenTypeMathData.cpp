@@ -33,8 +33,6 @@
 #include "SharedBuffer.h"
 #include "SimpleFontData.h"
 
-#include "SharedBuffer.h"
-
 using namespace std;
 
 namespace WebCore {

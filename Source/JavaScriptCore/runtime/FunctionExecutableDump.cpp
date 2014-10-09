@@ -28,8 +28,6 @@
 
 #include "CodeBlock.h"
 
-#include "JSCellInlines.h"
-
 namespace JSC {
 
 void FunctionExecutableDump::dump(PrintStream& out) const
