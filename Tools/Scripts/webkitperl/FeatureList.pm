@@ -270,7 +270,7 @@ my @features = (
       define => "ENABLE_INPUT_TYPE_MONTH", default => isHaiku(), value => \$inputTypeMonthSupport },
 
     { option => "input-type-time", desc => "Toggle Input Type Time support",
-      define => "ENABLE_INPUT_TYPE_TIME", default => 0, value => \$inputTypeTimeSupport },
+      define => "ENABLE_INPUT_TYPE_TIME", default => isHaiku(), value => \$inputTypeTimeSupport },
 
     { option => "input-type-week", desc => "Toggle Input Type Week support",
       define => "ENABLE_INPUT_TYPE_WEEK", default => 0, value => \$inputTypeWeekSupport },
