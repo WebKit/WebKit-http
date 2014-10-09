@@ -204,6 +204,7 @@ Page::Page(PageClients& pageClients)
     , m_visitedLinkStore(WTF::move(pageClients.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
+    , m_isPlayingAudio(false)
 {
     ASSERT(m_editorClient);
     
@@ -743,7 +744,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
                 view->setScrollPosition(origin);
 #if USE(TILED_BACKING_STORE)
             else
-                view->hostWindow()->delegatedScrollRequested(origin);
+                view->requestScrollPositionUpdate(origin);
 #endif
         }
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -775,12 +776,12 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
     if (view && view->scrollPosition() != origin) {
         if (!m_settings->delegatesPageScaling() && document->renderView() && document->renderView()->needsLayout() && view->didFirstLayout())
             view->layout();
-        
+
         if (!view->delegatesScrolling())
             view->setScrollPosition(origin);
 #if USE(TILED_BACKING_STORE)
         else
-            view->hostWindow()->delegatedScrollRequested(origin);
+            view->requestScrollPositionUpdate(origin);
 #endif
     }
 
@@ -1190,6 +1191,24 @@ void Page::enableLegacyPrivateBrowsing(bool privateBrowsingEnabled)
     ASSERT(m_sessionID == SessionID::defaultSessionID() || m_sessionID == SessionID::legacyPrivateSessionID());
 
     setSessionID(privateBrowsingEnabled ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID());
+}
+
+void Page::updateIsPlayingAudio()
+{
+    bool isPlayingAudio = false;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (frame->document()->isPlayingAudio()) {
+            isPlayingAudio = true;
+            break;
+        }
+    }
+
+    if (isPlayingAudio == m_isPlayingAudio)
+        return;
+
+    m_isPlayingAudio = isPlayingAudio;
+
+    chrome().client().isPlayingAudioDidChange(m_isPlayingAudio);
 }
 
 #if !ASSERT_DISABLED

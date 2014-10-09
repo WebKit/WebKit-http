@@ -1,3 +1,29 @@
+2014-10-07  Christophe Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for RenderText / RenderTextFragment
+        https://bugs.webkit.org/show_bug.cgi?id=137476
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebRenderNode.mm:
+        (copyRenderNode):
+
+2014-10-06  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        * Misc/WebCache.mm:
+        (+[WebCache imageForURL:]):
+
+2014-10-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed build fix after r174333.
+
+        Forgot explicit WebCore:: namespace.
+
+        * Misc/WebCache.mm:
+        (+[WebCache imageForURL:]):
+
 2014-10-05  Christophe Dumez  <cdumez@apple.com>
 
         Use is<>() / downcast<>() for CachedResource subclasses

@@ -446,6 +446,7 @@ public:
             , shareResources(true)
             , preferDiscreteGPU(false)
             , forceSoftwareRenderer(false)
+            , devicePixelRatio(1)
         {
         }
 
@@ -459,6 +460,7 @@ public:
         bool shareResources;
         bool preferDiscreteGPU;
         bool forceSoftwareRenderer;
+        float devicePixelRatio;
     };
 
     enum RenderStyle {

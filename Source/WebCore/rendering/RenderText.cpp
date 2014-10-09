@@ -35,6 +35,7 @@
 #include "Range.h"
 #include "RenderBlock.h"
 #include "RenderCombineText.h"
+#include "RenderInline.h"
 #include "RenderLayer.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -961,13 +962,13 @@ void RenderText::setTextWithOffset(const String& text, unsigned offset, unsigned
     setText(text, force || m_linesDirty);
 }
 
-static inline bool isInlineFlowOrEmptyText(const RenderObject* o)
+static inline bool isInlineFlowOrEmptyText(const RenderObject& renderer)
 {
-    if (o->isRenderInline())
+    if (is<RenderInline>(renderer))
         return true;
-    if (!o->isText())
+    if (!is<RenderText>(renderer))
         return false;
-    StringImpl* text = toRenderText(o)->text();
+    StringImpl* text = downcast<RenderText>(renderer).text();
     if (!text)
         return true;
     return !text->length();
@@ -978,12 +979,13 @@ UChar RenderText::previousCharacter() const
     // find previous text renderer if one exists
     const RenderObject* previousText = this;
     while ((previousText = previousText->previousInPreOrder()))
-        if (!isInlineFlowOrEmptyText(previousText))
+        if (!isInlineFlowOrEmptyText(*previousText))
             break;
     UChar prev = ' ';
-    if (previousText && previousText->isText())
-        if (StringImpl* previousString = toRenderText(previousText)->text())
+    if (is<RenderText>(previousText)) {
+        if (StringImpl* previousString = downcast<RenderText>(*previousText).text())
             prev = (*previousString)[previousString->length() - 1];
+    }
     return prev;
 }
 
@@ -1527,6 +1529,13 @@ void RenderText::momentarilyRevealLastTypedCharacter(unsigned lastTypedCharacter
 
 StringView RenderText::stringView(int start, int stop) const
 {
+    if (stop == -1)
+        stop = textLength();
+    ASSERT(static_cast<unsigned>(start) <= length());
+    ASSERT(static_cast<unsigned>(stop) <= length());
+    ASSERT(start <= stop);
+    ASSERT(start >= 0);
+    ASSERT(stop >= 0);
     if (is8Bit())
         return StringView(characters8() + start, stop - start);
     return StringView(characters16() + start, stop - start);

@@ -115,12 +115,10 @@ TEST_F(EWK2ContextTest, ewk_context_storage_manager_get)
 
 TEST_F(EWK2ContextTest, ewk_context_url_scheme_register)
 {
-#if ENABLE(CUSTOM_PROTOCOL)
-    ewk_context_url_scheme_register(ewk_view_context_get(webView()), "fooscheme", schemeRequestCallback, 0);
+    ewk_context_url_scheme_register(ewk_view_context_get(webView()), "fooscheme", schemeRequestCallback, nullptr);
     ewk_view_url_set(webView(), "fooscheme:MyPath");
 
     ASSERT_TRUE(waitUntilTrue(finishTest, testTimeoutSeconds));
-#endif
 }
 
 TEST_F(EWK2ContextTest, ewk_context_cache_model)
@@ -230,9 +228,9 @@ TEST_F(EWK2ContextTest, ewk_context_new)
     ewk_object_unref(context);
 }
 
-TEST_F(EWK2ContextTest, ewk_context_new_with_extensions_path)
+TEST_F(EWK2ContextTest, ewk_context_new_with_injected_bundle_path)
 {
-    Ewk_Context* context = ewk_context_new_with_extensions_path(environment->extensionSample());
+    Ewk_Context* context = ewk_context_new_with_injected_bundle_path(environment->injectedBundleSample());
     ASSERT_TRUE(context);
     ewk_object_unref(context);
 }

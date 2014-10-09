@@ -53,6 +53,12 @@ public:
 
     virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const override final;
 
+    virtual IntRect borderBoundingBox() const override final
+    {
+        IntRect boundingBox = linesBoundingBox();
+        return IntRect(0, 0, boundingBox.width(), boundingBox.height());
+    }
+
     IntRect linesBoundingBox() const;
     LayoutRect linesVisualOverflowBoundingBox() const;
     LayoutRect linesVisualOverflowBoundingBoxInRegion(const RenderRegion*) const;
@@ -148,12 +154,6 @@ private:
 
     virtual LayoutRect frameRectForStickyPositioning() const override final { return linesBoundingBox(); }
 
-    virtual IntRect borderBoundingBox() const override final
-    {
-        IntRect boundingBox = linesBoundingBox();
-        return IntRect(0, 0, boundingBox.width(), boundingBox.height());
-    }
-
     virtual std::unique_ptr<InlineFlowBox> createInlineFlowBox(); // Subclassed by RenderSVGInline
 
     virtual void dirtyLinesFromChangedChild(RenderObject* child) override final { m_lineBoxes.dirtyLinesFromChangedChild(this, child); }
@@ -183,5 +183,7 @@ private:
 RENDER_OBJECT_TYPE_CASTS(RenderInline, isRenderInline())
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderInline, isRenderInline())
 
 #endif // RenderInline_h

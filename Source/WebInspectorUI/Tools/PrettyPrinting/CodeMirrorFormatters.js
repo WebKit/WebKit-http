@@ -322,8 +322,15 @@ CodeMirror.extendMode("css", {
                 return true;
             if (lastContent === ":") // Space in "prop: value" but not in a selectors "a:link" or "div::after" or media queries "(max-device-width:480px)".
                 return state.state === "prop";
-            if (lastContent === ")" && (content !== ")" && content !== ",")) // Space in "not(foo)and" but not at the end of "not(not(foo))"
-                return state.state === "media" || state.state === "media_parens";
+            if (lastContent === ")" && (content !== ")" && content !== ",")) {
+                if (token === "number") // linear-gradient(rgb(...)0%,rgb(...)100%)
+                    return true;
+                if (state.state === "prop") // -webkit-transform:rotate(...)translate(...);
+                    return true;
+                if (state.state === "media" || state.state === "media_parens") // Space in "not(foo)and" but not at the end of "not(not(foo))" 
+                    return true;
+                return false; // color: rgb(...);
+            }
             return ">+~-*/".indexOf(lastContent) >= 0; // calc() expression or child/sibling selectors
         }
 
@@ -400,7 +407,7 @@ CodeMirror.extendMode("css", {
         // In order insert newlines in selector lists we need keep track of the length of the current line.
         // This isn't exact line length, only the builder knows that, but it is good enough to get an idea.
         // If we are at a top level, keep track of the current line length, otherwise we reset to 0.
-        if (state.state === "top" || state.state === "media")
+        if (!isComment && (state.state === "top" || state.state === "media" || state.state === "pseudo"))
             state._cssPrettyPrint.lineLength += content.length;
         else
             state._cssPrettyPrint.lineLength = 0;

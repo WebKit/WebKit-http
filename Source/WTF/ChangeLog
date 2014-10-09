@@ -1,3 +1,184 @@
+2014-10-08  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Enable JIT on 32-bit.
+        https://bugs.webkit.org/show_bug.cgi?id=137521
+
+        Reviewed by Mark Lam.
+
+        Enable JIT on Windows 32-bit, but disable it at runtime if SSE2 is not present.
+
+        * wtf/Platform.h:
+
+2014-10-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Resolve warnings about missing __has_include macro under MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=137524
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h: Provide a dummy implementation of __has_include that
+        avoids the warning without changing compile behavior.
+
+2014-10-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Resolve some MSVC static analyzer warnings
+        https://bugs.webkit.org/show_bug.cgi?id=137504
+
+        Reviewed by Dean Jackson.
+
+        * wtf/GregorianDateTime.cpp:
+        (WTF::GregorianDateTime::setToCurrentLocalTime): Properly handle
+        possible timezone error case.
+        * wtf/OSAllocatorWin.cpp:
+        (WTF::OSAllocator::decommit): Silence a spurious warning about using
+        MEM_DECOMMIT instead of MEM_RELEASE.
+        * wtf/ThreadingWin.cpp: Silence a spurious warning about how the
+        tryLock method is implemented.
+
+2014-10-07  Christophe Dumez  <cdumez@apple.com>
+
+        [WK2] Use is<>() / downcast<>() for DrawingAreaProxy subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137477
+
+        Reviewed by Andreas Kling.
+
+        Rename wtf/cf/TypeCasts.h to wtf/cf/TypeCastsCF.h to avoid conflict
+        with wtf/TypeCasts.h. They were using the same #ifndef guard and it
+        was causing problems when both were included in the same context.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/cf/TypeCastsCF.h: Renamed from Source/WTF/wtf/cf/TypeCasts.h.
+        (WTF::dynamic_cf_cast):
+        (WTF::checked_cf_cast):
+
+2014-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the Mountain Lion build.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::underlyingStringIsValid):
+        (WTF::StringView::setUnderlyingString):
+        (WTF::StringView::invalidate):
+
+2014-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Use "1", not "true".
+
+        * wtf/text/StringView.h:
+
+2014-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Temporarily disable the StringView lifetime checking.
+
+        * wtf/text/StringView.h:
+
+2014-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Another build fix attempt.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::UnderlyingString::UnderlyingString):
+
+2014-10-07  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the Windows build.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::UnderlyingString::UnderlyingString):
+
+2014-10-06  Darin Adler  <darin@apple.com>
+
+        Make StringView check the lifetime of the StringImpl it's created from
+        https://bugs.webkit.org/show_bug.cgi?id=137202
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.vcxproj/WTF.vcxproj: Added StringView.cpp.
+        * WTF.vcxproj/WTF.vcxproj.filters: Added StringView.cpp.
+        * WTF.xcodeproj/project.pbxproj: Added StringView.cpp.
+        * wtf/CMakeLists.txt: Added StringView.cpp.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl): Call StringView::invalidate.
+
+        * wtf/text/StringView.cpp: Added.
+        (WTF::underlyingStrings): Returns map from StringImpl to the underlying
+        string object used by StringView to track validity.
+        (WTF::StringView::invalidate): Mark the underlying string object invalid,
+        and remove it from the map, so any future StringImpl will get a new one,
+        even if it has the same pointer.
+        (WTF::StringView::underlyingStringIsValid): Return true only if the
+        underlying string is still valid.
+        (WTF::StringView::setUnderlyingString): Create and manage reference counts
+        of underlying string objects as needed.
+
+        * wtf/text/StringView.h: Moved function bodies out of the class definition,
+        so we can now read a clean class definition to see the class design and what
+        functions it offers.
+        (WTF::StringView::StringView): Added a comment to the default constructor.
+        Also added copy and move constructors so they can call setUnderlyingString
+        and assert the underlying string is valid as needed, replacing the
+        compiler-generated ones.
+        (WTF::StringView::~StringView): Added a call to setUnderlyingString.
+        (WTF::StringView::operator=): Added these assignment operators with the same
+        job as the constructors above.
+        (WTF::StringView::initialize): Added a comment.
+        (WTF::StringView::characters8): Added an assertion that the underlying
+        string is valid.
+        (WTF::StringView::characters16): Ditto.
+        (WTF::StringView::substring): Added code to propagate the underlying string
+        from the original string to the substring.
+        (WTF::StringView::invalidate): Inline empty version of this function for
+        non-debug builds.
+        (WTF::StringView::underlyingStringIsValid): Ditto.
+        (WTF::StringView::setUnderlyingString): Ditto.
+
+2014-10-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] DateMath's calculateUTFOffset does not account for DST.
+        https://bugs.webkit.org/show_bug.cgi?id=137458
+        <rdar://problem/18559172>
+
+        Reviewed by Geoffrey Garen.
+
+        Check the return value of GetTimeZoneInformation and use the
+        proper bias against UTC (depending on whether we are in daylight
+        savings time, or standard time).
+
+        Also, handle possible error cases in the FileTimeToSystemTime
+        and SystemTimeToTzSpecificLocalTime, rather than using potentially
+        uninitialized values.
+
+        * wtf/DateMath.cpp:
+        (WTF::calculateUTCOffset): Use proper daylight-savings-time state.
+        (WTF::calculateDSTOffset): Avoid uninitialized data due to failing
+        API calls.
+
+2014-10-06  Christophe Dumez  <cdumez@apple.com>
+
+        Add is<>() / downcast<>() support for RenderObject subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137424
+
+        Reviewed by Benjamin Poulain.
+
+        Handle correctly calling TypeCastTraits<ExpectedType, ArgType>::isOfType(ArgType&)
+        with ExpectedType being a base class of ArgType (or the same as ArgType). The
+        previous template specialization was only meant to support the case where
+        ExpectedType is the same as ArgType but even that wasn't working as the compiler
+        would complain about ambiguous partial specializations. Since this is needed by
+        RenderTraversal functions, this patch adds an extra isBaseType template parameter
+        to TypeCastTraits to resolve the ambiguity and relies on std::is_base_of for the
+        detection.
+
+        * wtf/TypeCasts.h:
+
+2014-10-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Project file gardening.
+
+        * WTF.vcxproj/WTF.vcxproj.filters: Move HashMethod.h and
+        FastBitVector.cpp to proper places in hierarchy.
+
 2014-10-04  Brian J. Burg  <burg@cs.washington.edu>
 
         Unreviewed, rolling out r174319.

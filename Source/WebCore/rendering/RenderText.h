@@ -156,7 +156,7 @@ public:
     void deleteLineBoxesBeforeSimpleLineLayout();
     const SimpleLineLayout::Layout* simpleLineLayout() const;
 
-    StringView stringView(int start, int stop) const;
+    StringView stringView(int start = 0, int stop = -1) const;
 
 protected:
     virtual void computePreferredLogicalWidths(float leadWidth);
@@ -223,8 +223,6 @@ private:
     RenderTextLineBoxes m_lineBoxes;
 };
 
-RENDER_OBJECT_TYPE_CASTS(RenderText, isText())
-
 inline UChar RenderText::uncheckedCharacterAt(unsigned i) const
 {
     ASSERT_WITH_SECURITY_IMPLICATION(i < textLength());
@@ -254,9 +252,11 @@ void makeCapitalized(String*, UChar previous);
     
 inline RenderText* Text::renderer() const
 {
-    return toRenderText(Node::renderer());
+    return downcast<RenderText>(Node::renderer());
 }
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderText, isText())
 
 #endif // RenderText_h

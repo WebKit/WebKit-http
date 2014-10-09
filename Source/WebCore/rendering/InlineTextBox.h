@@ -51,7 +51,7 @@ public:
 
     virtual ~InlineTextBox();
 
-    RenderText& renderer() const { return toRenderText(InlineBox::renderer()); }
+    RenderText& renderer() const { return downcast<RenderText>(InlineBox::renderer()); }
     const RenderStyle& lineStyle() const { return isFirstLine() ? renderer().firstLineStyle() : renderer().style(); }
 
     InlineTextBox* prevTextBox() const { return m_prevTextBox; }
@@ -132,13 +132,6 @@ private:
 
 public:
     virtual bool isLineBreak() const override final;
-
-    void setExpansion(float newExpansion)
-    {
-        m_logicalWidth -= expansion();
-        InlineBox::setExpansion(newExpansion);
-        m_logicalWidth += newExpansion;
-    }
 
 private:
     virtual bool isInlineTextBox() const override final { return true; }

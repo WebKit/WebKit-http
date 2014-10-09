@@ -62,7 +62,7 @@ public:
 
         LayoutRect rect() const;
         FloatPoint baseline() const;
-        String text() const;
+        StringView text() const;
 
         unsigned lineIndex() const;
 
@@ -182,11 +182,11 @@ inline FloatPoint RunResolver::Run::baseline() const
     return FloatPoint(run.left, roundToInt(baselinePosition + resolver.m_borderAndPaddingBefore));
 }
 
-inline String RunResolver::Run::text() const
+inline StringView RunResolver::Run::text() const
 {
     auto& resolver = m_iterator.resolver();
     auto& run = m_iterator.simpleRun();
-    return resolver.m_string.substringSharingImpl(run.start, run.end - run.start);
+    return StringView(resolver.m_string).substring(run.start, run.end - run.start);
 }
 
 inline unsigned RunResolver::Run::lineIndex() const
@@ -252,7 +252,7 @@ inline const SimpleLineLayout::Run& RunResolver::Iterator::simpleRun() const
 
 inline RunResolver::RunResolver(const RenderBlockFlow& flow, const Layout& layout)
     : m_layout(layout)
-    , m_string(toRenderText(*flow.firstChild()).text())
+    , m_string(downcast<RenderText>(*flow.firstChild()).text())
     , m_lineHeight(lineHeightFromFlow(flow))
     , m_baseline(baselineFromFlow(flow))
     , m_borderAndPaddingBefore(flow.borderAndPaddingBefore())

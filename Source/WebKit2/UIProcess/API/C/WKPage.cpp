@@ -1610,6 +1610,14 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
             m_client.didCancelTrackingPotentialLongMousePress(toAPI(page), toAPI(userInfo), m_client.base.clientInfo);
         }
+
+        virtual void isPlayingAudioDidChange(WebPageProxy& page)
+        {
+            if (!m_client.isPlayingAudioDidChange)
+                return;
+
+            m_client.isPlayingAudioDidChange(toAPI(&page), m_client.base.clientInfo);
+        }
     };
 
     toImpl(pageRef)->setUIClient(std::make_unique<UIClient>(wkClient));
@@ -1768,11 +1776,6 @@ void WKPageEndPrinting(WKPageRef page)
 }
 #endif
 
-WKImageRef WKPageCreateSnapshotOfVisibleContent(WKPageRef)
-{
-    return 0;
-}
-
 void WKPageSetShouldSendEventsSynchronously(WKPageRef page, bool sync)
 {
     toImpl(page)->setShouldSendEventsSynchronously(sync);
@@ -1884,15 +1887,9 @@ void WKPageSetAddsVisitedLinks(WKPageRef page, bool addsVisitedLinks)
     toImpl(page)->setAddsVisitedLinks(addsVisitedLinks);
 }
 
-bool WKPageIsPlayingAudio(WKPageRef)
+bool WKPageIsPlayingAudio(WKPageRef page)
 {
-    // FIXME: To be implemented (https://bugs.webkit.org/show_bug.cgi?id=137048).
-    return false;
-}
-
-void WKPageSetInvalidMessageFunction(WKPageInvalidMessageFunction)
-{
-    // FIXME: Remove this function when doing so won't break WebKit nightlies.
+    return toImpl(page)->isPlayingAudio();
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

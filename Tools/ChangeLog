@@ -1,3 +1,348 @@
+2014-10-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Resolve various static analyzer warnings in Tools.
+        https://bugs.webkit.org/show_bug.cgi?id=137534
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/cg/ImageDiffCG.cpp:
+        (main): User proper printf specifiers.
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::childrenCount): Handle possibility that
+        gcc_accChildCount returns with an error.
+        (accessibilityState): Ditto for gcc_accState.
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.cpp:
+        (DRTDesktopNotificationPresenter::showDesktopNotification): Use proper
+        check for return value from 'isHTML'. HRESULT is not a boolean and cannot
+        be treated as such.
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (DumpRenderTreeWndProc): Avoid possible infinite loop on teardown caused
+        by comparing an unsigned value as being greater-than zero.
+        * DumpRenderTree/win/EditingDelegate.cpp:
+        (dump): Pass proper character pointer type to printf.
+        (EditingDelegate::shouldBeginEditingInDOMRange): Ditto.
+        (EditingDelegate::shouldEndEditingInDOMRange): Ditto.
+        (EditingDelegate::shouldInsertNode): Ditto.
+        (EditingDelegate::shouldInsertText): Ditto.
+        (EditingDelegate::shouldDeleteDOMRange): Ditto.
+        (EditingDelegate::shouldChangeSelectedDOMRange): Ditto.
+        (EditingDelegate::shouldApplyStyle): Ditto.
+        * DumpRenderTree/win/EventSender.cpp:
+        (beginDragWithFilesCallback): Handle possible error case for GlobalAlloc.
+        * DumpRenderTree/win/EventSender.h: Add proper declaration for HRESULT to match
+        system headers.
+        * DumpRenderTree/win/PixelDumpSupportWin.cpp: Handle possible failure
+        from CreateDIBSection.
+        * DumpRenderTree/win/UIDelegate.cpp: Ensure proper type is passed to printf.
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp: Get rid of workaround for NaN under
+        older versions of MSVC we no longer support.
+        * TestWebKitAPI/Tests/WebKit/win/WebViewDestruction.cpp: Use proper types and API
+        for 64-bit builds.
+        * TestWebKitAPI/TestsController.cpp: Use NeverDestroyed like a good citizen.
+        * TestWebKitAPI/TestsController.h: Ditto.
+        * WinLauncher/Common.cpp: Handle possible failure from GetModuleFileName.
+        * WinLauncher/WinLauncher.cpp: Make order of operations explicit to avoid
+        performing bitwise | before the comparison is done.
+
+2014-10-08  Ada Chan  <adachan@apple.com>
+
+        Add a test for WKPageIsPlayingAudio().
+        https://bugs.webkit.org/show_bug.cgi?id=137048
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Add file-with-video.html, test.mp4, and WKPageIsPlayingAudio.cpp to the project.
+        * TestWebKitAPI/Tests/WebKit2/WKPageIsPlayingAudio.cpp: Added.
+        (TestWebKitAPI::nullJavaScriptCallback):
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::isPlayingAudioDidChangeCallback):
+        (TestWebKitAPI::setUpClients):
+        (TestWebKitAPI::TEST):
+        This test loads a page with a video in it. When the page is loaded, we first check that
+        WKPageIsPlayingAudio() returns false for the page. Then we call a method to start the video.
+        When the WKPageUIClient::isPlayingAudioDidChange callback gets called, check that WKPageIsPlayingAudio()
+        now returns true for the page.
+        * TestWebKitAPI/Tests/WebKit2/file-with-video.html: Added.
+        * TestWebKitAPI/Tests/WebKit2/test.mp4: Added.
+        This is a video copied from LayoutTests/media/content.
+
+2014-10-08  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [webkitpy] Use python-irclib-0.4.8.tar.gz instead of zip in AutoInstaller
+        https://bugs.webkit.org/show_bug.cgi?id=137516
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_irc):
+
+2014-10-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] install-dependencies should install libjpeg-turbo on Debian and derivatives.
+        https://bugs.webkit.org/show_bug.cgi?id=137520
+
+        Reviewed by Philippe Normand.
+
+        Debian is switching is default JPEG library to libjpeg-turbo <https://wiki.debian.org/LJTTransition#Text>
+        For other distributions, we are already installing libjpeg-turbo.
+        So, do the same for Debian and derivatives.
+
+        * gtk/install-dependencies: Install libjpeg-dev that depends on the default implementation of libjpeg.
+
+2014-10-08  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [webkitpy] Add back the workaround to replace ZipFile.extractall()
+        https://bugs.webkit.org/show_bug.cgi?id=137519
+
+        Reviewed by Csaba Osztrogonác.
+
+        It was removed by <http://trac.webkit.org/changeset/174266>,
+        because the comment stated it is a workaround for buggy python
+        2.6.1 which shipped on Snow Leopard. But it turned out the bug
+        is still valid with python 2.7 shipped on the latest Ubuntu
+        (12.04 and 14.04) and OS X 10.9.
+
+        * Scripts/webkitpy/common/system/autoinstall.py:
+        (AutoInstaller):
+        (AutoInstaller._extract_all):
+        (AutoInstaller._unzip):
+
+2014-10-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174335.
+        https://bugs.webkit.org/show_bug.cgi?id=137515
+
+        It broke EFL layout test totally (Requested by gyuyoung on
+        #webkit).
+
+        Reverted changeset:
+
+        "[EFL] Introduce EWebKit_Extension"
+        https://bugs.webkit.org/show_bug.cgi?id=134921
+        http://trac.webkit.org/changeset/174335
+
+2014-10-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make forwarding headers generation depend on source code
+        https://bugs.webkit.org/show_bug.cgi?id=137394
+
+        Reviewed by Philippe Normand.
+
+        * TestWebKitAPI/CMakeLists.txt: Add missing dependency rule.
+        * TestWebKitAPI/PlatformGTK.cmake: Only run
+        generate-forwarding-headers.pl when source code changes.
+        * WebKitTestRunner/PlatformGTK.cmake: Ditto.
+
+2014-10-07  Tanay C  <tanay.c@samsung.com>
+
+        Remove build warnings in Hashmap API tests
+        https://bugs.webkit.org/show_bug.cgi?id=137484
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST): Changed EXPECT_EQ(false, addResult.isNewEntry) to EXPECT_FALSE(addResult.isNewEntry) 
+
+2014-10-07  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Commit queue doesn't drop obsolete patches sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=137460
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_mock.py:
+        Adds another test patch for use in queues_unittest.py.
+        courtesy of Csaba Osztrogonác <ossy@webkit.org>
+        (MockBugzilla):
+        * Scripts/webkitpy/tool/bot/commitqueuetask.py:
+        Raises a PatchIsNotValid exception in the case of validate() returning
+        false.
+        (CommitQueueTask.run):
+        * Scripts/webkitpy/tool/bot/earlywarningsystemtask.py:
+        Raises a PatchIsNotValid exception in the case of validate() returning
+        false.
+        (EarlyWarningSystemTask.run):
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        Defines PatchIsNotValid exception. 
+        (PatchIsNotValid):
+        (PatchIsNotValid.__init__):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        Remove call to validate() and instead catches the PatchIsNotValid
+        exception.
+        (AbstractEarlyWarningSystem.review_patch):
+        * Scripts/webkitpy/tool/commands/queues.py:
+        Adds logic to catch the PatchIsNotValid exception.
+        (CommitQueue.process_work_item):
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        Adds the test_non_valid_patch test to ensure that invalid patches are
+        handled properly, and don't just result in indefinite spinning.
+        courtesy of Csaba Osztrogonác <ossy@webkit.org>
+        (test_non_valid_patch):
+
+2014-10-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Teach run-webkit-tests to honor TestExpectation file for iOS Simulator 64-bit builds
+        https://bugs.webkit.org/show_bug.cgi?id=137499
+
+        Reviewed by Simon Fraser.
+
+        Fixes an issue where the TestExpectation file for the iOS Simulator platform was only
+        honored when running run-webkit-tests with a 32-bit simulator build of iOS WebKit. We
+        should honor the TestExpectation file for the iOS Simulator platform for both 32- and 64-
+        bit simulator builds of iOS WebKit.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort._generate_all_test_configurations):
+
+2014-10-07  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [GTK] jhbuild modules should build xserver with the --without-dtrace option.
+        https://bugs.webkit.org/show_bug.cgi?id=137482
+
+        Reviewed by Martin Robinson.
+
+        * gtk/jhbuild.modules: Added --without-dtrace option to xserver jhbuild.modules config.
+
+2014-10-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] TLS errors should take precedence over HTTP authentication
+        https://bugs.webkit.org/show_bug.cgi?id=137300
+
+        Reviewed by Sergio Villar Senin.
+
+        Add a test case to check that authenticate signal is not emitted
+        in case of TLS errors, and the load fails instead.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestSSL.cpp:
+        (webViewAuthenticationCallback):
+        (testTLSErrorsHTTPAuth):
+        (httpsServerCallback):
+        (beforeAll):
+
+2014-10-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make webkit-patch find-users useful
+        https://bugs.webkit.org/show_bug.cgi?id=137475
+
+        Reviewed by Alexey Proskuryakov.
+
+        Make find-users use the CommitterList instead of accessing Bugzilla.
+
+        This essentially exposes the same functionality as webkitbot's whois command.
+
+        * Scripts/webkitpy/tool/commands/findusers.py:
+        (FindUsers.execute):
+
+2014-10-06  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS8: Crash at -[WebAccessibilityObjectWrapper accessibilityElementAtIndex:]
+        https://bugs.webkit.org/show_bug.cgi?id=137289
+
+        Unreviewed build fix.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::getChildrenWithRange):
+
+2014-10-06  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Add commit queue
+        https://bugs.webkit.org/show_bug.cgi?id=137462
+
+        Reviewed by Tim Horton.
+
+        Generalizes EWS into "bubble queue", which also includes commit queue and style queue.
+        Style queue is still invisible, as it doesn't have an associated platform, and also
+        we never have problems with it anyway, so it's not worth watching.
+
+        The UI now allows for adding more bots to the Other column (such as leaks bot).
+        To make that actually happen, we'll need to refactor QueueView, allowing for multiple
+        sources of data in a cell.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueue.js: Copied from Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueue.js.
+        (BubbleQueue):
+        (BubbleQueue.prototype.get statusPageURL):
+        (BubbleQueue.prototype.update):
+        (BubbleQueue.prototype.loadDetailedStatus):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js: Copied from Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWS.js.
+        (BubbleQueueServer):
+        (BubbleQueueServer.prototype.jsonQueueLengthURL):
+        (BubbleQueueServer.prototype.jsonQueueStatusURL):
+        (BubbleQueueServer.prototype.queueStatusURL):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueView.js: Copied from Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueueView.js.
+        (BubbleQueueView):
+        (BubbleQueueView.prototype.update.appendQueue):
+        (BubbleQueueView.prototype.update):
+        (BubbleQueueView.prototype._addQueueHeadingToPopover):
+        (BubbleQueueView.prototype._popoverContentForBubbleQueue):
+        (BubbleQueueView.prototype._presentPopoverForBubbleQueue):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWS.js: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueue.js: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/EWSQueueView.js: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Initialization.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/QueueView.css:
+        (.bubble-server-popover .popover-queue-heading .queue-charts-link):
+        (.bubble-server-popover .latest-status-no-link):
+        (.bubble-server-popover .bot-status-description):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/index.html:
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsMain.js:
+        (buildAggregateTable):
+        (buildQueuesTable):
+        Removed dysfunctional support for EWS for now. It will be different.
+
+2014-10-06  Alexey Proskuryakov  <ap@apple.com>
+
+        One more case of incorrect comparison in recordpatchevent.py
+        https://bugs.webkit.org/show_bug.cgi?id=137459
+
+        Reviewed by Tim Horton.
+
+        * QueueStatusServer/app.yaml:
+        * QueueStatusServer/loggers/recordpatchevent.py:
+        (RecordPatchEvent.started):
+
+2014-10-06  Alexey Proskuryakov  <ap@apple.com>
+
+        webkit-queues PatchLog is incorrect for patches that took less than a second
+        https://bugs.webkit.org/show_bug.cgi?id=137453
+
+        Reviewed by Tim Horton.
+
+        * QueueStatusServer/app.yaml: Updated app version.
+
+        * QueueStatusServer/loggers/recordpatchevent.py: (RecordPatchEvent.stopped):
+        Don't bail out for patches that took 0 seconds to process (as frequently happens
+        when a patch is obsolete).
+
+2014-10-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        EWS bubble hover shows wrong timestamps
+        https://bugs.webkit.org/show_bug.cgi?id=137252
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add "Z" suffix to timestamps to make sure if it is handled as UTC time.
+
+        * QueueStatusServer/handlers/queuestatusjson.py:
+        (QueueStatusJSON.get):
+        * QueueStatusServer/handlers/statusbubble.py:
+        (StatusBubble._iso_time):
+
+2014-10-06  Mario Sanchez Prada  <mario@webkit.org>
+
+        Unreviewed, updated list of email addresses in contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json: Added my former
+        email address in Igalia, for the sake of completeness.
+
+2014-10-06  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        Unreviewed, moved myself to the list of committers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2014-10-05  Ryuan Choi  <ryuan.choi@gmail.com>
 
         [EFL] Introduce EWebKit_Extension

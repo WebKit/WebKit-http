@@ -82,9 +82,6 @@ WK_EXPORT void WKPageBeginPrinting(WKPageRef page, WKFrameRef frame, WKPrintInfo
 WK_EXPORT void WKPageDrawPagesToPDF(WKPageRef page, WKFrameRef frame, WKPrintInfo printInfo, uint32_t first, uint32_t count, WKPageDrawToPDFFunction callback, void* context);
 WK_EXPORT void WKPageEndPrinting(WKPageRef page);
 
-// FIXME https://bugs.webkit.org/show_bug.cgi?id=66979: Remove this sync call.
-WK_EXPORT WKImageRef WKPageCreateSnapshotOfVisibleContent(WKPageRef page);
-
 WK_EXPORT void WKPageSetShouldSendEventsSynchronously(WKPageRef page, bool sync);
 
 WK_EXPORT bool WKPageGetAllowsRemoteInspection(WKPageRef page);
@@ -97,9 +94,6 @@ typedef void (*WKPageGetBytecodeProfileFunction)(WKStringRef, WKErrorRef, void*)
 WK_EXPORT void WKPageGetBytecodeProfile(WKPageRef page, void* context, WKPageGetBytecodeProfileFunction function);
     
 WK_EXPORT WKArrayRef WKPageCopyRelatedPages(WKPageRef page);
-
-typedef void (*WKPageInvalidMessageFunction)(uint32_t messageID);
-WK_EXPORT void WKPageSetInvalidMessageFunction(WKPageInvalidMessageFunction function);
 
 enum {
     kWKScrollPinningBehaviorDoNotPin,
