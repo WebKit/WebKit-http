@@ -35,6 +35,7 @@
 #include <MenuItem.h>
 #include <SeparatorView.h>
 #include <TextControl.h>
+#include <TimeFormat.h>
 
 namespace WebCore {
 
@@ -45,6 +46,7 @@ public:
             const DateTimeChooserParameters& params)
         : BWindow(params.anchorRectInRootView, "Date Picker", B_FLOATING_WINDOW,
             B_NOT_RESIZABLE | B_NOT_ZOOMABLE | B_AUTO_UPDATE_SIZE_LIMITS)
+        , m_calendar(nullptr)
         , m_client(client)
     {
         BGroupLayout* root = new BGroupLayout(B_VERTICAL);
@@ -55,7 +57,7 @@ public:
         group->GroupLayout()->SetInsets(5, 5, 5, 5);
         AddChild(group);
 
-        BButton* ok = new BButton("ok", "Done", new BMessage('done'));
+        m_okButton = new BButton("ok", "Done", new BMessage('done'));
         BButton* cancel = new BButton("cancel", "Cancel", new BMessage('canc'));
 
         BGroupView* bottomGroup = new BGroupView(B_HORIZONTAL);
@@ -64,20 +66,17 @@ public:
             .SetInsets(5, 5, 5, 5)
             .AddGlue()
             .Add(cancel)
-            .Add(ok);
+            .Add(m_okButton);
         AddChild(bottomGroup);
 
         // TODO handle params.type to decide what to include in the window
         // (may be only a month, or so - but should we use a popup menu in that
         // case?)
 
-        // FIXME we need to parse params.currentValue using the YYYY-MM-dd format
-        // and set the fields to the appropriate values. (or other formats
+        // FIXME we need to parse params.currentValue using other formats
         // depending on the type:
-        // week: YYYY-WW
-        // time: HH:MM
-        // datetime: YYYY-MM-DD-THH:MMZ
-        // month: YYYY-MM
+        // time: HH:mm
+        // datetime: yyyy-MM-dd-THH:mmZ
 
         // TODO we should also handle the list of suggestions from the params
         // (probably as a BMenuField), and the min, max, and step values.
@@ -87,23 +86,27 @@ public:
                 || params.type == InputTypeNames::date()
                 || params.type == InputTypeNames::week()
                 || params.type == InputTypeNames::month()) {
-            BMenu* monthMenu = new BMenu("month");
+            BDateFormat format;
+
             m_yearControl = new BTextControl("year", NULL, NULL,
                 new BMessage('yech'));
+            m_yearControl->SetModificationMessage(new BMessage('yech'));
+            m_yearControl->TextView()->SetMaxBytes(6);
+            // TODO add filter on isdigit() only
+
+            // Setup month menu
+            BMenu* monthMenu = new BMenu("month");
             monthMenu->SetLabelFromMarked(true);
 
-            BString out;
-            BDateFormat format;
-            format.SetDateFormat(B_SHORT_DATE_FORMAT, "LLLL");
-
             for (int i = 1; i <= 12; i++) {
-                BDate date(1970, i, 1);
-                format.Format(out, date, B_SHORT_DATE_FORMAT);
+                BString out;
+                format.GetMonthName(i, out);
                 BMessage* message = new BMessage('moch');
                 message->AddInt32("month", i);
                 monthMenu->AddItem(new BMenuItem(out, message));
             }
 
+            // Build window
             BGroupLayoutBuilder(group)
                 .AddGroup(B_VERTICAL)
                     .AddGroup(B_HORIZONTAL)
@@ -114,11 +117,26 @@ public:
                 .End()
             .End();
 
-            format.SetDateFormat(B_LONG_DATE_FORMAT, "YYYY");
-            format.Format(out, m_calendar->Date(), B_LONG_DATE_FORMAT);
+            // Parse initial date
+            BDate initialDate;
+
+            if (params.type == InputTypeNames::date())
+                format.SetDateFormat(B_LONG_DATE_FORMAT, "yyyy'-'MM'-'dd");
+            else if (params.type == InputTypeNames::month()) {
+                format.SetDateFormat(B_LONG_DATE_FORMAT, "yyyy'-'MM");
+            } else if (params.type == InputTypeNames::week())
+                format.SetDateFormat(B_LONG_DATE_FORMAT, "yyyy'-W'ww");
+            format.Parse(params.currentValue, B_LONG_DATE_FORMAT, initialDate);
+
+            m_calendar->SetDate(initialDate);
+
+            BString out;
+            format.SetDateFormat(B_SHORT_DATE_FORMAT, "yyyy");
+            format.Format(out, initialDate, B_SHORT_DATE_FORMAT);
             m_yearControl->SetText(out.String());
 
-            monthMenu->ItemAt(m_calendar->Date().Month() - 1)->SetMarked(true);
+            monthMenu->ItemAt(initialDate.Month() - 1)->SetMarked(true);
+
         }
 
         if (params.type == InputTypeNames::datetime() 
@@ -128,44 +146,54 @@ public:
         if (params.type == InputTypeNames::datetime() 
                 || params.type == InputTypeNames::datetimelocal()
                 || params.type == InputTypeNames::time()) {
-            BMenu* hourMenu = new BMenu("hour");
-            hourMenu->SetLabelFromMarked(true);
-            BMenu* minuteMenu = new BMenu("minute");
-            minuteMenu->SetLabelFromMarked(true);
+            m_hourMenu = new BMenu("hour");
+            m_hourMenu->SetLabelFromMarked(true);
+            m_minuteMenu = new BMenu("minute");
+            m_minuteMenu->SetLabelFromMarked(true);
+
+            // Parse the initial time
+            BTimeFormat format;
+            BTime initialTime;
+            format.SetTimeFormat(B_SHORT_TIME_FORMAT, "HH':'mm");
+            format.Parse(params.currentValue, B_SHORT_TIME_FORMAT, initialTime);
 
             for (int i = 0; i <= 24; i++) {
                 BString label;
-                label << i; // TODO we could be more locale safe here
-                hourMenu->AddItem(new BMenuItem(label, NULL));
+                label << i; // TODO we could be more locale safe here (AM/PM)
+                m_hourMenu->AddItem(new BMenuItem(label, NULL));
             }
 
-            hourMenu->ItemAt(0)->SetMarked(true); // TODO select the right one
+            m_hourMenu->ItemAt(initialTime.Hour())->SetMarked(true);
 
             for (int i = 0; i <= 60; i++) {
                 BString label;
                 label << i; // TODO we could be more locale safe here
-                minuteMenu->AddItem(new BMenuItem(label, NULL));
+                m_minuteMenu->AddItem(new BMenuItem(label, NULL));
             }
 
-            minuteMenu->ItemAt(0)->SetMarked(true); // TODO select the right one
+            m_minuteMenu->ItemAt(initialTime.Minute())->SetMarked(true);
 
             BGroupLayoutBuilder(group)
                 .AddGroup(B_VERTICAL)
                     .AddGroup(B_HORIZONTAL)
-                        .Add(new BMenuField(NULL, hourMenu))
-                        .Add(new BMenuField(NULL, minuteMenu))
+                        .Add(new BMenuField(NULL, m_hourMenu))
+                        .Add(new BMenuField(NULL, m_minuteMenu))
                         .AddGlue();
         }
 
         // Now show only the relevant parts of the window depending on the type
         // and configure the output format
         if (params.type == InputTypeNames::month()) {
-            m_format = "YYYY-MM";
+            m_format = "yyyy'-'MM";
             m_calendar->Hide();
+        } else if (params.type == InputTypeNames::week()) {
+            m_format = "YYYY'-W'ww";
         } else if (params.type == InputTypeNames::date()) {
-            m_format = "YYYY-MM-dd";
+            m_format = "yyyy'-'MM'-'dd";
+        } else if (params.type == InputTypeNames::time()) {
+            m_format = "HH':'mm";
         } else {
-            // TODO week, time, datetime, datetime-local
+            // TODO datetime, datetime-local
         }
 
     }
@@ -182,9 +210,18 @@ public:
                 BString str;
                 BLanguage language("en");
                 BFormattingConventions conventions("en_US");
-                conventions.SetExplicitDateFormat(B_LONG_DATE_FORMAT, m_format);
-                BDateFormat formatter(&language, &conventions);
-                formatter.Format(str, m_calendar->Date(), B_LONG_DATE_FORMAT);
+                if (m_calendar) {
+                    // TODO handle datetime format
+                    conventions.SetExplicitDateFormat(B_LONG_DATE_FORMAT, m_format);
+                    BDateFormat formatter(&language, &conventions);
+                    formatter.Format(str, m_calendar->Date(), B_LONG_DATE_FORMAT);
+                } else {
+                    // time-only format
+                    str << m_hourMenu->Superitem()->Label();
+                    if (str.Length() < 2) str.Prepend("0");
+                    str << ':';
+                    str << m_minuteMenu->Superitem()->Label();
+                }
                 m_client->didChooseValue(str);
                 // fallthrough
             }
@@ -200,9 +237,18 @@ public:
 
             case 'yech':
             {
-                // FIXME perform some validation on the value...
-                int year = strtol(m_yearControl->Text(), NULL, 10);
-                m_calendar->SetYear(year);
+                char* p;
+                errno = 0;
+                int year = strtol(m_yearControl->Text(), &p, 10);
+                if (errno == ERANGE || year > 275759 || year <= 0
+                        || p == m_yearControl->Text() || *p != '\0') {
+                    m_yearControl->MarkAsInvalid(true);
+                    m_okButton->SetEnabled(false); // TODO not if other fields are invalid?
+                } else {
+                    m_yearControl->MarkAsInvalid(false);
+                    m_okButton->SetEnabled(true);
+                    m_calendar->SetYear(year);
+                }
                 return;
             }
         }
@@ -213,6 +259,9 @@ public:
 private:
     BPrivate::BCalendarView* m_calendar;
     BTextControl* m_yearControl;
+    BButton* m_okButton;
+    BMenu* m_hourMenu;
+    BMenu* m_minuteMenu;
     BString m_format;
 
     DateTimeChooserClient* m_client;
