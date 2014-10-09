@@ -41,7 +41,7 @@
 #include <sys/sysctl.h>
 #endif
 
-#if OS(WINDOWS)
+#if OS(WINDOWS) || OS(HAIKU)
 #include "MacroAssemblerX86.h"
 #endif
 
@@ -231,7 +231,7 @@ static void recomputeDependentOptions()
 #if !ENABLE(FTL_JIT)
     Options::useFTLJIT() = false;
 #endif
-#if OS(WINDOWS) && CPU(X86) 
+#if (OS(WINDOWS) || OS(HAIKU)) && CPU(X86)
     // Disable JIT on Windows if SSE2 is not present 
     if (!MacroAssemblerX86::supportsFloatingPoint())
         Options::useJIT() = false;
