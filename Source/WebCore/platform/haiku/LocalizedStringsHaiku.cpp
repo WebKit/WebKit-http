@@ -442,6 +442,11 @@ String textTrackNoLabelText()
 {
     return String::fromUTF8("No label");
 }
+
+String audioTrackNoLabelText()
+{
+    return String::fromUTF8("No label");
+}
 #endif
 
 String imageTitle(const String& filename, const IntSize& size)
