@@ -1092,7 +1092,7 @@ sub isCrossCompilation()
       my @host = $compiler_options =~ m/--host=(.*?)\s/;
       my @target = $compiler_options =~ m/--target=(.*?)\s/;
 
-      return ($host[0] ne "" && $target[0] ne "" && $host[0] ne $target[0]);
+      return (@host && @target && $host[0] ne "" && $target[0] ne "" && $host[0] ne $target[0]);
   }
   return 0;
 }
