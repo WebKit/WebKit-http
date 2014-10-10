@@ -72,12 +72,6 @@
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(HAIKU)
-#include <Entry.h>
-#include <FindDirectory.h>
-#include <Path.h>
-#endif
-
 namespace WebCore {
 
 const int selectTimeoutMS = 5;
@@ -97,14 +91,6 @@ static CString certificatePath()
             CFURLGetFileSystemRepresentation(certURLRef.get(), false, reinterpret_cast<UInt8*>(path), MAX_PATH);
             return path;
         }
-    }
-#elif PLATFORM(HAIKU)
-    BPath path;
-    if (find_directory(B_COMMON_DATA_DIRECTORY, &path) == B_OK
-        && path.Append("ssl/cert.pem") == B_OK) {
-        BEntry entry(path.Path());
-        if (entry.Exists())
-            return path.Path();
     }
 #endif
     char* envPath = getenv("CURL_CA_BUNDLE_PATH");
@@ -304,7 +290,7 @@ ResourceHandleManager* ResourceHandleManager::sharedInstance()
     return sharedInstance;
 }
 
-static void handleLocalReceiveResponse(CURL* handle, ResourceHandle* job, ResourceHandleInternal* d)
+static void handleLocalReceiveResponse (CURL* handle, ResourceHandle* job, ResourceHandleInternal* d)
 {
     // since the code in headerCallback will not have run for local files
     // the code to set the URL and fire didReceiveResponse is never run,
@@ -318,60 +304,6 @@ static void handleLocalReceiveResponse(CURL* handle, ResourceHandle* job, Resour
      if (d->client())
          d->client()->didReceiveResponse(job, d->m_response);
      d->m_response.setResponseFired(true);
-}
-
-static void handleHTTPAuthentication(ResourceHandle* job)
-{
-    ResourceHandleInternal* d = job->getInternal();
-    unsigned failureCount = 0;
-
-    const KURL& url = job->firstRequest().url();
-    ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
-    if (url.protocolIs("https"))
-        serverType = ProtectionSpaceServerHTTPS;
-
-    String challenge = d->m_response.httpHeaderField("WWW-Authenticate");
-    ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
-    if (challenge.startsWith("Digest", false))
-        scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
-    else if (challenge.startsWith("Basic", false))
-        scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
-
-    String realm;
-    int realmStart = challenge.find("realm=\"", 0, false);
-    if (realmStart > 0) {
-        realmStart += 7;
-        int realmEnd = challenge.find("\"", realmStart);
-        if (realmEnd >= 0)
-            realm = challenge.substring(realmStart, realmEnd - realmStart);
-    }
-
-    ProtectionSpace protectionSpace(url.host(), url.port(), serverType, realm, scheme);
-    ResourceError resourceError(url.host(), 401, url.string(), String());
-
-    while (d->m_response.httpStatusCode() == 401 && !d->m_authenticationCancelled) {
-        Credential proposedCredential(d->m_user, d->m_pass, CredentialPersistenceForSession);
-
-        AuthenticationChallenge authenticationChallenge(protectionSpace,
-            proposedCredential, failureCount++, d->m_response, resourceError);
-        authenticationChallenge.m_authenticationClient = job;
-        job->didReceiveAuthenticationChallenge(authenticationChallenge);
-            // will set m_user and m_pass in ResourceHandleInternal
-
-        if (!d->m_authenticationCancelled) {
-            String userpass = d->m_user + ":" + d->m_pass;
-            curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
-        } else {
-            // if cancelled we still send out the request again which will
-            // load and show the unauthorized message as sent by the server
-            curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, 0);
-        }
-
-        curl_easy_perform(d->m_handle);
-    }
-
-    if (d->client())
-        d->client()->didFinishLoading(job, 0);
 }
 
 // called with data after all headers have been processed via headerCallback
@@ -393,8 +325,7 @@ static size_t writeCallback(void* ptr, size_t size, size_t nmemb, void* data)
     CURL* h = d->m_handle;
     long httpCode = 0;
     CURLcode err = curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &httpCode);
-    if (CURLE_OK == err && ((httpCode >= 300 && httpCode < 400)
-            || (httpCode == 401 && !d->m_authenticationCancelled)))
+    if (CURLE_OK == err && httpCode >= 300 && httpCode < 400)
         return totalSize;
 
     if (!d->m_response.responseFired()) {
@@ -893,8 +824,6 @@ static void setupFormData(ResourceHandle* job, CURLoption sizeOption, struct cur
 
     curl_easy_setopt(d->m_handle, CURLOPT_READFUNCTION, readCallback);
     curl_easy_setopt(d->m_handle, CURLOPT_READDATA, job);
-    curl_easy_setopt(d->m_handle, CURLOPT_SEEKFUNCTION, seekCallback);
-    curl_easy_setopt(d->m_handle, CURLOPT_SEEKDATA, job);
 }
 
 void ResourceHandleManager::setupPUT(ResourceHandle* job, struct curl_slist** headers)

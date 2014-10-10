@@ -45,7 +45,6 @@ public:
 
     ~FormDataStream();
 
-    int seek(long long offset, int whence);
     size_t read(void* ptr, size_t blockSize, size_t numberOfBlocks);
     bool hasMoreElements() const;
 

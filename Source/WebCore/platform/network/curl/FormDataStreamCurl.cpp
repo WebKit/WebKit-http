@@ -46,20 +46,6 @@ FormDataStream::~FormDataStream()
         fclose(m_file);
 }
 
-int FormDataStream::seek(long long offset, int whence)
-{
-    if (offset != 0 || whence != SEEK_SET)
-        return 1;
-
-    m_formDataElementIndex = 0;
-    m_formDataElementDataOffset = 0;
-    if (m_file) {
-        fclose(m_file);
-        m_file = 0;
-    }
-    return 0;
-}
-
 size_t FormDataStream::read(void* ptr, size_t blockSize, size_t numberOfBlocks)
 {
     // Check for overflow.

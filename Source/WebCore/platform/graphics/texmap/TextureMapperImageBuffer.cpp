@@ -26,11 +26,7 @@
 #if USE(TEXTURE_MAPPER)
 namespace WebCore {
 
-#if PLATFORM(HAIKU)
-static const int s_maximumAllowedImageBufferDimension = 2048;
-#else
 static const int s_maximumAllowedImageBufferDimension = 4096;
-#endif
 
 void BitmapTextureImageBuffer::updateContents(const void* data, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag)
 {

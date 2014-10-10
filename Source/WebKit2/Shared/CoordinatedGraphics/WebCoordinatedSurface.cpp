@@ -27,7 +27,7 @@
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/GraphicsSurfaceToken.h>
 
-#if USE(TEXTURE_MAPPER) && USE(3D_RENDERING)
+#if USE(TEXTURE_MAPPER)
 #include "TextureMapperGL.h"
 #endif
 

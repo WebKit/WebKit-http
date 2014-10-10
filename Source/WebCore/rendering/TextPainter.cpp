@@ -128,7 +128,7 @@ static void paintTextWithShadows(GraphicsContext& context, const Font& font, con
         ShadowApplier shadowApplier(context, shadow, boxRect, lastShadowIterationShouldDrawText, opaque, horizontal ? Horizontal : Vertical);
         if (shadowApplier.nothingToDraw()) {
             shadow = shadow->next();
-            //continue;
+            continue;
         }
 
         IntSize extraOffset = roundedIntSize(shadowApplier.extraOffset());

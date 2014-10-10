@@ -214,13 +214,11 @@ void PageViewportController::pageTransitionViewportReady()
         applyScaleAfterRenderingContents(innerBoundedViewportScale(initialScale));
     }
 
-#if USE(TILED_BACKING_STORE)
     // At this point we should already have received the first viewport arguments and the requested scroll
     // position for the newly loaded page and sent our reactions to the web process. It's now safe to tell
     // the web process to start rendering the new page contents and possibly re-use the current tiles.
     // This assumes that all messages have been handled in order and that nothing has been pushed back on the event loop.
     m_webPageProxy->commitPageTransitionViewport();
-#endif
 }
 
 void PageViewportController::pageDidRequestScroll(const IntPoint& cssPosition)
@@ -262,7 +260,6 @@ void PageViewportController::didChangeContentsVisibility(const FloatPoint& posit
 
 void PageViewportController::syncVisibleContents(const FloatPoint& trajectoryVector)
 {
-#if USE(COORDINATED_GRAPHICS)
     CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(m_webPageProxy->drawingArea());
     if (!drawingArea || m_viewportSize.isEmpty() || m_contentsSize.isEmpty())
         return;
@@ -270,7 +267,6 @@ void PageViewportController::syncVisibleContents(const FloatPoint& trajectoryVec
     FloatRect visibleContentsRect(boundContentsPosition(m_contentsPosition), visibleContentsSize());
     visibleContentsRect.intersect(FloatRect(FloatPoint::zero(), m_contentsSize));
     drawingArea->setVisibleContentsRect(visibleContentsRect, trajectoryVector);
-#endif
 
     m_client->didChangeVisibleContents();
 }
