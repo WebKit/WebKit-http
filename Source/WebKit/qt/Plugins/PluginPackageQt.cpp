@@ -146,7 +146,8 @@ bool PluginPackage::isPluginBlacklisted()
 {
     // TODO: enumerate all plugins that are incompatible with Qt5.
     const QLatin1String pluginBlacklist[] = {
-        QLatin1String("skypebuttons")
+        QLatin1String("skypebuttons"),
+        QLatin1String("libkpartsplugin")
     };
 
     QString baseName = QFileInfo(static_cast<QString>(m_path)).baseName();
