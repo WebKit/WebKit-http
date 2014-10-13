@@ -479,7 +479,7 @@
 #define WTF_USE_SOUP 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(HAIKU) || PLATFORM(GTK) || PLATFORM(EFL)
 #define WTF_USE_WEBP 1
 #endif
 
