@@ -667,9 +667,12 @@ void QNetworkReplyHandler::forwardData()
         // -1 means we do not provide any data about transfer size to inspector so it would use
         // Content-Length headers or content size to show transfer size.
         client->didReceiveData(m_resourceHandle, buffer, readSize, -1);
+        // Check if the request has been aborted or this reply-handler was otherwise released.
+        if (wasAborted() || !m_replyWrapper)
+            break;
     }
     delete[] buffer;
-    if (bytesAvailable > 0)
+    if (bytesAvailable > 0 && m_replyWrapper)
         m_queue.requeue(&QNetworkReplyHandler::forwardData);
 }
 
