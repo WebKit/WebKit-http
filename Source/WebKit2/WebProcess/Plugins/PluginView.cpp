@@ -464,7 +464,7 @@ void PluginView::manualLoadDidFail(const ResourceError& error)
 
 RenderBoxModelObject* PluginView::renderer() const
 {
-    return toRenderBoxModelObject(m_pluginElement->renderer());
+    return downcast<RenderBoxModelObject>(m_pluginElement->renderer());
 }
 
 void PluginView::pageScaleFactorDidChange()
@@ -1297,7 +1297,7 @@ void PluginView::invalidateRect(const IntRect& dirtyRect)
     if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting)
         return;
 
-    RenderBoxModelObject* renderer = toRenderBoxModelObject(m_pluginElement->renderer());
+    RenderBoxModelObject* renderer = downcast<RenderBoxModelObject>(m_pluginElement->renderer());
     if (!renderer)
         return;
 
@@ -1729,7 +1729,7 @@ void PluginView::pluginSnapshotTimerFired()
 
         if (snapshotImage) {
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
-            bool snapshotIsAlmostSolidColor = isAlmostSolidColor(toBitmapImage(snapshotImage.get()));
+            bool snapshotIsAlmostSolidColor = isAlmostSolidColor(downcast<BitmapImage>(snapshotImage.get()));
             snapshotFound = !snapshotIsAlmostSolidColor;
 #endif
 

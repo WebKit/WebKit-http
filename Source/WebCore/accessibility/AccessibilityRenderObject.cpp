@@ -75,6 +75,7 @@
 #include "RenderLayer.h"
 #include "RenderLineBreak.h"
 #include "RenderListBox.h"
+#include "RenderListItem.h"
 #include "RenderListMarker.h"
 #include "RenderMathMLBlock.h"
 #include "RenderMathMLFraction.h"
@@ -148,9 +149,9 @@ void AccessibilityRenderObject::detach(AccessibilityDetachmentType detachmentTyp
 
 RenderBoxModelObject* AccessibilityRenderObject::renderBoxModelObject() const
 {
-    if (!m_renderer || !m_renderer->isBoxModelObject())
+    if (!is<RenderBoxModelObject>(m_renderer))
         return nullptr;
-    return toRenderBoxModelObject(m_renderer);
+    return downcast<RenderBoxModelObject>(m_renderer);
 }
 
 void AccessibilityRenderObject::setRenderer(RenderObject* renderer)
@@ -159,16 +160,9 @@ void AccessibilityRenderObject::setRenderer(RenderObject* renderer)
     setNode(renderer->node());
 }
 
-static inline bool isInlineWithContinuation(RenderObject* object)
+static inline bool isInlineWithContinuation(RenderObject& object)
 {
-    if (!object->isBoxModelObject())
-        return false;
-
-    RenderBoxModelObject* renderer = toRenderBoxModelObject(object);
-    if (!renderer->isRenderInline())
-        return false;
-
-    return toRenderInline(renderer)->continuation();
+    return is<RenderInline>(object) && downcast<RenderInline>(object).continuation();
 }
 
 static inline RenderObject* firstChildInContinuation(RenderInline& renderer)
@@ -190,7 +184,7 @@ static inline RenderObject* firstChildConsideringContinuation(RenderObject& rend
 {
     RenderObject* firstChild = renderer.firstChildSlow();
 
-    if (!firstChild && isInlineWithContinuation(&renderer))
+    if (!firstChild && isInlineWithContinuation(renderer))
         firstChild = firstChildInContinuation(downcast<RenderInline>(renderer));
 
     return firstChild;
@@ -308,9 +302,9 @@ static inline RenderObject* childBeforeConsideringContinuations(RenderInline* re
     return nullptr;
 }
 
-static inline bool firstChildIsInlineContinuation(RenderObject* renderer)
+static inline bool firstChildIsInlineContinuation(RenderElement& renderer)
 {
-    RenderObject* child = renderer->firstChildSlow();
+    RenderObject* child = renderer.firstChild();
     return child && child->isInlineElementContinuation();
 }
 
@@ -329,9 +323,11 @@ AccessibilityObject* AccessibilityRenderObject::previousSibling() const
 
     // Case 2: Anonymous block parent of the end of a continuation - skip all the way to before
     // the parent of the start, since everything in between will be linked up via the continuation.
-    else if (m_renderer->isAnonymousBlock() && firstChildIsInlineContinuation(m_renderer)) {
-        auto* firstParent = startOfContinuations(*m_renderer->firstChildSlow())->parent();
-        while (firstChildIsInlineContinuation(firstParent))
+    else if (m_renderer->isAnonymousBlock() && firstChildIsInlineContinuation(downcast<RenderBlock>(*m_renderer))) {
+        RenderBlock& renderBlock = downcast<RenderBlock>(*m_renderer);
+        auto* firstParent = startOfContinuations(*renderBlock.firstChild())->parent();
+        ASSERT(firstParent);
+        while (firstChildIsInlineContinuation(*firstParent))
             firstParent = startOfContinuations(*firstParent->firstChild())->parent();
         previousSibling = firstParent->previousSibling();
     }
@@ -351,10 +347,10 @@ AccessibilityObject* AccessibilityRenderObject::previousSibling() const
     return axObjectCache()->getOrCreate(previousSibling);
 }
 
-static inline bool lastChildHasContinuation(RenderObject* renderer)
+static inline bool lastChildHasContinuation(RenderElement& renderer)
 {
-    RenderObject* child = renderer->lastChildSlow();
-    return child && isInlineWithContinuation(child);
+    RenderObject* child = renderer.lastChild();
+    return child && isInlineWithContinuation(*child);
 }
 
 AccessibilityObject* AccessibilityRenderObject::nextSibling() const
@@ -372,9 +368,10 @@ AccessibilityObject* AccessibilityRenderObject::nextSibling() const
 
     // Case 2: Anonymous block parent of the start of a continuation - skip all the way to
     // after the parent of the end, since everything in between will be linked up via the continuation.
-    else if (m_renderer->isAnonymousBlock() && lastChildHasContinuation(m_renderer)) {
+    else if (m_renderer->isAnonymousBlock() && lastChildHasContinuation(downcast<RenderBlock>(*m_renderer))) {
         RenderElement* lastParent = endOfContinuations(*downcast<RenderBlock>(*m_renderer).lastChild())->parent();
-        while (lastChildHasContinuation(lastParent))
+        ASSERT(lastParent);
+        while (lastChildHasContinuation(*lastParent))
             lastParent = endOfContinuations(*lastParent->lastChild())->parent();
         nextSibling = lastParent->nextSibling();
     }
@@ -385,11 +382,11 @@ AccessibilityObject* AccessibilityRenderObject::nextSibling() const
 
     // Case 4: node is an inline with a continuation. Next sibling is the next sibling of the end 
     // of the continuation chain.
-    else if (isInlineWithContinuation(m_renderer))
+    else if (isInlineWithContinuation(*m_renderer))
         nextSibling = endOfContinuations(*m_renderer)->nextSibling();
 
     // Case 5: node has no next sibling, and its parent is an inline with a continuation.
-    else if (isInlineWithContinuation(m_renderer->parent())) {
+    else if (isInlineWithContinuation(*m_renderer->parent())) {
         auto& continuation = *downcast<RenderInline>(*m_renderer->parent()).continuation();
         
         // Case 5a: continuation is a block - in this case the block itself is the next sibling.
@@ -626,8 +623,8 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
     if (!m_renderer)
         return String();
 
-    if (m_renderer->isFileUploadControl())
-        return toRenderFileUploadControl(m_renderer)->buttonValue();
+    if (is<RenderFileUploadControl>(*m_renderer))
+        return downcast<RenderFileUploadControl>(*m_renderer).buttonValue();
     
     // Reflect when a content author has explicitly marked a line break.
     if (m_renderer->isBR())
@@ -725,10 +722,10 @@ String AccessibilityRenderObject::stringValue() const
         return staticText;
     }
         
-    if (m_renderer->isText())
+    if (is<RenderText>(*m_renderer))
         return textUnderElement();
     
-    if (cssBox && cssBox->isMenuList()) {
+    if (is<RenderMenuList>(cssBox)) {
         // RenderMenuList will go straight to the text() of its selected item.
         // This has to be overridden in the case where the selected item has an ARIA label.
         HTMLSelectElement& selectElement = downcast<HTMLSelectElement>(*m_renderer->node());
@@ -739,11 +736,11 @@ String AccessibilityRenderObject::stringValue() const
             if (!overriddenDescription.isNull())
                 return overriddenDescription;
         }
-        return toRenderMenuList(m_renderer)->text();
+        return downcast<RenderMenuList>(*m_renderer).text();
     }
     
-    if (m_renderer->isListMarker())
-        return toRenderListMarker(*m_renderer).text();
+    if (is<RenderListMarker>(*m_renderer))
+        return downcast<RenderListMarker>(*m_renderer).text();
     
     if (isWebArea())
         return String();
@@ -751,8 +748,8 @@ String AccessibilityRenderObject::stringValue() const
     if (isTextControl())
         return text();
     
-    if (m_renderer->isFileUploadControl())
-        return toRenderFileUploadControl(m_renderer)->fileTextValue();
+    if (is<RenderFileUploadControl>(*m_renderer))
+        return downcast<RenderFileUploadControl>(*m_renderer).fileTextValue();
     
     // FIXME: We might need to implement a value here for more types
     // FIXME: It would be better not to advertise a value at all for the types for which we don't implement one;
@@ -1089,7 +1086,7 @@ AccessibilityObject* AccessibilityRenderObject::titleUIElement() const
     
     // if isFieldset is true, the renderer is guaranteed to be a RenderFieldset
     if (isFieldset())
-        return axObjectCache()->getOrCreate(toRenderFieldset(m_renderer)->findLegend(RenderFieldset::IncludeFloatingOrOutOfFlow));
+        return axObjectCache()->getOrCreate(downcast<RenderFieldset>(*m_renderer).findLegend(RenderFieldset::IncludeFloatingOrOutOfFlow));
     
     Node* node = m_renderer->node();
     if (!is<Element>(node))
@@ -1285,8 +1282,8 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
         return false;
 #endif
     
-    if (m_renderer->isRenderBlockFlow() && m_renderer->childrenInline() && !canSetFocusAttribute())
-        return !toRenderBlockFlow(m_renderer)->hasLines() && !mouseButtonListener();
+    if (is<RenderBlockFlow>(*m_renderer) && m_renderer->childrenInline() && !canSetFocusAttribute())
+        return !downcast<RenderBlockFlow>(*m_renderer).hasLines() && !mouseButtonListener();
     
     // ignore images seemingly used as spacers
     if (isImage()) {
@@ -1298,9 +1295,9 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
         // First check the RenderImage's altText (which can be set through a style sheet, or come from the Element).
         // However, if this is not a native image, fallback to the attribute on the Element.
         AccessibilityObjectInclusion altTextInclusion = DefaultBehavior;
-        bool isRenderImage = m_renderer && m_renderer->isRenderImage();
+        bool isRenderImage = is<RenderImage>(m_renderer);
         if (isRenderImage)
-            altTextInclusion = objectInclusionFromAltText(toRenderImage(m_renderer)->altText());
+            altTextInclusion = objectInclusionFromAltText(downcast<RenderImage>(*m_renderer).altText());
         else
             altTextInclusion = objectInclusionFromAltText(getAttribute(altAttr).string());
 
@@ -1315,13 +1312,13 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     
         if (isRenderImage) {
             // check for one-dimensional image
-            RenderImage* image = toRenderImage(m_renderer);
-            if (image->height() <= 1 || image->width() <= 1)
+            RenderImage& image = downcast<RenderImage>(*m_renderer);
+            if (image.height() <= 1 || image.width() <= 1)
                 return true;
             
             // check whether rendered image was stretched from one-dimensional file image
-            if (image->cachedImage()) {
-                LayoutSize imageSize = image->cachedImage()->imageSizeForRenderer(toRenderElement(m_renderer), image->view().zoomFactor());
+            if (image.cachedImage()) {
+                LayoutSize imageSize = image.cachedImage()->imageSizeForRenderer(&image, image.view().zoomFactor());
                 return imageSize.height() <= 1 || imageSize.width() <= 1;
             }
         }
@@ -1709,9 +1706,9 @@ Document* AccessibilityRenderObject::document() const
 
 Widget* AccessibilityRenderObject::widget() const
 {
-    if (!m_renderer->isBoxModelObject() || !toRenderBoxModelObject(m_renderer)->isWidget())
+    if (!is<RenderWidget>(*m_renderer))
         return nullptr;
-    return toRenderWidget(m_renderer)->widget();
+    return downcast<RenderWidget>(*m_renderer).widget();
 }
 
 AccessibilityObject* AccessibilityRenderObject::accessibilityParentForImageMap(HTMLMapElement* map) const
@@ -2007,12 +2004,12 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForPoint(const IntPoin
 
         // descend into widget (FRAME, IFRAME, OBJECT...)
         Widget* widget = toRenderWidget(renderer)->widget();
-        if (!widget || !widget->isFrameView())
+        if (!is<FrameView>(widget))
             break;
-        Frame& frame = toFrameView(widget)->frame();
+        Frame& frame = downcast<FrameView>(*widget).frame();
         renderView = frame.document()->renderView();
 #if PLATFORM(COCOA)
-        frameView = toFrameView(widget);
+        frameView = downcast<FrameView>(widget);
 #endif
     }
     
@@ -2374,18 +2371,18 @@ AccessibilityObject* AccessibilityRenderObject::correspondingLabelForControlElem
     return nullptr;
 }
 
-bool AccessibilityRenderObject::renderObjectIsObservable(RenderObject* renderer) const
+bool AccessibilityRenderObject::renderObjectIsObservable(RenderObject& renderer) const
 {
     // AX clients will listen for AXValueChange on a text control.
-    if (renderer->isTextControl())
+    if (is<RenderTextControl>(renderer))
         return true;
     
     // AX clients will listen for AXSelectedChildrenChanged on listboxes.
-    Node* node = renderer->node();
+    Node* node = renderer.node();
     if (!node)
         return false;
     
-    if (nodeHasRole(node, "listbox") || (renderer->isBoxModelObject() && toRenderBoxModelObject(renderer)->isListBox()))
+    if (nodeHasRole(node, "listbox") || (is<RenderBoxModelObject>(renderer) && downcast<RenderBoxModelObject>(renderer).isListBox()))
         return true;
 
     // Textboxes should send out notifications.
@@ -2399,7 +2396,7 @@ AccessibilityObject* AccessibilityRenderObject::observableObject() const
 {
     // Find the object going up the parent chain that is used in accessibility to monitor certain notifications.
     for (RenderObject* renderer = m_renderer; renderer && renderer->node(); renderer = renderer->parent()) {
-        if (renderObjectIsObservable(renderer)) {
+        if (renderObjectIsObservable(*renderer)) {
             if (AXObjectCache* cache = axObjectCache())
                 return cache->getOrCreate(renderer);
         }
@@ -2548,10 +2545,22 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && (node->hasTagName(rpTag) || node->hasTagName(rtTag)))
         return AnnotationRole;
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(EFL)
     // Gtk ATs expect all tables, data and layout, to be exposed as tables.
-    if (node && (node->hasTagName(tdTag) || node->hasTagName(thTag)))
+    if (node && (node->hasTagName(tdTag)))
         return CellRole;
+
+    if (node && (node->hasTagName(thTag))) {
+        for (Node* parentNode = node->parentNode(); parentNode; parentNode = parentNode->parentNode()) {
+            if (parentNode->hasTagName(theadTag))
+                return ColumnHeaderRole;
+            if (parentNode->hasTagName(tbodyTag) || parentNode->hasTagName(tfootTag))
+                return RowHeaderRole;
+            if (parentNode->hasTagName(tableTag))
+                return CellRole;
+        }
+        return CellRole;
+    }
 
     if (node && node->hasTagName(trTag))
         return RowRole;
@@ -2858,11 +2867,10 @@ AccessibilitySVGRoot* AccessibilityRenderObject::remoteSVGRootElement() const
         return nullptr;
     
     Image* image = cachedImage->image();
-    if (!image || !image->isSVGImage())
+    if (!is<SVGImage>(image))
         return nullptr;
     
-    SVGImage* svgImage = static_cast<SVGImage*>(image);
-    FrameView* frameView = svgImage->frameView();
+    FrameView* frameView = downcast<SVGImage>(*image).frameView();
     if (!frameView)
         return nullptr;
     Frame& frame = frameView->frame();
@@ -3404,10 +3412,10 @@ static AccessibilityRole msaaRoleForRenderer(const RenderObject* renderer)
     if (!renderer)
         return UnknownRole;
 
-    if (renderer->isText())
+    if (is<RenderText>(*renderer))
         return EditableTextRole;
 
-    if (renderer->isBoxModelObject() && toRenderBoxModelObject(renderer)->isListItem())
+    if (is<RenderListItem>(*renderer))
         return ListItemRole;
 
     return UnknownRole;

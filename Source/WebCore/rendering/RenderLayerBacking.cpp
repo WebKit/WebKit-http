@@ -318,8 +318,8 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
 void RenderLayerBacking::layerWillBeDestroyed()
 {
     RenderObject& renderer = this->renderer();
-    if (renderer.isEmbeddedObject() && toRenderEmbeddedObject(renderer).allowsAcceleratedCompositing()) {
-        PluginViewBase* pluginViewBase = toPluginViewBase(toRenderWidget(renderer).widget());
+    if (is<RenderEmbeddedObject>(renderer) && downcast<RenderEmbeddedObject>(renderer).allowsAcceleratedCompositing()) {
+        PluginViewBase* pluginViewBase = downcast<PluginViewBase>(downcast<RenderWidget>(renderer).widget());
         if (pluginViewBase && m_graphicsLayer->contentsLayerForMedia())
             pluginViewBase->detachPluginLayer();
     }
@@ -572,8 +572,8 @@ bool RenderLayerBacking::updateConfiguration()
     if (isDirectlyCompositedImage())
         updateImageContents();
 
-    if (renderer().isEmbeddedObject() && toRenderEmbeddedObject(&renderer())->allowsAcceleratedCompositing()) {
-        PluginViewBase* pluginViewBase = toPluginViewBase(toRenderWidget(&renderer())->widget());
+    if (is<RenderEmbeddedObject>(renderer()) && downcast<RenderEmbeddedObject>(renderer()).allowsAcceleratedCompositing()) {
+        PluginViewBase* pluginViewBase = downcast<PluginViewBase>(downcast<RenderWidget>(renderer()).widget());
 #if PLATFORM(IOS)
         if (pluginViewBase && !m_graphicsLayer->contentsLayerForMedia()) {
             pluginViewBase->detachPluginLayer();
@@ -988,15 +988,15 @@ void RenderLayerBacking::adjustAncestorCompositingBoundsForFlowThread(LayoutRect
         }
 
         // Move the ancestor position at the top of the region where the composited layer is going to display.
-        RenderFlowThread& flowThread = toRenderFlowThread(flowThreadLayer->renderer());
+        RenderFlowThread& flowThread = downcast<RenderFlowThread>(flowThreadLayer->renderer());
         RenderNamedFlowFragment* parentRegion = flowThread.cachedRegionForCompositedLayer(m_owningLayer);
         if (!parentRegion)
             return;
 
         IntPoint flowDelta;
         m_owningLayer.convertToPixelSnappedLayerCoords(flowThreadLayer, flowDelta);
-        parentRegion->adjustRegionBoundsFromFlowThreadPortionRect(flowDelta, ancestorCompositingBounds);
-        RenderBoxModelObject& layerOwner = toRenderBoxModelObject(parentRegion->layerOwner());
+        parentRegion->adjustRegionBoundsFromFlowThreadPortionRect(ancestorCompositingBounds);
+        RenderBoxModelObject& layerOwner = downcast<RenderBoxModelObject>(parentRegion->layerOwner());
         RenderLayerBacking* layerOwnerBacking = layerOwner.layer()->backing();
         if (!layerOwnerBacking)
             return;
@@ -1919,18 +1919,18 @@ LayoutSize RenderLayerBacking::contentOffsetInCompostingLayer() const
 
 LayoutRect RenderLayerBacking::contentsBox() const
 {
-    if (!renderer().isBox())
+    if (!is<RenderBox>(renderer()))
         return LayoutRect();
 
-    RenderBox& renderBox = toRenderBox(renderer());
+    RenderBox& renderBox = downcast<RenderBox>(renderer());
     LayoutRect contentsRect;
 #if ENABLE(VIDEO)
-    if (renderBox.isVideo())
-        contentsRect = toRenderVideo(renderBox).videoBox();
+    if (is<RenderVideo>(renderBox))
+        contentsRect = downcast<RenderVideo>(renderBox).videoBox();
     else
 #endif
-    if (renderBox.isRenderReplaced()) {
-        RenderReplaced& renderReplaced = *toRenderReplaced(&renderBox);
+    if (is<RenderReplaced>(renderBox)) {
+        RenderReplaced& renderReplaced = downcast<RenderReplaced>(renderBox);
         contentsRect = renderReplaced.replacedContentRect(renderBox.intrinsicSize());
     } else
         contentsRect = renderBox.contentBoxRect();

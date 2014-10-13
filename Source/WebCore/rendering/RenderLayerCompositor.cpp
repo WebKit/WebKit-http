@@ -1287,7 +1287,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
         // anonymous RenderRegion, but first we need to make sure that the parent itself of the region is going to
         // have a composited layer. We only want to make regions composited when there's an actual layer that we
         // need to move to that region.
-        computeRegionCompositingRequirements(toRenderBlockFlow(layer.renderer()).renderNamedFlowFragment(), overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
+        computeRegionCompositingRequirements(downcast<RenderBlockFlow>(layer.renderer()).renderNamedFlowFragment(), overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
     }
 
     
@@ -1544,7 +1544,7 @@ void RenderLayerCompositor::rebuildCompositingLayerTree(RenderLayer& layer, Vect
     }
 
     if (layer.renderer().isRenderNamedFlowFragmentContainer())
-        rebuildRegionCompositingLayerTree(toRenderBlockFlow(layer.renderer()).renderNamedFlowFragment(), layerChildren, depth + 1);
+        rebuildRegionCompositingLayerTree(downcast<RenderBlockFlow>(layer.renderer()).renderNamedFlowFragment(), layerChildren, depth + 1);
 
     if (Vector<RenderLayer*>* normalFlowList = layer.normalFlowList()) {
         for (size_t i = 0, size = normalFlowList->size(); i < size; ++i)
@@ -2068,7 +2068,6 @@ bool RenderLayerCompositor::shouldPropagateCompositingToEnclosingFrame() const
     // is to have the parent document become composited too. However, this can cause problems on platforms that
     // use native views for frames (like Mac), so disable that behavior on those platforms for now.
     HTMLFrameOwnerElement* ownerElement = m_renderView.document().ownerElement();
-    RenderElement* renderer = ownerElement ? ownerElement->renderer() : 0;
 
     // If we are the top-level frame, don't propagate.
     if (!ownerElement)
@@ -2077,7 +2076,8 @@ bool RenderLayerCompositor::shouldPropagateCompositingToEnclosingFrame() const
     if (!allowsIndependentlyCompositedFrames(&m_renderView.frameView()))
         return true;
 
-    if (!renderer || !renderer->isWidget())
+    RenderElement* renderer = ownerElement->renderer();
+    if (!is<RenderWidget>(renderer))
         return false;
 
     // On Mac, only propagate compositing if the frame is overlapped in the parent
@@ -2086,11 +2086,10 @@ bool RenderLayerCompositor::shouldPropagateCompositingToEnclosingFrame() const
     if (page && page->pageScaleFactor() != 1)
         return true;
     
-    RenderWidget* frameRenderer = toRenderWidget(renderer);
-    if (frameRenderer->widget()) {
-        ASSERT(frameRenderer->widget()->isFrameView());
-        FrameView* view = toFrameView(frameRenderer->widget());
-        if (view->isOverlappedIncludingAncestors() || view->hasCompositingAncestor())
+    RenderWidget& frameRenderer = downcast<RenderWidget>(*renderer);
+    if (frameRenderer.widget()) {
+        FrameView& view = downcast<FrameView>(*frameRenderer.widget());
+        if (view.isOverlappedIncludingAncestors() || view.hasCompositingAncestor())
             return true;
     }
 
@@ -2559,7 +2558,7 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
 
 bool RenderLayerCompositor::requiresCompositingForIndirectReason(RenderLayerModelObject& renderer, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason& reason) const
 {
-    RenderLayer& layer = *toRenderBoxModelObject(renderer).layer();
+    RenderLayer& layer = *downcast<RenderBoxModelObject>(renderer).layer();
 
     // When a layer has composited descendants, some effects, like 2d transforms, filters, masks etc must be implemented
     // via compositing so that they also apply to those composited descendants.
@@ -3654,7 +3653,7 @@ StickyPositionViewportConstraints RenderLayerCompositor::computeStickyViewportCo
     ASSERT(!layer.enclosingOverflowClipLayer(ExcludeSelf));
 #endif
 
-    RenderBoxModelObject& renderer = toRenderBoxModelObject(layer.renderer());
+    RenderBoxModelObject& renderer = downcast<RenderBoxModelObject>(layer.renderer());
 
     StickyPositionViewportConstraints constraints;
     renderer.computeStickyPositionConstraints(constraints, renderer.constrainingRectForStickyPosition());

@@ -226,15 +226,15 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
 
     // FIXME: Temporary in order to ensure compatibility with existing layout test results.
     if (adjustForTableCells)
-        r.move(0, -toRenderTableCell(o.containingBlock())->intrinsicPaddingBefore());
+        r.move(0, -downcast<RenderTableCell>(*o.containingBlock()).intrinsicPaddingBefore());
 
     // FIXME: Convert layout test results to report sub-pixel values, in the meantime using enclosingIntRect
     // for consistency with old results.
     ts << " " << enclosingIntRect(r);
 
-    if (!o.isText()) {
-        if (o.isFileUploadControl())
-            ts << " " << quoteAndEscapeNonPrintables(toRenderFileUploadControl(&o)->fileTextValue());
+    if (!is<RenderText>(o)) {
+        if (is<RenderFileUploadControl>(o))
+            ts << " " << quoteAndEscapeNonPrintables(downcast<RenderFileUploadControl>(o).fileTextValue());
 
         if (o.parent()) {
             Color color = o.style().visitedDependentColor(CSSPropertyColor);
@@ -542,7 +542,7 @@ void write(TextStream& ts, const RenderObject& o, int indent, RenderAsTextBehavi
         auto& text = downcast<RenderText>(o);
         if (auto layout = text.simpleLineLayout()) {
             ASSERT(!text.firstTextBox());
-            auto resolver = runResolver(toRenderBlockFlow(*text.parent()), *layout);
+            auto resolver = runResolver(downcast<RenderBlockFlow>(*text.parent()), *layout);
             for (auto it = resolver.begin(), end = resolver.end(); it != end; ++it) {
                 auto run = *it;
                 writeIndent(ts, indent + 1);
@@ -563,16 +563,15 @@ void write(TextStream& ts, const RenderObject& o, int indent, RenderAsTextBehavi
         }
     }
 
-    if (o.isWidget()) {
-        Widget* widget = toRenderWidget(&o)->widget();
-        if (widget && widget->isFrameView()) {
-            FrameView* view = toFrameView(widget);
-            if (RenderView* root = view->frame().contentRenderer()) {
+    if (is<RenderWidget>(o)) {
+        Widget* widget = downcast<RenderWidget>(o).widget();
+        if (is<FrameView>(widget)) {
+            FrameView& view = downcast<FrameView>(*widget);
+            if (RenderView* root = view.frame().contentRenderer()) {
                 if (!(behavior & RenderAsTextDontUpdateLayout))
-                    view->layout();
-                RenderLayer* l = root->layer();
-                if (l)
-                    writeLayers(ts, l, l, l->rect(), indent + 1, behavior);
+                    view.layout();
+                if (RenderLayer* layer = root->layer())
+                    writeLayers(ts, layer, layer, layer->rect(), indent + 1, behavior);
             }
         }
     }

@@ -89,13 +89,13 @@ testSelector(":nth-child(even of .foo, .bar, .baz)", ["testcase2", "testcase4", 
 testSelector(":nth-child(odd of [attribute1], [attribute2=value2])", ["testcase1", "testcase3", "testcase5", "testcase7", "testcase9", "testcase11", "testcase13", "testcase15", "testcase17", "testcase19", "testcase21", "testcase23", "testcase25", "testcase27", "testcase29"]);
 
 // Any element with an odd number of (attribute3 or empty) above.
-testSelector(':nth-child(even of [attribute3$="3"], :empty)', ["testcase2", "testcase6", "testcase10", "testcase14", "testcase15", "testcase16", "testcase18", "testcase19", "testcase20", "testcase22", "testcase23", "testcase24", "testcase26", "testcase27", "testcase29", "testcase30"]);
+testSelector(':nth-child(even of [attribute3$="3"], :empty)', ["testcase2", "testcase6", "testcase10", "testcase16", "testcase20", "testcase24", "testcase27"]);
 
 // Any element with an odd number of (attribute3 or empty) above. Overqualified with id to test compound selectors.
-testSelector(':nth-child(even of [id][attribute3$="3"], [id]:empty)', ["testcase2", "testcase6", "testcase10", "testcase14", "testcase15", "testcase16", "testcase18", "testcase19", "testcase20", "testcase22", "testcase23", "testcase24", "testcase26", "testcase27", "testcase29", "testcase30"]);
+testSelector(':nth-child(even of [id][attribute3$="3"], [id]:empty)', ["testcase2", "testcase6", "testcase10", "testcase16", "testcase20", "testcase24", "testcase27"]);
 
 // id is always there but attribute2 is uncommon. The classes .foo.bar matches many elements.
-testSelector(':nth-child(even of [id][attribute2*="alue"], .foo.bar)', ["testcase3", "testcase4", "testcase6", "testcase10", "testcase12", "testcase13", "testcase14", "testcase16", "testcase20", "testcase22", "testcase23", "testcase24", "testcase26", "testcase27", "testcase30"]);
+testSelector(':nth-child(even of [id][attribute2*="alue"], .foo.bar)', ["testcase4", "testcase6", "testcase10", "testcase14", "testcase16", "testcase20", "testcase24", "testcase27", "testcase30"]);
 
 </script>
 <script src="../../resources/js-test-post.js"></script>

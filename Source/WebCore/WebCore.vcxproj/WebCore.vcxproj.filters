@@ -8211,9 +8211,6 @@
     <ClInclude Include="..\platform\MemoryPressureHandler.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\MainThreadTask.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\MIMETypeRegistry.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -10153,9 +10150,6 @@
       <Filter>dom</Filter>
     </ClInclude>
     <ClInclude Include="..\dom\ContextDestructionObserver.h">
-      <Filter>dom</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dom\CrossThreadTask.h">
       <Filter>dom</Filter>
     </ClInclude>
     <ClInclude Include="..\dom\CustomEvent.h">

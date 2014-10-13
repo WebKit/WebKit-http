@@ -1,3 +1,314 @@
+2014-10-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        [SOUP] [WK2] WebProcess and NetworkProcess initialization clears cache contents
+        https://bugs.webkit.org/show_bug.cgi?id=137489
+
+        Reviewed by Carlos Garcia Campos.
+
+        Temporarily set the SoupCache's maximum size to a huge value
+        before calling soup_cache_load() so that the cache is not shrinked
+        to the default value.
+
+        * NetworkProcess/soup/NetworkProcessSoup.cpp:
+        (WebKit::NetworkProcess::platformInitializeNetworkProcess):
+        * WebProcess/soup/WebProcessSoup.cpp:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2014-10-12  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL] Introduce EWebKit_Extension
+        https://bugs.webkit.org/show_bug.cgi?id=134921
+
+        Reviewed by Gyuyoung Kim.
+
+        EWebKit2 does not provide the functionality to extend WebProcess.
+        Although there is ewk_context_new_with_injected_bundle_path() in ewebkit2 APIs,
+        application developers can not make bundle object without touching WK APIs
+        which ewebkit2 does not expose.
+
+        This patch introduces EWebKit_Extension, basic structure for the extension of WebProcess.
+
+        * PlatformEfl.cmake:
+        Added files for the EWebKit_Extension and install them properly.
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        (bundlePathForExtension):
+        (EwkContext::create):
+        (EwkContext::getInjectedBundleInitializationUserData):
+        (EwkContext::setMessageFromInjectedBundleCallback):
+        (ewk_context_new_with_extensions_path):
+        Deleted because ewebkit2 does not have a way to make injected bundle.
+        Instead, Ewk_Extension will cover the same functionalities.
+        (ewk_context_new_with_injected_bundle_path): Deleted.
+        * UIProcess/API/efl/ewk_context.h:
+        * UIProcess/API/efl/ewk_context_private.h:
+        (EwkContext::extensionsPath):
+        * UIProcess/API/efl/tests/InjectedBundle/injected_bundle_sample.cpp: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestEnvironment.cpp:
+        (EWK2UnitTest::EWK2UnitTestEnvironment::extensionSample):
+        (EWK2UnitTest::EWK2UnitTestEnvironment::injectedBundleSample): Renamed injectedBundleSample to extensionSample.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestEnvironment.h:
+        * UIProcess/API/efl/tests/extensions/extension_sample.cpp: Copied from Source/WebKit2/UIProcess/API/efl/tests/InjectedBundle/injected_bundle_sample.cpp.
+        * UIProcess/API/efl/tests/test_ewk2_context.cpp: Renamed ewk_context_new_with_injected_bundle_path to ewk_context_new_with_extensions_path.
+        (TEST_F):
+        * WebProcess/InjectedBundle/API/efl/EWebKit_Extension.h: Added.
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.cpp: Added.
+        (EwkExtension::append):
+        (EwkExtension::remove):
+        (ewk_extension_client_add):
+        (ewk_extension_client_del):
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.h: Added.
+        * WebProcess/InjectedBundle/API/efl/ewk_extension_private.h: Added.
+        (EwkExtension::EwkExtension):
+        (EwkExtension::~EwkExtension):
+        * WebProcess/efl/ExtensionManagerEfl.cpp: Added.
+        (WebKit::ExtensionManagerEfl::shared):
+        (WebKit::ExtensionManagerEfl::ExtensionManagerEfl):
+        (WebKit::ExtensionManagerEfl::initialize):
+        * WebProcess/efl/ExtensionManagerEfl.h: Added.
+        * WebProcess/efl/WebInjectedBundleMainEfl.cpp: Added.
+        (WKBundleInitialize):
+        * efl/ewebkit2-extension.pc.in: Added.
+
+2014-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Image subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137625
+
+        Reviewed by Andreas Kling.
+
+        Use is<>() / downcast<>() for Image subclasses.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::pluginSnapshotTimerFired):
+
+2014-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for GraphicsLayer subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137595
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for GraphicsLayer subclasses and clean up the
+        surrounding code.
+
+        * WebProcess/WebPage/mac/GraphicsLayerCARemote.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::layerForTransientZoom):
+        (WebKit::TiledCoreAnimationDrawingArea::shadowLayerForTransientZoom):
+
+2014-10-10  Pascal Jacquemart  <p.jacquemart@samsung.com>
+
+        Fix debug build on EFL after r174584
+        https://bugs.webkit.org/show_bug.cgi?id=137613
+
+        Reviewed by Christophe Dumez.
+
+        * UIProcess/efl/RequestManagerClientEfl.cpp:
+        (WebKit::RequestManagerClientEfl::RequestManagerClientEfl):
+
+2014-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for RenderBoxModelObject
+        https://bugs.webkit.org/show_bug.cgi?id=137587
+
+        Reviewed by Mihnea Ovidenie.
+
+        Use is<>() / downcast<>() for RenderBoxModelObject and clean up the
+        surrounding code.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::renderer):
+        (WebKit::PluginView::invalidateRect):
+
+2014-10-10  Pascal Jacquemart  <p.jacquemart@samsung.com>
+
+        [SOUP] Remove custom URI schemes implementation
+        https://bugs.webkit.org/show_bug.cgi?id=128169
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/API/C/soup/WKAPICastSoup.h:
+        * UIProcess/API/C/soup/WKContextSoup.cpp: Removed.
+        * UIProcess/API/C/soup/WKSoupRequestManager.cpp: Removed.
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::WebContext):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didReceiveURIRequest): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/soup/WebSoupRequestManagerClient.cpp: Removed.
+        * UIProcess/soup/WebSoupRequestManagerProxy.cpp: Removed.
+        * UIProcess/soup/WebSoupRequestManagerProxy.messages.in: Removed.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess):
+        * WebProcess/soup/WebKitSoupRequestGeneric.cpp:
+        (webkitSoupRequestGenericSendAsync):
+        (webkitSoupRequestGenericSendFinish):
+        * WebProcess/soup/WebProcessSoup.cpp:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+        * WebProcess/soup/WebSoupRequestManager.cpp: Removed.
+        * WebProcess/soup/WebSoupRequestManager.messages.in: Removed.
+
+2014-10-09  Dean Jackson  <dino@apple.com>
+
+        Remove ENABLE_CSS3_CONDITIONAL_RULES
+        https://bugs.webkit.org/show_bug.cgi?id=137571
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-10-09  Tim Horton  <timothy_horton@apple.com>
+
+        Move ServicesOverlayController to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=137416
+        <rdar://problem/18546283>
+
+        Reviewed by Anders Carlsson.
+
+        * Platform/Logging.h:
+        Move Services logging channel to WebCore.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::handleTelephoneNumberClick):
+        (WebKit::WebChromeClient::handleSelectionServiceClick):
+        (WebKit::WebChromeClient::hasRelevantSelectionServices):
+        Implement services-related ChromeClient callbacks.
+        Clicks are forwarded to WebPageMac where they do what they used to;
+        hasRelevantSelectionServices is implemented as it was when it lived
+        inside ServicesOverlayController.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::selectedTelephoneNumberRangesChanged): Deleted.
+        (WebKit::WebEditorClient::selectionRectsDidChange): Deleted.
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+        Remove WebEditorClient overrides for now-removed functions.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        (WebKit::WebPage::updatePreferences):
+        Forward serviceControlsEnabled setting to WebCore.
+
+        (WebKit::WebPage::servicesOverlayController): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::serviceControlsEnabled): Deleted.
+
+2014-10-09  Andy Estes  <aestes@apple.com>
+
+        [iOS] Crash in CFURLDownloadClient.didFail if the download has a null resumeData
+        https://bugs.webkit.org/show_bug.cgi?id=137551
+
+        Reviewed by David Kilzer.
+
+        CFDataGetBytePtr() and CFDataGetLength() crash if passed a null value.
+
+        * Shared/Downloads/ios/DownloadIOS.mm:
+        (WebKit::setUpDownloadClient):
+
+2014-10-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [X11] Plugin process crashes in NetscapePlugin::platformPostInitialize()
+        https://bugs.webkit.org/show_bug.cgi?id=137426
+
+        Reviewed by Darin Adler.
+
+        For some reason flash crashes when NPP_GetValue is called with
+        NPPVpluginCancelSrcStream, but only in windowed mode. Not calling
+        NPP_GetValue and unconditionally loading the source URL in the
+        browser fixes the crash and plugins work normally. We can handle
+        this particular case with a new quirk.
+
+        * Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp:
+        (WebKit::NetscapePluginModule::determineQuirks): Add
+        DoNotCancelSrcStreamInWindowedMode quirk if it's flash plugin.
+        * Shared/Plugins/PluginQuirks.h: Add
+        DoNotCancelSrcStreamInWindowedMode quirk.
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        (WebKit::NetscapePlugin::shouldLoadSrcURL): Return early if plugin
+        is windowed and DoNotCancelSrcStreamInWindowedMode quirk is present.
+
+2014-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Widget subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137549
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for Widget subclasses and clean up the
+        surrounding code.
+
+        * Shared/WebRenderObject.cpp:
+        (WebKit::WebRenderObject::WebRenderObject):
+
+2014-10-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use the PageLoadState observer also to monitor title and estimated load progress
+        https://bugs.webkit.org/show_bug.cgi?id=136997
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * UIProcess/API/gtk/WebKitLoaderClient.cpp:
+        (attachLoaderClientToView): Remove implementation of
+        didReceiveTitleForFrame, didStartProgress, didChangeProgress and
+        didFinishProgress.
+        (didReceiveTitleForFrame): Deleted.
+        (didChangeProgress): Deleted.
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkit_web_view_get_estimated_load_progress): Return the value
+        directly from the PageLoadState object, since we don't need to
+        cache the value anymore.
+        (webkitWebViewSetTitle): Deleted.
+        (webkitWebViewSetEstimatedLoadProgress): Deleted.
+        * UIProcess/API/gtk/WebKitWebViewPrivate.h:
+
+2014-10-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Race condition with WebKitWebView:is-loading after starting page load
+        https://bugs.webkit.org/show_bug.cgi?id=136692
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Use PageLoadState::Observer to update both is-loading and uri
+        properties, instead of manually update them. This ensures that our
+        web view is always in sync with the WebPageProxy so that
+        webkit_web_view_is_loading() returns true right after requesting
+        any load. We still need to manually set the is-loading property
+        only in the case where we delay the emission of the load-changed
+        signals when waiting for the main resource. The bahaviour is a bit
+        different but still consistent with what our API documentation says.
+
+        * UIProcess/API/gtk/WebKitLoaderClient.cpp:
+        (attachLoaderClientToView): Remove
+        didSameDocumentNavigationForFrame implementation, since we are
+        already notified about the URL change by the PageLoadState::Observer.
+        (didSameDocumentNavigationForFrame): Deleted.
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewSetIsLoading): No longer update the URI when
+        changing the is-loading property.
+        (webkitWebViewConstructed): Crate a PageLoadStateObserver and add
+        it to the PageLoadState.
+        (webkitWebViewDispose): Remove the PageLoadStateObserver from the PageLoadState.
+        (webkitWebViewEmitLoadChanged): Add isDelayedEvent parameter to
+        update the is-loading property accordingly when emitting the
+        delayed events.
+        (webkitWebViewEmitDelayedLoadEvents): Pass true as isDelayedEvent
+        parameter of webkitWebViewEmitLoadChanged().
+        (webkitWebViewLoadChanged): Pass false as isDelayedEvent parameter
+        of webkitWebViewEmitLoadChanged().
+        (webkitWebViewLoadFailed):
+        (webkitWebViewLoadFailedWithTLSErrors):
+        (webkitWebViewUpdateURI): Deleted.
+        * UIProcess/API/gtk/WebKitWebViewPrivate.h:
+
 2014-10-08  Christophe Dumez  <cdumez@apple.com>
 
         Use is<>() / downcast<>() for RenderBlock objects

@@ -334,12 +334,12 @@ void HTMLPlugInImageElement::updateSnapshot(PassRefPtr<Image> image)
 
     m_snapshotImage = image;
 
-    if (renderer()->isSnapshottedPlugIn()) {
-        toRenderSnapshottedPlugIn(renderer())->updateSnapshot(image);
+    if (is<RenderSnapshottedPlugIn>(*renderer())) {
+        downcast<RenderSnapshottedPlugIn>(*renderer()).updateSnapshot(image);
         return;
     }
 
-    if (renderer()->isEmbeddedObject())
+    if (is<RenderEmbeddedObject>(*renderer()))
         renderer()->repaint();
 }
 
@@ -551,8 +551,8 @@ void HTMLPlugInImageElement::checkSizeChangeForSnapshotting()
     setDisplayState(WaitingForSnapshot);
     m_snapshotDecision = Snapshotted;
     Widget* widget = pluginWidget();
-    if (widget && widget->isPluginViewBase())
-        toPluginViewBase(widget)->beginSnapshottingRunningPlugin();
+    if (is<PluginViewBase>(widget))
+        downcast<PluginViewBase>(*widget).beginSnapshottingRunningPlugin();
 }
 
 static inline bool is100Percent(Length length)
@@ -582,7 +582,7 @@ bool HTMLPlugInImageElement::isTopLevelFullPagePlugin(const RenderEmbeddedObject
     
 void HTMLPlugInImageElement::checkSnapshotStatus()
 {
-    if (!renderer()->isSnapshottedPlugIn()) {
+    if (!is<RenderSnapshottedPlugIn>(*renderer())) {
         if (displayState() == Playing)
             checkSizeChangeForSnapshotting();
         return;
@@ -590,7 +590,7 @@ void HTMLPlugInImageElement::checkSnapshotStatus()
     
     // If width and height styles were previously not set and we've snapshotted the plugin we may need to restart the plugin so that its state can be updated appropriately.
     if (!document().page()->settings().snapshotAllPlugIns() && displayState() <= DisplayingSnapshot && !m_plugInDimensionsSpecified) {
-        RenderSnapshottedPlugIn& renderer = toRenderSnapshottedPlugIn(*this->renderer());
+        RenderSnapshottedPlugIn& renderer = downcast<RenderSnapshottedPlugIn>(*this->renderer());
         if (!renderer.style().logicalWidth().isSpecified() && !renderer.style().logicalHeight().isSpecified())
             return;
         
@@ -725,11 +725,11 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const URL& url)
     setDisplayState(WaitingForSnapshot);
 }
 
-void HTMLPlugInImageElement::subframeLoaderDidCreatePlugIn(const Widget* widget)
+void HTMLPlugInImageElement::subframeLoaderDidCreatePlugIn(const Widget& widget)
 {
     m_plugInWasCreated = true;
 
-    if (widget->isPluginViewBase() && toPluginViewBase(widget)->shouldAlwaysAutoStart()) {
+    if (is<PluginViewBase>(widget) && downcast<PluginViewBase>(widget).shouldAlwaysAutoStart()) {
         LOG(Plugins, "%p Plug-in should auto-start, set to play", this);
         m_snapshotDecision = NeverSnapshot;
         setDisplayState(Playing);

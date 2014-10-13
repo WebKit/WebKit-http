@@ -12,6 +12,46 @@ batterystatus
 # no plug-ins on iOS
 compositing/plugins
 
+# no fullscreen API on iOS
+fullscreen
+http/tests/fullscreen
+
+# no gamepad on iOS
+gamepad
+
+# Java is not available on iOS
+java
+
+# iOS doesn't support Notifications.
+fast/notifications
+http/tests/notifications
+
+# Pointer Lock is not implemented in iOS.
+pointer-lock/
+http/tests/pointer-lock/
+
+# FIXME: <rdar://problem/6512037> LayoutTests: Enable printing tests once printing is supported on iPhone OS
+printing
+
+# Proximity Events not supported on iOS
+proximity
+fast/events/constructors/device-proximity-event-constructor.html
+
+# Encrypted Media Extensions are not enabled.
+media/encrypted-media/
+fast/events/constructors/media-key-event-constructor.html
+
+# Touch adjustment not supported on iOS
+touchadjustment
+
+# ENABLE_VIBRATION - Vibration API is not enabled.
+vibration
+
+# Skip webgl tests in the simulator
+fast/canvas/webgl
+webgl
+
+# canvas
 webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.darker.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
@@ -34,3 +74,60 @@ webkit.org/b/137530 canvas/philip/tests/2d.text.draw.space.collapse.other.html [
 webkit.org/b/137530 canvas/philip/tests/2d.text.draw.space.collapse.space.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.text.draw.space.collapse.start.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.text.measure.width.space.html [ Failure ]
+
+fast/canvas/canvas-bg.html [ Failure ]
+fast/canvas/canvas-blending-global-alpha.html [ Failure ]
+fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
+fast/canvas/canvas-measureText-ideographicSpace.html [ Failure ]
+fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
+fast/canvas/canvas-toDataURL-webp.html  [ Skip ] # Webp not supported
+fast/canvas/draw-focus-if-needed-with-path.html [ Failure ]
+fast/canvas/draw-focus-if-needed.html [ Failure ]
+
+webkit.org/b/137572 scrollbars/scroll-rtl-or-bt-layer.html [ Failure ]
+webkit.org/b/137572 scrollbars/scrollable-iframe-remove-crash.html [ Failure ]
+webkit.org/b/137572 scrollbars/scrollbar-drag-thumb-with-large-content.html [ Failure ]
+webkit.org/b/137572 scrollbars/scrollbar-iframe-click-does-not-blur-content.html [ Failure ]
+webkit.org/b/137572 scrollbars/scrollbar-selectors.html [ Failure ]
+webkit.org/b/137572 scrollbars/scrollevent-iframe-no-scrolling.html [ Failure ]
+
+# Quota API is not supported on iOS.
+storage/domstorage/quota.html [ Skip ]
+storage/storageinfo-missing-arguments.html [ Skip ]
+storage/storageinfo-no-callbacks.html [ Skip ]
+storage/storageinfo-query-usage.html [ Skip ]
+storage/storageinfo-request-quota.html [ Skip ]
+storage/storagequota-query-usage.html [ Skip ]
+storage/storagequota-request-quota.html [ Skip ]
+storage/websql/quota-tracking.html [ Skip ]
+
+# SVG
+webkit.org/b/137574 svg/as-image/svg-nested.html [ Crash ]
+webkit.org/b/137574 svg/dom/SVGAnimatedAngle.html [ Pass Crash ]
+webkit.org/b/137574 svg/css/arrow-with-shadow.svg [ Pass Crash ]
+
+# webaudio
+webaudio/codec-tests/vorbis/vbr-96kbps-44khz.html [ Skip ] # unsupported audio format
+webaudio/mediastreamaudiodestinationnode.html [ Skip ] # don't support context.createMediaStreamDestination
+webaudio/mediastreamaudiosourcenode.html [ Skip ] # don't support getUserMedia
+
+# request-animation-frame broken in the simulator.
+webkit.org/b/137588 fast/animation
+
+# enableAutoResizeMode not implementated
+fast/autoresize
+
+# CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
+webkit.org/b/76173 fast/css3-text/css3-text-align-last
+webkit.org/b/99945 fast/css3-text/css3-text-justify [ Skip ]
+webkit.org/b/112755 fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
+webkit.org/b/58491 editing/pasteboard/insert-text-decoration.html [ Skip ]
+
+# ENABLE(SHADOW_DOM) is disabled.
+fast/dom/shadow
+fast/dom/HTMLTemplateElement/cycles-in-shadow.html
+editing/shadow
+accessibility/corresponding-control-deleted-crash.html
+editing/text-iterator/basic-iteration-shadowdom.html
+fast/dom/DeviceMotion/no-page-cache.html [ Skip ]
+fast/dom/DeviceOrientation

@@ -349,8 +349,8 @@ void Node::willBeDeletedFrom(Document& document)
 void Node::materializeRareData()
 {
     NodeRareData* data;
-    if (isElementNode())
-        data = std::make_unique<ElementRareData>(toRenderElement(m_data.m_renderer)).release();
+    if (is<Element>(*this))
+        data = std::make_unique<ElementRareData>(downcast<RenderElement>(m_data.m_renderer)).release();
     else
         data = std::make_unique<NodeRareData>(m_data.m_renderer).release();
     ASSERT(data);
@@ -629,13 +629,13 @@ bool Node::isEditableToAccessibility(EditableLevel editableLevel) const
 RenderBox* Node::renderBox() const
 {
     RenderObject* renderer = this->renderer();
-    return renderer && renderer->isBox() ? toRenderBox(renderer) : 0;
+    return is<RenderBox>(renderer) ? downcast<RenderBox>(renderer) : nullptr;
 }
 
 RenderBoxModelObject* Node::renderBoxModelObject() const
 {
     RenderObject* renderer = this->renderer();
-    return renderer && renderer->isBoxModelObject() ? toRenderBoxModelObject(renderer) : 0;
+    return is<RenderBoxModelObject>(renderer) ? downcast<RenderBoxModelObject>(renderer) : nullptr;
 }
 
 LayoutRect Node::boundingBox() const

@@ -419,8 +419,6 @@ HTMLMediaElement::~HTMLMediaElement()
 #endif
 
     m_completelyLoaded = true;
-    if (m_player)
-        m_player->clearMediaPlayerClient();
 }
 
 void HTMLMediaElement::registerWithDocument(Document& document)
@@ -5323,7 +5321,7 @@ void HTMLMediaElement::createMediaPlayer()
 #if ENABLE(VIDEO_TRACK)
     forgetResourceSpecificTracks();
 #endif
-    m_player = MediaPlayer::create(this);
+    m_player = MediaPlayer::create(*this);
 
 #if ENABLE(WEB_AUDIO)
     if (m_audioSourceNode) {
@@ -5708,7 +5706,12 @@ bool HTMLMediaElement::mediaPlayerGetRawCookies(const URL& url, Vector<Cookie>& 
     return getRawCookies(&document(), url, cookies);
 }
 #endif
-    
+
+bool HTMLMediaElement::mediaPlayerIsInMediaDocument() const
+{
+    return document().isMediaDocument();
+}
+
 void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
 {
     m_mediaSession->removeBehaviorRestriction(HTMLMediaSession::RequireUserGestureForLoad);

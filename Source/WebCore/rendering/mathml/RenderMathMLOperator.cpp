@@ -1308,6 +1308,15 @@ void RenderMathMLOperator::stretchTo(LayoutUnit width)
     updateStyle();
 }
 
+void RenderMathMLOperator::resetStretchSize()
+{
+    if (m_isVertical) {
+        m_stretchHeightAboveBaseline = 0;
+        m_stretchDepthBelowBaseline = 0;
+    } else
+        m_stretchWidth = 0;
+}
+
 FloatRect RenderMathMLOperator::boundsForGlyph(const GlyphData& data) const
 {
     return data.fontData->boundsForGlyph(data.glyph);
@@ -1370,10 +1379,10 @@ void RenderMathMLOperator::rebuildTokenContent(const String& operatorString)
     // We destroy the wrapper and rebuild it.
     // FIXME: Using this RenderText make the text inaccessible to the dumpAsText/selection code (https://bugs.webkit.org/show_bug.cgi?id=125597).
     if (firstChild())
-        toRenderElement(firstChild())->destroy();
+        downcast<RenderElement>(*firstChild()).destroy();
     createWrapperIfNeeded();
     RenderPtr<RenderText> text = createRenderer<RenderText>(document(), textContent);
-    toRenderElement(firstChild())->addChild(text.leakPtr());
+    downcast<RenderElement>(*firstChild()).addChild(text.leakPtr());
 
     // We verify whether the operator text can be represented by a single UChar.
     // FIXME: This does not handle surrogate pairs (https://bugs.webkit.org/show_bug.cgi?id=122296).
@@ -1645,7 +1654,7 @@ void RenderMathMLOperator::updateStyle()
     // We add spacing around the operator.
     // FIXME: The spacing should be added to the whole embellished operator (https://bugs.webkit.org/show_bug.cgi?id=124831).
     // FIXME: The spacing should only be added inside (perhaps inferred) mrow (http://www.w3.org/TR/MathML/chapter3.html#presm.opspacing).
-    const auto& wrapper = toRenderElement(firstChild());
+    const auto& wrapper = downcast<RenderElement>(firstChild());
     auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(&style(), FLEX);
     newStyle.get().setMarginStart(Length(m_leadingSpace, Fixed));
     newStyle.get().setMarginEnd(Length(m_trailingSpace, Fixed));

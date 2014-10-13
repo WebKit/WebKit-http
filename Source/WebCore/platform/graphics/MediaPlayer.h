@@ -129,7 +129,6 @@ extern const PlatformMedia NoPlatformMedia;
 
 class CachedResourceLoader;
 class ContentType;
-class FrameView;
 class GraphicsContext;
 class GraphicsContext3D;
 class IntRect;
@@ -264,6 +263,8 @@ public:
     virtual void mediaPlayerHandlePlaybackCommand(MediaSession::RemoteControlCommandType) { }
 
     virtual String mediaPlayerSourceApplicationIdentifier() const { return emptyString(); }
+
+    virtual bool mediaPlayerIsInMediaDocument() const { return false; }
 };
 
 class MediaPlayerSupportsTypeClient {
@@ -278,7 +279,7 @@ class MediaPlayer {
     WTF_MAKE_NONCOPYABLE(MediaPlayer); WTF_MAKE_FAST_ALLOCATED;
 public:
 
-    static PassOwnPtr<MediaPlayer> create(MediaPlayerClient* client)
+    static PassOwnPtr<MediaPlayer> create(MediaPlayerClient& client)
     {
         return adoptPtr(new MediaPlayer(client));
     }
@@ -316,9 +317,7 @@ public:
     bool hasVideo() const;
     bool hasAudio() const;
 
-    void setFrameView(FrameView* frameView) { m_frameView = frameView; }
-    FrameView* frameView() { return m_frameView; }
-    bool inMediaDocument();
+    bool inMediaDocument() const;
 
     IntSize size() const { return m_size; }
     void setSize(const IntSize& size);
@@ -381,7 +380,7 @@ public:
 
     double volume() const;
     void setVolume(double);
-    bool platformVolumeConfigurationRequired() const { return m_mediaPlayerClient->mediaPlayerPlatformVolumeConfigurationRequired(); }
+    bool platformVolumeConfigurationRequired() const { return m_client.mediaPlayerPlatformVolumeConfigurationRequired(); }
 
     bool muted() const;
     void setMuted(bool);
@@ -439,8 +438,7 @@ public:
 
     void repaint();
 
-    MediaPlayerClient* mediaPlayerClient() const { return m_mediaPlayerClient; }
-    void clearMediaPlayerClient() { m_mediaPlayerClient = 0; }
+    MediaPlayerClient& client() const { return m_client; }
 
     bool hasAvailableVideoFrame() const;
     void prepareForRendering();
@@ -579,14 +577,14 @@ public:
     String sourceApplicationIdentifier() const;
 
 private:
-    MediaPlayer(MediaPlayerClient*);
+    MediaPlayer(MediaPlayerClient&);
     MediaPlayerFactory* nextBestMediaEngine(MediaPlayerFactory*) const;
     void loadWithNextMediaEngine(MediaPlayerFactory*);
     void reloadTimerFired(Timer<MediaPlayer>&);
 
     static void initializeMediaEngines();
 
-    MediaPlayerClient* m_mediaPlayerClient;
+    MediaPlayerClient& m_client;
     Timer<MediaPlayer> m_reloadTimer;
     OwnPtr<MediaPlayerPrivateInterface> m_private;
     MediaPlayerFactory* m_currentMediaEngine;
@@ -594,7 +592,6 @@ private:
     String m_contentMIMEType;
     String m_contentTypeCodecs;
     String m_keySystem;
-    FrameView* m_frameView;
     IntSize m_size;
     Preload m_preload;
     bool m_visible;

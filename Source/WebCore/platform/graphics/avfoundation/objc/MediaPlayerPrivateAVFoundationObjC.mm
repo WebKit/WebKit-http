@@ -38,7 +38,6 @@
 #import "ExceptionCodePlaceholder.h"
 #import "FloatConversion.h"
 #import "FloatConversion.h"
-#import "FrameView.h"
 #import "GraphicsContext.h"
 #import "GraphicsContextCG.h"
 #import "InbandMetadataTextTrackPrivateAVF.h"
@@ -583,7 +582,7 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoLayer()
         if (!m_videoLayer)
             createAVPlayerLayer();
 
-        player()->mediaPlayerClient()->mediaPlayerRenderingModeChanged(player());
+        player()->client().mediaPlayerRenderingModeChanged(player());
     });
 }
 
@@ -600,7 +599,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
 #endif
     [m_videoLayer addObserver:m_objcObserver.get() forKeyPath:@"readyForDisplay" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextAVPlayerLayer];
     updateVideoLayerGravity();
-    IntSize defaultSize = player()->mediaPlayerClient() ? player()->mediaPlayerClient()->mediaPlayerContentBoxRect().pixelSnappedSize() : IntSize();
+    IntSize defaultSize = player()->client().mediaPlayerContentBoxRect().pixelSnappedSize();
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoLayer(%p) - returning %p", this, m_videoLayer.get());
 
 #if PLATFORM(IOS)
@@ -866,7 +865,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayer()
     [m_avPlayer.get() setAllowsExternalPlayback:m_allowsWirelessVideoPlayback];
 #endif
 
-    if (player()->mediaPlayerClient() && player()->mediaPlayerClient()->mediaPlayerIsVideo())
+    if (player()->client().mediaPlayerIsVideo())
         createAVPlayerLayer();
 
     if (m_avPlayerItem)

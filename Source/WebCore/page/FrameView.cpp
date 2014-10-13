@@ -1782,7 +1782,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
 
         // Fixed items should always have layers.
         ASSERT(renderer->hasLayer());
-        RenderLayer* layer = toRenderBoxModelObject(renderer)->layer();
+        RenderLayer* layer = downcast<RenderBoxModelObject>(*renderer).layer();
 
         if (layer->viewportConstrainedNotCompositedReason() == RenderLayer::NotCompositedForBoundsOutOfView
             || layer->viewportConstrainedNotCompositedReason() == RenderLayer::NotCompositedForNoVisibleContent) {
@@ -2234,25 +2234,24 @@ void FrameView::repaintContentRectangle(const IntRect& r)
     ScrollView::repaintContentRectangle(r);
 }
 
-static unsigned countRenderedCharactersInRenderObjectWithThreshold(const RenderObject& renderer, unsigned countSoFar, unsigned threshold)
+static unsigned countRenderedCharactersInRenderObjectWithThreshold(const RenderElement& renderer, unsigned threshold)
 {
-    // FIXME: Consider writing this using RenderObject::nextInPreOrder() instead of using recursion.
-    if (is<RenderText>(renderer))
-        countSoFar += downcast<RenderText>(renderer).text()->length();
-
-    for (RenderObject* child = renderer.firstChildSlow(); child; child = child->nextSibling()) {
-        if (countSoFar >= threshold)
-            break;
-        countSoFar = countRenderedCharactersInRenderObjectWithThreshold(*child, countSoFar, threshold);
+    unsigned count = 0;
+    for (const RenderObject* descendant = &renderer; descendant; descendant = descendant->nextInPreOrder()) {
+        if (is<RenderText>(*descendant)) {
+            count += downcast<RenderText>(*descendant).text()->length();
+            if (count >= threshold)
+                break;
+        }
     }
-    return countSoFar;
+    return count;
 }
 
 bool FrameView::renderedCharactersExceed(unsigned threshold)
 {
     if (!m_frame->contentRenderer())
         return false;
-    return countRenderedCharactersInRenderObjectWithThreshold(*m_frame->contentRenderer(), 0, threshold) >= threshold;
+    return countRenderedCharactersInRenderObjectWithThreshold(*m_frame->contentRenderer(), threshold) >= threshold;
 }
 
 void FrameView::contentsResized()
@@ -3568,11 +3567,11 @@ Color FrameView::documentBackgroundColor() const
 bool FrameView::hasCustomScrollbars() const
 {
     for (auto& widget : children()) {
-        if (widget->isFrameView()) {
-            if (toFrameView(*widget).hasCustomScrollbars())
+        if (is<FrameView>(*widget)) {
+            if (downcast<FrameView>(*widget).hasCustomScrollbars())
                 return true;
-        } else if (widget->isScrollbar()) {
-            if (toScrollbar(*widget).isCustomScrollbar())
+        } else if (is<Scrollbar>(*widget)) {
+            if (downcast<Scrollbar>(*widget).isCustomScrollbar())
                 return true;
         }
     }
@@ -3598,16 +3597,16 @@ bool FrameView::isInChildFrameWithFrameFlattening() const
 
     // Frame flattening applies when the owner element is either in a frameset or
     // an iframe with flattening parameters.
-    if (frame().ownerElement()->hasTagName(iframeTag)) {
-        RenderIFrame* iframeRenderer = toRenderIFrame(frame().ownerElement()->renderWidget());
-        if (iframeRenderer->flattenFrame())
+    if (is<HTMLIFrameElement>(*frame().ownerElement())) {
+        RenderIFrame& iframeRenderer = downcast<RenderIFrame>(*frame().ownerElement()->renderWidget());
+        if (iframeRenderer.flattenFrame())
             return true;
     }
 
     if (!frameFlatteningEnabled())
         return false;
 
-    if (frame().ownerElement()->hasTagName(frameTag))
+    if (is<HTMLFrameElement>(*frame().ownerElement()))
         return true;
 
     return false;
@@ -3905,8 +3904,8 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     Vector<Ref<FrameView>, 16> childViews;
     childViews.reserveInitialCapacity(children().size());
     for (auto& widget : children()) {
-        if (widget->isFrameView())
-            childViews.uncheckedAppend(toFrameView(*widget));
+        if (is<FrameView>(*widget))
+            childViews.uncheckedAppend(downcast<FrameView>(*widget));
     }
 
     for (unsigned i = 0; i < childViews.size(); ++i)
@@ -4104,8 +4103,8 @@ IntPoint FrameView::convertFromContainingViewToRenderer(const RenderElement* ren
 IntRect FrameView::convertToContainingView(const IntRect& localRect) const
 {
     if (const ScrollView* parentScrollView = parent()) {
-        if (parentScrollView->isFrameView()) {
-            const FrameView* parentView = toFrameView(parentScrollView);
+        if (is<FrameView>(*parentScrollView)) {
+            const FrameView& parentView = downcast<FrameView>(*parentScrollView);
             // Get our renderer in the parent view
             RenderWidget* renderer = frame().ownerRenderer();
             if (!renderer)
@@ -4115,7 +4114,7 @@ IntRect FrameView::convertToContainingView(const IntRect& localRect) const
             // Add borders and padding??
             rect.move(renderer->borderLeft() + renderer->paddingLeft(),
                       renderer->borderTop() + renderer->paddingTop());
-            return parentView->convertFromRendererToContainingView(renderer, rect);
+            return parentView.convertFromRendererToContainingView(renderer, rect);
         }
         
         return Widget::convertToContainingView(localRect);
@@ -4127,15 +4126,15 @@ IntRect FrameView::convertToContainingView(const IntRect& localRect) const
 IntRect FrameView::convertFromContainingView(const IntRect& parentRect) const
 {
     if (const ScrollView* parentScrollView = parent()) {
-        if (parentScrollView->isFrameView()) {
-            const FrameView* parentView = toFrameView(parentScrollView);
+        if (is<FrameView>(*parentScrollView)) {
+            const FrameView& parentView = downcast<FrameView>(*parentScrollView);
 
             // Get our renderer in the parent view
             RenderWidget* renderer = frame().ownerRenderer();
             if (!renderer)
                 return parentRect;
 
-            IntRect rect = parentView->convertFromContainingViewToRenderer(renderer, parentRect);
+            IntRect rect = parentView.convertFromContainingViewToRenderer(renderer, parentRect);
             // Subtract borders and padding
             rect.move(-renderer->borderLeft() - renderer->paddingLeft(),
                       -renderer->borderTop() - renderer->paddingTop());
@@ -4151,8 +4150,8 @@ IntRect FrameView::convertFromContainingView(const IntRect& parentRect) const
 IntPoint FrameView::convertToContainingView(const IntPoint& localPoint) const
 {
     if (const ScrollView* parentScrollView = parent()) {
-        if (parentScrollView->isFrameView()) {
-            const FrameView* parentView = toFrameView(parentScrollView);
+        if (is<FrameView>(*parentScrollView)) {
+            const FrameView& parentView = downcast<FrameView>(*parentScrollView);
 
             // Get our renderer in the parent view
             RenderWidget* renderer = frame().ownerRenderer();
@@ -4164,7 +4163,7 @@ IntPoint FrameView::convertToContainingView(const IntPoint& localPoint) const
             // Add borders and padding
             point.move(renderer->borderLeft() + renderer->paddingLeft(),
                        renderer->borderTop() + renderer->paddingTop());
-            return parentView->convertFromRendererToContainingView(renderer, point);
+            return parentView.convertFromRendererToContainingView(renderer, point);
         }
         
         return Widget::convertToContainingView(localPoint);
@@ -4176,15 +4175,15 @@ IntPoint FrameView::convertToContainingView(const IntPoint& localPoint) const
 IntPoint FrameView::convertFromContainingView(const IntPoint& parentPoint) const
 {
     if (const ScrollView* parentScrollView = parent()) {
-        if (parentScrollView->isFrameView()) {
-            const FrameView* parentView = toFrameView(parentScrollView);
+        if (is<FrameView>(*parentScrollView)) {
+            const FrameView& parentView = downcast<FrameView>(*parentScrollView);
 
             // Get our renderer in the parent view
             RenderWidget* renderer = frame().ownerRenderer();
             if (!renderer)
                 return parentPoint;
 
-            IntPoint point = parentView->convertFromContainingViewToRenderer(renderer, parentPoint);
+            IntPoint point = parentView.convertFromContainingViewToRenderer(renderer, parentPoint);
             // Subtract borders and padding
             point.move(-renderer->borderLeft() - renderer->paddingLeft(),
                        -renderer->borderTop() - renderer->paddingTop());
@@ -4280,10 +4279,10 @@ void FrameView::sendScrollEvent()
     frame().eventHandler().dispatchFakeMouseMoveEventSoon();
 }
 
-void FrameView::removeChild(Widget* widget)
+void FrameView::removeChild(Widget& widget)
 {
-    if (widget->isFrameView())
-        removeScrollableArea(toFrameView(widget));
+    if (is<FrameView>(widget))
+        removeScrollableArea(&downcast<FrameView>(widget));
 
     ScrollView::removeChild(widget);
 }

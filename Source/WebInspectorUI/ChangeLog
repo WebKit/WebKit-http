@@ -1,3 +1,75 @@
+2014-10-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve appearance of alpha color swatches
+        https://bugs.webkit.org/show_bug.cgi?id=137627
+
+        Reviewed by Timothy Hatcher.
+
+        This improves the sizes. The color-swatch size is 1em x 1em,
+        which ends up being 11px, and thus there is still an imbalance.
+        However on both 1x and 2x displays this looks more even.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch):
+
+2014-10-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: assert always logs undefined instead of the desired string
+        https://bugs.webkit.org/show_bug.cgi?id=137632
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.dispatch):
+        Fix the assert log to include the method name.
+
+2014-10-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS minification should not strip whitespace around calc +/- binary operators
+        https://bugs.webkit.org/show_bug.cgi?id=137624
+
+        Reviewed by Timothy Hatcher.
+
+        Be careful when stripping whitespace around "+". We want to strip for
+        selectors "a + b" but not for calc expressions "calc(1px + 2px)".
+
+        This is not a perfect solution, but it does a good job. It may still break
+        with more complex calc expressions, like "calc(1px + calc())" but this
+        handles the basics.
+
+        * Scripts/copy-user-interface-resources-dryrun.rb: Added.
+        * Scripts/cssmin.py:
+        (cssminify):
+
+2014-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOM Storage Editing is broken in many ways, frustrating
+        https://bugs.webkit.org/show_bug.cgi?id=137547
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMStorageObject.js:
+        (WebInspector.DOMStorageObject.prototype.getEntries): Deleted.
+        When getting entires, populate the model object with these keys/values
+        so we can accurately detect duplicates in editing.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.determineNextCell):
+        (WebInspector.DataGrid.prototype.moveToNextCell):
+        When the users uses "Enter" to commit, stop editing.
+
+        (WebInspector.DataGrid.prototype._editingCommitted):
+        Fix title property accessor. This is not a map. This fixes an exception
+        when showing context menus on editable data grid rows.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype.cleanup):
+        (WebInspector.DOMStorageContentView.prototype.restoreOriginalValues):
+        (WebInspector.DOMStorageContentView.prototype._editingCallback):
+        Completely rewrite editing here. As soon as an edit is made, enter
+        an uncommitted state with the original key/value. When a commit is
+        allowed, update as appropriate based on the original values.
+
 2014-10-08  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: CSS Pretty Printing fails to put space between value functions around ending parenthesis

@@ -31,8 +31,6 @@
 
 #import "BlockExceptions.h"
 #import "DocumentLoader.h"
-#import "Frame.h"
-#import "HostWindow.h"
 #import "GraphicsContext.h"
 #import "URL.h"
 #import "Logging.h"
@@ -464,7 +462,7 @@ MediaPlayerPrivateQTKit::MediaRenderingMode MediaPlayerPrivateQTKit::preferredRe
     if (!m_qtMovie)
         return MediaRenderingNone;
 
-    if (supportsAcceleratedRendering() && m_player->mediaPlayerClient()->mediaPlayerRenderingCanBeAccelerated(m_player))
+    if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player))
         return MediaRenderingMovieLayer;
 
     if (!QTVideoRendererClass())
@@ -499,7 +497,7 @@ void MediaPlayerPrivateQTKit::setUpVideoRendering()
 
     // If using a movie layer, inform the client so the compositing tree is updated.
     if (currentMode == MediaRenderingMovieLayer || preferredMode == MediaRenderingMovieLayer)
-        m_player->mediaPlayerClient()->mediaPlayerRenderingModeChanged(m_player);
+        m_player->client().mediaPlayerRenderingModeChanged(m_player);
 }
 
 void MediaPlayerPrivateQTKit::tearDownVideoRendering()
@@ -932,7 +930,7 @@ void MediaPlayerPrivateQTKit::prepareForRendering()
     // If using a movie layer, inform the client so the compositing tree is updated. This is crucial if the movie
     // has a poster, as it will most likely not have a layer and we will now be rendering frames to the movie layer.
     if (currentRenderingMode() == MediaRenderingMovieLayer || preferredRenderingMode() == MediaRenderingMovieLayer)
-        m_player->mediaPlayerClient()->mediaPlayerRenderingModeChanged(m_player);
+        m_player->client().mediaPlayerRenderingModeChanged(m_player);
 }
 
 void MediaPlayerPrivateQTKit::updateStates()
@@ -1447,7 +1445,7 @@ void MediaPlayerPrivateQTKit::disableUnsupportedTracks()
 void MediaPlayerPrivateQTKit::sawUnsupportedTracks()
 {
     m_hasUnsupportedTracks = true;
-    m_player->mediaPlayerClient()->mediaPlayerSawUnsupportedTracks(m_player);
+    m_player->client().mediaPlayerSawUnsupportedTracks(m_player);
 }
 
 bool MediaPlayerPrivateQTKit::supportsAcceleratedRendering() const

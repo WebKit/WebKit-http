@@ -91,7 +91,7 @@ HTMLPlugInElement::~HTMLPlugInElement()
 
 bool HTMLPlugInElement::canProcessDrag() const
 {
-    const PluginViewBase* plugin = pluginWidget() && pluginWidget()->isPluginViewBase() ? toPluginViewBase(pluginWidget()) : nullptr;
+    const PluginViewBase* plugin = is<PluginViewBase>(pluginWidget()) ? downcast<PluginViewBase>(pluginWidget()) : nullptr;
     return plugin ? plugin->canProcessDrag() : false;
 }
 
@@ -207,17 +207,17 @@ void HTMLPlugInElement::defaultEventHandler(Event* event)
     // FIXME: Mouse down and scroll events are passed down to plug-in via custom code in EventHandler; these code paths should be united.
 
     auto renderer = this->renderer();
-    if (!renderer || !renderer->isWidget())
+    if (!is<RenderWidget>(renderer))
         return;
 
-    if (renderer->isEmbeddedObject()) {
-        if (toRenderEmbeddedObject(renderer)->isPluginUnavailable()) {
-            toRenderEmbeddedObject(renderer)->handleUnavailablePluginIndicatorEvent(event);
+    if (is<RenderEmbeddedObject>(*renderer)) {
+        if (downcast<RenderEmbeddedObject>(*renderer).isPluginUnavailable()) {
+            downcast<RenderEmbeddedObject>(*renderer).handleUnavailablePluginIndicatorEvent(event);
             return;
         }
 
-        if (toRenderEmbeddedObject(renderer)->isSnapshottedPlugIn() && displayState() < Restarting) {
-            toRenderSnapshottedPlugIn(renderer)->handleEvent(event);
+        if (is<RenderSnapshottedPlugIn>(*renderer) && displayState() < Restarting) {
+            downcast<RenderSnapshottedPlugIn>(*renderer).handleEvent(event);
             HTMLFrameOwnerElement::defaultEventHandler(event);
             return;
         }
@@ -226,7 +226,7 @@ void HTMLPlugInElement::defaultEventHandler(Event* event)
             return;
     }
 
-    RefPtr<Widget> widget = toRenderWidget(renderer)->widget();
+    RefPtr<Widget> widget = downcast<RenderWidget>(*renderer).widget();
     if (!widget)
         return;
     widget->handleEvent(event);
@@ -242,10 +242,10 @@ bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent*) const
         return false;
 
     Widget* widget = pluginWidget();
-    if (!widget || !widget->isPluginViewBase())
+    if (!is<PluginViewBase>(widget))
         return false;
 
-    return toPluginViewBase(widget)->supportsKeyboardFocus();
+    return downcast<PluginViewBase>(*widget).supportsKeyboardFocus();
 }
 
 bool HTMLPlugInElement::isPluginElement() const
@@ -257,17 +257,17 @@ bool HTMLPlugInElement::isUserObservable() const
 {
     // No widget - can't be anything to see or hear here.
     Widget* widget = pluginWidget(PluginLoadingPolicy::DoNotLoad);
-    if (!widget || !widget->isPluginViewBase())
+    if (!is<PluginViewBase>(widget))
         return false;
 
-    PluginViewBase* pluginView = toPluginViewBase(widget);
+    PluginViewBase& pluginView = downcast<PluginViewBase>(*widget);
 
     // If audio is playing (or might be) then the plugin is detectable.
-    if (pluginView->audioHardwareActivity() != AudioHardwareActivityType::IsInactive)
+    if (pluginView.audioHardwareActivity() != AudioHardwareActivityType::IsInactive)
         return true;
 
     // If the plugin is visible and not vanishingly small in either dimension it is detectable.
-    return pluginView->isVisible() && widget->width() > 2 && widget->height() > 2;
+    return pluginView.isVisible() && pluginView.width() > 2 && pluginView.height() > 2;
 }
 
 bool HTMLPlugInElement::supportsFocus() const

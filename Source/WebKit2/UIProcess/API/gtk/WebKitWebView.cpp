@@ -143,6 +143,7 @@ enum {
 
 typedef HashMap<uint64_t, GRefPtr<WebKitWebResource> > LoadingResourcesMap;
 typedef HashMap<uint64_t, GRefPtr<GTask> > SnapshotResultsMap;
+class PageLoadStateObserver;
 
 struct _WebKitWebViewPrivate {
     ~_WebKitWebViewPrivate()
@@ -159,10 +160,10 @@ struct _WebKitWebViewPrivate {
     WebKitWebView* relatedView;
     CString title;
     CString customTextEncoding;
-    double estimatedLoadProgress;
     CString activeURI;
     bool isLoading;
 
+    std::unique_ptr<PageLoadStateObserver> loadObserver;
     bool waitingForMainResource;
     unsigned long mainResourceResponseHandlerID;
     WebKitLoadEvent lastDelayedEvent;
@@ -202,6 +203,83 @@ static inline WebPageProxy* getPage(WebKitWebView* webView)
 {
     return webkitWebViewBaseGetPage(reinterpret_cast<WebKitWebViewBase*>(webView));
 }
+
+static void webkitWebViewSetIsLoading(WebKitWebView* webView, bool isLoading)
+{
+    if (webView->priv->isLoading == isLoading)
+        return;
+
+    webView->priv->isLoading = isLoading;
+    g_object_notify(G_OBJECT(webView), "is-loading");
+}
+
+class PageLoadStateObserver final : public PageLoadState::Observer {
+public:
+    PageLoadStateObserver(WebKitWebView* webView)
+        : m_webView(webView)
+    {
+    }
+
+private:
+    virtual void willChangeIsLoading() override
+    {
+        g_object_freeze_notify(G_OBJECT(m_webView));
+    }
+    virtual void didChangeIsLoading() override
+    {
+        if (m_webView->priv->waitingForMainResource) {
+            // The actual load has finished but we haven't emitted the delayed load events yet, so we are still loading.
+            g_object_thaw_notify(G_OBJECT(m_webView));
+            return;
+        }
+        webkitWebViewSetIsLoading(m_webView, getPage(m_webView)->pageLoadState().isLoading());
+        g_object_thaw_notify(G_OBJECT(m_webView));
+    }
+
+    virtual void willChangeTitle() override
+    {
+        g_object_freeze_notify(G_OBJECT(m_webView));
+    }
+    virtual void didChangeTitle() override
+    {
+        m_webView->priv->title = getPage(m_webView)->pageLoadState().title().utf8();
+        g_object_notify(G_OBJECT(m_webView), "title");
+        g_object_thaw_notify(G_OBJECT(m_webView));
+    }
+
+    virtual void willChangeActiveURL() override
+    {
+        g_object_freeze_notify(G_OBJECT(m_webView));
+    }
+    virtual void didChangeActiveURL() override
+    {
+        m_webView->priv->activeURI = getPage(m_webView)->pageLoadState().activeURL().utf8();
+        g_object_notify(G_OBJECT(m_webView), "uri");
+        g_object_thaw_notify(G_OBJECT(m_webView));
+    }
+
+    virtual void willChangeHasOnlySecureContent() override { }
+    virtual void didChangeHasOnlySecureContent() override { }
+
+    virtual void willChangeEstimatedProgress() override
+    {
+        g_object_freeze_notify(G_OBJECT(m_webView));
+    }
+    virtual void didChangeEstimatedProgress() override
+    {
+        g_object_notify(G_OBJECT(m_webView), "estimated-load-progress");
+        g_object_thaw_notify(G_OBJECT(m_webView));
+    }
+
+    virtual void willChangeCanGoBack() override { }
+    virtual void didChangeCanGoBack() override { }
+    virtual void willChangeCanGoForward() override { }
+    virtual void didChangeCanGoForward() override { }
+    virtual void willChangeNetworkRequestsInProgress() override { }
+    virtual void didChangeNetworkRequestsInProgress() override { }
+
+    WebKitWebView* m_webView;
+};
 
 static gboolean webkitWebViewLoadFail(WebKitWebView* webView, WebKitLoadEvent, const char* failingURI, GError* error)
 {
@@ -493,6 +571,10 @@ static void webkitWebViewConstructed(GObject* object)
     if (!priv->settings)
         priv->settings = adoptGRef(webkit_settings_new());
     webkitWebContextCreatePageForWebView(priv->context, webView, priv->userContentManager.get(), priv->relatedView);
+
+    priv->loadObserver = std::make_unique<PageLoadStateObserver>(webView);
+    getPage(webView)->pageLoadState().addObserver(*priv->loadObserver);
+
     // The related view is only valid during the construction.
     priv->relatedView = nullptr;
 
@@ -590,6 +672,11 @@ static void webkitWebViewDispose(GObject* object)
     webkitWebViewDisconnectMainResourceResponseChangedSignalHandler(webView);
     webkitWebViewDisconnectSettingsSignalHandlers(webView);
     webkitWebViewDisconnectFaviconDatabaseSignalHandlers(webView);
+
+    if (webView->priv->loadObserver) {
+        getPage(webView)->pageLoadState().removeObserver(*webView->priv->loadObserver);
+        webView->priv->loadObserver.reset();
+    }
 
     webkitWebContextWebViewDestroyed(webView->priv->context, webView);
 
@@ -1484,21 +1571,6 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
             WEBKIT_TYPE_AUTHENTICATION_REQUEST);
 }
 
-static void webkitWebViewSetIsLoading(WebKitWebView* webView, bool isLoading)
-{
-    if (webView->priv->isLoading == isLoading)
-        return;
-
-    webView->priv->isLoading = isLoading;
-    g_object_freeze_notify(G_OBJECT(webView));
-    g_object_notify(G_OBJECT(webView), "is-loading");
-
-    // Update the URI if a new load has started.
-    if (webView->priv->isLoading)
-        webkitWebViewUpdateURI(webView);
-    g_object_thaw_notify(G_OBJECT(webView));
-}
-
 static void webkitWebViewCancelAuthenticationRequest(WebKitWebView* webView)
 {
     if (!webView->priv->authenticationRequest)
@@ -1508,19 +1580,30 @@ static void webkitWebViewCancelAuthenticationRequest(WebKitWebView* webView)
     webView->priv->authenticationRequest.clear();
 }
 
-static void webkitWebViewEmitLoadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent)
+static void webkitWebViewEmitLoadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent, bool isDelayedEvent)
 {
     if (loadEvent == WEBKIT_LOAD_STARTED) {
-        webkitWebViewSetIsLoading(webView, true);
         webkitWebViewWatchForChangesInFavicon(webView);
         webkitWebViewCancelAuthenticationRequest(webView);
     } else if (loadEvent == WEBKIT_LOAD_FINISHED) {
-        webkitWebViewSetIsLoading(webView, false);
+        if (isDelayedEvent) {
+            // In case of the delayed event, we need to manually set is-loading to false.
+            webkitWebViewSetIsLoading(webView, false);
+        }
         webkitWebViewCancelAuthenticationRequest(webView);
         webkitWebViewDisconnectMainResourceResponseChangedSignalHandler(webView);
-    } else
-        webkitWebViewUpdateURI(webView);
+    }
+
     g_signal_emit(webView, signals[LOAD_CHANGED], 0, loadEvent);
+
+    if (isDelayedEvent) {
+        if (loadEvent == WEBKIT_LOAD_COMMITTED)
+            webView->priv->waitingForMainResource = false;
+        else if (loadEvent == WEBKIT_LOAD_FINISHED) {
+            // Manually set is-loading again in case a new load was started.
+            webkitWebViewSetIsLoading(webView, getPage(webView)->pageLoadState().isLoading());
+        }
+    }
 }
 
 static void webkitWebViewEmitDelayedLoadEvents(WebKitWebView* webView)
@@ -1531,9 +1614,8 @@ static void webkitWebViewEmitDelayedLoadEvents(WebKitWebView* webView)
     ASSERT(priv->lastDelayedEvent == WEBKIT_LOAD_COMMITTED || priv->lastDelayedEvent == WEBKIT_LOAD_FINISHED);
 
     if (priv->lastDelayedEvent == WEBKIT_LOAD_FINISHED)
-        webkitWebViewEmitLoadChanged(webView, WEBKIT_LOAD_COMMITTED);
-    webkitWebViewEmitLoadChanged(webView, priv->lastDelayedEvent);
-    priv->waitingForMainResource = false;
+        webkitWebViewEmitLoadChanged(webView, WEBKIT_LOAD_COMMITTED, true);
+    webkitWebViewEmitLoadChanged(webView, priv->lastDelayedEvent, true);
 }
 
 void webkitWebViewLoadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent)
@@ -1564,12 +1646,11 @@ void webkitWebViewLoadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent)
     if (priv->waitingForMainResource)
         priv->lastDelayedEvent = loadEvent;
     else
-        webkitWebViewEmitLoadChanged(webView, loadEvent);
+        webkitWebViewEmitLoadChanged(webView, loadEvent, false);
 }
 
 void webkitWebViewLoadFailed(WebKitWebView* webView, WebKitLoadEvent loadEvent, const char* failingURI, GError *error)
 {
-    webkitWebViewSetIsLoading(webView, false);
     webkitWebViewCancelAuthenticationRequest(webView);
 
     gboolean returnValue;
@@ -1579,7 +1660,6 @@ void webkitWebViewLoadFailed(WebKitWebView* webView, WebKitLoadEvent loadEvent, 
 
 void webkitWebViewLoadFailedWithTLSErrors(WebKitWebView* webView, const char* failingURI, GError* error, GTlsCertificateFlags tlsErrors, GTlsCertificate* certificate)
 {
-    webkitWebViewSetIsLoading(webView, false);
     webkitWebViewCancelAuthenticationRequest(webView);
 
     WebKitTLSErrorsPolicy tlsErrorsPolicy = webkit_web_context_get_tls_errors_policy(webView->priv->context);
@@ -1591,35 +1671,6 @@ void webkitWebViewLoadFailedWithTLSErrors(WebKitWebView* webView, const char* fa
     }
 
     g_signal_emit(webView, signals[LOAD_CHANGED], 0, WEBKIT_LOAD_FINISHED);
-}
-
-void webkitWebViewSetTitle(WebKitWebView* webView, const CString& title)
-{
-    WebKitWebViewPrivate* priv = webView->priv;
-    if (priv->title == title)
-        return;
-
-    priv->title = title;
-    g_object_notify(G_OBJECT(webView), "title");
-}
-
-void webkitWebViewSetEstimatedLoadProgress(WebKitWebView* webView, double estimatedLoadProgress)
-{
-    if (webView->priv->estimatedLoadProgress == estimatedLoadProgress)
-        return;
-
-    webView->priv->estimatedLoadProgress = estimatedLoadProgress;
-    g_object_notify(G_OBJECT(webView), "estimated-load-progress");
-}
-
-void webkitWebViewUpdateURI(WebKitWebView* webView)
-{
-    CString activeURI = getPage(webView)->pageLoadState().activeURL().utf8();
-    if (webView->priv->activeURI == activeURI)
-        return;
-
-    webView->priv->activeURI = activeURI;
-    g_object_notify(G_OBJECT(webView), "uri");
 }
 
 WebPageProxy* webkitWebViewCreateNewPage(WebKitWebView* webView, const WindowFeatures& windowFeatures, WebKitNavigationAction* navigationAction)
@@ -2466,7 +2517,7 @@ void webkit_web_view_set_custom_charset(WebKitWebView* webView, const gchar* cha
 gdouble webkit_web_view_get_estimated_load_progress(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), 0);
-    return webView->priv->estimatedLoadProgress;
+    return getPage(webView)->pageLoadState().estimatedProgress();
 }
 
 /**

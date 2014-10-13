@@ -44,10 +44,6 @@
 #include <wtf/gobject/GRefPtr.h>
 #include <wtf/gobject/GUniquePtr.h>
 
-#if !ENABLE(CUSTOM_PROTOCOLS)
-#include "WebSoupRequestManager.h"
-#endif
-
 namespace WebKit {
 
 static uint64_t getCacheDiskFreeSize(SoupCache* cache)
@@ -159,7 +155,12 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     ASSERT(!parameters.diskCacheDirectory.isEmpty());
     GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(parameters.diskCacheDirectory.utf8().data(), SOUP_CACHE_SINGLE_USER));
     WebCore::SoupNetworkSession::defaultSession().setCache(soupCache.get());
+    // Set an initial huge max_size for the SoupCache so the call to soup_cache_load() won't evict any cached
+    // resource. The final size of the cache will be set by NetworkProcess::platformSetCacheModel().
+    unsigned initialMaxSize = soup_cache_get_max_size(soupCache.get());
+    soup_cache_set_max_size(soupCache.get(), G_MAXUINT);
     soup_cache_load(soupCache.get());
+    soup_cache_set_max_size(soupCache.get(), initialMaxSize);
 
     if (!parameters.cookiePersistentStoragePath.isEmpty()) {
         supplement<WebCookieManager>()->setCookiePersistentStorage(parameters.cookiePersistentStoragePath,
@@ -169,11 +170,6 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
 
     if (!parameters.languages.isEmpty())
         setSoupSessionAcceptLanguage(parameters.languages);
-
-#if !ENABLE(CUSTOM_PROTOCOLS)
-    for (size_t i = 0; i < parameters.urlSchemesRegistered.size(); i++)
-        supplement<WebSoupRequestManager>()->registerURIScheme(parameters.urlSchemesRegistered[i]);
-#endif
 
     setIgnoreTLSErrors(parameters.ignoreTLSErrors);
 

@@ -1,3 +1,137 @@
+2014-10-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Adding svn:ignore so that .pyc files don't show up as new.
+
+        * inspector/scripts/codegen: Added property svn:ignore.
+
+2014-10-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174606.
+        https://bugs.webkit.org/show_bug.cgi?id=137621
+
+        broke a JSC test (Requested by estes on #webkit).
+
+        Reverted changeset:
+
+        "Various arguments optimisations in codegen fail to account
+        for arguments being in lexical record"
+        https://bugs.webkit.org/show_bug.cgi?id=137617
+        http://trac.webkit.org/changeset/174606
+
+2014-10-10  Oliver Hunt  <oliver@apple.com>
+
+        Various arguments optimisations in codegen fail to account for arguments being in lexical record
+        https://bugs.webkit.org/show_bug.cgi?id=137617
+
+        Reviewed by Michael Saboff.
+
+        Rework the way we track |arguments| references so that we don't try
+        to use the |arguments| reference on the stack if it's not safe.
+
+        To do this without nuking performance it was necessary to update
+        the parser to track modification of the |arguments| reference
+        itself.
+
+        * bytecode/CodeBlock.cpp:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::willResolveToArguments):
+        (JSC::BytecodeGenerator::uncheckedLocalArgumentsRegister):
+        (JSC::BytecodeGenerator::emitCall):
+        (JSC::BytecodeGenerator::emitConstruct):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::uncheckedRegisterForArguments): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::hasSafeLocalArgumentsRegister):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BracketAccessorNode::emitBytecode):
+        (JSC::DotAccessorNode::emitBytecode):
+        (JSC::getArgumentByVal):
+        (JSC::CallFunctionCallDotNode::emitBytecode):
+        (JSC::ApplyFunctionCallDotNode::emitBytecode):
+        (JSC::ArrayPatternNode::emitDirectBinding):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::existingArguments):
+        * parser/Nodes.h:
+        (JSC::ScopeNode::modifiesArguments):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        * parser/Parser.h:
+        (JSC::Scope::getCapturedVariables):
+        * parser/ParserModes.h:
+
+2014-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused generator code
+        https://bugs.webkit.org/show_bug.cgi?id=137564
+
+        Reviewed by Brian Burg.
+
+        * inspector/scripts/codegen/generate_backend_dispatcher_header.py:
+        (BackendDispatcherHeaderGenerator.generate_output): Deleted.
+        * inspector/scripts/codegen/generate_backend_dispatcher_implementation.py:
+        (BackendDispatcherImplementationGenerator.generate_output):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_header.py:
+        (FrontendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_implementation.py:
+        (FrontendDispatcherImplementationGenerator.generate_output):
+        * inspector/scripts/codegen/generate_protocol_types_header.py:
+        (ProtocolTypesHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_protocol_types_implementation.py:
+        (ProtocolTypesImplementationGenerator.generate_output):
+        inputFilename is now handled by the generic generator base class.
+
+        * inspector/scripts/codegen/models.py:
+        (Framework.fromString):
+        (Frameworks):
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        The WTF framework is unused. Remove unexpected frameworks.
+
+2014-10-09  Dean Jackson  <dino@apple.com>
+
+        Remove ENABLE_CSS3_CONDITIONAL_RULES
+        https://bugs.webkit.org/show_bug.cgi?id=137571
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-10-09  Adrien Destugues  <pulkomandy@gmail.com>
+
+        Fix compiler warning on noreturn function
+        https://bugs.webkit.org/show_bug.cgi?id=137558
+
+        Reviewed by Darin Adler.
+
+        The function is marked "noreturn", but the stub implementation does
+        return. No new tests: function is never called. Only fixes a warning.
+
+        * heap/HeapStatistics.cpp:
+        (JSC::HeapStatistics::exitWithFailure):
+
+2014-10-09  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Ensure that inline assembly Thunk functions don't conflict with the section designations of the compiler
+        https://bugs.webkit.org/show_bug.cgi?id=137434
+
+        Reviewed by Michael Saboff.
+
+        The ARM64 version of the defineUnaryDoubleOpWrapper macro in
+        ThunkGenerators.cpp contains inline assembly with .text assembler
+        directive followed by a static variable declaration. This macro gets
+        expanded several times afterwards, however, only during the compilation
+        of the first expansion does gcc insert a .data assembler directive
+        before the assembled version of the static variable. Thus, only the
+        first variable gets allocated in the .data section, all the others
+        remain in .text. If JavaScriptCore is built as a shared library then
+        this causes a segmentation fault during dynamic linking.
+
+        This patch puts a .previous directive at the end of the inline assembly
+        to ensure that the assumptions of the compiler about the sections are
+        not broken and the following variable goes to the right place.
+
+        * jit/ThunkGenerators.cpp:
+
 2014-10-08  Oliver Hunt  <oliver@apple.com>
 
         Make sure arguments tearoff is performed through the environment record if necessary

@@ -55,6 +55,8 @@ public:
     RenderObject* firstChild() const { return m_firstChild; }
     RenderObject* lastChild() const { return m_lastChild; }
 
+    virtual bool isEmpty() const override { return !firstChild(); }
+
     // FIXME: Make these standalone and move to relevant files.
     bool isRenderLayerModelObject() const;
     bool isBoxModelObject() const;
@@ -243,8 +245,6 @@ private:
     static bool s_noLongerAffectsParentBlock;
 };
 
-RENDER_OBJECT_TYPE_CASTS(RenderElement, isRenderElement())
-
 inline void RenderElement::setAnimatableStyle(PassRef<RenderStyle> style)
 {
     setStyle(animation().updateAnimations(*this, WTF::move(style)));
@@ -321,51 +321,51 @@ inline Element* RenderElement::generatingElement() const
 
 inline bool RenderObject::isRenderLayerModelObject() const
 {
-    return isRenderElement() && toRenderElement(this)->isRenderLayerModelObject();
+    return is<RenderElement>(*this) && downcast<RenderElement>(*this).isRenderLayerModelObject();
 }
 
 inline bool RenderObject::isBoxModelObject() const
 {
-    return isRenderElement() && toRenderElement(this)->isBoxModelObject();
+    return is<RenderElement>(*this) && downcast<RenderElement>(*this).isBoxModelObject();
 }
 
 inline bool RenderObject::isRenderBlock() const
 {
-    return isRenderElement() && toRenderElement(this)->isRenderBlock();
+    return is<RenderElement>(*this) && downcast<RenderElement>(*this).isRenderBlock();
 }
 
 inline bool RenderObject::isRenderBlockFlow() const
 {
-    return isRenderElement() && toRenderElement(this)->isRenderBlockFlow();
+    return is<RenderElement>(*this) && downcast<RenderElement>(*this).isRenderBlockFlow();
 }
 
 inline bool RenderObject::isRenderReplaced() const
 {
-    return isRenderElement() && toRenderElement(this)->isRenderReplaced();
+    return is<RenderElement>(*this) && downcast<RenderElement>(*this).isRenderReplaced();
 }
 
 inline bool RenderObject::isRenderInline() const
 {
-    return isRenderElement() && toRenderElement(this)->isRenderInline();
+    return is<RenderElement>(*this) && downcast<RenderElement>(*this).isRenderInline();
 }
 
 inline RenderStyle& RenderObject::style() const
 {
     if (isText())
         return m_parent->style();
-    return toRenderElement(this)->style();
+    return downcast<RenderElement>(*this).style();
 }
 
 inline RenderStyle& RenderObject::firstLineStyle() const
 {
     if (isText())
         return m_parent->firstLineStyle();
-    return toRenderElement(this)->firstLineStyle();
+    return downcast<RenderElement>(*this).firstLineStyle();
 }
 
 inline RenderElement* ContainerNode::renderer() const
 {
-    return toRenderElement(Node::renderer());
+    return downcast<RenderElement>(Node::renderer());
 }
 
 inline int adjustForAbsoluteZoom(int value, const RenderElement& renderer)

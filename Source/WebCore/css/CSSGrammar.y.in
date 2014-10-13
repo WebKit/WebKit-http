@@ -84,7 +84,7 @@ static inline CSSParserValue makeIdentValue(CSSParserString string)
 
 auto invalidSelectorVector = reinterpret_cast<Vector<std::unique_ptr<CSSParserSelector>>*>(-1);
 
-static bool isValidNthSelectorList(const Vector<std::unique_ptr<CSSParserSelector>>* selectorVector)
+static bool selectorListDoesNotMatchAnyPseudoElement(const Vector<std::unique_ptr<CSSParserSelector>>* selectorVector)
 {
     if (!selectorVector)
         return true;
@@ -343,8 +343,6 @@ static bool isValidNthSelectorList(const Vector<std::unique_ptr<CSSParserSelecto
 %destructor { destroy($$); } track_names_list
 #endif
 
-#if ENABLE_CSS3_CONDITIONAL_RULES
-
 %token SUPPORTS_AND
 %token SUPPORTS_NOT
 %token SUPPORTS_OR
@@ -355,8 +353,6 @@ static bool isValidNthSelectorList(const Vector<std::unique_ptr<CSSParserSelecto
 %destructor { if ($$) $$->deref(); } supports
 
 %type <boolean> supports_condition supports_condition_in_parens supports_conjunction supports_declaration_condition supports_disjunction supports_error supports_negation
-
-#endif
 
 #if ENABLE_CSS_DEVICE_ADAPTATION
 
@@ -384,9 +380,7 @@ stylesheet:
 #endif
   | webkit_selector maybe_space
   | webkit_keyframe_rule maybe_space
-#if ENABLE_CSS3_CONDITIONAL_RULES
   | webkit_supports_condition maybe_space
-#endif
   ;
 
 webkit_rule: WEBKIT_RULE_SYM '{' maybe_space valid_rule maybe_space '}' { parser->m_rule = adoptRef($4); } ;
@@ -419,11 +413,7 @@ webkit_selector:
     }
 ;
 
-#if ENABLE_CSS3_CONDITIONAL_RULES
-
 webkit_supports_condition: WEBKIT_SUPPORTS_CONDITION_SYM WHITESPACE maybe_space supports_condition '}' { parser->m_supportsCondition = $4; } ;
-
-#endif
 
 /* for expressions that require at least one whitespace to be present, like the + and - operators in calc expressions */
 space: WHITESPACE | space WHITESPACE ;
@@ -471,9 +461,7 @@ valid_rule:
   | namespace { $$ = nullptr; }
   | import
   | region
-#if ENABLE_CSS3_CONDITIONAL_RULES
   | supports
-#endif
 #if ENABLE_CSS_DEVICE_ADAPTATION
   | viewport
 #endif
@@ -519,9 +507,7 @@ block_valid_rule:
   | font_face
   | media
   | keyframes
-#if ENABLE_CSS3_CONDITIONAL_RULES
   | supports
-#endif
 #if ENABLE_CSS_DEVICE_ADAPTATION
   | viewport
 #endif
@@ -728,8 +714,6 @@ media:
     }
     ;
 
-#if ENABLE_CSS3_CONDITIONAL_RULES
-
 supports:
     before_supports_rule SUPPORTS_SYM maybe_space supports_condition at_supports_rule_header_end '{' at_rule_body_start maybe_space block_rule_list save_block {
         $$ = parser->createSupportsRule($4, std::unique_ptr<Vector<RefPtr<StyleRuleBase>>>($9).get()).leakRef();
@@ -794,8 +778,6 @@ supports_declaration_condition:
         p->markPropertyEnd($7, false);
     }
     ;
-
-#endif
 
 before_keyframes_rule:
     /* empty */ {
@@ -1364,7 +1346,7 @@ pseudo:
     // Definition of :nth-child().
     | ':' NTHCHILDFUNCTION maybe_space NTH nth_selector_ending {
         $$ = nullptr;
-        if (isValidNthSelectorList($5)) {
+        if (selectorListDoesNotMatchAnyPseudoElement($5)) {
             auto selector = std::make_unique<CSSParserSelector>();
             selector->setMatch(CSSSelector::PseudoClass);
             selector->setArgument($4);
@@ -1377,7 +1359,7 @@ pseudo:
     }
     | ':' NTHCHILDFUNCTION maybe_space maybe_unary_operator INTEGER nth_selector_ending {
         $$ = nullptr;
-        if (isValidNthSelectorList($6)) {
+        if (selectorListDoesNotMatchAnyPseudoElement($6)) {
             auto selector = std::make_unique<CSSParserSelector>();
             selector->setMatch(CSSSelector::PseudoClass);
             selector->setArgument(AtomicString::number($4 * $5));
@@ -1390,7 +1372,7 @@ pseudo:
     }
     | ':' NTHCHILDFUNCTION maybe_space IDENT nth_selector_ending {
         $$ = nullptr;
-        if (isValidNthToken($4) && isValidNthSelectorList($5)) {
+        if (isValidNthToken($4) && selectorListDoesNotMatchAnyPseudoElement($5)) {
             auto selector = std::make_unique<CSSParserSelector>();
             selector->setMatch(CSSSelector::PseudoClass);
             selector->setArgument($4);
@@ -1441,7 +1423,20 @@ pseudo:
         $$ = selector.release();
     }
 
-    // used by :not
+    // Definition of :not().
+#if ENABLE_CSS_SELECTORS_LEVEL4
+    | ':' NOTFUNCTION maybe_space nested_selector_list maybe_space ')' {
+        $$ = nullptr;
+        if ($4 && selectorListDoesNotMatchAnyPseudoElement($4)) {
+            auto selector = std::make_unique<CSSParserSelector>();
+            selector->setMatch(CSSSelector::PseudoClass);
+            selector->setPseudoClassValue($2);
+            selector->adoptSelectorVector(*std::unique_ptr<Vector<std::unique_ptr<CSSParserSelector>>>($4));
+            if (selector->pseudoClassType() == CSSSelector::PseudoClassNot)
+                $$ = selector.release();
+        }
+    }
+#else
     | ':' NOTFUNCTION maybe_space compound_selector maybe_space ')' {
         std::unique_ptr<CSSParserSelector> selector($4);
         $$ = nullptr;
@@ -1455,6 +1450,7 @@ pseudo:
             $$->setPseudoClassValue($2);
         }
     }
+#endif
   ;
 
 declaration_list:

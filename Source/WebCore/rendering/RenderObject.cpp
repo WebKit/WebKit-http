@@ -437,8 +437,8 @@ void RenderObject::adjustComputedFontSizesOnBlocks(float size, float visibleWidt
             depthStack.append(newFixedDepth);
 
         int stackSize = depthStack.size();
-        if (descendent->isRenderBlockFlow() && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
-            toRenderBlockFlow(descendent)->adjustComputedFontSizes(size, visibleWidth);
+        if (is<RenderBlockFlow>(*descendent) && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
+            downcast<RenderBlockFlow>(*descendent).adjustComputedFontSizes(size, visibleWidth);
         newFixedDepth = 0;
     }
 
@@ -465,8 +465,8 @@ void RenderObject::resetTextAutosizing()
             depthStack.append(newFixedDepth);
 
         int stackSize = depthStack.size();
-        if (descendent->isRenderBlockFlow() && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
-            toRenderBlockFlow(descendent)->resetComputedFontSize();
+        if (is<RenderBlockFlow>(*descendent) && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
+            downcast<RenderBlockFlow>(*descendent).resetComputedFontSize();
         newFixedDepth = 0;
     }
 }
@@ -592,8 +592,8 @@ void RenderObject::clearNeedsLayout()
     setNeedsSimplifiedNormalFlowLayoutBit(false);
     setNormalChildNeedsLayoutBit(false);
     setNeedsPositionedMovementLayoutBit(false);
-    if (isRenderElement())
-        toRenderElement(this)->setAncestorLineBoxDirty(false);
+    if (is<RenderElement>(*this))
+        downcast<RenderElement>(*this).setAncestorLineBoxDirty(false);
 #ifndef NDEBUG
     checkBlockPositionedObjectsNeedLayout();
 #endif
@@ -1429,11 +1429,11 @@ void RenderObject::showRenderTreeForThis() const
 
 void RenderObject::showLineTreeForThis() const
 {
-    if (!isRenderBlockFlow())
+    if (!is<RenderBlockFlow>(*this))
         return;
     showRenderTreeLegend();
     showRenderObject(false, 1);
-    toRenderBlockFlow(this)->showLineTreeAndMark(nullptr, 2);
+    downcast<RenderBlockFlow>(*this).showLineTreeAndMark(nullptr, 2);
 }
 
 void RenderObject::showRegionsInformation() const
@@ -1586,8 +1586,8 @@ void RenderObject::showRenderSubTreeAndMark(const RenderObject* markedObject, in
 #endif
 
     showRenderObject(markedObject == this, depth);
-    if (isRenderBlockFlow())
-        toRenderBlockFlow(this)->showLineTreeAndMark(nullptr, depth + 1);
+    if (is<RenderBlockFlow>(*this))
+        downcast<RenderBlockFlow>(*this).showLineTreeAndMark(nullptr, depth + 1);
 
     for (const RenderObject* child = firstChildSlow(); child; child = child->nextSibling())
         child->showRenderSubTreeAndMark(markedObject, depth + 1);
@@ -2025,7 +2025,7 @@ void RenderObject::willBeDestroyed()
 
     removeFromParent();
 
-    ASSERT(documentBeingDestroyed() || !isRenderElement() || !view().frameView().hasSlowRepaintObject(toRenderElement(this)));
+    ASSERT(documentBeingDestroyed() || !is<RenderElement>(*this) || !view().frameView().hasSlowRepaintObject(downcast<RenderElement>(this)));
 
     // The remove() call above may invoke axObjectCache()->childrenChanged() on the parent, which may require the AX render
     // object for this renderer. So we remove the AX render object now, after the renderer is removed.
@@ -2124,7 +2124,7 @@ void RenderObject::destroy()
 {
 #if PLATFORM(IOS)
     if (hasLayer())
-        toRenderBoxModelObject(this)->layer()->willBeDestroyed();
+        downcast<RenderBoxModelObject>(*this).layer()->willBeDestroyed();
 #endif
 
     willBeDestroyed();
@@ -2356,12 +2356,12 @@ void RenderObject::collectAnnotatedRegions(Vector<AnnotatedRegionValue>& regions
 {
     // RenderTexts don't have their own style, they just use their parent's style,
     // so we don't want to include them.
-    if (isText())
+    if (is<RenderText>(*this))
         return;
 
     addAnnotatedRegions(regions);
-    for (RenderObject* curr = toRenderElement(this)->firstChild(); curr; curr = curr->nextSibling())
-        curr->collectAnnotatedRegions(regions);
+    for (RenderObject* current = downcast<RenderElement>(*this).firstChild(); current; current = current->nextSibling())
+        current->collectAnnotatedRegions(regions);
 }
 #endif
 
@@ -2424,7 +2424,7 @@ RenderBoxModelObject* RenderObject::offsetParent() const
     // A is the HTML body element.
     // The computed value of the position property for element A is fixed.
     if (isRoot() || isBody() || (isOutOfFlowPositioned() && style().position() == FixedPosition))
-        return 0;
+        return nullptr;
 
     // If A is an area HTML element which has a map HTML element somewhere in the ancestor
     // chain return the nearest ancestor map HTML element and stop this algorithm.
@@ -2440,24 +2440,24 @@ RenderBoxModelObject* RenderObject::offsetParent() const
 
     bool skipTables = isPositioned();
     float currZoom = style().effectiveZoom();
-    auto curr = parent();
-    while (curr && (!curr->element() || (!curr->isPositioned() && !curr->isBody())) && !curr->isRenderNamedFlowThread()) {
-        Element* element = curr->element();
+    auto current = parent();
+    while (current && (!current->element() || (!current->isPositioned() && !current->isBody())) && !is<RenderNamedFlowThread>(*current)) {
+        Element* element = current->element();
         if (!skipTables && element && (is<HTMLTableElement>(*element) || is<HTMLTableCellElement>(*element)))
             break;
  
-        float newZoom = curr->style().effectiveZoom();
+        float newZoom = current->style().effectiveZoom();
         if (currZoom != newZoom)
             break;
         currZoom = newZoom;
-        curr = curr->parent();
+        current = current->parent();
     }
     
     // CSS regions specification says that region flows should return the body element as their offsetParent.
-    if (curr && curr->isRenderNamedFlowThread())
-        curr = document().body() ? document().body()->renderer() : 0;
+    if (is<RenderNamedFlowThread>(current))
+        current = document().body() ? document().body()->renderer() : nullptr;
     
-    return curr && curr->isBoxModelObject() ? toRenderBoxModelObject(curr) : 0;
+    return is<RenderBoxModelObject>(current) ? downcast<RenderBoxModelObject>(current) : nullptr;
 }
 
 VisiblePosition RenderObject::createVisiblePosition(int offset, EAffinity affinity) const

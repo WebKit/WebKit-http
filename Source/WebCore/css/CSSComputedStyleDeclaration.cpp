@@ -721,6 +721,14 @@ static PassRef<CSSPrimitiveValue> percentageOrZoomAdjustedValue(Length length, c
     return zoomAdjustedPixelValue(valueForLength(length, 0), style);
 }
 
+static PassRef<CSSPrimitiveValue> autoOrZoomAdjustedValue(Length length, const RenderStyle* style)
+{
+    if (length.isAuto())
+        return cssValuePool().createIdentifierValue(CSSValueAuto);
+
+    return zoomAdjustedPixelValue(valueForLength(length, 0), style);
+}
+
 static PassRef<CSSValueList> getBorderRadiusCornerValues(const LengthSize& radius, const RenderStyle* style)
 {
     auto list = CSSValueList::createSpaceSeparated();
@@ -1656,7 +1664,7 @@ static inline PassRefPtr<RenderStyle> computeRenderStyleForProperty(Node* styled
 
     if (renderer && renderer->isComposited() && AnimationController::supportsAcceleratedAnimationOfProperty(propertyID)) {
         AnimationUpdateBlock animationUpdateBlock(&renderer->animation());
-        RefPtr<RenderStyle> style = renderer->animation().getAnimatedStyleForRenderer(toRenderElement(renderer));
+        RefPtr<RenderStyle> style = renderer->animation().getAnimatedStyleForRenderer(downcast<RenderElement>(renderer));
         if (pseudoElementSpecifier && !styledNode->isPseudoElement()) {
             // FIXME: This cached pseudo style will only exist if the animation has been run at least once.
             return style->getCachedPseudoStyle(pseudoElementSpecifier);
@@ -2744,10 +2752,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             if (!style->hasClip())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
             RefPtr<Rect> rect = Rect::create();
-            rect->setTop(zoomAdjustedPixelValue(style->clip().top().value(), style.get()));
-            rect->setRight(zoomAdjustedPixelValue(style->clip().right().value(), style.get()));
-            rect->setBottom(zoomAdjustedPixelValue(style->clip().bottom().value(), style.get()));
-            rect->setLeft(zoomAdjustedPixelValue(style->clip().left().value(), style.get()));
+            rect->setTop(autoOrZoomAdjustedValue(style->clip().top(), style.get()));
+            rect->setRight(autoOrZoomAdjustedValue(style->clip().right(), style.get()));
+            rect->setBottom(autoOrZoomAdjustedValue(style->clip().bottom(), style.get()));
+            rect->setLeft(autoOrZoomAdjustedValue(style->clip().left(), style.get()));
             return cssValuePool().createValue(rect.release());
         }
         case CSSPropertySpeak:

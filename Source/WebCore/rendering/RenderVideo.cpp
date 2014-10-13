@@ -56,10 +56,8 @@ RenderVideo::RenderVideo(HTMLVideoElement& element, PassRef<RenderStyle> style)
 
 RenderVideo::~RenderVideo()
 {
-    if (MediaPlayer* player = videoElement().player()) {
+    if (MediaPlayer* player = videoElement().player())
         player->setVisible(false);
-        player->setFrameView(0);
-    }
 }
 
 IntSize RenderVideo::defaultSize()
@@ -233,7 +231,6 @@ void RenderVideo::updatePlayer()
     contentChanged(VideoChanged);
     
     IntRect videoBounds = videoBox(); 
-    mediaPlayer->setFrameView(&view().frameView());
     mediaPlayer->setSize(IntSize(videoBounds.width(), videoBounds.height()));
     mediaPlayer->setVisible(true);
     mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFitFill);
@@ -277,14 +274,7 @@ bool RenderVideo::requiresImmediateCompositing() const
 static const RenderBlock* rendererPlaceholder(const RenderObject* renderer)
 {
     RenderObject* parent = renderer->parent();
-    if (!parent)
-        return 0;
-    
-    RenderFullScreen* fullScreen = parent->isRenderFullScreen() ? toRenderFullScreen(parent) : 0;
-    if (!fullScreen)
-        return 0;
-    
-    return fullScreen->placeholder();
+    return is<RenderFullScreen>(parent) ? downcast<RenderFullScreen>(*parent).placeholder() : nullptr;
 }
 
 LayoutUnit RenderVideo::offsetLeft() const
