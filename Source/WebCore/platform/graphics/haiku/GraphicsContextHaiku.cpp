@@ -351,6 +351,7 @@ public:
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
     : m_currentLayer(new Layer(view))
     , m_graphicsState(new CustomGraphicsState)
+    , m_strokeStyle(B_SOLID_HIGH)
 {
 }
 
@@ -706,30 +707,46 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     }
 }
 
-void GraphicsContext::drawFocusRing(const Path& path, int /*width*/, int /*offset*/, const Color& color)
+void GraphicsContext::drawFocusRing(const Path& path, int width, int /*offset*/, const Color& color)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || width <= 0 || color.alpha() == 0)
         return;
 
+    // GTK forces this to 2, we use 1. A focus ring several pixels thick doesn't
+    // look good.
+    width = 1;
+
+    m_data->view()->PushState();
     setPlatformFillColor(color, ColorSpaceDeviceRGB);
-    //m_data->view()->StrokePath(path, B_SOLID_HIGH);
-    notImplemented();
+    m_data->view()->SetPenSize(width);
+    m_data->view()->StrokeShape(path.platformPath(), B_SOLID_HIGH);
+    m_data->view()->PopState();
 }
 
-void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width */, int /* offset */, const Color& color)
+void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int width, int /* offset */, const Color& color)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || width <= 0 || color.alpha() == 0)
         return;
 
     unsigned rectCount = rects.size();
+    if (rectCount <= 0)
+        return;
 
+    m_data->view()->PushState();
+
+    // GTK forces this to 2, we use 1. A focus ring several pixels thick doesn't
+    // look good.
+    // FIXME this still draws a focus ring that looks not so good on "details"
+    // elements. Maybe we should disable that somewhere.
+    width = 1;
+
+    setPlatformFillColor(color, ColorSpaceDeviceRGB);
+    m_data->view()->SetPenSize(width);
     // FIXME: maybe we should implement this with BShape?
+    for (unsigned i = 0; i < rectCount; ++i)
+        m_data->view()->StrokeRect(rects[i], B_SOLID_HIGH);
 
-    if (rects.size() > 1) {
-        setPlatformFillColor(color, ColorSpaceDeviceRGB);
-        for (unsigned i = 0; i < rectCount; ++i)
-            m_data->view()->StrokeRect(rects[i], B_SOLID_HIGH);
-    }
+    m_data->view()->PopState();
 }
 
 void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool /*printing*/, bool /* doubleLines */)
