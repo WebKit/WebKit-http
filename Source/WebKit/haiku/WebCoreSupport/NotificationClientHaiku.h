@@ -39,24 +39,14 @@ public:
     NotificationClientHaiku(BWebPage*) {}
 
     bool show(Notification* descriptor) override {
-        BNotification notification(B_INFORMATION_NOTIFICATION);
-        notification.SetTitle(descriptor->title());
-        notification.SetContent(descriptor->body());
-        notification.SetMessageID(descriptor->tag());
-        // FIXME SetIcon(...) < iconURL()
 
         // FIXME should call dispatch{Click/Close/Error/Show}Event
-        notification.Send();
+        fromDescriptor(descriptor).Send();
         return true;
     }
 
     void cancel(Notification* descriptor) override {
-        BNotification notification(B_INFORMATION_NOTIFICATION);
-        notification.SetTitle(descriptor->title());
-        notification.SetContent(descriptor->body());
-        notification.SetMessageID(descriptor->tag());
-
-        notification.Send(0); // 0 timeout = destroy now
+        fromDescriptor(descriptor).Send(0); // 0 timeout = destroy now
     }
 
     void notificationObjectDestroyed(Notification*) override {}
@@ -72,6 +62,22 @@ public:
         notImplemented();
         return PermissionAllowed;
     }
+
+private:
+    BNotification fromDescriptor(Notification* descriptor) {
+        BNotification notification(B_INFORMATION_NOTIFICATION);
+        if (descriptor->body().length() > 0) {
+            notification.SetTitle(descriptor->title());
+            notification.SetContent(descriptor->body());
+        } else {
+            notification.SetContent(descriptor->title());
+        }
+        // FIXME SetIcon(...) < iconURL()
+        notification.SetMessageID(descriptor->tag());
+
+        return notification;
+    }
+
 };
 
 }
