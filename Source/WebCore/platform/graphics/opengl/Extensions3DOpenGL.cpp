@@ -38,8 +38,10 @@
 #include <OpenGL/gl.h>
 #elif PLATFORM(QT)
 #include <private/qopenglextensions_p.h>
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
 #include <private/qopenglvertexarrayobject_p.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
+#endif
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 
@@ -50,7 +52,7 @@ namespace WebCore {
 Extensions3DOpenGL::Extensions3DOpenGL(GraphicsContext3D* context)
     : Extensions3DOpenGLCommon(context)
 {
-#if PLATFORM(QT)
+#if PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     context->makeContextCurrent();
     m_vaoFunctions = new QOpenGLVertexArrayObjectHelper(context->platformGraphicsContext3D());
 #endif
@@ -58,7 +60,7 @@ Extensions3DOpenGL::Extensions3DOpenGL(GraphicsContext3D* context)
 
 Extensions3DOpenGL::~Extensions3DOpenGL()
 {
-#if PLATFORM(QT)
+#if PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     delete m_vaoFunctions;
     m_vaoFunctions = 0;
 #endif
@@ -90,8 +92,10 @@ Platform3DObject Extensions3DOpenGL::createVertexArrayOES()
     if (isVertexArrayObjectSupported())
         glGenVertexArrays(1, &array);
 #elif PLATFORM(QT)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     if (isVertexArrayObjectSupported())
         m_vaoFunctions->glGenVertexArrays(1, &array);
+#endif
 #elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
     glGenVertexArraysAPPLE(1, &array);
 #endif
@@ -108,8 +112,10 @@ void Extensions3DOpenGL::deleteVertexArrayOES(Platform3DObject array)
     if (isVertexArrayObjectSupported())
         glDeleteVertexArrays(1, &array);
 #elif PLATFORM(QT)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     if (isVertexArrayObjectSupported())
         m_vaoFunctions->glDeleteVertexArrays(1, &array);
+#endif
 #elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
     glDeleteVertexArraysAPPLE(1, &array);
 #endif
@@ -124,9 +130,11 @@ GC3Dboolean Extensions3DOpenGL::isVertexArrayOES(Platform3DObject array)
 #if (PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN))
     if (isVertexArrayObjectSupported())
         return glIsVertexArray(array);
-#elif PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+#elif PLATFORM(QT)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     if (isVertexArrayObjectSupported())
         return m_vaoFunctions->glIsVertexArray(array);
+#endif
 #elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
     return glIsVertexArrayAPPLE(array);
 #endif
@@ -142,8 +150,10 @@ void Extensions3DOpenGL::bindVertexArrayOES(Platform3DObject array)
     if (isVertexArrayObjectSupported())
         glBindVertexArray(array);
 #elif PLATFORM(QT)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     if (isVertexArrayObjectSupported())
         m_vaoFunctions->glBindVertexArray(array);
+#endif
 #elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
     glBindVertexArrayAPPLE(array);
 #else
@@ -270,7 +280,11 @@ bool Extensions3DOpenGL::isVertexArrayObjectSupported()
 #elif PLATFORM(QT)
 bool Extensions3DOpenGL::isVertexArrayObjectSupported()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     return m_vaoFunctions && m_vaoFunctions->isValid();
+#else
+    return false;
+#endif
 }
 #endif
 

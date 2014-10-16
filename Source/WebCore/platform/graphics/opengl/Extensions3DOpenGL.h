@@ -71,7 +71,7 @@ private:
     bool isVertexArrayObjectSupported();
 #endif
 
-#if PLATFORM(QT)
+#if PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     QOpenGLVertexArrayObjectHelper *m_vaoFunctions;
 #endif
 };

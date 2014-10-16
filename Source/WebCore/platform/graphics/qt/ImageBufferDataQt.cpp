@@ -274,8 +274,11 @@ void ImageBufferDataPrivateAccelerated::paintToTextureMapper(TextureMapper* text
     }
 
     invalidateState();
-
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     static_cast<TextureMapperGL*>(textureMapper)->drawTexture(m_paintDevice->texture(), TextureMapperGL::ShouldBlend, m_paintDevice->size(), targetRect, matrix, opacity);
+#else
+    static_cast<TextureMapperGL*>(textureMapper)->drawTexture(m_paintDevice->texture(), TextureMapperGL::ShouldBlend | TextureMapperGL::ShouldFlipTexture, m_paintDevice->size(), targetRect, matrix, opacity);
+#endif
 }
 
 #if USE(GRAPHICS_SURFACE)
