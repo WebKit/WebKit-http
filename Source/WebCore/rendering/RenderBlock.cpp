@@ -253,7 +253,7 @@ void RenderBlock::willBeDestroyed()
     
     if (!documentBeingDestroyed()) {
         if (parent())
-            parent()->dirtyLinesFromChangedChild(this);
+            parent()->dirtyLinesFromChangedChild(*this);
     }
 
     removeFromUpdateScrollInfoAfterLayoutTransaction();
@@ -1630,11 +1630,11 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
     if ((paintPhase == PaintPhaseOutline || paintPhase == PaintPhaseChildOutlines)) {
         RenderInline* inlineCont = inlineElementContinuation();
         if (inlineCont && inlineCont->hasOutline() && inlineCont->style().visibility() == VISIBLE) {
-            RenderInline* inlineRenderer = toRenderInline(inlineCont->element()->renderer());
-            RenderBlock* cb = containingBlock();
+            RenderInline* inlineRenderer = downcast<RenderInline>(inlineCont->element()->renderer());
+            RenderBlock* containingBlock = this->containingBlock();
 
             bool inlineEnclosedInSelfPaintingLayer = false;
-            for (RenderBoxModelObject* box = inlineRenderer; box != cb; box = &box->parent()->enclosingBoxModelObject()) {
+            for (RenderBoxModelObject* box = inlineRenderer; box != containingBlock; box = &box->parent()->enclosingBoxModelObject()) {
                 if (box->hasSelfPaintingLayer()) {
                     inlineEnclosedInSelfPaintingLayer = true;
                     break;
@@ -1645,7 +1645,7 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
             // anonymous block (i.e. have our own layer), paint them straightaway instead. This is because a block depends on renderers in its continuation table being
             // in the same layer. 
             if (!inlineEnclosedInSelfPaintingLayer && !hasLayer())
-                cb->addContinuationWithOutline(inlineRenderer);
+                containingBlock->addContinuationWithOutline(inlineRenderer);
             else if (!inlineRenderer->firstLineBox() || (!inlineEnclosedInSelfPaintingLayer && hasLayer()))
                 inlineRenderer->paintOutline(paintInfo, paintOffset - locationOffset() + inlineRenderer->containingBlock()->location());
         }
@@ -1664,7 +1664,7 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 RenderInline* RenderBlock::inlineElementContinuation() const
 { 
     RenderBoxModelObject* continuation = this->continuation();
-    return continuation && continuation->isRenderInline() ? toRenderInline(continuation) : 0;
+    return is<RenderInline>(continuation) ? downcast<RenderInline>(continuation) : nullptr;
 }
 
 RenderBlock* RenderBlock::blockElementContinuation() const
@@ -2453,10 +2453,10 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     if (style().clipPath()) {
         switch (style().clipPath()->type()) {
         case ClipPathOperation::Shape: {
-            ShapeClipPathOperation* clipPath = toShapeClipPathOperation(style().clipPath());
+            const auto& clipPath = downcast<ShapeClipPathOperation>(*style().clipPath());
 
             LayoutRect referenceBoxRect;
-            switch (clipPath->referenceBox()) {
+            switch (clipPath.referenceBox()) {
             case CSSBoxType::MarginBox:
                 referenceBoxRect = marginBoxRect();
                 break;
@@ -2475,7 +2475,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
             case CSSBoxType::ViewBox:
                 referenceBoxRect = borderBoxRect();
             }
-            if (!clipPath->pathForReferenceRect(referenceBoxRect).contains(locationInContainer.point() - localOffset, clipPath->windRule()))
+            if (!clipPath.pathForReferenceRect(referenceBoxRect).contains(locationInContainer.point() - localOffset, clipPath.windRule()))
                 return false;
             break;
         }
@@ -3400,7 +3400,7 @@ void RenderBlock::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& a
         // FIXME: This is wrong. The principal renderer may not be the continuation preceding this block.
         // FIXME: This is wrong for block-flows that are horizontal.
         // https://bugs.webkit.org/show_bug.cgi?id=46781
-        bool prevInlineHasLineBox = toRenderInline(inlineElementContinuation()->element()->renderer())->firstLineBox();
+        bool prevInlineHasLineBox = downcast<RenderInline>(*inlineElementContinuation()->element()->renderer()).firstLineBox();
         float topMargin = prevInlineHasLineBox ? collapsedMarginBefore() : LayoutUnit();
         float bottomMargin = nextInlineHasLineBox ? collapsedMarginAfter() : LayoutUnit();
         LayoutRect rect(additionalOffset.x(), additionalOffset.y() - topMargin, width(), height() + topMargin + bottomMargin);

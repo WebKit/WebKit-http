@@ -53,7 +53,6 @@
 #include <wtf/Deque.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/WeakPtr.h>
 
@@ -1202,7 +1201,7 @@ public:
     WEBCORE_EXPORT void didRemoveWheelEventHandler();
 
     double lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
-    void resetLastHandledUserGestureTimestamp();
+    void updateLastHandledUserGestureTimestamp();
 
 #if ENABLE(TOUCH_EVENTS)
     bool hasTouchEventHandlers() const { return (m_touchEventTargets.get()) ? m_touchEventTargets->size() : false; }
@@ -1289,10 +1288,12 @@ public:
     bool hasStyleWithViewportUnits() const { return m_hasStyleWithViewportUnits; }
     void updateViewportUnitsOnResize();
 
+#if ENABLE(VIDEO)
     void registerMediaSession(MediaSession&);
     void unregisterMediaSession(MediaSession&);
     bool isPlayingAudio() const { return m_isPlayingAudio; }
     void updateIsPlayingAudio();
+#endif
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };

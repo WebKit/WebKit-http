@@ -1,3 +1,277 @@
+2014-10-15  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Unskip fast/sub-pixel directory.
+        https://bugs.webkit.org/show_bug.cgi?id=137732
+
+        Reviewed by Simon Fraser.
+
+        Unskip tests.
+
+        * TestExpectations:
+        * fast/sub-pixel/inline-block-with-padding-expected.txt: minor adjustment.
+        * fast/sub-pixel/zoomed-em-border-expected.html: minor adjustment.
+        * platform/mac/TestExpectations: we still have to skip couple of tests.
+
+2014-10-14  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (Safari 7.1/8.0): Border-radius and overflow hidden renders incorrectly.
+        https://bugs.webkit.org/show_bug.cgi?id=137205
+
+        Reviewed by Simon Fraser.
+
+        Child layer should not reset radius clipping behaviour.
+
+        * fast/layers/parent-clipping-overflow-is-overwritten-by-child-clipping-expected.html: Added.
+        * fast/layers/parent-clipping-overflow-is-overwritten-by-child-clipping.html: Added.
+
+2014-10-14  Dan Bernstein  <mitz@apple.com>
+
+        URLs that start with http:/// and https:/// lose two slashes when parsed, causing assertion failure and inconsistent behavior
+        https://bugs.webkit.org/show_bug.cgi?id=137718
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/loader/url-parse-1-expected.txt: Updated results.
+        * fast/loader/url-parse-1.html: Added a few test cases.
+        * fast/url/file-http-base-expected.txt: Updated results.
+        * fast/url/host-expected.txt: Ditto.
+        * fast/url/invalid-urls-utf8-expected.txt: Ditto.
+        * fast/url/relative-expected.txt: Ditto.
+        * fast/url/standard-url-expected.txt: Ditto.
+
+2014-10-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Re-adding fast/hidpi/image-srcset-relative-svg-canvas.html, as it still fails on bots
+
+        * TestExpectations:
+
+2014-10-14  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed gardening following r174585.
+
+        * platform/win/TestExpectations:
+        * platform/win/editing/inserting/4960120-1-expected.txt: Added.
+        * platform/win/editing/selection/select-across-readonly-input-1-expected.txt: Added.
+        * platform/win/editing/selection/select-across-readonly-input-2-expected.txt: Added.
+        * platform/win/editing/selection/select-across-readonly-input-3-expected.txt: Added.
+        * platform/win/editing/selection/select-across-readonly-input-4-expected.png: Added.
+        * platform/win/editing/selection/select-across-readonly-input-4-expected.txt: Added.
+        * platform/win/editing/selection/select-across-readonly-input-5-expected.png: Added.
+        * platform/win/editing/selection/select-across-readonly-input-5-expected.txt: Added.
+        * platform/win/fast/block/positioning/inline-block-relposition-expected.txt: Added.
+        * platform/win/fast/css/resize-corner-tracking-expected.png: Added.
+        * platform/win/fast/css/resize-corner-tracking-expected.txt: Added.
+        * platform/win/fast/css/text-input-with-webkit-border-radius-expected.txt: Added.
+        * platform/win/fast/dom/html-link-element-activation-behavior-url-is-null-expected.txt: Added.
+        * platform/win/fast/dynamic/positioned-movement-with-positioned-children-expected.txt: Added.
+        * platform/win/fast/events/shadow-event-path-2-expected.txt: Added.
+        * platform/win/fast/forms/003-expected.txt: Added.
+        * platform/win/fast/forms/004-expected.txt: Added.
+        * platform/win/fast/forms/button-default-title-expected.txt: Added.
+        * platform/win/fast/forms/button-generated-content-expected.png: Added.
+        * platform/win/fast/forms/button-generated-content-expected.txt: Added.
+        * platform/win/fast/forms/menulist-clip-expected.png: Added.
+        * platform/win/fast/forms/menulist-clip-expected.txt: Added.
+        * platform/win/fast/forms/menulist-deselect-update-expected.txt: Added.
+        * platform/win/fast/forms/menulist-style-color-expected.png: Added.
+        * platform/win/fast/forms/menulist-style-color-expected.txt: Added.
+        * platform/win/fast/forms/menulist-width-change-expected.txt: Added.
+        * platform/win/fast/forms/option-script-expected.txt: Added.
+        * platform/win/fast/forms/option-text-clip-expected.png: Added.
+        * platform/win/fast/forms/option-text-clip-expected.txt: Added.
+        * platform/win/fast/forms/select-writing-direction-natural-expected.png: Added.
+        * platform/win/fast/forms/select-writing-direction-natural-expected.txt: Added.
+        * platform/win/fast/forms/textarea-placeholder-visibility-1-expected.txt: Added.
+        * platform/win/fast/forms/textarea-placeholder-visibility-2-expected.txt: Added.
+        * platform/win/fast/forms/textarea-scrollbar-expected.png: Added.
+        * platform/win/fast/forms/textarea-scrollbar-expected.txt: Added.
+        * platform/win/fast/repaint/control-clip-expected.png: Added.
+        * platform/win/fast/repaint/control-clip-expected.txt: Added.
+        * platform/win/fast/repaint/selection-gap-fixed-child-expected.txt: Added.
+        * platform/win/fast/repaint/selection-gap-flipped-fixed-child-expected.txt: Added.
+        * platform/win/fast/table/append-cells2-expected.txt: Added.
+        * platform/win/fast/table/remove-td-display-none-expected.txt: Added.
+        * platform/win/fast/text/atsui-rtl-override-selection-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug30559-expected.txt: Added.
+
+2014-10-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Rebaseline some compositing tests that are sensitive to the visible rect, and skip
+        tests that rely on media loading.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/compositing/columns/hittest-composited-in-paginated-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/animating-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/rounded-contents-scale-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/scaled-ancestor-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/simple-scale-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/z-translate-expected.txt:
+        * platform/ios-simulator/compositing/geometry/partial-layout-update-expected.txt:
+        * platform/ios-simulator/compositing/geometry/root-layer-update-expected.txt:
+        * platform/ios-simulator/compositing/geometry/transfrom-origin-on-zero-size-layer-expected.txt:
+        * platform/ios-simulator/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants-expected.txt:
+        * platform/ios-simulator/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants2-expected.txt:
+        * platform/ios-simulator/compositing/overflow/overflow-positioning-expected.txt:
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/tile-cache-zoomed-expected.txt:
+        * platform/ios-simulator/compositing/tiling/tiled-layer-resize-expected.txt:
+        * platform/ios-simulator/compositing/transitions/singular-scale-transition-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/2d-transformed-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/3d-transform-style-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/3d-transformed-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/animated-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/animated-from-none-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/clipped-by-viewport-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/clipped-visible-rect-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/flipped-preserve-3d-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/iframe-and-layers-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/nested-transform-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/scrolled-expected.txt:
+
+2014-10-14  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        REGRESSION(r174567): [GTK] Layout Tests platform/gtk/accessibility/aria-table-hierarchy.html and platform/gtk/accessibility/table-hierarchy.html fail
+        https://bugs.webkit.org/show_bug.cgi?id=137697
+
+        These tests were overlooked when updating tests to reflect the correct
+        mapping for ColumnHeaderRole and RowHeaderRole in ATK.
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Remove two failing tests.
+        * platform/gtk/accessibility/aria-table-hierarchy-expected.txt: Updated expectations.
+        * platform/gtk/accessibility/aria-table-hierarchy.html: Updated in-test shouldBe values for headers.
+        * platform/gtk/accessibility/table-hierarchy-expected.txt: Updated expectations.
+        * platform/gtk/accessibility/table-hierarchy.html: Updated in-test shouldBe values for headers.
+
+2014-10-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report new failures and update expectations.
+        * platform/gtk/css3/selectors3/html/css3-modsel-61-expected.txt: Rebaseline after r174535.
+        * platform/gtk/css3/selectors3/html/css3-modsel-83-expected.txt: Rebaseline after r174535.
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-61-expected.txt: Rebaseline after r174535.
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-83-expected.txt: Rebaseline after r174535.
+        * platform/gtk/css3/selectors3/xml/css3-modsel-61-expected.txt: Rebaseline after r174535.
+        * platform/gtk/css3/selectors3/xml/css3-modsel-83-expected.txt: Rebaseline after r174535.
+        * platform/gtk/fast/borders/bidi-002-expected.txt: Rebaseline after r174160.
+        * platform/gtk/fast/borders/bidi-009a-expected.txt: Rebaseline after r174160.
+        * platform/gtk/fast/selectors/061-expected.txt: Rebaseline after r174535.
+        * platform/gtk/fast/selectors/083-expected.txt: Rebaseline after r174535.
+        * platform/gtk/mathml/opentype/horizontal-expected.txt: Rebaseline after r174540.
+
+2014-10-14  Youenn Fablet  <youennf@gmail.com>
+
+        [XHR] Abort method execution when m_loader->cancel() in internalAbort() caused reentry
+        https://bugs.webkit.org/show_bug.cgi?id=126975
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adding reentrant-cancel-abort.html (from https://codereview.chromium.org/76133002/) 
+        that crashes without the patch
+        Updated reentrant-cancel.html test to expect the exception 
+        that is now hit in initSend function (since a XHR open() call is aborted)
+
+        * http/tests/xmlhttprequest/reentrant-cancel-abort-expected.txt: Added.
+        * http/tests/xmlhttprequest/reentrant-cancel-abort.html: Added.
+        * http/tests/xmlhttprequest/reentrant-cancel.html:
+
+2014-10-14  Alejandro G. Castro  <alex@igalia.com>
+
+        Add test to check stretchy value is case sensitive
+        https://bugs.webkit.org/show_bug.cgi?id=137602
+
+        Reviewed by Darin Adler.
+
+        * mathml/presentation/mo-stretchy-case-sensitive-expected.html: Added.
+        * mathml/presentation/mo-stretchy-case-sensitive.html: Added.
+
+2014-10-14  Alejandro G. Castro  <alex@igalia.com>
+
+        Changes in the stretchy attribute do not update rendering
+        https://bugs.webkit.org/show_bug.cgi?id=136883
+
+        Reviewed by Darin Adler.
+
+        The test updates the stretchy value in a timeout.
+
+        * mathml/presentation/mo-stretch-update-expected.html: Added.
+        * mathml/presentation/mo-stretch-update.html: Added.
+
+2014-10-14  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [AX] Improve AccessibilityTableCell columnHeaders and rowHeaders functions.
+        https://bugs.webkit.org/show_bug.cgi?id=136818
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/table-headers-expected.txt: Added.
+        * accessibility/table-headers.html: Added.
+        * platform/mac/accessibility/table-attributes-expected.txt:
+        * platform/mac/accessibility/table-cells-expected.txt:
+        * platform/mac/accessibility/table-sections-expected.txt:
+
+2014-10-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add test coverage for the more complex cases of :not()
+        https://bugs.webkit.org/show_bug.cgi?id=137671
+
+        Reviewed by Andreas Kling.
+
+        Those tests cover the future CSS JIT support of :not(). I'll to the implementation
+        split over multiple patch, better put the tests first.
+
+        * fast/selectors/not-backtracking-expected.txt: Added.
+        * fast/selectors/not-backtracking.html: Added.
+        * fast/selectors/not-boundaries-expected.txt: Added.
+        * fast/selectors/not-boundaries.html: Added.
+
+2014-10-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS JIT: Implement :visited pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=135293
+
+        Reviewed by Benjamin Poulain.
+
+        To cover the :-webkit-any(:not(:link)), added new tests.
+
+        * TestExpectations:
+        * fast/history/link-inside-not-expected.txt:
+        * fast/history/link-inside-not-inside-any-expected.txt: Added.
+        * fast/history/link-inside-not-inside-any.html: Added.
+        * fast/history/link-inside-not.html:
+
+2014-10-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the test image diffs page
+        https://bugs.webkit.org/show_bug.cgi?id=137674
+
+        Reviewed by Alexey Proskuryakov.
+        
+        New version of the image diff page that has the diff images in-place, and allows
+        for control of the image toggling.
+
+        * fast/harness/image-diff-template-expected.txt:
+        * fast/harness/image-diff-template.html:
+
+2014-10-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Gardening.
+
+        * platform/mac/TestExpectations:
+
+2014-09-30  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Pass the valid set of tracks to grow beyond growth limits
+        https://bugs.webkit.org/show_bug.cgi?id=137253
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-content-sized-columns-resolution-expected.txt:
+        * fast/css-grid-layout/grid-content-sized-columns-resolution.html:
+
 2014-10-12  Mike West  <mkwst@chromium.org>
 
         Referrer Policy: Update <meta name="referrer"> values to match the spec

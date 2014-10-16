@@ -170,11 +170,11 @@ static inline RenderObject* firstChildInContinuation(RenderInline& renderer)
     auto continuation = renderer.continuation();
 
     while (continuation) {
-        if (continuation->isRenderBlock())
+        if (is<RenderBlock>(*continuation))
             return continuation;
         if (RenderObject* child = continuation->firstChild())
             return child;
-        continuation = toRenderInline(continuation)->continuation();
+        continuation = downcast<RenderInline>(*continuation).continuation();
     }
 
     return nullptr;
@@ -1438,7 +1438,7 @@ String AccessibilityRenderObject::selectedText() const
         return String(); // need to return something distinct from empty string
     
     if (isNativeTextControl()) {
-        HTMLTextFormControlElement& textControl = toRenderTextControl(m_renderer)->textFormControlElement();
+        HTMLTextFormControlElement& textControl = downcast<RenderTextControl>(*m_renderer).textFormControlElement();
         return textControl.selectedText();
     }
     
@@ -1467,7 +1467,7 @@ PlainTextRange AccessibilityRenderObject::selectedTextRange() const
     
     AccessibilityRole ariaRole = ariaRoleAttribute();
     if (isNativeTextControl() && ariaRole == UnknownRole) {
-        HTMLTextFormControlElement& textControl = toRenderTextControl(m_renderer)->textFormControlElement();
+        HTMLTextFormControlElement& textControl = downcast<RenderTextControl>(*m_renderer).textFormControlElement();
         return PlainTextRange(textControl.selectionStart(), textControl.selectionEnd() - textControl.selectionStart());
     }
     
@@ -1477,7 +1477,7 @@ PlainTextRange AccessibilityRenderObject::selectedTextRange() const
 void AccessibilityRenderObject::setSelectedTextRange(const PlainTextRange& range)
 {
     if (isNativeTextControl()) {
-        HTMLTextFormControlElement& textControl = toRenderTextControl(m_renderer)->textFormControlElement();
+        HTMLTextFormControlElement& textControl = downcast<RenderTextControl>(*m_renderer).textFormControlElement();
         textControl.setSelectionRange(range.start, range.start + range.length);
         return;
     }
@@ -1831,9 +1831,9 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForIndex(int index) co
         return VisiblePosition();
 
     if (isNativeTextControl())
-        return toRenderTextControl(m_renderer)->textFormControlElement().visiblePositionForIndex(index);
+        return downcast<RenderTextControl>(*m_renderer).textFormControlElement().visiblePositionForIndex(index);
 
-    if (!allowsTextRanges() && !m_renderer->isText())
+    if (!allowsTextRanges() && !is<RenderText>(*m_renderer))
         return VisiblePosition();
     
     Node* node = m_renderer->node();
@@ -1846,7 +1846,7 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForIndex(int index) co
 int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& pos) const
 {
     if (isNativeTextControl())
-        return toRenderTextControl(m_renderer)->textFormControlElement().indexForVisiblePosition(pos);
+        return downcast<RenderTextControl>(*m_renderer).textFormControlElement().indexForVisiblePosition(pos);
 
     if (!isTextControl())
         return 0;
@@ -2799,10 +2799,10 @@ void AccessibilityRenderObject::clearChildren()
 void AccessibilityRenderObject::addImageMapChildren()
 {
     RenderBoxModelObject* cssBox = renderBoxModelObject();
-    if (!cssBox || !cssBox->isRenderImage())
+    if (!is<RenderImage>(cssBox))
         return;
     
-    HTMLMapElement* map = toRenderImage(cssBox)->imageMap();
+    HTMLMapElement* map = downcast<RenderImage>(*cssBox).imageMap();
     if (!map)
         return;
 
@@ -2859,10 +2859,10 @@ void AccessibilityRenderObject::detachRemoteSVGRoot()
 
 AccessibilitySVGRoot* AccessibilityRenderObject::remoteSVGRootElement() const
 {
-    if (!m_renderer || !m_renderer->isRenderImage())
+    if (!is<RenderImage>(m_renderer))
         return nullptr;
     
-    CachedImage* cachedImage = toRenderImage(m_renderer)->cachedImage();
+    CachedImage* cachedImage = downcast<RenderImage>(*m_renderer).cachedImage();
     if (!cachedImage)
         return nullptr;
     

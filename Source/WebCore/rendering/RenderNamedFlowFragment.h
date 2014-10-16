@@ -69,7 +69,7 @@ public:
     
     virtual bool shouldClipFlowThreadContent() const override;
     
-    virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const override;
+    virtual LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = nullptr) const override;
 
     bool isPseudoElementRegion() const { return parent() && parent()->isPseudoElement(); }
 
@@ -123,7 +123,7 @@ public:
 private:
     virtual const char* renderName() const override { return "RenderNamedFlowFragment"; }
 
-    PassRefPtr<RenderStyle> computeStyleInRegion(RenderElement&, RenderStyle& parentStyle);
+    PassRefPtr<RenderStyle> computeStyleInRegion(RenderElement&, RenderStyle& parentStyle) const;
     void computeChildrenStyleInRegion(RenderElement&);
     void setObjectStyleInRegion(RenderObject*, PassRefPtr<RenderStyle>, bool objectRegionStyleCached);
 

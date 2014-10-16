@@ -549,11 +549,11 @@ void GraphicsLayerCA::moveOrCopyLayerAnimation(MoveOrCopy operation, const Strin
     switch (operation) {
     case Move:
         fromLayer->removeAnimationForKey(animationIdentifier);
-        toLayer->addAnimationForKey(animationIdentifier, anim.get());
+        toLayer->addAnimationForKey(animationIdentifier, *anim);
         break;
 
     case Copy:
-        toLayer->addAnimationForKey(animationIdentifier, anim.get());
+        toLayer->addAnimationForKey(animationIdentifier, *anim);
         break;
     }
 }
@@ -1680,7 +1680,7 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
             // If m_layer doesn't have a parent, it means it's the root layer and
             // is likely hosted by something that is not expecting to be changed
             ASSERT(m_structuralLayer->superlayer());
-            m_structuralLayer->superlayer()->replaceSublayer(m_structuralLayer.get(), m_layer.get());
+            m_structuralLayer->superlayer()->replaceSublayer(*m_structuralLayer, *m_layer);
 
             moveOrCopyAnimations(Move, m_structuralLayer.get(), m_layer.get());
 
@@ -1953,7 +1953,7 @@ void GraphicsLayerCA::updateContentsRects()
             m_contentsClippingLayer->setName("Contents Clipping");
 #endif
             m_contentsLayer->removeFromSuperlayer();
-            m_contentsClippingLayer->appendSublayer(m_contentsLayer.get());
+            m_contentsClippingLayer->appendSublayer(*m_contentsLayer);
             gainedOrLostClippingLayer = true;
         }
     
@@ -2030,9 +2030,9 @@ void GraphicsLayerCA::updateReplicatedLayers()
         return;
 
     if (m_structuralLayer)
-        m_structuralLayer->insertSublayer(replicaRoot.get(), 0);
+        m_structuralLayer->insertSublayer(*replicaRoot, 0);
     else
-        m_layer->insertSublayer(replicaRoot.get(), 0);
+        m_layer->insertSublayer(*replicaRoot, 0);
 }
 
 // For now, this assumes that layers only ever have one replica, so replicaIndices contains only 0 and 1.
@@ -2109,7 +2109,7 @@ void GraphicsLayerCA::updateAnimations()
     if ((numAnimations = m_uncomittedAnimations.size())) {
         for (size_t i = 0; i < numAnimations; ++i) {
             const LayerPropertyAnimation& pendingAnimation = m_uncomittedAnimations[i];
-            setAnimationOnLayer(pendingAnimation.m_animation.get(), pendingAnimation.m_property, pendingAnimation.m_name, pendingAnimation.m_index, pendingAnimation.m_subIndex, pendingAnimation.m_timeOffset);
+            setAnimationOnLayer(*pendingAnimation.m_animation, pendingAnimation.m_property, pendingAnimation.m_name, pendingAnimation.m_index, pendingAnimation.m_subIndex, pendingAnimation.m_timeOffset);
             
             AnimationsMap::iterator it = m_runningAnimations.find(pendingAnimation.m_name);
             if (it == m_runningAnimations.end()) {
@@ -2141,12 +2141,12 @@ bool GraphicsLayerCA::isRunningTransformAnimation() const
     return false;
 }
 
-void GraphicsLayerCA::setAnimationOnLayer(PlatformCAAnimation* caAnim, AnimatedPropertyID property, const String& animationName, int index, int subIndex, double timeOffset)
+void GraphicsLayerCA::setAnimationOnLayer(PlatformCAAnimation& caAnim, AnimatedPropertyID property, const String& animationName, int index, int subIndex, double timeOffset)
 {
     PlatformCALayer* layer = animatedLayer(property);
 
     if (timeOffset)
-        caAnim->setBeginTime(CACurrentMediaTime() - timeOffset);
+        caAnim.setBeginTime(CACurrentMediaTime() - timeOffset);
 
     String animationID = animationIdentifier(animationName, property, index, subIndex);
 
@@ -2221,7 +2221,7 @@ void GraphicsLayerCA::pauseCAAnimationOnLayer(AnimatedPropertyID property, const
     newAnim->setSpeed(0);
     newAnim->setTimeOffset(timeOffset);
     
-    layer->addAnimationForKey(animationID, newAnim.get()); // This will replace the running animation.
+    layer->addAnimationForKey(animationID, *newAnim); // This will replace the running animation.
 
     // Pause the animations on the clones too.
     if (LayerMap* layerCloneMap = animatedLayerClones(property)) {
@@ -2230,7 +2230,7 @@ void GraphicsLayerCA::pauseCAAnimationOnLayer(AnimatedPropertyID property, const
             // Skip immediate replicas, since they move with the original.
             if (m_replicaLayer && isReplicatedRootClone(it->key))
                 continue;
-            it->value->addAnimationForKey(animationID, newAnim.get());
+            it->value->addAnimationForKey(animationID, *newAnim);
         }
     }
 }
@@ -2969,11 +2969,11 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
 
     m_usingTiledBacking = useTiledLayer;
     
-    m_layer->adoptSublayers(oldLayer.get());
+    m_layer->adoptSublayers(*oldLayer);
 
 #ifdef VISIBLE_TILE_WASH
     if (m_visibleTileWashLayer)
-        m_layer->appendSublayer(m_visibleTileWashLayer.get());
+        m_layer->appendSublayer(*m_visibleTileWashLayer;
 #endif
 
     if (isMaskLayer()) {
@@ -2985,7 +2985,7 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
         // Skip this step if we don't have a superlayer. This is probably a benign
         // case that happens while restructuring the layer tree, and also occurs with
         // WebKit2 page overlays, which can become tiled but are out-of-tree.
-        oldLayer->superlayer()->replaceSublayer(oldLayer.get(), m_layer.get());
+        oldLayer->superlayer()->replaceSublayer(*oldLayer, *m_layer);
     }
 
     m_uncommittedChanges |= ChildrenChanged
@@ -3149,11 +3149,11 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
             return nullptr;
 
         if (structuralLayer) {
-            structuralLayer->insertSublayer(replicaRoot.get(), 0);
+            structuralLayer->insertSublayer(*replicaRoot, 0);
             return structuralLayer;
         }
         
-        primaryLayer->insertSublayer(replicaRoot.get(), 0);
+        primaryLayer->insertSublayer(*replicaRoot, 0);
         return primaryLayer;
     }
 
@@ -3171,7 +3171,7 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
 
     if (contentsClippingLayer) {
         ASSERT(contentsLayer);
-        contentsClippingLayer->appendSublayer(contentsLayer.get());
+        contentsClippingLayer->appendSublayer(*contentsLayer);
     }
     
     if (replicaLayer || structuralLayer || contentsLayer || contentsClippingLayer || childLayers.size() > 0) {
@@ -3216,7 +3216,7 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
             // If we have a transform layer, then the contents layer is parented in the 
             // primary layer (which is itself a child of the transform layer).
             primaryLayer->removeAllSublayers();
-            primaryLayer->appendSublayer(contentsClippingLayer ? contentsClippingLayer.get() : contentsLayer.get());
+            primaryLayer->appendSublayer(contentsClippingLayer ? *contentsClippingLayer : *contentsLayer);
         }
 
         result = structuralLayer;

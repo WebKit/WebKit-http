@@ -86,6 +86,7 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, PassRef<Re
     , m_renderBoxNeedsLazyRepaint(false)
     , m_hasPausedImageAnimations(false)
     , m_hasCounterNodeMap(false)
+    , m_isCSSAnimating(false)
     , m_firstChild(nullptr)
     , m_lastChild(nullptr)
     , m_style(WTF::move(style))
@@ -468,24 +469,24 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
     bool needsTable = false;
 
-    if (newChild->isRenderTableCol()) {
-        RenderTableCol* newTableColumn = toRenderTableCol(newChild);
-        bool isColumnInColumnGroup = newTableColumn->isTableColumn() && isRenderTableCol();
-        needsTable = !isTable() && !isColumnInColumnGroup;
-    } else if (newChild->isTableCaption())
-        needsTable = !isTable();
-    else if (newChild->isTableSection())
-        needsTable = !isTable();
-    else if (newChild->isTableRow())
-        needsTable = !isTableSection();
-    else if (newChild->isTableCell())
-        needsTable = !isTableRow();
+    if (is<RenderTableCol>(*newChild)) {
+        RenderTableCol& newTableColumn = downcast<RenderTableCol>(*newChild);
+        bool isColumnInColumnGroup = newTableColumn.isTableColumn() && is<RenderTableCol>(*this);
+        needsTable = !is<RenderTable>(*this) && !isColumnInColumnGroup;
+    } else if (is<RenderTableCaption>(*newChild))
+        needsTable = !is<RenderTable>(*this);
+    else if (is<RenderTableSection>(*newChild))
+        needsTable = !is<RenderTable>(*this);
+    else if (is<RenderTableRow>(*newChild))
+        needsTable = !is<RenderTableSection>(*this);
+    else if (is<RenderTableCell>(*newChild))
+        needsTable = !is<RenderTableRow>(*this);
 
     if (needsTable) {
         RenderTable* table;
         RenderObject* afterChild = beforeChild ? beforeChild->previousSibling() : m_lastChild;
-        if (afterChild && afterChild->isAnonymous() && afterChild->isTable() && !afterChild->isBeforeContent())
-            table = toRenderTable(afterChild);
+        if (afterChild && afterChild->isAnonymous() && is<RenderTable>(*afterChild) && !afterChild->isBeforeContent())
+            table = downcast<RenderTable>(afterChild);
         else {
             table = RenderTable::createAnonymousWithParentRenderer(this);
             addChild(table, beforeChild);
@@ -494,7 +495,7 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
     } else
         insertChildInternal(newChild, beforeChild, NotifyChildren);
 
-    if (is<RenderText>(newChild))
+    if (is<RenderText>(*newChild))
         downcast<RenderText>(*newChild).styleDidChange(StyleDifferenceEqual, nullptr);
 
     // SVG creates renderers for <g display="none">, as SVG requires children of hidden
@@ -506,7 +507,7 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
     // To avoid the problem alltogether, detect early if we're inside a hidden SVG subtree
     // and stop creating layers at all for these cases - they're not used anyways.
     if (newChild->hasLayer() && !layerCreationAllowedForSubtree())
-        toRenderLayerModelObject(newChild)->layer()->removeOnlyThisLayer();
+        downcast<RenderLayerModelObject>(*newChild).layer()->removeOnlyThisLayer();
 
     SVGRenderSupport::childAdded(*this, *newChild);
 }
@@ -995,7 +996,7 @@ void RenderElement::willBeRemovedFromTree()
         view().frameView().removeSlowRepaintObject(this);
 
     if (isOutOfFlowPositioned() && parent()->childrenInline())
-        parent()->dirtyLinesFromChangedChild(this);
+        parent()->dirtyLinesFromChangedChild(*this);
 
     if (auto* containerFlowThread = parent()->renderNamedFlowThreadWrapper())
         containerFlowThread->removeFlowChild(*this);

@@ -548,11 +548,11 @@ http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
 webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html [ Failure Pass ]
 
 # Some WebGL tests don't work properly on MountainLion
-[ MountainLion ] webgl/1.0.1/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Failure ]
+[ MountainLion ] webgl/1.0.1/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Pass Failure ]
 [ MountainLion ] webgl/1.0.1/conformance/glsl/variables/gl-pointcoord.html [ Failure ]
 [ MountainLion ] webgl/1.0.1/conformance/limits/gl-max-texture-dimensions.html [ Failure ]
 [ MountainLion ] webgl/1.0.1/conformance/textures/texture-size.html [ Failure ]
-[ MountainLion ] webgl/1.0.2/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Failure ]
+[ MountainLion ] webgl/1.0.2/conformance/glsl/functions/glsl-function-smoothstep-gentype.html [ Pass Failure ]
 [ MountainLion ] webgl/1.0.2/conformance/glsl/variables/gl-pointcoord.html [ Failure ]
 [ MountainLion ] webgl/1.0.2/conformance/limits/gl-max-texture-dimensions.html [ Failure ]
 [ MountainLion ] webgl/1.0.2/conformance/ogles/GL/control_flow/control_flow_009_to_010.html [ Crash Pass Failure ]
@@ -881,9 +881,6 @@ webkit.org/b/103857 fast/events/mouse-cursor-change.html
 # Reference test fast/sub-pixel/float-wrap-zoom.html fails
 webkit.org/b/114800 fast/sub-pixel/float-wrap-zoom.html [ Pass ImageOnlyFailure ]
 
-# Disabling subpixel layout on mac, https://bugs.webkit.org/show_bug.cgi?id=114999
-fast/sub-pixel
-
 # Some tests need to be rebaselined still after disabling subpixel layout
 # http://bugs.webkit.org/show_bug.cgi?id=115292
 webkit.org/b/115292 css1/units/rounding.html
@@ -996,7 +993,7 @@ webkit.org/b/123029 [ Debug ] platform/mac/editing/attributed-string [ Pass Cras
 webkit.org/b/124933 svg/animations/getCurrentTime-pause-unpause.html [ Pass Failure ]
 
 # GL Scissors don't work properly in Mountain Lion.
-webkit.org/b/126455 [ MountainLion ] webgl/1.0.2/conformance/rendering/gl-scissor-test.html [ Failure ]
+webkit.org/b/126455 [ MountainLion ] webgl/1.0.2/conformance/rendering/gl-scissor-test.html [ Pass Failure ]
 webkit.org/b/126586 [ Mavericks Debug ] webgl/1.0.2/conformance/rendering/gl-scissor-test.html [ Pass Failure ]
 
 webkit.org/b/52016 http/tests/xmlhttprequest/xmlhttprequest-50ms-download-dispatch.html [ Pass Failure Timeout ]
@@ -1041,6 +1038,9 @@ webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
 [ MountainLion ] fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html [ Pass ImageOnlyFailure ]
 # clipping filter effects when region is present. 
 webkit.org/b/133523 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
+
+webkit.org/b/136419 fast/sub-pixel/block-with-margin-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/137729 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
 # End of subpixel failures.
 
 webkit.org/b/127310 svg/filters/feComponentTransfer-style-crash.xhtml [ Pass Failure Timeout ]
@@ -1084,8 +1084,8 @@ webkit.org/b/89153 http/tests/websocket/tests/hybi/workers/close.html [ Pass Fai
 
 [ MountainLion Mavericks ] fast/images/image-controls-basic.html [ WontFix ]
 
-webkit.org/b/131886 [ MountainLion ] webgl/1.0.2/conformance/textures/texture-size-limit.html [ Failure ]
-webkit.org/b/131886 [ MountainLion ] fast/canvas/webgl/webgl-compressed-texture-size-limit.html [ Failure ]
+webkit.org/b/131886 [ MountainLion ] webgl/1.0.2/conformance/textures/texture-size-limit.html [ Pass Failure ]
+webkit.org/b/131886 [ MountainLion ] fast/canvas/webgl/webgl-compressed-texture-size-limit.html [ Pass Failure ]
 
 webkit.org/b/132385 compositing/repaint/repaint-on-layer-grouping-change.html [ Pass Failure ]
 
@@ -1203,6 +1203,8 @@ webkit.org/b/135071 [ MountainLion ] media/video-seek-with-negative-playback.htm
 webkit.org/b/136532 [ MountainLion ] media/audio-data-url.html [ Failure ]
 webkit.org/b/136532 [ MountainLion ] media/sources-fallback-codecs.html [ Failure ]
 webkit.org/b/136532 [ MountainLion ] media/video-seek-past-end-playing.html [ Pass Failure ]
+[ MountainLion ] media/video-playbackrate.html [ Pass Timeout ]
+[ MountainLion ] media/video-ended-event-slow-motion-playback.html [ Pass Failure ]
 
 # Mountain Lion and earlier do not support Encrypted Media Extensions.
 Bug(jernoble) [ MountainLion ] media/encrypted-media/ [ WontFix ]

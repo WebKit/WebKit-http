@@ -27,7 +27,12 @@
 #include "PlatformUtilities.h"
 #include "PlatformWebView.h"
 #include "Test.h"
+#include <JavaScriptCore/JSRetainPtr.h>
+#include <JavaScriptCore/JavaScriptCore.h>
+#include <WebKit/WKSerializedScriptValue.h>
 #include <WebKit/WKPagePrivate.h>
+#include <WebKit/WKPreferencesRef.h>
+#include <WebKit/WKPreferencesRefPrivate.h>
 
 // This test loads file-with-video.html. It first checks to make sure WKPageIsPlayingAudio() returns
 // false for the page. Then it calls a JavaScript method to play the video, waits for
@@ -36,11 +41,26 @@
 
 namespace TestWebKitAPI {
 
+static bool isMSEEnabledChanged;
+static bool isMSEEnabled;
 static bool didFinishLoad;
 static bool isPlayingAudioChanged;
 
 static void nullJavaScriptCallback(WKSerializedScriptValueRef, WKErrorRef error, void*)
 {
+}
+
+static void isMSEEnabledCallback(WKSerializedScriptValueRef serializedResultValue, WKErrorRef error, void*)
+{
+    JSGlobalContextRef scriptContext = JSGlobalContextCreate(0);
+
+    JSValueRef resultValue = WKSerializedScriptValueDeserialize(serializedResultValue, scriptContext, 0);
+    EXPECT_TRUE(JSValueIsBoolean(scriptContext, resultValue));
+
+    isMSEEnabledChanged = true;
+    isMSEEnabled = JSValueToBoolean(scriptContext, resultValue);
+
+    JSGlobalContextRelease(scriptContext);
 }
 
 static void didFinishLoadForFrame(WKPageRef page, WKFrameRef, WKTypeRef, const void*)
@@ -85,6 +105,39 @@ TEST(WebKit2, WKPageIsPlayingAudio)
     Util::run(&didFinishLoad);
 
     EXPECT_FALSE(WKPageIsPlayingAudio(webView.page()));
+    WKPageRunJavaScriptInMainFrame(webView.page(), Util::toWK("playVideo()").get(), 0, nullJavaScriptCallback);
+
+    Util::run(&isPlayingAudioChanged);
+    EXPECT_TRUE(WKPageIsPlayingAudio(webView.page()));
+}
+
+TEST(WebKit2, MSEIsPlayingAudio)
+{
+    WKRetainPtr<WKContextRef> context = adoptWK(WKContextCreate());
+
+    WKRetainPtr<WKPageGroupRef> pageGroup(AdoptWK, WKPageGroupCreateWithIdentifier(Util::toWK("MSEIsPlayingAudioPageGroup").get()));
+    WKPreferencesRef preferences = WKPageGroupGetPreferences(pageGroup.get());
+    WKPreferencesSetMediaSourceEnabled(preferences, true);
+    WKPreferencesSetFileAccessFromFileURLsAllowed(preferences, true);
+
+    PlatformWebView webView(context.get(), pageGroup.get());
+    setUpClients(webView.page());
+
+    WKRetainPtr<WKURLRef> url = adoptWK(Util::createURLForResource("file-with-mse", "html"));
+    didFinishLoad = false;
+    WKPageLoadURL(webView.page(), url.get());
+
+    Util::run(&didFinishLoad);
+
+    // Bail out of the test early if the platform does not support MSE.
+    isMSEEnabledChanged = false;
+    WKPageRunJavaScriptInMainFrame(webView.page(), Util::toWK("window.MediaSource !== undefined").get(), 0, isMSEEnabledCallback);
+    Util::run(&isMSEEnabledChanged);
+    if (!isMSEEnabled)
+        return;
+
+    EXPECT_FALSE(WKPageIsPlayingAudio(webView.page()));
+    isPlayingAudioChanged = false;
     WKPageRunJavaScriptInMainFrame(webView.page(), Util::toWK("playVideo()").get(), 0, nullJavaScriptCallback);
 
     Util::run(&isPlayingAudioChanged);

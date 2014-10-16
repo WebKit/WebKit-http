@@ -728,8 +728,8 @@ bool TextIterator::handleReplacedElement()
         return false;
     }
 
-    if ((m_behavior & TextIteratorEntersTextControls) && renderer.isTextControl()) {
-        if (TextControlInnerTextElement* innerTextElement = toRenderTextControl(renderer).textFormControlElement().innerTextElement()) {
+    if ((m_behavior & TextIteratorEntersTextControls) && is<RenderTextControl>(renderer)) {
+        if (TextControlInnerTextElement* innerTextElement = downcast<RenderTextControl>(renderer).textFormControlElement().innerTextElement()) {
             m_node = innerTextElement->containingShadowRoot();
             pushFullyClippedState(m_fullyClippedStack, *m_node);
             m_offset = 0;
@@ -760,8 +760,8 @@ bool TextIterator::handleReplacedElement()
     m_positionStartOffset = 0;
     m_positionEndOffset = 1;
 
-    if ((m_behavior & TextIteratorEmitsImageAltText) && renderer.isRenderImage()) {
-        String altText = toRenderImage(renderer).altText();
+    if ((m_behavior & TextIteratorEmitsImageAltText) && is<RenderImage>(renderer)) {
+        String altText = downcast<RenderImage>(renderer).altText();
         if (unsigned length = altText.length()) {
             m_lastCharacter = altText[length - 1];
             m_copyableText.set(WTF::move(altText));
@@ -785,7 +785,7 @@ static bool shouldEmitTabBeforeNode(Node& node)
         return false;
     
     // Want a tab before every cell other than the first one.
-    RenderTableCell& cell = toRenderTableCell(*renderer);
+    RenderTableCell& cell = downcast<RenderTableCell>(*renderer);
     RenderTable* table = cell.table();
     return table && (table->cellBefore(&cell) || table->cellAbove(&cell));
 }
@@ -840,14 +840,14 @@ static bool shouldEmitNewlinesBeforeAndAfterNode(Node& node)
     
     // Need to make an exception for table row elements, because they are neither
     // "inline" or "RenderBlock", but we want newlines for them.
-    if (renderer->isTableRow()) {
-        RenderTable* table = toRenderTableRow(*renderer).table();
+    if (is<RenderTableRow>(*renderer)) {
+        RenderTable* table = downcast<RenderTableRow>(*renderer).table();
         if (table && !table->isInline())
             return true;
     }
     
     return !renderer->isInline()
-        && renderer->isRenderBlock()
+        && is<RenderBlock>(*renderer)
         && !renderer->isFloatingOrOutOfFlowPositioned()
         && !renderer->isBody()
         && !renderer->isRubyText();

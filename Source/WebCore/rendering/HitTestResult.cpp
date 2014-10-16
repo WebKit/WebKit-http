@@ -290,16 +290,16 @@ String HitTestResult::altDisplayString() const
 Image* HitTestResult::image() const
 {
     if (!m_innerNonSharedNode)
-        return 0;
+        return nullptr;
     
-    auto renderer = m_innerNonSharedNode->renderer();
-    if (renderer && renderer->isRenderImage()) {
-        RenderImage* image = toRenderImage(renderer);
-        if (image->cachedImage() && !image->cachedImage()->errorOccurred())
-            return image->cachedImage()->imageForRenderer(image);
+    auto* renderer = m_innerNonSharedNode->renderer();
+    if (is<RenderImage>(renderer)) {
+        auto& image = downcast<RenderImage>(*renderer);
+        if (image.cachedImage() && !image.cachedImage()->errorOccurred())
+            return image.cachedImage()->imageForRenderer(&image);
     }
 
-    return 0;
+    return nullptr;
 }
 
 IntRect HitTestResult::imageRect() const
@@ -414,7 +414,7 @@ void HitTestResult::toggleMediaFullscreenState() const
 #if ENABLE(VIDEO)
     if (HTMLMediaElement* mediaElement = this->mediaElement()) {
         if (mediaElement->isVideo() && mediaElement->supportsFullscreen()) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
+            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
             mediaElement->toggleFullscreenState();
         }
     }
@@ -428,7 +428,7 @@ void HitTestResult::enterFullscreenForVideo() const
     if (is<HTMLVideoElement>(mediaElement)) {
         HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
         if (!videoElement.isFullscreen() && mediaElement->supportsFullscreen()) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
+            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
             videoElement.enterFullscreen();
         }
     }

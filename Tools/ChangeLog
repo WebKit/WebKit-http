@@ -1,3 +1,316 @@
+2014-10-13  David Farler  <dfarler@apple.com>
+
+        [iOS] LayoutTestRelay: Detect broken pipe when reading simulator app's stdout and stderr.
+        https://bugs.webkit.org/show_bug.cgi?id=137662
+
+        Reviewed by Darin Adler.
+
+        The layout test harness can close LayoutTestRelay's subprocess
+        stdout and stderr in the case of a timeout or if a run is
+        cancelled and the FIFOs are cleaned up. If LayoutTestRelay
+        finds that no one is listening to its stdout/stderr (broken
+        pipe), then just exit(1), there is nothing to report.
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController didReceiveStdoutData:]):
+        Add @try/@catch for NSFileHandleOperationException.
+        (-[LTRelayController didReceiveStderrData:]):
+        Add @try/@catch for NSFileHandleOperationException.
+
+2014-10-15  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [GTK] Minibrowser : Add keyboard support for zoom in , zoom out and default zoom in GTK Minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=137060
+
+        Reviewed by Philippe Normand.
+
+        Add keyboard support for zoom in , zoom out and default zoom using 'Ctrl' + '+', 'Ctrl' + '-' and 'Ctrl' + '0' respectively.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (zoomInCallback):
+        (zoomOutCallback):
+        (defaultZoomCallback): Callback for default zoom keyboard support.
+        (browser_window_init):
+
+2014-10-14  Simon Fraser  <simon.fraser@apple.com>
+
+        [Mac] DRT stderr logging after the test completes gets attributed to the next test
+
+        Reviewed by Alexey Proskuryakov.
+        
+        DRT would send "#EOF" to stderr just after doing so to stdout, which cause any later
+        logging to stderr to get associated with the next test.
+        
+        Fix by logging #EOF to stderr later, after we've completely finished with this test.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpTestResults):
+        (runTest):
+
+2014-10-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening. Ignore Visual Studio *.sdf temporary files.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj: Modified property svn:ignore.
+
+2014-10-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Fix the make build after r174683
+        https://bugs.webkit.org/show_bug.cgi?id=137703
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/webkitdirs.pm:
+        (buildCMakeGeneratedProject):
+
+2014-10-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Adding myself to the watchlist to CachedFont
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-10-14  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL][GTK] Make it possible to get verbose output with ninja
+        https://bugs.webkit.org/show_bug.cgi?id=137606
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitdirs.pm:
+        (buildCMakeGeneratedProject):
+
+2014-10-14  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Make it possible to use ninja for EFL build too
+        https://bugs.webkit.org/show_bug.cgi?id=137605
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+        * efl/install-dependencies:
+
+2014-10-14  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [GTK] Minibrowser : Add home buton and keyboard support for home page load
+        https://bugs.webkit.org/show_bug.cgi?id=137486
+
+        Reviewed by Philippe Normand.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (loadHomePage): Callback for home page load.
+        (browser_window_init):
+        * MiniBrowser/gtk/BrowserWindow.h:
+        * MiniBrowser/gtk/main.c:
+        (main):
+
+2014-10-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        import-w3c-tests doesn't prefix property values
+        https://bugs.webkit.org/show_bug.cgi?id=137600
+
+        Reviewed by Bem Jones-Bey.
+
+        Some property values are prefixed in WebKit. Modified the W3C import
+        script in order to prefix property values and not only properties.
+        The patch re-uses most of the already existent logic to prefix
+        properties.
+
+        * Scripts/webkitpy/w3c/test_converter.py: Read prefixed property values
+        from CSSValueKeywords.in and adapt converter to modify both properties
+        and property values.
+        (convert_for_webkit):
+        (_W3CTestConverter.__init__):
+        (_W3CTestConverter.output):
+        (_W3CTestConverter.read_webkit_prefixed_css_property_list):
+        (_W3CTestConverter):
+        (_W3CTestConverter.add_webkit_prefix_to_unprefixed_properties_and_values):
+        (_W3CTestConverter.add_webkit_prefix_following_regex):
+        (_W3CTestConverter.convert_reference_relpaths):
+        (_W3CTestConverter.convert_style_data):
+        (_W3CTestConverter.convert_attributes_if_needed):
+        (_W3CTestConverter.add_webkit_prefix_to_unprefixed_properties): Deleted.
+        * Scripts/webkitpy/w3c/test_converter_unittest.py: Updated unit test to
+        include checks for property values too.
+        (W3CTestConverterTest.test_read_prefixed_property_list):
+        (verify_no_conversion_happened):
+        (verify_prefixed_properties):
+        (verify_prefixed_property_values):
+        (generate_test_content_properties_and_values):
+        (generate_test_content):
+        * Scripts/webkitpy/w3c/test_importer.py: Modified importer to manage
+        prefixed property values and inform about them.
+        (TestImporter.import_tests):
+        (TestImporter.write_import_log):
+
+2014-10-13  Jer Noble  <jer.noble@apple.com>
+
+        MediaPlayer::characteristicChanged() is not called when new tracks are found in SourceBufferPrivateAVFObjC
+        https://bugs.webkit.org/show_bug.cgi?id=137533
+
+        Reviewed by Andy Estes.
+
+        Follow up patch; bail out of the test early (without failing) if the platform does not support MSE.
+
+        * TestWebKitAPI/Tests/WebKit2/WKPageIsPlayingAudio.cpp:
+        (TestWebKitAPI::isMSEEnabledCallback):
+        (TestWebKitAPI::TEST):
+
+2014-10-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Implement a page load profiling tool
+        https://bugs.webkit.org/show_bug.cgi?id=137673
+
+        Reviewed by Dean Jackson.
+
+        Add a tool to capture and summarize page load statistics.
+
+        * WinLauncher/Common.cpp:
+        (parseCommandLine): Move from WinMain.cpp so that it can
+        be shared with internal tools.
+        * WinLauncher/PageLoadTestClient.cpp: Added.
+        (PageLoadTestClient::PageLoadTestClient):
+        (PageLoadTestClient::pageLoadStartedAtTime):
+        (PageLoadTestClient::didStartProvisionalLoad):
+        (PageLoadTestClient::didCommitLoad):
+        (PageLoadTestClient::didFirstLayoutForMainFrame):
+        (PageLoadTestClient::didHandleOnLoadEvents):
+        (PageLoadTestClient::didFinishLoad):
+        (PageLoadTestClient::didFailLoad):
+        (PageLoadTestClient::didInitiateResourceLoad):
+        (PageLoadTestClient::didEndResourceLoad):
+        (PageLoadTestClient::pageLoadEndedAtTime):
+        (PageLoadTestClient::endPageLoad):
+        (PageLoadTestClient::clearPageLoadState):
+        (PageLoadTestClient::shouldConsiderPageLoadEnded):
+        (PageLoadTestClient::maybeEndPageLoadSoon):
+        (PageLoadTestClient::setPageURL):
+        (PageLoadTestClient::dumpRunStatistics):
+        * WinLauncher/PrintWebUIDelegate.cpp:
+        (PrintWebUIDelegate::createWebViewWithRequest): Handle
+        nullptr URL properly.
+        * WinLauncher/ResourceLoadDelegate.cpp: Added.
+        (ResourceLoadDelegate::QueryInterface):
+        (ResourceLoadDelegate::AddRef):
+        (ResourceLoadDelegate::Release):
+        (ResourceLoadDelegate::identifierForInitialRequest):
+        (ResourceLoadDelegate::willSendRequest):
+        (ResourceLoadDelegate::didReceiveAuthenticationChallenge):
+        (ResourceLoadDelegate::didCancelAuthenticationChallenge):
+        (ResourceLoadDelegate::didReceiveResponse):
+        (ResourceLoadDelegate::didReceiveContentLength):
+        (ResourceLoadDelegate::didFinishLoadingFromDataSource):
+        (ResourceLoadDelegate::didFailLoadingWithError):
+        (ResourceLoadDelegate::plugInFailedWithError):
+        * WinLauncher/ResourceLoadDelegate.h: Added.
+        (ResourceLoadDelegate::ResourceLoadDelegate):
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::WinLauncher): Accept argument to indicate we want to capture
+        page loading statistics.
+        (WinLauncher::setFrameLoadDelegatePrivate): Get rid of stub implementation
+        and set private load delegate state.
+        (WinLauncher::setResourceLoadDelegate): Replace stub with a full implementation
+        that sets the view's resource load delegate.
+        (WinLauncher::loadURL): If no URL is passed, load the test document.
+        * WinLauncher/WinLauncher.h:
+        (WinLauncher::pageLoadTestClient):
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj: Updated for new source files.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj.filters: Ditto.
+        * WinLauncher/WinLauncherWebHost.cpp:
+        (WinLauncherWebHost::updateAddressBar): Hook into page load statistics routine.
+        (WinLauncherWebHost::loadURL): Moved 'SendMessage' call to its own method so that
+        it could be used from other source files.
+        (WinLauncherWebHost::didFinishLoadForFrame): Added overload to capture statistics.
+        (WinLauncherWebHost::didStartProvisionalLoadForFrame): Ditto.
+        (WinLauncherWebHost::didFailLoadWithError): Ditto.
+        (WinLauncherWebHost::didHandleOnloadEventsForFrame): Ditto.
+        (WinLauncherWebHost::didFirstLayoutInFrame): Ditto.
+        (WinLauncherWebHost::didFinishDocumentLoadForFrame): Ditto.
+        (WinLauncherWebHost::didFirstVisuallyNonEmptyLayoutInFrame): Ditto.
+        (WinLauncherWebHost::didStartProvisionalLoadForFrame): Deleted.
+        * WinLauncher/WinLauncherWebHost.h:
+        * WinLauncher/WinMain.cpp:
+        (wWinMain): Create and use new delegates for gathering page load data.
+        * WinLauncher/stdafx.h: Need to add <wtf/Platform> include for various macros used in build.
+
+2014-10-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the test image diffs page
+        https://bugs.webkit.org/show_bug.cgi?id=137674
+
+        Reviewed by Alexey Proskuryakov.
+        
+        Don't treat the input file as a format string, otherwise we have to escape special
+        characters. Just do a couple of replaces.
+
+        * Scripts/webkitpy/layout_tests/controllers/test_result_writer.py:
+        (TestResultWriter.write_image_diff_files):
+
+2014-10-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [XvfbDriver] Regular expression used to match running X servers fails on Fedora 21.
+        https://bugs.webkit.org/show_bug.cgi?id=137659
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._next_free_display): Update the regular expression to also match Xorg.bin
+
+2014-10-13  Alexey Proskuryakov  <ap@apple.com>
+
+        Add more detailed wait time information to EWS metrics
+        https://bugs.webkit.org/show_bug.cgi?id=137649
+
+        Reviewed by Daniel Bates.
+
+        Added average and worst time (we used to only have median), and also a percentage
+        of patches that took a non-trivial time to start. Non-trivial is defined as 3 minutes.
+
+        There is always some wait due to the polling nature of the queues, which is well understood
+        and doesn't need to be measured. What needs to be measured is whether there is enough
+        bot machines to process patches as soon as they are submitted.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._analyzeBubblePerformance):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsBubbleView.js:
+        (MetricsBubbleView.prototype._update):
+
+2014-10-11  Jer Noble  <jer.noble@apple.com>
+
+        MediaPlayer::characteristicChanged() is not called when new tracks are found in SourceBufferPrivateAVFObjC
+        https://bugs.webkit.org/show_bug.cgi?id=137533
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/WKPageIsPlayingAudio.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/file-with-mse.html: Added.
+        * TestWebKitAPI/Tests/WebKit2/test-mse.mp4: Added.
+
+2014-10-13  Simon Fraser  <simon.fraser@apple.com>
+
+        iOS DRT snapshots are limited to the page visible area
+        https://bugs.webkit.org/show_bug.cgi?id=137650
+
+        Reviewed by Daniel Bates.
+        
+        LegacyTileCache drawing was limited to the window's visible area, found by
+        crawling up the layer hierarchy to the root layer. This caused test snapshots to
+        be missing non-composited content outside the iPhone visible area, which hinders
+        testing.
+        
+        Fix by adding a test-only mode where the window visible area is the entire window.
+        
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        (dumpWebViewAsPixelsAndCompareWithExpected): Drive-by RetainPtr fix.
+        * DumpRenderTree/mac/DumpRenderTreeWindow.mm:
+        (-[DumpRenderTreeWindow initWithLayer:]): Call setEntireWindowVisibleForTesting:YES
+        for the DRT window.
+        
+
 2014-10-12  Simon Fraser  <simon.fraser@apple.com>
 
         Page not fully rendered in iOS DRT snapshots

@@ -76,6 +76,7 @@ static const char *defaultWindowTitle = "WebKitGTK+ MiniBrowser";
 static const char *miniBrowserAboutScheme = "minibrowser-about";
 static const gdouble minimumZoomLevel = 0.5;
 static const gdouble maximumZoomLevel = 3;
+static const gdouble defaultZoomLevel = 1;
 static const gdouble zoomStep = 1.2;
 static gint windowCount = 0;
 
@@ -501,14 +502,23 @@ static gboolean inspectorWasClosed(WebKitWebInspector *inspectorWindow, BrowserW
 
 static void zoomInCallback(BrowserWindow *window)
 {
-    gdouble zoomLevel = webkit_web_view_get_zoom_level(window->webView) * zoomStep;
-    webkit_web_view_set_zoom_level(window->webView, zoomLevel);
+    if (browserWindowCanZoomIn(window)) {
+        gdouble zoomLevel = webkit_web_view_get_zoom_level(window->webView) * zoomStep;
+        webkit_web_view_set_zoom_level(window->webView, zoomLevel);
+    }
 }
 
 static void zoomOutCallback(BrowserWindow *window)
 {
-    gdouble zoomLevel = webkit_web_view_get_zoom_level(window->webView) / zoomStep;
-    webkit_web_view_set_zoom_level(window->webView, zoomLevel);
+    if (browserWindowCanZoomOut(window)) {
+        gdouble zoomLevel = webkit_web_view_get_zoom_level(window->webView) / zoomStep;
+        webkit_web_view_set_zoom_level(window->webView, zoomLevel);
+    }
+}
+
+static void defaultZoomCallback(BrowserWindow *window)
+{
+    webkit_web_view_set_zoom_level(window->webView, defaultZoomLevel);
 }
 
 static void searchCallback(BrowserWindow *window)
@@ -544,6 +554,11 @@ static void stopPageLoad(BrowserWindow *window, gpointer user_data)
 {
     if (webkit_web_view_is_loading(window->webView))
         webkit_web_view_stop_loading(window->webView);
+}
+
+static void loadHomePage(BrowserWindow *window, gpointer user_data)
+{
+    webkit_web_view_load_uri(window->webView, BROWSER_DEFAULT_URL);
 }
 
 static void browserWindowFinalize(GObject *gObject)
@@ -637,6 +652,24 @@ static void browser_window_init(BrowserWindow *window)
     gtk_accel_group_connect(window->accelGroup, GDK_KEY_Escape, 0, GTK_ACCEL_VISIBLE,
         g_cclosure_new_swap(G_CALLBACK(stopPageLoad), window, NULL));
 
+    /* Load home page */ 
+    gtk_accel_group_connect(window->accelGroup, GDK_KEY_Home, GDK_MOD1_MASK, GTK_ACCEL_VISIBLE,
+        g_cclosure_new_swap(G_CALLBACK(loadHomePage), window, NULL));
+
+    /* Zoom in, zoom out and default zoom*/
+    gtk_accel_group_connect(window->accelGroup, GDK_KEY_equal, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE,
+        g_cclosure_new_swap(G_CALLBACK(zoomInCallback), window, NULL));
+    gtk_accel_group_connect(window->accelGroup, GDK_KEY_KP_Add, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE,
+        g_cclosure_new_swap(G_CALLBACK(zoomInCallback), window, NULL));
+    gtk_accel_group_connect(window->accelGroup, GDK_KEY_minus, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE,
+        g_cclosure_new_swap(G_CALLBACK(zoomOutCallback), window, NULL));
+    gtk_accel_group_connect(window->accelGroup, GDK_KEY_KP_Subtract, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE,
+        g_cclosure_new_swap(G_CALLBACK(zoomOutCallback), window, NULL));
+    gtk_accel_group_connect(window->accelGroup, GDK_KEY_0, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE,
+        g_cclosure_new_swap(G_CALLBACK(defaultZoomCallback), window, NULL));
+    gtk_accel_group_connect(window->accelGroup, GDK_KEY_KP_0, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE,
+        g_cclosure_new_swap(G_CALLBACK(defaultZoomCallback), window, NULL));
+
     GtkWidget *toolbar = gtk_toolbar_new();
     window->toolbar = toolbar;
     gtk_orientable_set_orientation(GTK_ORIENTABLE(toolbar), GTK_ORIENTATION_HORIZONTAL);
@@ -677,6 +710,12 @@ static void browser_window_init(BrowserWindow *window)
     g_signal_connect_swapped(item, "clicked", G_CALLBACK(searchCallback), window);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
     gtk_widget_add_accelerator(GTK_WIDGET(item), "clicked", window->accelGroup, GDK_KEY_F, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_show(GTK_WIDGET(item));
+
+    item = gtk_tool_button_new_from_stock(GTK_STOCK_HOME);
+    g_signal_connect_swapped(item, "clicked", G_CALLBACK(loadHomePage), window);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
+    gtk_widget_add_accelerator(GTK_WIDGET(item), "clicked", window->accelGroup, GDK_KEY_Home, GDK_MOD1_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_show(GTK_WIDGET(item));
 
     item = gtk_tool_item_new();

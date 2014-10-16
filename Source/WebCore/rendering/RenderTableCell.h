@@ -74,9 +74,9 @@ public:
     RenderTableCell* nextCell() const;
     RenderTableCell* previousCell() const;
 
-    RenderTableRow* row() const { return toRenderTableRow(parent()); }
-    RenderTableSection* section() const { return toRenderTableSection(parent()->parent()); }
-    RenderTable* table() const { return toRenderTable(parent()->parent()->parent()); }
+    RenderTableRow* row() const { return downcast<RenderTableRow>(parent()); }
+    RenderTableSection* section() const { return downcast<RenderTableSection>(parent()->parent()); }
+    RenderTable* table() const { return downcast<RenderTable>(parent()->parent()->parent()); }
 
     unsigned rowIndex() const
     {
@@ -234,7 +234,7 @@ private:
 
     virtual bool boxShadowShouldBeAppliedToBackground(BackgroundBleedAvoidance, InlineFlowBox*) const override;
 
-    virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const override;
+    virtual LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const override;
     virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
     virtual void computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const override;
 
@@ -294,26 +294,24 @@ private:
     int m_intrinsicPaddingAfter;
 };
 
-RENDER_OBJECT_TYPE_CASTS(RenderTableCell, isTableCell())
-
 inline RenderTableCell* RenderTableCell::nextCell() const
 {
-    return toRenderTableCell(RenderBlockFlow::nextSibling());
+    return downcast<RenderTableCell>(RenderBlockFlow::nextSibling());
 }
 
 inline RenderTableCell* RenderTableCell::previousCell() const
 {
-    return toRenderTableCell(RenderBlockFlow::previousSibling());
+    return downcast<RenderTableCell>(RenderBlockFlow::previousSibling());
 }
 
 inline RenderTableCell* RenderTableRow::firstCell() const
 {
-    return toRenderTableCell(RenderBox::firstChild());
+    return downcast<RenderTableCell>(RenderBox::firstChild());
 }
 
 inline RenderTableCell* RenderTableRow::lastCell() const
 {
-    return toRenderTableCell(RenderBox::lastChild());
+    return downcast<RenderTableCell>(RenderBox::lastChild());
 }
 
 } // namespace WebCore

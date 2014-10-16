@@ -1,3 +1,152 @@
+2014-10-15  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Allow plug-ins to read managed preferences
+        https://bugs.webkit.org/show_bug.cgi?id=137665
+        <rdar://problem/18255601>
+
+        Reviewed by Darin Adler.
+
+        * Resources/PlugInSandboxProfiles/com.apple.WebKit.plugin-common.sb:
+
+2014-10-14  Joonghun Park  <jh718.park@samsung.com>
+
+        [WK2][EFL] Fix the problem that threads created by a DispatchQueueEfl are not destroyed
+        even after the DispatchQueueEfl has been destructed
+        https://bugs.webkit.org/show_bug.cgi?id=137195
+
+        Reviewed by Gyuyoung Kim.
+
+        Linux and Unix System's pthreads are created in joinable state by default.
+        If threads aren't destructed explicitly, it will be still live
+        until process which created the thread is dead.
+        Besides it may cause out of capacity range of thread creation in a process.
+        It is one of hidden defects.
+        This patch calls detachThread() to detach thread immediately after it is created.
+        So the thread can be destroyed as soon as the thread's ThreadContext::function()
+        returns.
+
+        * Platform/efl/DispatchQueueEfl.cpp:
+        (DispatchQueue::ThreadContext::start):
+
+2014-10-14  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for PlatformCAAnimation subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137722
+
+        Reviewed by Simon Fraser.
+
+        Use is<>() / downcast<>() for PlatformCAAnimation subclasses and clean
+        up the surrounding code.
+
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.h:
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (WebKit::PlatformCAAnimationRemote::copy):
+        (WebKit::PlatformCAAnimationRemote::copyTimingFunctionFrom):
+        (WebKit::PlatformCAAnimationRemote::copyFromValueFrom):
+        (WebKit::PlatformCAAnimationRemote::copyToValueFrom):
+        (WebKit::PlatformCAAnimationRemote::copyValuesFrom):
+        (WebKit::PlatformCAAnimationRemote::copyKeyTimesFrom):
+        (WebKit::PlatformCAAnimationRemote::copyTimingFunctionsFrom):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::addAnimationForKey):
+        (WebKit::PlatformCALayerRemote::animationStarted):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::commitTransientZoom):
+
+2014-10-14  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r165356): Issues with Japanese text input
+        https://bugs.webkit.org/show_bug.cgi?id=137719
+        rdar://problem/18431952
+        rdar://problem/18483741
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebPage/WebPage.cpp: (WebKit::WebPage::didChangeSelection):
+        In sync code path, ensure consistent message delivery order by adding
+        a DispatchMessageEvenWhenWaitingForSyncReply flag. This way, delayed
+        EditorStateChanged messages won't confuse UI process.
+
+2014-10-14  Anders Carlsson  <andersca@apple.com>
+
+        Hide the find indicator when starting a swipe
+        https://bugs.webkit.org/show_bug.cgi?id=137711
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::navigationGestureDidBegin):
+
+2014-10-14  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for RenderImage
+        https://bugs.webkit.org/show_bug.cgi?id=137683
+
+        Reviewed by Mihnea Ovidenie.
+
+        Use is<>() / downcast<>() for RenderImage.
+
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+        (WebKit::cachedImage):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::performActionOnElement):
+
+2014-10-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][CMake] Non-ninja build is broken since r174422
+        https://bugs.webkit.org/show_bug.cgi?id=137656
+
+        Reviewed by Philippe Normand.
+
+        Make WebKit2-forwarding-headers depend only on static,
+        non-generated sources.
+
+        * CMakeLists.txt:
+        * PlatformGTK.cmake:
+
+2014-10-13  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for PlatformCALayer subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137661
+
+        Reviewed by Simon Fraser.
+
+        Use is<>() / downcast<>() for PlatformCALayer subclasses and clean up 
+        the surrounding code.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::~PlatformCALayerRemote):
+        (WebKit::PlatformCALayerRemote::updateClonedLayerProperties):
+        (WebKit::PlatformCALayerRemote::recursiveBuildTransaction):
+        (WebKit::PlatformCALayerRemote::setSublayers):
+        (WebKit::PlatformCALayerRemote::appendSublayer):
+        (WebKit::PlatformCALayerRemote::insertSublayer):
+        (WebKit::PlatformCALayerRemote::replaceSublayer):
+        (WebKit::PlatformCALayerRemote::adoptSublayers):
+        (WebKit::PlatformCALayerRemote::setMask):
+        (WebKit::PlatformCALayerRemote::copyFiltersFrom):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.mm:
+        (WebKit::RemoteLayerTreeContext::buildTransaction):
+
+2014-10-13  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Filter / FilterOperation subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137644
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for Filter / FilterOperation subclasses.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (IPC::ArgumentCoder<WebCore::FilterOperations>::encode):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<FilterOperation>::encode):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTextStream::operator<<):
+
 2014-10-12  Sergio Villar Senin  <svillar@igalia.com>
 
         [SOUP] [WK2] WebProcess and NetworkProcess initialization clears cache contents

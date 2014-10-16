@@ -688,14 +688,14 @@ endmacro()
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
-GENERATE_WEBKIT2_MESSAGE_SOURCES(WebKit2_SOURCES "${WebKit2_MESSAGES_IN_FILES}")
+GENERATE_WEBKIT2_MESSAGE_SOURCES(WebKit2_DERIVED_SOURCES "${WebKit2_MESSAGES_IN_FILES}")
 
 add_definitions(-DBUILDING_WEBKIT)
 include_directories(${WebKit2_INCLUDE_DIRECTORIES})
 foreach(inc ${WebKit2_LOCAL_INCLUDE_DIRECTORIES})
     add_definitions(-iquote ${inc})
 endforeach(inc)
-add_library(WebKit2 ${WebKit2_LIBRARY_TYPE} ${WebKit2_SOURCES})
+add_library(WebKit2 ${WebKit2_LIBRARY_TYPE} ${WebKit2_SOURCES} ${WebKit2_DERIVED_SOURCES})
 
 add_dependencies(WebKit2 WebCore)
 add_dependencies(WebKit2 ${WEBKIT2_EXTRA_DEPENDENCIES})

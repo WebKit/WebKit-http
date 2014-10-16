@@ -107,7 +107,7 @@ void RenderInline::willBeDestroyed()
                     box->removeFromParent();
             }
         } else if (parent()) 
-            parent()->dirtyLinesFromChangedChild(this);
+            parent()->dirtyLinesFromChangedChild(*this);
     }
 
     m_lineBoxes.deleteLineBoxes();
@@ -217,7 +217,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
         return;
 
     RenderStyle* parentStyle = &parent()->style();
-    RenderInline* parentRenderInline = parent()->isRenderInline() ? toRenderInline(parent()) : 0;
+    RenderInline* parentRenderInline = is<RenderInline>(*parent()) ? downcast<RenderInline>(parent()) : nullptr;
     bool checkFonts = document().inNoQuirksMode();
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     bool alwaysCreateLineBoxes = (parentRenderInline && parentRenderInline->alwaysCreateLineBoxes())
@@ -1107,27 +1107,27 @@ LayoutRect RenderInline::clippedOverflowRectForRepaint(const RenderLayerModelObj
 
     // We need to add in the in-flow position offsets of any inlines (including us) up to our
     // containing block.
-    RenderBlock* cb = containingBlock();
-    for (const RenderObject* inlineFlow = this; inlineFlow && inlineFlow->isRenderInline() && inlineFlow != cb;
+    RenderBlock* containingBlock = this->containingBlock();
+    for (const RenderElement* inlineFlow = this; is<RenderInline>(inlineFlow) && inlineFlow != containingBlock;
          inlineFlow = inlineFlow->parent()) {
          if (inlineFlow == repaintContainer) {
             hitRepaintContainer = true;
             break;
         }
         if (inlineFlow->style().hasInFlowPosition() && inlineFlow->hasLayer())
-            repaintRect.move(toRenderInline(inlineFlow)->layer()->offsetForInFlowPosition());
+            repaintRect.move(downcast<RenderInline>(*inlineFlow).layer()->offsetForInFlowPosition());
     }
 
     LayoutUnit outlineSize = style().outlineSize();
     repaintRect.inflate(outlineSize);
 
-    if (hitRepaintContainer || !cb)
+    if (hitRepaintContainer || !containingBlock)
         return repaintRect;
 
-    if (cb->hasOverflowClip())
-        cb->applyCachedClipAndScrollOffsetForRepaint(repaintRect);
+    if (containingBlock->hasOverflowClip())
+        containingBlock->applyCachedClipAndScrollOffsetForRepaint(repaintRect);
 
-    cb->computeRectForRepaint(repaintContainer, repaintRect);
+    containingBlock->computeRectForRepaint(repaintContainer, repaintRect);
 
     if (outlineSize) {
         for (auto& child : childrenOfType<RenderElement>(*this))
@@ -1167,8 +1167,8 @@ void RenderInline::computeRectForRepaint(const RenderLayerModelObject* repaintCo
         return;
 
     bool containerSkipped;
-    RenderElement* o = container(repaintContainer, &containerSkipped);
-    if (!o)
+    RenderElement* container = this->container(repaintContainer, &containerSkipped);
+    if (!container)
         return;
 
     LayoutPoint topLeft = rect.location();
@@ -1184,36 +1184,35 @@ void RenderInline::computeRectForRepaint(const RenderLayerModelObject* repaintCo
     // FIXME: We ignore the lightweight clipping rect that controls use, since if |o| is in mid-layout,
     // its controlClipRect will be wrong. For overflow clip we use the values cached by the layer.
     rect.setLocation(topLeft);
-    if (o->hasOverflowClip()) {
-        RenderBox* containerBox = toRenderBox(o);
-        containerBox->applyCachedClipAndScrollOffsetForRepaint(rect);
+    if (container->hasOverflowClip()) {
+        downcast<RenderBox>(*container).applyCachedClipAndScrollOffsetForRepaint(rect);
         if (rect.isEmpty())
             return;
     }
 
     if (containerSkipped) {
         // If the repaintContainer is below o, then we need to map the rect into repaintContainer's coordinates.
-        LayoutSize containerOffset = repaintContainer->offsetFromAncestorContainer(o);
+        LayoutSize containerOffset = repaintContainer->offsetFromAncestorContainer(*container);
         rect.move(-containerOffset);
         return;
     }
     
-    o->computeRectForRepaint(repaintContainer, rect, fixed);
+    container->computeRectForRepaint(repaintContainer, rect, fixed);
 }
 
-LayoutSize RenderInline::offsetFromContainer(RenderObject* container, const LayoutPoint&, bool* offsetDependsOnPoint) const
+LayoutSize RenderInline::offsetFromContainer(RenderElement& container, const LayoutPoint&, bool* offsetDependsOnPoint) const
 {
-    ASSERT(container == this->container());
+    ASSERT(&container == this->container());
     
     LayoutSize offset;    
     if (isInFlowPositioned())
         offset += offsetForInFlowPosition();
 
-    if (container->isBox())
-        offset -= toRenderBox(container)->scrolledContentOffset();
+    if (is<RenderBox>(container))
+        offset -= downcast<RenderBox>(container).scrolledContentOffset();
 
     if (offsetDependsOnPoint)
-        *offsetDependsOnPoint = (container->isBox() && container->style().isFlippedBlocksWritingMode()) || container->isRenderFlowThread();
+        *offsetDependsOnPoint = (is<RenderBox>(container) && container.style().isFlippedBlocksWritingMode()) || is<RenderFlowThread>(container);
 
     return offset;
 }
@@ -1233,24 +1232,24 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     }
 
     bool containerSkipped;
-    RenderElement* o = container(repaintContainer, &containerSkipped);
-    if (!o)
+    RenderElement* container = this->container(repaintContainer, &containerSkipped);
+    if (!container)
         return;
 
-    if (mode & ApplyContainerFlip && o->isBox()) {
-        if (o->style().isFlippedBlocksWritingMode()) {
+    if (mode & ApplyContainerFlip && is<RenderBox>(*container)) {
+        if (container->style().isFlippedBlocksWritingMode()) {
             LayoutPoint centerPoint(transformState.mappedPoint());
-            transformState.move(toRenderBox(o)->flipForWritingMode(centerPoint) - centerPoint);
+            transformState.move(downcast<RenderBox>(*container).flipForWritingMode(centerPoint) - centerPoint);
         }
         mode &= ~ApplyContainerFlip;
     }
 
-    LayoutSize containerOffset = offsetFromContainer(o, LayoutPoint(transformState.mappedPoint()));
+    LayoutSize containerOffset = offsetFromContainer(*container, LayoutPoint(transformState.mappedPoint()));
 
-    bool preserve3D = mode & UseTransforms && (o->style().preserves3D() || style().preserves3D());
-    if (mode & UseTransforms && shouldUseTransformFromContainer(o)) {
+    bool preserve3D = mode & UseTransforms && (container->style().preserves3D() || style().preserves3D());
+    if (mode & UseTransforms && shouldUseTransformFromContainer(container)) {
         TransformationMatrix t;
-        getTransformFromContainer(o, containerOffset, t);
+        getTransformFromContainer(container, containerOffset, t);
         transformState.applyTransform(t, preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform);
     } else
         transformState.move(containerOffset.width(), containerOffset.height(), preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform);
@@ -1258,12 +1257,12 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     if (containerSkipped) {
         // There can't be a transform between repaintContainer and o, because transforms create containers, so it should be safe
         // to just subtract the delta between the repaintContainer and o.
-        LayoutSize containerOffset = repaintContainer->offsetFromAncestorContainer(o);
+        LayoutSize containerOffset = repaintContainer->offsetFromAncestorContainer(*container);
         transformState.move(-containerOffset.width(), -containerOffset.height(), preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform);
         return;
     }
 
-    o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
+    container->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
 
 const RenderObject* RenderInline::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -1273,17 +1272,17 @@ const RenderObject* RenderInline::pushMappingToContainer(const RenderLayerModelO
     bool ancestorSkipped;
     RenderElement* container = this->container(ancestorToStopAt, &ancestorSkipped);
     if (!container)
-        return 0;
+        return nullptr;
 
     LayoutSize adjustmentForSkippedAncestor;
     if (ancestorSkipped) {
         // There can't be a transform between repaintContainer and o, because transforms create containers, so it should be safe
         // to just subtract the delta between the ancestor and o.
-        adjustmentForSkippedAncestor = -ancestorToStopAt->offsetFromAncestorContainer(container);
+        adjustmentForSkippedAncestor = -ancestorToStopAt->offsetFromAncestorContainer(*container);
     }
 
     bool offsetDependsOnPoint = false;
-    LayoutSize containerOffset = offsetFromContainer(container, LayoutPoint(), &offsetDependsOnPoint);
+    LayoutSize containerOffset = offsetFromContainer(*container, LayoutPoint(), &offsetDependsOnPoint);
 
     bool preserve3D = container->style().preserves3D() || style().preserves3D();
     if (shouldUseTransformFromContainer(container)) {

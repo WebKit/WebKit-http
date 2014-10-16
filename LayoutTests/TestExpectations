@@ -35,6 +35,7 @@ webkit.org/b/137359 webaudio/distance-linear.html [ Pass Failure ]
 
 webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas-2x.html [ ImageOnlyFailure ]
 webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas-2x.html [ ImageOnlyFailure ]
+webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas.html [ Pass ImageOnlyFailure ]
 
 # The test frequently times out, and is just unsuccessful at detecting incorrect behavior when it passes.
 webkit.org/b/72698 media/audio-garbage-collect.html [ Skip ]
@@ -74,9 +75,6 @@ webkit.org/b/127697 fast/writing-mode/ruby-text-logical-left.html [ Skip ]
 webkit.org/b/83618 fast/dom/inline-event-attributes-release.html [ Failure ]
 
 webkit.org/b/129057 media/controls-styling-strict.html [ Pass Failure ]
-
-#subpixel failure on non-retina displays.
-webkit.org/b/129050 fast/sub-pixel/compositing-layers-on-subpixel-position.html [ ImageOnlyFailure ]
 
 webkit.org/b/133761 inspector-protocol/debugger/breakpoint-action-detach.html [ Skip ]
 webkit.org/b/129639 inspector-protocol/dom/dom-search-crash.html [ Skip ]
@@ -216,9 +214,6 @@ webkit.org/b/137167 js/kde/function_arguments.html [ Failure ]
 
 # Promises/A+ 2.3.3 has many tests and it sometimes exceeds the time limit.
 webkit.org/b/136878 js/promises-tests/promises-tests-2-3-3.html [ Slow ]
-
-# Intentional breaking of :not(:link) and :not(:visited) for the development of the extended :not() from CSS Selector Level 4.
-fast/history/link-inside-not.html [ Failure ]
 
 # @supports W3C Failures
 webkit.org/b/137566 css3/conditional/w3c/at-supports-010.html [ ImageOnlyFailure ]

@@ -1,3 +1,90 @@
+2014-10-14  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Add ESLint open source library to the inspector
+        https://bugs.webkit.org/show_bug.cgi?id=137714
+
+        Reviewed by Timothy Hatcher.
+
+        This adds the eslint.js external library for static analysis and the necessary license.
+
+        * Scripts/copy-user-interface-resources.pl:
+        * UserInterface/External/ESLint/LICENSE: Added.
+        * UserInterface/External/ESLint/eslint.js: Added.
+
+2014-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: paint flashing mode should be disabled when remote inspecting legacy iOS versions
+        https://bugs.webkit.org/show_bug.cgi?id=137575
+
+        Reviewed by Simon Fraser.
+
+        Remove setShowPaintRects from the legacy iOS protocol definitions.
+        The methods were unimplemented by the backends, so they should
+        not advertise supporting it.
+
+        * UserInterface/Protocol/Legacy/6.0/InspectorWebBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorWebBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorWebBackendCommands.js:
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/InspectorWeb-iOS-8.0.json:
+
+2014-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Processing Instruction Nodes appear poorly in DOM Tree
+        https://bugs.webkit.org/show_bug.cgi?id=137681
+
+        Reviewed by Timothy Hatcher.
+
+        Handle processing instruction node types in more places. The
+        backend sends the contents as a pure string, not as attribute
+        pairs, so just include the string in the UI.
+
+        * UserInterface/Models/DOMSearchMatchObject.js:
+        (WebInspector.DOMSearchMatchObject.prototype._generateClassName):
+        (WebInspector.DOMSearchMatchObject.titleForDOMNode):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._nodeTitleInfo):
+        Display the value in the UI.
+
+        * UserInterface/Views/DOMTreeElementPathComponent.js:
+        (WebInspector.DOMTreeElementPathComponent):
+        Include an icon like DOCTYPE.
+
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.syntax-highlighted .html-processing-instruction):
+        Style gray like a DOCTYPE.
+
+2014-10-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Paint Flashing button does not match page state after reload
+        https://bugs.webkit.org/show_bug.cgi?id=137680
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Make paint flashing a frontend setting. Enable it when the inspector
+        is opened if it was previously enabled.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        (WebInspector.DOMTreeContentView.prototype._togglePaintFlashing):
+        (WebInspector.DOMTreeContentView.prototype._showPaintRectsSettingChanged):
+        Have the paint flashing button always match the global setting.
+
+2014-10-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve appearance of alpha color swatches
+        https://bugs.webkit.org/show_bug.cgi?id=137627
+
+        Reviewed by Andreas Kling.
+
+        * UserInterface/Protocol/Legacy/7.0/InspectorWebBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorWebBackendCommands.js:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/InspectorWeb-iOS-8.0.json:
+
 2014-10-10  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Improve appearance of alpha color swatches

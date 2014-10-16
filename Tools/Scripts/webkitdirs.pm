@@ -1777,9 +1777,9 @@ sub generateBuildSystemFromCMakeProject
     my $originalWorkingDirectory = getcwd();
     chdir($buildPath) or die;
 
-    # For GTK+ we try to be smart about when to rerun cmake, so that we can have faster incremental builds.
-    my $willUseNinja = (isGtk() || isHaiku()) && canUseNinja();
-    if (isGtk() && -e cmakeCachePath() && -e cmakeGeneratedBuildfile($willUseNinja)) {
+    # We try to be smart about when to rerun cmake, so that we can have faster incremental builds.
+    my $willUseNinja = canUseNinja();
+    if (-e cmakeCachePath() && -e cmakeGeneratedBuildfile($willUseNinja)) {
         return 0;
     }
 
@@ -1847,6 +1847,7 @@ sub buildCMakeGeneratedProject($)
         $command = "$buildPath/build.sh";
         @args = ($makeArgs);
     }
+    push @args, "-v" if ($ENV{VERBOSE} && canUseNinja());
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters. In particular, $makeArgs may contain such metacharacters.
