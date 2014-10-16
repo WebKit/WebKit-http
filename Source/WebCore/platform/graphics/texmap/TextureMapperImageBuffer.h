@@ -31,6 +31,7 @@ class BitmapTextureImageBuffer : public BitmapTexture {
 public:
     static PassRefPtr<BitmapTexture> create() { return adoptRef(new BitmapTextureImageBuffer); }
     virtual IntSize size() const { return m_image->internalSize(); }
+    bool canReuseWith(const IntSize& /* contentsSize */, Flags = 0) override { return true; }
     virtual void didReset();
     virtual bool isValid() const { return m_image.get(); }
     inline GraphicsContext* graphicsContext() { return m_image ? m_image->context() : 0; }
