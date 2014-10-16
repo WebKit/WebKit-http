@@ -126,6 +126,7 @@ MediaPlayerPrivate::~MediaPlayerPrivate()
     delete m_soundPlayer;
     delete m_mediaFile;
     delete m_cache;
+    delete m_frameBuffer;
 }
 
 void MediaPlayerPrivate::load(const String& url)
@@ -164,7 +165,7 @@ void MediaPlayerPrivate::load(const String& url)
 void MediaPlayerPrivate::cancelLoad()
 {
     BUrlRequest* request;
-    while(request = m_requests.RemoveItemAt(0)) {
+    while((request = m_requests.RemoveItemAt(0))) {
         request->Stop();
         delete request;
     }
@@ -176,7 +177,7 @@ void MediaPlayerPrivate::prepareToPlay()
 }
 
 void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
-    size_t size, const media_raw_audio_format& format)
+    size_t /*size*/, const media_raw_audio_format& /*format*/)
 {
     MediaPlayerPrivate* player = (MediaPlayerPrivate*)cookie;
 
@@ -350,7 +351,7 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
 
 // #pragma mark - BUrlProtocolListener
 
-void MediaPlayerPrivate::DataReceived(BUrlRequest* r, const char* data, off_t position, ssize_t size)
+void MediaPlayerPrivate::DataReceived(BUrlRequest* /*r*/, const char* data, off_t position, ssize_t size)
 {
     m_cache->WriteAt(position, data, size);
 }
@@ -372,7 +373,7 @@ void MediaPlayerPrivate::DownloadProgress(BUrlRequest*, ssize_t currentSize,
     }
 }
 
-void MediaPlayerPrivate::RequestCompleted(BUrlRequest* req, bool success)
+void MediaPlayerPrivate::RequestCompleted(BUrlRequest* /*req*/, bool success)
 {
     BMessage result('reqc');
     result.AddBool("success", success);
@@ -450,6 +451,8 @@ void MediaPlayerPrivate::IdentifyTracks()
             track->DecodedFormat(&format);
 
             if (format.IsVideo()) {
+                if (m_videoTrack)
+                    continue;
                 m_videoTrack = track;
 
                 m_frameBuffer = new BBitmap(
@@ -461,6 +464,8 @@ void MediaPlayerPrivate::IdentifyTracks()
             }
 
             if (format.IsAudio()) {
+                if (m_audioTrack)
+                    continue;
                 m_audioTrack = track;
 
                 m_soundPlayer = new BSoundPlayer(&format.u.raw_audio,
