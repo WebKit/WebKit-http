@@ -161,6 +161,7 @@ private:
     bool m_delayingLoad;
     String m_mediaUrl;
     bool m_suppressNextPlaybackChanged;
+    bool m_prerolling;
 
 };
 }

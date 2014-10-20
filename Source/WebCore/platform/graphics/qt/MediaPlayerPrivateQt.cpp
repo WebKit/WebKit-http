@@ -114,6 +114,7 @@ MediaPlayerPrivateQt::MediaPlayerPrivateQt(MediaPlayer* player)
     , m_preload(MediaPlayer::Auto)
     , m_bytesLoadedAtLastDidLoadingProgress(0)
     , m_suppressNextPlaybackChanged(false)
+    , m_prerolling(false)
 {
     m_mediaPlayer->setVideoOutput(this);
 
@@ -245,9 +246,8 @@ void MediaPlayerPrivateQt::commitLoad(const String& url)
     // Setting a media source will start loading the media, but we need
     // to pre-roll as well to get video size-hints and buffer-status
     if (m_webCorePlayer->paused())
-        m_mediaPlayer->pause();
-    else
-        m_mediaPlayer->play();
+        m_prerolling = true;
+    m_mediaPlayer->play();
 }
 
 void MediaPlayerPrivateQt::resumeLoad()
@@ -272,6 +272,7 @@ void MediaPlayerPrivateQt::prepareToPlay()
 
 void MediaPlayerPrivateQt::play()
 {
+    m_prerolling = false;
     if (m_mediaPlayer->state() != QMediaPlayer::PlayingState)
         m_mediaPlayer->play();
 }
@@ -284,7 +285,7 @@ void MediaPlayerPrivateQt::pause()
 
 bool MediaPlayerPrivateQt::paused() const
 {
-    return (m_mediaPlayer->state() != QMediaPlayer::PlayingState);
+    return (m_prerolling || m_mediaPlayer->state() != QMediaPlayer::PlayingState);
 }
 
 void MediaPlayerPrivateQt::seek(float position)
@@ -411,8 +412,16 @@ void MediaPlayerPrivateQt::setVisible(bool)
 {
 }
 
-void MediaPlayerPrivateQt::mediaStatusChanged(QMediaPlayer::MediaStatus)
+void MediaPlayerPrivateQt::mediaStatusChanged(QMediaPlayer::MediaStatus status)
 {
+    // Pre-roll done
+    if (m_prerolling && (status == QMediaPlayer::BufferingMedia || status == QMediaPlayer::BufferedMedia)) {
+        // Don't send PlaybackChanged notification for pre-roll.
+        m_suppressNextPlaybackChanged = true;
+        m_prerolling = false;
+        m_mediaPlayer->pause();
+    }
+
     updateStates();
 }
 
