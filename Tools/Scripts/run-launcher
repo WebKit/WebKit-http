@@ -50,6 +50,10 @@ if (isGtk() || isEfl()) {
     $launcherPath = catdir($productDir, "bin", "MiniBrowser");
 }
 
+if (isHaiku()) {
+    $launcherPath = catdir($productDir, "HaikuLauncher");
+}
+
 $launcherPath && -x $launcherPath or die "Can't find the launcher command";
 
 @jhbuildWrapper = jhbuildWrapperPrefixIfNeeded();

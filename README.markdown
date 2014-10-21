@@ -158,16 +158,23 @@ and renamed to the name of the test that triggered the crash. If you don't do
 this, you have to manually click the "save report" button, and while the
 testsuite waits on that, it may mark one or several tests as "timed out".
 
+WebKit also needs an HTTP server for some of the tests, with CGI support for
+PHP, Perl, and a few others. You can use the --no-http option to
+run-webkit-tests to skip this part. Otherwise you need to install lighttpd
+(build it from haikuports) and PHP. The current PHP recipe leads to a broken
+executable, so the testsuite scripts expect a php-cgi binary in
+system/non-packaged/bin. I used the "PHP 5.2.5 for BeOS" port available on
+HaikuWare.
+
 You can then run the testsuite:
 
     $ python Tools/Scripts/run-webkit-tests --platform=haiku --no-build \
-        --no-http --no-retry-failures --clobber-old-results \
-        --no-new-test-results
+        --no-retry-failures --clobber-old-results --no-new-test-results
 
 The options will prevent the script to try updating DumpRenderTree (it doesn't
-know how to do that on Haiku, yet) and to run the HTTP tests (requires apache).
-It doesn't retry failed tests, will remove previous results before starting,
-and will not generate missing "expected" files in the LayoutTests directory.
+know how to do that on Haiku, yet). It doesn't retry failed tests, will remove
+previous results before starting, and will not generate missing "expected" files
+in the LayoutTests directory.
 
 A lot of tests are currently failing. The problems are either in the WebKit
 code itself, or in the various parts of the test harness, none of which are
@@ -179,8 +186,7 @@ asserts in WebKit code.
 Same as above, but:
 
     $ python Tools/Scripts/run-webkit-tests --platform=haiku-wk2 --no-build \
-        --no-http --no-retry-failures --clobber-old-results \
-        --no-new-test-results
+        --no-retry-failures --clobber-old-results --no-new-test-results
 
 Note that this is currently not working.
 

@@ -119,6 +119,21 @@ class HaikuPort(Port):
         # FIXME: old-run-webkit-tests converted results_filename path for cygwin.
         self._run_script("run-launcher", run_launcher_args)
 
+    def _uses_apache(self):
+        return False
+
+    def _path_to_lighttpd(self):
+        return "/system/bin/lighttpd"
+
+    def _path_to_lighttpd_modules(self):
+        return "/system/lib/lighttpd"
+
+    def _path_to_lighttpd_php(self):
+        return "/system/non-packaged/bin/php-cgi"
+
+    def _path_to_lighttpd_env(self):
+        return "/bin/env"
+
     def check_sys_deps(self, needs_http):
         return super(HaikuPort, self).check_sys_deps(needs_http) and self._driver_class().check_driver(self)
 

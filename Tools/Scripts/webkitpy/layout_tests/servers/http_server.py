@@ -105,11 +105,13 @@ class Lighttpd(http_server_base.HttpServerBase):
         # Write out our cgi handlers.  Run perl through env so that it
         # processes the #! line and runs perl with the proper command
         # line arguments. Emulate apache's mod_asis with a cat cgi handler.
-        f.write(('cgi.assign = ( ".cgi"  => "/usr/bin/env",\n'
-                 '               ".pl"   => "/usr/bin/env",\n'
+        f.write(('cgi.assign = ( ".cgi"  => "%s",\n'
+                 '               ".pl"   => "%s",\n'
                  '               ".asis" => "/bin/cat",\n'
                  '               ".php"  => "%s" )\n\n') %
-                                     self._port_obj._path_to_lighttpd_php())
+                (self._port_obj._path_to_lighttpd_env(),
+                 self._port_obj._path_to_lighttpd_env(),
+                 self._port_obj._path_to_lighttpd_php()))
 
         # Setup log files
         f.write(('server.errorlog = "%s"\n'
