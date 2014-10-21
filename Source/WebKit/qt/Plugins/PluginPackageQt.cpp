@@ -42,7 +42,11 @@ bool PluginPackage::fetchInfo()
         if (isPluginBlacklisted())
             return false;
         m_module = new QLibrary((QString)m_path);
+#if QT_VERSION >= QT_VERSION_CHECK(5,5,0)
+        m_module->setLoadHints(QLibrary::ResolveAllSymbolsHint | QLibrary::DeepBindHint);
+#else
         m_module->setLoadHints(QLibrary::ResolveAllSymbolsHint);
+#endif
         if (!m_module->load()) {
             LOG(Plugins, "%s not loaded (%s)", m_path.utf8().data(),
                 m_module->errorString().toLatin1().constData());
@@ -144,7 +148,8 @@ static void initializeGtk(QLibrary* module = 0)
 
 bool PluginPackage::isPluginBlacklisted()
 {
-    // TODO: enumerate all plugins that are incompatible with Qt5.
+    // These plugins are incompatible because they themselves use dlopen on
+    // subplugins linked against Qt 4 but without using DEEPBIND.
     const QLatin1String pluginBlacklist[] = {
         QLatin1String("skypebuttons"),
         QLatin1String("libkpartsplugin")
@@ -170,7 +175,11 @@ bool PluginPackage::load()
 
     if (!m_module) {
         m_module = new QLibrary((QString)m_path);
+#if QT_VERSION >= QT_VERSION_CHECK(5,5,0)
+        m_module->setLoadHints(QLibrary::ResolveAllSymbolsHint | QLibrary::DeepBindHint);
+#else
         m_module->setLoadHints(QLibrary::ResolveAllSymbolsHint);
+#endif
         if (!m_module->load()) {
             LOG(Plugins, "%s not loaded (%s)", m_path.utf8().data(),
                 m_module->errorString().toLatin1().constData());
