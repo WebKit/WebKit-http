@@ -194,14 +194,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -frtti")
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
 if (CMAKE_COMPILER_IS_GNUCC AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86")
     # i686 is the official requirement for Haiku, let's try to keep this working
-    # for everyone. Moreover, our stack isn't 16-byte aligned so this avoid
-    # crashes where gcc would otherwise use SSE2 instructions.
+    # for everyone.
     set(CMAKE_C_FLAGS "-march=i686 ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "-march=i686 ${CMAKE_CXX_FLAGS}")
 endif()
 
-set(ENABLE_TEXTURE_MAPPER 1)
-set(WTF_USE_TEXTURE_MAPPER 1)
 add_definitions(-DWTF_USE_TEXTURE_MAPPER=1)
 
 set(WTF_USE_COORDINATED_GRAPHICS 0)
