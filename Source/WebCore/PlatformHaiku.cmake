@@ -120,6 +120,8 @@ list(APPEND WebCore_SOURCES
   platform/graphics/haiku/TileHaiku.cpp
   platform/graphics/haiku/TiledBackingStoreHaiku.cpp
 
+  platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
+
   platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
   platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
   platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
@@ -174,16 +176,6 @@ if (WTF_USE_COORDINATED_GRAPHICS)
 else()
 
 endif()
-
-if (WTF_USE_TEXTURE_MAPPER)
-    list(APPEND WebCore_SOURCES
-        platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
-    )
-else()
-    list(APPEND WebCore_SOURCES
-        platform/graphics/haiku/GraphicsLayerHaiku.cpp
-    )
-endif ()
 
 set(WebCore_USER_AGENT_SCRIPTS
     ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
