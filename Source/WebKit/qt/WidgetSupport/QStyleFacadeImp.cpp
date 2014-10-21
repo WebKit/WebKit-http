@@ -248,7 +248,7 @@ void QStyleFacadeImp::paintButton(QPainter* painter, QStyleFacade::ButtonType ty
     QWidget* widget = qobject_cast<QWidget*>(widgetForPainter(painter));
     MappedStyleOption<QStyleOptionButton> option(widget, proxyOption);
 
-    if (m_style->inherits("QWindowsVistaStyle"))
+    if (m_style->inherits("QWindowsVistaStyle") || QApplication::style()->inherits("QWindowsVistaStyle"))
         option.styleObject = 0;
 
     if (type == PushButton)
