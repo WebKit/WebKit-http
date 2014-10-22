@@ -445,7 +445,7 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
     }
     
     if (behavior & RenderAsTextShowOverflow && is<RenderBox>(o)) {
-        const RenderBox& box = downcast<RenderBox>(o);
+        const auto& box = downcast<RenderBox>(o);
         if (box.hasRenderOverflow()) {
             LayoutRect layoutOverflow = box.layoutOverflowRect();
             ts << " (layout overflow " << layoutOverflow.x().toInt() << "," << layoutOverflow.y().toInt() << " " << layoutOverflow.width().toInt() << "x" << layoutOverflow.height().toInt() << ")";
@@ -652,8 +652,8 @@ static void writeRenderRegionList(const RenderRegionList& flowThreadRegionList, 
 
         Element* generatingElement = renderRegion->generatingElement();
         if (generatingElement) {
-            bool isRenderNamedFlowFragment = renderRegion->isRenderNamedFlowFragment();
-            if (isRenderNamedFlowFragment && toRenderNamedFlowFragment(renderRegion)->hasCustomRegionStyle())
+            bool isRenderNamedFlowFragment = is<RenderNamedFlowFragment>(*renderRegion);
+            if (isRenderNamedFlowFragment && downcast<RenderNamedFlowFragment>(*renderRegion).hasCustomRegionStyle())
                 ts << " region style: 1";
             if (renderRegion->hasAutoLogicalHeight())
                 ts << " hasAutoLogicalHeight";
@@ -802,8 +802,8 @@ static void writeLayers(TextStream& ts, const RenderLayer* rootLayer, RenderLaye
     
     // Altough the RenderFlowThread requires a layer, it is not collected by its parent,
     // so we have to treat it as a special case.
-    if (l->renderer().isRenderView())
-        writeRenderNamedFlowThreads(ts, toRenderView(l->renderer()), rootLayer, paintDirtyRect, indent, behavior);
+    if (is<RenderView>(l->renderer()))
+        writeRenderNamedFlowThreads(ts, downcast<RenderView>(l->renderer()), rootLayer, paintDirtyRect, indent, behavior);
 }
 
 static String nodePosition(Node* node)
@@ -874,30 +874,30 @@ static String externalRepresentation(RenderBox* renderer, RenderAsTextBehavior b
 
 String externalRepresentation(Frame* frame, RenderAsTextBehavior behavior)
 {
-    RenderObject* renderer = frame->contentRenderer();
-    if (!renderer || !renderer->isBox())
+    RenderView* renderer = frame->contentRenderer();
+    if (!renderer)
         return String();
 
     PrintContext printContext(frame);
     if (behavior & RenderAsTextPrintingMode)
-        printContext.begin(toRenderBox(renderer)->width());
+        printContext.begin(renderer->width());
     if (!(behavior & RenderAsTextDontUpdateLayout))
         frame->document()->updateLayout();
 
-    return externalRepresentation(toRenderBox(renderer), behavior);
+    return externalRepresentation(renderer, behavior);
 }
 
 String externalRepresentation(Element* element, RenderAsTextBehavior behavior)
 {
-    RenderObject* renderer = element->renderer();
-    if (!renderer || !renderer->isBox())
+    RenderElement* renderer = element->renderer();
+    if (!is<RenderBox>(renderer))
         return String();
     // Doesn't support printing mode.
     ASSERT(!(behavior & RenderAsTextPrintingMode));
     if (!(behavior & RenderAsTextDontUpdateLayout))
         element->document().updateLayout();
     
-    return externalRepresentation(toRenderBox(renderer), behavior | RenderAsTextShowAllLayers);
+    return externalRepresentation(downcast<RenderBox>(renderer), behavior | RenderAsTextShowAllLayers);
 }
 
 static void writeCounterValuesFromChildren(TextStream& stream, const RenderElement* parent, bool& isFirstCounter)
@@ -934,11 +934,11 @@ String markerTextForListItem(Element* element)
     RefPtr<Element> elementRef(element);
     element->document().updateLayout();
 
-    RenderObject* renderer = element->renderer();
-    if (!renderer || !renderer->isListItem())
+    RenderElement* renderer = element->renderer();
+    if (!is<RenderListItem>(renderer))
         return String();
 
-    return toRenderListItem(renderer)->markerText();
+    return downcast<RenderListItem>(*renderer).markerText();
 }
 
 } // namespace WebCore

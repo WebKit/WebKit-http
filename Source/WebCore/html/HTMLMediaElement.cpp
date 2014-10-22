@@ -4245,8 +4245,8 @@ void HTMLMediaElement::mediaPlayerSizeChanged(MediaPlayer*)
 
 bool HTMLMediaElement::mediaPlayerRenderingCanBeAccelerated(MediaPlayer*)
 {
-    if (renderer() && renderer()->isVideo())
-        return renderer()->view().compositor().canAccelerateVideoRendering(toRenderVideo(*renderer()));
+    if (is<RenderVideo>(renderer()))
+        return renderer()->view().compositor().canAccelerateVideoRendering(downcast<RenderVideo>(*renderer()));
     return false;
 }
 
@@ -4477,8 +4477,7 @@ void HTMLMediaElement::updateVolume()
         }
 
         m_player->setMuted(shouldMute);
-        if (m_volumeInitialized)
-            m_player->setVolume(m_volume * volumeMultiplier);
+        m_player->setVolume(m_volume * volumeMultiplier);
     }
 
     if (hasMediaControls())

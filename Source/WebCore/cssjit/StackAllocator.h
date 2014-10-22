@@ -103,7 +103,12 @@ public:
     StackReferenceVector push(const Vector<JSC::MacroAssembler::RegisterID>& registerIDs)
     {
         RELEASE_ASSERT(!m_hasFunctionCallPadding);
+
         StackReferenceVector stackReferences;
+
+        if (registerIDs.isEmpty())
+            return stackReferences;
+
 #if CPU(ARM64)
         unsigned pushRegisterCount = registerIDs.size();
         for (unsigned i = 0; i < pushRegisterCount - 1; i += 2) {
@@ -227,16 +232,21 @@ public:
         stackC.reset();
     }
 
-    unsigned offsetToStackReference(StackReference stackReference)
+    JSC::MacroAssembler::Address addressOf(StackReference stackReference)
     {
-        RELEASE_ASSERT(m_offsetFromTop >= stackReference);
-        return m_offsetFromTop - stackReference;
+        return JSC::MacroAssembler::Address(JSC::MacroAssembler::stackPointerRegister, offsetToStackReference(stackReference));
     }
 
 private:
     static unsigned stackUnitInBytes()
     {
         return JSC::MacroAssembler::pushToSaveByteOffset();
+    }
+
+    unsigned offsetToStackReference(StackReference stackReference)
+    {
+        RELEASE_ASSERT(m_offsetFromTop >= stackReference);
+        return m_offsetFromTop - stackReference;
     }
 
     void reset()

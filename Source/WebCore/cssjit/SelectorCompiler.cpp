@@ -132,12 +132,19 @@ static const unsigned invalidHeight = std::numeric_limits<unsigned>::max();
 static const unsigned invalidWidth = std::numeric_limits<unsigned>::max();
 
 struct SelectorFragment;
-typedef Vector<SelectorFragment, 32> SelectorFragmentList;
+class SelectorFragmentList;
+
+class SelectorList : public Vector<SelectorFragmentList> {
+public:
+    unsigned registerRequirements = std::numeric_limits<unsigned>::max();
+    unsigned stackRequirements = std::numeric_limits<unsigned>::max();
+    bool clobberElementAddressRegister = true;
+};
 
 struct NthChildOfSelectorInfo {
     int a;
     int b;
-    Vector<SelectorFragmentList> selectorList;
+    SelectorList selectorList;
 };
 
 struct SelectorFragment {
@@ -188,7 +195,7 @@ struct SelectorFragment {
     Vector<AttributeMatchingInfo, 4> attributes;
     Vector<std::pair<int, int>, 2> nthChildFilters;
     Vector<NthChildOfSelectorInfo> nthChildOfFilters;
-    Vector<SelectorFragment> notFilters;
+    SelectorList notFilters;
     Vector<Vector<SelectorFragment>> anyFilters;
     const CSSSelector* pseudoElementSelector;
 
@@ -204,6 +211,13 @@ struct SelectorFragment {
     //    selector does not use a pseudo-element selector.
     //    selector is not part of an argument to a functional pseudo-class or pseudo-element.
     bool onlyMatchesLinksInQuirksMode;
+};
+
+class SelectorFragmentList : public Vector<SelectorFragment, 32> {
+public:
+    unsigned registerRequirements = std::numeric_limits<unsigned>::max();
+    unsigned stackRequirements = std::numeric_limits<unsigned>::max();
+    bool clobberElementAddressRegister = true;
 };
 
 struct TagNamePattern {
@@ -244,7 +258,7 @@ private:
 
     void generateSelectorChecker();
     void generateSelectorCheckerExcludingPseudoElements(Assembler::JumpList& failureCases, const SelectorFragmentList&);
-    Assembler::JumpList generateElementMatchesSelectorList(Assembler::RegisterID elementRegister, const Vector<SelectorFragmentList>&);
+    void generateElementMatchesSelectorList(Assembler::JumpList& failureCases, Assembler::RegisterID elementToMatch, const SelectorList&);
 
     // Element relations tree walker.
     void generateRightmostTreeWalker(Assembler::JumpList& failureCases, const SelectorFragment&);
@@ -647,33 +661,28 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
         {
             const CSSSelectorList* selectorList = selector.selectorList();
 
+            ASSERT_WITH_MESSAGE(selectorList, "The CSS Parser should never produce valid :not() CSSSelector with an empty selectorList.");
             if (!selectorList)
                 return FunctionType::CannotMatchAnything;
 
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-            if (selectorList->first()->tagHistory() || CSSSelectorList::next(selectorList->first()))
-                return FunctionType::CannotCompile;
-#endif
+            FunctionType functionType = FunctionType::SimpleSelectorChecker;
+            for (const CSSSelector* subselector = selectorList->first(); subselector; subselector = CSSSelectorList::next(subselector)) {
+                SelectorFragmentList selectorFragments;
+                VisitedMode ignoreVisitedMode = VisitedMode::None;
+                FunctionType localFunctionType = constructFragments(subselector, selectorContext, selectorFragments, FragmentsLevel::InFunctionalPseudoType, positionInRootFragments, visitedMatchEnabled, ignoreVisitedMode);
+                ASSERT_WITH_MESSAGE(ignoreVisitedMode == VisitedMode::None, ":visited is disabled in the functional pseudo classes");
 
-            SelectorFragmentList notFragments;
-            VisitedMode ignoreVisitedMode = VisitedMode::None;
-            FunctionType functionType = constructFragments(selectorList->first(), selectorContext, notFragments, FragmentsLevel::InFunctionalPseudoType, positionInRootFragments, visitedMatchEnabled, ignoreVisitedMode);
-            ASSERT_WITH_MESSAGE(ignoreVisitedMode == VisitedMode::None, ":visited is disabled in the functional pseudo classes");
+                // Since this is not pseudo class filter, CannotMatchAnything implies this filter always passes.
+                if (localFunctionType == FunctionType::CannotMatchAnything)
+                    continue;
 
-            // Since this is not pseudo class filter, CannotMatchAnything implies this filter always passes.
-            if (functionType == FunctionType::CannotMatchAnything)
-                return FunctionType::SimpleSelectorChecker;
+                if (localFunctionType == FunctionType::CannotCompile)
+                    return FunctionType::CannotCompile;
 
-            if (functionType == FunctionType::CannotCompile)
-                return functionType;
+                functionType = std::max(functionType, localFunctionType);
+                fragment.notFilters.append(selectorFragments);
+            }
 
-            ASSERT(notFragments.size() == 1);
-            if (notFragments.size() != 1)
-                return FunctionType::CannotCompile;
-
-            const SelectorFragment& subFragment = notFragments.first();
-
-            fragment.notFilters.append(subFragment);
             return functionType;
         }
 
@@ -968,12 +977,6 @@ static unsigned minimumRegisterRequirements(const SelectorFragment& selectorFrag
         minimum = std::max(minimum, minimumRequiredRegisterCountForNthChildFilter);
 #endif
 
-    // :not pseudo class filters cause some register pressure.
-    for (const SelectorFragment& subFragment : selectorFragment.notFilters) {
-        unsigned notFilterMinimum = minimumRegisterRequirements(subFragment);
-        minimum = std::max(minimum, notFilterMinimum);
-    }
-
     // :any pseudo class filters cause some register pressure.
     for (const auto& subFragments : selectorFragment.anyFilters) {
         for (const SelectorFragment& subFragment : subFragments) {
@@ -985,31 +988,78 @@ static unsigned minimumRegisterRequirements(const SelectorFragment& selectorFrag
     return minimum;
 }
 
-struct BacktrackingMemoryRequirements {
-    unsigned registerCount;
-    unsigned stackCount;
-};
+bool hasAnyCombinators(const Vector<SelectorFragmentList>& selectorList);
+template <size_t inlineCapacity>
+bool hasAnyCombinators(const Vector<SelectorFragment, inlineCapacity>& selectorFragmentList);
 
-static BacktrackingMemoryRequirements computeBacktrackingMemoryRequirements(const SelectorFragmentList& selectorFragments, bool backtrackingRegisterReserved)
+bool hasAnyCombinators(const Vector<SelectorFragmentList>& selectorList)
 {
-    BacktrackingMemoryRequirements subtreeBacktrackingMemoryRequirement;
-    subtreeBacktrackingMemoryRequirement.registerCount = 0;
-    subtreeBacktrackingMemoryRequirement.stackCount = 0;
+    for (const SelectorFragmentList& selectorFragmentList : selectorList) {
+        if (hasAnyCombinators(selectorFragmentList))
+            return true;
+    }
+    return false;
+}
 
-    for (const SelectorFragment& selectorFragment : selectorFragments) {
+template <size_t inlineCapacity>
+bool hasAnyCombinators(const Vector<SelectorFragment, inlineCapacity>& selectorFragmentList)
+{
+    if (selectorFragmentList.isEmpty())
+        return false;
+    if (selectorFragmentList.size() != 1)
+        return true;
+    if (hasAnyCombinators(selectorFragmentList.first().notFilters))
+        return true;
+    for (const NthChildOfSelectorInfo& nthChildOfSelectorInfo : selectorFragmentList.first().nthChildOfFilters) {
+        if (hasAnyCombinators(nthChildOfSelectorInfo.selectorList))
+            return true;
+    }
+    return false;
+}
+
+// The CSS JIT has only been validated with a strict minimum of 6 allocated registers.
+const unsigned minimumRegisterRequirement = 6;
+
+void computeBacktrackingMemoryRequirements(SelectorFragmentList& selectorFragments, bool backtrackingRegisterReserved = false);
+
+static void computeBacktrackingMemoryRequirements(SelectorList& selectorList, unsigned& totalRegisterRequirements, unsigned& totalStackRequirements, bool backtrackingRegisterReservedForFragment = false)
+{
+    unsigned selectorListRegisterRequirements = 0;
+    unsigned selectorListStackRequirements = 0;
+    bool clobberElementAddressRegister = false;
+
+    for (SelectorFragmentList& selectorFragmentList : selectorList) {
+        computeBacktrackingMemoryRequirements(selectorFragmentList, backtrackingRegisterReservedForFragment);
+
+        selectorListRegisterRequirements = std::max(selectorListRegisterRequirements, selectorFragmentList.registerRequirements);
+        selectorListStackRequirements = std::max(selectorListStackRequirements, selectorFragmentList.stackRequirements);
+        clobberElementAddressRegister = clobberElementAddressRegister || selectorFragmentList.clobberElementAddressRegister;
+    }
+
+    totalRegisterRequirements = std::max(totalRegisterRequirements, selectorListRegisterRequirements);
+    totalStackRequirements = std::max(totalStackRequirements, selectorListStackRequirements);
+
+    selectorList.registerRequirements = std::max(selectorListRegisterRequirements, minimumRegisterRequirement);
+    selectorList.stackRequirements = selectorListStackRequirements;
+    selectorList.clobberElementAddressRegister = clobberElementAddressRegister;
+}
+
+void computeBacktrackingMemoryRequirements(SelectorFragmentList& selectorFragments, bool backtrackingRegisterReserved)
+{
+    selectorFragments.registerRequirements = minimumRegisterRequirement;
+    selectorFragments.stackRequirements = 0;
+    selectorFragments.clobberElementAddressRegister = hasAnyCombinators(selectorFragments);
+
+    for (SelectorFragment& selectorFragment : selectorFragments) {
         unsigned fragmentRegisterRequirements = minimumRegisterRequirements(selectorFragment);
         unsigned fragmentStackRequirements = 0;
 
-        if (!selectorFragment.nthChildOfFilters.isEmpty()) {
-            bool backtrackingRegisterReservedForFragment = backtrackingRegisterReserved || selectorFragment.backtrackingFlags & BacktrackingFlag::InChainWithDescendantTail;
-            for (const NthChildOfSelectorInfo& nthChildOfSelectorInfo : selectorFragment.nthChildOfFilters) {
-                for (const SelectorFragmentList& selectorFragments : nthChildOfSelectorInfo.selectorList) {
-                    BacktrackingMemoryRequirements backtrackingMemoryRequirements = computeBacktrackingMemoryRequirements(selectorFragments, backtrackingRegisterReservedForFragment);
-                    fragmentRegisterRequirements = std::max(fragmentRegisterRequirements, backtrackingMemoryRequirements.registerCount);
-                    fragmentStackRequirements = std::max(fragmentStackRequirements, backtrackingMemoryRequirements.stackCount);
-                }
-            }
-        }
+        bool backtrackingRegisterReservedForFragment = backtrackingRegisterReserved || selectorFragment.backtrackingFlags & BacktrackingFlag::InChainWithDescendantTail;
+
+        computeBacktrackingMemoryRequirements(selectorFragment.notFilters, fragmentRegisterRequirements, fragmentStackRequirements, backtrackingRegisterReservedForFragment);
+
+        for (NthChildOfSelectorInfo& nthChildOfSelectorInfo : selectorFragment.nthChildOfFilters)
+            computeBacktrackingMemoryRequirements(nthChildOfSelectorInfo.selectorList, fragmentRegisterRequirements, fragmentStackRequirements, backtrackingRegisterReservedForFragment);
 
         if (selectorFragment.backtrackingFlags & BacktrackingFlag::InChainWithDescendantTail) {
             if (!backtrackingRegisterReserved)
@@ -1020,19 +1070,9 @@ static BacktrackingMemoryRequirements computeBacktrackingMemoryRequirements(cons
         if (selectorFragment.backtrackingFlags & BacktrackingFlag::InChainWithAdjacentTail)
             ++fragmentStackRequirements;
 
-        subtreeBacktrackingMemoryRequirement.registerCount = std::max(subtreeBacktrackingMemoryRequirement.registerCount, fragmentRegisterRequirements);
-        subtreeBacktrackingMemoryRequirement.stackCount = std::max(subtreeBacktrackingMemoryRequirement.stackCount, fragmentStackRequirements);
+        selectorFragments.registerRequirements = std::max(selectorFragments.registerRequirements, fragmentRegisterRequirements);
+        selectorFragments.stackRequirements = std::max(selectorFragments.stackRequirements, fragmentStackRequirements);
     }
-    return subtreeBacktrackingMemoryRequirement;
-}
-
-// The CSS JIT has only been validated with a strict minimum of 6 allocated registers.
-const unsigned minimumRegisterRequirement = 6;
-static BacktrackingMemoryRequirements computeBacktrackingMemoryRequirements(const SelectorFragmentList& selectorFragments)
-{
-    BacktrackingMemoryRequirements rootBacktrackingMemoryRequirement = computeBacktrackingMemoryRequirements(selectorFragments, false);
-    rootBacktrackingMemoryRequirement.registerCount = std::max(rootBacktrackingMemoryRequirement.registerCount, minimumRegisterRequirement);
-    return rootBacktrackingMemoryRequirement;
 }
 
 inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::VM* vm, JSC::MacroAssemblerCodeRef& codeRef)
@@ -1431,6 +1471,18 @@ void computeBacktrackingInformation(SelectorFragmentList& selectorFragments, uns
     }
 
     for (SelectorFragment& fragment : selectorFragments) {
+        if (!fragment.notFilters.isEmpty()) {
+#if CSS_SELECTOR_JIT_DEBUGGING
+            dataLogF("  ");
+            dataLogF("Subselectors for :not():\n");
+#endif
+
+            for (SelectorFragmentList& selectorList : fragment.notFilters)
+                computeBacktrackingInformation(selectorList, level + 1);
+        }
+    }
+
+    for (SelectorFragment& fragment : selectorFragments) {
         for (NthChildOfSelectorInfo& nthChildOfSelectorInfo : fragment.nthChildOfFilters) {
 #if CSS_SELECTOR_JIT_DEBUGGING
             for (unsigned i = level; i; --i)
@@ -1439,8 +1491,8 @@ void computeBacktrackingInformation(SelectorFragmentList& selectorFragments, uns
             dataLogF("Subselectors for %dn+%d:\n", nthChildOfSelectorInfo.a, nthChildOfSelectorInfo.b);
 #endif
 
-            for (SelectorFragmentList& selectorFragments : nthChildOfSelectorInfo.selectorList)
-                computeBacktrackingInformation(selectorFragments, level + 1);
+            for (SelectorFragmentList& selectorList : nthChildOfSelectorInfo.selectorList)
+                computeBacktrackingInformation(selectorList, level + 1);
         }
     }
 }
@@ -1507,16 +1559,16 @@ void SelectorCodeGenerator::generateSelectorChecker()
         generateRequestedPseudoElementEqualsToSelectorPseudoElement(failureOnFunctionEntry, m_selectorFragments.first(), checkingContextRegister);
     }
 
-    BacktrackingMemoryRequirements backtrackingMemoryRequirements = computeBacktrackingMemoryRequirements(m_selectorFragments);
-    unsigned availableRegisterCount = m_registerAllocator.reserveCallerSavedRegisters(backtrackingMemoryRequirements.registerCount);
+    computeBacktrackingMemoryRequirements(m_selectorFragments);
+    unsigned availableRegisterCount = m_registerAllocator.reserveCallerSavedRegisters(m_selectorFragments.registerRequirements);
 
 #if CSS_SELECTOR_JIT_DEBUGGING
-    dataLogF("Compiling with minimum required register count %u, minimum stack space %u\n", backtrackingMemoryRequirements.registerCount, backtrackingMemoryRequirements.stackCount);
+    dataLogF("Compiling with minimum required register count %u, minimum stack space %u\n", m_selectorFragments.registerRequirements, m_selectorFragments.stackRequirements);
 #endif
 
     // We do not want unbounded stack allocation for backtracking. Going down 8 enry points would already be incredibly inefficient.
     unsigned maximumBacktrackingAllocations = 8;
-    if (backtrackingMemoryRequirements.stackCount > maximumBacktrackingAllocations) {
+    if (m_selectorFragments.stackRequirements > maximumBacktrackingAllocations) {
         m_assembler.move(Assembler::TrustedImm32(0), returnRegister);
         m_assembler.ret();
         return;
@@ -1526,10 +1578,10 @@ void SelectorCodeGenerator::generateSelectorChecker()
 
     StackAllocator::StackReferenceVector calleeSavedRegisterStackReferences;
     bool reservedCalleeSavedRegisters = false;
-    ASSERT(backtrackingMemoryRequirements.registerCount <= maximumRegisterCount);
-    if (availableRegisterCount < backtrackingMemoryRequirements.registerCount) {
+    ASSERT(m_selectorFragments.registerRequirements <= maximumRegisterCount);
+    if (availableRegisterCount < m_selectorFragments.registerRequirements) {
         reservedCalleeSavedRegisters = true;
-        calleeSavedRegisterStackReferences = m_stackAllocator.push(m_registerAllocator.reserveCalleeSavedRegisters(backtrackingMemoryRequirements.registerCount - availableRegisterCount));
+        calleeSavedRegisterStackReferences = m_stackAllocator.push(m_registerAllocator.reserveCalleeSavedRegisters(m_selectorFragments.registerRequirements - availableRegisterCount));
     }
 
     m_registerAllocator.allocateRegister(elementAddressRegister);
@@ -1539,7 +1591,7 @@ void SelectorCodeGenerator::generateSelectorChecker()
     if (m_functionType == FunctionType::SelectorCheckerWithCheckingContext)
         m_checkingContextStackReference = m_stackAllocator.push(checkingContextRegister);
 
-    unsigned stackRequirementCount = backtrackingMemoryRequirements.stackCount;
+    unsigned stackRequirementCount = m_selectorFragments.stackRequirements;
     if (m_visitedMode == VisitedMode::Visited)
         stackRequirementCount += 2;
 
@@ -1550,10 +1602,8 @@ void SelectorCodeGenerator::generateSelectorChecker()
     if (m_visitedMode == VisitedMode::Visited) {
         m_lastVisitedElement = temporaryStack.takeLast();
         m_startElement = temporaryStack.takeLast();
-        unsigned offsetToStartElement = m_stackAllocator.offsetToStackReference(m_startElement);
-        m_assembler.storePtr(elementAddressRegister, Assembler::Address(Assembler::stackPointerRegister, offsetToStartElement));
-        unsigned offsetToLastVisitedElement = m_stackAllocator.offsetToStackReference(m_lastVisitedElement);
-        m_assembler.storePtr(Assembler::TrustedImmPtr(nullptr), Assembler::Address(Assembler::stackPointerRegister, offsetToLastVisitedElement));
+        m_assembler.storePtr(elementAddressRegister, m_stackAllocator.addressOf(m_startElement));
+        m_assembler.storePtr(Assembler::TrustedImmPtr(nullptr), m_stackAllocator.addressOf(m_lastVisitedElement));
     }
 
     m_backtrackingStack = temporaryStack;
@@ -1568,8 +1618,7 @@ void SelectorCodeGenerator::generateSelectorChecker()
 
     if (m_visitedMode == VisitedMode::Visited) {
         LocalRegister lastVisitedElement(m_registerAllocator);
-        unsigned offsetToLastVisitedElement = m_stackAllocator.offsetToStackReference(m_lastVisitedElement);
-        m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToLastVisitedElement), lastVisitedElement);
+        m_assembler.loadPtr(m_stackAllocator.addressOf(m_lastVisitedElement), lastVisitedElement);
         Assembler::Jump noLastVisitedElement = m_assembler.branchTestPtr(Assembler::Zero, lastVisitedElement);
         generateElementIsFirstLink(failureCases, lastVisitedElement);
         noLastVisitedElement.link(&m_assembler);
@@ -1579,7 +1628,7 @@ void SelectorCodeGenerator::generateSelectorChecker()
 
     if (m_functionType == FunctionType::SimpleSelectorChecker) {
         if (temporaryStackBase == m_stackAllocator.stackTop() && !reservedCalleeSavedRegisters && !needsEpilogue) {
-            ASSERT(!backtrackingMemoryRequirements.stackCount);
+            ASSERT(!m_selectorFragments.stackRequirements);
             // Success.
             m_assembler.move(Assembler::TrustedImm32(1), returnRegister);
             m_assembler.ret();
@@ -1654,43 +1703,123 @@ void SelectorCodeGenerator::generateSelectorCheckerExcludingPseudoElements(Assem
     m_backtrackingLevels.takeLast();
 }
 
-Assembler::JumpList SelectorCodeGenerator::generateElementMatchesSelectorList(Assembler::RegisterID elementRegister, const Vector<SelectorFragmentList>& selectorList)
+void SelectorCodeGenerator::generateElementMatchesSelectorList(Assembler::JumpList& failingCases, Assembler::RegisterID elementToMatch, const SelectorList& selectorList)
 {
-    Assembler::JumpList matchFragmentList;
-    for (const SelectorFragmentList& selectorFragmentList : selectorList) {
-        Assembler::JumpList failureCases;
+    RegisterVector registersToSave;
 
-        RegisterVector allocatedRegisters = m_registerAllocator.allocatedRegisters();
-        if (m_descendantBacktrackingStartInUse)
-            allocatedRegisters.remove(allocatedRegisters.find(m_descendantBacktrackingStart));
-        StackAllocator::StackReferenceVector allocatedRegistersOnStack = m_stackAllocator.push(allocatedRegisters);
+    // The contract is that existing registers are preserved. Two special cases are elementToMatch and elementAddressRegister
+    // because they are used by the matcher itself.
+    // To simplify things for now, we just always preserve them on the stack.
+    unsigned elementAddressRegisterIndex = std::numeric_limits<unsigned>::max();
+    unsigned elementToTestIndex = elementAddressRegisterIndex;
+    bool isElementToMatchOnStack = false;
+    if (selectorList.clobberElementAddressRegister) {
+        if (elementToMatch != elementAddressRegister) {
+            registersToSave.append(elementAddressRegister);
+            registersToSave.append(elementToMatch);
+            elementAddressRegisterIndex = 0;
+            elementToTestIndex = 1;
+            isElementToMatchOnStack = true;
+        } else {
+            registersToSave.append(elementAddressRegister);
+            elementAddressRegisterIndex = 0;
+            elementToTestIndex = 0;
+        }
+    } else if (elementToMatch != elementAddressRegister) {
+        registersToSave.append(elementAddressRegister);
+        elementAddressRegisterIndex = 0;
+    }
 
+    // Next, we need to free as many registers as needed by the nested selector list.
+    unsigned availableRegisterCount = m_registerAllocator.availableRegisterCount();
+
+    // Do not count elementAddressRegister, it will remain allocated.
+    ++availableRegisterCount;
+
+    if (isElementToMatchOnStack)
+        ++availableRegisterCount;
+
+    if (selectorList.registerRequirements > availableRegisterCount) {
+        unsigned registerToPushCount = selectorList.registerRequirements - availableRegisterCount;
+        for (Assembler::RegisterID registerId : m_registerAllocator.allocatedRegisters()) {
+            if (registerId == elementAddressRegister)
+                continue; // Handled separately above.
+            if (isElementToMatchOnStack && registerId == elementToMatch)
+                continue; // Do not push the element twice to the stack!
+
+            registersToSave.append(registerId);
+
+            --registerToPushCount;
+            if (!registerToPushCount)
+                break;
+        }
+    }
+
+    StackAllocator::StackReferenceVector allocatedRegistersOnStack = m_stackAllocator.push(registersToSave);
+    for (Assembler::RegisterID registerID : registersToSave) {
+        if (registerID != elementAddressRegister)
+            m_registerAllocator.deallocateRegister(registerID);
+    }
+
+
+    if (elementToMatch != elementAddressRegister)
+        m_assembler.move(elementToMatch, elementAddressRegister);
+
+    Assembler::JumpList localFailureCases;
+    if (selectorList.size() == 1) {
+        const SelectorFragmentList& nestedSelectorFragmentList = selectorList.first();
+        generateSelectorCheckerExcludingPseudoElements(localFailureCases, nestedSelectorFragmentList);
+    } else {
+        Assembler::JumpList matchFragmentList;
+
+        unsigned selectorListSize = selectorList.size();
+        unsigned selectorListLastIndex = selectorListSize - 1;
+        for (unsigned i = 0; i < selectorList.size(); ++i) {
+            const SelectorFragmentList& nestedSelectorFragmentList = selectorList[i];
+            Assembler::JumpList localSelectorFailureCases;
+            generateSelectorCheckerExcludingPseudoElements(localSelectorFailureCases, nestedSelectorFragmentList);
+            if (i != selectorListLastIndex) {
+                matchFragmentList.append(m_assembler.jump());
+                localSelectorFailureCases.link(&m_assembler);
+
+                if (nestedSelectorFragmentList.clobberElementAddressRegister) {
+                    RELEASE_ASSERT(elementToTestIndex != std::numeric_limits<unsigned>::max());
+                    m_assembler.loadPtr(m_stackAllocator.addressOf(allocatedRegistersOnStack[elementToTestIndex]), elementAddressRegister);
+                }
+            } else
+                localFailureCases.append(localSelectorFailureCases);
+        }
+        matchFragmentList.link(&m_assembler);
+    }
+
+    // Finally, restore all the registers in the state they were before this selector checker.
+    for (Assembler::RegisterID registerID : registersToSave) {
+        if (registerID != elementAddressRegister)
+            m_registerAllocator.allocateRegister(registerID);
+    }
+
+    if (allocatedRegistersOnStack.isEmpty()) {
+        failingCases.append(localFailureCases);
+        return;
+    }
+
+    if (localFailureCases.empty())
+        m_stackAllocator.pop(allocatedRegistersOnStack, registersToSave);
+    else {
         StackAllocator successStack = m_stackAllocator;
         StackAllocator failureStack = m_stackAllocator;
 
-        for (Assembler::RegisterID registerID : allocatedRegisters) {
-            if (registerID != elementAddressRegister)
-                m_registerAllocator.deallocateRegister(registerID);
-        }
+        successStack.pop(allocatedRegistersOnStack, registersToSave);
 
-        if (elementRegister != elementAddressRegister)
-            m_assembler.move(elementRegister, elementAddressRegister);
-        generateSelectorCheckerExcludingPseudoElements(failureCases, selectorFragmentList);
+        Assembler::Jump skipFailureCase = m_assembler.jump();
+        localFailureCases.link(&m_assembler);
+        failureStack.pop(allocatedRegistersOnStack, registersToSave);
+        failingCases.append(m_assembler.jump());
 
-        for (Assembler::RegisterID registerID : allocatedRegisters) {
-            if (registerID != elementAddressRegister)
-                m_registerAllocator.allocateRegister(registerID);
-        }
-
-        successStack.pop(allocatedRegistersOnStack, allocatedRegisters);
-        matchFragmentList.append(m_assembler.jump());
-
-        failureCases.link(&m_assembler);
-        failureStack.pop(allocatedRegistersOnStack, allocatedRegisters);
+        skipFailureCase.link(&m_assembler);
 
         m_stackAllocator.merge(WTF::move(successStack), WTF::move(failureStack));
     }
-    return matchFragmentList;
 }
 
 static inline Assembler::Jump testIsElementFlagOnNode(Assembler::ResultCondition condition, Assembler& assembler, Assembler::RegisterID nodeAddress)
@@ -1740,8 +1869,7 @@ void SelectorCodeGenerator::generateParentElementTreeWalker(Assembler::JumpList&
             ASSERT(!currentBacktrackingLevel.descendantBacktrackingStart.isValid());
             currentBacktrackingLevel.descendantBacktrackingStart = m_backtrackingStack.takeLast();
 
-            unsigned offsetToDescendantBacktrackingStart = m_stackAllocator.offsetToStackReference(currentBacktrackingLevel.descendantBacktrackingStart);
-            m_assembler.storePtr(elementAddressRegister, Assembler::Address(Assembler::stackPointerRegister, offsetToDescendantBacktrackingStart));
+            m_assembler.storePtr(elementAddressRegister, m_stackAllocator.addressOf(currentBacktrackingLevel.descendantBacktrackingStart));
         }
     }
 }
@@ -1826,8 +1954,7 @@ void SelectorCodeGenerator::generateDirectAdjacentTreeWalker(Assembler::JumpList
         ASSERT(!currentBacktrackingLevel.adjacentBacktrackingStart.isValid());
         currentBacktrackingLevel.adjacentBacktrackingStart = m_backtrackingStack.takeLast();
 
-        unsigned offsetToAdjacentBacktrackingStart = m_stackAllocator.offsetToStackReference(currentBacktrackingLevel.adjacentBacktrackingStart);
-        m_assembler.storePtr(elementAddressRegister, Assembler::Address(Assembler::stackPointerRegister, offsetToAdjacentBacktrackingStart));
+        m_assembler.storePtr(elementAddressRegister, m_stackAllocator.addressOf(currentBacktrackingLevel.adjacentBacktrackingStart));
     }
 }
 
@@ -1903,8 +2030,7 @@ void SelectorCodeGenerator::loadCheckingContext(Assembler::RegisterID checkingCo
 {
     // Get the checking context.
     RELEASE_ASSERT(m_functionType == FunctionType::SelectorCheckerWithCheckingContext);
-    unsigned offsetToCheckingContext = m_stackAllocator.offsetToStackReference(m_checkingContextStackReference);
-    m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToCheckingContext), checkingContext);
+    m_assembler.loadPtr(m_stackAllocator.addressOf(m_checkingContextStackReference), checkingContext);
 }
 
 Assembler::Jump SelectorCodeGenerator::branchOnResolvingModeWithCheckingContext(Assembler::RelationalCondition condition, SelectorChecker::Mode mode, Assembler::RegisterID checkingContext)
@@ -2155,11 +2281,10 @@ void SelectorCodeGenerator::generateAdjacentBacktrackingTail()
     m_backtrackingLevels.last().adjacentBacktrackingFailureCases.clear();
 
     BacktrackingLevel& currentBacktrackingLevel = m_backtrackingLevels.last();
-    unsigned offsetToAdjacentBacktrackingStart = m_stackAllocator.offsetToStackReference(currentBacktrackingLevel.adjacentBacktrackingStart);
+    m_assembler.loadPtr(m_stackAllocator.addressOf(currentBacktrackingLevel.adjacentBacktrackingStart), elementAddressRegister);
     m_backtrackingStack.append(currentBacktrackingLevel.adjacentBacktrackingStart);
     currentBacktrackingLevel.adjacentBacktrackingStart = StackAllocator::StackReference();
 
-    m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToAdjacentBacktrackingStart), elementAddressRegister);
     m_assembler.jump(m_backtrackingLevels.last().indirectAdjacentEntryPoint);
 }
 
@@ -2174,8 +2299,7 @@ void SelectorCodeGenerator::generateDescendantBacktrackingTail()
         m_registerAllocator.deallocateRegister(m_descendantBacktrackingStart);
         m_descendantBacktrackingStartInUse = false;
     } else {
-        unsigned offsetToDescendantBacktrackingStart = m_stackAllocator.offsetToStackReference(currentBacktrackingLevel.descendantBacktrackingStart);
-        m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToDescendantBacktrackingStart), elementAddressRegister);
+        m_assembler.loadPtr(m_stackAllocator.addressOf(currentBacktrackingLevel.descendantBacktrackingStart), elementAddressRegister);
         m_backtrackingStack.append(currentBacktrackingLevel.descendantBacktrackingStart);
         currentBacktrackingLevel.descendantBacktrackingStart = StackAllocator::StackReference();
     }
@@ -3295,11 +3419,8 @@ void SelectorCodeGenerator::generateElementIsNthChildOf(Assembler::JumpList& fai
     }
 
     // The initial element must match the selector list.
-    for (const NthChildOfSelectorInfo& nthChildOfSelectorInfo : fragment.nthChildOfFilters) {
-        Assembler::JumpList matchFragmentList = generateElementMatchesSelectorList(elementAddressRegister, nthChildOfSelectorInfo.selectorList);
-        failureCases.append(m_assembler.jump());
-        matchFragmentList.link(&m_assembler);
-    }
+    for (const NthChildOfSelectorInfo& nthChildOfSelectorInfo : fragment.nthChildOfFilters)
+        generateElementMatchesSelectorList(failureCases, elementAddressRegister, nthChildOfSelectorInfo.selectorList);
 
     Vector<const NthChildOfSelectorInfo*> validSubsetFilters;
     for (const NthChildOfSelectorInfo& nthChildOfSelectorInfo : fragment.nthChildOfFilters) {
@@ -3330,9 +3451,9 @@ void SelectorCodeGenerator::generateElementIsNthChildOf(Assembler::JumpList& fai
             generateWalkToPreviousAdjacentElement(noMoreSiblingsCases, previousSibling);
             markElementIfResolvingStyle(previousSibling, Node::flagAffectsNextSiblingElementStyle());
 
-            Assembler::JumpList matchFragmentList = generateElementMatchesSelectorList(previousSibling, nthChildOfSelectorInfo->selectorList);
-            m_assembler.jump().linkTo(loopStart, &m_assembler);
-            matchFragmentList.link(&m_assembler);
+            Assembler::JumpList localFailureCases;
+            generateElementMatchesSelectorList(localFailureCases, previousSibling, nthChildOfSelectorInfo->selectorList);
+            localFailureCases.linkTo(loopStart, &m_assembler);
             m_assembler.add32(Assembler::TrustedImm32(1), elementCounter);
             m_assembler.jump().linkTo(loopStart, &m_assembler);
 
@@ -3345,13 +3466,11 @@ void SelectorCodeGenerator::generateElementIsNthChildOf(Assembler::JumpList& fai
 
 void SelectorCodeGenerator::generateElementMatchesNotPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
 {
-    for (const auto& subFragment : fragment.notFilters) {
-        Assembler::JumpList localFailureCases;
-        generateElementMatching(localFailureCases, localFailureCases, subFragment);
-        // Since this is a not pseudo class filter, reaching here is a failure.
-        failureCases.append(m_assembler.jump());
-        localFailureCases.link(&m_assembler);
-    }
+    Assembler::JumpList localFailureCases;
+    generateElementMatchesSelectorList(localFailureCases, elementAddressRegister, fragment.notFilters);
+    // Since this is a not pseudo class filter, reaching here is a failure.
+    failureCases.append(m_assembler.jump());
+    localFailureCases.link(&m_assembler);
 }
 
 void SelectorCodeGenerator::generateElementMatchesAnyPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
@@ -3438,8 +3557,7 @@ void SelectorCodeGenerator::generateElementIsTarget(Assembler::JumpList& failure
 void SelectorCodeGenerator::generateElementIsFirstLink(Assembler::JumpList& failureCases, Assembler::RegisterID element)
 {
     LocalRegister currentElement(m_registerAllocator);
-    unsigned offsetToStartElement = m_stackAllocator.offsetToStackReference(m_startElement);
-    m_assembler.loadPtr(Assembler::Address(Assembler::stackPointerRegister, offsetToStartElement), currentElement);
+    m_assembler.loadPtr(m_stackAllocator.addressOf(m_startElement), currentElement);
 
     // Tree walking up to the provided element until link node is found.
     Assembler::Label loopStart(m_assembler.label());
@@ -3460,8 +3578,7 @@ void SelectorCodeGenerator::generateElementIsFirstLink(Assembler::JumpList& fail
 
 void SelectorCodeGenerator::generateStoreLastVisitedElement(Assembler::RegisterID element)
 {
-    unsigned offsetToLastVisitedElement = m_stackAllocator.offsetToStackReference(m_lastVisitedElement);
-    m_assembler.storePtr(element, Assembler::Address(Assembler::stackPointerRegister, offsetToLastVisitedElement));
+    m_assembler.storePtr(element, m_stackAllocator.addressOf(m_lastVisitedElement));
 }
 
 void SelectorCodeGenerator::generateMarkPseudoStyleForPseudoElement(Assembler::JumpList& failureCases, const SelectorFragment& fragment)

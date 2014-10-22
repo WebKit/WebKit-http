@@ -471,6 +471,10 @@ public:
     void setInputMethodState(bool enabled);
 #endif
 
+#if PLATFORM (GTK) && HAVE(GTK_GESTURES)
+    void getCenterForZoomGesture(const WebCore::IntPoint& centerInViewCoordinates, WebCore::IntPoint& center);
+#endif
+
 #if PLATFORM(COCOA)
     void windowAndViewFramesChanged(const WebCore::FloatRect& viewFrameInWindowCoordinates, const WebCore::FloatPoint& accessibilityViewCoordinates);
     void setMainFrameIsScrollable(bool);
@@ -918,6 +922,8 @@ public:
     void removeNavigationGestureSnapshot();
 #endif
 
+    WebHitTestResult* activeActionMenuHitTestResult() const { return m_activeActionMenuHitTestResult.get(); }
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     void platformInitialize();
@@ -1363,6 +1369,8 @@ private:
     RefPtr<WebContextMenuProxy> m_activeContextMenu;
     ContextMenuContextData m_activeContextMenuContextData;
 #endif
+    RefPtr<WebHitTestResult> m_activeActionMenuHitTestResult;
+
     RefPtr<WebOpenPanelResultListenerProxy> m_openPanelResultListener;
     GeolocationPermissionRequestManagerProxy m_geolocationPermissionRequestManager;
     NotificationPermissionRequestManagerProxy m_notificationPermissionRequestManager;

@@ -66,11 +66,11 @@ struct SelectionIterator {
     
     void checkForSpanner()
     {
-        if (!m_current || !m_current->isRenderMultiColumnSpannerPlaceholder())
+        if (!is<RenderMultiColumnSpannerPlaceholder>(m_current))
             return;
-        RenderMultiColumnSpannerPlaceholder* placeholder = toRenderMultiColumnSpannerPlaceholder(m_current);
-        m_spannerStack.append(placeholder);
-        m_current = placeholder->spanner();
+        auto& placeholder = downcast<RenderMultiColumnSpannerPlaceholder>(*m_current);
+        m_spannerStack.append(&placeholder);
+        m_current = placeholder.spanner();
     }
     
     RenderObject* current()
@@ -503,7 +503,7 @@ void RenderView::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
 static inline bool isComposited(RenderElement* object)
 {
-    return object->hasLayer() && toRenderLayerModelObject(object)->layer()->isComposited();
+    return object->hasLayer() && downcast<RenderLayerModelObject>(*object).layer()->isComposited();
 }
 
 static inline bool rendererObscuresBackground(RenderElement* rootObject)
@@ -563,9 +563,9 @@ void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
     bool rootFillsViewport = false;
     bool rootObscuresBackground = false;
     Element* documentElement = document().documentElement();
-    if (RenderElement* rootRenderer = documentElement ? documentElement->renderer() : 0) {
+    if (RenderElement* rootRenderer = documentElement ? documentElement->renderer() : nullptr) {
         // The document element's renderer is currently forced to be a block, but may not always be.
-        RenderBox* rootBox = rootRenderer->isBox() ? toRenderBox(rootRenderer) : 0;
+        RenderBox* rootBox = is<RenderBox>(*rootRenderer) ? downcast<RenderBox>(rootRenderer) : nullptr;
         rootFillsViewport = rootBox && !rootBox->x() && !rootBox->y() && rootBox->width() >= width() && rootBox->height() >= height();
         rootObscuresBackground = rendererObscuresBackground(rootRenderer);
     }
@@ -1311,9 +1311,11 @@ void RenderView::pushLayoutStateForCurrentFlowThread(const RenderObject& object)
     if (!m_flowThreadController)
         return;
 
-    RenderFlowThread* currentFlowThread = m_flowThreadController->currentRenderFlowThread();
+    RenderFlowThread* currentFlowThread = object.flowThreadContainingBlock();
     if (!currentFlowThread)
         return;
+
+    m_layoutState->setCurrentRenderFlowThread(currentFlowThread);
 
     currentFlowThread->pushFlowThreadLayoutState(object);
 }
@@ -1323,7 +1325,7 @@ void RenderView::popLayoutStateForCurrentFlowThread()
     if (!m_flowThreadController)
         return;
 
-    RenderFlowThread* currentFlowThread = m_flowThreadController->currentRenderFlowThread();
+    RenderFlowThread* currentFlowThread = m_layoutState->currentRenderFlowThread();
     if (!currentFlowThread)
         return;
 

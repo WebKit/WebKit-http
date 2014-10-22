@@ -1,3 +1,658 @@
+2014-10-21  Mark Lam  <mark.lam@apple.com>
+
+        Remove erroneous canUseJIT() in the intrinsics version of JITThunks::hostFunctionStub().
+        <https://webkit.org/b/137937>
+
+        Reviewed by Michael Saboff.
+
+        This version of JITThunks::hostFunctionStub() can only be called from the intrinsics
+        version of VM::getHostFunction() which asserts canUseJIT().  Hence, we can eliminate
+        the canUseJIT() check in JITThunks::hostFunctionStub().  We don't handle the
+        !canUseJIT() case properly there anyway.
+
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::hostFunctionStub):
+
+2014-10-21  Michael Saboff  <msaboff@apple.com>
+
+        Add operator==(PropertyName, const char*)
+        https://bugs.webkit.org/show_bug.cgi?id=137925
+
+        Reviewed by Mark Lam.
+
+        * runtime/PropertyName.h:
+        (JSC::operator==): Added to simplify comparison with string literals.
+
+
+2014-10-21  Michael Saboff  <msaboff@apple.com>
+
+        Change native call frames to use the scope from their Callee instead of their caller's scope
+        https://bugs.webkit.org/show_bug.cgi?id=137907
+
+        Reviewed by Mark Lam.
+
+        Changed setting of scope for native CallFrames to use the scope associated with the
+        Callee instead of the caller's scope.
+
+        * jit/ThunkGenerators.cpp:
+        (JSC::nativeForGenerator):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2014-10-21  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Add missing ENABLE(FTL_NATIVE_CALL_INLINING) guard to BundlePath.cpp after r174940
+        https://bugs.webkit.org/show_bug.cgi?id=137924
+
+        Reviewed by Csaba Osztrogonác.
+
+        * runtime/BundlePath.cpp:
+
+2014-10-21  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Fix FTL Native Inlining for EFL
+        https://bugs.webkit.org/show_bug.cgi?id=137774
+
+        Reviewed by Michael Saboff.
+
+        Added required functionality for Native Inlining to EFL, and fixed a bug/typo in the original code,
+        which caused incorrect memory allocation.
+
+        * CMakeLists.txt:
+        * create-llvm-ir-from-source-file.py: Added.
+        * create-symbol-table-index.py: Added.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::lower):
+        (JSC::FTL::LowerDFGToLLVM::getModuleByPathForSymbol):
+        (JSC::FTL::LowerDFGToLLVM::exitValueForAvailability):
+        (JSC::FTL::LowerDFGToLLVM::exitValueForNode):
+        * runtime/BundlePath.cpp: Added.
+        (JSC::bundlePath):
+        * runtime/JSDataViewPrototype.cpp:
+        (JSC::getData):
+        (JSC::setData):
+        * runtime/MathObject.cpp:
+
+2014-10-21  Milan Crha  <mcrha@redhat.com>
+
+        Move JSC::MacroAssemblerX86Common::s_sse2CheckState definition to MacroAssemblerX86Common.cpp.
+        <https://webkit.org/b/137807>
+
+        Reviewed by Csaba Osztrogonác.
+
+        * assembler/MacroAssemblerX86Common.cpp:
+        * jit/JIT.cpp:
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed add back copyright line that was accidentally removed.
+
+        * inspector/scripts/codegen/generator_templates.py:
+        (GeneratorTemplates):
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: InspectorBackendCommands should include when to activate particular domains
+        https://bugs.webkit.org/show_bug.cgi?id=137753
+
+        Reviewed by Timothy Hatcher.
+
+        Add an availability property to domains that only activate for
+        particular debuggable types. If missing, the domain is always
+        activated. Otherwise it must be a debuggable type string.
+        When a frontend is opened for that debuggable type, the domain
+        will be activated.
+
+        * inspector/scripts/codegen/models.py:
+        (Protocol.parse_domain):
+        (Domain.__init__):
+        (Domains):
+        Parse and validate the Domain's "availability" property.
+
+        * inspector/scripts/codegen/generate_backend_commands.py:
+        (BackendCommandsGenerator.generate_domain):
+        Emit InspectorBackend.activateDomain with debuggable type filter.
+
+        * inspector/protocol/ApplicationCache.json:
+        * inspector/protocol/CSS.json:
+        * inspector/protocol/DOM.json:
+        * inspector/protocol/DOMDebugger.json:
+        * inspector/protocol/DOMStorage.json:
+        * inspector/protocol/Database.json:
+        * inspector/protocol/IndexedDB.json:
+        * inspector/protocol/LayerTree.json:
+        * inspector/protocol/Network.json:
+        * inspector/protocol/Page.json:
+        * inspector/protocol/Replay.json:
+        * inspector/protocol/Timeline.json:
+        * inspector/protocol/Worker.json:
+        These domains only activate for Web debuggables.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        Update existing tests that now have activate output.
+
+        * inspector/scripts/tests/expected/fail-on-domain-availability.json-error: Added.
+        * inspector/scripts/tests/fail-on-domain-availability.json: Added.
+        Add a test for "availability" validation.
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Win] Build fix for generated inspector files.
+
+        Rubberstamped by Brent Fulgham.
+
+        * inspector/scripts/codegen/generate_backend_dispatcher_header.py:
+        (BackendDispatcherHeaderGenerator._generate_async_handler_declaration_for_command):
+        * inspector/scripts/codegen/generator_templates.py:
+        (GeneratorTemplates):
+
+2014-10-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix.
+
+        We need to (1) pass the 'windows' argument to our script for checking feature definitions,
+        and (2) we must use Cwd::realpath on our path input arguments to avoid Cygwin and Windows
+        getting confused about path separators versus escape characters.
+
+
+        * JavaScriptCore.vcxproj/build-generated-files.pl:
+
+2014-10-20  Mark Lam  <mark.lam@apple.com>
+
+        [Follow up] Web Process crash when starting the web inspector after r174025.
+        <https://webkit.org/b/137340>
+
+        Reviewed by Geoffrey Garen.
+
+        Applied Geoff's feedback to clean up some code for better clarity after
+        r174856.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::insertCheck):
+        * dfg/DFGInsertionSet.h:
+        (JSC::DFG::InsertionSet::insertOutOfOrder):
+
+2014-10-20  Mark Lam  <mark.lam@apple.com>
+
+        Factor out JITCode::typeName() for debugging use.
+        <https://webkit.org/b/137888>
+
+        Reviewed by Geoffrey Garen.
+
+        JITCode's printInternal() currently decodes the JITType into a string and
+        prints it.  This change factors out the part that decodes the JITType into
+        JITCode::typeName() so that we can call it from lldb while debugging to
+        quickly decode a JITType value.
+
+        * jit/JITCode.cpp:
+        (JSC::JITCode::typeName):
+        (WTF::printInternal):
+        * jit/JITCode.h:
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed Windows Build Fix #2 after r174892.
+
+        * JavaScriptCore.vcxproj/build-generated-files.pl:
+        Define FEATURE_DEFINES for JavaScriptCore's DerivedSources.make.
+        This uses the same technique as WebCore.
+
+2014-10-20  Mark Lam  <mark.lam@apple.com>
+
+        Fix placement of a few items in vcxproj ItemGroups.
+        <https://webkit.org/b/137886>
+
+        Reviewed by Geoffrey Garen.
+
+        https://webkit.org/b/137873 is likely a cut-and-paste error that manifested
+        because we had ClCompile and ClInclude entries mixed up in the wrong ItemGroups.
+        We should fix these so that ClCompile entries are in the ClCompile ItemGroup,
+        and ClInclude entries in the ClInclude ItemGroup.  This will help reduce the
+        chance of future cut-and-paste errors of this nature.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed Windows Build Fix after r174892.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        Update file name to the new generated file name.
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename generated Inspector.json to CombinedDomains.json to prevent name collisions
+        https://bugs.webkit.org/show_bug.cgi?id=137825
+
+        Reviewed by Timothy Hatcher.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.vcxproj/copy-files.cmd:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/protocol/Inspector.json: Renamed from Source/JavaScriptCore/inspector/protocol/InspectorDomain.json.
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Generate all Inspector domains together in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=137748
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/ApplicationCache.json: Renamed from Source/WebCore/inspector/protocol/ApplicationCache.json.
+        * inspector/protocol/CSS.json: Renamed from Source/WebCore/inspector/protocol/CSS.json.
+        * inspector/protocol/DOM.json: Renamed from Source/WebCore/inspector/protocol/DOM.json.
+        * inspector/protocol/DOMDebugger.json: Renamed from Source/WebCore/inspector/protocol/DOMDebugger.json.
+        * inspector/protocol/DOMStorage.json: Renamed from Source/WebCore/inspector/protocol/DOMStorage.json.
+        * inspector/protocol/Database.json: Renamed from Source/WebCore/inspector/protocol/Database.json.
+        * inspector/protocol/IndexedDB.json: Renamed from Source/WebCore/inspector/protocol/IndexedDB.json.
+        * inspector/protocol/LayerTree.json: Renamed from Source/WebCore/inspector/protocol/LayerTree.json.
+        * inspector/protocol/Network.json: Renamed from Source/WebCore/inspector/protocol/Network.json.
+        * inspector/protocol/Page.json: Renamed from Source/WebCore/inspector/protocol/Page.json.
+        * inspector/protocol/Replay.json: Renamed from Source/WebCore/inspector/protocol/Replay.json.
+        * inspector/protocol/Timeline.json: Renamed from Source/WebCore/inspector/protocol/Timeline.json.
+        * inspector/protocol/Worker.json: Renamed from Source/WebCore/inspector/protocol/Worker.json.
+        Move all protocol files into this directory.
+
+        * inspector/InspectorProtocolTypesBase.h: Renamed from Source/JavaScriptCore/inspector/InspectorProtocolTypes.h.
+        Renamed the base types file to not clash with the generated types file.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.vcxproj/copy-files.cmd:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Update build phases for new JSON files and new filenames.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        Updated names of things now that prefixes are no longer needed.
+
+        * inspector/ConsoleMessage.h:
+        * inspector/ContentSearchUtilities.cpp:
+        * inspector/ContentSearchUtilities.h:
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptBase.h:
+        * inspector/ScriptCallFrame.h:
+        * inspector/ScriptCallStack.h:
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::breakpointActionTypeForString):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * runtime/TypeProfiler.cpp:
+        * runtime/TypeSet.cpp:
+        Update includes and update a few function names that are generated.
+
+        * inspector/scripts/codegen/generate_protocol_types_header.py:
+        (ProtocolTypesHeaderGenerator.output_filename):
+        (ProtocolTypesHeaderGenerator.generate_output):
+        Include an export macro for type string constants defined in the implementation file.
+
+        * inspector/scripts/codegen/generate_backend_commands.py:
+        (BackendCommandsGenerator.output_filename):
+        * inspector/scripts/codegen/generate_backend_dispatcher_header.py:
+        (BackendDispatcherHeaderGenerator.output_filename):
+        (BackendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_backend_dispatcher_implementation.py:
+        (BackendDispatcherImplementationGenerator.output_filename):
+        (BackendDispatcherImplementationGenerator.generate_output):
+        (BackendDispatcherImplementationGenerator._generate_async_dispatcher_class_for_domain):
+        (BackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_header.py:
+        (FrontendDispatcherHeaderGenerator.output_filename):
+        (FrontendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_implementation.py:
+        (FrontendDispatcherImplementationGenerator.output_filename):
+        (FrontendDispatcherImplementationGenerator.generate_output):
+        (FrontendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_event):
+        (_generate_class_for_object_declaration):
+        (_generate_builder_setter_for_member):
+        (_generate_unchecked_setter_for_member):
+        * inspector/scripts/codegen/generate_protocol_types_implementation.py:
+        (ProtocolTypesImplementationGenerator.output_filename):
+        (ProtocolTypesImplementationGenerator.generate_output):
+        (ProtocolTypesImplementationGenerator._generate_enum_mapping):
+        * inspector/scripts/codegen/models.py:
+        (Framework.fromString):
+        (Frameworks):
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        Simplify generator now that prefixes are no longer needed. This updates
+        filenames, includes, and the list of supported directories.
+
+2014-10-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove obsolete comments after r99798
+        https://bugs.webkit.org/show_bug.cgi?id=137871
+
+        Reviewed by Darin Adler.
+
+        r99798 removed the comment in MacroAssemblerARMv7::supportsFloatingPointTruncate(),
+        so we should remove the stale references to this removed comment.
+
+        * assembler/MacroAssemblerX86.h:
+        * assembler/MacroAssemblerX86_64.h:
+
+2014-10-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        MacroAssemblerX86Common.cpp should be built on Windows too
+        https://bugs.webkit.org/show_bug.cgi?id=137873
+
+        Reviewed by Brent Fulgham.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+
+2014-10-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Remove duplicated source files
+        https://bugs.webkit.org/show_bug.cgi?id=137875
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+
+2014-10-18  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Replay: code generator shouldn't complain about enums without a storage type if they are in an enclosing scope
+        https://bugs.webkit.org/show_bug.cgi?id=137084
+
+        Reviewed by Joseph Pecoraro.
+
+        In order to generate encode/decode method declarations without pulling in lots of headers,
+        the generator must forward declare enums (for enum classes or enums with explicit sizes).
+
+        Change the generator to not require an explicit size if an enum is declared inside a struct
+        or class definition. In that case, it must pull in headers since scoped enums can't be
+        forward declared.
+
+        This patch also fixes some chained if-statements that should be if-else statements.
+
+        Test: updated replay/scripts/tests/generate-enum-encoding-helpers.json to cover the new case.
+
+        * replay/scripts/CodeGeneratorReplayInputs.py:
+        (InputsModel.parse_type_with_framework_name.is):
+        (InputsModel.parse_type_with_framework_name.is.must):
+        (Generator.generate_enum_trait_implementation):
+        (InputsModel.parse_type_with_framework_name): Deleted.
+        * replay/scripts/CodeGeneratorReplayInputsTemplates.py:
+        * replay/scripts/tests/expected/fail-on-c-style-enum-no-storage.json-error:
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers-with-guarded-values.json-TestReplayInputs.cpp:
+        (JSC::EncodingTraits<WebCore::MouseButton>::decodeValue):
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers.json-TestReplayInputs.cpp:
+        (JSC::EncodingTraits<WebCore::MouseButton>::decodeValue):
+        (JSC::EncodingTraits<WebCore::PlatformEvent::Type>::encodeValue):
+        (JSC::EncodingTraits<WebCore::PlatformEvent::Type>::decodeValue):
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers.json-TestReplayInputs.h:
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.cpp:
+        (JSC::EncodingTraits<WebCore::FormData1::Type>::decodeValue):
+        (JSC::EncodingTraits<PlatformEvent1::Type>::decodeValue):
+        * replay/scripts/tests/generate-enum-encoding-helpers.json: Added a new input to cover this case.
+
+2014-10-17  Mark Lam  <mark.lam@apple.com>
+
+        Web Process crash when starting the web inspector after r174025.
+        <https://webkit.org/b/137340>
+
+        Reviewed by Filip Pizlo.
+
+        After r174025, we can generate a bad graph in the DFG fixup phase like so:
+
+            102:<!0:-> StoreBarrier(Check:KnownCell:@19, ..., bc#44)
+            60:<!0:->  PutStructure(Check:KnownCell:@19, ..., bc#44)
+            103:<!0:-> Check(Check:NotCell:@54, ..., bc#44)
+                    // ^-- PutByOffset's StoreBarrier has been elided and replaced
+                    //     with a speculation check which can OSR exit.
+            61:<!0:->  PutByOffset(Check:KnownCell:@19, ..., bc#44)
+
+        As a result, the structure change will get executed even if we end up OSR
+        exiting before the PutByOffset.  In the baseline JIT code, the structure now
+        erroneously tells the put operation that there is a value in that property
+        slot when it is actually uninitialized (hence, the crash).
+
+        The fix is to insert the Check at the earliest point possible:
+
+        1. If the checked node is in the same bytecode as the PutByOffset, then
+           the earliest point where we can insert the Check is right after the
+           checked node.
+
+        2. If the checked node is from a preceding bytecode (before the PutByOffset),
+           then the earliest point where we can insert the Check is at the start
+           of the current bytecode.
+
+        Also reverted the workaround from r174749: https://webkit.org/b/137758.
+
+        Benchmark results appear to be a wash on aggregate.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::indexOfNode):
+        (JSC::DFG::FixupPhase::indexOfFirstNodeOfExitOrigin):
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::insertCheck):
+        * dfg/DFGInsertionSet.h:
+        (JSC::DFG::InsertionSet::insertOutOfOrder):
+        (JSC::DFG::InsertionSet::insertOutOfOrderNode):
+
+2014-10-10  Oliver Hunt  <oliver@apple.com>
+
+        Various arguments optimisations in codegen fail to account for arguments being in lexical record
+        https://bugs.webkit.org/show_bug.cgi?id=137617
+
+        Reviewed by Michael Saboff.
+
+        Rework the way we track |arguments| references so that we don't try
+        to use the |arguments| reference on the stack if it's not safe.
+
+        To do this without nuking performance it was necessary to update
+        the parser to track modification of the |arguments| reference
+        itself.
+
+        * bytecode/CodeBlock.cpp:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::willResolveToArguments):
+        (JSC::BytecodeGenerator::uncheckedLocalArgumentsRegister):
+        (JSC::BytecodeGenerator::emitCall):
+        (JSC::BytecodeGenerator::emitConstruct):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::uncheckedRegisterForArguments): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::hasSafeLocalArgumentsRegister):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BracketAccessorNode::emitBytecode):
+        (JSC::DotAccessorNode::emitBytecode):
+        (JSC::getArgumentByVal):
+        (JSC::CallFunctionCallDotNode::emitBytecode):
+        (JSC::ApplyFunctionCallDotNode::emitBytecode):
+        (JSC::ArrayPatternNode::emitDirectBinding):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::existingArguments):
+        * parser/Nodes.h:
+        (JSC::ScopeNode::modifiesArguments):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        * parser/Parser.h:
+        (JSC::Scope::getCapturedVariables):
+        * parser/ParserModes.h:
+
+2014-10-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use WTF::move() instead of std::move() to help ensure move semantics in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=137809
+
+        Reviewed by Csaba Osztrogonác.
+
+        Substitution of WTF::move() for std::move(). Clean up std::move() in JavaScriptCore.
+
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeForStubInfo):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * bytecode/PutByIdVariant.cpp:
+        (JSC::PutByIdVariant::setter):
+
+2014-10-15  Oliver Hunt  <oliver@apple.com>
+
+        Use a single allocation for the Arguments object
+        https://bugs.webkit.org/show_bug.cgi?id=137751
+
+        Reviewed by Filip Pizlo.
+
+        This patch removes the secondary allocation for parameters in the Arguments
+        object.  This is faily simple, but we needed to make it possible for the JIT
+        to allocate a variable GC object.  To do this i've added a new 
+        emitAllocateVariableSizedJSObject function to the JIT that does the work to
+        find the correct heap for a variable sized allocation and then bump that
+        allocator.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateArguments):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::emitAllocateVariableSizedJSObject):
+        * heap/CopyToken.h:
+        * heap/Heap.h:
+        (JSC::Heap::subspaceForObjectWithoutDestructor):
+        (JSC::Heap::subspaceForObjectNormalDestructor):
+        (JSC::Heap::subspaceForObjectsWithImmortalStructure):
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::subspaceForObjectsWithNormalDestructor):
+        (JSC::MarkedSpace::subspaceForObjectsWithImmortalStructure):
+        (JSC::MarkedSpace::subspaceForObjectsWithoutDestructor):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::createArguments):
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::visitChildren):
+        (JSC::Arguments::copyBackingStore):
+        (JSC::Arguments::tearOff):
+        (JSC::Arguments::allocateRegisterArray): Deleted.
+        * runtime/Arguments.h:
+        (JSC::Arguments::create):
+        (JSC::Arguments::isTornOff):
+        (JSC::Arguments::offsetOfRegisterArray):
+        (JSC::Arguments::registerArraySizeInBytes):
+        (JSC::Arguments::registerArray):
+        (JSC::Arguments::allocationSize): Deleted.
+
+2014-10-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Apparently we've had a hole in arguments capture all along
+        https://bugs.webkit.org/show_bug.cgi?id=137767
+
+        Reviewed by Oliver Hunt.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getArgument):
+        * tests/stress/arguments-captured.js: Added.
+        (foo):
+        (bar):
+
+2014-10-16  Saam Barati  <saambarati1@gmail.com>
+
+        Have the ProfileType node in the DFG convert to a structure check where it can
+        https://bugs.webkit.org/show_bug.cgi?id=137596
+
+        Reviewed by Filip Pizlo.
+
+        TypeSet now keeps track of the live set of Structures it has seen.
+        It no longer nukes everything during GC. It now only removes unmarked
+        structures during GC. This modification allows the ProfileType node 
+        to convert into a CheckStructure node safely in the DFG. 
+
+        This change brings up the conversion rate from ProfileType to Check 
+        or CheckStructrue from ~45% to ~65%. This change also speeds the 
+        type profiler up significantly: consistently between 2x-20x faster. 
+
+        This patch also does some slight refactoring: a few type profiler
+        related fields are moved from VM to TypeProfiler.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToCheckStructure):
+        * heap/Heap.cpp:
+        (JSC::Heap::collect):
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::uniqueIDForVariable):
+        * runtime/SymbolTable.h:
+        * runtime/TypeLocationCache.cpp:
+        (JSC::TypeLocationCache::getTypeLocation):
+        * runtime/TypeProfiler.cpp:
+        (JSC::TypeProfiler::TypeProfiler):
+        (JSC::TypeProfiler::nextTypeLocation):
+        (JSC::TypeProfiler::invalidateTypeSetCache):
+        (JSC::TypeProfiler::dumpTypeProfilerData):
+        * runtime/TypeProfiler.h:
+        (JSC::TypeProfiler::getNextUniqueVariableID):
+        * runtime/TypeProfilerLog.cpp:
+        (JSC::TypeProfilerLog::processLogEntries):
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::addTypeInformation):
+        (JSC::TypeSet::invalidateCache):
+        * runtime/TypeSet.h:
+        (JSC::TypeSet::structureSet):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::enableTypeProfiler):
+        (JSC::VM::disableTypeProfiler):
+        (JSC::VM::dumpTypeProfilerData):
+        (JSC::VM::nextTypeLocation): Deleted.
+        (JSC::VM::invalidateTypeSetCache): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::typeProfiler):
+        (JSC::VM::getNextUniqueVariableID): Deleted.
+        * tests/typeProfiler/dfg-jit-optimizations.js:
+
+2014-10-16  Adrien Destugues  <pulkomandy@gmail.com>
+
+        Use isnan from std namespace in ProfileGenerator.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=137653
+
+        Reviewed by Darin Adler.
+
+        The C++ isnan() function is in the std namespace. The unprefixed isnan
+        may be available because of C99 headers leakage in C++, but should not
+        be used.
+
+        No new tests: no functional change, build fix on platforms which don't
+        export C99 functions in C++.
+
+        * profiler/ProfileGenerator.cpp:
+        (JSC::ProfileGenerator::beginCallEntry):
+        (JSC::ProfileGenerator::endCallEntry):
+        (JSC::ProfileGenerator::didPause):
+        (JSC::ProfileGenerator::didContinue):
+
+2014-10-15  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r174025): remote inspector crashes frequently when executing inspector frontend's JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=137758
+
+        Rubber stamped by Filip Pizlo.
+
+        Reverted r174025 for just PutByOffset Nodes.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
 2014-10-14  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Clean up unnecessary PassOwnPtr.h inclusion

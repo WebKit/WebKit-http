@@ -295,7 +295,7 @@ private:
 
     void pushLayoutStateForCurrentFlowThread(const RenderObject&);
     void popLayoutStateForCurrentFlowThread();
-    
+
     friend class LayoutStateMaintainer;
     friend class LayoutStateDisabler;
 
@@ -368,8 +368,6 @@ private:
     SelectionRectGatherer m_selectionRectGatherer;
 #endif
 };
-
-RENDER_OBJECT_TYPE_CASTS(RenderView, isRenderView())
 
 // Stack-based class to assist with LayoutState push/pop
 class LayoutStateMaintainer {

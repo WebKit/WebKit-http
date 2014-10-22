@@ -382,9 +382,6 @@ webkit.org/b/82981 http/tests/misc/favicon-loads-with-icon-loading-override.html
 
 webkit.org/b/82982 fast/dom/jsDevicePixelRatio.html [ Pass Failure ]
 
-# Failing subpixel reference tests
-webkit.org/b/85532 fast/sub-pixel/file-upload-control-at-fractional-offset.html [ ImageOnlyFailure ]
-
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
 http/tests/security/video-cross-origin-accessfailure.html
@@ -410,9 +407,6 @@ webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Pass Failure ]
 webkit.org/b/90724 compositing/iframes/iframe-size-from-zero.html [ Pass Failure ]
 
 compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
-
-# This test depends on subpixel layout.
-webkit.org/b/92352 css3/flexbox/flex-rounding.html [ Failure ]
 
 # <rdar://problem/11224160> Focus not transferring properly in DumpRenderTree in Mountain Lion
 fast/events/show-modal-dialog-onblur-onfocus.html [ Skip ]
@@ -881,31 +875,6 @@ webkit.org/b/103857 fast/events/mouse-cursor-change.html
 # Reference test fast/sub-pixel/float-wrap-zoom.html fails
 webkit.org/b/114800 fast/sub-pixel/float-wrap-zoom.html [ Pass ImageOnlyFailure ]
 
-# Some tests need to be rebaselined still after disabling subpixel layout
-# http://bugs.webkit.org/show_bug.cgi?id=115292
-webkit.org/b/115292 css1/units/rounding.html
-webkit.org/b/115292 fast/block/float/overhanging-tall-block.html
-webkit.org/b/115292 fast/events/clientXY-in-zoom-and-scroll.html
-webkit.org/b/115292 fast/events/constructors/mouse-event-constructor.html
-webkit.org/b/115292 fast/events/constructors/wheel-event-constructor.html
-webkit.org/b/115292 fast/forms/range/slider-mouse-events.html
-webkit.org/b/115292 fast/overflow/infiniteRecursionGuard.html
-webkit.org/b/115292 svg/zoom/page/zoom-replaced-intrinsic-ratio-001.htm
-webkit.org/b/115292 editing/selection/vertical-lr-ltr-extend-line-backward-br.html
-webkit.org/b/115292 editing/selection/vertical-lr-ltr-extend-line-forward-br.html
-webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-backward-br.html
-webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-backward-p.html
-webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-forward-br.html
-webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-forward-p.html
-webkit.org/b/115292 fast/text/international/hindi-spacing.html
-webkit.org/b/115292 fast/text/international/vertical-text-glyph-test.html
-webkit.org/b/115292 fast/text/orientation-sideways.html
-webkit.org/b/115292 fast/writing-mode/Kusa-Makura-background-canvas.html
-webkit.org/b/115292 fast/writing-mode/japanese-ruby-vertical-lr.html
-webkit.org/b/115292 fast/writing-mode/japanese-ruby-vertical-rl.html
-webkit.org/b/115292 fast/writing-mode/vertical-baseline-alignment.html
-webkit.org/b/115292 fast/writing-mode/vertical-font-fallback.html
-
 webkit.org/b/116244 fast/events/mouse-cursor-image-set.html [ Failure Pass ]
 
 webkit.org/b/116245 canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Pass Failure ]
@@ -998,50 +967,31 @@ webkit.org/b/126586 [ Mavericks Debug ] webgl/1.0.2/conformance/rendering/gl-sci
 
 webkit.org/b/52016 http/tests/xmlhttprequest/xmlhttprequest-50ms-download-dispatch.html [ Pass Failure Timeout ]
 
-# Subpixel failures
+# Subpixel failures START
+# Inline text positioning
+webkit.org/b/85532 fast/sub-pixel/file-upload-control-at-fractional-offset.html [ ImageOnlyFailure ]
 
-# Subpixel: -webkit-flex off-by-one px
+# -webkit-flex off-by-one px
 webkit.org/b/126898 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
 
-# Subpixel rendering: borders are reporting float values.
-webkit.org/b/128061 css1/units/length_units.html [ Failure ]
-webkit.org/b/128061 fast/css/bidi-override-in-anonymous-block.html [ Failure ]
-webkit.org/b/128061 fast/repaint/repaint-during-scroll-with-zoom.html [ Failure ]
-webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-initial-value-001.htm [ Failure ]
-webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-style-001.htm [ Failure ]
-webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-style-002.htm [ Failure ]
-webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-style-004.htm [ Failure ]
-webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-with-three-values-001.htm [ Failure ]
-webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-with-two-values-001.htm [ Failure ]
-webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-top-left-radius-values-003.htm [ Failure ]
-webkit.org/b/128061 media/video-zoom.html [ Failure ]
-webkit.org/b/128061 svg/custom/svg-fonts-in-html.html [ Failure ]
-webkit.org/b/128061 svg/zoom/page/zoom-svg-float-border-padding.xml [ Failure ]
-webkit.org/b/128061 tables/mozilla_expected_failures/bugs/bug1055-2.html [ Failure ]
-
-# debug assert on empty drawRect
-webkit.org/b/128283 [ Debug ] transitions/shorthand-border-transitions.html [ Skip ]
-
-# Non-uniform scaling context.
-webkit.org/b/128081 fast/events/page-scaled-mouse-click-iframe.html
-
-# repaintRectsAsText reports different repaintrects on ML
+# repaintRectsAsText reports different repaintrects.
 webkit.org/b/131887 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
 
 # Some CSS region expected tests do not properly match CSS region's behavior.
 webkit.org/b/132990 fast/regions/overflow/overflow-size-change-with-stacking-context.html [ ImageOnlyFailure ]
 
-webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
-
 # These tests require fractional text widths. Ahem can't provide it -> using LucidaGrandeUI -> fails on ML due to different font size.  
 [ MountainLion ] fast/inline/hidpi-selection-gap-overlaps-inline-selection.html [ Pass ImageOnlyFailure ]
 [ MountainLion ] fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html [ Pass ImageOnlyFailure ]
-# clipping filter effects when region is present. 
+
+webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
+
+# Clipping filter effects when region is present.
 webkit.org/b/133523 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
 
 webkit.org/b/136419 fast/sub-pixel/block-with-margin-overflow.html [ ImageOnlyFailure ]
 webkit.org/b/137729 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
-# End of subpixel failures.
+# Subpixel failures END
 
 webkit.org/b/127310 svg/filters/feComponentTransfer-style-crash.xhtml [ Pass Failure Timeout ]
 
@@ -1549,3 +1499,6 @@ webkit.org/b/136109 [ Yosemite ] fast/multicol/mixed-opacity-fixed-test.html  [ 
 [ Yosemite ] inspector/event-listener.html [ Failure Crash ]
 [ Yosemite ] inspector/model/parse-script-syntax-tree.html [ Failure Crash ]
 [ Yosemite ] inspector/protocol-promise-result.html [ Failure Crash ]
+
+webkit.org/b/137882 http/tests/media/hls/video-controls-live-stream.html [ Failure ]
+webkit.org/b/137882 http/tests/media/track-in-band-hls-metadata.html [ Failure ]

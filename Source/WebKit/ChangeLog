@@ -1,3 +1,36 @@
+2014-10-19  Chris Dumez  <cdumez@apple.com>
+
+        Kill toRenderedDocumentMarker() by using tighter typing
+        https://bugs.webkit.org/show_bug.cgi?id=137858
+
+        Reviewed by Darin Adler.
+
+        Update symbol export for Windows due to argument type change.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-10-17  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Accelerated compositing is not implemented.
+        https://bugs.webkit.org/show_bug.cgi?id=137345
+
+        Reviewed by Brent Fulgham.
+
+        This patch is based on GTK, and the texture mapper graphics layer type.
+
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj: Added new accelerated compositing source files.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters: Ditto.
+
+2014-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Implement selection services menu for Legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=137582
+        <rdar://problem/18604241>
+
+        Reviewed by Brady Eidson.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
 2014-10-14  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Unreviewed gardening. Ignore Visual Studio *.sdf files.

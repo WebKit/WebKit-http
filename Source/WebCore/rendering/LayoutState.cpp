@@ -112,8 +112,8 @@ LayoutState::LayoutState(std::unique_ptr<LayoutState> next, RenderBox* renderer,
     m_layoutDeltaYSaturated = m_next->m_layoutDeltaYSaturated;
 #endif
 
-    if (lineGrid() && (lineGrid()->style().writingMode() == renderer->style().writingMode()) && renderer->isRenderMultiColumnFlowThread())
-        toRenderMultiColumnFlowThread(renderer)->computeLineGridPaginationOrigin(*this);
+    if (lineGrid() && (lineGrid()->style().writingMode() == renderer->style().writingMode()) && is<RenderMultiColumnFlowThread>(*renderer))
+        downcast<RenderMultiColumnFlowThread>(*renderer).computeLineGridPaginationOrigin(*this);
 
     // If we have a new grid to track, then add it to our set.
     if (renderer->style().lineGrid() != RenderStyle::initialLineGrid() && is<RenderBlockFlow>(*renderer))
@@ -142,9 +142,9 @@ LayoutState::LayoutState(RenderObject& root)
 
     if (container->hasOverflowClip()) {
         m_clipped = true;
-        RenderBox* containerBox = toRenderBox(container);
-        m_clipRect = LayoutRect(toLayoutPoint(m_paintOffset), containerBox->cachedSizeForOverflowClip());
-        m_paintOffset -= containerBox->scrolledContentOffset();
+        auto& containerBox = downcast<RenderBox>(*container);
+        m_clipRect = LayoutRect(toLayoutPoint(m_paintOffset), containerBox.cachedSizeForOverflowClip());
+        m_paintOffset -= containerBox.scrolledContentOffset();
     }
 }
 void LayoutState::clearPaginationInformation()

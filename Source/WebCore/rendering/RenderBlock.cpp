@@ -68,7 +68,9 @@
 #include "ShadowRoot.h"
 #include "TextBreakIterator.h"
 #include "TransformState.h"
+
 #include <wtf/NeverDestroyed.h>
+#include <wtf/Optional.h>
 #include <wtf/StackStats.h>
 #include <wtf/TemporaryChange.h>
 
@@ -94,7 +96,7 @@ static TrackedDescendantsMap* gPercentHeightDescendantsMap = 0;
 
 static TrackedContainerMap* gPositionedContainerMap = 0;
 static TrackedContainerMap* gPercentHeightContainerMap = 0;
-    
+
 typedef HashMap<RenderBlock*, std::unique_ptr<ListHashSet<RenderInline*>>> ContinuationOutlineTableMap;
 
 struct UpdateScrollInfoAfterLayoutTransaction {
@@ -121,14 +123,17 @@ static std::unique_ptr<DelayedUpdateScrollInfoStack>& updateScrollInfoAfterLayou
 struct RenderBlockRareData {
     WTF_MAKE_NONCOPYABLE(RenderBlockRareData); WTF_MAKE_FAST_ALLOCATED;
 public:
-    RenderBlockRareData() 
+    RenderBlockRareData()
         : m_paginationStrut(0)
         , m_pageLogicalOffset(0)
-    { 
+        , m_flowThreadContainingBlock(Nullopt)
+    {
     }
 
     LayoutUnit m_paginationStrut;
     LayoutUnit m_pageLogicalOffset;
+
+    Optional<RenderFlowThread*> m_flowThreadContainingBlock;
 };
 
 typedef HashMap<const RenderBlock*, std::unique_ptr<RenderBlockRareData>> RenderBlockRareDataMap;
@@ -266,7 +271,7 @@ void RenderBlock::styleWillChange(StyleDifference diff, const RenderStyle& newSt
     const RenderStyle* oldStyle = hasInitializedStyle() ? &style() : nullptr;
 
     setReplaced(newStyle.isDisplayInlineType());
-    
+
     if (oldStyle && parent() && diff == StyleDifferenceLayout && oldStyle->position() != newStyle.position()) {
         if (newStyle.position() == StaticPosition)
             // Clear our positioned objects list. Our absolutely positioned descendants will be
@@ -283,7 +288,7 @@ void RenderBlock::styleWillChange(StyleDifference diff, const RenderStyle& newSt
                 }
                 containingBlock = containingBlock->parent();
             }
-            
+
             if (is<RenderBlock>(*containingBlock))
                 downcast<RenderBlock>(*containingBlock).removePositionedObjects(this, NewContainingBlock);
         }
@@ -308,9 +313,19 @@ static bool borderOrPaddingLogicalWidthChanged(const RenderStyle* oldStyle, cons
 
 void RenderBlock::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    RenderBox::styleDidChange(diff, oldStyle);
-    
     RenderStyle& newStyle = style();
+
+    bool hadTransform = hasTransform();
+    bool flowThreadContainingBlockInvalidated = false;
+    if (oldStyle && oldStyle->position() != newStyle.position()) {
+        invalidateFlowThreadContainingBlockIncludingDescendants();
+        flowThreadContainingBlockInvalidated = true;
+    }
+
+    RenderBox::styleDidChange(diff, oldStyle);
+
+    if (hadTransform != hasTransform() && !flowThreadContainingBlockInvalidated)
+        invalidateFlowThreadContainingBlockIncludingDescendants();
 
     if (!isAnonymousBlock()) {
         // Ensure that all of our continuation blocks pick up the new style.
@@ -324,7 +339,7 @@ void RenderBlock::styleDidChange(StyleDifference diff, const RenderStyle* oldSty
 
     propagateStyleToAnonymousChildren(PropagateToBlockChildrenOnly);
     m_lineHeight = -1;
-    
+
     // It's possible for our border/padding to change, but for the overall logical width of the block to
     // end up being the same. We keep track of this change so in layoutBlock, we can know to set relayoutChildren=true.
     m_hasBorderOrPaddingLogicalWidthChanged = oldStyle && diff == StyleDifferenceLayout && needsLayout() && borderOrPaddingLogicalWidthChanged(oldStyle, &newStyle);
@@ -690,9 +705,8 @@ void RenderBlock::collapseAnonymousBoxChild(RenderBlock& parent, RenderBlock* ch
     RenderObject* nextSibling = child->nextSibling();
 
     RenderFlowThread* childFlowThread = child->flowThreadContainingBlock();
-    CurrentRenderFlowThreadMaintainer flowThreadMaintainer(childFlowThread);
-    if (childFlowThread && childFlowThread->isRenderNamedFlowThread())
-        toRenderNamedFlowThread(childFlowThread)->removeFlowChildInfo(child);
+    if (is<RenderNamedFlowThread>(childFlowThread))
+        downcast<RenderNamedFlowThread>(*childFlowThread).removeFlowChildInfo(child);
 
     parent.removeChildInternal(*child, child->hasLayer() ? NotifyChildren : DontNotifyChildren);
     child->moveAllChildrenTo(&parent, nextSibling, child->hasLayer());
@@ -1213,14 +1227,14 @@ void RenderBlock::simplifiedNormalFlowLayout()
     if (childrenInline()) {
         ListHashSet<RootInlineBox*> lineBoxes;
         for (InlineWalker walker(*this); !walker.atEnd(); walker.advance()) {
-            RenderObject* o = walker.current();
-            if (!o->isOutOfFlowPositioned() && (o->isReplaced() || o->isFloating())) {
-                RenderBox& box = toRenderBox(*o);
+            RenderObject& renderer = *walker.current();
+            if (!renderer.isOutOfFlowPositioned() && (renderer.isReplaced() || renderer.isFloating())) {
+                RenderBox& box = downcast<RenderBox>(renderer);
                 box.layoutIfNeeded();
                 if (box.inlineBoxWrapper())
                     lineBoxes.add(&box.inlineBoxWrapper()->root());
-            } else if (o->isText() || (o->isRenderInline() && !walker.atEndOfInline()))
-                o->clearNeedsLayout();
+            } else if (is<RenderText>(renderer) || (is<RenderInline>(renderer) && !walker.atEndOfInline()))
+                renderer.clearNeedsLayout();
         }
 
         // FIXME: Glyph overflow will get lost in this case, but not really a big deal.
@@ -1254,8 +1268,8 @@ bool RenderBlock::simplifiedLayout()
 
     // Make sure a forced break is applied after the content if we are a flow thread in a simplified layout.
     // This ensures the size information is correctly computed for the last auto-height region receiving content.
-    if (isRenderFlowThread())
-        toRenderFlowThread(this)->applyBreakAfterContent(clientLogicalBottom());
+    if (is<RenderFlowThread>(*this))
+        downcast<RenderFlowThread>(*this).applyBreakAfterContent(clientLogicalBottom());
 
     // Lay out our positioned objects if our positioned child bit is set.
     // Also, if an absolute position element inside a relative positioned container moves, and the absolute element has a fixed position
@@ -1297,12 +1311,12 @@ void RenderBlock::markFixedPositionObjectForLayoutIfNeeded(RenderObject& child)
         return;
 
     auto o = child.parent();
-    while (o && !o->isRenderView() && o->style().position() != AbsolutePosition)
+    while (o && !is<RenderView>(*o) && o->style().position() != AbsolutePosition)
         o = o->parent();
     if (o->style().position() != AbsolutePosition)
         return;
 
-    RenderBox& box = toRenderBox(child);
+    auto& box = downcast<RenderBox>(child);
     if (hasStaticInlinePosition) {
         LogicalExtentComputedValues computedValues;
         box.computeLogicalWidthInRegion(computedValues);
@@ -1566,7 +1580,7 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
             bool didClipToRegion = false;
             
             RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
-            if (paintInfo.paintContainer && namedFlowFragment && paintInfo.paintContainer->isRenderNamedFlowThread()) {
+            if (namedFlowFragment && is<RenderNamedFlowThread>(paintInfo.paintContainer)) {
                 // If this box goes beyond the current region, then make sure not to overflow the region.
                 // This (overflowing region X altough also fragmented to region X+1) could happen when one of this box's children
                 // overflows region X and is an unsplittable element (like an image).
@@ -1575,7 +1589,7 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
                 paintInfo.context->save();
                 didClipToRegion = true;
 
-                paintInfo.context->clip(toRenderNamedFlowThread(paintInfo.paintContainer)->decorationsClipRectForBoxInNamedFlowFragment(*this, *namedFlowFragment));
+                paintInfo.context->clip(downcast<RenderNamedFlowThread>(*paintInfo.paintContainer).decorationsClipRectForBoxInNamedFlowFragment(*this, *namedFlowFragment));
             }
 
             paintBoxDecorations(paintInfo, paintOffset);
@@ -1884,9 +1898,9 @@ GapRects RenderBlock::selectionGaps(RenderBlock& rootBlock, const LayoutPoint& r
     }
     
     RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
-    if (paintInfo && namedFlowFragment && paintInfo->paintContainer->isRenderFlowThread()) {
+    if (paintInfo && namedFlowFragment && is<RenderFlowThread>(*paintInfo->paintContainer)) {
         // Make sure the current object is actually flowed into the region being painted.
-        if (!toRenderFlowThread(paintInfo->paintContainer)->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
+        if (!downcast<RenderFlowThread>(*paintInfo->paintContainer).objectShouldFragmentInFlowRegion(this, namedFlowFragment))
             return result;
     }
 
@@ -2276,11 +2290,11 @@ void RenderBlock::removePercentHeightDescendantIfNeeded(RenderBox& descendant)
 void RenderBlock::clearPercentHeightDescendantsFrom(RenderBox& parent)
 {
     ASSERT(gPercentHeightContainerMap);
-    for (RenderObject* curr = parent.firstChild(); curr; curr = curr->nextInPreOrder(&parent)) {
-        if (!curr->isBox())
+    for (RenderObject* child = parent.firstChild(); child; child = child->nextInPreOrder(&parent)) {
+        if (!is<RenderBox>(*child))
             continue;
  
-        RenderBox& box = toRenderBox(*curr);
+        auto& box = downcast<RenderBox>(*child);
         if (!hasPercentHeightDescendant(box))
             continue;
 
@@ -2428,7 +2442,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutSize localOffset = toLayoutSize(adjustedLocation);
 
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    RenderNamedFlowFragment* namedFlowFragment = flowThread ? toRenderNamedFlowFragment(flowThread->currentRegion()) : nullptr;
+    RenderNamedFlowFragment* namedFlowFragment = flowThread ? downcast<RenderNamedFlowFragment>(flowThread->currentRegion()) : nullptr;
     // If we are now searching inside a region, make sure this element
     // is being fragmented into this region.
     if (namedFlowFragment && !flowThread->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
@@ -2453,7 +2467,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     if (style().clipPath()) {
         switch (style().clipPath()->type()) {
         case ClipPathOperation::Shape: {
-            const auto& clipPath = downcast<ShapeClipPathOperation>(*style().clipPath());
+            auto& clipPath = downcast<ShapeClipPathOperation>(*style().clipPath());
 
             LayoutRect referenceBoxRect;
             switch (clipPath.referenceBox()) {
@@ -2745,7 +2759,7 @@ void RenderBlock::computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth
         }
 
         const RenderStyle& childStyle = child->style();
-        if (child->isFloating() || (child->isBox() && toRenderBox(child)->avoidsFloats())) {
+        if (child->isFloating() || (is<RenderBox>(*child) && downcast<RenderBox>(*child).avoidsFloats())) {
             LayoutUnit floatTotalWidth = floatLeftWidth + floatRightWidth;
             if (childStyle.clear() & CLEFT) {
                 maxLogicalWidth = std::max(floatTotalWidth, maxLogicalWidth);
@@ -2772,10 +2786,10 @@ void RenderBlock::computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth
         margin = marginStart + marginEnd;
 
         LayoutUnit childMinPreferredLogicalWidth, childMaxPreferredLogicalWidth;
-        if (child->isBox() && child->isHorizontalWritingMode() != isHorizontalWritingMode()) {
-            RenderBox* childBox = toRenderBox(child);
+        if (is<RenderBox>(*child) && child->isHorizontalWritingMode() != isHorizontalWritingMode()) {
+            auto& childBox = downcast<RenderBox>(*child);
             LogicalExtentComputedValues computedValues;
-            childBox->computeLogicalHeight(childBox->borderAndPaddingLogicalHeight(), 0, computedValues);
+            childBox.computeLogicalHeight(childBox.borderAndPaddingLogicalHeight(), 0, computedValues);
             childMinPreferredLogicalWidth = childMaxPreferredLogicalWidth = computedValues.m_extent;
         } else {
             childMinPreferredLogicalWidth = child->minPreferredLogicalWidth();
@@ -2792,7 +2806,7 @@ void RenderBlock::computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth
         w = childMaxPreferredLogicalWidth + margin;
 
         if (!child->isFloating()) {
-            if (child->isBox() && toRenderBox(child)->avoidsFloats()) {
+            if (is<RenderBox>(*child) && downcast<RenderBox>(*child).avoidsFloats()) {
                 // Determine a left and right max value based off whether or not the floats can fit in the
                 // margins of the object.  For negative margins, we will attempt to overlap the float if the negative margin
                 // is smaller than the float width.
@@ -3254,6 +3268,50 @@ void RenderBlock::updateFirstLetter()
     createFirstLetterRenderer(firstLetterContainer, downcast<RenderText>(firstLetterObj));
 }
 
+RenderFlowThread* RenderBlock::cachedFlowThreadContainingBlock() const
+{
+    RenderBlockRareData* rareData = getRareData(this);
+
+    if (!rareData || !rareData->m_flowThreadContainingBlock)
+        return nullptr;
+
+    return rareData->m_flowThreadContainingBlock.value();
+}
+
+bool RenderBlock::cachedFlowThreadContainingBlockNeedsUpdate() const
+{
+    RenderBlockRareData* rareData = getRareData(this);
+
+    if (!rareData || !rareData->m_flowThreadContainingBlock)
+        return true;
+
+    return false;
+}
+
+void RenderBlock::setCachedFlowThreadContainingBlockNeedsUpdate()
+{
+    RenderBlockRareData& rareData = ensureRareData(this);
+    rareData.m_flowThreadContainingBlock = Nullopt;
+}
+
+RenderFlowThread* RenderBlock::updateCachedFlowThreadContainingBlock(RenderFlowThread* flowThread) const
+{
+    RenderBlockRareData& rareData = ensureRareData(this);
+    rareData.m_flowThreadContainingBlock = flowThread;
+
+    return flowThread;
+}
+
+RenderFlowThread* RenderBlock::locateFlowThreadContainingBlock() const
+{
+    RenderBlockRareData* rareData = getRareData(this);
+    if (!rareData || !rareData->m_flowThreadContainingBlock)
+        return updateCachedFlowThreadContainingBlock(RenderBox::locateFlowThreadContainingBlock());
+
+    ASSERT(rareData->m_flowThreadContainingBlock.value() == RenderBox::locateFlowThreadContainingBlock());
+    return rareData->m_flowThreadContainingBlock.value();
+}
+
 LayoutUnit RenderBlock::paginationStrut() const
 {
     RenderBlockRareData* rareData = getRareData(this);
@@ -3413,16 +3471,16 @@ void RenderBlock::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& a
         if (childrenInline())
             addFocusRingRectsForInlineChildren(rects, additionalOffset, paintContainer);
     
-        for (RenderObject* curr = firstChild(); curr; curr = curr->nextSibling()) {
-            if (!curr->isText() && !curr->isListMarker() && curr->isBox()) {
-                RenderBox* box = toRenderBox(curr);
+        for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
+            if (!is<RenderText>(*child) && !is<RenderListMarker>(*child) && is<RenderBox>(*child)) {
+                auto& box = downcast<RenderBox>(*child);
                 FloatPoint pos;
                 // FIXME: This doesn't work correctly with transforms.
-                if (box->layer()) 
-                    pos = curr->localToContainerPoint(FloatPoint(), paintContainer);
+                if (box.layer())
+                    pos = child->localToContainerPoint(FloatPoint(), paintContainer);
                 else
-                    pos = FloatPoint(additionalOffset.x() + box->x(), additionalOffset.y() + box->y());
-                box->addFocusRingRects(rects, flooredLayoutPoint(pos), paintContainer);
+                    pos = FloatPoint(additionalOffset.x() + box.x(), additionalOffset.y() + box.y());
+                box.addFocusRingRects(rects, flooredLayoutPoint(pos), paintContainer);
             }
         }
     }

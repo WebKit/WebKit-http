@@ -250,7 +250,7 @@ void RenderBlockFlow::rebuildFloatingObjectSetFromIntrudingFloats()
     
     LayoutUnit logicalLeftOffset = 0;
     if (prev)
-        logicalTopOffset -= toRenderBox(prev)->logicalTop();
+        logicalTopOffset -= downcast<RenderBox>(*prev).logicalTop();
     else {
         prev = &parentBlock;
         logicalLeftOffset += parentBlock.logicalLeftOffsetForContent();
@@ -501,8 +501,8 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
 
     // Before updating the final size of the flow thread make sure a forced break is applied after the content.
     // This ensures the size information is correctly computed for the last auto-height region receiving content.
-    if (isRenderFlowThread())
-        toRenderFlowThread(this)->applyBreakAfterContent(oldClientAfterEdge);
+    if (is<RenderFlowThread>(*this))
+        downcast<RenderFlowThread>(*this).applyBreakAfterContent(oldClientAfterEdge);
 
     updateLogicalHeight();
     LayoutUnit newHeight = logicalHeight();
@@ -1985,18 +1985,10 @@ void RenderBlockFlow::styleWillChange(StyleDifference diff, const RenderStyle& n
     if (oldStyle) {
         EPosition oldPosition = oldStyle->position();
         EPosition newPosition = newStyle.position();
-        
+
         if (parent() && diff == StyleDifferenceLayout && oldPosition != newPosition) {
             if (containsFloats() && !isFloating() && !isOutOfFlowPositioned() && newStyle.hasOutOfFlowPosition())
                 markAllDescendantsWithFloatsForLayout();
-
-            // If this block is inside a multicol and is moving from in-flow positioning to out-of-flow positioning,
-            // remove its info (such as lines-to-region mapping) from the flowthread because it won't be able to do it later.
-            // The flowthread will no longer be in its containing block chain and, as such, flowThreadContainingBlock will return null.
-            if (RenderFlowThread* flowThread = flowThreadContainingBlock(SkipFlowThreadCache)) {
-                if (flowThread->isRenderMultiColumnFlowThread() && !isOutOfFlowPositioned() && (newPosition == AbsolutePosition || newPosition == FixedPosition))
-                    flowThread->removeFlowChildInfo(this);
-            }
         }
     }
 
@@ -2834,8 +2826,8 @@ bool RenderBlockFlow::hitTestFloats(const HitTestRequest& request, HitTestResult
         return false;
 
     LayoutPoint adjustedLocation = accumulatedOffset;
-    if (isRenderView())
-        adjustedLocation += toLayoutSize(toRenderView(*this).frameView().scrollPosition());
+    if (is<RenderView>(*this))
+        adjustedLocation += toLayoutSize(downcast<RenderView>(*this).frameView().scrollPosition());
 
     const FloatingObjectSet& floatingObjectSet = m_floatingObjects->set();
     auto begin = floatingObjectSet.begin();
@@ -3270,11 +3262,11 @@ Position RenderBlockFlow::positionForBox(InlineBox *box, bool start) const
     if (!box->renderer().nonPseudoNode())
         return createLegacyEditingPosition(nonPseudoElement(), start ? caretMinOffset() : caretMaxOffset());
 
-    if (!box->isInlineTextBox())
+    if (!is<InlineTextBox>(*box))
         return createLegacyEditingPosition(box->renderer().nonPseudoNode(), start ? box->renderer().caretMinOffset() : box->renderer().caretMaxOffset());
 
-    InlineTextBox* textBox = toInlineTextBox(box);
-    return createLegacyEditingPosition(box->renderer().nonPseudoNode(), start ? textBox->start() : textBox->start() + textBox->len());
+    auto& textBox = downcast<InlineTextBox>(*box);
+    return createLegacyEditingPosition(textBox.renderer().nonPseudoNode(), start ? textBox.start() : textBox.start() + textBox.len());
 }
 
 VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, const RenderRegion* region)
@@ -3352,7 +3344,7 @@ VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const Layout
         if (!isHorizontalWritingMode())
             point = point.transposedPoint();
         if (closestBox->renderer().isReplaced())
-            return positionForPointRespectingEditingBoundaries(*this, toRenderBox(closestBox->renderer()), point);
+            return positionForPointRespectingEditingBoundaries(*this, downcast<RenderBox>(closestBox->renderer()), point);
         return closestBox->renderer().positionForPoint(point, nullptr);
     }
 
@@ -3732,8 +3724,8 @@ void RenderBlockFlow::checkForPaginationLogicalHeightChange(bool& relayoutChildr
         flowThread->setColumnHeightAvailable(std::max<LayoutUnit>(columnHeight, 0));
         if (oldHeightAvailable != flowThread->columnHeightAvailable())
             relayoutChildren = true;
-    } else if (isRenderFlowThread()) {
-        RenderFlowThread* flowThread = toRenderFlowThread(this);
+    } else if (is<RenderFlowThread>(*this)) {
+        RenderFlowThread& flowThread = downcast<RenderFlowThread>(*this);
 
         // FIXME: This is a hack to always make sure we have a page logical height, if said height
         // is known. The page logical height thing in LayoutState is meaningless for flow
@@ -3744,9 +3736,9 @@ void RenderBlockFlow::checkForPaginationLogicalHeightChange(bool& relayoutChildr
         // it's unknown, we need to prevent the pagination code from assuming page breaks everywhere
         // and thereby eating every top margin. It should be trivial to clean up and get rid of this
         // hack once the old multicol implementation is gone.
-        pageLogicalHeight = flowThread->isPageLogicalHeightKnown() ? LayoutUnit(1) : LayoutUnit(0);
+        pageLogicalHeight = flowThread.isPageLogicalHeightKnown() ? LayoutUnit(1) : LayoutUnit(0);
 
-        pageLogicalHeightChanged = flowThread->pageLogicalSizeChanged();
+        pageLogicalHeightChanged = flowThread.pageLogicalSizeChanged();
     }
 }
 

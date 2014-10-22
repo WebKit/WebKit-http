@@ -65,7 +65,7 @@ public:
 
     virtual void removeFlowChildInfo(RenderObject*);
 #ifndef NDEBUG
-    bool hasChildInfo(RenderObject* child) const { return child && child->isBox() && m_regionRangeMap.contains(toRenderBox(child)); }
+    bool hasChildInfo(RenderObject* child) const { return is<RenderBox>(child) && m_regionRangeMap.contains(downcast<RenderBox>(child)); }
 #endif
 
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
@@ -231,6 +231,8 @@ public:
 
     ContainingRegionMap& containingRegionMap();
 
+    virtual bool cachedFlowThreadContainingBlockNeedsUpdate() const override { return false; }
+
     // FIXME: Eventually as column and region flow threads start nesting, this may end up changing.
     virtual bool shouldCheckColumnBreaks() const { return false; }
 
@@ -243,6 +245,8 @@ private:
 
 protected:
     RenderFlowThread(Document&, PassRef<RenderStyle>);
+
+    virtual RenderFlowThread* locateFlowThreadContainingBlock() const override { return const_cast<RenderFlowThread*>(this); }
 
     virtual const char* renderName() const = 0;
 
@@ -370,28 +374,6 @@ protected:
     unsigned m_layoutPhase : 2;
     bool m_needsTwoPhasesLayout : 1;
     bool m_layersToRegionMappingsDirty : 1;
-};
-
-RENDER_OBJECT_TYPE_CASTS(RenderFlowThread, isRenderFlowThread())
-
-class CurrentRenderFlowThreadMaintainer {
-    WTF_MAKE_NONCOPYABLE(CurrentRenderFlowThreadMaintainer);
-public:
-    CurrentRenderFlowThreadMaintainer(RenderFlowThread*);
-    ~CurrentRenderFlowThreadMaintainer();
-private:
-    RenderFlowThread* m_renderFlowThread;
-    RenderFlowThread* m_previousRenderFlowThread;
-};
-
-class CurrentRenderFlowThreadDisabler {
-    WTF_MAKE_NONCOPYABLE(CurrentRenderFlowThreadDisabler);
-public:
-    CurrentRenderFlowThreadDisabler(RenderView*);
-    ~CurrentRenderFlowThreadDisabler();
-private:
-    RenderView* m_view;
-    RenderFlowThread* m_renderFlowThread;
 };
 
 // This structure is used by PODIntervalTree for debugging.

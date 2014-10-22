@@ -58,6 +58,8 @@ xcopy /y /d "%ProjectDir%..\platform\graphics\gstreamer\*.h" "%CONFIGURATIONBUIL
 xcopy /y /d "%ProjectDir%..\platform\graphics\win\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
 xcopy /y /d "%ProjectDir%..\platform\graphics\win\%1\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
 xcopy /y /d "%ProjectDir%..\platform\graphics\opentype\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
+xcopy /y /d "%ProjectDir%..\platform\graphics\opengl\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
+xcopy /y /d "%ProjectDir%..\platform\graphics\texmap\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
 xcopy /y /d "%ProjectDir%..\platform\mock\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
 xcopy /y /d "%ProjectDir%..\platform\text\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
 xcopy /y /d "%ProjectDir%..\platform\text\icu\*.h" "%CONFIGURATIONBUILDDIR%\include\WebCore"
@@ -107,6 +109,5 @@ xcopy /y /d "%ProjectDir%..\testing\js\WebCoreTestSupport.h" "%CONFIGURATIONBUIL
 
 set DerivedSourcesDirectory=%CONFIGURATIONBUILDDIR%\obj%PlatformArchitecture%\WebCore\DerivedSources
 set PrivateHeadersDirectory=%CONFIGURATIONBUILDDIR%\include\private\WebCore
-xcopy /y "%DerivedSourcesDirectory%\InspectorWebBackendCommands.js" "%PrivateHeadersDirectory%"
 
 if exist "%CONFIGURATIONBUILDDIR%\buildfailed" del "%CONFIGURATIONBUILDDIR%\buildfailed"

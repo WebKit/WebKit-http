@@ -179,6 +179,7 @@ public:
     const String& injectedBundlePath() const { return m_injectedBundlePath; }
 
     DownloadProxy* download(WebPageProxy* initiatingPage, const WebCore::ResourceRequest&);
+    DownloadProxy* resumeDownload(const API::Data* resumeData, const String& path);
 
     void setInjectedBundleInitializationUserData(PassRefPtr<API::Object> userData) { m_injectedBundleInitializationUserData = userData; }
 
@@ -335,14 +336,12 @@ public:
     bool isURLKnownHSTSHost(const String& urlString, bool privateBrowsingEnabled) const;
     void resetHSTSHosts();
 
-#if ENABLE(CUSTOM_PROTOCOLS)
     void registerSchemeForCustomProtocol(const String&);
     void unregisterSchemeForCustomProtocol(const String&);
 
     static HashSet<String>& globalURLSchemesWithCustomProtocolHandlers();
     static void registerGlobalURLSchemeAsHavingCustomProtocolHandlers(const String&);
     static void unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers(const String&);
-#endif
 
 #if PLATFORM(COCOA)
     void updateProcessSuppressionState() const;

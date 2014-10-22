@@ -654,11 +654,11 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
 
     if (isBlockedPlugin) {
         bool replacementObscured = false;
-        if (pluginElement->renderer()->isEmbeddedObject()) {
-            RenderEmbeddedObject* renderObject = toRenderEmbeddedObject(pluginElement->renderer());
-            renderObject->setPluginUnavailabilityReasonWithDescription(RenderEmbeddedObject::InsecurePluginVersion, unavailabilityDescription);
-            replacementObscured = renderObject->isReplacementObscured();
-            renderObject->setUnavailablePluginIndicatorIsHidden(replacementObscured);
+        if (is<RenderEmbeddedObject>(*pluginElement->renderer())) {
+            auto& renderObject = downcast<RenderEmbeddedObject>(*pluginElement->renderer());
+            renderObject.setPluginUnavailabilityReasonWithDescription(RenderEmbeddedObject::InsecurePluginVersion, unavailabilityDescription);
+            replacementObscured = renderObject.isReplacementObscured();
+            renderObject.setUnavailablePluginIndicatorIsHidden(replacementObscured);
         }
 
         send(Messages::WebPageProxy::DidBlockInsecurePluginVersion(parameters.mimeType, parameters.url.string(), frameURLString, pageURLString, replacementObscured));
@@ -4577,7 +4577,7 @@ void WebPage::determinePrimarySnapshottedPlugIn()
             auto pluginRenderer = plugInImageElement.renderer();
             if (!pluginRenderer || !pluginRenderer->isBox())
                 continue;
-            auto& pluginRenderBox = toRenderBox(*pluginRenderer);
+            auto& pluginRenderBox = downcast<RenderBox>(*pluginRenderer);
             if (!plugInIntersectsSearchRect(plugInImageElement))
                 continue;
 
@@ -4669,7 +4669,7 @@ bool WebPage::plugInIntersectsSearchRect(HTMLPlugInImageElement& plugInImageElem
 
 bool WebPage::plugInIsPrimarySize(WebCore::HTMLPlugInImageElement& plugInImageElement, unsigned& candidatePlugInArea)
 {
-    auto& pluginRenderBox = toRenderBox(*(plugInImageElement.renderer()));
+    auto& pluginRenderBox = downcast<RenderBox>(*plugInImageElement.renderer());
     if (pluginRenderBox.contentWidth() < primarySnapshottedPlugInMinimumWidth || pluginRenderBox.contentHeight() < primarySnapshottedPlugInMinimumHeight)
         return false;
 

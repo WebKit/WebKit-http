@@ -87,6 +87,7 @@
 #import <WebCore/PrintContext.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/RenderWidget.h>
+#import <WebCore/RenderedDocumentMarker.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/ScriptController.h>
 #import <WebCore/SecurityOrigin.h>
@@ -1329,10 +1330,10 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (CGSize)renderedSizeOfNode:(DOMNode *)node constrainedToWidth:(float)width
 {
-    Node *n = core(node);
-    RenderObject *r = n ? n->renderer() : 0;
-    float w = std::min((float)r->maxPreferredLogicalWidth(), width);
-    return r && r->isBox() ? CGSizeMake(w, toRenderBox(r)->height()) : CGSizeMake(0,0);
+    Node* n = core(node);
+    RenderObject* renderer = n ? n->renderer() : nullptr;
+    float w = std::min((float)renderer->maxPreferredLogicalWidth(), width);
+    return is<RenderBox>(renderer) ? CGSizeMake(w, downcast<RenderBox>(*renderer).height()) : CGSizeMake(0, 0);
 }
 
 - (DOMNode *)deepestNodeAtViewportLocation:(CGPoint)aViewportLocation
@@ -1763,14 +1764,12 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     id previousMetadata = nil;
     
     for (Node* node = root; node; node = NodeTraversal::next(node)) {
-        Vector<DocumentMarker*> markers = document->markers().markersFor(node);
-        Vector<DocumentMarker*>::const_iterator end = markers.end();
-        for (Vector<DocumentMarker*>::const_iterator it = markers.begin(); it != end; ++it) {
-            
-            if ((*it)->type() != DocumentMarker::DictationResult)
+        auto markers = document->markers().markersFor(node);
+        for (auto marker : markers) {
+
+            if (marker->type() != DocumentMarker::DictationResult)
                 continue;
             
-            const DocumentMarker* marker = *it;
             id metadata = marker->metadata();
             
             // All result markers should have metadata.
@@ -1812,7 +1811,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     if (!range)
         return nil;
     
-    Vector<DocumentMarker*> markers = core(self)->document()->markers().markersInRange(core(range), DocumentMarker::DictationResult);
+    auto markers = core(self)->document()->markers().markersInRange(core(range), DocumentMarker::DictationResult);
     
     // UIKit should only ever give us a DOMRange for a phrase with alternatives, which should not be part of more than one result.
     ASSERT(markers.size() <= 1);

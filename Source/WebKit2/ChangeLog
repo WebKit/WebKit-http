@@ -1,3 +1,761 @@
+2014-10-21  Tim Horton  <timothy_horton@apple.com>
+
+        Quick Look preview bubble has unnecessary controls
+        https://bugs.webkit.org/show_bug.cgi?id=137940
+        <rdar://problem/18731860>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _quickLookURLFromActionMenu:]):
+        Temporarily use more SPI to allow us to hide the preview bubble's controls.
+
+2014-10-21  Jeff Miller  <jeffm@apple.com>
+
+        Remove const from WKURLRequestRef parameter to WKContextDownloadURLRequest()
+        https://bugs.webkit.org/show_bug.cgi?id=137928
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextDownloadURLRequest):
+        * UIProcess/API/C/WKContext.h:
+
+2014-10-21  Anders Carlsson  <andersca@apple.com>
+
+        WKRemoteObjectCoder should handle floats
+        https://bugs.webkit.org/show_bug.cgi?id=137926
+        <rdar://problem/18695126>
+
+        Reviewed by Beth Dakin.
+
+        * Shared/API/Cocoa/WKRemoteObjectCoder.mm:
+        (encodeInvocation):
+        (-[WKRemoteObjectEncoder encodeFloat:forKey:]):
+        (decodeInvocationArguments):
+        (-[WKRemoteObjectDecoder decodeFloatForKey:]):
+
+2014-10-21  Jeff Miller  <jeffm@apple.com>
+
+        WKContext needs to provide an API to resume a download
+        https://bugs.webkit.org/show_bug.cgi?id=137507
+
+        Reviewed by Darin Adler.
+
+        This patch adds WKContextResumeDownload(), which is only supported on the Mac, and requires the
+        resume data from WKDownloadGetResumeData().
+
+        We have to create a sandbox extension for the partially downloaded file in the UI process so the
+        network or web process can resume writing to it.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::resumeDownload):
+        Added, calls through to DownloadManager::resumeDownload().
+
+        * NetworkProcess/NetworkProcess.h:
+        Added resumeDownload().
+
+        * NetworkProcess/NetworkProcess.messages.in:
+        Added ResumeDownload message.
+
+        * Shared/Downloads/Download.h:
+        Added resume().
+
+        * Shared/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::resumeDownload):
+        Added. The URL being downloaded is part of the opaque resumeData, so we can't specify it when the
+        Download is constructed.
+
+        * Shared/Downloads/DownloadManager.h:
+        Added resumeDownload().
+
+        * Shared/Downloads/ios/DownloadIOS.mm:
+        (WebKit::Download::resume):
+        Added, not implemented on this platform.
+
+        * Shared/Downloads/mac/DownloadMac.mm:
+        (WebKit::Download::resume):
+        Added. Consumes the sandbox extension, resumes the download, and sets m_request after the
+        NSURLDownload has been created. Note that we already have code to revoke the sandbox extension when
+        the download is finished, canceled, or fails.
+
+        * Shared/Downloads/soup/DownloadSoup.cpp:
+        (WebKit::Download::resume):
+        Added, not implemented on this platform.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextResumeDownload):
+        Added.
+
+        * UIProcess/API/C/WKContext.h:
+        Added WKContextResumeDownload().
+
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::resumeDownload):
+        Added. Creates a sandbox extension for the existing file and includes it in the message to the
+        network or web process.
+
+        * UIProcess/WebContext.h:
+        Added resumeDownload().
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::resumeDownload):
+        Added, calls through to DownloadManager::resumeDownload().
+
+        * WebProcess/WebProcess.h:
+        Added resumeDownload().
+
+        * WebProcess/WebProcess.messages.in:
+        Added ResumeDownload message.
+
+2014-10-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Change the default TLS errors policy to WEBKIT_TLS_ERRORS_POLICY_FAIL
+        https://bugs.webkit.org/show_bug.cgi?id=137832
+
+        Reviewed by Carlos Garcia Campos.
+
+        Too many general-purpose browsers that really need this policy
+        are not selecting it, so let's do so for them.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (createDefaultWebContext):
+
+2014-10-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] Disable SSLv3
+        https://bugs.webkit.org/show_bug.cgi?id=137859
+
+        Reviewed by Carlos Garcia Campos.
+
+        Set G_TLS_GNUTLS_PRIORITY if unset.
+
+        * NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp:
+        (main):
+        * WebProcess/EntryPoint/unix/WebProcessMain.cpp:
+        (main):
+
+2014-10-20  Chris Dumez  <cdumez@apple.com>
+
+        ResourceRequest deserialization unnecessarily calls partitionName() on encoded cache partition
+        https://bugs.webkit.org/show_bug.cgi?id=137797
+
+        Reviewed by Darin Adler.
+
+        This patch adds a |needsValidation| argument to
+        ResourceRequest::setCachePartition() setter so that the caller can
+        indicate that the partition name is valid (because it was already
+        processed by partitionName() before). Use this new argument in
+        ArgumentCoder<ResourceRequest>::decode() to spent a bit less time
+        deserializing resource requests.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceRequest>::decode):
+
+2014-10-20  Beth Dakin  <bdakin@apple.com>
+
+        Action menu items should have tags
+        https://bugs.webkit.org/show_bug.cgi?id=137898
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/API/c/WKActionMenuItemTypes.h: Added.
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _defaultMenuItemsForLink]):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-10-20  Beth Dakin  <bdakin@apple.com>
+
+        Add support for action menus
+        https://bugs.webkit.org/show_bug.cgi?id=137891
+        rdar://problem/18451638
+        rdar://problem/18694470
+
+        Reviewed by Anders Carlsson.
+
+        Temporary artwork needed for menu item.
+        * Resources/OpenInNewWindowTemplate.pdf: Added.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+        Add a preference that defaults to false for action menu support.
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetActionMenuSupportEnabled):
+        (WKPreferencesGetActionMenuSupportEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+
+        New SPI. WebKit clients can implement this method to customize the action menu.
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+
+        Create the action menu if it is supported.
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView initWithFrame:context:configuration:webView:]):
+
+        Methods to implement the default menu actions.
+        (-[WKView _openURLFromActionMenu:]):
+        (-[WKView _addToReadingListFromActionMenu:]):
+        (-[WKView _quickLookURLFromActionMenu:]):
+
+        Add action menus support for links. Populate the menu at the right time.
+        (-[WKView _defaultMenuItemsForLink]):
+        (-[WKView _defaultMenuItems]):
+        (-[WKView prepareForMenu:withEvent:]):
+        (-[WKView _actionMenuItemsForHitTestResult:defaultActionMenuItems:]):
+
+        New member variable caches the HitTestResult on mouse move.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::mouseDidMoveOverElement):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::activeActionMenuHitTestResult):
+
+2014-10-20  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Delay and white area when Web Inspector crashes
+        https://bugs.webkit.org/show_bug.cgi?id=137230
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::processDidCrash): Added.
+        (WebKit::WebInspectorProxy::eagerlyCreateInspectorPage): Hook up loader client.
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Generate all Inspector domains together in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=137748
+
+        Reviewed by Brian Burg.
+
+        * PlatformGTK.cmake:
+
+2014-10-19  Antti Koivisto  <antti@apple.com>
+
+        Avoid unnecessary NSURLResponse construction for QuickLook on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=137876
+
+        Reviewed by Andy Estes.
+
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResponse):
+
+            Switch to the modified QuickLookHandle interface that does not need NSURLResponse.
+
+2014-10-16  Andy Estes  <aestes@apple.com>
+
+        [iOS] Capture WKActionSheetAssistant's interaction with WKContentView in a @protocol
+        https://bugs.webkit.org/show_bug.cgi?id=137792
+
+        Reviewed by Tim Horton.
+
+        WKPDFView would like to use WKActionSheetAssistant to show an action sheet when long-pressing a link, but it
+        can't so long as WKActionSheetAssistant is tightly coupled to WKContentView. Resolve this by factoring
+        WKActionSheetAssistant's interaction with WKContentView into a new protocol called
+        WKActionSheetAssistantDelegate and having WKContentView conform to this protocol.
+
+        * UIProcess/API/Cocoa/_WKElementAction.mm:
+        (+[_WKElementAction elementActionWithTitle:actionHandler:]): Changed instances of WKContentView * to id <WKActionSheetAssistantDelegate>.
+        (+[_WKElementAction elementActionWithType:customTitle:]): Ditto.
+        (-[_WKElementAction _runActionWithElementInfo:delegate:]): Ditto.
+        (copyElement): Deleted.
+        (saveImage): Deleted.
+        (-[_WKElementAction _runActionWithElementInfo:view:]): Deleted.
+        * UIProcess/API/Cocoa/_WKElementActionInternal.h:
+        * UIProcess/ios/WKActionSheet.h:
+        * UIProcess/ios/WKActionSheet.mm:
+        (-[WKActionSheet init]): Renamed from initWithView: since WKActionSheet no longer needs to know about a view.
+        (-[WKActionSheet _didRotateAndLayout]): Called -[WKActionSheetDelegate updatePositionInformation].
+        (-[WKActionSheet initWithView:]): Deleted.
+        * UIProcess/ios/WKActionSheetAssistant.h:
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant delegate]): Added a getter for the delegate property.
+        (-[WKActionSheetAssistant setDelegate:]): Added a setter for the delegate property.
+        (-[WKActionSheetAssistant initWithView:]): Changed argument type from WKContentView * to UIView *.
+        (-[WKActionSheetAssistant initialPresentationRectInHostViewForSheet]): Returned CGRectZero if there is no delegate.
+        Otherwise, retrieved positionInformation from the delegate.
+        (-[WKActionSheetAssistant presentationRectInHostViewForSheet]): Ditto.
+        (-[WKActionSheetAssistant updatePositionInformation]): Called -[WKActionSheetAssistantDelegate updatePositionInformation].
+        (-[WKActionSheetAssistant _createSheetWithElementActions:showLinkTitle:]): Returned early if there is no delegate.
+        Otherwise, retrieved positionInformation from the delegate.
+        (-[WKActionSheetAssistant showImageSheet]): Ditto.
+        (-[WKActionSheetAssistant showLinkSheet]): Ditto.
+        (-[WKActionSheetAssistant showDataDetectorsSheet]): Ditto.
+        (-[WKActionSheetAssistant cleanupSheet]):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]): Installed self as WKActionSheetAssistant's delegate.
+        (-[WKContentView updatePositionInformation]): Renamed from _updatePositionInformation.
+        (-[WKContentView performAction:]): Renamed from _performAction:.
+        (-[WKContentView openElementAtLocation:]): Called _attemptClickAtLocation:.
+        (-[WKContentView actionsForElement:defaultActions:]): Called API::UIClient::actionsForElement().
+        (-[WKContentView startInteractionWithElement:]): Called WebPageProxy::startInteractionWithElementAtPosition().
+        (-[WKContentView stopInteraction]): Called WebPageProxy::stopInteraction().
+        (-[WKContentView _updatePositionInformation]): Deleted.
+        (-[WKContentView _performAction:]): Deleted.
+
+2014-10-20  Carlos Garnacho  <carlosg@gnome.org>
+
+        [GTK] Improve zooming gesture positioning
+        https://bugs.webkit.org/show_bug.cgi?id=137822
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/gtk/GestureController.cpp:
+        (WebKit::GestureController::ZoomGesture::center):
+        (WebKit::GestureController::ZoomGesture::begin):
+        (WebKit::GestureController::ZoomGesture::handleZoom):
+        (WebKit::GestureController::ZoomGesture::scaleChanged): Calculate
+        the proper view coordinates for the current offset/scale, based
+        on the initial gesture center point in document coordinates, and
+        the current center/scale.
+        * UIProcess/gtk/GestureController.h:
+        * UIProcess/gtk/WebPageProxyGtk.cpp:
+        (WebKit::WebPageProxy::getCenterForZoomGesture): Added. Synchronous
+        call to retrieve the zoom gesture anchor point, in document coordinates.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in: Added stub.
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        (WebKit::WebPage::getCenterForZoomGesture): Added. Getter for the
+        translated coordinates used as the anchor point of the zoom gesture.
+
+2014-10-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove the factory method from DragAndDropHandler
+        https://bugs.webkit.org/show_bug.cgi?id=137872
+
+        Reviewed by Sergio Villar Senin.
+
+        Make the constructor public and use std::make_unique instead.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseDragAndDropHandler):
+        * UIProcess/gtk/DragAndDropHandler.cpp:
+        (WebKit::DragAndDropHandler::create): Deleted.
+        * UIProcess/gtk/DragAndDropHandler.h:
+
+2014-10-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add initial gestures support
+        https://bugs.webkit.org/show_bug.cgi?id=137812
+
+        Reviewed by Sergio Villar Senin.
+
+        Now that GTK+ has support for gestures, we can use it to handle
+        touch events and allow to scroll, zoom and tap with the fingers.
+
+        * PlatformGTK.cmake: Add new files to compilation.
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::doneWithTouchEvent): When the touch event
+        hasn't been handled by the web process pass it to the
+        GestureController and only fallback to pointer emulation when the
+        GestureController doesn't handle the event.
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseTouchEvent): If the GestureController is
+        currently processing gestures is because the START touch event was
+        not handled by the web process, so pass any successive touch
+        events to the GestureController directly.
+        (webkitWebViewBaseGestureController): Create the GestureController
+        on demand and return a reference.
+        * UIProcess/API/gtk/WebKitWebViewBasePrivate.h:
+        * UIProcess/gtk/GestureController.cpp: Added.
+        (WebKit::GestureController::create): Create a GestureController.
+        (WebKit::GestureController::GestureController): Initialize the
+        Gesture memebers.
+        (WebKit::GestureController::handleEvent): Pass the event to the gestures.
+        (WebKit::GestureController::isProcessingGestures): Whether
+        Gestures are active.
+        (WebKit::GestureController::Gesture::Gesture): Base class for gestures.
+        (WebKit::GestureController::Gesture::isActive): Whether the
+        gesture is active.
+        (WebKit::GestureController::Gesture::handleEvent): Pass the event
+        to the GtkGesture to process it.
+        (WebKit::GestureController::DragGesture::handleDrag): Send a wheel
+        event corresponding to the drag gesture to the web process.
+        (WebKit::GestureController::DragGesture::handleTap): Send move,
+        press and release events corresponding to a tap gesture to the web process.
+        (WebKit::GestureController::DragGesture::begin): Start a drag
+        gesture and schedule a timer to discard tap gesture in case of
+        long press.
+        (WebKit::GestureController::DragGesture::update): If the actual
+        drag hasn't started yet, check the drag threshold to decide
+        whether to start the drag or not. Otherwise call handleDrag() to
+        send the appropriate events to the web process.
+        (WebKit::GestureController::DragGesture::end): If the drag gesture
+        finishes and the drag didn't happen (it wasn't a long press and
+        drag threshold was not reached), call handleTap() to emulate a
+        click event.
+        (WebKit::GestureController::DragGesture::DragGesture): Initialize
+        the GtkGestureDrag.
+        (WebKit::GestureController::ZoomGesture::begin): Save the current
+        page scale factor and the center point of the gesture.
+        (WebKit::GestureController::ZoomGesture::scaleChanged): Schedule a
+        page scale change in an idle for the given scale value.
+        (WebKit::GestureController::ZoomGesture::ZoomGesture): Initialize
+        the GtkGestureZoom.
+        * UIProcess/gtk/GestureController.h: Added.
+
+2014-10-19  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for all remaining RenderObject subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137845
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for all remaining RenderObject subclasses and 
+        clean up the surrounding code.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::pluginProcessCrashed):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::createPlugin):
+
+2014-10-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move GtkDragAndDropHelper from Platform to WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=137422
+
+        Reviewed by Martin Robinson.
+
+        WebKitWebViewBase is currently the only user of
+        GtkDragAndDropHelper, that was added to share the code with
+        WebKit1. Move all the drag and drop logic to a new class
+        DragAndDropHandler.
+
+        * PlatformGTK.cmake: Add new files to compilation.
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::startDrag):
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseConstructed):
+        (webkitWebViewBaseDragDataGet):
+        (webkitWebViewBaseDragEnd):
+        (webkitWebViewBaseDragDataReceived):
+        (webkitWebViewBaseDragMotion):
+        (webkitWebViewBaseDragLeave):
+        (webkitWebViewBaseDragDrop):
+        (webkitWebViewBaseDragAndDropHandler):
+        (dragExitedCallback): Deleted.
+        (webkitWebViewBaseStartDrag): Deleted.
+        * UIProcess/API/gtk/WebKitWebViewBasePrivate.h:
+        * UIProcess/gtk/DragAndDropHandler.cpp: Added.
+        (WebKit::DragAndDropHandler::create):
+        (WebKit::DragAndDropHandler::DragAndDropHandler):
+        (WebKit::DragAndDropHandler::DroppingContext::DroppingContext):
+        (WebKit::dragOperationToGdkDragActions):
+        (WebKit::dragOperationToSingleGdkDragAction):
+        (WebKit::gdkDragActionToDragOperation):
+        (WebKit::DragAndDropHandler::startDrag):
+        (WebKit::DragAndDropHandler::fillDragData):
+        (WebKit::DragAndDropHandler::finishDrag):
+        (WebKit::DragAndDropHandler::dataObjectForDropData):
+        (WebKit::DragAndDropHandler::dragEntered):
+        (WebKit::DragAndDropHandler::requestDragData):
+        (WebKit::DragAndDropHandler::dragMotion):
+        (WebKit::DragAndDropHandler::dragLeave):
+        (WebKit::DragAndDropHandler::drop):
+        * UIProcess/gtk/DragAndDropHandler.h: Added.
+
+2014-10-18  Dan Bernstein  <mitz@apple.com>
+
+        WorkQueue dispatches functions but isn’t a FunctionDispatcher
+        https://bugs.webkit.org/show_bug.cgi?id=137853
+
+        Reviewed by Anders Carlsson.
+
+        * Platform/WorkQueue.h: Changed to inherit from FunctionDispatcher.
+
+2014-10-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Improve documentation of webkit_web_view_get_tls_info()
+        https://bugs.webkit.org/show_bug.cgi?id=137852
+
+        Reviewed by Martin Robinson.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+
+2014-10-17  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for RenderBox
+        https://bugs.webkit.org/show_bug.cgi?id=137804
+
+        Reviewed by Andreas Kling.
+
+        Use is<>() / downcast<>() for RenderBox and clean up the surrounding
+        code.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+        (WebKit::WebPage::plugInIsPrimarySize):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::sendTapHighlightForNodeIfNecessary):
+
+2014-10-16  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Turn off font autosizing for iOS WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=137806
+
+        Reviewed by Sam Weinig.
+        
+        Confusingly, WKPreferencesSetTextAutosizingEnabled() does nothing on iOS.
+        Instead, we have to add WKPreferencesSetMinimumZoomFontSize() and set it to 0
+        to disable font autosizing.
+
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetMinimumZoomFontSize):
+        (WKPreferencesGetMinimumZoomFontSize):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+
+2014-10-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] REGRESSION(r173929): It broke the Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=137522
+
+        Reviewed by Csaba Osztrogonác.
+
+        r173929 let web inspector use a separate web process. Besides it changed that the inspector is shown
+        as docking mode by default. However EFL port doesn't support to show web inspector as docking window yet.
+        This patch is to show web inspector on EFL new window as before. Docking mode should be implemented by
+        upcoming patch.
+
+        * UIProcess/efl/WebInspectorProxyEfl.cpp:
+        (WebKit::WebInspectorProxy::platformAttach):
+
+2014-10-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to GMainLoopSource to schedule sources after a delay in microseconds
+        https://bugs.webkit.org/show_bug.cgi?id=137782
+
+        Reviewed by Sergio Villar Senin.
+
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::layerFlushTimerFired): Use microseconds
+        instead of milliseconds.
+
+2014-10-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move touch events handling from Platform to WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=137735
+
+        Reviewed by Sergio Villar Senin.
+
+        GtkTouchContextHelper was only used by WebKitWebViewBase, since
+        it's the only one that can create touch events. The code has been
+        simplified by processing the events in the view, and the native
+        touch events are now created with the native event and touch points.
+
+        * Shared/NativeWebTouchEvent.h:
+        (WebKit::NativeWebTouchEvent::touchContext): Deleted.
+        * Shared/gtk/NativeWebTouchEventGtk.cpp:
+        (WebKit::NativeWebTouchEvent::NativeWebTouchEvent): Pass touch
+        points instead of touch context to WebEventFactory::createWebTouchEvent().
+        * Shared/gtk/WebEventFactory.cpp:
+        (WebKit::WebEventFactory::createWebTouchEvent): Create the
+        WebTouchEvent for the given native event and points.
+        (WebKit::touchPhaseFromEvents): Deleted.
+        (WebKit::appendTouchEvent): Deleted.
+        * Shared/gtk/WebEventFactory.h:
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (appendTouchEvent): Helper function to create a
+        WebPlatformTouchPoint for the given native event and add it to the
+        list of touch points.
+        (webkitWebViewBaseGetTouchPointForEvent): Build the touch point
+        list for the event.
+        (webkitWebViewBaseTouchEvent): Process the touch event.
+        (webkitWebViewBaseDragDataReceived): Deleted.
+
+2014-10-16  Pascal Jacquemart  <p.jacquemart@samsung.com>
+
+        Removing CUSTOM_PROTOCOLS guard
+        https://bugs.webkit.org/show_bug.cgi?id=137741
+
+        Reviewed by Benjamin Poulain.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::NetworkProcess):
+        * Shared/Network/CustomProtocols/Cocoa/CustomProtocolManagerCocoa.mm:
+        * Shared/Network/CustomProtocols/CustomProtocolManager.h:
+        * Shared/Network/CustomProtocols/CustomProtocolManager.messages.in:
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp:
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.h:
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerSoup.cpp:
+        * Shared/Network/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode):
+        (WebKit::NetworkProcessCreationParameters::decode):
+        * Shared/Network/NetworkProcessCreationParameters.h:
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/API/C/soup/WKAPICastSoup.h:
+        * UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp:
+        (WKSoupCustomProtocolRequestManagerGetTypeID):
+        (WKSoupCustomProtocolRequestManagerSetClient):
+        * UIProcess/Network/CustomProtocols/CustomProtocolManagerProxy.h:
+        * UIProcess/Network/CustomProtocols/CustomProtocolManagerProxy.messages.in:
+        * UIProcess/Network/CustomProtocols/mac/CustomProtocolManagerProxyMac.mm:
+        * UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp:
+        * UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp:
+        * UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.h:
+        * UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp:
+        * UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.h:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::NetworkProcessProxy):
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::WebContext):
+        (WebKit::WebContext::unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers):
+        (WebKit::WebContext::unregisterSchemeForCustomProtocol):
+        * UIProcess/WebContext.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::WebProcessProxy):
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::platformInitializeWebProcess):
+        (WebKit::WebContext::platformInitializeNetworkProcess):
+        * WebKit2Prefix.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess):
+        * WebProcess/soup/WebKitSoupRequestGeneric.cpp:
+        (webkitSoupRequestGenericSendAsync):
+        (webkitSoupRequestGenericSendFinish):
+        * WebProcess/soup/WebKitSoupRequestGeneric.h:
+
+2014-10-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Crash under RemoteLayerTreeHost::getLayer() when closing a tab
+        https://bugs.webkit.org/show_bug.cgi?id=137796
+        rdar://problem/18547565
+
+        Reviewed by Tim Horton.
+        
+        CA can call our animation delegate after the RemoteLayerTreeHost has been
+        destroyed. CAAnimation retains its delegate, so it's safe for us to null out
+        the WKAnimationDelegate's pointer to the RemoteLayerTreeHost when tearing down
+        the RemoteLayerTreeHost.
+
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::~RemoteLayerTreeHost):
+        (WebKit::RemoteLayerTreeHost::animationDidEnd):
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (-[WKAnimationDelegate invalidate]):
+        (-[WKAnimationDelegate animationDidStart:]):
+        (-[WKAnimationDelegate animationDidStop:finished:]):
+
+2014-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Implement selection services menu for Legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=137582
+        <rdar://problem/18604241>
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (-[WKSharingServicePickerDelegate sharingService:didShareItems:]):
+        Add a note that we should transition to using replaceSelectionWithAttributedString.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::handleSelectionServiceClick):
+        Allow editor services in editable-but-not-rich-text areas, just like in WebKit1.
+
+2014-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Various crashes in ViewGestureControllerIOS when closing a tab while a swipe gesture is in progress
+        https://bugs.webkit.org/show_bug.cgi?id=137770
+        <rdar://problem/17916459>
+
+        Reviewed by Dan Bernstein.
+
+        When tearing down a WKWebView in the middle of a swipe gesture, a variety of
+        UI process crashes were observed. First, two uses of potentially deleted objects
+        (the WebBackForwardListItem and ViewGestureController), which were fixed by
+        extending the object's lifetime and checking for its liveness, respectively.
+        Second, a potential null-deref of DrawingArea if the timing of endSwipeGesture
+        vs. page teardown was such that DrawingArea was null but everything else was in line.
+        Lastly, another case of messaging a potentially deleted object (specifically,
+        the _UIViewControllerTransitionContext's animator) in a callback from CA, which
+        was fixed by nulling out the animator (and a few other properties) when tearing
+        down the ViewGestureController.
+
+        * UIProcess/ios/ViewGestureControllerIOS.mm:
+        (-[WKSwipeTransitionController invalidate]):
+        Clear the soon-to-be-invalid ViewGestureController pointer.
+
+        (WebKit::ViewGestureController::~ViewGestureController):
+        Call [WKSwipeTransitionController invalidate] upon destruction.
+        Clear our transition context's interactor and animator, and inform it that
+        the transition is not in flight. This avoids a crash when calling back
+        to the already-destroyed animator later.
+
+        (WebKit::ViewGestureController::beginSwipeGesture):
+        Keep a reference to the target WebBackForwardListItem; this avoids
+        it being deleted between here and the transition completion block firing.
+
+        Look up the ViewGestureController by pageID, just like we do in endSwipeGesture,
+        to avoid situations where the callback fires after the WKWebView/ViewGestureController
+        have gone away.
+
+        Hold on to our _UIViewControllerOneToOneTransitionContext, so that we can do the
+        aforementioned clearing upon deallocation.
+
+        (WebKit::ViewGestureController::endSwipeGesture):
+        Null check the DrawingArea. If it is null, instead of doing our normal delayed logic
+        for swipe snapshot teardown, just put things back together immediately.
+
+        (WebKit::ViewGestureController::removeSwipeSnapshot):
+        Clear m_swipeTransitionContext.
+
+2014-10-16  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r173356): Downloading a disk image appends ".txt" to it
+        https://bugs.webkit.org/show_bug.cgi?id=137493
+        <rdar://problem/18321947>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Shared/Downloads/ios/DownloadIOS.mm:
+        (WebKit::Download::startWithHandle):
+        * Shared/Downloads/mac/DownloadMac.mm:
+        (WebKit::Download::startWithHandle):
+
+            It appears that the synthesized NS/CFURLResponse fails to serialize the suggested filename correctly
+            unless it has been accessed first.
+
+2014-10-15  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] "Plug-in will handle load" error isn't declared in the modern API
+        https://bugs.webkit.org/show_bug.cgi?id=137747
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKError.mm: Define _WKLegacyErrorDomain.
+        * UIProcess/API/Cocoa/WKErrorInternal.h: Changed to import WKErrorPrivate.h.
+        * UIProcess/API/Cocoa/WKErrorPrivate.h: Added. Declares _WKLegacyErrorDomain
+        and _WKLegacyErrorPlugInWillHandleLoad.
+        * WebKit2.xcodeproj/project.pbxproj: Added new private header.
+
+2014-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for TransformOperation subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=137731
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for TransformOperation subclasses and clean
+        up the surrounding code.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (IPC::ArgumentCoder<TransformOperations>::encode):
+
+2014-10-15  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Allow some Kerberos related paths in sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=137666
+        rdar://problem/17965010
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
 2014-10-15  Alexey Proskuryakov  <ap@apple.com>
 
         [Mac] Allow plug-ins to read managed preferences

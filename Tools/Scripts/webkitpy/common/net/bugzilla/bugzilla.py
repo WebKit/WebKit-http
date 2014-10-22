@@ -468,12 +468,10 @@ class Bugzilla(object):
 
     def fetch_bug_dictionary(self, bug_id):
         try:
+            self.authenticate()
             return self._parse_bug_dictionary_from_xml(self._fetch_bug_page(bug_id))
         except KeyboardInterrupt:
             raise
-        except:
-            self.authenticate()
-            return self._parse_bug_dictionary_from_xml(self._fetch_bug_page(bug_id))
 
     # FIXME: A BugzillaCache object should provide all these fetch_ methods.
 
@@ -754,7 +752,7 @@ class Bugzilla(object):
 
         self.browser.open(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
-        self.browser.set_value(comment_text, name='comment', nr=0)
+        self.browser.set_value(comment_text, name='comment', nr=1)
         self._find_select_element_for_flag('review').value = ("X",)
         self._find_select_element_for_flag('commit-queue').value = ("X",)
         self.browser.submit()

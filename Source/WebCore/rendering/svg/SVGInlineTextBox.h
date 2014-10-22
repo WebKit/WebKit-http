@@ -35,7 +35,7 @@ class SVGInlineTextBox final : public InlineTextBox {
 public:
     explicit SVGInlineTextBox(RenderSVGInlineText&);
 
-    RenderSVGInlineText& renderer() const { return toRenderSVGInlineText(InlineTextBox::renderer()); }
+    RenderSVGInlineText& renderer() const { return downcast<RenderSVGInlineText>(InlineTextBox::renderer()); }
 
     virtual float virtualLogicalHeight() const { return m_logicalHeight; }
     void setLogicalHeight(float height) { m_logicalHeight = height; }
@@ -92,8 +92,8 @@ private:
     Vector<SVGTextFragment> m_textFragments;
 };
 
-INLINE_BOX_OBJECT_TYPE_CASTS(SVGInlineTextBox, isSVGInlineTextBox())
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_INLINE_BOX(SVGInlineTextBox, isSVGInlineTextBox())
 
 #endif // SVGInlineTextBox_h

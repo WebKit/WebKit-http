@@ -179,6 +179,7 @@ set(ENABLE_INSPECTOR ON)
 set(ENABLE_WEBKIT OFF)
 set(ENABLE_WEBKIT2 ON)
 set(ENABLE_PLUGIN_PROCESS ON)
+set(ENABLE_SMOOTH_SCROLLING ON)
 
 set(GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6)
 set(GTK_API_VERSION 3.0)
@@ -258,6 +259,10 @@ endif ()
 if (ENABLE_CREDENTIAL_STORAGE)
     find_package(Libsecret)
     set(ENABLE_CREDENTIAL_STORAGE 1)
+endif ()
+
+if (GTK_SUPPORTS_GESTURES)
+    add_definitions(-DHAVE_GTK_GESTURES=1)
 endif ()
 
 # This part can be simplified once CMake 2.8.6 is required and

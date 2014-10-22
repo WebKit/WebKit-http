@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKError.h"
+#import "WKErrorPrivate.h"
 
 #if WK_API_ENABLED
 

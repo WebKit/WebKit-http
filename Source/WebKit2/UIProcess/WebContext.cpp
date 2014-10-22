@@ -29,6 +29,7 @@
 #include "APIArray.h"
 #include "APIDownloadClient.h"
 #include "APIHistoryClient.h"
+#include "CustomProtocolManagerMessages.h"
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
 #include "Platform/Logging.h"
@@ -91,15 +92,11 @@
 #include "ServicesController.h"
 #endif
 
-#if ENABLE(CUSTOM_PROTOCOLS)
-#include "CustomProtocolManagerMessages.h"
-#endif
-
 #if ENABLE(REMOTE_INSPECTOR)
 #include <JavaScriptCore/RemoteInspector.h>
 #endif
 
-#if USE(SOUP) && ENABLE(CUSTOM_PROTOCOLS)
+#if USE(SOUP)
 #include "WebSoupCustomProtocolRequestManager.h"
 #endif
 
@@ -205,7 +202,7 @@ WebContext::WebContext(WebContextConfiguration configuration)
 #if ENABLE(SQL_DATABASE)
     addSupplement<WebDatabaseManagerProxy>();
 #endif
-#if USE(SOUP) && ENABLE(CUSTOM_PROTOCOLS)
+#if USE(SOUP)
     addSupplement<WebSoupCustomProtocolRequestManager>();
 #endif
 #if ENABLE(BATTERY_STATUS)
@@ -892,6 +889,25 @@ DownloadProxy* WebContext::download(WebPageProxy* initiatingPage, const Resource
     return downloadProxy;
 }
 
+DownloadProxy* WebContext::resumeDownload(const API::Data* resumeData, const String& path)
+{
+    DownloadProxy* downloadProxy = createDownloadProxy(ResourceRequest());
+
+    SandboxExtension::Handle sandboxExtensionHandle;
+    if (!path.isEmpty())
+        SandboxExtension::createHandle(path, SandboxExtension::ReadWrite, sandboxExtensionHandle);
+
+#if ENABLE(NETWORK_PROCESS)
+    if (usesNetworkProcess() && networkProcess()) {
+        networkProcess()->send(Messages::NetworkProcess::ResumeDownload(downloadProxy->downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
+        return downloadProxy;
+    }
+#endif
+
+    m_processes[0]->send(Messages::WebProcess::ResumeDownload(downloadProxy->downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
+    return downloadProxy;
+}
+
 void WebContext::postMessageToInjectedBundle(const String& messageName, API::Object* messageBody)
 {
     if (m_processes.isEmpty()) {
@@ -1011,7 +1027,6 @@ void WebContext::registerURLSchemeAsCORSEnabled(const String& urlScheme)
     sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsCORSEnabled(urlScheme));
 }
 
-#if ENABLE(CUSTOM_PROTOCOLS)
 HashSet<String>& WebContext::globalURLSchemesWithCustomProtocolHandlers()
 {
     static NeverDestroyed<HashSet<String>> set;
@@ -1039,7 +1054,6 @@ void WebContext::unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers(const S
     for (auto* context : allContexts())
         context->unregisterSchemeForCustomProtocol(schemeLower);
 }
-#endif
 
 #if ENABLE(CACHE_PARTITIONING)
 void WebContext::registerURLSchemeAsCachePartitioned(const String& urlScheme)
@@ -1397,7 +1411,6 @@ void WebContext::setPlugInAutoStartOriginsFilteringOutEntriesAddedAfterTime(Immu
     m_plugInAutoStartProvider.setAutoStartOriginsFilteringOutEntriesAddedAfterTime(dictionary, time);
 }
 
-#if ENABLE(CUSTOM_PROTOCOLS)
 void WebContext::registerSchemeForCustomProtocol(const String& scheme)
 {
     sendToNetworkingProcess(Messages::CustomProtocolManager::RegisterScheme(scheme));
@@ -1407,7 +1420,6 @@ void WebContext::unregisterSchemeForCustomProtocol(const String& scheme)
 {
     sendToNetworkingProcess(Messages::CustomProtocolManager::UnregisterScheme(scheme));
 }
-#endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebContext::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)

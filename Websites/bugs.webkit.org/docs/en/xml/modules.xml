@@ -42,10 +42,8 @@
       <para>
         Running Bugzilla on Windows requires the use of ActiveState
         Perl 5.8.1 or higher. Many modules already exist in the core
-        distribution of ActiveState Perl. Additional modules can be downloaded
-        from <ulink url="http://theoryx5.uwinnipeg.ca/ppms/" /> if you use
-        Perl 5.8.x or from <ulink url="http://cpan.uwinnipeg.ca/PPMPackages/10xx/" />
-        if you use Perl 5.10.x.
+        distribution of ActiveState Perl. If some modules are missing, upgrade
+        ActiveState Perl to at least 5.12; it has all the required modules.
       </para>
     </note>
 
@@ -98,14 +96,6 @@
     </para>
 
     <para>
-      File::Spec:
-      <literallayout>
-        CPAN Download Page: <ulink url="http://search.cpan.org/dist/File-Spec/"/>
-        Documentation: <ulink url="http://perldoc.perl.org/File/Spec.html"/>
-      </literallayout>
-    </para>
-
-    <para>
       Template-Toolkit:
       <literallayout>
         CPAN Download Page: <ulink url="http://search.cpan.org/dist/Template-Toolkit/"/>
@@ -143,7 +133,7 @@
     <title>Optional Modules</title>
 
     <para>
-      Chart::Base:
+      Chart::Lines:
       <literallayout>
         CPAN Download Page: <ulink url="http://search.cpan.org/dist/Chart/"/>
         Documentation: <ulink url="http://search.cpan.org/dist/Chart/Chart.pod"/>
@@ -179,14 +169,6 @@
       <literallayout>
         CPAN Download Page: <ulink url="http://search.cpan.org/author/JKEISER/PatchReader/"/>
         Documentation: <ulink url="http://www.johnkeiser.com/mozilla/Patch_Viewer.html"/>
-      </literallayout>
-    </para>
-
-   <para>
-      Image::Magick:
-      <literallayout>
-        CPAN Download Page: <ulink url="http://search.cpan.org/dist/PerlMagick/"/>
-        Documentation: <ulink url="http://www.imagemagick.org/script/resources.php"/>
       </literallayout>
     </para>
    </section>

@@ -422,10 +422,10 @@ bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const Pai
 
 int RenderThemeIOS::baselinePosition(const RenderObject& renderer) const
 {
-    if (!renderer.isBox())
+    if (!is<RenderBox>(renderer))
         return 0;
 
-    const RenderBox& box = *toRenderBox(&renderer);
+    const auto& box = downcast<RenderBox>(renderer);
 
     if (box.style().appearance() == CheckboxPart || box.style().appearance() == RadioPart)
         return box.marginTop() + box.height() - 2; // The baseline is 2px up from the bottom of the checkbox/radio in AppKit.
@@ -849,7 +849,7 @@ double RenderThemeIOS::animationDurationForProgressBar(RenderProgress&) const
 
 bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintInfo& paintInfo, const IntRect& rect)
 {
-    if (!renderer.isProgress())
+    if (!is<RenderProgress>(renderer))
         return true;
 
     const int progressBarHeight = 9;
@@ -897,7 +897,7 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
 
     context->fillRect(FloatRect(rect.x(), verticalRenderingPosition, rect.width(), upperGradientHeight));
 
-    const RenderProgress& renderProgress = *toRenderProgress(&renderer);
+    const auto& renderProgress = downcast<RenderProgress>(renderer);
     if (renderProgress.isDeterminate()) {
         // 2) Draw the progress bar.
         double position = clampTo(renderProgress.position(), 0.0, 1.0);

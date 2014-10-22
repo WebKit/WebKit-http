@@ -34,9 +34,15 @@ package Bugzilla::Config::MTA;
 use strict;
 
 use Bugzilla::Config::Common;
+# Return::Value 1.666002 pollutes the error log with warnings about this
+# deprecated module. We have to set NO_CLUCK = 1 before loading Email::Send
+# to disable these warnings.
+BEGIN {
+    $Return::Value::NO_CLUCK = 1;
+}
 use Email::Send;
 
-$Bugzilla::Config::MTA::sortkey = "10";
+our $sortkey = 1200;
 
 sub get_param_list {
   my $class = shift;
@@ -58,9 +64,10 @@ sub get_param_list {
   },
 
   {
-   name => 'sendmailnow',
+   name => 'use_mailer_queue',
    type => 'b',
-   default => 1
+   default => 0,
+   checker => \&check_theschwartz_available,
   },
 
   {
@@ -90,7 +97,6 @@ sub get_param_list {
    default => 7,
    checker => \&check_numeric
   },
-  
   {
    name => 'globalwatchers',
    type => 't',

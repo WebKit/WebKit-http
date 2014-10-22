@@ -277,9 +277,14 @@ void WKContextSetConnectionClient(WKContextRef contextRef, const WKContextConnec
     toImpl(contextRef)->initializeConnectionClient(wkClient);
 }
 
-WKDownloadRef WKContextDownloadURLRequest(WKContextRef contextRef, const WKURLRequestRef requestRef)
+WKDownloadRef WKContextDownloadURLRequest(WKContextRef contextRef, WKURLRequestRef requestRef)
 {
     return toAPI(toImpl(contextRef)->download(0, toImpl(requestRef)->resourceRequest()));
+}
+
+WKDownloadRef WKContextResumeDownload(WKContextRef contextRef, WKDataRef resumeData, WKStringRef path)
+{
+    return toAPI(toImpl(contextRef)->resumeDownload(toImpl(resumeData), toWTFString(path)));
 }
 
 void WKContextSetInitializationUserDataForInjectedBundle(WKContextRef contextRef,  WKTypeRef userDataRef)

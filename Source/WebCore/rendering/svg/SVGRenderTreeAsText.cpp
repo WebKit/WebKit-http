@@ -258,8 +258,8 @@ static void writeStyle(TextStream& ts, const RenderElement& renderer)
         writeNameValuePair(ts, "transform", renderer.localTransform());
     writeIfNotDefault(ts, "image rendering", style.imageRendering(), RenderStyle::initialImageRendering());
     writeIfNotDefault(ts, "opacity", style.opacity(), RenderStyle::initialOpacity());
-    if (renderer.isSVGShape()) {
-        const auto& shape = toRenderSVGShape(renderer);
+    if (is<RenderSVGShape>(renderer)) {
+        const auto& shape = downcast<RenderSVGShape>(renderer);
 
         Color fallbackColor;
         if (RenderSVGResource* strokePaintingResource = RenderSVGResource::strokePaintingResource(const_cast<RenderSVGShape&>(shape), shape.style(), fallbackColor)) {
@@ -364,7 +364,7 @@ static TextStream& operator<<(TextStream& ts, const RenderSVGRoot& root)
 
 static void writeRenderSVGTextBox(TextStream& ts, const RenderSVGText& text)
 {
-    SVGRootInlineBox* box = toSVGRootInlineBox(text.firstRootBox());
+    auto* box = downcast<SVGRootInlineBox>(text.firstRootBox());
     if (!box)
         return;
 
@@ -434,10 +434,10 @@ static inline void writeSVGInlineTextBox(TextStream& ts, SVGInlineTextBox* textB
 static inline void writeSVGInlineTextBoxes(TextStream& ts, const RenderText& text, int indent)
 {
     for (InlineTextBox* box = text.firstTextBox(); box; box = box->nextTextBox()) {
-        if (!box->isSVGInlineTextBox())
+        if (!is<SVGInlineTextBox>(*box))
             continue;
 
-        writeSVGInlineTextBox(ts, toSVGInlineTextBox(box), indent);
+        writeSVGInlineTextBox(ts, downcast<SVGInlineTextBox>(box), indent);
     }
 }
 

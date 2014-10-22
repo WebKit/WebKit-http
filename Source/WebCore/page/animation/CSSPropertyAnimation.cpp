@@ -114,11 +114,11 @@ static inline std::unique_ptr<ShadowData> blendFunc(const AnimationBase* anim, c
         blend(from->color(), to->color(), progress));
 }
 
-static inline TransformOperations blendFunc(const AnimationBase* anim, const TransformOperations& from, const TransformOperations& to, double progress)
+static inline TransformOperations blendFunc(const AnimationBase* animation, const TransformOperations& from, const TransformOperations& to, double progress)
 {
-    if (anim->isTransformFunctionListValid())
+    if (animation->isTransformFunctionListValid())
         return to.blendByMatchingOperations(from, progress);
-    return to.blendByUsingMatrixInterpolation(from, progress, anim->renderer()->isBox() ? toRenderBox(anim->renderer())->borderBoxRect().size() : LayoutSize());
+    return to.blendByUsingMatrixInterpolation(from, progress, is<RenderBox>(*animation->renderer()) ? downcast<RenderBox>(*animation->renderer()).borderBoxRect().size() : LayoutSize());
 }
 
 static inline PassRefPtr<ClipPathOperation> blendFunc(const AnimationBase*, ClipPathOperation* from, ClipPathOperation* to, double progress)
@@ -130,13 +130,13 @@ static inline PassRefPtr<ClipPathOperation> blendFunc(const AnimationBase*, Clip
     if (from->type() != ClipPathOperation::Shape || to->type() != ClipPathOperation::Shape)
         return to;
 
-    const BasicShape* fromShape = static_cast<ShapeClipPathOperation*>(from)->basicShape();
-    const BasicShape* toShape = static_cast<ShapeClipPathOperation*>(to)->basicShape();
+    const BasicShape& fromShape = downcast<ShapeClipPathOperation>(*from).basicShape();
+    const BasicShape& toShape = downcast<ShapeClipPathOperation>(*to).basicShape();
 
-    if (!fromShape->canBlend(toShape))
+    if (!fromShape.canBlend(toShape))
         return to;
 
-    return ShapeClipPathOperation::create(toShape->blend(fromShape, progress));
+    return ShapeClipPathOperation::create(toShape.blend(fromShape, progress));
 }
 
 #if ENABLE(CSS_SHAPES)
@@ -151,21 +151,21 @@ static inline PassRefPtr<ShapeValue> blendFunc(const AnimationBase*, ShapeValue*
     if (from->cssBox() != to->cssBox())
         return to;
 
-    const BasicShape* fromShape = from->shape();
-    const BasicShape* toShape = to->shape();
+    const BasicShape& fromShape = *from->shape();
+    const BasicShape& toShape = *to->shape();
 
-    if (!fromShape->canBlend(toShape))
+    if (!fromShape.canBlend(toShape))
         return to;
 
-    return ShapeValue::createShapeValue(toShape->blend(fromShape, progress), to->cssBox());
+    return ShapeValue::createShapeValue(toShape.blend(fromShape, progress), to->cssBox());
 }
 #endif
 
-static inline PassRefPtr<FilterOperation> blendFunc(const AnimationBase* anim, FilterOperation* fromOp, FilterOperation* toOp, double progress, bool blendToPassthrough = false)
+static inline PassRefPtr<FilterOperation> blendFunc(const AnimationBase* animation, FilterOperation* fromOp, FilterOperation* toOp, double progress, bool blendToPassthrough = false)
 {
     ASSERT(toOp);
     if (toOp->blendingNeedsRendererSize()) {
-        LayoutSize size = anim->renderer()->isBox() ? toRenderBox(anim->renderer())->borderBoxRect().size() : LayoutSize();
+        LayoutSize size = is<RenderBox>(*animation->renderer()) ? downcast<RenderBox>(*animation->renderer()).borderBoxRect().size() : LayoutSize();
         return toOp->blend(fromOp, progress, size, blendToPassthrough);
     }
     return toOp->blend(fromOp, progress, blendToPassthrough);
@@ -293,9 +293,9 @@ static inline PassRefPtr<StyleImage> blendFunc(const AnimationBase* anim, StyleI
         return to;
 
     // Animation between two generated images. Cross fade for all other cases.
-    if (from->isGeneratedImage() && to->isGeneratedImage()) {
-        CSSImageGeneratorValue& fromGenerated = toStyleGeneratedImage(from)->imageValue();
-        CSSImageGeneratorValue& toGenerated = toStyleGeneratedImage(to)->imageValue();
+    if (is<StyleGeneratedImage>(*from) && is<StyleGeneratedImage>(*to)) {
+        CSSImageGeneratorValue& fromGenerated = downcast<StyleGeneratedImage>(*from).imageValue();
+        CSSImageGeneratorValue& toGenerated = downcast<StyleGeneratedImage>(*to).imageValue();
 
         if (is<CSSFilterImageValue>(fromGenerated) && is<CSSFilterImageValue>(toGenerated)) {
             // Animation of generated images just possible if input images are equal.
@@ -315,19 +315,19 @@ static inline PassRefPtr<StyleImage> blendFunc(const AnimationBase* anim, StyleI
 
         // FIXME: Add support for animation between two *gradient() functions.
         // https://bugs.webkit.org/show_bug.cgi?id=119956
-    } else if (from->isGeneratedImage() && to->isCachedImage()) {
-        CSSImageGeneratorValue& fromGenerated = toStyleGeneratedImage(from)->imageValue();
+    } else if (is<StyleGeneratedImage>(*from) && is<StyleCachedImage>(*to)) {
+        CSSImageGeneratorValue& fromGenerated = downcast<StyleGeneratedImage>(*from).imageValue();
         if (is<CSSFilterImageValue>(fromGenerated)) {
             CSSFilterImageValue& fromFilter = downcast<CSSFilterImageValue>(fromGenerated);
-            if (fromFilter.cachedImage() && toStyleCachedImage(to)->cachedImage() == fromFilter.cachedImage())
+            if (fromFilter.cachedImage() && downcast<StyleCachedImage>(*to).cachedImage() == fromFilter.cachedImage())
                 return blendFilter(anim, fromFilter.cachedImage(), fromFilter.filterOperations(), FilterOperations(), progress);
         }
         // FIXME: Add interpolation between cross-fade and image source.
-    } else if (from->isCachedImage() && to->isGeneratedImage()) {
-        CSSImageGeneratorValue& toGenerated = toStyleGeneratedImage(to)->imageValue();
+    } else if (is<StyleCachedImage>(*from) && is<StyleGeneratedImage>(*to)) {
+        CSSImageGeneratorValue& toGenerated = downcast<StyleGeneratedImage>(*to).imageValue();
         if (is<CSSFilterImageValue>(toGenerated)) {
             CSSFilterImageValue& toFilter = downcast<CSSFilterImageValue>(toGenerated);
-            if (toFilter.cachedImage() && toStyleCachedImage(from)->cachedImage() == toFilter.cachedImage())     
+            if (toFilter.cachedImage() && downcast<StyleCachedImage>(*from).cachedImage() == toFilter.cachedImage())
                 return blendFilter(anim, toFilter.cachedImage(), FilterOperations(), toFilter.filterOperations(), progress);
         }
         // FIXME: Add interpolation between image source and cross-fade.
@@ -335,8 +335,8 @@ static inline PassRefPtr<StyleImage> blendFunc(const AnimationBase* anim, StyleI
 
     // FIXME: Add support cross fade between cached and generated images.
     // https://bugs.webkit.org/show_bug.cgi?id=78293
-    if (from->isCachedImage() && to->isCachedImage())
-        return crossfadeBlend(anim, toStyleCachedImage(from), toStyleCachedImage(to), progress);
+    if (is<StyleCachedImage>(*from) && is<StyleCachedImage>(*to))
+        return crossfadeBlend(anim, downcast<StyleCachedImage>(from), downcast<StyleCachedImage>(to), progress);
 
     return to;
 }

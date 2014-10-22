@@ -2005,6 +2005,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         }
 
         case op_profile_type: {
+            RELEASE_ASSERT(vm()->typeProfiler());
             // The format of this instruction is: op_profile_type regToProfile, TypeLocation*, flag, identifier?, resolveType?
             size_t instructionOffset = i + opLength - 1;
             unsigned divotStart, divotEnd;
@@ -3886,6 +3887,8 @@ struct VerifyCapturedDef {
             return;
 
         if (codeBlock->usesArguments() && virtualReg == codeBlock->argumentsRegister())
+            return;
+        if (codeBlock->usesArguments() && virtualReg == unmodifiedArgumentsRegister(codeBlock->argumentsRegister()))
             return;
 
         if (codeBlock->captureCount() && codeBlock->symbolTable()->isCaptured(operand)) {

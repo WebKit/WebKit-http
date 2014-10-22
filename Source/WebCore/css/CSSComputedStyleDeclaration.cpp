@@ -787,13 +787,13 @@ static PassRef<CSSValueList> getBorderRadiusShorthandValue(const RenderStyle* st
     return list;
 }
 
-static LayoutRect sizingBox(RenderObject* renderer)
+static LayoutRect sizingBox(RenderObject& renderer)
 {
-    if (!renderer->isBox())
+    if (!is<RenderBox>(renderer))
         return LayoutRect();
 
-    RenderBox* box = toRenderBox(renderer);
-    return box->style().boxSizing() == BORDER_BOX ? box->borderBoxRect() : box->computedCSSContentBoxRect();
+    auto& box = downcast<RenderBox>(renderer);
+    return box.style().boxSizing() == BORDER_BOX ? box.borderBoxRect() : box.computedCSSContentBoxRect();
 }
 
 static PassRef<WebKitCSSTransformValue> matrixTransformValue(const TransformationMatrix& transform, const RenderStyle* style)
@@ -841,8 +841,8 @@ static PassRef<CSSValue> computedTransform(RenderObject* renderer, const RenderS
         return cssValuePool().createIdentifierValue(CSSValueNone);
 
     FloatRect pixelSnappedRect;
-    if (renderer->isBox())
-        pixelSnappedRect = snapRectToDevicePixels(toRenderBox(renderer)->borderBoxRect(), renderer->document().deviceScaleFactor());
+    if (is<RenderBox>(*renderer))
+        pixelSnappedRect = snapRectToDevicePixels(downcast<RenderBox>(*renderer).borderBoxRect(), renderer->document().deviceScaleFactor());
 
     TransformationMatrix transform;
     style->applyTransform(transform, pixelSnappedRect, RenderStyle::ExcludeTransformOrigin);
@@ -1462,12 +1462,12 @@ static PassRef<CSSValueList> contentToCSSValue(const RenderStyle* style)
 {
     auto list = CSSValueList::createSpaceSeparated();
     for (const ContentData* contentData = style->contentData(); contentData; contentData = contentData->next()) {
-        if (contentData->isCounter())
-            list.get().append(cssValuePool().createValue(toCounterContentData(contentData)->counter().identifier(), CSSPrimitiveValue::CSS_COUNTER_NAME));
-        else if (contentData->isImage())
-            list.get().append(*toImageContentData(contentData)->image().cssValue());
-        else if (contentData->isText())
-            list.get().append(cssValuePool().createValue(toTextContentData(contentData)->text(), CSSPrimitiveValue::CSS_STRING));
+        if (is<CounterContentData>(*contentData))
+            list.get().append(cssValuePool().createValue(downcast<CounterContentData>(*contentData).counter().identifier(), CSSPrimitiveValue::CSS_COUNTER_NAME));
+        else if (is<ImageContentData>(*contentData))
+            list.get().append(*downcast<ImageContentData>(*contentData).image().cssValue());
+        else if (is<TextContentData>(*contentData))
+            list.get().append(cssValuePool().createValue(downcast<TextContentData>(*contentData).text(), CSSPrimitiveValue::CSS_STRING));
     }
     if (style->hasFlowFrom())
         list.get().append(cssValuePool().createValue(style->regionThread(), CSSPrimitiveValue::CSS_STRING));
@@ -1573,9 +1573,9 @@ template<RenderStyleLengthGetter lengthGetter, RenderBoxComputedCSSValueGetter c
 inline PassRefPtr<CSSValue> zoomAdjustedPaddingOrMarginPixelValue(RenderStyle* style, RenderObject* renderer)
 {
     Length unzoomzedLength = (style->*lengthGetter)();
-    if (!renderer || !renderer->isBox() || unzoomzedLength.isFixed())
+    if (!is<RenderBox>(renderer) || unzoomzedLength.isFixed())
         return zoomAdjustedPixelValueForLength(unzoomzedLength, style);
-    return zoomAdjustedPixelValue((toRenderBox(renderer)->*computedCSSValueGetter)(), style);
+    return zoomAdjustedPixelValue((downcast<RenderBox>(*renderer).*computedCSSValueGetter)(), style);
 }
 
 template<RenderStyleLengthGetter lengthGetter>
@@ -1664,7 +1664,7 @@ static inline PassRefPtr<RenderStyle> computeRenderStyleForProperty(Node* styled
 
     if (renderer && renderer->isComposited() && AnimationController::supportsAcceleratedAnimationOfProperty(propertyID)) {
         AnimationUpdateBlock animationUpdateBlock(&renderer->animation());
-        RefPtr<RenderStyle> style = renderer->animation().getAnimatedStyleForRenderer(downcast<RenderElement>(renderer));
+        RefPtr<RenderStyle> style = renderer->animation().getAnimatedStyleForRenderer(downcast<RenderElement>(*renderer));
         if (pseudoElementSpecifier && !styledNode->isPseudoElement()) {
             // FIXME: This cached pseudo style will only exist if the animation has been run at least once.
             return style->getCachedPseudoStyle(pseudoElementSpecifier);
@@ -1693,7 +1693,7 @@ static PassRef<CSSValue> shapePropertyValue(const RenderStyle* style, const Shap
     ASSERT(shapeValue->type() == ShapeValue::Type::Shape);
 
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
-    list->append(valueForBasicShape(style, shapeValue->shape()));
+    list->append(valueForBasicShape(style, *shapeValue->shape()));
     if (shapeValue->cssBox() != BoxMissing)
         list->append(cssValuePool().createValue(shapeValue->cssBox()));
     return list.releaseNonNull();
@@ -2183,7 +2183,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
                 // the "height" property does not apply for non-replaced inline elements.
                 if (!renderer->isReplaced() && renderer->isInline())
                     return cssValuePool().createIdentifierValue(CSSValueAuto);
-                return zoomAdjustedPixelValue(sizingBox(renderer).height(), style.get());
+                return zoomAdjustedPixelValue(sizingBox(*renderer).height(), style.get());
             }
             return zoomAdjustedPixelValueForLength(style->height(), style.get());
         case CSSPropertyWebkitHyphens:
@@ -2246,16 +2246,16 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return zoomAdjustedPaddingOrMarginPixelValue<&RenderStyle::marginTop, &RenderBoxModelObject::marginTop>(style.get(), renderer);
         case CSSPropertyMarginRight: {
             Length marginRight = style->marginRight();
-            if (marginRight.isFixed() || !renderer || !renderer->isBox())
+            if (marginRight.isFixed() || !is<RenderBox>(renderer))
                 return zoomAdjustedPixelValueForLength(marginRight, style.get());
             float value;
             if (marginRight.isPercent()) {
                 // RenderBox gives a marginRight() that is the distance between the right-edge of the child box
                 // and the right-edge of the containing box, when display == BLOCK. Let's calculate the absolute
                 // value of the specified margin-right % instead of relying on RenderBox's marginRight() value.
-                value = minimumValueForLength(marginRight, toRenderBox(renderer)->containingBlockLogicalWidthForContent());
+                value = minimumValueForLength(marginRight, downcast<RenderBox>(*renderer).containingBlockLogicalWidthForContent());
             } else
-                value = toRenderBox(renderer)->marginRight();
+                value = downcast<RenderBox>(*renderer).marginRight();
             return zoomAdjustedPixelValue(value, style.get());
         }
         case CSSPropertyMarginBottom:
@@ -2487,7 +2487,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
                 // the "width" property does not apply for non-replaced inline elements.
                 if (!renderer->isReplaced() && renderer->isInline())
                     return cssValuePool().createIdentifierValue(CSSValueAuto);
-                return zoomAdjustedPixelValue(sizingBox(renderer).width(), style.get());
+                return zoomAdjustedPixelValue(sizingBox(*renderer).width(), style.get());
             }
             return zoomAdjustedPixelValueForLength(style->width(), style.get());
         case CSSPropertyWordBreak:
@@ -2713,8 +2713,8 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             if (renderer) {
                 LayoutRect box;
-                if (renderer->isBox())
-                    box = toRenderBox(renderer)->borderBoxRect();
+                if (is<RenderBox>(*renderer))
+                    box = downcast<RenderBox>(*renderer).borderBoxRect();
 
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->perspectiveOriginX(), box.width()), style.get()));
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->perspectiveOriginY(), box.height()), style.get()));
@@ -2766,8 +2766,8 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             if (renderer) {
                 LayoutRect box;
-                if (renderer->isBox())
-                    box = toRenderBox(renderer)->borderBoxRect();
+                if (is<RenderBox>(*renderer))
+                    box = downcast<RenderBox>(*renderer).borderBoxRect();
 
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->transformOriginX(), box.width()), style.get()));
                 list->append(zoomAdjustedPixelValue(minimumValueForLength(style->transformOriginY(), box.height()), style.get()));

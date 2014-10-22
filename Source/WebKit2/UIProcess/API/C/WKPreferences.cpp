@@ -1236,6 +1236,16 @@ bool WKPreferencesGetTelephoneNumberParsingEnabled(WKPreferencesRef preferencesR
     return toImpl(preferencesRef)->telephoneNumberParsingEnabled();
 }
 
+void WKPreferencesSetActionMenuSupportEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setActionMenuSupportEnabled(enabled);
+}
+
+bool WKPreferencesGetActionMenuSupportEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->actionMenuSupportEnabled();
+}
+
 void WKPreferencesSetEnableInheritURIQueryComponent(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setEnableInheritURIQueryComponent(enabled);
@@ -1284,4 +1294,14 @@ void WKPreferencesSetLongMousePressEnabled(WKPreferencesRef preferencesRef, bool
 bool WKPreferencesGetLongMousePressEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->longMousePressEnabled();
+}
+
+void WKPreferencesSetMinimumZoomFontSize(WKPreferencesRef preferencesRef, double size)
+{
+    toImpl(preferencesRef)->setMinimumZoomFontSize(size);
+}
+
+double WKPreferencesGetMinimumZoomFontSize(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->minimumZoomFontSize();
 }

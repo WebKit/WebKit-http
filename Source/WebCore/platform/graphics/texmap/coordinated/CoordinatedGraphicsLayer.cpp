@@ -798,6 +798,9 @@ void CoordinatedGraphicsLayer::syncPendingStateChangesIncludingSubLayers()
         resetLayerState();
     }
 
+    if (maskLayer())
+        toCoordinatedGraphicsLayer(maskLayer())->syncPendingStateChangesIncludingSubLayers();
+
     for (size_t i = 0; i < children().size(); ++i)
         toCoordinatedGraphicsLayer(children()[i])->syncPendingStateChangesIncludingSubLayers();
 }

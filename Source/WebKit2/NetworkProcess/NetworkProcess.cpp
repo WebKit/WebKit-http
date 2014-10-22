@@ -76,9 +76,7 @@ NetworkProcess::NetworkProcess()
 
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
-#if ENABLE(CUSTOM_PROTOCOLS)
     addSupplement<CustomProtocolManager>();
-#endif
 }
 
 NetworkProcess::~NetworkProcess()
@@ -236,6 +234,11 @@ void NetworkProcess::destroyPrivateBrowsingSession(SessionID sessionID)
 void NetworkProcess::downloadRequest(uint64_t downloadID, const ResourceRequest& request)
 {
     downloadManager().startDownload(downloadID, request);
+}
+
+void NetworkProcess::resumeDownload(uint64_t downloadID, const IPC::DataReference& resumeData, const String& path, const WebKit::SandboxExtension::Handle& sandboxExtensionHandle)
+{
+    downloadManager().resumeDownload(downloadID, resumeData, path, sandboxExtensionHandle);
 }
 
 void NetworkProcess::cancelDownload(uint64_t downloadID)

@@ -1,3 +1,75 @@
+2014-10-21  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Fix FTL Native Inlining for EFL
+        https://bugs.webkit.org/show_bug.cgi?id=137774
+
+        Reviewed by Michael Saboff.
+
+        Updated guard definition for Native Inlining, and added an attribute define for marking functions
+        that should not be left out of the symbol table.
+
+        * wtf/Platform.h:
+
+2014-10-20  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Accessibility objects
+        https://bugs.webkit.org/show_bug.cgi?id=137286
+
+        Reviewed by Darin Adler.
+
+        Remove the legacy TYPE_CASTS_BASE() macro now that it is no longer
+        used.
+
+        * wtf/Assertions.h:
+
+2014-10-18  Dan Bernstein  <mitz@apple.com>
+
+        WorkQueue dispatches functions but isn’t a FunctionDispatcher
+        https://bugs.webkit.org/show_bug.cgi?id=137853
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/FunctionDispatcher.h: Added header guards.
+
+2014-10-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to GMainLoopSource to schedule sources after a delay in microseconds
+        https://bugs.webkit.org/show_bug.cgi?id=137782
+
+        Reviewed by Sergio Villar Senin.
+
+        In some cases when we have a double with the time in seconds, the
+        conversion to milliseconds ends up truncating the value to 0, and
+        the source scheduled immediately.
+
+        * wtf/gobject/GMainLoopSource.cpp:
+        (WTF::createMicrosecondsTimeoutSource): Use a custom timeout
+        source that handles the interval in microseconds instead of milliseconds.
+        (WTF::GMainLoopSource::scheduleAfterDelay): Use MicrosecondsTimeoutSource.
+        (WTF::GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy): Ditto.
+        * wtf/gobject/GMainLoopSource.h:
+
+2014-10-17  Dan Bernstein  <mitz@apple.com>
+
+        Reverted incorrect build fix attempt.
+
+        * wtf/Threading.cpp:
+
+2014-10-17  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the Yosemite build.
+
+        * wtf/Threading.cpp:
+
+2014-10-16  Dan Bernstein  <mitz@apple.com>
+
+        OSObjectPtr is missing leakRef()
+        https://bugs.webkit.org/show_bug.cgi?id=137798
+
+        Reviewed by Sam Weinig.
+
+        * wtf/OSObjectPtr.h:
+
 2014-10-14  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Unreviewed gardening. Ignore Visual Studio *.sdf files.

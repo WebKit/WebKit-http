@@ -84,6 +84,11 @@ bool screenIsMonochrome(Widget* widget)
     return deviceInfo.dmColor == DMCOLOR_MONOCHROME;
 }
 
+bool screenHasInvertedColors()
+{
+    return false;
+}
+
 FloatRect screenRect(Widget* widget)
 {
     MONITORINFOEX monitorInfo = monitorInfoForWidget(widget);

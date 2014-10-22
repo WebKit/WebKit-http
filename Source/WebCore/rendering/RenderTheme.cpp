@@ -648,15 +648,15 @@ Color RenderTheme::platformInactiveListBoxSelectionForegroundColor() const
     return platformInactiveSelectionForegroundColor();
 }
 
-int RenderTheme::baselinePosition(const RenderObject& o) const
+int RenderTheme::baselinePosition(const RenderObject& renderer) const
 {
-    if (!o.isBox())
+    if (!is<RenderBox>(renderer))
         return 0;
 
-    const RenderBox& box = *toRenderBox(&o);
+    const auto& box = downcast<RenderBox>(renderer);
 
 #if USE(NEW_THEME)
-    return box.height() + box.marginTop() + m_theme->baselinePositionAdjustment(o.style().appearance()) * o.style().effectiveZoom();
+    return box.height() + box.marginTop() + m_theme->baselinePositionAdjustment(renderer.style().appearance()) * renderer.style().effectiveZoom();
 #else
     return box.height() + box.marginTop();
 #endif
@@ -837,9 +837,9 @@ bool RenderTheme::isSpinUpButtonPartPressed(const RenderObject& renderer) const
     if (!is<Element>(node))
         return false;
     Element& element = downcast<Element>(*node);
-    if (!element.active() || !element.isSpinButtonElement())
+    if (!element.active() || !is<SpinButtonElement>(element))
         return false;
-    return static_cast<SpinButtonElement&>(element).upDownState() == SpinButtonElement::Up;
+    return downcast<SpinButtonElement>(element).upDownState() == SpinButtonElement::Up;
 }
 
 bool RenderTheme::isReadOnlyControl(const RenderObject& renderer) const
@@ -855,19 +855,19 @@ bool RenderTheme::isHovered(const RenderObject& renderer) const
     Node* node = renderer.node();
     if (!is<Element>(node))
         return false;
-    if (!downcast<Element>(*node).isSpinButtonElement())
-        return downcast<Element>(*node).hovered();
-    SpinButtonElement* element = static_cast<SpinButtonElement*>(node);
-    return element->hovered() && element->upDownState() != SpinButtonElement::Indeterminate;
+    Element& element = downcast<Element>(*node);
+    if (!is<SpinButtonElement>(element))
+        return element.hovered();
+    SpinButtonElement& spinButton = downcast<SpinButtonElement>(element);
+    return spinButton.hovered() && spinButton.upDownState() != SpinButtonElement::Indeterminate;
 }
 
 bool RenderTheme::isSpinUpButtonPartHovered(const RenderObject& renderer) const
 {
     Node* node = renderer.node();
-    if (!is<Element>(node) || !downcast<Element>(*node).isSpinButtonElement())
+    if (!is<SpinButtonElement>(node))
         return false;
-    SpinButtonElement* element = static_cast<SpinButtonElement*>(node);
-    return element->upDownState() == SpinButtonElement::Up;
+    return downcast<SpinButtonElement>(*node).upDownState() == SpinButtonElement::Up;
 }
 
 bool RenderTheme::isDefault(const RenderObject& o) const

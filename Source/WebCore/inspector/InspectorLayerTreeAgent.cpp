@@ -35,7 +35,7 @@
 #include "InspectorLayerTreeAgent.h"
 
 #include "InspectorDOMAgent.h"
-#include "InspectorWebFrontendDispatchers.h"
+#include <inspector/InspectorFrontendDispatchers.h>
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
 #include "PseudoElement.h"
@@ -129,7 +129,7 @@ void InspectorLayerTreeAgent::layersForNode(ErrorString& errorString, int nodeId
 void InspectorLayerTreeAgent::gatherLayersUsingRenderObjectHierarchy(ErrorString& errorString, RenderObject* renderer, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>& layers)
 {
     if (renderer->hasLayer()) {
-        gatherLayersUsingRenderLayerHierarchy(errorString, toRenderLayerModelObject(renderer)->layer(), layers);
+        gatherLayersUsingRenderLayerHierarchy(errorString, downcast<RenderLayerModelObject>(*renderer).layer(), layers);
         return;
     }
 

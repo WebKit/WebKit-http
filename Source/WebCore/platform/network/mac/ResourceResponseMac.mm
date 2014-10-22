@@ -66,6 +66,9 @@ void ResourceResponse::initNSURLResponse() const
         [headerDictionary setObject:(NSString *)header.value forKey:(NSString *)header.key];
 
     m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url statusCode:m_httpStatusCode HTTPVersion:(NSString*)kCFHTTPVersion1_1 headerFields:headerDictionary]);
+
+    // Mime type sniffing doesn't work with a synthesized response.
+    [m_nsResponse.get() _setMIMEType:(NSString *)m_mimeType];
 }
 
 #if USE(CFNETWORK)
@@ -138,9 +141,9 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
             
             if (initLevel < AllFields) {
                 NSDictionary *headers = [httpResponse allHeaderFields];
-                for (unsigned i = 0; i < WTF_ARRAY_LENGTH(commonHeaderFields); ++i) {
-                    if (NSString* headerValue = [headers objectForKey:commonHeaderFields[i]])
-                        m_httpHeaderFields.set(String(commonHeaderFields[i]), headerValue);
+                for (NSString *name : commonHeaderFields) {
+                    if (NSString* headerValue = [headers objectForKey:name])
+                        m_httpHeaderFields.set(name, headerValue);
                 }
             }
         } else
@@ -161,7 +164,7 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
 
             NSDictionary *headers = [httpResponse allHeaderFields];
             for (NSString *name in headers)
-                m_httpHeaderFields.set(String(name), [headers objectForKey:name]);
+                m_httpHeaderFields.set(name, [headers objectForKey:name]);
             
             [pool drain];
         }

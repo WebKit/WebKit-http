@@ -1,3 +1,128 @@
+2014-10-20  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Crash in ATI display driver in accelerated compositing mode.
+        https://bugs.webkit.org/show_bug.cgi?id=137879
+
+        Reviewed by Darin Adler.
+
+        Speculative fix; don't enable antialiasing when drawing textures.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::initialize):
+
+2014-10-20  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for Accessibility objects
+        https://bugs.webkit.org/show_bug.cgi?id=137286
+
+        Reviewed by Darin Adler.
+
+        Use is<>() / downcast<>() for Accessibility objects.
+
+        * AccessibleBase.cpp:
+        (AccessibleBase::accSelect):
+        * AccessibleImage.cpp:
+        (AccessibleImage::name):
+
+2014-10-18  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Repaint issues with accelerated compositing.
+        https://bugs.webkit.org/show_bug.cgi?id=137850
+
+        Reviewed by Brent Fulgham.
+
+        There is sometimes missing content in accelerated compositing mode.
+        This is caused by not invalidating the non composited layer,
+        and not rendering when a flush did not complete.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::flushAndRenderLayers): Also render when flush did not complete.
+        (AcceleratedCompositingContext::setNeedsDisplayInRect): Deleted.
+        * WebCoreSupport/AcceleratedCompositingContext.h: Ditto.
+        * WebView.cpp:
+        (WebView::addToDirtyRegion): Invalidate non composited layer.
+        (WebView::flushPendingGraphicsLayerChanges): Flush layers.
+
+2014-10-17  Chris Dumez  <cdumez@apple.com>
+
+        Use is<>() / downcast<>() for RenderBox
+        https://bugs.webkit.org/show_bug.cgi?id=137804
+
+        Reviewed by Andreas Kling.
+
+        Use is<>() / downcast<>() for RenderBox and clean up the surrounding
+        code.
+
+        * WebView.cpp:
+        (WebView::gestureNotify):
+
+2014-10-17  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Accelerated compositing is not implemented.
+        https://bugs.webkit.org/show_bug.cgi?id=137345
+
+        Reviewed by Brent Fulgham.
+
+        This patch is based on GTK, and the texture mapper graphics layer type.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp: Added.
+        (WebKit::AcceleratedCompositingContext::AcceleratedCompositingContext):
+        (WebKit::getWebViewSize):
+        (WebKit::AcceleratedCompositingContext::initialize):
+        (WebKit::AcceleratedCompositingContext::~AcceleratedCompositingContext):
+        (WebKit::AcceleratedCompositingContext::stopAnyPendingLayerFlush):
+        (WebKit::AcceleratedCompositingContext::enabled):
+        (WebKit::AcceleratedCompositingContext::prepareForRendering):
+        (WebKit::AcceleratedCompositingContext::startedAnimation):
+        (WebKit::AcceleratedCompositingContext::compositeLayersToContext):
+        (WebKit::AcceleratedCompositingContext::setRootCompositingLayer):
+        (WebKit::AcceleratedCompositingContext::setNonCompositedContentsNeedDisplay):
+        (WebKit::AcceleratedCompositingContext::setNeedsDisplayInRect):
+        (WebKit::AcceleratedCompositingContext::resizeRootLayer):
+        (WebKit::AcceleratedCompositingContext::scrollNonCompositedContents):
+        (WebKit::AcceleratedCompositingContext::scheduleLayerFlush):
+        (WebKit::AcceleratedCompositingContext::flushPendingLayerChanges):
+        (WebKit::AcceleratedCompositingContext::flushPendingLayerChangesSoon):
+        (WebKit::AcceleratedCompositingContext::flushAndRenderLayers):
+        (WebKit::AcceleratedCompositingContext::layerFlushTimerFired):
+        (WebKit::AcceleratedCompositingContext::notifyAnimationStarted):
+        (WebKit::AcceleratedCompositingContext::notifyFlushRequired):
+        (WebKit::AcceleratedCompositingContext::paintContents):
+        * WebCoreSupport/AcceleratedCompositingContext.h: Added.
+        (WebKit::AcceleratedCompositingContext::LayerFlushTimer::LayerFlushTimer):
+        (WebKit::AcceleratedCompositingContext::LayerFlushTimer::fired):
+        * WebView.cpp:
+        (WebView::WebView):
+        (WebView::addToDirtyRegion):
+        (WebView::scrollBackingStore):
+        (WebView::sizeChanged):
+        (WebView::paint):
+        (WebView::setRootChildLayer):
+        (WebView::flushPendingGraphicsLayerChangesSoon):
+        (WebView::setAcceleratedCompositing):
+        * WebView.h:
+
+2014-10-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174754.
+        https://bugs.webkit.org/show_bug.cgi?id=137789
+
+        Speculative fix for Windows test was ineffective. (Requested
+        by rfong on #webkit).
+
+        Reverted changeset:
+
+        "[Windows] Add some more logging to debug Windows test
+        issues."
+        http://trac.webkit.org/changeset/174754
+
+2014-10-15  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Add some more logging to debug Windows test issues.
+
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read):
+
 2014-10-14  Roger Fong  <roger_fong@apple.com>
 
         [Windows] Add some logging to debug random crashing when running layout tests on Windows.

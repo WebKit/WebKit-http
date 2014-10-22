@@ -271,6 +271,7 @@ Arguments* StackVisitor::Frame::createArguments()
         ASSERT(m_inlineCallFrame);
         arguments = Arguments::create(vm, physicalFrame, m_inlineCallFrame, mode);
         arguments->tearOff(physicalFrame, m_inlineCallFrame);
+        jsCast<Arguments*>((JSCell*)arguments);
     } else 
 #endif
     {
@@ -295,6 +296,9 @@ Arguments* StackVisitor::Frame::existingArguments()
     else
 #endif // ENABLE(DFG_JIT)
         reg = codeBlock()->argumentsRegister();
+
+    if (codeBlock()->needsActivation())
+        return jsCast<Arguments*>(callFrame()->lexicalEnvironment()->registerAt(unmodifiedArgumentsRegister(reg).offset()).get());
     
     JSValue result = callFrame()->r(unmodifiedArgumentsRegister(reg).offset()).jsValue();
     if (!result || !result.isCell()) // Protect against Undefined in case we throw in op_enter.

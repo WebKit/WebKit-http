@@ -84,30 +84,32 @@ enum RepaintStatus {
 class ClipRect {
 public:
     ClipRect()
-    : m_hasRadius(false)
-    { }
+        : m_affectedByRadius(false)
+    {
+    }
     
     ClipRect(const LayoutRect& rect)
-    : m_rect(rect)
-    , m_hasRadius(false)
-    { }
+        : m_rect(rect)
+        , m_affectedByRadius(false)
+    {
+    }
     
     const LayoutRect& rect() const { return m_rect; }
     void setRect(const LayoutRect& rect) { m_rect = rect; }
 
-    bool hasRadius() const { return m_hasRadius; }
-    void setHasRadius(bool hasRadius) { m_hasRadius = hasRadius; }
+    bool affectedByRadius() const { return m_affectedByRadius; }
+    void setAffectedByRadius(bool affectedByRadius) { m_affectedByRadius = affectedByRadius; }
 
-    bool operator==(const ClipRect& other) const { return rect() == other.rect() && hasRadius() == other.hasRadius(); }
-    bool operator!=(const ClipRect& other) const { return rect() != other.rect() || hasRadius() != other.hasRadius(); }
+    bool operator==(const ClipRect& other) const { return rect() == other.rect() && affectedByRadius() == other.affectedByRadius(); }
+    bool operator!=(const ClipRect& other) const { return rect() != other.rect() || affectedByRadius() != other.affectedByRadius(); }
     bool operator!=(const LayoutRect& otherRect) const { return rect() != otherRect; }
 
     void intersect(const LayoutRect& other) { m_rect.intersect(other); }
     void intersect(const ClipRect& other)
     {
         m_rect.intersect(other.rect());
-        if (other.hasRadius())
-            m_hasRadius = true;
+        if (other.affectedByRadius())
+            m_affectedByRadius = true;
     }
     void move(LayoutUnit x, LayoutUnit y) { m_rect.move(x, y); }
     void move(const LayoutSize& size) { m_rect.move(size); }
@@ -123,7 +125,7 @@ public:
 
 private:
     LayoutRect m_rect;
-    bool m_hasRadius;
+    bool m_affectedByRadius;
 };
 
 inline ClipRect intersection(const ClipRect& a, const ClipRect& b)
@@ -344,7 +346,7 @@ public:
     String name() const;
 
     RenderLayerModelObject& renderer() const { return m_renderer; }
-    RenderBox* renderBox() const { return renderer().isBox() ? &toRenderBox(renderer()) : nullptr; }
+    RenderBox* renderBox() const { return is<RenderBox>(renderer()) ? &downcast<RenderBox>(renderer()) : nullptr; }
     RenderLayer* parent() const { return m_parent; }
     RenderLayer* previousSibling() const { return m_previous; }
     RenderLayer* nextSibling() const { return m_next; }
@@ -966,7 +968,7 @@ private:
     void setFirstChild(RenderLayer* first) { m_first = first; }
     void setLastChild(RenderLayer* last) { m_last = last; }
 
-    LayoutPoint renderBoxLocation() const { return renderer().isBox() ? toRenderBox(renderer()).location() : LayoutPoint(); }
+    LayoutPoint renderBoxLocation() const { return is<RenderBox>(renderer()) ? downcast<RenderBox>(renderer()).location() : LayoutPoint(); }
 
     void collectLayers(bool includeHiddenLayers, CollectLayersBehavior, std::unique_ptr<Vector<RenderLayer*>>&, std::unique_ptr<Vector<RenderLayer*>>&);
 

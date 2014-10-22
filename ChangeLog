@@ -1,3 +1,72 @@
+2014-10-21  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL] Remove unnecessary ENABLE_3D_RENDERING definition from OptionsEfl.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=137946
+
+        Reviewed by Gyuyoung Kim.
+
+        ENABLE_3D_RENDERING is already enabled as WEBKIT_OPTION_DEFAULT_PORT_VALUE since r135813.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-10-21  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Fix FTL Native Inlining for EFL
+        https://bugs.webkit.org/show_bug.cgi?id=137774
+
+        Reviewed by Michael Saboff.
+
+        Updated CMake for FTL Native Inlining.
+
+        * CMakeLists.txt:
+        * Source/cmake/FindClang.cmake: Added.
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2014-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Generate all Inspector domains together in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=137748
+
+        Reviewed by Brian Burg.
+
+        * Source/PlatformEfl.cmake:
+
+2014-10-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add initial gestures support
+        https://bugs.webkit.org/show_bug.cgi?id=137812
+
+        Reviewed by Sergio Villar Senin.
+
+        Check if the GTK+ version supports gestures or not.
+
+        * Source/cmake/FindGTK3.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-10-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(CMake): [GTK] WebKitSettings:enable-smooth-scrolling does nothing
+        https://bugs.webkit.org/show_bug.cgi?id=137781
+
+        Reviewed by Martin Robinson.
+
+        We used to enable smooth scrolling unconditionally in autotools
+        (via WebKitFeatures.m4), but since the switch to CMake it's
+        unconditionally disabled, so changing the setting doesn't have any
+        effect.
+
+        * Source/cmake/OptionsGTK.cmake: Enable smooth scrolling.
+
+2014-10-16  Pascal Jacquemart  <p.jacquemart@samsung.com>
+
+        Removing CUSTOM_PROTOCOLS guard
+        https://bugs.webkit.org/show_bug.cgi?id=137741
+
+        Reviewed by Benjamin Poulain.
+
+        * Source/cmake/OptionsEfl.cmake:
+
 2014-10-11  KwangHyuk Kim  <hyuki.kim@samsung.com>
 
         [EFL] Enable WebP support.

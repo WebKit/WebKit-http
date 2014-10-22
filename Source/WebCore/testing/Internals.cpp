@@ -85,6 +85,7 @@
 #include "RenderMenuList.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
+#include "RenderedDocumentMarker.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "ScrollingCoordinator.h"
@@ -779,39 +780,39 @@ unsigned Internals::markerCountForNode(Node* node, const String& markerType, Exc
     return node->document().markers().markersFor(node, markerTypes).size();
 }
 
-DocumentMarker* Internals::markerAt(Node* node, const String& markerType, unsigned index, ExceptionCode& ec)
+RenderedDocumentMarker* Internals::markerAt(Node* node, const String& markerType, unsigned index, ExceptionCode& ec)
 {
     node->document().updateLayoutIgnorePendingStylesheets();
     if (!node) {
         ec = INVALID_ACCESS_ERR;
-        return 0;
+        return nullptr;
     }
 
     DocumentMarker::MarkerTypes markerTypes = 0;
     if (!markerTypesFrom(markerType, markerTypes)) {
         ec = SYNTAX_ERR;
-        return 0;
+        return nullptr;
     }
 
     node->document().frame()->editor().updateEditorUINowIfScheduled();
 
-    Vector<DocumentMarker*> markers = node->document().markers().markersFor(node, markerTypes);
+    Vector<RenderedDocumentMarker*> markers = node->document().markers().markersFor(node, markerTypes);
     if (markers.size() <= index)
-        return 0;
+        return nullptr;
     return markers[index];
 }
 
 PassRefPtr<Range> Internals::markerRangeForNode(Node* node, const String& markerType, unsigned index, ExceptionCode& ec)
 {
-    DocumentMarker* marker = markerAt(node, markerType, index, ec);
+    RenderedDocumentMarker* marker = markerAt(node, markerType, index, ec);
     if (!marker)
-        return 0;
+        return nullptr;
     return Range::create(node->document(), node, marker->startOffset(), node, marker->endOffset());
 }
 
 String Internals::markerDescriptionForNode(Node* node, const String& markerType, unsigned index, ExceptionCode& ec)
 {
-    DocumentMarker* marker = markerAt(node, markerType, index, ec);
+    RenderedDocumentMarker* marker = markerAt(node, markerType, index, ec);
     if (!marker)
         return String();
     return marker->description();
@@ -2092,13 +2093,13 @@ bool Internals::isSelectPopupVisible(Node* node)
 
     HTMLSelectElement& select = downcast<HTMLSelectElement>(*node);
 
-    auto renderer = select.renderer();
-    if (!renderer->isMenuList())
+    auto* renderer = select.renderer();
+    ASSERT(renderer);
+    if (!is<RenderMenuList>(*renderer))
         return false;
 
 #if !PLATFORM(IOS)
-    RenderMenuList* menuList = toRenderMenuList(renderer);
-    return menuList->popupIsVisible();
+    return downcast<RenderMenuList>(*renderer).popupIsVisible();
 #else
     return false;
 #endif // !PLATFORM(IOS)
@@ -2220,14 +2221,13 @@ bool Internals::isPluginUnavailabilityIndicatorObscured(Element* element, Except
         return false;
     }
 
-    auto renderer = element->renderer();
-    if (!renderer || !renderer->isEmbeddedObject()) {
+    auto* renderer = element->renderer();
+    if (!is<RenderEmbeddedObject>(renderer)) {
         ec = INVALID_ACCESS_ERR;
         return false;
     }
 
-    RenderEmbeddedObject* embed = toRenderEmbeddedObject(renderer);
-    return embed->isReplacementObscured();
+    return downcast<RenderEmbeddedObject>(*renderer).isReplacementObscured();
 }
     
 bool Internals::isPluginSnapshotted(Element* element, ExceptionCode& ec)

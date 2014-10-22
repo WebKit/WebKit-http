@@ -73,12 +73,36 @@ void Download::startWithHandle(ResourceHandle* handle, const ResourceResponse& r
     ASSERT(!m_nsURLDownload);
     ASSERT(!m_delegate);
 
+    // FIXME: For some reason the filename needs to be accessed or it may be incorrect after
+    // NSURLResponse is serialized/deserialized (gains .txt extension)
+    response.suggestedFilename();
+
     m_delegate = adoptNS([[WKDownloadAsDelegate alloc] initWithDownload:this]);
     m_nsURLDownload = [NSURLDownload _downloadWithLoadingConnection:handle->connection()
                                                             request:m_request.nsURLRequest(UpdateHTTPBody)
                                                            response:response.nsURLResponse()
                                                             delegate:m_delegate.get()
                                                                proxy:nil];
+
+    // FIXME: Allow this to be changed by the client.
+    [m_nsURLDownload setDeletesFileUponFailure:NO];
+}
+
+void Download::resume(const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle& sandboxExtensionHandle)
+{
+    ASSERT(!m_nsURLDownload);
+    ASSERT(!m_delegate);
+
+    m_sandboxExtension = SandboxExtension::create(sandboxExtensionHandle);
+    if (m_sandboxExtension)
+        m_sandboxExtension->consume();
+
+    m_delegate = adoptNS([[WKDownloadAsDelegate alloc] initWithDownload:this]);
+
+    auto nsData = adoptNS([[NSData alloc] initWithBytes:resumeData.data() length:resumeData.size()]);
+    m_nsURLDownload = adoptNS([[NSURLDownload alloc] initWithResumeData:nsData.get() delegate:m_delegate.get() path:path]);
+
+    m_request = [m_nsURLDownload request];
 
     // FIXME: Allow this to be changed by the client.
     [m_nsURLDownload setDeletesFileUponFailure:NO];

@@ -139,8 +139,8 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, PassRef<Rend
     // Works only if we have exactly one piece of content and it's a URL.
     // Otherwise acts as if we didn't support this feature.
     const ContentData* contentData = style.get().contentData();
-    if (contentData && !contentData->next() && contentData->isImage() && !element.isPseudoElement()) {
-        auto& styleImage = toImageContentData(contentData)->image();
+    if (contentData && !contentData->next() && is<ImageContentData>(*contentData) && !element.isPseudoElement()) {
+        auto& styleImage = downcast<ImageContentData>(*contentData).image();
         auto image = createRenderer<RenderImage>(element, WTF::move(style), const_cast<StyleImage*>(&styleImage));
         image->setIsGeneratedContent();
         return WTF::move(image);
@@ -256,7 +256,7 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
         // Text nodes share style with their parents but transforms don't apply to them,
         // hence the !isText() check.
         // FIXME: when transforms are taken into account for overflow, we will need to do a layout.
-        if (!hasLayer() || !toRenderLayerModelObject(this)->layer()->isComposited()) {
+        if (!hasLayer() || !downcast<RenderLayerModelObject>(*this).layer()->isComposited()) {
             // We need to set at least SimplifiedLayout, but if PositionedMovementOnly is already set
             // then we actually need SimplifiedLayoutAndPositionedMovement.
             if (!hasLayer())
@@ -272,14 +272,14 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
     // If opacity changed, and we are not composited, need to repaint (also
     // ignoring text nodes)
     if (contextSensitiveProperties & ContextSensitivePropertyOpacity) {
-        if (!hasLayer() || !toRenderLayerModelObject(this)->layer()->isComposited())
+        if (!hasLayer() || !downcast<RenderLayerModelObject>(*this).layer()->isComposited())
             diff = StyleDifferenceRepaintLayer;
         else if (diff < StyleDifferenceRecompositeLayer)
             diff = StyleDifferenceRecompositeLayer;
     }
 
     if ((contextSensitiveProperties & ContextSensitivePropertyFilter) && hasLayer()) {
-        RenderLayer* layer = toRenderLayerModelObject(this)->layer();
+        RenderLayer* layer = downcast<RenderLayerModelObject>(*this).layer();
         if (!layer->isComposited() || layer->paintsWithFilters())
             diff = StyleDifferenceRepaintLayer;
         else if (diff < StyleDifferenceRecompositeLayer)
@@ -290,7 +290,7 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
     // style changing, since it depends on whether we decide to composite these elements. When the
     // layer status of one of these elements changes, we need to force a layout.
     if (diff == StyleDifferenceEqual && isRenderLayerModelObject()) {
-        if (hasLayer() != toRenderLayerModelObject(this)->requiresLayer())
+        if (hasLayer() != downcast<RenderLayerModelObject>(*this).requiresLayer())
             diff = StyleDifferenceLayout;
     }
 
@@ -589,7 +589,7 @@ RenderObject* RenderElement::removeChildInternal(RenderObject& oldChild, NotifyC
     ASSERT(oldChild.parent() == this);
 
     if (oldChild.isFloatingOrOutOfFlowPositioned())
-        toRenderBox(oldChild).removeFloatingOrPositionedChildFromBlockLists();
+        downcast<RenderBox>(oldChild).removeFloatingOrPositionedChildFromBlockLists();
 
     // So that we'll get the appropriate dirty bit set (either that a normal flow child got yanked or
     // that a positioned child got yanked). We also repaint, so that the area exposed when the child
@@ -604,10 +604,10 @@ RenderObject* RenderElement::removeChildInternal(RenderObject& oldChild, NotifyC
     }
 
     // If we have a line box wrapper, delete it.
-    if (oldChild.isBox())
-        toRenderBox(oldChild).deleteLineBoxWrapper();
-    else if (oldChild.isLineBreak())
-        toRenderLineBreak(oldChild).deleteInlineBoxWrapper();
+    if (is<RenderBox>(oldChild))
+        downcast<RenderBox>(oldChild).deleteLineBoxWrapper();
+    else if (is<RenderLineBreak>(oldChild))
+        downcast<RenderLineBreak>(oldChild).deleteInlineBoxWrapper();
 
     // If oldChild is the start or end of the selection, then clear the selection to
     // avoid problems of invalid pointers.
@@ -658,7 +658,7 @@ static void addLayers(RenderElement& renderer, RenderLayer* parentLayer, RenderE
             beforeChild = newObject->parent()->findNextLayer(parentLayer, newObject);
             newObject = nullptr;
         }
-        parentLayer->addChild(toRenderLayerModelObject(renderer).layer(), beforeChild);
+        parentLayer->addChild(downcast<RenderLayerModelObject>(renderer).layer(), beforeChild);
         return;
     }
 
@@ -682,7 +682,7 @@ void RenderElement::removeLayers(RenderLayer* parentLayer)
         return;
 
     if (hasLayer()) {
-        parentLayer->removeChild(toRenderLayerModelObject(this)->layer());
+        parentLayer->removeChild(downcast<RenderLayerModelObject>(*this).layer());
         return;
     }
 
@@ -696,7 +696,7 @@ void RenderElement::moveLayers(RenderLayer* oldParent, RenderLayer* newParent)
         return;
 
     if (hasLayer()) {
-        RenderLayer* layer = toRenderLayerModelObject(this)->layer();
+        RenderLayer* layer = downcast<RenderLayerModelObject>(*this).layer();
         ASSERT(oldParent == layer->parent());
         if (oldParent)
             oldParent->removeChild(layer);
@@ -837,11 +837,11 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         if (isFloating() && (m_style->floating() != newStyle.floating()))
             // For changes in float styles, we need to conceivably remove ourselves
             // from the floating objects list.
-            toRenderBox(this)->removeFloatingOrPositionedChildFromBlockLists();
+            downcast<RenderBox>(*this).removeFloatingOrPositionedChildFromBlockLists();
         else if (isOutOfFlowPositioned() && (m_style->position() != newStyle.position()))
             // For changes in positioning styles, we need to conceivably remove ourselves
             // from the positioned objects list.
-            toRenderBox(this)->removeFloatingOrPositionedChildFromBlockLists();
+            downcast<RenderBox>(*this).removeFloatingOrPositionedChildFromBlockLists();
 
         s_affectsParentBlock = isFloatingOrOutOfFlowPositioned()
             && (!newStyle.isFloating() && !newStyle.hasOutOfFlowPosition())
@@ -1006,7 +1006,7 @@ void RenderElement::willBeRemovedFromTree()
 
 void RenderElement::willBeDestroyed()
 {
-    animation().cancelAnimations(this);
+    animation().cancelAnimations(*this);
 
     destroyLeftoverChildren();
 
@@ -1034,7 +1034,7 @@ void RenderElement::setNeedsPositionedMovementLayout(const RenderStyle* oldStyle
     setNeedsPositionedMovementLayoutBit(true);
     markContainingBlocksForLayout();
     if (hasLayer()) {
-        if (oldStyle && style().diffRequiresLayerRepaint(*oldStyle, toRenderLayerModelObject(this)->layer()->isComposited()))
+        if (oldStyle && style().diffRequiresLayerRepaint(*oldStyle, downcast<RenderLayerModelObject>(*this).layer()->isComposited()))
             setLayerNeedsFullRepaint();
         else
             setLayerNeedsFullRepaintForPositionedMovementLayout();
@@ -1240,8 +1240,8 @@ bool RenderElement::repaintAfterLayoutIfNeeded(const RenderLayerModelObject* rep
         LayoutUnit shadowLeft;
         LayoutUnit shadowRight;
         style().getBoxShadowHorizontalExtent(shadowLeft, shadowRight);
-        LayoutUnit borderRight = isBox() ? toRenderBox(this)->borderRight() : LayoutUnit::fromPixel(0);
-        LayoutUnit boxWidth = isBox() ? toRenderBox(this)->width() : LayoutUnit();
+        LayoutUnit borderRight = is<RenderBox>(*this) ? downcast<RenderBox>(*this).borderRight() : LayoutUnit::fromPixel(0);
+        LayoutUnit boxWidth = is<RenderBox>(*this) ? downcast<RenderBox>(*this).width() : LayoutUnit();
         LayoutUnit minInsetRightShadowExtent = std::min<LayoutUnit>(-insetShadowExtent.right(), std::min<LayoutUnit>(newBounds.width(), oldBounds.width()));
         LayoutUnit borderWidth = std::max<LayoutUnit>(borderRight, std::max<LayoutUnit>(valueForLength(style().borderTopRightRadius().width(), boxWidth), valueForLength(style().borderBottomRightRadius().width(), boxWidth)));
         LayoutUnit decorationsWidth = std::max<LayoutUnit>(-outlineStyle.outlineOffset(), borderWidth + minInsetRightShadowExtent) + std::max<LayoutUnit>(outlineWidth, shadowRight);
@@ -1260,8 +1260,8 @@ bool RenderElement::repaintAfterLayoutIfNeeded(const RenderLayerModelObject* rep
         LayoutUnit shadowTop;
         LayoutUnit shadowBottom;
         style().getBoxShadowVerticalExtent(shadowTop, shadowBottom);
-        LayoutUnit borderBottom = isBox() ? toRenderBox(this)->borderBottom() : LayoutUnit::fromPixel(0);
-        LayoutUnit boxHeight = isBox() ? toRenderBox(this)->height() : LayoutUnit();
+        LayoutUnit borderBottom = is<RenderBox>(*this) ? downcast<RenderBox>(*this).borderBottom() : LayoutUnit::fromPixel(0);
+        LayoutUnit boxHeight = is<RenderBox>(*this) ? downcast<RenderBox>(*this).height() : LayoutUnit();
         LayoutUnit minInsetBottomShadowExtent = std::min<LayoutUnit>(-insetShadowExtent.bottom(), std::min<LayoutUnit>(newBounds.height(), oldBounds.height()));
         LayoutUnit borderHeight = std::max<LayoutUnit>(borderBottom, std::max<LayoutUnit>(valueForLength(style().borderBottomLeftRadius().height(), boxHeight),
             valueForLength(style().borderBottomRightRadius().height(), boxHeight)));
@@ -1331,10 +1331,10 @@ bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visib
 
 RenderNamedFlowThread* RenderElement::renderNamedFlowThreadWrapper()
 {
-    auto renderer = this;
-    while (renderer && renderer->isAnonymousBlock() && !renderer->isRenderNamedFlowThread())
+    auto* renderer = this;
+    while (renderer && renderer->isAnonymousBlock() && !is<RenderNamedFlowThread>(*renderer))
         renderer = renderer->parent();
-    return renderer && renderer->isRenderNamedFlowThread() ? toRenderNamedFlowThread(renderer) : nullptr;
+    return is<RenderNamedFlowThread>(renderer) ? downcast<RenderNamedFlowThread>(renderer) : nullptr;
 }
 
 bool RenderElement::hasControlStatesForRenderer(const RenderObject* o)

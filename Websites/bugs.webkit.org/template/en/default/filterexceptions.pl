@@ -34,7 +34,7 @@
 #                                   [% foo.push() %]
 # TT loop variables               - [% loop.count %]
 # Already-filtered stuff          - [% wibble FILTER html %]
-#   where the filter is one of html|csv|js|url_quote|quoteUrls|time|uri|xml|none
+#   where the filter is one of html|csv|js|quoteUrls|time|uri|xml|none
 
 %::safe = (
 
@@ -57,27 +57,9 @@
   'type.id', 
 ],
 
-'search/boolean-charts.html.tmpl' => [
-  '"field${chartnum}-${rownum}-${colnum}"', 
-  '"value${chartnum}-${rownum}-${colnum}"', 
-  '"type${chartnum}-${rownum}-${colnum}"', 
-  'field.name', 
-  'type.name',
-  'type.description', 
-  '"${chartnum}-${rownum}-${newor}"', 
-  '"${chartnum}-${newand}-0"', 
-  'newchart',
-  'jsmagic',
-],
-
 'search/form.html.tmpl' => [
-  'qv.value',
   'qv.name',
   'qv.description',
-  'field.name',
-  'field.description',
-  'field.accesskey',
-  'sel.name',
 ],
 
 'search/search-specific.html.tmpl' => [
@@ -96,24 +78,6 @@
   'request.attach_id', 
 ],
 
-'reports/components.html.tmpl' => [
-  'numcols',
-],
-
-'reports/duplicates-table.html.tmpl' => [
-  'column.name', 
-  'column.description',
-  'bug.count', 
-  'bug.delta', 
-],
-
-'reports/duplicates.html.tmpl' => [
-  'bug_ids_string', 
-  'maxrows',
-  'changedsince',
-  'reverse',
-],
-
 'reports/keywords.html.tmpl' => [
   'keyword.bug_count', 
 ],
@@ -124,7 +88,6 @@
 ],
 
 'reports/report-table.html.tmpl' => [
-  '"&amp;$tbl_vals" IF tbl_vals', 
   '"&amp;$col_vals" IF col_vals', 
   '"&amp;$row_vals" IF row_vals', 
   'classes.$row_idx.$col_idx', 
@@ -143,15 +106,7 @@
   'other_format.name', 
   'sizeurl', 
   'switchbase',
-  'format',
   'cumulate',
-],
-
-'reports/duplicates.rdf.tmpl' => [
-  'template_version', 
-  'bug.id', 
-  'bug.count', 
-  'bug.delta', 
 ],
 
 'reports/chart.html.tmpl' => [
@@ -184,10 +139,6 @@
   'default.series_id', 
 ],
 
-'list/change-columns.html.tmpl' => [
-  'column', 
-],
-
 'list/edit-multiple.html.tmpl' => [
   'group.id', 
   'menuname',
@@ -202,7 +153,6 @@
 'list/table.html.tmpl' => [
   'tableheader',
   'bug.bug_id', 
-  'abbrev.$id.title || field_descs.$id || column.title',
 ],
 
 'list/list.csv.tmpl' => [
@@ -236,7 +186,6 @@
 ],
 
 'global/messages.html.tmpl' => [
-  'message_tag', 
   'series.frequency * 2',
 ],
 
@@ -261,20 +210,15 @@
 
 'global/confirm-user-match.html.tmpl' => [
   'script',
-  'fields.${field_name}.flag_type.name',
 ],
 
 'global/site-navigation.html.tmpl' => [
-  'bug_list.first', 
-  'bug_list.$prev_bug', 
-  'bug_list.$next_bug', 
-  'bug_list.last', 
   'bug.bug_id', 
-  'bug.votes', 
 ],
 
 'bug/comments.html.tmpl' => [
   'comment.id',
+  'comment.count',
   'bug.bug_id',
 ],
 
@@ -297,30 +241,16 @@
 ],
 
 'bug/edit.html.tmpl' => [
-  'bug.deadline',
   'bug.remaining_time', 
   'bug.delta_ts', 
   'bug.bug_id', 
-  'bug.votes', 
   'group.bit', 
-  'dep.title', 
-  'dep.fieldname', 
-  'bug.${dep.fieldname}.join(\', \')', 
   'selname',
-  '" accesskey=\"$accesskey\"" IF accesskey',
   'inputname',
   '" colspan=\"$colspan\"" IF colspan',
   '" size=\"$size\"" IF size',
   '" maxlength=\"$maxlength\"" IF maxlength',
-  'flag.status',
   '" spellcheck=\"$spellcheck\"" IF spellcheck',
-],
-
-'bug/navigate.html.tmpl' => [
-  'bug_list.first', 
-  'bug_list.last', 
-  'bug_list.$prev_bug', 
-  'bug_list.$next_bug', 
 ],
 
 'bug/show-multiple.html.tmpl' => [
@@ -343,6 +273,10 @@
   'subtotal FILTER format("%.2f")',
   'work_time FILTER format("%.2f")',
   'global.total FILTER format("%.2f")',
+  'global.remaining FILTER format("%.2f")',
+  'global.estimated FILTER format("%.2f")',
+  'bugs.$id.remaining_time FILTER format("%.2f")',
+  'bugs.$id.estimated_time FILTER format("%.2f")',
 ],
 
 
@@ -353,19 +287,6 @@
        FILTER format("%d")', 
 ],
 
-'bug/votes/list-for-bug.html.tmpl' => [
-  'voter.vote_count', 
-  'total', 
-],
-
-'bug/votes/list-for-user.html.tmpl' => [
-  'product.maxperbug', 
-  'bug.id', 
-  'bug.count', 
-  'product.total', 
-  'product.maxvotes', 
-],
-
 'bug/process/results.html.tmpl' => [
   'title.$type', 
   '"$terms.Bug $id" FILTER bug_link(id)',
@@ -373,9 +294,6 @@
 ],
 
 'bug/create/create.html.tmpl' => [
-  'g.bit',
-  'sel.name',
-  'sel.description',
   'cloned_bug_id',
 ],
 
@@ -387,7 +305,6 @@
 
 'bug/activity/table.html.tmpl' => [
   'change.attachid', 
-  'change.field', 
 ],
 
 'attachment/create.html.tmpl' => [
@@ -403,7 +320,8 @@
 'attachment/edit.html.tmpl' => [
   'attachment.id', 
   'attachment.bug_id', 
-  'a', 
+  'a',
+  'editable_or_hide',
 ],
 
 'attachment/list.html.tmpl' => [
@@ -432,8 +350,6 @@
   'bugid',
   'oldid',
   'newid',
-  'style',
-  'javascript',
   'patch.id',
 ],
 
@@ -446,8 +362,6 @@
   'section_num',
   'current_line_old',
   'current_line_new',
-  'curr_old',
-  'curr_new'
 ],
 
 'admin/admin.html.tmpl' => [
@@ -456,6 +370,12 @@
 
 'admin/table.html.tmpl' => [
   'link_uri'
+],
+
+'admin/custom_fields/cf-js.js.tmpl' => [
+  'constants.FIELD_TYPE_SINGLE_SELECT',
+  'constants.FIELD_TYPE_MULTI_SELECT',
+  'constants.FIELD_TYPE_BUG_ID',
 ],
 
 'admin/params/common.html.tmpl' => [
@@ -467,19 +387,14 @@
 ],
 
 'admin/products/groupcontrol/edit.html.tmpl' => [
-  'group.bugcount', 
-  'group.id', 
-  'const.CONTROLMAPNA', 
-  'const.CONTROLMAPSHOWN', 
-  'const.CONTROLMAPDEFAULT', 
-  'const.CONTROLMAPMANDATORY', 
+  'group.id',
+  'constants.CONTROLMAPNA', 
+  'constants.CONTROLMAPSHOWN',
+  'constants.CONTROLMAPDEFAULT',
+  'constants.CONTROLMAPMANDATORY',
 ],
 
 'admin/products/list.html.tmpl' => [
-  'classification_url_part', 
-],
-
-'admin/products/confirm-delete.html.tmpl' => [
   'classification_url_part', 
 ],
 
@@ -494,12 +409,6 @@
 ],
 
 'admin/flag-type/edit.html.tmpl' => [
-  'action', 
-  'type.id', 
-  'type.target_type', 
-  'type.sortkey || 1',
-  'typeLabelLowerPlural',
-  'typeLabelLowerSingular',
   'selname',
 ],
 
@@ -526,7 +435,6 @@
   'flags.setter',
   'longdescs',
   'quips',
-  'votes',
   'series',
   'watch.watched',
   'watch.watcher',
@@ -554,8 +462,8 @@
   'new_status.id',
 ],
 
-'account/login.html.tmpl' => [
-  'target', 
+'account/auth/login-small.html.tmpl' => [
+  'qs_suffix',
 ],
 
 'account/prefs/email.html.tmpl' => [
@@ -571,6 +479,10 @@
 
 'account/prefs/saved-searches.html.tmpl' => [
   'group.id',
+],
+
+'config.rdf.tmpl' => [
+  'escaped_urlbase',
 ],
 
 );

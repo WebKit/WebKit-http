@@ -1,3 +1,360 @@
+2014-10-21  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Cannot click on green tester bubbles
+        https://bugs.webkit.org/show_bug.cgi?id=137909
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus):
+
+2014-10-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Run DumpRenderTree using native controls, not SafariTheme.dll.
+        https://bugs.webkit.org/show_bug.cgi?id=137932
+
+        Reviewed by Simon Fraser.
+
+        This is the first step in moving over to native Windows rendering for our layout tests.
+        Once this change lands, approximately 300 tests will start failing on Windows. I will
+        rebaseline these changes against our test hardware and update this bug with the
+        commits related to that work.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetDefaultsToConsistentValues): Call 'setShouldPaintNativeControls(TRUE)' so that
+        we use native Windows drawing style.
+
+2014-10-21  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Fix FTL Native Inlining for EFL
+        https://bugs.webkit.org/show_bug.cgi?id=137774
+
+        Reviewed by Michael Saboff.
+
+        Added Clang as an optional module to jhbuild.
+
+        * efl/jhbuild.modules:
+
+2014-10-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Change the default TLS errors policy to WEBKIT_TLS_ERRORS_POLICY_FAIL
+        https://bugs.webkit.org/show_bug.cgi?id=137832
+
+        Reviewed by Carlos Garcia Campos.
+
+        Ensure each test sets the TLS errors policy that it really needs.
+        Have each test except testTLSErrorsPolicy stash and restore the original
+        TLS errors policy. Update testTLSErrorsPolicy to account for the new
+        default policy.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestSSL.cpp:
+        (testSSL):
+        (testInsecureContent):
+        (testTLSErrorsPolicy):
+        (testTLSErrorsRedirect):
+        (testTLSErrorsHTTPAuth):
+        (testLoadFailedWithTLSErrors):
+        (beforeAll):
+
+2014-10-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Unskip inspector server unit tests.
+
+        They should pass now.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2014-10-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test TestWebKitAPI/WebKit2Gtk/TestInspectorServer fails
+        https://bugs.webkit.org/show_bug.cgi?id=132044
+
+        Reviewed by Brian Burg.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestInspectorServer.cpp:
+        (openRemoteDebuggingSession): Remove trailing slash when
+        concatenating base inspector URL with the page, because the
+        inspector returns the relative paths with a leading slash.
+
+2014-10-20  Tanay C  <tanay.c@samsung.com>
+
+        [EFL][WK2] Minibrowser : Add support for Case sensitive and word start search
+        https://bugs.webkit.org/show_bug.cgi?id=137023
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c: Added functionality to support case sensitive and word start search
+        (search_box_show): Modified.
+        (search_box_hide): Modified.
+        (on_search_field_activated): Modified.
+        (on_search_backward_button_clicked): Modified.
+        (on_search_forward_button_clicked): Modified.
+        (on_search_case_option_changed): Added.
+        (on_search_word_start_option_changed): Added.
+        (window_create): Modified.
+
+2014-10-20  Tanay C  <tanay.c@samsung.com>
+
+        [GTK][Minibrowser] Escape key does not hide the search box
+        https://bugs.webkit.org/show_bug.cgi?id=137734
+
+        Reviewed by Philippe Normand.
+
+        * MiniBrowser/gtk/BrowserWindow.c: Added the check to handle search box hide
+        (stopPageLoad): Modified.
+
+2014-10-18  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r173356): Safari can't install a profile, gets 'Download Failed error
+        https://bugs.webkit.org/show_bug.cgi?id=137855
+
+        Reviewed by Dan Bernstein.
+
+        Test and warn if the dumped response mime type differs from the platform response mime type.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didReceiveResponseForResource):
+        (WTR::InjectedBundlePage::platformResponseMimeType):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.h:
+        * WebKitTestRunner/InjectedBundle/cocoa/InjectedBundlePageCocoa.mm:
+        (WTR::InjectedBundlePage::platformResponseMimeType):
+
+2014-10-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove run-inspector-perf-tests.py there is no PerformanceTests/inspector anymore
+        https://bugs.webkit.org/show_bug.cgi?id=137835
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/run-inspector-perf-tests.py: Removed.
+        This script is stale, as PerformanceTests/inspector no longer exists.
+
+2014-10-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix typo: should be ios-simulator-wk2, not ios-simulator_wk2.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.default_baseline_search_path):
+
+2014-10-17  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Simplify test fallback paths for iOS Simulator testing
+        https://bugs.webkit.org/show_bug.cgi?id=137830
+
+        Reviewed by Zalan Bujtas.
+        
+        Make the fallback paths be:
+            ios-simulator -> generic
+            ios-simulator-wk2->ios-simulator -> generic
+        
+        so don't include mac in the fallback path. Also remove the
+        version handling for simplicity.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort):
+        (IOSSimulatorPort.default_baseline_search_path):
+
+2014-10-17  Dana Burkart  <dburkart@apple.com>
+
+        Fix typos in the dashboard config file.
+
+        Unreviewed.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+
+2014-10-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Allow WinLauncher to specify Custom User Agent strings
+        https://bugs.webkit.org/show_bug.cgi?id=137828
+
+        Reviewed by Dean Jackson.
+
+        * WinLauncher/Common.cpp: Add support for custom user agent strings.
+        * WinLauncher/WinLauncher.cpp: Add some convenience methods to get
+        and set the user agent strings.
+        * WinLauncher/WinLauncher.h:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.rc: Add new menu
+        resources and dialog for setting custom User Agent strings.
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLibResource.h:
+
+2014-10-16  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Turn off font autosizing for iOS WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=137806
+
+        Reviewed by Sam Weinig.
+
+        Confusingly, WKPreferencesSetTextAutosizingEnabled() does nothing on iOS.
+        Instead, we have to add WKPreferencesSetMinimumZoomFontSize() and set it to 0
+        to disable font autosizing.
+        
+        Add platformResetPreferencesToConsistentValues() and implement it in the iOS
+        test controller to set platform-specific prefs.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+
+2014-10-16  Dan Bernstein  <mitz@apple.com>
+
+        OSObjectPtr is missing leakRef()
+        https://bugs.webkit.org/show_bug.cgi?id=137798
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/darwin/OSObjectPtr.cpp:
+        (TestWebKitAPI::TEST(OSObjectPtr, LeakRef)): Added.
+
+2014-10-16  Lucas Forschler  <lforschler@apple.com>
+
+        Update target platform to remove Leopard, Snow Leopard, Lion.
+        Add Yosemite. 
+        
+        Unreviewed.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        (_should_file_trigger_build):
+
+2014-10-16  David Kilzer  <ddkilzer@apple.com>
+
+        commit-queue: fails to replace OO-PS! with reviewer name
+        <http://webkit.org/b/137795>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.fetch_bug_dictionary): Bugzilla 4.2.x never gives out
+        email addresses to unauthenticated page loads, so we must always
+        authenticate before getting bug data so we get full email
+        addresses.
+
+2014-10-16  David Kilzer  <ddkilzer@apple.com>
+
+        commit-queue: fails to close bugs after successfully landing patches
+        <http://webkit.org/b/137794>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.clear_attachment_flags): Change 'nr=0' to 'nr=1' to
+        tell Mechanize to use the second <textarea> on the page with
+        name="comment".
+
+2014-10-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update DRT to match Mac Logic
+        https://bugs.webkit.org/show_bug.cgi?id=137787
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (initialize): 0 -> nullptr
+        (runTest): Initialize MSG structure before using.
+        (main): Add CRT debug flags if building DRT with debug malloc on Windows.
+        Also, cleanly shut down COM when exiting.
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (FrameLoadDelegate::didChangeLocationWithinPageForFrame): Move from
+        header and add printf to match Mac.
+        (FrameLoadDelegate::windowScriptObjectAvailable): Ditto.
+        * DumpRenderTree/win/FrameLoadDelegate.h:
+        (FrameLoadDelegate::didChangeLocationWithinPageForFrame): Deleted.
+        (FrameLoadDelegate::windowScriptObjectAvailable): Deleted.
+        * DumpRenderTree/win/ResourceLoadDelegate.cpp:
+        (isLocalhost): Added.
+        (hostIsUsedBySomeTestsToGenerateError): Added.
+        (ResourceLoadDelegate::willSendRequest): Add logic to mimic Mac's use
+        of certain error and redirect host names.
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (UIDelegate::runJavaScriptAlertPanelWithMessage): Use 'done' flag to decide if
+        anything should be output to the console. This modifies behavior to match the Mac.
+        (UIDelegate::runJavaScriptConfirmPanelWithMessage): Ditto.
+        (UIDelegate::runJavaScriptTextInputPanelWithPrompt): Ditto.
+        (UIDelegate::runBeforeUnloadConfirmPanelWithMessage): Ditto.
+        (UIDelegate::webViewAddMessageToConsole): Ditto.
+        * WinLauncher/PageLoadTestClient.cpp:
+        (PageLoadTestClient::pageLoadEndedAtTime): Drive-by-fix for an assertion that I
+        added last week.
+
+2014-10-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174754.
+        https://bugs.webkit.org/show_bug.cgi?id=137789
+
+        Speculative fix for Windows test was ineffective. (Requested
+        by rfong on #webkit).
+
+        Reverted changeset:
+
+        "[Windows] Add some more logging to debug Windows test
+        issues."
+        http://trac.webkit.org/changeset/174754
+
+2014-10-15  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, add myself to CoordinatedGraphics watchers.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2014-10-15  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Speculative Windows test fix.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp: Make sure that OLEAUT32.dll doesn't cache BSTRs.
+
+2014-10-15  Rebecca Hauck  <rhauck@adobe.com>
+
+        import-w3c-test rewrites relative src paths in ref files incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=137586
+
+        This patch fixes a bug in test_converter.py where src paths were getting 
+        rewritten as ../../some-path instead of <script src="../../some-path>". 
+        It also adds support for rewriting src paths in style  elements, which was 
+        missing before and it adds tests for this case.
+
+        Reviewed by Bem Jones-Bey.
+
+        * Scripts/webkitpy/w3c/test_converter.py:
+        (_W3CTestConverter.convert_attributes_if_needed):
+        * Scripts/webkitpy/w3c/test_converter_unittest.py:
+        (test_convert_attributes_if_needed):
+        (verify_reference_relative_paths):
+
+2014-10-15  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Add --json flag to test-webkitpy to emit JSON formatted test results
+        to stdout
+        https://bugs.webkit.org/show_bug.cgi?id=137353
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/port/server_process_unittest.py:
+        Adds the read method to MockFile to allow the stdout of test_webkitpy
+        to be redirected without causing erroneous test failures.
+        In particular,
+        webkitpy.port.server_process_unittest.TestServerProcess.test_broken_pipe
+        and
+        webkitpy.port.server_process_unittest.TestServerProcess.test_cleanup
+        because when redirecting to a file, the
+        _wait_for_data_and_update_buffers_using_select method in 
+        server_process.py will find that there is a read file descriptor in
+        its call to select.select, which eventually leads to it calling read()
+        on the MockFile object.
+        (MockFile.read):
+        * Scripts/webkitpy/test/main.py:
+        Adds the _print_results_as_json method and the --json flag which
+        determines whether _print_results_as_json will get called.
+        (Tester._parse_args):
+        (Tester._print_results_as_json):
+        (Tester._print_results_as_json.result_dict_from_tuple):
+        (Tester._run_tests):
+
 2014-10-13  David Farler  <dfarler@apple.com>
 
         [iOS] LayoutTestRelay: Detect broken pipe when reading simulator app's stdout and stderr.

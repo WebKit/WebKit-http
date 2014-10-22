@@ -373,19 +373,18 @@ bool RenderThemeGtk::controlSupportsTints(const RenderObject& o) const
     return isEnabled(o);
 }
 
-int RenderThemeGtk::baselinePosition(const RenderObject& o) const
+int RenderThemeGtk::baselinePosition(const RenderObject& renderer) const
 {
-    if (!o.isBox())
+    if (!is<RenderBox>(renderer))
         return 0;
 
     // FIXME: This strategy is possibly incorrect for the GTK+ port.
-    if (o.style().appearance() == CheckboxPart
-        || o.style().appearance() == RadioPart) {
-        const RenderBox* box = toRenderBox(&o);
-        return box->marginTop() + box->height() - 2;
+    if (renderer.style().appearance() == CheckboxPart || renderer.style().appearance() == RadioPart) {
+        const auto& box = downcast<RenderBox>(renderer);
+        return box.marginTop() + box.height() - 2;
     }
 
-    return RenderTheme::baselinePosition(o);
+    return RenderTheme::baselinePosition(renderer);
 }
 
 static GtkTextDirection gtkTextDirection(TextDirection direction)
@@ -990,13 +989,13 @@ static IntRect centerRectVerticallyInParentInputElement(const RenderObject& rend
     Node* input = renderObject.node()->shadowHost();
     if (!input)
         input = renderObject.node();
-    if (!input->renderer()->isBox())
+    if (!is<RenderBox>(*input->renderer()))
         return IntRect();
 
     // If possible center the y-coordinate of the rect vertically in the parent input element.
     // We also add one pixel here to ensure that the y coordinate is rounded up for box heights
     // that are even, which looks in relation to the box text.
-    IntRect inputContentBox = toRenderBox(input->renderer())->absoluteContentBox();
+    IntRect inputContentBox = downcast<RenderBox>(*input->renderer()).absoluteContentBox();
 
     // Make sure the scaled decoration stays square and will fit in its parent's box.
     int iconSize = std::min(inputContentBox.width(), std::min(inputContentBox.height(), rect.height()));
@@ -1333,73 +1332,70 @@ double RenderThemeGtk::caretBlinkInterval() const
     return time / 2000.;
 }
 
+enum StyleColorType { StyleColorBackground, StyleColorForeground };
+
+static Color styleColor(GType widgetType, GtkStateFlags state, StyleColorType colorType)
+{
+
+    GtkStyleContext* context = getStyleContext(widgetType);
+    // Recent GTK+ versions (> 3.14) require to explicitly set the state before getting the color.
+    gtk_style_context_set_state(context, state);
+
+    GdkRGBA gdkRGBAColor;
+    if (colorType == StyleColorBackground)
+        gtk_style_context_get_background_color(context, state, &gdkRGBAColor);
+    else
+        gtk_style_context_get_color(context, state, &gdkRGBAColor);
+    return gdkRGBAColor;
+}
+
 Color RenderThemeGtk::platformActiveSelectionBackgroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_background_color(getStyleContext(GTK_TYPE_ENTRY), static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_ENTRY, static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), StyleColorBackground);
 }
 
 Color RenderThemeGtk::platformInactiveSelectionBackgroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_background_color(getStyleContext(GTK_TYPE_ENTRY), GTK_STATE_FLAG_SELECTED, &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_ENTRY, GTK_STATE_FLAG_SELECTED, StyleColorBackground);
 }
 
 Color RenderThemeGtk::platformActiveSelectionForegroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_color(getStyleContext(GTK_TYPE_ENTRY), static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_ENTRY, static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), StyleColorForeground);
 }
 
 Color RenderThemeGtk::platformInactiveSelectionForegroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_color(getStyleContext(GTK_TYPE_ENTRY), GTK_STATE_FLAG_SELECTED, &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_ENTRY, GTK_STATE_FLAG_SELECTED, StyleColorForeground);
 }
 
 Color RenderThemeGtk::platformActiveListBoxSelectionBackgroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_background_color(getStyleContext(GTK_TYPE_TREE_VIEW), static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_TREE_VIEW, static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), StyleColorBackground);
 }
 
 Color RenderThemeGtk::platformInactiveListBoxSelectionBackgroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_background_color(getStyleContext(GTK_TYPE_TREE_VIEW), GTK_STATE_FLAG_SELECTED, &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_TREE_VIEW, GTK_STATE_FLAG_SELECTED, StyleColorBackground);
 }
 
 Color RenderThemeGtk::platformActiveListBoxSelectionForegroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_color(getStyleContext(GTK_TYPE_TREE_VIEW), static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_TREE_VIEW, static_cast<GtkStateFlags>(GTK_STATE_FLAG_SELECTED | GTK_STATE_FLAG_FOCUSED), StyleColorForeground);
 }
 
 Color RenderThemeGtk::platformInactiveListBoxSelectionForegroundColor() const
 {
-    GdkRGBA gdkRGBAColor;
-    gtk_style_context_get_color(getStyleContext(GTK_TYPE_TREE_VIEW), GTK_STATE_FLAG_SELECTED, &gdkRGBAColor);
-    return gdkRGBAColor;
+    return styleColor(GTK_TYPE_TREE_VIEW, GTK_STATE_FLAG_SELECTED, StyleColorForeground);
 }
 
 Color RenderThemeGtk::systemColor(CSSValueID cssValueId) const
 {
-    GdkRGBA gdkRGBAColor;
-
     switch (cssValueId) {
     case CSSValueButtontext:
-        gtk_style_context_get_color(getStyleContext(GTK_TYPE_BUTTON), GTK_STATE_FLAG_ACTIVE, &gdkRGBAColor);
-        return gdkRGBAColor;
+        return styleColor(GTK_TYPE_BUTTON, GTK_STATE_FLAG_ACTIVE, StyleColorForeground);
     case CSSValueCaptiontext:
-        gtk_style_context_get_color(getStyleContext(GTK_TYPE_ENTRY), static_cast<GtkStateFlags>(0), &gdkRGBAColor);
-        return gdkRGBAColor;
+        return styleColor(GTK_TYPE_ENTRY, GTK_STATE_FLAG_ACTIVE, StyleColorForeground);
     default:
         return RenderTheme::systemColor(cssValueId);
     }
@@ -1621,7 +1617,7 @@ double RenderThemeGtk::animationDurationForProgressBar(RenderProgress&) const
 IntRect RenderThemeGtk::calculateProgressRect(const RenderObject& renderObject, const IntRect& fullBarRect)
 {
     IntRect progressRect(fullBarRect);
-    const RenderProgress& renderProgress = toRenderProgress(renderObject);
+    const auto& renderProgress = downcast<RenderProgress>(renderObject);
     if (renderProgress.isDeterminate()) {
         int progressWidth = progressRect.width() * renderProgress.position();
         if (renderObject.style().direction() == RTL)

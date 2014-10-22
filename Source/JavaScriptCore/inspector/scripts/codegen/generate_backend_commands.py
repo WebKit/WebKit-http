@@ -41,7 +41,7 @@ class BackendCommandsGenerator(Generator):
         Generator.__init__(self, model, input_filepath)
 
     def output_filename(self):
-        return "Inspector%sBackendCommands.js" % self.model().framework.setting('prefix')
+        return "InspectorBackendCommands.js"
 
     def domains_to_generate(self):
         def should_generate_domain(domain):
@@ -113,5 +113,15 @@ class BackendCommandsGenerator(Generator):
                 'returnParams': ", ".join(['"%s"' % parameter.parameter_name for parameter in command.return_parameters]),
             }
             lines.append('InspectorBackend.registerCommand("%(domain)s.%(commandName)s", [%(callParams)s], [%(returnParams)s]);' % command_args)
+
+        if domain.commands or domain.events:
+            activate_args = {
+                'domain': domain.domain_name,
+                'availability': domain.availability,
+            }
+            if domain.availability:
+                lines.append('InspectorBackend.activateDomain("%(domain)s", "%(availability)s");' % activate_args)
+            else:
+                lines.append('InspectorBackend.activateDomain("%(domain)s");' % activate_args)
 
         return "\n".join(lines)

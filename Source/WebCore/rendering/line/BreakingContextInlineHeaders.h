@@ -308,33 +308,33 @@ inline void BreakingContext::handleOutOfFlowPositioned(Vector<RenderBox*>& posit
 {
     // If our original display wasn't an inline type, then we can
     // go ahead and determine our static inline position now.
-    RenderBox* box = toRenderBox(m_current.renderer());
-    bool isInlineType = box->style().isOriginalDisplayInlineType();
+    auto& box = downcast<RenderBox>(*m_current.renderer());
+    bool isInlineType = box.style().isOriginalDisplayInlineType();
     if (!isInlineType)
-        m_block.setStaticInlinePositionForChild(*box, m_block.logicalHeight(), m_block.startOffsetForContent(m_block.logicalHeight()));
+        m_block.setStaticInlinePositionForChild(box, m_block.logicalHeight(), m_block.startOffsetForContent(m_block.logicalHeight()));
     else {
         // If our original display was an INLINE type, then we can go ahead
         // and determine our static y position now.
-        box->layer()->setStaticBlockPosition(m_block.logicalHeight());
+        box.layer()->setStaticBlockPosition(m_block.logicalHeight());
     }
 
     // If we're ignoring spaces, we have to stop and include this object and
     // then start ignoring spaces again.
-    if (isInlineType || box->container()->isRenderInline()) {
+    if (isInlineType || box.container()->isRenderInline()) {
         if (m_ignoringSpaces)
-            m_lineMidpointState.ensureLineBoxInsideIgnoredSpaces(box);
-        m_trailingObjects.appendBoxIfNeeded(box);
+            m_lineMidpointState.ensureLineBoxInsideIgnoredSpaces(&box);
+        m_trailingObjects.appendBoxIfNeeded(&box);
     } else
-        positionedObjects.append(box);
+        positionedObjects.append(&box);
 
-    m_width.addUncommittedWidth(inlineLogicalWidth(box));
+    m_width.addUncommittedWidth(inlineLogicalWidth(&box));
     // Reset prior line break context characters.
     m_renderTextInfo.m_lineBreakIterator.resetPriorContext();
 }
 
 inline void BreakingContext::handleFloat()
 {
-    RenderBox& floatBox = toRenderBox(*m_current.renderer());
+    auto& floatBox = downcast<RenderBox>(*m_current.renderer());
     FloatingObject* floatingObject = m_lineBreaker.insertFloatingObject(floatBox);
     // check if it fits in the current line.
     // If it does, position it now, otherwise, position
@@ -407,7 +407,7 @@ inline void BreakingContext::handleEmptyInline()
 
 inline void BreakingContext::handleReplaced()
 {
-    RenderBox& replacedBox = toRenderBox(*m_current.renderer());
+    auto& replacedBox = downcast<RenderBox>(*m_current.renderer());
 
     if (m_atStart)
         m_width.updateAvailableWidth(replacedBox.logicalHeight());
@@ -430,7 +430,7 @@ inline void BreakingContext::handleReplaced()
     // Optimize for a common case. If we can't find whitespace after the list
     // item, then this is all moot.
     LayoutUnit replacedLogicalWidth = m_block.logicalWidthForChild(replacedBox) + m_block.marginStartForChild(replacedBox) + m_block.marginEndForChild(replacedBox) + inlineLogicalWidth(m_current.renderer());
-    if (m_current.renderer()->isListMarker()) {
+    if (is<RenderListMarker>(*m_current.renderer())) {
         if (m_blockStyle.collapseWhiteSpace() && shouldSkipWhitespaceAfterStartObject(m_block, m_current.renderer(), m_lineMidpointState)) {
             // Like with inline flows, we start ignoring spaces to make sure that any
             // additional spaces we see will be discarded.
@@ -438,12 +438,12 @@ inline void BreakingContext::handleReplaced()
             m_currentCharacterIsWS = false;
             m_ignoringSpaces = true;
         }
-        if (toRenderListMarker(*m_current.renderer()).isInside())
+        if (downcast<RenderListMarker>(*m_current.renderer()).isInside())
             m_width.addUncommittedWidth(replacedLogicalWidth);
     } else
         m_width.addUncommittedWidth(replacedLogicalWidth);
-    if (m_current.renderer()->isRubyRun())
-        m_width.applyOverhang(toRenderRubyRun(m_current.renderer()), m_lastObject, m_nextObject);
+    if (is<RenderRubyRun>(*m_current.renderer()))
+        m_width.applyOverhang(downcast<RenderRubyRun>(m_current.renderer()), m_lastObject, m_nextObject);
     // Update prior line break context characters, using U+FFFD (OBJECT REPLACEMENT CHARACTER) for replaced element.
     m_renderTextInfo.m_lineBreakIterator.updatePriorContext(replacementCharacter);
 }
@@ -594,8 +594,8 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
     if (m_autoWrap && !RenderStyle::autoWrap(m_lastWS) && m_ignoringSpaces)
         commitLineBreakAtCurrentWidth(renderText);
 
-    if (renderText.style().hasTextCombine() && m_current.renderer()->isCombineText() && !toRenderCombineText(*m_current.renderer()).isCombined()) {
-        RenderCombineText& combineRenderer = toRenderCombineText(*m_current.renderer());
+    if (renderText.style().hasTextCombine() && is<RenderCombineText>(*m_current.renderer()) && !downcast<RenderCombineText>(*m_current.renderer()).isCombined()) {
+        auto& combineRenderer = downcast<RenderCombineText>(*m_current.renderer());
         combineRenderer.combineText();
         // The length of the renderer's text may have changed. Increment stale iterator positions
         if (iteratorIsBeyondEndOfRenderCombineText(m_lineBreak, combineRenderer)) {
@@ -995,7 +995,7 @@ inline void BreakingContext::commitAndUpdateLineBreakIfNeeded()
 
     if (!m_current.renderer()->isFloatingOrOutOfFlowPositioned()) {
         m_lastObject = m_current.renderer();
-        if (m_lastObject->isReplaced() && m_autoWrap && (!m_lastObject->isImage() || m_allowImagesToBreak) && (!m_lastObject->isListMarker() || toRenderListMarker(*m_lastObject).isInside())) {
+        if (m_lastObject->isReplaced() && m_autoWrap && (!m_lastObject->isImage() || m_allowImagesToBreak) && (!is<RenderListMarker>(*m_lastObject) || downcast<RenderListMarker>(*m_lastObject).isInside())) {
             m_width.commit();
             m_lineBreak.moveToStartOf(m_nextObject);
         }

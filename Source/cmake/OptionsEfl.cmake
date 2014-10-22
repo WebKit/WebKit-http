@@ -226,9 +226,6 @@ add_definitions(-DWTF_USE_TEXTURE_MAPPER=1)
 set(WTF_USE_3D_GRAPHICS 1)
 add_definitions(-DWTF_USE_3D_GRAPHICS=1)
 
-set(ENABLE_3D_RENDERING 1)
-add_definitions(-DENABLE_3D_RENDERING=1)
-
 add_definitions(-DWTF_USE_GRAPHICS_SURFACE=1)
 
 option(ENABLE_GLES2 "Enable GLES Support")
@@ -306,9 +303,11 @@ endif ()
 if (ENABLE_FTL_JIT)
     find_package(LLVM REQUIRED)
     set(HAVE_LLVM ON)
+    if (ENABLE_FTL_NATIVE_CALL_INLINING)
+        find_package(Clang REQUIRED)
+        add_definitions(-DENABLE_FTL_NATIVE_CALL_INLINING=1)
+    endif ()
 endif ()
-
-add_definitions(-DENABLE_CUSTOM_PROTOCOLS=1)
 
 # [E]WebKit2 tests need a hint to find out where processes such as WebProcess are located at.
 add_definitions(-DWEBKIT_EXEC_PATH=\"${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\")

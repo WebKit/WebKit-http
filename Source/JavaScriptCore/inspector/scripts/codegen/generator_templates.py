@@ -115,7 +115,7 @@ private:
 };""")
 
     BackendDispatcherHeaderAsyncCommandDeclaration = (
-    """    class ${callbackName} : public Inspector::InspectorBackendDispatcher::CallbackBase {
+    """    ${classAndExportMacro} ${callbackName} : public Inspector::InspectorBackendDispatcher::CallbackBase {
     public:
         ${callbackName}(PassRefPtr<Inspector::InspectorBackendDispatcher>, int id);
         void sendSuccess(${outParameters});

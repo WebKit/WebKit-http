@@ -210,7 +210,7 @@ if ($fetch_extension_info) {
     _die_on_fault($soapresult);
     my $extensions = $soapresult->result()->{extensions};
     foreach my $extensionname (keys(%$extensions)) {
-        print "Extensionn '$extensionname' information\n";
+        print "Extension '$extensionname' information\n";
         my $extension = $extensions->{$extensionname};
         foreach my $data (keys(%$extension)) {
             print '  ' . $data . ' => ' . $extension->{$data} . "\n";
@@ -287,24 +287,32 @@ if ($bug_id) {
 
 =head2 Retrieving Product Information
 
-Call C<Product.get_product> with the name of the product you want to know more
-of.
+Call C<Product.get> with the name of the product you want to know more of.
 The call will return a C<Bugzilla::Product> object.
 
 =cut
 
 if ($product_name) {
-    $soapresult = $proxy->call('Product.get_product', $product_name);
+    $soapresult = $proxy->call('Product.get', {'names' => [$product_name]});
     _die_on_fault($soapresult);
-    $result = $soapresult->result;
+    $result = $soapresult->result()->{'products'}->[0];
 
-    if (ref($result) eq 'HASH') {
-        foreach (keys(%$result)) {
-            print "$_: $$result{$_}\n";
+    # Iterate all entries, the values may be scalars or array refs with hash refs.
+    foreach my $key (sort(keys %$result)) {
+      my $value = $result->{$key};
+
+      if (ref($value)) {
+        my $counter = 0;
+        foreach my $hash (@$value) {
+          while (my ($innerKey, $innerValue) = each %$hash) {
+            print "$key.$counter.$innerKey: $innerValue\n";
+          }
+          ++$counter;
         }
-    }
-    else {
-        print "$result\n";
+      }
+      else {
+        print "$key: $value\n"
+      }
     }
 }
 
@@ -390,7 +398,7 @@ this:
         version     => "unspecified",
         description => "This is a description of the bug... hohoho",
         op_sys      => "All",
-        platform    => "All",	
+        platform    => "All",
         priority    => "P4",
         severity    => "normal"
     };

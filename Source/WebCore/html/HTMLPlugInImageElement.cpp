@@ -145,9 +145,7 @@ RenderEmbeddedObject* HTMLPlugInImageElement::renderEmbeddedObject() const
 {
     // HTMLObjectElement and HTMLEmbedElement may return arbitrary renderers
     // when using fallback content.
-    if (!renderer() || !renderer()->isEmbeddedObject())
-        return 0;
-    return toRenderEmbeddedObject(renderer());
+    return is<RenderEmbeddedObject>(renderer()) ? downcast<RenderEmbeddedObject>(renderer()) : nullptr;
 }
 
 bool HTMLPlugInImageElement::isImageType()
@@ -540,7 +538,7 @@ void HTMLPlugInImageElement::checkSizeChangeForSnapshotting()
         return;
 
     m_needsCheckForSizeChange = false;
-    LayoutRect contentBoxRect = toRenderBox(renderer())->contentBoxRect();
+    LayoutRect contentBoxRect = downcast<RenderBox>(*renderer()).contentBoxRect();
     int contentWidth = contentBoxRect.width();
     int contentHeight = contentBoxRect.height();
 
@@ -693,7 +691,7 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const URL& url)
         return;
     }
     
-    auto& renderer = toRenderEmbeddedObject(*this->renderer());
+    auto& renderer = downcast<RenderEmbeddedObject>(*this->renderer());
     LayoutRect contentRect = renderer.contentBoxRect();
     int contentWidth = contentRect.width();
     int contentHeight = contentRect.height();

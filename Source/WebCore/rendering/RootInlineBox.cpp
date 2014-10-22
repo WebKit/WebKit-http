@@ -33,6 +33,7 @@
 #include "Page.h"
 #include "PaintInfo.h"
 #include "RenderFlowThread.h"
+#include "RenderInline.h"
 #include "RenderView.h"
 #include "VerticalPositionCache.h"
 #include <wtf/NeverDestroyed.h>
@@ -95,12 +96,9 @@ void RootInlineBox::clearTruncation()
 bool RootInlineBox::isHyphenated() const
 {
     for (InlineBox* box = firstLeafChild(); box; box = box->nextLeafChild()) {
-        if (box->isInlineTextBox()) {
-            if (toInlineTextBox(box)->hasHyphen())
-                return true;
-        }
+        if (is<InlineTextBox>(*box) && downcast<InlineTextBox>(*box).hasHyphen())
+            return true;
     }
-
     return false;
 }
 
@@ -743,7 +741,7 @@ void RootInlineBox::setLineBreakInfo(RenderObject* obj, unsigned breakPos, const
     // This has security implications because if the RenderObject does not
     // point to at least one line box, then that RenderInline can be deleted
     // later without resetting the lineBreakObj, leading to use-after-free.
-    ASSERT_WITH_SECURITY_IMPLICATION(!obj || obj->isText() || !(obj->isRenderInline() && obj->isBox() && !toRenderBox(obj)->inlineBoxWrapper()));
+    ASSERT_WITH_SECURITY_IMPLICATION(!obj || is<RenderText>(*obj) || !(is<RenderInline>(*obj) && is<RenderBox>(*obj) && !downcast<RenderBox>(*obj).inlineBoxWrapper()));
 
     m_lineBreakObj = obj;
     m_lineBreakPos = breakPos;
@@ -830,10 +828,10 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
 
     Vector<const SimpleFontData*>* usedFonts = nullptr;
     GlyphOverflow* glyphOverflow = nullptr;
-    if (box.isInlineTextBox()) {
-        GlyphOverflowAndFallbackFontsMap::iterator it = textBoxDataMap.find(toInlineTextBox(&box));
-        usedFonts = it == textBoxDataMap.end() ? 0 : &it->value.first;
-        glyphOverflow = it == textBoxDataMap.end() ? 0 : &it->value.second;
+    if (is<InlineTextBox>(box)) {
+        GlyphOverflowAndFallbackFontsMap::iterator it = textBoxDataMap.find(&downcast<InlineTextBox>(box));
+        usedFonts = it == textBoxDataMap.end() ? nullptr : &it->value.first;
+        glyphOverflow = it == textBoxDataMap.end() ? nullptr : &it->value.second;
     }
         
     bool includeLeading = includeLeadingForBox(box);
@@ -1017,7 +1015,7 @@ bool RootInlineBox::includeFontForBox(InlineBox& box) const
     if (box.renderer().isReplaced() || (box.renderer().isTextOrLineBreak() && !box.behavesLikeText()))
         return false;
     
-    if (!box.behavesLikeText() && box.isInlineFlowBox() && !toInlineFlowBox(&box)->hasTextChildren())
+    if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
     // For now map "glyphs" to "font" in vertical text mode until the bounds returned by glyphs aren't garbage.
@@ -1030,7 +1028,7 @@ bool RootInlineBox::includeGlyphsForBox(InlineBox& box) const
     if (box.renderer().isReplaced() || (box.renderer().isTextOrLineBreak() && !box.behavesLikeText()))
         return false;
     
-    if (!box.behavesLikeText() && box.isInlineFlowBox() && !toInlineFlowBox(&box)->hasTextChildren())
+    if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
     // FIXME: We can't fit to glyphs yet for vertical text, since the bounds returned are garbage.
@@ -1043,7 +1041,7 @@ bool RootInlineBox::includeInitialLetterForBox(InlineBox& box) const
     if (box.renderer().isReplaced() || (box.renderer().isTextOrLineBreak() && !box.behavesLikeText()))
         return false;
     
-    if (!box.behavesLikeText() && box.isInlineFlowBox() && !toInlineFlowBox(&box)->hasTextChildren())
+    if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
     LineBoxContain lineBoxContain = renderer().style().lineBoxContain();

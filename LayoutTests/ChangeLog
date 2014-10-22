@@ -1,3 +1,546 @@
+2014-10-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More rebaselines.
+
+        * platform/win/css1/box_properties/acid_test-expected.txt:
+        * platform/win/editing/selection/3690719-expected.txt:
+        * platform/win/editing/selection/move-left-right-expected.txt:
+        * platform/win/fast/css/continuationCrash-expected.txt:
+        * platform/win/fast/css/fieldset-display-row-expected.txt:
+        * platform/win/fast/css/margin-top-bottom-dynamic-expected.txt:
+        * platform/win/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt:
+        * platform/win/fast/forms/file/file-input-direction-expected.txt:
+        * platform/win/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/win/fast/forms/file/input-file-re-render-expected.txt:
+        * platform/win/fast/forms/formmove-expected.txt:
+        * platform/win/fast/forms/formmove2-expected.txt:
+        * platform/win/fast/forms/formmove3-expected.txt:
+        * platform/win/fast/forms/input-appearance-height-expected.txt:
+        * platform/win/fast/forms/input-button-sizes-expected.txt:
+        * platform/win/fast/forms/input-step-as-double-expected.txt: Removed.
+        * platform/win/fast/forms/input-text-drag-down-expected.txt:
+        * platform/win/fast/forms/input-value-expected.txt:
+        * platform/win/fast/forms/listbox-bidi-align-expected.txt:
+        * platform/win/fast/forms/targeted-frame-submission-expected.txt:
+        * platform/win/fast/forms/text-control-intrinsic-widths-expected.txt:
+
+2014-10-21  Benjamin Poulain  <bpoulain@apple.com>
+
+        CSS Rule features are ignored for nested CSS Selector lists
+        https://bugs.webkit.org/show_bug.cgi?id=137908
+
+        Reviewed by Andreas Kling.
+
+        * fast/selectors/class-style-update-with-not-expected.txt: Added.
+        * fast/selectors/class-style-update-with-not.html: Added.
+        Parts of this test fail due to a bug with specificity. This will be addressed
+        separately.
+
+        * fast/css/class-style-invalidation-optimization-expected.txt: Added.
+        * fast/css/class-style-invalidation-optimization.html: Added.
+        * fast/css/direct-adjacent-style-sharing-1-expected.html: Added.
+        * fast/css/direct-adjacent-style-sharing-1.html: Added.
+        * fast/css/direct-adjacent-style-sharing-2-expected.html: Added.
+        * fast/css/direct-adjacent-style-sharing-2.html: Added.
+        * fast/css/direct-adjacent-style-sharing-3-expected.html: Added.
+        * fast/css/direct-adjacent-style-sharing-3.html: Added.
+        * fast/css/id-style-invalidation-optimization-expected.txt: Added.
+        * fast/css/id-style-invalidation-optimization.html: Added.
+        * fast/selectors/class-style-update-expected.txt: Added.
+        * fast/selectors/class-style-update-with-nth-child-of-expected.txt: Added.
+        * fast/selectors/class-style-update-with-nth-child-of.html: Added.
+        * fast/selectors/class-style-update.html: Added.
+
+2014-10-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test updates after switching to Windows theme for tests.
+        https://bugs.webkit.org/show_bug.cgi?id=137932
+
+        * platform/win/css1/box_properties/acid_test-expected.txt:
+        * platform/win/editing/inserting/4960120-1-expected.txt:
+
+2014-10-21  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        'true' isn't a valid value for justify-self
+        https://bugs.webkit.org/show_bug.cgi?id=137913
+
+        Reviewed by Andreas Kling.
+
+        Merged from Blink (patch by dstockwell):
+        <https://src.chromium.org/viewvc/blink?view=rev&revision=174638>
+
+        CSS Box Alignment Module Level 3:
+        http://dev.w3.org/csswg/css-align/#justify-self-property
+
+        Add a bad case where "justify-self: true"
+
+        * fast/css/parse-justify-self-expected.txt:
+        * fast/css/parse-justify-self.html:
+
+2014-10-21  Michael Saboff  <msaboff@apple.com>
+
+        Change native call frames to use the scope from their Callee instead of their caller's scope
+        https://bugs.webkit.org/show_bug.cgi?id=137907
+
+        Updated tests to reflect that the results of changing where a native call frame
+        and therefore the lexicalGlobalObject came from.  Verified that these tests changes
+        are consistent with the HTML standard.  These changes are also closer to the behavior
+        of other browsers.
+
+        Reviewed by Mark Lam.
+
+        * fast/frames/sandboxed-iframe-navigation-parent-expected.txt:
+        * fast/frames/sandboxed-iframe-navigation-parent.html:
+        Changed the test and results to show that a sandboxed iframe can navigate its
+        ancesters when it is sandbox with both "allow-scripts" and "allow-same-origin".
+
+        * http/tests/security/calling-versus-current.html:
+        Updated the test to really have a different domain.  We do a simple string comparison
+        to check for that we are part of the same domain.  The test expected that 0.0.1 was
+        from the same domain as 127.0.0.1.  Changed the test to try 0.0.2 and expect a
+        security exception.
+
+        * http/tests/security/frameNavigation/context-for-location-assign-expected.txt:
+        Updated test results.
+
+        * traversal/node-iterator-prototype-expected.txt:
+        * traversal/node-iterator-prototype.html:
+        Fixed as a result of this change.
+
+2014-10-21  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] CSS-generated text content not exposed to assistive technologies
+        https://bugs.webkit.org/show_bug.cgi?id=137669
+
+        Reviewed by Chris Fleizach.
+
+        Moved the Mac platform test and modified it to dump the accessible tree
+        and string values rather than a platform-specific hierarchy so that it
+        could be shared across platforms.
+
+        * accessibility/css-content-attribute.html: Added.
+        * platform/gtk/accessibility/css-content-attribute-expected.txt: Added.
+        * platform/mac/accessibility/css-content-attribute-expected.txt: Modified to reflect new output.
+        * platform/mac/accessibility/css-content-attribute.html: Removed.
+
+2014-10-21  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION: Google Search (mobile) video thumbnails are too large.
+        https://bugs.webkit.org/show_bug.cgi?id=137895
+
+        Reviewed by Simon Fraser.
+
+        This patch fixes layer clipping when an ancestor layer has border-radius clipping.
+
+        In cases, where the current layer has non-radius cliprect, while an ancestor layer
+        has border-radius clipping, we only use the border-radius rect to clip.
+
+        * fast/clip/overflow-hidden-with-border-radius-overflow-clipping-parent-expected.html: Added.
+        * fast/clip/overflow-hidden-with-border-radius-overflow-clipping-parent.html: Added.
+
+2014-10-21  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r170808): Volume slider in built-in media controls only changes volume when thumb is released, not while dragging
+        https://bugs.webkit.org/show_bug.cgi?id=137805
+
+        Reviewed by Dan Bernstein.
+
+        * media/video-volume-slider-drag-expected.txt: Added.
+        * media/video-volume-slider-drag.html: Added.
+
+2014-10-21  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        ASSERTION FAILED: !gridWasPopulated() in WebCore::RenderGrid::placeItemsOnGrid
+        https://bugs.webkit.org/show_bug.cgi?id=136939
+
+        Reviewed by Darin Adler.
+
+        Added a test case to reproduce the crash in debug mode.
+
+        * fast/css-grid-layout/grid-was-populated-assert-expected.txt: Added.
+        * fast/css-grid-layout/grid-was-populated-assert.html: Added.
+
+2014-10-17  Jeffrey Pfau  <jpfau@apple.com>
+
+        Ensure attached frame count doesn't exceed the maximum allowed frames
+        https://bugs.webkit.org/show_bug.cgi?id=136457
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/frames/exponential-frames-expected.txt: Added.
+        * fast/frames/exponential-frames.html: Added.
+
+2014-10-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Tighten XMLHttpRequest setRequestHeader value check
+        https://bugs.webkit.org/show_bug.cgi?id=128593
+
+        Reviewed by Darin Adler.
+
+        Added a test originating from w3c-test.org to test header values checking.
+        Testing headers with non ASCII characters and various control characters. 
+
+        * http/tests/xmlhttprequest/set-bad-headervalue-expected.txt: Added.
+        * http/tests/xmlhttprequest/set-bad-headervalue.html: Added.
+
+2014-10-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Mark a few tests as no-longer failing.
+
+        It looks like Said's work on SVG has fixed a number of things!
+
+        * platform/win/TestExpectations: Remove 'crash' and 'failures' cases
+        for a few things that are now reliably passing.
+
+2014-10-20  Dean Jackson  <dino@apple.com>
+
+        [Mac] Support "inverted-colors" and "monochrome" media feature.
+        https://bugs.webkit.org/show_bug.cgi?id=137535
+        <rdar://problem/18586398>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests for the new "inverted-colors" media feature, and
+        another test for the "monochrome" feature. Note that these
+        tests don't actually exercise the positive values of the
+        query, since that requires the screen to be changed and would
+        interfere with concurrent tests.
+
+        * fast/media/mq-inverted-colors.html: Added.
+        * fast/media/mq-monochrome.html: Added.
+        * fast/media/mq-inverted-colors-expected.html: Added.
+        * fast/media/mq-monochrome-expected.html: Added.
+
+2014-10-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Eight transitions tests are very flaky, frequently failing all at once
+        https://bugs.webkit.org/show_bug.cgi?id=137883
+
+        Marking them as flaky. Enough is enough.
+
+        * TestExpectations:
+
+2014-10-20  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(r174823): Two new failing HLS tests
+        https://bugs.webkit.org/show_bug.cgi?id=137882
+
+        Unreviewed gardening; add two expected failures.
+
+        * platform/mac/TestExpectations:
+
+2014-10-20  Benjamin Poulain  <benjamin@webkit.org>
+
+        Update the <link>'s link status
+        https://bugs.webkit.org/show_bug.cgi?id=137861
+
+        Reviewed by Chris Dumez.
+
+        * fast/css/link-basics-expected.html: Added.
+        * fast/css/link-basics.html: Added.
+        * fast/selectors/link-basics-expected.txt: Added.
+        * fast/selectors/link-basics-xhtml-expected.txt: Added.
+        * fast/selectors/link-basics-xhtml.xhtml: Added.
+        * fast/selectors/link-basics.html: Added.
+        * fast/selectors/resources/html-link-type-tests.js: Added.
+        (testHTMLElement):
+        (testHTMLTagsForLink):
+        * fast/selectors/webkit-any-link-basics-expected.txt: Added.
+        * fast/selectors/webkit-any-link-basics.html: Added.
+
+2014-10-18  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r173356): Safari can't install a profile, gets 'Download Failed error
+        https://bugs.webkit.org/show_bug.cgi?id=137855
+
+        Reviewed by Dan Bernstein.
+
+        * http/tests/mime/mime-type-sniff-expected.txt: Added.
+        * http/tests/mime/mime-type-sniff.html: Added.
+        * http/tests/mime/resources/png-with-text-content-type.cgi: Added.
+
+2014-10-18  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Tables with <colgroups> are not reporting table column headers
+        https://bugs.webkit.org/show_bug.cgi?id=137846
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/table-column-headers-with-captions-expected.txt: Added.
+        * accessibility/table-column-headers-with-captions.html: Added.
+
+2014-10-17  Michael Saboff  <msaboff@apple.com>
+
+        Don't create cached functions that access lexicalGlobalObject()
+        https://bugs.webkit.org/show_bug.cgi?id=137839
+
+        Reviewed by Geoffrey Garen.
+
+        Updadted test that check for 
+
+        * fast/dom/wrapper-scope-expected.txt:
+        * fast/dom/wrapper-scope.html:
+        Removed "close" and "postMessage" from functions to check for wrapper scope.
+
+        * http/tests/security/cross-frame-access-put-expected.txt:
+        * http/tests/security/resources/cross-frame-iframe-for-put-test.html:
+        Removed "blur", "close" and "focus" from the functions to test, since this tests that
+        a parent's and child window's instances are the same.  Now they are always different.
+
+        * js/dom/global-function-resolve-expected.txt:
+        * js/dom/script-tests/global-function-resolve.js:
+        Removed "close" from this lists of functions to check.
+
+2014-10-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        Make a better use of the available registers when compiling nested selector lists
+        https://bugs.webkit.org/show_bug.cgi?id=137802
+
+        Reviewed by Andreas Kling.
+
+        The register pressure cases are already well covered by fast/selectors/nth-child-of-boundaries-*.
+        The new test covers the maximum register pressure inside :nth-child(of) and having the selector with
+        max pressure inside a selector list instead of being alone/first.
+
+        * fast/selectors/nth-child-of-register-requirement-expected.txt: Added.
+        * fast/selectors/nth-child-of-register-requirement.html: Added.
+
+2014-10-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening. Mark some tests as passing that have benefitted from recent bug fixes.
+
+        * platform/win/TestExpectations:
+
+2014-10-17  Andreas Kling  <akling@apple.com>
+
+        Add test for innerHTML mutations that yield identical DOM.
+        <https://webkit.org/b/137823>
+
+        Reviewed by Chris Dumez.
+
+        I made this test while working on an optimization, and it seems useful
+        to have in the tree since it adds additional coverage. The optimization
+        may come later.
+
+        The test works by creating little DOM subtrees like so:
+
+            <foo><bar>some text</bar></foo>
+
+        It then overwrites that subtree with an identical one by mutating the
+        containing element's innerHTML property. It then verifies that the DOM
+        structure is correct and that Node wrappers retain any custom properties
+        set on them.
+
+        * fast/innerHTML/identical-mutations-expected.txt: Added.
+        * fast/innerHTML/identical-mutations.html: Added.
+
+2014-10-16  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Represent AVMediaSelectionOptions as AudioTracks
+        https://bugs.webkit.org/show_bug.cgi?id=137474
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/media/hls/hls-audio-tracks-expected.txt: Added.
+        * http/tests/media/hls/hls-audio-tracks.html: Added.
+        * http/tests/media/resources/hls/audio-tracks.m3u8: Added.
+        * http/tests/media/resources/hls/bipbop/iframe_index.m3u8: Added.
+        * http/tests/media/resources/hls/bipbop/main0.ts: Added.
+        * http/tests/media/resources/hls/bipbop/main1.ts: Added.
+        * http/tests/media/resources/hls/bipbop/prog_index.m3u8: Added.
+        * http/tests/media/resources/hls/french/main.aac: Added.
+        * http/tests/media/resources/hls/french/prog_index.m3u8: Added.
+        * http/tests/media/resources/hls/spanish/main.aac: Added.
+        * http/tests/media/resources/hls/spanish/prog_index.m3u8: Added.
+
+2014-10-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Test gardening after r174796.
+
+        Now that Windows DRT matches Mac's output, we can get rid of some custom test expecations.
+
+        * platform/win/fast/dom/window-load-crash-expected.txt: Removed.
+        * platform/win/fast/images/crossfade-client-not-removed-crash-expected.txt: Removed.
+        * platform/win/fast/ruby/before-block-doesnt-crash-expected.txt: Removed.
+        * platform/win/fast/ruby/before-table-doesnt-crash-expected.txt: Removed.
+        * platform/win/fast/ruby/generated-before-counter-doesnt-crash-expected.txt: Removed.
+        * platform/win/loader/image-loader-adoptNode-assert-expected.txt: Removed.
+
+2014-10-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS Selectors Level 4: Implement :matches in SelectorChecker
+        https://bugs.webkit.org/show_bug.cgi?id=137393
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/selectors/matches-selector-list-expected.txt: Added.
+        * fast/selectors/matches-selector-list.html: Added.
+        * fast/selectors/querySelector-matches-expected.txt: Added.
+        * fast/selectors/querySelector-matches.html: Added.
+
+2014-10-16  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r169024): Undetermined text is not displayed in the search field of Adobe Help Website
+        https://bugs.webkit.org/show_bug.cgi?id=137679
+        rdar://problem/18450335
+
+        Reviewed by Enrica Casucci.
+
+        * platform/mac/editing/input/selected-composed-text-painting-expected.html: Added.
+        * platform/mac/editing/input/selected-composed-text-painting.html: Added.
+
+2014-10-16  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        * platform/mac/TestExpectations:
+
+2014-10-16  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        Unskip more subpixel related tests.
+
+        * platform/mac/TestExpectations:
+
+2014-10-16  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        Unskip subpixel border tests.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/css1/units/length_units-expected.txt:
+        * platform/mac/fast/css/bidi-override-in-anonymous-block-expected.txt:
+        * platform/mac/fast/repaint/repaint-during-scroll-with-zoom-expected.txt:
+        * platform/mac/ietestcenter/css3/bordersbackgrounds/border-radius-initial-value-001-expected.txt:
+        * platform/mac/ietestcenter/css3/bordersbackgrounds/border-radius-style-001-expected.txt:
+        * platform/mac/ietestcenter/css3/bordersbackgrounds/border-radius-style-002-expected.txt:
+        * platform/mac/ietestcenter/css3/bordersbackgrounds/border-radius-style-004-expected.txt:
+        * platform/mac/ietestcenter/css3/bordersbackgrounds/border-radius-with-three-values-001-expected.txt:
+        * platform/mac/ietestcenter/css3/bordersbackgrounds/border-radius-with-two-values-001-expected.txt:
+        * platform/mac/ietestcenter/css3/bordersbackgrounds/border-top-left-radius-values-003-expected.txt:
+        * platform/mac/media/video-zoom-expected.txt:
+        * platform/mac/svg/custom/svg-fonts-in-html-expected.txt:
+        * platform/mac/svg/zoom/page/zoom-svg-float-border-padding-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug1055-2-expected.txt:
+
+2014-10-15  Andrei Bucur  <abucur@adobe.com>
+
+        ASSERTION  FAILED in WebCore::RenderFlowThread::getRegionRangeForBox
+        https://bugs.webkit.org/show_bug.cgi?id=135563
+
+        Reviewed by David Hyatt.
+
+        A test verifying that positioned elements inside multi-column containers don't
+        cause assertions or crashes.
+
+        * fast/multicol/multicol-all-positioned-crash-expected.txt: Added.
+        * fast/multicol/multicol-all-positioned-crash.html: Added.
+        * fast/multicol/multicol-transform-containing-block-expected.txt: Added.
+        * fast/multicol/multicol-transform-containing-block.html: Added.
+
+2014-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r174753.
+        https://bugs.webkit.org/show_bug.cgi?id=137761
+
+        caused layout tests to fail. (Requested by zalan on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] Unreviewed gardening."
+        http://trac.webkit.org/changeset/174753
+
+2014-10-15  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        Unskip subpixel border tests.
+
+        * platform/mac/TestExpectations:
+
+2014-10-15  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening(mountain-lion).
+
+        * platform/mac-mountainlion/fast/text/international/hindi-spacing-expected.txt: Added.
+
+2014-10-15  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        Rebaselining.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/editing/selection/vertical-lr-ltr-extend-line-backward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-lr-ltr-extend-line-forward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-ltr-extend-line-backward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-ltr-extend-line-backward-p-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-ltr-extend-line-forward-br-expected.txt:
+        * platform/mac/editing/selection/vertical-rl-ltr-extend-line-forward-p-expected.txt:
+        * platform/mac/fast/block/float/overhanging-tall-block-expected.txt:
+        * platform/mac/fast/events/constructors/mouse-event-constructor-expected.txt: Added.
+        * platform/mac/fast/events/constructors/wheel-event-constructor-expected.txt: Added.
+        * platform/mac/fast/text/international/hindi-spacing-expected.txt:
+        * platform/mac/fast/text/international/vertical-text-glyph-test-expected.txt:
+        * platform/mac/fast/text/orientation-sideways-expected.txt:
+        * platform/mac/fast/writing-mode/Kusa-Makura-background-canvas-expected.txt:
+        * platform/mac/fast/writing-mode/japanese-ruby-vertical-lr-expected.txt:
+        * platform/mac/fast/writing-mode/japanese-ruby-vertical-rl-expected.txt:
+        * platform/mac/fast/writing-mode/vertical-font-fallback-expected.txt:
+        * platform/mac/svg/zoom/page/zoom-replaced-intrinsic-ratio-001-expected.txt:
+
+2014-10-13  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Going back is broken for VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=137382
+
+        Reviewed by Darin Adler.
+
+        Update tests now that AXLoadComplete is sent more reliably.
+
+        * platform/mac/accessibility/aria-expanded-notifications-expected.txt:
+        * platform/mac/accessibility/aria-expanded-notifications.html:
+
+2014-10-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Sometimes can't scroll overflow:scroll areas in subframes
+        https://bugs.webkit.org/show_bug.cgi?id=137746
+        rdar://problem/18603560
+
+        Reviewed by Tim Horton.
+        
+        Test that changes an overflow size in a subframe and then dumps the non-fast scrollable region.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/resources/layouting-frame.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/scroll-region-after-frame-layout-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/frames/scroll-region-after-frame-layout.html: Added.
+
+2014-10-15  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        Rebaselining.
+
+        * css3/flexbox/flex-rounding.html:
+
+2014-10-15  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        Unskip some subpixel related tests.
+
+        * platform/mac/TestExpectations:
+
+2014-10-15  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        css3/flexbox/flex-rounding.html passes now that subpixel is on.
+
+        * platform/mac/TestExpectations:
+
 2014-10-15  Zalan Bujtas  <zalan@apple.com>
 
         Subpixel layout: Unskip fast/sub-pixel directory.

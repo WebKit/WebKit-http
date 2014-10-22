@@ -38,7 +38,6 @@
 #endif
 #include "TypesettingFeatures.h"
 #include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/StringHash.h>
 
@@ -219,8 +218,8 @@ public:
 
     bool applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advances, size_t glyphCount, TypesettingFeatures typesettingFeatures) const
     {
-        if (isSVGFont())
-            return false;
+        // We need to handle transforms on SVG fonts internally, since they are rendered internally.
+        ASSERT(!isSVGFont());
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080)
         wkCTFontTransformOptions options = (typesettingFeatures & Kerning ? wkCTFontTransformApplyPositioning : 0) | (typesettingFeatures & Ligatures ? wkCTFontTransformApplyShaping : 0);
         return wkCTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
@@ -302,7 +301,10 @@ private:
     GlyphData m_missingGlyphData;
 
     struct DerivedFontData {
-        static PassOwnPtr<DerivedFontData> create(bool forCustomFont);
+        explicit DerivedFontData(bool custom)
+            : forCustomFont(custom)
+        {
+        }
         ~DerivedFontData();
 
         bool forCustomFont;
@@ -315,15 +317,9 @@ private:
 #if PLATFORM(COCOA)
         mutable RetainPtr<CFMutableDictionaryRef> compositeFontReferences;
 #endif
-
-    private:
-        DerivedFontData(bool custom)
-            : forCustomFont(custom)
-        {
-        }
     };
 
-    mutable OwnPtr<DerivedFontData> m_derivedFontData;
+    mutable std::unique_ptr<DerivedFontData> m_derivedFontData;
 
 #if USE(CG) || USE(CAIRO)
     float m_syntheticBoldOffset;
