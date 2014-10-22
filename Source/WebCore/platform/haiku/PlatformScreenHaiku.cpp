@@ -53,6 +53,11 @@ int screenVerticalDPI(Widget*)
     return 0;
 }
 
+bool screenHasInvertedColors()
+{
+    return false;
+}
+
 FloatRect screenRect(Widget*)
 {
     BScreen screen;

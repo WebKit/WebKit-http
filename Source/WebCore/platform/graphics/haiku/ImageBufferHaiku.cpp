@@ -30,6 +30,7 @@
 #include "ImageData.h"
 #include "IntRect.h"
 #include "JSCellInlines.h"
+#include "JSCJSValueInlines.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "StillImageHaiku.h"
