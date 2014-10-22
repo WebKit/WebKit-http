@@ -77,6 +77,7 @@ BMessageRunner* waitToDumpWatchdog = NULL;
 // From the top-level DumpRenderTree.h
 RefPtr<TestRunner> gTestRunner;
 volatile bool done = true;
+volatile bool first = true;
 
 static bool dumpPixelsForCurrentTest;
 static int dumpPixelsForAllTests = false;
@@ -265,6 +266,7 @@ static void createTestRunner(const String& testURL, const String& expectedPixelH
 
     topLoadingFrame = 0;
     done = false;
+    first = true;
 
     gTestRunner->setIconDatabaseEnabled(false);
 
@@ -555,11 +557,14 @@ void DumpRenderTreeApp::topLoadingFrameLoadFinished()
     topLoadingFrame = 0;
 
     WorkQueue::shared()->setFrozen(true);
-    if (gTestRunner->waitToDump())
+    if (gTestRunner->waitToDump()) {
         return;
+    }
 
     if (WorkQueue::shared()->count()) {
+        // FIXME should wait untile the work queue is done before dumping
         // ecore_idler_add(processWork, 0 /*frame*/);
+        dump();
     } else {
         dump();
     }
@@ -582,8 +587,10 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
 
         // Make sure we only set this once per test. If it gets cleared, and
         // then set again, we might end up doing two dumps for one test.
-        if (!topLoadingFrame && !done)
+        if (!topLoadingFrame && first) {
+            first = false;
             topLoadingFrame = frame;
+        }
         break;
     }
 
