@@ -112,6 +112,31 @@ static bool startsOpeningScriptTagAt(const String& string, size_t start)
         && WTF::toASCIILowerUnchecked(string[start + 6]) == 't';
 }
 
+static bool startsSingleQuoteCommentAt(const String& string, size_t start)
+{
+    return (start + 1 < string.length() && string[start] == '\'');
+}
+
+static bool startsDoubleQuoteCommentAt(const String& string, size_t start)
+{
+    return (start + 1 < string.length() && string[start] == '"');
+}
+
+static bool startsMultiParameterAt(const String& string, size_t start)
+{
+    return (start + 1 < string.length() && string[start] == '&');
+}
+
+static bool startsFunctionParenthesisAt(const String& string, size_t start)
+{
+    return (start + 1 < string.length() && string[start] == '(');
+}
+
+static bool startsArraySquareBracketAt(const String& string, size_t start)
+{
+    return (start + 1 < string.length() && string[start] == '[');
+}
+
 // If other files need this, we should move this to HTMLParserIdioms.h
 template<size_t inlineCapacity>
 bool threadSafeMatch(const Vector<UChar, inlineCapacity>& vector, const QualifiedName& qname)
@@ -656,6 +681,36 @@ String XSSAuditor::decodedSnippetForJavaScript(const FilterTokenRequest& request
                 startPosition = foundPosition + 2;
             else
                 startPosition = endPosition;
+
+        } else if (startsSingleQuoteCommentAt(string, startPosition)) {
+            if (startPosition + 2 < endPosition && (foundPosition = string.find("'", startPosition + 2)) != notFound)
+                startPosition = foundPosition + 2;
+            else
+                startPosition = endPosition;
+	    
+        } else if (startsDoubleQuoteCommentAt(string, startPosition)) {
+            if (startPosition + 2 < endPosition && (foundPosition = string.find('"', startPosition + 2)) != notFound)
+                startPosition = foundPosition + 2;
+            else
+                startPosition = endPosition;
+	    
+        } else if (startsMultiParameterAt(string, startPosition)) {
+            if (startPosition + 2 < endPosition && (foundPosition = string.find("=", startPosition + 2)) != notFound)
+                startPosition = foundPosition + 2;
+            else
+                startPosition = endPosition;
+	    
+        } else if (startsFunctionParenthesisAt(string, startPosition)) {
+            if (startPosition + 2 < endPosition && (foundPosition = string.find(")", startPosition + 2)) != notFound)
+                startPosition = foundPosition + 2;
+            else
+                startPosition = endPosition;
+	    
+        } else if (startsArraySquareBracketAt(string, startPosition)) {
+            if (startPosition + 2 < endPosition && (foundPosition = string.find("]", startPosition + 2)) != notFound)
+                startPosition = foundPosition + 2;
+            else
+                startPosition = endPosition;
         } else
             break;
     }
@@ -668,7 +723,13 @@ String XSSAuditor::decodedSnippetForJavaScript(const FilterTokenRequest& request
         lastNonSpacePosition = notFound;
         for (foundPosition = startPosition; foundPosition < endPosition; foundPosition++) {
             if (!request.shouldAllowCDATA) {
-                if (startsSingleLineCommentAt(string, foundPosition) || startsMultiLineCommentAt(string, foundPosition)) {
+                if (startsSingleLineCommentAt(string, foundPosition)||
+			        startsMultiLineCommentAt(string, foundPosition)||
+			        startsSingleQuoteCommentAt(string, foundPosition)||
+			        startsDoubleQuoteCommentAt(string, foundPosition)||
+			        startsMultiParameterAt(string, foundPosition)||
+			        startsFunctionParenthesisAt(string, foundPosition)||
+		            startsArraySquareBracketAt(string, foundPosition)) {
                     foundPosition += 2;
                     break;
                 }
