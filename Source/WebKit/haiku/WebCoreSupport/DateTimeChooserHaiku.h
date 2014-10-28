@@ -208,12 +208,14 @@ public:
             case 'done':
             {
                 BString str;
+                // We must use the en_US format here because this is what WebKit
+                // expects.
                 BLanguage language("en");
                 BFormattingConventions conventions("en_US");
                 if (m_calendar) {
                     // TODO handle datetime format
                     conventions.SetExplicitDateFormat(B_LONG_DATE_FORMAT, m_format);
-                    BDateFormat formatter(&language, &conventions);
+                    BDateFormat formatter(language, conventions);
                     formatter.Format(str, m_calendar->Date(), B_LONG_DATE_FORMAT);
                 } else {
                     // time-only format
