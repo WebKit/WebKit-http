@@ -27,7 +27,9 @@
 
 class QFramebufferPaintDevice : public QOpenGLPaintDevice {
 public:
-    QFramebufferPaintDevice(const QSize& size);
+    QFramebufferPaintDevice(const QSize& size,
+                            QOpenGLFramebufferObject::Attachment attachment = QOpenGLFramebufferObject::CombinedDepthStencil,
+                            bool clearOnInit = true);
 
     // QOpenGLPaintDevice:
     virtual void ensureActiveTarget() Q_DECL_OVERRIDE;

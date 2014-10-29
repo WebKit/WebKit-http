@@ -21,17 +21,22 @@
 #include "QFramebufferPaintDevice.h"
 #include <QOpenGLFunctions>
 
-QFramebufferPaintDevice::QFramebufferPaintDevice(const QSize& size)
+QFramebufferPaintDevice::QFramebufferPaintDevice(const QSize& size,
+                                                 QOpenGLFramebufferObject::Attachment attachment,
+                                                 bool clearOnInit)
     : QOpenGLPaintDevice(size)
-    , m_framebufferObject(size, QOpenGLFramebufferObject::CombinedDepthStencil)
+    , m_framebufferObject(size, attachment)
 {
     m_surface = QOpenGLContext::currentContext()->surface();
 #if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     setPaintFlipped(true);
 #endif
-    m_framebufferObject.bind();
-    context()->functions()->glClearColor(0, 0, 0, 0);
-    context()->functions()->glClear(GL_COLOR_BUFFER_BIT);
+    if (clearOnInit) {
+        m_framebufferObject.bind();
+
+        context()->functions()->glClearColor(0, 0, 0, 0);
+        context()->functions()->glClear(GL_COLOR_BUFFER_BIT);
+    }
 }
 
 void QFramebufferPaintDevice::ensureActiveTarget()

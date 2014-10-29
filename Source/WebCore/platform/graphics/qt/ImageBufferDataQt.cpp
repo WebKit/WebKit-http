@@ -200,7 +200,27 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext* destContext, Color
         // If accelerated compositing is disabled, this may be the painter of the QGLWidget, which is a QGL2PaintEngineEx.
         QOpenGL2PaintEngineEx* acceleratedPaintEngine = dynamic_cast<QOpenGL2PaintEngineEx*>(destContext->platformContext()->paintEngine());
         if (acceleratedPaintEngine) {
-            acceleratedPaintEngine->drawTexture(destRect, m_paintDevice->texture(), m_paintDevice->size(), srcRect);
+            QPaintDevice* targetPaintDevice = acceleratedPaintEngine->paintDevice();
+
+            QRect rect(QPoint(), m_paintDevice->size());
+
+            // Using the same texture as source and target of a rendering operation is undefined in OpenGL,
+            // so if that's the case we need to use a temporary intermediate buffer.
+            if (m_paintDevice == targetPaintDevice) {
+                m_context->makeCurrentIfNeeded();
+
+                QFramebufferPaintDevice device(rect.size(), QOpenGLFramebufferObject::NoAttachment, false);
+
+                QPainter painter(&device);
+                QOpenGL2PaintEngineEx* pe = static_cast<QOpenGL2PaintEngineEx*>(painter.paintEngine());
+                pe->drawTexture(rect, m_paintDevice->texture(), rect.size(), rect);
+                painter.end();
+
+                acceleratedPaintEngine->drawTexture(destRect, device.texture(), rect.size(), srcRect);
+            } else {
+                acceleratedPaintEngine->drawTexture(destRect, m_paintDevice->texture(), rect.size(), srcRect);
+            }
+
             return;
         }
     }
