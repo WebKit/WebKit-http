@@ -204,6 +204,11 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext* destContext, Color
 
             QRect rect(QPoint(), m_paintDevice->size());
 
+            // drawTexture's rendering is flipped relative to QtWebKit's convention, so we need to compensate
+            FloatRect srcRectFlipped = m_paintDevice->paintFlipped()
+                ? FloatRect(srcRect.x(), srcRect.maxY(), srcRect.width(), -srcRect.height())
+                : FloatRect(srcRect.x(), rect.height() - srcRect.maxY(), srcRect.width(), srcRect.height());
+
             // Using the same texture as source and target of a rendering operation is undefined in OpenGL,
             // so if that's the case we need to use a temporary intermediate buffer.
             if (m_paintDevice == targetPaintDevice) {
@@ -211,14 +216,17 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext* destContext, Color
 
                 QFramebufferPaintDevice device(rect.size(), QOpenGLFramebufferObject::NoAttachment, false);
 
+                // We disable flipping in order to do a pure blit into the intermediate buffer
+                device.setPaintFlipped(false);
+
                 QPainter painter(&device);
                 QOpenGL2PaintEngineEx* pe = static_cast<QOpenGL2PaintEngineEx*>(painter.paintEngine());
                 pe->drawTexture(rect, m_paintDevice->texture(), rect.size(), rect);
                 painter.end();
 
-                acceleratedPaintEngine->drawTexture(destRect, device.texture(), rect.size(), srcRect);
+                acceleratedPaintEngine->drawTexture(destRect, device.texture(), rect.size(), srcRectFlipped);
             } else {
-                acceleratedPaintEngine->drawTexture(destRect, m_paintDevice->texture(), rect.size(), srcRect);
+                acceleratedPaintEngine->drawTexture(destRect, m_paintDevice->texture(), rect.size(), srcRectFlipped);
             }
 
             return;
