@@ -119,10 +119,8 @@ String keyIdentifierForQtKeyCode(int keyCode)
     case Qt::Key_Return:
     case Qt::Key_Enter:
         return ASCIILiteral("Enter");
-    // 'Find'
     case Qt::Key_Help:
         return ASCIILiteral("Help");
-    // 'Info'
     case Qt::Key_Menu:
     case Qt::Key_MenuKB:
         return ASCIILiteral("Menu");
@@ -136,7 +134,6 @@ String keyIdentifierForQtKeyCode(int keyCode)
         return ASCIILiteral("Cancel");
     case Qt::Key_Escape:
         return ASCIILiteral("Esc");
-    // 'Exit'
     case Qt::Key_Zoom:
         return ASCIILiteral("Zoom");
     case Qt::Key_Comma:
@@ -213,7 +210,6 @@ String keyIdentifierForQtKeyCode(int keyCode)
         return ASCIILiteral("Insert");
     case Qt::Key_Paste:
         return ASCIILiteral("Paste");
-    // 'Undo'
     case Qt::Key_Dead_Grave:
         return ASCIILiteral("DeadGrave");
     case Qt::Key_Dead_Acute:
@@ -324,6 +320,20 @@ String keyIdentifierForQtKeyCode(int keyCode)
         return ASCIILiteral("Red");
     case Qt::Key_Yellow:
         return ASCIILiteral("Yellow");
+#if QT_VERSION >= QT_VERSION_CHECK(5,4,0)
+    case Qt::Key_Find:
+        return ASCIILiteral("Find");
+    case Qt::Key_Info:
+        return ASCIILiteral("Info");
+    case Qt::Key_Exit:
+        return ASCIILiteral("Exit");
+    case Qt::Key_Undo:
+        return ASCIILiteral("Undo");
+    case Qt::Key_Guide:
+        return ASCIILiteral("Guide");
+    case Qt::Key_Settings:
+        return ASCIILiteral("Settings");
+#endif
     // Keys we have returned U+charcode for in the past.
     // FIXME: Change them to correct standard values if others do.
     case Qt::Key_Tab:
