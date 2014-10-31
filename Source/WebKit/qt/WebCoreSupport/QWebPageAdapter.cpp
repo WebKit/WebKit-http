@@ -470,9 +470,7 @@ void QWebPageAdapter::adjustPointForClicking(QMouseEvent* ev)
     if (!foundClickableNode)
         return;
 
-    QMouseEvent* ret = new QMouseEvent(ev->type(), QPoint(adjustedPoint), ev->globalPos(), ev->button(), ev->buttons(), ev->modifiers());
-    delete ev;
-    ev = ret;
+    *ev = QMouseEvent(ev->type(), QPoint(adjustedPoint), ev->globalPos(), ev->button(), ev->buttons(), ev->modifiers());
 #else
     Q_UNUSED(ev);
 #endif
