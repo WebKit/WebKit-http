@@ -41,7 +41,7 @@ QFramebufferPaintDevice::QFramebufferPaintDevice(const QSize& size,
 
 void QFramebufferPaintDevice::ensureActiveTarget()
 {
-    if (QOpenGLContext::currentContext() != context() || context()->surface() != m_surface)
+    if (QOpenGLContext::currentContext() != context())
         context()->makeCurrent(m_surface);
 
     m_framebufferObject.bind();

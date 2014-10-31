@@ -60,16 +60,10 @@ namespace WebCore {
 class QOpenGLContextThreadStorage
 {
 public:
-    QOpenGLContext *context(QOpenGLContext* sharedContext, const QSurfaceFormat& format) {
+    QOpenGLContext *context() {
         QOpenGLContext *&context = storage.localData();
-        if (context && context->shareContext() != sharedContext) {
-            delete context;
-            context = 0;
-        }
         if (!context) {
             context = new QOpenGLContext;
-            context->setShareContext(sharedContext);
-            context->setFormat(format);
             context->create();
         }
         return context;
@@ -86,33 +80,47 @@ Q_GLOBAL_STATIC(QOpenGLContextThreadStorage, imagebuffer_opengl_context)
 class ImageBufferContext {
 public:
     ImageBufferContext(QOpenGLContext* sharedContext)
+        : m_ownSurface(0)
     {
-        // Make a format compatible with the host QOpenGLContext, but only singlebuffered.
-        QSurfaceFormat format;
         if (sharedContext)
-            format = sharedContext->format();
-        format.setSwapBehavior(QSurfaceFormat::SingleBuffer);
-        format.setAlphaBufferSize(8);
-        m_context = imagebuffer_opengl_context->context(sharedContext, format);
-        m_surface = new QOffscreenSurface;
-        m_surface->setFormat(format);
-        m_surface->create();
+            m_format = sharedContext->format();
+
+        m_context = sharedContext ? sharedContext : imagebuffer_opengl_context->context();
+
+        m_surface = m_context->surface();
     }
     ~ImageBufferContext()
     {
-        if (QOpenGLContext::currentContext() == m_context && m_context->surface() == m_surface)
+        if (QOpenGLContext::currentContext() == m_context && m_context->surface() == m_ownSurface)
             m_context->doneCurrent();
-        delete m_surface;
+        delete m_ownSurface;
     }
-    void makeCurrentIfNeeded() {
-        if (QOpenGLContext::currentContext() != m_context || m_context->surface() != m_surface)
+    void createSurfaceIfNeeded()
+    {
+        if (m_surface)
+            return;
+
+        m_ownSurface = new QOffscreenSurface;
+        m_ownSurface->setFormat(m_format);
+        m_ownSurface->create();
+
+        m_surface = m_ownSurface;
+    }
+    void makeCurrentIfNeeded()
+    {
+        if (QOpenGLContext::currentContext() != m_context) {
+            createSurfaceIfNeeded();
+
             m_context->makeCurrent(m_surface);
+        }
     }
     QOpenGLContext* context() { return m_context; }
 
 private:
-    QOffscreenSurface *m_surface;
+    QSurface *m_surface;
+    QOffscreenSurface *m_ownSurface;
     QOpenGLContext *m_context;
+    QSurfaceFormat m_format;
 };
 
 // ---------------------- ImageBufferDataPrivateAccelerated
