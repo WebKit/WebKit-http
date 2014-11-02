@@ -77,7 +77,7 @@ static const StretchyCharacter stretchyCharacters[14] = {
 namespace MathMLOperatorDictionary {
 
 typedef std::pair<UChar, Form> Key;
-inline Key ExtractKey(const Entry* entry) { return Key(entry->character, entry->form); }
+inline Key ExtractKey(const Entry* entry) { return Key(entry->character, static_cast<Form>(entry->form)); }
 inline UChar ExtractChar(const Entry* entry) { return entry->character; }
 
 // This table has been automatically generated from the Operator Dictionary of the MathML3 specification (appendix C).
@@ -1246,7 +1246,7 @@ void RenderMathMLOperator::setOperatorProperties()
                 // If the previous entry is another form for that operator, we move to that entry. Note that it only remains at most two forms so we don't need to move any further.
                 if (entry != MathMLOperatorDictionary::dictionary && (entry-1)->character == m_textContent)
                     entry--;
-                m_operatorForm = entry->form; // We override the form previously determined.
+                m_operatorForm = static_cast<MathMLOperatorDictionary::Form>(entry->form); // We override the form previously determined.
                 setOperatorPropertiesFromOpDictEntry(entry);
             }
         }
@@ -1548,7 +1548,7 @@ RenderMathMLOperator::StretchyData RenderMathMLOperator::getDisplayStyleLargeOpe
     Vector<OpenTypeMathData::AssemblyPart> assemblyParts;
 
     // The value of displayOperatorMinHeight is sometimes too small, so we ensure that it is at least \sqrt{2} times the size of the base glyph.
-    float displayOperatorMinHeight = std::max(baseGlyph.fontData->boundsForGlyph(baseGlyph.glyph).height() * float(M_SQRT2), primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::DisplayOperatorMinHeight));
+    float displayOperatorMinHeight = std::max(baseGlyph.fontData->boundsForGlyph(baseGlyph.glyph).height() * sqrtOfTwoFloat, primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::DisplayOperatorMinHeight));
 
     primaryFontData->mathData()->getMathVariants(baseGlyph.glyph, true, sizeVariants, assemblyParts);
 

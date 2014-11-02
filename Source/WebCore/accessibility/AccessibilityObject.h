@@ -444,8 +444,7 @@ public:
     virtual bool isAccessibilitySVGRoot() const { return false; }
 
     bool accessibilityObjectContainsText(String *) const;
-    
-    virtual bool isAnchor() const { return false; }
+
     virtual bool isAttachment() const { return false; }
     virtual bool isHeading() const { return false; }
     virtual bool isLink() const { return false; }
@@ -475,7 +474,6 @@ public:
     virtual bool isControl() const { return false; }
     virtual bool isList() const { return false; }
     virtual bool isTable() const { return false; }
-    virtual bool isAccessibilityTable() const { return false; }
     virtual bool isDataTable() const { return false; }
     virtual bool isTableRow() const { return false; }
     virtual bool isTableColumn() const { return false; }

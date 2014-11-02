@@ -1,3 +1,458 @@
+2014-10-31  Dan Bernstein  <mitz@apple.com>
+
+        llvmForJSC build emits a linker warning that it can't find usr/local/LLVMForJavaScriptCore/lib under the build directory
+        https://bugs.webkit.org/show_bug.cgi?id=138259
+
+        Reviewed by Geoff Garen.
+
+        * Scripts/copy-webkitlibraries-to-product-directory: Create this directory even if it’s
+        going to be empty to silence the warning.
+
+2014-10-31  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Support script message handlers WebKitUserContentManager
+        https://bugs.webkit.org/show_bug.cgi?id=133730
+
+        Reviewed by Carlos Garcia Campos.
+
+        Support user script message handlers in WebKitUserContentManager.
+        This needs building with ENABLE_USER_MESSAGE_HANDLERS, for which
+        an option is added to the CMake build files. The option is disabled
+        globally by default, and the WebKitGTK port enables it. On the API
+        level, two new methods to register and unregister names are provided
+        in the "window.webkit" namespace, and on message reception the
+        "WebKitUserContentManager::script-message-received" signal is
+        emitted, using the registered names as signal detail.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        Add test case for user script message handlers.
+        (scriptMessageReceived):
+        (testUserContentManagerScriptMessageReceived):
+        (beforeAll):
+
+2014-10-30  Matthew Hanson  <matthew_hanson@apple.com>
+
+        bisect-builds should support WebKit clients other than Safari
+        https://bugs.webkit.org/show_bug.cgi?id=138225
+
+        This patch adds support for bisecting WebKit nightly builds with clients other than Safari.
+
+        The -a / --application optional argument allows the user to specify which application (or application bundle)
+        should be run against the WebKit nightly builds.
+
+        Reviewed by David Kilzer.
+
+        * Scripts/bisect-builds:
+        Swap out $safariPath for the more general $applicationPath
+        Leave --safari-path as a commandline option for backwards compatibility
+        (mountAndRunNightly):
+        Use File::Spec->cat correctly (one directory per argument)
+        Use open --wait-apps instead of running the target application directly
+
+2014-10-30  Dana Burkart  <dburkart@apple.com>
+
+        <rdar://problem/18821260> Perpare for the mysterious future
+
+        Reviewed by Lucas Forschler.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * LayoutTestRelay/Configurations/Base.xcconfig:
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * WebKitLauncher/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
+2014-10-30  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update safariVersion to safariVersionString
+        https://bugs.webkit.org/show_bug.cgi?id=138193
+
+        The preceding change updated safariVersion to safariVersionString for the "4 Public Beta" check in OS X 10.5.x,
+        but it should have also been done for the "4 Public Beta" check in OS X 10.4.x.
+
+        Rubber-stamped by David Kilzer.
+
+        * Scripts/bisect-builds:
+        (makeNightlyList):
+        Compare safariVersionString to a string literal, instead of safariVersion.
+
+2014-10-30  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [GTK] Minibrowser : Add window fullscreen support for Minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=137775
+
+        Reviewed by Carlos Garcia Campos.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (toggleFullScreen): Callback to toggle window fullscreen on pressing F11 key.
+        (browser_window_init):
+
+2014-10-29  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        CommitQueue and EWS should reject any patches that result in consistent test
+        failures that aren't present on the tree.
+        https://bugs.webkit.org/show_bug.cgi?id=138184
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/layout_tests/models/test_results.py:
+        Adds a simple hashing function to allow for set operations to handle
+        TestResult objects properly.
+        (TestResult.__hash__):
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        Adds one unit test, and modifies others to agree with the notion that
+        patches that introduce new test failures (but also have flakyness)
+        should be rejected rather than spin.
+        (MockCommitQueue.report_flaky_tests):
+        (CommitQueueTaskTest._run_and_expect_patch_analysis_result):
+        (test_double_flaky_test_failure):
+        (test_two_flaky_tests):
+        (test_very_flaky_patch):
+        (test_very_flaky_patch_with_some_tree_redness):
+        (test_different_test_failures):
+        (test_different_test_failures_with_some_tree_redness):
+        (test_different_test_failures_with_some_tree_redness_and_some_fixes):
+        (test_mildly_flaky_patch):
+        (test_mildly_flaky_patch_with_some_tree_redness):
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        Makes PatchAnalysisTask reject said patches.
+        (PatchAnalysisTask._test_patch):
+
+2014-10-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        WinCairoRequirements.zip cannot be downloaded from dropbox
+        https://bugs.webkit.org/show_bug.cgi?id=138113
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/update-webkit-dependency: Removing --sslv3 option from curl
+
+2014-10-29  Matthew Hanson  <matthew_hanson@apple.com>
+
+        bisect-builds should filter out nightlies that predate the introduction of an OS X operating system
+        https://bugs.webkit.org/show_bug.cgi?id=138193
+
+        This patch restricts the set of nightles to bisect to only those nightlies that ship with frameworks
+        for the target OS (only support for OS X Yosemite, Mavericks and Mountain Lion was added.)
+
+        It also does a bit of refactoring, including distinguishing between versions and version strings and
+        saving versions to local variables instead of using eval in each conditional.
+
+        Reviewed by David Kilzer.
+
+        * Scripts/bisect-builds:
+        (makeNightlyList):
+        Restrict the set of nightlies to r174650 and above when running Yosemite.
+        Restrict the set of nightlies to r157846 and above when running Mavericks.
+        Restrict the set of nightlies to r122421 and above when running Mountain Lion.
+
+2014-10-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] build-webkit should try harder to avoid re-running cmake
+        https://bugs.webkit.org/show_bug.cgi?id=137949
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/webkitdirs.pm:
+        (shouldRemoveCMakeCache): Don't remove CMakeCache unconditionally for EFL.
+        (generateBuildSystemFromCMakeProject): Comment fix after r174681.
+
+2014-10-28  Daniel Bates  <dabates@apple.com>
+
+        Unify logic in RunTests.run() to run the Python unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=138160
+
+        Reviewed by Martin Robinson.
+
+        Unify the interactive and non-interactive code path for running the Python unit tests
+        in step RunTests so as to remove duplicate code to compute the the path to the script
+        test-webkitpy and log an informative message ("Running Python unit tests") to the console.
+
+        No new tests since no functionality was changed.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.python_unittest_results_directory):
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        (RunTests.run):
+
+2014-10-28  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Make runtest.py call test-webkitpy with the --json flag when in
+        non-interactive mode.
+        https://bugs.webkit.org/show_bug.cgi?id=137667
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/port/base.py:
+        Adds the python_unittest_results_directory method.
+        (Port.python_unittest_results_directory):
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        Changes RunTests to call test-webkitpy with the --json flag if the
+        --non-interactive flag is set.
+        (RunTests):
+        (RunTests.run):
+
+2014-10-28  Rebecca Hauck  <rhauck@adobe.com>
+
+        import-w3c-tests should use re.escape() wherever it's handling file paths
+        https://bugs.webkit.org/show_bug.cgi?id=137934
+
+        This patch adds re.escape() to a few places where we're doing string
+        conversions. This prevents errors when attribute values coincidentally
+        have character sequences that can be interpreted as regular expressions.
+
+        Reviewed by Bem Jones-Bey.
+
+        * Scripts/webkitpy/w3c/test_converter.py:
+        (_W3CTestConverter.convert_attributes_if_needed):
+
+2014-10-28  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Remove an unused include from Tools/WebKitTestRunner/efl/PlatformWebViewEfl.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=138130
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+
+2014-10-25  Raniere Silva  <raniere@ime.unicamp.br>
+
+        Fix link to Arch Linux Wiki
+        https://bugs.webkit.org/show_bug.cgi?id=138010
+
+        Reviewed by Benjamin Poulain.
+
+        * gtk/install-dependencies:
+
+2014-10-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Test regressions are not detected when image result is missing
+        https://bugs.webkit.org/show_bug.cgi?id=138070
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitpy/layout_tests/models/test_run_results.py:
+        * Scripts/webkitpy/layout_tests/views/buildbot_results.py:
+        Count these as regressions, not as flaky tests.
+
+        * Scripts/webkitpy/port/test.py:
+        * Scripts/webkitpy/layout_tests/run_webkit_tests_integrationtest.py:
+        Test it.
+
+2014-10-24  Timothy Horton  <timothy_horton@apple.com>
+
+        Add Conrad Shultz to the contributors list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-10-24  Dan Bernstein  <mitz@apple.com>
+
+        build.webkit.org/dashboard immediately retries a request to buildbot when the response is 404
+        https://bugs.webkit.org/show_bug.cgi?id=138046
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype._load): Only consider retrying immediately if the error code was
+        401. Otherwise, we’ll retry normally in 45 seconds.
+
+2014-10-24  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Implement is_selected method on WebKitHitTestResult
+        https://bugs.webkit.org/show_bug.cgi?id=137110
+
+        Reviewed by Tim Horton.
+
+        Add tests for new context SELECTION on WebKitHitTestResult.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (testContextMenuDefaultMenu):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (testWebViewMouseTarget):
+
+2014-10-23  Roger Fong  <roger_fong@apple.com>
+
+        [Win] Skip failing JSC tests following r175078
+        https://bugs.webkit.org/show_bug.cgi?id=130967.
+
+        * Scripts/run-javascriptcore-tests:
+
+2014-10-22  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        commitqueuetask_unittest.py should be made more concise.
+        https://bugs.webkit.org/show_bug.cgi?id=137985
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        Refactors tests to use MockSimpleTestPlanCommitQueue where possible.
+        (MockCommitQueue.__init__):
+        (MockCommitQueue.report_flaky_tests):
+        (MockCommitQueue):
+        (MockCommitQueue.get_reported_flaky_tests):
+        (MockSimpleTestPlanCommitQueue.__init__):
+        (MockSimpleTestPlanCommitQueue.run_command):
+        (MockSimpleTestPlanCommitQueue.did_run_clean_tests):
+        (CommitQueueTaskTest._run_and_expect_patch_analysis_result):
+        (test_land_failure):
+        (test_failed_archive):
+        (test_double_flaky_test_failure):
+        (test_test_failure):
+        (test_red_test_failure):
+        (test_very_red_tree_retry):
+        (test_red_tree_patch_rejection):
+        (test_one_flaky_test):
+        (test_tree_more_red_than_patch):
+        (MockCommitQueue.test_results): Deleted.
+        (test_simple_flaky_test_failure): Deleted.
+        (_expect_validate): Deleted.
+        (_expect_validate.MockDelegate): Deleted.
+        (_expect_validate.MockDelegate.refetch_patch): Deleted.
+        (_expect_validate.MockDelegate.expected_failures): Deleted.
+        (_mock_patch): Deleted.
+        (test_validate): Deleted.
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        Fixes a bug that slipped through the cracks prior to this change.
+        (PatchAnalysisTask._test_patch):
+
+2014-10-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Flakiness dashboard should support OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=137986
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestResultServer/app.yaml:
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2014-10-22  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        commitqueuetask should include more tests to ensure that the behavior
+        of PatchAnalysisTask._test_patch() is well defined
+        https://bugs.webkit.org/show_bug.cgi?id=137977
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        Adds the MockSimpleTestPlanCommitQueue class, which makes it easier
+        and more readable to define tests that are meant to test the behaviour
+        of PatchAnalysisTask._test_patch(), and adds several unit tests.
+        (FailingTestCommitQueue.test_results):
+        (PatchAnalysisResult):
+        (MockSimpleTestPlanCommitQueue):
+        (MockSimpleTestPlanCommitQueue.__init__):
+        (MockSimpleTestPlanCommitQueue.run_command):
+        (MockSimpleTestPlanCommitQueue._mock_test_result):
+        (MockSimpleTestPlanCommitQueue.test_results):
+        (CommitQueueTaskTest._run_and_expect_patch_analysis_result):
+        (test_flaky_test_failure):
+        (test_failed_archive):
+        (test_two_flaky_tests):
+        (test_one_flaky_test):
+        (test_very_flaky_patch):
+        (test_very_flaky_patch_with_some_tree_redness):
+        (test_different_test_failures):
+        (test_different_test_failures_with_some_tree_redness):
+        (test_mildly_flaky_patch):
+        (test_mildly_flaky_patch_with_some_tree_redness):
+        (test_tree_more_red_than_patch):
+
+2014-10-22  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        PatchAnalysisTask._test_patch() needs refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=137904
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        Fixes several small bugs, and makes minor changes to accomodate the
+        changes in PatchAnalysisTask.
+        (MockCommitQueue.refetch_patch):
+        (MockCommitQueue.test_results):
+        (test_flaky_test_failure):
+        (test_failed_archive):
+        (test_very_red_tree_retry):
+        (_expect_validate.MockDelegate.refetch_patch):
+        (MockCommitQueue.expected_failures): Deleted.
+        (_expect_validate.MockDelegate.expected_failures): Deleted.
+        * Scripts/webkitpy/tool/bot/expectedfailures.py: Removed.
+        * Scripts/webkitpy/tool/bot/expectedfailures_unittest.py: Removed.
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        Removes the unexpected_failures member, adds the _clean_tree_results
+        member, adds a helper function for _test_patch, and refactors
+        _test_patch to be more readable.
+        (PatchAnalysisTask.__init__):
+        (PatchAnalysisTask._continue_testing_patch_that_exceeded_failure_limit_on_first_or_second_try):
+        (PatchAnalysisTask._test_patch):
+        (PatchAnalysisTask.results_from_test_run_without_patch):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        Removes AbstractEarlyWarningSystem's dependancy on ExpectedFailures. 
+        (AbstractEarlyWarningSystem.begin_work_queue):
+        (AbstractEarlyWarningSystem._failing_tests_message):
+        (AbstractEarlyWarningSystem.command_failed):
+        (AbstractEarlyWarningSystem.expected_failures): Deleted.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        Makes changes to accomodate the changes made to PatchAnalysisTask.
+        (AbstractEarlyWarningSystemTest.test_failing_tests_message):
+        * Scripts/webkitpy/tool/commands/perfalizer.py:
+        Removes Perfalizer's dependancy on ExpectedFailures. 
+        (PerfalizerTask.refetch_patch):
+        (PerfalizerTask.expected_failures): Deleted.
+        * Scripts/webkitpy/tool/commands/queues.py:
+        Removes CommitQueue's dependancy on ExpectedFailures, and adds an
+        initializer to allow for mock injection.
+        (CommitQueue.__init__):
+        (CommitQueue.begin_work_queue):
+        (CommitQueue.process_work_item):
+        (CommitQueue._failing_tests_message):
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        Removes dependancy on ExpectedFailures, and instead uses mock
+        injection.
+        (MockCommitQueueTask):
+        (MockCommitQueueTask.results_from_patch_test_run):
+        (MockCommitQueueTask.results_from_test_run_without_patch):
+        (mock_run_webkit_patch):
+
+2014-10-22  Rohit Kumar  <kumar.rohit@samsung.com>
+
+        [EFL][WK2] Minibrowser : Add support for mouse middle button to open links in new window
+        https://bugs.webkit.org/show_bug.cgi?id=136736
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+        (on_navigation_policy_decision): Check whether it's a link clicked with the middle mouse button and load the request in a new window.
+        (window_create):
+
+2014-10-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move GtkInputMethodFilter from Platform to WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=137884
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Move InputMethodFilter test from WebCore tests to WebKit2 tests
+        and adapt it to use the new InputMethodFilter WebKit class. Instead
+        of having virtual methods just for testing, it has a testing mode
+        that logs the events.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebKit2/gtk/InputMethodFilter.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebCore/gtk/InputMethodFilter.cpp.
+        (TestWebKitAPI::TestInputMethodFilter::TestInputMethodFilter):
+        (TestWebKitAPI::TestInputMethodFilter::~TestInputMethodFilter):
+        (TestWebKitAPI::TestInputMethodFilter::sendKeyEventToFilter):
+        (TestWebKitAPI::TestInputMethodFilter::sendPressAndReleaseKeyEventPairToFilter):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::temporaryGetPreeditStringOverride):
+        (TestWebKitAPI::temporaryResetOverride):
+        (TestWebKitAPI::verifyCanceledComposition):
+
 2014-10-21  Alexey Proskuryakov  <ap@apple.com>
 
         build.webkit.org/dashboard: Cannot click on green tester bubbles

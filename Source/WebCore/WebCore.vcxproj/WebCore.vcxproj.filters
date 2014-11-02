@@ -900,6 +900,9 @@
     <ClCompile Include="..\loader\LoaderStrategy.cpp">
       <Filter>loader</Filter>
     </ClCompile>
+    <ClCompile Include="..\loader\MediaResourceLoader.cpp">
+      <Filter>loader</Filter>
+    </ClCompile>
     <ClCompile Include="..\loader\MixedContentChecker.cpp">
       <Filter>loader</Filter>
     </ClCompile>
@@ -922,9 +925,6 @@
       <Filter>loader</Filter>
     </ClCompile>
     <ClCompile Include="..\loader\ProgressTracker.cpp">
-      <Filter>loader</Filter>
-    </ClCompile>
-    <ClCompile Include="..\loader\ResourceBuffer.cpp">
       <Filter>loader</Filter>
     </ClCompile>
     <ClCompile Include="..\loader\ResourceLoader.cpp">
@@ -4053,6 +4053,9 @@
     <ClCompile Include="..\html\RangeInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\RelList.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\ResetInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
@@ -5186,6 +5189,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SelectorPseudoElementTypeMap.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StyleBuilder.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\EventFactory.cpp">
@@ -7911,6 +7917,9 @@
     <ClInclude Include="..\loader\LoaderStrategy.h">
       <Filter>loader</Filter>
     </ClInclude>
+    <ClInclude Include="..\loader\MediaResourceLoader.h">
+      <Filter>loader</Filter>
+    </ClInclude>
     <ClInclude Include="..\loader\MixedContentChecker.h">
       <Filter>loader</Filter>
     </ClInclude>
@@ -7936,9 +7945,6 @@
       <Filter>loader</Filter>
     </ClInclude>
     <ClInclude Include="..\loader\ProgressTrackerClient.h">
-      <Filter>loader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\loader\ResourceBuffer.h">
       <Filter>loader</Filter>
     </ClInclude>
     <ClInclude Include="..\loader\ResourceLoader.h">
@@ -8521,6 +8527,9 @@
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\PlatformLayer.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\PlatformMediaResourceLoader.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\PlatformTimeRanges.h">
@@ -11206,6 +11215,9 @@
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\RangeInputType.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\RelList.h">
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\ResetInputType.h">

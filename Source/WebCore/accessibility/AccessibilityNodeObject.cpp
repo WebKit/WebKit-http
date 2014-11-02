@@ -31,6 +31,7 @@
 
 #include "AXObjectCache.h"
 #include "AccessibilityImageMapLink.h"
+#include "AccessibilityList.h"
 #include "AccessibilityListBox.h"
 #include "AccessibilitySpinButton.h"
 #include "AccessibilityTable.h"
@@ -280,12 +281,9 @@ AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
     if (!node())
         return UnknownRole;
 
-    m_ariaRole = determineAriaRoleAttribute();
+    if ((m_ariaRole = determineAriaRoleAttribute()) != UnknownRole)
+        return m_ariaRole;
     
-    AccessibilityRole ariaRole = ariaRoleAttribute();
-    if (ariaRole != UnknownRole)
-        return ariaRole;
-
     if (node()->isLink())
         return WebCoreLinkRole;
     if (node()->isTextNode())
@@ -302,7 +300,9 @@ AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
             return buttonRoleType();
         if (input.isRangeControl())
             return SliderRole;
-
+        if (input.isInputTypeHidden())
+            return IgnoredRole;
+        
 #if ENABLE(INPUT_TYPE_COLOR)
         const AtomicString& type = input.getAttribute(typeAttr);
         if (equalIgnoringCase(type, "color"))
@@ -436,6 +436,9 @@ bool AccessibilityNodeObject::computeAccessibilityIsIgnored() const
     if (isDescendantOfBarrenParent())
         return true;
 
+    if (roleValue() == IgnoredRole)
+        return true;
+    
     return m_role == UnknownRole;
 }
 
@@ -454,11 +457,6 @@ bool AccessibilityNodeObject::canvasHasFallbackContent() const
 bool AccessibilityNodeObject::isImageButton() const
 {
     return isNativeImage() && isButton();
-}
-
-bool AccessibilityNodeObject::isAnchor() const
-{
-    return !isNativeImage() && isLink();
 }
 
 bool AccessibilityNodeObject::isNativeTextControl() const
@@ -959,7 +957,7 @@ Element* AccessibilityNodeObject::anchorElement() const
     // search up the DOM tree for an anchor element
     // NOTE: this assumes that any non-image with an anchor is an HTMLAnchorElement
     for ( ; node; node = node->parentNode()) {
-        if (is<HTMLAnchorElement>(*node) || (node->renderer() && cache->getOrCreate(node->renderer())->isAnchor()))
+        if (is<HTMLAnchorElement>(*node) || (node->renderer() && cache->getOrCreate(node->renderer())->isLink()))
             return downcast<Element>(node);
     }
 
@@ -1623,7 +1621,13 @@ static bool shouldUseAccessiblityObjectInnerText(AccessibilityObject* obj, Acces
         return false;
 
     // Skip big container elements like lists, tables, etc.
-    if (obj->isList() || obj->isAccessibilityTable() || obj->isTree() || obj->isCanvas())
+    if (is<AccessibilityList>(*obj))
+        return false;
+
+    if (is<AccessibilityTable>(*obj) && downcast<AccessibilityTable>(*obj).isExposableThroughAccessibility())
+        return false;
+
+    if (obj->isTree() || obj->isCanvas())
         return false;
 
     return true;

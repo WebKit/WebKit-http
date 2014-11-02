@@ -594,6 +594,11 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoLayer()
         if (!m_videoLayer)
             createAVPlayerLayer();
 
+#if USE(VIDEOTOOLBOX) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+        if (!m_videoOutput)
+            createVideoOutput();
+#endif
+
         player()->client().mediaPlayerRenderingModeChanged(player());
     });
 }
@@ -1452,7 +1457,7 @@ static HashSet<String> mimeTypeCache()
 
     NSArray *types = [AVURLAsset audiovisualMIMETypes];
     for (NSString *mimeType in types)
-        cache.add(mimeType);
+        cache.add([mimeType lowercaseString]);
 
     return cache;
 } 
@@ -1707,6 +1712,16 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
             }
         }
 
+#if ENABLE(VIDEO_TRACK)
+        updateAudioTracks();
+        updateVideoTracks();
+
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
+        hasAudio |= (m_audibleGroup && m_audibleGroup->selectedOption());
+        hasVideo |= (m_visualGroup && m_visualGroup->selectedOption());
+#endif
+#endif
+
         // Always says we have video if the AVPlayerLayer is ready for diaplay to work around
         // an AVFoundation bug which causes it to sometimes claim a track is disabled even
         // when it is not.
@@ -1716,11 +1731,6 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
 #if ENABLE(DATACUE_VALUE)
         if (hasMetaData)
             processMetadataTrack();
-#endif
-
-#if ENABLE(VIDEO_TRACK)
-        updateAudioTracks();
-        updateVideoTracks();
 #endif
     }
 
@@ -1994,7 +2004,11 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoOutput()
         return;
 
 #if USE(VIDEOTOOLBOX)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    NSDictionary* attributes = nil;
+#else
     NSDictionary* attributes = @{ (NSString*)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_422YpCbCr8) };
+#endif
 #else
     NSDictionary* attributes = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInt:kCVPixelFormatType_32BGRA], kCVPixelBufferPixelFormatTypeKey,
                                 nil];
@@ -2005,8 +2019,6 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoOutput()
     [m_videoOutput setDelegate:m_videoOutputDelegate.get() queue:globalPullDelegateQueue()];
 
     [m_avPlayerItem.get() addOutput:m_videoOutput.get()];
-
-    waitForVideoOutputMediaDataWillChange();
 
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoOutput(%p) - returning %p", this, m_videoOutput.get());
 }
@@ -2128,6 +2140,9 @@ void MediaPlayerPrivateAVFoundationObjC::updateLastImage()
 
 void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext* context, const IntRect& outputRect)
 {
+    if (m_videoOutput && !m_lastImage)
+        waitForVideoOutputMediaDataWillChange();
+
     updateLastImage();
 
     if (!m_lastImage)

@@ -245,12 +245,6 @@ public:
     // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline
     // children.
     virtual RenderBlock* firstLineBlock() const;
-
-    // Called when an object that was floating or positioned becomes a normal flow object
-    // again.  We have to make sure the render tree updates as needed to accommodate the new
-    // normal flow object.
-    void handleDynamicFloatPositionChange();
-    void removeAnonymousWrappersForInlinesIfNecessary();
     
     // RenderObject tree manipulation
     //////////////////////////////////////////
@@ -383,6 +377,8 @@ public:
     static inline bool isBeforeContent(const RenderObject* obj) { return obj && obj->isBeforeContent(); }
     static inline bool isAfterContent(const RenderObject* obj) { return obj && obj->isAfterContent(); }
     static inline bool isBeforeOrAfterContent(const RenderObject* obj) { return obj && obj->isBeforeOrAfterContent(); }
+
+    bool beingDestroyed() const { return m_bitfields.beingDestroyed(); }
 
     bool everHadLayout() const { return m_bitfields.everHadLayout(); }
 
@@ -654,13 +650,6 @@ public:
     // returns the containing block level element for this element.
     RenderBlock* containingBlock() const;
 
-    bool canContainFixedPositionObjects() const
-    {
-        return isRenderView() || (hasTransform() && isRenderBlock())
-                || isSVGForeignObject()
-                || isOutOfFlowRenderFlowThread();
-    }
-
     // Convert the given local point to absolute coordinates
     // FIXME: Temporary. If UseTransforms is true, take transforms into account. Eventually localToAbsolute() will always be transform-aware.
     WEBCORE_EXPORT FloatPoint localToAbsolute(const FloatPoint& localPoint = FloatPoint(), MapCoordinatesFlags = 0) const;
@@ -818,7 +807,6 @@ public:
 
     // Virtual function helpers for the deprecated Flexible Box Layout (display: -webkit-box).
     virtual bool isDeprecatedFlexibleBox() const { return false; }
-    virtual bool isStretchingChildren() const { return false; }
 
     // Virtual function helper for the new FlexibleBox Layout (display: -webkit-flex).
     virtual bool isFlexibleBox() const { return false; }
@@ -934,7 +922,8 @@ private:
 
     public:
         RenderObjectBitfields(const Node& node)
-            : m_needsLayout(false)
+            : m_beingDestroyed(false)
+            , m_needsLayout(false)
             , m_needsPositionedMovementLayout(false)
             , m_normalChildNeedsLayout(false)
             , m_posChildNeedsLayout(false)
@@ -962,7 +951,7 @@ private:
         {
         }
         
-        // 31 bits have been used here. There is one bit available.
+        ADD_BOOLEAN_BITFIELD(beingDestroyed, BeingDestroyed);
         ADD_BOOLEAN_BITFIELD(needsLayout, NeedsLayout);
         ADD_BOOLEAN_BITFIELD(needsPositionedMovementLayout, NeedsPositionedMovementLayout);
         ADD_BOOLEAN_BITFIELD(normalChildNeedsLayout, NormalChildNeedsLayout);

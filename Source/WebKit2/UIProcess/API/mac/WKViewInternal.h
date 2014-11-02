@@ -50,6 +50,7 @@ class FindIndicator;
 class LayerTreeContext;
 class ViewSnapshot;
 class WebContext;
+struct ActionMenuHitTestResult;
 struct ColorSpaceData;
 struct EditorState;
 struct WebPageConfiguration;
@@ -123,5 +124,9 @@ struct WebPageConfiguration;
 @property (readonly) BOOL _hasFullScreenWindowController;
 @property (readonly) WKFullScreenWindowController *_fullScreenWindowController;
 - (void)_closeFullScreenWindowController;
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+- (void)_didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult;
+#endif
 
 @end

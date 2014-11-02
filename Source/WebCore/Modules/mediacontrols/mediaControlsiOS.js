@@ -136,6 +136,10 @@ ControllerIOS.prototype = {
     createControls: function() {
         Controller.prototype.createControls.call(this);
 
+        var panelCompositedParent = this.controls.panelCompositedParent = document.createElement('div');
+        panelCompositedParent.setAttribute('pseudo', '-webkit-media-controls-panel-composited-parent');
+
+
         var wirelessPlaybackStatus = this.controls.wirelessPlaybackStatus = document.createElement('div');
         wirelessPlaybackStatus.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-status');
         wirelessPlaybackStatus.classList.add(this.ClassNames.hidden);
@@ -216,6 +220,12 @@ ControllerIOS.prototype = {
     showControls: function() {
         Controller.prototype.showControls.call(this);
         this.updateShouldListenForPlaybackTargetAvailabilityEvent();
+    },
+
+    addControls: function() {
+        this.base.appendChild(this.controls.panelCompositedParent);
+        this.controls.panelCompositedParent.appendChild(this.controls.panel);
+        this.setNeedsTimelineMetricsUpdate();
     },
 
     updateControls: function() {
@@ -320,12 +330,17 @@ ControllerIOS.prototype = {
             return;
 
         var velocity = Math.abs(event.scale - 1) / duration;
-
-        if (event.scale < 1.25 || velocity < 2)
+        
+        if (velocity < 2)
             return;
 
-        delete this.gestureStartTime;
-        this.video.webkitEnterFullscreen();
+        if (event.scale >= 1.25) {
+            delete this.gestureStartTime;
+            this.video.webkitEnterFullscreen();
+        } else if (event.scale <= 0.75) {
+            delete this.gestureStartTime;
+            this.host.enterFullscreenOptimized();
+        }
     },
 
     handleBaseGestureEnd: function(event) {

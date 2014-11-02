@@ -80,6 +80,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/efl/EwkView.cpp
     UIProcess/API/efl/GestureRecognizer.cpp
     UIProcess/API/efl/SnapshotImageGL.cpp
+    UIProcess/API/efl/WebAccessibility.cpp
     UIProcess/API/efl/ewk_application_cache_manager.cpp
     UIProcess/API/efl/ewk_auth_request.cpp
     UIProcess/API/efl/ewk_back_forward_list.cpp
@@ -182,6 +183,8 @@ list(APPEND WebKit2_SOURCES
     WebProcess/InjectedBundle/API/efl/ewk_extension.cpp
 
     WebProcess/InjectedBundle/efl/InjectedBundleEfl.cpp
+
+    WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
 
     WebProcess/Plugins/Netscape/unix/PluginProxyUnix.cpp
 
@@ -463,6 +466,12 @@ set(EWK2UnitTests_LIBRARIES
     gtest
 )
 
+if (ENABLE_ECORE_X)
+    list(APPEND EWK2UnitTests_LIBRARIES
+        ${ECORE_X_LIBRARIES}
+    )
+endif ()
+
 set(WEBKIT2_EFL_TEST_DIR "${WEBKIT2_DIR}/UIProcess/API/efl/tests")
 set(TEST_RESOURCES_DIR ${WEBKIT2_EFL_TEST_DIR}/resources)
 set(TEST_EXTENSIONS_DIR ${WEBKIT2_EFL_TEST_DIR}/extensions)
@@ -492,6 +501,7 @@ target_link_libraries(ewk2UnitTestUtils ${EWK2UnitTests_LIBRARIES})
 # The "ewk" on the test name needs to be suffixed with "2", otherwise it
 # will clash with tests from the WebKit 1 test suite.
 set(EWK2UnitTests_BINARIES
+    test_ewk2_accessibility
     test_ewk2_application_cache_manager
     test_ewk2_auth_request
     test_ewk2_back_forward_list

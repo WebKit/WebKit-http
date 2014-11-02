@@ -57,11 +57,11 @@
 #include "InspectorDOMAgent.h"
 #include "InspectorInstrumentation.h"
 #include "InspectorOverlay.h"
+#include "InspectorTimelineAgent.h"
 #include "InstrumentingAgents.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
 #include "Page.h"
-#include "ResourceBuffer.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
@@ -72,7 +72,6 @@
 #include <inspector/ContentSearchUtilities.h>
 #include <inspector/IdentifiersFactory.h>
 #include <inspector/InspectorValues.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/text/Base64.h>
 #include <wtf/text/StringBuilder.h>
@@ -143,11 +142,9 @@ bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, S
 
     *base64Encoded = !hasTextContent(cachedResource);
     if (*base64Encoded) {
-        RefPtr<SharedBuffer> buffer = hasZeroSize ? SharedBuffer::create() : cachedResource->resourceBuffer()->sharedBuffer();
-
+        RefPtr<SharedBuffer> buffer = hasZeroSize ? SharedBuffer::create() : cachedResource->resourceBuffer();
         if (!buffer)
             return false;
-
         *result = base64Encode(buffer->data(), buffer->size());
         return true;
     }
@@ -166,7 +163,7 @@ bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, S
             *result = downcast<CachedScript>(*cachedResource).script();
             return true;
         case CachedResource::RawResource: {
-            ResourceBuffer* buffer = cachedResource->resourceBuffer();
+            auto* buffer = cachedResource->resourceBuffer();
             if (!buffer)
                 return false;
             RefPtr<TextResourceDecoder> decoder = createXHRTextDecoder(cachedResource->response().mimeType(), cachedResource->response().textEncodingName());
@@ -177,7 +174,7 @@ bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, S
             return true;
         }
         default:
-            ResourceBuffer* buffer = cachedResource->resourceBuffer();
+            auto* buffer = cachedResource->resourceBuffer();
             return decodeBuffer(buffer ? buffer->data() : nullptr, buffer ? buffer->size() : 0, cachedResource->encoding(), result);
         }
     }
@@ -186,12 +183,10 @@ bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, S
 
 bool InspectorPageAgent::mainResourceContent(Frame* frame, bool withBase64Encode, String* result)
 {
-    RefPtr<ResourceBuffer> buffer = frame->loader().documentLoader()->mainResourceData();
+    RefPtr<SharedBuffer> buffer = frame->loader().documentLoader()->mainResourceData();
     if (!buffer)
         return false;
-    String textEncodingName = frame->document()->inputEncoding();
-
-    return InspectorPageAgent::dataContent(buffer->data(), buffer->size(), textEncodingName, withBase64Encode, result);
+    return InspectorPageAgent::dataContent(buffer->data(), buffer->size(), frame->document()->inputEncoding(), withBase64Encode, result);
 }
 
 // static
@@ -357,6 +352,11 @@ void InspectorPageAgent::willDestroyFrontendAndBackend(InspectorDisconnectReason
 #if ENABLE(TOUCH_EVENTS)
     updateTouchEventEmulationInPage(false);
 #endif
+}
+
+double InspectorPageAgent::timestamp()
+{
+    return m_instrumentingAgents->inspectorEnvironment().executionStopwatch()->elapsedTime();
 }
 
 void InspectorPageAgent::enable(ErrorString&)
@@ -709,12 +709,12 @@ void InspectorPageAgent::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWor
 void InspectorPageAgent::domContentEventFired()
 {
     m_isFirstLayoutAfterOnLoad = true;
-    m_frontendDispatcher->domContentEventFired(currentTime());
+    m_frontendDispatcher->domContentEventFired(timestamp());
 }
 
 void InspectorPageAgent::loadEventFired()
 {
-    m_frontendDispatcher->loadEventFired(currentTime());
+    m_frontendDispatcher->loadEventFired(timestamp());
 }
 
 void InspectorPageAgent::frameNavigated(DocumentLoader* loader)

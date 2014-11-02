@@ -278,7 +278,7 @@ SOFT_LINK(CoreMedia, CMVideoFormatDescriptionGetPresentationDimensions, CGSize, 
     });
 }
 
-- (void)streamParserWillProvideContentKeyRequestInitializationData:(AVStreamDataParser *)streamDataParser forTrackID:(CMPersistentTrackID)trackID
+- (void)streamDataParserWillProvideContentKeyRequestInitializationData:(AVStreamDataParser *)streamDataParser forTrackID:(CMPersistentTrackID)trackID
 {
 #if ASSERT_DISABLED
     UNUSED_PARAM(streamDataParser);
@@ -783,7 +783,7 @@ void SourceBufferPrivateAVFObjC::abort()
 
 void SourceBufferPrivateAVFObjC::destroyParser()
 {
-    if (m_mediaSource->player()->hasStreamSession())
+    if (m_mediaSource && m_mediaSource->player()->hasStreamSession())
         [m_mediaSource->player()->streamSession() removeStreamDataParser:m_parser.get()];
 
     [m_delegate invalidate];

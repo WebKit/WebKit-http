@@ -160,6 +160,10 @@ messages -> WebPage LegacyReceiver {
     PerformDictionaryLookupAtLocation(WebCore::FloatPoint point)
 #endif
 
+#if PLATFORM(MAC)
+    PerformDictionaryLookupOfCurrentSelection()
+#endif
+
     PreferencesDidChange(WebKit::WebPreferencesStore store)
 
     SetUserAgent(String userAgent)
@@ -287,6 +291,7 @@ messages -> WebPage LegacyReceiver {
 
     # Media
     SetMediaVolume(float volume)
+    SetMuted(bool muted)
     SetMayStartMediaWhenInWindow(bool mayStartMedia)
 
     // FIXME: This a dummy message, to avoid breaking the build for platforms that don't require
@@ -387,4 +392,8 @@ messages -> WebPage LegacyReceiver {
     GetBytecodeProfile(uint64_t callbackID)
     
     TakeSnapshot(WebCore::IntRect snapshotRect, WebCore::IntSize bitmapSize, uint32_t options, uint64_t callbackID)
+#if PLATFORM(MAC)
+    PerformActionMenuHitTestAtLocation(WebCore::FloatPoint location)
+    SelectLookupTextAtLocation(WebCore::FloatPoint location)
+#endif
 }

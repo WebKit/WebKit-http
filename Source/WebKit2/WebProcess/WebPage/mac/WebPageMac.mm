@@ -28,6 +28,7 @@
 
 #if PLATFORM(MAC)
 
+#import "ActionMenuHitTestResult.h"
 #import "AttributedString.h"
 #import "DataReference.h"
 #import "DictionaryPopupInfo.h"
@@ -52,10 +53,12 @@
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/BackForwardController.h>
+#import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameView.h>
+#import <WebCore/GraphicsContext.h>
 #import <WebCore/HTMLConverter.h>
 #import <WebCore/HitTestResult.h>
 #import <WebCore/KeyboardEvent.h>
@@ -68,12 +71,14 @@
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
 #import <WebCore/RenderStyle.h>
+#import <WebCore/RenderView.h>
 #import <WebCore/ResourceHandle.h>
 #import <WebCore/ScrollView.h>
 #import <WebCore/StyleInheritedData.h>
 #import <WebCore/TextIterator.h>
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/WindowsKeyboardCodes.h>
+#import <WebCore/htmlediting.h>
 #import <WebKitSystemInterface.h>
 
 using namespace WebCore;
@@ -496,6 +501,68 @@ static bool shouldUseSelection(const VisiblePosition& position, const VisibleSel
     return isPositionInRange(position, selectedRange.get());
 }
 
+static PassRefPtr<Range> rangeExpandedAroundPositionByCharacters(const VisiblePosition& position, int numberOfCharactersToExpand)
+{
+    Position start = position.deepEquivalent();
+    Position end = position.deepEquivalent();
+    for (int i = 0; i < numberOfCharactersToExpand; ++i) {
+        if (directionOfEnclosingBlock(start) == LTR)
+            start = start.previous(Character);
+        else
+            start = start.next(Character);
+
+        if (directionOfEnclosingBlock(end) == LTR)
+            end = end.next(Character);
+        else
+            end = end.previous(Character);
+    }
+
+    return makeRange(start, end);
+}
+
+PassRefPtr<Range> WebPage::rangeForDictionaryLookupAtHitTestResult(const WebCore::HitTestResult& hitTestResult, NSDictionary **options)
+{
+    Node* node = hitTestResult.innerNonSharedNode();
+    if (!node)
+        return nullptr;
+
+    auto renderer = node->renderer();
+    if (!renderer)
+        return nullptr;
+
+    Frame* frame = node->document().frame();
+    if (!frame)
+        return nullptr;
+
+    // Don't do anything if there is no character at the point.
+    if (!frame->rangeForPoint(hitTestResult.roundedPointInInnerNodeFrame()))
+        return nullptr;
+
+    VisiblePosition position = renderer->positionForPoint(hitTestResult.localPoint(), nullptr);
+    if (position.isNull())
+        position = firstPositionInOrBeforeNode(node);
+
+    VisibleSelection selection = m_page->focusController().focusedOrMainFrame().selection().selection();
+    if (shouldUseSelection(position, selection)) {
+        performDictionaryLookupForSelection(frame, selection);
+        return nullptr;
+    }
+
+    // As context, we are going to use 250 characters of text before and after the point.
+    RefPtr<Range> fullCharacterRange = rangeExpandedAroundPositionByCharacters(position, 250);
+    NSRange rangeToPass = NSMakeRange(TextIterator::rangeLength(makeRange(fullCharacterRange->startPosition(), position).get()), 0);
+
+    String fullPlainTextString = plainText(fullCharacterRange.get());
+
+    NSRange extractedRange = WKExtractWordDefinitionTokenRangeFromContextualString(fullPlainTextString, rangeToPass, options);
+
+    // This function sometimes returns {NSNotFound, 0} if it was unable to determine a good string.
+    if (extractedRange.location == NSNotFound)
+        return nullptr;
+
+    return TextIterator::subrange(fullCharacterRange.get(), extractedRange.location, extractedRange.length);
+}
+
 void WebPage::performDictionaryLookupAtLocation(const FloatPoint& floatPoint)
 {
     if (PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame())) {
@@ -507,63 +574,12 @@ void WebPage::performDictionaryLookupAtLocation(const FloatPoint& floatPoint)
     IntPoint point = roundedIntPoint(floatPoint);
     HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point));
     Frame* frame = result.innerNonSharedNode() ? result.innerNonSharedNode()->document().frame() : &m_page->focusController().focusedOrMainFrame();
-
-    IntPoint translatedPoint = frame->view()->windowToContents(point);
-
-    // Don't do anything if there is no character at the point.
-    if (!frame->rangeForPoint(translatedPoint))
-        return;
-
-    VisiblePosition position = frame->visiblePositionForPoint(translatedPoint);
-    VisibleSelection selection = m_page->focusController().focusedOrMainFrame().selection().selection();
-    if (shouldUseSelection(position, selection)) {
-        performDictionaryLookupForSelection(frame, selection);
-        return;
-    }
-
     NSDictionary *options = nil;
-
-    // As context, we are going to use four lines of text before and after the point. (Dictionary can sometimes look up things that are four lines long)
-    const int numberOfLinesOfContext = 4;
-    VisiblePosition contextStart = position;
-    VisiblePosition contextEnd = position;
-    for (int i = 0; i < numberOfLinesOfContext; i++) {
-        VisiblePosition n = previousLinePosition(contextStart, contextStart.lineDirectionPointForBlockDirectionNavigation());
-        if (n.isNull() || n == contextStart)
-            break;
-        contextStart = n;
-    }
-    for (int i = 0; i < numberOfLinesOfContext; i++) {
-        VisiblePosition n = nextLinePosition(contextEnd, contextEnd.lineDirectionPointForBlockDirectionNavigation());
-        if (n.isNull() || n == contextEnd)
-            break;
-        contextEnd = n;
-    }
-
-    VisiblePosition lineStart = startOfLine(contextStart);
-    if (!lineStart.isNull())
-        contextStart = lineStart;
-
-    VisiblePosition lineEnd = endOfLine(contextEnd);
-    if (!lineEnd.isNull())
-        contextEnd = lineEnd;
-
-    NSRange rangeToPass = NSMakeRange(TextIterator::rangeLength(makeRange(contextStart, position).get()), 0);
-
-    RefPtr<Range> fullCharacterRange = makeRange(contextStart, contextEnd);
-    String fullPlainTextString = plainText(fullCharacterRange.get());
-
-    NSRange extractedRange = WKExtractWordDefinitionTokenRangeFromContextualString(fullPlainTextString, rangeToPass, &options);
-
-    // This function sometimes returns {NSNotFound, 0} if it was unable to determine a good string.
-    if (extractedRange.location == NSNotFound)
+    RefPtr<Range> range = rangeForDictionaryLookupAtHitTestResult(result, &options);
+    if (!range)
         return;
 
-    RefPtr<Range> finalRange = TextIterator::subrange(fullCharacterRange.get(), extractedRange.location, extractedRange.length);
-    if (!finalRange)
-        return;
-
-    performDictionaryLookupForRange(frame, *finalRange, options);
+    performDictionaryLookupForRange(frame, *range, options);
 }
 
 void WebPage::performDictionaryLookupForSelection(Frame* frame, const VisibleSelection& selection)
@@ -591,6 +607,12 @@ void WebPage::performDictionaryLookupForSelection(Frame* frame, const VisibleSel
     WKExtractWordDefinitionTokenRangeFromContextualString(fullPlainTextString, rangeToPass, &options);
 
     performDictionaryLookupForRange(frame, *selectedRange, options);
+}
+
+void WebPage::performDictionaryLookupOfCurrentSelection()
+{
+    Frame* frame = &m_page->focusController().focusedOrMainFrame();
+    performDictionaryLookupForSelection(frame, frame->selection().selection());
 }
 
 void WebPage::performDictionaryLookupForRange(Frame* frame, Range& range, NSDictionary *options)
@@ -1048,6 +1070,113 @@ void WebPage::handleSelectionServiceClick(FrameSelection& selection, const Vecto
 String WebPage::platformUserAgent(const URL&) const
 {
     return String();
+}
+
+static RetainPtr<DDActionContext> scanForDataDetectedItems(const HitTestResult& hitTestResult, FloatRect& actionBoundingBox)
+{
+    Node* node = hitTestResult.innerNonSharedNode();
+    if (!node)
+        return nullptr;
+    auto renderer = node->renderer();
+    if (!renderer)
+        return nullptr;
+    VisiblePosition position = renderer->positionForPoint(hitTestResult.localPoint(), nullptr);
+    if (position.isNull())
+        position = firstPositionInOrBeforeNode(node);
+
+    RefPtr<Range> contextRange = rangeExpandedAroundPositionByCharacters(position, 250);
+    if (!contextRange)
+        return nullptr;
+
+    String fullPlainTextString = plainText(contextRange.get());
+    int hitLocation = TextIterator::rangeLength(makeRange(contextRange->startPosition(), position).get());
+
+    RetainPtr<DDScannerRef> scanner = adoptCF(DDScannerCreate(DDScannerTypeStandard, 0, nullptr));
+    RetainPtr<DDScanQueryRef> scanQuery = adoptCF(DDScanQueryCreateFromString(kCFAllocatorDefault, fullPlainTextString.createCFString().get(), CFRangeMake(0, fullPlainTextString.length())));
+
+    if (!DDScannerScanQuery(scanner.get(), scanQuery.get()))
+        return nullptr;
+
+    RetainPtr<CFArrayRef> results = adoptCF(DDScannerCopyResultsWithOptions(scanner.get(), DDScannerCopyResultsOptionsNoOverlap));
+
+    // Find the DDResultRef that intersects the hitTestResult's VisiblePosition.
+    DDResultRef mainResult = nullptr;
+    RefPtr<Range> mainResultRange;
+    CFIndex resultCount = CFArrayGetCount(results.get());
+    for (CFIndex i = 0; i < resultCount; i++) {
+        DDResultRef result = (DDResultRef)CFArrayGetValueAtIndex(results.get(), i);
+        CFRange resultRangeInContext = DDResultGetRange(result);
+        if (hitLocation >= resultRangeInContext.location && (hitLocation - resultRangeInContext.location) < resultRangeInContext.length) {
+            mainResult = result;
+            mainResultRange = TextIterator::subrange(contextRange.get(), resultRangeInContext.location, resultRangeInContext.length);
+            break;
+        }
+    }
+
+    if (!mainResult)
+        return nullptr;
+
+    RetainPtr<DDActionContext> actionContext = adoptNS([[getDDActionContextClass() alloc] init]);
+    [actionContext setAllResults:(NSArray *)results.get()];
+    [actionContext setMainResult:mainResult];
+
+    Vector<FloatQuad> quads;
+    mainResultRange->textQuads(quads);
+    if (!quads.isEmpty())
+        actionBoundingBox = mainResultRange->ownerDocument().view()->contentsToWindow(quads[0].enclosingBoundingBox());
+
+    return actionContext;
+}
+
+void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInViewCooordinates)
+{
+    layoutIfNeeded();
+
+    MainFrame& mainFrame = corePage()->mainFrame();
+    if (!mainFrame.view() || !mainFrame.view()->renderView()) {
+        send(Messages::WebPageProxy::DidPerformActionMenuHitTest(ActionMenuHitTestResult()));
+        return;
+    }
+
+    RenderView& mainRenderView = *mainFrame.view()->renderView();
+
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
+
+    IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCooordinates));
+    HitTestResult hitTestResult(locationInContentCoordinates);
+    mainRenderView.hitTest(request, hitTestResult);
+
+    ActionMenuHitTestResult actionMenuResult;
+
+    if (Image* image = hitTestResult.image()) {
+        actionMenuResult.image = ShareableBitmap::createShareable(IntSize(image->size()), ShareableBitmap::SupportsAlpha);
+        if (actionMenuResult.image)
+            actionMenuResult.image->createGraphicsContext()->drawImage(image, ColorSpaceDeviceRGB, IntPoint());
+    }
+
+    // FIXME: Avoid scanning if we will just throw away the result (e.g. we're over a link).
+    if (hitTestResult.innerNode() && hitTestResult.innerNode()->isTextNode()) {
+        FloatRect actionBoundingBox;
+        actionMenuResult.actionContext = scanForDataDetectedItems(hitTestResult, actionBoundingBox);
+        actionMenuResult.actionBoundingBox = actionBoundingBox;
+    }
+    
+    send(Messages::WebPageProxy::DidPerformActionMenuHitTest(actionMenuResult));
+}
+
+void WebPage::selectLookupTextAtLocation(FloatPoint locationInWindowCooordinates)
+{
+    MainFrame& mainFrame = corePage()->mainFrame();
+    if (!mainFrame.view() || !mainFrame.view()->renderView())
+        return;
+
+    IntPoint point = roundedIntPoint(locationInWindowCooordinates);
+    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point));
+    Frame* frame = result.innerNonSharedNode() ? result.innerNonSharedNode()->document().frame() : &m_page->focusController().focusedOrMainFrame();
+    NSDictionary *options = nil;
+    RefPtr<Range> lookupRange = rangeForDictionaryLookupAtHitTestResult(result, &options);
+    if (lookupRange)
+        frame->selection().setSelectedRange(lookupRange.get(), DOWNSTREAM, true);
 }
 
 } // namespace WebKit

@@ -109,9 +109,11 @@ MutableStyleProperties::MutableStyleProperties(const StyleProperties& other)
     if (is<MutableStyleProperties>(other))
         m_propertyVector = downcast<MutableStyleProperties>(other).m_propertyVector;
     else {
-        m_propertyVector.reserveInitialCapacity(other.propertyCount());
-        for (unsigned i = 0; i < other.propertyCount(); ++i)
-            m_propertyVector.uncheckedAppend(other.propertyAt(i).toCSSProperty());
+        const auto& immutableOther = downcast<ImmutableStyleProperties>(other);
+        unsigned propertyCount = immutableOther.propertyCount();
+        m_propertyVector.reserveInitialCapacity(propertyCount);
+        for (unsigned i = 0; i < propertyCount; ++i)
+            m_propertyVector.uncheckedAppend(immutableOther.propertyAt(i).toCSSProperty());
     }
 }
 
@@ -149,9 +151,9 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
         return get4Values(borderWidthShorthand());
     case CSSPropertyBorderStyle:
         return get4Values(borderStyleShorthand());
-    case CSSPropertyWebkitColumnRule:
+    case CSSPropertyColumnRule:
         return getShorthandValue(webkitColumnRuleShorthand());
-    case CSSPropertyWebkitColumns:
+    case CSSPropertyColumns:
         return getShorthandValue(webkitColumnsShorthand());
     case CSSPropertyFlex:
         return getShorthandValue(flexShorthand());
@@ -1061,15 +1063,15 @@ static const CSSPropertyID blockProperties[] = {
     CSSPropertyOrphans,
     CSSPropertyOverflow, // This can be also be applied to replaced elements
     CSSPropertyWebkitAspectRatio,
-    CSSPropertyWebkitColumnCount,
-    CSSPropertyWebkitColumnGap,
-    CSSPropertyWebkitColumnRuleColor,
-    CSSPropertyWebkitColumnRuleStyle,
-    CSSPropertyWebkitColumnRuleWidth,
+    CSSPropertyColumnCount,
+    CSSPropertyColumnGap,
+    CSSPropertyColumnRuleColor,
+    CSSPropertyColumnRuleStyle,
+    CSSPropertyColumnRuleWidth,
     CSSPropertyWebkitColumnBreakBefore,
     CSSPropertyWebkitColumnBreakAfter,
     CSSPropertyWebkitColumnBreakInside,
-    CSSPropertyWebkitColumnWidth,
+    CSSPropertyColumnWidth,
     CSSPropertyPageBreakAfter,
     CSSPropertyPageBreakBefore,
     CSSPropertyPageBreakInside,
@@ -1257,7 +1259,7 @@ String StyleProperties::PropertyReference::cssText() const
     StringBuilder result;
     result.append(cssName());
     result.appendLiteral(": ");
-    result.append(propertyValue()->cssText());
+    result.append(m_value->cssText());
     if (isImportant())
         result.appendLiteral(" !important");
     result.append(';');

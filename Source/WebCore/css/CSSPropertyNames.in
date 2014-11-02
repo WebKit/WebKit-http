@@ -7,6 +7,48 @@
 // Microsoft extensions are documented here:
 // http://msdn.microsoft.com/workshop/author/css/reference/attributes.asp
 // 
+// StyleBuilder options:
+// * NewStyleBuilder:
+// Indicates to makeprop.pl that this property should be generated
+// in the new StyleBuilder.cpp. This option is temporary until all
+// CSS properties are generated.
+//
+// * TypeName:
+// Overrides the type of the setter method argument on RenderStyle. By
+// default, 'E' + PropertyId is used (e.g. EBorderCollapse). This option
+// is not needed if the "Converter" option is used.
+//
+// * Initial:
+// Overrides the method name on RenderStyle to get the initial value for
+// the property. By default, initial' + PropertyId is used (e.g.
+// initialBorderCollapse()).
+//
+// * Getter:
+// Overrides the method name on RenderStyle to get the current value for
+// the property. By default, the PropertyId with first letter lowercased
+// is used (e.g. borderCollapse()).
+//
+// * Setter:
+// Overrides the method name on RenderStyle to set the current value for
+// the property. By default, 'set' + PropertyId is used (e.g.
+// setBorderCollapse()).
+//
+// * NameForMethods:
+// Overrides the Getter / Setter / Initial method names on RenderStyle.
+// For e.g. "NameForMethods=OverflowWrap" will use
+// "overflowWrap() / setOverflowWrap() / initialOverflowWrap()".
+//
+// * Converter=XXX:
+// If converting the input CSSValue into the setter method argument type
+// is not trivial (i.e. casting to TypeName does not suffice), then you
+// can indicate that a Converter helper function in
+// css/StyleBuilderConverter.h should be used.
+//
+// * Custom=Value:
+// This option is used to indicate that the CSS property requires special
+// handling to set its value, and a regular Converter helper cannot be
+// used. The Custom code for the property should be located in
+// css/StyleBuilderCustom.h and named applyValue[CSSPropertyName]().
 
 
 // high-priority property names have to be listed first, to simplify the check
@@ -39,7 +81,7 @@ zoom
 line-height [Inherited]
 
 // Keep this in between the highest priority props and the lower ones.
--webkit-ruby-position [Inherited]
+-webkit-ruby-position [Inherited, NewStyleBuilder, TypeName=RubyPosition]
 
 // The remaining properties are listed in alphabetical order
 background
@@ -59,48 +101,48 @@ background-size
 border
 border-bottom
 border-bottom-color
-border-bottom-left-radius
+border-bottom-left-radius [NewStyleBuilder, Initial=initialBorderRadius, Converter=Radius]
 -webkit-border-bottom-left-radius = border-bottom-left-radius
-border-bottom-right-radius
+border-bottom-right-radius [NewStyleBuilder, Initial=initialBorderRadius, Converter=Radius]
 -webkit-border-bottom-right-radius = border-bottom-right-radius
-border-bottom-style
-border-bottom-width
-border-collapse [Inherited]
+border-bottom-style [NewStyleBuilder, TypeName=EBorderStyle, Initial=initialBorderStyle]
+border-bottom-width [NewStyleBuilder, Initial=initialBorderWidth, Converter=LineWidth<float>]
+border-collapse [Inherited, NewStyleBuilder]
 border-color
 border-image
 border-image-outset
 border-image-repeat
 border-image-slice
-border-image-source
+border-image-source [NewStyleBuilder, Converter=BorderImageSource<CSSPropertyBorderImageSource>]
 border-image-width
 border-left
 border-left-color
-border-left-style
-border-left-width
+border-left-style [NewStyleBuilder, TypeName=EBorderStyle, Initial=initialBorderStyle]
+border-left-width [NewStyleBuilder, Initial=initialBorderWidth, Converter=LineWidth<float>]
 border-radius
 border-right
 border-right-color
-border-right-style
-border-right-width
+border-right-style [NewStyleBuilder, TypeName=EBorderStyle, Initial=initialBorderStyle]
+border-right-width [NewStyleBuilder, Initial=initialBorderWidth, Converter=LineWidth<float>]
 border-spacing [Inherited]
 border-style
 border-top
 border-top-color
-border-top-left-radius
+border-top-left-radius [NewStyleBuilder, Initial=initialBorderRadius, Converter=Radius]
 -webkit-border-top-left-radius = border-top-left-radius
-border-top-right-radius
+border-top-right-radius [NewStyleBuilder, Initial=initialBorderRadius, Converter=Radius]
 -webkit-border-top-right-radius = border-top-right-radius
-border-top-style
-border-top-width
+border-top-style [NewStyleBuilder, TypeName=EBorderStyle, Initial=initialBorderStyle]
+border-top-width [NewStyleBuilder, Initial=initialBorderWidth, Converter=LineWidth<float>]
 border-width
-bottom
+bottom [NewStyleBuilder, Initial=initialOffset, Converter=LengthOrAuto]
 box-shadow
-box-sizing
+box-sizing [NewStyleBuilder]
 // -webkit-box-sizing worked in Safari 4 and earlier.
 -webkit-box-sizing = box-sizing
-caption-side [Inherited]
+caption-side [Inherited, NewStyleBuilder]
 -epub-caption-side = caption-side
-clear
+clear [NewStyleBuilder]
 clip
 -webkit-clip-path
 content
@@ -108,109 +150,109 @@ counter-increment
 counter-reset
 cursor [Inherited]
 #if defined(ENABLE_CURSOR_VISIBILITY) && ENABLE_CURSOR_VISIBILITY
--webkit-cursor-visibility [Inherited]
+-webkit-cursor-visibility [Inherited, NewStyleBuilder, TypeName=CursorVisibility]
 #endif
-empty-cells [Inherited]
-float
+empty-cells [Inherited, NewStyleBuilder, TypeName=EEmptyCell]
+float [NewStyleBuilder, TypeName=EFloat, NameForMethods=Floating]
 font-stretch
-height
+height [NewStyleBuilder, Initial=initialSize, Converter=LengthSizing]
 #if defined(ENABLE_CSS_IMAGE_ORIENTATION) && ENABLE_CSS_IMAGE_ORIENTATION
-image-orientation [Inherited]
+image-orientation [Inherited, NewStyleBuilder, TypeName=ImageOrientationEnum]
 #endif
-image-rendering [Inherited]
+image-rendering [Inherited, NewStyleBuilder]
 #if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
 image-resolution [Inherited]
 #endif
-left
-letter-spacing [Inherited]
+left [NewStyleBuilder, Initial=initialOffset, Converter=LengthOrAuto]
+letter-spacing [Inherited, NewStyleBuilder, Converter=Spacing]
 list-style [Inherited]
 list-style-image [Inherited]
-list-style-position [Inherited]
-list-style-type [Inherited]
+list-style-position [Inherited, NewStyleBuilder]
+list-style-type [Inherited, NewStyleBuilder]
 margin
-margin-bottom
-margin-left
-margin-right
-margin-top
-max-height
-max-width
-min-height
-min-width
-object-fit
-opacity
+margin-bottom [NewStyleBuilder, Initial=initialMargin, Converter=LengthOrAuto]
+margin-left [NewStyleBuilder, Initial=initialMargin, Converter=LengthOrAuto]
+margin-right [NewStyleBuilder, Initial=initialMargin, Converter=LengthOrAuto]
+margin-top [NewStyleBuilder, Initial=initialMargin, Converter=LengthOrAuto]
+max-height [NewStyleBuilder, Initial=initialMaxSize, Converter=LengthMaxSizing]
+max-width [NewStyleBuilder, Initial=initialMaxSize, Converter=LengthMaxSizing]
+min-height [NewStyleBuilder, Initial=initialMinSize, Converter=LengthSizing]
+min-width [NewStyleBuilder, Initial=initialMinSize, Converter=LengthSizing]
+object-fit [NewStyleBuilder, TypeName=ObjectFit]
+opacity [NewStyleBuilder, TypeName=float]
 // Honor -webkit-opacity as a synonym for opacity. This was the only syntax that worked in Safari 1.1,
 // and may be in use on some websites and widgets.
 -webkit-opacity = opacity
 orphans [Inherited]
 outline
 outline-color
-outline-offset
+outline-offset [NewStyleBuilder, Converter=ComputedLength<int>]
 outline-style
-outline-width
+outline-width [NewStyleBuilder, Converter=LineWidth<unsigned short>]
 overflow
-overflow-wrap
-overflow-x
-overflow-y
+overflow-wrap [NewStyleBuilder]
+overflow-x [NewStyleBuilder, TypeName=EOverflow]
+overflow-y [NewStyleBuilder, TypeName=EOverflow]
 padding
-padding-bottom
-padding-left
-padding-right
-padding-top
+padding-bottom [NewStyleBuilder, Initial=initialPadding, Converter=Length]
+padding-left [NewStyleBuilder, Initial=initialPadding, Converter=Length]
+padding-right [NewStyleBuilder, Initial=initialPadding, Converter=Length]
+padding-top [NewStyleBuilder, Initial=initialPadding, Converter=Length]
 page
-page-break-after
-page-break-before
-page-break-inside
+page-break-after [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
+page-break-before [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
+page-break-inside [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
 paint-order
-pointer-events [Inherited]
-position
+pointer-events [Inherited, NewStyleBuilder]
+position [NewStyleBuilder]
 quotes [Inherited]
 resize [Inherited]
-right
+right [NewStyleBuilder, Initial=initialOffset, Converter=LengthOrAuto]
 size
 src
-speak [Inherited]
-table-layout
-tab-size [Inherited]
+speak [Inherited, NewStyleBuilder]
+table-layout [NewStyleBuilder]
+tab-size [Inherited, NewStyleBuilder, TypeName=unsigned]
 text-align [Inherited]
-text-decoration
+text-decoration [NewStyleBuilder, Converter=TextDecoration]
 text-indent [Inherited]
 text-line-through
 text-line-through-color
 text-line-through-mode
 text-line-through-style
 text-line-through-width
-text-overflow
+text-overflow [NewStyleBuilder, TypeName=TextOverflow]
 text-overline
 text-overline-color
 text-overline-mode
 text-overline-style
 text-overline-width
 text-shadow [Inherited]
-text-transform [Inherited]
+text-transform [Inherited, NewStyleBuilder]
 -epub-text-transform = text-transform
 text-underline
 text-underline-color
 text-underline-mode
 text-underline-style
 text-underline-width
-top
+top [NewStyleBuilder, Initial=initialOffset, Converter=LengthOrAuto]
 transition
 transition-delay
 transition-duration
 transition-property
 transition-timing-function
 
-unicode-bidi
+unicode-bidi [NewStyleBuilder]
 unicode-range
 vertical-align
-visibility [Inherited]
-white-space [Inherited]
+visibility [Inherited, NewStyleBuilder]
+white-space [Inherited, NewStyleBuilder]
 widows [Inherited]
-width
-word-break [Inherited]
+width [NewStyleBuilder, Initial=initialSize, Converter=LengthSizing]
+word-break [Inherited, NewStyleBuilder]
 -epub-word-break = word-break
 word-spacing [Inherited]
-word-wrap [Inherited]
+word-wrap [Inherited, NewStyleBuilder=EOverflowWrap, NameForMethods=OverflowWrap]
 z-index
 -webkit-alt
 -webkit-animation
@@ -222,9 +264,9 @@ z-index
 -webkit-animation-name
 -webkit-animation-play-state
 -webkit-animation-timing-function
--webkit-appearance
+-webkit-appearance [NewStyleBuilder, TypeName=ControlPart]
 -webkit-aspect-ratio [Inherited]
--webkit-backface-visibility
+-webkit-backface-visibility [NewStyleBuilder]
 -webkit-background-clip
 -webkit-background-composite
 -webkit-background-origin
@@ -244,9 +286,9 @@ z-index
 -webkit-border-end-color
 -webkit-border-end-style
 -webkit-border-end-width
--webkit-border-fit
--webkit-border-horizontal-spacing [Inherited]
--webkit-border-image
+-webkit-border-fit [NewStyleBuilder]
+-webkit-border-horizontal-spacing [Inherited, NewStyleBuilder, NameForMethods=HorizontalBorderSpacing, Converter=ComputedLength<short>]
+-webkit-border-image [NewStyleBuilder, Initial=initialNinePieceImage, Converter=BorderImage<CSSPropertyWebkitBorderImage>]
 // -webkit-border-radius differs from border-radius only in the interpretation of
 // a value consisting of two lengths: "-webkit-border-radius: l1 l2;" is equivalent
 // to "border-radius: l1 / l2;"
@@ -255,65 +297,76 @@ z-index
 -webkit-border-start-color
 -webkit-border-start-style
 -webkit-border-start-width
--webkit-border-vertical-spacing [Inherited]
--webkit-box-align
--webkit-box-direction [Inherited]
--webkit-box-flex
--webkit-box-flex-group
--webkit-box-lines
--webkit-box-ordinal-group
--webkit-box-orient
--webkit-box-pack
+-webkit-border-vertical-spacing [Inherited, NewStyleBuilder, NameForMethods=VerticalBorderSpacing, Converter=ComputedLength<short>]
+-webkit-box-align [NewStyleBuilder, TypeName=EBoxAlignment]
+-webkit-box-direction [Inherited, NewStyleBuilder]
+-webkit-box-flex [NewStyleBuilder, TypeName=float]
+-webkit-box-flex-group [NewStyleBuilder, TypeName=unsigned]
+-webkit-box-lines [NewStyleBuilder]
+-webkit-box-ordinal-group [NewStyleBuilder, TypeName=unsigned]
+-webkit-box-orient [NewStyleBuilder]
+-webkit-box-pack [NewStyleBuilder]
 -webkit-box-reflect
 // -webkit-box-shadow differs from box-shadow in its treatement of blur radii > 8px.
 // Let -webkit-box-shadow blur radius be w_r and box-shadow blur radius be b_r. For
 // w_r > 8px, b_r = 8 + 4 * sqrt((w_r - 8) / 2).
 -webkit-box-shadow
--webkit-color-correction [Inherited]
--webkit-column-axis
--webkit-column-break-after
--webkit-column-break-before
--webkit-column-break-inside
--webkit-column-count
--webkit-column-fill
--webkit-column-gap
--webkit-column-progression
--webkit-column-rule
--webkit-column-rule-color
--webkit-column-rule-style
--webkit-column-rule-width
--webkit-column-span
--webkit-column-width
--webkit-columns
+-webkit-color-correction [Inherited, NewStyleBuilder, TypeName=ColorSpace, NameForMethods=ColorSpace]
+-webkit-column-axis [NewStyleBuilder, TypeName=ColumnAxis]
+-webkit-column-break-after [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
+-webkit-column-break-before [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
+-webkit-column-break-inside [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
+column-count
+-webkit-column-count = column-count
+column-fill [NewStyleBuilder, TypeName=ColumnFill]
+-webkit-column-fill = column-fill
+column-gap
+-webkit-column-gap = column-gap
+column-progression [NewStyleBuilder, TypeName=ColumnProgression]
+-webkit-column-progression = column-progression
+column-rule
+-webkit-column-rule = column-rule
+column-rule-color
+-webkit-column-rule-color = column-rule-color
+column-rule-style [NewStyleBuilder, TypeName=EBorderStyle, Initial=initialBorderStyle]
+-webkit-column-rule-style = column-rule-style
+column-rule-width [NewStyleBuilder, Converter=LineWidth<unsigned short>]
+-webkit-column-rule-width = column-rule-width
+column-span [NewStyleBuilder, TypeName=ColumnSpan]
+-webkit-column-span = column-span
+column-width
+-webkit-column-width = column-width
+columns
+-webkit-columns = columns
 #if defined(ENABLE_CSS_BOX_DECORATION_BREAK) && ENABLE_CSS_BOX_DECORATION_BREAK
--webkit-box-decoration-break
+-webkit-box-decoration-break [NewStyleBuilder]
 #endif
 #if defined(ENABLE_CSS_COMPOSITING) && ENABLE_CSS_COMPOSITING
-mix-blend-mode
-isolation
+mix-blend-mode [NewStyleBuilder, TypeName=BlendMode, NameForMethods=BlendMode]
+isolation [NewStyleBuilder, TypeName=Isolation]
 #endif
 -webkit-filter
-align-content
+align-content [NewStyleBuilder]
 -webkit-align-content = align-content
-align-items
+align-items [NewStyleBuilder]
 -webkit-align-items = align-items
-align-self
+align-self [NewStyleBuilder, TypeName=EAlignItems]
 -webkit-align-self = align-self
 flex
 -webkit-flex = flex
-flex-basis
+flex-basis [NewStyleBuilder, Converter=LengthOrAuto]
 -webkit-flex-basis = flex-basis
-flex-direction
+flex-direction [NewStyleBuilder]
 -webkit-flex-direction = flex-direction
 flex-flow
 -webkit-flex-flow = flex-flow
-flex-grow
+flex-grow [NewStyleBuilder, TypeName=float]
 -webkit-flex-grow = flex-grow
-flex-shrink
+flex-shrink [NewStyleBuilder, TypeName=float]
 -webkit-flex-shrink = flex-shrink
-flex-wrap
+flex-wrap [NewStyleBuilder]
 -webkit-flex-wrap = flex-wrap
-justify-content
+justify-content [NewStyleBuilder]
 -webkit-justify-content = justify-content
 -webkit-justify-self
 -webkit-font-size-delta
@@ -335,41 +388,41 @@ justify-content
 -webkit-grid-auto-flow
 #endif
 -webkit-hyphenate-character [Inherited]
--webkit-hyphenate-limit-after [Inherited]
--webkit-hyphenate-limit-before [Inherited]
--webkit-hyphenate-limit-lines [Inherited]
--webkit-hyphens [Inherited]
+-webkit-hyphenate-limit-after [Inherited, NewStyleBuilder, NameForMethods=HyphenationLimitAfter, Converter=Number<short>]
+-webkit-hyphenate-limit-before [Inherited, NewStyleBuilder, NameForMethods=HyphenationLimitBefore, Converter=Number<short>]
+-webkit-hyphenate-limit-lines [Inherited, NewStyleBuilder, NameForMethods=HyphenationLimitLines, Custom=Value]
+-webkit-hyphens [Inherited, NewStyleBuilder, TypeName=Hyphens]
 -epub-hyphens = -webkit-hyphens
 -webkit-initial-letter
 -webkit-line-box-contain [Inherited]
--webkit-line-align [Inherited]
--webkit-line-break [Inherited]
--webkit-line-clamp
+-webkit-line-align [Inherited, NewStyleBuilder, TypeName=LineAlign]
+-webkit-line-break [Inherited, NewStyleBuilder, TypeName=LineBreak]
+-webkit-line-clamp [NewStyleBuilder, TypeName=LineClampValue]
 -webkit-line-grid [Inherited]
--webkit-line-snap [Inherited]
+-webkit-line-snap [Inherited, NewStyleBuilder, TypeName=LineSnap]
 -webkit-logical-width
 -webkit-logical-height
--webkit-margin-after-collapse
--webkit-margin-before-collapse
--webkit-margin-bottom-collapse
--webkit-margin-top-collapse
+-webkit-margin-after-collapse [NewStyleBuilder, TypeName=EMarginCollapse]
+-webkit-margin-before-collapse [NewStyleBuilder, TypeName=EMarginCollapse]
+-webkit-margin-bottom-collapse [NewStyleBuilder, TypeName=EMarginCollapse, NameForMethods=MarginAfterCollapse]
+-webkit-margin-top-collapse [NewStyleBuilder, TypeName=EMarginCollapse, NameForMethods=MarginBeforeCollapse]
 -webkit-margin-collapse
 -webkit-margin-after
 -webkit-margin-before
 -webkit-margin-end
 -webkit-margin-start
 -webkit-marquee
--webkit-marquee-direction
--webkit-marquee-increment
+-webkit-marquee-direction [NewStyleBuilder]
+-webkit-marquee-increment [NewStyleBuilder, Custom=Value]
 -webkit-marquee-repetition
 -webkit-marquee-speed
--webkit-marquee-style
+-webkit-marquee-style [NewStyleBuilder, TypeName=EMarqueeBehavior, NameForMethods=MarqueeBehavior]
 -webkit-mask
--webkit-mask-box-image
+-webkit-mask-box-image [NewStyleBuilder, Initial=initialNinePieceImage, Converter=BorderMask<CSSPropertyWebkitMaskBoxImage>]
 -webkit-mask-box-image-outset
 -webkit-mask-box-image-repeat
 -webkit-mask-box-image-slice
--webkit-mask-box-image-source
+-webkit-mask-box-image-source [NewStyleBuilder, Converter=BorderImageSource<CSSPropertyWebkitMaskBoxImageSource>]
 -webkit-mask-box-image-width
 -webkit-mask-clip
 -webkit-mask-composite
@@ -387,8 +440,8 @@ justify-content
 -webkit-max-logical-height
 -webkit-min-logical-width
 -webkit-min-logical-height
--webkit-nbsp-mode [Inherited]
-order
+-webkit-nbsp-mode [Inherited, NewStyleBuilder, TypeName=ENBSPMode, Setter=setNBSPMode, Initial=initialNBSPMode]
+order [NewStyleBuilder, TypeName=int]
 -webkit-order = order
 -webkit-padding-after
 -webkit-padding-before
@@ -396,10 +449,10 @@ order
 -webkit-padding-start
 -webkit-perspective
 -webkit-perspective-origin
--webkit-perspective-origin-x
--webkit-perspective-origin-y
--webkit-print-color-adjust [Inherited]
--webkit-rtl-ordering [Inherited]
+-webkit-perspective-origin-x [NewStyleBuilder, Converter=Length]
+-webkit-perspective-origin-y [NewStyleBuilder, Converter=Length]
+-webkit-print-color-adjust [Inherited, NewStyleBuilder, TypeName=PrintColorAdjust]
+-webkit-rtl-ordering [Inherited, NewStyleBuilder, TypeName=Order, Setter=setRTLOrdering, Initial=initialRTLOrdering]
 #if defined(ENABLE_CSS_SCROLL_SNAP)
 -webkit-scroll-snap-points-x
 -webkit-scroll-snap-points-y
@@ -407,15 +460,15 @@ order
 -webkit-scroll-snap-destination
 -webkit-scroll-snap-coordinate
 #endif
--webkit-text-combine [Inherited]
+-webkit-text-combine [Inherited, NewStyleBuilder, TypeName=TextCombine]
 -epub-text-combine = -webkit-text-combine
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
--webkit-text-align-last [Inherited]
--webkit-text-justify [Inherited]
+-webkit-text-align-last [Inherited, NewStyleBuilder, TypeName=TextAlignLast]
+-webkit-text-justify [Inherited, NewStyleBuilder, TypeName=TextJustify]
 #endif
 -webkit-text-decoration
--webkit-text-decoration-line
--webkit-text-decoration-style
+-webkit-text-decoration-line [NewStyleBuilder, NameForMethods=TextDecoration, Converter=TextDecoration]
+-webkit-text-decoration-style [NewStyleBuilder, TypeName=TextDecorationStyle]
 -webkit-text-decoration-color
 -webkit-text-decoration-skip [Inherited]
 -webkit-text-underline-position [Inherited]
@@ -432,36 +485,36 @@ text-emphasis-position = -webkit-text-emphasis-position
 -epub-text-emphasis-style = -webkit-text-emphasis-style
 text-emphasis-style = -webkit-text-emphasis-style
 -webkit-text-fill-color [Inherited]
--webkit-text-security [Inherited]
+-webkit-text-security [Inherited, NewStyleBuilder]
 -webkit-text-stroke [Inherited]
 -webkit-text-stroke-color [Inherited]
 -webkit-text-stroke-width [Inherited]
 -webkit-transform
 -webkit-transform-origin
--webkit-transform-origin-x
--webkit-transform-origin-y
--webkit-transform-origin-z
--webkit-transform-style
+-webkit-transform-origin-x [NewStyleBuilder, Converter=Length]
+-webkit-transform-origin-y [NewStyleBuilder, Converter=Length]
+-webkit-transform-origin-z [NewStyleBuilder, Converter=ComputedLength<float>]
+-webkit-transform-style [NewStyleBuilder, TypeName=ETransformStyle3D, NameForMethods=TransformStyle3D]
 -webkit-transition
 -webkit-transition-delay
 -webkit-transition-duration
 -webkit-transition-property
 -webkit-transition-timing-function
--webkit-user-drag
--webkit-user-modify [Inherited]
--webkit-user-select [Inherited]
+-webkit-user-drag [NewStyleBuilder]
+-webkit-user-modify [Inherited, NewStyleBuilder]
+-webkit-user-select [Inherited, NewStyleBuilder]
 #if defined(ENABLE_CSS_REGIONS) && ENABLE_CSS_REGIONS
 -webkit-flow-into
 -webkit-flow-from
--webkit-region-fragment
--webkit-region-break-after
--webkit-region-break-before
--webkit-region-break-inside
+-webkit-region-fragment [NewStyleBuilder, TypeName=RegionFragment]
+-webkit-region-break-after [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
+-webkit-region-break-before [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
+-webkit-region-break-inside [NewStyleBuilder, TypeName=EPageBreak, Initial=initialPageBreak]
 #endif
 #if defined(ENABLE_CSS_SHAPES) && ENABLE_CSS_SHAPES
 -webkit-shape-outside
--webkit-shape-margin
--webkit-shape-image-threshold
+-webkit-shape-margin [NewStyleBuilder, Converter=Length]
+-webkit-shape-image-threshold [NewStyleBuilder, Converter=Number<float>]
 #endif
 #if defined(ENABLE_CSS_DEVICE_ADAPTATION) && ENABLE_CSS_DEVICE_ADAPTATION
 max-zoom

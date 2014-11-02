@@ -302,6 +302,7 @@ public:
 
 #if ENABLE(VIDEO)
     void simulateAudioInterruption(Node*);
+    bool mediaElementHasCharacteristic(Node*, const String&, ExceptionCode&);
 #endif
 
     bool isSelectPopupVisible(Node*);
@@ -344,6 +345,8 @@ public:
 
     void installMockPageOverlay(const String& overlayType, ExceptionCode&);
     String pageOverlayLayerTreeAsText(ExceptionCode&) const;
+
+    void setPageMuted(bool);
 
 private:
     explicit Internals(Document*);

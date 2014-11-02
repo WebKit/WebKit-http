@@ -160,6 +160,7 @@ Page::Page(PageClients& pageClients)
     , m_inLowQualityInterpolationMode(false)
     , m_areMemoryCacheClientCallsEnabled(true)
     , m_mediaVolume(1)
+    , m_muted(false)
     , m_pageScaleFactor(1)
     , m_zoomedOutPageScaleFactor(0)
     , m_deviceScaleFactor(1)
@@ -240,6 +241,8 @@ Page::~Page()
     setGroupName(String());
     allPages->remove(this);
     
+    m_settings->pageDestroyed();
+
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         frame->willDetachPage();
         frame->detachFromPage();
@@ -1193,7 +1196,6 @@ void Page::enableLegacyPrivateBrowsing(bool privateBrowsingEnabled)
     setSessionID(privateBrowsingEnabled ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID());
 }
 
-#if ENABLE(VIDEO)
 void Page::updateIsPlayingAudio()
 {
     bool isPlayingAudio = false;
@@ -1211,7 +1213,17 @@ void Page::updateIsPlayingAudio()
 
     chrome().client().isPlayingAudioDidChange(m_isPlayingAudio);
 }
-#endif
+
+void Page::setMuted(bool muted)
+{
+    if (m_muted == muted)
+        return;
+
+    m_muted = muted;
+
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
+        frame->document()->pageMutedStateDidChange();
+}
 
 #if !ASSERT_DISABLED
 void Page::checkSubframeCountConsistency() const

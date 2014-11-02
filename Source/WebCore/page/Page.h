@@ -436,10 +436,10 @@ public:
     WEBCORE_EXPORT void enableLegacyPrivateBrowsing(bool privateBrowsingEnabled);
     bool usesEphemeralSession() const { return m_sessionID.isEphemeral(); }
 
-#if ENABLE(VIDEO)
     bool isPlayingAudio() const { return m_isPlayingAudio; }
     void updateIsPlayingAudio();
-#endif
+    bool isMuted() const { return m_muted; }
+    WEBCORE_EXPORT void setMuted(bool);
 
 private:
     WEBCORE_EXPORT void initGroup();
@@ -518,6 +518,7 @@ private:
     bool m_inLowQualityInterpolationMode;
     bool m_areMemoryCacheClientCallsEnabled;
     float m_mediaVolume;
+    bool m_muted;
 
     float m_pageScaleFactor;
     float m_zoomedOutPageScaleFactor;

@@ -52,6 +52,8 @@ WebHitTestResult::Data::Data(const HitTestResult& hitTestResult)
     , isContentEditable(hitTestResult.isContentEditable())
     , elementBoundingBox(elementBoundingBoxInWindowCoordinates(hitTestResult))
     , isScrollbar(hitTestResult.scrollbar())
+    , isSelected(hitTestResult.isSelected())
+    , isTextNode(hitTestResult.innerNode() && hitTestResult.innerNode()->isTextNode())
 {
 }
 
@@ -70,6 +72,8 @@ void WebHitTestResult::Data::encode(IPC::ArgumentEncoder& encoder) const
     encoder << isContentEditable;
     encoder << elementBoundingBox;
     encoder << isScrollbar;
+    encoder << isSelected;
+    encoder << isTextNode;
 }
 
 bool WebHitTestResult::Data::decode(IPC::ArgumentDecoder& decoder, WebHitTestResult::Data& hitTestResultData)
@@ -82,7 +86,9 @@ bool WebHitTestResult::Data::decode(IPC::ArgumentDecoder& decoder, WebHitTestRes
         || !decoder.decode(hitTestResultData.linkTitle)
         || !decoder.decode(hitTestResultData.isContentEditable)
         || !decoder.decode(hitTestResultData.elementBoundingBox)
-        || !decoder.decode(hitTestResultData.isScrollbar))
+        || !decoder.decode(hitTestResultData.isScrollbar)
+        || !decoder.decode(hitTestResultData.isSelected)
+        || !decoder.decode(hitTestResultData.isTextNode))
         return false;
 
     return true;

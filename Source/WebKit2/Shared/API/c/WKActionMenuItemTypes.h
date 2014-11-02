@@ -36,7 +36,13 @@ enum {
     kWKContextActionItemTagNoAction = 0,
     kWKContextActionItemTagOpenLinkInDefaultBrowser,
     kWKContextActionItemTagPreviewLink,
-    kWKContextActionItemTagAddLinkToSafariReadingList
+    kWKContextActionItemTagAddLinkToSafariReadingList,
+    kWKContextActionItemTagCopyImage,
+    kWKContextActionItemTagAddImageToPhotos,
+    kWKContextActionItemTagSaveImageToDownloads,
+    kWKContextActionItemTagShareImage,
+    kWKContextActionItemTagCopyText,
+    kWKContextActionItemTagLookupText
 };
 
 #ifdef __cplusplus

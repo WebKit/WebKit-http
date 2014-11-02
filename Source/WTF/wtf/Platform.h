@@ -471,15 +471,16 @@
 #define WTF_USE_CA 1
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(EFL)
 #define WTF_USE_CAIRO 1
 #define WTF_USE_GLIB 1
 #define WTF_USE_FREETYPE 1
 #define WTF_USE_HARFBUZZ 1
 #define WTF_USE_SOUP 1
+#define WTF_USE_WEBP 1
 #endif
 
-#if PLATFORM(HAIKU) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(HAIKU)
 #define WTF_USE_WEBP 1
 #endif
 
@@ -745,7 +746,7 @@
 
 #if !defined(ENABLE_DFG_JIT) && ENABLE(JIT)
 /* Enable the DFG JIT on X86 and X86_64. */
-#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HAIKU) || OS(WINDOWS))
+#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(WINDOWS) || OS(HURD) || OS(HAIKU))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARMv7.  Only tested on iOS and Qt/GTK+ Linux. */

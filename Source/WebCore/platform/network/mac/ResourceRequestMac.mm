@@ -28,8 +28,6 @@
 
 #if PLATFORM(MAC)
 
-#import "RuntimeApplicationChecks.h"
-
 #import <Foundation/Foundation.h>
 
 @interface NSURLRequest (WebNSURLRequestDetails)
@@ -38,31 +36,6 @@
 @end
 
 namespace WebCore {
-
-static bool initQuickLookResourceCachingQuirks()
-{
-    if (applicationIsSafari())
-        return false;
-    
-    NSArray* frameworks = [NSBundle allFrameworks];
-    
-    if (!frameworks)
-        return false;
-    
-    for (unsigned int i = 0; i < [frameworks count]; i++) {
-        NSBundle* bundle = [frameworks objectAtIndex: i];
-        const char* bundleID = [[bundle bundleIdentifier] UTF8String];
-        if (bundleID && !strcasecmp(bundleID, "com.apple.QuickLookUIFramework"))
-            return true;
-    }
-    return false;
-}
-
-bool ResourceRequest::useQuickLookResourceCachingQuirks()
-{
-    static bool flag = initQuickLookResourceCachingQuirks();
-    return flag;
-}
 
 #if USE(CFNETWORK)
 

@@ -1,3 +1,57 @@
+2014-10-31  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Support script message handlers WebKitUserContentManager
+        https://bugs.webkit.org/show_bug.cgi?id=133730
+
+        Reviewed by Carlos Garcia Campos.
+
+        Support user script message handlers in WebKitUserContentManager.
+        This needs building with ENABLE_USER_MESSAGE_HANDLERS, for which
+        an option is added to the CMake build files. The option is disabled
+        globally by default, and the WebKitGTK port enables it. On the API
+        level, two new methods to register and unregister names are provided
+        in the "window.webkit" namespace, and on message reception the
+        "WebKitUserContentManager::script-message-received" signal is
+        emitted, using the registered names as signal detail.
+
+        * Source/cmake/OptionsGTK.cmake: For the GTK port, enable the
+        ENABLE_USER_MESSAGE_HANDLERS feature by default.
+        * Source/cmake/WebKitFeatures.cmake: Add feature description for
+        ENABLE_USER_MESSAGE_HANDLERS, disabled by default.
+
+2014-10-29  Raphael Kubo da Costa  <rakuco@FreeBSD.org>
+
+        [GTK] Bump libsoup's minimum version to 2.42.0.
+        https://bugs.webkit.org/show_bug.cgi?id=138086
+
+        Reviewed by Martin Robinson.
+
+        The SOUP_CHECK_VERSION macro was added in libsoup 2.41.1, and the
+        soup-version.h header was added to soup.h in 2.41.4, which then becomes
+        the minimum version required to build the port these days.
+
+        In addition, since the autotools build system required 2.42.0 before
+        being retired, require the same version here. Version 2.42.0 was also
+        recommended in
+        https://lists.webkit.org/pipermail/webkit-gtk/2013-March/001387.html.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-10-28  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Remove unnecessary defines from OptionsEfl.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=138132
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-10-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.7.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
 2014-10-21  Ryuan Choi  <ryuan.choi@gmail.com>
 
         [EFL] Remove unnecessary ENABLE_3D_RENDERING definition from OptionsEfl.cmake

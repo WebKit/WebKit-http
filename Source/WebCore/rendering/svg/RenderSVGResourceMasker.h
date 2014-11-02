@@ -50,8 +50,8 @@ public:
     SVGUnitTypes::SVGUnitType maskUnits() const { return maskElement().maskUnits(); }
     SVGUnitTypes::SVGUnitType maskContentUnits() const { return maskElement().maskContentUnits(); }
 
-    virtual RenderSVGResourceType resourceType() const { return s_resourceType; }
-    static RenderSVGResourceType s_resourceType;
+    static const RenderSVGResourceType s_resourceType = MaskerResourceType;
+    virtual RenderSVGResourceType resourceType() const override { return s_resourceType; }
 
 private:
     void element() const = delete;

@@ -66,7 +66,7 @@ class TextResourceDecoder;
 
 typedef String ErrorString;
 
-class InspectorPageAgent : public InspectorAgentBase, public Inspector::InspectorPageBackendDispatcherHandler {
+class InspectorPageAgent final : public InspectorAgentBase, public Inspector::InspectorPageBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorPageAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -160,6 +160,8 @@ private:
 #if ENABLE(TOUCH_EVENTS)
     void updateTouchEventEmulationInPage(bool);
 #endif
+
+    double timestamp();
 
     static bool mainResourceContent(Frame*, bool withBase64Encode, String* result);
     static bool dataContent(const char* data, unsigned size, const String& textEncodingName, bool withBase64Encode, String* result);

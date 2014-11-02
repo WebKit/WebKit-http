@@ -66,6 +66,8 @@ public:
     static PassRefPtr<Settings> create(Page*);
     ~Settings();
 
+    void pageDestroyed() { m_page = nullptr; }
+
     WEBCORE_EXPORT void setStandardFontFamily(const AtomicString&, UScriptCode = USCRIPT_COMMON);
     WEBCORE_EXPORT const AtomicString& standardFontFamily(UScriptCode = USCRIPT_COMMON) const;
 
@@ -265,6 +267,11 @@ public:
     static bool shouldManageAudioSessionCategory() { return gManageAudioSession; }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    WEBCORE_EXPORT void setMediaKeysStorageDirectory(const String& directory) { m_mediaKeysStorageDirectory = directory; }
+    const String& mediaKeysStorageDirectory() const { return m_mediaKeysStorageDirectory; }
+#endif
+
 private:
     explicit Settings(Page*);
 
@@ -342,6 +349,10 @@ private:
     WEBCORE_EXPORT static bool gAVKitEnabled;
     WEBCORE_EXPORT static bool gShouldOptOutOfNetworkStateObservation;
     WEBCORE_EXPORT static bool gManageAudioSession;
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    String m_mediaKeysStorageDirectory;
 #endif
 
     static double gHiddenPageDOMTimerAlignmentInterval;

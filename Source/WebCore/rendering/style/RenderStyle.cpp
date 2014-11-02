@@ -1381,6 +1381,9 @@ void RenderStyle::setWordSpacing(Length value)
     case Fixed:
         fontWordSpacing = value.value();
         break;
+    case Calculated:
+        fontWordSpacing = value.nonNanCalculatedValue(maxValueForCssLength);
+        break;
     default:
         ASSERT_NOT_REACHED();
         fontWordSpacing = 0;
@@ -1519,7 +1522,7 @@ Color RenderStyle::colorIncludingFallback(int colorProperty, bool visitedLink) c
     case CSSPropertyOutlineColor:
         result = visitedLink ? visitedLinkOutlineColor() : outlineColor();
         break;
-    case CSSPropertyWebkitColumnRuleColor:
+    case CSSPropertyColumnRuleColor:
         result = visitedLink ? visitedLinkColumnRuleColor() : columnRuleColor();
         break;
     case CSSPropertyWebkitTextDecorationColor:

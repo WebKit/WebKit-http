@@ -73,6 +73,8 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << containerTemporaryDirectoryExtensionHandle;
     encoder << hstsDatabasePathExtensionHandle;
 #endif
+    encoder << mediaKeyStorageDirectory;
+    encoder << mediaKeyStorageDirectoryExtensionHandle;
     encoder << shouldUseTestingNetworkSession;
     encoder << urlSchemesRegistererdAsEmptyDocument;
     encoder << urlSchemesRegisteredAsSecure;
@@ -106,6 +108,7 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
 #if PLATFORM(COCOA)
     encoder << presenterApplicationPid;
     encoder << accessibilityEnhancedUserInterfaceEnabled;
+    encoder << needsQuickLookResourceCachingQuirks;
     encoder << nsURLCacheMemoryCapacity;
     encoder << nsURLCacheDiskCapacity;
     encoder << acceleratedCompositingPort;
@@ -170,6 +173,10 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
     if (!decoder.decode(parameters.hstsDatabasePathExtensionHandle))
         return false;
 #endif
+    if (!decoder.decode(parameters.mediaKeyStorageDirectory))
+        return false;
+    if (!decoder.decode(parameters.mediaKeyStorageDirectoryExtensionHandle))
+        return false;
     if (!decoder.decode(parameters.shouldUseTestingNetworkSession))
         return false;
     if (!decoder.decode(parameters.urlSchemesRegistererdAsEmptyDocument))
@@ -229,6 +236,8 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
     if (!decoder.decode(parameters.presenterApplicationPid))
         return false;
     if (!decoder.decode(parameters.accessibilityEnhancedUserInterfaceEnabled))
+        return false;
+    if (!decoder.decode(parameters.needsQuickLookResourceCachingQuirks))
         return false;
     if (!decoder.decode(parameters.nsURLCacheMemoryCapacity))
         return false;

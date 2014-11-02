@@ -131,6 +131,7 @@
 #endif
 
 #if PLATFORM(IOS)
+#include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "WebVideoFullscreenManagerProxy.h"
 #include "WebVideoFullscreenManagerProxyMessages.h"
 #endif
@@ -269,6 +270,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
 #if PLATFORM(IOS)
+    , m_hasReceivedLayerTreeTransactionAfterDidCommitLoad(true)
+    , m_firstLayerTreeTransactionIdAfterDidCommitLoad(0)
     , m_deviceOrientation(0)
     , m_dynamicViewportSizeUpdateWaitingForTarget(false)
     , m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit(false)
@@ -2615,6 +2618,13 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+#if PLATFORM(IOS)
+    if (frame->isMainFrame()) {
+        m_hasReceivedLayerTreeTransactionAfterDidCommitLoad = false;
+        m_firstLayerTreeTransactionIdAfterDidCommitLoad = downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea()).nextLayerTreeTransactionID();
+    }
+#endif
+
     auto transaction = m_pageLoadState.transaction();
 
     if (frame->isMainFrame())
@@ -3101,7 +3111,7 @@ void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResult::Data& hitTest
     if (!decoder.decode(messageDecoder))
         return;
 
-    m_activeActionMenuHitTestResult = WebHitTestResult::create(hitTestResultData);
+    m_lastMouseMoveHitTestResult = WebHitTestResult::create(hitTestResultData);
 
     WebEvent::Modifiers modifiers = static_cast<WebEvent::Modifiers>(opaqueModifiers);
 
@@ -3371,6 +3381,14 @@ void WebPageProxy::setMediaVolume(float volume)
         return;
     
     m_process->send(Messages::WebPage::SetMediaVolume(volume), m_pageID);    
+}
+
+void WebPageProxy::setMuted(bool muted)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetMuted(muted), m_pageID);
 }
 
 void WebPageProxy::setMayStartMediaWhenInWindow(bool mayStartMedia)
@@ -5249,6 +5267,21 @@ void WebPageProxy::isPlayingAudioDidChange(bool newIsPlayingAudio)
 void WebPageProxy::removeNavigationGestureSnapshot()
 {
     m_pageClient.removeNavigationGestureSnapshot();
+}
+
+void WebPageProxy::performActionMenuHitTestAtLocation(FloatPoint point)
+{
+    m_process->send(Messages::WebPage::PerformActionMenuHitTestAtLocation(point), m_pageID);
+}
+
+void WebPageProxy::selectLookupTextAtLocation(FloatPoint point)
+{
+    m_process->send(Messages::WebPage::SelectLookupTextAtLocation(point), m_pageID);
+}
+
+void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result)
+{
+    m_pageClient.didPerformActionMenuHitTest(result);
 }
 #endif
 

@@ -1700,10 +1700,6 @@ sub shouldRemoveCMakeCache(@)
 {
     my ($cacheFilePath, @buildArgs) = @_;
 
-    if (!isGtk()) {
-        return 1;
-    }
-
     # We check this first, because we always want to create this file for a fresh build.
     my $productDir = File::Spec->catdir(baseProductDir(), configuration());
     my $optionsCache = File::Spec->catdir($productDir, "build-webkit-options.txt");

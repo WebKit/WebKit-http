@@ -81,6 +81,7 @@
 #include "WebInspectorMessages.h"
 #include "WebInspectorUI.h"
 #include "WebInspectorUIMessages.h"
+#include "WebMediaKeyStorageManager.h"
 #include "WebNotificationClient.h"
 #include "WebOpenPanelResultListener.h"
 #include "WebPageCreationParameters.h"
@@ -136,7 +137,6 @@
 #include <WebCore/RenderLayer.h>
 #include <WebCore/RenderTreeAsText.h>
 #include <WebCore/RenderView.h>
-#include <WebCore/ResourceBuffer.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
@@ -267,8 +267,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_pdfPluginEnabled(false)
     , m_hasCachedWindowFrame(false)
     , m_viewGestureGeometryCollector(*this)
-#elif PLATFORM(GTK) && HAVE(ACCESSIBILITY)
-    , m_accessibilityObject(0)
+#elif HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
+    , m_accessibilityObject(nullptr)
 #endif
     , m_setCanStartMediaTimer(RunLoop::main(), this, &WebPage::setCanStartMediaTimerFired)
     , m_formClient(std::make_unique<API::InjectedBundle::FormClient>())
@@ -474,6 +474,12 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     for (auto& mimeType : parameters.mimeTypesWithCustomContentProviders)
         m_mimeTypesWithCustomContentProviders.add(mimeType);
+
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    if (WebMediaKeyStorageManager* manager = WebProcess::shared().supplement<WebMediaKeyStorageManager>())
+        m_page->settings().setMediaKeysStorageDirectory(manager->mediaKeyStorageDirectory());
+#endif
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -2426,17 +2432,16 @@ void WebPage::runJavaScriptInMainFrame(const String& script, uint64_t callbackID
     // NOTE: We need to be careful when running scripts that the objects we depend on don't
     // disappear during script execution.
 
-    // Retain the SerializedScriptValue at this level so it (and the internal data) lives
-    // long enough for the DataReference to be encoded by the sent message.
     RefPtr<SerializedScriptValue> serializedResultValue;
-    IPC::DataReference dataReference;
-
     JSLockHolder lock(JSDOMWindow::commonVM());
     if (JSValue resultValue = m_mainFrame->coreFrame()->script().executeScript(script, true).jsValue()) {
-        if ((serializedResultValue = SerializedScriptValue::create(m_mainFrame->jsContext(), toRef(m_mainFrame->coreFrame()->script().globalObject(mainThreadNormalWorld())->globalExec(), resultValue), 0)))
-            dataReference = serializedResultValue->data();
+        serializedResultValue = SerializedScriptValue::create(m_mainFrame->jsContext(),
+            toRef(m_mainFrame->coreFrame()->script().globalObject(mainThreadNormalWorld())->globalExec(), resultValue), nullptr);
     }
 
+    IPC::DataReference dataReference;
+    if (serializedResultValue)
+        dataReference = serializedResultValue->data();
     send(Messages::WebPageProxy::ScriptValueCallback(dataReference, callbackID));
 }
 
@@ -2449,15 +2454,14 @@ void WebPage::getContentsAsString(uint64_t callbackID)
 #if ENABLE(MHTML)
 void WebPage::getContentsAsMHTMLData(uint64_t callbackID, bool useBinaryEncoding)
 {
-    IPC::DataReference dataReference;
-
     RefPtr<SharedBuffer> buffer = useBinaryEncoding
         ? MHTMLArchive::generateMHTMLDataUsingBinaryEncoding(m_page.get())
         : MHTMLArchive::generateMHTMLData(m_page.get());
 
+    // FIXME: Use SharedBufferDataReference.
+    IPC::DataReference dataReference;
     if (buffer)
         dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
-
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 #endif
@@ -2480,20 +2484,17 @@ static Frame* frameWithSelection(Page* page)
 
 void WebPage::getSelectionAsWebArchiveData(uint64_t callbackID)
 {
-    IPC::DataReference dataReference;
-
 #if PLATFORM(COCOA)
-    RefPtr<LegacyWebArchive> archive;
     RetainPtr<CFDataRef> data;
-
-    Frame* frame = frameWithSelection(m_page.get());
-    if (frame) {
-        archive = LegacyWebArchive::createFromSelection(frame);
-        data = archive->rawDataRepresentation();
-        dataReference = IPC::DataReference(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()));
-    }
+    if (Frame* frame = frameWithSelection(m_page.get()))
+        data = LegacyWebArchive::createFromSelection(frame)->rawDataRepresentation();
 #endif
 
+    IPC::DataReference dataReference;
+#if PLATFORM(COCOA)
+    if (data)
+        dataReference = IPC::DataReference(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()));
+#endif
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 
@@ -2516,24 +2517,20 @@ void WebPage::getSourceForFrame(uint64_t frameID, uint64_t callbackID)
 
 void WebPage::getMainResourceDataOfFrame(uint64_t frameID, uint64_t callbackID)
 {
-    IPC::DataReference dataReference;
-
-    RefPtr<ResourceBuffer> buffer;
-    RefPtr<SharedBuffer> pdfResource;
+    RefPtr<SharedBuffer> buffer;
     if (WebFrame* frame = WebProcess::shared().webFrame(frameID)) {
-        if (PluginView* pluginView = pluginViewForFrame(frame->coreFrame())) {
-            if ((pdfResource = pluginView->liveResourceData()))
-                dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(pdfResource->data()), pdfResource->size());
-        }
-
-        if (dataReference.isEmpty()) {
-            if (DocumentLoader* loader = frame->coreFrame()->loader().documentLoader()) {
-                if ((buffer = loader->mainResourceData()))
-                    dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
-            }
+        if (PluginView* pluginView = pluginViewForFrame(frame->coreFrame()))
+            buffer = pluginView->liveResourceData();
+        if (!buffer) {
+            if (DocumentLoader* loader = frame->coreFrame()->loader().documentLoader())
+                buffer = loader->mainResourceData();
         }
     }
 
+    // FIXME: Use SharedBufferDataReference.
+    IPC::DataReference dataReference;
+    if (buffer)
+        dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 
@@ -2552,38 +2549,38 @@ static PassRefPtr<SharedBuffer> resourceDataForFrame(Frame* frame, const URL& re
 
 void WebPage::getResourceDataFromFrame(uint64_t frameID, const String& resourceURLString, uint64_t callbackID)
 {
-    IPC::DataReference dataReference;
-    URL resourceURL(URL(), resourceURLString);
-
     RefPtr<SharedBuffer> buffer;
     if (WebFrame* frame = WebProcess::shared().webFrame(frameID)) {
+        URL resourceURL(URL(), resourceURLString);
         buffer = resourceDataForFrame(frame->coreFrame(), resourceURL);
         if (!buffer) {
             // Try to get the resource data from the cache.
             buffer = cachedResponseDataForURL(resourceURL);
         }
-
-        if (buffer)
-            dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
     }
 
+    // FIXME: Use SharedBufferDataReference.
+    IPC::DataReference dataReference;
+    if (buffer)
+        dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 
 void WebPage::getWebArchiveOfFrame(uint64_t frameID, uint64_t callbackID)
 {
-    IPC::DataReference dataReference;
-
 #if PLATFORM(COCOA)
     RetainPtr<CFDataRef> data;
-    if (WebFrame* frame = WebProcess::shared().webFrame(frameID)) {
-        if ((data = frame->webArchiveData(0, 0)))
-            dataReference = IPC::DataReference(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()));
-    }
+    if (WebFrame* frame = WebProcess::shared().webFrame(frameID))
+        data = frame->webArchiveData(nullptr, nullptr);
 #else
     UNUSED_PARAM(frameID);
 #endif
 
+    IPC::DataReference dataReference;
+#if PLATFORM(COCOA)
+    if (data)
+        dataReference = IPC::DataReference(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()));
+#endif
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 
@@ -3912,6 +3909,11 @@ void WebPage::removeResourceRequest(unsigned long identifier)
 void WebPage::setMediaVolume(float volume)
 {
     m_page->setMediaVolume(volume);
+}
+
+void WebPage::setMuted(bool muted)
+{
+    m_page->setMuted(muted);
 }
 
 void WebPage::setMayStartMediaWhenInWindow(bool mayStartMedia)

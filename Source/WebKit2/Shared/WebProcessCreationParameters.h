@@ -78,6 +78,8 @@ struct WebProcessCreationParameters {
     // FIXME: Remove this once <rdar://problem/17726660> is fixed.
     SandboxExtension::Handle hstsDatabasePathExtensionHandle;
 #endif
+    SandboxExtension::Handle mediaKeyStorageDirectoryExtensionHandle;
+    String mediaKeyStorageDirectory;
 
     bool shouldUseTestingNetworkSession;
 
@@ -124,6 +126,7 @@ struct WebProcessCreationParameters {
     pid_t presenterApplicationPid;
 
     bool accessibilityEnhancedUserInterfaceEnabled;
+    bool needsQuickLookResourceCachingQuirks;
 
     uint64_t nsURLCacheMemoryCapacity;
     uint64_t nsURLCacheDiskCapacity;

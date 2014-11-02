@@ -1651,6 +1651,7 @@ set(WebCore_SOURCES
     html/RadioInputType.cpp
     html/RadioNodeList.cpp
     html/RangeInputType.cpp
+    html/RelList.cpp
     html/ResetInputType.cpp
     html/SearchInputType.cpp
     html/StepRange.cpp
@@ -1810,6 +1811,7 @@ set(WebCore_SOURCES
     loader/ImageLoader.cpp
     loader/LinkLoader.cpp
     loader/LoaderStrategy.cpp
+    loader/MediaResourceLoader.cpp
     loader/MixedContentChecker.cpp
     loader/NavigationAction.cpp
     loader/NavigationScheduler.cpp
@@ -1818,7 +1820,6 @@ set(WebCore_SOURCES
     loader/PolicyCallback.cpp
     loader/PolicyChecker.cpp
     loader/ProgressTracker.cpp
-    loader/ResourceBuffer.cpp
     loader/ResourceLoadNotifier.cpp
     loader/ResourceLoadScheduler.cpp
     loader/ResourceLoader.cpp
@@ -1859,6 +1860,7 @@ set(WebCore_SOURCES
     loader/cache/CachedSVGDocumentReference.cpp
     loader/cache/CachedScript.cpp
     loader/cache/CachedXSLStyleSheet.cpp
+    loader/cache/CacheValidation.cpp
     loader/cache/MemoryCache.cpp
 
     loader/icon/IconController.cpp
@@ -3109,6 +3111,21 @@ if (ENABLE_WEB_REPLAY)
     )
 endif ()
 
+if (ENABLE_USER_MESSAGE_HANDLERS)
+    list(APPEND WebCore_IDL_FILES
+        page/UserMessageHandler.idl
+        page/UserMessageHandlersNamespace.idl
+        page/WebKitNamespace.idl
+    )
+    list(APPEND WebCore_SOURCES
+        bindings/js/JSUserMessageHandlersNamespaceCustom.cpp
+        page/UserMessageHandler.cpp
+        page/UserMessageHandlerDescriptor.cpp
+        page/UserMessageHandlersNamespace.cpp
+        page/WebKitNamespace.cpp
+    )
+endif ()
+
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/testing"
@@ -3246,7 +3263,7 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTTPHeaderNames.cpp)
 
 # Generate CSS property names
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.in ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.h ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.gperf
+    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.in ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.h ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp
     MAIN_DEPENDENCY ${WEBCORE_DIR}/css/makeprop.pl
     DEPENDS ${WebCore_CSS_PROPERTY_NAMES}
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
@@ -3254,6 +3271,7 @@ add_custom_command(
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/css/makeprop.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}"
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp)
+list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/CSSParser.cpp CSSValueKeywords.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp CSSPropertyNames.h)
 

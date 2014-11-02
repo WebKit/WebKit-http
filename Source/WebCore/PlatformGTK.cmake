@@ -67,6 +67,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/OpenGLShims.cpp
     platform/graphics/WOFFFileFormat.cpp
 
+    platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
+    platform/graphics/cairo/BackingStoreBackendCairoX11.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
     platform/graphics/cairo/DrawingBufferCairo.cpp
@@ -130,6 +132,7 @@ list(APPEND WebCore_SOURCES
     platform/gtk/LoggingGtk.cpp
     platform/gtk/MIMETypeRegistryGtk.cpp
     platform/gtk/SharedBufferGtk.cpp
+    platform/gtk/SharedTimerGtk.cpp
     platform/gtk/TemporaryLinkStubs.cpp
     platform/gtk/UserAgentGtk.cpp
 
@@ -197,8 +200,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     page/gtk/DragControllerGtk.cpp
     page/gtk/EventHandlerGtk.cpp
 
-    platform/cairo/WidgetBackingStoreCairo.cpp
-
     platform/graphics/GLContext.cpp
 
     platform/graphics/egl/GLContextEGL.cpp
@@ -222,7 +223,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/DragImageGtk.cpp
     platform/gtk/GRefPtrGtk.cpp
     platform/gtk/GtkClickCounter.cpp
-    platform/gtk/GtkInputMethodFilter.cpp
     platform/gtk/GtkUtilities.cpp
     platform/gtk/GtkVersioning.c
     platform/gtk/KeyBindingTranslator.cpp
@@ -235,9 +235,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/PlatformWheelEventGtk.cpp
     platform/gtk/RedirectedXCompositeWindow.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
-    platform/gtk/SharedTimerGtk.cpp
     platform/gtk/SoundGtk.cpp
-    platform/gtk/WidgetBackingStoreGtkX11.cpp
     platform/gtk/WidgetGtk.cpp
 
     rendering/RenderThemeGtk.cpp

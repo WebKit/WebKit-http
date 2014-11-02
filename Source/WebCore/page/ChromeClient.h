@@ -28,6 +28,7 @@
 #include "FocusDirection.h"
 #include "FrameLoader.h"
 #include "GraphicsContext.h"
+#include "HTMLMediaElement.h"
 #include "HostWindow.h"
 #include "LayerFlushThrottleState.h"
 #include "PopupMenu.h"
@@ -74,6 +75,7 @@ class GraphicsContext3D;
 class GraphicsLayer;
 class GraphicsLayerFactory;
 class HTMLInputElement;
+class HTMLVideoElement;
 class HitTestResult;
 class IntRect;
 class NavigationAction;
@@ -338,7 +340,7 @@ public:
 #endif
 
     virtual bool supportsVideoFullscreen() { return false; }
-    virtual void enterVideoFullscreenForVideoElement(HTMLVideoElement*) { }
+    virtual void enterVideoFullscreenForVideoElement(HTMLVideoElement*, HTMLMediaElement::VideoFullscreenMode) { }
     virtual void exitVideoFullscreen() { }
     virtual bool requiresFullscreenForVideoPlayback() { return false; } 
 

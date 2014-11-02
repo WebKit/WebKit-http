@@ -29,6 +29,7 @@
 #if ENABLE(VIDEO)
 #include "HTMLElement.h"
 #include "ActiveDOMObject.h"
+#include "AudioProducer.h"
 #include "GenericEventQueue.h"
 #include "HTMLMediaSession.h"
 #include "MediaCanStartListener.h"
@@ -43,10 +44,6 @@
 #include "TextTrackCue.h"
 #include "VTTCue.h"
 #include "VideoTrack.h"
-#endif
-
-#if ENABLE(MEDIA_STREAM)
-#include "MediaStream.h"
 #endif
 
 #ifndef NDEBUG
@@ -92,9 +89,13 @@ typedef CueIntervalTree::IntervalType CueInterval;
 typedef Vector<CueInterval> CueList;
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+class MediaStream;
+#endif
+
 class HTMLMediaElement
     : public HTMLElement
-    , private MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface , public MediaSessionClient
+    , private MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface , public MediaSessionClient, private AudioProducer
 #if ENABLE(VIDEO_TRACK)
     , private AudioTrackClient
     , private TextTrackClient
@@ -390,8 +391,11 @@ public:
     
     WEBCORE_EXPORT virtual bool isFullscreen() const override;
     void toggleFullscreenState();
+    enum VideoFullscreenMode { VideoFullscreenModeNone, VideoFullscreenModeStandard, VideoFullscreenModeOptimized };
+    void enterFullscreen(VideoFullscreenMode);
     virtual void enterFullscreen() override;
     WEBCORE_EXPORT void exitFullscreen();
+    void enterFullscreenOptimized();
 
     virtual bool hasClosedCaptions() const override;
     virtual bool closedCaptionsVisible() const override;
@@ -466,7 +470,7 @@ protected:
     DisplayMode displayMode() const { return m_displayMode; }
     virtual void setDisplayMode(DisplayMode mode) { m_displayMode = mode; }
     
-    virtual bool isMediaElement() const override { return true; }
+    virtual bool isMediaElement() const override final { return true; }
 
 #if ENABLE(VIDEO_TRACK)
     bool ignoreTrackDisplayUpdateRequests() const { return m_ignoreTrackDisplayUpdate > 0 || !m_textTracks || !m_cueTree.size(); }
@@ -543,6 +547,7 @@ private:
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) override;
+    virtual String mediaPlayerMediaKeysStorageDirectory() const override;
 #endif
 
 #if ENABLE(IOS_AIRPLAY)
@@ -552,7 +557,6 @@ private:
 
     virtual String mediaPlayerReferrer() const override;
     virtual String mediaPlayerUserAgent() const override;
-    virtual CORSMode mediaPlayerCORSMode() const override;
 
     virtual bool mediaPlayerNeedsSiteSpecificHacks() const override;
     virtual String mediaPlayerDocumentHost() const override;
@@ -570,6 +574,7 @@ private:
     virtual bool mediaPlayerIsPaused() const override;
     virtual bool mediaPlayerIsLooping() const override;
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
+    virtual PassRefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>);
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
@@ -646,6 +651,7 @@ private:
 
     void updateVolume();
     void updatePlayState();
+    void setPlaying(bool);
     bool potentiallyPlaying() const;
     bool endedPlayback() const;
     bool stoppedDueToErrors() const;
@@ -704,8 +710,12 @@ private:
     virtual bool canReceiveRemoteControlCommands() const override { return true; }
     virtual void didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType) override;
     virtual bool overrideBackgroundPlaybackRestriction() const override;
-    virtual bool hasMediaCharacteristics(MediaSession::MediaCharacteristics) const override;
-    virtual void mediaStateDidChange() override;
+
+    // AudioProducer overrides
+    virtual bool isPlayingAudio() override;
+    virtual void pageMutedStateDidChange() override;
+
+    bool effectiveMuted() const;
 
     void registerWithDocument(Document&);
     void unregisterWithDocument(Document&);
@@ -764,6 +774,7 @@ private:
     RefPtr<HTMLSourceElement> m_currentSourceNode;
     RefPtr<Node> m_nextChildNodeToConsider;
 
+    VideoFullscreenMode m_videoFullscreenMode;
 #if PLATFORM(IOS)
     RetainPtr<PlatformLayer> m_videoFullscreenLayer;
     FloatRect m_videoFullscreenFrame;
@@ -827,7 +838,6 @@ private:
     // support progress events so setting m_sendProgressEvents disables them 
     bool m_sendProgressEvents : 1;
 
-    bool m_isInVideoFullscreen : 1;
     bool m_closedCaptionsVisible : 1;
     bool m_webkitLegacyClosedCaptionOverride : 1;
     bool m_completelyLoaded : 1;

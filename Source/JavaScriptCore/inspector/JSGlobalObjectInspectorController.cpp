@@ -43,6 +43,8 @@
 #include "ScriptArguments.h"
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
+#include <wtf/Stopwatch.h>
+
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <execinfo.h>
@@ -59,8 +61,12 @@ JSGlobalObjectInspectorController::JSGlobalObjectInspectorController(JSGlobalObj
     : m_globalObject(globalObject)
     , m_injectedScriptManager(std::make_unique<InjectedScriptManager>(*this, InjectedScriptHost::create()))
     , m_inspectorFrontendChannel(nullptr)
+    , m_executionStopwatch(Stopwatch::create())
     , m_includeNativeCallStackWithExceptions(true)
     , m_isAutomaticInspection(false)
+#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
+    , m_augmentingClient(nullptr)
+#endif
 {
     auto runtimeAgent = std::make_unique<JSGlobalObjectRuntimeAgent>(m_injectedScriptManager.get(), m_globalObject);
     auto consoleAgent = std::make_unique<JSGlobalObjectConsoleAgent>(m_injectedScriptManager.get());
@@ -76,6 +82,8 @@ JSGlobalObjectInspectorController::JSGlobalObjectInspectorController(JSGlobalObj
     m_agents.append(WTF::move(runtimeAgent));
     m_agents.append(WTF::move(consoleAgent));
     m_agents.append(WTF::move(debuggerAgent));
+
+    m_executionStopwatch->start();
 }
 
 JSGlobalObjectInspectorController::~JSGlobalObjectInspectorController()
@@ -101,6 +109,11 @@ void JSGlobalObjectInspectorController::connectFrontend(InspectorFrontendChannel
     m_inspectorBackendDispatcher = InspectorBackendDispatcher::create(frontendChannel);
 
     m_agents.didCreateFrontendAndBackend(frontendChannel, m_inspectorBackendDispatcher.get());
+
+#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
+    if (m_augmentingClient)
+        m_augmentingClient->inspectorConnected();
+#endif
 }
 
 void JSGlobalObjectInspectorController::disconnectFrontend(InspectorDisconnectReason reason)
@@ -115,6 +128,11 @@ void JSGlobalObjectInspectorController::disconnectFrontend(InspectorDisconnectRe
     m_inspectorFrontendChannel = nullptr;
 
     m_isAutomaticInspection = false;
+
+#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
+    if (m_augmentingClient)
+        m_augmentingClient->inspectorDisconnected();
+#endif
 }
 
 void JSGlobalObjectInspectorController::dispatchMessageFromFrontend(const String& message)
@@ -198,6 +216,11 @@ void JSGlobalObjectInspectorController::frontendInitialized()
     if (m_isAutomaticInspection)
         m_globalObject.inspectorDebuggable().unpauseForInitializedInspector();
 #endif
+}
+
+PassRefPtr<Stopwatch> JSGlobalObjectInspectorController::executionStopwatch()
+{
+    return m_executionStopwatch;
 }
 
 } // namespace Inspector

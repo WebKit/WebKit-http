@@ -1,3 +1,168 @@
+2014-10-31  Jeffrey Pfau  <jpfau@apple.com>
+
+        Unreviewed, fix ASan build after r175382
+
+        * wtf/SizeLimits.cpp:
+
+2014-10-31  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled in r175389.
+
+        WebKit was failing to build 32bit on some Apple internal systems because
+        those systems were configured to build bmalloc 64-bit-only. Those systems
+        have been updated to build bmalloc as a universal binary, so everything
+        should work fine now.
+
+        The relevant setting is controlled by an environment variable on the
+        build system, and not by the project file in the source tree, so there's
+        no new code change here.
+
+                Enable bmalloc in 32bit builds
+                https://bugs.webkit.org/show_bug.cgi?id=138232
+
+                Reviewed by Andreas Kling.
+
+        * wtf/FastMalloc.cpp:
+
+2014-10-31  Lucas Forschler  <lforschler@apple.com>
+
+        Unreviewed rollout r175389.
+        
+2014-10-30  Dana Burkart  <dburkart@apple.com>
+
+        <rdar://problem/18821260> Prepare for the mysterious future
+
+        Reviewed by Lucas Forschler.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2014-10-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Enable bmalloc in 32bit builds
+        https://bugs.webkit.org/show_bug.cgi?id=138232
+
+        Reviewed by Andreas Kling.
+
+        Seems to work fine.
+
+        * wtf/FastMalloc.cpp:
+
+2014-10-30  Jeffrey Pfau  <jpfau@apple.com>
+
+        ASSERT(!m_deletionHasBegun) in RefCounted.h should be ASSERT_WITH_SECURITY_IMPLICATION
+        https://bugs.webkit.org/show_bug.cgi?id=138141
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/RefCounted.h:
+        (WTF::RefCountedBase::ref):
+        (WTF::RefCountedBase::relaxAdoptionRequirement):
+        (WTF::RefCountedBase::derefBase):
+        (WTF::adopted):
+
+2014-10-28  Milan Crha  <mcrha@redhat.com>
+
+        Use constants from wtf/MathExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=137967
+
+        Reviewed by Darin Adler.
+
+        * wtf/MathExtras.h:
+
+2014-10-28  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Remove unnecessary defines from OptionsEfl.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=138132
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h:
+
+2014-10-27  Chris Dumez  <cdumez@apple.com>
+
+        Use separate HashMaps for common and uncommon headers in HTTPHeaderMap
+        https://bugs.webkit.org/show_bug.cgi?id=138079
+
+        Reviewed by Anders Carlsson.
+
+        Add HashTraits for C++11 strong enum types. Using integer HashTraits for
+        strong enums would be inconvenient as it would require casting between
+        integer and strong enum types.
+
+        * wtf/HashTraits.h:
+        (WTF::StrongEnumHashTraits::emptyValue):
+        (WTF::StrongEnumHashTraits::constructDeletedValue):
+        (WTF::StrongEnumHashTraits::isDeletedValue):
+
+2014-10-25  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: timelines should not count time elapsed while paused in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+
+        Unreviewed, follow-up fix after r175203. The debugger agent should not assume
+        that the inspector environment's stopwatch has already been started.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::isActive): Added. Allow peeking at the stopwatch state.
+
+2014-10-18  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: timelines should not count time elapsed while paused in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+
+        Reviewed by Timothy Hatcher.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Stopwatch.h: Added. This implements a refcounted monotonic stopwatch.
+        (WTF::Stopwatch::create):
+        (WTF::Stopwatch::Stopwatch):
+        (WTF::Stopwatch::reset):
+        (WTF::Stopwatch::start):
+        (WTF::Stopwatch::stop):
+        (WTF::Stopwatch::elapsedTime):
+
+2014-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide a way to have alternate inspector agents
+        https://bugs.webkit.org/show_bug.cgi?id=137901
+
+        Reviewed by Brian Burg.
+
+        * wtf/FeatureDefines.h:
+
+2014-10-23  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Fix build on Hurd
+        https://bugs.webkit.org/show_bug.cgi?id=138003
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/InlineASM.h:
+        * wtf/Platform.h:
+
+2014-10-22  Byungseon Shin  <sun.shin@lge.com>
+
+        String(new Date(Mar 30 2014 01:00:00)) is wrong in CET
+        https://bugs.webkit.org/show_bug.cgi?id=130967
+
+        Reviewed by Mark Lam.
+
+        By definition of calculateLocalTimeOffset, input time should be UTC time.
+        But there are many cases when input time is based on local time.
+        So, it gives erroneous results while calculating offset of DST boundary time.
+        By adding a argument to distinguish UTC and local time, we can get the correct offset.
+
+        * wtf/DateMath.cpp:
+        (WTF::calculateLocalTimeOffset):
+        (WTF::parseDateFromNullTerminatedCharacters):
+        Compensate time offset depends on UTC time or local time.
+        * wtf/DateMath.h:
+        Add argument to differenciate UTC or local time.
+
 2014-10-21  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
 
         Fix FTL Native Inlining for EFL

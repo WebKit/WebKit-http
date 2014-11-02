@@ -42,6 +42,7 @@
 using namespace WebKit;
 
 static const float DisabledOptionAlpha = 0.3;
+static const float GroupOptionTextColorAlpha = 0.5;
 
 @interface UIPickerView (UIPickerViewInternal)
 - (BOOL)allowsMultipleSelection;
@@ -110,7 +111,7 @@ static const float DisabledOptionAlpha = 0.3;
 
     [[self titleLabel] setText:trimmedText];
     [self setChecked:NO];
-    [[self titleLabel] setTextColor:[UIColor colorWithWhite:0.0 alpha:0.5]];
+    [[self titleLabel] setTextColor:[UIColor colorWithWhite:0.0 alpha:GroupOptionTextColorAlpha]];
     [self setDisabled:YES];
 
     return self;
@@ -279,8 +280,19 @@ static const float DisabledOptionAlpha = 0.3;
 
     OptionItem& item = [_view assistedNodeSelectOptions][rowIndex];
 
+    // FIXME: Remove this workaround once <rdar://problem/18745253> is fixed.
+    // Group rows should not be checkable, but we are getting this delegate for
+    // those rows. As a workaround, if we get this delegate for a group row, reset
+    // the styles for the content view so it still appears unselected.
+    if (item.isGroup) {
+        UIPickerContentView *view = (UIPickerContentView *)[self viewForRow:rowIndex forComponent:columnIndex];
+        [view setChecked:NO];
+        [[view titleLabel] setTextColor:[UIColor colorWithWhite:0.0 alpha:GroupOptionTextColorAlpha]];
+        return;
+    }
+
     if ([self allowsMultipleSelection]) {
-        [_view page]->setAssistedNodeSelectedIndex([self findItemIndexAt:rowIndex], isChecked);
+        [_view page]->setAssistedNodeSelectedIndex([self findItemIndexAt:rowIndex], true);
         item.isSelected = isChecked;
     } else {
         // Single selection.
@@ -290,7 +302,7 @@ static const float DisabledOptionAlpha = 0.3;
         // This private delegate often gets called for multiple rows in the picker,
         // so we only activate and set as selected the checked item in single selection.
         if (isChecked) {
-            [_view page]->setAssistedNodeSelectedIndex([self findItemIndexAt:rowIndex], isChecked);
+            [_view page]->setAssistedNodeSelectedIndex([self findItemIndexAt:rowIndex]);
             item.isSelected = YES;
         }
     }

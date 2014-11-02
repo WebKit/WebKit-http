@@ -1,3 +1,1614 @@
+2014-10-30  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] Send origin & deletion requests to WebProcessess in additon to the DatabaseProcess.
+        https://bugs.webkit.org/show_bug.cgi?id=138212
+
+        Reviewed by Brady Eidson.
+
+        Now that the WebProcess has its own WebOriginDataManager, WebOriginDataManagerProxy needs to
+        send its origin and deletion messages to all the WebProcesses. This necessetates synchronizing
+        all the various process's callbacks so that the final callback is only triggered once all the
+        messaged processes reply.
+
+        Add a simple class, CallbackSynchronizer, which will keep track of outstanding process callbacks
+        and which will trigger the final callback once all of them finish.
+
+        * UIProcess/WebOriginDataManagerProxy.cpp:
+        (WebKit::CallbackSynchronizer::create):
+        (WebKit::CallbackSynchronizer::~CallbackSynchronizer):
+        (WebKit::CallbackSynchronizer::taskStarted):
+        (WebKit::CallbackSynchronizer::taskCompleted):
+        (WebKit::CallbackSynchronizer::CallbackSynchronizer):
+        (WebKit::createSynchronizedCallback):
+        (WebKit::sendMessageToAllProcessesInContext):
+        (WebKit::WebOriginDataManagerProxy::getOrigins):
+        (WebKit::WebOriginDataManagerProxy::deleteEntriesForOrigin):
+        (WebKit::WebOriginDataManagerProxy::deleteEntriesModifiedBetweenDates):
+        (WebKit::WebOriginDataManagerProxy::deleteAllEntries):
+
+        Drive-by fix: check the correct enum value for WebMedia origin requests.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::getOrigins):
+        (WebKit::WebProcess::deleteEntriesForOrigin):
+        (WebKit::WebProcess::deleteEntriesModifiedBetweenDates):
+        (WebKit::WebProcess::deleteAllEntries):
+
+2014-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r175376): Occasional null deref when doing a dictionary lookup
+        https://bugs.webkit.org/show_bug.cgi?id=138261
+        <rdar://problem/18841709>
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::performDictionaryLookupAtLocation):
+        rangeForDictionaryLookupAtHitTestResult can easily return null.
+
+2014-10-31  Beth Dakin  <bdakin@apple.com>
+
+        Use system art for action menus when possible
+        https://bugs.webkit.org/show_bug.cgi?id=138260
+
+        Reviewed by Tim Horton.
+
+        * Resources/AddImageToPhotosTemplate.pdf: Removed.
+        * Resources/CopyImageTemplate.pdf: Removed.
+        * Resources/SaveImageToDownloadsTemplate.pdf: Removed.
+        * Resources/ShareImageTemplate.pdf: Removed.
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController _createActionMenuItemForTag:]):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-10-31  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build for Yosemite systems after r175417
+
+        * UIProcess/mac/WKActionMenuController.mm:
+
+2014-10-31  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build for pre-Yosemite systems after r175417
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView dealloc]):
+        (-[WKView initWithFrame:context:configuration:webView:]):
+        * UIProcess/API/mac/WKViewInternal.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::didPerformActionMenuHitTest):
+        * UIProcess/mac/WKActionMenuController.h:
+        * UIProcess/mac/WKActionMenuController.mm:
+
+2014-10-31  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove "Add to iPhoto" from the action menu's sharing menu
+        https://bugs.webkit.org/show_bug.cgi?id=138251
+        <rdar://problem/18837197>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController sharingServicePicker:sharingServicesForItems:mask:proposedSharingServices:]):
+        Retain/autorelease the new array.
+
+2014-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove "Add to iPhoto" from the action menu's sharing menu
+        https://bugs.webkit.org/show_bug.cgi?id=138251
+        <rdar://problem/18837197>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController sharingServicePicker:sharingServicesForItems:mask:proposedSharingServices:]):
+        Filter out "Add to iPhoto".
+
+2014-10-31  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Support script message handlers WebKitUserContentManager
+        https://bugs.webkit.org/show_bug.cgi?id=133730
+
+        Reviewed by Carlos Garcia Campos.
+
+        Support user script message handlers in WebKitUserContentManager.
+        This needs building with ENABLE_USER_MESSAGE_HANDLERS, for which
+        an option is added to the CMake build files. The option is disabled
+        globally by default, and the WebKitGTK port enables it. On the API
+        level, two new methods to register and unregister names are provided
+        in the "window.webkit" namespace, and on message reception the
+        "WebKitUserContentManager::script-message-received" signal is
+        emitted, using the registered names as signal detail.
+
+        * UIProcess/API/gtk/WebKitJavascriptResult.cpp: Add a new private
+        function to construct a WebKitJavascriptResult directly from a
+        WebCore::SerializedScriptValue.
+        (_WebKitJavascriptResult::_WebKitJavascriptResult): Ditto.
+        (webkitJavascriptResultCreate): Ditto.
+        * UIProcess/API/gtk/WebKitJavascriptResultPrivate.h: Ditto.
+        * UIProcess/API/gtk/WebKitUserContentManager.cpp:
+        (webkit_user_content_manager_class_init): Install the
+        "script-message-received" signal.
+        (webkit_user_content_manager_register_script_message_handler):
+        Added.
+        (webkit_user_content_manager_unregister_script_message_handler):
+        Added.
+        * UIProcess/API/gtk/WebKitUserContentManager.h: Added the new
+        public API methods.
+        * UIProcess/API/gtk/docs/webkit2gtk-sections.txt: Ditto.
+        * UIProcess/API/gtk/docs/webkit2gtk.types: Add
+        webkit_user_content_manager_get_type() to the list in order to make
+        gtk-doc to generate documentation for signals.
+
+2014-10-31  Martin Hock  <mhock@apple.com>
+
+        Unreviewed, iOS build fix since 175406.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::performActionOnElement):
+
+2014-10-30  Darin Adler  <darin@apple.com>
+
+        Eliminate ResourceBuffer and use SharedBuffer directly instead
+        https://bugs.webkit.org/show_bug.cgi?id=138174
+
+        Reviewed by Antti Koivisto.
+
+        * CMakeLists.txt: Removed WebResourceBuffer.cpp.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::sendBuffer): Use a reference instead of pointer.
+        * NetworkProcess/NetworkResourceLoader.h: Ditto.
+        * NetworkProcess/mac/NetworkDiskCacheMonitor.h: Ditto.
+        * NetworkProcess/mac/NetworkDiskCacheMonitor.mm:
+        (WebKit::NetworkDiskCacheMonitor::resourceBecameFileBacked): Ditto.
+        * NetworkProcess/mac/NetworkResourceLoaderMac.mm:
+        (WebKit::NetworkResourceLoader::tryGetShareableHandleFromSharedBuffer): Ditto.
+
+        * Shared/WebResourceBuffer.cpp: Removed.
+        * Shared/WebResourceBuffer.h: Removed.
+
+        * WebKit2.xcodeproj/project.pbxproj: Removed WebResourceBuffer.cpp/h.
+
+        * WebProcess/Network/NetworkProcessConnection.cpp: Removed unneeded includes.
+        (WebKit::NetworkProcessConnection::didCacheResource): Use a reference instead
+        of a pointer.
+
+        * WebProcess/Network/WebResourceLoadScheduler.cpp: Removed unneeded include.
+        * WebProcess/Network/WebResourceLoader.cpp: Ditto.
+        * WebProcess/Network/WebResourceLoader.h: Ditto.
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp: Ditto.
+        (WebKit::WebFrameLoaderClient::finishedLoading): Use SharedBuffer directly.
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::source): Ditto.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::runJavaScriptInMainFrame): Refactored to make the relationship
+        between the buffer and the DataReference clearer and to avoid having a long-lived
+        DataReference pointing to an underlying buffer with unclear lifetime.
+        (WebKit::WebPage::getContentsAsString): Ditto.
+        (WebKit::WebPage::getSelectionAsWebArchiveData): Ditto.
+        (WebKit::WebPage::getMainResourceDataOfFrame): Ditto. Also use SharedBuffer directly.
+        (WebKit::WebPage::getResourceDataFromFrame): Ditto.
+        (WebKit::WebPage::getWebArchiveOfFrame): Ditto.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::containingLinkElement): Use elementLineage.
+        (WebKit::WebPage::performActionOnElement): Use references and SharedBuffer.
+        ALso did a bit of other cleanup in here.
+        (WebKit::isAssistableElement): Take Element& instead of Node*, since that's what
+        the caller has.
+        (WebKit::nextAssistableElement): Changed name to match what the function does.
+        Added an obviously-missing check on the startNode argument. Updated for change
+        to isAssistableElement above. Take a Page& instead of a Page*.
+        (WebKit::hasAssistableElement): Changed name to match what the function does.
+        Updated for change to nextAssistableElement above. Took out incorrect comparison
+        of a C++ pointer to the Objective-C object pointer nil. Take a Page& instead of a Page*.
+        (WebKit::WebPage::focusNextAssistedNode): Updated for above changes.
+        (WebKit::WebPage::getAssistedNodeInformation): Updated for above changes.
+
+2014-10-30  Jer Noble  <jer.noble@apple.com>
+
+        [EME] Add Setting for accessing storage location for MediaKeys data
+        https://bugs.webkit.org/show_bug.cgi?id=138147
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage): Pass from WebMediaKeyStorageManager into Settings.
+
+2014-10-30  Dana Burkart  <dburkart@apple.com>
+
+        Workaround for <rdar://problem/18830639>
+
+        Unreviewed.
+
+        * Shared/API/Cocoa/WKFoundation.h:
+
+2014-10-30  Dana Burkart  <dburkart@apple.com>
+
+        <rdar://problem/18821260> Prepare for the mysterious future
+
+        Reviewed by Lucas Forschler.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebContentService.Development.xcconfig:
+        * Configurations/WebContentService.xcconfig:
+        * Configurations/WebKit.xcconfig:
+
+2014-10-30  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the iOS build.
+
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2014-10-30  Tim Horton  <timothy_horton@apple.com>
+
+        Long spins under rangeExpandedAroundPosition on Yahoo Mail
+        https://bugs.webkit.org/show_bug.cgi?id=138223
+        <rdar://problem/18819547>
+
+        Reviewed by Enrica Casucci.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::rangeExpandedAroundPositionByCharacters):
+        Reimplement rangeExpandedAroundPosition to operate on characters instead of lines,
+        and to use Position. Moving VisiblePositions by line can be very expensive in some cases,
+        and for generating lookup/Data Detectors context, we don't care about that kind of precision.
+        This makes this function ~1000x faster when it hits on a row in the Yahoo Mail message list.
+
+        (WebKit::WebPage::performDictionaryLookupAtLocation):
+        (WebKit::scanForDataDetectedItems):
+        Adopt the new rangeExpandedAroundPositionByCharacters, expanding 250 characters
+        before and after, which roughly matches what we were usually getting going by line,
+        and is a reasonable amount of context for these operations.
+
+2014-10-30  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB is deleting data when a PK is shared amongst two objectStores
+        rdar://problem/18479306 and https://bugs.webkit.org/show_bug.cgi?id=137154
+
+        Reviewed by Jer Noble.
+
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::v1RecordsTableSchema): Store away the v1 schema for introspection into the database.
+        (WebKit::v2RecordsTableSchema): Add utility methods to get the v2 schema with different Table names.
+        (WebKit::createOrMigrateRecordsTableIfNecessary): Check to see if the Records table exists with
+          the correct schema. If it is the v1 schema, then migrate the data to a new v2 table, drop the v1
+          table, then slide the new table into place.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::ensureValidRecordsTable): Make sure the Records table
+          exists and is v2, and then make sure the uniqueness index exists.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::createAndPopulateInitialMetadata): Don’t bother creating
+          the Records table here as it will have already been established earlier.
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getOrEstablishMetadata):
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+
+2014-10-30  Beth Dakin  <bdakin@apple.com>
+
+        Implement action menus for text
+        https://bugs.webkit.org/show_bug.cgi?id=138220
+        -and corresponding-
+        rdar://problem/18742297
+
+        Reviewed by Tim Horton.
+
+        Two new types of actions for the two text actions.
+        * Shared/API/c/WKActionMenuItemTypes.h:
+
+        One new type of menu.
+        * Shared/API/c/WKActionMenuTypes.h:
+
+        Pass willOpenMenu on to the WKActionMenuController.
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView willOpenMenu:withEvent:]):
+
+        Two new WebPageProxy functions that will pass messages along to the web process.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::selectLookupTextAtLocation):
+        * UIProcess/WebPageProxy.h:
+
+        At willOpenMenu time, text menus should select text so that it is clear what the 
+        menu actions will apply to.
+        * UIProcess/mac/WKActionMenuController.h:
+        * UIProcess/mac/WKActionMenuController.mm:
+
+        Menu items for text menus.
+        (-[WKActionMenuController willOpenMenu:withEvent:]):
+        (-[WKActionMenuController _defaultMenuItemsForText]):
+        (-[WKActionMenuController _copyText:]):
+        (-[WKActionMenuController _lookupText:]):
+        (-[WKActionMenuController _createActionMenuItemForTag:]):
+        (imageForResource:name::if):
+
+        New messages to the web process.
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::performDictionaryLookupOfCurrentSelection):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+        Re-factor performDictionaryLookupAtLocation() to re-use the code that finds the 
+        Range for the dictionary lookup. That code now lives in 
+        rangeForDictionaryLookupAtHitTestResult() and can be used by 
+        performDictionaryLookupAtLocation() and our new function 
+        selectLookupTextAtLocation().
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::rangeForDictionaryLookupAtHitTestResult):
+        (WebKit::WebPage::performDictionaryLookupAtLocation):
+
+        Since the action menu text is always selected, when the lookup action is chosen, 
+        we can just lookup the current selection.
+        (WebKit::WebPage::performDictionaryLookupOfCurrentSelection):
+
+        Uses the new function rangeForDictionaryLookupAtHitTestResult() to get a lookup 
+        range and then select it.
+        (WebKit::WebPage::selectLookupTextAtLocation):
+
+2014-10-30  Dan Bernstein  <mitz@apple.com>
+
+        When a client certificate is rejected, Safari says the website didn’t accept the certificate “unknown” instead of naming the certificate
+        https://bugs.webkit.org/show_bug.cgi?id=138216
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Shared/cf/ArgumentCodersCF.cpp:
+        (IPC::typeFromCFTypeRef): Remove no-longer-necessary platform guards around SecIdentityRef.
+        (IPC::encode): Ditto.
+        (IPC::decode): Ditto.
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<ResourceError>::encodePlatformData): If NSErrorClientCertificateChainKey
+        is present in the error’s userInfo dictionary, assert that it’s an array of identities and
+        certificates, and include it in the filtered dictionary.
+
+2014-10-29  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [CoordinatedGraphics] Use modern for-loops
+        https://bugs.webkit.org/show_bug.cgi?id=138168
+
+        Reviewed by Andreas Kling.
+
+        No new tests as there is no change in functionality.
+
+        * UIProcess/CoordinatedGraphics/CoordinatedBackingStore.cpp: Use a modern for loop.
+        (WebCore::CoordinatedBackingStore::texture):
+        (WebCore::CoordinatedBackingStore::paintTilesToTextureMapper):
+        * UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.cpp: Use a modern for loop.
+        (WebKit::CoordinatedDrawingAreaProxy::incorporateUpdate):
+        * UIProcess/CoordinatedGraphics/CoordinatedGraphicsScene.cpp: Use a modern for loop.
+        (WebCore::CoordinatedGraphicsScene::setLayerChildrenIfNeeded):
+        (WebCore::CoordinatedGraphicsScene::createLayers): changed the name of argument to be equal with deleteLayer(). 
+        (WebCore::CoordinatedGraphicsScene::deleteLayers):
+        (WebCore::CoordinatedGraphicsScene::createTilesIfNeeded):
+        (WebCore::CoordinatedGraphicsScene::removeTilesIfNeeded):
+        (WebCore::CoordinatedGraphicsScene::updateTilesIfNeeded):
+        (WebCore::CoordinatedGraphicsScene::syncUpdateAtlases):
+        (WebCore::CoordinatedGraphicsScene::syncImageBackings):
+        (WebCore::CoordinatedGraphicsScene::commitSceneState):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp: Use a modern for loop.
+        (WebKit::shouldPaintBoundsRect):
+        (WebKit::CoordinatedDrawingArea::display):
+
+2014-10-29  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL build fix since r175349.
+
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::didRemoveItem): Use PLATFORM(COCOA) for setSnapshot().
+
+2014-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Null deref under performActionMenuHitTestAtLocation
+        https://bugs.webkit.org/show_bug.cgi?id=138197
+        <rdar://problem/18817803>
+
+        Reviewed by Beth Dakin.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::scanForDataDetectedItems):
+        Null-check the expanded range.
+
+2014-10-28  Ada Chan  <adachan@apple.com>
+
+        Implement WKPageSetMuted(bool).
+        https://bugs.webkit.org/show_bug.cgi?id=138158
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetMuted):
+        * UIProcess/API/C/WKPagePrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setMuted):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setMuted):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2014-10-29  Anders Carlsson  <andersca@apple.com>
+
+        Clear ViewSnapshots when back/forward list items are removed from their list
+        https://bugs.webkit.org/show_bug.cgi?id=138188
+        <rdar://problem/18817001>
+
+        Reviewed by Tim Horton.
+
+        Ideally we should remove the WebBackForwardListItem objects as well, but this is a somewhat safer fix.
+
+        Change all the "remove item" codepaths to call WebBackForwardList::didRemoveItem and have it clear out the snapshot.
+
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::pageClosed):
+        (WebKit::WebBackForwardList::addItem):
+        (WebKit::WebBackForwardList::removeAllItems):
+        (WebKit::WebBackForwardList::clear):
+        (WebKit::WebBackForwardList::didRemoveItem):
+        * UIProcess/WebBackForwardList.h:
+
+2014-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Hide the 'Add to Photos' item if it isn't available
+        https://bugs.webkit.org/show_bug.cgi?id=138182
+        <rdar://problem/18814999>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController _defaultMenuItemsForImage]):
+        (-[WKActionMenuController _canAddImageToPhotos]):
+        (-[WKActionMenuController _addImageToPhotos:]):
+        Factor _canAddImageToPhotos out of _addImageToPhotos:, and use it in
+        _defaultMenuItemsForImage to avoid including the menu item in the first place.
+
+2014-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Rename WebPageProxy::activeActionMenuHitTestResult to lastMouseMoveHitTestResult
+        https://bugs.webkit.org/show_bug.cgi?id=138137
+        <rdar://problem/18798257>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::mouseDidMoveOverElement):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::lastMouseMoveHitTestResult):
+        (WebKit::WebPageProxy::activeActionMenuHitTestResult): Deleted.
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController _defaultMenuItemsForLink]):
+        (-[WKActionMenuController _openURLFromActionMenu:]):
+        (-[WKActionMenuController _addToReadingListFromActionMenu:]):
+        (-[WKActionMenuController _quickLookURLFromActionMenu:]):
+        (-[WKActionMenuController _saveImageToDownloads:]):
+        (imageForResource:name::if):
+        (-[WKActionMenuController _updateActionMenuItems]):
+        Rename to the more accurate and general name.
+
+2014-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Implement action menus for data detected items
+        https://bugs.webkit.org/show_bug.cgi?id=138178
+        <rdar://problem/18709436>
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/API/c/WKActionMenuTypes.h:
+        Add a new type.
+
+        * Shared/WebHitTestResult.cpp:
+        (WebKit::WebHitTestResult::Data::Data):
+        (WebKit::WebHitTestResult::Data::encode):
+        (WebKit::WebHitTestResult::Data::decode):
+        * Shared/WebHitTestResult.h:
+        (WebKit::WebHitTestResult::isTextNode):
+        Determine, store, encode, and decode whether or not the hit node is a text node.
+
+        * Shared/mac/ActionMenuHitTestResult.h:
+        * Shared/mac/ActionMenuHitTestResult.mm: Renamed from Source/WebKit2/Shared/mac/ActionMenuHitTestResult.cpp.
+        (WebKit::ActionMenuHitTestResult::encode):
+        (WebKit::ActionMenuHitTestResult::decode):
+        Make ActionMenuHitTestResult an Obj-C++ file.
+        Store, encode, and decode (securely!) a DDActionContext and FloatRect
+        representing the bounding box of the data detected item, if any.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView initWithFrame:context:configuration:webView:]):
+        (-[WKView willOpenMenu:withEvent:]): Deleted.
+        Stop using willOpenMenu; we'll use NSMenuDelegate's menuNeedsUpdate: instead.
+        Hook up WKActionMenuController as our action menu's delegate.
+
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController prepareForMenu:withEvent:]):
+        Call _updateActionMenuItems *after* we've adjusted _state, so that it
+        can depend on the value being correct.
+
+        (-[WKActionMenuController willOpenMenu:withEvent:]):
+        (-[WKActionMenuController didPerformActionMenuHitTest:]):
+        Move menu updating to menuNeedsUpdate for more accurate timing.
+
+        (_updateActionMenuItems):
+        When building the menu, if we have a text node that is not a link,
+        and hit a data detected item, retrieve the menu from the DDActionContext.
+        If we have nothing, make sure to reset _type, and if the final hit-test
+        is still pending, build a menu with a dummy item.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::performActionMenuHitTestAtLocation): Moved to WebPageMac.
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::rangeExpandedAroundPosition):
+        Factor this out of performDictionaryLookupAtLocation.
+
+        (WebKit::WebPage::performDictionaryLookupAtLocation):
+        Make use of rangeExpandedAroundPosition.
+
+        (WebKit::scanForDataDetectedItems):
+        Expand to four lines of context around the hit point.
+        Convert that range to plain text, and feed it to DataDetectors.
+        Find the result that intersects the hit point, and make a DDActionContext
+        for it. Also, store the bounding box of the first quad of the detected
+        text, to provide to Data Detectors as a hint for UI placement.
+
+        (WebKit::WebPage::performActionMenuHitTestAtLocation):
+        If the hit node is a text node, call scanForDataDetectedItems and
+        store the resultant DDActionContext and bounding rect on our
+        ActionMenuHitTestResult for transfer to the UI process.
+
+2014-10-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] iPad: Occasional <select> crashes attempting to scroll to non-existing row 0 in viewWillAppear
+        https://bugs.webkit.org/show_bug.cgi?id=138165
+
+        Reviewed by David Kilzer.
+
+        This is a speculative fix for a crash attempting to scroll to a row in a
+        select picker on iPad. In these cases we are trying to scroll to the first
+        row of the first section, but no such row appears to exist. I was unable
+        to reproduce the issue, but if it is happening we should be able to protect
+        safely protect against crashing.
+
+        * UIProcess/ios/forms/WKFormSelectPopover.mm:
+        (-[WKSelectTableViewController viewWillAppear:]):
+        Protect against trying to scroll to a section/row that does not exist
+        by pre-checking that the section/row is valid.
+
+2014-10-28  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Cast std::chrono::duration.count() to int64_t in ArgumentCoder
+        https://bugs.webkit.org/show_bug.cgi?id=136981
+
+        Reviewed by Alexey Proskuryakov.
+
+        Explicitly cast the return value of std::chrono::duration.count() to
+        a fixed-size interger type, which prevents compilation error when
+        the return value type matches neither int32_t nor int64_t.
+
+        * Platform/IPC/ArgumentCoders.h:
+
+2014-10-28  Jer Noble  <jer.noble@apple.com>
+
+        [EME] Pass location for media key storage through from WebKit/WebKit2.
+        https://bugs.webkit.org/show_bug.cgi?id=137120
+
+        Reviewed by Anders Carlsson.
+
+        Allow the location for media key storage to be passed into the WebProcess from the UIProcess
+        through the WebContextConfiguraiton struct.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode): Add mediaKeysStorageDirectory.
+        (WebKit::WebProcessCreationParameters::decode): Ditto.
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        (WKContextConfigurationCopyMediaKeysStorageDirectory): Added getter.
+        (WKContextConfigurationSetMediaKeysStorageDirectory): Added setter.
+        * UIProcess/API/C/WKContextConfigurationRef.h:
+        * UIProcess/API/C/WKOriginDataManager.h:
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _initWithConfiguration:]): Provide a default location.
+        * UIProcess/APIContextConfiguration.cpp:
+        (API::ContextConfiguration::webContextConfiguration): Set mediaKeysStorageDirectory.
+        * UIProcess/APIContextConfiguration.h:
+        (API::ContextConfiguration::mediaKeysStorageDirectory): Added getter.
+        (API::ContextConfiguration::setMediaKeysStorageDirectory): Added setter.
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::applyPlatformSpecificConfigurationDefaults): Apply mediaKeysStorageDirectory.
+        (WebKit::WebContext::WebContext): Initialize m_mediaKeysStorageDirectory.
+        (WebKit::WebContext::createNewWebProcess): Create a sandbox extension handle for mediaKeysStorageDirectory.
+        * UIProcess/WebContext.h:
+        * UIProcess/efl/WebContextEfl.cpp:
+        (WebKit::WebContext::platformDefaultMediaKeysStorageDirectory): Return a default location.
+        * UIProcess/gtk/WebContextGtk.cpp:
+        (WebKit::WebContext::platformDefaultMediaKeysStorageDirectory): Ditto.
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::platformDefaultMediaKeysStorageDirectory): Return an overridable default location.
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.cpp: Added.
+        (WebKit::WebMediaKeyStorageManager::initialize): Pull the mediaKeysStorageDirectory out of configuration.
+        (WebKit::WebMediaKeyStorageManager::supplementName): Return a configuration name.
+        (WebKit::WebMediaKeyStorageManager::mediaKeyStorageDirectoryForOrigin): Return the
+            correct storage directory based on the SecureOrigin.
+        (WebKit::WebMediaKeyStorageManager::getMediaKeyOrigins): Return the origins within the
+            storage directory.
+        (WebKit::removeAllMediaKeyStorageForOriginPath): Static, remove contents and directory at path.
+        (WebKit::WebMediaKeyStorageManager::deleteMediaKeyEntriesForOrigin): Use
+            removeAllMediaKeyStorageForOriginPath to remove origin data.
+        (WebKit::WebMediaKeyStorageManager::deleteMediaKeyEntriesModifiedBetweenDates): Ditto.
+        (WebKit::WebMediaKeyStorageManager::deleteAllMediaKeyEntries): Ditto.
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.h: Added.
+        (WebKit::WebMediaKeyStorageManager::WebMediaKeyStorageManager): Default constructor.
+        (WebKit::WebMediaKeyStorageManager::~WebMediaKeyStorageManager): Default virtual destructor.
+        (WebKit::WebMediaKeyStorageManager::mediaKeyStorageDirectory): Simple accessor.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess): Add WebMediaKeyStorageManager as a supplement.
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess): Create a sandbox extension from the sandbox extension handle.
+
+        Add new source files to project(s).
+
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.cpp:
+        (WebKit::WebMediaKeyStorageManager::getMediaKeyOrigins):
+        (WebKit::removeAllMediaKeyStorageForOriginPath):
+
+        Drive-by fix: references to VoidCallback are ambiguous, since the same name is re-used in multiple namespaces.
+        Make references to WebCore::VoidCallback explicit where the entire WebCore (and other) namespaces are pulled in.
+
+        * WebProcess/Notifications/NotificationPermissionRequestManager.cpp:
+        (WebKit::NotificationPermissionRequestManager::startRequest):
+        (WebKit::NotificationPermissionRequestManager::didReceiveNotificationPermissionDecision):
+        * WebProcess/WebCoreSupport/WebNotificationClient.cpp:
+        (WebKit::WebNotificationClient::requestPermission):
+
+2014-10-28  Jeremy Jones  <jeremyj@apple.com>
+
+        Add optimized fullscreen mode.
+        https://bugs.webkit.org/show_bug.cgi?id=138044
+
+        Reviewed by Anders Carlsson.
+
+        Enable different types of fullscreen video behavior.
+        Add an enum parameter to enterVideoFullscreenForVideoElement for alternate types of fullscreen.
+
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.h: Add fullscreenType parameter
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.messages.in: ditto
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::setupFullscreenWithID): ditto
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::enterVideoFullscreenForVideoElement): ditto
+        * WebProcess/WebCoreSupport/WebChromeClient.h: ditto
+        * WebProcess/ios/WebVideoFullscreenManager.h: ditto
+        * WebProcess/ios/WebVideoFullscreenManager.mm:
+        (WebKit::WebVideoFullscreenManager::enterVideoFullscreenForVideoElement): ditto
+        (WebKit::WebVideoFullscreenManager::didCleanupFullscreen): ditto
+
+2014-10-28  Dan Bernstein  <mitz@apple.com>
+
+        Added a Radar reference to a comment.
+
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<Credential>::encodePlatformData):
+
+2014-10-28  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] REGERESSION (r171801): Client certificate authentication is failing
+        https://bugs.webkit.org/show_bug.cgi?id=138144
+
+        Reviewed by Alexey Proskuryakov.
+
+        NSURLCredential’s implementation of NSSecureCoding fails to encode identity-based
+        credentials properly. Work around that by encoding the identity, certificate, and
+        persistence individually.
+
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<Credential>::encodePlatformData):
+        (IPC::ArgumentCoder<Credential>::decodePlatformData):
+
+2014-10-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] iPhone should not allow selecting <optgroup> in <select multiple>
+        https://bugs.webkit.org/show_bug.cgi?id=137991
+
+        Reviewed by Darin Adler.
+
+        We seem to be getting the delegate when we are not supposed to.
+        Workaround the issue as best we can by reseting the styles
+        for the group's content view and not changing selections.
+
+        * UIProcess/ios/forms/WKFormSelectPicker.mm:
+        (-[WKMultipleSelectPicker pickerView:row:column:checked:]):
+
+2014-10-28  Tim Horton  <timothy_horton@apple.com>
+
+        Remove an inaccurate comment in WKActionMenuController
+        https://bugs.webkit.org/show_bug.cgi?id=138135
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController _defaultMenuItemsForLink]):
+        The comment is wrong; the separator is there for spacing, not just as a workaround.
+
+2014-10-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.7.1 release.
+
+        * gtk/NEWS: Add release notes for 2.7.1.
+
+2014-10-28  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] OS X Mavericks build broken with public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=138108
+
+        Reviewed by Mark Rowe.
+
+        * Shared/API/Cocoa/WKFoundation.h: Only define the NSEventModifierFlags type when using a
+        version of the OS X SDK that doesn’t define it.
+
+2014-10-27  Conrad Shultz  <conrad_shultz@apple.com>
+
+        NSSharingService protocol conformance should be internal to WKActionMenuController
+        https://bugs.webkit.org/show_bug.cgi?id=138112
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/mac/WKActionMenuController.h:
+        * UIProcess/mac/WKActionMenuController.mm:
+        Move protocol conformance from the interface to a class extension.
+
+2014-10-27  Enrica Casucci  <enrica@apple.com>
+
+        WebContent crash in WebKit::WebPage::expandedRangeFromHandle.
+        https://bugs.webkit.org/show_bug.cgi?id=138023
+        rdar://problem/18787412
+
+        Reviewed by Ryosuke Niwa.
+
+        We must change that we have a valid currentRange before trying
+        to expand or contract.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::changeBlockSelection):
+
+2014-10-27  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/cookies/third-party-cookie-relaxing.html is flaky on bots
+        https://bugs.webkit.org/show_bug.cgi?id=138098
+
+        Reviewed by Anders Carlsson.
+
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+        * WebProcess/com.apple.WebProcess.sb.in:
+        Update for the new name of testing session. Memory regions are now of the form
+        "WebKit Test-<pid>-0".
+
+2014-10-27  Chris Dumez  <cdumez@apple.com>
+
+        Use separate HashMaps for common and uncommon headers in HTTPHeaderMap
+        https://bugs.webkit.org/show_bug.cgi?id=138079
+
+        Reviewed by Anders Carlsson.
+
+        Update the WK2 IPC HTTPHeaderMap serialization / deserialization code
+        to leverage the fact that HTTPHeaderMap now stores common HTTP headers
+        and uncommon one in separate HashMaps. This speeds up deserialization
+        as we no longer need to call findHTTPHeaderName() for every decoded
+        header. We already know if the header is a common one or not, and if
+        it is then we already have a HTTPHeaderName type instead of a String.
+
+        I see that we spend ~40% less time in HTTPHeaderMap decoding when
+        loading http://flickr.com/explore, while the encoding takes about
+        the same amount of time as before.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<HTTPHeaderMap>::encode):
+        (IPC::ArgumentCoder<HTTPHeaderMap>::decode):
+
+2014-10-24  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix the iOS build
+
+        * Configurations/WebKit.xcconfig:
+
+2014-10-24  Beth Dakin  <bdakin@apple.com>
+
+        _actionMenuItemsForHitTestResult should also take a type indicating what the menu 
+        was built for
+        https://bugs.webkit.org/show_bug.cgi?id=138063
+
+        Reviewed by Dan Bernstein.
+
+        New type enum that can be used by clients.
+        * Shared/API/c/WKActionMenuTypes.h: Added.
+
+        Remove the old SPI and add the new.
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _actionMenuItemsForHitTestResult:withType:defaultActionMenuItems:]):
+        (-[WKView _actionMenuItemsForHitTestResult:defaultActionMenuItems:]): Deleted.
+
+        Now keep an ivar for the type.
+        * UIProcess/mac/WKActionMenuController.h:
+
+        Create a category for the old SPI so that we can still call it if clients have 
+        implemented it.
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController initWithPage:view:]):
+        (-[WKActionMenuController didCloseMenu:withEvent:]):
+        (imageForResource:name::if):
+        (-[WKActionMenuController _updateActionMenuItems]):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-10-24  Tim Horton  <timothy_horton@apple.com>
+
+        Share sheet doesn't attach to the window
+        https://bugs.webkit.org/show_bug.cgi?id=138062
+        <rdar://problem/18767397>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/mac/WKActionMenuController.h:
+        WKActionMenuController is now a NSSharingService{Picker}Delegate.
+
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController _defaultMenuItemsForImage]):
+        Set us up as the NSSharingServicePicker delegate.
+
+        (-[WKActionMenuController sharingServicePicker:delegateForSharingService:]):
+        Set us up as the NSSharingService delegate.
+
+        (-[WKActionMenuController sharingService:sourceWindowForShareItems:sharingContentScope:]):
+        Return the appropriate window to attach to.
+
+2014-10-24  Jer Noble  <jer.noble@apple.com>
+
+        Abstractify WebOriginDataManager to support arbitrary ChildProcess supplements.
+        https://bugs.webkit.org/show_bug.cgi?id=137993
+
+        Reviewed by Brady Eidson.
+
+        To allow different ChildProcess subclasses to handle listing and deletion of origin
+        data, make WebOriginDataManager more generic by having a supplement implement the
+        details, leaving WebOriginDataManager to deal with cross-process messaging.
+
+        De-virtualize AsyncTask, allowing a task to be created by passing in a
+        function<void()>, rather than an object, method, and arguments.
+
+        * Shared/AsyncTask.h:
+        (WebKit::AsyncTask::AsyncTask):
+        (WebKit::AsyncTask::performTask):
+        (WebKit::AsyncTask::~AsyncTask): Deleted.
+
+        Add a new virtual base class, to be implemented by various ChildProcesses, which
+        WebOriginDataManager will use to implement listing and deletion requests.
+
+        * WebProcess/OriginData/WebOriginDataManager.h:
+        * WebProcess/OriginData/WebOriginDataManagerSupplement.h: Added.
+        (WebKit::WebOriginDataManagerSupplement::WebOriginDataManagerSupplement):
+        (WebKit::WebOriginDataManagerSupplement::~WebOriginDataManagerSupplement):
+        (WebKit::WebOriginDataManagerSupplement::getOrigins):
+        (WebKit::WebOriginDataManagerSupplement::deleteEntriesForOrigin):
+        (WebKit::WebOriginDataManagerSupplement::deleteEntriesModifiedBetweenDates):
+        (WebKit::WebOriginDataManagerSupplement::deleteAllEntries):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+        WebOriginDataManager doesn't need to be a ChildSupplement. Remove the DatabaseProcess-
+        specific implementations for its message handlers and replace with clean, generic calls
+        to its supplement. Because these supplements may want to respond to the request
+        asynchronously, pass a completion function in to be called by the supplement once its
+        work is complete.
+
+        * WebProcess/OriginData/WebOriginDataManager.cpp:
+        (WebKit::WebOriginDataManager::WebOriginDataManager):
+        (WebKit::WebOriginDataManager::getOrigins):
+        (WebKit::WebOriginDataManager::deleteEntriesForOrigin):
+        (WebKit::WebOriginDataManager::deleteEntriesModifiedBetweenDates):
+        (WebKit::WebOriginDataManager::deleteAllEntries):
+        (WebKit::WebOriginDataManager::supplementName): Deleted.
+
+        DatabaseProcess already uses WebOriginDataManager, so it will be the first process
+        to fall under the heel of the new regime. DatabaseProcess will subclass
+        WebOriginDataManagerSupplement, and pass itself in twice to the WebOriginDataManager
+        constructor. Create a lambda-based AsyncTask for each request, and call the completion
+        function when each request is complete.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::DatabaseProcess):
+        (WebKit::DatabaseProcess::getIndexedDatabaseOrigins):
+        (WebKit::DatabaseProcess::deleteIndexedDatabaseEntriesForOrigin):
+        (WebKit::DatabaseProcess::deleteIndexedDatabaseEntriesModifiedBetweenDates):
+        (WebKit::DatabaseProcess::deleteAllIndexedDatabaseEntries):
+        (WebKit::DatabaseProcess::getOrigins):
+        (WebKit::DatabaseProcess::deleteEntriesForOrigin):
+        (WebKit::DatabaseProcess::deleteEntriesModifiedBetweenDates):
+        (WebKit::DatabaseProcess::deleteAllEntries):
+        (WebKit::DatabaseProcess::doGetIndexedDatabaseOrigins): Deleted.
+        (WebKit::DatabaseProcess::doDeleteIndexedDatabaseEntriesForOrigin): Deleted.
+        (WebKit::DatabaseProcess::doDeleteIndexedDatabaseEntriesModifiedBetweenDates): Deleted.
+        (WebKit::DatabaseProcess::doDeleteAllIndexedDatabaseEntries): Deleted.
+        * DatabaseProcess/DatabaseProcess.h:
+
+2014-10-24  Beth Dakin  <bdakin@apple.com>
+
+        Very large images crash in action menu code
+        https://bugs.webkit.org/show_bug.cgi?id=138059
+        -and corresponding-
+        rdar://problem/18767859
+
+        Reviewed by Tim Horton.
+
+        If the HitTestResult failed to create and image, then don’t go for the image 
+        action menu.
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController _defaultMenuItems]):
+
+        ShareableBitmap::createShareable() can fail. The result needs to be null-checked.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::performActionMenuHitTestAtLocation):
+
+2014-10-24  Beth Dakin  <bdakin@apple.com>
+
+        Build fix.
+
+        * UIProcess/mac/WKActionMenuController.h:
+        * UIProcess/mac/WKActionMenuController.mm:
+
+2014-10-24  Tim Horton  <timothy_horton@apple.com>
+
+        Blindly try to fix all the builds.
+
+        * UIProcess/mac/WKActionMenuController.h:
+        * UIProcess/mac/WKActionMenuController.mm:
+
+2014-10-24  Timothy Horton  <timothy_horton@apple.com>
+
+        Blindly try to fix all the builds.
+
+        * UIProcess/mac/WKActionMenuController.h:
+
+2014-10-24  Timothy Horton  <timothy_horton@apple.com>
+
+        Blindly try to fix the 32-bit build.
+
+        * UIProcess/mac/WKActionMenuController.h:
+        * UIProcess/mac/WKActionMenuController.mm:
+
+2014-10-24  Tim Horton  <timothy_horton@apple.com>
+
+        [Mac][WebKit2] Move action menu code into its own file
+        https://bugs.webkit.org/show_bug.cgi?id=138034
+        <rdar://problem/18758758>
+
+        * UIProcess/mac/WKActionMenuController.mm:
+        (-[WKActionMenuController prepareForMenu:withEvent:]):
+        (-[WKActionMenuController _addImageToPhotos:]):
+        Review comments that were not previously addressed.
+
+2014-10-24  Tim Horton  <timothy_horton@apple.com>
+
+        [Mac][WebKit2] Move action menu code into its own file
+        https://bugs.webkit.org/show_bug.cgi?id=138034
+        <rdar://problem/18758758>
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView initWithFrame:context:configuration:webView:]):
+        Make a WKActionMenuController if needed.
+
+        (-[WKView prepareForMenu:withEvent:]):
+        (-[WKView willOpenMenu:withEvent:]):
+        (-[WKView didCloseMenu:withEvent:]):
+        (-[WKView _didPerformActionMenuHitTest:]):
+        Forward these to WKActionMenuController.
+
+        (-[WKView _openURLFromActionMenu:]): Deleted.
+        (-[WKView _addToReadingListFromActionMenu:]): Deleted.
+        (-[WKView _quickLookURLFromActionMenu:]): Deleted.
+        (-[WKView _createActionMenuItemForTag:]): Deleted.
+        (webKitBundleImageNamed): Deleted.
+        (-[WKView _copyImage:]): Deleted.
+        (-[WKView _saveImageToDownloads:]): Deleted.
+        (temporaryPhotosDirectoryPath): Deleted.
+        (pathToPhotoOnDisk): Deleted.
+        (-[WKView _addImageToPhotos:]): Deleted.
+        (-[WKView _defaultMenuItemsForImage]): Deleted.
+        (-[WKView _defaultMenuItems]): Deleted.
+        (-[WKView _updateActionMenu]): Deleted.
+        Moved to WKActionMenuController.
+
+        * UIProcess/mac/WKActionMenuController.h: Added.
+        * UIProcess/mac/WKActionMenuController.mm: Added.
+        (-[WKActionMenuController initWithPage:view:]):
+        (-[WKActionMenuController prepareForMenu:withEvent:]):
+        (-[WKActionMenuController willOpenMenu:withEvent:]):
+        (-[WKActionMenuController didCloseMenu:withEvent:]):
+        (-[WKActionMenuController didPerformActionMenuHitTest:]):
+        (-[WKActionMenuController _defaultMenuItemsForLink]):
+        (-[WKActionMenuController _openURLFromActionMenu:]):
+        (-[WKActionMenuController _addToReadingListFromActionMenu:]):
+        (-[WKActionMenuController _quickLookURLFromActionMenu:]):
+        (-[WKActionMenuController _defaultMenuItemsForImage]):
+        (-[WKActionMenuController _copyImage:]):
+        (-[WKActionMenuController _saveImageToDownloads:]):
+        (temporaryPhotosDirectoryPath):
+        (pathToPhotoOnDisk):
+        (-[WKActionMenuController _addImageToPhotos:]):
+        (-[WKActionMenuController _createActionMenuItemForTag:]):
+        (webKitBundleImageNamed):
+        (imageForResource:name::if):
+        (-[WKActionMenuController _updateActionMenuItems]):
+        Moved from WKView.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2014-10-24  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Implement is_selected method on WebKitHitTestResult
+        https://bugs.webkit.org/show_bug.cgi?id=137110
+
+        Reviewed by Tim Horton.
+
+        Expose CONTEXT_SELECTION for WebKitHitTestResult.
+
+        * Shared/WebHitTestResult.cpp: Add is_selected field and getter for this field.
+        (WebKit::WebHitTestResult::Data::Data):
+        (WebKit::WebHitTestResult::Data::encode):
+        (WebKit::WebHitTestResult::Data::decode):
+        * Shared/WebHitTestResult.h:
+        (WebKit::WebHitTestResult::isSelected):
+        * UIProcess/API/gtk/WebKitHitTestResult.cpp: Add WEBKIT_HIT_TEST_RESULT_CONTEXT_SELECTION context and method to check it.
+        (webkitHitTestResultCreate):
+        (webkitHitTestResultCompare):
+        (webkit_hit_test_result_context_is_selection):
+        * UIProcess/API/gtk/WebKitHitTestResult.h:
+        * UIProcess/API/gtk/WebKitWebView.cpp: Modify context-menu callback to set the new context option.
+        (webkitWebViewPopulateContextMenu):
+        * UIProcess/API/gtk/docs/webkit2gtk-sections.txt: Add documentation about new function.
+
+2014-10-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][Cairo] Remove GTK dependency of WidgetBackingStoreGtkX11
+        https://bugs.webkit.org/show_bug.cgi?id=138004
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * UIProcess/BackingStore.h: Rename m_backingStore as m_backend,
+        since it's a bit confusing that a BackingStore class has a
+        m_backingStore member and WidgetBackingStore has been renamed as
+        BackingStoreBackendCairo.
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::BackingStore::createBackend): Helper function to create
+        the BackingStore backend depending on the platform.
+        (WebKit::BackingStore::paint): Use m_backend instead of m_backingStore.
+        (WebKit::BackingStore::incorporateUpdate): Ditto.
+        (WebKit::BackingStore::scroll): Ditto.
+        (WebKit::createBackingStoreForGTK): Deleted.
+
+2014-10-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix a bad find-and-replace in r175153
+
+        Looks like I messed up the commit on landing.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::didCommitLoadForFrame):
+
+2014-10-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS WK2] If a page has the exact same VisibleContentRect as the page before, its VisibleContentRectUpdate can be ignored
+        https://bugs.webkit.org/show_bug.cgi?id=138031
+        rdar://problem/18739335
+
+        Reviewed by Simon Fraser.
+
+        Since any VisibleContentRectUpdate is costly for the WebProcess, we avoid sending updates
+        if none of the important parameters have changed (scale and geometry).
+
+        One unintended side effect is that the update of a page can be blocked if the parameters
+        of the previous page were identical.
+
+        What happen is this:
+        1) Page [A] sends its content rect update as needed. WebPageProxy saves the last update
+           in m_lastVisibleContentRectUpdate and use that value to avoid useless updates.
+        2) Page [B] load after page [A] and have the exact VisibleContentRect. When receiving the first
+           layer tree commit after didCommitLoadForFrame, WKWebView sends its VisibleContentRect
+           to WebPageProxy to synchronize the state of the WebProcess with what is on screen.
+        3) Since the two VisibleContentRect update has the same value as the ones of page [A], WebPageProxy
+           discards the update. The WebProcess has its initialization viewport and is not udpated until
+           a major parameter changes (scale or position).
+
+        In rdar://problem/18739335, the problem is the similar but with a different failure point:
+        1) Everything above happened already.
+        2) The layer tree transaction has a scrolling request. This is processed by WKWebView.
+        3) Since the scrolling position is invalid, the request is ignored and we send the last
+           VisibleContentRect to the WebProcess with WebPageProxy::resendLastVisibleContentRects().
+        4) Since the VisibleContentRect was never updated after didCommitLoadForFrame, the one we send
+           is for the previous page, which the web process correctly ignores.
+
+        This patch solves the problem by nuking the cached m_lastVisibleContentRectUpdate before
+        any valid VisibleContentRectUpdate for a new page.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::didCommitLoadForFrame):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didCommitLayerTree):
+
+2014-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide a way to have alternate inspector agents
+        https://bugs.webkit.org/show_bug.cgi?id=137901
+
+        Reviewed by Brian Burg.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2014-10-23  Tim Horton  <timothy_horton@apple.com>
+
+        Add some SPI headers for NSExtension and NSSharingService{Picker}
+        https://bugs.webkit.org/show_bug.cgi?id=138027
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/mac/WKView.mm:
+        * UIProcess/mac/ServicesController.mm:
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        Replace redefinitions with SPI header #imports.
+
+2014-10-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS WK2] Make sure any dynamic viewport update schedules a layer tree commit
+        https://bugs.webkit.org/show_bug.cgi?id=138021
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+        Sometimes, the clients can do a dynamic viewport update but only change the minimum
+        layout size (see rdar://problem/18755250).
+
+        When that happens, it is possible to do the full state update without ever scheduling
+        a layer tree commit. For example, if the new minimum layout height is only a few pixels
+        smaller than the old value and the layout of the page is equal or larger than the old value,
+        the layout is done without any side effect to the content (assuming a viewport configuration
+        based on width).
+
+        The contract with the client is that the next layer tree commit after a dynamic viewport update
+        carries all the valid parameters for the new viewport size. Since the new layout never scheduled
+        a layer tree commit, the UIProcess is just waiting for one, discarding all input.
+
+        This patch solves the issue by explicitely scheduling a layer flush after updating all the layout
+        and view parameters to their final values. In most cases, this makes no difference since a layer
+        tree commit was already scheduled. In the rare cases where nothing was scheduled, scheduling
+        the layer tree commit ensure we unlock the UIProcess.
+
+2014-10-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebContent crash in WebKit::WebPage::expandedRangeFromHandle
+        https://bugs.webkit.org/show_bug.cgi?id=138023
+
+        Reviewed by Enrica Casucci.
+
+        The crashes are caused by rangeForBlockAtPoint returning a null Range.
+        Exit early or continue if a range is null in various places.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::expandedRangeFromHandle): Continue looking for another point if the range returned by
+        rangeForBlockAtPoint is null.
+        (WebKit::WebPage::contractedRangeFromHandle): Ditto.
+        (WebKit::WebPage::computeExpandAndShrinkThresholdsForHandle): Removed the FIXME now that Enrica has
+        verified that this early exit added in r173788 is correct.
+
+2014-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] iPhone unselecting items in <select multiple> shows incorrect values selected
+        https://bugs.webkit.org/show_bug.cgi?id=137989
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/ios/forms/WKFormSelectPicker.mm:
+        (-[WKMultipleSelectPicker pickerView:row:column:checked:]):
+        The second argument is "allowsMultipleSelection" and should only be set
+        when we are making a selection in a <select multiple>.
+
+2014-10-23  Tim Horton  <timothy_horton@apple.com>
+
+        Assertion failures in ImageKit soft linking
+        https://bugs.webkit.org/show_bug.cgi?id=138009
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/mac/WKView.mm:
+        Soft-link ImageKit correctly.
+        ImageKit is inside the Quartz umbrella framework.
+
+2014-10-23  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Fix the build after <http://trac.webkit.org/changeset/175079>
+        (https://bugs.webkit.org/show_bug.cgi?id=137995)
+
+        Rubber-stamped by Anders Carlsson.
+
+        Remove PageClientImpl::didPerformActionMenuHitTest() for iOS.
+
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didPerformActionMenuHitTest): Deleted.
+
+2014-10-23  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Fix build problem after r175098
+        https://bugs.webkit.org/show_bug.cgi?id=138002
+
+        Reviewed by Gyuyoung Kim.
+
+        Add ECORE_X dependency to avoid linking problems while building unit tests.
+
+        * PlatformEfl.cmake:
+
+2014-10-23  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Set proper default value for WebPageAccessibilityObject
+        https://bugs.webkit.org/show_bug.cgi?id=137951
+
+        Reviewed by Csaba Osztrogonác.
+
+        Initial value for WebPageAccessibilityObject should be nullptr.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+
+2014-10-23  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Introduce EFL Accessibility in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=137819
+
+        Reviewed by Gyuyoung Kim.
+
+        EFL Accessibility provides an API that is used to notify clients that certain
+        Accessibility events occur. Utilizing it makes WebKit-EFL coherent with EFL native
+        accessibility approach.
+
+        * PlatformEfl.cmake:
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::EwkView):
+        * UIProcess/API/efl/EwkView.h:
+        (EwkView::webAccessibility):
+        * UIProcess/API/efl/WebAccessibility.cpp: Added.
+        (WebKit::WebAccessibility::WebAccessibility):
+        (WebKit::WebAccessibility::~WebAccessibility):
+        (WebKit::WebAccessibility::eventHandler):
+        (WebKit::WebAccessibility::executeGestureAction):
+        (WebKit::WebAccessibility::activate):
+        (WebKit::WebAccessibility::read):
+        (WebKit::WebAccessibility::readNext):
+        (WebKit::WebAccessibility::readPrev):
+        (WebKit::WebAccessibility::up):
+        (WebKit::WebAccessibility::down):
+        (WebKit::WebAccessibility::scroll):
+        (WebKit::WebAccessibility::mouse):
+        (WebKit::WebAccessibility::enable):
+        (WebKit::WebAccessibility::disable):
+        * UIProcess/API/efl/WebAccessibility.h: Added.
+        (WebKit::WebAccessibility::activateAction):
+        (WebKit::WebAccessibility::nextAction):
+        (WebKit::WebAccessibility::prevAction):
+        (WebKit::WebAccessibility::readAction):
+        * UIProcess/API/efl/ewk_view.cpp:
+        (ewk_view_accessibility_action_activate_get):
+        (ewk_view_accessibility_action_next_get):
+        (ewk_view_accessibility_action_prev_get):
+        (ewk_view_accessibility_action_read_by_point_get):
+        * UIProcess/API/efl/ewk_view.h:
+        * UIProcess/API/efl/tests/test_ewk2_accessibility.cpp: Added.
+        (EWK2Accessibility::xwindow):
+        (TEST_F):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/efl/WebPageProxyEfl.cpp:
+        (WebKit::WebPageProxy::accessibilityObjectReadByPoint):
+        (WebKit::WebPageProxy::accessibilityObjectReadPrevious):
+        (WebKit::WebPageProxy::accessibilityObjectReadNext):
+
+2014-10-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        [iOS WK2] Protect WKWebView dynamic viewport change against empty sizes
+        https://bugs.webkit.org/show_bug.cgi?id=137988
+        rdar://problem/17785162
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _beginAnimatedResizeWithUpdates:]):
+        The algorithm behind dynamic size update finds the best content area to put in the viewport
+        after a viewport change. If an initial size or a target size is empty, it is impossible to
+        compute a reasonable area to keep in the view. We end up handling NaN scales
+        and/or sizes and CoreAnimation raises an exception when applying that value.
+
+        This patch add early exits when that occurs and fallback to the common code.
+
+        On Input, things are easy. If any of the initial values is empty, we just execute the updateBlock
+        without attempting any of the dynamic behaviors.
+
+        For the target values, things are trickier. We do not know what the values are going to be before we execute
+        the block. But once we executed the block, we have already skipped all the setters that call the web process.
+
+        To handle that, every value is set manually on WebPageProxy. This is a bit unfortunate because the setters
+        get yet another entry point.
+
+2014-10-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        EFL and GTK ports have broken since r175075
+        https://bugs.webkit.org/show_bug.cgi?id=137995
+
+        Unreviewed, EFL and GTK ports build fix.
+
+        Need to use PLATFORM(MAC) guard for ActionMenuHitTest functions.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::removeNavigationGestureSnapshot):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2014-10-22  Tim Horton  <timothy_horton@apple.com>
+
+        Add action menu support for images
+        https://bugs.webkit.org/show_bug.cgi?id=137987
+        <rdar://problem/18717767>
+
+        Reviewed by Anders Carlsson, Sam Weinig, and Beth Dakin.
+
+        * Resources/AddImageToPhotos.pdf: Added.
+        * Resources/CopyImage.pdf: Added.
+        * Resources/SaveImageToDownloads.pdf: Added.
+        * Resources/ShareImage.pdf: Added.
+        Add some temporary artwork.
+
+        * Scripts/webkit/messages.py:
+        (struct_or_class):
+        ActionMenuHitTestResult is a struct.
+
+        * Shared/API/c/WKActionMenuItemTypes.h:
+        Add new items for image menus.
+
+        * Shared/mac/ActionMenuHitTestResult.cpp:
+        (WebKit::ActionMenuHitTestResult::encode):
+        (WebKit::ActionMenuHitTestResult::decode):
+        For now, pass the hit image data across to the UI process as a ShareableBitmap.
+
+        * Shared/mac/ActionMenuHitTestResult.h:
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _createActionMenuItemForTag:]):
+        Refactor action menu item creation into a single function, so that
+        callers can share code and be much simpler.
+
+        (webKitBundleImageNamed):
+        Add a helper to acquire an image from the WebKit2 bundle.
+
+        (-[WKView _copyImage:]):
+        (-[WKView _saveImageToDownloads:]):
+        (temporaryPhotosDirectoryPath):
+        (pathToPhotoOnDisk):
+        (-[WKView _addImageToPhotos:]):
+        Add rudimentary implementations of image actions.
+
+        (-[WKView _defaultMenuItemsForImage]):
+        Support the image menu, plus a submenu acquired from NSSharingServicePicker
+        for the Share menu.
+
+        (-[WKView _defaultMenuItems]):
+        Call _defaultMenuItemsForImage if needed.
+
+        (-[WKView _updateActionMenu]):
+        Refactor _updateActionMenu out of prepareForMenu:withEvent:.
+
+        (-[WKView prepareForMenu:withEvent:]):
+        Ask the Web process to re-hit-test under the location that the menu
+        will appear. Mark the menu as pending.
+
+        (-[WKView _didPerformActionMenuHitTest:]):
+        When we get the hit test reply, record the result for future use.
+
+        (-[WKView willOpenMenu:withEvent:]):
+        If we got a hit test reply, rebuild the menu immediately. If not, wait
+        up to 500ms for the reply to come in. This eventually needs to be
+        cancellable if the menu is rejected in the interim.
+
+        (-[WKView didCloseMenu:withEvent:]):
+        Clear all state when the menu closes.
+
+        * UIProcess/API/mac/WKViewInternal.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::performActionMenuHitTestAtLocation):
+        (WebKit::WebPageProxy::didPerformActionMenuHitTest):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::didPerformActionMenuHitTest):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        Plumb didPerformActionMenuHitTest back from WebPageProxy to WKView.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::performActionMenuHitTestAtLocation):
+        Hit test at the given location, recording the image data if there is any,
+        and return the result to the UI process.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        Add the PDFs.
+
+2014-10-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove WidgetBackingStoreCairo::create() factory function
+        https://bugs.webkit.org/show_bug.cgi?id=137943
+
+        Reviewed by Darin Adler.
+
+        WidgetBackingStoreCairo::create() can be replaced by std::make_unique<>.
+        Thus this patch removes it, then use std::make_unique<>|std::unique_ptr<>.
+
+        * UIProcess/BackingStore.h:
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::createBackingStoreForGTK):
+        (WebKit::BackingStore::incorporateUpdate):
+
+2014-10-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove TextCheckerEnchant::create() factory function
+        https://bugs.webkit.org/show_bug.cgi?id=137944
+
+        Reviewed by Darin Adler.
+
+        TextCheckerEnchant::create() can be replaced by std::make_unique<> and std::unique_ptr<>.
+
+        * UIProcess/API/gtk/WebKitTextChecker.cpp:
+        (WebKitTextChecker::WebKitTextChecker):
+        * UIProcess/API/gtk/WebKitTextChecker.h:
+        * UIProcess/efl/TextCheckerClientEfl.cpp:
+        (TextCheckerClientEfl::TextCheckerClientEfl):
+        * UIProcess/efl/TextCheckerClientEfl.h:
+
+2014-10-22  Antti Koivisto  <antti@apple.com>
+
+        Revert fix for REGRESSION (r173356): Safari can't install a profile, gets 'Download Failed error
+        (https://bugs.webkit.org/show_bug.cgi?id=137493)
+
+        Turns out the root cause was a bug in MIME type sniffing, https://bugs.webkit.org/show_bug.cgi?id=137855
+
+        Remove the workaround.
+
+        * Shared/Downloads/ios/DownloadIOS.mm:
+        (WebKit::Download::startWithHandle):
+        * Shared/Downloads/mac/DownloadMac.mm:
+        (WebKit::Download::startWithHandle):
+
+2014-10-22  Beth Dakin  <bdakin@apple.com>
+
+        Remove action menu web preference
+        https://bugs.webkit.org/show_bug.cgi?id=137975
+
+        Reviewed by Tim Horton.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetActionMenuSupportEnabled): Deleted.
+        (WKPreferencesGetActionMenuSupportEnabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView initWithFrame:context:configuration:webView:]):
+
+2014-10-22  Chris Dumez  <cdumez@apple.com>
+
+        [Mac][WK2] Fix applicationIsSafari() detection
+        https://bugs.webkit.org/show_bug.cgi?id=137893
+
+        Reviewed by Alexey Proskuryakov.
+
+        Provide an implementation for FrameLoaderClient's new
+        needsQuickLookResourceCachingQuirks(), which accesses the flag stored
+        on the WebProcess, which is initialized upon WebProcess creation.
+
+        QuickLookMac::computeNeedsQuickLookResourceCachingQuirks() is called
+        on UIProcess side so that it works reliably and the flag is passed as
+        parameter when constructing the WebProcess.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::platformInitializeWebProcess):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::needsQuickLookResourceCachingQuirks):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess):
+        * WebProcess/WebProcess.h:
+        (WebKit::WebProcess::needsQuickLookResourceCachingQuirks):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2014-10-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ debug build after r175046.
+
+        Remove invalid ASSERT.
+
+        * UIProcess/gtk/InputMethodFilter.cpp:
+        (WebKit::InputMethodFilter::setCursorRect):
+
+2014-10-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move GtkInputMethodFilter from Platform to WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=137884
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Merge WebViewBaseInputMethodFilter and GtkInputMethodFilter into a
+        single class InputMethodFilter. The code is mostly the same, but
+        instead of having a setWebView method only to get the WebPageProxy,
+        it has a setPage method that passes the WebPageProxy. The GtkIMContext
+        client window is set by the WebView when it's realized/unrealized.
+
+        * PlatformGTK.cmake:
+        * Shared/NativeWebKeyboardEvent.h:
+        * Shared/gtk/NativeWebKeyboardEventGtk.cpp:
+        (WebKit::NativeWebKeyboardEvent::NativeWebKeyboardEvent):
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseRealize):
+        (webkitWebViewBaseUnrealize):
+        (webkit_web_view_base_class_init):
+        (webkitWebViewBaseCreateWebPage):
+        (webkitWebViewBaseEnterFullScreen): Deleted.
+        * UIProcess/API/gtk/WebViewBaseInputMethodFilter.cpp: Removed.
+        * UIProcess/API/gtk/WebViewBaseInputMethodFilter.h: Removed.
+        * UIProcess/gtk/InputMethodFilter.cpp: Added.
+        (WebKit::InputMethodFilter::handleCommitCallback):
+        (WebKit::InputMethodFilter::handlePreeditStartCallback):
+        (WebKit::InputMethodFilter::handlePreeditChangedCallback):
+        (WebKit::InputMethodFilter::handlePreeditEndCallback):
+        (WebKit::InputMethodFilter::InputMethodFilter):
+        (WebKit::InputMethodFilter::~InputMethodFilter):
+        (WebKit::InputMethodFilter::setEnabled):
+        (WebKit::InputMethodFilter::setCursorRect):
+        (WebKit::InputMethodFilter::handleKeyboardEvent):
+        (WebKit::InputMethodFilter::handleKeyboardEventWithCompositionResults):
+        (WebKit::InputMethodFilter::filterKeyEvent):
+        (WebKit::InputMethodFilter::confirmComposition):
+        (WebKit::InputMethodFilter::updatePreedit):
+        (WebKit::InputMethodFilter::notifyFocusedIn):
+        (WebKit::InputMethodFilter::notifyFocusedOut):
+        (WebKit::InputMethodFilter::notifyMouseButtonPress):
+        (WebKit::InputMethodFilter::confirmCurrentComposition):
+        (WebKit::InputMethodFilter::cancelContextComposition):
+        (WebKit::InputMethodFilter::sendCompositionAndPreeditWithFakeKeyEvents):
+        (WebKit::InputMethodFilter::handleCommit):
+        (WebKit::InputMethodFilter::handlePreeditStart):
+        (WebKit::InputMethodFilter::handlePreeditChanged):
+        (WebKit::InputMethodFilter::handlePreeditEnd):
+        (WebKit::InputMethodFilter::logHandleKeyboardEventForTesting):
+        (WebKit::InputMethodFilter::logHandleKeyboardEventWithCompositionResultsForTesting):
+        (WebKit::InputMethodFilter::logConfirmCompositionForTesting):
+        (WebKit::InputMethodFilter::logSetPreeditForTesting):
+        * UIProcess/gtk/InputMethodFilter.h: Added.
+        (WebKit::InputMethodFilter::context):
+        (WebKit::InputMethodFilter::setPage):
+        (WebKit::InputMethodFilter::setTestingMode):
+        (WebKit::InputMethodFilter::events):
+
 2014-10-21  Tim Horton  <timothy_horton@apple.com>
 
         Quick Look preview bubble has unnecessary controls

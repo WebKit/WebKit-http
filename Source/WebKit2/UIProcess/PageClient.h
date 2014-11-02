@@ -61,6 +61,7 @@ class ViewSnapshot;
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebPopupMenuProxy;
+struct ActionMenuHitTestResult;
 
 #if ENABLE(TOUCH_EVENTS)
 class NativeWebTouchEvent;
@@ -308,6 +309,10 @@ public:
     virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() = 0;
     virtual void didFinishLoadForMainFrame() = 0;
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) = 0;
+
+#if PLATFORM(MAC)
+    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&) = 0;
+#endif
 };
 
 } // namespace WebKit

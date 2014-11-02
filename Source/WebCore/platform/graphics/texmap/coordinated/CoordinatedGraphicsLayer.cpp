@@ -90,8 +90,8 @@ void CoordinatedGraphicsLayer::didChangeImageBacking()
 void CoordinatedGraphicsLayer::setShouldUpdateVisibleRect()
 {
     m_shouldUpdateVisibleRect = true;
-    for (size_t i = 0; i < children().size(); ++i)
-        toCoordinatedGraphicsLayer(children()[i])->setShouldUpdateVisibleRect();
+    for (auto& child : children())
+        toCoordinatedGraphicsLayer(child)->setShouldUpdateVisibleRect();
     if (replicaLayer())
         toCoordinatedGraphicsLayer(replicaLayer())->setShouldUpdateVisibleRect();
 }
@@ -597,8 +597,8 @@ void CoordinatedGraphicsLayer::flushCompositingState(const FloatRect& rect)
 
     flushCompositingStateForThisLayerOnly();
 
-    for (size_t i = 0; i < children().size(); ++i)
-        children()[i]->flushCompositingState(rect);
+    for (auto& child : children())
+        child->flushCompositingState(rect);
 }
 
 CoordinatedGraphicsLayer* toCoordinatedGraphicsLayer(GraphicsLayer* layer)
@@ -613,8 +613,8 @@ void CoordinatedGraphicsLayer::syncChildren()
     m_shouldSyncChildren = false;
     m_layerState.childrenChanged = true;
     m_layerState.children.clear();
-    for (size_t i = 0; i < children().size(); ++i)
-        m_layerState.children.append(toCoordinatedLayerID(children()[i]));
+    for (auto& child : children())
+        m_layerState.children.append(toCoordinatedLayerID(child));
 }
 
 void CoordinatedGraphicsLayer::syncFilters()
@@ -801,8 +801,8 @@ void CoordinatedGraphicsLayer::syncPendingStateChangesIncludingSubLayers()
     if (maskLayer())
         toCoordinatedGraphicsLayer(maskLayer())->syncPendingStateChangesIncludingSubLayers();
 
-    for (size_t i = 0; i < children().size(); ++i)
-        toCoordinatedGraphicsLayer(children()[i])->syncPendingStateChangesIncludingSubLayers();
+    for (auto& child : children())
+        toCoordinatedGraphicsLayer(child)->syncPendingStateChangesIncludingSubLayers();
 }
 
 void CoordinatedGraphicsLayer::resetLayerState()
@@ -841,8 +841,8 @@ CoordinatedGraphicsLayer* CoordinatedGraphicsLayer::findFirstDescendantWithConte
     if (shouldHaveBackingStore())
         return this;
 
-    for (size_t i = 0; i < children().size(); ++i) {
-        CoordinatedGraphicsLayer* layer = toCoordinatedGraphicsLayer(children()[i])->findFirstDescendantWithContentsRecursively();
+    for (auto& child : children()) {
+        CoordinatedGraphicsLayer* layer = toCoordinatedGraphicsLayer(child)->findFirstDescendantWithContentsRecursively();
         if (layer)
             return layer;
     }
@@ -1002,8 +1002,8 @@ void CoordinatedGraphicsLayer::updateContentBuffersIncludingSubLayers()
 
     updateContentBuffers();
 
-    for (size_t i = 0; i < children().size(); ++i)
-        toCoordinatedGraphicsLayer(children()[i])->updateContentBuffersIncludingSubLayers();
+    for (auto& child : children())
+        toCoordinatedGraphicsLayer(child)->updateContentBuffersIncludingSubLayers();
 }
 
 void CoordinatedGraphicsLayer::updateContentBuffers()

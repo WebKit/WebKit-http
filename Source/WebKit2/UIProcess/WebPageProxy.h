@@ -167,6 +167,7 @@ class WebPageGroup;
 class WebProcessProxy;
 class WebUserContentControllerProxy;
 class WebWheelEvent;
+struct ActionMenuHitTestResult;
 struct AttributedString;
 struct ColorSpaceData;
 struct DictionaryPopupInfo;
@@ -689,6 +690,7 @@ public:
 #if PLATFORM(COCOA)
     // Dictionary.
     void performDictionaryLookupAtLocation(const WebCore::FloatPoint&);
+    void performDictionaryLookupOfCurrentSelection();
 #endif
 
     void receivedPolicyDecision(WebCore::PolicyAction, WebFrameProxy*, uint64_t listenerID, uint64_t navigationID);
@@ -836,6 +838,7 @@ public:
     void printMainFrame();
     
     void setMediaVolume(float);
+    void setMuted(bool);
     void setMayStartMediaWhenInWindow(bool);
     bool mayStartMediaWhenInWindow() const { return m_mayStartMediaWhenInWindow; }
         
@@ -920,9 +923,17 @@ public:
 
 #if PLATFORM(MAC)
     void removeNavigationGestureSnapshot();
+
+    WebHitTestResult* lastMouseMoveHitTestResult() const { return m_lastMouseMoveHitTestResult.get(); }
+    void performActionMenuHitTestAtLocation(WebCore::FloatPoint);
+    void selectLookupTextAtLocation(WebCore::FloatPoint);
 #endif
 
-    WebHitTestResult* activeActionMenuHitTestResult() const { return m_activeActionMenuHitTestResult.get(); }
+#if PLATFORM(EFL) && HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)
+    bool accessibilityObjectReadByPoint(const WebCore::IntPoint&);
+    bool accessibilityObjectReadPrevious();
+    bool accessibilityObjectReadNext();
+#endif
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
@@ -1301,6 +1312,10 @@ private:
     void viewDidLeaveWindow();
     void viewDidEnterWindow();
 
+#if PLATFORM(MAC)
+    void didPerformActionMenuHitTest(const ActionMenuHitTestResult&);
+#endif
+
     PageClient& m_pageClient;
     std::unique_ptr<API::LoaderClient> m_loaderClient;
     std::unique_ptr<API::PolicyClient> m_policyClient;
@@ -1345,6 +1360,8 @@ private:
 #if PLATFORM(IOS)
     RefPtr<WebVideoFullscreenManagerProxy> m_videoFullscreenManager;
     VisibleContentRectUpdateInfo m_lastVisibleContentRectUpdate;
+    bool m_hasReceivedLayerTreeTransactionAfterDidCommitLoad;
+    uint64_t m_firstLayerTreeTransactionIdAfterDidCommitLoad;
     int32_t m_deviceOrientation;
     bool m_dynamicViewportSizeUpdateWaitingForTarget;
     bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit;
@@ -1369,7 +1386,7 @@ private:
     RefPtr<WebContextMenuProxy> m_activeContextMenu;
     ContextMenuContextData m_activeContextMenuContextData;
 #endif
-    RefPtr<WebHitTestResult> m_activeActionMenuHitTestResult;
+    RefPtr<WebHitTestResult> m_lastMouseMoveHitTestResult;
 
     RefPtr<WebOpenPanelResultListenerProxy> m_openPanelResultListener;
     GeolocationPermissionRequestManagerProxy m_geolocationPermissionRequestManager;

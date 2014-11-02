@@ -82,8 +82,9 @@
 #elif   OS(LINUX)               \
      || OS(FREEBSD)             \
      || OS(OPENBSD)             \
-     || OS(NETBSD)              \
-     || OS(HAIKU)
+     || OS(HURD)                \
+     || OS(HAIKU)               \
+     || OS(NETBSD)
     // GNU as-compatible syntax.
 #define LOCAL_LABEL_STRING(name) ".L" #name
 #endif

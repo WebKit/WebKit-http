@@ -200,6 +200,7 @@
 #import <wtf/StdLibExtras.h>
 
 #if !PLATFORM(IOS)
+#import "WebActionMenuController.h"
 #import "WebContextMenuClient.h"
 #import "WebFullScreenController.h"
 #import "WebNSEventExtras.h"
@@ -207,6 +208,7 @@
 #import "WebNSPasteboardExtras.h"
 #import "WebNSPrintOperationExtras.h"
 #import "WebPDFView.h"
+#import <WebCore/NSViewSPI.h>
 #import <WebCore/WebVideoFullscreenController.h>
 #else
 #import "MemoryMeasure.h"
@@ -1061,6 +1063,12 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     [self setMaintainsBackForwardList: YES];
 #if !PLATFORM(IOS)
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
+
+    if ([self respondsToSelector:@selector(setActionMenu:)]) {
+        RetainPtr<NSMenu> actionMenu = adoptNS([[NSMenu alloc] init]);
+        self.actionMenu = actionMenu.get();
+        _private->actionMenuController = [[WebActionMenuController alloc] initWithWebView:self];
+    }
 #endif
     return self;
 }
@@ -1702,6 +1710,7 @@ static bool fastDocumentTeardownEnabled()
     [self setUIDelegate:nil];
 
     [_private->inspector webViewClosed];
+    [_private->actionMenuController webViewClosed];
 #endif
 
 #if !PLATFORM(IOS)
@@ -2393,6 +2402,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     [[self window] setTilePaintCountsVisible:[preferences showRepaintCounter]];
     [[self window] setAcceleratedDrawingEnabled:[preferences acceleratedDrawingEnabled]];
     [WAKView _setInterpolationQuality:[preferences _interpolationQuality]];
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    settings.setMediaKeysStorageDirectory([preferences mediaKeysStorageDirectory]);
 #endif
 }
 
@@ -8365,7 +8378,7 @@ bool LayerFlushController::flushLayers()
 #endif
 
 #if ENABLE(VIDEO)
-- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement
+- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElement::VideoFullscreenMode)mode
 {
     if (_private->fullscreenController) {
         if ([_private->fullscreenController videoElement] == videoElement) {
@@ -8385,7 +8398,7 @@ bool LayerFlushController::flushLayers()
         _private->fullscreenController = [[WebVideoFullscreenController alloc] init];
         [_private->fullscreenController setVideoElement:videoElement];
 #if PLATFORM(IOS)
-        [_private->fullscreenController enterFullscreen:(UIView *)[[[self window] hostLayer] delegate]];
+        [_private->fullscreenController enterFullscreen:(UIView *)[[[self window] hostLayer] delegate] mode:mode];
 #else
         [_private->fullscreenController enterFullscreen:[[self window] screen]];
 #endif
@@ -8403,7 +8416,7 @@ bool LayerFlushController::flushLayers()
     _private->fullscreenController = nil;
 }
 
-#endif // ENABLE(VIDEO) && !PLATFORM(IOS)
+#endif // ENABLE(VIDEO)
 
 #if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS)
 - (BOOL)_supportsFullScreenForElement:(const WebCore::Element*)element withKeyboard:(BOOL)withKeyboard
@@ -8515,6 +8528,16 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 {
     return NSMakeRect(rect.origin.x, [self bounds].size.height - rect.origin.y - rect.size.height, rect.size.width, rect.size.height);
 }
+
+#if !PLATFORM(IOS)
+- (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
+{
+    if (menu != self.actionMenu)
+        return;
+
+    [_private->actionMenuController prepareForMenu:menu withEvent:event];
+}
+#endif
 
 @end
 

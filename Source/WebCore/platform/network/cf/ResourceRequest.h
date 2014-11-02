@@ -30,6 +30,7 @@
 #include "ResourceRequestBase.h"
 #include <wtf/RetainPtr.h>
 
+OBJC_CLASS NSMutableURLRequest;
 OBJC_CLASS NSURLRequest;
 
 #if PLATFORM(COCOA) || USE(CFNETWORK)
@@ -117,10 +118,6 @@ namespace WebCore {
 
         static bool resourcePrioritiesEnabled();
 
-#if PLATFORM(COCOA)
-        static bool useQuickLookResourceCachingQuirks();
-#endif
-
 #if PLATFORM(IOS)
         // FIXME: deprecatedIsMainResourceRequest() does not return the correct value if the ResourceRequest has been
         // deserialized from an IPC message. As a result this function can only be relied on when networking is not in a
@@ -139,6 +136,10 @@ namespace WebCore {
         void doUpdateResourceRequest();
         void doUpdatePlatformHTTPBody();
         void doUpdateResourceHTTPBody();
+
+#if PLATFORM(COCOA)
+        NSMutableURLRequest *ensureMutableNSURLRequest();
+#endif
 
         PassOwnPtr<CrossThreadResourceRequestData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceRequestData>) const;
         void doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData>);

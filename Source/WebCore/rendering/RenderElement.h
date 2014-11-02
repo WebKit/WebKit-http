@@ -57,6 +57,8 @@ public:
 
     virtual bool isEmpty() const override { return !firstChild(); }
 
+    bool canContainFixedPositionObjects() const;
+
     // FIXME: Make these standalone and move to relevant files.
     bool isRenderLayerModelObject() const;
     bool isBoxModelObject() const;
@@ -198,6 +200,9 @@ protected:
     void setRenderInlineAlwaysCreatesLineBoxes(bool b) { m_renderInlineAlwaysCreatesLineBoxes = b; }
     bool renderInlineAlwaysCreatesLineBoxes() const { return m_renderInlineAlwaysCreatesLineBoxes; }
 
+    void setHasContinuation(bool b) { m_hasContinuation = b; }
+    bool hasContinuation() const { return m_hasContinuation; }
+
     static bool hasControlStatesForRenderer(const RenderObject*);
     static ControlStates* controlStatesForRenderer(const RenderObject*);
     static void removeControlStatesForRenderer(const RenderObject*);
@@ -213,6 +218,12 @@ private:
 
     virtual RenderObject* firstChildSlow() const override final { return firstChild(); }
     virtual RenderObject* lastChildSlow() const override final { return lastChild(); }
+
+    // Called when an object that was floating or positioned becomes a normal flow object
+    // again.  We have to make sure the render tree updates as needed to accommodate the new
+    // normal flow object.
+    void handleDynamicFloatPositionChange();
+    void removeAnonymousWrappersForInlinesIfNecessary();
 
     bool shouldRepaintForStyleDifference(StyleDifference) const;
     bool hasImmediateNonWhitespaceTextChildOrBorderOrOutline() const;
@@ -237,6 +248,7 @@ private:
     unsigned m_hasPausedImageAnimations : 1;
     unsigned m_hasCounterNodeMap : 1;
     unsigned m_isCSSAnimating : 1;
+    unsigned m_hasContinuation : 1;
 
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;
@@ -321,6 +333,14 @@ inline Element* RenderElement::generatingElement() const
     if (parent() && isRenderNamedFlowFragment())
         return parent()->generatingElement();
     return downcast<Element>(RenderObject::generatingNode());
+}
+
+inline bool RenderElement::canContainFixedPositionObjects() const
+{
+    return isRenderView()
+        || (hasTransform() && isRenderBlock())
+        || isSVGForeignObject()
+        || isOutOfFlowRenderFlowThread();
 }
 
 inline bool RenderObject::isRenderLayerModelObject() const

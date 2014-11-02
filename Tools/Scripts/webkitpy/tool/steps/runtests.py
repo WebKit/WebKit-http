@@ -32,7 +32,7 @@ import platform
 import sys
 from webkitpy.tool.steps.abstractstep import AbstractStep
 from webkitpy.tool.steps.options import Options
-from webkitpy.common.system.executive import ScriptError
+from webkitpy.common.system.executive import ScriptError, Executive
 
 _log = logging.getLogger(__name__)
 
@@ -53,13 +53,22 @@ class RunTests(AbstractStep):
         if not self._options.test:
             return
 
+        python_unittests_command = self._tool.deprecated_port().run_python_unittests_command()
+        if python_unittests_command:
+            _log.info("Running Python unit tests")
+            if self._options.non_interactive:
+                filesystem = self._tool.filesystem
+                python_unittest_results_directory = self._tool.port_factory.get().python_unittest_results_directory()
+                filesystem.maybe_make_directory(python_unittest_results_directory)
+
+                python_unittests_command.append('--json')
+                output = self._tool.executive.run_command(python_unittests_command, cwd=self._tool.scm().checkout_root, error_handler=Executive.ignore_error, return_stderr=False)
+                filesystem.write_text_file(filesystem.join(python_unittest_results_directory, "results.json"), output)
+            else:
+                self._tool.executive.run_and_throw_if_fail(python_unittests_command, cwd=self._tool.scm().checkout_root)
+
         if not self._options.non_interactive:
             # FIXME: We should teach the commit-queue and the EWS how to run these tests.
-
-            python_unittests_command = self._tool.deprecated_port().run_python_unittests_command()
-            if python_unittests_command:
-                _log.info("Running Python unit tests")
-                self._tool.executive.run_and_throw_if_fail(python_unittests_command, cwd=self._tool.scm().checkout_root)
 
             perl_unittests_command = self._tool.deprecated_port().run_perl_unittests_command()
             if perl_unittests_command:

@@ -30,6 +30,8 @@
 
 namespace WebCore {
 
+class RelList;
+
 // Link relation bitmask values.
 // FIXME: Uncomment as the various link relations are implemented.
 enum {
@@ -94,13 +96,14 @@ public:
 
     bool isLiveLink() const;
 
-    virtual bool willRespondToMouseClickEvents() override;
+    virtual bool willRespondToMouseClickEvents() override final;
 
     bool hasRel(uint32_t relation) const;
-    void setRel(const String&);
     
     LinkHash visitedLinkHash() const;
     void invalidateCachedVisitedLinkHash() { m_cachedVisitedLinkHash = 0; }
+
+    DOMTokenList& relList();
 
 protected:
     HTMLAnchorElement(const QualifiedName&, Document&);
@@ -111,14 +114,14 @@ private:
     virtual bool supportsFocus() const override;
     virtual bool isMouseFocusable() const override;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
-    virtual void defaultEventHandler(Event*) override;
+    virtual void defaultEventHandler(Event*) override final;
     virtual void setActive(bool active = true, bool pause = false) override final;
-    virtual void accessKeyAction(bool sendMouseEvents) override;
-    virtual bool isURLAttribute(const Attribute&) const override;
-    virtual bool canStartSelection() const override;
+    virtual void accessKeyAction(bool sendMouseEvents) override final;
+    virtual bool isURLAttribute(const Attribute&) const override final;
+    virtual bool canStartSelection() const override final;
     virtual String target() const override;
     virtual short tabIndex() const override final;
-    virtual bool draggable() const override;
+    virtual bool draggable() const override final;
 
     void sendPings(const URL& destinationURL);
 
@@ -140,6 +143,8 @@ private:
     bool m_wasShiftKeyDownOnMouseDown : 1;
     uint32_t m_linkRelations : 30;
     mutable LinkHash m_cachedVisitedLinkHash;
+
+    std::unique_ptr<RelList> m_relList;
 };
 
 inline LinkHash HTMLAnchorElement::visitedLinkHash() const

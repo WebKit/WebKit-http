@@ -75,11 +75,11 @@ struct WebSocketFrame;
 
 typedef String ErrorString;
 
-class InspectorResourceAgent : public InspectorAgentBase, public Inspector::InspectorNetworkBackendDispatcherHandler {
+class InspectorResourceAgent final : public InspectorAgentBase, public Inspector::InspectorNetworkBackendDispatcherHandler {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorResourceAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorClient*);
-    ~InspectorResourceAgent();
+    virtual ~InspectorResourceAgent();
 
     virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
@@ -137,6 +137,8 @@ public:
 
 private:
     void enable();
+
+    double timestamp();
 
     InspectorPageAgent* m_pageAgent;
     InspectorClient* m_client;

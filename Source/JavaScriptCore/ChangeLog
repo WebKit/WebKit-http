@@ -1,3 +1,815 @@
+2014-10-31  Michael Saboff  <msaboff@apple.com>
+
+        Add scope operand to op_push_with_scope, op_push_name_scope and op_pop_scope
+        https://bugs.webkit.org/show_bug.cgi?id=138252
+
+        Reviewed by Geoffrey Garen.
+
+        Added scope operand to op_push_with_scope, op_push_name_scope and op_pop_scope.
+        Although the scope register is filled in with the ScopeChain register for all 
+        three bytecodes, this operand is not used in the processing of the bytecodes.
+        That will be addressed in a future patch.
+
+        * bytecode/BytecodeList.json: Lengthened the three bytecodes.
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode): Added code to dump the scope operand.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitPushWithScope):
+        (JSC::BytecodeGenerator::emitPopScope):
+        (JSC::BytecodeGenerator::emitComplexPopScopes):
+        (JSC::BytecodeGenerator::emitPopScopes):
+        (JSC::BytecodeGenerator::emitPushFunctionNameScope):
+        (JSC::BytecodeGenerator::emitPushCatchScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::scopeRegister):
+        Added scope register to these emit functions and the bytecodes they emit.
+        New m_scopeRegister and accessor.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ContinueNode::emitBytecode):
+        (JSC::BreakNode::emitBytecode):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::WithNode::emitBytecode):
+        (JSC::TryNode::emitBytecode):
+        Created a RegisterID for the ScopeChain register and used it to emit the updated
+        bytecodes.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_push_with_scope):
+        (JSC::JIT::emit_op_push_name_scope):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_push_with_scope):
+        (JSC::JIT::emit_op_push_name_scope):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter.asm:
+        Updated the operand indecies for the processing of the updated bytecodes.
+
+2014-10-31  Andreas Kling  <akling@apple.com>
+
+        Make writes to RegExpObject.lastIndex cacheable.
+        <https://webkit.org/b/138255>
+
+        Reviewed by Geoffrey Garen.
+
+        We were neglecting to IC the puts to RegExpObject.lastIndex on Octane/regexp,
+        and ended up spending 4.5% of a time profile in operationPutByIdNonStrict.
+
+        ~3% progression on Octane/regexp.
+
+        * runtime/RegExpObject.cpp:
+        (JSC::regExpObjectSetLastIndexStrict):
+        (JSC::regExpObjectSetLastIndexNonStrict):
+        (JSC::RegExpObject::put):
+
+2014-10-31  Chris Dumez  <cdumez@apple.com>
+
+        Fix a couple of warnings in JSC reported by clang static analyzer
+        https://bugs.webkit.org/show_bug.cgi?id=138240
+
+        Reviewed by Geoffrey Garen.
+
+        Fix a couple of warnings in JSC reported by clang static analyzer about
+        value stored in variables never being read. This is addressed by
+        reducing the scope of the variable or removing the variable entirely.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::emitGetByOffset):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+
+2014-10-30  Dana Burkart  <dburkart@apple.com>
+
+        <rdar://problem/18821260> Prepare for the mysterious future
+
+        Reviewed by Lucas Forschler.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2014-10-30  Saam Barati  <saambarati1@gmail.com>
+
+        AST Nodes should keep track of their end offset
+        https://bugs.webkit.org/show_bug.cgi?id=138143
+
+        Reviewed by Filip Pizlo.
+
+        AST nodes nodes now have an int property for their end text 
+        offsets. This change lays some foundational work that will be 
+        needed in profiling which basic blocks have executed.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::setEndOffset):
+        * parser/Nodes.h:
+        (JSC::Node::endOffset):
+        (JSC::Node::setEndOffset):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseStatement):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseExpression):
+        (JSC::Parser<LexerType>::parseProperty):
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::operatorStackPop):
+
+2014-10-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Generate ObjC inspector protocol types and alternate dispatcher interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=138048
+
+        Reviewed by Brian Burg.
+
+        Generate Objective-C interfaces for inspector protocol types, command, and event dispatchers.
+        This is very much like the InspectorProtocolTypes, BackendDispatchers, and FrontendDispatchers,
+        but with an ObjC spin on things.
+
+        The private API that clients would use is all encapsulated in RWIProtocol.h. It includes the
+        types interfaces, command handler protocol, and event dispatcher interface. Where possible the
+        API uses real enums, which hides the raw protocol enum strings from clients.
+
+        Inspector protocol types are, like InspectorProtocolObjects, built on top of an InspectorObject.
+        This offers the flexibilty of adding arbitrary key/values using the RWIProtocolJSONObject
+        interface, which may be required for certain protocol objects like "Network.Headers" which
+        have no fields, but expect arbitrary properties to be added.
+
+        Command handler protocols always have two callbacks. An error callback and a success callback.
+        The signature is very much like BackendDispatchers. In parameters are passed directly to
+        the selectors, and out parameters are defined by the success callback. It will be the client's
+        responsibility to call either of these callbacks to complete handling of a request.
+
+        Event dispatcher interfaces are straight forward, just packaging up the arguments and sending
+        the message to the frontend.
+
+        ObjC <-> Protocol conversion happens in each of the generated files. In type getters / setters,
+        in commands parameters and event parameters. For this to work we generate conversion helpers
+        for all enums, ObjC enum <-> protocol strings. For NSArray <-> InspectorArray there are some
+        static helpers to do the conversions. We do lose some type safety in these conversions.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/scripts/codegen/__init__.py:
+        * inspector/scripts/codegen/generate_alternate_backend_dispatcher_header.py:
+        (AlternateBackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        * inspector/scripts/codegen/generate_backend_dispatcher_header.py:
+        (BackendDispatcherHeaderGenerator._generate_alternate_handler_forward_declarations_for_domains.AlternateInspector):
+        (BackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        (BackendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        * inspector/scripts/codegen/generate_backend_dispatcher_implementation.py:
+        (BackendDispatcherImplementationGenerator._generate_handler_class_destructor_for_domain):
+        (BackendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_header.py:
+        (FrontendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        * inspector/scripts/codegen/generate_frontend_dispatcher_implementation.py:
+        (FrontendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        * inspector/scripts/codegen/generate_objective_c.py: Added.
+        (join_type_and_name):
+        (strip_comment_markers):
+        (remove_duplicate_from_str):
+        (ObjCTypeCategory):
+        (ObjCTypeCategory.category_of_type):
+        (ObjCGenerator):
+        (ObjCGenerator.identifier_to_objc_identifier):
+        (ObjCGenerator.objc_identifier_to_identifier):
+        (ObjCGenerator.should_generate_domain_types_filter):
+        (ObjCGenerator.should_generate_domain_types_filter.should_generate_domain_types):
+        (ObjCGenerator.should_generate_domain_command_handler_filter):
+        (ObjCGenerator.should_generate_domain_command_handler_filter.should_generate_domain_command_handler):
+        (ObjCGenerator.should_generate_domain_event_dispatcher_filter):
+        (ObjCGenerator.should_generate_domain_event_dispatcher_filter.should_generate_domain_event_dispatcher):
+        (ObjCGenerator.objc_name_for_type):
+        (ObjCGenerator.objc_enum_name_for_anonymous_enum_declaration):
+        (ObjCGenerator.objc_enum_name_for_anonymous_enum_member):
+        (ObjCGenerator.objc_enum_name_for_anonymous_enum_parameter):
+        (ObjCGenerator.objc_enum_name_for_non_anonymous_enum):
+        (ObjCGenerator.variable_name_prefix_for_domain):
+        (ObjCGenerator.objc_accessor_type_for_raw_name):
+        (ObjCGenerator.objc_type_for_raw_name):
+        (ObjCGenerator.objc_class_for_raw_name):
+        (ObjCGenerator.protocol_type_for_raw_name):
+        (ObjCGenerator.protocol_type_for_type):
+        (ObjCGenerator.objc_class_for_type):
+        (ObjCGenerator.objc_accessor_type_for_member):
+        (ObjCGenerator.objc_accessor_type_for_member_internal):
+        (ObjCGenerator.objc_type_for_member):
+        (ObjCGenerator.objc_type_for_member_internal):
+        (ObjCGenerator.objc_type_for_param):
+        (ObjCGenerator.objc_type_for_param_internal):
+        (ObjCGenerator.objc_protocol_export_expression_for_variable):
+        (ObjCGenerator.objc_protocol_import_expression_for_member):
+        (ObjCGenerator.objc_protocol_import_expression_for_parameter):
+        (ObjCGenerator.objc_protocol_import_expression_for_variable):
+        (ObjCGenerator.objc_to_protocol_expression_for_member):
+        (ObjCGenerator.protocol_to_objc_expression_for_member):
+        (ObjCGenerator.objc_setter_method_for_member):
+        (ObjCGenerator.objc_setter_method_for_member_internal):
+        (ObjCGenerator.objc_getter_method_for_member):
+        (ObjCGenerator.objc_getter_method_for_member_internal):
+        * inspector/scripts/codegen/generate_objective_c_backend_dispatcher_header.py: Copied from Source/JavaScriptCore/inspector/scripts/codegen/generate_alternate_backend_dispatcher_header.py.
+        (ObjectiveCBackendDispatcherHeaderGenerator):
+        (ObjectiveCBackendDispatcherHeaderGenerator.output_filename):
+        (ObjectiveCBackendDispatcherHeaderGenerator.domains_to_generate):
+        (ObjectiveCBackendDispatcherHeaderGenerator.generate_output):
+        (ObjectiveCBackendDispatcherHeaderGenerator._generate_objc_forward_declarations):
+        (ObjectiveCBackendDispatcherHeaderGenerator._generate_objc_forward_declarations_for_domains):
+        (ObjectiveCBackendDispatcherHeaderGenerator._generate_objc_handler_declarations_for_domain):
+        (ObjectiveCBackendDispatcherHeaderGenerator._generate_objc_handler_declaration_for_command):
+        * inspector/scripts/codegen/generate_objective_c_backend_dispatcher_implementation.py: Added.
+        (ObjectiveCConfigurationImplementationGenerator):
+        (ObjectiveCConfigurationImplementationGenerator.__init__):
+        (ObjectiveCConfigurationImplementationGenerator.output_filename):
+        (ObjectiveCConfigurationImplementationGenerator.domains_to_generate):
+        (ObjectiveCConfigurationImplementationGenerator.generate_output):
+        (ObjectiveCConfigurationImplementationGenerator._generate_handler_implementation_for_domain):
+        (ObjectiveCConfigurationImplementationGenerator._generate_handler_implementation_for_command):
+        (ObjectiveCConfigurationImplementationGenerator._generate_success_block_for_command):
+        (ObjectiveCConfigurationImplementationGenerator._generate_conversions_for_command):
+        (ObjectiveCConfigurationImplementationGenerator._generate_invocation_for_command):
+        * inspector/scripts/codegen/generate_objective_c_configuration_header.py: Copied from Source/JavaScriptCore/inspector/scripts/codegen/generate_alternate_backend_dispatcher_header.py.
+        (ObjectiveCConfigurationHeaderGenerator):
+        (ObjectiveCConfigurationHeaderGenerator.output_filename):
+        (ObjectiveCConfigurationHeaderGenerator.generate_output):
+        (ObjectiveCConfigurationHeaderGenerator._generate_configuration_interface_for_domains):
+        (ObjectiveCConfigurationHeaderGenerator._generate_properties_for_domain):
+        * inspector/scripts/codegen/generate_objective_c_configuration_implementation.py: Added.
+        (ObjectiveCBackendDispatcherImplementationGenerator):
+        (ObjectiveCBackendDispatcherImplementationGenerator.__init__):
+        (ObjectiveCBackendDispatcherImplementationGenerator.output_filename):
+        (ObjectiveCBackendDispatcherImplementationGenerator.generate_output):
+        (ObjectiveCBackendDispatcherImplementationGenerator._generate_configuration_implementation_for_domains):
+        (ObjectiveCBackendDispatcherImplementationGenerator._generate_ivars):
+        (ObjectiveCBackendDispatcherImplementationGenerator._generate_dealloc):
+        (ObjectiveCBackendDispatcherImplementationGenerator._generate_handler_setter_for_domain):
+        (ObjectiveCBackendDispatcherImplementationGenerator._generate_event_dispatcher_getter_for_domain):
+        * inspector/scripts/codegen/generate_objective_c_conversion_helpers.py: Added.
+        (add_whitespace_separator):
+        (ObjectiveCConversionHelpersGenerator):
+        (ObjectiveCConversionHelpersGenerator.__init__):
+        (ObjectiveCConversionHelpersGenerator.output_filename):
+        (ObjectiveCConversionHelpersGenerator.domains_to_generate):
+        (ObjectiveCConversionHelpersGenerator.generate_output):
+        (ObjectiveCConversionHelpersGenerator._generate_enum_conversion_functions):
+        (ObjectiveCConversionHelpersGenerator._generate_anonymous_enum_conversion_for_declaration):
+        (ObjectiveCConversionHelpersGenerator._generate_anonymous_enum_conversion_for_member):
+        (ObjectiveCConversionHelpersGenerator._generate_anonymous_enum_conversion_for_parameter):
+        (ObjectiveCConversionHelpersGenerator._generate_enum_objc_to_protocol_string):
+        (ObjectiveCConversionHelpersGenerator._generate_enum_from_protocol_string):
+        * inspector/scripts/codegen/generate_objective_c_frontend_dispatcher_implementation.py: Added.
+        (ObjectiveCFrontendDispatcherImplementationGenerator):
+        (ObjectiveCFrontendDispatcherImplementationGenerator.__init__):
+        (ObjectiveCFrontendDispatcherImplementationGenerator.output_filename):
+        (ObjectiveCFrontendDispatcherImplementationGenerator.domains_to_generate):
+        (ObjectiveCFrontendDispatcherImplementationGenerator.generate_output):
+        (ObjectiveCFrontendDispatcherImplementationGenerator._generate_event_dispatcher_implementations):
+        (ObjectiveCFrontendDispatcherImplementationGenerator._generate_event):
+        (ObjectiveCFrontendDispatcherImplementationGenerator._generate_event_signature):
+        (ObjectiveCFrontendDispatcherImplementationGenerator._generate_event_out_parameters):
+        * inspector/scripts/codegen/generate_objective_c_header.py: Added.
+        (add_whitespace_separator):
+        (ObjectiveCHeaderGenerator):
+        (ObjectiveCHeaderGenerator.__init__):
+        (ObjectiveCHeaderGenerator.output_filename):
+        (ObjectiveCHeaderGenerator.generate_output):
+        (ObjectiveCHeaderGenerator._generate_forward_declarations):
+        (ObjectiveCHeaderGenerator._generate_enums):
+        (ObjectiveCHeaderGenerator._generate_types):
+        (ObjectiveCHeaderGenerator._generate_anonymous_enum_for_declaration):
+        (ObjectiveCHeaderGenerator._generate_anonymous_enum_for_member):
+        (ObjectiveCHeaderGenerator._generate_anonymous_enum_for_parameter):
+        (ObjectiveCHeaderGenerator._generate_enum):
+        (ObjectiveCHeaderGenerator._generate_enum.NS_ENUM):
+        (ObjectiveCHeaderGenerator._generate_type_interface):
+        (ObjectiveCHeaderGenerator._generate_init_method_for_required_members):
+        (ObjectiveCHeaderGenerator._generate_member_property):
+        (ObjectiveCHeaderGenerator._generate_command_protocols):
+        (ObjectiveCHeaderGenerator._generate_single_command_protocol):
+        (ObjectiveCHeaderGenerator._callback_block_for_command):
+        (ObjectiveCHeaderGenerator._generate_event_interfaces):
+        (ObjectiveCHeaderGenerator._generate_single_event_interface):
+        * inspector/scripts/codegen/generate_objective_c_internal_header.py: Copied from Source/JavaScriptCore/inspector/scripts/codegen/generate_alternate_backend_dispatcher_header.py.
+        (ObjectiveCTypesInternalHeaderGenerator):
+        (ObjectiveCTypesInternalHeaderGenerator.output_filename):
+        (ObjectiveCTypesInternalHeaderGenerator.generate_output):
+        (ObjectiveCTypesInternalHeaderGenerator._generate_event_dispatcher_private_interfaces):
+        * inspector/scripts/codegen/generate_objective_c_types_implementation.py: Added.
+        (add_whitespace_separator):
+        (ObjectiveCTypesImplementationGenerator):
+        (ObjectiveCTypesImplementationGenerator.__init__):
+        (ObjectiveCTypesImplementationGenerator.output_filename):
+        (ObjectiveCTypesImplementationGenerator.domains_to_generate):
+        (ObjectiveCTypesImplementationGenerator.generate_output):
+        (ObjectiveCTypesImplementationGenerator.generate_type_implementations):
+        (ObjectiveCTypesImplementationGenerator.generate_type_implementation):
+        (ObjectiveCTypesImplementationGenerator._generate_init_method_for_required_members):
+        (ObjectiveCTypesImplementationGenerator._generate_setter_for_member):
+        (ObjectiveCTypesImplementationGenerator._generate_getter_for_member):
+        * inspector/scripts/codegen/generate_protocol_types_header.py:
+        (ProtocolTypesHeaderGenerator._generate_forward_declarations):
+        (_generate_typedefs_for_domain):
+        (_generate_builders_for_domain):
+        * inspector/scripts/codegen/generator.py:
+        (Generator.wrap_with_guard_for_domain):
+        (Generator):
+        (Generator.wrap_with_guard):
+        * inspector/scripts/codegen/generator_templates.py:
+        (AlternateInspector):
+        (ObjCInspector):
+        * inspector/scripts/codegen/models.py:
+        (Framework.fromString):
+        (Frameworks):
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        (generate_from_specification):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2014-10-30  Andreas Kling  <akling@apple.com>
+
+        Unreviewed assertion fix.
+
+        RegExpCachedResult::m_reified is now the dedicated member that knows whether
+        the result was reified into an array or not. Check that instead of m_result
+        which is now single-purpose.
+
+        * runtime/RegExpCachedResult.cpp:
+        (JSC::RegExpCachedResult::setInput):
+
+2014-10-29  Andreas Kling  <akling@apple.com>
+
+        Use plain JSArray for RegExp matches instead of a lazily populated custom object.
+        <https://webkit.org/b/138191>
+
+        Reviewed by Geoffrey Garen.
+
+        We're already offering two RegExp matching APIs, one that collects subpattern
+        matches (exec), and one that simply tests for a match (test).
+        Given that, it was pretty overkill to lazily populate the resulting array of
+        matches, since the user could simply use test() if they didn't need them.
+
+        This allows the JIT to generate better code for RegExp match arrays, and also
+        enables some fast paths in the JSC runtime that check if an object isJSArray().
+
+        Looks like ~1.5% improvement on Octane/regexp according to run-jsc-benchmarks.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        * runtime/JSArray.h:
+        (JSC::createArrayButterflyWithExactLength): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RegExpCachedResult.cpp:
+        (JSC::RegExpCachedResult::visitChildren):
+        (JSC::RegExpCachedResult::lastResult):
+        (JSC::RegExpCachedResult::leftContext):
+        (JSC::RegExpCachedResult::rightContext):
+        * runtime/RegExpCachedResult.h:
+        (JSC::RegExpCachedResult::RegExpCachedResult):
+        (JSC::RegExpCachedResult::record):
+        (JSC::RegExpCachedResult::input):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::getBackref):
+        (JSC::RegExpConstructor::getLastParen):
+        (JSC::RegExpConstructor::getLeftContext):
+        (JSC::RegExpConstructor::getRightContext):
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createRegExpMatchesArray):
+        (JSC::RegExpMatchesArray::RegExpMatchesArray): Deleted.
+        (JSC::RegExpMatchesArray::create): Deleted.
+        (JSC::RegExpMatchesArray::finishCreation): Deleted.
+        (JSC::RegExpMatchesArray::visitChildren): Deleted.
+        (JSC::RegExpMatchesArray::reifyAllProperties): Deleted.
+        (JSC::RegExpMatchesArray::reifyMatchProperty): Deleted.
+        (JSC::RegExpMatchesArray::leftContext): Deleted.
+        (JSC::RegExpMatchesArray::rightContext): Deleted.
+        * runtime/RegExpMatchesArray.h:
+        (JSC::RegExpMatchesArray::createStructure): Deleted.
+        (JSC::RegExpMatchesArray::reifyAllPropertiesIfNecessary): Deleted.
+        (JSC::RegExpMatchesArray::reifyMatchPropertyIfNecessary): Deleted.
+        (JSC::RegExpMatchesArray::getOwnPropertySlot): Deleted.
+        (JSC::RegExpMatchesArray::getOwnPropertySlotByIndex): Deleted.
+        (JSC::RegExpMatchesArray::put): Deleted.
+        (JSC::RegExpMatchesArray::putByIndex): Deleted.
+        (JSC::RegExpMatchesArray::deleteProperty): Deleted.
+        (JSC::RegExpMatchesArray::deletePropertyByIndex): Deleted.
+        (JSC::RegExpMatchesArray::getOwnPropertyNames): Deleted.
+        (JSC::RegExpMatchesArray::defineOwnProperty): Deleted.
+        (JSC::isRegExpMatchesArray): Deleted.
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::exec):
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncMatch):
+
+2014-10-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix Type Dependency Issues
+        https://bugs.webkit.org/show_bug.cgi?id=125664
+
+        Reviewed by Brian Burg.
+
+        Now that all JSON protocol files are processed together again
+        in r174892, we can remove the duplicated types which were only
+        needed when the domains were split.
+
+        * inspector/protocol/Console.json:
+        * inspector/protocol/Runtime.json:
+
+2014-10-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r175249.
+        https://bugs.webkit.org/show_bug.cgi?id=138138
+
+        Appears to be failing some JS tests (Requested by mlam_ on
+        #webkit).
+
+        Reverted changeset:
+
+        "Holes are not copied properly when Arrays change shape to
+        ArrayStorage type."
+        https://bugs.webkit.org/show_bug.cgi?id=138118
+        http://trac.webkit.org/changeset/175249
+
+2014-10-27  Mark Lam  <mark.lam@apple.com>
+
+        Holes are not copied properly when Arrays change shape to ArrayStorage type.
+        <https://webkit.org/b/138118>
+
+        Reviewed by Mark Hahnenberg.
+
+        When we convert non-ArrayStorage typed arrays into ArrayStorage typed arrays,
+        we skipped the holes.  As a result, the slots in the ArrayStorage vector that
+        corresponds to those holes are uninitialize.  This is now fixed.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::convertUndecidedToArrayStorage):
+        (JSC::JSObject::convertInt32ToArrayStorage):
+        (JSC::JSObject::convertDoubleToArrayStorage):
+        (JSC::JSObject::convertContiguousToArrayStorage):
+
+2014-10-27  Mark Lam  <mark.lam@apple.com>
+
+        Crash when attempting to perform array iteration on a non-array with numeric keys not initialized.
+        <https://webkit.org/b/137814>
+
+        Reviewed by Geoffrey Garen.
+
+        The arrayIteratorNextThunkGenerator() thunk was not checking for the case where
+        the butterfly may be NULL.  This was the source of the crash, and is now fixed.
+
+        In addition, it is also not checking for the case where a property named "length"
+        may have been set on the iterated object.  The thunk only checks the butterfly's
+        publicLength for its iteration operation.  Array objects will work fine with this
+        because it always updates its butterfly's publicLength when its length changes.
+        In the case of iterable non-Array objects, the "length" property will require a
+        look up outside of the scope of this thunk.  The fix is simply to limit the fast
+        case checks in this thunk to Array objects.
+
+        * jit/ThunkGenerators.cpp:
+        (JSC::arrayIteratorNextThunkGenerator):
+
+2014-10-27  Mark Lam  <mark.lam@apple.com>
+
+        Simplified some JSObject methods for converting arrays to ArrayStorage shape.
+        <https://webkit.org/b/138119>
+
+        Reviewed by Filip Pizlo.
+
+        Currently, for each Undecided, Int32, Double, and Contiguous array shapes,
+        there are 3 JSObject methods to convert them to ArrayStorage shape:
+            ArrayStorage* convert<shape>ToArrayStorage(VM&, NonPropertyTransition, unsigned neededLength);
+            ArrayStorage* convert<shape>ToArrayStorage(VM&, NonPropertyTransition);
+            ArrayStorage* convert<shape>ToArrayStorage(VM&);
+
+        However, the neededLength that is passed is always m_butterfly->vectorLength().
+        Hence, the method that takes a neededLength is really not needed.  This patch
+        removes this unneeded verbosity.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::convertUndecidedToArrayStorage):
+        (JSC::JSObject::convertInt32ToArrayStorage):
+        - Also reordered the placement of the DeferGC statement so this Int32 function
+          will look more similar to the others.
+        (JSC::JSObject::convertDoubleToArrayStorage):
+        (JSC::JSObject::convertContiguousToArrayStorage):
+        * runtime/JSObject.h:
+
+2014-10-25  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: timelines should not count time elapsed while paused in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+
+        Unreviewed, follow-up fix after r175203. The debugger agent should not assume
+        that the inspector environment's stopwatch has already been started.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::didPause): Check if the stopwatch isActive() before stopping.
+
+2014-10-18  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: timelines should not count time elapsed while paused in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=136351
+
+        Reviewed by Timothy Hatcher.
+
+        Now that we have a stopwatch to provide pause-aware timing data, we can remove the
+        profiler's handling of debugger pause/continue callbacks. The debugger agent accounts
+        for suspended execution by pausing and resuming the stopwatch.
+
+        * API/JSProfilerPrivate.cpp:
+        (JSStartProfiling): Use a fresh stopwatch when profiling from the JSC API.
+        * inspector/InspectorEnvironment.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::executionStopwatch):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::handlePause):
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::didPause):
+        (Inspector::InspectorDebuggerAgent::breakpointActionProbe):
+        (Inspector::InspectorDebuggerAgent::didContinue):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * profiler/LegacyProfiler.cpp:
+        (JSC::LegacyProfiler::profiler): Use nullptr.
+        (JSC::LegacyProfiler::startProfiling): Hand off a stopwatch to the profile generator.
+        (JSC::LegacyProfiler::stopProfiling): Use nullptr.
+        (JSC::LegacyProfiler::didPause): Deleted.
+        (JSC::LegacyProfiler::didContinue): Deleted.
+        * profiler/LegacyProfiler.h:
+        * profiler/Profile.cpp: The root node should always have a start time of 0.0.
+        (JSC::Profile::Profile):
+        * profiler/ProfileGenerator.cpp: Remove debugger pause/continue callbacks and the
+        timestamp member that was used to track time elapsed by the debugger. Just use the
+        stopwatch's elapsed times to generate start/elapsed times for function calls.
+
+        (JSC::ProfileGenerator::create):
+        (JSC::ProfileGenerator::ProfileGenerator):
+        (JSC::AddParentForConsoleStartFunctor::operator()): The parent node of |console.profile|
+        should have a start time of 0.0, since it represents the starting node of profiling.
+
+        (JSC::ProfileGenerator::beginCallEntry):
+        (JSC::ProfileGenerator::endCallEntry):
+        (JSC::ProfileGenerator::didPause): Deleted.
+        (JSC::ProfileGenerator::didContinue): Deleted.
+        * profiler/ProfileGenerator.h:
+
+2014-10-24  Mark Lam  <mark.lam@apple.com>
+
+        Simplified IndexingType's hasAnyArrayStorage().
+        <https://webkit.org/b/138051>
+
+        Reviewed by Michael Saboff.
+
+        IndexingType's hasAnyArrayStorage() currently does subtraction of ArrayStorageShape
+        with the purpose of making non-ArrayStorage types underflow (with that subtraction)
+        and have a result that exceeds SlowPutArrayStorageShape.  What it is doing is
+        basically checking for a shape value that is greater equal to ArrayStorageShape.
+        We can just simplify the code as such.
+
+        Also added a comment to describe the structure of the bits in IndexingType.
+
+        * runtime/IndexingType.h:
+        (JSC::hasAnyArrayStorage):
+
+2014-10-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide a way to have alternate inspector agents
+        https://bugs.webkit.org/show_bug.cgi?id=137901
+
+        Reviewed by Brian Burg.
+
+        Provide a way to use alternate inspector agents debugging a JSContext.
+        Expose a very slim private API that a client could use to know when
+        an inspector has connected/disconnected, and a way to register its
+        augmentative agents.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        New feature guard. New files.
+
+        * API/JSContextRef.cpp:
+        (JSGlobalContextGetAugmentableInspectorController):
+        * API/JSContextRefInspectorSupport.h: Added.
+        Access to the private interface from a JSContext.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        (Inspector::JSGlobalObjectInspectorController::disconnectFrontend):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/augmentable/AugmentableInspectorController.h: Added.
+        (Inspector::AugmentableInspectorController::~AugmentableInspectorController):
+        (Inspector::AugmentableInspectorController::connected):
+        * inspector/augmentable/AugmentableInspectorControllerClient.h: Added.
+        (Inspector::AugmentableInspectorControllerClient::~AugmentableInspectorControllerClient):
+        * inspector/augmentable/AlternateDispatchableAgent.h: Added.
+        (Inspector::AlternateDispatchableAgent::AlternateDispatchableAgent):
+        Provide the private APIs a client could use to add alternate agents using alternate backend dispatchers.
+
+        * inspector/scripts/codegen/__init__.py:
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        (generate_from_specification):
+        New includes, and use the new generator.
+        
+        * inspector/scripts/codegen/generate_alternate_backend_dispatcher_header.py: Added.
+        (AlternateBackendDispatcherHeaderGenerator):
+        (AlternateBackendDispatcherHeaderGenerator.__init__):
+        (AlternateBackendDispatcherHeaderGenerator.output_filename):
+        (AlternateBackendDispatcherHeaderGenerator.generate_output):
+        (AlternateBackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        (AlternateBackendDispatcherHeaderGenerator._generate_handler_declaration_for_command):
+        Generate the abstract AlternateInspectorBackendDispatcher interfaces.
+
+        * inspector/scripts/codegen/generate_backend_dispatcher_header.py:
+        (BackendDispatcherHeaderGenerator.generate_output):
+        (BackendDispatcherHeaderGenerator._generate_alternate_handler_forward_declarations_for_domains):
+        (BackendDispatcherHeaderGenerator._generate_alternate_handler_forward_declarations_for_domains.AlternateInspector):
+        Forward declare alternate dispatchers, and allow setting an alternate dispatcher on a domain dispatcher.
+
+        * inspector/scripts/codegen/generate_backend_dispatcher_implementation.py:
+        (BackendDispatcherImplementationGenerator.generate_output):
+        (BackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        Check for and dispatch on an AlternateInspectorBackendDispatcher if there is one for this domain.
+
+        * inspector/scripts/codegen/generator_templates.py:
+        (AlternateInspectorBackendDispatcher):
+        (AlternateInspector):
+        Template boilerplate for prelude and postlude.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        Rebaseline tests.
+
+2014-10-23  Michael Saboff  <msaboff@apple.com>
+
+        offsets.rb:183:in `buildOffsetsMap': unhandled exception - is offlineasm dependency tracking broken? (132668)
+        https://bugs.webkit.org/show_bug.cgi?id=138017
+
+        Reviewed by Mark Lam.
+
+        Removed from the nput file $(SRCROOT)/llint/LowLevelAssembler.asm and output file
+        $(BUILT_PRODUCTS_DIR)/LLIntOffsets/LLIntDesiredOffsets.h from the Generate Derived Sources
+        build phase in the LLInt Offset target.  There is no need for Xcode to do any dependency
+        checking with these files as the ruby script offlineasm/generate_offset_extractor.rb will
+        do that for us.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2014-10-23  Michael Saboff  <msaboff@apple.com>
+
+        Change CallFrame::lexicalGlobalObject() to use Callee instead of JSScope
+        https://bugs.webkit.org/show_bug.cgi?id=136901
+
+        Reviewed by Mark Lam.
+
+        Implement ExecState::lexicalGlobalObject() using Callee.
+        
+        * runtime/JSScope.h:
+        (JSC::ExecState::lexicalGlobalObject):
+
+2014-10-22  Milan Crha  <mcrha@redhat.com>
+
+        Prefix isnan() with std::.
+        <https://webkit.org/b/137966>.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * profiler/ProfileNode.h:
+        (JSC::ProfileNode::Call::setStartTime):
+        (JSC::ProfileNode::Call::setElapsedTime):
+
+2014-10-22  Mark Lam  <mark.lam@apple.com>
+
+        Refactoring to simplify some code in DatePrototype.cpp.
+        <https://webkit.org/b/137997>
+
+        Reviewed by Filip Pizlo.
+
+        A bunch of functions in DatePrototype.cpp have the pattern of loading a
+        constant into a local variable only to pass it to a callee function
+        immediately after.  There is no other use for that variable.  This adds
+        additional verbosity with no added benefit.
+
+        This patch refactors those functions to just pass the constant arg directly.
+
+        * runtime/DatePrototype.cpp:
+        (JSC::dateProtoFuncSetMilliSeconds):
+        (JSC::dateProtoFuncSetUTCMilliseconds):
+        (JSC::dateProtoFuncSetSeconds):
+        (JSC::dateProtoFuncSetUTCSeconds):
+        (JSC::dateProtoFuncSetMinutes):
+        (JSC::dateProtoFuncSetUTCMinutes):
+        (JSC::dateProtoFuncSetHours):
+        (JSC::dateProtoFuncSetUTCHours):
+        (JSC::dateProtoFuncSetDate):
+        (JSC::dateProtoFuncSetUTCDate):
+        (JSC::dateProtoFuncSetMonth):
+        (JSC::dateProtoFuncSetUTCMonth):
+        (JSC::dateProtoFuncSetFullYear):
+        (JSC::dateProtoFuncSetUTCFullYear):
+
+2014-10-22  Byungseon Shin  <sun.shin@lge.com>
+
+        String(new Date(Mar 30 2014 01:00:00)) is wrong in CET
+        https://bugs.webkit.org/show_bug.cgi?id=130967
+
+        Reviewed by Mark Lam.
+
+        By definition of calculateLocalTimeOffset, input time should be UTC time.
+        But there are many cases when input time is based on local time.
+        So, it gives erroneous results while calculating offset of DST boundary time.
+        By adding a argument to distinguish UTC and local time, we can get the correct offset.
+
+        * JavaScriptCore.order:
+        * runtime/DateConstructor.cpp:
+        (JSC::constructDate):
+        (JSC::callDate):
+        (JSC::dateUTC):
+        * runtime/DateInstance.cpp:
+        (JSC::DateInstance::calculateGregorianDateTime):
+        (JSC::DateInstance::calculateGregorianDateTimeUTC):
+        * runtime/DatePrototype.cpp:
+        (JSC::setNewValueFromTimeArgs):
+        (JSC::setNewValueFromDateArgs):
+        (JSC::dateProtoFuncSetMilliSeconds):
+        (JSC::dateProtoFuncSetUTCMilliseconds):
+        (JSC::dateProtoFuncSetSeconds):
+        (JSC::dateProtoFuncSetUTCSeconds):
+        (JSC::dateProtoFuncSetMinutes):
+        (JSC::dateProtoFuncSetUTCMinutes):
+        (JSC::dateProtoFuncSetHours):
+        (JSC::dateProtoFuncSetUTCHours):
+        (JSC::dateProtoFuncSetDate):
+        (JSC::dateProtoFuncSetUTCDate):
+        (JSC::dateProtoFuncSetMonth):
+        (JSC::dateProtoFuncSetUTCMonth):
+        (JSC::dateProtoFuncSetFullYear):
+        (JSC::dateProtoFuncSetUTCFullYear):
+        (JSC::dateProtoFuncSetYear):
+        * runtime/JSDateMath.cpp:
+        (JSC::localTimeOffset):
+        (JSC::gregorianDateTimeToMS):
+        (JSC::msToGregorianDateTime):
+        (JSC::parseDateFromNullTerminatedCharacters):
+        * runtime/JSDateMath.h:
+        * runtime/VM.h:
+        (JSC::LocalTimeOffsetCache::LocalTimeOffsetCache):
+        (JSC::LocalTimeOffsetCache::reset):
+        Passing TimeType argument to distingush UTC time and local time.
+
+2014-10-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix generator importing of protocol type "any", treat as value
+        https://bugs.webkit.org/show_bug.cgi?id=137931
+
+        Reviewed by Timothy Hatcher.
+
+        Treat incoming "any" objects as InspectorValues, which can be any type.
+        Add the necessary boilerplate to import.
+
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::AsMethodBridges::asValue):
+        (Inspector::InspectorBackendDispatcher::getValue):
+        * inspector/InspectorBackendDispatcher.h:
+        * inspector/scripts/codegen/generator.py:
+        (Generator.keyed_get_method_for_type):
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+
+2014-10-22  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r174996): Broke C_LOOP
+        https://bugs.webkit.org/show_bug.cgi?id=137971
+
+        Reviewed by Mark Lam.
+
+        Removed incorrect move to cfr (CallFrameRegister) before we make the call to a native function.
+        After r174996, the source register for the move contained garbage causing the crash.  The move
+        to cfr before making the call to the native function is wrong and should have been removed
+        some time ago.  This brings the ARM64 / C_LOOP code path inline with the other CPU paths.
+        Tested on ARM64 as well as a C_LOOP build.
+
+        * llint/LowLevelInterpreter64.asm:
+
 2014-10-21  Mark Lam  <mark.lam@apple.com>
 
         Remove erroneous canUseJIT() in the intrinsics version of JITThunks::hostFunctionStub().

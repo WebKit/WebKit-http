@@ -196,6 +196,7 @@ struct SelectorFragment {
     Vector<std::pair<int, int>, 2> nthChildFilters;
     Vector<NthChildOfSelectorInfo> nthChildOfFilters;
     SelectorList notFilters;
+    Vector<SelectorList> matchesFilters;
     Vector<Vector<SelectorFragment>> anyFilters;
     const CSSSelector* pseudoElementSelector;
 
@@ -309,6 +310,7 @@ private:
     void generateElementIsNthChildOf(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementMatchesNotPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementMatchesAnyPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment&);
+    void generateElementMatchesMatchesPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementHasPseudoElement(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsRoot(Assembler::JumpList& failureCases);
     void generateElementIsScopeRoot(Assembler::JumpList& failureCases);
@@ -561,13 +563,13 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
     case CSSSelector::PseudoClassNthLastChild:
     case CSSSelector::PseudoClassNthLastOfType:
     case CSSSelector::PseudoClassDrag:
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-    case CSSSelector::PseudoClassMatches:
-#endif
         return FunctionType::CannotCompile;
 
     // Optimized pseudo selectors.
+#if ENABLE(CSS_SELECTORS_LEVEL4)
     case CSSSelector::PseudoClassAnyLink:
+#endif
+    case CSSSelector::PseudoClassAnyLinkDeprecated:
     case CSSSelector::PseudoClassLink:
     case CSSSelector::PseudoClassRoot:
     case CSSSelector::PseudoClassTarget:
@@ -679,7 +681,7 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
                 if (localFunctionType == FunctionType::CannotCompile)
                     return FunctionType::CannotCompile;
 
-                functionType = std::max(functionType, localFunctionType);
+                functionType = mostRestrictiveFunctionType(functionType, localFunctionType);
                 fragment.notFilters.append(selectorFragments);
             }
 
@@ -743,11 +745,44 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
             return FunctionType::SimpleSelectorChecker;
         }
 
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+    case CSSSelector::PseudoClassMatches:
+        {
+            SelectorList matchesList;
+            const CSSSelectorList* selectorList = selector.selectorList();
+            FunctionType functionType = FunctionType::SimpleSelectorChecker;
+            for (const CSSSelector* subselector = selectorList->first(); subselector; subselector = CSSSelectorList::next(subselector)) {
+                SelectorFragmentList selectorFragments;
+                VisitedMode ignoreVisitedMode = VisitedMode::None;
+                FunctionType localFunctionType = constructFragments(subselector, selectorContext, selectorFragments, FragmentsLevel::InFunctionalPseudoType, positionInRootFragments, visitedMatchEnabled, ignoreVisitedMode);
+                ASSERT_WITH_MESSAGE(ignoreVisitedMode == VisitedMode::None, ":visited is disabled in the functional pseudo classes");
+
+                // Since this fragment never matches against the element, don't insert it to matchesList.
+                if (localFunctionType == FunctionType::CannotMatchAnything)
+                    continue;
+
+                if (localFunctionType == FunctionType::CannotCompile)
+                    return FunctionType::CannotCompile;
+
+                functionType = mostRestrictiveFunctionType(functionType, localFunctionType);
+                matchesList.append(selectorFragments);
+            }
+
+            // Since all selector list in :matches() cannot match anything, the whole :matches() filter cannot match anything.
+            if (matchesList.isEmpty())
+                return FunctionType::CannotMatchAnything;
+
+            fragment.matchesFilters.append(matchesList);
+
+            return functionType;
+        }
+#endif
+
     case CSSSelector::PseudoClassUnknown:
         ASSERT_NOT_REACHED();
         return FunctionType::CannotMatchAnything;
     }
-    
+
     ASSERT_NOT_REACHED();
     return FunctionType::CannotCompile;
 }
@@ -1010,6 +1045,10 @@ bool hasAnyCombinators(const Vector<SelectorFragment, inlineCapacity>& selectorF
         return true;
     if (hasAnyCombinators(selectorFragmentList.first().notFilters))
         return true;
+    for (const SelectorList& matchesList : selectorFragmentList.first().matchesFilters) {
+        if (hasAnyCombinators(matchesList))
+            return true;
+    }
     for (const NthChildOfSelectorInfo& nthChildOfSelectorInfo : selectorFragmentList.first().nthChildOfFilters) {
         if (hasAnyCombinators(nthChildOfSelectorInfo.selectorList))
             return true;
@@ -1057,6 +1096,9 @@ void computeBacktrackingMemoryRequirements(SelectorFragmentList& selectorFragmen
         bool backtrackingRegisterReservedForFragment = backtrackingRegisterReserved || selectorFragment.backtrackingFlags & BacktrackingFlag::InChainWithDescendantTail;
 
         computeBacktrackingMemoryRequirements(selectorFragment.notFilters, fragmentRegisterRequirements, fragmentStackRequirements, backtrackingRegisterReservedForFragment);
+
+        for (SelectorList& matchesList : selectorFragment.matchesFilters)
+            computeBacktrackingMemoryRequirements(matchesList, fragmentRegisterRequirements, fragmentStackRequirements, backtrackingRegisterReservedForFragment);
 
         for (NthChildOfSelectorInfo& nthChildOfSelectorInfo : selectorFragment.nthChildOfFilters)
             computeBacktrackingMemoryRequirements(nthChildOfSelectorInfo.selectorList, fragmentRegisterRequirements, fragmentStackRequirements, backtrackingRegisterReservedForFragment);
@@ -1422,9 +1464,7 @@ void computeBacktrackingInformation(SelectorFragmentList& selectorFragments, uns
         computeBacktrackingWidthFromIndirectAdjacent(fragment, tagNamesForDirectAdjacentChain, hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain, previousDirectAdjacentFragmentInDirectAdjacentChain);
 
 #if CSS_SELECTOR_JIT_DEBUGGING
-        for (unsigned i = level; i; --i)
-            dataLogF("    ");
-        dataLogF("Computing fragment[%d] backtracking height %u. NotMatched %u / Matched %u | width %u. NotMatched %u / Matched %u\n", i, fragment.heightFromDescendant, fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant, fragment.tagNameMatchedBacktrackingStartHeightFromDescendant, fragment.widthFromIndirectAdjacent, fragment.tagNameNotMatchedBacktrackingStartWidthFromIndirectAdjacent, fragment.tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent);
+        dataLogF("%*sComputing fragment[%d] backtracking height %u. NotMatched %u / Matched %u | width %u. NotMatched %u / Matched %u\n", level * 4, "", i, fragment.heightFromDescendant, fragment.tagNameNotMatchedBacktrackingStartHeightFromDescendant, fragment.tagNameMatchedBacktrackingStartHeightFromDescendant, fragment.widthFromIndirectAdjacent, fragment.tagNameNotMatchedBacktrackingStartWidthFromIndirectAdjacent, fragment.tagNameMatchedBacktrackingStartWidthFromIndirectAdjacent);
 #endif
 
         solveBacktrackingAction(fragment, hasDescendantRelationOnTheRight, hasIndirectAdjacentRelationOnTheRightOfDirectAdjacentChain);
@@ -1473,22 +1513,27 @@ void computeBacktrackingInformation(SelectorFragmentList& selectorFragments, uns
     for (SelectorFragment& fragment : selectorFragments) {
         if (!fragment.notFilters.isEmpty()) {
 #if CSS_SELECTOR_JIT_DEBUGGING
-            dataLogF("  ");
-            dataLogF("Subselectors for :not():\n");
+            dataLogF("%*s  Subselectors for :not():\n", level * 4, "");
 #endif
 
             for (SelectorFragmentList& selectorList : fragment.notFilters)
                 computeBacktrackingInformation(selectorList, level + 1);
         }
-    }
 
-    for (SelectorFragment& fragment : selectorFragments) {
+        if (!fragment.matchesFilters.isEmpty()) {
+            for (SelectorList& matchesList : fragment.matchesFilters) {
+#if CSS_SELECTOR_JIT_DEBUGGING
+                dataLogF("%*s  Subselectors for :matches():\n", level * 4, "");
+#endif
+
+                for (SelectorFragmentList& selectorList : matchesList)
+                    computeBacktrackingInformation(selectorList, level + 1);
+            }
+        }
+
         for (NthChildOfSelectorInfo& nthChildOfSelectorInfo : fragment.nthChildOfFilters) {
 #if CSS_SELECTOR_JIT_DEBUGGING
-            for (unsigned i = level; i; --i)
-                dataLogF("    ");
-            dataLogF("  ");
-            dataLogF("Subselectors for %dn+%d:\n", nthChildOfSelectorInfo.a, nthChildOfSelectorInfo.b);
+            dataLogF("%*s  Subselectors for %dn+%d:\n", level * 4, "", nthChildOfSelectorInfo.a, nthChildOfSelectorInfo.b);
 #endif
 
             for (SelectorFragmentList& selectorList : nthChildOfSelectorInfo.selectorList)
@@ -1710,25 +1755,20 @@ void SelectorCodeGenerator::generateElementMatchesSelectorList(Assembler::JumpLi
     // The contract is that existing registers are preserved. Two special cases are elementToMatch and elementAddressRegister
     // because they are used by the matcher itself.
     // To simplify things for now, we just always preserve them on the stack.
-    unsigned elementAddressRegisterIndex = std::numeric_limits<unsigned>::max();
-    unsigned elementToTestIndex = elementAddressRegisterIndex;
+    unsigned elementToTestIndex = std::numeric_limits<unsigned>::max();
     bool isElementToMatchOnStack = false;
     if (selectorList.clobberElementAddressRegister) {
         if (elementToMatch != elementAddressRegister) {
             registersToSave.append(elementAddressRegister);
             registersToSave.append(elementToMatch);
-            elementAddressRegisterIndex = 0;
             elementToTestIndex = 1;
             isElementToMatchOnStack = true;
         } else {
             registersToSave.append(elementAddressRegister);
-            elementAddressRegisterIndex = 0;
             elementToTestIndex = 0;
         }
-    } else if (elementToMatch != elementAddressRegister) {
+    } else if (elementToMatch != elementAddressRegister)
         registersToSave.append(elementAddressRegister);
-        elementAddressRegisterIndex = 0;
-    }
 
     // Next, we need to free as many registers as needed by the nested selector list.
     unsigned availableRegisterCount = m_registerAllocator.availableRegisterCount();
@@ -2374,6 +2414,8 @@ void SelectorCodeGenerator::generateElementMatching(Assembler::JumpList& matchin
         generateElementMatchesNotPseudoClass(matchingPostTagNameFailureCases, fragment);
     if (!fragment.anyFilters.isEmpty())
         generateElementMatchesAnyPseudoClass(matchingPostTagNameFailureCases, fragment);
+    if (!fragment.matchesFilters.isEmpty())
+        generateElementMatchesMatchesPseudoClass(matchingPostTagNameFailureCases, fragment);
     if (fragment.langFilter)
         generateElementIsInLanguage(matchingPostTagNameFailureCases, *fragment.langFilter);
     if (fragment.pseudoElementSelector)
@@ -2408,7 +2450,7 @@ void SelectorCodeGenerator::generateElementDataMatching(Assembler::JumpList& fai
 
 void SelectorCodeGenerator::generateElementLinkMatching(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
 {
-    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassLink) || fragment.pseudoClasses.contains(CSSSelector::PseudoClassAnyLink) || fragment.pseudoClasses.contains(CSSSelector::PseudoClassVisited))
+    if (fragment.pseudoClasses.contains(CSSSelector::PseudoClassLink) || fragment.pseudoClasses.contains(CSSSelector::PseudoClassAnyLink) || fragment.pseudoClasses.contains(CSSSelector::PseudoClassVisited) || fragment.pseudoClasses.contains(CSSSelector::PseudoClassAnyLinkDeprecated))
         generateElementIsLink(failureCases);
 }
 
@@ -3490,6 +3532,14 @@ void SelectorCodeGenerator::generateElementMatchesAnyPseudoClass(Assembler::Jump
         // At the last fragment, optimize the failure jump to jump to the non-local failure directly.
         generateElementMatching(failureCases, failureCases, subFragments.last());
         successCases.link(&m_assembler);
+    }
+}
+
+void SelectorCodeGenerator::generateElementMatchesMatchesPseudoClass(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
+{
+    for (const SelectorList& matchesList : fragment.matchesFilters) {
+        ASSERT(!matchesList.isEmpty());
+        generateElementMatchesSelectorList(failureCases, elementAddressRegister, matchesList);
     }
 }
 

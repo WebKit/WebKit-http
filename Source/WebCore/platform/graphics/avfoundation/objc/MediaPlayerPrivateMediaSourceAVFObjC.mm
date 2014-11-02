@@ -29,6 +29,7 @@
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
 #import "CDMSessionMediaSourceAVFObjC.h"
+#import "FileSystem.h"
 #import "Logging.h"
 #import "MediaSourcePrivateAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
@@ -114,6 +115,13 @@ SOFT_LINK_CONSTANT(CoreMedia, kCMTimebaseNotification_EffectiveRateChanged, CFSt
 - (id)addPeriodicTimeObserverForInterval:(CMTime)interval queue:(dispatch_queue_t)queue usingBlock:(void (^)(CMTime time))block;
 - (id)addBoundaryTimeObserverForTimes:(NSArray *)times queue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block;
 - (void)removeTimeObserver:(id)observer;
+@end
+
+#pragma mark - 
+#pragma mark AVStreamSession
+
+@interface AVStreamSession : NSObject
+- (instancetype)initWithStorageDirectoryAtURL:(NSURL *)storageDirectory;
 @end
 
 namespace WebCore {
@@ -669,8 +677,22 @@ void MediaPlayerPrivateMediaSourceAVFObjC::sizeChanged()
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 AVStreamSession* MediaPlayerPrivateMediaSourceAVFObjC::streamSession()
 {
-    if (!m_streamSession)
-        m_streamSession = adoptNS([[getAVStreamSessionClass() alloc] init]);
+    if (!getAVStreamSessionClass() || ![getAVStreamSessionClass() instancesRespondToSelector:@selector(initWithStorageDirectoryAtURL:)])
+        return nil;
+
+    if (!m_streamSession) {
+        String storageDirectory = m_player->mediaKeysStorageDirectory();
+        if (storageDirectory.isEmpty())
+            return nil;
+
+        if (!fileExists(storageDirectory)) {
+            if (!makeAllDirectories(storageDirectory))
+                return nil;
+        }
+
+        String storagePath = pathByAppendingComponent(storageDirectory, "SecureStop.plist");
+        m_streamSession = adoptNS([[getAVStreamSessionClass() alloc] initWithStorageDirectoryAtURL:[NSURL fileURLWithPath:storagePath]]);
+    }
     return m_streamSession.get();
 }
 

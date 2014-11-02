@@ -57,6 +57,7 @@
 #include "WebKitWebViewBasePrivate.h"
 #include "WebKitWebViewPrivate.h"
 #include "WebKitWindowPropertiesPrivate.h"
+#include "WebSerializedScriptValue.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/DragIcon.h>
@@ -1911,6 +1912,7 @@ void webkitWebViewPopulateContextMenu(WebKitWebView* webView, API::Array* propos
     data.isContentEditable = webHitTestResult->isContentEditable();
     data.elementBoundingBox = webHitTestResult->elementBoundingBox();
     data.isScrollbar = webHitTestResult->isScrollbar();
+    data.isSelected = webHitTestResult->isSelected();
 
     GRefPtr<WebKitHitTestResult> hitTestResult = adoptGRef(webkitHitTestResultCreate(data));
     GUniquePtr<GdkEvent> contextMenuEvent(webkitWebViewBaseTakeContextMenuEvent(webViewBase));
@@ -2777,7 +2779,8 @@ static void webkitWebViewRunJavaScriptCallback(WebSerializedScriptValue* wkSeria
     }
 
     WebKitWebView* webView = WEBKIT_WEB_VIEW(g_task_get_source_object(task));
-    g_task_return_pointer(task, webkitJavascriptResultCreate(webView, wkSerializedScriptValue),
+    g_task_return_pointer(task, webkitJavascriptResultCreate(webView,
+        *static_cast<WebCore::SerializedScriptValue*>(wkSerializedScriptValue->internalRepresentation())),
         reinterpret_cast<GDestroyNotify>(webkit_javascript_result_unref));
 }
 

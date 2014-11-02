@@ -36,22 +36,23 @@ public:
 
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }
 
-    virtual const char* renderName() const;
+    virtual const char* renderName() const override;
 
     virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
 
-    virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageHeight = 0);
+    virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageHeight = 0) override;
     void layoutHorizontalBox(bool relayoutChildren);
     void layoutVerticalBox(bool relayoutChildren);
 
-    virtual bool avoidsFloats() const { return true; }
-    virtual bool isDeprecatedFlexibleBox() const { return true; }
-    virtual bool isStretchingChildren() const { return m_stretchingChildren; }
+    bool isStretchingChildren() const { return m_stretchingChildren; }
+
+    virtual bool avoidsFloats() const override { return true; }
     virtual bool canCollapseAnonymousBlockChild() const override { return false; }
 
     void placeChild(RenderBox* child, const LayoutPoint& location, LayoutSize* childLayoutDelta = 0);
 
 private:
+    virtual bool isDeprecatedFlexibleBox() const override { return true; }
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
     virtual void computePreferredLogicalWidths() override;
 
@@ -68,5 +69,7 @@ private:
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderDeprecatedFlexibleBox, isDeprecatedFlexibleBox())
 
 #endif // RenderDeprecatedFlexibleBox_h

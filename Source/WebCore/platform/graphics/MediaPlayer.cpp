@@ -1124,6 +1124,11 @@ bool MediaPlayer::keyNeeded(Uint8Array* initData)
 {
     return m_client.mediaPlayerKeyNeeded(this, initData);
 }
+
+String MediaPlayer::mediaKeysStorageDirectory() const
+{
+    return m_client.mediaPlayerMediaKeysStorageDirectory();
+}
 #endif
 
 String MediaPlayer::referrer() const
@@ -1154,6 +1159,11 @@ GraphicsDeviceAdapter* MediaPlayer::graphicsDeviceAdapter() const
 CachedResourceLoader* MediaPlayer::cachedResourceLoader()
 {
     return m_client.mediaPlayerCachedResourceLoader();
+}
+
+PassRefPtr<PlatformMediaResourceLoader> MediaPlayer::createResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient> client)
+{
+    return m_client.mediaPlayerCreateResourceLoader(WTF::move(client));
 }
 
 #if ENABLE(VIDEO_TRACK)

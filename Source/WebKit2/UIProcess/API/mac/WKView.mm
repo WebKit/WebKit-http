@@ -34,6 +34,7 @@
 #endif
 
 #import "APIHistoryClient.h"
+#import "ActionMenuHitTestResult.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "DataReference.h"
@@ -56,6 +57,7 @@
 #import "ViewGestureController.h"
 #import "ViewSnapshotStore.h"
 #import "WKAPICast.h"
+#import "WKActionMenuController.h"
 #import "WKActionMenuItemTypes.h"
 #import "WKFullScreenWindowController.h"
 #import "WKPrintingView.h"
@@ -91,6 +93,7 @@
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/Region.h>
 #import <WebCore/SharedBuffer.h>
+#import <WebCore/SoftLinking.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
@@ -117,16 +120,6 @@
 @interface NSWindow (WKNSWindowDetails)
 - (NSRect)_intersectBottomCornersWithRect:(NSRect)viewRect;
 - (void)_maskRoundedBottomCorners:(NSRect)clipRect;
-@end
-
-@class QLPreviewBubble;
-@interface NSObject (WKQLPreviewBubbleDetails)
-@property (copy) NSArray * controls;
-@property NSSize maximumSize;
-@property NSRectEdge preferredEdge;
-@property (retain) IBOutlet NSWindow* parentWindow;
-- (void)showPreviewItem:(id)previewItem itemFrame:(NSRect)frame;
-- (void)setAutomaticallyCloseWithMask:(NSEventMask)autocloseMask filterMask:(NSEventMask)filterMask block:(void (^)(void))block;
 @end
 
 #if USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -258,6 +251,7 @@ struct WKViewInterpretKeyEventsParameters {
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     BOOL _automaticallyAdjustsContentInsets;
+    RetainPtr<WKActionMenuController> _actionMenuController;
 #endif
 
 #if WK_API_ENABLED
@@ -309,6 +303,10 @@ struct WKViewInterpretKeyEventsParameters {
 
 - (void)dealloc
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [_data->_actionMenuController willDestroyView:self];
+#endif
+
     _data->_page->close();
 
 #if WK_API_ENABLED
@@ -3537,10 +3535,14 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillTerminate:) name:NSApplicationWillTerminateNotification object:NSApp];
 
-    if (_data->_page->preferences().actionMenuSupportEnabled() && [self respondsToSelector:@selector(setActionMenu:)]) {
-        RetainPtr<NSMenu> actionMenu = adoptNS([[NSMenu alloc] init]);
-        [self setActionMenu:actionMenu.get()];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if ([self respondsToSelector:@selector(setActionMenu:)]) {
+        RetainPtr<NSMenu> menu = adoptNS([[NSMenu alloc] init]);
+        self.actionMenu = menu.get();
+        _data->_actionMenuController = adoptNS([[WKActionMenuController alloc] initWithPage:*_data->_page view:self]);
+        self.actionMenu.delegate = _data->_actionMenuController.get();
     }
+#endif
 
     return self;
 }
@@ -3639,106 +3641,29 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         _data->_gestureController->removeSwipeSnapshot();
 }
 
-- (void)_openURLFromActionMenu:(id)sender
-{
-    WebHitTestResult* hitTestResult = _data->_page->activeActionMenuHitTestResult();
-    if (!hitTestResult)
-        return;
-
-    NSURL *url = [NSURL URLWithString:hitTestResult->absoluteLinkURL()];
-    [[NSWorkspace sharedWorkspace] openURL:url];
-}
-
-- (void)_addToReadingListFromActionMenu:(id)sender
-{
-    WebHitTestResult* hitTestResult = _data->_page->activeActionMenuHitTestResult();
-    if (!hitTestResult)
-        return;
-
-    NSURL *url = [NSURL URLWithString:hitTestResult->absoluteLinkURL()];
-    NSSharingService *service = [NSSharingService sharingServiceNamed:NSSharingServiceNameAddToSafariReadingList];
-    [service performWithItems:@[ url ]];
-}
-
-- (void)_quickLookURLFromActionMenu:(id)sender
-{
-    WebHitTestResult* hitTestResult = _data->_page->activeActionMenuHitTestResult();
-    if (!hitTestResult)
-        return;
-
-    NSRect itemFrame = [self convertRect:hitTestResult->elementBoundingBox() toView:nil];
-    NSSize maximumPreviewSize = NSMakeSize(self.bounds.size.width * 0.75, self.bounds.size.height * 0.75);
-
-    RetainPtr<QLPreviewBubble> bubble = adoptNS([[NSClassFromString(@"QLPreviewBubble") alloc] init]);
-    [bubble setParentWindow:self.window];
-    [bubble setMaximumSize:maximumPreviewSize];
-    [bubble setPreferredEdge:NSMaxYEdge];
-    [bubble setControls:@[ ]];
-    NSEventMask filterMask = NSAnyEventMask & ~(NSAppKitDefinedMask | NSSystemDefinedMask | NSApplicationDefinedMask | NSMouseEnteredMask | NSMouseExitedMask);
-    NSEventMask autocloseMask = NSLeftMouseDownMask | NSRightMouseDownMask | NSKeyDownMask;
-    [bubble setAutomaticallyCloseWithMask:autocloseMask filterMask:filterMask block:[bubble] {
-        [bubble close];
-    }];
-    [bubble showPreviewItem:[NSURL URLWithString:hitTestResult->absoluteLinkURL()] itemFrame:itemFrame];
-}
-
-- (NSArray *)_defaultMenuItemsForLink
-{
-    NSMutableArray *menuItems = [NSMutableArray array];
-
-    WebHitTestResult* hitTestResult = _data->_page->activeActionMenuHitTestResult();
-    if (!hitTestResult)
-        return menuItems;
-
-    if (!WebCore::protocolIsInHTTPFamily(hitTestResult->absoluteLinkURL()))
-        return menuItems;
-
-    RetainPtr<NSMenuItem> openLinkItem = adoptNS([[NSMenuItem alloc] initWithTitle:@"Open" action:@selector(_openURLFromActionMenu:) keyEquivalent:@""]);
-    [openLinkItem setImage:[[NSBundle bundleForClass:[WKView class]] imageForResource:@"OpenInNewWindowTemplate"]];
-    [openLinkItem setTarget:self];
-    [openLinkItem setTag:kWKContextActionItemTagOpenLinkInDefaultBrowser];
-    [menuItems addObject:openLinkItem.get()];
-
-    RetainPtr<NSMenuItem> previewLinkItem = adoptNS([[NSMenuItem alloc] initWithTitle:@"Preview" action:@selector(_quickLookURLFromActionMenu:) keyEquivalent:@""]);
-    [previewLinkItem setImage:[NSImage imageNamed:NSImageNameQuickLookTemplate]];
-    [previewLinkItem setTarget:self];
-    [previewLinkItem setTag:kWKContextActionItemTagPreviewLink];
-    [menuItems addObject:previewLinkItem.get()];
-
-    RetainPtr<NSMenuItem> readingListItem = adoptNS([[NSMenuItem alloc] initWithTitle:@"Add to Safari Reading List" action:@selector(_addToReadingListFromActionMenu:) keyEquivalent:@""]);
-    [readingListItem setImage:[NSImage imageNamed:NSImageNameBookmarksTemplate]];
-    [readingListItem setTarget:self];
-    [readingListItem setTag:kWKContextActionItemTagAddLinkToSafariReadingList];
-    [menuItems addObject:readingListItem.get()];
-
-    // FIXME: Required to work around <rdar://18684207>.
-    [menuItems addObject:[NSMenuItem separatorItem]];
-
-    return menuItems;
-}
-
-- (NSArray *)_defaultMenuItems
-{
-    if (WebHitTestResult* hitTestResult = _data->_page->activeActionMenuHitTestResult()) {
-        if (!hitTestResult->absoluteLinkURL().isEmpty())
-            return [self _defaultMenuItemsForLink];
-    }
-
-    return @[];
-}
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
-    if (menu != self.actionMenu)
-        return;
-
-    [[self actionMenu] removeAllItems];
-
-    NSArray *menuItems = [self _actionMenuItemsForHitTestResult:toAPI(_data->_page->activeActionMenuHitTestResult()) defaultActionMenuItems:[self _defaultMenuItems]];
-
-    for (NSMenuItem *item in menuItems)
-        [[self actionMenu] addItem:item];
+    [_data->_actionMenuController prepareForMenu:menu withEvent:event];
 }
+
+- (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
+{
+    [_data->_actionMenuController willOpenMenu:menu withEvent:event];
+}
+
+- (void)didCloseMenu:(NSMenu *)menu withEvent:(NSEvent *)event
+{
+    [_data->_actionMenuController didCloseMenu:menu withEvent:event];
+}
+
+- (void)_didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult
+{
+    [_data->_actionMenuController didPerformActionMenuHitTest:hitTestResult];
+}
+
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 @end
 
@@ -4208,7 +4133,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 }
 
 
-- (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult defaultActionMenuItems:(NSArray *)defaultMenuItems
+- (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems
 {
     return defaultMenuItems;
 }
