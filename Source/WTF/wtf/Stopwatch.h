@@ -44,7 +44,7 @@ public:
 
     double elapsedTime();
 
-    bool isActive() const { return !isnan(m_lastStartTime); }
+    bool isActive() const { return !std::isnan(m_lastStartTime); }
 private:
     Stopwatch()
         : m_elapsedTime(0.0)
@@ -64,14 +64,14 @@ inline void Stopwatch::reset()
 
 inline void Stopwatch::start()
 {
-    ASSERT(isnan(m_lastStartTime));
+    ASSERT(std::isnan(m_lastStartTime));
 
     m_lastStartTime = monotonicallyIncreasingTime();
 }
 
 inline void Stopwatch::stop()
 {
-    ASSERT(!isnan(m_lastStartTime));
+    ASSERT(!std::isnan(m_lastStartTime));
 
     m_elapsedTime += monotonicallyIncreasingTime() - m_lastStartTime;
     m_lastStartTime = NAN;
@@ -79,7 +79,7 @@ inline void Stopwatch::stop()
 
 inline double Stopwatch::elapsedTime()
 {
-    bool shouldSuspend = !isnan(m_lastStartTime);
+    bool shouldSuspend = !std::isnan(m_lastStartTime);
     if (shouldSuspend)
         stop();
 
