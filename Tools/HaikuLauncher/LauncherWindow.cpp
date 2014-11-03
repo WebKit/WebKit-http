@@ -32,10 +32,12 @@
 
 #include "LauncherWindow.h"
 
+#include "AuthenticationPanel.h"
 #include "LauncherApp.h"
 #include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
+
 #include <Button.h>
 #include <Entry.h>
 #include <FilePanel.h>
@@ -333,6 +335,21 @@ void LauncherWindow::NavigationCapabilitiesChanged(bool canGoBackward,
     if (m_StopButton)
         m_StopButton->SetEnabled(canStop);
 }
+
+
+bool
+LauncherWindow::AuthenticationChallenge(BString message, BString& inOutUser,
+	BString& inOutPassword, bool& inOutRememberCredentials,
+	uint32 failureCount, BWebView* view)
+{
+	AuthenticationPanel* panel = new AuthenticationPanel(Frame());
+		// Panel auto-destructs.
+	bool success = panel->getAuthentication(message, inOutUser, inOutPassword,
+		inOutRememberCredentials, failureCount > 0, inOutUser, inOutPassword,
+		&inOutRememberCredentials);
+	return success;
+}
+
 
 void LauncherWindow::init(BWebView* webView, ToolbarPolicy toolbarPolicy)
 {

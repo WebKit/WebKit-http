@@ -83,6 +83,10 @@ private:
     virtual void StatusChanged(const BString& status, BWebView* view) override;
     virtual void NavigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop, BWebView* view) override;
+	virtual	bool				AuthenticationChallenge(BString message,
+									BString& inOutUser, BString& inOutPassword,
+									bool& inOutRememberCredentials,
+									uint32 failureCount, BWebView* view);
 
     void init(BWebView* view, ToolbarPolicy);
     void updateTitle(const BString& title);

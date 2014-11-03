@@ -1,6 +1,7 @@
 SET(HaikuLauncher_SOURCES
     ${TOOLS_DIR}/HaikuLauncher/LauncherApp.cpp
     ${TOOLS_DIR}/HaikuLauncher/LauncherWindow.cpp
+    ${TOOLS_DIR}/HaikuLauncher/AuthenticationPanel.cpp
 )
 
 SET(HaikuLauncher_LIBRARIES
