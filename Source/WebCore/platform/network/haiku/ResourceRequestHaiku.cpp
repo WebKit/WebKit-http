@@ -75,7 +75,20 @@ BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context)
                     languages << ',';
                 languages << language;
                 languages << ";q=";
-                languages << 1 - (i / 10.f);
+                // This will lead to negative priorities if there are more than
+                // 100 languages. Hopefully no one can read that much...
+                languages << 1 - (i / 100.f);
+
+                int underscore = language.FindFirst('_');
+                if (underscore > 0) {
+                    // Some page only accept 2-letter language codes (eg Google
+                    // account login). Include that if we have a country suffix
+                    language.Truncate(underscore);
+                    languages << ',';
+                    languages << language;
+                    languages << ";q=";
+                    languages << 1 - (i / 100.f);
+                }
             }
 
             requestHeaders->AddHeader("Accept-Language", languages);
