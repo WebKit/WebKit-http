@@ -100,6 +100,29 @@ BFormDataIO::Read(void* buffer, size_t size)
 
         switch (element.m_type) {
             case FormDataElement::Type::EncodedBlob:
+            {
+                BlobRegistryImpl& registry = static_cast<BlobRegistryImpl&>(blobRegistry());
+                RefPtr<BlobData> blobData = registry.getBlobDataFromURL(URL(ParsedURLString, element.m_url));
+                const BlobDataItem& item = blobData->items()[0];
+                if (item.type == BlobDataItem::Data) {
+                    size_t toCopy = 0;
+
+                    if (remaining < item.length() - m_currentOffset)
+                        toCopy = remaining;
+                    else
+                        toCopy = item.length() - m_currentOffset;
+
+                    memcpy(reinterpret_cast<char*>(buffer) + read,
+                        item.data->data() + item.offset() + m_currentOffset, toCopy);
+                    m_currentOffset += toCopy;
+                    read += toCopy;
+
+                    if (m_currentOffset >= item.length())
+                        _NextElement();
+
+                }
+                // fallthrough for file blobs
+            }
             case FormDataElement::Type::EncodedFile:
                 {
                     ssize_t result = m_currentFile->Read(
@@ -197,8 +220,11 @@ BFormDataIO::_ParseCurrentElement()
                 else
                     m_currentFileSize = item.length();
                 return;
+            } else if(item.type == BlobDataItem::Data) {
+
+            } else {
+                debugger("Unhandled blob type. Please submit a bugreport with the webpage that triggered this.");
             }
-            debugger("Data blobs are currently unsupported. Please submit a bugreport with the webpage that triggered this.");
         }
         default:
             // Nothing to do for other types.
