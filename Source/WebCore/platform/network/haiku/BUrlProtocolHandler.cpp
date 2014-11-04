@@ -345,12 +345,25 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
 
     String challenge = static_cast<const BHttpResult&>(request->Result()).Headers()["WWW-Authenticate"];
     ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
+
+    ResourceHandleClient* client = m_resourceHandle->client();
+
     if (challenge.startsWith("Digest", false))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
     else if (challenge.startsWith("Basic", false))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
-
-
+    else if (challenge.startsWith("Bearer", false)) {
+        // OAuth bearer token - will most likely be handled in Javascript?
+        client->didFinishLoading(m_resourceHandle, 0);
+        return;
+    } else if (challenge.isEmpty()) {
+        // This shouldn't happen according to the spec, but Google Drive does
+        // it...
+        client->didFinishLoading(m_resourceHandle, 0);
+        return;
+    } else {
+        debugger(challenge.utf8().data());
+    }
 
     String realm;
     int realmStart = challenge.find("realm=\"", 0, false);
@@ -364,8 +377,6 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     ProtectionSpace protectionSpace(url.host(), url.port(), serverType, realm, scheme);
     ResourceError resourceError(url.host(), 401, url.string(), String());
 
-    ResourceHandleClient* client = m_resourceHandle->client();
-    
     m_redirectionTries--;
     if(m_redirectionTries == 0)
     {
