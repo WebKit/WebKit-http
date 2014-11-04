@@ -897,6 +897,10 @@ void QWebPagePrivate::dropEvent(T *ev)
 
 void QWebPagePrivate::leaveEvent(QEvent*)
 {
+    // If a mouse button is pressed we will continue to receive mouse events after leaving the window.
+    if (mousePressed)
+        return;
+
     // Fake a mouse move event just outside of the widget, since all
     // the interesting mouse-out behavior like invalidating scrollbars
     // is handled by the WebKit event handler's mouseMoved function.
