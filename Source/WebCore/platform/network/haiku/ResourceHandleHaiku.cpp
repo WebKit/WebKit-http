@@ -174,8 +174,15 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     response = syncLoader.resourceResponse();
 }
 
- 
-//stubs needed for windows version
+
+bool ResourceHandle::didReceiveInvalidCertificate(BCertificate& certificate,
+    const char* message)
+{
+    if (client())
+        client()->didReceiveInvalidCertificate(this, certificate, message);
+}
+
+
 void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
     ResourceHandleInternal* internal = getInternal();

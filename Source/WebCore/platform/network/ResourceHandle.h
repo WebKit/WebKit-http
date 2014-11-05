@@ -80,6 +80,10 @@ typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 #endif
 
+#if PLATFORM(HAIKU)
+class BCertificate;
+#endif
+
 namespace WTF {
 class SchedulePair;
 }
@@ -151,6 +155,10 @@ public:
 #if PLATFORM(COCOA)
     void schedule(WTF::SchedulePair&);
     void unschedule(WTF::SchedulePair&);
+#endif
+
+#if PLATFORM(HAIKU)
+    bool didReceiveInvalidCertificate(BCertificate& certificate, const char* message);
 #endif
 
 #if USE(CFNETWORK)

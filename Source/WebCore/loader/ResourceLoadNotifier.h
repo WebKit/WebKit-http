@@ -35,6 +35,7 @@
 namespace WebCore {
 
 class AuthenticationChallenge;
+class CertificateInfo;
 class DocumentLoader;
 class Frame;
 class Page;
@@ -52,6 +53,8 @@ public:
     void didReceiveAuthenticationChallenge(unsigned long identifier, DocumentLoader*, const AuthenticationChallenge&);
     void didCancelAuthenticationChallenge(ResourceLoader*, const AuthenticationChallenge&);
     void didCancelAuthenticationChallenge(unsigned long identifier, DocumentLoader*, const AuthenticationChallenge&);
+
+    bool didReceiveInvalidCertificate(ResourceLoader*, const CertificateInfo&, const char*);
 
     void willSendRequest(ResourceLoader*, ResourceRequest&, const ResourceResponse& redirectResponse);
     void didReceiveResponse(ResourceLoader*, const ResourceResponse&);

@@ -76,6 +76,7 @@ private:
 	void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;
 	void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal) override;
 	void RequestCompleted(BUrlRequest* caller, bool success) override;
+    bool CertificateVerificationFailed(BUrlRequest* caller, BCertificate& certificate, const char* message) override;
 
 private:
     void start();

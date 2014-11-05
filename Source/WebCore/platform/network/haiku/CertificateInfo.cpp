@@ -34,21 +34,7 @@
 namespace WebCore {
 
 CertificateInfo::CertificateInfo()
-{
-    notImplemented();
-}
-
-CertificateInfo::CertificateInfo(const ResourceResponse& response)
-{
-    notImplemented();
-}
-
-CertificateInfo::CertificateInfo(const ResourceError& resourceError)
-{
-    notImplemented();
-}
-
-CertificateInfo::~CertificateInfo()
+    : m_certificate(nullptr)
 {
 }
 

@@ -71,6 +71,11 @@ void ResourceLoadNotifier::didCancelAuthenticationChallenge(unsigned long identi
     m_frame.loader().client().dispatchDidCancelAuthenticationChallenge(loader, identifier, currentWebChallenge);
 }
 
+bool ResourceLoadNotifier::didReceiveInvalidCertificate(ResourceLoader* loader, const CertificateInfo& certificate, const char* message)
+{
+    return m_frame.loader().client().dispatchDidReceiveInvalidCertificate(loader->documentLoader(), certificate, message);
+}
+
 void ResourceLoadNotifier::willSendRequest(ResourceLoader* loader, ResourceRequest& clientRequest, const ResourceResponse& redirectResponse)
 {
     m_frame.loader().applyUserAgent(clientRequest);

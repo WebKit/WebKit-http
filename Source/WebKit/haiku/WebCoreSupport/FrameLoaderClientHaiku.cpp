@@ -240,6 +240,30 @@ void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLo
     notImplemented();
 }
 
+
+bool FrameLoaderClientHaiku::dispatchDidReceiveInvalidCertificate(DocumentLoader*,
+    const CertificateInfo& certificate, const char* message)
+{
+    String text = "The SSL certificate received from " + 
+        m_webFrame->Frame()->document()->url().string() + " could not be "
+        "authenticated for the following reason: " + message + ".\n\n"
+        "The secure connection to the website may be compromised, make sure "
+        "to not send any sensitive information.";
+
+    // TODO add information about the certificate to the alert
+    // TODO this can be called several times for the same certificate since we
+    // don't store the user choice (we should at least store it for the current
+    // session)
+
+    BAlert* alert = new BAlert("Unsecure SSL certificate", text.utf8().data(),
+        "Continue", "Stop", NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
+
+    int button = alert->Go();
+
+    return button == 0;
+}
+
+
 void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader,
                                                         unsigned long identifier,
                                                         const ResourceResponse& coreResponse)

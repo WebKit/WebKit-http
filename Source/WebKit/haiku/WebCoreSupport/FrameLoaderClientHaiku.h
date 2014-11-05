@@ -87,6 +87,10 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDidCancelAuthenticationChallenge(DocumentLoader*,
                                                           unsigned long identifier,
                                                           const AuthenticationChallenge&) override;
+
+    bool dispatchDidReceiveInvalidCertificate(DocumentLoader*,
+        const CertificateInfo& certificate, const char* message) override;
+
     void dispatchDidReceiveResponse(DocumentLoader*, unsigned long,
                                             const ResourceResponse&) override;
     void dispatchDidReceiveContentLength(DocumentLoader*, unsigned long, int) override;

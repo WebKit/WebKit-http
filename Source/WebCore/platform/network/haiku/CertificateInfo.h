@@ -26,6 +26,8 @@
 #ifndef CertificateInfo_h
 #define CertificateInfo_h
 
+#include <Certificate.h>
+
 namespace WebCore {
 
 class ResourceError;
@@ -34,11 +36,14 @@ class ResourceResponse;
 class CertificateInfo {
 public:
     CertificateInfo();
-    explicit CertificateInfo(const WebCore::ResourceResponse&);
-    explicit CertificateInfo(const WebCore::ResourceError&);
-    ~CertificateInfo();
+    explicit CertificateInfo(const BCertificate& certificate)
+        : m_certificate(&certificate)
+    { }
+
+    const BCertificate& certificate() const { return *m_certificate; }
 
 private:
+    const BCertificate* m_certificate;
 };
 
 } // namespace WebCore

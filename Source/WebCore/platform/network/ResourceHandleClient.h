@@ -42,6 +42,10 @@
 OBJC_CLASS NSCachedURLResponse;
 #endif
 
+#if PLATFORM(HAIKU)
+class BCertificate;
+#endif
+
 namespace WebCore {
     class AuthenticationChallenge;
     class Credential;
@@ -117,6 +121,11 @@ namespace WebCore {
         virtual bool canAuthenticateAgainstProtectionSpace(ResourceHandle*, const ProtectionSpace&) { return false; }
 #endif
         virtual void receivedCancellation(ResourceHandle*, const AuthenticationChallenge&) { }
+
+#if PLATFORM(HAIKU)
+        virtual bool didReceiveInvalidCertificate(ResourceHandle*, const BCertificate&,
+            const char*) { return false; }
+#endif
 
 #if PLATFORM(IOS) || USE(CFNETWORK)
         virtual RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) { return nullptr; }

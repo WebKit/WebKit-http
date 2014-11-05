@@ -330,6 +330,13 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 }
 
 
+bool BUrlProtocolHandler::CertificateVerificationFailed(BUrlRequest* caller,
+    BCertificate& certificate, const char* message)
+{
+    return m_resourceHandle->didReceiveInvalidCertificate(certificate, message);
+}
+
+
 void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceResponse& response)
 {
     if (!m_resourceHandle)
@@ -362,7 +369,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         client->didFinishLoading(m_resourceHandle, 0);
         return;
     } else {
-        debugger(challenge.utf8().data());
+        debugger("Unknown http authentication token received. Please submit a bugreport with the page that triggered this");
     }
 
     String realm;
