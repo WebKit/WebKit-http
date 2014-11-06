@@ -58,8 +58,14 @@ public:
     const T* operator->() const { return m_ptr; }
     T* operator->() { return m_ptr; }
 
+    const T* ptr() const { return m_ptr; }
+    T* ptr() { return m_ptr; }
+
     const T& get() const { return *m_ptr; }
     T& get() { return *m_ptr; }
+
+    operator T&() { return *m_ptr; }
+    operator const T&() const { return *m_ptr; }
 
     template<typename U> PassRef<T> replace(PassRef<U>) WARN_UNUSED_RETURN;
 
@@ -77,7 +83,7 @@ template<typename T> template<typename U> inline PassRef<T> Ref<T>::replace(Pass
 template <typename T>
 struct GetPtrHelper<Ref<T>> {
     typedef T* PtrType;
-    static T* getPtr(const Ref<T>& p) { return const_cast<T*>(&p.get()); }
+    static T* getPtr(const Ref<T>& p) { return const_cast<T*>(p.ptr()); }
 };
 
 } // namespace WTF

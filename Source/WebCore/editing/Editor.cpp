@@ -1214,14 +1214,14 @@ bool Editor::insertTextWithoutSendingTextEvent(const String& text, bool selectIn
 
             // Insert the text
             if (triggeringEvent && triggeringEvent->isDictation())
-                DictationCommand::insertText(&document.get(), text, triggeringEvent->dictationAlternatives(), selection);
+                DictationCommand::insertText(document, text, triggeringEvent->dictationAlternatives(), selection);
             else {
                 TypingCommand::Options options = 0;
                 if (selectInsertedText)
                     options |= TypingCommand::SelectInsertedText;
                 if (autocorrectionWasApplied)
                     options |= TypingCommand::RetainAutocorrectionIndicator;
-                TypingCommand::insertText(document.get(), text, selection, options, triggeringEvent && triggeringEvent->isComposition() ? TypingCommand::TextCompositionConfirm : TypingCommand::TextCompositionNone);
+                TypingCommand::insertText(document, text, selection, options, triggeringEvent && triggeringEvent->isComposition() ? TypingCommand::TextCompositionConfirm : TypingCommand::TextCompositionNone);
             }
 
             // Reveal the current selection

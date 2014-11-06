@@ -48,7 +48,7 @@ TileCoverageMap::TileCoverageMap(const TileController& controller)
     m_visibleRectIndicatorLayer.get().setAnchorPoint(FloatPoint3D());
     m_visibleRectIndicatorLayer.get().setBorderColor(Color(255, 0, 0));
 
-    m_layer.get().appendSublayer(m_visibleRectIndicatorLayer.get());
+    m_layer.get().appendSublayer(m_visibleRectIndicatorLayer);
 
     update();
 }
@@ -102,7 +102,7 @@ void TileCoverageMap::update()
 
 void TileCoverageMap::platformCALayerPaintContents(PlatformCALayer* platformCALayer, GraphicsContext& context, const FloatRect&)
 {
-    ASSERT_UNUSED(platformCALayer, platformCALayer == &m_layer.get());
+    ASSERT_UNUSED(platformCALayer, platformCALayer == m_layer.ptr());
     m_controller.tileGrid().drawTileMapContents(context.platformContext(), m_layer.get().bounds());
 }
 

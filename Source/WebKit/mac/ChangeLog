@@ -1,3 +1,75 @@
+2014-11-03  Jeremy Jones  <jeremyj@apple.com>
+
+        Add button and enable optimized fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=138351
+
+        Reviewed by Eric Carlson.
+
+        Add IsOptimizedFullscreenSupported to enable the feature only where appropriate.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): added
+
+2014-11-04  Chris Dumez  <cdumez@apple.com>
+
+        Add ptr() method to Ref class
+        https://bugs.webkit.org/show_bug.cgi?id=138361
+
+        Reviewed by Darin Adler.
+
+        Use the new Ref::ptr() method.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _setTypingStyle:withUndoAction:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _applyStyleToSelection:withUndoAction:]):
+        (-[WebHTMLView _changeCSSColorUsingSelector:inRange:]):
+        * WebView/WebView.mm:
+        (-[WebView applyStyle:]):
+
+2014-11-04  Darin Adler  <darin@apple.com>
+
+        Eliminate ResourceBuffer and use SharedBuffer directly instead
+        https://bugs.webkit.org/show_bug.cgi?id=138174
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource data]): Use SharedBuffer directly.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]): Ditto.
+
+2014-11-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r175406, r175413, and r175423.
+        https://bugs.webkit.org/show_bug.cgi?id=138327
+
+        Multipart tests are still broken (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Eliminate ResourceBuffer and use SharedBuffer directly
+        instead"
+        https://bugs.webkit.org/show_bug.cgi?id=138174
+        http://trac.webkit.org/changeset/175406
+
+        "Unreviewed, iOS build fix since 175406."
+        http://trac.webkit.org/changeset/175413
+
+        "Fix assertion in CachedResource::addDataBuffer"
+        http://trac.webkit.org/changeset/175423
+
+2014-10-31  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr for TypeCountSet
+        https://bugs.webkit.org/show_bug.cgi?id=138242
+
+        Reviewed by Andreas Kling.
+
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics javaScriptProtectedObjectTypeCounts]): Use std::unique_ptr<> instead of OwnPtr.
+        (+[WebCoreStatistics javaScriptObjectTypeCounts]): ditto.
+
 2014-10-31  Beth Dakin  <bdakin@apple.com>
 
         Use system art for action menus when possible

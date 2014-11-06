@@ -1,3 +1,440 @@
+2014-11-04  Mark Lam  <mark.lam@apple.com>
+
+        Rename checkMarkByte() to jumpIfIsRememberedOrInEden().
+        <https://webkit.org/b/138369>
+
+        Reviewed by Geoffrey Garen.
+
+        Write barriers are needed for GC Eden collections so that we can scan pointers
+        pointing from old generation objects to eden generation objects.  The barrier
+        currently checks the mark byte in a cell to see if we should skip adding the
+        cell to the GC remembered set.  The addition should be skipped if:
+
+        1. The cell is in the young generation.  It has no old to eden pointers by
+           definition.
+        2. The cell is already in the remembered set.  While it is ok to add the cell
+           to the GC remembered set more than once, it would be redundant.  Hence,
+           we skip this as an optimization to avoid doing unnecessary work.
+
+        The barrier currently names this check as checkMarkByte().  We should rename it
+        to jumpIfIsRememberedOrInEden() to be clearer about its intent.
+
+        Similarly, Jump results of this check are currently named
+        ownerNotMarkedOrAlreadyRemembered.  This can be misinterpreted as the owner is
+        not marked or not already remembered.  We should rename it to
+        ownerIsRememberedOrInEden which is clearer about the intent of the
+        check.  What we are really checking for is that the cell is in the eden gen,
+        which is implied by it being "not marked".
+
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::osrWriteBarrier):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::jumpIfIsRememberedOrInEden):
+        (JSC::AssemblyHelpers::checkMarkByte): Deleted.
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitWriteBarrier):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSCell.h:
+
+2014-11-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pause on exceptions should show the actual exception
+        https://bugs.webkit.org/show_bug.cgi?id=63096
+
+        Reviewed by Timothy Hatcher.
+
+        * debugger/Debugger.h:
+        Expose accessor for the pause reason to subclasses.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::type):
+        New "error" subtype for error objects.
+
+        * inspector/InjectedScriptSource.js:
+        When an object is an error object, use toString to provide a richer description.
+
+        * inspector/protocol/Runtime.json:
+        Expose a new "error" subtype for Error types (TypeError, ReferenceError, EvalError, etc).
+
+        * inspector/protocol/Debugger.json:
+        Provide type checked objects for different Debugger.pause pause reasons.
+        An exception provides the thrown object, but assert / CSP pauses provide
+        a richer typed object as the auxiliary data.
+
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::dispatchDidPause):
+        When paused because of an exception, pass the exception on.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        (Inspector::InspectorDebuggerAgent::scriptExecutionBlockedByCSP):
+        Provide richer data in pause events.
+
+        * inspector/scripts/codegen/generate_backend_commands.py:
+        (BackendCommandsGenerator.generate_domain.is_anonymous_enum_param):
+        (BackendCommandsGenerator.generate_domain):
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        Generate frontend enums for anonymous enum event parameters.
+
+2014-11-04  Michael Saboff  <msaboff@apple.com>
+
+        Disable flakey float32-repeat-out-of-bounds.js and int8-repeat-out-of-bounds.js tests for ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=138381
+
+        Reviewed by Mark Lam.
+
+        Disabled these test for ARM64.  Will address the failures and then re-enable.
+
+        * tests/stress/float32-repeat-out-of-bounds.js:
+        * tests/stress/int8-repeat-out-of-bounds.js:
+
+2014-11-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Enum value collisions between different generators
+        https://bugs.webkit.org/show_bug.cgi?id=138343
+
+        Reviewed by Brian Burg.
+
+        Each generator was using its own filtered list of domains_to_generate
+        to build the shared unique list of enum value encodings. This list
+        was slightly different across different generators. Instead always
+        use the list of all non-supplemental domains to generate the shared
+        list of enum values.
+
+        * inspector/scripts/codegen/generator.py:
+        (Generator.non_supplemental_domains):
+        (Generator.domains_to_generate):
+        (Generator._traverse_and_assign_enum_values):
+        * inspector/scripts/tests/enum-values.json: Added.
+        * inspector/scripts/tests/expected/enum-values.json-result: Added.
+
+2014-11-03  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Workaround for Cortex-A53 erratum 835769
+        https://bugs.webkit.org/show_bug.cgi?id=138315
+
+        Reviewed by Filip Pizlo.
+
+        This patch introduces CMake variable and preprocessor macro
+        WTF_CPU_ARM64_CORTEXA53 with the aim of enabling Cortex-A53-specific
+        code paths, if set true. The patch also implements one case where such
+        code paths are needed: the workaround for Cortex-A53 erratum 835769. If
+        WTF_CPU_ARM64_CORTEXA53 is set then:
+        - CMake checks whether the compiler already has support for a workaround
+          and adds -mfix-cortex-a53-835769 to the compiler flags if so,
+        - the ARM64 backend of offlineasm inserts a nop between memory and
+          multiply-accumulate instructions, and
+        - the ARM64 assembler also inserts a nop between memory and (64-bit) 
+          multiply-accumulate instructions.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::madd):
+        Call nopCortexA53Fix835769() to insert a nop if CPU(ARM64_CORTEXA53) and
+        if necessary.
+        (JSC::ARM64Assembler::msub): Likewise.
+        (JSC::ARM64Assembler::smaddl): Likewise.
+        (JSC::ARM64Assembler::smsubl): Likewise.
+        (JSC::ARM64Assembler::umaddl): Likewise.
+        (JSC::ARM64Assembler::umsubl): Likewise.
+        (JSC::ARM64Assembler::nopCortexA53Fix835769):
+        Added. Insert a nop if the previously emitted instruction was a load, a
+        store, or a prefetch, and if the current instruction is 64-bit.
+        * offlineasm/arm64.rb:
+        Add the arm64CortexA53Fix835769 phase and call it from
+        getModifiedListARM64 to insert nopCortexA53Fix835769 between appropriate
+        macro instructions. Also, lower nopCortexA53Fix835769 to nop if
+        CPU(ARM64_CORTEXA53), to nothing otherwise.
+        * offlineasm/instructions.rb:
+        Define macro instruction nopFixCortexA53Err835769.
+
+2014-11-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r175509.
+        https://bugs.webkit.org/show_bug.cgi?id=138349
+
+        broke some builds (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "Update scope related slow path code to use scope register
+        added to opcodes"
+        https://bugs.webkit.org/show_bug.cgi?id=138254
+        http://trac.webkit.org/changeset/175509
+
+2014-11-03  Michael Saboff  <msaboff@apple.com>
+
+        Update scope related slow path code to use scope register added to opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=138254
+
+        Reviewed by Mark Lam.
+
+        Updated slow paths for op_pop_scope, op_push_name_scope and op_push_with_scope.
+        Added scope register index parameter to the front of the relevant argument lists of the
+        slow functions.  In the case of op_push_name_scope for x86 (32 bit), there aren't enough
+        registers to accomodate all the parameters.  Therefore, added two new JSVALUE32_64 slow
+        paths called operationPushCatchScope() and operationPushFunctionNameScope() to eliminate
+        the last "type" argument.
+        
+
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::FunctionPtr::FunctionPtr): Added a new template to take 6 arguments.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        New variants of setupArgumentsWithExecState() and callOperation() to handle the new
+        combinations of argument types and counts.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_push_with_scope):
+        (JSC::JIT::emit_op_pop_scope):
+        (JSC::JIT::emit_op_push_name_scope):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_push_with_scope):
+        (JSC::JIT::emit_op_pop_scope):
+        (JSC::JIT::emit_op_push_name_scope):
+        Use the new slow paths.
+
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        Updates to set the scope result using the scope register index.  Added operationPushCatchScope()
+        and operationPushFunctionNameScope().
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        Updated the scope slow paths to use the scope register index in the instruction to read and
+        write the register instead of using CallFrame::scope() and CallFrame::setScope().
+
+2014-11-03  Michael Saboff  <msaboff@apple.com>
+
+        Add "get scope" byte code
+        https://bugs.webkit.org/show_bug.cgi?id=138326
+
+        Reviewed by Mark Lam.
+
+        Added op_get_scope.  Added implementations for the LLInt and baseline JIT.
+        Provided nop implementation for DFG and FTL.  The new byte code is emitted
+        after op_enter for any function, program or eval.  It is expected that the
+        DFG will be implemented such that unneeded op_get_scope would be eliminated
+        during DFG compilation.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        Added new op_get_scope bytecode.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitGetScope):
+        * bytecompiler/BytecodeGenerator.h:
+        Emit new op_get_scope bytecode.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        Added framework for new op_get_scope bytecode.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_get_scope):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_get_scope):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Implementation of op_get_scope bytecode.
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix RWIProtocol 64-to-32 bit conversion warnings
+        https://bugs.webkit.org/show_bug.cgi?id=138325
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InspectorValues.h:
+        Vector's length really is an unsigned, so a static_cast here is fine.
+
+        * inspector/scripts/codegen/generate_objective_c.py:
+        (ObjCGenerator.objc_type_for_raw_name):
+        Use int instead of NSInteger for APIs that eventually map to
+        InspectorObject's setInteger, which takes an int.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        Rebaselined results with the type change.
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Selector's Specificity
+        https://bugs.webkit.org/show_bug.cgi?id=138189
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/CSS.json:
+        Create a new named type CSSSelector to include a selector's text and specificity.
+        The specificity tuple is optional as it may soon be made dynamic in some cases.
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ObjC Protocol Interfaces should throw exceptions for nil arguments
+        https://bugs.webkit.org/show_bug.cgi?id=138221
+
+        Reviewed by Timothy Hatcher.
+
+        The RWIProtocol APIs will now raise exceptions when:
+
+          - any properties are set on a type with a nil value or key (handled by RWIProtocolJSONObject)
+          - required parameters in type constructors have nil value
+          - required or optional command return parameters have nil values
+          - required or optional event parameters have nil values
+
+        The exceptions include the name of the field when possible.
+
+        * inspector/scripts/codegen/generate_objective_c.py:
+        (ObjCGenerator.is_type_objc_pointer_type):
+        Provide a quick check to see if type would be a pointer or not
+        in the ObjC API. Enums for example are not pointers in the API
+        because we manage converting them to/from strings.
+
+        * inspector/scripts/codegen/generate_objective_c_backend_dispatcher_implementation.py:
+        (ObjectiveCConfigurationImplementationGenerator._generate_success_block_for_command):
+        * inspector/scripts/codegen/generate_objective_c_frontend_dispatcher_implementation.py:
+        (ObjectiveCFrontendDispatcherImplementationGenerator._generate_event):
+        * inspector/scripts/codegen/generate_objective_c_types_implementation.py:
+        (ObjectiveCTypesImplementationGenerator._generate_init_method_for_required_members):
+        (ObjectiveCTypesImplementationGenerator._generate_setter_for_member):
+        Throw exceptions when nil values are disallowed.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        Rebaseline tests which include the exception raise calls.
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ALTERNATE_DISPATCHERS Let the frontend know about extra agents
+        https://bugs.webkit.org/show_bug.cgi?id=138236
+
+        Reviewed by Brian Burg.
+
+        Inform the frontend about any extra domains the backend may have
+        above and beyond the default list of domains for the debuggable type.
+        This approach means there is almost no cost to normal debugging.
+        When a JSContext is debugged with extra agents, a message is sent
+        to the frontend letting it know which domains to then activate,
+        and perform any initialization work that may be required.
+
+        * inspector/InspectorAgentBase.h:
+        (Inspector::InspectorAgentBase::domainName):
+        * inspector/InspectorAgentRegistry.cpp:
+        (Inspector::InspectorAgentRegistry::appendExtraAgent):
+        * inspector/InspectorAgentRegistry.h:
+        * inspector/scripts/codegen/generator_templates.py:
+        Provide a way to get a list of just the extra domains.
+        To aggregate this list provide a different "append"
+        specifically for extra agents.
+
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        When a frontend connects, inform it of the extra domains.
+
+        * inspector/protocol/Inspector.json:
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::enable):
+        (Inspector::InspectorAgent::activateExtraDomains):
+        Send an event with the extra domains to activate.
+
+2014-11-01  Michael Saboff  <msaboff@apple.com>
+
+        Add scope operand to op_resolve_scope
+        https://bugs.webkit.org/show_bug.cgi?id=138253
+
+        Reviewed by Mark Lam.
+
+        Added scope operand to op_resolve_scope.  Although the scope register is filled in with
+        the ScopeChain register, this operand is not used in the processing of the bytecode.
+        That will be addressed in a future patch.
+
+        * bytecode/BytecodeList.json: Lengthened the three bytecodes.
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode): Added code to dump the scope operand.
+
+        (JSC::CodeBlock::CodeBlock): 
+        (JSC::CodeBlock::finalizeUnconditionally):
+        Updated the operand indecies for the processing of op_resolve_scope.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitGetOwnScope):
+        (JSC::BytecodeGenerator::emitReturn):
+        Added scope register to these emit functions and the bytecodes they emit.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        (JSC::JIT::emitSlow_op_resolve_scope):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        (JSC::JIT::emitSlow_op_resolve_scope):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Updated the operand indecies for the processing of op_resolve_scope.
+
+2014-11-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(CMake): Make it possible to build without introspection
+        https://bugs.webkit.org/show_bug.cgi?id=138006
+
+        Reviewed by Philippe Normand.
+
+        Do not install introspection files when introspection is disabled.
+
+        * PlatformGTK.cmake:
+
+2014-10-31  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr for TypeCountSet
+        https://bugs.webkit.org/show_bug.cgi?id=138242
+
+        Reviewed by Andreas Kling.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::protectedObjectTypeCounts):
+        Use std::unique_ptr<> instead of PassOwnPtr|OwnPtr.
+        (JSC::Heap::objectTypeCounts): ditto.
+        * heap/Heap.h:
+
 2014-10-31  Michael Saboff  <msaboff@apple.com>
 
         Add scope operand to op_push_with_scope, op_push_name_scope and op_pop_scope

@@ -66,6 +66,7 @@ SOFT_LINK_CLASS(DataDetectors, DDActionsManager)
 @property NSRect highlightFrame;
 @property (retain) NSArray *allResults;
 @property (retain) __attribute__((NSObject)) DDResultRef mainResult;
+@property (copy) void (^completionHandler)(void);
 
 @end
 
@@ -73,5 +74,6 @@ SOFT_LINK_CLASS(DataDetectors, DDActionsManager)
 
 + (DDActionsManager *)sharedManager;
 - (NSArray *)menuItemsForResult:(DDResultRef)result actionContext:(DDActionContext *)context;
+- (void)unanchorBubbles;
 
 @end

@@ -27,7 +27,10 @@
 #define ActionMenuHitTestResult_h
 
 #include "ShareableBitmap.h"
+#include "TextIndicator.h"
+#include "WebHitTestResult.h"
 #include <WebCore/FloatRect.h>
+#include <wtf/text/WTFString.h>
 
 OBJC_CLASS DDActionContext;
 
@@ -42,10 +45,15 @@ struct ActionMenuHitTestResult {
     void encode(IPC::ArgumentEncoder&) const;
     static bool decode(IPC::ArgumentDecoder&, ActionMenuHitTestResult&);
 
+    WebCore::FloatPoint hitTestLocationInViewCooordinates;
+    WebHitTestResult::Data hitTestResult;
+
+    String lookupText;
     RefPtr<ShareableBitmap> image;
 
     RetainPtr<DDActionContext> actionContext;
-    WebCore::FloatRect actionBoundingBox;
+    WebCore::FloatRect detectedDataBoundingBox;
+    RefPtr<TextIndicator> detectedDataTextIndicator;
 };
 
 } // namespace WebKit

@@ -33,11 +33,11 @@
 #import "DataReference.h"
 #import "DictionaryPopupInfo.h"
 #import "DownloadProxy.h"
-#import "FindIndicator.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebWheelEvent.h"
 #import "NavigationState.h"
 #import "StringUtilities.h"
+#import "TextIndicator.h"
 #import "ViewSnapshotStore.h"
 #import "WKAPICast.h"
 #import "WKFullScreenWindowController.h"
@@ -467,9 +467,9 @@ PassRefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page,
 }
 #endif
 
-void PageClientImpl::setFindIndicator(PassRefPtr<FindIndicator> findIndicator, bool fadeOut, bool animate)
+void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, bool fadeOut, bool animate)
 {
-    [m_wkView _setFindIndicator:findIndicator fadeOut:fadeOut animate:animate];
+    [m_wkView _setTextIndicator:textIndicator fadeOut:fadeOut animate:animate];
 }
 
 void PageClientImpl::accessibilityWebProcessTokenReceived(const IPC::DataReference& data)
@@ -545,6 +545,11 @@ void PageClientImpl::dismissDictionaryLookupPanel()
 {
     // FIXME: We don't know which panel we are dismissing, it may not even be in the current page (see <rdar://problem/13875766>).
     WKHideWordDefinitionWindow();
+}
+
+void PageClientImpl::dismissActionMenuDataDetectorPopovers()
+{
+    [m_wkView _dismissActionMenuDataDetectorPopovers];
 }
 
 void PageClientImpl::showCorrectionPanel(AlternativeTextType type, const FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings)
@@ -685,7 +690,7 @@ void PageClientImpl::beganExitFullScreen(const IntRect& initialFrame, const IntR
 void PageClientImpl::navigationGestureDidBegin()
 {
     // Hide the finde indicator if it's visible.
-    setFindIndicator(nullptr, false, false);
+    setTextIndicator(nullptr, false, false);
 
 #if WK_API_ENABLED
     if (m_webView)
@@ -753,10 +758,10 @@ CGRect PageClientImpl::boundsOfLayerInLayerBackedWindowCoordinates(CALayer *laye
     return [windowContentLayer convertRect:layer.bounds fromLayer:layer];
 }
 
-void PageClientImpl::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result)
+void PageClientImpl::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, API::Object* userData)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [m_wkView _didPerformActionMenuHitTest:result];
+    [m_wkView _didPerformActionMenuHitTest:result userData:userData];
 #endif
 }
 

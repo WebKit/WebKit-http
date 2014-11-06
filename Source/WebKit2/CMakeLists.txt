@@ -209,6 +209,7 @@ set(WebKit2_SOURCES
     Shared/ShareableBitmap.cpp
     Shared/ShareableResource.cpp
     Shared/StatisticsData.cpp
+    Shared/TextIndicator.cpp
     Shared/UpdateInfo.cpp
     Shared/UserData.cpp
     Shared/VisitedLinkTable.cpp
@@ -292,7 +293,6 @@ set(WebKit2_SOURCES
     UIProcess/APISession.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
-    UIProcess/FindIndicator.cpp
     UIProcess/FrameLoadState.cpp
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp
     UIProcess/GeolocationPermissionRequestProxy.cpp

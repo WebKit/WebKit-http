@@ -29,6 +29,7 @@
 #import "ArgumentCodersCF.h"
 #import "ArgumentDecoder.h"
 #import "ArgumentEncoder.h"
+#import "TextIndicator.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/DataDetectorsSPI.h>
 
@@ -36,6 +37,10 @@ namespace WebKit {
 
 void ActionMenuHitTestResult::encode(IPC::ArgumentEncoder& encoder) const
 {
+    encoder << hitTestLocationInViewCooordinates;
+    encoder << hitTestResult;
+    encoder << lookupText;
+
     ShareableBitmap::Handle handle;
 
     // FIXME: We should consider sharing the raw original resource data so that metadata and whatnot are preserved.
@@ -54,13 +59,27 @@ void ActionMenuHitTestResult::encode(IPC::ArgumentEncoder& encoder) const
         [archiver finishEncoding];
 
         IPC::encode(encoder, reinterpret_cast<CFDataRef>(data.get()));
-    }
 
-    encoder << actionBoundingBox;
+        encoder << detectedDataBoundingBox;
+
+        bool hasTextIndicator = detectedDataTextIndicator;
+        encoder << hasTextIndicator;
+        if (hasTextIndicator)
+            encoder << detectedDataTextIndicator->data();
+    }
 }
 
 bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHitTestResult& actionMenuHitTestResult)
 {
+    if (!decoder.decode(actionMenuHitTestResult.hitTestLocationInViewCooordinates))
+        return false;
+
+    if (!decoder.decode(actionMenuHitTestResult.hitTestResult))
+        return false;
+
+    if (!decoder.decode(actionMenuHitTestResult.lookupText))
+        return false;
+
     ShareableBitmap::Handle handle;
     if (!decoder.decode(handle))
         return false;
@@ -87,10 +106,22 @@ bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHi
         }
         
         [unarchiver finishDecoding];
-    }
 
-    if (!decoder.decode(actionMenuHitTestResult.actionBoundingBox))
-        return false;
+        if (!decoder.decode(actionMenuHitTestResult.detectedDataBoundingBox))
+            return false;
+
+        bool hasTextIndicator;
+        if (!decoder.decode(hasTextIndicator))
+            return false;
+
+        if (hasTextIndicator) {
+            TextIndicator::Data indicatorData;
+            if (!decoder.decode(indicatorData))
+                return false;
+
+            actionMenuHitTestResult.detectedDataTextIndicator = TextIndicator::create(indicatorData);
+        }
+    }
 
     return true;
 }

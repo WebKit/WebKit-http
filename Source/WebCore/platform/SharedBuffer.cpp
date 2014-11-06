@@ -227,27 +227,27 @@ void SharedBuffer::clear()
     clearDataBuffer();
 }
 
-PassRef<SharedBuffer> SharedBuffer::copy() const
+PassRefPtr<SharedBuffer> SharedBuffer::copy() const
 {
-    PassRef<SharedBuffer> clone { adoptRef(*new SharedBuffer) };
+    RefPtr<SharedBuffer> clone { adoptRef(*new SharedBuffer) };
     if (hasPlatformData()) {
-        clone.get().append(data(), size());
-        return clone;
+        clone->append(data(), size());
+        return clone.release();
     }
 
-    clone.get().m_size = m_size;
-    clone.get().m_buffer->data.reserveCapacity(m_size);
-    clone.get().m_buffer->data.append(m_buffer->data.data(), m_buffer->data.size());
+    clone->m_size = m_size;
+    clone->m_buffer->data.reserveCapacity(m_size);
+    clone->m_buffer->data.append(m_buffer->data.data(), m_buffer->data.size());
 
 #if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     for (char* segment : m_segments)
-        clone.get().m_buffer->data.append(segment, segmentSize);
+        clone->m_buffer->data.append(segment, segmentSize);
 #else
     for (auto& data : m_dataArray)
-        clone.get().append(data.get());
+        clone->append(data.get());
 #endif
 
-    return clone;
+    return clone.release();
 }
 
 void SharedBuffer::duplicateDataBufferIfNecessary() const

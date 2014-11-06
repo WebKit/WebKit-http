@@ -101,9 +101,11 @@ protected:
     RetainPtr<UIWindow> m_window;
     RetainPtr<UIViewController> m_viewController;
     RetainPtr<UIView> m_parentView;
+    RetainPtr<UIWindow> m_parentWindow;
     HTMLMediaElement::VideoFullscreenMode m_mode;
     bool m_exitRequested;
     bool m_exitCompleted;
+    bool m_enterRequested;
 
     WebAVPlayerController *playerController();
     

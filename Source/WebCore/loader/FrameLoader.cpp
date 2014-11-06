@@ -2971,7 +2971,7 @@ void FrameLoader::continueLoadAfterNewWindowPolicy(const ResourceRequest& reques
     mainFrame->page()->setOpenedByDOM();
     mainFrame->loader().m_client.dispatchShow();
     if (!m_suppressOpenerInNewFrame) {
-        mainFrame->loader().setOpener(&frame.get());
+        mainFrame->loader().setOpener(frame.ptr());
         mainFrame->document()->setReferrerPolicy(frame->document()->referrerPolicy());
     }
     mainFrame->loader().loadWithNavigationAction(request, NavigationAction(request), LockHistory::No, FrameLoadType::Standard, formState, allowNavigationToInvalidURL);
@@ -3286,8 +3286,8 @@ void FrameLoader::dispatchDidClearWindowObjectsInAllWorlds()
 
     Vector<Ref<DOMWrapperWorld>> worlds;
     ScriptController::getAllWorlds(worlds);
-    for (size_t i = 0; i < worlds.size(); ++i)
-        dispatchDidClearWindowObjectInWorld(worlds[i].get());
+    for (auto& world : worlds)
+        dispatchDidClearWindowObjectInWorld(world);
 }
 
 void FrameLoader::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
@@ -3309,8 +3309,8 @@ void FrameLoader::dispatchGlobalObjectAvailableInAllWorlds()
 {
     Vector<Ref<DOMWrapperWorld>> worlds;
     ScriptController::getAllWorlds(worlds);
-    for (size_t i = 0; i < worlds.size(); ++i)
-        m_client.dispatchGlobalObjectAvailable(worlds[i].get());
+    for (auto& world : worlds)
+        m_client.dispatchGlobalObjectAvailable(world);
 }
 
 SandboxFlags FrameLoader::effectiveSandboxFlags() const

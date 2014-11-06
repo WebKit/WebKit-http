@@ -193,7 +193,7 @@ class ObjCGenerator:
         if raw_name is 'array':
             return 'NSArray *'
         if raw_name is 'integer':
-            return 'NSInteger'
+            return 'int'
         if raw_name is 'number':
             return 'double'
         if raw_name is 'boolean':
@@ -243,6 +243,20 @@ class ObjCGenerator:
         if (isinstance(_type, ArrayType)):
             sub_type = ObjCGenerator.protocol_type_for_type(_type.element_type)
             return 'Inspector::Protocol::Array<%s>' % sub_type
+        return None
+
+    @staticmethod
+    def is_type_objc_pointer_type(_type):
+        if (isinstance(_type, AliasedType)):
+            _type = _type.aliased_type
+        if (isinstance(_type, PrimitiveType)):
+            return _type.raw_name() in ['string', 'array', 'any', 'object']
+        if (isinstance(_type, EnumType)):
+            return False
+        if (isinstance(_type, ObjectType)):
+            return True
+        if (isinstance(_type, ArrayType)):
+            return True
         return None
 
     @staticmethod
@@ -342,7 +356,7 @@ class ObjCGenerator:
         if category is ObjCTypeCategory.Array:
             protocol_type = ObjCGenerator.protocol_type_for_type(var_type.element_type)
             objc_class = ObjCGenerator.objc_class_for_type(var_type.element_type)
-            if protocol_type is 'Inspector::Protocol::Array<String>':
+            if protocol_type == 'Inspector::Protocol::Array<String>':
                 return 'inspectorStringArrayArray(%s)' % var_name
             if protocol_type is 'String' and objc_class is 'NSString':
                 return 'inspectorStringArray(%s)' % var_name

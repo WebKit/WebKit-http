@@ -54,7 +54,7 @@ struct Highlight;
 namespace WebKit {
 
 class DrawingAreaProxy;
-class FindIndicator;
+class TextIndicator;
 class NativeWebKeyboardEvent;
 class RemoteLayerTreeTransaction;
 class ViewSnapshot;
@@ -214,7 +214,7 @@ public:
     virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) = 0;
 #endif
 
-    virtual void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate) = 0;
+    virtual void setTextIndicator(PassRefPtr<TextIndicator>, bool fadeOut, bool animate) = 0;
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
     virtual void exitAcceleratedCompositingMode() = 0;
@@ -225,6 +225,7 @@ public:
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
     virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&) = 0;
     virtual void dismissDictionaryLookupPanel() = 0;
+    virtual void dismissActionMenuDataDetectorPopovers() = 0;
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings) = 0;
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText) = 0;
     virtual String dismissCorrectionPanelSoon(WebCore::ReasonForDismissingAlternativeText) = 0;
@@ -311,7 +312,7 @@ public:
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) = 0;
 
 #if PLATFORM(MAC)
-    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&) = 0;
+    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, API::Object*) = 0;
 #endif
 };
 

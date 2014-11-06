@@ -569,7 +569,7 @@ macro writeBarrierOnOperand(cellOperand)
     if GGC
         loadisFromInstruction(cellOperand, t1)
         loadConstantOrVariablePayload(t1, CellTag, t2, .writeBarrierDone)
-        checkMarkByte(t2, t1, t3, 
+        skipIfIsRememberedOrInEden(t2, t1, t3, 
             macro(gcData)
                 btbnz gcData, .writeBarrierDone
                 push cfr, PC
@@ -603,7 +603,7 @@ macro writeBarrierOnGlobalObject(valueOperand)
     
         loadp CodeBlock[cfr], t3
         loadp CodeBlock::m_globalObject[t3], t3
-        checkMarkByte(t3, t1, t2,
+        skipIfIsRememberedOrInEden(t3, t1, t2,
             macro(gcData)
                 btbnz gcData, .writeBarrierDone
                 push cfr, PC
@@ -723,6 +723,16 @@ _llint_op_create_lexical_environment:
     traceExecution()
     loadi 4[PC], t0
     callSlowPath(_llint_slow_path_create_lexical_environment)
+    dispatch(2)
+
+
+_llint_op_get_scope:
+    traceExecution()
+    loadi Callee + PayloadOffset[cfr], t0
+    loadi JSCallee::m_scope[t0], t0
+    loadisFromInstruction(1, t1)
+    storei CellTag, TagOffset[cfr, t1, 8]
+    storei t0, PayloadOffset[cfr, t1, 8]
     dispatch(2)
 
 
@@ -2159,7 +2169,7 @@ end
 
 macro resolveScope()
     loadp CodeBlock[cfr], t0
-    loadisFromInstruction(4, t2)
+    loadisFromInstruction(5, t2)
 
     loadp ScopeChain + PayloadOffset[cfr], t0
     btiz t2, .resolveScopeLoopEnd
@@ -2178,44 +2188,44 @@ end
 
 _llint_op_resolve_scope:
     traceExecution()
-    loadisFromInstruction(3, t0)
+    loadisFromInstruction(4, t0)
 
 #rGlobalProperty:
     bineq t0, GlobalProperty, .rGlobalVar
     getGlobalObject(1)
-    dispatch(6)
+    dispatch(7)
 
 .rGlobalVar:
     bineq t0, GlobalVar, .rClosureVar
     getGlobalObject(1)
-    dispatch(6)
+    dispatch(7)
 
 .rClosureVar:
     bineq t0, ClosureVar, .rGlobalPropertyWithVarInjectionChecks
     resolveScope()
-    dispatch(6)
+    dispatch(7)
 
 .rGlobalPropertyWithVarInjectionChecks:
     bineq t0, GlobalPropertyWithVarInjectionChecks, .rGlobalVarWithVarInjectionChecks
     varInjectionCheck(.rDynamic)
     getGlobalObject(1)
-    dispatch(6)
+    dispatch(7)
 
 .rGlobalVarWithVarInjectionChecks:
     bineq t0, GlobalVarWithVarInjectionChecks, .rClosureVarWithVarInjectionChecks
     varInjectionCheck(.rDynamic)
     getGlobalObject(1)
-    dispatch(6)
+    dispatch(7)
 
 .rClosureVarWithVarInjectionChecks:
     bineq t0, ClosureVarWithVarInjectionChecks, .rDynamic
     varInjectionCheck(.rDynamic)
     resolveScope()
-    dispatch(6)
+    dispatch(7)
 
 .rDynamic:
     callSlowPath(_llint_slow_path_resolve_scope)
-    dispatch(6)
+    dispatch(7)
 
 
 macro loadWithStructureCheck(operand, slowPath)

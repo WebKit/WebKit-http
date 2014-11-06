@@ -879,6 +879,14 @@ using namespace Inspector;
     if (!frontendChannel)
         return;
 
+    THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(columnNames, @"columnNames");
+    THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(notes, @"notes");
+    THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(values, @"values");
+    THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(payload, @"payload");
+    THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(sqlError, @"sqlError");
+    THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(screenColor, @"screenColor");
+    THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(printColor, @"printColor");
+
     RefPtr<InspectorObject> jsonMessage = InspectorObject::create();
     jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteOptionalParameters"));
     RefPtr<InspectorObject> paramsObject = InspectorObject::create();
@@ -907,6 +915,14 @@ using namespace Inspector;
     InspectorFrontendChannel* frontendChannel = _controller->frontendChannel();
     if (!frontendChannel)
         return;
+
+    THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(columnNames, @"columnNames");
+    THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(notes, @"notes");
+    THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(values, @"values");
+    THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(payload, @"payload");
+    THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(sqlError, @"sqlError");
+    THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(screenColor, @"screenColor");
+    THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(printColor, @"printColor");
 
     RefPtr<InspectorObject> jsonMessage = InspectorObject::create();
     jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteNoOptionalParameters"));
@@ -970,9 +986,9 @@ using namespace Inspector;
 
 
 @interface RWIProtocolDatabaseError : RWIProtocolJSONObject
-- (instancetype)initWithMessage:(NSString *)message code:(NSInteger)code;
+- (instancetype)initWithMessage:(NSString *)message code:(int)code;
 /* required */ @property (nonatomic, copy) NSString *message;
-/* required */ @property (nonatomic, assign) NSInteger code;
+/* required */ @property (nonatomic, assign) int code;
 @end
 
 
@@ -1029,11 +1045,13 @@ using namespace Inspector;
 
 @implementation RWIProtocolDatabaseError
 
-- (instancetype)initWithMessage:(NSString *)message code:(NSInteger)code;
+- (instancetype)initWithMessage:(NSString *)message code:(int)code;
 {
     self = [super init];
     if (!self)
         return nil;
+
+    THROW_EXCEPTION_FOR_REQUIRED_PROPERTY(message, @"message");
 
     self.message = message;
     self.code = code;
@@ -1051,12 +1069,12 @@ using namespace Inspector;
     return [super stringForKey:@"message"];
 }
 
-- (void)setCode:(NSInteger)code
+- (void)setCode:(int)code
 {
     [super setInteger:code forKey:@"code"];
 }
 
-- (NSInteger)code
+- (int)code
 {
     return [super integerForKey:@"code"];
 }

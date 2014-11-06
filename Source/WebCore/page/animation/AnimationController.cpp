@@ -516,7 +516,7 @@ PassRef<RenderStyle> AnimationController::updateAnimations(RenderElement& render
     Ref<RenderStyle> newStyleBeforeAnimation(WTF::move(newStyle));
 
     CompositeAnimation& rendererAnimations = m_data->ensureCompositeAnimation(renderer);
-    auto blendedStyle = rendererAnimations.animate(renderer, oldStyle, newStyleBeforeAnimation.get());
+    auto blendedStyle = rendererAnimations.animate(renderer, oldStyle, newStyleBeforeAnimation);
 
     if (renderer.parent() || newStyleBeforeAnimation->animations() || (oldStyle && oldStyle->animations())) {
         m_data->updateAnimationTimerForRenderer(renderer);
@@ -525,7 +525,7 @@ PassRef<RenderStyle> AnimationController::updateAnimations(RenderElement& render
 #endif
     }
 
-    if (&blendedStyle.get() != &newStyleBeforeAnimation.get()) {
+    if (blendedStyle.ptr() != newStyleBeforeAnimation.ptr()) {
         // If the animations/transitions change opacity or transform, we need to update
         // the style to impose the stacking rules. Note that this is also
         // done in StyleResolver::adjustRenderStyle().

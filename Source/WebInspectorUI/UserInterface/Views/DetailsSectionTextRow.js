@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,57 +23,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FindIndicatorWindow_h
-#define FindIndicatorWindow_h
+WebInspector.DetailsSectionTextRow = function(text)
+{
+    WebInspector.DetailsSectionRow.call(this);
 
-#if PLATFORM(MAC)
+    this.element.classList.add(WebInspector.DetailsSectionTextRow.StyleClassName);
 
-#import "WebKitSystemInterface.h"
-#import <wtf/Noncopyable.h>
-#import <wtf/RefPtr.h>
-#import <wtf/RetainPtr.h>
-#import <wtf/RunLoop.h>
-
-@class WKFindIndicatorWindowAnimation;
-@class WKView;
-
-namespace WebKit {
-
-class FindIndicator;
-
-class FindIndicatorWindow {
-    WTF_MAKE_NONCOPYABLE(FindIndicatorWindow);
-
-public:
-    explicit FindIndicatorWindow(WKView *);
-    ~FindIndicatorWindow();
-
-    void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate);
-
-private:
-    void closeWindow();
-
-    void startFadeOutTimerFired();
-
-    void fadeOutAnimationCallback(double);
-    void fadeOutAnimationDidEnd();
-
-    void bounceAnimationCallback(double);
-    void bounceAnimationDidEnd();
-
-    WKView* m_wkView;
-    RefPtr<FindIndicator> m_findIndicator;
-    RetainPtr<NSWindow> m_findIndicatorWindow;
-
-    WKWindowBounceAnimationContextRef m_bounceAnimationContext;
-    RetainPtr<WKFindIndicatorWindowAnimation> m_bounceAnimation;
-
-    RunLoop::Timer<FindIndicatorWindow> m_startFadeOutTimer;
-    RetainPtr<WKFindIndicatorWindowAnimation> m_fadeOutAnimation;
+    this.element.textContent = text;
 };
 
-} // namespace WebKit
+WebInspector.DetailsSectionTextRow.StyleClassName = "text";
 
-#endif // FindIndicatorWindow_h
+WebInspector.DetailsSectionTextRow.prototype = {
+    constructor: WebInspector.DetailsSectionTextRow,
+    __proto__: WebInspector.DetailsSectionRow.prototype,
 
-#endif // PLATFORM(MAC)
+    // Public
+
+    get text()
+    {
+        return this.element.textContent;
+    },
+
+    set text(text)
+    {
+        this.element.textContent = text;
+    }
+};

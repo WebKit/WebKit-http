@@ -1,3 +1,168 @@
+2014-11-04  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Add a method for performing cherrypick-merges.
+        https://bugs.webkit.org/show_bug.cgi?id=138375
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds support for cherrypick-merges.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.cherrypick_merge): Added.
+
+2014-11-04  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Add a way to ascertain the SVN URL associated with a Git branch.
+        https://bugs.webkit.org/show_bug.cgi?id=138374
+
+        Reviewed by Ryosuke Niwa.
+
+        The svn_url method returns the SVN URL associated with the current Git branch.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.svn_url): Added.
+
+2014-11-04  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Add the ability to search for modifications that are staged for commit.
+        https://bugs.webkit.org/show_bug.cgi?id=138373
+
+        Reviewed by Ryosuke Niwa and Daniel Bates.
+
+        This makes is easy to do identify files that require merge post-processing,
+        in addition to stand-alone utility.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.modifications_staged_for_commit): Added.
+
+2014-11-04  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Add a branch keyword argument to _run_git_svn_find_rev.
+        https://bugs.webkit.org/show_bug.cgi?id=138372
+
+        Reviewed by Ryosuke Niwa.
+
+        The addition of this keyword argument allows clients to determine the Git hash
+        of commits made on an SVN branch, provided that branch has been fetched locally.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git._run_git_svn_find_rev):
+        Add a branch keyword argument that is added to the end of the command, if present.
+
+2014-11-04  Chris Dumez  <cdumez@apple.com>
+
+        Add ptr() method to Ref class
+        https://bugs.webkit.org/show_bug.cgi?id=138361
+
+        Reviewed by Darin Adler.
+
+        Use the new Ref::ptr() method.
+
+        * TestWebKitAPI/Tests/WTF/Ref.cpp:
+        (TestWebKitAPI::TEST):
+
+2014-11-04  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [jhbuild] Make it possible to build GTK/EFL in same repository
+        https://bugs.webkit.org/show_bug.cgi?id=137448
+
+        Reviewed by Martin Robinson.
+
+        * Scripts/webkitdirs.pm:
+        (getJhbuildPath):
+        * WebKitTestRunner/InjectedBundle/efl/FontManagement.cpp:
+        (getPlatformFontsPath):
+        * WebKitTestRunner/InjectedBundle/gtk/ActivateFontsGtk.cpp:
+        (WTR::getFontsPath):
+        * jhbuild/jhbuild-wrapper:
+        (determine_platform):
+        (install_jhbuild):
+        * jhbuild/jhbuildrc_common.py:
+        (init):
+
+2014-11-04  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        [EFL] Bump LLVM to version 3.5.0
+        https://bugs.webkit.org/show_bug.cgi?id=138312
+
+        Reviewed by Csaba Osztrogonác.
+
+        * efl/jhbuild.modules:
+        * efl/patches/llvm-elf-add-stackmaps.patch: Added.
+        * efl/patches/llvm-elf-fix-x86_64-fdecfiencoding.patch: Added.
+
+2014-11-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Add page overlays that show regions with mouseWheel event handlers, and the non-fast-scrollable region, and code to toggle them in MiniBrowser WK2
+        https://bugs.webkit.org/show_bug.cgi?id=138257
+
+        Reviewed by Tim Horton.
+        
+        Add a "Debug Overlays" submenu item under "WebKit2-only Settings" which allows
+        the user to toggle region page overlays on and off. Two overlays are available,
+        for the non-fast scrollable region, and the region of element with wheel
+        event handlers.
+
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController nonFastScrollableRegionOverlayVisible]):
+        (-[SettingsController wheelEventHandlerRegionOverlayVisible]):
+        (-[SettingsController preferenceKeyForRegionOverlayTag:]):
+        (-[SettingsController toggleDebugOverlay:]):
+        (-[SettingsController debugOverlayVisible:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController didChangeSettings]):
+
+2014-11-03  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (Subpixel layout): Bubbles don't fit in Bugzilla review page
+        https://bugs.webkit.org/show_bug.cgi?id=138323
+
+        Reviewed by Zalan Bujtas.
+
+        * QueueStatusServer/templates/statusbubble.html: Round the sizes up, not down.
+
+2014-11-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [ninja] Don't remove response files for verbose builds
+        https://bugs.webkit.org/show_bug.cgi?id=137816
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitdirs.pm:
+        (determineNinjaVersion):
+        (buildCMakeGeneratedProject):
+
+2014-11-02  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        [GTK] Fix the build of FTL JIT
+        https://bugs.webkit.org/show_bug.cgi?id=138298
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild-optional.modules:
+        Bump up LLVM version to 3.5.0 release and apply patches.
+        * gtk/patches/llvm-elf-add-stackmaps.patch:
+        Added. Adds .llvm_stackmaps section to ELF files. Backported from LLVM
+        trunk.
+        * gtk/patches/llvm-elf-fix-x86_64-fdecfiencoding.patch:
+        Added. Ensures that PC-relative relocations in EH frames are not
+        truncated to 32 bits on x86_64.
+
+2014-10-31  Michael Saboff  <msaboff@apple.com>
+
+        No way to specify target os or architecture when using the --no-copy option with run-jsc-stress-tests
+        https://bugs.webkit.org/show_bug.cgi?id=138268
+
+        Reviewed by Andreas Kling.
+
+        Added a --arch and --os option to set or override the values that are
+        normally computed based on examining the JavaScriptCore we want to test.
+
+        * Scripts/run-jsc-stress-tests:
+
 2014-10-31  Dan Bernstein  <mitz@apple.com>
 
         llvmForJSC build emits a linker warning that it can't find usr/local/LLVMForJavaScriptCore/lib under the build directory

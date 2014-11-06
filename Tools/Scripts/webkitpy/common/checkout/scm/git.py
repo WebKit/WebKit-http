@@ -207,6 +207,13 @@ class Git(SCM, SVNRepository):
 
         return self.remote_merge_base()
 
+    def modifications_staged_for_commit(self):
+        # This will only return non-deleted files with the "updated in index" status
+        # as defined by http://git-scm.com/docs/git-status.
+        status_command = [self.executable_name, 'status', '--short']
+        updated_in_index_regexp = '^M[ M] (?P<filename>.+)$'
+        return self.run_status_and_extract_filenames(status_command, updated_in_index_regexp)
+
     def changed_files(self, git_commit=None):
         # FIXME: --diff-filter could be used to avoid the "extract_filenames" step.
         status_command = [self.executable_name, 'diff', '-r', '--name-status', "--no-renames", "--no-ext-diff", "--full-index", self.merge_base(git_commit)]
@@ -265,6 +272,14 @@ class Git(SCM, SVNRepository):
             return ""
         return str(match.group('svn_revision'))
 
+    def svn_url(self):
+        git_command = ['svn', 'info']
+        status = self._run_git(git_command)
+        match = re.search(r'^URL: (?P<url>.*)$', status, re.MULTILINE)
+        if not match:
+            return ""
+        return match.group('url')
+
     def timestamp_of_revision(self, path, revision):
         git_log = self._most_recent_log_matching('git-svn-id:.*@%s' % revision, path)
         match = re.search("^Date:\s*(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})$", git_log, re.MULTILINE)
@@ -308,9 +323,17 @@ class Git(SCM, SVNRepository):
             command += changed_files
         return self.prepend_svn_revision(self.run(command, decode_output=False, cwd=self.checkout_root))
 
-    def _run_git_svn_find_rev(self, arg):
+    def _run_git_svn_find_rev(self, revision, branch=None):
+        revision = str(revision)
+        if revision and revision[0] != 'r':
+            revision = 'r' + revision
+
         # git svn find-rev always exits 0, even when the revision or commit is not found.
-        return self._run_git(['svn', 'find-rev', arg]).rstrip()
+        command = ['svn', 'find-rev', revision]
+        if branch:
+            command.append(branch)
+
+        return self._run_git(command).rstrip()
 
     def _string_to_int_or_none(self, string):
         try:
@@ -474,6 +497,10 @@ class Git(SCM, SVNRepository):
         # For now, just use the first one.
         first_remote_branch_ref = remote_branch_refs.split('\n')[0]
         return first_remote_branch_ref.split(':')[1]
+
+    def cherrypick_merge(self, commit):
+        git_args = ['cherry-pick', '-n', commit]
+        return self._run_git(git_args)
 
     def commit_locally_with_message(self, message):
         self._run_git(['commit', '--all', '-F', '-'], input=message)

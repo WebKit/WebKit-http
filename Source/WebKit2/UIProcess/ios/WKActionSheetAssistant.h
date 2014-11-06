@@ -36,18 +36,22 @@ class WebPageProxy;
 struct InteractionInformationAtPosition;
 }
 
-@protocol WKActionSheetDelegate;
+@class WKActionSheetAssistant;
 @class _WKActivatedElementInfo;
+@protocol WKActionSheetDelegate;
 
-@protocol WKActionSheetAssistantDelegate
+@protocol WKActionSheetAssistantDelegate <NSObject>
 @required
-@property (nonatomic, readonly) const WebKit::InteractionInformationAtPosition& positionInformation;
-- (void)updatePositionInformation;
-- (void)performAction:(WebKit::SheetAction)action;
-- (void)openElementAtLocation:(CGPoint)location;
-- (RetainPtr<NSArray>)actionsForElement:(_WKActivatedElementInfo *)element defaultActions:(RetainPtr<NSArray>)defaultActions;
-- (void)startInteractionWithElement:(_WKActivatedElementInfo *)element;
-- (void)stopInteraction;
+- (const WebKit::InteractionInformationAtPosition&)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant performAction:(WebKit::SheetAction)action;
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant openElementAtLocation:(CGPoint)location;
+- (RetainPtr<NSArray>)actionSheetAssistant:(WKActionSheetAssistant *)assistant decideActionsForElement:(_WKActivatedElementInfo *)element defaultActions:(RetainPtr<NSArray>)defaultActions;
+
+@optional
+- (void)updatePositionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant willStartInteractionWithElement:(_WKActivatedElementInfo *)element;
+- (void)actionSheetAssistantDidStopInteraction:(WKActionSheetAssistant *)assistant;
+
 @end
 
 @interface WKActionSheetAssistant : NSObject <WKActionSheetDelegate, DDDetectionControllerInteractionDelegate>

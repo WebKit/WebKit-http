@@ -165,6 +165,12 @@ sub setSourceDir($)
     ($sourceDir) = @_;
 }
 
+sub determineNinjaVersion
+{
+    chomp(my $ninjaVersion = `ninja --version`);
+    return $ninjaVersion;
+}
+
 sub determineXcodeVersion
 {
     return if defined $xcodeVersion;
@@ -1648,7 +1654,13 @@ sub getJhbuildPath()
     if (isGit() && isGitBranchBuild() && gitBranch()) {
         pop(@jhbuildPath);
     }
-    push(@jhbuildPath, "Dependencies");
+    if (isEfl()) {
+        push(@jhbuildPath, "DependenciesEFL");
+    } elsif (isGtk()) {
+        push(@jhbuildPath, "DependenciesGTK");
+    } else {
+        die "Cannot get JHBuild path for platform that isn't GTK+ or EFL.\n";
+    }
     return File::Spec->catdir(@jhbuildPath);
 }
 
@@ -1843,7 +1855,11 @@ sub buildCMakeGeneratedProject($)
         $command = "$buildPath/build.sh";
         @args = ($makeArgs);
     }
-    push @args, "-v" if ($ENV{VERBOSE} && canUseNinja());
+
+    if ($ENV{VERBOSE} && canUseNinja()) {
+        push @args, "-v";
+        push @args, "-d keeprsp" if (version->parse(determineNinjaVersion()) >= version->parse("1.4.0"));
+    }
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters. In particular, $makeArgs may contain such metacharacters.

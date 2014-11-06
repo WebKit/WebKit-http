@@ -81,21 +81,19 @@ static Length convertToFloatLength(const CSSPrimitiveValue* primitiveValue, cons
     return primitiveValue ? primitiveValue->convertToLength<FixedFloatConversion | PercentConversion | CalculatedConversion>(conversionData) : Length(Undefined);
 }
 
-bool transformsForValue(CSSValue* value, const CSSToLengthConversionData& conversionData, TransformOperations& outOperations)
+bool transformsForValue(CSSValue& value, const CSSToLengthConversionData& conversionData, TransformOperations& outOperations)
 {
-    if (!value || !value->isValueList()) {
+    if (!is<CSSValueList>(value)) {
         outOperations.clear();
         return false;
     }
 
     TransformOperations operations;
-    for (CSSValueListIterator i = value; i.hasMore(); i.advance()) {
-        CSSValue& currValue = *i.value();
-
-        if (!is<WebKitCSSTransformValue>(currValue))
+    for (auto& currentValue : downcast<CSSValueList>(value)) {
+        if (!is<WebKitCSSTransformValue>(currentValue.get()))
             continue;
 
-        WebKitCSSTransformValue& transformValue = downcast<WebKitCSSTransformValue>(currValue);
+        auto& transformValue = downcast<WebKitCSSTransformValue>(currentValue.get());
         if (!transformValue.length())
             continue;
 

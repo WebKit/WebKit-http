@@ -34,6 +34,8 @@
 #import "DictionaryPopupInfo.h"
 #import "EditingRange.h"
 #import "EditorState.h"
+#import "InjectedBundleHitTestResult.h"
+#import "InjectedBundleUserMessageCoders.h"
 #import "PDFKitImports.h"
 #import "PageBanner.h"
 #import "PluginView.h"
@@ -45,6 +47,7 @@
 #import "WebFrame.h"
 #import "WebImage.h"
 #import "WebInspector.h"
+#import "WebPageOverlay.h"
 #import "WebPageProxyMessages.h"
 #import "WebPasteboardOverrides.h"
 #import "WebPreferencesStore.h"
@@ -66,6 +69,7 @@
 #import <WebCore/MainFrame.h>
 #import <WebCore/NetworkingContext.h>
 #import <WebCore/Page.h>
+#import <WebCore/PageOverlayController.h>
 #import <WebCore/PlatformKeyboardEvent.h>
 #import <WebCore/PluginDocument.h>
 #import <WebCore/RenderElement.h>
@@ -520,7 +524,32 @@ static PassRefPtr<Range> rangeExpandedAroundPositionByCharacters(const VisiblePo
     return makeRange(start, end);
 }
 
-PassRefPtr<Range> WebPage::rangeForDictionaryLookupAtHitTestResult(const WebCore::HitTestResult& hitTestResult, NSDictionary **options)
+static PassRefPtr<Range> rangeForDictionaryLookupForSelection(const VisibleSelection& selection, NSDictionary **options)
+{
+    RefPtr<Range> selectedRange = selection.toNormalizedRange();
+    if (!selectedRange)
+        return nullptr;
+
+    VisiblePosition selectionStart = selection.visibleStart();
+    VisiblePosition selectionEnd = selection.visibleEnd();
+
+    // As context, we are going to use the surrounding paragraphs of text.
+    VisiblePosition paragraphStart = startOfParagraph(selectionStart);
+    VisiblePosition paragraphEnd = endOfParagraph(selectionEnd);
+
+    int lengthToSelectionStart = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
+    int lengthToSelectionEnd = TextIterator::rangeLength(makeRange(paragraphStart, selectionEnd).get());
+    NSRange rangeToPass = NSMakeRange(lengthToSelectionStart, lengthToSelectionEnd - lengthToSelectionStart);
+
+    String fullPlainTextString = plainText(makeRange(paragraphStart, paragraphEnd).get());
+
+    // Since we already have the range we want, we just need to grab the returned options.
+    WKExtractWordDefinitionTokenRangeFromContextualString(fullPlainTextString, rangeToPass, options);
+    
+    return selectedRange.release();
+}
+
+static PassRefPtr<Range> rangeForDictionaryLookupAtHitTestResult(const HitTestResult& hitTestResult, NSDictionary **options)
 {
     Node* node = hitTestResult.innerNonSharedNode();
     if (!node)
@@ -542,11 +571,9 @@ PassRefPtr<Range> WebPage::rangeForDictionaryLookupAtHitTestResult(const WebCore
     if (position.isNull())
         position = firstPositionInOrBeforeNode(node);
 
-    VisibleSelection selection = m_page->focusController().focusedOrMainFrame().selection().selection();
-    if (shouldUseSelection(position, selection)) {
-        performDictionaryLookupForSelection(frame, selection);
-        return nullptr;
-    }
+    VisibleSelection selection = frame->page()->focusController().focusedOrMainFrame().selection().selection();
+    if (shouldUseSelection(position, selection))
+        return rangeForDictionaryLookupForSelection(selection, options);
 
     // As context, we are going to use 250 characters of text before and after the point.
     RefPtr<Range> fullCharacterRange = rangeExpandedAroundPositionByCharacters(position, 250);
@@ -584,28 +611,8 @@ void WebPage::performDictionaryLookupAtLocation(const FloatPoint& floatPoint)
 
 void WebPage::performDictionaryLookupForSelection(Frame* frame, const VisibleSelection& selection)
 {
-    RefPtr<Range> selectedRange = selection.toNormalizedRange();
-    if (!selectedRange)
-        return;
-
     NSDictionary *options = nil;
-
-    VisiblePosition selectionStart = selection.visibleStart();
-    VisiblePosition selectionEnd = selection.visibleEnd();
-
-    // As context, we are going to use the surrounding paragraphs of text.
-    VisiblePosition paragraphStart = startOfParagraph(selectionStart);
-    VisiblePosition paragraphEnd = endOfParagraph(selectionEnd);
-
-    int lengthToSelectionStart = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
-    int lengthToSelectionEnd = TextIterator::rangeLength(makeRange(paragraphStart, selectionEnd).get());
-    NSRange rangeToPass = NSMakeRange(lengthToSelectionStart, lengthToSelectionEnd - lengthToSelectionStart);
-
-    String fullPlainTextString = plainText(makeRange(paragraphStart, paragraphEnd).get());
-
-    // Since we already have the range we want, we just need to grab the returned options.
-    WKExtractWordDefinitionTokenRangeFromContextualString(fullPlainTextString, rangeToPass, &options);
-
+    RefPtr<Range> selectedRange = rangeForDictionaryLookupForSelection(selection, &options);
     performDictionaryLookupForRange(frame, *selectedRange, options);
 }
 
@@ -1072,7 +1079,7 @@ String WebPage::platformUserAgent(const URL&) const
     return String();
 }
 
-static RetainPtr<DDActionContext> scanForDataDetectedItems(const HitTestResult& hitTestResult, FloatRect& actionBoundingBox)
+static RetainPtr<DDActionContext> scanForDataDetectedItems(const HitTestResult& hitTestResult, FloatRect& detectedDataBoundingBox, RefPtr<Range>& detectedDataRange)
 {
     Node* node = hitTestResult.innerNonSharedNode();
     if (!node)
@@ -1123,9 +1130,31 @@ static RetainPtr<DDActionContext> scanForDataDetectedItems(const HitTestResult& 
     Vector<FloatQuad> quads;
     mainResultRange->textQuads(quads);
     if (!quads.isEmpty())
-        actionBoundingBox = mainResultRange->ownerDocument().view()->contentsToWindow(quads[0].enclosingBoundingBox());
+        detectedDataBoundingBox = mainResultRange->ownerDocument().view()->contentsToWindow(quads[0].enclosingBoundingBox());
+
+    detectedDataRange = mainResultRange;
 
     return actionContext;
+}
+
+static PassRefPtr<TextIndicator> textIndicatorForRange(Range* range)
+{
+    if (!range)
+        return nullptr;
+
+    Frame* frame = range->startContainer()->document().frame();
+
+    if (!frame)
+        return nullptr;
+
+    VisibleSelection oldSelection = frame->selection().selection();
+    frame->selection().setSelection(range);
+
+    RefPtr<TextIndicator> indicator = TextIndicator::createWithSelectionInFrame(*WebFrame::fromCoreFrame(*frame));
+
+    frame->selection().setSelection(oldSelection);
+
+    return indicator.release();
 }
 
 void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInViewCooordinates)
@@ -1134,19 +1163,24 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
 
     MainFrame& mainFrame = corePage()->mainFrame();
     if (!mainFrame.view() || !mainFrame.view()->renderView()) {
-        send(Messages::WebPageProxy::DidPerformActionMenuHitTest(ActionMenuHitTestResult()));
+        send(Messages::WebPageProxy::DidPerformActionMenuHitTest(ActionMenuHitTestResult(), InjectedBundleUserMessageEncoder(nullptr)));
         return;
     }
 
     RenderView& mainRenderView = *mainFrame.view()->renderView();
 
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent | HitTestRequest::IgnoreClipping);
 
     IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCooordinates));
     HitTestResult hitTestResult(locationInContentCoordinates);
     mainRenderView.hitTest(request, hitTestResult);
 
     ActionMenuHitTestResult actionMenuResult;
+    actionMenuResult.hitTestLocationInViewCooordinates = locationInViewCooordinates;
+    actionMenuResult.hitTestResult = WebHitTestResult::Data(hitTestResult);
+
+    RefPtr<WebCore::Range> lookupRange = lookupTextAtLocation(locationInViewCooordinates);
+    actionMenuResult.lookupText = lookupRange ? lookupRange->text() : String();
 
     if (Image* image = hitTestResult.image()) {
         actionMenuResult.image = ShareableBitmap::createShareable(IntSize(image->size()), ShareableBitmap::SupportsAlpha);
@@ -1156,12 +1190,46 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
 
     // FIXME: Avoid scanning if we will just throw away the result (e.g. we're over a link).
     if (hitTestResult.innerNode() && hitTestResult.innerNode()->isTextNode()) {
-        FloatRect actionBoundingBox;
-        actionMenuResult.actionContext = scanForDataDetectedItems(hitTestResult, actionBoundingBox);
-        actionMenuResult.actionBoundingBox = actionBoundingBox;
+        FloatRect detectedDataBoundingBox;
+        RefPtr<Range> detectedDataRange;
+        actionMenuResult.actionContext = scanForDataDetectedItems(hitTestResult, detectedDataBoundingBox, detectedDataRange);
+        if (actionMenuResult.actionContext) {
+            actionMenuResult.detectedDataBoundingBox = detectedDataBoundingBox;
+            actionMenuResult.detectedDataTextIndicator = textIndicatorForRange(detectedDataRange.get());
+        }
     }
-    
-    send(Messages::WebPageProxy::DidPerformActionMenuHitTest(actionMenuResult));
+
+    RefPtr<API::Object> userData;
+
+    bool handled = false;
+    for (const auto& overlay : mainFrame.pageOverlayController().pageOverlays()) {
+        WebPageOverlay* webOverlay = WebPageOverlay::fromCoreOverlay(*overlay);
+        if (!webOverlay)
+            continue;
+        if (webOverlay->prepareForActionMenu(userData)) {
+            handled = true;
+            break;
+        }
+    }
+
+    if (!handled) {
+        RefPtr<InjectedBundleHitTestResult> injectedBundleHitTestResult = InjectedBundleHitTestResult::create(hitTestResult);
+        injectedBundleContextMenuClient().prepareForActionMenu(this, injectedBundleHitTestResult.get(), userData);
+    }
+
+    send(Messages::WebPageProxy::DidPerformActionMenuHitTest(actionMenuResult, InjectedBundleUserMessageEncoder(userData.get())));
+}
+
+PassRefPtr<WebCore::Range> WebPage::lookupTextAtLocation(FloatPoint locationInViewCooordinates)
+{
+    MainFrame& mainFrame = corePage()->mainFrame();
+    if (!mainFrame.view() || !mainFrame.view()->renderView())
+        return nullptr;
+
+    IntPoint point = roundedIntPoint(locationInViewCooordinates);
+    HitTestResult result = mainFrame.eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent | HitTestRequest::IgnoreClipping);
+    NSDictionary *options = nil;
+    return rangeForDictionaryLookupAtHitTestResult(result, &options);
 }
 
 void WebPage::selectLookupTextAtLocation(FloatPoint locationInWindowCooordinates)
@@ -1171,7 +1239,7 @@ void WebPage::selectLookupTextAtLocation(FloatPoint locationInWindowCooordinates
         return;
 
     IntPoint point = roundedIntPoint(locationInWindowCooordinates);
-    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point));
+    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent | HitTestRequest::IgnoreClipping);
     Frame* frame = result.innerNonSharedNode() ? result.innerNonSharedNode()->document().frame() : &m_page->focusController().focusedOrMainFrame();
     NSDictionary *options = nil;
     RefPtr<Range> lookupRange = rangeForDictionaryLookupAtHitTestResult(result, &options);

@@ -1970,7 +1970,7 @@ void WebPage::performActionOnElement(uint32_t action)
         CachedImage* cachedImage = downcast<RenderImage>(*element.renderer()).cachedImage();
         if (!cachedImage)
             return;
-        SharedBuffer* buffer = cachedImage->resourceBuffer();
+        RefPtr<SharedBuffer> buffer = cachedImage->resourceBuffer();
         if (!buffer)
             return;
         uint64_t bufferSize = buffer->size();

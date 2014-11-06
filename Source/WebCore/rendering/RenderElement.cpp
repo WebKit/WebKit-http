@@ -391,7 +391,7 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
     // and remove the check of m_hasInitializedStyle below too.
     ASSERT(m_hasInitializedStyle || isRenderView());
 
-    if (&m_style.get() == &style.get()) {
+    if (m_style.ptr() == style.ptr()) {
         // FIXME: Can we change things so we never hit this code path?
         // We need to run through adjustStyleDifference() for iframes, plugins, and canvas so
         // style sharing is disabled for them. That should ensure that we never hit this code path.
@@ -405,7 +405,7 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
     StyleDifference diff = StyleDifferenceEqual;
     unsigned contextSensitiveProperties = ContextSensitivePropertyNone;
     if (m_hasInitializedStyle)
-        diff = m_style->diff(&style.get(), contextSensitiveProperties);
+        diff = m_style->diff(style.get(), contextSensitiveProperties);
 
     diff = adjustStyleDifference(diff, contextSensitiveProperties);
 
@@ -430,11 +430,11 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
 
     bool doesNotNeedLayout = !parent();
 
-    styleDidChange(diff, &oldStyle.get());
+    styleDidChange(diff, oldStyle.ptr());
 
     // Text renderers use their parent style. Notify them about the change.
     for (auto& child : childrenOfType<RenderText>(*this))
-        child.styleDidChange(diff, &oldStyle.get());
+        child.styleDidChange(diff, oldStyle.ptr());
 
     // FIXME: |this| might be destroyed here. This can currently happen for a RenderTextFragment when
     // its first-letter block gets an update in RenderTextFragment::styleDidChange. For RenderTextFragment(s),
@@ -451,9 +451,9 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
         if (updatedDiff == StyleDifferenceLayout)
             setNeedsLayoutAndPrefWidthsRecalc();
         else if (updatedDiff == StyleDifferenceLayoutPositionedMovementOnly)
-            setNeedsPositionedMovementLayout(&oldStyle.get());
+            setNeedsPositionedMovementLayout(oldStyle.ptr());
         else if (updatedDiff == StyleDifferenceSimplifiedLayoutAndPositionedMovement) {
-            setNeedsPositionedMovementLayout(&oldStyle.get());
+            setNeedsPositionedMovementLayout(oldStyle.ptr());
             setNeedsSimplifiedNormalFlowLayout();
         } else if (updatedDiff == StyleDifferenceSimplifiedLayout)
             setNeedsSimplifiedNormalFlowLayout();
@@ -521,8 +521,8 @@ RenderObject* RenderElement::removeChild(RenderObject& oldChild)
 void RenderElement::destroyLeftoverChildren()
 {
     while (m_firstChild) {
-        if (m_firstChild->isListMarker() || (m_firstChild->style().styleType() == FIRST_LETTER && !m_firstChild->isText())) {
-            m_firstChild->removeFromParent(); // List markers are owned by their enclosing list and so don't get destroyed by this container. Similarly, first letters are destroyed by their remaining text fragment.
+        if (m_firstChild->style().styleType() == FIRST_LETTER && !m_firstChild->isText()) {
+            m_firstChild->removeFromParent(); // :first-letter fragment renderers are destroyed by their remaining text fragment.
         } else {
             // Destroy any anonymous children remaining in the render tree, as well as implicit (shadow) DOM elements like those used in the engine-based text fields.
             if (m_firstChild->node())
@@ -969,7 +969,7 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
         return;
     
     if (diff == StyleDifferenceLayout || diff == StyleDifferenceSimplifiedLayout) {
-        RenderCounter::rendererStyleChanged(*this, oldStyle, &m_style.get());
+        RenderCounter::rendererStyleChanged(*this, oldStyle, m_style.ptr());
 
         // If the object already needs layout, then setNeedsLayout won't do
         // any work. But if the containing block has changed, then we may need

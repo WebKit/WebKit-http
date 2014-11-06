@@ -38,10 +38,10 @@ public:
         return adoptRef(new StyleGeneratedImage(WTF::move(value)));
     }
 
-    CSSImageGeneratorValue& imageValue() { return m_imageGeneratorValue.get(); }
+    CSSImageGeneratorValue& imageValue() { return m_imageGeneratorValue; }
 
 private:
-    virtual WrappedImagePtr data() const override { return &m_imageGeneratorValue.get(); }
+    virtual WrappedImagePtr data() const override { return m_imageGeneratorValue.ptr(); }
 
     virtual PassRefPtr<CSSValue> cssValue() const override;
 

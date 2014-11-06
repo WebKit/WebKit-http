@@ -28,8 +28,10 @@
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
+#import "TextIndicator.h"
 #import "WKNSURLExtras.h"
 #import "WKViewInternal.h"
+#import "WKWebView.h"
 #import "WebContext.h"
 #import "WebKitSystemInterface.h"
 #import "WebPageMessages.h"
@@ -46,16 +48,10 @@
 #import <WebCore/SoftLinking.h>
 #import <WebCore/URL.h>
 
-// FIXME: This should move into an SPI header if it stays.
-@class QLPreviewBubble;
-@interface NSObject (WKQLPreviewBubbleDetails)
-@property (copy) NSArray * controls;
-@property NSSize maximumSize;
-@property NSRectEdge preferredEdge;
-@property (retain) IBOutlet NSWindow* parentWindow;
-- (void)showPreviewItem:(id)previewItem itemFrame:(NSRect)frame;
-- (void)setAutomaticallyCloseWithMask:(NSEventMask)autocloseMask filterMask:(NSEventMask)filterMask block:(void (^)(void))block;
-@end
+enum class MenuUpdateStage {
+    PrepareForMenu,
+    MenuNeedsUpdate
+};
 
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, ImageKit)
 SOFT_LINK_CLASS(ImageKit, IKSlideshow)
@@ -64,13 +60,54 @@ using namespace WebCore;
 using namespace WebKit;
 
 @interface WKActionMenuController () <NSSharingServiceDelegate, NSSharingServicePickerDelegate>
-- (void)_updateActionMenuItems;
+- (void)_updateActionMenuItemsForStage:(MenuUpdateStage)stage;
 - (BOOL)_canAddImageToPhotos;
+- (void)_showTextIndicator;
+- (void)_hideTextIndicator;
 @end
 
 @interface WKView (WKDeprecatedSPI)
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult defaultActionMenuItems:(NSArray *)defaultMenuItems;
 @end
+
+#if WK_API_ENABLED
+@interface WKPagePreviewViewController : NSViewController {
+@public
+    NSSize _preferredSize;
+
+@private
+    RetainPtr<NSURL> _url;
+}
+
+- (instancetype)initWithPageURL:(NSURL *)URL;
+
+@end
+
+@implementation WKPagePreviewViewController
+
+- (instancetype)initWithPageURL:(NSURL *)URL
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _url = URL;
+    _preferredSize = NSMakeSize(320, 568);
+
+    return self;
+}
+
+- (void)loadView
+{
+    WKWebView *webView = [[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, _preferredSize.width, _preferredSize.height)];
+    if (_url) {
+        NSURLRequest *request = [NSURLRequest requestWithURL:_url.get()];
+        [webView loadRequest:request];
+    }
+    [self setView:webView];
+}
+
+@end
+#endif
 
 @implementation WKActionMenuController
 
@@ -92,6 +129,7 @@ using namespace WebKit;
 {
     _page = nullptr;
     _wkView = nullptr;
+    _hitTestResult = ActionMenuHitTestResult();
 }
 
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
@@ -102,7 +140,14 @@ using namespace WebKit;
     _page->performActionMenuHitTestAtLocation([_wkView convertPoint:event.locationInWindow fromView:nil]);
 
     _state = ActionMenuState::Pending;
-    [self _updateActionMenuItems];
+    [self _updateActionMenuItemsForStage:MenuUpdateStage::PrepareForMenu];
+
+    [self _hideTextIndicator];
+}
+
+- (BOOL)isMenuForTextContent
+{
+    return _type == kWKActionMenuReadOnlyText || _type == kWKActionMenuEditableText || _type == kWKActionMenuEditableTextWithSuggestions;
 }
 
 - (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
@@ -110,12 +155,15 @@ using namespace WebKit;
     if (menu != _wkView.actionMenu)
         return;
 
-    if (_type != kWKActionMenuReadOnlyText)
+    if (_type == kWKActionMenuDataDetectedItem)
+        [self _showTextIndicator];
+
+    if (![self isMenuForTextContent])
         return;
 
     // Action menus for text should highlight the text so that it is clear what the action menu actions
     // will apply to. If the text is already selected, the menu will use the existing selection.
-    WebHitTestResult* hitTestResult = _page->lastMouseMoveHitTestResult();
+    RefPtr<WebHitTestResult> hitTestResult = [self _hitTestResultForStage:MenuUpdateStage::MenuNeedsUpdate];
     if (!hitTestResult->isSelected())
         _page->selectLookupTextAtLocation([_wkView convertPoint:event.locationInWindow fromView:nil]);
 }
@@ -124,6 +172,9 @@ using namespace WebKit;
 {
     if (menu != _wkView.actionMenu)
         return;
+
+    if (_type == kWKActionMenuDataDetectedItem && menu.numberOfItems > 1)
+        [self _hideTextIndicator];
     
     _state = ActionMenuState::None;
     _hitTestResult = ActionMenuHitTestResult();
@@ -131,23 +182,54 @@ using namespace WebKit;
     _sharingServicePicker = nil;
 }
 
-- (void)didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult
+- (void)didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData
 {
     // FIXME: This needs to use the WebKit2 callback mechanism to avoid out-of-order replies.
     _state = ActionMenuState::Ready;
     _hitTestResult = hitTestResult;
+    _userData = userData;
+}
+
+- (void)dismissActionMenuDataDetectorPopovers
+{
+    // Ideally, this would actually dismiss the popovers. We don't currently have the ability to request
+    // that and know whether or not it succeeded, so we'll settle for unanchoring.
+    [[getDDActionsManagerClass() sharedManager] unanchorBubbles];
+    [self _hideTextIndicator];
+}
+
+#pragma mark Text Indicator
+
+- (void)_showTextIndicator
+{
+    if (_isShowingTextIndicator)
+        return;
+
+    if (_hitTestResult.detectedDataTextIndicator) {
+        _page->setTextIndicator(_hitTestResult.detectedDataTextIndicator->data(), false, true);
+        _isShowingTextIndicator = YES;
+    }
+}
+
+- (void)_hideTextIndicator
+{
+    if (!_isShowingTextIndicator)
+        return;
+
+    _page->clearTextIndicator(false, true);
+    _isShowingTextIndicator = NO;
 }
 
 #pragma mark Link actions
 
 - (NSArray *)_defaultMenuItemsForLink
 {
-    WebHitTestResult* hitTestResult = _page->lastMouseMoveHitTestResult();
-    if (!WebCore::protocolIsInHTTPFamily(hitTestResult->absoluteLinkURL()))
-        return @[ ];
-
     RetainPtr<NSMenuItem> openLinkItem = [self _createActionMenuItemForTag:kWKContextActionItemTagOpenLinkInDefaultBrowser];
+#if WK_API_ENABLED
     RetainPtr<NSMenuItem> previewLinkItem = [self _createActionMenuItemForTag:kWKContextActionItemTagPreviewLink];
+#else
+    RetainPtr<NSMenuItem> previewLinkItem = [NSMenuItem separatorItem];
+#endif
     RetainPtr<NSMenuItem> readingListItem = [self _createActionMenuItemForTag:kWKContextActionItemTagAddLinkToSafariReadingList];
 
     return @[ openLinkItem.get(), previewLinkItem.get(), [NSMenuItem separatorItem], readingListItem.get() ];
@@ -166,24 +248,27 @@ using namespace WebKit;
     [service performWithItems:@[ [NSURL _web_URLWithWTFString:hitTestResult->absoluteLinkURL()] ]];
 }
 
-- (void)_quickLookURLFromActionMenu:(id)sender
+#if WK_API_ENABLED
+- (void)_previewURLFromActionMenu:(id)sender
 {
     WebHitTestResult* hitTestResult = _page->lastMouseMoveHitTestResult();
-    NSRect itemFrame = [_wkView convertRect:hitTestResult->elementBoundingBox() toView:nil];
-    NSSize maximumPreviewSize = NSMakeSize(_wkView.bounds.size.width * 0.75, _wkView.bounds.size.height * 0.75);
-
-    RetainPtr<QLPreviewBubble> bubble = adoptNS([[NSClassFromString(@"QLPreviewBubble") alloc] init]);
-    [bubble setParentWindow:_wkView.window];
-    [bubble setMaximumSize:maximumPreviewSize];
-    [bubble setPreferredEdge:NSMaxYEdge];
-    [bubble setControls:@[ ]];
-    NSEventMask filterMask = NSAnyEventMask & ~(NSAppKitDefinedMask | NSSystemDefinedMask | NSApplicationDefinedMask | NSMouseEnteredMask | NSMouseExitedMask);
-    NSEventMask autocloseMask = NSLeftMouseDownMask | NSRightMouseDownMask | NSKeyDownMask;
-    [bubble setAutomaticallyCloseWithMask:autocloseMask filterMask:filterMask block:[bubble] {
-        [bubble close];
-    }];
-    [bubble showPreviewItem:[NSURL _web_URLWithWTFString:hitTestResult->absoluteLinkURL()] itemFrame:itemFrame];
+    NSURL *url = [NSURL _web_URLWithWTFString:hitTestResult->absoluteLinkURL()];
+    RetainPtr<NSPopover> popover = [self _createPreviewPopoverForURL:url];
+    [popover showRelativeToRect:hitTestResult->elementBoundingBox() ofView:_wkView preferredEdge:NSMaxYEdge];
 }
+
+- (RetainPtr<NSPopover>)_createPreviewPopoverForURL:(NSURL *)url
+{
+    RetainPtr<WKPagePreviewViewController> previewViewController = adoptNS([[WKPagePreviewViewController alloc] initWithPageURL:url]);
+    NSRect wkViewBounds = [_wkView bounds];
+    previewViewController->_preferredSize = NSMakeSize(NSWidth(wkViewBounds) * 0.75, NSHeight(wkViewBounds) * 0.75);
+
+    RetainPtr<NSPopover> popover = adoptNS([[NSPopover alloc] init]);
+    [popover setBehavior:NSPopoverBehaviorTransient];
+    [popover setContentViewController:previewViewController.get()];
+    return popover;
+}
+#endif
 
 #pragma mark Image actions
 
@@ -308,6 +393,21 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
 #pragma mark Text actions
 
+- (NSArray *)_defaultMenuItemsForDataDetectedText
+{
+    DDActionContext *actionContext = _hitTestResult.actionContext.get();
+    if (!actionContext)
+        return @[ ];
+
+    actionContext.completionHandler = ^() {
+        [self _hideTextIndicator];
+    };
+
+    WKSetDDActionContextIsForActionMenu(actionContext);
+    actionContext.highlightFrame = [_wkView.window convertRectToScreen:[_wkView convertRect:_hitTestResult.detectedDataBoundingBox toView:nil]];
+    return [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_hitTestResult.actionContext mainResult] actionContext:actionContext];
+}
+
 - (NSArray *)_defaultMenuItemsForText
 {
     RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagCopyText];
@@ -316,14 +416,72 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     return @[ copyTextItem.get(), lookupTextItem.get() ];
 }
 
--(void)_copyText:(id)sender
+- (NSArray *)_defaultMenuItemsForEditableText
+{
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagCopyText];
+    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagLookupText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:kWKContextActionItemTagPaste];
+
+    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get() ];
+}
+
+- (NSArray *)_defaultMenuItemsForEditableTextWithSuggestions
+{
+    if (_hitTestResult.lookupText.isEmpty())
+        return @[ ];
+
+    Vector<TextCheckingResult> results;
+    _page->checkTextOfParagraph(_hitTestResult.lookupText, NSTextCheckingTypeSpelling, results);
+    if (results.isEmpty())
+        return @[ ];
+
+    Vector<String> guesses;
+    _page->getGuessesForWord(_hitTestResult.lookupText, String(), guesses);
+    if (guesses.isEmpty())
+        return @[ ];
+
+    RetainPtr<NSMenu> spellingSubMenu = adoptNS([[NSMenu alloc] init]);
+    for (const auto& guess : guesses) {
+        RetainPtr<NSMenuItem> item = adoptNS([[NSMenuItem alloc] initWithTitle:guess action:@selector(_changeSelectionToSuggestion:) keyEquivalent:@""]);
+        [item setRepresentedObject:guess];
+        [item setTarget:self];
+        [spellingSubMenu addItem:item.get()];
+    }
+
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagCopyText];
+    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagLookupText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:kWKContextActionItemTagPaste];
+    RetainPtr<NSMenuItem> textSuggestionsItem = [self _createActionMenuItemForTag:kWKContextActionItemTagTextSuggestions];
+
+    [textSuggestionsItem setSubmenu:spellingSubMenu.get()];
+
+    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get(), textSuggestionsItem.get() ];
+}
+
+- (void)_copySelection:(id)sender
 {
     _page->executeEditCommand("copy");
 }
 
--(void)_lookupText:(id)sender
+- (void)_paste:(id)sender
+{
+    _page->executeEditCommand("paste");
+}
+
+- (void)_lookupText:(id)sender
 {
     _page->performDictionaryLookupOfCurrentSelection();
+}
+
+- (void)_changeSelectionToSuggestion:(id)sender
+{
+    NSString *selectedCorrection = [sender representedObject];
+    if (!selectedCorrection)
+        return;
+
+    ASSERT([selectedCorrection isKindOfClass:[NSString class]]);
+
+    _page->changeSpellingToWord(selectedCorrection);
 }
 
 #pragma mark NSMenuDelegate implementation
@@ -342,7 +500,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
             connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformActionMenuHitTest>(_page->pageID(), std::chrono::milliseconds(500));
     }
 
-    [self _updateActionMenuItems];
+    [self _updateActionMenuItemsForStage:MenuUpdateStage::MenuNeedsUpdate];
 }
 
 #pragma mark NSSharingServicePickerDelegate implementation
@@ -388,11 +546,13 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         image = webKitBundleImageNamed(@"OpenInNewWindowTemplate");
         break;
 
+#if WK_API_ENABLED
     case kWKContextActionItemTagPreviewLink:
-        selector = @selector(_quickLookURLFromActionMenu:);
+        selector = @selector(_previewURLFromActionMenu:);
         title = @"Preview";
         image = [NSImage imageNamed:@"NSActionMenuQuickLook"];
         break;
+#endif
 
     case kWKContextActionItemTagAddLinkToSafariReadingList:
         selector = @selector(_addToReadingListFromActionMenu:);
@@ -424,7 +584,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         break;
 
     case kWKContextActionItemTagCopyText:
-        selector = @selector(_copyText:);
+        selector = @selector(_copySelection:);
         title = @"Copy";
         image = [NSImage imageNamed:@"NSActionMenuCopy"];
         break;
@@ -433,6 +593,17 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         selector = @selector(_lookupText:);
         title = @"Lookup";
         image = [NSImage imageNamed:@"NSActionMenuLookup"];
+        break;
+
+    case kWKContextActionItemTagPaste:
+        selector = @selector(_paste:);
+        title = @"Paste";
+        image = [NSImage imageNamed:@"NSActionMenuPaste"];
+        break;
+
+    case kWKContextActionItemTagTextSuggestions:
+        title = @"Suggestions";
+        image = [NSImage imageNamed:@"NSActionMenuSpelling"];
         break;
 
     default:
@@ -452,47 +623,80 @@ static NSImage *webKitBundleImageNamed(NSString *name)
     return [[NSBundle bundleForClass:[WKView class]] imageForResource:name];
 }
 
-- (NSArray *)_defaultMenuItems
+- (PassRefPtr<WebHitTestResult>)_hitTestResultForStage:(MenuUpdateStage)stage
 {
-    if (WebHitTestResult* hitTestResult = _page->lastMouseMoveHitTestResult()) {
-        if (!hitTestResult->absoluteImageURL().isEmpty() && _hitTestResult.image) {
-            _type = kWKActionMenuImage;
-            return [self _defaultMenuItemsForImage];
+    RefPtr<WebHitTestResult> hitTestResult;
+    switch (stage) {
+    case MenuUpdateStage::PrepareForMenu:
+        hitTestResult = _page->lastMouseMoveHitTestResult();
+        break;
+    case MenuUpdateStage::MenuNeedsUpdate:
+        if (_state == ActionMenuState::Ready)
+            hitTestResult = WebHitTestResult::create(_hitTestResult.hitTestResult);
+        else
+            hitTestResult = _page->lastMouseMoveHitTestResult();
+        break;
+    }
+
+    return hitTestResult.release();
+}
+
+- (NSArray *)_defaultMenuItems:(MenuUpdateStage)stage
+{
+    RefPtr<WebHitTestResult> hitTestResult = [self _hitTestResultForStage:stage];
+    if (!hitTestResult) {
+        _type = kWKActionMenuNone;
+        return _state != ActionMenuState::Ready ? @[ [NSMenuItem separatorItem] ] : @[ ];
+    }
+
+    if (!hitTestResult->absoluteImageURL().isEmpty() && _hitTestResult.image) {
+        _type = kWKActionMenuImage;
+        return [self _defaultMenuItemsForImage];
+    }
+
+    String absoluteLinkURL = hitTestResult->absoluteLinkURL();
+    if (!absoluteLinkURL.isEmpty() && WebCore::protocolIsInHTTPFamily(absoluteLinkURL)) {
+        _type = kWKActionMenuLink;
+        return [self _defaultMenuItemsForLink];
+    }
+
+    if (hitTestResult->isTextNode()) {
+        NSArray *dataDetectorMenuItems = [self _defaultMenuItemsForDataDetectedText];
+        if (dataDetectorMenuItems.count) {
+            _type = kWKActionMenuDataDetectedItem;
+            return dataDetectorMenuItems;
         }
 
-        if (!hitTestResult->absoluteLinkURL().isEmpty()) {
-            _type = kWKActionMenuLink;
-            return [self _defaultMenuItemsForLink];
-        }
-
-        if (hitTestResult->isTextNode()) {
-            if (DDActionContext *actionContext = _hitTestResult.actionContext.get()) {
-                WKSetDDActionContextIsForActionMenu(actionContext);
-                actionContext.highlightFrame = [_wkView.window convertRectToScreen:[_wkView convertRect:_hitTestResult.actionBoundingBox toView:nil]];
-                NSArray *dataDetectorMenuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_hitTestResult.actionContext mainResult] actionContext:actionContext];
-                if (dataDetectorMenuItems.count) {
-                    _type = kWKActionMenuDataDetectedItem;
-                    return dataDetectorMenuItems;
-                }
+        if (hitTestResult->isContentEditable()) {
+            NSArray *editableTextWithSuggestions = [self _defaultMenuItemsForEditableTextWithSuggestions];
+            if (editableTextWithSuggestions.count) {
+                _type = kWKActionMenuEditableTextWithSuggestions;
+                return editableTextWithSuggestions;
             }
-            _type = kWKActionMenuReadOnlyText;
-            return [self _defaultMenuItemsForText];
+
+            _type = kWKActionMenuEditableText;
+            return [self _defaultMenuItemsForEditableText];
         }
+
+        _type = kWKActionMenuReadOnlyText;
+        return [self _defaultMenuItemsForText];
     }
 
     _type = kWKActionMenuNone;
     return _state != ActionMenuState::Ready ? @[ [NSMenuItem separatorItem] ] : @[ ];
 }
 
-- (void)_updateActionMenuItems
+- (void)_updateActionMenuItemsForStage:(MenuUpdateStage)stage
 {
     [_wkView.actionMenu removeAllItems];
 
-    NSArray *menuItems = [self _defaultMenuItems];
+    NSArray *menuItems = [self _defaultMenuItems:stage];
+    RefPtr<WebHitTestResult> hitTestResult = [self _hitTestResultForStage:stage];
+
     if ([_wkView respondsToSelector:@selector(_actionMenuItemsForHitTestResult:defaultActionMenuItems:)])
-        menuItems = [_wkView _actionMenuItemsForHitTestResult:toAPI(_page->lastMouseMoveHitTestResult()) defaultActionMenuItems:menuItems];
+        menuItems = [_wkView _actionMenuItemsForHitTestResult:toAPI(hitTestResult.get()) defaultActionMenuItems:menuItems];
     else
-        menuItems = [_wkView _actionMenuItemsForHitTestResult:toAPI(_page->lastMouseMoveHitTestResult()) withType:_type defaultActionMenuItems:menuItems];
+        menuItems = [_wkView _actionMenuItemsForHitTestResult:toAPI(hitTestResult.get()) withType:_type defaultActionMenuItems:menuItems userData:toAPI(_userData.get())];
 
     for (NSMenuItem *item in menuItems)
         [_wkView.actionMenu addItem:item];

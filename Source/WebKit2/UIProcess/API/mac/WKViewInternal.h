@@ -46,8 +46,8 @@ struct KeypressCommand;
 
 namespace WebKit {
 class DrawingAreaProxy;
-class FindIndicator;
 class LayerTreeContext;
+class TextIndicator;
 class ViewSnapshot;
 class WebContext;
 struct ActionMenuHitTestResult;
@@ -80,7 +80,7 @@ struct WebPageConfiguration;
 - (void)_setIntrinsicContentSize:(NSSize)intrinsicContentSize;
 - (NSRect)_convertToDeviceSpace:(NSRect)rect;
 - (NSRect)_convertToUserSpace:(NSRect)rect;
-- (void)_setFindIndicator:(PassRefPtr<WebKit::FindIndicator>)findIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate;
+- (void)_setTextIndicator:(PassRefPtr<WebKit::TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate;
 
 - (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer;
 - (CALayer *)_acceleratedCompositingModeRootLayer;
@@ -126,7 +126,9 @@ struct WebPageConfiguration;
 - (void)_closeFullScreenWindowController;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-- (void)_didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult;
+- (void)_didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData;
 #endif
+
+- (void)_dismissActionMenuDataDetectorPopovers;
 
 @end

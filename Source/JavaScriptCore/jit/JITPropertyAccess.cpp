@@ -602,8 +602,8 @@ void JIT::emitResolveClosure(int dst, bool needsVarInjectionChecks, unsigned dep
 void JIT::emit_op_resolve_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
-    ResolveType resolveType = static_cast<ResolveType>(currentInstruction[3].u.operand);
-    unsigned depth = currentInstruction[4].u.operand;
+    ResolveType resolveType = static_cast<ResolveType>(currentInstruction[4].u.operand);
+    unsigned depth = currentInstruction[5].u.operand;
 
     switch (resolveType) {
     case GlobalProperty:
@@ -629,13 +629,13 @@ void JIT::emit_op_resolve_scope(Instruction* currentInstruction)
 void JIT::emitSlow_op_resolve_scope(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     int dst = currentInstruction[1].u.operand;
-    ResolveType resolveType = static_cast<ResolveType>(currentInstruction[3].u.operand);
+    ResolveType resolveType = static_cast<ResolveType>(currentInstruction[4].u.operand);
 
     if (resolveType == GlobalProperty || resolveType == GlobalVar || resolveType == ClosureVar)
         return;
 
     linkSlowCase(iter);
-    int32_t indentifierIndex = currentInstruction[2].u.operand;
+    int32_t indentifierIndex = currentInstruction[3].u.operand;
     callOperation(operationResolveScope, dst, indentifierIndex);
 }
 
@@ -828,9 +828,9 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBaseAndValue || mode == ShouldFilterBase)
         ownerNotCell = branchTest64(NonZero, regT0, tagMaskRegister);
 
-    Jump ownerNotMarkedOrAlreadyRemembered = checkMarkByte(regT0);
+    Jump ownerIsRememberedOrInEden = jumpIfIsRememberedOrInEden(regT0);
     callOperation(operationUnconditionalWriteBarrier, regT0);
-    ownerNotMarkedOrAlreadyRemembered.link(this);
+    ownerIsRememberedOrInEden.link(this);
 
     if (mode == ShouldFilterBaseAndValue || mode == ShouldFilterBase)
         ownerNotCell.link(this);
@@ -878,9 +878,9 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBase || mode == ShouldFilterBaseAndValue)
         ownerNotCell = branch32(NotEqual, regT0, TrustedImm32(JSValue::CellTag));
 
-    Jump ownerNotMarkedOrAlreadyRemembered = checkMarkByte(regT1);
+    Jump ownerIsRememberedOrInEden = jumpIfIsRememberedOrInEden(regT1);
     callOperation(operationUnconditionalWriteBarrier, regT1);
-    ownerNotMarkedOrAlreadyRemembered.link(this);
+    ownerIsRememberedOrInEden.link(this);
 
     if (mode == ShouldFilterBase || mode == ShouldFilterBaseAndValue)
         ownerNotCell.link(this);
@@ -919,9 +919,9 @@ void JIT::emitWriteBarrier(JSCell* owner)
 {
 #if ENABLE(GGC)
     if (!MarkedBlock::blockFor(owner)->isMarked(owner)) {
-        Jump ownerNotMarkedOrAlreadyRemembered = checkMarkByte(owner);
+        Jump ownerIsRememberedOrInEden = jumpIfIsRememberedOrInEden(owner);
         callOperation(operationUnconditionalWriteBarrier, owner);
-        ownerNotMarkedOrAlreadyRemembered.link(this);
+        ownerIsRememberedOrInEden.link(this);
     } else
         callOperation(operationUnconditionalWriteBarrier, owner);
 #else

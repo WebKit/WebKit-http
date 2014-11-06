@@ -42,7 +42,9 @@ enum {
     kWKContextActionItemTagSaveImageToDownloads,
     kWKContextActionItemTagShareImage,
     kWKContextActionItemTagCopyText,
-    kWKContextActionItemTagLookupText
+    kWKContextActionItemTagLookupText,
+    kWKContextActionItemTagPaste,
+    kWKContextActionItemTagTextSuggestions
 };
 
 #ifdef __cplusplus

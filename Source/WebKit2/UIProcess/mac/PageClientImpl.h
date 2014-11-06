@@ -42,7 +42,7 @@ class AlternativeTextUIController;
 }
 
 namespace WebKit {
-class FindIndicatorWindow;
+class TextIndicatorWindow;
 
 class PageClientImpl final : public PageClient
 #if ENABLE(FULLSCREEN_API)
@@ -120,7 +120,7 @@ private:
     virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
 #endif
 
-    void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate);
+    void setTextIndicator(PassRefPtr<TextIndicator>, bool fadeOut, bool animate);
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
@@ -138,6 +138,7 @@ private:
     
     virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&);
     virtual void dismissDictionaryLookupPanel();
+    virtual void dismissActionMenuDataDetectorPopovers();
 
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings);
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText);
@@ -186,7 +187,7 @@ private:
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
     virtual void removeNavigationGestureSnapshot() override;
 
-    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&) override;
+    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, API::Object*) override;
 
     WKView *m_wkView;
     WKWebView *m_webView;

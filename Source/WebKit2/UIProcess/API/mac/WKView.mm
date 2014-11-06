@@ -40,8 +40,6 @@
 #import "DataReference.h"
 #import "EditingRange.h"
 #import "EditorState.h"
-#import "FindIndicator.h"
-#import "FindIndicatorWindow.h"
 #import "LayerTreeContext.h"
 #import "Logging.h"
 #import "NativeWebKeyboardEvent.h"
@@ -53,6 +51,8 @@
 #import "StringUtilities.h"
 #import "TextChecker.h"
 #import "TextCheckerState.h"
+#import "TextIndicator.h"
+#import "TextIndicatorWindow.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 #import "ViewGestureController.h"
 #import "ViewSnapshotStore.h"
@@ -182,7 +182,7 @@ struct WKViewInterpretKeyEventsParameters {
     // For asynchronous validation.
     ValidationMap _validationMap;
 
-    std::unique_ptr<FindIndicatorWindow> _findIndicatorWindow;
+    std::unique_ptr<TextIndicatorWindow> _textIndicatorWindow;
 
     // We keep here the event when resending it to
     // the application to distinguish the case of a new event from one 
@@ -492,7 +492,7 @@ struct WKViewInterpretKeyEventsParameters {
 - (void)renewGState
 {
     // Hide the find indicator.
-    _data->_findIndicatorWindow = nullptr;
+    _data->_textIndicatorWindow = nullptr;
 
     // Update the view frame.
     if ([self window])
@@ -2539,6 +2539,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         _data->_flagsChangedEventMonitor = nil;
 
         WKHideWordDefinitionWindow();
+        [self _dismissActionMenuDataDetectorPopovers];
     }
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
@@ -3041,17 +3042,17 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     }
 }
 
-- (void)_setFindIndicator:(PassRefPtr<FindIndicator>)findIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate
+- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate
 {
-    if (!findIndicator) {
-        _data->_findIndicatorWindow = nullptr;
+    if (!textIndicator) {
+        _data->_textIndicatorWindow = nullptr;
         return;
     }
 
-    if (!_data->_findIndicatorWindow)
-        _data->_findIndicatorWindow = std::make_unique<FindIndicatorWindow>(self);
+    if (!_data->_textIndicatorWindow)
+        _data->_textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    _data->_findIndicatorWindow->setFindIndicator(findIndicator, fadeOut, animate);
+    _data->_textIndicatorWindow->setTextIndicator(textIndicator, fadeOut, animate);
 }
 
 - (CALayer *)_rootLayer
@@ -3658,12 +3659,19 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [_data->_actionMenuController didCloseMenu:menu withEvent:event];
 }
 
-- (void)_didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult
+- (void)_didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData
 {
-    [_data->_actionMenuController didPerformActionMenuHitTest:hitTestResult];
+    [_data->_actionMenuController didPerformActionMenuHitTest:hitTestResult userData:userData];
 }
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (void)_dismissActionMenuDataDetectorPopovers
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [_data->_actionMenuController dismissActionMenuDataDetectorPopovers];
+#endif
+}
 
 @end
 
@@ -4136,6 +4144,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems
 {
     return defaultMenuItems;
+}
+
+- (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems userData:(WKTypeRef)userData
+{
+    return [self _actionMenuItemsForHitTestResult:hitTestResult withType:type defaultActionMenuItems:defaultMenuItems];
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

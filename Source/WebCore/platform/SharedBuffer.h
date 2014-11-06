@@ -102,7 +102,7 @@ public:
     void append(CFDataRef);
 #endif
 
-    PassRef<SharedBuffer> copy() const;
+    PassRefPtr<SharedBuffer> copy() const;
     
     // Return the number of consecutive bytes after "position". "data"
     // points to the first byte.

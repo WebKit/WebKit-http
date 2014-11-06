@@ -802,6 +802,7 @@ void WebVideoFullscreenInterfaceAVKit::setupFullscreen(PlatformLayer& videoLayer
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         m_parentView = parentView;
+        m_parentWindow = parentView.window;
 
         if (!applicationIsAdSheet()) {
             m_window = adoptNS([[getUIWindowClass() alloc] initWithFrame:[[getUIScreenClass() mainScreen] bounds]]);
@@ -860,10 +861,10 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreen()
     
     m_exitCompleted = false;
     m_exitRequested = false;
+    m_enterRequested = true;
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [m_videoLayerContainer setBackgroundColor:[[getUIColorClass() blackColor] CGColor]];
-#if ENABLE(OPTIMIZED_FULLSCREEN)
         if (m_mode == HTMLMediaElement::VideoFullscreenModeOptimized) {
             [m_playerViewController startOptimizedFullscreenWithStartCompletionHandler:^(BOOL success, NSError *) {
                 
@@ -896,7 +897,6 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreen()
                 }
             }];
         } else
-#endif
         if (m_mode == HTMLMediaElement::VideoFullscreenModeStandard) {
             [m_playerViewController enterFullScreenWithCompletionHandler:^(BOOL, NSError*)
             {
@@ -940,12 +940,10 @@ void WebVideoFullscreenInterfaceAVKit::exitFullscreen(WebCore::IntRect finalRect
             [m_videoLayerContainer setVideoLayerGravity:AVVideoLayerGravityResizeAspect];
         [[m_playerViewController view] layoutIfNeeded];
         
-#if ENABLE(OPTIMIZED_FULLSCREEN)
         if (m_mode == HTMLMediaElement::VideoFullscreenModeOptimized) {
             [m_window setHidden:NO];
             [m_playerViewController stopOptimizedFullscreen];
         } else
-#endif
         if (m_mode == HTMLMediaElement::VideoFullscreenModeStandard) {
             [m_playerViewController exitFullScreenWithCompletionHandler:^(BOOL, NSError*) {
                 m_exitCompleted = true;
@@ -979,7 +977,8 @@ void WebVideoFullscreenInterfaceAVKit::cleanupFullscreen()
         if (m_window) {
             [m_window setHidden:YES];
             [m_window setRootViewController:nil];
-            [[getUIApplicationClass() sharedApplication] _setStatusBarOrientation:[[m_parentView window] interfaceOrientation]];
+            if (m_parentWindow)
+                [[getUIApplicationClass() sharedApplication] _setStatusBarOrientation:[m_parentWindow interfaceOrientation]];
         }
         [m_playerViewController setDelegate:nil];
         [[m_playerViewController view] removeFromSuperview];
@@ -996,10 +995,12 @@ void WebVideoFullscreenInterfaceAVKit::cleanupFullscreen()
         m_viewController = nil;
         m_window = nil;
         m_parentView = nil;
+        m_parentWindow = nil;
         
         WebThreadRun(^{
             if (m_fullscreenChangeObserver)
                 m_fullscreenChangeObserver->didCleanupFullscreen();
+            m_enterRequested = false;
             protect = nullptr;
         });
     });
@@ -1026,10 +1027,14 @@ void WebVideoFullscreenInterfaceAVKit::invalidate()
     m_viewController = nil;
     m_window = nil;
     m_parentView = nil;
+    m_parentWindow = nil;
 }
 
 void WebVideoFullscreenInterfaceAVKit::requestHideAndExitFullscreen()
 {
+    if (!m_enterRequested)
+        return;
+    
     if (m_mode == HTMLMediaElement::VideoFullscreenModeOptimized)
         return;
     
@@ -1043,7 +1048,7 @@ void WebVideoFullscreenInterfaceAVKit::requestHideAndExitFullscreen()
         }];
     });
 
-    if (m_videoFullscreenModel)
+    if (m_videoFullscreenModel && !m_exitRequested)
         m_videoFullscreenModel->requestExitFullscreen();
 }
 

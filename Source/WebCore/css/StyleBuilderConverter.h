@@ -32,6 +32,7 @@
 #include "Length.h"
 #include "Pair.h"
 #include "StyleResolver.h"
+#include "TransformFunctions.h"
 
 namespace WebCore {
 
@@ -47,12 +48,19 @@ public:
     static LengthSize convertRadius(StyleResolver&, CSSValue&);
     static TextDecoration convertTextDecoration(StyleResolver&, CSSValue&);
     template <typename T> static T convertNumber(StyleResolver&, CSSValue&);
+    static short convertWebkitHyphenateLimitLines(StyleResolver&, CSSValue&);
     template <CSSPropertyID property> static NinePieceImage convertBorderImage(StyleResolver&, CSSValue&);
     template <CSSPropertyID property> static NinePieceImage convertBorderMask(StyleResolver&, CSSValue&);
     template <CSSPropertyID property> static PassRefPtr<StyleImage> convertBorderImageSource(StyleResolver&, CSSValue&);
+    static TransformOperations convertTransform(StyleResolver&, CSSValue&);
+    static String convertString(StyleResolver&, CSSValue&);
+    static String convertStringOrAuto(StyleResolver&, CSSValue&);
+    static String convertStringOrNone(StyleResolver&, CSSValue&);
+    static TextEmphasisPosition convertTextEmphasisPosition(StyleResolver&, CSSValue&);
 
 private:
     static Length convertToRadiusLength(CSSToLengthConversionData&, CSSPrimitiveValue&);
+    static TextEmphasisPosition valueToEmphasisPosition(CSSPrimitiveValue&);
 };
 
 inline Length StyleBuilderConverter::convertLength(StyleResolver& styleResolver, CSSValue& value)
@@ -195,8 +203,10 @@ inline LengthSize StyleBuilderConverter::convertRadius(StyleResolver& styleResol
 inline TextDecoration StyleBuilderConverter::convertTextDecoration(StyleResolver&, CSSValue& value)
 {
     TextDecoration result = RenderStyle::initialTextDecoration();
-    for (CSSValueListIterator it(&value); it.hasMore(); it.advance())
-        result |= downcast<CSSPrimitiveValue>(*it.value());
+    if (is<CSSValueList>(value)) {
+        for (auto& currentValue : downcast<CSSValueList>(value))
+            result |= downcast<CSSPrimitiveValue>(currentValue.get());
+    }
     return result;
 }
 
@@ -207,6 +217,14 @@ inline T StyleBuilderConverter::convertNumber(StyleResolver&, CSSValue& value)
     if (primitiveValue.getValueID() == CSSValueAuto)
         return -1;
     return primitiveValue.getValue<T>(CSSPrimitiveValue::CSS_NUMBER);
+}
+
+inline short StyleBuilderConverter::convertWebkitHyphenateLimitLines(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueNoLimit)
+        return -1;
+    return primitiveValue.getValue<short>(CSSPrimitiveValue::CSS_NUMBER);
 }
 
 template <CSSPropertyID property>
@@ -228,7 +246,65 @@ inline NinePieceImage StyleBuilderConverter::convertBorderMask(StyleResolver& st
 template <CSSPropertyID property>
 inline PassRefPtr<StyleImage> StyleBuilderConverter::convertBorderImageSource(StyleResolver& styleResolver, CSSValue& value)
 {
-    return styleResolver.styleImage(property, &value);
+    return styleResolver.styleImage(property, value);
+}
+
+inline TransformOperations StyleBuilderConverter::convertTransform(StyleResolver& styleResolver, CSSValue& value)
+{
+    TransformOperations operations;
+    transformsForValue(value, styleResolver.state().cssToLengthConversionData(), operations);
+    return operations;
+}
+
+inline String StyleBuilderConverter::convertString(StyleResolver&, CSSValue& value)
+{
+    return downcast<CSSPrimitiveValue>(value).getStringValue();
+}
+
+inline String StyleBuilderConverter::convertStringOrAuto(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueAuto)
+        return nullAtom;
+    return convertString(styleResolver, value);
+}
+
+inline String StyleBuilderConverter::convertStringOrNone(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone)
+        return nullAtom;
+    return convertString(styleResolver, value);
+}
+
+inline TextEmphasisPosition StyleBuilderConverter::valueToEmphasisPosition(CSSPrimitiveValue& primitiveValue)
+{
+    ASSERT(primitiveValue.isValueID());
+
+    switch (primitiveValue.getValueID()) {
+    case CSSValueOver:
+        return TextEmphasisPositionOver;
+    case CSSValueUnder:
+        return TextEmphasisPositionUnder;
+    case CSSValueLeft:
+        return TextEmphasisPositionLeft;
+    case CSSValueRight:
+        return TextEmphasisPositionRight;
+    default:
+        break;
+    }
+
+    ASSERT_NOT_REACHED();
+    return RenderStyle::initialTextEmphasisPosition();
+}
+
+inline TextEmphasisPosition StyleBuilderConverter::convertTextEmphasisPosition(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value))
+        return valueToEmphasisPosition(downcast<CSSPrimitiveValue>(value));
+
+    TextEmphasisPosition position = 0;
+    for (auto& currentValue : downcast<CSSValueList>(value))
+        position |= valueToEmphasisPosition(downcast<CSSPrimitiveValue>(currentValue.get()));
+    return position;
 }
 
 } // namespace WebCore

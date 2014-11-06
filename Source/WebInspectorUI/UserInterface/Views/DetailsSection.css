@@ -261,6 +261,14 @@ body.mac-platform.legacy .details-section > .content > .group:last-child > .row.
     padding: 5px 4px 2px;
 }
 
+.details-section > .content > .group:first-child > .row.simple:first-child > * {
+    padding: 0px 4px 2px 4px;
+}
+
+body.mac-platform.legacy .details-section > .content > .group:first-child > .row.simple:first-child > * {
+    padding: 5px 4px 2px;
+}
+
 .details-section > .content > .group > .row.simple > .label {
     color: rgb(51, 51, 51);
 
@@ -290,13 +298,27 @@ body.mac-platform.legacy .details-section > .content > .group:last-child > .row.
     word-break: break-all;
 }
 
-.details-section > .content > .group > .row.empty {
-    padding: 6px;
+.details-section > .content > .group > .row.empty,
+.details-section > .content > .group > .row.text {
+    padding: 0 6px 7px 6px;
     text-align: center;
     color: gray;
 }
 
+body.mac-platform.legacy .details-section > .content > .group > .row.empty,
+body.mac-platform.legacy .details-section > .content > .group > .row.text {
+    padding: 6px;
+}
+
+.details-section > .content > .group > .row.text {
+    -webkit-user-select: text;
+}
+
 .details-section > .content > .group > .row.properties:not(.empty) {
+    padding: 0 4px 6px 4px;
+}
+
+body.mac-platform.legacy .details-section > .content > .group > .row.properties:not(.empty) {
     padding: 4px 6px;
 }
 

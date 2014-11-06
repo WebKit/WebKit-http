@@ -1,3 +1,385 @@
+2014-11-04  Michael Saboff  <msaboff@apple.com>
+
+        Disable flakey dfg-int8array.js and dfg-int16array.js tests for ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=138379
+
+        Reviewed by Mark Lam.
+
+        Disabled these test for ARM64.  Will address the failures and then re-enable.
+
+        * js/script-tests/dfg-int16array.js:
+        * js/script-tests/dfg-int8array.js:
+
+2014-11-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OSX] CJK characters styled with font-family: cursive are italicized
+        https://bugs.webkit.org/show_bug.cgi?id=138328
+        rdar://problem/18801907
+
+        Reviewed by Simon Fraser.
+
+        Make sure that the text matches the output of a different codepath.
+
+        * platform/mac/fast/text/font-cursive-italic-cjk-expected.html: Added.
+        * platform/mac/fast/text/font-cursive-italic-cjk.html: Added.
+        * platform/mac/TestExpectations: Skipped test on non-Yosemite platforms.
+
+2014-11-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        When computing the specificity of selectors, use saturated arithmetic per component
+        https://bugs.webkit.org/show_bug.cgi?id=138336
+
+        Reviewed by Andreas Kling.
+
+        * fast/selectors/specificity-overflow-2-expected.txt: Added.
+        * fast/selectors/specificity-overflow-2.html: Added.
+
+2014-11-04  Darin Adler  <darin@apple.com>
+
+        * TestExpectations: Turn off http/tests/multipart/stop-crash.html.
+        Will turn it back on soon.
+
+2014-11-04  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Skip websocket tests
+        https://bugs.webkit.org/show_bug.cgi?id=138355
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/efl/TestExpectations:
+
+2014-11-04  Nikos Andrkos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        Fix animation of orient attribute on marker element
+        https://bugs.webkit.org/show_bug.cgi?id=137942
+
+        Reviewed by Dirk Schulze.
+
+        Test the rendered result of the animation of the orient attribute.
+        Existing tests were only testing the animated value in the DOM.
+
+        * svg/animations/animate-marker-orienttype-1-expected.txt: Added.
+        * svg/animations/animate-marker-orienttype-1.html: Added.
+        * svg/animations/animate-marker-orienttype-2-expected.txt: Added.
+        * svg/animations/animate-marker-orienttype-2.html: Added.
+        * svg/animations/animate-marker-orienttype-3-expected.txt: Added.
+        * svg/animations/animate-marker-orienttype-3.html: Added.
+
+2014-11-03  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Adding test for array buffer and data view POST in XMLHttpRequest async send.
+        https://bugs.webkit.org/show_bug.cgi?id=138304
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adding test for array buffer and data view
+
+        * http/tests/xmlhttprequest/send-data-view-async-expected.txt: Added.
+        * http/tests/xmlhttprequest/send-data-view-async.html: Added.
+
+2014-11-03  Chris Dumez  <cdumez@apple.com>
+
+        Fix jquery/manipulation.html flakiness on debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=138335
+
+        Reviewed by Alexey Proskuryakov.
+
+        Update jquery's qunit config to not refresh the test results
+        regularly as this is not useful as part of layout testing.
+
+        This was causing qunit to set a timer every 13ms to check if
+        results should be updated and this timer would sometimes get
+        throttled after r175441.
+
+        * TestExpectations:
+        * jquery/resources/test/qunit/qunit/qunit.js:
+        (.):
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Selector's Specificity
+        https://bugs.webkit.org/show_bug.cgi?id=138189
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/css/matched-style-properties.html:
+        * inspector/css/selector-specificity-expected.txt: Added.
+        * inspector/css/selector-specificity.html: Copied from LayoutTests/inspector/css/matched-style-properties.html.
+
+2014-11-03  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed gardening. Rebaseline after r175259.
+        https://bugs.webkit.org/show_bug.cgi?id=138317
+
+        Rebaseline pending test expectations affected by r175259.
+
+        * platform/gtk/css1/box_properties/border_bottom-expected.txt:
+        * platform/gtk/css1/box_properties/border_top-expected.txt:
+        * platform/gtk/css1/formatting_model/inline_elements-expected.txt:
+        * platform/gtk/css1/pseudo/pseudo_elements_in_selectors-expected.txt:
+        * platform/gtk/fast/table/border-collapsing/004-vertical-expected.txt:
+        * platform/gtk/svg/custom/bug45331-expected.txt:
+        * platform/gtk/svg/custom/path-bad-data-expected.txt:
+
+2014-11-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Unskip passing ENCRYPTED_MEDIA_V2 tests
+        https://bugs.webkit.org/show_bug.cgi?id=138133
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/efl/TestExpectations:
+
+2014-11-03  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        AX: Fix some minor typos related to the word "accessibility".
+        https://bugs.webkit.org/show_bug.cgi?id=138299
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-link-supports-press.html:
+
+2014-11-01  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [CSS] Add tests for :read-only and :read-write
+        https://bugs.webkit.org/show_bug.cgi?id=92473
+
+        Add test case for :readonly and :readwrite pseudoclass for common elements
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/css/readonly-pseudoclass-common-element-expected.txt: Added.
+        * fast/css/readonly-pseudoclass-common-element.html: Added.
+        * fast/css/readwrite-pseudoclass-editable-expected.txt: Added.
+        * fast/css/readwrite-pseudoclass-editable.html: Added.
+
+2014-11-01  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: Using a media element changes window.name
+        https://bugs.webkit.org/show_bug.cgi?id=138278
+        rdar://problem/18704134
+
+        Reviewed by Jer Noble.
+
+        * fast/media/window-name-expected.txt: Added.
+        * fast/media/window-name.html: Added.
+
+        * platform/mac/webarchive/loading/video-in-webarchive-expected.txt: Removed.
+        This result was incorrect due to this bug, and now Mac matches cross-platform
+        results.
+
+2014-11-01  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed gardening.
+
+        Mark jquery/manipulation.html as flakey on Debug bots as marking it
+        as slow did not help.
+
+        * TestExpectations:
+
+2014-11-01  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix double-slash in previous gardening commit.
+
+        * TestExpectations:
+
+2014-11-01  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed gardening.
+
+        Mark jquery/manipulation.html as slow on Debug builds until I can
+        investigate how to avoid this with timer throttling.
+
+        * TestExpectations:
+
+2014-11-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix the specificity of the extended :not() selector
+        https://bugs.webkit.org/show_bug.cgi?id=138275
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/not-self-specificity-expected.html: Added.
+        * fast/css/not-self-specificity.html: Added.
+        Test that :not() itself does not influence the specificity,
+        only the nested selectors contribute to the global specificity.
+
+        * fast/css/not-specificity-1-expected.html: Added.
+        * fast/css/not-specificity-1.html: Added.
+        * fast/css/not-specificity-2-expected.html: Added.
+        * fast/css/not-specificity-2.html: Added.
+        * fast/css/not-specificity-3-expected.html: Added.
+        * fast/css/not-specificity-3.html: Added.
+        Tests for compound selectors.
+        All tests are variations of the same base testing specificity
+        and position.
+
+        * fast/css/not-specificity-4-expected.html: Added.
+        * fast/css/not-specificity-4.html: Added.
+        * fast/css/not-specificity-5-expected.html: Added.
+        * fast/css/not-specificity-5.html: Added.
+        * fast/css/not-specificity-6-expected.html: Added.
+        * fast/css/not-specificity-6.html: Added.
+        Same thing for complex selectors.
+
+        * fast/selectors/class-style-update-with-not-expected.txt:
+        Yeah, one more test fixed :)
+
+2014-11-01  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Unreviewed EFL gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=138276
+
+        Rebaseline after r175259.
+
+        * platform/efl/css1/basic/containment-expected.txt:
+        * platform/efl/css1/basic/contextual_selectors-expected.txt:
+        * platform/efl/css1/basic/grouping-expected.txt:
+        * platform/efl/css1/basic/id_as_selector-expected.txt:
+        * platform/efl/css1/basic/inheritance-expected.txt:
+        * platform/efl/css1/box_properties/border-expected.txt:
+        * platform/efl/css1/box_properties/border_bottom-expected.txt:
+        * platform/efl/css1/box_properties/border_bottom_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_bottom_width-expected.txt:
+        * platform/efl/css1/box_properties/border_bottom_width_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_color-expected.txt:
+        * platform/efl/css1/box_properties/border_color_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_left-expected.txt:
+        * platform/efl/css1/box_properties/border_left_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_left_width-expected.txt:
+        * platform/efl/css1/box_properties/border_left_width_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_right-expected.txt:
+        * platform/efl/css1/box_properties/border_right_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_right_width-expected.txt:
+        * platform/efl/css1/box_properties/border_right_width_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_style-expected.txt:
+        * platform/efl/css1/box_properties/border_style_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_top-expected.txt:
+        * platform/efl/css1/box_properties/border_top_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_top_width-expected.txt:
+        * platform/efl/css1/box_properties/border_top_width_inline-expected.txt:
+        * platform/efl/css1/box_properties/border_width-expected.txt:
+        * platform/efl/css1/box_properties/border_width_inline-expected.txt:
+        * platform/efl/css1/box_properties/clear-expected.txt:
+        * platform/efl/css1/box_properties/clear_float-expected.txt:
+        * platform/efl/css1/box_properties/float-expected.txt:
+        * platform/efl/css1/box_properties/float_elements_in_series-expected.txt:
+        * platform/efl/css1/box_properties/float_margin-expected.txt:
+        * platform/efl/css1/box_properties/float_on_text_elements-expected.txt:
+        * platform/efl/css1/box_properties/height-expected.txt:
+        * platform/efl/css1/box_properties/margin-expected.txt:
+        * platform/efl/css1/box_properties/margin_bottom-expected.txt:
+        * platform/efl/css1/box_properties/margin_bottom_inline-expected.txt:
+        * platform/efl/css1/box_properties/margin_inline-expected.txt:
+        * platform/efl/css1/box_properties/margin_left-expected.txt:
+        * platform/efl/css1/box_properties/margin_left_inline-expected.txt:
+        * platform/efl/css1/box_properties/margin_right-expected.txt:
+        * platform/efl/css1/box_properties/margin_right_inline-expected.txt:
+        * platform/efl/css1/box_properties/margin_top-expected.txt:
+        * platform/efl/css1/box_properties/margin_top_inline-expected.txt:
+        * platform/efl/css1/box_properties/padding-expected.txt:
+        * platform/efl/css1/box_properties/padding_bottom-expected.txt:
+        * platform/efl/css1/box_properties/padding_bottom_inline-expected.txt:
+        * platform/efl/css1/box_properties/padding_inline-expected.txt:
+        * platform/efl/css1/box_properties/padding_left-expected.txt:
+        * platform/efl/css1/box_properties/padding_left_inline-expected.txt:
+        * platform/efl/css1/box_properties/padding_right-expected.txt:
+        * platform/efl/css1/box_properties/padding_right_inline-expected.txt:
+        * platform/efl/css1/box_properties/padding_top-expected.txt:
+        * platform/efl/css1/box_properties/padding_top_inline-expected.txt:
+        * platform/efl/css1/box_properties/width-expected.txt:
+        * platform/efl/css1/cascade/cascade_order-expected.txt:
+        * platform/efl/css1/cascade/important-expected.txt:
+        * platform/efl/css1/classification/display-expected.txt:
+        * platform/efl/css1/classification/list_style-expected.txt:
+        * platform/efl/css1/classification/list_style_image-expected.txt:
+        * platform/efl/css1/classification/list_style_position-expected.txt:
+        * platform/efl/css1/classification/list_style_type-expected.txt:
+        * platform/efl/css1/classification/white_space-expected.txt:
+        * platform/efl/css1/color_and_background/background-expected.txt:
+        * platform/efl/css1/color_and_background/background_attachment-expected.txt:
+        * platform/efl/css1/color_and_background/background_color-expected.txt:
+        * platform/efl/css1/color_and_background/background_image-expected.txt:
+        * platform/efl/css1/color_and_background/background_position-expected.txt:
+        * platform/efl/css1/color_and_background/background_repeat-expected.txt:
+        * platform/efl/css1/color_and_background/color-expected.txt:
+        * platform/efl/css1/conformance/forward_compatible_parsing-expected.txt:
+        * platform/efl/css1/font_properties/font-expected.txt:
+        * platform/efl/css1/font_properties/font_family-expected.txt:
+        * platform/efl/css1/font_properties/font_size-expected.txt:
+        * platform/efl/css1/font_properties/font_style-expected.txt:
+        * platform/efl/css1/font_properties/font_variant-expected.txt:
+        * platform/efl/css1/font_properties/font_weight-expected.txt:
+        * platform/efl/css1/formatting_model/canvas-expected.txt:
+        * platform/efl/css1/formatting_model/floating_elements-expected.txt:
+        * platform/efl/css1/formatting_model/height_of_lines-expected.txt:
+        * platform/efl/css1/formatting_model/inline_elements-expected.txt:
+        * platform/efl/css1/formatting_model/replaced_elements-expected.txt:
+        * platform/efl/css1/formatting_model/vertical_formatting-expected.txt:
+        * platform/efl/css1/pseudo/anchor-expected.txt:
+        * platform/efl/css1/pseudo/firstletter-expected.txt:
+        * platform/efl/css1/pseudo/firstline-expected.txt:
+        * platform/efl/css1/pseudo/multiple_pseudo_elements-expected.txt:
+        * platform/efl/css1/pseudo/pseudo_elements_in_selectors-expected.txt:
+        * platform/efl/css1/text_properties/letter_spacing-expected.txt:
+        * platform/efl/css1/text_properties/line_height-expected.txt:
+        * platform/efl/css1/text_properties/text_align-expected.txt:
+        * platform/efl/css1/text_properties/text_decoration-expected.txt:
+        * platform/efl/css1/text_properties/text_indent-expected.txt:
+        * platform/efl/css1/text_properties/text_transform-expected.txt:
+        * platform/efl/css1/text_properties/vertical_align-expected.txt:
+        * platform/efl/css1/text_properties/word_spacing-expected.txt:
+        * platform/efl/css1/units/color_units-expected.txt:
+        * platform/efl/css1/units/length_units-expected.txt:
+        * platform/efl/css1/units/percentage_units-expected.txt:
+        * platform/efl/css1/units/urls-expected.txt:
+        * platform/efl/css2.1/t100801-c548-ln-ht-00-c-a-expected.txt:
+        * platform/efl/css2.1/t1606-c562-white-sp-00-b-ag-expected.txt:
+        * platform/efl/fast/css/empty-pseudo-class-expected.txt:
+        * platform/efl/fast/css/first-child-pseudo-class-expected.txt:
+        * platform/efl/fast/css/last-child-pseudo-class-expected.txt:
+        * platform/efl/fast/css/only-child-pseudo-class-expected.txt:
+        * platform/efl/fast/forms/targeted-frame-submission-expected.txt:
+        * platform/efl/fast/frames/onlyCommentInIFrame-expected.txt:
+        * platform/efl/fast/html/listing-expected.txt:
+        * platform/efl/fast/invalid/junk-data-expected.txt:
+        * platform/efl/fast/invalid/missing-end-tag-expected.txt:
+        * platform/efl/fast/loader/text-document-wrapping-expected.txt:
+        * platform/efl/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/efl/fast/parser/xhtml-alternate-entities-expected.txt:
+        * platform/efl/fast/table/border-collapsing/004-expected.txt:
+        * platform/efl/fast/table/border-collapsing/004-vertical-expected.txt:
+        * platform/efl/fast/text/whitespace/001-expected.txt: Added.
+        * platform/efl/fast/text/whitespace/013-expected.txt: Added.
+        * platform/efl/fast/text/whitespace/014-expected.txt: Added.
+        * platform/efl/fast/text/whitespace/022-expected.txt:
+        * platform/efl/fast/text/whitespace/024-expected.txt:
+        * platform/efl/fast/text/whitespace/030-expected.txt:
+        * platform/efl/fast/xsl/xslt-extra-content-at-end-expected.txt:
+        * platform/efl/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt:
+        * platform/efl/svg/hixie/error/012-expected.txt:
+        * platform/efl/tables/mozilla/bugs/45621-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug139524-2-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug21518-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug22122-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+
+2014-10-31  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Add initial parsing functionality of :lang pseudo class in Selectors Level 4.
+        https://bugs.webkit.org/show_bug.cgi?id=138170
+
+        Reviewed by Benjamin Poulain.
+
+        Add tests for comma-separated list arguments for :lang
+
+        * fast/css/css-selector-text-expected.txt: Updated.
+        * fast/css/css-selector-text.html: Updated.
+        * fast/selectors/lang-invalid-expected.txt: Added.
+        * fast/selectors/lang-invalid.html: Added.
+
 2014-10-31  Benjamin Poulain  <bpoulain@apple.com>
 
         Pseudo classes with an escaped parenthesis generate invalid rules

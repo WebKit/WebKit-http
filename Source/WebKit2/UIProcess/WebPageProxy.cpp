@@ -41,8 +41,7 @@
 #include "DrawingAreaProxy.h"
 #include "DrawingAreaProxyMessages.h"
 #include "EventDispatcherMessages.h"
-#include "FindIndicator.h"
-#include "Platform/Logging.h"
+#include "Logging.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
@@ -55,6 +54,7 @@
 #include "PrintInfo.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
+#include "TextIndicator.h"
 #include "WKContextPrivate.h"
 #include "WebBackForwardList.h"
 #include "WebBackForwardListItem.h"
@@ -363,6 +363,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_suppressVisibilityUpdates(false)
     , m_autoSizingShouldExpandToViewHeight(false)
     , m_mediaVolume(1)
+    , m_muted(false)
     , m_mayStartMediaWhenInWindow(true)
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
@@ -374,7 +375,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     if (m_process->state() == WebProcessProxy::State::Running) {
         if (m_userContentController)
             m_process->addWebUserContentControllerProxy(*m_userContentController);
-        m_process->addVisitedLinkProvider(m_visitedLinkProvider.get());
+        m_process->addVisitedLinkProvider(m_visitedLinkProvider);
     }
 
     updateViewState();
@@ -466,7 +467,7 @@ bool WebPageProxy::isValid() const
 
 void WebPageProxy::setPreferences(WebPreferences& preferences)
 {
-    if (&preferences == &m_preferences.get())
+    if (&preferences == m_preferences.ptr())
         return;
 
     m_preferences->removePage(*this);
@@ -639,7 +640,7 @@ void WebPageProxy::initializeWebPage()
 #endif
 
 #if ENABLE(INSPECTOR_SERVER)
-    if (pageGroup().preferences().developerExtrasEnabled())
+    if (m_preferences->developerExtrasEnabled())
         inspector()->enableRemoteInspection();
 #endif
 
@@ -2636,6 +2637,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     m_pageClient.resetSecureInputState();
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
     m_pageClient.dismissDictionaryLookupPanel();
+    m_pageClient.dismissActionMenuDataDetectorPopovers();
 #endif
 
     clearLoadDependentCallbacks();
@@ -3168,7 +3170,7 @@ void WebPageProxy::processDidFinishLaunching()
 
     if (m_userContentController)
         m_process->addWebUserContentControllerProxy(*m_userContentController);
-    m_process->addVisitedLinkProvider(m_visitedLinkProvider.get());
+    m_process->addVisitedLinkProvider(m_visitedLinkProvider);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -3325,6 +3327,7 @@ void WebPageProxy::pageDidScroll()
 {
     m_uiClient->pageDidScroll(this);
 #if PLATFORM(MAC)
+    m_pageClient.dismissActionMenuDataDetectorPopovers();
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
 #endif
 }
@@ -3385,6 +3388,11 @@ void WebPageProxy::setMediaVolume(float volume)
 
 void WebPageProxy::setMuted(bool muted)
 {
+    if (m_muted == muted)
+        return;
+
+    m_muted = muted;
+
     if (!isValid())
         return;
 
@@ -3619,10 +3627,14 @@ void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& conten
     m_findMatchesClient.didGetImageForMatchResult(this, WebImage::create(ShareableBitmap::create(contentImageHandle)).get(), matchIndex);
 }
 
-void WebPageProxy::setFindIndicator(const FloatRect& selectionRectInWindowCoordinates, const Vector<FloatRect>& textRectsInSelectionRectCoordinates, float contentImageScaleFactor, const ShareableBitmap::Handle& contentImageHandle, bool fadeOut, bool animate)
+void WebPageProxy::setTextIndicator(const TextIndicator::Data& indicatorData, bool fadeOut, bool animate)
 {
-    RefPtr<FindIndicator> findIndicator = FindIndicator::create(selectionRectInWindowCoordinates, textRectsInSelectionRectCoordinates, contentImageScaleFactor, contentImageHandle);
-    m_pageClient.setFindIndicator(findIndicator.release(), fadeOut, animate);
+    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), fadeOut, animate);
+}
+
+void WebPageProxy::clearTextIndicator(bool fadeOut, bool animate)
+{
+    m_pageClient.setTextIndicator(nullptr, fadeOut, animate);
 }
 
 void WebPageProxy::didFindString(const String& string, uint32_t matchCount, int32_t matchIndex)
@@ -4536,6 +4548,7 @@ void WebPageProxy::resetStateAfterProcessExited()
 #if PLATFORM(MAC)
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
     m_pageClient.dismissDictionaryLookupPanel();
+    m_pageClient.dismissActionMenuDataDetectorPopovers();
 #endif
 
     PageLoadState::Transaction transaction = m_pageLoadState.transaction();
@@ -4572,6 +4585,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.deviceScaleFactor = deviceScaleFactor();
     parameters.topContentInset = m_topContentInset;
     parameters.mediaVolume = m_mediaVolume;
+    parameters.muted = m_muted;
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
     parameters.minimumLayoutSize = m_minimumLayoutSize;
     parameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
@@ -5279,9 +5293,14 @@ void WebPageProxy::selectLookupTextAtLocation(FloatPoint point)
     m_process->send(Messages::WebPage::SelectLookupTextAtLocation(point), m_pageID);
 }
 
-void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result)
+void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, IPC::MessageDecoder& decoder)
 {
-    m_pageClient.didPerformActionMenuHitTest(result);
+    RefPtr<API::Object> userData;
+    WebContextUserMessageDecoder messageDecoder(userData, process());
+    if (!decoder.decode(messageDecoder))
+        return;
+
+    m_pageClient.didPerformActionMenuHitTest(result, userData.get());
 }
 #endif
 

@@ -32,8 +32,6 @@ WebInspector.CSSMedia = function(type, text, sourceCodeLocation)
     this._sourceCodeLocation = sourceCodeLocation || null;
 };
 
-WebInspector.Object.addConstructorFunctions(WebInspector.CSSMedia);
-
 WebInspector.CSSMedia.Type = {
     MediaRule: "css-media-type-media-rule",
     ImportRule: "css-media-type-import-rule",

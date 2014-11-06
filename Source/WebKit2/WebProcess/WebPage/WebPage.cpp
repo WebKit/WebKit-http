@@ -446,6 +446,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     
     setMediaVolume(parameters.mediaVolume);
 
+    setMuted(parameters.muted);
+
     // We use the DidFirstVisuallyNonEmptyLayout milestone to determine when to unfreeze the layer tree.
     m_page->addLayoutMilestones(DidFirstLayout | DidFirstVisuallyNonEmptyLayout);
 
@@ -2688,6 +2690,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setShowDebugBorders(store.getBoolValueForKey(WebPreferencesKey::compositingBordersVisibleKey()));
     settings.setShowRepaintCounter(store.getBoolValueForKey(WebPreferencesKey::compositingRepaintCountersVisibleKey()));
     settings.setShowTiledScrollingIndicator(store.getBoolValueForKey(WebPreferencesKey::tiledScrollingIndicatorVisibleKey()));
+    settings.setVisibleDebugOverlayRegions(store.getUInt32ValueForKey(WebPreferencesKey::visibleDebugOverlayRegionsKey()));
+    
     settings.setAggressiveTileRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::aggressiveTileRetentionEnabledKey()));
     settings.setTemporaryTileCohortRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::temporaryTileCohortRetentionEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));

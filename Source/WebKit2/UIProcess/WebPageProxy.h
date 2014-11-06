@@ -152,6 +152,7 @@ class PageClient;
 class RemoteLayerTreeTransaction;
 class RemoteScrollingCoordinatorProxy;
 class StringPairVector;
+class TextIndicator;
 class ViewSnapshot;
 class VisitedLinkProvider;
 class WebBackForwardList;
@@ -255,7 +256,7 @@ public:
     RemoteScrollingCoordinatorProxy* scrollingCoordinatorProxy() const { return m_scrollingCoordinatorProxy.get(); }
 #endif
 
-    WebBackForwardList& backForwardList() { return m_backForwardList.get(); }
+    WebBackForwardList& backForwardList() { return m_backForwardList; }
 
     bool addsVisitedLinks() const { return m_addsVisitedLinks; }
     void setAddsVisitedLinks(bool addsVisitedLinks) { m_addsVisitedLinks = addsVisitedLinks; }
@@ -661,7 +662,8 @@ public:
     void hideFindUI();
     void countStringMatches(const String&, FindOptions, unsigned maxMatchCount);
     void didCountStringMatches(const String&, uint32_t matchCount);
-    void setFindIndicator(const WebCore::FloatRect& selectionRectInWindowCoordinates, const Vector<WebCore::FloatRect>& textRectsInSelectionRectCoordinates, float contentImageScaleFactor, const ShareableBitmap::Handle& contentImageHandle, bool fadeOut, bool animate);
+    void setTextIndicator(const TextIndicator::Data&, bool fadeOut, bool animate);
+    void clearTextIndicator(bool fadeOut, bool animate);
     void didFindString(const String&, uint32_t matchCount, int32_t matchIndex);
     void didFailToFindString(const String&);
     void didFindStringMatches(const String&, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection);
@@ -738,13 +740,13 @@ public:
     bool isValidKeypressCommandName(const String& name) const { return m_knownKeypressCommandNames.contains(name); }
 #endif
 
-    WebProcessProxy& process() { return m_process.get(); }
+    WebProcessProxy& process() { return m_process; }
     PlatformProcessIdentifier processIdentifier() const;
 
-    WebPreferences& preferences() { return m_preferences.get(); }
+    WebPreferences& preferences() { return m_preferences; }
     void setPreferences(WebPreferences&);
 
-    WebPageGroup& pageGroup() { return m_pageGroup.get(); }
+    WebPageGroup& pageGroup() { return m_pageGroup; }
 
     bool isValid() const;
 
@@ -934,6 +936,11 @@ public:
     bool accessibilityObjectReadPrevious();
     bool accessibilityObjectReadNext();
 #endif
+
+#if USE(UNIFIED_TEXT_CHECKING)
+    void checkTextOfParagraph(const String& text, uint64_t checkingTypes, Vector<WebCore::TextCheckingResult>& results);
+#endif
+    void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
@@ -1166,15 +1173,11 @@ private:
 #endif
 
     // Spelling and grammar.
-#if USE(UNIFIED_TEXT_CHECKING)
-    void checkTextOfParagraph(const String& text, uint64_t checkingTypes, Vector<WebCore::TextCheckingResult>& results);
-#endif
     void checkSpellingOfString(const String& text, int32_t& misspellingLocation, int32_t& misspellingLength);
     void checkGrammarOfString(const String& text, Vector<WebCore::GrammarDetail>&, int32_t& badGrammarLocation, int32_t& badGrammarLength);
     void spellingUIIsShowing(bool&);
     void updateSpellingUIWithMisspelledWord(const String& misspelledWord);
     void updateSpellingUIWithGrammarString(const String& badGrammarPhrase, const WebCore::GrammarDetail&);
-    void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
     void learnWord(const String& word);
     void ignoreWord(const String& word);
     void requestCheckingOfString(uint64_t requestID, const WebCore::TextCheckingRequestData&);
@@ -1313,7 +1316,7 @@ private:
     void viewDidEnterWindow();
 
 #if PLATFORM(MAC)
-    void didPerformActionMenuHitTest(const ActionMenuHitTestResult&);
+    void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, IPC::MessageDecoder&);
 #endif
 
     PageClient& m_pageClient;
@@ -1554,6 +1557,7 @@ private:
     WebCore::IntSize m_minimumLayoutSize;
 
     float m_mediaVolume;
+    bool m_muted;
     bool m_mayStartMediaWhenInWindow;
 
     bool m_waitingForDidUpdateViewState;

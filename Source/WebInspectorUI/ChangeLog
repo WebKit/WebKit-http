@@ -1,3 +1,220 @@
+2014-11-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Too much whitespace in resource details sidebar in groups
+        https://bugs.webkit.org/show_bug.cgi?id=138386
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .content > .group:first-child > .row.simple:first-child > *):
+        (body.mac-platform.legacy .details-section > .content > .group:first-child > .row.simple:first-child > *):
+        (body.mac-platform.legacy .details-section > .content > .group > .row.text):
+        (.details-section > .content > .group > .row.properties:not(.empty)):
+        (body.mac-platform.legacy .details-section > .content > .group > .row.properties:not(.empty)):
+        Adjust top and bottom padding.
+
+2014-11-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Lots of TimelineDataGridNode asserts on reloads
+        https://bugs.webkit.org/show_bug.cgi?id=138387
+
+        Reviewed by Brian Burg.
+
+        The TimelineRuler.secondsPerPixel in the TimelineOverview is initialized
+        with a non-0 value and saved in a setting. However the TimelineRuler in
+        the OverviewTimelineView is not initialized with this value, and instead
+        initialized to 0. This patch initializes them to the same non-0 value.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.set secondsPerPixel):
+        * UserInterface/Views/TimelineContentView.js:
+
+2014-11-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pause on exceptions should show the actual exception
+        https://bugs.webkit.org/show_bug.cgi?id=63096
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New strings / files.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.get pauseReason):
+        (WebInspector.DebuggerManager.prototype.get pauseData):
+        (WebInspector.DebuggerManager.prototype.reset):
+        (WebInspector.DebuggerManager.prototype.debuggerDidPause):
+        (WebInspector.DebuggerManager.prototype._pauseReasonFromPayload):
+        Maintain the current pause reason and auxiliary data in the manager.
+
+        * UserInterface/Protocol/DebuggerObserver.js:
+        (WebInspector.DebuggerObserver.prototype.paused):
+        Pass previously unused event parameters on to the manager.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl):
+        Style error objects in the console like Objects. The new description
+        string provides a richer message if you console.log(exception).
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidPause):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidResume):
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReason):
+        Update the UI when we pause / resume to show / hide a pause reason section.
+
+        * UserInterface/Views/DetailsSectionRow.js:
+        (WebInspector.DetailsSectionRow.prototype.set emptyMessage):
+        Fix a latent bug that would have thrown an exception if the setter was ever used.
+
+        * UserInterface/Views/DetailsSectionTextRow.js: Added.
+        (WebInspector.DetailsSectionTextRow):
+        (WebInspector.DetailsSectionTextRow.prototype.get text):
+        (WebInspector.DetailsSectionTextRow.prototype.set text):
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .content > .group > .row.simple.data > .value):
+        (.details-section > .content > .group > .row.text):
+        Simple class for a section of centered text. This is modelled after
+        the empty message text style in other sections.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-formatted-object, .console-formatted-node, .console-formatted-error):
+        (.console-formatted-object .section, .console-formatted-node .section, .console-formatted-error .section):
+        (.console-formatted-object .properties, .console-formatted-node .properties, .console-formatted-error .properties):
+        Style "error" objects like regular objects. We may wish to treat differently later.
+
+        * UserInterface/Protocol/Legacy/6.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        Regenerate legacy backend commands to get the new enum.
+
+2014-11-04  Andrei Bucur  <abucur@adobe.com>
+
+        Building WebInspectorUI should not run the clang static analyzer by default
+        https://bugs.webkit.org/show_bug.cgi?id=137652
+
+        Reviewed by Timothy Hatcher.
+
+        There's no need to have the static analyzer enabled at compile time by default for the WebInspectorUI project.
+        It also breaks the ASAN build because the static analyzing step runs using the default compiler not the
+        ASAN clang.
+
+        * Configurations/DebugRelease.xcconfig: Remove the RUN_CLANG_STATIC_ANALYZER variable.
+
+2014-11-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exceptions when paused and hovering JavaScript without CallFrames
+        https://bugs.webkit.org/show_bug.cgi?id=138338
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression):
+        Fallback to using the main page's context if there is no active call frame we can use.
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: TextEditor search doesn't work after editing contents
+        https://bugs.webkit.org/show_bug.cgi?id=138198
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.customPerformSearch):
+        Fallback to pure TextEditor content searching (CodeMirror) if the editor has edits.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.hasEdits):
+        Check the CodeMirror clean state to known if we have edits or not.
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Selector's Specificity
+        https://bugs.webkit.org/show_bug.cgi?id=138189
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        Add new files and strings.
+
+        * UserInterface/Models/CSSMedia.js:
+        Constructor functions are not needed, remove unnecessary code.
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.set selectors): Deleted.
+        This was unused and is no longer correct.
+
+        (WebInspector.CSSRule.prototype.get matchedSelectorText):
+        Update now that selectors are a list of objects, not just strings.
+
+        * UserInterface/Models/CSSSelector.js:
+        (WebInspector.CSSSelector):
+        (WebInspector.CSSSelector.prototype.get specificity):
+        New model object for protocol type CSS.CSSSelector.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseSelectorListPayload.return):
+        (WebInspector.DOMNodeStyles.prototype._parseSelectorListPayload):
+        (WebInspector.DOMNodeStyles.prototype._parseRulePayload):
+        Handle parsing old and new SelectorLists.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh.appendSelector):
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh.appendSelectorText):
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh):
+        Update the code now that the list of selectors are model objects instead
+        of just selector text strings.
+
+2014-11-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ALTERNATE_DISPATCHERS Let the frontend know about extra agents
+        https://bugs.webkit.org/show_bug.cgi?id=138236
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.activateDomain):
+        * UserInterface/Protocol/InspectorObserver.js:
+        (WebInspector.InspectorObserver.prototype.activateExtraDomains):
+        * UserInterface/Base/Object.js:
+        * UserInterface/Base/Test.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.activateExtraDomains):
+        Default state is that there are no extra domains. When extra domains
+        are activated, some agents need to be re-initialized. Dispatch a
+        model event so views also know to re-initialize.
+
+        * UserInterface/Controllers/ApplicationCacheManager.js:
+        (WebInspector.ApplicationCacheManager.prototype._mainResourceDidChange):
+        * UserInterface/Controllers/DOMTreeManager.js:
+        Be more careful about direct agent use during main resource changes.
+        That can happen with a JSContext extended with a Page agent.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager):
+        (WebInspector.FrameResourceManager.prototype._mainFrameDidChange):
+        (WebInspector.FrameResourceManager.prototype._extraDomainsActivated):
+        * UserInterface/Controllers/StorageManager.js:
+        (WebInspector.StorageManager):
+        (WebInspector.StorageManager.prototype._databaseForIdentifier):
+        (WebInspector.StorageManager.prototype._extraDomainsActivated):
+        It is possible new window.FooAgent's are available. Perform expected
+        initialization re-checking if the agents are now available.
+
+        * UserInterface/Models/CSSCompletions.js:
+        Avoid re-initialization if we already did it. This should never
+        happen but this is just to be safe.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._extraDomainsActivated):
+        Don't disallow expandable tree elements if this is a JSContext with
+        extra domains. If that JSContext has resources, we would have been
+        unable to see child resources.
+
 2014-10-30  Dana Burkart  <dburkart@apple.com>
 
         <rdar://problem/18821260> Prepare for the mysterious future
