@@ -452,7 +452,7 @@ QNetworkReplyHandler::QNetworkReplyHandler(ResourceHandle* handle, LoadType load
         m_method = QNetworkAccessManager::PostOperation;
     else if (r.httpMethod() == "PUT")
         m_method = QNetworkAccessManager::PutOperation;
-    else if (r.httpMethod() == "DELETE")
+    else if (r.httpMethod() == "DELETE" && !r.httpBody()) // A delete with a body is a custom operation.
         m_method = QNetworkAccessManager::DeleteOperation;
     else
         m_method = QNetworkAccessManager::CustomOperation;
