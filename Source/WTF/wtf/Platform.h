@@ -981,6 +981,10 @@
 #define ENABLE_BINDING_INTEGRITY 1
 #endif
 
+#if !defined(ENABLE_JS_MEMORY_TRACKING) && !defined(NDEBUG)
+#define ENABLE_JS_MEMORY_TRACKING 1
+#endif
+
 #if PLATFORM(COCOA)
 #define WTF_USE_AVFOUNDATION 1
 #endif

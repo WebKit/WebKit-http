@@ -276,6 +276,7 @@ typedef const char* optionString;
     v(bool, useZombieMode, false) \
     v(bool, objectsAreImmortal, false) \
     v(bool, showObjectStatistics, false) \
+    v(bool, showAllocationBacktraces, false) \
     \
     v(gcLogLevel, logGC, GCLogging::None) \
     v(bool, disableGC, false) \

@@ -27,6 +27,7 @@
 #define HeapInlines_h
 
 #include "Heap.h"
+#include "HeapStatistics.h"
 #include "JSCell.h"
 #include "Structure.h"
 
@@ -213,6 +214,10 @@ inline CheckedBoolean Heap::tryAllocateStorage(JSCell* intendedOwner, size_t byt
 #else
     UNUSED_PARAM(intendedOwner);
 #endif
+#if ENABLE(JS_MEMORY_TRACKING)
+    if (Options::showAllocationBacktraces())
+        HeapStatistics::showAllocBacktrace(this, bytes, *outPtr);
+#endif
     return result;
 }
 
@@ -226,6 +231,10 @@ inline CheckedBoolean Heap::tryReallocateStorage(JSCell* intendedOwner, void** p
     dataLogF("JSC GC reallocating %lu -> %lu bytes of storage for %p: %p -> %p.\n", oldSize, newSize, intendedOwner, oldPtr, *ptr);
 #else
     UNUSED_PARAM(intendedOwner);
+#endif
+#if ENABLE(JS_MEMORY_TRACKING)
+    if (Options::showAllocationBacktraces())
+        HeapStatistics::showAllocBacktrace(this, newSize, *ptr);
 #endif
     return result;
 }

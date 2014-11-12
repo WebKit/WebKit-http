@@ -338,6 +338,7 @@ Heap::Heap(VM* vm, HeapType heapType)
 #if USE(CF)
     , m_delayedReleaseRecursionCount(0)
 #endif
+    , m_computingBacktrace(false)
 {
     m_machineThreads = adoptRef(new MachineThreads(this));
     m_storageSpace.init();

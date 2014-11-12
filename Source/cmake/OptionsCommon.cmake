@@ -106,6 +106,10 @@ if (NOT PORT STREQUAL "GTK")
     set(LIBEXEC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Absolute path to install executables executed by the library")
 endif ()
 
+if (ENABLE_ALLOCATION_LOGGING)
+    add_definitions(-DENABLE_ALLOCATION_LOGGING=1)
+endif ()
+
 # The Ninja generator does not yet know how to build archives in pieces, and so response
 # files must be used to deal with very long linker command lines.
 # See https://bugs.webkit.org/show_bug.cgi?id=129771
