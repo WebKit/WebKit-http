@@ -25,8 +25,14 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
 
-#if USE(EGL) && !PLATFORM(GTK)
+// FIXME: WPE should use EGLNativeWindowType once we can use the Wayland EGL platform.
+#if USE(EGL)
+#if !PLATFORM(GTK) && !PLATFORM(WPE)
 #include "eglplatform.h"
+#else
+#include <wayland-egl.h>
+#include <EGL/eglplatform.h>
+#endif
 typedef EGLNativeWindowType GLNativeWindowType;
 #else
 typedef uint64_t GLNativeWindowType;
