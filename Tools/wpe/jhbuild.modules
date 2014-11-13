@@ -93,17 +93,17 @@
       <dep package="fontconfig"/>
       <dep package="pixman"/>
     </dependencies>
-    <branch module="releases/cairo-1.12.18.tar.xz" version="1.12.18"
+    <branch module="releases/cairo-1.14.0.tar.xz" version="1.14.0"
             repo="cairographics.org"
-            hash="sha256:dc59f0b7ac945ce4e138a03c227a29260915a8b05a4226c1f6f1be586ba7f5b6">
+            hash="sha256:2cf5f81432e77ea4359af9dcd0f4faf37d015934501391c311bfd2d19a0134b7">
       <patch file="cairo-egl-device-create-for-egl-surface.patch" strip="1"/>
     </branch>
   </autotools>
 
   <autotools id="wayland">
-    <branch module="releases/wayland-1.5.0.tar.xz" version="1.5.0"
+    <branch module="releases/wayland-1.6.0.tar.xz" version="1.6.0"
             repo="wayland.freedesktop.org"
-            hash="sha256:0069e1e9af888b3e05384380ad8cc6c976ea3e81d08ba19b7675ce1d693a41b5"/>
+            hash="sha256:a7d5102dcf53d08c059d24bc62de491d7cd482070abeb6737a20d0d86ba6fc7f"/>
   </autotools>
 
   <autotools id="weston" autogenargs="--disable-weston-launch">
