@@ -70,6 +70,7 @@ static guint webkitVideoSinkSignals[LAST_SIGNAL] = { 0, };
 
 struct _WebKitVideoSinkPrivate {
     _WebKitVideoSinkPrivate()
+        : timeoutSource("[WebKit] webkitVideoSinkTimeoutCallback")
     {
         g_mutex_init(&sampleMutex);
         g_cond_init(&dataCondition);
@@ -83,7 +84,7 @@ struct _WebKitVideoSinkPrivate {
     }
 
     GstSample* sample;
-    GThreadSafeMainLoopSource timeoutSource;
+    GMainLoopSource::Simple timeoutSource;
     GMutex sampleMutex;
     GCond dataCondition;
 
@@ -218,9 +219,8 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     // This should likely use a lower priority, but glib currently starves
     // lower priority sources.
     // See: https://bugzilla.gnome.org/show_bug.cgi?id=610830.
-    gst_object_ref(sink);
-    priv->timeoutSource.schedule("[WebKit] webkitVideoSinkTimeoutCallback", std::function<void()>(std::bind(webkitVideoSinkTimeoutCallback, sink)), G_PRIORITY_DEFAULT,
-        [sink] { gst_object_unref(sink); });
+    GstObjectRef protector(GST_OBJECT(sink));
+    priv->timeoutSource.schedule(std::chrono::milliseconds(0), [protector] { webkitVideoSinkTimeoutCallback(WEBKIT_VIDEO_SINK(protector.get())); });
 
     g_cond_wait(&priv->dataCondition, &priv->sampleMutex);
     return GST_FLOW_OK;
