@@ -415,22 +415,15 @@ void GraphicsLayerTextureMapper::setDebugBorder(const Color& color, float width)
     m_changeMask |= DebugVisualsChange;
 }
 
-static void toTextureMapperLayerVector(const Vector<GraphicsLayer*>& layers, Vector<TextureMapperLayer*>& texmapLayers)
-{
-    texmapLayers.reserveCapacity(layers.size());
-    for (auto* layer : layers)
-        texmapLayers.append(toTextureMapperLayer(layer));
-}
-
 void GraphicsLayerTextureMapper::commitLayerChanges()
 {
     if (m_changeMask == NoChanges)
         return;
 
     if (m_changeMask & ChildrenChange) {
-        Vector<TextureMapperLayer*> textureMapperLayerChildren;
-        toTextureMapperLayerVector(children(), textureMapperLayerChildren);
-        m_layer->setChildren(textureMapperLayerChildren);
+        m_layer->removeAllChildren();
+        for (auto& child : m_children)
+            m_layer->addChild(toTextureMapperLayer(child));
     }
 
     if (m_changeMask & MaskLayerChange)
