@@ -113,6 +113,9 @@
 
 #if ENABLE(SQL_DATABASE)
 #include "WebDatabaseManager.h"
+#if PLATFORM(IOS)
+#include "WebSQLiteDatabaseTracker.h"
+#endif
 #endif
 
 #if ENABLE(BATTERY_STATUS)
@@ -153,6 +156,7 @@ WebProcess::WebProcess()
     , m_inDidClose(false)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
+    , m_diskCacheIsDisabledForTesting(false)
 #if PLATFORM(COCOA)
     , m_compositingRenderServerPort(MACH_PORT_NULL)
     , m_clearResourceCachesDispatchGroup(0)
@@ -193,7 +197,11 @@ WebProcess::WebProcess()
     
 #if ENABLE(SQL_DATABASE)
     addSupplement<WebDatabaseManager>();
+#if PLATFORM(IOS)
+    addSupplement<WebSQLiteDatabaseTracker>();
 #endif
+#endif
+
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     addSupplement<WebNotificationManager>();
 #endif
@@ -299,6 +307,7 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     if (!parameters.applicationCacheDirectory.isEmpty())
         cacheStorage().setCacheDirectory(parameters.applicationCacheDirectory);
 
+    m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
     if (!parameters.languages.isEmpty())
@@ -1188,7 +1197,7 @@ bool WebProcess::markAllLayersVolatileIfPossible()
     return successfullyMarkedAllLayersVolatile;
 }
 
-void WebProcess::processSuspensionCleanupTimerFired(Timer<WebProcess>* timer)
+void WebProcess::processSuspensionCleanupTimerFired(Timer* timer)
 {
     if (markAllLayersVolatileIfPossible()) {
         parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
@@ -1210,7 +1219,7 @@ void WebProcess::pageWillLeaveWindow(uint64_t pageID)
         m_nonVisibleProcessCleanupTimer.startOneShot(nonVisibleProcessCleanupDelay);
 }
     
-void WebProcess::nonVisibleProcessCleanupTimerFired(Timer<WebProcess>*)
+void WebProcess::nonVisibleProcessCleanupTimerFired(Timer*)
 {
     ASSERT(m_pagesInWindows.isEmpty());
     if (!m_pagesInWindows.isEmpty())

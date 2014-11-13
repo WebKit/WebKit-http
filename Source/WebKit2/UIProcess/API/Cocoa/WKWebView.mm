@@ -75,6 +75,7 @@
 #import <JavaScriptCore/JSContext.h>
 #import <JavaScriptCore/JSValue.h>
 #import <wtf/HashMap.h>
+#import <wtf/MathExtras.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RetainPtr.h>
 
@@ -89,6 +90,7 @@
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
 #import "WebPageMessages.h"
+#import "WebVideoFullscreenManagerProxy.h"
 #import <CoreGraphics/CGFloat.h>
 #import <CoreGraphics/CGPDFDocumentPrivate.h>
 #import <UIKit/UIApplication.h>
@@ -235,6 +237,11 @@ static int32_t deviceOrientationForUIInterfaceOrientation(UIInterfaceOrientation
 static int32_t deviceOrientation()
 {
     return deviceOrientationForUIInterfaceOrientation([[UIApplication sharedApplication] statusBarOrientation]);
+}
+
+- (BOOL)_isPlayingFullscreenOptimizedVideo
+{
+    return _page->videoFullscreenManager() && _page->videoFullscreenManager()->mode() == WebCore::HTMLMediaElement::HTMLMediaElement::VideoFullscreenModeOptimized;
 }
 #endif
 
@@ -829,10 +836,9 @@ static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, Web
 
 // WebCore stores the page scale factor as float instead of double. When we get a scale from WebCore,
 // we need to ignore differences that are within a small rounding error on floats.
-template <typename TypeA, typename TypeB>
-static inline bool withinEpsilon(TypeA a, TypeB b)
+static inline bool areEssentiallyEqualAsFloat(float a, float b)
 {
-    return std::abs(a - b) < std::numeric_limits<float>::epsilon();
+    return WTF::areEssentiallyEqual(a, b);
 }
 
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
@@ -882,7 +888,7 @@ static inline bool withinEpsilon(TypeA a, TypeB b)
     if (_needsToRestoreExposedRect && layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore) {
         _needsToRestoreExposedRect = NO;
 
-        if (withinEpsilon(contentZoomScale(self), _scaleToRestore)) {
+        if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
             WebCore::FloatPoint exposedPosition = _exposedRectToRestore.location();
             exposedPosition.scale(_scaleToRestore, _scaleToRestore);
 
@@ -894,7 +900,7 @@ static inline bool withinEpsilon(TypeA a, TypeB b)
     if (_needsToRestoreUnobscuredCenter && layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore) {
         _needsToRestoreUnobscuredCenter = NO;
 
-        if (withinEpsilon(contentZoomScale(self), _scaleToRestore)) {
+        if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
             CGRect unobscuredRect = UIEdgeInsetsInsetRect(self.bounds, _obscuredInsets);
             WebCore::FloatSize unobscuredContentSizeAtNewScale(unobscuredRect.size.width / _scaleToRestore, unobscuredRect.size.height / _scaleToRestore);
             WebCore::FloatPoint topLeftInDocumentCoordinate(_unobscuredCenterToRestore.x() - unobscuredContentSizeAtNewScale.width() / 2, _unobscuredCenterToRestore.y() - unobscuredContentSizeAtNewScale.height() / 2);
@@ -1307,11 +1313,13 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     if (scrollView.panGestureRecognizer.state == UIGestureRecognizerStateBegan)
         [_contentView scrollViewWillStartPanOrPinchGesture];
+
     [_contentView willStartZoomOrScroll];
 #if ENABLE(CSS_SCROLL_SNAP) && ENABLE(ASYNC_SCROLLING)
     // FIXME: We will want to detect whether snapping will occur before beginning to drag. See WebPageProxy::didCommitLayerTree.
     WebKit::RemoteScrollingCoordinatorProxy* coordinator = _page->scrollingCoordinatorProxy();
-    scrollView.decelerationRate = (coordinator && coordinator->shouldSetScrollViewDecelerationRateFast()) ? UIScrollViewDecelerationRateFast : UIScrollViewDecelerationRateNormal;
+    ASSERT(scrollView == _scrollView.get());
+    scrollView.decelerationRate = (coordinator && coordinator->shouldSetScrollViewDecelerationRateFast()) ? UIScrollViewDecelerationRateFast : [_scrollView preferredScrollDecelerationFactor];;
 #endif
 }
 
@@ -2468,6 +2476,16 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (void)_setTopContentInset:(CGFloat)contentInset
 {
     [_wkView _setTopContentInset:contentInset];
+}
+
+- (BOOL)_ignoresNonWheelMouseEvents
+{
+    return [_wkView _ignoresNonWheelMouseEvents];
+}
+
+- (void)_setIgnoresNonWheelMouseEvents:(BOOL)ignoresNonWheelMouseEvents
+{
+    [_wkView _setIgnoresNonWheelMouseEvents:ignoresNonWheelMouseEvents];
 }
 
 - (CGFloat)_topContentInset

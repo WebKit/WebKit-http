@@ -1,3 +1,344 @@
+2014-11-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Handle activating extra agents properly after inspector has connected
+        https://bugs.webkit.org/show_bug.cgi?id=138639
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.activateExtraDomains):
+
+2014-11-11  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Main.js missing many trailing semicolons
+        https://bugs.webkit.org/show_bug.cgi?id=138624
+
+        Add semicolons to function variable assignments.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js: Added semicolons.
+
+2014-11-10  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Update Esprima, remove WebInspector.Esprima global.
+        https://bugs.webkit.org/show_bug.cgi?id=138579
+
+        Reviewed by Timothy Hatcher.
+
+        Update esprima.js file to be unchanged by removing WebInspector.Esprima global object. Move esprima.js include
+        so that all external libraries load before the WebInspector namespace is declared in the combined Main.js.
+
+        * UserInterface/External/Esprima/esprima.js: File updated, no changes made.
+        * UserInterface/Main.html: esprima.js script tag moved up with other externals.
+        * UserInterface/Models/ScriptSyntaxTree.js: WebInspector.Esprima changed to esprima
+        (WebInspector.ScriptSyntaxTree):
+
+2014-11-10  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Add infrastructure for eslint based static analyzer
+        https://bugs.webkit.org/show_bug.cgi?id=137890
+
+        Reviewed by Timothy Hatcher.
+
+        Fix to previous patch to add AnalyzerManager and AnalyzerMessage classes. Changed Main.html to include ESLint.js
+        before Main.js in the combined resources.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Controllers/AnalyzerManager.js: Added.
+        (WebInspector.AnalyzerManager):
+        (set WebInspector.AnalyzerManager.prototype.getAnalyzerMessagesForSourceCode.):
+        (set WebInspector.AnalyzerManager.prototype.getAnalyzerMessagesForSourceCode):
+        (set WebInspector.AnalyzerManager.prototype.set get sourceCodeCanBeAnalyzed):
+        (set WebInspector.AnalyzerManager.prototype._handleSourceCodeContentDidChange):
+        * UserInterface/Main.html:
+        * UserInterface/Models/AnalyzerMessage.js: Added.
+        (WebInspector.AnalyzerMessage):
+        (WebInspector.AnalyzerMessage.prototype.get sourceCodeLocation):
+        (WebInspector.AnalyzerMessage.prototype.get sourceCode):
+        (WebInspector.AnalyzerMessage.prototype.get text):
+        (WebInspector.AnalyzerMessage.prototype.get ruleIdentifier):
+        * UserInterface/Models/SourceCode.js:
+
+2014-11-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: decouple child element folderization logic from FrameTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=138364
+
+        Reviewed by Timothy Hatcher.
+
+        Created FolderizedTreeElement base class, which FrameTreeElement now inherits via SourceCodeTreeElement.
+        FolderizedTreeElement uses settings provided by derived classes for labeling subfolders and to determine
+        folder membership for child items.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.canArchiveMainFrame):
+        * UserInterface/Main.html:
+        * UserInterface/Models/LayoutTimelineRecord.js:
+        (WebInspector.LayoutTimelineRecord.displayNameForEventType):
+        (WebInspector.LayoutTimelineRecord.EventType.displayName): Deleted.
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.typeFromMIMEType):
+        (WebInspector.Resource.displayNameForType):
+        (WebInspector.Resource.prototype.get syntheticMIMEType):
+        (WebInspector.Resource.prototype.updateForResponse):
+        (WebInspector.Resource.Type.fromMIMEType): Deleted.
+        (WebInspector.Resource.Type.displayName): Deleted.
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource):
+        * UserInterface/Views/FolderizedTreeElement.js: Added.
+        (WebInspector.FolderizedTreeElement):
+        (WebInspector.FolderizedTreeElement.prototype.get groupedIntoFolders):
+        (WebInspector.FolderizedTreeElement.prototype.set folderSettingsKey):
+        (WebInspector.FolderizedTreeElement.prototype.registerFolderizeSettings):
+        (WebInspector.FolderizedTreeElement.prototype.set removeChildren):
+        (WebInspector.FolderizedTreeElement.prototype.addChildForRepresentedObject):
+        (WebInspector.FolderizedTreeElement.prototype.addRepresentedObjectToNewChildQueue):
+        (WebInspector.FolderizedTreeElement.prototype.removeChildForRepresentedObject):
+        (WebInspector.FolderizedTreeElement.prototype.compareChildTreeElements):
+        (WebInspector.FolderizedTreeElement.prototype.updateParentStatus):
+        (WebInspector.FolderizedTreeElement.prototype._clearNewChildQueue):
+        (WebInspector.FolderizedTreeElement.prototype._populateFromNewChildQueue):
+        (WebInspector.FolderizedTreeElement.prototype._removeRepresentedObjectFromNewChildQueue):
+        (WebInspector.FolderizedTreeElement.prototype._addTreeElement):
+        (WebInspector.FolderizedTreeElement.prototype._compareTreeElementsByMainTitle):
+        (WebInspector.FolderizedTreeElement.prototype._insertFolderTreeElement):
+        (WebInspector.FolderizedTreeElement.prototype._insertChildTreeElement):
+        (WebInspector.FolderizedTreeElement.prototype._removeTreeElement):
+        (WebInspector.FolderizedTreeElement.prototype._parentTreeElementForRepresentedObject):
+        (WebInspector.FolderizedTreeElement.prototype._folderTreeElementExpandedStateChange):
+        (WebInspector.FolderizedTreeElement.prototype._settingsForRepresentedObject):
+        (WebInspector.FolderizedTreeElement.prototype._shouldGroupIntoFolders.pushCategory):
+        (WebInspector.FolderizedTreeElement.prototype._shouldGroupIntoFolders):
+        * UserInterface/Views/FrameTreeElement.js:
+        (.this):
+        (WebInspector.FrameTreeElement.prototype.updateSourceMapResources):
+        (WebInspector.FrameTreeElement.prototype.onattach):
+        (WebInspector.FrameTreeElement.prototype.ondetach):
+        (WebInspector.FrameTreeElement.prototype.compareChildTreeElements):
+        (WebInspector.FrameTreeElement.prototype.onpopulate):
+        (WebInspector.FrameTreeElement.prototype._mainResourceDidChange):
+        (WebInspector.FrameTreeElement.prototype._resourceWasAdded):
+        (WebInspector.FrameTreeElement.prototype._resourceWasRemoved):
+        (WebInspector.FrameTreeElement.prototype._childFrameWasAdded):
+        (WebInspector.FrameTreeElement.prototype._childFrameWasRemoved):
+        (WebInspector.FrameTreeElement.prototype._childContentFlowWasAdded):
+        (WebInspector.FrameTreeElement.prototype._childContentFlowWasRemoved):
+        (WebInspector.FrameTreeElement.prototype._rootDOMNodeInvalidated):
+        (WebInspector.FrameTreeElement): Deleted.
+        (WebInspector.FrameTreeElement.prototype.removeChildren): Deleted.
+        (WebInspector.FrameTreeElement.prototype._updateParentStatus): Deleted.
+        (WebInspector.FrameTreeElement.prototype._addRepresentedObjectToNewChildQueue): Deleted.
+        (WebInspector.FrameTreeElement.prototype._removeRepresentedObjectFromNewChildQueue): Deleted.
+        (WebInspector.FrameTreeElement.prototype._populateFromNewChildQueue): Deleted.
+        (WebInspector.FrameTreeElement.prototype._clearNewChildQueue): Deleted.
+        (WebInspector.FrameTreeElement.prototype._addChildForRepresentedObject): Deleted.
+        (WebInspector.FrameTreeElement.prototype._removeChildForRepresentedObject): Deleted.
+        (WebInspector.FrameTreeElement.prototype._addTreeElementForRepresentedObject): Deleted.
+        (WebInspector.FrameTreeElement.prototype._addTreeElement): Deleted.
+        (WebInspector.FrameTreeElement.prototype._compareTreeElementsByMainTitle): Deleted.
+        (WebInspector.FrameTreeElement.prototype._insertFolderTreeElement): Deleted.
+        (WebInspector.FrameTreeElement.prototype._compareResourceTreeElements): Deleted.
+        (WebInspector.FrameTreeElement.prototype._insertResourceTreeElement): Deleted.
+        (WebInspector.FrameTreeElement.prototype._removeTreeElement): Deleted.
+        (WebInspector.FrameTreeElement.prototype._folderNameForResourceType): Deleted.
+        (WebInspector.FrameTreeElement.prototype._parentTreeElementForRepresentedObject.createFolderTreeElement): Deleted.
+        (WebInspector.FrameTreeElement.prototype._parentTreeElementForRepresentedObject): Deleted.
+        (WebInspector.FrameTreeElement.prototype._folderTreeElementExpandedStateChange): Deleted.
+        (WebInspector.FrameTreeElement.prototype._shouldGroupIntoFolders.pushResourceType): Deleted.
+        (WebInspector.FrameTreeElement.prototype._shouldGroupIntoFolders.pushCategory): Deleted.
+        (WebInspector.FrameTreeElement.prototype._shouldGroupIntoFolders): Deleted.
+        * UserInterface/Views/LayoutTimelineDataGridNode.js:
+        (WebInspector.LayoutTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView): Deleted.
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView): Deleted.
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshResourceType):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WebInspector.SourceCodeTreeElement):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.createColumnScopeBar):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2014-11-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Layer summary should be bottom sticky
+        https://bugs.webkit.org/show_bug.cgi?id=138518
+
+        Reviewed by Timothy Hatcher.
+
+        Previously only NavigationSidebars had a content view. Now, give all
+        Sidebars a contentElement section for content.
+
+        Update all Details Sidebars to append content to the contentElement
+        instead of directly to the element. Only two Details sidebars append
+        to the element:
+
+          - CSSStyleDetailsSidebarPanel for the navigation bar at the top
+          - LayerTreeDetailsSidebarPanel for the summary view at the bottom
+
+        Take this opportunity to fix up some naming and styles as well.
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel):
+        (WebInspector.SidebarPanel.prototype.get contentElement):
+        Give every SidebarPanel a content element.
+
+        * UserInterface/Views/DetailsSidebarPanel.css: Removed.
+        (.sidebar > .panel > .content):
+        * UserInterface/Views/SidebarPanel.css: Added.
+        (.sidebar > .panel > .content):
+        And give that content element a default style.
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .content):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        (WebInspector.NavigationSidebarPanel.prototype.createContentTreeOutline):
+        (WebInspector.NavigationSidebarPanel.prototype._updateContentOverflowShadowVisibility):
+        (WebInspector.NavigationSidebarPanel.prototype.get contentElement): Deleted.
+        Navigation sidebar panels now use the parent's contentElement.
+        Also, carry over their default styles, overriding the base.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js: Renamed from Source/WebInspectorUI/UserInterface/Views/LayerTreeSidebarPanel.js.
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._buildLayerInfoSection):
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._buildDataGridSection):
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._buildBottomBar):
+        Rename LayerTreeSidebarPanel to make it clear this is a DetailsSidebarPanel.
+        Add the "bottom bar" to the root element, and sections to the contentElement.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.css: Renamed from Source/WebInspectorUI/UserInterface/Views/LayerTreeSidebarPanel.css.
+        (.sidebar > .layer-tree.panel > .content):
+        (body.mac-platform.legacy .sidebar > .layer-tree.panel > .content):
+        Style the bottom bar to pin it to the bottom of the sidebar panel.
+
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.refresh):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._navigationItemSelected):
+        Add the navigation bar to the root element, and sections to the contentElement.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Main.html:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        Update for new names.
+
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        (WebInspector.ApplicationCacheDetailsSidebarPanel):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        * UserInterface/Views/DOMDetailsSidebarPanel.js:
+        (WebInspector.DOMDetailsSidebarPanel):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        * UserInterface/Views/DetailsSidebarPanel.js:
+        (WebInspector.DetailsSidebarPanel):
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshURL):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshImageSizeSection):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRequestDataSection):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.refresh.delayedWork):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.refresh):
+        All details sidebar panels now use the contentElement instead of element for content.
+
+2014-11-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Cursor and scroll view jumps around when modifying styles
+        https://bugs.webkit.org/show_bug.cgi?id=137467
+
+        This merges commit e2962a5b0df56c8ee5a4482899d308decf3d7677 from CodeMirror.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/External/CodeMirror/codemirror.js:
+        (maybeScrollWindow): Signal the scrollCursorIntoView event.
+        (signalDOMEvent): Support string events by transforming them to event objects.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        (scrollCursorIntoView): Added. Default event listener that provides our own
+        implementation using WebKit's scrollIntoViewIfNeeded.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh): Stop doing an
+        extra scrollIntoViewIfNeeded call, CodeMirror does this.
+
+2014-11-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pseudo element matchedCSSRules do not include matching selector info
+        https://bugs.webkit.org/show_bug.cgi?id=138438
+
+        Reviewed by Benjamin Poulain.
+
+        * UserInterface/Base/Test.js:
+        (WebInspector.loaded):
+        Include a global setting for shadow dom used by DOM model classes.
+        Give it a "test" specific name to not override non-test setting values.
+
+2014-11-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r175628.
+        https://bugs.webkit.org/show_bug.cgi?id=138451
+
+        Totally borked the web inspector (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Add infrastructure for eslint based static
+        analyzer"
+        https://bugs.webkit.org/show_bug.cgi?id=137890
+        http://trac.webkit.org/changeset/175628
+
+2014-11-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Specificity not shown for pseudo element styles
+        https://bugs.webkit.org/show_bug.cgi?id=138436
+
+        Reviewed by Benjamin Poulain.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh):
+        Previously we were skipping the pre-selector <span>s when we were
+        not getting a listing of matched selector indices, and missing out
+        on the opportunity to give each selector a specificity. Now, always
+        loop over selectors if we have them.
+
+2014-11-05  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Add infrastructure for eslint based static analyzer
+        https://bugs.webkit.org/show_bug.cgi?id=137890
+
+        Reviewed by Timothy Hatcher.
+
+        Adding a manager to analyze source code, return warnings (AnalyzerMessages), and cache warnings.
+
+        * UserInterface/Base/Main.js: Create analyzerManager singleton.
+        * UserInterface/Controllers/AnalyzerManager.js: Added.
+        (WebInspector.AnalyzerManager):
+        (set WebInspector.AnalyzerManager.prototype.getAnalyzerMessagesForSourceCode.):
+        (set WebInspector.AnalyzerManager.prototype.getAnalyzerMessagesForSourceCode):
+        (set WebInspector.AnalyzerManager.prototype.set get sourceCodeCanBeAnalyzed):
+        (set WebInspector.AnalyzerManager.prototype._handleSourceCodeContentDidChange):
+        * UserInterface/Main.html: Add new files.
+        * UserInterface/Models/AnalyzerMessage.js: Added.
+        (WebInspector.AnalyzerMessage):
+        (WebInspector.AnalyzerMessage.prototype.get sourceCodeLocation):
+        (WebInspector.AnalyzerMessage.prototype.get sourceCode):
+        (WebInspector.AnalyzerMessage.prototype.get text):
+        (WebInspector.AnalyzerMessage.prototype.get ruleIdentifier):
+        * UserInterface/Models/SourceCode.js: Added call to WebInspector.Object.addConstructorFunctions().
+
 2014-11-04  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Too much whitespace in resource details sidebar in groups

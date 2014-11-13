@@ -62,6 +62,10 @@
 #import "ThemeMac.h"
 #endif
 
+#if ENABLE(FILTERS_LEVEL_2)
+@interface CABackdropLayer : CALayer
+@end
+#endif
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
@@ -233,6 +237,14 @@ PlatformCALayerMac::PlatformCALayerMac(LayerType layerType, PlatformCALayerClien
     case LayerTypeTransformLayer:
         layerClass = [CATransformLayer class];
         break;
+    case LayerTypeBackdropLayer:
+#if ENABLE(FILTERS_LEVEL_2)
+        layerClass = [CABackdropLayer class];
+#else
+        ASSERT_NOT_REACHED();
+        layerClass = [CALayer class];
+#endif
+        break;
     case LayerTypeWebTiledLayer:
         ASSERT_NOT_REACHED();
         break;
@@ -247,13 +259,17 @@ PlatformCALayerMac::PlatformCALayerMac(LayerType layerType, PlatformCALayerClien
         // We don't create PlatformCALayerMacs wrapped around WebGLLayers.
         ASSERT_NOT_REACHED();
         break;
+    case LayerTypeShapeLayer:
+        layerClass = [CAShapeLayer class];
+        // fillColor defaults to opaque black.
+        break;
     case LayerTypeCustom:
         break;
     }
 
     if (layerClass)
         m_layer = adoptNS([[layerClass alloc] init]);
-    
+
     commonInit();
 }
 
@@ -302,6 +318,9 @@ PassRefPtr<PlatformCALayer> PlatformCALayerMac::clone(PlatformCALayerClient* own
     case LayerTypeAVPlayerLayer:
         type = LayerTypeAVPlayerLayer;
         break;
+    case LayerTypeShapeLayer:
+        type = LayerTypeShapeLayer;
+        break;
     case LayerTypeLayer:
     default:
         type = LayerTypeLayer;
@@ -320,6 +339,7 @@ PassRefPtr<PlatformCALayer> PlatformCALayerMac::clone(PlatformCALayerClient* own
     newLayer->setOpaque(isOpaque());
     newLayer->setBackgroundColor(backgroundColor());
     newLayer->setContentsScale(contentsScale());
+    newLayer->setCornerRadius(cornerRadius());
     newLayer->copyFiltersFrom(*this);
     newLayer->updateCustomAppearance(customAppearance());
 
@@ -333,6 +353,9 @@ PassRefPtr<PlatformCALayer> PlatformCALayerMac::clone(PlatformCALayerClient* own
             [destinationPlayerLayer setPlayer:[sourcePlayerLayer player]];
         });
     }
+    
+    if (type == LayerTypeShapeLayer)
+        newLayer->setShapeRoundedRect(shapeRoundedRect());
 
     return newLayer;
 }
@@ -489,7 +512,7 @@ PassRefPtr<PlatformCAAnimation> PlatformCALayerMac::animationForKey(const String
 void PlatformCALayerMac::setMask(PlatformCALayer* layer)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
-    [m_layer.get() setMask:layer ? layer->platformLayer() : 0];
+    [m_layer.get() setMask:layer ? layer->platformLayer() : nil];
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
@@ -794,10 +817,43 @@ void PlatformCALayerMac::setContentsScale(float value)
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
+float PlatformCALayerMac::cornerRadius() const
+{
+    return [m_layer.get() cornerRadius];
+}
+
+void PlatformCALayerMac::setCornerRadius(float value)
+{
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
+    [m_layer.get() setCornerRadius:value];
+    END_BLOCK_OBJC_EXCEPTIONS
+}
+
 void PlatformCALayerMac::setEdgeAntialiasingMask(unsigned mask)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
     [m_layer.get() setEdgeAntialiasingMask:mask];
+    END_BLOCK_OBJC_EXCEPTIONS
+}
+
+FloatRoundedRect PlatformCALayerMac::shapeRoundedRect() const
+{
+    ASSERT(m_layerType == LayerTypeShapeLayer);
+    if (m_shapeRoundedRect)
+        return *m_shapeRoundedRect;
+
+    return FloatRoundedRect();
+}
+
+void PlatformCALayerMac::setShapeRoundedRect(const FloatRoundedRect& roundedRect)
+{
+    ASSERT(m_layerType == LayerTypeShapeLayer);
+    m_shapeRoundedRect = std::make_unique<FloatRoundedRect>(roundedRect);
+
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
+    Path shapePath;
+    shapePath.addRoundedRect(roundedRect);
+    [(CAShapeLayer *)m_layer setPath:shapePath.platformPath()];
     END_BLOCK_OBJC_EXCEPTIONS
 }
 

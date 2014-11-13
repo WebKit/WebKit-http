@@ -81,6 +81,7 @@
 @property (readonly, getter=isUsingUISideCompositing) BOOL usingUISideCompositing;
 @property (readwrite) BOOL allowsMagnification;
 @property (readwrite) double magnification;
+@property (readwrite, setter=_setIgnoresNonWheelMouseEvents:) BOOL _ignoresNonWheelMouseEvents;
 @property (readwrite) BOOL allowsBackForwardNavigationGestures;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
 
@@ -108,6 +109,7 @@
 - (void)setMagnification:(double)magnification centeredAtPoint:(NSPoint)point;
 
 - (void)saveBackForwardSnapshotForCurrentItem;
+- (void)saveBackForwardSnapshotForItem:(WKBackForwardListItemRef)item;
 
 // Views must be layer-backed, have no transform applied, be in back-to-front z-order, and the whole set must be a contiguous opaque rectangle.
 - (void)_setCustomSwipeViews:(NSArray *)customSwipeViews;
@@ -119,6 +121,9 @@
 
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems;
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems userData:(WKTypeRef)userData;
+
+- (NSView *)_viewForPreviewingURL:(NSURL *)url initialFrameSize:(NSSize)initialFrameSize;
+- (void)_finishPreviewingURL:(NSURL *)url withPreviewView:(NSView *)previewView;
 #endif
 
 @end

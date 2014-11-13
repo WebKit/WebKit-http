@@ -31,7 +31,7 @@
 #include "FilterOperations.h"
 #include "FloatPoint.h"
 #include "FloatPoint3D.h"
-#include "FloatRect.h"
+#include "FloatRoundedRect.h"
 #include "FloatSize.h"
 #include "GraphicsLayerClient.h"
 #include "IntRect.h"
@@ -66,7 +66,7 @@ public:
 
     double keyTime() const { return m_keyTime; }
     const TimingFunction* timingFunction() const { return m_timingFunction.get(); }
-    virtual PassOwnPtr<AnimationValue> clone() const = 0;
+    virtual std::unique_ptr<AnimationValue> clone() const = 0;
 
 protected:
     AnimationValue(double keyTime, TimingFunction* timingFunction = nullptr)
@@ -84,25 +84,20 @@ private:
 // FIXME: Should be moved to its own header file.
 class FloatAnimationValue : public AnimationValue {
 public:
-    static PassOwnPtr<FloatAnimationValue> create(double keyTime, float value, TimingFunction* timingFunction = nullptr)
-    {
-        return adoptPtr(new FloatAnimationValue(keyTime, value, timingFunction));
-    }
-
-    virtual PassOwnPtr<AnimationValue> clone() const override
-    {
-        return adoptPtr(new FloatAnimationValue(*this));
-    }
-
-    float value() const { return m_value; }
-
-private:
-    FloatAnimationValue(double keyTime, float value, TimingFunction* timingFunction)
+    FloatAnimationValue(double keyTime, float value, TimingFunction* timingFunction = nullptr)
         : AnimationValue(keyTime, timingFunction)
         , m_value(value)
     {
     }
 
+    virtual std::unique_ptr<AnimationValue> clone() const override
+    {
+        return std::make_unique<FloatAnimationValue>(*this);
+    }
+
+    float value() const { return m_value; }
+
+private:
     float m_value;
 };
 
@@ -110,25 +105,20 @@ private:
 // FIXME: Should be moved to its own header file.
 class TransformAnimationValue : public AnimationValue {
 public:
-    static PassOwnPtr<TransformAnimationValue> create(double keyTime, const TransformOperations& value, TimingFunction* timingFunction = nullptr)
-    {
-        return adoptPtr(new TransformAnimationValue(keyTime, value, timingFunction));
-    }
-
-    virtual PassOwnPtr<AnimationValue> clone() const override
-    {
-        return adoptPtr(new TransformAnimationValue(*this));
-    }
-
-    const TransformOperations& value() const { return m_value; }
-
-private:
-    TransformAnimationValue(double keyTime, const TransformOperations& value, TimingFunction* timingFunction)
+    TransformAnimationValue(double keyTime, const TransformOperations& value, TimingFunction* timingFunction = nullptr)
         : AnimationValue(keyTime, timingFunction)
         , m_value(value)
     {
     }
 
+    virtual std::unique_ptr<AnimationValue> clone() const override
+    {
+        return std::make_unique<TransformAnimationValue>(*this);
+    }
+
+    const TransformOperations& value() const { return m_value; }
+
+private:
     TransformOperations m_value;
 };
 
@@ -136,25 +126,20 @@ private:
 // FIXME: Should be moved to its own header file.
 class FilterAnimationValue : public AnimationValue {
 public:
-    static PassOwnPtr<FilterAnimationValue> create(double keyTime, const FilterOperations& value, TimingFunction* timingFunction = nullptr)
-    {
-        return adoptPtr(new FilterAnimationValue(keyTime, value, timingFunction));
-    }
-
-    virtual PassOwnPtr<AnimationValue> clone() const override
-    {
-        return adoptPtr(new FilterAnimationValue(*this));
-    }
-
-    const FilterOperations& value() const { return m_value; }
-
-private:
-    FilterAnimationValue(double keyTime, const FilterOperations& value, TimingFunction* timingFunction)
+    FilterAnimationValue(double keyTime, const FilterOperations& value, TimingFunction* timingFunction = nullptr)
         : AnimationValue(keyTime, timingFunction)
         , m_value(value)
     {
     }
 
+    virtual std::unique_ptr<AnimationValue> clone() const override
+    {
+        return std::make_unique<FilterAnimationValue>(*this);
+    }
+
+    const FilterOperations& value() const { return m_value; }
+
+private:
     FilterOperations m_value;
 };
 
@@ -198,10 +183,10 @@ public:
     const AnimationValue& at(size_t i) const { return *m_values.at(i); }
     
     // Insert, sorted by keyTime.
-    void insert(PassOwnPtr<const AnimationValue>);
+    void insert(std::unique_ptr<const AnimationValue>);
     
 protected:
-    Vector<OwnPtr<const AnimationValue>> m_values;
+    Vector<std::unique_ptr<const AnimationValue>> m_values;
     AnimatedPropertyID m_property;
 };
 
@@ -325,6 +310,8 @@ public:
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
     virtual void setAcceleratesDrawing(bool b) { m_acceleratesDrawing = b; }
 
+    bool needsBackdrop() const { return !m_backdropFilters.isEmpty(); }
+
     // The color used to paint the layer background. Pass an invalid color to remove it.
     // Note that this covers the entire layer. Use setContentsToSolidColor() if the color should
     // only cover the contentsRect.
@@ -342,9 +329,11 @@ public:
     virtual void setOpacity(float opacity) { m_opacity = opacity; }
 
     const FilterOperations& filters() const { return m_filters; }
-    
-    // Returns true if filter can be rendered by the compositor
+    // Returns true if filter can be rendered by the compositor.
     virtual bool setFilters(const FilterOperations& filters) { m_filters = filters; return true; }
+
+    const FilterOperations& backdropFilters() const { return m_backdropFilters; }
+    virtual bool setBackdropFilters(const FilterOperations& filters) { m_backdropFilters = filters; return true; }
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return m_blendMode; }
@@ -378,8 +367,8 @@ public:
     FloatRect contentsRect() const { return m_contentsRect; }
     virtual void setContentsRect(const FloatRect& r) { m_contentsRect = r; }
 
-    FloatRect contentsClippingRect() const { return m_contentsClippingRect; }
-    virtual void setContentsClippingRect(const FloatRect& r) { m_contentsClippingRect = r; }
+    FloatRoundedRect contentsClippingRect() const { return m_contentsClippingRect; }
+    virtual void setContentsClippingRect(const FloatRoundedRect& roundedRect) { m_contentsClippingRect = roundedRect; }
 
     // Transitions are identified by a special animation name that cannot clash with a keyframe identifier.
     static String animationNameForTransition(AnimatedPropertyID);
@@ -518,6 +507,7 @@ protected:
     // when compositing is not done in hardware. It is not virtual, so the caller
     // needs to notifiy the change to the platform layer as needed.
     void clearFilters() { m_filters.clear(); }
+    void clearBackdropFilters() { m_backdropFilters.clear(); }
 
     // Given a KeyframeValueList containing filterOperations, return true if the operations are valid.
     static int validateFilterOperations(const KeyframeValueList&);
@@ -564,6 +554,7 @@ protected:
     float m_zPosition;
     
     FilterOperations m_filters;
+    FilterOperations m_backdropFilters;
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode m_blendMode;
@@ -596,7 +587,7 @@ protected:
     FloatPoint m_replicatedLayerPosition; // For a replica layer, the position of the replica.
 
     FloatRect m_contentsRect;
-    FloatRect m_contentsClippingRect;
+    FloatRoundedRect m_contentsClippingRect;
     FloatPoint m_contentsTilePhase;
     FloatSize m_contentsTileSize;
 

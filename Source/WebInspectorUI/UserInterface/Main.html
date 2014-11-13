@@ -71,7 +71,6 @@
     <link rel="stylesheet" href="Views/DatabaseTableIcon.css">
     <link rel="stylesheet" href="Views/DebuggerSidebarPanel.css">
     <link rel="stylesheet" href="Views/DetailsSection.css">
-    <link rel="stylesheet" href="Views/DetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/DividerNavigationItem.css">
     <link rel="stylesheet" href="Views/Editing.css">
     <link rel="stylesheet" href="Views/EventListenerSectionGroup.css">
@@ -87,7 +86,7 @@
     <link rel="stylesheet" href="Views/ImageResourceContentView.css">
     <link rel="stylesheet" href="Views/IndeterminateProgressSpinner.css">
     <link rel="stylesheet" href="Views/IndexedDatabaseObjectStoreContentView.css">
-    <link rel="stylesheet" href="Views/LayerTreeSidebarPanel.css">
+    <link rel="stylesheet" href="Views/LayerTreeDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/LayoutTimelineOverviewGraph.css">
     <link rel="stylesheet" href="Views/LayoutTimelineView.css">
     <link rel="stylesheet" href="Views/LogContentView.css">
@@ -117,6 +116,7 @@
     <link rel="stylesheet" href="Views/SearchIcons.css">
     <link rel="stylesheet" href="Views/Section.css">
     <link rel="stylesheet" href="Views/Sidebar.css">
+    <link rel="stylesheet" href="Views/SidebarPanel.css">
     <link rel="stylesheet" href="Views/Slider.css">
     <link rel="stylesheet" href="Views/SourceCodeTextEditor.css">
     <link rel="stylesheet" href="Views/StyleRuleIcons.css">
@@ -160,6 +160,9 @@
     <script src="External/CodeMirror/sql.js"></script>
     <script src="External/CodeMirror/xml.js"></script>
 
+    <script src="External/Esprima/esprima.js"></script>
+    <script src="External/ESLint/eslint.js"></script>
+
     <script src="Base/WebInspector.js"></script>
     <script src="Protocol/InspectorFrontendHostStub.js"></script>
     <script src="Base/Platform.js"></script>
@@ -173,8 +176,6 @@
     <script src="Base/MIMETypeUtilities.js"></script>
     <script src="Base/URLUtilities.js"></script>
     <script src="Base/Utilities.js"></script>
-
-    <script src="External/Esprima/esprima.js"></script>
 
     <script src="Protocol/ApplicationCacheObserver.js"></script>
     <script src="Protocol/CSSObserver.js"></script>
@@ -202,6 +203,7 @@
     <script src="Models/Timeline.js"></script>
     <script src="Models/TimelineRecord.js"></script>
 
+    <script src="Models/AnalyzerMessage.js"></script>
     <script src="Models/ApplicationCacheFrame.js"></script>
     <script src="Models/ApplicationCacheManifest.js"></script>
     <script src="Models/BackForwardEntry.js"></script>
@@ -301,6 +303,7 @@
     <script src="Views/TimelineDataGridNode.js"></script>
 
     <script src="Views/DOMDetailsSidebarPanel.js"></script>
+    <script src="Views/FolderizedTreeElement.js"></script>
     <script src="Views/SourceCodeTreeElement.js"></script>
     <script src="Views/StorageTreeElement.js"></script>
     <script src="Views/TimelineRecordTreeElement.js"></script>
@@ -392,7 +395,7 @@
     <script src="Views/IndexedDatabaseObjectStoreTreeElement.js"></script>
     <script src="Views/IndexedDatabaseTreeElement.js"></script>
     <script src="Views/LayerTreeDataGridNode.js"></script>
-    <script src="Views/LayerTreeSidebarPanel.js"></script>
+    <script src="Views/LayerTreeDetailsSidebarPanel.js"></script>
     <script src="Views/LayoutTimelineDataGrid.js"></script>
     <script src="Views/LayoutTimelineDataGridNode.js"></script>
     <script src="Views/LayoutTimelineOverviewGraph.js"></script>
@@ -458,6 +461,7 @@
 
     <script src="Controllers/CodeMirrorEditingController.js"></script>
 
+    <script src="Controllers/AnalyzerManager.js"></script>
     <script src="Controllers/ApplicationCacheManager.js"></script>
     <script src="Controllers/BranchManager.js"></script>
     <script src="Controllers/CSSStyleManager.js"></script>

@@ -174,6 +174,7 @@ public:
     virtual bool canSetStringValue() const;
     virtual String localizeValue(const String&) const;
     virtual String visibleValue() const;
+    virtual bool isEmptyValue() const;
     // Returing the null string means "use the default value."
     // This function must be called only by HTMLInputElement::sanitizeValue().
     virtual String sanitizeValue(const String&) const;
@@ -271,9 +272,7 @@ public:
     virtual void disabledAttributeChanged();
     virtual void readonlyAttributeChanged();
     virtual void requiredAttributeChanged();
-    virtual void valueAttributeChanged();
     virtual String defaultToolTip() const;
-    virtual void updateClearButtonVisibility();
 
 #if ENABLE(DATALIST_ELEMENT)
     virtual void listAttributeTargetChanged();

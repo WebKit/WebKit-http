@@ -126,6 +126,8 @@ MediaSessionManageriOS::~MediaSessionManageriOS()
 
 void MediaSessionManageriOS::resetRestrictions()
 {
+    LOG(Media, "MediaSessionManageriOS::resetRestrictions");
+
     MediaSessionManager::resetRestrictions();
 
     static wkDeviceClass deviceClass = iosDeviceClass();
@@ -166,6 +168,8 @@ void MediaSessionManageriOS::configureWireLessTargetMonitoring()
         }
     }
 
+    LOG(Media, "MediaSessionManageriOS::configureWireLessTargetMonitoring - requiresMonitoring = %s", requiresMonitoring ? "true" : "false");
+
     if (requiresMonitoring)
         [m_objcObserver startMonitoringAirPlayRoutes];
     else
@@ -187,6 +191,8 @@ void MediaSessionManageriOS::sessionWillEndPlayback(MediaSession& session)
     
 void MediaSessionManageriOS::updateNowPlayingInfo()
 {
+    LOG(Media, "MediaSessionManageriOS::updateNowPlayingInfo");
+
     MPNowPlayingInfoCenter *nowPlaying = (MPNowPlayingInfoCenter *)[getMPNowPlayingInfoCenterClass() defaultCenter];
     const MediaSession* currentSession = this->currentSession();
     
@@ -213,12 +219,19 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
     [nowPlaying setNowPlayingInfo:info.get()];
 }
 
+bool MediaSessionManageriOS::sessionCanLoadMedia(const MediaSession& session) const
+{
+    return session.state() == MediaSession::Playing || !session.isHidden() || session.displayType() == MediaSession::Optimized;
+}
+
 } // namespace WebCore
 
 @implementation WebMediaSessionHelper
 
 - (id)initWithCallback:(MediaSessionManageriOS*)callback
 {
+    LOG(Media, "-[WebMediaSessionHelper initWithCallback]");
+
     if (!(self = [super init]))
         return nil;
     
@@ -244,17 +257,38 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
 
 - (void)dealloc
 {
+    LOG(Media, "-[WebMediaSessionHelper dealloc]");
+
+    if (!isMainThread()) {
+        auto volumeView = WTF::move(_volumeView);
+        auto routingController = WTF::move(_airPlayPresenceRoutingController);
+
+        callOnMainThread([volumeView, routingController] () mutable {
+            LOG(Media, "-[WebMediaSessionHelper dealloc] - dipatched to MainThread");
+
+            volumeView.clear();
+
+            if (!routingController)
+                return;
+
+            [routingController setDiscoveryMode:MPRouteDiscoveryModeDisabled];
+            routingController.clear();
+        });
+    }
+
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [super dealloc];
 }
 
 - (void)clearCallback
 {
+    LOG(Media, "-[WebMediaSessionHelper clearCallback]");
     _callback = nil;
 }
 
 - (BOOL)hasWirelessTargetsAvailable
 {
+    LOG(Media, "-[WebMediaSessionHelper hasWirelessTargetsAvailable]");
     return [_volumeView areWirelessRoutesAvailable];
 }
 
@@ -263,8 +297,18 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
     if (_airPlayPresenceRoutingController)
         return;
 
-    _airPlayPresenceRoutingController = adoptNS([[getMPAVRoutingControllerClass() alloc] initWithName:@"WebCore - HTML media element checking for AirPlay route presence"]);
-    [_airPlayPresenceRoutingController setDiscoveryMode:MPRouteDiscoveryModePresence];
+    LOG(Media, "-[WebMediaSessionHelper startMonitoringAirPlayRoutes]");
+
+    RetainPtr<WebMediaSessionHelper> strongSelf = self;
+    callOnMainThread([strongSelf] () {
+        LOG(Media, "-[WebMediaSessionHelper startMonitoringAirPlayRoutes] - dipatched to MainThread");
+
+        if (strongSelf->_airPlayPresenceRoutingController)
+            return;
+
+        strongSelf->_airPlayPresenceRoutingController = adoptNS([[getMPAVRoutingControllerClass() alloc] initWithName:@"WebCore - HTML media element checking for AirPlay route presence"]);
+        [strongSelf->_airPlayPresenceRoutingController setDiscoveryMode:MPRouteDiscoveryModePresence];
+    });
 }
 
 - (void)stopMonitoringAirPlayRoutes
@@ -272,8 +316,18 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
     if (!_airPlayPresenceRoutingController)
         return;
 
-    [_airPlayPresenceRoutingController setDiscoveryMode:MPRouteDiscoveryModeDisabled];
-    _airPlayPresenceRoutingController = nil;
+    LOG(Media, "-[WebMediaSessionHelper stopMonitoringAirPlayRoutes]");
+
+    RetainPtr<WebMediaSessionHelper> strongSelf = self;
+    callOnMainThread([strongSelf] () {
+        LOG(Media, "-[WebMediaSessionHelper stopMonitoringAirPlayRoutes] - dipatched to MainThread");
+
+        if (!strongSelf->_airPlayPresenceRoutingController)
+            return;
+
+        [strongSelf->_airPlayPresenceRoutingController setDiscoveryMode:MPRouteDiscoveryModeDisabled];
+        strongSelf->_airPlayPresenceRoutingController = nil;
+    });
 }
 
 - (void)interruption:(NSNotification *)notification
@@ -283,6 +337,8 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
 
     NSUInteger type = [[[notification userInfo] objectForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
     MediaSession::EndInterruptionFlags flags = MediaSession::NoFlags;
+
+    LOG(Media, "-[WebMediaSessionHelper interruption] - type = %i", (int)type);
 
     if (type == AVAudioSessionInterruptionTypeEnded && [[[notification userInfo] objectForKey:AVAudioSessionInterruptionOptionKey] unsignedIntegerValue] == AVAudioSessionInterruptionOptionShouldResume)
         flags = MediaSession::MayResumePlaying;
@@ -306,6 +362,8 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
     if (!_callback)
         return;
 
+    LOG(Media, "-[WebMediaSessionHelper applicationWillEnterForeground]");
+
     WebThreadRun(^{
         if (!_callback)
             return;
@@ -321,6 +379,8 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
     if (!_callback)
         return;
 
+    LOG(Media, "-[WebMediaSessionHelper applicationDidBecomeActive]");
+
     WebThreadRun(^{
         if (!_callback)
             return;
@@ -335,7 +395,9 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
 
     if (!_callback)
         return;
-    
+
+    LOG(Media, "-[WebMediaSessionHelper applicationWillResignActive]");
+
     WebThreadRun(^{
         if (!_callback)
             return;
@@ -350,6 +412,8 @@ void MediaSessionManageriOS::updateNowPlayingInfo()
 
     if (!_callback)
         return;
+
+    LOG(Media, "-[WebMediaSessionHelper wirelessRoutesAvailableDidChange]");
 
     WebThreadRun(^{
         if (!_callback)

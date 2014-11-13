@@ -228,6 +228,7 @@ static void linkRestoreScratch(LinkBuffer& patchBuffer, bool needToRestoreScratc
 
 enum ByIdStubKind {
     GetValue,
+    GetUndefined,
     CallGetter,
     CallCustomGetter,
     CallSetter,
@@ -239,6 +240,8 @@ static const char* toString(ByIdStubKind kind)
     switch (kind) {
     case GetValue:
         return "GetValue";
+    case GetUndefined:
+        return "GetUndefined";
     case CallGetter:
         return "CallGetter";
     case CallCustomGetter:
@@ -257,6 +260,8 @@ static ByIdStubKind kindFor(const PropertySlot& slot)
 {
     if (slot.isCacheableValue())
         return GetValue;
+    if (slot.isUnset())
+        return GetUndefined;
     if (slot.isCacheableCustom())
         return CallCustomGetter;
     RELEASE_ASSERT(slot.isCacheableGetter());
@@ -301,7 +306,7 @@ static void generateByIdStub(
         static_cast<GPRReg>(stubInfo.patch.valueGPR));
     GPRReg scratchGPR = TempRegisterSet(stubInfo.patch.usedRegisters).getFreeGPR();
     bool needToRestoreScratch = scratchGPR == InvalidGPRReg;
-    RELEASE_ASSERT(!needToRestoreScratch || kind == GetValue);
+    RELEASE_ASSERT(!needToRestoreScratch || (kind == GetValue || kind == GetUndefined));
     
     CCallHelpers stubJit(&exec->vm(), exec->codeBlock());
     if (needToRestoreScratch) {
@@ -357,28 +362,32 @@ static void generateByIdStub(
                 failureCases, scratchGPR);
             currStructure = it->get();
         }
-        ASSERT(protoObject->structure() == currStructure);
+        ASSERT(!protoObject || protoObject->structure() == currStructure);
     }
     
     currStructure->startWatchingPropertyForReplacements(*vm, offset);
-    GPRReg baseForAccessGPR;
-    if (chain) {
-        // We could have clobbered scratchGPR earlier, so we have to reload from baseGPR to get the target.
-        if (loadTargetFromProxy)
-            stubJit.loadPtr(MacroAssembler::Address(baseGPR, JSProxy::targetOffset()), baseForGetGPR);
-        stubJit.move(MacroAssembler::TrustedImmPtr(protoObject), scratchGPR);
-        baseForAccessGPR = scratchGPR;
-    } else {
-        // For proxy objects, we need to do all the Structure checks before moving the baseGPR into 
-        // baseForGetGPR because if we fail any of the checks then we would have the wrong value in baseGPR
-        // on the slow path.
-        if (loadTargetFromProxy)
-            stubJit.move(scratchGPR, baseForGetGPR);
-        baseForAccessGPR = baseForGetGPR;
+    GPRReg baseForAccessGPR = InvalidGPRReg;
+    if (kind != GetUndefined) {
+        if (chain) {
+            // We could have clobbered scratchGPR earlier, so we have to reload from baseGPR to get the target.
+            if (loadTargetFromProxy)
+                stubJit.loadPtr(MacroAssembler::Address(baseGPR, JSProxy::targetOffset()), baseForGetGPR);
+            stubJit.move(MacroAssembler::TrustedImmPtr(protoObject), scratchGPR);
+            baseForAccessGPR = scratchGPR;
+        } else {
+            // For proxy objects, we need to do all the Structure checks before moving the baseGPR into
+            // baseForGetGPR because if we fail any of the checks then we would have the wrong value in baseGPR
+            // on the slow path.
+            if (loadTargetFromProxy)
+                stubJit.move(scratchGPR, baseForGetGPR);
+            baseForAccessGPR = baseForGetGPR;
+        }
     }
 
     GPRReg loadedValueGPR = InvalidGPRReg;
-    if (kind != CallCustomGetter && kind != CallCustomSetter) {
+    if (kind == GetUndefined)
+        stubJit.moveTrustedValue(jsUndefined(), valueRegs);
+    else if (kind != CallCustomGetter && kind != CallCustomSetter) {
         if (kind == GetValue)
             loadedValueGPR = valueRegs.payloadGPR();
         else
@@ -412,7 +421,7 @@ static void generateByIdStub(
     std::unique_ptr<CallLinkInfo> callLinkInfo;
 
     MacroAssembler::Jump success, fail;
-    if (kind != GetValue) {
+    if (kind != GetValue && kind != GetUndefined) {
         // Need to make sure that whenever this call is made in the future, we remember the
         // place that we made it from. It just so happens to be the place that we are at
         // right now!
@@ -733,18 +742,20 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
     // FIXME: Cache property access for immediates.
     if (!baseValue.isCell())
         return GiveUpOnCache;
+
+    if (!slot.isCacheable() && !slot.isUnset())
+        return GiveUpOnCache;
+
     JSCell* baseCell = baseValue.asCell();
     Structure* structure = baseCell->structure();
-    if (!slot.isCacheable())
-        return GiveUpOnCache;
 
     InlineCacheAction action = actionForCell(*vm, baseCell);
     if (action != AttemptToCache)
         return action;
 
     // Optimize self access.
-    if (slot.slotBase() == baseValue
-        && slot.isCacheableValue()
+    if (slot.isCacheableValue()
+        && slot.slotBase() == baseValue
         && !slot.watchpointSet()
         && MacroAssembler::isCompactPtrAlignedAddressOffset(maxOffsetRelativeToPatchedStorage(slot.cachedOffset()))) {
         structure->startWatchingPropertyForReplacements(*vm, slot.cachedOffset());
@@ -783,7 +794,7 @@ static void patchJumpToGetByIdStub(CodeBlock* codeBlock, StructureStubInfo& stub
 static InlineCacheAction tryBuildGetByIDList(ExecState* exec, JSValue baseValue, const Identifier& ident, const PropertySlot& slot, StructureStubInfo& stubInfo)
 {
     if (!baseValue.isCell()
-        || !slot.isCacheable())
+        || (!slot.isCacheable() && !slot.isUnset()))
         return GiveUpOnCache;
 
     JSCell* baseCell = baseValue.asCell();
@@ -808,20 +819,23 @@ static InlineCacheAction tryBuildGetByIDList(ExecState* exec, JSValue baseValue,
         // We cannot do as much inline caching if the registers were not flushed prior to this GetById. In particular,
         // non-Value cached properties require planting calls, which requires registers to have been flushed. Thus,
         // if registers were not flushed, don't do non-Value caching.
-        if (!slot.isCacheableValue())
+        if (!slot.isCacheableValue() && !slot.isUnset())
             return GiveUpOnCache;
     }
-    
-    PropertyOffset offset = slot.cachedOffset();
+
+    PropertyOffset offset = slot.isUnset() ? invalidOffset : slot.cachedOffset();
     StructureChain* prototypeChain = 0;
     size_t count = 0;
     
-    if (slot.slotBase() != baseValue) {
+    if (slot.isUnset() || slot.slotBase() != baseValue) {
         if (typeInfo.prohibitsPropertyCaching() || structure->isDictionary())
             return GiveUpOnCache;
-        
-        count = normalizePrototypeChainForChainAccess(
-            exec, baseValue, slot.slotBase(), ident, offset);
+
+        if (slot.isUnset())
+            count = normalizePrototypeChain(exec, baseCell);
+        else
+            count = normalizePrototypeChainForChainAccess(
+                exec, baseValue, slot.slotBase(), ident, offset);
         if (count == InvalidPrototypeChain)
             return GiveUpOnCache;
         prototypeChain = structure->prototypeChain(exec);
@@ -843,6 +857,8 @@ static InlineCacheAction tryBuildGetByIDList(ExecState* exec, JSValue baseValue,
     GetByIdAccess::AccessType accessType;
     if (slot.isCacheableValue())
         accessType = slot.watchpointSet() ? GetByIdAccess::WatchedStub : GetByIdAccess::SimpleStub;
+    else if (slot.isUnset())
+        accessType = GetByIdAccess::SimpleMiss;
     else if (slot.isCacheableGetter())
         accessType = GetByIdAccess::Getter;
     else
@@ -1113,6 +1129,39 @@ static void emitPutTransitionStub(
     }
 #endif
     
+    ScratchBuffer* scratchBuffer = nullptr;
+
+#if ENABLE(GGC)
+    MacroAssembler::Call callFlushWriteBarrierBuffer;
+    MacroAssembler::Jump ownerIsRememberedOrInEden = stubJit.jumpIfIsRememberedOrInEden(baseGPR);
+    {
+        WriteBarrierBuffer* writeBarrierBuffer = &stubJit.vm()->heap.writeBarrierBuffer();
+        stubJit.move(MacroAssembler::TrustedImmPtr(writeBarrierBuffer), scratchGPR1);
+        stubJit.load32(MacroAssembler::Address(scratchGPR1, WriteBarrierBuffer::currentIndexOffset()), scratchGPR2);
+        MacroAssembler::Jump needToFlush =
+            stubJit.branch32(MacroAssembler::AboveOrEqual, scratchGPR2, MacroAssembler::Address(scratchGPR1, WriteBarrierBuffer::capacityOffset()));
+
+        stubJit.add32(MacroAssembler::TrustedImm32(1), scratchGPR2);
+        stubJit.store32(scratchGPR2, MacroAssembler::Address(scratchGPR1, WriteBarrierBuffer::currentIndexOffset()));
+
+        stubJit.loadPtr(MacroAssembler::Address(scratchGPR1, WriteBarrierBuffer::bufferOffset()), scratchGPR1);
+        // We use an offset of -sizeof(void*) because we already added 1 to scratchGPR2.
+        stubJit.storePtr(baseGPR, MacroAssembler::BaseIndex(scratchGPR1, scratchGPR2, MacroAssembler::ScalePtr, static_cast<int32_t>(-sizeof(void*))));
+
+        MacroAssembler::Jump doneWithBarrier = stubJit.jump();
+        needToFlush.link(&stubJit);
+
+        scratchBuffer = vm->scratchBufferForSize(allocator.desiredScratchBufferSizeForCall());
+        allocator.preserveUsedRegistersToScratchBufferForCall(stubJit, scratchBuffer, scratchGPR2);
+        stubJit.setupArgumentsWithExecState(baseGPR);
+        callFlushWriteBarrierBuffer = stubJit.call();
+        allocator.restoreUsedRegistersFromScratchBufferForCall(stubJit, scratchBuffer, scratchGPR2);
+
+        doneWithBarrier.link(&stubJit);
+    }
+    ownerIsRememberedOrInEden.link(&stubJit);
+#endif
+
     MacroAssembler::Jump success;
     MacroAssembler::Jump failure;
             
@@ -1133,7 +1182,8 @@ static void emitPutTransitionStub(
         slowPath.link(&stubJit);
         
         allocator.restoreReusedRegistersByPopping(stubJit);
-        ScratchBuffer* scratchBuffer = vm->scratchBufferForSize(allocator.desiredScratchBufferSizeForCall());
+        if (!scratchBuffer)
+            scratchBuffer = vm->scratchBufferForSize(allocator.desiredScratchBufferSizeForCall());
         allocator.preserveUsedRegistersToScratchBufferForCall(stubJit, scratchBuffer, scratchGPR1);
 #if USE(JSVALUE64)
         stubJit.setupArgumentsWithExecState(baseGPR, MacroAssembler::TrustedImmPtr(structure), MacroAssembler::TrustedImm32(slot.cachedOffset()), valueGPR);
@@ -1151,6 +1201,9 @@ static void emitPutTransitionStub(
         patchBuffer.link(failure, failureLabel);
     else
         patchBuffer.link(failureCases, failureLabel);
+#if ENABLE(GGC)
+    patchBuffer.link(callFlushWriteBarrierBuffer, operationFlushWriteBarrierBuffer);
+#endif
     if (structure->outOfLineCapacity() != oldStructure->outOfLineCapacity()) {
         patchBuffer.link(operationCall, operationReallocateStorageAndFinishPut);
         patchBuffer.link(successInSlowPath, stubInfo.callReturnLocation.labelAtOffset(stubInfo.patch.deltaCallToDone));

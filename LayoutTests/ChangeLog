@@ -1,3 +1,904 @@
+2014-11-11  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening. Rebaseline after r174535.
+
+        * platform/efl/css3/selectors3/html/css3-modsel-61-expected.txt:
+        * platform/efl/css3/selectors3/html/css3-modsel-83-expected.txt:
+        * platform/efl/css3/selectors3/xhtml/css3-modsel-61-expected.txt:
+        * platform/efl/css3/selectors3/xhtml/css3-modsel-83-expected.txt:
+        * platform/efl/css3/selectors3/xml/css3-modsel-61-expected.txt:
+        * platform/efl/css3/selectors3/xml/css3-modsel-83-expected.txt:
+        * platform/efl/fast/selectors/061-expected.txt:
+        * platform/efl/fast/selectors/083-expected.txt:
+
+2014-11-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Temporarlity turn video/video-border-radius-expected.html into a non-reftest,
+        hoping to get some error output from it.
+
+        * compositing/video/video-border-radius-expected.html: Removed.
+        * compositing/video/video-border-radius-expected.html-disabled: Copied from LayoutTests/compositing/video/video-border-radius-expected.html.
+        * compositing/video/video-border-radius-expected.png: Added.
+        * compositing/video/video-border-radius-expected.txt: Added.
+
+2014-11-11  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/text/international/hindi-spacing.html and transforms/2d/hindi-rotated.html are
+        flaky on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=138075
+
+        * platform/mac/TestExpectations: Mark them as such.
+
+2014-11-11  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector/css/matched-style-properties.html and inspector/css/selector-specificity.html
+        are very flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=138636
+
+        Bring back Crash expectattion, as this is how it's reported on WK1. Also added one more test.
+
+        * platform/mac/TestExpectations:
+
+2014-11-11  Alexey Proskuryakov  <ap@apple.com>
+
+        compositing/video/video-border-radius.html frequently times out on 10.8
+
+        Add an error even listener, to at hopefully get a proper failure when this happens.
+
+        * compositing/video/video-border-radius.html:
+
+2014-11-11  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector/css/matched-style-properties.html and inspector/css/selector-specificity.html
+        are very flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=138636
+
+        Updated the results and comments for tests that don't work in production builds,
+        those are not quite relevant here.
+
+        * platform/mac/TestExpectations:
+
+2014-11-11  Alexey Proskuryakov  <ap@apple.com>
+
+        compositing/video/video-border-radius.html frequently times out on 10.8
+
+        Add an event listener before setting source, not after. This should not affect
+        anything, but seems worth a try.
+
+        * compositing/video/video-border-radius.html:
+
+2014-11-11  Daniel Bates  <dabates@apple.com>
+
+        [Frame Flattening] ASSERT(transaction->view == &view()) fails in RenderBlock::removeFromUpdateScrollInfoAfterLayoutTransaction()
+        https://bugs.webkit.org/show_bug.cgi?id=138615
+        <rdar://problem/18928487>
+
+        Reviewed by David Hyatt.
+
+        Add a test that causes an assertion failure in affected builds.
+
+        * fast/frames/flattening/iframe-flattening-inside-flexbox-with-delayed-scroll-update-expected.txt: Added.
+        * fast/frames/flattening/iframe-flattening-inside-flexbox-with-delayed-scroll-update.html: Added.
+
+2014-11-11  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Unskip now passing http tests
+        https://bugs.webkit.org/show_bug.cgi?id=137694
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/efl/TestExpectations:
+
+2014-10-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Limit the size of explicit/implicit grid
+        https://bugs.webkit.org/show_bug.cgi?id=136217
+
+        Reviewed by Andreas Kling.
+
+        Removed as they are now part of the WebCore's CSSParser.cpp unit
+        test. The reason why it was moved there is because the test would
+        require huge (~1000000 tracks) grid allocations, making the test
+        quite slow specially on Debug builds.
+
+        * fast/css-grid-layout/grid-element-repeat-max-repetitions-expected.txt: Removed.
+        * fast/css-grid-layout/grid-element-repeat-max-repetitions.html: Removed.
+
+2014-11-11  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Unreviewed EFL gardening after r174233.
+
+        * platform/efl/css2.1/t0905-c5525-fltcont-00-d-g-expected.txt:
+        * platform/efl/css2.1/t0905-c5525-fltwidth-00-c-g-expected.txt:
+        * platform/efl/css2.1/t1602-c546-txt-align-00-b-expected.txt:
+        * platform/efl/fast/multicol/float-avoidance-expected.txt:
+        * platform/efl/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/efl/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/efl/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/efl/fast/multicol/positive-leading-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-avoidance-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-avoidance-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-1-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-10-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-2-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-3-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-4-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-5-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-6-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-7-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-8-expected.txt:
+        * platform/efl/fast/repaint/line-flow-with-floats-9-expected.txt:
+        * platform/efl/fast/text/hyphenate-character-expected.txt:
+        * platform/efl/fast/text/hyphens-expected.txt:
+        * platform/efl/fast/text/justified-selection-at-edge-expected.txt:
+        * platform/efl/fast/text/justify-nbsp-expected.txt: Added.
+        * platform/efl/fast/text/trailing-white-space-2-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tr_align_justify-expected.txt:
+
+2014-11-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        CSS4 Selectors: Add multiple pseudo elements support to :matches
+        https://bugs.webkit.org/show_bug.cgi?id=138214
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/selectors/pseudo-element-in-non-rightmost-fragments-expected.html: Added.
+        * fast/selectors/pseudo-element-in-non-rightmost-fragments.html: Added.
+        In this test, we ensure that pseudo elements selector in the
+        non-rightmost fragments becomes unmatched.
+        * fast/selectors/pseudo-element-inside-matches-expected.html: Added.
+        * fast/selectors/pseudo-element-inside-matches.html: Added.
+        * fast/selectors/ignore-pseudo-element-inside-non-rightmost-fragments-expected.txt: Added.
+        * fast/selectors/ignore-pseudo-element-inside-non-rightmost-fragments.html: Added.
+
+2014-11-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add parsing support for the extended :nth-last-child(An+B of selector-list)
+        https://bugs.webkit.org/show_bug.cgi?id=138520
+
+        Reviewed by Andreas Kling.
+
+        All the tests are variations of the existing tests for :nth-child(An+B of selector-list).
+
+        * fast/css/css-selector-text-expected.txt:
+        * fast/css/css-selector-text.html:
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+        * fast/css/parsing-css-nth-last-child-of-1-expected.txt: Added.
+        * fast/css/parsing-css-nth-last-child-of-1.html: Added.
+        * fast/css/parsing-css-nth-last-child-of-2-expected.txt: Added.
+        * fast/css/parsing-css-nth-last-child-of-2.html: Added.
+        * fast/css/parsing-css-nth-last-child-of-3-expected.txt: Added.
+        * fast/css/parsing-css-nth-last-child-of-3.html: Added.
+        * fast/css/parsing-css-nth-last-child-of-4-expected.txt: Added.
+        * fast/css/parsing-css-nth-last-child-of-4.html: Added.
+
+2014-11-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG foreign objects do not inherit the container coordinates system if they are repainted..
+        https://bugs.webkit.org/show_bug.cgi?id=138481.
+
+        Reviewed by Simon Fraser.
+
+        Ensure the repaint rectangle of the SVG foreign object is calculated correctly
+        when the container element has transformation.
+        
+        * svg/transforms/svg-transform-foreign-object-repaint-expected.png: Added.
+        * svg/transforms/svg-transform-foreign-object-repaint-expected.txt: Added.
+        * svg/transforms/svg-transform-foreign-object-repaint.html: Added.
+        
+        Re-baseline these tests since the render tree dumping uses renderer.absoluteClippedOverflowRect() 
+        in writePositionAndStyle() to get the object rectangle so this issue only affects test output.
+
+        * svg/zoom/page/zoom-foreign-content-expected.txt:
+        * platform/mac/svg/zoom/page/zoom-foreignObject-expected.txt:
+
+2014-11-10  Andreas Kling  <akling@apple.com>
+
+        The JIT should cache property lookup misses.
+        <https://webkit.org/b/135578>
+
+        Add a JSRegress test for caching of property lookup misses.
+        There are three subtests:
+
+            1. Pure speed test.
+            2. Test for when a property previously cached as missing suddenly
+               appears on the object.
+            3. Same as (2), but it appears on the prototype.
+
+        The test runs ~5.5x faster with the optimization.
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/script-tests/undefined-property-access.js: Added.
+        (foo):
+        (bar):
+        (baz):
+        * js/regress/undefined-property-access-expected.txt: Added.
+        * js/regress/undefined-property-access.html: Added.
+
+2014-11-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test that complext and fast text codepaths measure the same width
+        https://bugs.webkit.org/show_bug.cgi?id=138581
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/space-width-expected.html: Added.
+        * fast/text/space-width.html: Added.
+
+2014-11-10  Alexey Proskuryakov  <ap@apple.com>
+
+        http tests should not use shared temporary files
+        https://bugs.webkit.org/show_bug.cgi?id=138583
+
+        Reviewed by Tim Horton.
+
+        Made some of the scripts that write to files take a path argument, and made others
+        more strictly serve only one test.
+
+        This way, we don't race for any files.
+
+        * http/tests/appcache/fail-on-update-2.html:
+        * http/tests/appcache/fallback.html:
+        * http/tests/appcache/main-resource-fallback-for-network-error-crash.html:
+        * http/tests/appcache/main-resource-hash.html:
+        * http/tests/appcache/main-resource-redirect.html:
+        * http/tests/appcache/multi-fallback.html:
+        * http/tests/appcache/non-html.xhtml:
+        * http/tests/appcache/offline-access.html:
+        * http/tests/appcache/online-whitelist.html:
+        * http/tests/appcache/remove-cache.html:
+        * http/tests/appcache/resources/counter.php: Removed.
+        * http/tests/appcache/resources/fail-on-update-2.php:
+        * http/tests/appcache/resources/fail-on-update.php:
+        * http/tests/appcache/resources/main-resource-redirect-frame.php:
+        * http/tests/appcache/resources/main-resource-redirect.manifest:
+        * http/tests/appcache/resources/non-html.manifest:
+        * http/tests/appcache/resources/offline-access-frame.html:
+        * http/tests/appcache/resources/offline-access.js:
+        * http/tests/appcache/resources/offline-access.manifest:
+        * http/tests/appcache/resources/online-whitelist.manifest:
+        * http/tests/appcache/resources/online-whitelist.php: Copied from LayoutTests/http/tests/appcache/resources/counter.php.
+        * http/tests/appcache/resources/remove-cache-frame-2.html:
+        * http/tests/appcache/resources/remove-cache-frame.html:
+        * http/tests/appcache/resources/remove-cache.php: Copied from LayoutTests/http/tests/appcache/resources/fail-on-update.php.
+        * http/tests/appcache/resources/update-cache.php: Copied from LayoutTests/http/tests/appcache/resources/versioned-manifest.php.
+        * http/tests/appcache/resources/versioned-manifest.php: Removed.
+        * http/tests/appcache/update-cache.html:
+        * http/tests/cache/network-error-during-revalidation.html:
+        * http/tests/cache/post-redirect-get.php:
+        * http/tests/cache/post-with-cached-subresources.php:
+        * http/tests/cache/reload-main-resource.php:
+        * http/tests/cache/resources/network-error-during-revalidation-frame.html:
+        * http/tests/cache/resources/partitioned-cache-echo-state.php:
+        * http/tests/cache/resources/partitioned-cache-loader.html:
+        * http/tests/cache/resources/post-image-to-verify.php:
+        * http/tests/cache/resources/reload-main-resource-iframe.php:
+        * http/tests/cache/stopped-revalidation.html:
+        * http/tests/cache/subresource-fragment-identifier.html:
+        * http/tests/css/border-image-loading.html:
+        * http/tests/css/css-image-loading.html:
+        * http/tests/css/mask-image-loading.html:
+        * http/tests/css/reflection-mask-image-loading.html:
+        * http/tests/css/resources/request-logging.js:
+        * http/tests/loading/preload-img-test.html:
+        * http/tests/local/link-stylesheet-load-order-preload.html:
+        * http/tests/local/link-stylesheet-load-order.html:
+        * http/tests/misc/link-rel-prefetch-and-subresource.html:
+        * http/tests/resources/network-simulator.php:
+        * http/tests/resources/tripmine.php: Removed.
+        * http/tests/xmlhttprequest/access-control-preflight-async-header-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-async-header-denied.html:
+        * http/tests/xmlhttprequest/access-control-preflight-async-method-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-async-method-denied.html:
+        * http/tests/xmlhttprequest/access-control-preflight-async-not-supported-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-async-not-supported.html:
+        * http/tests/xmlhttprequest/access-control-preflight-headers-async.html:
+        * http/tests/xmlhttprequest/access-control-preflight-headers-sync.html:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-header-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-header-denied.html:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-method-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-method-denied.html:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-not-supported-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-not-supported.html:
+        * http/tests/xmlhttprequest/redirect-cross-origin-tripmine.html:
+        * http/tests/xmlhttprequest/resources/access-control-preflight-denied-xsrf.php:
+        * http/tests/xmlhttprequest/resources/no-custom-header.php:
+        * http/tests/xmlhttprequest/resources/redirect-cross-origin-tripmine.php: Copied from LayoutTests/http/tests/resources/tripmine.php.
+        * http/tests/xmlhttprequest/state-after-network-error.html:
+        * http/tests/xmlhttprequest/xmlhttprequest-responseURL-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-responseURL.html:
+
+2014-11-10  Michael Saboff  <msaboff@apple.com>
+
+        Add test for fix of REGRESSION (r174985-174986): Site display disappears
+        https://bugs.webkit.org/show_bug.cgi?id=138470
+
+        Reviewed by Geoffrey Garen.
+
+        This checks that document.write() and document.writeln() are cached and the same instance
+        is always returned.
+
+        * js/dom/document-write-functions-cached-expected.txt: Added.
+        * js/dom/document-write-functions-cached.html: Added.
+
+2014-11-04  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(r174823): Several tests fail due to canplaythrough firing before tracks are available
+        https://bugs.webkit.org/show_bug.cgi?id=137882
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/http/tests/media/hls/video-controls-live-stream-expected.txt:
+
+2014-11-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r175813.
+        https://bugs.webkit.org/show_bug.cgi?id=138573
+
+        Breaks complex text layout spacing (Requested by litherum on
+        #webkit).
+
+        Reverted changeset:
+
+        "[OSX] Some words are placed on top of each other in complex
+        text layout"
+        https://bugs.webkit.org/show_bug.cgi?id=138348
+        http://trac.webkit.org/changeset/175813
+
+2014-11-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OSX] Some words are placed on top of each other in complex text layout
+        https://bugs.webkit.org/show_bug.cgi?id=138348
+
+        Reviewed by Simon Fraser.
+
+        Updating tests to not use cached space width.
+
+        * fast/text/large-space-width-complex-expected.html: Added.
+        * fast/text/large-space-width-complex.html: Added.
+        * fast/text/resources/NotoNastaliqUrduDraft.ttf: Added.
+        * platform/mac-mavericks/fast/text/emphasis-expected.png:
+        * platform/mac-mavericks/fast/text/emphasis-expected.txt: This test is orthogonal to space widths.
+        * platform/mac-mountainlion/fast/text/emphasis-expected.png:
+        * platform/mac-mountainlion/fast/text/emphasis-expected.txt:
+        * platform/mac/fast/text/emphasis-expected.png:
+        * platform/mac/fast/text/emphasis-expected.txt:
+        * platform/mac/fast/text/sticky-typesetting-features-expected.png:
+        * platform/mac/fast/text/sticky-typesetting-features-expected.txt: Ditto.
+        * platform/mac/fast/writing-mode/text-orientation-basic-expected.png:
+        * platform/mac/fast/writing-mode/text-orientation-basic-expected.txt: This test actually is improved with
+        this patch. Instead of a weirdly wide space width, the two words are spaced appropriately now.
+
+2014-11-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Crash in WebCore::Node::getFlag
+        https://bugs.webkit.org/show_bug.cgi?id=137961
+
+        Reviewed by Antti Koivisto.
+
+        * editing/execCommand/crash-137961-expected.txt: Added.
+        * editing/execCommand/crash-137961.html: Added.
+
+2014-11-10  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        ASSERTION FAILED: !object || !object->parent()->isRuby() || is<RenderRubyRun>(*object) || (object->isInline() && (object->isBeforeContent() || object->isAfterContent())) || (object->isAnonymous() && ... ) in WebCore::isAnonymousRubyInlineBlock
+        https://bugs.webkit.org/show_bug.cgi?id=137958
+
+        Reviewed by Chris Dumez.
+
+        * fast/multicol/newmulticol/ruby-from-multicol-to-auto-expected.txt: Added.
+        * fast/multicol/newmulticol/ruby-from-multicol-to-auto.html: Added.
+
+2014-11-10  Sanghyup Lee  <sh53.lee@samsung.com>
+
+        [EFL] Add missing test results since r169631, r174992 
+        https://bugs.webkit.org/show_bug.cgi?id=138502
+
+        Reviewed by Gyuyoung Kim.
+
+        * platform/efl/accessibility/aria-inherits-presentational-expected.txt: Added.
+        * platform/efl/accessibility/css-content-attribute-expected.txt: Added.
+
+2014-11-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Put bug link at the start of the line.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-11-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement round-rect clipping on video elements
+        https://bugs.webkit.org/show_bug.cgi?id=138537
+        rdar://problem/9534399
+
+        Reviewed by Darin Adler.
+        
+        Test that uses clip() to compare a bit of rounded-rect video in the corner.
+        Rebaselined test that dumped contents layers.
+
+        * compositing/video/video-border-radius-expected.html: Added.
+        * compositing/video/video-border-radius.html: Added.
+        * platform/mac/compositing/reflections/direct-image-object-fit-reflected-expected.txt:
+
+2014-11-08  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/xmlhttprequest/cross-origin-cookie-storage.html fails with PPT.
+
+        This test used to pass because some previous test leaked a cookie. Now that we
+        clear cookies between tests, it fails, and will fail until we implement testRunner.setAlwaysAcceptCookies.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-11-08  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/navigation/redirect-on-back-updates-history-item.html leaks a cookie
+        https://bugs.webkit.org/show_bug.cgi?id=138507
+
+        Reviewed by Pratik Solanki.
+
+        * http/tests/navigation/resources/redirect-updates-history-item-done.html:
+
+2014-11-07  Chris Dumez  <cdumez@apple.com>
+
+        Move 'webkit-clip-path' CSS property to the new StyleBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=138452
+
+        Reviewed by Andreas Kling.
+
+        Add layout test to make sure we don't crash in the StyleBuilder when
+        setting unexpected values to webkit-clip-path property.
+
+        * fast/masking/clip-path-bad-value-expected.txt: Added.
+        * fast/masking/clip-path-bad-value.html: Added.
+
+2014-11-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pseudo element matchedCSSRules do not include matching selector info
+        https://bugs.webkit.org/show_bug.cgi?id=138438
+
+        Reviewed by Benjamin Poulain.
+
+        * inspector/css/pseudo-element-matches-expected.txt: Added.
+        * inspector/css/pseudo-element-matches.html: Added.
+        Add a test to ensure we get correct selector matches for a pseudo element
+        inside of an <audio> element. The test is heavily coupled to our UserAgent
+        stylesheet and Shadow DOM layout, so check for possible failures if
+        WebCore changes things.
+
+2014-11-07  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] the sandbag JS utility code isn't producing the correct expected result in the shape-image gradient tests
+        https://bugs.webkit.org/show_bug.cgi?id=135923
+
+        Reviewed by Dirk Schulze.
+
+        Import tests from upstream. They have been modified so that they use
+        testharness to validate success or failure instead of being reftests,
+        allowing for fuzziness in matching to get around small variances
+        between implementations.
+
+        * TestExpectations:
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-001-expected.html: Removed.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-001-expected.txt: Added.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-001.html:
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-002-expected.html: Removed.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-002-expected.txt: Added.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-002.html:
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-003-expected.html: Removed.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-003-expected.txt: Added.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-003.html:
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-004-expected.html: Removed.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-004-expected.txt: Added.
+        * css3/shapes/shape-outside/shape-image/gradients/shape-outside-radial-gradient-004.html:
+        * css3/shapes/shape-outside/shape-image/gradients/w3c-import.log:
+        * css3/shapes/shape-outside/supported-shapes/support/test-utils.js:
+        (verifyTextPoints):
+
+2014-11-07  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: get-by-pname.js is failing when run with JSC_useLLINT=false and other special JIT configurations.
+        <https://webkit.org/b/138497>
+
+        Unreviewed.
+
+        * js/script-tests/get-by-pname.js:
+        - temporarily skipping this from the JSC tests to green the bots until the issue is fixed.
+
+2014-11-06  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r175549): http/tests/multipart/stop-crash.html failing (assertion failure in CachedResource::setEncodedSize)
+        https://bugs.webkit.org/show_bug.cgi?id=138358
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestExpectations: Turn the test back on.
+
+2014-11-06  Mark Lam  <mark.lam@apple.com>
+
+        Refactor the get-by-pname.js test [follow up 2].
+        <https://webkit.org/b/138483>
+
+        Reviewed by Michael Saboff.
+
+        Make unique copies of the test functions to ensure that each test case does not
+        affect the tiering up of other test cases.
+
+        * js/get-by-pname-expected.txt:
+        * js/script-tests/get-by-pname.js:
+        (foo): Deleted.
+        (getByPnameOnConstant): Deleted.
+        (getByPnameOnVar): Deleted.
+
+2014-11-06  Mark Lam  <mark.lam@apple.com>
+
+        Refactor the get-by-pname.js test [follow up].
+        <https://webkit.org/b/138483>
+
+        Reviewed by Michael Saboff.
+
+        Used named properties to make the test code more readable.
+        
+        * js/script-tests/get-by-pname.js:
+        (isTierIteration):
+        (tierName):
+        (testExpr): Deleted.
+        (testExpectedResult): Deleted.
+
+2014-11-06  Mark Lam  <mark.lam@apple.com>
+
+        slow_path_get_direct_pname() needs to be hardened against a constant baseValue.
+        <https://webkit.org/b/138476>
+
+        Reviewed by Michael Saboff.
+
+        * js/get-by-pname-expected.txt:
+        * js/script-tests/get-by-pname.js:
+        (getByPnameOnConstant):
+        (getByPnameOnVar):
+        - Added more test cases.
+
+2014-11-06  Mark Lam  <mark.lam@apple.com>
+
+        Refactor the get-by-pname.js test.
+        <https://webkit.org/b/138483>
+
+        Reviewed by Geoffrey Garen.
+
+        Refactored the test code to:
+        1. make it easier to add more test cases.
+        2. test each case against different tier JITs.
+        3. print only one set of results for each tier being tested.
+
+        * js/get-by-pname-expected.txt:
+        * js/script-tests/get-by-pname.js:
+        (getByPnameOnConstant):
+        (getByPnameOnVar):
+        (testExpr):
+        (testExpectedResult):
+        (isTierIteration):
+        (tierName):
+
+2014-11-06  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] the spec-examples reftests are off by a few pixels
+        https://bugs.webkit.org/show_bug.cgi?id=135927
+
+        Reviewed by Zoltan Horvath.
+
+        Import new versions of the spec example tests that are js tests
+        instead of ref tests so that they can properly handle the small pixel
+        differences in rendering between platforms.
+
+        * TestExpectations:
+        * css3/shapes/spec-examples/shape-outside-010-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-010-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-010.html:
+        * css3/shapes/spec-examples/shape-outside-011-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-011-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-011.html:
+        * css3/shapes/spec-examples/shape-outside-012-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-012-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-012.html:
+        * css3/shapes/spec-examples/shape-outside-013-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-013-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-013.html:
+        * css3/shapes/spec-examples/shape-outside-014-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-014-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-014.html:
+        * css3/shapes/spec-examples/shape-outside-015-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-015-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-015.html:
+        * css3/shapes/spec-examples/shape-outside-016-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-016-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-016.html:
+        * css3/shapes/spec-examples/shape-outside-017-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-017-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-017.html:
+        * css3/shapes/spec-examples/shape-outside-018-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-018-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-018.html:
+        * css3/shapes/spec-examples/shape-outside-019-expected.html: Removed.
+        * css3/shapes/spec-examples/shape-outside-019-expected.txt: Added.
+        * css3/shapes/spec-examples/shape-outside-019.html:
+        * css3/shapes/spec-examples/support/spec-example-utils.js: Added.
+        (.runTest):
+        (approxShapeTest):
+        * css3/shapes/spec-examples/support/w3c-import.log:
+        * css3/shapes/spec-examples/w3c-import.log:
+
+2014-11-06  Dean Jackson  <dino@apple.com>
+
+        [filters2] Support for backdrop-filter
+        https://bugs.webkit.org/show_bug.cgi?id=138384
+        <rdar://problem/18874494>
+
+        Reviewed by Simon Fraser.
+
+        Take 2!! Previous patch was rolled out.
+
+        Tests for backdrop-filter. These are skipped on non-Apple platforms.
+
+        * platform/win/TestExpections: Skip these tests.
+        * platform/efl/TestExpections:
+        * platform/gtk/TestExpections:
+        * platform/mac-mavericks/TestExpectations: Yosemite only.
+
+        * css3/filters/backdrop/backdropfilter-property-computed-style-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-computed-style.html: Added.
+        * css3/filters/backdrop/backdropfilter-property-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing-invalid-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing-invalid.html: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing.html: Added.
+        * css3/filters/backdrop/backdropfilter-property.html: Added.
+        * css3/filters/backdrop/effect-hw-expected.html: Added.
+        * css3/filters/backdrop/effect-hw.html: Added.
+        * css3/filters/backdrop/script-tests/backdropfilter-property-computed-style.js: Added.
+        (testComputedFilterRule):
+        * css3/filters/backdrop/script-tests/backdropfilter-property-parsing-invalid.js: Added.
+        (testInvalidFilterRule):
+        * css3/filters/backdrop/script-tests/backdropfilter-property-parsing.js: Added.
+        (jsWrapperClass):
+        (shouldBeType):
+        (testFilterRule):
+        * css3/filters/backdrop/script-tests/backdropfilter-property.js: Added.
+
+2014-11-06  Benjamin Poulain  <bpoulain@apple.com>
+
+        Give pseudo elements the correct specificity
+        https://bugs.webkit.org/show_bug.cgi?id=138378
+
+        Reviewed by Dean Jackson.
+
+        * fast/css/pseudo-element-specificity-expected.html: Added.
+        * fast/css/pseudo-element-specificity.html: Added.
+        Given that all selector affecting the pseudo element were offset by one,
+        it is impossible to use a pseudo element directly to affect the order, making the bug
+        hard to test.
+
+        What I did here for testing is use the stauration at 255 of any specificity field.
+        With 255 class + 1 pseudo element, the old code would saturate at (0, 255, 0), while
+        the fixed code would correctly give (0, 255, 1). By comparing that to a non-saturated
+        selector, I can show the fix is correct.
+
+        * inspector/css/selector-specificity-expected.txt:
+
+2014-11-06  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector-protocol/debugger/setPauseOnExceptions-uncaught.html frequently times out on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=138097
+
+        * platform/mac-wk2/TestExpectations: Marking it as such.
+
+2014-11-06  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Update testharness.js to the latest version
+        https://bugs.webkit.org/show_bug.cgi?id=138446
+
+        Reviewed by Ryosuke Niwa.
+
+        The only change I've made from upstream is to set output to false by
+        default.
+
+        * resources/testharness.js:
+
+2014-11-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix nits after r175688.
+
+        Just a couple of non-functional fixes to the layout test.
+
+        * fast/dom/Text/splitText.html:
+
+2014-11-05  Shivakumar JM  <shiva.jm@samsung.com>
+
+        splitText API does not match DOM specification.
+        https://bugs.webkit.org/show_bug.cgi?id=138405
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/Text/splitText-expected.txt: Added.
+        * fast/dom/Text/splitText.html: Added.
+        * fast/dom/non-numeric-values-numeric-parameters-expected.txt:
+        * fast/dom/script-tests/non-numeric-values-numeric-parameters.js:
+
+2014-11-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r175672.
+        https://bugs.webkit.org/show_bug.cgi?id=138455
+
+        Tries to make backdrop layers on every layer, asserts on
+        Mavericks (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "[filters2] Support for backdrop-filter"
+        https://bugs.webkit.org/show_bug.cgi?id=138384
+        http://trac.webkit.org/changeset/175672
+
+2014-11-04  Dean Jackson  <dino@apple.com>
+
+        [filters2] Support for backdrop-filter
+        https://bugs.webkit.org/show_bug.cgi?id=138384
+        <rdar://problem/18874494>
+
+        Reviewed by Simon Fraser.
+
+        Tests for backdrop-filter. These are skipped on non-Apple platforms.
+
+        * platform/win/TestExpections: Skip these tests.
+        * platform/efl/TestExpections:
+        * platform/gtk/TestExpections:
+        * platform/mac-mavericks/TestExpectations: Yosemite only.
+
+        * css3/filters/backdrop/backdropfilter-property-computed-style-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-computed-style.html: Added.
+        * css3/filters/backdrop/backdropfilter-property-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing-invalid-expected.txt: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing-invalid.html: Added.
+        * css3/filters/backdrop/backdropfilter-property-parsing.html: Added.
+        * css3/filters/backdrop/backdropfilter-property.html: Added.
+        * css3/filters/backdrop/effect-hw-expected.html: Added.
+        * css3/filters/backdrop/effect-hw.html: Added.
+        * css3/filters/backdrop/script-tests/backdropfilter-property-computed-style.js: Added.
+        (testComputedFilterRule):
+        * css3/filters/backdrop/script-tests/backdropfilter-property-parsing-invalid.js: Added.
+        (testInvalidFilterRule):
+        * css3/filters/backdrop/script-tests/backdropfilter-property-parsing.js: Added.
+        (jsWrapperClass):
+        (shouldBeType):
+        (testFilterRule):
+        * css3/filters/backdrop/script-tests/backdropfilter-property.js: Added.
+
+2014-11-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid backing store for opacity:0 descendant layers
+        https://bugs.webkit.org/show_bug.cgi?id=138448
+
+        Reviewed by Dean Jackson.
+        
+        Test for no backing store with opacity:0 child, and that we get backing
+        store when dynamically changing the opacity to non-0.
+
+        * compositing/backing/no-backing-for-opacity-0-child-expected.txt: Added.
+        * compositing/backing/no-backing-for-opacity-0-child.html: Added.
+        * compositing/backing/toggle-opacity-0-child-expected.txt: Added.
+        * compositing/backing/toggle-opacity-0-child.html: Added.
+
+2014-11-05  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: add "alt" as an overriding synonym of "-webkit-alt" (now in the CSS4 spec)
+        https://bugs.webkit.org/show_bug.cgi?id=138393
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/accessibility/alt-for-css-content-expected.txt: Added.
+        * platform/mac/accessibility/alt-for-css-content.html: Added.
+
+2014-11-05  Dan Bernstein  <mitz@apple.com>
+
+        Remove the unused deletion UI feature
+        https://bugs.webkit.org/show_bug.cgi?id=138442
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        Removed tests, expected results, and support files for this feature.
+
+        * platform/mac/editing/deleting/deletionUI-borders-expected.txt: Removed.
+        * platform/mac/editing/deleting/deletionUI-borders.html: Removed.
+        * platform/mac/editing/deleting/deletionUI-click-on-delete-button-expected.txt: Removed.
+        * platform/mac/editing/deleting/deletionUI-click-on-delete-button.html: Removed.
+        * platform/mac/editing/deleting/deletionUI-differing-background-expected.txt: Removed.
+        * platform/mac/editing/deleting/deletionUI-differing-background.html: Removed.
+        * platform/mac/editing/deleting/deletionUI-minimum-size-expected.txt: Removed.
+        * platform/mac/editing/deleting/deletionUI-minimum-size.html: Removed.
+        * platform/mac/editing/deleting/deletionUI-single-instance-expected.png: Removed.
+        * platform/mac/editing/deleting/deletionUI-single-instance-expected.txt: Removed.
+        * platform/mac/editing/deleting/deletionUI-single-instance.html: Removed.
+        * platform/mac/editing/deleting/deletionUI-successful-deletion-expected.txt: Removed.
+        * platform/mac/editing/deleting/deletionUI-successful-deletion.html: Removed.
+        * platform/mac/editing/deleting/id-in-deletebutton-expected.txt: Removed.
+        * platform/mac/editing/deleting/id-in-deletebutton.html: Removed.
+        * platform/mac/editing/deleting/resources: Removed.
+        * platform/mac/editing/deleting/resources/deletionUI-helpers.js: Removed.
+        * platform/wk2/TestExpectations:
+
+2014-11-04  David Hyatt  <hyatt@apple.com>
+
+        Descendant ends up in wrong flow thread with nested columns and spans.
+        https://bugs.webkit.org/show_bug.cgi?id=137273
+
+        Reviewed by Simon Fraser.
+
+        Unskipped the two problematic span tests.
+
+        * TestExpectations:
+
+2014-11-05  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Positioned polygon reftests failing again
+        https://bugs.webkit.org/show_bug.cgi?id=138058
+
+        Reviewed by Anders Carlsson.
+
+        Remove these tests from TestExpectations since they do pass.
+
+        * TestExpectations:
+
+2014-11-05  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] shape-image-threshold parsing tests have a few failures
+        https://bugs.webkit.org/show_bug.cgi?id=138060
+
+        Reviewed by Dirk Schulze.
+
+        Remove testing for inline style from the CSSWG test because it isn't
+        specified and isn't consistent across browsers. This has been updated
+        upstream as well.
+
+        Add inline style tests to the WebKit test suite to make sure that
+        WebKIt doesn't lose coverage with this change.
+
+        * TestExpectations:
+        * css3/shapes/shape-outside/values/shape-image-threshold-001-expected.txt:
+        * css3/shapes/shape-outside/values/shape-image-threshold-001.html:
+        * fast/shapes/parsing/parsing-shape-image-threshold-expected.txt:
+        * fast/shapes/parsing/parsing-shape-image-threshold.html:
+
+2014-11-05  Chris Dumez  <cdumez@apple.com>
+
+        Stop special-casing the empty string in HTMLInputElement.type setter
+        https://bugs.webkit.org/show_bug.cgi?id=138403
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test to check the functionality of the HTMLInputElement.type
+        getter and setter.
+
+        * fast/dom/HTMLInputElement/input-type-attribute-expected.txt: Added.
+        * fast/dom/HTMLInputElement/input-type-attribute.html: Added.
+
+2014-11-05  Andreas Kling  <akling@apple.com>
+
+        Simple line layout: support text-transform: lowercase|uppercase|capitalize
+        <https://webkit.org/b/138406>
+
+        Reviewed by Antti Koivisto.
+
+        Add ref test for simple line layout with all text-transform values.
+
+        * fast/text/simple-lines-text-transform-expected.html: Added.
+        * fast/text/simple-lines-text-transform.html: Added.
+
 2014-11-04  Michael Saboff  <msaboff@apple.com>
 
         Disable flakey dfg-int8array.js and dfg-int16array.js tests for ARM64

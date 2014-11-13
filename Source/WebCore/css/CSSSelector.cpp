@@ -92,11 +92,9 @@ unsigned CSSSelector::specificity() const
 
 inline unsigned CSSSelector::specificityForOneSelector() const
 {
-    // FIXME: Pseudo-elements and pseudo-classes do not have the same specificity. This function
-    // isn't quite correct.
     switch (match()) {
     case Id:
-        return 0x10000;
+        return static_cast<unsigned>(SelectorSpecificityIncrement::ClassA);
 
     case PagePseudoClass:
         break;
@@ -124,13 +122,14 @@ inline unsigned CSSSelector::specificityForOneSelector() const
     case Set:
     case List:
     case Hyphen:
-    case PseudoElement:
     case Contain:
     case Begin:
     case End:
-        return 0x100;
+        return static_cast<unsigned>(SelectorSpecificityIncrement::ClassB);
     case Tag:
-        return (tagQName().localName() != starAtom) ? 1 : 0;
+        return (tagQName().localName() != starAtom) ? static_cast<unsigned>(SelectorSpecificityIncrement::ClassC) : 0;
+    case PseudoElement:
+        return static_cast<unsigned>(SelectorSpecificityIncrement::ClassC);
     case Unknown:
         return 0;
     }
@@ -278,7 +277,6 @@ static void appendArgumentList(StringBuilder& str, const Vector<AtomicString>& a
             str.appendLiteral(", ");
     }
 }
-#endif
 
 static void appendSelectorList(StringBuilder& str, const CSSSelectorList* selectorList)
 {
@@ -289,6 +287,7 @@ static void appendSelectorList(StringBuilder& str, const CSSSelectorList* select
         str.append(subSelector->selectorText());
     }
 }
+#endif
 
 String CSSSelector::selectorText(const String& rightSide) const
 {
@@ -467,7 +466,16 @@ String CSSSelector::selectorText(const String& rightSide) const
                 break;
             case CSSSelector::PseudoClassNthLastChild:
                 str.appendLiteral(":nth-last-child(");
-                appendPseudoClassFunctionTail(str, cs);
+                str.append(cs->argument());
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+                if (const CSSSelectorList* selectorList = cs->selectorList()) {
+                    str.appendLiteral(" of ");
+                    appendSelectorList(str, selectorList);
+                }
+#else
+                ASSERT(!cs->selectorList());
+#endif
+                str.append(')');
                 break;
             case CSSSelector::PseudoClassNthLastOfType:
                 str.appendLiteral(":nth-last-of-type(");

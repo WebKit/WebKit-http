@@ -67,6 +67,7 @@ SOFT_LINK_CLASS(DataDetectors, DDActionsManager)
 @property (retain) NSArray *allResults;
 @property (retain) __attribute__((NSObject)) DDResultRef mainResult;
 @property (copy) void (^completionHandler)(void);
+@property (assign) BOOL forActionMenuContent;
 
 @end
 
@@ -74,6 +75,7 @@ SOFT_LINK_CLASS(DataDetectors, DDActionsManager)
 
 + (DDActionsManager *)sharedManager;
 - (NSArray *)menuItemsForResult:(DDResultRef)result actionContext:(DDActionContext *)context;
-- (void)unanchorBubbles;
+- (NSArray *)menuItemsForTargetURL:(NSString *)targetURL actionContext:(DDActionContext *)context;
+- (void)requestBubbleClosureUnanchorOnFailure:(BOOL)unanchorOnFailure;
 
 @end

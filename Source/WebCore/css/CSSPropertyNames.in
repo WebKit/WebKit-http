@@ -112,11 +112,11 @@ border-bottom-width [NewStyleBuilder, Initial=initialBorderWidth, Converter=Line
 border-collapse [Inherited, NewStyleBuilder]
 border-color
 border-image
-border-image-outset
-border-image-repeat
-border-image-slice
+border-image-outset [NewStyleBuilder, Custom=All]
+border-image-repeat [NewStyleBuilder, Custom=All]
+border-image-slice [NewStyleBuilder, Custom=All]
 border-image-source [NewStyleBuilder, Converter=BorderImageSource<CSSPropertyBorderImageSource>]
-border-image-width
+border-image-width [NewStyleBuilder, Custom=All]
 border-left
 border-left-color
 border-left-style [NewStyleBuilder, TypeName=EBorderStyle, Initial=initialBorderStyle]
@@ -146,7 +146,7 @@ caption-side [Inherited, NewStyleBuilder]
 -epub-caption-side = caption-side
 clear [NewStyleBuilder]
 clip
--webkit-clip-path
+-webkit-clip-path [NewStyleBuilder, Converter=ClipPath]
 content
 counter-increment
 counter-reset
@@ -208,16 +208,16 @@ paint-order
 pointer-events [Inherited, NewStyleBuilder]
 position [NewStyleBuilder]
 quotes [Inherited]
-resize [Inherited]
+resize [Inherited, NewStyleBuilder, Converter=Resize]
 right [NewStyleBuilder, Initial=initialOffset, Converter=LengthOrAuto]
-size
+size [NewStyleBuilder, Custom=All]
 src
 speak [Inherited, NewStyleBuilder]
 table-layout [NewStyleBuilder]
 tab-size [Inherited, NewStyleBuilder, TypeName=unsigned]
-text-align [Inherited]
+text-align [Inherited, NewStyleBuilder, Converter=TextAlign]
 text-decoration [NewStyleBuilder, Converter=TextDecoration]
-text-indent [Inherited]
+text-indent [Inherited, NewStyleBuilder, Custom=All]
 text-line-through
 text-line-through-color
 text-line-through-mode
@@ -256,7 +256,8 @@ word-break [Inherited, NewStyleBuilder]
 word-spacing [Inherited]
 word-wrap [Inherited, NewStyleBuilder=EOverflowWrap, NameForMethods=OverflowWrap]
 z-index
--webkit-alt
+alt
+-webkit-alt = alt
 -webkit-animation
 -webkit-animation-delay
 -webkit-animation-direction
@@ -370,6 +371,9 @@ flex-wrap [NewStyleBuilder]
 -webkit-flex-wrap = flex-wrap
 justify-content [NewStyleBuilder]
 -webkit-justify-content = justify-content
+#if defined(ENABLE_FILTERS_LEVEL_2) && ENABLE_FILTERS_LEVEL_2
+-webkit-backdrop-filter
+#endif
 -webkit-justify-self
 -webkit-font-size-delta
 #if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
@@ -417,15 +421,15 @@ justify-content [NewStyleBuilder]
 -webkit-marquee-direction [NewStyleBuilder]
 -webkit-marquee-increment [NewStyleBuilder, Custom=Value]
 -webkit-marquee-repetition
--webkit-marquee-speed
+-webkit-marquee-speed [NewStyleBuilder, Converter=MarqueeSpeed]
 -webkit-marquee-style [NewStyleBuilder, TypeName=EMarqueeBehavior, NameForMethods=MarqueeBehavior]
 -webkit-mask
 -webkit-mask-box-image [NewStyleBuilder, Initial=initialNinePieceImage, Converter=BorderMask<CSSPropertyWebkitMaskBoxImage>]
--webkit-mask-box-image-outset
--webkit-mask-box-image-repeat
--webkit-mask-box-image-slice
+-webkit-mask-box-image-outset [NewStyleBuilder, Custom=All]
+-webkit-mask-box-image-repeat [NewStyleBuilder, Custom=All]
+-webkit-mask-box-image-slice [NewStyleBuilder, Custom=All]
 -webkit-mask-box-image-source [NewStyleBuilder, Converter=BorderImageSource<CSSPropertyWebkitMaskBoxImageSource>]
--webkit-mask-box-image-width
+-webkit-mask-box-image-width [NewStyleBuilder, Custom=All]
 -webkit-mask-clip
 -webkit-mask-composite
 -webkit-mask-image

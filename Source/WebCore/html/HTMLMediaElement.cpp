@@ -757,7 +757,7 @@ void HTMLMediaElement::scheduleEvent(const AtomicString& eventName)
     m_asyncEventQueue.enqueueEvent(event.release());
 }
 
-void HTMLMediaElement::loadTimerFired(Timer<HTMLMediaElement>&)
+void HTMLMediaElement::loadTimerFired(Timer&)
 {
     Ref<HTMLMediaElement> protect(*this); // loadNextSourceChild may fire 'beforeload', which can make arbitrary DOM mutations.
 
@@ -2225,7 +2225,7 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys)
 }
 #endif
 
-void HTMLMediaElement::progressEventTimerFired(Timer<HTMLMediaElement>&)
+void HTMLMediaElement::progressEventTimerFired(Timer&)
 {
     ASSERT(m_player);
     if (m_networkState != NETWORK_LOADING)
@@ -2368,7 +2368,7 @@ void HTMLMediaElement::seekWithTolerance(const MediaTime& inTime, const MediaTim
         seekTimerFired(m_seekTimer);
 }
 
-void HTMLMediaElement::seekTimerFired(Timer<HTMLMediaElement>&)
+void HTMLMediaElement::seekTimerFired(Timer&)
 {
     if (!m_player) {
         m_seeking = false;
@@ -3112,7 +3112,7 @@ double HTMLMediaElement::nextScanRate()
     return rate;
 }
 
-void HTMLMediaElement::scanTimerFired(Timer<HTMLMediaElement>&)
+void HTMLMediaElement::scanTimerFired(Timer&)
 {
     if (m_scanType == Seek) {
         double seekTime = m_scanDirection == Forward ? SeekTime : -SeekTime;
@@ -3134,7 +3134,7 @@ void HTMLMediaElement::startPlaybackProgressTimer()
     m_playbackProgressTimer.startRepeating(maxTimeupdateEventFrequency);
 }
 
-void HTMLMediaElement::playbackProgressTimerFired(Timer<HTMLMediaElement>&)
+void HTMLMediaElement::playbackProgressTimerFired(Timer&)
 {
     ASSERT(m_player);
 
@@ -4651,6 +4651,8 @@ void HTMLMediaElement::userCancelledLoad()
 
 void HTMLMediaElement::clearMediaPlayer(int flags)
 {
+    LOG(Media, "HTMLMediaElement::clearMediaPlayer(%p) - flags = %x", this, (unsigned)flags);
+
 #if USE(PLATFORM_TEXT_TRACK_MENU)
     if (platformTextTrackMenu()) {
         m_platformMenu->setClient(0);
@@ -4855,6 +4857,7 @@ bool HTMLMediaElement::removeEventListener(const AtomicString& eventType, EventL
         return false;
 
     bool didRemoveLastAvailabilityChangedListener = !hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent);
+    LOG(Media, "HTMLMediaElement::removeEventListener(%p) - removed last listener = %s", this, boolString(didRemoveLastAvailabilityChangedListener));
     if (didRemoveLastAvailabilityChangedListener)
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, false);
 
@@ -5357,6 +5360,8 @@ void HTMLMediaElement::markCaptionAndSubtitleTracksAsUnconfigured(ReconfigureMod
 
 void HTMLMediaElement::createMediaPlayer()
 {
+    LOG(Media, "HTMLMediaElement::createMediaPlayer(%p)", this);
+
 #if ENABLE(WEB_AUDIO)
     if (m_audioSourceNode)
         m_audioSourceNode->lock();
@@ -5757,6 +5762,20 @@ bool HTMLMediaElement::mediaPlayerIsInMediaDocument() const
     return document().isMediaDocument();
 }
 
+void HTMLMediaElement::mediaPlayerEngineFailedToLoad() const
+{
+    if (!m_player)
+        return;
+
+    Page* page = document().page();
+    if (!page || !page->settings().diagnosticLoggingEnabled())
+        return;
+
+    String engine = m_player->engineDescription();
+    String message = String::number(m_player->platformErrorCode());
+    page->chrome().client().logDiagnosticMessage(DiagnosticLoggingKeys::engineFailedToLoadKey(), engine, message);
+}
+
 void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
 {
     m_mediaSession->removeBehaviorRestriction(HTMLMediaSession::RequireUserGestureForLoad);
@@ -5972,6 +5991,23 @@ MediaSession::MediaType HTMLMediaElement::presentationType() const
         return MediaSession::Video;
 
     return MediaSession::Audio;
+}
+
+MediaSession::DisplayType HTMLMediaElement::displayType() const
+{
+    switch (m_videoFullscreenMode) {
+    case VideoFullscreenModeStandard:
+        return MediaSession::Fullscreen;
+    case VideoFullscreenModeOptimized:
+        return MediaSession::Optimized;
+    case VideoFullscreenModeNone:
+        return MediaSession::Normal;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+
+    return MediaSession::Normal;
 }
 
 #if ENABLE(MEDIA_SOURCE)

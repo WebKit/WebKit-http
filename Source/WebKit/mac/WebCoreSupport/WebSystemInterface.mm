@@ -54,9 +54,6 @@ void InitWebCoreSystemInterface(void)
 #if !PLATFORM(IOS)
     INIT(CGContextDrawsWithCorrectShadowOffsets);
 #endif
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    INIT(CTFontTransformGlyphs);
-#endif
     INIT(CopyCONNECTProxyResponse);
     INIT(CopyNSURLResponseStatusLine);
     INIT(CopyNSURLResponseCertificateChain);
@@ -123,7 +120,6 @@ void InitWebCoreSystemInterface(void)
     INIT(QTClearMediaDownloadCache);
 #endif
 
-    INIT(GetVerticalGlyphsForCharacters);
 #if PLATFORM(IOS)
     INIT(ExecutableWasLinkedOnOrAfterIOSVersion);
     INIT(GetDeviceClass);
@@ -132,19 +128,17 @@ void InitWebCoreSystemInterface(void)
     INIT(GetScreenScaleFactor);
     INIT(IsGB18030ComplianceRequired);
     INIT(IsOptimizedFullscreenSupported);
+    INIT(GetMediaUIImageData);
 #endif
-
-    INIT(CreateCTLineWithUniCharProvider);
 
 #if !PLATFORM(IOS_SIMULATOR)
     INIT(IOSurfaceContextCreate);
     INIT(IOSurfaceContextCreateImage);
 #endif
-    INIT(CreateCTTypesetterWithUniCharProviderAndOptions);
-    INIT(CTRunGetInitialAdvance);
 #if !PLATFORM(IOS)
     INIT(RecommendedScrollerStyle);
     INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);
+    INIT(ExtractWordDefinitionTokenRangeFromContextualString);
     INIT(CopyDefaultSearchProviderDisplayName);
     INIT(Cursor);
 #endif

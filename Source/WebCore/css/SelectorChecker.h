@@ -43,7 +43,31 @@ class RenderStyle;
 
 class SelectorChecker {
     WTF_MAKE_NONCOPYABLE(SelectorChecker);
-    enum Match { SelectorMatches, SelectorFailsLocally, SelectorFailsAllSiblings, SelectorFailsCompletely };
+    enum class Match { SelectorMatches, SelectorFailsLocally, SelectorFailsAllSiblings, SelectorFailsCompletely };
+
+    enum class MatchType { VirtualPseudoElementOnly, Element };
+
+    struct MatchResult {
+        Match match;
+        MatchType matchType;
+
+        static MatchResult matches(MatchType matchType)
+        {
+            return { Match::SelectorMatches, matchType };
+        }
+
+        static MatchResult updateWithMatchType(MatchResult result, MatchType matchType)
+        {
+            if (matchType == MatchType::VirtualPseudoElementOnly)
+                result.matchType = MatchType::VirtualPseudoElementOnly;
+            return result;
+        }
+
+        static MatchResult fails(Match match)
+        {
+            return { match, MatchType::Element };
+        }
+    };
 
 public:
     enum class Mode : unsigned char {
@@ -72,7 +96,7 @@ public:
 
     struct CheckingContextWithStatus;
 
-    bool match(const CSSSelector*, Element*, const CheckingContext&) const;
+    bool match(const CSSSelector*, Element*, const CheckingContext&, unsigned& specificity) const;
 
     static bool tagMatches(const Element*, const QualifiedName&);
     static bool isCommonPseudoClassSelector(const CSSSelector*);
@@ -83,8 +107,8 @@ public:
     static unsigned determineLinkMatchType(const CSSSelector*);
 
 private:
-    Match matchRecursively(const CheckingContextWithStatus&, PseudoId&) const;
-    bool checkOne(const CheckingContextWithStatus&) const;
+    MatchResult matchRecursively(const CheckingContextWithStatus&, PseudoIdSet&) const;
+    bool checkOne(const CheckingContextWithStatus&, PseudoIdSet&, MatchType&) const;
     bool matchSelectorList(const CheckingContextWithStatus&, Element&, const CSSSelectorList&) const;
 
     bool checkScrollbarPseudoClass(const CheckingContextWithStatus&, const CSSSelector*) const;

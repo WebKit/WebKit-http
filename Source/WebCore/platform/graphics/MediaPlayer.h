@@ -88,8 +88,6 @@ struct PlatformMedia {
         QTMovieType,
         QTMovieGWorldType,
         QTMovieVisualContextType,
-        ChromiumMediaPlayerType,
-        QtMediaPlayerType,
         AVFoundationMediaPlayerType,
         AVFoundationCFMediaPlayerType,
         AVFoundationAssetType,
@@ -99,8 +97,6 @@ struct PlatformMedia {
         QTMovie* qtMovie;
         QTMovieGWorld* qtMovieGWorld;
         QTMovieVisualContext* qtMovieVisualContext;
-        MediaPlayerPrivateInterface* chromiumMediaPlayer;
-        MediaPlayerPrivateInterface* qtMediaPlayer;
         AVPlayer* avfMediaPlayer;
         AVCFPlayer* avcfMediaPlayer;
         AVAsset* avfAsset;
@@ -265,6 +261,7 @@ public:
     virtual String mediaPlayerSourceApplicationIdentifier() const { return emptyString(); }
 
     virtual bool mediaPlayerIsInMediaDocument() const { return false; }
+    virtual void mediaPlayerEngineFailedToLoad() const { }
 };
 
 class MediaPlayerSupportsTypeClient {
@@ -524,6 +521,7 @@ public:
     String userAgent() const;
 
     String engineDescription() const;
+    long platformErrorCode() const;
 
     CachedResourceLoader* cachedResourceLoader();
     PassRefPtr<PlatformMediaResourceLoader> createResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>);
@@ -582,12 +580,12 @@ private:
     MediaPlayer(MediaPlayerClient&);
     MediaPlayerFactory* nextBestMediaEngine(MediaPlayerFactory*) const;
     void loadWithNextMediaEngine(MediaPlayerFactory*);
-    void reloadTimerFired(Timer<MediaPlayer>&);
+    void reloadTimerFired(Timer&);
 
     static void initializeMediaEngines();
 
     MediaPlayerClient& m_client;
-    Timer<MediaPlayer> m_reloadTimer;
+    Timer m_reloadTimer;
     OwnPtr<MediaPlayerPrivateInterface> m_private;
     MediaPlayerFactory* m_currentMediaEngine;
     URL m_url;

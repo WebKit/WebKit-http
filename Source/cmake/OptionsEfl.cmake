@@ -78,6 +78,7 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DOWNLOAD_ATTRIBUTE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DRAG_SUPPORT ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_ENCRYPTED_MEDIA OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_ENCRYPTED_MEDIA_V2 ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FILTERS_LEVEL_2 OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FULLSCREEN_API ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_GAMEPAD OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_GAMEPAD_DEPRECATED ON)
@@ -142,19 +143,17 @@ endif ()
 find_package(Eo QUIET)
 if (EO_FOUND)
     add_definitions(-DWTF_USE_EO=1)
-
-    # EFL 1.8 provides FooConfig.cmake and it is preferred because FindFoo.cmake's
-    # tricky check routine for version is not availiable on EFL 1.8.
-    # But FindFoo.cmake is still required to support EFL 1.7 and config mode of CMake
-    # is supported after CMake 2.8.8.
-    # So, just disabled version requirement if CMake version is lower than 2.8.8 to
-    # build with EFL 1.8. Eo probably guarantee their version.
-    if (NOT (CMAKE_VERSION VERSION_LESS 2.8.8))
-       set(EFL_CONFIG_MODE CONFIG)
-       set(EFL_REQUIRED_VERSION 1.8)
-    endif ()
+    set(EFL_CONFIG_MODE CONFIG)
+    set(EFL_REQUIRED_VERSION 1.8)
 else ()
     set(EFL_REQUIRED_VERSION 1.7)
+endif ()
+
+if (ENABLE_ACCESSIBILITY)
+    find_package(ATK 2.10.0 REQUIRED)
+    set(EFL_REQUIRED_VERSION 1.9)
+else ()
+    add_definitions(-DHAVE_ACCESSIBILITY=0)
 endif ()
 
 find_package(Eina ${EFL_REQUIRED_VERSION} REQUIRED ${EFL_CONFIG_MODE})
@@ -284,11 +283,6 @@ if (ENABLE_SPELLCHECK)
     find_package(Enchant REQUIRED)
 endif ()
 
-if (ENABLE_ACCESSIBILITY)
-    find_package(ATK 2.10.0 REQUIRED)
-else ()
-    add_definitions(-DHAVE_ACCESSIBILITY=0)
-endif ()
 
 if (ENABLE_SPEECH_SYNTHESIS)
     find_package(Espeak REQUIRED)

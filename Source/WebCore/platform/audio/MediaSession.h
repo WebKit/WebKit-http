@@ -102,15 +102,24 @@ public:
     virtual bool requiresPlaybackTargetRouteMonitoring() const { return false; }
     void wirelessRoutesAvailableDidChange() const;
 
+    enum DisplayType {
+        Normal,
+        Fullscreen,
+        Optimized,
+    };
+    DisplayType displayType() const;
+
+    bool isHidden() const;
+
 protected:
     MediaSessionClient& client() const { return m_client; }
 
 private:
-    void clientDataBufferingTimerFired(Timer<MediaSession>&);
+    void clientDataBufferingTimerFired(Timer&);
     void updateClientDataBuffering();
 
     MediaSessionClient& m_client;
-    Timer<MediaSession> m_clientDataBufferingTimer;
+    Timer m_clientDataBufferingTimer;
     State m_state;
     State m_stateToRestore;
     bool m_notifyingClient;
@@ -123,6 +132,7 @@ public:
     
     virtual MediaSession::MediaType mediaType() const = 0;
     virtual MediaSession::MediaType presentationType() const = 0;
+    virtual MediaSession::DisplayType displayType() const { return MediaSession::Normal; }
 
     virtual void resumePlayback() = 0;
     virtual void pausePlayback() = 0;

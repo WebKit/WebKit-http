@@ -423,7 +423,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekWithTolerance(const MediaTime& ti
     m_seekTimer.startOneShot(0);
 }
 
-void MediaPlayerPrivateMediaSourceAVFObjC::seekTimerFired(Timer<MediaPlayerPrivateMediaSourceAVFObjC>&)
+void MediaPlayerPrivateMediaSourceAVFObjC::seekTimerFired(Timer&)
 {
     seekInternal();
 }
@@ -608,6 +608,10 @@ void MediaPlayerPrivateMediaSourceAVFObjC::ensureLayer()
         return;
 
     m_sampleBufferDisplayLayer = adoptNS([[getAVSampleBufferDisplayLayerClass() alloc] init]);
+#ifndef NDEBUG
+    [m_sampleBufferDisplayLayer setName:@"MediaPlayerPrivateMediaSource AVSampleBufferDisplayLayer"];
+#endif
+
     [m_synchronizer addRenderer:m_sampleBufferDisplayLayer.get()];
 }
 

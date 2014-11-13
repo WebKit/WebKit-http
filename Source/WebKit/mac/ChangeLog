@@ -1,3 +1,320 @@
+2014-11-11  Beth Dakin  <bdakin@apple.com>
+
+        Action menu hit testing is not working properly with all WK1 apps
+        https://bugs.webkit.org/show_bug.cgi?id=138643
+        -and corresponding-
+        rdar://problem/18949376
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController prepareForMenu:withEvent:]):
+        (-[WebActionMenuController _lookupText:]):
+
+2014-11-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Finish moving CTFontGetVerticalGlyphsForCharacters and CTLineCreateWithUniCharProvider out from WKSI
+        https://bugs.webkit.org/show_bug.cgi?id=138623
+
+        Reviewed by Geoff Garen.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebKit.order:
+
+2014-11-11  Tim Horton  <timothy_horton@apple.com>
+
+        Localize strings for action menus
+        https://bugs.webkit.org/show_bug.cgi?id=138591
+        <rdar://problem/18815343>
+
+        Reviewed by Dan Bates.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _createActionMenuItemForTag:withHitTestResult:]):
+        Make use of the new strings.
+
+2014-11-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Cleanup from r175379
+        https://bugs.webkit.org/show_bug.cgi?id=138616
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebKit.order:
+
+2014-11-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Move CTFontTransformGlyphs out from WKSI
+        https://bugs.webkit.org/show_bug.cgi?id=138599
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebKit.order:
+
+2014-11-11  Dan Bernstein  <mitz@apple.com>
+
+        More iOS build fix.
+
+        * WebView/WebHTMLViewInternal.h:
+
+2014-11-11  Dan Bernstein  <mitz@apple.com>
+
+        iOS build fix.
+
+        * WebView/WebHTMLView.mm:
+
+2014-11-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Support default actions for editable text with misspelled word
+        https://bugs.webkit.org/show_bug.cgi?id=138590
+        -and corresponding-
+        rdar://problem/18877506
+
+        Reviewed by Tim Horton.
+
+        If there are misspelled word suggestions for editable text, create a new type of 
+        menu with a spelling suggestion sub-menu.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController isMenuForTextContent]):
+        (-[WebActionMenuController _defaultMenuItemsForEditableTextWithSuggestions:]):
+        (-[WebActionMenuController _changeSelectionToSuggestion:]):
+        (-[WebActionMenuController _createActionMenuItemForTag:withHitTestResult:]):
+        (-[WebActionMenuController _defaultMenuItemsForHitTestResult:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _changeSpellingToWord:]):
+        * WebView/WebHTMLViewInternal.h:
+        * WebView/WebUIDelegatePrivate.h:
+
+2014-11-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Support default actions for editable whitespace
+        https://bugs.webkit.org/show_bug.cgi?id=138586
+        -and corresponding-
+        rdar://problem/18932048
+
+        Reviewed by Tim Horton.
+
+        New menu type. Just wants paste.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController isMenuForTextContent]):
+        (-[WebActionMenuController _defaultMenuItemsForWhitespaceInEditableArea:]):
+        (-[WebActionMenuController _defaultMenuItemsForHitTestResult:]):
+        * WebView/WebUIDelegatePrivate.h:
+
+2014-11-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Support default actions for editable text
+        https://bugs.webkit.org/show_bug.cgi?id=138580
+        -and corresponding-
+        rdar://problem/18877497
+
+        Reviewed by Tim Horton.
+
+        New menu type, and new action type for paste. 
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController isMenuForTextContent]):
+        (-[WebActionMenuController willOpenMenu:withEvent:]):
+        (-[WebActionMenuController _defaultMenuItemsForEditableText:]):
+        (-[WebActionMenuController _paste:]):
+        (-[WebActionMenuController _createActionMenuItemForTag:withHitTestResult:]):
+        (-[WebActionMenuController _defaultMenuItemsForHitTestResult:]):
+        * WebView/WebUIDelegatePrivate.h:
+
+2014-11-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Text is getting selected even when an action menu fails to invoke
+        https://bugs.webkit.org/show_bug.cgi?id=138576
+        -and corresponding-
+        rdar://problem/18931330
+
+        Reviewed by Tim Horton.
+
+        Selection changes should happen in willOpenMenu: instead of prepareForMenu:
+        * WebView/WebActionMenuController.h:
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController prepareForMenu:withEvent:]):
+        (-[WebActionMenuController willOpenMenu:withEvent:]):
+
+        _selectLookupText no longer needs to return a BOOL indicating success or failure.
+        (-[WebActionMenuController _selectLookupText]):
+        (-[WebActionMenuController _defaultMenuItemsForHitTestResult:]):
+
+        Pass willOpenMenu: on to the controller.
+        * WebView/WebView.mm:
+        (-[WebView willOpenMenu:withEvent:]):
+
+2014-11-10  Beth Dakin  <bdakin@apple.com>
+
+        Speculative build fix.
+
+        * WebView/WebActionMenuController.mm:
+
+2014-11-10  Beth Dakin  <bdakin@apple.com>
+
+        Action menu initialization should be moved to _commonInitializationWithFrameName
+        https://bugs.webkit.org/show_bug.cgi?id=138572
+        -and corresponding-
+        rdar://problem/18929733
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _initWithFrame:frameName:groupName:]):
+
+2014-11-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Support default actions for read-only text
+        https://bugs.webkit.org/show_bug.cgi?id=138552
+        -and corresponding-
+        rdar://problem/18877483
+
+        Reviewed by Tim Horton.
+
+        New WKSystemInterface functions that WebCore needs to use.
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+        WebActionMenuController now keeps an ivar for the WebCore::HitTestResult. This 
+        makes a lot of things easier.
+        * WebView/WebActionMenuController.h:
+        * WebView/WebActionMenuController.mm:
+
+        Perform the hit test ourselves instead of calling into WebView so that we can more 
+        easily save the WebCore::HitTestResult for ourselves.
+        (-[WebActionMenuController performHitTestAtPoint:]):
+
+        Clear selection for non-text menus.
+        (-[WebActionMenuController prepareForMenu:withEvent:]):
+
+        Re-set the _type here just to be safe.
+        (-[WebActionMenuController didCloseMenu:withEvent:]):
+
+        Moving this method to be next to the link actions so they can be within a pragma 
+        mark.
+        (-[WebActionMenuController _defaultMenuItemsForLink:]):
+
+        New method for default text actions — lookup and copy.
+        (-[WebActionMenuController _defaultMenuItemsForText:]):
+        (-[WebActionMenuController _copySelection:]):
+        (-[WebActionMenuController _lookupText:]):
+
+        If there is not already a selection, invoking the action menu on text should 
+        select the lookup text.
+        (-[WebActionMenuController _selectLookupText]):
+        (performDictionaryLookupForSelection):
+        (performDictionaryLookupForRange):
+
+        Handle text now.
+        (-[WebActionMenuController _createActionMenuItemForTag:withHitTestResult:]):
+        (-[WebActionMenuController _defaultMenuItemsForHitTestResult:]):
+
+        New enum values.
+        * WebView/WebUIDelegatePrivate.h:
+
+        Pass didCloseMenu on to the controller.
+        * WebView/WebView.mm:
+        (-[WebView didCloseMenu:withEvent:]):
+
+2014-11-09  Chris Dumez  <cdumez@apple.com>
+
+        Add a more correct way to compare floating point numbers and use it
+        https://bugs.webkit.org/show_bug.cgi?id=138527
+
+        Reviewed by Darin Adler.
+
+        Use the new WTF::areEssentuallyEqual() utility function from MathExtras.h
+        to compare floating-point numbers.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _adjustedBottomOfPageWithTop:bottom:limit:]):
+
+2014-11-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Delete cookies between tests
+        https://bugs.webkit.org/show_bug.cgi?id=138528
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPreferences.mm: (+[WebPreferences _clearNetworkLoaderSession]):
+        * WebView/WebPreferencesPrivate.h:
+        Added an SPI for DumpRenderTree.
+
+2014-11-07  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Update optimized fullscreen media controls
+        https://bugs.webkit.org/show_bug.cgi?id=138493
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Initialize GetMediaUIImageData.
+
+2014-11-06  Daniel Jalkut  <jalkut@red-sweater.com>
+
+        Wrap the bulk of -[WebView dealloc] with an autorelease pool.
+        https://bugs.webkit.org/show_bug.cgi?id=138443
+
+        Reviewed by Anders Carlsson.
+
+        Wrapping the dealloc method in its own autorelease pool avoids the problem of
+        complex tear-downs leading to the WebView itself being added to an autorelease
+        pool that is not drained until after the instance has been dealloc'd.
+ 
+        * WebView/WebView.mm:
+        (-[WebView dealloc]):
+
+2014-11-05  Jer Noble  <jer.noble@apple.com>
+
+        De-templatize Timer
+        https://bugs.webkit.org/show_bug.cgi?id=138450
+
+        Reviewed by Anders Carlsson.
+
+        Remove template specifiers from Timer.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::requestTimerFired):
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::deliverDataTimerFired):
+
+2014-11-05  Dan Bernstein  <mitz@apple.com>
+
+        Remove the unused deletion UI feature
+        https://bugs.webkit.org/show_bug.cgi?id=138442
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * DefaultDelegates/WebDefaultEditingDelegate.m:
+        (-[WebDefaultEditingDelegate webView:shouldShowDeleteInterfaceForElement:]): Deleted.
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::shouldShowDeleteInterface): Deleted.
+        * WebView/WebEditingDelegatePrivate.h: Removed declaration of
+        -webView:shouldShowDeleteInterfaceForElement:.
+
+2014-11-03  Dean Jackson  <dino@apple.com>
+
+        Add ENABLE_FILTERS_LEVEL_2 feature guard.
+        https://bugs.webkit.org/show_bug.cgi?id=138362
+
+        Reviewed by Tim Horton.
+
+        Add a new feature define for Level 2 of CSS Filters.
+        http://dev.w3.org/fxtf/filters-2/
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2014-11-03  Jeremy Jones  <jeremyj@apple.com>
 
         Add button and enable optimized fullscreen.

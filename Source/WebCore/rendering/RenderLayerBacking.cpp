@@ -112,6 +112,9 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
     , m_usingTiledCacheLayer(false)
     , m_requiresOwnBackingStore(true)
     , m_canCompositeFilters(false)
+#if ENABLE(FILTERS_LEVEL_2)
+    , m_canCompositeBackdropFilters(false)
+#endif
     , m_backgroundLayerPaintsFixedRootBackground(false)
 {
     Page* page = renderer().frame().page();
@@ -311,6 +314,9 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
     updateOpacity(renderer().style());
     updateTransform(renderer().style());
     updateFilters(renderer().style());
+#if ENABLE(FILTERS_LEVEL_2)
+    updateBackdropFilters(renderer().style());
+#endif
 #if ENABLE(CSS_COMPOSITING)
     updateBlendMode(renderer().style());
 #endif
@@ -374,6 +380,13 @@ void RenderLayerBacking::updateFilters(const RenderStyle& style)
 {
     m_canCompositeFilters = m_graphicsLayer->setFilters(style.filter());
 }
+
+#if ENABLE(FILTERS_LEVEL_2)
+void RenderLayerBacking::updateBackdropFilters(const RenderStyle& style)
+{
+    m_canCompositeBackdropFilters = m_graphicsLayer->setBackdropFilters(style.backdropFilter());
+}
+#endif
 
 #if ENABLE(CSS_COMPOSITING)
 void RenderLayerBacking::updateBlendMode(const RenderStyle& style)
@@ -652,7 +665,9 @@ void RenderLayerBacking::updateGeometry()
         updateOpacity(style);
 
     updateFilters(style);
-
+#if ENABLE(FILTERS_LEVEL_2)
+    updateBackdropFilters(style);
+#endif
 #if ENABLE(CSS_COMPOSITING)
     updateBlendMode(style);
 #endif
@@ -1082,12 +1097,12 @@ void RenderLayerBacking::resetContentsRect()
 {
     m_graphicsLayer->setContentsRect(snappedIntRect(contentsBox()));
     
-    LayoutRect contentsClippingRect;
-    if (is<RenderBox>(renderer()))
-        contentsClippingRect = downcast<RenderBox>(renderer()).contentBoxRect();
-
-    contentsClippingRect.move(contentOffsetInCompostingLayer());
-    m_graphicsLayer->setContentsClippingRect(snappedIntRect(contentsClippingRect));
+    if (is<RenderBox>(renderer())) {
+        LayoutRect boxRect(LayoutPoint(), downcast<RenderBox>(renderer()).size());
+        FloatRoundedRect contentsClippingRect = renderer().style().getRoundedInnerBorderFor(boxRect).pixelSnappedRoundedRectForPainting(deviceScaleFactor());
+        contentsClippingRect.move(contentOffsetInCompostingLayer());
+        m_graphicsLayer->setContentsClippingRect(contentsClippingRect);
+    }
 
     m_graphicsLayer->setContentsTileSize(IntSize());
     m_graphicsLayer->setContentsTilePhase(IntPoint());
@@ -1255,7 +1270,7 @@ void RenderLayerBacking::positionOverflowControlsLayers()
         if (layer->usesContentsLayer()) {
             IntRect barRect = IntRect(IntPoint(), hBarRect.size());
             layer->setContentsRect(barRect);
-            layer->setContentsClippingRect(barRect);
+            layer->setContentsClippingRect(FloatRoundedRect(barRect));
         }
         layer->setDrawsContent(m_owningLayer.horizontalScrollbar() && !layer->usesContentsLayer());
     }
@@ -1267,7 +1282,7 @@ void RenderLayerBacking::positionOverflowControlsLayers()
         if (layer->usesContentsLayer()) {
             IntRect barRect = IntRect(IntPoint(), vBarRect.size());
             layer->setContentsRect(barRect);
-            layer->setContentsClippingRect(barRect);
+            layer->setContentsClippingRect(FloatRoundedRect(barRect));
         }
         layer->setDrawsContent(m_owningLayer.verticalScrollbar() && !layer->usesContentsLayer());
     }
@@ -1572,7 +1587,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundColor(bool isSimpleCo
     m_graphicsLayer->setContentsToSolidColor(backgroundColor);
     FloatRect contentsRect = backgroundBoxForPainting();
     m_graphicsLayer->setContentsRect(contentsRect);
-    m_graphicsLayer->setContentsClippingRect(contentsRect);
+    m_graphicsLayer->setContentsClippingRect(FloatRoundedRect(contentsRect));
     didUpdateContentsRect = true;
 }
 
@@ -1600,7 +1615,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(bool isSimpleCo
     m_graphicsLayer->setContentsTileSize(tileSize);
     m_graphicsLayer->setContentsTilePhase(phase);
     m_graphicsLayer->setContentsRect(destRect);
-    m_graphicsLayer->setContentsClippingRect(destRect);
+    m_graphicsLayer->setContentsClippingRect(FloatRoundedRect(destRect));
     m_graphicsLayer->setContentsToImage(image.get());
     didUpdateContentsRect = true;
 }
@@ -1890,9 +1905,10 @@ void RenderLayerBacking::updateImageContents()
     // This is a no-op if the layer doesn't have an inner layer for the image.
     m_graphicsLayer->setContentsRect(snappedIntRect(contentsBox()));
 
-    LayoutRect contentsClippingRect = imageRenderer.contentBoxRect();
+    LayoutRect boxRect(LayoutPoint(), imageRenderer.size());
+    FloatRoundedRect contentsClippingRect = renderer().style().getRoundedInnerBorderFor(boxRect).pixelSnappedRoundedRectForPainting(deviceScaleFactor());
     contentsClippingRect.move(contentOffsetInCompostingLayer());
-    m_graphicsLayer->setContentsClippingRect(snappedIntRect(contentsClippingRect));
+    m_graphicsLayer->setContentsClippingRect(contentsClippingRect);
 
     m_graphicsLayer->setContentsToImage(image);
     bool isSimpleContainer = false;
@@ -1977,14 +1993,7 @@ GraphicsLayer* RenderLayerBacking::parentForSublayers() const
     if (m_scrollingContentsLayer)
         return m_scrollingContentsLayer.get();
 
-#if PLATFORM(IOS)
-    // FIXME: Can we remove this iOS-specific code path?
-    if (GraphicsLayer* clippingLayer = this->clippingLayer())
-        return clippingLayer;
-    return m_graphicsLayer.get();
-#else
     return m_childContainmentLayer ? m_childContainmentLayer.get() : m_graphicsLayer.get();
-#endif
 }
 
 GraphicsLayer* RenderLayerBacking::childForSuperlayers() const
@@ -2350,13 +2359,13 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
         
         bool isFirstOrLastKeyframe = key == 0 || key == 1;
         if ((hasTransform && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyWebkitTransform))
-            transformVector.insert(TransformAnimationValue::create(key, keyframeStyle->transform(), tf));
+            transformVector.insert(std::make_unique<TransformAnimationValue>(key, keyframeStyle->transform(), tf));
 
         if ((hasOpacity && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyOpacity))
-            opacityVector.insert(FloatAnimationValue::create(key, keyframeStyle->opacity(), tf));
+            opacityVector.insert(std::make_unique<FloatAnimationValue>(key, keyframeStyle->opacity(), tf));
 
         if ((hasFilter && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyWebkitFilter))
-            filterVector.insert(FilterAnimationValue::create(key, keyframeStyle->filter(), tf));
+            filterVector.insert(std::make_unique<FilterAnimationValue>(key, keyframeStyle->filter(), tf));
     }
 
     if (renderer().frame().page() && !renderer().frame().page()->settings().acceleratedCompositedAnimationsEnabled())
@@ -2396,8 +2405,8 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
         const Animation* opacityAnim = toStyle->transitionForProperty(CSSPropertyOpacity);
         if (opacityAnim && !opacityAnim->isEmptyOrZeroDuration()) {
             KeyframeValueList opacityVector(AnimatedPropertyOpacity);
-            opacityVector.insert(FloatAnimationValue::create(0, compositingOpacity(fromStyle->opacity())));
-            opacityVector.insert(FloatAnimationValue::create(1, compositingOpacity(toStyle->opacity())));
+            opacityVector.insert(std::make_unique<FloatAnimationValue>(0, compositingOpacity(fromStyle->opacity())));
+            opacityVector.insert(std::make_unique<FloatAnimationValue>(1, compositingOpacity(toStyle->opacity())));
             // The boxSize param is only used for transform animations (which can only run on RenderBoxes), so we pass an empty size here.
             if (m_graphicsLayer->addAnimation(opacityVector, FloatSize(), opacityAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyOpacity), timeOffset)) {
                 // To ensure that the correct opacity is visible when the animation ends, also set the final opacity.
@@ -2411,8 +2420,8 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
         const Animation* transformAnim = toStyle->transitionForProperty(CSSPropertyWebkitTransform);
         if (transformAnim && !transformAnim->isEmptyOrZeroDuration()) {
             KeyframeValueList transformVector(AnimatedPropertyWebkitTransform);
-            transformVector.insert(TransformAnimationValue::create(0, fromStyle->transform()));
-            transformVector.insert(TransformAnimationValue::create(1, toStyle->transform()));
+            transformVector.insert(std::make_unique<TransformAnimationValue>(0, fromStyle->transform()));
+            transformVector.insert(std::make_unique<TransformAnimationValue>(1, toStyle->transform()));
             if (m_graphicsLayer->addAnimation(transformVector, downcast<RenderBox>(renderer()).pixelSnappedBorderBoxRect().size(), transformAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyWebkitTransform), timeOffset)) {
                 // To ensure that the correct transform is visible when the animation ends, also set the final transform.
                 updateTransform(*toStyle);
@@ -2425,8 +2434,8 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
         const Animation* filterAnim = toStyle->transitionForProperty(CSSPropertyWebkitFilter);
         if (filterAnim && !filterAnim->isEmptyOrZeroDuration()) {
             KeyframeValueList filterVector(AnimatedPropertyWebkitFilter);
-            filterVector.insert(FilterAnimationValue::create(0, fromStyle->filter()));
-            filterVector.insert(FilterAnimationValue::create(1, toStyle->filter()));
+            filterVector.insert(std::make_unique<FilterAnimationValue>(0, fromStyle->filter()));
+            filterVector.insert(std::make_unique<FilterAnimationValue>(1, toStyle->filter()));
             if (m_graphicsLayer->addAnimation(filterVector, FloatSize(), filterAnim, GraphicsLayer::animationNameForTransition(AnimatedPropertyWebkitFilter), timeOffset)) {
                 // To ensure that the correct filter is visible when the animation ends, also set the final filter.
                 updateFilters(*toStyle);

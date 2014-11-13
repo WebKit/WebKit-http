@@ -1219,7 +1219,7 @@ void CoordinatedGraphicsLayer::resumeAnimations()
     didChangeAnimations();
 }
 
-void CoordinatedGraphicsLayer::animationStartedTimerFired(Timer<CoordinatedGraphicsLayer>*)
+void CoordinatedGraphicsLayer::animationStartedTimerFired(Timer*)
 {
     client().notifyAnimationStarted(this, "", m_lastAnimationStartTime);
 }

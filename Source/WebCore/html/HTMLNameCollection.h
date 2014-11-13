@@ -24,7 +24,6 @@
 #define HTMLNameCollection_h
 
 #include "HTMLCollection.h"
-
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -85,6 +84,9 @@ private:
     }
 };
 
-}
+} // namespace WebCore
 
-#endif
+SPECIALIZE_TYPE_TRAITS_HTMLCOLLECTION(WindowNameCollection, WindowNamedItems)
+SPECIALIZE_TYPE_TRAITS_HTMLCOLLECTION(DocumentNameCollection, DocumentNamedItems)
+
+#endif // HTMLNameCollection_h

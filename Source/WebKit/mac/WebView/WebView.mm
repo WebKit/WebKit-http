@@ -869,6 +869,12 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     [frameView release];
 
 #if !PLATFORM(IOS)
+    if ([self respondsToSelector:@selector(setActionMenu:)]) {
+        RetainPtr<NSMenu> actionMenu = adoptNS([[NSMenu alloc] init]);
+        self.actionMenu = actionMenu.get();
+        _private->actionMenuController = [[WebActionMenuController alloc] initWithWebView:self];
+    }
+
     static bool didOneTimeInitialization = false;
 #endif
     if (!didOneTimeInitialization) {
@@ -1063,12 +1069,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     [self setMaintainsBackForwardList: YES];
 #if !PLATFORM(IOS)
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
-
-    if ([self respondsToSelector:@selector(setActionMenu:)]) {
-        RetainPtr<NSMenu> actionMenu = adoptNS([[NSMenu alloc] init]);
-        self.actionMenu = actionMenu.get();
-        _private->actionMenuController = [[WebActionMenuController alloc] initWithWebView:self];
-    }
 #endif
     return self;
 }
@@ -5085,26 +5085,32 @@ static bool needsWebViewInitThreadWorkaround()
     if (WebCoreObjCScheduleDeallocateOnMainThread([WebView class], self))
         return;
 
+    // Because the machinations of the view's shutdown may cause self to be added to
+    // active autorelease pool, we capture any such releases here to ensure they are
+    // carried out before we are dealloc'd.
+    @autoreleasepool {
+
 #if PLATFORM(IOS)
-    if (_private)
-        [_private->_geolocationProvider stopTrackingWebView:self];
+        if (_private)
+            [_private->_geolocationProvider stopTrackingWebView:self];
 #endif
 
-    // call close to ensure we tear-down completely
-    // this maintains our old behavior for existing applications
-    [self close];
+        // call close to ensure we tear-down completely
+        // this maintains our old behavior for existing applications
+        [self close];
 
-    if ([[self class] shouldIncludeInWebKitStatistics])
-        --WebViewCount;
+        if ([[self class] shouldIncludeInWebKitStatistics])
+            --WebViewCount;
 
 #if !PLATFORM(IOS)
-    if ([self _needsFrameLoadDelegateRetainQuirk])
-        [_private->frameLoadDelegate release];
+        if ([self _needsFrameLoadDelegateRetainQuirk])
+            [_private->frameLoadDelegate release];
 #endif
-        
-    [_private release];
-    // [super dealloc] can end up dispatching against _private (3466082)
-    _private = nil;
+
+        [_private release];
+        // [super dealloc] can end up dispatching against _private (3466082)
+        _private = nil;
+    }
 
     [super dealloc];
 }
@@ -8536,6 +8542,22 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
         return;
 
     [_private->actionMenuController prepareForMenu:menu withEvent:event];
+}
+
+- (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
+{
+    if (menu != self.actionMenu)
+        return;
+
+    [_private->actionMenuController willOpenMenu:menu withEvent:event];
+}
+
+- (void)didCloseMenu:(NSMenu *)menu withEvent:(NSEvent *)event
+{
+    if (menu != self.actionMenu)
+        return;
+
+    [_private->actionMenuController didCloseMenu:menu withEvent:event];
 }
 #endif
 

@@ -547,9 +547,9 @@ void PageClientImpl::dismissDictionaryLookupPanel()
     WKHideWordDefinitionWindow();
 }
 
-void PageClientImpl::dismissActionMenuDataDetectorPopovers()
+void PageClientImpl::dismissActionMenuPopovers()
 {
-    [m_wkView _dismissActionMenuDataDetectorPopovers];
+    [m_wkView _dismissActionMenuPopovers];
 }
 
 void PageClientImpl::showCorrectionPanel(AlternativeTextType type, const FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings)
@@ -585,13 +585,6 @@ void PageClientImpl::recordAutocorrectionResponse(AutocorrectionResponseType res
 
 void PageClientImpl::recommendedScrollbarStyleDidChange(int32_t newStyle)
 {
-    NSArray *trackingAreas = [m_wkView trackingAreas];
-    NSUInteger count = [trackingAreas count];
-    ASSERT(count == 1);
-    
-    for (NSUInteger i = 0; i < count; ++i)
-        [m_wkView removeTrackingArea:[trackingAreas objectAtIndex:i]];
-
     // Now re-create a tracking area with the appropriate options given the new scrollbar style
     NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect;
     if (newStyle == NSScrollerStyleLegacy)
@@ -599,12 +592,8 @@ void PageClientImpl::recommendedScrollbarStyleDidChange(int32_t newStyle)
     else
         options |= NSTrackingActiveInKeyWindow;
 
-    NSTrackingArea *trackingArea = [[NSTrackingArea alloc] initWithRect:[m_wkView frame]
-                                                                options:options
-                                                                  owner:m_wkView
-                                                               userInfo:nil];
-    [m_wkView addTrackingArea:trackingArea];
-    [trackingArea release];
+    RetainPtr<NSTrackingArea> trackingArea = adoptNS([[NSTrackingArea alloc] initWithRect:[m_wkView frame] options:options owner:m_wkView userInfo:nil]);
+    [m_wkView _setPrimaryTrackingArea:trackingArea.get()];
 }
 
 void PageClientImpl::intrinsicContentSizeDidChange(const IntSize& intrinsicContentSize)
@@ -689,8 +678,9 @@ void PageClientImpl::beganExitFullScreen(const IntRect& initialFrame, const IntR
 
 void PageClientImpl::navigationGestureDidBegin()
 {
-    // Hide the finde indicator if it's visible.
+    // Hide the text indicator and action menu popovers if they are visible.
     setTextIndicator(nullptr, false, false);
+    dismissActionMenuPopovers();
 
 #if WK_API_ENABLED
     if (m_webView)
@@ -764,6 +754,12 @@ void PageClientImpl::didPerformActionMenuHitTest(const ActionMenuHitTestResult& 
     [m_wkView _didPerformActionMenuHitTest:result userData:userData];
 #endif
 }
+
+void PageClientImpl::showPlatformContextMenu(NSMenu *menu, IntPoint location)
+{
+    [menu popUpMenuPositioningItem:nil atLocation:location inView:m_wkView];
+}
+
 
 } // namespace WebKit
 

@@ -43,6 +43,7 @@ class FilterOperations;
 class FloatPoint;
 class FloatPoint3D;
 class FloatRect;
+class FloatRoundedRect;
 class FloatSize;
 class FixedPositionViewportConstraints;
 class HTTPHeaderMap;
@@ -163,6 +164,11 @@ template<> struct ArgumentCoder<WebCore::FloatSize> {
     static bool decode(ArgumentDecoder&, WebCore::FloatSize&);
 };
 
+template<> struct ArgumentCoder<WebCore::FloatRoundedRect> {
+    static void encode(ArgumentEncoder&, const WebCore::FloatRoundedRect&);
+    static bool decode(ArgumentDecoder&, WebCore::FloatRoundedRect&);
+};
+
 #if PLATFORM(IOS)
 template<> struct ArgumentCoder<WebCore::FloatQuad> {
     static void encode(ArgumentEncoder&, const WebCore::FloatQuad&);
@@ -213,11 +219,6 @@ template<> struct ArgumentCoder<WebCore::MimeClassInfo> {
 template<> struct ArgumentCoder<WebCore::PluginInfo> {
     static void encode(ArgumentEncoder&, const WebCore::PluginInfo&);
     static bool decode(ArgumentDecoder&, WebCore::PluginInfo&);
-};
-
-template<> struct ArgumentCoder<WebCore::HTTPHeaderMap> {
-    static void encode(ArgumentEncoder&, const WebCore::HTTPHeaderMap&);
-    static bool decode(ArgumentDecoder&, WebCore::HTTPHeaderMap&);
 };
 
 template<> struct ArgumentCoder<WebCore::AuthenticationChallenge> {

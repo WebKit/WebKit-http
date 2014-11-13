@@ -906,11 +906,19 @@ uint64_t WebPageProxy::reload(bool reloadFromOrigin)
 
 void WebPageProxy::recordNavigationSnapshot()
 {
+    if (WebBackForwardListItem* item = m_backForwardList->currentItem())
+        recordNavigationSnapshot(*item);
+}
+
+void WebPageProxy::recordNavigationSnapshot(WebBackForwardListItem& item)
+{
     if (!m_shouldRecordNavigationSnapshots)
         return;
 
 #if PLATFORM(COCOA)
-    ViewSnapshotStore::shared().recordSnapshot(*this);
+    ViewSnapshotStore::shared().recordSnapshot(*this, item);
+#else
+    UNUSED_PARAM(item);
 #endif
 }
 
@@ -2637,7 +2645,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     m_pageClient.resetSecureInputState();
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
     m_pageClient.dismissDictionaryLookupPanel();
-    m_pageClient.dismissActionMenuDataDetectorPopovers();
+    m_pageClient.dismissActionMenuPopovers();
 #endif
 
     clearLoadDependentCallbacks();
@@ -3327,7 +3335,7 @@ void WebPageProxy::pageDidScroll()
 {
     m_uiClient->pageDidScroll(this);
 #if PLATFORM(MAC)
-    m_pageClient.dismissActionMenuDataDetectorPopovers();
+    m_pageClient.dismissActionMenuPopovers();
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
 #endif
 }
@@ -4496,6 +4504,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
         editCommandVector[i]->invalidate();
 
     m_activePopupMenu = 0;
+    m_isPlayingAudio = false;
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -4548,7 +4557,7 @@ void WebPageProxy::resetStateAfterProcessExited()
 #if PLATFORM(MAC)
     dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
     m_pageClient.dismissDictionaryLookupPanel();
-    m_pageClient.dismissActionMenuDataDetectorPopovers();
+    m_pageClient.dismissActionMenuPopovers();
 #endif
 
     PageLoadState::Transaction transaction = m_pageLoadState.transaction();
@@ -5288,9 +5297,9 @@ void WebPageProxy::performActionMenuHitTestAtLocation(FloatPoint point)
     m_process->send(Messages::WebPage::PerformActionMenuHitTestAtLocation(point), m_pageID);
 }
 
-void WebPageProxy::selectLookupTextAtLocation(FloatPoint point)
+void WebPageProxy::selectLastActionMenuRange()
 {
-    m_process->send(Messages::WebPage::SelectLookupTextAtLocation(point), m_pageID);
+    m_process->send(Messages::WebPage::SelectLastActionMenuRange(), m_pageID);
 }
 
 void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, IPC::MessageDecoder& decoder)

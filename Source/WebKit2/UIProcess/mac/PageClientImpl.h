@@ -138,7 +138,7 @@ private:
     
     virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&);
     virtual void dismissDictionaryLookupPanel();
-    virtual void dismissActionMenuDataDetectorPopovers();
+    virtual void dismissActionMenuPopovers();
 
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings);
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText);
@@ -188,6 +188,7 @@ private:
     virtual void removeNavigationGestureSnapshot() override;
 
     virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, API::Object*) override;
+    virtual void showPlatformContextMenu(NSMenu *, WebCore::IntPoint) override;
 
     WKView *m_wkView;
     WKWebView *m_webView;

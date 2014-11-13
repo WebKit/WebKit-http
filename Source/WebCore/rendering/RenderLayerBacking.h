@@ -89,15 +89,15 @@ public:
 
     // Layer to clip children
     bool hasClippingLayer() const { return (m_childContainmentLayer && !m_usingTiledCacheLayer); }
-    GraphicsLayer* clippingLayer() const { return !m_usingTiledCacheLayer ? m_childContainmentLayer.get() : 0; }
+    GraphicsLayer* clippingLayer() const { return !m_usingTiledCacheLayer ? m_childContainmentLayer.get() : nullptr; }
 
     // Layer to get clipped by ancestor
-    bool hasAncestorClippingLayer() const { return m_ancestorClippingLayer != 0; }
+    bool hasAncestorClippingLayer() const { return m_ancestorClippingLayer != nullptr; }
     GraphicsLayer* ancestorClippingLayer() const { return m_ancestorClippingLayer.get(); }
 
     GraphicsLayer* contentsContainmentLayer() const { return m_contentsContainmentLayer.get(); }
 
-    bool hasContentsLayer() const { return m_foregroundLayer != 0; }
+    bool hasContentsLayer() const { return m_foregroundLayer != nullptr; }
     GraphicsLayer* foregroundLayer() const { return m_foregroundLayer.get(); }
 
     GraphicsLayer* backgroundLayer() const { return m_backgroundLayer.get(); }
@@ -232,6 +232,9 @@ public:
     GraphicsLayer* layerForScrollCorner() const { return m_layerForScrollCorner.get(); }
 
     bool canCompositeFilters() const { return m_canCompositeFilters; }
+#if ENABLE(FILTERS_LEVEL_2)
+    bool canCompositeBackdropFilters() const { return m_canCompositeBackdropFilters; }
+#endif
 
     // Return an estimate of the backing store area (in pixels) allocated by this object's GraphicsLayers.
     double backingStoreMemoryEstimate() const;
@@ -279,6 +282,9 @@ private:
     void updateOpacity(const RenderStyle&);
     void updateTransform(const RenderStyle&);
     void updateFilters(const RenderStyle&);
+#if ENABLE(FILTERS_LEVEL_2)
+    void updateBackdropFilters(const RenderStyle&);
+#endif
 #if ENABLE(CSS_COMPOSITING)
     void updateBlendMode(const RenderStyle&);
 #endif
@@ -310,7 +316,7 @@ private:
     bool shouldClipCompositedBounds() const;
 
     bool hasTiledBackingFlatteningLayer() const { return (m_childContainmentLayer && m_usingTiledCacheLayer); }
-    GraphicsLayer* tileCacheFlatteningLayer() const { return m_usingTiledCacheLayer ? m_childContainmentLayer.get() : 0; }
+    GraphicsLayer* tileCacheFlatteningLayer() const { return m_usingTiledCacheLayer ? m_childContainmentLayer.get() : nullptr; }
 
     void paintIntoLayer(const GraphicsLayer*, GraphicsContext*, const IntRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase);
 
@@ -348,6 +354,9 @@ private:
     bool m_usingTiledCacheLayer;
     bool m_requiresOwnBackingStore;
     bool m_canCompositeFilters;
+#if ENABLE(FILTERS_LEVEL_2)
+    bool m_canCompositeBackdropFilters;
+#endif
     bool m_backgroundLayerPaintsFixedRootBackground;
 
     static bool m_creatingPrimaryGraphicsLayer;

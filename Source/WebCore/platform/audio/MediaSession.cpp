@@ -180,7 +180,7 @@ void MediaSession::visibilityChanged()
         m_clientDataBufferingTimer.startOneShot(kClientDataBufferingTimerThrottleDelay);
 }
 
-void MediaSession::clientDataBufferingTimerFired(Timer<WebCore::MediaSession> &)
+void MediaSession::clientDataBufferingTimerFired(Timer &)
 {
     updateClientDataBuffering();
 }
@@ -190,8 +190,17 @@ void MediaSession::updateClientDataBuffering()
     if (m_clientDataBufferingTimer.isActive())
         m_clientDataBufferingTimer.stop();
 
-    bool shouldBuffer = m_state == Playing || !m_client.elementIsHidden();
-    m_client.setShouldBufferData(shouldBuffer);
+    m_client.setShouldBufferData(MediaSessionManager::sharedManager().sessionCanLoadMedia(*this));
+}
+
+bool MediaSession::isHidden() const
+{
+    return m_client.elementIsHidden();
+}
+
+MediaSession::DisplayType MediaSession::displayType() const
+{
+    return m_client.displayType();
 }
 
 void MediaSession::wirelessRoutesAvailableDidChange() const

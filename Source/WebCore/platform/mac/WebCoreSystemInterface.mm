@@ -104,18 +104,7 @@ void (*wkSetCFURLRequestShouldContentSniff)(CFMutableURLRequestRef, bool);
 void (*wkSetRequestStorageSession)(CFURLStorageSessionRef, CFMutableURLRequestRef);
 #endif
 
-bool (*wkGetVerticalGlyphsForCharacters)(CTFontRef, const UniChar[], CGGlyph[], size_t);
-
 void* wkGetHyphenationLocationBeforeIndex;
-
-CTLineRef (*wkCreateCTLineWithUniCharProvider)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*);
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-bool (*wkCTFontTransformGlyphs)(CTFontRef font, CGGlyph glyphs[], CGSize advances[], CFIndex count, wkCTFontTransformOptions options);
-#endif
-
-CGSize (*wkCTRunGetInitialAdvance)(CTRunRef);
-
-CTTypesetterRef (*wkCreateCTTypesetterWithUniCharProviderAndOptions)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
 
 CGContextRef (*wkIOSurfaceContextCreate)(IOSurfaceRef surface, unsigned width, unsigned height, CGColorSpaceRef colorSpace);
 CGImageRef (*wkIOSurfaceContextCreateImage)(CGContextRef context);
@@ -123,6 +112,8 @@ CGImageRef (*wkIOSurfaceContextCreateImage)(CGContextRef context);
 int (*wkRecommendedScrollerStyle)(void);
 
 bool (*wkExecutableWasLinkedOnOrBeforeSnowLeopard)(void);
+
+NSRange (*wkExtractWordDefinitionTokenRangeFromContextualString)(NSString *contextString, NSRange range, NSDictionary **options);
 
 CFStringRef (*wkCopyDefaultSearchProviderDisplayName)(void);
 

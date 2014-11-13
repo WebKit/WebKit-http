@@ -52,7 +52,7 @@ public:
 
     PassRefPtr<HTMLCollection> elements();
     bool hasNamedElement(const AtomicString&);
-    void getNamedElements(const AtomicString&, Vector<Ref<Element>>&);
+    Vector<Ref<Element>> namedElements(const AtomicString&);
 
     unsigned length() const;
     Node* item(unsigned index);
@@ -194,10 +194,10 @@ private:
     bool m_wasDemoted;
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
-    void requestAutocompleteTimerFired(Timer<HTMLFormElement>*);
+    void requestAutocompleteTimerFired(Timer*);
 
     Vector<RefPtr<Event>> m_pendingAutocompleteEvents;
-    Timer<HTMLFormElement> m_requestAutocompleteTimer;
+    Timer m_requestAutocompleteTimer;
 #endif
 };
 

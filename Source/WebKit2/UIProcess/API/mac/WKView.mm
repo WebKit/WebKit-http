@@ -170,6 +170,8 @@ struct WKViewInterpretKeyEventsParameters {
     RetainPtr<WKBrowsingContextController> _browsingContextController;
 #endif
 
+    RetainPtr<NSTrackingArea> _primaryTrackingArea;
+
     // For ToolTips.
     NSToolTipTag _lastToolTipTag;
     id _trackingRectOwner;
@@ -242,6 +244,7 @@ struct WKViewInterpretKeyEventsParameters {
 
     std::unique_ptr<ViewGestureController> _gestureController;
     BOOL _allowsMagnification;
+    BOOL _ignoresNonWheelMouseEvents;
     BOOL _allowsBackForwardNavigationGestures;
 
     RetainPtr<CALayer> _rootLayer;
@@ -1095,7 +1098,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 
 // Events
 
--(BOOL)shouldIgnoreMouseEvents
+- (BOOL)_shouldIgnoreMouseEvents
 {
     // FIXME: This check is surprisingly specific. Are there any other cases where we need to block mouse events?
     // Do we actually need to in thumbnail view? And if we do, what about non-mouse events?
@@ -1103,6 +1106,18 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
     if (_data->_thumbnailView)
         return YES;
 #endif
+
+    // -scrollWheel: uses -_shouldIgnoreWheelEvents, so for all other event types it is correct to use this.
+    return _data->_ignoresNonWheelMouseEvents;
+}
+
+- (BOOL)_shouldIgnoreWheelEvents
+{
+#if WK_API_ENABLED
+    if (_data->_thumbnailView)
+        return YES;
+#endif
+
     return NO;
 }
 
@@ -1128,7 +1143,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
-        if ([self shouldIgnoreMouseEvents]) \
+        if (self._shouldIgnoreMouseEvents) \
             return; \
         if (NSTextInputContext *context = [self inputContext]) { \
             [context handleEvent:theEvent completionHandler:^(BOOL handled) { \
@@ -1148,7 +1163,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
-        if ([self shouldIgnoreMouseEvents]) \
+        if (self._shouldIgnoreMouseEvents) \
             return; \
         if ([[self inputContext] handleEvent:theEvent]) { \
             LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
@@ -1185,7 +1200,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)scrollWheel:(NSEvent *)event
 {
-    if ([self shouldIgnoreMouseEvents])
+    if ([self _shouldIgnoreWheelEvents])
         return;
 
     if (_data->_allowsBackForwardNavigationGestures) {
@@ -1200,7 +1215,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)swipeWithEvent:(NSEvent *)event
 {
-    if ([self shouldIgnoreMouseEvents])
+    if (self._shouldIgnoreMouseEvents)
         return;
 
     if (!_data->_allowsBackForwardNavigationGestures) {
@@ -1218,7 +1233,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseMoved:(NSEvent *)event
 {
-    if ([self shouldIgnoreMouseEvents])
+    if (self._shouldIgnoreMouseEvents)
         return;
 
     // When a view is first responder, it gets mouse moved events even when the mouse is outside its visible rect.
@@ -1230,7 +1245,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseDown:(NSEvent *)event
 {
-    if ([self shouldIgnoreMouseEvents])
+    if (self._shouldIgnoreMouseEvents)
         return;
 
     [self _setMouseDownEvent:event];
@@ -1240,7 +1255,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseUp:(NSEvent *)event
 {
-    if ([self shouldIgnoreMouseEvents])
+    if (self._shouldIgnoreMouseEvents)
         return;
 
     [self _setMouseDownEvent:nil];
@@ -1249,7 +1264,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseDragged:(NSEvent *)event
 {
-    if ([self shouldIgnoreMouseEvents])
+    if (self._shouldIgnoreMouseEvents)
         return;
 
     if (_data->_ignoringMouseDraggedEvents)
@@ -2539,7 +2554,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         _data->_flagsChangedEventMonitor = nil;
 
         WKHideWordDefinitionWindow();
-        [self _dismissActionMenuDataDetectorPopovers];
+        [self _dismissActionMenuPopovers];
     }
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
@@ -3480,6 +3495,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_page->suppressVisibilityUpdates();
 }
 
+- (NSTrackingArea *)_primaryTrackingArea
+{
+    return _data->_primaryTrackingArea.get();
+}
+
+- (void)_setPrimaryTrackingArea:(NSTrackingArea *)trackingArea
+{
+    [self removeTrackingArea:_data->_primaryTrackingArea.get()];
+    _data->_primaryTrackingArea = trackingArea;
+    [self addTrackingArea:trackingArea];
+}
+
 - (instancetype)initWithFrame:(NSRect)frame context:(WebContext&)context configuration:(WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView
 {
     self = [super initWithFrame:frame];
@@ -3497,14 +3524,10 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     else
         options |= NSTrackingActiveInKeyWindow;
 
-    NSTrackingArea *trackingArea = [[NSTrackingArea alloc] initWithRect:frame
-                                                                options:options
-                                                                  owner:self
-                                                               userInfo:nil];
-    [self addTrackingArea:trackingArea];
-    [trackingArea release];
-
     _data = [[WKViewData alloc] init];
+    _data->_primaryTrackingArea = adoptNS([[NSTrackingArea alloc] initWithRect:frame options:options owner:self userInfo:nil]);
+    [self addTrackingArea:_data->_primaryTrackingArea.get()];
+
     _data->_pageClient = std::make_unique<PageClientImpl>(self, webView);
     _data->_page = context.createWebPage(*_data->_pageClient, WTF::move(webPageConfiguration));
     _data->_page->setAddsVisitedLinks(context.historyClient().addsVisitedLinks());
@@ -3666,10 +3689,10 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
-- (void)_dismissActionMenuDataDetectorPopovers
+- (void)_dismissActionMenuPopovers
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [_data->_actionMenuController dismissActionMenuDataDetectorPopovers];
+    [_data->_actionMenuController dismissActionMenuPopovers];
 #endif
 }
 
@@ -3680,6 +3703,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (void)saveBackForwardSnapshotForCurrentItem
 {
     _data->_page->recordNavigationSnapshot();
+}
+
+- (void)saveBackForwardSnapshotForItem:(WKBackForwardListItemRef)item
+{
+    _data->_page->recordNavigationSnapshot(*toImpl(item));
 }
 
 - (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef
@@ -3958,6 +3986,16 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_allowsBackForwardNavigationGestures;
 }
 
+- (void)_setIgnoresNonWheelMouseEvents:(BOOL)ignoresNonWheelMouseEvents
+{
+    _data->_ignoresNonWheelMouseEvents = ignoresNonWheelMouseEvents;
+}
+
+- (BOOL)_ignoresNonWheelMouseEvents
+{
+    return _data->_ignoresNonWheelMouseEvents;
+}
+
 - (void)_dispatchSetTopContentInset
 {
     if (!_data->_didScheduleSetTopContentInset)
@@ -4149,6 +4187,15 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems userData:(WKTypeRef)userData
 {
     return [self _actionMenuItemsForHitTestResult:hitTestResult withType:type defaultActionMenuItems:defaultMenuItems];
+}
+
+- (NSView *)_viewForPreviewingURL:(NSURL *)url initialFrameSize:(NSSize)initialFrameSize
+{
+    return nil;
+}
+
+- (void)_finishPreviewingURL:(NSURL *)url withPreviewView:(NSView *)previewView
+{
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

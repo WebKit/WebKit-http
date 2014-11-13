@@ -1,7 +1,8 @@
 <?php
 require_once '../../resources/portabilityLayer.php';
 
-$tmpFile = sys_get_temp_dir() . "/" . "fail_on_update_state";
+# This script may only be used by appcache/fail-on-update-2.html test, since it uses global data.
+$tmpFile = sys_get_temp_dir() . "/" . "appcache_fail-on-update-2_state";
 
 function setState($newState, $file)
 {
@@ -32,7 +33,7 @@ if ($command == "reset") {
     print("CACHE MANIFEST\n");
     print("fail-on-update-2.html\n");
     print("NETWORK:\n");
-    print("fail-on-update.php?command=\n");
+    print("fail-on-update-2.php?command=\n");
 } else if ($state == "Deleted") {
     header('HTTP/1.0 404 Not Found');
 }

@@ -33,11 +33,6 @@ using namespace WebCore;
 
 namespace WebKit {
 
-bool fuzzyCompare(float a, float b, float epsilon)
-{
-    return std::abs(a - b) < epsilon;
-}
-
 PageViewportController::PageViewportController(WebKit::WebPageProxy* proxy, PageViewportControllerClient& client)
     : m_webPageProxy(proxy)
     , m_client(client)
@@ -48,6 +43,7 @@ PageViewportController::PageViewportController(WebKit::WebPageProxy* proxy, Page
     , m_pageScaleFactor(1)
     , m_pendingPositionChange(false)
     , m_pendingScaleChange(false)
+    , m_layerTreeStateIsFrozen(false)
 {
     // Initializing Viewport Raw Attributes to avoid random negative or infinity scale factors
     // if there is a race condition between the first layout and setting the viewport attributes for the first time.
@@ -139,6 +135,8 @@ void PageViewportController::didCommitLoad()
     // Do not continue to use the content size of the previous page.
     m_contentsSize = IntSize();
 
+    m_layerTreeStateIsFrozen = true;
+
     // Reset the position to the top, page/history scroll requests may override this before we re-enable rendering.
     applyPositionAfterRenderingContents(FloatPoint());
 }
@@ -201,6 +199,8 @@ void PageViewportController::didRenderFrame(const IntSize& contentsSize, const I
         m_client.setViewportPosition(m_contentsPosition);
         m_pendingPositionChange = false;
     }
+
+    m_layerTreeStateIsFrozen = false;
 }
 
 void PageViewportController::pageTransitionViewportReady()
@@ -265,7 +265,8 @@ void PageViewportController::syncVisibleContents(const FloatPoint& trajectoryVec
     visibleContentsRect.intersect(FloatRect(FloatPoint::zero(), m_contentsSize));
     drawingArea->setVisibleContentsRect(visibleContentsRect, trajectoryVector);
 
-    m_client.didChangeVisibleContents();
+    if (!m_layerTreeStateIsFrozen)
+        m_client.didChangeVisibleContents();
 }
 
 void PageViewportController::didChangeViewportAttributes(const WebCore::ViewportAttributes& newAttributes)
@@ -321,14 +322,16 @@ bool PageViewportController::updateMinimumScaleToFit(bool userInitiatedUpdate)
     if (m_viewportSize.isEmpty() || m_contentsSize.isEmpty())
         return false;
 
-    bool currentlyScaledToFit = fuzzyCompare(m_pageScaleFactor, m_minimumScaleToFit, 0.0001);
+    // FIXME: Why this arbitrary precision? We likely want to omit the third argument so that
+    // std::numeric_limits<float>::epsilon() is used instead, similarly to Mac / iOS.
+    bool currentlyScaledToFit = WTF::areEssentiallyEqual(m_pageScaleFactor, m_minimumScaleToFit, 0.0001f);
 
     float minimumScale = WebCore::computeMinimumScaleFactorForContentContained(m_rawAttributes, WebCore::roundedIntSize(m_viewportSize), WebCore::roundedIntSize(m_contentsSize));
 
     if (minimumScale <= 0)
         return false;
 
-    if (!fuzzyCompare(minimumScale, m_minimumScaleToFit, 0.0001)) {
+    if (!WTF::areEssentiallyEqual(minimumScale, m_minimumScaleToFit, 0.0001f)) {
         m_minimumScaleToFit = minimumScale;
 
         if (!m_webPageProxy->areActiveDOMObjectsAndAnimationsSuspended()) {
@@ -337,7 +340,7 @@ bool PageViewportController::updateMinimumScaleToFit(bool userInitiatedUpdate)
             else {
                 // Ensure the effective scale stays within bounds.
                 float boundedScale = innerBoundedViewportScale(m_pageScaleFactor);
-                if (!fuzzyCompare(boundedScale, m_pageScaleFactor, 0.0001))
+                if (!WTF::areEssentiallyEqual(boundedScale, m_pageScaleFactor, 0.0001f))
                     applyScaleAfterRenderingContents(boundedScale);
             }
         }

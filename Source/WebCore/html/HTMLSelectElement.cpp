@@ -375,7 +375,7 @@ PassRefPtr<HTMLCollection> HTMLSelectElement::selectedOptions()
 
 PassRefPtr<HTMLOptionsCollection> HTMLSelectElement::options()
 {
-    return static_cast<HTMLOptionsCollection*>(ensureCachedHTMLCollection(SelectOptions).get());
+    return downcast<HTMLOptionsCollection>(ensureCachedHTMLCollection(SelectOptions).get());
 }
 
 void HTMLSelectElement::updateListItemSelectedStates()
@@ -427,14 +427,14 @@ void HTMLSelectElement::setSize(int size)
     setIntegralAttribute(sizeAttr, size);
 }
 
-Node* HTMLSelectElement::namedItem(const AtomicString& name)
+HTMLOptionElement* HTMLSelectElement::namedItem(const AtomicString& name)
 {
-    return options()->namedItem(name);
+    return downcast<HTMLOptionElement>(options()->namedItem(name));
 }
 
-Node* HTMLSelectElement::item(unsigned index)
+HTMLOptionElement* HTMLSelectElement::item(unsigned index)
 {
-    return options()->item(index);
+    return downcast<HTMLOptionElement>(options()->item(index));
 }
 
 void HTMLSelectElement::setOption(unsigned index, HTMLOptionElement* option, ExceptionCode& ec)

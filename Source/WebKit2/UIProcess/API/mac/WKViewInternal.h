@@ -109,6 +109,8 @@ struct WebPageConfiguration;
 - (void)_setSuppressVisibilityUpdates:(BOOL)suppressVisibilityUpdates;
 - (BOOL)_suppressVisibilityUpdates;
 
+- (BOOL)_shouldIgnoreMouseEvents;
+
 - (void)_didFirstVisuallyNonEmptyLayoutForMainFrame;
 - (void)_didFinishLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)type;
@@ -129,6 +131,8 @@ struct WebPageConfiguration;
 - (void)_didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData;
 #endif
 
-- (void)_dismissActionMenuDataDetectorPopovers;
+- (void)_dismissActionMenuPopovers;
+
+@property (nonatomic, retain, setter=_setPrimaryTrackingArea:) NSTrackingArea *_primaryTrackingArea;
 
 @end

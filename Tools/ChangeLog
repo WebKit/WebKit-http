@@ -1,3 +1,380 @@
+2014-11-11  David Kilzer  <ddkilzer@apple.com>
+
+        webkit-patch --suggest-reviewers is broken with newer versions of git
+        <http://webkit.org/b/138627>
+
+        Reviewed by Michael Saboff with feedback from Daniel Bates.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git._changes_files_for_commit): Strip blank lines instead of
+        assuming there is always a blank line at the beginning of the
+        list.
+
+2014-11-11  Alexey Proskuryakov  <ap@apple.com>
+
+        DRT and WKTR touch disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=138622
+
+        Reviewed by Geoffrey Garen.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm: (prepareConsistentTestingEnvironment):
+        Set a shared cache before calling -_switchNetworkLoaderToNewTestingSession, not after,
+        because this function uses the shared cache.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm: (WTR::TestController::platformInitializeContext):
+        Create an empty shared cache to prevent a default one from being created on disk.
+
+2014-10-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Limit the size of explicit/implicit grid
+        https://bugs.webkit.org/show_bug.cgi?id=136217
+
+        Reviewed by Andreas Kling.
+
+        Added a new unit test for the CSS parser. Right now it only checks
+        that we properly clamp the maximum number of tracks on a grid to a
+        maximum of 1 million.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/CSSParser.cpp: Added.
+        (TestWebKitAPI::computeNumberOfTracks): Helper function.
+        (TestWebKitAPI::TEST): Added a
+        CSSPropertyParserTest.GridTrackLimits test case.
+
+2014-11-11  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        webkitpy test fix after r175867
+        https://bugs.webkit.org/show_bug.cgi?id=138607
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitpy/port/linux_get_crash_log_unittest.py:
+        (GDBCrashLogGeneratorTest.test_generate_crash_log):
+
+2014-11-10  Philippe Normand  <pnormand@igalia.com>
+
+        webkitpy: demangle C++ symbols from crash log stderr
+        https://bugs.webkit.org/show_bug.cgi?id=138565
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/linux_get_crash_log.py:
+        (GDBCrashLogGenerator.generate_crash_log): Process stderr output
+        with c++filt.
+
+2014-11-10  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] fix up the GDB backtrace report tool
+        https://bugs.webkit.org/show_bug.cgi?id=138564
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._get_crash_log): Match the process name reported by the
+        driver with the GTK port WebProcess executable filename.
+        * Scripts/webkitpy/port/linux_get_crash_log.py:
+        (GDBCrashLogGenerator._get_gdb_output): Invoke gdb for the crashed
+        program.
+        (GDBCrashLogGenerator.generate_crash_log): Use %E in the core
+        pattern to workaround the 16 characters size limit of %e.
+
+2014-11-10  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Unreviewed, moved myself to the list of committers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-11-10  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Fix the test font path after r175555.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebKitTestRunner/PlatformEfl.cmake: Dependencies -> DependenciesEFL
+
+2014-11-10  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Fix the exception fuzz helper to generate targets in the correct range
+        https://bugs.webkit.org/show_bug.cgi?id=138544
+
+        Reviewed by Filip Pizlo.
+
+        Currently, the script generates exception fuzz targets in the range of
+        0..($checkCount-1). However, target 0 is never hit, while target 1 is
+        always outside of the outermost try block of the tests, which therefore
+        prints unexpected output and results in false failures when fired at.
+        Additionally, target $checkCount is never generated.
+
+        This patch fixes the script to generate targets in the range of
+        2..$checkCount.
+
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz:
+
+2014-11-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        make-passwords-json.py should generarate everything needed for testing
+        https://bugs.webkit.org/show_bug.cgi?id=138503
+
+        Reviewed by Ryosuke Niwa.
+
+        * BuildSlaveSupport/build.webkit.org-config/make_passwords_json.py:
+        Renamed from make-passwords-json.py to be able included from mastercfg_unittest.py.
+        Additionally generate auth.json, credentials.cfg and committers.cfg too.
+        (create_mock_slave_passwords_dict): Moved from mastercfg_unittest.py
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        (BuildBotConfigLoader._mock_open): Use make_passwords_json.create_mock_slave_passwords_dict() to avoid duplication.
+        (BuildBotConfigLoader._create_mock_passwords_dict): Deleted.
+
+2014-11-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] generate-gtkdoc should ignore invalid files
+        https://bugs.webkit.org/show_bug.cgi?id=138542
+
+        Reviewed by Darin Adler.
+
+        * gtk/generate-gtkdoc:
+        (files_to_ignore.file_should_be_ignored): Return True to ignore
+        invalid files.
+
+2014-11-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Delete cookies between tests
+        https://bugs.webkit.org/show_bug.cgi?id=138528
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        Do it.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        Added a FIXME.
+
+2014-11-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Run layout tests using the network process
+        https://bugs.webkit.org/show_bug.cgi?id=138428
+
+        Reviewed by Martin Robinson.
+
+        Shared secondary process is the default in the GTK+ port, but we
+        should run the tests using the network process to ensure
+        everything works with the network process. In the future, the
+        shared secondary process model might be a special case of multiple
+        processes with 1 as maximum number of processes, but always using
+        the network process.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
+2014-11-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Allow to create a view with a related page in WTR
+        https://bugs.webkit.org/show_bug.cgi?id=138501
+
+        Reviewed by Martin Robinson.
+
+        * TestWebKitAPI/gtk/PlatformWebViewGtk.cpp:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView): Pass nullptr as
+        related page to WKViewCreate.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView): Pass the given related
+        page to WKViewCreate.
+
+2014-11-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WTR crashes after running a test when NetworkProcess enabled
+        https://bugs.webkit.org/show_bug.cgi?id=138500
+
+        Reviewed by Alexey Proskuryakov.
+
+        WebNotificationProvider destructor is calling
+        WKNotificationManagerSetProvider, but m_notificationManager is
+        null because removeNotificationManager was already called.
+
+        * WebKitTestRunner/WebNotificationProvider.cpp:
+        (WTR::WebNotificationProvider::~WebNotificationProvider): Check
+        m_notificationManager is not null before calling WKNotificationManagerSetProvider.
+
+2014-11-06  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Remove duplicate code from PatchAnalysisTask._test_patch and fix bug
+        regarding incorrect call to PatchAnalysisTask.report_failure
+        https://bugs.webkit.org/show_bug.cgi?id=138229
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/common/net/layouttestresults.py:
+        Makes sure test_results returns a list.
+        (LayoutTestResults.test_results):
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        Makes unit tests also check to make sure
+        task.results_from_patch_test_run() and
+        task.results_from_test_run_without_patch return instances of
+        LayoutTestResults.
+        (CommitQueueTaskTest._run_and_expect_patch_analysis_result):
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        Condenses duplicate code into _should_defer_patch_or_throw, and
+        removes the now-unused _clean_tree_results member.
+        (PatchAnalysisTask.__init__):
+        (PatchAnalysisTask._continue_testing_patch_that_exceeded_failure_limit_on_first_or_second_try):
+        (PatchAnalysisTask._should_defer_patch_or_throw):
+        (PatchAnalysisTask._test_patch):
+        (PatchAnalysisTask.results_from_patch_test_run):
+        (PatchAnalysisTask.results_from_test_run_without_patch): Deleted.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        Removes needless call to results_from_test_run_without_patch
+        (AbstractEarlyWarningSystem._failing_tests_message):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        Changes order of test failure messages to be in the order that they
+        appear.
+        (AbstractEarlyWarningSystemTest.test_failing_tests_message):
+        * Scripts/webkitpy/tool/commands/queues.py:
+        Removes needless call to results_from_test_run_without_patch.
+        (CommitQueue._failing_tests_message):
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        (MockCommitQueueTask.results_from_test_run_without_patch): Deleted.
+
+2014-11-06  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        Unreviewed. Reorder my e-mail addresses in contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2014-11-06  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Remove code that prepends a leading 'r' to the first argument of _run_git_svn_find_rev
+        https://bugs.webkit.org/show_bug.cgi?id=138475
+
+        Reviewed by Ryosuke Niwa.
+
+        The change in https://trac.webkit.org/175603 introduced broke compatibility with svn_revision_from_git_commit.
+        This patch reverts the part of that change that broke compatibility. In addition, this patch adds a comment to
+        explain that SVN revisions require a leading 'r', moves an existing comment to a more appropriate location and
+        renames the positional argument to better reflect that it can represent either an SVN revision or a Git tree-ish.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git._run_git_svn_find_rev):
+        Add comment mentioning that svn_revisions need to begin with 'r'.
+        Move comment (explaining that git svn find-rev exits with code 0 when no match is found) to a more appropriate location.
+        Rename the argument 'revision' to 'revision_or_treeish' to reflect the dual form that argument can take.
+        Remove code that coerced the revision/treeish into a string and prepended an 'r'.
+
+2014-11-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add context menu API to Web Process Extensions
+        https://bugs.webkit.org/show_bug.cgi?id=138311
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add tests cases for WebKitWebPage::context-menu signal.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (testContextMenuWebExtensionMenu):
+        (testContextMenuWebExtensionNode):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (serializeContextMenu):
+        (serializeNode):
+        (contextMenuCallback):
+        (pageCreatedCallback):
+
+2014-11-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r175690.
+        https://bugs.webkit.org/show_bug.cgi?id=138460
+
+        We are not ready to run layout tests using the network process
+        yet (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Run layout tests using the network process"
+        https://bugs.webkit.org/show_bug.cgi?id=138428
+        http://trac.webkit.org/changeset/175690
+
+2014-11-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Run layout tests using the network process
+        https://bugs.webkit.org/show_bug.cgi?id=138428
+
+        Reviewed by Martin Robinson.
+
+        Shared secondary process is the default in the GTK+ port, but we
+        should run the tests using the network process to ensure
+        everything works with the network process. In the future, the
+        shared secondary process model might be a special case of multiple
+        processes with 1 as maximum number of processes, but always using
+        the network process.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
+2014-11-05  Dan Bernstein  <mitz@apple.com>
+
+        Remove the unused deletion UI feature
+        https://bugs.webkit.org/show_bug.cgi?id=138442
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/EditingDelegate.mm:
+        (-[EditingDelegate webView:shouldShowDeleteInterfaceForElement:]): Deleted implementation of
+        delegate method that’s been removed.
+
+2014-11-05  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/dom/remove-body-during-body-replacement2.html fails on WK2
+        https://bugs.webkit.org/show_bug.cgi?id=138334
+
+        Reviewed by Anders Carlsson.
+
+        Reset focus to main frame between tests. DumpRenderTree does this via -makeFirstResponder
+        calls, which works because each frame is an NSView in WK1. WK2 makes equivalent
+        -makeFirstResponder calls, which may or may not be needed for other reasons, but
+        it also needs to reset internal focus explicitly.
+
+        It's not clear if this is the right long-term fix or a workaround for a WebKit bug.
+        WebKit behavior appears wrong, but it matches Firefox.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::resetAfterTest):
+
+2014-11-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add WebKitWebResource::failed-with-tls-errors signal
+        https://bugs.webkit.org/show_bug.cgi?id=137862
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add a test case to check that WebKitWebResource::failed-with-tls-errors
+        is emitted when a subresource load fails due to TLS errors.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestSSL.cpp:
+        (TLSSubresourceTest::resourceLoadStartedCallback):
+        (TLSSubresourceTest::TLSSubresourceTest):
+        (TLSSubresourceTest::subresourceFailedCallback):
+        (TLSSubresourceTest::subresourceFailedWithTLSErrorsCallback):
+        (TLSSubresourceTest::subresourceLoadStarted):
+        (TLSSubresourceTest::subresourceFailedWithTLSErrors):
+        (TLSSubresourceTest::waitUntilSubresourceLoadFail):
+        (testSubresourceLoadFailedWithTLSErrors):
+        (httpsServerCallback):
+        (httpServerCallback):
+        (beforeAll):
+
+2014-11-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix for some compiler versions.
+
+        * TestWebKitAPI/Tests/mac/TypingStyleCrash.mm: (TestWebKitAPI::TEST): Compiler was
+        unhappy because this is a getter, and these shouldn't have side effects.
+
 2014-11-04  Matthew Hanson  <matthew_hanson@apple.com>
 
         Add a method for performing cherrypick-merges.

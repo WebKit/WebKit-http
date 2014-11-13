@@ -40,11 +40,6 @@
 
 namespace WebCore {
 
-PassOwnPtr<TileController> TileController::create(PlatformCALayer* rootPlatformLayer)
-{
-    return adoptPtr(new TileController(rootPlatformLayer));
-}
-
 TileController::TileController(PlatformCALayer* rootPlatformLayer)
     : m_tileCacheLayer(rootPlatformLayer)
     , m_tileGrid(std::make_unique<TileGrid>(*this))
@@ -345,7 +340,7 @@ bool TileController::shouldTemporarilyRetainTileCohorts() const
     return owningGraphicsLayer()->platformCALayerShouldTemporarilyRetainTileCohorts(m_tileCacheLayer);
 }
 
-void TileController::tileRevalidationTimerFired(Timer<TileController>*)
+void TileController::tileRevalidationTimerFired(Timer*)
 {
     if (!owningGraphicsLayer())
         return;

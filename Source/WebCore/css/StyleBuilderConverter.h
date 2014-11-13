@@ -27,15 +27,18 @@
 #ifndef StyleBuilderConverter_h
 #define StyleBuilderConverter_h
 
+#include "BasicShapeFunctions.h"
 #include "CSSCalculationValue.h"
 #include "CSSPrimitiveValue.h"
 #include "Length.h"
 #include "Pair.h"
+#include "Settings.h"
 #include "StyleResolver.h"
 #include "TransformFunctions.h"
 
 namespace WebCore {
 
+// Note that we assume the CSS parser only allows valid CSSValue types.
 class StyleBuilderConverter {
 public:
     static Length convertLength(StyleResolver&, CSSValue&);
@@ -57,6 +60,10 @@ public:
     static String convertStringOrAuto(StyleResolver&, CSSValue&);
     static String convertStringOrNone(StyleResolver&, CSSValue&);
     static TextEmphasisPosition convertTextEmphasisPosition(StyleResolver&, CSSValue&);
+    static ETextAlign convertTextAlign(StyleResolver&, CSSValue&);
+    static PassRefPtr<ClipPathOperation> convertClipPath(StyleResolver&, CSSValue&);
+    static EResize convertResize(StyleResolver&, CSSValue&);
+    static int convertMarqueeSpeed(StyleResolver&, CSSValue&);
 
 private:
     static Length convertToRadiusLength(CSSToLengthConversionData&, CSSPrimitiveValue&);
@@ -305,6 +312,109 @@ inline TextEmphasisPosition StyleBuilderConverter::convertTextEmphasisPosition(S
     for (auto& currentValue : downcast<CSSValueList>(value))
         position |= valueToEmphasisPosition(downcast<CSSPrimitiveValue>(currentValue.get()));
     return position;
+}
+
+inline ETextAlign StyleBuilderConverter::convertTextAlign(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    ASSERT(primitiveValue.isValueID());
+
+    if (primitiveValue.getValueID() != CSSValueWebkitMatchParent)
+        return primitiveValue;
+
+    auto* parentStyle = styleResolver.parentStyle();
+    if (parentStyle->textAlign() == TASTART)
+        return parentStyle->isLeftToRightDirection() ? LEFT : RIGHT;
+    if (parentStyle->textAlign() == TAEND)
+        return parentStyle->isLeftToRightDirection() ? RIGHT : LEFT;
+    return parentStyle->textAlign();
+}
+
+inline PassRefPtr<ClipPathOperation> StyleBuilderConverter::convertClipPath(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+        if (primitiveValue.primitiveType() == CSSPrimitiveValue::CSS_URI) {
+            String cssURLValue = primitiveValue.getStringValue();
+            URL url = styleResolver.document().completeURL(cssURLValue);
+            // FIXME: It doesn't work with external SVG references (see https://bugs.webkit.org/show_bug.cgi?id=126133)
+            return ReferenceClipPathOperation::create(cssURLValue, url.fragmentIdentifier());
+        }
+        ASSERT(primitiveValue.getValueID() == CSSValueNone);
+        return nullptr;
+    }
+
+    CSSBoxType referenceBox = BoxMissing;
+    RefPtr<ClipPathOperation> operation;
+
+    for (auto& currentValue : downcast<CSSValueList>(value)) {
+        auto& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
+        if (primitiveValue.isShape()) {
+            ASSERT(!operation);
+            operation = ShapeClipPathOperation::create(basicShapeForValue(styleResolver.state().cssToLengthConversionData(), primitiveValue.getShapeValue()));
+        } else {
+            ASSERT(primitiveValue.getValueID() == CSSValueContentBox
+                   || primitiveValue.getValueID() == CSSValueBorderBox
+                   || primitiveValue.getValueID() == CSSValuePaddingBox
+                   || primitiveValue.getValueID() == CSSValueMarginBox
+                   || primitiveValue.getValueID() == CSSValueFill
+                   || primitiveValue.getValueID() == CSSValueStroke
+                   || primitiveValue.getValueID() == CSSValueViewBox);
+            ASSERT(referenceBox == BoxMissing);
+            referenceBox = primitiveValue;
+        }
+    }
+    if (operation)
+        downcast<ShapeClipPathOperation>(*operation).setReferenceBox(referenceBox);
+    else {
+        ASSERT(referenceBox != BoxMissing);
+        operation = BoxClipPathOperation::create(referenceBox);
+    }
+
+    return operation.release();
+}
+
+inline EResize StyleBuilderConverter::convertResize(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    EResize resize = RESIZE_NONE;
+    if (primitiveValue.getValueID() == CSSValueAuto) {
+        if (Settings* settings = styleResolver.document().settings())
+            resize = settings->textAreasAreResizable() ? RESIZE_BOTH : RESIZE_NONE;
+    } else
+        resize = primitiveValue;
+
+    return resize;
+}
+
+inline int StyleBuilderConverter::convertMarqueeSpeed(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    int speed = 85;
+    if (CSSValueID ident = primitiveValue.getValueID()) {
+        switch (ident) {
+        case CSSValueSlow:
+            speed = 500; // 500 msec.
+            break;
+        case CSSValueNormal:
+            speed = 85; // 85msec. The WinIE default.
+            break;
+        case CSSValueFast:
+            speed = 10; // 10msec. Super fast.
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            break;
+        }
+    } else if (primitiveValue.isTime())
+        speed = primitiveValue.computeTime<int, CSSPrimitiveValue::Milliseconds>();
+    else {
+        // For scrollamount support.
+        ASSERT(primitiveValue.isNumber());
+        speed = primitiveValue.getIntValue();
+    }
+    return speed;
 }
 
 } // namespace WebCore

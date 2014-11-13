@@ -637,7 +637,7 @@ void RenderLayerCompositor::scheduleCompositingLayerUpdate()
         m_updateCompositingLayersTimer.startOneShot(0);
 }
 
-void RenderLayerCompositor::updateCompositingLayersTimerFired(Timer<RenderLayerCompositor>&)
+void RenderLayerCompositor::updateCompositingLayersTimerFired(Timer&)
 {
     updateCompositingLayers(CompositingUpdateAfterLayout);
 }
@@ -880,6 +880,15 @@ static bool styleChangeRequiresLayerRebuild(const RenderLayer& layer, const Rend
     // FIXME: we should avoid doing this for all clip changes.
     if (oldStyle.clip() != newStyle.clip() || oldStyle.hasClip() != newStyle.hasClip())
         return true;
+
+    // FIXME: need to check everything that we consult to avoid backing store here: webkit.org/b/138383
+    if (!oldStyle.opacity() != !newStyle.opacity()) {
+        RenderLayerModelObject* repaintContainer = layer.renderer().containerForRepaint();
+        if (RenderLayerBacking* ancestorBacking = repaintContainer ? repaintContainer->layer()->backing() : nullptr) {
+            if (newStyle.opacity() != ancestorBacking->graphicsLayer()->drawsContent())
+                return true;
+        }
+    }
 
     // When overflow changes, composited layers may need to update their ancestorClipping layers.
     if (!layer.isComposited() && (oldStyle.overflowX() != newStyle.overflowX() || oldStyle.overflowY() != newStyle.overflowY()) && layer.stackingContainer()->hasCompositingDescendant())
@@ -2171,13 +2180,13 @@ bool RenderLayerCompositor::requiresOwnBackingStore(const RenderLayer& layer, co
         || renderer.hasMask()
         || renderer.hasReflection()
         || renderer.hasFilter()
+        || renderer.hasBackdropFilter()
 #if PLATFORM(IOS)
         || requiresCompositingForScrolling(layer)
 #endif
         )
         return true;
-        
-    
+
     if (layer.mustCompositeForIndirectReasons()) {
         RenderLayer::IndirectCompositingReason reason = layer.indirectCompositingReason();
         return reason == RenderLayer::IndirectCompositingReason::Overlap
@@ -2264,7 +2273,7 @@ CompositingReasons RenderLayerCompositor::reasonsForCompositing(const RenderLaye
         if (renderer->hasReflection())
             reasons |= CompositingReasonReflectionWithCompositedDescendants;
 
-        if (renderer->hasFilter())
+        if (renderer->hasFilter() || renderer->hasBackdropFilter())
             reasons |= CompositingReasonFilterWithCompositedDescendants;
 
 #if ENABLE(CSS_COMPOSITING)
@@ -2585,6 +2594,11 @@ bool RenderLayerCompositor::requiresCompositingForIndirectReason(RenderLayerMode
 
 bool RenderLayerCompositor::requiresCompositingForFilters(RenderLayerModelObject& renderer) const
 {
+#if ENABLE(FILTERS_LEVEL_2)
+    if (renderer.hasBackdropFilter())
+        return true;
+#endif
+
     if (!(m_compositingTriggers & ChromeClient::FilterTrigger))
         return false;
 
@@ -4062,14 +4076,14 @@ void RenderLayerCompositor::startInitialLayerFlushTimerIfNeeded()
     m_layerFlushTimer.startOneShot(throttledLayerFlushInitialDelay);
 }
 
-void RenderLayerCompositor::layerFlushTimerFired(Timer<RenderLayerCompositor>&)
+void RenderLayerCompositor::layerFlushTimerFired(Timer&)
 {
     if (!m_hasPendingLayerFlush)
         return;
     scheduleLayerFlushNow();
 }
 
-void RenderLayerCompositor::paintRelatedMilestonesTimerFired(Timer<RenderLayerCompositor>&)
+void RenderLayerCompositor::paintRelatedMilestonesTimerFired(Timer&)
 {
     Frame& frame = m_renderView.frameView().frame();
     Page* page = frame.page();

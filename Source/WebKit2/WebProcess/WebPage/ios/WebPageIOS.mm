@@ -87,6 +87,7 @@
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/WKContentObservation.h>
 #import <WebCore/WebEvent.h>
+#import <wtf/MathExtras.h>
 #import <wtf/TemporaryChange.h>
 
 using namespace WebCore;
@@ -893,6 +894,8 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
             m_currentWordRange = Range::create(*frame.document(), range->startPosition(), range->endPosition());
             break;
         case GestureRecognizerState::Changed:
+            if (!m_currentWordRange)
+                break;
             range = Range::create(*frame.document(), m_currentWordRange->startPosition(), m_currentWordRange->endPosition());
             if (position < range->startPosition())
                 range->setStart(position.deepEquivalent(), ASSERT_NO_EXCEPTION);
@@ -2209,9 +2212,11 @@ void WebPage::setDeviceOrientation(int32_t deviceOrientation)
     m_page->mainFrame().orientationChanged();
 }
 
-static inline bool withinEpsilon(float a, float b)
+// WebCore stores the page scale factor as float instead of double. When we get a scale from WebCore,
+// we need to ignore differences that are within a small rounding error on floats.
+static inline bool areEssentiallyEqualAsFloat(float a, float b)
 {
-    return fabs(a - b) < std::numeric_limits<float>::epsilon();
+    return WTF::areEssentiallyEqual(a, b);
 }
 
 void WebPage::resetTextAutosizingBeforeLayoutIfNeeded(const FloatSize& oldSize, const FloatSize& newSize)
@@ -2280,7 +2285,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     FloatRect newUnobscuredContentRect = targetUnobscuredRect;
     FloatRect newExposedContentRect = targetExposedContentRect;
 
-    bool scaleChanged = !withinEpsilon(scale, targetScale);
+    bool scaleChanged = !areEssentiallyEqualAsFloat(scale, targetScale);
     if (scaleChanged) {
         // The target scale the UI is using cannot be reached by the content. We need to compute new targets based
         // on the viewport constraint and report everything back to the UIProcess.
@@ -2345,7 +2350,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
                 newExposedContentRect.setY(0);
             }
 
-            bool likelyResponsiveDesignViewport = newLayoutSize.width() == minimumLayoutSize.width() && withinEpsilon(scale, 1);
+            bool likelyResponsiveDesignViewport = newLayoutSize.width() == minimumLayoutSize.width() && areEssentiallyEqualAsFloat(scale, 1);
             bool contentBleedsOutsideLayoutWidth = newContentSize.width() > newLayoutSize.width();
             bool originalScrollPositionWasOnTheLeftEdge = targetUnobscuredRect.x() <= 0;
             if (likelyResponsiveDesignViewport && contentBleedsOutsideLayoutWidth && originalScrollPositionWasOnTheLeftEdge) {

@@ -53,7 +53,7 @@ class TileController final : public TiledBacking {
     friend class TileCoverageMap;
     friend class TileGrid;
 public:
-    WEBCORE_EXPORT static PassOwnPtr<TileController> create(PlatformCALayer*);
+    explicit TileController(PlatformCALayer*);
     ~TileController();
 
     WEBCORE_EXPORT void tileCacheLayerBoundsChanged();
@@ -124,16 +124,13 @@ public:
 
     WEBCORE_EXPORT Vector<RefPtr<PlatformCALayer>> containerLayers();
 
-protected:
+private:
+    TileGrid& tileGrid() { return *m_tileGrid; }
+
     void scheduleTileRevalidation(double interval);
 
     bool isInWindow() const { return m_isInWindow; }
     float topContentInset() const { return m_topContentInset; }
-
-private:
-    TileController(PlatformCALayer*);
-
-    TileGrid& tileGrid() { return *m_tileGrid; }
 
     // TiledBacking member functions.
     virtual void setVisibleRect(const FloatRect&) override;
@@ -159,7 +156,7 @@ private:
     virtual float zoomedOutContentsScale() const override;
 
 
-    void tileRevalidationTimerFired(Timer<TileController>*);
+    void tileRevalidationTimerFired(Timer*);
 
     void setNeedsRevalidateTiles();
 
@@ -177,7 +174,7 @@ private:
     FloatRect m_visibleRectAtLastRevalidate;
     IntRect m_boundsAtLastRevalidate;
 
-    Timer<TileController> m_tileRevalidationTimer;
+    Timer m_tileRevalidationTimer;
 
     float m_zoomedOutContentsScale;
     float m_deviceScaleFactor;

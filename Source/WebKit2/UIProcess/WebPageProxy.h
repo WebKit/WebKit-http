@@ -900,6 +900,7 @@ public:
     bool shouldRecordNavigationSnapshots() const { return m_shouldRecordNavigationSnapshots; }
     void setShouldRecordNavigationSnapshots(bool shouldRecordSnapshots) { m_shouldRecordNavigationSnapshots = shouldRecordSnapshots; }
     void recordNavigationSnapshot();
+    void recordNavigationSnapshot(WebBackForwardListItem&);
 
 #if PLATFORM(COCOA)
     PassRefPtr<ViewSnapshot> takeViewSnapshot();
@@ -928,7 +929,7 @@ public:
 
     WebHitTestResult* lastMouseMoveHitTestResult() const { return m_lastMouseMoveHitTestResult.get(); }
     void performActionMenuHitTestAtLocation(WebCore::FloatPoint);
-    void selectLookupTextAtLocation(WebCore::FloatPoint);
+    void selectLastActionMenuRange();
 #endif
 
 #if PLATFORM(EFL) && HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)

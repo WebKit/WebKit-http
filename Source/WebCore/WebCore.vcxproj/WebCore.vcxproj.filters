@@ -3483,12 +3483,6 @@
     <ClCompile Include="..\editing\CreateLinkCommand.cpp">
       <Filter>editing</Filter>
     </ClCompile>
-    <ClCompile Include="..\editing\DeleteButton.cpp">
-      <Filter>editing</Filter>
-    </ClCompile>
-    <ClCompile Include="..\editing\DeleteButtonController.cpp">
-      <Filter>editing</Filter>
-    </ClCompile>
     <ClCompile Include="..\editing\DeleteFromTextNodeCommand.cpp">
       <Filter>editing</Filter>
     </ClCompile>
@@ -3721,9 +3715,6 @@
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="..\fileapi\FileReaderSync.cpp">
-      <Filter>html</Filter>
-    </ClCompile>
-    <ClCompile Include="..\fileapi\FileThread.cpp">
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="..\html\FormAssociatedElement.cpp">
@@ -10614,12 +10605,6 @@
     <ClInclude Include="..\editing\CreateLinkCommand.h">
       <Filter>editing</Filter>
     </ClInclude>
-    <ClInclude Include="..\editing\DeleteButton.h">
-      <Filter>editing</Filter>
-    </ClInclude>
-    <ClInclude Include="..\editing\DeleteButtonController.h">
-      <Filter>editing</Filter>
-    </ClInclude>
     <ClInclude Include="..\editing\DeleteFromTextNodeCommand.h">
       <Filter>editing</Filter>
     </ClInclude>
@@ -10879,9 +10864,6 @@
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\fileapi\FileReaderSync.h">
-      <Filter>html</Filter>
-    </ClInclude>
-    <ClInclude Include="..\fileapi\FileThread.h">
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\FormAssociatedElement.h">

@@ -33,14 +33,15 @@ namespace WebCore {
 class HTMLAllCollection final : public HTMLCollection {
 public:
     static PassRef<HTMLAllCollection> create(Document&, CollectionType);
-    virtual ~HTMLAllCollection();
 
-    Node* namedItemWithIndex(const AtomicString& name, unsigned index) const;
+    Element* namedItemWithIndex(const AtomicString& name, unsigned index) const;
 
 private:
     HTMLAllCollection(Document&, CollectionType);
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_HTMLCOLLECTION(HTMLAllCollection, DocAll)
 
 #endif // HTMLAllCollection_h

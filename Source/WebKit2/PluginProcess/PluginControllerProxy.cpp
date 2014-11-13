@@ -41,6 +41,7 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebProcessConnection.h"
 #include <WebCore/GraphicsContext.h>
+#include <WebCore/HTTPHeaderMap.h>
 #include <WebCore/IdentifierRep.h>
 #include <WebCore/NotImplemented.h>
 #include <wtf/TemporaryChange.h>
@@ -307,6 +308,11 @@ bool PluginControllerProxy::evaluate(NPObject* npObject, const String& scriptStr
 
     *result = m_connection->npRemoteObjectMap()->npVariantDataToNPVariant(resultData, m_plugin.get());
     return true;
+}
+
+void PluginControllerProxy::setPluginIsPlayingAudio(bool pluginIsPlayingAudio)
+{
+    m_connection->connection()->send(Messages::PluginProxy::SetPluginIsPlayingAudio(pluginIsPlayingAudio), m_pluginInstanceID);
 }
 
 void PluginControllerProxy::setStatusbarText(const String& statusbarText)

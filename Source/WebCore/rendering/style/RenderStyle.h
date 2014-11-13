@@ -234,6 +234,14 @@ public:
             ASSERT(pseudo < FIRST_INTERNAL_PSEUDOID);
             m_flags |= oneBitMask << (pseudoBitsOffset - 1 + pseudo);
         }
+        void setHasPseudoStyles(PseudoIdSet pseudoIdSet)
+        {
+            ASSERT(pseudoIdSet);
+            uint64_t rawPseudoIdSet = pseudoIdSet.data();
+            ASSERT((rawPseudoIdSet & PUBLIC_PSEUDOID_MASK) == rawPseudoIdSet);
+            static_assert(pseudoBitsOffset >= 1, "(pseudoBitsOffset - 1) should be valid.");
+            m_flags |= (static_cast<uint64_t>(rawPseudoIdSet) << (pseudoBitsOffset - 1));
+        }
 
         ETableLayout tableLayout() const { return static_cast<ETableLayout>(getValue(tableLayoutBitMask, tableLayoutOffset)); }
         void setTableLayout(ETableLayout tableLayout) { updateValue(tableLayout, tableLayoutBitMask, tableLayoutOffset); }
@@ -561,6 +569,7 @@ public:
     bool hasAnyPublicPseudoStyles() const;
     bool hasPseudoStyle(PseudoId pseudo) const;
     void setHasPseudoStyle(PseudoId pseudo);
+    void setHasPseudoStyles(PseudoIdSet);
     bool hasUniquePseudoStyle() const;
 
     // attribute getter methods
@@ -1117,6 +1126,14 @@ public:
     const FilterOperations& filter() const { return rareNonInheritedData->m_filter->m_operations; }
     bool hasFilter() const { return !rareNonInheritedData->m_filter->m_operations.operations().isEmpty(); }
 
+#if ENABLE(FILTERS_LEVEL_2)
+    FilterOperations& mutableBackdropFilter() { return rareNonInheritedData.access()->m_backdropFilter.access()->m_operations; }
+    const FilterOperations& backdropFilter() const { return rareNonInheritedData->m_backdropFilter->m_operations; }
+    bool hasBackdropFilter() const { return !rareNonInheritedData->m_backdropFilter->m_operations.operations().isEmpty(); }
+#else
+    bool hasBackdropFilter() const { return false; }
+#endif
+
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return static_cast<BlendMode>(rareNonInheritedData->m_effectiveBlendMode); }
     void setBlendMode(BlendMode blendMode) { SET_VAR(rareNonInheritedData, m_effectiveBlendMode, blendMode); }
@@ -1547,6 +1564,9 @@ public:
     void setRubyPosition(RubyPosition position) { SET_VAR(rareInheritedData, m_rubyPosition, position); }
 
     void setFilter(const FilterOperations& ops) { SET_VAR(rareNonInheritedData.access()->m_filter, m_operations, ops); }
+#if ENABLE(FILTERS_LEVEL_2)
+    void setBackdropFilter(const FilterOperations& ops) { SET_VAR(rareNonInheritedData.access()->m_backdropFilter, m_operations, ops); }
+#endif
 
     void setTabSize(unsigned size) { SET_VAR(rareInheritedData, m_tabSize, size); }
 
@@ -1995,6 +2015,9 @@ public:
     static const Vector<StyleDashboardRegion>& noneDashboardRegions();
 #endif
     static const FilterOperations& initialFilter() { DEPRECATED_DEFINE_STATIC_LOCAL(FilterOperations, ops, ()); return ops; }
+#if ENABLE(FILTERS_LEVEL_2)
+    static const FilterOperations& initialBackdropFilter() { DEPRECATED_DEFINE_STATIC_LOCAL(FilterOperations, ops, ()); return ops; }
+#endif
 #if ENABLE(CSS_COMPOSITING)
     static BlendMode initialBlendMode() { return BlendModeNormal; }
     static Isolation initialIsolation() { return IsolationAuto; }
@@ -2153,6 +2176,11 @@ inline bool RenderStyle::hasPseudoStyle(PseudoId pseudo) const
 inline void RenderStyle::setHasPseudoStyle(PseudoId pseudo)
 {
     noninherited_flags.setHasPseudoStyle(pseudo);
+}
+
+inline void RenderStyle::setHasPseudoStyles(PseudoIdSet pseudoIdSet)
+{
+    noninherited_flags.setHasPseudoStyles(pseudoIdSet);
 }
 
 } // namespace WebCore

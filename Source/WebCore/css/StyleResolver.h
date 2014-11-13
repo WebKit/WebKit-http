@@ -498,7 +498,7 @@ private:
 
     // Every N additions to the matched declaration cache trigger a sweep where entries holding
     // the last reference to a style declaration are garbage collected.
-    void sweepMatchedPropertiesCache(Timer<StyleResolver>*);
+    void sweepMatchedPropertiesCache(Timer*);
 
     bool classNamesAffectedByRules(const SpaceSplitString&) const;
     bool sharingCandidateHasIdenticalStyleAffectingAttributes(StyledElement*) const;
@@ -513,7 +513,7 @@ private:
     typedef HashMap<unsigned, MatchedPropertiesCacheItem> MatchedPropertiesCache;
     MatchedPropertiesCache m_matchedPropertiesCache;
 
-    Timer<StyleResolver> m_matchedPropertiesCacheSweepTimer;
+    Timer m_matchedPropertiesCacheSweepTimer;
 
     std::unique_ptr<MediaQueryEvaluator> m_medium;
     RefPtr<RenderStyle> m_rootDefaultStyle;
@@ -572,7 +572,8 @@ inline bool checkRegionSelector(const CSSSelector* regionSelector, Element* regi
     SelectorChecker selectorChecker(regionElement->document());
     for (const CSSSelector* s = regionSelector; s; s = CSSSelectorList::next(s)) {
         SelectorChecker::CheckingContext selectorCheckingContext(SelectorChecker::Mode::QueryingRules);
-        if (selectorChecker.match(s, regionElement, selectorCheckingContext))
+        unsigned ignoredSpecificity;
+        if (selectorChecker.match(s, regionElement, selectorCheckingContext, ignoredSpecificity))
             return true;
     }
     return false;

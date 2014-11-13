@@ -35,6 +35,7 @@
 
 namespace WebCore {
 
+// Note that we assume the CSS parser only allows valid CSSValue types.
 namespace StyleBuilderFunctions {
 
 inline void applyValueWebkitMarqueeIncrement(StyleResolver& styleResolver, CSSValue& value)
@@ -147,6 +148,315 @@ inline void applyValueWebkitShapeOutside(StyleResolver& styleResolver, CSSValue&
     }
 }
 #endif // ENABLE(CSS_SHAPES)
+
+static inline Length mmLength(double mm)
+{
+    Ref<CSSPrimitiveValue> value(CSSPrimitiveValue::create(mm, CSSPrimitiveValue::CSS_MM));
+    return value.get().computeLength<Length>(CSSToLengthConversionData());
+}
+static inline Length inchLength(double inch)
+{
+    Ref<CSSPrimitiveValue> value(CSSPrimitiveValue::create(inch, CSSPrimitiveValue::CSS_IN));
+    return value.get().computeLength<Length>(CSSToLengthConversionData());
+}
+static bool getPageSizeFromName(CSSPrimitiveValue* pageSizeName, CSSPrimitiveValue* pageOrientation, Length& width, Length& height)
+{
+    static NeverDestroyed<Length> a5Width(mmLength(148));
+    static NeverDestroyed<Length> a5Height(mmLength(210));
+    static NeverDestroyed<Length> a4Width(mmLength(210));
+    static NeverDestroyed<Length> a4Height(mmLength(297));
+    static NeverDestroyed<Length> a3Width(mmLength(297));
+    static NeverDestroyed<Length> a3Height(mmLength(420));
+    static NeverDestroyed<Length> b5Width(mmLength(176));
+    static NeverDestroyed<Length> b5Height(mmLength(250));
+    static NeverDestroyed<Length> b4Width(mmLength(250));
+    static NeverDestroyed<Length> b4Height(mmLength(353));
+    static NeverDestroyed<Length> letterWidth(inchLength(8.5));
+    static NeverDestroyed<Length> letterHeight(inchLength(11));
+    static NeverDestroyed<Length> legalWidth(inchLength(8.5));
+    static NeverDestroyed<Length> legalHeight(inchLength(14));
+    static NeverDestroyed<Length> ledgerWidth(inchLength(11));
+    static NeverDestroyed<Length> ledgerHeight(inchLength(17));
+
+    if (!pageSizeName)
+        return false;
+
+    switch (pageSizeName->getValueID()) {
+    case CSSValueA5:
+        width = a5Width;
+        height = a5Height;
+        break;
+    case CSSValueA4:
+        width = a4Width;
+        height = a4Height;
+        break;
+    case CSSValueA3:
+        width = a3Width;
+        height = a3Height;
+        break;
+    case CSSValueB5:
+        width = b5Width;
+        height = b5Height;
+        break;
+    case CSSValueB4:
+        width = b4Width;
+        height = b4Height;
+        break;
+    case CSSValueLetter:
+        width = letterWidth;
+        height = letterHeight;
+        break;
+    case CSSValueLegal:
+        width = legalWidth;
+        height = legalHeight;
+        break;
+    case CSSValueLedger:
+        width = ledgerWidth;
+        height = ledgerHeight;
+        break;
+    default:
+        return false;
+    }
+
+    if (pageOrientation) {
+        switch (pageOrientation->getValueID()) {
+        case CSSValueLandscape:
+            std::swap(width, height);
+            break;
+        case CSSValuePortrait:
+            // Nothing to do.
+            break;
+        default:
+            return false;
+        }
+    }
+    return true;
+}
+
+inline void applyInheritSize(StyleResolver&) { }
+inline void applyInitialSize(StyleResolver&) { }
+inline void applyValueSize(StyleResolver& styleResolver, CSSValue& value)
+{
+    styleResolver.style()->resetPageSizeType();
+    Length width;
+    Length height;
+    PageSizeType pageSizeType = PAGE_SIZE_AUTO;
+    if (!is<CSSValueList>(value))
+        return;
+
+    auto& valueList = downcast<CSSValueList>(value);
+    switch (valueList.length()) {
+    case 2: {
+        CSSValue* firstValue = valueList.itemWithoutBoundsCheck(0);
+        CSSValue* secondValue = valueList.itemWithoutBoundsCheck(1);
+        // <length>{2} | <page-size> <orientation>
+        if (!is<CSSPrimitiveValue>(*firstValue) || !is<CSSPrimitiveValue>(*secondValue))
+            return;
+        auto& firstPrimitiveValue = downcast<CSSPrimitiveValue>(*firstValue);
+        auto& secondPrimitiveValue = downcast<CSSPrimitiveValue>(*secondValue);
+        if (firstPrimitiveValue.isLength()) {
+            // <length>{2}
+            if (!secondPrimitiveValue.isLength())
+                return;
+            CSSToLengthConversionData conversionData = styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f);
+            width = firstPrimitiveValue.computeLength<Length>(conversionData);
+            height = secondPrimitiveValue.computeLength<Length>(conversionData);
+        } else {
+            // <page-size> <orientation>
+            // The value order is guaranteed. See CSSParser::parseSizeParameter.
+            if (!getPageSizeFromName(&firstPrimitiveValue, &secondPrimitiveValue, width, height))
+                return;
+        }
+        pageSizeType = PAGE_SIZE_RESOLVED;
+        break;
+    }
+    case 1: {
+        CSSValue* value = valueList.itemWithoutBoundsCheck(0);
+        // <length> | auto | <page-size> | [ portrait | landscape]
+        if (!is<CSSPrimitiveValue>(*value))
+            return;
+        auto& primitiveValue = downcast<CSSPrimitiveValue>(*value);
+        if (primitiveValue.isLength()) {
+            // <length>
+            pageSizeType = PAGE_SIZE_RESOLVED;
+            width = height = primitiveValue.computeLength<Length>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
+        } else {
+            switch (primitiveValue.getValueID()) {
+            case 0:
+                return;
+            case CSSValueAuto:
+                pageSizeType = PAGE_SIZE_AUTO;
+                break;
+            case CSSValuePortrait:
+                pageSizeType = PAGE_SIZE_AUTO_PORTRAIT;
+                break;
+            case CSSValueLandscape:
+                pageSizeType = PAGE_SIZE_AUTO_LANDSCAPE;
+                break;
+            default:
+                // <page-size>
+                pageSizeType = PAGE_SIZE_RESOLVED;
+                if (!getPageSizeFromName(&primitiveValue, nullptr, width, height))
+                    return;
+            }
+        }
+        break;
+    }
+    default:
+        return;
+    }
+    styleResolver.style()->setPageSizeType(pageSizeType);
+    styleResolver.style()->setPageSize(LengthSize(width, height));
+}
+
+inline void applyInheritTextIndent(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setTextIndent(styleResolver.parentStyle()->textIndent());
+#if ENABLE(CSS3_TEXT)
+    styleResolver.style()->setTextIndentLine(styleResolver.parentStyle()->textIndentLine());
+    styleResolver.style()->setTextIndentType(styleResolver.parentStyle()->textIndentType());
+#endif
+}
+
+inline void applyInitialTextIndent(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setTextIndent(RenderStyle::initialTextIndent());
+#if ENABLE(CSS3_TEXT)
+    styleResolver.style()->setTextIndentLine(RenderStyle::initialTextIndentLine());
+    styleResolver.style()->setTextIndentType(RenderStyle::initialTextIndentType());
+#endif
+}
+
+inline void applyValueTextIndent(StyleResolver& styleResolver, CSSValue& value)
+{
+    Length lengthOrPercentageValue;
+#if ENABLE(CSS3_TEXT)
+    TextIndentLine textIndentLineValue = RenderStyle::initialTextIndentLine();
+    TextIndentType textIndentTypeValue = RenderStyle::initialTextIndentType();
+#endif
+    for (auto& item : downcast<CSSValueList>(value)) {
+        auto& primitiveValue = downcast<CSSPrimitiveValue>(item.get());
+        if (!primitiveValue.getValueID())
+            lengthOrPercentageValue = primitiveValue.convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(styleResolver.state().cssToLengthConversionData());
+#if ENABLE(CSS3_TEXT)
+        else if (primitiveValue.getValueID() == CSSValueWebkitEachLine)
+            textIndentLineValue = TextIndentEachLine;
+        else if (primitiveValue.getValueID() == CSSValueWebkitHanging)
+            textIndentTypeValue = TextIndentHanging;
+#endif
+    }
+
+    ASSERT(!lengthOrPercentageValue.isUndefined());
+    styleResolver.style()->setTextIndent(lengthOrPercentageValue);
+#if ENABLE(CSS3_TEXT)
+    styleResolver.style()->setTextIndentLine(textIndentLineValue);
+    styleResolver.style()->setTextIndentType(textIndentTypeValue);
+#endif
+}
+
+enum BorderImageType { BorderImage, WebkitMaskBoxImage };
+enum BorderImageModifierType { Outset, Repeat, Slice, Width };
+template <BorderImageType type, BorderImageModifierType modifier>
+class ApplyPropertyBorderImageModifier {
+public:
+    static void applyInheritValue(StyleResolver& styleResolver)
+    {
+        NinePieceImage image(getValue(styleResolver.style()));
+        switch (modifier) {
+        case Outset:
+            image.copyOutsetFrom(getValue(styleResolver.parentStyle()));
+            break;
+        case Repeat:
+            image.copyRepeatFrom(getValue(styleResolver.parentStyle()));
+            break;
+        case Slice:
+            image.copyImageSlicesFrom(getValue(styleResolver.parentStyle()));
+            break;
+        case Width:
+            image.copyBorderSlicesFrom(getValue(styleResolver.parentStyle()));
+            break;
+        }
+        setValue(styleResolver.style(), image);
+    }
+
+    static void applyInitialValue(StyleResolver& styleResolver)
+    {
+        NinePieceImage image(getValue(styleResolver.style()));
+        switch (modifier) {
+        case Outset:
+            image.setOutset(LengthBox(0));
+            break;
+        case Repeat:
+            image.setHorizontalRule(StretchImageRule);
+            image.setVerticalRule(StretchImageRule);
+            break;
+        case Slice:
+            // Masks have a different initial value for slices. Preserve the value of 0 for backwards compatibility.
+            image.setImageSlices(type == BorderImage ? LengthBox(Length(100, Percent), Length(100, Percent), Length(100, Percent), Length(100, Percent)) : LengthBox());
+            image.setFill(false);
+            break;
+        case Width:
+            // Masks have a different initial value for widths. They use an 'auto' value rather than trying to fit to the border.
+            image.setBorderSlices(type == BorderImage ? LengthBox(Length(1, Relative), Length(1, Relative), Length(1, Relative), Length(1, Relative)) : LengthBox());
+            break;
+        }
+        setValue(styleResolver.style(), image);
+    }
+
+    static void applyValue(StyleResolver& styleResolver, CSSValue& value)
+    {
+        NinePieceImage image(getValue(styleResolver.style()));
+        switch (modifier) {
+        case Outset:
+            image.setOutset(styleResolver.styleMap()->mapNinePieceImageQuad(value));
+            break;
+        case Repeat:
+            styleResolver.styleMap()->mapNinePieceImageRepeat(value, image);
+            break;
+        case Slice:
+            styleResolver.styleMap()->mapNinePieceImageSlice(value, image);
+            break;
+        case Width:
+            image.setBorderSlices(styleResolver.styleMap()->mapNinePieceImageQuad(value));
+            break;
+        }
+        setValue(styleResolver.style(), image);
+    }
+
+private:
+    static inline const NinePieceImage& getValue(RenderStyle* style)
+    {
+        return type == BorderImage ? style->borderImage() : style->maskBoxImage();
+    }
+
+    static inline void setValue(RenderStyle* style, const NinePieceImage& value)
+    {
+        return type == BorderImage ? style->setBorderImage(value) : style->setMaskBoxImage(value);
+    }
+};
+
+#define DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(type, modifier) \
+inline void applyInherit##type##modifier(StyleResolver& styleResolver) \
+{ \
+    ApplyPropertyBorderImageModifier<type, modifier>::applyInheritValue(styleResolver); \
+} \
+inline void applyInitial##type##modifier(StyleResolver& styleResolver) \
+{ \
+    ApplyPropertyBorderImageModifier<type, modifier>::applyInitialValue(styleResolver); \
+} \
+inline void applyValue##type##modifier(StyleResolver& styleResolver, CSSValue& value) \
+{ \
+    ApplyPropertyBorderImageModifier<type, modifier>::applyValue(styleResolver, value); \
+}
+
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Outset)
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Repeat)
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Slice)
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Width)
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Outset)
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Repeat)
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Slice)
+DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Width)
 
 } // namespace StyleBuilderFunctions
 

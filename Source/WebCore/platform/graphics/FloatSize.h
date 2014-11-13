@@ -177,6 +177,11 @@ inline bool operator==(const FloatSize& a, const FloatSize& b)
     return a.width() == b.width() && a.height() == b.height();
 }
 
+inline bool areEssentiallyEqual(const FloatSize& a, const FloatSize& b)
+{
+    return WTF::areEssentiallyEqual(a.width(), b.width()) && WTF::areEssentiallyEqual(a.height(), b.height());
+}
+
 inline bool operator!=(const FloatSize& a, const FloatSize& b)
 {
     return a.width() != b.width() || a.height() != b.height();

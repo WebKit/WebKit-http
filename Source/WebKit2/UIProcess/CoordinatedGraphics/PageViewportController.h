@@ -104,10 +104,9 @@ private:
 
     bool m_pendingPositionChange;
     bool m_pendingScaleChange;
+    bool m_layerTreeStateIsFrozen;
     WebCore::FloatRect m_lastFrameCoveredRect;
 };
-
-bool fuzzyCompare(float, float, float epsilon);
 
 } // namespace WebKit
 

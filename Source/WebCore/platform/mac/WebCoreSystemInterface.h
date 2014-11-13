@@ -103,6 +103,7 @@ OBJC_CLASS NSControl;
 OBJC_CLASS NSCursor;
 OBJC_CLASS NSData;
 OBJC_CLASS NSDate;
+OBJC_CLASS NSDictionary;
 OBJC_CLASS NSEvent;
 OBJC_CLASS NSFont;
 OBJC_CLASS NSHTTPCookie;
@@ -225,30 +226,11 @@ extern void (*wkSetCONNECTProxyForStream)(CFReadStreamRef, CFStringRef proxyHost
 extern void (*wkSetCONNECTProxyAuthorizationForStream)(CFReadStreamRef, CFStringRef proxyAuthorizationString);
 extern CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
 
-extern bool (*wkGetVerticalGlyphsForCharacters)(CTFontRef, const UniChar[], CGGlyph[], size_t);
-
 extern BOOL (*wkUseSharedMediaUI)();
 
 #if !PLATFORM(IOS)
 extern void* wkGetHyphenationLocationBeforeIndex;
 #endif
-
-extern CTLineRef (*wkCreateCTLineWithUniCharProvider)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*);
-
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-enum {
-    wkCTFontTransformApplyShaping = (1 << 0),
-    wkCTFontTransformApplyPositioning = (1 << 1)
-};
-
-typedef int wkCTFontTransformOptions;
-
-extern bool (*wkCTFontTransformGlyphs)(CTFontRef font, CGGlyph glyphs[], CGSize advances[], CFIndex count, wkCTFontTransformOptions options);
-#endif
-
-extern CTTypesetterRef (*wkCreateCTTypesetterWithUniCharProviderAndOptions)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
-
-extern CGSize (*wkCTRunGetInitialAdvance)(CTRunRef);
 
 #if PLATFORM(COCOA) && USE(CA) && !PLATFORM(IOS_SIMULATOR)
 extern CGContextRef (*wkIOSurfaceContextCreate)(IOSurfaceRef surface, unsigned width, unsigned height, CGColorSpaceRef colorSpace);
@@ -259,6 +241,8 @@ extern CGImageRef (*wkIOSurfaceContextCreateImage)(CGContextRef context);
 extern int (*wkRecommendedScrollerStyle)(void);
 
 extern bool (*wkExecutableWasLinkedOnOrBeforeSnowLeopard)(void);
+
+extern NSRange (*wkExtractWordDefinitionTokenRangeFromContextualString)(NSString *contextString, NSRange range, NSDictionary **options);
 
 extern CFStringRef (*wkCopyDefaultSearchProviderDisplayName)(void);
 

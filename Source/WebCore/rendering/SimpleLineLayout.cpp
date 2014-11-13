@@ -130,8 +130,6 @@ bool canUseFor(const RenderBlockFlow& flow)
         return false;
     if (!style.wordSpacing().isZero() || style.letterSpacing())
         return false;
-    if (style.textTransform() != TTNONE)
-        return false;
     if (!style.isLeftToRightDirection())
         return false;
     if (style.lineBoxContain() != RenderStyle::initialLineBoxContain())
@@ -476,6 +474,8 @@ void removeTrailingWhitespace(LineState& lineState, Layout::RunVector& lineRuns,
         lineState.removeCommittedTrailingWhitespace();
     }
 
+    if (contentIterator.isEndOfContent(lineState.position))
+        return;
     // If we skipped any whitespace and now the line end is a "preserved" newline, skip the newline too as we are wrapping the line here already.
     if (lastPosition != lineState.position && style.preserveNewline && contentIterator.isNewlineCharacter(lineState.position))
         ++lineState.position;

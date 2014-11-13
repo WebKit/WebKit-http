@@ -199,12 +199,6 @@ public:
 
     void didFindZoomableArea(const WKPoint&, const WKRect&);
 
-    // FIXME: PageViewportController needs to fix a problem that current page is shown in (0,0) position when starting to load new page.
-    // Below functions are to fix this problem for now.
-    void setWaitingForNewPage() { m_isWaitingForNewPage = true; }
-    bool waitingForNewPage() { return m_isWaitingForNewPage; }
-    void didCommitNewPage() { m_isWaitingForNewPage = false; }
-
     static const char smartClassName[];
 
 #if HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)
@@ -221,7 +215,7 @@ private:
     WebCore::IntSize size() const;
     WebCore::IntSize deviceSize() const;
 
-    void displayTimerFired(WebCore::Timer<EwkView>*);
+    void displayTimerFired(WebCore::Timer*);
 
     // Evas_Smart_Class callback interface:
     static void handleEvasObjectAdd(Evas_Object*);
@@ -303,7 +297,7 @@ private:
     bool m_touchEventsEnabled;
     std::unique_ptr<WebKit::GestureRecognizer> m_gestureRecognizer;
 #endif
-    WebCore::Timer<EwkView> m_displayTimer;
+    WebCore::Timer m_displayTimer;
     RefPtr<EwkContextMenu> m_contextMenu;
     std::unique_ptr<EwkPopupMenu> m_popupMenu;
     std::unique_ptr<WebKit::InputMethodContextEfl> m_inputMethodContext;

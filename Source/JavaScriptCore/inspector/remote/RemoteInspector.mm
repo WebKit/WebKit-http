@@ -43,12 +43,12 @@
 #import <sandbox/private.h>
 #else
 enum sandbox_filter_type {
-    SANDBOX_FILTER_GLOBAL_NAME,
+    SANDBOX_FILTER_GLOBAL_NAME = 2,
 };
 #endif
-extern "C" {
-    int sandbox_check(pid_t, const char *operation, enum sandbox_filter_type, ...);
-}
+
+extern "C" int sandbox_check(pid_t, const char *operation, enum sandbox_filter_type, ...);
+extern "C" const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT;
 
 #if PLATFORM(IOS)
 #import <wtf/ios/WebCoreThread.h>
@@ -58,7 +58,7 @@ namespace Inspector {
 
 static bool canAccessWebInspectorMachPort()
 {
-    return sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_GLOBAL_NAME, WIRXPCMachPortName) == 0;
+    return sandbox_check(getpid(), "mach-lookup", static_cast<enum sandbox_filter_type>(SANDBOX_FILTER_GLOBAL_NAME | SANDBOX_CHECK_NO_REPORT), WIRXPCMachPortName) == 0;
 }
 
 static bool globalAutomaticInspectionState()
@@ -189,8 +189,8 @@ void RemoteInspector::updateDebuggableAutomaticInspectCandidate(RemoteInspectorD
         auto result = m_debuggableMap.set(identifier, std::make_pair(debuggable, debuggable->info()));
         ASSERT_UNUSED(result, !result.isNewEntry);
 
-        // Don't allow automatic inspection unless there is a debugger or we are stopped.
-        if (!WTFIsDebuggerAttached() || !m_automaticInspectionEnabled || !m_enabled) {
+        // Don't allow automatic inspection unless it is allowed or we are stopped.
+        if (!m_automaticInspectionEnabled || !m_enabled) {
             pushListingSoon();
             return;
         }

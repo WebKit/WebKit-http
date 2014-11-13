@@ -349,7 +349,7 @@ StyleResolver::~StyleResolver()
 #endif
 }
 
-void StyleResolver::sweepMatchedPropertiesCache(Timer<StyleResolver>*)
+void StyleResolver::sweepMatchedPropertiesCache(Timer*)
 {
     // Look for cache entries containing a style declaration with a single ref and remove them.
     // This may happen when an element attribute mutation causes it to generate a new inlineStyle()
@@ -1259,6 +1259,9 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         || style.clipPath()
         || style.boxReflect()
         || style.hasFilter()
+#if ENABLE(FILTERS_LEVEL_2)
+        || style.hasBackdropFilter()
+#endif
         || style.hasBlendMode()
         || style.hasIsolation()
         || style.position() == StickyPosition
@@ -1352,6 +1355,9 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     if (style.preserves3D() && (style.overflowX() != OVISIBLE
         || style.overflowY() != OVISIBLE
         || style.hasFilter()
+#if ENABLE(FILTERS_LEVEL_2)
+        || style.hasBackdropFilter()
+#endif
         || style.hasBlendMode()))
         style.setTransformStyle3D(TransformStyle3DFlat);
 
@@ -2230,7 +2236,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
                 state.style()->clearContent();
             return;
         }
-    case CSSPropertyWebkitAlt:
+    case CSSPropertyAlt:
         {
             bool didSet = false;
             if (primitiveValue->isString()) {
@@ -2701,6 +2707,16 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             state.style()->setFilter(operations);
         return;
     }
+
+#if ENABLE(FILTERS_LEVEL_2)
+    case CSSPropertyWebkitBackdropFilter: {
+        HANDLE_INHERIT_AND_INITIAL(backdropFilter, BackdropFilter);
+        FilterOperations operations;
+        if (createFilterOperations(value, operations))
+            state.style()->setBackdropFilter(operations);
+        return;
+    }
+#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridAutoColumns: {

@@ -35,6 +35,8 @@
 #include "UserGestureIndicator.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
+#include <wtf/MathExtras.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 
 #if PLATFORM(IOS)
@@ -84,41 +86,60 @@ private:
 
 DOMTimerFireState* DOMTimerFireState::current = nullptr;
 
-struct NestedTimersVector {
-    typedef Vector<DOMTimer*, 1>::const_iterator const_iterator;
+struct NestedTimersMap {
+    typedef HashMap<int, DOMTimer*>::const_iterator const_iterator;
 
-    NestedTimersVector(ScriptExecutionContext* context)
-        : shouldSetCurrent(context->isDocument())
+    static NestedTimersMap* instanceForContext(ScriptExecutionContext* context)
     {
-        if (shouldSetCurrent) {
-            previous = current;
-            current = this;
-        }
+        // For worker threads, we don't use NestedTimersMap as doing so would not
+        // be thread safe.
+        if (context->isDocument())
+            return &instance();
+        return nullptr;
     }
 
-    ~NestedTimersVector()
+    void startTracking()
     {
-        if (shouldSetCurrent)
-            current = previous;
+        // Make sure we start with an empty HashMap. In theory, it is possible the HashMap is not
+        // empty if a timer fires during the execution of another timer (may happen with the
+        // in-process Web Inspector).
+        nestedTimers.clear();
+        isTrackingNestedTimers = true;
     }
 
-    static NestedTimersVector* current;
-
-    void registerTimer(DOMTimer* timer)
+    void stopTracking()
     {
-        nestedTimers.append(timer);
+        isTrackingNestedTimers = false;
+        nestedTimers.clear();
+    }
+
+    void add(int timeoutId, DOMTimer* timer)
+    {
+        if (isTrackingNestedTimers)
+            nestedTimers.add(timeoutId, timer);
+    }
+
+    void remove(int timeoutId)
+    {
+        if (isTrackingNestedTimers)
+            nestedTimers.remove(timeoutId);
     }
 
     const_iterator begin() const { return nestedTimers.begin(); }
     const_iterator end() const { return nestedTimers.end(); }
 
 private:
-    bool shouldSetCurrent;
-    NestedTimersVector* previous;
-    Vector<DOMTimer*, 1> nestedTimers;
+    static NestedTimersMap& instance()
+    {
+        static NeverDestroyed<NestedTimersMap> map;
+        return map;
+    }
+
+    static bool isTrackingNestedTimers;
+    HashMap<int /* timeoutId */, DOMTimer*> nestedTimers;
 };
 
-NestedTimersVector* NestedTimersVector::current = nullptr;
+bool NestedTimersMap::isTrackingNestedTimers = false;
 
 static inline bool shouldForwardUserGesture(int interval, int nestingLevel)
 {
@@ -170,8 +191,8 @@ int DOMTimer::install(ScriptExecutionContext* context, std::unique_ptr<Scheduled
     InspectorInstrumentation::didInstallTimer(context, timer->m_timeoutId, timeout, singleShot);
 
     // Keep track of nested timer installs.
-    if (NestedTimersVector::current)
-        NestedTimersVector::current->registerTimer(timer);
+    if (NestedTimersMap* nestedTimers = NestedTimersMap::instanceForContext(context))
+        nestedTimers->add(timer->m_timeoutId, timer);
 
     return timer->m_timeoutId;
 }
@@ -184,18 +205,25 @@ void DOMTimer::removeById(ScriptExecutionContext* context, int timeoutId)
     if (timeoutId <= 0)
         return;
 
+    if (NestedTimersMap* nestedTimers = NestedTimersMap::instanceForContext(context))
+        nestedTimers->remove(timeoutId);
+
     InspectorInstrumentation::didRemoveTimer(context, timeoutId);
     context->removeTimeout(timeoutId);
 }
 
 void DOMTimer::updateThrottlingStateIfNecessary(const DOMTimerFireState& fireState)
 {
-    if (fireState.scriptDidInteractWithUserObservablePlugin && m_throttleState != ShouldNotThrottle) {
-        m_throttleState = ShouldNotThrottle;
-        updateTimerIntervalIfNecessary();
-    } else if (fireState.scriptDidInteractWithNonUserObservablePlugin && m_throttleState == Undetermined) {
-        m_throttleState = ShouldThrottle;
-        updateTimerIntervalIfNecessary();
+    if (fireState.scriptDidInteractWithUserObservablePlugin) {
+        if (m_throttleState != ShouldNotThrottle) {
+            m_throttleState = ShouldNotThrottle;
+            updateTimerIntervalIfNecessary();
+        }
+    } else if (fireState.scriptDidInteractWithNonUserObservablePlugin) {
+        if (m_throttleState != ShouldThrottle) {
+            m_throttleState = ShouldThrottle;
+            updateTimerIntervalIfNecessary();
+        }
     }
 }
 
@@ -274,7 +302,10 @@ void DOMTimer::fired()
 #endif
 
     // Keep track nested timer installs.
-    NestedTimersVector nestedTimers(context);
+    NestedTimersMap* nestedTimers = NestedTimersMap::instanceForContext(context);
+    if (nestedTimers)
+        nestedTimers->startTracking();
+
     m_action->execute(context);
 
 #if PLATFORM(IOS)
@@ -290,9 +321,13 @@ void DOMTimer::fired()
     InspectorInstrumentation::didFireTimer(cookie);
 
     // Check if we should throttle nested single-shot timers.
-    for (auto* timer : nestedTimers) {
-        if (!timer->repeatInterval())
-            timer->updateThrottlingStateIfNecessary(fireState);
+    if (nestedTimers) {
+        for (auto& keyValue : *nestedTimers) {
+            auto* timer = keyValue.value;
+            if (timer->isActive() && !timer->repeatInterval())
+                timer->updateThrottlingStateIfNecessary(fireState);
+        }
+        nestedTimers->stopTracking();
     }
 
     context->setTimerNestingLevel(0);
@@ -313,11 +348,11 @@ void DOMTimer::updateTimerIntervalIfNecessary()
     double previousInterval = m_currentTimerInterval;
     m_currentTimerInterval = intervalClampedToMinimum();
 
-    if (previousInterval == m_currentTimerInterval)
+    if (WTF::areEssentiallyEqual(previousInterval, m_currentTimerInterval))
         return;
 
     if (repeatInterval()) {
-        ASSERT(repeatInterval() == previousInterval);
+        ASSERT(WTF::areEssentiallyEqual(repeatInterval(), previousInterval));
         augmentRepeatInterval(m_currentTimerInterval - previousInterval);
     } else
         augmentFireInterval(m_currentTimerInterval - previousInterval);

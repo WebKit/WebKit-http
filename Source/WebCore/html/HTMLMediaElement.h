@@ -392,6 +392,8 @@ public:
     WEBCORE_EXPORT virtual bool isFullscreen() const override;
     void toggleFullscreenState();
     enum VideoFullscreenMode { VideoFullscreenModeNone, VideoFullscreenModeStandard, VideoFullscreenModeOptimized };
+    VideoFullscreenMode fullscreenMode() const { return m_videoFullscreenMode; }
+
     void enterFullscreen(VideoFullscreenMode);
     virtual void enterFullscreen() override;
     WEBCORE_EXPORT void exitFullscreen();
@@ -590,12 +592,13 @@ private:
 #endif
 
     virtual bool mediaPlayerIsInMediaDocument() const override final;
+    virtual void mediaPlayerEngineFailedToLoad() const override final;
 
-    void loadTimerFired(Timer<HTMLMediaElement>&);
-    void progressEventTimerFired(Timer<HTMLMediaElement>&);
-    void playbackProgressTimerFired(Timer<HTMLMediaElement>&);
-    void scanTimerFired(Timer<HTMLMediaElement>&);
-    void seekTimerFired(Timer<HTMLMediaElement>&);
+    void loadTimerFired(Timer&);
+    void progressEventTimerFired(Timer&);
+    void playbackProgressTimerFired(Timer&);
+    void scanTimerFired(Timer&);
+    void seekTimerFired(Timer&);
     void startPlaybackProgressTimer();
     void startProgressEventTimer();
     void stopPeriodicTimers();
@@ -702,6 +705,7 @@ private:
     // MediaSessionClient Overrides
     virtual MediaSession::MediaType mediaType() const override;
     virtual MediaSession::MediaType presentationType() const override;
+    virtual MediaSession::DisplayType displayType() const override;
     virtual void pausePlayback() override;
     virtual void resumePlayback() override;
     virtual String mediaSessionTitle() const override;
@@ -722,11 +726,11 @@ private:
 
     void updateCaptionContainer();
 
-    Timer<HTMLMediaElement> m_loadTimer;
-    Timer<HTMLMediaElement> m_progressEventTimer;
-    Timer<HTMLMediaElement> m_playbackProgressTimer;
-    Timer<HTMLMediaElement> m_scanTimer;
-    Timer<HTMLMediaElement> m_seekTimer;
+    Timer m_loadTimer;
+    Timer m_progressEventTimer;
+    Timer m_playbackProgressTimer;
+    Timer m_scanTimer;
+    Timer m_seekTimer;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 

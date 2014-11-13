@@ -1,3 +1,454 @@
+2014-11-11  Michael Saboff  <msaboff@apple.com>
+
+        Change DFG to use scope operand for op_resolve_scope
+        https://bugs.webkit.org/show_bug.cgi?id=138651
+
+        Reviewed by Geoffrey Garen.
+
+        Changed to use the provided scope VirtualRegister.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getScope): Changed to use an argument scope register.
+        (JSC::DFG::ByteCodeParser::parseBlock): Created VirtualRegister from scope operand.
+
+2014-11-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Remove IncrementalSweeper::create()
+        https://bugs.webkit.org/show_bug.cgi?id=138243
+
+        Reviewed by Filip Pizlo.
+
+        As a step to use std::unique_ptr<> and std::make_unique<>, this patch removes
+        IncrementalSweeper::create(), then set constructor of IncrementalSweeper to public.
+        Now we begins to use std::make_unique<> to create IncrementalSweeper instance.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::setIncrementalSweeper):
+        * heap/Heap.h:
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::create): Deleted.
+        * heap/IncrementalSweeper.h:
+
+2014-11-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Handle activating extra agents properly after inspector has connected
+        https://bugs.webkit.org/show_bug.cgi?id=138639
+
+        Reviewed by Timothy Hatcher.
+
+        Instead of having the protocol configuration directly add the extra agent
+        to the inspector registry, isntead go through the augmentable controller.
+        The controller will initialize as required if we are already connected or not,
+        and will add to the registry.
+
+        The functional change here is that the frontend can be notified to activate
+        extra agents multiple times as agents eventually become available.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::appendExtraAgent):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::activateExtraDomain):
+        * inspector/agents/InspectorAgent.h:
+        * inspector/augmentable/AugmentableInspectorController.h:
+        * inspector/scripts/codegen/generator_templates.py:
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        Rebased results.
+
+2014-11-11  Michael Saboff  <msaboff@apple.com>
+
+        Use scope register when processing op_resolve_scope in LLInt and Baseline JIT
+        https://bugs.webkit.org/show_bug.cgi?id=138637
+
+        Reviewed by Mark Lam.
+
+        Filled out op_resolve_scope processing to use the scope operand to access the current
+        scope chain.
+
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        Added scope virtual register parameter to emitResolveClosure().  Added new callOperation() to
+        support the additional argument.
+
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitResolveClosure):
+        (JSC::JIT::emit_op_resolve_scope):
+        (JSC::JIT::emitSlow_op_resolve_scope):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitResolveClosure):
+        (JSC::JIT::emit_op_resolve_scope):
+        (JSC::JIT::emitSlow_op_resolve_scope):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        Added "scope" parameter to emitResolveClosure().  Passed scope register index to slow path.
+        Used scope virtual register instead of JSStack::ScopeChain.
+
+2014-11-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Don't require a debugger be attached for inspector auto attach
+        https://bugs.webkit.org/show_bug.cgi?id=138638
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::updateDebuggableAutomaticInspectCandidate):
+
+2014-11-11  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Handle cases in StackVisitor::Frame::existingArguments() when lexicalEnvironment and/or unmodifiedArgumentsRegister is not set up yet
+        https://bugs.webkit.org/show_bug.cgi?id=138543
+
+        Reviewed by Geoffrey Garen.
+
+        Exception fuzzing may may raise exceptions in places where they would be
+        otherwise impossible. Therefore, a callFrame may lack activation even if
+        the codeBlock signals need of activation. Also, even if codeBlock
+        signals the use of arguments, the unmodifiedArgumentsRegister may not be
+        initialized yet (neither locally nor in lexicalEnvironment).
+
+        If codeBlock()->needsActivation() is false, unmodifiedArgumentsRegister
+        is already checked for Undefined. This patch applies the same check when
+        the condition is true (and also checks whether
+        callFrame()->hasActivation()).
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::hasActivation):
+        Moved to interpreter/CallFrameInlines.h.
+        * interpreter/CallFrameInlines.h:
+        (JSC::CallFrame::hasActivation):
+        Fixed to verify that the JSValue returned by uncheckedActivation() is a
+        cell.
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::existingArguments):
+
+2014-11-11  Andreas Kling  <akling@apple.com>
+
+        Another assertion fix for debug builds after r175846.
+
+        generateByIdStub() can now be called with an empty prototype chain
+        if kind == GetUndefined, so tweak the assertion to cover that.
+
+        * jit/Repatch.cpp:
+        (JSC::generateByIdStub):
+
+2014-11-10  Andreas Kling  <akling@apple.com>
+
+        Assertion fix for debug builds after r175846.
+
+        PropertySlot::slotBase() will assert if the slot is unset, so reorder
+        the tests to check for isCacheableValue() first.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+
+2014-11-10  Andreas Kling  <akling@apple.com>
+
+        The JIT should cache property lookup misses.
+        <https://webkit.org/b/135578>
+
+        Add support for inline caching of missed property lookups.
+        Previously this would banish us to C++ slow path.
+
+        It's implemented as a simple GetById cache that returns jsUndefined()
+        as long as the Structure chain check passes. There's no DFG exploitation
+        of this knowledge in this patch.
+
+        Test: js/regress/undefined-property-access.js (~5.5x speedup)
+
+        Reviewed by Filip Pizlo.
+
+        * bytecode/PolymorphicGetByIdList.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeForStubInfo):
+
+            Add GetByIdAccess::SimpleMiss so we can communicate to the DFG that
+            the access has been cached.
+
+        * jit/Repatch.cpp:
+        (JSC::toString):
+        (JSC::kindFor):
+        (JSC::generateByIdStub):
+        (JSC::tryCacheGetByID):
+        (JSC::tryBuildGetByIDList):
+
+            Added a GetUndefined stub kind, just a simple "store jsUndefined()" snippet.
+            Use this to cache missed lookups, piggybacking mostly on the GetValue kind.
+
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::isUnset):
+
+            Exposed the unset state so PropertySlot can communicate that lookup failed.
+
+2014-11-10  Michael Saboff  <msaboff@apple.com>
+
+        Add scope operand to op_create_lexical_environment
+        https://bugs.webkit.org/show_bug.cgi?id=138588
+
+        Reviewed by Geoffrey Garen.
+
+        Added a second operand to op_create_lexical_environment that contains the scope register
+        to update.  Note that the DFG relies on operationCreateActivation() to update the
+        scope register since we can't issue a set() with a non-local, non-argument register.
+        This is temporary until the scope register is allocated as a local.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        Added the scope register operand.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        Filled in the scope register operand.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_create_lexical_environment):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_create_lexical_environment):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Set the scope register with the result of the appropriate create activation slow call.
+
+2014-11-09  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Fix 'noreturn' function does return warning in LLVMOverrides.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=138306
+
+        Reviewed by Filip Pizlo.
+
+        Adding NO_RETURN where needed.
+
+        * llvm/library/LLVMExports.cpp:
+        (initializeAndGetJSCLLVMAPI):
+        * llvm/library/LLVMOverrides.cpp:
+        * llvm/library/LLVMTrapCallback.h:
+
+2014-11-07  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        Fix an alignment issue with operationPushCatchScope on ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=138510
+
+        Reviewed by Csaba Osztrogonác.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+
+2014-11-07  Michael Saboff  <msaboff@apple.com>
+
+        Update scope related slow path code to use scope register added to opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=138254
+
+        Reviewed by Mark Lam.
+
+        Updated slow paths for op_pop_scope, op_push_name_scope and op_push_with_scope.
+        Added scope register index parameter to the front of the relevant argument lists of the
+        slow functions.  In the case of op_push_name_scope for x86 (32 bit), there aren't enough
+        registers to accomodate all the parameters.  Therefore, added two new JSVALUE32_64 slow
+        paths called operationPushCatchScope() and operationPushFunctionNameScope() to eliminate
+        the last "type" argument.
+        
+
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::FunctionPtr::FunctionPtr): Added a new template to take 6 arguments.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        New variants of setupArgumentsWithExecState() and callOperation() to handle the new
+        combinations of argument types and counts.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_push_with_scope):
+        (JSC::JIT::emit_op_pop_scope):
+        (JSC::JIT::emit_op_push_name_scope):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_push_with_scope):
+        (JSC::JIT::emit_op_pop_scope):
+        (JSC::JIT::emit_op_push_name_scope):
+        Use the new slow paths.
+
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        Updates to set the scope result using the scope register index.  Added operationPushCatchScope()
+        and operationPushFunctionNameScope().
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        Updated the scope slow paths to use the scope register index in the instruction to read and
+        write the register instead of using CallFrame::scope() and CallFrame::setScope().
+
+2014-11-07  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Apply std::unique_ptr to slowPathCall()
+        https://bugs.webkit.org/show_bug.cgi?id=138489
+
+        Reviewed by Mark Lam.
+
+        As a step to use std::unique_ptr<>, this patch makes slowPathCall() use std::unique_ptr<>,
+        std::make_unique<>, and WTF::move(). 
+
+        * dfg/DFGSlowPathGenerator.h:
+        (JSC::DFG::slowPathCall):
+        (JSC::DFG::slowPathMove):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateJSArray):
+        (JSC::DFG::SpeculativeJIT::addSlowPathGenerator):
+        (JSC::DFG::SpeculativeJIT::arrayify):
+        (JSC::DFG::SpeculativeJIT::compileIn):
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnString):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompare):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompare):
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeStrictEq):
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2014-11-06  Mark Lam  <mark.lam@apple.com>
+
+        slow_path_get_direct_pname() needs to be hardened against a constant baseValue.
+        <https://webkit.org/b/138476>
+
+        Reviewed by Michael Saboff.
+
+        slow_path_get_direct_pname() currently assumes that the baseValue is always a
+        non-constant virtual register.  However, this is not always the case like in the
+        following:
+
+            function foo() {
+                var o = { a:1 };
+                for (var n in o)
+                    0[n];
+            }
+            foo();
+
+        This patch fixes it to also check for constant virtual register indexes.
+
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2014-11-06  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r174985-174986): Site display disappears 
+        https://bugs.webkit.org/show_bug.cgi?id=138082
+
+        Reviewed by Geoffrey Garen.
+
+        In support of the change in WebCore, this adds a new functor class to unwind to our
+        caller's frame possibly skipping of intermediate C++ frames.
+
+        * interpreter/StackVisitor.h:
+        (JSC::CallerFunctor::CallerFunctor):
+        (JSC::CallerFunctor::callerFrame):
+        (JSC::CallerFunctor::operator()):
+
+2014-11-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr in CodeBlock class
+        https://bugs.webkit.org/show_bug.cgi?id=138395
+
+        Reviewed by Darin Adler.
+
+        * bytecode/CodeBlock.h: Use std::unique_ptr.
+        (JSC::CodeBlock::setJITCodeMap):
+        * jit/CompactJITCodeMap.h: Use std::unique_ptr instead of OwnPtr|PassOwnPtr.
+        (JSC::CompactJITCodeMap::CompactJITCodeMap):
+        (JSC::CompactJITCodeMap::Encoder::finish): Use std::unique_ptr instead of PassOwnPtr.
+
+2014-11-05  Mark Lam  <mark.lam@apple.com>
+
+        PutById inline caches should have a store barrier when it triggers a structure transition.
+        <https://webkit.org/b/138441>
+
+        Reviewed by Geoffrey Garen.
+
+        After r174025, we no longer insert DFG store barriers when the payload of a
+        PutById operation is not a cell.  However, this can lead to a crash when we have
+        PutById inline cache code transitioning the structure and re-allocating the
+        butterfly of an old gen object.  The lack of a store barrier in that inline
+        cache results in the old gen object not being noticed during an eden GC scan.
+        As a result, its newly allocated butterfly will not be kept alive, which leads
+        to a stale butterfly pointer and, eventually, a crash.
+
+        It is also possible that the new structure can be collected by the eden GC if
+        (at GC time):
+        1. It is in the eden gen.
+        2. The inline cache that installed it has been evicted.
+        3. There are no live eden gen objects referring to it.
+
+        The chances of this should be more rare than the butterfly re-allocation, but
+        it is still possible.  Hence, the fix is to always add a store barrier if the
+        inline caches performs a structure transition.
+
+        * jit/Repatch.cpp:
+        (JSC::emitPutTransitionStub):
+        - Added store barrier code based on SpeculativeJIT::storeToWriteBarrierBuffer()'s
+          implementation.
+
+2014-11-05  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr in JSClassRef and JSCallbackObject
+        https://bugs.webkit.org/show_bug.cgi?id=138402
+
+        Reviewed by Geoffrey Garen.
+
+        * API/JSCallbackObject.h: Use std::unique_ptr instead of OwnPtr|PassOwnPtr.
+        (JSC::JSCallbackObjectData::setPrivateProperty): ditto.
+        * API/JSClassRef.cpp: ditto.
+        * API/JSClassRef.h: ditto.
+
+2014-11-05  Michael Saboff  <msaboff@apple.com>
+
+        Disable flakey float32-repeat-out-of-bounds.js and int8-repeat-out-of-bounds.js tests for ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=138381
+
+        Reviewed by Mark Lam.
+
+        Disabled these test for ARM64.  Will address the failures and then re-enable.
+
+        * tests/stress/float32-repeat-out-of-bounds.js:
+        * tests/stress/int8-repeat-out-of-bounds.js:
+
+2014-11-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Incorrect sandbox_check in RemoteInspector.mm
+        https://bugs.webkit.org/show_bug.cgi?id=138408
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::canAccessWebInspectorMachPort):
+
+2014-11-03  Dean Jackson  <dino@apple.com>
+
+        Add ENABLE_FILTERS_LEVEL_2 feature guard.
+        https://bugs.webkit.org/show_bug.cgi?id=138362
+
+        Reviewed by Tim Horton.
+
+        Add a new feature define for Level 2 of CSS Filters.
+        http://dev.w3.org/fxtf/filters-2/
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2014-11-04  Mark Lam  <mark.lam@apple.com>
 
         Rename checkMarkByte() to jumpIfIsRememberedOrInEden().

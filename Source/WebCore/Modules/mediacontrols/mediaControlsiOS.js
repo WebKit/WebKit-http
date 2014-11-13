@@ -5,6 +5,7 @@ function createControls(root, video, host)
 
 function ControllerIOS(root, video, host)
 {
+    this.doingSetup = true;
     this.hasWirelessPlaybackTargets = false;
     this._pageScaleFactor = 1;
     this.isListeningForPlaybackTargetAvailabilityEvent = false;
@@ -15,6 +16,7 @@ function ControllerIOS(root, video, host)
     this.setNeedsTimelineMetricsUpdate();
 
     host.controlsDependOnPageScaleFactor = true;
+    this.doingSetup = false;
 };
 
 /* Enums */
@@ -30,6 +32,7 @@ ControllerIOS.prototype = {
 
         this.listenFor(this.video, 'webkitbeginfullscreen', this.handleFullscreenChange);
         this.listenFor(this.video, 'webkitendfullscreen', this.handleFullscreenChange);
+        this.listenFor(this.video, 'webkitcurrentplaybacktargetiswirelesschanged', this.handleWirelessPlaybackChange);
     },
 
     removeVideoListeners: function() {
@@ -37,6 +40,7 @@ ControllerIOS.prototype = {
 
         this.stopListeningFor(this.video, 'webkitbeginfullscreen', this.handleFullscreenChange);
         this.stopListeningFor(this.video, 'webkitendfullscreen', this.handleFullscreenChange);
+        this.stopListeningFor(this.video, 'webkitcurrentplaybacktargetiswirelesschanged', this.handleWirelessPlaybackChange);
 
         this.setShouldListenForPlaybackTargetAvailabilityEvent(false);
     },
@@ -76,7 +80,7 @@ ControllerIOS.prototype = {
         if (this.video.currentSrc && this.video.error)
             return true;
 
-        if (!this.host.userGestureRequired && allowsInline)
+        if (!this.doingSetup && !this.host.userGestureRequired && allowsInline)
             return false;
 
         return true;
@@ -115,13 +119,13 @@ ControllerIOS.prototype = {
             backgroundImageSVG = backgroundImageSVG.replace('##DEVICE_TYPE##', deviceType);
             backgroundImageSVG = backgroundImageSVG.replace('##DEVICE_NAME##', deviceName);
 
-            this.controls.wirelessPlaybackStatus.style.backgroundImage = backgroundImageSVG;
-            this.controls.wirelessPlaybackStatus.setAttribute('aria-label', deviceType + ", " + deviceName);
+            this.controls.inlinePlaybackPlaceholder.style.backgroundImage = backgroundImageSVG;
+            this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', deviceType + ", " + deviceName);
 
-            this.controls.wirelessPlaybackStatus.classList.remove(this.ClassNames.hidden);
+            this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
             this.controls.wirelessTargetPicker.classList.add(this.ClassNames.active);
         } else {
-            this.controls.wirelessPlaybackStatus.classList.add(this.ClassNames.hidden);
+            this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.active);
         }
     },
@@ -139,10 +143,16 @@ ControllerIOS.prototype = {
         var panelCompositedParent = this.controls.panelCompositedParent = document.createElement('div');
         panelCompositedParent.setAttribute('pseudo', '-webkit-media-controls-panel-composited-parent');
 
+        var inlinePlaybackPlaceholder = this.controls.inlinePlaybackPlaceholder = document.createElement('div');
+        inlinePlaybackPlaceholder.setAttribute('pseudo', '-webkit-media-controls-inline-playback-placeholder');
+        inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
+        inlinePlaybackPlaceholder.setAttribute('aria-label', this.UIString('Display Optimized Full Screen'));
 
-        var wirelessPlaybackStatus = this.controls.wirelessPlaybackStatus = document.createElement('div');
-        wirelessPlaybackStatus.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-status');
-        wirelessPlaybackStatus.classList.add(this.ClassNames.hidden);
+        var buttonImageSVG = "background-image: url('" + this.host.mediaUIImageData("optimized-fullscreen-button") + "')";
+        document.styleSheets[0].insertRule('video::-webkit-media-controls-optimized-fullscreen-button { ' + buttonImageSVG + '; }', 0);
+
+        buttonImageSVG = "background-image: url('" + this.host.mediaUIImageData("optimized-fullscreen-button-hilited") + "')";
+        document.styleSheets[0].insertRule('video::-webkit-media-controls-optimized-fullscreen-button:active { ' + buttonImageSVG + '; }', 0);
 
         var wirelessTargetPicker = this.controls.wirelessTargetPicker = document.createElement('button');
         wirelessTargetPicker.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-picker-button');
@@ -196,8 +206,6 @@ ControllerIOS.prototype = {
     },
 
     configureInlineControls: function() {
-        this.base.appendChild(this.controls.wirelessPlaybackStatus);
-
         this.controls.panel.appendChild(this.controls.playButton);
         this.controls.panel.appendChild(this.controls.statusDisplay);
         this.controls.panel.appendChild(this.controls.timelineBox);
@@ -229,6 +237,7 @@ ControllerIOS.prototype = {
     },
 
     addControls: function() {
+        this.base.appendChild(this.controls.inlinePlaybackPlaceholder);
         this.base.appendChild(this.controls.panelCompositedParent);
         this.controls.panelCompositedParent.appendChild(this.controls.panel);
         this.setNeedsTimelineMetricsUpdate();
@@ -237,7 +246,7 @@ ControllerIOS.prototype = {
     updateControls: function() {
         if (this.shouldHaveStartPlaybackButton())
             this.setControlsType(ControllerIOS.StartPlaybackControls);
-        else if (this.isFullScreen())
+        else if (this.isFullScreen() && this.host.fullscreenMode !== "optimized")
             this.setControlsType(Controller.FullScreenControls);
         else
             this.setControlsType(Controller.InlineControls);
@@ -355,7 +364,7 @@ ControllerIOS.prototype = {
     },
 
     handleWrapperTouchStart: function(event) {
-        if (event.target != this.base && event.target != this.controls.wirelessPlaybackStatus)
+        if (event.target != this.base && event.target != this.controls.inlinePlaybackPlaceholder)
             return;
 
         this.mostRecentNumberOfTargettedTouches = event.targetTouches.length;
@@ -367,7 +376,7 @@ ControllerIOS.prototype = {
                     this.lastDoubleTouchTime = now;
                 } else {
                     var doubleTouchIntervalThresholdms = 300
-                    if (now - this.lastDoubleTouchTime < doubleTouchSpeedThreshold) {
+                    if (now - this.lastDoubleTouchTime < doubleTouchIntervalThresholdms) {
                         delete this.lastDoubleTouchTime;
                         event.preventDefault();
                         this.host.enterFullscreenOptimized();
@@ -432,7 +441,7 @@ ControllerIOS.prototype = {
     },
 
     handleOptimizedFullscreenButtonClicked: function(event) {
-        if (this.isFullenterFullscreenOptimizedScreen())
+        if (this.isFullScreen())
             this.video.webkitExitFullscreen();
         else
             this.host.enterFullscreenOptimized();
@@ -465,6 +474,7 @@ ControllerIOS.prototype = {
             return true;
 
         this.video.play();
+        this.updateControls();
 
         return true;
     },
@@ -546,20 +556,19 @@ ControllerIOS.prototype = {
             return;
 
         this.isListeningForPlaybackTargetAvailabilityEvent = shouldListen;
-        if (shouldListen) {
-            this.listenFor(this.video, 'webkitcurrentplaybacktargetiswirelesschanged', this.handleWirelessPlaybackChange);
+        if (shouldListen)
             this.listenFor(this.video, 'webkitplaybacktargetavailabilitychanged', this.handleWirelessTargetAvailableChange);
-        } else {
-            this.stopListeningFor(this.video, 'webkitcurrentplaybacktargetiswirelesschanged', this.handleWirelessPlaybackChange);
+        else
             this.stopListeningFor(this.video, 'webkitplaybacktargetavailabilitychanged', this.handleWirelessTargetAvailableChange);
-        }
     },
 
-    get pageScaleFactor() {
+    get pageScaleFactor()
+    {
         return this._pageScaleFactor;
     },
 
-    set pageScaleFactor(newScaleFactor) {
+    set pageScaleFactor(newScaleFactor)
+    {
         if (this._pageScaleFactor === newScaleFactor)
             return;
 
@@ -580,7 +589,25 @@ ControllerIOS.prototype = {
                 this.updateProgress();
             }
         }
-    }
+    },
+
+    handleFullscreenChange: function(event)
+    {
+        Controller.prototype.handleFullscreenChange.call(this, event);
+
+        if (!this.isFullScreen()) {
+            this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
+        } else if (this.host.fullscreenMode === "optimized") {
+            var backgroundImageSVG = "url('" + this.host.mediaUIImageData("optimized-fullscreen-placeholder") + "')";
+            this.controls.inlinePlaybackPlaceholder.style.backgroundImage = backgroundImageSVG;
+            this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', "video playback placeholder");
+
+            this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
+        }
+
+        this.updateCaptionContainer();
+    },
+
 };
 
 Object.create(Controller.prototype).extend(ControllerIOS.prototype);

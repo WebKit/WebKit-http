@@ -49,6 +49,7 @@
 #include "NodeList.h"
 #include "RenderNamedFlowFragment.h"
 #include "SVGStyleElement.h"
+#include "SelectorChecker.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
 #include "StyleResolver.h"
@@ -109,11 +110,11 @@ public:
     void scheduleFor(WebKitNamedFlow*, int documentNodeId);
     void unschedule(WebKitNamedFlow*);
     void reset();
-    void timerFired(Timer<ChangeRegionOversetTask>&);
+    void timerFired(Timer&);
 
 private:
     InspectorCSSAgent* m_cssAgent;
-    Timer<ChangeRegionOversetTask> m_timer;
+    Timer m_timer;
     HashMap<WebKitNamedFlow*, int> m_namedFlows;
 };
 
@@ -142,7 +143,7 @@ void ChangeRegionOversetTask::reset()
     m_namedFlows.clear();
 }
 
-void ChangeRegionOversetTask::timerFired(Timer<ChangeRegionOversetTask>&)
+void ChangeRegionOversetTask::timerFired(Timer&)
 {
     // The timer is stopped on m_cssAgent destruction, so this method will never be called after m_cssAgent has been destroyed.
     for (HashMap<WebKitNamedFlow*, int>::iterator it = m_namedFlows.begin(), end = m_namedFlows.end(); it != end; ++it)
@@ -826,7 +827,7 @@ void InspectorCSSAgent::getSupportedCSSProperties(ErrorString&, RefPtr<Inspector
             CSSPropertyID longhandID = shorthand.properties()[j];
             longhands->addItem(getPropertyNameString(longhandID));
         }
-        property->setLonghands(longhands);
+        property->setLonghands(longhands.release());
         properties->addItem(property.release());
     }
     cssProperties = properties.release();
@@ -1047,7 +1048,7 @@ PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> Inspec
         RefPtr<Inspector::Protocol::CSS::CSSRule> ruleObject = buildObjectForRule(rule);
         if (!ruleObject)
             continue;
-        result->addItem(ruleObject);
+        result->addItem(ruleObject.release());
     }
     return result.release();
 }
@@ -1056,26 +1057,33 @@ PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> Insp
 {
     RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> result = Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>::create();
 
+    SelectorChecker::CheckingContext context(SelectorChecker::Mode::CollectingRules);
+    SelectorChecker selectorChecker(element->document());
+
     for (unsigned i = 0; i < matchedRules.size(); ++i) {
         if (!matchedRules[i]->isStyleRule())
             continue;
+
         StyleRule* matchedStyleRule = static_cast<StyleRule*>(matchedRules[i].get());
         RefPtr<Inspector::Protocol::CSS::CSSRule> ruleObject = buildObjectForRule(matchedStyleRule, styleResolver);
         if (!ruleObject)
             continue;
+
         RefPtr<Inspector::Protocol::Array<int>> matchingSelectors = Inspector::Protocol::Array<int>::create();
         const CSSSelectorList& selectorList = matchedStyleRule->selectorList();
         long index = 0;
         for (const CSSSelector* selector = selectorList.first(); selector; selector = CSSSelectorList::next(selector)) {
-            bool matched = element->matches(selector->selectorText(), IGNORE_EXCEPTION);
+            unsigned ignoredSpecificity;
+            bool matched = selectorChecker.match(selector, element, context, ignoredSpecificity);
             if (matched)
                 matchingSelectors->addItem(index);
             ++index;
         }
+
         RefPtr<Inspector::Protocol::CSS::RuleMatch> match = Inspector::Protocol::CSS::RuleMatch::create()
-            .setRule(ruleObject)
-            .setMatchingSelectors(matchingSelectors);
-        result->addItem(match);
+            .setRule(ruleObject.release())
+            .setMatchingSelectors(matchingSelectors.release());
+        result->addItem(match.release());
     }
 
     return result.release();
@@ -1128,7 +1136,7 @@ PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::Region>> Inspect
             // documentNodeId was previously asserted
             .setNodeId(m_domAgent->pushNodeToFrontend(errorString, documentNodeId, regionList->item(i)));
 
-        regions->addItem(region);
+        regions->addItem(region.release());
     }
 
     return regions.release();
@@ -1144,14 +1152,13 @@ PassRefPtr<Inspector::Protocol::CSS::NamedFlow> InspectorCSSAgent::buildObjectFo
         content->addItem(m_domAgent->pushNodeToFrontend(errorString, documentNodeId, contentList->item(i)));
     }
 
-    RefPtr<Inspector::Protocol::CSS::NamedFlow> namedFlow = Inspector::Protocol::CSS::NamedFlow::create()
+    return Inspector::Protocol::CSS::NamedFlow::create()
         .setDocumentNodeId(documentNodeId)
         .setName(webkitNamedFlow->name().string())
         .setOverset(webkitNamedFlow->overset())
-        .setContent(content)
-        .setRegions(buildArrayForRegions(errorString, webkitNamedFlow->getRegions(), documentNodeId));
-
-    return namedFlow.release();
+        .setContent(content.release())
+        .setRegions(buildArrayForRegions(errorString, webkitNamedFlow->getRegions(), documentNodeId))
+        .release();
 }
 
 void InspectorCSSAgent::didRemoveDocument(Document* document)
