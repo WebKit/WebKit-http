@@ -36,8 +36,8 @@ public:
     void setFlattening(bool);
     void setLocalTransform(const TransformationMatrix&);
     void setChildrenTransform(const TransformationMatrix&);
-    TransformationMatrix combined();
-    TransformationMatrix combinedForChildren();
+    const TransformationMatrix& combined();
+    const TransformationMatrix& combinedForChildren();
 
     void combineTransforms(const TransformationMatrix& parentTransform);
 
