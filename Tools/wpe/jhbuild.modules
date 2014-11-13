@@ -1,0 +1,162 @@
+<?xml version="1.0"?>
+<!DOCTYPE moduleset SYSTEM "moduleset.dtd">
+<?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
+<moduleset>
+
+  <metamodule id="webkitwpe-testing-dependencies">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="libsoup"/>
+      <dep package="cairo"/>
+      <dep package="wayland"/>
+      <dep package="weston"/>
+      <dep package="gstreamer"/>
+      <dep package="gst-plugins-base"/>
+      <dep package="gst-plugins-good"/>
+      <dep package="gst-plugins-bad"/>
+      <dep package="gst-libav"/>
+    </dependencies>
+  </metamodule>
+
+  <repository type="tarball" name="sourceware.org-mirror"
+      href="ftp://mirrors.kernel.org/sources.redhat.com/"/>
+  <repository type="tarball" name="ftp.gnome.org"
+      href="http://ftp.gnome.org"/>
+  <repository type="tarball" name="cairographics.org"
+      href="http://cairographics.org"/>
+  <repository type="tarball" name="freedesktop.org"
+      href="http://www.freedesktop.org"/>
+  <repository type="tarball" name="wayland.freedesktop.org"
+      href="http://wayland.freedesktop.org"/>
+  <repository type="git" name="github.com"
+      href="git://github.com"/>
+  <repository type="tarball" name="gstreamer"
+      href="http://gstreamer.freedesktop.org/src/"/>
+
+  <autotools id="libffi" autogen-sh="configure">
+    <branch module="libffi/libffi-3.0.10.tar.gz" version="3.0.10"
+             repo="sourceware.org-mirror"
+             hash="sha256:f01eb9027e9eb56aeaeef636649877756d475d714ef8b47f627f65bc5f3b492f"/>
+  </autotools>
+
+  <autotools id="glib"
+             autogen-sh="configure"
+             autogenargs="--disable-dtrace">
+    <dependencies>
+      <dep package="libffi"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib/2.42/glib-2.42.0.tar.xz" version="2.42.0"
+            repo="ftp.gnome.org"
+            hash="sha256:94fbc0a7d10633433ff383e540607de649c1b46baaa59dea446a50977a6c4472"/>
+  </autotools>
+
+  <autotools id="glib-networking">
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib-networking/2.42/glib-networking-2.42.0.tar.xz" version="2.42.0"
+            repo="ftp.gnome.org"
+            hash="sha256:304dd9e4c0ced69094300e0b9e66cd2eaae7161b9fc3186536d11458677d820d"/>
+  </autotools>
+
+  <autotools id="libsoup"
+             autogenargs="--without-gnome --disable-introspection">
+    <dependencies>
+      <dep package="glib-networking"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/libsoup/2.48/libsoup-2.48.0.tar.xz" version="2.48.0"
+            repo="ftp.gnome.org"
+            hash="sha256:ea34dd64fe44343445daf6dd690d0691e9d973468de44878da97371c16d89784"/>
+  </autotools>
+
+  <autotools id="fontconfig" autogen-sh="configure">
+    <branch module="software/fontconfig/release/fontconfig-2.8.0.tar.gz" version="2.8.0"
+            repo="freedesktop.org"
+            hash="sha256:fa2a1c6eea654d9fce7a4b1220f10c99cdec848dccaf1625c01f076b31382335"
+            md5sum="77e15a92006ddc2adbb06f840d591c0e">
+      <patch file="fontconfig-C-11-requires-a-space-between-literal-and-identifier.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="pixman"
+             autogen-sh="configure"
+             autogenargs="--enable-gtk=no">
+    <branch module="releases/pixman-0.32.6.tar.gz" version="0.32.6"
+            repo="cairographics.org"
+            hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"/>
+  </autotools>
+
+  <autotools id="cairo" autogen-sh="configure"
+             autogenargs="--enable-egl=yes --enable-glesv2">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="fontconfig"/>
+      <dep package="pixman"/>
+    </dependencies>
+    <branch module="releases/cairo-1.12.18.tar.xz" version="1.12.18"
+            repo="cairographics.org"
+            hash="sha256:dc59f0b7ac945ce4e138a03c227a29260915a8b05a4226c1f6f1be586ba7f5b6">
+      <patch file="cairo-egl-device-create-for-egl-surface.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="wayland">
+    <branch module="releases/wayland-1.5.0.tar.xz" version="1.5.0"
+            repo="wayland.freedesktop.org"
+            hash="sha256:0069e1e9af888b3e05384380ad8cc6c976ea3e81d08ba19b7675ce1d693a41b5"/>
+  </autotools>
+
+  <autotools id="weston" autogenargs="--disable-weston-launch">
+    <branch repo="github.com" module="zdobersek/weston.git" checkoutdir="weston" tag="kbmod"/>
+  </autotools>
+
+  <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+    <branch module="gstreamer/gstreamer-1.4.2.tar.xz" version="1.4.2"
+            repo="gstreamer"
+            hash="sha256:0339e0f156e130233ae26f0dcf541bf42ed73dcf6e2713369ed61d215b0847fc"/>
+  </autotools>
+
+  <autotools id="gst-plugins-base" autogenargs="--disable-examples --disable-gtk-doc">
+    <dependencies>
+      <dep package="gstreamer"/>
+    </dependencies>
+    <branch module="gst-plugins-base/gst-plugins-base-1.4.2.tar.xz" version="1.4.2"
+            repo="gstreamer"
+            hash="sha256:c0a8c44607d8a5669d2f0c118a72026f883a58ce1f3c720924b77f275b7b8835">
+      <patch file="gst-plugins-base-fix-build-gcc-4.9-x86.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="gst-plugins-good" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+
+    <branch module="gst-plugins-good/gst-plugins-good-1.4.2.tar.xz" version="1.4.2"
+            repo="gstreamer"
+            hash="sha256:63d7c8006af05143839b6e166a363d84c438380efe1409029deebcfce50b0fa8">
+    </branch>
+  </autotools>
+
+  <autotools id="gst-plugins-bad" autogenargs="--disable-examples  --disable-gtk-doc">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+    <branch module="gst-plugins-bad/gst-plugins-bad-1.4.2.tar.xz" version="1.4.2"
+            repo="gstreamer"
+            hash="sha256:31623079803b0311560730f47389cc360ddb2df5286ad2cf40048b9a82c4808e"/>
+  </autotools>
+
+  <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+    <branch module="gst-libav/gst-libav-1.4.2.tar.xz" version="1.4.2"
+            repo="gstreamer"
+            hash="sha256:f658a7025ef00a87f1f2032621bad88ad77ba87e18583d7a66bfcf335b187104"/>
+  </autotools>
+
+</moduleset>

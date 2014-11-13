@@ -34,7 +34,7 @@
 #include <wtf/MathExtras.h>
 #include <wtf/text/WTFString.h>
 
-#if !PLATFORM(EFL)
+#if PLATFORM(GTK)
 #include <gdk/gdk.h>
 #endif
 

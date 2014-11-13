@@ -1,0 +1,230 @@
+/*
+ * Copyright (C) 2014 Igalia S.L.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "config.h"
+#include "PageClientImpl.h"
+
+#include "DrawingAreaProxyImpl.h"
+#include "WPEView.h"
+#include "WebContextMenuProxy.h"
+#include <WebCore/NotImplemented.h>
+
+namespace WebKit {
+
+PageClientImpl::PageClientImpl(WPE::View& view)
+    : m_view(view)
+{
+}
+
+std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
+{
+    return std::make_unique<DrawingAreaProxyImpl>(m_view.page());
+}
+
+void PageClientImpl::setViewNeedsDisplay(const WebCore::IntRect&)
+{
+}
+
+void PageClientImpl::displayView()
+{
+}
+
+void PageClientImpl::scrollView(const WebCore::IntRect&, const WebCore::IntSize&)
+{
+}
+
+void PageClientImpl::requestScroll(const WebCore::FloatPoint&, bool)
+{
+}
+
+WebCore::IntSize PageClientImpl::viewSize()
+{
+    return m_view.size();
+}
+
+bool PageClientImpl::isViewWindowActive()
+{
+    // FIXME: Needs proper implementation.
+    return true;
+}
+
+bool PageClientImpl::isViewFocused()
+{
+    // FIXME: Needs proper implementation.
+    return true;
+}
+
+bool PageClientImpl::isViewVisible()
+{
+    // FIXME: Needs proper implementation.
+    return true;
+}
+
+bool PageClientImpl::isViewInWindow()
+{
+    // FIXME: Needs proper implementation.
+    return true;
+}
+
+void PageClientImpl::processDidExit()
+{
+}
+
+void PageClientImpl::didRelaunchProcess()
+{
+}
+
+void PageClientImpl::pageClosed()
+{
+}
+
+void PageClientImpl::preferencesDidChange()
+{
+}
+
+void PageClientImpl::toolTipChanged(const String&, const String&)
+{
+}
+
+void PageClientImpl::didCommitLoadForMainFrame(const String&, bool)
+{
+}
+
+void PageClientImpl::handleDownloadRequest(DownloadProxy*)
+{
+}
+
+void PageClientImpl::setCursor(const WebCore::Cursor&)
+{
+}
+
+void PageClientImpl::setCursorHiddenUntilMouseMoves(bool)
+{
+}
+
+void PageClientImpl::didChangeViewportProperties(const WebCore::ViewportAttributes&)
+{
+}
+
+void PageClientImpl::registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo)
+{
+}
+
+void PageClientImpl::clearAllEditCommands()
+{
+}
+
+bool PageClientImpl::canUndoRedo(WebPageProxy::UndoOrRedo)
+{
+    return false;
+}
+
+void PageClientImpl::executeUndoRedo(WebPageProxy::UndoOrRedo)
+{
+}
+
+WebCore::FloatRect PageClientImpl::convertToDeviceSpace(const WebCore::FloatRect& rect)
+{
+    return rect;
+}
+
+WebCore::FloatRect PageClientImpl::convertToUserSpace(const WebCore::FloatRect& rect)
+{
+    return rect;
+}
+
+WebCore::IntPoint PageClientImpl::screenToRootView(const WebCore::IntPoint& point)
+{
+    return point;
+}
+
+WebCore::IntRect PageClientImpl::rootViewToScreen(const WebCore::IntRect& rect)
+{
+    return rect;
+}
+
+void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent&, bool)
+{
+}
+
+PassRefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy*)
+{
+    return nullptr;
+}
+
+PassRefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy*)
+{
+    return nullptr;
+}
+
+void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator>, bool, bool)
+{
+}
+
+void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext&)
+{
+}
+
+void PageClientImpl::exitAcceleratedCompositingMode()
+{
+}
+
+void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext&)
+{
+}
+
+void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&)
+{
+}
+
+void PageClientImpl::navigationGestureDidBegin()
+{
+}
+
+void PageClientImpl::navigationGestureWillEnd(bool, WebBackForwardListItem&)
+{
+}
+
+void PageClientImpl::navigationGestureDidEnd(bool, WebBackForwardListItem&)
+{
+}
+
+void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem&)
+{
+}
+
+void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
+{
+}
+
+void PageClientImpl::didFinishLoadForMainFrame()
+{
+}
+
+void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType)
+{
+}
+
+} // namespace WebKit

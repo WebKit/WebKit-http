@@ -1,0 +1,6 @@
+list(APPEND JavaScriptCore_LIBRARIES
+    ${GLIB_LIBRARIES}
+)
+list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
+    ${GLIB_INCLUDE_DIRS}
+)

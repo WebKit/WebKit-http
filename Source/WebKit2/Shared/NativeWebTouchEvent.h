@@ -53,6 +53,9 @@ public:
 #elif PLATFORM(EFL)
     NativeWebTouchEvent(EwkTouchEvent*, const WebCore::AffineTransform&);
     const EwkTouchEvent* nativeEvent() const { return m_nativeEvent.get(); }
+#elif PLATFORM(WPE)
+    NativeWebTouchEvent(const void*);
+    const void* nativeEvent() const { return nullptr; }
 #endif
 
 private:

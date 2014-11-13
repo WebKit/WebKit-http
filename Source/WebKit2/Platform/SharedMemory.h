@@ -30,9 +30,8 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if USE(UNIX_DOMAIN_SOCKETS)
 #include "Attachment.h"
-#include <wtf/text/WTFString.h>
 #endif
 
 namespace IPC {

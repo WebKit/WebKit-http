@@ -76,7 +76,7 @@
 @end
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
 #define ENABLE_NETWORK_PROCESS 1
 #endif
 

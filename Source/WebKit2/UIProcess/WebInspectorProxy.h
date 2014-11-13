@@ -193,7 +193,7 @@ private:
 
     WebPageGroup* inspectorPageGroup() const;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
     void createInspectorWindow();
 #endif
 

@@ -30,7 +30,7 @@
 #include <windows.h>
 #elif PLATFORM(EFL)
 #include <Ecore.h>
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
 #include <glib.h>
 #endif
 
@@ -63,7 +63,7 @@ void EventLoop::cycle()
     CFRunLoopRunInMode(remoteInspectorRunLoopMode(), timeInterval, true);
 #elif PLATFORM(EFL)
     ecore_main_loop_iterate();
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
     g_main_context_iteration(NULL, FALSE);
 #endif
 }

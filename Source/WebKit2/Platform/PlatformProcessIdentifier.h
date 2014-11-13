@@ -35,7 +35,7 @@ namespace WebKit {
 
 #if PLATFORM(COCOA)
 typedef pid_t PlatformProcessIdentifier;
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
 typedef int PlatformProcessIdentifier;
 #elif PLATFORM(EFL)
 typedef pid_t PlatformProcessIdentifier;

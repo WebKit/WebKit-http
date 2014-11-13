@@ -32,10 +32,17 @@
 
 namespace WTF {
 
+static GMainContext* threadDefaultContext()
+{
+    if (GMainContext* context = g_main_context_get_thread_default())
+        return context;
+    return g_main_context_default();
+}
+
 RunLoop::RunLoop()
 {
     // g_main_context_default() doesn't add an extra reference.
-    m_runLoopContext = isMainThread() ? g_main_context_default() : adoptGRef(g_main_context_new());
+    m_runLoopContext = isMainThread() ? threadDefaultContext() : adoptGRef(g_main_context_new());
     ASSERT(m_runLoopContext);
     GRefPtr<GMainLoop> innermostLoop = adoptGRef(g_main_loop_new(m_runLoopContext.get(), FALSE));
     ASSERT(innermostLoop);

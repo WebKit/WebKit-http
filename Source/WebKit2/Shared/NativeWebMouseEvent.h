@@ -56,6 +56,8 @@ public:
 #elif PLATFORM(EFL)
     template <typename EvasEventMouse>
     NativeWebMouseEvent(const EvasEventMouse*, const WebCore::AffineTransform&, const WebCore::AffineTransform&);
+#elif PLATFORM(WPE)
+    NativeWebMouseEvent(const void*);
 #endif
 
 #if USE(APPKIT)
@@ -66,6 +68,8 @@ public:
     const void* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(IOS)
     const void* nativeEvent() const { return 0; }
+#elif PLATFORM(WPE)
+    const void* nativeEvent() const { return nullptr; }
 #endif
 
 private:

@@ -33,7 +33,7 @@
 #include <wtf/RetainPtr.h>
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
 typedef struct _GModule GModule;
 #endif
 
@@ -74,7 +74,7 @@ private:
 #if !defined(__LP64__)
     CFBundleRefNum m_bundleResourceMap;
 #endif
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
     GModule* m_handle;
 #elif PLATFORM(EFL)
     EflUniquePtr<Eina_Module> m_module;

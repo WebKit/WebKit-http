@@ -38,7 +38,7 @@ OBJC_CLASS NSURLDownload;
 OBJC_CLASS WKDownloadAsDelegate;
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceHandleClient.h>
 #include <memory>
@@ -134,7 +134,7 @@ private:
     RetainPtr<CFURLDownloadRef> m_download;
     RefPtr<DownloadAuthenticationClient> m_authenticationClient;
 #endif
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
     std::unique_ptr<WebCore::ResourceHandleClient> m_downloadClient;
     RefPtr<WebCore::ResourceHandle> m_resourceHandle;
 #endif

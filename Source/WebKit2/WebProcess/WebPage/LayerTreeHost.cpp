@@ -30,8 +30,12 @@
 #include "CoordinatedLayerTreeHost.h"
 #endif
 
-#if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER_GL)
+#if PLATFORM(GTK)
 #include "LayerTreeHostGtk.h"
+#elif PLATFORM(WPE)
+#include "LayerTreeHostWPE.h"
+#endif
 #endif
 
 using namespace WebCore;
@@ -42,8 +46,10 @@ PassRefPtr<LayerTreeHost> LayerTreeHost::create(WebPage* webPage)
 {
 #if USE(COORDINATED_GRAPHICS)
     return CoordinatedLayerTreeHost::create(webPage);
-#elif PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
+#elif USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK)
     return LayerTreeHostGtk::create(webPage);
+#elif USE(TEXTURE_MAPPER_GL) && PLATFORM(WPE)
+    return LayerTreeHostWPE::create(webPage);
 #else
     UNUSED_PARAM(webPage);
     return 0;

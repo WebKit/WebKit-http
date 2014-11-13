@@ -41,11 +41,11 @@
 #include <wtf/Threading.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
 #include "PlatformProcessIdentifier.h"
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
 #include <wtf/gobject/GMainLoopSource.h>
 #include <wtf/gobject/GRefPtr.h>
 #elif PLATFORM(EFL)
@@ -70,7 +70,7 @@ public:
 
 #if OS(DARWIN)
     dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
     void registerSocketEventHandler(int, std::function<void ()>, std::function<void ()>);
     void unregisterSocketEventHandler(int);
 #elif PLATFORM(EFL)
@@ -87,7 +87,7 @@ private:
 #if OS(DARWIN)
     static void executeFunction(void*);
     dispatch_queue_t m_dispatchQueue;
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
     static void startWorkQueueThread(WorkQueue*);
     void workQueueThreadBody();
 

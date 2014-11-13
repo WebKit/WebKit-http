@@ -40,14 +40,10 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/UniStdExtras.h>
 
-#if PLATFORM(GTK)
-#include <glib.h>
-#endif
-
 #ifdef SOCK_SEQPACKET
 #define SOCKET_TYPE SOCK_SEQPACKET
 #else
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
 #define SOCKET_TYPE SOCK_STREAM
 #else
 #define SOCKET_TYPE SOCK_DGRAM
@@ -139,7 +135,7 @@ void Connection::platformInitialize(Identifier identifier)
 void Connection::platformInvalidate()
 {
     // In GTK+ platform the socket is closed by the work queue.
-#if !PLATFORM(GTK)
+#if !PLATFORM(GTK) || PLATFORM(WPE)
     if (m_socketDescriptor != -1)
         closeWithRetry(m_socketDescriptor);
 #endif
@@ -147,7 +143,7 @@ void Connection::platformInvalidate()
     if (!m_isConnected)
         return;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
     m_connectionQueue->unregisterSocketEventHandler(m_socketDescriptor);
 #endif
 
@@ -389,7 +385,7 @@ bool Connection::open()
     }
 
     m_isConnected = true;
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
     RefPtr<Connection> protector(this);
     m_connectionQueue->registerSocketEventHandler(m_socketDescriptor,
         [=] {

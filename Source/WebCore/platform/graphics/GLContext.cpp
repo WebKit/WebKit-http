@@ -42,6 +42,10 @@
 #endif
 #endif
 
+#if PLATFORM(WAYLAND)
+#include "WaylandDisplayWPE.h"
+#endif
+
 using WTF::ThreadSpecific;
 
 namespace WebCore {
@@ -141,6 +145,15 @@ void GLContext::cleanupActiveContextsAtExit()
 }
 #endif // PLATFORM(X11)
 
+#if PLATFORM(WAYLAND)
+struct wl_display* GLContext::sharedWaylandDisplay()
+{
+    // FIXME: RELEASE_ASSERT? Return a reference from ::instance()?
+    if (auto* display = WaylandDisplay::instance())
+        return display->nativeDisplay();
+    return nullptr;
+}
+#endif
 
 PassOwnPtr<GLContext> GLContext::createContextForWindow(GLNativeWindowType windowHandle, GLContext* sharingContext)
 {
@@ -174,7 +187,11 @@ GLContext::GLContext()
 
 PassOwnPtr<GLContext> GLContext::createOffscreenContext(GLContext* sharingContext)
 {
+#if PLATFORM(WAYLAND)
+    return WaylandDisplay::instance()->createOffscreenGLContext(sharingContext);
+#else
     return createContextForWindow(0, sharingContext);
+#endif
 }
 
 GLContext::~GLContext()

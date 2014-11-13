@@ -32,6 +32,9 @@
 #elif PLATFORM(EFL)
 #include <WebCore/ErrorsEfl.h>
 #endif
+#if PLATFORM(WPE)
+#include <WebCore/ErrorsWPE.h>
+#endif
 
 namespace WebKit {
 
