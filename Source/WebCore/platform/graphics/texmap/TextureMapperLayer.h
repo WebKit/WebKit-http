@@ -77,7 +77,8 @@ public:
     TextureMapper* textureMapper() const { return rootLayer().m_textureMapper; }
     void setTextureMapper(TextureMapper* texmap) { m_textureMapper = texmap; }
 
-    void setChildren(const Vector<TextureMapperLayer*>&);
+    void removeAllChildren();
+    void addChild(TextureMapperLayer*);
     void setMaskLayer(TextureMapperLayer*);
     void setReplicaLayer(TextureMapperLayer*);
     void setPosition(const FloatPoint&);
@@ -125,7 +126,6 @@ public:
     void setScrollPositionDeltaIfNeeded(const FloatSize&);
 
     void applyAnimationsRecursively();
-    void addChild(TextureMapperLayer*);
 
 private:
     const TextureMapperLayer& rootLayer() const
@@ -146,7 +146,6 @@ private:
     bool isAncestorFixedToViewport() const;
     TransformationMatrix replicaTransform();
     void removeFromParent();
-    void removeAllChildren();
 
     enum ResolveSelfOverlapMode {
         ResolveSelfOverlapAlways = 0,

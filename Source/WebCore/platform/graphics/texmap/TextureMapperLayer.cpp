@@ -448,13 +448,6 @@ TextureMapperLayer::~TextureMapperLayer()
     removeFromParent();
 }
 
-void TextureMapperLayer::setChildren(const Vector<TextureMapperLayer*>& newChildren)
-{
-    removeAllChildren();
-    for (auto* child : newChildren)
-        addChild(child);
-}
-
 void TextureMapperLayer::addChild(TextureMapperLayer* childLayer)
 {
     ASSERT(childLayer != this);
