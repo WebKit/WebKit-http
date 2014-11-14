@@ -2976,7 +2976,11 @@ bool RenderLayerCompositor::mainFrameBackingIsTiled() const
     if (!backing)
         return false;
 
+#if USE(TILED_BACKING_STORE)
+    return true;
+#else
     return backing->usingTiledBacking();
+#endif
 }
 
 bool RenderLayerCompositor::shouldCompositeOverflowControls() const

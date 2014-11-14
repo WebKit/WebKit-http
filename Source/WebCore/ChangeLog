@@ -1,3 +1,24 @@
+2015-01-08  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [CoordinatedGraphics] Non-overlay scrollbar is not rendered
+        https://bugs.webkit.org/show_bug.cgi?id=140243
+
+        Reviewed by NOBODY (OOPS!).
+
+        Current Coordinated Graphics, doesn't support non-overlay scrollbars properly.
+        Because Coordinated Graphics uses TILED_BACKING_STORE, all of scrollbars
+        should be composited, but it only composite overlay scrollbars.
+
+        RenderLayerCompositor::mainFrameBackingIsTiled is checking the
+        RenderLayerBacking uses tiledbacking dynamically.  In the Coordinated
+        Graphics, the main frame backing is always uses tiled backing store. So
+        it should return true.
+
+        No new tests. No change in functionality.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::mainFrameBackingIsTiled):
+
 2015-03-31  Simon Fraser  <simon.fraser@apple.com>
 
         Make it possible to compute a region for elements on the page that have wheel event handlers
