@@ -45,16 +45,12 @@
 #import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/GeometryUtilities.h>
 #import <WebCore/LocalizedStrings.h>
+#import <WebCore/LookupSPI.h>
 #import <WebCore/NSSharingServiceSPI.h>
 #import <WebCore/NSSharingServicePickerSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/URL.h>
-
-enum class MenuUpdateStage {
-    PrepareForMenu,
-    MenuNeedsUpdate
-};
 
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, ImageKit)
 SOFT_LINK_CLASS(ImageKit, IKSlideshow)
@@ -63,7 +59,7 @@ using namespace WebCore;
 using namespace WebKit;
 
 @interface WKActionMenuController () <NSSharingServiceDelegate, NSSharingServicePickerDelegate, NSPopoverDelegate>
-- (void)_updateActionMenuItemsForStage:(MenuUpdateStage)stage;
+- (void)_updateActionMenuItems;
 - (BOOL)_canAddMediaToPhotos;
 - (void)_showTextIndicator;
 - (void)_hideTextIndicator;
@@ -161,9 +157,9 @@ using namespace WebKit;
 - (void)willDestroyView:(WKView *)view
 {
     _page = nullptr;
-    _wkView = nullptr;
+    _wkView = nil;
     _hitTestResult = ActionMenuHitTestResult();
-
+    _currentActionContext = nil;
 }
 
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
@@ -181,14 +177,14 @@ using namespace WebKit;
     _page->performActionMenuHitTestAtLocation([_wkView convertPoint:event.locationInWindow fromView:nil]);
 
     _state = ActionMenuState::Pending;
-    [self _updateActionMenuItemsForStage:MenuUpdateStage::PrepareForMenu];
+    [self _updateActionMenuItems];
 
     _shouldKeepPreviewPopoverOpen = NO;
 }
 
 - (BOOL)isMenuForTextContent
 {
-    return _type == kWKActionMenuReadOnlyText || _type == kWKActionMenuEditableText || _type == kWKActionMenuEditableTextWithSuggestions || _type == kWKActionMenuWhitespaceInEditableArea;
+    return _type == kWKActionMenuReadOnlyText || _type == kWKActionMenuEditableText || _type == kWKActionMenuEditableTextWithSuggestions;
 }
 
 - (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
@@ -197,15 +193,26 @@ using namespace WebKit;
         return;
 
     if (_type == kWKActionMenuDataDetectedItem) {
-        if (menu.numberOfItems == 1) {
+        if (_currentActionContext && ![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()]) {
+            [menu cancelTracking];
+            return;
+        }
+        if (menu.numberOfItems == 1)
             _page->clearSelection();
-            [self _showTextIndicator];
-        } else
+        else
             _page->selectLastActionMenuRange();
         return;
     }
 
+    if (_type == kWKActionMenuWhitespaceInEditableArea) {
+        _page->focusAndSelectLastActionMenuHitTestResult();
+        return;
+    }
+
     if (![self isMenuForTextContent]) {
+#if WK_API_ENABLED
+        [self _createPreviewPopover];
+#endif
         _page->clearSelection();
         return;
     }
@@ -222,9 +229,12 @@ using namespace WebKit;
     if (menu != _wkView.actionMenu)
         return;
 
-    if (_type == kWKActionMenuDataDetectedItem && menu.numberOfItems > 1)
-        [self _hideTextIndicator];
+    if (_type == kWKActionMenuDataDetectedItem) {
+        if (_currentActionContext)
+            [getDDActionsManagerClass() didUseActions];
+    }
 
+    [_previewPopover setBehavior:NSPopoverBehaviorTransient];
     if (!_shouldKeepPreviewPopoverOpen)
         [self _clearPreviewPopover];
 
@@ -232,6 +242,7 @@ using namespace WebKit;
     _hitTestResult = ActionMenuHitTestResult();
     _type = kWKActionMenuNone;
     _sharingServicePicker = nil;
+    _currentActionContext = nil;
 }
 
 - (void)didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData
@@ -240,6 +251,8 @@ using namespace WebKit;
     _state = ActionMenuState::Ready;
     _hitTestResult = hitTestResult;
     _userData = userData;
+
+    [self _updateActionMenuItems];
 }
 
 - (void)dismissActionMenuPopovers
@@ -310,26 +323,31 @@ using namespace WebKit;
 
 - (void)_previewURLFromActionMenu:(id)sender
 {
+    ASSERT(_previewPopover);
+
     // We might already have a preview showing if the menu item was highlighted earlier.
-    if (_previewPopover)
+    if ([_previewPopover isShown])
         return;
 
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
-    NSURL *url = [NSURL _web_URLWithWTFString:hitTestResult->absoluteLinkURL()];
     NSRect originRect = hitTestResult->elementBoundingBox();
-    [self _createPreviewPopoverForURL:url originRect:originRect];
     [_previewPopover showRelativeToRect:originRect ofView:_wkView preferredEdge:NSMaxYEdge];
 }
 
-- (void)_createPreviewPopoverForURL:(NSURL *)url originRect:(NSRect)originRect
+- (void)_createPreviewPopover
 {
+    RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
+    NSURL *url = [NSURL _web_URLWithWTFString:hitTestResult->absoluteLinkURL()];
+    NSRect originRect = hitTestResult->elementBoundingBox();
+
     NSSize popoverSize = [self _preferredSizeForPopoverPresentedFromOriginRect:originRect];
     CGFloat actualPopoverToViewScale = popoverSize.width / NSWidth(_wkView.bounds);
     _previewViewController = adoptNS([[WKPagePreviewViewController alloc] initWithPageURL:url mainViewSize:_wkView.bounds.size popoverToViewScale:actualPopoverToViewScale]);
     _previewViewController->_delegate = self;
+    [_previewViewController loadView];
 
     _previewPopover = adoptNS([[NSPopover alloc] init]);
-    [_previewPopover setBehavior:NSPopoverBehaviorTransient];
+    [_previewPopover setBehavior:NSPopoverBehaviorApplicationDefined];
     [_previewPopover setContentSize:popoverSize];
     [_previewPopover setContentViewController:_previewViewController.get()];
     [_previewPopover setDelegate:self];
@@ -402,17 +420,18 @@ static bool targetSizeFitsInAvailableSpace(NSSize targetSize, NSSize availableSp
 {
     RetainPtr<NSMenuItem> copyVideoURLItem = [self _createActionMenuItemForTag:kWKContextActionItemTagCopyVideoURL];
 
-    RetainPtr<NSMenuItem> saveToDownloadsItem;
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
-    if (hitTestResult->isDownloadableMedia())
-        saveToDownloadsItem = [self _createActionMenuItemForTag:kWKContextActionItemTagSaveVideoToDownloads];
-    else
-        saveToDownloadsItem = [NSMenuItem separatorItem];
-
+    RetainPtr<NSMenuItem> saveToDownloadsItem = [self _createActionMenuItemForTag:kWKContextActionItemTagSaveVideoToDownloads];
     RetainPtr<NSMenuItem> shareItem = [self _createActionMenuItemForTag:kWKContextActionItemTagShareVideo];
-    String videoURL = hitTestResult->absoluteMediaURL();
-    if (!videoURL.isEmpty()) {
-        _sharingServicePicker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ videoURL ]]);
+
+    String urlToShare = hitTestResult->absoluteMediaURL();
+    if (!hitTestResult->isDownloadableMedia()) {
+        [saveToDownloadsItem setEnabled:NO];
+        urlToShare = _page->mainFrame()->url();
+    }
+
+    if (!urlToShare.isEmpty()) {
+        _sharingServicePicker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ urlToShare ]]);
         [_sharingServicePicker setDelegate:self];
         [shareItem setSubmenu:[_sharingServicePicker menu]];
     }
@@ -423,9 +442,12 @@ static bool targetSizeFitsInAvailableSpace(NSSize targetSize, NSSize availableSp
 - (void)_copyVideoURL:(id)sender
 {
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
+    String urlToCopy = hitTestResult->absoluteMediaURL();
+    if (!hitTestResult->isDownloadableMedia())
+        urlToCopy = _page->mainFrame()->url();
 
     [[NSPasteboard generalPasteboard] clearContents];
-    [[NSPasteboard generalPasteboard] writeObjects:@[ hitTestResult->absoluteMediaURL() ]];
+    [[NSPasteboard generalPasteboard] writeObjects:@[ urlToCopy ]];
 }
 
 - (void)_saveVideoToDownloads:(id)sender
@@ -435,6 +457,16 @@ static bool targetSizeFitsInAvailableSpace(NSSize targetSize, NSSize availableSp
 }
 
 #pragma mark Image actions
+
+- (NSImage *)_hitTestResultImage
+{
+    RefPtr<SharedMemory> imageSharedMemory = _hitTestResult.imageSharedMemory;
+    if (!imageSharedMemory)
+        return nil;
+
+    RetainPtr<NSImage> nsImage = adoptNS([[NSImage alloc] initWithData:[NSData dataWithBytes:imageSharedMemory->data() length:imageSharedMemory->size()]]);
+    return nsImage.autorelease();
+}
 
 - (NSArray *)_defaultMenuItemsForImage
 {
@@ -447,10 +479,8 @@ static bool targetSizeFitsInAvailableSpace(NSSize targetSize, NSSize availableSp
     RetainPtr<NSMenuItem> saveToDownloadsItem = [self _createActionMenuItemForTag:kWKContextActionItemTagSaveImageToDownloads];
     RetainPtr<NSMenuItem> shareItem = [self _createActionMenuItemForTag:kWKContextActionItemTagShareImage];
 
-    if (RefPtr<ShareableBitmap> bitmap = _hitTestResult.image) {
-        RetainPtr<CGImageRef> image = bitmap->makeCGImage();
-        RetainPtr<NSImage> nsImage = adoptNS([[NSImage alloc] initWithCGImage:image.get() size:NSZeroSize]);
-        _sharingServicePicker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ nsImage.get() ]]);
+    if (RetainPtr<NSImage> image = [self _hitTestResultImage]) {
+        _sharingServicePicker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ image.get() ]]);
         [_sharingServicePicker setDelegate:self];
         [shareItem setSubmenu:[_sharingServicePicker menu]];
     }
@@ -460,14 +490,12 @@ static bool targetSizeFitsInAvailableSpace(NSSize targetSize, NSSize availableSp
 
 - (void)_copyImage:(id)sender
 {
-    RefPtr<ShareableBitmap> bitmap = _hitTestResult.image;
-    if (!bitmap)
+    RetainPtr<NSImage> image = [self _hitTestResultImage];
+    if (!image)
         return;
 
-    RetainPtr<CGImageRef> image = bitmap->makeCGImage();
-    RetainPtr<NSImage> nsImage = adoptNS([[NSImage alloc] initWithCGImage:image.get() size:NSZeroSize]);
     [[NSPasteboard generalPasteboard] clearContents];
-    [[NSPasteboard generalPasteboard] writeObjects:@[ nsImage.get() ]];
+    [[NSPasteboard generalPasteboard] writeObjects:@[ image.get() ]];
 }
 
 - (void)_saveImageToDownloads:(id)sender
@@ -531,22 +559,20 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     if (![self _canAddMediaToPhotos])
         return;
 
-    RefPtr<ShareableBitmap> bitmap = _hitTestResult.image;
-    if (!bitmap)
+    RefPtr<SharedMemory> imageSharedMemory = _hitTestResult.imageSharedMemory;
+    if (!imageSharedMemory->size() || _hitTestResult.imageExtension.isEmpty())
         return;
-    RetainPtr<CGImageRef> image = bitmap->makeCGImage();
+
+    RetainPtr<NSData> imageData = adoptNS([[NSData alloc] initWithBytes:imageSharedMemory->data() length:imageSharedMemory->size()]);
+    RetainPtr<NSString> suggestedFilename = [[[NSProcessInfo processInfo] globallyUniqueString] stringByAppendingPathExtension:_hitTestResult.imageExtension];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        NSString * const suggestedFilename = @"image.jpg";
-
-        NSString *filePath = pathToPhotoOnDisk(suggestedFilename);
+        NSString *filePath = pathToPhotoOnDisk(suggestedFilename.get());
         if (!filePath)
             return;
 
         NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-        auto dest = adoptCF(CGImageDestinationCreateWithURL((CFURLRef)fileURL, kUTTypeJPEG, 1, nullptr));
-        CGImageDestinationAddImage(dest.get(), image.get(), nullptr);
-        CGImageDestinationFinalize(dest.get());
+        [imageData writeToURL:fileURL atomically:NO];
 
         dispatch_async(dispatch_get_main_queue(), ^{
             // This API provides no way to report failure, but if 18420778 is fixed so that it does, we should handle this.
@@ -563,13 +589,22 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     if (!actionContext)
         return @[ ];
 
-    actionContext.completionHandler = ^() {
+    // Ref our WebPageProxy for use in the blocks below.
+    RefPtr<WebPageProxy> page = _page;
+    PageOverlay::PageOverlayID overlayID = _hitTestResult.detectedDataOriginatingPageOverlay;
+    _currentActionContext = [actionContext contextForView:_wkView altMode:YES interactionStartedHandler:^() {
+        page->send(Messages::WebPage::DataDetectorsDidPresentUI(overlayID));
+    } interactionChangedHandler:^() {
+        [self _showTextIndicator];
+        page->send(Messages::WebPage::DataDetectorsDidChangeUI(overlayID));
+    } interactionStoppedHandler:^() {
         [self _hideTextIndicator];
-    };
+        page->send(Messages::WebPage::DataDetectorsDidHideUI(overlayID));
+    }];
 
-    actionContext.forActionMenuContent = YES;
-    actionContext.highlightFrame = [_wkView.window convertRectToScreen:[_wkView convertRect:_hitTestResult.detectedDataBoundingBox toView:nil]];
-    return [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_hitTestResult.actionContext mainResult] actionContext:actionContext];
+    [_currentActionContext setHighlightFrame:[_wkView.window convertRectToScreen:[_wkView convertRect:_hitTestResult.detectedDataBoundingBox toView:nil]]];
+
+    return [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_currentActionContext mainResult] actionContext:_currentActionContext.get()];
 }
 
 - (NSArray *)_defaultMenuItemsForText
@@ -663,6 +698,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 {
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
 
+    // FIXME: Should this show a yellow highlight?
     RetainPtr<DDActionContext> actionContext = [[getDDActionContextClass() alloc] init];
     [actionContext setForActionMenuContent:YES];
     [actionContext setHighlightFrame:[_wkView.window convertRectToScreen:[_wkView convertRect:hitTestResult->elementBoundingBox() toView:nil]]];
@@ -685,7 +721,8 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
             connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformActionMenuHitTest>(_page->pageID(), std::chrono::milliseconds(500));
     }
 
-    [self _updateActionMenuItemsForStage:MenuUpdateStage::MenuNeedsUpdate];
+    if (_state != ActionMenuState::Ready)
+        [self _updateActionMenuItems];
 }
 
 - (void)menu:(NSMenu *)menu willHighlightItem:(NSMenuItem *)item
@@ -739,6 +776,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     SEL selector = nullptr;
     NSString *title = nil;
     NSImage *image = nil;
+    bool enabled = true;
 
     switch (tag) {
     case kWKContextActionItemTagOpenLinkInDefaultBrowser:
@@ -794,6 +832,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         selector = @selector(_lookupText:);
         title = WEB_UI_STRING_KEY("Look Up", "Look Up (action menu item)", "action menu item");
         image = [NSImage imageNamed:@"NSActionMenuLookup"];
+        enabled = getLULookupDefinitionModuleClass();
         break;
 
     case kWKContextActionItemTagPaste:
@@ -815,12 +854,12 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
     case kWKContextActionItemTagSaveVideoToDownloads:
         selector = @selector(_saveVideoToDownloads:);
-        title = WEB_UI_STRING_KEY("Share", "Share (video action menu item)", "video action menu item");
+        title = WEB_UI_STRING_KEY("Save to Downloads", "Save to Downloads (video action menu item)", "video action menu item");
         image = [NSImage imageNamed:@"NSActionMenuSaveToDownloads"];
         break;
 
     case kWKContextActionItemTagShareVideo:
-        title = WEB_UI_STRING_KEY("Save to Downloads", "Save to Downloads (video action menu item)", "video action menu item");
+        title = WEB_UI_STRING_KEY("Share", "Share (video action menu item)", "video action menu item");
         image = [NSImage imageNamed:@"NSActionMenuShare"];
         break;
 
@@ -833,6 +872,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     [item setImage:image];
     [item setTarget:self];
     [item setTag:tag];
+    [item setEnabled:enabled];
     return item;
 }
 
@@ -873,7 +913,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         return [self _defaultMenuItemsForVideo];
     }
 
-    if (!hitTestResult->absoluteImageURL().isEmpty() && _hitTestResult.image) {
+    if (!hitTestResult->absoluteImageURL().isEmpty() && _hitTestResult.imageSharedMemory && !_hitTestResult.imageExtension.isEmpty()) {
         _type = kWKActionMenuImage;
         return [self _defaultMenuItemsForImage];
     }
@@ -909,7 +949,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     return _state != ActionMenuState::Ready ? @[ [NSMenuItem separatorItem] ] : @[ ];
 }
 
-- (void)_updateActionMenuItemsForStage:(MenuUpdateStage)stage
+- (void)_updateActionMenuItems
 {
     [_wkView.actionMenu removeAllItems];
 
@@ -923,6 +963,9 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
     for (NSMenuItem *item in menuItems)
         [_wkView.actionMenu addItem:item];
+
+    if (_state == ActionMenuState::Ready && !_wkView.actionMenu.numberOfItems)
+        [_wkView.actionMenu cancelTracking];
 }
 
 #if WK_API_ENABLED

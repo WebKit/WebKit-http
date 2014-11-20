@@ -121,7 +121,9 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
 #if ENABLE(TOUCH_EVENTS)
     , m_hasTouchEventHandler(false)
 #endif
-    , m_inputType(InputType::createText(*this))
+    // m_inputType is lazily created when constructed by the parser to avoid constructing unnecessarily a text inputType and
+    // its shadow subtree, just to destroy them when the |type| attribute gets set by the parser to something else than 'text'.
+    , m_inputType(createdByParser ? nullptr : InputType::createText(*this))
 {
     ASSERT(hasTagName(inputTag) || hasTagName(isindexTag));
     setHasCustomStyleResolveCallbacks();
@@ -129,8 +131,10 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
 
 PassRefPtr<HTMLInputElement> HTMLInputElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
 {
+    bool shouldCreateShadowRootLazily = createdByParser;
     RefPtr<HTMLInputElement> inputElement = adoptRef(new HTMLInputElement(tagName, document, form, createdByParser));
-    inputElement->ensureUserAgentShadowRoot();
+    if (!shouldCreateShadowRootLazily)
+        inputElement->ensureUserAgentShadowRoot();
     return inputElement.release();
 }
 
@@ -432,6 +436,7 @@ void HTMLInputElement::setType(const AtomicString& type)
 
 void HTMLInputElement::updateType()
 {
+    ASSERT(m_inputType);
     auto newType = InputType::create(*this, fastGetAttribute(typeAttr));
     bool hadType = m_hasType;
     m_hasType = true;
@@ -456,17 +461,6 @@ void HTMLInputElement::updateType()
     m_inputType = WTF::move(newType);
     m_inputType->createShadowSubtree();
     updateInnerTextElementEditability();
-
-#if ENABLE(TOUCH_EVENTS)
-    bool hasTouchEventHandler = m_inputType->hasTouchEventHandler();
-    if (hasTouchEventHandler != m_hasTouchEventHandler) {
-        if (hasTouchEventHandler)
-            document().didAddTouchEventHandler(this);
-        else
-            document().didRemoveTouchEventHandler(this);
-        m_hasTouchEventHandler = hasTouchEventHandler;
-    }
-#endif
 
     setNeedsWillValidateCheck();
 
@@ -503,6 +497,23 @@ void HTMLInputElement::updateType()
             attributeChanged(alignAttr, nullAtom, align->value());
     }
 
+    runPostTypeUpdateTasks();
+}
+
+inline void HTMLInputElement::runPostTypeUpdateTasks()
+{
+    ASSERT(m_inputType);
+#if ENABLE(TOUCH_EVENTS)
+    bool hasTouchEventHandler = m_inputType->hasTouchEventHandler();
+    if (hasTouchEventHandler != m_hasTouchEventHandler) {
+        if (hasTouchEventHandler)
+            document().didAddTouchEventHandler(this);
+        else
+            document().didRemoveTouchEventHandler(this);
+        m_hasTouchEventHandler = hasTouchEventHandler;
+    }
+#endif
+
     if (renderer())
         setNeedsStyleRecalc(ReconstructRenderTree);
 
@@ -516,7 +527,7 @@ void HTMLInputElement::updateType()
 
     addToRadioButtonGroup();
 
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 void HTMLInputElement::subtreeHasChanged()
@@ -596,8 +607,29 @@ void HTMLInputElement::collectStyleForPresentationAttribute(const QualifiedName&
         HTMLTextFormControlElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
+inline void HTMLInputElement::initializeInputType()
+{
+    ASSERT(m_parsingInProgress);
+    ASSERT(!m_inputType);
+
+    const AtomicString& type = fastGetAttribute(typeAttr);
+    if (type.isNull()) {
+        m_inputType = InputType::createText(*this);
+        ensureUserAgentShadowRoot();
+        return;
+    }
+
+    m_hasType = true;
+    m_inputType = InputType::create(*this, type);
+    ensureUserAgentShadowRoot();
+    registerForSuspensionCallbackIfNeeded();
+    runPostTypeUpdateTasks();
+}
+
 void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
+    ASSERT(m_inputType);
+
     if (name == nameAttr) {
         removeFromRadioButtonGroup();
         m_name = value;
@@ -633,7 +665,7 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
             setNeedsStyleRecalc();
         }
         setFormControlValueMatchesRenderer(false);
-        setNeedsValidityCheck();
+        updateValidity();
         m_valueAttributeWasUpdatedAfterParsing = !m_parsingInProgress;
     } else if (name == checkedAttr) {
         // Another radio button in the same group might be checked by state
@@ -670,20 +702,20 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         setNeedsStyleRecalc();
     } else if (name == minAttr) {
         m_inputType->minOrMaxAttributeChanged();
-        setNeedsValidityCheck();
+        updateValidity();
     } else if (name == maxAttr) {
         m_inputType->minOrMaxAttributeChanged();
-        setNeedsValidityCheck();
+        updateValidity();
     } else if (name == multipleAttr) {
         m_inputType->multipleAttributeChanged();
-        setNeedsValidityCheck();
+        updateValidity();
     } else if (name == stepAttr) {
         m_inputType->stepAttributeChanged();
-        setNeedsValidityCheck();
+        updateValidity();
     } else if (name == patternAttr) {
-        setNeedsValidityCheck();
+        updateValidity();
     } else if (name == precisionAttr) {
-        setNeedsValidityCheck();
+        updateValidity();
     } else if (name == disabledAttr) {
         HTMLTextFormControlElement::parseAttribute(name, value);
         m_inputType->disabledAttributeChanged();
@@ -705,9 +737,16 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
     m_inputType->attributeChanged();
 }
 
+void HTMLInputElement::parserDidSetAttributes()
+{
+    ASSERT(m_parsingInProgress);
+    initializeInputType();
+}
+
 void HTMLInputElement::finishParsingChildren()
 {
     m_parsingInProgress = false;
+    ASSERT(m_inputType);
     HTMLTextFormControlElement::finishParsingChildren();
     if (!m_stateRestored) {
         bool checked = fastHasAttribute(checkedAttr);
@@ -820,7 +859,7 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
             buttons->updateCheckedState(this);
     if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme().stateChanged(*renderer(), ControlStates::CheckedState);
-    setNeedsValidityCheck();
+    updateValidity();
 
     // Ideally we'd do this from the render tree (matching
     // RenderTextView), but it's not possible to do it at the moment
@@ -964,7 +1003,7 @@ void HTMLInputElement::setValueInternal(const String& sanitizedValue, TextFieldE
 {
     m_valueIfDirty = sanitizedValue;
     m_wasModifiedByUser = eventBehavior != DispatchNoEvent;
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 double HTMLInputElement::valueAsDate() const
@@ -1011,7 +1050,7 @@ void HTMLInputElement::setValueFromRenderer(const String& value)
     if (!isTextField())
         dispatchInputEvent();
 
-    setNeedsValidityCheck();
+    updateValidity();
 
     // Clear autofill flag (and yellow background) on user edit.
     setAutofilled(false);
@@ -1470,9 +1509,9 @@ void HTMLInputElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
     addSubresourceURL(urls, src());
 }
 
-bool HTMLInputElement::recalcWillValidate() const
+bool HTMLInputElement::computeWillValidate() const
 {
-    return m_inputType->supportsValidation() && HTMLTextFormControlElement::recalcWillValidate();
+    return m_inputType->supportsValidation() && HTMLTextFormControlElement::computeWillValidate();
 }
 
 void HTMLInputElement::requiredAttributeChanged()
@@ -1693,7 +1732,7 @@ void HTMLInputElement::parseMaxLengthAttribute(const AtomicString& value)
     if (oldMaxLength != maxLength)
         updateValueIfNeeded();
     setNeedsStyleRecalc();
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 void HTMLInputElement::updateValueIfNeeded()

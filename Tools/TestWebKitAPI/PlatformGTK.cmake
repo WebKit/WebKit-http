@@ -91,6 +91,7 @@ add_executable(TestWebKit2
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ResizeWindowAfterCrash.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/RestoreSessionStateContainingFormData.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ShouldGoToBackForwardListItem.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/UserMedia.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/UserMessage.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WillSendSubmitEvent.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKPageGetScaleFactorNotZero.cpp
@@ -108,14 +109,12 @@ set_target_properties(TestWebKit2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBK
 
 set(TestWebCoreGtk_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/gtk/UserAgentQuirks.cpp
-    ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp
 )
 
 add_executable(TestWebCore
     ${test_main_SOURCES}
     ${TestWebCoreGtk_SOURCES}
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebCore/CSSParser.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
 )

@@ -1,3 +1,459 @@
+2014-11-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Screen braille input doesn't work on forms.
+        https://bugs.webkit.org/show_bug.cgi?id=138804
+
+        Reviewed by Mario Sanchez Prada.
+
+        Add a method to setValue through the AX API in DRT.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (setValueCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::setValue):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::setValue):
+
+2014-11-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove the WinCairo buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=138805
+
+        Reviewed by Alex Christensen.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (appendCustomBuildFlags):
+        * BuildSlaveSupport/test-result-archive:
+        (archiveTestResults):
+
+2014-11-18  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Libdispatch, Dyld, IOKit, Mach, NSPointerFunctions, MobileGestalt
+        SPI are not available in public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=138802
+
+        Reviewed by David Kilzer.
+
+        Include header MachVMSPI.h instead of including the private header mach/mach_vm.h.
+
+        * DumpRenderTree/mac/CheckedMalloc.cpp:
+
+2014-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix after /webkit2/WebKitWebView/default-context r176256.
+
+        Forgot to fix this test before landing.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewDefaultContext):
+
+2014-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to create a WebKitWebContext
+        https://bugs.webkit.org/show_bug.cgi?id=138826
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Use a different WebKitWebContext for every test to ensure test
+        cases are independent to each other. Tests using DBus to
+        communicate with the injected bundle extension now use a unique
+        name for the well known DBus name.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestAuthentication.cpp:
+        (beforeAll): Remove comment about the order of the tests and
+        move the success test before the failed one now that tests don't
+        depend on each others.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (beforeAll): Remove call to set the web extensions directory,
+        since this is now done for all test in the Test constructor.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestCookieManager.cpp:
+        (beforeAll): Do not create a temporary directory, a temporary data
+        directory is now created for all tests.
+        (afterAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDOMNode.cpp:
+        (testWebKitDOMNodeHierarchyNavigation): Pass the web extension ID
+        to the web process test runner.
+        (testWebKitDOMNodeInsertion): Ditto.
+        (testWebKitDOMNodeTagNames): Ditto.
+        (beforeAll): Remove call to set the web extensions directory.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDOMNodeFilter.cpp:
+        (runTest): Pass the web extension ID to the web process test runner.
+        (beforeAll): Remove call to set the web extensions directory.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDOMXPathNSResolver.cpp:
+        (runTest): Pass the web extension ID to the web process test runner.
+        (beforeAll): Remove call to set the web extensions directory.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        (createFileAtDestination): Use Test::dataDirectory() as base dir
+        for temporary files.
+        (beforeAll): Do not create a temporary directory.
+        (afterAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestFrame.cpp:
+        (webkitFrameTestRun): Pass the web extension ID to the web process
+        test runner.
+        (beforeAll): Remove call to set the web extensions directory.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestLoaderClient.cpp:
+        (beforeAll): Remove call to set the web extensions directory.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestMultiprocess.cpp:
+        (testProcessPerWebView): Use local member instead of global variable.
+        (testMultiprocessWebViewCreateReadyClose): Ditto.
+        (beforeAll): Do not connect to initialize-web-extensions, Test now
+        connects to the signal for all tests and calls a virtual method
+        that test can override.
+        (afterAll):
+        (initializeWebExtensions): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestPrinting.cpp:
+        (testPrintOperationPrint): Use Test::dataDirectory() as base dir
+        for temporary files.
+        (beforeAll): Do not create a temporary directory.
+        (afterAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (beforeAll): Remove call to set the web extensions directory.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestSSL.cpp:
+        (beforeAll): Remove comment about the tests order.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebExtensions.cpp:
+        (testWebExtensionGetTitle): Build the DBus service name using the
+        web extension ID.
+        (testDocumentLoadedSignal): Ditto.
+        (testWebKitWebViewProcessCrashed): Ditto.
+        (testWebExtensionIsolatedWorld): Ditto.
+        (beforeAll): Remove initialization-user-data test, since now all
+        tests are passing user data to the web extension.
+        (testWebExtensionInitializationUserData): Deleted.
+        (initializeWebExtensions): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitFaviconDatabase.cpp:
+        (testSetDirectory): Use the web context member inherited from Test.
+        (testClearDatabase): Ditto.
+        (testGetFaviconURI): Ditto.
+        (beforeAll): Do not create a temporary directory.
+        (afterAll):
+        (webkitFaviconDatabaseFinalizedCallback): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        (UserContentManagerTest::UserContentManagerTest):
+        (beforeAll): Remove call to set the web extensions directory.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (testWebContextDefault): Check also that a newly create web
+        context is not the default web context.
+        (testWebContextSpellChecker): Use the web context member inherited
+        from Test.
+        (testWebContextLanguages): Ditto.
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (methodCallCallback): Remove GetInitializationUserData method.
+        (webkit_web_extension_initialize_with_user_data): Always create
+        the DBus name using the user data provided.
+        (makeBusName): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebProcessTest.cpp:
+        (webkit_web_extension_initialize_with_user_data): Create the DBus
+        name using the user data provided.
+        (webkit_web_extension_initialize): Deleted.
+        * TestWebKitAPI/gtk/WebKit2Gtk/TestMain.cpp:
+        (Test::dataDirectory): Return the temporary data directory.
+        (removeNonEmptyDirectory): Also remove directories recursively.
+        (main): Remove the disk cache directory initialization, since this
+        is now done in the Test constructor.
+        * TestWebKitAPI/gtk/WebKit2Gtk/TestMain.h:
+        (Test::initializeWebExtensionsCallback): Call the virtual method
+        initializeWebExtensions()
+        (Test::Test): Create a new WebKitWebContext and initialize it.
+        (Test::~Test): Disconnect initialize-web-extensions signal.
+        (Test::initializeWebExtensions): Set the web extensions directory
+        and user data.
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebProcessTestRunner.cpp:
+        (WebProcessTestRunner::~WebProcessTestRunner): Use nullptr.
+        (WebProcessTestRunner::runTest): Build the DBus proxy using a
+        unique name created with the Test web extension ID.
+        (WebProcessTestRunner::proxy): Deleted.
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebProcessTestRunner.h:
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::WebViewTest): Create the web view with the Test web
+        context.
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h: Add optional user
+        content manager parameter to the constructor.
+
+2014-11-18  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] Mesa build fails over llvm-3.5
+        https://bugs.webkit.org/show_bug.cgi?id=138825
+
+        Reviewed by Gustavo Noronha Silva.
+
+        OwningPtr.h have been removed in llvm-3.5. Instread we should use std::unique_ptr for mesa build.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/mesa-gallivm-Fix-build-after-LLVM-commit-211259.patch: Added.
+
+2014-11-17  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r176232.
+
+        Broke the Mac build. Will investigate offline.
+
+        Reverted changeset:
+
+        "[iOS] Libdispatch, Dyld, IOKit, Mach, NSPointerFunctions,
+        MobileGestalt"
+        https://bugs.webkit.org/show_bug.cgi?id=138802
+        http://trac.webkit.org/changeset/176232
+
+2014-11-17  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Libdispatch, Dyld, IOKit, Mach, NSPointerFunctions, MobileGestalt
+        SPI are not available in public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=138802
+
+        Reviewed by David Kilzer.
+
+        Include header MachVMSPI.h instead of including the private header mach/mach_vm.h.
+
+        * DumpRenderTree/mac/CheckedMalloc.cpp:
+
+2014-11-17  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Having 30+ flaky failures breaks EWS
+        https://bugs.webkit.org/show_bug.cgi?id=138743
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds tests to ensure that the problem has been solved.
+        * Scripts/webkitpy/tool/bot/commitqueuetask_unittest.py:
+        (test_first_failure_limit):
+        (test_first_failure_limit_with_some_tree_redness):
+        (test_second_failure_limit):
+        (test_tree_failure_limit_with_patch_that_potentially_fixes_some_redness):
+        (test_first_and_second_failure_limit):
+        (test_first_and_clean_failure_limit):
+        (test_first_second_and_clean_failure_limit):
+        (test_very_red_tree_retry): Deleted.
+        Really this was renamed to test_first_second_and_clean_failure_limit.
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        Makes the appropriate changes to PatchAnalysisTask to make sure that
+        even when the first test run hits the failure limit, it will still try
+        a second run.
+        (PatchAnalysisTask._results_failed_different_tests):
+        (PatchAnalysisTask._test_patch):
+        (PatchAnalysisTask._continue_testing_patch_that_exceeded_failure_limit_on_first_or_second_try): Deleted.
+
+2014-11-17  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [GTK] Add library search paths from LDFLAGS before pkg-config --libs
+        https://bugs.webkit.org/show_bug.cgi?id=136018
+
+        Reviewed by Carlos Garcia Campos.
+
+        It is possible that the order of -L arguments in the output of
+        pkg-config is wrong, which causes the linker to find the wrong
+        version (usually older version) of libraries when running
+        gtkdoc-scangobj.
+
+        * gtk/gtkdoc.py:
+        (GTKDoc._run_gtkdoc_scangobj):
+
+2014-11-17  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        Bump EFL version to 1.12.0
+        https://bugs.webkit.org/show_bug.cgi?id=138733
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2014-11-16  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Expose the blockquote element using ATK_ROLE_BLOCK_QUOTE
+        https://bugs.webkit.org/show_bug.cgi?id=138771
+
+        Reviewed by Chris Fleizach.
+
+        Add mapping for ATK_ROLE_BLOCK_QUOTE in roleToString()
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+
+2014-11-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Video and audio elements should be exposed using ATK's video and audio roles.
+        https://bugs.webkit.org/show_bug.cgi?id=138767
+
+        Reviewed by Chris Fleizach.
+
+        Add mappings for ATK_ROLE_AUDIO and ATK_ROLE_VIDEO to roleToString().
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+
+2014-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Add shortcut macros to Mac TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=138729
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitpy/port/mac.py: (MacPort.configuration_specifier_macros):
+        Add version macros for current OS versions.
+
+2014-11-13  Alexey Proskuryakov  <ap@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=138628
+        A patch that doesn't apply is stuck in commit queue
+
+        Rubber-stamped by David Kilzer.
+
+        This also hopefully fixes other issues:
+        - a patch that has cq+ flag set by a non-committer kills commit queue;
+        - EWS never reports failing tests, and keeps spinning instead.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.set_flag_on_attachment):
+        (Bugzilla.obsolete_attachment):
+        Apply the fix from r174797 to more places.
+
+2014-11-13  Dan Bernstein  <mitz@apple.com>
+
+        Policy client not called for navigations through the page cache
+        https://bugs.webkit.org/show_bug.cgi?id=138703
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Navigation.mm:
+        (-[DecidePolicyForPageCacheNavigationDelegate webView:didFinishNavigation:]):
+        (-[DecidePolicyForPageCacheNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+
+2014-11-13  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Do not return ATK_ROLE_UNKNOWN for null or otherwise invalid accessible objects
+        https://bugs.webkit.org/show_bug.cgi?id=137867
+
+        Reviewed by Chris Fleizach.
+
+        Add ATK_ROLE_INVALID to roleToString. Remove the null AtkRole check in
+        AccessibilityUIElement::role: ATK_ROLE_INVALID = 0, and we need to be
+        able to test for the presence of ATK_ROLE_INVALID.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::role):
+
+2014-11-13  Juergen Ributzka  <juergen@apple.com>
+
+        Update the "combineModules" script to handel more LLVM metadata.
+        https://bugs.webkit.org/show_bug.cgi?id=138514
+
+        Reviewed by Filip Pizlo.
+
+        * ReducedFTL/combineModules.rb:
+
+2014-11-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow constructing a base PassRef with a derived Ref
+        https://bugs.webkit.org/show_bug.cgi?id=138701
+
+        Reviewed by Andreas Kling
+
+        * TestWebKitAPI/Tests/WTF/Ref.cpp:
+        (TestWebKitAPI::passWithPassRef):
+        (TestWebKitAPI::passWithPassRefPtr):
+        (TestWebKitAPI::TEST):
+
+2014-11-05  Ada Chan  <adachan@apple.com>
+
+        Implement new plug-in API for muting plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=138105
+
+        Reviewed by Anders Carlsson.
+
+        Add a new plug-in test for the mute API.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/TestNetscapePlugIn/Tests/mac/SetMuted.cpp: Added.
+        (SetMuted::SetMuted):
+        (SetMuted::isMuted):
+        (SetMuted::cachedIsMuted):
+        (SetMuted::ScriptableObject::hasProperty):
+        (SetMuted::ScriptableObject::getProperty):
+        (SetMuted::ScriptableObject::pluginTest):
+        (SetMuted::NPP_New):
+        (SetMuted::NPP_GetValue):
+        (SetMuted::NPP_SetValue):
+
+2014-11-12  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK gardening.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Skip the UserMediaBasic test because it depends on
+        constraints validation which is going to be fixed in bug #136449.
+
+2014-11-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Expose user script messages to GObject DOM bindings
+        https://bugs.webkit.org/show_bug.cgi?id=138411
+
+        Reviewed by Philippe Normand.
+
+        Add a test case to check that user script messages sent using the
+        DOM bindings API are also received in the UI process.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        (UserScriptMessageTest::waitUntilMessageReceived):
+        (UserScriptMessageTest::postMessageAndWaitUntilReceived):
+        (testUserContentManagerScriptMessageFromDOMBindings):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (documentLoadedCallback):
+
+2014-11-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ clean build after r175930.
+
+        Partial rollout of r175930 to not build the new unit test that
+        broke clean builds in GTK+ port.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2014-09-01  Philippe Normand  <pnormand@igalia.com>
+
+        [WK2] UserMediaClient support
+        https://bugs.webkit.org/show_bug.cgi?id=123158
+
+        Reviewed by Benjamin Poulain.
+
+        Simple API test for the UserMedia permission request API. The
+        required test infrastructure is also added, inspired by the
+        Geolocation infrastructure.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: New API test for UserMedia
+        Permission request.
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp: Added.
+        (TestWebKitAPI::decidePolicyForUserMediaPermissionRequestCallBack):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/getUserMedia.html: Added.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl: new
+        helper method to set the permission request result without user interaction.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp: Ditto.
+        (WTR::InjectedBundle::setUserMediaPermission):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h: Ditto.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp: Ditto.
+        (WTR::TestRunner::setUserMediaPermission):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h: Ditto.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::decidePolicyForUserMediaPermissionRequest): Permission
+        request handler.
+        (WTR::TestController::createOtherPage): Enable the new UserMedia
+        permission request handler.
+        (WTR::TestController::createWebViewWithOptions): Ditto.
+        (WTR::TestController::resetPreferencesToConsistentValues): Enable
+        MediaStream support, this is needed for getUserMedia.
+        (WTR::TestController::resetStateToConsistentValues): clear
+        UserMedia permissions list and flags.
+        (WTR::TestController::setUserMediaPermission): Set permission
+        request result and distpatch it.
+        (WTR::TestController::handleUserMediaPermissionRequest): Save
+        request and dispatch it.
+        (WTR::TestController::decidePolicyForUserMediaPermissionRequestIfPossible):
+        Dispatch cached permission requests.
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
 2014-11-11  David Kilzer  <ddkilzer@apple.com>
 
         webkit-patch --suggest-reviewers is broken with newer versions of git

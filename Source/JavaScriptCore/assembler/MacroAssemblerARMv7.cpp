@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,57 +28,60 @@
 #if ENABLE(ASSEMBLER) && CPU(ARM_THUMB2)
 #include "MacroAssemblerARMv7.h"
 
-#if USE(MASM_PROBE)
-#include <wtf/StdLibExtras.h>
-#endif
-
 namespace JSC {
 
-#if USE(MASM_PROBE)
+#if ENABLE(MASM_PROBE)
 
-void MacroAssemblerARMv7::ProbeContext::dumpCPURegisters(const char* indentation)
+#define INDENT printIndent(indentation)
+
+void MacroAssemblerARMv7::printCPURegisters(CPUState& cpu, int indentation)
 {
-    #define DUMP_GPREGISTER(_type, _regName) { \
+    #define PRINT_GPREGISTER(_type, _regName) { \
         int32_t value = reinterpret_cast<int32_t>(cpu._regName); \
-        dataLogF("%s    %5s: 0x%08x   %d\n", indentation, #_regName, value, value) ; \
+        INDENT, dataLogF("%5s: 0x%08x  %d\n", #_regName, value, value) ; \
     }
-    FOR_EACH_CPU_GPREGISTER(DUMP_GPREGISTER)
-    FOR_EACH_CPU_SPECIAL_REGISTER(DUMP_GPREGISTER)
-    #undef DUMP_GPREGISTER
+    FOR_EACH_CPU_GPREGISTER(PRINT_GPREGISTER)
+    FOR_EACH_CPU_SPECIAL_REGISTER(PRINT_GPREGISTER)
+    #undef PRINT_GPREGISTER
 
-    #define DUMP_FPREGISTER(_type, _regName) { \
-        uint32_t* u = reinterpret_cast<uint32_t*>(&cpu._regName); \
+    #define PRINT_FPREGISTER(_type, _regName) { \
+        uint64_t* u = reinterpret_cast<uint64_t*>(&cpu._regName); \
         double* d = reinterpret_cast<double*>(&cpu._regName); \
-        dataLogF("%s    %5s: 0x %08x %08x   %12g\n", \
-            indentation, #_regName, u[1], u[0], d[0]); \
+        INDENT, dataLogF("%5s: 0x%016llx  %.13g\n", #_regName, *u, *d); \
     }
-    FOR_EACH_CPU_FPREGISTER(DUMP_FPREGISTER)
-    #undef DUMP_FPREGISTER
+    FOR_EACH_CPU_FPREGISTER(PRINT_FPREGISTER)
+    #undef PRINT_FPREGISTER
 }
 
-void MacroAssemblerARMv7::ProbeContext::dump(const char* indentation)
+#undef INDENT
+
+void MacroAssemblerARMv7::printRegister(MacroAssemblerARMv7::CPUState& cpu, RegisterID regID)
 {
-    if (!indentation)
-        indentation = "";
-
-    dataLogF("%sProbeContext %p {\n", indentation, this);
-    dataLogF("%s  probeFunction: %p\n", indentation, probeFunction);
-    dataLogF("%s  arg1: %p %llu\n", indentation, arg1, reinterpret_cast<int64_t>(arg1));
-    dataLogF("%s  arg2: %p %llu\n", indentation, arg2, reinterpret_cast<int64_t>(arg2));
-    dataLogF("%s  cpu: {\n", indentation);
-
-    dumpCPURegisters(indentation);
-
-    dataLogF("%s  }\n", indentation);
-    dataLogF("%s}\n", indentation);
+    const char* name = CPUState::registerName(regID);
+    union {
+        void* voidPtr;
+        intptr_t intptrValue;
+    } u;
+    u.voidPtr = cpu.registerValue(regID);
+    dataLogF("%s:<%p %ld>", name, u.voidPtr, u.intptrValue);
 }
 
+void MacroAssemblerARMv7::printRegister(MacroAssemblerARMv7::CPUState& cpu, FPRegisterID regID)
+{
+    const char* name = CPUState::registerName(regID);
+    union {
+        double doubleValue;
+        uint64_t uint64Value;
+    } u;
+    u.doubleValue = cpu.registerValue(regID);
+    dataLogF("%s:<0x%016llx %.13g>", name, u.uint64Value, u.doubleValue);
+}
 
 extern "C" void ctiMasmProbeTrampoline();
 
 // For details on "What code is emitted for the probe?" and "What values are in
-// the saved registers?", see comment for MacroAssemblerX86::probe() in
-// MacroAssemblerX86_64.h.
+// the saved registers?", see comment for MacroAssemblerX86Common::probe() in
+// MacroAssemblerX86Common.cpp.
 
 void MacroAssemblerARMv7::probe(MacroAssemblerARMv7::ProbeFunction function, void* arg1, void* arg2)
 {
@@ -96,7 +99,7 @@ void MacroAssemblerARMv7::probe(MacroAssemblerARMv7::ProbeFunction function, voi
     move(trustedImm32FromPtr(ctiMasmProbeTrampoline), RegisterID::ip);
     m_assembler.blx(RegisterID::ip);
 }
-#endif // USE(MASM_PROBE)
+#endif // ENABLE(MASM_PROBE)
 
 } // namespace JSC
 

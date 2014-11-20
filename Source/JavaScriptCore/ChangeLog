@@ -1,3 +1,477 @@
+2014-11-19  Juergen Ributzka  <juergen@apple.com>
+
+        Update WebKit to build with LLVM TOT
+        https://bugs.webkit.org/show_bug.cgi?id=138519
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/LLVMForJSC.xcconfig:
+        * llvm/LLVMAPIFunctions.h:
+        * llvm/library/LLVMExports.cpp:
+        (initializeAndGetJSCLLVMAPI):
+
+2014-11-18  David Kilzer  <ddkilzer@apple.com>
+
+        FeatureDefines.xcconfig: Switch from using PLATFORM_NAME to SDK selectors
+        <http://webkit.org/b/138813>
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/FeatureDefines.xcconfig: Switch to using SDK
+        selectors.
+
+2014-11-18  Chris Dumez  <cdumez@apple.com>
+
+        Update the Vector API to deal with unsigned types instead of size_t
+        https://bugs.webkit.org/show_bug.cgi?id=138824
+
+        Reviewed by Andreas Kling.
+
+        Update code base to fix build errors related to the typing changes
+        in the Vector API (size_t -> unsigned).
+
+        * bytecode/PreciseJumpTargets.cpp:
+        * replay/EncodedValue.h:
+
+2014-11-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r176207.
+        https://bugs.webkit.org/show_bug.cgi?id=138836
+
+        Not ready yet (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Update WebKit to build with LLVM TOT"
+        https://bugs.webkit.org/show_bug.cgi?id=138519
+        http://trac.webkit.org/changeset/176207
+
+2014-11-17  Mark Lam  <mark.lam@apple.com>
+
+        Add printing functionality in JITted code for debugging purposes.
+        <https://webkit.org/b/138660>
+
+        Reviewed by Geoffrey Garen.
+
+        Sometimes, for debugging, it'd be nice to be able to just print the
+        values of constants or registers used in JITted code, or even just
+        a string to log that certain pieces of JITted code have been executed.
+        Using the JIT probe mechanism, we can make this happen.
+
+        * assembler/ARMv7Assembler.h:
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::AbstractMacroAssembler::CPUState::registerName):
+        (JSC::AbstractMacroAssembler::CPUState::registerValue):
+        (JSC::AbstractMacroAssembler::print):
+        (JSC::AbstractMacroAssembler::PrintArg::PrintArg):
+        (JSC::AbstractMacroAssembler::appendPrintArg):
+        (JSC::AbstractMacroAssembler::printInternal):
+        (JSC::AbstractMacroAssembler::printCallback):
+        * assembler/MacroAssemblerARM.cpp:
+        (JSC::MacroAssemblerARM::printCPURegisters):
+        (JSC::MacroAssemblerARM::printRegister):
+        * assembler/MacroAssemblerARM.h:
+        * assembler/MacroAssemblerARMv7.cpp:
+        (JSC::MacroAssemblerARMv7::printCPURegisters):
+        (JSC::MacroAssemblerARMv7::printRegister):
+        * assembler/MacroAssemblerARMv7.h:
+        * assembler/MacroAssemblerX86Common.cpp:
+        (JSC::MacroAssemblerX86Common::printRegister):
+        * assembler/MacroAssemblerX86Common.h:
+
+2014-11-17  Anders Carlsson  <andersca@apple.com>
+
+        Fix JavaScriptCore build with newer versions of clang.
+        <rdar://problem/18978716>
+
+        * heap/Heap.cpp:
+        (JSC::Heap::visitTempSortVectors):
+        (JSC::Heap::deleteAllCompiledCode): Deleted.
+        * inspector/agents/InspectorConsoleAgent.h:
+
+2014-11-17  Juergen Ributzka  <juergen@apple.com>
+
+        Update WebKit to build with LLVM TOT
+        https://bugs.webkit.org/show_bug.cgi?id=138519
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/LLVMForJSC.xcconfig:
+        * llvm/LLVMAPIFunctions.h:
+        * llvm/library/LLVMExports.cpp:
+        (initializeAndGetJSCLLVMAPI):
+
+2014-11-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        STRH can store values with the wrong offset
+        https://bugs.webkit.org/show_bug.cgi?id=138723
+
+        Reviewed by Michael Saboff.
+
+        This is the counterpart of r176083 for the str instruction.
+
+        I believe this code is currently unreachable because there is only one client of strh()
+        in the MacroAssembler and it always setup the scale explicitely.
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::strh):
+
+2014-11-13  Mark Lam  <mark.lam@apple.com>
+
+        Reduce amount of cut-and-paste needed for probe mechanism implementations.
+        <https://webkit.org/b/138671>
+
+        Reviewed by Geoffrey Garen.
+
+        The existing code requires that each MacroAssembler implementation provide
+        their own copy of all of the probe implementations even when most of it is
+        identical.  This patch hoists the common parts into AbstractMacroAssembler
+        (with some minor renaming).  Each target specific MacroAssembler now only
+        need to implement a few target specific methods that are expected by and
+        documented in AbstractMacroAssembler.h in the ENABLE(MASM_PROBE) section.
+
+        In this patch, I also simplified the X86 and X86_64 ports to use the same
+        port implementation.  The ARMv7 probe implementation should not conditionally
+        exclude the higher FP registers (since the JIT doesn't).  Fixed the ARMv7
+        probe code to include the higher FP registers always. 
+
+        This is all done in preparation to add printing functionality in JITted code
+        for debugging.
+
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::AbstractMacroAssembler::Label::Label):
+        (JSC::AbstractMacroAssembler::ConvertibleLoadLabel::ConvertibleLoadLabel):
+        (JSC::AbstractMacroAssembler::DataLabelPtr::DataLabelPtr):
+        (JSC::AbstractMacroAssembler::DataLabel32::DataLabel32):
+        (JSC::AbstractMacroAssembler::DataLabelCompact::DataLabelCompact):
+        (JSC::AbstractMacroAssembler::Jump::link):
+        (JSC::AbstractMacroAssembler::Jump::linkTo):
+        (JSC::AbstractMacroAssembler::JumpList::link):
+        (JSC::AbstractMacroAssembler::JumpList::linkTo):
+        (JSC::AbstractMacroAssembler::ProbeContext::print):
+        (JSC::AbstractMacroAssembler::printIndent):
+        (JSC::AbstractMacroAssembler::printCPU):
+        (JSC::AbstractMacroAssembler::CachedTempRegister::CachedTempRegister):
+        - Except for the 3 printing methods (which are for the probe), the rest
+          are touched simply because we need to add the MacroAssemblerType to the
+          template args.
+          The MacroAssemblerType is used by the abstract probe code to call the
+          few probe methods that need to have CPU specific implementations.
+
+        * assembler/MacroAssemblerARM.cpp:
+        (JSC::MacroAssemblerARM::printCPURegisters):
+        - This was refactored from ProbeContext::dumpCPURegisters() which no
+          longer exists.
+        (JSC::MacroAssemblerARM::ProbeContext::dumpCPURegisters): Deleted.
+        (JSC::MacroAssemblerARM::ProbeContext::dump): Deleted.
+
+        * assembler/MacroAssemblerARM.h:
+        * assembler/MacroAssemblerARM64.h:
+
+        * assembler/MacroAssemblerARMv7.cpp:
+        (JSC::MacroAssemblerARMv7::printCPURegisters):
+        - This was refactored from ProbeContext::dumpCPURegisters() which no
+          longer exists.
+        (JSC::MacroAssemblerARMv7::ProbeContext::dumpCPURegisters): Deleted.
+        (JSC::MacroAssemblerARMv7::ProbeContext::dump): Deleted.
+
+        * assembler/MacroAssemblerARMv7.h:
+        * assembler/MacroAssemblerMIPS.h:
+        * assembler/MacroAssemblerSH4.h:
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::trustedImm32FromPtr): Deleted.
+        (JSC::MacroAssemblerX86::probe): Deleted.
+
+        * assembler/MacroAssemblerX86Common.cpp:
+        (JSC::MacroAssemblerX86Common::printCPURegisters):
+        - This was refactored from ProbeContext::dumpCPURegisters() which no
+          longer exists.
+        (JSC::MacroAssemblerX86Common::probe):
+        - This implementation of probe() is based on the one originally in
+          MacroAssemblerX86_64.h.  It is generic and should work for both
+          32-bit and 64-bit.
+        (JSC::MacroAssemblerX86Common::ProbeContext::dumpCPURegisters): Deleted.
+        (JSC::MacroAssemblerX86Common::ProbeContext::dump): Deleted.
+
+        * assembler/MacroAssemblerX86Common.h:
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::trustedImm64FromPtr): Deleted.
+        (JSC::MacroAssemblerX86_64::probe): Deleted.
+        * jit/JITStubsARMv7.h:
+
+2014-11-13  Michael Saboff  <msaboff@apple.com>
+
+        Add scope operand to op_new_func* byte codes
+        https://bugs.webkit.org/show_bug.cgi?id=138707
+
+        Reviewed by Mark Lam.
+
+        Added scope operand to op_new_func and op_new_func_expr to replace the implicit use
+        of exec->scope().
+
+        * bytecode/BytecodeList.json: Increased size of op_new_func & op_new_func_expr bytecodes.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode): Added scope operand to dump output.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewFunctionInternal):
+        (JSC::BytecodeGenerator::emitNewFunctionExpression):
+        Emit scope operand.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        Added new scope source nodes to NewFunction, NewFunctionExpression & NewFunctionNoCheck.
+        
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionNoCheck):
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionExpression):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        Use scope children when making new function JIT_Operation calls.  Use JSScope* value instead of
+        exec->scope().
+
+        * dfg/DFGOperations.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_new_func):
+        (JSC::JIT::emit_op_new_func_exp):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        Added new Jsc JIT_Operation parameter type for JSScope* values.  Created declarations and
+        definitions for new JIT_Operations with Jsc parameters.  Use the JSScope* parameters in lieu
+        of exec->scope() in operationNewFunction().
+        Removed comment for unused Jsa (JSLexicalEnvironment*) JIT_Operation parameter type.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        Use the scope operand instead of exec->scope().
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Changed the operand indecies for added scope operand.
+
+2014-11-13  Mark Lam  <mark.lam@apple.com>
+
+        Change X86/64 JIT probes to save/restore xmm regs as double instead of __m128. [Follow up]
+        <https://webkit.org/b/138708>
+
+        Reviewed by Michael Saboff.
+
+        Removed a stale comment and a now unnecessary #include. 
+
+        * assembler/X86Assembler.h:
+
+2014-11-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r176087.
+        https://bugs.webkit.org/show_bug.cgi?id=138714
+
+        Broke the build (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Update WebKit to build with LLVM TOT"
+        https://bugs.webkit.org/show_bug.cgi?id=138519
+        http://trac.webkit.org/changeset/176087
+
+2014-11-13  Mark Lam  <mark.lam@apple.com>
+
+        Change X86/64 JIT probes to save/restore xmm regs as double instead of __m128.
+        <https://webkit.org/b/138708>
+
+        Reviewed by Michael Saboff.
+
+        The JIT code only uses the xmm regs as double registers.  This patch changes
+        the storage types of the FP registers in X86Assembler.h to double instead of
+        __m128, and updates the X86 and X86_64 JIT probe implementations accordingly.
+
+        Also made some minor cosmetic changes in the output of the probe dump functions.
+
+        * assembler/MacroAssemblerX86Common.cpp:
+        (JSC::MacroAssemblerX86Common::ProbeContext::dumpCPURegisters):
+        * assembler/X86Assembler.h:
+        * jit/JITStubsX86.h:
+        * jit/JITStubsX86Common.h:
+        * jit/JITStubsX86_64.h:
+
+2014-11-13  Juergen Ributzka  <juergen@apple.com>
+
+        Update WebKit to build with LLVM TOT
+        https://bugs.webkit.org/show_bug.cgi?id=138519
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/LLVMForJSC.xcconfig:
+        * llvm/LLVMAPIFunctions.h:
+        * llvm/library/LLVMExports.cpp:
+        (initializeAndGetJSCLLVMAPI):
+
+2014-11-13  Benjamin Poulain  <benjamin@webkit.org>
+
+        ARMv7(s) Assembler: LDRH with immediate offset is loading from the wrong offset
+        https://bugs.webkit.org/show_bug.cgi?id=136914
+
+        Reviewed by Michael Saboff.
+
+        TLDR: the immediate offset of half-word load was divided by 2.
+
+        Story time: So I started getting those weird reports of :nth-child() behaving bizarrely
+        on ARMv7 and ARMv7s. To make things worse, the behavior changes depending on style updates.
+
+        I started looking the disassembly on the tests cases...
+
+        The first thing I noticed was that the computation of An+B looked wrong. For example,
+        in the case of n+6, the instruction should have been:
+            subs r1, r1, #6
+        but was
+            subs r1, r1, #2
+
+        After spending a lot of time trying to find the error in the assembler, I discovered
+        the problem was not real, but just a bug in the disassembler.
+        This is the first fix: ARMv7DOpcodeAddSubtractImmediate3's immediate3() was truncating
+        the value to 2 bits instead of 3 bits.
+
+        The disassembler being fixed, I still have no lead on the weird bug. Some disassembly later,
+        I realize the LDRH instruction is not decoded at all. The reason is that both LDRH and STRH
+        were under the umbrella ARMv7DOpcodeLoadStoreRegisterImmediateHalfWord but the pattern
+        only matched SRTH.
+
+        I fix that next, ARMv7DOpcodeLoadStoreRegisterImmediateHalfWord is split into
+        ARMv7DOpcodeStoreRegisterImmediateHalfWord and ARMv7DOpcodeLoadRegisterImmediateHalfWord,
+        each with their own pattern and their instruction group.
+
+        Now that I can see the LDRHs correctly, there is something fishy about them, their offset
+        is way too small for the data I load.
+
+        This time, looking at the binary, the generated code is indeed incorrect. It turns out that
+        the ARMv7 assembler shifted the offset of half-word load as if they were byte load: divided by 4.
+        As a result, all the load of half-words with more than zero offset were loading
+        values with a smaller offset than what they should have.
+
+        That being fixed, I dump the assembly: still wrong. I am ready to throw my keyboard through
+        my screen at that point.
+
+        Looking at the disassembler, there is yet again a bug. The computation of the scale() adjustment
+        of the offset was incorrect for anything but word loads.
+        I replaced it by a switch-case to make it explicit.
+
+        STRH is likely incorrect too. I'll fix that in a follow up, I want to survey all the 16 bits cases
+        that are not directly used by the CSS JIT.
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::ldrh):
+        Fix the immediate scaling. Add an assertion to make sure the alignment of the input is correct.
+
+        * disassembler/ARMv7/ARMv7DOpcode.cpp:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeLoadStoreRegisterImmediate::scale):
+        Fix the scaling code. Just hardcode instruction-to-scale table.
+
+        * disassembler/ARMv7/ARMv7DOpcode.h:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeAddSubtractImmediate3::immediate3):
+        The mask for a 3 bits immediate is not 3 :)
+
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeLoadStoreRegisterImmediate::scale): Deleted.
+
+2014-11-13  Andreas Kling  <akling@apple.com>
+
+        Generate put_by_id for bracket assignment with constant string subscript.
+        <https://webkit.org/b/138702>
+
+        Reviewed by Geoffrey Garen.
+
+        Transform o["f"]=x to o.f=x when generating bytecode. This allows our JIT
+        to inline-cache those accesses instead of always dropping out to C++.
+
+        Just like the get_by_id transformations, this gets a bunch of use on
+        real-web content (and Speedometer) but little/none on raw JS benchmarks.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::AssignBracketNode::emitBytecode):
+
+2014-11-12  Mark Lam  <mark.lam@apple.com>
+
+        Create canonical lists of registers used by both the Assemblers and the JIT probes.
+        <https://webkit.org/b/138681>
+
+        Reviewed by Filip Pizlo.
+
+        * assembler/ARMAssembler.h:
+        * assembler/ARMv7Assembler.h:
+        * assembler/X86Assembler.h:
+        - The FP register storage type is still defined as __m128 because the JIT
+          probe code still expects that amount of storage to be available.  Will
+          change this to double when the JIT probe code is updated accordingly in a
+          later patch.
+
+2014-11-12  Andreas Kling  <akling@apple.com>
+
+        Generate get_by_id for bracket access with constant string subscript.
+        <https://webkit.org/b/138663>
+
+        Reviewed by Michael Saboff.
+
+        Transform o["f"] into o.f when generating bytecode. This allows our JIT
+        to inline-cache those accesses instead of always dropping out to C++.
+
+        This is surprisingly common in real-web content, less so in benchmarks.
+        Interestingly, Speedometer does hit the optimization quite a bit.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BracketAccessorNode::emitBytecode):
+
+2014-11-12  Mark Lam  <mark.lam@apple.com>
+
+        Rename USE(MASM_PROBE) to ENABLE(MASM_PROBE).
+        <https://webkit.org/b/138661>
+
+        Reviewed by Michael Saboff.
+
+        Also move the switch for enabling the use of MASM_PROBE from JavaScriptCore's
+        config.h to WTF's Platform.h.  This ensures that the setting is consistently
+        applied even when building WebCore parts as well.
+
+        * assembler/ARMAssembler.h:
+        * assembler/ARMv7Assembler.h:
+        * assembler/MacroAssemblerARM.cpp:
+        * assembler/MacroAssemblerARM.h:
+        * assembler/MacroAssemblerARMv7.cpp:
+        * assembler/MacroAssemblerARMv7.h:
+        * assembler/MacroAssemblerX86.h:
+        * assembler/MacroAssemblerX86Common.cpp:
+        * assembler/MacroAssemblerX86Common.h:
+        * assembler/MacroAssemblerX86_64.h:
+        * assembler/X86Assembler.h:
+        * config.h:
+        * jit/JITStubs.h:
+        * jit/JITStubsARM.h:
+        * jit/JITStubsARMv7.h:
+        * jit/JITStubsX86.h:
+        * jit/JITStubsX86Common.h:
+        * jit/JITStubsX86_64.h:
+
+2014-11-12  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Incorrect names for test executables in debug mode.
+        https://bugs.webkit.org/show_bug.cgi?id=138659
+
+        Reviewed by Alex Christensen.
+
+        In debug mode, jsc.exe, and testapi.exe are not created, causing JSC test failures.
+
+        * JavaScriptCore.vcxproj/jsc/jscLauncher.vcxproj:
+        * JavaScriptCore.vcxproj/testapi/testapiLauncher.vcxproj:
+
 2014-11-11  Michael Saboff  <msaboff@apple.com>
 
         Change DFG to use scope operand for op_resolve_scope

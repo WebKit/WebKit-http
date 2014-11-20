@@ -34,7 +34,7 @@
 
 namespace JSC {
 
-class MacroAssemblerARMv7 : public AbstractMacroAssembler<ARMv7Assembler> {
+class MacroAssemblerARMv7 : public AbstractMacroAssembler<ARMv7Assembler, MacroAssemblerARMv7> {
     static const RegisterID dataTempRegister = ARMRegisters::ip;
     static const RegisterID addressTempRegister = ARMRegisters::r6;
 
@@ -1901,31 +1901,14 @@ public:
         UNREACHABLE_FOR_PLATFORM();
     }
 
-#if USE(MASM_PROBE)
-    struct CPUState {
-        #define DECLARE_REGISTER(_type, _regName) \
-            _type _regName;
-        FOR_EACH_CPU_REGISTER(DECLARE_REGISTER)
-        #undef DECLARE_REGISTER
-    };
-
-    struct ProbeContext;
-    typedef void (*ProbeFunction)(struct ProbeContext*);
-
-    struct ProbeContext {
-        ProbeFunction probeFunction;
-        void* arg1;
-        void* arg2;
-        CPUState cpu;
-
-        void dump(const char* indentation = 0);
-    private:
-        void dumpCPURegisters(const char* indentation);
-    };
-
-    // For details about probe(), see comment in MacroAssemblerX86_64.h.
+#if ENABLE(MASM_PROBE)
+    // Methods required by the MASM_PROBE mechanism as defined in
+    // AbstractMacroAssembler.h. 
+    static void printCPURegisters(CPUState&, int indentation = 0);
+    static void printRegister(CPUState&, RegisterID);
+    static void printRegister(CPUState&, FPRegisterID);
     void probe(ProbeFunction, void* arg1 = 0, void* arg2 = 0);
-#endif // USE(MASM_PROBE)
+#endif // ENABLE(MASM_PROBE)
 
 protected:
     ALWAYS_INLINE Jump jump()
@@ -2037,7 +2020,7 @@ private:
         ARMv7Assembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
-#if USE(MASM_PROBE)
+#if ENABLE(MASM_PROBE)
     inline TrustedImm32 trustedImm32FromPtr(void* ptr)
     {
         return TrustedImm32(TrustedImmPtr(ptr));

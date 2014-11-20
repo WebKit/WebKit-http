@@ -1,3 +1,188 @@
+2014-11-18  Chris Dumez  <cdumez@apple.com>
+
+        Have Vector::capacity() return an unsigned instead of a size_t
+        https://bugs.webkit.org/show_bug.cgi?id=138842
+
+        Reviewed by Andreas Kling.
+
+        Have Vector::capacity() return an unsigned instead of a size_t as
+        capacity is stored as an unsigned internally.
+
+        * wtf/Vector.h:
+        (WTF::Vector::capacity):
+        (WTF::OverflowHandler>::expandCapacity):
+        (WTF::OverflowHandler>::tryExpandCapacity):
+
+2014-11-18  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed the custom allocator for ListHashSet nodes
+        https://bugs.webkit.org/show_bug.cgi?id=138841
+
+        Reviewed by Andreas Kling.
+
+        bmalloc is fast, so we don't need a custom allocator.
+
+        The MallocBench test for linked list node allocation (list_allocate) is
+        4.09X faster in bmalloc than TCMalloc. Also, I wrote a stress test to
+        add/remove link elements, which modify a ListHashSet on insertion and
+        removal, and it was 1% faster / in the noise with bmalloc enabled.
+
+        * wtf/ListHashSet.h:
+        (WTF::ListHashSetNode::ListHashSetNode):
+        (WTF::ListHashSetTranslator::translate):
+        (WTF::U>::ListHashSet):
+        (WTF::=):
+        (WTF::U>::swap):
+        (WTF::U>::~ListHashSet):
+        (WTF::U>::size):
+        (WTF::U>::capacity):
+        (WTF::U>::isEmpty):
+        (WTF::U>::first):
+        (WTF::U>::removeFirst):
+        (WTF::U>::takeFirst):
+        (WTF::U>::last):
+        (WTF::U>::removeLast):
+        (WTF::U>::takeLast):
+        (WTF::U>::contains):
+        (WTF::U>::remove):
+        (WTF::U>::clear):
+        (WTF::U>::unlink):
+        (WTF::U>::unlinkAndDelete):
+        (WTF::U>::appendNode):
+        (WTF::U>::prependNode):
+        (WTF::U>::insertNodeBefore):
+        (WTF::U>::deleteAllNodes):
+        (WTF::ListHashSetNodeAllocator::ListHashSetNodeAllocator): Deleted.
+        (WTF::ListHashSetNodeAllocator::allocate): Deleted.
+        (WTF::ListHashSetNodeAllocator::deallocate): Deleted.
+        (WTF::ListHashSetNodeAllocator::pool): Deleted.
+        (WTF::ListHashSetNodeAllocator::pastPool): Deleted.
+        (WTF::ListHashSetNodeAllocator::inPool): Deleted.
+        (WTF::ListHashSetNode::operator new): Deleted.
+        (WTF::ListHashSetNode::destroy): Deleted.
+
+2014-11-18  Chris Dumez  <cdumez@apple.com>
+
+        Update the Vector API to deal with unsigned types instead of size_t
+        https://bugs.webkit.org/show_bug.cgi?id=138824
+
+        Reviewed by Andreas Kling.
+
+        Update part of the Vector API to deal with unsigned types instead of
+        size_t. The Vector class is already using unsigned type for its
+        capacity and size data members. However, the Vector API was never
+        updated accordingly.
+
+        The rest of the Vector API will be ported in follow-up patches to
+        make the change smaller and more easily reviewable.
+
+        * wtf/Forward.h:
+        * wtf/Vector.h:
+        (WTF::VectorTypeOperations::compare):
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::shouldReallocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (WTF::VectorBufferBase::capacity):
+        (WTF::VectorBufferBase::VectorBufferBase):
+        (WTF::VectorBuffer::VectorBuffer):
+        (WTF::VectorBuffer::allocateBuffer):
+        (WTF::VectorBuffer::tryAllocateBuffer):
+        (WTF::VectorBuffer::shouldReallocateBuffer):
+        (WTF::VectorBuffer::reallocateBuffer):
+        (WTF::VectorBuffer::swap):
+        (WTF::VectorBuffer::swapInlineBuffer):
+        (WTF::VectorBuffer::swapInlineBuffers):
+        (WTF::Vector::Vector):
+        (WTF::Vector::at):
+        (WTF::Vector::operator[]):
+        (WTF::OverflowHandler>::find):
+        (WTF::OverflowHandler>::reverseFind):
+        (WTF::OverflowHandler>::fill):
+        (WTF::OverflowHandler>::expandCapacity):
+        (WTF::OverflowHandler>::tryExpandCapacity):
+        (WTF::OverflowHandler>::resize):
+        (WTF::OverflowHandler>::resizeToFit):
+        (WTF::OverflowHandler>::shrink):
+        (WTF::OverflowHandler>::grow):
+        (WTF::OverflowHandler>::reserveCapacity):
+        (WTF::OverflowHandler>::tryReserveCapacity):
+        (WTF::OverflowHandler>::reserveInitialCapacity):
+        (WTF::OverflowHandler>::shrinkCapacity):
+        (WTF::OverflowHandler>::append):
+        (WTF::OverflowHandler>::tryAppend):
+        (WTF::OverflowHandler>::insert):
+        (WTF::OverflowHandler>::insertVector):
+        (WTF::OverflowHandler>::remove):
+        (WTF::OverflowHandler>::reverse):
+        (WTF::OverflowHandler>::checkConsistency):
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::adopt):
+        (WTF::equalIgnoringNullity):
+        * wtf/text/StringView.h:
+        (WTF::append):
+        * wtf/text/WTFString.h:
+
+2014-11-18  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Compile errors when GStreamer is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=137000
+
+        Reviewed by Philippe Normand.
+
+        MSVC does not allow the keyword default on move constructors and move assignment operators.
+
+        * wtf/gobject/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::cancel):
+        (WTF::GMainLoopSource::socketCallback):
+        * wtf/gobject/GMainLoopSource.h:
+        (WTF::GMainLoopSource::Context::operator=):
+
+2014-11-17  Anders Carlsson  <andersca@apple.com>
+
+        Fix WTF build with newer versions of clang.
+        <rdar://problem/18978705>
+
+        * wtf/HashTable.h:
+        (WTF::removeIterator):
+        * wtf/dtoa/utils.h:
+        (WTF::double_conversion::BitCast):
+
+2014-11-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow constructing a base PassRef with a derived Ref
+        https://bugs.webkit.org/show_bug.cgi?id=138701
+
+        Reviewed by Andreas Kling
+
+        * wtf/PassRef.h:
+        (WTF::PassRef<T>::PassRef):
+
+2014-11-12  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Fix the build with EFL 1.12
+        https://bugs.webkit.org/show_bug.cgi?id=138245
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/efl/UniquePtrEfl.h:
+        Removed Evas_GL.h from UniquePtrEfl.h, which is commonly included, because
+        it should not be included with official GL headers.
+
+2014-11-12  Mark Lam  <mark.lam@apple.com>
+
+        Rename USE(MASM_PROBE) to ENABLE(MASM_PROBE).
+        <https://webkit.org/b/138661>
+
+        Reviewed by Michael Saboff.
+
+        Also move the switch for enabling the use of MASM_PROBE from JavaScriptCore's
+        config.h to WTF's Platform.h.  This ensures that the setting is consistently
+        applied even when building WebCore parts as well.
+
+        * wtf/Platform.h:
+
 2014-11-09  Antti Koivisto  <antti@apple.com>
 
         Remove BloomFilter size limit

@@ -130,6 +130,12 @@
     <Filter Include="platform\network\curl">
       <UniqueIdentifier>{b5903214-cbb2-4fad-9ff0-3930aaa733f6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="platform\spi">
+      <UniqueIdentifier>{247a4ea4-dcb5-4dd0-9d0d-bb13ecb08d58}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform\spi\cg">
+      <UniqueIdentifier>{a2e9a1a3-c5c3-4331-ab01-0d12fea979e7}</UniqueIdentifier>
+    </Filter>
     <Filter Include="platform\sql">
       <UniqueIdentifier>{f935d93c-734f-4f61-a31f-c3b960fc5aff}</UniqueIdentifier>
     </Filter>
@@ -1018,6 +1024,9 @@
       <Filter>loader\archive</Filter>
     </ClCompile>
     <ClCompile Include="..\loader\cache\CachedCSSStyleSheet.cpp">
+      <Filter>loader\cache</Filter>
+    </ClCompile>
+    <ClCompile Include="..\loader\cache\CachedSVGFont.cpp">
       <Filter>loader\cache</Filter>
     </ClCompile>
     <ClCompile Include="..\loader\cache\CachedFont.cpp">
@@ -2340,10 +2349,10 @@
     <ClCompile Include="..\css\WebKitCSSFilterValue.cpp">
       <Filter>css</Filter>
     </ClCompile>
-    <ClCompile Include="..\css\WebKitCSSKeyframeRule.cpp">
+    <ClCompile Include="..\css\CSSKeyframeRule.cpp">
       <Filter>css</Filter>
     </ClCompile>
-    <ClCompile Include="..\css\WebKitCSSKeyframesRule.cpp">
+    <ClCompile Include="..\css\CSSKeyframesRule.cpp">
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\css\WebKitCSSMatrix.cpp">
@@ -6346,10 +6355,10 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSFilterValue.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSKeyframeRule.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCSSKeyframeRule.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSKeyframesRule.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCSSKeyframesRule.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSMatrix.cpp">
@@ -6928,7 +6937,13 @@
     <ClCompile Include="..\rendering\SimpleLineLayout.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
+    <ClCompile Include="..\rendering\SimpleLineLayoutFlowContents.cpp">
+      <Filter>rendering</Filter>
+    </ClCompile>
     <ClCompile Include="..\rendering\SimpleLineLayoutFunctions.cpp">
+      <Filter>rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rendering\SimpleLineLayoutResolver.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\css\CSSGridTemplateAreasValue.cpp">
@@ -8040,6 +8055,9 @@
     <ClInclude Include="..\loader\cache\CachedCSSStyleSheet.h">
       <Filter>loader\cache</Filter>
     </ClInclude>
+    <ClInclude Include="..\loader\cache\CachedSVGFont.h">
+      <Filter>loader\cache</Filter>
+    </ClInclude>
     <ClInclude Include="..\loader\cache\CachedFont.h">
       <Filter>loader\cache</Filter>
     </ClInclude>
@@ -8889,6 +8907,9 @@
     <ClInclude Include="..\platform\network\cf\LoaderRunLoopCF.h">
       <Filter>platform\network\cf</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\spi\cg\CoreGraphicsSPI.h">
+      <Filter>platform\spi\cg</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\sql\SQLiteDatabase.h">
       <Filter>platform\sql</Filter>
     </ClInclude>
@@ -9327,10 +9348,10 @@
     <ClInclude Include="..\css\WebKitCSSFilterValue.h">
       <Filter>css</Filter>
     </ClInclude>
-    <ClInclude Include="..\css\WebKitCSSKeyframeRule.h">
+    <ClInclude Include="..\css\CSSKeyframeRule.h">
       <Filter>css</Filter>
     </ClInclude>
-    <ClInclude Include="..\css\WebKitCSSKeyframesRule.h">
+    <ClInclude Include="..\css\CSSKeyframesRule.h">
       <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="..\css\WebKitCSSMatrix.h">
@@ -14252,10 +14273,10 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSFilterValue.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSKeyframeRule.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCSSKeyframeRule.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSKeyframesRule.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCSSKeyframesRule.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSMatrix.h">

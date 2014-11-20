@@ -230,12 +230,13 @@
 #import "WebUIKitSupport.h"
 #import "WebVisiblePosition.h"
 #import <CFNetwork/CFURLCachePriv.h>
-#import <MobileGestalt.h>
+#import <WebCore/DispatchSPI.h>
 #import <WebCore/EventNames.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/GraphicsLayer.h>
 #import <WebCore/IconController.h>
 #import <WebCore/LegacyTileCache.h>
+#import <WebCore/MobileGestaltSPI.h>
 #import <WebCore/NetworkStateNotifier.h>
 #import <WebCore/RuntimeApplicationChecksIOS.h>
 #import <WebCore/SQLiteDatabaseTracker.h>
@@ -249,7 +250,6 @@
 #import <WebCore/WebCoreThreadRun.h>
 #import <WebCore/WebEvent.h>
 #import <WebCore/WebVideoFullscreenControllerAVKit.h>
-#import <dispatch/private.h>
 #import <wtf/FastMalloc.h>
 #endif // !PLATFORM(IOS)
 
@@ -2222,6 +2222,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setApplicationChromeMode([preferences applicationChromeModeEnabled]);
 
     settings.setNeedsSiteSpecificQuirks(_private->useSiteSpecificSpoofing);
+    settings.setDOMTimersThrottlingEnabled([preferences domTimersThrottlingEnabled]);
     settings.setWebArchiveDebugModeEnabled([preferences webArchiveDebugModeEnabled]);
     settings.setLocalFileContentSniffingEnabled([preferences localFileContentSniffingEnabled]);
     settings.setOfflineWebApplicationCacheEnabled([preferences offlineWebApplicationCacheEnabled]);
@@ -2257,6 +2258,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setMediaPlaybackRequiresUserGesture([preferences mediaPlaybackRequiresUserGesture]);
     settings.setMediaPlaybackAllowsInline([preferences mediaPlaybackAllowsInline]);
+    settings.setAllowsAlternateFullscreen([preferences allowsAlternateFullscreen]);
     settings.setSuppressesIncrementalRendering([preferences suppressesIncrementalRendering]);
     settings.setBackspaceKeyNavigationEnabled([preferences backspaceKeyNavigationEnabled]);
     settings.setWantsBalancedSetDefersLoadingBehavior([preferences wantsBalancedSetDefersLoadingBehavior]);

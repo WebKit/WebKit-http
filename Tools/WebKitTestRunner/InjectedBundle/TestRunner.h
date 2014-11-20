@@ -255,6 +255,9 @@ public:
     void setMockGeolocationPosition(double latitude, double longitude, double accuracy, JSValueRef altitude, JSValueRef altitudeAccuracy, JSValueRef heading, JSValueRef speed);
     void setMockGeolocationPositionUnavailableError(JSStringRef message);
 
+    // MediaStream
+    void setUserMediaPermission(bool);
+
     void setPageVisibility(JSStringRef state);
     void resetPageVisibility();
 

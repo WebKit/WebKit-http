@@ -75,7 +75,7 @@ public:
     CachedResourceHandle<CachedCSSStyleSheet> requestCSSStyleSheet(CachedResourceRequest&);
     CachedResourceHandle<CachedCSSStyleSheet> requestUserCSSStyleSheet(CachedResourceRequest&);
     CachedResourceHandle<CachedScript> requestScript(CachedResourceRequest&);
-    CachedResourceHandle<CachedFont> requestFont(CachedResourceRequest&);
+    CachedResourceHandle<CachedFont> requestFont(CachedResourceRequest&, bool isSVG);
     CachedResourceHandle<CachedRawResource> requestRawResource(CachedResourceRequest&);
     CachedResourceHandle<CachedRawResource> requestMainResource(CachedResourceRequest&);
     CachedResourceHandle<CachedSVGDocument> requestSVGDocument(CachedResourceRequest&);
@@ -165,7 +165,7 @@ private:
     
     int m_requestCount;
     
-    OwnPtr<ListHashSet<CachedResource*>> m_preloads;
+    std::unique_ptr<ListHashSet<CachedResource*>> m_preloads;
     struct PendingPreload {
         CachedResource::Type m_type;
         CachedResourceRequest m_request;

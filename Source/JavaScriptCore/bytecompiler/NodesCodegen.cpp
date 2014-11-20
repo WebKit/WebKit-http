@@ -389,11 +389,20 @@ RegisterID* BracketAccessorNode::emitBytecode(BytecodeGenerator& generator, Regi
         return generator.emitGetArgumentByVal(generator.finalDestination(dst), generator.uncheckedLocalArgumentsRegister(), property);
     }
 
-    RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(m_base, m_subscriptHasAssignments, m_subscript->isPure(generator));
-    RegisterID* property = generator.emitNode(m_subscript);
-    generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
+    RegisterID* ret;
     RegisterID* finalDest = generator.finalDestination(dst);
-    RegisterID* ret = generator.emitGetByVal(finalDest, base.get(), property);
+
+    if (m_subscript->isString()) {
+        RefPtr<RegisterID> base = generator.emitNode(m_base);
+        ret = generator.emitGetById(finalDest, base.get(), static_cast<StringNode*>(m_subscript)->value());
+    } else {
+        RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(m_base, m_subscriptHasAssignments, m_subscript->isPure(generator));
+        RegisterID* property = generator.emitNode(m_subscript);
+        ret = generator.emitGetByVal(finalDest, base.get(), property);
+    }
+
+    generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
+
     if (generator.vm()->typeProfiler()) {
         generator.emitProfileType(finalDest, ProfileTypeBytecodeDoesNotHaveGlobalID, nullptr);
         generator.emitTypeProfilerExpressionInfo(divotStart(), divotEnd());
@@ -1635,7 +1644,12 @@ RegisterID* AssignBracketNode::emitBytecode(BytecodeGenerator& generator, Regist
 
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     RegisterID* forwardResult = (dst == generator.ignoredResult()) ? result : generator.moveToDestinationIfNeeded(generator.tempDestination(result), result);
-    generator.emitPutByVal(base.get(), property.get(), forwardResult);
+
+    if (m_subscript->isString())
+        generator.emitPutById(base.get(), static_cast<StringNode*>(m_subscript)->value(), forwardResult);
+    else
+        generator.emitPutByVal(base.get(), property.get(), forwardResult);
+
     if (generator.vm()->typeProfiler()) {
         generator.emitProfileType(forwardResult, ProfileTypeBytecodeDoesNotHaveGlobalID, nullptr);
         generator.emitTypeProfilerExpressionInfo(divotStart(), divotEnd());

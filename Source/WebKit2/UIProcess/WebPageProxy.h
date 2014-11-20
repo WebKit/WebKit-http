@@ -45,6 +45,7 @@
 #include "PlatformProcessIdentifier.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
+#include "UserMediaPermissionRequestManagerProxy.h"
 #include "VisibleContentRectUpdateInfo.h"
 #include "WKBase.h"
 #include "WKPagePrivate.h"
@@ -124,6 +125,7 @@ class DragData;
 class FloatRect;
 class GraphicsLayer;
 class IntSize;
+class MediaConstraintsImpl;
 class ProtectionSpace;
 class RunLoopObserver;
 class SharedBuffer;
@@ -405,11 +407,10 @@ public:
     void overflowScrollWillStartScroll();
     void overflowScrollDidEndScroll();
 
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale, int32_t deviceOrientation);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate();
 
     void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
-    void setViewportConfigurationMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void setDeviceOrientation(int32_t);
     int32_t deviceOrientation() const { return m_deviceOrientation; }
@@ -449,7 +450,6 @@ public:
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
     void viewportMetaTagWidthDidChange(float width);
-    void setUsesMinimalUI(bool);
     void didFinishDrawingPagesToPDF(const IPC::DataReference&);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
 #endif
@@ -930,6 +930,7 @@ public:
     WebHitTestResult* lastMouseMoveHitTestResult() const { return m_lastMouseMoveHitTestResult.get(); }
     void performActionMenuHitTestAtLocation(WebCore::FloatPoint);
     void selectLastActionMenuRange();
+    void focusAndSelectLastActionMenuHitTestResult();
 #endif
 
 #if PLATFORM(EFL) && HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)
@@ -1060,6 +1061,9 @@ private:
     void exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, PassRefPtr<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>);
     void reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>);
     void requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier);
+
+    void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video);
+
     void runModal();
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&);
     void recommendedScrollbarStyleDidChange(int32_t newStyle);
@@ -1072,7 +1076,6 @@ private:
     void didBlockInsecurePluginVersion(const String& mimeType, const String& pluginURLString, const String& frameURLString, const String& pageURLString, bool replacementObscured);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
     void setCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents) { m_canShortCircuitHorizontalWheelEvents = canShortCircuitHorizontalWheelEvents; }
-    void willChangeCurrentHistoryItemForMainFrame();
 
     void reattachToWebProcess();
     uint64_t reattachToWebProcessWithItem(WebBackForwardListItem*);
@@ -1170,7 +1173,7 @@ private:
     void searchTheWeb(const String&);
 
     // Dictionary.
-    void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&);
+    void didPerformDictionaryLookup(const DictionaryPopupInfo&);
 #endif
 
     // Spelling and grammar.
@@ -1396,6 +1399,8 @@ private:
     GeolocationPermissionRequestManagerProxy m_geolocationPermissionRequestManager;
     NotificationPermissionRequestManagerProxy m_notificationPermissionRequestManager;
 
+    UserMediaPermissionRequestManagerProxy m_userMediaPermissionRequestManager;
+
     WebCore::ViewState::Flags m_viewState;
     bool m_viewWasEverInWindow;
 
@@ -1550,6 +1555,9 @@ private:
     WebCore::IntRect m_visibleScrollerThumbRect;
 
     uint64_t m_renderTreeSize;
+    uint64_t m_sessionRestorationRenderTreeSize;
+    bool m_wantsSessionRestorationRenderTreeSizeThresholdEvent;
+    bool m_hitRenderTreeSizeThreshold;
 
     bool m_shouldSendEventsSynchronously;
 

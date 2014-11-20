@@ -17,7 +17,7 @@ aside
       AXRole: AXLandmarkComplementary
       
 blockquote
-      AXRole: AXGroup
+      AXRole: AXBlockquote
       
 button
       AXRole: AXButton
@@ -39,6 +39,9 @@ fieldset
       
 legend
       AXRole: AXLabel
+      
+footer
+      AXRole: AXFooter
       
 form
       AXRole: AXForm
@@ -161,7 +164,7 @@ select:not([multiple])
       AXRole: AXComboBox
       
 select[multiple]
-      AXRole: AXList
+      AXRole: AXListBox
       
 option
       AXRole: AXListItem

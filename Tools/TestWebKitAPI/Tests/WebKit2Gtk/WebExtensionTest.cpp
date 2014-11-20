@@ -33,6 +33,11 @@
 #include <wtf/gobject/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
+#define WEBKIT_DOM_USE_UNSTABLE_API
+#include <webkitdom/WebKitDOMWebKitNamespace.h>
+#include <webkitdom/WebKitDOMUserMessageHandlersNamespace.h>
+#include <webkitdom/WebKitDOMUserMessageHandler.h>
+
 static const char introspectionXML[] =
     "<node>"
     " <interface name='org.webkit.gtk.WebExtensionTest'>"
@@ -46,9 +51,6 @@ static const char introspectionXML[] =
     "   <arg type='t' name='pageID' direction='in'/>"
     "   <arg type='s' name='script' direction='in'/>"
     "  </method>"
-    "  <method name='GetInitializationUserData'>"
-    "   <arg type='s' name='userData' direction='out'/>"
-    "  </method>"
     "  <method name='GetProcessIdentifier'>"
     "   <arg type='u' name='identifier' direction='out'/>"
     "  </method>"
@@ -58,8 +60,6 @@ static const char introspectionXML[] =
     "  </signal>"
     " </interface>"
     "</node>";
-
-static GRefPtr<GVariant> initializationUserData;
 
 
 typedef enum {
@@ -98,8 +98,18 @@ static void emitDocumentLoaded(GDBusConnection* connection)
     g_assert(ok);
 }
 
-static void documentLoadedCallback(WebKitWebPage*, WebKitWebExtension* extension)
+static void documentLoadedCallback(WebKitWebPage* webPage, WebKitWebExtension* extension)
 {
+    // FIXME: Too much code just to send a message, we need convenient custom API for this.
+    WebKitDOMDocument* document = webkit_web_page_get_dom_document(webPage);
+    WebKitDOMDOMWindow* window = webkit_dom_document_get_default_view(document);
+    if (WebKitDOMWebKitNamespace* webkit = webkit_dom_dom_window_get_webkit_namespace(window)) {
+        WebKitDOMUserMessageHandlersNamespace* messageHandlers = webkit_dom_webkit_namespace_get_message_handlers(webkit);
+        if (WebKitDOMUserMessageHandler* handler = webkit_dom_user_message_handlers_namespace_get_handler(messageHandlers, "dom"))
+            webkit_dom_user_message_handler_post_message(handler, "DocumentLoaded");
+    }
+
+
     gpointer data = g_object_get_data(G_OBJECT(extension), "dbus-connection");
     if (data)
         emitDocumentLoaded(G_DBUS_CONNECTION(data));
@@ -289,11 +299,6 @@ static void methodCallCallback(GDBusConnection* connection, const char* sender, 
         g_dbus_method_invocation_return_value(invocation, 0);
     } else if (!g_strcmp0(methodName, "AbortProcess")) {
         abort();
-    } else if (!g_strcmp0(methodName, "GetInitializationUserData")) {
-        g_assert(initializationUserData);
-        g_assert(g_variant_is_of_type(initializationUserData.get(), G_VARIANT_TYPE_STRING));
-        g_dbus_method_invocation_return_value(invocation, g_variant_new("(s)",
-            g_variant_get_string(initializationUserData.get(), nullptr)));
     } else if (!g_strcmp0(methodName, "GetProcessIdentifier")) {
         g_dbus_method_invocation_return_value(invocation,
             g_variant_new("(u)", static_cast<guint32>(getCurrentProcessID())));
@@ -336,26 +341,14 @@ static void busAcquiredCallback(GDBusConnection* connection, const char* name, g
     }
 }
 
-static GUniquePtr<char> makeBusName(GVariant* userData)
-{
-    // When the web extension is used by TestMultiprocess, an uint32
-    // identifier is passed as user data. It uniquely identifies
-    // the web process, and the UI side expects it added as suffix to
-    // the bus name.
-    if (userData && g_variant_is_of_type(userData, G_VARIANT_TYPE_UINT32))
-        return GUniquePtr<char>(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", g_variant_get_uint32(userData)));
-
-    return GUniquePtr<char>(g_strdup("org.webkit.gtk.WebExtensionTest"));
-}
-
 extern "C" void webkit_web_extension_initialize_with_user_data(WebKitWebExtension* extension, GVariant* userData)
 {
-    initializationUserData = userData;
-
     g_signal_connect(extension, "page-created", G_CALLBACK(pageCreatedCallback), extension);
     g_signal_connect(webkit_script_world_get_default(), "window-object-cleared", G_CALLBACK(windowObjectCleared), 0);
 
-    GUniquePtr<char> busName(makeBusName(userData));
+    g_assert(userData);
+    g_assert(g_variant_is_of_type(userData, G_VARIANT_TYPE_UINT32));
+    GUniquePtr<char> busName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", g_variant_get_uint32(userData)));
     g_bus_own_name(
         G_BUS_TYPE_SESSION,
         busName.get(),

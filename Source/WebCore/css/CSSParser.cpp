@@ -43,6 +43,8 @@
 #include "CSSImageValue.h"
 #include "CSSInheritedValue.h"
 #include "CSSInitialValue.h"
+#include "CSSKeyframeRule.h"
+#include "CSSKeyframesRule.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSMediaRule.h"
 #include "CSSPageRule.h"
@@ -80,8 +82,6 @@
 #include "StyleSheetContents.h"
 #include "TextEncoding.h"
 #include "WebKitCSSFilterValue.h"
-#include "WebKitCSSKeyframeRule.h"
-#include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
 #include "WebKitCSSTransformValue.h"
 #include <bitset>
@@ -625,6 +625,8 @@ static bool parseSimpleLengthValue(MutableStyleProperties* declaration, CSSPrope
         unit = CSSPrimitiveValue::CSS_PX;
     }
     if (number < 0 && !acceptsNegativeNumbers)
+        return false;
+    if (std::isinf(number))
         return false;
 
     RefPtr<CSSValue> value = cssValuePool().createValue(number, unit);
@@ -1696,6 +1698,8 @@ bool CSSParser::validUnit(CSSParserValue* value, Units unitflags, CSSParserMode 
     }
     if (b && unitflags & FNonNeg && value->fValue < 0)
         b = false;
+    if (b && std::isinf(value->fValue))
+        b = false;
     return b;
 }
 
@@ -2500,7 +2504,8 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyOrder:
         if (validUnit(value, FInteger, CSSStrictMode)) {
             // We restrict the smallest value to int min + 2 because we use int min and int min + 1 as special values in a hash set.
-            parsedValue = cssValuePool().createValue(std::max<double>(std::numeric_limits<int>::min() + 2, value->fValue), static_cast<CSSPrimitiveValue::UnitTypes>(value->unit));
+            double result = std::max<double>(std::numeric_limits<int>::min() + 2, parsedDouble(value, ReleaseParsedCalcValue));
+            parsedValue = cssValuePool().createValue(result, CSSPrimitiveValue::CSS_NUMBER);
             m_valueList->next();
         }
         break;
@@ -2593,6 +2598,14 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         }
         return false;
     }
+    case CSSPropertyAnimationDelay:
+    case CSSPropertyAnimationDirection:
+    case CSSPropertyAnimationDuration:
+    case CSSPropertyAnimationFillMode:
+    case CSSPropertyAnimationName:
+    case CSSPropertyAnimationPlayState:
+    case CSSPropertyAnimationIterationCount:
+    case CSSPropertyAnimationTimingFunction:
     case CSSPropertyWebkitAnimationDelay:
     case CSSPropertyWebkitAnimationDirection:
     case CSSPropertyWebkitAnimationDuration:
@@ -2880,8 +2893,9 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         return parseShorthand(propId, webkitColumnRuleShorthand(), important);
     case CSSPropertyWebkitTextStroke:
         return parseShorthand(propId, webkitTextStrokeShorthand(), important);
+    case CSSPropertyAnimation:
     case CSSPropertyWebkitAnimation:
-        return parseAnimationShorthand(important);
+        return parseAnimationShorthand(propId, important);
     case CSSPropertyTransition:
     case CSSPropertyWebkitTransition:
         return parseTransitionShorthand(propId, important);
@@ -3433,18 +3447,21 @@ void CSSParser::addAnimationValue(RefPtr<CSSValue>& lval, PassRef<CSSValue> rval
     lval = WTF::move(list);
 }
 
-bool CSSParser::parseAnimationShorthand(bool important)
+bool CSSParser::parseAnimationShorthand(CSSPropertyID propId, bool important)
 {
-    const StylePropertyShorthand& animationProperties = webkitAnimationShorthandForParsing();
+    ASSERT(propId == CSSPropertyAnimation || propId == CSSPropertyWebkitAnimation);
+
     const unsigned numProperties = 7;
+    const StylePropertyShorthand& shorthand = animationShorthandForParsing(propId);
 
     // The list of properties in the shorthand should be the same
     // length as the list with animation name in last position, even though they are
     // in a different order.
-    ASSERT(numProperties == webkitAnimationShorthandForParsing().length());
+    ASSERT(numProperties == shorthand.length());
+    ASSERT(numProperties == animationShorthand().length());
     ASSERT(numProperties == webkitAnimationShorthand().length());
 
-    ShorthandScope scope(this, CSSPropertyWebkitAnimation);
+    ShorthandScope scope(this, propId);
 
     bool parsedProperty[numProperties] = { false };
     AnimationParseContext context;
@@ -3470,7 +3487,7 @@ bool CSSParser::parseAnimationShorthand(bool important)
         for (i = 0; i < numProperties; ++i) {
             if (!parsedProperty[i]) {
                 RefPtr<CSSValue> val;
-                if (parseAnimationProperty(animationProperties.properties()[i], val, context)) {
+                if (parseAnimationProperty(shorthand.properties()[i], val, context)) {
                     parsedProperty[i] = found = true;
                     addAnimationValue(values[i], val.releaseNonNull());
                     break;
@@ -3493,7 +3510,7 @@ bool CSSParser::parseAnimationShorthand(bool important)
         if (!parsedProperty[i])
             addAnimationValue(values[i], cssValuePool().createImplicitInitialValue());
 
-        addProperty(animationProperties.properties()[i], values[i].release(), important);
+        addProperty(shorthand.properties()[i], values[i].release(), important);
     }
 
     return true;
@@ -4762,63 +4779,71 @@ bool CSSParser::parseAnimationProperty(CSSPropertyID propId, RefPtr<CSSValue>& r
         }
         else {
             switch (propId) {
-                case CSSPropertyWebkitAnimationDelay:
-                case CSSPropertyTransitionDelay:
-                case CSSPropertyWebkitTransitionDelay:
-                    currValue = parseAnimationDelay();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyWebkitAnimationDirection:
-                    currValue = parseAnimationDirection();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyWebkitAnimationDuration:
-                case CSSPropertyTransitionDuration:
-                case CSSPropertyWebkitTransitionDuration:
-                    currValue = parseAnimationDuration();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyWebkitAnimationFillMode:
-                    currValue = parseAnimationFillMode();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyWebkitAnimationIterationCount:
-                    currValue = parseAnimationIterationCount();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyWebkitAnimationName:
-                    currValue = parseAnimationName();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyWebkitAnimationPlayState:
-                    currValue = parseAnimationPlayState();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyTransitionProperty:
-                case CSSPropertyWebkitTransitionProperty:
-                    currValue = parseAnimationProperty(context);
-                    if (value && !context.animationPropertyKeywordAllowed())
-                        return false;
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                case CSSPropertyWebkitAnimationTimingFunction:
-                case CSSPropertyTransitionTimingFunction:
-                case CSSPropertyWebkitTransitionTimingFunction:
-                    currValue = parseAnimationTimingFunction();
-                    if (currValue)
-                        m_valueList->next();
-                    break;
-                default:
-                    ASSERT_NOT_REACHED();
+            case CSSPropertyAnimationDelay:
+            case CSSPropertyWebkitAnimationDelay:
+            case CSSPropertyTransitionDelay:
+            case CSSPropertyWebkitTransitionDelay:
+                currValue = parseAnimationDelay();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyAnimationDirection:
+            case CSSPropertyWebkitAnimationDirection:
+                currValue = parseAnimationDirection();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyAnimationDuration:
+            case CSSPropertyWebkitAnimationDuration:
+            case CSSPropertyTransitionDuration:
+            case CSSPropertyWebkitTransitionDuration:
+                currValue = parseAnimationDuration();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyAnimationFillMode:
+            case CSSPropertyWebkitAnimationFillMode:
+                currValue = parseAnimationFillMode();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyAnimationIterationCount:
+            case CSSPropertyWebkitAnimationIterationCount:
+                currValue = parseAnimationIterationCount();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyAnimationName:
+            case CSSPropertyWebkitAnimationName:
+                currValue = parseAnimationName();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyAnimationPlayState:
+            case CSSPropertyWebkitAnimationPlayState:
+                currValue = parseAnimationPlayState();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyTransitionProperty:
+            case CSSPropertyWebkitTransitionProperty:
+                currValue = parseAnimationProperty(context);
+                if (value && !context.animationPropertyKeywordAllowed())
                     return false;
+                if (currValue)
+                    m_valueList->next();
+                break;
+            case CSSPropertyAnimationTimingFunction:
+            case CSSPropertyWebkitAnimationTimingFunction:
+            case CSSPropertyTransitionTimingFunction:
+            case CSSPropertyWebkitTransitionTimingFunction:
+                currValue = parseAnimationTimingFunction();
+                if (currValue)
+                    m_valueList->next();
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+                return false;
             }
 
             if (!currValue)
@@ -10677,6 +10702,10 @@ inline bool CSSParser::detectFunctionTypeToken(int length)
 #if ENABLE(CSS_SELECTORS_LEVEL4)
         if (isEqualToCSSIdentifier(name, "lang")) {
             m_token = LANGFUNCTION;
+            return true;
+        }
+        if (isEqualToCSSIdentifier(name, "role")) {
+            m_token = ROLEFUNCTION;
             return true;
         }
 #endif

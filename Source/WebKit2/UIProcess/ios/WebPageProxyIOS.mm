@@ -261,14 +261,14 @@ void WebPageProxy::overflowScrollDidEndScroll()
     m_pageClient.overflowScrollDidEndScroll();
 }
 
-void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
+void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
 {
     if (!isValid())
         return;
 
     m_dynamicViewportSizeUpdateWaitingForTarget = true;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = true;
-    m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, minimumLayoutSizeForMinimalUI, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, targetScale, deviceOrientation), m_pageID);
+    m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, targetScale, deviceOrientation), m_pageID);
 }
 
 void WebPageProxy::synchronizeDynamicViewportUpdate()
@@ -313,11 +313,6 @@ void WebPageProxy::setViewportConfigurationMinimumLayoutSize(const WebCore::Floa
     m_process->send(Messages::WebPage::SetViewportConfigurationMinimumLayoutSize(size), m_pageID);
 }
 
-void WebPageProxy::setViewportConfigurationMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize& size)
-{
-    m_process->send(Messages::WebPage::SetViewportConfigurationMinimumLayoutSizeForMinimalUI(size), m_pageID);
-}
-
 void WebPageProxy::setMaximumUnobscuredSize(const WebCore::FloatSize& size)
 {
     m_process->send(Messages::WebPage::SetMaximumUnobscuredSize(size), m_pageID);
@@ -330,6 +325,12 @@ void WebPageProxy::setDeviceOrientation(int32_t deviceOrientation)
         if (isValid())
             m_process->send(Messages::WebPage::SetDeviceOrientation(deviceOrientation), m_pageID);
     }
+}
+
+static bool exceedsRenderTreeSizeSizeThreshold(uint64_t thresholdSize, uint64_t committedSize)
+{
+    const double thesholdSizeFraction = 0.5; // Empirically-derived.
+    return committedSize > thresholdSize * thesholdSizeFraction;
 }
 
 void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& layerTreeTransaction)
@@ -349,6 +350,12 @@ void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& 
     }
 
     m_pageClient.didCommitLayerTree(layerTreeTransaction);
+
+    if (m_wantsSessionRestorationRenderTreeSizeThresholdEvent && !m_hitRenderTreeSizeThreshold
+        && exceedsRenderTreeSizeSizeThreshold(m_sessionRestorationRenderTreeSize, layerTreeTransaction.renderTreeSize())) {
+        m_hitRenderTreeSizeThreshold = true;
+        m_loaderClient->didLayout(this, WebCore::ReachedSessionRestorationRenderTreeSizeThreshold, nullptr);
+    }
 }
 
 void WebPageProxy::selectWithGesture(const WebCore::IntPoint point, WebCore::TextGranularity granularity, uint32_t gestureType, uint32_t gestureState, std::function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)> callbackFunction)
@@ -757,7 +764,7 @@ void WebPageProxy::setAssistedNodeSelectedIndex(uint32_t index, bool allowMultip
     process().send(Messages::WebPage::SetAssistedNodeSelectedIndex(index, allowMultipleSelection), m_pageID);
 }
 
-void WebPageProxy::didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&)
+void WebPageProxy::didPerformDictionaryLookup(const DictionaryPopupInfo&)
 {
     notImplemented();
 }
@@ -805,11 +812,6 @@ void WebPageProxy::didNotHandleTapAsClick(const WebCore::IntPoint& point)
 void WebPageProxy::viewportMetaTagWidthDidChange(float width)
 {
     m_pageClient.didChangeViewportMetaTagWidth(width);
-}
-
-void WebPageProxy::setUsesMinimalUI(bool usesMinimalUI)
-{
-    m_pageClient.setUsesMinimalUI(usesMinimalUI);
 }
 
 void WebPageProxy::didFinishDrawingPagesToPDF(const IPC::DataReference& pdfData)

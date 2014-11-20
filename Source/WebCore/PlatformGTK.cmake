@@ -233,7 +233,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/PlatformMouseEventGtk.cpp
     platform/gtk/PlatformScreenGtk.cpp
     platform/gtk/PlatformWheelEventGtk.cpp
-    platform/gtk/RedirectedXCompositeWindow.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
     platform/gtk/SoundGtk.cpp
     platform/gtk/WidgetGtk.cpp
@@ -636,7 +635,10 @@ list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
     page/PerformanceNavigation.idl
     page/PerformanceTiming.idl
     page/Screen.idl
+    page/UserMessageHandler.idl
+    page/UserMessageHandlersNamespace.idl
     page/WebKitPoint.idl
+    page/WebKitNamespace.idl
 
     plugins/DOMMimeType.idl
     plugins/DOMMimeTypeArray.idl
@@ -693,6 +695,7 @@ set(GObjectDOMBindingsStable_INSTALLED_HEADERS
 
 set(GObjectDOMBindingsUnstable_INSTALLED_HEADERS
      ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdomdefines-unstable.h
+     ${WEBCORE_DIR}/bindings/gobject/WebKitDOMCustomUnstable.h
 )
 
 foreach (file ${GObjectDOMBindingsStable_IDL_FILES})
@@ -734,7 +737,8 @@ add_custom_command(
 
 # Some of the static headers are included by generated public headers with include <webkitdom/WebKitDOMFoo.h>.
 # We need those headers in the derived sources to be in webkitdom directory.
-foreach (classname ${GObjectDOMBindings_STATIC_CLASS_LIST})
+set(GObjectDOMBindings_STATIC_HEADER_NAMES ${GObjectDOMBindings_STATIC_CLASS_LIST} CustomUnstable)
+foreach (classname ${GObjectDOMBindings_STATIC_HEADER_NAMES})
     add_custom_command(
         OUTPUT ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/WebKitDOM${classname}.h
         DEPENDS ${WEBCORE_DIR}/bindings/gobject/WebKitDOM${classname}.h

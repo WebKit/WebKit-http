@@ -60,9 +60,6 @@ fast/events/mouseover-button.html
 
 webkit.org/b/33923 platform/mac/accessibility/change-notification-on-scroll.html [ Skip ] # times out
 
-# Accept header is handled by the browser
-http/tests/misc/image-checks-for-accept.html
-
 # eventSender needs to propagate the event to the calling window, not the main frame always.
 http/tests/plugins/plugin-document-has-focus.html
 
@@ -157,6 +154,7 @@ http/tests/security/contentTypeOptions
 # Media Stream API is not yet enabled.
 fast/mediastream
 fast/events/constructors/media-stream-event-constructor.html
+http/tests/media/media-stream
 
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
@@ -174,8 +172,6 @@ webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1
 # Still working out flakiness issues with the perf tests.
 perf
 
-# This test appears to be flakey on all platforms, especially
-# Mac-Leopard after r63862.  Skipping for now.
 webkit.org/b/42821 animations/play-state.html [ Pass Failure ]
 webkit.org/b/113598 animations/animation-delay-changed.html [ Pass Failure ]
 webkit.org/b/113599 svg/animations/reinserting-svg-into-document.html [ Pass Failure ]
@@ -256,8 +252,7 @@ fast/dom/HTMLAnchorElement/anchor-nodownload-set.html
 fast/dom/HTMLAnchorElement/anchor-download-unset.html
 
 # HTTP 204 (No Content) should be ignored
-# https://bugs.webkit.org/show_bug.cgi?id=60206
-http/tests/navigation/response204.html
+webkit.org/b/60206 http/tests/navigation/response204.html
 
 # Styled scope element is not yet enabled.
 webkit.org/b/49142 fast/css/style-scoped
@@ -374,14 +369,6 @@ webkit.org/b/82972 plugins/multiple-plugins.html [ Pass Failure ]
 webkit.org/b/82979 fast/canvas/2d.text.draw.fill.maxWidth.gradient.html [ Pass Failure ]
 webkit.org/b/82979 canvas/philip/tests/2d.text.draw.align.center.html [ Pass Failure ]
 
-webkit.org/b/82980 http/tests/navigation/back-twice-without-commit.html [ Timeout ]
-
-webkit.org/b/112617 [ Debug ] http/tests/navigation/navigation-redirect-schedule-crash.html [ Crash Pass ]
-
-webkit.org/b/82981 http/tests/misc/favicon-loads-with-icon-loading-override.html [ Pass Failure ]
-
-webkit.org/b/82982 fast/dom/jsDevicePixelRatio.html [ Pass Failure ]
-
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
 http/tests/security/video-cross-origin-accessfailure.html
@@ -389,34 +376,25 @@ http/tests/security/video-cross-origin-accessfailure.html
 # Requires ENABLE(MEDIA_CAPTURE)
 fast/forms/file/file-input-capture.html
 
-webkit.org/b/85523 fullscreen/full-screen-iframe-legacy.html [ Pass Failure ]
+webkit.org/b/85523 fullscreen/full-screen-iframe-legacy.html [ Pass Failure Timeout ]
 
-webkit.org/b/85969 http/tests/loading/post-in-iframe-with-back-navigation.html
+webkit.org/b/85969 http/tests/loading/post-in-iframe-with-back-navigation.html [ Failure ]
 
 webkit.org/b/86480 plugins/npruntime/delete-plugin-within-setProperty.html [ Failure ]
 webkit.org/b/86480 plugins/npruntime/delete-plugin-within-hasProperty-return-true.html [ Failure ]
 webkit.org/b/86480 plugins/npruntime/delete-plugin-within-hasProperty-return-false.html [ Failure ]
 
-webkit.org/b/87347 fast/frames/flattening/iframe-tiny.html [ Pass Failure ]
-
-webkit.org/b/89680 fast/canvas/canvas-imageSmoothingEnabled-repaint.html [ Pass Failure ]
-
 # Implement textInputController.setComposition()
 webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Pass Failure ]
-
-webkit.org/b/90724 compositing/iframes/iframe-size-from-zero.html [ Pass Failure ]
-
-compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
 
 # <rdar://problem/11224160> Focus not transferring properly in DumpRenderTree in Mountain Lion
 fast/events/show-modal-dialog-onblur-onfocus.html [ Skip ]
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html [ Failure ]
 platform/mac/fast/overflow/overflow-scrollbar-hit-test.html [ Failure ]
 
-platform/mac/accessibility/form-control-value-settable.html [ Pass Failure ]
-platform/mac/fast/forms/input-appearance-spinbutton-up.html [ Pass Failure ]
-platform/mac/fast/forms/input-appearance-spinbutton.html [ Pass Failure ]
-platform/mac/fast/text/systemFont.html [ Pass Failure ]
+[ Mavericks ] platform/mac/accessibility/form-control-value-settable.html [ Failure ]
+platform/mac/fast/forms/input-appearance-spinbutton-up.html [ Failure ]
+platform/mac/fast/forms/input-appearance-spinbutton.html [ Failure ]
 platform/mac/fast/text/vertical-no-sideways.html [ Pass Failure ]
 
 fast/css/resize-corner-tracking.html [ Pass Failure ]
@@ -441,7 +419,8 @@ fast/writing-mode/japanese-rl-selection.html [ Failure ]
 fast/writing-mode/japanese-rl-text.html [ Failure ]
 
 # <rdar://problem/11358748> http/tests/multipart/multipart-wait-before-boundary.html fails on ML as of r115745
-http/tests/multipart/multipart-wait-before-boundary.html
+# FIXME: This may not be a problem any more, should check bots once they gather some data for the test.
+http/tests/multipart/multipart-wait-before-boundary.html [ Failure ]
 
 # <rdar://problem/11059031> Many, many Java tests fail on Mountain Lion
 java/
@@ -463,11 +442,6 @@ svg/custom/zero-path-square-cap-rendering.svg [ Failure ]
 svg/stroke/zero-length-arc-linecaps-rendering.svg [ Failure ]
 svg/stroke/zero-length-path-linecap-rendering.svg [ Failure ]
 svg/stroke/zero-length-subpaths-linecap-rendering.svg [ Failure ]
-
-# Blend mode result is slightly different than the applied formula.
-webkit.org/b/130582 css3/blending/background-blend-mode-data-uri-svg-image.html [ ImageOnlyFailure Pass ]
-webkit.org/b/130582 css3/blending/background-blend-mode-tiled-layers.html [ ImageOnlyFailure Pass ]
-webkit.org/b/130582 css3/blending/background-blend-mode-crossfade-image.html [ ImageOnlyFailure Pass ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=110871
 compositing/overlap-blending/reflection-opacity-huge.html [ ImageOnlyFailure ]
@@ -794,9 +768,6 @@ webkit.org/b/67434 [ Debug ] fast/overflow/overflow-height-float-not-removed-cra
 webkit.org/b/67434 [ Debug ] fast/overflow/overflow-height-float-not-removed-crash3.html [ Skip ]
 webkit.org/b/67434 [ Debug ] fast/block/float/overhanging-tall-block.html [ Skip ]
 
-# Only failing on WK1
-webkit.org/b/104104 fast/overflow/scrollbar-click-retains-focus.html [ Failure ]
-
 webkit.org/b/104954 http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyFailure ]
 
 webkit.org/b/104962 platform/mac/fast/loader/file-url-mimetypes-2.html [ Failure ]
@@ -809,9 +780,6 @@ webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
 webkit.org/b/106415 fast/workers/worker-close-more.html [ Pass Failure ] 
 webkit.org/b/106415 fast/workers/worker-document-leak.html [ Pass Failure ] 
 webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
-fast/workers/worker-close-more.html [ Skip ] # times out
-fast/workers/worker-document-leak.html [ Skip ] # times out
-fast/workers/worker-lifecycle.html [ Skip ] # times out
 
 webkit.org/b/119374 fast/workers/termination-early.html [ Pass Crash ]
 
@@ -864,11 +832,6 @@ webkit.org/b/121331 http/tests/misc/submit-post-keygen.html [ Pass Failure Timeo
 # isProtocolHandlerRegistered() isn't supported yet.
 webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
 
-webkit.org/b/113227 transitions/cross-fade-background-image.html [ Pass Failure ]
-webkit.org/b/113227 transitions/cross-fade-border-image.html [ Pass Failure ]
-webkit.org/b/113227 transitions/default-timing-function.html [ Pass Failure ]
-webkit.org/b/113227 transitions/svg-text-shadow-transition.html [ Pass Failure ]
-
 # New test failing, needs investigation.
 webkit.org/b/103857 fast/events/mouse-cursor-change.html
 
@@ -917,7 +880,9 @@ webkit.org/b/121628 fast/history/history-back-while-pdf-in-pagecache.html [ Pass
 
 webkit.org/b/122490 [ Debug ] mathml/very-large-stretchy-operators.html [ Skip ]
 
-webkit.org/b/122508 compositing/video/video-reflection.html [ Pass Timeout ]
+webkit.org/b/122508 [ MountainLion ] compositing/video/video-reflection.html [ Pass Timeout ]
+[ MountainLion ] compositing/video/video-object-fit.html [ Pass Timeout ]
+webkit.org/b/138662 [ MountainLion ] compositing/video/video-border-radius.html [ Skip ]
 
 webkit.org/b/123220 compositing/regions/floated-region-with-transformed-child.html [ Pass ImageOnlyFailure ]
 webkit.org/b/138179 compositing/regions/propagate-region-box-shadow-border-padding-for-video.html [ Skip ]
@@ -1155,8 +1120,7 @@ webkit.org/b/135071 [ MountainLion ] media/video-seek-with-negative-playback.htm
 webkit.org/b/136532 [ MountainLion ] media/audio-data-url.html [ Failure ]
 webkit.org/b/136532 [ MountainLion ] media/sources-fallback-codecs.html [ Failure ]
 webkit.org/b/136532 [ MountainLion ] media/video-seek-past-end-playing.html [ Pass Failure ]
-[ MountainLion ] media/video-playbackrate.html [ Pass Timeout ]
-[ MountainLion ] media/video-ended-event-slow-motion-playback.html [ Pass Failure ]
+[ MountainLion ] media/video-playbackrate.html [ Pass Failure Timeout ]
 
 # Mountain Lion and earlier do not support Encrypted Media Extensions.
 Bug(jernoble) [ MountainLion ] media/encrypted-media/ [ WontFix ]
@@ -1186,7 +1150,6 @@ webkit.org/b/112659 media/video-playing-and-pause.html [ Pass Failure ]
 webkit.org/b/114744 media/video-layer-crash.html [ Pass Failure Timeout ]
 webkit.org/b/115048 media/media-element-play-after-eos.html [ Pass Failure ]
 webkit.org/b/116277 media/video-buffered.html [ Pass Failure ]
-webkit.org/b/121803 compositing/video/video-object-fit.html [ Pass ImageOnlyFailure ]
 webkit.org/b/121803 media/video-object-fit-change.html [ Pass ImageOnlyFailure ]
 webkit.org/b/121803 media/video-object-fit.html [ Pass ImageOnlyFailure ]
 webkit.org/b/122021 media/track/track-cue-rendering-vertical.html [ Pass Failure ]
@@ -1212,6 +1175,7 @@ webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/track.html [ Pass Fa
 webkit.org/b/135160 media/track/track-in-band-subtitles-too-large.html [ Pass Failure ]
 webkit.org/b/135160 media/track/track-long-word-container-sizing.html [ Pass Failure ]
 webkit.org/b/137311 media/video-fullscreeen-only-playback.html [ Pass Failure Crash Timeout ]
+webkit.org/b/138798 [ MountainLion ] media/track/track-cues-sorted-before-dispatch.html [ Pass Failure Timeout ]
 ## --- End flaky media tests
 
 # Skipped while Eric Carlson works on a fix.
@@ -1314,18 +1278,8 @@ webkit.org/b/137157 inspector/page/main-frame-resource.html [ Pass Failure Crash
 webkit.org/b/137319 [ MountainLion ] fast/css/test-setting-canvas-color.html [ Pass Crash Timeout ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15393179>)
-[ Yosemite ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
-[ Yosemite ] webaudio/oscillator-sawtooth.html [ Failure ]
-
-# FIXME: Needs bugzilla (<rdar://problem/15864185>)
-[ Yosemite ] platform/mac/editing/attributed-string/anchor-element.html [ Failure ]
-[ Yosemite ] platform/mac/editing/attributed-string/basic.html [ Failure ]
-[ Yosemite ] platform/mac/editing/attributed-string/font-size.html [ Failure ]
-[ Yosemite ] platform/mac/editing/attributed-string/font-style-variant-effect.html [ Failure ]
-[ Yosemite ] platform/mac/editing/attributed-string/font-weight.html [ Failure ]
-[ Yosemite ] platform/mac/editing/attributed-string/letter-spacing.html [ Failure ]
-[ Yosemite ] platform/mac/editing/attributed-string/text-decorations.html [ Failure ]
-[ Yosemite ] platform/mac/editing/attributed-string/vertical-align.html [ Failure ]
+[ Yosemite+ ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
+[ Yosemite+ ] webaudio/oscillator-sawtooth.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15971846>)
 [ Yosemite ] accessibility/deleting-iframe-destroys-axcache.html [ Failure ]
@@ -1337,15 +1291,15 @@ webkit.org/b/137319 [ MountainLion ] fast/css/test-setting-canvas-color.html [ P
 webkit.org/b/124219 [ Yosemite ] media/track/track-forced-subtitles-in-band.html [ Failure Pass ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15971968>)
-[ Yosemite ] platform/mac/accessibility/misspelled-attributed-string.html [ Pass Failure ]
+[ Yosemite+ ] platform/mac/accessibility/misspelled-attributed-string.html [ Pass Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15764845>)
 [ Yosemite ] webgl/1.0.2/conformance/rendering/gl-scissor-test.html [ Pass Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16040720>)
-[ Yosemite ] canvas/philip/tests/2d.drawImage.animated.poster.html [ Pass Failure ]
+[ Yosemite+ ] canvas/philip/tests/2d.drawImage.animated.poster.html [ Pass Failure ]
 [ Yosemite ] fast/canvas/canvas-lineDash.html [ Pass Failure ]
-[ Yosemite ] fast/canvas/canvas-scale-strokePath-shadow.html [ Pass Failure ]
+[ Yosemite+ ] fast/canvas/canvas-scale-strokePath-shadow.html [ Pass Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16187249>)
 [ Yosemite ] transitions/transition-end-event-destroy-iframe.html [ Skip ]
@@ -1354,18 +1308,13 @@ webkit.org/b/124219 [ Yosemite ] media/track/track-forced-subtitles-in-band.html
 [ Yosemite ] media/auto-play-in-sandbox-with-allow-scripts.html [ Skip ]
 [ Yosemite ] fast/events/media-focus-in-standalone-media-document.html [ Skip ]
 
-# FIXME: Needs bugzilla (<rdar://problem/16200275>)
-[ Yosemite ] inspector/test-harness-trivially-works.html [ Skip ]
-[ Yosemite ] inspector/dom/content-flow-content-removal.html [ Skip ]
-[ Yosemite ] inspector/dom/content-flow-list.html [ Skip ]
-
 # FIXME: Needs bugzilla (<rdar://problem/16663912>)
 # Seems like this should happen everywhere, but it only does on Yosemite.
-[ Yosemite ] http/tests/navigation/post-frames-goback1.html [ Failure ]
+[ Yosemite+ ] http/tests/navigation/post-frames-goback1.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16664245>)
 # We should land updated results if we can't get this bug fixed in time.
-[ Yosemite ] http/tests/xmlhttprequest/cache-override.html [ Failure ]
+[ Yosemite+ ] http/tests/xmlhttprequest/cache-override.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16676355>)
 [ Yosemite ] webgl/1.0.1/conformance/canvas/buffer-offscreen-test.html [ Pass Failure ]
@@ -1377,48 +1326,27 @@ webkit.org/b/124219 [ Yosemite ] media/track/track-forced-subtitles-in-band.html
 [ Yosemite ] fast/frames/flattening/iframe-flattening-fixed-width.html [ Pass Failure ]
 [ Yosemite ] fast/frames/flattening/iframe-flattening-simple.html [ Pass Failure ]
 
-# Passes on Yosemite.
-webkit.org/b/123498 [ Yosemite ] media/track/track-in-band-cues-added-once.html [ Pass ]
+webkit.org/b/138806 [ Yosemite+ ] media/track/track-in-band-cues-added-once.html [ Pass Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16696298>)
 [ Yosemite ] webgl/1.0.2/conformance/textures/texture-size-limit.html [ Pass Failure ]
 [ Yosemite ] fast/canvas/webgl/webgl-compressed-texture-size-limit.html [ Pass Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16802900>)
-[ Yosemite ] fast/forms/select-initial-position.html [ Failure ]
+[ Yosemite+ ] fast/forms/select-initial-position.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16802068>)
-[ Yosemite ] fast/css/input-search-padding.html [ Failure ]
+[ Yosemite+ ] fast/css/input-search-padding.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16801910>)
-[ Yosemite ] fast/replaced/width100percent-textarea.html [ Failure ]
+[ Yosemite+ ] fast/replaced/width100percent-textarea.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16801814>)
 [ Yosemite ] media/controls-after-reload.html [ Failure ]
 [ Yosemite ] media/controls-without-preload.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15992006>)
-[ Yosemite ] fast/text/international/text-combine-image-test.html [ Failure ]
-
-# FIXME: Needs bugzilla (<rdar://problem/16715047>)
-[ Yosemite ] svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
-[ Yosemite ] css3/filters/hidpi-filter-is-on-subpixel-position.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/layers/hidpi-transform-on-child-content-is-mispositioned.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/backgrounds/hidpi-bitmap-background-origin-on-subpixel-position.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/backgrounds/hidpi-generated-gradient-background-on-subpixel-position.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/backgrounds/hidpi-bitmap-background-on-subpixel-position.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/borders/hidpi-rounded-border-on-subpixel-position.html [ ImageOnlyFailure ]
-[ Yosemite ] fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
-[ Yosemite ] svg/custom/hidpi-masking-clipping.svg [ ImageOnlyFailure ]
-
-# FIXME: Needs bugzilla (<rdar://problem/16731930>)
-[ Yosemite ] compositing/contents-scale/incremental-change.html [ ImageOnlyFailure ]
-
-# FIXME: Needs bugzilla (<rdar://problem/16732502>)
-[ Yosemite ] compositing/video/video-object-fit.html [ Failure ]
+[ Yosemite+ ] fast/text/international/text-combine-image-test.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16804845>)
 [ Yosemite ] fast/forms/hidpi-textarea-on-subpixel-position.html [ ImageOnlyFailure ]
@@ -1427,49 +1355,41 @@ webkit.org/b/123498 [ Yosemite ] media/track/track-in-band-cues-added-once.html 
 [ Yosemite ] http/tests/misc/webtiming-ssl.php [ Skip ]
 
 # FIXME: Needs bugzilla (<rdar://problem/17458211>)
-[ Yosemite ] platform/mac/fast/text/systemFont.html [ Pass Failure ]
+[ Yosemite+ ] platform/mac/fast/text/systemFont.html [ Pass Failure ]
+[ Mavericks ] platform/mac/fast/text/systemFont.html [ Failure ]
+[ MountainLion ] platform/mac/fast/text/systemFont.html [ Pass ]
 
 # FIXME: Needs bugzilla (<rdar://problem/17476688>)
-[ Yosemite ] media/media-source/media-source-tracks.html [ Skip ]
+[ Yosemite+ ] media/media-source/media-source-tracks.html [ Skip ]
 
 # Passing Media Source tests
-[ Yosemite ] http/tests/media/media-source/ [ Skip ]
-[ Yosemite ] http/tests/media/media-source/mediasource-addsourcebuffer.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-append-buffer.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-closed.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-config-change-mp4-v-framerate.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-endofstream-invaliderror.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-multiple-attach.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-play.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-remove.html [ Pass ]
-[ Yosemite ] http/tests/media/media-source/mediasource-sourcebufferlist.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/ [ Skip ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-addsourcebuffer.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-append-buffer.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-closed.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-config-change-mp4-v-framerate.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-endofstream-invaliderror.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-multiple-attach.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-play.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-remove.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-sourcebufferlist.html [ Pass ]
 
 # These two tests have "Error: InvalidStateError: DOM Exception 11" in output.
-[ Yosemite ] media/media-source/media-source-duplicate-seeked.html [ Failure ]
-[ Yosemite ] media/media-source/media-source-play.html [ Failure ]
+[ Yosemite+ ] media/media-source/media-source-duplicate-seeked.html [ Failure ]
+[ Yosemite+ ] media/media-source/media-source-play.html [ Failure ]
 
 # This test times out.
-[ Yosemite ] media/media-source/media-source-seek-complete.html [ Failure ]
+[ Yosemite+ ] media/media-source/media-source-seek-complete.html [ Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/17748495>)
 # Some of these failures already have individual bugs, others are covered by this one.
-[ Yosemite ] compositing/backgrounds/fixed-background-on-descendant.html	 [ Pass ImageOnlyFailure ]
+[ Yosemite ] compositing/backgrounds/fixed-background-on-descendant.html [ Pass ImageOnlyFailure ]
 [ Yosemite ] compositing/iframes/become-overlapped-iframe.html [ Pass Failure ]
 [ Yosemite ] compositing/masks/solid-color-masked.html [ Pass ImageOnlyFailure ]
 [ Yosemite ] fast/canvas/canvas-overflow-hidden-animation.html [ Pass ImageOnlyFailure ]
 [ Yosemite ] fast/layers/wrong-clipping-semi-transparent-compositing-layer-on-subpixel-position.html [ Pass ImageOnlyFailure ]
-[ Yosemite ] fast/repaint/fixed-move-after-keyboard-scroll.html [ Pass Failure ]
-# FIXME: Needs bugzilla (<rdar://problem/17748156>)
-[ Yosemite ] compositing/iframes/become-composited-nested-iframes.html [ Pass Failure ]
-# FIXME: Needs bugzilla (<rdar://problem/17748276>)
-[ Yosemite ] compositing/reflections/repaint-with-reflection.html [ Pass ImageOnlyFailure ]
-# FIXME: Needs bugzilla (<rdar://problem/17748454>)
-[ Yosemite ] compositing/repaint/foreground-layer-change.html [ Pass ImageOnlyFailure ]
-
-# FIXME: Needs bugzilla (<rdar://problem/16660589>)
-[ Yosemite ] css3/blending/blend-mode-isolation-flags-turn-off-blending.html [ Pass Failure ]
-[ Yosemite ] css3/blending/blend-mode-isolation-flags-turn-on-stacking-context.html [ Pass Failure ]
+[ Yosemite+ ] fast/repaint/fixed-move-after-keyboard-scroll.html [ Pass Failure ]
 
 # These tests used to only fail with WK2, but on Yosemite, they also fail with WK1.
 webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-blur.html [ ImageOnlyFailure ]
@@ -1482,33 +1402,37 @@ webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-reference.html [ ImageOnlyFa
 platform/mac/editing/input/undo-grouping-on-text-insertion.html [ Skip ]
 
 # FIXME: Needs bugzilla (<rdar://problem/17890720>)
-[ Yosemite ] fast/dom/Geolocation/requestQueuingForHiddenPage.html [ Skip ]
+[ Yosemite+ ] fast/dom/Geolocation/requestQueuingForHiddenPage.html [ Skip ]
 
 # This test fails in compositing mode, so pre-Yosemite failures are WK2 only, and now it fails on WK1 too.
-webkit.org/b/136109 [ Yosemite ] fast/multicol/mixed-opacity-fixed-test.html  [ ImageOnlyFailure ]
+webkit.org/b/136109 [ Yosemite+ ] fast/multicol/mixed-opacity-fixed-test.html  [ ImageOnlyFailure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/18232228>)
 [ Yosemite ] fast/canvas/image-potential-subsample.html [ Pass Failure ]
 [ Yosemite ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-potentially-subsampled-image.html [ Pass Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/18273139>)
-[ Yosemite ] storage/websql/sql-error-codes.html [ Failure ]
+[ Yosemite+ ] storage/websql/sql-error-codes.html [ Failure ]
 
 # Some inspector tests fail when run from Production builds due to missing test resources.
 # FIXME: Needs bugzilla (<rdar://problem/16200275>)
-# Also, these tests are flaky in Debug/Release builds, <https://bugs.webkit.org/show_bug.cgi?id=138636>.
-[ Yosemite ] inspector/css/matched-style-properties.html [ Pass Failure Crash ]
-[ Yosemite ] inspector/css/pseudo-element-matches.html [ Pass Failure Crash ]
-[ Yosemite ] inspector/css/selector-specificity.html [ Pass Failure Crash ]
-[ Yosemite ] inspector/event-listener-set.html [ Pass Failure Crash ]
-[ Yosemite ] inspector/event-listener.html [ Pass Failure Crash ]
-[ Yosemite ] inspector/model/parse-script-syntax-tree.html [ Pass Failure Crash ]
-[ Yosemite ] inspector/protocol-promise-result.html [ Pass Failure Crash ]
-
-webkit.org/b/138394 media/track/audio-track.html [ Pass Failure ]
+# Also, these tests are flaky in Debug/Release builds, <https://bugs.webkit.org/show_bug.cgi?id=138636>
+# and <https://bugs.webkit.org/show_bug.cgi?id=129817>.
+[ Yosemite+ ] inspector/css/matched-style-properties.html [ Pass Failure Crash ]
+[ Yosemite+ ] inspector/css/pseudo-element-matches.html [ Pass Failure Crash ]
+[ Yosemite+ ] inspector/css/selector-specificity.html [ Pass Failure Crash ]
+[ Yosemite+ ] inspector/dom/content-flow-content-removal.html [ Skip ]
+[ Yosemite+ ] inspector/dom/content-flow-list.html [ Skip ]
+[ Yosemite+ ] inspector/event-listener-set.html [ Pass Failure Crash ]
+[ Yosemite+ ] inspector/event-listener.html [ Pass Failure Crash ]
+[ Yosemite+ ] inspector/model/parse-script-syntax-tree.html [ Pass Failure Crash ]
+[ Yosemite+ ] inspector/protocol-promise-result.html [ Pass Failure Crash ]
+[ Yosemite+ ] inspector/test-harness-trivially-works.html [ Skip ]
 
 # Specific to Yosemite's font fallback
 webkit.org/b/138328 [ Mavericks MountainLion ] platform/mac/fast/text/font-cursive-italic-cjk.html [ Skip ]
 
 webkit.org/b/138075 [ Yosemite ] transforms/2d/hindi-rotated.html [ Pass Failure ]
 webkit.org/b/138075 [ Yosemite ] fast/text/international/hindi-spacing.html [ Pass Failure ]
+
+webkit.org/b/82980 http/tests/navigation/back-twice-without-commit.html [ Timeout ]

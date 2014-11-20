@@ -1,3 +1,1263 @@
+2014-11-19  Chris Dumez  <cdumez@apple.com>
+
+        Add layout test for DOM timers throttling and 0 height element with visible overflowing content
+        https://bugs.webkit.org/show_bug.cgi?id=138873
+
+        Reviewed by Simon Fraser.
+
+        Add a layout test for verify that a DOM timer changing the style of a 0
+        height element with visible overflowing content does not get throttled.
+        If the implementation did not properly use the overflow rect to
+        determine if the element is visible, this test would fail.
+
+        This covers the case of the top scrolling banner on huffingtonpost.com.
+
+        * fast/dom/repeating-timer-element-overflow-throttling-expected.txt: Added.
+        * fast/dom/repeating-timer-element-overflow-throttling.html: Added.
+
+2014-11-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Safari fails to load a web page with VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=138849
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/inline-block-assertion-expected.txt: Added.
+        * accessibility/inline-block-assertion.html: Added.
+
+2014-11-19  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Screen braille input doesn't work on forms.
+        https://bugs.webkit.org/show_bug.cgi?id=138804
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/ios-sim: Copied from LayoutTests/platform/ios-sim.
+        * platform/ios-sim/accessibility/set-value-expected.txt: Added.
+        * platform/ios-sim/accessibility/set-value.html: Added.
+
+2014-11-19  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Add selector checker for :lang pseudo class in Selectors level 4
+        https://bugs.webkit.org/show_bug.cgi?id=138281
+
+        Reviewed by Benjamin Poulain.
+
+        Add layout tests for :lang selector checker with multiple arguments and
+        related behaviors on extended filtering.
+
+        * fast/selectors/lang-extended-filtering-expected.txt: Added.
+        * fast/selectors/lang-extended-filtering.html: Added.
+        * fast/selectors/lang-multiple-expected.txt: Added.
+        * fast/selectors/lang-multiple.html: Added.
+
+2014-11-18  Philippe Normand  <pnormand@igalia.com>
+
+        start/stop method for AudioBufferSourceNodes and OscillatorNodes can take no args
+        https://bugs.webkit.org/show_bug.cgi?id=138739
+
+        Reviewed by Darin Adler.
+
+        * webaudio/dom-exceptions-expected.txt: Added.
+        * webaudio/dom-exceptions.html: Added.
+
+2014-11-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Aad failing test expectations to some tests imported in r176144.
+
+        * platform/win/TestExpectations:
+
+2014-11-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Use of uninitialized value in string eq in many http tests
+        https://bugs.webkit.org/show_bug.cgi?id=138852
+
+        Reviewed by Daniel Bates.
+
+        * http/tests/security/xssAuditor/resources/echo-intertag.pl: Don't use it uninitialized.
+
+2014-11-18  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add the initial implementation of dynamic specificity for :matches()
+        https://bugs.webkit.org/show_bug.cgi?id=138822
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/matches-specificity-1-expected.html: Added.
+        * fast/css/matches-specificity-1.html: Added.
+        * fast/css/matches-specificity-2-expected.html: Added.
+        * fast/css/matches-specificity-2.html: Added.
+        * fast/css/matches-specificity-3-expected.html: Added.
+        * fast/css/matches-specificity-3.html: Added.
+        * fast/css/matches-specificity-4-expected.html: Added.
+        * fast/css/matches-specificity-4.html: Added.
+        * fast/css/matches-specificity-5-expected.html: Added.
+        * fast/css/matches-specificity-5.html: Added.
+        * fast/css/matches-specificity-6-expected.html: Added.
+        * fast/css/matches-specificity-6.html: Added.
+        * fast/css/matches-specificity-7-expected.html: Added.
+        * fast/css/matches-specificity-7.html: Added.
+        * fast/css/matches-specificity-8-expected.html: Added.
+        * fast/css/matches-specificity-8.html: Added.
+        * fast/css/matches-specificity-9-expected.html: Added.
+        * fast/css/matches-specificity-9.html: Added.
+        * fast/css/matches-specificity-10-expected.html: Added.
+        * fast/css/matches-specificity-10.html: Added.
+
+2014-11-18  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting 'z-index' / 'flex-shrink' CSS properties to a calculated value
+        https://bugs.webkit.org/show_bug.cgi?id=138783
+
+        Reviewed by Andreas Kling.
+
+        Add layout tests to check that settings 'z-index' / 'flex-shrink' CSS
+        properties to a calculated value does not crash and behaves as
+        expected.
+
+        * fast/css/flex-shrink-calculated-value-expected.txt: Added.
+        * fast/css/flex-shrink-calculated-value.html: Added.
+        * fast/css/z-index-calculated-value-expected.txt: Added.
+        * fast/css/z-index-calculated-value.html: Added.
+
+2014-11-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r176263 and r176273.
+        https://bugs.webkit.org/show_bug.cgi?id=138854
+
+        Underlines are hideous. (Requested by litherum on #webkit).
+
+        Reverted changesets:
+
+        "Use underlining metrics from the font file"
+        https://bugs.webkit.org/show_bug.cgi?id=138762
+        http://trac.webkit.org/changeset/176263
+
+        "iOS build fix."
+        http://trac.webkit.org/changeset/176273
+
+2014-11-18  David Hyatt  <hyatt@apple.com>
+
+        REGRESSION (r167210): Invalid cast in WebCore::RenderBlock::blockSelectionGaps
+        https://bugs.webkit.org/show_bug.cgi?id=137590
+
+        Reviewed by Dean Jackson.
+
+        * fast/block/selection-block-gap-crash-expected.txt: Added.
+        * fast/block/selection-block-gap-crash.html: Added.
+
+2014-11-18  Andreas Kling  <akling@apple.com>
+
+        Avoid synchronous style recalc in Document.activeElement
+        <https://webkit.org/b/138850>
+
+        Reviewed by Ryosuke Niwa.
+
+        Tweak a test to run once the DOM is loaded instead of during parsing.
+
+        * fast/forms/autofocus-in-sandbox-with-allow-scripts.html:
+
+2014-11-18  David Hyatt  <hyatt@apple.com>
+
+        REGRESSION(r152313): Inline-block element doesn't wrap properly
+        https://bugs.webkit.org/show_bug.cgi?id=138846 - <rdar://problem/18838703>
+
+        Reviewed by Simon Fraser.
+
+        * fast/inline-block/inline-block-empty-spans-expected.html: Added.
+        * fast/inline-block/inline-block-empty-spans.html: Added.
+
+2014-11-18  Myles C. Maxfield  <litherum@gmail.com>
+
+        Multicolumn layout with negative line spacing and orphans causes pieces of letters to be shown at the bottom of columns
+        https://bugs.webkit.org/show_bug.cgi?id=138204
+
+        Reviewed by Dave Hyatt.
+
+        Create a layout where the "orphans" css property causes a block element to
+        be pushed to the next column.
+
+        * fast/multicol/orphans-negative-line-spacing-expected.html: Added.
+        * fast/multicol/orphans-negative-line-spacing.html: Added.
+
+2014-11-18  Chris Dumez  <cdumez@apple.com>
+
+        DOMTimers sometimes don't get unthrottled on scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=138838
+
+        Reviewed by Antti Koivisto.
+
+        Add a layout test to verify that DOMTimers get unthrottled on scroll if
+        the element whose style they are changing is inside the viewport after
+        the scroll.
+
+        * fast/dom/timer-unthrottle-on-scroll-expected.txt: Added.
+        * fast/dom/timer-unthrottle-on-scroll.html: Added.
+
+2014-11-18  Myles C. Maxfield  <litherum@gmail.com>
+
+        Use underlining metrics from the font file
+        https://bugs.webkit.org/show_bug.cgi?id=138762
+
+        Reviewed by Dave Hyatt.
+
+        This patch makes underline placement platform-dependent.
+
+        * platform/mac/fast/css3-text/css3-text-decoration/text-decoration-thickness-expected.html: Renamed from LayoutTests/fast/css3-text/css3-text-decoration/text-decoration-thickness-expected.html.
+        * platform/mac/fast/css3-text/css3-text-decoration/text-decoration-thickness.html: Renamed from LayoutTests/fast/css3-text/css3-text-decoration/text-decoration-thickness.html.
+
+2014-11-17  David Hyatt  <hyatt@apple.com>
+
+        Improve Ruby selection (getting rid of overlap and improving gap filling)
+        https://bugs.webkit.org/show_bug.cgi?id=138250
+
+        Reviewed by Dean Jackson.
+
+        Added fast/repaint/selection-ruby-rl.html
+
+        * fast/repaint/selection-ruby-rl-expected.txt: Added.
+        * fast/repaint/selection-ruby-rl.html: Added.
+
+2014-11-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r176218.
+        https://bugs.webkit.org/show_bug.cgi?id=138827
+
+        seems to have caused regressions on the perf bots (Requested
+        by lajava on #webkit).
+
+        Reverted changeset:
+
+        "[CSS Grid Layout] Upgrade align-self and align-items parsing
+        to CSS 3"
+        https://bugs.webkit.org/show_bug.cgi?id=133359
+        http://trac.webkit.org/changeset/176218
+
+2014-11-18  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        fast/multicol/newmulticol tests use a non-existent resource
+        https://bugs.webkit.org/show_bug.cgi?id=138800
+
+        Reviewed by Andrei Bucur.
+
+        Fix path in tests.
+
+        * fast/multicol/newmulticol/compare-with-old-impl/shrink-to-column-height-for-pagination-expected.html:
+        * fast/multicol/newmulticol/compare-with-old-impl/shrink-to-column-height-for-pagination.html:
+        * fast/multicol/newmulticol/float-multicol-expected.html:
+        * fast/multicol/newmulticol/float-multicol.html:
+
+2014-11-18  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Crash getting the orientation of a MenuListOption after the MenuList was removed from the document
+        https://bugs.webkit.org/show_bug.cgi?id=138727
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/accessibility/combobox-descendants-orientation-crash-expected.txt: Added.
+        * platform/gtk/accessibility/combobox-descendants-orientation-crash.html: Added.
+
+2014-11-17  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Add parsing for :role()
+        https://bugs.webkit.org/show_bug.cgi?id=138310
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/css/css-selector-text-expected.txt:
+        * fast/css/css-selector-text.html:
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+        * fast/selectors/invalid-functional-pseudo-class-expected.txt:
+        * fast/selectors/invalid-functional-pseudo-class.html:
+
+2014-11-17  Chris Dumez  <cdumez@apple.com>
+
+        Add initial layout testing coverage for timer throttling
+        https://bugs.webkit.org/show_bug.cgi?id=138809
+
+        Reviewed by Simon Fraser.
+
+        Add initial layout test coverage for timer throttling. It currently
+        covers the following cases:
+        - Repeating timer changes the style of an Element that is visible
+        - Repeating timer changes the style of an Element that is not visible
+          (i.e. "display: none").
+        - Repeating timer doing DOM mutations
+        - Nested timer changes the style of an Element that is visible
+        - Nested timer changes the style of an Element that is not visible
+          (i.e. "display: none").
+        - Nested timer doing DOM mutations
+
+        More layout tests are coming. In particular, we should add coverage for
+        changing the style of an Element outside the viewport. We should also
+        Test that the timer gets unthrottled if necessary on scrolling / layout.
+
+        * fast/dom/nested-timer-invisible-element-throttling-expected.txt: Added.
+        * fast/dom/nested-timer-invisible-element-throttling.html: Added.
+        * fast/dom/nested-timer-visible-element-throttling-expected.txt: Added.
+        * fast/dom/nested-timer-visible-element-throttling.html: Added.
+        * fast/dom/repeating-timer-invisible-element-throttling-expected.txt: Added.
+        * fast/dom/repeating-timer-invisible-element-throttling.html: Added.
+        * fast/dom/repeating-timer-visible-element-throttling-expected.txt: Added.
+        * fast/dom/repeating-timer-visible-element-throttling.html: Added.
+
+2014-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        media/track/track-in-band-cues-added-once.html fails sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=138806
+
+        * platform/mac/TestExpectations: Marked as flaky.
+
+2014-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/multicol/newmulticol/spanner-crash.html still crashes sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=137316
+
+        * TestExpectations: Skipped it.
+
+2014-11-17  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Upgrade align-self and align-items parsing to CSS 3
+        https://bugs.webkit.org/show_bug.cgi?id=133359
+
+        Reviewed by David Hyatt.
+
+        From Blink r164817 and r165264 by <jchaffraix@chromium.org>
+
+        Broaden justify-self's parsing name and upgrade align-self and
+        align-items parsing to CSS 3.
+
+        * css3/flexbox/css-properties-expected.txt:
+        * css3/flexbox/css-properties.html:
+        * css3/parse-align-items-expected.txt: Added.
+        * css3/parse-align-items.html: Added.
+        * css3/parse-align-self-expected.txt: Added.
+        * css3/parse-align-self.html: Added.
+        * css3/resources/alignment-parsing-utils.js: Added.
+        (checkValues):
+        (checkBadValues):
+        (checkInitialValues):
+        (checkInheritValues):
+        (checkLegacyValues):
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/resources/property-names.js:
+        * svg/css/getComputedStyle-basic-expected.txt:
+        * platform/gtk/TestExpectations: Report new failures and update expectations.
+
+2014-11-17  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Attribute text in HTMLAnchorElement should behave as per specification.
+        https://bugs.webkit.org/show_bug.cgi?id=138557
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/HTMLAnchorElement/anchor-text-attribute-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-text-attribute.html: Added.
+
+2014-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        media/track/track-cues-sorted-before-dispatch.html is flaky on Mountain Lion
+        https://bugs.webkit.org/show_bug.cgi?id=138798
+
+        * platform/mac/TestExpectations: Marked it as such.
+
+2014-11-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r176169.
+        https://bugs.webkit.org/show_bug.cgi?id=138797
+
+        Appears to have broken svg/custom/anchor-on-use.svg (Requested
+        by ap on #webkit).
+
+        Reverted changeset:
+
+        "Attribute text in HTMLAnchorElement should behave as per
+        specification."
+        https://bugs.webkit.org/show_bug.cgi?id=138557
+        http://trac.webkit.org/changeset/176169
+
+2014-11-16  Andreas Kling  <akling@apple.com>
+
+        Avoid synchronous style recalc when mutating a Node inside FrameSelection.
+        <https://webkit.org/b/138791>
+
+        Reviewed by Antti Koivisto.
+
+        Rebaseline fast/dynamic/move-node-with-selection.html.
+        This is a progression, we avoid littering the render tree with some empty
+        text renderers due to deferring the style recalc in selection clearing.
+
+        * platform/efl/fast/dynamic/move-node-with-selection-expected.txt:
+        * platform/gtk/fast/dynamic/move-node-with-selection-expected.txt:
+        * platform/ios-sim-deprecated/fast/dynamic/move-node-with-selection-expected.txt:
+        * platform/ios-simulator/fast/dynamic/move-node-with-selection-expected.txt:
+        * platform/mac/fast/dynamic/move-node-with-selection-expected.txt:
+
+2014-11-17  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        [EFL] Skip timeouting editing tests
+        https://bugs.webkit.org/show_bug.cgi?id=138693
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/efl/TestExpectations:
+
+2014-11-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Skip more tests failing after r175776.
+
+        There is no network load scheduling or prioritization with NetworkProcess.
+
+        * platform/gtk/TestExpectations:
+
+2014-11-16  Benjamin Poulain  <benjamin@webkit.org>
+
+        Implement :valid and :invalid matching for the fieldset element
+        https://bugs.webkit.org/show_bug.cgi?id=138769
+
+        Reviewed by Darin Adler.
+
+        There are many ways to change the validation state of a submittable element.
+        I included a series of test trying to exercises as many combination
+        as possible.
+
+        * fast/css/pseudo-valid-unapplied-expected.txt:
+        * fast/css/pseudo-valid-unapplied.html:
+        This test was checking that :valid and :invalid are not applied
+        to fieldset. Such results are incorrect with the latest specification.
+
+        * fast/css/pseudo-invalid-fieldset-expected.html: Added.
+        * fast/css/pseudo-invalid-fieldset-invalidation-optimization-expected.txt: Added.
+        * fast/css/pseudo-invalid-fieldset-invalidation-optimization.html: Added.
+        * fast/css/pseudo-invalid-fieldset-style-sharing-expected.html: Added.
+        * fast/css/pseudo-invalid-fieldset-style-sharing.html: Added.
+        * fast/css/pseudo-invalid-fieldset.html: Added.
+        * fast/css/pseudo-valid-fieldset-expected.html: Added.
+        * fast/css/pseudo-valid-fieldset-invalidation-optimization-expected.txt: Added.
+        * fast/css/pseudo-valid-fieldset-invalidation-optimization.html: Added.
+        * fast/css/pseudo-valid-fieldset-style-sharing-expected.html: Added.
+        * fast/css/pseudo-valid-fieldset-style-sharing.html: Added.
+        * fast/css/pseudo-valid-fieldset.html: Added.
+        * fast/selectors/invalid-fieldset-style-update-1-expected.txt: Added.
+        * fast/selectors/invalid-fieldset-style-update-1.html: Added.
+        * fast/selectors/invalid-fieldset-style-update-2-expected.txt: Added.
+        * fast/selectors/invalid-fieldset-style-update-2.html: Added.
+        * fast/selectors/invalid-fieldset-style-update-3-expected.txt: Added.
+        * fast/selectors/invalid-fieldset-style-update-3.html: Added.
+        * fast/selectors/invalid-fieldset-style-update-4-expected.txt: Added.
+        * fast/selectors/invalid-fieldset-style-update-4.html: Added.
+        * fast/selectors/invalid-fieldset-style-update-5-expected.txt: Added.
+        * fast/selectors/invalid-fieldset-style-update-5.html: Added.
+        * fast/selectors/valid-fieldset-style-update-1-expected.txt: Added.
+        * fast/selectors/valid-fieldset-style-update-1.html: Added.
+        * fast/selectors/valid-fieldset-style-update-2-expected.txt: Added.
+        * fast/selectors/valid-fieldset-style-update-2.html: Added.
+        * fast/selectors/valid-fieldset-style-update-3-expected.txt: Added.
+        * fast/selectors/valid-fieldset-style-update-3.html: Added.
+        * fast/selectors/valid-fieldset-style-update-4-expected.txt: Added.
+        * fast/selectors/valid-fieldset-style-update-4.html: Added.
+        * fast/selectors/valid-fieldset-style-update-5-expected.txt: Added.
+        * fast/selectors/valid-fieldset-style-update-5.html: Added.
+
+2014-11-16  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting 'order' CSS property to a calculated value
+        https://bugs.webkit.org/show_bug.cgi?id=138780
+
+        Reviewed by Darin Adler.
+
+        Add a layout test to validate that setting a calculated value to the
+        'order' CSS property does not crash and behaves as expected.
+
+        * fast/css/order-calculated-value-expected.txt: Added.
+        * fast/css/order-calculated-value.html: Added.
+
+2014-11-16  Chris Dumez  <cdumez@apple.com>
+
+        Assertion hit when setting a very large value to 'border-width' / 'font-size' CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=138770
+
+        Reviewed by Darin Adler.
+
+        Add a layout test setting very large values to 'border-width' and
+        'font-size' CSS properties.
+
+        * fast/css/style-builder-infinite-value-expected.txt: Added.
+        * fast/css/style-builder-infinite-value.html: Added.
+
+2014-11-16  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Attribute text in HTMLAnchorElement should behave as per specification.
+        https://bugs.webkit.org/show_bug.cgi?id=138557
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/HTMLAnchorElement/anchor-text-attribute-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-text-attribute.html: Added.
+
+2014-11-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Test expectation gardening.
+
+        * platform/mac/TestExpectations:
+
+2014-11-16  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting '-webkit-line-clamp' CSS property to a calculated value
+        https://bugs.webkit.org/show_bug.cgi?id=138777
+
+        Reviewed by Benjamin Poulain.
+
+        Add a layout test to check that assigning calculated values to the
+        '-webkit-line-clamp' CSS property does not crash and behaves as
+        expected.
+
+        * fast/css/webkit-line-clamp-calculated-value-expected.txt: Added.
+        * fast/css/webkit-line-clamp-calculated-value.html: Added.
+
+2014-11-16  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Expose the blockquote element using ATK_ROLE_BLOCK_QUOTE
+        https://bugs.webkit.org/show_bug.cgi?id=138771
+
+        Reviewed by Chris Fleizach.
+
+        Updated the expectations for GTK and EFL as there is a new role
+        being used. The Mac expectations were not updated because the
+        new role on that platform continues to be to AXGroup.
+
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated
+
+2014-11-16  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting 'alt' CSS property to inherit or initial
+        https://bugs.webkit.org/show_bug.cgi?id=138774
+        <rdar://problem/18995409>
+
+        Reviewed by Chris Fleizach.
+
+        Add a layout test to verify that setting the 'alt' CSS property to
+        inherit / initial is not crashing and working as intended.
+
+        * fast/css/alt-inherit-initial-expected.txt: Added.
+        * fast/css/alt-inherit-initial.html: Added.
+
+2014-11-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Lists with selectable children should have ATK_ROLE_LIST_BOX
+        https://bugs.webkit.org/show_bug.cgi?id=127060
+
+        Reviewed by Chris Fleizach.
+
+        Updated the expectations to reflect the corrected role.
+
+        * platform/efl/accessibility/roles-exposed-expected.txt: updated
+        * platform/gtk/accessibility/roles-exposed-expected.txt: updated
+
+2014-11-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Video and audio elements should be exposed using ATK's video and audio roles.
+        https://bugs.webkit.org/show_bug.cgi?id=138767
+
+        Reviewed by Chris Fleizach.
+
+        Updated expectations to reflect the new mapping to ATK_ROLE_AUDIO and
+        ATK_ROLE_VIDEO.
+
+        * platform/efl/accessibility/media-element-expected.txt: updated
+        * platform/efl/accessibility/media-emits-object-replacement-expected.txt: updated
+        * platform/gtk/accessibility/media-controls-panel-title-expected.txt: updated
+        * platform/gtk/accessibility/media-controls-panel-title.html: updated
+        * platform/gtk/accessibility/media-element-expected.txt: updated
+        * platform/gtk/accessibility/media-emits-object-replacement-expected.txt: updated
+
+2014-11-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Expose the footer element as ATK_ROLE_FOOTER
+        https://bugs.webkit.org/show_bug.cgi?id=138773
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/roles-exposed.html: Unskip the footer element test for GTK and EFL
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated expectations
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated expectations
+
+2014-11-14  Dean Jackson  <dino@apple.com>
+
+        Rename WebKitCSSKeyframe(s)Rule into CSSKeyframe(s)Rule
+        https://bugs.webkit.org/show_bug.cgi?id=138763
+        <rdar://problem/18991569>
+
+        Reviewed by Simon Fraser.
+
+        Some of the tests use the prefixed interface name. Replace that
+        with the unprefixed version.
+
+        The "keyframes-rule.html" test added a check to make sure the
+        old constant WEBKIT_KEYFRAMES_RULE is the same as the new
+        constant KEYFRAMES_RULE.
+
+        * animations/keyframes-rule-expected.txt:
+        * animations/keyframes-rule.html:
+        * fast/dom/resources/wrapper-identity-base.js:
+        * fast/dom/wrapper-classes.html:
+        * fast/dom/wrapper-identity-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/fast/dom/objc-wrapper-identity-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2014-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Application test expectation gardening on WK2.
+
+        * platform/mac-wk2/TestExpectations: Skip two tests that toggle private browsing,
+        and added a bug number to http/tests/appcache/auth.html.
+
+2014-11-14  Dean Jackson  <dino@apple.com>
+
+        [Media] Timeline scrubber not updating as the video plays
+        https://bugs.webkit.org/show_bug.cgi?id=138717
+        <rdar://problem/18957509>
+
+        Reviewed by Jer Noble.
+
+        Tests that an inline video will actually advance the
+        timeline scrubber if it plays momentarily.
+
+        Eric wrote all the hard bits here. I just changed
+        a few lines to test if the timeline had moved from 0.
+        Unfortunately we can't rely on the timeline value
+        being identical to the currentTime of the media element,
+        because we only move the timeline when we get events.
+
+        * media/media-controls-timeline-updates.html: Added.
+
+2014-11-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test that small caps of web fonts works regardless of where the font face is declared
+        https://bugs.webkit.org/show_bug.cgi?id=138700
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/text/svg-small-caps-expected.html: Added.
+        * fast/text/svg-small-caps.html: Added.
+
+2014-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Add shortcut macros to Mac TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=138729
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        Use the new functionality.
+
+2014-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Many (most?)  transitions tests are very flaky, frequently failing all at once
+        https://bugs.webkit.org/show_bug.cgi?id=137883
+
+        * TestExpectations:
+        * platform/mac/TestExpectations:
+        Add more affected tests to unbreak EWS.
+
+2014-11-11  David Hyatt  <hyatt@apple.com>
+
+        Table rows repaint entire table when their background color changes.
+        https://bugs.webkit.org/show_bug.cgi?id=26662
+
+        Reviewed by Simon Fraser.
+
+        Added fast/repaint/table-row-repaint.html
+
+        * fast/repaint/table-row-repaint-expected.txt: Added.
+        * fast/repaint/table-row-repaint.html: Added.
+        * platform/mac/accessibility/table-detection-expected.txt:
+
+2014-11-14  Andrzej Badowski  <a.badowski@samsung.com>
+
+        AX: Improve AccessibilityTableCell isColumnHeaderCell function.
+        https://bugs.webkit.org/show_bug.cgi?id=138423
+
+        Reviewed by Chris Fleizach.
+
+        Files of expected type are adapted to changes in the code of the function.
+
+        * accessibility/table-cells-roles-expected.txt:
+        * platform/efl/accessibility/table-attributes-expected.txt:
+        * platform/efl/accessibility/table-cells-expected.txt:
+        * platform/gtk/accessibility/table-attributes-expected.txt:
+        * platform/gtk/accessibility/table-cells-expected.txt:
+        * platform/mac/accessibility/table-attributes-expected.txt:
+        * platform/mac/accessibility/table-cells-expected.txt:
+
+2014-11-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Skip http/tests/appcache/auth.html after r175776.
+
+        Appcache manifest is still downloaded in the WebProcess.
+
+        * platform/gtk/TestExpectations:
+
+2014-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove some ineffective entries.
+
+        * platform/mac/TestExpectations: Remove entries that were meant to override other
+        ones, but don't.
+
+2014-11-13  Pratik Solanki  <psolanki@apple.com>
+
+        Rebaseline iOS layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=138721
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline many of the failures in compositing tests.
+
+        * platform/ios-simulator/compositing/absolute-inside-out-of-view-fixed-expected.txt:
+        * platform/ios-simulator/compositing/backing/backface-visibility-flip-expected.txt:
+        * platform/ios-simulator/compositing/backing/backface-visibility-in-3dtransformed-expected.txt:
+        * platform/ios-simulator/compositing/backing/border-radius-no-backing-expected.txt:
+        * platform/ios-simulator/compositing/backing/child-layer-no-backing-expected.txt:
+        * platform/ios-simulator/compositing/backing/filter-no-backing-expected.txt:
+        * platform/ios-simulator/compositing/backing/inline-block-no-backing-expected.txt:
+        * platform/ios-simulator/compositing/backing/masked-child-no-backing-expected.txt:
+        * platform/ios-simulator/compositing/backing/no-backing-for-clip-expected.txt:
+        * platform/ios-simulator/compositing/backing/no-backing-for-clip-overhang-expected.txt:
+        * platform/ios-simulator/compositing/backing/no-backing-for-clip-overlap-expected.txt:
+        * platform/ios-simulator/compositing/backing/no-backing-for-perspective-expected.txt:
+        * platform/ios-simulator/compositing/backing/replaced-child-no-backing-expected.txt:
+        * platform/ios-simulator/compositing/backing/whitespace-nodes-no-backing-expected.txt:
+        * platform/ios-simulator/compositing/bounds-in-flipped-writing-mode-expected.txt:
+        * platform/ios-simulator/compositing/clip-child-by-non-stacking-ancestor-expected.txt:
+        * platform/ios-simulator/compositing/columns/ancestor-clipped-in-paginated-expected.txt:
+        * platform/ios-simulator/compositing/columns/clipped-in-paginated-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-columns-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-columns-vertical-rl-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-in-paginated-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-in-paginated-rl-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-in-paginated-writing-mode-rl-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-lr-paginated-repaint-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-nested-columns-expected.txt:
+        * platform/ios-simulator/compositing/columns/composited-rl-paginated-repaint-expected.txt:
+        * platform/ios-simulator/compositing/columns/hittest-composited-in-paginated-expected.txt:
+        * platform/ios-simulator/compositing/columns/rotated-in-paginated-expected.txt:
+        * platform/ios-simulator/compositing/columns/untransformed-composited-in-paginated-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/background-clip-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/background-color-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/body-background-painted-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/body-background-skipped-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/control-layer-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/filter-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/hidden-with-visible-child-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/hidden-with-visible-text-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/layer-opacity-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/layer-transform-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/overflow-hidden-child-layers-expected.txt:
+        * platform/ios-simulator/compositing/contents-opaque/visibility-hidden-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/animating-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/rounded-contents-scale-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/scaled-ancestor-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/simple-scale-expected.txt:
+        * platform/ios-simulator/compositing/contents-scale/z-translate-expected.txt:
+        * platform/ios-simulator/compositing/filters/sw-layer-overlaps-hw-shadow-expected.txt:
+        * platform/ios-simulator/compositing/filters/sw-nested-shadow-overlaps-hw-nested-shadow-expected.txt:
+        * platform/ios-simulator/compositing/filters/sw-shadow-overlaps-hw-layer-expected.txt:
+        * platform/ios-simulator/compositing/filters/sw-shadow-overlaps-hw-shadow-expected.txt:
+        * platform/ios-simulator/compositing/fixed-image-loading-expected.txt:
+        * platform/ios-simulator/compositing/geometry/ancestor-overflow-change-expected.txt:
+        * platform/ios-simulator/compositing/geometry/bounds-clipped-composited-child-expected.txt:
+        * platform/ios-simulator/compositing/geometry/bounds-ignores-hidden-composited-descendant-expected.txt:
+        * platform/ios-simulator/compositing/geometry/bounds-ignores-hidden-dynamic-expected.txt:
+        * platform/ios-simulator/compositing/geometry/bounds-ignores-hidden-dynamic-negzindex-expected.txt:
+        * platform/ios-simulator/compositing/geometry/bounds-ignores-hidden-expected.txt:
+        * platform/ios-simulator/compositing/geometry/clip-expected.txt:
+        * platform/ios-simulator/compositing/geometry/clip-inside-expected.txt:
+        * platform/ios-simulator/compositing/geometry/composited-in-columns-expected.txt:
+        * platform/ios-simulator/compositing/geometry/fixed-position-composited-switch-expected.txt:
+        * platform/ios-simulator/compositing/geometry/flipped-writing-mode-expected.txt:
+        * platform/ios-simulator/compositing/geometry/foreground-layer-expected.txt:
+        * platform/ios-simulator/compositing/geometry/layer-due-to-layer-children-deep-switch-expected.txt:
+        * platform/ios-simulator/compositing/geometry/layer-due-to-layer-children-switch-expected.txt:
+        * platform/ios-simulator/compositing/geometry/limit-layer-bounds-fixed-expected.txt:
+        * platform/ios-simulator/compositing/geometry/limit-layer-bounds-fixed-positioned-expected.txt:
+        * platform/ios-simulator/compositing/geometry/limit-layer-bounds-overflow-root-expected.txt:
+        * platform/ios-simulator/compositing/geometry/limit-layer-bounds-positioned-expected.txt:
+        * platform/ios-simulator/compositing/geometry/limit-layer-bounds-positioned-transition-expected.txt:
+        * platform/ios-simulator/compositing/geometry/limit-layer-bounds-transformed-expected.txt:
+        * platform/ios-simulator/compositing/geometry/limit-layer-bounds-transformed-overflow-expected.txt:
+        * platform/ios-simulator/compositing/geometry/negative-text-indent-with-overflow-hidden-layer-expected.txt:
+        * platform/ios-simulator/compositing/geometry/preserve-3d-switching-expected.txt:
+        * platform/ios-simulator/compositing/geometry/vertical-scroll-composited-expected.txt:
+        * platform/ios-simulator/compositing/iframes/become-composited-nested-iframes-expected.txt:
+        * platform/ios-simulator/compositing/iframes/become-overlapped-iframe-expected.txt:
+        * platform/ios-simulator/compositing/iframes/composited-parent-iframe-expected.txt:
+        * platform/ios-simulator/compositing/iframes/connect-compositing-iframe-delayed-expected.txt:
+        * platform/ios-simulator/compositing/iframes/connect-compositing-iframe-expected.txt:
+        * platform/ios-simulator/compositing/iframes/connect-compositing-iframe2-expected.txt:
+        * platform/ios-simulator/compositing/iframes/connect-compositing-iframe3-expected.txt:
+        * platform/ios-simulator/compositing/iframes/enter-compositing-iframe-expected.txt:
+        * platform/ios-simulator/compositing/iframes/iframe-resize-expected.txt:
+        * platform/ios-simulator/compositing/iframes/iframe-size-from-zero-expected.txt:
+        * platform/ios-simulator/compositing/iframes/iframe-size-to-zero-expected.txt: Progression.
+        * platform/ios-simulator/compositing/iframes/iframe-src-change-expected.txt: Progression.
+        * platform/ios-simulator/compositing/iframes/invisible-nested-iframe-hide-expected.txt:
+        * platform/ios-simulator/compositing/iframes/leave-compositing-iframe-expected.txt:
+        * platform/ios-simulator/compositing/iframes/overlapped-iframe-expected.txt:
+        * platform/ios-simulator/compositing/iframes/overlapped-iframe-iframe-expected.txt:
+        * platform/ios-simulator/compositing/iframes/overlapped-nested-iframes-expected.txt:
+        * platform/ios-simulator/compositing/iframes/page-cache-layer-tree-expected.txt:
+        * platform/ios-simulator/compositing/iframes/resizer-expected.txt:
+        * platform/ios-simulator/compositing/iframes/scrolling-iframe-expected.txt:
+        * platform/ios-simulator/compositing/images/clip-on-directly-composited-image-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/animation-overlap-with-children-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/fixed-position-and-transform-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/fixed-position-change-out-of-view-in-view-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/fixed-position-out-of-view-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/fixed-position-out-of-view-scaled-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/fixed-position-out-of-view-scaled-scroll-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/fixed-position-transformed-into-view-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/fixed-position-under-transform-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/no-compositing-for-fixed-position-under-transform-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/no-compositing-for-preserve-3d-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/no-compositing-for-sticky-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overflow-scroll-overlap-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overlap-child-layer-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overlap-clipping-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overlap-transformed-3d-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overlap-transformed-and-clipped-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overlap-transformed-layer-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overlap-transformed-preserved-3d-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/overlap-transforms-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/rotate3d-overlap-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/scroll-partial-update-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/stacking-context-overlap-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/stacking-context-overlap-nested-expected.txt:
+        * platform/ios-simulator/compositing/layer-creation/translatez-overlap-expected.txt:
+        * platform/ios-simulator/compositing/masks/mask-layer-size-expected.txt:
+        * platform/ios-simulator/compositing/overflow-trumps-transform-style-expected.txt:
+        * platform/ios-simulator/compositing/overflow/automatically-opt-into-composited-scrolling-expected.txt: Progression.
+        * platform/ios-simulator/compositing/overflow/clip-descendents-expected.txt:
+        * platform/ios-simulator/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants-expected.txt:
+        * platform/ios-simulator/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants2-expected.txt:
+        * platform/ios-simulator/compositing/overflow/content-gains-scrollbars-expected.txt:
+        * platform/ios-simulator/compositing/overflow/content-loses-scrollbars-expected.txt:
+        * platform/ios-simulator/compositing/overflow/overflow-auto-with-touch-expected.txt:
+        * platform/ios-simulator/compositing/overflow/overflow-auto-with-touch-toggle-expected.txt:
+        * platform/ios-simulator/compositing/overflow/overflow-overlay-with-touch-expected.txt:
+        * platform/ios-simulator/compositing/overflow/overflow-scrollbar-layer-positions-expected.txt:
+        * platform/ios-simulator/compositing/overflow/overflow-scrollbar-layers-expected.txt:
+        * platform/ios-simulator/compositing/overflow/resize-painting-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-clip-descendant-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-from-abs-in-named-flow-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-from-outflow-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-got-transformed-parent-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-lost-transformed-parent-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-overlap-composited-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-in-named-flow-transformed-parent-expected.txt:
+        * platform/ios-simulator/compositing/regions/fixed-transformed-in-named-flow-expected.txt:
+        * platform/ios-simulator/compositing/repaint/absolute-painted-into-composited-ancestor-expected.txt:
+        * platform/ios-simulator/compositing/repaint/become-overlay-composited-layer-expected.txt:
+        * platform/ios-simulator/compositing/repaint/fixed-background-scroll-expected.txt:
+        * platform/ios-simulator/compositing/repaint/invalidations-on-composited-layers-expected.txt:
+        * platform/ios-simulator/compositing/repaint/positioned-movement-expected.txt:
+        * platform/ios-simulator/compositing/repaint/repaint-on-layer-grouping-change-expected.txt:
+        * platform/ios-simulator/compositing/repaint/resize-repaint-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-absolute-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-absolute-overflow-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-absolute-overflow-scrolled-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-fixed-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-fixed-overflow-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-fixed-overflow-scrolled-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-iframe-absolute-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-iframe-absolute-overflow-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-iframe-fixed-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-iframe-relative-expected.txt:
+        * platform/ios-simulator/compositing/rtl/rtl-relative-expected.txt:
+        * platform/ios-simulator/compositing/scrolling/touch-scroll-to-clip-expected.txt:
+        * platform/ios-simulator/compositing/tiled-layers-hidpi-expected.txt:
+        * platform/ios-simulator/compositing/tiling/backface-preserve-3d-tiled-expected.txt:
+        * platform/ios-simulator/compositing/tiling/crash-reparent-tiled-layer-expected.txt:
+        * platform/ios-simulator/compositing/tiling/huge-layer-add-remove-child-expected.txt:
+        * platform/ios-simulator/compositing/tiling/huge-layer-img-expected.txt:
+        * platform/ios-simulator/compositing/tiling/huge-layer-with-layer-children-expected.txt:
+        * platform/ios-simulator/compositing/tiling/huge-layer-with-layer-children-resize-expected.txt:
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/tile-cache-zoomed-expected.txt:
+        * platform/ios-simulator/compositing/tiling/tiled-layer-resize-expected.txt:
+        * platform/ios-simulator/compositing/visibility/layer-visible-content-expected.txt:
+        * platform/ios-simulator/compositing/visibility/visibility-image-layers-dynamic-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/2d-transformed-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/3d-transform-style-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/3d-transformed-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/clipped-by-viewport-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/clipped-visible-rect-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/flipped-preserve-3d-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/iframe-and-layers-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/nested-transform-expected.txt:
+        * platform/ios-simulator/compositing/visible-rect/scrolled-expected.txt:
+
+2014-11-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update expected .png for platform/mac/editing/input/devanagari-ligature.html
+        https://bugs.webkit.org/show_bug.cgi?id=138712
+
+        This doesn't actually fix the test, it just updates the image.
+
+        Reviewed by Zalan Bujtas.
+
+        * platform/mac/editing/input/devanagari-ligature-expected.png:
+
+2014-11-13  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Do not return ATK_ROLE_UNKNOWN for null or otherwise invalid accessible objects
+        https://bugs.webkit.org/show_bug.cgi?id=137867
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/accessibility/detached-object-role-expected.txt: Added.
+        * platform/gtk/accessibility/detached-object-role.html: Added.
+
+2014-11-13  Pratik Solanki  <psolanki@apple.com>
+
+        Rename ios-sim to ios-sim-deprecated.
+
+        The results here are historical and new results should go into ios-simulator
+        directory. Eventually, we should get rid of this directory completely.
+
+        Rubber-stamped by Simon Fraser.
+
+        * platform/ios-sim: Removed.
+        * platform/ios-sim-deprecated: Copied from LayoutTests/platform/ios-sim.
+
+2014-11-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        Implement the matching for :nth-last-child(An+B of selector-list)
+        https://bugs.webkit.org/show_bug.cgi?id=138650
+
+        Reviewed by Andreas Kling.
+
+        * fast/selectors/nth-last-child-of-class-style-update-expected.txt: Added.
+        * fast/selectors/nth-last-child-of-class-style-update.html: Added.
+        Verify simple cases of style update.
+
+        * fast/css/nth-last-child-of-style-update-optimization-expected.txt: Added.
+        * fast/css/nth-last-child-of-style-update-optimization.html: Added.
+        Verify that style invalidation stays reasonable.
+
+        * fast/css/nth-last-child-of-style-sharing-1-expected.html: Added.
+        * fast/css/nth-last-child-of-style-sharing-1.html: Added.
+        * fast/css/nth-last-child-of-style-sharing-2-expected.html: Added.
+        * fast/css/nth-last-child-of-style-sharing-2.html: Added.
+        Check that style sharing is disabled for elements matching :nth-last-child().
+
+        * fast/css/nth-child-and-nth-last-child-expected.html: Added.
+        * fast/css/nth-child-and-nth-last-child.html: Added.
+        Test uniqueness testing by combining :nth-child() and :nth-last-child().
+
+        * fast/css/nth-last-child-of-classname-expected.html: Added.
+        * fast/css/nth-last-child-of-classname.html: Added.
+        * fast/css/nth-last-child-of-complex-selector-expected.html: Added.
+        * fast/css/nth-last-child-of-complex-selector.html: Added.
+        * fast/css/nth-last-child-of-compound-selector-expected.html: Added.
+        * fast/css/nth-last-child-of-compound-selector.html: Added.
+        * fast/css/nth-last-child-of-tagname-expected.html: Added.
+        * fast/css/nth-last-child-of-tagname.html: Added.
+        Test matching, those are the "last-child" counterpart of the existing
+        "nth-child-of" tests.
+
+2014-11-12  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        REGRESSION (r172826): Password field placeholder text is missing if
+        placeholder attribute precedes type attribute
+
+        <https://bugs.webkit.org/show_bug.cgi?id=138682>
+        <rdar://problem/18574213> 
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/forms/placeholder-attribute-ordering-expected.html: Added.
+        * fast/forms/placeholder-attribute-ordering.html: Added.
+
+2014-11-13  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Accessible focus events are emitted when the selection is changed in non-focused combo boxes
+        https://bugs.webkit.org/show_bug.cgi?id=137866
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/gtk/accessibility/menu-list-unfocused-notifications-expected.txt: Added.
+        * platform/gtk/accessibility/menu-list-unfocused-notifications.html: Added.
+
+2014-11-13  Alexey Proskuryakov  <ap@apple.com>
+
+        Simplify expectations for fullscreen/full-screen-iframe-legacy.html, as the more
+        specific variant doesn't work due to <https://bugs.webkit.org/show_bug.cgi?id=138698>.
+
+        * platform/mac/TestExpectations:
+
+2014-11-13  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/events/overflow-scroll-fake-mouse-move.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=138697
+
+        * platform/mac-wk1/TestExpectations: Mark it as such.
+
+2014-11-13  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed WK2 subpixel gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-11-13  Chris Dumez  <cdumez@apple.com>
+
+        Lazily create HTMLInputElement's inputType and shadow subtree
+        https://bugs.webkit.org/show_bug.cgi?id=138524
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a test case to make sure we don't crash when parsing an <input>
+        Element that has a |border| attribute as first attribute. This is what
+        was happening with the first version of this patch that landed in
+        r175852. When attributeChanged() was called for the |border| attribute
+        HTMLInputElement::isPresentationAttribute() would get called before
+        m_inputType is initialized, and "name == borderAttr && isImageButton()"
+        would crash because isImageButton() dereferences m_inputType.
+
+        * fast/dom/HTMLInputElement/border-attribute-crash-expected.txt: Added.
+        * fast/dom/HTMLInputElement/border-attribute-crash.html: Added.
+
+2014-11-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Skip more test failing after r175776.
+
+        * platform/gtk/TestExpectations:
+
+2014-11-12  Dean Jackson  <dino@apple.com>
+
+        Support unprefixed animation property names
+        https://bugs.webkit.org/show_bug.cgi?id=138678
+        <rdar://problem/18943059>
+
+        Reviewed by Simon Fraser.
+
+        Tests for unprefixed parsing and calculation of animation
+        properties. Fun fact, this is the first test we have
+        for the computed style of all animation-direction values.
+
+        * animations/unprefixed-properties-expected.txt: Added.
+        * animations/unprefixed-properties.html: Added.
+        * animations/unprefixed-shorthand-expected.txt: Added.
+        * animations/unprefixed-shorthand.html: Added.
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/15864185> Syrah: platform/mac/editing/attributed-string tests are failing
+
+        Land Yosemite results, and remove the tests from TestExpectations.
+
+        * platform/mac-mavericks/platform/mac/editing/attributed-string: Added.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/anchor-element-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/anchor-element-expected.txt.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/basic-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/basic-expected.txt.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/font-size-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/font-size-expected.txt.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/font-weight-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/font-weight-expected.txt.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/letter-spacing-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/letter-spacing-expected.txt.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/text-decorations-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/text-decorations-expected.txt.
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/vertical-align-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/vertical-align-expected.txt.
+        * platform/mac/editing/attributed-string/anchor-element-expected.txt:
+        * platform/mac/editing/attributed-string/basic-expected.txt:
+        * platform/mac/editing/attributed-string/font-size-expected.txt:
+        * platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac/editing/attributed-string/font-weight-expected.txt:
+        * platform/mac/editing/attributed-string/letter-spacing-expected.txt:
+        * platform/mac/editing/attributed-string/text-decorations-expected.txt:
+        * platform/mac/editing/attributed-string/vertical-align-expected.txt:
+        * platform/mac/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Make Mac media-source test expectations future compatible
+        https://bugs.webkit.org/show_bug.cgi?id=138674
+
+        Roll it out, it somehow broke Mountain Liona and Mavericks.
+
+        * platform/mac/TestExpectations:
+
+2014-11-12  Jer Noble  <jer.noble@apple.com>
+
+        media/video-play-pause-exception.html is flakey.
+        https://bugs.webkit.org/show_bug.cgi?id=138670
+
+        Reviewed by Alexey Proskuryakov.
+
+        Work around race-condition behavior in HTMLMediaElement's resource selection algorithm.
+
+        * media/video-play-pause-exception.html:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Make Mac media-source test expectations future compatible
+        https://bugs.webkit.org/show_bug.cgi?id=138674
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Flaky Test: media/video-ended-event-slow-motion-playback.html
+        https://bugs.webkit.org/show_bug.cgi?id=136755
+
+        Reviewed by Jer Noble.
+
+        * media/video-ended-event-slow-motion-playback.html: The test verifies that playback
+        rate doesn't get rounded down to 0, and that is very easy to detect, no need for
+        flaky timeouts.
+
+        * platform/mac/TestExpectations: Remove the flakiness expectation. Also while at it,
+        updated media/video-playbackrate.html to match what the bots actually see.
+
+2014-11-05  Ada Chan  <adachan@apple.com>
+
+        Implement new plug-in API for muting plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=138105
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac-wk2/plugins/muted-state-expected.txt: Added.
+        * platform/mac-wk2/plugins/muted-state.html: Added.
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Some platform/mac text expectation cleanup.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Mac-WK2 test expectations cleanup, part 1.
+
+        Put WK1 specific expectations into mac-wk1 (they used to be put in mac, and then
+        being overridden for wk2).
+        Remove expectations for tests that are no longer flaky.
+        Add more specific expectations to encient entries that were added in old format,
+        and just skipped indiscriminately.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove expectations for a couple tests that were marked as flaky on WK1 only,
+        as they don't appear to be flaky any more.
+
+        * platform/mac-wk1/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Some WebKit1-only Yosemite-only failures don't appear to exist any more.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        Unmark the tests.
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        A number of hidpi tests don't appear to fail on Yosemite now, let's try unmarking them.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Instead of blacklisting tests for OS X versions that use PPT for testing,
+        whitelist MountainLion that doesn't. That's more future compatible.
+
+        * platform/mac-wk2/TestExpectations:
+
+2014-11-12  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] media/track/audio-track.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=138394
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix a typo in the previous commit - a test should be skipped, not its expectation.
+
+        * platform/mac/TestExpectations:
+
+2014-11-12  Alexey Proskuryakov  <ap@apple.com>
+
+        compositing/video/video-border-radius.html frequently times out on Mountain Lion only
+        https://bugs.webkit.org/show_bug.cgi?id=138662
+
+        Make the test a reftest again, and skip it, as nothing helps.
+
+        Also, updated all compositing/video expectations to match what bots see now.
+
+        * compositing/video/video-border-radius-expected.html: Copied from LayoutTests/compositing/video/video-border-radius-expected.html-disabled.
+        * compositing/video/video-border-radius-expected.html-disabled: Removed.
+        * compositing/video/video-border-radius-expected.png: Removed.
+        * compositing/video/video-border-radius-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+
+2014-11-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Skip shared worker tests after r175776.
+
+        Shared workers are disabled with the Network Process.
+
+        * platform/gtk/TestExpectations:
+
+2014-09-01  Philippe Normand  <pnormand@igalia.com>
+
+        [WK2] UserMediaClient support
+        https://bugs.webkit.org/show_bug.cgi?id=123158
+
+        Reviewed by Benjamin Poulain.
+
+        Simple UserMedia permission request tests inspired from the
+        Geolocation test suite.
+
+        * fast/mediastream/error-expected.txt: Added.
+        * fast/mediastream/error.html: Added.
+        * fast/mediastream/script-tests/error.js: Added.
+        * fast/mediastream/script-tests/success.js: Added.
+        * fast/mediastream/success-expected.txt: Added.
+        * fast/mediastream/success.html: Added.
+        * fast/mediastream/delayed-permission-allowed-expected.txt: Added.
+        * fast/mediastream/delayed-permission-allowed.html: Added.
+        * fast/mediastream/delayed-permission-denied-expected.txt: Added.
+        * fast/mediastream/delayed-permission-denied.html: Added.
+        * http/tests/media/media-stream/disconnected-frame-already-expected.txt: Added.
+        * http/tests/media/media-stream/disconnected-frame-already.html: Added.
+        * http/tests/media/media-stream/disconnected-frame-expected.txt: Added.
+        * http/tests/media/media-stream/disconnected-frame-permission-denied-expected.txt: Added.
+        * http/tests/media/media-stream/disconnected-frame-permission-denied.html: Added.
+        * http/tests/media/media-stream/disconnected-frame.html: Added.
+        * http/tests/media/media-stream/resources/disconnected-frame-already-inner1.html: Added.
+        * http/tests/media/media-stream/resources/disconnected-frame-already-inner2.html: Added.
+        * http/tests/media/media-stream/resources/disconnected-frame-inner.html: Added.
+        * platform/gtk/TestExpectations:
+
 2014-11-11  Jinwoo Song  <jinwoo7.song@samsung.com>
 
         [EFL] Unreviewed EFL gardening. Rebaseline after r174535.

@@ -30,16 +30,11 @@
 
 #import "WebVideoFullscreenInterfaceAVKit.h"
 
+#import "AVKitSPI.h"
 #import "Logging.h"
 #import "GeometryUtilities.h"
 #import "WebVideoFullscreenModel.h"
 #import <AVFoundation/AVTime.h>
-#import <AVKit/AVKit.h>
-#import <AVKit/AVPlayerController.h>
-#import <AVKit/AVPlayerViewController_Private.h>
-#import <AVKit/AVPlayerViewController_WebKitOnly.h>
-#import <AVKit/AVValueTiming.h>
-#import <AVKit/AVVideoLayer.h>
 #import <CoreMedia/CMTime.h>
 #import <UIKit/UIKit.h>
 #import <WebCore/RuntimeApplicationChecksIOS.h>
@@ -1010,7 +1005,10 @@ void WebVideoFullscreenInterfaceAVKit::invalidate()
 {
     [m_window setHidden:YES];
     [m_window setRootViewController:nil];
-    [m_playerViewController exitFullScreenAnimated:NO completionHandler:nil];
+    if (m_mode == HTMLMediaElement::VideoFullscreenModeOptimized)
+        [m_playerViewController stopOptimizedFullscreen];
+    else
+        [m_playerViewController exitFullScreenAnimated:NO completionHandler:nil];
     m_playerController = nil;
     [m_playerViewController setDelegate:nil];
     [[m_playerViewController view] removeFromSuperview];

@@ -579,6 +579,16 @@ bool WKPreferencesGetShouldPrintBackgrounds(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->shouldPrintBackgrounds();
 }
 
+void WKPreferencesSetDOMTimersThrottlingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setDOMTimersThrottlingEnabled(enabled);
+}
+
+bool WKPreferencesGetDOMTimersThrottlingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->domTimersThrottlingEnabled();
+}
+
 void WKPreferencesSetWebArchiveDebugModeEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setWebArchiveDebugModeEnabled(enabled);
@@ -736,6 +746,16 @@ void WKPreferencesSetMediaPlaybackAllowsInline(WKPreferencesRef preferencesRef, 
 bool WKPreferencesGetMediaPlaybackAllowsInline(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->mediaPlaybackAllowsInline();
+}
+
+void WKPreferencesSetAllowsAlternateFullscreen(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setAllowsAlternateFullscreen(flag);
+}
+
+bool WKPreferencesGetAllowsAlternateFullscreen(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->allowsAlternateFullscreen();
 }
 
 void WKPreferencesSetShowsToolTipOverTruncatedText(WKPreferencesRef preferencesRef, bool flag)

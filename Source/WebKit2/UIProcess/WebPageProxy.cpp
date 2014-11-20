@@ -55,6 +55,7 @@
 #include "TextChecker.h"
 #include "TextCheckerState.h"
 #include "TextIndicator.h"
+#include "UserMediaPermissionRequestProxy.h"
 #include "WKContextPrivate.h"
 #include "WebBackForwardList.h"
 #include "WebBackForwardListItem.h"
@@ -279,6 +280,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #endif
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
+    , m_userMediaPermissionRequestManager(*this)
     , m_viewState(ViewState::NoFlags)
     , m_viewWasEverInWindow(false)
     , m_backForwardList(WebBackForwardList::create(*this))
@@ -359,6 +361,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_isShowingNavigationGestureSnapshot(false)
     , m_pageCount(0)
     , m_renderTreeSize(0)
+    , m_sessionRestorationRenderTreeSize(0)
+    , m_wantsSessionRestorationRenderTreeSizeThresholdEvent(false)
+    , m_hitRenderTreeSizeThreshold(false)
     , m_shouldSendEventsSynchronously(false)
     , m_suppressVisibilityUpdates(false)
     , m_autoSizingShouldExpandToViewHeight(false)
@@ -1929,11 +1934,15 @@ SessionState WebPageProxy::sessionState(const std::function<bool (WebBackForward
     if (!provisionalURLString.isEmpty())
         sessionState.provisionalURL = URL(URL(), provisionalURLString);
 
+    sessionState.renderTreeSize = renderTreeSize();
     return sessionState;
 }
 
 uint64_t WebPageProxy::restoreFromSessionState(SessionState sessionState, bool navigate)
 {
+    m_sessionRestorationRenderTreeSize = 0;
+    m_hitRenderTreeSizeThreshold = false;
+
     bool hasBackForwardList = !!sessionState.backForwardListState.currentIndex;
 
     if (hasBackForwardList) {
@@ -1945,8 +1954,11 @@ uint64_t WebPageProxy::restoreFromSessionState(SessionState sessionState, bool n
         process().send(Messages::WebPage::RestoreSession(m_backForwardList->itemStates()), m_pageID);
     }
 
+    // FIXME: Navigating should be separate from state restoration.
     if (navigate) {
-        // FIXME: Navigating should be separate from state restoration.
+        m_sessionRestorationRenderTreeSize = sessionState.renderTreeSize;
+        if (!m_sessionRestorationRenderTreeSize)
+            m_hitRenderTreeSizeThreshold = true; // If we didn't get data on renderTreeSize, just don't fire the milestone.
 
         if (!sessionState.provisionalURL.isNull())
             return loadRequest(sessionState.provisionalURL);
@@ -2105,6 +2117,8 @@ void WebPageProxy::listenForLayoutMilestones(WebCore::LayoutMilestones milestone
 {
     if (!isValid())
         return;
+    
+    m_wantsSessionRestorationRenderTreeSizeThresholdEvent = milestones & WebCore::ReachedSessionRestorationRenderTreeSizeThreshold;
 
     m_process->send(Messages::WebPage::ListenForLayoutMilestones(milestones), m_pageID);
 }
@@ -4716,6 +4730,18 @@ void WebPageProxy::requestGeolocationPermissionForFrame(uint64_t geolocationID, 
     request->deny();
 }
 
+void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video)
+{
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(frame);
+
+    RefPtr<WebSecurityOrigin> origin = WebSecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(originIdentifier));
+    RefPtr<UserMediaPermissionRequestProxy> request = m_userMediaPermissionRequestManager.createRequest(userMediaID, audio, video);
+
+    if (!m_uiClient->decidePolicyForUserMediaPermissionRequest(*this, *frame, *origin.get(), *request.get()))
+        request->deny();
+}
+
 void WebPageProxy::requestNotificationPermission(uint64_t requestID, const String& originString)
 {
     if (!isRequestIDValid(requestID))
@@ -5272,11 +5298,6 @@ void WebPageProxy::navigationGestureSnapshotWasRemoved()
     m_isShowingNavigationGestureSnapshot = false;
 }
 
-void WebPageProxy::willChangeCurrentHistoryItemForMainFrame()
-{
-    recordNavigationSnapshot();
-}
-
 void WebPageProxy::isPlayingAudioDidChange(bool newIsPlayingAudio)
 {
     if (m_isPlayingAudio == newIsPlayingAudio)
@@ -5300,6 +5321,11 @@ void WebPageProxy::performActionMenuHitTestAtLocation(FloatPoint point)
 void WebPageProxy::selectLastActionMenuRange()
 {
     m_process->send(Messages::WebPage::SelectLastActionMenuRange(), m_pageID);
+}
+
+void WebPageProxy::focusAndSelectLastActionMenuHitTestResult()
+{
+    m_process->send(Messages::WebPage::FocusAndSelectLastActionMenuHitTestResult(), m_pageID);
 }
 
 void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, IPC::MessageDecoder& decoder)

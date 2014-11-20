@@ -25,6 +25,7 @@
 #define HTMLFieldSetElement_h
 
 #include "HTMLFormControlElement.h"
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 
@@ -41,7 +42,8 @@ public:
     const Vector<FormAssociatedElement*>& associatedElements() const;
     unsigned length() const;
 
-protected:
+    void addInvalidDescendant(const HTMLFormControlElement&);
+    void removeInvalidDescendant(const HTMLFormControlElement&);
 
 private:
     HTMLFieldSetElement(const QualifiedName&, Document&, HTMLFormElement*);
@@ -51,17 +53,21 @@ private:
     virtual bool supportsFocus() const override;
     virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
     virtual const AtomicString& formControlType() const override;
-    virtual bool recalcWillValidate() const override { return false; }
+    virtual bool computeWillValidate() const override { return false; }
     virtual void disabledAttributeChanged() override;
     virtual void disabledStateChanged() override;
     virtual void childrenChanged(const ChildChange&) override;
     virtual void didMoveToNewDocument(Document* oldDocument) override;
+
+    virtual bool matchesValidPseudoClass() const override;
+    virtual bool matchesInvalidPseudoClass() const override;
 
     void refreshElementsIfNeeded() const;
 
     mutable Vector<FormAssociatedElement*> m_associatedElements;
     // When dom tree is modified, we have to refresh the m_associatedElements array.
     mutable uint64_t m_documentVersion;
+    HashSet<const HTMLFormControlElement*> m_invalidDescendants;
 };
 
 } // namespace

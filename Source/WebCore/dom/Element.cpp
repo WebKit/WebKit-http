@@ -1233,17 +1233,23 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector)
     ASSERT(!parentNode());
     ASSERT(!m_elementData);
 
-    if (attributeVector.isEmpty())
-        return;
+    if (!attributeVector.isEmpty()) {
+        if (document().sharedObjectPool())
+            m_elementData = document().sharedObjectPool()->cachedShareableElementDataWithAttributes(attributeVector);
+        else
+            m_elementData = ShareableElementData::createWithAttributes(attributeVector);
 
-    if (document().sharedObjectPool())
-        m_elementData = document().sharedObjectPool()->cachedShareableElementDataWithAttributes(attributeVector);
-    else
-        m_elementData = ShareableElementData::createWithAttributes(attributeVector);
+    }
+
+    parserDidSetAttributes();
 
     // Use attributeVector instead of m_elementData because attributeChanged might modify m_elementData.
-    for (unsigned i = 0; i < attributeVector.size(); ++i)
-        attributeChanged(attributeVector[i].name(), nullAtom, attributeVector[i].value(), ModifiedDirectly);
+    for (const auto& attribute : attributeVector)
+        attributeChanged(attribute.name(), nullAtom, attribute.value(), ModifiedDirectly);
+}
+
+void Element::parserDidSetAttributes()
+{
 }
 
 bool Element::hasAttributes() const
@@ -2120,6 +2126,11 @@ void Element::setChildrenAffectedByBackwardPositionalRules()
     ensureElementRareData().setChildrenAffectedByBackwardPositionalRules(true);
 }
 
+void Element::setChildrenAffectedByPropertyBasedBackwardPositionalRules()
+{
+    ensureElementRareData().setChildrenAffectedByPropertyBasedBackwardPositionalRules(true);
+}
+
 void Element::setChildIndex(unsigned index)
 {
     ElementRareData& rareData = ensureElementRareData();
@@ -2137,7 +2148,8 @@ bool Element::hasFlagsSetDuringStylingOfChildren() const
         return false;
     return rareDataChildrenAffectedByActive()
         || rareDataChildrenAffectedByDrag()
-        || rareDataChildrenAffectedByBackwardPositionalRules();
+        || rareDataChildrenAffectedByBackwardPositionalRules()
+        || rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules();
 }
 
 bool Element::rareDataStyleAffectedByEmpty() const
@@ -2162,6 +2174,12 @@ bool Element::rareDataChildrenAffectedByBackwardPositionalRules() const
 {
     ASSERT(hasRareData());
     return elementRareData()->childrenAffectedByBackwardPositionalRules();
+}
+
+bool Element::rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules() const
+{
+    ASSERT(hasRareData());
+    return elementRareData()->childrenAffectedByPropertyBasedBackwardPositionalRules();
 }
 
 unsigned Element::rareDataChildIndex() const
@@ -2327,6 +2345,11 @@ Element* Element::closest(const String& selector, ExceptionCode& ec)
 bool Element::shouldAppearIndeterminate() const
 {
     return false;
+}
+
+bool Element::isInsideViewport(const IntRect* visibleRect) const
+{
+    return renderer() && renderer()->isInsideViewport(visibleRect);
 }
 
 DOMTokenList& Element::classList()

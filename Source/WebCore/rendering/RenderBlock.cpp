@@ -1882,7 +1882,7 @@ GapRects RenderBlock::selectionGaps(RenderBlock& rootBlock, const LayoutPoint& r
         result = blockSelectionGaps(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock, lastLogicalTop, lastLogicalLeft, lastLogicalRight, cache, paintInfo);
 
     // Go ahead and fill the vertical gap all the way to the bottom of our block if the selection extends past our block.
-    if (&rootBlock == this && (selectionState() != SelectionBoth && selectionState() != SelectionEnd) && !isRubyBase()) {
+    if (&rootBlock == this && (selectionState() != SelectionBoth && selectionState() != SelectionEnd) && !isRubyBase() && !isRubyText()) {
         result.uniteCenter(blockSelectionGap(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock,
             lastLogicalTop, lastLogicalLeft, lastLogicalRight, logicalHeight(), cache, paintInfo));
     }
@@ -1927,7 +1927,7 @@ GapRects RenderBlock::blockSelectionGaps(RenderBlock& rootBlock, const LayoutPoi
         }
 
         bool paintsOwnSelection = curr->shouldPaintSelectionGaps() || curr->isTable(); // FIXME: Eventually we won't special-case table like this.
-        bool fillBlockGaps = !isRubyBase() && (paintsOwnSelection || (curr->canBeSelectionLeaf() && childState != SelectionNone));
+        bool fillBlockGaps = (paintsOwnSelection || (curr->canBeSelectionLeaf() && childState != SelectionNone)) && !isRubyBase() && !isRubyText();
         if (fillBlockGaps) {
             // We need to fill the vertical gap above this object.
             if (childState == SelectionEnd || childState == SelectionInside) {
@@ -1956,7 +1956,7 @@ GapRects RenderBlock::blockSelectionGaps(RenderBlock& rootBlock, const LayoutPoi
             lastLogicalTop = blockDirectionOffset(rootBlock, offsetFromRootBlock) + curr->logicalBottom();
             lastLogicalLeft = logicalLeftSelectionOffset(rootBlock, curr->logicalBottom(), cache);
             lastLogicalRight = logicalRightSelectionOffset(rootBlock, curr->logicalBottom(), cache);
-        } else if (childState != SelectionNone) {
+        } else if (childState != SelectionNone && is<RenderBlock>(*curr)) {
             // We must be a block that has some selected object inside it.  Go ahead and recur.
             result.unite(downcast<RenderBlock>(*curr).selectionGaps(rootBlock, rootBlockPhysicalPosition, LayoutSize(offsetFromRootBlock.width() + curr->x(), offsetFromRootBlock.height() + curr->y()),
                 lastLogicalTop, lastLogicalLeft, lastLogicalRight, childCache, paintInfo));

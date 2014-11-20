@@ -29,17 +29,13 @@
 #include "config.h"
 #include "GlyphPageTreeNode.h"
 
-#include "CGFontUnicodeSupportSPI.h"
+#include "CoreGraphicsSPI.h"
 #include "CoreTextSPI.h"
 #include "Font.h"
 #include "SimpleFontData.h"
 #include "WebCoreSystemInterface.h"
 #if !PLATFORM(IOS)
 #include <ApplicationServices/ApplicationServices.h>
-#else
-#include <CoreGraphics/CGFontUnicodeSupport.h>
-#include <CoreText/CTFontPriv.h>
-#include <CoreText/CoreText.h>
 #endif
 
 namespace WebCore {

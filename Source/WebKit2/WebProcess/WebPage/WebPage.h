@@ -44,13 +44,16 @@
 #include "Plugin.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
+#include "UserMediaPermissionRequestManager.h"
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DragData.h>
 #include <WebCore/Editor.h>
 #include <WebCore/FrameLoaderTypes.h>
+#include <WebCore/HitTestResult.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSizeHash.h>
 #include <WebCore/Page.h>
+#include <WebCore/PageOverlay.h>
 #include <WebCore/PageVisibilityState.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/TextChecking.h>
@@ -157,6 +160,7 @@ class WebMouseEvent;
 class WebNotificationClient;
 class WebOpenPanelResultListener;
 class WebPageGroupProxy;
+class WebPageOverlay;
 class WebPopupMenu;
 class WebUndoStep;
 class WebUserContentController;
@@ -447,6 +451,10 @@ public:
 #if PLATFORM(IOS) || PLATFORM(EFL)
     void savePageState(WebCore::HistoryItem&);
     void restorePageState(const WebCore::HistoryItem&);
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+    UserMediaPermissionRequestManager& userMediaPermissionRequestManager() { return m_userMediaPermissionRequestManager; }
 #endif
 
 #if PLATFORM(IOS)
@@ -747,10 +755,9 @@ public:
 
 #if PLATFORM(IOS)
     void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
-    void setViewportConfigurationMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize&);
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void setDeviceOrientation(int32_t);
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate(double& newTargetScale, WebCore::FloatPoint& newScrollPosition, uint64_t& nextValidLayerTreeTransactionID);
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&, double oldestTimestamp);
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
@@ -837,8 +844,6 @@ public:
 #endif
 
     void didChangeScrollOffsetForFrame(WebCore::Frame*);
-
-    void willChangeCurrentHistoryItemForMainFrame();
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -1019,6 +1024,10 @@ private:
 
     void didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed);
 
+#if ENABLE(MEDIA_STREAM)
+    void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed);
+#endif
+
     void advanceToNextMisspelling(bool startBeforeSelection);
     void changeSpellingToWord(const String& word);
 #if USE(APPKIT)
@@ -1049,6 +1058,11 @@ private:
     void performActionMenuHitTestAtLocation(WebCore::FloatPoint);
     PassRefPtr<WebCore::Range> lookupTextAtLocation(WebCore::FloatPoint);
     void selectLastActionMenuRange();
+    void focusAndSelectLastActionMenuHitTestResult();
+
+    void dataDetectorsDidPresentUI(WebCore::PageOverlay::PageOverlayID);
+    void dataDetectorsDidChangeUI(WebCore::PageOverlay::PageOverlayID);
+    void dataDetectorsDidHideUI(WebCore::PageOverlay::PageOverlayID);
 #endif
 
     uint64_t m_pageID;
@@ -1186,6 +1200,10 @@ private:
     GeolocationPermissionRequestManager m_geolocationPermissionRequestManager;
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    UserMediaPermissionRequestManager m_userMediaPermissionRequestManager;
+#endif
+
     std::unique_ptr<WebCore::PrintContext> m_printContext;
 #if PLATFORM(GTK)
     RefPtr<WebPrintOperationGtk> m_printOperation;
@@ -1276,6 +1294,8 @@ private:
 
 #if PLATFORM(MAC)
     RefPtr<WebCore::Range> m_lastActionMenuRangeForSelection;
+    WebCore::HitTestResult m_lastActionMenuHitTestResult;
+    RefPtr<WebPageOverlay> m_lastActionMenuHitPageOverlay;
 #endif
 };
 

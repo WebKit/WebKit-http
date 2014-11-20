@@ -359,6 +359,7 @@ private:
     virtual bool isPresentationAttribute(const QualifiedName&) const override final;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override final;
     virtual void finishParsingChildren() override final;
+    virtual void parserDidSetAttributes() override final;
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) override final;
 
@@ -395,10 +396,12 @@ private:
 
     virtual bool isOptionalFormControl() const override final { return !isRequiredFormControl(); }
     virtual bool isRequiredFormControl() const override final;
-    virtual bool recalcWillValidate() const override final;
+    virtual bool computeWillValidate() const override final;
     virtual void requiredAttributeChanged() override final;
 
+    void initializeInputType();
     void updateType();
+    void runPostTypeUpdateTasks();
     
     virtual void subtreeHasChanged() override final;
 

@@ -29,6 +29,7 @@
 #if USE(CG)
 #include "ImageSourceCG.h"
 
+#include "CoreGraphicsSPI.h"
 #include "ImageOrientation.h"
 #include "IntPoint.h"
 #include "IntSize.h"
@@ -39,7 +40,6 @@
 #if !PLATFORM(IOS)
 #include <ApplicationServices/ApplicationServices.h>
 #else
-#include <CoreGraphics/CGImagePrivate.h>
 #include <ImageIO/ImageIO.h>
 #include <wtf/RetainPtr.h>
 #endif
@@ -343,7 +343,7 @@ size_t ImageSource::frameCount() const
 CGImageRef ImageSource::createFrameAtIndex(size_t index, SubsamplingLevel subsamplingLevel)
 {
     if (!initialized())
-        return 0;
+        return nullptr;
 
     RetainPtr<CGImageRef> image = adoptCF(CGImageSourceCreateImageAtIndex(m_decoder, index, imageSourceOptions(subsamplingLevel).get()));
 
@@ -360,11 +360,22 @@ CGImageRef ImageSource::createFrameAtIndex(size_t index, SubsamplingLevel subsam
 #if COMPILER(CLANG)
 #pragma clang diagnostic pop
 #endif
-#endif // !PLATFORM(IOS)
+#endif // PLATFORM(IOS)
 
     CFStringRef imageUTI = CGImageSourceGetType(m_decoder);
     static const CFStringRef xbmUTI = CFSTR("public.xbitmap-image");
-    if (!imageUTI || !CFEqual(imageUTI, xbmUTI))
+
+    if (!imageUTI)
+        return image.leakRef();
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if (CFEqual(imageUTI, kUTTypeGIF)) {
+        CGImageSetCachingFlags(image.get(), kCGImageCachingTransient);
+        return image.leakRef();
+    }
+#endif
+
+    if (!CFEqual(imageUTI, xbmUTI))
         return image.leakRef();
     
     // If it is an xbm image, mask out all the white areas to render them transparent.

@@ -120,6 +120,7 @@
     macro(ForceFTPDirectoryListings, forceFTPDirectoryListings, Bool, bool, false) \
     macro(TabsToLinks, tabsToLinks, Bool, bool, DEFAULT_WEBKIT_TABSTOLINKS_ENABLED) \
     macro(DNSPrefetchingEnabled, dnsPrefetchingEnabled, Bool, bool, false) \
+    macro(DOMTimersThrottlingEnabled, domTimersThrottlingEnabled, Bool, bool, true) \
     macro(WebArchiveDebugModeEnabled, webArchiveDebugModeEnabled, Bool, bool, false) \
     macro(LocalFileContentSniffingEnabled, localFileContentSniffingEnabled, Bool, bool, false) \
     macro(UsesPageCache, usesPageCache, Bool, bool, true) \
@@ -137,6 +138,7 @@
     macro(AVFoundationEnabled, isAVFoundationEnabled, Bool, bool, true) \
     macro(MediaPlaybackRequiresUserGesture, mediaPlaybackRequiresUserGesture, Bool, bool, DEFAULT_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE) \
     macro(MediaPlaybackAllowsInline, mediaPlaybackAllowsInline, Bool, bool, DEFAULT_MEDIA_PLAYBACK_ALLOWS_INLINE) \
+    macro(AllowsAlternateFullscreen, allowsAlternateFullscreen, Bool, bool, true) \
     macro(MediaPlaybackAllowsAirPlay, mediaPlaybackAllowsAirPlay, Bool, bool, true) \
     macro(InspectorStartsAttached, inspectorStartsAttached, Bool, bool, true) \
     macro(ShowsToolTipOverTruncatedText, showsToolTipOverTruncatedText, Bool, bool, false) \

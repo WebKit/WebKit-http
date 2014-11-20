@@ -292,6 +292,8 @@ protected:
 #endif
 
 private:
+    virtual bool decodedDataIsPurgeable() const override;
+
     ImageSource m_source;
     mutable IntSize m_size; // The size to use for the overall image (will just be the size of the first image).
     mutable IntSize m_sizeRespectingOrientation;

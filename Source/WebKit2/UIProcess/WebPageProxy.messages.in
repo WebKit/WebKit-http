@@ -186,7 +186,6 @@ messages -> WebPageProxy {
     CommitPotentialTapFailed()
     DidNotHandleTapAsClick(WebCore::IntPoint point)
     ViewportMetaTagWidthDidChange(float width)
-    SetUsesMinimalUI(bool usesMinimalUI)
     DidFinishDrawingPagesToPDF(IPC::DataReference pdfData)
 #endif
 #if PLATFORM(GTK)
@@ -257,6 +256,11 @@ messages -> WebPageProxy {
     # Geolocation messages
     RequestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier)
     
+#if ENABLE(MEDIA_STREAM)
+    # MediaSteam messages
+    RequestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video)
+#endif
+
     # Notification messages
     RequestNotificationPermission(uint64_t requestID, String originIdentifier)
     ShowNotification(String title, String body, String iconURL, String tag, String lang, String dir, String originIdentifier, uint64_t notificationID)
@@ -292,7 +296,7 @@ messages -> WebPageProxy {
 
 #if PLATFORM(COCOA)
     # Dictionary support.
-    DidPerformDictionaryLookup(WebKit::AttributedString text, WebKit::DictionaryPopupInfo dictionaryPopupInfo)
+    DidPerformDictionaryLookup(WebKit::DictionaryPopupInfo dictionaryPopupInfo)
 
     # Keyboard input support messages
     ExecuteSavedCommandBySelector(String selector) -> (bool handled)
@@ -402,8 +406,6 @@ messages -> WebPageProxy {
     DidStartLoadForQuickLookDocumentInMainFrame(String fileName, String uti)
     DidFinishLoadForQuickLookDocumentInMainFrame(WebKit::QuickLookDocumentData data)
 #endif
-
-    WillChangeCurrentHistoryItemForMainFrame()
 
 #if ENABLE(CONTENT_FILTERING)
     ContentFilterDidBlockLoadForFrame(WebCore::ContentFilter contentFilter, uint64_t frameID)

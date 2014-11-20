@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 
 namespace JSC {
 
-class MacroAssemblerX86Common : public AbstractMacroAssembler<X86Assembler> {
+class MacroAssemblerX86Common : public AbstractMacroAssembler<X86Assembler, MacroAssemblerX86Common> {
 public:
 #if CPU(X86_64)
     static const X86Registers::RegisterID scratchRegister = X86Registers::r11;
@@ -1469,28 +1469,14 @@ public:
         return X86Assembler::maxJumpReplacementSize();
     }
 
-#if USE(MASM_PROBE)
-    struct CPUState {
-        #define DECLARE_REGISTER(_type, _regName) \
-            _type _regName;
-        FOR_EACH_CPU_REGISTER(DECLARE_REGISTER)
-        #undef DECLARE_REGISTER
-    };
-
-    struct ProbeContext;
-    typedef void (*ProbeFunction)(struct ProbeContext*);
-
-    struct ProbeContext {
-        ProbeFunction probeFunction;
-        void* arg1;
-        void* arg2;
-        CPUState cpu;
-
-        void dump(const char* indentation = 0);
-    private:
-        void dumpCPURegisters(const char* indentation);
-    };
-#endif // USE(MASM_PROBE)
+#if ENABLE(MASM_PROBE)
+    // Methods required by the MASM_PROBE mechanism as defined in
+    // AbstractMacroAssembler.h. 
+    static void printCPURegisters(CPUState&, int indentation = 0);
+    static void printRegister(CPUState&, RegisterID);
+    static void printRegister(CPUState&, FPRegisterID);
+    void probe(ProbeFunction, void* arg1 = 0, void* arg2 = 0);
+#endif // ENABLE(MASM_PROBE)
 
 protected:
     X86Assembler::Condition x86Condition(RelationalCondition cond)

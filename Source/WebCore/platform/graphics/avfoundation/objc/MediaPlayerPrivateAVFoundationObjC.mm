@@ -76,11 +76,12 @@
 #include "TextTrack.h"
 #endif
 
-#import <Foundation/NSGeometry.h>
 #import <AVFoundation/AVFoundation.h>
 #if PLATFORM(IOS)
+#import "WAKAppKitStubs.h"
 #import <CoreImage/CoreImage.h>
 #else
+#import <Foundation/NSGeometry.h>
 #import <QuartzCore/CoreImage.h>
 #endif
 #import <CoreMedia/CoreMedia.h>
@@ -2842,6 +2843,14 @@ void MediaPlayerPrivateAVFoundationObjC::canPlayFastForwardDidChange(bool newVal
 void MediaPlayerPrivateAVFoundationObjC::canPlayFastReverseDidChange(bool newValue)
 {
     m_cachedCanPlayFastReverse = newValue;
+}
+
+URL MediaPlayerPrivateAVFoundationObjC::resolvedURL() const
+{
+    if (!m_avAsset)
+        return MediaPlayerPrivateAVFoundation::resolvedURL();
+
+    return URL([m_avAsset resolvedURL]);
 }
 
 NSArray* assetMetadataKeyNames()

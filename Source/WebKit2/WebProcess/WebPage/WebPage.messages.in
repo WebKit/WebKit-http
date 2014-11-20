@@ -44,10 +44,9 @@ messages -> WebPage LegacyReceiver {
     WheelEventSyncForTesting(WebKit::WebWheelEvent event) -> (bool handled)
 #if PLATFORM(IOS)
     SetViewportConfigurationMinimumLayoutSize(WebCore::FloatSize size)
-    SetViewportConfigurationMinimumLayoutSizeForMinimalUI(WebCore::FloatSize size)
     SetMaximumUnobscuredSize(WebCore::FloatSize size)
     SetDeviceOrientation(int32_t deviceOrientation)
-    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatSize minimumLayoutSizeForMinimalUI,  WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation)
+    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation)
     SynchronizeDynamicViewportUpdate() -> (double newTargetScale, WebCore::FloatPoint newScrollPosition, uint64_t nextValidLayerTreeTransactionID)
 
     HandleTap(WebCore::IntPoint point)
@@ -269,6 +268,11 @@ messages -> WebPage LegacyReceiver {
     DidReceiveGeolocationPermissionDecision(uint64_t geolocationID, bool allowed)
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    # MediaSteam
+    DidReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed)
+#endif
+
     # Notification
     DidReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed)
 
@@ -395,5 +399,9 @@ messages -> WebPage LegacyReceiver {
 #if PLATFORM(MAC)
     PerformActionMenuHitTestAtLocation(WebCore::FloatPoint location)
     SelectLastActionMenuRange()
+    FocusAndSelectLastActionMenuHitTestResult()
+    DataDetectorsDidPresentUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
+    DataDetectorsDidChangeUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
+    DataDetectorsDidHideUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
 #endif
 }

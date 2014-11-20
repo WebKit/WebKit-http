@@ -80,12 +80,25 @@ text-rendering [Inherited]
 zoom [NewStyleBuilder, Custom=All]
 
 // line height needs to be right after the above high-priority properties
-line-height [Inherited]
+#if defined(ENABLE_IOS_TEXT_AUTOSIZING) && ENABLE_IOS_TEXT_AUTOSIZING
+line-height [Inherited, NewStyleBuilder, Custom=All]
+#else
+line-height [Inherited, NewStyleBuilder, Getter=specifiedLineHeight, Custom=Value]
+#endif
 
 // Keep this in between the highest priority props and the lower ones.
 -webkit-ruby-position [Inherited, NewStyleBuilder, TypeName=RubyPosition]
 
 // The remaining properties are listed in alphabetical order
+animation
+animation-delay
+animation-direction
+animation-duration
+animation-fill-mode
+animation-iteration-count
+animation-name
+animation-play-state
+animation-timing-function
 background
 background-attachment
 background-blend-mode
@@ -163,7 +176,7 @@ image-orientation [Inherited, NewStyleBuilder, TypeName=ImageOrientationEnum]
 #endif
 image-rendering [Inherited, NewStyleBuilder]
 #if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
-image-resolution [Inherited]
+image-resolution [Inherited, NewStyleBuilder, Custom=All]
 #endif
 left [NewStyleBuilder, Initial=initialOffset, Converter=LengthOrAuto]
 letter-spacing [Inherited, NewStyleBuilder, Converter=Spacing]
@@ -246,14 +259,14 @@ transition-timing-function
 
 unicode-bidi [NewStyleBuilder]
 unicode-range
-vertical-align
+vertical-align [NewStyleBuilder, Custom=Value]
 visibility [Inherited, NewStyleBuilder]
 white-space [Inherited, NewStyleBuilder]
 widows [Inherited]
 width [NewStyleBuilder, Initial=initialSize, Converter=LengthSizing]
 word-break [Inherited, NewStyleBuilder]
 -epub-word-break = word-break
-word-spacing [Inherited]
+word-spacing [Inherited, NewStyleBuilder, Custom=Value]
 word-wrap [Inherited, NewStyleBuilder=EOverflowWrap, NameForMethods=OverflowWrap]
 z-index
 alt
@@ -420,7 +433,7 @@ justify-content [NewStyleBuilder]
 -webkit-marquee
 -webkit-marquee-direction [NewStyleBuilder]
 -webkit-marquee-increment [NewStyleBuilder, Custom=Value]
--webkit-marquee-repetition
+-webkit-marquee-repetition [NewStyleBuilder, NameForMethods=MarqueeLoopCount, Converter=MarqueeRepetition]
 -webkit-marquee-speed [NewStyleBuilder, Converter=MarqueeSpeed]
 -webkit-marquee-style [NewStyleBuilder, TypeName=EMarqueeBehavior, NameForMethods=MarqueeBehavior]
 -webkit-mask
@@ -477,7 +490,7 @@ order [NewStyleBuilder, TypeName=int]
 -webkit-text-decoration-style [NewStyleBuilder, TypeName=TextDecorationStyle]
 -webkit-text-decoration-color
 -webkit-text-decoration-skip [Inherited]
--webkit-text-underline-position [Inherited]
+-webkit-text-underline-position [Inherited, NewStyleBuilder, Converter=TextUnderlinePosition]
 -webkit-text-decorations-in-effect [Inherited]
 -webkit-text-emphasis [Inherited]
 -epub-text-emphasis = -webkit-text-emphasis

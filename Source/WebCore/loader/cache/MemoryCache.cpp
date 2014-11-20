@@ -342,6 +342,11 @@ void MemoryCache::pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestr
             if (!shouldDestroyDecodedDataForAllLiveResources && elapsedTime < cMinDelayBeforeLiveDecodedPrune)
                 return;
 
+            if (current->decodedDataIsPurgeable()) {
+                current = prev;
+                continue;
+            }
+
             // Destroy our decoded data. This will remove us from 
             // m_liveDecodedResources, and possibly move us to a different LRU 
             // list in m_allResources.
@@ -818,6 +823,9 @@ MemoryCache::Statistics MemoryCache::getStatistics()
                 case CachedResource::XSLStyleSheet:
                     stats.xslStyleSheets.addResource(resource);
                     break;
+#endif
+#if ENABLE(SVG_FONTS)
+                case CachedResource::SVGFontResource:
 #endif
                 case CachedResource::FontResource:
                     stats.fonts.addResource(resource);

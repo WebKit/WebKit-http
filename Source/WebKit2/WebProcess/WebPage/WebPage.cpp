@@ -87,6 +87,7 @@
 #include "WebPageCreationParameters.h"
 #include "WebPageGroupProxy.h"
 #include "WebPageMessages.h"
+#include "WebPageOverlay.h"
 #include "WebPageProxyMessages.h"
 #include "WebPlugInClient.h"
 #include "WebPopupMenu.h"
@@ -98,6 +99,7 @@
 #include "WebProgressTrackerClient.h"
 #include "WebUndoStep.h"
 #include "WebUserContentController.h"
+#include "WebUserMediaClient.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/ArchiveResource.h>
 #include <WebCore/Chrome.h>
@@ -195,8 +197,7 @@
 #include "RemoteLayerTreeDrawingArea.h"
 #include "WebVideoFullscreenManager.h"
 #include <CoreGraphics/CoreGraphics.h>
-#include <CoreText/CTFontDescriptorPriv.h>
-#include <CoreText/CTFontPriv.h>
+#include <WebCore/CoreTextSPI.h>
 #include <WebCore/Icon.h>
 #endif
 
@@ -280,6 +281,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_userContentController(parameters.userContentControllerID ? WebUserContentController::getOrCreate(parameters.userContentControllerID) : nullptr)
 #if ENABLE(GEOLOCATION)
     , m_geolocationPermissionRequestManager(this)
+#endif
+#if ENABLE(MEDIA_STREAM)
+    , m_userMediaPermissionRequestManager(*this)
 #endif
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
@@ -385,6 +389,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 #if ENABLE(PROXIMITY_EVENTS)
     WebCore::provideDeviceProximityTo(m_page.get(), new WebDeviceProximityClient(this));
+#endif
+#if ENABLE(MEDIA_STREAM)
+    WebCore::provideUserMediaTo(m_page.get(), new WebUserMediaClient(*this));
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -2653,6 +2660,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setJavaScriptCanOpenWindowsAutomatically(store.getBoolValueForKey(WebPreferencesKey::javaScriptCanOpenWindowsAutomaticallyKey()));
     settings.setForceFTPDirectoryListings(store.getBoolValueForKey(WebPreferencesKey::forceFTPDirectoryListingsKey()));
     settings.setDNSPrefetchingEnabled(store.getBoolValueForKey(WebPreferencesKey::dnsPrefetchingEnabledKey()));
+    settings.setDOMTimersThrottlingEnabled(store.getBoolValueForKey(WebPreferencesKey::domTimersThrottlingEnabledKey()));
 #if ENABLE(WEB_ARCHIVE)
     settings.setWebArchiveDebugModeEnabled(store.getBoolValueForKey(WebPreferencesKey::webArchiveDebugModeEnabledKey()));
 #endif
@@ -2701,6 +2709,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAccelerated2dCanvasEnabled(store.getBoolValueForKey(WebPreferencesKey::accelerated2dCanvasEnabledKey()));
     settings.setMediaPlaybackRequiresUserGesture(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackRequiresUserGestureKey()));
     settings.setMediaPlaybackAllowsInline(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackAllowsInlineKey()));
+    settings.setAllowsAlternateFullscreen(store.getBoolValueForKey(WebPreferencesKey::allowsAlternateFullscreenKey()));
     settings.setMockScrollbarsEnabled(store.getBoolValueForKey(WebPreferencesKey::mockScrollbarsEnabledKey()));
     settings.setHyperlinkAuditingEnabled(store.getBoolValueForKey(WebPreferencesKey::hyperlinkAuditingEnabledKey()));
     settings.setRequestAnimationFrameEnabled(store.getBoolValueForKey(WebPreferencesKey::requestAnimationFrameEnabledKey()));
@@ -3251,6 +3260,13 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 {
     notificationPermissionRequestManager()->didReceiveNotificationPermissionDecision(notificationID, allowed);
 }
+
+#if ENABLE(MEDIA_STREAM)
+void WebPage::didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed)
+{
+    m_userMediaPermissionRequestManager.didReceiveUserMediaPermissionDecision(userMediaID, allowed);
+}
+#endif
 
 #if !PLATFORM(IOS)
 void WebPage::advanceToNextMisspelling(bool startBeforeSelection)
@@ -4794,11 +4810,6 @@ void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
         return;
 
     updateMainFrameScrollOffsetPinning();
-}
-
-void WebPage::willChangeCurrentHistoryItemForMainFrame()
-{
-    send(Messages::WebPageProxy::WillChangeCurrentHistoryItemForMainFrame());
 }
 
 } // namespace WebKit

@@ -56,6 +56,7 @@ class BUrlProtocolHandler;
 #if USE(SOUP)
 #include "GUniquePtrSoup.h"
 #include <libsoup/soup.h>
+#include <wtf/gobject/GMainLoopSource.h>
 #include <wtf/gobject/GRefPtr.h>
 #endif
 
@@ -208,7 +209,7 @@ namespace WebCore {
         GRefPtr<SoupMultipartInputStream> m_multipartInputStream;
         GRefPtr<GCancellable> m_cancellable;
         GRefPtr<GAsyncResult> m_deferredResult;
-        GRefPtr<GSource> m_timeoutSource;
+        GMainLoopSource m_timeoutSource;
         GUniquePtr<SoupBuffer> m_soupBuffer;
         unsigned long m_bodySize;
         unsigned long m_bodyDataSent;

@@ -30,6 +30,7 @@
 #import "CSSPrimitiveValue.h"
 #import "CSSToLengthConversionData.h"
 #import "CSSValueKeywords.h"
+#import "CoreTextSPI.h"
 #import "DateComponents.h"
 #import "Document.h"
 #import "FloatRoundedRect.h"
@@ -47,8 +48,8 @@
 #import "LocalizedDateCache.h"
 #import "NodeRenderStyle.h"
 #import "Page.h"
-#import "PlatformLocale.h"
 #import "PaintInfo.h"
+#import "PlatformLocale.h"
 #import "RenderObject.h"
 #import "RenderProgress.h"
 #import "RenderStyle.h"
@@ -58,8 +59,7 @@
 #import "UserAgentScripts.h"
 #import "UserAgentStyleSheets.h"
 #import "WebCoreThreadRun.h"
-#import <CoreGraphics/CGPathPrivate.h>
-#import <CoreText/CTFontDescriptorPriv.h>
+#import <CoreGraphics/CoreGraphics.h>
 #import <objc/runtime.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RefPtr.h>
@@ -80,14 +80,6 @@ SOFT_LINK_CONSTANT(UIKit, UIContentSizeCategoryDidChangeNotification, CFStringRe
 
 @implementation WebCoreRenderThemeBundle
 @end
-
-// This is a temporary hack to build on iOS. Should be removed as soon as CT fixes the header files.
-extern const CFStringRef kCTUIFontTextStyleShortHeadline CT_AVAILABLE(10_10, 7_0);
-extern const CFStringRef kCTUIFontTextStyleShortBody CT_AVAILABLE(10_10, 7_0);
-extern const CFStringRef kCTUIFontTextStyleShortSubhead CT_AVAILABLE(10_10, 7_0);
-extern const CFStringRef kCTUIFontTextStyleShortFootnote CT_AVAILABLE(10_10, 7_0);
-extern const CFStringRef kCTUIFontTextStyleShortCaption1 CT_AVAILABLE(10_10, 7_0);
-extern const CFStringRef kCTUIFontTextStyleTallBody CT_AVAILABLE(10_10, 7_0);
 
 namespace WebCore {
 
@@ -1251,8 +1243,12 @@ void RenderThemeIOS::systemFont(CSSValueID valueID, FontDescription& fontDescrip
 String RenderThemeIOS::mediaControlsStyleSheet()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsStyleSheet.isEmpty())
-        m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
+    if (m_mediaControlsStyleSheet.isEmpty()) {
+        StringBuilder builder;
+        builder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil]);
+        builder.append(wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenButton));
+        m_mediaControlsStyleSheet = builder.toString();
+    }
     return m_mediaControlsStyleSheet;
 #else
     return emptyString();

@@ -555,9 +555,9 @@ bool MediaPlayer::supportsFullscreen() const
     return m_private->supportsFullscreen();
 }
 
-bool MediaPlayer::supportsSave() const
+bool MediaPlayer::canSaveMediaData() const
 {
-    return m_private->supportsSave();
+    return m_private->canSaveMediaData();
 }
 
 bool MediaPlayer::supportsScanning() const

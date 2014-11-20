@@ -41,6 +41,8 @@
 #include "CSSFontSelector.h"
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
+#include "CSSKeyframeRule.h"
+#include "CSSKeyframesRule.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSPageRule.h"
 #include "CSSParser.h"
@@ -132,8 +134,6 @@
 #include "ViewportStyleResolver.h"
 #include "VisitedLinkState.h"
 #include "WebKitCSSFilterValue.h"
-#include "WebKitCSSKeyframeRule.h"
-#include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
@@ -525,21 +525,17 @@ bool StyleResolver::canShareStyleWithControl(StyledElement* element) const
     if (element->isDefaultButtonForForm() != state.element()->isDefaultButtonForForm())
         return false;
 
-    if (state.document().containsValidityStyleRules()) {
-        bool willValidate = element->willValidate();
+    if (element->matchesValidPseudoClass() != state.element()->matchesValidPseudoClass())
+        return false;
 
-        if (willValidate != state.element()->willValidate())
-            return false;
+    if (element->matchesInvalidPseudoClass() != state.element()->matchesValidPseudoClass())
+        return false;
 
-        if (willValidate && (element->isValidFormControlElement() != state.element()->isValidFormControlElement()))
-            return false;
+    if (element->isInRange() != state.element()->isInRange())
+        return false;
 
-        if (element->isInRange() != state.element()->isInRange())
-            return false;
-
-        if (element->isOutOfRange() != state.element()->isOutOfRange())
-            return false;
-    }
+    if (element->isOutOfRange() != state.element()->isOutOfRange())
+        return false;
 
     return true;
 }
@@ -841,7 +837,7 @@ PassRef<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementS
         applyProperty(CSSPropertyLineHeight, state.lineHeightValue());
 
     // Now do rest of the properties.
-    applyCascadedProperties(cascade, CSSPropertyBackground, lastCSSProperty);
+    applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
 
     // If our font got dirtied by one of the non-essential font props,
     // go ahead and update it a second time.
@@ -858,7 +854,7 @@ PassRef<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementS
         CSSPropertyID property = keyframe->properties().propertyAt(i).id();
         // Timing-function within keyframes is special, because it is not animated; it just
         // describes the timing function between this keyframe and the next.
-        if (property != CSSPropertyWebkitAnimationTimingFunction)
+        if (property != CSSPropertyWebkitAnimationTimingFunction && property != CSSPropertyAnimationTimingFunction)
             keyframeValue.addProperty(property);
     }
 
@@ -1011,7 +1007,7 @@ PassRef<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     if (m_state.lineHeightValue())
         applyProperty(CSSPropertyLineHeight, m_state.lineHeightValue());
 
-    applyCascadedProperties(cascade, CSSPropertyBackground, lastCSSProperty);
+    applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
 
     cascade.applyDeferredProperties(*this);
 
@@ -1716,7 +1712,7 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         applyCascadedProperties(cascade, firstCSSProperty, CSSPropertyLineHeight);
     
         updateFont();
-        applyCascadedProperties(cascade, CSSPropertyBackground, lastCSSProperty);
+        applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
 
         state.cacheBorderAndBackground();
     }
@@ -1754,7 +1750,7 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         return applyMatchedProperties(matchResult, element, DoNotUseMatchedPropertiesCache);
 
     // Apply properties that no other properties depend on.
-    applyCascadedProperties(cascade, CSSPropertyBackground, lastCSSProperty);
+    applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
 
     // Finally, some properties must be applied in the order they were parsed.
     // There are some CSS properties that affect the same RenderStyle values,
@@ -2238,6 +2234,15 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         }
     case CSSPropertyAlt:
         {
+            if (isInherit) {
+                state.style()->setContentAltText(state.parentStyle()->contentAltText());
+                return;
+            }
+            if (isInitial) {
+                state.style()->setContentAltText(emptyAtom);
+                return;
+            }
+            ASSERT(primitiveValue);
             bool didSet = false;
             if (primitiveValue->isString()) {
                 state.style()->setContentAltText(primitiveValue->getStringValue().impl());
@@ -2346,6 +2351,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         }
         return;
 
+    case CSSPropertyAnimation:
     case CSSPropertyBackground:
     case CSSPropertyBackgroundPosition:
     case CSSPropertyBackgroundRepeat:
@@ -2955,6 +2961,14 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     }
     
     // These properties are aliased and DeprecatedStyleBuilder already applied the property on the prefixed version.
+    case CSSPropertyAnimationDelay:
+    case CSSPropertyAnimationDirection:
+    case CSSPropertyAnimationDuration:
+    case CSSPropertyAnimationFillMode:
+    case CSSPropertyAnimationName:
+    case CSSPropertyAnimationPlayState:
+    case CSSPropertyAnimationIterationCount:
+    case CSSPropertyAnimationTimingFunction:
     case CSSPropertyTransitionDelay:
     case CSSPropertyTransitionDuration:
     case CSSPropertyTransitionProperty:

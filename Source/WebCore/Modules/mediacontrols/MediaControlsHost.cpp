@@ -198,10 +198,11 @@ void MediaControlsHost::enterFullscreenOptimized()
 bool MediaControlsHost::optimizedFullscreenSupported()
 {
 #if PLATFORM(IOS)
-    return wkIsOptimizedFullscreenSupported();
-#else
-    return false;
+    if (!wkIsOptimizedFullscreenSupported())
+        return false;
 #endif
+
+    return m_mediaElement->mediaSession().allowsAlternateFullscreen(*m_mediaElement);
 }
 
 void MediaControlsHost::updateCaptionDisplaySizes()
@@ -317,9 +318,6 @@ String MediaControlsHost::mediaUIImageData(const String& partID) const
 #if PLATFORM(IOS)
     if (partID == "optimized-fullscreen-button")
         return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenButton);
-
-    if (partID == "optimized-fullscreen-button-hilited")
-        return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenButtonHilited);
 
     if (partID == "optimized-fullscreen-placeholder")
         return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenPlaceholder);

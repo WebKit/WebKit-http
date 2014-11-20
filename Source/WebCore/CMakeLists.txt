@@ -354,8 +354,8 @@ set(WebCore_NON_SVG_IDL_FILES
     css/StyleSheet.idl
     css/StyleSheetList.idl
     css/WebKitCSSFilterValue.idl
-    css/WebKitCSSKeyframeRule.idl
-    css/WebKitCSSKeyframesRule.idl
+    css/CSSKeyframeRule.idl
+    css/CSSKeyframesRule.idl
     css/WebKitCSSMatrix.idl
     css/WebKitCSSRegionRule.idl
     css/WebKitCSSTransformValue.idl
@@ -1292,8 +1292,8 @@ set(WebCore_SOURCES
     css/TransformFunctions.cpp
     css/ViewportStyleResolver.cpp
     css/WebKitCSSFilterValue.cpp
-    css/WebKitCSSKeyframeRule.cpp
-    css/WebKitCSSKeyframesRule.cpp
+    css/CSSKeyframeRule.cpp
+    css/CSSKeyframesRule.cpp
     css/WebKitCSSMatrix.cpp
     css/WebKitCSSRegionRule.cpp
     css/WebKitCSSTransformValue.cpp
@@ -1846,6 +1846,7 @@ set(WebCore_SOURCES
     loader/archive/mhtml/MHTMLParser.cpp
 
     loader/cache/CachedCSSStyleSheet.cpp
+    loader/cache/CachedSVGFont.cpp
     loader/cache/CachedFont.cpp
     loader/cache/CachedImage.cpp
     loader/cache/CachedRawResource.cpp
@@ -2354,7 +2355,9 @@ set(WebCore_SOURCES
     rendering/SelectionSubtreeRoot.cpp
     rendering/ScrollBehavior.cpp
     rendering/SimpleLineLayout.cpp
+    rendering/SimpleLineLayoutFlowContents.cpp
     rendering/SimpleLineLayoutFunctions.cpp
+    rendering/SimpleLineLayoutResolver.cpp
     rendering/TextAutosizer.cpp
     rendering/TextPaintStyle.cpp
     rendering/TextPainter.cpp
@@ -3343,7 +3346,6 @@ ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/StyleResolver.cpp Plu
 
 GENERATE_GRAMMAR(cssyy ${WEBCORE_DIR}/css/CSSGrammar.y.in ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.h ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}")
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp)
-
 
 GENERATE_GRAMMAR(xpathyy ${WEBCORE_DIR}/xml/XPathGrammar.y ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.h ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp "")
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp)
