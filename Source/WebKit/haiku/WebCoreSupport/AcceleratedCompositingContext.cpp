@@ -55,7 +55,7 @@ AcceleratedCompositingContext::~AcceleratedCompositingContext()
 #endif
 }
 
-void AcceleratedCompositingContext::syncLayers(Timer<AcceleratedCompositingContext>*)
+void AcceleratedCompositingContext::syncLayers(Timer*)
 {
     flushAndRenderLayers();
 }
@@ -111,7 +111,10 @@ void AcceleratedCompositingContext::paintToGraphicsContext()
 void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
 {
 #if USE(TEXTURE_MAPPER)
-    TextureMapperLayer* currentRootLayer = toTextureMapperLayer(m_rootLayer);
+    if (!m_rootLayer || !m_rootLayer->isGraphicsLayerTextureMapper())
+        return;
+
+    TextureMapperLayer* currentRootLayer = downcast<GraphicsLayerTextureMapper>(m_rootLayer)->layer();
     if (!currentRootLayer)
         return;
 
