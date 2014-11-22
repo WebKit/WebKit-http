@@ -62,10 +62,11 @@ GSourceFuncs EventSource::sourceFuncs = {
         struct wl_display* display = source->display;
 
         gushort revents = source->pfd.revents;
-        if (revents & G_IO_ERR || revents & G_IO_HUP)
-            fprintf(stderr, "\tG_IO_ERR || G_IO_HUP\n");
         if (revents & G_IO_IN)
             wl_display_dispatch(display);
+
+        if (revents & G_IO_ERR || revents & G_IO_HUP)
+            return FALSE;
 
         return TRUE;
     },
