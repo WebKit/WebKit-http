@@ -37,7 +37,7 @@
 #include <wtf/Threading.h>
 
 #if USE(GLIB)
-#include <wtf/gobject/GMainLoopSource.h>
+#include <wtf/gobject/GSourceWrap.h>
 #endif
 
 #if PLATFORM(EFL)
@@ -101,7 +101,7 @@ public:
         Ecore_Timer* m_timer;
         bool m_isRepeating;
 #elif USE(GLIB)
-        GMainLoopSource m_timerSource;
+        GSourceWrap::Dynamic m_timerSource;
 #endif
     };
 
@@ -164,6 +164,7 @@ public:
 private:
     GRefPtr<GMainContext> m_runLoopContext;
     Vector<GRefPtr<GMainLoop>> m_runLoopMainLoops;
+    GSourceWrap::Static m_workSource;
 #endif
 };
 

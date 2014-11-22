@@ -37,7 +37,7 @@
 #include <wayland-client.h>
 #include <wtf/HashMap.h>
 #include <wtf/OwnPtr.h>
-#include <wtf/gobject/GMainLoopSource.h>
+#include <wtf/gobject/GSourceWrap.h>
 
 namespace WebKit {
 
@@ -98,7 +98,7 @@ private:
     OwnPtr<WebCore::GLContext> m_context;
     double m_lastFlushTime;
     bool m_layerFlushSchedulingEnabled;
-    GMainLoopSource::Simple m_layerFlushTimer;
+    GSourceWrap::Static m_layerFlushTimer;
 
     static const struct wl_callback_listener m_frameListener;
     enum class FrameRequestState {

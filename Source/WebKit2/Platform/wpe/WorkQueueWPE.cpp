@@ -41,6 +41,8 @@ void WorkQueue::platformInitialize(const char* name, QOS)
     m_eventLoop = adoptGRef(g_main_loop_new(m_eventContext.get(), FALSE));
     ASSERT(m_eventLoop);
 
+    m_dispatchQueue.initialize("[WebKit] WorkQueue::dispatch", G_PRIORITY_DEFAULT_IDLE, m_eventContext.get());
+
     // This name can be com.apple.WebKit.ProcessLauncher or com.apple.CoreIPC.ReceiveQueue.
     // We are using those names for the thread name, but both are longer than 31 characters,
     // which is the limit of Visual Studio for thread names.
@@ -109,9 +111,7 @@ void WorkQueue::unregisterSocketEventHandler(int)
 
 void WorkQueue::dispatch(std::function<void ()> function)
 {
-    ref();
-    GMainLoopSource::scheduleAndDeleteOnDestroy("[WebKit] WorkQueue::dispatch", WTF::move(function), G_PRIORITY_DEFAULT,
-        [this] { deref(); }, m_eventContext.get());
+    m_dispatchQueue.queue(WTF::move(function));
 }
 
 void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<void ()> function)

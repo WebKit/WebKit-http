@@ -48,6 +48,7 @@
 #if PLATFORM(GTK) || PLATFORM(WPE)
 #include <wtf/gobject/GMainLoopSource.h>
 #include <wtf/gobject/GRefPtr.h>
+#include <wtf/gobject/GSourceWrap.h>
 #elif PLATFORM(EFL)
 #include <DispatchQueueEfl.h>
 #endif
@@ -96,6 +97,7 @@ private:
     Mutex m_eventLoopLock;
     GRefPtr<GMainLoop> m_eventLoop;
     GMainLoopSource m_socketEventSource;
+    GSourceQueue m_dispatchQueue;
 #elif PLATFORM(EFL)
     RefPtr<DispatchQueue> m_dispatchQueue;
 #endif

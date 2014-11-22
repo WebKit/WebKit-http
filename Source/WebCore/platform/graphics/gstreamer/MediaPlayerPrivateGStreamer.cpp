@@ -210,6 +210,11 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_volumeAndMuteInitialized(false)
     , m_hasVideo(false)
     , m_hasAudio(false)
+    , m_audioTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::audioChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfAudio, this))
+    , m_textTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::textChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfText, this))
+    , m_videoTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::videoChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfVideo, this))
+    , m_videoCapsTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::videoCapsChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfVideoCaps, this))
+    , m_readyTimerHandler("[WebKit] mediaPlayerPrivateReadyStateTimeoutCallback", [this] { changePipelineState(GST_STATE_NULL); })
     , m_totalBytes(0)
     , m_preservesPitch(false)
     , m_requestedState(GST_STATE_VOID_PENDING)
@@ -391,8 +396,7 @@ bool MediaPlayerPrivateGStreamer::changePipelineState(GstState newState)
     // Also lets remove the timer if we request a state change for any state other than READY.
     // See also https://bugs.webkit.org/show_bug.cgi?id=117354
     if (newState == GST_STATE_READY && !m_readyTimerHandler.isScheduled()) {
-        m_readyTimerHandler.scheduleAfterDelay("[WebKit] mediaPlayerPrivateReadyStateTimeoutCallback", std::function<void()>([this] { changePipelineState(GST_STATE_NULL); }),
-            std::chrono::seconds(gReadyStateTimerInterval));
+        m_readyTimerHandler.schedule(std::chrono::seconds(gReadyStateTimerInterval));
     } else if (newState != GST_STATE_READY && m_readyTimerHandler.isScheduled()) {
         m_readyTimerHandler.cancel();
     }
@@ -638,12 +642,12 @@ bool MediaPlayerPrivateGStreamer::seeking() const
 
 void MediaPlayerPrivateGStreamer::videoChanged()
 {
-    m_videoTimerHandler.schedule("[WebKit] MediaPlayerPrivateGStreamer::videoChanged", std::function<void()>(std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfVideo, this)));
+    m_videoTimerHandler.schedule();
 }
 
 void MediaPlayerPrivateGStreamer::videoCapsChanged()
 {
-    m_videoCapsTimerHandler.schedule("[WebKit] MediaPlayerPrivateGStreamer::videoCapsChanged", std::function<void()>(std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfVideoCaps, this)));
+    m_videoCapsTimerHandler.schedule();
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
@@ -691,7 +695,7 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideoCaps()
 
 void MediaPlayerPrivateGStreamer::audioChanged()
 {
-    m_audioTimerHandler.schedule("[WebKit] MediaPlayerPrivateGStreamer::audioChanged", std::function<void()>(std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfAudio, this)));
+    m_audioTimerHandler.schedule();
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
@@ -734,7 +738,7 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 #if ENABLE(VIDEO_TRACK)
 void MediaPlayerPrivateGStreamer::textChanged()
 {
-    m_textTimerHandler.schedule("[WebKit] MediaPlayerPrivateGStreamer::textChanged", std::function<void()>(std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfText, this)));
+    m_textTimerHandler.schedule();
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfText()

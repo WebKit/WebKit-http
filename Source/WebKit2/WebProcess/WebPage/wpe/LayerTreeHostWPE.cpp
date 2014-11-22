@@ -316,7 +316,7 @@ void LayerTreeHostWPE::scheduleLayerFlush()
     }
 
     if (!m_layerFlushTimer.isScheduled())
-        m_layerFlushTimer.schedule(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(0)));
+        m_layerFlushTimer.schedule();
 }
 
 void LayerTreeHostWPE::setLayerFlushSchedulingEnabled(bool layerFlushingEnabled)

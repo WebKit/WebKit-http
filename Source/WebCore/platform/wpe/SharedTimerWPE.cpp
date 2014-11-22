@@ -28,7 +28,7 @@
 #include "config.h"
 #include "SharedTimer.h"
 
-#include <wtf/gobject/GMainLoopSource.h>
+#include <wtf/gobject/GSourceWrap.h>
 
 namespace WebCore {
 
@@ -37,7 +37,7 @@ static void sharedTimerFire()
 {
     sharedTimerFiredFunction();
 }
-static GMainLoopSource::Simple gSharedTimer("[WebKit] sharedTimerTimeoutCallback", sharedTimerFire);
+static GSourceWrap::Static gSharedTimer("[WebKit] sharedTimerTimeoutCallback", std::function<void ()>(sharedTimerFire));
 
 void setSharedTimerFiredFunction(void (*f)())
 {

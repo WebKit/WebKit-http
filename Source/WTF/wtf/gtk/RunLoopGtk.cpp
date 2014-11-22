@@ -47,6 +47,9 @@ RunLoop::RunLoop()
     GRefPtr<GMainLoop> innermostLoop = adoptGRef(g_main_loop_new(m_runLoopContext.get(), FALSE));
     ASSERT(innermostLoop);
     m_runLoopMainLoops.append(innermostLoop);
+
+    m_workSource.initialize("[WebKit] RunLoop work", std::bind(&RunLoop::performWork, this),
+        G_PRIORITY_DEFAULT, m_runLoopContext.get());
 }
 
 RunLoop::~RunLoop()
@@ -106,15 +109,13 @@ void RunLoop::stop()
 
 void RunLoop::wakeUp()
 {
-    RefPtr<RunLoop> runLoop(this);
-    GMainLoopSource::scheduleAndDeleteOnDestroy("[WebKit] RunLoop work", std::function<void()>([runLoop] {
-        runLoop->performWork();
-    }), G_PRIORITY_DEFAULT, nullptr, m_runLoopContext.get());
+    m_workSource.schedule();
     g_main_context_wakeup(m_runLoopContext.get());
 }
 
 RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
     : m_runLoop(runLoop)
+    , m_timerSource("[WebKit] RunLoop::Timer", G_PRIORITY_DEFAULT, m_runLoop.m_runLoopContext.get())
 {
 }
 
@@ -125,8 +126,7 @@ RunLoop::TimerBase::~TimerBase()
 
 void RunLoop::TimerBase::start(double fireInterval, bool repeat)
 {
-    m_timerSource.scheduleAfterDelay("[WebKit] RunLoop::Timer", std::function<bool ()>([this, repeat] { fired(); return repeat; }),
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(fireInterval)), G_PRIORITY_DEFAULT, nullptr, m_runLoop.m_runLoopContext.get());
+    m_timerSource.schedule([this, repeat] { fired(); return repeat; }, std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(fireInterval)));
 }
 
 void RunLoop::TimerBase::stop()

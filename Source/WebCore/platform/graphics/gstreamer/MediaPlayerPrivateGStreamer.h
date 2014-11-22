@@ -33,7 +33,7 @@
 #include <gst/gst.h>
 #include <gst/pbutils/install-plugins.h>
 #include <wtf/Forward.h>
-#include <wtf/gobject/GThreadSafeMainLoopSource.h>
+#include <wtf/gobject/GSourceWrap.h>
 
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
 #include <wtf/text/AtomicStringHash.h>
@@ -202,11 +202,11 @@ private:
     bool m_volumeAndMuteInitialized;
     bool m_hasVideo;
     bool m_hasAudio;
-    GThreadSafeMainLoopSource m_audioTimerHandler;
-    GThreadSafeMainLoopSource m_textTimerHandler;
-    GThreadSafeMainLoopSource m_videoTimerHandler;
-    GThreadSafeMainLoopSource m_videoCapsTimerHandler;
-    GThreadSafeMainLoopSource m_readyTimerHandler;
+    GSourceWrap::Static m_audioTimerHandler;
+    GSourceWrap::Static m_textTimerHandler;
+    GSourceWrap::Static m_videoTimerHandler;
+    GSourceWrap::Static m_videoCapsTimerHandler;
+    GSourceWrap::Static m_readyTimerHandler;
     mutable unsigned long long m_totalBytes;
     URL m_url;
     bool m_preservesPitch;
