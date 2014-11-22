@@ -27,6 +27,9 @@
 #include <WebKit/WKGeometry.h>
 #include <glib.h>
 #include <weston/compositor.h>
+#include <WebKit/WKRetainPtr.h>
+#include <WebKit/WKInputHandler.h>
+#include <WebKit/WKView.h>
 
 namespace WPE {
 
@@ -43,6 +46,7 @@ private:
     static const struct wl_wpe_interface m_wpeInterface;
     static const struct weston_pointer_grab_interface m_pgInterface;
     static const struct weston_keyboard_grab_interface m_kgInterface;
+    static const struct weston_touch_grab_interface m_tgInterface;
 
     static Shell* m_instance;
 
@@ -53,9 +57,8 @@ private:
     struct wl_listener m_outputCreatedListener;
     WKSize m_outputSize;
 
-    // FIXME: Properly implement input handling.
-    // InputEventHandler m_inputEventHandler;
-    // View* m_focusedView;
+    WKRetainPtr<WKInputHandlerRef> m_inputHandler;
+    WKRetainPtr<WKViewRef> m_view;
 
     void createOutput(struct weston_output*);
 

@@ -23,39 +23,64 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "InputEventHandler.h"
+#ifndef WKInputHandler_h
+#define WKInputHandler_h
 
-#include "NativeWebKeyboardEvent.h"
-#include "WPEView.h"
+#include <WebKit/WKBase.h>
 
-namespace WPE {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-InputEventHandler::InputEventHandler()
-{
-    struct xkb_context* context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    struct xkb_rule_names names = { "evdev", "pc105", "us", "", "" };
+struct WKKeyboardKey {
+    uint32_t time;
+    uint32_t key;
+    uint32_t state;
+};
+typedef struct WKKeyboardKey WKKeyboardKey;
 
-    m_xkbKeymap = xkb_keymap_new_from_names(context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
-    m_xkbState = xkb_state_new(m_xkbKeymap);
+struct WKKeyboardModifiers {
+    uint32_t serial;
+    uint32_t mods_depressed;
+    uint32_t mods_latched;
+    uint32_t mods_locked;
+    uint32_t group;
+};
+typedef struct WKKeyboardModifiers WKKeyboardModifiers;
 
-    xkb_context_unref(context);
+struct WKTouchDown {
+    uint32_t time;
+    int id;
+    int32_t x;
+    int32_t y;
+};
+typedef struct WKTouchDown WKTouchDown;
+
+struct WKTouchUp {
+    uint32_t time;
+    int id;
+};
+typedef struct WKTouchUp WKTouchUp;
+
+struct WKTouchMotion {
+    uint32_t time;
+    int id;
+    int32_t x;
+    int32_t y;
+};
+typedef struct WKTouchMotion WKTouchMotion;
+
+WK_EXPORT WKInputHandlerRef WKInputHandlerCreate(WKViewRef);
+
+WK_EXPORT void WKInputHandlerNotifyKeyboardKey(WKInputHandlerRef, WKKeyboardKey);
+WK_EXPORT void WKInputHandlerNotifyKeyboardModifiers(WKInputHandlerRef, WKKeyboardModifiers);
+
+WK_EXPORT void WKInputHandlerNotifyTouchDown(WKInputHandlerRef, WKTouchDown);
+WK_EXPORT void WKInputHandlerNotifyTouchUp(WKInputHandlerRef, WKTouchUp);
+WK_EXPORT void WKInputHandlerNotifyTouchMotion(WKInputHandlerRef, WKTouchMotion);
+
+#ifdef __cplusplus
 }
+#endif
 
-InputEventHandler::~InputEventHandler()
-{
-    xkb_keymap_unref(m_xkbKeymap);
-    xkb_state_unref(m_xkbState);
-}
-
-void InputEventHandler::handleKeyboardEvent(View& view, const KeyboardEvent::Raw& rawEvent)
-{
-    view.page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent({
-        rawEvent.time,
-        xkb_state_key_get_one_sym(m_xkbState, rawEvent.key),
-        xkb_state_key_get_utf32(m_xkbState, rawEvent.key),
-        !!rawEvent.state
-    }));
-}
-
-} // namespace WPE
+#endif // WKInputHandler_h

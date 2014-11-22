@@ -23,22 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "WPEInputEvent.h"
-#include <xkbcommon/xkbcommon.h>
+#include "config.h"
+#include "NativeWebTouchEvent.h"
 
-namespace WPE {
+#include "WebEventFactory.h"
 
-class View;
+namespace WebKit {
 
-class InputEventHandler {
-public:
-    InputEventHandler();
-    ~InputEventHandler();
-    void handleKeyboardEvent(View&, const KeyboardEvent::Raw&);
+NativeWebTouchEvent::NativeWebTouchEvent(WPE::TouchEvent&& event)
+    : WebTouchEvent(WebEventFactory::createWebTouchEvent(WTF::move(event)))
+{
+}
 
-private:
-    struct xkb_keymap* m_xkbKeymap;
-    struct xkb_state* m_xkbState;
-};
-
-} // namespace WPE
+} // namespace WebKit

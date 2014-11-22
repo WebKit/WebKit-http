@@ -1,9 +1,9 @@
-# - Try to find Weston.
+# - Try to find libxkbcommon.
 # Once done, this will define
 #
-#  WESTON_FOUND - system has Wayland.
-#  WESTON_INCLUDE_DIRS - the Wayland include directories
-#  WESTON_LIBRARIES - link these to use Wayland.
+#  LIBXKBCOMMON_FOUND - system has libxkbcommon.
+#  LIBXKBCOMMON_INCLUDE_DIRS - the libxkbcommon include directories
+#  LIBXKBCOMMON_LIBRARIES - link these to use libxkbcommon.
 #
 # Copyright (C) 2014 Igalia S.L.
 #
@@ -29,8 +29,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-# FIXME: This, for now, also looks for pixman.
-pkg_check_modules(WESTON weston pixman-1)
+pkg_check_modules(LIBXKBCOMMON xkbcommon)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(WESTON DEFAULT_MSG WESTON_INCLUDE_DIRS)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(LIBXKBCOMMON DEFAULT_MSG LIBXKBCOMMON_FOUND)

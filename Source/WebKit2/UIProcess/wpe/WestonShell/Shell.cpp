@@ -30,10 +30,8 @@
 #include <WebKit/WKContext.h>
 #include <WebKit/WKPageGroup.h>
 #include <WebKit/WKPage.h>
-#include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKString.h>
 #include <WebKit/WKURL.h>
-#include <WebKit/WKView.h>
 
 namespace WPE {
 
@@ -119,6 +117,7 @@ Shell::Shell(struct weston_compositor* compositor)
 
     weston_compositor_set_default_pointer_grab(m_compositor, &m_pgInterface);
     weston_compositor_set_default_keyboard_grab(m_compositor, &m_kgInterface);
+    weston_compositor_set_default_touch_grab(m_compositor, &m_tgInterface);
 }
 
 void Shell::createOutput(struct weston_output* output)
@@ -185,13 +184,47 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
 
 const struct weston_keyboard_grab_interface Shell::m_kgInterface = {
     // key
-    [](struct weston_keyboard_grab*, uint32_t time, uint32_t key, uint32_t state) { },
+    [](struct weston_keyboard_grab*, uint32_t time, uint32_t key, uint32_t state)
+    {
+        WKInputHandlerNotifyKeyboardKey(Shell::instance().m_inputHandler.get(),
+            WKKeyboardKey{ time, key, state });
+    },
 
     // modifiers
-    [](struct weston_keyboard_grab*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) { },
+    [](struct weston_keyboard_grab*, uint32_t serial, uint32_t depressed,
+        uint32_t latched, uint32_t locked, uint32_t group)
+    {
+        WKInputHandlerNotifyKeyboardModifiers(Shell::instance().m_inputHandler.get(),
+            WKKeyboardModifiers{ serial, depressed, latched, locked, group });
+    },
 
     // cancel
     [](struct weston_keyboard_grab*) { }
+};
+
+const struct weston_touch_grab_interface Shell::m_tgInterface = {
+    // down
+    [](struct weston_touch_grab*, uint32_t time, int id, wl_fixed_t x, wl_fixed_t y)
+    {
+        WKInputHandlerNotifyTouchDown(Shell::instance().m_inputHandler.get(),
+            WKTouchDown{ time, id, x, y});
+    },
+    // up
+    [](struct weston_touch_grab*, uint32_t time, int id)
+    {
+        WKInputHandlerNotifyTouchUp(Shell::instance().m_inputHandler.get(),
+            WKTouchUp{ time, id});
+    },
+    // motion
+    [](struct weston_touch_grab*, uint32_t time, int id, wl_fixed_t x, wl_fixed_t y)
+    {
+        WKInputHandlerNotifyTouchMotion(Shell::instance().m_inputHandler.get(),
+            WKTouchMotion{ time, id, x, y });
+    },
+    // frame
+    [](struct weston_touch_grab*) { },
+    // cancel
+    [](struct weston_touch_grab*) { }
 };
 
 Shell* Shell::m_instance = nullptr;
@@ -211,14 +244,17 @@ gpointer Shell::launchWPE(gpointer data)
     auto contextConfiguration = adoptWK(WKContextConfigurationCreate());
     auto context = adoptWK(WKContextCreateWithConfiguration(contextConfiguration.get()));
 
-    auto view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
-    WKViewResize(view.get(), Shell::instance().m_outputSize);
+    Shell::instance().m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
+    auto view = Shell::instance().m_view.get();
+    WKViewResize(view, Shell::instance().m_outputSize);
+
+    Shell::instance().m_inputHandler = adoptWK(WKInputHandlerCreate(view));
 
     const char* url = g_getenv("WPE_SHELL_URL");
     if (!url)
         url = "https://www.youtube.com/tv/";
     auto shellURL = adoptWK(WKURLCreateWithUTF8CString(url));
-    WKPageLoadURL(WKViewGetPage(view.get()), shellURL.get());
+    WKPageLoadURL(WKViewGetPage(view), shellURL.get());
 
     g_main_loop_run(threadLoop);
     return nullptr;

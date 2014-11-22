@@ -31,11 +31,13 @@
 #endif
 
 namespace WPE {
+class InputHandler;
 class View;
 }
 
 namespace WebKit {
 
+WK_ADD_API_MAPPING(WKInputHandlerRef, WPE::InputHandler)
 WK_ADD_API_MAPPING(WKViewRef, WPE::View)
 
 }

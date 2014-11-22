@@ -38,6 +38,8 @@ struct _UIWebTouchEvent;
 #include "EwkTouchEvent.h"
 #include <WebCore/AffineTransform.h>
 #include <wtf/RefPtr.h>
+#elif PLATFORM(WPE)
+#include "WPEInputEvents.h"
 #endif
 
 namespace WebKit {
@@ -54,8 +56,7 @@ public:
     NativeWebTouchEvent(EwkTouchEvent*, const WebCore::AffineTransform&);
     const EwkTouchEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(WPE)
-    NativeWebTouchEvent(const void*);
-    const void* nativeEvent() const { return nullptr; }
+    NativeWebTouchEvent(WPE::TouchEvent&&);
 #endif
 
 private:

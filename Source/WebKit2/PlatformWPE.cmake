@@ -45,13 +45,16 @@ list(APPEND WebKit2_SOURCES
     Shared/soup/WebCoreArgumentCodersSoup.cpp
     Shared/unix/ChildProcessMain.cpp
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
+    Shared/wpe/NativeWebTouchEventWPE.cpp
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
+    UIProcess/API/C/wpe/WKInputHandler.cpp
     UIProcess/API/C/wpe/WKView.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
+    UIProcess/API/wpe/WPEInputHandler.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/DrawingAreaProxyImpl.cpp
@@ -128,6 +131,15 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
+    ${LIBXKBCOMMON_INCLUDE_DIRS}
+)
+
+list(APPEND WebKit2_LIBRARIES
+    ${CAIRO_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${HARFBUZZ_LIBRARIES}
+    ${LIBSOUP_LIBRARIES}
+    ${LIBXKBCOMMON_LIBRARIES}
 )
 
 set(WPEWestonShell_SOURCES

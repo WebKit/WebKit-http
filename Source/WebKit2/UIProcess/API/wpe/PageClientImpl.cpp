@@ -169,6 +169,10 @@ void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent&, bool)
 {
 }
 
+void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent&, bool)
+{
+}
+
 PassRefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy*)
 {
     return nullptr;

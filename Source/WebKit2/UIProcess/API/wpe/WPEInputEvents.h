@@ -23,14 +23,56 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKBaseWPE_h
-#define WKBaseWPE_h
+#ifndef WPEInputEvents_h
+#define WPEInputEvents_h
 
-#ifndef WKBase_h
-#error "Please #include \"WKBase.h\" instead of this file directly."
-#endif
+#include "WebEvent.h"
+#include <wtf/Vector.h>
 
-typedef const struct OpaqueWKInputHandler* WKInputHandlerRef;
-typedef const struct OpaqueWKView* WKViewRef;
+namespace WPE {
 
-#endif /* WKBaseWPE_h */
+struct KeyboardEvent {
+    struct Raw {
+        uint32_t time;
+        uint32_t key;
+        uint32_t state;
+    };
+
+    uint32_t time;
+    uint32_t keyCode;
+    uint32_t unicode;
+    bool pressed;
+};
+
+struct KeyboardModifiers {
+    uint32_t serial;
+    uint32_t depressed;
+    uint32_t latched;
+    uint32_t locked;
+    uint32_t group;
+};
+
+struct TouchEvent {
+    enum Type : uint32_t {
+        Null,
+        Down,
+        Motion,
+        Up
+    };
+
+    struct Raw {
+        Type type;
+        uint32_t time;
+        int id;
+        int32_t x;
+        int32_t y;
+    };
+
+    Vector<WebKit::WebPlatformTouchPoint> touchPoints;
+    Type type;
+    uint32_t time;
+};
+
+} // namespace WPE;
+
+#endif // WPEInputEvents_h

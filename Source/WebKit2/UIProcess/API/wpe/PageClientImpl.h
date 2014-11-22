@@ -76,6 +76,7 @@ private:
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) override;
 
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool) override;
+    virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool) override;
 
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;

@@ -23,24 +23,45 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEInputEvent_h
-#define WPEInputEvent_h
+#ifndef WPEInputHandler_h
+#define WPEInputHandler_h
+
+#include "WPEInputEvents.h"
+#include <array>
+#include <wtf/Vector.h>
+#include <xkbcommon/xkbcommon.h>
 
 namespace WPE {
 
-struct KeyboardEvent {
-    struct Raw {
-        uint32_t time;
-        uint32_t key;
-        uint32_t state;
-    };
+class View;
 
-    uint32_t time;
-    uint32_t keyCode;
-    uint32_t unicode;
-    bool pressed;
+class InputHandler {
+public:
+    static InputHandler* create(View& view)
+    {
+        return new InputHandler(view);
+    }
+    ~InputHandler();
+
+    void handleKeyboardKey(KeyboardEvent::Raw);
+    void handleKeyboardModifiers(KeyboardModifiers);
+
+    void handleTouchDown(TouchEvent::Raw);
+    void handleTouchUp(TouchEvent::Raw);
+    void handleTouchMotion(TouchEvent::Raw);
+
+private:
+    InputHandler(View&);
+
+    View& m_view;
+
+    struct xkb_keymap* m_xkbKeymap;
+    struct xkb_state* m_xkbState;
+
+    void dispatchTouchEvent(int id);
+    std::array<TouchEvent::Raw, 10> m_touchEvents;
 };
 
 } // namespace WPE
 
-#endif // WPEInputEvent_h
+#endif // WPEInputHandler_h

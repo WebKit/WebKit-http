@@ -27,7 +27,7 @@
 #include "WebEventFactory.h"
 
 #include "WindowsKeyboardCodes.h"
-#include "WPEInputEvent.h"
+#include "WPEInputEvents.h"
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace WebKit {
@@ -523,7 +523,7 @@ static String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent& event)
     }
 }
 
-WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(const WPE::KeyboardEvent& event)
+WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::KeyboardEvent&& event)
 {
     String singleCharacterString = singleCharacterStringForKeyEvent(event);
     return WebKeyboardEvent(event.pressed ? WebEvent::KeyUp : WebEvent::KeyDown,
@@ -532,6 +532,26 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(const WPE::KeyboardEven
         windowsKeyCodeForKeyEvent(event),
         event.keyCode, 0, false, false, false,
         static_cast<WebEvent::Modifiers>(0), event.time);
+}
+
+WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::TouchEvent&& event)
+{
+    WebEvent::Type type = WebEvent::NoType;
+    switch (event.type) {
+    case WPE::TouchEvent::Down:
+        type = WebEvent::TouchStart;
+        break;
+    case WPE::TouchEvent::Motion:
+        type = WebEvent::TouchMove;
+        break;
+    case WPE::TouchEvent::Up:
+        type = WebEvent::TouchEnd;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    return WebTouchEvent(type, WTF::move(event.touchPoints), WebEvent::Modifiers(0), event.time);
 }
 
 } // namespace WebKit

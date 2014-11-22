@@ -29,7 +29,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(ATHOL athol xkbcommon)
+pkg_check_modules(ATHOL athol)
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(ATHOL DEFAULT_MSG ATHOL_FOUND)

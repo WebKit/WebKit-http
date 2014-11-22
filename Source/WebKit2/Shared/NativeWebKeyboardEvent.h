@@ -56,7 +56,7 @@ OBJC_CLASS WebIOSEvent;
 #endif
 
 #if PLATFORM(WPE)
-#include "WPEInputEvent.h"
+#include "WPEInputEvents.h"
 #endif
 
 namespace WebKit {
@@ -74,7 +74,7 @@ public:
 #elif PLATFORM(IOS)
     NativeWebKeyboardEvent(WebIOSEvent *);
 #elif PLATFORM(WPE)
-    NativeWebKeyboardEvent(WPE::KeyboardEvent);
+    NativeWebKeyboardEvent(WPE::KeyboardEvent&&);
 #endif
 
 #if USE(APPKIT)
@@ -89,7 +89,7 @@ public:
 #elif PLATFORM(IOS)
     WebIOSEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(WPE)
-    const WPE::KeyboardEvent* nativeEvent() const { return &m_nativeEvent; }
+    const void* nativeEvent() const { return nullptr; }
 #endif
 
 private:
@@ -104,8 +104,6 @@ private:
     bool m_isFiltered;
 #elif PLATFORM(IOS)
     RetainPtr<WebIOSEvent> m_nativeEvent;
-#elif PLATFORM(WPE)
-    WPE::KeyboardEvent m_nativeEvent;
 #endif
 };
 

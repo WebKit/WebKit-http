@@ -106,8 +106,8 @@
             hash="sha256:a7d5102dcf53d08c059d24bc62de491d7cd482070abeb6737a20d0d86ba6fc7f"/>
   </autotools>
 
-  <autotools id="weston" autogenargs="--disable-weston-launch">
-    <branch repo="github.com" module="zdobersek/weston.git" checkoutdir="weston" tag="kbmod"/>
+  <autotools id="weston" autogenargs="--disable-setuid-install --enable-libinput-backend">
+    <branch repo="github.com" module="zdobersek/weston.git" checkoutdir="weston" tag="patches"/>
   </autotools>
 
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
