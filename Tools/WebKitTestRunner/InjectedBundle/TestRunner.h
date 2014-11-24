@@ -41,6 +41,9 @@ typedef RetainPtr<CFRunLoopTimerRef> PlatformTimerRef;
 typedef unsigned int PlatformTimerRef;
 #elif PLATFORM(EFL)
 typedef Ecore_Timer* PlatformTimerRef;
+#elif PLATFORM(WPE)
+#include <wtf/gobject/GSourceWrap.h>
+typedef GSourceWrap::Static PlatformTimerRef;
 #endif
 
 namespace WTR {

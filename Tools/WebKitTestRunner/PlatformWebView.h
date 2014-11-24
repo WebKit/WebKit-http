@@ -45,6 +45,9 @@ typedef GtkWidget* PlatformWindow;
 #elif PLATFORM(EFL)
 typedef Evas_Object* PlatformWKView;
 typedef Ecore_Evas* PlatformWindow;
+#elif PLATFORM(WPE)
+typedef WKViewRef PlatformWKView;
+typedef void* PlatformWindow;
 #endif
 
 namespace WTR {
