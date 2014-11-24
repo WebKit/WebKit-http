@@ -530,7 +530,7 @@ GSourceFuncs GMainLoopSource::Simple::m_sourceFunctions = {
 
 gboolean GMainLoopSource::Simple::simpleSourceCallback(GMainLoopSource::Simple* source)
 {
-    ASSERT(m_function);
+    ASSERT(source->m_function);
 
     g_source_set_ready_time(source->m_source.get(), -1);
     source->m_status = Dispatching;
