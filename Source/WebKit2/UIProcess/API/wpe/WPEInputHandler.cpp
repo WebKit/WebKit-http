@@ -70,7 +70,7 @@ void InputHandler::handleKeyboardModifiers(KeyboardModifiers)
 void InputHandler::handleTouchDown(TouchEvent::Raw event)
 {
     // std::fprintf(stderr, "InputHandler::handleTouchDown()     [%d] (%d,%d)\n", event.id, event.x, event.y);
-    ASSERT(m_touchEvents[event.id] == TouchEvent::Null);
+    ASSERT(m_touchEvents[event.id].type == TouchEvent::Null);
     m_touchEvents[event.id] = TouchEvent::Raw{ TouchEvent::Down, event.time, event.id, event.x, event.y };
     dispatchTouchEvent(event.id);
 }
@@ -78,7 +78,7 @@ void InputHandler::handleTouchDown(TouchEvent::Raw event)
 void InputHandler::handleTouchUp(TouchEvent::Raw event)
 {
     // std::fprintf(stderr, "InputHandler::handleTouchUp()       [%d]\n", event.id);
-    ASSERT(m_touchEvents[event.id] == TouchEvent::Down || m_touchEvents[event.id] == TouchEvent::Motion);
+    ASSERT(m_touchEvents[event.id].type == TouchEvent::Down || m_touchEvents[event.id].type == TouchEvent::Motion);
     auto& previousEvent = m_touchEvents[event.id];
     int x = previousEvent.x;
     int y = previousEvent.y;
@@ -89,7 +89,7 @@ void InputHandler::handleTouchUp(TouchEvent::Raw event)
 void InputHandler::handleTouchMotion(TouchEvent::Raw event)
 {
     // std::fprintf(stderr, "InputHandler::handleTouchMotion()   [%d] (%d,%d)\n", event.id, event.x, event.y);
-    ASSERT(m_touchEvents[event.id] == TouchEvent::Down || m_touchEvents[event.id] == TouchEvent::Motion);
+    ASSERT(m_touchEvents[event.id].type == TouchEvent::Down || m_touchEvents[event.id].type == TouchEvent::Motion);
     m_touchEvents[event.id] = TouchEvent::Raw{ TouchEvent::Motion, event.time, event.id, event.x, event.y };
     dispatchTouchEvent(event.id);
 }
