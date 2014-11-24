@@ -23,8 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <DerivedSources/WebCore/WaylandWPEProtocolServer.h>
-#include <WebKit/WKGeometry.h>
 #include <glib.h>
 #include <weston/compositor.h>
 #include <WebKit/WKRetainPtr.h>
@@ -33,38 +31,28 @@
 
 namespace WPE {
 
-class View;
+class Environment;
 
 class Shell {
 public:
-    Shell(struct weston_compositor*);
+    Shell(const Environment&);
 
     static Shell& instance() { return *m_instance; }
     static gpointer launchWPE(gpointer);
 
+    const Environment& environment() const { return m_environment; }
+
 private:
-    static const struct wl_wpe_interface m_wpeInterface;
     static const struct weston_pointer_grab_interface m_pgInterface;
     static const struct weston_keyboard_grab_interface m_kgInterface;
     static const struct weston_touch_grab_interface m_tgInterface;
 
     static Shell* m_instance;
 
-    struct weston_compositor* m_compositor;
-
-    struct weston_layer m_layer;
-    struct wl_list m_outputList;
-    struct wl_listener m_outputCreatedListener;
-    WKSize m_outputSize;
+    const Environment& m_environment;
 
     WKRetainPtr<WKInputHandlerRef> m_inputHandler;
     WKRetainPtr<WKViewRef> m_view;
-
-    void createOutput(struct weston_output*);
-
-    void registerSurface(struct weston_surface*);
-
-    static void outputCreated(struct wl_listener*, void* data);
 };
 
 } // namespace WPE

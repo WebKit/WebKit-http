@@ -1,0 +1,35 @@
+#ifndef Environment_h
+#define Environment_h
+
+#include <DerivedSources/WebCore/WaylandWPEProtocolServer.h>
+#include <WebKit/WKGeometry.h>
+#include <weston/compositor.h>
+
+namespace WPE {
+
+class Environment {
+public:
+    Environment(struct weston_compositor*);
+
+    struct weston_compositor* compositor() const { return m_compositor; }
+    WKSize outputSize() const { return m_outputSize; }
+
+private:
+    static const struct wl_wpe_interface m_wpeInterface;
+
+    void createOutput(struct weston_output*);
+    static void outputCreated(struct wl_listener*, void* data);
+
+    void registerSurface(struct weston_surface*);
+
+    struct weston_compositor* m_compositor;
+
+    struct weston_layer m_layer;
+    struct wl_list m_outputList;
+    struct wl_listener m_outputCreatedListener;
+    WKSize m_outputSize;
+};
+
+} // namespace WPE
+
+#endif // Environment_h

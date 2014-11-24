@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Shell.h"
 
+#include "Environment.h"
 #include <WebKit/WKContextConfigurationRef.h>
 #include <WebKit/WKContext.h>
 #include <WebKit/WKPageGroup.h>
@@ -35,132 +36,14 @@
 
 namespace WPE {
 
-class Output {
-public:
-    Output(struct weston_output*, struct weston_view*);
-
-private:
-    struct wl_list m_link;
-
-    struct weston_output* m_output;
-    struct wl_listener m_outputDestroyed;
-
-    struct weston_view* m_baseView;
-
-    static void outputDestroyed(struct wl_listener*, void* data);
-
-    friend class Shell;
-};
-
-Output::Output(struct weston_output* output, struct weston_view* baseView)
-    : m_output(output)
-    , m_baseView(baseView)
+Shell::Shell(const Environment& environment)
+    : m_environment(environment)
 {
-    m_outputDestroyed.notify = outputDestroyed;
-    wl_signal_add(&output->destroy_signal, &m_outputDestroyed);
+    auto* compositor = m_environment.compositor();
+    weston_compositor_set_default_pointer_grab(compositor, &m_pgInterface);
+    weston_compositor_set_default_keyboard_grab(compositor, &m_kgInterface);
+    weston_compositor_set_default_touch_grab(compositor, &m_tgInterface);
 }
-
-void Output::outputDestroyed(struct wl_listener*, void*)
-{
-}
-
-class Surface {
-public:
-    Surface(struct weston_surface*);
-
-private:
-    struct weston_surface* m_surface;
-    struct weston_view* m_view;
-
-    static void configure(struct weston_surface*, int32_t sx, int32_t sy);
-
-    friend class Shell;
-};
-
-Surface::Surface(struct weston_surface* surface)
-    : m_surface(surface)
-    , m_view(weston_view_create(m_surface))
-{
-    surface->configure = configure;
-    surface->configure_private = this;
-}
-
-void Surface::configure(struct weston_surface* surface, int32_t sx, int32_t sy)
-{
-    auto shellSurface = static_cast<Surface*>(surface->configure_private);
-    weston_view_set_position(shellSurface->m_view, sx, sy);
-}
-
-
-Shell::Shell(struct weston_compositor* compositor)
-    : m_compositor(compositor)
-    , m_outputSize(WKSizeMake(800, 600))
-{
-    weston_layer_init(&m_layer, &m_compositor->cursor_layer.link);
-
-    wl_list_init(&m_outputList);
-    m_outputCreatedListener.notify = outputCreated;
-    wl_signal_add(&m_compositor->output_created_signal, &m_outputCreatedListener);
-
-    struct weston_output* output;
-    wl_list_for_each(output, &m_compositor->output_list, link)
-        createOutput(output);
-
-    wl_global_create(m_compositor->wl_display,
-        &wl_wpe_interface, wl_wpe_interface.version, this,
-        [](struct wl_client* client, void* data, uint32_t version, uint32_t id) {
-            ASSERT(version == wl_wpe_interface.version);
-            auto shell = static_cast<Shell*>(data);
-            struct wl_resource* resource = wl_resource_create(client, &wl_wpe_interface, version, id);
-            wl_resource_set_implementation(resource, &m_wpeInterface, shell, nullptr);
-        });
-
-    weston_compositor_set_default_pointer_grab(m_compositor, &m_pgInterface);
-    weston_compositor_set_default_keyboard_grab(m_compositor, &m_kgInterface);
-    weston_compositor_set_default_touch_grab(m_compositor, &m_tgInterface);
-}
-
-void Shell::createOutput(struct weston_output* output)
-{
-    m_outputSize = WKSizeMake(output->width, output->height);
-
-    struct weston_surface* surface = weston_surface_create(m_compositor);
-    weston_surface_set_color(surface, 0.0f, 0.75f, 0.0f, 1.0f);
-	pixman_region32_fini(&surface->opaque);
-	pixman_region32_init_rect(&surface->opaque, 0, 0, output->width, output->height);
-	pixman_region32_fini(&surface->input);
-	pixman_region32_init_rect(&surface->input, 0, 0, output->width, output->height);
-    weston_surface_set_size(surface, output->width, output->height);
-
-    struct weston_view* baseView = weston_view_create(surface);
-    weston_view_set_position(baseView, output->x, output->y);
-    wl_list_insert(&m_layer.view_list, &baseView->layer_link);
-
-    auto shellOutput = new Output(output, baseView);
-    wl_list_insert(&m_outputList, &shellOutput->m_link);
-}
-
-void Shell::registerSurface(struct weston_surface* surface)
-{
-    auto shellSurface = new Surface(surface);
-    wl_list_insert(&m_layer.view_list, &shellSurface->m_view->layer_link);
-
-    weston_compositor_schedule_repaint(m_compositor);
-}
-
-void Shell::outputCreated(struct wl_listener*, void*)
-{
-}
-
-const struct wl_wpe_interface Shell::m_wpeInterface = {
-    // register_surface
-    [](struct wl_client*, struct wl_resource* shellResource, struct wl_resource* surfaceResource)
-    {
-        auto shell = static_cast<Shell*>(wl_resource_get_user_data(shellResource));
-        auto surface = static_cast<struct weston_surface*>(wl_resource_get_user_data(surfaceResource));
-        shell->registerSurface(surface);
-    },
-};
 
 const struct weston_pointer_grab_interface Shell::m_pgInterface = {
     // focus
@@ -246,7 +129,7 @@ gpointer Shell::launchWPE(gpointer data)
 
     Shell::instance().m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
     auto view = Shell::instance().m_view.get();
-    WKViewResize(view, Shell::instance().m_outputSize);
+    WKViewResize(view, Shell::instance().m_environment.outputSize());
 
     Shell::instance().m_inputHandler = adoptWK(WKInputHandlerCreate(view));
 

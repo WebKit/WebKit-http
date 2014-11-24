@@ -143,6 +143,7 @@ list(APPEND WebKit2_LIBRARIES
 )
 
 set(WPEWestonShell_SOURCES
+    UIProcess/wpe/WestonShell/Environment.cpp
     UIProcess/wpe/WestonShell/Module.cpp
     UIProcess/wpe/WestonShell/Shell.cpp
 )

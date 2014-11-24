@@ -25,11 +25,65 @@
 
 #include "config.h"
 
+#include "Environment.h"
 #include "Shell.h"
+#include <cstdio>
+#include <cstdlib>
+#include <dlfcn.h>
 
-WL_EXPORT int module_init(struct weston_compositor* compositor, int*, char**)
+struct TestShellLaunch {
+    using EntryPoint = void(*)(int, char**);
+    EntryPoint launchFunction;
+    int argc;
+    char** argv;
+};
+
+static gpointer launchTestShell(gpointer data)
 {
-    WPE::Shell* shell = new WPE::Shell(compositor);
-    g_thread_new("WPE Thread", WPE::Shell::launchWPE, shell);
+    GMainContext* threadContext = g_main_context_new();
+    GMainLoop* threadLoop = g_main_loop_new(threadContext, FALSE);
+
+    g_main_context_push_thread_default(threadContext);
+
+    auto& launchData = *reinterpret_cast<TestShellLaunch*>(data);
+
+    launchData.launchFunction(launchData.argc, launchData.argv);
+    return nullptr;
+}
+
+static void loadTestShell(const char* shellPath, int argc, char** argv)
+{
+    void* shell = dlopen(shellPath, RTLD_NOW);
+    if (!shell) {
+        std::fprintf(stderr, "Failed to open test shell: %s\n", dlerror());
+        return;
+    }
+
+    auto launchFunction = reinterpret_cast<TestShellLaunch::EntryPoint>(dlsym(shell, "WPETestShellLaunch"));
+    if (!launchFunction) {
+        std::fprintf(stderr, "Failed to load the WPETestShellLaunch entrypoint: %s\n", dlerror());
+        return;
+    }
+
+    g_thread_new("WPE Test Shell", launchTestShell,
+        new TestShellLaunch{ launchFunction, argc, argv });
+}
+
+WL_EXPORT int module_init(struct weston_compositor* compositor, int* argc, char** argv)
+{
+    fprintf(stderr, "WestonShell::module_init\n");
+    auto* environment = new WPE::Environment(compositor);
+
+    const char* testShell = std::getenv("WPE_TEST_SHELL");
+    fprintf(stderr, "\ttestShell %s\n", testShell);
+    if (testShell)
+        loadTestShell(testShell, *argc, argv);
+    else
+        g_thread_new("WPE Thread", WPE::Shell::launchWPE, new WPE::Shell(*environment));
+
+    // This is a bit rough, but it works. We ensure that
+    // all the remaining args have been handled.
+    *argc = 1;
+
     return 0;
 }
