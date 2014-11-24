@@ -53,6 +53,9 @@ def platform_options(use_globs=False):
         optparse.make_option('--gtk', action='store_const', dest='platform',
             const=('gtk*' if use_globs else 'gtk'),
             help=('Alias for --platform=gtk*' if use_globs else 'Alias for --platform=gtk')),
+        optparse.make_option('--wpe', action='store_const', dest='platform',
+            const=('wpe*' if use_globs else 'wpe'),
+            help=('Alias for --platform=wpe*' if use_globs else 'Alias for --platform=wpe')),
         ]
 
 
@@ -85,6 +88,7 @@ class PortFactory(object):
         'mock_drt.MockDRTPort',
         'test.TestPort',
         'win.WinPort',
+        'wpe.WPEPort',
     )
 
     def __init__(self, host):

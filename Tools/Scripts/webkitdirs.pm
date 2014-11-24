@@ -109,6 +109,7 @@ my $isGtk;
 my $isWinCairo;
 my $isWin64;
 my $isEfl;
+my $isWPE;
 my $isInspectorFrontend;
 my $isWK2;
 my $shouldTargetWebProcess;
@@ -322,7 +323,7 @@ sub determineArchitecture
                 $architecture = 'armv7';
             }
         }
-    } elsif (isEfl() || isGtk()) {
+    } elsif (isEfl() || isGtk() || isWPE()) {
         my $host_processor = "";
         $host_processor = `cmake --system-information | grep CMAKE_SYSTEM_PROCESSOR`;
         if ($host_processor =~ m/^CMAKE_SYSTEM_PROCESSOR \"([^"]+)\"/) {
@@ -338,7 +339,7 @@ sub determineArchitecture
         chomp $architecture;
     }
 
-    if (!$architecture && (isGtk() || isAppleMacWebKit() || isEfl())) {
+    if (!$architecture && (isGtk() || isAppleMacWebKit() || isEfl() || isWPE())) {
         # Fall back to output of `uname -m', if it is present.
         $architecture = `uname -m`;
         chomp $architecture;
@@ -961,6 +962,18 @@ sub isGtk()
 {
     determineIsGtk();
     return $isGtk;
+}
+
+sub determineIsWPE()
+{
+    return if defined($isWPE);
+    $isWPE = checkForArgumentAndRemoveFromARGV("--wpe");
+}
+
+sub isWPE()
+{
+    determineIsWPE();
+    return $isWPE;
 }
 
 # Determine if this is debian, ubuntu, linspire, or something similar.
@@ -1640,6 +1653,8 @@ sub getJhbuildPath()
         push(@jhbuildPath, "DependenciesEFL");
     } elsif (isGtk()) {
         push(@jhbuildPath, "DependenciesGTK");
+    } elsif (isWPE()) {
+        push(@jhbuildPath, "DependenciesWPE");
     } else {
         die "Cannot get JHBuild path for platform that isn't GTK+ or EFL.\n";
     }
@@ -1676,6 +1691,8 @@ sub jhbuildWrapperPrefixIfNeeded()
             push(@prefix, "--efl");
         } elsif (isGtk()) {
             push(@prefix, "--gtk");
+        } elsif (isWPE()) {
+            push(@prefix, "--wpe");
         }
         push(@prefix, "run");
 
@@ -1776,7 +1793,7 @@ sub generateBuildSystemFromCMakeProject
     my @args;
     push @args, "-DPORT=\"$port\"";
     push @args, "-DCMAKE_INSTALL_PREFIX=\"$prefixPath\"" if $prefixPath;
-    push @args, "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" if isGtk();
+    push @args, "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" if isGtk() || isWPE();
     if ($config =~ /release/i) {
         push @args, "-DCMAKE_BUILD_TYPE=Release";
     } elsif ($config =~ /debug/i) {
@@ -1793,7 +1810,7 @@ sub generateBuildSystemFromCMakeProject
     }
 
     # GTK+ has a production mode, but build-webkit should always use developer mode.
-    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk();
+    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isWPE();
 
     # Don't warn variables which aren't used by cmake ports.
     push @args, "--no-warn-unused-cli";
@@ -1892,12 +1909,13 @@ sub cmakeBasedPortName()
 {
     return "Efl" if isEfl();
     return "GTK" if isGtk();
+    return "WPE" if isWPE();
     return "";
 }
 
 sub isCMakeBuild()
 {
-    return isEfl() || isGtk();
+    return isEfl() || isGtk() || isWPE();
 }
 
 sub promptUser

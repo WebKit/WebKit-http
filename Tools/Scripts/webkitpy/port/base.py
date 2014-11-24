@@ -840,6 +840,9 @@ class Port(object):
             # Windows:
             'PATH',
 
+            # WPE:
+            'WAYLAND_DISPLAY',
+
             # Most ports (?):
             'WEBKIT_TESTFONTS',
             'WEBKIT_OUTPUTDIR',
