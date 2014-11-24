@@ -260,8 +260,10 @@ public:
     explicit AXAttributeCacheEnabler(AXObjectCache *cache);
     ~AXAttributeCacheEnabler();
     
+#if HAVE(ACCESSIBILITY)
 private:
     AXObjectCache* m_cache;
+#endif
 };
     
 bool nodeHasRole(Node*, const String& role);
@@ -321,6 +323,8 @@ inline void AXObjectCache::remove(Node*) { }
 inline void AXObjectCache::remove(Widget*) { }
 inline void AXObjectCache::selectedChildrenChanged(RenderObject*) { }
 inline void AXObjectCache::selectedChildrenChanged(Node*) { }
+inline AXAttributeCacheEnabler::AXAttributeCacheEnabler(AXObjectCache*) { }
+inline AXAttributeCacheEnabler::~AXAttributeCacheEnabler() { }
 #endif
 
 }
