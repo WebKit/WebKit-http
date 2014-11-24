@@ -28,7 +28,12 @@ set(ENABLE_WEBCORE ON)
 set(ENABLE_WEBKIT OFF)
 set(ENABLE_WEBKIT2 ON)
 set(ENABLE_API_TESTS OFF)
-set(ENABLE_TOOLS OFF)
+
+if (DEVELOPER_MODE)
+    set(ENABLE_TOOLS ON)
+else ()
+    set(ENABLE_TOOLS OFF)
+endif ()
 
 set(WTF_LIBRARY_TYPE STATIC)
 set(JavaScriptCore_LIBRARY_TYPE STATIC)
@@ -93,6 +98,12 @@ add_definitions(-DWTF_PLATFORM_WAYLAND=1)
 set(FORWARDING_HEADERS_DIR ${DERIVED_SOURCES_DIR}/ForwardingHeaders)
 
 # Push of rbp is needed after JSC JIT uses CStack. See http://wkbug.com/127777.
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer")
+
 # Build with -fvisibility=hidden to reduce the size of the shared library.
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-omit-frame-pointer -fvisibility=hidden")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer -fvisibility=hidden")
+# Not to be used when building the WebKitTestRunner library.
+if (NOT DEVELOPER_MODE)
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fvisibility=hidden")
+endif ()
