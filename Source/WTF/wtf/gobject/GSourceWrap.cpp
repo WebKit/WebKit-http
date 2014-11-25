@@ -22,6 +22,11 @@ GSourceWrap::Base::Base()
 {
 }
 
+GSourceWrap::Base::~Base()
+{
+    g_source_destroy(m_source.get());
+}
+
 bool GSourceWrap::Base::isScheduled() const
 {
     ASSERT(m_source);
@@ -74,8 +79,6 @@ GSourceFuncs GSourceWrap::Base::sourceFunctions = {
     // dispatch
     [](GSource* source, GSourceFunc callback, gpointer data) -> gboolean
     {
-        // fprintf(stderr, "GSourceWrap::m_sourceFunctions::dispatch() '%s' cb %p, data %p\n",
-        //     g_source_get_name(source), callback, data);
         ASSERT(source);
         CallbackContext context{ *reinterpret_cast<Source*>(source), data };
         return callback(&context);

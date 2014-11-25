@@ -16,6 +16,7 @@ private:
     class Base {
     public:
         Base();
+        ~Base();
 
         bool isScheduled() const;
         bool isActive() const;
