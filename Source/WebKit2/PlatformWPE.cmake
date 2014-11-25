@@ -113,6 +113,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
     "${WEBKIT2_DIR}/Shared/soup"
     "${WEBKIT2_DIR}/Shared/unix"
+    "${WEBKIT2_DIR}/Shared/wpe"
     "${WEBKIT2_DIR}/UIProcess/API/C/cairo"
     "${WEBKIT2_DIR}/UIProcess/API/C/soup"
     "${WEBKIT2_DIR}/UIProcess/API/C/wpe"
@@ -149,6 +150,7 @@ set(WPEWestonShell_SOURCES
 )
 
 set(WPEWestonShell_INCLUDE_DIRECTORIES
+    "${WEBKIT2_DIR}/Shared/wpe"
     ${WESTON_INCLUDE_DIRS}
 )
 
