@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebContext.h"
 
+#include "Logging.h"
 #include "WebCookieManagerProxy.h"
 #include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
