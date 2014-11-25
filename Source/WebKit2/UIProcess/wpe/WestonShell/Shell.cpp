@@ -135,7 +135,7 @@ gpointer Shell::launchWPE(gpointer data)
 
     const char* url = g_getenv("WPE_SHELL_URL");
     if (!url)
-        url = "https://www.youtube.com/tv/";
+        url = "http://www.webkit.org/blog-files/3d-transforms/poster-circle.html";
     auto shellURL = adoptWK(WKURLCreateWithUTF8CString(url));
     WKPageLoadURL(WKViewGetPage(view), shellURL.get());
 
