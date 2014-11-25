@@ -53,13 +53,13 @@ private:
     void compositeLayers(BRect updateRect);
 
     bool flushPendingLayerChanges();
-    void syncLayers(Timer<AcceleratedCompositingContext>*);
+    void syncLayers(Timer*);
 
     BWebView* m_view;
     BRect m_updateRect;
 
     GraphicsLayer* m_rootLayer;
-    Timer<AcceleratedCompositingContext> m_syncTimer;
+    Timer m_syncTimer;
 
 #if USE(TEXTURE_MAPPER)
     std::unique_ptr<TextureMapper> m_textureMapper;
