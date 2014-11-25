@@ -106,6 +106,7 @@ endif ()
 FIND_GSTREAMER_COMPONENT(GSTREAMER_APP gstreamer-app-1.0 gst/app/gstappsink.h gstapp-1.0)
 FIND_GSTREAMER_COMPONENT(GSTREAMER_AUDIO gstreamer-audio-1.0 gst/audio/audio.h gstaudio-1.0)
 FIND_GSTREAMER_COMPONENT(GSTREAMER_FFT gstreamer-fft-1.0 gst/fft/gstfft.h gstfft-1.0)
+FIND_GSTREAMER_COMPONENT(GSTREAMER_GL gstreamer-gl-1.0 gst/gl/gl.h gstgl-1.0)
 FIND_GSTREAMER_COMPONENT(GSTREAMER_MPEGTS gstreamer-mpegts-1.0>=1.4.0 gst/mpegts/mpegts.h gstmpegts-1.0)
 FIND_GSTREAMER_COMPONENT(GSTREAMER_PBUTILS gstreamer-pbutils-1.0 gst/pbutils/pbutils.h gstpbutils-1.0)
 FIND_GSTREAMER_COMPONENT(GSTREAMER_TAG gstreamer-tag-1.0 gst/tag/tag.h gsttag-1.0)
@@ -136,6 +137,8 @@ mark_as_advanced(
     GSTREAMER_BASE_LIBRARIES
     GSTREAMER_FFT_INCLUDE_DIRS
     GSTREAMER_FFT_LIBRARIES
+    GSTREAMER_GL_INCLUDE_DIRS
+    GSTREAMER_GL_LIBRARIES
     GSTREAMER_INCLUDE_DIRS
     GSTREAMER_LIBRARIES
     GSTREAMER_MPEGTS_INCLUDE_DIRS
