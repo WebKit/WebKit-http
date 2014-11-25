@@ -261,7 +261,9 @@ X86_INSTRUCTIONS =
 ARM_INSTRUCTIONS =
     [
      "clrbp",
-     "mvlbl"
+     "mvlbl",
+     "ldlbl",
+     "calllbl"
     ]
 
 ARM64_INSTRUCTIONS =

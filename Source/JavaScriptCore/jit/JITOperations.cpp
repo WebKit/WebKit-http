@@ -2010,6 +2010,7 @@ SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
 #elif COMPILER(GCC) && CPU(ARM_TRADITIONAL)
 asm (
 ".text" "\n"
+".align 2" "\n"
 ".globl " SYMBOL_STRING(getHostCallReturnValue) "\n"
 HIDE_SYMBOL(getHostCallReturnValue) "\n"
 INLINE_ARM_FUNCTION(getHostCallReturnValue)
