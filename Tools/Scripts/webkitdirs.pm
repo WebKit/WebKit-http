@@ -1658,6 +1658,8 @@ sub getJhbuildPath()
         push(@jhbuildPath, "DependenciesEFL");
     } elsif (isGtk()) {
         push(@jhbuildPath, "DependenciesGTK");
+    } elsif (isHaiku()) {
+        return () # Unused on Haiku.
     } else {
         die "Cannot get JHBuild path for platform that isn't GTK+ or EFL.\n";
     }
