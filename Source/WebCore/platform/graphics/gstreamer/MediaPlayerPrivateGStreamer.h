@@ -175,7 +175,6 @@ private:
     float m_seekTime;
     bool m_changingRate;
     float m_endTime;
-    bool m_isEndReached;
     mutable bool m_isStreaming;
     GstStructure* m_mediaLocations;
     int m_mediaLocationCurrentIndex;
