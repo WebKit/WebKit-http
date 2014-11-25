@@ -100,6 +100,7 @@ target_link_libraries(TestRunnerInjectedBundle ${WebKitTestRunnerInjectedBundle_
 
 if (PORT STREQUAL "WPE")
 add_library(WebKitTestRunner SHARED ${WebKitTestRunner_SOURCES})
+add_dependencies(WebKitTestRunner WebKitTestRunner-shell-script)
 else ()
 add_executable(WebKitTestRunner ${WebKitTestRunner_SOURCES})
 endif ()
