@@ -57,6 +57,8 @@ TrackPrivateBaseGStreamer::TrackPrivateBaseGStreamer(TrackPrivateBase* owner, gi
     : m_index(index)
     , m_pad(pad)
     , m_owner(owner)
+    , m_activeTimerHandler("[WebKit] TrackPrivateBaseGStreamer::notifyTrackOfActiveChanged", std::function<void()>(std::bind(&TrackPrivateBaseGStreamer::notifyTrackOfActiveChanged, this)))
+    , m_tagTimerHandler("[WebKit] TrackPrivateBaseGStreamer::notifyTrackOfTagsChanged", std::function<void()>(std::bind(&TrackPrivateBaseGStreamer::notifyTrackOfTagsChanged, this)))
 {
     ASSERT(m_pad);
 
@@ -92,7 +94,7 @@ void TrackPrivateBaseGStreamer::disconnect()
 
 void TrackPrivateBaseGStreamer::activeChanged()
 {
-    m_activeTimerHandler.schedule("[WebKit] TrackPrivateBaseGStreamer::notifyTrackOfActiveChanged", std::function<void()>(std::bind(&TrackPrivateBaseGStreamer::notifyTrackOfActiveChanged, this)));
+    m_activeTimerHandler.schedule(std::chrono::milliseconds(0));
 }
 
 void TrackPrivateBaseGStreamer::tagsChanged()
@@ -106,7 +108,7 @@ void TrackPrivateBaseGStreamer::tagsChanged()
         m_tags.swap(tags);
     }
 
-    m_tagTimerHandler.schedule("[WebKit] TrackPrivateBaseGStreamer::notifyTrackOfTagsChanged", std::function<void()>(std::bind(&TrackPrivateBaseGStreamer::notifyTrackOfTagsChanged, this)));
+    m_tagTimerHandler.schedule(std::chrono::milliseconds(0));
 }
 
 void TrackPrivateBaseGStreamer::notifyTrackOfActiveChanged()
