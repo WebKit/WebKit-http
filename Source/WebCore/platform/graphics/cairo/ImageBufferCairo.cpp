@@ -47,9 +47,15 @@
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #include "GLContext.h"
-#include "OpenGLShims.h"
 #include "TextureMapperGL.h"
 #include <cairo-gl.h>
+
+#if USE(OPENGL_ES_2)
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#else
+#include "OpenGLShims.h"
+#endif
 #endif
 
 using namespace std;

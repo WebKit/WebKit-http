@@ -31,6 +31,11 @@
 #include "Extensions3DOpenGLES.h"
 
 #if USE(3D_GRAPHICS)
+
+#if PLATFORM(WAYLAND)
+#include <wayland-egl.h>
+#endif
+
 #include "GraphicsContext3D.h"
 #include "NotImplemented.h"
 #include <EGL/egl.h>

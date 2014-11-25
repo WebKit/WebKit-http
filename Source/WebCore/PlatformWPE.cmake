@@ -40,7 +40,6 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue2.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
-    platform/graphics/OpenGLShims.cpp
     platform/graphics/WOFFFileFormat.cpp
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
