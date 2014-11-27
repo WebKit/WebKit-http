@@ -526,7 +526,7 @@ static String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent& event)
 WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::KeyboardEvent&& event)
 {
     String singleCharacterString = singleCharacterStringForKeyEvent(event);
-    return WebKeyboardEvent(event.pressed ? WebEvent::KeyUp : WebEvent::KeyDown,
+    return WebKeyboardEvent(event.pressed ? WebEvent::KeyDown : WebEvent::KeyUp,
         singleCharacterString, singleCharacterString,
         identifierForKeyEvent(event),
         windowsKeyCodeForKeyEvent(event),
