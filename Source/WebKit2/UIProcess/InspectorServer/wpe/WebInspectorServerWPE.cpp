@@ -15,8 +15,6 @@ namespace WebKit {
 
 bool WebInspectorServer::platformResourceForPath(const String& path, Vector<char>& data, String& contentType)
 {
-    fprintf(stderr, "WebInspectorServer::platformResourceForPath() %s\n", path.utf8().data());
-
     // The page list contains an unformated list of pages that can be inspected with a link to open a session.
     if (path == "/pagelist.json") {
         buildPageList(data, contentType);
@@ -99,7 +97,6 @@ void WebInspectorServer::buildPageList(Vector<char>& data, String& contentType)
     }
     builder.appendLiteral(" ]");
     CString cstr = builder.toString().utf8();
-    fprintf(stderr, "page list\n%s\n", cstr.data());
     data.append(cstr.data(), cstr.length());
     contentType = "application/json; charset=utf-8";
 }

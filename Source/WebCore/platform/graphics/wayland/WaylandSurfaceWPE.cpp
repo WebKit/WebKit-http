@@ -60,10 +60,7 @@ void WaylandSurface::resize(const IntSize& size)
 
 PassOwnPtr<GLContextEGL> WaylandSurface::createGLContext()
 {
-    PassOwnPtr<GLContextEGL> ctx = GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());
-    std::fprintf(stderr, "WaylandSurface::createGLContext() created context %p, sharing context %p\n",
-        ctx.get(), GLContext::sharingContext());
-    return ctx;
+    return GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());
 }
 
 struct wl_callback* WaylandSurface::requestFrame()

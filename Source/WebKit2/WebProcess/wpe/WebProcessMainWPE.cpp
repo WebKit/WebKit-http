@@ -65,7 +65,6 @@ public:
 
 int WebProcessMainUnix(int argc, char** argv)
 {
-    std::cerr << "WebProcessMainUnix -- talk about progress!" << std::endl;
     return ChildProcessMain<WebProcess, WebProcessMain>(argc, argv);
 }
 

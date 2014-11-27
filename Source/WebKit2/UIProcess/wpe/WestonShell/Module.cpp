@@ -71,11 +71,9 @@ static void loadTestShell(const char* shellPath, int argc, char** argv)
 
 WL_EXPORT int module_init(struct weston_compositor* compositor, int* argc, char** argv)
 {
-    fprintf(stderr, "WestonShell::module_init\n");
     auto* environment = new WPE::Environment(compositor);
 
     const char* testShell = std::getenv("WPE_TEST_SHELL");
-    fprintf(stderr, "\ttestShell %s\n", testShell);
     if (testShell)
         loadTestShell(testShell, *argc, argv);
     else

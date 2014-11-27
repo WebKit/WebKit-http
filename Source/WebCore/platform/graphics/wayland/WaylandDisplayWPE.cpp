@@ -71,11 +71,7 @@ GSourceFuncs EventSource::sourceFuncs = {
         return TRUE;
     },
     // finalize
-    [](GSource*)
-    {
-        fprintf(stderr, "sourceFuncs::finalize\n");
-    },
-
+    nullptr,
     // closure_callback
     nullptr,
     // closure_marshall
