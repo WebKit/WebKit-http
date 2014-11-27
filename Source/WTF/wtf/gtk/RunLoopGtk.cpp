@@ -126,7 +126,7 @@ RunLoop::TimerBase::~TimerBase()
 
 void RunLoop::TimerBase::start(double fireInterval, bool repeat)
 {
-    m_timerSource.schedule([this, repeat] { fired(); return repeat; }, std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(fireInterval)));
+    m_timerSource.schedule(std::function<bool ()>([this, repeat] { fired(); return repeat; }), std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(fireInterval)));
 }
 
 void RunLoop::TimerBase::stop()

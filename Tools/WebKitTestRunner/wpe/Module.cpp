@@ -28,6 +28,7 @@
 #include "TestController.h"
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <wtf/Threading.h>
 
 extern "C" {
