@@ -59,7 +59,7 @@ LayerTreeHostWPE::LayerTreeHostWPE(WebPage* webPage)
     , m_isValid(true)
     , m_notifyAfterScheduledLayerFlush(false)
     , m_layerFlushSchedulingEnabled(true)
-    , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this))
+    , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 10)
     , m_frameRequestState(FrameRequestState::Completed)
 {
 }
