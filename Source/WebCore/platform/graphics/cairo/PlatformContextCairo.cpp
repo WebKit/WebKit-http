@@ -147,11 +147,11 @@ static void drawPatternToCairoContext(cairo_t* cr, cairo_pattern_t* pattern, con
     cairo_set_source(cr, pattern);
     cairo_rectangle(cr, 0, 0, destRect.width(), destRect.height());
 
-    if (alpha < 1) {
-        cairo_clip(cr);
+    cairo_clip(cr);
+    if (alpha < 1)
         cairo_paint_with_alpha(cr, alpha);
-    } else
-        cairo_fill(cr);
+    else
+        cairo_paint(cr);
 }
 
 void PlatformContextCairo::drawSurfaceToContext(cairo_surface_t* surface, const FloatRect& destRect, const FloatRect& originalSrcRect, GraphicsContext* context)
