@@ -516,15 +516,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
 void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
 {
-    sendResponseIfNeeded();
 }
 
 void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, off_t position, ssize_t size)
 {
-    // don't emit the "Document has moved here" type of HTML
-    if (m_redirected)
-        return;
-
     if (!m_resourceHandle)
         return;
 
@@ -533,6 +528,10 @@ void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data
         return;
 
     sendResponseIfNeeded();
+
+    // don't emit the "Document has moved here" type of HTML
+    if (m_redirected)
+        return;
 
     if (size > 0) {
         m_responseDataSent = true;
