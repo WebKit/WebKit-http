@@ -3324,9 +3324,7 @@ QWebPage::VisibilityState QWebPage::visibilityState() const
     \fn void QWebPage::scrollRequested(int dx, int dy, const QRect& rectToScroll)
 
     This signal is emitted whenever the content given by \a rectToScroll needs
-    to be scrolled \a dx and \a dy downwards and no view was set.
-
-    \sa view()
+    to be scrolled \a dx and \a dy downwards.
 */
 
 /*!
