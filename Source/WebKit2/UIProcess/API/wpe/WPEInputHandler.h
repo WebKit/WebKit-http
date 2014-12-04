@@ -44,7 +44,8 @@ public:
     ~InputHandler();
 
     void handleKeyboardKey(KeyboardEvent::Raw);
-    void handleKeyboardModifiers(KeyboardModifiers);
+
+    void handlePointerEvent(PointerEvent::Raw);
 
     void handleTouchDown(TouchEvent::Raw);
     void handleTouchUp(TouchEvent::Raw);
@@ -57,6 +58,18 @@ private:
 
     struct xkb_keymap* m_xkbKeymap;
     struct xkb_state* m_xkbState;
+
+    struct Modifiers {
+        xkb_mod_index_t ctrl;
+        xkb_mod_index_t shift;
+
+        uint32_t effective;
+    } m_modifiers;
+
+    struct Pointer {
+        double x;
+        double y;
+    } m_pointer;
 
     void dispatchTouchEvent(int id);
     std::array<TouchEvent::Raw, 10> m_touchEvents;

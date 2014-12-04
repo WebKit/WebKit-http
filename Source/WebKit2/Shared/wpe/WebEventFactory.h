@@ -30,6 +30,7 @@
 
 namespace WPE {
 struct KeyboardEvent;
+struct PointerEvent;
 struct TouchEvent;
 };
 
@@ -38,6 +39,7 @@ namespace WebKit {
 class WebEventFactory {
 public:
     static WebKeyboardEvent createWebKeyboardEvent(WPE::KeyboardEvent&&);
+    static WebMouseEvent createWebMouseEvent(WPE::PointerEvent&&);
     static WebTouchEvent createWebTouchEvent(WPE::TouchEvent&&);
 };
 

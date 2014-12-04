@@ -44,6 +44,10 @@ OBJC_CLASS NSView;
 typedef union _GdkEvent GdkEvent;
 #endif
 
+#if PLATFORM(WPE)
+#include "WPEInputEvents.h"
+#endif
+
 namespace WebKit {
 
 class NativeWebMouseEvent : public WebMouseEvent {
@@ -57,7 +61,7 @@ public:
     template <typename EvasEventMouse>
     NativeWebMouseEvent(const EvasEventMouse*, const WebCore::AffineTransform&, const WebCore::AffineTransform&);
 #elif PLATFORM(WPE)
-    NativeWebMouseEvent(const void*);
+    NativeWebMouseEvent(WPE::PointerEvent&&);
 #endif
 
 #if USE(APPKIT)

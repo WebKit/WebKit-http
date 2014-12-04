@@ -76,10 +76,7 @@ const struct weston_keyboard_grab_interface Shell::m_kgInterface = {
     // modifiers
     [](struct weston_keyboard_grab*, uint32_t serial, uint32_t depressed,
         uint32_t latched, uint32_t locked, uint32_t group)
-    {
-        WKInputHandlerNotifyKeyboardModifiers(Shell::instance().m_inputHandler.get(),
-            WKKeyboardModifiers{ serial, depressed, latched, locked, group });
-    },
+    { },
 
     // cancel
     [](struct weston_keyboard_grab*) { }

@@ -23,33 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <Athol/Interfaces.h>
-#include <DerivedSources/WebCore/WaylandWPEProtocolServer.h>
-#include <WebKit/WKInputHandler.h>
-#include <WebKit/WKRetainPtr.h>
-#include <WebKit/WKView.h>
-#include <glib.h>
-#include <wayland-server.h>
+#include "config.h"
+#include "NativeWebMouseEvent.h"
 
-namespace WPE {
+#include "WebEventFactory.h"
 
-class InputClient;
-class View;
+namespace WebKit {
 
-class AtholShell {
-public:
-    AtholShell(API::Compositor*);
-    static gpointer launchWPE(gpointer);
+NativeWebMouseEvent::NativeWebMouseEvent(WPE::PointerEvent&& event)
+    : WebMouseEvent(WebEventFactory::createWebMouseEvent(WTF::move(event)))
+{
+}
 
-private:
-    friend class InputClient;
-
-    static const struct wl_wpe_interface m_wpeInterface;
-
-    API::Compositor* m_compositor;
-
-    WKRetainPtr<WKViewRef> m_view;
-    WKRetainPtr<WKInputHandlerRef> m_inputHandler;
-};
-
-} // namespace WPE
+} // namespace WebKit

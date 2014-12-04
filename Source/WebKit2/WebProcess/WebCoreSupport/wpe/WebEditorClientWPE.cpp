@@ -26,18 +26,62 @@
 #include "config.h"
 #include "WebEditorClient.h"
 
-#include <WebCore/NotImplemented.h>
+#include "PlatformKeyboardEvent.h"
+#include <WebCore/Document.h>
+#include <WebCore/Editor.h>
+#include <WebCore/Frame.h>
+#include <WebCore/KeyboardEvent.h>
+#include <WebCore/Node.h>
+#include <WebCore/WindowsKeyboardCodes.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
-void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent*)
+void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent* event)
 {
-    notImplemented();
+    Node* node = event->target()->toNode();
+    ASSERT(node);
+    Frame* frame = node->document().frame();
+    ASSERT(frame);
+
+    // FIXME: Reorder the checks in a more sensible way.
+
+    const PlatformKeyboardEvent* platformEvent = event->keyEvent();
+    if (!platformEvent)
+        return;
+
+    // If this was an IME event don't do anything.
+    if (platformEvent->windowsVirtualKeyCode() == VK_PROCESSKEY)
+        return;
+
+    // Don't allow text insertion for nodes that cannot edit.
+    if (!frame->editor().canEdit())
+        return;
+
+    // This is just a normal text insertion, so wait to execute the insertion
+    // until a keypress event happens. This will ensure that the insertion will not
+    // be reflected in the contents of the field until the keyup DOM event.
+    if (event->type() != eventNames().keypressEvent)
+        return;
+
+    // Don't insert null or control characters as they can result in unexpected behaviour
+    if (event->charCode() < ' ')
+        return;
+
+    // Don't insert anything if a modifier is pressed
+    if (platformEvent->ctrlKey() || platformEvent->altKey())
+        return;
+
+    if (frame->editor().insertText(platformEvent->text(), event))
+        event->setDefaultHandled();
 }
 
-void WebEditorClient::handleInputMethodKeydown(WebCore::KeyboardEvent*)
+void WebEditorClient::handleInputMethodKeydown(WebCore::KeyboardEvent* event)
 {
-    notImplemented();
+    const PlatformKeyboardEvent* platformEvent = event->keyEvent();
+    if (platformEvent && platformEvent->windowsVirtualKeyCode() == VK_PROCESSKEY)
+        event->preventDefault();
 }
 
 } // namespace WebKit

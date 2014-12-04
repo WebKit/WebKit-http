@@ -45,14 +45,25 @@ void WKInputHandlerNotifyKeyboardKey(WKInputHandlerRef handler, WKKeyboardKey ev
     });
 }
 
-void WKInputHandlerNotifyKeyboardModifiers(WKInputHandlerRef handler, WKKeyboardModifiers event)
+void WKInputHandlerNotifyPointerMotion(WKInputHandlerRef handler, WKPointerMotion event)
 {
-    toImpl(handler)->handleKeyboardModifiers(WPE::KeyboardModifiers{
-        event.serial,
-        event.mods_depressed,
-        event.mods_latched,
-        event.mods_locked,
-        event.group
+    toImpl(handler)->handlePointerEvent(WPE::PointerEvent::Raw{
+        WPE::PointerEvent::Motion,
+        event.time,
+        event.dx,
+        event.dy,
+        0, 0
+    });
+}
+
+void WKInputHandlerNotifyPointerButton(WKInputHandlerRef handler, WKPointerButton event)
+{
+    toImpl(handler)->handlePointerEvent(WPE::PointerEvent::Raw{
+        WPE::PointerEvent::Button,
+        event.time,
+        0.0, 0.0,
+        event.button,
+        event.state
     });
 }
 

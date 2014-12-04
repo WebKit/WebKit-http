@@ -38,18 +38,42 @@ struct KeyboardEvent {
         uint32_t state;
     };
 
+    enum Modifiers {
+        Control = 1 << 0,
+        Shift   = 1 << 1,
+        Alt     = 1 << 2,
+        Meta    = 1 << 3
+    };
+
     uint32_t time;
     uint32_t keyCode;
     uint32_t unicode;
     bool pressed;
+    uint8_t modifiers;
 };
 
-struct KeyboardModifiers {
-    uint32_t serial;
-    uint32_t depressed;
-    uint32_t latched;
-    uint32_t locked;
-    uint32_t group;
+struct PointerEvent {
+    enum Type : uint32_t {
+        Null,
+        Motion,
+        Button
+    };
+
+    struct Raw {
+        Type type;
+        uint32_t time;
+        double dx;
+        double dy;
+        uint32_t button;
+        uint32_t state;
+    };
+
+    Type type;
+    uint32_t time;
+    double x;
+    double y;
+    uint32_t button;
+    uint32_t state;
 };
 
 struct TouchEvent {

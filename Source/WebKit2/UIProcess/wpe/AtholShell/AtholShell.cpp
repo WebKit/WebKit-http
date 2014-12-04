@@ -30,17 +30,50 @@
 #include <WebKit/WKContext.h>
 #include <WebKit/WKPageGroup.h>
 #include <WebKit/WKPage.h>
-#include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKString.h>
 #include <WebKit/WKURL.h>
-#include <WebKit/WKView.h>
 
 namespace WPE {
 
-AtholShell::AtholShell(struct wl_display* display)
-    : m_display(display)
+class InputClient final : public API::InputClient {
+public:
+    InputClient(AtholShell&);
+
+private:
+    virtual void handleKeyboardEvent(uint32_t, uint32_t, uint32_t) override;
+    virtual void handlePointerMotion(uint32_t, double, double) override;
+    virtual void handlePointerButton(uint32_t, uint32_t, uint32_t) override;
+
+    AtholShell& m_shell;
+};
+
+InputClient::InputClient(AtholShell& shell)
+    : m_shell(shell)
 {
-    wl_global_create(m_display,
+}
+
+void InputClient::handleKeyboardEvent(uint32_t time, uint32_t key, uint32_t state)
+{
+    WKInputHandlerNotifyKeyboardKey(m_shell.m_inputHandler.get(),
+        WKKeyboardKey{ time, key, state });
+}
+
+void InputClient::handlePointerMotion(uint32_t time, double dx, double dy)
+{
+    WKInputHandlerNotifyPointerMotion(m_shell.m_inputHandler.get(),
+        WKPointerMotion{ time, dx, dy});
+}
+
+void InputClient::handlePointerButton(uint32_t time, uint32_t button, uint32_t state)
+{
+    WKInputHandlerNotifyPointerButton(m_shell.m_inputHandler.get(),
+        WKPointerButton{ time, button, state });
+}
+
+AtholShell::AtholShell(API::Compositor* compositor)
+    : m_compositor(compositor)
+{
+    wl_global_create(m_compositor->display(),
         &wl_wpe_interface, wl_wpe_interface.version, this,
         [](struct wl_client* client, void* data, uint32_t version, uint32_t id) {
             ASSERT(version == wl_wpe_interface.version);
@@ -48,6 +81,8 @@ AtholShell::AtholShell(struct wl_display* display)
             struct wl_resource* resource = wl_resource_create(client, &wl_wpe_interface, version, id);
             wl_resource_set_implementation(resource, &m_wpeInterface, shell, nullptr);
         });
+
+    m_compositor->initializeInput(std::make_unique<InputClient>(*this));
 }
 
 const struct wl_wpe_interface AtholShell::m_wpeInterface = {
@@ -70,14 +105,17 @@ gpointer AtholShell::launchWPE(gpointer data)
     auto contextConfiguration = adoptWK(WKContextConfigurationCreate());
     auto context = adoptWK(WKContextCreateWithConfiguration(contextConfiguration.get()));
 
-    auto view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
-    WKViewResize(view.get(), WKSizeMake(1920, 1080));
+    shell.m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
+    auto* view = shell.m_view.get();
+    WKViewResize(view, WKSizeMake(1280, 720));
+
+    shell.m_inputHandler = adoptWK(WKInputHandlerCreate(view));
 
     const char* url = g_getenv("WPE_SHELL_URL");
     if (!url)
         url = "https://www.youtube.com/tv/";
     auto shellURL = adoptWK(WKURLCreateWithUTF8CString(url));
-    WKPageLoadURL(WKViewGetPage(view.get()), shellURL.get());
+    WKPageLoadURL(WKViewGetPage(view), shellURL.get());
 
     g_main_loop_run(threadLoop);
     return nullptr;

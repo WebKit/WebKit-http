@@ -28,6 +28,7 @@
 
 #include "WindowsKeyboardCodes.h"
 #include "WPEInputEvents.h"
+#include <wtf/gobject/GUniquePtr.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace WebKit {
@@ -519,8 +520,28 @@ static String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent& event)
         case XKB_KEY_Tab:
             return "\t";
         default:
+            glong length;
+            GUniquePtr<gunichar2> uchar16(g_ucs4_to_utf16(&event.unicode, 1, 0, &length, nullptr));
+            if (uchar16)
+                return String(uchar16.get());
             return String();
     }
+}
+
+static WebEvent::Modifiers modifiersForEvent(const WPE::KeyboardEvent& event)
+{
+    unsigned modifiers = 0;
+
+    if (event.modifiers & WPE::KeyboardEvent::Control)
+        modifiers |= WebEvent::ControlKey;
+    if (event.modifiers & WPE::KeyboardEvent::Shift)
+        modifiers |= WebEvent::ShiftKey;
+    if (event.modifiers & WPE::KeyboardEvent::Alt)
+        modifiers |= WebEvent::AltKey;
+    if (event.modifiers & WPE::KeyboardEvent::Meta)
+        modifiers |= WebEvent::MetaKey;
+
+    return static_cast<WebEvent::Modifiers>(modifiers);
 }
 
 WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::KeyboardEvent&& event)
@@ -531,7 +552,27 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::KeyboardEvent&& ev
         identifierForKeyEvent(event),
         windowsKeyCodeForKeyEvent(event),
         event.keyCode, 0, false, false, false,
-        static_cast<WebEvent::Modifiers>(0), event.time);
+        modifiersForEvent(event), event.time);
+}
+
+WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::PointerEvent&& event)
+{
+    WebEvent::Type type = WebEvent::NoType;
+    switch (event.type) {
+    case WPE::PointerEvent::Motion:
+        type = WebEvent::MouseMove;
+        break;
+    case WPE::PointerEvent::Button:
+        type = event.state ? WebEvent::MouseDown : WebEvent::MouseUp;
+        break;
+    case WPE::PointerEvent::Null:
+        ASSERT_NOT_REACHED();
+    }
+
+    // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
+    return WebMouseEvent(type, WebMouseEvent::LeftButton /* FIXME: HAH! */,
+        WebCore::IntPoint(event.x, event.y), WebCore::IntPoint(event.x, event.y),
+        0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 
 WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::TouchEvent&& event)
@@ -547,7 +588,7 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::TouchEvent&& event)
     case WPE::TouchEvent::Up:
         type = WebEvent::TouchEnd;
         break;
-    default:
+    case WPE::TouchEvent::Null:
         ASSERT_NOT_REACHED();
     }
 

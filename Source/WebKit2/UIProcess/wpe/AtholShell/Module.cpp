@@ -29,9 +29,9 @@
 
 extern "C" {
 
-WL_EXPORT int module_init(struct wl_display* display)
+WL_EXPORT int module_init(API::Compositor* compositor)
 {
-    auto* shell = new WPE::AtholShell(display);
+    auto* shell = new WPE::AtholShell(compositor);
     g_thread_new("WPE Thread", WPE::AtholShell::launchWPE, shell);
     return 0;
 }
