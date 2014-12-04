@@ -53,7 +53,7 @@ private:
     void compositeLayers(BRect updateRect);
 
     bool flushPendingLayerChanges();
-    void syncLayers(Timer*);
+    void syncLayers();
 
     BWebView* m_view;
     BRect m_updateRect;

@@ -63,6 +63,7 @@
 #include "loader/archive/mhtml/MHTMLArchive.h"
 #include "Page.h"
 #include "PageCache.h"
+#include "PageConfiguration.h"
 #include "PageGroup.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
@@ -83,6 +84,7 @@
 #include "WebSettings.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
+#include "WebVisitedLinkStore.h"
 
 #include <Bitmap.h>
 #include <Entry.h>
@@ -154,7 +156,7 @@ BMessenger BWebPage::sDownloadListener;
     Settings::setDefaultMinDOMTimerInterval(0.004);
     WebCore::UTF8Encoding();
 
-    PageGroup::setShouldTrackVisitedLinks(true);
+    WebVisitedLinkStore::setShouldTrackVisitedLinks(true);
 }
 
 /*static*/ void BWebPage::ShutdownOnce()
@@ -190,8 +192,8 @@ BMessenger BWebPage::sDownloadListener;
         return;
     }
 
-    memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    memoryCache().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     pageCache()->setCapacity(pageCacheCapacity);
 }
 
@@ -212,16 +214,24 @@ BWebPage::BWebPage(BWebView* webView)
     , fStatusbarVisible(true)
     , fMenubarVisible(true)
 {
-    Page::PageClients pageClients;
-    pageClients.chromeClient = new ChromeClientHaiku(this, webView);
-    pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
-    pageClients.editorClient = new EditorClientHaiku(this);
-    pageClients.dragClient = new DragClientHaiku(webView);
-    pageClients.inspectorClient = new InspectorClientHaiku();
-    pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
     fProgressTracker = new ProgressTrackerClientHaiku(this);
+
+    PageConfiguration pageClients;
+    pageClients.chromeClient = new ChromeClientHaiku(this, webView);
+    pageClients.dragClient = new DragClientHaiku(webView);
+    pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
+    pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.progressTrackerClient = fProgressTracker;
-    //pageClients.alternativeTextClient = new WebAlternativeTextClient(self);
+    // backForwardClient ?
+    pageClients.editorClient = new EditorClientHaiku(this);
+    // pluginClient ?
+    // validationMessageClient?
+    // pageClients.alternativeTextClient = new WebAlternativeTextClient(self); ?
+    // storageNamespaceProvider?
+    // userContentController?
+    pageClients.visitedLinkStore = &WebVisitedLinkStore::shared();
+    pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
+
     fPage = new Page(pageClients);
 
 #if ENABLE(GEOLOCATION)

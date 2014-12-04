@@ -40,6 +40,7 @@ LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/InspectorClientHaiku.cpp
     haiku/WebCoreSupport/PlatformStrategiesHaiku.cpp
     haiku/WebCoreSupport/ProgressTrackerHaiku.cpp
+    haiku/WebCoreSupport/WebVisitedLinkStore.cpp
 
     haiku/API/WebDownload.cpp
     haiku/API/WebDownloadPrivate.cpp

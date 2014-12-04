@@ -129,7 +129,7 @@ class HaikuPort(Port):
         return "/system/lib/lighttpd"
 
     def _path_to_lighttpd_php(self):
-        return "/system/non-packaged/bin/php-cgi"
+        return "/system/bin/php-cgi"
 
     def _path_to_lighttpd_env(self):
         return "/bin/env"

@@ -71,17 +71,23 @@ void DumpRenderTreeClient::Register(BWebPage* page)
 void DumpRenderTreeClient::addUserScript(const BWebView* view,
     const String& sourceCode, bool runAtStart, bool allFrames)
 {
+    // FIXME this was moved to viewGroup and this method should be public
+    // and part of the WebView API to match mac/ios/win.
+#if 0
     view->WebPage()->page()->group().addUserScriptToWorld(
         WebCore::mainThreadNormalWorld(), sourceCode, WebCore::URL(),
         Vector<String>(), Vector<String>(),
         runAtStart ? WebCore::InjectAtDocumentStart : WebCore::InjectAtDocumentEnd,
         allFrames ? WebCore::InjectInAllFrames : WebCore::InjectInTopFrameOnly);
+#endif
 }
 
 void DumpRenderTreeClient::clearUserScripts(const BWebView* view)
 {
+#if 0
     view->WebPage()->page()->group().removeUserScriptsFromWorld(
         WebCore::mainThreadNormalWorld());
+#endif
 }
 
 

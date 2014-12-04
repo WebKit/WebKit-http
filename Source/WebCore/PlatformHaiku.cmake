@@ -30,16 +30,6 @@ list(APPEND WebCore_SOURCES
   crypto/algorithms/CryptoAlgorithmSHA384.cpp
   crypto/algorithms/CryptoAlgorithmSHA512.cpp
 
-  crypto/gtk/CryptoAlgorithmAES_CBCGtk.cpp
-  crypto/gtk/CryptoAlgorithmAES_KWGtk.cpp
-  crypto/gtk/CryptoAlgorithmHMACGtk.cpp
-  crypto/gtk/CryptoAlgorithmRSAES_PKCS1_v1_5Gtk.cpp
-  crypto/gtk/CryptoAlgorithmRSASSA_PKCS1_v1_5Gtk.cpp
-  crypto/gtk/CryptoAlgorithmRSA_OAEPGtk.cpp
-  crypto/gtk/CryptoAlgorithmRegistryGtk.cpp
-  crypto/gtk/CryptoDigestGtk.cpp
-  crypto/gtk/CryptoKeyRSAGtk.cpp
-
   crypto/keys/CryptoKeyAES.cpp
   crypto/keys/CryptoKeyDataOctetSequence.cpp
   crypto/keys/CryptoKeyDataRSAComponents.cpp

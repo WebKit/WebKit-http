@@ -38,7 +38,7 @@ namespace WebCore {
 AcceleratedCompositingContext::AcceleratedCompositingContext(BWebView* view)
     : m_view(view)
     , m_rootLayer(nullptr)
-    , m_syncTimer(this, &AcceleratedCompositingContext::syncLayers)
+    , m_syncTimer(*this, &AcceleratedCompositingContext::syncLayers)
 {
     ASSERT(m_view);
 
@@ -55,7 +55,7 @@ AcceleratedCompositingContext::~AcceleratedCompositingContext()
 #endif
 }
 
-void AcceleratedCompositingContext::syncLayers(Timer*)
+void AcceleratedCompositingContext::syncLayers()
 {
     flushAndRenderLayers();
 }
