@@ -34,6 +34,8 @@
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "NotImplemented.h"
 #include "ViewState.h"
+#include "WebBackForwardList.h"
+#include "WebBackForwardListItem.h"
 #include "WebContextMenuProxy.h"
 #include "WebPageProxy.h"
 
@@ -345,7 +347,7 @@ bool WebView::isViewInWindow()
 
 void WebView::processDidExit()
 {
-    m_client.webProcessCrashed(this, m_page->urlAtProcessExit());
+    m_client.webProcessCrashed(this, m_page->backForwardList().currentItem()->url());
 }
 
 void WebView::didRelaunchProcess()
@@ -448,7 +450,7 @@ PassRefPtr<WebColorPicker> WebView::createColorPicker(WebPageProxy*, const WebCo
 }
 #endif
 
-void WebView::setTextIndicator(PassRefPtr<TextIndicator>, bool, bool)
+void WebView::setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool)
 {
     notImplemented();
 }

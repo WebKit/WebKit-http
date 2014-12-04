@@ -82,7 +82,7 @@ public:
 
     void setScriptMadeUserObservableChanges() { m_scriptMadeUserObservableChanges = true; }
     void setScriptMadeNonUserObservableChanges() { m_scriptMadeNonUserObservableChanges = true; }
-    void setScriptMadeNonUserObservableChangesToElementStyle(StyledElement& element)
+    void setScriptMadeNonUserObservableChangesToElement(Element& element)
     {
         m_scriptMadeNonUserObservableChanges = true;
         m_elementsChangedOutsideViewport.add(&element);
@@ -99,14 +99,12 @@ public:
         return document && document->domTreeVersion() != m_initialDOMTreeVersion;
     }
 
-    void setChangedStyleOfElementOutsideViewport(StyledElement& element)
+    void elementsChangedOutsideViewport(Vector<WeakPtr<Element>>& elements) const
     {
-        m_elementsChangedOutsideViewport.add(&element);
-    }
-
-    void elementsChangedOutsideViewport(Vector<RefPtr<StyledElement>>& elements) const
-    {
-        copyToVector(m_elementsChangedOutsideViewport, elements);
+        ASSERT(elements.isEmpty());
+        elements.reserveCapacity(m_elementsChangedOutsideViewport.size());
+        for (auto& element : m_elementsChangedOutsideViewport)
+            elements.uncheckedAppend(element->createWeakPtr());
     }
 
     static DOMTimerFireState* current;
@@ -115,7 +113,7 @@ private:
     ScriptExecutionContext& m_context;
     uint64_t m_initialDOMTreeVersion;
     DOMTimerFireState* m_previous;
-    HashSet<RefPtr<StyledElement>> m_elementsChangedOutsideViewport;
+    HashSet<RefPtr<Element>> m_elementsChangedOutsideViewport;
     bool m_contextIsDocument;
     bool m_scriptMadeNonUserObservableChanges { false };
     bool m_scriptMadeUserObservableChanges { false };
@@ -209,7 +207,9 @@ DOMTimer::DOMTimer(ScriptExecutionContext& context, std::unique_ptr<ScheduledAct
 
 DOMTimer::~DOMTimer()
 {
-    if (isIntervalDependentOnViewport())
+    // If the ScriptExecutionContext has already been destroyed, there is
+    // no need to stop listening for viewport changes.
+    if (scriptExecutionContext() && isIntervalDependentOnViewport())
         unregisterForViewportChanges();
 }
 
@@ -310,7 +310,7 @@ void DOMTimer::scriptDidInteractWithPlugin(HTMLPlugInElement& pluginElement)
         DOMTimerFireState::current->setScriptMadeNonUserObservableChanges();
 }
 
-void DOMTimer::scriptDidUpdateStyleOfElement(StyledElement& styledElement, bool changed)
+void DOMTimer::scriptDidCauseElementRepaint(Element& element, bool changed)
 {
     if (!DOMTimerFireState::current)
         return;
@@ -321,10 +321,10 @@ void DOMTimer::scriptDidUpdateStyleOfElement(StyledElement& styledElement, bool 
         return;
     }
 
-    if (styledElement.isInsideViewport())
+    if (element.isInsideViewport())
         DOMTimerFireState::current->setScriptMadeUserObservableChanges();
     else
-        DOMTimerFireState::current->setScriptMadeNonUserObservableChangesToElementStyle(styledElement);
+        DOMTimerFireState::current->setScriptMadeNonUserObservableChangesToElement(element);
 }
 
 void DOMTimer::fired()
@@ -443,6 +443,7 @@ void DOMTimer::registerForViewportChanges()
 
 void DOMTimer::unregisterForViewportChanges()
 {
+    ASSERT(scriptExecutionContext());
     if (auto* frameView = downcast<Document>(*scriptExecutionContext()).view())
         frameView->unregisterThrottledDOMTimer(this);
 
@@ -473,9 +474,10 @@ void DOMTimer::updateThrottlingStateAfterViewportChange(const IntRect& visibleRe
 {
     ASSERT(isIntervalDependentOnViewport());
     // Check if the elements that caused this timer to be throttled are still outside the viewport.
-    for (auto& element : m_elementsCausingThrottling) {
+    for (auto& weakElementPtr : m_elementsCausingThrottling) {
+        Element* element = weakElementPtr.get();
         // Skip elements that were removed from the document.
-        if (!element->inDocument())
+        if (!element || !element->inDocument())
             continue;
 
         if (element->isInsideViewport(&visibleRect)) {

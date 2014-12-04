@@ -733,10 +733,6 @@ void WebChromeClient::annotatedRegionsChanged()
 }
 #endif
 
-void WebChromeClient::populateVisitedLinks()
-{
-}
-
 bool WebChromeClient::shouldReplaceWithGeneratedFileForUpload(const String& path, String& generatedFilename)
 {
     generatedFilename = m_page->injectedBundleUIClient().shouldGenerateFileForUpload(m_page, path);
@@ -987,14 +983,6 @@ void WebChromeClient::pageExtendedBackgroundColorDidChange(Color backgroundColor
 void WebChromeClient::numWheelEventHandlersChanged(unsigned count)
 {
     m_page->numWheelEventHandlersChanged(count);
-}
-
-void WebChromeClient::logDiagnosticMessage(const String& message, const String& description, const String& success)
-{
-    if (!m_page->corePage()->settings().diagnosticLoggingEnabled())
-        return;
-
-    m_page->injectedBundleDiagnosticLoggingClient().logDiagnosticMessage(m_page, message, description, success);
 }
 
 String WebChromeClient::plugInStartLabelTitle(const String& mimeType) const

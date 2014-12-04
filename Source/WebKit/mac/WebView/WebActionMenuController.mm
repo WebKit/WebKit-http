@@ -25,9 +25,12 @@
 
 #import "WebActionMenuController.h"
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
 #import "DOMElementInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
+#import "DictionaryPopupInfo.h"
 #import "WebDocumentInternal.h"
 #import "WebElementDictionary.h"
 #import "WebFrameInternal.h"
@@ -51,43 +54,33 @@
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLConverter.h>
 #import <WebCore/LookupSPI.h>
+#import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSSharingServicePickerSPI.h>
 #import <WebCore/NSSharingServiceSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/Page.h>
+#import <WebCore/QuickLookMacSPI.h>
 #import <WebCore/Range.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextCheckerClient.h>
+#import <WebCore/TextIndicator.h>
 #import <WebKitSystemInterface.h>
 #import <objc/objc-class.h>
 #import <objc/objc.h>
 
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, QuickLookUI)
-SOFT_LINK_CLASS(QuickLookUI, QLPreviewBubble)
+SOFT_LINK_CLASS(QuickLookUI, QLPreviewMenuItem)
 
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, ImageKit)
 SOFT_LINK_CLASS(ImageKit, IKSlideshow)
 
-@class QLPreviewBubble;
-@interface NSObject (WKQLPreviewBubbleDetails)
-@property (copy) NSArray * controls;
-@property NSSize maximumSize;
-@property NSRectEdge preferredEdge;
-@property (retain) IBOutlet NSWindow* parentWindow;
-- (void)showPreviewItem:(id)previewItem itemFrame:(NSRect)frame;
-- (void)setAutomaticallyCloseWithMask:(NSEventMask)autocloseMask filterMask:(NSEventMask)filterMask block:(void (^)(void))block;
+@interface WebActionMenuController () <QLPreviewMenuItemDelegate>
 @end
 
 using namespace WebCore;
-
-struct DictionaryPopupInfo {
-    NSPoint origin;
-    RetainPtr<NSDictionary> options;
-    RetainPtr<NSAttributedString> attributedString;
-};
 
 @implementation WebActionMenuController
 
@@ -130,6 +123,19 @@ struct DictionaryPopupInfo {
     return [[[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult] autorelease];
 }
 
+- (void)webView:(WebView *)webView willHandleMouseDown:(NSEvent *)event
+{
+    if (_type == WebActionMenuDataDetectedItem && _currentActionContext && _hasActivatedActionContext) {
+        [getDDActionsManagerClass() didUseActions];
+        _hasActivatedActionContext = NO;
+    }
+}
+
+- (void)webView:(WebView *)webView didHandleScrollWheel:(NSEvent *)event
+{
+    [self _dismissActionMenuPopovers];
+}
+
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
     if (!_webView)
@@ -139,6 +145,7 @@ struct DictionaryPopupInfo {
     if (menu != actionMenu)
         return;
 
+    [self _dismissActionMenuPopovers];
     [actionMenu removeAllItems];
 
     WebElementDictionary *hitTestResult = [self performHitTestAtPoint:event.locationInWindow];
@@ -150,6 +157,14 @@ struct DictionaryPopupInfo {
 
     for (NSMenuItem *item in menuItems)
         [actionMenu addItem:item];
+
+    if (_type == WebActionMenuDataDetectedItem && _currentActionContext) {
+        _hasActivatedActionContext = YES;
+        if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()]) {
+            [menu cancelTracking];
+            [menu removeAllItems];
+        }
+    }
 }
 
 - (BOOL)isMenuForTextContent
@@ -182,12 +197,10 @@ struct DictionaryPopupInfo {
     if (menu != _webView.actionMenu)
         return;
 
-    if (_type == WebActionMenuDataDetectedItem) {
-        if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()]) {
-            [menu cancelTracking];
-            return;
-        }
+    if (!menu.numberOfItems)
+        return;
 
+    if (_type == WebActionMenuDataDetectedItem) {
         if (menu.numberOfItems == 1)
             [[_webView _selectedOrMainFrame] _clearSelection];
         else
@@ -216,11 +229,16 @@ struct DictionaryPopupInfo {
     if (menu != _webView.actionMenu)
         return;
 
-    if (_type == WebActionMenuDataDetectedItem && _currentActionContext)
+    if (_type == WebActionMenuDataDetectedItem && _currentActionContext && _hasActivatedActionContext) {
         [getDDActionsManagerClass() didUseActions];
+        _hasActivatedActionContext = NO;
+    }
 
     _type = WebActionMenuNone;
     _sharingServicePicker = nil;
+    _currentDetectedDataTextIndicator = nil;
+    _currentDetectedDataRange = nil;
+    _currentActionContext = nil;
 }
 
 #pragma mark Link actions
@@ -259,42 +277,23 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
     return view->contentsToWindow(node->pixelSnappedBoundingBox());
 }
 
-- (void)_quickLookURLFromActionMenu:(id)sender
-{
-    if (!_webView)
-        return;
-
-    NSURL *url = _hitTestResult.absoluteLinkURL();
-    if (!url)
-        return;
-
-    Node* node = _hitTestResult.innerNode();
-    if (!node)
-        return;
-
-    NSRect itemFrame = elementBoundingBoxInWindowCoordinatesFromNode(node);
-    NSSize maximumPreviewSize = NSMakeSize(_webView.bounds.size.width * 0.75, _webView.bounds.size.height * 0.75);
-
-    RetainPtr<QLPreviewBubble> bubble = adoptNS([[getQLPreviewBubbleClass() alloc] init]);
-    [bubble setParentWindow:_webView.window];
-    [bubble setMaximumSize:maximumPreviewSize];
-    [bubble setPreferredEdge:NSMaxYEdge];
-    [bubble setControls:@[ ]];
-    NSEventMask filterMask = NSAnyEventMask & ~(NSAppKitDefinedMask | NSSystemDefinedMask | NSApplicationDefinedMask | NSMouseEnteredMask | NSMouseExitedMask);
-    NSEventMask autocloseMask = NSLeftMouseDownMask | NSRightMouseDownMask | NSKeyDownMask;
-    [bubble setAutomaticallyCloseWithMask:autocloseMask filterMask:filterMask block:[bubble] {
-        [bubble close];
-    }];
-    [bubble showPreviewItem:url itemFrame:itemFrame];
-}
-
 - (NSArray *)_defaultMenuItemsForLink
 {
     RetainPtr<NSMenuItem> openLinkItem = [self _createActionMenuItemForTag:WebActionMenuItemTagOpenLinkInDefaultBrowser];
-    RetainPtr<NSMenuItem> previewLinkItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPreviewLink];
+
+    BOOL shouldUseStandardQuickLookPreview = [NSMenuItem respondsToSelector:@selector(standardQuickLookMenuItem)];
+    RetainPtr<NSMenuItem> previewLinkItem;
+    RetainPtr<QLPreviewMenuItem> qlPreviewLinkItem;
+    if (shouldUseStandardQuickLookPreview) {
+        qlPreviewLinkItem = [NSMenuItem standardQuickLookMenuItem];
+        [qlPreviewLinkItem setPreviewStyle:QLPreviewStylePopover];
+        [qlPreviewLinkItem setDelegate:self];
+    } else
+        previewLinkItem = [NSMenuItem separatorItem];
+
     RetainPtr<NSMenuItem> readingListItem = [self _createActionMenuItemForTag:WebActionMenuItemTagAddLinkToSafariReadingList];
 
-    return @[ openLinkItem.get(), previewLinkItem.get(), [NSMenuItem separatorItem], readingListItem.get() ];
+    return @[ openLinkItem.get(), shouldUseStandardQuickLookPreview ? qlPreviewLinkItem.get() : previewLinkItem.get(), [NSMenuItem separatorItem], readingListItem.get() ];
 }
 
 #pragma mark Mailto Link actions
@@ -306,7 +305,7 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
         return @[ ];
 
     RetainPtr<DDActionContext> actionContext = [[getDDActionContextClass() alloc] init];
-    [actionContext setForActionMenuContent:YES];
+    [actionContext setAltMode:YES];
 
     // FIXME: Should this show a yellow highlight?
     [actionContext setHighlightFrame:elementBoundingBoxInWindowCoordinatesFromNode(node)];
@@ -569,16 +568,28 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     if (!actionContext || !detectedDataRange)
         return @[ ];
 
-    // FIXME: We should hide/show the yellow highlight here.
+    [actionContext setAltMode:YES];
+    if ([[getDDActionsManagerClass() sharedManager] respondsToSelector:@selector(hasActionsForResult:actionContext:)]) {
+        if (![[getDDActionsManagerClass() sharedManager] hasActionsForResult:[actionContext mainResult] actionContext:actionContext.get()])
+            return @[ ];
+    }
+
+    _currentDetectedDataTextIndicator = TextIndicator::createWithRange(*detectedDataRange, TextIndicatorPresentationTransition::BounceAndCrossfade);
+
     _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
     } interactionChangedHandler:^() {
+        [self _showTextIndicator];
     } interactionStoppedHandler:^() {
+        [self _hideTextIndicator];
     }];
     _currentDetectedDataRange = detectedDataRange;
 
-    [_currentActionContext setHighlightFrame:[_webView.window convertRectToScreen:[_webView convertRect:detectedDataBoundingBox toView:nil]]];
+    [_currentActionContext setHighlightFrame:[_webView.window convertRectToScreen:detectedDataBoundingBox]];
 
-    return [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_currentActionContext mainResult] actionContext:_currentActionContext.get()];
+    NSArray *menuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_currentActionContext mainResult] actionContext:_currentActionContext.get()];
+    if (menuItems.count == 1 && _currentDetectedDataTextIndicator)
+        _currentDetectedDataTextIndicator->setPresentationTransition(TextIndicatorPresentationTransition::Bounce);
+    return menuItems;
 }
 
 - (void)_copySelection:(id)sender
@@ -593,15 +604,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         return;
 
     DictionaryPopupInfo popupInfo = performDictionaryLookupForSelection(frame, frame->selection().selection());
-    if (!popupInfo.attributedString)
-        return;
-
-    NSPoint textBaselineOrigin = popupInfo.origin;
-
-    // Convert to screen coordinates.
-    textBaselineOrigin = [_webView.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
-
-    [getLULookupDefinitionModuleClass() showDefinitionForTerm:popupInfo.attributedString.get() atLocation:textBaselineOrigin options:popupInfo.options.get()];
+    [_webView _showDictionaryLookupPopup:popupInfo];
 }
 
 - (void)_paste:(id)sender
@@ -641,11 +644,11 @@ static DictionaryPopupInfo performDictionaryLookupForSelection(Frame* frame, con
     DictionaryPopupInfo popupInfo;
     RefPtr<Range> selectedRange = rangeForDictionaryLookupForSelection(selection, &options);
     if (selectedRange)
-        popupInfo = performDictionaryLookupForRange(frame, *selectedRange, options);
+        popupInfo = performDictionaryLookupForRange(frame, *selectedRange, options, TextIndicatorPresentationTransition::BounceAndCrossfade);
     return popupInfo;
 }
 
-static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& range, NSDictionary *options)
+static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& range, NSDictionary *options, TextIndicatorPresentationTransition presentationTransition)
 {
     DictionaryPopupInfo popupInfo;
     if (range.text().stripWhiteSpace().isEmpty())
@@ -664,7 +667,7 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
     popupInfo.origin = NSMakePoint(rangeRect.x(), rangeRect.y() + (style.fontMetrics().descent() * frame->page()->pageScaleFactor()));
     popupInfo.options = options;
 
-    NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range);
+    NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range, IncludeImagesInAttributedString::No);
     RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
 
@@ -681,6 +684,7 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
     }];
 
     popupInfo.attributedString = scaledNSAttributedString.get();
+    popupInfo.textIndicator = TextIndicator::createWithRange(range, presentationTransition);
     return popupInfo;
 }
 
@@ -720,6 +724,26 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
     return _webView.window;
 }
 
+#pragma mark QLPreviewMenuItemDelegate implementation
+
+- (NSView *)menuItem:(NSMenuItem *)menuItem viewAtScreenPoint:(NSPoint)screenPoint
+{
+    return _webView;
+}
+
+- (id<QLPreviewItem>)menuItem:(NSMenuItem *)menuItem previewItemAtPoint:(NSPoint)point
+{
+    if (!_webView)
+        return nil;
+
+    return _hitTestResult.absoluteLinkURL();
+}
+
+- (NSRectEdge)menuItem:(NSMenuItem *)menuItem preferredEdgeForPoint:(NSPoint)point
+{
+    return NSMaxYEdge;
+}
+
 #pragma mark Menu Items
 
 - (RetainPtr<NSMenuItem>)_createActionMenuItemForTag:(uint32_t)tag
@@ -734,12 +758,6 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
         selector = @selector(_openURLFromActionMenu:);
         title = WEB_UI_STRING_KEY("Open", "Open (action menu item)", "action menu item");
         image = [NSImage imageNamed:@"NSActionMenuOpenInNewWindow"];
-        break;
-
-    case WebActionMenuItemTagPreviewLink:
-        selector = @selector(_quickLookURLFromActionMenu:);
-        title = WEB_UI_STRING_KEY("Preview", "Preview (action menu item)", "action menu item");
-        image = [NSImage imageNamed:@"NSActionMenuQuickLook"];
         break;
 
     case WebActionMenuItemTagAddLinkToSafariReadingList:
@@ -852,7 +870,12 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
     Node* node = _hitTestResult.innerNode();
     if (node && node->isTextNode()) {
         NSArray *dataDetectorMenuItems = [self _defaultMenuItemsForDataDetectedText];
-        if (dataDetectorMenuItems.count) {
+        if (_currentActionContext) {
+            // If this is a data detected item with no menu items, we should not fall back to regular text options.
+            if (!dataDetectorMenuItems.count) {
+                _type = WebActionMenuNone;
+                return @[ ];
+            }
             _type = WebActionMenuDataDetectedItem;
             return dataDetectorMenuItems;
         }
@@ -877,8 +900,48 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
         return [self _defaultMenuItemsForWhitespaceInEditableArea];
     }
 
+    if (_hitTestResult.isSelected()) {
+        // A selection should present the read-only text menu. It might make more sense to present a new
+        // type of menu with just copy, but for the time being, we should stay consistent with text.
+        _type = WebActionMenuReadOnlyText;
+        return [self _defaultMenuItemsForText];
+    }
+
     _type = WebActionMenuNone;
     return @[ ];
 }
 
+#pragma mark Text Indicator
+
+- (void)_showTextIndicator
+{
+    if (_isShowingTextIndicator)
+        return;
+
+    if (_type == WebActionMenuDataDetectedItem && _currentDetectedDataTextIndicator) {
+        [_webView _setTextIndicator:_currentDetectedDataTextIndicator.get() fadeOut:NO animationCompletionHandler:^ { }];
+        _isShowingTextIndicator = YES;
+    }
+}
+
+- (void)_hideTextIndicator
+{
+    if (!_isShowingTextIndicator)
+        return;
+
+    [_webView _clearTextIndicator];
+    _isShowingTextIndicator = NO;
+}
+
+- (void)_dismissActionMenuPopovers
+{
+    DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
+    if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
+        [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
+
+    [self _hideTextIndicator];
+}
+
 @end
+
+#endif // PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

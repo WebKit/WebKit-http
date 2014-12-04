@@ -40,30 +40,28 @@ class FlowContents {
 public:
     FlowContents(const RenderBlockFlow&);
 
-    unsigned findNextBreakablePosition(unsigned position);
+    unsigned findNextBreakablePosition(unsigned position) const;
     unsigned findNextNonWhitespacePosition(unsigned position, unsigned& spaceCount) const;
 
     float textWidth(unsigned from, unsigned to, float xPosition) const;
 
-    bool isNewlineCharacter(unsigned position) const;
-    bool isEndOfContent(unsigned position) const;
+    bool isLineBreak(unsigned position) const;
+    bool isEnd(unsigned position) const;
 
-    bool resolveRendererPositions(const RenderText&, unsigned& startPosition, unsigned& endPosition) const;
-    const RenderText& renderer(unsigned position) const;
+    struct Segment {
+        unsigned start;
+        unsigned end;
+        String text;
+        const RenderText& renderer;
+    };
+    const Segment& segmentForPosition(unsigned) const;
+    const Segment& segmentForRenderer(const RenderText&) const;
 
-    class Style {
-    public:
-        Style(const RenderStyle& style)
-            : font(style.font())
-            , textAlign(style.textAlign())
-            , collapseWhitespace(style.collapseWhiteSpace())
-            , preserveNewline(style.preserveNewline())
-            , wrapLines(style.autoWrap())
-            , breakWordOnOverflow(style.overflowWrap() == BreakOverflowWrap && (wrapLines || preserveNewline))
-            , spaceWidth(font.width(TextRun(&space, 1)))
-            , tabWidth(collapseWhitespace ? 0 : style.tabSize())
-        {
-        }
+    bool hasOneSegment() const { return m_segments.size() == 1; }
+    unsigned length() const { return m_segments.last().end; };
+
+    struct Style {
+        explicit Style(const RenderStyle&);
 
         const Font& font;
         ETextAlign textAlign;
@@ -73,27 +71,52 @@ public:
         bool breakWordOnOverflow;
         float spaceWidth;
         unsigned tabWidth;
+        AtomicString locale;
     };
     const Style& style() const { return m_style; }
 
 private:
-    unsigned nextNonWhitespacePosition(unsigned position, unsigned& spaceCount) const;
-    float runWidth(unsigned from, unsigned to, float xPosition) const;
+    unsigned segmentIndexForPosition(unsigned position) const;
+    unsigned segmentIndexForPositionSlow(unsigned position) const;
 
-    const RenderBlockFlow& m_flow;
-    Style m_style;
-    LazyLineBreakIterator m_lineBreakIterator;
+    UChar characterAt(unsigned position) const;
+    float runWidth(const String&, unsigned from, unsigned to, float xPosition) const;
+
+    const Style m_style;
+    const Vector<Segment, 8> m_segments;
+
+    mutable LazyLineBreakIterator m_lineBreakIterator;
+    mutable unsigned m_lastSegmentIndex;
 };
 
-inline bool FlowContents::isNewlineCharacter(unsigned position) const
+inline UChar FlowContents::characterAt(unsigned position) const
 {
-    ASSERT(m_lineBreakIterator.string().length() > position);
-    return m_lineBreakIterator.string().at(position) == '\n';
+    auto& segment = segmentForPosition(position);
+    return segment.text[position - segment.start];
 }
 
-inline bool FlowContents::isEndOfContent(unsigned position) const
+inline bool FlowContents::isLineBreak(unsigned position) const
 {
-    return position >= m_lineBreakIterator.string().length();
+    return m_style.preserveNewline && characterAt(position) == '\n';
+}
+
+inline bool FlowContents::isEnd(unsigned position) const
+{
+    return position >= length();
+}
+
+inline unsigned FlowContents::segmentIndexForPosition(unsigned position) const
+{
+    ASSERT(!isEnd(position));
+    auto& lastSegment = m_segments[m_lastSegmentIndex];
+    if (lastSegment.start <= position && position < lastSegment.end)
+        return m_lastSegmentIndex;
+    return segmentIndexForPositionSlow(position);
+}
+
+inline const FlowContents::Segment& FlowContents::segmentForPosition(unsigned position) const
+{
+    return m_segments[segmentIndexForPosition(position)];
 }
 
 }

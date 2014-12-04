@@ -361,6 +361,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/WebKitCSSTransformValue.idl
     css/WebKitCSSViewportRule.idl
 
+    dom/AnimationEvent.idl
     dom/Attr.idl
     dom/BeforeLoadEvent.idl
     dom/BeforeUnloadEvent.idl
@@ -1302,6 +1303,7 @@ set(WebCore_SOURCES
     cssjit/SelectorCompiler.cpp
 
     dom/ActiveDOMObject.cpp
+    dom/AnimationEvent.cpp
     dom/Attr.cpp
     dom/BeforeTextInsertedEvent.cpp
     dom/BeforeUnloadEvent.cpp
@@ -1891,7 +1893,6 @@ set(WebCore_SOURCES
     page/DOMWindowExtension.cpp
     page/DOMWindowProperty.cpp
     page/DebugPageOverlays.cpp
-    page/DefaultVisitedLinkStore.cpp
     page/DeviceController.cpp
     page/DiagnosticLoggingKeys.cpp
     page/DragController.cpp
@@ -1903,7 +1904,6 @@ set(WebCore_SOURCES
     page/FrameSnapshotting.cpp
     page/FrameTree.cpp
     page/FrameView.cpp
-    page/GestureTapHighlighter.cpp
     page/GroupSettings.cpp
     page/History.cpp
     page/Location.cpp
@@ -1913,7 +1913,7 @@ set(WebCore_SOURCES
     page/NavigatorBase.cpp
     page/OriginAccessEntry.cpp
     page/Page.cpp
-    page/PageActivityAssertionToken.cpp
+    page/PageConfiguration.cpp
     page/PageConsoleClient.cpp
     page/PageGroup.cpp
     page/PageGroupLoadDeferrer.cpp
@@ -1936,6 +1936,7 @@ set(WebCore_SOURCES
     page/Settings.cpp
     page/SpatialNavigation.cpp
     page/SuspendableTimer.cpp
+    page/TextIndicator.cpp
     page/UserContentController.cpp
     page/UserContentURLPattern.cpp
     page/VisitedLinkStore.cpp
@@ -2485,6 +2486,7 @@ set(WebCore_SOURCES
     storage/StorageMap.cpp
     storage/StorageNamespace.cpp
     storage/StorageNamespaceImpl.cpp
+    storage/StorageNamespaceProvider.cpp
     storage/StorageStrategy.cpp
     storage/StorageSyncManager.cpp
     storage/StorageThread.cpp

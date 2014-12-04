@@ -26,9 +26,12 @@
 #import "SoftLinking.h"
 #import <objc/runtime.h>
 
+// FIXME: This header should include various DataDetectors SPI headers if using the internal SDK.
+
 typedef struct __DDScanner DDScanner, *DDScannerRef;
 typedef struct __DDScanQuery *DDScanQueryRef;
 typedef struct __DDResult *DDResultRef;
+typedef struct __DDHighlight DDHighlight, *DDHighlightRef;
 
 typedef enum {
     DDScannerTypeStandard = 0,
@@ -55,6 +58,7 @@ SOFT_LINK(DataDetectorsCore, DDScanQueryCreateFromString, DDScanQueryRef, (CFAll
 SOFT_LINK(DataDetectorsCore, DDScannerScanQuery, DDScanQueryRef, (DDScannerRef scanner, DDScanQueryRef query), (scanner, query))
 SOFT_LINK(DataDetectorsCore, DDScannerCopyResultsWithOptions, CFArrayRef, (DDScannerRef scanner, DDScannerCopyResultsOptions options), (scanner, options))
 SOFT_LINK(DataDetectorsCore, DDResultGetRange, CFRange, (DDResultRef result), (result))
+SOFT_LINK(DataDetectorsCore, DDResultGetType, CFStringRef, (DDResultRef result), (result))
 
 }
 
@@ -66,12 +70,27 @@ SOFT_LINK_CLASS(DataDetectors, DDActionContext)
 @property NSRect highlightFrame;
 @property (retain) NSArray *allResults;
 @property (retain) __attribute__((NSObject)) DDResultRef mainResult;
-@property (copy) void (^completionHandler)(void);
-@property (assign) BOOL forActionMenuContent;
+@property (assign) BOOL altMode;
 
 - (DDActionContext *)contextForView:(NSView *)view altMode:(BOOL)altMode interactionStartedHandler:(void (^)(void))interactionStartedHandler interactionChangedHandler:(void (^)(void))interactionChangedHandler interactionStoppedHandler:(void (^)(void))interactionStoppedHandler;
 
 @end
+
+enum {
+    DDHighlightStyleBubbleNone = 0,
+    DDHighlightStyleBubbleStandard = 1
+};
+
+enum {
+    DDHighlightStyleIconNone = (0 << 16),
+    DDHighlightStyleStandardIconArrow = (1 << 16)
+};
+
+enum {
+    DDHighlightStyleButtonShowAlways  = (1 << 24),
+};
+
+typedef NSUInteger DDHighlightStyle;
 #endif
 
 SOFT_LINK_CLASS(DataDetectors, DDActionsManager)
@@ -86,5 +105,6 @@ SOFT_LINK_CLASS(DataDetectors, DDActionsManager)
 + (BOOL)shouldUseActionsWithContext:(DDActionContext *)context;
 + (void)didUseActions;
 
+- (BOOL)hasActionsForResult:(DDResultRef)result actionContext:(DDActionContext *)actionContext;
 
 @end

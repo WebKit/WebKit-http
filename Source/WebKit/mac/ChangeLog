@@ -1,3 +1,602 @@
+2014-12-02  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2014-12-02  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/appcache/main-resource-fallback-for-network-error-crash.html can break subsequent tests
+        https://bugs.webkit.org/show_bug.cgi?id=139149
+
+        Reviewed by Anders Carlsson.
+
+        This changes API behavior. I think that it's OK, because existing behavior made no sense.
+        We used to delete caches from disk, but they were still active in memory. Now we also
+        obsolete them in memory, so documents that use a cache still work, but new ones don't
+        pick one up.
+
+        * WebCoreSupport/WebApplicationCache.mm:
+        (+[WebApplicationCache setMaximumSize:]): Changing maximum on-disk size doesn't
+        need to delete in-momry caches too. Keep existing behavior.
+        (+[WebApplicationCache deleteAllApplicationCaches]): Use the new WebCore function
+        that properly deletes caches.
+
+2014-12-02  Tim Horton  <timothy_horton@apple.com>
+
+        Remove a SnowLeopard-era quirk for QuickLook
+        https://bugs.webkit.org/show_bug.cgi?id=139208
+        <rdar://problem/19121822>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2014-12-02  Tim Horton  <timothy_horton@apple.com>
+
+        Loading Lookup causes http/tests/cache/post-redirect-get.php to fail
+        https://bugs.webkit.org/show_bug.cgi?id=139204
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _showDictionaryLookupPopup:]):
+        * WebView/WebViewData.h:
+        Work around this by delaying the softlinking (and setting up the notification
+        observer) until we actually need it. There's still an underlying bug, but
+        this will fix the test.
+
+2014-12-02  Beth Dakin  <bdakin@apple.com>
+
+        Yet another build fix.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForLink]):
+
+2014-12-02  Beth Dakin  <bdakin@apple.com>
+
+        Build fix.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForLink]):
+
+2014-12-02  Beth Dakin  <bdakin@apple.com>
+
+        More build fixing.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForLink]):
+
+2014-12-02  Beth Dakin  <bdakin@apple.com>
+
+        Should use standardQuickLookMenuItem for apps that don't implement customizations
+        https://bugs.webkit.org/show_bug.cgi?id=139193
+        -and corresponding-
+        rdar://problem/18944696
+
+        Reviewed by Anders Carlsson.
+
+        Use [NSMenuItem standardQuickLookMenuItem].
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForLink]):
+
+        Delegate methods to set up the standardQuickLookMenuItem.
+        (-[WebActionMenuController menuItem:viewAtScreenPoint:]):
+        (-[WebActionMenuController menuItem:previewItemAtPoint:]):
+        (-[WebActionMenuController menuItem:preferredEdgeForPoint:]):
+
+        Remove all of the old QLPreviewBubble code.
+        (-[WebActionMenuController _createActionMenuItemForTag:]):
+        (-[WebActionMenuController _quickLookURLFromActionMenu:]): Deleted.
+
+2014-12-02  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * WebView/WebViewData.h:
+
+2014-12-02  Tim Horton  <timothy_horton@apple.com>
+
+        Implement Lookup transition from selection for Legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=139180
+        <rdar://problem/19067172>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/DictionaryPopupInfo.h: Added.
+        Split DictionaryPopupInfo out into its own file.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _lookupText:]):
+        Hand the DictionaryPopupInfo to WebView, which will show the TextIndicator and invoke Lookup.
+
+        (performDictionaryLookupForSelection):
+        (performDictionaryLookupForRange):
+        Plumb the transition style through these helpers.
+        Create a TextIndicator from the selection range.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _lookUpInDictionaryFromMenu:]):
+        Make use of TextIndicator (and DictionaryPopupInfo, and the new
+        _showDictionaryLookupPopup on WebView) to add a transition from blue
+        when performing Lookup from the context menu.
+
+        (-[WebHTMLView quickLookWithEvent:]):
+        Remove our TextIndicator whenever a normal three-finger-tap event
+        comes through, as it will have its own indication.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _dictionaryLookupPopoverWillClose:]):
+        Register for the LUNotificationPopoverWillClose notification and remove
+        our TextIndicator when it is called, just like in WebKit2.
+        Deregistration is already handled in _close.
+
+        (-[WebView _showDictionaryLookupPopup:]):
+        Just like WebKit2, show our TextIndicator and tell Lookup not to show its own,
+        if the relevant API is available.
+
+        * WebView/WebViewInternal.h:
+
+2014-12-02  Anders Carlsson  <andersca@apple.com>
+
+        Remove visited link handling from PageGroup
+        https://bugs.webkit.org/show_bug.cgi?id=139185
+
+        Reviewed by Sam Weinig.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate removeItemForURLString:]):
+        (-[WebHistoryPrivate removeAllItems]):
+        (+[WebHistory setOptionalSharedHistory:]):
+        (+[WebHistory _setVisitedLinkTrackingEnabled:]):
+        (+[WebHistory _removeAllVisitedLinks]):
+        (-[WebHistoryPrivate addVisitedLinksToPageGroup:]): Deleted.
+        (-[WebHistory _addVisitedLinksToPageGroup:]): Deleted.
+        * History/WebHistoryInternal.h:
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::populateVisitedLinks): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView addVisitedLinks:]):
+        (-[WebView removeVisitedLink:]):
+
+2014-12-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Try to fix the Mac build.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _close]):
+
+2014-12-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the iOS build.
+
+        * WebView/WebActionMenuController.h:
+        * WebView/WebActionMenuController.mm:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView scrollWheel:scrollWheel:]):
+        (-[WebHTMLView mouseDown:mouseDown:]):
+        * WebView/WebView.mm:
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+        * WebView/WebViewInternal.h:
+
+2014-12-01  Tim Horton  <timothy_horton@apple.com>
+
+        Implement yellow highlight for WebKit1 data detectors
+        https://bugs.webkit.org/show_bug.cgi?id=138956
+        <rdar://problem/18992185>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.h:
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController webView:willHandleMouseDown:]):
+        (-[WebActionMenuController webView:didHandleScrollWheel:]):
+        (-[WebActionMenuController prepareForMenu:withEvent:]):
+        (-[WebActionMenuController didCloseMenu:withEvent:]):
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectedText]):
+        (-[WebActionMenuController _showTextIndicator]):
+        (-[WebActionMenuController _hideTextIndicator]):
+        (-[WebActionMenuController _dismissActionMenuPopovers]):
+        Copy the WebKit2 WKActionMenuController TextIndicator implementation
+        into WebActionMenuController. The only significant difference is
+        that we build the TextIndicator right at menu construction time
+        instead of in the Web process.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView scrollWheel:]):
+        Let the WebActionMenuController know that we're handling a scroll.
+
+        (-[WebHTMLView mouseDown:]):
+        Let the WebActionMenuController know that we're handling a mouseDown.
+
+        * WebView/WebView.mm:
+        (-[WebView _setTextIndicator:fadeOut:animationCompletionHandler:]):
+        (-[WebView _clearTextIndicator]):
+        (-[WebView _actionMenuController]):
+        (-[WebView _convertRectFromRootView:]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        * WebView/WebViewInternal.h:
+        Keep a TextIndicatorWindow on WebView, just like WKView does.
+        Expose the WebActionMenuController on WebView (internally).
+
+2014-12-01  Anders Carlsson  <andersca@apple.com>
+
+        Remove old site specific quirks code that was added in 2009
+        https://bugs.webkit.org/show_bug.cgi?id=139141
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::needsSiteSpecificQuirks): Deleted.
+
+2014-11-30  Anders Carlsson  <andersca@apple.com>
+
+        Fix a test failure.
+
+        * History/WebHistory.mm:
+        (+[WebHistory _setVisitedLinkTrackingEnabled:]):
+        Call through to the visited link store.
+
+        (+[WebHistory _removeAllVisitedLinks]):
+        Ditto.
+
+        * WebCoreSupport/WebVisitedLinkStore.mm:
+        (WebVisitedLinkStore::isLinkVisited):
+        Make sure to populate visited links.
+
+2014-11-30  Anders Carlsson  <andersca@apple.com>
+
+        Switch over to the visited link store from the WebViewGroup
+        https://bugs.webkit.org/show_bug.cgi?id=139112
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView setGroupName:]):
+
+2014-11-30  Anders Carlsson  <andersca@apple.com>
+
+        Add WebVisitedLinkStore::removeVisitedLink and use it on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=139111
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebVisitedLinkStore.h:
+        * WebCoreSupport/WebVisitedLinkStore.mm:
+        (WebVisitedLinkStore::removeVisitedLink):
+        * WebView/WebView.mm:
+        (-[WebView removeVisitedLink:]):
+
+2014-11-29  Anders Carlsson  <andersca@apple.com>
+
+        Populate visited links
+        https://bugs.webkit.org/show_bug.cgi?id=139101
+
+        Reviewed by Sam Weinig.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate addVisitedLinksToVisitedLinkStore:]):
+        Helper function that adds all visited link to the given store.
+
+        (-[WebHistory _addVisitedLinksToVisitedLinkStore:]):
+        Call the private method.
+
+        * History/WebHistoryInternal.h:
+        * WebCoreSupport/WebVisitedLinkStore.h:
+        Add new members.
+
+        * WebCoreSupport/WebVisitedLinkStore.mm:
+        (WebVisitedLinkStore::addVisitedLink):
+        Get the characters from the URL string and hash them, then call addVisitedLinkHash.
+
+        (WebVisitedLinkStore::populateVisitedLinksIfNeeded):
+        Implement this. First try the delegate, then try the shared history.
+
+        (WebVisitedLinkStore::addVisitedLinkHash):
+        Factor code that adds the link to the hash table into a separate function.
+
+        * WebView/WebView.mm:
+        (-[WebView addVisitedLinks:]):
+        Add the visited links to the store.
+
+2014-11-29  Anders Carlsson  <andersca@apple.com>
+
+        More work on the legacy WebKit visited link store
+        https://bugs.webkit.org/show_bug.cgi?id=139100
+
+        Reviewed by Sam Weinig.
+
+        * History/WebHistory.mm:
+        (+[WebHistory setOptionalSharedHistory:]):
+        Call WebVisitedLinkStore::setShouldTrackVisitedLinks and WebVisitedLinkStore::removeAllVisitedLinks.
+
+        * WebCoreSupport/WebVisitedLinkStore.h:
+        * WebCoreSupport/WebVisitedLinkStore.mm:
+        (visitedLinkStores):
+        (WebVisitedLinkStore::WebVisitedLinkStore):
+        (WebVisitedLinkStore::~WebVisitedLinkStore):
+        Keep track of live visited link stores.
+
+        (WebVisitedLinkStore::setShouldTrackVisitedLinks):
+        Update s_shouldTrackVisitedLinks and call removeAllVisitedLinks if necessary.
+
+        (WebVisitedLinkStore::removeAllVisitedLinks):
+        Iterate over all live link stores and remove their links.
+
+        (WebVisitedLinkStore::isLinkVisited):
+        Populate visited links and check if our hash table contains the link.
+
+        (WebVisitedLinkStore::addVisitedLink):
+        Add the link hash to the table.
+
+        (WebVisitedLinkStore::populateVisitedLinksIfNeeded):
+        Add stub.
+
+        (WebVisitedLinkStore::removeVisitedLinkHashes):
+        Clear out the hash table.
+
+2014-11-27  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out WebVisitedLinkStore to WebViewGroup
+        https://bugs.webkit.org/show_bug.cgi?id=139066
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebViewGroup.h:
+        (WebViewGroup::visitedLinkStore):
+        * WebCoreSupport/WebViewGroup.mm:
+        (WebViewGroup::WebViewGroup):
+        * WebCoreSupport/WebVisitedLinkStore.h: Copied from Source/WebKit/mac/WebCoreSupport/WebViewGroup.h.
+        * WebCoreSupport/WebVisitedLinkStore.mm: Copied from Source/WebKit/mac/WebCoreSupport/WebViewGroup.h.
+        (WebVisitedLinkStore::create):
+        (WebVisitedLinkStore::WebVisitedLinkStore):
+        (WebVisitedLinkStore::~WebVisitedLinkStore):
+        (WebVisitedLinkStore::isLinkVisited):
+        (WebVisitedLinkStore::addVisitedLink):
+
+2014-11-25  Anders Carlsson  <andersca@apple.com>
+
+        Remove user content handling from PageGroup
+        https://bugs.webkit.org/show_bug.cgi?id=139051
+
+        Reviewed by Antti Koivisto.
+
+        Use the user content controller in the web view group.
+
+        * WebView/WebView.mm:
+        (-[WebView _injectOutlookQuirksScript]):
+
+2014-11-25  Anders Carlsson  <andersca@apple.com>
+
+        Add a user content controller to WebViewGroup and use it for user content
+        https://bugs.webkit.org/show_bug.cgi?id=139043
+
+        Reviewed by Antti Koivisto.
+
+        This is another tiny step towards getting rid of user content handling inside PageGroup.
+
+        * WebCoreSupport/WebViewGroup.h:
+        (WebViewGroup::userContentController):
+        Add a UserContentController member and getter.
+
+        * WebCoreSupport/WebViewGroup.mm:
+        (WebViewGroup::get):
+        Helper function that returns a WebViewGroup by its name (or null if it doesn't exist).
+
+        (WebViewGroup::WebViewGroup):
+        Create a user content controller.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        Instead of calling -[WebView setGroupName:], create a WebViewGroup before creating the page, that way we can
+        set its user content controller in the PageConfiguration.
+
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        Ditto.
+
+        (+[WebView _addUserScriptToGroup:world:source:url:whitelist:blacklist:injectionTime:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:whitelist:blacklist:injectedFrames:]):
+        (+[WebView _removeUserScriptFromGroup:world:url:]):
+        (+[WebView _removeUserStyleSheetFromGroup:world:url:]):
+        (+[WebView _removeUserScriptsFromGroup:world:]):
+        (+[WebView _removeUserStyleSheetsFromGroup:world:]):
+        (+[WebView _removeAllUserContentFromGroup:]):
+        Instead of calling into the PageGroup, get the WebViewGroup's user content controller and call into that.
+
+        (-[WebView setGroupName:]):
+        Set the user content controller to the new WebViewGroup's user content controller.
+
+2014-11-21  Jer Noble  <jer.noble@apple.com>
+
+        Support multiple signatures of diagnostic logging.
+        https://bugs.webkit.org/show_bug.cgi?id=138690
+
+        Reviewed by Anders Carlsson.
+
+        Page::PageClients has been renamed PageConfiguration.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2014-11-21  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add "show simple line layout debug borders" setting to MiniBrowser.
+        https://bugs.webkit.org/show_bug.cgi?id=138981
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences simpleLineLayoutDebugBordersEnabled]):
+        (-[WebPreferences setSimpleLineLayoutDebugBordersEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2014-11-21  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r176351): Parts of apple.com/contact aren't Lookup-able
+        ​https://bugs.webkit.org/show_bug.cgi?id=138960
+        <rdar://problem/19056715>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForMailtoLink]):
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectedText]):
+        Use DataDetectors SPI instead of an explicit blacklist.
+
+2014-11-21  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r176351): Parts of apple.com/contact aren't Lookup-able
+        https://bugs.webkit.org/show_bug.cgi?id=138960
+        <rdar://problem/19056715>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectedText]):
+        Blacklist contact results, because they don't have useful menus. If we
+        bail before setting up _currentActionContext, we'll still allow fallthrough
+        to ordinary text actions, avoiding mysterious failure when a contact is detected.
+
+        This doesn't break the case that r176351 was intended to fix,
+        because in that case we were detecting e.g. addresses.
+
+2014-11-21  Anders Carlsson  <andersca@apple.com>
+
+        Remove the Timer parameters from timer callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=138974
+
+        Reviewed by Antti Koivisto.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::NetscapePluginInstanceProxy):
+        (WebKit::NetscapePluginInstanceProxy::requestTimerFired):
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::WebNetscapePluginStream):
+        (WebNetscapePluginStream::deliverDataTimerFired):
+
+2014-11-21  Anders Carlsson  <andersca@apple.com>
+
+        Make memoryCache() return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=138939
+
+        Reviewed by Antti Koivisto.
+
+        * Misc/WebCache.mm:
+        (+[WebCache statistics]):
+        (+[WebCache emptyInMemoryResources]):
+        (+[WebCache sizeOfDeadResources:]):
+        (+[WebCache addImageToCache:forURL:forFrame:]):
+        (+[WebCache removeImageFromCacheForURL:forFrame:]):
+        (+[WebCache imageForURL:]):
+        (+[WebCache setDisabled:]):
+        (+[WebCache isDisabled]):
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+
+2014-11-20  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove the remaining vestiges of minimal-ui
+        https://bugs.webkit.org/show_bug.cgi?id=138890
+
+        Reviewed by Sam Weinig.
+
+        * History/WebHistoryItem.mm:
+        * History/WebHistoryItemPrivate.h:
+
+2014-11-20  Tim Horton  <timothy_horton@apple.com>
+
+        Cancel DataDetectors menu earlier if we know it can't be presented
+        https://bugs.webkit.org/show_bug.cgi?id=138922
+        <rdar://problem/18950441>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController prepareForMenu:withEvent:]):
+        Move our call to shouldUseActionsWithContext earlier, to menuNeedsUpdate,
+        and use a bigger hammer (removeAllItems).
+
+        (-[WebActionMenuController willOpenMenu:withEvent:]):
+        If we end up with a menu with no items, don't change selection or anything.
+
+2014-11-20  Beth Dakin  <bdakin@apple.com>
+
+        Invalid message WebPageProxy.DidPerformDictionaryLookup on Google stocks result
+        https://bugs.webkit.org/show_bug.cgi?id=138568
+        -and corresponding-
+        rdar://problem/18904600
+
+        Reviewed by Tim Horton.
+
+        Skip images for lookup.
+        * WebView/WebActionMenuController.mm:
+        (performDictionaryLookupForRange):
+
+2014-11-19  Beth Dakin  <bdakin@apple.com>
+
+        Invoking an action menu on a selection should result in the text menu
+        https://bugs.webkit.org/show_bug.cgi?id=138892
+        -and corresponding-
+        rdar://problem/18996776
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItems]):
+
+2014-11-19  Beth Dakin  <bdakin@apple.com>
+
+        Data detected results with no menu items should not fall through to regular text 
+        action menus
+        https://bugs.webkit.org/show_bug.cgi?id=138887
+        -and corresponding-
+        rdar://problem/18971616
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItems]):
+
+2014-11-19  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit build with public iOS SDK
+        https://bugs.webkit.org/show_bug.cgi?id=136863
+
+        Reviewed by David Kilzer.
+
+        * History/WebHistory.mm: Include header NSCalendarDateSPI.h.
+        * History/WebHistoryItemPrivate.h: Remove include of private header Foundation/NSCalendarDate.h.
+        * Misc/WebDownload.h: Forward declare NSURLDownload when building without header Foundation/NSURLDownload.h.
+        We use __has_include() instead of WTF_USE_APPLE_INTERNAL_SDK since this header
+        may be used by Apple internal clients that do not include wtf/Platform.h.
+        * Misc/WebDownload.mm: Include header NSURLDownloadSPI.h instead of including
+        private Foundation headers directly.
+        * Misc/WebNSURLExtras.mm: Remove unnecessary include of private Foundation header.
+        * WebCoreSupport/WebFrameNetworkingContext.mm: Include header CFNetworkSPI.h
+        instead of including private CFNetwork headers directly. Also fixed up style and
+        ordering of header include directives.
+        * WebView/WebView.mm: Include header CFNetworkSPI.h instead of including private
+        CFNetwork headers directly. Also sort the #import directives.
+        * WebView/WebViewPrivate.h: Define ENABLE_TOUCH_EVENTS if not otherwise defined
+        and added ENABLE_TOUCH_EVENTS-guard around -_touchEventRegions.
+
 2014-11-18  David Kilzer  <ddkilzer@apple.com>
 
         FeatureDefines.xcconfig: Switch from using PLATFORM_NAME to SDK selectors

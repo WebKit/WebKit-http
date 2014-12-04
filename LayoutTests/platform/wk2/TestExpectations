@@ -193,10 +193,6 @@ http/tests/cache/history-only-cached-subresource-loads-max-age-https.html
 # https://bugs.webkit.org/show_bug.cgi?id=40361
 editing/text-iterator/findString-selection-disabled.html
 
-# WebKit2 needs an implementation of FrameLoaderClient::revertToProvisionalState
-# https://bugs.webkit.org/show_bug.cgi?id=81365
-http/tests/multipart/multipart-wait-before-boundary.html
-
 # layoutTestController.setWindowIsKey() has no effect on the web process side in WebKit2
 # https://bugs.webkit.org/show_bug.cgi?id=81736 rdar://problem/11088268
 fast/events/blur-focus-window-should-blur-focus-element.html
@@ -226,6 +222,15 @@ webkit.org/b/105952 fast/loader/submit-form-while-parsing-2.html [ Pass Failure 
 webkit.org/b/127683 http/tests/navigation/new-window-redirect-history.html [ Skip ]
 
 webkit.org/b/132297 svg/custom/bug79798.html [ Skip ]
+
+# These tests started crashing with assertion failures only on debug builds after r176687:
+webkit.org/b/139224 [ Debug ] fast/events/clear-drag-state.html  [ Skip ]
+webkit.org/b/139224 [ Debug ] fast/css/user-drag-none.html  [ Skip ]
+webkit.org/b/139224 [ Debug ] editing/pasteboard/dataTransfer-setData-getData.html [ Skip ]
+webkit.org/b/139224 [ Debug ] editing/pasteboard/drop-text-events-sideeffect-crash.html [ Skip ]
+webkit.org/b/139224 [ Debug ] editing/pasteboard/drag-drop-iframe-refresh-crash.html [ Skip ]
+webkit.org/b/139224 [ Debug ] editing/pasteboard/drop-text-events-sideeffect.html [ Skip ]
+webkit.org/b/139224 [ Debug ] editing/selection/user-drag-element-and-user-select-none.html [ Skip ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################

@@ -31,9 +31,9 @@
 #import "ArgumentCodersCF.h"
 #import "ArgumentDecoder.h"
 #import "ArgumentEncoder.h"
-#import "TextIndicator.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/DataDetectorsSPI.h>
+#import <WebCore/TextIndicator.h>
 
 namespace WebKit {
 
@@ -61,6 +61,7 @@ void ActionMenuHitTestResult::encode(IPC::ArgumentEncoder& encoder) const
         IPC::encode(encoder, reinterpret_cast<CFDataRef>(data.get()));
 
         encoder << detectedDataBoundingBox;
+        encoder << detectedDataOriginatingPageOverlay;
 
         bool hasTextIndicator = detectedDataTextIndicator;
         encoder << hasTextIndicator;
@@ -113,16 +114,19 @@ bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHi
         if (!decoder.decode(actionMenuHitTestResult.detectedDataBoundingBox))
             return false;
 
+        if (!decoder.decode(actionMenuHitTestResult.detectedDataOriginatingPageOverlay))
+            return false;
+
         bool hasTextIndicator;
         if (!decoder.decode(hasTextIndicator))
             return false;
 
         if (hasTextIndicator) {
-            TextIndicator::Data indicatorData;
+            WebCore::TextIndicatorData indicatorData;
             if (!decoder.decode(indicatorData))
                 return false;
 
-            actionMenuHitTestResult.detectedDataTextIndicator = TextIndicator::create(indicatorData);
+            actionMenuHitTestResult.detectedDataTextIndicator = WebCore::TextIndicator::create(indicatorData);
         }
     }
 

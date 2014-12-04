@@ -57,13 +57,14 @@ static inline bool isCSSTokenAString(int yytype)
     case ANYFUNCTION:
     case NOTFUNCTION:
     case CALCFUNCTION:
-    case MINFUNCTION:
+    case MATCHESFUNCTION:
     case MAXFUNCTION:
+    case MINFUNCTION:
     case NTHCHILDFUNCTIONS:
     case NTHCHILDSELECTORSEPARATOR:
 #if ENABLE_CSS_SELECTORS_LEVEL4
+    case DIRFUNCTION:
     case LANGFUNCTION:
-    case MATCHESFUNCTION:
     case ROLEFUNCTION:
 #endif
     case UNICODERANGE:
@@ -151,11 +152,11 @@ static bool selectorListDoesNotMatchAnyPseudoElement(const Vector<std::unique_pt
 %token MEDIA_SYM
 %token FONT_FACE_SYM
 %token CHARSET_SYM
+%token KEYFRAME_RULE_SYM
+%token KEYFRAMES_SYM
 %token NAMESPACE_SYM
 %token WEBKIT_RULE_SYM
 %token WEBKIT_DECLS_SYM
-%token WEBKIT_KEYFRAME_RULE_SYM
-%token WEBKIT_KEYFRAMES_SYM
 %token WEBKIT_VALUE_SYM
 %token WEBKIT_MEDIAQUERY_SYM
 #if ENABLE_PICTURE_SIZES
@@ -226,13 +227,14 @@ static bool selectorListDoesNotMatchAnyPseudoElement(const Vector<std::unique_pt
 %token <string> ANYFUNCTION
 %token <string> NOTFUNCTION
 %token <string> CALCFUNCTION
-%token <string> MINFUNCTION
+%token <string> MATCHESFUNCTION
 %token <string> MAXFUNCTION
+%token <string> MINFUNCTION
 %token <string> NTHCHILDFUNCTIONS
 
 #if ENABLE_CSS_SELECTORS_LEVEL4
+%token <string> DIRFUNCTION
 %token <string> LANGFUNCTION
-%token <string> MATCHESFUNCTION
 %token <string> ROLEFUNCTION
 #endif
 
@@ -395,7 +397,7 @@ stylesheet:
 
 webkit_rule: WEBKIT_RULE_SYM '{' maybe_space valid_rule maybe_space '}' { parser->m_rule = adoptRef($4); } ;
 
-webkit_keyframe_rule: WEBKIT_KEYFRAME_RULE_SYM '{' maybe_space keyframe_rule maybe_space '}' { parser->m_keyframe = adoptRef($4); } ;
+webkit_keyframe_rule: KEYFRAME_RULE_SYM '{' maybe_space keyframe_rule maybe_space '}' { parser->m_keyframe = adoptRef($4); } ;
 
 webkit_decls: WEBKIT_DECLS_SYM '{' maybe_space_before_declaration declaration_list '}' ;
 
@@ -803,7 +805,7 @@ before_keyframes_rule:
     ;
 
 keyframes:
-    before_keyframes_rule WEBKIT_KEYFRAMES_SYM maybe_space keyframe_name at_rule_header_end_maybe_space '{' at_rule_body_start maybe_space keyframes_rule closing_brace {
+    before_keyframes_rule KEYFRAMES_SYM maybe_space keyframe_name at_rule_header_end_maybe_space '{' at_rule_body_start maybe_space keyframes_rule closing_brace {
         $$ = parser->createKeyframesRule($4, std::unique_ptr<Vector<RefPtr<StyleKeyframe>>>($9)).leakRef();
     }
     ;
@@ -1363,20 +1365,6 @@ pseudo:
                 $$ = selector.release();
         }
     }
-
-#if ENABLE_CSS_SELECTORS_LEVEL4
-    | ':' LANGFUNCTION maybe_space comma_separated_identifiers maybe_space ')' {
-        $$ = nullptr;
-        if ($4) {
-          auto selector = std::make_unique<CSSParserSelector>();
-          selector->setMatch(CSSSelector::PseudoClass);
-          selector->setArgumentList(*std::unique_ptr<Vector<CSSParserString>>($4));
-          selector->setPseudoClassValue($2);
-          if (selector->pseudoClassType() == CSSSelector::PseudoClassLang)
-              $$ = selector.release();
-        }
-    }
-
     | ':' MATCHESFUNCTION maybe_space nested_selector_list maybe_space ')' {
         $$ = nullptr;
         if ($4) {
@@ -1386,6 +1374,29 @@ pseudo:
             selector->setPseudoClassValue($2);
             if (selector->pseudoClassType() == CSSSelector::PseudoClassMatches)
                 $$ = selector.release();
+        }
+    }
+
+#if ENABLE_CSS_SELECTORS_LEVEL4
+    | ':' DIRFUNCTION maybe_space IDENT maybe_space ')' {
+        $$ = nullptr;
+        auto selector = std::make_unique<CSSParserSelector>();
+        selector->setMatch(CSSSelector::PseudoClass);
+        selector->setArgument($4);
+        selector->setPseudoClassValue($2);
+        if (selector->pseudoClassType() == CSSSelector::PseudoClassDir)
+            $$ = selector.release();
+    }
+
+    | ':' LANGFUNCTION maybe_space comma_separated_identifiers maybe_space ')' {
+        $$ = nullptr;
+        if ($4) {
+          auto selector = std::make_unique<CSSParserSelector>();
+          selector->setMatch(CSSSelector::PseudoClass);
+          selector->setArgumentList(*std::unique_ptr<Vector<CSSParserString>>($4));
+          selector->setPseudoClassValue($2);
+          if (selector->pseudoClassType() == CSSSelector::PseudoClassLang)
+              $$ = selector.release();
         }
     }
 
@@ -1483,9 +1494,7 @@ pseudo:
         }
         $$ = selector.release();
     }
-
     // Definition of :not().
-#if ENABLE_CSS_SELECTORS_LEVEL4
     | ':' NOTFUNCTION maybe_space nested_selector_list maybe_space ')' {
         $$ = nullptr;
         if ($4 && selectorListDoesNotMatchAnyPseudoElement($4)) {
@@ -1497,21 +1506,6 @@ pseudo:
                 $$ = selector.release();
         }
     }
-#else
-    | ':' NOTFUNCTION maybe_space compound_selector maybe_space ')' {
-        std::unique_ptr<CSSParserSelector> selector($4);
-        $$ = nullptr;
-        if (selector && selector->isSimple()) {
-            $$ = new CSSParserSelector;
-            $$->setMatch(CSSSelector::PseudoClass);
-
-            Vector<std::unique_ptr<CSSParserSelector>> selectorVector;
-            selectorVector.append(WTF::move(selector));
-            $$->adoptSelectorVector(selectorVector);
-            $$->setPseudoClassValue($2);
-        }
-    }
-#endif
   ;
 
 declaration_list:
@@ -1889,9 +1883,9 @@ invalid_square_brackets_block: '[' error_recovery ']' | '[' error_recovery TOKEN
 invalid_parentheses_block: opening_parenthesis error_recovery closing_parenthesis;
 
 opening_parenthesis:
-    '(' | FUNCTION | CALCFUNCTION | MINFUNCTION | MAXFUNCTION | ANYFUNCTION | NOTFUNCTION
+    '(' | FUNCTION | CALCFUNCTION | MATCHESFUNCTION | MAXFUNCTION | MINFUNCTION | ANYFUNCTION | NOTFUNCTION
 #if ENABLE_CSS_SELECTORS_LEVEL4
-    | LANGFUNCTION | MATCHESFUNCTION | ROLEFUNCTION
+    | DIRFUNCTION | LANGFUNCTION | ROLEFUNCTION
 #endif
 #if ENABLE_VIDEO_TRACK
     | CUEFUNCTION

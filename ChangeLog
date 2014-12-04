@@ -1,3 +1,78 @@
+2014-12-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Add subtle crypto to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=138612
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-12-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Add a ENABLE_CSS_SCROLL_SNAP macro to CMake build system
+        https://bugs.webkit.org/show_bug.cgi?id=139085
+
+        Reviewed by Andreas Kling.
+
+        * Source/cmake/OptionsEfl.cmake: Add ENABLE_CSS_SCROLL_SNAP.
+        * Source/cmake/WebKitFeatures.cmake: ditto.
+        * Source/cmakeconfig.h.cmake: ditto.
+
+2014-11-30  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Drop support for the EFL 1.7
+        https://bugs.webkit.org/show_bug.cgi?id=139114
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/EFLHelpers.cmake: Removed.
+        * Source/cmake/FindEcore.cmake: Removed.
+        * Source/cmake/FindEdje.cmake: Removed.
+        * Source/cmake/FindEet.cmake: Removed.
+        * Source/cmake/FindEeze.cmake: Removed.
+        * Source/cmake/FindEfreet.cmake: Removed.
+        * Source/cmake/FindEina.cmake: Removed.
+        * Source/cmake/FindElementary.cmake: Removed.
+        * Source/cmake/FindEvas.cmake: Removed.
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-11-28  Philippe Normand  <pnormand@igalia.com>
+
+        [CMake] Build failure against GStreamer git master
+        https://bugs.webkit.org/show_bug.cgi?id=138872
+
+        Reviewed by Csaba Osztrogon.
+
+        * Source/cmake/FindGStreamer.cmake: Simplified the
+        FIND_GSTREAMER_COMPONENT macro. Trust pkg-config for include
+        headers lookup, there's no need to do this manually. Also
+        explicitely check the version specified in GStreamer_FIND_VERSION.
+
+2014-11-27  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Remove E_Dbus dependency
+        https://bugs.webkit.org/show_bug.cgi?id=136355
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/FindE_DBus.cmake: Removed.
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-11-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.7.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2014-11-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [CMake] Use ld.gold if it is available to speedup builds
+        https://bugs.webkit.org/show_bug.cgi?id=137953
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsCommon.cmake:
+
 2014-11-19  Akos Kiss  <akiss@inf.u-szeged.hu>
 
         Fix the detection of toolchain support for Cortex-A53 erratum 835769 workaround

@@ -1,3 +1,1235 @@
+2014-12-03  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: updating some tests as skips instead of crashes.
+        <https://webkit.org/b/139224>
+
+        Not reviewed.
+
+        * platform/wk2/TestExpectations:
+
+2014-12-03  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: marking some tests as crashes.
+        <https://webkit.org/b/139224>
+
+        Not reviewed.
+
+        * platform/wk2/TestExpectations:
+
+2014-12-02  Dean Jackson  <dino@apple.com>
+
+        [Media] Audio content shouldn't have fullscreen buttons, even if in a video element
+        https://bugs.webkit.org/show_bug.cgi?id=139200
+        <rdar://problem/18914506>
+
+        Reviewed by Eric Carlson.
+
+        Loads an audio file via the video element and checks if the
+        fullscreen button is visible.
+
+        * media/audio-as-video-fullscreen-expected.txt: Added.
+        * media/audio-as-video-fullscreen.html: Added.
+
+2014-12-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Add subtle crypto to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=138612
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/efl/TestExpectations:
+
+2014-12-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        Little cleanup of the default stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=139168
+
+        Reviewed by Antti Koivisto.
+
+        Test the default display type of <map> since it is not longer explicitely set.
+
+        * fast/css/map-tag-default-display-expected.html: Added.
+        * fast/css/map-tag-default-display.html: Added.
+        * fast/selectors/map-tag-default-display-expected.txt: Added.
+        * fast/selectors/map-tag-default-display.html: Added.
+
+2014-12-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Table captions and table rows are missing from the accessible hierarchy
+        https://bugs.webkit.org/show_bug.cgi?id=139005
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-table-hierarchy.html: Added.
+        * accessibility/roles-exposed.html: Removed comment pointing to this bug.
+        * accessibility/table-hierarchy.html: Added.
+        * platform/efl/accessibility/aria-table-hierarchy-expected.txt: Added.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated to reflect new behavior.
+        * platform/efl/accessibility/table-detection-expected.txt: Updated to reflect new behavior.
+        * platform/efl/accessibility/table-hierarchy-expected.txt: Added.
+        * platform/efl/accessibility/table-roles-hierarchy-expected.txt: Added.
+        * platform/efl/accessibility/table-with-rules-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/aria-table-hierarchy-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/aria-table-hierarchy.html: Removed (made into a shared test).
+        * platform/gtk/accessibility/caret-offsets-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/caret-offsets.html: Modified to handle inclusion of rows.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-hierarchy-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-hierarchy.html: Removed (made into a shared test).
+        * platform/gtk/accessibility/table-roles-hierarchy-expected.txt: Added.
+        * platform/gtk/accessibility/table-with-rules-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/text-for-range-table-cells.html: Updated to reflect new behavior.
+        * platform/mac/accessibility/aria-table-hierarchy-expected.txt: Added.
+        * platform/mac/accessibility/table-hierarchy-expected.txt: Added.
+
+2014-12-02  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting 'flex' CSS property to 'calc(2 * 3) calc(2 * 3)'
+        https://bugs.webkit.org/show_bug.cgi?id=139162
+
+        Reviewed by Darin Adler.
+
+        Add layout test for calculated value support for 'flex' CSS property.
+
+        * fast/css/flex-calculated-value-expected.txt: Added.
+        * fast/css/flex-calculated-value.html: Added.
+
+2014-12-02  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting 'column-span' CSS property to 'calc(2 * 3)'
+        https://bugs.webkit.org/show_bug.cgi?id=139170
+
+        Reviewed by Darin Adler.
+
+        Add layout tests to test calculated values for 'column-span'
+        and 'column-width' CSS properties.
+
+        * fast/css/column-width-calculated-value-expected.txt: Added.
+        * fast/css/column-width-calculated-value.html: Added.
+        * fast/css/webkit-column-span-calculated-value-expected.txt: Added.
+        * fast/css/webkit-column-span-calculated-value.html: Added.
+
+2014-12-02  Sylvain Galineau  <galineau@adobe.com>
+
+    Missing support for innerHTML on SVGElement
+    https://bugs.webkit.org/show_bug.cgi?id=136903
+
+        Reviewed by Dean Jackson.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt: The property enumeration order is different now that inner/outerHTML are inherited from Element
+        * platform/mac/svg/in-html/svg-inner-html-expected.png: Added.
+        * svg/css/svg-attribute-length-parsing-expected.txt:
+        Now that innerHTML works, the output should start with 'Test'
+        * svg/in-html/svg-inner-html-expected.txt: Added.
+        * svg/in-html/svg-inner-html.html: Added.
+
+2014-12-02  Andrzej Badowski  <a.badowski@samsung.com>
+
+        REGRESSION(r176122): [GTK] Layout Test platform/gtk/accessibility/table-hierarchy.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=139125
+
+        Reviewed by Chris Fleizach.
+
+        Update test and expectation to fix regression.
+
+        * platform/gtk/accessibility/table-hierarchy-expected.txt:
+        * platform/gtk/accessibility/table-hierarchy.html:
+
+2014-12-01  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add the dynamic specificity of the selector list argument when matching :nth-child() and :nth-last-child()
+        https://bugs.webkit.org/show_bug.cgi?id=139001
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/nth-child-specificity-1-expected.html: Added.
+        * fast/css/nth-child-specificity-1.html: Added.
+        * fast/css/nth-child-specificity-2-expected.html: Added.
+        * fast/css/nth-child-specificity-2.html: Added.
+        * fast/css/nth-child-specificity-3-expected.html: Added.
+        * fast/css/nth-child-specificity-3.html: Added.
+        * fast/css/nth-child-specificity-4-expected.html: Added.
+        * fast/css/nth-child-specificity-4.html: Added.
+        * fast/css/nth-last-child-specificity-1-expected.html: Added.
+        * fast/css/nth-last-child-specificity-1.html: Added.
+        * fast/css/nth-last-child-specificity-2-expected.html: Added.
+        * fast/css/nth-last-child-specificity-2.html: Added.
+        * fast/css/nth-last-child-specificity-3-expected.html: Added.
+        * fast/css/nth-last-child-specificity-3.html: Added.
+        * fast/css/nth-last-child-specificity-4-expected.html: Added.
+        * fast/css/nth-last-child-specificity-4.html: Added.
+
+
+2014-12-01  Zalan Bujtas  <zalan@apple.com>
+
+        Twitter avatar moves when hovering/unhovering the "follow" button.
+        https://bugs.webkit.org/show_bug.cgi?id=139147
+        rdar://problem/19096508
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that the out of flow positioned render boxes (RenderReplaced) do not
+        get repositioned when their inline box wrappers move.
+        Ideally, out of flow positioned renderers do not have inline wrappers by the time we start
+        placing inline boxes, but in certain case (optimized code path for descendantsHaveSameLineHeightAndBaseline()),
+        they are still part of the inline box tree.
+        This patch prevents those renderer boxes from getting positioned as part of the inline box placement.
+        They will get removed later at RenderBlockFlow::computeBlockDirectionPositionsForLine().
+
+        * fast/inline/out-of-flow-positioned-render-replaced-box-moves-expected.html: Added.
+        * fast/inline/out-of-flow-positioned-render-replaced-box-moves.html: Added.
+
+2014-12-01  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Unskip LayoutTests/dom tests
+
+        * platform/ios-simulator/TestExpectations:
+
+2014-12-01  Chris Dumez  <cdumez@apple.com>
+
+        Take into consideration canvas drawing for throttling DOM timers
+        https://bugs.webkit.org/show_bug.cgi?id=139140
+        <rdar://problem/19102218>
+
+        Reviewed by Andreas Kling.
+
+        Add layout tests to test that we take into consideration canvas drawing
+        when considering if we should throttle DOM timers.
+
+        * fast/canvas/canvas-inside-viewport-timer-throttling-expected.txt: Added.
+        * fast/canvas/canvas-inside-viewport-timer-throttling.html: Added.
+        * fast/canvas/canvas-outside-viewport-timer-throttling-expected.txt: Added.
+        * fast/canvas/canvas-outside-viewport-timer-throttling.html: Added.
+
+2014-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Crash in Font::dashesForIntersectionsWithRect() due to underlining SVG fonts
+        https://bugs.webkit.org/show_bug.cgi?id=139158
+
+        Reviewed by Simon Fraser.
+
+        Test for no crashes when the primary SimpleFontData and the first character's
+        SimpleFontData differ in their SVG-ness.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/decoration-skip-crash-fallback-svg-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/decoration-skip-crash-fallback-svg.html: Added.
+
+2014-12-01  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Update expected results for LayoutTests/crypto
+
+        * platform/ios-simulator/TestExpectations:
+
+2014-12-01  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Skip some animation tests that time out in iOS WebKit2
+
+        * platform/ios-simulator-wk2/TestExpectations: Added.
+
+2014-12-01  Alexey Proskuryakov  <ap@apple.com>
+
+        http tests should not use shared temporary files, part 3
+        https://bugs.webkit.org/show_bug.cgi?id=139135
+
+        Reviewed by Tim Horton.
+
+        Fix ping tests, using the same techniques as before.
+
+        * http/tests/navigation/image-load-in-unload-handler.html:
+        * http/tests/navigation/ping-cross-origin-from-https.html:
+        * http/tests/navigation/resources/check-ping.php:
+        * http/tests/navigation/resources/delete-ping.php:
+        * http/tests/navigation/resources/image-load-in-unload-handler-2.html: Copied from LayoutTests/http/tests/navigation/resources/ping-redirect.html.
+        * http/tests/navigation/resources/ping-file-path.php: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/resources/report-file-path.php.
+        * http/tests/navigation/resources/ping-redirect.html: Removed.
+        * http/tests/navigation/resources/save-Ping.php:
+
+2014-12-01  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/11358748> http/tests/multipart/multipart-wait-before-boundary.html fails on ML as of r115745
+
+        Looks like it no longer fails.
+
+        * platform/mac/TestExpectations:
+        * platform/wk2/TestExpectations:
+        Removed it from test expectations.
+
+2014-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOMExceptions do not show the error message string in Pause Reason section
+        https://bugs.webkit.org/show_bug.cgi?id=138988
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/command-line-api-exception-expected.txt:
+
+2014-12-01  Bartlomiej Gajda  <b.gajda@samsung.com>
+
+        [MSE] Unset timestamps of trackbuffers during Reset Parser State algorithm.
+        https://bugs.webkit.org/show_bug.cgi?id=139075.
+
+        Reviewed by Jer Noble.
+
+        Specification requires from us to unset timestamps for trackBuffers during abort() method.
+        Tests appendBuffer() with first sync sample, then aborts after a few more samples, and emits
+        a few more non-sync samples, so they should be dropped, as trackBuffer will have
+        needRandomAccessFlag set.
+
+        * media/media-source/media-source-append-nonsync-sample-after-abort-expected.txt: Added.
+        * media/media-source/media-source-append-nonsync-sample-after-abort.html: Added.
+
+2014-11-28  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [ATK] Allowing the use of AccessibilityUIElement::columnHeaders method for table.
+        https://bugs.webkit.org/show_bug.cgi?id=139044
+
+        Reviewed by Chris Fleizach.
+
+        ATK method AccessibilityUIElement::columnHeaders currently focused only on the object table cell.
+        The proposed solution will enable the use of this method for the object table.
+        Existing test shows the result.
+
+        * accessibility/table-column-headers-with-captions.html: Updated for ATK platform.
+        * platform/efl/accessibility/table-column-headers-with-captions-expected.txt: Added.
+        * platform/gtk/TestExpectations: Updated for GTK.
+        * platform/gtk/accessibility/table-column-headers-with-captions-expected.txt: Added.
+
+2014-11-27  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Meter and Option elements do not expose their id attribute
+        https://bugs.webkit.org/show_bug.cgi?id=139017
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/roles-exposed.html: Unskipped the meter element test.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated to reflect fixes.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated to reflect fixes.
+
+2014-11-27  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [GTK] Unreviewed GTK gardening. 
+        https://bugs.webkit.org/show_bug.cgi?id=139061
+
+        rebaseline after r176354.
+
+        * platform/gtk/fast/multicol/tall-image-behavior-expected.png: Added.
+        * platform/gtk/fast/multicol/tall-image-behavior-expected.txt: Added.
+        * platform/gtk/fast/multicol/tall-image-behavior-lr-expected.png: Added.
+        * platform/gtk/fast/multicol/tall-image-behavior-lr-expected.txt: Added.
+        * platform/gtk/fast/multicol/tall-image-behavior-rl-expected.png: Added.
+        * platform/gtk/fast/multicol/tall-image-behavior-rl-expected.txt: Added.
+
+2014-11-26  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Unreviewed EFL gardening after r176354.
+        https://bugs.webkit.org/show_bug.cgi?id=139060
+
+        rebaseline after r176354.
+
+        * platform/efl/fast/multicol/tall-image-behavior-expected.png: Added.
+        * platform/efl/fast/multicol/tall-image-behavior-expected.txt: Added.
+        * platform/efl/fast/multicol/tall-image-behavior-lr-expected.png: Added.
+        * platform/efl/fast/multicol/tall-image-behavior-lr-expected.txt: Added.
+        * platform/efl/fast/multicol/tall-image-behavior-rl-expected.png: Added.
+        * platform/efl/fast/multicol/tall-image-behavior-rl-expected.txt: Added.
+
+2014-11-25  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Add parsing for :dir()
+        https://bugs.webkit.org/show_bug.cgi?id=138932
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/css/css-selector-text-expected.txt:
+        * fast/css/css-selector-text.html:
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+        * fast/selectors/invalid-functional-pseudo-class-expected.txt:
+        * fast/selectors/invalid-functional-pseudo-class.html:
+
+2014-11-25  Alejandro G. Castro  <alex@igalia.com>
+
+        Unreviewed, upload two missing test files in the commit r174677.
+
+        * mathml/presentation/mo-stretch-update-expected.html: Added.
+        * mathml/presentation/mo-stretch-update.html: Added.
+
+2014-11-24  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Fix the parsing and re-serialization of :lang pseudo class selector when it has multiple arguments with same value
+        https://bugs.webkit.org/show_bug.cgi?id=139013
+
+        Reviewed by Benjamin Poulain.
+
+        Updated tests to verify the parsing and serialization of :lang pseudo class
+        selector when it has multiple arguments with same value.
+
+        * fast/css/css-selector-text-expected.txt: Updated to cover fix.
+        * fast/css/css-selector-text.html: Updated to cover fix.
+
+2014-11-24  Antti Koivisto  <antti@apple.com>
+
+        Avoid String concatenation with line break iterator
+        https://bugs.webkit.org/show_bug.cgi?id=139034
+
+        Reviewed by Zalan Bujtas.
+
+        Test that there is no implicit break point between Text nodes.
+
+        * fast/text/simple-lines-multiple-renderers-break-expected.html: Added.
+        * fast/text/simple-lines-multiple-renderers-break.html: Added.
+
+2014-11-24  Zalan Bujtas  <zalan@apple.com>
+
+        SimpleLineLayout::canUseFor() should iterate through RenderTexts to check if their content is eligible for simple line layout.
+        https://bugs.webkit.org/show_bug.cgi?id=139007
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-multiple-renderers-non-breaking-space-expected.html: Added.
+        * fast/text/simple-line-layout-multiple-renderers-non-breaking-space.html: Added.
+        * fast/text/simple-line-layout-multiple-renderers-with-float-expected.html: Added.
+        * fast/text/simple-line-layout-multiple-renderers-with-float.html: Added.
+
+2014-11-24  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: fast/text/simple-lines-multiple-renderers test has the wrong content.
+        https://bugs.webkit.org/show_bug.cgi?id=139036
+
+        Swap simple-lines-multiple-renderers.html and simple-lines-multiple-renderers-expected.html
+
+        * fast/text/simple-lines-multiple-renderers-expected.html:
+        * fast/text/simple-lines-multiple-renderers.html:
+
+2014-11-24  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Unskip the skipped ATK tests in roles-exposed.html
+        https://bugs.webkit.org/show_bug.cgi?id=139016
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/roles-exposed.html: Unskipped a bunch of tests.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated for unskipped tests.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated for unskipped tests.
+
+2014-11-22  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Accessible names missing for imagemap images and links
+        https://bugs.webkit.org/show_bug.cgi?id=127288
+
+        New and updated tests to reflect the expected role, accessible hierarchy,
+        and exposure of the alternative text for each platform.
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/image-with-alt-and-map.html: Added.
+        * accessibility/roles-exposed.html: Added some more elements to the test.
+        * platform/efl/accessibility/image-map1-expected.txt: Added.
+        * platform/efl/accessibility/image-map2-expected.txt: Updated to reflect fix.
+        * platform/efl/accessibility/image-with-alt-and-map-expected.txt: Added.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated for added elements.
+        * platform/gtk/accessibility/image-map1-expected.txt: Added.
+        * platform/gtk/accessibility/image-map2-expected.txt: Updated to reflect fix.
+        * platform/gtk/accessibility/image-with-alt-and-map-expected.txt: Added.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated for added elements.
+        * platform/mac/accessibility/image-with-alt-and-map-expected.txt: Added.
+        * platform/mac/accessibility/roles-exposed-expected.txt: Updated for added elements.
+        * platform/mac-mavericks/accessibility/roles-exposed-expected.txt: Updated for added elements.
+        * platform/mac-mountainlion/accessibility/roles-exposed-expected.txt: Updated for added elements.
+
+2014-11-21  Chris Dumez  <cdumez@apple.com>
+
+        Throttled DOMTimers can prevent their document from being garbage collected
+        https://bugs.webkit.org/show_bug.cgi?id=138915
+
+        Reviewed by Andreas Kling.
+
+        Improve fast/dom/throttled-timer-running-on-document-destruction.html
+        layout test to cover the case where the throttled timer is changing the
+        style of an element on the *same* document when the document is
+        destroyed.
+
+        * fast/dom/resources/frame-with-throttled-timer-animating-element-other-document.html: Renamed from LayoutTests/fast/dom/resources/frame-with-throttled-timer.html.
+        * fast/dom/resources/frame-with-throttled-timer-animating-element-same-document.html: Added.
+        * fast/dom/throttled-timer-running-on-document-destruction.html:
+
+2014-11-21  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Regression(r176202): line-height is wrong on marco.org
+        https://bugs.webkit.org/show_bug.cgi?id=138970
+
+        Reviewed by Simon Fraser.
+
+        Add layout test to cover line-height CSS property and its interaction
+        with -webkit-text-size-adjust.
+
+        * fast/css/line-height-text-autosizing-expected.txt: Added.
+        * fast/css/line-height-text-autosizing.html: Added.
+        * platform/ios-simulator/fast/css/line-height-text-autosizing-expected.txt: Added.
+
+2014-11-21  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Unclear that user and password are autofilled, no VoiceOver version of the yellow outline.
+        https://bugs.webkit.org/show_bug.cgi?id=138904
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/auto-filled-value.html: Added.
+        * platform/mac/accessibility/auto-filled-value-expected.txt: Added.
+
+2014-11-21  Michael Saboff  <msaboff@apple.com>
+
+        Allocate local ScopeChain register
+        https://bugs.webkit.org/show_bug.cgi?id=138793
+
+        Reviewed by Geoffrey Garen.
+
+        New test that sets a breakpoint in a callee of a DFG caller.  While stopped in the
+        breakpoint, it modifies a global via the scope chain of the DFG caller as well as
+        a local of the DFG caller.
+
+        * inspector-protocol/debugger/resources/breakpoint.js:
+        (notInlineable3):
+        (dfgWithoutInline3):
+        * inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local-expected.txt: Added.
+        * inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html: Added.
+
+2014-11-21  Glenn Adams  <glenn@skynav.com> and Myles C. Maxfield  <mmaxfield@apple.com>
+
+        CSS3: line-break property support
+        https://bugs.webkit.org/show_bug.cgi?id=89235
+
+        Reviewed by Eric Seidel and Dave Hyatt.
+
+        * platform/mac/TestExpectations: Mark css3/line-break tests as passing.
+
+2014-11-21  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r175259) Simple line layout text measuring behavior changed.
+        https://bugs.webkit.org/show_bug.cgi?id=138947
+        rdar://problem/19050653
+
+        Reviewed by Antti Koivisto.
+
+        In certain cases, when block flow needs to compute the preferred width of a particular text
+        renderer, we use the non-simple line layout text measuring.
+        However, the same text renderer might end up at simple line layout later.
+        Complex line layout measures text including the trailing space and it subtracts
+        (the constant value of) space width afterwards, while simple line layout measures
+        runs without the extra space.
+        In such cases, this may result different word widths and produce unexpected line breaking. (preferred width != final width)
+        In long term, any text renderer qualified for simple line layout should go through the simple
+        text measuring code path. (https://bugs.webkit.org/show_bug.cgi?id=138973)
+        For now, just copy complex line layout behaviour. This also matches the previous simple line layout line breaking implementation.
+
+        * fast/text/simple-line-text-measuring-with-trailing-space-expected.html: Added.
+        * fast/text/simple-line-text-measuring-with-trailing-space.html: Added.
+
+2014-11-21  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting 'transition-delay' CSS property to a calculated value
+        https://bugs.webkit.org/show_bug.cgi?id=138784
+
+        Reviewed by Sam Weinig.
+
+        Add a layout test to check that setting the 'transition-delay' CSS
+        property to a calculated value does not crash and works as intended.
+
+        * fast/css/transition-delay-calculated-value-expected.txt: Added.
+        * fast/css/transition-delay-calculated-value.html: Added.
+
+2014-11-20  Roger Fong  <roger_fong@apple.com>
+
+        Two WebGL tests try to use an external resource.
+        https://bugs.webkit.org/show_bug.cgi?id=138936.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/resources/square128.png: Added.
+        * http/tests/webgl/1.0.2/resources/webgl_test_files/conformance/more/functions/texImage2DHTML.html:
+        * http/tests/webgl/1.0.2/resources/webgl_test_files/conformance/more/functions/texSubImage2DHTML.html:
+        * http/tests/webgl/1.0.2/texImage2DHTML-expected.txt:
+        * http/tests/webgl/1.0.2/texSubImage2DHTML-expected.txt:
+
+2014-11-21  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r175381): -webkit-mask-box-image is broken
+        https://bugs.webkit.org/show_bug.cgi?id=138969
+        <rdar://problem/19054471>
+
+        Reviewed by Simon Fraser.
+
+        Add a layout test to add basic coverage for -webkit-mask-box-image
+        CSS property.
+
+        * fast/css/resources/mask.png: Added.
+        * fast/css/webkit-mask-box-image.html: Added.
+        * fast/css/webkit-mask-box-image-expected.html: Added
+
+2014-11-21  Chris Dumez  <cdumez@apple.com>
+
+        Crash when setting 'font' CSS property to 'calc(2 * 3)'
+        https://bugs.webkit.org/show_bug.cgi?id=138933
+
+        Reviewed by Darin Adler.
+
+        Add a layout test to cover the case where the 'font' CSS property is
+        set to a value whose weight is a calculated value, to make sure it
+        does not crash and behaves as intended.
+
+        * fast/css/font-calculated-value-expected.txt: Added.
+        * fast/css/font-calculated-value.html: Added.
+
+2014-11-21  Bear Travis  <betravis@gmail.com>
+
+        [CSS Font Loading] Switch to dispatching events asynchronously
+        https://bugs.webkit.org/show_bug.cgi?id=138755
+
+        Reviewed by Simon Fraser.
+
+        Refactoring tests to check for all events only after the FontLoader
+        itself has completed. Tests were previously checking after a specific font
+        had loaded, at which point some of the events may have yet to fire.
+
+        * fast/css/fontloader-multiple-faces-download-error-expected.txt:
+        * fast/css/fontloader-multiple-faces-download-error.html:
+        * fast/css/fontloader-multiple-faces-expected.txt:
+        * fast/css/fontloader-multiple-faces.html:
+        * fast/css/fontloader-multiple-families-expected.txt:
+        * fast/css/fontloader-multiple-families.html:
+        * fast/css/fontloader-svg-select-expected.txt: Added
+        * fast/css/fontloader-svg-select.svg: Added
+
+2014-11-21  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: MathML expressions are misread by VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=138948
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/mathml-root-expected.txt: Added.
+        * platform/mac/accessibility/mathml-root.html: Added.
+
+2014-11-20  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Skip some tests that fail with stderr
+
+        * platform/ios-simulator/TestExpectations:
+
+2014-11-20  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (174986): CSS clip property is ignored when border-radius is present.
+        https://bugs.webkit.org/show_bug.cgi?id=138935
+        rdar://problem/18965984
+
+        Reviewed by Simon Fraser.
+
+        Revert back to r163382 and fix bug 127729 properly. Save the graphics context when paint and clip rects are
+        the same, but the clip rect has radius.
+        Each iteration on ::clipRect() from r163382 onwards just introduced yet another regression.
+
+        * fast/clip/css-clip-does-not-work-when-border-radius-is-present-expected.html: Added.
+        * fast/clip/css-clip-does-not-work-when-border-radius-is-present.html: Added.
+
+2014-11-20  Dean Jackson  <dino@apple.com>
+
+        Support unprefixed animation event types
+        https://bugs.webkit.org/show_bug.cgi?id=138931
+        <rdar://problem/18943167>
+
+        Reviewed by Simon Fraser.
+
+        Add a test for unprefixed animation event names, as well
+        as a test that ensures we don't get multiple dispatches if
+        we're still listening for the old events.
+
+        And for the older tests, just add the new things from the
+        window namespace.
+
+        * animations/unprefixed-events-expected.txt: Added.
+        * animations/unprefixed-events-mixed-with-prefixed-expected.txt: Added.
+        * animations/unprefixed-events-mixed-with-prefixed.html: Added.
+        * animations/unprefixed-events.html: Added.
+
+        * fast/events/event-creation-expected.txt:
+        * fast/events/event-creation.html:
+        * js/dom/constructor-length.html:
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/constructor-length-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/constructor-length-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/constructor-length-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+
+2014-11-20  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Update TestExpectation file for LayoutTests/canvas tests
+
+        Also skip some LayoutTests/animation tests that are flaky or fail due to an assertion failure.
+
+        * platform/ios-simulator/TestExpectations:
+
+2014-11-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip flaky inspector-protocol/debugger tests.
+        webkit.org/b/100846, webkit.org/b/136715
+
+        * platform/mac/TestExpectations:
+
+2014-11-20  Alexey Proskuryakov  <ap@apple.com>
+
+        http tests should not use shared temporary files, part 2
+        https://bugs.webkit.org/show_bug.cgi?id=138894
+
+        Rubber-stamped by Tim Horton.
+
+        Made more scripts that access local files use per-test files. Some tests could use
+        HTTP referrer, others needed explicit parameters.
+
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-allow.html:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-block.html:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-empty.html:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-filter.html:
+        * http/tests/security/contentSecurityPolicy/1.1/reflected-xss-invalid.html:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-child-frame-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-child-frame.html:
+        * http/tests/security/contentSecurityPolicy/resources/echo-report.php:
+        * http/tests/security/contentSecurityPolicy/resources/generate-csp-report.html: Removed.
+        * http/tests/security/contentSecurityPolicy/resources/generate-csp-report.php: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/resources/generate-csp-report.html.
+        * http/tests/security/contentSecurityPolicy/resources/go-to-echo-report.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/reflected-xss-and-xss-protection.js:
+        (testMixedHeader):
+        * http/tests/security/contentSecurityPolicy/resources/report-file-path.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/save-report.php:
+        * http/tests/security/contentSecurityPolicy/xmlhttprequest-protected-resource-does-not-crash.html:
+        * http/tests/security/xssAuditor/block-does-not-leak-location-expected.txt:
+        * http/tests/security/xssAuditor/block-does-not-leak-location.html:
+        * http/tests/security/xssAuditor/block-does-not-leak-referrer.html:
+        * http/tests/security/xssAuditor/cookie-injection-expected.txt:
+        * http/tests/security/xssAuditor/cookie-injection.html:
+        * http/tests/security/xssAuditor/embed-tag-code-attribute-2-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-code-attribute-2.html:
+        * http/tests/security/xssAuditor/embed-tag-code-attribute-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-code-attribute.html:
+        * http/tests/security/xssAuditor/embed-tag-control-char-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-control-char.html:
+        * http/tests/security/xssAuditor/embed-tag-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-javascript-url-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-javascript-url.html:
+        * http/tests/security/xssAuditor/embed-tag-null-char-expected.txt:
+        * http/tests/security/xssAuditor/embed-tag-null-char.html:
+        * http/tests/security/xssAuditor/embed-tag.html:
+        * http/tests/security/xssAuditor/faux-script1.html:
+        * http/tests/security/xssAuditor/faux-script2.html:
+        * http/tests/security/xssAuditor/faux-script3.html:
+        * http/tests/security/xssAuditor/form-action-expected.txt:
+        * http/tests/security/xssAuditor/form-action.html:
+        * http/tests/security/xssAuditor/formaction-on-button-expected.txt:
+        * http/tests/security/xssAuditor/formaction-on-button.html:
+        * http/tests/security/xssAuditor/formaction-on-input-expected.txt:
+        * http/tests/security/xssAuditor/formaction-on-input.html:
+        * http/tests/security/xssAuditor/frameset-injection-expected.txt:
+        * http/tests/security/xssAuditor/frameset-injection.html:
+        * http/tests/security/xssAuditor/full-block-get-from-iframe-expected.txt:
+        * http/tests/security/xssAuditor/full-block-get-from-iframe.html:
+        * http/tests/security/xssAuditor/full-block-iframe-javascript-url-expected.txt:
+        * http/tests/security/xssAuditor/full-block-iframe-javascript-url.html:
+        * http/tests/security/xssAuditor/full-block-iframe-no-inherit-expected.txt:
+        * http/tests/security/xssAuditor/full-block-iframe-no-inherit.php:
+        * http/tests/security/xssAuditor/full-block-link-onclick-expected.txt:
+        * http/tests/security/xssAuditor/full-block-link-onclick.html:
+        * http/tests/security/xssAuditor/full-block-object-tag-expected.txt:
+        * http/tests/security/xssAuditor/full-block-object-tag.html:
+        * http/tests/security/xssAuditor/full-block-post-from-iframe.html:
+        * http/tests/security/xssAuditor/full-block-script-tag-cross-domain-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-cross-domain.html:
+        * http/tests/security/xssAuditor/full-block-script-tag-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-with-source-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-with-source.html:
+        * http/tests/security/xssAuditor/full-block-script-tag.html:
+        * http/tests/security/xssAuditor/get-from-iframe-expected.txt:
+        * http/tests/security/xssAuditor/get-from-iframe.html:
+        * http/tests/security/xssAuditor/iframe-injection-allowed-2.html:
+        * http/tests/security/xssAuditor/iframe-injection-allowed-3.html:
+        * http/tests/security/xssAuditor/iframe-injection-allowed.html:
+        * http/tests/security/xssAuditor/iframe-injection-expected.txt:
+        * http/tests/security/xssAuditor/iframe-injection.html:
+        * http/tests/security/xssAuditor/iframe-javascript-url-expected.txt:
+        * http/tests/security/xssAuditor/iframe-javascript-url-more-encoding-expected.txt:
+        * http/tests/security/xssAuditor/iframe-javascript-url-more-encoding.html:
+        * http/tests/security/xssAuditor/iframe-javascript-url-twice-url-encode-expected.txt:
+        * http/tests/security/xssAuditor/iframe-javascript-url-twice-url-encode.html:
+        * http/tests/security/xssAuditor/iframe-javascript-url-twice-url-encode2-expected.txt:
+        * http/tests/security/xssAuditor/iframe-javascript-url-twice-url-encode2.html:
+        * http/tests/security/xssAuditor/iframe-javascript-url-twice-url-encode3-expected.txt:
+        * http/tests/security/xssAuditor/iframe-javascript-url-twice-url-encode3.html:
+        * http/tests/security/xssAuditor/iframe-javascript-url-url-encoded-expected.txt:
+        * http/tests/security/xssAuditor/iframe-javascript-url-url-encoded.html:
+        * http/tests/security/xssAuditor/iframe-javascript-url.html:
+        * http/tests/security/xssAuditor/iframe-onload-GBK-char-expected.txt:
+        * http/tests/security/xssAuditor/iframe-onload-GBK-char.html:
+        * http/tests/security/xssAuditor/iframe-onload-in-svg-tag-expected.txt:
+        * http/tests/security/xssAuditor/iframe-onload-in-svg-tag.html:
+        * http/tests/security/xssAuditor/iframe-srcdoc-expected.txt:
+        * http/tests/security/xssAuditor/iframe-srcdoc.html:
+        * http/tests/security/xssAuditor/img-onerror-GBK-char-expected.txt:
+        * http/tests/security/xssAuditor/img-onerror-GBK-char.html:
+        * http/tests/security/xssAuditor/img-onerror-accented-char-expected.txt:
+        * http/tests/security/xssAuditor/img-onerror-accented-char.html:
+        * http/tests/security/xssAuditor/img-onerror-non-ASCII-char-expected.txt:
+        * http/tests/security/xssAuditor/img-onerror-non-ASCII-char.html:
+        * http/tests/security/xssAuditor/img-onerror-non-ASCII-char2-expected.txt:
+        * http/tests/security/xssAuditor/img-onerror-non-ASCII-char2.html:
+        * http/tests/security/xssAuditor/img-onerror-tricky.html:
+        * http/tests/security/xssAuditor/img-tag-with-comma-expected.txt:
+        * http/tests/security/xssAuditor/img-tag-with-comma.html:
+        * http/tests/security/xssAuditor/inline-event-HTML-entities-expected.txt:
+        * http/tests/security/xssAuditor/inline-event-HTML-entities.html:
+        * http/tests/security/xssAuditor/link-onclick-ampersand-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-ampersand.html:
+        * http/tests/security/xssAuditor/link-onclick-control-char-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-control-char.html:
+        * http/tests/security/xssAuditor/link-onclick-entities-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-entities.html:
+        * http/tests/security/xssAuditor/link-onclick-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-null-char-expected.txt:
+        * http/tests/security/xssAuditor/link-onclick-null-char.html:
+        * http/tests/security/xssAuditor/link-onclick.html:
+        * http/tests/security/xssAuditor/link-opens-new-window-expected.txt:
+        * http/tests/security/xssAuditor/link-opens-new-window.html:
+        * http/tests/security/xssAuditor/malformed-HTML-expected.txt:
+        * http/tests/security/xssAuditor/malformed-HTML.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-1-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-1.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-2-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-2.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-3-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-3.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-4-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-4.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-5-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-5.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-6-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-6.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-7-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-7.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-8-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-8.html:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-9-expected.txt:
+        * http/tests/security/xssAuditor/malformed-xss-protection-header-9.html:
+        * http/tests/security/xssAuditor/no-protection-script-tag.html:
+        * http/tests/security/xssAuditor/object-embed-tag-control-char-expected.txt:
+        * http/tests/security/xssAuditor/object-embed-tag-control-char.html:
+        * http/tests/security/xssAuditor/object-embed-tag-expected.txt:
+        * http/tests/security/xssAuditor/object-embed-tag-null-char-expected.txt:
+        * http/tests/security/xssAuditor/object-embed-tag-null-char.html:
+        * http/tests/security/xssAuditor/object-embed-tag.html:
+        * http/tests/security/xssAuditor/object-tag-expected.txt:
+        * http/tests/security/xssAuditor/object-tag-javascript-url-expected.txt:
+        * http/tests/security/xssAuditor/object-tag-javascript-url.html:
+        * http/tests/security/xssAuditor/object-tag.html:
+        * http/tests/security/xssAuditor/open-event-handler-iframe-expected.txt:
+        * http/tests/security/xssAuditor/open-event-handler-iframe.html:
+        * http/tests/security/xssAuditor/open-iframe-src-03-expected.txt:
+        * http/tests/security/xssAuditor/open-iframe-src-03.html:
+        * http/tests/security/xssAuditor/post-from-iframe.html:
+        * http/tests/security/xssAuditor/report-script-tag-expected.txt:
+        * http/tests/security/xssAuditor/report-script-tag-full-block-expected.txt:
+        * http/tests/security/xssAuditor/report-script-tag-full-block.html:
+        * http/tests/security/xssAuditor/report-script-tag-replace-state-expected.txt:
+        * http/tests/security/xssAuditor/report-script-tag-replace-state.html:
+        * http/tests/security/xssAuditor/report-script-tag.html:
+        * http/tests/security/xssAuditor/resources/echo-intertag.pl:
+        * http/tests/security/xssAuditor/script-tag-Big5-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-Big5-char-twice-url-encode-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-Big5-char-twice-url-encode.html:
+        * http/tests/security/xssAuditor/script-tag-Big5-char.html:
+        * http/tests/security/xssAuditor/script-tag-Big5-char2-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-Big5-char2.html:
+        * http/tests/security/xssAuditor/script-tag-control-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-control-char.html:
+        * http/tests/security/xssAuditor/script-tag-convoluted-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-convoluted.html:
+        * http/tests/security/xssAuditor/script-tag-entities-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-entities.html:
+        * http/tests/security/xssAuditor/script-tag-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-expression-follows-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-expression-follows.html:
+        * http/tests/security/xssAuditor/script-tag-inside-svg-tag-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-inside-svg-tag.html:
+        * http/tests/security/xssAuditor/script-tag-inside-svg-tag2-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-inside-svg-tag2.html:
+        * http/tests/security/xssAuditor/script-tag-inside-svg-tag3-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-inside-svg-tag3.html:
+        * http/tests/security/xssAuditor/script-tag-near-start-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-near-start.html:
+        * http/tests/security/xssAuditor/script-tag-null-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-null-char.html:
+        * http/tests/security/xssAuditor/script-tag-open-redirect-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-open-redirect.html:
+        * http/tests/security/xssAuditor/script-tag-post-control-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-post-control-char.html:
+        * http/tests/security/xssAuditor/script-tag-post-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-post-null-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-post-null-char.html:
+        * http/tests/security/xssAuditor/script-tag-post.html:
+        * http/tests/security/xssAuditor/script-tag-redirect-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-redirect.html:
+        * http/tests/security/xssAuditor/script-tag-with-16bit-unicode-surrogate-pair-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-16bit-unicode-surrogate-pair.html:
+        * http/tests/security/xssAuditor/script-tag-with-16bit-unicode5-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-16bit-unicode5.html:
+        * http/tests/security/xssAuditor/script-tag-with-actual-comma-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-actual-comma.html:
+        * http/tests/security/xssAuditor/script-tag-with-callbacks-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-callbacks.html:
+        * http/tests/security/xssAuditor/script-tag-with-comma-01-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-comma-01.html:
+        * http/tests/security/xssAuditor/script-tag-with-comma-02-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-comma-02.html:
+        * http/tests/security/xssAuditor/script-tag-with-fancy-unicode-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-fancy-unicode.html:
+        * http/tests/security/xssAuditor/script-tag-with-invalid-closing-tag-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-invalid-closing-tag.html:
+        * http/tests/security/xssAuditor/script-tag-with-invalid-url-encoding-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-invalid-url-encoding.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-control-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-control-char.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-data-url-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-data-url.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-data-url2-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-data-url2.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-data-url3-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-data-url3.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-double-quote-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-double-quote.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-entities-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-entities.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-no-quote-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-no-quote.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-null-char-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-null-char.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-relative-scheme-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-relative-scheme.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-same-host-with-query-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-same-host-with-query.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-same-host.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-unterminated-01-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-unterminated-01.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-unterminated-02-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-unterminated-02.html:
+        * http/tests/security/xssAuditor/script-tag-with-source-unterminated-03-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-source-unterminated-03.html:
+        * http/tests/security/xssAuditor/script-tag-with-source.html:
+        * http/tests/security/xssAuditor/script-tag-with-three-times-url-encoded-16bit-unicode-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-three-times-url-encoded-16bit-unicode.html:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment-U2028-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment-U2028.html:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment.html:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment2-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment2.html:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment3-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment3.html:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment4-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment4.html:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment5-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-trailing-comment5.html:
+        * http/tests/security/xssAuditor/script-tag.html:
+        * http/tests/security/xssAuditor/svg-animate-expected.txt:
+        * http/tests/security/xssAuditor/svg-animate.html:
+        * http/tests/security/xssAuditor/svg-script-tag-expected.txt:
+        * http/tests/security/xssAuditor/svg-script-tag.html:
+        * http/tests/security/xssAuditor/xss-filter-bypass-big5-expected.txt:
+        * http/tests/security/xssAuditor/xss-filter-bypass-big5.html:
+        * http/tests/security/xssAuditor/xss-filter-bypass-sjis-expected.txt:
+        * http/tests/security/xssAuditor/xss-filter-bypass-sjis.html:
+        * http/tests/security/xssAuditor/xss-protection-parsing-01.html:
+        * http/tests/security/xssAuditor/xss-protection-parsing-02-expected.txt:
+        * http/tests/security/xssAuditor/xss-protection-parsing-02.html:
+        * http/tests/security/xssAuditor/xss-protection-parsing-03-expected.txt:
+        * http/tests/security/xssAuditor/xss-protection-parsing-03.html:
+        * http/tests/security/xssAuditor/xss-protection-parsing-04-expected.txt:
+        * http/tests/security/xssAuditor/xss-protection-parsing-04.html:
+
+2014-11-20  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Update expected results for LayoutTests/animations
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/animations/3d/replace-filling-transform-expected.txt: Added.
+        * platform/ios-simulator/animations/animation-offscreen-to-onscreen-expected.txt: Added.
+        * platform/ios-simulator/animations/missing-values-first-keyframe-expected.txt: Added.
+        * platform/ios-simulator/animations/missing-values-last-keyframe-expected.txt: Added.
+        * platform/ios-simulator/animations/opacity-transform-animation-expected.txt: Added.
+        * platform/ios-simulator/animations/suspend-transform-animation-expected.txt: Added.
+
+2014-11-20  Eric Carlson  <eric.carlson@apple.com>
+
+        Update media/track/track-in-band-cues-added-once.html to make failures easier to diagnose
+        https://bugs.webkit.org/show_bug.cgi?id=138908
+
+        Reviewed by Alexey Proskuryakov.
+
+        * media/track/track-in-band-cues-added-once.html: Update test to remove one potential
+            source of flakeyness and to do more logging in the event of a failure to make debugging 
+            failures simpler.
+        * media/track/track-in-band-cues-added-once-expected.txt:
+
+2014-11-20  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Temporarily skip almost all DRT tests
+
+        Towards updating the expected results on iOS, temporarily skip running almost
+        all DRT tests on iOS. We'll subsequently un-skip tests as we land updated/new
+        expected results for them.
+
+        * platform/ios-simulator/TestExpectations:
+
+2014-11-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Rename String.prototype.contains to String.prototype.includes
+        https://bugs.webkit.org/show_bug.cgi?id=138923
+
+        Reviewed by Geoffrey Garen.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/string-includes.js: Renamed from LayoutTests/js/script-tests/string-contains.js.
+        (stringToSearchIn.toString):
+        (startOffset.valueOf):
+        (matchString.toString):
+        (endOffset.valueOf):
+        * js/string-includes-expected.txt: Renamed from LayoutTests/js/string-contains-expected.txt.
+        * js/string-includes.html: Renamed from LayoutTests/js/string-contains.html.
+
+2014-11-20  Chris Dumez  <cdumez@apple.com>
+
+        Crash when destroying a Document that has a throttled timer still running
+        https://bugs.webkit.org/show_bug.cgi?id=138914
+
+        Reviewed by Benjamin Poulain.
+
+        Add a layout test to test the case where a Document gets destroyed while
+        throttled timer is still running.
+
+        * fast/dom/resources/frame-with-throttled-timer.html: Added.
+        * fast/dom/throttled-timer-running-on-document-destruction-expected.txt: Added.
+        * fast/dom/throttled-timer-running-on-document-destruction.html: Added.
+
+2014-11-20  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Introduce text fragment continuation.
+        https://bugs.webkit.org/show_bug.cgi?id=138274
+
+        Rebaseline for simple line layout's multiple rendere support.
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-lines-multiple-renderers-expected.html: Added.
+        * fast/text/simple-lines-multiple-renderers.html: Added.
+        * fast/tokenizer/script_extra_close-expected.txt: Multiple tab characters should collapse into a single whitespace. This
+        needs fixing in complex line layout.
+        * tables/mozilla/bugs/bug157890-expected.txt: no-op endofline run is added by complex inline layout
+        when multiple text content is injected through JS into a <pre>. This requires fixing complex line layout.
+
+2014-11-20  Mark Lam  <mark.lam@apple.com>
+
+        WTFCrashWithSecurityImplication under SpeculativeJIT::compile() when loading a page from theblaze.com.
+        <https://webkit.org/b/137642>
+
+        Reviewed by Filip Pizlo.
+
+        * js/dfg-inline-identity-expected.txt: Added.
+        * js/dfg-inline-identity.html: Added.
+        * js/script-tests/dfg-inline-identity.js: Added.
+        (o.toKey):
+        (foo):
+        (test):
+
+2014-11-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r176396.
+        https://bugs.webkit.org/show_bug.cgi?id=138926
+
+        revealed some WebCore::BidiResolver issue. rollout this for
+        now. (Requested by zalan on #webkit).
+
+        Reverted changeset:
+
+        "Simple line layout: Introduce text fragment continuation."
+        https://bugs.webkit.org/show_bug.cgi?id=138274
+        http://trac.webkit.org/changeset/176396
+
+2014-11-20  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Introduce text fragment continuation.
+        https://bugs.webkit.org/show_bug.cgi?id=138274
+
+        Rebaseline for simple line layout's multiple rendere support.
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-lines-multiple-renderers-expected.html: Added.
+        * fast/text/simple-lines-multiple-renderers.html: Added.
+        * fast/tokenizer/script_extra_close-expected.txt: Multiple tab characters should collapse into a single whitespace. This
+        needs fixing in complex line layout.
+        * tables/mozilla/bugs/bug157890-expected.txt: no-op endofline run is added by complex inline layout
+        when multiple text content is injected through JS into a <pre>. This requires fixing complex line layout.
+
+2014-11-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Upright vertical text is completely broken for multi-code-unit codepoints
+        https://bugs.webkit.org/show_bug.cgi?id=138891
+
+        Reviewed by Dan Bernstein.
+
+        Make sure a single upright vertical multi-code-unit codepoint is rendered the same as
+        the same codepoint rendered horizontally.
+
+        * platform/mac/fast/text/multiple-codeunit-vertical-upright-expected.html: Added.
+        * platform/mac/fast/text/multiple-codeunit-vertical-upright.html: Added.
+        * platform/mac/fast/text/resources/multiple-codeunit-vertical-upright.otf: Added.
+
+2014-11-16  Sam Weinig  <sam@webkit.org>
+
+        Move the 'quotes' CSS property to the new StyleBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=138788
+
+        Reviewed by Chris Dumez.
+
+        Add a test for the behavior of non-valid primitive identifiers being
+        used with the quotes property.
+
+        * fast/css/content/content-quotes-07-expected.txt: Added.
+        * fast/css/content/content-quotes-07.html: Added.
+
+2014-11-19  Dean Jackson  <dino@apple.com>
+
+        Handle unprefixed @keyframes rule
+        https://bugs.webkit.org/show_bug.cgi?id=138899
+        <rdar://problem/18943117>
+
+        Reviewed by Simon Fraser.
+
+        Tests for @keyframes, both the OM side and the parsing.
+
+        * animations/unprefixed-keyframes-expected.txt: Added.
+        * animations/unprefixed-keyframes-rule-expected.txt: Added.
+        * animations/unprefixed-keyframes-rule.html: Added.
+        * animations/unprefixed-keyframes.html: Added.
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection Resource search does not work
+        https://bugs.webkit.org/show_bug.cgi?id=131252
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/search-scripts-expected.txt: Added.
+        * inspector/debugger/search-scripts.html: Added.
+        Tests for Debugger.searchInContent.
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide $exception in the console for the thrown exception value
+        https://bugs.webkit.org/show_bug.cgi?id=138726
+
+        Reviewed by Timothy Hatcher.
+
+        Provide some tests to ensure $exception is the value we expect at different times,
+        such as on the exception line, when there is no exception, or when stepping through
+        catch blocks (it should always be the most recent caught exception).
+
+        * inspector/debugger/command-line-api-exception-expected.txt: Added.
+        * inspector/debugger/command-line-api-exception-nested-catch-expected.txt: Added.
+        * inspector/debugger/command-line-api-exception-nested-catch.html: Added.
+        * inspector/debugger/command-line-api-exception.html: Added.
+        * inspector/debugger/resources/exceptions.js: Added.
+        (triggerUncaughtTypeException):
+        (triggerUncaughtReferenceException):
+        (triggerUncaughtSyntaxException):
+        (triggerUncaughtDOMException):
+        (throwString):
+        (throwNumber):
+        (throwNull):
+        (throwObject):
+        (throwNode):
+        (catcher):
+        (nestedCatchBlocks):
+
+2014-11-19  David Hyatt  <hyatt@apple.com>
+
+        Images/replaced elements that are as tall as a page should be on their own page
+        https://bugs.webkit.org/show_bug.cgi?id=138886 - <rdar://problem/18296371>
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/tall-image-behavior-lr.html: Added.
+        * fast/multicol/tall-image-behavior-rl.html: Added.
+        * fast/multicol/tall-image-behavior.html: Added.
+        * platform/mac/fast/multicol/tall-image-behavior-expected.png: Added.
+        * platform/mac/fast/multicol/tall-image-behavior-expected.txt: Added.
+        * platform/mac/fast/multicol/tall-image-behavior-lr-expected.png: Added.
+        * platform/mac/fast/multicol/tall-image-behavior-lr-expected.txt: Added.
+        * platform/mac/fast/multicol/tall-image-behavior-rl-expected.png: Added.
+        * platform/mac/fast/multicol/tall-image-behavior-rl-expected.txt: Added.
+
+2014-11-18  Ada Chan  <adachan@apple.com>
+
+        Take Web Audio into account for the Page::isPlayingAudio() API.
+        https://bugs.webkit.org/show_bug.cgi?id=137464
+
+        Reviewed by Jer Noble.
+
+        This test checks that Page::isPlayingAudio() returns false before an audio context is created
+        and before the oscillator node makes a sound. It then starts the oscillator node and checks
+        that Page::isPlayingAudio() later returns true.
+
+        * webaudio/web-audio-is-playing-expected.txt: Added.
+        * webaudio/web-audio-is-playing.html: Added.
+
+2014-11-19  Chris Dumez  <cdumez@apple.com>
+
+        Add layout test for throttling of DOM timer changing the style of visible and invisible elements
+        https://bugs.webkit.org/show_bug.cgi?id=138875
+
+        Reviewed by Simon Fraser.
+
+        Add a layout test to test that a repeating DOM timer changing the style
+        of both visible and invisible elements does not get throttled.
+
+        Also rename existing tests to use "display-none" instead of "invisible"
+        for clarity.
+
+        * fast/dom/nested-timer-display-none-element-throttling-expected.txt: Renamed from LayoutTests/fast/dom/nested-timer-invisible-element-throttling-expected.txt.
+        * fast/dom/nested-timer-display-none-element-throttling.html: Renamed from LayoutTests/fast/dom/nested-timer-invisible-element-throttling.html.
+        * fast/dom/repeating-timer-display-none-element-throttling-expected.txt: Renamed from LayoutTests/fast/dom/repeating-timer-invisible-element-throttling-expected.txt.
+        * fast/dom/repeating-timer-display-none-element-throttling.html: Renamed from LayoutTests/fast/dom/repeating-timer-invisible-element-throttling.html.
+        * fast/dom/repeating-timer-mixed-visible-display-none-elements-throttling-expected.txt: Added.
+        * fast/dom/repeating-timer-mixed-visible-display-none-elements-throttling.html: Added.
+
+2014-11-19  Chris Dumez  <cdumez@apple.com>
+
+        Add layout test for DOM timer throttling and element moving into view after layout
+        https://bugs.webkit.org/show_bug.cgi?id=138874
+
+        Reviewed by Simon Fraser.
+
+        Add a layout test to make sure we unthrottle a DOM timer changing the
+        style of an element outside viewport if the element ends up inside
+        the viewport after layout.
+
+        * fast/dom/timer-unthrottle-on-layout-expected.txt: Added.
+        * fast/dom/timer-unthrottle-on-layout.html: Added.
+
 2014-11-19  Chris Dumez  <cdumez@apple.com>
 
         Add layout test for DOM timers throttling and 0 height element with visible overflowing content

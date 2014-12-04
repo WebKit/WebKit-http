@@ -51,13 +51,6 @@ typedef struct _SoupRequest SoupRequest;
 typedef const struct __CFData * CFDataRef;
 #endif
 
-#if USE(WININET)
-typedef unsigned long DWORD;
-typedef unsigned long DWORD_PTR;
-typedef void* LPVOID;
-typedef LPVOID HINTERNET;
-#endif
-
 #if PLATFORM(COCOA)
 OBJC_CLASS NSCachedURLResponse;
 OBJC_CLASS NSData;
@@ -188,14 +181,6 @@ public:
 
     WEBCORE_EXPORT static void forceContentSniffing();
 
-#if USE(WININET)
-    void setSynchronousInternetHandle(HINTERNET);
-    void fileLoadTimer(Timer*);
-    void onRedirect();
-    bool onRequestComplete();
-    static void CALLBACK internetStatusCallback(HINTERNET, DWORD_PTR, DWORD, LPVOID, DWORD);
-#endif
-
 #if USE(CURL) || USE(SOUP) || PLATFORM(HAIKU)
     ResourceHandleInternal* getInternal() { return d.get(); }
 #endif
@@ -248,7 +233,7 @@ public:
     WEBCORE_EXPORT ResourceRequest& firstRequest();
     const String& lastHTTPMethod() const;
 
-    void failureTimerFired(Timer&);
+    void failureTimerFired();
 
     NetworkingContext* context() const;
 

@@ -105,7 +105,7 @@ JSValue eval(CallFrame* callFrame)
     
     CallFrame* callerFrame = callFrame->callerFrame();
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
-    JSScope* callerScopeChain = callerFrame->scope();
+    JSScope* callerScopeChain = callerFrame->uncheckedR(callerCodeBlock->scopeRegister().offset()).Register::scope();
     EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(callerCodeBlock->isStrictMode(), programSource, callerScopeChain);
 
     if (!eval) {
@@ -726,13 +726,15 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallF
     if (codeBlock->needsActivation() && callFrame->hasActivation())
         ++targetScopeDepth;
 
-    JSScope* scope = callFrame->scope();
+    int scopeRegisterOffset = codeBlock->scopeRegister().offset();
+    JSScope* scope = callFrame->scope(scopeRegisterOffset);
     int scopeDelta = scope->depth() - targetScopeDepth;
     RELEASE_ASSERT(scopeDelta >= 0);
 
     while (scopeDelta--)
         scope = scope->next();
-    callFrame->setScope(scope);
+
+    callFrame->setScope(scopeRegisterOffset, scope);
 
     return handler;
 }
@@ -1237,7 +1239,7 @@ void Interpreter::enableSampler()
 {
 #if ENABLE(OPCODE_SAMPLING)
     if (!m_sampler) {
-        m_sampler = adoptPtr(new SamplingTool(this));
+        m_sampler = std::make_unique<SamplingTool>(this);
         m_sampler->setup();
     }
 #endif

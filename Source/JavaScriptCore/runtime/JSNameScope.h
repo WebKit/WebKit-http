@@ -41,10 +41,10 @@ public:
         FunctionNameScope
     };
 
-    static JSNameScope* create(ExecState* exec, const Identifier& identifier, JSValue value, unsigned attributes, Type type)
+    static JSNameScope* create(ExecState* exec, JSScope* currentScope, const Identifier& identifier, JSValue value, unsigned attributes, Type type)
     {
         VM& vm = exec->vm();
-        JSNameScope* scopeObject = new (NotNull, allocateCell<JSNameScope>(vm.heap)) JSNameScope(vm, exec->lexicalGlobalObject(), exec->scope(), type);
+        JSNameScope* scopeObject = new (NotNull, allocateCell<JSNameScope>(vm.heap)) JSNameScope(vm, exec->lexicalGlobalObject(), currentScope, type);
         scopeObject->finishCreation(vm, identifier, value, attributes);
         return scopeObject;
     }
@@ -65,8 +65,10 @@ public:
 
     DECLARE_INFO;
 
-    bool isFunctionNameScope() { return m_type == FunctionNameScope; }
-    bool isCatchScope() { return m_type == CatchScope; }
+    bool isFunctionNameScope() const { return m_type == FunctionNameScope; }
+    bool isCatchScope() const { return m_type == CatchScope; }
+
+    JSValue value() const { return m_registerStore.get(); }
 
 protected:
     void finishCreation(VM& vm, const Identifier& identifier, JSValue value, unsigned attributes)

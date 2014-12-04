@@ -80,7 +80,7 @@ class InspectorClient;
 class InspectorController;
 class MainFrame;
 class MediaCanStartListener;
-class PageActivityAssertionToken;
+class PageConfiguration;
 class PageConsoleClient;
 class PageDebuggable;
 class PageGroup;
@@ -100,6 +100,7 @@ class ScrollableArea;
 class ScrollingCoordinator;
 class Settings;
 class StorageNamespace;
+class StorageNamespaceProvider;
 class UserContentController;
 class ValidationMessageClient;
 class ViewStateChangeObserver;
@@ -119,33 +120,7 @@ public:
     WEBCORE_EXPORT static void updateStyleForAllPagesAfterGlobalChangeInEnvironment();
     WEBCORE_EXPORT static void clearPreviousItemFromAllPages(HistoryItem*);
 
-    // It is up to the platform to ensure that non-null clients are provided where required.
-    // FIXME: Rename this to PageConfiguration and move it to its own class.
-    struct PageClients {
-        WTF_MAKE_NONCOPYABLE(PageClients); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        WEBCORE_EXPORT PageClients();
-        WEBCORE_EXPORT ~PageClients();
-
-        AlternativeTextClient* alternativeTextClient;
-        ChromeClient* chromeClient;
-#if ENABLE(CONTEXT_MENUS)
-        ContextMenuClient* contextMenuClient;
-#endif
-        EditorClient* editorClient;
-        DragClient* dragClient;
-        InspectorClient* inspectorClient;
-        PlugInClient* plugInClient;
-        ProgressTrackerClient* progressTrackerClient;
-        RefPtr<BackForwardClient> backForwardClient;
-        ValidationMessageClient* validationMessageClient;
-        FrameLoaderClient* loaderClientForMainFrame;
-
-        RefPtr<UserContentController> userContentController;
-        RefPtr<VisitedLinkStore> visitedLinkStore;
-    };
-
-    WEBCORE_EXPORT explicit Page(PageClients&);
+    WEBCORE_EXPORT explicit Page(PageConfiguration&);
     WEBCORE_EXPORT ~Page();
 
     WEBCORE_EXPORT uint64_t renderTreeSize() const;
@@ -340,8 +315,6 @@ public:
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
 
-    static void removeAllVisitedLinks();
-
     WEBCORE_EXPORT void invalidateStylesForAllLinks();
     WEBCORE_EXPORT void invalidateStylesForLink(LinkHash);
 
@@ -426,10 +399,14 @@ public:
     void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
     unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
 
-    void setUserContentController(UserContentController*);
+    StorageNamespaceProvider* storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
+    void setStorageNamespaceProvider(PassRef<StorageNamespaceProvider>);
+
     UserContentController* userContentController() { return m_userContentController.get(); }
+    void setUserContentController(UserContentController*);
 
     VisitedLinkStore& visitedLinkStore();
+    void setVisitedLinkStore(PassRef<VisitedLinkStore>);
 
     WEBCORE_EXPORT SessionID sessionID() const;
     WEBCORE_EXPORT void setSessionID(SessionID);
@@ -593,8 +570,9 @@ private:
     unsigned m_lastSpatialNavigationCandidatesCount;
     unsigned m_framesHandlingBeforeUnloadEvent;
 
+    RefPtr<StorageNamespaceProvider> m_storageNamespaceProvider;
     RefPtr<UserContentController> m_userContentController;
-    RefPtr<VisitedLinkStore> m_visitedLinkStore;
+    Ref<VisitedLinkStore> m_visitedLinkStore;
 
     HashSet<ViewStateChangeObserver*> m_viewStateChangeObservers;
 

@@ -350,7 +350,7 @@ void Node::materializeRareData()
 {
     NodeRareData* data;
     if (is<Element>(*this))
-        data = std::make_unique<ElementRareData>(downcast<RenderElement>(m_data.m_renderer)).release();
+        data = std::make_unique<ElementRareData>(downcast<Element>(*this), downcast<RenderElement>(m_data.m_renderer)).release();
     else
         data = std::make_unique<NodeRareData>(m_data.m_renderer).release();
     ASSERT(data);
@@ -403,7 +403,7 @@ void Node::setNodeValue(const String& /*nodeValue*/, ExceptionCode& ec)
     // By default, setting nodeValue has no effect.
 }
 
-PassRefPtr<NodeList> Node::childNodes()
+RefPtr<NodeList> Node::childNodes()
 {
     if (is<ContainerNode>(*this))
         return ensureRareData().ensureNodeLists().ensureChildNodeList(downcast<ContainerNode>(*this));

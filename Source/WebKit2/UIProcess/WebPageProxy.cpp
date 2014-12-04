@@ -54,7 +54,6 @@
 #include "PrintInfo.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
-#include "TextIndicator.h"
 #include "UserMediaPermissionRequestProxy.h"
 #include "WKContextPrivate.h"
 #include "WebBackForwardList.h"
@@ -97,6 +96,7 @@
 #include <WebCore/RenderEmbeddedObject.h>
 #include <WebCore/SerializedCryptoKeyWrap.h>
 #include <WebCore/TextCheckerClient.h>
+#include <WebCore/TextIndicator.h>
 #include <WebCore/WindowFeatures.h>
 #include <stdio.h>
 #include <wtf/NeverDestroyed.h>
@@ -284,7 +284,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_viewState(ViewState::NoFlags)
     , m_viewWasEverInWindow(false)
     , m_backForwardList(WebBackForwardList::create(*this))
-    , m_loadStateAtProcessExit(FrameLoadState::State::Finished)
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     , m_temporarilyClosedComposition(false)
 #endif
@@ -784,10 +783,16 @@ uint64_t WebPageProxy::loadFile(const String& fileURLString, const String& resou
     return navigationID;
 }
 
-void WebPageProxy::loadData(API::Data* data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData)
+uint64_t WebPageProxy::loadData(API::Data* data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData)
 {
     if (m_isClosed)
-        return;
+        return 0;
+
+    uint64_t navigationID = generateNavigationID();
+
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setPendingAPIRequestURL(transaction, !baseURL.isEmpty() ? baseURL : ASCIILiteral("about:blank"));
 
     if (!isValid())
         reattachToWebProcess();
@@ -795,8 +800,11 @@ void WebPageProxy::loadData(API::Data* data, const String& MIMEType, const Strin
     m_process->assumeReadAccessToBaseURL(baseURL);
     m_process->send(Messages::WebPage::LoadData(data->dataReference(), MIMEType, encoding, baseURL, WebContextUserMessageEncoder(userData, process())), m_pageID);
     m_process->responsivenessTimer()->start();
+
+    return navigationID;
 }
 
+// FIXME: Get rid of loadHTMLString and just use loadData instead.
 uint64_t WebPageProxy::loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData)
 {
     if (m_isClosed)
@@ -3649,14 +3657,14 @@ void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& conten
     m_findMatchesClient.didGetImageForMatchResult(this, WebImage::create(ShareableBitmap::create(contentImageHandle)).get(), matchIndex);
 }
 
-void WebPageProxy::setTextIndicator(const TextIndicator::Data& indicatorData, bool fadeOut, bool animate)
+void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, bool fadeOut)
 {
-    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), fadeOut, animate);
+    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), fadeOut);
 }
 
-void WebPageProxy::clearTextIndicator(bool fadeOut, bool animate)
+void WebPageProxy::clearTextIndicator()
 {
-    m_pageClient.setTextIndicator(nullptr, fadeOut, animate);
+    m_pageClient.setTextIndicator(nullptr, false);
 }
 
 void WebPageProxy::didFindString(const String& string, uint32_t matchCount, int32_t matchIndex)
@@ -4535,11 +4543,6 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     m_isValid = false;
     m_isPageSuspended = false;
-
-    if (m_mainFrame) {
-        m_urlAtProcessExit = m_mainFrame->url();
-        m_loadStateAtProcessExit = m_mainFrame->frameLoadState().m_state;
-    }
 
     m_pageClient.processDidExit();
 

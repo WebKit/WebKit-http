@@ -69,7 +69,9 @@ class CachedResourceStreamingClient final : public PlatformMediaResourceLoaderCl
 
     private:
         // PlatformMediaResourceLoaderClient virtual methods.
+#if USE(SOUP)
         virtual char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize) override;
+#endif
         virtual void responseReceived(const ResourceResponse&) override;
         virtual void dataReceived(const char*, int) override;
         virtual void accessControlCheckFailed(const ResourceError&) override;
@@ -582,6 +584,15 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
         result = TRUE;
         break;
     }
+    case GST_QUERY_SCHEDULING: {
+        GstSchedulingFlags flags;
+        int minSize, maxSize, align;
+
+        gst_query_parse_scheduling(query, &flags, &minSize, &maxSize, &align);
+        gst_query_set_scheduling(query, static_cast<GstSchedulingFlags>(flags | GST_SCHEDULING_FLAG_BANDWIDTH_LIMITED), minSize, maxSize, align);
+        result = TRUE;
+        break;
+    }
     default: {
         GRefPtr<GstPad> target = adoptGRef(gst_ghost_pad_get_target(GST_GHOST_PAD_CAST(pad)));
 
@@ -994,10 +1005,12 @@ CachedResourceStreamingClient::~CachedResourceStreamingClient()
 {
 }
 
+#if USE(SOUP)
 char* CachedResourceStreamingClient::getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize)
 {
     return createReadBuffer(requestedSize, actualSize);
 }
+#endif
 
 void CachedResourceStreamingClient::responseReceived(const ResourceResponse& response)
 {

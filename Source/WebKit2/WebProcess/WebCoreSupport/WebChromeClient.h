@@ -150,8 +150,6 @@ private:
     virtual void annotatedRegionsChanged() override;
 #endif
 
-    virtual void populateVisitedLinks() override;
-    
     virtual bool shouldReplaceWithGeneratedFileForUpload(const String& path, String& generatedFilename) override;
     virtual String generateReplacementFile(const String& path) override;
     
@@ -285,8 +283,6 @@ private:
     virtual void pageExtendedBackgroundColorDidChange(WebCore::Color) const override;
     
     virtual void numWheelEventHandlersChanged(unsigned) override;
-
-    virtual void logDiagnosticMessage(const String& message, const String& description, const String& success) override;
 
     virtual String plugInStartLabelTitle(const String& mimeType) const override;
     virtual String plugInStartLabelSubtitle(const String& mimeType) const override;

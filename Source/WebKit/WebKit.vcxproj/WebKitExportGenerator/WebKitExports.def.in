@@ -177,7 +177,7 @@ EXPORTS
         symbolWithPointer(?createCFString@String@WTF@@QBE?AV?$RetainPtr@PBU__CFString@@@2@XZ, ?createCFString@String@WTF@@QEBA?AV?$RetainPtr@PEBU__CFString@@@2@XZ)
         symbolWithPointer(?dictionary@CFDictionaryPropertyBag@@QBEPAU__CFDictionary@@XZ, ?dictionary@CFDictionaryPropertyBag@@QEBAPEAU__CFDictionary@@XZ)
 #endif
-        symbolWithPointer(?createShadowRoot@Element@WebCore@@QAE?AV?$PassRefPtr@VShadowRoot@WebCore@@@WTF@@AAH@Z, ?createShadowRoot@Element@WebCore@@QEAA?AV?$PassRefPtr@VShadowRoot@WebCore@@@WTF@@AEAH@Z)
+        symbolWithPointer(?createShadowRoot@Element@WebCore@@QAE?AV?$RefPtr@VShadowRoot@WebCore@@@WTF@@AAH@Z, ?createShadowRoot@Element@WebCore@@QEAA?AV?$RefPtr@VShadowRoot@WebCore@@@WTF@@AEAH@Z)
         symbolWithPointer(?createWrapper@WebCore@@YA?AVJSValue@JSC@@PAVExecState@3@PAVJSDOMGlobalObject@1@PAVNode@1@@Z, ?createWrapper@WebCore@@YA?AVJSValue@JSC@@PEAVExecState@3@PEAVJSDOMGlobalObject@1@PEAVNode@1@@Z)
         symbolWithPointer(?createWrapper@WebCore@@YA?AVJSValue@JSC@@AAVJSDOMGlobalObject@1@AAVNodeList@1@@Z, ?createWrapper@WebCore@@YA?AVJSValue@JSC@@AEAVJSDOMGlobalObject@1@AEAVNodeList@1@@Z)
         symbolWithPointer(?deprecatedShadowAncestorNode@Node@WebCore@@QBEPAV12@XZ, ?deprecatedShadowAncestorNode@Node@WebCore@@QEBAPEAV12@XZ)
@@ -403,7 +403,7 @@ EXPORTS
         symbolWithPointer(??1StyleSheetContents@WebCore@@QAE@XZ, ??1StyleSheetContents@WebCore@@QEAA@XZ)
         symbolWithPointer(?pauseAnimationAtTime@AnimationController@WebCore@@QAE_NPAVRenderElement@2@ABVAtomicString@WTF@@N@Z, ?pauseAnimationAtTime@AnimationController@WebCore@@QEAA_NPEAVRenderElement@2@AEBVAtomicString@WTF@@N@Z)
         symbolWithPointer(?pauseTransitionAtTime@AnimationController@WebCore@@QAE_NPAVRenderElement@2@ABVString@WTF@@N@Z, ?pauseTransitionAtTime@AnimationController@WebCore@@QEAA_NPEAVRenderElement@2@AEBVString@WTF@@N@Z)
-        symbolWithPointer(?memoryCache@WebCore@@YAPAVMemoryCache@1@XZ, ?memoryCache@WebCore@@YAPEAVMemoryCache@1@XZ)
+        symbolWithPointer(?memoryCache@WebCore@@YAAAVMemoryCache@1@XZ, ?memoryCache@WebCore@@YAAEAVMemoryCache@1@XZ)
         symbolWithPointer(?resourceForURL@MemoryCache@WebCore@@QAEPAVCachedResource@2@ABVURL@2@@Z, ?resourceForURL@MemoryCache@WebCore@@QEAAPEAVCachedResource@2@AEBVURL@2@@Z)
         symbolWithPointer(?nonFastScrollableRects@Page@WebCore@@QAE?AV?$PassRefPtr@VClientRectList@WebCore@@@WTF@@PBVFrame@2@@Z, ?nonFastScrollableRects@Page@WebCore@@QEAA?AV?$PassRefPtr@VClientRectList@WebCore@@@WTF@@PEBVFrame@2@@Z)
         symbolWithPointer(?numberOfActiveAnimations@AnimationController@WebCore@@QBEIPAVDocument@2@@Z, ?numberOfActiveAnimations@AnimationController@WebCore@@QEBAIPEAVDocument@2@@Z)

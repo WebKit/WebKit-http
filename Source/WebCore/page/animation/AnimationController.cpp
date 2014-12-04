@@ -31,6 +31,7 @@
 
 #include "AnimationBase.h"
 #include "AnimationControllerPrivate.h"
+#include "AnimationEvent.h"
 #include "CSSParser.h"
 #include "CSSPropertyAnimation.h"
 #include "CompositeAnimation.h"
@@ -51,8 +52,8 @@ static const double cAnimationTimerDelay = 0.025;
 static const double cBeginAnimationUpdateTimeNotSet = -1;
 
 AnimationControllerPrivate::AnimationControllerPrivate(Frame& frame)
-    : m_animationTimer(this, &AnimationControllerPrivate::animationTimerFired)
-    , m_updateStyleIfNeededDispatcher(this, &AnimationControllerPrivate::updateStyleIfNeededDispatcherFired)
+    : m_animationTimer(*this, &AnimationControllerPrivate::animationTimerFired)
+    , m_updateStyleIfNeededDispatcher(*this, &AnimationControllerPrivate::updateStyleIfNeededDispatcherFired)
     , m_frame(frame)
     , m_beginAnimationUpdateTime(cBeginAnimationUpdateTimeNotSet)
     , m_animationsWaitingForStyle()
@@ -158,7 +159,7 @@ void AnimationControllerPrivate::updateAnimationTimer(SetChanged callSetChanged/
     m_animationTimer.startOneShot(timeToNextService);
 }
 
-void AnimationControllerPrivate::updateStyleIfNeededDispatcherFired(Timer&)
+void AnimationControllerPrivate::updateStyleIfNeededDispatcherFired()
 {
     fireEventsAndUpdateStyle();
 }
@@ -178,7 +179,7 @@ void AnimationControllerPrivate::fireEventsAndUpdateStyle()
         if (it->eventType == eventNames().transitionendEvent)
             element->dispatchEvent(TransitionEvent::create(it->eventType, it->name, it->elapsedTime, PseudoElement::pseudoElementNameForEvents(element->pseudoId())));
         else
-            element->dispatchEvent(WebKitAnimationEvent::create(it->eventType, it->name, it->elapsedTime));
+            element->dispatchEvent(AnimationEvent::create(it->eventType, it->name, it->elapsedTime));
     }
 
     for (unsigned i = 0, size = m_elementChangesToDispatch.size(); i < size; ++i)
@@ -225,7 +226,7 @@ void AnimationControllerPrivate::animationFrameCallbackFired()
 }
 #endif
 
-void AnimationControllerPrivate::animationTimerFired(Timer&)
+void AnimationControllerPrivate::animationTimerFired()
 {
     // Make sure animationUpdateTime is updated, so that it is current even if no
     // styleChange has happened (e.g. accelerated animations)

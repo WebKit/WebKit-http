@@ -1,3 +1,215 @@
+2014-12-02  Anders Carlsson  <andersca@apple.com>
+
+        Remove more Windows cruft
+        https://bugs.webkit.org/show_bug.cgi?id=139189
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::createNetworkingContext):
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        (WebFrameNetworkingContext::create):
+        (WebFrameNetworkingContext::WebFrameNetworkingContext):
+        (WebFrameNetworkingContext::userAgent): Deleted.
+
+2014-12-02  Anders Carlsson  <andersca@apple.com>
+
+        Remove visited link handling from PageGroup
+        https://bugs.webkit.org/show_bug.cgi?id=139185
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::populateVisitedLinks): Deleted.
+        * WebCoreSupport/WebChromeClient.h:
+
+2014-12-01  Anders Carlsson  <andersca@apple.com>
+
+        Remove IWebCookieManager on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139144
+
+        Reviewed by Sam Weinig.
+
+        Remove WebCookieManager.
+
+        * ForEachCoClass.h:
+        * Interfaces/IWebCookieManager.idl: Removed.
+        * Interfaces/WebKit.idl:
+        * WebCookieManager.cpp: Removed.
+        * WebCookieManager.h: Removed.
+        * WebCookieManagerCFNet.cpp: Removed.
+        * WebCookieManagerCurl.cpp: Removed.
+        * WebKitClassFactory.cpp:
+
+2014-11-29  Anders Carlsson  <andersca@apple.com>
+
+        Switch over to using WebVisitedLinkStore on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139103
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::populateVisitedLinks):
+        * WebHistory.cpp:
+        (WebHistory::setOptionalSharedHistory):
+        (WebHistory::removeAllItems):
+        (WebHistory::setVisitedLinkTrackingEnabled):
+        (WebHistory::removeAllVisitedLinks):
+        (WebHistory::removeItemForURLString):
+        (WebHistory::addVisitedLinksToVisitedLinkStore):
+        (WebHistory::addVisitedLinksToPageGroup): Deleted.
+        * WebHistory.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2014-11-29  Anders Carlsson  <andersca@apple.com>
+
+        Another build fix.
+
+        * WebHistory.cpp:
+        (WebHistory::addVisitedLinksToVisitedLinkStore):
+
+2014-11-29  Anders Carlsson  <andersca@apple.com>
+
+        Another build fix.
+
+        * WebHistory.cpp:
+        (WebHistory::addVisitedLinksToVisitedLinkStore):
+        (WebHistory::removeAllVisitedLinks): Deleted.
+        (WebHistory::setHistoryItemLimit): Deleted.
+
+2014-11-29  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix build.
+
+        * WebHistory.h:
+
+2014-11-29  Anders Carlsson  <andersca@apple.com>
+
+        Stub out more of WebVisitedLinkStore on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139098
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebVisitedLinkStore.cpp:
+        (WebVisitedLinkStore::WebVisitedLinkStore):
+        Initialize m_visitedLinksPopulated to false.
+
+        (WebVisitedLinkStore::setShouldTrackVisitedLinks):
+        Update s_shouldTrackVisitedLinks and remove all visited links if needed.
+
+        (WebVisitedLinkStore::removeAllVisitedLinks):
+        Remove all hashes from our shared link store.
+
+        (WebVisitedLinkStore::addVisitedLink):
+        Compute the visited link hash and add it to the store.
+
+        (WebVisitedLinkStore::isLinkVisited):
+        Populate visited links and then look up the hash in our hash map.
+
+        (WebVisitedLinkStore::populateVisitedLinksIfNeeded):
+        Call out to the history delegate or populate visited links from shared history.
+
+        (WebVisitedLinkStore::addVisitedLinkHash):
+        Add the hash if we're tracking hashes.
+
+        (WebVisitedLinkStore::removeVisitedLinkHashes):
+        Clear the map.
+
+        * WebCoreSupport/WebVisitedLinkStore.h:
+        Add members.
+
+        * WebHistory.cpp:
+        (WebHistory::addVisitedLinksToVisitedLinkStore):
+        New function that adds visited links from the history to a given store.
+
+        * WebHistory.h:
+        Add new member.
+
+        * WebView.cpp:
+        (WebView::addVisitedLinks):
+        Add links to the visited link store as well.
+
+2014-11-27  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out WebVisitedLinkStore class on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139078
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebVisitedLinkStore.cpp: Added.
+        (WebVisitedLinkStore::shared):
+        (WebVisitedLinkStore::WebVisitedLinkStore):
+        (WebVisitedLinkStore::~WebVisitedLinkStore):
+        (WebVisitedLinkStore::isLinkVisited):
+        (WebVisitedLinkStore::addVisitedLink):
+        * WebCoreSupport/WebVisitedLinkStore.h: Added.
+
+2014-11-24  Anders Carlsson  <andersca@apple.com>
+
+        Stub out user content WebView member functions on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139033
+
+        Reviewed by Sam Weinig.
+
+        These functions aren't used by any clients and hinder getting rid of PageGroup.
+        If it turns out they're still needed we can copy the user content controller code from Mac Legacy WebKit.
+
+        * WebView.cpp:
+        (WebView::addUserScriptToGroup):
+        (WebView::addUserStyleSheetToGroup):
+        (WebView::removeUserScriptFromGroup):
+        (WebView::removeUserStyleSheetFromGroup):
+        (WebView::removeUserScriptsFromGroup):
+        (WebView::removeUserStyleSheetsFromGroup):
+        (WebView::removeAllUserContentFromGroup):
+        (toStringVector): Deleted.
+
+2014-11-21  Jer Noble  <jer.noble@apple.com>
+
+        Support multiple signatures of diagnostic logging.
+        https://bugs.webkit.org/show_bug.cgi?id=138690
+
+        Reviewed by Anders Carlsson.
+
+        Page::PageClients has been renamed PageConfiguration.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2014-11-21  Anders Carlsson  <andersca@apple.com>
+
+        Another Windows build fix.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::FullscreenVideoController):
+
+2014-11-21  Anders Carlsson  <andersca@apple.com>
+
+        Remove the Timer parameters from timer callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=138974
+
+        Reviewed by Antti Koivisto.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::timerFired):
+        * FullscreenVideoController.h:
+
+2014-11-21  Anders Carlsson  <andersca@apple.com>
+
+        Make memoryCache() return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=138939
+
+        Reviewed by Antti Koivisto.
+
+        * WebCache.cpp:
+        (WebCache::statistics):
+        (WebCache::empty):
+        (WebCache::setDisabled):
+        (WebCache::disabled):
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
 2014-11-16  Zan Dobersek  <zdobersek@igalia.com>
 
         [TexMap] Add typecasting support for GraphicsLayerTextureMapper

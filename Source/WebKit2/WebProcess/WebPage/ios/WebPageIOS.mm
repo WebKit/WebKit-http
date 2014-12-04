@@ -159,7 +159,7 @@ void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
 void WebPage::savePageState(HistoryItem& historyItem)
 {
     historyItem.setScaleIsInitial(!m_userHasChangedPageScaleFactor);
-    historyItem.setMinimumLayoutSizeInScrollViewCoordinates(m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates());
+    historyItem.setMinimumLayoutSizeInScrollViewCoordinates(m_viewportConfiguration.minimumLayoutSize());
     historyItem.setContentSize(m_viewportConfiguration.contentsSize());
 }
 
@@ -214,7 +214,7 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
 
     m_userHasChangedPageScaleFactor = !historyItem.scaleIsInitial();
 
-    FloatSize currentMinimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates();
+    FloatSize currentMinimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.minimumLayoutSize();
     if (historyItem.minimumLayoutSizeInScrollViewCoordinates() == currentMinimumLayoutSizeInScrollViewCoordinates) {
         float boundedScale = std::min<float>(m_viewportConfiguration.maximumScale(), std::max<float>(m_viewportConfiguration.minimumScale(), historyItem.pageScaleFactor()));
         scalePage(boundedScale, IntPoint());
@@ -296,12 +296,12 @@ void WebPage::performDictionaryLookupAtLocation(const FloatPoint&)
     notImplemented();
 }
 
-void WebPage::performDictionaryLookupForSelection(Frame*, const VisibleSelection&)
+void WebPage::performDictionaryLookupForSelection(Frame*, const VisibleSelection&, TextIndicatorPresentationTransition)
 {
     notImplemented();
 }
 
-void WebPage::performDictionaryLookupForRange(Frame*, Range&, NSDictionary *)
+void WebPage::performDictionaryLookupForRange(Frame*, Range&, NSDictionary *, TextIndicatorPresentationTransition)
 {
     notImplemented();
 }
@@ -509,6 +509,7 @@ void WebPage::handleTap(const IntPoint& point)
 
 void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
 {
+#if ENABLE(TOUCH_EVENTS)
     if (!node)
         return;
 
@@ -536,6 +537,10 @@ void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
 
         send(Messages::WebPageProxy::DidGetTapHighlightGeometries(requestID, highlightColor, quads, roundedIntSize(borderRadii.topLeft()), roundedIntSize(borderRadii.topRight()), roundedIntSize(borderRadii.bottomLeft()), roundedIntSize(borderRadii.bottomRight())));
     }
+#else
+    UNUSED_PARAM(requestID);
+    UNUSED_PARAM(node);
+#endif
 }
 
 void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint& position)
@@ -816,10 +821,8 @@ PassRefPtr<Range> WebPage::rangeForBlockAtPoint(const IntPoint& point)
 void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-    IntPoint adjustedPoint(frame.view()->rootViewToContents(point));
+    VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point);
 
-    IntPoint constrainedPoint = m_assistedNode ? constrainPoint(adjustedPoint, &frame, m_assistedNode.get()) : adjustedPoint;
-    VisiblePosition position = frame.visiblePositionForPoint(constrainedPoint);
     if (position.isNull()) {
         send(Messages::WebPageProxy::GestureCallback(point, gestureType, gestureState, 0, callbackID));
         return;
@@ -853,12 +856,11 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
             // Don't cross line boundaries.
             result = position;
         } else if (withinTextUnitOfGranularity(position, WordGranularity, DirectionForward)) {
-            // The position lies within a word.
-            RefPtr<Range> wordRange = enclosingTextUnitOfGranularity(position, WordGranularity, DirectionForward);
-
-            result = wordRange->startPosition();
-            if (distanceBetweenPositions(position, result) > 1)
-                result = wordRange->endPosition();
+            // The position lies within a word, we want to select the word.
+            if (frame.selection().isCaret())
+                range = enclosingTextUnitOfGranularity(position, WordGranularity, DirectionForward);
+            else if (frame.selection().isRange() && (position < frame.selection().selection().start() || position > frame.selection().selection().end()))
+                result = position;
         } else if (atBoundaryOfGranularity(position, WordGranularity, DirectionBackward)) {
             // The position is at the end of a word.
             result = position;
@@ -1551,6 +1553,112 @@ void WebPage::moveSelectionByOffset(int32_t offset, uint64_t callbackID)
     if (position.isNotNull() && startPosition != position)
         frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).get(), position.affinity(), true);
     send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+VisiblePosition WebPage::visiblePositionInFocusedNodeForPoint(Frame& frame, const IntPoint& point)
+{
+    IntPoint adjustedPoint(frame.view()->rootViewToContents(point));
+    IntPoint constrainedPoint = m_assistedNode ? constrainPoint(adjustedPoint, &frame, m_assistedNode.get()) : adjustedPoint;
+    return frame.visiblePositionForPoint(constrainedPoint);
+}
+
+void WebPage::selectPositionAtPoint(const WebCore::IntPoint& point, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point);
+    
+    if (position.isNotNull())
+        frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).get(), position.affinity(), true);
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+void WebPage::selectPositionAtBoundaryWithDirection(const WebCore::IntPoint& point, uint32_t granularity, uint32_t direction, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point);
+
+    if (position.isNotNull()) {
+        position = positionOfNextBoundaryOfGranularity(position, static_cast<WebCore::TextGranularity>(granularity), static_cast<SelectionDirection>(direction));
+        if (position.isNotNull())
+            frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).get(), UPSTREAM, true);
+    }
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, uint32_t granularity, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point);
+
+    RefPtr<Range> range;
+    switch (static_cast<WebCore::TextGranularity>(granularity)) {
+    case WordGranularity:
+        range = wordRangeFromPosition(position);
+        break;
+    case SentenceGranularity:
+        range = enclosingTextUnitOfGranularity(position, SentenceGranularity, DirectionForward);
+        break;
+    case ParagraphGranularity:
+        range = enclosingTextUnitOfGranularity(position, ParagraphGranularity, DirectionForward);
+        break;
+    case DocumentGranularity:
+        frame.selection().selectAll();
+        break;
+    default:
+        break;
+    }
+    if (range)
+        frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+void WebPage::beginSelectionInDirection(uint32_t direction, uint64_t callbackID)
+{
+    m_selectionAnchor = (static_cast<SelectionDirection>(direction) == DirectionLeft) ? Start : End;
+    send(Messages::WebPageProxy::UnsignedCallback(m_selectionAnchor == Start, callbackID));
+}
+    
+void WebPage::updateSelectionWithExtentPoint(const WebCore::IntPoint& point, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point);
+
+    if (position.isNull()) {
+        send(Messages::WebPageProxy::UnsignedCallback(false, callbackID));
+        return;
+    }
+
+    RefPtr<Range> range;
+    VisiblePosition selectionStart;
+    VisiblePosition selectionEnd;
+    
+    if (m_selectionAnchor == Start) {
+        selectionStart = frame.selection().selection().visibleStart();
+        selectionEnd = position;
+
+        if (position <= selectionStart) {
+            selectionStart = selectionStart.previous();
+            selectionEnd = frame.selection().selection().visibleEnd();
+            m_selectionAnchor = End;
+        }
+    } else {
+        selectionStart = position;
+        selectionEnd = frame.selection().selection().visibleEnd();
+        
+        if (position >= selectionEnd) {
+            selectionStart = frame.selection().selection().visibleStart();
+            selectionEnd = selectionEnd.next();
+            m_selectionAnchor = Start;
+        }
+    }
+    
+    if (selectionStart.isNotNull() && selectionEnd.isNotNull())
+        range = Range::create(*frame.document(), selectionStart, selectionEnd);
+
+    if (range)
+        frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
+
+    send(Messages::WebPageProxy::UnsignedCallback(m_selectionAnchor == Start, callbackID));
 }
 
 void WebPage::convertSelectionRectsToRootView(FrameView* view, Vector<SelectionRect>& selectionRects)
@@ -2434,7 +2542,7 @@ void WebPage::viewportConfigurationChanged()
     FrameView& frameView = *mainFrameView();
     IntPoint scrollPosition = frameView.scrollPosition();
     if (!m_hasReceivedVisibleContentRectsAfterDidCommitLoad) {
-        FloatSize minimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates();
+        FloatSize minimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.minimumLayoutSize();
         minimumLayoutSizeInScrollViewCoordinates.scale(1 / scale);
         IntSize minimumLayoutSizeInDocumentCoordinates = roundedIntSize(minimumLayoutSizeInScrollViewCoordinates);
         frameView.setUnobscuredContentSize(minimumLayoutSizeInDocumentCoordinates);
@@ -2450,7 +2558,7 @@ void WebPage::viewportConfigurationChanged()
         // This takes scale into account, so do after the scale change.
         frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(frameView.viewportConstrainedObjectsRect()));
 
-        frameView.setCustomSizeForResizeEvent(expandedIntSize(m_viewportConfiguration.activeMinimumLayoutSizeInScrollViewCoordinates()));
+        frameView.setCustomSizeForResizeEvent(expandedIntSize(m_viewportConfiguration.minimumLayoutSize()));
     }
 }
 
@@ -2458,7 +2566,7 @@ void WebPage::updateViewportSizeForCSSViewportUnits()
 {
     FloatSize largestUnobscuredRect = m_maximumUnobscuredSize;
     if (largestUnobscuredRect.isEmpty())
-        largestUnobscuredRect = m_viewportConfiguration.minimumLayoutSizeForMinimalUI();
+        largestUnobscuredRect = m_viewportConfiguration.minimumLayoutSize();
 
     FrameView& frameView = *mainFrameView();
     largestUnobscuredRect.scale(1 / m_viewportConfiguration.initialScale());
@@ -2603,12 +2711,14 @@ void WebPage::zoomToRect(FloatRect rect, double minimumScale, double maximumScal
     send(Messages::WebPageProxy::ZoomToRect(rect, minimumScale, maximumScale));
 }
 
+#if ENABLE(IOS_TOUCH_EVENTS)
 void WebPage::dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue)
 {
     bool ignored;
     for (const WebTouchEvent& event : queue)
         dispatchTouchEvent(event, ignored);
 }
+#endif
 
 void WebPage::computePagesForPrintingAndStartDrawingToPDF(uint64_t frameID, const PrintInfo& printInfo, uint32_t firstPage, PassRefPtr<Messages::WebPage::ComputePagesForPrintingAndStartDrawingToPDF::DelayedReply> reply)
 {

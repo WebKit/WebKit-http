@@ -147,12 +147,12 @@ EncodedJSValue JIT_OPERATION operationGetByIdBuildList(ExecState* exec, Structur
 
     JSValue baseValue = JSValue::decode(base);
     PropertySlot slot(baseValue);
-    JSValue result = baseValue.get(exec, ident, slot);
-
+    bool hasResult = baseValue.getPropertySlot(exec, ident, slot);
+    
     if (accessType == static_cast<AccessType>(stubInfo->accessType))
         buildGetByIDList(exec, baseValue, ident, slot, *stubInfo);
 
-    return JSValue::encode(result);
+    return JSValue::encode(hasResult? slot.getValue(exec, ident) : jsUndefined());
 }
 
 EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue base, StringImpl* uid)
@@ -160,18 +160,15 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, Structure
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
     Identifier ident = uid->isEmptyUnique() ? Identifier::from(PrivateName(uid)) : Identifier(vm, uid);
-    AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
 
     JSValue baseValue = JSValue::decode(base);
     PropertySlot slot(baseValue);
     JSValue result = baseValue.get(exec, ident, slot);
     
-    if (accessType == static_cast<AccessType>(stubInfo->accessType)) {
-        if (stubInfo->seen)
-            repatchGetByID(exec, baseValue, ident, slot, *stubInfo);
-        else
-            stubInfo->seen = true;
-    }
+    if (stubInfo->seen)
+        repatchGetByID(exec, baseValue, ident, slot, *stubInfo);
+    else
+        stubInfo->seen = true;
 
     return JSValue::encode(result);
 }
@@ -1313,9 +1310,14 @@ void JIT_OPERATION operationPushNameScope(ExecState* exec, int32_t dst, Identifi
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
+    // FIXME: This won't work if this operation is called from the DFG or FTL.
+    // This should be changed to pass in the new scope.
+    JSScope* currentScope = exec->uncheckedR(dst).Register::scope();
     JSNameScope::Type scopeType = static_cast<JSNameScope::Type>(type);
-    JSNameScope* scope = JSNameScope::create(exec, *identifier, JSValue::decode(encodedValue), attibutes, scopeType);
+    JSNameScope* scope = JSNameScope::create(exec, currentScope, *identifier, JSValue::decode(encodedValue), attibutes, scopeType);
 
+    // FIXME: This won't work if this operation is called from the DFG or FTL.
+    // This should be changed to return the new scope.
     exec->uncheckedR(dst) = scope;
 }
 
@@ -1340,7 +1342,10 @@ void JIT_OPERATION operationPushWithScope(ExecState* exec, int32_t dst, EncodedJ
     if (vm.exception())
         return;
 
-    exec->uncheckedR(dst) = JSWithScope::create(exec, o);
+    // FIXME: This won't work if this operation is called from the DFG or FTL.
+    // This should be changed to pass in the old scope and return the new scope.
+    JSScope* currentScope = exec->uncheckedR(dst).Register::scope();
+    exec->uncheckedR(dst) = JSWithScope::create(exec, o, currentScope);
 }
 
 void JIT_OPERATION operationPopScope(ExecState* exec, int32_t scopeReg)

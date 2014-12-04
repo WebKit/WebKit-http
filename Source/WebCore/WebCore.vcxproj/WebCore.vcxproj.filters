@@ -738,9 +738,6 @@
     <ClCompile Include="..\page\DebugPageOverlays.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\DefaultVisitedLinkStore.cpp">
-      <Filter>page</Filter>
-    </ClCompile>
     <ClCompile Include="..\page\DragController.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -3057,6 +3054,9 @@
     <ClCompile Include="..\dom\ActiveDOMObject.cpp">
       <Filter>dom</Filter>
     </ClCompile>
+    <ClCompile Include="..\dom\AnimationEvent.cpp">
+      <Filter>dom</Filter>
+    </ClCompile>
     <ClCompile Include="..\dom\Attr.cpp">
       <Filter>dom</Filter>
     </ClCompile>
@@ -4704,6 +4704,9 @@
     <ClCompile Include="..\storage\StorageNamespaceImpl.cpp">
       <Filter>storage</Filter>
     </ClCompile>
+    <ClCompile Include="..\storage\StorageNamespaceProvider.cpp">
+      <Filter>storage</Filter>
+    </ClCompile>
     <ClCompile Include="..\storage\StorageSyncManager.cpp">
       <Filter>storage</Filter>
     </ClCompile>
@@ -5210,6 +5213,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSAbstractWorker.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSAnimationEvent.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSAttr.cpp">
@@ -10113,6 +10119,9 @@
     <ClInclude Include="..\dom\ActiveDOMObject.h">
       <Filter>dom</Filter>
     </ClInclude>
+    <ClInclude Include="..\dom\AnimationEvent.h">
+      <Filter>dom</Filter>
+    </ClInclude>
     <ClInclude Include="..\dom\Attr.h">
       <Filter>dom</Filter>
     </ClInclude>
@@ -13133,6 +13142,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSAbstractWorker.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSAnimationEvent.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSAttr.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -15123,9 +15135,6 @@
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\page\DebugPageOverlays.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\DefaultVisitedLinkStore.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\BorderEdge.h">

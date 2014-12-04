@@ -31,15 +31,16 @@
 #include <memory>
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
     class DOMTimerFireState;
     class Document;
+    class Element;
     class HTMLPlugInElement;
     class IntRect;
     class ScheduledAction;
-    class StyledElement;
 
     class DOMTimer final : public RefCounted<DOMTimer>, public SuspendableTimer {
         WTF_MAKE_NONCOPYABLE(DOMTimer);
@@ -58,7 +59,7 @@ namespace WebCore {
         void updateThrottlingStateAfterViewportChange(const IntRect& visibleRect);
 
         static void scriptDidInteractWithPlugin(HTMLPlugInElement&);
-        static void scriptDidUpdateStyleOfElement(StyledElement&, bool changed);
+        static void scriptDidCauseElementRepaint(Element&, bool changed = true);
 
     private:
         DOMTimer(ScriptExecutionContext&, std::unique_ptr<ScheduledAction>, int interval, bool singleShot);
@@ -91,9 +92,10 @@ namespace WebCore {
         TimerThrottleState m_throttleState;
         double m_currentTimerInterval;
         bool m_shouldForwardUserGesture;
-        // Hold a reference to the elements in case they get removed from the
-        // Document after the timer is throttled.
-        Vector<RefPtr<StyledElement>> m_elementsCausingThrottling;
+        // Use WeakPtrs because we don't want to keep the elements alive but we
+        // still need to handle cases where the elements get destroyed after
+        // the timer has fired.
+        Vector<WeakPtr<Element>> m_elementsCausingThrottling;
     };
 
 } // namespace WebCore

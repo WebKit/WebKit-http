@@ -111,7 +111,7 @@ FrameSelection::FrameSelection(Frame* frame)
     : m_frame(frame)
     , m_xPosForVerticalArrowNavigation(NoXPosForVerticalArrowNavigation())
     , m_granularity(CharacterGranularity)
-    , m_caretBlinkTimer(this, &FrameSelection::caretBlinkTimerFired)
+    , m_caretBlinkTimer(*this, &FrameSelection::caretBlinkTimerFired)
     , m_absCaretBoundsDirty(true)
     , m_caretPaint(true)
     , m_isCaretBlinkingSuspended(false)
@@ -1327,17 +1327,17 @@ bool CaretBase::updateCaretRect(Document* document, const VisiblePosition& caret
 {
     document->updateLayoutIgnorePendingStylesheets();
     m_caretRectNeedsUpdate = false;
-    RenderObject* renderer;
+    RenderBlock* renderer;
     m_caretLocalRect = localCaretRectInRendererForCaretPainting(caretPosition, renderer);
     return !m_caretLocalRect.isEmpty();
 }
 
-RenderObject* FrameSelection::caretRendererWithoutUpdatingLayout() const
+RenderBlock* FrameSelection::caretRendererWithoutUpdatingLayout() const
 {
     return rendererForCaretPainting(m_selection.start().deprecatedNode());
 }
 
-RenderObject* DragCaretController::caretRenderer() const
+RenderBlock* DragCaretController::caretRenderer() const
 {
     return rendererForCaretPainting(m_position.deepEquivalent().deprecatedNode());
 }
@@ -1358,11 +1358,8 @@ IntRect FrameSelection::absoluteCaretBounds()
 
 static void repaintCaretForLocalRect(Node* node, const LayoutRect& rect)
 {
-    RenderObject* caretPainter = rendererForCaretPainting(node);
-    if (!caretPainter)
-        return;
-
-    caretPainter->repaintRectangle(rect);
+    if (auto* caretPainter = rendererForCaretPainting(node))
+        caretPainter->repaintRectangle(rect);
 }
 
 bool FrameSelection::recomputeCaretRect()
@@ -1481,9 +1478,8 @@ void CaretBase::paintCaret(Node* node, GraphicsContext* context, const LayoutPoi
         return;
 
     LayoutRect drawingRect = localCaretRectWithoutUpdate();
-    RenderObject* renderer = rendererForCaretPainting(node);
-    if (is<RenderBox>(renderer))
-        downcast<RenderBox>(*renderer).flipForWritingMode(drawingRect);
+    if (auto* renderer = rendererForCaretPainting(node))
+        renderer->flipForWritingMode(drawingRect);
     drawingRect.moveBy(roundedIntPoint(paintOffset));
     LayoutRect caret = intersection(drawingRect, clipRect);
     if (caret.isEmpty())
@@ -1894,7 +1890,7 @@ void FrameSelection::setCaretVisibility(CaretVisibility visibility)
     updateAppearance();
 }
 
-void FrameSelection::caretBlinkTimerFired(Timer&)
+void FrameSelection::caretBlinkTimerFired()
 {
 #if ENABLE(TEXT_CARET)
     ASSERT(caretIsVisible());

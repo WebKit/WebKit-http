@@ -507,8 +507,6 @@ void WebFrameLoaderClient::dispatchDidFinishDocumentLoad()
     if (!webPage)
         return;
 
-    webPage->didFinishDocumentLoad(m_frame);
-
     RefPtr<API::Object> userData;
 
     // Notify the bundle client.
@@ -1641,13 +1639,6 @@ void WebFrameLoaderClient::contentFilterDidBlockLoad(std::unique_ptr<WebCore::Co
 #if ENABLE(REQUEST_AUTOCOMPLETE)
 void WebFrameLoaderClient::didRequestAutocomplete(PassRefPtr<WebCore::FormState>)
 {
-}
-#endif
-
-#if PLATFORM(MAC)
-bool WebFrameLoaderClient::needsQuickLookResourceCachingQuirks() const
-{
-    return WebProcess::shared().needsQuickLookResourceCachingQuirks();
 }
 #endif
 

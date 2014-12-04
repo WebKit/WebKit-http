@@ -228,8 +228,6 @@ public:
     virtual void annotatedRegionsChanged();
 #endif
 
-    virtual void populateVisitedLinks();
-
     virtual bool shouldReplaceWithGeneratedFileForUpload(const String& path, String& generatedFilename);
     virtual String generateReplacementFile(const String& path);
 
@@ -415,8 +413,6 @@ public:
     virtual void didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const HitTestResult&) { UNUSED_PARAM(mouseDownPosition); }
     virtual void didRecognizeLongMousePress() { }
     virtual void didCancelTrackingPotentialLongMousePress() { }
-
-    virtual void logDiagnosticMessage(const String& message, const String& description, const String& status) { UNUSED_PARAM(message); UNUSED_PARAM(description); UNUSED_PARAM(status); }
 
     virtual FloatSize minimumWindowSize() const { return FloatSize(100, 100); };
 

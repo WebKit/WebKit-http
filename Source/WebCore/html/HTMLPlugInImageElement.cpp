@@ -107,8 +107,8 @@ HTMLPlugInImageElement::HTMLPlugInImageElement(const QualifiedName& tagName, Doc
     , m_needsWidgetUpdate(!createdByParser)
     , m_shouldPreferPlugInsForImages(preferPlugInsForImagesOption == ShouldPreferPlugInsForImages)
     , m_needsDocumentActivationCallbacks(false)
-    , m_simulatedMouseClickTimer(this, &HTMLPlugInImageElement::simulatedMouseClickTimerFired, simulatedMouseClickTimerDelay)
-    , m_removeSnapshotTimer(this, &HTMLPlugInImageElement::removeSnapshotTimerFired)
+    , m_simulatedMouseClickTimer(*this, &HTMLPlugInImageElement::simulatedMouseClickTimerFired, simulatedMouseClickTimerDelay)
+    , m_removeSnapshotTimer(*this, &HTMLPlugInImageElement::removeSnapshotTimerFired)
     , m_createdDuringUserGesture(ScriptController::processingUserGesture())
     , m_isRestartedPlugin(false)
     , m_needsCheckForSizeChange(false)
@@ -332,13 +332,17 @@ void HTMLPlugInImageElement::updateSnapshot(PassRefPtr<Image> image)
 
     m_snapshotImage = image;
 
-    if (is<RenderSnapshottedPlugIn>(*renderer())) {
-        downcast<RenderSnapshottedPlugIn>(*renderer()).updateSnapshot(image);
+    if (!renderer())
+        return;
+    auto& renderer = *this->renderer();
+
+    if (is<RenderSnapshottedPlugIn>(renderer)) {
+        downcast<RenderSnapshottedPlugIn>(renderer).updateSnapshot(image);
         return;
     }
 
-    if (is<RenderEmbeddedObject>(*renderer()))
-        renderer()->repaint();
+    if (is<RenderEmbeddedObject>(renderer))
+        renderer.repaint();
 }
 
 static DOMWrapperWorld& plugInImageElementIsolatedWorld()
@@ -399,7 +403,7 @@ bool HTMLPlugInImageElement::partOfSnapshotOverlay(Node* node)
     return node && snapshotLabel && (node == snapshotLabel.get() || node->isDescendantOf(snapshotLabel.get()));
 }
 
-void HTMLPlugInImageElement::removeSnapshotTimerFired(Timer&)
+void HTMLPlugInImageElement::removeSnapshotTimerFired()
 {
     m_snapshotImage = nullptr;
     m_isRestartedPlugin = false;

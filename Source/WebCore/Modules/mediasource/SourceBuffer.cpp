@@ -109,7 +109,7 @@ SourceBuffer::SourceBuffer(PassRef<SourceBufferPrivate> sourceBufferPrivate, Med
     , m_private(WTF::move(sourceBufferPrivate))
     , m_source(source)
     , m_asyncEventQueue(*this)
-    , m_appendBufferTimer(this, &SourceBuffer::appendBufferTimerFired)
+    , m_appendBufferTimer(*this, &SourceBuffer::appendBufferTimerFired)
     , m_highestPresentationEndTimestamp(MediaTime::invalidTime())
     , m_buffered(TimeRanges::create())
     , m_appendState(WaitingForSegment)
@@ -119,7 +119,7 @@ SourceBuffer::SourceBuffer(PassRef<SourceBufferPrivate> sourceBufferPrivate, Med
     , m_reportedExtraMemoryCost(0)
     , m_pendingRemoveStart(MediaTime::invalidTime())
     , m_pendingRemoveEnd(MediaTime::invalidTime())
-    , m_removeTimer(this, &SourceBuffer::removeTimerFired)
+    , m_removeTimer(*this, &SourceBuffer::removeTimerFired)
     , m_updating(false)
     , m_receivedFirstInitializationSegment(false)
     , m_active(false)
@@ -217,6 +217,33 @@ void SourceBuffer::appendBuffer(PassRefPtr<ArrayBufferView> data, ExceptionCode&
     appendBufferInternal(static_cast<unsigned char*>(data->baseAddress()), data->byteLength(), ec);
 }
 
+void SourceBuffer::resetParserState()
+{
+    // Section 3.5.2 Reset Parser State algorithm steps.
+    // http://www.w3.org/TR/2014/CR-media-source-20140717/#sourcebuffer-reset-parser-state
+    // 1. If the append state equals PARSING_MEDIA_SEGMENT and the input buffer contains some complete coded frames,
+    //    then run the coded frame processing algorithm until all of these complete coded frames have been processed.
+    // FIXME: If any implementation will work in pulling mode (instead of async push to SourceBufferPrivate, and forget)
+    //     this should be handled somehow either here, or in m_private->abort();
+
+    // 2. Unset the last decode timestamp on all track buffers.
+    // 3. Unset the last frame duration on all track buffers.
+    // 4. Unset the highest presentation timestamp on all track buffers.
+    // 5. Set the need random access point flag on all track buffers to true.
+    for (auto& trackBufferPair : m_trackBufferMap.values()) {
+        trackBufferPair.lastDecodeTimestamp = MediaTime::invalidTime();
+        trackBufferPair.lastFrameDuration = MediaTime::invalidTime();
+        trackBufferPair.highestPresentationTimestamp = MediaTime::invalidTime();
+        trackBufferPair.needRandomAccessFlag = true;
+    }
+    // 6. Remove all bytes from the input buffer.
+    // Note: this is handled by abortIfUpdating()
+    // 7. Set append state to WAITING_FOR_SEGMENT.
+    m_appendState = WaitingForSegment;
+
+    m_private->abort();
+}
+
 void SourceBuffer::abort(ExceptionCode& ec)
 {
     // Section 3.2 abort() method steps.
@@ -234,7 +261,7 @@ void SourceBuffer::abort(ExceptionCode& ec)
     abortIfUpdating();
 
     // 4. Run the reset parser state algorithm.
-    m_private->abort();
+    resetParserState();
 
     // FIXME(229408) Add steps 5-6 update appendWindowStart & appendWindowEnd.
 }
@@ -447,7 +474,7 @@ void SourceBuffer::appendBufferInternal(unsigned char* data, unsigned size, Exce
     reportExtraMemoryCost();
 }
 
-void SourceBuffer::appendBufferTimerFired(Timer&)
+void SourceBuffer::appendBufferTimerFired()
 {
     if (isRemoved())
         return;
@@ -672,7 +699,7 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
     LOG(Media, "SourceBuffer::removeCodedFrames(%p) - buffered = %s", this, toString(m_buffered->ranges()).utf8().data());
 }
 
-void SourceBuffer::removeTimerFired(Timer*)
+void SourceBuffer::removeTimerFired()
 {
     ASSERT(m_updating);
     ASSERT(m_pendingRemoveStart.isValid());

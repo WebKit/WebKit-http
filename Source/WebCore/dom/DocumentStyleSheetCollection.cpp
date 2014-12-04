@@ -56,12 +56,8 @@ DocumentStyleSheetCollection::DocumentStyleSheetCollection(Document& document)
     , m_injectedStyleSheetCacheValid(false)
     , m_hadActiveLoadingStylesheet(false)
     , m_pendingUpdateType(NoUpdate)
-    , m_usesSiblingRules(false)
-    , m_usesSiblingRulesOverride(false)
     , m_usesFirstLineRules(false)
     , m_usesFirstLetterRules(false)
-    , m_usesBeforeAfterRules(false)
-    , m_usesBeforeAfterRulesOverride(false)
     , m_usesRemUnits(false)
 {
 }
@@ -70,19 +66,15 @@ void DocumentStyleSheetCollection::combineCSSFeatureFlags()
 {
     // Delay resetting the flags until after next style recalc since unapplying the style may not work without these set (this is true at least with before/after).
     const StyleResolver& styleResolver = m_document.ensureStyleResolver();
-    m_usesSiblingRules = m_usesSiblingRules || styleResolver.usesSiblingRules();
     m_usesFirstLineRules = m_usesFirstLineRules || styleResolver.usesFirstLineRules();
     m_usesFirstLetterRules = m_usesFirstLetterRules || styleResolver.usesFirstLetterRules();
-    m_usesBeforeAfterRules = m_usesBeforeAfterRules || styleResolver.usesBeforeAfterRules();
 }
 
 void DocumentStyleSheetCollection::resetCSSFeatureFlags()
 {
     const StyleResolver& styleResolver = m_document.ensureStyleResolver();
-    m_usesSiblingRules = styleResolver.usesSiblingRules();
     m_usesFirstLineRules = styleResolver.usesFirstLineRules();
     m_usesFirstLetterRules = styleResolver.usesFirstLetterRules();
-    m_usesBeforeAfterRules = styleResolver.usesBeforeAfterRules();
 }
 
 CSSStyleSheet* DocumentStyleSheetCollection::pageUserSheet()

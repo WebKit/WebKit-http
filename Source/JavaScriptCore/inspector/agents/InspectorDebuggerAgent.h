@@ -42,7 +42,6 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
@@ -146,6 +145,7 @@ private:
     void clearDebuggerBreakpointState();
     void clearInspectorBreakpointState();
     void clearBreakDetails();
+    void clearExceptionValue();
 
     bool breakpointActionsFromProtocol(ErrorString&, RefPtr<InspectorArray>& actions, BreakpointActions* result);
 
@@ -167,6 +167,7 @@ private:
     RefPtr<InspectorObject> m_breakAuxData;
     bool m_enabled;
     bool m_javaScriptPauseScheduled;
+    bool m_hasExceptionValue;
     RefPtr<WTF::Stopwatch> m_stopwatch;
     int m_nextProbeSampleId;
 };

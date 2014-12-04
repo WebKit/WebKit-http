@@ -282,6 +282,7 @@ public:
 
     // Special registers
     void setThisRegister(VirtualRegister thisRegister) { m_thisRegister = thisRegister; }
+    void setScopeRegister(VirtualRegister scopeRegister) { m_scopeRegister = scopeRegister; }
     void setActivationRegister(VirtualRegister activationRegister) { m_lexicalEnvironmentRegister = activationRegister; }
 
     void setArgumentsRegister(VirtualRegister argumentsRegister) { m_argumentsRegister = argumentsRegister; }
@@ -429,6 +430,7 @@ public:
     CodeType codeType() const { return m_codeType; }
 
     VirtualRegister thisRegister() const { return m_thisRegister; }
+    VirtualRegister scopeRegister() const { return m_scopeRegister; }
     VirtualRegister activationRegister() const { return m_lexicalEnvironmentRegister; }
     bool hasActivationRegister() const { return m_lexicalEnvironmentRegister.isValid(); }
 
@@ -463,7 +465,7 @@ public:
         return m_rareData->m_constantBuffers[index];
     }
 
-    bool hasRareData() const { return m_rareData; }
+    bool hasRareData() const { return m_rareData.get(); }
 
     int lineNumberForBytecodeOffset(unsigned bytecodeOffset);
 
@@ -508,7 +510,7 @@ private:
     void createRareDataIfNecessary()
     {
         if (!m_rareData)
-            m_rareData = adoptPtr(new RareData);
+            m_rareData = std::make_unique<RareData>();
     }
 
     void getLineAndColumn(ExpressionRangeInfo&, unsigned& line, unsigned& column);
@@ -520,6 +522,7 @@ private:
 
     VirtualRegister m_thisRegister;
     VirtualRegister m_argumentsRegister;
+    VirtualRegister m_scopeRegister;
     VirtualRegister m_lexicalEnvironmentRegister;
     VirtualRegister m_globalObjectRegister;
 
@@ -581,7 +584,7 @@ public:
     };
 
 private:
-    OwnPtr<RareData> m_rareData;
+    std::unique_ptr<RareData> m_rareData;
     Vector<ExpressionRangeInfo> m_expressionInfo;
     struct TypeProfilerExpressionRange {
         unsigned m_startDivot;

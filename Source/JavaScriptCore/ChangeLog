@@ -1,3 +1,749 @@
+2014-12-03  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
+
+        Remove unused JSC runtime options
+        https://bugs.webkit.org/show_bug.cgi?id=133070
+
+        Reviewed by Csaba Osztrogonác.
+
+        * runtime/Options.h:
+
+2014-12-02  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r176592, r176603, r176616, and r176705 until build and perf issues are resolved.
+        https://bugs.webkit.org/show_bug.cgi?id=138821
+
+        Not reviewed.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::visitChildren):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitComplexPopScopes):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitSwitchIntJump):
+        * ftl/FTLAbbreviations.h:
+        (JSC::FTL::mdNode):
+        (JSC::FTL::buildCall):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLengthWithArrayStorage):
+        (JSC::JSArray::sortCompactedVector):
+        * tools/ProfileTreeNode.h:
+        (JSC::ProfileTreeNode::dumpInternal):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::matchCharacterClass):
+
+2014-12-02  Michael Saboff  <msaboff@apple.com>
+
+        Change CallFrame::globalThisValue() to not use CallFrame::scope()
+        https://bugs.webkit.org/show_bug.cgi?id=139202
+
+        Reviewed by Mark Lam.
+
+        Changed to use the globalThis() on the globalObject associated with the
+        callee.  Moved the inline definition to JSGlobalObject.h instead of
+        including JSGlobalObject.h in JSScope.h.  Also moved it as JSScope
+        objects are no longer involved in getting the value.
+
+        * runtime/JSGlobalObject.h:
+        (JSC::ExecState::globalThisValue):
+        * runtime/JSScope.h:
+        (JSC::ExecState::globalThisValue): Deleted.
+
+2014-12-02  Matthew Mirman  <mmirman@apple.com>
+
+        Fixes inline cache fast path accessing nonexistant getters.
+        <rdar://problem/18416918>
+        https://bugs.webkit.org/show_bug.cgi?id=136961
+
+        Reviewed by Filip Pizlo.
+
+        Fixes a bug in inline caching where getters would have been able to 
+        modify the property they are getting during 
+        building the inline cache and then accessing that 
+        property through the inline cache site causing a recursive 
+        inline cache building and allowing the fast path of the cache to 
+        try to load a getter for the property that no longer exists.
+                
+        * jit/JITOperations.cpp: Switched use of get to getPropertySlot.
+        * runtime/JSCJSValue.h: 
+        added getPropertySlot for when you don't want to perform the get quite yet but want 
+        to fill out the slot.
+        * runtime/JSCJSValueInlines.h: Added implementation for getPropertySlot
+        (JSC::JSValue::get): changed to simply call getPropertySlot
+        (JSC::JSValue::getPropertySlot): added.
+        * tests/stress/recursive_property_redefine_during_inline_caching.js: Added test case for bug.
+        (test):
+        
+2014-12-01  Michael Saboff  <msaboff@apple.com>
+
+        Remove GetMyScope node from DFG
+        https://bugs.webkit.org/show_bug.cgi?id=139166
+
+        Reviewed by Oliver Hunt.
+
+        Eliminated GetMyScope DFG node type.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isLiveInBytecode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileGetMyScope): Deleted.
+
+2014-12-01  Michael Saboff  <msaboff@apple.com>
+
+        Crash (integer overflow) beneath ByteCodeParser::handleGetById typing in search field on weather.com
+        https://bugs.webkit.org/show_bug.cgi?id=139165
+
+        Reviewed by Oliver Hunt.
+
+        If we don't have any getById or putById variants, emit non-cached versions of these operations.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        (JSC::DFG::ByteCodeParser::handlePutById):
+
+2014-12-01  Andreas Kling  <akling@apple.com>
+
+        Optimize constructing JSC::Identifier from AtomicString.
+        <https://webkit.org/b/139157>
+
+        Reviewed by Michael Saboff.
+
+        Add constructors for Identifier taking AtomicString and AtomicStringImpl.
+        This avoids branching on the string's isAtomic flag, which is obviously
+        always true for AtomicString & AtomicStringImpl.
+
+        Had to add a Identifier(const char*) constructor to resolve implicit
+        ambiguity between String / AtomicString.
+
+        Also made PrivateName::uid() return AtomicStringImpl* to take advantage
+        of the new constructor in a few places.
+
+        * runtime/Identifier.h:
+        (JSC::Identifier::Identifier):
+        * runtime/IdentifierInlines.h:
+        (JSC::Identifier::Identifier):
+        * runtime/PrivateName.h:
+        (JSC::PrivateName::uid):
+
+2014-12-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Several JavaScriptCore date tests are flaky, because they expect time to be frozen during execution
+        https://bugs.webkit.org/show_bug.cgi?id=139138
+
+        Reviewed by Mark Lam.
+
+        Merged a fix by Bob Clary.
+
+        * tests/mozilla/ecma/Date/15.9.1.1-1.js:
+        * tests/mozilla/ecma/Date/15.9.1.1-2.js:
+        * tests/mozilla/ecma/Date/15.9.2.1.js:
+        * tests/mozilla/ecma/Date/15.9.2.2-1.js:
+        * tests/mozilla/ecma/Date/15.9.2.2-2.js:
+        * tests/mozilla/ecma/Date/15.9.2.2-3.js:
+        * tests/mozilla/ecma/Date/15.9.2.2-4.js:
+        * tests/mozilla/ecma/Date/15.9.2.2-5.js:
+        * tests/mozilla/ecma/Date/15.9.2.2-6.js:
+
+2014-11-17  Oliver Hunt  <oliver@apple.com>
+
+        Make sure range based iteration of Vector<> still receives bounds checking
+        https://bugs.webkit.org/show_bug.cgi?id=138821
+
+        Reviewed by Mark Lam.
+
+        There are a few uses of begin()/end() that explicitly require pointers,
+        so we use getPtr() to extract the underlying pointer generically.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::visitChildren):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitComplexPopScopes):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitSwitchIntJump):
+        * ftl/FTLAbbreviations.h:
+        (JSC::FTL::mdNode):
+        (JSC::FTL::buildCall):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        * profiler/ProfileNode.cpp:
+        (JSC::ProfileNode::debugPrintRecursively):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLengthWithArrayStorage):
+        (JSC::JSArray::sortCompactedVector):
+        * tools/ProfileTreeNode.h:
+        (JSC::ProfileTreeNode::dumpInternal):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::matchCharacterClass):
+
+2014-11-29  Andreas Kling  <akling@apple.com>
+
+        PropertyTable keys should be AtomicStringImpl.
+        <https://webkit.org/b/139096>
+
+        Reviewed by Sam Weinig.
+
+        Since PropertyTable keys are really always Identifiers, switch the key
+        type from StringImpl* to AtomicStringImpl*.
+
+        We have code in the GetByVal opcode implementations that assumes things
+        about this, so this change adds confidence to those algorithms.
+
+        * bytecode/ComplexGetStatus.cpp:
+        (JSC::ComplexGetStatus::computeFor):
+        * bytecode/ComplexGetStatus.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        (JSC::GetByIdStatus::computeFor):
+        (JSC::GetByIdStatus::computeForStubInfo):
+        * bytecode/GetByIdStatus.h:
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFromLLInt):
+        (JSC::PutByIdStatus::computeFor):
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * bytecode/PutByIdStatus.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        * dfg/DFGDesiredIdentifiers.cpp:
+        (JSC::DFG::DesiredIdentifiers::addLazily):
+        (JSC::DFG::DesiredIdentifiers::at):
+        * dfg/DFGDesiredIdentifiers.h:
+        (JSC::DFG::DesiredIdentifiers::operator[]):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::isStringPrototypeMethodSane):
+        * runtime/Identifier.h:
+        (JSC::Identifier::impl):
+        * runtime/IntendedStructureChain.cpp:
+        (JSC::IntendedStructureChain::mayInterceptStoreTo):
+        * runtime/IntendedStructureChain.h:
+        * runtime/PropertyMapHashTable.h:
+        * runtime/Structure.cpp:
+        (JSC::StructureTransitionTable::contains):
+        (JSC::StructureTransitionTable::get):
+        (JSC::Structure::addPropertyTransitionToExistingStructureImpl):
+        (JSC::Structure::addPropertyTransitionToExistingStructureConcurrently):
+        (JSC::Structure::getConcurrently):
+        (JSC::Structure::add):
+        (JSC::Structure::remove):
+        * runtime/Structure.h:
+        (JSC::PropertyMapEntry::PropertyMapEntry):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::getConcurrently):
+        * runtime/StructureTransitionTable.h:
+        (JSC::StructureTransitionTable::Hash::hash):
+
+2014-11-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr<>|make_unique<> in ftl, bytecode of JSC
+        https://bugs.webkit.org/show_bug.cgi?id=139063
+
+        Reviewed by Andreas Kling.
+
+        Clean up OwnPtr and PassOwnPtr in JSC.
+
+        * bytecode/StructureStubClearingWatchpoint.cpp:
+        (JSC::StructureStubClearingWatchpoint::push):
+        * bytecode/StructureStubClearingWatchpoint.h:
+        (JSC::StructureStubClearingWatchpoint::StructureStubClearingWatchpoint):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLJITFinalizer.h:
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * parser/SourceProviderCacheItem.h:
+
+2014-11-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr instead of OwnPtr in JSC classes
+        https://bugs.webkit.org/show_bug.cgi?id=139009
+
+        Reviewed by Filip Pizlo.
+
+        As a step of using std::unique_ptr<>, this patch replaces OwnPtr with
+        std::unique_ptr<>|std::make_unique<>.
+
+        * bytecode/DFGExitProfile.cpp:
+        (JSC::DFG::ExitProfile::add):
+        * bytecode/DFGExitProfile.h:
+        * bytecode/LazyOperandValueProfile.cpp:
+        (JSC::CompressedLazyOperandValueProfileHolder::add):
+        * bytecode/LazyOperandValueProfile.h:
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::specializedSweep):
+        (JSC::MarkedBlock::stopAllocating):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::clearNewlyAllocated):
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::findMagicComment):
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::invalidateCode):
+        * runtime/RegExp.h:
+        * yarr/RegularExpression.cpp:
+        (JSC::Yarr::RegularExpression::Private::compile):
+        (JSC::Yarr::RegularExpression::isValid):
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::ByteCompiler::compile):
+        (JSC::Yarr::ByteCompiler::regexBegin):
+        (JSC::Yarr::byteCompile):
+        * yarr/YarrInterpreter.h:
+        (JSC::Yarr::BytecodePattern::BytecodePattern):
+
+2014-11-24  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Clean up OwnPtr and PassOwnPtr in JSC - bytecode, jit, inspector, and interpreter
+        https://bugs.webkit.org/show_bug.cgi?id=139022
+
+        Reviewed by Filip Pizlo.
+
+        As a step of using std::unique_ptr<>, this patch replaces OwnPtr with
+        std::unique_ptr<>|std::make_unique<>.
+
+        * bytecode/DFGExitProfile.cpp:
+        (JSC::DFG::ExitProfile::add):
+        * bytecode/DFGExitProfile.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        (JSC::DFG::JITCompiler::linkFunction):
+        * dfg/DFGJITFinalizer.cpp:
+        (JSC::DFG::JITFinalizer::JITFinalizer):
+        * dfg/DFGJITFinalizer.h:
+        * heap/IncrementalSweeper.h:
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::findMagicComment):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::enableSampler):
+        * interpreter/Interpreter.h:
+        * jit/ExecutableAllocator.cpp:
+        (JSC::ExecutableAllocator::ExecutableAllocator):
+        * jit/ExecutableAllocator.h:
+
+2014-11-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Clean up OwnPtr and PassOwnPtr in some of JS classes
+        https://bugs.webkit.org/show_bug.cgi?id=138724
+
+        Reviewed by Filip Pizlo.
+
+        As a step to use std::unique_ptr<> and std::make_unique<>, this patch replaces
+        OwnPtr with std::unique_ptr<>. Besides create() factory function is removed as well.
+
+        * builtins/BuiltinExecutables.h:
+        (JSC::BuiltinExecutables::create): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::createRareDataIfNecessary):
+        * bytecode/StructureStubInfo.h:
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::hasRareData):
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        * runtime/CodeCache.h:
+        (JSC::CodeCache::create): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::clearRareData):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::createRareDataIfNeeded):
+        * runtime/RegExpConstructor.h:
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStrings::createSingleCharacterString):
+        (JSC::SmallStrings::singleCharacterStringRep):
+        * runtime/SmallStrings.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2014-11-21  Michael Saboff  <msaboff@apple.com>
+
+        r176455: ASSERT(!m_vector.isEmpty()) in IntendedStructureChain.cpp(143)
+        https://bugs.webkit.org/show_bug.cgi?id=139000
+
+        Reviewed by Darin Adler.
+
+        Check that the chainCount is non-zero before using a StructureChain.
+
+        * bytecode/ComplexGetStatus.cpp:
+        (JSC::ComplexGetStatus::computeFor):
+
+2014-11-21  Michael Saboff  <msaboff@apple.com>
+
+        Allocate local ScopeChain register
+        https://bugs.webkit.org/show_bug.cgi?id=138793
+
+        Reviewed by Geoffrey Garen.
+
+        Now we allocate the scope register as a local.  The allocated register is stored in the 
+        CodeBlock for use by other components.  Update the DFG to work with a local scope register.
+        Changed usage of JSStack::ScopeChain access to the CallFrame header to use the allocated
+        local register.
+
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        Updated to properly represent the operand inputs and bytecode result.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::setScopeRegister):
+        (JSC::CodeBlock::scopeRegister):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::setScopeRegister):
+        (JSC::UnlinkedCodeBlock::scopeRegister):
+        Added scope register member and accessors.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::allocateAndEmitScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::scopeRegister):
+        Change m_scopeRegister to an allocated register.  Added allocateAndEmitScope helper to
+        allocate the scope register, set the CodeBlock with its value and emit op_get_scope.
+
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::scope): Changed to access the scope using the new convention.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::get):
+        (JSC::DFG::ByteCodeParser::flush):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        Changed op_create_lexical_environment to set the scope VirtualRegister operand.
+        Filled out op_get_scope processing to emit a GetScope node putting the result in
+        the scope VirtualRegister result operand.
+        Added Phantoms where appropriate to keep the Scope register alive in places where
+        it use is optimized away, but where the baseline JIT would need to use its value.
+        Eliminated uses of JSStack::ScopeChain.
+
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+        Make sure that the scope register stack location is allocated using the same place
+        that the codeBlock expects. 
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        Allow strength reduction of Flush to skip of GetScope nodes looking for a prior
+        corresponding SetLocal.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::scope):
+        (JSC::ExecState::setScope):
+        Added new scope() and setScope() helpers that take a VirtualRegister offset.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        Changed eval() to get the scope from the caller's scope register instead of from the
+        temporary frame created for eval.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::unwind):
+        Changed unwind() to manipulate the scope n the allocated register instead of from the
+        call frame slot.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::readNonInlinedFrame):
+        (JSC::StackVisitor::readInlinedFrame):
+        * interpreter/StackVisitor.h:
+        (JSC::StackVisitor::Frame::callee):
+        (JSC::StackVisitor::Frame::scope): Deleted.
+        Eliminated the scope member as it needed to change and no StackVisitor users use it.
+
+        * jit/JITOperations.cpp:
+        (JSC::operationPushNameScope):
+        (JSC::operationPushWithScope):
+        * runtime/JSNameScope.h:
+        (JSC::JSNameScope::create):
+        * runtime/JSWithScope.h:
+        (JSC::JSWithScope::create): Deleted.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        Deleted JSNameScope::create() and JSWithScope::create() flavors tht used the ScopeChain slot
+        in the CallFrame header.  Changed the only user of these function, op_push_name_scope and
+        op_push_with_scope helpers, to use the remaining create variants that require explicit scope.  
+        Those operations get the scope from the register pointed to by their scope operands.
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Changed resolveScope to use the allocated register.
+
+2014-11-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [JSC] Disable verifyHeap
+        https://bugs.webkit.org/show_bug.cgi?id=138962
+
+        Reviewed by Mark Lam.
+
+        * runtime/Options.h:
+
+2014-11-20  Mark Lam  <mark.lam@apple.com>
+
+        Add some comments to describe the DFG UseKind representations.
+        <https://webkit.org/b/138934>
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGUseKind.h:
+        - Also regrouped the UseKind enums by representation to be more readable.
+
+2014-11-20  Mark Lam  <mark.lam@apple.com>
+
+        Add Heap verification infrastructure.
+        <https://webkit.org/b/138851>
+
+        Reviewed by Geoffrey Garen.
+
+        The verification infrastructure code is always built in but disabled by
+        default.  When disabled, the cost is minimal:
+        1. Heap has a m_verifier field.
+        2. GC does a few "if (m_verifier)" checks that should fail.
+        3. HeapVerifier takes up code space though not used.
+
+        When enabled:
+        1. The HeapVerifier will keep N number of GC cycle data.
+           Each GC cycle will contain a "before marking" and "after marking" live
+           object list.
+           The GC cycles is a circular buffer.  Only data for the last N GC cycles
+           will be retained.
+        2. During GC, the current GC cycle's live objects lists will be populated
+           before and after marking.
+        3. The current GC cycle's live object lists will be validated before GC,
+           after marking, and after GC.
+
+        Currently, the only validation being done is to verify that object
+        butterflies are allocated from valid blocks in the Storage (aka Copied)
+        space.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::collect):
+        * heap/Heap.h:
+        * heap/HeapVerifier.cpp: Added.
+        (JSC::LiveObjectList::findObject):
+        (JSC::HeapVerifier::HeapVerifier):
+        (JSC::HeapVerifier::collectionTypeName):
+        (JSC::HeapVerifier::phaseName):
+        (JSC::getButterflyDetails):
+        (JSC::HeapVerifier::initializeGCCycle):
+        (JSC::GatherLiveObjFunctor::GatherLiveObjFunctor):
+        (JSC::GatherLiveObjFunctor::operator()):
+        (JSC::HeapVerifier::gatherLiveObjects):
+        (JSC::HeapVerifier::liveObjectListForGathering):
+        (JSC::trimDeadObjectsFromList):
+        (JSC::HeapVerifier::trimDeadObjects):
+        (JSC::HeapVerifier::verifyButterflyIsInStorageSpace):
+        (JSC::HeapVerifier::verify):
+        (JSC::HeapVerifier::reportObject):
+        (JSC::HeapVerifier::checkIfRecorded):
+        * heap/HeapVerifier.h: Added.
+        (JSC::LiveObjectData::LiveObjectData):
+        (JSC::LiveObjectList::LiveObjectList):
+        (JSC::LiveObjectList::reset):
+        (JSC::HeapVerifier::GCCycle::GCCycle):
+        (JSC::HeapVerifier::GCCycle::collectionTypeName):
+        (JSC::HeapVerifier::incrementCycle):
+        (JSC::HeapVerifier::currentCycle):
+        (JSC::HeapVerifier::cycleForIndex):
+        * runtime/Options.h:
+
+2014-11-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Rename String.prototype.contains to String.prototype.includes
+        https://bugs.webkit.org/show_bug.cgi?id=138923
+
+        As per the latest TC39 meeting[1, 2], String.prototype.contains is
+        renamed to String.prototype.includes. This is because the name
+        `contains` breaks the web since it conflicts with existing `contains`
+        implementations in major libraries.
+
+        [1]: https://github.com/mathiasbynens/String.prototype.includes
+        [2]: https://github.com/tc39/test262/pull/119
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::stringProtoFuncIncludes):
+        (JSC::stringProtoFuncContains): Deleted.
+
+2014-11-19  Mark Lam  <mark.lam@apple.com>
+
+        WTFCrashWithSecurityImplication under SpeculativeJIT::compile() when loading a page from theblaze.com.
+        <https://webkit.org/b/137642>
+
+        Reviewed by Filip Pizlo.
+
+        In the DFG, we have a ConstantFolding phase that occurs after all LocalCSE
+        phases have already transpired.  Hence, Identity nodes introduced in the
+        ConstantFolding phase will be left in the node graph.  Subsequently, the
+        DFG code generator asserts that CSE phases have consumed all Identity nodes.
+        This turns out to not be true.  Hence, the crash.  We fix this by teaching
+        the DFG code generator to emit code for Identity nodes.
+
+        Unlike the DFG, the FTL does not have this issue.  That is because the FTL
+        plan has GlobalCSE phases that come after ConstantFolding and any other
+        phases that can generate Identity nodes.  Hence, for the FTL, it is true that
+        CSE will consume all Identity nodes, and the code generator should not see any
+        Identity nodes.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection Resource search does not work
+        https://bugs.webkit.org/show_bug.cgi?id=131252
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::searchInContent):
+        * inspector/protocol/Debugger.json:
+        Do some cleanup of the description and implementation of content searching.
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide $exception in the console for the thrown exception value
+        https://bugs.webkit.org/show_bug.cgi?id=138726
+
+        Reviewed by Timothy Hatcher.
+
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::caughtValue):
+        * debugger/DebuggerScope.h:
+        Access the caught value if this scope is a catch scope.
+
+        * runtime/JSNameScope.h:
+        (JSC::JSNameScope::isFunctionNameScope):
+        (JSC::JSNameScope::isCatchScope):
+        (JSC::JSNameScope::value):
+        Provide an accessor for the single value in the JSNameScope (with / catch block).
+
+        * inspector/InjectedScriptSource.js:
+        Save the exception value and expose it via $exception. Since the command line api
+        is recreated on each evaluation, $exception is essentially readonly.
+
+        * inspector/ScriptDebugServer.h:
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::dispatchDidPause):
+        (Inspector::ScriptDebugServer::exceptionOrCaughtValue):
+        When pausing, get the exception or caught value. The exception will be provided
+        if we are breaking on an explicit exception. When inside of a catch block, we
+        can get the caught value by walking up the scope chain.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::InspectorDebuggerAgent):
+        (Inspector::InspectorDebuggerAgent::resume):
+        (Inspector::InspectorDebuggerAgent::stepOver):
+        (Inspector::InspectorDebuggerAgent::stepInto):
+        (Inspector::InspectorDebuggerAgent::stepOut):
+        Clearing state can be done in didContinue.
+
+        (Inspector::InspectorDebuggerAgent::didPause):
+        Set the exception value explicitly in the injected script when we have it.
+
+        (Inspector::InspectorDebuggerAgent::didContinue):
+        Clear state saved when we had paused, including clearly an exception value if needed.
+
+        (Inspector::InspectorDebuggerAgent::clearDebuggerBreakpointState):
+        (Inspector::InspectorDebuggerAgent::clearExceptionValue):
+        Call into the injected script only when needed.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::setExceptionValue):
+        (Inspector::InjectedScript::clearExceptionValue):
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::clearExceptionValue):
+        * inspector/InjectedScriptManager.h:
+        Clear on all injected scripts.
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed build fixes after r176329.
+
+          - export all of the codegen python files as they are included by the main generator
+          - update the imports of the main generator to match __init__.py
+          - remove bundling the python scripts as framework resources, just have them PrivateHeaders
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+
+2014-11-18  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: standardize language-specific protocol generator file, class, and method prefixes
+        https://bugs.webkit.org/show_bug.cgi?id=138237
+
+        Reviewed by Joseph Pecoraro.
+
+        Settle on cpp/objc/js file prefixes and Cpp/ObjC/JS class prefixes for generators.
+        Move C++-specific static methods into CppGenerator and add cpp_ prefixes where relevant.
+        Split the templates file into language-specific template files.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/scripts/codegen/__init__.py:
+        * inspector/scripts/codegen/cpp_generator.py: Copied from Source/JavaScriptCore/inspector/scripts/codegen/generator.py.
+        * inspector/scripts/codegen/cpp_generator_templates.py: Copied from Source/JavaScriptCore/inspector/scripts/codegen/generator_templates.py.
+        (CppGeneratorTemplates):
+        * inspector/scripts/codegen/generate_cpp_alternate_backend_dispatcher_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_alternate_backend_dispatcher_header.py.
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_backend_dispatcher_header.py.
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_backend_dispatcher_implementation.py.
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_frontend_dispatcher_header.py.
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_frontend_dispatcher_implementation.py.
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_protocol_types_header.py.
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_protocol_types_implementation.py.
+        * inspector/scripts/codegen/generate_js_backend_commands.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_backend_commands.py.
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_backend_dispatcher_header.py.
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_backend_dispatcher_implementation.py.
+        * inspector/scripts/codegen/generate_objc_configuration_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_configuration_header.py.
+        * inspector/scripts/codegen/generate_objc_configuration_implementation.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_configuration_implementation.py.
+        * inspector/scripts/codegen/generate_objc_conversion_helpers.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_conversion_helpers.py.
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_frontend_dispatcher_implementation.py.
+        * inspector/scripts/codegen/generate_objc_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_header.py.
+        * inspector/scripts/codegen/generate_objc_internal_header.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_internal_header.py.
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c_types_implementation.py.
+        * inspector/scripts/codegen/generator.py:
+        * inspector/scripts/codegen/generator_templates.py:
+        * inspector/scripts/codegen/objc_generator.py: Renamed from Source/JavaScriptCore/inspector/scripts/codegen/generate_objective_c.py.
+        * inspector/scripts/codegen/objc_generator_templates.py: Added.
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+
 2014-11-19  Juergen Ributzka  <juergen@apple.com>
 
         Update WebKit to build with LLVM TOT

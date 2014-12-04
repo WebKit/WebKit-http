@@ -106,7 +106,7 @@ static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderMap& loaders)
         if (!loader->frameLoader())
             return false;
 
-        CachedResource* cachedResource = memoryCache()->resourceForURL(handle->firstRequest().url(), loader->frameLoader()->frame().page()->sessionID());
+        CachedResource* cachedResource = memoryCache().resourceForURL(handle->firstRequest().url(), loader->frameLoader()->frame().page()->sessionID());
         if (!cachedResource)
             return false;
 
@@ -134,12 +134,12 @@ DocumentLoader::DocumentLoader(const ResourceRequest& req, const SubstituteData&
     , m_isLoadingMultipartContent(false)
     , m_wasOnloadHandled(false)
     , m_stopRecordingResponses(false)
-    , m_substituteResourceDeliveryTimer(this, &DocumentLoader::substituteResourceDeliveryTimerFired)
+    , m_substituteResourceDeliveryTimer(*this, &DocumentLoader::substituteResourceDeliveryTimerFired)
     , m_didCreateGlobalHistoryEntry(false)
     , m_loadingMainResource(false)
     , m_timeOfLastDataReceived(0.0)
     , m_identifierForLoadWithoutResourceLoader(0)
-    , m_dataLoadTimer(this, &DocumentLoader::handleSubstituteDataLoadNow)
+    , m_dataLoadTimer(*this, &DocumentLoader::handleSubstituteDataLoadNow)
     , m_waitingForContentPolicy(false)
     , m_subresourceLoadersArePageCacheAcceptable(false)
     , m_applicationCacheHost(adoptPtr(new ApplicationCacheHost(*this)))
@@ -448,7 +448,7 @@ void DocumentLoader::finishedLoading(double finishTime)
     // and deny the appcache the chance to intercept it in the future, so remove from the memory cache.
     if (m_frame) {
         if (m_mainResource && m_frame->document()->hasManifest())
-            memoryCache()->remove(m_mainResource.get());
+            memoryCache().remove(m_mainResource.get());
     }
     m_applicationCacheHost->finishedLoadingMainResource();
 }
@@ -466,7 +466,7 @@ bool DocumentLoader::isPostOrRedirectAfterPost(const ResourceRequest& newRequest
     return false;
 }
 
-void DocumentLoader::handleSubstituteDataLoadNow(DocumentLoaderTimer*)
+void DocumentLoader::handleSubstituteDataLoadNow()
 {
     URL url = m_substituteData.responseURL();
     if (url.isEmpty())
@@ -488,7 +488,7 @@ void DocumentLoader::startDataLoadTimer()
 void DocumentLoader::handleSubstituteDataLoadSoon()
 {
     if (!m_deferMainResourceDataLoad || frameLoader()->loadsSynchronously())
-        handleSubstituteDataLoadNow(0);
+        handleSubstituteDataLoadNow();
     else
         startDataLoadTimer();
 }
@@ -599,7 +599,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     // The memory cache doesn't understand the application cache or its caching rules. So if a main resource is served
     // from the application cache, ensure we don't save the result for future use.
     if (willLoadFallback)
-        memoryCache()->remove(m_mainResource.get());
+        memoryCache().remove(m_mainResource.get());
 
     if (willLoadFallback)
         return;
@@ -1125,7 +1125,7 @@ void DocumentLoader::deliverSubstituteResourcesAfterDelay()
         m_substituteResourceDeliveryTimer.startOneShot(0);
 }
 
-void DocumentLoader::substituteResourceDeliveryTimerFired(Timer&)
+void DocumentLoader::substituteResourceDeliveryTimerFired()
 {
     if (m_pendingSubstituteResources.isEmpty())
         return;

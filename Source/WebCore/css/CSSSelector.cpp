@@ -78,14 +78,6 @@ static unsigned maxSpecificity(const CSSSelectorList& selectorList)
     return maxSpecificity;
 }
 
-unsigned CSSSelector::specificity() const
-{
-    if (isForPage())
-        return specificityForPage() & maxValueMask;
-
-    return selectorSpecificity(*this, false);
-}
-
 static unsigned simpleSelectorSpecificityInternal(const CSSSelector& simpleSelector, bool isComputingMaximumSpecificity)
 {
     ASSERT_WITH_MESSAGE(!simpleSelector.isForPage(), "At the time of this writing, page selectors are not treated as real selectors that are matched. The value computed here only account for real selectors.");
@@ -97,7 +89,6 @@ static unsigned simpleSelectorSpecificityInternal(const CSSSelector& simpleSelec
     case CSSSelector::PagePseudoClass:
         break;
     case CSSSelector::PseudoClass:
-#if ENABLE(CSS_SELECTORS_LEVEL4)
         if (simpleSelector.pseudoClassType() == CSSSelector::PseudoClassMatches) {
             ASSERT_WITH_MESSAGE(simpleSelector.selectorList() && simpleSelector.selectorList()->first(), "The parser should never generate a valid selector for an empty :matches().");
             if (!isComputingMaximumSpecificity)
@@ -110,11 +101,6 @@ static unsigned simpleSelectorSpecificityInternal(const CSSSelector& simpleSelec
             return maxSpecificity(*simpleSelector.selectorList());
         }
         FALLTHROUGH;
-#else
-        if (simpleSelector.pseudoClassType() == CSSSelector::PseudoClassNot && simpleSelector.selectorList())
-            return simpleSelector.selectorList()->first()->simpleSelectorSpecificity();
-        FALLTHROUGH;
-#endif
     case CSSSelector::Exact:
     case CSSSelector::Class:
     case CSSSelector::Set:
@@ -138,6 +124,62 @@ static unsigned simpleSelectorSpecificityInternal(const CSSSelector& simpleSelec
 unsigned CSSSelector::simpleSelectorSpecificity() const
 {
     return simpleSelectorSpecificityInternal(*this, false);
+}
+
+static unsigned staticSpecificityInternal(const CSSSelector& firstSimpleSelector, bool& ok);
+
+static unsigned simpleSelectorFunctionalPseudoClassStaticSpecificity(const CSSSelector& simpleSelector, bool& ok)
+{
+    if (simpleSelector.match() == CSSSelector::PseudoClass) {
+        CSSSelector::PseudoClassType pseudoClassType = simpleSelector.pseudoClassType();
+        if (pseudoClassType == CSSSelector::PseudoClassMatches || pseudoClassType == CSSSelector::PseudoClassNthChild || pseudoClassType == CSSSelector::PseudoClassNthLastChild) {
+            const CSSSelectorList* selectorList = simpleSelector.selectorList();
+            if (!selectorList) {
+                ASSERT_WITH_MESSAGE(pseudoClassType != CSSSelector::PseudoClassMatches, ":matches() should never be created without a valid selector list.");
+                return 0;
+            }
+
+            const CSSSelector& firstSubselector = *selectorList->first();
+
+            unsigned initialSpecificity = staticSpecificityInternal(firstSubselector, ok);
+            if (!ok)
+                return 0;
+
+            const CSSSelector* subselector = &firstSubselector;
+            while ((subselector = CSSSelectorList::next(subselector))) {
+                unsigned subSelectorSpecificity = staticSpecificityInternal(*subselector, ok);
+                if (initialSpecificity != subSelectorSpecificity)
+                    ok = false;
+                if (!ok)
+                    return 0;
+            }
+            return initialSpecificity;
+        }
+    }
+    return 0;
+}
+
+static unsigned functionalPseudoClassStaticSpecificity(const CSSSelector& firstSimpleSelector, bool& ok)
+{
+    unsigned total = 0;
+    for (const CSSSelector* selector = &firstSimpleSelector; selector; selector = selector->tagHistory()) {
+        total = CSSSelector::addSpecificities(total, simpleSelectorFunctionalPseudoClassStaticSpecificity(*selector, ok));
+        if (!ok)
+            return 0;
+    }
+    return total;
+}
+
+static unsigned staticSpecificityInternal(const CSSSelector& firstSimpleSelector, bool& ok)
+{
+    unsigned staticSpecificity = selectorSpecificity(firstSimpleSelector, false);
+    return CSSSelector::addSpecificities(staticSpecificity, functionalPseudoClassStaticSpecificity(firstSimpleSelector, ok));
+}
+
+unsigned CSSSelector::staticSpecificity(bool &ok) const
+{
+    ok = true;
+    return staticSpecificityInternal(*this, ok);
 }
 
 unsigned CSSSelector::addSpecificities(unsigned a, unsigned b)
@@ -283,6 +325,9 @@ bool CSSSelector::operator==(const CSSSelector& other) const
 static void appendPseudoClassFunctionTail(StringBuilder& str, const CSSSelector* selector)
 {
     switch (selector->pseudoClassType()) {
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+    case CSSSelector::PseudoClassDir:
+#endif
     case CSSSelector::PseudoClassLang:
     case CSSSelector::PseudoClassNthChild:
     case CSSSelector::PseudoClassNthLastChild:
@@ -303,13 +348,14 @@ static void appendPseudoClassFunctionTail(StringBuilder& str, const CSSSelector*
 #if ENABLE(CSS_SELECTORS_LEVEL4)
 static void appendArgumentList(StringBuilder& str, const Vector<AtomicString>& argumentList)
 {
-    const AtomicString& lastArgument = argumentList.last();
-    for (const AtomicString argument : argumentList) {
-        str.append(argument);
-        if (argument != lastArgument)
+    unsigned argumentListSize = argumentList.size();
+    for (unsigned i = 0; i < argumentListSize; ++i) {
+        str.append(argumentList[i]);
+        if (i != argumentListSize - 1)
             str.appendLiteral(", ");
     }
 }
+#endif
 
 static void appendSelectorList(StringBuilder& str, const CSSSelectorList* selectorList)
 {
@@ -320,7 +366,6 @@ static void appendSelectorList(StringBuilder& str, const CSSSelectorList* select
         str.append(subSelector->selectorText());
     }
 }
-#endif
 
 String CSSSelector::selectorText(const String& rightSide) const
 {
@@ -405,6 +450,12 @@ String CSSSelector::selectorText(const String& rightSide) const
             case CSSSelector::PseudoClassDefault:
                 str.appendLiteral(":default");
                 break;
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+            case CSSSelector::PseudoClassDir:
+                str.appendLiteral(":dir(");
+                appendPseudoClassFunctionTail(str, cs);
+                break;
+#endif
             case CSSSelector::PseudoClassDisabled:
                 str.appendLiteral(":disabled");
                 break;
@@ -476,12 +527,7 @@ String CSSSelector::selectorText(const String& rightSide) const
                 break;
             case CSSSelector::PseudoClassNot:
                 str.appendLiteral(":not(");
-#if ENABLE(CSS_SELECTORS_LEVEL4)
                 appendSelectorList(str, cs->selectorList());
-#else
-                if (const CSSSelectorList* selectorList = cs->selectorList())
-                    str.append(selectorList->first()->selectorText());
-#endif
                 str.append(')');
                 break;
             case CSSSelector::PseudoClassNthChild:
@@ -527,7 +573,6 @@ String CSSSelector::selectorText(const String& rightSide) const
             case CSSSelector::PseudoClassOptional:
                 str.appendLiteral(":optional");
                 break;
-#if ENABLE(CSS_SELECTORS_LEVEL4)
             case CSSSelector::PseudoClassMatches: {
                 str.appendLiteral(":matches(");
                 appendSelectorList(str, cs->selectorList());
@@ -537,7 +582,6 @@ String CSSSelector::selectorText(const String& rightSide) const
             case CSSSelector::PseudoClassPlaceholderShown:
                 str.appendLiteral(":placeholder-shown");
                 break;
-#endif
             case CSSSelector::PseudoClassOutOfRange:
                 str.appendLiteral(":out-of-range");
                 break;

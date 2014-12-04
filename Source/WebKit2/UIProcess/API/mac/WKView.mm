@@ -51,8 +51,6 @@
 #import "StringUtilities.h"
 #import "TextChecker.h"
 #import "TextCheckerState.h"
-#import "TextIndicator.h"
-#import "TextIndicatorWindow.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 #import "ViewGestureController.h"
 #import "ViewSnapshotStore.h"
@@ -96,6 +94,8 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/TextIndicator.h>
+#import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
 #import <WebCore/WebCoreCALayerExtras.h>
@@ -1209,6 +1209,9 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
     if ([self _shouldIgnoreWheelEvents])
         return;
 
+    // Work around <rdar://problem/19086993> by always clearing the active text indicator on scroll.
+    [self _setTextIndicator:nullptr fadeOut:NO];
+
     if (_data->_allowsBackForwardNavigationGestures) {
         [self _ensureGestureController];
         if (_data->_gestureController->handleScrollWheelEvent(event))
@@ -1256,6 +1259,12 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
     [self _setMouseDownEvent:event];
     _data->_ignoringMouseDraggedEvents = NO;
+
+    // Work around <rdar://problem/19086993> by always clearing the active text indicator on mouseDown.
+    [self _setTextIndicator:nullptr fadeOut:NO];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [_data->_actionMenuController wkView:self willHandleMouseDown:event];
+#endif
     [self mouseDownInternal:event];
 }
 
@@ -2698,7 +2707,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
 {
-    [self _setTextIndicator:nil fadeOut:NO animate:NO];
+    [self _setTextIndicator:nil fadeOut:NO];
 }
 
 - (void)_accessibilityRegisterUIProcessTokens
@@ -3069,7 +3078,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     }
 }
 
-- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate animationCompletionHandler:(std::function<void ()>)completionHandler
+- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animationCompletionHandler:(std::function<void ()>)completionHandler
 {
     if (!textIndicator) {
         _data->_textIndicatorWindow = nullptr;
@@ -3079,12 +3088,12 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     if (!_data->_textIndicatorWindow)
         _data->_textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    _data->_textIndicatorWindow->setTextIndicator(textIndicator, fadeOut, animate, WTF::move(completionHandler));
+    _data->_textIndicatorWindow->setTextIndicator(textIndicator, fadeOut, WTF::move(completionHandler));
 }
 
-- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate
+- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut
 {
-    [self _setTextIndicator:textIndicator fadeOut:fadeOut animate:animate animationCompletionHandler:[] {}];
+    [self _setTextIndicator:textIndicator fadeOut:fadeOut animationCompletionHandler:[] { }];
 }
 
 - (CALayer *)_rootLayer
@@ -4216,8 +4225,30 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return nil;
 }
 
+- (NSString *)_titleForPreviewOfURL:(NSURL *)url
+{
+    return nil;
+}
+
+- (void)_setPreviewTitle:(NSString *)previewTitle
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [_data->_actionMenuController setPreviewTitle:previewTitle];
+#endif
+}
+
 - (void)_finishPreviewingURL:(NSURL *)url withPreviewView:(NSView *)previewView
 {
+}
+
+- (void)_handleClickInPreviewView:(NSView *)previewView URL:(NSURL *)url
+{
+    [[NSWorkspace sharedWorkspace] openURL:url];
+}
+
+- (BOOL)_shouldUseStandardQuickLookPreview
+{
+    return YES;
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

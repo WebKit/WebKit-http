@@ -1,3 +1,245 @@
+2014-12-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS Minification breaks some selectors with colons
+        https://bugs.webkit.org/show_bug.cgi?id=139206
+
+        Reviewed by Simon Fraser.
+
+        Do not remove spaces preceeding colons, as they may change the semantics
+        of selectors with colon prefixes (e.g. "a :not(b)").
+
+        At the same time, we can strip spaces around "!" characters, for example
+        a space is not required before "!important" priority.
+
+        * Scripts/cssmin.py:
+        (cssminify):
+
+2014-12-01  Benjamin Poulain  <benjamin@webkit.org>
+
+        Web Inspector: add more :not() and :matches() awesomeness
+        https://bugs.webkit.org/show_bug.cgi?id=138997
+
+        Reviewed by Joseph Pecoraro.
+
+        Simplify the Inspector's CSS when possible.
+
+        * UserInterface/Views/DatabaseContentView.css:
+        (:matches(.database-user-query, .database-query-prompt, .database-query-result)::before):
+        (.database-user-query::before, .database-query-prompt::before, .database-query-result::before): Deleted.
+        * UserInterface/Views/GradientSlider.css:
+        (.gradient-slider-knob > :matches(img, div)):
+        (.gradient-slider-knob > div): Deleted.
+        * UserInterface/Views/HoverMenu.css:
+        (.hover-menu > svg > :matches(path, rect)):
+        (.hover-menu > svg > rect): Deleted.
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.css:
+        (.panel.details.layer-tree .name-column :matches(.pseudo-element, .reflection)):
+        (.panel.details.layer-tree tr.selected .name-column :matches(.pseudo-element, .reflection)):
+        (.panel.details.layer-tree .name-column .reflection): Deleted.
+        (.panel.details.layer-tree tr.selected .name-column .reflection): Deleted.
+        * UserInterface/Views/ProbeDetailsSidebarPanel.css:
+        (.details-section.probe-set .options > :matches(.probe-remove, .probe-clear-samples, .probe-add)):
+        (.details-section.probe-set .options > .probe-add): Deleted.
+        * UserInterface/Views/ResourceSidebarPanel.css:
+        (.sidebar > .panel.navigation.resource > :matches(.content, .empty-content-placeholder)):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.resource > :matches(.content, .empty-content-placeholder)):
+        (.sidebar > .panel.navigation.resource > .empty-content-placeholder): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.resource > .empty-content-placeholder): Deleted.
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li:matches(.selected, :active)):
+        (.scope-bar > li:active): Deleted.
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.syntax-highlighted :matches(.css-comment, .javascript-comment, .html-comment)):
+        (.syntax-highlighted :matches(.css-keyword, .css-tag, .css-at-rule, .css-important, .javascript-keyword, .html-tag)):
+        (.syntax-highlighted :matches(.css-number, .javascript-number)):
+        (.syntax-highlighted :matches(.css-property, .css-selector, .javascript-ident)):
+        (.syntax-highlighted :matches(.css-string, .javascript-string, .javascript-regexp, .html-attribute-value)):
+        (.syntax-highlighted :matches(.html-doctype, .html-processing-instruction)):
+        (.syntax-highlighted .html-comment): Deleted.
+        (.syntax-highlighted .html-tag): Deleted.
+        (.syntax-highlighted .javascript-number): Deleted.
+        (.syntax-highlighted .javascript-ident): Deleted.
+        (.syntax-highlighted .html-attribute-value): Deleted.
+        (.syntax-highlighted .html-processing-instruction): Deleted.
+        It looks like ".cm-tag.cm-bracket" was there only to override the rule below.
+        From basic testing, it looks like "cm-tag" and "cm-bracket" always appear together. I removed the "cm-bracket" rule
+        from the second rule, and simplified the first rule.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > :matches(.content, .empty-content-placeholder)):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .empty-content-placeholder): Deleted.
+        * UserInterface/Views/Toolbar.css:
+        (body.mac-platform:not(.legacy, .docked) .toolbar):
+        (body.mac-platform:not(.legacy, .docked) .toolbar.icon-and-label-vertical):
+        (body.mac-platform:not(.legacy, .docked) .toolbar.icon-and-label-vertical.small-size):
+        (body.mac-platform:not(.legacy, .docked) .toolbar:matches(.icon-and-label-horizontal, .icon-only)):
+        (body.mac-platform:not(.legacy, .docked) .toolbar:matches(.icon-and-label-horizontal.small-size, .icon-only.small-size, .label-only)):
+        (.toolbar:matches(.icon-and-label-horizontal.small-size, .icon-only.small-size, .label-only) .control-section):
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar): Deleted.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.icon-and-label-vertical): Deleted.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.icon-and-label-vertical.small-size): Deleted.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.icon-only): Deleted.
+        (body.mac-platform:not(.legacy):not(.docked) .toolbar.label-only): Deleted.
+        (.toolbar.label-only .control-section): Deleted.
+
+2014-11-27  Andres Gomez  <agomez@igalia.com>
+
+        Web Inspector: Update NavigationItemProbes icon for the GTK+ port
+        https://bugs.webkit.org/show_bug.cgi?id=139074
+
+        Reviewed by Carlos Garcia Campos.
+
+        NavigationItemProbes was updated for the Mac port and we are now
+        having a similar ideogram in GTK+.
+
+        * UserInterface/Images/gtk/NavigationItemProbes.svg: Updated.
+
+2014-11-21  Benjamin Poulain  <bpoulain@apple.com>
+
+        Start using the new :not() and :matches() in the Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=138978
+
+        Reviewed by Joseph Pecoraro.
+
+        Start simpifying some definitions by using modern CSS.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (body.mac-platform.legacy .style-declaration-section.last-in-group + .style-declaration-section:matches(.last-in-group, :last-child)):
+        (.style-declaration-section:matches(.locked, .selector-locked) > .header > .selector):
+        (body.mac-platform.legacy .style-declaration-section.last-in-group + .style-declaration-section:last-child): Deleted.
+        (.style-declaration-section.selector-locked > .header > .selector): Deleted.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property:matches(.disabled, .invalid, .other-vendor, .not-inherited, .overridden)):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property:matches(.implicit, .not-inherited)):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .editing-line .css-style-declaration-property:matches(.disabled, .other-vendor, .not-inherited, .overridden)):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property.overridden): Deleted.
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property.not-inherited): Deleted.
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .editing-line .css-style-declaration-property.overridden): Deleted.
+        * UserInterface/Views/ControlToolbarItem.css:
+        (.toolbar:matches(.icon-and-label-horizontal, .toolbar.icon-only) .item.control):
+        (.toolbar.icon-only .item.control): Deleted.
+        * UserInterface/Views/DOMStorageContentView.css:
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar.icon-and-label-vertical:matches(.small-size, .normal-size) .dashboard-container):
+        (.toolbar:matches(.label-only, .small-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal)) .dashboard-container):
+        (.toolbar.normal-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard-container):
+        (.toolbar.normal-size.icon-and-label-vertical .dashboard-container): Deleted.
+        (.toolbar.small-size.icon-and-label-horizontal .dashboard-container): Deleted.
+        (.toolbar.normal-size.icon-and-label-horizontal .dashboard-container): Deleted.
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid :matches(th, td):not(:last-child)):
+        (.data-grid th:matches(.sort-ascending, .sort-descending)):
+        (.data-grid :matches(th, td) > div):
+        (.data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child):
+        (.data-grid tr:matches(.selected, :hover) .go-to-arrow):
+        (.data-grid :-webkit-any(th, td):not(:last-child)): Deleted.
+        (.data-grid th:-webkit-any(.sort-ascending, .sort-descending)): Deleted.
+        (.data-grid :-webkit-any(th, td) > div): Deleted.
+        (.data-grid th:-webkit-any(.sort-ascending, .sort-descending) > div:first-child): Deleted.
+        (.data-grid tr:-webkit-any(.selected, :hover) .go-to-arrow): Deleted.
+        * UserInterface/Views/DebuggerDashboardView.css:
+        (.toolbar.collapsed .dashboard.debugger > :not(.message, .navigation-bar )):
+        (.toolbar.collapsed .dashboard.debugger > :not(.message):not(.navigation-bar )): Deleted.
+        * UserInterface/Views/DefaultDashboardView.css:
+        (body.web .toolbar.collapsed .dashboard.default > :matches(.time, .resourcesSize, .logs)):
+        (body.javascript .toolbar .dashboard.default > :matches(.time, .resourcesSize, .resourcesCount)):
+        (.toolbar:matches(.label-only, .small-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal)) .dashboard.default > .item):
+        (.toolbar.normal-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard.default > .item):
+        (body.web .toolbar.collapsed .dashboard.default > .logs): Deleted.
+        (body.javascript .toolbar .dashboard.default > .resourcesCount): Deleted.
+        (.toolbar.small-size.icon-and-label-horizontal .dashboard.default > .item): Deleted.
+        (.toolbar.normal-size.icon-and-label-horizontal .dashboard.default > .item): Deleted.
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .header > :matches(.node-link, .go-to-arrow)):
+        (.details-section > .content > .group:nth-child(even) > .row:matches(.simple:first-child > *, :not(.simple):first-child)):
+        (body.mac-platform.legacy .details-section > .content > .group:matches(:nth-child(even), :last-child) > .row.simple:last-child > *):
+        (.details-section > .content > .group > .row:matches(.empty, .text)):
+        (body.mac-platform.legacy .details-section > .content > .group > .row:matches(.empty, .text)):
+        (.details-section > .header > .go-to-arrow): Deleted.
+        (.details-section > .content > .group:nth-child(even) > .row.simple:first-child > *): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group:last-child > .row.simple:last-child > *): Deleted.
+        (.details-section > .content > .group > .row.text): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group > .row.text): Deleted.
+        * UserInterface/Views/FindBanner.css:
+        (:matches(.find-banner, .supports-find-banner).no-find-banner-transition):
+        (.supports-find-banner.no-find-banner-transition): Deleted.
+        * UserInterface/Views/FlexibleSpaceNavigationItem.css:
+        (:matches(.navigation-bar, .toolbar) .item.flexible-space):
+        (.toolbar .item.flexible-space): Deleted.
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: LayoutTests/inspector should not have localStorage side effects
+        https://bugs.webkit.org/show_bug.cgi?id=138895
+
+        Reviewed by Brian Burg.
+
+        When running inspector tests, do not restore/save WebInspector.Settings
+        to localStorage, as that will cause side effects. Instead each Setting
+        will be initialized with its default value and can be modified during
+        the run of the test.
+
+        * UserInterface/Base/Test.js:
+        (WebInspector.loaded):
+        Name the setting to match the normal setting name now that persistence
+        is not an issue.
+
+        * UserInterface/Models/Setting.js:
+        (WebInspector.Setting.prototype.get value):
+        (WebInspector.Setting.prototype.set value):
+        Do not restore/save when in tests.
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JSContext inspection Resource search does not work
+        https://bugs.webkit.org/show_bug.cgi?id=131252
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.resourceCallback):
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.resourcesCallback):
+        Cleanup by reordering things a bit.
+
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.searchScripts.scriptCallback):
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.searchScripts):
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch):
+        Search non-resource scripts individually.
+
+        (WebInspector.ResourceSidebarPanel.prototype._searchTreeElementForScript):
+        Lazily create a ScriptTreeElement for the search tree outline as needed.
+
+        (WebInspector.ResourceSidebarPanel.prototype._scriptsToSearch):
+        When searching scripts, just perform a shallow walk of the tree outline to find
+        Script resources that are not also Resources. Scripts are always guarenteed to
+        be in a folder when inspecting a web resource. For JSContext inspection, scripts
+        are promoted to the top level.
+
+        * UserInterface/Main.html:
+        * UserInterface/Models/SourceCodeSearchMatchObject.js: Renamed from Source/WebInspectorUI/UserInterface/Models/ResourceSearchMatchObject.js.
+        (WebInspector.SourceCodeSearchMatchObject):
+        * UserInterface/Views/SearchIcons.css:
+        (.source-code-match-icon .icon):
+        (.resource-match-icon .icon): Deleted.
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement):
+        Rename ResourceSearchMatchObject to SourceCodeSearchMatchObject.
+
+2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide $exception in the console for the thrown exception value
+        https://bugs.webkit.org/show_bug.cgi?id=138726
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Test.js:
+        (WebInspector.loaded):
+        In order to use RuntimeManager to execute in the global context or on the
+        active debugger call frame, we need to expose the quickConsole controller.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        Expose $exception to completion when we paused because of an exception.
+
 2014-11-19  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Debugger should not mutate variable when hovering mouse over ++n expression

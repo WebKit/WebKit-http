@@ -75,7 +75,7 @@ CFDictionaryRef _CFURLConnectionCopyTimingData(CFURLConnectionRef);
 #endif
 
 #if PLATFORM(IOS)
-#import "CFURLRequestSPI.h"
+#import "CFNetworkSPI.h"
 #import "RuntimeApplicationChecksIOS.h"
 #import "WebCoreThreadRun.h"
 
@@ -243,8 +243,6 @@ bool ResourceHandle::start()
 
     // FIXME: Do not use the sync version of shouldUseCredentialStorage when the client returns true from usesAsyncCallbacks.
     bool shouldUseCredentialStorage = !client() || client()->shouldUseCredentialStorage(this);
-
-    d->m_needsSiteSpecificQuirks = d->m_context->needsSiteSpecificQuirks();
 
 #if !PLATFORM(IOS)
     createNSURLConnection(

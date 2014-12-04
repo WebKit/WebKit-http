@@ -152,7 +152,8 @@ private:
     void scheduleEvent(const AtomicString& eventName);
 
     void appendBufferInternal(unsigned char*, unsigned, ExceptionCode&);
-    void appendBufferTimerFired(Timer&);
+    void appendBufferTimerFired();
+    void resetParserState();
 
     void setActive(bool);
 
@@ -166,7 +167,7 @@ private:
 
     void monitorBufferingRate();
 
-    void removeTimerFired(Timer*);
+    void removeTimerFired();
     void removeCodedFrames(const MediaTime& start, const MediaTime& end);
 
     size_t extraMemoryCost() const;

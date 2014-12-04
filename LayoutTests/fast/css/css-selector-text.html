@@ -88,6 +88,15 @@ testSelectorRoundTrip(":lang(de-DE, de-DE-1996, de-Latn-DE, de-Latf-DE, de-Latn-
 testSelectorRoundTrip(":lang(de-CH, it-CH, fr-CH, rm-CH)");
 testSelectorRoundTrip(":lang(de-DE, de-DE-1996, de-Latn-DE, de-Latf-DE, de-Latn-DE-1996, de-CH, it-CH, fr-CH, rm-CH)");
 
+debug('')
+
+testSelectorRoundTrip(":lang(a, a, a)");
+testSelectorRoundTrip(":lang(en, en, en)");
+testSelectorRoundTrip(":lang(en-us, en-us, en-us)");
+testSelectorRoundTrip(":lang(de-DE-1996, de-DE-1996, de-DE-1996)");
+testSelectorRoundTrip(":lang(de-Latn-DE-1996, de-Latn-DE-1996, de-Latn-DE-1996)");
+testSelectorRoundTrip(":lang(java, java, java)");
+
 debug('');
 
 testSelectorRoundTrip(":not(a)");
@@ -352,6 +361,20 @@ shouldBe("parseThenSerializeRule(':lang(a,b,    c    ) { }')", "':lang(a, b, c) 
 
 debug('');
 
+shouldBe("parseThenSerializeRule(':lang(en, en, en) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(en,en,en) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(en,en,    en) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(en,    en,en) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(en,    en,en    ) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(    en,    en,en    ) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(en,   en,   en) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(    en,    en,    en) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(    en,    en,    en    ) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(    en    ,    en    ,   en    ) { }')", "':lang(en, en, en) { }'");
+shouldBe("parseThenSerializeRule(':lang(    en,en,en    ) { }')", "':lang(en, en, en) { }'");
+
+debug('');
+
 shouldThrow("parseThenSerializeRule(':lang() { }')");
 shouldThrow("parseThenSerializeRule(':lang(12, b, c) { }')");
 shouldThrow("parseThenSerializeRule(':lang(a, 12, c) { }')");
@@ -392,6 +415,25 @@ shouldThrow("parseThenSerializeRule(':role()) { }')");
 shouldThrow("parseThenSerializeRule(':role(role()) { }')");
 shouldThrow("parseThenSerializeRule(':role(:role()) { }')");
 shouldThrow("parseThenSerializeRule(':role(:role(a)) { }')");
+
+debug('');
+
+testSelectorRoundTrip(":dir(ltr)");
+testSelectorRoundTrip(":dir(rtl)");
+testSelectorRoundTrip(":dir(LTR)");
+testSelectorRoundTrip(":dir(aBcD)");
+shouldBe("parseThenSerializeRule(':dir( a    ) { }')", "':dir(a) { }'");
+
+debug('');
+
+shouldThrow("parseThenSerializeRule(':dir() { }')");
+shouldThrow("parseThenSerializeRule(':dir(42) { }')");
+shouldThrow("parseThenSerializeRule(':dir(a, b) { }')");
+shouldThrow("parseThenSerializeRule(':dir(}) { }')");
+shouldThrow("parseThenSerializeRule(':dir()) { }')");
+shouldThrow("parseThenSerializeRule(':dir(dir()) { }')");
+shouldThrow("parseThenSerializeRule(':dir(:dir()) { }')");
+shouldThrow("parseThenSerializeRule(':dir(:dir(ltr)) { }')");
 
 </script>
 <script src="../../resources/js-test-post.js"></script>

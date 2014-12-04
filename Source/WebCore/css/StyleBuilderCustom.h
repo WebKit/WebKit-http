@@ -31,15 +31,115 @@
 #include "CSSImageGeneratorValue.h"
 #include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
+#include "CSSShadowValue.h"
 #include "Frame.h"
+#include "LocaleToScriptMapping.h"
+#include "Rect.h"
+#include "SVGElement.h"
+#include "StyleFontSizeFunctions.h"
 #include "StyleResolver.h"
 
 namespace WebCore {
 
 // Note that we assume the CSS parser only allows valid CSSValue types.
-namespace StyleBuilderFunctions {
+class StyleBuilderCustom {
+public:
+    static void applyValueWebkitMarqueeIncrement(StyleResolver&, CSSValue&);
 
-inline void applyValueWebkitMarqueeIncrement(StyleResolver& styleResolver, CSSValue& value)
+    static void applyValueDirection(StyleResolver&, CSSValue&);
+
+    static void applyInitialZoom(StyleResolver&);
+    static void applyInheritZoom(StyleResolver&);
+    static void applyValueZoom(StyleResolver&, CSSValue&);
+
+#if ENABLE(CSS_SHAPES)
+    static void applyValueWebkitShapeOutside(StyleResolver&, CSSValue&);
+#endif // ENABLE(CSS_SHAPES)
+
+    static void applyValueVerticalAlign(StyleResolver&, CSSValue&);
+
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    static void applyInheritImageResolution(StyleResolver&);
+    static void applyInitialImageResolution(StyleResolver&);
+    static void applyValueImageResolution(StyleResolver&, CSSValue&);
+#endif // ENABLE(CSS_IMAGE_RESOLUTION)
+
+    static void applyInheritSize(StyleResolver&);
+    static void applyInitialSize(StyleResolver&);
+    static void applyValueSize(StyleResolver&, CSSValue&);
+
+    static void applyInheritTextIndent(StyleResolver&);
+    static void applyInitialTextIndent(StyleResolver&);
+    static void applyValueTextIndent(StyleResolver&, CSSValue&);
+
+#define DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(type, modifier) \
+    static void applyInherit##type##modifier(StyleResolver&); \
+    static void applyInitial##type##modifier(StyleResolver&); \
+    static void applyValue##type##modifier(StyleResolver&, CSSValue&)
+
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Outset);
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Repeat);
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Slice);
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(BorderImage, Width);
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Outset);
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Repeat);
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Slice);
+    DECLARE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Width);
+
+    static void applyValueWordSpacing(StyleResolver&, CSSValue&);
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    static void applyInheritLineHeight(StyleResolver&);
+    static void applyInitialLineHeight(StyleResolver&);
+#endif // ENABLE(IOS_TEXT_AUTOSIZING)
+    static void applyValueLineHeight(StyleResolver&, CSSValue&);
+
+    static void applyInheritOutlineStyle(StyleResolver&);
+    static void applyInitialOutlineStyle(StyleResolver&);
+    static void applyValueOutlineStyle(StyleResolver&, CSSValue&);
+
+    static void applyInitialClip(StyleResolver&);
+    static void applyInheritClip(StyleResolver&);
+    static void applyValueClip(StyleResolver&, CSSValue&);
+
+    static void applyValueWebkitLocale(StyleResolver&, CSSValue&);
+    static void applyValueWebkitWritingMode(StyleResolver&, CSSValue&);
+    static void applyValueWebkitTextOrientation(StyleResolver&, CSSValue&);
+    static void applyValueWebkitJustifySelf(StyleResolver&, CSSValue&);
+    static void applyValueWebkitPerspective(StyleResolver&, CSSValue&);
+
+    static void applyInitialTextShadow(StyleResolver&);
+    static void applyInheritTextShadow(StyleResolver&);
+    static void applyValueTextShadow(StyleResolver&, CSSValue&);
+    static void applyInitialBoxShadow(StyleResolver&);
+    static void applyInheritBoxShadow(StyleResolver&);
+    static void applyValueBoxShadow(StyleResolver&, CSSValue&);
+    static void applyInitialWebkitBoxShadow(StyleResolver&);
+    static void applyInheritWebkitBoxShadow(StyleResolver&);
+    static void applyValueWebkitBoxShadow(StyleResolver&, CSSValue&);
+
+    static void applyInitialFontFamily(StyleResolver&);
+    static void applyInheritFontFamily(StyleResolver&);
+    static void applyValueFontFamily(StyleResolver&, CSSValue&);
+
+    static void applyInheritDisplay(StyleResolver&);
+    static void applyValueDisplay(StyleResolver&, CSSValue&);
+
+private:
+    static void resetEffectiveZoom(StyleResolver&);
+    static CSSToLengthConversionData csstoLengthConversionDataWithTextZoomFactor(StyleResolver&);
+    static bool convertLineHeight(StyleResolver&, const CSSValue&, Length&, float multiplier = 1.f);
+
+    static Length mmLength(double mm);
+    static Length inchLength(double inch);
+    static bool getPageSizeFromName(CSSPrimitiveValue* pageSizeName, CSSPrimitiveValue* pageOrientation, Length& width, Length& height);
+
+    template <CSSPropertyID id>
+    static void applyTextOrBoxShadowValue(StyleResolver&, CSSValue&);
+    static bool isValidDisplayValue(StyleResolver&, EDisplay);
+};
+
+inline void StyleBuilderCustom::applyValueWebkitMarqueeIncrement(StyleResolver& styleResolver, CSSValue& value)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
     Length marqueeLength(Undefined);
@@ -63,7 +163,7 @@ inline void applyValueWebkitMarqueeIncrement(StyleResolver& styleResolver, CSSVa
         styleResolver.style()->setMarqueeIncrement(marqueeLength);
 }
 
-inline void applyValueDirection(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueDirection(StyleResolver& styleResolver, CSSValue& value)
 {
     styleResolver.style()->setDirection(downcast<CSSPrimitiveValue>(value));
 
@@ -72,25 +172,25 @@ inline void applyValueDirection(StyleResolver& styleResolver, CSSValue& value)
         element->document().setDirectionSetOnDocumentElement(true);
 }
 
-inline void resetEffectiveZoom(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::resetEffectiveZoom(StyleResolver& styleResolver)
 {
     // Reset the zoom in effect. This allows the setZoom method to accurately compute a new zoom in effect.
     styleResolver.setEffectiveZoom(styleResolver.parentStyle() ? styleResolver.parentStyle()->effectiveZoom() : RenderStyle::initialZoom());
 }
 
-inline void applyInitialZoom(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInitialZoom(StyleResolver& styleResolver)
 {
     resetEffectiveZoom(styleResolver);
     styleResolver.setZoom(RenderStyle::initialZoom());
 }
 
-inline void applyInheritZoom(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInheritZoom(StyleResolver& styleResolver)
 {
     resetEffectiveZoom(styleResolver);
     styleResolver.setZoom(styleResolver.parentStyle()->zoom());
 }
 
-inline void applyValueZoom(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueZoom(StyleResolver& styleResolver, CSSValue& value)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
 
@@ -116,7 +216,7 @@ inline void applyValueZoom(StyleResolver& styleResolver, CSSValue& value)
 }
 
 #if ENABLE(CSS_SHAPES)
-inline void applyValueWebkitShapeOutside(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueWebkitShapeOutside(StyleResolver& styleResolver, CSSValue& value)
 {
     if (is<CSSPrimitiveValue>(value)) {
         // FIXME: Shouldn't this be CSSValueNone?
@@ -150,17 +250,17 @@ inline void applyValueWebkitShapeOutside(StyleResolver& styleResolver, CSSValue&
 }
 #endif // ENABLE(CSS_SHAPES)
 
-inline Length mmLength(double mm)
+inline Length StyleBuilderCustom::mmLength(double mm)
 {
     Ref<CSSPrimitiveValue> value(CSSPrimitiveValue::create(mm, CSSPrimitiveValue::CSS_MM));
     return value.get().computeLength<Length>(CSSToLengthConversionData());
 }
-inline Length inchLength(double inch)
+inline Length StyleBuilderCustom::inchLength(double inch)
 {
     Ref<CSSPrimitiveValue> value(CSSPrimitiveValue::create(inch, CSSPrimitiveValue::CSS_IN));
     return value.get().computeLength<Length>(CSSToLengthConversionData());
 }
-static bool getPageSizeFromName(CSSPrimitiveValue* pageSizeName, CSSPrimitiveValue* pageOrientation, Length& width, Length& height)
+bool StyleBuilderCustom::getPageSizeFromName(CSSPrimitiveValue* pageSizeName, CSSPrimitiveValue* pageOrientation, Length& width, Length& height)
 {
     static NeverDestroyed<Length> a5Width(mmLength(148));
     static NeverDestroyed<Length> a5Height(mmLength(210));
@@ -234,7 +334,7 @@ static bool getPageSizeFromName(CSSPrimitiveValue* pageSizeName, CSSPrimitiveVal
     return true;
 }
 
-inline void applyValueVerticalAlign(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueVerticalAlign(StyleResolver& styleResolver, CSSValue& value)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
     if (primitiveValue.getValueID())
@@ -244,21 +344,21 @@ inline void applyValueVerticalAlign(StyleResolver& styleResolver, CSSValue& valu
 }
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
-inline void applyInheritImageResolution(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInheritImageResolution(StyleResolver& styleResolver)
 {
     styleResolver.style()->setImageResolutionSource(styleResolver.parentStyle()->imageResolutionSource());
     styleResolver.style()->setImageResolutionSnap(styleResolver.parentStyle()->imageResolutionSnap());
     styleResolver.style()->setImageResolution(styleResolver.parentStyle()->imageResolution());
 }
 
-inline void applyInitialImageResolution(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInitialImageResolution(StyleResolver& styleResolver)
 {
     styleResolver.style()->setImageResolutionSource(RenderStyle::initialImageResolutionSource());
     styleResolver.style()->setImageResolutionSnap(RenderStyle::initialImageResolutionSnap());
     styleResolver.style()->setImageResolution(RenderStyle::initialImageResolution());
 }
 
-inline void applyValueImageResolution(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueImageResolution(StyleResolver& styleResolver, CSSValue& value)
 {
     ImageResolutionSource source = RenderStyle::initialImageResolutionSource();
     ImageResolutionSnap snap = RenderStyle::initialImageResolutionSnap();
@@ -278,9 +378,9 @@ inline void applyValueImageResolution(StyleResolver& styleResolver, CSSValue& va
 }
 #endif // ENABLE(CSS_IMAGE_RESOLUTION)
 
-inline void applyInheritSize(StyleResolver&) { }
-inline void applyInitialSize(StyleResolver&) { }
-inline void applyValueSize(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyInheritSize(StyleResolver&) { }
+inline void StyleBuilderCustom::applyInitialSize(StyleResolver&) { }
+inline void StyleBuilderCustom::applyValueSize(StyleResolver& styleResolver, CSSValue& value)
 {
     styleResolver.style()->resetPageSizeType();
     Length width;
@@ -354,7 +454,7 @@ inline void applyValueSize(StyleResolver& styleResolver, CSSValue& value)
     styleResolver.style()->setPageSize(LengthSize(width, height));
 }
 
-inline void applyInheritTextIndent(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInheritTextIndent(StyleResolver& styleResolver)
 {
     styleResolver.style()->setTextIndent(styleResolver.parentStyle()->textIndent());
 #if ENABLE(CSS3_TEXT)
@@ -363,7 +463,7 @@ inline void applyInheritTextIndent(StyleResolver& styleResolver)
 #endif
 }
 
-inline void applyInitialTextIndent(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInitialTextIndent(StyleResolver& styleResolver)
 {
     styleResolver.style()->setTextIndent(RenderStyle::initialTextIndent());
 #if ENABLE(CSS3_TEXT)
@@ -372,7 +472,7 @@ inline void applyInitialTextIndent(StyleResolver& styleResolver)
 #endif
 }
 
-inline void applyValueTextIndent(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueTextIndent(StyleResolver& styleResolver, CSSValue& value)
 {
     Length lengthOrPercentageValue;
 #if ENABLE(CSS3_TEXT)
@@ -469,27 +569,27 @@ public:
     }
 
 private:
-    static inline const NinePieceImage& getValue(RenderStyle* style)
+    static const NinePieceImage& getValue(RenderStyle* style)
     {
         return type == BorderImage ? style->borderImage() : style->maskBoxImage();
     }
 
-    static inline void setValue(RenderStyle* style, const NinePieceImage& value)
+    static void setValue(RenderStyle* style, const NinePieceImage& value)
     {
         return type == BorderImage ? style->setBorderImage(value) : style->setMaskBoxImage(value);
     }
 };
 
 #define DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(type, modifier) \
-inline void applyInherit##type##modifier(StyleResolver& styleResolver) \
+inline void StyleBuilderCustom::applyInherit##type##modifier(StyleResolver& styleResolver) \
 { \
     ApplyPropertyBorderImageModifier<type, modifier>::applyInheritValue(styleResolver); \
 } \
-inline void applyInitial##type##modifier(StyleResolver& styleResolver) \
+inline void StyleBuilderCustom::applyInitial##type##modifier(StyleResolver& styleResolver) \
 { \
     ApplyPropertyBorderImageModifier<type, modifier>::applyInitialValue(styleResolver); \
 } \
-inline void applyValue##type##modifier(StyleResolver& styleResolver, CSSValue& value) \
+inline void StyleBuilderCustom::applyValue##type##modifier(StyleResolver& styleResolver, CSSValue& value) \
 { \
     ApplyPropertyBorderImageModifier<type, modifier>::applyValue(styleResolver, value); \
 }
@@ -503,7 +603,7 @@ DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Repeat)
 DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Slice)
 DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Width)
 
-inline CSSToLengthConversionData csstoLengthConversionDataWithTextZoomFactor(StyleResolver& styleResolver)
+inline CSSToLengthConversionData StyleBuilderCustom::csstoLengthConversionDataWithTextZoomFactor(StyleResolver& styleResolver)
 {
     if (Frame* frame = styleResolver.document().frame())
         return styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(styleResolver.style()->effectiveZoom() * frame->textZoomFactor());
@@ -511,7 +611,7 @@ inline CSSToLengthConversionData csstoLengthConversionDataWithTextZoomFactor(Sty
     return styleResolver.state().cssToLengthConversionData();
 }
 
-inline bool convertLineHeight(StyleResolver& styleResolver, const CSSValue& value, Length& length, float multiplier = 1.f)
+inline bool StyleBuilderCustom::convertLineHeight(StyleResolver& styleResolver, const CSSValue& value, Length& length, float multiplier)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
     if (primitiveValue.getValueID() == CSSValueNormal) {
@@ -520,11 +620,13 @@ inline bool convertLineHeight(StyleResolver& styleResolver, const CSSValue& valu
     }
     if (primitiveValue.isLength()) {
         length = primitiveValue.computeLength<Length>(csstoLengthConversionDataWithTextZoomFactor(styleResolver));
+        if (multiplier != 1.f)
+            length = Length(length.value() * multiplier, Fixed);
         return true;
     }
     if (primitiveValue.isPercentage()) {
         // FIXME: percentage should not be restricted to an integer here.
-        length = Length((styleResolver.style()->computedFontSize() * primitiveValue.getIntValue()) * multiplier / 100, Fixed);
+        length = Length((styleResolver.style()->computedFontSize() * primitiveValue.getIntValue()) / 100, Fixed);
         return true;
     }
     if (primitiveValue.isNumber()) {
@@ -535,7 +637,7 @@ inline bool convertLineHeight(StyleResolver& styleResolver, const CSSValue& valu
     return false;
 }
 
-inline void applyValueWordSpacing(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueWordSpacing(StyleResolver& styleResolver, CSSValue& value)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
 
@@ -555,22 +657,23 @@ inline void applyValueWordSpacing(StyleResolver& styleResolver, CSSValue& value)
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 
-inline void applyInheritLineHeight(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInheritLineHeight(StyleResolver& styleResolver)
 {
     styleResolver.style()->setLineHeight(styleResolver.parentStyle()->lineHeight());
     styleResolver.style()->setSpecifiedLineHeight(styleResolver.parentStyle()->specifiedLineHeight());
 }
 
-inline void applyInitialLineHeight(StyleResolver& styleResolver)
+inline void StyleBuilderCustom::applyInitialLineHeight(StyleResolver& styleResolver)
 {
     styleResolver.style()->setLineHeight(RenderStyle::initialLineHeight());
     styleResolver.style()->setSpecifiedLineHeight(RenderStyle::initialSpecifiedLineHeight());
 }
 
-inline void applyValueLineHeight(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueLineHeight(StyleResolver& styleResolver, CSSValue& value)
 {
     Length lineHeight;
-    if (!convertLineHeight(styleResolver, value, lineHeight, styleResolver.style()->textSizeAdjust().multiplier()))
+    float multiplier = styleResolver.style()->textSizeAdjust().isPercentage() ? styleResolver.style()->textSizeAdjust().multiplier() : 1.f;
+    if (!convertLineHeight(styleResolver, value, lineHeight, multiplier))
         return;
 
     styleResolver.style()->setLineHeight(lineHeight);
@@ -579,7 +682,7 @@ inline void applyValueLineHeight(StyleResolver& styleResolver, CSSValue& value)
 
 #else
 
-inline void applyValueLineHeight(StyleResolver& styleResolver, CSSValue& value)
+inline void StyleBuilderCustom::applyValueLineHeight(StyleResolver& styleResolver, CSSValue& value)
 {
     Length lineHeight;
     if (!convertLineHeight(styleResolver, value, lineHeight))
@@ -590,7 +693,318 @@ inline void applyValueLineHeight(StyleResolver& styleResolver, CSSValue& value)
 
 #endif
 
-} // namespace StyleBuilderFunctions
+inline void StyleBuilderCustom::applyInheritOutlineStyle(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setOutlineStyleIsAuto(styleResolver.parentStyle()->outlineStyleIsAuto());
+    styleResolver.style()->setOutlineStyle(styleResolver.parentStyle()->outlineStyle());
+}
+
+inline void StyleBuilderCustom::applyInitialOutlineStyle(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setOutlineStyleIsAuto(RenderStyle::initialOutlineStyleIsAuto());
+    styleResolver.style()->setOutlineStyle(RenderStyle::initialBorderStyle());
+}
+
+inline void StyleBuilderCustom::applyValueOutlineStyle(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    styleResolver.style()->setOutlineStyleIsAuto(primitiveValue);
+    styleResolver.style()->setOutlineStyle(primitiveValue);
+}
+
+inline void StyleBuilderCustom::applyInitialClip(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setClip(Length(), Length(), Length(), Length());
+    styleResolver.style()->setHasClip(false);
+}
+
+inline void StyleBuilderCustom::applyInheritClip(StyleResolver& styleResolver)
+{
+    RenderStyle* parentStyle = styleResolver.parentStyle();
+    if (!parentStyle->hasClip())
+        return applyInitialClip(styleResolver);
+    styleResolver.style()->setClip(parentStyle->clipTop(), parentStyle->clipRight(), parentStyle->clipBottom(), parentStyle->clipLeft());
+    styleResolver.style()->setHasClip(true);
+}
+
+inline void StyleBuilderCustom::applyValueClip(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    if (Rect* rect = primitiveValue.getRectValue()) {
+        auto conversionData = styleResolver.state().cssToLengthConversionData();
+        Length top = rect->top()->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(conversionData);
+        Length right = rect->right()->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(conversionData);
+        Length bottom = rect->bottom()->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(conversionData);
+        Length left = rect->left()->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(conversionData);
+        styleResolver.style()->setClip(top, right, bottom, left);
+        styleResolver.style()->setHasClip(true);
+    } else {
+        ASSERT(primitiveValue.getValueID() == CSSValueAuto);
+        applyInitialClip(styleResolver);
+    }
+}
+
+inline void StyleBuilderCustom::applyValueWebkitLocale(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    if (primitiveValue.getValueID() == CSSValueAuto)
+        styleResolver.style()->setLocale(nullAtom);
+    else
+        styleResolver.style()->setLocale(primitiveValue.getStringValue());
+    
+    FontDescription fontDescription = styleResolver.style()->fontDescription();
+    fontDescription.setScript(localeToScriptCodeForFontSelection(styleResolver.style()->locale()));
+    styleResolver.setFontDescription(fontDescription);
+}
+
+inline void StyleBuilderCustom::applyValueWebkitWritingMode(StyleResolver& styleResolver, CSSValue& value)
+{
+    styleResolver.setWritingMode(downcast<CSSPrimitiveValue>(value));
+
+    // FIXME: It is not ok to modify document state while applying style.
+    auto& state = styleResolver.state();
+    if (state.element() && state.element() == state.document().documentElement())
+        state.document().setWritingModeSetOnDocumentElement(true);
+}
+
+inline void StyleBuilderCustom::applyValueWebkitTextOrientation(StyleResolver& styleResolver, CSSValue& value)
+{
+    styleResolver.setTextOrientation(downcast<CSSPrimitiveValue>(value));
+}
+
+inline void StyleBuilderCustom::applyValueWebkitJustifySelf(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    if (Pair* pairValue = primitiveValue.getPairValue()) {
+        styleResolver.style()->setJustifySelf(*pairValue->first());
+        styleResolver.style()->setJustifySelfOverflowAlignment(*pairValue->second());
+    } else
+        styleResolver.style()->setJustifySelf(primitiveValue);
+}
+
+inline void StyleBuilderCustom::applyValueWebkitPerspective(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    if (primitiveValue.getValueID() == CSSValueNone) {
+        styleResolver.style()->setPerspective(0);
+        return;
+    }
+
+    float perspectiveValue;
+    if (primitiveValue.isLength())
+        perspectiveValue = primitiveValue.computeLength<float>(styleResolver.state().cssToLengthConversionData());
+    else if (primitiveValue.isNumber()) {
+        // For backward compatibility, treat valueless numbers as px.
+        Ref<CSSPrimitiveValue> value(CSSPrimitiveValue::create(primitiveValue.getDoubleValue(), CSSPrimitiveValue::CSS_PX));
+        perspectiveValue = value.get().computeLength<float>(styleResolver.state().cssToLengthConversionData());
+    } else {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    if (perspectiveValue >= 0.0f)
+        styleResolver.style()->setPerspective(perspectiveValue);
+}
+
+template <CSSPropertyID id>
+inline void StyleBuilderCustom::applyTextOrBoxShadowValue(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        if (id == CSSPropertyTextShadow)
+            styleResolver.style()->setTextShadow(nullptr);
+        else
+            styleResolver.style()->setBoxShadow(nullptr);
+        return;
+    }
+
+    bool isFirstEntry = true;
+    for (auto& item : downcast<CSSValueList>(value)) {
+        auto& shadowValue = downcast<CSSShadowValue>(item.get());
+        auto conversionData = styleResolver.state().cssToLengthConversionData();
+        int x = shadowValue.x->computeLength<int>(conversionData);
+        int y = shadowValue.y->computeLength<int>(conversionData);
+        int blur = shadowValue.blur ? shadowValue.blur->computeLength<int>(conversionData) : 0;
+        int spread = shadowValue.spread ? shadowValue.spread->computeLength<int>(conversionData) : 0;
+        ShadowStyle shadowStyle = shadowValue.style && shadowValue.style->getValueID() == CSSValueInset ? Inset : Normal;
+        Color color;
+        if (shadowValue.color)
+            color = styleResolver.colorFromPrimitiveValue(shadowValue.color.get());
+        else
+            color = styleResolver.style()->color();
+        auto shadowData = std::make_unique<ShadowData>(IntPoint(x, y), blur, spread, shadowStyle, id == CSSPropertyWebkitBoxShadow, color.isValid() ? color : Color::transparent);
+        if (id == CSSPropertyTextShadow)
+            styleResolver.style()->setTextShadow(WTF::move(shadowData), !isFirstEntry); // add to the list if this is not the first entry
+        else
+            styleResolver.style()->setBoxShadow(WTF::move(shadowData), !isFirstEntry); // add to the list if this is not the first entry
+        isFirstEntry = false;
+    }
+}
+
+inline void StyleBuilderCustom::applyInitialTextShadow(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setTextShadow(nullptr);
+}
+
+inline void StyleBuilderCustom::applyInheritTextShadow(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setTextShadow(styleResolver.parentStyle()->textShadow() ? std::make_unique<ShadowData>(*styleResolver.parentStyle()->textShadow()) : nullptr);
+}
+
+inline void StyleBuilderCustom::applyValueTextShadow(StyleResolver& styleResolver, CSSValue& value)
+{
+    applyTextOrBoxShadowValue<CSSPropertyTextShadow>(styleResolver, value);
+}
+
+inline void StyleBuilderCustom::applyInitialBoxShadow(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setBoxShadow(nullptr);
+}
+
+inline void StyleBuilderCustom::applyInheritBoxShadow(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setBoxShadow(styleResolver.parentStyle()->boxShadow() ? std::make_unique<ShadowData>(*styleResolver.parentStyle()->boxShadow()) : nullptr);
+}
+
+inline void StyleBuilderCustom::applyValueBoxShadow(StyleResolver& styleResolver, CSSValue& value)
+{
+    applyTextOrBoxShadowValue<CSSPropertyBoxShadow>(styleResolver, value);
+}
+
+inline void StyleBuilderCustom::applyInitialWebkitBoxShadow(StyleResolver& styleResolver)
+{
+    applyInitialBoxShadow(styleResolver);
+}
+
+inline void StyleBuilderCustom::applyInheritWebkitBoxShadow(StyleResolver& styleResolver)
+{
+    applyInheritBoxShadow(styleResolver);
+}
+
+inline void StyleBuilderCustom::applyValueWebkitBoxShadow(StyleResolver& styleResolver, CSSValue& value)
+{
+    applyTextOrBoxShadowValue<CSSPropertyWebkitBoxShadow>(styleResolver, value);
+}
+
+inline void StyleBuilderCustom::applyInitialFontFamily(StyleResolver& styleResolver)
+{
+    FontDescription fontDescription = styleResolver.style()->fontDescription();
+    FontDescription initialDesc = FontDescription();
+
+    // We need to adjust the size to account for the generic family change from monospace to non-monospace.
+    if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize())
+        styleResolver.setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, false, styleResolver.document()));
+    fontDescription.setGenericFamily(initialDesc.genericFamily());
+    if (!initialDesc.firstFamily().isEmpty())
+        fontDescription.setFamilies(initialDesc.families());
+
+    styleResolver.setFontDescription(fontDescription);
+}
+
+inline void StyleBuilderCustom::applyInheritFontFamily(StyleResolver& styleResolver)
+{
+    FontDescription fontDescription = styleResolver.style()->fontDescription();
+    FontDescription parentFontDescription = styleResolver.parentStyle()->fontDescription();
+
+    fontDescription.setGenericFamily(parentFontDescription.genericFamily());
+    fontDescription.setFamilies(parentFontDescription.families());
+    fontDescription.setIsSpecifiedFont(parentFontDescription.isSpecifiedFont());
+    styleResolver.setFontDescription(fontDescription);
+}
+
+inline void StyleBuilderCustom::applyValueFontFamily(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& valueList = downcast<CSSValueList>(value);
+
+    FontDescription fontDescription = styleResolver.style()->fontDescription();
+    // Before mapping in a new font-family property, we should reset the generic family.
+    bool oldFamilyUsedFixedDefaultSize = fontDescription.useFixedDefaultSize();
+    fontDescription.setGenericFamily(FontDescription::NoFamily);
+
+    Vector<AtomicString> families;
+    families.reserveInitialCapacity(valueList.length());
+
+    for (auto& item : valueList) {
+        auto& contentValue = downcast<CSSPrimitiveValue>(item.get());
+        AtomicString face;
+        if (contentValue.isString())
+            face = contentValue.getStringValue();
+        else if (Settings* settings = styleResolver.document().settings()) {
+            switch (contentValue.getValueID()) {
+            case CSSValueWebkitBody:
+                face = settings->standardFontFamily();
+                break;
+            case CSSValueSerif:
+                face = serifFamily;
+                fontDescription.setGenericFamily(FontDescription::SerifFamily);
+                break;
+            case CSSValueSansSerif:
+                face = sansSerifFamily;
+                fontDescription.setGenericFamily(FontDescription::SansSerifFamily);
+                break;
+            case CSSValueCursive:
+                face = cursiveFamily;
+                fontDescription.setGenericFamily(FontDescription::CursiveFamily);
+                break;
+            case CSSValueFantasy:
+                face = fantasyFamily;
+                fontDescription.setGenericFamily(FontDescription::FantasyFamily);
+                break;
+            case CSSValueMonospace:
+                face = monospaceFamily;
+                fontDescription.setGenericFamily(FontDescription::MonospaceFamily);
+                break;
+            case CSSValueWebkitPictograph:
+                face = pictographFamily;
+                fontDescription.setGenericFamily(FontDescription::PictographFamily);
+                break;
+            default:
+                break;
+            }
+        }
+
+        if (face.isEmpty())
+            continue;
+        if (families.isEmpty())
+            fontDescription.setIsSpecifiedFont(fontDescription.genericFamily() == FontDescription::NoFamily);
+        families.uncheckedAppend(face);
+    }
+
+    if (families.isEmpty())
+        return;
+    fontDescription.setFamilies(families);
+
+    if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize() != oldFamilyUsedFixedDefaultSize)
+        styleResolver.setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize, styleResolver.document()));
+
+    styleResolver.setFontDescription(fontDescription);
+}
+
+inline bool StyleBuilderCustom::isValidDisplayValue(StyleResolver& styleResolver, EDisplay display)
+{
+    if (is<SVGElement>(styleResolver.element()) && styleResolver.style()->styleType() == NOPSEUDO)
+        return display == INLINE || display == BLOCK || display == NONE;
+    return true;
+}
+
+inline void StyleBuilderCustom::applyInheritDisplay(StyleResolver& styleResolver)
+{
+    EDisplay display = styleResolver.parentStyle()->display();
+    if (isValidDisplayValue(styleResolver, display))
+        styleResolver.style()->setDisplay(display);
+}
+
+inline void StyleBuilderCustom::applyValueDisplay(StyleResolver& styleResolver, CSSValue& value)
+{
+    EDisplay display = downcast<CSSPrimitiveValue>(value);
+    if (isValidDisplayValue(styleResolver, display))
+        styleResolver.style()->setDisplay(display);
+}
 
 } // namespace WebCore
 

@@ -193,6 +193,8 @@ public:
     // FIXME: needs refactoring (split callback invoke)
     void informURLChange();
 
+    void updateScaleToPageViewportController(double scaleFactor, int x, int y);
+
     PassRefPtr<cairo_surface_t> takeSnapshot();
     bool scrollBy(const WebCore::IntSize&);
 
@@ -216,7 +218,7 @@ private:
     WebCore::IntSize size() const;
     WebCore::IntSize deviceSize() const;
 
-    void displayTimerFired(WebCore::Timer*);
+    void displayTimerFired();
 
     // Evas_Smart_Class callback interface:
     static void handleEvasObjectAdd(Evas_Object*);

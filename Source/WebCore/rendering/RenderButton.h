@@ -43,7 +43,7 @@ public:
     virtual bool canBeSelectionLeaf() const override;
 
     virtual void addChild(RenderObject* newChild, RenderObject *beforeChild = 0) override;
-    virtual RenderObject* removeChild(RenderObject&) override;
+    virtual void removeChild(RenderObject&) override;
     virtual void removeLeftoverAnonymousBlock(RenderBlock*) override { }
     virtual bool createsAnonymousWrapper() const override { return true; }
 
@@ -74,7 +74,7 @@ private:
 
     virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
 
-    void timerFired(Timer&);
+    void timerFired();
 
     RenderTextFragment* m_buttonText;
     RenderBlock* m_inner;

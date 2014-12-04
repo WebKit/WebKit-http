@@ -95,7 +95,6 @@
 #import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIPeripheralHost_Private.h>
 #import <UIKit/UIWindow_Private.h>
-#import <QuartzCore/CARenderServer.h>
 #import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/InspectorOverlay.h>
 #import <WebCore/QuartzCoreSPI.h>
@@ -300,7 +299,6 @@ static int32_t deviceOrientation()
     _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self]);
 
     _page = [_contentView page];
-    _page->setApplicationNameForUserAgent([@"Mobile/" stringByAppendingString:[UIDevice currentDevice].buildVersion]);
     _page->setDeviceOrientation(deviceOrientation());
 
     [_contentView layer].anchorPoint = CGPointZero;
@@ -336,6 +334,9 @@ static int32_t deviceOrientation()
 #endif
 
     _page->setBackgroundExtendsBeyondPage(true);
+
+    if (NSString *applicationNameForUserAgent = configuration.applicationNameForUserAgent)
+        _page->setApplicationNameForUserAgent(applicationNameForUserAgent);
 
     _navigationState = std::make_unique<WebKit::NavigationState>(self);
     _page->setPolicyClient(_navigationState->createPolicyClient());
@@ -432,7 +433,14 @@ static int32_t deviceOrientation()
 
 - (WKNavigation *)loadHTMLString:(NSString *)string baseURL:(NSURL *)baseURL
 {
-    uint64_t navigationID = _page->loadHTMLString(string, baseURL.absoluteString);
+    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+
+    return [self loadData:data MIMEType:@"text/html" characterEncodingName:@"UTF-8" baseURL:baseURL];
+}
+
+- (WKNavigation *)loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL
+{
+    uint64_t navigationID = _page->loadData(API::Data::createWithoutCopying(data).get(), MIMEType, characterEncodingName, baseURL.absoluteString);
     if (!navigationID)
         return nil;
 
@@ -589,6 +597,16 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
         completionHandler([value toObject], nil);
     });
+}
+
+- (NSString *)customUserAgent
+{
+    return _page->customUserAgent();
+}
+
+- (void)setCustomUserAgent:(NSString *)customUserAgent
+{
+    _page->setCustomUserAgent(customUserAgent);
 }
 
 #pragma mark iOS-specific methods
@@ -1659,12 +1677,13 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (NSString *)_customUserAgent
 {
-    return _page->customUserAgent();
+    return self.customUserAgent;
+
 }
 
-- (void)_setCustomUserAgent:(NSString *)_customUserAgent
+- (void)_setCustomUserAgent:(NSString *)customUserAgent
 {
-    _page->setCustomUserAgent(_customUserAgent);
+    self.customUserAgent = customUserAgent;
 }
 
 - (pid_t)_webProcessIdentifier

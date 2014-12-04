@@ -29,15 +29,12 @@
 #import <WebKitLegacy/WebHistoryItem.h>
 
 #if TARGET_OS_IPHONE
-#import <Foundation/NSCalendarDate.h>
-
 extern NSString *WebViewportInitialScaleKey;
 extern NSString *WebViewportMinimumScaleKey;
 extern NSString *WebViewportMaximumScaleKey;
 extern NSString *WebViewportUserScalableKey;
 extern NSString *WebViewportWidthKey;
 extern NSString *WebViewportHeightKey;
-extern NSString *WebViewportMinimalUIKey;
 #endif
 
 @interface WebHistoryItem (WebPrivate)

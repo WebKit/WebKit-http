@@ -496,7 +496,11 @@ void MediaPlayerPrivateAVFoundationObjC::cancelLoad()
 #if ENABLE(IOS_AIRPLAY)
         [m_avPlayer.get() removeObserver:m_objcObserver.get() forKeyPath:@"externalPlaybackActive"];
 #endif
-        m_avPlayer = nil;
+        
+        RetainPtr<AVPlayerType> strongPlayer = WTF::move(m_avPlayer);
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), [strongPlayer] () mutable {
+            strongPlayer.clear();
+        });
     }
 
     // Reset cached properties
@@ -1187,7 +1191,7 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::platformDuration() const
     if (CMTIME_IS_INDEFINITE(cmDuration))
         return MediaTime::positiveInfiniteTime();
 
-    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::platformDuration(%p) - invalid duration, returning %.0f", this, toString(MediaTime::invalidTime()).utf8().data());
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::platformDuration(%p) - invalid duration, returning %s", this, toString(MediaTime::invalidTime()).utf8().data());
     return MediaTime::invalidTime();
 }
 
@@ -2001,10 +2005,10 @@ void MediaPlayerPrivateAVFoundationObjC::sizeChanged()
     
 bool MediaPlayerPrivateAVFoundationObjC::hasSingleSecurityOrigin() const 
 {
-    if (!m_avAsset)
+    if (!m_avAsset || [m_avAsset statusOfValueForKey:@"resolvedURL" error:nullptr] != AVKeyValueStatusLoaded)
         return false;
     
-    RefPtr<SecurityOrigin> resolvedOrigin = SecurityOrigin::create(URL([m_avAsset resolvedURL]));
+    RefPtr<SecurityOrigin> resolvedOrigin = SecurityOrigin::create(resolvedURL());
     RefPtr<SecurityOrigin> requestedOrigin = SecurityOrigin::createFromString(assetURL());
     return resolvedOrigin->isSameSchemeHostPort(requestedOrigin.get());
 }
@@ -2154,7 +2158,7 @@ void MediaPlayerPrivateAVFoundationObjC::updateLastImage()
 
 void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext* context, const IntRect& outputRect)
 {
-    if (m_videoOutput && !m_lastImage)
+    if (m_videoOutput && !m_lastImage && !videoOutputHasAvailableFrame())
         waitForVideoOutputMediaDataWillChange();
 
     updateLastImage();
@@ -2847,7 +2851,7 @@ void MediaPlayerPrivateAVFoundationObjC::canPlayFastReverseDidChange(bool newVal
 
 URL MediaPlayerPrivateAVFoundationObjC::resolvedURL() const
 {
-    if (!m_avAsset)
+    if (!m_avAsset || [m_avAsset statusOfValueForKey:@"resolvedURL" error:nullptr] != AVKeyValueStatusLoaded)
         return MediaPlayerPrivateAVFoundation::resolvedURL();
 
     return URL([m_avAsset resolvedURL]);
@@ -2863,6 +2867,7 @@ NSArray* assetMetadataKeyNames()
                     @"preferredVolume",
                     @"preferredRate",
                     @"playable",
+                    @"resolvedURL",
                     @"tracks",
                     @"availableMediaCharacteristicsWithMediaSelectionOptions",
                    nil];

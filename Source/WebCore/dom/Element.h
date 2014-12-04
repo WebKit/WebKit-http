@@ -59,7 +59,7 @@ enum SpellcheckAttributeState {
 
 class Element : public ContainerNode {
 public:
-    static PassRefPtr<Element> create(const QualifiedName&, Document&);
+    static RefPtr<Element> create(const QualifiedName&, Document&);
     virtual ~Element();
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
@@ -220,8 +220,8 @@ public:
 
     WEBCORE_EXPORT IntRect boundsInRootViewSpace();
 
-    PassRefPtr<ClientRectList> getClientRects();
-    PassRefPtr<ClientRect> getBoundingClientRect();
+    RefPtr<ClientRectList> getClientRects();
+    RefPtr<ClientRect> getBoundingClientRect();
     
     // Returns the absolute bounding box translated into client coordinates.
     WEBCORE_EXPORT IntRect clientRect() const;
@@ -231,16 +231,16 @@ public:
     bool removeAttribute(const AtomicString& name);
     bool removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
-    PassRefPtr<Attr> detachAttribute(unsigned index);
+    RefPtr<Attr> detachAttribute(unsigned index);
 
-    PassRefPtr<Attr> getAttributeNode(const AtomicString& name);
-    PassRefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    PassRefPtr<Attr> setAttributeNode(Attr*, ExceptionCode&);
-    PassRefPtr<Attr> setAttributeNodeNS(Attr*, ExceptionCode&);
-    PassRefPtr<Attr> removeAttributeNode(Attr*, ExceptionCode&);
+    RefPtr<Attr> getAttributeNode(const AtomicString& name);
+    RefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    RefPtr<Attr> setAttributeNode(Attr*, ExceptionCode&);
+    RefPtr<Attr> setAttributeNodeNS(Attr*, ExceptionCode&);
+    RefPtr<Attr> removeAttributeNode(Attr*, ExceptionCode&);
 
-    PassRefPtr<Attr> attrIfExists(const QualifiedName&);
-    PassRefPtr<Attr> ensureAttr(const QualifiedName&);
+    RefPtr<Attr> attrIfExists(const QualifiedName&);
+    RefPtr<Attr> ensureAttr(const QualifiedName&);
 
     const Vector<RefPtr<Attr>>& attrNodeList();
 
@@ -267,8 +267,8 @@ public:
 
     virtual String nodeName() const override;
 
-    PassRefPtr<Element> cloneElementWithChildren();
-    PassRefPtr<Element> cloneElementWithoutChildren();
+    RefPtr<Element> cloneElementWithChildren();
+    RefPtr<Element> cloneElementWithoutChildren();
 
     void normalizeAttributes();
     String nodeNamePreservingCase() const;
@@ -315,7 +315,7 @@ public:
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
-    WEBCORE_EXPORT PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
+    WEBCORE_EXPORT RefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
 
     ShadowRoot* userAgentShadowRoot() const;
     ShadowRoot& ensureUserAgentShadowRoot();
@@ -395,6 +395,10 @@ public:
     virtual void updateFocusAppearance(bool restorePreviousSelection);
     virtual void blur();
 
+    String innerHTML() const;
+    String outerHTML() const;
+    void setInnerHTML(const String&, ExceptionCode&);
+    void setOuterHTML(const String&, ExceptionCode&);
     WEBCORE_EXPORT String innerText();
     String outerText();
  
@@ -540,7 +544,7 @@ public:
     virtual void didAttachRenderers();
     virtual void willDetachRenderers();
     virtual void didDetachRenderers();
-    virtual PassRefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle);
+    virtual RefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle);
 
     void setBeforePseudoElement(PassRefPtr<PseudoElement>);
     void setAfterPseudoElement(PassRefPtr<PseudoElement>);
@@ -551,6 +555,7 @@ public:
     void clearHoverAndActiveStatusBeforeDetachingRenderer();
 
     WEBCORE_EXPORT URL absoluteLinkURL() const;
+    WeakPtr<Element> createWeakPtr();
 
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
@@ -561,16 +566,18 @@ protected:
     virtual void removeAllEventListeners() override final;
     virtual void parserDidSetAttributes();
 
-    void clearTabIndexExplicitlyIfNeeded();    
+    void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(short);
 
-    PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
+    RefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
     HTMLCollection* cachedHTMLCollection(CollectionType);
 
     // classAttributeChanged() exists to share code between
     // parseAttribute (called via setAttribute()) and
     // svgAttributeChanged (called when element.className.baseValue is set)
     void classAttributeChanged(const AtomicString& newClassString);
+
+    static void mergeWithNextTextNode(Text& node, ExceptionCode&);
 
 private:
     bool isTextNode() const;
@@ -625,8 +632,8 @@ private:
 
     // cloneNode is private so that non-virtual cloneElementWithChildren and cloneElementWithoutChildren
     // are used instead.
-    virtual PassRefPtr<Node> cloneNode(bool deep) override;
-    virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
+    virtual RefPtr<Node> cloneNode(bool deep) override;
+    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren();
 
     void addShadowRoot(PassRefPtr<ShadowRoot>);
     void removeShadowRoot();

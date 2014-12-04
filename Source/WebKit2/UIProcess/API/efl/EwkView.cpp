@@ -299,7 +299,7 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
     , m_touchEventsEnabled(false)
     , m_gestureRecognizer(std::make_unique<GestureRecognizer>(this))
 #endif
-    , m_displayTimer(this, &EwkView::displayTimerFired)
+    , m_displayTimer(*this, &EwkView::displayTimerFired)
     , m_inputMethodContext(InputMethodContextEfl::create(this, smartData()->base.evas))
 #if HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)
     , m_webAccessibility(std::make_unique<WebAccessibility>(this))
@@ -352,6 +352,9 @@ EwkView::~EwkView()
 {
     ASSERT(wkPageToEvasObjectMap().get(wkPage()) == m_evasObject);
     wkPageToEvasObjectMap().remove(wkPage());
+
+    m_evasGLSurface = nullptr;
+    m_evasGLContext = nullptr;
 
     if (m_evasGL)
         evas_gl_free(m_evasGL);
@@ -544,7 +547,7 @@ inline IntSize EwkView::deviceSize() const
     return toIntSize(WKViewGetSize(wkView()));
 }
 
-void EwkView::displayTimerFired(Timer*)
+void EwkView::displayTimerFired()
 {
     Ewk_View_Smart_Data* sd = smartData();
 
@@ -1069,6 +1072,20 @@ void EwkView::informURLChange()
 
     m_url = WKEinaSharedString(wkURLString.get());
     smartCallback<URLChanged>().call(m_url);
+}
+
+/**
+ * @internal
+ * Update new scale factor to PageViewportController.
+ *
+ * ewk_view_scale_set() had only updated a scale factor of WebPageProxy. It had caused unsynchronized scale factor
+ * between WebPageProxy and PageViewportController. To be sync between WebPageProxy and PageViewportController,
+ * ewk_view_scale_set() needs to update the scale factor in PageViewportController as well.
+ */
+void EwkView::updateScaleToPageViewportController(double scaleFactor, int x, int y)
+{
+    m_pageViewportController.setInitiallyFitToViewport(false);
+    m_pageViewportController.didChangeContentsVisibility(WebCore::FloatPoint(x, y), scaleFactor);
 }
 
 EwkWindowFeatures* EwkView::windowFeatures()

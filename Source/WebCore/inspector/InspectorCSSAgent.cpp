@@ -110,7 +110,7 @@ public:
     void scheduleFor(WebKitNamedFlow*, int documentNodeId);
     void unschedule(WebKitNamedFlow*);
     void reset();
-    void timerFired(Timer&);
+    void timerFired();
 
 private:
     InspectorCSSAgent* m_cssAgent;
@@ -120,7 +120,7 @@ private:
 
 ChangeRegionOversetTask::ChangeRegionOversetTask(InspectorCSSAgent* cssAgent)
     : m_cssAgent(cssAgent)
-    , m_timer(this, &ChangeRegionOversetTask::timerFired)
+    , m_timer(*this, &ChangeRegionOversetTask::timerFired)
 {
 }
 
@@ -143,7 +143,7 @@ void ChangeRegionOversetTask::reset()
     m_namedFlows.clear();
 }
 
-void ChangeRegionOversetTask::timerFired(Timer&)
+void ChangeRegionOversetTask::timerFired()
 {
     // The timer is stopped on m_cssAgent destruction, so this method will never be called after m_cssAgent has been destroyed.
     for (HashMap<WebKitNamedFlow*, int>::iterator it = m_namedFlows.begin(), end = m_namedFlows.end(); it != end; ++it)
@@ -1035,22 +1035,6 @@ PassRefPtr<Inspector::Protocol::CSS::CSSRule> InspectorCSSAgent::buildObjectForR
     ASSERT(rule->parentStyleSheet());
     InspectorStyleSheet* inspectorStyleSheet = bindStyleSheet(rule->parentStyleSheet());
     return inspectorStyleSheet ? inspectorStyleSheet->buildObjectForRule(rule) : nullptr;
-}
-
-PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> InspectorCSSAgent::buildArrayForRuleList(CSSRuleList* ruleList)
-{
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> result = Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>::create();
-    if (!ruleList)
-        return result.release();
-
-    for (unsigned i = 0, size = ruleList->length(); i < size; ++i) {
-        CSSStyleRule* rule = asCSSStyleRule(*ruleList->item(i));
-        RefPtr<Inspector::Protocol::CSS::CSSRule> ruleObject = buildObjectForRule(rule);
-        if (!ruleObject)
-            continue;
-        result->addItem(ruleObject.release());
-    }
-    return result.release();
 }
 
 PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> InspectorCSSAgent::buildArrayForMatchedRuleList(const Vector<RefPtr<StyleRule>>& matchedRules, StyleResolver& styleResolver, Element* element)
