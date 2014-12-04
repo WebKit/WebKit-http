@@ -166,6 +166,7 @@ target_link_libraries(WPEWestonShell ${WPEWestonShell_LIBRARIES})
 target_include_directories(WPEWestonShell PUBLIC ${WPEWestonShell_INCLUDE_DIRECTORIES})
 install(TARGETS WPEWestonShell DESTINATION "${LIB_INSTALL_DIR}")
 
+if (ENABLE_ATHOL_SHELL)
 set(WPEAtholShell_SOURCES
     UIProcess/wpe/AtholShell/AtholShell.cpp
     UIProcess/wpe/AtholShell/Module.cpp
@@ -185,6 +186,7 @@ add_library(WPEAtholShell SHARED ${WPEAtholShell_SOURCES})
 target_link_libraries(WPEAtholShell ${WPEAtholShell_LIBRARIES})
 target_include_directories(WPEAtholShell PUBLIC ${WPEAtholShell_INCLUDE_DIRECTORIES})
 install(TARGETS WPEAtholShell DESTINATION "${LIB_INSTALL_DIR}")
+endif ()
 
 file(GLOB InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html

@@ -46,7 +46,6 @@ find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
 
-find_package(Athol 0.1 REQUIRED)
 find_package(Cairo 1.10.2 REQUIRED)
 find_package(CairoGL 1.10.2 REQUIRED COMPONENTS cairo-egl)
 find_package(Fontconfig 2.8.0 REQUIRED)
@@ -65,6 +64,11 @@ find_package(Weston 1.5.0 REQUIRED)
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
+
+find_package(Athol 0.1)
+if (ATHOL_FOUND)
+    set(ENABLE_ATHOL_SHELL ON)
+endif ()
 
 if (ENABLE_VIDEO)
     set(GSTREAMER_COMPONENTS app audio fft gl pbutils tag video)
