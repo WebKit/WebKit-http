@@ -42,7 +42,7 @@ public:
 /*!
     \qmltype WebLoadRequest
     \instantiates QWebLoadRequest
-    \inqmlmodule QtWebKit 3.0
+    \inqmlmodule QtWebKit
 
     \brief A utility class for the WebView::loadingChanged signal.
 
