@@ -126,7 +126,6 @@
     <branch module="gst-plugins-base/gst-plugins-base-1.4.2.tar.xz" version="1.4.2"
             repo="gstreamer"
             hash="sha256:c0a8c44607d8a5669d2f0c118a72026f883a58ce1f3c720924b77f275b7b8835">
-      <patch file="gst-plugins-base-fix-build-gcc-4.9-x86.patch" strip="1"/>
     </branch>
   </autotools>
 
