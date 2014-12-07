@@ -119,7 +119,6 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
         return;  // create will notice we didn't set m_initialized and fail.
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(m_data.m_surface.get()));
-    cairo_set_antialias(cr.get(), CAIRO_ANTIALIAS_NONE);
     m_data.m_platformContext.setCr(cr.get());
     m_context = adoptPtr(new GraphicsContext(&m_data.m_platformContext));
     success = true;
