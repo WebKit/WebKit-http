@@ -34,6 +34,7 @@ use warnings;
 use File::Spec::Functions qw/catdir/;
 use File::Temp qw/tempfile/;
 use FindBin;
+use Getopt::Long;
 use lib $FindBin::Bin;
 use webkitdirs;
 
@@ -48,6 +49,13 @@ checkFrameworks();
 # Set paths according to the build system used
 if (isGtk() || isEfl()) {
     $launcherPath = catdir($productDir, "bin", "MiniBrowser");
+} elsif (isWPE()) {
+    my $url = "http://www.webkitgtk.org";
+    GetOptions("url=s" => \$url);
+
+    $ENV{WEBKIT_EXEC_PATH} = catdir($productDir, "bin");
+    $ENV{WPE_SHELL_URL} = $url;
+    $launcherPath = catdir($productDir, "bin", "WPELauncher");
 }
 
 $launcherPath && -x $launcherPath or die "Can't find the launcher command";

@@ -829,6 +829,9 @@ sub builtDylibPathForName
             return "$baseProductDir/$libraryName.intermediate/$configuration/$libraryName.intermediate/$libraryName.lib";
         }
     }
+    if (isWPE()) {
+        return "$configurationProductDir/lib/libWebKit2.so";
+    }
 
     die "Unsupported platform, can't determine built library locations.\nTry `build-webkit --help` for more information.\n";
 }

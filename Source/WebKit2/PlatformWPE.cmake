@@ -8,8 +8,19 @@ add_custom_target(webkit2wpe-forwarding-headers
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${FORWARDING_HEADERS_DIR} soup
 )
 
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/bin/WPELauncher
+    DEPENDS ${WEBKIT2_DIR}/UIProcess/wpe/WPELauncher.in
+    COMMAND cp ${WEBKIT2_DIR}/UIProcess/wpe/WPELauncher.in ${CMAKE_BINARY_DIR}/bin/WPELauncher
+    COMMAND chmod +x ${CMAKE_BINARY_DIR}/bin/WPELauncher
+)
+add_custom_target(webkit2wpe-launcher-script
+    DEPENDS ${CMAKE_BINARY_DIR}/bin/WPELauncher
+)
+
 set(WEBKIT2_EXTRA_DEPENDENCIES
     webkit2wpe-forwarding-headers
+    webkit2wpe-launcher-script
 )
 
 list(APPEND WebProcess_SOURCES
