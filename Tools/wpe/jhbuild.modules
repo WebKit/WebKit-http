@@ -88,16 +88,12 @@
 
   <autotools id="cairo" autogen-sh="configure"
              autogenargs="--enable-egl=yes --enable-glesv2">
-    <dependencies>
+    <cairo>
       <dep package="glib"/>
       <dep package="fontconfig"/>
       <dep package="pixman"/>
     </dependencies>
-    <branch module="releases/cairo-1.14.0.tar.xz" version="1.14.0"
-            repo="cairographics.org"
-            hash="sha256:2cf5f81432e77ea4359af9dcd0f4faf37d015934501391c311bfd2d19a0134b7">
-      <patch file="cairo-egl-device-create-for-egl-surface.patch" strip="1"/>
-    </branch>
+    <branch repo="github.com" module="WebKitForWayland/cairo.git" checkoutdir="cairo" tag="patches"/>
   </autotools>
 
   <autotools id="wayland">
@@ -107,7 +103,11 @@
   </autotools>
 
   <autotools id="weston" autogenargs="--disable-setuid-install --enable-libinput-backend">
-    <branch repo="github.com" module="zdobersek/weston.git" checkoutdir="weston" tag="patches"/>
+    <dependencies>
+      <dep package="wayland"/>
+      <dep package="cairo"/>
+    </dependencies>
+    <branch repo="github.com" module="WebKitForWayland/weston.git" checkoutdir="weston" tag="patches"/>
   </autotools>
 
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
