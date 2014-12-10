@@ -307,7 +307,7 @@ void LayerTreeHostWPE::flushAndRenderLayers()
 
 void LayerTreeHostWPE::scheduleLayerFlush()
 {
-    if (!m_layerFlushSchedulingEnabled)
+    if (!m_layerFlushSchedulingEnabled || m_layerFlushTimer.isScheduled())
         return;
 
     if (m_frameRequestState != FrameRequestState::Completed) {
@@ -315,8 +315,7 @@ void LayerTreeHostWPE::scheduleLayerFlush()
         return;
     }
 
-    if (!m_layerFlushTimer.isScheduled())
-        m_layerFlushTimer.schedule();
+    m_layerFlushTimer.schedule();
 }
 
 void LayerTreeHostWPE::setLayerFlushSchedulingEnabled(bool layerFlushingEnabled)
