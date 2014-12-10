@@ -88,7 +88,7 @@
 
   <autotools id="cairo" autogen-sh="configure"
              autogenargs="--enable-egl=yes --enable-glesv2">
-    <cairo>
+    <dependencies>
       <dep package="glib"/>
       <dep package="fontconfig"/>
       <dep package="pixman"/>
