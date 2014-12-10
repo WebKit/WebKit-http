@@ -25,10 +25,11 @@ use Getopt::Long qw(:config pass_through);
 my $platform = "";
 $platform = "efl" if isEfl();
 $platform = "gtk" if isGtk();
+$platform = "wpe" if isWPE();
 my $wipeOnChange = $ENV{JHBUILD_WIPE_ON_CHANGE} // 1;
 
 if (!$platform) {
-    die "No platform specified for " . basename($0) .". Use --gtk or --efl.\n";
+    die "No platform specified for " . basename($0) .". Use --gtk, --efl or --wpe.\n";
 }
 
 GetOptions('wipe-on-change!' => \$wipeOnChange,);
@@ -112,7 +113,7 @@ delete $ENV{AR_FLAGS} if exists $ENV{AR_FLAGS};
 
 chdir(relativeScriptsDir() . "/../jhbuild") or die $!;
 
-my %prettyPlatform = ( "efl" => "EFL", "gtk" => "GTK+" );
+my %prettyPlatform = ( "efl" => "EFL", "gtk" => "GTK+", "wpe" => "WPE" );
 
 if ($wipeOnChange && -e getJhbuildPath() && jhbuildConfigurationChanged()) {
     cleanJhbuild();
