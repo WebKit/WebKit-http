@@ -29,9 +29,15 @@
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 
 #include "DisplayRefreshMonitorClient.h"
-#include "DisplayRefreshMonitorIOS.h"
-#include "DisplayRefreshMonitorMac.h"
 #include "DisplayRefreshMonitorManager.h"
+
+#if PLATFORM(IOS)
+#include "DisplayRefreshMonitorIOS.h"
+#elif PLATFORM(MAC)
+#include "DisplayRefreshMonitorMac.h"
+#endif
+
+#include <stdio.h>
 
 namespace WebCore {
 
@@ -42,11 +48,12 @@ PassRefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::create(DisplayRefreshMo
     if (RefPtr<DisplayRefreshMonitor> monitor = client->createDisplayRefreshMonitor(displayID))
         return monitor.release();
 
-#if PLATFORM(MAC)
-    return DisplayRefreshMonitorMac::create(displayID);
-#endif
 #if PLATFORM(IOS)
     return DisplayRefreshMonitorIOS::create(displayID);
+#elif PLATFORM(MAC)
+    return DisplayRefreshMonitorMac::create(displayID);
+#elif PLATFORM(WPE)
+    RELEASE_ASSERT_NOT_REACHED();
 #endif
 }
 

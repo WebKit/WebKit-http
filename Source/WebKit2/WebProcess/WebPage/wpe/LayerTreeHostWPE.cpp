@@ -61,6 +61,7 @@ LayerTreeHostWPE::LayerTreeHostWPE(WebPage* webPage)
     , m_layerFlushSchedulingEnabled(true)
     , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 10)
     , m_frameRequestState(FrameRequestState::Completed)
+    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitorWPE))
 {
 }
 
@@ -343,6 +344,12 @@ void LayerTreeHostWPE::cancelPendingLayerFlush()
     m_layerFlushTimer.cancel();
 }
 
+PassRefPtr<WebCore::DisplayRefreshMonitor> LayerTreeHostWPE::createDisplayRefreshMonitor(PlatformDisplayID)
+{
+    // FIXME: See LayerTreeHostWPE::DisplayRefreshMonitorWPE implementation.
+    return m_displayRefreshMonitor;
+}
+
 static double lastTime = currentTime();
 static unsigned frameCount = 0;
 
@@ -361,6 +368,8 @@ const struct wl_callback_listener LayerTreeHostWPE::m_frameListener = {
         wl_callback_destroy(callback);
 
         auto& layerTreeHost = *static_cast<LayerTreeHostWPE*>(data);
+        layerTreeHost.m_displayRefreshMonitor->dispatchRefreshCallback();
+
         switch (layerTreeHost.m_frameRequestState) {
         case FrameRequestState::InProgress:
             layerTreeHost.m_frameRequestState = FrameRequestState::Completed;
@@ -376,5 +385,28 @@ const struct wl_callback_listener LayerTreeHostWPE::m_frameListener = {
         }
     }
 };
+
+// FIXME: This is a dumb implementation of the DisplayRefreshMonitor class.
+// It is specific to one LayerTreeHost object and doesn't properly use
+// display IDs or perform cross-thread safety. But it works well enough
+// at the moment, though it really needs additional work.
+LayerTreeHostWPE::DisplayRefreshMonitorWPE::DisplayRefreshMonitorWPE()
+    : DisplayRefreshMonitor(0)
+{
+}
+
+bool LayerTreeHostWPE::DisplayRefreshMonitorWPE::requestRefreshCallback()
+{
+    setIsScheduled(true);
+    return true;
+}
+
+void LayerTreeHostWPE::DisplayRefreshMonitorWPE::dispatchRefreshCallback()
+{
+    if (!isScheduled())
+        return;
+
+    callOnMainThread(DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread, this);
+}
 
 } // namespace WebKit

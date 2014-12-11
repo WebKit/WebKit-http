@@ -28,6 +28,8 @@
 
 #include "LayerTreeContext.h"
 #include <WebCore/Color.h>
+#include <WebCore/DisplayRefreshMonitor.h>
+#include <WebCore/PlatformScreen.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
@@ -82,6 +84,10 @@ public:
 
 #if USE(COORDINATED_GRAPHICS) && ENABLE(REQUEST_ANIMATION_FRAME)
     virtual void scheduleAnimation() = 0;
+#endif
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) { return nullptr; }
 #endif
 
 protected:

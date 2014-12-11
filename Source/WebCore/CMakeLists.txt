@@ -2052,6 +2052,9 @@ set(WebCore_SOURCES
     platform/graphics/BitmapImage.cpp
     platform/graphics/Color.cpp
     platform/graphics/CrossfadeGeneratedImage.cpp
+    platform/graphics/DisplayRefreshMonitor.cpp
+    platform/graphics/DisplayRefreshMonitorClient.cpp
+    platform/graphics/DisplayRefreshMonitorManager.cpp
     platform/graphics/FloatPoint.cpp
     platform/graphics/FloatPoint3D.cpp
     platform/graphics/FloatPolygon.cpp

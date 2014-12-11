@@ -30,6 +30,7 @@
 #include "LayerTreeContext.h"
 #include "LayerTreeHost.h"
 #include "TextureMapperLayer.h"
+#include <WebCore/DisplayRefreshMonitor.h>
 #include <WebCore/GLContext.h>
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/Timer.h>
@@ -74,6 +75,8 @@ private:
 
     virtual bool flushPendingLayerChanges();
 
+    virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
+
     // GraphicsLayerClient
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect);
 
@@ -107,6 +110,15 @@ private:
         Completed
     };
     FrameRequestState m_frameRequestState;
+
+    class DisplayRefreshMonitorWPE : public WebCore::DisplayRefreshMonitor {
+    public:
+        DisplayRefreshMonitorWPE();
+
+        virtual bool requestRefreshCallback() override;
+        void dispatchRefreshCallback();
+    };
+    RefPtr<DisplayRefreshMonitorWPE> m_displayRefreshMonitor;
 };
 
 } // namespace WebKit
