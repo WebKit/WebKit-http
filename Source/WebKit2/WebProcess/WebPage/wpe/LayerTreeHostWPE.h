@@ -99,7 +99,6 @@ private:
     std::unique_ptr<WebCore::TextureMapper> m_textureMapper;
     std::unique_ptr<WebCore::WaylandSurface> m_waylandSurface;
     OwnPtr<WebCore::GLContext> m_context;
-    double m_lastFlushTime;
     bool m_layerFlushSchedulingEnabled;
     GSourceWrap::Static m_layerFlushTimer;
 
