@@ -238,9 +238,6 @@ void LayerTreeHostWPE::layerFlushTimerFired()
     }
 
     flushAndRenderLayers();
-
-    if (toTextureMapperLayer(m_rootLayer.get())->descendantsOrSelfHaveRunningAnimations())
-        scheduleLayerFlush();
 }
 
 bool LayerTreeHostWPE::flushPendingLayerChanges()

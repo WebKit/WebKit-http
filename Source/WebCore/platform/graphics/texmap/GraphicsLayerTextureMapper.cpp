@@ -417,6 +417,9 @@ void GraphicsLayerTextureMapper::setDebugBorder(const Color& color, float width)
 
 void GraphicsLayerTextureMapper::commitLayerChanges()
 {
+    if (m_animations.hasRunningAnimations())
+        client().notifyFlushBeforeDisplayRefresh(this);
+
     if (m_changeMask == NoChanges)
         return;
 
@@ -504,6 +507,7 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     if (m_changeMask & CommittedScrollOffsetChange)
         m_layer->didCommitScrollOffset(m_committedScrollOffset);
 
+    client().didCommitChangesForLayer(this);
     m_changeMask = NoChanges;
 }
 
