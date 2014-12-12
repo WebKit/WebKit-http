@@ -201,15 +201,6 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
             player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
                 &count);
 
-            // The ffmpeg decoder leaves us with the alpha channel set to 0!
-            // This goes unnoticed usually, but it's a problem here because the
-            // bitmap is copied on a layer that is later alpha-blended on screen.
-            char* buffer = (char*)player->m_frameBuffer->Bits();
-            for (int i = 3; i < player->m_frameBuffer->BitsLength(); i+=4)
-            {
-                *(buffer + i) = 0xff;
-            }
-
             player->Looper()->PostMessage('rfsh', player);
         }
     }
