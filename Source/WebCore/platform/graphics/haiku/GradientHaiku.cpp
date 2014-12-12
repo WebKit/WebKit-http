@@ -63,12 +63,7 @@ PlatformGradient Gradient::platformGradient()
         color.alpha = static_cast<uint8>(stop.alpha * 255);
         m_gradient->AddColor(color, stop.stop * 255);
 
-        // The first and last colors must propagate to the ends of the gradient.
         // TODO handle m_spreadMethod (pad/reflect/repeat)
-        if (i == 0)
-            m_gradient->AddColor(color, 0);
-        else if (i == size - 1)
-            m_gradient->AddColor(color, 255);
     }
     return m_gradient;
 }
