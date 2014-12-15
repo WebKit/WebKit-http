@@ -135,11 +135,13 @@ public:
         UserMediaPermissionRequest,
         Vibration,
         ViewportAttributes,
+        WebsiteDataStore,
 
         // Bundle types
         Bundle,
         BundleBackForwardList,
         BundleBackForwardListItem,
+        BundleCSSStyleDeclarationHandle,
         BundleDOMWindowExtension,
         BundleFrame,
         BundleHitTestResult,

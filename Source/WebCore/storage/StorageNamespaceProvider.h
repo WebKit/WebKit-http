@@ -43,16 +43,19 @@ public:
     StorageNamespaceProvider();
     virtual ~StorageNamespaceProvider();
 
+    virtual RefPtr<StorageNamespace> createSessionStorageNamespace(Page&, unsigned quota) = 0;
     StorageNamespace& localStorageNamespace();
     StorageNamespace& transientLocalStorageNamespace(SecurityOrigin&);
-    virtual RefPtr<StorageNamespace> createSessionStorageNamespace(Page&) = 0;
 
     void addPage(Page&);
     void removePage(Page&);
 
+protected:
+    StorageNamespace* optionalLocalStorageNamespace() { return m_localStorageNamespace.get(); }
+
 private:
-    virtual RefPtr<StorageNamespace> createLocalStorageNamespace() = 0;
-    virtual RefPtr<StorageNamespace> createTransientLocalStorageNamespace(SecurityOrigin&) = 0;
+    virtual RefPtr<StorageNamespace> createLocalStorageNamespace(unsigned quota) = 0;
+    virtual RefPtr<StorageNamespace> createTransientLocalStorageNamespace(SecurityOrigin&, unsigned quota) = 0;
 
     HashSet<Page*> m_pages;
 

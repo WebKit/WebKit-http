@@ -91,13 +91,6 @@ class PortTestCase(unittest.TestCase):
         port._config.build_directory = lambda configuration: '/mock-build'
         return port
 
-    def test_default_max_locked_shards(self):
-        port = self.make_port()
-        port.default_child_processes = lambda: 16
-        self.assertEqual(port.default_max_locked_shards(), 1)
-        port.default_child_processes = lambda: 2
-        self.assertEqual(port.default_max_locked_shards(), 1)
-
     def test_default_timeout_ms(self):
         self.assertEqual(self.make_port(options=MockOptions(configuration='Release')).default_timeout_ms(), 35000)
         self.assertEqual(self.make_port(options=MockOptions(configuration='Debug')).default_timeout_ms(), 35000)
@@ -135,12 +128,6 @@ class PortTestCase(unittest.TestCase):
                 self.fail('failed to connect to %s:%d' % (host, port))
             finally:
                 test_socket.close()
-
-    def integration_test_http_lock(self):
-        port = self.make_port()
-        # Only checking that no exception is raised.
-        port.acquire_http_lock()
-        port.release_http_lock()
 
     def integration_test_check_sys_deps(self):
         port = self.make_port()

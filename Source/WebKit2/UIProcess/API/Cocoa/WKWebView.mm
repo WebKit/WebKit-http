@@ -233,10 +233,26 @@ static int32_t deviceOrientation()
     return deviceOrientationForUIInterfaceOrientation([[UIApplication sharedApplication] statusBarOrientation]);
 }
 
-- (BOOL)_isPlayingFullscreenOptimizedVideo
+- (BOOL)_isShowingVideoOptimized
 {
-    return _page->videoFullscreenManager() && _page->videoFullscreenManager()->mode() == WebCore::HTMLMediaElement::HTMLMediaElement::VideoFullscreenModeOptimized;
+    if (!_page || !_page->videoFullscreenManager())
+        return false;
+    
+    return _page->videoFullscreenManager()->mode() & WebCore::HTMLMediaElement::VideoFullscreenModeOptimized;
 }
+
+- (BOOL)_mayAutomaticallyShowVideoOptimized
+{
+#if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 82000)
+    return false;
+#else
+    if (!_page || !_page->videoFullscreenManager())
+        return false;
+
+    return _page->videoFullscreenManager()->mayAutomaticallyShowVideoOptimized();
+#endif
+}
+
 #endif
 
 - (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration
@@ -271,8 +287,9 @@ static int32_t deviceOrientation()
 
     webPageConfiguration.userContentController = [_configuration userContentController]->_userContentControllerProxy.get();
     webPageConfiguration.visitedLinkProvider = [_configuration _visitedLinkProvider]->_visitedLinkProvider.get();
-    webPageConfiguration.session = [_configuration _websiteDataStore]->_session.get();
-    
+    webPageConfiguration.websiteDataStore = &[_configuration _websiteDataStore]->_websiteDataStore->websiteDataStore();
+    webPageConfiguration.sessionID = webPageConfiguration.websiteDataStore->sessionID();
+
     RefPtr<WebKit::WebPageGroup> pageGroup;
     NSString *groupIdentifier = configuration._groupIdentifier;
     if (groupIdentifier.length) {
@@ -1583,14 +1600,14 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [_wkView setMagnification:magnification centeredAtPoint:NSPointFromCGPoint(point)];
 }
 
-- (BOOL)_ignoresNonWheelMouseEvents
+- (BOOL)_ignoresNonWheelEvents
 {
-    return [_wkView _ignoresNonWheelMouseEvents];
+    return [_wkView _ignoresNonWheelEvents];
 }
 
-- (void)_setIgnoresNonWheelMouseEvents:(BOOL)ignoresNonWheelMouseEvents
+- (void)_setIgnoresNonWheelEvents:(BOOL)ignoresNonWheelEvents
 {
-    [_wkView _setIgnoresNonWheelMouseEvents:ignoresNonWheelMouseEvents];
+    [_wkView _setIgnoresNonWheelEvents:ignoresNonWheelEvents];
 }
 
 #endif
@@ -1804,6 +1821,9 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 
     if (events & _WKRenderingProgressEventFirstLayout)
         milestones |= WebCore::DidFirstLayout;
+
+    if (events & _WKRenderingProgressEventFirstVisuallyNonEmptyLayout)
+        milestones |= WebCore::DidFirstVisuallyNonEmptyLayout;
 
     if (events & _WKRenderingProgressEventFirstPaintWithSignificantArea)
         milestones |= WebCore::DidHitRelevantRepaintedObjectsAreaThreshold;

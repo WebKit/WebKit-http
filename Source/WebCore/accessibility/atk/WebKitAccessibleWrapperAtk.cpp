@@ -649,6 +649,20 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
         return ATK_ROLE_DEFINITION;
     case DocumentMathRole:
         return ATK_ROLE_MATH;
+    case MathElementRole:
+        if (coreObject->isMathRow())
+            return ATK_ROLE_PANEL;
+        if (coreObject->isMathTable())
+            return ATK_ROLE_TABLE;
+        if (coreObject->isMathTableRow())
+            return ATK_ROLE_TABLE_ROW;
+        if (coreObject->isMathTableCell())
+            return ATK_ROLE_TABLE_CELL;
+#if ATK_CHECK_VERSION(2, 15, 2)
+        if (coreObject->isMathToken())
+            return ATK_ROLE_STATIC;
+#endif
+        return ATK_ROLE_UNKNOWN;
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
@@ -664,6 +678,10 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
         return ATK_ROLE_DESCRIPTION_TERM;
     case DescriptionListDetailRole:
         return ATK_ROLE_DESCRIPTION_VALUE;
+#endif
+#if ATK_CHECK_VERSION(2, 15, 2)
+    case InlineRole:
+        return ATK_ROLE_STATIC;
 #endif
     default:
         return ATK_ROLE_UNKNOWN;
@@ -1077,7 +1095,7 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
     } else if (!coreObject->isWebArea()) {
         if (role != TableRole) {
             interfaceMask |= 1 << WAIHypertext;
-            if ((renderer && renderer->childrenInline()) || roleIsTextType(role))
+            if ((renderer && renderer->childrenInline()) || roleIsTextType(role) || coreObject->isMathToken())
                 interfaceMask |= 1 << WAIText;
         }
 

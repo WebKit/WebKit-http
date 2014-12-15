@@ -163,14 +163,15 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, Structure
 
     JSValue baseValue = JSValue::decode(base);
     PropertySlot slot(baseValue);
-    JSValue result = baseValue.get(exec, ident, slot);
     
+    bool hasResult = baseValue.getPropertySlot(exec, ident, slot);
     if (stubInfo->seen)
         repatchGetByID(exec, baseValue, ident, slot, *stubInfo);
     else
         stubInfo->seen = true;
+    
+    return JSValue::encode(hasResult? slot.getValue(exec, ident) : jsUndefined());
 
-    return JSValue::encode(result);
 }
 
 EncodedJSValue JIT_OPERATION operationInOptimize(ExecState* exec, StructureStubInfo* stubInfo, JSCell* base, StringImpl* key)
@@ -365,12 +366,13 @@ void JIT_OPERATION operationPutByIdStrictBuildList(ExecState* exec, StructureStu
     JSValue baseValue = JSValue::decode(encodedBase);
     PutPropertySlot slot(baseValue, true, exec->codeBlock()->putByIdContext());
     
+    Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr; 
     baseValue.put(exec, ident, value, slot);
-    
+
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
-    
-    buildPutByIdList(exec, baseValue, ident, slot, *stubInfo, NotDirect);
+
+    buildPutByIdList(exec, baseValue, structure, ident, slot, *stubInfo, NotDirect);
 }
 
 void JIT_OPERATION operationPutByIdNonStrictBuildList(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue encodedValue, EncodedJSValue encodedBase, StringImpl* uid)
@@ -384,13 +386,14 @@ void JIT_OPERATION operationPutByIdNonStrictBuildList(ExecState* exec, Structure
     JSValue value = JSValue::decode(encodedValue);
     JSValue baseValue = JSValue::decode(encodedBase);
     PutPropertySlot slot(baseValue, false, exec->codeBlock()->putByIdContext());
-    
+
+    Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr;
     baseValue.put(exec, ident, value, slot);
     
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
-    buildPutByIdList(exec, baseValue, ident, slot, *stubInfo, NotDirect);
+    buildPutByIdList(exec, baseValue, structure, ident, slot, *stubInfo, NotDirect);
 }
 
 void JIT_OPERATION operationPutByIdDirectStrictBuildList(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue encodedValue, EncodedJSValue encodedBase, StringImpl* uid)
@@ -404,13 +407,14 @@ void JIT_OPERATION operationPutByIdDirectStrictBuildList(ExecState* exec, Struct
     JSValue value = JSValue::decode(encodedValue);
     JSObject* baseObject = asObject(JSValue::decode(encodedBase));
     PutPropertySlot slot(baseObject, true, exec->codeBlock()->putByIdContext());
-    
-    baseObject->putDirect(exec->vm(), ident, value, slot);
+
+    Structure* structure = baseObject->structure(*vm);    
+    baseObject->putDirect(*vm, ident, value, slot);
     
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
-    buildPutByIdList(exec, baseObject, ident, slot, *stubInfo, Direct);
+    buildPutByIdList(exec, baseObject, structure, ident, slot, *stubInfo, Direct);
 }
 
 void JIT_OPERATION operationPutByIdDirectNonStrictBuildList(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue encodedValue, EncodedJSValue encodedBase, StringImpl* uid)
@@ -424,13 +428,14 @@ void JIT_OPERATION operationPutByIdDirectNonStrictBuildList(ExecState* exec, Str
     JSValue value = JSValue::decode(encodedValue);
     JSObject* baseObject = asObject(JSValue::decode(encodedBase));
     PutPropertySlot slot(baseObject, false, exec->codeBlock()->putByIdContext());
-    
-    baseObject ->putDirect(exec->vm(), ident, value, slot);
-    
+
+    Structure* structure = baseObject->structure(*vm);    
+    baseObject->putDirect(*vm, ident, value, slot);
+
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
-    buildPutByIdList(exec, baseObject, ident, slot, *stubInfo, Direct);
+    buildPutByIdList(exec, baseObject, structure, ident, slot, *stubInfo, Direct);
 }
 
 void JIT_OPERATION operationReallocateStorageAndFinishPut(ExecState* exec, JSObject* base, Structure* structure, PropertyOffset offset, EncodedJSValue value)
@@ -603,11 +608,11 @@ void JIT_OPERATION operationDirectPutByValGeneric(ExecState* exec, EncodedJSValu
 
 EncodedJSValue JIT_OPERATION operationCallEval(ExecState* exec, ExecState* execCallee)
 {
-    ASSERT(exec->codeBlock()->codeType() != FunctionCode
+
+    ASSERT_UNUSED(exec, exec->codeBlock()->codeType() != FunctionCode
         || !exec->codeBlock()->needsActivation()
         || exec->hasActivation());
 
-    execCallee->setScope(exec->scope());
     execCallee->setCodeBlock(0);
 
     if (!isHostFunction(execCallee->calleeAsValue(), globalFuncEval))
@@ -626,7 +631,6 @@ static void* handleHostCall(ExecState* execCallee, JSValue callee, CodeSpecializ
     ExecState* exec = execCallee->callerFrame();
     VM* vm = &exec->vm();
 
-    execCallee->setScope(exec->scope());
     execCallee->setCodeBlock(0);
 
     if (kind == CodeForCall) {
@@ -687,7 +691,6 @@ inline char* linkFor(
 
     JSFunction* callee = jsCast<JSFunction*>(calleeAsFunctionCell);
     JSScope* scope = callee->scopeUnchecked();
-    execCallee->setScope(scope);
     ExecutableBase* executable = callee->executable();
 
     MacroAssemblerCodePtr codePtr;
@@ -697,7 +700,6 @@ inline char* linkFor(
     else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
         JSObject* error = functionExecutable->prepareForExecution(execCallee, callee, &scope, kind);
-        execCallee->setScope(scope);
         if (error) {
             throwStackOverflowError(exec);
             return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
@@ -752,12 +754,10 @@ inline char* virtualForWithFunction(
     
     JSFunction* function = jsCast<JSFunction*>(calleeAsFunctionCell);
     JSScope* scope = function->scopeUnchecked();
-    execCallee->setScope(scope);
     ExecutableBase* executable = function->executable();
     if (UNLIKELY(!executable->hasJITCodeFor(kind))) {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
         JSObject* error = functionExecutable->prepareForExecution(execCallee, function, &scope, kind);
-        execCallee->setScope(scope);
         if (error) {
             exec->vm().throwException(exec, error);
             return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
@@ -1268,7 +1268,7 @@ void JIT_OPERATION operationPutGetterSetter(ExecState* exec, EncodedJSValue enco
     ASSERT(JSValue::decode(encodedObjectValue).isObject());
     JSObject* baseObj = asObject(JSValue::decode(encodedObjectValue));
 
-    GetterSetter* accessor = GetterSetter::create(vm);
+    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject());
 
     JSValue getter = JSValue::decode(encodedGetterValue);
     JSValue setter = JSValue::decode(encodedSetterValue);
@@ -1277,9 +1277,9 @@ void JIT_OPERATION operationPutGetterSetter(ExecState* exec, EncodedJSValue enco
     ASSERT(getter.isObject() || setter.isObject());
 
     if (!getter.isUndefined())
-        accessor->setGetter(vm, asObject(getter));
+        accessor->setGetter(vm, exec->lexicalGlobalObject(), asObject(getter));
     if (!setter.isUndefined())
-        accessor->setSetter(vm, asObject(setter));
+        accessor->setSetter(vm, exec->lexicalGlobalObject(), asObject(setter));
     baseObj->putDirectAccessor(exec, *identifier, accessor, Accessor);
 }
 #else
@@ -1291,16 +1291,16 @@ void JIT_OPERATION operationPutGetterSetter(ExecState* exec, JSCell* object, Ide
     ASSERT(object && object->isObject());
     JSObject* baseObj = object->getObject();
 
-    GetterSetter* accessor = GetterSetter::create(vm);
+    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject());
 
     ASSERT(!getter || getter->isObject());
     ASSERT(!setter || setter->isObject());
     ASSERT(getter || setter);
 
     if (getter)
-        accessor->setGetter(vm, getter->getObject());
+        accessor->setGetter(vm, exec->lexicalGlobalObject(), getter->getObject());
     if (setter)
-        accessor->setSetter(vm, setter->getObject());
+        accessor->setSetter(vm, exec->lexicalGlobalObject(), setter->getObject());
     baseObj->putDirectAccessor(exec, *identifier, accessor, Accessor);
 }
 #endif
@@ -1396,12 +1396,11 @@ EncodedJSValue JIT_OPERATION operationCheckHasInstance(ExecState* exec, EncodedJ
     return JSValue::encode(JSValue());
 }
 
-JSCell* JIT_OPERATION operationCreateActivation(ExecState* exec, int32_t offset)
+JSCell* JIT_OPERATION operationCreateActivation(ExecState* exec, JSScope* currentScope, int32_t offset)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    JSLexicalEnvironment* lexicalEnvironment = JSLexicalEnvironment::create(vm, exec, exec->registers() + offset, exec->codeBlock());
-    exec->setScope(lexicalEnvironment);
+    JSLexicalEnvironment* lexicalEnvironment = JSLexicalEnvironment::create(vm, exec, exec->registers() + offset, currentScope, exec->codeBlock());
     return lexicalEnvironment;
 }
 

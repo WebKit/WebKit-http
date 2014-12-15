@@ -38,6 +38,7 @@ public:
         WebGLLoseContextName,
         EXTShaderTextureLODName,
         EXTTextureFilterAnisotropicName,
+        EXTsRGBName,
         OESTextureFloatName,
         OESTextureFloatLinearName,
         OESTextureHalfFloatName,

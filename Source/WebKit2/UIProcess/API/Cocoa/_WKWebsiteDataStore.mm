@@ -28,38 +28,66 @@
 
 #if WK_API_ENABLED
 
-using namespace WebKit;
-
 @implementation _WKWebsiteDataStore
 
 + (instancetype)defaultDataStore
 {
-    return wrapper(API::Session::defaultSession());
+    return WebKit::wrapper(*API::WebsiteDataStore::defaultDataStore().get());
 }
 
 + (instancetype)nonPersistentDataStore
 {
-    RefPtr<API::Session> session = API::Session::create(true);
-    return [wrapper(*session.release().leakRef()) autorelease];
+    return [WebKit::wrapper(*API::WebsiteDataStore::createNonPersistentDataStore().release().leakRef()) autorelease];
 }
 
 - (void)dealloc
 {
-    _session->API::Session::~Session();
+    _websiteDataStore->API::WebsiteDataStore::~WebsiteDataStore();
 
     [super dealloc];
 }
 
 - (BOOL)isNonPersistent
 {
-    return _session->isEphemeral();
+    return _websiteDataStore->isNonPersistent();
+}
+
+static WebKit::WebsiteDataTypes toWebsiteDataTypes(WKWebsiteDataTypes wkWebsiteDataTypes)
+{
+    using WebsiteDataTypes = WebKit::WebsiteDataTypes;
+
+    int websiteDataTypes = 0;
+
+    if (wkWebsiteDataTypes & WKWebsiteDataTypeCookies)
+        websiteDataTypes |= WebsiteDataTypes::WebsiteDataTypeCookies;
+    if (wkWebsiteDataTypes & WKWebsiteDataTypeDiskCache)
+        websiteDataTypes |= WebsiteDataTypes::WebsiteDataTypeDiskCache;
+
+    return static_cast<WebsiteDataTypes>(websiteDataTypes);
+}
+
+static std::chrono::system_clock::time_point toSystemClockTime(NSDate *date)
+{
+    ASSERT(date);
+    using namespace std::chrono;
+
+    return system_clock::time_point(duration_cast<system_clock::duration>(duration<double>(date.timeIntervalSince1970)));
+}
+
+- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)())completionHandler
+{
+    auto completionHandlerCopy = Block_copy(completionHandler);
+    _websiteDataStore->websiteDataStore().removeData(toWebsiteDataTypes(websiteDataTypes), toSystemClockTime(date ? date : [NSDate distantPast]), [completionHandlerCopy] {
+        completionHandlerCopy();
+        Block_release(completionHandlerCopy);
+    });
 }
 
 #pragma mark WKObject protocol implementation
 
 - (API::Object&)_apiObject
 {
-    return *_session;
+    return *_websiteDataStore;
 }
 
 @end

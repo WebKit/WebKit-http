@@ -152,8 +152,6 @@ public:
         m_hasCapturedVariables = hasCapturedVariables;
     }
 
-    bool forceUsesArguments() const { return m_forceUsesArguments; }
-
     CodeFeatures features() const { return m_features; }
     bool hasCapturedVariables() const { return m_hasCapturedVariables; }
 
@@ -168,8 +166,6 @@ private:
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForCall;
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForConstruct;
 
-    unsigned m_numCapturedVariables : 29;
-    bool m_forceUsesArguments : 1;
     bool m_isInStrictContext : 1;
     bool m_hasCapturedVariables : 1;
     bool m_isBuiltinFunction : 1;
@@ -491,6 +487,9 @@ public:
     ALWAYS_INLINE unsigned startColumn() const { return 0; }
     unsigned endColumn() const { return m_endColumn; }
 
+    void addOpProfileControlFlowBytecodeOffset(size_t offset) { m_opProfileControlFlowBytecodeOffsets.append(offset); }
+    const Vector<size_t>& opProfileControlFlowBytecodeOffsets() const { return m_opProfileControlFlowBytecodeOffsets; }
+
     void dumpExpressionRangeInfo(); // For debugging purpose only.
 
 protected:
@@ -591,6 +590,7 @@ private:
         unsigned m_endDivot;
     };
     HashMap<unsigned, TypeProfilerExpressionRange> m_typeProfilerInfoMap;
+    Vector<size_t> m_opProfileControlFlowBytecodeOffsets;
 
 protected:
 

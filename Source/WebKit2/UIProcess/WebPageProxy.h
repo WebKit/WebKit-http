@@ -171,6 +171,7 @@ class WebPageGroup;
 class WebProcessProxy;
 class WebUserContentControllerProxy;
 class WebWheelEvent;
+class WebsiteDataStore;
 struct ActionMenuHitTestResult;
 struct AttributedString;
 struct ColorSpaceData;
@@ -227,7 +228,11 @@ struct WebPageConfiguration {
     WebUserContentControllerProxy* userContentController = nullptr;
     VisitedLinkProvider* visitedLinkProvider = nullptr;
 
-    API::Session* session = nullptr;
+    WebsiteDataStore* websiteDataStore = nullptr;
+    // FIXME: We currently have to pass the session ID separately here to support the legacy private browsing session.
+    // Once we get rid of it we should get rid of this configuration parameter as well.
+    WebCore::SessionID sessionID;
+
     WebPageProxy* relatedPage = nullptr;
 
     WebPreferencesStore::ValueMap preferenceValues;
@@ -244,10 +249,9 @@ public:
     static PassRefPtr<WebPageProxy> create(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     virtual ~WebPageProxy();
 
-    void setSession(API::Session&);
-
     uint64_t pageID() const { return m_pageID; }
-    WebCore::SessionID sessionID() const { return m_session->getID(); }
+    WebCore::SessionID sessionID() const { return m_sessionID; }
+    void setSessionID(WebCore::SessionID);
 
     WebFrameProxy* mainFrame() const { return m_mainFrame.get(); }
     WebFrameProxy* focusedFrame() const { return m_focusedFrame.get(); }
@@ -263,6 +267,8 @@ public:
 
     bool addsVisitedLinks() const { return m_addsVisitedLinks; }
     void setAddsVisitedLinks(bool addsVisitedLinks) { m_addsVisitedLinks = addsVisitedLinks; }
+
+    void fullscreenMayReturnToInline();
 
 #if ENABLE(INSPECTOR)
     WebInspectorProxy* inspector();
@@ -367,7 +373,7 @@ public:
     bool delegatesScrolling() const { return m_delegatesScrolling; }
 
     enum class ViewStateChangeDispatchMode { Deferrable, Immediate };
-    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, bool wantsReply = false, ViewStateChangeDispatchMode = ViewStateChangeDispatchMode::Deferrable);
+    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, bool wantsSynchronousReply = false, ViewStateChangeDispatchMode = ViewStateChangeDispatchMode::Deferrable);
     bool isInWindow() const { return m_viewState & WebCore::ViewState::IsInWindow; }
     void waitForDidUpdateViewState();
     void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
@@ -848,11 +854,7 @@ public:
     bool mayStartMediaWhenInWindow() const { return m_mayStartMediaWhenInWindow; }
         
     // WebPopupMenuProxy::Client
-    virtual NativeWebMouseEvent* currentlyProcessedMouseDownEvent();
-
-#if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
-    void setAcceleratedCompositingWindowId(uint64_t nativeWindowId);
-#endif
+    virtual NativeWebMouseEvent* currentlyProcessedMouseDownEvent() override;
 
     void setSuppressVisibilityUpdates(bool flag) { m_suppressVisibilityUpdates = flag; }
     bool suppressVisibilityUpdates() { return m_suppressVisibilityUpdates; }
@@ -934,6 +936,8 @@ public:
     void performActionMenuHitTestAtLocation(WebCore::FloatPoint);
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
+
+    void installViewStateChangeCompletionHandler(void(^completionHandler)());
 #endif
 
 #if PLATFORM(EFL) && HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)
@@ -946,6 +950,8 @@ public:
     void checkTextOfParagraph(const String& text, uint64_t checkingTypes, Vector<WebCore::TextCheckingResult>& results);
 #endif
     void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
+
+    void setShouldDispatchFakeMouseMoveEvents(bool);
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
@@ -973,8 +979,8 @@ private:
     virtual uint64_t messageSenderDestinationID() override;
 
     // WebPopupMenuProxy::Client
-    virtual void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex);
-    virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index);
+    virtual void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex) override;
+    virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
 #if PLATFORM(GTK)
     virtual void failedToShowPopupMenu();
 #endif
@@ -1350,6 +1356,7 @@ private:
     Ref<WebPreferences> m_preferences;
     const RefPtr<WebUserContentControllerProxy> m_userContentController;
     Ref<VisitedLinkProvider> m_visitedLinkProvider;
+    Ref<WebsiteDataStore> m_websiteDataStore;
 
     RefPtr<WebFrameProxy> m_mainFrame;
     RefPtr<WebFrameProxy> m_focusedFrame;
@@ -1490,7 +1497,7 @@ private:
 #endif
 
     const uint64_t m_pageID;
-    Ref<API::Session> m_session;
+    WebCore::SessionID m_sessionID;
 
     bool m_isPageSuspended;
     bool m_addsVisitedLinks;
@@ -1582,7 +1589,8 @@ private:
 
     WebPreferencesStore::ValueMap m_configurationPreferenceValues;
     WebCore::ViewState::Flags m_potentiallyChangedViewStateFlags;
-    bool m_viewStateChangeWantsReply;
+    bool m_viewStateChangeWantsSynchronousReply;
+    Vector<uint64_t> m_nextViewStateChangeCallbacks;
 
     bool m_isPlayingAudio;
 };

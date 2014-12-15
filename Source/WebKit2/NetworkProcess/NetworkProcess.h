@@ -96,7 +96,7 @@ private:
 
     // IPC::Connection::Client
     virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
     virtual void didClose(IPC::Connection*) override;
     virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
@@ -112,6 +112,12 @@ private:
     void createNetworkConnectionToWebProcess();
     void ensurePrivateBrowsingSession(WebCore::SessionID);
     void destroyPrivateBrowsingSession(WebCore::SessionID);
+
+    void deleteWebsiteData(WebCore::SessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
+
+    // FIXME: This should take a session ID so we can identify which disk cache to delete.
+    void clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);
+
     void downloadRequest(uint64_t downloadID, const WebCore::ResourceRequest&);
     void resumeDownload(uint64_t downloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
     void cancelDownload(uint64_t downloadID);

@@ -100,6 +100,7 @@
 #import "WebScriptWorldInternal.h"
 #import "WebSelectionServiceController.h"
 #import "WebStorageManagerInternal.h"
+#import "WebStorageNamespaceProvider.h"
 #import "WebSystemInterface.h"
 #import "WebTextCompletionController.h"
 #import "WebTextIterator.h"
@@ -174,6 +175,7 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/Settings.h>
+#import <WebCore/StorageThread.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
@@ -208,12 +210,14 @@
 #import "WebActionMenuController.h"
 #import "WebContextMenuClient.h"
 #import "WebFullScreenController.h"
+#import "WebImmediateActionController.h"
 #import "WebNSEventExtras.h"
 #import "WebNSObjectExtras.h"
 #import "WebNSPasteboardExtras.h"
 #import "WebNSPrintOperationExtras.h"
 #import "WebPDFView.h"
 #import <WebCore/LookupSPI.h>
+#import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
@@ -886,6 +890,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         RetainPtr<NSMenu> actionMenu = adoptNS([[NSMenu alloc] init]);
         self.actionMenu = actionMenu.get();
         _private->actionMenuController = [[WebActionMenuController alloc] initWithWebView:self];
+        self.actionMenu.autoenablesItems = NO;
+    }
+
+    if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
+        RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
+        _private->immediateActionController = [[WebImmediateActionController alloc] initWithWebView:self];
+        [recognizer setDelegate:_private->immediateActionController];
+        [self addGestureRecognizer:recognizer.get()];
     }
 #endif
 
@@ -933,7 +945,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         didOneTimeInitialization = true;
     }
 
-    _private->group = WebViewGroup::getOrCreate(groupName);
+    _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
     PageConfiguration pageConfiguration;
@@ -952,6 +964,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
+    pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentController = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
     _private->page = new Page(pageConfiguration);
@@ -1058,9 +1071,11 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         SecurityPolicy::setLocalLoadPolicy(SecurityPolicy::AllowLocalLoadsForLocalAndSubstituteData);
     }
 
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC)
     if (!WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITHOUT_CONTENT_SNIFFING_FOR_FILE_URLS))
         ResourceHandle::forceContentSniffing();
+
+    _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
 #endif
 
 #if USE(GLIB)
@@ -1089,9 +1104,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private = [[WebViewPrivate alloc] init];
     [self _commonInitializationWithFrameName:frameName groupName:groupName];
     [self setMaintainsBackForwardList: YES];
-#if !PLATFORM(IOS)
-    _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
-#endif
     return self;
 }
 
@@ -1176,7 +1188,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     [self addSubview:frameView];
     [frameView release];
 
-    _private->group = WebViewGroup::getOrCreate(groupName);
+    _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
     PageConfiguration pageConfiguration;
@@ -1188,7 +1200,9 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
+    pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentController = &_private->group->userContentController();
+    pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
 
     _private->page = new Page(pageConfiguration);
     
@@ -1253,6 +1267,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     tileControllerMemoryHandler().trimUnparentedTilesToTarget(0);
 
     [WebStorageManager closeIdleLocalStorageDatabases];
+    StorageThread::releaseFastMallocFreeMemoryInAllThreads();
 
     [WebView _releaseMemoryNow];
 }
@@ -1739,6 +1754,7 @@ static bool fastDocumentTeardownEnabled()
 #endif
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [_private->actionMenuController webViewClosed];
+    [_private->immediateActionController webViewClosed];
 #endif
 
 #if !PLATFORM(IOS)
@@ -4023,7 +4039,7 @@ static Vector<String> toStringVector(NSArray* patterns)
     if (group.isEmpty())
         return;
 
-    auto* viewGroup = WebViewGroup::get(group);
+    auto viewGroup = WebViewGroup::getOrCreate(groupName, String());
     if (!viewGroup)
         return;
 
@@ -4048,7 +4064,7 @@ static Vector<String> toStringVector(NSArray* patterns)
     if (group.isEmpty())
         return;
 
-    auto* viewGroup = WebViewGroup::get(group);
+    auto viewGroup = WebViewGroup::getOrCreate(groupName, String());
     if (!viewGroup)
         return;
 
@@ -4790,6 +4806,7 @@ static Vector<String> toStringVector(NSArray* patterns)
     if (!pluginDatabaseClientCount)
         [WebPluginDatabase closeSharedDatabase];
 
+    WebStorageNamespaceProvider::closeLocalStorage();
     PageGroup::closeLocalStorage();
 }
 #endif // !PLATFORM(IOS)
@@ -6124,7 +6141,7 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
     if (_private->group)
         _private->group->removeWebView(self);
 
-    _private->group = WebViewGroup::getOrCreate(groupName);
+    _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
     if (!_private->page)
@@ -8600,7 +8617,8 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
     if (!_private->textIndicatorWindow)
         _private->textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    _private->textIndicatorWindow->setTextIndicator(textIndicator, fadeOut, WTF::move(completionHandler));
+    NSRect contentRect = [self.window convertRectToScreen:textIndicator->textBoundingRectInWindowCoordinates()];
+    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut, WTF::move(completionHandler));
 }
 
 - (void)_clearTextIndicator

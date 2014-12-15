@@ -23,7 +23,9 @@ list(APPEND WebKit2_SOURCES
 
     Shared/API/c/efl/WKArrayEfl.cpp
 
+    Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
     Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp
+    Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
     Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp
 
     Shared/Downloads/efl/DownloadSoupErrorsEfl.cpp
@@ -113,9 +115,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/efl/ewk_view.cpp
     UIProcess/API/efl/ewk_window_features.cpp
 
-    UIProcess/CoordinatedGraphics/CoordinatedBackingStore.cpp
     UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.cpp
-    UIProcess/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp
     UIProcess/CoordinatedGraphics/PageViewportController.cpp
     UIProcess/CoordinatedGraphics/WebPageProxyCoordinatedGraphics.cpp
@@ -333,7 +333,7 @@ if (ENABLE_SECCOMP_FILTERS)
 
     # If building with jhbuild, add the root build directory to the
     # filesystem access policy.
-    if (IS_DIRECTORY ${CMAKE_SOURCE_DIR}/WebKitBuild/Dependencies)
+    if (IS_DIRECTORY ${CMAKE_SOURCE_DIR}/WebKitBuild/DependenciesEFL)
         add_definitions(-DSOURCE_DIR=\"${CMAKE_SOURCE_DIR}\")
     endif ()
 endif ()
@@ -517,6 +517,7 @@ set(EWK2UnitTests_BINARIES
     test_ewk2_settings
     test_ewk2_ssl
     test_ewk2_storage_manager
+    test_ewk2_text_checker
     test_ewk2_view
     test_ewk2_window_features
 )
@@ -526,7 +527,6 @@ set(EWK2UnitTests_BINARIES
 # webkit.org/b/107422: test_ewk2_auth_request
 # webkit.org/b/132980: test_ewk2_context_menu
 # webkit.org/b/132981: test_ewk2_download_job
-# webkit.org/b/132982: test_ewk2_text_checker
 
 if (ENABLE_API_TESTS)
     foreach (testName ${EWK2UnitTests_BINARIES})

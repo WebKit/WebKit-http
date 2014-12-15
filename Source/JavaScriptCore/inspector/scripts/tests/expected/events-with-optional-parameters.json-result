@@ -720,6 +720,7 @@ using namespace Inspector;
 
 #import "RWIProtocol.h"
 
+__attribute__((visibility ("default")))
 @interface RWIProtocolConfiguration : NSObject
 @property (nonatomic, readonly) RWIProtocolDatabaseDomainEventDispatcher *databaseEventDispatcher;
 @end
@@ -985,6 +986,7 @@ using namespace Inspector;
 
 
 
+__attribute__((visibility ("default")))
 @interface RWIProtocolDatabaseError : RWIProtocolJSONObject
 - (instancetype)initWithMessage:(NSString *)message code:(int)code;
 /* required */ @property (nonatomic, copy) NSString *message;
@@ -993,6 +995,7 @@ using namespace Inspector;
 
 
 
+__attribute__((visibility ("default")))
 @interface RWIProtocolDatabaseDomainEventDispatcher : NSObject
 - (void)didExecuteOptionalParametersWithColumnNames:(NSArray/*<NSString>*/ **)columnNames notes:(NSString **)notes timestamp:(double *)timestamp values:(RWIProtocolJSONObject **)values payload:(RWIProtocolJSONObject **)payload sqlError:(RWIProtocolDatabaseError **)sqlError screenColor:(NSString **)screenColor printColor:(NSString **)printColor;
 - (void)didExecuteNoOptionalParametersWithColumnNames:(NSArray/*<NSString>*/ *)columnNames notes:(NSString *)notes timestamp:(double)timestamp values:(RWIProtocolJSONObject *)values payload:(RWIProtocolJSONObject *)payload sqlError:(RWIProtocolDatabaseError *)sqlError screenColor:(NSString *)screenColor printColor:(NSString *)printColor;

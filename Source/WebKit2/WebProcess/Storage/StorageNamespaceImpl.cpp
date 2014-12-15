@@ -41,47 +41,44 @@ using namespace WebCore;
 
 namespace WebKit {
 
-typedef HashMap<uint64_t, StorageNamespaceImpl*> LocalStorageNamespaceMap;
-
-static LocalStorageNamespaceMap& localStorageNamespaceMap()
+RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(uint64_t identifier, unsigned quotaInBytes)
 {
-    static NeverDestroyed<LocalStorageNamespaceMap> localStorageNamespaceMap;
-    return localStorageNamespaceMap;
+    return adoptRef(new StorageNamespaceImpl(SessionStorage, identifier, nullptr, quotaInBytes));
+}
+
+RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createLocalStorageNamespace(uint64_t identifier, unsigned quotaInBytes)
+{
+    return adoptRef(new StorageNamespaceImpl(LocalStorage, identifier, nullptr, quotaInBytes));
+}
+
+RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createTransientLocalStorageNamespace(uint64_t identifier, WebCore::SecurityOrigin& topLevelOrigin, uint64_t quotaInBytes)
+{
+    return adoptRef(new StorageNamespaceImpl(LocalStorage, identifier, &topLevelOrigin, quotaInBytes));
+}
+
+PassRefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(WebPage* webPage)
+{
+    return createSessionStorageNamespace(webPage->pageID(), webPage->corePage()->settings().sessionStorageQuota());
 }
 
 PassRefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createLocalStorageNamespace(PageGroup* pageGroup)
 {
     uint64_t pageGroupID = WebProcess::shared().webPageGroup(pageGroup)->pageGroupID();
-
-    LocalStorageNamespaceMap::AddResult result = localStorageNamespaceMap().add(pageGroupID, nullptr);
-    if (!result.isNewEntry)
-        return result.iterator->value;
-
     unsigned quota = pageGroup->groupSettings().localStorageQuotaBytes();
-    RefPtr<StorageNamespaceImpl> localStorageNamespace = adoptRef(new StorageNamespaceImpl(LocalStorage, pageGroupID, quota));
 
-    result.iterator->value = localStorageNamespace.get();
-    return localStorageNamespace.release();
+    return createLocalStorageNamespace(pageGroupID, quota);
 }
 
-PassRefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(WebPage* webPage)
-{
-    return adoptRef(new StorageNamespaceImpl(SessionStorage, webPage->pageID(), webPage->corePage()->settings().sessionStorageQuota()));
-}
-
-StorageNamespaceImpl::StorageNamespaceImpl(WebCore::StorageType storageType, uint64_t storageNamespaceID, unsigned quotaInBytes)
+StorageNamespaceImpl::StorageNamespaceImpl(WebCore::StorageType storageType, uint64_t storageNamespaceID, WebCore::SecurityOrigin* topLevelOrigin, unsigned quotaInBytes)
     : m_storageType(storageType)
     , m_storageNamespaceID(storageNamespaceID)
+    , m_topLevelOrigin(topLevelOrigin)
     , m_quotaInBytes(quotaInBytes)
 {
 }
 
 StorageNamespaceImpl::~StorageNamespaceImpl()
 {
-    if (m_storageType == LocalStorage) {
-        ASSERT(localStorageNamespaceMap().contains(m_storageNamespaceID));
-        localStorageNamespaceMap().remove(m_storageNamespaceID);
-    }
 }
 
 PassRefPtr<StorageArea> StorageNamespaceImpl::storageArea(PassRefPtr<SecurityOrigin> securityOrigin)

@@ -600,6 +600,7 @@ public:
 #endif
 
     void didChangeSelection();
+    void discardedComposition();
 
 #if PLATFORM(COCOA)
     void registerUIProcessAccessibilityTokens(const IPC::DataReference& elemenToken, const IPC::DataReference& windowToken);
@@ -650,10 +651,6 @@ public:
     void confirmComposition(const String& compositionString);
     void setComposition(const WTF::String& compositionString, const WTF::Vector<WebCore::CompositionUnderline>& underlines, uint64_t cursorPosition);
     void cancelComposition();
-#elif PLATFORM(GTK)
-#if USE(TEXTURE_MAPPER_GL)
-    void setAcceleratedCompositingWindowId(uint64_t nativeWindowHandle);
-#endif
 #endif
 
 #if HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
@@ -861,6 +858,8 @@ public:
     void didChangeScrollOffsetForFrame(WebCore::Frame*);
 
     void setMainFrameProgressCompleted(bool completed) { m_mainFrameProgressCompleted = completed; }
+    bool shouldDispatchFakeMouseMoveEvents() const { return m_shouldDispatchFakeMouseMoveEvents; }
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -927,7 +926,7 @@ private:
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
     void setWindowResizerSize(const WebCore::IntSize&);
     void updateIsInWindow(bool isInitialState = false);
-    void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState = false);
+    void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs);
     void validateCommand(const String&, uint64_t);
     void executeEditCommand(const String&);
 
@@ -1081,6 +1080,8 @@ private:
     void dataDetectorsDidChangeUI(WebCore::PageOverlay::PageOverlayID);
     void dataDetectorsDidHideUI(WebCore::PageOverlay::PageOverlayID);
 #endif
+
+    void setShouldDispatchFakeMouseMoveEvents(bool dispatch) { m_shouldDispatchFakeMouseMoveEvents = dispatch; }
 
     uint64_t m_pageID;
 
@@ -1326,6 +1327,7 @@ private:
 #endif
 
     bool m_mainFrameProgressCompleted;
+    bool m_shouldDispatchFakeMouseMoveEvents;
 };
 
 } // namespace WebKit

@@ -295,7 +295,7 @@ public:
     WTF_EXPORT_STRING_API static PassRef<StringImpl> create(const UChar*, unsigned length);
     WTF_EXPORT_STRING_API static PassRef<StringImpl> create(const LChar*, unsigned length);
     WTF_EXPORT_STRING_API static PassRef<StringImpl> create8BitIfPossible(const UChar*, unsigned length);
-    template<unsigned inlineCapacity>
+    template<size_t inlineCapacity>
     static PassRef<StringImpl> create8BitIfPossible(const Vector<UChar, inlineCapacity>& vector)
     {
         return create8BitIfPossible(vector.data(), vector.size());
@@ -394,10 +394,10 @@ public:
     static unsigned flagIsAtomic() { return s_hashFlagIsAtomic; }
     static unsigned dataOffset() { return OBJECT_OFFSETOF(StringImpl, m_data8); }
 
-    template<typename CharType, unsigned inlineCapacity, typename OverflowHandler>
+    template<typename CharType, size_t inlineCapacity, typename OverflowHandler>
     static PassRef<StringImpl> adopt(Vector<CharType, inlineCapacity, OverflowHandler>& vector)
     {
-        if (unsigned size = vector.size()) {
+        if (size_t size = vector.size()) {
             ASSERT(vector.data());
             if (size > std::numeric_limits<unsigned>::max())
                 CRASH();
@@ -740,13 +740,13 @@ private:
     template<typename T>
     const T* tailPointer() const
     {
-        return reinterpret_cast<const T*>(reinterpret_cast<const uint8_t*>(this) + tailOffset<T>());
+        return reinterpret_cast_ptr<const T*>(reinterpret_cast<const uint8_t*>(this) + tailOffset<T>());
     }
 
     template<typename T>
     T* tailPointer()
     {
-        return reinterpret_cast<T*>(reinterpret_cast<uint8_t*>(this) + tailOffset<T>());
+        return reinterpret_cast_ptr<T*>(reinterpret_cast<uint8_t*>(this) + tailOffset<T>());
     }
 
     StringImpl* const& substringBuffer() const
@@ -1252,7 +1252,7 @@ inline size_t StringImpl::find(UChar character, unsigned start)
     return WTF::find(characters16(), m_length, character, start);
 }
 
-template<unsigned inlineCapacity> inline bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, StringImpl* b)
+template<size_t inlineCapacity> inline bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, StringImpl* b)
 {
     return equalIgnoringNullity(a.data(), a.size(), b);
 }

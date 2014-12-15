@@ -1,3 +1,411 @@
+2014-12-11  Anders Carlsson  <andersca@apple.com>
+
+        Call StorageThread::releaseFastMallocFreeMemoryInAllThreads from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=139547
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        (+[WebView _handleMemoryWarning]):
+
+2014-12-11  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (Async Text Input): Text input method state is not reset when reloading a page
+        https://bugs.webkit.org/show_bug.cgi?id=139504
+        rdar://problem/19034674
+
+        Reviewed by Enrica Casucci.
+
+        Stub out new client calls, this patch does not attempt to make any changes on WebKit1.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::discardedComposition):
+
+2014-12-10  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the storage strategy
+        https://bugs.webkit.org/show_bug.cgi?id=139519
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createStorageStrategy): Deleted.
+
+2014-12-10  Timothy Horton  <timothy_horton@apple.com>
+
+        Copy and paste action menu items don't work on the Mozilla Midas demo in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=139529
+        <rdar://problem/19213620>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _copySelection:]):
+        (-[WebActionMenuController _paste:]):
+        Use the copy: and paste: methods on WebView so that we traverse subviews
+        when trying to respond, otherwise these actions don't work in subframes.
+
+2014-12-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Add initial support for immediate actions
+        https://bugs.webkit.org/show_bug.cgi?id=139522
+
+        Reviewed by Dan Bernstein.
+
+        This basic implementation of the controller will use the delegate methods to 
+        perform and cache a HitTest when relevant. Future patches will patch 
+        _updateImmediateActionItem to use the HitTestResult to determine if there is any 
+        immediate action that should be taken.
+        * WebView/WebImmediateActionController.h: Added.
+        * WebView/WebImmediateActionController.mm: Added.
+        (-[WebImmediateActionController webViewClosed]):
+        (-[WebImmediateActionController _clearImmediateActionState]):
+        (-[WebImmediateActionController performHitTestAtPoint:]):
+        (-[WebImmediateActionController immediateActionRecognizerWillPrepare:]):
+        (-[WebImmediateActionController immediateActionRecognizerWillBeginAnimation:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidCancelAnimation:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidCompleteAnimation:]):
+        (-[WebImmediateActionController _updateImmediateActionItem]):
+
+        New enum for immediate action types.
+        * WebView/WebUIDelegatePrivate.h:
+
+        Create an NSImmediateActionGestureRecognizer if possible and a controller.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _close]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        Use the new storage namespace provider in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=139425
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        Set the storage namespace provider from the web page group.
+
+2014-12-10  Timothy Horton  <timothy_horton@apple.com>
+
+        Should have copy and paste items in all text menus
+        https://bugs.webkit.org/show_bug.cgi?id=139510
+        <rdar://problem/19198388>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForText]):
+        Add a disabled paste menu item into the read-only text menu.
+
+        (-[WebActionMenuController _defaultMenuItemsForWhitespaceInEditableArea]):
+        Add a disabled copy menu item into the editable whitespace text menu.
+
+2014-12-10  Anders Carlsson  <andersca@apple.com>
+
+        Add WebStorageNamespaceProvider::closeLocalStorage
+        https://bugs.webkit.org/show_bug.cgi?id=139502
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (+[WebView _applicationWillTerminate]):
+        Call WebStorageNamespaceProvider::closeLocalStorage.
+
+2014-12-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177037.
+        https://bugs.webkit.org/show_bug.cgi?id=139464
+
+        broke ~50 API tests (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "Use the new storage namespace provider in WebKit1"
+        https://bugs.webkit.org/show_bug.cgi?id=139425
+        http://trac.webkit.org/changeset/177037
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        Use the new storage namespace provider in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=139425
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        Set the storage namespace provider from the web page group.
+
+2014-12-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete Node::boundingBox()
+        https://bugs.webkit.org/show_bug.cgi?id=139333
+
+        Reviewed by Zalan Bujtas.
+
+        * WebView/WebActionMenuController.mm:
+        (elementBoundingBoxInWindowCoordinatesFromNode): Use
+        RenderObject::absoluteBoundingBoxRect().
+
+2014-12-08  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r158036): WebView cannot handle HTTP Basic Authentication challenge
+        https://bugs.webkit.org/show_bug.cgi?id=138843
+        rdar://problem/18793695
+
+        Reviewed by Dan Bernstein.
+
+        * Panels/WebAuthenticationPanel.m:
+        (-[WebAuthenticationPanel cancel:]):
+        (-[WebAuthenticationPanel logIn:]):
+        Don't close the panel before using panel.sheetParent, because the parent becomes nil.
+        In fact, we don't need to close it at all, it's enough to call orderOut:, and even
+        that only when using an old NSWindow API.
+
+2014-12-08  Beth Dakin  <bdakin@apple.com>
+
+        Copy and Lookup menu items should be disabled when something is not copyable
+        https://bugs.webkit.org/show_bug.cgi?id=139423
+
+        Reviewed by Tim Horton.
+
+        Disable both lookup and copy when a HitTestResult does not allow copy.
+        * WebView/WebActionMenuController.mm:
+
+        Set autoenablesItems to NO. It’s messing with our ability to control the enable/
+        disable state otherwise.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        Adding user content to a group should force that group to be created
+        https://bugs.webkit.org/show_bug.cgi?id=139421
+        rdar://problem/19180108
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebViewGroup.h:
+        Store the local storage database path in the group.
+
+        * WebCoreSupport/WebViewGroup.mm:
+        (WebViewGroup::getOrCreate):
+        If we have an existing group that hasn't had its storage namespace provider created, and the path passed is not empty,
+        set it. This will ensure that getOrCreate will still work when creating a storage namspace provider.
+
+        (WebViewGroup::WebViewGroup):
+        Initialize the new member variable.
+
+        (WebViewGroup::storageNamespaceProvider):
+        Create the namespace provider lazily.
+
+        * WebView/WebView.mm:
+        (+[WebView _addUserScriptToGroup:world:source:url:whitelist:blacklist:injectionTime:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:whitelist:blacklist:injectedFrames:]):
+        Use getOrCreate instead of get.
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        WebStorageNamespaceProvider should know about its local storage database path
+        https://bugs.webkit.org/show_bug.cgi?id=139413
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebViewGroup.h:
+        * WebCoreSupport/WebViewGroup.mm:
+        (WebViewGroup::getOrCreate):
+        (WebViewGroup::WebViewGroup):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView setGroupName:]):
+        (-[WebView groupName]): Deleted.
+
+2014-12-08  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Fix the WebKit build with the public SDK
+
+        Include header NSURLDownloadSPI.h.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2014-12-07  Dan Bernstein  <mitz@apple.com>
+
+        Introduce and deploy a function that allocates and returns an instance of a soft-linked class
+        https://bugs.webkit.org/show_bug.cgi?id=139348
+
+        Reviewed by Anders Carlsson.
+
+        In [[getFooClass() alloc] init*], the type of the result of +alloc is id, so the compiler
+        picks an arbitrary declaration of init*, not necessarily the Foo one. This can then lead
+        to warnings or errors if the types or attributes don’t match, or to runtime errors if Foo
+        doesn’t even have the expected initializer. The new allocFooInstance() returns a Foo *, thus
+        avoiding the ambiguity.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectableLink]):
+
+2014-12-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out version of WebStorageNamespaceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=139213
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebViewGroup.h:
+        (WebViewGroup::storageNamespaceProvider):
+        * WebCoreSupport/WebViewGroup.mm:
+        (WebViewGroup::getOrCreate):
+        (WebViewGroup::WebViewGroup):
+        Give WebViewGroup a storage namespace provider.
+
+2014-12-06  Anders Carlsson  <andersca@apple.com>
+
+        Fix build with newer versions of clang.
+        rdar://problem/18978687
+
+        Add missing overrides and missing casts.
+
+        * Storage/WebDatabaseManagerClient.h:
+        * Storage/WebStorageTrackerClient.h:
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _makeRepresentation]):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _makeDocumentViewForDataSource:]):
+
+2014-12-05  Tim Horton  <timothy_horton@apple.com>
+
+        Legacy WebKit should set deviceScaleFactor in _commonInitializationWithFrameName, not _initWithFrame
+        https://bugs.webkit.org/show_bug.cgi?id=139306
+        <rdar://problem/19157955>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _initWithFrame:frameName:groupName:]):
+        Move setDeviceScaleFactor to the initialization path that is guaranteed to happen.
+
+2014-12-05  David Kilzer  <ddkilzer@apple.com>
+
+        FeatureDefines.xcconfig: Workaround bug in Xcode 5.1.1 when defining ENABLE_WEB_REPLAY
+        <http://webkit.org/b/139286>
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/FeatureDefines.xcconfig: Switch back to using
+        PLATFORM_NAME to workaround a bug in Xcode 5.1.1 on 10.8.
+
+2014-12-04  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the 32-bit build.
+
+        * WebView/WebView.mm:
+        (-[WebView _setTextIndicator:fadeOut:animationCompletionHandler:]):
+
+2014-12-04  Tim Horton  <timothy_horton@apple.com>
+
+        TextIndicator::createWithSelectionInFrame does synchronous IPC in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=139252
+        <rdar://problem/19140827>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebView.mm:
+        (-[WebView _setTextIndicator:fadeOut:animationCompletionHandler:]):
+        Adjust to the WebCore changes.
+
+2014-12-03  Timothy Horton  <timothy_horton@apple.com>
+
+        Implement action menus for tel: URLs
+        https://bugs.webkit.org/show_bug.cgi?id=139240
+        <rdar://problem/19115662>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectableLink]):
+        Make sure to use the newly created currentActionContext... everywhere.
+
+2014-12-03  Timothy Horton  <timothy_horton@apple.com>
+
+        Implement action menus for tel: URLs
+        https://bugs.webkit.org/show_bug.cgi?id=139240
+        <rdar://problem/19115662>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectableLink]):
+        Make sure to use the newly created currentActionContext.
+
+2014-12-03  Beth Dakin  <bdakin@apple.com>
+
+        <input> elements get whitespace action menu instead of editable text menu
+        https://bugs.webkit.org/show_bug.cgi?id=139241
+        -and corresponding-
+        rdar://problem/19072083
+
+        Reviewed by Sam Weinig.
+
+        We should disallow shadow content in the hit test. This is the default and it is 
+        how context menus behave. We originally wanted to text inside shadow content so 
+        that we could find the text, but the new function I added to HitTestResult will 
+        allow that.
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController performHitTestAtPoint:]):
+
+        Adjust to the fact that we don’t hit test shadow content any more.
+        (-[WebActionMenuController focusAndSelectHitTestResult]):
+
+        Offer the text menus for text inside form controls.
+        (-[WebActionMenuController _defaultMenuItems]):
+
+2014-12-03  Tim Horton  <timothy_horton@apple.com>
+
+        Implement action menus for tel: URLs
+        https://bugs.webkit.org/show_bug.cgi?id=139240
+        <rdar://problem/19115662>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectableLink]):
+        Rename this function as it will work for both mailto and tel URLs.
+        Adjust it to use contextForView:.
+
+        (-[WebActionMenuController webView:willHandleMouseDown:]):
+        (-[WebActionMenuController prepareForMenu:withEvent:]):
+        (-[WebActionMenuController didCloseMenu:withEvent:]):
+        (-[WebActionMenuController _defaultMenuItems]):
+        Don't check the menu type when going to interact with _currentActionContext.
+        We'll only have a _currentActionContext if we have a data detected item,
+        and there are multiple menu types that end up using DDActionContext.
+
+        * WebView/WebUIDelegatePrivate.h:
+        Add a new type.
+
+2014-12-03  Anders Carlsson  <andersca@apple.com>
+
+        Set a visited link store when creating a simple WebView
+        https://bugs.webkit.org/show_bug.cgi?id=139234
+        <rdar://problem/19132978>
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
 2014-12-02  Timothy Horton  <timothy_horton@apple.com>
 
         Fix the build.

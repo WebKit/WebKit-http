@@ -98,6 +98,7 @@
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include "WebProgressTrackerClient.h"
+#include "WebStorageNamespaceProvider.h"
 #include "WebUndoStep.h"
 #include "WebUserContentController.h"
 #include "WebUserMediaClient.h"
@@ -334,6 +335,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
     , m_mainFrameProgressCompleted(false)
+    , m_shouldDispatchFakeMouseMoveEvents(true)
 {
     ASSERT(m_pageID);
     // FIXME: This is a non-ideal location for this Setting and
@@ -368,6 +370,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(*this);
     pageConfiguration.diagnosticLoggingClient = new WebDiagnosticLoggingClient(*this);
 
+    pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::getOrCreate(m_pageGroup->pageGroupID());
     pageConfiguration.userContentController = m_userContentController ? &m_userContentController->userContentController() : &m_pageGroup->userContentController();
     pageConfiguration.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
 
@@ -503,7 +506,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
 {
     if (m_viewState != parameters.viewState)
-        setViewState(parameters.viewState);
+        setViewState(parameters.viewState, false, Vector<uint64_t>());
     if (m_layerHostingMode != parameters.layerHostingMode)
         setLayerHostingMode(static_cast<unsigned>(parameters.layerHostingMode));
 }
@@ -1955,6 +1958,11 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 
 void WebPage::mouseEventSyncForTesting(const WebMouseEvent& mouseEvent, bool& handled)
 {
+#if ENABLE(DRAG_SUPPORT)
+    if (m_isStartingDrag)
+        messageSenderConnection()->waitForAndDispatchImmediately<Messages::WebPage::DidStartDrag>(messageSenderDestinationID(), std::chrono::seconds(60));
+#endif
+
     handled = false;
 #if !PLATFORM(IOS)
     if (!handled && m_headerBanner)
@@ -2305,7 +2313,7 @@ void WebPage::updateIsInWindow(bool isInitialState)
         layoutIfNeeded();
 }
 
-void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewState)
+void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs)
 {
     ViewState::Flags changed = m_viewState ^ viewState;
     m_viewState = viewState;
@@ -2314,7 +2322,7 @@ void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewSt
     for (auto* pluginView : m_pluginViews)
         pluginView->viewStateDidChange(changed);
 
-    m_drawingArea->viewStateDidChange(changed, wantsDidUpdateViewState);
+    m_drawingArea->viewStateDidChange(changed, wantsDidUpdateViewState, callbackIDs);
 
     if (changed & ViewState::IsInWindow)
         updateIsInWindow();
@@ -2879,6 +2887,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     if (m_drawingArea)
         m_drawingArea->updatePreferences(store);
+
+#if PLATFORM(IOS)
+    m_viewportConfiguration.setIgnoreScalingConstraints(store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey()));
+#endif
 }
 
 #if PLATFORM(COCOA)
@@ -4367,6 +4379,7 @@ void WebPage::didChangeSelection()
 #if PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT)
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     // Abandon the current inline input session if selection changed for any other reason but an input method direct action.
+    // FIXME: This logic should be in WebCore.
     // FIXME: Many changes that affect composition node do not go through didChangeSelection(). We need to do something when DOM manipulation affects the composition, because otherwise input method's idea about it will be different from Editor's.
     // FIXME: We can't cancel composition when selection changes to NoSelection, but we probably should.
     if (frame.editor().hasComposition() && !frame.editor().ignoreCompositionSelectionChange() && !frame.selection().isNone()) {
@@ -4381,6 +4394,11 @@ void WebPage::didChangeSelection()
 #if PLATFORM(IOS)
     m_drawingArea->scheduleCompositingLayerFlush();
 #endif
+}
+
+void WebPage::discardedComposition()
+{
+    send(Messages::WebPageProxy::CompositionWasCanceled(editorState()));
 }
 
 void WebPage::setMinimumLayoutSize(const IntSize& minimumLayoutSize)

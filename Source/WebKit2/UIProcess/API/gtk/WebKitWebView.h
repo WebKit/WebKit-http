@@ -39,6 +39,7 @@
 #include <webkit2/WebKitHitTestResult.h>
 #include <webkit2/WebKitJavascriptResult.h>
 #include <webkit2/WebKitNavigationAction.h>
+#include <webkit2/WebKitNotification.h>
 #include <webkit2/WebKitPermissionRequest.h>
 #include <webkit2/WebKitPolicyDecision.h>
 #include <webkit2/WebKitScriptDialog.h>
@@ -238,12 +239,15 @@ struct _WebKitWebViewClass {
                                                 const gchar                 *failing_uri,
                                                 GTlsCertificate             *certificate,
                                                 GTlsCertificateFlags         errors);
+    gboolean   (* show_notification)           (WebKitWebView               *web_view,
+                                                WebKitNotification          *notification);
+    gboolean   (* close_notification)          (WebKitWebView               *web_view,
+                                                WebKitNotification          *notification);
+
     void (*_webkit_reserved0) (void);
     void (*_webkit_reserved1) (void);
     void (*_webkit_reserved2) (void);
     void (*_webkit_reserved3) (void);
-    void (*_webkit_reserved4) (void);
-    void (*_webkit_reserved5) (void);
 };
 
 WEBKIT_API GType

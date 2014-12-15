@@ -1172,6 +1172,8 @@ private:
 
             break;
         }
+
+        case CreateActivation:
         case NewFunction: {
             fixEdge<CellUse>(node->child2());
             break;
@@ -1202,6 +1204,7 @@ private:
         case Construct:
         case ProfiledCall:
         case ProfiledConstruct:
+        case ProfileControlFlow:
         case NativeCall:
         case NativeConstruct:
         case NewObject:
@@ -1215,7 +1218,6 @@ private:
         case IsNumber:
         case IsObject:
         case IsFunction:
-        case CreateActivation:
         case CreateArguments:
         case PhantomArguments:
         case TearOffArguments:

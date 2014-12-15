@@ -43,6 +43,7 @@ namespace WebCore {
 class ANGLEInstancedArrays;
 class EXTTextureFilterAnisotropic;
 class EXTShaderTextureLOD;
+class EXTsRGB;
 class HTMLImageElement;
 class HTMLVideoElement;
 class ImageBuffer;
@@ -388,7 +389,7 @@ private:
     bool validateWebGLObject(const char*, WebGLObject*);
 
     bool validateDrawArrays(const char* functionName, GC3Denum mode, GC3Dint first, GC3Dsizei count, GC3Dsizei primcount);
-    bool validateDrawElements(const char* functionName, GC3Denum mode, GC3Dsizei count, GC3Denum type, long long offset, unsigned& numElements);
+    bool validateDrawElements(const char* functionName, GC3Denum mode, GC3Dsizei count, GC3Denum type, long long offset, unsigned& numElements, GC3Dsizei primcount);
 
     // Adds a compressed texture format.
     void addCompressedTextureFormat(GC3Denum);
@@ -538,6 +539,7 @@ private:
     bool isContextLostOrPending();
 
     // Enabled extension objects.
+    std::unique_ptr<EXTsRGB> m_extsRGB;
     std::unique_ptr<EXTTextureFilterAnisotropic> m_extTextureFilterAnisotropic;
     std::unique_ptr<EXTShaderTextureLOD> m_extShaderTextureLOD;
     std::unique_ptr<OESTextureFloat> m_oesTextureFloat;

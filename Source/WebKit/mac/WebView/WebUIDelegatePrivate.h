@@ -140,8 +140,13 @@ typedef enum {
     WebActionMenuImage,
     WebActionMenuVideo,
     WebActionMenuDataDetectedItem,
-    WebActionMenuMailtoLink
+    WebActionMenuMailtoLink,
+    WebActionMenuTelLink
 } WebActionMenuType;
+
+typedef enum {
+    WebImmediateActionNone = 0,
+} WebImmediateActionType;
 
 // Message Sources.
 extern NSString *WebConsoleMessageXMLMessageSource;

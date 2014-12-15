@@ -452,9 +452,6 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
     if (!canRequest(type, url, request.options(), request.forPreload()))
         return 0;
 
-    if (Frame* f = frame())
-        f->loader().client().dispatchWillRequestResource(&request);
-
     if (memoryCache().disabled()) {
         DocumentResourceMap::iterator it = m_documentResources.find(url.string());
         if (it != m_documentResources.end()) {
@@ -757,6 +754,14 @@ void CachedResourceLoader::removeCachedResource(CachedResource* resource) const
         ASSERT(it->value.get() == resource);
 #endif
     m_documentResources.remove(resource->url());
+}
+
+void CachedResourceLoader::addCachedResource(CachedResource* resource)
+{
+    m_documentResources.set(resource->url(), resource);
+
+    if (!memoryCache().add(resource))
+        resource->setOwningCachedResourceLoader(this);
 }
 
 void CachedResourceLoader::loadDone(CachedResource* resource, bool shouldPerformPostLoadActions)

@@ -23,7 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "WebVisitedLinkStore.h"
 
 #include "WebHistory.h"
@@ -37,7 +36,7 @@ static bool s_shouldTrackVisitedLinks;
 
 WebVisitedLinkStore& WebVisitedLinkStore::shared()
 {
-    static NeverDestroyed<WebVisitedLinkStore> visitedLinkStore;
+    static WebVisitedLinkStore& visitedLinkStore = *adoptRef(new WebVisitedLinkStore).leakRef();
     
     return visitedLinkStore;
 }

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -720,6 +720,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTsRGB.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\accessibility\AccessibilityNodeObject.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
@@ -749,6 +763,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\css\WebKitCSSResourceValue.cpp" />
     <ClCompile Include="..\DerivedSources.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeader>
@@ -6654,6 +6669,7 @@
     <ClCompile Include="..\html\canvas\CanvasContextAttributes.cpp" />
     <ClCompile Include="..\html\canvas\CanvasPathMethods.cpp" />
     <ClCompile Include="..\html\canvas\EXTShaderTextureLOD.cpp" />
+    <ClCompile Include="..\html\canvas\EXTsRGB.cpp" />
     <ClCompile Include="..\html\canvas\EXTTextureFilterAnisotropic.cpp" />
     <ClCompile Include="..\html\canvas\OESElementIndexUint.cpp" />
     <ClCompile Include="..\html\canvas\OESStandardDerivatives.cpp" />
@@ -7582,6 +7598,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\platform\graphics\MaskImageOperation.cpp" />
     <ClCompile Include="..\platform\graphics\OpenGLShims.cpp" />
     <ClCompile Include="..\platform\graphics\opengl\Extensions3DOpenGL.cpp" />
     <ClCompile Include="..\platform\graphics\opengl\Extensions3DOpenGLCommon.cpp" />
@@ -7950,6 +7967,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\rendering\RenderLayerMaskImageInfo.cpp" />
     <ClCompile Include="..\rendering\style\StyleCachedImageSet.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
@@ -7964,7 +7982,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\storage\StorageStrategy.cpp" />
     <ClCompile Include="..\svg\graphics\SVGImageForContainer.cpp" />
     <ClCompile Include="..\WebCorePrefix.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -14930,7 +14947,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\editing\win\EditorWin.cpp"/>
+    <ClCompile Include="..\editing\win\EditorWin.cpp" />
     <ClCompile Include="..\fileapi\AsyncFileStream.cpp" />
     <ClCompile Include="..\html\BaseButtonInputType.cpp" />
     <ClCompile Include="..\html\BaseCheckableInputType.cpp" />
@@ -18849,8 +18866,10 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTRegion.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTRegionList.cpp" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSVTTRegionList.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTsRGB.h" />
     <ClInclude Include="..\accessibility\AccessibilityNodeObject.h" />
     <ClInclude Include="..\css\CSSImageSetValue.h" />
+    <ClInclude Include="..\css\WebKitCSSResourceValue.h" />
     <ClInclude Include="..\ForwardingHeaders\bindings\ScriptFunctionCall.h" />
     <ClInclude Include="..\ForwardingHeaders\bindings\ScriptObject.h" />
     <ClInclude Include="..\ForwardingHeaders\bindings\ScriptValue.h" />
@@ -18936,6 +18955,7 @@
     <ClInclude Include="..\html\canvas\CanvasContextAttributes.h" />
     <ClInclude Include="..\html\canvas\CanvasPathMethods.h" />
     <ClInclude Include="..\html\canvas\EXTShaderTextureLOD.h" />
+    <ClInclude Include="..\html\canvas\EXTsRGB.h" />
     <ClInclude Include="..\html\canvas\EXTTextureFilterAnisotropic.h" />
     <ClInclude Include="..\html\canvas\OESElementIndexUint.h" />
     <ClInclude Include="..\html\canvas\OESStandardDerivatives.h" />
@@ -19407,6 +19427,7 @@
     <ClInclude Include="..\platform\graphics\gstreamer\VideoSinkGStreamer.h" />
     <ClInclude Include="..\platform\graphics\gstreamer\VideoTrackPrivateGStreamer.h" />
     <ClInclude Include="..\platform\graphics\gstreamer\WebKitWebSourceGStreamer.h" />
+    <ClInclude Include="..\platform\graphics\MaskImageOperation.h" />
     <ClInclude Include="..\platform\graphics\MediaPlayerPrivate.h" />
     <ClInclude Include="..\platform\graphics\OpenGLShims.h" />
     <ClInclude Include="..\platform\graphics\opengl\Extensions3DOpenGL.h" />
@@ -19538,9 +19559,8 @@
     <ClInclude Include="..\platform\win\WebCoreBundleWin.h" />
     <ClInclude Include="..\platform\win\WebCoreInstanceHandle.h" />
     <ClInclude Include="..\rendering\HitTestLocation.h" />
+    <ClInclude Include="..\rendering\RenderLayerMaskImageInfo.h" />
     <ClInclude Include="..\rendering\style\StyleCachedImageSet.h" />
-    <ClInclude Include="..\storage\StorageStrategy.h" />
-    <ClInclude Include="..\svg\graphics\SVGImageForContainer.h" />
     <ClInclude Include="..\WebCorePrefix.h" />
     <ClInclude Include="..\platform\win\WebCoreTextRenderer.h" />
     <ClInclude Include="..\platform\win\WindowMessageBroadcaster.h" />

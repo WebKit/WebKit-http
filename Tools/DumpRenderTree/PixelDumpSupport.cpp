@@ -45,7 +45,6 @@
 #include "PixelDumpSupportHaiku.h"
 #endif
 
-#if !PLATFORM(IOS)
 void dumpWebViewAsPixelsAndCompareWithExpected(const std::string& expectedHash)
 {
     RefPtr<BitmapContext> context;
@@ -76,7 +75,6 @@ void dumpWebViewAsPixelsAndCompareWithExpected(const std::string& expectedHash)
     if (dumpImage)
         dumpBitmap(context.get(), actualHash);
 }
-#endif
 
 static void appendIntToVector(unsigned number, Vector<unsigned char>& vector)
 {

@@ -29,6 +29,7 @@
 #include "JIT.h"
 
 #include "Arguments.h"
+#include "BasicBlockLocation.h"
 #include "CopiedSpaceInlines.h"
 #include "Debugger.h"
 #include "Heap.h"
@@ -671,7 +672,8 @@ void JIT::emit_op_create_lexical_environment(Instruction* currentInstruction)
     int dst = currentInstruction[1].u.operand;
     int scope = currentInstruction[2].u.operand;
 
-    callOperation(operationCreateActivation, 0);
+    emitGetVirtualRegister(scope, regT0);
+    callOperation(operationCreateActivation, regT0, 0);
     emitStoreCell(dst, returnValueGPR);
     emitStoreCell(scope, returnValueGPR);
 }
@@ -1388,6 +1390,13 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
     skipClearLog.link(this);
 
     jumpToEnd.link(this);
+}
+
+void JIT::emit_op_profile_control_flow(Instruction* currentInstruction)
+{
+    BasicBlockLocation* basicBlockLocation = currentInstruction[1].u.basicBlockLocation;
+    if (!basicBlockLocation->hasExecuted())
+        basicBlockLocation->emitExecuteCode(*this, regT1);
 }
 
 #endif // USE(JSVALUE64)

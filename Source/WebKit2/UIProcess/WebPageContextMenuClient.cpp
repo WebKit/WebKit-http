@@ -30,10 +30,11 @@
 #include "WebPageContextMenuClient.h"
 
 #include "APIArray.h"
-#include "Platform/Logging.h"
-#include "WebContextMenuItem.h"
+#include "Logging.h"
 #include "WKAPICast.h"
 #include "WKSharedAPICast.h"
+#include "WebContextMenuItem.h"
+#include "WebPageProxy.h"
 
 namespace WebKit {
 

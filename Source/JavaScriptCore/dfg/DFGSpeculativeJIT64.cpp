@@ -4243,9 +4243,11 @@ void SpeculativeJIT::compile(Node* node)
         
         GPRTemporary result(this);
         GPRReg resultGPR = result.gpr();
-    
+        SpeculateCellOperand scope(this, node->child2());
+        GPRReg scopeGPR = scope.gpr();
+
         flushRegisters();
-        callOperation(operationCreateActivation, resultGPR, framePointerOffsetToGetActivationRegisters());
+        callOperation(operationCreateActivation, resultGPR, scopeGPR, framePointerOffsetToGetActivationRegisters());
 
         cellResult(resultGPR, node);
         break;
@@ -4932,6 +4934,15 @@ void SpeculativeJIT::compile(Node* node)
 
         jumpToEnd.link(&m_jit);
 
+        noResult(node);
+        break;
+    }
+    case ProfileControlFlow: {
+        BasicBlockLocation* basicBlockLocation = node->basicBlockLocation();
+        if (!basicBlockLocation->hasExecuted()) {
+            GPRTemporary scratch1(this);
+            basicBlockLocation->emitExecuteCode(m_jit, scratch1.gpr());
+        }
         noResult(node);
         break;
     }

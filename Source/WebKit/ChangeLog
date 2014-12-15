@@ -1,3 +1,131 @@
+2014-12-11  Anders Carlsson  <andersca@apple.com>
+
+        Build fix.
+
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-11  Anders Carlsson  <andersca@apple.com>
+
+        Replicate a bunch of PageGroup functions in WebStorageNamespaceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=139544
+
+        Reviewed by Antti Koivisto.
+
+        This code is currently unused but will be called by StorageTracker once that class has been
+        moved from WebCore to WebKit.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::clearLocalStorageForAllOrigins):
+        (WebStorageNamespaceProvider::clearLocalStorageForOrigin):
+        (WebStorageNamespaceProvider::closeIdleLocalStorageDatabases):
+        (WebStorageNamespaceProvider::syncLocalStorage):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Add initial support for immediate actions
+        https://bugs.webkit.org/show_bug.cgi?id=139522
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-12-10  Anders Carlsson  <andersca@apple.com>
+
+        Add session storage handling to StorageNamespaceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=139507
+
+        Reviewed by Tim Horton.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::createSessionStorageNamespace):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-10  Anders Carlsson  <andersca@apple.com>
+
+        Add WebStorageNamespaceProvider::closeLocalStorage
+        https://bugs.webkit.org/show_bug.cgi?id=139502
+
+        Reviewed by Tim Horton.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (storageNamespaceProviders):
+        (WebStorageNamespaceProvider::WebStorageNamespaceProvider):
+        (WebStorageNamespaceProvider::~WebStorageNamespaceProvider):
+        Keep track of all live storage namespace providers.
+        
+        (WebStorageNamespaceProvider::closeLocalStorage):
+        Loop through all storage namespace providers and call close() on their local storage namespaces.
+
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177037.
+        https://bugs.webkit.org/show_bug.cgi?id=139464
+
+        broke ~50 API tests (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "Use the new storage namespace provider in WebKit1"
+        https://bugs.webkit.org/show_bug.cgi?id=139425
+        http://trac.webkit.org/changeset/177037
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        WebStorageNamespaceProvider should create StorageNamespaceImpls
+        https://bugs.webkit.org/show_bug.cgi?id=139419
+
+        Reviewed by Andreas Kling.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::createLocalStorageNamespace):
+        (WebStorageNamespaceProvider::createTransientLocalStorageNamespace):
+        Create StorageNamespaceImpls.
+
+        (WebStorageNamespaceProvider::createSessionStorageNamespace): Deleted.
+        Delete this for now.
+
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        WebStorageNamespaceProvider should know about its local storage database path
+        https://bugs.webkit.org/show_bug.cgi?id=139413
+
+        Reviewed by Andreas Kling.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::create):
+        (WebStorageNamespaceProvider::WebStorageNamespaceProvider):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out version of WebStorageNamespaceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=139213
+
+        Reviewed by Sam Weinig.
+
+        * Storage/WebStorageNamespaceProvider.cpp: Added.
+        * Storage/WebStorageNamespaceProvider.h: Added.
+
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.xcodeproj/project.pbxproj:
+        Add new files.
+
+2014-12-05  Roger Fong  <roger_fong@apple.com>
+
+        [Win] proj files copying over too many resources..
+        https://bugs.webkit.org/show_bug.cgi?id=139315.
+        <rdar://problem/19148278>
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.proj: Only copy resource folders and WebKit.dll.
+
 2014-12-02  Sam Weinig  <sam@webkit.org>
 
         Remove empty directories

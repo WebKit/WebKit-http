@@ -110,8 +110,6 @@ struct WebPageConfiguration;
 - (void)_setSuppressVisibilityUpdates:(BOOL)suppressVisibilityUpdates;
 - (BOOL)_suppressVisibilityUpdates;
 
-- (BOOL)_shouldIgnoreMouseEvents;
-
 - (void)_didFirstVisuallyNonEmptyLayoutForMainFrame;
 - (void)_didFinishLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)type;
@@ -133,5 +131,7 @@ struct WebPageConfiguration;
 #endif
 
 @property (nonatomic, retain, setter=_setPrimaryTrackingArea:) NSTrackingArea *_primaryTrackingArea;
+
+@property (readonly) NSWindow *_targetWindowForMovePreparation;
 
 @end

@@ -1,3 +1,64 @@
+2014-12-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Hide Compositing Borders Button if backend returns an error that it is unsupported
+        https://bugs.webkit.org/show_bug.cgi?id=139307
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype._updateCompositingBordersButtonToMatchPageSettings):
+
+2014-12-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exceptions when attempting to show Content Flow
+        https://bugs.webkit.org/show_bug.cgi?id=139276
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView):
+        (WebInspector.ContentView.isViewable):
+        LegacyJavaScriptProfileObject no longer exists, these references should be removed.
+
+        * UserInterface/Views/FolderizedTreeElement.js:
+        (WebInspector.FolderizedTreeElement.prototype._insertChildTreeElement):
+        This sort function references "this" and needed to be bound.
+
+2014-12-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Timeline Filter Bar only has "All", missing Resource Type filters
+        https://bugs.webkit.org/show_bug.cgi?id=139268
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.createColumnScopeBar):
+        Users of createColumnScopeBar pass a Map object now instead of a dictionary.
+        Iterate over the map appropriately.
+
+2014-12-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: LayoutTests/inspector tests fail in Production builds due to missing test resources
+        https://bugs.webkit.org/show_bug.cgi?id=138898
+
+        Reviewed by Mark Rowe.
+
+        In Production builds, if FORCE_TOOL_INSTALL=YES is in the environment
+        we will copy all resources (for Tests) and still do the combine and
+        optimize phase for normal Production inspection resources.
+
+        * Scripts/copy-user-interface-resources.pl:
+
+2014-12-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Missing getter, clients never see DragToAdjustController is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=139228
+
+        Reviewed by Simon Fraser.
+
+        * UserInterface/Controllers/DragToAdjustController.js:
+        (WebInspector.DragToAdjustController.prototype.get enabled):
+
 2014-12-02  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: CSS Minification breaks some selectors with colons

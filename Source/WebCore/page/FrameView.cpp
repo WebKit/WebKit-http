@@ -289,7 +289,7 @@ void FrameView::reset()
     m_visuallyNonEmptyPixelCount = 0;
     m_isVisuallyNonEmpty = false;
     m_firstVisuallyNonEmptyLayoutCallbackPending = true;
-    m_maintainScrollPositionAnchor = 0;
+    m_maintainScrollPositionAnchor = nullptr;
     m_throttledTimers.clear();
 }
 
@@ -1984,7 +1984,10 @@ bool FrameView::scrollToAnchor(const String& name)
     if (!anchorElement && !(name.isEmpty() || equalIgnoringCase(name, "top")))
         return false;
 
-    maintainScrollPositionAtAnchor(anchorElement ? static_cast<Node*>(anchorElement) : frame().document());
+    ContainerNode* scrollPositionAnchor = anchorElement;
+    if (!scrollPositionAnchor)
+        scrollPositionAnchor = frame().document();
+    maintainScrollPositionAtAnchor(scrollPositionAnchor);
     
     // If the anchor accepts keyboard focus, move focus there to aid users relying on keyboard navigation.
     if (anchorElement && anchorElement->isFocusable())
@@ -1993,7 +1996,7 @@ bool FrameView::scrollToAnchor(const String& name)
     return true;
 }
 
-void FrameView::maintainScrollPositionAtAnchor(Node* anchorNode)
+void FrameView::maintainScrollPositionAtAnchor(ContainerNode* anchorNode)
 {
     m_maintainScrollPositionAnchor = anchorNode;
     if (!m_maintainScrollPositionAnchor)
@@ -2014,7 +2017,7 @@ void FrameView::scrollElementToRect(Element* element, const IntRect& rect)
 {
     frame().document()->updateLayoutIgnorePendingStylesheets();
 
-    LayoutRect bounds = element->boundingBox();
+    LayoutRect bounds = rendererAnchorRect(*element);
     int centeringOffsetX = (rect.width() - bounds.width()) / 2;
     int centeringOffsetY = (rect.height() - bounds.height()) / 2;
     setScrollPosition(IntPoint(bounds.x() - centeringOffsetX - rect.x(), bounds.y() - centeringOffsetY - rect.y()));
@@ -2023,7 +2026,7 @@ void FrameView::scrollElementToRect(Element* element, const IntRect& rect)
 void FrameView::setScrollPosition(const IntPoint& scrollPoint)
 {
     TemporaryChange<bool> changeInProgrammaticScroll(m_inProgrammaticScroll, true);
-    m_maintainScrollPositionAnchor = 0;
+    m_maintainScrollPositionAnchor = nullptr;
     ScrollView::setScrollPosition(scrollPoint);
 }
 
@@ -2775,7 +2778,7 @@ bool FrameView::shouldUpdate() const
 
 void FrameView::scrollToAnchor()
 {
-    RefPtr<Node> anchorNode = m_maintainScrollPositionAnchor;
+    RefPtr<ContainerNode> anchorNode = m_maintainScrollPositionAnchor;
     if (!anchorNode)
         return;
 
@@ -2784,11 +2787,16 @@ void FrameView::scrollToAnchor()
 
     LayoutRect rect;
     if (anchorNode != frame().document())
-        rect = anchorNode->boundingBox();
+        rect = rendererAnchorRect(*anchorNode.get());
 
     // Scroll nested layers and frames to reveal the anchor.
     // Align to the top and to the closest side (this matches other browsers).
-    anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+    if (anchorNode->renderer()->style().isHorizontalWritingMode())
+        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+    else if (anchorNode->renderer()->style().isFlippedBlocksWritingMode())
+        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignRightAlways, ScrollAlignment::alignToEdgeIfNeeded);
+    else
+        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignLeftAlways, ScrollAlignment::alignToEdgeIfNeeded);
 
     if (AXObjectCache* cache = frame().document()->existingAXObjectCache())
         cache->handleScrolledToAnchor(anchorNode.get());
@@ -3713,7 +3721,7 @@ void FrameView::setWasScrolledByUser(bool wasScrolledByUser)
 {
     if (m_inProgrammaticScroll)
         return;
-    m_maintainScrollPositionAnchor = 0;
+    m_maintainScrollPositionAnchor = nullptr;
     if (m_wasScrolledByUser == wasScrolledByUser)
         return;
     m_wasScrolledByUser = wasScrolledByUser;
@@ -4380,6 +4388,14 @@ bool FrameView::isFlippedDocument() const
         return false;
 
     return renderView->style().isFlippedBlocksWritingMode();
+}
+
+bool FrameView::containsSVGDocument() const
+{
+    if (frame().document())
+        return frame().document()->isSVGDocument();
+    
+    return false;
 }
 
 void FrameView::notifyWidgetsInAllFrames(WidgetNotification notification)

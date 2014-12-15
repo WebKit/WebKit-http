@@ -23,7 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "AcceleratedCompositingContext.h"
 
 #if USE(TEXTURE_MAPPER_GL)
@@ -139,18 +138,10 @@ bool AcceleratedCompositingContext::prepareForRendering()
 
 bool AcceleratedCompositingContext::startedAnimation(WebCore::GraphicsLayer* layer)
 {
-    if (!layer)
+    if (!layer || !downcast<GraphicsLayerTextureMapper>(*layer).layer())
         return false;
 
-    if (downcast<GraphicsLayerTextureMapper>(layer)->startedAnimation())
-        return true;
-
-    for (auto childLayer : layer->children()) {
-        if (startedAnimation(childLayer))
-            return true;
-    }
-
-    return false;
+    return downcast<GraphicsLayerTextureMapper>(*layer).layer()->descendantsOrSelfHaveRunningAnimations();
 }
 
 void AcceleratedCompositingContext::compositeLayersToContext(CompositePurpose purpose)

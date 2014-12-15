@@ -46,11 +46,10 @@ WebGLExtension::ExtensionName WebGLDrawBuffers::getName() const
     return WebGLExtension::WebGLDrawBuffersName;
 }
 
-#if OS(DARWIN)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000)
 
 bool WebGLDrawBuffers::supported(WebGLRenderingContext*)
 {
-    // https://bugs.webkit.org/show_bug.cgi?id=112486
     return false;
 }
 

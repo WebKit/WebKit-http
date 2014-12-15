@@ -108,24 +108,14 @@ using namespace WebCore;
     Frame* coreFrame = core([documentView _frame]);
     if (!coreFrame)
         return nil;
-    HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active;
-    _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point), hitType);
-
-    // We hit test including shadow content to get the desired result for editable text regions.
-    // But for media, we want to re-set to the shadow root.
-    if (Node* node = _hitTestResult.innerNode()) {
-        if (Element* shadowHost = node->shadowHost()) {
-            if (shadowHost->isMediaElement())
-                _hitTestResult.setToNonShadowAncestor();
-        }
-    }
+    _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point));
 
     return [[[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult] autorelease];
 }
 
 - (void)webView:(WebView *)webView willHandleMouseDown:(NSEvent *)event
 {
-    if (_type == WebActionMenuDataDetectedItem && _currentActionContext && _hasActivatedActionContext) {
+    if (_currentActionContext && _hasActivatedActionContext) {
         [getDDActionsManagerClass() didUseActions];
         _hasActivatedActionContext = NO;
     }
@@ -158,7 +148,7 @@ using namespace WebCore;
     for (NSMenuItem *item in menuItems)
         [actionMenu addItem:item];
 
-    if (_type == WebActionMenuDataDetectedItem && _currentActionContext) {
+    if (_currentActionContext) {
         _hasActivatedActionContext = YES;
         if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()]) {
             [menu cancelTracking];
@@ -181,15 +171,13 @@ using namespace WebCore;
     if (!element)
         return;
 
-    auto renderer = element->renderer();
-    if (!renderer)
+    Frame* frame = element->document().frame();
+    if (!frame)
         return;
 
-    Frame& frame = renderer->frame();
-
-    frame.page()->focusController().setFocusedElement(element, element->document().frame());
-    VisiblePosition position = renderer->positionForPoint(_hitTestResult.localPoint(), nullptr);
-    frame.selection().setSelection(position);
+    frame->page()->focusController().setFocusedElement(element, frame);
+    VisiblePosition position = frame->visiblePositionForPoint(_hitTestResult.roundedPointInInnerNodeFrame());
+    frame->selection().setSelection(position);
 }
 
 - (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
@@ -229,7 +217,7 @@ using namespace WebCore;
     if (menu != _webView.actionMenu)
         return;
 
-    if (_type == WebActionMenuDataDetectedItem && _currentActionContext && _hasActivatedActionContext) {
+    if (_currentActionContext && _hasActivatedActionContext) {
         [getDDActionsManagerClass() didUseActions];
         _hasActivatedActionContext = NO;
     }
@@ -274,7 +262,7 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
     if (!view)
         return IntRect();
 
-    return view->contentsToWindow(node->pixelSnappedBoundingBox());
+    return view->contentsToWindow(rendererBoundingBox(*node));
 }
 
 - (NSArray *)_defaultMenuItemsForLink
@@ -296,20 +284,25 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
     return @[ openLinkItem.get(), shouldUseStandardQuickLookPreview ? qlPreviewLinkItem.get() : previewLinkItem.get(), [NSMenuItem separatorItem], readingListItem.get() ];
 }
 
-#pragma mark Mailto Link actions
+#pragma mark mailto: and tel: Link actions
 
-- (NSArray *)_defaultMenuItemsForMailtoLink
+- (NSArray *)_defaultMenuItemsForDataDetectableLink
 {
     Node* node = _hitTestResult.innerNode();
     if (!node)
         return @[ ];
 
-    RetainPtr<DDActionContext> actionContext = [[getDDActionContextClass() alloc] init];
-    [actionContext setAltMode:YES];
+    RetainPtr<DDActionContext> actionContext = [allocDDActionContextInstance() init];
 
     // FIXME: Should this show a yellow highlight?
-    [actionContext setHighlightFrame:elementBoundingBoxInWindowCoordinatesFromNode(node)];
-    return [[getDDActionsManagerClass() sharedManager] menuItemsForTargetURL:_hitTestResult.absoluteLinkURL() actionContext:actionContext.get()];
+    _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
+    } interactionChangedHandler:^() {
+    } interactionStoppedHandler:^() {
+    }];
+
+    [_currentActionContext setHighlightFrame:elementBoundingBoxInWindowCoordinatesFromNode(node)];
+
+    return [[getDDActionsManagerClass() sharedManager] menuItemsForTargetURL:_hitTestResult.absoluteLinkURL() actionContext:_currentActionContext.get()];
 }
 
 #pragma mark Image actions
@@ -484,8 +477,10 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 {
     RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
     RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagLookupText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
+    [pasteItem setEnabled:NO];
 
-    return @[ copyTextItem.get(), lookupTextItem.get() ];
+    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get() ];
 }
 
 - (NSArray *)_defaultMenuItemsForEditableText
@@ -594,7 +589,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
 - (void)_copySelection:(id)sender
 {
-    [_webView _executeCoreCommandByName:@"copy" value:nil];
+    [_webView copy:self];
 }
 
 - (void)_lookupText:(id)sender
@@ -609,7 +604,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
 - (void)_paste:(id)sender
 {
-    [_webView _executeCoreCommandByName:@"paste" value:nil];
+    [_webView paste:self];
 }
 
 - (void)_selectLookupText
@@ -692,9 +687,11 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
 
 - (NSArray *)_defaultMenuItemsForWhitespaceInEditableArea
 {
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
     RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
+    [copyTextItem setEnabled:NO];
 
-    return @[ [NSMenuItem separatorItem], [NSMenuItem separatorItem], pasteItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get() ];
 }
 
 #pragma mark NSSharingServicePickerDelegate implementation
@@ -770,13 +767,14 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
         selector = @selector(_copySelection:);
         title = WEB_UI_STRING_KEY("Copy", "Copy (text action menu item)", "text action menu item");
         image = [NSImage imageNamed:@"NSActionMenuCopy"];
+        enabled = _hitTestResult.allowsCopy();
         break;
 
     case WebActionMenuItemTagLookupText:
         selector = @selector(_lookupText:);
         title = WEB_UI_STRING_KEY("Look Up", "Look Up (action menu item)", "action menu item");
         image = [NSImage imageNamed:@"NSActionMenuLookup"];
-        enabled = getLULookupDefinitionModuleClass();
+        enabled = getLULookupDefinitionModuleClass() && _hitTestResult.allowsCopy();
         break;
 
     case WebActionMenuItemTagPaste:
@@ -846,14 +844,20 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
 - (NSArray *)_defaultMenuItems
 {
     NSURL *url = _hitTestResult.absoluteLinkURL();
-    if (url && WebCore::protocolIsInHTTPFamily([url absoluteString])) {
+    NSString *absoluteURLString = [url absoluteString];
+    if (url && WebCore::protocolIsInHTTPFamily(absoluteURLString)) {
         _type = WebActionMenuLink;
         return [self _defaultMenuItemsForLink];
     }
 
-    if (url && WebCore::protocolIs([url absoluteString], "mailto")) {
+    if (url && WebCore::protocolIs(absoluteURLString, "mailto")) {
         _type = WebActionMenuMailtoLink;
-        return [self _defaultMenuItemsForMailtoLink];
+        return [self _defaultMenuItemsForDataDetectableLink];
+    }
+
+    if (url && WebCore::protocolIs(absoluteURLString, "tel")) {
+        _type = WebActionMenuTelLink;
+        return [self _defaultMenuItemsForDataDetectableLink];
     }
 
     if (!_hitTestResult.absoluteMediaURL().isEmpty()) {
@@ -868,7 +872,7 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
     }
 
     Node* node = _hitTestResult.innerNode();
-    if (node && node->isTextNode()) {
+    if ((node && node->isTextNode()) || _hitTestResult.isOverTextInsideFormControlElement()) {
         NSArray *dataDetectorMenuItems = [self _defaultMenuItemsForDataDetectedText];
         if (_currentActionContext) {
             // If this is a data detected item with no menu items, we should not fall back to regular text options.

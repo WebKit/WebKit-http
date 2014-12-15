@@ -28,6 +28,7 @@
 
 #include <unordered_map>
 #include <wtf/HashMethod.h>
+#include <wtf/Vector.h>
 
 namespace JSC {
 
@@ -51,6 +52,7 @@ public:
     bool hasExecutedAtOffset(intptr_t id, unsigned offset);
     void insertUnexecutedRange(intptr_t id, unsigned start, unsigned end);
     void removeUnexecutedRange(intptr_t id, unsigned start, unsigned end);
+    Vector<std::pair<unsigned, unsigned>> getUnexecutedFunctionRanges(intptr_t id);
 
 private:     
     typedef std::unordered_map<FunctionRange, bool, HashMethod<FunctionRange>> RangeMap;

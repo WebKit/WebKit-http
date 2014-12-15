@@ -112,7 +112,7 @@ typedef const char* optionString;
     v(bool, forceDebuggerBytecodeGeneration, false) \
     v(bool, forceProfilerBytecodeGeneration, false) \
     \
-    v(bool, enableFunctionDotArguments, false) \
+    v(bool, enableFunctionDotArguments, true) \
     \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false) \
@@ -282,6 +282,7 @@ typedef const char* optionString;
     v(bool, recordGCPauseTimes, false) \
     v(bool, logHeapStatisticsAtExit, false) \
     v(bool, enableTypeProfiler, false) \
+    v(bool, enableControlFlowProfiler, false) \
     \
     v(bool, verifyHeap, false) \
     v(unsigned, numberOfGCCyclesToRecordForVerification, 3) \

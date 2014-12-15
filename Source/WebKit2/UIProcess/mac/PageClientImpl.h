@@ -98,6 +98,9 @@ private:
     virtual void updateSecureInputState() override;
     virtual void resetSecureInputState() override;
     virtual void notifyInputContextAboutDiscardedComposition() override;
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
+    virtual void notifyApplicationAboutInputContextChange() override;
+#endif
 
     virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&);
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&);
@@ -180,6 +183,7 @@ private:
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
 
     NSView *activeView() const;
+    NSWindow *activeWindow() const;
 
     virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
     virtual void didFinishLoadForMainFrame() override;

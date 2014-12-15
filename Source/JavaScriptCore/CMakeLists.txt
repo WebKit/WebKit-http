@@ -407,6 +407,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ArrayIteratorConstructor.cpp
     runtime/ArrayIteratorPrototype.cpp
     runtime/ArrayPrototype.cpp
+    runtime/BasicBlockLocation.cpp
     runtime/BooleanConstructor.cpp
     runtime/BooleanObject.cpp
     runtime/BooleanPrototype.cpp
@@ -422,6 +423,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ConsoleClient.cpp
     runtime/ConsolePrototype.cpp
     runtime/ConstructData.cpp
+    runtime/ControlFlowProfiler.cpp
     runtime/CustomGetterSetter.cpp
     runtime/DataView.cpp
     runtime/DateConstructor.cpp
@@ -511,6 +513,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/NamePrototype.cpp
     runtime/NativeErrorConstructor.cpp
     runtime/NativeErrorPrototype.cpp
+    runtime/NullGetterFunction.cpp
     runtime/NumberConstructor.cpp
     runtime/NumberObject.cpp
     runtime/NumberPrototype.cpp

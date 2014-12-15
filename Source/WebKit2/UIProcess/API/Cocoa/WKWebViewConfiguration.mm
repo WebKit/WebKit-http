@@ -114,7 +114,7 @@ private:
 
 - (id)copyWithZone:(NSZone *)zone
 {
-    WKWebViewConfiguration *configuration = [[[self class] allocWithZone:zone] init];
+    WKWebViewConfiguration *configuration = [(WKWebViewConfiguration *)[[self class] allocWithZone:zone] init];
 
     configuration.processPool = self.processPool;
     configuration.preferences = self.preferences;
@@ -280,7 +280,7 @@ static NSString *defaultApplicationNameForUserAgent()
 }
 
 #if PLATFORM(IOS)
-- (BOOL) _allowsAlternateFullscreen
+- (BOOL)_allowsAlternateFullscreen
 {
     return _allowsAlternateFullscreen;
 }

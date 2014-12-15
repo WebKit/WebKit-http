@@ -1,3 +1,280 @@
+2014-12-10  Geoffrey Garen  <ggaren@apple.com>
+
+        Please disable the webkitFirstVersionWithInitConstructorSupport check on Apple TV
+        https://bugs.webkit.org/show_bug.cgi?id=139501
+
+        Reviewed by Gavin Barraclough.
+
+        Added a platform definition for APPLETV.
+
+        (It's not an OS because it's not mutually exclusive with other OS definitions.)
+
+        * wtf/Platform.h:
+
+2014-12-10  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add support for text-decoration-skip
+        https://bugs.webkit.org/show_bug.cgi?id=131540
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * wtf/Platform.h: Enable text decoration skip by default.
+
+2014-12-09  David Kilzer  <ddkilzer@apple.com>
+
+        Switch from using PLATFORM_NAME to SDK selectors in ANGLE, bmalloc, gtest, JavaScriptCore, WTF
+        <http://webkit.org/b/139212>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        - Only set GCC_ENABLE_OBJC_GC, GCC_MODEL_TUNING and TOOLCHAINS
+          on OS X.
+        * Configurations/DebugRelease.xcconfig:
+        - Only set MACOSX_DEPLOYMENT_TARGET and SDKROOT on OS X.
+
+2014-12-09  Dean Jackson  <dino@apple.com>
+
+        [Apple] Use Accelerate framework to speed-up FEGaussianBlur
+        https://bugs.webkit.org/show_bug.cgi?id=139310
+
+        Unreviewed followup, after comments by Andreas Kling.
+
+        It was pointed out that we already have a USE(ACCELERATE), so
+        we don't need a HAVE(ACCELERATE) :)
+
+        * wtf/Platform.h:
+
+2014-12-09  Alberto Garcia  <berto@igalia.com>
+
+        Undefined Symbol build error "_objc_registerThreadWithCollector" when building WebKit GTK Mac OS X on Snow Leopard
+        https://bugs.webkit.org/show_bug.cgi?id=58737
+
+        Reviewed by Darin Adler.
+
+        Replace OS(MAC_OS_X) with PLATFORM(MAC) to prevent using
+        osx-specific code in WebKitGTK+ builds.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::initializeCurrentThreadInternal):
+
+2014-12-08  Dean Jackson  <dino@apple.com>
+
+        [Apple] Use Accelerate framework to speed-up FEGaussianBlur
+        https://bugs.webkit.org/show_bug.cgi?id=139310
+        <rdar://problem/18434594>
+
+        Reviewed by Simon Fraser.
+
+        Add a HAVE_ACCELERATE flag, true on Apple platforms.
+
+        * wtf/Platform.h:
+
+2014-12-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fix iOS build after r176971.
+
+        I had previously modified the WTF forwarding header instead of modifying the real source.
+
+        * wtf/unicode/CharacterNames.h:
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        Change WTF::currentCPUTime to return std::chrono::microseconds and get rid of currentCPUTimeMS
+        https://bugs.webkit.org/show_bug.cgi?id=139410
+
+        Reviewed by Andreas Kling.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::currentCPUTime):
+        (WTF::currentCPUTimeMS): Deleted.
+        * wtf/CurrentTime.h:
+
+2014-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Revert r176293 & r176275
+
+        Unreviewed, revert r176293 & r176275 changing the Vector API to use unsigned type
+        instead of size_t. There is some disagreement regarding the long-term direction
+        of the API and we shouldn’t leave the API partly transitioned to unsigned type
+        while making a decision.
+
+        * wtf/Forward.h:
+        * wtf/Vector.h:
+        (WTF::VectorTypeOperations::compare):
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::shouldReallocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (WTF::VectorBufferBase::capacity):
+        (WTF::VectorBufferBase::VectorBufferBase):
+        (WTF::VectorBuffer::VectorBuffer):
+        (WTF::VectorBuffer::allocateBuffer):
+        (WTF::VectorBuffer::tryAllocateBuffer):
+        (WTF::VectorBuffer::shouldReallocateBuffer):
+        (WTF::VectorBuffer::reallocateBuffer):
+        (WTF::VectorBuffer::swap):
+        (WTF::VectorBuffer::swapInlineBuffer):
+        (WTF::VectorBuffer::swapInlineBuffers):
+        (WTF::Vector::Vector):
+        (WTF::Vector::capacity):
+        (WTF::Vector::at):
+        (WTF::Vector::operator[]):
+        (WTF::OverflowHandler>::find):
+        (WTF::OverflowHandler>::reverseFind):
+        (WTF::OverflowHandler>::fill):
+        (WTF::OverflowHandler>::expandCapacity):
+        (WTF::OverflowHandler>::tryExpandCapacity):
+        (WTF::OverflowHandler>::resize):
+        (WTF::OverflowHandler>::resizeToFit):
+        (WTF::OverflowHandler>::shrink):
+        (WTF::OverflowHandler>::grow):
+        (WTF::OverflowHandler>::reserveCapacity):
+        (WTF::OverflowHandler>::tryReserveCapacity):
+        (WTF::OverflowHandler>::reserveInitialCapacity):
+        (WTF::OverflowHandler>::shrinkCapacity):
+        (WTF::OverflowHandler>::append):
+        (WTF::OverflowHandler>::tryAppend):
+        (WTF::OverflowHandler>::insert):
+        (WTF::OverflowHandler>::insertVector):
+        (WTF::OverflowHandler>::remove):
+        (WTF::OverflowHandler>::reverse):
+        (WTF::OverflowHandler>::checkConsistency):
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::adopt):
+        (WTF::equalIgnoringNullity):
+        * wtf/text/StringView.h:
+        (WTF::append):
+        * wtf/text/WTFString.h:
+
+2014-12-07  Andreas Kling  <akling@apple.com>
+
+        Use more PassRef in AtomicString.
+        <https://webkit.org/b/139319>
+
+        Reviewed by Antti Koivisto.
+
+        Make a pass over AtomicString and convert functions that return PassRefPtr
+        into returning RefPtr (where it may be null) and PassRef otherwise.
+        This allows the compiler to skip null checks in many places.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::addToStringTable):
+        (WTF::AtomicString::add):
+        (WTF::AtomicString::addFromLiteralData):
+        (WTF::AtomicString::addSlowCase):
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::add):
+        (WTF::AtomicString::addWithStringTableProvider):
+        * wtf/text/cf/AtomicStringCF.cpp:
+        (WTF::AtomicString::add):
+
+2014-12-05  Roger Fong  <roger_fong@apple.com>
+
+        [Win] proj files copying over too many resources..
+        https://bugs.webkit.org/show_bug.cgi?id=139315.
+        <rdar://problem/19148278>
+
+        Reviewed by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.proj: Only copy WTF.dll.
+
+2014-12-05  Andreas Kling  <akling@apple.com>
+
+        PassRef should deref on destruction if pointee was not moved.
+        <https://webkit.org/b/139309>
+
+        Reviewed by Antti Koivisto.
+
+        Let PassRef become nullptr internally after having WTF::move()'d the pointee.
+        This means that PassRef is now essentially a PassRefPtr that can only be
+        constructed with a non-null pointee.
+
+        This should make it possible for all ::create()-style construction helpers to
+        return PassRef, removing a branch in each case.
+
+        * wtf/PassRef.h:
+        (WTF::PassRef<T>::PassRef):
+        (WTF::PassRef<T>::~PassRef):
+        (WTF::PassRef<T>::get):
+        (WTF::PassRef<T>::ptr):
+        (WTF::PassRef<T>::leakRef):
+        (WTF::PassRef<T>::dropRef): Deleted.
+
+2014-12-05  Jer Noble  <jer.noble@apple.com>
+
+        [WTF] MediaTime should support round-tripping from and to doubles.
+        https://bugs.webkit.org/show_bug.cgi?id=139248
+
+        Reviewed by Eric Carlson.
+
+        MediaTimes should be able to return precisely the same double value as was used
+        when the MediaTime was created, so long as that MediaTime was not modified in a
+        non-destructive way. This will allow API which accepts floating-point values to
+        return the exact same value when asked, but still be able to store that value
+        as a MediaTime.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::createWithFloat): Added; store the floating-point value in a union.
+        (WTF::MediaTime::createWithDouble): Ditto.
+        (WTF::MediaTime::toFloat): If the value is a double, just return it.
+        (WTF::MediaTime::toDouble): Ditto.
+        (WTF::MediaTime::operator+): Special case when one or both sides are doubles.
+        (WTF::MediaTime::operator-): Ditto.
+        (WTF::MediaTime::operator*): Ditto.
+        (WTF::MediaTime::compare): Ditto.
+        (WTF::abs): Ditto.
+        (WTF::MediaTime::setTimeScale): Convert the MediaTime from a double.
+
+2014-12-05  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] WTF project is missing a GStreamer source file.
+        https://bugs.webkit.org/show_bug.cgi?id=139296
+
+        Reviewed by Philippe Normand.
+
+        The WTF project file is missing a GStreamer source file,
+        causing a link error when compiling with GStreamer enabled.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+
+2014-12-04  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r176683): RefCounter.h is installed outside SDKROOT
+
+        * WTF.xcodeproj/project.pbxproj: Don't mark RefCounter.h as a
+        private header.  WTF headers use a special build phase script to
+        be installed.
+
+2014-12-04  Anders Carlsson  <andersca@apple.com>
+
+        Make API::String copy the underlying strings if needed, for thread safety
+        https://bugs.webkit.org/show_bug.cgi?id=139261
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RefPtr.h:
+        (WTF::RefPtr<T>::leakRef):
+        Add a leakRef() to RefPtr so we don't have to go through PassRefPtr.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::isSafeToSendToAnotherThread):
+        Check if the string is empty before checking whether it's in an atomic string table.
+        It's safe to send empty strings to other threads even if they're in the atomic string table
+        since they will never be deallocated.
+
+2014-12-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix cast-align warning in StringImpl.h
+        https://bugs.webkit.org/show_bug.cgi?id=139222
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::tailPointer):
+
 2014-12-02  Mark Lam  <mark.lam@apple.com>
 
         Rolling out r176592, r176603, r176616, and r176705 until build and perf issues are resolved.

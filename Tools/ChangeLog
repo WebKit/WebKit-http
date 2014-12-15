@@ -1,3 +1,663 @@
+2014-12-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] REGRESSION(r175555) GTK API Tests run outside the JHBuild.
+        https://bugs.webkit.org/show_bug.cgi?id=139537
+
+        Reviewed by Carlos Garcia Campos.
+
+        * jhbuild/jhbuild-wrapper: Pass the port name in the invocation
+        of get_dependencies_path().
+        * jhbuild/jhbuildutils.py:
+        (get_dependencies_path): Fix the function to return the new
+        dependencies path: DependenciesPORT.
+        (enter_jhbuild_environment_if_available): Pass the port name
+        when invoking get_dependencies_path().
+
+2014-12-10  Lucas Forschler  <lforschler@apple.com>
+
+        Update Apple owned build slaves.
+        
+        Rubber-stamped by Dana Burkart.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2014-12-10  Daniel Bates  <dabates@apple.com>
+
+        [iOS] REGRESSION (r174642): Watchdog timer expiration reported as DumpRenderTree.app
+        timeout instead of test failure
+        https://bugs.webkit.org/show_bug.cgi?id=139525
+
+        Reviewed by Zalan Bujtas.
+
+        Increase the default process timeout limit in run-webkit-tests to 80ms to prevent
+        run-webkit-tests from prematurely terminating DumpRenderTree.app before it dumps
+        output.
+
+        Following <http://trac.webkit.org/changeset/174642>, DumpRenderTree.app waits
+        for the WebThread to spin its run loop before dumping its output. A test that
+        calls testRunner.waitUntilDone() and does not subsequently call testRunner.notifyDone()
+        before DumpRenderTree.app's watchdog timer expires may be incorrectly reported
+        by run-webkit-tests as a DumpRenderTree.app timeout instead of a test failure
+        because run-webkit-tests may terminate a DumpRenderTree.app process when it
+        exceeds its process time limit (defaults to 35ms) regardless of whether such
+        a DumpRenderTree.app process was waiting for the WebThread to run so as to dump output.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.default_timeout_ms):
+
+2014-12-09  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK][WK2] Add HTML5 Notifications support
+        https://bugs.webkit.org/show_bug.cgi?id=61140
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitperl/FeatureList.pm: enable notifications for GTK+.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewNotification):
+        (beforeAll):
+        * MiniBrowser/gtk/BrowserWindow.c: also handle notification permission requests.
+        (permissionRequestDialogCallback):
+        (webViewDecidePermissionRequest):
+        (geolocationRequestDialogCallback): Deleted.
+
+2014-12-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix webkitpy test expectation
+
+        Not sure what I messed up, but TOTAL_SKIPS was not right.
+
+        * Scripts/webkitpy/port/test.py:
+
+2014-12-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove virtual test support from webkitpy
+        https://bugs.webkit.org/show_bug.cgi?id=139427
+
+        Reviewed by Alexey Proskuryakov.
+
+        It seems that the only concrete client of virtual tests is the unit tests :D
+
+        This patch tries to clean as much useless code as possible.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests_integrationtest.py:
+        (RunTest.test_tolerance):
+        (RunTest.test_virtual): Deleted.
+        * Scripts/webkitpy/layout_tests/views/printing.py:
+        (Printer._print_test_trace):
+        * Scripts/webkitpy/port/base.py:
+        (Port.expected_filename):
+        (Port.tests):
+        (Port.test_isfile):
+        (Port.test_isdir):
+        (Port.sample_process):
+        (Port.find_system_pid):
+        (Port.test_expectations_file_position):
+        (Port.virtual_test_suites): Deleted.
+        (Port): Deleted.
+        (Port.populated_virtual_test_suites): Deleted.
+        (Port._virtual_tests): Deleted.
+        (Port.lookup_virtual_test_base): Deleted.
+        (Port.lookup_virtual_test_args): Deleted.
+        (VirtualTestSuite): Deleted.
+        (VirtualTestSuite.__init__): Deleted.
+        (VirtualTestSuite.__repr__): Deleted.
+        * Scripts/webkitpy/port/base_unittest.py:
+        (PortTest.test_test_exists):
+        (PortTest.test_test_isfile):
+        (PortTest.test_test_isdir):
+        (PortTest.test_tests):
+        * Scripts/webkitpy/port/driver.py:
+        (DriverProxy.run_test): Deleted.
+        * Scripts/webkitpy/port/test.py:
+        (TestPort._skipped_tests_for_unsupported_features):
+        (TestPort.all_baseline_variants):
+        (TestPort.virtual_test_suites): Deleted.
+        * Scripts/webkitpy/tool/commands/queries.py:
+        (PrintBaselines.__init__):
+        (PrintBaselines.execute):
+        * Scripts/webkitpy/tool/commands/queries_unittest.py:
+        (PrintBaselinesTest.test_basic):
+        (PrintBaselinesTest.test_multiple):
+        (PrintBaselinesTest.test_csv):
+
+2014-12-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Blink Merge: Remove 'http_lock' code from webkitpy
+        https://bugs.webkit.org/show_bug.cgi?id=136722
+
+        Reviewed by Alexey Proskuryakov.
+
+        Based on Blink commit by Dirk Pranke <dpranke@chromium.org>
+        https://chromium.googlesource.com/chromium/blink/+/196f8146a948275c2f1594b13e30ab19a6e6fd66
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.__init__):
+        (LayoutTestRunner.run_tests):
+        (LayoutTestRunner.start_servers): Renamed from start_servers_with_lock.
+        (LayoutTestRunner.stop_servers): Renamed from stop_servers_with_lock.
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner_unittest.py:
+        (FakePrinter.flush):
+        (LayoutTestRunnerTests._runner):
+        (LayoutTestRunnerTests._run_tests):
+        (LayoutTestRunnerTests.test_servers_started):
+        (LockCheckingRunner): Deleted.
+        (LockCheckingRunner.__init__): Deleted.
+        (LockCheckingRunner.handle_finished_list): Deleted.
+        (LayoutTestRunnerTests.test_http_locking): Deleted.
+        * Scripts/webkitpy/port/base.py:
+        (Port.__init__):
+        (Port.to.http_server_supports_ipv6):
+        (Port.to.stop_websocket_server):
+        (Port.to.acquire_http_lock): Deleted.
+        (Port.to.release_http_lock): Deleted.
+        * Scripts/webkitpy/port/http_lock.py: Removed.
+        * Scripts/webkitpy/port/http_lock_unittest.py: Removed.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.show_results_html_file):
+        (IOSSimulatorPort.acquire_http_lock): Deleted.
+        (IOSSimulatorPort): Deleted.
+        (IOSSimulatorPort.release_http_lock): Deleted.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.show_results_html_file):
+        (MacPort): Deleted.
+        (MacPort.acquire_http_lock): Deleted.
+        (MacPort.release_http_lock): Deleted.
+        * Scripts/webkitpy/port/mock_drt.py:
+        (MockDRTPort.start_websocket_server):
+        (MockDRTPort.stop_websocket_server):
+        (MockDRTPort.acquire_http_lock): Deleted.
+        (MockDRTPort.release_http_lock): Deleted.
+        * Scripts/webkitpy/port/mock_drt_unittest.py:
+        (MockDRTPortTest.test_uses_apache):
+        (MockDRTPortTest.integration_test_http_lock): Deleted.
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase.assert_servers_are_up):
+        (PortTestCase.integration_test_http_lock): Deleted.
+        * Scripts/webkitpy/port/test.py:
+        (TestPort.start_websocket_server):
+        (TestPort.stop_websocket_server):
+        (TestPort.acquire_http_lock): Deleted.
+        (TestPort.release_http_lock): Deleted.
+
+2014-12-09  Alberto Garcia  <berto@igalia.com>
+
+        convertToUTF8String converts null string to empty string
+        https://bugs.webkit.org/show_bug.cgi?id=133904
+
+        Reviewed by Carlos Garcia Campos.
+
+        Test that trying to get the value of a non-existent attribute
+        returns 0 instead of an empty string.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeTest.cpp:
+        (WebKitDOMNodeTest::testInsertion):
+
+2014-12-09  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] Bump minimum version of ATK used by jhbuild to at least 2.15.2
+        https://bugs.webkit.org/show_bug.cgi?id=139070
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules:
+
+2014-12-08  Tim Horton  <timothy_horton@apple.com>
+
+        Add action menu tests
+        https://bugs.webkit.org/show_bug.cgi?id=139156
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/PlatformWebView.h:
+        * TestWebKitAPI/mac/PlatformWebViewMac.mm:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView):
+        Add a mechanism allowing tests to provide their own WKView subclass.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/action-menu-targets.html: Added.
+        Add a file with lots of menu targets.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenus.mm: Added.
+        (-[ActionMenusTestWKView _actionMenuItemsForHitTestResult:withType:defaultActionMenuItems:userData:]):
+        (-[ActionMenusTestWKView runMenuSequenceAtPoint:preMenuNeedsUpdateHandler:preWillOpenMenuHandler:preDidCloseMenuHandler:]):
+        (-[ActionMenusTestWKView runMenuSequenceAtPoint:preDidCloseMenuHandler:]):
+        Run through the normal sequence of callbacks, recording what items and type were returned, and give clients a chance to do work at various points in the process.
+
+        (-[ActionMenusTestWKView _setOverrideActionMenuItems:]):
+
+        (TestWebKitAPI::didFinishLoadForFrameCallback):
+        (TestWebKitAPI::didFinishDownloadCallback):
+        (TestWebKitAPI::didCreateDownloadDestinationCallback):
+        Watch downloads and ensure that they match the content we expect.
+
+        (TestWebKitAPI::watchPasteboardForString):
+        (TestWebKitAPI::watchPasteboardForImage):
+        (TestWebKitAPI::JavaScriptStringCallbackContext::JavaScriptStringCallbackContext):
+        (TestWebKitAPI::JavaScriptBoolCallbackContext::JavaScriptBoolCallbackContext):
+        (TestWebKitAPI::javaScriptStringCallback):
+        (TestWebKitAPI::javaScriptBoolCallback):
+        (TestWebKitAPI::callJavaScriptReturningString):
+        (TestWebKitAPI::callJavaScriptReturningBool):
+        (TestWebKitAPI::watchEditableAreaForString):
+        (TestWebKitAPI::waitForVideoReady):
+        (TestWebKitAPI::retrieveSelection):
+        (TestWebKitAPI::retrieveSelectionInElement):
+        (TestWebKitAPI::performMenuItemAtIndexOfTypeAsync):
+        (TestWebKitAPI::ensureMenuItemAtIndexOfTypeIsDisabled):
+        Add many helpers for testing, especially to make asynchronous things synchronous.
+
+        (TestWebKitAPI::windowPointForTarget):
+        (TestWebKitAPI::inset8):
+        Hard-code points in action-menu-targets.html for hit testing.
+
+        (TestWebKitAPI::TEST):
+        Add a suite of tests for WebKit2 action menus.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenusBundle.mm: Added.
+        (TestWebKitAPI::createActionContextForPhoneNumber):
+        (TestWebKitAPI::ActionMenuTest::ActionMenuTest):
+        (TestWebKitAPI::ActionMenuTest::prepareForActionMenu):
+        (TestWebKitAPI::ActionMenuTest::actionContextForResultAtPoint):
+        (TestWebKitAPI::ActionMenuTest::drawRect):
+        (TestWebKitAPI::ActionMenuTest::didCreatePage):
+        Add a bundle with a PageOverlay and a actionContextForResultAtPoint override,
+        so that we can test that infrastructure.
+
+2014-12-08  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] UserMedia Permission Request API
+        https://bugs.webkit.org/show_bug.cgi?id=136449
+
+        Reviewed by Carlos Garcia Campos.
+
+        The GTK version of the MiniBrowser has gained UserMedia permission
+        request support.
+
+        * MiniBrowser/gtk/BrowserWindow.c: Show a popup when the page
+        requires user permission to access audio/video devices.
+        (permissionRequestDialogCallback):
+        (webViewDecidePermissionRequest):
+        (geolocationRequestDialogCallback): Deleted.
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out method for clearing out the website data store
+        https://bugs.webkit.org/show_bug.cgi?id=139404
+
+        Reviewed by Antti Koivisto.
+
+        Add a debug menu item for testing clearing of website data.
+
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController clearWebsiteData:]):
+
+2014-12-07  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        Update style checker to deal with "const override"
+        https://bugs.webkit.org/show_bug.cgi?id=139371
+
+        Reviewed by Csaba Osztrogonác.
+
+        check-webkit-style shouldn't complain about an open brace to start a
+        line after a function definition with const override.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_braces):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_brace_at_begin_of_line):
+
+2014-12-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Fix GObject DOM bindings API break tests after r176920
+        https://bugs.webkit.org/show_bug.cgi?id=139368
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Remove the @version from the symbol name before comparing.
+
+        * gtk/check-for-webkitdom-api-breaks:
+        (read_expected_api):
+
+2014-12-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove the option to automatically update the GObject DOM bindings symbols file
+        https://bugs.webkit.org/show_bug.cgi?id=139366
+
+        Reviewed by Martin Robinson.
+
+        It's currently broken, because symbols now need to be in a
+        specific order. Now that the symbols file only contains stable
+        API, it's not a problem to manually update it every time new API
+        is added.
+
+        * gtk/check-for-webkitdom-api-breaks:
+        (read_expected_api):
+        (check_api):
+        (write_expected_api): Deleted.
+
+2014-12-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use GMainLoopSource in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=138831
+
+        Reviewed by Sergio Villar Senin.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::platformInitialize):
+        (WTR::TestRunner::invalidateWaitToDumpWatchdogTimer):
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        (WTR::waitToDumpWatchdogTimerCallback): Deleted.
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::notifyDone):
+        (WTR::TestController::platformRunUntil):
+        (WTR::cancelTimeout): Deleted.
+
+2014-12-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Missing API detected in GObject DOM bindings after r176630
+        https://bugs.webkit.org/show_bug.cgi?id=139201
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Handle deprecated symbols again when generating the GObject DOM
+        bindings documentation.
+
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGenerator):
+        (WebKitDOMDocGenerator.is_deprecated_symbol_file):
+        (WebKitDOMDocGenerator.generate):
+        (WebKitDOMDocGeneratorSections.__init__):
+        (WebKitDOMDocGeneratorSections._find_deprecated_symbols):
+        (WebKitDOMDocGeneratorSections.write_section):
+
+2014-12-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL][jhbuild] Fix libsoup build with clang
+        https://bugs.webkit.org/show_bug.cgi?id=139088
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+        * efl/patches/soup-clang-warning-fix1.patch: Added.
+        * efl/patches/soup-clang-warning-fix2.patch: Added.
+
+2014-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] DumpRenderTree sets storage directory incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=139347
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm: (setDefaultsToConsistentValuesForTesting):
+        Don't use user defaults to pass per-instance paths, as user defaults are shared
+        across all instances.
+
+2014-12-05  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: I cannot activate links on the mobile version of news.google.com
+        https://bugs.webkit.org/show_bug.cgi?id=139330
+
+        Reviewed by Simon Fraser.
+
+        Implement press for iOS.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::press):
+
+2014-12-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Query -[WAKWindow screenScale] instead of using WKGetScreenScaleFactor()
+        https://bugs.webkit.org/show_bug.cgi?id=139326
+
+        Reviewed by Anders Carlsson.
+
+        Ask the window for its screen scale factor instead of calling WKGetScreenScaleFactor()
+        to query the OS for it. This approach will ensure DumpRenderTree takes the snapshot
+        using the same scale factor as used in WebKit.
+
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        (createBitmapContextFromWebView):
+
+2014-12-05  Anders Carlsson  <andersca@apple.com>
+
+        REGRESSION (r176677): All tests crash on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139321
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+        Don't call CFRelease on the url while we have an outstanding pointer to its string,
+        and use the right number of bytes when allocating the testURL buffer.
+
+2014-12-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] DumpRenderTree produces many reference test mismatches
+        https://bugs.webkit.org/show_bug.cgi?id=139314
+
+        Reviewed by Simon Fraser.
+
+        Fixes an issue where the scale factor used to render the snapshot taken by
+        DumpRenderTree may differ from the device scale factor. In particular, the
+        scale factor used to render a snapshot of a test may differ from the scale
+        factor used to render the snapshot of its expected result.
+
+        Currently DumpRenderTree uses SPI, -[UIView newSnapshotForRect], on iOS to
+        snapshot the UIWebBrowserView. This SPI always render using a scale factor
+        of one when the backing store for the LegacyTileLayer objects were out-of-
+        date regardless of the device scale factor. Instead we should use UIImage
+        and CALayer API to perform the snapshot with respect to the device scale
+        factor.
+
+        Additionally write iOS pixel dump support logic in terms of existing
+        DumpRenderTree abstractions so as to support generating and comparing
+        pixel dump checksums as well as make the iOS code more consistent with
+        the logic used by other ports.
+
+        * DumpRenderTree/PixelDumpSupport.cpp:
+        (dumpWebViewAsPixelsAndCompareWithExpected): Removed !PLATFORM(IOS)-guard.
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        (BitmapContext::createFromUIImage): Added.
+        (BitmapContext::pixelData): Added.
+        (BitmapContext::BitmapContext): Added.
+        (computeMD5HashStringForBitmapContext): Added.
+        (dumpBitmap): Added.
+        (createBitmapContextFromWebView): Moved logic from dumpWebViewAsPixelsAndCompareWithExpected() to here.
+        (dumpWebViewAsPixelsAndCompareWithExpected): Deleted.
+
+2014-12-05  Anders Carlsson  <andersca@apple.com>
+
+        Give all web pages a website data store
+        https://bugs.webkit.org/show_bug.cgi?id=139317
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate newPrivateWindow:]):
+        Don't release the controller - it's implicitly retained by the window.
+
+2014-12-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] DumpRenderTree fails to render every other test when pixel tests are on
+        https://bugs.webkit.org/show_bug.cgi?id=137581
+        <rdar://problem/18642906>
+
+        Reviewed by Simon Fraser.
+
+        Fixes an issue where the DumpRenderTree snapshot may reflect the rendered content
+        of the test that proceeded the currently running test.
+
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        (dumpWebViewAsPixelsAndCompareWithExpected): Ensure that UIKit has performed a layout
+        of the UIWebBrowserView view. Also, remove unnecessary call to -[UIWebDocumentView layoutTilesNow]
+        as -[UIWebDocumentView newSnapshotWithRect] will layout the tiles.
+
+2014-12-05  Jer Noble  <jer.noble@apple.com>
+
+        [WTF] MediaTime should support round-tripping from and to doubles.
+        https://bugs.webkit.org/show_bug.cgi?id=139248
+
+        Reviewed by Eric Carlson.
+
+        Add API tests for new features of MediaTime. Update the LLDB python provider to correctly display
+        the MediaTimes after this change.
+
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+        (WTF::operator<<):
+        (TestWebKitAPI::TEST):
+        * lldb/lldb_webkit.py:
+        (WTFMediaTime_SummaryProvider):
+        (WTFMediaTimeProvider.timeValueAsDouble):
+        (WTFMediaTimeProvider.isIndefinite):
+        (WTFMediaTimeProvider):
+        (WTFMediaTimeProvider.hasDoubleValue):
+
+2014-12-05  Anders Carlsson  <andersca@apple.com>
+
+        Add a private browsing mode to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=139308
+
+        Reviewed by Sam Weinig.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (defaultConfiguration):
+        (-[BrowserAppDelegate newWindow:]):
+        (-[BrowserAppDelegate newPrivateWindow:]):
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK2BrowserWindowController.h:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController initWithConfiguration:]):
+        (-[WK2BrowserWindowController dealloc]):
+        (-[WK2BrowserWindowController observeValueForKeyPath:ofObject:change:context:]):
+
+2014-12-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Run http tests parallel
+        https://bugs.webkit.org/show_bug.cgi?id=138958
+
+        Reviewed by Daniel Bates.
+
+        Remove the concept of "locked shard". Now http tests are just like any other tests.
+        We start HTTP and WebSocket servers at the start if we need them, and terminate them
+        when done with all the tests (not when the last http test runs, which is unnecessarily
+        unpredictable).
+
+        This makes debug tests run in 8 minutes and 12 seconds on my Mac Pro. Without the
+        patch, they used to take over 15 minutes.
+
+        As part of the fix, we no longer pass the number of servers to Apache. I don't
+        think that these parameters did what we wanted them to do; Apache handles the load
+        just fine without them.
+
+        The change applies to all platforms. I fixed everything I could find on Mac, and
+        Ossy told me that he's been running http tests in parallel for a long time. If
+        there is increased instability for some ports, it will need to be fixed - there is
+        generally nothing special about http tests at this point, and most code is
+        cross-platform in WebKit2.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.__init__):
+        (LayoutTestRunner.run_tests):
+        (LayoutTestRunner.start_servers_with_lock):
+        (LayoutTestRunner._handle_started_test):
+        (Worker.handle):
+        (Sharder.__init__):
+        (Sharder.shard_tests):
+        (Sharder._shard_every_file):
+        (Sharder._shard_by_directory):
+        (LayoutTestRunner._handle_finished_test_list): Deleted.
+        (LayoutTestRunner._handle_finished_test_list.find): Deleted.
+        (Sharder._shard_in_two): Deleted.
+        (Sharder): Deleted.
+        (Sharder._resize_shards): Deleted.
+        (Sharder._resize_shards.divide_and_round_up): Deleted.
+        (Sharder._resize_shards.extract_and_flatten): Deleted.
+        (Sharder._resize_shards.split_at): Deleted.
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner_unittest.py:
+        (FakePrinter.print_workers_and_shards):
+        (LayoutTestRunnerTests.test_servers_started.start_http_server):
+        (LayoutTestRunnerTests.test_servers_started):
+        (SharderTests.get_shards):
+        (SharderTests.test_shard_by_dir):
+        (SharderTests.test_shard_every_file):
+        (SharderTests): Deleted.
+        (SharderTests.test_shard_in_two): Deleted.
+        (SharderTests.test_shard_in_two_has_no_locked_shards): Deleted.
+        (SharderTests.test_shard_in_two_has_no_unlocked_shards): Deleted.
+        (SharderTests.test_multiple_locked_shards): Deleted.
+        * Scripts/webkitpy/layout_tests/controllers/manager_unittest.py:
+        (ManagerTest.test_needs_servers.get_manager):
+        (ManagerTest.integration_test_needs_servers.get_manager):
+        (ManagerTest.test_look_for_new_crash_logs.get_manager):
+        (ManagerTest):
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (_set_up_derived_options):
+        * Scripts/webkitpy/layout_tests/run_webkit_tests_integrationtest.py:
+        (RunTest.test_batch_size):
+        (RunTest.test_max_locked_shards): Deleted.
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__):
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server_unittest.py:
+        (TestLayoutTestApacheHttpd.test_start_cmd):
+        * Scripts/webkitpy/layout_tests/servers/http_server.py:
+        (Lighttpd.__init__):
+        * Scripts/webkitpy/layout_tests/servers/http_server_base.py:
+        (HttpServerBase.__init__):
+        * Scripts/webkitpy/layout_tests/views/printing.py:
+        (Printer.print_workers_and_shards):
+        * Scripts/webkitpy/port/base.py:
+        (Port.default_child_processes):
+        (Port.to.start_http_server):
+        (Port.default_max_locked_shards): Deleted.
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase.make_port):
+        (PortTestCase.test_default_max_locked_shards): Deleted.
+        * Scripts/webkitpy/port/test.py:
+        (TestPort.start_http_server):
+
+2014-12-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't lock perf tests in run-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=139264
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner_unittest.py:
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        * Scripts/webkitpy/layout_tests/models/test_input.py:
+        * Scripts/webkitpy/layout_tests/run_webkit_tests_integrationtest.py:
+
+2014-12-03  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/security/mixedContent/about-blank-iframe-in-main-frame.html fails unless certain other tests run before it
+        https://bugs.webkit.org/show_bug.cgi?id=139243
+
+        Reviewed by Anders Carlsson.
+
+        We didn't get WKPageLoaderClient calls in secondary windows, so we didn't have a
+        chance to allow untrusted certificates.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::createOtherPage):
+        Set up more client objects for secondary windows. We may be able to share some of the
+        code with main view creation function, but it's not exactly the same (notably, we
+        do not focus a secondary window when it's done loading).
+
+2014-12-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Inline text elements with accessible object attributes and/or event handlers are not exposed
+        https://bugs.webkit.org/show_bug.cgi?id=139071
+
+        Reviewed by Chris Fleizach.
+
+        Add string value for ATK_ROLE_STATIC in roleToString.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+
 2014-12-03  Renato Nagy  <rnagy@inf.u-szeged.hu>
 
         check-webkit-style is confused by ternary expression inside first member initializer

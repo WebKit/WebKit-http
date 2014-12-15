@@ -638,6 +638,8 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
     // so rangeOfContents does not work for them (nor does regular text selection).
     if (is<RenderText>(*m_renderer) && m_renderer->isAnonymous() && ancestorsOfType<RenderMathMLOperator>(*m_renderer).first())
         return downcast<RenderText>(*m_renderer).text();
+    if (is<RenderMathMLOperator>(*m_renderer) && !m_renderer->isAnonymous())
+        return downcast<RenderMathMLOperator>(*m_renderer).element().textContent();
 #endif
 
     // rangeOfContents does not include CSS-generated content.
@@ -2646,6 +2648,15 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (supportsARIAAttributes() || canSetFocusAttribute())
         return GroupRole;
     
+    // InlineRole is the final fallback before assigning UnknownRole to an object. It makes it
+    // possible to distinguish truly unknown objects from non-focusable inline text elements
+    // which have an event handler or attribute suggesting possible inclusion by the platform.
+    if (is<RenderInline>(*m_renderer)
+        && (hasAttributesRequiredForInclusion()
+            || (node && node->hasEventListeners())
+            || (supportsDatetimeAttribute() && !getAttribute(datetimeAttr).isEmpty())))
+        return InlineRole;
+
     return UnknownRole;
 }
 
@@ -3532,6 +3543,11 @@ bool AccessibilityRenderObject::isMathSquareRoot() const
     return m_renderer && m_renderer->isRenderMathMLSquareRoot();
 }
     
+bool AccessibilityRenderObject::isMathToken() const
+{
+    return m_renderer && m_renderer->isRenderMathMLToken();
+}
+
 bool AccessibilityRenderObject::isMathRoot() const
 {
     return m_renderer && m_renderer->isRenderMathMLRoot();
@@ -3563,7 +3579,7 @@ bool AccessibilityRenderObject::isMathSeparatorOperator() const
     
 bool AccessibilityRenderObject::isMathText() const
 {
-    return node() && node()->hasTagName(MathMLNames::mtextTag);
+    return node() && (node()->hasTagName(MathMLNames::mtextTag) || hasTagName(MathMLNames::msTag));
 }
 
 bool AccessibilityRenderObject::isMathNumber() const
@@ -3588,7 +3604,7 @@ bool AccessibilityRenderObject::isMathTable() const
 
 bool AccessibilityRenderObject::isMathTableRow() const
 {
-    return node() && node()->hasTagName(MathMLNames::mtrTag);
+    return node() && (node()->hasTagName(MathMLNames::mtrTag) || hasTagName(MathMLNames::mlabeledtrTag));
 }
 
 bool AccessibilityRenderObject::isMathTableCell() const

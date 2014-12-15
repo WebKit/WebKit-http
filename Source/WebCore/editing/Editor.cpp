@@ -857,7 +857,7 @@ bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessP
     target->dispatchEvent(event, IGNORE_EXCEPTION);
     bool noDefaultProcessing = event->defaultPrevented();
     if (noDefaultProcessing && policy == DataTransferAccessPolicy::Writable) {
-        OwnPtr<Pasteboard> pasteboard = Pasteboard::createForCopyAndPaste();
+        auto pasteboard = Pasteboard::createForCopyAndPaste();
         pasteboard->clear();
         pasteboard->writePasteboard(dataTransfer->pasteboard());
     }
@@ -1091,7 +1091,11 @@ Editor::~Editor()
 
 void Editor::clear()
 {
-    m_compositionNode = 0;
+    if (m_compositionNode) {
+        m_compositionNode = nullptr;
+        if (EditorClient* client = this->client())
+            client->discardedComposition(&m_frame);
+    }
     m_customCompositionUnderlines.clear();
     m_shouldStyleWithCSS = false;
     m_defaultParagraphSeparator = EditorParagraphSeparatorIsDiv;

@@ -780,69 +780,6 @@ public:
     }
 };
 
-class ApplyPropertyTextEmphasisStyle {
-public:
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setTextEmphasisFill(styleResolver->parentStyle()->textEmphasisFill());
-        styleResolver->style()->setTextEmphasisMark(styleResolver->parentStyle()->textEmphasisMark());
-        styleResolver->style()->setTextEmphasisCustomMark(styleResolver->parentStyle()->textEmphasisCustomMark());
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setTextEmphasisFill(RenderStyle::initialTextEmphasisFill());
-        styleResolver->style()->setTextEmphasisMark(RenderStyle::initialTextEmphasisMark());
-        styleResolver->style()->setTextEmphasisCustomMark(RenderStyle::initialTextEmphasisCustomMark());
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (is<CSSValueList>(*value)) {
-            CSSValueList& list = downcast<CSSValueList>(*value);
-            ASSERT(list.length() == 2);
-            if (list.length() != 2)
-                return;
-            for (unsigned i = 0; i < 2; ++i) {
-                CSSValue* item = list.itemWithoutBoundsCheck(i);
-                if (!is<CSSPrimitiveValue>(*item))
-                    continue;
-
-                CSSPrimitiveValue& value = downcast<CSSPrimitiveValue>(*item);
-                if (value.getValueID() == CSSValueFilled || value.getValueID() == CSSValueOpen)
-                    styleResolver->style()->setTextEmphasisFill(value);
-                else
-                    styleResolver->style()->setTextEmphasisMark(value);
-            }
-            styleResolver->style()->setTextEmphasisCustomMark(nullAtom);
-            return;
-        }
-
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-
-        if (primitiveValue.isString()) {
-            styleResolver->style()->setTextEmphasisFill(TextEmphasisFillFilled);
-            styleResolver->style()->setTextEmphasisMark(TextEmphasisMarkCustom);
-            styleResolver->style()->setTextEmphasisCustomMark(primitiveValue.getStringValue());
-            return;
-        }
-
-        styleResolver->style()->setTextEmphasisCustomMark(nullAtom);
-
-        if (primitiveValue.getValueID() == CSSValueFilled || primitiveValue.getValueID() == CSSValueOpen) {
-            styleResolver->style()->setTextEmphasisFill(primitiveValue);
-            styleResolver->style()->setTextEmphasisMark(TextEmphasisMarkAuto);
-        } else {
-            styleResolver->style()->setTextEmphasisFill(TextEmphasisFillFilled);
-            styleResolver->style()->setTextEmphasisMark(primitiveValue);
-        }
-    }
-
-    static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
-};
-
 template <typename T,
           T (Animation::*getterFunction)() const,
           void (Animation::*setterFunction)(T),
@@ -919,54 +856,6 @@ public:
     static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
 };
 
-class ApplyPropertyAspectRatio {
-public:
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        if (styleResolver->parentStyle()->aspectRatioType() == AspectRatioAuto)
-            return;
-        styleResolver->style()->setAspectRatioType(styleResolver->parentStyle()->aspectRatioType());
-        styleResolver->style()->setAspectRatioDenominator(styleResolver->parentStyle()->aspectRatioDenominator());
-        styleResolver->style()->setAspectRatioNumerator(styleResolver->parentStyle()->aspectRatioNumerator());
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setAspectRatioType(RenderStyle::initialAspectRatioType());
-        styleResolver->style()->setAspectRatioDenominator(RenderStyle::initialAspectRatioDenominator());
-        styleResolver->style()->setAspectRatioNumerator(RenderStyle::initialAspectRatioNumerator());
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (is<CSSPrimitiveValue>(*value)) {
-            CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-
-            if (primitiveValue.getValueID() == CSSValueAuto)
-                return styleResolver->style()->setAspectRatioType(AspectRatioAuto);
-            if (primitiveValue.getValueID() == CSSValueFromDimensions)
-                return styleResolver->style()->setAspectRatioType(AspectRatioFromDimensions);
-            if (primitiveValue.getValueID() == CSSValueFromIntrinsic)
-                return styleResolver->style()->setAspectRatioType(AspectRatioFromIntrinsic);
-        }
-
-        if (!is<CSSAspectRatioValue>(*value)) {
-            styleResolver->style()->setAspectRatioType(AspectRatioAuto);
-            return;
-        }
-
-        CSSAspectRatioValue& aspectRatioValue = downcast<CSSAspectRatioValue>(*value);
-        styleResolver->style()->setAspectRatioType(AspectRatioSpecified);
-        styleResolver->style()->setAspectRatioDenominator(aspectRatioValue.denominatorValue());
-        styleResolver->style()->setAspectRatioNumerator(aspectRatioValue.numeratorValue());
-    }
-
-    static PropertyHandler createHandler()
-    {
-        return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue);
-    }
-};
-
 const DeprecatedStyleBuilder& DeprecatedStyleBuilder::sharedStyleBuilder()
 {
     static NeverDestroyed<DeprecatedStyleBuilder> styleBuilderInstance;
@@ -1026,7 +915,6 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitAnimationName, ApplyPropertyAnimation<const String&, &Animation::name, &Animation::setName, &Animation::isNameSet, &Animation::clearName, &Animation::initialAnimationName, &CSSToStyleMap::mapAnimationName, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
     setPropertyHandler(CSSPropertyWebkitAnimationPlayState, ApplyPropertyAnimation<EAnimPlayState, &Animation::playState, &Animation::setPlayState, &Animation::isPlayStateSet, &Animation::clearPlayState, &Animation::initialAnimationPlayState, &CSSToStyleMap::mapAnimationPlayState, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
     setPropertyHandler(CSSPropertyWebkitAnimationTimingFunction, ApplyPropertyAnimation<const PassRefPtr<TimingFunction>, &Animation::timingFunction, &Animation::setTimingFunction, &Animation::isTimingFunctionSet, &Animation::clearTimingFunction, &Animation::initialAnimationTimingFunction, &CSSToStyleMap::mapAnimationTimingFunction, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
-    setPropertyHandler(CSSPropertyWebkitAspectRatio, ApplyPropertyAspectRatio::createHandler());
     setPropertyHandler(CSSPropertyWebkitBackgroundClip, CSSPropertyBackgroundClip);
     setPropertyHandler(CSSPropertyWebkitBackgroundComposite, ApplyPropertyFillLayer<CompositeOperator, CSSPropertyWebkitBackgroundComposite, BackgroundFillLayer, &RenderStyle::accessBackgroundLayers, &RenderStyle::backgroundLayers, &FillLayer::isCompositeSet, &FillLayer::composite, &FillLayer::setComposite, &FillLayer::clearComposite, &FillLayer::initialFillComposite, &CSSToStyleMap::mapFillComposite>::createHandler());
     setPropertyHandler(CSSPropertyWebkitBackgroundOrigin, CSSPropertyBackgroundOrigin);
@@ -1050,7 +938,6 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitMaskSourceType, ApplyPropertyFillLayer<EMaskSourceType, CSSPropertyWebkitMaskSourceType, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isMaskSourceTypeSet, &FillLayer::maskSourceType, &FillLayer::setMaskSourceType, &FillLayer::clearMaskSourceType, &FillLayer::initialMaskSourceType, &CSSToStyleMap::mapFillMaskSourceType>::createHandler());
     setPropertyHandler(CSSPropertyWebkitPerspectiveOrigin, ApplyPropertyExpanding<SuppressValue, CSSPropertyWebkitPerspectiveOriginX, CSSPropertyWebkitPerspectiveOriginY>::createHandler());
     setPropertyHandler(CSSPropertyWebkitTextEmphasisColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::textEmphasisColor, &RenderStyle::setTextEmphasisColor, &RenderStyle::setVisitedLinkTextEmphasisColor, &RenderStyle::color>::createHandler());
-    setPropertyHandler(CSSPropertyWebkitTextEmphasisStyle, ApplyPropertyTextEmphasisStyle::createHandler());
     setPropertyHandler(CSSPropertyWebkitTextFillColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::textFillColor, &RenderStyle::setTextFillColor, &RenderStyle::setVisitedLinkTextFillColor, &RenderStyle::color>::createHandler());
     setPropertyHandler(CSSPropertyWebkitTextStrokeColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::textStrokeColor, &RenderStyle::setTextStrokeColor, &RenderStyle::setVisitedLinkTextStrokeColor, &RenderStyle::color>::createHandler());
     setPropertyHandler(CSSPropertyWebkitTransitionDelay, ApplyPropertyAnimation<double, &Animation::delay, &Animation::setDelay, &Animation::isDelaySet, &Animation::clearDelay, &Animation::initialAnimationDelay, &CSSToStyleMap::mapAnimationDelay, &RenderStyle::accessTransitions, &RenderStyle::transitions>::createHandler());

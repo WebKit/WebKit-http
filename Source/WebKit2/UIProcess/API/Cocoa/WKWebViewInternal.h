@@ -95,11 +95,12 @@ struct PrintInfo;
 
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType;
 
-- (BOOL)_isPlayingFullscreenOptimizedVideo;
+- (BOOL)_isShowingVideoOptimized;
+- (BOOL)_mayAutomaticallyShowVideoOptimized;
 
 @property (nonatomic, readonly) UIEdgeInsets _computedContentInset;
 #else
-@property (nonatomic, setter=_setIgnoresNonWheelMouseEvents:) BOOL _ignoresNonWheelMouseEvents;
+@property (nonatomic, setter=_setIgnoresNonWheelEvents:) BOOL _ignoresNonWheelEvents;
 #endif
 
 @end

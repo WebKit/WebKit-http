@@ -1,3 +1,1327 @@
+2014-12-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Explicitly export somre more RWIProtocol classes.
+        rdar://problem/19220408
+
+        Unreviewed build fix.
+
+        * inspector/scripts/codegen/generate_objc_configuration_header.py:
+        (ObjCConfigurationHeaderGenerator._generate_configuration_interface_for_domains):
+        * inspector/scripts/codegen/generate_objc_header.py:
+        (ObjCHeaderGenerator._generate_event_interfaces):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2014-12-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Explicitly export some RWIProtocol classes
+        rdar://problem/19220408
+
+        * inspector/scripts/codegen/generate_objc_header.py:
+        (ObjCHeaderGenerator._generate_type_interface):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2014-12-11  Mark Lam  <mark.lam@apple.com>
+
+        Fix broken build after r177146.
+        https://bugs.webkit.org/show_bug.cgi?id=139533 
+
+        Not reviewed.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::init):
+        - Restored CallFrame::init() minus the unused JSScope* arg.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        - Remove JSScope* arg when calling CallFrame::init().
+
+2014-12-11  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION: Use of undefined CallFrame::ScopeChain value
+        https://bugs.webkit.org/show_bug.cgi?id=139533
+
+        Reviewed by Mark Lam.
+
+        Removed CallFrame::scope() and CallFrame::setScope() and eliminated or changed
+        all usages of these funcitons.  In some cases the scope is passed in or determined
+        another way.  In some cases the scope is used to calculate other values.  Lastly
+        were places where these functions where used that are no longer needed.  For
+        example when making a call, the caller's ScopeChain was copied to the callee's
+        ScopeChain.  This change no longer uses the ScopeChain call frame header slot.
+        That slot will be removed in a future patch.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * runtime/JSLexicalEnvironment.h:
+        (JSC::JSLexicalEnvironment::create):
+        (JSC::JSLexicalEnvironment::JSLexicalEnvironment):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_create_lexical_environment):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_create_lexical_environment):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::handleHostCall):
+        (JSC::LLInt::setUpCall):
+        (JSC::LLInt::llint_throw_stack_overflow_error):
+        Pass the current scope value to the helper operationCreateActivation() and
+        the call to JSLexicalEnvironment::create() instead of using the stack frame
+        scope chain value.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        CreateActivation now has a second child, the scope.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::init): Deleted.  This is dead code.
+        (JSC::ExecState::scope): Deleted.
+        (JSC::ExecState::setScope): Deleted.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::dumpRegisters): Changed so we didn't access the scope
+        chain slot.  
+        
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        Changed process to find JSScope values on the stack or by some other means.
+
+        * runtime/JSWithScope.h:
+        (JSC::JSWithScope::JSWithScope): Deleted.
+        Eliminated unused constructor.
+
+        * runtime/StrictEvalActivation.cpp:
+        (JSC::StrictEvalActivation::StrictEvalActivation):
+        * runtime/StrictEvalActivation.h:
+        (JSC::StrictEvalActivation::create):
+        Changed to pass in the current scope.
+
+2014-12-10  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr instead of OwnPtr in JSC - heap, jit, runtime, and parser directories
+        https://bugs.webkit.org/show_bug.cgi?id=139351
+
+        Reviewed by Filip Pizlo.
+
+        As a step to use std::unique_ptr<>, this cleans up OwnPtr and PassOwnPtr.
+
+        * bytecode/SamplingTool.h:
+        (JSC::SamplingTool::SamplingTool):
+        * heap/CopiedBlock.h:
+        (JSC::CopiedBlock::didSurviveGC):
+        (JSC::CopiedBlock::pin):
+        * heap/CopiedBlockInlines.h:
+        (JSC::CopiedBlock::reportLiveBytes):
+        * heap/GCActivityCallback.h:
+        * heap/GCThread.cpp:
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::markListSet):
+        * jit/ExecutableAllocator.cpp:
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        * jit/JIT.h:
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::JITThunks):
+        (JSC::JITThunks::clearHostFunctionStubs):
+        * jit/JITThunks.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        (JSC::Scope::pushLabel):
+        * parser/ParserArena.cpp:
+        * parser/ParserArena.h:
+        (JSC::ParserArena::identifierArena):
+        * parser/SourceProviderCache.h:
+        * runtime/CodeCache.h:
+        * runtime/Executable.h:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::sortVector):
+        * runtime/JSGlobalObject.h:
+
+2014-12-10  Geoffrey Garen  <ggaren@apple.com>
+
+        Please disable the webkitFirstVersionWithInitConstructorSupport check on Apple TV
+        https://bugs.webkit.org/show_bug.cgi?id=139501
+
+        Reviewed by Gavin Barraclough.
+
+        NSVersionOfLinkTimeLibrary only works if you link directly against
+        JavaScriptCore, which is a bit awkward for our Apple TV client to do.
+
+        It's easy enough just to disable this check on Apple TV, since it has no
+        backwards compatibility requirement.
+
+        * API/JSWrapperMap.mm:
+        (supportsInitMethodConstructors):
+
+2014-12-10  Matthew Mirman  <mmirman@apple.com>
+
+        Fixes operationPutByIds such that they check that the put didn't
+        change the structure of the object who's property access is being
+        cached.
+        https://bugs.webkit.org/show_bug.cgi?id=139196
+
+        Reviewed by Filip Pizlo.
+
+        * jit/JITOperations.cpp:
+        (JSC::operationGetByIdOptimize): changed get to getPropertySlot
+        (JSC::operationPutByIdStrictBuildList): saved the structure before the put.
+        (JSC::operationPutByIdNonStrictBuildList): ditto.
+        (JSC::operationPutByIdDirectStrictBuildList): ditto.
+        (JSC::operationPutByIdDirectNonStrictBuildList): ditto.
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID): fixed structure() to use the existant vm. 
+        (JSC::tryBuildPutByIdList): Added a check that the old structure's id 
+        is the same as the new.
+        (JSC::buildPutByIdList): Added an argument
+        * jit/Repatch.h: 
+        (JSC::buildPutByIdList): Added an argument
+        * tests/stress/put-by-id-strict-build-list-order.js: Added.
+
+2014-12-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r177030.
+
+        Fix linking failure occured on ARM buildbots:
+        lib/libjavascriptcore_efl.so.1.11.0: undefined reference to `JSC::Structure::get(JSC::VM&, JSC::PropertyName, unsigned int&)'
+
+        * runtime/NullGetterFunction.cpp:
+
+2014-12-09  Michael Saboff  <msaboff@apple.com>
+
+        DFG Tries using an inner object's getter/setter when one hasn't been defined
+        https://bugs.webkit.org/show_bug.cgi?id=139229
+
+        Reviewed by Filip Pizlo.
+
+        Added a new NullGetterFunction singleton class to use for getters and setters that
+        haven't been set to a user defined value.  The NullGetterFunction callReturnUndefined()
+        and createReturnUndefined() methods return undefined.  Changed all null checks of the
+        getter and setter pointers to the newly added isGetterNull() and isSetterNull()
+        helper methods.  
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Added NullGetterFunction.cpp & .h to build files.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncLookupGetter):
+        (JSC::objectProtoFuncLookupSetter):
+        * runtime/PropertyDescriptor.cpp:
+        (JSC::PropertyDescriptor::setDescriptor):
+        (JSC::PropertyDescriptor::setAccessorDescriptor):
+        Changed checking getter and setter to null to use new isGetterNull() and isSetterNull()
+        helpers.
+
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putIndexedDescriptor):
+        (JSC::putDescriptor):
+        (JSC::JSObject::defineOwnNonIndexProperty):
+        * runtime/MapPrototype.cpp:
+        (JSC::MapPrototype::finishCreation):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+        Updated calls to GetterSetter::create(), setGetter(), setSetter(), withGetter()
+        and withSetter() to provide a global object.
+
+        * runtime/GetterSetter.cpp:
+        (JSC::GetterSetter::withGetter):
+        (JSC::GetterSetter::withSetter):
+        (JSC::callGetter):
+        (JSC::callSetter):
+        * runtime/GetterSetter.h:
+        (JSC::GetterSetter::GetterSetter):
+        (JSC::GetterSetter::create):
+        (JSC::GetterSetter::isGetterNull):
+        (JSC::GetterSetter::isSetterNull):
+        (JSC::GetterSetter::setGetter):
+        (JSC::GetterSetter::setSetter):
+        Changed to use NullGetterFunction for unspecified getters / setters.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::createThrowTypeError):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::nullGetterFunction):
+        (JSC::JSGlobalObject::evalFunction):
+        Added m_nullGetterFunction singleton.  Updated calls to GetterSetter::create(),
+        setGetter() and setSetter() to provide a global object.
+
+        * runtime/NullGetterFunction.cpp: Added.
+        (JSC::callReturnUndefined):
+        (JSC::constructReturnUndefined):
+        (JSC::NullGetterFunction::getCallData):
+        (JSC::NullGetterFunction::getConstructData):
+        * runtime/NullGetterFunction.h: Added.
+        (JSC::NullGetterFunction::create):
+        (JSC::NullGetterFunction::createStructure):
+        (JSC::NullGetterFunction::NullGetterFunction):
+        New singleton class that returns undefined when called.
+
+2014-12-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Re-enable function.arguments
+        https://bugs.webkit.org/show_bug.cgi?id=139452
+        <rdar://problem/18848149>
+
+        Reviewed by Sam Weinig.
+
+        Disabling function.arguments broke a few websites, and we don't have
+        time right now to work through the details.
+
+        I'm re-enabling function.arguments but leaving in the infrastructure
+        to re-disable it, so we can try this experiment again in the future.
+
+        * runtime/Options.h:
+
+2014-12-09  David Kilzer  <ddkilzer@apple.com>
+
+        Switch from using PLATFORM_NAME to SDK selectors in ANGLE, bmalloc, gtest, JavaScriptCore, WTF
+        <http://webkit.org/b/139212>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        - Only set GCC_ENABLE_OBJC_GC, GCC_MODEL_TUNING and TOOLCHAINS
+          on OS X.
+        - Only set LLVM_LOCAL_HEADER_PATH and LLVM_SYSTEM_HEADER_PATH on
+          OS X.
+        - Set JAVASCRIPTCORE_CONTENTS_DIR and
+          JAVASCRIPTCORE_FRAMEWORKS_DIR separately for iOS and OS X.
+
+        * Configurations/DebugRelease.xcconfig:
+        - Only set MACOSX_DEPLOYMENT_TARGET and SDKROOT on OS X.
+
+        * Configurations/JSC.xcconfig:
+        - Only set CODE_SIGN_ENTITLEMENTS for iOS hardware builds.
+
+        * Configurations/JavaScriptCore.xcconfig:
+        - Set OTHER_LDFLAGS separately for iOS and OS X.
+        - Set SECTORDER_FLAGS separately for iOS and OS X, but only for
+          Production builds.
+        - Only set EXCLUDED_SOURCE_FILE_NAMES for iOS.
+
+        * Configurations/LLVMForJSC.xcconfig:
+        - Rename LLVM_LIBS_iphoneos to LLVM_LIBS_ios.
+        - Set LLVM_LIBRARY_PATHS and OTHER_LDFLAGS_LLVM_ENABLE_FTL_JIT
+          separately for iOS hardware and OS X.
+        - Fix curly braces in LIBRARY_SEARCH_PATHS.
+        - Merge OTHER_LDFLAGS_BASE into OTHER_LDFLAGS. (Could have been
+          done before this patch.)
+
+        * Configurations/ToolExecutable.xcconfig:
+        - Only set CODE_SIGN_ENTITLEMENTS for iOS, per target.
+        - Only set CLANG_ENABLE_OBJC_ARC for i386 on the iOS Simulator.
+        - Add missing newline.
+
+        * Configurations/Version.xcconfig:
+        - Set SYSTEM_VERSION_PREFIX separately for iOS and OS X.
+
+2014-12-08  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Fix EFL build fix since r177001
+        https://bugs.webkit.org/show_bug.cgi?id=139428
+
+        Unreviewed, EFL build fix.
+
+        Do not inherit duplicated class. ExpressionNode is already
+        child of ParserArenaFreeable class.
+
+        * parser/Nodes.h:
+
+2014-12-08  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Fix Build Warning in JavaScriptCore ControlFlowProfiler::dumpData() api.
+        https://bugs.webkit.org/show_bug.cgi?id=139384
+
+        Reviewed by Mark Lam.
+
+        Fix Build Warning by using dataLog() function instead of dataLogF() function.
+
+        * runtime/ControlFlowProfiler.cpp:
+        (JSC::ControlFlowProfiler::dumpData):
+
+2014-12-08  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Enable runtime API for JSC's control flow profiler
+        https://bugs.webkit.org/show_bug.cgi?id=139346
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch creates an API that the Web Inspector can use
+        to get information about which basic blocks have exectued
+        from JSC's control flow profiler.
+
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getBasicBlocks):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/protocol/Runtime.json:
+
+2014-12-08  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed some allocation and cruft from the parser
+        https://bugs.webkit.org/show_bug.cgi?id=139416
+
+        Reviewed by Mark Lam.
+
+        Now, the only AST nodes that require a destructor are the ones that
+        relate to pickling a function's arguments -- which will required some
+        deeper thinking to resolve.
+
+        This is a < 1% parser speedup.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj: Removed NodeInfo because it
+        was unused.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::CommaNode::emitBytecode):
+        (JSC::SourceElements::lastStatement):
+        (JSC::SourceElements::emitBytecode): Updated for interface change to linked list.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::ASTBuilder):
+        (JSC::ASTBuilder::varDeclarations):
+        (JSC::ASTBuilder::funcDeclarations):
+        (JSC::ASTBuilder::createFuncDeclStatement):
+        (JSC::ASTBuilder::addVar): Removed the ParserArenaData abstraction because
+        it wasn't buying us anything. We can just use Vector directly.
+
+        (JSC::ASTBuilder::createCommaExpr):
+        (JSC::ASTBuilder::appendToCommaExpr): Changed to use a linked list instead
+        of a vector, to avoid allocating a vector with inline capacity in the
+        common case in which an expression is not followed by a vector.
+
+        (JSC::ASTBuilder::Scope::Scope): Use Vector directly to avoid new'ing
+        up a Vector*.
+
+        (JSC::ASTBuilder::appendToComma): Deleted.
+        (JSC::ASTBuilder::combineCommaNodes): Deleted.
+
+        * parser/Lexer.cpp:
+
+        * parser/NodeConstructors.h:
+        (JSC::StatementNode::StatementNode):
+        (JSC::CommaNode::CommaNode):
+        (JSC::SourceElements::SourceElements): Updated for interface change to linked list.
+
+        * parser/NodeInfo.h: Removed.
+
+        * parser/Nodes.cpp:
+        (JSC::SourceElements::append):
+        (JSC::SourceElements::singleStatement): Use a linked list instead of a
+        vector to track the statements in a list. This removes some allocation
+        and it means that we don't need a destructor anymore.
+
+        (JSC::ScopeNode::ScopeNode):
+        (JSC::ProgramNode::ProgramNode):
+        (JSC::EvalNode::EvalNode):
+        (JSC::FunctionNode::FunctionNode): Updated for interface change to reference,
+        since these values are never null.
+
+        * parser/Nodes.h:
+        (JSC::StatementNode::next):
+        (JSC::StatementNode::setNext):
+        (JSC::CommaNode::append): Deleted. Updated for interface change to linked list.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::didFinishParsing): Updated for interface change to reference.
+
+        (JSC::Parser<LexerType>::parseVarDeclarationList):
+        (JSC::Parser<LexerType>::parseExpression): Track comma expressions as
+        an explicit list of CommaNodes, removing a use of vector and a destructor.
+
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createCommaExpr):
+        (JSC::SyntaxChecker::appendToCommaExpr):
+        (JSC::SyntaxChecker::appendToComma): Deleted. Updated for interface changes.
+
+2014-12-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r176979.
+        https://bugs.webkit.org/show_bug.cgi?id=139424
+
+        "New JSC test in this patch is failing" (Requested by mlam on
+        #webkit).
+
+        Reverted changeset:
+
+        "Fixes operationPutByIds such that they check that the put
+        didn't"
+        https://bugs.webkit.org/show_bug.cgi?id=139196
+        http://trac.webkit.org/changeset/176979
+
+2014-12-08  Matthew Mirman  <mmirman@apple.com>
+
+        Fixes operationPutByIds such that they check that the put didn't
+        change the structure of the object who's property access is being
+        cached.
+        https://bugs.webkit.org/show_bug.cgi?id=139196
+
+        Reviewed by Filip Pizlo.
+
+        * jit/JITOperations.cpp:
+        (JSC::operationGetByIdOptimize): changed get to getPropertySlot
+        (JSC::operationPutByIdStrictBuildList): saved the structure before the put.
+        (JSC::operationPutByIdNonStrictBuildList): ditto.
+        (JSC::operationPutByIdDirectStrictBuildList): ditto.
+        (JSC::operationPutByIdDirectNonStrictBuildList): ditto.
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID): fixed structure() to use the existant vm. 
+        (JSC::tryBuildPutByIdList): Added a check that the old structure's id 
+        is the same as the new.
+        (JSC::buildPutByIdList): Added an argument
+        * jit/Repatch.h: 
+        (JSC::buildPutByIdList): Added an argument
+        * tests/stress/put-by-id-build-list-order-recurse.js: Test that failed before the change
+        * tests/stress/put-by-id-strict-build-list-order.js: Added.
+
+ 
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        Change WTF::currentCPUTime to return std::chrono::microseconds and get rid of currentCPUTimeMS
+        https://bugs.webkit.org/show_bug.cgi?id=139410
+
+        Reviewed by Andreas Kling.
+
+        * API/JSContextRef.cpp:
+        (JSContextGroupSetExecutionTimeLimit):
+        (JSContextGroupClearExecutionTimeLimit):
+        * runtime/Watchdog.cpp:
+        (JSC::Watchdog::setTimeLimit):
+        (JSC::Watchdog::didFire):
+        (JSC::Watchdog::startCountdownIfNeeded):
+        (JSC::Watchdog::startCountdown):
+        * runtime/Watchdog.h:
+        * runtime/WatchdogMac.cpp:
+        (JSC::Watchdog::startTimer):
+
+2014-12-08  Mark Lam  <mark.lam@apple.com>
+
+        CFA wrongly assumes that a speculation for SlowPutArrayStorageShape disallows ArrayStorageShape arrays.
+        <https://webkit.org/b/139327>
+
+        Reviewed by Michael Saboff.
+
+        The code generator and runtime slow paths expects otherwise.  This patch fixes
+        CFA to match the code generator's expectation.
+
+        * dfg/DFGArrayMode.h:
+        (JSC::DFG::ArrayMode::arrayModesThatPassFiltering):
+        (JSC::DFG::ArrayMode::arrayModesWithIndexingShapes):
+
+2014-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Revert r176293 & r176275
+
+        Unreviewed, revert r176293 & r176275 changing the Vector API to use unsigned type
+        instead of size_t. There is some disagreement regarding the long-term direction
+        of the API and we shouldn’t leave the API partly transitioned to unsigned type
+        while making a decision.
+
+        * bytecode/PreciseJumpTargets.cpp:
+        * replay/EncodedValue.h:
+
+2014-12-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove the unused WTF_USE_GCC_COMPUTED_GOTO_WORKAROUND after r129453.
+        https://bugs.webkit.org/show_bug.cgi?id=139373
+
+        Reviewed by Sam Weinig.
+
+        * interpreter/Interpreter.cpp:
+
+2014-12-06  Anders Carlsson  <andersca@apple.com>
+
+        Fix build with newer versions of clang.
+        rdar://problem/18978716
+
+        * ftl/FTLJITCode.h:
+        Add missing overrides.
+
+2014-12-05  Roger Fong  <roger_fong@apple.com>
+
+        [Win] proj files copying over too many resources..
+        https://bugs.webkit.org/show_bug.cgi?id=139315.
+        <rdar://problem/19148278>
+
+        Reviewed by Brent Fulgham.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj: Only copy resource folders and JavaScriptCore.dll.
+
+2014-12-05  Juergen Ributzka  <juergen@apple.com>
+
+        [JSC][FTL] Add the data layout to the module and fix the pass order.
+        https://bugs.webkit.org/show_bug.cgi?id=138748
+
+        Reviewed by Oliver Hunt.
+
+        This adds the data layout to the module, so it can be used by all
+        optimization passes in the LLVM optimizer pipeline. This also allows
+        FastISel to select more instructions, because less non-legal types are
+        generated.
+        
+        Also fix the order of the alias analysis passes in the optimization
+        pipeline.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+
+2014-12-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed an unused function.
+
+        Reviewed by Michael Saboff.
+
+        Broken out from https://bugs.webkit.org/show_bug.cgi?id=139305.
+
+        * parser/ParserArena.h:
+
+2014-12-05  David Kilzer  <ddkilzer@apple.com>
+
+        FeatureDefines.xcconfig: Workaround bug in Xcode 5.1.1 when defining ENABLE_WEB_REPLAY
+        <http://webkit.org/b/139286>
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/FeatureDefines.xcconfig: Switch back to using
+        PLATFORM_NAME to workaround a bug in Xcode 5.1.1 on 10.8.
+
+2014-12-04  Mark Rowe  <mrowe@apple.com>
+
+        Build fix after r176836.
+
+        Reviewed by Mark Lam.
+
+        * runtime/VM.h:
+        (JSC::VM::controlFlowProfiler): Don't try to export an inline function.
+        Doing so results in a weak external symbol being generated.
+
+2014-12-04  Saam Barati  <saambarati1@gmail.com>
+
+        JavaScript Control Flow Profiler
+        https://bugs.webkit.org/show_bug.cgi?id=137785
+
+        Reviewed by Filip Pizlo.
+
+        This patch introduces a mechanism for JavaScriptCore to profile
+        which basic blocks have executed. This mechanism will then be
+        used by the Web Inspector to indicate which basic blocks
+        have and have not executed.
+        
+        The profiling works by compiling in an op_profile_control_flow
+        at the start of every basic block. Then, whenever this op code 
+        executes, we know that a particular basic block has executed.
+        
+        When we tier up a CodeBlock that contains an op_profile_control_flow
+        that corresponds to an already executed basic block, we don't
+        have to emit code for that particular op_profile_control_flow
+        because the internal data structures used to keep track of 
+        basic block locations has already recorded that the corresponding
+        op_profile_control_flow has executed.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/Instruction.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset):
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitProfileControlFlow):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ConditionalNode::emitBytecode):
+        (JSC::IfElseNode::emitBytecode):
+        (JSC::WhileNode::emitBytecode):
+        (JSC::ForNode::emitBytecode):
+        (JSC::ContinueNode::emitBytecode):
+        (JSC::BreakNode::emitBytecode):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::CaseClauseNode::emitBytecode):
+        (JSC::SwitchNode::emitBytecode):
+        (JSC::ThrowNode::emitBytecode):
+        (JSC::TryNode::emitBytecode):
+        (JSC::ProgramNode::emitBytecode):
+        (JSC::FunctionNode::emitBytecode):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::basicBlockLocation):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_profile_control_flow):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_profile_control_flow):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionFindTypeForExpression):
+        (functionReturnTypeFor):
+        (functionDumpBasicBlockExecutionRanges):
+        * llint/LowLevelInterpreter.asm:
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createGetterOrSetterProperty):
+        (JSC::ASTBuilder::createFuncDeclStatement):
+        (JSC::ASTBuilder::endOffset):
+        (JSC::ASTBuilder::setStartOffset):
+        * parser/NodeConstructors.h:
+        (JSC::Node::Node):
+        * parser/Nodes.h:
+        (JSC::CaseClauseNode::setStartOffset):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseSwitchClauses):
+        (JSC::Parser<LexerType>::parseSwitchDefaultClause):
+        (JSC::Parser<LexerType>::parseBlockStatement):
+        (JSC::Parser<LexerType>::parseStatement):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseIfStatement):
+        (JSC::Parser<LexerType>::parseExpression):
+        (JSC::Parser<LexerType>::parseConditionalExpression):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createFunctionExpr):
+        (JSC::SyntaxChecker::createFuncDeclStatement):
+        (JSC::SyntaxChecker::createGetterOrSetterProperty):
+        (JSC::SyntaxChecker::operatorStackPop):
+        * runtime/BasicBlockLocation.cpp: Added.
+        (JSC::BasicBlockLocation::BasicBlockLocation):
+        (JSC::BasicBlockLocation::insertGap):
+        (JSC::BasicBlockLocation::getExecutedRanges):
+        (JSC::BasicBlockLocation::dumpData):
+        (JSC::BasicBlockLocation::emitExecuteCode):
+        * runtime/BasicBlockLocation.h: Added.
+        (JSC::BasicBlockLocation::startOffset):
+        (JSC::BasicBlockLocation::endOffset):
+        (JSC::BasicBlockLocation::setStartOffset):
+        (JSC::BasicBlockLocation::setEndOffset):
+        (JSC::BasicBlockLocation::hasExecuted):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        * runtime/ControlFlowProfiler.cpp: Added.
+        (JSC::ControlFlowProfiler::~ControlFlowProfiler):
+        (JSC::ControlFlowProfiler::getBasicBlockLocation):
+        (JSC::ControlFlowProfiler::dumpData):
+        (JSC::ControlFlowProfiler::getBasicBlocksForSourceID):
+        * runtime/ControlFlowProfiler.h: Added. This class is in 
+        charge of generating BasicBlockLocations and also
+        providing an interface that the Web Inspector can use to ping
+        which basic blocks have executed based on the source id of a script.
+
+        (JSC::BasicBlockKey::BasicBlockKey):
+        (JSC::BasicBlockKey::isHashTableDeletedValue):
+        (JSC::BasicBlockKey::operator==):
+        (JSC::BasicBlockKey::hash):
+        (JSC::BasicBlockKeyHash::hash):
+        (JSC::BasicBlockKeyHash::equal):
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::ProgramExecutable):
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        * runtime/FunctionHasExecutedCache.cpp:
+        (JSC::FunctionHasExecutedCache::getUnexecutedFunctionRanges):
+        * runtime/FunctionHasExecutedCache.h:
+        * runtime/Options.h:
+        * runtime/TypeProfiler.cpp:
+        (JSC::TypeProfiler::logTypesForTypeLocation):
+        (JSC::TypeProfiler::typeInformationForExpressionAtOffset):
+        (JSC::TypeProfiler::findLocation):
+        (JSC::TypeProfiler::dumpTypeProfilerData):
+        * runtime/TypeProfiler.h:
+        (JSC::TypeProfiler::functionHasExecutedCache): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::enableProfilerWithRespectToCount):
+        (JSC::disableProfilerWithRespectToCount):
+        (JSC::VM::enableTypeProfiler):
+        (JSC::VM::disableTypeProfiler):
+        (JSC::VM::enableControlFlowProfiler):
+        (JSC::VM::disableControlFlowProfiler):
+        (JSC::VM::dumpTypeProfilerData):
+        * runtime/VM.h:
+        (JSC::VM::functionHasExecutedCache):
+        (JSC::VM::controlFlowProfiler):
+
+2014-12-04  Filip Pizlo  <fpizlo@apple.com>
+
+        printInternal(PrintStream& out, JSC::JITCode::JITType type) ends up dumping a literal %s
+        https://bugs.webkit.org/show_bug.cgi?id=139274
+
+        Reviewed by Geoffrey Garen.
+
+        * jit/JITCode.cpp:
+        (WTF::printInternal):
+
+2014-12-04  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed the concept of ParserArenaRefCounted
+        https://bugs.webkit.org/show_bug.cgi?id=139277
+
+        Reviewed by Oliver Hunt.
+
+        This is a step toward a parser speedup.
+
+        Now that we have a clear root node type for each parse tree, there's no
+        need to have a concept for "I might be refcounted or arena allocated".
+        Instead, we can just use unique_ptr to manage the tree as a whole.
+
+        * API/JSScriptRef.cpp:
+        (parseScript):
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createBuiltinExecutable): Updated for type change.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock): Use unique_ptr. No need to call
+        destroyData() explicitly: the unique_ptr destructor will do everything
+        we need, as Bjarne intended.
+
+        * parser/NodeConstructors.h:
+        (JSC::ParserArenaRoot::ParserArenaRoot):
+        (JSC::ParserArenaRefCounted::ParserArenaRefCounted): Deleted.
+
+        * parser/Nodes.cpp:
+        (JSC::ScopeNode::ScopeNode):
+        (JSC::ProgramNode::ProgramNode):
+        (JSC::EvalNode::EvalNode):
+        (JSC::FunctionNode::FunctionNode):
+        (JSC::ProgramNode::create): Deleted.
+        (JSC::EvalNode::create): Deleted.
+        (JSC::FunctionNode::create): Deleted. All special create semantics can
+        just go away now that we play by C++ constructor / destructor rules.
+
+        * parser/Nodes.h:
+        (JSC::ParserArenaRoot::parserArena):
+        (JSC::ParserArenaRoot::~ParserArenaRoot): Just a normal class now, which
+        holds onto the whole parse tree by virtue of owning the arena in which
+        all the parsed nodes (except for itself) were allocated.
+
+        (JSC::ProgramNode::closedVariables):
+        (JSC::ParserArenaRefCounted::~ParserArenaRefCounted): Deleted.
+
+        (JSC::ScopeNode::destroyData): Deleted. No need to destroy anything
+        explicitly anymore -- we can just rely on destructors.
+
+        (JSC::ScopeNode::parserArena): Deleted.
+
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse):
+        (JSC::parse): unique_ptr all the things.
+
+        * parser/ParserArena.cpp:
+        (JSC::ParserArena::reset):
+        (JSC::ParserArena::isEmpty):
+        (JSC::ParserArena::contains): Deleted.
+        (JSC::ParserArena::last): Deleted.
+        (JSC::ParserArena::removeLast): Deleted.
+        (JSC::ParserArena::derefWithArena): Deleted.
+        * parser/ParserArena.h:
+        (JSC::ParserArena::swap): Much delete. Such wow.
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::checkSyntax): unique_ptr all the things.
+
+2014-12-04  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r173188): Text inserted when trying to delete a word from the Twitter message box.
+        <https://webkit.org/b/139076>
+
+        Reviewed by Geoffrey Garen.
+
+        The StringImpl* -> Weak<JSString> cache used by the DOM bindings
+        had a bug where the key could become a stale pointer if the cached
+        JSString had its internal StringImpl atomicized.
+
+        If a new StringImpl was then later constructed at the exact same
+        address as the stale key, before the Weak<JSString> got booted out
+        of the string cache, we'd now have a situation where asking the
+        string cache for that key would return the old JSString.
+
+        Solve this by not allowing JSString::toExistingAtomicString() to
+        change the JSString's internal StringImpl unless it's resolving a
+        rope string. (The StringImpl nullity determines rope state.)
+
+        This means that calling toExistingAtomicString() may now have to
+        query the AtomicString table on each call rather than just once.
+        All clients of this API would be forced to do this regardless,
+        since they return value will be used to key into containers with
+        AtomicStringImpl* keys.
+
+        No test because this relies on malloc putting two StringImpls
+        at the same address at different points in time and we have no
+        mechanism to reliably test that.
+
+        * runtime/JSString.h:
+        (JSC::JSString::toExistingAtomicString):
+
+2014-12-04  Geoffrey Garen  <ggaren@apple.com>
+
+        Marked some final things final.
+
+        Reviewed by Andreas Kling.
+
+        * parser/Nodes.h:
+
+2014-12-04  Geoffrey Garen  <ggaren@apple.com>
+
+        Split out FunctionNode from FunctionBodyNode
+        https://bugs.webkit.org/show_bug.cgi?id=139273
+
+        Reviewed by Andreas Kling.
+
+        This is step toward a parser speedup.
+
+        We used to use FunctionBodyNode for two different purposes:
+
+        (1) "I am the root function you are currently parsing";
+
+        (2) "I am a lazy record of a nested function, which you will parse later".
+
+        This made for awkward lifetime semantics and interfaces.
+
+        Now, case (1) is handled by FunctionBodyNode, and case (2) is handled by
+        a new node named FunctionNode.
+
+        Since case (1) no longer needs to handle being the root of the parse
+        tree, FunctionBodyNode can be a normal arena-allocated node.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock): Use FunctionNode instead of
+        FunctionBodyNode, since we are producing the root of the function parse
+        tree.
+
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable): Removed
+        some unused data, and default-initialized other data, which isn't filled
+        in meaningfully until recordParse() is called. (The previous values were
+        incorrect / meaningless, since the FunctionBodyNode didn't have
+        meaningful values in this case.)
+
+        * bytecode/UnlinkedCodeBlock.h: Ditto.
+
+        (JSC::UnlinkedFunctionExecutable::forceUsesArguments): Deleted.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator): Use FunctionNode instead of
+        FunctionBodyNode, since we are generating code starting at the root of
+        the parse tree.
+
+        (JSC::BytecodeGenerator::resolveCallee):
+        (JSC::BytecodeGenerator::addCallee):
+        * bytecompiler/BytecodeGenerator.h: Ditto.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionBodyNode::emitBytecode):
+        (JSC::FunctionNode::emitBytecode): Moved the emitBytecode implementation
+        to FunctionNode, since we never generate code for FunctionBodyNode,
+        since it's just a placeholder in the AST.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionBody):
+        (JSC::ASTBuilder::setUsesArguments): Deleted. Updated for interface
+        changes.
+
+        * parser/Nodes.cpp:
+        (JSC::FunctionBodyNode::FunctionBodyNode):
+        (JSC::FunctionBodyNode::finishParsing):
+        (JSC::FunctionBodyNode::setEndPosition):
+        (JSC::FunctionNode::FunctionNode):
+        (JSC::FunctionNode::create):
+        (JSC::FunctionNode::finishParsing):
+        (JSC::FunctionBodyNode::create): Deleted.
+
+        * parser/Nodes.h:
+        (JSC::FunctionBodyNode::parameters):
+        (JSC::FunctionBodyNode::source):
+        (JSC::FunctionBodyNode::startStartOffset):
+        (JSC::FunctionBodyNode::isInStrictContext):
+        (JSC::FunctionNode::parameters):
+        (JSC::FunctionNode::ident):
+        (JSC::FunctionNode::functionMode):
+        (JSC::FunctionNode::startColumn):
+        (JSC::FunctionNode::endColumn):
+        (JSC::ScopeNode::setSource): Deleted.
+        (JSC::FunctionBodyNode::parameterCount): Deleted. Split out the differences
+        between FunctionNode and FunctionBodyNode.
+
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createClauseList):
+        (JSC::SyntaxChecker::setUsesArguments): Deleted. Removed setUsesArguments
+        since it wasn't used.
+
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::checkSyntax): Removed a branch that was always
+        false.
+
+2014-12-02  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: timeline probe records have inaccurate per-probe hit counts
+        https://bugs.webkit.org/show_bug.cgi?id=138976
+
+        Reviewed by Joseph Pecoraro.
+
+        Previously, the DebuggerAgent was responsible for assigning unique ids to samples.
+        However, this makes it impossible for the frontend's Timeline manager to associate
+        a Probe Sample timeline record with the corresponding probe sample data. The record
+        only included the probe batchId (misnamed as hitCount in ScriptDebugServer).
+
+        This patch moves both the batchId and sampleId counters into ScriptDebugServer, so
+        any client of ScriptDebugListener will get the correct sampleId for each sample.
+
+        * inspector/ScriptDebugListener.h:
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::ScriptDebugServer):
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionProbe):
+        (Inspector::ScriptDebugServer::handleBreakpointHit):
+        * inspector/ScriptDebugServer.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::InspectorDebuggerAgent):
+        (Inspector::InspectorDebuggerAgent::breakpointActionProbe):
+        * inspector/agents/InspectorDebuggerAgent.h:
+
+2014-12-04  Oliver Hunt  <oliver@apple.com>
+
+        Serialization of MapData object provides unsafe access to internal types
+        https://bugs.webkit.org/show_bug.cgi?id=138653
+
+        Reviewed by Geoffrey Garen.
+
+        Converting these ASSERTs into RELEASE_ASSERTs, as it is now obvious
+        that despite trying hard to be safe in all cases it's simply to easy
+        to use an iterator in an unsafe state.
+
+        * runtime/MapData.h:
+        (JSC::MapData::const_iterator::key):
+        (JSC::MapData::const_iterator::value):
+
+2014-12-03  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Move JavaScriptCore/dfg to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=139169
+
+        Reviewed by Filip Pizlo.
+
+        Use std::unique_ptr<>|std::make_unique<> in JavaScriptCore/dfg directory.
+
+        * dfg/DFGBasicBlock.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::JITCompiler):
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::link):
+        (JSC::DFG::JITCompiler::compileFunction):
+        (JSC::DFG::JITCompiler::linkFunction):
+        * dfg/DFGJITCompiler.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        (JSC::DFG::Plan::cancel):
+        * dfg/DFGPlan.h:
+        * dfg/DFGSlowPathGenerator.h:
+        * dfg/DFGWorklist.h:
+        * ftl/FTLFail.cpp:
+        (JSC::FTL::fail):
+        * ftl/FTLState.cpp:
+        (JSC::FTL::State::State):
+
+2014-12-03  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r176479): DFG ASSERTION beneath emitOSRExitCall running Kraken/imaging-gaussian-blur.js.ftl-no-cjit-osr-validation and other tests
+        https://bugs.webkit.org/show_bug.cgi?id=139246
+
+        Reviewed by Geoffrey Garen.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::buildExitArguments):
+        The DFG_ASSERT that checks liveness at exit time doesn't properly
+        handle the case where the local is not available at OSR exit time,
+        but the local is live in the bytecode.  This now happens with the
+        allocated scope register when we are compiling for FTLForOSREntryMode
+        due to DCE done when the control flow was changed and a new entrypoint
+        was added in the OSR entrypoint creation phase.  Therefore we silence
+        the assert when compiling for FTLForOSREntryMode.
+
+2014-12-03  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed the global parser arena
+        https://bugs.webkit.org/show_bug.cgi?id=139236
+
+        Reviewed by Sam Weinig.
+
+        Simplifies parser lifetime logic.
+
+        There's no need to keep a global arena. We can create a new arena
+        each time we parse.
+
+        * bytecompiler/BytecodeGenerator.h: Global replace to pass around a
+        ParserArena instead of VM*, since the VM no longer owns the arena.
+        (JSC::BytecodeGenerator::parserArena):
+
+        * bytecompiler/NodesCodegen.cpp: Ditto.
+        (JSC::ArrayNode::toArgumentList):
+        (JSC::ApplyFunctionCallDotNode::emitBytecode):
+        * parser/ASTBuilder.h: Ditto.
+        (JSC::ASTBuilder::ASTBuilder):
+        (JSC::ASTBuilder::createSourceElements):
+        (JSC::ASTBuilder::createCommaExpr):
+        (JSC::ASTBuilder::createLogicalNot):
+        (JSC::ASTBuilder::createUnaryPlus):
+        (JSC::ASTBuilder::createVoid):
+        (JSC::ASTBuilder::thisExpr):
+        (JSC::ASTBuilder::createResolve):
+        (JSC::ASTBuilder::createObjectLiteral):
+        (JSC::ASTBuilder::createArray):
+        (JSC::ASTBuilder::createNumberExpr):
+        (JSC::ASTBuilder::createString):
+        (JSC::ASTBuilder::createBoolean):
+        (JSC::ASTBuilder::createNull):
+        (JSC::ASTBuilder::createBracketAccess):
+        (JSC::ASTBuilder::createDotAccess):
+        (JSC::ASTBuilder::createSpreadExpression):
+        (JSC::ASTBuilder::createRegExp):
+        (JSC::ASTBuilder::createNewExpr):
+        (JSC::ASTBuilder::createConditionalExpr):
+        (JSC::ASTBuilder::createAssignResolve):
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createFunctionBody):
+        (JSC::ASTBuilder::createGetterOrSetterProperty):
+        (JSC::ASTBuilder::createArguments):
+        (JSC::ASTBuilder::createArgumentsList):
+        (JSC::ASTBuilder::createProperty):
+        (JSC::ASTBuilder::createPropertyList):
+        (JSC::ASTBuilder::createElementList):
+        (JSC::ASTBuilder::createFormalParameterList):
+        (JSC::ASTBuilder::createClause):
+        (JSC::ASTBuilder::createClauseList):
+        (JSC::ASTBuilder::createFuncDeclStatement):
+        (JSC::ASTBuilder::createBlockStatement):
+        (JSC::ASTBuilder::createExprStatement):
+        (JSC::ASTBuilder::createIfStatement):
+        (JSC::ASTBuilder::createForLoop):
+        (JSC::ASTBuilder::createForInLoop):
+        (JSC::ASTBuilder::createForOfLoop):
+        (JSC::ASTBuilder::createEmptyStatement):
+        (JSC::ASTBuilder::createVarStatement):
+        (JSC::ASTBuilder::createEmptyVarExpression):
+        (JSC::ASTBuilder::createReturnStatement):
+        (JSC::ASTBuilder::createBreakStatement):
+        (JSC::ASTBuilder::createContinueStatement):
+        (JSC::ASTBuilder::createTryStatement):
+        (JSC::ASTBuilder::createSwitchStatement):
+        (JSC::ASTBuilder::createWhileStatement):
+        (JSC::ASTBuilder::createDoWhileStatement):
+        (JSC::ASTBuilder::createLabelStatement):
+        (JSC::ASTBuilder::createWithStatement):
+        (JSC::ASTBuilder::createThrowStatement):
+        (JSC::ASTBuilder::createDebugger):
+        (JSC::ASTBuilder::createConstStatement):
+        (JSC::ASTBuilder::appendConstDecl):
+        (JSC::ASTBuilder::combineCommaNodes):
+        (JSC::ASTBuilder::createDeconstructingAssignment):
+        (JSC::ASTBuilder::Scope::Scope):
+        (JSC::ASTBuilder::createNumber):
+        (JSC::ASTBuilder::makeTypeOfNode):
+        (JSC::ASTBuilder::makeDeleteNode):
+        (JSC::ASTBuilder::makeNegateNode):
+        (JSC::ASTBuilder::makeBitwiseNotNode):
+        (JSC::ASTBuilder::makeMultNode):
+        (JSC::ASTBuilder::makeDivNode):
+        (JSC::ASTBuilder::makeModNode):
+        (JSC::ASTBuilder::makeAddNode):
+        (JSC::ASTBuilder::makeSubNode):
+        (JSC::ASTBuilder::makeLeftShiftNode):
+        (JSC::ASTBuilder::makeRightShiftNode):
+        (JSC::ASTBuilder::makeURightShiftNode):
+        (JSC::ASTBuilder::makeBitOrNode):
+        (JSC::ASTBuilder::makeBitAndNode):
+        (JSC::ASTBuilder::makeBitXOrNode):
+        (JSC::ASTBuilder::makeFunctionCallNode):
+        (JSC::ASTBuilder::makeBinaryNode):
+        (JSC::ASTBuilder::makeAssignNode):
+        (JSC::ASTBuilder::makePrefixNode):
+        (JSC::ASTBuilder::makePostfixNode):
+
+        * parser/NodeConstructors.h: Ditto.
+        (JSC::ParserArenaFreeable::operator new):
+        (JSC::ParserArenaDeletable::operator new):
+        (JSC::ParserArenaRefCounted::ParserArenaRefCounted):
+
+        * parser/Nodes.cpp: Ditto.
+        (JSC::ScopeNode::ScopeNode):
+        (JSC::ProgramNode::ProgramNode):
+        (JSC::ProgramNode::create):
+        (JSC::EvalNode::EvalNode):
+        (JSC::EvalNode::create):
+        (JSC::FunctionBodyNode::FunctionBodyNode):
+        (JSC::FunctionBodyNode::create):
+
+        * parser/Nodes.h: Ditto.
+        (JSC::ScopeNode::parserArena):
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseInner):
+        (JSC::Parser<LexerType>::parseProperty): The parser now owns its own
+        arena, and transfers ownership of its contents when invoking the ScopeNode
+        constructor.
+
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse): No need to explicitly reset the arena,
+        since its lifetime is tied to the parser's lifetime now.
+
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createProperty):
+        (JSC::SyntaxChecker::createGetterOrSetterProperty):
+
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h: The point of the patch: no more global.
+
+2014-12-03  Geoffrey Garen  <ggaren@apple.com>
+
+        The parser should allocate all pieces of the AST
+        https://bugs.webkit.org/show_bug.cgi?id=139230
+
+        Reviewed by Oliver Hunt.
+
+        This is a step toward a 14% parsing speedup.
+
+        Previously, allocation was split between the parser and certain node
+        constructor functions. This made for some duplicated code and circular
+        dependencies.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createGetterOrSetterProperty): No need to pass through
+        the VM, since our callee no longer needs to allocate anything.
+
+        (JSC::ASTBuilder::createProperty): Allocate the identifier for our
+        callee, since that is simpler than requiring our callee to notice that
+        we didn't do so, and do it for us.
+
+        (JSC::ASTBuilder::createForInLoop): Allocate the DeconstructingAssignmentNode
+        for our callee, since that is simpler than requiring our callee to notice
+        that we didn't do so, and do it for us.
+
+        Also, reuse some code instead of duplicating it.
+
+        (JSC::ASTBuilder::createForOfLoop): Ditto.
+
+        (JSC::ASTBuilder::createArrayPattern):
+        (JSC::ASTBuilder::createObjectPattern):
+        (JSC::ASTBuilder::createBindingLocation): No need to pass through a VM
+        pointer, since our callee no longer needs to allocate anything.
+
+        (JSC::ASTBuilder::createBreakStatement): Deleted.
+        (JSC::ASTBuilder::createContinueStatement): Deleted.
+
+        * parser/NodeConstructors.h:
+        (JSC::PropertyNode::PropertyNode):
+        (JSC::DeconstructionPatternNode::DeconstructionPatternNode):
+        (JSC::ArrayPatternNode::ArrayPatternNode):
+        (JSC::ArrayPatternNode::create):
+        (JSC::ObjectPatternNode::ObjectPatternNode):
+        (JSC::ObjectPatternNode::create):
+        (JSC::BindingNode::create):
+        (JSC::BindingNode::BindingNode):
+        (JSC::ContinueNode::ContinueNode): Deleted.
+        (JSC::BreakNode::BreakNode): Deleted.
+        (JSC::EnumerationNode::EnumerationNode): Deleted.
+        (JSC::ForInNode::ForInNode): Deleted.
+        (JSC::ForOfNode::ForOfNode): Deleted. Deleted a bunch of special cases
+        that don't exist anymore, now that the parser allocates all pieces of
+        the AST unconditionally.
+
+        * parser/Nodes.h: Ditto.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseBreakStatement):
+        (JSC::Parser<LexerType>::parseContinueStatement): Allocate the null
+        identifier for our callee, since that is simpler than requiring our
+        callee to notice that we didn't do so, and do it for us.
+
+        (JSC::Parser<LexerType>::parseProperty):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createProperty): No need to pass through a VM
+        pointer, since our callee no longer needs to allocate anything.
+
 2014-12-03  Zsolt Borbely  <zsborbely.u-szeged@partner.samsung.com>
 
         Remove unused JSC runtime options

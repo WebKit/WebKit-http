@@ -40,7 +40,6 @@
 #include <JavaScriptCore/JSBase.h>
 #include <array>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RandomNumber.h>
 
@@ -80,6 +79,7 @@ class ProgramExecutable;
 class RegExpConstructor;
 class RegExpPrototype;
 class SourceCode;
+class NullGetterFunction;
 struct ActivationStackNode;
 struct HashTable;
 
@@ -173,6 +173,8 @@ protected:
     WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
 #endif
     WriteBarrier<ObjectConstructor> m_objectConstructor;
+
+    WriteBarrier<NullGetterFunction> m_nullGetterFunction;
 
     WriteBarrier<JSFunction> m_evalFunction;
     WriteBarrier<JSFunction> m_callFunction;
@@ -370,6 +372,8 @@ public:
 #if ENABLE(PROMISES)
     JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
 #endif
+
+    NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
 
     JSFunction* evalFunction() const { return m_evalFunction.get(); }
     JSFunction* callFunction() const { return m_callFunction.get(); }

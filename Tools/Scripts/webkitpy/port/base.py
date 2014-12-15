@@ -54,7 +54,6 @@ from webkitpy.common.webkit_finder import WebKitFinder
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port import config as port_config
 from webkitpy.port import driver
-from webkitpy.port import http_lock
 from webkitpy.port import image_diff
 from webkitpy.port import server_process
 from webkitpy.port.factory import PortFactory
@@ -119,7 +118,6 @@ class Port(object):
         self._websocket_server = None
         self._image_differ = None
         self._server_process_constructor = server_process.ServerProcess  # overridable for testing
-        self._http_lock = None  # FIXME: Why does this live on the port object?
 
         if not hasattr(options, 'configuration') or not options.configuration:
             self.set_option_default('configuration', self.default_configuration())
@@ -158,10 +156,6 @@ class Port(object):
     def default_child_processes(self):
         """Return the number of DumpRenderTree instances to use for this port."""
         return self._executive.cpu_count()
-
-    def default_max_locked_shards(self):
-        """Return the number of "locked" shards to run in parallel (like the http tests)."""
-        return 1
 
     def worker_startup_delay_secs(self):
         # FIXME: If we start workers up too quickly, DumpRenderTree appears
@@ -430,10 +424,6 @@ class Port(object):
         if platform_dir:
             return self._filesystem.join(platform_dir, baseline_filename)
 
-        actual_test_name = self.lookup_virtual_test_base(test_name)
-        if actual_test_name:
-            return self.expected_filename(actual_test_name, suffix)
-
         if return_default:
             return self._filesystem.join(self.layout_tests_dir(), baseline_filename)
         return None
@@ -520,9 +510,7 @@ class Port(object):
     def tests(self, paths):
         """Return the list of tests found. Both generic and platform-specific tests matching paths should be returned."""
         expanded_paths = self._expanded_paths(paths)
-        tests = self._real_tests(expanded_paths)
-        tests.extend(self._virtual_tests(expanded_paths, self.populated_virtual_test_suites()))
-        return tests
+        return self._real_tests(expanded_paths)
 
     def _expanded_paths(self, paths):
         expanded_paths = []
@@ -605,19 +593,13 @@ class Port(object):
     def test_isfile(self, test_name):
         """Return True if the test name refers to a directory of tests."""
         # Used by test_expectations.py to apply rules to whole directories.
-        if self._filesystem.isfile(self.abspath_for_test(test_name)):
-            return True
-        base = self.lookup_virtual_test_base(test_name)
-        return base and self._filesystem.isfile(self.abspath_for_test(base))
+        return self._filesystem.isfile(self.abspath_for_test(test_name))
 
     @memoized
     def test_isdir(self, test_name):
         """Return True if the test name refers to a directory of tests."""
         # Used by test_expectations.py to apply rules to whole directories.
-        if self._filesystem.isdir(self.abspath_for_test(test_name)):
-            return True
-        base = self.lookup_virtual_test_base(test_name)
-        return base and self._filesystem.isdir(self.abspath_for_test(base))
+        return self._filesystem.isdir(self.abspath_for_test(test_name))
 
     @memoized
     def test_exists(self, test_name):
@@ -877,16 +859,16 @@ class Port(object):
         storage, it should override this method."""
         pass
 
-    def start_http_server(self, additional_dirs=None, number_of_servers=None):
+    def start_http_server(self, additional_dirs=None):
         """Start a web server. Raise an error if it can't start or is already running.
 
         Ports can stub this out if they don't need a web server to be running."""
         assert not self._http_server, 'Already running an http server.'
 
         if self._uses_apache():
-            server = apache_http_server.LayoutTestApacheHttpd(self, self.results_directory(), additional_dirs=additional_dirs, number_of_servers=number_of_servers)
+            server = apache_http_server.LayoutTestApacheHttpd(self, self.results_directory(), additional_dirs=additional_dirs)
         else:
-            server = http_server.Lighttpd(self, self.results_directory(), additional_dirs=additional_dirs, number_of_servers=number_of_servers)
+            server = http_server.Lighttpd(self, self.results_directory(), additional_dirs=additional_dirs)
 
         server.start()
         self._http_server = server
@@ -908,10 +890,6 @@ class Port(object):
             return False
         return True
 
-    def acquire_http_lock(self):
-        self._http_lock = http_lock.HttpLock(None, filesystem=self._filesystem, executive=self._executive)
-        self._http_lock.wait_for_httpd_lock()
-
     def stop_helper(self):
         """Shut down the test helper if it is running. Do nothing if
         it isn't, or it isn't available. If a port overrides start_helper()
@@ -929,10 +907,6 @@ class Port(object):
         if self._websocket_server:
             self._websocket_server.stop()
             self._websocket_server = None
-
-    def release_http_lock(self):
-        if self._http_lock:
-            self._http_lock.cleanup_http_lock()
 
     def exit_code_from_summarized_results(self, unexpected_results):
         """Given summarized results, compute the exit code to be returned by new-run-webkit-tests.
@@ -1214,51 +1188,9 @@ class Port(object):
     def sample_process(self, name, pid):
         pass
 
-    def virtual_test_suites(self):
-        return []
-
     def find_system_pid(self, name, pid):
         # This is only overridden on Windows
         return pid
-
-    @memoized
-    def populated_virtual_test_suites(self):
-        suites = self.virtual_test_suites()
-
-        # Sanity-check the suites to make sure they don't point to other suites.
-        suite_dirs = [suite.name for suite in suites]
-        for suite in suites:
-            assert suite.base not in suite_dirs
-
-        for suite in suites:
-            base_tests = self._real_tests([suite.base])
-            suite.tests = {}
-            for test in base_tests:
-                suite.tests[test.replace(suite.base, suite.name, 1)] = test
-        return suites
-
-    def _virtual_tests(self, paths, suites):
-        virtual_tests = list()
-        for suite in suites:
-            if paths:
-                for test in suite.tests:
-                    if any(test.startswith(p) for p in paths):
-                        virtual_tests.append(test)
-            else:
-                virtual_tests.extend(suite.tests.keys())
-        return virtual_tests
-
-    def lookup_virtual_test_base(self, test_name):
-        for suite in self.populated_virtual_test_suites():
-            if test_name.startswith(suite.name):
-                return test_name.replace(suite.name, suite.base, 1)
-        return None
-
-    def lookup_virtual_test_args(self, test_name):
-        for suite in self.populated_virtual_test_suites():
-            if test_name.startswith(suite.name):
-                return suite.args
-        return []
 
     def should_run_as_pixel_test(self, test_input):
         if not self._options.pixel_tests:
@@ -1412,13 +1344,3 @@ class Port(object):
     def test_expectations_file_position(self):
         # By default baseline search path schema is i.e. port-wk2 -> wk2 -> port -> generic, so port expectations file is at second to last position.
         return 1
-
-class VirtualTestSuite(object):
-    def __init__(self, name, base, args, tests=None):
-        self.name = name
-        self.base = base
-        self.args = args
-        self.tests = tests or set()
-
-    def __repr__(self):
-        return "VirtualTestSuite('%s', '%s', %s)" % (self.name, self.base, self.args)

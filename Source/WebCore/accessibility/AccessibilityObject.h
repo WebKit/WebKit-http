@@ -137,6 +137,7 @@ enum AccessibilityRole {
     HelpTagRole,
     HorizontalRuleRole,
     IgnoredRole,
+    InlineRole,
     ImageRole,
     ImageMapRole,
     ImageMapLinkRole,
@@ -549,6 +550,8 @@ public:
     virtual bool hasUnderline() const { return false; }
     bool hasHighlighting() const;
 
+    bool supportsDatetimeAttribute() const;
+
     virtual bool canSetFocusAttribute() const { return false; }
     virtual bool canSetTextRangeAttributes() const { return false; }
     virtual bool canSetValueAttribute() const { return false; }
@@ -755,6 +758,7 @@ public:
 #else
     virtual void detachFromParent() { }
 #endif
+    virtual bool isDetachedFromParent() { return false; }
 
     virtual void selectedChildren(AccessibilityChildrenVector&) { }
     virtual void visibleChildren(AccessibilityChildrenVector&) { }
@@ -892,6 +896,7 @@ public:
     virtual bool isMathTableRow() const { return false; }
     virtual bool isMathTableCell() const { return false; }
     virtual bool isMathMultiscript() const { return false; }
+    virtual bool isMathToken() const { return false; }
 
     // Root components.
     virtual AccessibilityObject* mathRadicandObject() { return nullptr; }
@@ -981,7 +986,8 @@ protected:
     static bool objectMatchesSearchCriteriaWithResultLimit(AccessibilityObject*, AccessibilitySearchCriteria*, AccessibilityChildrenVector&);
     virtual AccessibilityRole buttonRoleType() const;
     bool isOnscreen() const;
-    
+    bool dispatchTouchEvent();
+
 #if (PLATFORM(GTK) || PLATFORM(EFL)) && HAVE(ACCESSIBILITY)
     bool allowsTextRanges() const;
     unsigned getLengthForTextRange() const;

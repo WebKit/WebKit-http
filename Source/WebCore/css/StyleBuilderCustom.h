@@ -28,6 +28,7 @@
 #define StyleBuilderCustom_h
 
 #include "BasicShapeFunctions.h"
+#include "CSSAspectRatioValue.h"
 #include "CSSImageGeneratorValue.h"
 #include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
@@ -124,6 +125,14 @@ public:
 
     static void applyInheritDisplay(StyleResolver&);
     static void applyValueDisplay(StyleResolver&, CSSValue&);
+
+    static void applyInitialWebkitAspectRatio(StyleResolver&);
+    static void applyInheritWebkitAspectRatio(StyleResolver&);
+    static void applyValueWebkitAspectRatio(StyleResolver&, CSSValue&);
+
+    static void applyInitialWebkitTextEmphasisStyle(StyleResolver&);
+    static void applyInheritWebkitTextEmphasisStyle(StyleResolver&);
+    static void applyValueWebkitTextEmphasisStyle(StyleResolver&, CSSValue&);
 
 private:
     static void resetEffectiveZoom(StyleResolver&);
@@ -899,7 +908,6 @@ inline void StyleBuilderCustom::applyInitialFontFamily(StyleResolver& styleResol
     // We need to adjust the size to account for the generic family change from monospace to non-monospace.
     if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize())
         styleResolver.setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, false, styleResolver.document()));
-    fontDescription.setGenericFamily(initialDesc.genericFamily());
     if (!initialDesc.firstFamily().isEmpty())
         fontDescription.setFamilies(initialDesc.families());
 
@@ -911,7 +919,6 @@ inline void StyleBuilderCustom::applyInheritFontFamily(StyleResolver& styleResol
     FontDescription fontDescription = styleResolver.style()->fontDescription();
     FontDescription parentFontDescription = styleResolver.parentStyle()->fontDescription();
 
-    fontDescription.setGenericFamily(parentFontDescription.genericFamily());
     fontDescription.setFamilies(parentFontDescription.families());
     fontDescription.setIsSpecifiedFont(parentFontDescription.isSpecifiedFont());
     styleResolver.setFontDescription(fontDescription);
@@ -924,55 +931,56 @@ inline void StyleBuilderCustom::applyValueFontFamily(StyleResolver& styleResolve
     FontDescription fontDescription = styleResolver.style()->fontDescription();
     // Before mapping in a new font-family property, we should reset the generic family.
     bool oldFamilyUsedFixedDefaultSize = fontDescription.useFixedDefaultSize();
-    fontDescription.setGenericFamily(FontDescription::NoFamily);
 
     Vector<AtomicString> families;
     families.reserveInitialCapacity(valueList.length());
 
     for (auto& item : valueList) {
         auto& contentValue = downcast<CSSPrimitiveValue>(item.get());
-        AtomicString face;
+        AtomicString family;
+        bool isGenericFamily = false;
         if (contentValue.isString())
-            face = contentValue.getStringValue();
-        else if (Settings* settings = styleResolver.document().settings()) {
+            family = contentValue.getStringValue();
+        else {
             switch (contentValue.getValueID()) {
             case CSSValueWebkitBody:
-                face = settings->standardFontFamily();
+                if (Settings* settings = styleResolver.document().settings())
+                    family = settings->standardFontFamily();
                 break;
             case CSSValueSerif:
-                face = serifFamily;
-                fontDescription.setGenericFamily(FontDescription::SerifFamily);
+                family = serifFamily;
+                isGenericFamily = true;
                 break;
             case CSSValueSansSerif:
-                face = sansSerifFamily;
-                fontDescription.setGenericFamily(FontDescription::SansSerifFamily);
+                family = sansSerifFamily;
+                isGenericFamily = true;
                 break;
             case CSSValueCursive:
-                face = cursiveFamily;
-                fontDescription.setGenericFamily(FontDescription::CursiveFamily);
+                family = cursiveFamily;
+                isGenericFamily = true;
                 break;
             case CSSValueFantasy:
-                face = fantasyFamily;
-                fontDescription.setGenericFamily(FontDescription::FantasyFamily);
+                family = fantasyFamily;
+                isGenericFamily = true;
                 break;
             case CSSValueMonospace:
-                face = monospaceFamily;
-                fontDescription.setGenericFamily(FontDescription::MonospaceFamily);
+                family = monospaceFamily;
+                isGenericFamily = true;
                 break;
             case CSSValueWebkitPictograph:
-                face = pictographFamily;
-                fontDescription.setGenericFamily(FontDescription::PictographFamily);
+                family = pictographFamily;
+                isGenericFamily = true;
                 break;
             default:
                 break;
             }
         }
 
-        if (face.isEmpty())
+        if (family.isEmpty())
             continue;
         if (families.isEmpty())
-            fontDescription.setIsSpecifiedFont(fontDescription.genericFamily() == FontDescription::NoFamily);
-        families.uncheckedAppend(face);
+            fontDescription.setIsSpecifiedFont(!isGenericFamily);
+        families.uncheckedAppend(family);
     }
 
     if (families.isEmpty())
@@ -1004,6 +1012,92 @@ inline void StyleBuilderCustom::applyValueDisplay(StyleResolver& styleResolver, 
     EDisplay display = downcast<CSSPrimitiveValue>(value);
     if (isValidDisplayValue(styleResolver, display))
         styleResolver.style()->setDisplay(display);
+}
+
+inline void StyleBuilderCustom::applyInitialWebkitAspectRatio(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setAspectRatioType(RenderStyle::initialAspectRatioType());
+    styleResolver.style()->setAspectRatioDenominator(RenderStyle::initialAspectRatioDenominator());
+    styleResolver.style()->setAspectRatioNumerator(RenderStyle::initialAspectRatioNumerator());
+}
+
+inline void StyleBuilderCustom::applyInheritWebkitAspectRatio(StyleResolver& styleResolver)
+{
+    if (styleResolver.parentStyle()->aspectRatioType() == AspectRatioAuto)
+        return;
+    styleResolver.style()->setAspectRatioType(styleResolver.parentStyle()->aspectRatioType());
+    styleResolver.style()->setAspectRatioDenominator(styleResolver.parentStyle()->aspectRatioDenominator());
+    styleResolver.style()->setAspectRatioNumerator(styleResolver.parentStyle()->aspectRatioNumerator());
+}
+
+inline void StyleBuilderCustom::applyValueWebkitAspectRatio(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+        if (primitiveValue.getValueID() == CSSValueFromDimensions)
+            return styleResolver.style()->setAspectRatioType(AspectRatioFromDimensions);
+        if (primitiveValue.getValueID() == CSSValueFromIntrinsic)
+            return styleResolver.style()->setAspectRatioType(AspectRatioFromIntrinsic);
+
+        ASSERT(primitiveValue.getValueID() == CSSValueAuto);
+        return styleResolver.style()->setAspectRatioType(AspectRatioAuto);
+    }
+
+    auto& aspectRatioValue = downcast<CSSAspectRatioValue>(value);
+    styleResolver.style()->setAspectRatioType(AspectRatioSpecified);
+    styleResolver.style()->setAspectRatioDenominator(aspectRatioValue.denominatorValue());
+    styleResolver.style()->setAspectRatioNumerator(aspectRatioValue.numeratorValue());
+}
+
+inline void StyleBuilderCustom::applyInitialWebkitTextEmphasisStyle(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setTextEmphasisFill(RenderStyle::initialTextEmphasisFill());
+    styleResolver.style()->setTextEmphasisMark(RenderStyle::initialTextEmphasisMark());
+    styleResolver.style()->setTextEmphasisCustomMark(RenderStyle::initialTextEmphasisCustomMark());
+}
+
+inline void StyleBuilderCustom::applyInheritWebkitTextEmphasisStyle(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setTextEmphasisFill(styleResolver.parentStyle()->textEmphasisFill());
+    styleResolver.style()->setTextEmphasisMark(styleResolver.parentStyle()->textEmphasisMark());
+    styleResolver.style()->setTextEmphasisCustomMark(styleResolver.parentStyle()->textEmphasisCustomMark());
+}
+
+inline void StyleBuilderCustom::applyValueWebkitTextEmphasisStyle(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSValueList>(value)) {
+        auto& list = downcast<CSSValueList>(value);
+        ASSERT(list.length() == 2);
+
+        for (auto& item : list) {
+            CSSPrimitiveValue& value = downcast<CSSPrimitiveValue>(item.get());
+            if (value.getValueID() == CSSValueFilled || value.getValueID() == CSSValueOpen)
+                styleResolver.style()->setTextEmphasisFill(value);
+            else
+                styleResolver.style()->setTextEmphasisMark(value);
+        }
+        styleResolver.style()->setTextEmphasisCustomMark(nullAtom);
+        return;
+    }
+
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.isString()) {
+        styleResolver.style()->setTextEmphasisFill(TextEmphasisFillFilled);
+        styleResolver.style()->setTextEmphasisMark(TextEmphasisMarkCustom);
+        styleResolver.style()->setTextEmphasisCustomMark(primitiveValue.getStringValue());
+        return;
+    }
+
+    styleResolver.style()->setTextEmphasisCustomMark(nullAtom);
+
+    if (primitiveValue.getValueID() == CSSValueFilled || primitiveValue.getValueID() == CSSValueOpen) {
+        styleResolver.style()->setTextEmphasisFill(primitiveValue);
+        styleResolver.style()->setTextEmphasisMark(TextEmphasisMarkAuto);
+    } else {
+        styleResolver.style()->setTextEmphasisFill(TextEmphasisFillFilled);
+        styleResolver.style()->setTextEmphasisMark(primitiveValue);
+    }
 }
 
 } // namespace WebCore

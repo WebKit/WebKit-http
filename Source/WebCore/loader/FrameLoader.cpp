@@ -529,8 +529,10 @@ void FrameLoader::willTransitionToCommitted()
     if (m_frame.editor().hasComposition()) {
         // The text was already present in DOM, so it's better to confirm than to cancel the composition.
         m_frame.editor().confirmComposition();
-        if (EditorClient* editorClient = m_frame.editor().client())
+        if (EditorClient* editorClient = m_frame.editor().client()) {
             editorClient->respondToChangedSelection(&m_frame);
+            editorClient->discardedComposition(&m_frame);
+        }
     }
 }
 
@@ -1148,7 +1150,7 @@ void FrameLoader::completed()
         parent->loader().checkCompleted();
 
     if (m_frame.view())
-        m_frame.view()->maintainScrollPositionAtAnchor(0);
+        m_frame.view()->maintainScrollPositionAtAnchor(nullptr);
     m_activityAssertion = nullptr;
 }
 
@@ -2148,13 +2150,24 @@ CachePolicy FrameLoader::subresourceCachePolicy() const
             return parentCachePolicy;
     }
     
-    if (m_loadType == FrameLoadType::Reload)
+    switch (m_loadType) {
+    case FrameLoadType::Reload:
         return CachePolicyRevalidate;
-
-    const ResourceRequest& request(documentLoader()->request());
-    if (request.cachePolicy() == ReturnCacheDataElseLoad)
+    case FrameLoadType::Back:
+    case FrameLoadType::Forward:
+    case FrameLoadType::IndexedBackForward:
         return CachePolicyHistoryBuffer;
+    case FrameLoadType::ReloadFromOrigin:
+        ASSERT_NOT_REACHED(); // Already handled above.
+        return CachePolicyReload;
+    case FrameLoadType::RedirectWithLockedBackForwardList:
+    case FrameLoadType::Replace:
+    case FrameLoadType::Same:
+    case FrameLoadType::Standard:
+        return CachePolicyVerify;
+    }
 
+    RELEASE_ASSERT_NOT_REACHED();
     return CachePolicyVerify;
 }
 

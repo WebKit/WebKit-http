@@ -101,6 +101,7 @@ public:
 
     NetworkConnectionToWebProcess* connectionToWebProcess() const { return m_connection.get(); }
     WebCore::SessionID sessionID() const { return m_parameters.sessionID; }
+    ResourceLoadIdentifier identifier() const { return m_parameters.identifier; }
 
     struct SynchronousLoadData;
 
@@ -149,7 +150,7 @@ private:
 
     void startBufferingTimerIfNeeded();
     void bufferingTimerFired();
-    void sendBuffer(WebCore::SharedBuffer*, int encodedDataLength);
+    bool sendBufferMaybeAborting(WebCore::SharedBuffer&, size_t encodedDataLength);
 
     bool isSynchronous() const;
 

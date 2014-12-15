@@ -1,4 +1,4 @@
- X
+X
 This tests that native elements and ARIA overrides result in the expected role, subrole and role description.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -10,8 +10,11 @@ a[href]
 a:not([href])
       AXRole: 
       
-abbr
+abbr:not([title])
       AXRole: 
+      
+abbr[title]
+      AXRole: AXStatic
       
 address
       AXRole: AXLandmarkContentInfo
@@ -46,8 +49,11 @@ cite
 code
       AXRole: 
       
-del
+del:not([datetime])
       AXRole: 
+      
+del[datetime]
+      AXRole: AXStatic
       
 dfn
       AXRole: AXDefinition
@@ -196,8 +202,11 @@ input[type='url']
 input[type='week']
       AXRole: AXTextField
       
-ins
+ins:not([datetime])
       AXRole: 
+      
+ins[datetime]
+      AXRole: AXStatic
       
 map
       AXRole: 
@@ -210,6 +219,54 @@ mark
       
 math
       AXRole: AXMath
+      
+merror
+      AXRole: AXGroup
+      
+mfenced
+      AXRole: AXGroup
+      
+mfrac
+      AXRole: AXUnknown
+      
+mi
+      AXRole: AXStatic
+      
+mn
+      AXRole: AXStatic
+      
+mo
+      AXRole: AXStatic
+      
+mroot
+      AXRole: AXUnknown
+      
+msqrt
+      AXRole: AXUnknown
+      
+mrow
+      AXRole: AXGroup
+      
+ms
+      AXRole: AXStatic
+      
+mtext
+      AXRole: AXStatic
+      
+mtable
+      AXRole: AXTable
+      
+mlabeledtr
+      AXRole: AXRow
+      
+mtd
+      AXRole: AXCell
+      
+mtr
+      AXRole: AXRow
+      
+mtd
+      AXRole: AXCell
       
 meter
       AXRole: AXProgressIndicator
@@ -265,8 +322,11 @@ optgroup
 small
       AXRole: 
       
-span
+span:not([onclick])
       AXRole: 
+      
+span[onclick]
+      AXRole: AXStatic
       
 strong
       AXRole: 
@@ -316,8 +376,11 @@ th
 textarea
       AXRole: AXTextField
       
-time
+time:not([datetime])
       AXRole: 
+      
+time[datetime]
+      AXRole: AXStatic
       
 ul
       AXRole: AXList

@@ -33,12 +33,11 @@
 #include <WebCore/PlatformStrategies.h>
 #include <WebCore/PluginStrategy.h>
 #include <WebCore/SharedWorkerStrategy.h>
-#include <WebCore/StorageStrategy.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebKit {
 
-class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::DatabaseStrategy, private WebCore::LoaderStrategy, private WebCore::PasteboardStrategy, private WebCore::PluginStrategy, private WebCore::SharedWorkerStrategy, private WebCore::StorageStrategy {
+class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::DatabaseStrategy, private WebCore::LoaderStrategy, private WebCore::PasteboardStrategy, private WebCore::PluginStrategy, private WebCore::SharedWorkerStrategy {
     friend class NeverDestroyed<WebPlatformStrategies>;
 public:
     static void initialize();
@@ -53,7 +52,6 @@ private:
     virtual WebCore::PasteboardStrategy* createPasteboardStrategy() override;
     virtual WebCore::PluginStrategy* createPluginStrategy() override;
     virtual WebCore::SharedWorkerStrategy* createSharedWorkerStrategy() override;
-    virtual WebCore::StorageStrategy* createStorageStrategy() override;
 
     // WebCore::CookiesStrategy
     virtual String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
@@ -84,11 +82,6 @@ private:
 
     // WebCore::SharedWorkerStrategy
     virtual bool isAvailable() const override;
-
-    // WebCore::StorageStrategy.
-    virtual PassRefPtr<WebCore::StorageNamespace> localStorageNamespace(WebCore::PageGroup*) override;
-    virtual PassRefPtr<WebCore::StorageNamespace> transientLocalStorageNamespace(WebCore::PageGroup*, WebCore::SecurityOrigin*) override;
-    virtual PassRefPtr<WebCore::StorageNamespace> sessionStorageNamespace(WebCore::Page*) override;
 
     // WebCore::PasteboardStrategy
 #if PLATFORM(IOS)

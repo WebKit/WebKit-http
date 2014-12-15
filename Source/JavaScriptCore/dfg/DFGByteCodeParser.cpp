@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "ArrayConstructor.h"
+#include "BasicBlockLocation.h"
 #include "CallLinkStatus.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
@@ -2884,6 +2885,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_profile_type);
         }
 
+        case op_profile_control_flow: {
+            BasicBlockLocation* basicBlockLocation = currentInstruction[1].u.basicBlockLocation;
+            addToGraph(ProfileControlFlow, OpInfo(basicBlockLocation));
+            NEXT_OPCODE(op_profile_control_flow);
+        }
+
         // === Block terminators. ===
 
         case op_jmp: {
@@ -3391,7 +3398,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_create_lexical_environment: {
-            Node* lexicalEnvironment = addToGraph(CreateActivation, get(VirtualRegister(currentInstruction[1].u.operand)));
+            Node* lexicalEnvironment = addToGraph(CreateActivation, get(VirtualRegister(currentInstruction[1].u.operand)), get(VirtualRegister(currentInstruction[2].u.operand)));
             set(VirtualRegister(currentInstruction[1].u.operand), lexicalEnvironment);
             set(VirtualRegister(currentInstruction[2].u.operand), lexicalEnvironment);
             NEXT_OPCODE(op_create_lexical_environment);

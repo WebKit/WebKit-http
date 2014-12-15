@@ -461,6 +461,11 @@
 #endif
 #endif
 
+/* PLATFORM(APPLETV) */
+#if defined(TARGET_OS_TV) && TARGET_OS_TV
+#define WTF_PLATFORM_APPLETV 1
+#endif
+
 /* Graphics engines */
 
 /* USE(CG) and PLATFORM(CI) */
@@ -1095,6 +1100,7 @@
 #if PLATFORM(GTK) || PLATFORM(EFL)
 #undef ENABLE_OPENTYPE_VERTICAL
 #define ENABLE_OPENTYPE_VERTICAL 1
+#define ENABLE_CSS3_TEXT_DECORATION_SKIP_INK 1
 #endif
 
 #if PLATFORM(COCOA)

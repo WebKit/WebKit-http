@@ -392,8 +392,16 @@ public:
     
     WEBCORE_EXPORT virtual bool isFullscreen() const override;
     void toggleFullscreenState();
-    enum VideoFullscreenMode { VideoFullscreenModeNone, VideoFullscreenModeStandard, VideoFullscreenModeOptimized };
+
+    enum {
+        VideoFullscreenModeNone = 0,
+        VideoFullscreenModeStandard = 1 << 0,
+        VideoFullscreenModeOptimized = 1 << 1,
+    };
+    typedef uint32_t VideoFullscreenMode;
+
     VideoFullscreenMode fullscreenMode() const { return m_videoFullscreenMode; }
+    void fullscreenModeChanged(VideoFullscreenMode mode) { m_videoFullscreenMode = mode; }
 
     void enterFullscreen(VideoFullscreenMode);
     virtual void enterFullscreen() override;
@@ -577,7 +585,7 @@ private:
     virtual bool mediaPlayerIsPaused() const override;
     virtual bool mediaPlayerIsLooping() const override;
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
-    virtual PassRefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>);
+    virtual PassRefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>) override;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
@@ -585,10 +593,10 @@ private:
 
     virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
     virtual void mediaPlayerHandlePlaybackCommand(MediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command); }
-    virtual String mediaPlayerSourceApplicationIdentifier() const;
+    virtual String mediaPlayerSourceApplicationIdentifier() const override;
 
 #if PLATFORM(IOS)
-    virtual String mediaPlayerNetworkInterfaceName() const;
+    virtual String mediaPlayerNetworkInterfaceName() const override;
     virtual bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const override;
 #endif
 

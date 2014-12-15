@@ -34,6 +34,7 @@
 #include "APIPolicyClient.h"
 #include "APISessionState.h"
 #include "APIUIClient.h"
+#include "AuthenticationChallengeProxy.h"
 #include "ImmutableDictionary.h"
 #include "LegacySessionStateCoding.h"
 #include "NativeWebKeyboardEvent.h"
@@ -47,9 +48,14 @@
 #include "WebBackForwardList.h"
 #include "WebContext.h"
 #include "WebFormClient.h"
+#include "WebInspectorProxy.h"
+#include "WebOpenPanelParameters.h"
+#include "WebOpenPanelResultListenerProxy.h"
+#include "WebPageGroup.h"
 #include "WebPageMessages.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
+#include "WebProtectionSpace.h"
 #include <WebCore/Page.h>
 #include <WebCore/WindowFeatures.h>
 
@@ -1595,7 +1601,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.pinnedStateDidChange(toAPI(&page), m_client.base.clientInfo);
         }
 
-        virtual void didBeginTrackingPotentialLongMousePress(WebPageProxy* page, const IntPoint& mouseDownPosition, const WebHitTestResult::Data& data, API::Object* userInfo)
+        virtual void didBeginTrackingPotentialLongMousePress(WebPageProxy* page, const IntPoint& mouseDownPosition, const WebHitTestResult::Data& data, API::Object* userInfo) override
         {
             if (!m_client.didBeginTrackingPotentialLongMousePress)
                 return;
@@ -1604,7 +1610,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.didBeginTrackingPotentialLongMousePress(toAPI(page), toAPI(mouseDownPosition), toAPI(webHitTestResult.get()), toAPI(userInfo), m_client.base.clientInfo);
         }
 
-        virtual void didRecognizeLongMousePress(WebPageProxy* page, API::Object* userInfo)
+        virtual void didRecognizeLongMousePress(WebPageProxy* page, API::Object* userInfo) override
         {
             if (!m_client.didRecognizeLongMousePress)
                 return;
@@ -1612,7 +1618,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.didRecognizeLongMousePress(toAPI(page), toAPI(userInfo), m_client.base.clientInfo);
         }
 
-        virtual void didCancelTrackingPotentialLongMousePress(WebPageProxy* page, API::Object* userInfo)
+        virtual void didCancelTrackingPotentialLongMousePress(WebPageProxy* page, API::Object* userInfo) override
         {
             if (!m_client.didCancelTrackingPotentialLongMousePress)
                 return;
@@ -1620,7 +1626,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.didCancelTrackingPotentialLongMousePress(toAPI(page), toAPI(userInfo), m_client.base.clientInfo);
         }
 
-        virtual void isPlayingAudioDidChange(WebPageProxy& page)
+        virtual void isPlayingAudioDidChange(WebPageProxy& page) override
         {
             if (!m_client.isPlayingAudioDidChange)
                 return;
@@ -1634,7 +1640,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
 void WKPageSetSession(WKPageRef pageRef, WKSessionRef session)
 {
-    toImpl(pageRef)->setSession(*toImpl(session));
+    toImpl(pageRef)->setSessionID(toImpl(session)->getID());
 }
 
 void WKPageRunJavaScriptInMainFrame(WKPageRef pageRef, WKStringRef scriptRef, void* context, WKPageRunJavaScriptFunction callback)

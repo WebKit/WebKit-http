@@ -147,7 +147,7 @@ static const CGFloat previewViewTitleHeight = 34;
     _previewView = [_delegate pagePreviewViewController:self viewForPreviewingURL:_url.get() initialFrameSize:defaultFrame.size];
     if (!_previewView) {
         RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:defaultFrame]);
-        [webView _setIgnoresNonWheelMouseEvents:YES];
+        [webView _setIgnoresNonWheelEvents:YES];
         if (_url) {
             NSURLRequest *request = [NSURLRequest requestWithURL:_url.get()];
             [webView loadRequest:request];
@@ -253,11 +253,6 @@ static const CGFloat previewViewTitleHeight = 34;
     if (menu != _wkView.actionMenu)
         return;
 
-    if (_wkView._shouldIgnoreMouseEvents) {
-        [menu cancelTracking];
-        return;
-    }
-
     [self dismissActionMenuPopovers];
 
     _eventLocationInView = [_wkView convertPoint:event.locationInWindow fromView:nil];
@@ -326,7 +321,7 @@ static const CGFloat previewViewTitleHeight = 34;
 
 - (void)_clearActionMenuState
 {
-    if (_type == kWKActionMenuDataDetectedItem && _currentActionContext && _hasActivatedActionContext) {
+    if (_currentActionContext && _hasActivatedActionContext) {
         [getDDActionsManagerClass() didUseActions];
         _hasActivatedActionContext = NO;
     }
@@ -783,8 +778,10 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 {
     RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagCopyText];
     RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagLookupText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:kWKContextActionItemTagPaste];
+    [pasteItem setEnabled:NO];
 
-    return @[ copyTextItem.get(), lookupTextItem.get() ];
+    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get() ];
 }
 
 - (NSArray *)_defaultMenuItemsForEditableText
@@ -859,22 +856,29 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
 - (NSArray *)_defaultMenuItemsForWhitespaceInEditableArea
 {
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:kWKContextActionItemTagCopyText];
     RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:kWKContextActionItemTagPaste];
+    [copyTextItem setEnabled:NO];
 
-    return @[ [NSMenuItem separatorItem], [NSMenuItem separatorItem], pasteItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get() ];
 }
 
-#pragma mark Mailto Link actions
+#pragma mark mailto: and tel: Link actions
 
-- (NSArray *)_defaultMenuItemsForMailtoLink
+- (NSArray *)_defaultMenuItemsForDataDetectableLink
 {
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
+    RetainPtr<DDActionContext> actionContext = [allocDDActionContextInstance() init];
 
     // FIXME: Should this show a yellow highlight?
-    RetainPtr<DDActionContext> actionContext = [[getDDActionContextClass() alloc] init];
-    [actionContext setAltMode:YES];
-    [actionContext setHighlightFrame:[_wkView.window convertRectToScreen:[_wkView convertRect:hitTestResult->elementBoundingBox() toView:nil]]];
-    return [[getDDActionsManagerClass() sharedManager] menuItemsForTargetURL:hitTestResult->absoluteLinkURL() actionContext:actionContext.get()];
+    _currentActionContext = [actionContext contextForView:_wkView altMode:YES interactionStartedHandler:^() {
+    } interactionChangedHandler:^() {
+    } interactionStoppedHandler:^() {
+    }];
+
+    [_currentActionContext setHighlightFrame:[_wkView.window convertRectToScreen:[_wkView convertRect:_hitTestResult.detectedDataBoundingBox toView:nil]]];
+
+    return [[getDDActionsManagerClass() sharedManager] menuItemsForTargetURL:hitTestResult->absoluteLinkURL() actionContext:_currentActionContext.get()];
 }
 
 #pragma mark NSMenuDelegate implementation
@@ -889,14 +893,17 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     // FIXME: We need to be able to cancel this if the menu goes away.
     // FIXME: Connection can be null if the process is closed; we should clean up better in that case.
     if (_state == ActionMenuState::Pending) {
-        if (auto* connection = _page->process().connection())
-            connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformActionMenuHitTest>(_page->pageID(), std::chrono::milliseconds(500));
+        if (auto* connection = _page->process().connection()) {
+            bool receivedReply = connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformActionMenuHitTest>(_page->pageID(), std::chrono::milliseconds(500));
+            if (!receivedReply)
+                _state = ActionMenuState::TimedOut;
+        }
     }
 
     if (_state != ActionMenuState::Ready)
         [self _updateActionMenuItems];
 
-    if (_type == kWKActionMenuDataDetectedItem && _currentActionContext) {
+    if (_currentActionContext) {
         _hasActivatedActionContext = YES;
         if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()]) {
             [menu cancelTracking];
@@ -978,6 +985,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     NSString *title = nil;
     NSImage *image = nil;
     bool enabled = true;
+    RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
 
     switch (tag) {
     case kWKContextActionItemTagOpenLinkInDefaultBrowser:
@@ -1027,13 +1035,14 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         selector = @selector(_copySelection:);
         title = WEB_UI_STRING_KEY("Copy", "Copy (text action menu item)", "text action menu item");
         image = [NSImage imageNamed:@"NSActionMenuCopy"];
+        enabled = hitTestResult->allowsCopy();
         break;
 
     case kWKContextActionItemTagLookupText:
         selector = @selector(_lookupText:);
         title = WEB_UI_STRING_KEY("Look Up", "Look Up (action menu item)", "action menu item");
         image = [NSImage imageNamed:@"NSActionMenuLookup"];
-        enabled = getLULookupDefinitionModuleClass();
+        enabled = getLULookupDefinitionModuleClass() && hitTestResult->allowsCopy();
         break;
 
     case kWKContextActionItemTagPaste:
@@ -1093,7 +1102,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
     if (!hitTestResult) {
         _type = kWKActionMenuNone;
-        return _state != ActionMenuState::Ready ? @[ [NSMenuItem separatorItem] ] : @[ ];
+        return _state == ActionMenuState::Pending ? @[ [NSMenuItem separatorItem] ] : @[ ];
     }
 
     String absoluteLinkURL = hitTestResult->absoluteLinkURL();
@@ -1105,7 +1114,12 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
         if (protocolIs(absoluteLinkURL, "mailto")) {
             _type = kWKActionMenuMailtoLink;
-            return [self _defaultMenuItemsForMailtoLink];
+            return [self _defaultMenuItemsForDataDetectableLink];
+        }
+
+        if (protocolIs(absoluteLinkURL, "tel")) {
+            _type = kWKActionMenuTelLink;
+            return [self _defaultMenuItemsForDataDetectableLink];
         }
     }
 
@@ -1119,7 +1133,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         return [self _defaultMenuItemsForImage];
     }
 
-    if (hitTestResult->isTextNode()) {
+    if (hitTestResult->isTextNode() || hitTestResult->isOverTextInsideFormControlElement()) {
         NSArray *dataDetectorMenuItems = [self _defaultMenuItemsForDataDetectedText];
         if (_currentActionContext) {
             // If this is a data detected item with no menu items, we should not fall back to regular text options.
@@ -1159,7 +1173,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     }
 
     _type = kWKActionMenuNone;
-    return _state != ActionMenuState::Ready ? @[ [NSMenuItem separatorItem] ] : @[ ];
+    return _state == ActionMenuState::Pending ? @[ [NSMenuItem separatorItem] ] : @[ ];
 }
 
 - (void)_updateActionMenuItems
@@ -1177,7 +1191,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     for (NSMenuItem *item in menuItems)
         [_wkView.actionMenu addItem:item];
 
-    if (_state == ActionMenuState::Ready && !_wkView.actionMenu.numberOfItems)
+    if (!_wkView.actionMenu.numberOfItems)
         [_wkView.actionMenu cancelTracking];
 }
 

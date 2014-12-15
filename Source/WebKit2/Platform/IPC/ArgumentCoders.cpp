@@ -32,6 +32,21 @@
 
 namespace IPC {
 
+void ArgumentCoder<std::chrono::system_clock::time_point>::encode(IPC::ArgumentEncoder& encoder, const std::chrono::system_clock::time_point& timePoint)
+{
+    encoder << static_cast<int64_t>(timePoint.time_since_epoch().count());
+}
+
+bool ArgumentCoder<std::chrono::system_clock::time_point>::decode(ArgumentDecoder& decoder, std::chrono::system_clock::time_point& result)
+{
+    int64_t time;
+    if (!decoder.decode(time))
+        return false;
+
+    result = std::chrono::system_clock::time_point(std::chrono::system_clock::duration(static_cast<std::chrono::system_clock::rep>(time)));
+    return true;
+}
+
 void ArgumentCoder<AtomicString>::encode(ArgumentEncoder& encoder, const AtomicString& atomicString)
 {
     encoder << atomicString.string();
@@ -57,7 +72,7 @@ void ArgumentCoder<CString>::encode(ArgumentEncoder& encoder, const CString& str
 
     uint32_t length = string.length();
     encoder << length;
-    encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.data()), length);
+    encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.data()), length, 1);
 }
 
 bool ArgumentCoder<CString>::decode(ArgumentDecoder& decoder, CString& result)
@@ -80,7 +95,7 @@ bool ArgumentCoder<CString>::decode(ArgumentDecoder& decoder, CString& result)
 
     char* buffer;
     CString string = CString::newUninitialized(length, buffer);
-    if (!decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(buffer), length))
+    if (!decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(buffer), length, 1))
         return false;
 
     result = string;
@@ -102,9 +117,9 @@ void ArgumentCoder<String>::encode(ArgumentEncoder& encoder, const String& strin
     encoder << length << is8Bit;
 
     if (is8Bit)
-        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.characters8()), length * sizeof(LChar));
+        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.characters8()), length * sizeof(LChar), alignof(LChar));
     else
-        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.characters16()), length * sizeof(UChar));
+        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.characters16()), length * sizeof(UChar), alignof(UChar));
 }
 
 template <typename CharacterType>
@@ -118,7 +133,7 @@ static inline bool decodeStringText(ArgumentDecoder& decoder, uint32_t length, S
     
     CharacterType* buffer;
     String string = String::createUninitialized(length, buffer);
-    if (!decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(buffer), length * sizeof(CharacterType)))
+    if (!decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(buffer), length * sizeof(CharacterType), alignof(CharacterType)))
         return false;
     
     result = string;

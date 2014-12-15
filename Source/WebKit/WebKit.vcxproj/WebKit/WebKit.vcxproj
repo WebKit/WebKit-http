@@ -285,6 +285,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Storage\WebStorageNamespaceProvider.cpp" />
     <ClCompile Include="..\..\cf\WebCoreSupport\WebInspectorClientCF.cpp" />
     <ClCompile Include="..\..\win\AccessibleBase.cpp" />
     <ClCompile Include="..\..\win\AccessibleDocument.cpp" />
@@ -418,6 +419,7 @@
     <ClCompile Include="..\..\win\WebWorkersPrivate.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Storage\WebStorageNamespaceProvider.h" />
     <ClInclude Include="..\..\win\AccessibleBase.h" />
     <ClInclude Include="..\..\win\AccessibleDocument.h" />
     <ClInclude Include="..\..\win\AccessibleImage.h" />

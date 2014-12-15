@@ -88,6 +88,7 @@
 #include "WebProtectionSpace.h"
 #include "WebSecurityOrigin.h"
 #include "WebUserContentControllerProxy.h"
+#include "WebsiteDataStore.h"
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
 #include <WebCore/FloatRect.h>
@@ -268,6 +269,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_preferences(*configuration.preferences)
     , m_userContentController(configuration.userContentController)
     , m_visitedLinkProvider(*configuration.visitedLinkProvider)
+    , m_websiteDataStore(*configuration.websiteDataStore)
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
 #if PLATFORM(IOS)
@@ -321,7 +323,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_isTrackingTouchEvents(false)
 #endif
     , m_pageID(pageID)
-    , m_session(*configuration.session)
+    , m_sessionID(configuration.sessionID)
     , m_isPageSuspended(false)
     , m_addsVisitedLinks(true)
 #if ENABLE(REMOTE_INSPECTOR)
@@ -373,9 +375,11 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_navigationID(0)
     , m_configurationPreferenceValues(configuration.preferenceValues)
     , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
-    , m_viewStateChangeWantsReply(false)
+    , m_viewStateChangeWantsSynchronousReply(false)
     , m_isPlayingAudio(false)
 {
+    m_websiteDataStore->addWebPage(*this);
+
     if (m_process->state() == WebProcessProxy::State::Running) {
         if (m_userContentController)
             m_process->addWebUserContentControllerProxy(*m_userContentController);
@@ -406,7 +410,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && (__IPHONE_OS_VERSION_MIN_REQUIRED > 82000)
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 #if ENABLE(VIBRATION)
@@ -418,7 +422,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     // FIXME: If we ever expose the session storage size as a preference, we need to pass it here.
     IPC::Connection* connection = m_process->state() == WebProcessProxy::State::Running ? m_process->connection() : nullptr;
     m_process->context().storageManager().createSessionStorageNamespace(m_pageID, connection, std::numeric_limits<unsigned>::max());
-    setSession(*configuration.session);
+    setSessionID(configuration.sessionID);
 
 #if PLATFORM(COCOA)
     const CFIndex viewStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
@@ -579,7 +583,7 @@ void WebPageProxy::reattachToWebProcess()
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && (__IPHONE_OS_VERSION_MIN_REQUIRED > 82000)
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 
@@ -611,14 +615,14 @@ uint64_t WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item
     return navigationID;
 }
 
-void WebPageProxy::setSession(API::Session& session)
+void WebPageProxy::setSessionID(SessionID sessionID)
 {
-    m_session = session;
-    m_process->send(Messages::WebPage::SetSessionID(session.getID()), m_pageID);
+    m_sessionID = sessionID;
+    m_process->send(Messages::WebPage::SetSessionID(sessionID), m_pageID);
 
 #if ENABLE(NETWORK_PROCESS)
-    if (session.isEphemeral())
-        m_process->context().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(session.getID()));
+    if (sessionID.isEphemeral())
+        m_process->context().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(sessionID));
 #endif
 }
 
@@ -692,6 +696,8 @@ void WebPageProxy::close()
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
     m_process->context().storageManager().destroySessionStorageNamespace(m_pageID);
     m_process->context().supplement<WebNotificationManagerProxy>()->clearNotifications(this);
+
+    m_websiteDataStore->removeWebPage(*this);
 }
 
 bool WebPageProxy::tryClose()
@@ -1168,10 +1174,10 @@ void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
         m_viewState |= ViewState::IsVisuallyIdle;
 }
 
-void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, bool wantsReply, ViewStateChangeDispatchMode dispatchMode)
+void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, bool wantsSynchronousReply, ViewStateChangeDispatchMode dispatchMode)
 {
     m_potentiallyChangedViewStateFlags |= mayHaveChanged;
-    m_viewStateChangeWantsReply = m_viewStateChangeWantsReply || wantsReply;
+    m_viewStateChangeWantsSynchronousReply = m_viewStateChangeWantsSynchronousReply || wantsSynchronousReply;
 
 #if PLATFORM(COCOA)
     bool isNewlyInWindow = !isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow();
@@ -1230,10 +1236,12 @@ void WebPageProxy::dispatchViewStateChange()
 
     // We always want to wait for the Web process to reply if we've been in-window before and are coming back in-window.
     if (m_viewWasEverInWindow && (changed & ViewState::IsInWindow) && isInWindow())
-        m_viewStateChangeWantsReply = true;
+        m_viewStateChangeWantsSynchronousReply = true;
 
-    if (changed || m_viewStateChangeWantsReply)
-        m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsReply), m_pageID);
+    if (changed || m_viewStateChangeWantsSynchronousReply)
+        m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsSynchronousReply, m_nextViewStateChangeCallbacks), m_pageID);
+
+    m_nextViewStateChangeCallbacks.clear();
 
     // This must happen after the SetViewState message is sent, to ensure the page visibility event can fire.
     updateActivityToken();
@@ -1256,11 +1264,11 @@ void WebPageProxy::dispatchViewStateChange()
 
     updateBackingStoreDiscardableState();
 
-    if (m_viewStateChangeWantsReply)
+    if (m_viewStateChangeWantsSynchronousReply)
         waitForDidUpdateViewState();
 
     m_potentiallyChangedViewStateFlags = ViewState::NoFlags;
-    m_viewStateChangeWantsReply = false;
+    m_viewStateChangeWantsSynchronousReply = false;
 }
 
 void WebPageProxy::updateActivityToken()
@@ -3081,6 +3089,11 @@ void WebPageProxy::showPage()
     m_uiClient->showPage(this);
 }
 
+void WebPageProxy::fullscreenMayReturnToInline()
+{
+    m_uiClient->fullscreenMayReturnToInline(this);
+}
+
 void WebPageProxy::closePage(bool stopResponsivenessTimer)
 {
     if (stopResponsivenessTimer)
@@ -3578,6 +3591,7 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     bool closedComposition = !editorState.shouldIgnoreCompositionSelectionChange && !editorState.hasComposition && (m_editorState.hasComposition || m_temporarilyClosedComposition);
     m_temporarilyClosedComposition = editorState.shouldIgnoreCompositionSelectionChange && (m_temporarilyClosedComposition || m_editorState.hasComposition) && !editorState.hasComposition;
+    bool editabilityChanged = m_editorState.isContentEditable != editorState.isContentEditable;
 #endif
 
     m_editorState = editorState;
@@ -3594,6 +3608,10 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     if (closedComposition)
         m_pageClient.notifyInputContextAboutDiscardedComposition();
+    if (editabilityChanged) {
+        // This is only needed in sync code path, because AppKit automatically refreshes input context for async clients (<rdar://problem/18604360>).
+        m_pageClient.notifyApplicationAboutInputContextChange();
+    }
     if (editorState.hasComposition) {
         // Abandon the current inline input session if selection changed for any other reason but an input method changing the composition.
         // FIXME: This logic should be in WebCore, no need to round-trip to UI process to cancel the composition.
@@ -4544,6 +4562,11 @@ void WebPageProxy::resetStateAfterProcessExited()
     m_isValid = false;
     m_isPageSuspended = false;
 
+    m_editorState = EditorState();
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
+    m_temporarilyClosedComposition = false;
+#endif
+
     m_pageClient.processDidExit();
 
     resetState(ResetStateReason::WebProcessExited);
@@ -4563,12 +4586,6 @@ void WebPageProxy::resetStateAfterProcessExited()
 
 #if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     m_touchEventQueue.clear();
-#endif
-
-    // FIXME: Reset m_editorState.
-    // FIXME: Notify input methods about abandoned composition.
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-    m_temporarilyClosedComposition = false;
 #endif
 
 #if PLATFORM(MAC)
@@ -4602,10 +4619,11 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.gapBetweenPages = m_gapBetweenPages;
     parameters.userAgent = userAgent();
     parameters.itemStates = m_backForwardList->itemStates();
-    parameters.sessionID = m_session->getID();
+    parameters.sessionID = m_sessionID;
     parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highedUsedItemID();
     parameters.userContentControllerID = m_userContentController ? m_userContentController->identifier() : 0;
     parameters.visitedLinkTableID = m_visitedLinkProvider->identifier();
+    parameters.websiteDataStoreID = m_websiteDataStore->identifier();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();
@@ -5340,6 +5358,27 @@ void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& re
 
     m_pageClient.didPerformActionMenuHitTest(result, userData.get());
 }
+
+void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHandler)())
+{
+    if (!isValid()) {
+        completionHandler();
+        return;
+    }
+
+    auto copiedCompletionHandler = Block_copy(completionHandler);
+    RefPtr<VoidCallback> voidCallback = VoidCallback::create([copiedCompletionHandler] (CallbackBase::Error) {
+        copiedCompletionHandler();
+        Block_release(copiedCompletionHandler);
+    }, std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(voidCallback.release());
+    m_nextViewStateChangeCallbacks.append(callbackID);
+}
 #endif
+
+void WebPageProxy::setShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
+{
+    m_process->send(Messages::WebPage::SetShouldDispatchFakeMouseMoveEvents(shouldDispatchFakeMouseMoveEvents), m_pageID);
+}
 
 } // namespace WebKit

@@ -29,6 +29,7 @@
 #include "ClientRectList.h"
 #include "ContextMenuClient.h"
 #include "ContextMenuController.h"
+#include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
 #include "DocumentStyleSheetCollection.h"
 #include "DragController.h"
@@ -202,7 +203,7 @@ Page::Page(PageConfiguration& pageConfiguration)
 #endif
     , m_lastSpatialNavigationCandidatesCount(0) // NOTE: Only called from Internals for Spatial Navigation testing.
     , m_framesHandlingBeforeUnloadEvent(0)
-    , m_storageNamespaceProvider(WTF::move(pageConfiguration.storageNamespaceProvider))
+    , m_storageNamespaceProvider(*WTF::move(pageConfiguration.storageNamespaceProvider))
     , m_userContentController(WTF::move(pageConfiguration.userContentController))
     , m_visitedLinkStore(*WTF::move(pageConfiguration.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
@@ -213,8 +214,8 @@ Page::Page(PageConfiguration& pageConfiguration)
     
     setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
 
-    if (m_storageNamespaceProvider)
-        m_storageNamespaceProvider->addPage(*this);
+    m_storageNamespaceProvider->addPage(*this);
+
     if (m_userContentController)
         m_userContentController->addPage(*this);
 
@@ -270,9 +271,38 @@ Page::~Page()
     pageCounter.decrement();
 #endif
 
+    m_storageNamespaceProvider->removePage(*this);
+
     if (m_userContentController)
         m_userContentController->removePage(*this);
     m_visitedLinkStore->removePage(*this);
+}
+
+std::unique_ptr<Page> Page::createPageFromBuffer(PageConfiguration& pageConfiguration, const SharedBuffer* buffer, const String& mimeType, bool canHaveScrollbars, bool transparent)
+{
+    ASSERT(buffer);
+    
+    std::unique_ptr<Page> newPage = std::make_unique<Page>(pageConfiguration);
+    newPage->settings().setMediaEnabled(false);
+    newPage->settings().setScriptEnabled(false);
+    newPage->settings().setPluginsEnabled(false);
+    
+    Frame& frame = newPage->mainFrame();
+    frame.setView(FrameView::create(frame));
+    frame.init();
+    FrameLoader& loader = frame.loader();
+    loader.forceSandboxFlags(SandboxAll);
+    
+    frame.view()->setCanHaveScrollbars(canHaveScrollbars);
+    frame.view()->setTransparent(transparent);
+    
+    ASSERT(loader.activeDocumentLoader()); // DocumentLoader should have been created by frame->init().
+    loader.activeDocumentLoader()->writer().setMIMEType(mimeType);
+    loader.activeDocumentLoader()->writer().begin(URL()); // create the empty document
+    loader.activeDocumentLoader()->writer().addData(buffer->data(), buffer->size());
+    loader.activeDocumentLoader()->writer().end();
+    
+    return newPage;
 }
 
 void Page::clearPreviousItemFromAllPages(HistoryItem* item)
@@ -1061,7 +1091,7 @@ void Page::setDebugger(JSC::Debugger* debugger)
 StorageNamespace* Page::sessionStorage(bool optionalCreate)
 {
     if (!m_sessionStorage && optionalCreate)
-        m_sessionStorage = StorageNamespace::sessionStorageNamespace(this);
+        m_sessionStorage = m_storageNamespaceProvider->createSessionStorageNamespace(*this, m_settings->sessionStorageQuota());
 
     return m_sessionStorage.get();
 }
@@ -1617,9 +1647,7 @@ void Page::setUserContentController(UserContentController* userContentController
 
 void Page::setStorageNamespaceProvider(PassRef<StorageNamespaceProvider> storageNamespaceProvider)
 {
-    if (m_storageNamespaceProvider)
-        m_storageNamespaceProvider->removePage(*this);
-
+    m_storageNamespaceProvider->removePage(*this);
     m_storageNamespaceProvider = WTF::move(storageNamespaceProvider);
     m_storageNamespaceProvider->addPage(*this);
 

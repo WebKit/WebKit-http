@@ -19,6 +19,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/Plugins"
     "${WEBKIT2_DIR}/Shared/Plugins/Netscape"
     "${WEBKIT2_DIR}/Shared/Plugins/Netscape/x11"
+    "${WEBKIT2_DIR}/Shared/WebsiteData"
     "${WEBKIT2_DIR}/UIProcess"
     "${WEBKIT2_DIR}/UIProcess/API"
     "${WEBKIT2_DIR}/UIProcess/API/C"
@@ -33,6 +34,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/Plugins"
     "${WEBKIT2_DIR}/UIProcess/Storage"
     "${WEBKIT2_DIR}/UIProcess/UserContent"
+    "${WEBKIT2_DIR}/UIProcess/WebsiteData"
     "${WEBKIT2_DIR}/WebProcess"
     "${WEBKIT2_DIR}/WebProcess/ApplicationCache"
     "${WEBKIT2_DIR}/WebProcess/Battery"
@@ -352,6 +354,7 @@ set(WebKit2_SOURCES
     UIProcess/WebViewportAttributes.cpp
 
     UIProcess/API/APISessionState.cpp
+    UIProcess/API/APIWebsiteDataStore.cpp
 
     UIProcess/API/C/WKApplicationCacheManager.cpp
     UIProcess/API/C/WKAuthenticationChallenge.cpp
@@ -432,6 +435,8 @@ set(WebKit2_SOURCES
     UIProcess/UserContent/WebScriptMessageHandler.cpp
     UIProcess/UserContent/WebUserContentControllerProxy.cpp
 
+    UIProcess/WebsiteData/WebsiteDataStore.cpp
+
     WebProcess/WebConnectionToUIProcess.cpp
     WebProcess/WebProcess.cpp
 
@@ -485,6 +490,7 @@ set(WebKit2_SOURCES
     WebProcess/InjectedBundle/API/c/WKBundleRangeHandle.cpp
     WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.cpp
 
+    WebProcess/InjectedBundle/DOM/InjectedBundleCSSStyleDeclarationHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp
 
@@ -522,6 +528,7 @@ set(WebKit2_SOURCES
     WebProcess/Storage/StorageAreaImpl.cpp
     WebProcess/Storage/StorageAreaMap.cpp
     WebProcess/Storage/StorageNamespaceImpl.cpp
+    WebProcess/Storage/WebStorageNamespaceProvider.cpp
 
     WebProcess/UserContent/WebUserContentController.cpp
 

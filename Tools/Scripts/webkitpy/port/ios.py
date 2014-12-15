@@ -82,6 +82,11 @@ class IOSSimulatorPort(Port):
     def default_timeout_ms(self):
         if self.get_option('guard_malloc'):
             return 350 * 1000
+        if not self.get_option('webkit_test_runner'):
+            # DumpRenderTree.app waits for the WebThread to run before dumping its output.  In practice
+            # it seems sufficient to wait up to 80ms to ensure that the WebThread ran and hence output
+            # for the test is dumped.
+            return 80 * 1000
         return super(IOSSimulatorPort, self).default_timeout_ms()
 
     def supports_per_test_timeout(self):
@@ -209,12 +214,6 @@ class IOSSimulatorPort(Port):
         # launching the browser.
         self._executive.popen([self.path_to_script('run-safari')] + self._arguments_for_configuration() + ['--no-saved-state', '-NSOpen', results_filename],
             cwd=self.webkit_base(), stdout=file(os.devnull), stderr=file(os.devnull))
-
-    def acquire_http_lock(self):
-        pass
-
-    def release_http_lock(self):
-        pass
 
     def sample_file_path(self, name, pid):
         return self._filesystem.join(self.results_directory(), "{0}-{1}-sample.txt".format(name, pid))

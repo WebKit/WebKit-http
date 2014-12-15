@@ -29,8 +29,10 @@
 #ifndef VM_h
 #define VM_h
 
+#include "ControlFlowProfiler.h"
 #include "DateInstanceCache.h"
 #include "ExecutableAllocator.h"
+#include "FunctionHasExecutedCache.h"
 #include "Heap.h"
 #include "Intrinsic.h"
 #include "JITThunks.h"
@@ -87,7 +89,6 @@ class Keywords;
 class LLIntOffsetsExtractor;
 class LegacyProfiler;
 class NativeExecutable;
-class ParserArena;
 class RegExpCache;
 class ScriptExecutable;
 class SourceProvider;
@@ -325,7 +326,6 @@ public:
 
     PrototypeMap prototypeMap;
 
-    OwnPtr<ParserArena> parserArena;
     typedef HashMap<RefPtr<SourceProvider>, RefPtr<SourceProviderCache>> SourceProviderCacheMap;
     SourceProviderCacheMap sourceProviderCacheMap;
     OwnPtr<Keywords> keywords;
@@ -519,6 +519,12 @@ public:
     TypeProfiler* typeProfiler() { return m_typeProfiler.get(); }
     JS_EXPORT_PRIVATE void dumpTypeProfilerData();
 
+    FunctionHasExecutedCache* functionHasExecutedCache() { return &m_functionHasExecutedCache; }
+
+    ControlFlowProfiler* controlFlowProfiler() { return m_controlFlowProfiler.get(); }
+    bool enableControlFlowProfiler();
+    bool disableControlFlowProfiler();
+
 private:
     friend class LLIntOffsetsExtractor;
     friend class ClearExceptionScope;
@@ -570,6 +576,9 @@ private:
     std::unique_ptr<TypeProfiler> m_typeProfiler;
     std::unique_ptr<TypeProfilerLog> m_typeProfilerLog;
     unsigned m_typeProfilerEnabledCount;
+    FunctionHasExecutedCache m_functionHasExecutedCache;
+    std::unique_ptr<ControlFlowProfiler> m_controlFlowProfiler;
+    unsigned m_controlFlowProfilerEnabledCount;
 };
 
 #if ENABLE(GC_VALIDATION)
