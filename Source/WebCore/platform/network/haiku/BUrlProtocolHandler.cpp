@@ -527,6 +527,12 @@ void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data
     if (!client)
         return;
 
+    sendResponseIfNeeded();
+
+    // don't emit the "Document has moved here" type of HTML
+    if (m_redirected)
+        return;
+
     if (size > 0) {
         m_responseDataSent = true;
         client->didReceiveData(m_resourceHandle, data, size, size);
