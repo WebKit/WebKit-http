@@ -26,7 +26,7 @@
 #ifndef WebStorageNamespaceProvider_h
 #define WebStorageNamespaceProvider_h
 
-#include <WebCore/StorageNamespaceProvider.h>
+#include <WebCore/storage/StorageNamespaceProvider.h>
 
 class WebStorageNamespaceProvider final : public WebCore::StorageNamespaceProvider {
 public:

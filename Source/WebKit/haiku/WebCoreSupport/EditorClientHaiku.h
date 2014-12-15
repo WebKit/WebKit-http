@@ -79,6 +79,8 @@ public:
     void didWriteSelectionToPasteboard() override;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData) override;
 
+    void discardedComposition(Frame*) override;
+
     void registerUndoStep(PassRefPtr<UndoStep>) override;
     void registerRedoStep(PassRefPtr<UndoStep>) override;
     void clearUndoRedoOperations() override;

@@ -217,6 +217,10 @@ void EditorClientHaiku::getClientPasteboardDataForRange(WebCore::Range*, Vector<
 {
 }
 
+void EditorClientHaiku::discardedComposition(Frame*)
+{
+}
+
 void EditorClientHaiku::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
 {
     if (!m_isInRedo)

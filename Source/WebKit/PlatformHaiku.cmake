@@ -1,5 +1,6 @@
 LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source"
+    "${WEBKIT_DIR}/Storage"
     "${WEBKIT_DIR}/haiku/API"
     "${WEBKIT_DIR}/haiku/WebCoreSupport"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
@@ -28,6 +29,8 @@ IF (ENABLE_NOTIFICATIONS)
   )
 ENDIF ()
 
+ADD_DEFINITIONS(-include config.h)
+
 LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/AcceleratedCompositingContext.cpp
     haiku/WebCoreSupport/ChromeClientHaiku.cpp
@@ -51,6 +54,8 @@ LIST(APPEND WebKit_SOURCES
     haiku/API/WebSettingsPrivate.cpp
     haiku/API/WebView.cpp
     haiku/API/WebWindow.cpp
+
+    Storage/WebStorageNamespaceProvider.cpp
 )
 
 LIST(APPEND WebKit_LIBRARIES

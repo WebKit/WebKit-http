@@ -82,6 +82,7 @@
 #include "WebFrame.h"
 #include "WebFramePrivate.h"
 #include "WebSettings.h"
+#include "WebStorageNamespaceProvider.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 #include "WebVisitedLinkStore.h"
@@ -227,10 +228,18 @@ BWebPage::BWebPage(BWebView* webView)
     // pluginClient ?
     // validationMessageClient?
     // pageClients.alternativeTextClient = new WebAlternativeTextClient(self); ?
-    // storageNamespaceProvider?
     // userContentController?
     pageClients.visitedLinkStore = &WebVisitedLinkStore::shared();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
+
+    // FIXME we should get this from the page settings, but they are created
+    // after the page, and we need this before the page is created.
+    BPath storagePath;
+    find_directory(B_USER_DATA_DIRECTORY, &storagePath);
+    storagePath.Append("LocalStorage");
+
+    pageClients.storageNamespaceProvider = WebStorageNamespaceProvider::create(
+        storagePath.Path());
 
     fPage = new Page(pageClients);
 

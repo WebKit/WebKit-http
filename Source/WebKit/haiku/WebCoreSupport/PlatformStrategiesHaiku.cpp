@@ -76,11 +76,6 @@ SharedWorkerStrategy* PlatformStrategiesHaiku::createSharedWorkerStrategy()
     return this;
 }
 
-StorageStrategy* PlatformStrategiesHaiku::createStorageStrategy()
-{
-    return this;
-}
-
 // CookiesStrategy
 String PlatformStrategiesHaiku::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
