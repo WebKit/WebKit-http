@@ -64,7 +64,7 @@ if (isAppleMacWebKit()) {
     $result = buildXCodeProject("WebKitTestRunner", $clean, XcodeOptions(), (@ARGV, @target));
 } elsif (isAppleWinWebKit()) {
     $result = buildVisualStudioProject("WebKitTestRunner.sln", $clean);
-} elsif (isGtk() || isEfl()) {
+} elsif (isGtk() || isEfl() || isWPE()) {
     # GTK+ and EFL build everything in one shot. No need to build anything here.
     $result = 0;
 } else {
