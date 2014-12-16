@@ -71,6 +71,8 @@ class WebPageProxy;
 typedef void (^UIWKAutocorrectionCompletionHandler)(UIWKAutocorrectionRects *rectsForInput);
 typedef void (^UIWKAutocorrectionContextHandler)(UIWKAutocorrectionContext *autocorrectionContext);
 typedef void (^UIWKDictationContextHandler)(NSString *selectedText, NSString *beforeText, NSString *afterText);
+typedef void (^UIWKSelectionCompletionHandler)(void);
+typedef void (^UIWKSelectionWithDirectionCompletionHandler)(BOOL selectionEndIsMoving);
 
 namespace WebKit {
 struct WKAutoCorrectionData {
@@ -136,6 +138,7 @@ struct WKAutoCorrectionData {
     BOOL _hasValidPositionInformation;
     BOOL _isTapHighlightIDValid;
     BOOL _potentialTapInProgress;
+    BOOL _highlightLongPressCanClick;
     BOOL _hasTapHighlightForPotentialTap;
     BOOL _selectionNeedsUpdate;
     BOOL _shouldRestoreSelection;
@@ -160,7 +163,9 @@ struct WKAutoCorrectionData {
 
 - (void)scrollViewWillStartPanOrPinchGesture;
 
+#if ENABLE(TOUCH_EVENTS)
 - (void)_webTouchEvent:(const WebKit::NativeWebTouchEvent&)touchEvent preventsNativeGestures:(BOOL)preventsDefault;
+#endif
 - (void)_commitPotentialTapFailed;
 - (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius;
 

@@ -222,17 +222,17 @@ public:
     bool isValueID() const { return m_primitiveUnitType == CSS_VALUE_ID; }
     bool isFlex() const { return primitiveType() == CSS_FR; }
 
-    static PassRef<CSSPrimitiveValue> createIdentifier(CSSValueID valueID) { return adoptRef(*new CSSPrimitiveValue(valueID)); }
-    static PassRef<CSSPrimitiveValue> createIdentifier(CSSPropertyID propertyID) { return adoptRef(*new CSSPrimitiveValue(propertyID)); }
-    static PassRef<CSSPrimitiveValue> createParserOperator(int parserOperator) { return adoptRef(*new CSSPrimitiveValue(parserOperator)); }
+    static Ref<CSSPrimitiveValue> createIdentifier(CSSValueID valueID) { return adoptRef(*new CSSPrimitiveValue(valueID)); }
+    static Ref<CSSPrimitiveValue> createIdentifier(CSSPropertyID propertyID) { return adoptRef(*new CSSPrimitiveValue(propertyID)); }
+    static Ref<CSSPrimitiveValue> createParserOperator(int parserOperator) { return adoptRef(*new CSSPrimitiveValue(parserOperator)); }
 
-    static PassRef<CSSPrimitiveValue> createColor(unsigned rgbValue) { return adoptRef(*new CSSPrimitiveValue(rgbValue)); }
-    static PassRef<CSSPrimitiveValue> create(double value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
-    static PassRef<CSSPrimitiveValue> create(const String& value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
-    static PassRef<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
-    static PassRef<CSSPrimitiveValue> create(const LengthSize& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
+    static Ref<CSSPrimitiveValue> createColor(unsigned rgbValue) { return adoptRef(*new CSSPrimitiveValue(rgbValue)); }
+    static Ref<CSSPrimitiveValue> create(double value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
+    static Ref<CSSPrimitiveValue> create(const String& value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
+    static Ref<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
+    static Ref<CSSPrimitiveValue> create(const LengthSize& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
 
-    template<typename T> static PassRef<CSSPrimitiveValue> create(T value)
+    template<typename T> static Ref<CSSPrimitiveValue> create(T value)
     {
         return adoptRef(*new CSSPrimitiveValue(value));
     }
@@ -241,7 +241,7 @@ public:
     // The basic idea is that a stylesheet can use the value __qem (for quirky em) instead of em.
     // When the quirky value is used, if you're in quirks mode, the margin will collapse away
     // inside a table cell.
-    static PassRef<CSSPrimitiveValue> createAllowingMarginQuirk(double value, UnitTypes type)
+    static Ref<CSSPrimitiveValue> createAllowingMarginQuirk(double value, UnitTypes type)
     {
         CSSPrimitiveValue* quirkValue = new CSSPrimitiveValue(value, type);
         quirkValue->m_isQuirkValue = true;
@@ -259,13 +259,13 @@ public:
     enum TimeUnit { Seconds, Milliseconds };
     template <typename T, TimeUnit timeUnit> T computeTime()
     {
-        if (timeUnit == Seconds && m_primitiveUnitType == CSS_S)
+        if (timeUnit == Seconds && primitiveType() == CSS_S)
             return getValue<T>();
-        if (timeUnit == Seconds && m_primitiveUnitType == CSS_MS)
+        if (timeUnit == Seconds && primitiveType() == CSS_MS)
             return getValue<T>() / 1000;
-        if (timeUnit == Milliseconds && m_primitiveUnitType == CSS_MS)
+        if (timeUnit == Milliseconds && primitiveType() == CSS_MS)
             return getValue<T>();
-        if (timeUnit == Milliseconds && m_primitiveUnitType == CSS_S)
+        if (timeUnit == Milliseconds && primitiveType() == CSS_S)
             return getValue<T>() * 1000;
         ASSERT_NOT_REACHED();
         return 0;
@@ -404,8 +404,8 @@ private:
 
     ALWAYS_INLINE String formatNumberForCustomCSSText() const;
     template <unsigned characterCount>
-    ALWAYS_INLINE PassRef<StringImpl> formatNumberValue(const char (&characters)[characterCount]) const;
-    NEVER_INLINE PassRef<StringImpl> formatNumberValue(const char* suffix, unsigned suffixLength) const;
+    ALWAYS_INLINE Ref<StringImpl> formatNumberValue(const char (&characters)[characterCount]) const;
+    NEVER_INLINE Ref<StringImpl> formatNumberValue(const char* suffix, unsigned suffixLength) const;
 
     union {
         CSSPropertyID propertyID;

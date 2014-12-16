@@ -27,24 +27,23 @@
 #define Allocator_h
 
 #include "BumpAllocator.h"
-#include "FixedVector.h"
-#include "Heap.h"
-#include "Sizes.h"
-#include "SmallLine.h"
 #include <array>
 
 namespace bmalloc {
 
 class Deallocator;
+class Heap;
 
 // Per-cache object allocator.
 
 class Allocator {
 public:
-    Allocator(Deallocator&);
+    Allocator(Heap*, Deallocator&);
     ~Allocator();
 
     void* allocate(size_t);
+    void* reallocate(void*, size_t);
+
     void scavenge();
 
 private:
@@ -58,10 +57,11 @@ private:
     BumpRange allocateBumpRange(size_t sizeClass);
     BumpRange allocateBumpRangeSlowCase(size_t sizeClass);
     
-    Deallocator& m_deallocator;
-
     std::array<BumpAllocator, mediumMax / alignment> m_bumpAllocators;
     std::array<BumpRangeCache, mediumMax / alignment> m_bumpRangeCaches;
+
+    bool m_isBmallocEnabled;
+    Deallocator& m_deallocator;
 };
 
 inline bool Allocator::allocateFastCase(size_t size, void*& object)

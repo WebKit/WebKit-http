@@ -117,7 +117,7 @@ private:
     virtual void finishParsingChildren() override final;
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) override final;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
     virtual bool willRecalcStyle(Style::Change) override final;
     virtual void didAttachRenderers() override final;
     virtual void willDetachRenderers() override final;
@@ -136,7 +136,7 @@ private:
     void simulatedMouseClickTimerFired();
 
     void restartSimilarPlugIns();
-    void removeSnapshotTimerFired(Timer&);
+    void removeSnapshotTimerFired();
     bool isTopLevelFullPagePlugin(const RenderEmbeddedObject&) const;
 
     URL m_loadedUrl;

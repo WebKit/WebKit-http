@@ -65,6 +65,7 @@
 #include "WebContextMenuClient.h"
 #include "WebContextMessages.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebDiagnosticLoggingClient.h"
 #include "WebDocumentLoader.h"
 #include "WebDragClient.h"
 #include "WebEditorClient.h"
@@ -87,6 +88,7 @@
 #include "WebPageCreationParameters.h"
 #include "WebPageGroupProxy.h"
 #include "WebPageMessages.h"
+#include "WebPageOverlay.h"
 #include "WebPageProxyMessages.h"
 #include "WebPlugInClient.h"
 #include "WebPopupMenu.h"
@@ -96,6 +98,7 @@
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include "WebProgressTrackerClient.h"
+#include "WebStorageNamespaceProvider.h"
 #include "WebUndoStep.h"
 #include "WebUserContentController.h"
 #include "WebUserMediaClient.h"
@@ -130,6 +133,7 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/MouseEvent.h>
 #include <WebCore/Page.h>
+#include <WebCore/PageConfiguration.h>
 #include <WebCore/PageThrottler.h>
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/PluginDocument.h>
@@ -196,8 +200,7 @@
 #include "RemoteLayerTreeDrawingArea.h"
 #include "WebVideoFullscreenManager.h"
 #include <CoreGraphics/CoreGraphics.h>
-#include <CoreText/CTFontDescriptorPriv.h>
-#include <CoreText/CTFontPriv.h>
+#include <WebCore/CoreTextSPI.h>
 #include <WebCore/Icon.h>
 #endif
 
@@ -288,6 +291,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
     , m_isRunningModal(false)
+#if ENABLE(DRAG_SUPPORT)
+    , m_isStartingDrag(false)
+#endif
     , m_cachedMainFrameIsPinnedToLeftSide(true)
     , m_cachedMainFrameIsPinnedToRightSide(true)
     , m_cachedMainFrameIsPinnedToTopSide(true)
@@ -300,6 +306,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_isShowingContextMenu(false)
 #endif
 #if PLATFORM(IOS)
+    , m_selectionAnchor(Start)
     , m_firstLayerTreeTransactionIDAfterDidCommitLoad(0)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
@@ -327,41 +334,47 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
+    , m_mainFrameProgressCompleted(false)
+    , m_shouldDispatchFakeMouseMoveEvents(true)
 {
     ASSERT(m_pageID);
     // FIXME: This is a non-ideal location for this Setting and
     // 4ms should be adopted project-wide now, https://bugs.webkit.org/show_bug.cgi?id=61214
     Settings::setDefaultMinDOMTimerInterval(0.004);
 
+    m_pageGroup = WebProcess::shared().webPageGroup(parameters.pageGroupData);
+
 #if PLATFORM(IOS)
     Settings::setShouldManageAudioSessionCategory(true);
 #endif
 
-    Page::PageClients pageClients;
-    pageClients.chromeClient = new WebChromeClient(this);
+    PageConfiguration pageConfiguration;
+    pageConfiguration.chromeClient = new WebChromeClient(this);
 #if ENABLE(CONTEXT_MENUS)
-    pageClients.contextMenuClient = new WebContextMenuClient(this);
+    pageConfiguration.contextMenuClient = new WebContextMenuClient(this);
 #endif
-    pageClients.editorClient = new WebEditorClient(this);
+    pageConfiguration.editorClient = new WebEditorClient(this);
 #if ENABLE(DRAG_SUPPORT)
-    pageClients.dragClient = new WebDragClient(this);
+    pageConfiguration.dragClient = new WebDragClient(this);
 #endif
-    pageClients.backForwardClient = WebBackForwardListProxy::create(this);
+    pageConfiguration.backForwardClient = WebBackForwardListProxy::create(this);
 #if ENABLE(INSPECTOR)
     m_inspectorClient = new WebInspectorClient(this);
-    pageClients.inspectorClient = m_inspectorClient;
+    pageConfiguration.inspectorClient = m_inspectorClient;
 #endif
 #if USE(AUTOCORRECTION_PANEL)
-    pageClients.alternativeTextClient = new WebAlternativeTextClient(this);
+    pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(this);
 #endif
-    pageClients.plugInClient = new WebPlugInClient(this);
-    pageClients.loaderClientForMainFrame = new WebFrameLoaderClient;
-    pageClients.progressTrackerClient = new WebProgressTrackerClient(*this);
+    pageConfiguration.plugInClient = new WebPlugInClient(*this);
+    pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
+    pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(*this);
+    pageConfiguration.diagnosticLoggingClient = new WebDiagnosticLoggingClient(*this);
 
-    pageClients.userContentController = m_userContentController ? &m_userContentController->userContentController() : nullptr;
-    pageClients.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
+    pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::getOrCreate(m_pageGroup->pageGroupID());
+    pageConfiguration.userContentController = m_userContentController ? &m_userContentController->userContentController() : &m_pageGroup->userContentController();
+    pageConfiguration.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
 
-    m_page = std::make_unique<Page>(pageClients);
+    m_page = std::make_unique<Page>(pageConfiguration);
 
     m_drawingArea = DrawingArea::create(*this, parameters);
     m_drawingArea->setPaintingEnabled(false);
@@ -401,7 +414,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     m_page->setCanStartMedia(false);
     m_mayStartMediaWhenInWindow = parameters.mayStartMediaWhenInWindow;
 
-    m_pageGroup = WebProcess::shared().webPageGroup(parameters.pageGroupData);
     m_page->setGroupName(m_pageGroup->identifier());
     m_page->setDeviceScaleFactor(parameters.deviceScaleFactor);
 #if PLATFORM(IOS)
@@ -494,7 +506,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
 {
     if (m_viewState != parameters.viewState)
-        setViewState(parameters.viewState);
+        setViewState(parameters.viewState, false, Vector<uint64_t>());
     if (m_layerHostingMode != parameters.layerHostingMode)
         setLayerHostingMode(static_cast<unsigned>(parameters.layerHostingMode));
 }
@@ -1903,13 +1915,23 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 {
     m_page->pageThrottler().didReceiveUserInput();
 
+    bool shouldHandleEvent = true;
+
 #if ENABLE(CONTEXT_MENUS)
     // Don't try to handle any pending mouse events if a context menu is showing.
-    if (m_isShowingContextMenu) {
+    if (m_isShowingContextMenu)
+        shouldHandleEvent = false;
+#endif
+#if ENABLE(DRAG_SUPPORT)
+    if (m_isStartingDrag)
+        shouldHandleEvent = false;
+#endif
+
+    if (!shouldHandleEvent) {
         send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(mouseEvent.type()), false));
         return;
     }
-#endif
+
     bool handled = false;
 
 #if !PLATFORM(IOS)
@@ -1936,6 +1958,11 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 
 void WebPage::mouseEventSyncForTesting(const WebMouseEvent& mouseEvent, bool& handled)
 {
+#if ENABLE(DRAG_SUPPORT)
+    if (m_isStartingDrag)
+        messageSenderConnection()->waitForAndDispatchImmediately<Messages::WebPage::DidStartDrag>(messageSenderDestinationID(), std::chrono::seconds(60));
+#endif
+
     handled = false;
 #if !PLATFORM(IOS)
     if (!handled && m_headerBanner)
@@ -2225,7 +2252,7 @@ void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const Web
     if (isKeyboardEventValid && event.type() == WebEvent::KeyDown) {
         PlatformKeyboardEvent platformEvent(platform(event));
         platformEvent.disambiguateKeyDownEvent(PlatformEvent::RawKeyDown);
-        m_page->focusController().setInitialFocus(forward ? FocusDirectionForward : FocusDirectionBackward, KeyboardEvent::create(platformEvent, frame.document()->defaultView()).get());
+        m_page->focusController().setInitialFocus(forward ? FocusDirectionForward : FocusDirectionBackward, &KeyboardEvent::create(platformEvent, frame.document()->defaultView()).get());
         return;
     }
 
@@ -2286,7 +2313,7 @@ void WebPage::updateIsInWindow(bool isInitialState)
         layoutIfNeeded();
 }
 
-void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewState)
+void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs)
 {
     ViewState::Flags changed = m_viewState ^ viewState;
     m_viewState = viewState;
@@ -2295,7 +2322,7 @@ void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewSt
     for (auto* pluginView : m_pluginViews)
         pluginView->viewStateDidChange(changed);
 
-    m_drawingArea->viewStateDidChange(changed, wantsDidUpdateViewState);
+    m_drawingArea->viewStateDidChange(changed, wantsDidUpdateViewState, callbackIDs);
 
     if (changed & ViewState::IsInWindow)
         updateIsInWindow();
@@ -2660,6 +2687,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setJavaScriptCanOpenWindowsAutomatically(store.getBoolValueForKey(WebPreferencesKey::javaScriptCanOpenWindowsAutomaticallyKey()));
     settings.setForceFTPDirectoryListings(store.getBoolValueForKey(WebPreferencesKey::forceFTPDirectoryListingsKey()));
     settings.setDNSPrefetchingEnabled(store.getBoolValueForKey(WebPreferencesKey::dnsPrefetchingEnabledKey()));
+    settings.setDOMTimersThrottlingEnabled(store.getBoolValueForKey(WebPreferencesKey::domTimersThrottlingEnabledKey()));
 #if ENABLE(WEB_ARCHIVE)
     settings.setWebArchiveDebugModeEnabled(store.getBoolValueForKey(WebPreferencesKey::webArchiveDebugModeEnabledKey()));
 #endif
@@ -2708,6 +2736,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAccelerated2dCanvasEnabled(store.getBoolValueForKey(WebPreferencesKey::accelerated2dCanvasEnabledKey()));
     settings.setMediaPlaybackRequiresUserGesture(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackRequiresUserGestureKey()));
     settings.setMediaPlaybackAllowsInline(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackAllowsInlineKey()));
+    settings.setAllowsAlternateFullscreen(store.getBoolValueForKey(WebPreferencesKey::allowsAlternateFullscreenKey()));
     settings.setMockScrollbarsEnabled(store.getBoolValueForKey(WebPreferencesKey::mockScrollbarsEnabledKey()));
     settings.setHyperlinkAuditingEnabled(store.getBoolValueForKey(WebPreferencesKey::hyperlinkAuditingEnabledKey()));
     settings.setRequestAnimationFrameEnabled(store.getBoolValueForKey(WebPreferencesKey::requestAnimationFrameEnabledKey()));
@@ -2858,6 +2887,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     if (m_drawingArea)
         m_drawingArea->updatePreferences(store);
+
+#if PLATFORM(IOS)
+    m_viewportConfiguration.setIgnoreScalingConstraints(store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey()));
+#endif
 }
 
 #if PLATFORM(COCOA)
@@ -2872,6 +2905,9 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
     layerTransaction.setMinimumScaleFactor(m_viewportConfiguration.minimumScale());
     layerTransaction.setMaximumScaleFactor(m_viewportConfiguration.maximumScale());
     layerTransaction.setAllowsUserScaling(allowsUserScaling());
+#endif
+#if PLATFORM(MAC)
+    layerTransaction.setScrollPosition(corePage()->mainFrame().view()->scrollPosition());
 #endif
 }
 
@@ -3908,19 +3944,22 @@ void WebPage::addResourceRequest(unsigned long identifier, const WebCore::Resour
     if (!request.url().protocolIsInHTTPFamily())
         return;
 
-    ASSERT(!m_networkResourceRequestIdentifiers.contains(identifier));
-    bool wasEmpty = m_networkResourceRequestIdentifiers.isEmpty();
-    m_networkResourceRequestIdentifiers.add(identifier);
+    if (m_mainFrameProgressCompleted && !ScriptController::processingUserGesture())
+        return;
+
+    ASSERT(!m_trackedNetworkResourceRequestIdentifiers.contains(identifier));
+    bool wasEmpty = m_trackedNetworkResourceRequestIdentifiers.isEmpty();
+    m_trackedNetworkResourceRequestIdentifiers.add(identifier);
     if (wasEmpty)
         send(Messages::WebPageProxy::SetNetworkRequestsInProgress(true));
 }
 
 void WebPage::removeResourceRequest(unsigned long identifier)
 {
-    if (!m_networkResourceRequestIdentifiers.remove(identifier))
+    if (!m_trackedNetworkResourceRequestIdentifiers.remove(identifier))
         return;
 
-    if (m_networkResourceRequestIdentifiers.isEmpty())
+    if (m_trackedNetworkResourceRequestIdentifiers.isEmpty())
         send(Messages::WebPageProxy::SetNetworkRequestsInProgress(false));
 }
 
@@ -4340,6 +4379,7 @@ void WebPage::didChangeSelection()
 #if PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT)
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     // Abandon the current inline input session if selection changed for any other reason but an input method direct action.
+    // FIXME: This logic should be in WebCore.
     // FIXME: Many changes that affect composition node do not go through didChangeSelection(). We need to do something when DOM manipulation affects the composition, because otherwise input method's idea about it will be different from Editor's.
     // FIXME: We can't cancel composition when selection changes to NoSelection, but we probably should.
     if (frame.editor().hasComposition() && !frame.editor().ignoreCompositionSelectionChange() && !frame.selection().isNone()) {
@@ -4354,6 +4394,11 @@ void WebPage::didChangeSelection()
 #if PLATFORM(IOS)
     m_drawingArea->scheduleCompositingLayerFlush();
 #endif
+}
+
+void WebPage::discardedComposition()
+{
+    send(Messages::WebPageProxy::CompositionWasCanceled(editorState()));
 }
 
 void WebPage::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
@@ -4477,10 +4522,11 @@ void WebPage::didCommitLoad(WebFrame* frame)
     m_userHasChangedPageScaleFactor = false;
     m_estimatedLatency = std::chrono::milliseconds(1000 / 60);
 
+#if ENABLE(IOS_TOUCH_EVENTS)
     WebProcess::shared().eventDispatcher().clearQueuedTouchEventsForPage(*this);
+#endif
 
     resetViewportDefaultConfiguration(frame);
-    m_viewportConfiguration.resetMinimalUI();
     const Frame* coreFrame = frame->coreFrame();
     m_viewportConfiguration.setContentsSize(coreFrame->view()->contentsSize());
     m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments());
@@ -4494,18 +4540,6 @@ void WebPage::didCommitLoad(WebFrame* frame)
     WebProcess::shared().updateActivePages();
 
     updateMainFrameScrollOffsetPinning();
-}
-
-void WebPage::didFinishDocumentLoad(WebFrame* frame)
-{
-#if PLATFORM(IOS)
-    if (!frame->isMainFrame())
-        return;
-
-    m_viewportConfiguration.didFinishDocumentLoad();
-#else
-    UNUSED_PARAM(frame);
-#endif // PLATFORM(IOS)
 }
 
 void WebPage::didFinishLoad(WebFrame* frame)
@@ -4808,11 +4842,6 @@ void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
         return;
 
     updateMainFrameScrollOffsetPinning();
-}
-
-void WebPage::willChangeCurrentHistoryItemForMainFrame()
-{
-    send(Messages::WebPageProxy::WillChangeCurrentHistoryItemForMainFrame());
 }
 
 } // namespace WebKit

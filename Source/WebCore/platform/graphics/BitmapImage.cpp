@@ -83,6 +83,13 @@ BitmapImage::~BitmapImage()
     stopAnimation();
 }
 
+#if !USE(CG)
+bool BitmapImage::decodedDataIsPurgeable() const
+{
+    return false;
+}
+#endif
+
 bool BitmapImage::haveFrameAtIndex(size_t index)
 {
     if (index >= frameCount())
@@ -131,6 +138,11 @@ void BitmapImage::destroyDecodedDataIfNecessary(bool destroyAll)
 #else
     const unsigned largeAnimationCutoff = 5242880;
 #endif
+
+    // If decoded data is purgeable, the operating system will
+    // take care of throwing it away when the system is under pressure.
+    if (decodedDataIsPurgeable())
+        return;
 
     // If we have decoded frames but there is no encoded data, we shouldn't destroy
     // the decoded image since we won't be able to reconstruct it later.
@@ -528,7 +540,7 @@ void BitmapImage::startAnimation(CatchUpAnimation catchUpIfNecessary)
 
     if (catchUpIfNecessary == DoNotCatchUp || time < m_desiredFrameStartTime) {
         // Haven't yet reached time for next frame to start; delay until then.
-        m_frameTimer = std::make_unique<Timer>(this, &BitmapImage::advanceAnimation);
+        m_frameTimer = std::make_unique<Timer>(*this, &BitmapImage::advanceAnimation);
         m_frameTimer->startOneShot(std::max(m_desiredFrameStartTime - time, 0.));
     } else {
         // We've already reached or passed the time for the next frame to start.
@@ -629,7 +641,7 @@ void BitmapImage::drawPattern(GraphicsContext* ctxt, const FloatRect& tileRect, 
 }
 
 
-void BitmapImage::advanceAnimation(Timer&)
+void BitmapImage::advanceAnimation()
 {
     internalAdvanceAnimation(false);
     // At this point the image region has been marked dirty, and if it's

@@ -60,6 +60,7 @@
 #include "WebProcessMessages.h"
 #include "WebProcessProxy.h"
 #include "WebResourceCacheManagerProxy.h"
+#include "WebsiteDataStore.h"
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/Language.h>
 #include <WebCore/LinkHash.h>
@@ -150,6 +151,14 @@ const Vector<WebContext*>& WebContext::allContexts()
     return contexts();
 }
 
+static WebsiteDataStore::Configuration websiteDataStoreConfiguration()
+{
+    WebsiteDataStore::Configuration configuration;
+
+    // FIXME: Fill in the configuration.
+    return configuration;
+}
+
 WebContext::WebContext(WebContextConfiguration configuration)
     : m_processModel(ProcessModelSharedSecondaryProcess)
     , m_webProcessCountLimit(UINT_MAX)
@@ -167,6 +176,7 @@ WebContext::WebContext(WebContextConfiguration configuration)
     , m_cacheModel(CacheModelDocumentViewer)
     , m_memorySamplerEnabled(false)
     , m_memorySamplerInterval(1400.0)
+    , m_websiteDataStore(WebsiteDataStore::create(websiteDataStoreConfiguration()))
     , m_storageManager(StorageManager::create(configuration.localStorageDirectory))
 #if USE(SOUP)
     , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
@@ -184,6 +194,8 @@ WebContext::WebContext(WebContextConfiguration configuration)
     , m_ignoreTLSErrors(true)
 #endif
     , m_memoryCacheDisabled(false)
+    , m_userObservablePageCounter([this]() { updateProcessSuppressionState(); })
+    , m_processSuppressionDisabledForPageCounter([this]() { updateProcessSuppressionState(); })
 {
     platformInitialize();
 
@@ -654,7 +666,9 @@ WebProcessProxy& WebContext::createNewWebProcess()
 
     parameters.shouldAlwaysUseComplexTextCodePath = m_alwaysUsesComplexTextCodePath;
     parameters.shouldUseFontSmoothing = m_shouldUseFontSmoothing;
-    
+
+    // FIXME: This leaves UI process and WebProcess disagreeing about the state if the client hasn't set the path.
+    // iconDatabasePath is non-empty by default, but m_iconDatabase isn't enabled in UI process unless setDatabasePath is called explicitly.
     parameters.iconDatabaseEnabled = !iconDatabasePath().isEmpty();
 
     parameters.terminationTimeout = (m_processModel == ProcessModelSharedSecondaryProcess) ? sharedSecondaryProcessShutdownTimeout : 0;
@@ -860,8 +874,11 @@ PassRefPtr<WebPageProxy> WebContext::createWebPage(PageClient& pageClient, WebPa
         configuration.preferences = &configuration.pageGroup->preferences();
     if (!configuration.visitedLinkProvider)
         configuration.visitedLinkProvider = m_visitedLinkProvider.get();
-    if (!configuration.session)
-        configuration.session = configuration.preferences->privateBrowsingEnabled() ? &API::Session::legacyPrivateSession() : &API::Session::defaultSession();
+    if (!configuration.websiteDataStore) {
+        ASSERT(!configuration.sessionID.isValid());
+        configuration.websiteDataStore = m_websiteDataStore.get();
+        configuration.sessionID = configuration.preferences->privateBrowsingEnabled() ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID();
+    }
 
     RefPtr<WebProcessProxy> process;
     if (m_processModel == ProcessModelSharedSecondaryProcess) {
@@ -1225,12 +1242,15 @@ String WebContext::applicationCacheDirectory() const
 void WebContext::setIconDatabasePath(const String& path)
 {
     m_overrideIconDatabasePath = path;
-    m_iconDatabase->setDatabasePath(path);
+    if (!m_overrideIconDatabasePath.isEmpty()) {
+        // This implicitly enables the database on UI process side.
+        m_iconDatabase->setDatabasePath(path);
+    }
 }
 
 String WebContext::iconDatabasePath() const
 {
-    if (!m_overrideIconDatabasePath.isEmpty())
+    if (!m_overrideIconDatabasePath.isNull())
         return m_overrideIconDatabasePath;
 
     return platformDefaultIconDatabasePath();

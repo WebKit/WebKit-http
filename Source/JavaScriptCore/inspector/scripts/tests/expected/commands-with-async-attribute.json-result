@@ -1009,6 +1009,7 @@ using namespace Inspector;
 
 #import "RWIProtocol.h"
 
+__attribute__((visibility ("default")))
 @interface RWIProtocolConfiguration : NSObject
 @property (nonatomic, retain, setter=setDatabaseHandler:) id<RWIProtocolDatabaseDomainHandler> databaseHandler;
 @end
@@ -1507,6 +1508,7 @@ typedef NS_ENUM(NSInteger, RWIProtocolDatabaseExecuteSQLAsyncPrintColor) {
 };
 
 
+__attribute__((visibility ("default")))
 @interface RWIProtocolDatabaseError : RWIProtocolJSONObject
 - (instancetype)initWithMessage:(NSString *)message code:(int)code;
 /* required */ @property (nonatomic, copy) NSString *message;

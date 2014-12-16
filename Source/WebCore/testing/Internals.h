@@ -62,6 +62,7 @@ class SerializedScriptValue;
 class SourceBuffer;
 class TimeRanges;
 class TypeConversions;
+class XMLHttpRequest;
 
 typedef int ExceptionCode;
 
@@ -74,6 +75,7 @@ public:
     static void resetToConsistentState(Page*);
 
     String elementRenderTreeAsText(Element*, ExceptionCode&);
+    bool hasPausedImageAnimations(Element*, ExceptionCode&);
 
     String address(Node*);
     bool nodeNeedsStyleRecalc(Node*, ExceptionCode&);
@@ -81,6 +83,8 @@ public:
 
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
+    String xhrResponseSource(XMLHttpRequest*);
+    void clearMemoryCache();
 
     PassRefPtr<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Node*, ExceptionCode&) const;
 
@@ -91,6 +95,9 @@ public:
     Element* includerFor(Node*, ExceptionCode&);
     String shadowPseudoId(Element*, ExceptionCode&);
     void setShadowPseudoId(Element*, const String&, ExceptionCode&);
+
+    // DOMTimers throttling testing.
+    bool isTimerThrottled(int timeoutId, ExceptionCode&);
 
     // Spatial Navigation testing.
     unsigned lastSpatialNavigationCandidateCount(ExceptionCode&) const;
@@ -346,6 +353,7 @@ public:
     String pageOverlayLayerTreeAsText(ExceptionCode&) const;
 
     void setPageMuted(bool);
+    bool isPagePlayingAudio();
 
 private:
     explicit Internals(Document*);

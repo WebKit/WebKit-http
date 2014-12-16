@@ -27,6 +27,7 @@
 #include "RenderTextLineBoxes.h"
 #include "SimpleLineLayout.h"
 #include "Text.h"
+#include "TextBreakIterator.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -48,6 +49,11 @@ public:
 
     RenderStyle& style() const;
     RenderStyle& firstLineStyle() const;
+    RenderStyle* getCachedPseudoStyle(PseudoId, RenderStyle* parentStyle = nullptr) const;
+
+    Color selectionBackgroundColor() const;
+    Color selectionForegroundColor() const;
+    Color selectionEmphasisMarkColor() const;
 
     virtual String originalText() const;
 
@@ -158,6 +164,8 @@ public:
 
     StringView stringView(int start = 0, int stop = -1) const;
 
+    LayoutUnit topOfFirstText() const;
+
 protected:
     virtual void computePreferredLogicalWidths(float leadWidth);
     virtual void willBeDestroyed() override;
@@ -247,8 +255,29 @@ inline RenderStyle& RenderText::firstLineStyle() const
     return parent()->firstLineStyle();
 }
 
+inline RenderStyle* RenderText::getCachedPseudoStyle(PseudoId pseudoId, RenderStyle* parentStyle) const
+{
+    return parent()->getCachedPseudoStyle(pseudoId, parentStyle);
+}
+
+inline Color RenderText::selectionBackgroundColor() const
+{
+    return parent()->selectionBackgroundColor();
+}
+
+inline Color RenderText::selectionForegroundColor() const
+{
+    return parent()->selectionForegroundColor();
+}
+
+inline Color RenderText::selectionEmphasisMarkColor() const
+{
+    return parent()->selectionEmphasisMarkColor();
+}
+
 void applyTextTransform(const RenderStyle&, String&, UChar);
 void makeCapitalized(String*, UChar previous);
+LineBreakIteratorMode mapLineBreakToIteratorMode(LineBreak);
     
 inline RenderText* Text::renderer() const
 {

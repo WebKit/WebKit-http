@@ -169,6 +169,20 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
             && (m_availableExtensions.contains("GL_ARB_draw_instanced") || m_availableExtensions.contains("GL_EXT_draw_instanced"));
     }
 
+    if (name == "GL_EXT_sRGB")
+#if PLATFORM(IOS)
+        return m_availableExtensions.contains("GL_EXT_sRGB");
+#else
+        return m_availableExtensions.contains("GL_EXT_texture_sRGB") && (m_availableExtensions.contains("GL_EXT_framebuffer_sRGB") || m_availableExtensions.contains("GL_ARB_framebuffer_sRGB"));
+#endif
+
+    if (name == "GL_EXT_frag_depth")
+#if PLATFORM(MAC)
+        return true;
+#else
+        return m_availableExtensions.contains("GL_EXT_frag_depth");
+#endif
+
     // Desktop GL always supports GL_OES_rgb8_rgba8.
     if (name == "GL_OES_rgb8_rgba8")
         return true;
@@ -204,7 +218,9 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
         return m_availableExtensions.contains("GL_EXT_texture_filter_anisotropic");
 
     if (name == "GL_EXT_draw_buffers") {
-#if PLATFORM(MAC) || PLATFORM(GTK)
+#if PLATFORM(IOS)
+        return m_availableExtensions.contains(name);
+#elif PLATFORM(MAC) || PLATFORM(GTK)
         return m_availableExtensions.contains("GL_ARB_draw_buffers");
 #else
         // FIXME: implement support for other platforms.

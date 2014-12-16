@@ -33,7 +33,6 @@
 #include "Timer.h"
 #include "WebVTTParser.h"
 #include <memory>
-#include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
@@ -80,7 +79,7 @@ private:
     virtual void fileFailedToParse() override;
     
     void processNewCueData(CachedResource*);
-    void cueLoadTimerFired(Timer*);
+    void cueLoadTimerFired();
     void corsPolicyPreventedLoad();
 
     enum State { Idle, Loading, Finished, Failed };

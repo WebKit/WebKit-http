@@ -1769,14 +1769,14 @@ _llint_op_switch_char:
 
 _llint_op_new_func:
     traceExecution()
-    loadisFromInstruction(3, t2)
+    loadisFromInstruction(4, t2)
     btiz t2, .opNewFuncUnchecked
     loadisFromInstruction(1, t1)
     btqnz [cfr, t1, 8], .opNewFuncDone
 .opNewFuncUnchecked:
     callSlowPath(_llint_slow_path_new_func)
 .opNewFuncDone:
-    dispatch(4)
+    dispatch(5)
 
 macro arrayProfileForCall()
     loadisFromInstruction(4, t3)
@@ -2000,9 +2000,9 @@ macro varInjectionCheck(slowPath)
 end
 
 macro resolveScope()
-    loadp CodeBlock[cfr], t0
     loadisFromInstruction(5, t2)
-    loadp ScopeChain[cfr], t0
+    loadisFromInstruction(2, t0)
+    loadp [cfr, t0, 8], t0
     btiz t2, .resolveScopeLoopEnd
 
 .resolveScopeLoop:

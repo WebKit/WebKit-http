@@ -1,4 +1,0 @@
-
-The iframe content was removed. There should be no layers here.
-
-FAIL: layers did not disappear when iframe source changed.

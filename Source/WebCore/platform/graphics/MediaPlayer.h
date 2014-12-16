@@ -293,8 +293,8 @@ public:
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     bool supportsFullscreen() const;
-    bool supportsSave() const;
     bool supportsScanning() const;
+    bool canSaveMediaData() const;
     bool requiresImmediateCompositing() const;
     bool doesHaveAttribute(const AtomicString&, AtomicString* value = nullptr) const;
     PlatformMedia platformMedia() const;
@@ -580,7 +580,7 @@ private:
     MediaPlayer(MediaPlayerClient&);
     MediaPlayerFactory* nextBestMediaEngine(MediaPlayerFactory*) const;
     void loadWithNextMediaEngine(MediaPlayerFactory*);
-    void reloadTimerFired(Timer&);
+    void reloadTimerFired();
 
     static void initializeMediaEngines();
 

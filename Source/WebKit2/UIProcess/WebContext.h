@@ -48,6 +48,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
+#include <wtf/RefCounter.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
@@ -313,8 +314,6 @@ public:
 
 #if PLATFORM(COCOA)
     bool processSuppressionEnabled() const;
-    static bool processSuppressionIsEnabledForAllContexts();
-    static bool processSuppressionPreferenceIsEnabledForAllContexts();
 #endif
 
     void windowServerConnectionStateChanged();
@@ -345,13 +344,25 @@ public:
     static void unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers(const String&);
 
 #if PLATFORM(COCOA)
-    void updateProcessSuppressionState() const;
+    void updateProcessSuppressionState();
 
     NSMutableDictionary *ensureBundleParameters();
     NSMutableDictionary *bundleParameters() { return m_bundleParameters.get(); }
+#else
+    void updateProcessSuppressionState() const { }
 #endif
 
     void setMemoryCacheDisabled(bool);
+
+    PassRefPtr<RefCounter::Count> userObservablePageCount()
+    {
+        return m_userObservablePageCounter.count();
+    }
+
+    PassRefPtr<RefCounter::Count> processSuppressionDisabledForPageCount()
+    {
+        return m_processSuppressionDisabledForPageCounter.count();
+    }
 
 private:
     void platformInitialize();
@@ -505,6 +516,7 @@ private:
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
 #endif
 
+    RefPtr<WebsiteDataStore> m_websiteDataStore;
     RefPtr<StorageManager> m_storageManager;
 
     typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*>> WebContextSupplementMap;
@@ -556,8 +568,12 @@ private:
 
     bool m_memoryCacheDisabled;
 
+    RefCounter m_userObservablePageCounter;
+    RefCounter m_processSuppressionDisabledForPageCounter;
+
 #if PLATFORM(COCOA)
     RetainPtr<NSMutableDictionary> m_bundleParameters;
+    RefPtr<RefCounter::Count> m_pluginProcessManagerProcessSuppressionDisabledCount;
 #endif
 };
 

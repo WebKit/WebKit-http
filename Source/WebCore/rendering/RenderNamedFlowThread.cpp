@@ -46,12 +46,12 @@
 
 namespace WebCore {
 
-RenderNamedFlowThread::RenderNamedFlowThread(Document& document, PassRef<RenderStyle> style, PassRef<WebKitNamedFlow> namedFlow)
+RenderNamedFlowThread::RenderNamedFlowThread(Document& document, Ref<RenderStyle>&& style, Ref<WebKitNamedFlow>&& namedFlow)
     : RenderFlowThread(document, WTF::move(style))
     , m_hasRegionsWithStyling(false)
     , m_dispatchRegionOversetChangeEvent(false)
     , m_namedFlow(WTF::move(namedFlow))
-    , m_regionOversetChangeEventTimer(this, &RenderNamedFlowThread::regionOversetChangeEventTimerFired)
+    , m_regionOversetChangeEventTimer(*this, &RenderNamedFlowThread::regionOversetChangeEventTimerFired)
 {
 }
 
@@ -566,7 +566,7 @@ void RenderNamedFlowThread::dispatchRegionOversetChangeEventIfNeeded()
         m_regionOversetChangeEventTimer.startOneShot(0);
 }
 
-void RenderNamedFlowThread::regionOversetChangeEventTimerFired(Timer&)
+void RenderNamedFlowThread::regionOversetChangeEventTimerFired()
 {
     namedFlow().dispatchRegionOversetChangeEvent();
 }

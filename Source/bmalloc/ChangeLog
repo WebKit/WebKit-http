@@ -1,3 +1,151 @@
+2014-12-15  Geoffrey Garen  <ggaren@apple.com>
+
+        Safari crashes when you set Malloc environment variables
+        https://bugs.webkit.org/show_bug.cgi?id=139656
+
+        Reviewed by Michael Saboff.
+
+        I forgot to cover the realloc() case. Whoops. (OoPS?)
+
+        This time around, I ran the full MallocBench test suite in Malloc=1
+        mode, and it passed.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocate):
+        * bmalloc/Allocator.h: Pushed realloc() logic down into the allocator.
+        It needs to be down there so that we can do the short-circuiting check
+        for whether bmalloc is enabled first.
+
+        Also added the check.
+
+        * bmalloc/Cache.cpp:
+        (bmalloc::Cache::scavenge):
+        (bmalloc::Cache::Cache):
+        (bmalloc::Cache::reallocateSlowCaseNullCache):
+        * bmalloc/Cache.h:
+        (bmalloc::Cache::deallocator):
+        (bmalloc::Cache::reallocate): Ditto.
+
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::free):
+        (bmalloc::api::realloc): Ditto.
+
+        (bmalloc::api::scavenge): Pushed this down into Cache to match the
+        surrounding functions.
+
+2014-12-11  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should support system memory analysis tools (part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=139565
+
+        Reviewed by Mark Lam.
+
+        This patch actually queries the environment to see if memory analysis
+        tools have been enabled.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::scavenge): Don't process the object log if
+        we've disabled bmalloc because it will be full of invalid nullptrs.
+
+        * bmalloc/Environment.cpp:
+        (bmalloc::isMallocEnvironmentVariableSet): Test for the list of known
+        Malloc debugging flags. I also added a plain "Malloc" catch-all for
+        when you want to disable bmalloc without enabling any kind of funny
+        business.
+
+        It would be slightly nicer just to iterate the list of environment
+        variables and strstr them, but getenv is the more portable option,
+        and performance here doesn't really matter.
+
+        (bmalloc::isLibgmallocEnabled): Test for the libgmalloc insertion
+        environment variable.
+
+        (bmalloc::Environment::computeIsBmallocEnabled):
+
+2014-12-11  Geoffrey Garen  <ggaren@apple.com>
+
+        Try to fix the iOS simulator build.
+
+        #include the declaration of malloc / free.
+
+        * bmalloc/Allocator.cpp:
+        * bmalloc/Deallocator.cpp:
+
+2014-12-11  Geoffrey Garen  <ggaren@apple.com>
+
+        Try to fix the build.
+
+        * bmalloc.xcodeproj/project.pbxproj: Marked a header exported.
+
+2014-12-11  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should support system memory analysis tools (part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=139559
+
+        Reviewed by Mark Lam.
+
+        This patch adds the hooks to disable bmalloc at runtime if certain
+        environment variables are set, but doesn't actually read from the
+        environment yet.
+
+        No performance change.
+
+        * bmalloc.xcodeproj/project.pbxproj: Added the Environment class, which
+        we'll use to read environment variables and see if memory analysis tools
+        have been enabled.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::Allocator):
+        (bmalloc::Allocator::allocateSlowCase): Added a hook to disable bmalloc
+        on the allocation path. We cache the setting to make the check fast.
+
+        * bmalloc/Allocator.h: Interface changes.
+
+        * bmalloc/Cache.cpp:
+        (bmalloc::Cache::Cache): Pass a heap pointer through to our allocator
+        and deallocator. This main purpose is to enable them to query the
+        environment for whether bmalloc is enabled; but this is also a slightly
+        cleaner way to guarantee to them that the Heap has been pre-initialized.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::Deallocator): If bmalloc is disable, artificially
+        fill the object log to force us to take the slow path on all deallocations.
+
+        (bmalloc::Deallocator::deallocateSlowCase): Do the disabled check.
+
+        * bmalloc/Deallocator.h: Interface changes.
+
+        * bmalloc/Environment.cpp: Added.
+        (bmalloc::Environment::Environment):
+        (bmalloc::Environment::computeIsBmallocEnabled):
+        * bmalloc/Environment.h: Added.
+        (bmalloc::Environment::isBmallocEnabled): This is the class that will
+        encapsulate looking for environment variables that turn on heap
+        analysis tools.
+
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::environment):
+
+        * bmalloc/Mutex.h:
+        (bmalloc::Mutex::Mutex):
+        * bmalloc/StaticMutex.h: A little refactoring to clarify these comments,
+        since I got super confused about them while writing this patch.
+
+        * bmalloc/VMHeap.cpp: Fixed an #include.
+
+2014-12-09  David Kilzer  <ddkilzer@apple.com>
+
+        Switch from using PLATFORM_NAME to SDK selectors in ANGLE, bmalloc, gtest, JavaScriptCore, WTF
+        <http://webkit.org/b/139212>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        - Only set GCC_ENABLE_OBJC_GC, GCC_MODEL_TUNING and TOOLCHAINS
+          on OS X.
+        * Configurations/DebugRelease.xcconfig:
+        - Only set MACOSX_DEPLOYMENT_TARGET and SDKROOT on OS X.
+
 2014-11-07  Geoffrey Garen  <ggaren@apple.com>
 
         bmalloc uses 8X more virtual memory than necessary

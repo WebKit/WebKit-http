@@ -28,6 +28,7 @@
 
 #if USE(CG)
 
+#include "CoreGraphicsSPI.h"
 #include "FloatConversion.h"
 #include "GeometryUtilities.h"
 #include "GraphicsContextCG.h"
@@ -37,10 +38,6 @@
 
 #if USE(APPKIT)
 #include <ApplicationServices/ApplicationServices.h>
-#endif
-
-#if PLATFORM(IOS)
-#include <CoreGraphics/CGContextPrivate.h>
 #endif
 
 #if PLATFORM(COCOA)
@@ -266,6 +263,13 @@ PassNativeImagePtr BitmapImage::copyUnscaledFrameAtIndex(size_t index)
         return CGImageRetain(m_frames[index].m_frame);
 
     return m_source.createFrameAtIndex(index);
+}
+
+bool BitmapImage::decodedDataIsPurgeable() const
+{
+    return m_frames.size() >= 1
+        && m_frames[0].m_frame
+        && CGImageGetCachingFlags(m_frames[0].m_frame) & kCGImageCachingTransient;
 }
 
 }

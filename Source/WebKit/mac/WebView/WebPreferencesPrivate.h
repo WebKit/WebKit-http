@@ -102,6 +102,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)automaticallyDetectsCacheModel;
 - (void)setAutomaticallyDetectsCacheModel:(BOOL)automaticallyDetectsCacheModel;
 
+- (BOOL)domTimersThrottlingEnabled;
+- (void)setDOMTimersThrottlingEnabled:(BOOL)domTimersThrottlingEnabled;
+
 - (BOOL)webArchiveDebugModeEnabled;
 - (void)setWebArchiveDebugModeEnabled:(BOOL)webArchiveDebugModeEnabled;
 
@@ -208,6 +211,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)showDebugBorders;
 - (void)setShowDebugBorders:(BOOL)show;
 
+- (BOOL)simpleLineLayoutDebugBordersEnabled;
+- (void)setSimpleLineLayoutDebugBordersEnabled:(BOOL)enabled;
+
 - (BOOL)showRepaintCounter;
 - (void)setShowRepaintCounter:(BOOL)show;
 
@@ -237,6 +243,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setMediaPlaybackAllowsInline:(BOOL)flag;
 - (BOOL)mediaPlaybackAllowsInline;
+
+- (void)setAllowsAlternateFullscreen:(BOOL)flag;
+- (BOOL)allowsAlternateFullscreen;
 
 - (NSString *)pictographFontFamily;
 - (void)setPictographFontFamily:(NSString *)family;

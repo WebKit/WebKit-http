@@ -31,7 +31,6 @@
 #include "NetworkResourceLoadParameters.h"
 #include "PluginInfoStore.h"
 #include "SessionTracker.h"
-#include "StorageNamespaceImpl.h"
 #include "WebContextMessages.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
@@ -67,9 +66,6 @@
 #include "NetworkProcessConnection.h"
 #include "WebResourceLoadScheduler.h"
 #endif
-
-// FIXME: Remove this #ifdef once we don't need the ability to turn the feature off.
-#define ENABLE_UI_PROCESS_STORAGE 1
 
 using namespace WebCore;
 
@@ -115,11 +111,6 @@ PluginStrategy* WebPlatformStrategies::createPluginStrategy()
 }
 
 SharedWorkerStrategy* WebPlatformStrategies::createSharedWorkerStrategy()
-{
-    return this;
-}
-
-StorageStrategy* WebPlatformStrategies::createStorageStrategy()
 {
     return this;
 }
@@ -335,37 +326,6 @@ void WebPlatformStrategies::populatePluginCache()
     m_pluginCacheIsPopulated = true;
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
-
-// StorageStrategy
-
-PassRefPtr<StorageNamespace> WebPlatformStrategies::localStorageNamespace(PageGroup* pageGroup)
-{
-#if ENABLE(UI_PROCESS_STORAGE)
-    return StorageNamespaceImpl::createLocalStorageNamespace(pageGroup);
-#else
-    return StorageStrategy::localStorageNamespace(pageGroup);
-#endif
-}
-
-PassRefPtr<StorageNamespace> WebPlatformStrategies::transientLocalStorageNamespace(PageGroup* pageGroup, SecurityOrigin*securityOrigin)
-{
-#if ENABLE(UI_PROCESS_STORAGE)
-    UNUSED_PARAM(securityOrigin);
-    // FIXME: This could be more clever and made to work across processes.
-    return StorageStrategy::sessionStorageNamespace(*pageGroup->pages().begin());
-#else
-    return StorageStrategy::transientLocalStorageNamespace(pageGroup, securityOrigin);
-#endif
-}
-
-PassRefPtr<StorageNamespace> WebPlatformStrategies::sessionStorageNamespace(Page* page)
-{
-#if ENABLE(UI_PROCESS_STORAGE)
-    return StorageNamespaceImpl::createSessionStorageNamespace(WebPage::fromCorePage(page));
-#else
-    return StorageStrategy::sessionStorageNamespace(page);
-#endif
-}
 
 #if PLATFORM(COCOA)
 // PasteboardStrategy

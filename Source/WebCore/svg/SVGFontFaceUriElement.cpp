@@ -54,7 +54,7 @@ SVGFontFaceUriElement::~SVGFontFaceUriElement()
         m_cachedFont->removeClient(this);
 }
 
-PassRef<CSSFontFaceSrcValue> SVGFontFaceUriElement::srcValue() const
+Ref<CSSFontFaceSrcValue> SVGFontFaceUriElement::srcValue() const
 {
     auto src = CSSFontFaceSrcValue::create(getAttribute(XLinkNames::hrefAttr));
     AtomicString value(fastGetAttribute(formatAttr));
@@ -88,6 +88,12 @@ Node::InsertionNotificationRequest SVGFontFaceUriElement::insertedInto(Container
     return SVGElement::insertedInto(rootParent);
 }
 
+static bool isSVGFontTarget(const SVGFontFaceUriElement& element)
+{
+    Ref<CSSFontFaceSrcValue> srcValue(element.srcValue());
+    return srcValue->isSVGFontTarget();
+}
+
 void SVGFontFaceUriElement::loadFont()
 {
     if (m_cachedFont)
@@ -98,7 +104,7 @@ void SVGFontFaceUriElement::loadFont()
         CachedResourceLoader* cachedResourceLoader = document().cachedResourceLoader();
         CachedResourceRequest request(ResourceRequest(document().completeURL(href)));
         request.setInitiator(this);
-        m_cachedFont = cachedResourceLoader->requestFont(request);
+        m_cachedFont = cachedResourceLoader->requestFont(request, isSVGFontTarget(*this));
         if (m_cachedFont) {
             m_cachedFont->addClient(this);
             m_cachedFont->beginLoadIfNeeded(cachedResourceLoader);

@@ -46,21 +46,21 @@ namespace WebCore {
 const int cDefaultWidth = 300;
 const int cDefaultHeight = 150;
 
-RenderReplaced::RenderReplaced(Element& element, PassRef<RenderStyle> style)
+RenderReplaced::RenderReplaced(Element& element, Ref<RenderStyle>&& style)
     : RenderBox(element, WTF::move(style), RenderReplacedFlag)
     , m_intrinsicSize(cDefaultWidth, cDefaultHeight)
 {
     setReplaced(true);
 }
 
-RenderReplaced::RenderReplaced(Element& element, PassRef<RenderStyle> style, const LayoutSize& intrinsicSize)
+RenderReplaced::RenderReplaced(Element& element, Ref<RenderStyle>&& style, const LayoutSize& intrinsicSize)
     : RenderBox(element, WTF::move(style), RenderReplacedFlag)
     , m_intrinsicSize(intrinsicSize)
 {
     setReplaced(true);
 }
 
-RenderReplaced::RenderReplaced(Document& document, PassRef<RenderStyle> style, const LayoutSize& intrinsicSize)
+RenderReplaced::RenderReplaced(Document& document, Ref<RenderStyle>&& style, const LayoutSize& intrinsicSize)
     : RenderBox(document, WTF::move(style), RenderReplacedFlag)
     , m_intrinsicSize(intrinsicSize)
 {
@@ -69,6 +69,14 @@ RenderReplaced::RenderReplaced(Document& document, PassRef<RenderStyle> style, c
 
 RenderReplaced::~RenderReplaced()
 {
+}
+
+void RenderReplaced::willBeDestroyed()
+{
+    if (!documentBeingDestroyed() && parent())
+        parent()->dirtyLinesFromChangedChild(*this);
+
+    RenderBox::willBeDestroyed();
 }
 
 void RenderReplaced::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)

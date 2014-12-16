@@ -333,7 +333,7 @@ typedef NSUInteger NSTextTabType;
 - (void)setHyphenationFactor:(float)aFactor;
 @end
 
-@interface NSShadow
+@interface NSShadow : NSObject
 - (void)setShadowOffset:(CGSize)size;
 - (void)setShadowBlurRadius:(CGFloat)radius;
 - (void)setShadowColor:(UIColor *)color;
@@ -1001,7 +1001,7 @@ static inline NSShadow *_shadowForShadowStyle(NSString *shadowStyle)
                 if (!spaceRange.length)
                     spaceRange = NSMakeRange(0, 0);
                 shadowBlurRadius = [[shadowStyle substringWithRange:NSMakeRange(NSMaxRange(spaceRange), thirdRange.location - NSMaxRange(spaceRange))] floatValue];
-                shadow = [[[PlatformNSShadow alloc] init] autorelease];
+                shadow = [[(NSShadow *)[PlatformNSShadow alloc] init] autorelease];
                 [shadow setShadowColor:shadowColor];
                 [shadow setShadowOffset:shadowOffset];
                 [shadow setShadowBlurRadius:shadowBlurRadius];
@@ -1830,7 +1830,7 @@ BOOL HTMLConverter::_enterElement(Element& element, BOOL embedded)
 
 void HTMLConverter::_addTableForElement(Element *tableElement)
 {
-    RetainPtr<NSTextTable> table = adoptNS([[PlatformNSTextTable alloc] init]);
+    RetainPtr<NSTextTable> table = adoptNS([(NSTextTable *)[PlatformNSTextTable alloc] init]);
     CGFloat cellSpacingVal = 1;
     CGFloat cellPaddingVal = 1;
     [table setNumberOfColumns:1];
@@ -2555,7 +2555,7 @@ NSAttributedString *attributedStringFromRange(Range& range)
     
 #if !PLATFORM(IOS)
 // This function uses TextIterator, which makes offsets in its result compatible with HTML editing.
-NSAttributedString *editingAttributedStringFromRange(Range& range)
+NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImagesInAttributedString includeOrSkipImages)
 {
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
     NSMutableAttributedString *string = [[NSMutableAttributedString alloc] init];
@@ -2568,14 +2568,16 @@ NSAttributedString *editingAttributedStringFromRange(Range& range)
         Node* endContainer = currentTextRange->endContainer();
         int startOffset = currentTextRange->startOffset();
         int endOffset = currentTextRange->endOffset();
-        
-        if (startContainer == endContainer && (startOffset == endOffset - 1)) {
-            Node* node = startContainer->traverseToChildAt(startOffset);
-            if (is<HTMLImageElement>(node)) {
-                NSFileWrapper* fileWrapper = fileWrapperForElement(downcast<HTMLImageElement>(node));
-                NSTextAttachment* attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper];
-                [string appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
-                [attachment release];
+
+        if (includeOrSkipImages == IncludeImagesInAttributedString::Yes) {
+            if (startContainer == endContainer && (startOffset == endOffset - 1)) {
+                Node* node = startContainer->traverseToChildAt(startOffset);
+                if (is<HTMLImageElement>(node)) {
+                    NSFileWrapper* fileWrapper = fileWrapperForElement(downcast<HTMLImageElement>(node));
+                    NSTextAttachment* attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper];
+                    [string appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+                    [attachment release];
+                }
             }
         }
 

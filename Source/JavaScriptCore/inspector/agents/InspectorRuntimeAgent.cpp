@@ -226,7 +226,7 @@ void InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets(ErrorString& er
         location->getInteger(ASCIILiteral("divot"), divot);
 
         bool okay;
-        TypeLocation* typeLocation = vm.typeProfiler()->findLocation(divot, sourceIDAsString.toIntPtrStrict(&okay), static_cast<TypeProfilerSearchDescriptor>(descriptor));
+        TypeLocation* typeLocation = vm.typeProfiler()->findLocation(divot, sourceIDAsString.toIntPtrStrict(&okay), static_cast<TypeProfilerSearchDescriptor>(descriptor), vm);
 
         RefPtr<TypeSet> typeSet;
         if (typeLocation) {
@@ -315,6 +315,28 @@ void InspectorRuntimeAgent::setTypeProfilerEnabledState(bool shouldEnableTypePro
         );
     } else
         recompileAllJSFunctionsForTypeProfiling(vm, shouldEnableTypeProfiling);
+}
+
+void InspectorRuntimeAgent::getBasicBlocks(ErrorString& errorString, const String& sourceIDAsString, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::BasicBlock>>& basicBlocks)
+{
+    VM& vm = globalVM();
+    if (!vm.controlFlowProfiler()) {
+        errorString = ASCIILiteral("The VM does not currently have a Control Flow Profiler.");
+        return;
+    }
+
+    bool okay;
+    intptr_t sourceID = sourceIDAsString.toIntPtrStrict(&okay);
+    ASSERT(okay);
+    const Vector<BasicBlockRange>& basicBlockRanges = vm.controlFlowProfiler()->getBasicBlocksForSourceID(sourceID, vm);
+    basicBlocks = Inspector::Protocol::Array<Inspector::Protocol::Runtime::BasicBlock>::create();
+    for (const BasicBlockRange& block : basicBlockRanges) {
+        RefPtr<Inspector::Protocol::Runtime::BasicBlock> location = Inspector::Protocol::Runtime::BasicBlock::create()
+            .setStartOffset(block.m_startOffset)
+            .setEndOffset(block.m_endOffset)
+            .setHasExecuted(block.m_hasExecuted);
+        basicBlocks->addItem(location);
+    }
 }
 
 } // namespace Inspector

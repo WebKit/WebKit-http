@@ -34,6 +34,8 @@
 #import "DOMDocumentInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
+#import "DictionaryPopupInfo.h"
+#import "WebActionMenuController.h"
 #import "WebArchive.h"
 #import "WebClipView.h"
 #import "WebDOMOperationsInternal.h"
@@ -114,6 +116,7 @@
 #import <WebCore/StyleProperties.h>
 #import <WebCore/Text.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/TextIndicator.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebNSAttributedStringExtras.h>
@@ -135,7 +138,6 @@
 #import <ApplicationServices/ApplicationServices.h>
 #import "WebNSEventExtras.h"
 #import "WebNSPasteboardExtras.h"
-#import <WebCore/WebFontCache.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #endif
 
@@ -3701,9 +3703,14 @@ static void setMenuTargets(NSMenu* menu)
 #if !PLATFORM(IOS)
     if (!frame || !frame->eventHandler().wheelEvent(event))
         [super scrollWheel:event];
+
 #else
     if (frame)
         frame->eventHandler().wheelEvent(event);
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [[[self _webView] _actionMenuController] webView:[self _webView] didHandleScrollWheel:event];
 #endif
 }
 
@@ -3812,6 +3819,11 @@ static void setMenuTargets(NSMenu* menu)
 
     // Record the mouse down position so we can determine drag hysteresis.
     [self _setMouseDownEvent:event];
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [[[self _webView] _actionMenuController] webView:[self _webView] willHandleMouseDown:event];
+    [[[self _webView] _immediateActionController] webView:[self _webView] willHandleMouseDown:event];
+#endif
 
 #if PLATFORM(IOS)
     // TEXTINPUT: if there is marked text and the current input
@@ -5625,12 +5637,22 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
     NSRect rect = coreFrame->selection().selectionBounds();
 
-    NSDictionary *attributes = [attrString fontAttributesInRange:NSMakeRange(0,1)];
+    NSDictionary *attributes = [attrString fontAttributesInRange:NSMakeRange(0, 1)];
     NSFont *font = [attributes objectForKey:NSFontAttributeName];
     if (font)
-        rect.origin.y += [font ascender];
+        rect.origin.y += [font descender];
 
-    [self showDefinitionForAttributedString:attrString atPoint:rect.origin];
+    DictionaryPopupInfo info;
+    info.attributedString = attrString;
+    info.origin = coreFrame->view()->contentsToWindow(enclosingIntRect(rect)).location();
+    info.textIndicator = TextIndicator::createWithSelectionInFrame(*coreFrame, TextIndicatorPresentationTransition::BounceAndCrossfade);
+    [[self _webView] _showDictionaryLookupPopup:info];
+}
+
+- (void)quickLookWithEvent:(NSEvent *)event
+{
+    [[self _webView] _setTextIndicator:nullptr fadeOut:NO animationCompletionHandler:[] { }];
+    [super quickLookWithEvent:event];
 }
 #endif // !PLATFORM(IOS)
 

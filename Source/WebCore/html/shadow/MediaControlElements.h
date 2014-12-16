@@ -65,7 +65,7 @@ private:
 
     void startTimer();
     void stopTimer();
-    void transitionTimerFired(Timer&);
+    void transitionTimerFired();
 
     void setPosition(const LayoutPoint&);
 
@@ -110,7 +110,7 @@ public:
 private:
     explicit MediaControlTimelineContainerElement(Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 };
 
 // ----------------------------
@@ -128,7 +128,7 @@ private:
 
     virtual void defaultEventHandler(Event*) override;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 };
 
 // ----------------------------
@@ -451,12 +451,12 @@ public:
     void exitedFullscreen();
 
 private:
-    void updateTimerFired(Timer&);
+    void updateTimerFired();
     void updateActiveCuesFontSize();
 
     explicit MediaControlTextTrackContainerElement(Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
     virtual PassRefPtr<Image> createTextTrackRepresentationImage() override;
     virtual void textTrackRepresentationBoundsChanged(const IntRect&) override;

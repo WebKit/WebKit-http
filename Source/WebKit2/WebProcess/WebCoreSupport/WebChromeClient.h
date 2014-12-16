@@ -150,8 +150,6 @@ private:
     virtual void annotatedRegionsChanged() override;
 #endif
 
-    virtual void populateVisitedLinks() override;
-    
     virtual bool shouldReplaceWithGeneratedFileForUpload(const String& path, String& generatedFilename) override;
     virtual String generateReplacementFile(const String& path) override;
     
@@ -224,7 +222,7 @@ private:
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
 #endif
 
-    virtual CompositingTriggerFlags allowedCompositingTriggers() const
+    virtual CompositingTriggerFlags allowedCompositingTriggers() const override
     {
         return static_cast<CompositingTriggerFlags>(
             ThreeDTransformTrigger |
@@ -253,9 +251,9 @@ private:
 #endif
 
 #if PLATFORM(IOS)
-    virtual bool supportsVideoFullscreen();
-    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement*, WebCore::HTMLMediaElement::VideoFullscreenMode);
-    virtual void exitVideoFullscreen();
+    virtual bool supportsVideoFullscreen() override;
+    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement*, WebCore::HTMLMediaElement::VideoFullscreenMode) override;
+    virtual void exitVideoFullscreen() override;
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -286,8 +284,6 @@ private:
     
     virtual void numWheelEventHandlersChanged(unsigned) override;
 
-    virtual void logDiagnosticMessage(const String& message, const String& description, const String& success) override;
-
     virtual String plugInStartLabelTitle(const String& mimeType) const override;
     virtual String plugInStartLabelSubtitle(const String& mimeType) const override;
     virtual String plugInExtraStyleSheet() const override;
@@ -312,6 +308,8 @@ private:
     virtual void handleSelectionServiceClick(WebCore::FrameSelection&, const Vector<String>& telephoneNumbers, const WebCore::IntPoint&) override;
     virtual bool hasRelevantSelectionServices(bool isTextOnly) const override;
 #endif
+
+    virtual bool shouldDispatchFakeMouseMoveEvents() const override;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

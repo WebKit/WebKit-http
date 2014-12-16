@@ -149,6 +149,10 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 + (BOOL)_addCompletion:(void(^)(BOOL))completion;
 @end
 
+@interface UIWebFormAccessory (StagingToRemove)
+@property(nonatomic,retain) NSArray *buttonItems;
+@end
+
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
 - (instancetype)initWithContentView:(WKContentView *)view userObject:(NSObject <NSSecureCoding> *)userObject;
@@ -193,6 +197,8 @@ const CGFloat minimumTapHighlightRadius = 2.0;
         [[_contentView formAccessoryView] showAutoFillButtonWithTitle:title];
     else
         [[_contentView formAccessoryView] hideAutoFillButton];
+    if (UICurrentUserInterfaceIdiomIsPad())
+        [_contentView reloadInputViews];
 }
 
 - (void)invalidate
@@ -232,9 +238,11 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
     [self.layer addObserver:self forKeyPath:@"transform" options:NSKeyValueObservingOptionInitial context:nil];
 
+#if ENABLE(TOUCH_EVENTS)
     _touchEventGestureRecognizer = adoptNS([[UIWebTouchEventsGestureRecognizer alloc] initWithTarget:self action:@selector(_webTouchEventsRecognized:) touchDelegate:self]);
     [_touchEventGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
+#endif
 
     _singleTapGestureRecognizer = adoptNS([[WKSyntheticClickTapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapCommited:)]);
     [_singleTapGestureRecognizer setDelegate:self];
@@ -448,6 +456,15 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     return YES;
 }
 
+- (BOOL)becomeFirstResponder
+{
+    BOOL didBecomeFirstResponder = [super becomeFirstResponder];
+    if (didBecomeFirstResponder)
+        [_textSelectionAssistant activateSelection];
+
+    return didBecomeFirstResponder;
+}
+
 - (BOOL)resignFirstResponder
 {
     // FIXME: Maybe we should call resignFirstResponder on the superclass
@@ -457,10 +474,12 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     _page->blurAssistedNode();
     [self _cancelInteraction];
     [_webSelectionAssistant resignedFirstResponder];
+    [_textSelectionAssistant deactivateSelection];
 
     return [super resignFirstResponder];
 }
 
+#if ENABLE(TOUCH_EVENTS)
 - (void)_webTouchEventsRecognized:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer
 {
     const _UIWebTouchEvent* lastTouchEvent = gestureRecognizer.lastTouchEvent;
@@ -477,6 +496,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     if (nativeWebTouchEvent.allTouchPointsAreReleased())
         _canSendTouchEventsAsynchronously = NO;
 }
+#endif
 
 - (void)_inspectorNodeSearchRecognized:(UIGestureRecognizer *)gestureRecognizer
 {
@@ -534,13 +554,17 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
     return FloatQuad(points[1], points[0], points[2], points[3]);
 }
 
+#if ENABLE(TOUCH_EVENTS)
 - (void)_webTouchEvent:(const WebKit::NativeWebTouchEvent&)touchEvent preventsNativeGestures:(BOOL)preventsNativeGesture
 {
     if (preventsNativeGesture) {
+        _highlightLongPressCanClick = NO;
+
         _canSendTouchEventsAsynchronously = YES;
         [_touchEventGestureRecognizer setDefaultPrevented:YES];
     }
 }
+#endif
 
 static inline bool highlightedQuadsAreSmallerThanRect(const Vector<FloatQuad>& quads, const FloatRect& rect)
 {
@@ -934,19 +958,22 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     switch ([gestureRecognizer state]) {
     case UIGestureRecognizerStateBegan:
+        _highlightLongPressCanClick = YES;
         cancelPotentialTapIfNecessary(self);
         _page->tapHighlightAtPosition([gestureRecognizer startPoint], ++_latestTapHighlightID);
         _isTapHighlightIDValid = YES;
         break;
     case UIGestureRecognizerStateEnded:
-        if (!_positionInformation.clickableElementName.isEmpty()) {
+        if (_highlightLongPressCanClick && !_positionInformation.clickableElementName.isEmpty()) {
             [self _attemptClickAtLocation:[gestureRecognizer startPoint]];
             [self _finishInteraction];
         } else
             [self _cancelInteraction];
+        _highlightLongPressCanClick = NO;
         break;
     case UIGestureRecognizerStateCancelled:
         [self _cancelInteraction];
+        _highlightLongPressCanClick = NO;
         break;
     default:
         break;
@@ -1075,7 +1102,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
             [_textSelectionAssistant setGestureRecognizers];
         }
 
-        [_textSelectionAssistant activateSelection];
+        if (self.isFirstResponder)
+            [_textSelectionAssistant activateSelection];
     }
 }
 
@@ -1122,10 +1150,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Phone:
     case InputType::Number:
     case InputType::NumberPad:
-        return YES;
+        return !UICurrentUserInterfaceIdiomIsPad();
     case InputType::ContentEditable:
     case InputType::TextArea:
-        return YES;
+        return !UICurrentUserInterfaceIdiomIsPad();
     case InputType::Select:
     case InputType::Date:
     case InputType::DateTime:
@@ -1148,6 +1176,15 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     }
     
     return _formAccessoryView.get();
+}
+
+- (NSArray *)inputAssistantButtonItems
+{
+    if (!_formAccessoryView) {
+        _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
+        [_formAccessoryView setDelegate:self];
+    }
+    return ([_formAccessoryView respondsToSelector:@selector(buttonItems)]) ? [_formAccessoryView buttonItems] : nil;
 }
 
 - (NSArray *)supportedPasteboardTypesForCurrentSelection
@@ -1632,6 +1669,40 @@ static inline SelectionHandlePosition toSelectionHandlePosition(UIWKHandlePositi
     }
 }
 
+static inline WebCore::TextGranularity toWKTextGranularity(UITextGranularity granularity)
+{
+    switch (granularity) {
+    case UITextGranularityCharacter:
+        return CharacterGranularity;
+    case UITextGranularityWord:
+        return WordGranularity;
+    case UITextGranularitySentence:
+        return SentenceGranularity;
+    case UITextGranularityParagraph:
+        return ParagraphGranularity;
+    case UITextGranularityLine:
+        return LineGranularity;
+    case UITextGranularityDocument:
+        return DocumentGranularity;
+    }
+}
+
+static inline WebCore::SelectionDirection toWKSelectionDirection(UITextDirection direction)
+{
+    switch (direction) {
+    case UITextLayoutDirectionDown:
+    case UITextLayoutDirectionRight:
+        return DirectionRight;
+    case UITextLayoutDirectionUp:
+    case UITextLayoutDirectionLeft:
+        return DirectionLeft;
+    default:
+        // UITextDirection is not an enum, but we only want to accept values from UITextLayoutDirection.
+        ASSERT_NOT_REACHED();
+        return DirectionRight;
+    }
+}
+
 static void selectionChangedWithGesture(WKContentView *view, const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, CallbackBase::Error error)
 {
     if (error != CallbackBase::Error::None) {
@@ -1741,6 +1812,56 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         _autocorrectionData.autocorrectionHandler(rects.size() ? [WKAutocorrectionRects autocorrectionRectsWithRects:firstRect lastRect:lastRect] : nil);
         [_autocorrectionData.autocorrectionHandler release];
         _autocorrectionData.autocorrectionHandler = nil;
+    });
+}
+
+- (void)selectPositionAtPoint:(CGPoint)point completionHandler:(void (^)(void))completionHandler
+{
+    UIWKSelectionCompletionHandler selectionHandler = [completionHandler copy];
+    
+    _page->selectPositionAtPoint(WebCore::IntPoint(point), [selectionHandler](CallbackBase::Error error) {
+        selectionHandler();
+        [selectionHandler release];
+    });
+}
+
+- (void)selectPositionAtBoundary:(UITextGranularity)granularity inDirection:(UITextDirection)direction fromPoint:(CGPoint)point completionHandler:(void (^)(void))completionHandler
+{
+    UIWKSelectionCompletionHandler selectionHandler = [completionHandler copy];
+    
+    _page->selectPositionAtBoundaryWithDirection(WebCore::IntPoint(point), toWKTextGranularity(granularity), toWKSelectionDirection(direction), [selectionHandler](CallbackBase::Error error) {
+        selectionHandler();
+        [selectionHandler release];
+    });
+}
+
+- (void)selectTextWithGranularity:(UITextGranularity)granularity atPoint:(CGPoint)point completionHandler:(void (^)(void))completionHandler
+{
+    UIWKSelectionCompletionHandler selectionHandler = [completionHandler copy];
+
+    _page->selectTextWithGranularityAtPoint(WebCore::IntPoint(point), toWKTextGranularity(granularity), [selectionHandler](CallbackBase::Error error) {
+        selectionHandler();
+        [selectionHandler release];
+    });
+}
+
+- (void)beginSelectionInDirection:(UITextDirection)direction completionHandler:(void (^)(BOOL endIsMoving))completionHandler
+{
+    UIWKSelectionWithDirectionCompletionHandler selectionHandler = [completionHandler copy];
+
+    _page->beginSelectionInDirection(toWKSelectionDirection(direction), [selectionHandler](bool endIsMoving, CallbackBase::Error error) {
+        selectionHandler(endIsMoving);
+        [selectionHandler release];
+    });
+}
+
+- (void)updateSelectionWithExtentPoint:(CGPoint)point completionHandler:(void (^)(BOOL endIsMoving))completionHandler
+{
+    UIWKSelectionWithDirectionCompletionHandler selectionHandler = [completionHandler copy];
+    
+    _page->updateSelectionWithExtentPoint(WebCore::IntPoint(point), [selectionHandler](bool endIsMoving, CallbackBase::Error error) {
+        selectionHandler(endIsMoving);
+        [selectionHandler release];
     });
 }
 
@@ -1861,7 +1982,12 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     _inputPeripheral = nil;
 
     _didAccessoryTabInitiateFocus = YES; // Will be cleared in either -_displayFormNodeInputView or -cleanupInteraction.
-    _page->focusNextAssistedNode(isNext);
+    [self beginSelectionChange];
+    _page->focusNextAssistedNode(isNext, [self](CallbackBase::Error) {
+        [self endSelectionChange];
+        [self reloadInputViews];
+    });
+
 }
 
 - (void)accessoryAutoFill
@@ -2528,6 +2654,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 - (void)_startAssistingKeyboard
 {
     [self useSelectionAssistantWithMode:UIWebSelectionModeTextOnly];
+    [self reloadInputViews];
 }
 
 - (void)_stopAssistingKeyboard
@@ -2570,6 +2697,8 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     if (![self isFirstResponder])
         [self becomeFirstResponder];
 
+    [self reloadInputViews];
+    
     switch (information.elementType) {
     case InputType::Select:
     case InputType::DateTimeLocal:
@@ -2584,8 +2713,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     
     if (information.insideFixedPosition)
         [_webView _updateVisibleContentRects];
-
-    [self reloadInputViews];
+    
     [self _displayFormNodeInputView];
 
     // _inputPeripheral has been initialized in inputView called by reloadInputViews.
@@ -2608,6 +2736,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     _inputPeripheral = nil;
 
     [self _stopAssistingKeyboard];
+    [_formAccessoryView hideAutoFillButton];
     [self reloadInputViews];
     [self _updateAccessory];
     // The name is misleading, but this actually clears the selection views and removes any selection.

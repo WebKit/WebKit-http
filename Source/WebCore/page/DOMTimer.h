@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,18 +29,25 @@
 
 #include "SuspendableTimer.h"
 #include <memory>
+#include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
-    struct DOMTimerFireState;
+    class DOMTimerFireState;
+    class Document;
+    class Element;
     class HTMLPlugInElement;
+    class IntRect;
     class ScheduledAction;
 
     class DOMTimer final : public RefCounted<DOMTimer>, public SuspendableTimer {
         WTF_MAKE_NONCOPYABLE(DOMTimer);
         WTF_MAKE_FAST_ALLOCATED;
     public:
+        virtual ~DOMTimer();
+
         // Creates a new timer owned by specified ScriptExecutionContext, starts it
         // and returns its Id.
         static int install(ScriptExecutionContext&, std::unique_ptr<ScheduledAction>, int timeout, bool singleShot);
@@ -49,12 +56,22 @@ namespace WebCore {
         // Notify that the interval may need updating (e.g. because the minimum interval
         // setting for the context has changed).
         void updateTimerIntervalIfNecessary();
+        void updateThrottlingStateAfterViewportChange(const IntRect& visibleRect);
 
         static void scriptDidInteractWithPlugin(HTMLPlugInElement&);
+        static void scriptDidCauseElementRepaint(Element&, bool changed = true);
 
     private:
         DOMTimer(ScriptExecutionContext&, std::unique_ptr<ScheduledAction>, int interval, bool singleShot);
+        friend class Internals;
+
         double intervalClampedToMinimum() const;
+
+        bool isDOMTimersThrottlingEnabled(Document&) const;
+        bool isIntervalDependentOnViewport() const { return m_throttleState == ShouldThrottle && !m_elementsCausingThrottling.isEmpty(); }
+        void registerForViewportChanges();
+        void unregisterForViewportChanges();
+
         void updateThrottlingStateIfNecessary(const DOMTimerFireState&);
 
         // SuspendableTimer
@@ -75,6 +92,10 @@ namespace WebCore {
         TimerThrottleState m_throttleState;
         double m_currentTimerInterval;
         bool m_shouldForwardUserGesture;
+        // Use WeakPtrs because we don't want to keep the elements alive but we
+        // still need to handle cases where the elements get destroyed after
+        // the timer has fired.
+        Vector<WeakPtr<Element>> m_elementsCausingThrottling;
     };
 
 } // namespace WebCore

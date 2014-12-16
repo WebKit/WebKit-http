@@ -50,6 +50,7 @@
 #include "Scrollbar.h"
 #include "ShadowRoot.h"
 #include "UserGestureIndicator.h"
+#include "VisibleUnits.h"
 #include "XLinkNames.h"
 
 namespace WebCore {
@@ -507,13 +508,55 @@ void HitTestResult::toggleMediaMuteState() const
 
 bool HitTestResult::isDownloadableMedia() const
 {
-    // FIXME: We should actually answer instead of always returning true for media elements.
-    // https://bugs.webkit.org/show_bug.cgi?id=138530
 #if ENABLE(VIDEO)
-    if (mediaElement())
-        return true;
+    if (HTMLMediaElement* mediaElt = mediaElement())
+        return mediaElt->canSaveMediaData();
 #endif
+
     return false;
+}
+
+bool HitTestResult::isOverTextInsideFormControlElement() const
+{
+    Node* node = innerNode();
+    if (!node)
+        return false;
+
+    if (!is<HTMLTextFormControlElement>(*node))
+        return false;
+
+    Frame* frame = node->document().frame();
+    if (!frame)
+        return false;
+
+    IntPoint framePoint = roundedPointInInnerNodeFrame();
+    if (!frame->rangeForPoint(framePoint))
+        return false;
+
+    VisiblePosition position = frame->visiblePositionForPoint(framePoint);
+    if (position.isNull())
+        return false;
+
+    RefPtr<Range> wordRange = enclosingTextUnitOfGranularity(position, WordGranularity, DirectionForward);
+    if (!wordRange)
+        return false;
+
+    return !wordRange->text().isEmpty();
+}
+
+bool HitTestResult::allowsCopy() const
+{
+    Node* node = innerNode();
+    if (!node)
+        return false;
+
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+        return false;
+
+    bool isUserSelectNone = renderer->style().userSelect() == SELECT_NONE;
+    bool isPasswordField = is<HTMLInputElement>(node) && downcast<HTMLInputElement>(*node).isPasswordField();
+    return !isPasswordField && !isUserSelectNone;
 }
 
 URL HitTestResult::absoluteLinkURL() const

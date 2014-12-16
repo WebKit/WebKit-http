@@ -24,6 +24,7 @@ set(WTF_HEADERS
     DisallowCType.h
     DoublyLinkedList.h
     FastMalloc.h
+    FeatureCounter.h
     FeatureDefines.h
     FilePrintStream.h
     FlipBytes.h
@@ -82,6 +83,7 @@ set(WTF_HEADERS
     Ref.h
     RefCounted.h
     RefCountedLeakCounter.h
+    RefCounter.h
     RefPtr.h
     RetainPtr.h
     RunLoop.h
@@ -158,6 +160,7 @@ set(WTF_SOURCES
     DecimalNumber.cpp
     FastBitVector.cpp
     FastMalloc.cpp
+    FeatureCounter.cpp
     FilePrintStream.cpp
     FunctionDispatcher.cpp
     GregorianDateTime.cpp
@@ -175,6 +178,7 @@ set(WTF_SOURCES
     RAMSize.cpp
     RandomNumber.cpp
     RefCountedLeakCounter.cpp
+    RefCounter.cpp
     RunLoop.cpp
     SHA1.cpp
     SixCharacterHash.cpp

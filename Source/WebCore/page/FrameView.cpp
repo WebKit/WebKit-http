@@ -3,7 +3,7 @@
  *                     1999 Lars Knoll <knoll@kde.org>
  *                     1999 Antti Koivisto <koivisto@kde.org>
  *                     2000 Dirk Mueller <mueller@kde.org>
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2008, 2013, 2014 Apple Inc. All rights reserved.
  *           (C) 2006 Graham Dennis (graham.dennis@gmail.com)
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2009 Google Inc. All rights reserved.
@@ -163,12 +163,12 @@ Pagination::Mode paginationModeForRenderStyle(const RenderStyle& style)
 FrameView::FrameView(Frame& frame)
     : m_frame(&frame)
     , m_canHaveScrollbars(true)
-    , m_layoutTimer(this, &FrameView::layoutTimerFired)
+    , m_layoutTimer(*this, &FrameView::layoutTimerFired)
     , m_layoutRoot(0)
     , m_layoutPhase(OutsideLayout)
     , m_inSynchronousPostLayout(false)
-    , m_postLayoutTasksTimer(this, &FrameView::postLayoutTimerFired)
-    , m_updateEmbeddedObjectsTimer(this, &FrameView::updateEmbeddedObjectsTimerFired)
+    , m_postLayoutTasksTimer(*this, &FrameView::postLayoutTimerFired)
+    , m_updateEmbeddedObjectsTimer(*this, &FrameView::updateEmbeddedObjectsTimerFired)
     , m_isTransparent(false)
     , m_baseBackgroundColor(Color::white)
     , m_mediaType("screen")
@@ -177,17 +177,21 @@ FrameView::FrameView(Frame& frame)
     , m_wasScrolledByUser(false)
     , m_inProgrammaticScroll(false)
     , m_safeToPropagateScrollToParent(true)
-    , m_delayedScrollEventTimer(this, &FrameView::delayedScrollEventTimerFired)
+    , m_delayedScrollEventTimer(*this, &FrameView::delayedScrollEventTimerFired)
     , m_isTrackingRepaints(false)
     , m_shouldUpdateWhileOffscreen(true)
     , m_exposedRect(FloatRect::infiniteRect())
     , m_deferSetNeedsLayouts(0)
     , m_setNeedsLayoutWasDeferred(false)
     , m_speculativeTilingEnabled(false)
-    , m_speculativeTilingEnableTimer(this, &FrameView::speculativeTilingEnableTimerFired)
+    , m_speculativeTilingEnableTimer(*this, &FrameView::speculativeTilingEnableTimerFired)
 #if PLATFORM(IOS)
     , m_useCustomFixedPositionLayoutRect(false)
     , m_useCustomSizeForResizeEvent(false)
+    , m_horizontalVelocity(0)
+    , m_verticalVelocity(0)
+    , m_scaleChangeRate(0)
+    , m_lastVelocityUpdateTime(0)
 #endif
     , m_hasOverrideViewportSize(false)
     , m_shouldAutoSize(false)
@@ -285,7 +289,8 @@ void FrameView::reset()
     m_visuallyNonEmptyPixelCount = 0;
     m_isVisuallyNonEmpty = false;
     m_firstVisuallyNonEmptyLayoutCallbackPending = true;
-    m_maintainScrollPositionAnchor = 0;
+    m_maintainScrollPositionAnchor = nullptr;
+    m_throttledTimers.clear();
 }
 
 void FrameView::removeFromAXObjectCache()
@@ -1148,7 +1153,8 @@ void FrameView::layout(bool allowSubtree)
         return;
 
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLayout(&frame());
-
+    AnimationUpdateBlock animationUpdateBlock(&frame().animation());
+    
     if (!allowSubtree && m_layoutRoot) {
         m_layoutRoot->markContainingBlocksForLayout(false);
         m_layoutRoot = 0;
@@ -1738,7 +1744,7 @@ IntPoint FrameView::maximumScrollPosition() const
     return maximumOffset;
 }
 
-void FrameView::delayedScrollEventTimerFired(Timer&)
+void FrameView::delayedScrollEventTimerFired()
 {
     sendScrollEvent();
 }
@@ -1797,7 +1803,8 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
             return false;
         }
 
-        IntRect updateRect = snappedIntRect(layer->repaintRectIncludingNonCompositingDescendants());
+        // FIXME: use pixel snapping instead of enclosing when ScrollView has finished transitioning from IntRect to Float/LayoutRect.
+        IntRect updateRect = enclosingIntRect(layer->repaintRectIncludingNonCompositingDescendants());
         updateRect = contentsToRootView(updateRect);
         if (!isCompositedContentLayer && clipsRepaints())
             updateRect.intersect(rectToScroll);
@@ -1979,7 +1986,10 @@ bool FrameView::scrollToAnchor(const String& name)
     if (!anchorElement && !(name.isEmpty() || equalIgnoringCase(name, "top")))
         return false;
 
-    maintainScrollPositionAtAnchor(anchorElement ? static_cast<Node*>(anchorElement) : frame().document());
+    ContainerNode* scrollPositionAnchor = anchorElement;
+    if (!scrollPositionAnchor)
+        scrollPositionAnchor = frame().document();
+    maintainScrollPositionAtAnchor(scrollPositionAnchor);
     
     // If the anchor accepts keyboard focus, move focus there to aid users relying on keyboard navigation.
     if (anchorElement && anchorElement->isFocusable())
@@ -1988,7 +1998,7 @@ bool FrameView::scrollToAnchor(const String& name)
     return true;
 }
 
-void FrameView::maintainScrollPositionAtAnchor(Node* anchorNode)
+void FrameView::maintainScrollPositionAtAnchor(ContainerNode* anchorNode)
 {
     m_maintainScrollPositionAnchor = anchorNode;
     if (!m_maintainScrollPositionAnchor)
@@ -2009,7 +2019,9 @@ void FrameView::scrollElementToRect(Element* element, const IntRect& rect)
 {
     frame().document()->updateLayoutIgnorePendingStylesheets();
 
-    LayoutRect bounds = element->boundingBox();
+    LayoutRect bounds;
+    if (RenderElement* renderer = element->renderer())
+        bounds = renderer->anchorRect();
     int centeringOffsetX = (rect.width() - bounds.width()) / 2;
     int centeringOffsetY = (rect.height() - bounds.height()) / 2;
     setScrollPosition(IntPoint(bounds.x() - centeringOffsetX - rect.x(), bounds.y() - centeringOffsetY - rect.y()));
@@ -2018,7 +2030,7 @@ void FrameView::scrollElementToRect(Element* element, const IntRect& rect)
 void FrameView::setScrollPosition(const IntPoint& scrollPoint)
 {
     TemporaryChange<bool> changeInProgrammaticScroll(m_inProgrammaticScroll, true);
-    m_maintainScrollPositionAnchor = 0;
+    m_maintainScrollPositionAnchor = nullptr;
     ScrollView::setScrollPosition(scrollPoint);
 }
 
@@ -2101,6 +2113,7 @@ void FrameView::scrollPositionChanged(const IntPoint& oldPosition, const IntPoin
     }
 
     resumeVisibleImageAnimationsIncludingSubframes();
+    updateThrottledDOMTimersState();
 }
 
 void FrameView::resumeVisibleImageAnimationsIncludingSubframes()
@@ -2400,7 +2413,7 @@ void FrameView::enableSpeculativeTilingIfNeeded()
     m_speculativeTilingEnableTimer.startOneShot(speculativeTilingEnableDelay);
 }
 
-void FrameView::speculativeTilingEnableTimerFired(Timer&)
+void FrameView::speculativeTilingEnableTimerFired()
 {
     if (m_speculativeTilingEnabled)
         return;
@@ -2408,7 +2421,7 @@ void FrameView::speculativeTilingEnableTimerFired(Timer&)
     adjustTiledBackingCoverage();
 }
 
-void FrameView::layoutTimerFired(Timer&)
+void FrameView::layoutTimerFired()
 {
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
     if (!frame().document()->ownerElement())
@@ -2769,7 +2782,7 @@ bool FrameView::shouldUpdate() const
 
 void FrameView::scrollToAnchor()
 {
-    RefPtr<Node> anchorNode = m_maintainScrollPositionAnchor;
+    RefPtr<ContainerNode> anchorNode = m_maintainScrollPositionAnchor;
     if (!anchorNode)
         return;
 
@@ -2777,12 +2790,17 @@ void FrameView::scrollToAnchor()
         return;
 
     LayoutRect rect;
-    if (anchorNode != frame().document())
-        rect = anchorNode->boundingBox();
+    if (anchorNode != frame().document() && anchorNode->renderer())
+        rect = anchorNode->renderer()->anchorRect();
 
     // Scroll nested layers and frames to reveal the anchor.
     // Align to the top and to the closest side (this matches other browsers).
-    anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+    if (anchorNode->renderer()->style().isHorizontalWritingMode())
+        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+    else if (anchorNode->renderer()->style().isFlippedBlocksWritingMode())
+        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignRightAlways, ScrollAlignment::alignToEdgeIfNeeded);
+    else
+        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignLeftAlways, ScrollAlignment::alignToEdgeIfNeeded);
 
     if (AXObjectCache* cache = frame().document()->existingAXObjectCache())
         cache->handleScrolledToAnchor(anchorNode.get());
@@ -2850,7 +2868,7 @@ bool FrameView::updateEmbeddedObjects()
     return m_embeddedObjectsToUpdate->isEmpty();
 }
 
-void FrameView::updateEmbeddedObjectsTimerFired(Timer*)
+void FrameView::updateEmbeddedObjectsTimerFired()
 {
     RefPtr<FrameView> protect(this);
     m_updateEmbeddedObjectsTimer.stop();
@@ -2865,7 +2883,7 @@ void FrameView::flushAnyPendingPostLayoutTasks()
     if (m_postLayoutTasksTimer.isActive())
         performPostLayoutTasks();
     if (m_updateEmbeddedObjectsTimer.isActive())
-        updateEmbeddedObjectsTimerFired(nullptr);
+        updateEmbeddedObjectsTimerFired();
 }
 
 void FrameView::performPostLayoutTasks()
@@ -2917,6 +2935,10 @@ void FrameView::performPostLayoutTasks()
     scrollToAnchor();
 
     sendResizeEventIfNeeded();
+
+    // Check if we should unthrottle DOMTimers after layout as the position
+    // of Elements may have changed.
+    updateThrottledDOMTimersState();
 }
 
 IntSize FrameView::sizeForResizeEvent() const
@@ -2999,9 +3021,34 @@ void FrameView::willEndLiveResize()
     adjustTiledBackingCoverage();
 }
 
-void FrameView::postLayoutTimerFired(Timer&)
+void FrameView::postLayoutTimerFired()
 {
     performPostLayoutTasks();
+}
+
+void FrameView::registerThrottledDOMTimer(DOMTimer* timer)
+{
+    m_throttledTimers.add(timer);
+}
+
+void FrameView::unregisterThrottledDOMTimer(DOMTimer* timer)
+{
+    m_throttledTimers.remove(timer);
+}
+
+void FrameView::updateThrottledDOMTimersState()
+{
+    if (m_throttledTimers.isEmpty())
+        return;
+
+    IntRect visibleRect = windowToContents(windowClipRect());
+
+    // Do not iterate over the HashSet because calling DOMTimer::updateThrottlingStateAfterViewportChange()
+    // may cause timers to remove themselves from it while we are iterating.
+    Vector<DOMTimer*> timers;
+    copyToVector(m_throttledTimers, timers);
+    for (auto* timer : timers)
+        timer->updateThrottlingStateAfterViewportChange(visibleRect);
 }
 
 void FrameView::autoSizeIfEnabled()
@@ -3166,7 +3213,7 @@ IntRect FrameView::windowClipRect(bool clipToContents) const
     ASSERT(frame().view() == this);
 
     if (paintsEntireContents())
-        return IntRect(IntPoint(), totalContentsSize());
+        return contentsToWindow(IntRect(IntPoint(), totalContentsSize()));
 
     // Set our clip rect to be our contents.
     IntRect clipRect;
@@ -3678,7 +3725,7 @@ void FrameView::setWasScrolledByUser(bool wasScrolledByUser)
 {
     if (m_inProgrammaticScroll)
         return;
-    m_maintainScrollPositionAnchor = 0;
+    m_maintainScrollPositionAnchor = nullptr;
     if (m_wasScrolledByUser == wasScrolledByUser)
         return;
     m_wasScrolledByUser = wasScrolledByUser;
@@ -3701,7 +3748,7 @@ void FrameView::willPaintContents(GraphicsContext* context, const IntRect& dirty
 
         // To avoid unnecessary image decoding, we don't prune recently-decoded live resources here since
         // we might need some live bitmaps on painting.
-        memoryCache()->prune();
+        memoryCache().prune();
     }
 
     if (paintingState.isTopLevelPainter)
@@ -3741,7 +3788,7 @@ void FrameView::didPaintContents(GraphicsContext* context, const IntRect& dirtyR
     // Painting can lead to decoding of large amounts of bitmaps
     // If we are low on memory, wipe them out after the paint.
     if (paintingState.isTopLevelPainter && memoryPressureHandler().isUnderMemoryPressure())
-        memoryCache()->pruneLiveResources(true);
+        memoryCache().pruneLiveResources(true);
 
     // Regions may have changed as a result of the visibility/z-index of element changing.
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -3893,6 +3940,8 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     // it is also incorrect, since if two frames overlap, the first could be excluded from the dirty
     // region but then become included later by the second frame adding rects to the dirty region
     // when it lays out.
+
+    AnimationUpdateBlock animationUpdateBlock(&frame().animation());
 
     frame().document()->updateStyleIfNeeded();
 
@@ -4345,6 +4394,14 @@ bool FrameView::isFlippedDocument() const
         return false;
 
     return renderView->style().isFlippedBlocksWritingMode();
+}
+
+bool FrameView::containsSVGDocument() const
+{
+    if (frame().document())
+        return frame().document()->isSVGDocument();
+    
+    return false;
 }
 
 void FrameView::notifyWidgetsInAllFrames(WidgetNotification notification)

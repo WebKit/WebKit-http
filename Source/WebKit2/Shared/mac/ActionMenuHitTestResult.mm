@@ -26,12 +26,14 @@
 #import "config.h"
 #import "ActionMenuHitTestResult.h"
 
+#if PLATFORM(MAC)
+
 #import "ArgumentCodersCF.h"
 #import "ArgumentDecoder.h"
 #import "ArgumentEncoder.h"
-#import "TextIndicator.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/DataDetectorsSPI.h>
+#import <WebCore/TextIndicator.h>
 
 namespace WebKit {
 
@@ -40,14 +42,12 @@ void ActionMenuHitTestResult::encode(IPC::ArgumentEncoder& encoder) const
     encoder << hitTestLocationInViewCooordinates;
     encoder << hitTestResult;
     encoder << lookupText;
+    encoder << imageExtension;
 
-    ShareableBitmap::Handle handle;
-
-    // FIXME: We should consider sharing the raw original resource data so that metadata and whatnot are preserved.
-    if (image)
-        image->createHandle(handle, SharedMemory::ReadOnly);
-
-    encoder << handle;
+    SharedMemory::Handle imageHandle;
+    if (imageSharedMemory && imageSharedMemory->size())
+        imageSharedMemory->createHandle(imageHandle, SharedMemory::ReadOnly);
+    encoder << imageHandle;
 
     bool hasActionContext = actionContext;
     encoder << hasActionContext;
@@ -61,12 +61,15 @@ void ActionMenuHitTestResult::encode(IPC::ArgumentEncoder& encoder) const
         IPC::encode(encoder, reinterpret_cast<CFDataRef>(data.get()));
 
         encoder << detectedDataBoundingBox;
+        encoder << detectedDataOriginatingPageOverlay;
 
         bool hasTextIndicator = detectedDataTextIndicator;
         encoder << hasTextIndicator;
         if (hasTextIndicator)
             encoder << detectedDataTextIndicator->data();
     }
+
+    encoder << dictionaryPopupInfo;
 }
 
 bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHitTestResult& actionMenuHitTestResult)
@@ -80,12 +83,15 @@ bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHi
     if (!decoder.decode(actionMenuHitTestResult.lookupText))
         return false;
 
-    ShareableBitmap::Handle handle;
-    if (!decoder.decode(handle))
+    if (!decoder.decode(actionMenuHitTestResult.imageExtension))
         return false;
 
-    if (!handle.isNull())
-        actionMenuHitTestResult.image = ShareableBitmap::create(handle, SharedMemory::ReadOnly);
+    SharedMemory::Handle imageHandle;
+    if (!decoder.decode(imageHandle))
+        return false;
+
+    if (!imageHandle.isNull())
+        actionMenuHitTestResult.imageSharedMemory = SharedMemory::create(imageHandle, SharedMemory::ReadOnly);
 
     bool hasActionContext;
     if (!decoder.decode(hasActionContext))
@@ -110,20 +116,28 @@ bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHi
         if (!decoder.decode(actionMenuHitTestResult.detectedDataBoundingBox))
             return false;
 
+        if (!decoder.decode(actionMenuHitTestResult.detectedDataOriginatingPageOverlay))
+            return false;
+
         bool hasTextIndicator;
         if (!decoder.decode(hasTextIndicator))
             return false;
 
         if (hasTextIndicator) {
-            TextIndicator::Data indicatorData;
+            WebCore::TextIndicatorData indicatorData;
             if (!decoder.decode(indicatorData))
                 return false;
 
-            actionMenuHitTestResult.detectedDataTextIndicator = TextIndicator::create(indicatorData);
+            actionMenuHitTestResult.detectedDataTextIndicator = WebCore::TextIndicator::create(indicatorData);
         }
     }
+
+    if (!decoder.decode(actionMenuHitTestResult.dictionaryPopupInfo))
+        return false;
 
     return true;
 }
     
 } // namespace WebKit
+
+#endif // PLATFORM(MAC)

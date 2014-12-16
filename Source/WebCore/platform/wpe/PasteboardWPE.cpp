@@ -26,18 +26,16 @@
 #include "config.h"
 #include "Pasteboard.h"
 
-#include <wtf/PassOwnPtr.h>
-
 namespace WebCore {
 
-PassOwnPtr<Pasteboard> Pasteboard::createForCopyAndPaste()
+std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
 {
-    return adoptPtr(new Pasteboard);
+    return std::make_unique<Pasteboard>();
 }
 
-PassOwnPtr<Pasteboard> Pasteboard::createPrivate()
+std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
 {
-    return adoptPtr(new Pasteboard);
+    return std::make_unique<Pasteboard>();
 }
 
 Pasteboard::Pasteboard()

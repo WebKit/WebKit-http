@@ -41,6 +41,7 @@
 #include <wtf/win/GDIObject.h>
 
 #if USE(CG)
+#include "CoreGraphicsSPI.h"
 #include <ApplicationServices/ApplicationServices.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
@@ -53,7 +54,12 @@ namespace WebCore
 void FontCache::platformInit()
 {
 #if USE(CG)
-    wkSetUpFontCache(1536 * 1024 * 4); // This size matches Mac.
+    // Turn on CG's local font cache.
+    size_t size = 1536 * 1024 * 4; // This size matches Mac.
+    CGFontSetShouldUseMulticache(true);
+    CGFontCache* fontCache = CGFontCacheGetLocalCache();
+    CGFontCacheSetShouldAutoExpire(fontCache, false);
+    CGFontCacheSetMaxSize(fontCache, size);
 #endif
 }
 

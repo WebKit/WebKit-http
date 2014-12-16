@@ -46,7 +46,7 @@ typedef ListHashSet<Element*> NamedFlowContentElements;
 
 class RenderNamedFlowThread final : public RenderFlowThread, public SelectionSubtreeRoot {
 public:
-    RenderNamedFlowThread(Document&, PassRef<RenderStyle>, PassRef<WebKitNamedFlow>);
+    RenderNamedFlowThread(Document&, Ref<RenderStyle>&&, Ref<WebKitNamedFlow>&&);
     virtual ~RenderNamedFlowThread();
 
     const AtomicString& flowThreadName() const;
@@ -124,7 +124,7 @@ private:
     void checkInvalidRegions();
 
     bool canBeDestroyed() const { return m_invalidRegionList.isEmpty() && m_regionList.isEmpty() && m_contentElements.isEmpty(); }
-    void regionOversetChangeEventTimerFired(Timer&);
+    void regionOversetChangeEventTimerFired();
     void clearContentElements();
     void updateWritingMode();
 

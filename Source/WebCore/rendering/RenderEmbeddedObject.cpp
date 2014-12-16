@@ -96,7 +96,7 @@ static const Color& unavailablePluginBorderColor()
     return standard;
 }
 
-RenderEmbeddedObject::RenderEmbeddedObject(HTMLFrameOwnerElement& element, PassRef<RenderStyle> style)
+RenderEmbeddedObject::RenderEmbeddedObject(HTMLFrameOwnerElement& element, Ref<RenderStyle>&& style)
     : RenderWidget(element, WTF::move(style))
     , m_isPluginUnavailable(false)
     , m_isUnavailablePluginIndicatorHidden(false)
@@ -112,7 +112,7 @@ RenderEmbeddedObject::~RenderEmbeddedObject()
     view().frameView().removeEmbeddedObjectToUpdate(*this);
 }
 
-RenderPtr<RenderEmbeddedObject> RenderEmbeddedObject::createForApplet(HTMLAppletElement& applet, PassRef<RenderStyle> style)
+RenderPtr<RenderEmbeddedObject> RenderEmbeddedObject::createForApplet(HTMLAppletElement& applet, Ref<RenderStyle>&& style)
 {
     auto renderer = createRenderer<RenderEmbeddedObject>(applet, WTF::move(style));
     renderer->setInline(true);
@@ -342,8 +342,10 @@ void RenderEmbeddedObject::paintReplaced(PaintInfo& paintInfo, const LayoutPoint
 
 void RenderEmbeddedObject::setUnavailablePluginIndicatorIsHidden(bool hidden)
 {
-    m_isUnavailablePluginIndicatorHidden = hidden;
+    if (m_isUnavailablePluginIndicatorHidden == hidden)
+        return;
 
+    m_isUnavailablePluginIndicatorHidden = hidden;
     repaint();
 }
 

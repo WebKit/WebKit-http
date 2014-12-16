@@ -93,7 +93,7 @@ struct SelectionIterator {
     }
 };
 
-RenderView::RenderView(Document& document, PassRef<RenderStyle> style)
+RenderView::RenderView(Document& document, Ref<RenderStyle>&& style)
     : RenderBlockFlow(document, WTF::move(style))
     , m_frameView(*document.view())
     , m_selectionUnsplitStart(0)
@@ -102,7 +102,7 @@ RenderView::RenderView(Document& document, PassRef<RenderStyle> style)
     , m_selectionUnsplitEndPos(-1)
     , m_rendererCount(0)
     , m_maximalOutlineSize(0)
-    , m_lazyRepaintTimer(this, &RenderView::lazyRepaintTimerFired)
+    , m_lazyRepaintTimer(*this, &RenderView::lazyRepaintTimerFired)
     , m_pageLogicalHeight(0)
     , m_pageLogicalHeightChanged(false)
     , m_layoutState(nullptr)
@@ -155,7 +155,7 @@ void RenderView::unscheduleLazyRepaint(RenderBox& renderer)
         m_lazyRepaintTimer.stop();
 }
 
-void RenderView::lazyRepaintTimerFired(Timer&)
+void RenderView::lazyRepaintTimerFired()
 {
     bool shouldRepaint = !document().inPageCache();
 
@@ -420,9 +420,9 @@ void RenderView::mapLocalToContainer(const RenderLayerModelObject* repaintContai
     ASSERT_ARG(repaintContainer, !repaintContainer || repaintContainer == this);
     ASSERT_UNUSED(wasFixed, !wasFixed || *wasFixed == (mode & IsFixed));
 
-    if (!repaintContainer && mode & UseTransforms && shouldUseTransformFromContainer(0)) {
+    if (!repaintContainer && mode & UseTransforms && shouldUseTransformFromContainer(nullptr)) {
         TransformationMatrix t;
-        getTransformFromContainer(0, LayoutSize(), t);
+        getTransformFromContainer(nullptr, LayoutSize(), t);
         transformState.applyTransform(t);
     }
     
@@ -446,9 +446,9 @@ const RenderObject* RenderView::pushMappingToContainer(const RenderLayerModelObj
     LayoutSize scrollOffset = frameView().scrollOffsetForFixedPosition();
 #endif
 
-    if (!ancestorToStopAt && shouldUseTransformFromContainer(0)) {
+    if (!ancestorToStopAt && shouldUseTransformFromContainer(nullptr)) {
         TransformationMatrix t;
-        getTransformFromContainer(0, LayoutSize(), t);
+        getTransformFromContainer(nullptr, LayoutSize(), t);
         geometryMap.pushView(this, scrollOffset, &t);
     } else
         geometryMap.pushView(this, scrollOffset);
@@ -465,9 +465,9 @@ void RenderView::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformStat
         transformState.move(frameView().scrollOffsetForFixedPosition());
 #endif
 
-    if (mode & UseTransforms && shouldUseTransformFromContainer(0)) {
+    if (mode & UseTransforms && shouldUseTransformFromContainer(nullptr)) {
         TransformationMatrix t;
-        getTransformFromContainer(0, LayoutSize(), t);
+        getTransformFromContainer(nullptr, LayoutSize(), t);
         transformState.applyTransform(t);
     }
 }
@@ -1325,13 +1325,6 @@ void RenderView::popLayoutStateForCurrentFlowThread()
         return;
 
     currentFlowThread->popFlowThreadLayoutState();
-}
-
-IntervalArena* RenderView::intervalArena()
-{
-    if (!m_intervalArena)
-        m_intervalArena = IntervalArena::create();
-    return m_intervalArena.get();
 }
 
 ImageQualityController& RenderView::imageQualityController()

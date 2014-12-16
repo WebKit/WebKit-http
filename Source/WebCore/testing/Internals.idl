@@ -36,9 +36,14 @@ enum PageOverlayType {
     [RaisesException] boolean nodeNeedsStyleRecalc(Node node);
     DOMString description(any value);
 
+    // Animated image pausing testing.
+    [RaisesException] boolean hasPausedImageAnimations(Element element);
+
     [RaisesException] DOMString elementRenderTreeAsText(Element element);
     boolean isPreloaded(DOMString url);
     boolean isLoadingFromMemoryCache(DOMString url);
+    DOMString xhrResponseSource(XMLHttpRequest xhr);
+    void clearMemoryCache();
 
     [RaisesException] CSSStyleDeclaration computedStyleIncludingVisitedInfo(Node node);
 
@@ -238,6 +243,9 @@ enum PageOverlayType {
     [RaisesException] void startTrackingRepaints();
     [RaisesException] void stopTrackingRepaints();
 
+    // Query if a timer is currently throttled, to debug timer throttling.
+    [RaisesException] boolean isTimerThrottled(long timerHandle);
+
     // |node| should be Document, HTMLIFrameElement, or unspecified.
     // If |node| is an HTMLIFrameElement, it assumes node.contentDocument is
     // specified without security checks. Unspecified means this document.
@@ -301,4 +309,5 @@ enum PageOverlayType {
     [RaisesException] DOMString pageOverlayLayerTreeAsText();
 
     void setPageMuted(boolean muted);
+    boolean isPagePlayingAudio();
 };

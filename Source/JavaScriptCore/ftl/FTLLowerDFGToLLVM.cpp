@@ -592,9 +592,6 @@ private:
         case GetScope:
             compileGetScope();
             break;
-        case GetMyScope:
-            compileGetMyScope();
-            break;
         case SkipScope:
             compileSkipScope();
             break;
@@ -3422,12 +3419,6 @@ private:
     void compileGetScope()
     {
         setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSFunction_scope));
-    }
-    
-    void compileGetMyScope()
-    {
-        setJSValue(m_out.loadPtr(addressFor(
-            m_node->origin.semantic.stackOffset() + JSStack::ScopeChain)));
     }
     
     void compileSkipScope()
@@ -6568,7 +6559,7 @@ private:
             if (Options::validateFTLOSRExitLiveness()) {
                 DFG_ASSERT(
                     m_graph, m_node,
-                    !(availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), codeOrigin)));
+                    (!(availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), codeOrigin))) || m_graph.m_plan.mode == FTLForOSREntryMode);
             }
             
             exit.m_values[i] = exitValueForAvailability(arguments, map, availability);

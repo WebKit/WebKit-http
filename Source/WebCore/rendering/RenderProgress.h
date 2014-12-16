@@ -29,7 +29,7 @@ class HTMLProgressElement;
 
 class RenderProgress final : public RenderBlockFlow {
 public:
-    RenderProgress(HTMLElement&, PassRef<RenderStyle>);
+    RenderProgress(HTMLElement&, Ref<RenderStyle>&&);
     virtual ~RenderProgress();
 
     double position() const { return m_position; }
@@ -47,7 +47,7 @@ private:
     virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
     virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
 
-    void animationTimerFired(Timer&);
+    void animationTimerFired();
     void updateAnimationState();
 
     double m_position;

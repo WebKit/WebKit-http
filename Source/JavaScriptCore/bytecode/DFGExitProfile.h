@@ -32,7 +32,6 @@
 #include "ExitKind.h"
 #include "ExitingJITType.h"
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
@@ -183,7 +182,7 @@ public:
 private:
     friend class QueryableExitProfile;
     
-    OwnPtr<Vector<FrequentExitSite>> m_frequentExitSites;
+    std::unique_ptr<Vector<FrequentExitSite>> m_frequentExitSites;
 };
 
 class QueryableExitProfile {

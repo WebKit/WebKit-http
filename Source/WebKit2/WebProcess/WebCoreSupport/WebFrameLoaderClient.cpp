@@ -507,8 +507,6 @@ void WebFrameLoaderClient::dispatchDidFinishDocumentLoad()
     if (!webPage)
         return;
 
-    webPage->didFinishDocumentLoad(m_frame);
-
     RefPtr<API::Object> userData;
 
     // Notify the bundle client.
@@ -1630,17 +1628,6 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
     return context.release();
 }
 
-void WebFrameLoaderClient::willChangeCurrentHistoryItem()
-{
-    WebPage* webPage = m_frame->page();
-    if (!webPage)
-        return;
-    if (!m_frame->isMainFrame())
-        return;
-
-    webPage->willChangeCurrentHistoryItemForMainFrame();
-}
-
 #if ENABLE(CONTENT_FILTERING)
 void WebFrameLoaderClient::contentFilterDidBlockLoad(std::unique_ptr<WebCore::ContentFilter> contentFilter)
 {
@@ -1652,13 +1639,6 @@ void WebFrameLoaderClient::contentFilterDidBlockLoad(std::unique_ptr<WebCore::Co
 #if ENABLE(REQUEST_AUTOCOMPLETE)
 void WebFrameLoaderClient::didRequestAutocomplete(PassRefPtr<WebCore::FormState>)
 {
-}
-#endif
-
-#if PLATFORM(MAC)
-bool WebFrameLoaderClient::needsQuickLookResourceCachingQuirks() const
-{
-    return WebProcess::shared().needsQuickLookResourceCachingQuirks();
 }
 #endif
 

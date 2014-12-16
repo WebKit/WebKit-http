@@ -183,6 +183,7 @@ def struct_or_class(namespace, type):
         'WebCore::RotateTransformOperation',
         'WebCore::ScaleTransformOperation',
         'WebCore::SkewTransformOperation',
+        'WebCore::TextIndicatorData',
         'WebCore::TimingFunction',
         'WebCore::TransformationMatrix',
         'WebCore::TransformOperation',
@@ -438,6 +439,7 @@ def headers_for_type(type):
         'WebCore::PasteboardWebContent': ['<WebCore/Pasteboard.h>'],
         'WebCore::TextCheckingRequestData': ['<WebCore/TextChecking.h>'],
         'WebCore::TextCheckingResult': ['<WebCore/TextCheckerClient.h>'],
+        'WebCore::TextIndicatorData': ['<WebCore/TextIndicator.h>'],
         'WebCore::ViewportAttributes': ['<WebCore/ViewportArguments.h>'],
         'WebKit::BackForwardListItemState': ['"SessionState.h"'],
         'WebKit::InjectedBundleUserMessageEncoder': [],
@@ -449,6 +451,7 @@ def headers_for_type(type):
         'WebKit::WebTouchEvent': ['"WebEvent.h"'],
         'WebKit::WebWheelEvent': ['"WebEvent.h"'],
         'WebKit::WebScriptMessageHandlerHandle': ['"WebScriptMessageHandler.h"'],
+        'std::chrono::system_clock::time_point': ['<chrono>'],
     }
 
     headers = []

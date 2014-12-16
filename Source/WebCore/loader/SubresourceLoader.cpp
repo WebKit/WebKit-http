@@ -37,7 +37,6 @@
 #include "Logging.h"
 #include "MemoryCache.h"
 #include "Page.h"
-#include "PageActivityAssertionToken.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -68,7 +67,7 @@ SubresourceLoader::SubresourceLoader(Frame* frame, CachedResource* resource, con
     , m_resource(resource)
     , m_loadingMultipartContent(false)
     , m_state(Uninitialized)
-    , m_requestCountTracker(adoptPtr(new RequestCountTracker(frame->document()->cachedResourceLoader(), resource)))
+    , m_requestCountTracker(std::make_unique<RequestCountTracker>(frame->document()->cachedResourceLoader(), resource))
 {
 #ifndef NDEBUG
     subresourceLoaderCounter.increment();
@@ -156,7 +155,7 @@ void SubresourceLoader::willSendRequest(ResourceRequest& newRequest, const Resou
         // Doing so would have us reusing the resource from the first request if the second request's revalidation succeeds.
         if (newRequest.isConditional() && m_resource->resourceToRevalidate() && newRequest.url() != m_resource->resourceToRevalidate()->response().url()) {
             newRequest.makeUnconditional();
-            memoryCache()->revalidationFailed(m_resource);
+            memoryCache().revalidationFailed(m_resource);
         }
         
         if (!m_documentLoader->cachedResourceLoader().canRequest(m_resource->type(), newRequest.url(), options())) {
@@ -202,13 +201,13 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
             // 304 Not modified / Use local copy
             // Existing resource is ok, just use it updating the expiration time.
             m_resource->setResponse(response);
-            memoryCache()->revalidationSucceeded(m_resource, response);
+            memoryCache().revalidationSucceeded(m_resource, response);
             if (!reachedTerminalState())
                 ResourceLoader::didReceiveResponse(response);
             return;
         }
         // Did not get 304 response, continue as a regular resource load.
-        memoryCache()->revalidationFailed(m_resource);
+        memoryCache().revalidationFailed(m_resource);
     }
 
     m_resource->responseReceived(response);
@@ -225,7 +224,7 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
         m_loadingMultipartContent = true;
 
         // We don't count multiParts in a CachedResourceLoader's request count
-        m_requestCountTracker.clear();
+        m_requestCountTracker = nullptr;
         if (!m_resource->isImage()) {
             cancel();
             return;
@@ -328,10 +327,10 @@ void SubresourceLoader::didFail(const ResourceError& error)
     CachedResourceHandle<CachedResource> protectResource(m_resource);
     m_state = Finishing;
     if (m_resource->resourceToRevalidate())
-        memoryCache()->revalidationFailed(m_resource);
+        memoryCache().revalidationFailed(m_resource);
     m_resource->setResourceError(error);
     if (!m_resource->isPreloaded())
-        memoryCache()->remove(m_resource);
+        memoryCache().remove(m_resource);
     m_resource->error(CachedResource::LoadError);
     cleanupForError(error);
     notifyDone();
@@ -361,9 +360,9 @@ void SubresourceLoader::willCancel(const ResourceError& error)
     m_state = Finishing;
 #endif
     if (m_resource->resourceToRevalidate())
-        memoryCache()->revalidationFailed(m_resource);
+        memoryCache().revalidationFailed(m_resource);
     m_resource->setResourceError(error);
-    memoryCache()->remove(m_resource);
+    memoryCache().remove(m_resource);
 }
 
 void SubresourceLoader::didCancel(const ResourceError&)
@@ -380,7 +379,7 @@ void SubresourceLoader::notifyDone()
     if (reachedTerminalState())
         return;
 
-    m_requestCountTracker.clear();
+    m_requestCountTracker = nullptr;
 #if PLATFORM(IOS)
     m_documentLoader->cachedResourceLoader().loadDone(m_resource, m_state != CancelledWhileInitializing);
 #else

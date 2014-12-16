@@ -100,9 +100,10 @@ public:
     void setRepaintCount(int);
 
     void setAnimations(const GraphicsLayerAnimations&);
-    bool startedAnimation() const { return m_startedAnimation; }
 
 private:
+    // GraphicsLayer
+    virtual bool isGraphicsLayerTextureMapper() const override { return true; }
 
     // TextureMapperPlatformLayer::Client
     virtual void platformLayerWillBeDestroyed() override { setContentsToPlatformLayer(0, NoContentsLayer); }
@@ -179,17 +180,12 @@ private:
 
     IntSize m_committedScrollOffset;
     bool m_isScrollable;
-    bool m_startedAnimation;
 };
 
-inline static GraphicsLayerTextureMapper* toGraphicsLayerTextureMapper(GraphicsLayer* layer)
-{
-    return static_cast<GraphicsLayerTextureMapper*>(layer);
-}
+} // namespace WebCore
 
-TextureMapperLayer* toTextureMapperLayer(GraphicsLayer*);
+SPECIALIZE_TYPE_TRAITS_GRAPHICSLAYER(WebCore::GraphicsLayerTextureMapper, isGraphicsLayerTextureMapper())
 
-}
 #endif
 
 #endif // GraphicsLayerTextureMapper_h

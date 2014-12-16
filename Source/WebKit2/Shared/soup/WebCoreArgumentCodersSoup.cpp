@@ -44,6 +44,7 @@ void ArgumentCoder<ResourceRequest>::encodePlatformData(ArgumentEncoder& encoder
     encoder << resourceRequest.url().string();
     encoder << resourceRequest.httpMethod();
     encoder << resourceRequest.httpHeaderFields();
+    encoder << resourceRequest.timeoutInterval();
 
     // FIXME: Do not encode HTTP message body.
     // 1. It can be large and thus costly to send across.
@@ -54,6 +55,8 @@ void ArgumentCoder<ResourceRequest>::encodePlatformData(ArgumentEncoder& encoder
         encoder << httpBody->flattenToString();
 
     encoder << resourceRequest.firstPartyForCookies().string();
+    encoder << resourceRequest.allowCookies();
+    encoder.encodeEnum(resourceRequest.priority());
 
     encoder << static_cast<uint32_t>(resourceRequest.soupMessageFlags());
     encoder << resourceRequest.initiatingPageID();
@@ -76,6 +79,11 @@ bool ArgumentCoder<ResourceRequest>::decodePlatformData(ArgumentDecoder& decoder
         return false;
     resourceRequest.setHTTPHeaderFields(WTF::move(headers));
 
+    double timeoutInterval;
+    if (!decoder.decode(timeoutInterval))
+        return false;
+    resourceRequest.setTimeoutInterval(timeoutInterval);
+
     bool hasHTTPBody;
     if (!decoder.decode(hasHTTPBody))
         return false;
@@ -90,6 +98,16 @@ bool ArgumentCoder<ResourceRequest>::decodePlatformData(ArgumentDecoder& decoder
     if (!decoder.decode(firstPartyForCookies))
         return false;
     resourceRequest.setFirstPartyForCookies(URL(URL(), firstPartyForCookies));
+
+    bool allowCookies;
+    if (!decoder.decode(allowCookies))
+        return false;
+    resourceRequest.setAllowCookies(allowCookies);
+
+    ResourceLoadPriority priority;
+    if (!decoder.decodeEnum(priority))
+        return false;
+    resourceRequest.setPriority(priority);
 
     uint32_t soupMessageFlags;
     if (!decoder.decode(soupMessageFlags))

@@ -38,6 +38,7 @@
 #include "ContentSecurityPolicy.h"
 #include "ContentType.h"
 #include "CookieJar.h"
+#include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
 #include "DisplaySleepDisabler.h"
 #include "DocumentLoader.h"
@@ -65,7 +66,6 @@
 #include "MediaResourceLoader.h"
 #include "MediaSessionManager.h"
 #include "NetworkingContext.h"
-#include "PageActivityAssertionToken.h"
 #include "PageGroup.h"
 #include "PageThrottler.h"
 #include "ProgressTracker.h"
@@ -254,11 +254,11 @@ private:
 HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLElement(tagName, document)
     , ActiveDOMObject(&document)
-    , m_loadTimer(this, &HTMLMediaElement::loadTimerFired)
-    , m_progressEventTimer(this, &HTMLMediaElement::progressEventTimerFired)
-    , m_playbackProgressTimer(this, &HTMLMediaElement::playbackProgressTimerFired)
-    , m_scanTimer(this, &HTMLMediaElement::scanTimerFired)
-    , m_seekTimer(this, &HTMLMediaElement::seekTimerFired)
+    , m_loadTimer(*this, &HTMLMediaElement::loadTimerFired)
+    , m_progressEventTimer(*this, &HTMLMediaElement::progressEventTimerFired)
+    , m_playbackProgressTimer(*this, &HTMLMediaElement::playbackProgressTimerFired)
+    , m_scanTimer(*this, &HTMLMediaElement::scanTimerFired)
+    , m_seekTimer(*this, &HTMLMediaElement::seekTimerFired)
     , m_playedTimeRanges()
     , m_asyncEventQueue(*this)
     , m_playbackRate(1.0f)
@@ -622,7 +622,7 @@ bool HTMLMediaElement::rendererIsNeeded(const RenderStyle& style)
     return controls() && HTMLElement::rendererIsNeeded(style);
 }
 
-RenderPtr<RenderElement> HTMLMediaElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLMediaElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderMedia>(*this, WTF::move(style));
 }
@@ -757,7 +757,7 @@ void HTMLMediaElement::scheduleEvent(const AtomicString& eventName)
     m_asyncEventQueue.enqueueEvent(event.release());
 }
 
-void HTMLMediaElement::loadTimerFired(Timer&)
+void HTMLMediaElement::loadTimerFired()
 {
     Ref<HTMLMediaElement> protect(*this); // loadNextSourceChild may fire 'beforeload', which can make arbitrary DOM mutations.
 
@@ -1825,20 +1825,22 @@ static void logMediaLoadRequest(Page* page, const String& mediaEngine, const Str
     if (!page || !page->settings().diagnosticLoggingEnabled())
         return;
 
-    ChromeClient& chromeClient = page->chrome().client();
+    DiagnosticLoggingClient* diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
+    if (!diagnosticLoggingClient)
+        return;
 
     if (!succeeded) {
-        chromeClient.logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingKeys::failKey());
+        diagnosticLoggingClient->logDiagnosticMessageWithResult(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingClient::Fail);
         return;
     }
 
-    chromeClient.logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), mediaEngine, DiagnosticLoggingKeys::noopKey());
+    diagnosticLoggingClient->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), mediaEngine);
 
     if (!page->hasSeenAnyMediaEngine())
-        chromeClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOneMediaEngineKey(), emptyString(), DiagnosticLoggingKeys::noopKey());
+        diagnosticLoggingClient->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOneMediaEngineKey(), emptyString());
 
     if (!page->hasSeenMediaEngine(mediaEngine))
-        chromeClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsMediaEngineKey(), mediaEngine, DiagnosticLoggingKeys::noopKey());
+        diagnosticLoggingClient->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsMediaEngineKey(), mediaEngine);
 
     page->sawMediaEngine(mediaEngine);
 }
@@ -2225,7 +2227,7 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys)
 }
 #endif
 
-void HTMLMediaElement::progressEventTimerFired(Timer&)
+void HTMLMediaElement::progressEventTimerFired()
 {
     ASSERT(m_player);
     if (m_networkState != NETWORK_LOADING)
@@ -2268,11 +2270,6 @@ void HTMLMediaElement::addPlayedRange(const MediaTime& start, const MediaTime& e
         m_playedTimeRanges = TimeRanges::create();
     m_playedTimeRanges->ranges().add(start, end);
 }  
-
-bool HTMLMediaElement::supportsSave() const
-{
-    return m_player ? m_player->supportsSave() : false;
-}
 
 bool HTMLMediaElement::supportsScanning() const
 {
@@ -2365,10 +2362,10 @@ void HTMLMediaElement::seekWithTolerance(const MediaTime& inTime, const MediaTim
     if (fromDOM)
         m_seekTimer.startOneShot(0);
     else
-        seekTimerFired(m_seekTimer);
+        seekTimerFired();
 }
 
-void HTMLMediaElement::seekTimerFired(Timer&)
+void HTMLMediaElement::seekTimerFired()
 {
     if (!m_player) {
         m_seeking = false;
@@ -2416,7 +2413,7 @@ void HTMLMediaElement::seekTimerFired(Timer&)
 #if ENABLE(MEDIA_SOURCE)
     // Always notify the media engine of a seek if the source is not closed. This ensures that the source is
     // always in a flushed state when the 'seeking' event fires.
-    if (m_mediaSource && m_mediaSource->isClosed())
+    if (m_mediaSource && !m_mediaSource->isClosed())
         noSeekRequired = false;
 #endif
 
@@ -3112,7 +3109,7 @@ double HTMLMediaElement::nextScanRate()
     return rate;
 }
 
-void HTMLMediaElement::scanTimerFired(Timer&)
+void HTMLMediaElement::scanTimerFired()
 {
     if (m_scanType == Seek) {
         double seekTime = m_scanDirection == Forward ? SeekTime : -SeekTime;
@@ -3134,7 +3131,7 @@ void HTMLMediaElement::startPlaybackProgressTimer()
     m_playbackProgressTimer.startRepeating(maxTimeupdateEventFrequency);
 }
 
-void HTMLMediaElement::playbackProgressTimerFired(Timer&)
+void HTMLMediaElement::playbackProgressTimerFired()
 {
     ASSERT(m_player);
 
@@ -4965,7 +4962,8 @@ void HTMLMediaElement::exitFullscreen()
 
 void HTMLMediaElement::enterFullscreenOptimized()
 {
-    enterFullscreen(VideoFullscreenModeOptimized);
+    if (m_mediaSession->allowsAlternateFullscreen(*this))
+        enterFullscreen(VideoFullscreenModeOptimized);
 }
 
 void HTMLMediaElement::didBecomeFullscreenElement()
@@ -5771,9 +5769,12 @@ void HTMLMediaElement::mediaPlayerEngineFailedToLoad() const
     if (!page || !page->settings().diagnosticLoggingEnabled())
         return;
 
+    DiagnosticLoggingClient* diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
+    if (!diagnosticLoggingClient)
+        return;
+
     String engine = m_player->engineDescription();
-    String message = String::number(m_player->platformErrorCode());
-    page->chrome().client().logDiagnosticMessage(DiagnosticLoggingKeys::engineFailedToLoadKey(), engine, message);
+    diagnosticLoggingClient->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::engineFailedToLoadKey(), engine, String::number(m_player->platformErrorCode()));
 }
 
 void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
@@ -5995,18 +5996,14 @@ MediaSession::MediaType HTMLMediaElement::presentationType() const
 
 MediaSession::DisplayType HTMLMediaElement::displayType() const
 {
-    switch (m_videoFullscreenMode) {
-    case VideoFullscreenModeStandard:
+    if (m_videoFullscreenMode == VideoFullscreenModeStandard)
         return MediaSession::Fullscreen;
-    case VideoFullscreenModeOptimized:
+    if (m_videoFullscreenMode & VideoFullscreenModeOptimized)
         return MediaSession::Optimized;
-    case VideoFullscreenModeNone:
+    if (m_videoFullscreenMode == VideoFullscreenModeNone)
         return MediaSession::Normal;
-    default:
-        ASSERT_NOT_REACHED();
-        break;
-    }
 
+    ASSERT_NOT_REACHED();
     return MediaSession::Normal;
 }
 
@@ -6074,9 +6071,12 @@ bool HTMLMediaElement::overrideBackgroundPlaybackRestriction() const
     if (m_player && m_player->isCurrentPlaybackTargetWireless())
         return true;
 #endif
-    if (m_videoFullscreenMode == VideoFullscreenModeOptimized)
+    if (m_videoFullscreenMode & VideoFullscreenModeOptimized)
         return true;
-    
+#if PLATFORM(IOS)
+    if (m_videoFullscreenMode == VideoFullscreenModeStandard && wkIsOptimizedFullscreenSupported() && isPlaying())
+        return true;
+#endif
     return false;
 }
 
@@ -6117,9 +6117,17 @@ bool HTMLMediaElement::doesHaveAttribute(const AtomicString& attribute, AtomicSt
 void HTMLMediaElement::setShouldBufferData(bool shouldBuffer)
 {
     if (m_player)
-        return m_player->setShouldBufferData(shouldBuffer);
+        m_player->setShouldBufferData(shouldBuffer);
 }
-    
+
+bool HTMLMediaElement::canSaveMediaData() const
+{
+    if (m_player)
+        return m_player->canSaveMediaData();
+
+    return false;
+}
+
 }
 
 #endif

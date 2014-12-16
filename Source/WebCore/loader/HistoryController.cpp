@@ -41,6 +41,7 @@
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "HistoryItem.h"
+#include "LinkHash.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "Page.h"
@@ -574,8 +575,6 @@ void HistoryController::updateForFrameLoadCompleted()
 
 void HistoryController::setCurrentItem(HistoryItem* item)
 {
-    m_frame.loader().client().willChangeCurrentHistoryItem();
-
     m_frameLoadComplete = false;
     m_previousItem = m_currentItem;
     m_currentItem = item;
@@ -889,10 +888,8 @@ void HistoryController::replaceCurrentItem(HistoryItem* item)
     m_previousItem = nullptr;
     if (m_provisionalItem)
         m_provisionalItem = item;
-    else {
-        m_frame.loader().client().willChangeCurrentHistoryItem();
+    else
         m_currentItem = item;
-    }
 }
 
 } // namespace WebCore

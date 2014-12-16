@@ -129,8 +129,8 @@ public:
 
     int createSourceElements() { return SourceElementsResult; }
     ExpressionType makeFunctionCallNode(const JSTokenLocation&, int, int, int, int, int) { return CallExpr; }
-    void appendToComma(ExpressionType& base, ExpressionType right) { base = right; }
-    ExpressionType createCommaExpr(const JSTokenLocation&, ExpressionType, ExpressionType right) { return right; }
+    ExpressionType createCommaExpr(const JSTokenLocation&, ExpressionType expr) { return expr; }
+    ExpressionType appendToCommaExpr(const JSTokenLocation&, ExpressionType& head, ExpressionType, ExpressionType next) { head = next; return next; }
     ExpressionType makeAssignNode(const JSTokenLocation&, ExpressionType, Operator, ExpressionType, bool, bool, int, int, int) { return AssignmentExpr; }
     ExpressionType makePrefixNode(const JSTokenLocation&, ExpressionType, Operator, int, int, int) { return PreExpr; }
     ExpressionType makePostfixNode(const JSTokenLocation&, ExpressionType, Operator, int, int, int) { return PostExpr; }
@@ -159,7 +159,7 @@ public:
     ExpressionType createConditionalExpr(const JSTokenLocation&, ExpressionType, ExpressionType, ExpressionType) { return ConditionalExpr; }
     ExpressionType createAssignResolve(const JSTokenLocation&, const Identifier&, ExpressionType, int, int, int) { return AssignmentExpr; }
     ExpressionType createEmptyVarExpression(const JSTokenLocation&, const Identifier&) { return AssignmentExpr; }
-    ExpressionType createFunctionExpr(const JSTokenLocation&, const Identifier*, int, int, int, int, int, int, int) { return FunctionExpr; }
+    ExpressionType createFunctionExpr(const JSTokenLocation&, const Identifier*, int, int, int, int, int, int, int, int) { return FunctionExpr; }
     int createFunctionBody(const JSTokenLocation&, const JSTokenLocation&, int, int, bool) { return FunctionBodyResult; }
     void setFunctionNameStart(int, int) { }
     int createArguments() { return ArgumentsResult; }
@@ -174,13 +174,13 @@ public:
         ASSERT(name);
         return Property(name, type);
     }
-    Property createProperty(VM* vm, double name, int, PropertyNode::Type type, bool complete)
+    Property createProperty(VM* vm, ParserArena& parserArena, double name, int, PropertyNode::Type type, bool complete)
     {
         if (!complete)
             return Property(type);
-        return Property(&vm->parserArena->identifierArena().makeNumericIdentifier(vm, name), type);
+        return Property(&parserArena.identifierArena().makeNumericIdentifier(vm, name), type);
     }
-    Property createProperty(VM*, ExpressionNode*, int, PropertyNode::Type type, bool)
+    Property createProperty(int, int, PropertyNode::Type type, bool)
     {
         return Property(type);
     }
@@ -193,8 +193,7 @@ public:
     int createClause(int, int) { return ClauseResult; }
     int createClauseList(int) { return ClauseListResult; }
     int createClauseList(int, int) { return ClauseListResult; }
-    void setUsesArguments(int) { }
-    int createFuncDeclStatement(const JSTokenLocation&, const Identifier*, int, int, int, int, int, int, int) { return StatementResult; }
+    int createFuncDeclStatement(const JSTokenLocation&, const Identifier*, int, int, int, int, int, int, int, int) { return StatementResult; }
     int createBlockStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createExprStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createIfStatement(const JSTokenLocation&, int, int, int, int) { return StatementResult; }
@@ -219,18 +218,18 @@ public:
     int createDebugger(const JSTokenLocation&, int, int) { return StatementResult; }
     int createConstStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int appendConstDecl(const JSTokenLocation&, int, const Identifier*, int) { return StatementResult; }
-    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool strict, const Identifier* name, int, int, int, int, int, int, int)
+    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool strict, const Identifier* name, int, int, int, int, int, int, int, int)
     {
         ASSERT(name);
         if (!strict)
             return Property(type);
         return Property(name, type);
     }
-    Property createGetterOrSetterProperty(VM* vm, const JSTokenLocation&, PropertyNode::Type type, bool strict, double name, int, int, int, int, int, int, int)
+    Property createGetterOrSetterProperty(VM* vm, ParserArena& parserArena, const JSTokenLocation&, PropertyNode::Type type, bool strict, double name, int, int, int, int, int, int, int, int)
     {
         if (!strict)
             return Property(type);
-        return Property(&vm->parserArena->identifierArena().makeNumericIdentifier(vm, name), type);
+        return Property(&parserArena.identifierArena().makeNumericIdentifier(vm, name), type);
     }
 
     void appendStatement(int, int) { }
@@ -298,6 +297,8 @@ public:
     }
 
     void setEndOffset(int, int) { }
+    int endOffset(int) { return 0; }
+    void setStartOffset(int, int) { }
 
 private:
     int m_topBinaryExpr;

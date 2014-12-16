@@ -260,12 +260,13 @@ namespace JSC {
         typedef DeclarationStacks::FunctionStack FunctionStack;
 
         BytecodeGenerator(VM&, ProgramNode*, UnlinkedProgramCodeBlock*, DebuggerMode, ProfilerMode);
-        BytecodeGenerator(VM&, FunctionBodyNode*, UnlinkedFunctionCodeBlock*, DebuggerMode, ProfilerMode);
+        BytecodeGenerator(VM&, FunctionNode*, UnlinkedFunctionCodeBlock*, DebuggerMode, ProfilerMode);
         BytecodeGenerator(VM&, EvalNode*, UnlinkedEvalCodeBlock*, DebuggerMode, ProfilerMode);
 
         ~BytecodeGenerator();
         
         VM* vm() const { return m_vm; }
+        ParserArena& parserArena() const { return m_scopeNode->parserArena(); }
         const CommonIdentifiers& propertyNames() const { return *m_vm->propertyNames; }
 
         bool isConstructor() { return m_codeBlock->isConstructor(); }
@@ -290,7 +291,7 @@ namespace JSC {
         // Returns the register storing "this"
         RegisterID* thisRegister() { return &m_thisRegister; }
         
-        RegisterID* scopeRegister() { return &m_scopeRegister; }
+        RegisterID* scopeRegister() { return m_scopeRegister; }
 
         // Returns the next available temporary register. Registers returned by
         // newTemporary require a modified form of reference counting: any
@@ -437,6 +438,8 @@ namespace JSC {
 
         void emitTypeProfilerExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot);
         void emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag, const Identifier*);
+
+        void emitProfileControlFlow(int);
 
         RegisterID* emitLoad(RegisterID* dst, bool);
         RegisterID* emitLoad(RegisterID* dst, double);
@@ -594,6 +597,7 @@ namespace JSC {
         ALWAYS_INLINE void rewindBinaryOp();
         ALWAYS_INLINE void rewindUnaryOp();
 
+        void allocateAndEmitScope();
         void emitComplexPopScopes(RegisterID*, ControlFlowContext* topScope, ControlFlowContext* bottomScope);
 
         typedef HashMap<double, JSValue> NumberMap;
@@ -629,8 +633,8 @@ namespace JSC {
 
         // Returns the index of the added var.
         void addParameter(const Identifier&, int parameterIndex);
-        RegisterID* resolveCallee(FunctionBodyNode*);
-        void addCallee(FunctionBodyNode*, RegisterID*);
+        RegisterID* resolveCallee(FunctionNode*);
+        void addCallee(FunctionNode*, RegisterID*);
 
         void preserveLastVar();
 
@@ -754,7 +758,7 @@ namespace JSC {
         RegisterID m_ignoredResultRegister;
         RegisterID m_thisRegister;
         RegisterID m_calleeRegister;
-        RegisterID m_scopeRegister;
+        RegisterID* m_scopeRegister;
         RegisterID* m_lexicalEnvironmentRegister;
         RegisterID* m_emptyValueRegister;
         RegisterID* m_globalObjectRegister;

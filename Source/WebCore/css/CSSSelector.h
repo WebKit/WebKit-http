@@ -58,7 +58,10 @@ namespace WebCore {
         static const unsigned classMask = 0xff00;
         static const unsigned elementMask = 0xff;
 
-        unsigned specificity() const;
+        unsigned staticSpecificity(bool& ok) const;
+        unsigned specificityForPage() const;
+        unsigned simpleSelectorSpecificity() const;
+        static unsigned addSpecificities(unsigned, unsigned);
 
         /* how the attribute value has to match.... Default is Exact */
         enum Match {
@@ -117,11 +120,9 @@ namespace WebCore {
             PseudoClassFullPageMedia,
             PseudoClassDefault,
             PseudoClassDisabled,
-            PseudoClassOptional,
-#if ENABLE(CSS_SELECTORS_LEVEL4)
             PseudoClassMatches,
+            PseudoClassOptional,
             PseudoClassPlaceholderShown,
-#endif
             PseudoClassRequired,
             PseudoClassReadOnly,
             PseudoClassReadWrite,
@@ -155,6 +156,10 @@ namespace WebCore {
 #if ENABLE(VIDEO_TRACK)
             PseudoClassFuture,
             PseudoClassPast,
+#endif
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+            PseudoClassDir,
+            PseudoClassRole,
 #endif
         };
 
@@ -306,8 +311,7 @@ namespace WebCore {
         unsigned m_isForPage             : 1;
         unsigned m_tagIsForNamespaceRule : 1;
 
-        unsigned specificityForOneSelector() const;
-        unsigned specificityForPage() const;
+        unsigned simpleSelectorSpecificityForPage() const;
 
         // Hide.
         CSSSelector& operator=(const CSSSelector&);

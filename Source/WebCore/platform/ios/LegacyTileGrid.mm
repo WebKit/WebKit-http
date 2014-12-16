@@ -28,15 +28,14 @@
 
 #if PLATFORM(IOS)
 
-#include "MemoryPressureHandler.h"
-#include "SystemMemory.h"
+#include "CoreGraphicsSPI.h"
 #include "LegacyTileGridTile.h"
 #include "LegacyTileLayer.h"
 #include "LegacyTileLayerPool.h"
+#include "MemoryPressureHandler.h"
+#include "QuartzCoreSPI.h"
+#include "SystemMemory.h"
 #include "WAKWindow.h"
-#include <CoreGraphics/CoreGraphicsPrivate.h>
-#include <QuartzCore/QuartzCore.h>
-#include <QuartzCore/QuartzCorePrivate.h>
 #include <algorithm>
 #include <functional>
 

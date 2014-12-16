@@ -50,7 +50,7 @@ HTMLFieldSetElement::~HTMLFieldSetElement()
         document().removeDisabledFieldsetElement();
 }
 
-PassRefPtr<HTMLFieldSetElement> HTMLFieldSetElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
+RefPtr<HTMLFieldSetElement> HTMLFieldSetElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
 {
     return adoptRef(new HTMLFieldSetElement(tagName, document, form));
 }
@@ -128,6 +128,16 @@ void HTMLFieldSetElement::didMoveToNewDocument(Document* oldDocument)
     }
 }
 
+bool HTMLFieldSetElement::matchesValidPseudoClass() const
+{
+    return m_invalidDescendants.isEmpty();
+}
+
+bool HTMLFieldSetElement::matchesInvalidPseudoClass() const
+{
+    return !m_invalidDescendants.isEmpty();
+}
+
 bool HTMLFieldSetElement::supportsFocus() const
 {
     return HTMLElement::supportsFocus();
@@ -139,7 +149,7 @@ const AtomicString& HTMLFieldSetElement::formControlType() const
     return fieldset;
 }
 
-RenderPtr<RenderElement> HTMLFieldSetElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLFieldSetElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderFieldset>(*this, WTF::move(style));
 }
@@ -149,7 +159,7 @@ HTMLLegendElement* HTMLFieldSetElement::legend() const
     return const_cast<HTMLLegendElement*>(childrenOfType<HTMLLegendElement>(*this).first());
 }
 
-PassRefPtr<HTMLCollection> HTMLFieldSetElement::elements()
+RefPtr<HTMLCollection> HTMLFieldSetElement::elements()
 {
     return ensureCachedHTMLCollection(FormControls);
 }
@@ -187,6 +197,27 @@ unsigned HTMLFieldSetElement::length() const
             ++length;
     }
     return length;
+}
+
+void HTMLFieldSetElement::addInvalidDescendant(const HTMLFormControlElement& invalidFormControlElement)
+{
+    ASSERT_WITH_MESSAGE(!is<HTMLFieldSetElement>(invalidFormControlElement), "FieldSet are never candidates for constraint validation.");
+    ASSERT(static_cast<const Element&>(invalidFormControlElement).matchesInvalidPseudoClass());
+    ASSERT_WITH_MESSAGE(!m_invalidDescendants.contains(&invalidFormControlElement), "Updating the fieldset on validity change is not an efficient operation, it should only be done when necessary.");
+
+    if (m_invalidDescendants.isEmpty())
+        setNeedsStyleRecalc();
+    m_invalidDescendants.add(&invalidFormControlElement);
+}
+
+void HTMLFieldSetElement::removeInvalidDescendant(const HTMLFormControlElement& formControlElement)
+{
+    ASSERT_WITH_MESSAGE(!is<HTMLFieldSetElement>(formControlElement), "FieldSet are never candidates for constraint validation.");
+    ASSERT_WITH_MESSAGE(m_invalidDescendants.contains(&formControlElement), "Updating the fieldset on validity change is not an efficient operation, it should only be done when necessary.");
+
+    m_invalidDescendants.remove(&formControlElement);
+    if (m_invalidDescendants.isEmpty())
+        setNeedsStyleRecalc();
 }
 
 } // namespace

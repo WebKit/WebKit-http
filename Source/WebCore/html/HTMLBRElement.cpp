@@ -39,12 +39,12 @@ HTMLBRElement::HTMLBRElement(const QualifiedName& tagName, Document& document)
     ASSERT(hasTagName(brTag));
 }
 
-PassRefPtr<HTMLBRElement> HTMLBRElement::create(Document& document)
+RefPtr<HTMLBRElement> HTMLBRElement::create(Document& document)
 {
     return adoptRef(new HTMLBRElement(brTag, document));
 }
 
-PassRefPtr<HTMLBRElement> HTMLBRElement::create(const QualifiedName& tagName, Document& document)
+RefPtr<HTMLBRElement> HTMLBRElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLBRElement(tagName, document));
 }
@@ -71,7 +71,7 @@ void HTMLBRElement::collectStyleForPresentationAttribute(const QualifiedName& na
         HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
-RenderPtr<RenderElement> HTMLBRElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLBRElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     if (style.get().hasContent())
         return RenderElement::createFor(*this, WTF::move(style));

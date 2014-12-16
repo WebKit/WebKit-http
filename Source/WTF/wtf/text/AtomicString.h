@@ -173,15 +173,15 @@ public:
     void show() const;
 #endif
 
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const LChar*);
-    ALWAYS_INLINE static PassRefPtr<StringImpl> add(const char* s) { return add(reinterpret_cast<const LChar*>(s)); };
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const LChar*, unsigned length);
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const UChar*, unsigned length);
-    ALWAYS_INLINE static PassRefPtr<StringImpl> add(const char* s, unsigned length) { return add(reinterpret_cast<const LChar*>(s), length); };
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const UChar*, unsigned length, unsigned existingHash);
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(const UChar*);
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(StringImpl*, unsigned offset, unsigned length);
-    ALWAYS_INLINE static PassRefPtr<StringImpl> add(StringImpl* string)
+    WTF_EXPORT_STRING_API static RefPtr<StringImpl> add(const LChar*);
+    ALWAYS_INLINE static RefPtr<StringImpl> add(const char* s) { return add(reinterpret_cast<const LChar*>(s)); };
+    WTF_EXPORT_STRING_API static RefPtr<StringImpl> add(const LChar*, unsigned length);
+    WTF_EXPORT_STRING_API static RefPtr<StringImpl> add(const UChar*, unsigned length);
+    ALWAYS_INLINE static RefPtr<StringImpl> add(const char* s, unsigned length) { return add(reinterpret_cast<const LChar*>(s), length); };
+    WTF_EXPORT_STRING_API static Ref<StringImpl> add(const UChar*, unsigned length, unsigned existingHash);
+    WTF_EXPORT_STRING_API static RefPtr<StringImpl> add(const UChar*);
+    WTF_EXPORT_STRING_API static RefPtr<StringImpl> add(StringImpl*, unsigned offset, unsigned length);
+    ALWAYS_INLINE static RefPtr<StringImpl> add(StringImpl* string)
     {
         if (!string || string->isAtomic()) {
             ASSERT_WITH_MESSAGE(!string || !string->length() || isInAtomicStringTable(string), "The atomic string comes from an other thread!");
@@ -189,13 +189,13 @@ public:
         }
         return addSlowCase(*string);
     }
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> addFromLiteralData(const char* characters, unsigned length);
+    WTF_EXPORT_STRING_API static Ref<StringImpl> addFromLiteralData(const char* characters, unsigned length);
 #if USE(CF)
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> add(CFStringRef);
+    WTF_EXPORT_STRING_API static RefPtr<StringImpl> add(CFStringRef);
 #endif
 
     template<typename StringTableProvider>
-    ALWAYS_INLINE static PassRefPtr<StringImpl> addWithStringTableProvider(StringTableProvider& stringTableProvider, StringImpl* string)
+    ALWAYS_INLINE static RefPtr<StringImpl> addWithStringTableProvider(StringTableProvider& stringTableProvider, StringImpl* string)
     {
         if (!string || string->isAtomic()) {
             ASSERT_WITH_MESSAGE(!string || !string->length() || isInAtomicStringTable(string), "The atomic string comes from an other thread!");
@@ -204,21 +204,21 @@ public:
         return addSlowCase(*stringTableProvider.atomicStringTable(), *string);
     }
 
+#if !ASSERT_DISABLED
+    WTF_EXPORT_STRING_API static bool isInAtomicStringTable(StringImpl*);
+#endif
+
 private:
     // The explicit constructors with AtomicString::ConstructFromLiteral must be used for literals.
     AtomicString(ASCIILiteral);
 
     String m_string;
     
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> addSlowCase(StringImpl&);
-    WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> addSlowCase(AtomicStringTable&, StringImpl&);
+    WTF_EXPORT_STRING_API static Ref<StringImpl> addSlowCase(StringImpl&);
+    WTF_EXPORT_STRING_API static Ref<StringImpl> addSlowCase(AtomicStringTable&, StringImpl&);
 
     WTF_EXPORT_STRING_API static AtomicStringImpl* findSlowCase(StringImpl&);
     WTF_EXPORT_STRING_API static AtomicString fromUTF8Internal(const char*, const char*);
-
-#if !ASSERT_DISABLED
-    WTF_EXPORT_STRING_API static bool isInAtomicStringTable(StringImpl*);
-#endif
 };
 
 inline bool operator==(const AtomicString& a, const AtomicString& b) { return a.impl() == b.impl(); }

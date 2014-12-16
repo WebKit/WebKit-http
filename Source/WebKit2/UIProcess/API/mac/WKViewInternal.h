@@ -41,13 +41,13 @@ class DataReference;
 namespace WebCore {
 class Image;
 class SharedBuffer;
+class TextIndicator;
 struct KeypressCommand;
 }
 
 namespace WebKit {
 class DrawingAreaProxy;
 class LayerTreeContext;
-class TextIndicator;
 class ViewSnapshot;
 class WebContext;
 struct ActionMenuHitTestResult;
@@ -80,7 +80,8 @@ struct WebPageConfiguration;
 - (void)_setIntrinsicContentSize:(NSSize)intrinsicContentSize;
 - (NSRect)_convertToDeviceSpace:(NSRect)rect;
 - (NSRect)_convertToUserSpace:(NSRect)rect;
-- (void)_setTextIndicator:(PassRefPtr<WebKit::TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate;
+- (void)_setTextIndicator:(PassRefPtr<WebCore::TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut;
+- (void)_setTextIndicator:(PassRefPtr<WebCore::TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animationCompletionHandler:(std::function<void ()>)completionHandler;
 
 - (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer;
 - (CALayer *)_acceleratedCompositingModeRootLayer;
@@ -109,8 +110,6 @@ struct WebPageConfiguration;
 - (void)_setSuppressVisibilityUpdates:(BOOL)suppressVisibilityUpdates;
 - (BOOL)_suppressVisibilityUpdates;
 
-- (BOOL)_shouldIgnoreMouseEvents;
-
 - (void)_didFirstVisuallyNonEmptyLayoutForMainFrame;
 - (void)_didFinishLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)type;
@@ -131,8 +130,8 @@ struct WebPageConfiguration;
 - (void)_didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData;
 #endif
 
-- (void)_dismissActionMenuPopovers;
-
 @property (nonatomic, retain, setter=_setPrimaryTrackingArea:) NSTrackingArea *_primaryTrackingArea;
+
+@property (readonly) NSWindow *_targetWindowForMovePreparation;
 
 @end

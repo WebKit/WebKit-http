@@ -51,13 +51,13 @@
 
 namespace WebCore {
 
-RenderInline::RenderInline(Element& element, PassRef<RenderStyle> style)
+RenderInline::RenderInline(Element& element, Ref<RenderStyle>&& style)
     : RenderBoxModelObject(element, WTF::move(style), RenderInlineFlag)
 {
     setChildrenInline(true);
 }
 
-RenderInline::RenderInline(Document& document, PassRef<RenderStyle> style)
+RenderInline::RenderInline(Document& document, Ref<RenderStyle>&& style)
     : RenderBoxModelObject(document, WTF::move(style), RenderInlineFlag)
 {
     setChildrenInline(true);
@@ -98,7 +98,8 @@ void RenderInline::willBeDestroyed()
                 for (auto box = firstLineBox(); box; box = box->nextLineBox())
                     box->removeFromParent();
             }
-        }
+        } else if (parent())
+            parent()->dirtyLinesFromChangedChild(*this);
     }
 
     m_lineBoxes.deleteLineBoxes();
@@ -123,7 +124,7 @@ void RenderInline::updateFromStyle()
     RenderBoxModelObject::updateFromStyle();
 
     // FIXME: Support transforms and reflections on inline flows someday.
-    setHasTransform(false);
+    setHasTransformRelatedProperty(false);
     setHasReflection(false);    
 }
 

@@ -82,6 +82,7 @@
 #include "RenderMathMLBlock.h"
 #include "RenderMathMLFraction.h"
 #include "RenderMathMLOperator.h"
+#include "RenderMathMLRoot.h"
 #include "RenderMenuList.h"
 #include "RenderSVGRoot.h"
 #include "RenderSVGShape.h"
@@ -248,7 +249,7 @@ AccessibilityObject* AccessibilityRenderObject::lastChild() const
 
 static inline RenderInline* startOfContinuations(RenderObject& renderer)
 {
-    if (renderer.isInlineElementContinuation())
+    if (renderer.isInlineElementContinuation() && is<RenderInline>(renderer.node()->renderer()))
         return downcast<RenderInline>(renderer.node()->renderer());
 
     // Blocks with a previous continuation always have a next continuation
@@ -637,6 +638,8 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
     // so rangeOfContents does not work for them (nor does regular text selection).
     if (is<RenderText>(*m_renderer) && m_renderer->isAnonymous() && ancestorsOfType<RenderMathMLOperator>(*m_renderer).first())
         return downcast<RenderText>(*m_renderer).text();
+    if (is<RenderMathMLOperator>(*m_renderer) && !m_renderer->isAnonymous())
+        return downcast<RenderMathMLOperator>(*m_renderer).element().textContent();
 #endif
 
     // rangeOfContents does not include CSS-generated content.
@@ -1163,6 +1166,9 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     ASSERT(m_initialized);
 #endif
 
+    if (!m_renderer)
+        return true;
+    
     // Check first if any of the common reasons cause this element to be ignored.
     // Then process other use cases that need to be applied to all the various roles
     // that AccessibilityRenderObjects take on.
@@ -1191,7 +1197,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
         return accessibilityIgnoreAttachment();
     
     // ignore popup menu items because AppKit does
-    if (ancestorsOfType<RenderMenuList>(*m_renderer).first())
+    if (m_renderer && ancestorsOfType<RenderMenuList>(*m_renderer).first())
         return true;
 
     // find out if this element is inside of a label element.
@@ -2611,6 +2617,12 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && node->hasTagName(addressTag))
         return LandmarkContentInfoRole;
 
+    if (node && node->hasTagName(blockquoteTag))
+        return BlockquoteRole;
+
+    if (node && node->hasTagName(captionTag))
+        return CaptionRole;
+
 #if ENABLE(VIDEO)
     if (is<HTMLVideoElement>(node))
         return VideoRole;
@@ -2636,6 +2648,15 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (supportsARIAAttributes() || canSetFocusAttribute())
         return GroupRole;
     
+    // InlineRole is the final fallback before assigning UnknownRole to an object. It makes it
+    // possible to distinguish truly unknown objects from non-focusable inline text elements
+    // which have an event handler or attribute suggesting possible inclusion by the platform.
+    if (is<RenderInline>(*m_renderer)
+        && (hasAttributesRequiredForInclusion()
+            || (node && node->hasEventListeners())
+            || (supportsDatetimeAttribute() && !getAttribute(datetimeAttr).isEmpty())))
+        return InlineRole;
+
     return UnknownRole;
 }
 
@@ -3522,6 +3543,11 @@ bool AccessibilityRenderObject::isMathSquareRoot() const
     return m_renderer && m_renderer->isRenderMathMLSquareRoot();
 }
     
+bool AccessibilityRenderObject::isMathToken() const
+{
+    return m_renderer && m_renderer->isRenderMathMLToken();
+}
+
 bool AccessibilityRenderObject::isMathRoot() const
 {
     return m_renderer && m_renderer->isRenderMathMLRoot();
@@ -3553,7 +3579,7 @@ bool AccessibilityRenderObject::isMathSeparatorOperator() const
     
 bool AccessibilityRenderObject::isMathText() const
 {
-    return node() && node()->hasTagName(MathMLNames::mtextTag);
+    return node() && (node()->hasTagName(MathMLNames::mtextTag) || hasTagName(MathMLNames::msTag));
 }
 
 bool AccessibilityRenderObject::isMathNumber() const
@@ -3578,7 +3604,7 @@ bool AccessibilityRenderObject::isMathTable() const
 
 bool AccessibilityRenderObject::isMathTableRow() const
 {
-    return node() && node()->hasTagName(MathMLNames::mtrTag);
+    return node() && (node()->hasTagName(MathMLNames::mtrTag) || hasTagName(MathMLNames::mlabeledtrTag));
 }
 
 bool AccessibilityRenderObject::isMathTableCell() const
@@ -3620,27 +3646,26 @@ AccessibilityObject* AccessibilityRenderObject::mathRadicandObject()
 {
     if (!isMathRoot())
         return nullptr;
-    
-    const auto& children = this->children();
-    if (children.size() < 1)
-        return 0;
-    
-    // The radicand is the value being rooted and must be listed first.
-    return children[0].get();
+    RenderMathMLRoot* root = &downcast<RenderMathMLRoot>(*m_renderer);
+    AccessibilityObject* rootRadicandWrapper = axObjectCache()->getOrCreate(root->baseWrapper());
+    if (!rootRadicandWrapper)
+        return nullptr;
+    AccessibilityObject* rootRadicand = rootRadicandWrapper->children().first().get();
+    ASSERT(rootRadicand && children().contains(rootRadicand));
+    return rootRadicand;
 }
 
 AccessibilityObject* AccessibilityRenderObject::mathRootIndexObject()
 {
     if (!isMathRoot())
         return nullptr;
-    
-    const auto& children = this->children();
-    if (children.size() != 2)
+    RenderMathMLRoot* root = &downcast<RenderMathMLRoot>(*m_renderer);
+    AccessibilityObject* rootIndexWrapper = axObjectCache()->getOrCreate(root->indexWrapper());
+    if (!rootIndexWrapper)
         return nullptr;
-
-    // The index in a root is the value which determines if it's a square, cube, etc, root
-    // and must be listed second.
-    return children[1].get();
+    AccessibilityObject* rootIndex = rootIndexWrapper->children().first().get();
+    ASSERT(rootIndex && children().contains(rootIndex));
+    return rootIndex;
 }
 
 AccessibilityObject* AccessibilityRenderObject::mathNumeratorObject()

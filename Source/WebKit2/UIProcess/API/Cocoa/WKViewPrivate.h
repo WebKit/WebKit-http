@@ -25,6 +25,7 @@
 
 #import <WebKit/WKActionMenuTypes.h>
 #import <WebKit/WKBase.h>
+#import <WebKit/WKImmediateActionTypes.h>
 #import <WebKit/WKView.h>
 
 @interface WKView (Private)
@@ -81,7 +82,8 @@
 @property (readonly, getter=isUsingUISideCompositing) BOOL usingUISideCompositing;
 @property (readwrite) BOOL allowsMagnification;
 @property (readwrite) double magnification;
-@property (readwrite, setter=_setIgnoresNonWheelMouseEvents:) BOOL _ignoresNonWheelMouseEvents;
+@property (readwrite, setter=_setIgnoresNonWheelEvents:) BOOL _ignoresNonWheelEvents;
+@property (readwrite, setter=_setIgnoresAllEvents:) BOOL _ignoresAllEvents;
 @property (readwrite) BOOL allowsBackForwardNavigationGestures;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
 
@@ -99,6 +101,7 @@
 - (void)endDeferringViewInWindowChanges;
 - (void)endDeferringViewInWindowChangesSync;
 - (BOOL)isDeferringViewInWindowChanges;
+- (void)_prepareForMoveToWindow:(NSWindow *)targetWindow withCompletionHandler:(void(^)(void))completionHandler;
 
 - (BOOL)windowOcclusionDetectionEnabled;
 - (void)setWindowOcclusionDetectionEnabled:(BOOL)flag;
@@ -122,8 +125,18 @@
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems;
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems userData:(WKTypeRef)userData;
 
+// Clients that want to maintain default behavior can return nil. To disable the immediate action entirely, return NSNull. And to
+// do something custom, return an object that conforms to the NSImmediateActionAnimationController protocol.
+- (id)_immediateActionAnimationControllerForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKImmediateActionType)type userData:(WKTypeRef)userData;
+
 - (NSView *)_viewForPreviewingURL:(NSURL *)url initialFrameSize:(NSSize)initialFrameSize;
+- (NSString *)_titleForPreviewOfURL:(NSURL *)url;
+- (void)_setPreviewTitle:(NSString *)previewTitle;
 - (void)_finishPreviewingURL:(NSURL *)url withPreviewView:(NSView *)previewView;
+- (void)_handleClickInPreviewView:(NSView *)previewView URL:(NSURL *)url;
+- (BOOL)_shouldUseStandardQuickLookPreview;
+
+- (void)_dismissContentRelativeChildWindows;
 #endif
 
 @end

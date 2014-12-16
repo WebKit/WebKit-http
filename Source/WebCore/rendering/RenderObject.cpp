@@ -62,7 +62,6 @@
 #include "RenderView.h"
 #include "SVGRenderSupport.h"
 #include "Settings.h"
-#include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include "TransformState.h"
 #include "htmlediting.h"
@@ -908,14 +907,8 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, float x1
             break;
         }
         case INSET:
-            // FIXME: Maybe we should lighten the colors on one side like Firefox.
-            // https://bugs.webkit.org/show_bug.cgi?id=58608
-            if (side == BSTop || side == BSLeft)
-                color = color.dark();
-            FALLTHROUGH;
         case OUTSET:
-            if (borderStyle == OUTSET && (side == BSBottom || side == BSRight))
-                color = color.dark();
+            calculateBorderStyleColor(borderStyle, side, color);
             FALLTHROUGH;
         case SOLID: {
             StrokeStyle oldStrokeStyle = graphicsContext->strokeStyle();
@@ -1562,68 +1555,6 @@ void RenderObject::showRenderSubTreeAndMark(const RenderObject* markedObject, in
 
 #endif // NDEBUG
 
-Color RenderObject::selectionBackgroundColor() const
-{
-    Color color;
-    if (style().userSelect() != SELECT_NONE) {
-        if (frame().selection().shouldShowBlockCursor() && frame().selection().isCaret())
-            color = style().visitedDependentColor(CSSPropertyColor).blendWithWhite();
-        else {
-            RefPtr<RenderStyle> pseudoStyle = selectionPseudoStyle();
-            if (pseudoStyle && pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).isValid())
-                color = pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).blendWithWhite();
-            else
-                color = frame().selection().isFocusedAndActive() ? theme().activeSelectionBackgroundColor() : theme().inactiveSelectionBackgroundColor();
-        }
-    }
-
-    return color;
-}
-
-Color RenderObject::selectionColor(int colorProperty) const
-{
-    Color color;
-    // If the element is unselectable, or we are only painting the selection,
-    // don't override the foreground color with the selection foreground color.
-    if (style().userSelect() == SELECT_NONE
-        || (view().frameView().paintBehavior() & PaintBehaviorSelectionOnly))
-        return color;
-
-    if (RefPtr<RenderStyle> pseudoStyle = selectionPseudoStyle()) {
-        color = pseudoStyle->visitedDependentColor(colorProperty);
-        if (!color.isValid())
-            color = pseudoStyle->visitedDependentColor(CSSPropertyColor);
-    } else
-        color = frame().selection().isFocusedAndActive() ? theme().activeSelectionForegroundColor() : theme().inactiveSelectionForegroundColor();
-
-    return color;
-}
-
-PassRefPtr<RenderStyle> RenderObject::selectionPseudoStyle() const
-{
-    if (isAnonymous())
-        return nullptr;
-
-    if (ShadowRoot* root = m_node.containingShadowRoot()) {
-        if (root->type() == ShadowRoot::UserAgentShadowRoot) {
-            if (Element* shadowHost = m_node.shadowHost())
-                return shadowHost->renderer()->getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
-        }
-    }
-
-    return getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
-}
-
-Color RenderObject::selectionForegroundColor() const
-{
-    return selectionColor(CSSPropertyWebkitTextFillColor);
-}
-
-Color RenderObject::selectionEmphasisMarkColor() const
-{
-    return selectionColor(CSSPropertyWebkitTextEmphasisColor);
-}
-
 SelectionSubtreeRoot& RenderObject::selectionRoot() const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
@@ -1717,9 +1648,7 @@ void RenderObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformSt
 bool RenderObject::shouldUseTransformFromContainer(const RenderObject* containerObject) const
 {
 #if ENABLE(3D_RENDERING)
-    // hasTransform() indicates whether the object has transform, transform-style or perspective. We just care about transform,
-    // so check the layer's transform directly.
-    return (hasLayer() && downcast<RenderLayerModelObject>(*this).layer()->transform()) || (containerObject && containerObject->style().hasPerspective());
+    return hasTransform() || (containerObject && containerObject->style().hasPerspective());
 #else
     UNUSED_PARAM(containerObject);
     return hasTransform();
@@ -1880,6 +1809,7 @@ RenderElement* RenderObject::container(const RenderLayerModelObject* repaintCont
         // we'll just return 0).
         // FIXME: The definition of view() has changed to not crawl up the render tree.  It might
         // be safe now to use it.
+        // FIXME: share code with containingBlockForFixedPosition().
         while (o && o->parent() && !(o->hasTransform() && o->isRenderBlock())) {
             // foreignObject is the containing block for its contents.
             if (o->isSVGForeignObject())
@@ -1899,7 +1829,9 @@ RenderElement* RenderObject::container(const RenderLayerModelObject* repaintCont
         // Same goes here.  We technically just want our containing block, but
         // we may not have one if we're part of an uninstalled subtree.  We'll
         // climb as high as we can though.
-        while (o && o->style().position() == StaticPosition && !o->isRenderView() && !(o->hasTransform() && o->isRenderBlock())) {
+        // FIXME: share code with isContainingBlockCandidateForAbsolutelyPositionedObject().
+        // FIXME: hasTransformRelatedProperty() includes preserves3D() check, but this may need to change: https://www.w3.org/Bugs/Public/show_bug.cgi?id=27566
+        while (o && o->style().position() == StaticPosition && !o->isRenderView() && !(o->hasTransformRelatedProperty() && o->isRenderBlock())) {
             if (o->isSVGForeignObject()) // foreignObject is the containing block for contents inside it
                 break;
 
@@ -2148,48 +2080,6 @@ bool RenderObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitT
 int RenderObject::innerLineHeight() const
 {
     return style().computedLineHeight();
-}
-
-RenderStyle* RenderObject::getCachedPseudoStyle(PseudoId pseudo, RenderStyle* parentStyle) const
-{
-    if (pseudo < FIRST_INTERNAL_PSEUDOID && !style().hasPseudoStyle(pseudo))
-        return 0;
-
-    RenderStyle* cachedStyle = style().getCachedPseudoStyle(pseudo);
-    if (cachedStyle)
-        return cachedStyle;
-    
-    RefPtr<RenderStyle> result = getUncachedPseudoStyle(PseudoStyleRequest(pseudo), parentStyle);
-    if (result)
-        return style().addCachedPseudoStyle(result.release());
-    return 0;
-}
-
-PassRefPtr<RenderStyle> RenderObject::getUncachedPseudoStyle(const PseudoStyleRequest& pseudoStyleRequest, RenderStyle* parentStyle, RenderStyle* ownStyle) const
-{
-    if (pseudoStyleRequest.pseudoId < FIRST_INTERNAL_PSEUDOID && !ownStyle && !style().hasPseudoStyle(pseudoStyleRequest.pseudoId))
-        return nullptr;
-    
-    if (!parentStyle) {
-        ASSERT(!ownStyle);
-        parentStyle = &style();
-    }
-
-    // FIXME: This "find nearest element parent" should be a helper function.
-    Node* node = this->node();
-    while (node && !is<Element>(*node))
-        node = node->parentNode();
-    if (!node)
-        return nullptr;
-    Element& element = downcast<Element>(*node);
-
-    if (pseudoStyleRequest.pseudoId == FIRST_LINE_INHERITED) {
-        RefPtr<RenderStyle> result = document().ensureStyleResolver().styleForElement(&element, parentStyle, DisallowStyleSharing);
-        result->setStyleType(FIRST_LINE_INHERITED);
-        return result.release();
-    }
-
-    return document().ensureStyleResolver().pseudoStyleForElement(&element, pseudoStyleRequest, parentStyle);
 }
 
 static Color decorationColor(RenderStyle* style)
@@ -2554,6 +2444,25 @@ RenderFlowThread* RenderObject::locateFlowThreadContainingBlock() const
 {
     RenderBlock* containingBlock = this->containingBlock();
     return containingBlock ? containingBlock->flowThreadContainingBlock() : nullptr;
+}
+
+void RenderObject::calculateBorderStyleColor(const EBorderStyle& style, const BoxSide& side, Color& color)
+{
+    // This values were derived empirically.
+    const RGBA32 baseDarkColor = 0xFF202020;
+    const RGBA32 baseLightColor = 0xFFEBEBEB;
+    enum Operation { Darken, Lighten };
+
+    Operation operation = (side == BSTop || side == BSLeft) == (style == INSET) ? Darken : Lighten;
+
+    // Here we will darken the border decoration color when needed. This will yield a similar behavior as in FF.
+    if (operation == Darken) {
+        if (differenceSquared(color, Color::black) > differenceSquared(baseDarkColor, Color::black))
+            color = color.dark();
+    } else {
+        if (differenceSquared(color, Color::white) > differenceSquared(baseLightColor, Color::white))
+            color = color.light();
+    }
 }
 
 } // namespace WebCore

@@ -39,11 +39,11 @@ class SVGFontFaceElement;
 
 class CSSFontFaceSrcValue : public CSSValue {
 public:
-    static PassRef<CSSFontFaceSrcValue> create(const String& resource)
+    static Ref<CSSFontFaceSrcValue> create(const String& resource)
     {
         return adoptRef(*new CSSFontFaceSrcValue(resource, false));
     }
-    static PassRef<CSSFontFaceSrcValue> createLocal(const String& resource)
+    static Ref<CSSFontFaceSrcValue> createLocal(const String& resource)
     {
         return adoptRef(*new CSSFontFaceSrcValue(resource, true));
     }
@@ -58,6 +58,7 @@ public:
 
 #if ENABLE(SVG_FONTS)
     bool isSVGFontFaceSrc() const;
+    bool isSVGFontTarget() const;
 
     SVGFontFaceElement* svgFontFaceElement() const { return m_svgFontFaceElement; }
     void setSVGFontFaceElement(SVGFontFaceElement* element) { m_svgFontFaceElement = element; }
@@ -69,7 +70,7 @@ public:
 
     bool hasFailedOrCanceledSubresources() const;
 
-    CachedFont* cachedFont(Document*);
+    CachedFont* cachedFont(Document*, bool isSVG);
 
     bool equals(const CSSFontFaceSrcValue&) const;
 

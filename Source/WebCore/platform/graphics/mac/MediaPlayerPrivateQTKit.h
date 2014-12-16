@@ -135,6 +135,8 @@ private:
     bool hasSingleSecurityOrigin() const;
     MediaPlayer::MovieLoadType movieLoadType() const;
 
+    virtual bool canSaveMediaData() const override;
+
     void createQTMovie(const String& url);
     void createQTMovie(NSURL *, NSDictionary *movieAttributes);
 
@@ -156,7 +158,7 @@ private:
     void updateStates();
     void doSeek();
     void cancelSeek();
-    void seekTimerFired(Timer&);
+    void seekTimerFired();
     MediaTime maxMediaTimeLoaded() const;
     void disableUnsupportedTracks();
     

@@ -47,9 +47,11 @@ namespace WebCore {
 class AlternativeTextUIController;
 class HistoryItem;
 class Page;
+class TextIndicatorWindow;
 }
 
 @class WebActionMenuController;
+@class WebImmediateActionController;
 @class WebInspector;
 @class WebNodeHighlight;
 @class WebPluginDatabase;
@@ -146,7 +148,14 @@ private:
     WebInspector *inspector;
     WebNodeHighlight *currentNodeHighlight;
 
+#if PLATFORM(MAC)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     WebActionMenuController *actionMenuController;
+    WebImmediateActionController *immediateActionController;
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    std::unique_ptr<WebCore::TextIndicatorWindow> textIndicatorWindow;
+    BOOL hasInitializedLookupObserver;
+#endif // PLATFORM(MAC)
 
     BOOL allowsUndo;
         

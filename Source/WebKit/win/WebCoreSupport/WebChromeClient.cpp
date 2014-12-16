@@ -24,7 +24,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "WebChromeClient.h"
 
 #include "COMPropertyBag.h"
@@ -633,21 +632,6 @@ void WebChromeClient::reachedMaxAppCacheSize(int64_t spaceNeeded)
 void WebChromeClient::reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t)
 {
     notImplemented();
-}
-
-void WebChromeClient::populateVisitedLinks()
-{
-    COMPtr<IWebHistoryDelegate> historyDelegate;
-    m_webView->historyDelegate(&historyDelegate);
-    if (historyDelegate) {
-        historyDelegate->populateVisitedLinksForWebView(m_webView);
-        return;
-    }
-
-    WebHistory* history = WebHistory::sharedHistory();
-    if (!history)
-        return;
-    history->addVisitedLinksToPageGroup(m_webView->page()->group());
 }
 
 void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> prpFileChooser)

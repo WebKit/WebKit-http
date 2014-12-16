@@ -54,8 +54,8 @@ enum LineCount {
 
 class RenderBlockFlow : public RenderBlock {
 public:
-    RenderBlockFlow(Element&, PassRef<RenderStyle>);
-    RenderBlockFlow(Document&, PassRef<RenderStyle>);
+    RenderBlockFlow(Element&, Ref<RenderStyle>&&);
+    RenderBlockFlow(Document&, Ref<RenderStyle>&&);
     virtual ~RenderBlockFlow();
         
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
@@ -377,7 +377,7 @@ public:
     bool hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule = ExcludePageBoundary) const;
 
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
-    virtual RenderObject* removeChild(RenderObject&) override;
+    virtual void removeChild(RenderObject&) override;
 
     void createMultiColumnFlowThread();
     void destroyMultiColumnFlowThread();
@@ -462,6 +462,8 @@ private:
     bool recomputeLogicalWidthAndColumnWidth();
     LayoutUnit columnGap() const;
     
+    RenderBlockFlow* previousSiblingWithOverhangingFloats(bool& parentHasFloats) const;
+
     // Called to lay out the legend for a fieldset or the ruby text of a ruby run. Also used by multi-column layout to handle
     // the flow thread child.
     virtual RenderObject* layoutSpecialExcludedChild(bool /*relayoutChildren*/);
@@ -510,7 +512,7 @@ private:
     virtual bool hitTestInlineChildren(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
     void addOverflowFromFloats();
-    virtual void addOverflowFromInlineChildren();
+    virtual void addOverflowFromInlineChildren() override;
     
     void fitBorderToLinesIfNeeded(); // Shrink the box in which the border paints if border-fit is set.
     void adjustForBorderFit(LayoutUnit x, LayoutUnit& left, LayoutUnit& right) const;
@@ -540,7 +542,7 @@ private:
     void adjustIntrinsicLogicalWidthsForColumns(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const;
 
     void layoutLineBoxes(bool relayoutChildren, LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom);
-    void layoutSimpleLines(LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom);
+    void layoutSimpleLines(bool relayoutChildren, LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom);
 
     virtual std::unique_ptr<RootInlineBox> createRootInlineBox(); // Subclassed by RenderSVGText.
     InlineFlowBox* createLineBoxes(RenderObject*, const LineInfo&, InlineBox* childBox);

@@ -24,6 +24,7 @@
 #define CachedImage_h
 
 #include "CachedResource.h"
+#include "Image.h"
 #include "ImageObserver.h"
 #include "IntRect.h"
 #include "IntSizeHash.h"
@@ -83,7 +84,7 @@ public:
     void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio);
 
     bool isManuallyCached() const { return m_isManuallyCached; }
-    virtual bool mustRevalidateDueToCacheHeaders(CachePolicy) const;
+    virtual bool mustRevalidateDueToCacheHeaders(CachePolicy) const override;
     virtual void load(CachedResourceLoader*, const ResourceLoaderOptions&) override;
 
     bool isOriginClean(SecurityOrigin*);
@@ -114,6 +115,8 @@ private:
     virtual bool shouldIgnoreHTTPStatusCodeErrors() const override { return true; }
 
     virtual bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
+
+    virtual bool decodedDataIsPurgeable() const override { return m_image && m_image->decodedDataIsPurgeable(); }
 
     // ImageObserver
     virtual void decodedSizeChanged(const Image*, int delta) override;

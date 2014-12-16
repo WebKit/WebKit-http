@@ -145,22 +145,6 @@ public:
     static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
 };
 
-template <typename GetterType, GetterType (RenderStyle::*getterFunction)() const, typename SetterType, void (RenderStyle::*setterFunction)(SetterType), typename InitialType, InitialType (*initialFunction)()>
-class ApplyPropertyDefault {
-public:
-    static void setValue(RenderStyle* style, SetterType value) { (style->*setterFunction)(value); }
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (is<CSSPrimitiveValue>(*value))
-            setValue(styleResolver->style(), downcast<CSSPrimitiveValue>(*value));
-    }
-    static PropertyHandler createHandler()
-    {
-        PropertyHandler handler = ApplyPropertyDefaultBase<GetterType, getterFunction, SetterType, setterFunction, InitialType, initialFunction>::createHandler();
-        return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
-    }
-};
-
 template <StyleImage* (RenderStyle::*getterFunction)() const, void (RenderStyle::*setterFunction)(PassRefPtr<StyleImage>), StyleImage* (*initialFunction)(), CSSPropertyID property>
 class ApplyPropertyStyleImage {
 public:
@@ -203,51 +187,6 @@ public:
             setValue(styleResolver->style(), primitiveValue);
         else if (valueType == ComputeLength)
             setValue(styleResolver->style(), primitiveValue.computeLength<T>(styleResolver->state().cssToLengthConversionData()));
-    }
-
-    static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
-};
-
-class ApplyPropertyClip {
-private:
-    static Length convertToLength(StyleResolver* styleResolver, CSSPrimitiveValue* value)
-    {
-        return value->convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(styleResolver->state().cssToLengthConversionData());
-    }
-public:
-    static void applyInheritValue(CSSPropertyID propertyID, StyleResolver* styleResolver)
-    {
-        RenderStyle* parentStyle = styleResolver->parentStyle();
-        if (!parentStyle->hasClip())
-            return applyInitialValue(propertyID, styleResolver);
-        styleResolver->style()->setClip(parentStyle->clipTop(), parentStyle->clipRight(), parentStyle->clipBottom(), parentStyle->clipLeft());
-        styleResolver->style()->setHasClip(true);
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setClip(Length(), Length(), Length(), Length());
-        styleResolver->style()->setHasClip(false);
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-
-        if (Rect* rect = primitiveValue.getRectValue()) {
-            Length top = convertToLength(styleResolver, rect->top());
-            Length right = convertToLength(styleResolver, rect->right());
-            Length bottom = convertToLength(styleResolver, rect->bottom());
-            Length left = convertToLength(styleResolver, rect->left());
-            styleResolver->style()->setClip(top, right, bottom, left);
-            styleResolver->style()->setHasClip(true);
-        } else if (primitiveValue.getValueID() == CSSValueAuto) {
-            styleResolver->style()->setClip(Length(), Length(), Length(), Length());
-            styleResolver->style()->setHasClip(false);
-        }
     }
 
     static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
@@ -427,113 +366,6 @@ public:
         CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
         FontDescription fontDescription = styleResolver->fontDescription();
         (fontDescription.*setterFunction)(primitiveValue);
-        styleResolver->setFontDescription(fontDescription);
-    }
-
-    static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
-};
-
-class ApplyPropertyFontFamily {
-public:
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        FontDescription fontDescription = styleResolver->style()->fontDescription();
-        FontDescription parentFontDescription = styleResolver->parentStyle()->fontDescription();
-        
-        fontDescription.setGenericFamily(parentFontDescription.genericFamily());
-        fontDescription.setFamilies(parentFontDescription.families());
-        fontDescription.setIsSpecifiedFont(parentFontDescription.isSpecifiedFont());
-        styleResolver->setFontDescription(fontDescription);
-        return;
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        FontDescription fontDescription = styleResolver->style()->fontDescription();
-        FontDescription initialDesc = FontDescription();
-        
-        // We need to adjust the size to account for the generic family change from monospace to non-monospace.
-        if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize())
-            styleResolver->setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, false, styleResolver->document()));
-        fontDescription.setGenericFamily(initialDesc.genericFamily());
-        if (!initialDesc.firstFamily().isEmpty())
-            fontDescription.setFamilies(initialDesc.families());
-
-        styleResolver->setFontDescription(fontDescription);
-        return;
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSValueList>(*value))
-            return;
-
-        auto& valueList = downcast<CSSValueList>(*value);
-
-        FontDescription fontDescription = styleResolver->style()->fontDescription();
-        // Before mapping in a new font-family property, we should reset the generic family.
-        bool oldFamilyUsedFixedDefaultSize = fontDescription.useFixedDefaultSize();
-        fontDescription.setGenericFamily(FontDescription::NoFamily);
-
-        Vector<AtomicString> families;
-        families.reserveInitialCapacity(valueList.length());
-
-        for (unsigned i = 0; i < valueList.length(); ++i) {
-            CSSValue* item = valueList.item(i);
-            if (!is<CSSPrimitiveValue>(*item))
-                continue;
-            CSSPrimitiveValue& contentValue = downcast<CSSPrimitiveValue>(*item);
-            AtomicString face;
-            if (contentValue.isString())
-                face = contentValue.getStringValue();
-            else if (Settings* settings = styleResolver->document().settings()) {
-                switch (contentValue.getValueID()) {
-                case CSSValueWebkitBody:
-                    face = settings->standardFontFamily();
-                    break;
-                case CSSValueSerif:
-                    face = serifFamily;
-                    fontDescription.setGenericFamily(FontDescription::SerifFamily);
-                    break;
-                case CSSValueSansSerif:
-                    face = sansSerifFamily;
-                    fontDescription.setGenericFamily(FontDescription::SansSerifFamily);
-                    break;
-                case CSSValueCursive:
-                    face = cursiveFamily;
-                    fontDescription.setGenericFamily(FontDescription::CursiveFamily);
-                    break;
-                case CSSValueFantasy:
-                    face = fantasyFamily;
-                    fontDescription.setGenericFamily(FontDescription::FantasyFamily);
-                    break;
-                case CSSValueMonospace:
-                    face = monospaceFamily;
-                    fontDescription.setGenericFamily(FontDescription::MonospaceFamily);
-                    break;
-                case CSSValueWebkitPictograph:
-                    face = pictographFamily;
-                    fontDescription.setGenericFamily(FontDescription::PictographFamily);
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            if (face.isEmpty())
-                continue;
-            if (families.isEmpty())
-                fontDescription.setIsSpecifiedFont(fontDescription.genericFamily() == FontDescription::NoFamily);
-            families.uncheckedAppend(face);
-        }
-
-        if (families.isEmpty())
-            return;
-        fontDescription.setFamilies(families);
-
-        if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize() != oldFamilyUsedFixedDefaultSize)
-            styleResolver->setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize, styleResolver->document()));
-
         styleResolver->setFontDescription(fontDescription);
     }
 
@@ -794,72 +626,6 @@ public:
     }
 };
 
-enum CounterBehavior {Increment = 0, Reset};
-template <CounterBehavior counterBehavior>
-class ApplyPropertyCounter {
-public:
-    static void emptyFunction(CSSPropertyID, StyleResolver*) { }
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        CounterDirectiveMap& map = styleResolver->style()->accessCounterDirectives();
-        CounterDirectiveMap& parentMap = styleResolver->parentStyle()->accessCounterDirectives();
-
-        typedef CounterDirectiveMap::iterator Iterator;
-        Iterator end = parentMap.end();
-        for (Iterator it = parentMap.begin(); it != end; ++it) {
-            CounterDirectives& directives = map.add(it->key, CounterDirectives()).iterator->value;
-            if (counterBehavior == Reset) {
-                directives.inheritReset(it->value);
-            } else {
-                directives.inheritIncrement(it->value);
-            }
-        }
-    }
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        bool setCounterIncrementToNone = counterBehavior == Increment && is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).getValueID() == CSSValueNone;
-
-        if (!is<CSSValueList>(*value) && !setCounterIncrementToNone)
-            return;
-
-        CounterDirectiveMap& map = styleResolver->style()->accessCounterDirectives();
-        typedef CounterDirectiveMap::iterator Iterator;
-
-        Iterator end = map.end();
-        for (Iterator it = map.begin(); it != end; ++it)
-            if (counterBehavior == Reset)
-                it->value.clearReset();
-            else
-                it->value.clearIncrement();
-        
-        if (setCounterIncrementToNone)
-            return;
-        
-        CSSValueList& list = downcast<CSSValueList>(*value);
-        int length = list.length();
-        for (int i = 0; i < length; ++i) {
-            CSSValue* currValue = list.itemWithoutBoundsCheck(i);
-            if (!is<CSSPrimitiveValue>(*currValue))
-                continue;
-
-            Pair* pair = downcast<CSSPrimitiveValue>(*currValue).getPairValue();
-            if (!pair || !pair->first() || !pair->second())
-                continue;
-
-            AtomicString identifier = static_cast<CSSPrimitiveValue*>(pair->first())->getStringValue();
-            int value = static_cast<CSSPrimitiveValue*>(pair->second())->getIntValue();
-            CounterDirectives& directives = map.add(identifier, CounterDirectives()).iterator->value;
-            if (counterBehavior == Reset) {
-                directives.setResetValue(value);
-            } else {
-                directives.addIncrementValue(value);
-            }
-        }
-    }
-    static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &emptyFunction, &applyValue); }
-};
-
-
 class ApplyPropertyCursor {
 public:
     static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
@@ -898,280 +664,6 @@ public:
             CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
             if (primitiveValue.isValueID() && styleResolver->style()->cursor() != ECursor(primitiveValue))
                 styleResolver->style()->setCursor(primitiveValue);
-        }
-    }
-
-    static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
-};
-
-static TextDecorationSkip valueToDecorationSkip(CSSPrimitiveValue& primitiveValue)
-{
-    ASSERT(primitiveValue.isValueID());
-
-    switch (primitiveValue.getValueID()) {
-    case CSSValueAuto:
-        return TextDecorationSkipAuto;
-    case CSSValueNone:
-        return TextDecorationSkipNone;
-    case CSSValueInk:
-        return TextDecorationSkipInk;
-    case CSSValueObjects:
-        return TextDecorationSkipObjects;
-    default:
-        break;
-    }
-
-    ASSERT_NOT_REACHED();
-    return TextDecorationSkipNone;
-}
-
-static inline CSSToLengthConversionData csstoLengthConversionDataWithTextZoomFactor(StyleResolver& styleResolver)
-{
-    if (Frame* frame = styleResolver.document().frame())
-        return styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(styleResolver.style()->effectiveZoom() * frame->textZoomFactor());
-
-    return styleResolver.state().cssToLengthConversionData();
-}
-
-class ApplyPropertyTextDecorationSkip {
-public:
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (is<CSSPrimitiveValue>(*value)) {
-            styleResolver->style()->setTextDecorationSkip(valueToDecorationSkip(downcast<CSSPrimitiveValue>(*value)));
-            return;
-        }
-
-        TextDecorationSkip skip = RenderStyle::initialTextDecorationSkip();
-        if (is<CSSValueList>(*value)) {
-            for (auto& currentValue : downcast<CSSValueList>(*value))
-                skip |= valueToDecorationSkip(downcast<CSSPrimitiveValue>(currentValue.get()));
-        }
-        styleResolver->style()->setTextDecorationSkip(skip);
-    }
-    static PropertyHandler createHandler()
-    {
-        PropertyHandler handler = ApplyPropertyDefaultBase<TextDecorationSkip, &RenderStyle::textDecorationSkip, TextDecorationSkip, &RenderStyle::setTextDecorationSkip, TextDecorationSkip, &RenderStyle::initialTextDecorationSkip>::createHandler();
-        return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
-    }
-};
-
-class ApplyPropertyMarqueeRepetition {
-public:
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-        if (primitiveValue.getValueID() == CSSValueInfinite)
-            styleResolver->style()->setMarqueeLoopCount(-1); // -1 means repeat forever.
-        else if (primitiveValue.isNumber())
-            styleResolver->style()->setMarqueeLoopCount(primitiveValue.getIntValue());
-    }
-    static PropertyHandler createHandler()
-    {
-        PropertyHandler handler = ApplyPropertyDefault<int, &RenderStyle::marqueeLoopCount, int, &RenderStyle::setMarqueeLoopCount, int, &RenderStyle::initialMarqueeLoopCount>::createHandler();
-        return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
-    }
-};
-
-class ApplyPropertyTextUnderlinePosition {
-public:
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        // This is true if value is 'auto' or 'alphabetic'.
-        if (is<CSSPrimitiveValue>(*value)) {
-            TextUnderlinePosition t = downcast<CSSPrimitiveValue>(*value);
-            styleResolver->style()->setTextUnderlinePosition(t);
-            return;
-        }
-
-        unsigned t = 0;
-        if (is<CSSValueList>(*value)) {
-            for (auto& currentValue : downcast<CSSValueList>(*value)) {
-                TextUnderlinePosition t2 = downcast<CSSPrimitiveValue>(currentValue.get());
-                t |= t2;
-            }
-        }
-        styleResolver->style()->setTextUnderlinePosition(static_cast<TextUnderlinePosition>(t));
-    }
-    static PropertyHandler createHandler()
-    {
-        PropertyHandler handler = ApplyPropertyDefaultBase<TextUnderlinePosition, &RenderStyle::textUnderlinePosition, TextUnderlinePosition, &RenderStyle::setTextUnderlinePosition, TextUnderlinePosition, &RenderStyle::initialTextUnderlinePosition>::createHandler();
-        return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
-    }
-};
-
-class ApplyPropertyLineHeight {
-public:
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-        Length lineHeight;
-
-        if (primitiveValue.getValueID() == CSSValueNormal)
-            lineHeight = RenderStyle::initialLineHeight();
-        else if (primitiveValue.isLength())
-            lineHeight = primitiveValue.computeLength<Length>(csstoLengthConversionDataWithTextZoomFactor(*styleResolver));
-        else if (primitiveValue.isPercentage()) {
-            // FIXME: percentage should not be restricted to an integer here.
-            lineHeight = Length((styleResolver->style()->computedFontSize() * primitiveValue.getIntValue()) / 100, Fixed);
-        } else if (primitiveValue.isNumber()) {
-            // FIXME: number and percentage values should produce the same type of Length (ie. Fixed or Percent).
-            lineHeight = Length(primitiveValue.getDoubleValue() * 100.0, Percent);
-        } else
-            return;
-        styleResolver->style()->setLineHeight(lineHeight);
-    }
-    static PropertyHandler createHandler()
-    {
-        PropertyHandler handler = ApplyPropertyDefaultBase<const Length&, &RenderStyle::specifiedLineHeight, Length, &RenderStyle::setLineHeight, Length, &RenderStyle::initialLineHeight>::createHandler();
-        return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
-    }
-};
-
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-// FIXME: Share more code with class ApplyPropertyLineHeight.
-class ApplyPropertyLineHeightForIOSTextAutosizing {
-public:
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-        Length lineHeight;
-
-        if (primitiveValue.getValueID() == CSSValueNormal)
-            lineHeight = RenderStyle::initialLineHeight();
-        else if (primitiveValue.isLength()) {
-            lineHeight = primitiveValue.computeLength<Length>(csstoLengthConversionDataWithTextZoomFactor(*styleResolver));
-            if (styleResolver->style()->textSizeAdjust().isPercentage())
-                lineHeight = Length(lineHeight.value() * styleResolver->style()->textSizeAdjust().multiplier(), Fixed);
-        } else if (primitiveValue.isPercentage()) {
-            // FIXME: percentage should not be restricted to an integer here.
-            lineHeight = Length((styleResolver->style()->fontSize() * primitiveValue.getIntValue()) / 100, Fixed);
-        } else if (primitiveValue.isNumber()) {
-            // FIXME: number and percentage values should produce the same type of Length (ie. Fixed or Percent).
-            if (styleResolver->style()->textSizeAdjust().isPercentage())
-                lineHeight = Length(primitiveValue.getDoubleValue() * styleResolver->style()->textSizeAdjust().multiplier() * 100.0, Percent);
-            else
-                lineHeight = Length(primitiveValue.getDoubleValue() * 100.0, Percent);
-        } else
-            return;
-        styleResolver->style()->setLineHeight(lineHeight);
-        styleResolver->style()->setSpecifiedLineHeight(lineHeight);
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setLineHeight(RenderStyle::initialLineHeight());
-        styleResolver->style()->setSpecifiedLineHeight(RenderStyle::initialSpecifiedLineHeight());
-    }
-
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setLineHeight(styleResolver->parentStyle()->lineHeight());
-        styleResolver->style()->setSpecifiedLineHeight(styleResolver->parentStyle()->specifiedLineHeight());
-    }
-
-    static PropertyHandler createHandler()
-    {
-        return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue);
-    }
-};
-#endif
-
-class ApplyPropertyWordSpacing {
-public:
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-        Length wordSpacing;
-
-        if (primitiveValue.getValueID() == CSSValueNormal)
-            wordSpacing = RenderStyle::initialWordSpacing();
-        else if (primitiveValue.isLength()) {
-            wordSpacing = primitiveValue.computeLength<Length>(csstoLengthConversionDataWithTextZoomFactor(*styleResolver));
-        } else if (primitiveValue.isPercentage())
-            wordSpacing = Length(clampTo<float>(primitiveValue.getDoubleValue(), minValueForCssLength, maxValueForCssLength), Percent);
-        else if (primitiveValue.isNumber())
-            wordSpacing = Length(primitiveValue.getDoubleValue(), Fixed);
-        else
-            return;
-        styleResolver->style()->setWordSpacing(wordSpacing);
-    }
-    static PropertyHandler createHandler()
-    {
-        PropertyHandler handler = ApplyPropertyDefaultBase<const Length&, &RenderStyle::wordSpacing, Length, &RenderStyle::setWordSpacing, Length, &RenderStyle::initialWordSpacing>::createHandler();
-        return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
-    }
-};
-
-class ApplyPropertyTextEmphasisStyle {
-public:
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setTextEmphasisFill(styleResolver->parentStyle()->textEmphasisFill());
-        styleResolver->style()->setTextEmphasisMark(styleResolver->parentStyle()->textEmphasisMark());
-        styleResolver->style()->setTextEmphasisCustomMark(styleResolver->parentStyle()->textEmphasisCustomMark());
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setTextEmphasisFill(RenderStyle::initialTextEmphasisFill());
-        styleResolver->style()->setTextEmphasisMark(RenderStyle::initialTextEmphasisMark());
-        styleResolver->style()->setTextEmphasisCustomMark(RenderStyle::initialTextEmphasisCustomMark());
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (is<CSSValueList>(*value)) {
-            CSSValueList& list = downcast<CSSValueList>(*value);
-            ASSERT(list.length() == 2);
-            if (list.length() != 2)
-                return;
-            for (unsigned i = 0; i < 2; ++i) {
-                CSSValue* item = list.itemWithoutBoundsCheck(i);
-                if (!is<CSSPrimitiveValue>(*item))
-                    continue;
-
-                CSSPrimitiveValue& value = downcast<CSSPrimitiveValue>(*item);
-                if (value.getValueID() == CSSValueFilled || value.getValueID() == CSSValueOpen)
-                    styleResolver->style()->setTextEmphasisFill(value);
-                else
-                    styleResolver->style()->setTextEmphasisMark(value);
-            }
-            styleResolver->style()->setTextEmphasisCustomMark(nullAtom);
-            return;
-        }
-
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-
-        if (primitiveValue.isString()) {
-            styleResolver->style()->setTextEmphasisFill(TextEmphasisFillFilled);
-            styleResolver->style()->setTextEmphasisMark(TextEmphasisMarkCustom);
-            styleResolver->style()->setTextEmphasisCustomMark(primitiveValue.getStringValue());
-            return;
-        }
-
-        styleResolver->style()->setTextEmphasisCustomMark(nullAtom);
-
-        if (primitiveValue.getValueID() == CSSValueFilled || primitiveValue.getValueID() == CSSValueOpen) {
-            styleResolver->style()->setTextEmphasisFill(primitiveValue);
-            styleResolver->style()->setTextEmphasisMark(TextEmphasisMarkAuto);
-        } else {
-            styleResolver->style()->setTextEmphasisFill(TextEmphasisFillFilled);
-            styleResolver->style()->setTextEmphasisMark(primitiveValue);
         }
     }
 
@@ -1254,189 +746,6 @@ public:
     static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
 };
 
-class ApplyPropertyOutlineStyle {
-public:
-    static void applyInheritValue(CSSPropertyID propertyID, StyleResolver* styleResolver)
-    {
-        ApplyPropertyDefaultBase<OutlineIsAuto, &RenderStyle::outlineStyleIsAuto, OutlineIsAuto, &RenderStyle::setOutlineStyleIsAuto, OutlineIsAuto, &RenderStyle::initialOutlineStyleIsAuto>::applyInheritValue(propertyID, styleResolver);
-        ApplyPropertyDefaultBase<EBorderStyle, &RenderStyle::outlineStyle, EBorderStyle, &RenderStyle::setOutlineStyle, EBorderStyle, &RenderStyle::initialBorderStyle>::applyInheritValue(propertyID, styleResolver);
-    }
-
-    static void applyInitialValue(CSSPropertyID propertyID, StyleResolver* styleResolver)
-    {
-        ApplyPropertyDefaultBase<OutlineIsAuto, &RenderStyle::outlineStyleIsAuto, OutlineIsAuto, &RenderStyle::setOutlineStyleIsAuto, OutlineIsAuto, &RenderStyle::initialOutlineStyleIsAuto>::applyInitialValue(propertyID, styleResolver);
-        ApplyPropertyDefaultBase<EBorderStyle, &RenderStyle::outlineStyle, EBorderStyle, &RenderStyle::setOutlineStyle, EBorderStyle, &RenderStyle::initialBorderStyle>::applyInitialValue(propertyID, styleResolver);
-    }
-
-    static void applyValue(CSSPropertyID propertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        ApplyPropertyDefault<OutlineIsAuto, &RenderStyle::outlineStyleIsAuto, OutlineIsAuto, &RenderStyle::setOutlineStyleIsAuto, OutlineIsAuto, &RenderStyle::initialOutlineStyleIsAuto>::applyValue(propertyID, styleResolver, value);
-        ApplyPropertyDefault<EBorderStyle, &RenderStyle::outlineStyle, EBorderStyle, &RenderStyle::setOutlineStyle, EBorderStyle, &RenderStyle::initialBorderStyle>::applyValue(propertyID, styleResolver, value);
-    }
-
-    static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
-};
-
-class ApplyPropertyVerticalAlign {
-public:
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-
-        if (primitiveValue.getValueID())
-            return styleResolver->style()->setVerticalAlign(primitiveValue);
-
-        styleResolver->style()->setVerticalAlignLength(primitiveValue.convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(styleResolver->state().cssToLengthConversionData()));
-    }
-
-    static PropertyHandler createHandler()
-    {
-        PropertyHandler handler = ApplyPropertyDefaultBase<EVerticalAlign, &RenderStyle::verticalAlign, EVerticalAlign, &RenderStyle::setVerticalAlign, EVerticalAlign, &RenderStyle::initialVerticalAlign>::createHandler();
-        return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
-    }
-};
-
-class ApplyPropertyAspectRatio {
-public:
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        if (styleResolver->parentStyle()->aspectRatioType() == AspectRatioAuto)
-            return;
-        styleResolver->style()->setAspectRatioType(styleResolver->parentStyle()->aspectRatioType());
-        styleResolver->style()->setAspectRatioDenominator(styleResolver->parentStyle()->aspectRatioDenominator());
-        styleResolver->style()->setAspectRatioNumerator(styleResolver->parentStyle()->aspectRatioNumerator());
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setAspectRatioType(RenderStyle::initialAspectRatioType());
-        styleResolver->style()->setAspectRatioDenominator(RenderStyle::initialAspectRatioDenominator());
-        styleResolver->style()->setAspectRatioNumerator(RenderStyle::initialAspectRatioNumerator());
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (is<CSSPrimitiveValue>(*value)) {
-            CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-
-            if (primitiveValue.getValueID() == CSSValueAuto)
-                return styleResolver->style()->setAspectRatioType(AspectRatioAuto);
-            if (primitiveValue.getValueID() == CSSValueFromDimensions)
-                return styleResolver->style()->setAspectRatioType(AspectRatioFromDimensions);
-            if (primitiveValue.getValueID() == CSSValueFromIntrinsic)
-                return styleResolver->style()->setAspectRatioType(AspectRatioFromIntrinsic);
-        }
-
-        if (!is<CSSAspectRatioValue>(*value)) {
-            styleResolver->style()->setAspectRatioType(AspectRatioAuto);
-            return;
-        }
-
-        CSSAspectRatioValue& aspectRatioValue = downcast<CSSAspectRatioValue>(*value);
-        styleResolver->style()->setAspectRatioType(AspectRatioSpecified);
-        styleResolver->style()->setAspectRatioDenominator(aspectRatioValue.denominatorValue());
-        styleResolver->style()->setAspectRatioNumerator(aspectRatioValue.numeratorValue());
-    }
-
-    static PropertyHandler createHandler()
-    {
-        return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue);
-    }
-};
-
-class ApplyPropertyDisplay {
-private:
-    static inline bool isValidDisplayValue(StyleResolver* styleResolver, EDisplay displayPropertyValue)
-    {
-        if (styleResolver->element() && styleResolver->element()->isSVGElement() && styleResolver->style()->styleType() == NOPSEUDO)
-            return (displayPropertyValue == INLINE || displayPropertyValue == BLOCK || displayPropertyValue == NONE);
-        return true;
-    }
-public:
-    static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        EDisplay display = styleResolver->parentStyle()->display();
-        if (!isValidDisplayValue(styleResolver, display))
-            return;
-        styleResolver->style()->setDisplay(display);
-    }
-
-    static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
-    {
-        styleResolver->style()->setDisplay(RenderStyle::initialDisplay());
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSPrimitiveValue>(*value))
-            return;
-
-        EDisplay display = downcast<CSSPrimitiveValue>(*value);
-
-        if (!isValidDisplayValue(styleResolver, display))
-            return;
-
-        styleResolver->style()->setDisplay(display);
-    }
-
-    static PropertyHandler createHandler()
-    {
-        return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue);
-    }
-};
-
-#if ENABLE(CSS_IMAGE_RESOLUTION)
-class ApplyPropertyImageResolution {
-public:
-    static void applyInheritValue(CSSPropertyID propertyID, StyleResolver* styleResolver)
-    {
-        ApplyPropertyDefaultBase<ImageResolutionSource, &RenderStyle::imageResolutionSource, ImageResolutionSource, &RenderStyle::setImageResolutionSource, ImageResolutionSource, &RenderStyle::initialImageResolutionSource>::applyInheritValue(propertyID, styleResolver);
-        ApplyPropertyDefaultBase<ImageResolutionSnap, &RenderStyle::imageResolutionSnap, ImageResolutionSnap, &RenderStyle::setImageResolutionSnap, ImageResolutionSnap, &RenderStyle::initialImageResolutionSnap>::applyInheritValue(propertyID, styleResolver);
-        ApplyPropertyDefaultBase<float, &RenderStyle::imageResolution, float, &RenderStyle::setImageResolution, float, &RenderStyle::initialImageResolution>::applyInheritValue(propertyID, styleResolver);
-    }
-
-    static void applyInitialValue(CSSPropertyID propertyID, StyleResolver* styleResolver)
-    {
-        ApplyPropertyDefaultBase<ImageResolutionSource, &RenderStyle::imageResolutionSource, ImageResolutionSource, &RenderStyle::setImageResolutionSource, ImageResolutionSource, &RenderStyle::initialImageResolutionSource>::applyInitialValue(propertyID, styleResolver);
-        ApplyPropertyDefaultBase<ImageResolutionSnap, &RenderStyle::imageResolutionSnap, ImageResolutionSnap, &RenderStyle::setImageResolutionSnap, ImageResolutionSnap, &RenderStyle::initialImageResolutionSnap>::applyInitialValue(propertyID, styleResolver);
-        ApplyPropertyDefaultBase<float, &RenderStyle::imageResolution, float, &RenderStyle::setImageResolution, float, &RenderStyle::initialImageResolution>::applyInitialValue(propertyID, styleResolver);
-    }
-
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
-    {
-        if (!is<CSSValueList>(*value))
-            return;
-        CSSValueList& valueList = downcast<CSSValueList>(*value);
-        ImageResolutionSource source = RenderStyle::initialImageResolutionSource();
-        ImageResolutionSnap snap = RenderStyle::initialImageResolutionSnap();
-        double resolution = RenderStyle::initialImageResolution();
-        for (size_t i = 0; i < valueList.length(); ++i) {
-            CSSValue& item = *valueList.itemWithoutBoundsCheck(i);
-            if (!is<CSSPrimitiveValue>(item))
-                continue;
-            CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(item);
-            if (primitiveValue.getValueID() == CSSValueFromImage)
-                source = ImageResolutionFromImage;
-            else if (primitiveValue.getValueID() == CSSValueSnap)
-                snap = ImageResolutionSnapPixels;
-            else
-                resolution = primitiveValue.getDoubleValue(CSSPrimitiveValue::CSS_DPPX);
-        }
-        styleResolver->style()->setImageResolutionSource(source);
-        styleResolver->style()->setImageResolutionSnap(snap);
-        styleResolver->style()->setImageResolution(resolution);
-    }
-
-    static PropertyHandler createHandler()
-    {
-        return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue);
-    }
-};
-#endif
-
 const DeprecatedStyleBuilder& DeprecatedStyleBuilder::sharedStyleBuilder()
 {
     static NeverDestroyed<DeprecatedStyleBuilder> styleBuilderInstance;
@@ -1464,34 +773,17 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyBorderLeftColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::borderLeftColor, &RenderStyle::setBorderLeftColor, &RenderStyle::setVisitedLinkBorderLeftColor, &RenderStyle::color>::createHandler());
     setPropertyHandler(CSSPropertyBorderRightColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::borderRightColor, &RenderStyle::setBorderRightColor, &RenderStyle::setVisitedLinkBorderRightColor, &RenderStyle::color>::createHandler());
     setPropertyHandler(CSSPropertyBorderTopColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::borderTopColor, &RenderStyle::setBorderTopColor, &RenderStyle::setVisitedLinkBorderTopColor, &RenderStyle::color>::createHandler());
-    setPropertyHandler(CSSPropertyClip, ApplyPropertyClip::createHandler());
     setPropertyHandler(CSSPropertyColor, ApplyPropertyColor<InheritFromParent, &RenderStyle::color, &RenderStyle::setColor, &RenderStyle::setVisitedLinkColor, &RenderStyle::invalidColor, RenderStyle::initialColor>::createHandler());
-    setPropertyHandler(CSSPropertyCounterIncrement, ApplyPropertyCounter<Increment>::createHandler());
-    setPropertyHandler(CSSPropertyCounterReset, ApplyPropertyCounter<Reset>::createHandler());
     setPropertyHandler(CSSPropertyCursor, ApplyPropertyCursor::createHandler());
-    setPropertyHandler(CSSPropertyDisplay, ApplyPropertyDisplay::createHandler());
-    setPropertyHandler(CSSPropertyFontFamily, ApplyPropertyFontFamily::createHandler());
     setPropertyHandler(CSSPropertyFontSize, ApplyPropertyFontSize::createHandler());
     setPropertyHandler(CSSPropertyFontStyle, ApplyPropertyFont<FontItalic, &FontDescription::italic, &FontDescription::setItalic, FontItalicOff>::createHandler());
     setPropertyHandler(CSSPropertyFontVariant, ApplyPropertyFont<FontSmallCaps, &FontDescription::smallCaps, &FontDescription::setSmallCaps, FontSmallCapsOff>::createHandler());
     setPropertyHandler(CSSPropertyFontWeight, ApplyPropertyFontWeight::createHandler());
-#if ENABLE(CSS_IMAGE_RESOLUTION)
-    setPropertyHandler(CSSPropertyImageResolution, ApplyPropertyImageResolution::createHandler());
-#endif
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-    setPropertyHandler(CSSPropertyLineHeight, ApplyPropertyLineHeightForIOSTextAutosizing::createHandler());
-#else
-    setPropertyHandler(CSSPropertyLineHeight, ApplyPropertyLineHeight::createHandler());
-#endif
     setPropertyHandler(CSSPropertyListStyleImage, ApplyPropertyStyleImage<&RenderStyle::listStyleImage, &RenderStyle::setListStyleImage, &RenderStyle::initialListStyleImage, CSSPropertyListStyleImage>::createHandler());
     setPropertyHandler(CSSPropertyOrphans, ApplyPropertyAuto<short, &RenderStyle::orphans, &RenderStyle::setOrphans, &RenderStyle::hasAutoOrphans, &RenderStyle::setHasAutoOrphans>::createHandler());
     setPropertyHandler(CSSPropertyOutlineColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::outlineColor, &RenderStyle::setOutlineColor, &RenderStyle::setVisitedLinkOutlineColor, &RenderStyle::color>::createHandler());
-    setPropertyHandler(CSSPropertyOutlineStyle, ApplyPropertyOutlineStyle::createHandler());
     setPropertyHandler(CSSPropertyWebkitTextDecorationColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::textDecorationColor, &RenderStyle::setTextDecorationColor, &RenderStyle::setVisitedLinkTextDecorationColor, &RenderStyle::color>::createHandler());
-    setPropertyHandler(CSSPropertyWebkitTextDecorationSkip, ApplyPropertyTextDecorationSkip::createHandler());
-    setPropertyHandler(CSSPropertyWebkitTextUnderlinePosition, ApplyPropertyTextUnderlinePosition::createHandler());
     setPropertyHandler(CSSPropertyTextRendering, ApplyPropertyFont<TextRenderingMode, &FontDescription::textRenderingMode, &FontDescription::setTextRenderingMode, AutoTextRendering>::createHandler());
-    setPropertyHandler(CSSPropertyVerticalAlign, ApplyPropertyVerticalAlign::createHandler());
 
     setPropertyHandler(CSSPropertyAnimationDelay, ApplyPropertyAnimation<double, &Animation::delay, &Animation::setDelay, &Animation::isDelaySet, &Animation::clearDelay, &Animation::initialAnimationDelay, &CSSToStyleMap::mapAnimationDelay, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
     setPropertyHandler(CSSPropertyAnimationDirection, ApplyPropertyAnimation<Animation::AnimationDirection, &Animation::direction, &Animation::setDirection, &Animation::isDirectionSet, &Animation::clearDirection, &Animation::initialAnimationDirection, &CSSToStyleMap::mapAnimationDirection, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
@@ -1510,7 +802,6 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitAnimationName, ApplyPropertyAnimation<const String&, &Animation::name, &Animation::setName, &Animation::isNameSet, &Animation::clearName, &Animation::initialAnimationName, &CSSToStyleMap::mapAnimationName, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
     setPropertyHandler(CSSPropertyWebkitAnimationPlayState, ApplyPropertyAnimation<EAnimPlayState, &Animation::playState, &Animation::setPlayState, &Animation::isPlayStateSet, &Animation::clearPlayState, &Animation::initialAnimationPlayState, &CSSToStyleMap::mapAnimationPlayState, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
     setPropertyHandler(CSSPropertyWebkitAnimationTimingFunction, ApplyPropertyAnimation<const PassRefPtr<TimingFunction>, &Animation::timingFunction, &Animation::setTimingFunction, &Animation::isTimingFunctionSet, &Animation::clearTimingFunction, &Animation::initialAnimationTimingFunction, &CSSToStyleMap::mapAnimationTimingFunction, &RenderStyle::accessAnimations, &RenderStyle::animations>::createHandler());
-    setPropertyHandler(CSSPropertyWebkitAspectRatio, ApplyPropertyAspectRatio::createHandler());
     setPropertyHandler(CSSPropertyWebkitBackgroundClip, CSSPropertyBackgroundClip);
     setPropertyHandler(CSSPropertyWebkitBackgroundComposite, ApplyPropertyFillLayer<CompositeOperator, CSSPropertyWebkitBackgroundComposite, BackgroundFillLayer, &RenderStyle::accessBackgroundLayers, &RenderStyle::backgroundLayers, &FillLayer::isCompositeSet, &FillLayer::composite, &FillLayer::setComposite, &FillLayer::clearComposite, &FillLayer::initialFillComposite, &CSSToStyleMap::mapFillComposite>::createHandler());
     setPropertyHandler(CSSPropertyWebkitBackgroundOrigin, CSSPropertyBackgroundOrigin);
@@ -1522,7 +813,6 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitFontKerning, ApplyPropertyFont<FontDescription::Kerning, &FontDescription::kerning, &FontDescription::setKerning, FontDescription::AutoKerning>::createHandler());
     setPropertyHandler(CSSPropertyWebkitFontSmoothing, ApplyPropertyFont<FontSmoothingMode, &FontDescription::fontSmoothing, &FontDescription::setFontSmoothing, AutoSmoothing>::createHandler());
     setPropertyHandler(CSSPropertyWebkitFontVariantLigatures, ApplyPropertyFontVariantLigatures::createHandler());
-    setPropertyHandler(CSSPropertyWebkitMarqueeRepetition, ApplyPropertyMarqueeRepetition::createHandler());
     setPropertyHandler(CSSPropertyWebkitMaskClip, ApplyPropertyFillLayer<EFillBox, CSSPropertyWebkitMaskClip, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isClipSet, &FillLayer::clip, &FillLayer::setClip, &FillLayer::clearClip, &FillLayer::initialFillClip, &CSSToStyleMap::mapFillClip>::createHandler());
     setPropertyHandler(CSSPropertyWebkitMaskComposite, ApplyPropertyFillLayer<CompositeOperator, CSSPropertyWebkitMaskComposite, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isCompositeSet, &FillLayer::composite, &FillLayer::setComposite, &FillLayer::clearComposite, &FillLayer::initialFillComposite, &CSSToStyleMap::mapFillComposite>::createHandler());
     setPropertyHandler(CSSPropertyWebkitMaskImage, ApplyPropertyFillLayer<StyleImage*, CSSPropertyWebkitMaskImage, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isImageSet, &FillLayer::image, &FillLayer::setImage, &FillLayer::clearImage, &FillLayer::initialFillImage, &CSSToStyleMap::mapFillImage>::createHandler());
@@ -1535,7 +825,6 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitMaskSourceType, ApplyPropertyFillLayer<EMaskSourceType, CSSPropertyWebkitMaskSourceType, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isMaskSourceTypeSet, &FillLayer::maskSourceType, &FillLayer::setMaskSourceType, &FillLayer::clearMaskSourceType, &FillLayer::initialMaskSourceType, &CSSToStyleMap::mapFillMaskSourceType>::createHandler());
     setPropertyHandler(CSSPropertyWebkitPerspectiveOrigin, ApplyPropertyExpanding<SuppressValue, CSSPropertyWebkitPerspectiveOriginX, CSSPropertyWebkitPerspectiveOriginY>::createHandler());
     setPropertyHandler(CSSPropertyWebkitTextEmphasisColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::textEmphasisColor, &RenderStyle::setTextEmphasisColor, &RenderStyle::setVisitedLinkTextEmphasisColor, &RenderStyle::color>::createHandler());
-    setPropertyHandler(CSSPropertyWebkitTextEmphasisStyle, ApplyPropertyTextEmphasisStyle::createHandler());
     setPropertyHandler(CSSPropertyWebkitTextFillColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::textFillColor, &RenderStyle::setTextFillColor, &RenderStyle::setVisitedLinkTextFillColor, &RenderStyle::color>::createHandler());
     setPropertyHandler(CSSPropertyWebkitTextStrokeColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::textStrokeColor, &RenderStyle::setTextStrokeColor, &RenderStyle::setVisitedLinkTextStrokeColor, &RenderStyle::color>::createHandler());
     setPropertyHandler(CSSPropertyWebkitTransitionDelay, ApplyPropertyAnimation<double, &Animation::delay, &Animation::setDelay, &Animation::isDelaySet, &Animation::clearDelay, &Animation::initialAnimationDelay, &CSSToStyleMap::mapAnimationDelay, &RenderStyle::accessTransitions, &RenderStyle::transitions>::createHandler());
@@ -1543,7 +832,6 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitTransitionProperty, ApplyPropertyAnimation<CSSPropertyID, &Animation::property, &Animation::setProperty, &Animation::isPropertySet, &Animation::clearProperty, &Animation::initialAnimationProperty, &CSSToStyleMap::mapAnimationProperty, &RenderStyle::accessTransitions, &RenderStyle::transitions>::createHandler());
     setPropertyHandler(CSSPropertyWebkitTransitionTimingFunction, ApplyPropertyAnimation<const PassRefPtr<TimingFunction>, &Animation::timingFunction, &Animation::setTimingFunction, &Animation::isTimingFunctionSet, &Animation::clearTimingFunction, &Animation::initialAnimationTimingFunction, &CSSToStyleMap::mapAnimationTimingFunction, &RenderStyle::accessTransitions, &RenderStyle::transitions>::createHandler());
     setPropertyHandler(CSSPropertyWidows, ApplyPropertyAuto<short, &RenderStyle::widows, &RenderStyle::setWidows, &RenderStyle::hasAutoWidows, &RenderStyle::setHasAutoWidows>::createHandler());
-    setPropertyHandler(CSSPropertyWordSpacing, ApplyPropertyWordSpacing::createHandler());
 
     setPropertyHandler(CSSPropertyZIndex, ApplyPropertyAuto<int, &RenderStyle::zIndex, &RenderStyle::setZIndex, &RenderStyle::hasAutoZIndex, &RenderStyle::setHasAutoZIndex>::createHandler());
 }

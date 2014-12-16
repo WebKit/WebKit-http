@@ -43,7 +43,7 @@ inline HTMLIFrameElement::HTMLIFrameElement(const QualifiedName& tagName, Docume
     ASSERT(hasTagName(iframeTag));
 }
 
-PassRefPtr<HTMLIFrameElement> HTMLIFrameElement::create(const QualifiedName& tagName, Document& document)
+RefPtr<HTMLIFrameElement> HTMLIFrameElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLIFrameElement(tagName, document));
 }
@@ -90,7 +90,7 @@ bool HTMLIFrameElement::rendererIsNeeded(const RenderStyle& style)
     return isURLAllowed() && style.display() != NONE;
 }
 
-RenderPtr<RenderElement> HTMLIFrameElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLIFrameElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderIFrame>(*this, WTF::move(style));
 }

@@ -61,10 +61,6 @@ void WebPage::platformInitialize()
     GUniquePtr<gchar> plugID(atk_plug_get_id(ATK_PLUG(m_accessibilityObject.get())));
     send(Messages::WebPageProxy::BindAccessibilityTree(String(plugID.get())));
 #endif
-
-#if USE(TEXTURE_MAPPER_GL)
-    m_nativeWindowHandle = 0;
-#endif
 }
 
 void WebPage::platformDetach()
@@ -97,12 +93,6 @@ bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboard
         return false;
 
     switch (keyboardEvent.windowsVirtualKeyCode()) {
-    case VK_BACK:
-        if (keyboardEvent.shiftKey())
-            m_page->backForward().goForward();
-        else
-            m_page->backForward().goBack();
-        break;
     case VK_SPACE:
         scroll(m_page.get(), keyboardEvent.shiftKey() ? ScrollUp : ScrollDown, ScrollByPage);
         break;
@@ -167,12 +157,6 @@ PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
     return 0;
 }
 
-#if USE(TEXTURE_MAPPER_GL)
-void WebPage::setAcceleratedCompositingWindowId(uint64_t nativeWindowHandle)
-{
-    m_nativeWindowHandle = nativeWindowHandle;
-}
-#endif
 
 String WebPage::platformUserAgent(const URL& url) const
 {

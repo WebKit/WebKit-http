@@ -167,7 +167,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Arrayify:
     case ArrayifyToStructure:
     case GetScope:
-    case GetMyScope:
     case SkipScope:
     case GetClosureRegisters:
     case GetClosureVar:
@@ -201,6 +200,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ProfileWillCall:
     case ProfileDidCall:
     case ProfileType:
+    case ProfileControlFlow:
     case CheckHasInstance:
     case InstanceOf:
     case IsUndefined:

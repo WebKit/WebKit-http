@@ -29,17 +29,13 @@
 #include "config.h"
 #include "GlyphPageTreeNode.h"
 
-#include "CGFontUnicodeSupportSPI.h"
+#include "CoreGraphicsSPI.h"
 #include "CoreTextSPI.h"
 #include "Font.h"
 #include "SimpleFontData.h"
 #include "WebCoreSystemInterface.h"
 #if !PLATFORM(IOS)
 #include <ApplicationServices/ApplicationServices.h>
-#else
-#include <CoreGraphics/CGFontUnicodeSupport.h>
-#include <CoreText/CTFontPriv.h>
-#include <CoreText/CoreText.h>
 #endif
 
 namespace WebCore {
@@ -88,6 +84,7 @@ bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned b
                : CTFontGetGlyphsForCharacters(fontData->platformData().ctFont(), buffer, glyphs.data(), bufferLength))) {
         // When buffer consists of surrogate pairs, CTFontGetVerticalGlyphsForCharacters and CTFontGetGlyphsForCharacters
         // place the glyphs at indices corresponding to the first character of each pair.
+        ASSERT(!(bufferLength % length) && (bufferLength / length == 1 || bufferLength / length == 2));
         unsigned glyphStep = bufferLength / length;
         for (unsigned i = 0; i < length; ++i) {
             if (!glyphs[i * glyphStep])
@@ -145,14 +142,18 @@ bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned b
                     stringIndices = indexVector.data();
                 }
 
+                // When buffer consists of surrogate pairs, CTRunGetStringIndicesPtr and CTRunGetStringIndices
+                // place the glyphs at indices corresponding to the first character of each pair.
+                ASSERT(!(bufferLength % length) && (bufferLength / length == 1 || bufferLength / length == 2));
+                unsigned glyphStep = bufferLength / length;
                 if (gotBaseFont) {
                     for (CFIndex i = 0; i < glyphCount; ++i) {
-                        if (stringIndices[i] >= static_cast<CFIndex>(length)) {
+                        if (stringIndices[i] >= static_cast<CFIndex>(bufferLength)) {
                             done = true;
                             break;
                         }
                         if (glyphs[i]) {
-                            setGlyphDataForIndex(offset + stringIndices[i], glyphs[i], fontData);
+                            setGlyphDataForIndex(offset + (stringIndices[i] / glyphStep), glyphs[i], fontData);
                             haveGlyphs = true;
                         }
                     }
@@ -161,12 +162,12 @@ bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned b
                     const SimpleFontData* runSimple = fontData->getCompositeFontReferenceFontData((NSFont *)runFont);
                     if (runSimple) {
                         for (CFIndex i = 0; i < glyphCount; ++i) {
-                            if (stringIndices[i] >= static_cast<CFIndex>(length)) {
+                            if (stringIndices[i] >= static_cast<CFIndex>(bufferLength)) {
                                 done = true;
                                 break;
                             }
                             if (glyphs[i]) {
-                                setGlyphDataForIndex(offset + stringIndices[i], glyphs[i], runSimple);
+                                setGlyphDataForIndex(offset + (stringIndices[i] / glyphStep), glyphs[i], runSimple);
                                 haveGlyphs = true;
                             }
                         }

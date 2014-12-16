@@ -29,10 +29,12 @@
 #include "ContentData.h"
 #include "ControlStates.h"
 #include "CursorList.h"
+#include "ElementChildIterator.h"
 #include "EventHandler.h"
 #include "Frame.h"
 #include "FrameSelection.h"
-#include "HTMLElement.h"
+#include "HTMLBodyElement.h"
+#include "HTMLHtmlElement.h"
 #include "HTMLNames.h"
 #include "FlowThreadController.h"
 #include "RenderCounter.h"
@@ -58,6 +60,7 @@
 #include "RenderView.h"
 #include "SVGRenderSupport.h"
 #include "Settings.h"
+#include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StackStats.h>
@@ -77,7 +80,7 @@ static HashMap<const RenderObject*, ControlStates*>& controlStatesRendererMap()
     return map;
 }
 
-inline RenderElement::RenderElement(ContainerNode& elementOrDocument, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+inline RenderElement::RenderElement(ContainerNode& elementOrDocument, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderObject(elementOrDocument)
     , m_baseTypeFlags(baseTypeFlags)
     , m_ancestorLineBoxDirty(false)
@@ -94,12 +97,12 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, PassRef<Re
 {
 }
 
-RenderElement::RenderElement(Element& element, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderElement::RenderElement(Element& element, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderElement(static_cast<ContainerNode&>(element), WTF::move(style), baseTypeFlags)
 {
 }
 
-RenderElement::RenderElement(Document& document, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderElement::RenderElement(Document& document, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderElement(static_cast<ContainerNode&>(document), WTF::move(style), baseTypeFlags)
 {
 }
@@ -134,7 +137,7 @@ RenderElement::~RenderElement()
         view().removeRendererWithPausedImageAnimations(*this);
 }
 
-RenderPtr<RenderElement> RenderElement::createFor(Element& element, PassRef<RenderStyle> style)
+RenderPtr<RenderElement> RenderElement::createFor(Element& element, Ref<RenderStyle>&& style)
 {
     // Minimal support for content properties replacing an entire element.
     // Works only if we have exactly one piece of content and it's a URL.
@@ -158,7 +161,6 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, PassRef<Rend
         return createRenderer<RenderRubyText>(element, WTF::move(style));
     switch (style.get().display()) {
     case NONE:
-        style.dropRef();
         return nullptr;
     case INLINE:
         return createRenderer<RenderInline>(element, WTF::move(style));
@@ -384,7 +386,7 @@ void RenderElement::initializeStyle()
     // have their parent set before getting a call to initializeStyle() :|
 }
 
-void RenderElement::setStyle(PassRef<RenderStyle> style)
+void RenderElement::setStyle(Ref<RenderStyle>&& style)
 {
     // FIXME: Should change RenderView so it can use initializeStyle too.
     // If we do that, we can assert m_hasInitializedStyle unconditionally,
@@ -398,7 +400,6 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
         ASSERT(!isRenderIFrame());
         ASSERT(!isEmbeddedObject());
         ASSERT(!isCanvas());
-        style.dropRef();
         return;
     }
 
@@ -513,9 +514,9 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
     SVGRenderSupport::childAdded(*this, *newChild);
 }
 
-RenderObject* RenderElement::removeChild(RenderObject& oldChild)
+void RenderElement::removeChild(RenderObject& oldChild)
 {
-    return removeChildInternal(oldChild, NotifyChildren);
+    removeChildInternal(oldChild, NotifyChildren);
 }
 
 void RenderElement::destroyLeftoverChildren()
@@ -584,7 +585,7 @@ void RenderElement::insertChildInternal(RenderObject* newChild, RenderObject* be
         cache->childrenChanged(this, newChild);
 }
 
-RenderObject* RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenType notifyChildren)
+void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenType notifyChildren)
 {
     ASSERT(canHaveChildren() || canHaveGeneratedChildren());
     ASSERT(oldChild.parent() == this);
@@ -645,8 +646,6 @@ RenderObject* RenderElement::removeChildInternal(RenderObject& oldChild, NotifyC
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->childrenChanged(this);
-    
-    return nextSibling;
 }
 
 static void addLayers(RenderElement& renderer, RenderLayer* parentLayer, RenderElement*& newObject, RenderLayer*& beforeChild)
@@ -859,7 +858,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         setHorizontalWritingMode(true);
         setHasBoxDecorations(false);
         setHasOverflowClip(false);
-        setHasTransform(false);
+        setHasTransformRelatedProperty(false);
         setHasReflection(false);
     } else {
         s_affectsParentBlock = false;
@@ -1041,7 +1040,7 @@ void RenderElement::willBeRemovedFromTree()
     if (m_style->hasFixedBackgroundImage() && !frame().settings().fixedBackgroundsPaintRelativeToDocument())
         view().frameView().removeSlowRepaintObject(this);
 
-    if (!documentBeingDestroyed())
+    if (isOutOfFlowPositioned() && parent()->childrenInline())
         parent()->dirtyLinesFromChangedChild(*this);
 
     if (auto* containerFlowThread = parent()->renderNamedFlowThreadWrapper())
@@ -1110,16 +1109,14 @@ void RenderElement::setNeedsSimplifiedNormalFlowLayout()
 RenderElement& RenderElement::rendererForRootBackground()
 {
     ASSERT(isRoot());
-    if (!hasBackground() && element() && element()->hasTagName(HTMLNames::htmlTag)) {
+    if (!hasBackground() && is<HTMLHtmlElement>(element())) {
         // Locate the <body> element using the DOM. This is easier than trying
         // to crawl around a render tree with potential :before/:after content and
         // anonymous blocks created by inline <body> tags etc. We can locate the <body>
         // render object very easily via the DOM.
-        if (auto body = document().body()) {
-            if (body->hasTagName(HTMLNames::bodyTag)) {
-                if (auto renderer = body->renderer())
-                    return *renderer;
-            }
+        if (auto* body = childrenOfType<HTMLBodyElement>(*element()).first()) {
+            if (auto* renderer = body->renderer())
+                return *renderer;
         }
     }
     return *this;
@@ -1333,13 +1330,21 @@ bool RenderElement::borderImageIsLoadedAndCanBeRendered() const
     return borderImage && borderImage->canRender(this, style().effectiveZoom()) && borderImage->isLoaded();
 }
 
+bool RenderElement::isInsideViewport(const IntRect* visibleRect) const
+{
+    auto& frameView = view().frameView();
+    if (frameView.isOffscreen())
+        return false;
+
+    // Compute viewport rect if it was not provided.
+    const IntRect& viewportRect = visibleRect ? *visibleRect : frameView.windowToContents(frameView.windowClipRect());
+    return viewportRect.intersects(enclosingIntRect(absoluteClippedOverflowRect()));
+}
+
 static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const IntRect& visibleRect)
 {
     const Document& document = renderer.document();
     if (document.inPageCache())
-        return false;
-    auto& frameView = renderer.view().frameView();
-    if (frameView.isOffscreen())
         return false;
 #if PLATFORM(IOS)
     if (document.frame()->timersPaused())
@@ -1349,7 +1354,22 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
         return false;
     if (renderer.style().visibility() != VISIBLE)
         return false;
-    if (!visibleRect.intersects(renderer.absoluteBoundingBoxRect()))
+    if (renderer.view().frameView().isOffscreen())
+        return false;
+
+    // Use background rect if we are the root or if we are the body and the background is propagated to the root.
+    // FIXME: This is overly conservative as the image may not be a background-image, in which case it will not
+    // be propagated to the root. At this point, we unfortunately don't have access to the image anymore so we
+    // can no longer check if it is a background image.
+    bool backgroundIsPaintedByRoot = renderer.isRoot();
+    if (renderer.isBody()) {
+        // FIXME: Should share body background propagation code.
+        RenderElement* rootObject = renderer.document().documentElement() ? renderer.document().documentElement()->renderer() : nullptr;
+        backgroundIsPaintedByRoot = &rootObject->rendererForRootBackground() == &renderer;
+
+    }
+    LayoutRect backgroundPaintingRect = backgroundIsPaintedByRoot ? renderer.view().backgroundRect(&renderer.view()) : renderer.absoluteClippedOverflowRect();
+    if (!visibleRect.intersects(enclosingIntRect(backgroundPaintingRect)))
         return false;
 
     return true;
@@ -1357,9 +1377,14 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
 
 void RenderElement::newImageAnimationFrameAvailable(CachedImage& image)
 {
+    if (document().inPageCache())
+        return;
     auto& frameView = view().frameView();
     auto visibleRect = frameView.windowToContents(frameView.windowClipRect());
     if (!shouldRepaintForImageAnimation(*this, visibleRect)) {
+        // FIXME: It would be better to pass the image along with the renderer
+        // so that we can be smarter about detecting if the image is inside the
+        // viewport in repaintForPausedImageAnimationsIfNeeded().
         view().addRendererWithPausedImageAnimations(*this);
         return;
     }
@@ -1405,6 +1430,228 @@ void RenderElement::removeControlStatesForRenderer(const RenderObject* o)
 void RenderElement::addControlStatesForRenderer(const RenderObject* o, ControlStates* states)
 {
     controlStatesRendererMap().add(o, states);
+}
+
+RenderStyle* RenderElement::getCachedPseudoStyle(PseudoId pseudo, RenderStyle* parentStyle) const
+{
+    if (pseudo < FIRST_INTERNAL_PSEUDOID && !style().hasPseudoStyle(pseudo))
+        return nullptr;
+
+    RenderStyle* cachedStyle = style().getCachedPseudoStyle(pseudo);
+    if (cachedStyle)
+        return cachedStyle;
+
+    RefPtr<RenderStyle> result = getUncachedPseudoStyle(PseudoStyleRequest(pseudo), parentStyle);
+    if (result)
+        return style().addCachedPseudoStyle(result.release());
+    return nullptr;
+}
+
+PassRefPtr<RenderStyle> RenderElement::getUncachedPseudoStyle(const PseudoStyleRequest& pseudoStyleRequest, RenderStyle* parentStyle, RenderStyle* ownStyle) const
+{
+    if (pseudoStyleRequest.pseudoId < FIRST_INTERNAL_PSEUDOID && !ownStyle && !style().hasPseudoStyle(pseudoStyleRequest.pseudoId))
+        return nullptr;
+
+    if (!parentStyle) {
+        ASSERT(!ownStyle);
+        parentStyle = &style();
+    }
+
+    if (isAnonymous())
+        return nullptr;
+
+    if (pseudoStyleRequest.pseudoId == FIRST_LINE_INHERITED) {
+        RefPtr<RenderStyle> result = document().ensureStyleResolver().styleForElement(element(), parentStyle, DisallowStyleSharing);
+        result->setStyleType(FIRST_LINE_INHERITED);
+        return result.release();
+    }
+
+    return document().ensureStyleResolver().pseudoStyleForElement(element(), pseudoStyleRequest, parentStyle);
+}
+
+Color RenderElement::selectionColor(int colorProperty) const
+{
+    // If the element is unselectable, or we are only painting the selection,
+    // don't override the foreground color with the selection foreground color.
+    if (style().userSelect() == SELECT_NONE
+        || (view().frameView().paintBehavior() & PaintBehaviorSelectionOnly))
+        return Color();
+
+    if (RefPtr<RenderStyle> pseudoStyle = selectionPseudoStyle()) {
+        Color color = pseudoStyle->visitedDependentColor(colorProperty);
+        if (!color.isValid())
+            color = pseudoStyle->visitedDependentColor(CSSPropertyColor);
+        return color;
+    }
+
+    if (frame().selection().isFocusedAndActive())
+        return theme().activeSelectionForegroundColor();
+    return theme().inactiveSelectionForegroundColor();
+}
+
+PassRefPtr<RenderStyle> RenderElement::selectionPseudoStyle() const
+{
+    if (isAnonymous())
+        return nullptr;
+
+    if (ShadowRoot* root = element()->containingShadowRoot()) {
+        if (root->type() == ShadowRoot::UserAgentShadowRoot) {
+            if (Element* shadowHost = element()->shadowHost())
+                return shadowHost->renderer()->getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
+        }
+    }
+
+    return getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
+}
+
+Color RenderElement::selectionForegroundColor() const
+{
+    return selectionColor(CSSPropertyWebkitTextFillColor);
+}
+
+Color RenderElement::selectionEmphasisMarkColor() const
+{
+    return selectionColor(CSSPropertyWebkitTextEmphasisColor);
+}
+
+Color RenderElement::selectionBackgroundColor() const
+{
+    if (style().userSelect() == SELECT_NONE)
+        return Color();
+
+    if (frame().selection().shouldShowBlockCursor() && frame().selection().isCaret())
+        return style().visitedDependentColor(CSSPropertyColor).blendWithWhite();
+
+    RefPtr<RenderStyle> pseudoStyle = selectionPseudoStyle();
+    if (pseudoStyle && pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).isValid())
+        return pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).blendWithWhite();
+
+    if (frame().selection().isFocusedAndActive())
+        return theme().activeSelectionBackgroundColor();
+    return theme().inactiveSelectionBackgroundColor();
+}
+
+bool RenderElement::getLeadingCorner(FloatPoint& point) const
+{
+    if (!isInline() || isReplaced()) {
+        point = localToAbsolute(FloatPoint(), UseTransforms);
+        return true;
+    }
+
+    // find the next text/image child, to get a position
+    const RenderObject* o = this;
+    while (o) {
+        const RenderObject* p = o;
+        if (RenderObject* child = o->firstChildSlow())
+            o = child;
+        else if (o->nextSibling())
+            o = o->nextSibling();
+        else {
+            RenderObject* next = 0;
+            while (!next && o->parent()) {
+                o = o->parent();
+                next = o->nextSibling();
+            }
+            o = next;
+
+            if (!o)
+                break;
+        }
+        ASSERT(o);
+
+        if (!o->isInline() || o->isReplaced()) {
+            point = o->localToAbsolute(FloatPoint(), UseTransforms);
+            return true;
+        }
+
+        if (p->node() && p->node() == element() && is<RenderText>(*o) && !downcast<RenderText>(*o).firstTextBox()) {
+            // do nothing - skip unrendered whitespace that is a child or next sibling of the anchor
+        } else if (is<RenderText>(*o) || o->isReplaced()) {
+            point = FloatPoint();
+            if (is<RenderText>(*o) && downcast<RenderText>(*o).firstTextBox())
+                point.move(downcast<RenderText>(*o).linesBoundingBox().x(), downcast<RenderText>(*o).topOfFirstText());
+            else if (is<RenderBox>(*o))
+                point.moveBy(downcast<RenderBox>(*o).location());
+            point = o->container()->localToAbsolute(point, UseTransforms);
+            return true;
+        }
+    }
+    
+    // If the target doesn't have any children or siblings that could be used to calculate the scroll position, we must be
+    // at the end of the document. Scroll to the bottom. FIXME: who said anything about scrolling?
+    if (!o && document().view()) {
+        point = FloatPoint(0, document().view()->contentsHeight());
+        return true;
+    }
+    return false;
+}
+
+bool RenderElement::getTrailingCorner(FloatPoint& point) const
+{
+    if (!isInline() || isReplaced()) {
+        point = localToAbsolute(LayoutPoint(downcast<RenderBox>(*this).size()), UseTransforms);
+        return true;
+    }
+
+    // find the last text/image child, to get a position
+    const RenderObject* o = this;
+    while (o) {
+        if (RenderObject* child = o->lastChildSlow())
+            o = child;
+        else if (o->previousSibling())
+            o = o->previousSibling();
+        else {
+            RenderObject* prev = 0;
+            while (!prev) {
+                o = o->parent();
+                if (!o)
+                    return false;
+                prev = o->previousSibling();
+            }
+            o = prev;
+        }
+        ASSERT(o);
+        if (is<RenderText>(*o) || o->isReplaced()) {
+            point = FloatPoint();
+            if (is<RenderText>(*o)) {
+                IntRect linesBox = downcast<RenderText>(*o).linesBoundingBox();
+                if (!linesBox.maxX() && !linesBox.maxY())
+                    continue;
+                point.moveBy(linesBox.maxXMaxYCorner());
+            } else
+                point.moveBy(downcast<RenderBox>(*o).frameRect().maxXMaxYCorner());
+            point = o->container()->localToAbsolute(point, UseTransforms);
+            return true;
+        }
+    }
+    return true;
+}
+
+LayoutRect RenderElement::anchorRect() const
+{
+    FloatPoint leading, trailing;
+    bool foundLeading = getLeadingCorner(leading);
+    bool foundTrailing = getTrailingCorner(trailing);
+    
+    // If we've found one corner, but not the other,
+    // then we should just return a point at the corner that we did find.
+    if (foundLeading != foundTrailing) {
+        if (foundLeading)
+            foundTrailing = foundLeading;
+        else
+            foundLeading = foundTrailing;
+    }
+
+    FloatPoint upperLeft = leading;
+    FloatPoint lowerRight = trailing;
+
+    // Vertical writing modes might mean the leading point is not in the top left
+    if (!isInline() || isReplaced()) {
+        upperLeft = FloatPoint(std::min(leading.x(), trailing.x()), std::min(leading.y(), trailing.y()));
+        lowerRight = FloatPoint(std::max(leading.x(), trailing.x()), std::max(leading.y(), trailing.y()));
+    } // Otherwise, it's not obvious what to do.
+
+    return enclosingLayoutRect(FloatRect(upperLeft, lowerRight.expandedTo(upperLeft) - upperLeft));
 }
 
 }

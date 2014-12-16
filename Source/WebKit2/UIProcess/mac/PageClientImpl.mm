@@ -37,7 +37,6 @@
 #import "NativeWebWheelEvent.h"
 #import "NavigationState.h"
 #import "StringUtilities.h"
-#import "TextIndicator.h"
 #import "ViewSnapshotStore.h"
 #import "WKAPICast.h"
 #import "WKFullScreenWindowController.h"
@@ -58,8 +57,10 @@
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/Image.h>
 #import <WebCore/KeyboardEvent.h>
+#import <WebCore/LookupSPI.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/SharedBuffer.h>
+#import <WebCore/TextIndicator.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
 #import <WebKitSystemInterface.h>
 #import <wtf/text/CString.h>
@@ -78,6 +79,8 @@
 - (BOOL)_hostsLayersInWindowServer;
 @end
 #endif
+
+SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUTermOptionDisableSearchTermIndicator, NSString *)
 
 using namespace WebCore;
 using namespace WebKit;
@@ -193,9 +196,20 @@ NSView *PageClientImpl::activeView() const
 #endif
 }
 
+NSWindow *PageClientImpl::activeWindow() const
+{
+#if WK_API_ENABLED
+    if (m_wkView._thumbnailView)
+        return m_wkView._thumbnailView.window;
+#endif
+    if (m_wkView._targetWindowForMovePreparation)
+        return m_wkView._targetWindowForMovePreparation;
+    return m_wkView.window;
+}
+
 bool PageClientImpl::isViewWindowActive()
 {
-    NSWindow *activeViewWindow = activeView().window;
+    NSWindow *activeViewWindow = activeWindow();
     return activeViewWindow.isKeyWindow || [NSApp keyWindow] == activeViewWindow;
 }
 
@@ -212,7 +226,7 @@ void PageClientImpl::makeFirstResponder()
 bool PageClientImpl::isViewVisible()
 {
     NSView *activeView = this->activeView();
-    NSWindow *activeViewWindow = activeView.window;
+    NSWindow *activeViewWindow = activeWindow();
 
     if (!activeViewWindow)
         return false;
@@ -240,12 +254,12 @@ bool PageClientImpl::isViewVisible()
 
 bool PageClientImpl::isViewVisibleOrOccluded()
 {
-    return activeView().window.isVisible;
+    return activeWindow().isVisible;
 }
 
 bool PageClientImpl::isViewInWindow()
 {
-    return activeView().window;
+    return activeWindow();
 }
 
 bool PageClientImpl::isVisuallyIdle()
@@ -256,7 +270,7 @@ bool PageClientImpl::isVisuallyIdle()
 LayerHostingMode PageClientImpl::viewLayerHostingMode()
 {
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
-    if ([activeView().window _hostsLayersInWindowServer])
+    if ([activeWindow() _hostsLayersInWindowServer])
         return LayerHostingMode::OutOfProcess;
 #endif
     return LayerHostingMode::InProcess;
@@ -415,6 +429,13 @@ void PageClientImpl::notifyInputContextAboutDiscardedComposition()
     [m_wkView _notifyInputContextAboutDiscardedComposition];
 }
 
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
+void PageClientImpl::notifyApplicationAboutInputContextChange()
+{
+    [NSApp updateWindows];
+}
+#endif
+
 FloatRect PageClientImpl::convertToDeviceSpace(const FloatRect& rect)
 {
     return [m_wkView _convertToDeviceSpace:rect];
@@ -467,9 +488,9 @@ PassRefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page,
 }
 #endif
 
-void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, bool fadeOut, bool animate)
+void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, bool fadeOut)
 {
-    [m_wkView _setTextIndicator:textIndicator fadeOut:fadeOut animate:animate];
+    [m_wkView _setTextIndicator:textIndicator fadeOut:fadeOut];
 }
 
 void PageClientImpl::accessibilityWebProcessTokenReceived(const IPC::DataReference& data)
@@ -529,27 +550,34 @@ void PageClientImpl::setPluginComplexTextInputState(uint64_t pluginComplexTextIn
     [m_wkView _setPluginComplexTextInputState:pluginComplexTextInputState pluginComplexTextInputIdentifier:pluginComplexTextInputIdentifier];
 }
 
-void PageClientImpl::didPerformDictionaryLookup(const AttributedString& text, const DictionaryPopupInfo& dictionaryPopupInfo)
+void PageClientImpl::didPerformDictionaryLookup(const DictionaryPopupInfo& dictionaryPopupInfo)
 {
-    RetainPtr<NSAttributedString> attributedString = text.string;
+    if (!getLULookupDefinitionModuleClass())
+        return;
+
     NSPoint textBaselineOrigin = dictionaryPopupInfo.origin;
 
     // Convert to screen coordinates.
     textBaselineOrigin = [m_wkView convertPoint:textBaselineOrigin toView:nil];
     textBaselineOrigin = [m_wkView.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
 
-    WKShowWordDefinitionWindow(attributedString.get(), textBaselineOrigin, (NSDictionary *)dictionaryPopupInfo.options.get());
+    RetainPtr<NSMutableDictionary> mutableOptions = adoptNS([(NSDictionary *)dictionaryPopupInfo.options.get() mutableCopy]);
+
+    if (canLoadLUTermOptionDisableSearchTermIndicator() && dictionaryPopupInfo.textIndicator.contentImage) {
+        // Run the animations serially because attaching another subwindow breaks the bounce animation.
+        // We could consider making the bounce NSAnimationNonblockingThreaded instead, which seems
+        // to work, but need to consider all of the implications.
+        [m_wkView _setTextIndicator:TextIndicator::create(dictionaryPopupInfo.textIndicator) fadeOut:NO animationCompletionHandler:[dictionaryPopupInfo, textBaselineOrigin, mutableOptions] {
+            [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
+            [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
+        }];
+    } else
+        [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
 }
 
-void PageClientImpl::dismissDictionaryLookupPanel()
+void PageClientImpl::dismissContentRelativeChildWindows()
 {
-    // FIXME: We don't know which panel we are dismissing, it may not even be in the current page (see <rdar://problem/13875766>).
-    WKHideWordDefinitionWindow();
-}
-
-void PageClientImpl::dismissActionMenuPopovers()
-{
-    [m_wkView _dismissActionMenuPopovers];
+    [m_wkView _dismissContentRelativeChildWindows];
 }
 
 void PageClientImpl::showCorrectionPanel(AlternativeTextType type, const FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings)
@@ -678,9 +706,7 @@ void PageClientImpl::beganExitFullScreen(const IntRect& initialFrame, const IntR
 
 void PageClientImpl::navigationGestureDidBegin()
 {
-    // Hide the text indicator and action menu popovers if they are visible.
-    setTextIndicator(nullptr, false, false);
-    dismissActionMenuPopovers();
+    dismissContentRelativeChildWindows();
 
 #if WK_API_ENABLED
     if (m_webView)

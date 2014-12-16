@@ -35,6 +35,7 @@
 #include "MediaCanStartListener.h"
 #include "MediaControllerInterface.h"
 #include "MediaPlayer.h"
+#include "PageThrottler.h"
 
 #if ENABLE(VIDEO_TRACK)
 #include "AudioTrack.h"
@@ -65,7 +66,6 @@ class MediaController;
 class MediaControls;
 class MediaControlsHost;
 class MediaError;
-class PageActivityAssertionToken;
 class TimeRanges;
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 class MediaKeys;
@@ -118,9 +118,10 @@ public:
     // Eventually overloaded in HTMLVideoElement
     virtual bool supportsFullscreen() const override { return false; };
 
-    virtual bool supportsSave() const;
     virtual bool supportsScanning() const override;
-    
+
+    bool canSaveMediaData() const;
+
     virtual bool doesHaveAttribute(const AtomicString&, AtomicString* value = nullptr) const override;
 
     WEBCORE_EXPORT PlatformMedia platformMedia() const;
@@ -391,8 +392,16 @@ public:
     
     WEBCORE_EXPORT virtual bool isFullscreen() const override;
     void toggleFullscreenState();
-    enum VideoFullscreenMode { VideoFullscreenModeNone, VideoFullscreenModeStandard, VideoFullscreenModeOptimized };
+
+    enum {
+        VideoFullscreenModeNone = 0,
+        VideoFullscreenModeStandard = 1 << 0,
+        VideoFullscreenModeOptimized = 1 << 1,
+    };
+    typedef uint32_t VideoFullscreenMode;
+
     VideoFullscreenMode fullscreenMode() const { return m_videoFullscreenMode; }
+    void fullscreenModeChanged(VideoFullscreenMode mode) { m_videoFullscreenMode = mode; }
 
     void enterFullscreen(VideoFullscreenMode);
     virtual void enterFullscreen() override;
@@ -480,7 +489,7 @@ protected:
     void endIgnoringTrackDisplayUpdateRequests();
 #endif
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool mediaControlsDependOnPageScaleFactor() const { return m_mediaControlsDependOnPageScaleFactor; }
@@ -576,7 +585,7 @@ private:
     virtual bool mediaPlayerIsPaused() const override;
     virtual bool mediaPlayerIsLooping() const override;
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
-    virtual PassRefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>);
+    virtual PassRefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>) override;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
@@ -584,21 +593,21 @@ private:
 
     virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
     virtual void mediaPlayerHandlePlaybackCommand(MediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command); }
-    virtual String mediaPlayerSourceApplicationIdentifier() const;
+    virtual String mediaPlayerSourceApplicationIdentifier() const override;
 
 #if PLATFORM(IOS)
-    virtual String mediaPlayerNetworkInterfaceName() const;
+    virtual String mediaPlayerNetworkInterfaceName() const override;
     virtual bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const override;
 #endif
 
     virtual bool mediaPlayerIsInMediaDocument() const override final;
     virtual void mediaPlayerEngineFailedToLoad() const override final;
 
-    void loadTimerFired(Timer&);
-    void progressEventTimerFired(Timer&);
-    void playbackProgressTimerFired(Timer&);
-    void scanTimerFired(Timer&);
-    void seekTimerFired(Timer&);
+    void loadTimerFired();
+    void progressEventTimerFired();
+    void playbackProgressTimerFired();
+    void scanTimerFired();
+    void seekTimerFired();
     void startPlaybackProgressTimer();
     void startProgressEventTimer();
     void stopPeriodicTimers();
@@ -898,7 +907,7 @@ private:
 #endif
 
     std::unique_ptr<HTMLMediaSession> m_mediaSession;
-    std::unique_ptr<PageActivityAssertionToken> m_activityToken;
+    PageActivityAssertionToken m_activityToken;
     size_t m_reportedExtraMemoryCost;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)

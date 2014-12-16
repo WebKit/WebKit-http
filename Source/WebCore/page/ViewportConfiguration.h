@@ -74,23 +74,16 @@ public:
     const FloatSize& minimumLayoutSize() const { return m_minimumLayoutSize; }
     WEBCORE_EXPORT void setMinimumLayoutSize(const FloatSize&);
 
-    const FloatSize& minimumLayoutSizeForMinimalUI() const { return m_minimumLayoutSizeForMinimalUI.isEmpty() ? m_minimumLayoutSize : m_minimumLayoutSizeForMinimalUI; }
-    WEBCORE_EXPORT void setMinimumLayoutSizeForMinimalUI(const FloatSize&);
-
-    WEBCORE_EXPORT const FloatSize& activeMinimumLayoutSizeInScrollViewCoordinates() const;
-
     const ViewportArguments& viewportArguments() const { return m_viewportArguments; }
     WEBCORE_EXPORT void setViewportArguments(const ViewportArguments&);
 
-    WEBCORE_EXPORT void resetMinimalUI();
-    WEBCORE_EXPORT void didFinishDocumentLoad();
+    void setIgnoreScalingConstraints(bool ignoreScalingConstraints) {m_ignoreScalingConstraints = ignoreScalingConstraints; }
 
     WEBCORE_EXPORT IntSize layoutSize() const;
     WEBCORE_EXPORT double initialScale() const;
     WEBCORE_EXPORT double minimumScale() const;
     double maximumScale() const { return m_configuration.maximumScale; }
-    bool allowsUserScaling() const { return m_configuration.allowsUserScaling; }
-    bool usesMinimalUI() const { return m_usesMinimalUI; }
+    WEBCORE_EXPORT bool allowsUserScaling() const;
 
     WEBCORE_EXPORT static Parameters webpageParameters();
     WEBCORE_EXPORT static Parameters textDocumentParameters();
@@ -113,11 +106,9 @@ private:
     Parameters m_defaultConfiguration;
     IntSize m_contentSize;
     FloatSize m_minimumLayoutSize;
-    FloatSize m_minimumLayoutSizeForMinimalUI;
     ViewportArguments m_viewportArguments;
 
-    bool m_usesMinimalUI;
-    bool m_pageDidFinishDocumentLoad;
+    bool m_ignoreScalingConstraints;
 };
 
 } // namespace WebCore

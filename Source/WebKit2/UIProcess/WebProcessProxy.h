@@ -118,16 +118,8 @@ public:
 
     DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&);
 
-    void pageSuppressibilityChanged(WebPageProxy*);
-    void pagePreferencesChanged(WebPageProxy*);
-
     void didSaveToPageCache();
     void releasePageCache();
-
-#if PLATFORM(COCOA)
-    bool allPagesAreProcessSuppressible() const;
-    void updateProcessSuppressionState();
-#endif
 
     void enableSuddenTermination();
     void disableSuddenTermination();
@@ -224,11 +216,6 @@ private:
 
     std::unique_ptr<DownloadProxyMap> m_downloadProxyMap;
     CustomProtocolManagerProxy m_customProtocolManagerProxy;
-
-#if PLATFORM(COCOA)
-    HashSet<uint64_t> m_processSuppressiblePages;
-    bool m_processSuppressionEnabled;
-#endif
 
     int m_numberOfTimesSuddenTerminationWasDisabled;
     std::unique_ptr<ProcessThrottler> m_throttler;

@@ -59,6 +59,7 @@ public:
     virtual void didEnterFullscreen() = 0;
     virtual void didExitFullscreen() = 0;
     virtual void didCleanupFullscreen() = 0;
+    virtual void fullscreenMayReturnToInline() = 0;
 };
 
 class WebVideoFullscreenInterfaceAVKit
@@ -81,7 +82,7 @@ public:
     WEBCORE_EXPORT virtual void setLegibleMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
     WEBCORE_EXPORT virtual void setExternalPlayback(bool enabled, ExternalPlaybackTargetType, WTF::String localizedDeviceName) override;
     
-    WEBCORE_EXPORT virtual void setupFullscreen(PlatformLayer&, IntRect initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode);
+    WEBCORE_EXPORT virtual void setupFullscreen(PlatformLayer&, IntRect initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
     WEBCORE_EXPORT virtual void enterFullscreen();
     WEBCORE_EXPORT virtual void exitFullscreen(IntRect finalRect);
     WEBCORE_EXPORT virtual void cleanupFullscreen();
@@ -89,6 +90,8 @@ public:
     WEBCORE_EXPORT virtual void requestHideAndExitFullscreen();
 
     HTMLMediaElement::VideoFullscreenMode mode() const { return m_mode; }
+    void setIsOptimized(bool);
+    bool mayAutomaticallyShowVideoOptimized();
 
 protected:
         

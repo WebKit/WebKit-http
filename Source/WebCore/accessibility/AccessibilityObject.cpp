@@ -35,11 +35,13 @@
 #include "AccessibilityTable.h"
 #include "DOMTokenList.h"
 #include "Editor.h"
+#include "EventHandler.h"
 #include "FloatRect.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameSelection.h"
+#include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "HitTestResult.h"
@@ -367,7 +369,7 @@ String AccessibilityObject::computedLabel()
 
 bool AccessibilityObject::isBlockquote() const
 {
-    return node() && node()->hasTagName(blockquoteTag);
+    return roleValue() == BlockquoteRole;
 }
 
 bool AccessibilityObject::isTextControl() const
@@ -868,8 +870,25 @@ bool AccessibilityObject::press()
         pressElement = hitTestElement;
     
     UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture, document);
-    pressElement->accessKeyAction(true);
+    
+    bool dispatchedTouchEvent = dispatchTouchEvent();
+    if (!dispatchedTouchEvent)
+        pressElement->accessKeyAction(true);
+    
     return true;
+}
+    
+bool AccessibilityObject::dispatchTouchEvent()
+{
+    bool handled = false;
+#if ENABLE(IOS_TOUCH_EVENTS)
+    MainFrame* frame = mainFrame();
+    if (!frame)
+        return false;
+
+    frame->eventHandler().dispatchSimulatedTouchEvent(clickPoint());
+#endif
+    return handled;
 }
 
 Frame* AccessibilityObject::frame() const
@@ -1964,12 +1983,29 @@ bool AccessibilityObject::hasHighlighting() const
     return false;
 }
 
+bool AccessibilityObject::supportsDatetimeAttribute() const
+{
+    return hasTagName(insTag) || hasTagName(delTag) || hasTagName(timeTag);
+}
+
 Element* AccessibilityObject::element() const
 {
     Node* node = this->node();
     if (is<Element>(node))
         return downcast<Element>(node);
     return nullptr;
+}
+    
+bool AccessibilityObject::isValueAutofilled() const
+{
+    if (!isNativeTextControl())
+        return false;
+    
+    Node* node = this->node();
+    if (!node || !is<HTMLInputElement>(*node))
+        return false;
+    
+    return downcast<HTMLInputElement>(*node).isAutofilled();
 }
 
 const AtomicString& AccessibilityObject::placeholderValue() const

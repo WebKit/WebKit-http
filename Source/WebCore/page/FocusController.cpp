@@ -127,10 +127,10 @@ static inline void dispatchEventsOnWindowAndFocusedElement(Document* document, b
     }
 
     if (!focused && document->focusedElement())
-        document->focusedElement()->dispatchBlurEvent(0);
+        document->focusedElement()->dispatchBlurEvent(nullptr);
     document->dispatchWindowEvent(Event::create(focused ? eventNames().focusEvent : eventNames().blurEvent, false, false));
     if (focused && document->focusedElement())
-        document->focusedElement()->dispatchFocusEvent(0, FocusDirectionNone);
+        document->focusedElement()->dispatchFocusEvent(nullptr, FocusDirectionNone);
 }
 
 static inline bool hasCustomFocusLogic(Element& element)
@@ -164,7 +164,7 @@ FocusController::FocusController(Page& page, ViewState::Flags viewState)
     : m_page(page)
     , m_isChangingFocusedFrame(false)
     , m_viewState(viewState)
-    , m_focusRepaintTimer(this, &FocusController::focusRepaintTimerFired)
+    , m_focusRepaintTimer(*this, &FocusController::focusRepaintTimerFired)
 {
 }
 
@@ -912,7 +912,7 @@ void FocusController::setFocusedElementNeedsRepaint()
     m_focusRepaintTimer.startOneShot(0.033);
 }
 
-void FocusController::focusRepaintTimerFired(Timer&)
+void FocusController::focusRepaintTimerFired()
 {
     Document* focusedDocument = focusedOrMainFrame().document();
     if (!focusedDocument)

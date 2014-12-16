@@ -28,8 +28,7 @@
 class WebViewTest: public Test {
 public:
     MAKE_GLIB_TEST_FIXTURE(WebViewTest);
-    WebViewTest(WebKitWebView*);
-    WebViewTest();
+    WebViewTest(WebKitUserContentManager* = nullptr);
     virtual ~WebViewTest();
 
     virtual void loadURI(const char* uri);
@@ -69,6 +68,8 @@ public:
     static bool javascriptResultIsUndefined(WebKitJavascriptResult*);
 
     cairo_surface_t* getSnapshotAndWaitUntilReady(WebKitSnapshotRegion, WebKitSnapshotOptions);
+
+    bool runWebProcessTest(const char* suiteName, const char* testName);
 
     WebKitWebView* m_webView;
     GMainLoop* m_mainLoop;

@@ -35,12 +35,12 @@ bool RenderLayerModelObject::s_hadLayer = false;
 bool RenderLayerModelObject::s_hadTransform = false;
 bool RenderLayerModelObject::s_layerWasSelfPainting = false;
 
-RenderLayerModelObject::RenderLayerModelObject(Element& element, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderLayerModelObject::RenderLayerModelObject(Element& element, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderElement(element, WTF::move(style), baseTypeFlags | RenderLayerModelObjectFlag)
 {
 }
 
-RenderLayerModelObject::RenderLayerModelObject(Document& document, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderLayerModelObject::RenderLayerModelObject(Document& document, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderElement(document, WTF::move(style), baseTypeFlags | RenderLayerModelObjectFlag)
 {
 }
@@ -147,7 +147,7 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
         if (oldStyle->hasBlendMode())
             layer()->parent()->dirtyAncestorChainHasBlendingDescendants();
 #endif
-        setHasTransform(false); // Either a transform wasn't specified or the object doesn't support transforms, so just null out the bit.
+        setHasTransformRelatedProperty(false); // All transform-related propeties force layers, so we know we don't have one or the object doesn't support them.
         setHasReflection(false);
         layer()->removeOnlyThisLayer(); // calls destroyLayer() which clears m_layer
         if (s_wasFloating && isFloating())

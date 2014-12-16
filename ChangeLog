@@ -1,3 +1,193 @@
+2014-12-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Null dereference performing a "TapAndAHalf" gesture in Google search field
+
+        <https://bugs.webkit.org/show_bug.cgi?id=139506>
+        <rdar://problem/19028828>
+
+        Reviewed by Darin Adler.
+
+        * ManualTests/ios/tap-and-a-half-gesture-in-empty-text-field.html: Added.
+
+2014-12-10  Dean Jackson  <dino@apple.com>
+
+        Blur filter performance test doesn't provide results
+        https://bugs.webkit.org/show_bug.cgi?id=139462
+
+        Reviewed by Sam Weinig.
+
+        This can't currently work under our performance test
+        infrastructure. Move it to a manual test to avoid
+        putting FAILures into the results.
+
+        * ManualTests/blur-filter-timing.html: Renamed from PerformanceTests/Interactive/blur-filter-timing.html.
+
+2014-12-09  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK][WK2] Add HTML5 Notifications support
+        https://bugs.webkit.org/show_bug.cgi?id=61140
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/FindLibNotify.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: add option to enable notifications, look for
+        libnotify and use it for a default implementation when found.
+
+2014-12-09  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        REGRESSION(r155906): Page content disappears on Tuaw article after loading
+        https://bugs.webkit.org/show_bug.cgi?id=138100
+
+        Reviewed by Simon Fraser.
+
+        DRT causes an extra paint which makes it impossible to test this with
+        an automated test.
+
+        * ManualTests/float-layer-not-painting.html: Added.
+
+2014-12-07  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] WebKit has a new required dependency on GnuTLS
+        https://bugs.webkit.org/show_bug.cgi?id=136158
+
+        Reviewed by Martin Robinson.
+
+        Detect if GnuTLS is installed and enable or disable subtle crypto
+        support accordingly.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-12-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Missing API detected in GObject DOM bindings after r176630
+        https://bugs.webkit.org/show_bug.cgi?id=139201
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Change GENERATE_BINDINGS macro to receive a list of optional
+        additional dependencies, so that we can add more dependecies
+        without having to change the macro.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2014-12-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Programmatic scrolling and content changes are not always synchronized
+        https://bugs.webkit.org/show_bug.cgi?id=139245
+        rdar://problem/18833612
+
+        Reviewed by Anders Carlsson.
+        
+        Manual test that tries to sync layout with programmatic scrolling.
+
+        * ManualTests/programmatic-scroll-flicker.html: Added.
+
+2014-12-04  Alberto Garcia  <berto@igalia.com>
+
+        can not find cairo-gl.h when build webkit with gtk on ubuntu 14.04
+        https://bugs.webkit.org/show_bug.cgi?id=136576
+
+        Reviewed by Carlos Garcia Campos.
+
+        CMake should complain if Accelerated 2D Canvas is explicitly
+        enabled but cairo-gl is not found.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2014-12-03  Eva Balazsfalvi  <evab.u-szeged@partner.samsung.com>
+
+        [EFL] Add subtle crypto to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=138612
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-12-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Add a ENABLE_CSS_SCROLL_SNAP macro to CMake build system
+        https://bugs.webkit.org/show_bug.cgi?id=139085
+
+        Reviewed by Andreas Kling.
+
+        * Source/cmake/OptionsEfl.cmake: Add ENABLE_CSS_SCROLL_SNAP.
+        * Source/cmake/WebKitFeatures.cmake: ditto.
+        * Source/cmakeconfig.h.cmake: ditto.
+
+2014-11-30  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Drop support for the EFL 1.7
+        https://bugs.webkit.org/show_bug.cgi?id=139114
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/EFLHelpers.cmake: Removed.
+        * Source/cmake/FindEcore.cmake: Removed.
+        * Source/cmake/FindEdje.cmake: Removed.
+        * Source/cmake/FindEet.cmake: Removed.
+        * Source/cmake/FindEeze.cmake: Removed.
+        * Source/cmake/FindEfreet.cmake: Removed.
+        * Source/cmake/FindEina.cmake: Removed.
+        * Source/cmake/FindElementary.cmake: Removed.
+        * Source/cmake/FindEvas.cmake: Removed.
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-11-28  Philippe Normand  <pnormand@igalia.com>
+
+        [CMake] Build failure against GStreamer git master
+        https://bugs.webkit.org/show_bug.cgi?id=138872
+
+        Reviewed by Csaba Osztrogon.
+
+        * Source/cmake/FindGStreamer.cmake: Simplified the
+        FIND_GSTREAMER_COMPONENT macro. Trust pkg-config for include
+        headers lookup, there's no need to do this manually. Also
+        explicitely check the version specified in GStreamer_FIND_VERSION.
+
+2014-11-27  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Remove E_Dbus dependency
+        https://bugs.webkit.org/show_bug.cgi?id=136355
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/FindE_DBus.cmake: Removed.
+        * Source/cmake/OptionsEfl.cmake:
+
+2014-11-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.7.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2014-11-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [CMake] Use ld.gold if it is available to speedup builds
+        https://bugs.webkit.org/show_bug.cgi?id=137953
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2014-11-19  Akos Kiss  <akiss@inf.u-szeged.hu>
+
+        Fix the detection of toolchain support for Cortex-A53 erratum 835769 workaround
+        https://bugs.webkit.org/show_bug.cgi?id=138840
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2014-11-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove Source/Platform cruft
+        https://bugs.webkit.org/show_bug.cgi?id=138658
+
+        Reviewed by Anders Carlsson.
+
+        * CMakeLists.txt:
+        * Source/Platform: Removed.
+
 2014-11-10  Akos Kiss  <akiss@inf.u-szeged.hu>
 
         Enable Cortex-A53-specific code paths by default if core is detected.

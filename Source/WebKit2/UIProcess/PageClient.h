@@ -47,14 +47,14 @@ OBJC_CLASS NSTextAlternatives;
 
 namespace WebCore {
 class Cursor;
-struct ViewportAttributes;
+class TextIndicator;
 struct Highlight;
+struct ViewportAttributes;
 }
 
 namespace WebKit {
 
 class DrawingAreaProxy;
-class TextIndicator;
 class NativeWebKeyboardEvent;
 class RemoteLayerTreeTransaction;
 class ViewSnapshot;
@@ -185,6 +185,10 @@ public:
     virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) = 0;
 #endif
 
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
+    virtual void notifyApplicationAboutInputContextChange() = 0;
+#endif
+
 #if USE(APPKIT)
     virtual void setPromisedData(const String& pasteboardName, PassRefPtr<WebCore::SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title,
                                  const String& url, const String& visibleUrl, PassRefPtr<WebCore::SharedBuffer> archiveBuffer) = 0;
@@ -214,7 +218,7 @@ public:
     virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) = 0;
 #endif
 
-    virtual void setTextIndicator(PassRefPtr<TextIndicator>, bool fadeOut, bool animate) = 0;
+    virtual void setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool fadeOut) = 0;
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
     virtual void exitAcceleratedCompositingMode() = 0;
@@ -223,9 +227,8 @@ public:
 #if PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
-    virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&) = 0;
-    virtual void dismissDictionaryLookupPanel() = 0;
-    virtual void dismissActionMenuPopovers() = 0;
+    virtual void didPerformDictionaryLookup(const DictionaryPopupInfo&) = 0;
+    virtual void dismissContentRelativeChildWindows() = 0;
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings) = 0;
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText) = 0;
     virtual String dismissCorrectionPanelSoon(WebCore::ReasonForDismissingAlternativeText) = 0;
@@ -274,7 +277,6 @@ public:
     virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) = 0;
     virtual void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale) = 0;
     virtual void didChangeViewportMetaTagWidth(float) = 0;
-    virtual void setUsesMinimalUI(bool) = 0;
     virtual double minimumZoomScale() const = 0;
     virtual WebCore::FloatSize contentsSize() const = 0;
     virtual void overflowScrollViewWillStartPanGesture() = 0;

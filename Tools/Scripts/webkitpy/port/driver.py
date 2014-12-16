@@ -130,10 +130,10 @@ class Driver(object):
         self._no_timeout = no_timeout
 
         self._driver_tempdir = None
-        # WebKitTestRunner can report back subprocess crashes by printing
-        # "#CRASHED - PROCESSNAME".  Since those can happen at any time
-        # and ServerProcess won't be aware of them (since the actual tool
-        # didn't crash, just a subprocess) we record the crashed subprocess name here.
+        # WebKitTestRunner/LayoutTestRelay can report back subprocess crashes by printing
+        # "#CRASHED - PROCESSNAME".  Since those can happen at any time and ServerProcess
+        # won't be aware of them (since the actual tool didn't crash, just a subprocess)
+        # we record the crashed subprocess name here.
         self._crashed_process_name = None
         self._crashed_pid = None
 
@@ -361,13 +361,13 @@ class Driver(object):
 
     def _check_for_driver_crash(self, error_line):
         if error_line == "#CRASHED\n":
-            # This is used on Windows to report that the process has crashed
+            # This is used on Windows and iOS to report that the process has crashed
             # See http://trac.webkit.org/changeset/65537.
             self._crashed_process_name = self._server_process.name()
             self._crashed_pid = self._server_process.pid()
         elif (error_line.startswith("#CRASHED - ")
             or error_line.startswith("#PROCESS UNRESPONSIVE - ")):
-            # WebKitTestRunner uses this to report that the WebProcess subprocess crashed.
+            # WebKitTestRunner/LayoutTestRelay uses this to report that the subprocess (e.g. WebProcess) crashed.
             match = re.match('#(?:CRASHED|PROCESS UNRESPONSIVE) - (\S+)', error_line)
             self._crashed_process_name = match.group(1) if match else 'WebProcess'
             match = re.search('pid (\d+)', error_line)
@@ -573,13 +573,6 @@ class DriverProxy(object):
         return self._driver.uri_to_test(uri)
 
     def run_test(self, driver_input, stop_when_done):
-        base = self._port.lookup_virtual_test_base(driver_input.test_name)
-        if base:
-            virtual_driver_input = copy.copy(driver_input)
-            virtual_driver_input.test_name = base
-            virtual_driver_input.args = self._port.lookup_virtual_test_args(driver_input.test_name)
-            return self.run_test(virtual_driver_input, stop_when_done)
-
         pixel_tests_needed = driver_input.should_run_pixel_test
         cmd_line_key = self._cmd_line_as_key(pixel_tests_needed, driver_input.args)
         if cmd_line_key != self._driver_cmd_line:

@@ -35,6 +35,7 @@
 #include "HeapIterationScope.h"
 #include "HeapRootVisitor.h"
 #include "HeapStatistics.h"
+#include "HeapVerifier.h"
 #include "IncrementalSweeper.h"
 #include "Interpreter.h"
 #include "JSGlobalObject.h"
@@ -339,6 +340,8 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_deferralDepth(0)
 {
     m_storageSpace.init();
+    if (Options::verifyHeap())
+        m_verifier = std::make_unique<HeapVerifier>(this, Options::numberOfGCCyclesToRecordForVerification());
 }
 
 Heap::~Heap()
@@ -662,7 +665,6 @@ void Heap::visitProtectedObjects(HeapRootVisitor& heapRootVisitor)
 void Heap::visitTempSortVectors(HeapRootVisitor& heapRootVisitor)
 {
     GCPHASE(VisitTempSortVectors);
-    typedef Vector<Vector<ValueStringPair, 0, UnsafeVectorOverflow>*> VectorOfValueStringVectors;
 
     for (auto* vector : m_tempSortingVectors) {
         for (auto& valueStringPair : *vector) {
@@ -1005,6 +1007,14 @@ void Heap::collect(HeapOperation collectionType)
     GCPHASE(Collect);
 
     double gcStartTime = WTF::monotonicallyIncreasingTime();
+    if (m_verifier) {
+        // Verify that live objects from the last GC cycle haven't been corrupted by
+        // mutators before we begin this new GC cycle.
+        m_verifier->verify(HeapVerifier::Phase::BeforeGC);
+
+        m_verifier->initializeGCCycle();
+        m_verifier->gatherLiveObjects(HeapVerifier::Phase::BeforeMarking);
+    }
 
     deleteOldCode(gcStartTime);
     flushOldStructureIDTables();
@@ -1013,6 +1023,10 @@ void Heap::collect(HeapOperation collectionType)
 
     markRoots(gcStartTime);
 
+    if (m_verifier) {
+        m_verifier->gatherLiveObjects(HeapVerifier::Phase::AfterMarking);
+        m_verifier->verify(HeapVerifier::Phase::AfterMarking);
+    }
     JAVASCRIPTCORE_GC_MARKED();
 
     if (vm()->typeProfiler())
@@ -1035,6 +1049,11 @@ void Heap::collect(HeapOperation collectionType)
     updateAllocationLimits();
     didFinishCollection(gcStartTime);
     resumeCompilerThreads();
+
+    if (m_verifier) {
+        m_verifier->trimDeadObjects();
+        m_verifier->verify(HeapVerifier::Phase::AfterGC);
+    }
 
     if (Options::logGC()) {
         double after = currentTimeMS();

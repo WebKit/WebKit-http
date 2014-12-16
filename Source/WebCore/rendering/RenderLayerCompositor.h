@@ -336,7 +336,7 @@ private:
     void addToOverlapMap(OverlapMap&, RenderLayer&, IntRect& layerBounds, bool& boundsComputed);
     void addToOverlapMapRecursive(OverlapMap&, RenderLayer&, RenderLayer* ancestorLayer = nullptr);
 
-    void updateCompositingLayersTimerFired(Timer&);
+    void updateCompositingLayersTimerFired();
 
     // Returns true if any layer's compositing changed
     void computeCompositingRequirements(RenderLayer* ancestorLayer, RenderLayer&, OverlapMap&, struct CompositingState&, bool& layersChanged, bool& descendantHas3DTransform);
@@ -393,7 +393,7 @@ private:
     ScrollingCoordinator* scrollingCoordinator() const;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    PassRefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const;
+    PassRefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
 #endif
 
     bool requiresCompositingForAnimation(RenderLayerModelObject&) const;
@@ -454,9 +454,9 @@ private:
     bool isThrottlingLayerFlushes() const;
     void startInitialLayerFlushTimerIfNeeded();
     void startLayerFlushTimerIfNeeded();
-    void layerFlushTimerFired(Timer&);
+    void layerFlushTimerFired();
 
-    void paintRelatedMilestonesTimerFired(Timer&);
+    void paintRelatedMilestonesTimerFired();
 
 #if !LOG_DISABLED
     const char* logReasonsForCompositing(const RenderLayer&);

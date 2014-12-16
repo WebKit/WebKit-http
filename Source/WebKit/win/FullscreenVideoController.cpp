@@ -23,7 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
 
 #if ENABLE(VIDEO) && !USE(GSTREAMER) && !USE(MEDIA_FOUNDATION)
 
@@ -245,7 +244,7 @@ FullscreenVideoController::FullscreenVideoController()
     , m_timeSlider(HUDSlider::DiamondButton, timeSliderButtonSize, IntRect(IntPoint(windowWidth / 2 - timeSliderWidth / 2, windowHeight - margin - sliderHeight), IntSize(timeSliderWidth, sliderHeight)))
     , m_hitWidget(0)
     , m_movingWindow(false)
-    , m_timer(this, &FullscreenVideoController::timerFired)
+    , m_timer(*this, &FullscreenVideoController::timerFired)
     , m_layerClient(adoptPtr(new LayerClient(this)))
     , m_rootChild(PlatformCALayerWin::create(PlatformCALayer::LayerTypeLayer, m_layerClient.get()))
     , m_fullscreenWindow(adoptPtr(new MediaPlayerPrivateFullscreenWindow(this)))
@@ -595,7 +594,7 @@ void FullscreenVideoController::onKeyDown(int virtualKey)
     }
 }
 
-void FullscreenVideoController::timerFired(Timer*)
+void FullscreenVideoController::timerFired()
 {
     // Update the time slider
     m_timeSlider.setValue(currentTime() / duration());

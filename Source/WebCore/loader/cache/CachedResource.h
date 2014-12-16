@@ -66,6 +66,9 @@ public:
         CSSStyleSheet,
         Script,
         FontResource,
+#if ENABLE(SVG_FONTS)
+        SVGFontResource,
+#endif
         RawResource,
         SVGDocumentResource
 #if ENABLE(XSLT)
@@ -144,6 +147,8 @@ public:
     unsigned encodedSize() const { return m_encodedSize; }
     unsigned decodedSize() const { return m_decodedSize; }
     unsigned overheadSize() const;
+
+    virtual bool decodedDataIsPurgeable() const { return false; }
     
     bool isLoaded() const { return !m_loading; } // FIXME. Method name is inaccurate. Loading might not have started yet.
 
@@ -347,7 +352,7 @@ public:
     void cancel();
 
 private:
-    void timerFired(Timer&);
+    void timerFired();
 
     CachedResource& m_resource;
     CachedResourceClient& m_client;

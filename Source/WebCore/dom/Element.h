@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -59,7 +59,7 @@ enum SpellcheckAttributeState {
 
 class Element : public ContainerNode {
 public:
-    static PassRefPtr<Element> create(const QualifiedName&, Document&);
+    static RefPtr<Element> create(const QualifiedName&, Document&);
     virtual ~Element();
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
@@ -200,6 +200,8 @@ public:
     double offsetWidth();
     double offsetHeight();
 
+    bool isInsideViewport(const IntRect* visibleRect = nullptr) const;
+
     // FIXME: Replace uses of offsetParent in the platform with calls
     // to the render layer and merge bindingsOffsetParent and offsetParent.
     Element* bindingsOffsetParent();
@@ -218,8 +220,8 @@ public:
 
     WEBCORE_EXPORT IntRect boundsInRootViewSpace();
 
-    PassRefPtr<ClientRectList> getClientRects();
-    PassRefPtr<ClientRect> getBoundingClientRect();
+    RefPtr<ClientRectList> getClientRects();
+    RefPtr<ClientRect> getBoundingClientRect();
     
     // Returns the absolute bounding box translated into client coordinates.
     WEBCORE_EXPORT IntRect clientRect() const;
@@ -229,16 +231,16 @@ public:
     bool removeAttribute(const AtomicString& name);
     bool removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
-    PassRefPtr<Attr> detachAttribute(unsigned index);
+    RefPtr<Attr> detachAttribute(unsigned index);
 
-    PassRefPtr<Attr> getAttributeNode(const AtomicString& name);
-    PassRefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    PassRefPtr<Attr> setAttributeNode(Attr*, ExceptionCode&);
-    PassRefPtr<Attr> setAttributeNodeNS(Attr*, ExceptionCode&);
-    PassRefPtr<Attr> removeAttributeNode(Attr*, ExceptionCode&);
+    RefPtr<Attr> getAttributeNode(const AtomicString& name);
+    RefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    RefPtr<Attr> setAttributeNode(Attr*, ExceptionCode&);
+    RefPtr<Attr> setAttributeNodeNS(Attr*, ExceptionCode&);
+    RefPtr<Attr> removeAttributeNode(Attr*, ExceptionCode&);
 
-    PassRefPtr<Attr> attrIfExists(const QualifiedName&);
-    PassRefPtr<Attr> ensureAttr(const QualifiedName&);
+    RefPtr<Attr> attrIfExists(const QualifiedName&);
+    RefPtr<Attr> ensureAttr(const QualifiedName&);
 
     const Vector<RefPtr<Attr>>& attrNodeList();
 
@@ -265,8 +267,8 @@ public:
 
     virtual String nodeName() const override;
 
-    PassRefPtr<Element> cloneElementWithChildren();
-    PassRefPtr<Element> cloneElementWithoutChildren();
+    RefPtr<Element> cloneElementWithChildren();
+    RefPtr<Element> cloneElementWithoutChildren();
 
     void normalizeAttributes();
     String nodeNamePreservingCase() const;
@@ -309,11 +311,11 @@ public:
 
     void lazyReattach();
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>);
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&);
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
-    WEBCORE_EXPORT PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
+    WEBCORE_EXPORT RefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
 
     ShadowRoot* userAgentShadowRoot() const;
     ShadowRoot& ensureUserAgentShadowRoot();
@@ -351,6 +353,7 @@ public:
     bool childrenAffectedByFirstChildRules() const { return getFlag(ChildrenAffectedByFirstChildRulesFlag); }
     bool childrenAffectedByLastChildRules() const { return getFlag(ChildrenAffectedByLastChildRulesFlag); }
     bool childrenAffectedByBackwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByBackwardPositionalRules(); }
+    bool childrenAffectedByPropertyBasedBackwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules(); }
     bool affectsNextSiblingElementStyle() const { return getFlag(AffectsNextSiblingElementStyle); }
     unsigned childIndex() const { return hasRareData() ? rareDataChildIndex() : 0; }
 
@@ -363,6 +366,7 @@ public:
     void setChildrenAffectedByFirstChildRules() { setFlag(ChildrenAffectedByFirstChildRulesFlag); }
     void setChildrenAffectedByLastChildRules() { setFlag(ChildrenAffectedByLastChildRulesFlag); }
     void setChildrenAffectedByBackwardPositionalRules();
+    void setChildrenAffectedByPropertyBasedBackwardPositionalRules();
     void setAffectsNextSiblingElementStyle() { setFlag(AffectsNextSiblingElementStyle); }
     void setStyleIsAffectedByPreviousSibling() { setFlag(StyleIsAffectedByPreviousSibling); }
     void setChildIndex(unsigned);
@@ -391,6 +395,10 @@ public:
     virtual void updateFocusAppearance(bool restorePreviousSelection);
     virtual void blur();
 
+    String innerHTML() const;
+    String outerHTML() const;
+    void setInnerHTML(const String&, ExceptionCode&);
+    void setOuterHTML(const String&, ExceptionCode&);
     WEBCORE_EXPORT String innerText();
     String outerText();
  
@@ -451,14 +459,14 @@ public:
     virtual bool isMediaElement() const { return false; }
 #endif
 
+    virtual bool matchesValidPseudoClass() const { return false; }
+    virtual bool matchesInvalidPseudoClass() const { return false; }
     virtual bool isFormControlElement() const { return false; }
     virtual bool isSpinButtonElement() const { return false; }
     virtual bool isTextFormControl() const { return false; }
     virtual bool isOptionalFormControl() const { return false; }
     virtual bool isRequiredFormControl() const { return false; }
     virtual bool isDefaultButtonForForm() const { return false; }
-    virtual bool willValidate() const { return false; }
-    virtual bool isValidFormControlElement() const { return false; }
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
     virtual bool isFrameElementBase() const { return false; }
@@ -524,10 +532,10 @@ public:
     bool dispatchWheelEvent(const PlatformWheelEvent&);
     bool dispatchKeyEvent(const PlatformKeyboardEvent&);
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
-    void dispatchFocusInEvent(const AtomicString& eventType, PassRefPtr<Element> oldFocusedElement);
-    void dispatchFocusOutEvent(const AtomicString& eventType, PassRefPtr<Element> newFocusedElement);
-    virtual void dispatchFocusEvent(PassRefPtr<Element> oldFocusedElement, FocusDirection);
-    virtual void dispatchBlurEvent(PassRefPtr<Element> newFocusedElement);
+    void dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement);
+    void dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement);
+    virtual void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection);
+    virtual void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement);
 
     virtual bool willRecalcStyle(Style::Change);
     virtual void didRecalcStyle(Style::Change);
@@ -536,7 +544,7 @@ public:
     virtual void didAttachRenderers();
     virtual void willDetachRenderers();
     virtual void didDetachRenderers();
-    virtual PassRefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle);
+    virtual RefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle);
 
     void setBeforePseudoElement(PassRefPtr<PseudoElement>);
     void setAfterPseudoElement(PassRefPtr<PseudoElement>);
@@ -547,6 +555,7 @@ public:
     void clearHoverAndActiveStatusBeforeDetachingRenderer();
 
     WEBCORE_EXPORT URL absoluteLinkURL() const;
+    WeakPtr<Element> createWeakPtr();
 
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
@@ -557,16 +566,18 @@ protected:
     virtual void removeAllEventListeners() override final;
     virtual void parserDidSetAttributes();
 
-    void clearTabIndexExplicitlyIfNeeded();    
+    void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(short);
 
-    PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
+    RefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
     HTMLCollection* cachedHTMLCollection(CollectionType);
 
     // classAttributeChanged() exists to share code between
     // parseAttribute (called via setAttribute()) and
     // svgAttributeChanged (called when element.className.baseValue is set)
     void classAttributeChanged(const AtomicString& newClassString);
+
+    static void mergeWithNextTextNode(Text& node, ExceptionCode&);
 
 private:
     bool isTextNode() const;
@@ -621,8 +632,8 @@ private:
 
     // cloneNode is private so that non-virtual cloneElementWithChildren and cloneElementWithoutChildren
     // are used instead.
-    virtual PassRefPtr<Node> cloneNode(bool deep) override;
-    virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
+    virtual RefPtr<Node> cloneNodeInternal(CloningOperation) override;
+    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren();
 
     void addShadowRoot(PassRefPtr<ShadowRoot>);
     void removeShadowRoot();
@@ -633,6 +644,7 @@ private:
     bool rareDataChildrenAffectedByDrag() const;
     bool rareDataChildrenAffectedByLastChildRules() const;
     bool rareDataChildrenAffectedByBackwardPositionalRules() const;
+    bool rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules() const;
     unsigned rareDataChildIndex() const;
 
     SpellcheckAttributeState spellcheckAttributeState() const;

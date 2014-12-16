@@ -68,14 +68,14 @@ friend class ImageLoader;
 friend class ResourceCacheValidationSuppressor;
 
 public:
-    static PassRef<CachedResourceLoader> create(DocumentLoader* documentLoader) { return adoptRef(*new CachedResourceLoader(documentLoader)); }
+    static Ref<CachedResourceLoader> create(DocumentLoader* documentLoader) { return adoptRef(*new CachedResourceLoader(documentLoader)); }
     ~CachedResourceLoader();
 
     CachedResourceHandle<CachedImage> requestImage(CachedResourceRequest&);
     CachedResourceHandle<CachedCSSStyleSheet> requestCSSStyleSheet(CachedResourceRequest&);
     CachedResourceHandle<CachedCSSStyleSheet> requestUserCSSStyleSheet(CachedResourceRequest&);
     CachedResourceHandle<CachedScript> requestScript(CachedResourceRequest&);
-    CachedResourceHandle<CachedFont> requestFont(CachedResourceRequest&);
+    CachedResourceHandle<CachedFont> requestFont(CachedResourceRequest&, bool isSVG);
     CachedResourceHandle<CachedRawResource> requestRawResource(CachedResourceRequest&);
     CachedResourceHandle<CachedRawResource> requestMainResource(CachedResourceRequest&);
     CachedResourceHandle<CachedSVGDocument> requestSVGDocument(CachedResourceRequest&);
@@ -114,6 +114,7 @@ public:
     SessionID sessionID() const;
 
     void removeCachedResource(CachedResource*) const;
+    void addCachedResource(CachedResource*);
 
     void loadDone(CachedResource*, bool shouldPerformPostLoadActions = true);
 
@@ -152,7 +153,7 @@ private:
     bool shouldContinueAfterNotifyingLoadedFromMemoryCache(const CachedResourceRequest&, CachedResource*);
     bool checkInsecureContent(CachedResource::Type, const URL&) const;
 
-    void garbageCollectDocumentResourcesTimerFired(Timer&);
+    void garbageCollectDocumentResourcesTimerFired();
     void performPostLoadActions();
 
     bool clientDefersImage(const URL&) const;
@@ -165,7 +166,7 @@ private:
     
     int m_requestCount;
     
-    OwnPtr<ListHashSet<CachedResource*>> m_preloads;
+    std::unique_ptr<ListHashSet<CachedResource*>> m_preloads;
     struct PendingPreload {
         CachedResource::Type m_type;
         CachedResourceRequest m_request;

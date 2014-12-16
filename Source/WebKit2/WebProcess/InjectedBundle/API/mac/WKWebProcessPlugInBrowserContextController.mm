@@ -82,6 +82,15 @@ static void didStartProvisionalLoadForFrame(WKBundlePageRef page, WKBundleFrameR
         [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didStartProvisionalLoadForFrame:wrapper(*toImpl(frame))];
 }
 
+static void didReceiveServerRedirectForProvisionalLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef *userDataRef, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didReceiveServerRedirectForProvisionalLoadForFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didReceiveServerRedirectForProvisionalLoadForFrame:wrapper(*toImpl(frame))];
+}
+
 static void didFinishLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
 {
     WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
@@ -207,6 +216,7 @@ static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *co
     client.base.version = 8;
     client.base.clientInfo = contextController;
     client.didStartProvisionalLoadForFrame = didStartProvisionalLoadForFrame;
+    client.didReceiveServerRedirectForProvisionalLoadForFrame = didReceiveServerRedirectForProvisionalLoadForFrame;
     client.didCommitLoadForFrame = didCommitLoadForFrame;
     client.didFinishDocumentLoadForFrame = didFinishDocumentLoadForFrame;
     client.didFailLoadWithErrorForFrame = didFailLoadWithErrorForFrame;
@@ -455,7 +465,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
             }
             [archiver finishEncoding];
 
-            userData = API::Data::createWithoutCopying((const unsigned char*)[data bytes], [data length], releaseNSData, data.leakRef()).leakRef();
+            userData = API::Data::createWithoutCopying(WTF::move(data));
         }
 
         virtual void willSubmitForm(WebPage*, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<WTF::String, WTF::String>>& values, RefPtr<API::Object>& userData) override
@@ -478,11 +488,6 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 
             if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:textDidChangeInTextField:inFrame:initiatedByUserTyping:)])
                 [formDelegate _webProcessPlugInBrowserContextController:m_controller textDidChangeInTextField:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(inputElement)) inFrame:wrapper(*frame) initiatedByUserTyping:initiatedByUserTyping];
-        }
-
-        static void releaseNSData(unsigned char*, const void* untypedData)
-        {
-            [(NSData *)untypedData release];
         }
 
         virtual void willBeginInputSession(WebPage*, Element* element, WebFrame* frame, RefPtr<API::Object>& userData) override

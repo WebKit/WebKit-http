@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StorageNamespaceImpl_h
-#define StorageNamespaceImpl_h
+#ifndef WebStorageNamespaceImpl_h
+#define WebStorageNamespaceImpl_h
 
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/StorageArea.h>
@@ -38,16 +38,23 @@ class WebPage;
 
 class StorageNamespaceImpl : public WebCore::StorageNamespace {
 public:
-    static PassRefPtr<StorageNamespaceImpl> createLocalStorageNamespace(WebCore::PageGroup*);
-    static PassRefPtr<StorageNamespaceImpl> createSessionStorageNamespace(WebPage*);
+    static RefPtr<StorageNamespaceImpl> createSessionStorageNamespace(uint64_t identifier, unsigned quotaInBytes);
+    static RefPtr<StorageNamespaceImpl> createLocalStorageNamespace(uint64_t identifier, unsigned quotaInBytes);
+    static RefPtr<StorageNamespaceImpl> createTransientLocalStorageNamespace(uint64_t identifier, WebCore::SecurityOrigin& topLevelOrigin, uint64_t quotaInBytes);
+
     virtual ~StorageNamespaceImpl();
 
     WebCore::StorageType storageType() const { return m_storageType; }
     uint64_t storageNamespaceID() const { return m_storageNamespaceID; }
+    WebCore::SecurityOrigin* topLevelOrigin() const { return m_topLevelOrigin.get(); }
     unsigned quotaInBytes() const { return m_quotaInBytes; }
 
+    // FIXME: Remove this deprecated overload.
+    static PassRefPtr<StorageNamespaceImpl> createLocalStorageNamespace(WebCore::PageGroup*);
+    static PassRefPtr<StorageNamespaceImpl> createSessionStorageNamespace(WebPage*);
+
 private:
-    explicit StorageNamespaceImpl(WebCore::StorageType, uint64_t storageNamespaceID, unsigned quotaInBytes);
+    explicit StorageNamespaceImpl(WebCore::StorageType, uint64_t storageNamespaceID, WebCore::SecurityOrigin* topLevelOrigin, unsigned quotaInBytes);
 
     virtual PassRefPtr<WebCore::StorageArea> storageArea(PassRefPtr<WebCore::SecurityOrigin>) override;
     virtual PassRefPtr<WebCore::StorageNamespace> copy(WebCore::Page*) override;
@@ -57,13 +64,17 @@ private:
     virtual void sync() override;
     virtual void closeIdleLocalStorageDatabases() override;
 
-    WebCore::StorageType m_storageType;
-    uint64_t m_storageNamespaceID;
-    unsigned m_quotaInBytes;
+    const WebCore::StorageType m_storageType;
+    const uint64_t m_storageNamespaceID;
+
+    // Only used for transient local storage namespaces.
+    const RefPtr<WebCore::SecurityOrigin> m_topLevelOrigin;
+
+    const unsigned m_quotaInBytes;
 
     HashMap<RefPtr<WebCore::SecurityOrigin>, RefPtr<StorageAreaMap>> m_storageAreaMaps;
 };
 
 } // namespace WebKit
 
-#endif // StorageNamespaceImpl_h
+#endif // WebStorageNamespaceImpl_h

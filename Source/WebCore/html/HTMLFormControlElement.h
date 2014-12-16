@@ -98,12 +98,12 @@ public:
     void setAutocapitalize(const AtomicString&);
 #endif
 
-    virtual bool willValidate() const override;
+    virtual bool willValidate() const override final;
     void updateVisibleValidationMessage();
     void hideVisibleValidationMessage();
     bool checkValidity(Vector<RefPtr<FormAssociatedElement>>* unhandledInvalidControls = 0);
     // This must be called when a validation constraint or control value is changed.
-    void setNeedsValidityCheck();
+    void updateValidity();
     virtual void setCustomValidity(const String&) override;
 
     bool isReadOnly() const { return m_isReadOnly; }
@@ -138,17 +138,20 @@ protected:
 
     virtual void didRecalcStyle(Style::Change) override;
 
-    virtual void dispatchBlurEvent(PassRefPtr<Element> newFocusedElement) override;
+    virtual void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement) override;
 
     // This must be called any time the result of willValidate() has changed.
     void setNeedsWillValidateCheck();
-    virtual bool recalcWillValidate() const;
+    virtual bool computeWillValidate() const;
 
     bool validationMessageShadowTreeContains(const Node&) const;
 
 private:
     virtual void refFormAssociatedElement() override { ref(); }
     virtual void derefFormAssociatedElement() override { deref(); }
+
+    virtual bool matchesValidPseudoClass() const override;
+    virtual bool matchesInvalidPseudoClass() const override;
 
     virtual bool isFormControlElement() const override final { return true; }
     virtual bool alwaysCreateUserAgentShadowRoot() const override { return true; }
@@ -157,7 +160,7 @@ private:
 
     virtual HTMLFormElement* virtualForm() const override;
     virtual bool isDefaultButtonForForm() const override;
-    virtual bool isValidFormControlElement() const override;
+    bool isValidFormControlElement() const;
 
     bool computeIsDisabledByFieldsetAncestor() const;
 

@@ -39,9 +39,9 @@ public:
     bool hasReplacedLogicalHeight() const;
 
 protected:
-    RenderReplaced(Element&, PassRef<RenderStyle>);
-    RenderReplaced(Element&, PassRef<RenderStyle>, const LayoutSize& intrinsicSize);
-    RenderReplaced(Document&, PassRef<RenderStyle>, const LayoutSize& intrinsicSize);
+    RenderReplaced(Element&, Ref<RenderStyle>&&);
+    RenderReplaced(Element&, Ref<RenderStyle>&&, const LayoutSize& intrinsicSize);
+    RenderReplaced(Document&, Ref<RenderStyle>&&, const LayoutSize& intrinsicSize);
 
     virtual void layout() override;
 
@@ -65,6 +65,8 @@ protected:
     virtual void paint(PaintInfo&, const LayoutPoint&) override;
     bool shouldPaint(PaintInfo&, const LayoutPoint&);
     LayoutRect localSelectionRect(bool checkWhetherSelected = true) const; // This is in local coordinates, but it's a physical rect (so the top left corner is physical top left).
+
+    virtual void willBeDestroyed() override;
 
 private:
     virtual RenderBox* embeddedContentBox() const { return 0; }

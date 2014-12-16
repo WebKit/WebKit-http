@@ -261,14 +261,14 @@ void WebPageProxy::overflowScrollDidEndScroll()
     m_pageClient.overflowScrollDidEndScroll();
 }
 
-void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& minimumLayoutSizeForMinimalUI, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
+void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
 {
     if (!isValid())
         return;
 
     m_dynamicViewportSizeUpdateWaitingForTarget = true;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = true;
-    m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, minimumLayoutSizeForMinimalUI, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, targetScale, deviceOrientation), m_pageID);
+    m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, targetScale, deviceOrientation), m_pageID);
 }
 
 void WebPageProxy::synchronizeDynamicViewportUpdate()
@@ -313,11 +313,6 @@ void WebPageProxy::setViewportConfigurationMinimumLayoutSize(const WebCore::Floa
     m_process->send(Messages::WebPage::SetViewportConfigurationMinimumLayoutSize(size), m_pageID);
 }
 
-void WebPageProxy::setViewportConfigurationMinimumLayoutSizeForMinimalUI(const WebCore::FloatSize& size)
-{
-    m_process->send(Messages::WebPage::SetViewportConfigurationMinimumLayoutSizeForMinimalUI(size), m_pageID);
-}
-
 void WebPageProxy::setMaximumUnobscuredSize(const WebCore::FloatSize& size)
 {
     m_process->send(Messages::WebPage::SetMaximumUnobscuredSize(size), m_pageID);
@@ -330,6 +325,12 @@ void WebPageProxy::setDeviceOrientation(int32_t deviceOrientation)
         if (isValid())
             m_process->send(Messages::WebPage::SetDeviceOrientation(deviceOrientation), m_pageID);
     }
+}
+
+static bool exceedsRenderTreeSizeSizeThreshold(uint64_t thresholdSize, uint64_t committedSize)
+{
+    const double thesholdSizeFraction = 0.5; // Empirically-derived.
+    return committedSize > thresholdSize * thesholdSizeFraction;
 }
 
 void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& layerTreeTransaction)
@@ -349,6 +350,12 @@ void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& 
     }
 
     m_pageClient.didCommitLayerTree(layerTreeTransaction);
+
+    if (m_wantsSessionRestorationRenderTreeSizeThresholdEvent && !m_hitRenderTreeSizeThreshold
+        && exceedsRenderTreeSizeSizeThreshold(m_sessionRestorationRenderTreeSize, layerTreeTransaction.renderTreeSize())) {
+        m_hitRenderTreeSizeThreshold = true;
+        m_loaderClient->didLayout(this, WebCore::ReachedSessionRestorationRenderTreeSizeThreshold, nullptr);
+    }
 }
 
 void WebPageProxy::selectWithGesture(const WebCore::IntPoint point, WebCore::TextGranularity granularity, uint32_t gestureType, uint32_t gestureState, std::function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)> callbackFunction)
@@ -421,6 +428,62 @@ bool WebPageProxy::applyAutocorrection(const String& correction, const String& o
     bool autocorrectionApplied = false;
     m_process->sendSync(Messages::WebPage::SyncApplyAutocorrection(correction, originalText), Messages::WebPage::SyncApplyAutocorrection::Reply(autocorrectionApplied), m_pageID);
     return autocorrectionApplied;
+}
+
+void WebPageProxy::selectTextWithGranularityAtPoint(const WebCore::IntPoint point, WebCore::TextGranularity granularity, std::function<void (CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    m_process->send(Messages::WebPage::SelectTextWithGranularityAtPoint(point, static_cast<uint32_t>(granularity), callbackID), m_pageID);
+}
+
+void WebPageProxy::selectPositionAtBoundaryWithDirection(const WebCore::IntPoint point, WebCore::TextGranularity granularity, WebCore::SelectionDirection direction, std::function<void (CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    m_process->send(Messages::WebPage::SelectPositionAtBoundaryWithDirection(point, static_cast<uint32_t>(granularity), static_cast<uint32_t>(direction), callbackID), m_pageID);
+}
+
+void WebPageProxy::selectPositionAtPoint(const WebCore::IntPoint point, std::function<void (CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    m_process->send(Messages::WebPage::SelectPositionAtPoint(point, callbackID), m_pageID);
+}
+
+void WebPageProxy::beginSelectionInDirection(WebCore::SelectionDirection direction, std::function<void (uint64_t, CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(0, CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    m_process->send(Messages::WebPage::BeginSelectionInDirection(direction, callbackID), m_pageID);
+}
+
+void WebPageProxy::updateSelectionWithExtentPoint(const WebCore::IntPoint point, std::function<void (uint64_t, CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(0, CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    m_process->send(Messages::WebPage::UpdateSelectionWithExtentPoint(point, callbackID), m_pageID);
+    
 }
 
 void WebPageProxy::requestDictationContext(std::function<void (const String&, const String&, const String&, CallbackBase::Error)> callbackFunction)
@@ -737,9 +800,15 @@ void WebPageProxy::disableInspectorNodeSearch()
 }
 #endif
 
-void WebPageProxy::focusNextAssistedNode(bool isForward)
+void WebPageProxy::focusNextAssistedNode(bool isForward, std::function<void (CallbackBase::Error)> callbackFunction)
 {
-    process().send(Messages::WebPage::FocusNextAssistedNode(isForward), m_pageID);
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    process().send(Messages::WebPage::FocusNextAssistedNode(isForward, callbackID), m_pageID);
 }
 
 void WebPageProxy::setAssistedNodeValue(const String& value)
@@ -757,7 +826,7 @@ void WebPageProxy::setAssistedNodeSelectedIndex(uint32_t index, bool allowMultip
     process().send(Messages::WebPage::SetAssistedNodeSelectedIndex(index, allowMultipleSelection), m_pageID);
 }
 
-void WebPageProxy::didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&)
+void WebPageProxy::didPerformDictionaryLookup(const DictionaryPopupInfo&)
 {
     notImplemented();
 }
@@ -805,11 +874,6 @@ void WebPageProxy::didNotHandleTapAsClick(const WebCore::IntPoint& point)
 void WebPageProxy::viewportMetaTagWidthDidChange(float width)
 {
     m_pageClient.didChangeViewportMetaTagWidth(width);
-}
-
-void WebPageProxy::setUsesMinimalUI(bool usesMinimalUI)
-{
-    m_pageClient.setUsesMinimalUI(usesMinimalUI);
 }
 
 void WebPageProxy::didFinishDrawingPagesToPDF(const IPC::DataReference& pdfData)

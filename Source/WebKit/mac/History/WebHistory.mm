@@ -33,7 +33,9 @@
 #import "WebKitLogging.h"
 #import "WebNSURLExtras.h"
 #import "WebTypesInternal.h"
+#import "WebVisitedLinkStore.h"
 #import <WebCore/HistoryItem.h>
+#import <WebCore/NSCalendarDateSPI.h>
 #import <WebCore/PageGroup.h>
 
 #if PLATFORM(IOS)
@@ -108,8 +110,6 @@ private:
 - (int)historyItemLimit;
 - (void)setHistoryAgeInDaysLimit:(int)limit;
 - (int)historyAgeInDaysLimit;
-
-- (void)addVisitedLinksToPageGroup:(PageGroup&)group;
 
 @end
 
@@ -279,7 +279,7 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
 #endif
 
     if (![_entriesByURL count])
-        PageGroup::removeAllVisitedLinks();
+        WebVisitedLinkStore::removeAllVisitedLinks();
 
     return YES;
 }
@@ -445,7 +445,7 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
     [_orderedLastVisitedDays release];
     _orderedLastVisitedDays = nil;
 
-    PageGroup::removeAllVisitedLinks();
+    WebVisitedLinkStore::removeAllVisitedLinks();
 
     return YES;
 }
@@ -693,20 +693,10 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
     return result;
 }
 
-- (void)addVisitedLinksToPageGroup:(PageGroup&)group
+- (void)addVisitedLinksToVisitedLinkStore:(WebVisitedLinkStore&)visitedLinkStore
 {
-    NSEnumerator *enumerator = [_entriesByURL keyEnumerator];
-    while (NSString *url = [enumerator nextObject]) {
-        size_t length = [url length];
-        const UChar* characters = CFStringGetCharactersPtr(reinterpret_cast<CFStringRef>(url));
-        if (characters)
-            group.addVisitedLink(characters, length);
-        else {
-            Vector<UChar, 512> buffer(length);
-            [url getCharacters:buffer.data()];
-            group.addVisitedLink(buffer.data(), length);
-        }
-    }
+    for (NSString *urlString in _entriesByURL)
+        visitedLinkStore.addVisitedLink(urlString);
 }
 
 @end
@@ -726,8 +716,9 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
     // and correct synchronization of history file between applications.
     [_sharedHistory release];
     _sharedHistory = [history retain];
-    PageGroup::setShouldTrackVisitedLinks(history);
-    PageGroup::removeAllVisitedLinks();
+
+    WebVisitedLinkStore::setShouldTrackVisitedLinks(history);
+    WebVisitedLinkStore::removeAllVisitedLinks();
 }
 
 - (void)timeZoneChanged:(NSNotification *)notification
@@ -909,12 +900,12 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
 
 + (void)_setVisitedLinkTrackingEnabled:(BOOL)visitedLinkTrackingEnabled
 {
-    PageGroup::setShouldTrackVisitedLinks(visitedLinkTrackingEnabled);
+    WebVisitedLinkStore::setShouldTrackVisitedLinks(visitedLinkTrackingEnabled);
 }
 
 + (void)_removeAllVisitedLinks
 {
-    PageGroup::removeAllVisitedLinks();
+    WebVisitedLinkStore::removeAllVisitedLinks();
 }
 
 @end
@@ -935,11 +926,10 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
     [entries release];
 }
 
-- (void)_addVisitedLinksToPageGroup:(WebCore::PageGroup&)group
+- (void)_addVisitedLinksToVisitedLinkStore:(WebVisitedLinkStore &)visitedLinkStore
 {
-    [_historyPrivate addVisitedLinksToPageGroup:group];
+    [_historyPrivate addVisitedLinksToVisitedLinkStore:visitedLinkStore];
 }
-
 @end
 
 WebHistoryWriter::WebHistoryWriter(DateToEntriesMap* entriesByDate)

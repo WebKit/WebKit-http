@@ -1117,7 +1117,7 @@ String listMarkerText(EListStyleType type, int value)
     return builder.toString();
 }
 
-RenderListMarker::RenderListMarker(RenderListItem& listItem, PassRef<RenderStyle> style)
+RenderListMarker::RenderListMarker(RenderListItem& listItem, Ref<RenderStyle>&& style)
     : RenderBox(listItem.document(), WTF::move(style), 0)
     , m_listItem(listItem)
 {
@@ -1342,7 +1342,7 @@ void RenderListMarker::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
             StringBuilder buffer;
             buffer.reserveCapacity(length);
             for (unsigned i = 0; i < length; ++i)
-                buffer.append(m_text[length - i]);
+                buffer.append(m_text[length - i - 1]);
             reversedText = buffer.toString();
             textRun.setText(StringView(reversedText));
         }

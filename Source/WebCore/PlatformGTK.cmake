@@ -56,6 +56,7 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
+    platform/audio/gstreamer/AudioSourceProviderGStreamer.cpp
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
@@ -155,6 +156,7 @@ list(APPEND WebCore_SOURCES
     platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/linux/GamepadDeviceLinux.cpp
+    platform/linux/MemoryPressureHandlerLinux.cpp
 
     platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
 
@@ -222,7 +224,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/DragIcon.cpp
     platform/gtk/DragImageGtk.cpp
     platform/gtk/GRefPtrGtk.cpp
-    platform/gtk/GtkClickCounter.cpp
     platform/gtk/GtkUtilities.cpp
     platform/gtk/GtkVersioning.c
     platform/gtk/KeyBindingTranslator.cpp
@@ -465,6 +466,7 @@ list(APPEND GObjectDOMBindings_SOURCES
     bindings/gobject/GObjectNodeFilterCondition.cpp
     bindings/gobject/GObjectXPathNSResolver.cpp
     bindings/gobject/WebKitDOMCustom.cpp
+    bindings/gobject/WebKitDOMDeprecated.cpp
     bindings/gobject/WebKitDOMEventTarget.cpp
     bindings/gobject/WebKitDOMHTMLPrivate.cpp
     bindings/gobject/WebKitDOMNodeFilter.cpp
@@ -680,13 +682,14 @@ if (ENABLE_QUOTA)
     )
 endif ()
 
-set(GObjectDOMBindings_STATIC_CLASS_LIST Custom EventTarget NodeFilter Object XPathNSResolver)
+set(GObjectDOMBindings_STATIC_CLASS_LIST Custom Deprecated EventTarget NodeFilter Object XPathNSResolver)
 
 set(GObjectDOMBindingsStable_CLASS_LIST ${GObjectDOMBindings_STATIC_CLASS_LIST})
 set(GObjectDOMBindingsStable_INSTALLED_HEADERS
      ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdomdefines.h
      ${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}/webkitdom.h
      ${WEBCORE_DIR}/bindings/gobject/WebKitDOMCustom.h
+     ${WEBCORE_DIR}/bindings/gobject/WebKitDOMDeprecated.h
      ${WEBCORE_DIR}/bindings/gobject/WebKitDOMEventTarget.h
      ${WEBCORE_DIR}/bindings/gobject/WebKitDOMNodeFilter.h
      ${WEBCORE_DIR}/bindings/gobject/WebKitDOMObject.h
@@ -752,6 +755,13 @@ add_custom_target(fake-generated-webkitdom-headers
 )
 
 set(GObjectDOMBindings_IDL_FILES ${GObjectDOMBindingsStable_IDL_FILES} ${GObjectDOMBindingsUnstable_IDL_FILES})
+set(ADDITIONAL_BINDINGS_DEPENDENCIES
+    ${WEBCORE_DIR}/bindings/gobject/webkitdom.symbols
+    ${WINDOW_CONSTRUCTORS_FILE}
+    ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+    ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+    ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+)
 GENERATE_BINDINGS(GObjectDOMBindings_SOURCES
     "${GObjectDOMBindings_IDL_FILES}"
     "${WEBCORE_DIR}"
@@ -761,10 +771,7 @@ GENERATE_BINDINGS(GObjectDOMBindings_SOURCES
     WebKitDOM GObject cpp
     ${IDL_ATTRIBUTES_FILE}
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
-    ${WINDOW_CONSTRUCTORS_FILE}
-    ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
+    ${ADDITIONAL_BINDINGS_DEPENDENCIES})
 
 add_definitions(-DBUILDING_WEBKIT)
 add_definitions(-DWEBKIT_DOM_USE_UNSTABLE_API)
@@ -833,22 +840,23 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/algorithms/CryptoAlgorithmSHA256.cpp
         crypto/algorithms/CryptoAlgorithmSHA384.cpp
         crypto/algorithms/CryptoAlgorithmSHA512.cpp
+
+        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoDigestGnuTLS.cpp
+        crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
+        crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp
+
         crypto/keys/CryptoKeyAES.cpp
         crypto/keys/CryptoKeyDataOctetSequence.cpp
         crypto/keys/CryptoKeyDataRSAComponents.cpp
         crypto/keys/CryptoKeyHMAC.cpp
         crypto/keys/CryptoKeySerializationRaw.cpp
-
-        crypto/gtk/CryptoAlgorithmRegistryGtk.cpp
-        crypto/gtk/CryptoAlgorithmAES_CBCGtk.cpp
-        crypto/gtk/CryptoAlgorithmAES_KWGtk.cpp
-        crypto/gtk/CryptoAlgorithmHMACGtk.cpp
-        crypto/gtk/CryptoAlgorithmRSAES_PKCS1_v1_5Gtk.cpp
-        crypto/gtk/CryptoAlgorithmRSA_OAEPGtk.cpp
-        crypto/gtk/CryptoAlgorithmRSASSA_PKCS1_v1_5Gtk.cpp
-        crypto/gtk/CryptoDigestGtk.cpp
-        crypto/gtk/CryptoKeyRSAGtk.cpp
-        crypto/gtk/SerializedCryptoKeyWrapGtk.cpp
     )
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES

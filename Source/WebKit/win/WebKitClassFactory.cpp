@@ -23,7 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
 #include "WebKitDLL.h"
 #include "WebKitClassFactory.h"
 
@@ -31,7 +30,6 @@
 #include "ForEachCoClass.h"
 #include "WebArchive.h"
 #include "WebCache.h"
-#include "WebCookieManager.h"
 #include "WebCoreStatistics.h"
 #include "WebDatabaseManager.h"
 #include "WebDownload.h"

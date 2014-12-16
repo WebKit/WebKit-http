@@ -40,13 +40,13 @@ using namespace HTMLNames;
 
 inline HTMLSourceElement::HTMLSourceElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
-    , m_errorEventTimer(this, &HTMLSourceElement::errorEventTimerFired)
+    , m_errorEventTimer(*this, &HTMLSourceElement::errorEventTimerFired)
 {
     LOG(Media, "HTMLSourceElement::HTMLSourceElement - %p", this);
     ASSERT(hasTagName(sourceTag));
 }
 
-PassRefPtr<HTMLSourceElement> HTMLSourceElement::create(const QualifiedName& tagName, Document& document)
+RefPtr<HTMLSourceElement> HTMLSourceElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLSourceElement(tagName, document));
 }
@@ -110,7 +110,7 @@ void HTMLSourceElement::cancelPendingErrorEvent()
     m_errorEventTimer.stop();
 }
 
-void HTMLSourceElement::errorEventTimerFired(Timer&)
+void HTMLSourceElement::errorEventTimerFired()
 {
     LOG(Media, "HTMLSourceElement::errorEventTimerFired - %p", this);
     dispatchEvent(Event::create(eventNames().errorEvent, false, true));

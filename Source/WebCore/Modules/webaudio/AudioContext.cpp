@@ -143,11 +143,8 @@ AudioContext::AudioContext(Document& document)
 
     m_destinationNode = DefaultAudioDestinationNode::create(this);
 
-    // This sets in motion an asynchronous loading mechanism on another thread.
-    // We can check m_hrtfDatabaseLoader->isLoaded() to find out whether or not it has been fully loaded.
-    // It's not that useful to have a callback function for this since the audio thread automatically starts rendering on the graph
-    // when this has finished (see AudioDestinationNode).
-    m_hrtfDatabaseLoader = HRTFDatabaseLoader::createAndLoadAsynchronouslyIfNecessary(sampleRate());
+    // Initialize the destination node's muted state to match the page's current muted state.
+    pageMutedStateDidChange();
 }
 
 // Constructor for offline (non-realtime) rendering.
@@ -166,9 +163,6 @@ AudioContext::AudioContext(Document& document, unsigned numberOfChannels, size_t
     , m_restrictions(NoRestrictions)
 {
     constructCommon();
-
-    // FIXME: the passed in sampleRate MUST match the hardware sample-rate since HRTFDatabaseLoader is a singleton.
-    m_hrtfDatabaseLoader = HRTFDatabaseLoader::createAndLoadAsynchronouslyIfNecessary(sampleRate);
 
     // Create a new destination for offline rendering.
     m_renderTarget = AudioBuffer::create(numberOfChannels, numberOfFrames, sampleRate);
@@ -228,6 +222,8 @@ void AudioContext::lazyInitialize()
                 m_destinationNode->initialize();
 
                 if (!isOfflineContext()) {
+                    document()->addAudioProducer(this);
+
                     // This starts the audio thread. The destination node's provideInput() method will now be called repeatedly to render audio.
                     // Each time provideInput() is called, a portion of the audio stream is rendered. Let's call this time period a "render quantum".
                     // NOTE: for now default AudioContext does not need an explicit startRendering() call from JavaScript.
@@ -273,6 +269,8 @@ void AudioContext::uninitialize()
     m_isAudioThreadFinished = true;
 
     if (!isOfflineContext()) {
+        document()->removeAudioProducer(this);
+
         ASSERT(s_hardwareContextCount);
         --s_hardwareContextCount;
     }
@@ -286,15 +284,6 @@ void AudioContext::uninitialize()
 bool AudioContext::isInitialized() const
 {
     return m_isInitialized;
-}
-
-bool AudioContext::isRunnable() const
-{
-    if (!isInitialized())
-        return false;
-    
-    // Check with the HRTF spatialization system to see if it's finished loading.
-    return m_hrtfDatabaseLoader->isLoaded();
 }
 
 void AudioContext::stopDispatch(void* userData)
@@ -314,6 +303,8 @@ void AudioContext::stop()
     if (m_isStopScheduled)
         return;
     m_isStopScheduled = true;
+
+    document()->updateIsPlayingAudio();
 
     // Don't call uninitialize() immediately here because the ScriptExecutionContext is in the middle
     // of dealing with all of its ActiveDOMObjects at this point. uninitialize() can de-reference other
@@ -978,6 +969,22 @@ void AudioContext::startRendering()
 void AudioContext::mediaCanStart()
 {
     removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);
+}
+
+bool AudioContext::isPlayingAudio()
+{
+    return !m_isStopScheduled && m_destinationNode && m_destinationNode->isPlayingAudio();
+}
+
+void AudioContext::pageMutedStateDidChange()
+{
+    if (m_destinationNode && document()->page())
+        m_destinationNode->setMuted(document()->page()->isMuted());
+}
+
+void AudioContext::isPlayingAudioDidChange()
+{
+    document()->updateIsPlayingAudio();
 }
 
 void AudioContext::fireCompletionEvent()

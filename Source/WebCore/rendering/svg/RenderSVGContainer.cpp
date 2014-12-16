@@ -37,7 +37,7 @@
 
 namespace WebCore {
 
-RenderSVGContainer::RenderSVGContainer(SVGElement& element, PassRef<RenderStyle> style)
+RenderSVGContainer::RenderSVGContainer(SVGElement& element, Ref<RenderStyle>&& style)
     : RenderSVGModelObject(element, WTF::move(style))
     , m_objectBoundingBoxValid(false)
     , m_needsBoundariesUpdate(true)
@@ -93,10 +93,10 @@ void RenderSVGContainer::addChild(RenderObject* child, RenderObject* beforeChild
     SVGResourcesCache::clientWasAddedToTree(*child);
 }
 
-RenderObject* RenderSVGContainer::removeChild(RenderObject& child)
+void RenderSVGContainer::removeChild(RenderObject& child)
 {
     SVGResourcesCache::clientWillBeRemovedFromTree(child);
-    return RenderSVGModelObject::removeChild(child);
+    RenderSVGModelObject::removeChild(child);
 }
 
 

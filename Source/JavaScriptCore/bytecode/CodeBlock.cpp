@@ -30,6 +30,7 @@
 #include "config.h"
 #include "CodeBlock.h"
 
+#include "BasicBlockLocation.h"
 #include "BytecodeGenerator.h"
 #include "BytecodeUseDef.h"
 #include "CallLinkStatus.h"
@@ -850,6 +851,12 @@ void CodeBlock::dumpBytecode(
             out.printf("%s", registerName(r0).data());
             break;
         }
+        case op_profile_control_flow: {
+            BasicBlockLocation* basicBlockLocation = (++it)->u.basicBlockLocation;
+            printLocationAndOp(out, exec, location, it, "profile_control_flow");
+            out.printf("[%d, %d]", basicBlockLocation->startOffset(), basicBlockLocation->endOffset());
+            break;
+        }
         case op_not: {
             printUnaryOp(out, exec, location, it, "not");
             break;
@@ -1271,17 +1278,19 @@ void CodeBlock::dumpBytecode(
         }
         case op_new_func: {
             int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
             int f0 = (++it)->u.operand;
             int shouldCheck = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "new_func");
-            out.printf("%s, f%d, %s", registerName(r0).data(), f0, shouldCheck ? "<Checked>" : "<Unchecked>");
+            out.printf("%s, %s, f%d, %s", registerName(r0).data(), registerName(r1).data(), f0, shouldCheck ? "<Checked>" : "<Unchecked>");
             break;
         }
         case op_new_func_exp: {
             int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
             int f0 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "new_func_exp");
-            out.printf("%s, f%d", registerName(r0).data(), f0);
+            out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
         case op_call: {
@@ -1628,6 +1637,7 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_vm(other.m_vm)
     , m_instructions(other.m_instructions)
     , m_thisRegister(other.m_thisRegister)
+    , m_scopeRegister(other.m_scopeRegister)
     , m_argumentsRegister(other.m_argumentsRegister)
     , m_lexicalEnvironmentRegister(other.m_lexicalEnvironmentRegister)
     , m_isStrictMode(other.m_isStrictMode)
@@ -1687,6 +1697,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     , m_ownerExecutable(m_globalObject->vm(), ownerExecutable, ownerExecutable)
     , m_vm(unlinkedCodeBlock->vm())
     , m_thisRegister(unlinkedCodeBlock->thisRegister())
+    , m_scopeRegister(unlinkedCodeBlock->scopeRegister())
     , m_argumentsRegister(unlinkedCodeBlock->argumentsRegister())
     , m_lexicalEnvironmentRegister(unlinkedCodeBlock->activationRegister())
     , m_isStrictMode(unlinkedCodeBlock->isStrictMode())
@@ -1724,8 +1735,8 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     ASSERT(m_source);
     setNumParameters(unlinkedCodeBlock->numParameters());
 
-    if (vm()->typeProfiler())
-        vm()->typeProfiler()->functionHasExecutedCache()->removeUnexecutedRange(m_ownerExecutable->sourceID(), m_ownerExecutable->typeProfilingStartOffset(), m_ownerExecutable->typeProfilingEndOffset());
+    if (vm()->typeProfiler() || vm()->controlFlowProfiler())
+        vm()->functionHasExecutedCache()->removeUnexecutedRange(m_ownerExecutable->sourceID(), m_ownerExecutable->typeProfilingStartOffset(), m_ownerExecutable->typeProfilingEndOffset());
 
     setConstantRegisters(unlinkedCodeBlock->constantRegisters());
     if (unlinkedCodeBlock->usesGlobalObject())
@@ -1733,8 +1744,8 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     m_functionDecls.resizeToFit(unlinkedCodeBlock->numberOfFunctionDecls());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionDecls(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
-        if (vm()->typeProfiler())
-            vm()->typeProfiler()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
+        if (vm()->typeProfiler() || vm()->controlFlowProfiler())
+            vm()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
         unsigned lineCount = unlinkedExecutable->lineCount();
         unsigned firstLine = ownerExecutable->lineNo() + unlinkedExecutable->firstLineOffset();
         bool startColumnIsOnOwnerStartLine = !unlinkedExecutable->firstLineOffset();
@@ -1751,8 +1762,8 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     m_functionExprs.resizeToFit(unlinkedCodeBlock->numberOfFunctionExprs());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionExprs(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionExpr(i);
-        if (vm()->typeProfiler())
-            vm()->typeProfiler()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
+        if (vm()->typeProfiler() || vm()->controlFlowProfiler())
+            vm()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
         unsigned lineCount = unlinkedExecutable->lineCount();
         unsigned firstLine = ownerExecutable->lineNo() + unlinkedExecutable->firstLineOffset();
         bool startColumnIsOnOwnerStartLine = !unlinkedExecutable->firstLineOffset();
@@ -2121,6 +2132,47 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         }
         i += opLength;
     }
+
+    if (vm()->controlFlowProfiler()) {
+        const Vector<size_t>& bytecodeOffsets = unlinkedCodeBlock->opProfileControlFlowBytecodeOffsets();
+        for (size_t i = 0, offsetsLength = bytecodeOffsets.size(); i < offsetsLength; i++) {
+            // Because op_profile_control_flow is emitted at the beginning of every basic block, finding 
+            // the next op_profile_control_flow will give us the text range of a single basic block.
+            size_t startIdx = bytecodeOffsets[i];
+            RELEASE_ASSERT(vm()->interpreter->getOpcodeID(instructions[startIdx].u.opcode) == op_profile_control_flow);
+            int basicBlockStartOffset = instructions[startIdx + 1].u.operand;
+            int basicBlockEndOffset;
+            if (i + 1 < offsetsLength) {
+                size_t endIdx = bytecodeOffsets[i + 1];
+                RELEASE_ASSERT(vm()->interpreter->getOpcodeID(instructions[endIdx].u.opcode) == op_profile_control_flow);
+                basicBlockEndOffset = instructions[endIdx + 1].u.operand;
+            } else
+                basicBlockEndOffset = m_sourceOffset + m_ownerExecutable->source().length() - 1;
+
+            BasicBlockLocation* basicBlockLocation = vm()->controlFlowProfiler()->getBasicBlockLocation(m_ownerExecutable->sourceID(), basicBlockStartOffset, basicBlockEndOffset);
+
+            // Find all functions that are enclosed within the range: [basicBlockStartOffset, basicBlockEndOffset]
+            // and insert these functions' start/end offsets as gaps in the current BasicBlockLocation.
+            // This is necessary because in the original source text of a JavaScript program, 
+            // function literals form new basic blocks boundaries, but they aren't represented 
+            // inside the CodeBlock's instruction stream.
+            auto insertFunctionGaps = [basicBlockLocation, basicBlockStartOffset, basicBlockEndOffset] (const WriteBarrier<FunctionExecutable>& functionExecutable) {
+                const UnlinkedFunctionExecutable* executable = functionExecutable->unlinkedExecutable();
+                int functionStart = executable->typeProfilingStartOffset();
+                int functionEnd = executable->typeProfilingEndOffset();
+                if (functionStart >= basicBlockStartOffset && functionEnd <= basicBlockEndOffset)
+                    basicBlockLocation->insertGap(functionStart, functionEnd);
+            };
+
+            for (const WriteBarrier<FunctionExecutable>& executable : m_functionDecls)
+                insertFunctionGaps(executable);
+            for (const WriteBarrier<FunctionExecutable>& executable : m_functionExprs)
+                insertFunctionGaps(executable);
+
+            instructions[startIdx + 1].u.basicBlockLocation = basicBlockLocation;
+        }
+    }
+
     m_instructions = WTF::RefCountedArray<Instruction>(instructions);
 
     // Set optimization thresholds only after m_instructions is initialized, since these

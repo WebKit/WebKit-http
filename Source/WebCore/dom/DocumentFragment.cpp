@@ -36,12 +36,12 @@ DocumentFragment::DocumentFragment(Document& document, ConstructionType construc
 {
 }
 
-PassRefPtr<DocumentFragment> DocumentFragment::create(Document& document)
+RefPtr<DocumentFragment> DocumentFragment::create(Document& document)
 {
     return adoptRef(new DocumentFragment(document, Node::CreateDocumentFragment));
 }
 
-PassRefPtr<DocumentFragment> DocumentFragment::create(ScriptExecutionContext& context)
+RefPtr<DocumentFragment> DocumentFragment::create(ScriptExecutionContext& context)
 {
     return adoptRef(new DocumentFragment(downcast<Document>(context), Node::CreateDocumentFragment));
 }
@@ -71,12 +71,18 @@ bool DocumentFragment::childTypeAllowed(NodeType type) const
     }
 }
 
-PassRefPtr<Node> DocumentFragment::cloneNode(bool deep)
+RefPtr<Node> DocumentFragment::cloneNodeInternal(CloningOperation type)
 {
     RefPtr<DocumentFragment> clone = create(document());
-    if (deep)
+    switch (type) {
+    case CloningOperation::OnlySelf:
+    case CloningOperation::SelfWithTemplateContent:
+        break;
+    case CloningOperation::Everything:
         cloneChildNodes(clone.get());
-    return clone.release();
+        break;
+    }
+    return clone;
 }
 
 void DocumentFragment::parseHTML(const String& source, Element* contextElement, ParserContentPolicy parserContentPolicy)

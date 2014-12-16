@@ -50,7 +50,6 @@
 #include "WebUserContentControllerProxy.h"
 #include <WebCore/CairoUtilities.h>
 #include <WebCore/GUniquePtrGtk.h>
-#include <WebCore/GtkClickCounter.h>
 #include <WebCore/GtkUtilities.h>
 #include <WebCore/GtkVersioning.h>
 #include <WebCore/NotImplemented.h>
@@ -78,6 +77,63 @@
 using namespace WebKit;
 using namespace WebCore;
 
+struct ClickCounter {
+public:
+    void reset()
+    {
+        currentClickCount = 0;
+        previousClickPoint = IntPoint();
+        previousClickTime = 0;
+        previousClickButton = 0;
+    }
+
+    int currentClickCountForGdkButtonEvent(GdkEventButton* buttonEvent)
+    {
+        GdkEvent* event = reinterpret_cast<GdkEvent*>(buttonEvent);
+        int doubleClickDistance = 250;
+        int doubleClickTime = 5;
+        g_object_get(gtk_settings_get_for_screen(gdk_event_get_screen(event)),
+            "gtk-double-click-distance", &doubleClickDistance, "gtk-double-click-time", &doubleClickTime, nullptr);
+
+        // GTK+ only counts up to triple clicks, but WebCore wants to know about
+        // quadruple clicks, quintuple clicks, ad infinitum. Here, we replicate the
+        // GDK logic for counting clicks.
+        guint32 eventTime = gdk_event_get_time(event);
+        if (!eventTime) {
+            // Real events always have a non-zero time, but events synthesized
+            // by the WTR do not and we must calculate a time manually. This time
+            // is not calculated in the WTR, because GTK+ does not work well with
+            // anything other than GDK_CURRENT_TIME on synthesized events.
+            GTimeVal timeValue;
+            g_get_current_time(&timeValue);
+            eventTime = (timeValue.tv_sec * 1000) + (timeValue.tv_usec / 1000);
+        }
+
+        if ((event->type == GDK_2BUTTON_PRESS || event->type == GDK_3BUTTON_PRESS)
+            || ((abs(buttonEvent->x - previousClickPoint.x()) < doubleClickDistance)
+                && (abs(buttonEvent->y - previousClickPoint.y()) < doubleClickDistance)
+                && (eventTime - previousClickTime < static_cast<unsigned>(doubleClickTime))
+                && (buttonEvent->button == previousClickButton)))
+            currentClickCount++;
+        else
+            currentClickCount = 1;
+
+        double x, y;
+        gdk_event_get_coords(event, &x, &y);
+        previousClickPoint = IntPoint(x, y);
+        previousClickButton = buttonEvent->button;
+        previousClickTime = eventTime;
+
+        return currentClickCount;
+    }
+
+private:
+    int currentClickCount;
+    IntPoint previousClickPoint;
+    unsigned previousClickButton;
+    int previousClickTime;
+};
+
 typedef HashMap<GtkWidget*, IntRect> WebKitWebViewChildrenMap;
 typedef HashMap<uint32_t, GUniquePtr<GdkEvent>> TouchEventsMap;
 
@@ -86,7 +142,7 @@ struct _WebKitWebViewBasePrivate {
     std::unique_ptr<PageClientImpl> pageClient;
     RefPtr<WebPageProxy> pageProxy;
     bool shouldForwardNextKeyEvent;
-    GtkClickCounter clickCounter;
+    ClickCounter clickCounter;
     CString tooltipText;
     IntRect tooltipArea;
 #if !GTK_CHECK_VERSION(3, 13, 4)
@@ -255,6 +311,26 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
 
 static void webkitWebViewBaseRealize(GtkWidget* widget)
 {
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+    GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
+    if (GDK_IS_X11_DISPLAY(display)) {
+        WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
+        GdkWindow* parentWindow = gtk_widget_get_parent_window(widget);
+        priv->redirectedWindow = RedirectedXCompositeWindow::create(
+            GDK_DISPLAY_XDISPLAY(display),
+            parentWindow ? GDK_WINDOW_XID(parentWindow) : 0,
+            IntSize(1, 1),
+            [widget] {
+                gtk_widget_queue_draw(widget);
+            });
+        if (priv->redirectedWindow) {
+            DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
+            drawingArea->setNativeSurfaceHandleForCompositing(priv->redirectedWindow->windowID());
+        }
+        webkitWebViewBaseUpdatePreferences(WEBKIT_WEB_VIEW_BASE(widget));
+    }
+#endif
+
     gtk_widget_set_realized(widget, TRUE);
 
     GtkAllocation allocation;
@@ -427,13 +503,6 @@ static void webkitWebViewBaseConstructed(GObject* object)
 
     WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(object)->priv;
     priv->pageClient = PageClientImpl::create(viewWidget);
-
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
-    GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
-    if (GDK_IS_X11_DISPLAY(display))
-        priv->redirectedWindow = RedirectedXCompositeWindow::create(GDK_DISPLAY_XDISPLAY(display), IntSize(1, 1), [viewWidget] { gtk_widget_queue_draw(viewWidget); });
-#endif
-
     priv->authenticationDialog = 0;
 }
 
@@ -453,6 +522,7 @@ static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* 
     if (cairo_surface_t* surface = priv->redirectedWindow->surface()) {
         cairo_rectangle(cr, clipRect->x, clipRect->y, clipRect->width, clipRect->height);
         cairo_set_source_surface(cr, surface, 0, 0);
+        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
         cairo_fill(cr);
     }
 
@@ -688,14 +758,21 @@ static gboolean webkitWebViewBaseButtonPressEvent(GtkWidget* widget, GdkEventBut
 
     priv->inputMethodFilter.notifyMouseButtonPress();
 
-    if (!priv->clickCounter.shouldProcessButtonEvent(buttonEvent))
+    // For double and triple clicks GDK sends both a normal button press event
+    // and a specific type (like GDK_2BUTTON_PRESS). If we detect a special press
+    // coming up, ignore this event as it certainly generated the double or triple
+    // click. The consequence of not eating this event is two DOM button press events
+    // are generated.
+    GUniquePtr<GdkEvent> nextEvent(gdk_event_peek());
+    if (nextEvent && (nextEvent->any.type == GDK_2BUTTON_PRESS || nextEvent->any.type == GDK_3BUTTON_PRESS))
         return TRUE;
 
     // If it's a right click event save it as a possible context menu event.
     if (buttonEvent->button == 3)
         priv->contextMenuEvent.reset(gdk_event_copy(reinterpret_cast<GdkEvent*>(buttonEvent)));
+
     priv->pageProxy->handleMouseEvent(NativeWebMouseEvent(reinterpret_cast<GdkEvent*>(buttonEvent),
-                                                     priv->clickCounter.clickCountForGdkButtonEvent(widget, buttonEvent)));
+        priv->clickCounter.currentClickCountForGdkButtonEvent(buttonEvent)));
     return TRUE;
 }
 
@@ -1027,11 +1104,12 @@ void webkitWebViewBaseUpdatePreferences(WebKitWebViewBase* webkitWebViewBase)
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
 
 #if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
-    if (priv->redirectedWindow)
-        return;
+    bool acceleratedCompositingEnabled = priv->redirectedWindow ? true : false;
+#else
+    bool acceleratedCompositingEnabled = false;
 #endif
 
-    priv->pageProxy->preferences().setAcceleratedCompositingEnabled(false);
+    priv->pageProxy->preferences().setAcceleratedCompositingEnabled(acceleratedCompositingEnabled);
 }
 
 #if HAVE(GTK_SCALE_FACTOR)
@@ -1054,11 +1132,6 @@ void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebCon
     priv->pageProxy->initializeWebPage();
 
     priv->inputMethodFilter.setPage(priv->pageProxy.get());
-
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
-    if (priv->redirectedWindow)
-        priv->pageProxy->setAcceleratedCompositingWindowId(priv->redirectedWindow->windowID());
-#endif
 
 #if HAVE(GTK_SCALE_FACTOR)
     // We attach this here, because changes in scale factor are passed directly to the page proxy.

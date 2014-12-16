@@ -88,7 +88,7 @@ inline SVGUseElement::SVGUseElement(const QualifiedName& tagName, Document& docu
     , m_wasInsertedByParser(wasInsertedByParser)
     , m_haveFiredLoadEvent(false)
     , m_needsShadowTreeRecreation(false)
-    , m_svgLoadEventTimer(this, &SVGElement::svgLoadEventTimerFired)
+    , m_svgLoadEventTimer(*this, &SVGElement::svgLoadEventTimerFired)
 {
     ASSERT(hasCustomStyleResolveCallbacks());
     ASSERT(hasTagName(SVGNames::useTag));
@@ -523,7 +523,7 @@ void SVGUseElement::buildShadowAndInstanceTree(SVGElement* target)
 #endif
 }
 
-RenderPtr<RenderElement> SVGUseElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> SVGUseElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderSVGTransformableContainer>(*this, WTF::move(style));
 }
@@ -992,8 +992,11 @@ void SVGUseElement::setCachedDocument(CachedResourceHandle<CachedSVGDocument> ca
         m_cachedDocument->removeClient(this);
 
     m_cachedDocument = cachedDocument;
-    if (m_cachedDocument)
+    if (m_cachedDocument) {
+        // We don't need the SVG document to create a new frame because the new document belongs to the parent UseElement.
+        m_cachedDocument->setShouldCreateFrameForDocument(false);
         m_cachedDocument->addClient(this);
+    }
 }
 
 }

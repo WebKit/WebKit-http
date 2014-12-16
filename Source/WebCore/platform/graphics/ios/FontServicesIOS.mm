@@ -25,10 +25,9 @@
 #import "config.h"
 #import "FontServicesIOS.h"
 
+#import "CoreGraphicsSPI.h"
+#import "DynamicLinkerSPI.h"
 #import "FontMetrics.h"
-#import <CoreGraphics/CoreGraphics.h>
-#import <CoreGraphics/CoreGraphicsPrivate.h>
-#import <mach-o/dyld_priv.h>
 #import <wtf/RetainPtr.h>
 
 namespace WebCore {

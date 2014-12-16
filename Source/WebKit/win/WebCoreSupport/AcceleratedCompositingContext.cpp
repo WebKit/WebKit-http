@@ -23,7 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "AcceleratedCompositingContext.h"
 
 #if USE(TEXTURE_MAPPER_GL)
@@ -103,7 +102,7 @@ void AcceleratedCompositingContext::initialize()
     m_context->makeContextCurrent();
 
     m_textureMapper = TextureMapperGL::create(TextureMapper::OpenGLMode);
-    toTextureMapperLayer(m_rootLayer.get())->setTextureMapper(m_textureMapper.get());
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer()->setTextureMapper(m_textureMapper.get());
 
     scheduleLayerFlush();
 }
@@ -139,18 +138,10 @@ bool AcceleratedCompositingContext::prepareForRendering()
 
 bool AcceleratedCompositingContext::startedAnimation(WebCore::GraphicsLayer* layer)
 {
-    if (!layer)
+    if (!layer || !downcast<GraphicsLayerTextureMapper>(*layer).layer())
         return false;
 
-    if (toGraphicsLayerTextureMapper(layer)->startedAnimation())
-        return true;
-
-    for (auto childLayer : layer->children()) {
-        if (startedAnimation(childLayer))
-            return true;
-    }
-
-    return false;
+    return downcast<GraphicsLayerTextureMapper>(*layer).layer()->descendantsOrSelfHaveRunningAnimations();
 }
 
 void AcceleratedCompositingContext::compositeLayersToContext(CompositePurpose purpose)
@@ -171,7 +162,7 @@ void AcceleratedCompositingContext::compositeLayersToContext(CompositePurpose pu
     }
 
     m_textureMapper->beginPainting();
-    toTextureMapperLayer(m_rootLayer.get())->paint();
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer()->paint();
     m_fpsCounter.updateFPSAndDisplay(m_textureMapper.get());
     m_textureMapper->endPainting();
 

@@ -23,13 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WebUIDelegatePrivate.h"
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
+#import "WebUIDelegatePrivate.h"
 #import <AppKit/NSSharingService.h>
 #import <WebCore/HitTestResult.h>
 #import <wtf/RetainPtr.h>
 
+@class DDActionContext;
 @class WebView;
+
+namespace WebCore {
+class Range;
+class TextIndicator;
+}
 
 @interface WebActionMenuController : NSObject <NSSharingServiceDelegate, NSSharingServicePickerDelegate> {
 @private
@@ -37,6 +44,11 @@
     WebActionMenuType _type;
     WebCore::HitTestResult _hitTestResult;
     RetainPtr<NSSharingServicePicker> _sharingServicePicker;
+    RetainPtr<DDActionContext> _currentActionContext;
+    RefPtr<WebCore::Range> _currentDetectedDataRange;
+    BOOL _isShowingTextIndicator;
+    RefPtr<WebCore::TextIndicator> _currentDetectedDataTextIndicator;
+    BOOL _hasActivatedActionContext;
 }
 
 - (id)initWithWebView:(WebView *)webView;
@@ -45,4 +57,9 @@
 - (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event;
 - (void)didCloseMenu:(NSMenu *)menu withEvent:(NSEvent *)event;
 
+- (void)webView:(WebView *)webView willHandleMouseDown:(NSEvent *)event;
+- (void)webView:(WebView *)webView didHandleScrollWheel:(NSEvent *)event;
+
 @end
+
+#endif // PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

@@ -30,11 +30,6 @@
 
 namespace WebCore {
 
-TextureMapperLayer* toTextureMapperLayer(GraphicsLayer* layer)
-{
-    return layer ? toGraphicsLayerTextureMapper(layer)->layer() : 0;
-}
-
 std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient& client)
 {
     if (!factory)
@@ -54,7 +49,6 @@ GraphicsLayerTextureMapper::GraphicsLayerTextureMapper(GraphicsLayerClient& clie
     , m_contentsLayer(0)
     , m_animationStartTime(0)
     , m_isScrollable(false)
-    , m_startedAnimation(false)
 {
 }
 
@@ -317,18 +311,18 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
     GraphicsLayer::setContentsToImage(image);
 }
 
-void GraphicsLayerTextureMapper::setContentsToPlatformLayer(TextureMapperPlatformLayer* media, ContentsLayerPurpose purpose)
+void GraphicsLayerTextureMapper::setContentsToPlatformLayer(TextureMapperPlatformLayer* platformLayer, ContentsLayerPurpose purpose)
 {
-    if (media == m_contentsLayer)
+    if (platformLayer == m_contentsLayer)
         return;
 
-    GraphicsLayer::setContentsToPlatformLayer(media, purpose);
+    GraphicsLayer::setContentsToPlatformLayer(platformLayer, purpose);
     notifyChange(ContentChange);
 
     if (m_contentsLayer)
         m_contentsLayer->setClient(0);
 
-    m_contentsLayer = media;
+    m_contentsLayer = platformLayer;
 
     if (m_contentsLayer)
         m_contentsLayer->setClient(this);
@@ -426,14 +420,14 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     if (m_changeMask & ChildrenChange) {
         m_layer->removeAllChildren();
         for (auto& child : m_children)
-            m_layer->addChild(toTextureMapperLayer(child));
+            m_layer->addChild(downcast<GraphicsLayerTextureMapper>(child)->layer());
     }
 
     if (m_changeMask & MaskLayerChange)
-        m_layer->setMaskLayer(toTextureMapperLayer(maskLayer()));
+        m_layer->setMaskLayer(downcast<GraphicsLayerTextureMapper>(maskLayer())->layer());
 
     if (m_changeMask & ReplicaLayerChange)
-        m_layer->setReplicaLayer(toTextureMapperLayer(replicaLayer()));
+        m_layer->setReplicaLayer(downcast<GraphicsLayerTextureMapper>(replicaLayer())->layer());
 
     if (m_changeMask & PositionChange)
         m_layer->setPosition(position());
@@ -579,7 +573,6 @@ bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList
         m_animationStartTime = currentTime - timeOffset;
     notifyChange(AnimationChange);
     notifyChange(AnimationStarted);
-    m_startedAnimation = true;
     return true;
 }
 

@@ -74,6 +74,9 @@ public:
 
     PageOverlayController* controller() const;
 
+    typedef uint64_t PageOverlayID;
+    virtual PageOverlayID pageOverlayID() const { return m_pageOverlayID; }
+
     void setPage(Page*);
     void setNeedsDisplay(const IntRect& dirtyRect);
     void setNeedsDisplay();
@@ -112,7 +115,7 @@ private:
     explicit PageOverlay(Client&, OverlayType);
 
     void startFadeAnimation();
-    void fadeAnimationTimerFired(Timer&);
+    void fadeAnimationTimerFired();
 
     Client& m_client;
     Page* m_page;
@@ -134,6 +137,7 @@ private:
     IntRect m_overrideFrame;
 
     RGBA32 m_backgroundColor;
+    PageOverlayID m_pageOverlayID;
 };
 
 } // namespace WebKit

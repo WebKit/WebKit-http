@@ -67,6 +67,10 @@ private:
     virtual void scheduleCompositingLayerFlush() override;
     virtual void scheduleCompositingLayerFlushImmediately() override;
 
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK)
+    virtual void setNativeSurfaceHandleForCompositing(uint64_t) override;
+#endif
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 #endif

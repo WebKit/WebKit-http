@@ -63,12 +63,12 @@ HTMLAnchorElement::HTMLAnchorElement(const QualifiedName& tagName, Document& doc
 {
 }
 
-PassRefPtr<HTMLAnchorElement> HTMLAnchorElement::create(Document& document)
+RefPtr<HTMLAnchorElement> HTMLAnchorElement::create(Document& document)
 {
     return adoptRef(new HTMLAnchorElement(aTag, document));
 }
 
-PassRefPtr<HTMLAnchorElement> HTMLAnchorElement::create(const QualifiedName& tagName, Document& document)
+RefPtr<HTMLAnchorElement> HTMLAnchorElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLAnchorElement(tagName, document));
 }
@@ -504,7 +504,12 @@ void HTMLAnchorElement::setSearch(const String& value)
 
 String HTMLAnchorElement::text()
 {
-    return innerText();
+    return textContent();
+}
+
+void HTMLAnchorElement::setText(const String& text, ExceptionCode& ec)
+{
+    setTextContent(text, ec);
 }
 
 String HTMLAnchorElement::toString() const

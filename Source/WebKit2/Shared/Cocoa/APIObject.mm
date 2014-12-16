@@ -53,17 +53,18 @@
 #import "_WKDownloadInternal.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKWebsiteDataStoreInternal.h"
+#import <objc/objc-auto.h>
 
 namespace API {
 
 void Object::ref()
 {
-    [wrapper() retain];
+    CFRetain(wrapper());
 }
 
 void Object::deref()
 {
-    [wrapper() release];
+    CFRelease(wrapper());
 }
 
 void* Object::newObject(size_t size, Type type)
@@ -135,10 +136,6 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKBrowsingContextGroup alloc];
         break;
 
-    case Type::Session:
-        wrapper = [_WKWebsiteDataStore alloc];
-        break;
-            
     case Type::String:
         wrapper = NSAllocateObject([WKNSString class], size, nullptr);
         break;
@@ -149,6 +146,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::URLRequest:
         wrapper = NSAllocateObject([WKNSURLRequest class], size, nullptr);
+        break;
+
+    case Type::WebsiteDataStore:
+        wrapper = [_WKWebsiteDataStore alloc];
         break;
 
     case Type::BundleFrame:
@@ -178,6 +179,11 @@ void* Object::newObject(size_t size, Type type)
 
     Object& object = wrapper._apiObject;
     object.m_wrapper = wrapper;
+
+#if PLATFORM(MAC)
+    if (objc_collectingEnabled())
+        object.ref();
+#endif
 
     return &object;
 }

@@ -30,14 +30,20 @@
 #include "JSWebGLRenderingContext.h"
 
 #include "ANGLEInstancedArrays.h"
+#include "EXTBlendMinMax.h"
+#include "EXTFragDepth.h"
 #include "EXTShaderTextureLOD.h"
 #include "EXTTextureFilterAnisotropic.h"
+#include "EXTsRGB.h"
 #include "ExceptionCode.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "JSANGLEInstancedArrays.h"
+#include "JSEXTBlendMinMax.h"
+#include "JSEXTFragDepth.h"
 #include "JSEXTShaderTextureLOD.h"
 #include "JSEXTTextureFilterAnisotropic.h"
+#include "JSEXTsRGB.h"
 #include "JSHTMLCanvasElement.h"
 #include "JSHTMLImageElement.h"
 #include "JSImageData.h"
@@ -211,6 +217,12 @@ static JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, WebGLExten
         return toJS(exec, globalObject, static_cast<EXTShaderTextureLOD*>(extension));
     case WebGLExtension::EXTTextureFilterAnisotropicName:
         return toJS(exec, globalObject, static_cast<EXTTextureFilterAnisotropic*>(extension));
+    case WebGLExtension::EXTsRGBName:
+        return toJS(exec, globalObject, static_cast<EXTsRGB*>(extension));
+    case WebGLExtension::EXTFragDepthName:
+        return toJS(exec, globalObject, static_cast<EXTFragDepth*>(extension));
+    case WebGLExtension::EXTBlendMinMaxName:
+        return toJS(exec, globalObject, static_cast<EXTBlendMinMax*>(extension));
     case WebGLExtension::OESStandardDerivativesName:
         return toJS(exec, globalObject, static_cast<OESStandardDerivatives*>(extension));
     case WebGLExtension::OESTextureFloatName:

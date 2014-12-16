@@ -29,13 +29,12 @@ namespace WebCore {
 
 class RenderSVGResourceLinearGradient final : public RenderSVGResourceGradient {
 public:
-    RenderSVGResourceLinearGradient(SVGLinearGradientElement&, PassRef<RenderStyle>);
+    RenderSVGResourceLinearGradient(SVGLinearGradientElement&, Ref<RenderStyle>&&);
     virtual ~RenderSVGResourceLinearGradient();
 
     SVGLinearGradientElement& linearGradientElement() const { return downcast<SVGLinearGradientElement>(RenderSVGResourceGradient::gradientElement()); }
 
-    static const RenderSVGResourceType s_resourceType = LinearGradientResourceType;
-    virtual RenderSVGResourceType resourceType() const override { return s_resourceType; }
+    virtual RenderSVGResourceType resourceType() const override { return LinearGradientResourceType; }
 
     virtual SVGUnitTypes::SVGUnitType gradientUnits() const override { return m_attributes.gradientUnits(); }
     virtual void calculateGradientTransform(AffineTransform& transform) override { transform = m_attributes.gradientTransform(); }
@@ -54,5 +53,7 @@ private:
 };
 
 }
+
+SPECIALIZE_TYPE_TRAITS_RENDER_SVG_RESOURCE(RenderSVGResourceLinearGradient, LinearGradientResourceType)
 
 #endif

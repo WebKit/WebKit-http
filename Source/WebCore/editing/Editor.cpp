@@ -857,7 +857,7 @@ bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessP
     target->dispatchEvent(event, IGNORE_EXCEPTION);
     bool noDefaultProcessing = event->defaultPrevented();
     if (noDefaultProcessing && policy == DataTransferAccessPolicy::Writable) {
-        OwnPtr<Pasteboard> pasteboard = Pasteboard::createForCopyAndPaste();
+        auto pasteboard = Pasteboard::createForCopyAndPaste();
         pasteboard->clear();
         pasteboard->writePasteboard(dataTransfer->pasteboard());
     }
@@ -1076,11 +1076,11 @@ Editor::Editor(Frame& frame)
     , m_areMarkedTextMatchesHighlighted(false)
     , m_defaultParagraphSeparator(EditorParagraphSeparatorIsDiv)
     , m_overwriteModeEnabled(false)
-    , m_editorUIUpdateTimer(this, &Editor::editorUIUpdateTimerFired)
+    , m_editorUIUpdateTimer(*this, &Editor::editorUIUpdateTimerFired)
     , m_editorUIUpdateTimerShouldCheckSpellingAndGrammar(false)
     , m_editorUIUpdateTimerWasTriggeredByDictation(false)
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
-    , m_telephoneNumberDetectionUpdateTimer(this, &Editor::scanSelectionForTelephoneNumbers)
+    , m_telephoneNumberDetectionUpdateTimer(*this, &Editor::scanSelectionForTelephoneNumbers)
 #endif
 {
 }
@@ -1091,7 +1091,11 @@ Editor::~Editor()
 
 void Editor::clear()
 {
-    m_compositionNode = 0;
+    if (m_compositionNode) {
+        m_compositionNode = nullptr;
+        if (EditorClient* client = this->client())
+            client->discardedComposition(&m_frame);
+    }
     m_customCompositionUnderlines.clear();
     m_shouldStyleWithCSS = false;
     m_defaultParagraphSeparator = EditorParagraphSeparatorIsDiv;
@@ -3270,11 +3274,6 @@ bool Editor::shouldDetectTelephoneNumbers()
     return document().isTelephoneNumberParsingEnabled() && TelephoneNumberDetector::isSupported();
 }
 
-void Editor::scanSelectionForTelephoneNumbers(Timer&)
-{
-    scanSelectionForTelephoneNumbers();
-}
-
 void Editor::scanSelectionForTelephoneNumbers()
 {
     if (!shouldDetectTelephoneNumbers() || !client())
@@ -3374,10 +3373,10 @@ void Editor::updateEditorUINowIfScheduled()
     if (!m_editorUIUpdateTimer.isActive())
         return;
     m_editorUIUpdateTimer.stop();
-    editorUIUpdateTimerFired(m_editorUIUpdateTimer);
+    editorUIUpdateTimerFired();
 }
 
-void Editor::editorUIUpdateTimerFired(Timer&)
+void Editor::editorUIUpdateTimerFired()
 {
     VisibleSelection oldSelection = m_oldSelectionForEditorUIUpdate;
 

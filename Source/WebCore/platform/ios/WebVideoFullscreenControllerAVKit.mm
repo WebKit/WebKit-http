@@ -67,6 +67,7 @@ using namespace WebCore;
 - (void)didEnterFullscreen;
 - (void)didExitFullscreen;
 - (void)didCleanupFullscreen;
+- (void)fullscreenMayReturnToInline;
 @end
 
 class WebVideoFullscreenControllerChangeObserver : public WebVideoFullscreenChangeObserver {
@@ -77,6 +78,7 @@ public:
     virtual void didEnterFullscreen() override { [_target didEnterFullscreen]; }
     virtual void didExitFullscreen() override { [_target didExitFullscreen]; }
     virtual void didCleanupFullscreen() override { [_target didCleanupFullscreen]; }
+    virtual void fullscreenMayReturnToInline() override { [_target fullscreenMayReturnToInline]; }
 };
 
 @implementation WebVideoFullscreenController
@@ -125,7 +127,7 @@ public:
     _interface->setWebVideoFullscreenModel(_model.get());
     _model->setVideoElement(_videoElement.get());
     _videoFullscreenLayer = [CALayer layer];
-    _interface->setupFullscreen(*_videoFullscreenLayer.get(), _videoElement->clientRect(), view, mode);
+    _interface->setupFullscreen(*_videoFullscreenLayer.get(), _videoElement->clientRect(), view, mode, _videoElement->mediaSession().allowsAlternateFullscreen(*_videoElement.get()));
 }
 
 - (void)exitFullscreen
@@ -172,6 +174,10 @@ public:
         
         [self release]; // Balance the -retain we did in enterFullscreen:
     });
+}
+
+- (void)fullscreenMayReturnToInline
+{
 }
 
 @end

@@ -118,11 +118,7 @@ public:
     mach_port_t compositingRenderServerPort() const { return m_compositingRenderServerPort; }
 #endif
 
-#if PLATFORM(MAC)
-    bool needsQuickLookResourceCachingQuirks() const { return m_needsQuickLookResourceCachingQuirks; }
-#endif
-
-    bool shouldPlugInAutoStartFromOrigin(const WebPage*, const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
+    bool shouldPlugInAutoStartFromOrigin(WebPage&, const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
     void plugInDidStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, WebCore::SessionID);
     void plugInDidReceiveUserInteraction(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, WebCore::SessionID);
 
@@ -173,7 +169,7 @@ public:
     void pageDidEnterWindow(uint64_t pageID);
     void pageWillLeaveWindow(uint64_t pageID);
 
-    void nonVisibleProcessCleanupTimerFired(WebCore::Timer*);
+    void nonVisibleProcessCleanupTimerFired();
 
     void updateActivePages();
 
@@ -184,7 +180,7 @@ public:
     void processWillSuspend();
     void cancelProcessWillSuspend();
     bool markAllLayersVolatileIfPossible();
-    void processSuspensionCleanupTimerFired(WebCore::Timer*);
+    void processSuspensionCleanupTimerFired();
 
 #if PLATFORM(IOS)
     void resetAllGeolocationPermissions();
@@ -282,9 +278,9 @@ private:
 
     // IPC::Connection::Client
     friend class WebConnectionToUIProcess;
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&);
-    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
-    virtual void didClose(IPC::Connection*);
+    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    virtual void didClose(IPC::Connection*) override;
     virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // Implemented in generated WebProcessMessageReceiver.cpp
@@ -322,9 +318,6 @@ private:
     pid_t m_presenterApplicationPid;
     dispatch_group_t m_clearResourceCachesDispatchGroup;
     bool m_shouldForceScreenFontSubstitution;
-#endif
-#if PLATFORM(MAC)
-    bool m_needsQuickLookResourceCachingQuirks;
 #endif
 
     bool m_fullKeyboardAccessEnabled;

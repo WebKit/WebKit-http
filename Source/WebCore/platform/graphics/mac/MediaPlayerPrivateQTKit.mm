@@ -183,7 +183,7 @@ MediaPlayerPrivateQTKit::MediaPlayerPrivateQTKit(MediaPlayer* player)
     : m_player(player)
     , m_objcObserver(adoptNS([[WebCoreMovieObserver alloc] initWithCallback:this]))
     , m_seekTo(MediaTime::invalidTime())
-    , m_seekTimer(this, &MediaPlayerPrivateQTKit::seekTimerFired)
+    , m_seekTimer(*this, &MediaPlayerPrivateQTKit::seekTimerFired)
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_rect()
@@ -329,7 +329,7 @@ void MediaPlayerPrivateQTKit::createQTMovie(NSURL *url, NSDictionary *movieAttri
         return;
     
     NSError *error = nil;
-    m_qtMovie = adoptNS([[QTMovie alloc] initWithAttributes:movieAttributes error:&error]);
+    m_qtMovie = adoptNS([allocQTMovieInstance() initWithAttributes:movieAttributes error:&error]);
     
     if (!m_qtMovie)
         return;
@@ -425,7 +425,7 @@ void MediaPlayerPrivateQTKit::createQTMovieLayer()
     ASSERT(supportsAcceleratedRendering());
     
     if (!m_qtVideoLayer) {
-        m_qtVideoLayer = adoptNS([[QTMovieLayer alloc] init]);
+        m_qtVideoLayer = adoptNS([allocQTMovieLayerInstance() init]);
         if (!m_qtVideoLayer)
             return;
 
@@ -678,7 +678,7 @@ void MediaPlayerPrivateQTKit::cancelSeek()
     m_seekTimer.stop();
 }
 
-void MediaPlayerPrivateQTKit::seekTimerFired(Timer&)
+void MediaPlayerPrivateQTKit::seekTimerFired()
 {        
     if (!metaDataAvailable() || !seeking() || currentMediaTime() == m_seekTo) {
         cancelSeek();
@@ -1515,6 +1515,27 @@ void MediaPlayerPrivateQTKit::setPrivateBrowsingMode(bool privateBrowsing)
     if (!m_qtMovie)
         return;
     [m_qtMovie.get() setAttribute:[NSNumber numberWithBool:!privateBrowsing] forKey:@"QTMovieAllowPersistentCacheAttribute"];
+}
+
+bool MediaPlayerPrivateQTKit::canSaveMediaData() const
+{
+    URL url;
+
+    if (durationMediaTime().isPositiveInfinite())
+        return false;
+
+    if (m_qtMovie)
+        url = URL(wkQTMovieResolvedURL(m_qtMovie.get()));
+    else
+        url = URL(ParsedURLString, m_movieURL);
+
+    if (url.isLocalFile())
+        return true;
+
+    if (url.protocolIsInHTTPFamily())
+        return true;
+    
+    return false;
 }
 
 } // namespace WebCore

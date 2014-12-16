@@ -13,7 +13,6 @@
       <dep package="glib"/>
       <dep package="glib-networking"/>
       <dep package="libsoup"/>
-      <dep package="e_dbus"/>
       <dep package="elementary"/>
       <dep package="libxml2"/>
       <dep package="gstreamer"/>
@@ -25,6 +24,8 @@
       <dep package="atk"/>
     </dependencies>
   </metamodule>
+
+  <include href="jhbuild-optional.modules"/>
 
   <repository type="tarball" name="github.com"
       href="https://github.com"/>
@@ -131,17 +132,21 @@
     <branch module="/pub/gnome/sources/libsoup/2.42/libsoup-2.42.0.tar.xz" version="2.42.0"
             repo="ftp.gnome.org"
             hash="sha256:9e0e7eb5d3f7401ccf521fbc289fc1fa0923b7c7833729e2ed7696f7b848893e">
+      <patch file="soup-clang-warning-fix1.patch" strip="1"/>
+      <patch file="soup-clang-warning-fix2.patch" strip="1"/>
     </branch>
   </autotools>
 
   <autotools id="llvm"
              autogen-sh="configure"
-             autogenargs="--enable-optimized=yes --enable-backtraces=no --enable-targets=x86_64 --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no --disable-expensive-checks --disable-debug-runtime --disable-assertions">
+             autogenargs="--enable-optimized=yes --enable-backtraces=no --enable-targets=host --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no --disable-expensive-checks --disable-debug-runtime --disable-assertions">
     <branch repo="llvm-tar"
             module="/releases/3.5.0/llvm-3.5.0.src.tar.xz" version="3.5.0" checkoutdir="llvm"
             hash="sha256:28e199f368ef0a4666708f31c7991ad3bcc3a578342b0306526dd35f07595c03">
-      <patch file="llvm-elf-fix-x86_64-fdecfiencoding.patch" strip="1"/>
+      <patch file="llvm-elf-allow-fde-references-outside-the-2gb-range.patch" strip="1"/>
+      <patch file="llvm-elf-allow-fde-references-outside-the-2gb-range-arm64.patch" strip="1"/>
       <patch file="llvm-elf-add-stackmaps.patch" strip="1"/>
+      <patch file="llvm-elf-add-stackmaps-arm64.patch" strip="1"/>
     </branch>
   </autotools>
 
@@ -183,32 +188,21 @@
       <dep package="gstreamer"/>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="rel/libs/efl/efl-1.11.2.tar.gz" version="1.11.2"
+    <branch module="rel/libs/efl/efl-1.12.0.tar.gz" version="1.12.0"
             repo="download.enlightenment.org"
-            hash="sha256:f3cc1cd2a77df114a7b76a7e77bc77e88c367ec49462047fca209ee622cb7288"
-            md5sum="f1b23b9a4e2ae04a4c0f6d2f924093e9">
+            hash="sha256:a3f536cd75ca7caac8d61805a53a99ecdcb4ccf1953f081c492dbecee282ef15"
+            md5sum="3ff1488abb4cd83e3cb9a42d4eda16b2">
       <patch file="ecore_remove_warnings.patch" strip="1"/>
     </branch>
-  </autotools>
-
-  <autotools id="e_dbus" autogen-sh="configure">
-    <branch module="releases/e_dbus-1.7.5.tar.bz2" version="1.7.5"
-            repo="download.enlightenment.org"
-            hash="sha256:d88886c13b470f9aee84f1a95a68eca5501506417362ee8066a117feffcd9399"
-            md5sum="a197ae1c8e93debf20728e3e7693b868">
-    </branch>
-    <dependencies>
-      <dep package="efl"/>
-    </dependencies>
   </autotools>
 
   <autotools id="elementary"
              autogen-sh="configure"
              autogenargs="--disable-emap --disable-eweather --with-elementary-web-backend=none">
-    <branch module="rel/libs/elementary/elementary-1.11.2.tar.gz" version="1.11.2"
+    <branch module="rel/libs/elementary/elementary-1.12.0.tar.gz" version="1.12.0"
             repo="download.enlightenment.org"
-            hash="sha256:18f7e8fb63fcfd0d5abd213943c0c356b1270a94e20d44b8e6047b1cd0e53010"
-            md5sum="f6939a24ffc50c2e4eac7ed38663f0f3">
+            hash="sha256:3ac56d0bf5f5d29224e59fb1ef3afec8a28435473df0bbca3783e45ee8d095ce"
+            md5sum="414539ebf6cf2b1a6ae1aac8b753f2ce">
     </branch>
     <dependencies>
         <dep package="efl"/>
@@ -285,7 +279,9 @@
   <autotools id="libseccomp" autogen-sh="configure">
       <branch module="libseccomp/libseccomp-2.1.0.tar.gz" version="2.1.0"
           repo="downloads.sourceforge.net"
-          hash="sha256:b0d6e4f0984e6632a04f0cf33c6babdb011674ba15ff208e196f037e0e09905e"/>
+          hash="sha256:b0d6e4f0984e6632a04f0cf33c6babdb011674ba15ff208e196f037e0e09905e">
+        <patch file="libseccomp-pick-up-CC.patch" strip="2"/>
+      </branch>
   </autotools>
 
   <autotools id="atk"

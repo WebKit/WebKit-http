@@ -25,7 +25,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
 #include "WebView.h"
 
 #include "BackForwardController.h"
@@ -65,6 +64,8 @@
 #include "WebPlatformStrategies.h"
 #include "WebPreferences.h"
 #include "WebScriptWorld.h"
+#include "WebStorageNamespaceProvider.h"
+#include "WebVisitedLinkStore.h"
 #include "resource.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/InitializeThreading.h>
@@ -118,6 +119,7 @@
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageCache.h>
+#include <WebCore/PageConfiguration.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/PlatformMouseEvent.h>
@@ -671,8 +673,8 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         ASSERT_NOT_REACHED();
     }
 
-    memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    memoryCache().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     pageCache()->setCapacity(pageCacheCapacity);
 
 #if USE(CFNETWORK)
@@ -2725,7 +2727,16 @@ bool WebView::shouldInitializeTrackPointHack()
 
     return shouldCreateScrollbars;
 }
-    
+
+static String localStorageDatabasePath(WebPreferences* preferences)
+{
+    BString localStorageDatabasePath;
+    if (FAILED(preferences->localStorageDatabasePath(&localStorageDatabasePath)))
+        return String();
+
+    return toString(localStorageDatabasePath);
+}
+
 HRESULT STDMETHODCALLTYPE WebView::initWithFrame( 
     /* [in] */ RECT frame,
     /* [in] */ BSTR frameName,
@@ -2791,26 +2802,25 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
     m_inspectorClient = new WebInspectorClient(this);
 #endif // ENABLE(INSPECTOR)
 
-    Page::PageClients pageClients;
-    pageClients.chromeClient = new WebChromeClient(this);
-    pageClients.contextMenuClient = new WebContextMenuClient(this);
-    pageClients.editorClient = new WebEditorClient(this);
-    pageClients.dragClient = new WebDragClient(this);
+    PageConfiguration configuration;
+    configuration.chromeClient = new WebChromeClient(this);
+    configuration.contextMenuClient = new WebContextMenuClient(this);
+    configuration.editorClient = new WebEditorClient(this);
+    configuration.dragClient = new WebDragClient(this);
 #if ENABLE(INSPECTOR)
-    pageClients.inspectorClient = m_inspectorClient;
+    configuration.inspectorClient = m_inspectorClient;
 #endif // ENABLE(INSPECTOR)
-    pageClients.loaderClientForMainFrame = new WebFrameLoaderClient;
-    pageClients.progressTrackerClient = static_cast<WebFrameLoaderClient*>(pageClients.loaderClientForMainFrame);
+    configuration.loaderClientForMainFrame = new WebFrameLoaderClient;
+    configuration.storageNamespaceProvider = WebStorageNamespaceProvider::create(localStorageDatabasePath(m_preferences.get()));
+    configuration.progressTrackerClient = static_cast<WebFrameLoaderClient*>(configuration.loaderClientForMainFrame);
+    configuration.visitedLinkStore = &WebVisitedLinkStore::shared();
 
-    m_page = new Page(pageClients);
+    m_page = new Page(configuration);
     provideGeolocationTo(m_page, new WebGeolocationClient(this));
 
     unsigned layoutMilestones = DidFirstLayout | DidFirstVisuallyNonEmptyLayout;
     m_page->addLayoutMilestones(static_cast<LayoutMilestones>(layoutMilestones));
 
-    BString localStoragePath;
-    if (SUCCEEDED(m_preferences->localStorageDatabasePath(&localStoragePath)))
-        m_page->settings().setLocalStorageDatabasePath(toString(localStoragePath));
 
     if (m_uiDelegate) {
         BString path;
@@ -6338,157 +6348,44 @@ void WebView::exitVideoFullscreen()
 #endif
 }
 
-static Vector<String> toStringVector(unsigned patternsCount, BSTR* patterns)
-{
-    Vector<String> patternsVector;
-    if (!patternsCount)
-        return patternsVector;
-    for (unsigned i = 0; i < patternsCount; ++i)
-        patternsVector.append(toString(patterns[i]));
-    return patternsVector;
-}
-
 HRESULT WebView::addUserScriptToGroup(BSTR groupName, IWebScriptWorld* iWorld, BSTR source, BSTR url, 
                                       unsigned whitelistCount, BSTR* whitelist,
                                       unsigned blacklistCount, BSTR* blacklist,
                                       WebUserScriptInjectionTime injectionTime)
 {
-    COMPtr<WebScriptWorld> world(Query, iWorld);
-    if (!world)
-        return E_POINTER;
-
-    String group = toString(groupName);
-    if (group.isEmpty())
-        return E_INVALIDARG;
-
-    PageGroup* pageGroup = PageGroup::pageGroup(group);
-    ASSERT(pageGroup);
-    if (!pageGroup)
-        return E_FAIL;
-
-    pageGroup->addUserScriptToWorld(world->world(), toString(source), toURL(url),
-                                    toStringVector(whitelistCount, whitelist), toStringVector(blacklistCount, blacklist),
-                                    injectionTime == WebInjectAtDocumentStart ? InjectAtDocumentStart : InjectAtDocumentEnd,
-                                    InjectInAllFrames);
-
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebView::addUserStyleSheetToGroup(BSTR groupName, IWebScriptWorld* iWorld, BSTR source, BSTR url,
                                           unsigned whitelistCount, BSTR* whitelist,
                                           unsigned blacklistCount, BSTR* blacklist)
 {
-    COMPtr<WebScriptWorld> world(Query, iWorld);
-    if (!world)
-        return E_POINTER;
-
-    String group = toString(groupName);
-    if (group.isEmpty())
-        return E_INVALIDARG;
-
-    PageGroup* pageGroup = PageGroup::pageGroup(group);
-    ASSERT(pageGroup);
-    if (!pageGroup)
-        return E_FAIL;
-
-    pageGroup->addUserStyleSheetToWorld(world->world(), toString(source), toURL(url),
-                                        toStringVector(whitelistCount, whitelist), toStringVector(blacklistCount, blacklist),
-                                        InjectInAllFrames);
-
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebView::removeUserScriptFromGroup(BSTR groupName, IWebScriptWorld* iWorld, BSTR url)
 {
-    COMPtr<WebScriptWorld> world(Query, iWorld);
-    if (!world)
-        return E_POINTER;
-
-    String group = toString(groupName);
-    if (group.isEmpty())
-        return E_INVALIDARG;
-
-    PageGroup* pageGroup = PageGroup::pageGroup(group);
-    ASSERT(pageGroup);
-    if (!pageGroup)
-        return E_FAIL;
-
-    pageGroup->removeUserScriptFromWorld(world->world(), toURL(url));
-
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebView::removeUserStyleSheetFromGroup(BSTR groupName, IWebScriptWorld* iWorld, BSTR url)
 {
-    COMPtr<WebScriptWorld> world(Query, iWorld);
-    if (!world)
-        return E_POINTER;
-
-    String group = toString(groupName);
-    if (group.isEmpty())
-        return E_INVALIDARG;
-
-    PageGroup* pageGroup = PageGroup::pageGroup(group);
-    ASSERT(pageGroup);
-    if (!pageGroup)
-        return E_FAIL;
-
-    pageGroup->removeUserStyleSheetFromWorld(world->world(), toURL(url));
-
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebView::removeUserScriptsFromGroup(BSTR groupName, IWebScriptWorld* iWorld)
 {
-    COMPtr<WebScriptWorld> world(Query, iWorld);
-    if (!world)
-        return E_POINTER;
-
-    String group = toString(groupName);
-    if (group.isEmpty())
-        return E_INVALIDARG;
-
-    PageGroup* pageGroup = PageGroup::pageGroup(group);
-    ASSERT(pageGroup);
-    if (!pageGroup)
-        return E_FAIL;
-
-    pageGroup->removeUserScriptsFromWorld(world->world());
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebView::removeUserStyleSheetsFromGroup(BSTR groupName, IWebScriptWorld* iWorld)
 {
-    COMPtr<WebScriptWorld> world(Query, iWorld);
-    if (!world)
-        return E_POINTER;
-
-    String group = toString(groupName);
-    if (group.isEmpty())
-        return E_INVALIDARG;
-
-    PageGroup* pageGroup = PageGroup::pageGroup(group);
-    ASSERT(pageGroup);
-    if (!pageGroup)
-        return E_FAIL;
-
-    pageGroup->removeUserStyleSheetsFromWorld(world->world());
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebView::removeAllUserContentFromGroup(BSTR groupName)
 {
-    String group = toString(groupName);
-    if (group.isEmpty())
-        return E_INVALIDARG;
-
-    PageGroup* pageGroup = PageGroup::pageGroup(group);
-    ASSERT(pageGroup);
-    if (!pageGroup)
-        return E_FAIL;
-
-    pageGroup->removeAllUserContent();
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 HRESULT WebView::invalidateBackingStore(const RECT* rect)
@@ -6544,12 +6441,14 @@ HRESULT WebView::historyDelegate(IWebHistoryDelegate** historyDelegate)
 
 HRESULT WebView::addVisitedLinks(BSTR* visitedURLs, unsigned visitedURLCount)
 {
+    auto& visitedLinkStore = WebVisitedLinkStore::shared();
     PageGroup& group = core(this)->group();
     
     for (unsigned i = 0; i < visitedURLCount; ++i) {
         BSTR url = visitedURLs[i];
         unsigned length = SysStringLen(url);
-        group.addVisitedLink(url, length);
+
+        visitedLinkStore.addVisitedLink(String(url, length));
     }
 
     return S_OK;

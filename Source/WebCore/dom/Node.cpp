@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2014 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
@@ -120,7 +120,6 @@ void Node::dumpStatistics()
     size_t documentNodes = 0;
     size_t docTypeNodes = 0;
     size_t fragmentNodes = 0;
-    size_t notationNodes = 0;
     size_t xpathNSNodes = 0;
     size_t shadowRootNodes = 0;
 
@@ -209,10 +208,6 @@ void Node::dumpStatistics()
                     ++fragmentNodes;
                 break;
             }
-            case NOTATION_NODE: {
-                ++notationNodes;
-                break;
-            }
             case XPATH_NAMESPACE_NODE: {
                 ++xpathNSNodes;
                 break;
@@ -235,7 +230,6 @@ void Node::dumpStatistics()
     printf("  Number of Document nodes: %zu\n", documentNodes);
     printf("  Number of DocumentType nodes: %zu\n", docTypeNodes);
     printf("  Number of DocumentFragment nodes: %zu\n", fragmentNodes);
-    printf("  Number of Notation nodes: %zu\n", notationNodes);
     printf("  Number of XPathNS nodes: %zu\n", xpathNSNodes);
     printf("  Number of ShadowRoot nodes: %zu\n", shadowRootNodes);
 
@@ -350,7 +344,7 @@ void Node::materializeRareData()
 {
     NodeRareData* data;
     if (is<Element>(*this))
-        data = std::make_unique<ElementRareData>(downcast<RenderElement>(m_data.m_renderer)).release();
+        data = std::make_unique<ElementRareData>(downcast<Element>(*this), downcast<RenderElement>(m_data.m_renderer)).release();
     else
         data = std::make_unique<NodeRareData>(m_data.m_renderer).release();
     ASSERT(data);
@@ -403,7 +397,7 @@ void Node::setNodeValue(const String& /*nodeValue*/, ExceptionCode& ec)
     // By default, setting nodeValue has no effect.
 }
 
-PassRefPtr<NodeList> Node::childNodes()
+RefPtr<NodeList> Node::childNodes()
 {
     if (is<ContainerNode>(*this))
         return ensureRareData().ensureNodeLists().ensureChildNodeList(downcast<ContainerNode>(*this));
@@ -637,13 +631,6 @@ RenderBoxModelObject* Node::renderBoxModelObject() const
     RenderObject* renderer = this->renderer();
     return is<RenderBoxModelObject>(renderer) ? downcast<RenderBoxModelObject>(renderer) : nullptr;
 }
-
-LayoutRect Node::boundingBox() const
-{
-    if (renderer())
-        return renderer()->absoluteBoundingBoxRect();
-    return LayoutRect();
-}
     
 LayoutRect Node::renderRect(bool* isReplaced)
 {    
@@ -670,16 +657,21 @@ void Node::derefEventTarget()
     deref();
 }
 
-static inline void markAncestorsWithChildNeedsStyleRecalc(Node& node)
+inline void Node::updateAncestorsForStyleRecalc()
 {
-    if (ContainerNode* ancestor = is<PseudoElement>(node) ? downcast<PseudoElement>(node).hostElement() : node.parentOrShadowHostNode()) {
+    if (ContainerNode* ancestor = is<PseudoElement>(*this) ? downcast<PseudoElement>(*this).hostElement() : parentOrShadowHostNode()) {
         ancestor->setDirectChildNeedsStyleRecalc();
+
+        if (is<Element>(*ancestor) && downcast<Element>(*ancestor).childrenAffectedByPropertyBasedBackwardPositionalRules()) {
+            if (ancestor->styleChangeType() < FullStyleChange)
+                ancestor->setStyleChange(FullStyleChange);
+        }
 
         for (; ancestor && !ancestor->childNeedsStyleRecalc(); ancestor = ancestor->parentOrShadowHostNode())
             ancestor->setChildNeedsStyleRecalc();
     }
 
-    Document& document = node.document();
+    Document& document = this->document();
     if (document.childNeedsStyleRecalc())
         document.scheduleStyleRecalc();
 }
@@ -695,7 +687,7 @@ void Node::setNeedsStyleRecalc(StyleChangeType changeType)
         setStyleChange(changeType);
 
     if (existingChangeType == NoStyleChange || changeType == ReconstructRenderTree)
-        markAncestorsWithChildNeedsStyleRecalc(*this);
+        updateAncestorsForStyleRecalc();
 }
 
 unsigned Node::computeNodeIndex() const
@@ -1166,7 +1158,6 @@ bool Node::isDefaultNamespace(const AtomicString& namespaceURIMaybeEmpty) const
                 return documentElement->isDefaultNamespace(namespaceURI);
             return false;
         case ENTITY_NODE:
-        case NOTATION_NODE:
         case DOCUMENT_TYPE_NODE:
         case DOCUMENT_FRAGMENT_NODE:
             return false;
@@ -1199,7 +1190,6 @@ String Node::lookupPrefix(const AtomicString &namespaceURI) const
                 return documentElement->lookupPrefix(namespaceURI);
             return String();
         case ENTITY_NODE:
-        case NOTATION_NODE:
         case DOCUMENT_FRAGMENT_NODE:
         case DOCUMENT_TYPE_NODE:
             return String();
@@ -1257,7 +1247,6 @@ String Node::lookupNamespaceURI(const String &prefix) const
                 return documentElement->lookupNamespaceURI(prefix);
             return String();
         case ENTITY_NODE:
-        case NOTATION_NODE:
         case DOCUMENT_TYPE_NODE:
         case DOCUMENT_FRAGMENT_NODE:
             return String();
@@ -1335,7 +1324,6 @@ static void appendTextContent(const Node* node, bool convertBRsToNewlines, bool&
 
     case Node::DOCUMENT_NODE:
     case Node::DOCUMENT_TYPE_NODE:
-    case Node::NOTATION_NODE:
     case Node::XPATH_NAMESPACE_NODE:
         break;
     }
@@ -1372,7 +1360,6 @@ void Node::setTextContent(const String& text, ExceptionCode& ec)
         }
         case DOCUMENT_NODE:
         case DOCUMENT_TYPE_NODE:
-        case NOTATION_NODE:
         case XPATH_NAMESPACE_NODE:
             // Do nothing.
             return;

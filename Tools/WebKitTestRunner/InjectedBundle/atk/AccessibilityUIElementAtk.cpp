@@ -339,6 +339,8 @@ const gchar* roleToString(AtkObject* object)
         return "AXDialog";
     case ATK_ROLE_CANVAS:
         return "AXCanvas";
+    case ATK_ROLE_CAPTION:
+        return "AXCaption";
     case ATK_ROLE_CHECK_BOX:
         return "AXCheckBox";
     case ATK_ROLE_COLOR_CHOOSER:
@@ -369,6 +371,8 @@ const gchar* roleToString(AtkObject* object)
         return "AXImage";
     case ATK_ROLE_IMAGE_MAP:
         return "AXImageMap";
+    case ATK_ROLE_INVALID:
+        return "AXInvalid";
     case ATK_ROLE_LABEL:
         return "AXLabel";
     case ATK_ROLE_LINK:
@@ -452,6 +456,10 @@ const gchar* roleToString(AtkObject* object)
 #if ATK_CHECK_VERSION(2, 11, 3)
     case ATK_ROLE_ARTICLE:
         return "AXArticle";
+    case ATK_ROLE_AUDIO:
+        return "AXAudio";
+    case ATK_ROLE_BLOCK_QUOTE:
+        return "AXBlockquote";
     case ATK_ROLE_DEFINITION:
         return "AXDefinition";
     case ATK_ROLE_LOG:
@@ -462,6 +470,8 @@ const gchar* roleToString(AtkObject* object)
         return "AXMath";
     case ATK_ROLE_TIMER:
         return "AXTimer";
+    case ATK_ROLE_VIDEO:
+        return "AXVideo";
 #endif
 #if ATK_CHECK_VERSION(2, 11, 4)
     case ATK_ROLE_DESCRIPTION_LIST:
@@ -470,6 +480,10 @@ const gchar* roleToString(AtkObject* object)
         return "AXDescriptionTerm";
     case ATK_ROLE_DESCRIPTION_VALUE:
         return "AXDescriptionValue";
+#endif
+#if ATK_CHECK_VERSION(2, 15, 2)
+    case ATK_ROLE_STATIC:
+        return "AXStatic";
 #endif
     default:
         // We want to distinguish ATK_ROLE_UNKNOWN from a known AtkRole which
@@ -947,14 +961,18 @@ JSValueRef AccessibilityUIElement::rowHeaders() const
 JSValueRef AccessibilityUIElement::columnHeaders() const
 {
 #if ATK_CHECK_VERSION(2,11,90)
-    if (!ATK_IS_TABLE_CELL(m_element.get()))
+    if (!ATK_IS_TABLE_CELL(m_element.get()) && !ATK_IS_TABLE(m_element.get()))
         return nullptr;
 
-    GRefPtr<GPtrArray> array = adoptGRef(atk_table_cell_get_column_header_cells(ATK_TABLE_CELL(m_element.get())));
-    if (!array)
-        return nullptr;
+    Vector<RefPtr<AccessibilityUIElement>> columns;
+    if (ATK_IS_TABLE_CELL(m_element.get())) {
+        GRefPtr<GPtrArray> array = adoptGRef(atk_table_cell_get_column_header_cells(ATK_TABLE_CELL(m_element.get())));
+        if (!array)
+            return nullptr;
 
-    Vector<RefPtr<AccessibilityUIElement>> columns = convertGPtrArrayToVector(array.get());
+        columns = convertGPtrArrayToVector(array.get());
+    } else
+        columns = getColumnHeaders(ATK_TABLE(m_element.get()));
     return convertToJSObjectArray(columns);
 #else
     return nullptr;
@@ -1011,9 +1029,6 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::parameterizedAttributeNames()
 JSRetainPtr<JSStringRef> AccessibilityUIElement::role()
 {
     if (!ATK_IS_OBJECT(m_element.get()))
-        return JSStringCreateWithCharacters(0, 0);
-
-    if (!atk_object_get_role(ATK_OBJECT(m_element.get())))
         return JSStringCreateWithCharacters(0, 0);
 
     GUniquePtr<char> roleStringWithPrefix(g_strdup_printf("AXRole: %s", roleToString(ATK_OBJECT(m_element.get()))));

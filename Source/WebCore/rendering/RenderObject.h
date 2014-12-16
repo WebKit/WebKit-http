@@ -550,15 +550,11 @@ public:
 
     bool hasOverflowClip() const { return m_bitfields.hasOverflowClip(); }
 
-    bool hasTransform() const { return m_bitfields.hasTransform(); }
+    bool hasTransformRelatedProperty() const { return m_bitfields.hasTransformRelatedProperty(); } // Transform, perspective or transform-style: preserve-3d.
+    bool hasTransform() const { return hasTransformRelatedProperty() && style().hasTransform(); }
 
     inline bool preservesNewline() const;
 
-    // The pseudo element style can be cached or uncached.  Use the cached method if the pseudo element doesn't respect
-    // any pseudo classes (and therefore has no concept of changing state).
-    RenderStyle* getCachedPseudoStyle(PseudoId, RenderStyle* parentStyle = 0) const;
-    PassRefPtr<RenderStyle> getUncachedPseudoStyle(const PseudoStyleRequest&, RenderStyle* parentStyle = 0, RenderStyle* ownStyle = 0) const;
-    
     virtual void updateDragState(bool dragOn);
 
     RenderView& view() const { return *document().renderView(); };
@@ -621,7 +617,7 @@ public:
     void setHorizontalWritingMode(bool b = true) { m_bitfields.setHorizontalWritingMode(b); }
     void setHasOverflowClip(bool b = true) { m_bitfields.setHasOverflowClip(b); }
     void setHasLayer(bool b = true) { m_bitfields.setHasLayer(b); }
-    void setHasTransform(bool b = true) { m_bitfields.setHasTransform(b); }
+    void setHasTransformRelatedProperty(bool b = true) { m_bitfields.setHasTransformRelatedProperty(b); }
     void setHasReflection(bool b = true) { m_bitfields.setHasReflection(b); }
 
     // Hook so that RenderTextControl can return the line height of its inner renderer.
@@ -782,11 +778,6 @@ public:
     virtual bool canBeSelectionLeaf() const { return false; }
     bool hasSelectedChildren() const { return selectionState() != SelectionNone; }
 
-    // Obtains the selection colors that should be used when painting a selection.
-    Color selectionBackgroundColor() const;
-    Color selectionForegroundColor() const;
-    Color selectionEmphasisMarkColor() const;
-
     // Whether or not a given block needs to paint selection gaps.
     virtual bool shouldPaintSelectionGaps() const { return false; }
 
@@ -882,10 +873,7 @@ protected:
 private:
     void removeFromRenderFlowThread();
     void removeFromRenderFlowThreadIncludingDescendants(bool);
-
-    Color selectionColor(int colorProperty) const;
-    PassRefPtr<RenderStyle> selectionPseudoStyle() const;
-
+    static void calculateBorderStyleColor(const EBorderStyle&, const BoxSide&, Color&);
     Node* generatingPseudoHostElement() const;
 
     virtual bool isWBR() const { ASSERT_NOT_REACHED(); return false; }
@@ -940,7 +928,7 @@ private:
             , m_isDragging(false)
             , m_hasLayer(false)
             , m_hasOverflowClip(false)
-            , m_hasTransform(false)
+            , m_hasTransformRelatedProperty(false)
             , m_hasReflection(false)
             , m_everHadLayout(false)
             , m_childrenInline(false)
@@ -971,7 +959,7 @@ private:
 
         ADD_BOOLEAN_BITFIELD(hasLayer, HasLayer);
         ADD_BOOLEAN_BITFIELD(hasOverflowClip, HasOverflowClip); // Set in the case of overflow:auto/scroll/hidden
-        ADD_BOOLEAN_BITFIELD(hasTransform, HasTransform);
+        ADD_BOOLEAN_BITFIELD(hasTransformRelatedProperty, HasTransformRelatedProperty);
         ADD_BOOLEAN_BITFIELD(hasReflection, HasReflection);
 
         ADD_BOOLEAN_BITFIELD(everHadLayout, EverHadLayout);

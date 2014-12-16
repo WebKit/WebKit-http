@@ -58,7 +58,7 @@ HTMLFrameSetElement::HTMLFrameSetElement(const QualifiedName& tagName, Document&
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<HTMLFrameSetElement> HTMLFrameSetElement::create(const QualifiedName& tagName, Document& document)
+RefPtr<HTMLFrameSetElement> HTMLFrameSetElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLFrameSetElement(tagName, document));
 }
@@ -155,7 +155,7 @@ bool HTMLFrameSetElement::rendererIsNeeded(const RenderStyle& style)
     return style.isStyleAvailable();
 }
 
-RenderPtr<RenderElement> HTMLFrameSetElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLFrameSetElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     if (style.get().hasContent())
         return RenderElement::createFor(*this, WTF::move(style));

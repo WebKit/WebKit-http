@@ -65,6 +65,9 @@ ControllerIOS.prototype = {
     shouldHaveStartPlaybackButton: function() {
         var allowsInline = this.host.mediaPlaybackAllowsInline;
 
+        if (this.isPlaying)
+            return false;
+
         if (this.isAudio() && allowsInline)
             return false;
 
@@ -147,12 +150,6 @@ ControllerIOS.prototype = {
         inlinePlaybackPlaceholder.setAttribute('pseudo', '-webkit-media-controls-inline-playback-placeholder');
         inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
         inlinePlaybackPlaceholder.setAttribute('aria-label', this.UIString('Display Optimized Full Screen'));
-
-        var buttonImageSVG = "background-image: url('" + this.host.mediaUIImageData("optimized-fullscreen-button") + "')";
-        document.styleSheets[0].insertRule('video::-webkit-media-controls-optimized-fullscreen-button { ' + buttonImageSVG + '; }', 0);
-
-        buttonImageSVG = "background-image: url('" + this.host.mediaUIImageData("optimized-fullscreen-button-hilited") + "')";
-        document.styleSheets[0].insertRule('video::-webkit-media-controls-optimized-fullscreen-button:active { ' + buttonImageSVG + '; }', 0);
 
         var wirelessTargetPicker = this.controls.wirelessTargetPicker = document.createElement('button');
         wirelessTargetPicker.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-picker-button');
@@ -369,23 +366,6 @@ ControllerIOS.prototype = {
 
         this.mostRecentNumberOfTargettedTouches = event.targetTouches.length;
         
-        if (this.host.optimizedFullscreenSupported) {
-            if (this.mostRecentNumberOfTargettedTouches == 2) {
-                var now = new Date();
-                if (this.lastDoubleTouchTime === undefined) {
-                    this.lastDoubleTouchTime = now;
-                } else {
-                    var doubleTouchIntervalThresholdms = 300
-                    if (now - this.lastDoubleTouchTime < doubleTouchIntervalThresholdms) {
-                        delete this.lastDoubleTouchTime;
-                        event.preventDefault();
-                        this.host.enterFullscreenOptimized();
-                    } else
-                        this.lastDoubleTouchTime = now;
-                }
-            }
-        }
-        
         if (this.controlsAreHidden()) {
             this.showControls();
             if (this.hideTimer)
@@ -543,8 +523,8 @@ ControllerIOS.prototype = {
 
     setPlaying: function(isPlaying)
     {
-        this.updateControls();
         Controller.prototype.setPlaying.call(this, isPlaying);
+        this.updateControls();
     },
 
     setShouldListenForPlaybackTargetAvailabilityEvent: function(shouldListen)

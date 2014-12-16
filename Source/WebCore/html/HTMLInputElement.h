@@ -63,7 +63,7 @@ struct InputElementClickState {
 
 class HTMLInputElement : public HTMLTextFormControlElement {
 public:
-    static PassRefPtr<HTMLInputElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
+    static RefPtr<HTMLInputElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
     virtual ~HTMLInputElement();
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitspeechchange);
@@ -200,7 +200,7 @@ public:
     bool canHaveSelection() const;
 
     virtual bool rendererIsNeeded(const RenderStyle&) override final;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override final;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override final;
     virtual void willAttachRenderers() override final;
     virtual void didAttachRenderers() override final;
     virtual void didDetachRenderers() override final;
@@ -396,7 +396,7 @@ private:
 
     virtual bool isOptionalFormControl() const override final { return !isRequiredFormControl(); }
     virtual bool isRequiredFormControl() const override final;
-    virtual bool recalcWillValidate() const override final;
+    virtual bool computeWillValidate() const override final;
     virtual void requiredAttributeChanged() override final;
 
     void initializeInputType();

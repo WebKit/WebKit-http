@@ -33,6 +33,7 @@ App.DashboardRow = Ember.Object.extend({
             paneInfo = null;
 
         var pane = App.Pane.create({
+            store: this.get('store'),
             platformId: paneInfo ? paneInfo[0] : null,
             metricId: paneInfo ? paneInfo[1] : null,
         });
@@ -45,7 +46,7 @@ App.DashboardPaneProxyForPicker = Ember.ObjectProxy.extend({
     _platformOrMetricIdChanged: function ()
     {
         var self = this;
-        App.BuildPopup('choosePane', this)
+        App.buildPopup(this.get('store'), 'choosePane', this)
             .then(function (platforms) { self.set('pickerData', platforms); });
     }.observes('platformId', 'metricId').on('init'),
     paneList: function () {
@@ -56,7 +57,6 @@ App.DashboardPaneProxyForPicker = Ember.ObjectProxy.extend({
 App.IndexController = Ember.Controller.extend({
     queryParams: ['grid', 'numberOfDays'],
     _previousGrid: {},
-    defaultTable: [],
     headerColumns: [],
     rows: [],
     numberOfDays: 30,
@@ -68,27 +68,26 @@ App.IndexController = Ember.Controller.extend({
         if (grid === this._previousGrid)
             return;
 
-        var table = null;
-        try {
-            if (grid)
-                table = JSON.parse(grid);
-        } catch (error) {
-            console.log("Failed to parse the grid:", error, grid);
+        var dashboard = null;
+        if (grid) {
+            dashboard = App.Dashboard.create({serialized: grid});
+            if (!dashboard.get('headerColumns').length)
+                dashboard = null;
         }
+        if (!dashboard)
+            dashboard = App.Manifest.get('defaultDashboard');
+        if (!dashboard)
+            return;
 
-        if (!table || !table.length) // FIXME: We should fetch this from the manifest.
-            table = this.get('defaultTable');
-
-        table = this._normalizeTable(table);
-        var columnCount = table[0].length;
+        var headerColumns = dashboard.get('headerColumns');
+        this.set('headerColumns', headerColumns);
+        var columnCount = headerColumns.length;
         this.set('columnCount', columnCount);
 
-        this.set('headerColumns', table[0].map(function (name, index) {
-            return {label:name, index: index};
-        }));
-
-        this.set('rows', table.slice(1).map(function (rowParam) {
+        var store = this.store;
+        this.set('rows', dashboard.get('rows').map(function (rowParam) {
             return App.DashboardRow.create({
+                store: store,
                 header: rowParam[0],
                 cellsInfo: rowParam.slice(1),
                 columnCount: columnCount,
@@ -96,22 +95,7 @@ App.IndexController = Ember.Controller.extend({
         }));
 
         this.set('emptyRow', new Array(columnCount));
-    }.observes('grid').on('init'),
-
-    _normalizeTable: function (table)
-    {
-        var maxColumnCount = Math.max(table.map(function (column) { return column.length; }));
-        for (var i = 1; i < table.length; i++) {
-            var row = table[i];
-            for (var j = 1; j < row.length; j++) {
-                if (row[j] && !(row[j] instanceof Array)) {
-                    console.log('Unrecognized (platform, metric) pair at column ' + i + ' row ' + j + ':' + row[j]);
-                    row[j] = [];
-                }
-            }
-        }
-        return table;
-    },
+    }.observes('grid', 'App.Manifest.defaultDashboard').on('init'),
 
     updateGrid: function()
     {
@@ -170,6 +154,7 @@ App.IndexController = Ember.Controller.extend({
         addRow: function ()
         {
             this.get('rows').pushObject(App.DashboardRow.create({
+                store: this.store,
                 header: this.get('newRowHeader'),
                 columnCount: this.get('columnCount'),
             }));
@@ -195,7 +180,7 @@ App.IndexController = Ember.Controller.extend({
     init: function ()
     {
         this._super();
-        App.Manifest.fetch();
+        App.Manifest.fetch(this.get('store'));
     }
 });
 
@@ -340,7 +325,7 @@ App.Pane = Ember.Object.extend({
         else {
             var self = this;
 
-            App.Manifest.fetchRunsWithPlatformAndMetric(this.store, platformId, metricId).then(function (result) {
+            App.Manifest.fetchRunsWithPlatformAndMetric(this.get('store'), platformId, metricId).then(function (result) {
                 self.set('platform', result.platform);
                 self.set('metric', result.metric);
                 self.set('chartData', result.runs);
@@ -354,8 +339,21 @@ App.Pane = Ember.Object.extend({
                 else
                     self.set('failure', 'An internal error');
             });
+
+            this.fetchAnalyticRanges();
         }
     }.observes('platformId', 'metricId').on('init'),
+    fetchAnalyticRanges: function ()
+    {
+        var platformId = this.get('platformId');
+        var metricId = this.get('metricId');
+        var self = this;
+        this.get('store')
+            .find('analysisTask', {platform: platformId, metric: metricId})
+            .then(function (tasks) {
+                self.set('analyticRanges', tasks.filter(function (task) { return task.get('startRun') && task.get('endRun'); }));
+            });
+    },
     _isValidId: function (id)
     {
         if (typeof(id) == "number")
@@ -401,6 +399,7 @@ App.ChartsController = Ember.Controller.extend({
     platforms: null,
     sharedZoom: null,
     startTime: null,
+    present: Date.now(),
     defaultSince: Date.now() - 7 * 24 * 3600 * 1000,
 
     addPane: function (pane)
@@ -452,35 +451,8 @@ App.ChartsController = Ember.Controller.extend({
 
     }.observes('zoom').on('init'),
 
-    updateSharedDomain: function ()
-    {
-        var panes = this.get('panes');
-        if (!panes.length)
-            return;
-
-        var union = [undefined, undefined];
-        for (var i = 0; i < panes.length; i++) {
-            var domain = panes[i].intrinsicDomain;
-            if (!domain)
-                continue;
-            if (!union[0] || domain[0] < union[0])
-                union[0] = domain[0];
-            if (!union[1] || domain[1] > union[1])
-                union[1] = domain[1];
-        }
-        if (union[0] === undefined)
-            return;
-
-        var startTime = this.get('startTime');
-        var zoom = this.get('sharedZoom');
-        if (startTime)
-            union[0] = zoom ? Math.min(zoom[0], startTime) : startTime;
-
-        this.set('sharedDomain', union);
-    }.observes('panes.@each'),
-
     _startTimeChanged: function () {
-        this.updateSharedDomain();
+        this.set('sharedDomain', [this.get('startTime'), this.get('present')]);
         this._scheduleQueryStringUpdate();
     }.observes('startTime'),
 
@@ -510,6 +482,7 @@ App.ChartsController = Ember.Controller.extend({
                 }
             }
             return App.Pane.create({
+                store: self.store,
                 info: paneInfo,
                 platformId: paneInfo[0],
                 metricId: paneInfo[1],
@@ -537,9 +510,8 @@ App.ChartsController = Ember.Controller.extend({
 
     _scheduleQueryStringUpdate: function ()
     {
-        Ember.run.debounce(this, '_updateQueryString', 500);
-    }.observes('sharedZoom')
-        .observes('panes.@each.platform', 'panes.@each.metric', 'panes.@each.selectedItem',
+        Ember.run.debounce(this, '_updateQueryString', 1000);
+    }.observes('sharedZoom', 'panes.@each.platform', 'panes.@each.metric', 'panes.@each.selectedItem',
         'panes.@each.timeRange', 'panes.@each.timeRangeIsLocked'),
 
     _updateQueryString: function ()
@@ -548,9 +520,9 @@ App.ChartsController = Ember.Controller.extend({
         this.set('paneList', this._currentEncodedPaneList);
 
         var zoom = undefined;
-        var selection = this.get('sharedZoom');
-        if (selection)
-            zoom = (selection[0] - 0) + '-' + (selection[1] - 0);
+        var sharedZoom = this.get('sharedZoom');
+        if (sharedZoom && !App.domainsAreEqual(sharedZoom, this.get('sharedDomain')))
+            zoom = +sharedZoom[0] + '-' + +sharedZoom[1];
         this.set('zoom', zoom);
 
         if (this.get('startTime') - this.defaultSince)
@@ -561,6 +533,7 @@ App.ChartsController = Ember.Controller.extend({
         addPaneByMetricAndPlatform: function (param)
         {
             this.addPane(App.Pane.create({
+                store: this.store,
                 platformId: param.platform.get('id'),
                 metricId: param.metric.get('id'),
                 showingDetails: false
@@ -572,15 +545,15 @@ App.ChartsController = Ember.Controller.extend({
     {
         this._super();
         var self = this;
-        App.BuildPopup('addPaneByMetricAndPlatform').then(function (platforms) {
+        App.buildPopup(this.store, 'addPaneByMetricAndPlatform').then(function (platforms) {
             self.set('platforms', platforms);
         });
     },
 });
 
-App.BuildPopup = function(action, position)
+App.buildPopup = function(store, action, position)
 {
-    return App.Manifest.fetch().then(function () {
+    return App.Manifest.fetch(store).then(function () {
         return App.Manifest.get('platforms').map(function (platform) {
             return App.PlatformProxyForPopup.create({content: platform,
                 action: action, position: position});
@@ -635,6 +608,10 @@ App.TestProxyForPopup = Ember.ObjectProxy.extend({
     }.property('childTests', 'metrics'),
 });
 
+App.domainsAreEqual = function (domain1, domain2) {
+    return (!domain1 && !domain2) || (domain1 && domain2 && !(domain1[0] - domain2[0]) && !(domain1[1] - domain2[1]));
+}
+
 App.PaneController = Ember.ObjectController.extend({
     needs: ['charts'],
     sharedTime: Ember.computed.alias('parentController.sharedTime'),
@@ -651,34 +628,23 @@ App.PaneController = Ember.ObjectController.extend({
         },
         toggleBugsPane: function ()
         {
-            if (this.toggleProperty('showingBugsPane'))
+            if (this.toggleProperty('showingAnalysisPane'))
                 this.set('showingSearchPane', false);
-        },
-        associateBug: function (bugTracker, bugNumber)
-        {
-            var point = this.get('selectedSinglePoint');
-            if (!point)
-                return;
-            var self = this;
-            point.measurement.associateBug(bugTracker.get('id'), bugNumber).then(function () {
-                self._updateBugs();
-                self._updateMarkedPoints();
-            }, function (error) {
-                alert(error);
-            });
         },
         createAnalysisTask: function ()
         {
             var name = this.get('newAnalysisTaskName');
-            var points = this._selectedPoints;
-            if (!name || !points || points.length < 2)
-                return;
+            var points = this.get('selectedPoints');
+            Ember.assert('The analysis name should not be empty', name);
+            Ember.assert('There should be at least two points in the range', points && points.length >= 2);
 
             var newWindow = window.open();
+            var self = this;
             App.AnalysisTask.create(name, points[0].measurement, points[points.length - 1].measurement).then(function (data) {
                 // FIXME: Update the UI to show the new analysis task.
                 var url = App.Router.router.generate('analysisTask', data['taskId']);
                 newWindow.location.href = '#' + url;
+                self.get('model').fetchAnalyticRanges();
             }, function (error) {
                 newWindow.close();
                 if (error === 'DuplicateAnalysisTask') {
@@ -695,7 +661,7 @@ App.PaneController = Ember.ObjectController.extend({
             if (!model.get('commitSearchRepository'))
                 model.set('commitSearchRepository', App.Manifest.repositoriesWithReportedCommits[0]);
             if (this.toggleProperty('showingSearchPane'))
-                this.set('showingBugsPane', false);
+                this.set('showingAnalysisPane', false);
         },
         searchCommit: function () {
             var model = this.get('model');
@@ -706,40 +672,21 @@ App.PaneController = Ember.ObjectController.extend({
             this.set('mainPlotDomain', selection ? selection : this.get('overviewDomain'));
             Ember.run.debounce(this, 'propagateZoom', 100);
         },
-        overviewDomainChanged: function (domain, intrinsicDomain)
-        {
-            this.set('overviewDomain', domain);
-            this.set('intrinsicDomain', intrinsicDomain);
-            this.get('parentController').updateSharedDomain();
-        },
-        rangeChanged: function (extent, points)
-        {
-            if (!points) {
-                this._hasRange = false;
-                this.set('details', null);
-                this.set('timeRange', null);
-                return;
-            }
-            this._hasRange = true;
-            this._showDetails(points);
-            this.set('timeRange', extent);
-        },
     },
     _detailsChanged: function ()
     {
-        this.set('showingBugsPane', false);
-        this.set('selectedSinglePoint', !this._hasRange && this._selectedPoints ? this._selectedPoints[0] : null);
+        this.set('showingAnalysisPane', false);
     }.observes('details'),
     _overviewSelectionChanged: function ()
     {
         var overviewSelection = this.get('overviewSelection');
-        this.set('mainPlotDomain', overviewSelection);
+        this.set('mainPlotDomain', overviewSelection || this.get('overviewDomain'));
         Ember.run.debounce(this, 'propagateZoom', 100);
     }.observes('overviewSelection'),
     _sharedDomainChanged: function ()
     {
         var newDomain = this.get('parentController').get('sharedDomain');
-        if (newDomain == this.get('overviewDomain'))
+        if (App.domainsAreEqual(newDomain, this.get('overviewDomain')))
             return;
         this.set('overviewDomain', newDomain);
         if (!this.get('overviewSelection'))
@@ -752,28 +699,30 @@ App.PaneController = Ember.ObjectController.extend({
     _sharedZoomChanged: function ()
     {
         var newSelection = this.get('parentController').get('sharedZoom');
-        if (newSelection == this.get('mainPlotDomain'))
+        if (App.domainsAreEqual(newSelection, this.get('mainPlotDomain')))
             return;
         this.set('overviewSelection', newSelection);
-        this.set('mainPlotDomain', newSelection);
     }.observes('parentController.sharedZoom').on('init'),
-    _currentItemChanged: function ()
+    _updateDetails: function ()
     {
-        if (this._hasRange)
-            return;
-        var point = this.get('currentItem');
-        if (!point || !point.measurement)
+        var selectedPoints = this.get('selectedPoints');
+        var currentPoint = this.get('currentItem');
+        if (!selectedPoints && !currentPoint) {
             this.set('details', null);
-        else {
-            var previousPoint = point.series.previousPoint(point);
-            this._showDetails(previousPoint ? [previousPoint, point] : [point]);
+            return;
         }
-    }.observes('currentItem'),
-    _showDetails: function (points)
-    {
-        var isShowingEndPoint = !this._hasRange;
-        var currentMeasurement = points[points.length - 1].measurement;
-        var oldMeasurement = points[0].measurement;
+
+        var currentMeasurement;
+        var oldMeasurement;
+        if (currentPoint) {
+            currentMeasurement = currentPoint.measurement;
+            var previousPoint = currentPoint.series.previousPoint(currentPoint);
+            oldMeasurement = previousPoint ? previousPoint.measurement : null;
+        } else {
+            currentMeasurement = selectedPoints[selectedPoints.length - 1].measurement;
+            oldMeasurement = selectedPoints[0].measurement;            
+        }
+
         var formattedRevisions = currentMeasurement.formattedRevisions(oldMeasurement);
         var revisions = App.Manifest.get('repositories')
             .filter(function (repository) { return formattedRevisions[repository.get('id')]; })
@@ -790,74 +739,28 @@ App.PaneController = Ember.ObjectController.extend({
 
         var buildNumber = null;
         var buildURL = null;
-        if (isShowingEndPoint) {
+        if (currentPoint) {
             buildNumber = currentMeasurement.buildNumber();
             var builder = App.Manifest.builder(currentMeasurement.builderId());
             if (builder)
                 buildURL = builder.urlFromBuildNumber(buildNumber);
         }
 
-        this._selectedPoints = points;
         this.set('details', Ember.Object.create({
             currentValue: currentMeasurement.mean().toFixed(2),
-            oldValue: oldMeasurement && !isShowingEndPoint ? oldMeasurement.mean().toFixed(2) : null,
+            oldValue: oldMeasurement && selectedPoints ? oldMeasurement.mean().toFixed(2) : null,
             buildNumber: buildNumber,
             buildURL: buildURL,
             buildTime: currentMeasurement.formattedBuildTime(),
             revisions: revisions,
         }));
-        this._updateBugs();
-    },
-    _updateBugs: function ()
+        this._updateCanAnalyze();
+    }.observes('currentItem', 'selectedPoints'),
+    _updateCanAnalyze: function ()
     {
-        if (!this._selectedPoints)
-            return;
-
-        var bugTrackers = App.Manifest.get('bugTrackers');
-        var trackerToBugNumbers = {};
-        bugTrackers.forEach(function (tracker) { trackerToBugNumbers[tracker.get('id')] = new Array(); });
-
-        var points = this._hasRange ? this._selectedPoints : [this._selectedPoints[1]];
-        points.map(function (point) {
-            var bugs = point.measurement.bugs();
-            bugTrackers.forEach(function (tracker) {
-                var bugNumber = bugs[tracker.get('id')];
-                if (bugNumber)
-                    trackerToBugNumbers[tracker.get('id')].push(bugNumber);
-            });
-        });
-
-        this.set('details.bugTrackers', App.Manifest.get('bugTrackers').map(function (tracker) {
-            var bugNumbers = trackerToBugNumbers[tracker.get('id')];
-            return Ember.ObjectProxy.create({
-                content: tracker,
-                bugs: bugNumbers.map(function (bugNumber) {
-                    return {
-                        bugNumber: bugNumber,
-                        bugUrl: bugNumber && tracker.get('bugUrl') ? tracker.get('bugUrl').replace(/\$number/g, bugNumber) : null
-                    };
-                }),
-                editedBugNumber: this._hasRange ? null : bugNumbers[0],
-            }); // FIXME: Create urls for new bugs.
-        }));
-    },
-    _updateMarkedPoints: function ()
-    {
-        var chartData = this.get('chartData');
-        if (!chartData || !chartData.current) {
-            this.set('markedPoints', {});
-            return;
-        }
-
-        var series = chartData.current.timeSeriesByCommitTime().series();
-        var markedPoints = {};
-        for (var i = 0; i < series.length; i++) {
-            var measurement = series[i].measurement;
-            if (measurement.hasBugs())
-                markedPoints[measurement.id()] = true;
-        }
-        this.set('markedPoints', markedPoints);
-    }.observes('chartData'),
+        var points = this.get('selectedPoints');
+        this.set('cannotAnalyze', !this.get('newAnalysisTaskName') || !points || points.length < 2);
+    }.observes('newAnalysisTaskName'),
 });
 
 App.InteractiveChartComponent = Ember.Component.extend({
@@ -958,7 +861,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
             this._dots.forEach(function (dot) { dots.remove(); });
         this._dots = [];
         if (this._highlights)
-            this._highlights.forEach(function (highlight) { _highlights.remove(); });
+            this._highlights.forEach(function (highlight) { highlight.remove(); });
         this._highlights = [];
 
         this._currentTimeSeries = chartData.current.timeSeriesByCommitTime();
@@ -1041,6 +944,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
         setTimeout(this._selectedItemChanged.bind(this), 0);
 
         this._needsConstruction = false;
+
+        this._rangesChanged();
     },
     _updateDomain: function ()
     {
@@ -1049,13 +954,12 @@ App.InteractiveChartComponent = Ember.Component.extend({
         if (!xDomain)
             xDomain = intrinsicXDomain;
         var currentDomain = this._x.domain();
-        if (currentDomain && this._xDomainsAreSame(currentDomain, xDomain))
+        if (currentDomain && App.domainsAreEqual(currentDomain, xDomain))
             return currentDomain;
 
         var yDomain = this._computeYAxisDomain(xDomain[0], xDomain[1]);
         this._x.domain(xDomain);
         this._y.domain(yDomain);
-        this.sendAction('domainChanged', xDomain, intrinsicXDomain);
         return xDomain;
     },
     _updateDimensionsIfNeeded: function (newSelection)
@@ -1136,6 +1040,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
         });
         this._updateMarkedDots();
         this._updateHighlightPositions();
+        this._updateRangeBarRects();
 
         if (this._brush) {
             if (selection)
@@ -1157,7 +1062,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
             this._yAxisUnitContainer.remove();
         this._yAxisUnitContainer = this._yAxisLabels.append("text")
             .attr("x", 0.5 * this._rem)
-            .attr("y", this._rem)
+            .attr("y", 0.2 * this._rem)
             .attr("dy", 0.8 * this._rem)
             .style("text-anchor", "start")
             .style("z-index", "100")
@@ -1234,33 +1139,23 @@ App.InteractiveChartComponent = Ember.Component.extend({
     {
         this._updateSelection(this.get('selection'));
     }.observes('selection'),
-    _sharedSelectionChanged: function ()
-    {
-        if (this.get('selectionIsLocked'))
-            return;
-        this._updateSelection(this.get('sharedSelection'));
-    }.observes('sharedSelection'),
     _updateSelection: function (newSelection)
     {
         if (!this._brush)
             return;
 
         var currentSelection = this._currentSelection();
-        if (newSelection && currentSelection && this._xDomainsAreSame(newSelection, currentSelection))
+        if (newSelection && currentSelection && App.domainsAreEqual(newSelection, currentSelection))
             return;
 
         var domain = this._x.domain();
-        if (!newSelection || this._xDomainsAreSame(domain, newSelection))
+        if (!newSelection || App.domainsAreEqual(domain, newSelection))
             this._brush.clear();
         else
             this._brush.extent(newSelection);
         this._updateBrush();
 
         this._setCurrentSelection(newSelection);
-    },
-    _xDomainsAreSame: function (domain1, domain2)
-    {
-        return !(domain1[0] - domain2[0]) && !(domain1[1] - domain2[1]);
     },
     _brushChanged: function ()
     {
@@ -1344,7 +1239,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
     _mousePointInGraph: function (event)
     {
         var offset = $(this.get('element')).offset();
-        if (!offset)
+        if (!offset || !$(event.target).closest('svg').length)
             return null;
 
         var point = {
@@ -1465,7 +1360,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
 
         var data = this._currentTimeSeriesData.filter(function (item) { return highlightedItems[item.measurement.id()]; });
 
-        if (this._highlights)
+        if (this._highlights.length)
             this._highlights.forEach(function (highlight) { highlight.remove(); });
 
         this._highlights.push(this._clippedContainer
@@ -1477,6 +1372,100 @@ App.InteractiveChartComponent = Ember.Component.extend({
         this._updateHighlightPositions();
 
     }.observes('highlightedItems'),
+    _rangesChanged: function ()
+    {
+        if (!this._currentTimeSeries)
+            return;
+
+        function midPoint(firstPoint, secondPoint) {
+            if (firstPoint && secondPoint)
+                return (+firstPoint.time + +secondPoint.time) / 2;
+            if (firstPoint)
+                return firstPoint.time;
+            return secondPoint.time;
+        }
+        var currentTimeSeries = this._currentTimeSeries;
+        var linkRoute = this.get('rangeRoute');
+        this.set('rangeBars', (this.get('ranges') || []).map(function (range) {
+            var start = currentTimeSeries.findPointByMeasurementId(range.get('startRun'));
+            var end = currentTimeSeries.findPointByMeasurementId(range.get('endRun'));
+            return Ember.Object.create({
+                startTime: midPoint(currentTimeSeries.previousPoint(start), start),
+                endTime: midPoint(end, currentTimeSeries.nextPoint(end)),
+                range: range,
+                left: null,
+                right: null,
+                rowIndex: null,
+                top: null,
+                bottom: null,
+                linkRoute: linkRoute,
+                linkId: range.get('id'),
+                label: range.get('label'),
+            });
+        }));
+
+        this._updateRangeBarRects();
+    }.observes('ranges'),
+    _updateRangeBarRects: function () {
+        var rangeBars = this.get('rangeBars');
+        if (!rangeBars || !rangeBars.length)
+            return;
+
+        var xScale = this._x;
+        var yScale = this._y;
+
+        // Expand the width of each range as needed and sort ranges by the left-edge of ranges.
+        var minWidth = 3;
+        var sortedBars = rangeBars.map(function (bar) {
+            var left = xScale(bar.get('startTime'));
+            var right = xScale(bar.get('endTime'));
+            if (right - left < minWidth) {
+                left -= minWidth / 2;
+                right += minWidth / 2;
+            }
+            bar.set('left', left);
+            bar.set('right', right);
+            return bar;
+        }).sort(function (first, second) { return first.get('left') - second.get('left'); });
+
+        // At this point, left edges of all ranges prior to a range R1 is on the left of R1.
+        // Place R1 into a row in which right edges of all ranges prior to R1 is on the left of R1 to avoid overlapping ranges.
+        var rows = [];
+        sortedBars.forEach(function (bar) {
+            var rowIndex = 0;
+            for (; rowIndex < rows.length; rowIndex++) {
+                var currentRow = rows[rowIndex];
+                if (currentRow[currentRow.length - 1].get('right') < bar.get('left')) {
+                    currentRow.push(bar);
+                    break;
+                }
+            }
+            if (rowIndex >= rows.length)
+                rows.push([bar]);
+            bar.set('rowIndex', rowIndex);
+        });
+        var rowHeight = 0.6 * this._rem;
+        var firstRowTop = this._contentHeight - rows.length * rowHeight;
+        var barHeight = 0.5 * this._rem;
+
+        $(this.get('element')).find('.rangeBarsContainerInlineStyle').css({
+            left: this._margin.left + 'px',
+            top: this._margin.top + firstRowTop + 'px',
+            width: this._contentWidth + 'px',
+            height: rows.length * barHeight + 'px',
+            overflow: 'hidden',
+            position: 'absolute',
+        });
+
+        var margin = this._margin;
+        sortedBars.forEach(function (bar) {
+            var top = bar.get('rowIndex') * rowHeight;
+            var height = barHeight;
+            var left = bar.get('left');
+            var width = bar.get('right') - left;
+            bar.set('inlineStyle', 'left: ' + left + 'px; top: ' + top + 'px; width: ' + width + 'px; height: ' + height + 'px;');
+        });
+    },
     _updateCurrentItemIndicators: function ()
     {
         if (!this._currentItemLine)
@@ -1517,8 +1506,9 @@ App.InteractiveChartComponent = Ember.Component.extend({
         this._setCurrentItem(undefined);
         this._updateSelectionToolbar();
 
-        this.set('sharedSelection', newSelection);
-        this.sendAction('selectionChanged', newSelection, points);
+        if (!App.domainsAreEqual(this.get('selection'), newSelection))
+            this.set('selection', newSelection);
+        this.set('selectedPoints', points);
     },
     _updateSelectionToolbar: function ()
     {
@@ -1541,6 +1531,10 @@ App.InteractiveChartComponent = Ember.Component.extend({
         {
             this.sendAction('zoom', this._currentSelection());
             this.set('selection', null);
+        },
+        openRange: function (range)
+        {
+            this.sendAction('openRange', range);
         },
     },
 });
@@ -1591,32 +1585,56 @@ App.AnalysisRoute = Ember.Route.extend({
 });
 
 App.AnalysisTaskRoute = Ember.Route.extend({
-    model: function (param) {
-        var store = this.store;
-        return this.store.find('analysisTask', param.taskId).then(function (task) {
-            return App.AnalysisTaskViewModel.create({content: task});
-        });
+    model: function (param)
+    {
+        return this.store.find('analysisTask', param.taskId);
     },
 });
 
-App.AnalysisTaskViewModel = Ember.ObjectProxy.extend({
+App.AnalysisTaskController = Ember.Controller.extend({
+    label: Ember.computed.alias('model.name'),
+    platform: Ember.computed.alias('model.platform'),
+    metric: Ember.computed.alias('model.metric'),
     testSets: [],
     roots: [],
+    bugTrackers: [],
     _taskUpdated: function ()
     {
-        var platformId = this.get('platform').get('id');
-        var metricId = this.get('metric').get('id');
+        var model = this.get('model');
+        if (!model)
+            return;
+
+        var platformId = model.get('platform').get('id');
+        var metricId = model.get('metric').get('id');
+        App.Manifest.fetch(this.store).then(this._fetchedManifest.bind(this));
         App.Manifest.fetchRunsWithPlatformAndMetric(this.store, platformId, metricId).then(this._fetchedRuns.bind(this));
-    }.observes('platform', 'metric').on('init'),
-    _fetchedRuns: function (data) {
+    }.observes('model').on('init'),
+    _fetchedManifest: function ()
+    {
+        var trackerIdToBugNumber = {};
+        this.get('model').get('bugs').forEach(function (bug) {
+            trackerIdToBugNumber[bug.get('bugTracker').get('id')] = bug.get('number');
+        });
+
+        this.set('bugTrackers', App.Manifest.get('bugTrackers').map(function (bugTracker) {
+            var bugNumber = trackerIdToBugNumber[bugTracker.get('id')];
+            return Ember.ObjectProxy.create({
+                content: bugTracker,
+                bugNumber: bugNumber,
+                editedBugNumber: bugNumber,
+            });
+        }));
+    },
+    _fetchedRuns: function (data)
+    {
         var runs = data.runs;
 
         var currentTimeSeries = runs.current.timeSeriesByCommitTime();
         if (!currentTimeSeries)
             return; // FIXME: Report an error.
 
-        var start = currentTimeSeries.findPointByMeasurementId(this.get('startRun'));
-        var end = currentTimeSeries.findPointByMeasurementId(this.get('endRun'));
+        var start = currentTimeSeries.findPointByMeasurementId(this.get('model').get('startRun'));
+        var end = currentTimeSeries.findPointByMeasurementId(this.get('model').get('endRun'));
         if (!start || !end)
             return; // FIXME: Report an error.
 
@@ -1651,7 +1669,8 @@ App.AnalysisTaskViewModel = Ember.ObjectProxy.extend({
             Ember.Object.create({name: "B", options: pointOptions, selection: pointOptions[pointOptions.length - 1]}),
         ];
     }.property('analysisPoints'),
-    _rootChangedForTestSet: function () {
+    _rootChangedForTestSet: function ()
+    {
         var sets = this.get('testSets');
         var roots = this.get('roots');
         if (!sets || !roots)
@@ -1707,4 +1726,16 @@ App.AnalysisTaskViewModel = Ember.ObjectProxy.extend({
         }
         return roots;
     }.property('analysisPoints'),
+    actions: {
+        associateBug: function (bugTracker, bugNumber)
+        {
+            var model = this.get('model');
+            this.store.createRecord('bug',
+                {task: this.get('model'), bugTracker: bugTracker.get('content'), number: bugNumber}).save().then(function () {
+                    // FIXME: Should we notify the user?
+                }, function (error) {
+                    alert('Failed to associate the bug: ' + error);
+                });
+        }
+    },
 });

@@ -181,7 +181,7 @@ private:
     bool m_hadVerticalLayoutOverflow;
 };
 
-RenderBlock::RenderBlock(Element& element, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderBlock::RenderBlock(Element& element, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderBox(element, WTF::move(style), baseTypeFlags | RenderBlockFlag)
     , m_lineHeight(-1)
     , m_hasMarginBeforeQuirk(false)
@@ -192,7 +192,7 @@ RenderBlock::RenderBlock(Element& element, PassRef<RenderStyle> style, unsigned 
 {
 }
 
-RenderBlock::RenderBlock(Document& document, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderBlock::RenderBlock(Document& document, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderBox(document, WTF::move(style), baseTypeFlags | RenderBlockFlag)
     , m_lineHeight(-1)
     , m_hasMarginBeforeQuirk(false)
@@ -231,6 +231,16 @@ RenderBlock::~RenderBlock()
         removeBlockFromDescendantAndContainerMaps(this, gPercentHeightDescendantsMap, gPercentHeightContainerMap);
     if (gPositionedDescendantsMap)
         removeBlockFromDescendantAndContainerMaps(this, gPositionedDescendantsMap, gPositionedContainerMap);
+}
+
+void RenderBlock::willBeDestroyed()
+{
+    if (!documentBeingDestroyed()) {
+        if (parent())
+            parent()->dirtyLinesFromChangedChild(*this);
+    }
+
+    RenderBox::willBeDestroyed();
 }
 
 bool RenderBlock::hasRareData() const
@@ -687,12 +697,14 @@ void RenderBlock::collapseAnonymousBoxChild(RenderBlock& parent, RenderBlock* ch
     child->destroy();
 }
 
-RenderObject* RenderBlock::removeChild(RenderObject& oldChild)
+void RenderBlock::removeChild(RenderObject& oldChild)
 {
     // No need to waste time in merging or removing empty anonymous blocks.
     // We can just bail out if our document is getting destroyed.
-    if (documentBeingDestroyed())
-        return RenderBox::removeChild(oldChild);
+    if (documentBeingDestroyed()) {
+        RenderBox::removeChild(oldChild);
+        return;
+    }
 
     // If this child is a block, and if our previous and next siblings are
     // both anonymous blocks with inline content, then we can go ahead and
@@ -745,7 +757,7 @@ RenderObject* RenderBlock::removeChild(RenderObject& oldChild)
 
     invalidateLineLayoutPath();
 
-    RenderObject* nextSibling = RenderBox::removeChild(oldChild);
+    RenderBox::removeChild(oldChild);
 
     RenderObject* child = prev ? prev : next;
     if (canMergeAnonymousBlocks && child && !child->previousSibling() && !child->nextSibling() && canCollapseAnonymousBlockChild()) {
@@ -753,7 +765,6 @@ RenderObject* RenderBlock::removeChild(RenderObject& oldChild)
         // box.  We can go ahead and pull the content right back up into our
         // box.
         collapseAnonymousBoxChild(*this, downcast<RenderBlock>(child));
-        nextSibling = nullptr;
     } else if (((prev && prev->isAnonymousBlock()) || (next && next->isAnonymousBlock())) && canCollapseAnonymousBlockChild()) {
         // It's possible that the removal has knocked us down to a single anonymous
         // block with pseudo-style element siblings (e.g. first-letter). If these
@@ -763,13 +774,10 @@ RenderObject* RenderBlock::removeChild(RenderObject& oldChild)
             && (!anonBlock->previousSibling() || (anonBlock->previousSibling()->style().styleType() != NOPSEUDO && anonBlock->previousSibling()->isFloating() && !anonBlock->previousSibling()->previousSibling()))
             && (!anonBlock->nextSibling() || (anonBlock->nextSibling()->style().styleType() != NOPSEUDO && anonBlock->nextSibling()->isFloating() && !anonBlock->nextSibling()->nextSibling()))) {
             collapseAnonymousBoxChild(*this, anonBlock);
-            nextSibling = nullptr;
         }
     }
 
     if (!firstChild()) {
-        nextSibling = nullptr;
-
         // If this was our last child be sure to clear out our line boxes.
         if (childrenInline())
             deleteLines();
@@ -800,8 +808,6 @@ RenderObject* RenderBlock::removeChild(RenderObject& oldChild)
             destroy();
         }
     }
-    
-    return nextSibling;
 }
 
 bool RenderBlock::isSelfCollapsingBlock() const
@@ -1094,12 +1100,6 @@ void RenderBlock::addVisualOverflowFromTheme()
 
     if (RenderFlowThread* flowThread = flowThreadContainingBlock())
         flowThread->addRegionsVisualOverflowFromTheme(this);
-}
-
-bool RenderBlock::expandsToEncloseOverhangingFloats() const
-{
-    return isInlineBlockOrInlineTable() || isFloatingOrOutOfFlowPositioned() || hasOverflowClip() || (parent() && parent()->isFlexibleBoxIncludingDeprecated())
-        || isTableCell() || isTableCaption() || isFieldset() || isWritingModeRoot() || isRoot() || isRenderFlowThread();
 }
 
 LayoutUnit RenderBlock::computeStartPositionDeltaForChildAvoidingFloats(const RenderBox& child, LayoutUnit childMarginStart, RenderRegion* region)
@@ -1524,7 +1524,7 @@ void RenderBlock::paintCaret(PaintInfo& paintInfo, const LayoutPoint& paintOffse
 {
     // Paint the caret if the FrameSelection says so or if caret browsing is enabled
     bool caretBrowsing = frame().settings().caretBrowsingEnabled();
-    RenderObject* caretPainter;
+    RenderBlock* caretPainter;
     bool isContentEditable;
     if (type == CursorCaret) {
         caretPainter = frame().selection().caretRendererWithoutUpdatingLayout();
@@ -1882,7 +1882,7 @@ GapRects RenderBlock::selectionGaps(RenderBlock& rootBlock, const LayoutPoint& r
         result = blockSelectionGaps(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock, lastLogicalTop, lastLogicalLeft, lastLogicalRight, cache, paintInfo);
 
     // Go ahead and fill the vertical gap all the way to the bottom of our block if the selection extends past our block.
-    if (&rootBlock == this && (selectionState() != SelectionBoth && selectionState() != SelectionEnd) && !isRubyBase()) {
+    if (&rootBlock == this && (selectionState() != SelectionBoth && selectionState() != SelectionEnd) && !isRubyBase() && !isRubyText()) {
         result.uniteCenter(blockSelectionGap(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock,
             lastLogicalTop, lastLogicalLeft, lastLogicalRight, logicalHeight(), cache, paintInfo));
     }
@@ -1927,7 +1927,7 @@ GapRects RenderBlock::blockSelectionGaps(RenderBlock& rootBlock, const LayoutPoi
         }
 
         bool paintsOwnSelection = curr->shouldPaintSelectionGaps() || curr->isTable(); // FIXME: Eventually we won't special-case table like this.
-        bool fillBlockGaps = !isRubyBase() && (paintsOwnSelection || (curr->canBeSelectionLeaf() && childState != SelectionNone));
+        bool fillBlockGaps = (paintsOwnSelection || (curr->canBeSelectionLeaf() && childState != SelectionNone)) && !isRubyBase() && !isRubyText();
         if (fillBlockGaps) {
             // We need to fill the vertical gap above this object.
             if (childState == SelectionEnd || childState == SelectionInside) {
@@ -1956,7 +1956,7 @@ GapRects RenderBlock::blockSelectionGaps(RenderBlock& rootBlock, const LayoutPoi
             lastLogicalTop = blockDirectionOffset(rootBlock, offsetFromRootBlock) + curr->logicalBottom();
             lastLogicalLeft = logicalLeftSelectionOffset(rootBlock, curr->logicalBottom(), cache);
             lastLogicalRight = logicalRightSelectionOffset(rootBlock, curr->logicalBottom(), cache);
-        } else if (childState != SelectionNone) {
+        } else if (childState != SelectionNone && is<RenderBlock>(*curr)) {
             // We must be a block that has some selected object inside it.  Go ahead and recur.
             result.unite(downcast<RenderBlock>(*curr).selectionGaps(rootBlock, rootBlockPhysicalPosition, LayoutSize(offsetFromRootBlock.width() + curr->x(), offsetFromRootBlock.height() + curr->y()),
                 lastLogicalTop, lastLogicalLeft, lastLogicalRight, childCache, paintInfo));
@@ -1987,7 +1987,7 @@ LayoutRect RenderBlock::blockSelectionGap(RenderBlock& rootBlock, const LayoutPo
 }
 
 LayoutRect RenderBlock::logicalLeftSelectionGap(RenderBlock& rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
-    RenderObject* selObj, LayoutUnit logicalLeft, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches& cache, const PaintInfo* paintInfo)
+    RenderBoxModelObject* selObj, LayoutUnit logicalLeft, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches& cache, const PaintInfo* paintInfo)
 {
     LayoutUnit rootBlockLogicalTop = blockDirectionOffset(rootBlock, offsetFromRootBlock) + logicalTop;
     LayoutUnit rootBlockLogicalLeft = std::max(logicalLeftSelectionOffset(rootBlock, logicalTop, cache), logicalLeftSelectionOffset(rootBlock, logicalTop + logicalHeight, cache));
@@ -2004,7 +2004,7 @@ LayoutRect RenderBlock::logicalLeftSelectionGap(RenderBlock& rootBlock, const La
 }
 
 LayoutRect RenderBlock::logicalRightSelectionGap(RenderBlock& rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
-    RenderObject* selObj, LayoutUnit logicalRight, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches& cache, const PaintInfo* paintInfo)
+    RenderBoxModelObject* selObj, LayoutUnit logicalRight, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches& cache, const PaintInfo* paintInfo)
 {
     LayoutUnit rootBlockLogicalTop = blockDirectionOffset(rootBlock, offsetFromRootBlock) + logicalTop;
     LayoutUnit rootBlockLogicalLeft = std::max(inlineDirectionOffset(rootBlock, offsetFromRootBlock) + logicalRight,
@@ -2384,10 +2384,7 @@ LayoutUnit RenderBlock::adjustLogicalRightOffsetForLine(LayoutUnit offsetFromFlo
 bool RenderBlock::avoidsFloats() const
 {
     // Floats can't intrude into our box if we have a non-auto column count or width.
-    return RenderBox::avoidsFloats()
-        || !style().hasAutoColumnCount()
-        || !style().hasAutoColumnWidth()
-        || style().hasFlowFrom();
+    return RenderBox::avoidsFloats() || style().hasFlowFrom();
 }
 
 bool RenderBlock::isPointInOverflowControl(HitTestResult& result, const LayoutPoint& locationInContainer, const LayoutPoint& accumulatedOffset)
@@ -2863,17 +2860,25 @@ int RenderBlock::baselinePosition(FontBaseline baselineType, bool firstLine, Lin
         // the normal flow.  We make an exception for marquees, since their baselines are meaningless
         // (the content inside them moves).  This matches WinIE as well, which just bottom-aligns them.
         // We also give up on finding a baseline if we have a vertical scrollbar, or if we are scrolled
-        // vertically (e.g., an overflow:hidden block that has had scrollTop moved) or if the baseline is outside
-        // of our content box.
+        // vertically (e.g., an overflow:hidden block that has had scrollTop moved).
         bool ignoreBaseline = (layer() && (layer()->marquee() || (direction == HorizontalLine ? (layer()->verticalScrollbar() || layer()->scrollYOffset() != 0)
             : (layer()->horizontalScrollbar() || layer()->scrollXOffset() != 0)))) || (isWritingModeRoot() && !isRubyRun());
         
         int baselinePos = ignoreBaseline ? -1 : inlineBlockBaseline(direction);
         
-        LayoutUnit bottomOfContent = direction == HorizontalLine ? borderTop() + paddingTop() + contentHeight() : borderRight() + paddingRight() + contentWidth();
-        if (baselinePos != -1 && baselinePos <= bottomOfContent)
+        if (isDeprecatedFlexibleBox()) {
+            // Historically, we did this check for all baselines. But we can't
+            // remove this code from deprecated flexbox, because it effectively
+            // breaks -webkit-line-clamp, which is used in the wild -- we would
+            // calculate the baseline as if -webkit-line-clamp wasn't used.
+            // For simplicity, we use this for all uses of deprecated flexbox.
+            LayoutUnit bottomOfContent = direction == HorizontalLine ? borderTop() + paddingTop() + contentHeight() : borderRight() + paddingRight() + contentWidth();
+            if (baselinePos > bottomOfContent)
+                baselinePos = -1;
+        }
+        if (baselinePos != -1)
             return direction == HorizontalLine ? marginTop() + baselinePos : marginRight() + baselinePos;
-            
+
         return RenderBox::baselinePosition(baselineType, firstLine, direction, linePositionMode);
     }
 
@@ -2967,7 +2972,7 @@ RenderBlock* RenderBlock::firstLineBlock() const
     return firstLineBlock;
 }
 
-static RenderStyle& styleForFirstLetter(RenderObject* firstLetterBlock, RenderObject* firstLetterContainer)
+static RenderStyle& styleForFirstLetter(RenderElement* firstLetterBlock, RenderObject* firstLetterContainer)
 {
     RenderStyle* pseudoStyle = firstLetterBlock->getCachedPseudoStyle(FIRST_LETTER, &firstLetterContainer->firstLineStyle());
     
@@ -3048,7 +3053,7 @@ static inline RenderBlock* findFirstLetterBlock(RenderBlock* start)
     return nullptr;
 }
 
-void RenderBlock::updateFirstLetterStyle(RenderObject* firstLetterBlock, RenderObject* currentChild)
+void RenderBlock::updateFirstLetterStyle(RenderElement* firstLetterBlock, RenderObject* currentChild)
 {
     RenderElement* firstLetter = currentChild->parent();
     RenderElement* firstLetterContainer = firstLetter->parent();
@@ -3090,7 +3095,7 @@ void RenderBlock::updateFirstLetterStyle(RenderObject* firstLetterBlock, RenderO
         firstLetter->setStyle(pseudoStyle);
 }
 
-void RenderBlock::createFirstLetterRenderer(RenderObject* firstLetterBlock, RenderText* currentTextChild)
+void RenderBlock::createFirstLetterRenderer(RenderElement* firstLetterBlock, RenderText* currentTextChild)
 {
     RenderElement* firstLetterContainer = currentTextChild->parent();
     RenderStyle& pseudoStyle = styleForFirstLetter(firstLetterBlock, firstLetterContainer);

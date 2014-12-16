@@ -30,6 +30,7 @@
 #include "InjectedBundleNodeHandle.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
+#include "WebFrame.h"
 
 using namespace WebKit;
 
@@ -88,6 +89,11 @@ bool WKBundleHitTestResultMediaIsInFullscreen(WKBundleHitTestResultRef hitTestRe
 bool WKBundleHitTestResultMediaHasAudio(WKBundleHitTestResultRef hitTestResultRef)
 {
     return toImpl(hitTestResultRef)->mediaHasAudio();
+}
+
+bool WKBundleHitTestResultIsDownloadableMedia(WKBundleHitTestResultRef hitTestResultRef)
+{
+    return toImpl(hitTestResultRef)->isDownloadableMedia();
 }
 
 WKBundleHitTestResultMediaType WKBundleHitTestResultGetMediaType(WKBundleHitTestResultRef hitTestResultRef)

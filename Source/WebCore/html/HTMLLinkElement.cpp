@@ -81,7 +81,7 @@ inline HTMLLinkElement::HTMLLinkElement(const QualifiedName& tagName, Document& 
     ASSERT(hasTagName(linkTag));
 }
 
-PassRefPtr<HTMLLinkElement> HTMLLinkElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
+RefPtr<HTMLLinkElement> HTMLLinkElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
 {
     return adoptRef(new HTMLLinkElement(tagName, document, createdByParser));
 }
@@ -328,7 +328,7 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const URL& baseURL, c
     }
 
     Ref<StyleSheetContents> styleSheet(StyleSheetContents::create(href, parserContext));
-    m_sheet = CSSStyleSheet::create(styleSheet, this);
+    m_sheet = CSSStyleSheet::create(styleSheet.copyRef(), this);
     m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(m_media));
     m_sheet->setTitle(title());
 
@@ -339,7 +339,7 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const URL& baseURL, c
     styleSheet.get().checkLoaded();
 
     if (styleSheet.get().isCacheable())
-        const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->saveParsedStyleSheet(styleSheet);
+        const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->saveParsedStyleSheet(WTF::move(styleSheet));
 }
 
 bool HTMLLinkElement::styleSheetIsLoading() const

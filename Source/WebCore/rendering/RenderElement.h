@@ -34,7 +34,7 @@ class RenderElement : public RenderObject {
 public:
     virtual ~RenderElement();
 
-    static RenderPtr<RenderElement> createFor(Element&, PassRef<RenderStyle>);
+    static RenderPtr<RenderElement> createFor(Element&, Ref<RenderStyle>&&);
 
     bool hasInitializedStyle() const { return m_hasInitializedStyle; }
 
@@ -43,9 +43,14 @@ public:
 
     void initializeStyle();
 
-    void setStyle(PassRef<RenderStyle>);
+    void setStyle(Ref<RenderStyle>&&);
     // Called to update a style that is allowed to trigger animations.
-    void setAnimatableStyle(PassRef<RenderStyle>);
+    void setAnimatableStyle(Ref<RenderStyle>&&);
+
+    // The pseudo element style can be cached or uncached.  Use the cached method if the pseudo element doesn't respect
+    // any pseudo classes (and therefore has no concept of changing state).
+    RenderStyle* getCachedPseudoStyle(PseudoId, RenderStyle* parentStyle = 0) const;
+    PassRefPtr<RenderStyle> getUncachedPseudoStyle(const PseudoStyleRequest&, RenderStyle* parentStyle = 0, RenderStyle* ownStyle = 0) const;
 
     // This is null for anonymous renderers.
     Element* element() const { return downcast<Element>(RenderObject::node()); }
@@ -59,6 +64,14 @@ public:
 
     bool canContainFixedPositionObjects() const;
 
+    Color selectionColor(int colorProperty) const;
+    PassRefPtr<RenderStyle> selectionPseudoStyle() const;
+
+    // Obtains the selection colors that should be used when painting a selection.
+    Color selectionBackgroundColor() const;
+    Color selectionForegroundColor() const;
+    Color selectionEmphasisMarkColor() const;
+
     // FIXME: Make these standalone and move to relevant files.
     bool isRenderLayerModelObject() const;
     bool isBoxModelObject() const;
@@ -71,7 +84,7 @@ public:
     virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const { return true; }
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0);
     virtual void addChildIgnoringContinuation(RenderObject* newChild, RenderObject* beforeChild = 0) { return addChild(newChild, beforeChild); }
-    virtual RenderObject* removeChild(RenderObject&);
+    virtual void removeChild(RenderObject&);
 
     // The following functions are used when the render tree hierarchy changes to make sure layers get
     // properly added and removed. Since containership can be implemented by any subclass, and since a hierarchy
@@ -83,7 +96,7 @@ public:
 
     enum NotifyChildrenType { NotifyChildren, DontNotifyChildren };
     void insertChildInternal(RenderObject*, RenderObject* beforeChild, NotifyChildrenType);
-    RenderObject* removeChildInternal(RenderObject&, NotifyChildrenType);
+    void removeChildInternal(RenderObject&, NotifyChildrenType);
 
     virtual RenderElement* hoverAncestor() const;
 
@@ -114,12 +127,13 @@ public:
 
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
-    void setStyleInternal(PassRef<RenderStyle> style) { m_style = WTF::move(style); }
+    void setStyleInternal(Ref<RenderStyle>&& style) { m_style = WTF::move(style); }
 
     // Repaint only if our old bounds and new bounds are different. The caller may pass in newBounds and newOutlineBox if they are known.
     bool repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldBounds, const LayoutRect& oldOutlineBox, const LayoutRect* newBoundsPtr = nullptr, const LayoutRect* newOutlineBoxPtr = nullptr);
 
     bool borderImageIsLoadedAndCanBeRendered() const;
+    bool isInsideViewport(const IntRect* visibleRect = nullptr) const;
 
     // Returns true if this renderer requires a new stacking context.
     bool createsGroup() const { return isTransparent() || hasMask() || hasFilter() || hasBackdropFilter() || hasBlendMode(); }
@@ -135,6 +149,11 @@ public:
     bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
     bool hasClipPath() const { return style().clipPath(); }
     bool hasHiddenBackface() const { return style().backfaceVisibility() == BackfaceVisibilityHidden; }
+
+    // anchorRect() is conceptually similar to absoluteBoundingBoxRect(), but is intended for scrolling to an anchor.
+    // For inline renderers, this gets the logical top left of the first leaf child and the logical bottom right of the
+    // last leaf child, converts them to absolute coordinates, and makes a box out of them.
+    LayoutRect anchorRect() const;
 
     bool hasFilter() const { return style().hasFilter(); }
     bool hasBackdropFilter() const
@@ -183,8 +202,8 @@ protected:
         RenderBlockFlowFlag = 1 << 5,
     };
 
-    RenderElement(Element&, PassRef<RenderStyle>, unsigned baseTypeFlags);
-    RenderElement(Document&, PassRef<RenderStyle>, unsigned baseTypeFlags);
+    RenderElement(Element&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
+    RenderElement(Document&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
 
     bool layerCreationAllowedForSubtree() const;
 
@@ -217,7 +236,7 @@ protected:
     static void addControlStatesForRenderer(const RenderObject*, ControlStates*);
 
 private:
-    RenderElement(ContainerNode&, PassRef<RenderStyle>, unsigned baseTypeFlags);
+    RenderElement(ContainerNode&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
     void node() const = delete;
     void nonPseudoNode() const = delete;
     void generatingNode() const = delete;
@@ -247,6 +266,9 @@ private:
 
     virtual void newImageAnimationFrameAvailable(CachedImage&) final override;
 
+    bool getLeadingCorner(FloatPoint& output) const;
+    bool getTrailingCorner(FloatPoint& output) const;
+
     unsigned m_baseTypeFlags : 6;
     unsigned m_ancestorLineBoxDirty : 1;
     unsigned m_hasInitializedStyle : 1;
@@ -269,7 +291,7 @@ private:
     static bool s_noLongerAffectsParentBlock;
 };
 
-inline void RenderElement::setAnimatableStyle(PassRef<RenderStyle> style)
+inline void RenderElement::setAnimatableStyle(Ref<RenderStyle>&& style)
 {
     setStyle(animation().updateAnimations(*this, WTF::move(style)));
 }

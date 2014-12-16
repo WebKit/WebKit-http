@@ -32,7 +32,7 @@ class HTMLFormElement;
 
 class HTMLObjectElement final : public HTMLPlugInImageElement, public FormAssociatedElement {
 public:
-    static PassRefPtr<HTMLObjectElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
+    static RefPtr<HTMLObjectElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
     virtual ~HTMLObjectElement();
 
     bool isDocNamedItem() const { return m_docNamedItem; }
@@ -41,6 +41,8 @@ public:
     bool hasFallbackContent() const;
     virtual bool useFallbackContent() const override { return m_useFallbackContent; }
     void renderFallbackContent();
+
+    virtual bool willValidate() const override { return false; }
 
     // Implementation of constraint validation API.
     // Note that the object elements are always barred from constraint validation.

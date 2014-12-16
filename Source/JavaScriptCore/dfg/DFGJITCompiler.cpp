@@ -55,7 +55,7 @@ JITCompiler::JITCompiler(Graph& dfg)
     , m_blockHeads(dfg.numBlocks())
 {
     if (shouldShowDisassembly() || m_graph.m_vm.m_perBytecodeProfiler)
-        m_disassembler = adoptPtr(new Disassembler(dfg));
+        m_disassembler = std::make_unique<Disassembler>(dfg);
 }
 
 JITCompiler::~JITCompiler()
@@ -291,7 +291,7 @@ void JITCompiler::compile()
 
     setStartOfCode();
     compileEntry();
-    m_speculative = adoptPtr(new SpeculativeJIT(*this));
+    m_speculative = std::make_unique<SpeculativeJIT>(*this);
     addPtr(TrustedImm32(m_graph.stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
     compileBody();
@@ -310,9 +310,9 @@ void JITCompiler::compile()
 
 void JITCompiler::link()
 {
-    OwnPtr<LinkBuffer> linkBuffer = adoptPtr(new LinkBuffer(*m_vm, *this, m_codeBlock, JITCompilationCanFail));
+    auto linkBuffer = std::make_unique<LinkBuffer>(*m_vm, *this, m_codeBlock, JITCompilationCanFail);
     if (linkBuffer->didFailToAllocate()) {
-        m_graph.m_plan.finalizer = adoptPtr(new FailedFinalizer(m_graph.m_plan));
+        m_graph.m_plan.finalizer = std::make_unique<FailedFinalizer>(m_graph.m_plan);
         return;
     }
     
@@ -324,8 +324,8 @@ void JITCompiler::link()
 
     disassemble(*linkBuffer);
     
-    m_graph.m_plan.finalizer = adoptPtr(new JITFinalizer(
-        m_graph.m_plan, m_jitCode.release(), linkBuffer.release()));
+    m_graph.m_plan.finalizer = std::make_unique<JITFinalizer>(
+        m_graph.m_plan, m_jitCode.release(), WTF::move(linkBuffer));
 }
 
 void JITCompiler::compileFunction()
@@ -349,7 +349,7 @@ void JITCompiler::compileFunction()
     checkStackPointerAlignment();
 
     // === Function body code generation ===
-    m_speculative = adoptPtr(new SpeculativeJIT(*this));
+    m_speculative = std::make_unique<SpeculativeJIT>(*this);
     compileBody();
     setEndOfMainPath();
 
@@ -412,9 +412,9 @@ void JITCompiler::compileFunction()
 void JITCompiler::linkFunction()
 {
     // === Link ===
-    OwnPtr<LinkBuffer> linkBuffer = adoptPtr(new LinkBuffer(*m_vm, *this, m_codeBlock, JITCompilationCanFail));
+    auto linkBuffer = std::make_unique<LinkBuffer>(*m_vm, *this, m_codeBlock, JITCompilationCanFail);
     if (linkBuffer->didFailToAllocate()) {
-        m_graph.m_plan.finalizer = adoptPtr(new FailedFinalizer(m_graph.m_plan));
+        m_graph.m_plan.finalizer = std::make_unique<FailedFinalizer>(m_graph.m_plan);
         return;
     }
     link(*linkBuffer);
@@ -429,8 +429,8 @@ void JITCompiler::linkFunction()
 
     MacroAssemblerCodePtr withArityCheck = linkBuffer->locationOf(m_arityCheck);
 
-    m_graph.m_plan.finalizer = adoptPtr(new JITFinalizer(
-        m_graph.m_plan, m_jitCode.release(), linkBuffer.release(), withArityCheck));
+    m_graph.m_plan.finalizer = std::make_unique<JITFinalizer>(
+        m_graph.m_plan, m_jitCode.release(), WTF::move(linkBuffer), withArityCheck);
 }
 
 void JITCompiler::disassemble(LinkBuffer& linkBuffer)

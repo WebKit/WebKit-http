@@ -53,7 +53,7 @@ public:
     virtual bool requiresLayer() const override
     {
         return isRoot() || isPositioned() || createsGroup() || hasClipPath() || hasOverflowClip()
-            || hasTransform() || hasHiddenBackface() || hasReflection() || style().specifiesColumns()
+            || hasTransformRelatedProperty() || hasHiddenBackface() || hasReflection() || style().specifiesColumns()
             || !style().hasAutoZIndex();
     }
 
@@ -612,12 +612,14 @@ public:
     virtual bool needsLayoutAfterRegionRangeChange() const { return false; }
 
 protected:
-    RenderBox(Element&, PassRef<RenderStyle>, unsigned baseTypeFlags);
-    RenderBox(Document&, PassRef<RenderStyle>, unsigned baseTypeFlags);
+    RenderBox(Element&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
+    RenderBox(Document&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
 
     virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
     virtual void updateFromStyle() override;
+
+    bool createsNewFormattingContext() const;
 
     // Returns false if it could not cheaply compute the extent (e.g. fixed background), in which case the returned rect may be incorrect.
     bool getBackgroundPaintedExtent(LayoutRect&) const;
@@ -651,6 +653,10 @@ protected:
 private:
 #if ENABLE(CSS_SHAPES)
     void updateShapeOutsideInfoAfterStyleChange(const RenderStyle&, const RenderStyle* oldStyle);
+#endif
+
+#if ENABLE(CSS_GRID_LAYOUT)
+    bool isGridItem() const { return parent() && parent()->isRenderGrid(); }
 #endif
 
     bool scrollLayer(ScrollDirection, ScrollGranularity, float multiplier, Element** stopElement);

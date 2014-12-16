@@ -60,12 +60,7 @@ static String objectGroupForBreakpointAction(const ScriptBreakpointAction& actio
 InspectorDebuggerAgent::InspectorDebuggerAgent(InjectedScriptManager* injectedScriptManager)
     : InspectorAgentBase(ASCIILiteral("Debugger"))
     , m_injectedScriptManager(injectedScriptManager)
-    , m_listener(nullptr)
-    , m_pausedScriptState(nullptr)
     , m_continueToLocationBreakpointID(JSC::noBreakpointID)
-    , m_enabled(false)
-    , m_javaScriptPauseScheduled(false)
-    , m_nextProbeSampleId(1)
 {
     // FIXME: make breakReason optional so that there was no need to init it with "other".
     clearBreakDetails();
@@ -400,17 +395,18 @@ PassRefPtr<Inspector::Protocol::Debugger::Location> InspectorDebuggerAgent::reso
     return location;
 }
 
-void InspectorDebuggerAgent::searchInContent(ErrorString& error, const String& scriptIDStr, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>& results)
+void InspectorDebuggerAgent::searchInContent(ErrorString& error, const String& scriptIDStr, const String& query, const bool* optionalCaseSensitive, const bool* optionalIsRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>& results)
 {
+    JSC::SourceID sourceID = scriptIDStr.toIntPtr();
+    auto it = m_scripts.find(sourceID);
+    if (it == m_scripts.end()) {
+        error = ASCIILiteral("No script for id: ") + scriptIDStr;
+        return;
+    }
+
     bool isRegex = optionalIsRegex ? *optionalIsRegex : false;
     bool caseSensitive = optionalCaseSensitive ? *optionalCaseSensitive : false;
-
-    JSC::SourceID sourceID = scriptIDStr.toIntPtr();
-    ScriptsMap::iterator it = m_scripts.find(sourceID);
-    if (it != m_scripts.end())
-        results = ContentSearchUtilities::searchInTextByLines(it->value.source, query, caseSensitive, isRegex);
-    else
-        error = ASCIILiteral("No script for id: ") + scriptIDStr;
+    results = ContentSearchUtilities::searchInTextByLines(it->value.source, query, caseSensitive, isRegex);
 }
 
 void InspectorDebuggerAgent::getScriptSource(ErrorString& error, const String& scriptIDStr, String* scriptSource)
@@ -468,7 +464,6 @@ void InspectorDebuggerAgent::resume(ErrorString& errorString)
     if (!assertPaused(errorString))
         return;
 
-    m_injectedScriptManager->releaseObjectGroup(InspectorDebuggerAgent::backtraceObjectGroup);
     scriptDebugServer().continueProgram();
 }
 
@@ -477,7 +472,6 @@ void InspectorDebuggerAgent::stepOver(ErrorString& errorString)
     if (!assertPaused(errorString))
         return;
 
-    m_injectedScriptManager->releaseObjectGroup(InspectorDebuggerAgent::backtraceObjectGroup);
     scriptDebugServer().stepOverStatement();
 }
 
@@ -486,7 +480,6 @@ void InspectorDebuggerAgent::stepInto(ErrorString& errorString)
     if (!assertPaused(errorString))
         return;
 
-    m_injectedScriptManager->releaseObjectGroup(InspectorDebuggerAgent::backtraceObjectGroup);
     scriptDebugServer().stepIntoStatement();
 
     if (m_listener)
@@ -498,7 +491,6 @@ void InspectorDebuggerAgent::stepOut(ErrorString& errorString)
     if (!assertPaused(errorString))
         return;
 
-    m_injectedScriptManager->releaseObjectGroup(InspectorDebuggerAgent::backtraceObjectGroup);
     scriptDebugServer().stepOutOfFunction();
 }
 
@@ -643,6 +635,8 @@ void InspectorDebuggerAgent::didPause(JSC::ExecState* scriptState, const Depreca
             m_breakReason = InspectorDebuggerFrontendDispatcher::Reason::Exception;
             m_breakAuxData = injectedScript.wrapObject(exception, InspectorDebuggerAgent::backtraceObjectGroup)->openAccessors();
             // m_breakAuxData might be null after this.
+            injectedScript.setExceptionValue(exception);
+            m_hasExceptionValue = true;
         }
     }
 
@@ -667,16 +661,14 @@ void InspectorDebuggerAgent::breakpointActionSound(int breakpointActionIdentifie
     m_frontendDispatcher->playBreakpointActionSound(breakpointActionIdentifier);
 }
 
-void InspectorDebuggerAgent::breakpointActionProbe(JSC::ExecState* scriptState, const ScriptBreakpointAction& action, int hitCount, const Deprecated::ScriptValue& sample)
+void InspectorDebuggerAgent::breakpointActionProbe(JSC::ExecState* scriptState, const ScriptBreakpointAction& action, unsigned batchId, unsigned sampleId, const Deprecated::ScriptValue& sample)
 {
-    int sampleId = m_nextProbeSampleId++;
-
     InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
     RefPtr<Protocol::Runtime::RemoteObject> payload = injectedScript.wrapObject(sample, objectGroupForBreakpointAction(action));
     RefPtr<Protocol::Debugger::ProbeSample> result = Protocol::Debugger::ProbeSample::create()
         .setProbeId(action.identifier)
+        .setBatchId(batchId)
         .setSampleId(sampleId)
-        .setBatchId(hitCount)
         .setTimestamp(m_injectedScriptManager->inspectorEnvironment().executionStopwatch()->elapsedTime())
         .setPayload(payload.release());
 
@@ -687,8 +679,10 @@ void InspectorDebuggerAgent::didContinue()
 {
     m_pausedScriptState = nullptr;
     m_currentCallStack = Deprecated::ScriptValue();
+    m_injectedScriptManager->releaseObjectGroup(InspectorDebuggerAgent::backtraceObjectGroup);
     m_injectedScriptManager->inspectorEnvironment().executionStopwatch()->start();
     clearBreakDetails();
+    clearExceptionValue();
 
     m_frontendDispatcher->resumed();
 }
@@ -724,6 +718,7 @@ void InspectorDebuggerAgent::clearDebuggerBreakpointState()
     m_continueToLocationBreakpointID = JSC::noBreakpointID;
     clearBreakDetails();
     m_javaScriptPauseScheduled = false;
+    m_hasExceptionValue = false;
 
     scriptDebugServer().continueProgram();
 }
@@ -752,6 +747,14 @@ void InspectorDebuggerAgent::clearBreakDetails()
 {
     m_breakReason = InspectorDebuggerFrontendDispatcher::Reason::Other;
     m_breakAuxData = nullptr;
+}
+
+void InspectorDebuggerAgent::clearExceptionValue()
+{
+    if (m_hasExceptionValue) {
+        m_injectedScriptManager->clearExceptionValue();
+        m_hasExceptionValue = false;
+    }
 }
 
 } // namespace Inspector

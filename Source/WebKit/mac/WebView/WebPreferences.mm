@@ -476,6 +476,7 @@ public:
         [NSNumber numberWithBool:NO],   WebKitJavaScriptExperimentsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAuthorAndUserStylesEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitApplicationChromeModeEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitDOMTimersThrottlingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebArchiveDebugModeEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitLocalFileContentSniffingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitOfflineWebApplicationCacheEnabledPreferenceKey,
@@ -493,6 +494,7 @@ public:
         [NSNumber numberWithBool:NO],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO],   WebKitShowDebugBordersPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitSimpleLineLayoutDebugBordersEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShowRepaintCounterPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitWebGLEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitForceSoftwareWebGLRenderingPreferenceKey,
@@ -538,6 +540,7 @@ public:
 
         [NSNumber numberWithBool:YES],   WebKitShouldRespectImageOrientationKey,
 #endif // PLATFORM(IOS)
+        [NSNumber numberWithBool:YES],  WebKitAllowsAlternateFullscreenPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitRequestAnimationFrameEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWantsBalancedSetDefersLoadingBehaviorKey,
         [NSNumber numberWithBool:NO],   WebKitDiagnosticLoggingEnabledKey,
@@ -1223,6 +1226,16 @@ public:
     [self _setBoolValue:flag forKey:WebKitApplicationChromeModeEnabledPreferenceKey];
 }
 
+- (BOOL)domTimersThrottlingEnabled
+{
+    return [self _boolValueForKey:WebKitDOMTimersThrottlingEnabledPreferenceKey];
+}
+
+- (void)setDOMTimersThrottlingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitDOMTimersThrottlingEnabledPreferenceKey];
+}
+
 - (BOOL)webArchiveDebugModeEnabled
 {
     return [self _boolValueForKey:WebKitWebArchiveDebugModeEnabledPreferenceKey];
@@ -1843,6 +1856,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitShowDebugBordersPreferenceKey];
 }
 
+- (BOOL)simpleLineLayoutDebugBordersEnabled
+{
+    return [self _boolValueForKey:WebKitSimpleLineLayoutDebugBordersEnabledPreferenceKey];
+}
+
+- (void)setSimpleLineLayoutDebugBordersEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitSimpleLineLayoutDebugBordersEnabledPreferenceKey];
+}
+
 - (BOOL)showRepaintCounter
 {
     return [self _boolValueForKey:WebKitShowRepaintCounterPreferenceKey];
@@ -2160,6 +2183,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMediaPlaybackAllowsInline:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMediaPlaybackAllowsInlinePreferenceKey];
+}
+
+- (BOOL)allowsAlternateFullscreen
+{
+    return [self _boolValueForKey:WebKitAllowsAlternateFullscreenPreferenceKey];
+}
+
+- (void)setAllowsAlternateFullscreen:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAllowsAlternateFullscreenPreferenceKey];
 }
 
 - (BOOL)mockScrollbarsEnabled

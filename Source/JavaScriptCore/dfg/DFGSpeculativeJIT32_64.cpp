@@ -1692,7 +1692,26 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case Identity: {
-        RELEASE_ASSERT_NOT_REACHED();
+        speculate(node, node->child1());
+        switch (node->child1().useKind()) {
+        case DoubleRepUse:
+        case DoubleRepRealUse: {
+            SpeculateDoubleOperand op(this, node->child1());
+            doubleResult(op.fpr(), node);
+            break;
+        }
+        case Int52RepUse: 
+        case MachineIntUse:
+        case DoubleRepMachineIntUse: {
+            RELEASE_ASSERT_NOT_REACHED();   
+            break;
+        }
+        default: {
+            JSValueOperand op(this, node->child1());
+            jsValueResult(op.tagGPR(), op.payloadGPR(), node);
+            break;
+        }
+        } // switch
         break;
     }
 
@@ -3506,15 +3525,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case GetMyScope: {
-        GPRTemporary result(this);
-        GPRReg resultGPR = result.gpr();
-
-        m_jit.loadPtr(JITCompiler::payloadFor(JSStack::ScopeChain), resultGPR);
-        cellResult(resultGPR, node);
-        break;
-    }
-        
     case SkipScope: {
         SpeculateCellOperand scope(this, node->child1());
         GPRTemporary result(this, Reuse, scope);
@@ -4170,9 +4180,11 @@ void SpeculativeJIT::compile(Node* node)
     case CreateActivation: {
         GPRTemporary result(this);
         GPRReg resultGPR = result.gpr();
+        SpeculateCellOperand scope(this, node->child2());
+        GPRReg scopeGPR = scope.gpr();
 
         flushRegisters();
-        callOperation(operationCreateActivation, resultGPR, framePointerOffsetToGetActivationRegisters());
+        callOperation(operationCreateActivation, resultGPR, scopeGPR, framePointerOffsetToGetActivationRegisters());
         
         cellResult(resultGPR, node);
         break;
@@ -4516,7 +4528,9 @@ void SpeculativeJIT::compile(Node* node)
         GPRReg valuePayloadGPR = value.payloadGPR();
         GPRReg resultTagGPR = resultTag.gpr();
         GPRReg resultPayloadGPR = resultPayload.gpr();
-        
+        SpeculateCellOperand scope(this, node->child2());
+        GPRReg scopeGPR = scope.gpr();
+
         m_jit.move(valuePayloadGPR, resultPayloadGPR);
         m_jit.move(valueTagGPR, resultTagGPR);
         
@@ -4524,7 +4538,7 @@ void SpeculativeJIT::compile(Node* node)
         
         addSlowPathGenerator(
             slowPathCall(
-                notCreated, this, operationNewFunction, JSValueRegs(resultTagGPR, resultPayloadGPR),
+                notCreated, this, operationNewFunction, JSValueRegs(resultTagGPR, resultPayloadGPR), scopeGPR,
                 m_jit.codeBlock()->functionDecl(node->functionDeclIndex())));
         
         jsValueResult(resultTagGPR, resultPayloadGPR, node);
@@ -4848,6 +4862,15 @@ void SpeculativeJIT::compile(Node* node)
         addSlowPathGenerator(
             slowPathCall(clearLog, this, operationProcessTypeProfilerLogDFG, NoResult));
 
+        noResult(node);
+        break;
+    }
+    case ProfileControlFlow: {
+        BasicBlockLocation* basicBlockLocation = node->basicBlockLocation();
+        if (!basicBlockLocation->hasExecuted()) {
+            GPRTemporary scratch1(this);
+            basicBlockLocation->emitExecuteCode(m_jit, scratch1.gpr());
+        }
         noResult(node);
         break;
     }

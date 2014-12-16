@@ -34,7 +34,7 @@
 #import "LengthFunctions.h"
 #import "PlatformCAAnimationMac.h"
 #import "PlatformCAFilters.h"
-#import "PlatformCAFiltersMac.h"
+#import "QuartzCoreSPI.h"
 #import "ScrollbarThemeMac.h"
 #import "SoftLinking.h"
 #import "TiledBacking.h"
@@ -56,8 +56,6 @@
 #import "WKGraphics.h"
 #import "WebCoreThread.h"
 #import "WebTiledLayer.h"
-#import <Foundation/NSGeometry.h>
-#import <QuartzCore/CATiledLayerPrivate.h>
 #else
 #import "ThemeMac.h"
 #endif
@@ -174,18 +172,6 @@ static double mediaTimeToCurrentTime(CFTimeInterval t)
 
 @end
 
-@interface CATiledLayer(GraphicsLayerCAPrivate)
-- (void)displayInRect:(CGRect)r levelOfDetail:(int)lod options:(NSDictionary *)dict;
-- (BOOL)canDrawConcurrently;
-- (void)setCanDrawConcurrently:(BOOL)flag;
-@end
-
-@interface CALayer(Private)
-- (void)setContentsChanged;
-- (void)setAcceleratesDrawing:(BOOL)flag;
-- (BOOL)acceleratesDrawing;
-@end
-
 void PlatformCALayerMac::setOwner(PlatformCALayerClient* owner)
 {
     PlatformCALayer::setOwner(owner);
@@ -268,7 +254,7 @@ PlatformCALayerMac::PlatformCALayerMac(LayerType layerType, PlatformCALayerClien
     }
 
     if (layerClass)
-        m_layer = adoptNS([[layerClass alloc] init]);
+        m_layer = adoptNS([(CALayer *)[layerClass alloc] init]);
 
     commonInit();
 }
@@ -708,15 +694,21 @@ void PlatformCALayerMac::setBorderWidth(float value)
 
 void PlatformCALayerMac::setBorderColor(const Color& value)
 {
-    CGFloat components[4];
-    value.getRGBA(components[0], components[1], components[2], components[3]);
+    if (value.isValid()) {
+        CGFloat components[4];
+        value.getRGBA(components[0], components[1], components[2], components[3]);
 
-    RetainPtr<CGColorSpaceRef> colorSpace = adoptCF(CGColorSpaceCreateDeviceRGB());
-    RetainPtr<CGColorRef> color = adoptCF(CGColorCreate(colorSpace.get(), components));
+        RetainPtr<CGColorSpaceRef> colorSpace = adoptCF(CGColorSpaceCreateDeviceRGB());
+        RetainPtr<CGColorRef> color = adoptCF(CGColorCreate(colorSpace.get(), components));
 
-    BEGIN_BLOCK_OBJC_EXCEPTIONS
-    [m_layer.get() setBorderColor:color.get()];
-    END_BLOCK_OBJC_EXCEPTIONS
+        BEGIN_BLOCK_OBJC_EXCEPTIONS
+        [m_layer.get() setBorderColor:color.get()];
+        END_BLOCK_OBJC_EXCEPTIONS
+    } else {
+        BEGIN_BLOCK_OBJC_EXCEPTIONS
+        [m_layer.get() setBorderColor:nil];
+        END_BLOCK_OBJC_EXCEPTIONS
+    }
 }
 
 float PlatformCALayerMac::opacity() const

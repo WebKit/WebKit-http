@@ -33,7 +33,7 @@ class VisibleSelection;
 
 class HTMLTextAreaElement final : public HTMLTextFormControlElement {
 public:
-    static PassRefPtr<HTMLTextAreaElement> create(const QualifiedName&, Document&, HTMLFormElement*);
+    static RefPtr<HTMLTextAreaElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
     int cols() const { return m_cols; }
     int rows() const { return m_rows; }
@@ -101,7 +101,7 @@ private:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     virtual bool isPresentationAttribute(const QualifiedName&) const override;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
     virtual bool appendFormData(FormDataList&, bool) override;
     virtual void reset() override;
     virtual bool hasCustomFocusLogic() const override;

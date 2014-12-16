@@ -36,6 +36,7 @@
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "StyleProperties.h"
+#include "StyledElement.h"
 #include <runtime/IdentifierInlines.h>
 #include <runtime/StringPrototype.h>
 #include <wtf/ASCIICType.h>
@@ -339,8 +340,13 @@ bool JSCSSStyleDeclaration::putDelegate(ExecState* exec, PropertyName propertyNa
     }
 
     ExceptionCode ec = 0;
-    impl().setPropertyInternal(static_cast<CSSPropertyID>(propertyInfo.propertyID), propValue, important, ec);
+    bool changed = impl().setPropertyInternal(static_cast<CSSPropertyID>(propertyInfo.propertyID), propValue, important, ec);
     setDOMException(exec, ec);
+
+    // Choke point for interaction with style of element; notify DOMTimer of the event.
+    if (auto* element = impl().parentElement())
+        DOMTimer::scriptDidCauseElementRepaint(*element, changed);
+
     return true;
 }
 

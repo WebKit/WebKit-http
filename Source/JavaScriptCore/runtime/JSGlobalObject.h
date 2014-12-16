@@ -40,7 +40,6 @@
 #include <JavaScriptCore/JSBase.h>
 #include <array>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RandomNumber.h>
 
@@ -80,6 +79,7 @@ class ProgramExecutable;
 class RegExpConstructor;
 class RegExpPrototype;
 class SourceCode;
+class NullGetterFunction;
 struct ActivationStackNode;
 struct HashTable;
 
@@ -174,6 +174,8 @@ protected:
 #endif
     WriteBarrier<ObjectConstructor> m_objectConstructor;
 
+    WriteBarrier<NullGetterFunction> m_nullGetterFunction;
+
     WriteBarrier<JSFunction> m_evalFunction;
     WriteBarrier<JSFunction> m_callFunction;
     WriteBarrier<JSFunction> m_applyFunction;
@@ -260,7 +262,7 @@ protected:
     RefPtr<WatchpointSet> m_havingABadTimeWatchpoint;
     RefPtr<WatchpointSet> m_varInjectionWatchpoint;
 
-    OwnPtr<JSGlobalObjectRareData> m_rareData;
+    std::unique_ptr<JSGlobalObjectRareData> m_rareData;
 
     WeakRandom m_weakRandom;
 
@@ -276,7 +278,7 @@ protected:
     {
         if (m_rareData)
             return;
-        m_rareData = adoptPtr(new JSGlobalObjectRareData);
+        m_rareData = std::make_unique<JSGlobalObjectRareData>();
     }
         
 public:
@@ -370,6 +372,8 @@ public:
 #if ENABLE(PROMISES)
     JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
 #endif
+
+    NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
 
     JSFunction* evalFunction() const { return m_evalFunction.get(); }
     JSFunction* callFunction() const { return m_callFunction.get(); }
@@ -672,6 +676,11 @@ inline JSArray* constructArrayNegativeIndexed(ExecState* exec, ArrayAllocationPr
 inline JSArray* constructArrayNegativeIndexed(ExecState* exec, ArrayAllocationProfile* profile, const JSValue* values, unsigned length)
 {
     return constructArrayNegativeIndexed(exec, profile, exec->lexicalGlobalObject(), values, length);
+}
+
+inline JSObject* ExecState::globalThisValue() const
+{
+    return lexicalGlobalObject()->globalThis();
 }
 
 inline JSObject* JSScope::globalThis()

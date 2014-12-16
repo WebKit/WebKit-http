@@ -33,7 +33,6 @@
 namespace JSC {
 
     class ParserArenaDeletable;
-    class ParserArenaRefCounted;
 
     class IdentifierArena {
         WTF_MAKE_FAST_ALLOCATED;
@@ -48,8 +47,6 @@ namespace JSC {
         ALWAYS_INLINE const Identifier& makeIdentifierLCharFromUChar(VM*, const UChar* characters, size_t length);
 
         const Identifier& makeNumericIdentifier(VM*, double number);
-
-        bool isEmpty() const { return m_identifiers.isEmpty(); }
 
     public:
         static const int MaximumCachableCharacter = 128;
@@ -131,7 +128,6 @@ namespace JSC {
             m_identifierArena.swap(otherArena.m_identifierArena);
             m_freeablePools.swap(otherArena.m_freeablePools);
             m_deletableObjects.swap(otherArena.m_deletableObjects);
-            m_refCountedObjects.swap(otherArena.m_refCountedObjects);
         }
 
         void* allocateFreeable(size_t size)
@@ -154,18 +150,10 @@ namespace JSC {
             return deletable;
         }
 
-        void derefWithArena(PassRefPtr<ParserArenaRefCounted>);
-        bool contains(ParserArenaRefCounted*) const;
-        ParserArenaRefCounted* last() const;
-        void removeLast();
-
-        bool isEmpty() const;
-        JS_EXPORT_PRIVATE void reset();
-
         IdentifierArena& identifierArena()
         {
             if (UNLIKELY (!m_identifierArena))
-                m_identifierArena = adoptPtr(new IdentifierArena);
+                m_identifierArena = std::make_unique<IdentifierArena>();
             return *m_identifierArena;
         }
 
@@ -184,10 +172,9 @@ namespace JSC {
         char* m_freeableMemory;
         char* m_freeablePoolEnd;
 
-        OwnPtr<IdentifierArena> m_identifierArena;
+        std::unique_ptr<IdentifierArena> m_identifierArena;
         Vector<void*> m_freeablePools;
         Vector<ParserArenaDeletable*> m_deletableObjects;
-        Vector<RefPtr<ParserArenaRefCounted>> m_refCountedObjects;
     };
 
 }

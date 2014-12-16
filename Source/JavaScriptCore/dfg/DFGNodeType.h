@@ -177,7 +177,6 @@ namespace JSC { namespace DFG {
     macro(GetArrayLength, NodeResultInt32) \
     macro(GetTypedArrayByteOffset, NodeResultInt32) \
     macro(GetScope, NodeResultJS) \
-    macro(GetMyScope, NodeResultJS) \
     macro(SkipScope, NodeResultJS) \
     macro(GetClosureRegisters, NodeResultStorage) \
     macro(GetClosureVar, NodeResultJS) \
@@ -258,6 +257,7 @@ namespace JSC { namespace DFG {
     macro(MakeRope, NodeResultJS) \
     macro(In, NodeResultBoolean | NodeMustGenerate | NodeClobbersWorld) \
     macro(ProfileType, NodeMustGenerate) \
+    macro(ProfileControlFlow, NodeMustGenerate) \
     \
     /* Nodes used for activations. Activation support works by having it anchored at */\
     /* epilgoues via TearOffActivation, and all CreateActivation nodes kept alive by */\

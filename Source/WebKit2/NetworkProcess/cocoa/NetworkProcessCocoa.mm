@@ -28,27 +28,14 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
+#import "NetworkCache.h"
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkResourceLoader.h"
 #import "SandboxExtension.h"
+#import <WebCore/CFNetworkSPI.h>
 #import <mach/host_info.h>
 #import <mach/mach.h>
 #import <mach/mach_error.h>
-
-typedef const struct _CFURLCache* CFURLCacheRef;
-extern "C" CFURLCacheRef CFURLCacheCopySharedURLCache();
-extern "C" void _CFURLCachePurgeMemoryCache(CFURLCacheRef);
-extern "C" void CFURLConnectionInvalidateConnectionCache();
-
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-extern "C" void _CFURLCacheSetMinSizeForVMCachedResource(CFURLCacheRef, CFIndex);
-#endif
-
-#if PLATFORM(IOS)
-@interface NSURLCache (WKDetails)
--(id)_initWithMemoryCapacity:(NSUInteger)memoryCapacity diskCapacity:(NSUInteger)diskCapacity relativePath:(NSString *)path;
-@end
-#endif
 
 namespace WebKit {
 
@@ -76,6 +63,13 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 
     if (!m_diskCacheDirectory.isNull()) {
         SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
+#if ENABLE(NETWORK_CACHE)
+        if (NetworkCache::shared().initialize(m_diskCacheDirectory)) {
+            NSURLCache *URLCache = [[NSURLCache alloc] initWithMemoryCapacity:0 diskCapacity:0 diskPath:nil];
+            [NSURLCache setSharedURLCache:URLCache];
+            return;
+        }
+#endif
 #if PLATFORM(IOS)
         [NSURLCache setSharedURLCache:adoptNS([[NSURLCache alloc]
             _initWithMemoryCapacity:parameters.nsURLCacheMemoryCapacity
@@ -141,10 +135,41 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
         cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
         pageCacheCapacity, urlCacheMemoryCapacity, urlCacheDiskCapacity);
 
+#if ENABLE(NETWORK_CACHE)
+    if (NetworkCache::shared().isEnabled()) {
+        NetworkCache::shared().setMaximumSize(urlCacheDiskCapacity);
+        return;
+    }
+#endif
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
     [nsurlCache setMemoryCapacity:urlCacheMemoryCapacity];
     if (!m_diskCacheIsDisabledForTesting)
         [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
+}
+
+void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+{
+#if ENABLE(NETWORK_CACHE)
+    NetworkCache::shared().clear();
+#endif
+
+    if (!m_clearCacheDispatchGroup)
+        m_clearCacheDispatchGroup = dispatch_group_create();
+
+    dispatch_group_async(m_clearCacheDispatchGroup, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [modifiedSince, completionHandler] {
+        NSURLCache *cache = [NSURLCache sharedURLCache];
+
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+        NSTimeInterval timeInterval = std::chrono::duration_cast<std::chrono::duration<double>>(modifiedSince.time_since_epoch()).count();
+        NSDate *date = [NSDate dateWithTimeIntervalSince1970:timeInterval];
+        [cache removeCachedResponsesSinceDate:date];
+#else
+        [cache removeAllCachedResponses];
+#endif
+        dispatch_async(dispatch_get_main_queue(), [completionHandler] {
+            completionHandler();
+        });
+    });
 }
 
 }

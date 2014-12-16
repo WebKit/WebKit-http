@@ -26,29 +26,11 @@
 
 class WebKitDOMNodeTest : public WebProcessTest {
 public:
-    static PassOwnPtr<WebProcessTest> create() { return adoptPtr(new WebKitDOMNodeTest()); }
+    static std::unique_ptr<WebProcessTest> create() { return std::unique_ptr<WebKitDOMNodeTest>(new WebKitDOMNodeTest()); }
 
 private:
-    guint64 webPageFromArgs(GVariant* args)
+    bool testHierarchyNavigation(WebKitWebPage* page)
     {
-        GVariantIter iter;
-        g_variant_iter_init(&iter, args);
-
-        const char* key;
-        GVariant* value;
-        while (g_variant_iter_loop(&iter, "{&sv}", &key, &value)) {
-            if (!strcmp(key, "pageID") && g_variant_classify(value) == G_VARIANT_CLASS_UINT64)
-                return g_variant_get_uint64(value);
-        }
-
-        g_assert_not_reached();
-        return 0;
-    }
-
-    bool testHierarchyNavigation(WebKitWebExtension* extension, GVariant* args)
-    {
-        WebKitWebPage* page = webkit_web_extension_get_page(extension, webPageFromArgs(args));
-        g_assert(WEBKIT_IS_WEB_PAGE(page));
         WebKitDOMDocument* document = webkit_web_page_get_dom_document(page);
         g_assert(WEBKIT_DOM_IS_DOCUMENT(document));
 
@@ -95,10 +77,8 @@ private:
         return true;
     }
 
-    bool testInsertion(WebKitWebExtension* extension, GVariant* args)
+    bool testInsertion(WebKitWebPage* page)
     {
-        WebKitWebPage* page = webkit_web_extension_get_page(extension, webPageFromArgs(args));
-        g_assert(WEBKIT_IS_WEB_PAGE(page));
         WebKitDOMDocument* document = webkit_web_page_get_dom_document(page);
         g_assert(WEBKIT_DOM_IS_DOCUMENT(document));
 
@@ -107,6 +87,9 @@ private:
 
         // Body shouldn't have any children at this point.
         g_assert(!webkit_dom_node_has_child_nodes(WEBKIT_DOM_NODE(body)));
+
+        // The value of a non-existent attribute should be null, not an empty string
+        g_assert(!webkit_dom_html_body_element_get_background(WEBKIT_DOM_HTML_BODY_ELEMENT(body)));
 
         // Insert one P element.
         WebKitDOMElement* p = webkit_dom_document_create_element(document, "P", 0);
@@ -170,12 +153,10 @@ private:
         return true;
     }
 
-    bool testTagNames(WebKitWebExtension* extension, GVariant* args)
+    bool testTagNames(WebKitWebPage* page)
     {
         static const char* expectedTagNames[] = { "HTML", "HEAD", "BODY", "VIDEO", "SOURCE", "VIDEO", "SOURCE", "INPUT" };
 
-        WebKitWebPage* page = webkit_web_extension_get_page(extension, webPageFromArgs(args));
-        g_assert(WEBKIT_IS_WEB_PAGE(page));
         WebKitDOMDocument* document = webkit_web_page_get_dom_document(page);
         g_assert(WEBKIT_DOM_IS_DOCUMENT(document));
 
@@ -192,14 +173,14 @@ private:
         return true;
     }
 
-    virtual bool runTest(const char* testName, WebKitWebExtension* extension, GVariant* args)
+    bool runTest(const char* testName, WebKitWebPage* page) override
     {
         if (!strcmp(testName, "hierarchy-navigation"))
-            return testHierarchyNavigation(extension, args);
+            return testHierarchyNavigation(page);
         if (!strcmp(testName, "insertion"))
-            return testInsertion(extension, args);
+            return testInsertion(page);
         if (!strcmp(testName, "tag-names"))
-            return testTagNames(extension, args);
+            return testTagNames(page);
 
         g_assert_not_reached();
         return false;

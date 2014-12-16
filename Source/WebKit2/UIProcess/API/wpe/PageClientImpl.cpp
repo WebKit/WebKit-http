@@ -183,7 +183,7 @@ PassRefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPagePr
     return nullptr;
 }
 
-void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator>, bool, bool)
+void PageClientImpl::setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool)
 {
 }
 

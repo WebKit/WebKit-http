@@ -158,6 +158,14 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitNavigationPolicyDecision.cpp
     UIProcess/API/gtk/WebKitNavigationPolicyDecision.h
     UIProcess/API/gtk/WebKitNavigationPolicyDecisionPrivate.h
+    UIProcess/API/gtk/WebKitNotificationPermissionRequest.cpp
+    UIProcess/API/gtk/WebKitNotificationPermissionRequest.h
+    UIProcess/API/gtk/WebKitNotificationPermissionRequestPrivate.h
+    UIProcess/API/gtk/WebKitNotificationProvider.cpp
+    UIProcess/API/gtk/WebKitNotificationProvider.h
+    UIProcess/API/gtk/WebKitNotification.cpp
+    UIProcess/API/gtk/WebKitNotification.h
+    UIProcess/API/gtk/WebKitNotificationPrivate.h
     UIProcess/API/gtk/WebKitPermissionRequest.cpp
     UIProcess/API/gtk/WebKitPermissionRequest.h
     UIProcess/API/gtk/WebKitPlugin.cpp
@@ -206,6 +214,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitUserContentManager.h
     UIProcess/API/gtk/WebKitUserContentManagerPrivate.h
     UIProcess/API/gtk/WebKitUserContentManager.cpp
+    UIProcess/API/gtk/WebKitUserMediaPermissionRequest.cpp
+    UIProcess/API/gtk/WebKitUserMediaPermissionRequest.h
+    UIProcess/API/gtk/WebKitUserMediaPermissionRequestPrivate.h
     UIProcess/API/gtk/WebKitVersion.cpp
     UIProcess/API/gtk/WebKitVersion.h.in
     UIProcess/API/gtk/WebKitWebContext.cpp
@@ -348,6 +359,8 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitMimeInfo.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNavigationAction.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNavigationPolicyDecision.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNotificationPermissionRequest.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitNotification.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPermissionRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPlugin.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitPolicyDecision.h
@@ -361,6 +374,7 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitURISchemeRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitUserContent.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitUserContentManager.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitUserMediaPermissionRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebContext.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebInspector.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebResource.h
@@ -451,6 +465,12 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${LIBSOUP_INCLUDE_DIRS}
 )
 
+if (LIBNOTIFY_FOUND)
+list(APPEND WebKit2_INCLUDE_DIRECTORIES
+    ${LIBNOTIFY_INCLUDE_DIRS}
+)
+endif ()
+
 set(WebKit2CommonIncludeDirectories ${WebKit2_INCLUDE_DIRECTORIES})
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
@@ -467,6 +487,15 @@ list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )
 
+file(WRITE ${CMAKE_BINARY_DIR}/test_atomic.cpp
+     "#include <atomic>\n"
+     "int main() { std::atomic<int64_t> i(0); i++; return 0; }\n")
+try_compile(ATOMIC_BUILD_SUCCEEDED ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/test_atomic.cpp)
+if (NOT ATOMIC_BUILD_SUCCEEDED)
+    list(APPEND WebKit2_LIBRARIES atomic)
+endif ()
+file(REMOVE ${CMAKE_BINARY_DIR}/test_atomic.cpp)
+
 set(SharedWebKit2Libraries
     ${WebKit2_LIBRARIES}
 )
@@ -476,6 +505,13 @@ list(APPEND WebKit2_LIBRARIES
     WebCorePlatformGTK
     ${GTK_UNIX_PRINT_LIBRARIES}
 )
+
+if (LIBNOTIFY_FOUND)
+list(APPEND WebKit2_LIBRARIES
+    ${LIBNOTIFY_LIBRARIES}
+)
+endif ()
+
 ADD_WHOLE_ARCHIVE_TO_LIBRARIES(WebKit2_LIBRARIES)
 
 set(WebKit2_MARSHAL_LIST ${WEBKIT2_DIR}/UIProcess/API/gtk/webkit2marshal.list)
@@ -723,11 +759,28 @@ add_library(webkit2gtkinjectedbundle MODULE "${WEBKIT2_DIR}/WebProcess/gtk/WebGt
 add_dependencies(webkit2gtkinjectedbundle GObjectDOMBindings)
 add_webkit2_prefix_header(webkit2gtkinjectedbundle)
 
+# Add ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} to LD_LIBRARY_PATH
+string(COMPARE EQUAL "$ENV{LD_LIBRARY_PATH}" "" ld_library_path_not_exist)
+if (ld_library_path_does_not_exist)
+    set(INTROSPECTION_ADDITIONAL_LIBRARY_PATH
+        "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+    )
+else ()
+    set(INTROSPECTION_ADDITIONAL_LIBRARY_PATH
+        "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH}"
+    )
+endif ()
+
+# Add required -L flags from ${CMAKE_SHARED_LINKER_FLAGS} for g-ir-scanner
+string(REGEX MATCHALL "-L[^ ]*"
+    INTROSPECTION_ADDITIONAL_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+
 add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/WebKit2-${WEBKITGTK_API_VERSION}.gir
     DEPENDS WebKit2
     DEPENDS ${CMAKE_BINARY_DIR}/JavaScriptCore-${WEBKITGTK_API_VERSION}.gir
     COMMAND CC=${CMAKE_C_COMPILER} CFLAGS=-Wno-deprecated-declarations LDFLAGS=
+        LD_LIBRARY_PATH="${INTROSPECTION_ADDITIONAL_LIBRARY_PATH}"
         ${INTROSPECTION_SCANNER}
         --quiet
         --warn-all
@@ -742,6 +795,7 @@ add_custom_command(
         --library=webkit2gtk-${WEBKITGTK_API_VERSION}
         --library=javascriptcoregtk-${WEBKITGTK_API_VERSION}
         -L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+        ${INTROSPECTION_ADDITIONAL_LINKER_FLAGS}
         --no-libtool
         --pkg=gobject-2.0
         --pkg=gtk+-3.0
@@ -766,6 +820,7 @@ add_custom_command(
     DEPENDS ${CMAKE_BINARY_DIR}/JavaScriptCore-${WEBKITGTK_API_VERSION}.gir
     DEPENDS ${CMAKE_BINARY_DIR}/WebKit2-${WEBKITGTK_API_VERSION}.gir
     COMMAND CC=${CMAKE_C_COMPILER} CFLAGS=-Wno-deprecated-declarations LDFLAGS=
+        LD_LIBRARY_PATH="${INTROSPECTION_ADDITIONAL_LIBRARY_PATH}"
         ${INTROSPECTION_SCANNER}
         --quiet
         --warn-all
@@ -780,6 +835,7 @@ add_custom_command(
         --library=webkit2gtk-${WEBKITGTK_API_VERSION}
         --library=javascriptcoregtk-${WEBKITGTK_API_VERSION}
         -L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+        ${INTROSPECTION_ADDITIONAL_LINKER_FLAGS}
         --no-libtool
         --pkg=gobject-2.0
         --pkg=gtk+-3.0

@@ -1,3 +1,276 @@
+2014-12-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard's chart UI is buggy
+        https://bugs.webkit.org/show_bug.cgi?id=139214
+
+        Reviewed by Chris Dumez.
+
+        The bugginess was caused by weird interactions between charts and panes. Rewrote the code to fix it.
+
+        Superfluous selectionChanged and domainChanged "event" actions were removed from the interactive chart
+        component. This is not how Ember.js components should interact to begin with. The component now exposes
+        selectedPoints and always updates selection instead of sharedSelection.
+
+        * public/v2/app.js:
+        (App.ChartsController.present): Added. We can't call Date.now() in various points in our code as that
+        would lead to infinite mutual recursions since X-axis domain values wouldn't match up.
+        (App.ChartsController.updateSharedDomain): This function was completely useless. The overview's start
+        and end time should be completely determined by "since" and the present time.
+        (App.ChartsController._startTimeChanged): Ditto.
+        (App.ChartsController._scheduleQueryStringUpdate):
+        (App.ChartsController._updateQueryString): Set "zoom" only if it's different from the shared domain.
+
+        (App.domainsAreEqual): Moved from InteractiveChartComponent._xDomainsAreSame.
+
+        (App.PaneController.actions.createAnalysisTask): Use selectedPoints property set by the chart.
+        (App.PaneController.actions.overviewDomainChanged): Removed; only needed to call updateSharedDomain.
+        (App.PaneController.actions.rangeChanged): Removed. _showDetails (renamed to _updateDetails) directly
+        observes the changes to selectedPoints property as it gets updated by the main chart.
+        (App.PaneController._overviewSelectionChanged): This was previously a dead code. Now it's used again
+        with a bug fix. When the overview selection is cleared, we use the same domain in the main chart and
+        the overview chart.
+        (App.PaneController._sharedDomainChanged): Fixed a but that it erroneously updates the overview domain
+        when domain arrays aren't identical. This was causing a subtle race with other logic.
+        (App.PaneController._sharedZoomChanged): Ditto. Also don't set mainPlotDomain here as any changes to
+        overviewSelection will automatically propagate to the main plot's domain as they're aliased.
+        (App.PaneController._currentItemChanged): Merged into _updateDetails (renamed from _showDetails).
+        (App.PaneController._updateDetails): Previously, this function took points and inspected _hasRange to
+        see if those two points correspond to a range or a single data point. Rewrote all that logic by
+        directly observing selectedPoints and currentItem properties instead of taking points and relying on
+        an instance variable, which was a terrible API.
+        (App.PaneController._updateCanAnalyze): Use selectedPoints property. Since this property is only set
+        when the main plot has a selected range, we don't have to check this._hasRange anymore.
+
+        (App.InteractiveChartComponent._updateDomain): No longer sends domainChanged "event" action.
+        (App.InteractiveChartComponent._sharedSelectionChanged): Removed. This is a dead code.
+        (App.InteractiveChartComponent._updateSelection):
+        (App.InteractiveChartComponent._xDomainsAreSame): Moved to App.domainsAreEqual.
+        (App.InteractiveChartComponent._setCurrentSelection): Update the selection only if needed. Also set
+        selectedPoints property.
+
+        (App.AnalysisTaskController._fetchedRuns):
+        (App.AnalysisTaskController._rootChangedForTestSet):
+
+        * public/v2/index.html:
+        Removed non-functional sharedSelection and superfluous selectionChanged and domainChanged actions.
+
+2014-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed. Fixed syntax errors.
+
+        * init-database.sql:
+        * public/api/commits.php:
+
+2014-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The dashboard on new perf monitor should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=138994
+
+        Reviewed by Benjamin Poulain.
+
+        For now, make it configurable via config.json. We should eventually make it configurable via
+        an administrative page but this will do for now.
+
+        * config.json: Added the empty dashboard configuration.
+
+        * public/include/manifest.php: Include the dashboard configuration in the manifest file.
+
+        * public/v2/app.js:
+        (App.IndexController): Removed defaultTable since this is now dynamically obtained via App.Manifest.
+        (App.IndexController.gridChanged): Use App.Dashboard to parse the dashboard configuration.
+        Also obtain the default configuration from App.Manifest.
+        (App.IndexController._normalizeTable): Moved to App.Dashboard.
+
+        * public/v2/manifest.js:
+        (App.Repository.urlForRevision): Fixed the position of the open curly bracket.
+        (App.Repository.urlForRevisionRange): Ditto.
+        (App.Dashboard): Added.
+        (App.Dashboard.table): Extracted from App.IndexController.gridChanged.
+        (App.Dashboard.rows): Ditto.
+        (App.Dashboard.headerColumns): Ditto.
+        (App.Dashboard._normalizeTable): Moved from App.IndexController._normalizeTable.
+        (App.MetricSerializer.normalizePayload): Synthesize a dashboard record from the configuration.
+        Since there is exactly one dashboard object per app, it's okay to hard code an id here.
+        (App.Manifest._fetchedManifest): Set defaultDashboard to the one and only one dashboard we have.
+
+2014-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        There should be a way to associate bugs with analysis tasks
+        https://bugs.webkit.org/show_bug.cgi?id=138977
+
+        Reviewed by Benjamin Poulain.
+
+        Updated associate-bug.php to match the new database schema.
+
+        * public/include/json-header.php:
+        (require_format): Removed the call to camel_case_words_separated_by_underscore since the name is
+        already camel-cased in require_existence_of. This makes the function usable elsewhere.
+
+        * public/privileged-api/associate-bug.php:
+        (main): Changed the API to take run, bugTracker, and number to match the new database schema.
+        Also verify that those values are integers using require_format.
+
+        * public/v2/analysis.js:
+        (App.AnalysisTask.label): Added. Concatenates the task's name with the bug numbers.
+        (App.Bug.label): Added.
+        (App.BugAdapter): Added.
+        (App.BugAdapter.createRecord): Use PrivilegedAPI instead of the builtin ajax call.
+        (App.BuildRequest): Inherit from newly added App.Model, which is set to DS.Model right now.
+
+        * public/v2/app.css: Renamed .test-groups to .analysis-group. Also added new rules for the table
+        containing the bug information.
+
+        * public/v2/app.js:
+        (App.InteractiveChartComponent._rangesChanged): Added label to range bar objects.
+        (App.AnalysisTaskRoute):
+        (App.AnalysisTaskController): Replaced the functionality of App.AnalysisTaskViewModel.
+        (App.AnalysisTaskController._fetchedManifest): Added.
+        (App.AnalysisTaskController.actions.associateBug): Added.
+
+        * public/v2/chart-pane.css: Renamed .bugs-pane to .analysis-pane.
+
+        * public/v2/data.js:
+        (Measurement.prototype.associateBug): Deleted.
+
+        * public/v2/index.html: Renamed .bugs-pane to .analysis-pane and .test-groups to .analysis-group.
+        Added a table show the bug information. Also hide the chart until chartData is available.
+
+        * public/v2/manifest.js:
+        (App.Model): Added.
+
+2014-11-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix misc bugs and typos in app.js
+        https://bugs.webkit.org/show_bug.cgi?id=138946
+
+        Reviewed by Benjamin Poulain.
+
+        * public/v2/app.js:
+        (App.DashboardPaneProxyForPicker._platformOrMetricIdChanged):
+        (App.ChartsController.init):
+        (App.buildPopup): Renamed from App.BuildPopup.
+        (App.InteractiveChartComponent._constructGraphIfPossible): Fixed the bug that we were calling
+        remove() on the wrong object (an array as opposed to elements in the array).
+        (App.InteractiveChartComponent._highlightedItemsChanged): Check the length of _highlights as
+        _highlights is always an array and evalutes to true.
+
+2014-11-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard should provide UI to create a new analysis task
+        https://bugs.webkit.org/show_bug.cgi?id=138910
+
+        Reviewed by Benjamin Poulain.
+
+        This patch reverts some parts of r175006 and re-introduces bugs associated with analysis tasks.
+        I'll add UI to show and edit bug numbers associated with an analysis task in a follow up patch.
+
+        With this patch, we can create a new analysis task by selection a range of points and opening
+        "analysis pane" (renamed from "bugs pane"). Each analysis task created is represented by a yellow bar
+        in the chart hyperlinked to the analysis task.
+
+        * init-database.sql: Redefined the bugs to be associated with an analysis task instead of a test run.
+
+        * public/api/analysis-tasks.php: Added the support for querying analysis tasks for a specific metric
+        on a specific platform. Also retrieve and return all bugs associated with analysis tasks.
+        (main):
+        (fetch_and_push_bugs_to_tasks): Added. Fetches all bugs associated with an array of analysis tasks
+        and adds the associated bugs to each task in the array.
+        (format_task):
+
+        * public/api/runs.php: Reverted changes made in r175006.
+        (fetch_runs_for_config):
+        (format_run): 
+
+        * public/api/test-groups.php:
+        (fetch_test_groups_for_task): Use the newly added Database::select_rows.
+
+        * public/include/db.php:
+        (Database::select_first_or_last_row):
+        (Database::select_rows): Extracted from select_first_or_last_row.
+
+        * public/v2/analysis.js:
+        (App.AnalysisTask): Added "bugs" property.
+        (App.Bug): Added now that bugs are regular data store objects.
+
+        * public/v2/app.js:
+        (App.Pane._fetch): Calls this.fetchAnalyticRanges to fetch analysis tasks as well as test runs.
+        (App.Pane.fetchAnalyticRanges): Added. Fetches analysis tasks for the current metric on the current
+        platform that are associated with a specific range of runs.
+        (App.PaneController.actions.toggleBugsPane): Updated per showingBugsPane to showingAnalysisPane rename.
+        (App.PaneController.actions.associateBug): Deleted.
+        (App.PaneController.actions.createAnalysisTask): Replaced the pre-condition checks with assertions as
+        this action should never be triggered when the pre-condition is not met. Also re-fetch analysis tasks
+        once we've created one.
+        (App.PaneController.toggleSearchPane): Updated per showingBugsPane to showingAnalysisPane rename.
+        (App.PaneController._detailsChanged): Ditto. Removed selectedSinglePoint since it's no longer used.
+        (App.PaneController._showDetails): Call _updateCanAnalyze to update the status of "Analyze" button.
+        (App.PaneController._updateBugs): Deleted.
+        (App.PaneController._updateMarkedPoints): Deleted.
+        (App.PaneController._updateCanAnalyze): Added. Disables the button to create an analysis task when
+        the name is missing or when at most one point is selected.
+        
+        (App.InteractiveChartComponent._constructGraphIfPossible): Update the locations of range rects.
+        (App.InteractiveChartComponent._relayoutDataAndAxes): Ditto.
+        (App.InteractiveChartComponent._mousePointInGraph): Don't return a point unless the mouse cursor is
+        on our svg element to avoid locking the current item when a bar shown for an analysis task is clicked.
+        (App.InteractiveChartComponent._rangesChanged): Added. Creates an array of objects representing
+        clickable bars for analysis tasks.
+        (App.InteractiveChartComponent._updateRangeBarRects): Computes the inline style used by each clickable
+        bar for analysis tasks to place them at the right location.
+        (App.InteractiveChartComponent.actions.openRange): Added. Forwards the action to the parent controller.
+
+        * public/v2/chart-pane.css:
+        (.chart .extent): Use the same color as the vertical indicator in the highlight behind the selection.
+        (.chart .rangeBar): Added.
+
+        * public/v2/data.js:
+        (TimeSeries.prototype.nextPoint): Added. Used by _rangesChanged.
+
+        * public/v2/index.html: Renamed "bugs pane" to "analysis pane" and removed the UI to associate bugs.
+        This ability will be reinstated in a follow up patch. Also added a container div and spans for analysis
+        task bars in the interactive chart component.
+
+2014-11-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix typos in r176203.
+
+        * public/v2/app.js:
+        (App.ChartsController.actions.addPaneByMetricAndPlatform):
+        (App.AnalysisTaskRoute):
+
+2014-11-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed. Updated the install instruction.
+
+        * Install.md:
+
+2014-11-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        App.Manifest shouldn't use App.__container__.lookup
+        https://bugs.webkit.org/show_bug.cgi?id=138768
+
+        Reviewed by Andreas Kling.
+
+        Removed the hack to find the store object via App.__container__.lookup.
+        Pass around the store object instead.
+
+        * public/v2/app.js:
+        (App.DashboardRow._createPane): Add "store" property to the pane.
+        (App.DashboardPaneProxyForPicker._platformOrMetricIdChanged): Ditto.
+        (App.IndexController.gridChanged): Ditto.
+        (App.IndexController.actions.addRow): Ditto.
+        (App.IndexController.init): Ditto.
+        (App.Pane._fetch): Ditto.
+        (App.ChartsController._parsePaneList): Ditto.
+        (App.ChartsController._updateQueryString): Ditto.
+        (App.ChartsController.actions.addPaneByMetricAndPlatform): Ditto.
+        (App.BuildPopup): Ditto.
+        (App.AnalysisTaskRoute.model): Ditto.
+        (App.AnalysisTaskViewModel._taskUpdated): Ditto.
+
+        * public/v2/manifest.js:
+        (App.Manifest.fetch): Removed the code to find the store object.
+
 2014-11-08  Ryosuke Niwa  <rniwa@webkit.org>
 
         Fix Ember.js warnings the new perf dashboard

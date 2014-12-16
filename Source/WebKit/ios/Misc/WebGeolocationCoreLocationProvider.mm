@@ -30,7 +30,6 @@
 #import <CoreLocation/CLLocation.h>
 #import <CoreLocation/CLLocationManagerDelegate.h>
 #import <CoreLocation/CoreLocation.h>
-#import <CoreLocation/CoreLocationPriv.h>
 #import <WebCore/GeolocationPosition.h>
 #import <WebCore/SoftLinking.h>
 #import <WebKitLogging.h>
@@ -66,10 +65,8 @@ using namespace WebCore;
 {
     ASSERT(!_locationManager);
 
-#define CLLocationManager getCLLocationManagerClass()
-    _locationManager = adoptNS([[CLLocationManager alloc] init]);
-    _lastAuthorizationStatus = [CLLocationManager authorizationStatus];
-#undef CLLocationManager
+    _locationManager = adoptNS([allocCLLocationManagerInstance() init]);
+    _lastAuthorizationStatus = [getCLLocationManagerClass() authorizationStatus];
 
     [ _locationManager setDelegate:self];
 }

@@ -26,10 +26,14 @@
 #ifndef ActionMenuHitTestResult_h
 #define ActionMenuHitTestResult_h
 
+#include "DataReference.h"
+#include "DictionaryPopupInfo.h"
 #include "ShareableBitmap.h"
-#include "TextIndicator.h"
+#include "SharedMemory.h"
 #include "WebHitTestResult.h"
 #include <WebCore/FloatRect.h>
+#include <WebCore/PageOverlay.h>
+#include <WebCore/TextIndicator.h>
 #include <wtf/text/WTFString.h>
 
 OBJC_CLASS DDActionContext;
@@ -49,11 +53,15 @@ struct ActionMenuHitTestResult {
     WebHitTestResult::Data hitTestResult;
 
     String lookupText;
-    RefPtr<ShareableBitmap> image;
+    RefPtr<SharedMemory> imageSharedMemory;
+    String imageExtension;
 
     RetainPtr<DDActionContext> actionContext;
     WebCore::FloatRect detectedDataBoundingBox;
-    RefPtr<TextIndicator> detectedDataTextIndicator;
+    RefPtr<WebCore::TextIndicator> detectedDataTextIndicator;
+    WebCore::PageOverlay::PageOverlayID detectedDataOriginatingPageOverlay;
+
+    DictionaryPopupInfo dictionaryPopupInfo;
 };
 
 } // namespace WebKit

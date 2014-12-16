@@ -107,13 +107,13 @@ void ValidationMessage::setMessage(const String& message)
     ASSERT(!message.isEmpty());
     m_message = message;
     if (!m_bubble)
-        m_timer = std::make_unique<Timer>(this, &ValidationMessage::buildBubbleTree);
+        m_timer = std::make_unique<Timer>(*this, &ValidationMessage::buildBubbleTree);
     else
-        m_timer = std::make_unique<Timer>(this, &ValidationMessage::setMessageDOMAndStartTimer);
+        m_timer = std::make_unique<Timer>(*this, &ValidationMessage::setMessageDOMAndStartTimer);
     m_timer->startOneShot(0);
 }
 
-void ValidationMessage::setMessageDOMAndStartTimer(Timer*)
+void ValidationMessage::setMessageDOMAndStartTimer()
 {
     ASSERT(!validationMessageClient());
     ASSERT(m_messageHeading);
@@ -136,7 +136,7 @@ void ValidationMessage::setMessageDOMAndStartTimer(Timer*)
     if (magnification <= 0)
         m_timer = nullptr;
     else {
-        m_timer = std::make_unique<Timer>(this, &ValidationMessage::deleteBubbleTree);
+        m_timer = std::make_unique<Timer>(*this, &ValidationMessage::deleteBubbleTree);
         m_timer->startOneShot(std::max(5.0, static_cast<double>(m_message.length()) * magnification / 1000));
     }
 }
@@ -165,9 +165,13 @@ static void adjustBubblePosition(const LayoutRect& hostRect, HTMLElement* bubble
     bubble->setInlineStyleProperty(CSSPropertyLeft, bubbleX, CSSPrimitiveValue::CSS_PX);
 }
 
-void ValidationMessage::buildBubbleTree(Timer*)
+void ValidationMessage::buildBubbleTree()
 {
     ASSERT(!validationMessageClient());
+
+    if (!m_element->renderer())
+        return;
+
     ShadowRoot& shadowRoot = m_element->ensureUserAgentShadowRoot();
 
     Document& document = m_element->document();
@@ -178,7 +182,7 @@ void ValidationMessage::buildBubbleTree(Timer*)
     m_bubble->setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
     shadowRoot.appendChild(m_bubble.get(), ASSERT_NO_EXCEPTION);
     document.updateLayout();
-    adjustBubblePosition(m_element->boundingBox(), m_bubble.get());
+    adjustBubblePosition(m_element->renderer()->absoluteBoundingBoxRect(), m_bubble.get());
 
     RefPtr<HTMLDivElement> clipper = HTMLDivElement::create(document);
     clipper->setPseudo(AtomicString("-webkit-validation-bubble-arrow-clipper", AtomicString::ConstructFromLiteral));
@@ -216,7 +220,7 @@ void ValidationMessage::requestToHideMessage()
     }
 
     // We must not modify the DOM tree in this context by the same reason as setMessage().
-    m_timer = std::make_unique<Timer>(this, &ValidationMessage::deleteBubbleTree);
+    m_timer = std::make_unique<Timer>(*this, &ValidationMessage::deleteBubbleTree);
     m_timer->startOneShot(0);
 }
 
@@ -227,7 +231,7 @@ bool ValidationMessage::shadowTreeContains(const Node& node) const
     return &m_bubble->treeScope() == &node.treeScope();
 }
 
-void ValidationMessage::deleteBubbleTree(Timer*)
+void ValidationMessage::deleteBubbleTree()
 {
     ASSERT(!validationMessageClient());
     if (m_bubble) {

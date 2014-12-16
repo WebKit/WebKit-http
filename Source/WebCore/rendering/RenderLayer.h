@@ -619,7 +619,7 @@ public:
 
     // Gets the nearest enclosing positioned ancestor layer (also includes
     // the <html> layer and the root layer).
-    RenderLayer* enclosingPositionedAncestor() const;
+    RenderLayer* enclosingAncestorForPosition(EPosition) const;
 
     // Returns the nearest enclosing layer that is scrollable.
     RenderLayer* enclosingScrollableLayer() const;
@@ -1120,7 +1120,7 @@ private:
     void createReflection();
     void removeReflection();
 
-    PassRef<RenderStyle> createReflectionStyle();
+    Ref<RenderStyle> createReflectionStyle();
     bool paintingInsideReflection() const { return m_paintingInsideReflection; }
     void setPaintingInsideReflection(bool b) { m_paintingInsideReflection = b; }
 
@@ -1266,6 +1266,7 @@ private:
 #endif
 
     bool m_hasFilterInfo : 1;
+    unsigned m_hasMaskImageInfo : 1;
 
 #if ENABLE(CSS_COMPOSITING)
     unsigned m_blendMode : 5;
@@ -1342,6 +1343,7 @@ private:
     std::unique_ptr<RenderLayerBacking> m_backing;
 
     class FilterInfo;
+    class MaskImageInfo;
 };
 
 inline void RenderLayer::clearZOrderLists()

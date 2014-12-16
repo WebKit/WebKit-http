@@ -152,8 +152,6 @@ public:
         m_hasCapturedVariables = hasCapturedVariables;
     }
 
-    bool forceUsesArguments() const { return m_forceUsesArguments; }
-
     CodeFeatures features() const { return m_features; }
     bool hasCapturedVariables() const { return m_hasCapturedVariables; }
 
@@ -168,8 +166,6 @@ private:
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForCall;
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForConstruct;
 
-    unsigned m_numCapturedVariables : 29;
-    bool m_forceUsesArguments : 1;
     bool m_isInStrictContext : 1;
     bool m_hasCapturedVariables : 1;
     bool m_isBuiltinFunction : 1;
@@ -282,6 +278,7 @@ public:
 
     // Special registers
     void setThisRegister(VirtualRegister thisRegister) { m_thisRegister = thisRegister; }
+    void setScopeRegister(VirtualRegister scopeRegister) { m_scopeRegister = scopeRegister; }
     void setActivationRegister(VirtualRegister activationRegister) { m_lexicalEnvironmentRegister = activationRegister; }
 
     void setArgumentsRegister(VirtualRegister argumentsRegister) { m_argumentsRegister = argumentsRegister; }
@@ -429,6 +426,7 @@ public:
     CodeType codeType() const { return m_codeType; }
 
     VirtualRegister thisRegister() const { return m_thisRegister; }
+    VirtualRegister scopeRegister() const { return m_scopeRegister; }
     VirtualRegister activationRegister() const { return m_lexicalEnvironmentRegister; }
     bool hasActivationRegister() const { return m_lexicalEnvironmentRegister.isValid(); }
 
@@ -463,7 +461,7 @@ public:
         return m_rareData->m_constantBuffers[index];
     }
 
-    bool hasRareData() const { return m_rareData; }
+    bool hasRareData() const { return m_rareData.get(); }
 
     int lineNumberForBytecodeOffset(unsigned bytecodeOffset);
 
@@ -489,6 +487,9 @@ public:
     ALWAYS_INLINE unsigned startColumn() const { return 0; }
     unsigned endColumn() const { return m_endColumn; }
 
+    void addOpProfileControlFlowBytecodeOffset(size_t offset) { m_opProfileControlFlowBytecodeOffsets.append(offset); }
+    const Vector<size_t>& opProfileControlFlowBytecodeOffsets() const { return m_opProfileControlFlowBytecodeOffsets; }
+
     void dumpExpressionRangeInfo(); // For debugging purpose only.
 
 protected:
@@ -508,7 +509,7 @@ private:
     void createRareDataIfNecessary()
     {
         if (!m_rareData)
-            m_rareData = adoptPtr(new RareData);
+            m_rareData = std::make_unique<RareData>();
     }
 
     void getLineAndColumn(ExpressionRangeInfo&, unsigned& line, unsigned& column);
@@ -520,6 +521,7 @@ private:
 
     VirtualRegister m_thisRegister;
     VirtualRegister m_argumentsRegister;
+    VirtualRegister m_scopeRegister;
     VirtualRegister m_lexicalEnvironmentRegister;
     VirtualRegister m_globalObjectRegister;
 
@@ -581,13 +583,14 @@ public:
     };
 
 private:
-    OwnPtr<RareData> m_rareData;
+    std::unique_ptr<RareData> m_rareData;
     Vector<ExpressionRangeInfo> m_expressionInfo;
     struct TypeProfilerExpressionRange {
         unsigned m_startDivot;
         unsigned m_endDivot;
     };
     HashMap<unsigned, TypeProfilerExpressionRange> m_typeProfilerInfoMap;
+    Vector<size_t> m_opProfileControlFlowBytecodeOffsets;
 
 protected:
 

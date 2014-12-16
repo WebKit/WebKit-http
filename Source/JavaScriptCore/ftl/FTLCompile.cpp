@@ -98,6 +98,8 @@ static uint8_t* mmAllocateDataSection(
         if (!strcmp(sectionName, SECTION_NAME("compact_unwind"))) {
 #elif OS(LINUX)
         if (!strcmp(sectionName, SECTION_NAME("eh_frame"))) {
+#else
+#error "Unrecognized OS"
 #endif
             state.unwindDataSection = section->base();
             state.unwindDataSectionSize = size;
@@ -308,12 +310,12 @@ static void fixFunctionBasedOnStackMaps(
         MacroAssembler::Call callLookupExceptionHandlerFromCallerFrame = checkJIT.call();
         checkJIT.jumpToExceptionHandler();
 
-        OwnPtr<LinkBuffer> linkBuffer = adoptPtr(new LinkBuffer(
-            vm, checkJIT, codeBlock, JITCompilationMustSucceed));
+        auto linkBuffer = std::make_unique<LinkBuffer>(
+            vm, checkJIT, codeBlock, JITCompilationMustSucceed);
         linkBuffer->link(callLookupExceptionHandler, FunctionPtr(lookupExceptionHandler));
         linkBuffer->link(callLookupExceptionHandlerFromCallerFrame, FunctionPtr(lookupExceptionHandlerFromCallerFrame));
 
-        state.finalizer->handleExceptionsLinkBuffer = linkBuffer.release();
+        state.finalizer->handleExceptionsLinkBuffer = WTF::move(linkBuffer);
     }
 
     ExitThunkGenerator exitThunkGenerator(state);
@@ -322,8 +324,8 @@ static void fixFunctionBasedOnStackMaps(
         RELEASE_ASSERT(state.finalizer->osrExit.size());
         RELEASE_ASSERT(didSeeUnwindInfo);
         
-        OwnPtr<LinkBuffer> linkBuffer = adoptPtr(new LinkBuffer(
-            vm, exitThunkGenerator, codeBlock, JITCompilationMustSucceed));
+        auto linkBuffer = std::make_unique<LinkBuffer>(
+            vm, exitThunkGenerator, codeBlock, JITCompilationMustSucceed);
         
         RELEASE_ASSERT(state.finalizer->osrExit.size() == state.jitCode->osrExit.size());
         
@@ -359,7 +361,7 @@ static void fixFunctionBasedOnStackMaps(
             }
         }
         
-        state.finalizer->exitThunksLinkBuffer = linkBuffer.release();
+        state.finalizer->exitThunksLinkBuffer = WTF::move(linkBuffer);
     }
 
     if (!state.getByIds.isEmpty() || !state.putByIds.isEmpty() || !state.checkIns.isEmpty()) {
@@ -483,8 +485,7 @@ static void fixFunctionBasedOnStackMaps(
         exceptionTarget.link(&slowPathJIT);
         MacroAssembler::Jump exceptionJump = slowPathJIT.jump();
         
-        state.finalizer->sideCodeLinkBuffer = adoptPtr(
-            new LinkBuffer(vm, slowPathJIT, codeBlock, JITCompilationMustSucceed));
+        state.finalizer->sideCodeLinkBuffer = std::make_unique<LinkBuffer>(vm, slowPathJIT, codeBlock, JITCompilationMustSucceed);
         state.finalizer->sideCodeLinkBuffer->link(
             exceptionJump, state.finalizer->handleExceptionsLinkBuffer->entrypoint());
         
@@ -626,40 +627,48 @@ void compile(State& state, Safepoint::Result& safepointResult)
         LLVMExecutionEngineRef engine;
         
         if (isARM64())
+#if OS(DARWIN)
             llvm->SetTarget(state.module, "arm64-apple-ios");
-        
+#elif OS(LINUX)
+            llvm->SetTarget(state.module, "aarch64-linux-gnu");
+#else
+#error "Unrecognized OS"
+#endif
+
         if (llvm->CreateMCJITCompilerForModule(&engine, state.module, &options, sizeof(options), &error)) {
             dataLog("FATAL: Could not create LLVM execution engine: ", error, "\n");
             CRASH();
         }
 
+        // The data layout also has to be set in the module. Get the data layout from the MCJIT and apply
+        // it to the module.
+        LLVMTargetMachineRef targetMachine = llvm->GetExecutionEngineTargetMachine(engine);
+        LLVMTargetDataRef targetData = llvm->GetExecutionEngineTargetData(engine);
+        llvm->SetDataLayout(state.module, llvm->CopyStringRepOfTargetData(targetData));
+
         LLVMPassManagerRef functionPasses = 0;
         LLVMPassManagerRef modulePasses;
-    
+
         if (Options::llvmSimpleOpt()) {
             modulePasses = llvm->CreatePassManager();
-            llvm->AddTargetData(llvm->GetExecutionEngineTargetData(engine), modulePasses);
-
-            LLVMTargetMachineRef targetMachine = llvm->GetExecutionEngineTargetMachine(engine);
-             
+            llvm->AddTargetData(targetData, modulePasses);
             llvm->AddAnalysisPasses(targetMachine, modulePasses);
             llvm->AddPromoteMemoryToRegisterPass(modulePasses);
- 
             llvm->AddGlobalOptimizerPass(modulePasses);
- 
             llvm->AddFunctionInliningPass(modulePasses);
             llvm->AddPruneEHPass(modulePasses);
             llvm->AddGlobalDCEPass(modulePasses);
-             
             llvm->AddConstantPropagationPass(modulePasses);
             llvm->AddAggressiveDCEPass(modulePasses);
             llvm->AddInstructionCombiningPass(modulePasses);
-            llvm->AddBasicAliasAnalysisPass(modulePasses);
+            // BEGIN - DO NOT CHANGE THE ORDER OF THE ALIAS ANALYSIS PASSES
             llvm->AddTypeBasedAliasAnalysisPass(modulePasses);
+            llvm->AddBasicAliasAnalysisPass(modulePasses);
+            // END - DO NOT CHANGE THE ORDER OF THE ALIAS ANALYSIS PASSES
             llvm->AddGVNPass(modulePasses);
             llvm->AddCFGSimplificationPass(modulePasses);
             llvm->AddDeadStoreEliminationPass(modulePasses);
- 
+
             llvm->RunPassManager(modulePasses, state.module);
         } else {
             LLVMPassManagerBuilderRef passBuilder = llvm->PassManagerBuilderCreate();

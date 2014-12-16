@@ -57,8 +57,8 @@ enum {
 
 class HTMLAnchorElement : public HTMLElement {
 public:
-    static PassRefPtr<HTMLAnchorElement> create(Document&);
-    static PassRefPtr<HTMLAnchorElement> create(const QualifiedName&, Document&);
+    static RefPtr<HTMLAnchorElement> create(Document&);
+    static RefPtr<HTMLAnchorElement> create(const QualifiedName&, Document&);
 
     virtual ~HTMLAnchorElement();
 
@@ -91,6 +91,7 @@ public:
     String origin() const;
 
     String text();
+    void setText(const String&, ExceptionCode&);
 
     String toString() const;
 

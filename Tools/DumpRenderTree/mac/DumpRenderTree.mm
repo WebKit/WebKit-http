@@ -41,7 +41,6 @@
 #import "FrameLoadDelegate.h"
 #import "HistoryDelegate.h"
 #import "JavaScriptThreading.h"
-#import "TestRunner.h"
 #import "MockGeolocationProvider.h"
 #import "MockWebNotificationProvider.h"
 #import "NavigationController.h"
@@ -51,6 +50,7 @@
 #import "PolicyDelegate.h"
 #import "ResourceLoadDelegate.h"
 #import "StorageTrackerDelegate.h"
+#import "TestRunner.h"
 #import "UIDelegate.h"
 #import "WebArchiveDumpSupport.h"
 #import "WebCoreTestSupport.h"
@@ -68,8 +68,8 @@
 #import <WebKit/WebCoreStatistics.h>
 #import <WebKit/WebDataSourcePrivate.h>
 #import <WebKit/WebDatabaseManagerPrivate.h>
-#import <WebKit/WebDocumentPrivate.h>
 #import <WebKit/WebDeviceOrientationProviderMock.h>
+#import <WebKit/WebDocumentPrivate.h>
 #import <WebKit/WebEditingDelegate.h>
 #import <WebKit/WebFrameView.h>
 #import <WebKit/WebHistory.h>
@@ -77,19 +77,20 @@
 #import <WebKit/WebInspector.h>
 #import <WebKit/WebKitNSStringExtras.h>
 #import <WebKit/WebPluginDatabase.h>
+#import <WebKit/WebPreferenceKeysPrivate.h>
 #import <WebKit/WebPreferences.h>
 #import <WebKit/WebPreferencesPrivate.h>
-#import <WebKit/WebPreferenceKeysPrivate.h>
 #import <WebKit/WebResourceLoadDelegate.h>
 #import <WebKit/WebStorageManagerPrivate.h>
 #import <WebKit/WebViewPrivate.h>
+#import <WebKitSystemInterface.h>
 #import <getopt.h>
 #import <wtf/Assertions.h>
 #import <wtf/FastMalloc.h>
-#import <wtf/RetainPtr.h>
-#import <wtf/Threading.h>
 #import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/OwnPtr.h>
+#import <wtf/RetainPtr.h>
+#import <wtf/Threading.h>
 #import <wtf/text/WTFString.h>
 
 #if !PLATFORM(IOS)
@@ -98,6 +99,7 @@
 #endif
 
 #if PLATFORM(IOS)
+#import "DumpRenderTreeBrowserView.h"
 #import <CoreGraphics/CGFontDB.h>
 #import <QuartzCore/QuartzCore.h>
 #import <UIKit/UIApplication_Private.h>
@@ -109,7 +111,6 @@
 #import <WebKit/WebCoreThreadRun.h>
 #import <WebKit/WebDOMOperations.h>
 #import <fcntl.h>
-#import "DumpRenderTreeBrowserView.h"
 #endif
 
 extern "C" {
@@ -154,7 +155,7 @@ using namespace std;
 @end
 #endif
 
-static void runTest(const string& testPathOrURL);
+static void runTest(const string& testURL);
 static void dumpTestResults();
 
 // Deciding when it's OK to dump out the state is a bit tricky.  All these must be true:
@@ -791,9 +792,6 @@ static void destroyWebViewAndOffscreenWindow()
 
 static NSString *libraryPathForDumpRenderTree()
 {
-    //FIXME: This may not be sufficient to prevent interactions/crashes
-    //when running more than one copy of DumpRenderTree.
-    //See https://bugs.webkit.org/show_bug.cgi?id=10906
     char* dumpRenderTreeTemp = getenv("DUMPRENDERTREE_TEMP");
     if (dumpRenderTreeTemp)
         return [[NSFileManager defaultManager] stringWithFileSystemRepresentation:dumpRenderTreeTemp length:strlen(dumpRenderTreeTemp)];
@@ -943,12 +941,17 @@ static void setDefaultsToConsistentValuesForTesting()
         @"NSOverlayScrollersEnabled": @NO,
         @"AppleShowScrollBars": @"Always",
         @"NSButtonAnimationsEnabled": @NO, // Ideally, we should find a way to test animations, but for now, make sure that the dumped snapshot matches actual state.
+    };
+
+    [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];
+
+    NSDictionary *processInstanceDefaults = @{
         WebDatabaseDirectoryDefaultsKey: [libraryPath stringByAppendingPathComponent:@"Databases"],
         WebStorageDirectoryDefaultsKey: [libraryPath stringByAppendingPathComponent:@"LocalStorage"],
         WebKitLocalCacheDefaultsKey: [libraryPath stringByAppendingPathComponent:@"LocalCache"]
     };
 
-    [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];
+    [[NSUserDefaults standardUserDefaults] setVolatileDomain:processInstanceDefaults forName:NSArgumentDomain];
 }
 
 static void runThread(void* arg)
@@ -1118,6 +1121,21 @@ static void prepareConsistentTestingEnvironment()
 #endif
 }
 
+#if PLATFORM(IOS)
+const char crashedMessage[] = "#CRASHED\n";
+
+void writeCrashedMessageOnFatalError(int signalCode)
+{
+    // Reset the default action for the signal so that we run ReportCrash(8) on pending and
+    // subsequent instances of the signal.
+    signal(signalCode, SIG_DFL);
+
+    // WRITE(2) and FSYNC(2) are considered safe to call from a signal handler by SIGACTION(2).
+    write(STDERR_FILENO, &crashedMessage[0], sizeof(crashedMessage) - 1);
+    fsync(STDERR_FILENO);
+}
+#endif
+
 void dumpRenderTree(int argc, const char *argv[])
 {
 #if PLATFORM(IOS)
@@ -1132,6 +1150,11 @@ void dumpRenderTree(int argc, const char *argv[])
     dup2(outfd, STDOUT_FILENO);
     int errfd = open(stderrPath, O_RDWR | O_NONBLOCK);
     dup2(errfd, STDERR_FILENO);
+
+    signal(SIGILL, &writeCrashedMessageOnFatalError);
+    signal(SIGFPE, &writeCrashedMessageOnFatalError);
+    signal(SIGBUS, &writeCrashedMessageOnFatalError);
+    signal(SIGSEGV, &writeCrashedMessageOnFatalError);
 #endif
 
     initializeGlobalsFromCommandLineOptions(argc, argv);
@@ -1491,7 +1514,7 @@ static void sizeWebViewForCurrentTest()
     [uiDelegate resetWindowOrigin];
 
     // W3C SVG tests expect to be 480x360
-    bool isSVGW3CTest = (gTestRunner->testPathOrURL().find("svg/W3C-SVG-1.1") != string::npos);
+    bool isSVGW3CTest = (gTestRunner->testURL().find("svg/W3C-SVG-1.1") != string::npos);
     if (isSVGW3CTest)
         [[mainFrame webView] setFrameSize:NSMakeSize(TestRunner::w3cSVGViewWidth, TestRunner::w3cSVGViewHeight)];
     else
@@ -1781,6 +1804,27 @@ static void WebThreadLockAfterDelegateCallbacksHaveCompleted()
 }
 #endif
 
+static NSString *testPathFromURL(NSURL* url)
+{
+    if ([url isFileURL]) {
+        NSString *filePath = [url path];
+        NSRange layoutTestsRange = [filePath rangeOfString:@"/LayoutTests/"];
+        if (layoutTestsRange.location == NSNotFound)
+            return nil;
+
+        return [filePath substringFromIndex:NSMaxRange(layoutTestsRange)];
+    }
+    
+    // HTTP test URLs look like: http://127.0.0.1:8000/inspector/resource-tree/resource-request-content-after-loading-and-clearing-cache.html
+    if (![[url scheme] isEqualToString:@"http"] && ![[url scheme] isEqualToString:@"https"])
+        return nil;
+
+    if ([[url host] isEqualToString:@"127.0.0.1"] && ([[url port] intValue] == 8000 || [[url port] intValue] == 8443))
+        return [url path];
+
+    return nil;
+}
+
 static void runTest(const string& inputLine)
 {
     ASSERT(!inputLine.empty());
@@ -1805,6 +1849,12 @@ static void runTest(const string& inputLine)
         return;
     }
 
+    NSString *testPath = testPathFromURL(url);
+    if (!testPath)
+        testPath = [url absoluteString];
+    NSString *informationString = [@"CRASHING TEST: " stringByAppendingString:testPath];
+    WKSetCrashReportApplicationSpecificInformation((CFStringRef)informationString);
+
     const char* testURL([[url absoluteString] UTF8String]);
     
     resetWebViewToConsistentStateBeforeTesting();
@@ -1822,6 +1872,7 @@ static void runTest(const string& inputLine)
 
     sizeWebViewForCurrentTest();
     gTestRunner->setIconDatabaseEnabled(false);
+    gTestRunner->clearAllApplicationCaches();
 
     if (disallowedURLs)
         CFSetRemoveAllValues(disallowedURLs);

@@ -56,14 +56,15 @@ StyleScrollSnapPoints::StyleScrollSnapPoints()
 }
 
 inline StyleScrollSnapPoints::StyleScrollSnapPoints(const StyleScrollSnapPoints& other)
-    : xPoints(other.xPoints)
+    : RefCounted()
+    , xPoints(other.xPoints)
     , yPoints(other.yPoints)
     , destination(other.destination)
     , coordinates(other.coordinates)
 {
 }
 
-PassRef<StyleScrollSnapPoints> StyleScrollSnapPoints::copy() const
+Ref<StyleScrollSnapPoints> StyleScrollSnapPoints::copy() const
 {
     return adoptRef(*new StyleScrollSnapPoints(*this));
 }

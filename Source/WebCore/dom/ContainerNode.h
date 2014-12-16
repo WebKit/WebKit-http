@@ -112,8 +112,6 @@ public:
 
     void cloneChildNodes(ContainerNode* clone);
 
-    virtual LayoutRect boundingBox() const override;
-
     enum ChildChangeType { ElementInserted, ElementRemoved, TextInserted, TextRemoved, TextChanged, AllChildrenRemoved, NonContentsChildChanged };
     enum ChildChangeSource { ChildChangeSourceParser, ChildChangeSourceAPI };
     struct ChildChange {
@@ -134,11 +132,11 @@ public:
     Element* querySelector(const String& selectors, ExceptionCode&);
     RefPtr<NodeList> querySelectorAll(const String& selectors, ExceptionCode&);
 
-    PassRefPtr<NodeList> getElementsByTagName(const AtomicString&);
-    PassRefPtr<NodeList> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    PassRefPtr<NodeList> getElementsByName(const String& elementName);
-    PassRefPtr<NodeList> getElementsByClassName(const AtomicString& classNames);
-    PassRefPtr<RadioNodeList> radioNodeList(const AtomicString&);
+    RefPtr<NodeList> getElementsByTagName(const AtomicString&);
+    RefPtr<NodeList> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    RefPtr<NodeList> getElementsByName(const String& elementName);
+    RefPtr<NodeList> getElementsByClassName(const AtomicString& classNames);
+    RefPtr<RadioNodeList> radioNodeList(const AtomicString&);
 
 protected:
     explicit ContainerNode(Document&, ConstructionType = CreateContainer);
@@ -156,9 +154,6 @@ protected:
 private:
     void removeBetween(Node* previousChild, Node* nextChild, Node& oldChild);
     void insertBeforeCommon(Node& nextChild, Node& oldChild);
-
-    bool getUpperLeftCorner(FloatPoint&) const;
-    bool getLowerRightCorner(FloatPoint&) const;
 
     void notifyChildInserted(Node& child, ChildChangeSource);
     void notifyChildRemoved(Node& child, Node* previousSibling, Node* nextSibling, ChildChangeSource);
@@ -262,7 +257,7 @@ public:
     }
 
     // Returns 0 if there is no next Node.
-    PassRefPtr<Node> nextNode()
+    RefPtr<Node> nextNode()
     {
         if (LIKELY(!hasSnapshot())) {
             RefPtr<Node> node = m_currentNode.release();

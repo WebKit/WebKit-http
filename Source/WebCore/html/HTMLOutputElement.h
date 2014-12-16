@@ -38,9 +38,7 @@ namespace WebCore {
 
 class HTMLOutputElement final : public HTMLFormControlElement {
 public:
-    static PassRefPtr<HTMLOutputElement> create(const QualifiedName&, Document&, HTMLFormElement*);
-
-    virtual bool willValidate() const override { return false; }
+    static RefPtr<HTMLOutputElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
     String value() const;
     void setValue(const String&);
@@ -54,6 +52,7 @@ public:
 private:
     HTMLOutputElement(const QualifiedName&, Document&, HTMLFormElement*);
 
+    virtual bool computeWillValidate() const override { return false; }
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     virtual const AtomicString& formControlType() const override;
     virtual bool isEnumeratable() const override { return true; }

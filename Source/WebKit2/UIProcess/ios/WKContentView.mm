@@ -51,12 +51,9 @@
 #import <WebCore/FrameView.h>
 #import <WebCore/InspectorOverlay.h>
 #import <WebCore/NotImplemented.h>
+#import <WebCore/QuartzCoreSPI.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/RetainPtr.h>
-
-#if __has_include(<QuartzCore/QuartzCorePrivate.h>)
-#import <QuartzCore/QuartzCorePrivate.h>
-#endif
 
 @interface CALayer (Details)
 @property BOOL hitTestsAsOpaque;
@@ -181,6 +178,8 @@ private:
     RetainPtr<WKInspectorHighlightView> _inspectorHighlightView;
 
     HistoricalVelocityData _historicalKinematicData;
+
+    RetainPtr<NSUndoManager> _undoManager;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame context:(WebKit::WebContext&)context configuration:(WebKit::WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView
@@ -376,6 +375,14 @@ private:
 - (void)didZoomToScale:(CGFloat)scale
 {
     [self _didEndScrollingOrZooming];
+}
+
+- (NSUndoManager *)undoManager
+{
+    if (!_undoManager)
+        _undoManager = adoptNS([[NSUndoManager alloc] init]);
+
+    return _undoManager.get();
 }
 
 #pragma mark Internal

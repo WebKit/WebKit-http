@@ -37,7 +37,7 @@ class HTMLImageLoader;
 
 class HTMLVideoElement final : public HTMLMediaElement {
 public:
-    static PassRefPtr<HTMLVideoElement> create(const QualifiedName&, Document&, bool);
+    static RefPtr<HTMLVideoElement> create(const QualifiedName&, Document&, bool);
 
     WEBCORE_EXPORT unsigned videoWidth() const;
     WEBCORE_EXPORT unsigned videoHeight() const;
@@ -76,7 +76,7 @@ public:
     bool shouldDisplayPosterImage() const { return displayMode() == Poster || displayMode() == PosterWaitingForVideo; }
 
     URL posterImageURL() const;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
 private:
     HTMLVideoElement(const QualifiedName&, Document&, bool);

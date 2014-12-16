@@ -50,8 +50,6 @@ namespace Inspector {
 
 ScriptDebugServer::ScriptDebugServer(bool isInWorkerThread)
     : Debugger(isInWorkerThread)
-    , m_doneProcessingDebuggerEvents(true)
-    , m_callingListeners(false)
 {
 }
 
@@ -138,8 +136,8 @@ void ScriptDebugServer::dispatchDidPause(ScriptDebugListener* listener)
     JSC::ExecState* state = globalObject->globalExec();
     RefPtr<JavaScriptCallFrame> javaScriptCallFrame = JavaScriptCallFrame::create(debuggerCallFrame);
     JSValue jsCallFrame = toJS(state, globalObject, javaScriptCallFrame.get());
-    Deprecated::ScriptValue exception = reasonForPause() == PausedForException ? Deprecated::ScriptValue(state->vm(), currentException()) : Deprecated::ScriptValue();
-    listener->didPause(state, Deprecated::ScriptValue(state->vm(), jsCallFrame), exception);
+
+    listener->didPause(state, Deprecated::ScriptValue(state->vm(), jsCallFrame), exceptionOrCaughtValue(state));
 }
 
 void ScriptDebugServer::dispatchBreakpointActionLog(ExecState* exec, const String& message)
@@ -176,7 +174,7 @@ void ScriptDebugServer::dispatchBreakpointActionSound(ExecState*, int breakpoint
         listener->breakpointActionSound(breakpointActionIdentifier);
 }
 
-void ScriptDebugServer::dispatchBreakpointActionProbe(ExecState* exec, const ScriptBreakpointAction& action, const Deprecated::ScriptValue& sample)
+void ScriptDebugServer::dispatchBreakpointActionProbe(ExecState* exec, const ScriptBreakpointAction& action, const Deprecated::ScriptValue& sampleValue)
 {
     if (m_callingListeners)
         return;
@@ -187,10 +185,12 @@ void ScriptDebugServer::dispatchBreakpointActionProbe(ExecState* exec, const Scr
 
     TemporaryChange<bool> change(m_callingListeners, true);
 
+    unsigned sampleId = m_nextProbeSampleId++;
+
     Vector<ScriptDebugListener*> listenersCopy;
     copyToVector(listeners, listenersCopy);
     for (auto* listener : listenersCopy)
-        listener->breakpointActionProbe(exec, action, m_hitCount, sample);
+        listener->breakpointActionProbe(exec, action, m_currentProbeBatchId, sampleId, sampleValue);
 }
 
 void ScriptDebugServer::dispatchDidContinue(ScriptDebugListener* listener)
@@ -288,7 +288,7 @@ void ScriptDebugServer::notifyDoneProcessingDebuggerEvents()
 
 void ScriptDebugServer::handleBreakpointHit(const JSC::Breakpoint& breakpoint)
 {
-    m_hitCount++;
+    m_currentProbeBatchId++;
     BreakpointIDToActionsMap::iterator it = m_breakpointIDToActions.find(breakpoint.id);
     if (it != m_breakpointIDToActions.end()) {
         BreakpointActions& actions = it->value;
@@ -325,6 +325,22 @@ const BreakpointActions& ScriptDebugServer::getActionsForBreakpoint(JSC::Breakpo
     
     static NeverDestroyed<BreakpointActions> emptyActionVector = BreakpointActions();
     return emptyActionVector;
+}
+
+Deprecated::ScriptValue ScriptDebugServer::exceptionOrCaughtValue(JSC::ExecState* state)
+{
+    if (reasonForPause() == PausedForException)
+        return Deprecated::ScriptValue(state->vm(), currentException());
+
+    RefPtr<DebuggerCallFrame> debuggerCallFrame = currentDebuggerCallFrame();
+    while (debuggerCallFrame) {
+        DebuggerScope* scope = debuggerCallFrame->scope();
+        if (scope->isCatchScope())
+            return Deprecated::ScriptValue(state->vm(), scope->caughtValue());
+        debuggerCallFrame = debuggerCallFrame->callerFrame();
+    }
+
+    return Deprecated::ScriptValue();
 }
 
 } // namespace Inspector

@@ -34,7 +34,6 @@
 #import "InteractionInformationAtPosition.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NavigationState.h"
-#import "TextIndicator.h"
 #import "ViewSnapshotStore.h"
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
@@ -52,6 +51,7 @@
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/SharedBuffer.h>
+#import <WebCore/TextIndicator.h>
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_webView->_page->process().connection())
 
@@ -179,7 +179,16 @@ bool PageClientImpl::isViewFocused()
 
 bool PageClientImpl::isViewVisible()
 {
-    return isViewInWindow() && (!m_contentView.isBackground || [m_webView _isPlayingFullscreenOptimizedVideo]);
+    if (isViewInWindow() && !m_contentView.isBackground)
+        return true;
+    
+    if ([m_webView _isShowingVideoOptimized])
+        return true;
+    
+    if ([m_webView _mayAutomaticallyShowVideoOptimized])
+        return true;
+    
+    return false;
 }
 
 bool PageClientImpl::isViewInWindow()
@@ -250,11 +259,6 @@ void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
 void PageClientImpl::didChangeViewportMetaTagWidth(float newWidth)
 {
     [m_webView _setViewportMetaTagWidth:newWidth];
-}
-
-void PageClientImpl::setUsesMinimalUI(bool usesMinimalUI)
-{
-    [m_webView _setUsesMinimalUI:usesMinimalUI];
 }
 
 double PageClientImpl::minimumZoomScale() const
@@ -440,7 +444,7 @@ PassRefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPagePr
     return 0;
 }
 
-void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, bool fadeOut, bool animate)
+void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, bool fadeOut)
 {
 }
 

@@ -26,7 +26,6 @@
 #include "config.h"
 
 #include "RefLogger.h"
-#include <wtf/PassRef.h>
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 
@@ -98,12 +97,12 @@ TEST(WTF_Ref, Assignment)
     ASSERT_STREQ("ref(a) | deref(a) | deref(c) ", takeLogStr().c_str());
 }
 
-PassRef<RefLogger> passWithPassRef(PassRef<RefLogger> reference)
+static Ref<RefLogger> passWithRef(Ref<RefLogger>&& reference)
 {
-    return reference;
+    return WTF::move(reference);
 }
 
-RefPtr<RefLogger> passWithPassRefPtr(PassRefPtr<RefLogger> reference)
+static RefPtr<RefLogger> passWithPassRefPtr(PassRefPtr<RefLogger> reference)
 {
     return reference;
 }
@@ -115,7 +114,7 @@ TEST(WTF_Ref, ReturnValue)
     DerivedRefLogger c("c");
 
     {
-        Ref<RefLogger> ptr(passWithPassRef(a));
+        Ref<RefLogger> ptr(passWithRef(Ref<RefLogger>(a)));
         ASSERT_EQ(&a, ptr.ptr());
     }
     ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
@@ -124,23 +123,39 @@ TEST(WTF_Ref, ReturnValue)
         Ref<RefLogger> ptr(a);
         ASSERT_EQ(&a, ptr.ptr());
         log() << "| ";
-        ptr = passWithPassRef(b);
+        ptr = passWithRef(b);
         ASSERT_EQ(&b, ptr.ptr());
         log() << "| ";
     }
     ASSERT_STREQ("ref(a) | ref(b) deref(a) | deref(b) ", takeLogStr().c_str());
 
     {
-        RefPtr<RefLogger> ptr(passWithPassRef(a));
+        RefPtr<RefLogger> ptr(passWithRef(a));
         ASSERT_EQ(&a, ptr.get());
     }
     ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
 
     {
-        RefPtr<RefLogger> ptr(passWithPassRefPtr(passWithPassRef(a)));
+        RefPtr<RefLogger> ptr(passWithPassRefPtr(passWithRef(a)));
         ASSERT_EQ(&a, ptr.get());
     }
     ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefPtr<DerivedRefLogger> ptr(&a);
+        RefPtr<RefLogger> ptr2(WTF::move(ptr));
+        ASSERT_EQ(nullptr, ptr.get());
+        ASSERT_EQ(&a, ptr2.get());
+    }
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        Ref<DerivedRefLogger> derivedReference(a);
+        Ref<RefLogger> baseReference(passWithRef(Ref<RefLogger>(derivedReference)));
+        ASSERT_EQ(&a, derivedReference.ptr());
+        ASSERT_EQ(&a, baseReference.ptr());
+    }
+    ASSERT_STREQ("ref(a) ref(a) deref(a) deref(a) ", takeLogStr().c_str());
 }
 
 } // namespace TestWebKitAPI

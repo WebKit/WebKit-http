@@ -45,6 +45,7 @@ public:
     virtual void ref() = 0;
     virtual void deref() = 0;
 
+    virtual StyledElement* parentElement() const { return nullptr; }
     virtual CSSRule* parentRule() const = 0;
     virtual String cssText() const = 0;
     virtual void setCssText(const String&, ExceptionCode&) = 0;
@@ -63,9 +64,9 @@ public:
     // The CSSValue returned by this function should not be exposed to the web as it may be used by multiple documents at the same time.
     virtual PassRefPtr<CSSValue> getPropertyCSSValueInternal(CSSPropertyID) = 0;
     virtual String getPropertyValueInternal(CSSPropertyID) = 0;
-    virtual void setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) = 0;
+    virtual bool setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) = 0;
 
-    virtual PassRef<MutableStyleProperties> copyProperties() const = 0;
+    virtual Ref<MutableStyleProperties> copyProperties() const = 0;
 
     virtual CSSStyleSheet* parentStyleSheet() const { return 0; }
 

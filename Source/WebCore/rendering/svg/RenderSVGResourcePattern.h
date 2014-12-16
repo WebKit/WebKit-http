@@ -41,7 +41,7 @@ public:
 
 class RenderSVGResourcePattern final : public RenderSVGResourceContainer {
 public:
-    RenderSVGResourcePattern(SVGPatternElement&, PassRef<RenderStyle>);
+    RenderSVGResourcePattern(SVGPatternElement&, Ref<RenderStyle>&&);
     SVGPatternElement& patternElement() const;
 
     virtual void removeAllClientsFromCache(bool markForInvalidation = true) override;
@@ -51,8 +51,7 @@ public:
     virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*) override;
     virtual FloatRect resourceBoundingBox(const RenderObject&) override { return FloatRect(); }
 
-    static const RenderSVGResourceType s_resourceType = PatternResourceType;
-    virtual RenderSVGResourceType resourceType() const override { return s_resourceType; }
+    virtual RenderSVGResourceType resourceType() const override { return PatternResourceType; }
 
 private:
     void element() const = delete;
@@ -70,5 +69,7 @@ private:
 };
 
 }
+
+SPECIALIZE_TYPE_TRAITS_RENDER_SVG_RESOURCE(RenderSVGResourcePattern, PatternResourceType)
 
 #endif

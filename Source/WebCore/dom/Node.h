@@ -138,8 +138,10 @@ public:
         DOCUMENT_NODE = 9,
         DOCUMENT_TYPE_NODE = 10,
         DOCUMENT_FRAGMENT_NODE = 11,
-        NOTATION_NODE = 12,
         XPATH_NAMESPACE_NODE = 13,
+    };
+    enum DeprecatedNodeType {
+        NOTATION_NODE = 12,
     };
     enum DocumentPosition {
         DOCUMENT_POSITION_EQUIVALENT = 0x00,
@@ -177,7 +179,7 @@ public:
     static ptrdiff_t previousSiblingMemoryOffset() { return OBJECT_OFFSETOF(Node, m_previous); }
     Node* nextSibling() const { return m_next; }
     static ptrdiff_t nextSiblingMemoryOffset() { return OBJECT_OFFSETOF(Node, m_next); }
-    PassRefPtr<NodeList> childNodes();
+    RefPtr<NodeList> childNodes();
     Node* firstChild() const;
     Node* lastChild() const;
     bool hasAttributes() const;
@@ -201,7 +203,15 @@ public:
 
     WEBCORE_EXPORT void remove(ExceptionCode&);
     bool hasChildNodes() const { return firstChild(); }
-    virtual PassRefPtr<Node> cloneNode(bool deep) = 0;
+
+    enum class CloningOperation {
+        OnlySelf,
+        SelfWithTemplateContent,
+        Everything,
+    };
+    virtual RefPtr<Node> cloneNodeInternal(CloningOperation) = 0;
+    RefPtr<Node> cloneNode(bool deep) { return cloneNodeInternal(deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
+
     virtual const AtomicString& localName() const;
     virtual const AtomicString& namespaceURI() const;
     virtual const AtomicString& prefix() const;
@@ -377,8 +387,6 @@ public:
         return false;
     }
 
-    virtual LayoutRect boundingBox() const;
-    IntRect pixelSnappedBoundingBox() const { return snappedIntRect(boundingBox()); }
     WEBCORE_EXPORT LayoutRect renderRect(bool* isReplaced);
     IntRect pixelSnappedRenderRect(bool* isReplaced) { return snappedIntRect(renderRect(isReplaced)); }
 
@@ -667,6 +675,7 @@ protected:
     void setTreeScope(TreeScope& scope) { m_treeScope = &scope; }
 
     void setStyleChange(StyleChangeType changeType) { m_nodeFlags = (m_nodeFlags & ~StyleChangeMask) | changeType; }
+    void updateAncestorsForStyleRecalc();
 
 private:
     friend class TreeShared<Node>;

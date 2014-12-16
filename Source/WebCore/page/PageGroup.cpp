@@ -29,7 +29,6 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "DOMWrapperWorld.h"
-#include "DefaultVisitedLinkStore.h"
 #include "Document.h"
 #include "DocumentStyleSheetCollection.h"
 #include "GroupSettings.h"
@@ -39,8 +38,6 @@
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "StorageNamespace.h"
-#include "UserContentController.h"
-#include "VisitedLinkStore.h"
 #include <wtf/StdLibExtras.h>
 
 #if ENABLE(VIDEO_TRACK)
@@ -61,21 +58,15 @@ static unsigned getUniqueIdentifier()
 
 // --------
 
-static bool shouldTrackVisitedLinks = false;
-
 PageGroup::PageGroup(const String& name)
     : m_name(name)
-    , m_visitedLinksPopulated(false)
     , m_identifier(getUniqueIdentifier())
-    , m_userContentController(UserContentController::create())
     , m_groupSettings(std::make_unique<GroupSettings>())
 {
 }
 
 PageGroup::PageGroup(Page& page)
-    : m_visitedLinksPopulated(false)
-    , m_identifier(getUniqueIdentifier())
-    , m_userContentController(UserContentController::create())
+    : m_identifier(getUniqueIdentifier())
     , m_groupSettings(std::make_unique<GroupSettings>())
 {
     addPage(page);
@@ -83,7 +74,6 @@ PageGroup::PageGroup(Page& page)
 
 PageGroup::~PageGroup()
 {
-    removeAllUserContent();
 }
 
 typedef HashMap<String, PageGroup*> PageGroupMap;
@@ -166,162 +156,22 @@ void PageGroup::addPage(Page& page)
 {
     ASSERT(!m_pages.contains(&page));
     m_pages.add(&page);
-
-    if (!page.userContentController())
-        page.setUserContentController(m_userContentController.get());
 }
 
 void PageGroup::removePage(Page& page)
 {
     ASSERT(m_pages.contains(&page));
     m_pages.remove(&page);
-
-    if (page.userContentController() == m_userContentController)
-        page.setUserContentController(nullptr);
-}
-
-VisitedLinkStore& PageGroup::visitedLinkStore()
-{
-    if (!m_visitedLinkStore)
-        m_visitedLinkStore = DefaultVisitedLinkStore::create();
-
-    return *m_visitedLinkStore;
-}
-
-bool PageGroup::isLinkVisited(LinkHash visitedLinkHash)
-{
-    if (!m_visitedLinksPopulated) {
-        m_visitedLinksPopulated = true;
-        ASSERT(!m_pages.isEmpty());
-        (*m_pages.begin())->chrome().client().populateVisitedLinks();
-    }
-    return m_visitedLinkHashes.contains(visitedLinkHash);
-}
-
-void PageGroup::addVisitedLinkHash(LinkHash hash)
-{
-    if (shouldTrackVisitedLinks)
-        addVisitedLink(hash);
-}
-
-inline void PageGroup::addVisitedLink(LinkHash hash)
-{
-    ASSERT(shouldTrackVisitedLinks);
-    if (!m_visitedLinkHashes.add(hash).isNewEntry)
-        return;
-    for (auto& page : m_pages)
-        page->invalidateStylesForLink(hash);
-    pageCache()->markPagesForVistedLinkStyleRecalc();
-}
-
-void PageGroup::addVisitedLink(const URL& url)
-{
-    if (!shouldTrackVisitedLinks)
-        return;
-    ASSERT(!url.isEmpty());
-    addVisitedLink(visitedLinkHash(url.string()));
-}
-
-void PageGroup::addVisitedLink(const UChar* characters, size_t length)
-{
-    if (!shouldTrackVisitedLinks)
-        return;
-    addVisitedLink(visitedLinkHash(characters, length));
-}
-
-void PageGroup::removeVisitedLink(const URL& url)
-{
-    LinkHash hash = visitedLinkHash(url.string());
-    ASSERT(m_visitedLinkHashes.contains(hash));
-    m_visitedLinkHashes.remove(hash);
-
-    // FIXME: Why can't we just invalidate the single visited link hash here?
-    for (auto& page : m_pages)
-        page->invalidateStylesForAllLinks();
-    pageCache()->markPagesForVistedLinkStyleRecalc();
-}
-
-void PageGroup::removeVisitedLinks()
-{
-    m_visitedLinksPopulated = false;
-    if (m_visitedLinkHashes.isEmpty())
-        return;
-    m_visitedLinkHashes.clear();
-
-    for (auto& page : m_pages)
-        page->invalidateStylesForAllLinks();
-    pageCache()->markPagesForVistedLinkStyleRecalc();
-}
-
-void PageGroup::removeAllVisitedLinks()
-{
-    Page::removeAllVisitedLinks();
-    pageCache()->markPagesForVistedLinkStyleRecalc();
-}
-
-void PageGroup::setShouldTrackVisitedLinks(bool shouldTrack)
-{
-    if (shouldTrackVisitedLinks == shouldTrack)
-        return;
-    shouldTrackVisitedLinks = shouldTrack;
-    if (!shouldTrackVisitedLinks)
-        removeAllVisitedLinks();
 }
 
 StorageNamespace* PageGroup::localStorage()
 {
-    if (!m_localStorage)
-        m_localStorage = StorageNamespace::localStorageNamespace(this);
-
     return m_localStorage.get();
 }
 
-StorageNamespace* PageGroup::transientLocalStorage(SecurityOrigin* topOrigin)
+StorageNamespace* PageGroup::transientLocalStorage(SecurityOrigin*)
 {
-    auto result = m_transientLocalStorageMap.add(topOrigin, nullptr);
-
-    if (result.isNewEntry)
-        result.iterator->value = StorageNamespace::transientLocalStorageNamespace(this, topOrigin);
-
-    return result.iterator->value.get();
-}
-
-void PageGroup::addUserScriptToWorld(DOMWrapperWorld& world, const String& source, const URL& url, const Vector<String>& whitelist, const Vector<String>& blacklist, UserScriptInjectionTime injectionTime, UserContentInjectedFrames injectedFrames)
-{
-    auto userScript = std::make_unique<UserScript>(source, url, whitelist, blacklist, injectionTime, injectedFrames);
-    m_userContentController->addUserScript(world, WTF::move(userScript));
-}
-
-void PageGroup::addUserStyleSheetToWorld(DOMWrapperWorld& world, const String& source, const URL& url, const Vector<String>& whitelist, const Vector<String>& blacklist, UserContentInjectedFrames injectedFrames, UserStyleLevel level, UserStyleInjectionTime injectionTime)
-{
-    auto userStyleSheet = std::make_unique<UserStyleSheet>(source, url, whitelist, blacklist, injectedFrames, level);
-    m_userContentController->addUserStyleSheet(world, WTF::move(userStyleSheet), injectionTime);
-
-}
-
-void PageGroup::removeUserScriptFromWorld(DOMWrapperWorld& world, const URL& url)
-{
-    m_userContentController->removeUserScript(world, url);
-}
-
-void PageGroup::removeUserStyleSheetFromWorld(DOMWrapperWorld& world, const URL& url)
-{
-    m_userContentController->removeUserStyleSheet(world, url);
-}
-
-void PageGroup::removeUserScriptsFromWorld(DOMWrapperWorld& world)
-{
-    m_userContentController->removeUserScripts(world);
-}
-
-void PageGroup::removeUserStyleSheetsFromWorld(DOMWrapperWorld& world)
-{
-    m_userContentController->removeUserStyleSheets(world);
-}
-
-void PageGroup::removeAllUserContent()
-{
-    m_userContentController->removeAllUserContent();
+    return nullptr;
 }
 
 #if ENABLE(VIDEO_TRACK)

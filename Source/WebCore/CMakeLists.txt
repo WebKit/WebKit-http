@@ -350,13 +350,14 @@ set(WebCore_NON_SVG_IDL_FILES
     css/StyleSheet.idl
     css/StyleSheetList.idl
     css/WebKitCSSFilterValue.idl
-    css/WebKitCSSKeyframeRule.idl
-    css/WebKitCSSKeyframesRule.idl
+    css/CSSKeyframeRule.idl
+    css/CSSKeyframesRule.idl
     css/WebKitCSSMatrix.idl
     css/WebKitCSSRegionRule.idl
     css/WebKitCSSTransformValue.idl
     css/WebKitCSSViewportRule.idl
 
+    dom/AnimationEvent.idl
     dom/Attr.idl
     dom/BeforeLoadEvent.idl
     dom/BeforeUnloadEvent.idl
@@ -404,7 +405,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/NodeFilter.idl
     dom/NodeIterator.idl
     dom/NodeList.idl
-    dom/Notation.idl
     dom/OverflowEvent.idl
     dom/PageTransitionEvent.idl
     dom/PopStateEvent.idl
@@ -531,8 +531,11 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/CanvasRenderingContext.idl
     html/canvas/CanvasRenderingContext2D.idl
     html/canvas/DOMPath.idl
+    html/canvas/EXTBlendMinMax.idl
+    html/canvas/EXTFragDepth.idl
     html/canvas/EXTShaderTextureLOD.idl
     html/canvas/EXTTextureFilterAnisotropic.idl
+    html/canvas/EXTsRGB.idl
     html/canvas/OESElementIndexUint.idl
     html/canvas/OESStandardDerivatives.idl
     html/canvas/OESTextureFloat.idl
@@ -1288,8 +1291,9 @@ set(WebCore_SOURCES
     css/TransformFunctions.cpp
     css/ViewportStyleResolver.cpp
     css/WebKitCSSFilterValue.cpp
-    css/WebKitCSSKeyframeRule.cpp
-    css/WebKitCSSKeyframesRule.cpp
+    css/WebKitCSSResourceValue.cpp
+    css/CSSKeyframeRule.cpp
+    css/CSSKeyframesRule.cpp
     css/WebKitCSSMatrix.cpp
     css/WebKitCSSRegionRule.cpp
     css/WebKitCSSTransformValue.cpp
@@ -1298,6 +1302,7 @@ set(WebCore_SOURCES
     cssjit/SelectorCompiler.cpp
 
     dom/ActiveDOMObject.cpp
+    dom/AnimationEvent.cpp
     dom/Attr.cpp
     dom/BeforeTextInsertedEvent.cpp
     dom/BeforeUnloadEvent.cpp
@@ -1385,7 +1390,6 @@ set(WebCore_SOURCES
     dom/NodeRareData.cpp
     dom/NodeRenderingTraversal.cpp
     dom/NodeTraversal.cpp
-    dom/Notation.cpp
     dom/OverflowEvent.cpp
     dom/PageTransitionEvent.cpp
     dom/PendingScript.cpp
@@ -1670,8 +1674,11 @@ set(WebCore_SOURCES
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
+    html/canvas/EXTBlendMinMax.cpp
+    html/canvas/EXTFragDepth.cpp
     html/canvas/EXTShaderTextureLOD.cpp
     html/canvas/EXTTextureFilterAnisotropic.cpp
+    html/canvas/EXTsRGB.cpp
     html/canvas/OESElementIndexUint.cpp
     html/canvas/OESStandardDerivatives.cpp
     html/canvas/OESTextureFloat.cpp
@@ -1842,6 +1849,7 @@ set(WebCore_SOURCES
     loader/archive/mhtml/MHTMLParser.cpp
 
     loader/cache/CachedCSSStyleSheet.cpp
+    loader/cache/CachedSVGFont.cpp
     loader/cache/CachedFont.cpp
     loader/cache/CachedImage.cpp
     loader/cache/CachedRawResource.cpp
@@ -1886,7 +1894,6 @@ set(WebCore_SOURCES
     page/DOMWindowExtension.cpp
     page/DOMWindowProperty.cpp
     page/DebugPageOverlays.cpp
-    page/DefaultVisitedLinkStore.cpp
     page/DeviceController.cpp
     page/DiagnosticLoggingKeys.cpp
     page/DragController.cpp
@@ -1898,7 +1905,6 @@ set(WebCore_SOURCES
     page/FrameSnapshotting.cpp
     page/FrameTree.cpp
     page/FrameView.cpp
-    page/GestureTapHighlighter.cpp
     page/GroupSettings.cpp
     page/History.cpp
     page/Location.cpp
@@ -1908,7 +1914,7 @@ set(WebCore_SOURCES
     page/NavigatorBase.cpp
     page/OriginAccessEntry.cpp
     page/Page.cpp
-    page/PageActivityAssertionToken.cpp
+    page/PageConfiguration.cpp
     page/PageConsoleClient.cpp
     page/PageGroup.cpp
     page/PageGroupLoadDeferrer.cpp
@@ -1931,6 +1937,7 @@ set(WebCore_SOURCES
     page/Settings.cpp
     page/SpatialNavigation.cpp
     page/SuspendableTimer.cpp
+    page/TextIndicator.cpp
     page/UserContentController.cpp
     page/UserContentURLPattern.cpp
     page/VisitedLinkStore.cpp
@@ -2090,6 +2097,7 @@ set(WebCore_SOURCES
     platform/graphics/ISOVTTCue.cpp
     platform/graphics/LayoutBoxExtent.cpp
     platform/graphics/LayoutRect.cpp
+    platform/graphics/MaskImageOperation.cpp
     platform/graphics/MediaPlayer.cpp
     platform/graphics/Path.cpp
     platform/graphics/PathTraversalState.cpp
@@ -2296,6 +2304,7 @@ set(WebCore_SOURCES
     rendering/RenderLayerBacking.cpp
     rendering/RenderLayerCompositor.cpp
     rendering/RenderLayerFilterInfo.cpp
+    rendering/RenderLayerMaskImageInfo.cpp
     rendering/RenderLayerModelObject.cpp
     rendering/RenderLineBoxList.cpp
     rendering/RenderLineBreak.cpp
@@ -2353,7 +2362,9 @@ set(WebCore_SOURCES
     rendering/SelectionSubtreeRoot.cpp
     rendering/ScrollBehavior.cpp
     rendering/SimpleLineLayout.cpp
+    rendering/SimpleLineLayoutFlowContents.cpp
     rendering/SimpleLineLayoutFunctions.cpp
+    rendering/SimpleLineLayoutResolver.cpp
     rendering/TextAutosizer.cpp
     rendering/TextPaintStyle.cpp
     rendering/TextPainter.cpp
@@ -2479,9 +2490,8 @@ set(WebCore_SOURCES
     storage/StorageEvent.cpp
     storage/StorageEventDispatcher.cpp
     storage/StorageMap.cpp
-    storage/StorageNamespace.cpp
     storage/StorageNamespaceImpl.cpp
-    storage/StorageStrategy.cpp
+    storage/StorageNamespaceProvider.cpp
     storage/StorageSyncManager.cpp
     storage/StorageThread.cpp
     storage/StorageTracker.cpp
@@ -2800,8 +2810,11 @@ if (ENABLE_WEBGL)
 
     list(APPEND WebCore_SOURCES
         html/canvas/ANGLEInstancedArrays.cpp
+        html/canvas/EXTBlendMinMax.cpp
+        html/canvas/EXTFragDepth.cpp
         html/canvas/EXTShaderTextureLOD.cpp
         html/canvas/EXTTextureFilterAnisotropic.cpp
+        html/canvas/EXTsRGB.cpp
         html/canvas/OESElementIndexUint.cpp
         html/canvas/OESStandardDerivatives.cpp
         html/canvas/OESTextureFloat.cpp
@@ -2838,8 +2851,11 @@ if (ENABLE_WEBGL)
     )
     list(APPEND WebCore_IDL_FILES
         html/canvas/ANGLEInstancedArrays.idl
+        html/canvas/EXTBlendMinMax.idl
+        html/canvas/EXTFragDepth.idl
         html/canvas/EXTShaderTextureLOD.idl
         html/canvas/EXTTextureFilterAnisotropic.idl
+        html/canvas/EXTsRGB.idl
         html/canvas/OESElementIndexUint.idl
         html/canvas/OESStandardDerivatives.idl
         html/canvas/OESTextureFloat.idl
@@ -3343,7 +3359,6 @@ ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/StyleResolver.cpp Plu
 GENERATE_GRAMMAR(cssyy ${WEBCORE_DIR}/css/CSSGrammar.y.in ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.h ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}")
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp)
 
-
 GENERATE_GRAMMAR(xpathyy ${WEBCORE_DIR}/xml/XPathGrammar.y ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.h ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp "")
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp)
 
@@ -3381,6 +3396,13 @@ add_custom_command(
 --sharedWorkerGlobalScopeConstructorsFile ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE} --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
     VERBATIM)
 
+set(ADDITIONAL_BINDINGS_DEPENDENCIES
+    ${WINDOW_CONSTRUCTORS_FILE}
+    ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+    ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+    ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+)
+
 GENERATE_BINDINGS(WebCore_SOURCES
     "${WebCore_IDL_FILES}"
     "${WEBCORE_DIR}"
@@ -3389,10 +3411,7 @@ GENERATE_BINDINGS(WebCore_SOURCES
     ${DERIVED_SOURCES_WEBCORE_DIR} JS JS cpp
     ${IDL_ATTRIBUTES_FILE}
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
-    ${WINDOW_CONSTRUCTORS_FILE}
-    ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
+    ${ADDITIONAL_BINDINGS_DEPENDENCIES})
 
 GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
     "${WebCoreTestSupport_IDL_FILES}"
@@ -3402,10 +3421,7 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
     ${DERIVED_SOURCES_WEBCORE_DIR} JS JS cpp
     ${IDL_ATTRIBUTES_FILE}
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
-    ${WINDOW_CONSTRUCTORS_FILE}
-    ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
+    ${ADDITIONAL_BINDINGS_DEPENDENCIES})
 
 
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/html/HTMLTreeBuilder.cpp MathMLNames.cpp)

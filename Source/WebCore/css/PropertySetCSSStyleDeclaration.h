@@ -44,7 +44,6 @@ class PropertySetCSSStyleDeclaration : public CSSStyleDeclaration {
 public:
     PropertySetCSSStyleDeclaration(MutableStyleProperties* propertySet) : m_propertySet(propertySet) { }
     
-    virtual StyledElement* parentElement() const { return nullptr; }
     virtual void clearParentElement() { ASSERT_NOT_REACHED(); }
     StyleSheetContents* contextStyleSheet() const;
     
@@ -66,9 +65,9 @@ private:
     virtual void setCssText(const String&, ExceptionCode&) override final;
     virtual PassRefPtr<CSSValue> getPropertyCSSValueInternal(CSSPropertyID) override final;
     virtual String getPropertyValueInternal(CSSPropertyID) override final;
-    virtual void setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) override final;
+    virtual bool setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) override final;
     
-    virtual PassRef<MutableStyleProperties> copyProperties() const override final;
+    virtual Ref<MutableStyleProperties> copyProperties() const override final;
 
     CSSValue* cloneAndCacheForCSSOM(CSSValue*);
     

@@ -117,23 +117,11 @@ void setPersistentUserStyleSheetLocation(CFStringRef url)
     persistentUserStyleSheetLocation = url;
 }
 
-bool setAlwaysAcceptCookies(bool alwaysAcceptCookies)
+bool setAlwaysAcceptCookies(bool)
 {
-#if USE(CFNETWORK)
-    COMPtr<IWebCookieManager> cookieManager;
-    if (FAILED(WebKitCreateInstance(CLSID_WebCookieManager, 0, IID_IWebCookieManager, reinterpret_cast<void**>(&cookieManager))))
-        return false;
-    CFHTTPCookieStorageRef cookieStorage = 0;
-    if (FAILED(cookieManager->cookieStorage(&cookieStorage)) || !cookieStorage)
-        return false;
-
-    WebKitCookieStorageAcceptPolicy cookieAcceptPolicy = alwaysAcceptCookies ? WebKitCookieStorageAcceptPolicyAlways : WebKitCookieStorageAcceptPolicyOnlyFromMainDocumentDomain;
-    CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage, cookieAcceptPolicy);
-    return true;
-#else
-    // FIXME: Implement!
+    // FIXME: Implement this by making the Windows port use the testing network storage session and
+    // modify its cookie storage policy.
     return false;
-#endif
 }
 
 static RetainPtr<CFStringRef> substringFromIndex(CFStringRef string, CFIndex index)
@@ -899,7 +887,7 @@ static void resetWebViewToConsistentStateBeforeTesting()
 
 static void sizeWebViewForCurrentTest()
 {
-    bool isSVGW3CTest = (gTestRunner->testPathOrURL().find("svg\\W3C-SVG-1.1") != string::npos);
+    bool isSVGW3CTest = (gTestRunner->testURL().find("svg\\W3C-SVG-1.1") != string::npos);
     unsigned width;
     unsigned height;
     if (isSVGW3CTest) {
@@ -1015,16 +1003,23 @@ static void runTest(const string& inputLine)
     ASSERT(urlBStr.length() == length);
     delete[] buffer;
 
+    CFIndex maximumURLLengthAsUTF8 = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+    char* testURL = new char[maximumURLLengthAsUTF8];
+    CFStringGetCString(str, testURL, maximumURLLengthAsUTF8, kCFStringEncodingUTF8);
+
     CFRelease(url);
 
-    ::gTestRunner = TestRunner::create(pathOrURL, command.expectedPixelHash);
+    ::gTestRunner = TestRunner::create(testURL, command.expectedPixelHash);
     topLoadingFrame = 0;
     done = false;
+
+    delete[] testURL;
 
     addFontFallbackIfPresent(fallbackPath);
 
     sizeWebViewForCurrentTest();
     gTestRunner->setIconDatabaseEnabled(false);
+    gTestRunner->clearAllApplicationCaches();
 
     if (shouldLogFrameLoadDelegates(pathOrURL.c_str()))
         gTestRunner->setDumpFrameLoadCallbacks(true);

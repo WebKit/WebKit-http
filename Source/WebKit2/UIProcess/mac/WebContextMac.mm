@@ -38,6 +38,7 @@
 #import "WebProcessCreationParameters.h"
 #import "WebProcessMessages.h"
 #import "WindowServerConnection.h"
+#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Color.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/NotImplemented.h>
@@ -54,18 +55,6 @@
 #import <WebCore/RuntimeApplicationChecksIOS.h>
 #else
 #import <QuartzCore/CARemoteLayerServer.h>
-#import <WebCore/QuickLookMac.h>
-#endif
-
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-
-#if __has_include(<CFNetwork/CFURLProtocolPriv.h>)
-#include <CFNetwork/CFURLProtocolPriv.h>
-#else
-extern "C" Boolean _CFNetworkIsKnownHSTSHostWithSession(CFURLRef url, CFURLStorageSessionRef session);
-extern "C" void _CFNetworkResetHSTSHostsWithSession(CFURLStorageSessionRef session);
-#endif
-
 #endif
 
 using namespace WebCore;
@@ -114,14 +103,18 @@ static void registerUserDefaultsIfNeeded()
     [[NSUserDefaults standardUserDefaults] registerDefaults:registrationDictionary];
 }
 
-void WebContext::updateProcessSuppressionState() const
+void WebContext::updateProcessSuppressionState()
 {
 #if ENABLE(NETWORK_PROCESS)
     if (m_usesNetworkProcess && m_networkProcess)
         m_networkProcess->setProcessSuppressionEnabled(processSuppressionEnabled());
 #endif
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    PluginProcessManager::shared().setProcessSuppressionEnabled(processSuppressionPreferenceIsEnabledForAllContexts());
+    if (!m_processSuppressionDisabledForPageCounter.value())
+        m_pluginProcessManagerProcessSuppressionDisabledCount = nullptr;
+    else if (!m_pluginProcessManagerProcessSuppressionDisabledCount)
+        m_pluginProcessManagerProcessSuppressionDisabledCount = PluginProcessManager::shared().processSuppressionDisabledForPageCount();
 #endif
 }
 
@@ -177,11 +170,8 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
 
 #if PLATFORM(MAC)
     parameters.accessibilityEnhancedUserInterfaceEnabled = [[NSApp accessibilityAttributeValue:@"AXEnhancedUserInterface"] boolValue];
-    static const bool shouldUseQuickLookResourceCachingQuirks = QuickLookMac::computeNeedsQuickLookResourceCachingQuirks();
-    parameters.needsQuickLookResourceCachingQuirks = shouldUseQuickLookResourceCachingQuirks;
 #else
     parameters.accessibilityEnhancedUserInterfaceEnabled = false;
-    parameters.needsQuickLookResourceCachingQuirks = false;
 #endif
 
     NSURLCache *urlCache = [NSURLCache sharedURLCache];
@@ -526,31 +516,9 @@ void WebContext::getPasteboardItemsCount(uint64_t& itemsCount)
 
 bool WebContext::processSuppressionEnabled() const
 {
-    for (const auto& process : m_processes) {
-        if (!process->allPagesAreProcessSuppressible())
-            return false;
-    }
-    return true;
+    return !m_userObservablePageCounter.value() && !m_processSuppressionDisabledForPageCounter.value();
 }
 
-bool WebContext::processSuppressionIsEnabledForAllContexts()
-{
-    for (const auto* context : WebContext::allContexts()) {
-        if (!context->processSuppressionEnabled())
-            return false;
-    }
-    return true;
-}
-
-bool WebContext::processSuppressionPreferenceIsEnabledForAllContexts()
-{
-    for (const auto* context : WebContext::allContexts()) {
-        if (!context->m_defaultPageGroup->preferences().store().getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey()))
-            return false;
-    }
-    return true;
-}
-    
 void WebContext::registerNotificationObservers()
 {
 #if !PLATFORM(IOS)

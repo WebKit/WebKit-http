@@ -47,7 +47,7 @@ inline HTMLButtonElement::HTMLButtonElement(const QualifiedName& tagName, Docume
     ASSERT(hasTagName(buttonTag));
 }
 
-PassRefPtr<HTMLButtonElement> HTMLButtonElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
+RefPtr<HTMLButtonElement> HTMLButtonElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
 {
     return adoptRef(new HTMLButtonElement(tagName, document, form));
 }
@@ -57,7 +57,7 @@ void HTMLButtonElement::setType(const AtomicString& type)
     setAttribute(typeAttr, type);
 }
 
-RenderPtr<RenderElement> HTMLButtonElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLButtonElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderButton>(*this, WTF::move(style));
 }
@@ -200,9 +200,9 @@ const AtomicString& HTMLButtonElement::value() const
     return fastGetAttribute(valueAttr);
 }
 
-bool HTMLButtonElement::recalcWillValidate() const
+bool HTMLButtonElement::computeWillValidate() const
 {
-    return m_type == SUBMIT && HTMLFormControlElement::recalcWillValidate();
+    return m_type == SUBMIT && HTMLFormControlElement::computeWillValidate();
 }
 
 } // namespace

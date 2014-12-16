@@ -81,7 +81,7 @@ private:
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;
 
-    virtual void setTextIndicator(PassRefPtr<TextIndicator>, bool, bool) override;
+    virtual void setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool) override;
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     virtual void exitAcceleratedCompositingMode() override;

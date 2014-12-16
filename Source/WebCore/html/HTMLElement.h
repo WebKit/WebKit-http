@@ -40,18 +40,14 @@ enum TranslateAttributeMode {
 
 class HTMLElement : public StyledElement {
 public:
-    static PassRefPtr<HTMLElement> create(const QualifiedName& tagName, Document&);
+    static RefPtr<HTMLElement> create(const QualifiedName& tagName, Document&);
 
-    PassRefPtr<HTMLCollection> children();
+    RefPtr<HTMLCollection> children();
 
     WEBCORE_EXPORT virtual String title() const override final;
 
     virtual short tabIndex() const override;
 
-    String innerHTML() const;
-    String outerHTML() const;
-    void setInnerHTML(const String&, ExceptionCode&);
-    void setOuterHTML(const String&, ExceptionCode&);
     void setInnerText(const String&, ExceptionCode&);
     void setOuterText(const String&, ExceptionCode&);
 
@@ -81,7 +77,7 @@ public:
     bool ieForbidsInsertHTML() const;
 
     virtual bool rendererIsNeeded(const RenderStyle&) override;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
     HTMLFormElement* form() const { return virtualForm(); }
 
@@ -111,7 +107,7 @@ protected:
     void applyAlignmentAttributeToStyle(const AtomicString&, MutableStyleProperties&);
     void applyBorderAttributeToStyle(const AtomicString&, MutableStyleProperties&);
 
-    virtual bool matchesReadWritePseudoClass() const;
+    virtual bool matchesReadWritePseudoClass() const override;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     virtual bool isPresentationAttribute(const QualifiedName&) const override;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
@@ -128,7 +124,7 @@ private:
     virtual HTMLFormElement* virtualForm() const;
 
     Node* insertAdjacent(const String& where, Node* newChild, ExceptionCode&);
-    PassRefPtr<DocumentFragment> textToFragment(const String&, ExceptionCode&);
+    RefPtr<DocumentFragment> textToFragment(const String&, ExceptionCode&);
 
     void dirAttributeChanged(const AtomicString&);
     void adjustDirectionalityIfNeededAfterChildAttributeChanged(Element* child);

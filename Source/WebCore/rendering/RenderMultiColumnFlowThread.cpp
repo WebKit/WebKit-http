@@ -38,7 +38,7 @@ namespace WebCore {
 
 bool RenderMultiColumnFlowThread::gShiftingSpanner = false;
 
-RenderMultiColumnFlowThread::RenderMultiColumnFlowThread(Document& document, PassRef<RenderStyle> style)
+RenderMultiColumnFlowThread::RenderMultiColumnFlowThread(Document& document, Ref<RenderStyle>&& style)
     : RenderFlowThread(document, WTF::move(style))
     , m_lastSetWorkedOn(nullptr)
     , m_columnCount(1)
@@ -249,7 +249,7 @@ static bool isValidColumnSpanner(RenderMultiColumnFlowThread* flowThread, Render
     if (style.columnSpan() != ColumnSpanAll || !is<RenderBox>(*descendant) || descendant->isFloatingOrOutOfFlowPositioned())
         return false;
 
-    RenderBlock* container = descendant->containingBlock();
+    RenderElement* container = descendant->parent();
     if (!is<RenderBlockFlow>(*container) || container->childrenInline()) {
         // Needs to be block-level.
         return false;

@@ -547,6 +547,7 @@
     <ClCompile Include="..\heap\Heap.cpp" />
     <ClCompile Include="..\heap\HeapStatistics.cpp" />
     <ClCompile Include="..\heap\HeapTimer.cpp" />
+    <ClCompile Include="..\heap\HeapVerifier.cpp" />
     <ClCompile Include="..\heap\IncrementalSweeper.cpp" />
     <ClCompile Include="..\heap\JITStubRoutineSet.cpp" />
     <ClCompile Include="..\heap\MachineStackMarker.cpp" />
@@ -673,6 +674,7 @@
     <ClCompile Include="..\runtime\ArrayIteratorConstructor.cpp" />
     <ClCompile Include="..\runtime\ArrayIteratorPrototype.cpp" />
     <ClCompile Include="..\runtime\ArrayPrototype.cpp" />
+    <ClCompile Include="..\runtime\BasicBlockLocation.cpp" />
     <ClCompile Include="..\runtime\BooleanConstructor.cpp" />
     <ClCompile Include="..\runtime\BooleanObject.cpp" />
     <ClCompile Include="..\runtime\BooleanPrototype.cpp" />
@@ -687,6 +689,7 @@
     <ClCompile Include="..\runtime\ConsoleClient.cpp" />
     <ClCompile Include="..\runtime\ConsolePrototype.cpp" />
     <ClCompile Include="..\runtime\ConstructData.cpp" />
+    <ClCompile Include="..\runtime\ControlFlowProfiler.cpp" />
     <ClCompile Include="..\runtime\CustomGetterSetter.cpp" />
     <ClCompile Include="..\runtime\DataView.cpp" />
     <ClCompile Include="..\runtime\DateConstructor.cpp" />
@@ -775,6 +778,7 @@
     <ClCompile Include="..\runtime\NamePrototype.cpp" />
     <ClCompile Include="..\runtime\NativeErrorConstructor.cpp" />
     <ClCompile Include="..\runtime\NativeErrorPrototype.cpp" />
+    <ClCompile Include="..\runtime\NullGetterFunction.cpp" />
     <ClCompile Include="..\runtime\NumberConstructor.cpp" />
     <ClCompile Include="..\runtime\NumberObject.cpp" />
     <ClCompile Include="..\runtime\NumberPrototype.cpp" />
@@ -1250,6 +1254,7 @@
     <ClInclude Include="..\heap\HeapRootVisitor.h" />
     <ClInclude Include="..\heap\HeapStatistics.h" />
     <ClInclude Include="..\heap\HeapTimer.h" />
+    <ClInclude Include="..\heap\HeapVerifier.h" />
     <ClInclude Include="..\heap\IncrementalSweeper.h" />
     <ClInclude Include="..\heap\JITStubRoutineSet.h" />
     <ClInclude Include="..\heap\ListableHandler.h" />
@@ -1378,7 +1383,6 @@
     <ClInclude Include="..\parser\ASTBuilder.h" />
     <ClInclude Include="..\parser\Lexer.h" />
     <ClInclude Include="..\parser\NodeConstructors.h" />
-    <ClInclude Include="..\parser\NodeInfo.h" />
     <ClInclude Include="..\parser\Nodes.h" />
     <ClInclude Include="..\parser\Parser.h" />
     <ClInclude Include="..\parser\ParserArena.h" />
@@ -1420,6 +1424,7 @@
     <ClInclude Include="..\runtime\ArrayIteratorPrototype.h" />
     <ClInclude Include="..\runtime\ArrayPrototype.h" />
     <ClInclude Include="..\runtime\ArrayStorage.h" />
+    <ClInclude Include="..\runtime\BasicBlockLocation.h" />
     <ClInclude Include="..\runtime\BatchedTransitionOptimizer.h" />
     <ClInclude Include="..\runtime\BigInteger.h" />
     <ClInclude Include="..\runtime\BooleanConstructor.h" />
@@ -1441,6 +1446,7 @@
     <ClInclude Include="..\runtime\ConsoleTypes.h" />
     <ClInclude Include="..\runtime\ConstantMode.h" />
     <ClInclude Include="..\runtime\ConstructData.h" />
+    <ClInclude Include="..\runtime\ControlFlowProfiler.h" />
     <ClInclude Include="..\runtime\CustomGetterSetter.h" />
     <ClInclude Include="..\runtime\DataView.h" />
     <ClInclude Include="..\runtime\DateConstructor.h" />
@@ -1566,6 +1572,7 @@
     <ClInclude Include="..\runtime\NamePrototype.h" />
     <ClInclude Include="..\runtime\NativeErrorConstructor.h" />
     <ClInclude Include="..\runtime\NativeErrorPrototype.h" />
+    <ClInclude Include="..\runtime\NullGetterFunction.h" />
     <ClInclude Include="..\runtime\NumberConstructor.h" />
     <ClInclude Include="..\runtime\NumberObject.h" />
     <ClInclude Include="..\runtime\NumberPrototype.h" />
@@ -1658,13 +1665,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\bytecode\BytecodeList.json" />
-    <None Include="..\inspector\scripts\codegen\generate_backend_commands.py" />
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_header.py" />
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_implementation.py" />
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_header.py" />
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_implementation.py" />
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_header.py" />
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_implementation.py" />
+    <None Include="..\inspector\scripts\codegen\cpp_generator.py" />
+    <None Include="..\inspector\scripts\codegen\cpp_generator_templates.py" />
+    <None Include="..\inspector\scripts\codegen\generate_cpp_backend_dispatcher_header.py" />
+    <None Include="..\inspector\scripts\codegen\generate_cpp_backend_dispatcher_implementation.py" />
+    <None Include="..\inspector\scripts\codegen\generate_cpp_frontend_dispatcher_header.py" />
+    <None Include="..\inspector\scripts\codegen\generate_cpp_frontend_dispatcher_implementation.py" />
+    <None Include="..\inspector\scripts\codegen\generate_cpp_protocol_types_header.py" />
+    <None Include="..\inspector\scripts\codegen\generate_cpp_protocol_types_implementation.py" />
+    <None Include="..\inspector\scripts\codegen\generate_js_backend_commands.py" />
     <None Include="..\inspector\scripts\codegen\generator.py" />
     <None Include="..\inspector\scripts\codegen\generator_templates.py" />
     <None Include="..\inspector\scripts\codegen\models.py" />

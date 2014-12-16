@@ -124,7 +124,10 @@ enum {
     WebActionMenuItemTagCopyImage,
     WebActionMenuItemTagAddImageToPhotos,
     WebActionMenuItemTagSaveImageToDownloads,
-    WebActionMenuItemTagShareImage
+    WebActionMenuItemTagShareImage,
+    WebActionMenuItemTagCopyVideoURL,
+    WebActionMenuItemTagSaveVideoToDownloads,
+    WebActionMenuItemTagShareVideo
 };
 
 typedef enum {
@@ -134,8 +137,19 @@ typedef enum {
     WebActionMenuEditableText,
     WebActionMenuWhitespaceInEditableArea,
     WebActionMenuEditableTextWithSuggestions,
-    WebActionMenuImage
+    WebActionMenuImage,
+    WebActionMenuVideo,
+    WebActionMenuDataDetectedItem,
+    WebActionMenuMailtoLink,
+    WebActionMenuTelLink
 } WebActionMenuType;
+
+typedef enum {
+    WebImmediateActionNone = 0,
+    WebImmediateActionLinkPreview,
+    WebImmediateActionDataDetectedItem,
+    WebImmediateActionText
+} WebImmediateActionType;
 
 // Message Sources.
 extern NSString *WebConsoleMessageXMLMessageSource;
@@ -155,8 +169,10 @@ extern NSString *WebConsoleMessageLogMessageLevel;
 extern NSString *WebConsoleMessageWarningMessageLevel;
 extern NSString *WebConsoleMessageErrorMessageLevel;
 
+@class DDActionContext;
 @class DOMElement;
 @class DOMNode;
+@class DOMRange;
 @class WebSecurityOrigin;
 
 #if ENABLE_FULLSCREEN_API
@@ -219,6 +235,11 @@ extern NSString *WebConsoleMessageErrorMessageLevel;
 - (void)webView:(WebView *)sender contextMenuItemSelected:(NSMenuItem *)item forElement:(NSDictionary *)element;
 - (void)webView:(WebView *)sender saveFrameView:(WebFrameView *)frameView showingPanel:(BOOL)showingPanel;
 - (NSArray *)_webView:(WebView *)sender actionMenuItemsForHitTestResult:(NSDictionary *)hitTestResult withType:(WebActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems;
+- (DDActionContext *)_webView:(WebView *)sender actionContextForHitTestResult:(NSDictionary *)hitTestResult range:(DOMRange **)range;
+
+// Clients that want to maintain default behavior can return nil. To disable the immediate action entirely, return NSNull. And to
+// do something custom, return an object that conforms to the NSImmediateActionAnimationController protocol.
+- (id)_webView:(WebView *)sender immediateActionAnimationControllerForHitTestResult:(NSDictionary *)hitTestResult withType:(WebImmediateActionType)type;
 #endif
 - (BOOL)webView:(WebView *)sender didPressMissingPluginButton:(DOMElement *)element;
 /*!

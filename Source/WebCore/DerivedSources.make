@@ -243,12 +243,13 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/css/StyleSheet.idl \
     $(WebCore)/css/StyleSheetList.idl \
     $(WebCore)/css/WebKitCSSFilterValue.idl \
-    $(WebCore)/css/WebKitCSSKeyframeRule.idl \
-    $(WebCore)/css/WebKitCSSKeyframesRule.idl \
+    $(WebCore)/css/CSSKeyframeRule.idl \
+    $(WebCore)/css/CSSKeyframesRule.idl \
     $(WebCore)/css/WebKitCSSMatrix.idl \
     $(WebCore)/css/WebKitCSSRegionRule.idl \
     $(WebCore)/css/WebKitCSSTransformValue.idl \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
+    $(WebCore)/dom/AnimationEvent.idl \
     $(WebCore)/dom/Attr.idl \
     $(WebCore)/dom/AutocompleteErrorEvent.idl \
     $(WebCore)/dom/BeforeLoadEvent.idl \
@@ -298,7 +299,6 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/dom/NodeFilter.idl \
     $(WebCore)/dom/NodeIterator.idl \
     $(WebCore)/dom/NodeList.idl \
-    $(WebCore)/dom/Notation.idl \
     $(WebCore)/dom/OverflowEvent.idl \
     $(WebCore)/dom/PageTransitionEvent.idl \
     $(WebCore)/dom/PopStateEvent.idl \
@@ -423,6 +423,9 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/canvas/DOMPath.idl \
     $(WebCore)/html/canvas/EXTShaderTextureLOD.idl \
     $(WebCore)/html/canvas/EXTTextureFilterAnisotropic.idl \
+    $(WebCore)/html/canvas/EXTsRGB.idl \
+    $(WebCore)/html/canvas/EXTBlendMinMax.idl \
+    $(WebCore)/html/canvas/EXTFragDepth.idl \
     $(WebCore)/html/canvas/OESElementIndexUint.idl \
     $(WebCore)/html/canvas/OESStandardDerivatives.idl \
     $(WebCore)/html/canvas/OESTextureFloat.idl \

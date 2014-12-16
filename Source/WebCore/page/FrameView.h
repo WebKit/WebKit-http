@@ -4,7 +4,7 @@
              (C) 1998, 1999 Torben Weis (weis@kde.org)
              (C) 1999 Lars Knoll (knoll@kde.org)
              (C) 1999 Antti Koivisto (koivisto@kde.org)
-   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+   Copyright (C) 2004-2009, 2014 Apple Inc. All rights reserved.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -27,6 +27,7 @@
 
 #include "AdjustViewSizeOrNot.h"
 #include "Color.h"
+#include "ContainerNode.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
 #include "Pagination.h"
@@ -35,12 +36,14 @@
 #include "ScrollView.h"
 #include <memory>
 #include <wtf/Forward.h>
+#include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class AXObjectCache;
+class DOMTimer;
 class Element;
 class FloatSize;
 class Frame;
@@ -104,7 +107,7 @@ public:
 
     void layout(bool allowSubtree = true);
     WEBCORE_EXPORT bool didFirstLayout() const;
-    void layoutTimerFired(Timer&);
+    void layoutTimerFired();
     void scheduleRelayout();
     void scheduleRelayoutOfSubtree(RenderElement&);
     void unscheduleRelayout();
@@ -239,7 +242,7 @@ public:
     virtual bool isRubberBandInProgress() const override;
     WEBCORE_EXPORT virtual IntPoint minimumScrollPosition() const override;
     WEBCORE_EXPORT virtual IntPoint maximumScrollPosition() const override;
-    void delayedScrollEventTimerFired(Timer&);
+    void delayedScrollEventTimerFired();
 
     void resumeVisibleImageAnimationsIncludingSubframes();
 
@@ -301,7 +304,10 @@ public:
 
     void restoreScrollbar();
 
-    void postLayoutTimerFired(Timer&);
+    void postLayoutTimerFired();
+
+    void registerThrottledDOMTimer(DOMTimer*);
+    void unregisterThrottledDOMTimer(DOMTimer*);
 
     WEBCORE_EXPORT bool wasScrolledByUser() const;
     WEBCORE_EXPORT void setWasScrolledByUser(bool);
@@ -383,7 +389,7 @@ public:
 
     bool scrollToFragment(const URL&);
     bool scrollToAnchor(const String&);
-    void maintainScrollPositionAtAnchor(Node*);
+    void maintainScrollPositionAtAnchor(ContainerNode*);
     WEBCORE_EXPORT void scrollElementToRect(Element*, const IntRect&);
 
     // Methods to convert points and rects between the coordinate space of the renderer, and this view.
@@ -521,6 +527,7 @@ protected:
 
     virtual bool isVerticalDocument() const override;
     virtual bool isFlippedDocument() const override;
+    virtual bool containsSVGDocument() const override;
 
 private:
     explicit FrameView(Frame&);
@@ -561,6 +568,7 @@ private:
     void forceLayoutParentViewIfNeeded();
     void performPostLayoutTasks();
     void autoSizeIfEnabled();
+    void updateThrottledDOMTimersState();
 
     void updateLayerFlushThrottling();
     WEBCORE_EXPORT void adjustTiledBackingCoverage();
@@ -607,9 +615,9 @@ private:
     virtual void notifyPageThatContentAreaWillPaint() const override;
 
     void enableSpeculativeTilingIfNeeded();
-    void speculativeTilingEnableTimerFired(Timer&);
+    void speculativeTilingEnableTimerFired();
 
-    void updateEmbeddedObjectsTimerFired(Timer*);
+    void updateEmbeddedObjectsTimerFired();
     bool updateEmbeddedObjects();
     void updateEmbeddedObject(RenderEmbeddedObject&);
     void scrollToAnchor();
@@ -708,7 +716,7 @@ private:
     bool m_isVisuallyNonEmpty;
     bool m_firstVisuallyNonEmptyLayoutCallbackPending;
 
-    RefPtr<Node> m_maintainScrollPositionAnchor;
+    RefPtr<ContainerNode> m_maintainScrollPositionAnchor;
 
     // Renderer to hold our custom scroll corner.
     RenderPtr<RenderScrollbarPart> m_scrollCorner;
@@ -748,6 +756,8 @@ private:
 
     std::unique_ptr<ScrollableAreaSet> m_scrollableAreas;
     std::unique_ptr<ViewportConstrainedObjectSet> m_viewportConstrainedObjects;
+
+    HashSet<DOMTimer*> m_throttledTimers;
 
     int m_headerHeight;
     int m_footerHeight;

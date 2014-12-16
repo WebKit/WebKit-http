@@ -33,7 +33,7 @@
 
 namespace API {
 template<> struct ClientTraits<WKBundlePageDiagnosticLoggingClientBase> {
-    typedef std::tuple<WKBundlePageDiagnosticLoggingClientV0> Versions;
+    typedef std::tuple<WKBundlePageDiagnosticLoggingClientV0, WKBundlePageDiagnosticLoggingClientV1> Versions;
 };
 }
 
@@ -45,7 +45,10 @@ class WebPage;
 
 class InjectedBundlePageDiagnosticLoggingClient : public API::Client<WKBundlePageDiagnosticLoggingClientBase> {
 public:
-    void logDiagnosticMessage(WebPage*, const String& message, const String& description, const String& success);
+    void logDiagnosticMessageDeprecated(WebPage*, const String& message, const String& description, const String& success);
+    void logDiagnosticMessage(WebPage*, const String& message, const String& description);
+    void logDiagnosticMessageWithResult(WebPage*, const String& message, const String& description, WKDiagnosticLoggingResultType);
+    void logDiagnosticMessageWithValue(WebPage*, const String& message, const String& description, const String& value);
 };
 
 } // namespace WebKit

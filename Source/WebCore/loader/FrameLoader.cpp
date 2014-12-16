@@ -47,6 +47,7 @@
 #include "DOMImplementation.h"
 #include "DOMWindow.h"
 #include "DatabaseManager.h"
+#include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
 #include "Document.h"
 #include "DocumentLoadTiming.h"
@@ -84,7 +85,6 @@
 #include "MainFrame.h"
 #include "MemoryCache.h"
 #include "Page.h"
-#include "PageActivityAssertionToken.h"
 #include "PageCache.h"
 #include "PageThrottler.h"
 #include "PageTransitionEvent.h"
@@ -236,7 +236,7 @@ FrameLoader::FrameLoader(Frame& frame, FrameLoaderClient& client)
     , m_pageDismissalEventBeingDispatched(NoDismissal)
     , m_isComplete(false)
     , m_needsClear(false)
-    , m_checkTimer(this, &FrameLoader::checkTimerFired)
+    , m_checkTimer(*this, &FrameLoader::checkTimerFired)
     , m_shouldCallCheckCompleted(false)
     , m_shouldCallCheckLoadComplete(false)
     , m_opener(nullptr)
@@ -529,8 +529,10 @@ void FrameLoader::willTransitionToCommitted()
     if (m_frame.editor().hasComposition()) {
         // The text was already present in DOM, so it's better to confirm than to cancel the composition.
         m_frame.editor().confirmComposition();
-        if (EditorClient* editorClient = m_frame.editor().client())
+        if (EditorClient* editorClient = m_frame.editor().client()) {
             editorClient->respondToChangedSelection(&m_frame);
+            editorClient->discardedComposition(&m_frame);
+        }
     }
 }
 
@@ -850,7 +852,7 @@ void FrameLoader::checkCompleted()
         checkLoadComplete();
 }
 
-void FrameLoader::checkTimerFired(Timer&)
+void FrameLoader::checkTimerFired()
 {
     Ref<Frame> protect(m_frame);
 
@@ -1148,7 +1150,7 @@ void FrameLoader::completed()
         parent->loader().checkCompleted();
 
     if (m_frame.view())
-        m_frame.view()->maintainScrollPositionAtAnchor(0);
+        m_frame.view()->maintainScrollPositionAtAnchor(nullptr);
     m_activityAssertion = nullptr;
 }
 
@@ -2148,18 +2150,24 @@ CachePolicy FrameLoader::subresourceCachePolicy() const
             return parentCachePolicy;
     }
     
-    if (m_loadType == FrameLoadType::Reload)
+    switch (m_loadType) {
+    case FrameLoadType::Reload:
         return CachePolicyRevalidate;
-
-    const ResourceRequest& request(documentLoader()->request());
-#if PLATFORM(MAC)
-    if (request.cachePolicy() == ReloadIgnoringCacheData && !equalIgnoringCase(request.httpMethod(), "post") && m_client.needsQuickLookResourceCachingQuirks())
-        return CachePolicyRevalidate;
-#endif
-
-    if (request.cachePolicy() == ReturnCacheDataElseLoad)
+    case FrameLoadType::Back:
+    case FrameLoadType::Forward:
+    case FrameLoadType::IndexedBackForward:
         return CachePolicyHistoryBuffer;
+    case FrameLoadType::ReloadFromOrigin:
+        ASSERT_NOT_REACHED(); // Already handled above.
+        return CachePolicyReload;
+    case FrameLoadType::RedirectWithLockedBackForwardList:
+    case FrameLoadType::Replace:
+    case FrameLoadType::Same:
+    case FrameLoadType::Standard:
+        return CachePolicyVerify;
+    }
 
+    RELEASE_ASSERT_NOT_REACHED();
     return CachePolicyVerify;
 }
 
@@ -2266,7 +2274,11 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             if (!page || !page->settings().diagnosticLoggingEnabled())
                 return;
 
-            page->chrome().client().logDiagnosticMessage(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingKeys::passKey() : DiagnosticLoggingKeys::failKey());
+            DiagnosticLoggingClient* diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
+            if (!diagnosticLoggingClient)
+                return;
+
+            diagnosticLoggingClient->logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingClient::Pass : DiagnosticLoggingClient::Fail);
 
             return;
         }
@@ -3153,7 +3165,10 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem* item, FrameLoadType loa
     history().setProvisionalItem(item);
 
     if (CachedPage* cachedPage = pageCache()->get(item)) {
-        loadWithDocumentLoader(cachedPage->documentLoader(), loadType, 0, AllowNavigationToInvalidURL::Yes);
+        auto documentLoader = cachedPage->documentLoader();
+        documentLoader->setTriggeringAction(NavigationAction(documentLoader->request(), loadType, false));
+        documentLoader->setLastCheckedRequest(ResourceRequest());
+        loadWithDocumentLoader(documentLoader, loadType, 0, AllowNavigationToInvalidURL::Yes);
         return;
     }
 
@@ -3380,7 +3395,7 @@ void FrameLoader::tellClientAboutPastMemoryCacheLoads()
 
     size_t size = pastLoads.size();
     for (size_t i = 0; i < size; ++i) {
-        CachedResource* resource = memoryCache()->resourceForRequest(pastLoads[i], m_frame.page()->sessionID());
+        CachedResource* resource = memoryCache().resourceForRequest(pastLoads[i], m_frame.page()->sessionID());
 
         // FIXME: These loads, loaded from cache, but now gone from the cache by the time
         // Page::setMemoryCacheClientCallsEnabled(true) is called, will not be seen by the client.

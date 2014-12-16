@@ -716,7 +716,7 @@ http/tests/xmlhttprequest/upload-onloadstart-event.html
 http/tests/xmlhttprequest/upload-progress-events.html
 http/tests/xmlhttprequest/upload-onprogress-event.html
 
-# LayoutTestController::setAutomaticLinkDetectionEnabled isn't implemented
+# testRunner::setAutomaticLinkDetectionEnabled isn't implemented
 editing/inserting/typing-space-to-trigger-smart-link.html
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html
 
@@ -834,7 +834,7 @@ webkit.org/b/25483 http/tests/navigation/redirect-cycle.html [ Pass Timeout ]
 # webkit.org/b/25220 media/video-document-types.html [ WontFix ]
 
 webkit.org/b/25792 fast/encoding/percent-escaping.html [ Pass Timeout ]
-# Bug 26481: Implement layoutTestController.dispatchPendingLoadRequests <https://bugs.webkit.org/show_bug.cgi?id=26481>
+# Bug 26481: Implement testRunner.dispatchPendingLoadRequests <https://bugs.webkit.org/show_bug.cgi?id=26481>
 http/tests/loading/deleted-host-in-resource-load-delegate-callback.html
 
 # <rdar://problem/7091605> http/tests/cache/subresource-expiration.html fails intermittently
@@ -1010,7 +1010,7 @@ fast/media/media-query-list-05.html [ Failure ]
 fast/media/media-query-list-06.html [ Failure ]
 #fast/media/media-query-list-07.html
 
-# Needs layoutTestController.enableAutoResizeMode()
+# Needs testRunner.enableAutoResizeMode()
 fast/autoresize
 
 # Need to add functionality to DumpRenderTree to handle scrollbar policy changes
@@ -1088,7 +1088,7 @@ fast/dom/HTMLLinkElement/subresource.html
 http/tests/misc/link-rel-prefetch-and-subresource.html
 http/tests/misc/prefetch-purpose.html
 
-# LayoutTestController::pageProperty is not implemented for WIN yet.
+# testRunner::pageProperty is not implemented for WIN yet.
 printing/page-rule-selection.html
 
 # Hyphenation is not implemented yet.
@@ -1102,7 +1102,7 @@ fast/events/scroll-event-during-modal-dialog.html
 fast/dom/Window/open-window-min-size.html
 js/dom/function-length.html
 
-# LayoutTestController::isPageBoxVisible, pageAreaRectInPixels, and preferredPageSizeInPixels are not implemented yet for WIN.
+# testRunner::isPageBoxVisible, pageAreaRectInPixels, and preferredPageSizeInPixels are not implemented yet for WIN.
 printing/page-format-data.html
 
 # Implement spinbutton support in RenderThemeSafari
@@ -1177,21 +1177,23 @@ fast/forms/validation-message-on-range.html
 fast/forms/validation-message-on-textarea.html
 
 # Web Timing is not enabled.
-webkit.org/b/42435 fast/dom/Window/window-properties-performance.html [ Failure ]
 webkit.org/b/42435 fast/dom/Window/web-timing-minimal-performance-now.html [ Timeout Failure ]
+webkit.org/b/42435 fast/dom/Window/window-properties-performance.html [ Failure ]
 webkit.org/b/42435 fast/dom/navigation-type-back-forward.html [ Failure ]
 webkit.org/b/42435 fast/dom/navigation-type-navigate.html [ Failure ]
 webkit.org/b/42435 fast/dom/navigation-type-reload.html [ Failure ]
-webkit.org/b/42435 fast/dom/webtiming.html [ Failure ]
 webkit.org/b/42435 fast/dom/webtiming-document-open.html [ Failure ]
 webkit.org/b/42435 fast/dom/webtiming-navigate-within-document.html [ Failure ]
-webkit.org/b/42435 http/tests/misc/webtiming-origins.html [ Failure ]
+webkit.org/b/42435 fast/dom/webtiming.html [ Failure ]
+webkit.org/b/42435 fast/performance/ [ Failure ]
+webkit.org/b/42435 http/tests/misc/webtiming-cross-origin-and-back1.html [ Failure ]
+webkit.org/b/42435 http/tests/misc/webtiming-cross-origin-redirect.php [ Failure ]
+webkit.org/b/42435 http/tests/misc/webtiming-no-origin.html [ Failure ]
 webkit.org/b/42435 http/tests/misc/webtiming-one-redirect.php [ Failure ]
 webkit.org/b/42435 http/tests/misc/webtiming-slow-load.php [ Failure ]
 webkit.org/b/42435 http/tests/misc/webtiming-ssl.php [ Failure ]
 webkit.org/b/42435 http/tests/misc/webtiming-two-redirects.php [ Failure ]
 webkit.org/b/42435 http/tests/w3c/webperf [ Failure ]
-webkit.org/b/42435 fast/performance/ [ Failure ]
 
 # Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
 webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1 [ Timeout Crash Pass Failure ]
@@ -1237,7 +1239,7 @@ fast/images/webp-color-profile-lossy.html
 http/tests/images/webp-partial-load.html
 http/tests/images/webp-progressive-load.html
 
-# Missing layoutTestController.findString()
+# Missing testRunner.findString()
 webkit.org/b/50234 editing/text-iterator/findString.html
 
 # The following tests requires the DRT's dumpUserGestureInFrameLoadCallbacks
@@ -1324,7 +1326,7 @@ webkit.org/b/51596 http/tests/xmlhttprequest/basic-auth-nouser.html
 # HTTP 204 (No Content) should be ignored
 webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 
-# Unskip after implementing LayoutTestController::setDefersLoading and ::goBack.
+# Unskip after implementing testRunner::setDefersLoading and ::goBack.
 loader/navigation-while-deferring-loads.html
 
 # Skip all webgl tests on Windows for now since they don't seem to work consistently
@@ -1420,7 +1422,7 @@ webkit.org/b/66620 editing/spelling/spelling-insert-html.html
 
 webkit.org/b/66773 http/tests/loading/progress-finished-callback.html
 
-# HiDPI tests require test infrastructure enhancements (e.g. layoutTestController.setBackingScaleFactor)
+# HiDPI tests require test infrastructure enhancements (e.g. testRunner.setBackingScaleFactor)
 # https://bugs.webkit.org/show_bug.cgi?id=87919
 webkit.org/b/87919 compositing/tiled-layers-hidpi.html
 webkit.org/b/87919 fast/canvas/2d.backingStorePixelRatio.html
@@ -3010,3 +3012,16 @@ webkit.org/b/138020 js/date-parse-comments-test.html [ Failure ]
 webkit.org/b/138020 js/date-parse-test.html [ Failure ]
 webkit.org/b/138020 js/date-set-to-nan.html [ Failure ]
 webkit.org/b/138020 js/dom/date-big-setmonth.html [ Failure ]
+
+webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.cone.front.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.cone.top.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.inside2.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.inside3.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.outside1.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.line.cap.closed.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.path.arcTo.collinear.2.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.path.arcTo.collinear.3.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.shadow.enable.blur.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.shadow.enable.off.1.html [ Failure Timeout ]
+webkit.org/b/138862 imported/w3c/canvas/2d.shadow.enable.x.html [ Failure ]
+webkit.org/b/138862 imported/w3c/canvas/2d.shadow.enable.y.html [ Failure ]

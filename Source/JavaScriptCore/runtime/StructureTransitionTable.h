@@ -29,8 +29,7 @@
 #include "IndexingType.h"
 #include "WeakGCMap.h"
 #include <wtf/HashFunctions.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/text/StringImpl.h>
+#include <wtf/text/AtomicStringImpl.h>
 
 namespace JSC {
 
@@ -94,11 +93,11 @@ class StructureTransitionTable {
 
     
     struct Hash {
-        typedef std::pair<StringImpl*, unsigned> Key;
+        typedef std::pair<AtomicStringImpl*, unsigned> Key;
         
         static unsigned hash(const Key& p)
         {
-            return PtrHash<StringImpl*>::hash(p.first) + p.second;
+            return PtrHash<AtomicStringImpl*>::hash(p.first) + p.second;
         }
 
         static bool equal(const Key& a, const Key& b)
@@ -131,8 +130,8 @@ public:
     }
 
     inline void add(VM&, Structure*);
-    inline bool contains(StringImpl* rep, unsigned attributes) const;
-    inline Structure* get(StringImpl* rep, unsigned attributes) const;
+    inline bool contains(AtomicStringImpl* rep, unsigned attributes) const;
+    inline Structure* get(AtomicStringImpl* rep, unsigned attributes) const;
 
 private:
     bool isUsingSingleSlot() const

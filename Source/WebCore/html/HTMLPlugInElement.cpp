@@ -67,7 +67,7 @@ using namespace HTMLNames;
 HTMLPlugInElement::HTMLPlugInElement(const QualifiedName& tagName, Document& document)
     : HTMLFrameOwnerElement(tagName, document)
     , m_inBeforeLoadEventHandler(false)
-    , m_swapRendererTimer(this, &HTMLPlugInElement::swapRendererTimerFired)
+    , m_swapRendererTimer(*this, &HTMLPlugInElement::swapRendererTimerFired)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , m_NPObject(0)
 #endif
@@ -292,7 +292,7 @@ NPObject* HTMLPlugInElement::getNPObject()
 
 #endif /* ENABLE(NETSCAPE_PLUGIN_API) */
 
-RenderPtr<RenderElement> HTMLPlugInElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLPlugInElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     if (m_pluginReplacement && m_pluginReplacement->willCreateRenderer())
         return m_pluginReplacement->createElementRenderer(*this, WTF::move(style));
@@ -300,7 +300,7 @@ RenderPtr<RenderElement> HTMLPlugInElement::createElementRenderer(PassRef<Render
     return createRenderer<RenderEmbeddedObject>(*this, WTF::move(style));
 }
 
-void HTMLPlugInElement::swapRendererTimerFired(Timer&)
+void HTMLPlugInElement::swapRendererTimerFired()
 {
     ASSERT(displayState() == PreparingPluginReplacement || displayState() == DisplayingSnapshot);
     if (userAgentShadowRoot())

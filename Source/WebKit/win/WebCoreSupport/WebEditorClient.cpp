@@ -23,7 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
 #include "WebKitDLL.h"
 #include "WebEditorClient.h"
 
@@ -218,6 +217,11 @@ void WebEditorClient::respondToChangedSelection(Frame*)
     static BSTR webViewDidChangeSelectionNotificationName = SysAllocString(WebViewDidChangeSelectionNotification);
     IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
     notifyCenter->postNotificationName(webViewDidChangeSelectionNotificationName, static_cast<IWebView*>(m_webView), 0);
+}
+
+void WebEditorClient::discardedComposition(Frame*)
+{
+    notImplemented();
 }
 
 void WebEditorClient::didEndEditing()

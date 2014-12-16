@@ -23,6 +23,8 @@
 #import "config.h"
 #import "Font.h"
 
+#import "CoreGraphicsSPI.h"
+#import "CoreTextSPI.h"
 #import "DashArray.h"
 #import "GlyphBuffer.h"
 #import "GraphicsContext.h"
@@ -34,20 +36,9 @@
 #endif
 #import <wtf/MathExtras.h>
 
-#if __has_include(<CoreText/CTFontDescriptorPriv.h>)
-#import <CoreText/CTFontDescriptorPriv.h>
-#endif
-extern "C" bool CTFontDescriptorIsSystemUIFont(CTFontDescriptorRef);
-
 #if ENABLE(LETTERPRESS)
+#import "CoreUISPI.h"
 #import "SoftLinking.h"
-#if __has_include(<CoreGraphics/CoreGraphicsPrivate.h>)
-#import <CoreGraphics/CoreGraphicsPrivate.h>
-#else
-extern CGColorRef CGContextGetFillColorAsColor(CGContextRef);
-#endif
-#import <CoreUI/CUICatalog.h>
-#import <CoreUI/CUIStyleEffectConfiguration.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(CoreUI)
 SOFT_LINK_CLASS(CoreUI, CUICatalog)
@@ -123,7 +114,7 @@ static void showLetterpressedGlyphsWithAdvances(const FloatPoint& point, const S
 
     static CUIStyleEffectConfiguration *styleConfiguration;
     if (!styleConfiguration) {
-        styleConfiguration = [[getCUIStyleEffectConfigurationClass() alloc] init];
+        styleConfiguration = [allocCUIStyleEffectConfigurationInstance() init];
         styleConfiguration.useSimplifiedEffect = YES;
     }
 
@@ -184,6 +175,26 @@ static void showGlyphsWithAdvances(const FloatPoint& point, const SimpleFontData
     }
 }
 
+#if PLATFORM(MAC)
+static void setCGFontRenderingMode(CGContextRef cgContext, NSFontRenderingMode renderingMode, BOOL shouldSubpixelQuantize)
+{
+    if (renderingMode == NSFontIntegerAdvancementsRenderingMode) {
+        CGContextSetShouldAntialiasFonts(cgContext, false);
+        return;
+    }
+
+    CGContextSetShouldAntialiasFonts(cgContext, true);
+
+    CGAffineTransform contextTransform = CGContextGetCTM(cgContext);
+    BOOL isTranslationOrIntegralScale = WTF::isIntegral(contextTransform.a) && WTF::isIntegral(contextTransform.d) && contextTransform.b == 0.f && contextTransform.c == 0.f;
+    BOOL isRotated = ((contextTransform.b || contextTransform.c) && (contextTransform.a || contextTransform.d));
+    BOOL doSubpixelQuantization = isTranslationOrIntegralScale || (!isRotated && shouldSubpixelQuantize);
+
+    CGContextSetShouldSubpixelPositionFonts(cgContext, renderingMode != NSFontAntialiasedIntegerAdvancementsRenderingMode || !isTranslationOrIntegralScale);
+    CGContextSetShouldSubpixelQuantizeFonts(cgContext, doSubpixelQuantization);
+}
+#endif
+
 void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* font, const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& anchorPoint) const
 {
     const FontPlatformData& platformData = font->platformData();
@@ -229,7 +240,7 @@ void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* font, cons
 #if !PLATFORM(IOS)
     bool originalShouldUseFontSmoothing = false;
     if (changeFontSmoothing) {
-        originalShouldUseFontSmoothing = wkCGContextGetShouldSmoothFonts(cgContext);
+        originalShouldUseFontSmoothing = CGContextGetShouldSmoothFonts(cgContext);
         CGContextSetShouldSmoothFonts(cgContext, shouldSmoothFonts);
     }
 #endif
@@ -305,7 +316,7 @@ void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* font, cons
     CGContextSetFontSize(cgContext, 1);
     CGContextSetShouldSubpixelQuantizeFonts(cgContext, context->shouldSubpixelQuantizeFonts());
 #else
-    wkSetCGFontRenderingMode(cgContext, drawFont, context->shouldSubpixelQuantizeFonts());
+    setCGFontRenderingMode(cgContext, [drawFont renderingMode], context->shouldSubpixelQuantizeFonts());
     if (drawFont)
         CGContextSetFontSize(cgContext, 1);
     else
@@ -537,7 +548,10 @@ DashArray Font::dashesForIntersectionsWithRect(const TextRun& run, const FloatPo
     if (!fontData->isSVGFont())
         translator = std::make_unique<MacGlyphToPathTranslator>(run, glyphBuffer, origin);
     else {
-        translator = run.renderingContext()->createGlyphToPathTranslator(*fontData, &run, glyphBuffer, 0, glyphBuffer.size(), origin);
+        TextRun::RenderingContext* renderingContext = run.renderingContext();
+        if (!renderingContext)
+            return DashArray();
+        translator = renderingContext->createGlyphToPathTranslator(*fontData, &run, glyphBuffer, 0, glyphBuffer.size(), origin);
         isSVG = true;
     }
     DashArray result;

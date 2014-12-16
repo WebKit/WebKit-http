@@ -25,8 +25,11 @@
 
 #import "WebActionMenuController.h"
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
 #import "DOMElementInternal.h"
 #import "DOMNodeInternal.h"
+#import "DOMRangeInternal.h"
 #import "WebDocumentInternal.h"
 #import "WebElementDictionary.h"
 #import "WebFrameInternal.h"
@@ -37,49 +40,39 @@
 #import "WebViewInternal.h"
 #import <ImageIO/ImageIO.h>
 #import <ImageKit/ImageKit.h>
+#import <WebCore/ArchiveResource.h>
+#import <WebCore/DataDetection.h>
+#import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/DictionaryLookup.h>
+#import <WebCore/DocumentLoader.h>
 #import <WebCore/Editor.h>
 #import <WebCore/Element.h>
 #import <WebCore/EventHandler.h>
+#import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLConverter.h>
+#import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSSharingServicePickerSPI.h>
 #import <WebCore/NSSharingServiceSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/Page.h>
+#import <WebCore/QuickLookMacSPI.h>
 #import <WebCore/Range.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
+#import <WebCore/SharedBuffer.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextCheckerClient.h>
+#import <WebCore/TextIndicator.h>
 #import <WebKitSystemInterface.h>
 #import <objc/objc-class.h>
 #import <objc/objc.h>
 
-SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, QuickLookUI)
-SOFT_LINK_CLASS(QuickLookUI, QLPreviewBubble)
-
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, ImageKit)
 SOFT_LINK_CLASS(ImageKit, IKSlideshow)
 
-@class QLPreviewBubble;
-@interface NSObject (WKQLPreviewBubbleDetails)
-@property (copy) NSArray * controls;
-@property NSSize maximumSize;
-@property NSRectEdge preferredEdge;
-@property (retain) IBOutlet NSWindow* parentWindow;
-- (void)showPreviewItem:(id)previewItem itemFrame:(NSRect)frame;
-- (void)setAutomaticallyCloseWithMask:(NSEventMask)autocloseMask filterMask:(NSEventMask)filterMask block:(void (^)(void))block;
-@end
-
 using namespace WebCore;
-
-struct DictionaryPopupInfo {
-    NSPoint origin;
-    RetainPtr<NSDictionary> options;
-    RetainPtr<NSAttributedString> attributedString;
-};
 
 @implementation WebActionMenuController
 
@@ -107,10 +100,22 @@ struct DictionaryPopupInfo {
     Frame* coreFrame = core([documentView _frame]);
     if (!coreFrame)
         return nil;
-    HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active;
-    _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point), hitType);
+    _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point));
 
     return [[[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult] autorelease];
+}
+
+- (void)webView:(WebView *)webView willHandleMouseDown:(NSEvent *)event
+{
+    if (_currentActionContext && _hasActivatedActionContext) {
+        [getDDActionsManagerClass() didUseActions];
+        _hasActivatedActionContext = NO;
+    }
+}
+
+- (void)webView:(WebView *)webView didHandleScrollWheel:(NSEvent *)event
+{
+    [self _dismissActionMenuPopovers];
 }
 
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
@@ -122,10 +127,11 @@ struct DictionaryPopupInfo {
     if (menu != actionMenu)
         return;
 
+    [self _dismissActionMenuPopovers];
     [actionMenu removeAllItems];
 
     WebElementDictionary *hitTestResult = [self performHitTestAtPoint:event.locationInWindow];
-    NSArray *menuItems = [self _defaultMenuItemsForHitTestResult:hitTestResult];
+    NSArray *menuItems = [self _defaultMenuItems];
 
     // Allow clients to customize the menu items.
     if ([[_webView UIDelegate] respondsToSelector:@selector(_webView:actionMenuItemsForHitTestResult:withType:defaultActionMenuItems:)])
@@ -133,17 +139,59 @@ struct DictionaryPopupInfo {
 
     for (NSMenuItem *item in menuItems)
         [actionMenu addItem:item];
+
+    if (_currentActionContext) {
+        _hasActivatedActionContext = YES;
+        if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()]) {
+            [menu cancelTracking];
+            [menu removeAllItems];
+        }
+    }
 }
 
 - (BOOL)isMenuForTextContent
 {
-    return _type == WebActionMenuReadOnlyText || _type == WebActionMenuEditableText || _type == WebActionMenuEditableTextWithSuggestions || _type == WebActionMenuWhitespaceInEditableArea;
+    return _type == WebActionMenuReadOnlyText || _type == WebActionMenuEditableText || _type == WebActionMenuEditableTextWithSuggestions;
+}
+
+- (void)focusAndSelectHitTestResult
+{
+    if (!_hitTestResult.isContentEditable())
+        return;
+
+    Element* element = _hitTestResult.innerElement();
+    if (!element)
+        return;
+
+    Frame* frame = element->document().frame();
+    if (!frame)
+        return;
+
+    frame->page()->focusController().setFocusedElement(element, frame);
+    VisiblePosition position = frame->visiblePositionForPoint(_hitTestResult.roundedPointInInnerNodeFrame());
+    frame->selection().setSelection(position);
 }
 
 - (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
     if (menu != _webView.actionMenu)
         return;
+
+    if (!menu.numberOfItems)
+        return;
+
+    if (_type == WebActionMenuDataDetectedItem) {
+        if (menu.numberOfItems == 1)
+            [[_webView _selectedOrMainFrame] _clearSelection];
+        else
+            [self _selectDataDetectedText];
+        return;
+    }
+
+    if (_type == WebActionMenuWhitespaceInEditableArea) {
+        [self focusAndSelectHitTestResult];
+        return;
+    }
 
     if (![self isMenuForTextContent]) {
         [[_webView _selectedOrMainFrame] _clearSelection];
@@ -161,8 +209,16 @@ struct DictionaryPopupInfo {
     if (menu != _webView.actionMenu)
         return;
 
+    if (_currentActionContext && _hasActivatedActionContext) {
+        [getDDActionsManagerClass() didUseActions];
+        _hasActivatedActionContext = NO;
+    }
+
     _type = WebActionMenuNone;
     _sharingServicePicker = nil;
+    _currentDetectedDataTextIndicator = nil;
+    _currentDetectedDataRange = nil;
+    _currentActionContext = nil;
 }
 
 #pragma mark Link actions
@@ -172,13 +228,7 @@ struct DictionaryPopupInfo {
     if (!_webView)
         return;
 
-    NSURL *url = [sender representedObject];
-    if (!url)
-        return;
-
-    ASSERT([url isKindOfClass:[NSURL class]]);
-
-    [[NSWorkspace sharedWorkspace] openURL:url];
+    [[NSWorkspace sharedWorkspace] openURL:_hitTestResult.absoluteLinkURL()];
 }
 
 - (void)_addToReadingListFromActionMenu:(id)sender
@@ -186,108 +236,87 @@ struct DictionaryPopupInfo {
     if (!_webView)
         return;
 
-    NSURL *url = [sender representedObject];
-    if (!url)
-        return;
-
-    ASSERT([url isKindOfClass:[NSURL class]]);
-
+    NSURL *url = _hitTestResult.absoluteLinkURL();
     NSSharingService *service = [NSSharingService sharingServiceNamed:NSSharingServiceNameAddToSafariReadingList];
     [service performWithItems:@[ url ]];
 }
 
-- (NSRect)_elementBoundingBoxFromDOMElement:(DOMElement *)domElement
+static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 {
-    if (!domElement)
-        return NSZeroRect;
+    if (!node)
+        return IntRect();
 
-    Node* node = core(domElement);
     Frame* frame = node->document().frame();
     if (!frame)
-        return NSZeroRect;
+        return IntRect();
 
     FrameView* view = frame->view();
     if (!view)
-        return NSZeroRect;
+        return IntRect();
 
-    return view->contentsToWindow(node->pixelSnappedBoundingBox());
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+        return IntRect();
+
+    return view->contentsToWindow(renderer->absoluteBoundingBoxRect());
 }
 
-- (void)_quickLookURLFromActionMenu:(id)sender
+- (NSArray *)_defaultMenuItemsForLink
 {
-    if (!_webView)
-        return;
+    RetainPtr<NSMenuItem> openLinkItem = [self _createActionMenuItemForTag:WebActionMenuItemTagOpenLinkInDefaultBrowser];
+    RetainPtr<NSMenuItem> readingListItem = [self _createActionMenuItemForTag:WebActionMenuItemTagAddLinkToSafariReadingList];
 
-    NSDictionary *hitTestResult = [sender representedObject];
-    if (!hitTestResult)
-        return;
+    return @[ openLinkItem.get(), [NSMenuItem separatorItem], [NSMenuItem separatorItem], readingListItem.get() ];
+}
 
-    ASSERT([hitTestResult isKindOfClass:[NSDictionary class]]);
+#pragma mark mailto: and tel: Link actions
 
-    NSURL *url = [hitTestResult objectForKey:WebElementLinkURLKey];
-    if (!url)
-        return;
+- (NSArray *)_defaultMenuItemsForDataDetectableLink
+{
+    Node* node = _hitTestResult.innerNode();
+    if (!node)
+        return @[ ];
 
-    DOMElement *domElement = [hitTestResult objectForKey:WebElementDOMNodeKey];
-    if (!domElement)
-        return;
+    RetainPtr<DDActionContext> actionContext = [allocDDActionContextInstance() init];
 
-    NSRect itemFrame = [_webView convertRect:[self _elementBoundingBoxFromDOMElement:domElement] toView:nil];
-    NSSize maximumPreviewSize = NSMakeSize(_webView.bounds.size.width * 0.75, _webView.bounds.size.height * 0.75);
-
-    RetainPtr<QLPreviewBubble> bubble = adoptNS([[getQLPreviewBubbleClass() alloc] init]);
-    [bubble setParentWindow:_webView.window];
-    [bubble setMaximumSize:maximumPreviewSize];
-    [bubble setPreferredEdge:NSMaxYEdge];
-    [bubble setControls:@[ ]];
-    NSEventMask filterMask = NSAnyEventMask & ~(NSAppKitDefinedMask | NSSystemDefinedMask | NSApplicationDefinedMask | NSMouseEnteredMask | NSMouseExitedMask);
-    NSEventMask autocloseMask = NSLeftMouseDownMask | NSRightMouseDownMask | NSKeyDownMask;
-    [bubble setAutomaticallyCloseWithMask:autocloseMask filterMask:filterMask block:[bubble] {
-        [bubble close];
+    // FIXME: Should this show a yellow highlight?
+    _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
+    } interactionChangedHandler:^() {
+    } interactionStoppedHandler:^() {
     }];
-    [bubble showPreviewItem:url itemFrame:itemFrame];
-}
 
-- (NSArray *)_defaultMenuItemsForLink:(WebElementDictionary *)hitTestResult
-{
-    NSURL *url = [hitTestResult objectForKey:WebElementLinkURLKey];
-    if (!url)
-        return @[ ];
+    [_currentActionContext setHighlightFrame:elementBoundingBoxInWindowCoordinatesFromNode(node)];
 
-    if (!WebCore::protocolIsInHTTPFamily([url absoluteString]))
-        return @[ ];
-
-    RetainPtr<NSMenuItem> openLinkItem = [self _createActionMenuItemForTag:WebActionMenuItemTagOpenLinkInDefaultBrowser withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> previewLinkItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPreviewLink withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> readingListItem = [self _createActionMenuItemForTag:WebActionMenuItemTagAddLinkToSafariReadingList withHitTestResult:hitTestResult];
-
-    return @[ openLinkItem.get(), previewLinkItem.get(), [NSMenuItem separatorItem], readingListItem.get() ];
+    return [[getDDActionsManagerClass() sharedManager] menuItemsForTargetURL:_hitTestResult.absoluteLinkURL() actionContext:_currentActionContext.get()];
 }
 
 #pragma mark Image actions
 
-- (NSArray *)_defaultMenuItemsForImage:(WebElementDictionary *)hitTestResult
+- (NSArray *)_defaultMenuItemsForImage
 {
-    RetainPtr<NSMenuItem> copyImageItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyImage withHitTestResult:hitTestResult];
+    RetainPtr<NSMenuItem> copyImageItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyImage];
 
     RetainPtr<NSMenuItem> addToPhotosItem;
     if ([self _canAddMediaToPhotos])
-        addToPhotosItem = [self _createActionMenuItemForTag:WebActionMenuItemTagAddImageToPhotos withHitTestResult:hitTestResult];
+        addToPhotosItem = [self _createActionMenuItemForTag:WebActionMenuItemTagAddImageToPhotos];
     else
         addToPhotosItem = [NSMenuItem separatorItem];
 
-    RetainPtr<NSMenuItem> saveToDownloadsItem = [self _createActionMenuItemForTag:WebActionMenuItemTagSaveImageToDownloads withHitTestResult:hitTestResult];
+    RetainPtr<NSMenuItem> saveToDownloadsItem = [self _createActionMenuItemForTag:WebActionMenuItemTagSaveImageToDownloads];
     if (!_webView.downloadDelegate)
         [saveToDownloadsItem setEnabled:NO];
 
-
-    RetainPtr<NSMenuItem> shareItem = [self _createActionMenuItemForTag:WebActionMenuItemTagShareImage withHitTestResult:hitTestResult];
+    RetainPtr<NSMenuItem> shareItem = [self _createActionMenuItemForTag:WebActionMenuItemTagShareImage];
     if (Image* image = _hitTestResult.image()) {
-        RetainPtr<CGImageRef> cgImage = image->getCGImageRef();
-        RetainPtr<NSImage> nsImage = adoptNS([[NSImage alloc] initWithCGImage:cgImage.get() size:NSZeroSize]);
-        _sharingServicePicker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ nsImage.get() ]]);
-        [_sharingServicePicker setDelegate:self];
-        [shareItem setSubmenu:[_sharingServicePicker menu]];
+        RefPtr<SharedBuffer> buffer = image->data();
+        if (buffer) {
+            RetainPtr<NSData> nsData = [NSData dataWithBytes:buffer->data() length:buffer->size()];
+            RetainPtr<NSImage> nsImage = adoptNS([[NSImage alloc] initWithData:nsData.get()]);
+            _sharingServicePicker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ nsImage.get() ]]);
+            [_sharingServicePicker setDelegate:self];
+            [shareItem setSubmenu:[_sharingServicePicker menu]];
+        } else
+            [shareItem setEnabled:NO];
     }
 
     return @[ copyImageItem.get(), addToPhotosItem.get(), saveToDownloadsItem.get(), shareItem.get() ];
@@ -359,19 +388,23 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     if (!image)
         return;
 
-    RetainPtr<CGImageRef> cgImage = image->getCGImageRef();
+    String imageExtension = image->filenameExtension();
+    if (imageExtension.isEmpty())
+        return;
+
+    RefPtr<SharedBuffer> buffer = image->data();
+    if (!buffer)
+        return;
+    RetainPtr<NSData> nsData = [NSData dataWithBytes:buffer->data() length:buffer->size()];
+    RetainPtr<NSString> suggestedFilename = [[[NSProcessInfo processInfo] globallyUniqueString] stringByAppendingPathExtension:imageExtension];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        NSString * const suggestedFilename = @"image.jpg";
-
-        NSString *filePath = pathToPhotoOnDisk(suggestedFilename);
+        NSString *filePath = pathToPhotoOnDisk(suggestedFilename.get());
         if (!filePath)
             return;
 
         NSURL *fileURL = [NSURL fileURLWithPath:filePath];
-        auto dest = adoptCF(CGImageDestinationCreateWithURL((CFURLRef)fileURL, kUTTypeJPEG, 1, nullptr));
-        CGImageDestinationAddImage(dest.get(), cgImage.get(), nullptr);
-        CGImageDestinationFinalize(dest.get());
+        [nsData writeToURL:fileURL atomically:NO];
 
         dispatch_async(dispatch_get_main_queue(), ^{
             // This API provides no way to report failure, but if 18420778 is fixed so that it does, we should handle this.
@@ -385,26 +418,64 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     [_webView _downloadURL:_hitTestResult.absoluteImageURL()];
 }
 
+#pragma mark Video actions
+
+- (NSArray*)_defaultMenuItemsForVideo
+{
+    RetainPtr<NSMenuItem> copyVideoURLItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyVideoURL];
+
+    RetainPtr<NSMenuItem> saveToDownloadsItem = [self _createActionMenuItemForTag:WebActionMenuItemTagSaveVideoToDownloads];
+    if (!_hitTestResult.isDownloadableMedia() || !_webView.downloadDelegate)
+        [saveToDownloadsItem setEnabled:NO];
+
+    RetainPtr<NSMenuItem> shareItem = [self _createActionMenuItemForTag:WebActionMenuItemTagShareVideo];
+    NSString *urlToShare = _hitTestResult.absoluteMediaURL();
+    if (!_hitTestResult.isDownloadableMedia()) {
+        [saveToDownloadsItem setEnabled:NO];
+        urlToShare = [_webView mainFrameURL];
+    }
+    _sharingServicePicker = adoptNS([[NSSharingServicePicker alloc] initWithItems:@[ urlToShare ]]);
+    [_sharingServicePicker setDelegate:self];
+    [shareItem setSubmenu:[_sharingServicePicker menu]];
+
+    return @[ copyVideoURLItem.get(), [NSMenuItem separatorItem], saveToDownloadsItem.get(), shareItem.get() ];
+}
+
+- (void)_copyVideoURL:(id)sender
+{
+    NSString *urlToCopy = _hitTestResult.absoluteMediaURL();
+    if (!_hitTestResult.isDownloadableMedia())
+        urlToCopy = [_webView mainFrameURL];
+
+    [[NSPasteboard generalPasteboard] clearContents];
+    [[NSPasteboard generalPasteboard] writeObjects:@[ urlToCopy ]];
+}
+
+- (void)_saveVideoToDownloads:(id)sender
+{
+    [_webView _downloadURL:_hitTestResult.absoluteMediaURL()];
+}
+
 #pragma mark Text actions
 
-- (NSArray *)_defaultMenuItemsForText:(WebElementDictionary *)hitTestResult
+- (NSArray *)_defaultMenuItemsForText
 {
-    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagLookupText withHitTestResult:hitTestResult];
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
+    [pasteItem setEnabled:NO];
 
-    return @[ copyTextItem.get(), lookupTextItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get() ];
 }
 
-- (NSArray *)_defaultMenuItemsForEditableText:(WebElementDictionary *)hitTestResult
+- (NSArray *)_defaultMenuItemsForEditableText
 {
-    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagLookupText withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste withHitTestResult:hitTestResult];
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
 
-    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get() ];
 }
 
-- (NSArray *)_defaultMenuItemsForEditableTextWithSuggestions:(WebElementDictionary *)hitTestResult
+- (NSArray *)_defaultMenuItemsForEditableTextWithSuggestions
 {
     Frame* frame = core([_webView _selectedOrMainFrame]);
     if (!frame)
@@ -437,42 +508,75 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         [spellingSubMenu addItem:item.get()];
     }
 
-    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagLookupText withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste withHitTestResult:hitTestResult];
-    RetainPtr<NSMenuItem> textSuggestionsItem = [self _createActionMenuItemForTag:WebActionMenuItemTagTextSuggestions withHitTestResult:hitTestResult];
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
+    RetainPtr<NSMenuItem> textSuggestionsItem = [self _createActionMenuItemForTag:WebActionMenuItemTagTextSuggestions];
 
     [textSuggestionsItem setSubmenu:spellingSubMenu.get()];
 
-    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get(), textSuggestionsItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get(), textSuggestionsItem.get() ];
+}
+
+- (void)_selectDataDetectedText
+{
+    [_webView _mainCoreFrame]->selection().setSelectedRange(_currentDetectedDataRange.get(), DOWNSTREAM, true);
+}
+
+- (NSArray *)_defaultMenuItemsForDataDetectedText
+{
+    RefPtr<Range> detectedDataRange;
+    FloatRect detectedDataBoundingBox;
+    RetainPtr<DDActionContext> actionContext;
+
+    if ([[_webView UIDelegate] respondsToSelector:@selector(_webView:actionContextForHitTestResult:range:)]) {
+        RetainPtr<WebElementDictionary> hitTestDictionary = adoptNS([[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult]);
+
+        DOMRange *customDataDetectorsRange;
+        actionContext = [[_webView UIDelegate] _webView:_webView actionContextForHitTestResult:hitTestDictionary.get() range:&customDataDetectorsRange];
+
+        if (actionContext && customDataDetectorsRange)
+            detectedDataRange = core(customDataDetectorsRange);
+    }
+
+    // If the client didn't give us an action context, try to scan around the hit point.
+    if (!actionContext || !detectedDataRange)
+        actionContext = DataDetection::detectItemAroundHitTestResult(_hitTestResult, detectedDataBoundingBox, detectedDataRange);
+
+    if (!actionContext || !detectedDataRange)
+        return @[ ];
+
+    [actionContext setAltMode:YES];
+    if ([[getDDActionsManagerClass() sharedManager] respondsToSelector:@selector(hasActionsForResult:actionContext:)]) {
+        if (![[getDDActionsManagerClass() sharedManager] hasActionsForResult:[actionContext mainResult] actionContext:actionContext.get()])
+            return @[ ];
+    }
+
+    _currentDetectedDataTextIndicator = TextIndicator::createWithRange(*detectedDataRange, TextIndicatorPresentationTransition::BounceAndCrossfade);
+
+    _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
+    } interactionChangedHandler:^() {
+        [self _showTextIndicator];
+    } interactionStoppedHandler:^() {
+        [self _hideTextIndicator];
+    }];
+    _currentDetectedDataRange = detectedDataRange;
+
+    [_currentActionContext setHighlightFrame:[_webView.window convertRectToScreen:detectedDataBoundingBox]];
+
+    NSArray *menuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_currentActionContext mainResult] actionContext:_currentActionContext.get()];
+    if (menuItems.count == 1 && _currentDetectedDataTextIndicator)
+        _currentDetectedDataTextIndicator->setPresentationTransition(TextIndicatorPresentationTransition::Bounce);
+    return menuItems;
 }
 
 - (void)_copySelection:(id)sender
 {
-    [_webView _executeCoreCommandByName:@"copy" value:nil];
-}
-
-- (void)_lookupText:(id)sender
-{
-    Frame* frame = core([_webView _selectedOrMainFrame]);
-    if (!frame)
-        return;
-
-    DictionaryPopupInfo popupInfo = performDictionaryLookupForSelection(frame, frame->selection().selection());
-    if (!popupInfo.attributedString)
-        return;
-
-    NSPoint textBaselineOrigin = popupInfo.origin;
-
-    // Convert to screen coordinates.
-    textBaselineOrigin = [_webView.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
-
-    WKShowWordDefinitionWindow(popupInfo.attributedString.get(), textBaselineOrigin, popupInfo.options.get());
+    [_webView copy:self];
 }
 
 - (void)_paste:(id)sender
 {
-    [_webView _executeCoreCommandByName:@"paste" value:nil];
+    [_webView paste:self];
 }
 
 - (void)_selectLookupText
@@ -487,7 +591,6 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         return;
 
     frame->selection().setSelectedRange(lookupRange.get(), DOWNSTREAM, true);
-    return;
 }
 
 - (void)_changeSelectionToSuggestion:(id)sender
@@ -502,62 +605,15 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     [documentView _changeSpellingToWord:selectedCorrection];
 }
 
-static DictionaryPopupInfo performDictionaryLookupForSelection(Frame* frame, const VisibleSelection& selection)
-{
-    NSDictionary *options = nil;
-    DictionaryPopupInfo popupInfo;
-    RefPtr<Range> selectedRange = rangeForDictionaryLookupForSelection(selection, &options);
-    if (selectedRange)
-        popupInfo = performDictionaryLookupForRange(frame, *selectedRange, options);
-    return popupInfo;
-}
-
-static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& range, NSDictionary *options)
-{
-    DictionaryPopupInfo popupInfo;
-    if (range.text().stripWhiteSpace().isEmpty())
-        return popupInfo;
-    
-    RenderObject* renderer = range.startContainer()->renderer();
-    const RenderStyle& style = renderer->style();
-
-    Vector<FloatQuad> quads;
-    range.textQuads(quads);
-    if (quads.isEmpty())
-        return popupInfo;
-
-    IntRect rangeRect = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
-
-    popupInfo.origin = NSMakePoint(rangeRect.x(), rangeRect.y() + (style.fontMetrics().descent() * frame->page()->pageScaleFactor()));
-    popupInfo.options = options;
-
-    NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range);
-    RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
-    NSFontManager *fontManager = [NSFontManager sharedFontManager];
-
-    [nsAttributedString enumerateAttributesInRange:NSMakeRange(0, [nsAttributedString length]) options:0 usingBlock:^(NSDictionary *attributes, NSRange range, BOOL *stop) {
-        RetainPtr<NSMutableDictionary> scaledAttributes = adoptNS([attributes mutableCopy]);
-
-        NSFont *font = [scaledAttributes objectForKey:NSFontAttributeName];
-        if (font) {
-            font = [fontManager convertFont:font toSize:[font pointSize] * frame->page()->pageScaleFactor()];
-            [scaledAttributes setObject:font forKey:NSFontAttributeName];
-        }
-
-        [scaledNSAttributedString addAttributes:scaledAttributes.get() range:range];
-    }];
-
-    popupInfo.attributedString = scaledNSAttributedString.get();
-    return popupInfo;
-}
-
 #pragma mark Whitespace actions
 
-- (NSArray *)_defaultMenuItemsForWhitespaceInEditableArea:(WebElementDictionary *)hitTestResult
+- (NSArray *)_defaultMenuItemsForWhitespaceInEditableArea
 {
-    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste withHitTestResult:hitTestResult];
+    RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
+    RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
+    [copyTextItem setEnabled:NO];
 
-    return @[ [NSMenuItem separatorItem], [NSMenuItem separatorItem], pasteItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get() ];
 }
 
 #pragma mark NSSharingServicePickerDelegate implementation
@@ -589,45 +645,31 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
 
 #pragma mark Menu Items
 
-- (RetainPtr<NSMenuItem>)_createActionMenuItemForTag:(uint32_t)tag withHitTestResult:(WebElementDictionary *)hitTestResult
+- (RetainPtr<NSMenuItem>)_createActionMenuItemForTag:(uint32_t)tag
 {
     SEL selector = nullptr;
     NSString *title = nil;
     NSImage *image = nil;
-    id representedObject = nil;
+    bool enabled = true;
 
     switch (tag) {
     case WebActionMenuItemTagOpenLinkInDefaultBrowser:
         selector = @selector(_openURLFromActionMenu:);
         title = WEB_UI_STRING_KEY("Open", "Open (action menu item)", "action menu item");
-        image = webKitBundleImageNamed(@"OpenInNewWindowTemplate");
-        representedObject = [hitTestResult objectForKey:WebElementLinkURLKey];
-        break;
-
-    case WebActionMenuItemTagPreviewLink:
-        selector = @selector(_quickLookURLFromActionMenu:);
-        title = WEB_UI_STRING_KEY("Preview", "Preview (action menu item)", "action menu item");
-        image = [NSImage imageNamed:@"NSActionMenuQuickLook"];
-        representedObject = hitTestResult;
+        image = [NSImage imageNamed:@"NSActionMenuOpenInNewWindow"];
         break;
 
     case WebActionMenuItemTagAddLinkToSafariReadingList:
         selector = @selector(_addToReadingListFromActionMenu:);
         title = WEB_UI_STRING_KEY("Add to Reading List", "Add to Reading List (action menu item)", "action menu item");
-        image = [NSImage imageNamed:NSImageNameBookmarksTemplate];
-        representedObject = [hitTestResult objectForKey:WebElementLinkURLKey];
+        image = [NSImage imageNamed:@"NSActionMenuAddToReadingList"];
         break;
 
     case WebActionMenuItemTagCopyText:
         selector = @selector(_copySelection:);
         title = WEB_UI_STRING_KEY("Copy", "Copy (text action menu item)", "text action menu item");
         image = [NSImage imageNamed:@"NSActionMenuCopy"];
-        break;
-
-    case WebActionMenuItemTagLookupText:
-        selector = @selector(_lookupText:);
-        title = WEB_UI_STRING_KEY("Look Up", "Look Up (action menu item)", "action menu item");
-        image = [NSImage imageNamed:@"NSActionMenuLookup"];
+        enabled = _hitTestResult.allowsCopy();
         break;
 
     case WebActionMenuItemTagPaste:
@@ -664,6 +706,23 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
         image = [NSImage imageNamed:@"NSActionMenuShare"];
         break;
 
+    case WebActionMenuItemTagCopyVideoURL:
+        selector = @selector(_copyVideoURL:);
+        title = WEB_UI_STRING_KEY("Copy", "Copy (video action menu item)", "video action menu item");
+        image = [NSImage imageNamed:@"NSActionMenuCopy"];
+        break;
+
+    case WebActionMenuItemTagSaveVideoToDownloads:
+        selector = @selector(_saveVideoToDownloads:);
+        title = WEB_UI_STRING_KEY("Save to Downloads", "Save to Downloads (video action menu item)", "video action menu item");
+        image = [NSImage imageNamed:@"NSActionMenuSaveToDownloads"];
+        break;
+
+    case WebActionMenuItemTagShareVideo:
+        title = WEB_UI_STRING_KEY("Share", "Share (video action menu item)", "video action menu item");
+        image = [NSImage imageNamed:@"NSActionMenuShare"];
+        break;
+
     default:
         ASSERT_NOT_REACHED();
         return nil;
@@ -673,52 +732,115 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
     [item setImage:image];
     [item setTarget:self];
     [item setTag:tag];
-    [item setRepresentedObject:representedObject];
+    [item setEnabled:enabled];
     return item;
 }
 
-static NSImage *webKitBundleImageNamed(NSString *name)
+- (NSArray *)_defaultMenuItems
 {
-    return [[NSBundle bundleForClass:NSClassFromString(@"WKView")] imageForResource:name];
-}
-
-- (NSArray *)_defaultMenuItemsForHitTestResult:(WebElementDictionary *)hitTestResult
-{
-    NSURL *url = [hitTestResult objectForKey:WebElementLinkURLKey];
-    if (url) {
+    NSURL *url = _hitTestResult.absoluteLinkURL();
+    NSString *absoluteURLString = [url absoluteString];
+    if (url && WebCore::protocolIsInHTTPFamily(absoluteURLString)) {
         _type = WebActionMenuLink;
-        return [self _defaultMenuItemsForLink:hitTestResult];
+        return [self _defaultMenuItemsForLink];
     }
 
-    if (_hitTestResult.image() && !_hitTestResult.absoluteImageURL().isEmpty()) {
+    if (url && WebCore::protocolIs(absoluteURLString, "mailto")) {
+        _type = WebActionMenuMailtoLink;
+        return [self _defaultMenuItemsForDataDetectableLink];
+    }
+
+    if (url && WebCore::protocolIs(absoluteURLString, "tel")) {
+        _type = WebActionMenuTelLink;
+        return [self _defaultMenuItemsForDataDetectableLink];
+    }
+
+    if (!_hitTestResult.absoluteMediaURL().isEmpty()) {
+        _type = WebActionMenuVideo;
+        return [self _defaultMenuItemsForVideo];
+    }
+
+    Image* image = _hitTestResult.image();
+    if (image && !_hitTestResult.absoluteImageURL().isEmpty() && !image->filenameExtension().isEmpty() && image->data() && !image->data()->isEmpty()) {
         _type = WebActionMenuImage;
-        return [self _defaultMenuItemsForImage:hitTestResult];
+        return [self _defaultMenuItemsForImage];
     }
 
     Node* node = _hitTestResult.innerNode();
-    if (node && node->isTextNode()) {
+    if ((node && node->isTextNode()) || _hitTestResult.isOverTextInsideFormControlElement()) {
+        NSArray *dataDetectorMenuItems = [self _defaultMenuItemsForDataDetectedText];
+        if (_currentActionContext) {
+            // If this is a data detected item with no menu items, we should not fall back to regular text options.
+            if (!dataDetectorMenuItems.count) {
+                _type = WebActionMenuNone;
+                return @[ ];
+            }
+            _type = WebActionMenuDataDetectedItem;
+            return dataDetectorMenuItems;
+        }
+
         if (_hitTestResult.isContentEditable()) {
-            NSArray *editableTextWithSuggestions = [self _defaultMenuItemsForEditableTextWithSuggestions:hitTestResult];
+            NSArray *editableTextWithSuggestions = [self _defaultMenuItemsForEditableTextWithSuggestions];
             if (editableTextWithSuggestions.count) {
                 _type = WebActionMenuEditableTextWithSuggestions;
                 return editableTextWithSuggestions;
             }
 
             _type = WebActionMenuEditableText;
-            return [self _defaultMenuItemsForEditableText:hitTestResult];
+            return [self _defaultMenuItemsForEditableText];
         }
 
         _type = WebActionMenuReadOnlyText;
-        return [self _defaultMenuItemsForText:hitTestResult];
+        return [self _defaultMenuItemsForText];
     }
 
     if (_hitTestResult.isContentEditable()) {
         _type = WebActionMenuWhitespaceInEditableArea;
-        return [self _defaultMenuItemsForWhitespaceInEditableArea:hitTestResult];
+        return [self _defaultMenuItemsForWhitespaceInEditableArea];
+    }
+
+    if (_hitTestResult.isSelected()) {
+        // A selection should present the read-only text menu. It might make more sense to present a new
+        // type of menu with just copy, but for the time being, we should stay consistent with text.
+        _type = WebActionMenuReadOnlyText;
+        return [self _defaultMenuItemsForText];
     }
 
     _type = WebActionMenuNone;
     return @[ ];
 }
 
+#pragma mark Text Indicator
+
+- (void)_showTextIndicator
+{
+    if (_isShowingTextIndicator)
+        return;
+
+    if (_type == WebActionMenuDataDetectedItem && _currentDetectedDataTextIndicator) {
+        [_webView _setTextIndicator:_currentDetectedDataTextIndicator.get() fadeOut:NO animationCompletionHandler:^ { }];
+        _isShowingTextIndicator = YES;
+    }
+}
+
+- (void)_hideTextIndicator
+{
+    if (!_isShowingTextIndicator)
+        return;
+
+    [_webView _clearTextIndicator];
+    _isShowingTextIndicator = NO;
+}
+
+- (void)_dismissActionMenuPopovers
+{
+    DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
+    if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
+        [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
+
+    [self _hideTextIndicator];
+}
+
 @end
+
+#endif // PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

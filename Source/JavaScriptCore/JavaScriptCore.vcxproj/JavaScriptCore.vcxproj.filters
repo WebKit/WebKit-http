@@ -282,6 +282,9 @@
     <ClCompile Include="..\heap\HeapTimer.cpp">
       <Filter>heap</Filter>
     </ClCompile>
+    <ClCompile Include="..\heap\HeapVerifier.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
     <ClCompile Include="..\heap\IncrementalSweeper.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -531,6 +534,9 @@
     <ClCompile Include="..\runtime\ArrayPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\BasicBlockLocation.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\BooleanConstructor.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -562,6 +568,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\ConstructData.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\ControlFlowProfiler.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\CustomGetterSetter.cpp">
@@ -745,6 +754,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\NativeErrorPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\NullGetterFunction.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\NumberConstructor.cpp">
@@ -2135,6 +2147,9 @@
     <ClInclude Include="..\heap\HeapTimer.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\HeapVerifier.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\IncrementalSweeper.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -2396,9 +2411,6 @@
     <ClInclude Include="..\parser\NodeConstructors.h">
       <Filter>parser</Filter>
     </ClInclude>
-    <ClInclude Include="..\parser\NodeInfo.h">
-      <Filter>parser</Filter>
-    </ClInclude>
     <ClInclude Include="..\parser\Nodes.h">
       <Filter>parser</Filter>
     </ClInclude>
@@ -2504,6 +2516,9 @@
     <ClInclude Include="..\runtime\ArrayStorage.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\BasicBlockLocation.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\BatchedTransitionOptimizer.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2556,6 +2571,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\ConstructData.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\ControlFlowProfiler.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\CustomGetterSetter.h">
@@ -2751,6 +2769,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\NativeErrorPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\NullGetterFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\NumberConstructor.h">
@@ -4197,25 +4218,31 @@
     <None Include="..\inspector\scripts\codegen\__init__.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
-    <None Include="..\inspector\scripts\codegen\generate_backend_commands.py">
+    <None Include="..\inspector\scripts\codegen\cpp_generator.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_header.py">
+    <None Include="..\inspector\scripts\codegen\cpp_generator_templates.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
-    <None Include="..\inspector\scripts\codegen\generate_backend_dispatcher_implementation.py">
+    <None Include="..\inspector\scripts\codegen\generate_cpp_backend_dispatcher_header.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_header.py">
+    <None Include="..\inspector\scripts\codegen\generate_cpp_backend_dispatcher_implementation.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
-    <None Include="..\inspector\scripts\codegen\generate_frontend_dispatcher_implementation.py">
+    <None Include="..\inspector\scripts\codegen\generate_cpp_frontend_dispatcher_header.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_header.py">
+    <None Include="..\inspector\scripts\codegen\generate_cpp_frontend_dispatcher_implementation.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
-    <None Include="..\inspector\scripts\codegen\generate_protocol_types_implementation.py">
+    <None Include="..\inspector\scripts\codegen\generate_cpp_protocol_types_header.py">
+      <Filter>inspector\scripts\codegen</Filter>
+    </None>
+    <None Include="..\inspector\scripts\codegen\generate_cpp_protocol_types_implementation.py">
+      <Filter>inspector\scripts\codegen</Filter>
+    </None>
+    <None Include="..\inspector\scripts\codegen\generate_js_backend_commands.py">
       <Filter>inspector\scripts\codegen</Filter>
     </None>
     <None Include="..\inspector\scripts\codegen\generator.py">

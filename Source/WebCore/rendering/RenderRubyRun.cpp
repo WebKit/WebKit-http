@@ -43,7 +43,7 @@ namespace WebCore {
 
 using namespace std;
 
-RenderRubyRun::RenderRubyRun(Document& document, PassRef<RenderStyle> style)
+RenderRubyRun::RenderRubyRun(Document& document, Ref<RenderStyle>&& style)
     : RenderBlockFlow(document, WTF::move(style))
 {
     setReplaced(true);
@@ -156,7 +156,7 @@ void RenderRubyRun::addChild(RenderObject* child, RenderObject* beforeChild)
     }
 }
 
-RenderObject* RenderRubyRun::removeChild(RenderObject& child)
+void RenderRubyRun::removeChild(RenderObject& child)
 {
     // If the child is a ruby text, then merge the ruby base with the base of
     // the right sibling run, if possible.
@@ -178,13 +178,13 @@ RenderObject* RenderRubyRun::removeChild(RenderObject& child)
         }
     }
 
-    RenderObject* next = RenderBlockFlow::removeChild(child);
+    RenderBlockFlow::removeChild(child);
 
     if (!beingDestroyed() && !documentBeingDestroyed()) {
         // Check if our base (if any) is now empty. If so, destroy it.
         RenderBlock* base = rubyBase();
         if (base && !base->firstChild()) {
-            next = RenderBlockFlow::removeChild(*base);
+            RenderBlockFlow::removeChild(*base);
             base->deleteLines();
             base->destroy();
         }
@@ -194,11 +194,8 @@ RenderObject* RenderRubyRun::removeChild(RenderObject& child)
             parent()->removeChild(*this);
             deleteLines();
             destroy();
-            next = nullptr;
         }
     }
-    
-    return next;
 }
 
 RenderRubyBase* RenderRubyRun::createRubyBase() const

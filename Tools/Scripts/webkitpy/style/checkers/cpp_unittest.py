@@ -1651,6 +1651,11 @@ class CppStyleTest(CppStyleTestBase):
             '{\n'
             '}\n',
             '')
+        self.assert_multi_line_lint(
+            'int foo() const override\n'
+            '{\n'
+            '}\n',
+            '')
 
     def test_mismatching_spaces_in_parens(self):
         self.assert_lint('if (foo ) {', 'Extra space before ) in if'
@@ -5087,6 +5092,12 @@ class WebKitStyleTest(CppStyleTestBase):
         self.assert_lint('MyClass::MyClass(Document* doc) : MySuperClass() { }',
         'Should be indented on a separate line, with the colon or comma first on that line.'
         '  [whitespace/indent] [4]')
+        self.assert_multi_line_lint((
+            'MyClass::MyClass(Document* doc)\n'
+            '    : m_myMember(b ? bar() : baz())\n'
+            '    , MySuperClass()\n'
+            '    , m_doc(0)\n'
+            '{ }'), '')
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc) : MySuperClass()
         { }''',

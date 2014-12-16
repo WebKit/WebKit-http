@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014 Dhi Aurrahman <diorahman@rockybars.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,20 +87,17 @@ ALWAYS_INLINE bool isChecked(Element* element)
 
 ALWAYS_INLINE bool isInRange(Element* element)
 {
-    element->document().setContainsValidityStyleRules();
     return element->isInRange();
 }
 
 ALWAYS_INLINE bool isOutOfRange(Element* element)
 {
-    element->document().setContainsValidityStyleRules();
     return element->isOutOfRange();
 }
 
 ALWAYS_INLINE bool isInvalid(const Element* element)
 {
-    element->document().setContainsValidityStyleRules();
-    return element->willValidate() && !element->isValidFormControlElement();
+    return element->matchesInvalidPseudoClass();
 }
 
 ALWAYS_INLINE bool isOptionalFormControl(const Element* element)
@@ -114,16 +112,94 @@ ALWAYS_INLINE bool isRequiredFormControl(const Element* element)
 
 ALWAYS_INLINE bool isValid(const Element* element)
 {
-    element->document().setContainsValidityStyleRules();
-    return element->willValidate() && element->isValidFormControlElement();
+    return element->matchesValidPseudoClass();
 }
 
 ALWAYS_INLINE bool isWindowInactive(const Element* element)
 {
     return !element->document().page()->focusController().isActive();
 }
+
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+inline bool equalIgnoringASCIICase(const String& a, const String& b)
+{
+    if (a.length() != b.length()) 
+        return false;
+    for (size_t i = 0; i < a.length(); ++i) {
+        if (toASCIILower(a[i]) != toASCIILower(b[i]))
+            return false;
+    }
+    return true;
+}
+
+inline bool containslanguageSubtagMatchingRange(const Vector<String>& languageSubtags, const String& range, size_t& position)
+{
+    for (size_t languageSubtagIndex = position; languageSubtagIndex < languageSubtags.size(); ++languageSubtagIndex) {
+        const String& currentLanguageSubtag = languageSubtags[languageSubtagIndex];
+        if (currentLanguageSubtag.length() == 1 && range != "*")
+            return false;
+        if (equalIgnoringASCIICase(range, currentLanguageSubtag) || range == "*") {
+            position = languageSubtagIndex + 1;
+            return true;
+        }
+    }
+    return false;
+}
+
+inline bool matchesLangPseudoClass(const Element* element, const Vector<AtomicString>& ranges)
+{
+    ASSERT(element);
+
+    AtomicString language;
+#if ENABLE(VIDEO_TRACK)
+    if (is<WebVTTElement>(*element))
+        language = downcast<WebVTTElement>(*element).language();
+    else
+#endif
+        language = element->computeInheritedLanguage();
+
+    if (language.isNull())
+        return false;
+
+    // Implement basic and extended filterings of given language tags 
+    // as specified in www.ietf.org/rfc/rfc4647.txt.
+    Vector<String> rangeSubtags;
+    Vector<String> languageSubtags;
+
+    language.string().split('-', true, languageSubtags);
+
+    for (const AtomicString& range : ranges) {
+        if (range == "*")
+            return true;
+
+        if (equalIgnoringASCIICase(language, range) && !language.contains('-'))
+            return true;
+
+        range.string().split('-', true, rangeSubtags);
+
+        if (rangeSubtags.size() > languageSubtags.size()) 
+            continue;
+
+        const String& firstRangeSubtag = rangeSubtags.first();
+        if (!equalIgnoringASCIICase(firstRangeSubtag, languageSubtags.first()) && firstRangeSubtag != "*") 
+            continue;
+
+        size_t lastMatchedLanguageSubtagIndex = 1;
+        bool matchedRange = true;
+        for (size_t rangeSubtagIndex = 1; rangeSubtagIndex < rangeSubtags.size(); ++rangeSubtagIndex) {
+            if (!containslanguageSubtagMatchingRange(languageSubtags, rangeSubtags[rangeSubtagIndex], lastMatchedLanguageSubtagIndex)) {
+                matchedRange = false;
+                break;
+            }
+        }
+        if (matchedRange)
+            return true;
+    }
+    return false;
+}
+#endif
     
-inline bool matchesLangPseudoClass(const Element* element, AtomicStringImpl* filter)
+inline bool matchesLangPseudoClassDeprecated(const Element* element, AtomicStringImpl* filter)
 {
     AtomicString value;
 #if ENABLE(VIDEO_TRACK)

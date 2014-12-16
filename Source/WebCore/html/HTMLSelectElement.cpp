@@ -80,7 +80,7 @@ HTMLSelectElement::HTMLSelectElement(const QualifiedName& tagName, Document& doc
     ASSERT(hasTagName(selectTag));
 }
 
-PassRefPtr<HTMLSelectElement> HTMLSelectElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
+RefPtr<HTMLSelectElement> HTMLSelectElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
 {
     ASSERT(tagName.matches(selectTag));
     return adoptRef(new HTMLSelectElement(tagName, document, form));
@@ -104,7 +104,7 @@ const AtomicString& HTMLSelectElement::formControlType() const
 void HTMLSelectElement::deselectItems(HTMLOptionElement* excludeElement)
 {
     deselectItemsWithoutValidation(excludeElement);
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 void HTMLSelectElement::optionSelectedByUser(int optionIndex, bool fireOnChangeNow, bool allowMultipleSelection)
@@ -113,7 +113,7 @@ void HTMLSelectElement::optionSelectedByUser(int optionIndex, bool fireOnChangeN
     // This produces that same behavior for changes triggered by other code running on behalf of the user.
     if (!usesMenuList()) {
         updateSelectedState(optionToListIndex(optionIndex), allowMultipleSelection, false);
-        setNeedsValidityCheck();
+        updateValidity();
         if (fireOnChangeNow)
             listBoxOnChange();
         return;
@@ -184,7 +184,7 @@ void HTMLSelectElement::listBoxSelectItem(int listIndex, bool allowMultiplySelec
         optionSelectedByUser(listToOptionIndex(listIndex), fireOnChangeNow, false);
     else {
         updateSelectedState(listIndex, allowMultiplySelections, shift);
-        setNeedsValidityCheck();
+        updateValidity();
         if (fireOnChangeNow)
             listBoxOnChange();
     }
@@ -227,7 +227,7 @@ void HTMLSelectElement::add(HTMLElement* element, HTMLElement* before, Exception
     Ref<HTMLElement> protectNewChild(*element);
 
     insertBefore(element, before, ec);
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 void HTMLSelectElement::removeByIndex(int optionIndex)
@@ -313,7 +313,7 @@ void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicSt
             updateListItemSelectedStates();
 
         m_size = size;
-        setNeedsValidityCheck();
+        updateValidity();
         if (m_size != oldSize) {
             setNeedsStyleRecalc(ReconstructRenderTree);
             setRecalcListItems();
@@ -346,7 +346,7 @@ bool HTMLSelectElement::canSelectAll() const
     return !usesMenuList();
 }
 
-RenderPtr<RenderElement> HTMLSelectElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLSelectElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
 #if !PLATFORM(IOS)
     if (usesMenuList())
@@ -368,12 +368,12 @@ bool HTMLSelectElement::childShouldCreateRenderer(const Node& child) const
     return validationMessageShadowTreeContains(child);
 }
 
-PassRefPtr<HTMLCollection> HTMLSelectElement::selectedOptions()
+RefPtr<HTMLCollection> HTMLSelectElement::selectedOptions()
 {
     return ensureCachedHTMLCollection(SelectedOptions);
 }
 
-PassRefPtr<HTMLOptionsCollection> HTMLSelectElement::options()
+RefPtr<HTMLOptionsCollection> HTMLSelectElement::options()
 {
     return downcast<HTMLOptionsCollection>(ensureCachedHTMLCollection(SelectOptions).get());
 }
@@ -387,7 +387,7 @@ void HTMLSelectElement::updateListItemSelectedStates()
 void HTMLSelectElement::childrenChanged(const ChildChange& change)
 {
     setRecalcListItems();
-    setNeedsValidityCheck();
+    updateValidity();
     m_lastOnChangeSelection.clear();
 
     HTMLFormControlElementWithState::childrenChanged(change);
@@ -396,7 +396,7 @@ void HTMLSelectElement::childrenChanged(const ChildChange& change)
 void HTMLSelectElement::optionElementChildrenChanged()
 {
     setRecalcListItems();
-    setNeedsValidityCheck();
+    updateValidity();
 
     if (renderer()) {
         if (AXObjectCache* cache = renderer()->document().existingAXObjectCache())
@@ -494,7 +494,7 @@ void HTMLSelectElement::setLength(unsigned newLen, ExceptionCode& ec)
                 item->parentNode()->removeChild(item.get(), ec);
         }
     }
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 bool HTMLSelectElement::isRequiredFormControl() const
@@ -591,7 +591,7 @@ void HTMLSelectElement::selectAll()
 
     updateListBoxSelection(false);
     listBoxOnChange();
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 void HTMLSelectElement::saveLastSelection()
@@ -656,7 +656,7 @@ void HTMLSelectElement::updateListBoxSelection(bool deselectOtherOptions)
     }
 
     scrollToSelection();
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 void HTMLSelectElement::listBoxOnChange()
@@ -907,7 +907,7 @@ void HTMLSelectElement::selectOption(int optionIndex, SelectOptionFlags flags)
         }
     }
 
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 int HTMLSelectElement::optionToListIndex(int optionIndex) const
@@ -945,23 +945,23 @@ int HTMLSelectElement::listToOptionIndex(int listIndex) const
     return optionIndex;
 }
 
-void HTMLSelectElement::dispatchFocusEvent(PassRefPtr<Element> oldFocusedElement, FocusDirection direction)
+void HTMLSelectElement::dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection direction)
 {
     // Save the selection so it can be compared to the new selection when
     // dispatching change events during blur event dispatch.
     if (usesMenuList())
         saveLastSelection();
-    HTMLFormControlElementWithState::dispatchFocusEvent(oldFocusedElement, direction);
+    HTMLFormControlElementWithState::dispatchFocusEvent(WTF::move(oldFocusedElement), direction);
 }
 
-void HTMLSelectElement::dispatchBlurEvent(PassRefPtr<Element> newFocusedElement)
+void HTMLSelectElement::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
 {
     // We only need to fire change events here for menu lists, because we fire
     // change events for list boxes whenever the selection change is actually made.
     // This matches other browsers' behavior.
     if (usesMenuList())
         dispatchChangeEventForMenuList();
-    HTMLFormControlElementWithState::dispatchBlurEvent(newFocusedElement);
+    HTMLFormControlElementWithState::dispatchBlurEvent(WTF::move(newFocusedElement));
 }
 
 void HTMLSelectElement::deselectItemsWithoutValidation(HTMLElement* excludeElement)
@@ -1039,14 +1039,14 @@ void HTMLSelectElement::restoreFormControlState(const FormControlState& state)
     }
 
     setOptionsChangedOnRenderer();
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 void HTMLSelectElement::parseMultipleAttribute(const AtomicString& value)
 {
     bool oldUsesMenuList = usesMenuList();
     m_multiple = !value.isNull();
-    setNeedsValidityCheck();
+    updateValidity();
     if (oldUsesMenuList != usesMenuList())
         setNeedsStyleRecalc(ReconstructRenderTree);
 }
@@ -1103,7 +1103,7 @@ void HTMLSelectElement::reset()
 
     setOptionsChangedOnRenderer();
     setNeedsStyleRecalc();
-    setNeedsValidityCheck();
+    updateValidity();
 }
 
 #if !PLATFORM(WIN)

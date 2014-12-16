@@ -58,6 +58,8 @@ list(APPEND WebCore_SOURCES
     page/efl/DragControllerEfl.cpp
     page/efl/EventHandlerEfl.cpp
 
+    page/scrolling/AxisScrollSnapOffsets.cpp
+
     page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
     page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
     page/scrolling/coordinatedgraphics/ScrollingStateScrollingNodeCoordinatedGraphics.cpp
@@ -70,6 +72,7 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
+    platform/audio/gstreamer/AudioSourceProviderGStreamer.cpp
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
@@ -209,6 +212,7 @@ list(APPEND WebCore_SOURCES
     platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/linux/GamepadDeviceLinux.cpp
+    platform/linux/MemoryPressureHandlerLinux.cpp
 
     platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
 
@@ -258,15 +262,6 @@ if (WTF_USE_GEOCLUE2)
     )
 endif ()
 
-if (ENABLE_BATTERY_STATUS OR (EFL_REQUIRED_VERSION VERSION_LESS 1.8))
-    list(APPEND WebCore_INCLUDE_DIRECTORIES ${DBUS_INCLUDE_DIRS})
-    list(APPEND WebCore_INCLUDE_DIRECTORIES ${E_DBUS_INCLUDE_DIRS})
-    list(APPEND WebCore_INCLUDE_DIRECTORIES ${E_DBUS_EUKIT_INCLUDE_DIRS})
-    list(APPEND WebCore_LIBRARIES ${DBUS_LIBRARIES})
-    list(APPEND WebCore_LIBRARIES ${E_DBUS_LIBRARIES})
-    list(APPEND WebCore_LIBRARIES ${E_DBUS_EUKIT_LIBRARIES})
-endif ()
-
 if (ENABLE_GAMEPAD_DEPRECATED)
     # FIXME: GAMEPAD_DEPRECATED is legacy implementation. Need to be removed.
     list(REMOVE_ITEM WebCore_INCLUDE_DIRECTORIES
@@ -294,6 +289,7 @@ list(APPEND WebCore_LIBRARIES
     ${EDJE_LIBRARIES}
     ${EEZE_LIBRARIES}
     ${EINA_LIBRARIES}
+    ${ELDBUS_LIBRARIES}
     ${EO_LIBRARIES}
     ${EVAS_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
@@ -324,6 +320,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${EDJE_INCLUDE_DIRS}
     ${EEZE_INCLUDE_DIRS}
     ${EINA_INCLUDE_DIRS}
+    ${ELDBUS_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
     ${FREETYPE2_INCLUDE_DIRS}
     ${GEOCLUE_INCLUDE_DIRS}
@@ -472,5 +469,51 @@ if (ENABLE_SPEECH_SYNTHESIS)
     list(APPEND WebCore_SOURCES
         platform/efl/PlatformSpeechSynthesizerEfl.cpp
         platform/efl/PlatformSpeechSynthesisProviderEfl.cpp
+    )
+endif ()
+
+if (ENABLE_SUBTLE_CRYPTO)
+    list(APPEND WebCore_SOURCES
+        crypto/CryptoAlgorithm.cpp
+        crypto/CryptoAlgorithmDescriptionBuilder.cpp
+        crypto/CryptoAlgorithmRegistry.cpp
+        crypto/CryptoKey.cpp
+        crypto/CryptoKeyPair.cpp
+        crypto/SubtleCrypto.cpp
+        crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
+        crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+        crypto/algorithms/CryptoAlgorithmHMAC.cpp
+        crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
+        crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmSHA1.cpp
+        crypto/algorithms/CryptoAlgorithmSHA224.cpp
+        crypto/algorithms/CryptoAlgorithmSHA256.cpp
+        crypto/algorithms/CryptoAlgorithmSHA384.cpp
+        crypto/algorithms/CryptoAlgorithmSHA512.cpp
+
+        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoDigestGnuTLS.cpp
+        crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
+        crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp
+
+        crypto/keys/CryptoKeyAES.cpp
+        crypto/keys/CryptoKeyDataOctetSequence.cpp
+        crypto/keys/CryptoKeyDataRSAComponents.cpp
+        crypto/keys/CryptoKeyHMAC.cpp
+        crypto/keys/CryptoKeySerializationRaw.cpp
+    )
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${GNUTLS_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${GNUTLS_LIBRARIES}
     )
 endif ()

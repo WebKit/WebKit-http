@@ -26,13 +26,8 @@
 #include "config.h"
 #include "StorageAreaImpl.h"
 
-#include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
-#include "Page.h"
-#include "SchemeRegistry.h"
 #include "SecurityOrigin.h"
-#include "Settings.h"
 #include "StorageAreaSync.h"
 #include "StorageEventDispatcher.h"
 #include "StorageMap.h"
@@ -56,7 +51,7 @@ inline StorageAreaImpl::StorageAreaImpl(StorageType storageType, PassRefPtr<Secu
     , m_isShutdown(false)
 #endif
     , m_accessCount(0)
-    , m_closeDatabaseTimer(this, &StorageAreaImpl::closeDatabaseTimerFired)
+    , m_closeDatabaseTimer(*this, &StorageAreaImpl::closeDatabaseTimerFired)
 {
     ASSERT(isMainThread());
     ASSERT(m_securityOrigin);
@@ -96,7 +91,7 @@ StorageAreaImpl::StorageAreaImpl(StorageAreaImpl* area)
     , m_isShutdown(area->m_isShutdown)
 #endif
     , m_accessCount(0)
-    , m_closeDatabaseTimer(this, &StorageAreaImpl::closeDatabaseTimerFired)
+    , m_closeDatabaseTimer(*this, &StorageAreaImpl::closeDatabaseTimerFired)
 {
     ASSERT(isMainThread());
     ASSERT(m_securityOrigin);
@@ -278,7 +273,7 @@ void StorageAreaImpl::decrementAccessCount()
     }
 }
 
-void StorageAreaImpl::closeDatabaseTimerFired(Timer *)
+void StorageAreaImpl::closeDatabaseTimerFired()
 {
     blockUntilImportComplete();
     if (m_storageAreaSync)
@@ -291,7 +286,7 @@ void StorageAreaImpl::closeDatabaseIfIdle()
         ASSERT(!m_accessCount);
         m_closeDatabaseTimer.stop();
 
-        closeDatabaseTimerFired(&m_closeDatabaseTimer);
+        closeDatabaseTimerFired();
     }
 }
 

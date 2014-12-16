@@ -42,7 +42,6 @@ class AlternativeTextUIController;
 }
 
 namespace WebKit {
-class TextIndicatorWindow;
 
 class PageClientImpl final : public PageClient
 #if ENABLE(FULLSCREEN_API)
@@ -99,6 +98,9 @@ private:
     virtual void updateSecureInputState() override;
     virtual void resetSecureInputState() override;
     virtual void notifyInputContextAboutDiscardedComposition() override;
+#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
+    virtual void notifyApplicationAboutInputContextChange() override;
+#endif
 
     virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&);
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&);
@@ -120,7 +122,7 @@ private:
     virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
 #endif
 
-    void setTextIndicator(PassRefPtr<TextIndicator>, bool fadeOut, bool animate);
+    void setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool fadeOut);
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
@@ -136,9 +138,8 @@ private:
 
     virtual void makeFirstResponder();
     
-    virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&);
-    virtual void dismissDictionaryLookupPanel();
-    virtual void dismissActionMenuPopovers();
+    virtual void didPerformDictionaryLookup(const DictionaryPopupInfo&);
+    virtual void dismissContentRelativeChildWindows();
 
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings);
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText);
@@ -181,6 +182,7 @@ private:
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
 
     NSView *activeView() const;
+    NSWindow *activeWindow() const;
 
     virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
     virtual void didFinishLoadForMainFrame() override;

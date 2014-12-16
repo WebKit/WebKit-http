@@ -152,7 +152,7 @@ WebProcess::WebProcess()
 #if PLATFORM(IOS)
     , m_viewUpdateDispatcher(ViewUpdateDispatcher::create())
 #endif
-    , m_processSuspensionCleanupTimer(this, &WebProcess::processSuspensionCleanupTimerFired)
+    , m_processSuspensionCleanupTimer(*this, &WebProcess::processSuspensionCleanupTimerFired)
     , m_inDidClose(false)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
@@ -160,9 +160,6 @@ WebProcess::WebProcess()
 #if PLATFORM(COCOA)
     , m_compositingRenderServerPort(MACH_PORT_NULL)
     , m_clearResourceCachesDispatchGroup(0)
-#endif
-#if PLATFORM(MAC)
-    , m_needsQuickLookResourceCachingQuirks(false)
 #endif
     , m_fullKeyboardAccessEnabled(false)
     , m_textCheckerState()
@@ -179,7 +176,7 @@ WebProcess::WebProcess()
     , m_hasSelectionServices(false)
     , m_hasRichContentServices(false)
 #endif
-    , m_nonVisibleProcessCleanupTimer(this, &WebProcess::nonVisibleProcessCleanupTimerFired)
+    , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
     , m_webOriginDataManager(std::make_unique<WebOriginDataManager>(*this, *this))
 {
     // Initialize our platform strategies.
@@ -585,7 +582,7 @@ void WebProcess::terminate()
 #ifndef NDEBUG
     gcController().garbageCollectNow();
     fontCache().invalidate();
-    memoryCache()->setDisabled(true);
+    memoryCache().setDisabled(true);
 #endif
 
     m_webConnection->invalidate();
@@ -638,7 +635,7 @@ void WebProcess::didClose(IPC::Connection*)
 
     gcController().garbageCollectSoon();
     fontCache().invalidate();
-    memoryCache()->setDisabled(true);
+    memoryCache().setDisabled(true);
 #endif    
 
     // The UI process closed this connection, shut down.
@@ -710,7 +707,7 @@ void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear
     setCacheModel(CacheModelDocumentViewer);
     setCacheModel(cacheModel);
 
-    memoryCache()->evictResources();
+    memoryCache().evictResources();
 
     // Empty the cross-origin preflight cache.
     CrossOriginPreflightResultCache::shared().empty();
@@ -765,21 +762,21 @@ bool WebProcess::isPlugInAutoStartOriginHash(unsigned plugInOriginHash, SessionI
     return currentTime() < it->value;
 }
 
-bool WebProcess::shouldPlugInAutoStartFromOrigin(const WebPage* page, const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
+bool WebProcess::shouldPlugInAutoStartFromOrigin(WebPage& webPage, const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
 {
     if (!pluginOrigin.isEmpty() && m_plugInAutoStartOrigins.contains(pluginOrigin))
         return true;
 
 #ifdef ENABLE_PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC
     // The plugin wasn't in the general whitelist, so check if it similar to the primary plugin for the page (if we've found one).
-    if (page && page->matchesPrimaryPlugIn(pageOrigin, pluginOrigin, mimeType))
+    if (webPage.matchesPrimaryPlugIn(pageOrigin, pluginOrigin, mimeType))
         return true;
 #else
-    UNUSED_PARAM(page);
+    UNUSED_PARAM(webPage);
 #endif
 
     // Lastly check against the more explicit hash list.
-    return isPlugInAutoStartOriginHash(hashForPlugInOrigin(pageOrigin, pluginOrigin, mimeType), page->sessionID());
+    return isPlugInAutoStartOriginHash(hashForPlugInOrigin(pageOrigin, pluginOrigin, mimeType), webPage.sessionID());
 }
 
 void WebProcess::plugInDidStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, SessionID sessionID)
@@ -866,7 +863,7 @@ static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t>>& r
     String xslString(ASCIILiteral("XSL"));
     String javaScriptString(ASCIILiteral("JavaScript"));
     
-    MemoryCache::Statistics memoryCacheStatistics = memoryCache()->getStatistics();
+    MemoryCache::Statistics memoryCacheStatistics = memoryCache().getStatistics();
     
     HashMap<String, uint64_t> counts;
     counts.set(imagesString, memoryCacheStatistics.images.count);
@@ -1197,11 +1194,10 @@ bool WebProcess::markAllLayersVolatileIfPossible()
     return successfullyMarkedAllLayersVolatile;
 }
 
-void WebProcess::processSuspensionCleanupTimerFired(Timer* timer)
+void WebProcess::processSuspensionCleanupTimerFired()
 {
     if (markAllLayersVolatileIfPossible()) {
         parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
-        timer->stop();
     }
 }
 
@@ -1219,7 +1215,7 @@ void WebProcess::pageWillLeaveWindow(uint64_t pageID)
         m_nonVisibleProcessCleanupTimer.startOneShot(nonVisibleProcessCleanupDelay);
 }
     
-void WebProcess::nonVisibleProcessCleanupTimerFired(Timer*)
+void WebProcess::nonVisibleProcessCleanupTimerFired()
 {
     ASSERT(m_pagesInWindows.isEmpty());
     if (!m_pagesInWindows.isEmpty())
@@ -1248,8 +1244,8 @@ RefPtr<API::Object> WebProcess::apiObjectByConvertingFromHandles(API::Object* ob
 
 void WebProcess::setMemoryCacheDisabled(bool disabled)
 {
-    if (memoryCache()->disabled() != disabled)
-        memoryCache()->setDisabled(disabled);
+    if (memoryCache().disabled() != disabled)
+        memoryCache().setDisabled(disabled);
 }
 
 #if ENABLE(SERVICE_CONTROLS)

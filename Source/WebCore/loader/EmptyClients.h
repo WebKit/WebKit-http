@@ -33,6 +33,7 @@
 #include "ContextMenuClient.h"
 #include "DeviceMotionClient.h"
 #include "DeviceOrientationClient.h"
+#include "DiagnosticLoggingClient.h"
 #include "DragClient.h"
 #include "EditorClient.h"
 #include "TextCheckerClient.h"
@@ -43,6 +44,7 @@
 #include "Page.h"
 #include "ProgressTrackerClient.h"
 #include "ResourceError.h"
+#include "VisitedLinkStore.h"
 #include <wtf/text/StringView.h>
 
 /*
@@ -401,10 +403,6 @@ public:
     virtual void didRequestAutocomplete(PassRefPtr<FormState>) override { }
 #endif
 
-#if PLATFORM(MAC)
-    virtual bool needsQuickLookResourceCachingQuirks() const override { return false; }
-#endif
-
     virtual bool isEmptyFrameLoaderClient() override { return true; }
 };
 
@@ -454,6 +452,7 @@ public:
     virtual void didBeginEditing() override { }
     virtual void respondToChangedContents() override { }
     virtual void respondToChangedSelection(Frame*) override { }
+    virtual void discardedComposition(Frame*) override { }
     virtual void didEndEditing() override { }
     virtual void willWriteSelectionToPasteboard(Range*) override { }
     virtual void didWriteSelectionToPasteboard() override { }
@@ -634,7 +633,13 @@ class EmptyProgressTrackerClient : public ProgressTrackerClient {
     virtual void progressFinished(Frame&) override { }
 };
 
-void fillWithEmptyClients(Page::PageClients&);
+class EmptyDiagnosticLoggingClient : public DiagnosticLoggingClient {
+    virtual void logDiagnosticMessage(const String&, const String&) override { }
+    virtual void logDiagnosticMessageWithResult(const String&, const String&, LogResultType) override { }
+    virtual void logDiagnosticMessageWithValue(const String&, const String&, const String&) override { }
+};
+
+void fillWithEmptyClients(PageConfiguration&);
 
 }
 

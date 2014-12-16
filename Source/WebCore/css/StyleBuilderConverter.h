@@ -29,9 +29,14 @@
 
 #include "BasicShapeFunctions.h"
 #include "CSSCalculationValue.h"
+#include "CSSImageGeneratorValue.h"
+#include "CSSImageSetValue.h"
+#include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
+#include "CSSReflectValue.h"
 #include "Length.h"
 #include "Pair.h"
+#include "QuotesData.h"
 #include "Settings.h"
 #include "StyleResolver.h"
 #include "TransformFunctions.h"
@@ -63,11 +68,21 @@ public:
     static ETextAlign convertTextAlign(StyleResolver&, CSSValue&);
     static PassRefPtr<ClipPathOperation> convertClipPath(StyleResolver&, CSSValue&);
     static EResize convertResize(StyleResolver&, CSSValue&);
+    static int convertMarqueeRepetition(StyleResolver&, CSSValue&);
     static int convertMarqueeSpeed(StyleResolver&, CSSValue&);
+    static PassRefPtr<QuotesData> convertQuotes(StyleResolver&, CSSValue&);
+    static TextUnderlinePosition convertTextUnderlinePosition(StyleResolver&, CSSValue&);
+    static PassRefPtr<StyleReflection> convertReflection(StyleResolver&, CSSValue&);
+    static IntSize convertInitialLetter(StyleResolver&, CSSValue&);
+    static float convertTextStrokeWidth(StyleResolver&, CSSValue&);
+    static LineBoxContain convertLineBoxContain(StyleResolver&, CSSValue&);
+    static TextDecorationSkip convertTextDecorationSkip(StyleResolver&, CSSValue&);
+    static PassRefPtr<ShapeValue> convertShapeValue(StyleResolver&, CSSValue&);
 
 private:
     static Length convertToRadiusLength(CSSToLengthConversionData&, CSSPrimitiveValue&);
     static TextEmphasisPosition valueToEmphasisPosition(CSSPrimitiveValue&);
+    static TextDecorationSkip valueToDecorationSkip(const CSSPrimitiveValue&);
 };
 
 inline Length StyleBuilderConverter::convertLength(StyleResolver& styleResolver, CSSValue& value)
@@ -245,8 +260,9 @@ inline NinePieceImage StyleBuilderConverter::convertBorderImage(StyleResolver& s
 template <CSSPropertyID property>
 inline NinePieceImage StyleBuilderConverter::convertBorderMask(StyleResolver& styleResolver, CSSValue& value)
 {
-    NinePieceImage image = convertBorderImage<property>(styleResolver, value);
+    NinePieceImage image;
     image.setMaskDefaults();
+    styleResolver.styleMap()->mapNinePieceImage(property, &value, image);
     return image;
 }
 
@@ -388,6 +404,16 @@ inline EResize StyleBuilderConverter::convertResize(StyleResolver& styleResolver
     return resize;
 }
 
+inline int StyleBuilderConverter::convertMarqueeRepetition(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueInfinite)
+        return -1; // -1 means repeat forever.
+
+    ASSERT(primitiveValue.isNumber());
+    return primitiveValue.getIntValue();
+}
+
 inline int StyleBuilderConverter::convertMarqueeSpeed(StyleResolver&, CSSValue& value)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
@@ -416,6 +442,201 @@ inline int StyleBuilderConverter::convertMarqueeSpeed(StyleResolver&, CSSValue& 
     }
     return speed;
 }
+
+inline PassRefPtr<QuotesData> StyleBuilderConverter::convertQuotes(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        return QuotesData::create(Vector<std::pair<String, String>>());
+    }
+
+    CSSValueList& list = downcast<CSSValueList>(value);
+    Vector<std::pair<String, String>> quotes;
+    quotes.reserveInitialCapacity(list.length() / 2);
+    for (unsigned i = 0; i < list.length(); i += 2) {
+        CSSValue* first = list.itemWithoutBoundsCheck(i);
+        // item() returns null if out of bounds so this is safe.
+        CSSValue* second = list.item(i + 1);
+        if (!second)
+            break;
+        String startQuote = downcast<CSSPrimitiveValue>(*first).getStringValue();
+        String endQuote = downcast<CSSPrimitiveValue>(*second).getStringValue();
+        quotes.append(std::make_pair(startQuote, endQuote));
+    }
+    return QuotesData::create(quotes);
+}
+
+inline TextUnderlinePosition StyleBuilderConverter::convertTextUnderlinePosition(StyleResolver&, CSSValue& value)
+{
+    // This is true if value is 'auto' or 'alphabetic'.
+    if (is<CSSPrimitiveValue>(value))
+        return downcast<CSSPrimitiveValue>(value);
+
+    unsigned combinedPosition = 0;
+    for (auto& currentValue : downcast<CSSValueList>(value)) {
+        TextUnderlinePosition position = downcast<CSSPrimitiveValue>(currentValue.get());
+        combinedPosition |= position;
+    }
+    return static_cast<TextUnderlinePosition>(combinedPosition);
+}
+
+inline PassRefPtr<StyleReflection> StyleBuilderConverter::convertReflection(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        return nullptr;
+    }
+
+    CSSReflectValue& reflectValue = downcast<CSSReflectValue>(value);
+
+    RefPtr<StyleReflection> reflection = StyleReflection::create();
+    reflection->setDirection(*reflectValue.direction());
+
+    if (reflectValue.offset())
+        reflection->setOffset(reflectValue.offset()->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(styleResolver.state().cssToLengthConversionData()));
+
+    NinePieceImage mask;
+    mask.setMaskDefaults();
+    styleResolver.styleMap()->mapNinePieceImage(CSSPropertyWebkitBoxReflect, reflectValue.mask(), mask);
+    reflection->setMask(mask);
+
+    return reflection.release();
+}
+
+inline IntSize StyleBuilderConverter::convertInitialLetter(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    if (primitiveValue.getValueID() == CSSValueNormal)
+        return IntSize();
+
+    Pair* pair = primitiveValue.getPairValue();
+    ASSERT(pair);
+    ASSERT(pair->first());
+    ASSERT(pair->second());
+
+    return IntSize(pair->first()->getIntValue(), pair->second()->getIntValue());
+}
+
+inline float StyleBuilderConverter::convertTextStrokeWidth(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+
+    float width = 0;
+    switch (primitiveValue.getValueID()) {
+    case CSSValueThin:
+    case CSSValueMedium:
+    case CSSValueThick: {
+        double result = 1.0 / 48;
+        if (primitiveValue.getValueID() == CSSValueMedium)
+            result *= 3;
+        else if (primitiveValue.getValueID() == CSSValueThick)
+            result *= 5;
+        Ref<CSSPrimitiveValue> emsValue(CSSPrimitiveValue::create(result, CSSPrimitiveValue::CSS_EMS));
+        width = convertComputedLength<float>(styleResolver, emsValue);
+        break;
+    }
+    case CSSValueInvalid: {
+        width = convertComputedLength<float>(styleResolver, primitiveValue);
+        break;
+    }
+    default:
+        ASSERT_NOT_REACHED();
+        return 0;
+    }
+
+    return width;
+}
+
+inline LineBoxContain StyleBuilderConverter::convertLineBoxContain(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        return LineBoxContainNone;
+    }
+
+    return downcast<CSSLineBoxContainValue>(value).value();
+}
+
+inline TextDecorationSkip StyleBuilderConverter::valueToDecorationSkip(const CSSPrimitiveValue& primitiveValue)
+{
+    ASSERT(primitiveValue.isValueID());
+
+    switch (primitiveValue.getValueID()) {
+    case CSSValueAuto:
+        return TextDecorationSkipAuto;
+    case CSSValueNone:
+        return TextDecorationSkipNone;
+    case CSSValueInk:
+        return TextDecorationSkipInk;
+    case CSSValueObjects:
+        return TextDecorationSkipObjects;
+    default:
+        break;
+    }
+
+    ASSERT_NOT_REACHED();
+    return TextDecorationSkipNone;
+}
+
+inline TextDecorationSkip StyleBuilderConverter::convertTextDecorationSkip(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value))
+        return valueToDecorationSkip(downcast<CSSPrimitiveValue>(value));
+
+    TextDecorationSkip skip = RenderStyle::initialTextDecorationSkip();
+    for (auto& currentValue : downcast<CSSValueList>(value))
+        skip |= valueToDecorationSkip(downcast<CSSPrimitiveValue>(currentValue.get()));
+    return skip;
+}
+
+#if ENABLE(CSS_SHAPES)
+static inline bool isImageShape(const CSSValue& value)
+{
+    return is<CSSImageValue>(value)
+#if ENABLE(CSS_IMAGE_SET)
+        || is<CSSImageSetValue>(value)
+#endif 
+        || is<CSSImageGeneratorValue>(value);
+}
+
+inline PassRefPtr<ShapeValue> StyleBuilderConverter::convertShapeValue(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        return nullptr;
+    }
+
+    if (isImageShape(value))
+        return ShapeValue::createImageValue(styleResolver.styleImage(CSSPropertyWebkitShapeOutside, value));
+
+    RefPtr<BasicShape> shape;
+    CSSBoxType referenceBox = BoxMissing;
+    for (auto& currentValue : downcast<CSSValueList>(value)) {
+        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
+        if (primitiveValue.isShape())
+            shape = basicShapeForValue(styleResolver.state().cssToLengthConversionData(), primitiveValue.getShapeValue());
+        else if (primitiveValue.getValueID() == CSSValueContentBox
+            || primitiveValue.getValueID() == CSSValueBorderBox
+            || primitiveValue.getValueID() == CSSValuePaddingBox
+            || primitiveValue.getValueID() == CSSValueMarginBox)
+            referenceBox = primitiveValue;
+        else {
+            ASSERT_NOT_REACHED();
+            return nullptr;
+        }
+    }
+
+    if (shape)
+        return ShapeValue::createShapeValue(shape.release(), referenceBox);
+
+    if (referenceBox != BoxMissing)
+        return ShapeValue::createBoxShapeValue(referenceBox);
+
+    ASSERT_NOT_REACHED();
+    return nullptr;
+}
+#endif // ENABLE(CSS_SHAPES)
 
 } // namespace WebCore
 

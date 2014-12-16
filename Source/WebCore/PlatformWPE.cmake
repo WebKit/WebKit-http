@@ -103,6 +103,7 @@ list(APPEND WebCore_SOURCES
     platform/image-decoders/jpeg/JPEGImageDecoder.cpp
     platform/image-decoders/png/PNGImageDecoder.cpp
     platform/image-decoders/webp/WEBPImageDecoder.cpp
+    platform/linux/MemoryPressureHandlerLinux.cpp
     platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp

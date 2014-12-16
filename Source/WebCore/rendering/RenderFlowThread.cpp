@@ -52,7 +52,7 @@
 
 namespace WebCore {
 
-RenderFlowThread::RenderFlowThread(Document& document, PassRef<RenderStyle> style)
+RenderFlowThread::RenderFlowThread(Document& document, Ref<RenderStyle>&& style)
     : RenderBlockFlow(document, WTF::move(style))
     , m_previousRegionCount(0)
     , m_autoLogicalHeightRegionsCount(0)
@@ -68,7 +68,7 @@ RenderFlowThread::RenderFlowThread(Document& document, PassRef<RenderStyle> styl
     setFlowThreadState(InsideOutOfFlowThread);
 }
 
-PassRef<RenderStyle> RenderFlowThread::createFlowThreadStyle(RenderStyle* parentStyle)
+Ref<RenderStyle> RenderFlowThread::createFlowThreadStyle(RenderStyle* parentStyle)
 {
     auto newStyle = RenderStyle::create();
     newStyle.get().inheritFrom(parentStyle);
@@ -1017,7 +1017,6 @@ void RenderFlowThread::updateRegionsFlowThreadPortionRect(const RenderRegion* la
     bool emptyRegionsSegment = false;
     // FIXME: Optimize not to clear the interval all the time. This implies manually managing the tree nodes lifecycle.
     m_regionIntervalTree.clear();
-    m_regionIntervalTree.initIfNeeded();
     for (auto& region : m_regionList) {
         // If we find an empty auto-height region, clear the computedAutoHeight value.
         if (emptyRegionsSegment && region->hasAutoLogicalHeight())

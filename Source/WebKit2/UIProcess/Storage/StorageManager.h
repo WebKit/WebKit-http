@@ -27,6 +27,7 @@
 #define StorageManager_h
 
 #include "Connection.h"
+#include <chrono>
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -59,12 +60,12 @@ public:
     void processWillCloseConnection(WebProcessProxy*);
     void applicationWillTerminate();
 
-    // FIXME: Instead of a context + C function, this should take a WTF::Function, but we currently don't
-    // support arguments in functions.
-    void getOrigins(FunctionDispatcher& callbackDispatcher, void* context, void (*callback)(const Vector<RefPtr<WebCore::SecurityOrigin>>&, void* context));
-    void getStorageDetailsByOrigin(FunctionDispatcher& callbackDispatcher, void* context, void (*callback)(const Vector<LocalStorageDetails>&, void* context));
+    void getOrigins(std::function<void (Vector<RefPtr<WebCore::SecurityOrigin>>)> completionHandler);
+    void getStorageDetailsByOrigin(std::function<void (Vector<LocalStorageDetails>)> completionHandler);
     void deleteEntriesForOrigin(const WebCore::SecurityOrigin&);
     void deleteAllEntries();
+
+    void deleteLocalStorageOriginsModifiedSince(time_t, std::function<void ()> completionHandler);
 
 private:
     explicit StorageManager(const String& localStorageDirectory);
@@ -75,6 +76,7 @@ private:
 
     // Message handlers.
     void createLocalStorageMap(IPC::Connection*, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData&);
+    void createTransientLocalStorageMap(IPC::Connection*, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData& topLevelOriginData, const SecurityOriginData&);
     void createSessionStorageMap(IPC::Connection*, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData&);
     void destroyStorageMap(IPC::Connection*, uint64_t storageMapID);
 
@@ -96,15 +98,15 @@ private:
     class LocalStorageNamespace;
     LocalStorageNamespace* getOrCreateLocalStorageNamespace(uint64_t storageNamespaceID);
 
-    void getOriginsInternal(FunctionDispatcher* callbackDispatcher, void* context, void (*callback)(const Vector<RefPtr<WebCore::SecurityOrigin>>&, void* context));
-    void getStorageDetailsByOriginInternal(FunctionDispatcher* callbackDispatcher, void* context, void (*callback)(const Vector<LocalStorageDetails>&, void* context));
-    void deleteEntriesForOriginInternal(WebCore::SecurityOrigin*);
-    void deleteAllEntriesInternal();
+    class TransientLocalStorageNamespace;
+    TransientLocalStorageNamespace* getOrCreateTransientLocalStorageNamespace(uint64_t storageNamespaceID, WebCore::SecurityOrigin& topLevelOrigin);
 
     RefPtr<WorkQueue> m_queue;
 
     RefPtr<LocalStorageDatabaseTracker> m_localStorageDatabaseTracker;
     HashMap<uint64_t, RefPtr<LocalStorageNamespace>> m_localStorageNamespaces;
+
+    HashMap<std::pair<uint64_t, RefPtr<WebCore::SecurityOrigin>>, RefPtr<TransientLocalStorageNamespace>> m_transientLocalStorageNamespaces;
 
     class SessionStorageNamespace;
     HashMap<uint64_t, RefPtr<SessionStorageNamespace>> m_sessionStorageNamespaces;

@@ -83,8 +83,6 @@
 #include "JIT.h"
 #endif
 
-#define WTF_USE_GCC_COMPUTED_GOTO_WORKAROUND (!defined(__llvm__))
-
 using namespace std;
 
 namespace JSC {
@@ -105,7 +103,7 @@ JSValue eval(CallFrame* callFrame)
     
     CallFrame* callerFrame = callFrame->callerFrame();
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
-    JSScope* callerScopeChain = callerFrame->scope();
+    JSScope* callerScopeChain = callerFrame->uncheckedR(callerCodeBlock->scopeRegister().offset()).Register::scope();
     EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(callerCodeBlock->isStrictMode(), programSource, callerScopeChain);
 
     if (!eval) {
@@ -383,7 +381,7 @@ void Interpreter::dumpRegisters(CallFrame* callFrame)
     --it;
     dataLogF("[Callee]                   | %10p | %p \n", it, callFrame->callee());
     --it;
-    dataLogF("[ScopeChain]               | %10p | %p \n", it, callFrame->scope());
+    // FIXME: Remove the next decrement when the ScopeChain slot is removed from the call header
     --it;
 #if ENABLE(JIT)
     AbstractPC pc = callFrame->abstractReturnPC(callFrame->vm());
@@ -726,13 +724,15 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallF
     if (codeBlock->needsActivation() && callFrame->hasActivation())
         ++targetScopeDepth;
 
-    JSScope* scope = callFrame->scope();
+    int scopeRegisterOffset = codeBlock->scopeRegister().offset();
+    JSScope* scope = callFrame->scope(scopeRegisterOffset);
     int scopeDelta = scope->depth() - targetScopeDepth;
     RELEASE_ASSERT(scopeDelta >= 0);
 
     while (scopeDelta--)
         scope = scope->next();
-    callFrame->setScope(scope);
+
+    callFrame->setScope(scopeRegisterOffset, scope);
 
     return handler;
 }
@@ -767,8 +767,8 @@ private:
 JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, JSObject* thisObj)
 {
     SamplingScope samplingScope(this);
-    
-    JSScope* scope = callFrame->scope();
+
+    JSScope* scope = thisObj->globalObject();
     VM& vm = *scope->vm();
 
     ASSERT(!vm.exception());
@@ -929,18 +929,21 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
         return jsNull();
 
     bool isJSCall = (callType == CallTypeJS);
-    JSScope* scope;
+    JSScope* scope = nullptr;
     CodeBlock* newCodeBlock;
     size_t argsCount = 1 + args.size(); // implicit "this" parameter
 
-    if (isJSCall)
+    JSGlobalObject* globalObject;
+
+    if (isJSCall) {
         scope = callData.js.scope;
-    else {
+        globalObject = scope->globalObject();
+    } else {
         ASSERT(callType == CallTypeHost);
-        scope = callFrame->scope();
+        globalObject = function->globalObject();
     }
 
-    VMEntryScope entryScope(vm, scope->globalObject());
+    VMEntryScope entryScope(vm, globalObject);
     if (!vm.isSafeToRecurse())
         return checkedReturn(throwStackOverflowError(callFrame));
 
@@ -997,18 +1000,21 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
         return checkedReturn(throwStackOverflowError(callFrame));
 
     bool isJSConstruct = (constructType == ConstructTypeJS);
-    JSScope* scope;
+    JSScope* scope = nullptr;
     CodeBlock* newCodeBlock;
     size_t argsCount = 1 + args.size(); // implicit "this" parameter
 
-    if (isJSConstruct)
+    JSGlobalObject* globalObject;
+
+    if (isJSConstruct) {
         scope = constructData.js.scope;
-    else {
+        globalObject = scope->globalObject();
+    } else {
         ASSERT(constructType == ConstructTypeHost);
-        scope = callFrame->scope();
+        globalObject = constructor->globalObject();
     }
 
-    VMEntryScope entryScope(vm, scope->globalObject());
+    VMEntryScope entryScope(vm, globalObject);
     if (!vm.isSafeToRecurse())
         return checkedReturn(throwStackOverflowError(callFrame));
 
@@ -1138,7 +1144,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
 
     JSScope* variableObject;
     if ((numVariables || numFunctions) && eval->isStrictMode()) {
-        scope = StrictEvalActivation::create(callFrame);
+        scope = StrictEvalActivation::create(callFrame, scope);
         variableObject = scope;
     } else {
         for (JSScope* node = scope; ; node = node->next()) {
@@ -1237,7 +1243,7 @@ void Interpreter::enableSampler()
 {
 #if ENABLE(OPCODE_SAMPLING)
     if (!m_sampler) {
-        m_sampler = adoptPtr(new SamplingTool(this));
+        m_sampler = std::make_unique<SamplingTool>(this);
         m_sampler->setup();
     }
 #endif

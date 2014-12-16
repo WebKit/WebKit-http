@@ -26,60 +26,41 @@
 #include "config.h"
 #include "StorageNamespaceImpl.h"
 
-#include "GroupSettings.h"
-#include "Page.h"
-#include "PageGroup.h"
 #include "SecurityOriginHash.h"
-#include "Settings.h"
 #include "StorageAreaImpl.h"
 #include "StorageMap.h"
 #include "StorageSyncManager.h"
 #include "StorageTracker.h"
 #include <wtf/MainThread.h>
-#include <wtf/StdLibExtras.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
-typedef HashMap<String, StorageNamespace*> LocalStorageNamespaceMap;
-
-static LocalStorageNamespaceMap& localStorageNamespaceMap()
+static HashMap<String, StorageNamespaceImpl*>& localStorageNamespaceMap()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(LocalStorageNamespaceMap, localStorageNamespaceMap, ());
+    static NeverDestroyed<HashMap<String, StorageNamespaceImpl*>> localStorageNamespaceMap;
+
     return localStorageNamespaceMap;
 }
 
-PassRefPtr<StorageNamespace> StorageNamespaceImpl::localStorageNamespace(PageGroup* pageGroup)
+RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(unsigned quota)
 {
-    // Need a page in this page group to query the settings for the local storage database path.
-    // Having these parameters attached to the page settings is unfortunate since these settings are
-    // not per-page (and, in fact, we simply grab the settings from some page at random), but
-    // at this point we're stuck with it.
-    Page* page = *pageGroup->pages().begin();
-    const String& path = page->settings().localStorageDatabasePath();
-    unsigned quota = pageGroup->groupSettings().localStorageQuotaBytes();
-    const String lookupPath = path.isNull() ? emptyString() : path;
-
-    LocalStorageNamespaceMap::AddResult result = localStorageNamespaceMap().add(lookupPath, nullptr);
-    if (!result.isNewEntry)
-        return result.iterator->value;
-
-    RefPtr<StorageNamespace> storageNamespace = adoptRef(new StorageNamespaceImpl(LocalStorage, lookupPath, quota));
-
-    result.iterator->value = storageNamespace.get();
-    return storageNamespace.release();
+    return adoptRef(new StorageNamespaceImpl(SessionStorage, String(), quota));
 }
 
-PassRefPtr<StorageNamespace> StorageNamespaceImpl::sessionStorageNamespace(Page* page)
+RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::getOrCreateLocalStorageNamespace(const String& databasePath, unsigned quota)
 {
-    return adoptRef(new StorageNamespaceImpl(SessionStorage, String(), page->settings().sessionStorageQuota()));
-}
+    ASSERT(!databasePath.isNull());
 
-PassRefPtr<StorageNamespace> StorageNamespaceImpl::transientLocalStorageNamespace(PageGroup* pageGroup, SecurityOrigin*)
-{
-    // FIXME: A smarter implementation would create a special namespace type instead of just piggy-backing off
-    // SessionStorageNamespace here.
-    return StorageNamespaceImpl::sessionStorageNamespace(*pageGroup->pages().begin());
+    auto& slot = localStorageNamespaceMap().add(databasePath, nullptr).iterator->value;
+    if (slot)
+        return slot;
+
+    RefPtr<StorageNamespaceImpl> storageNamespace = adoptRef(new StorageNamespaceImpl(LocalStorage, databasePath, quota));
+    slot = storageNamespace.get();
+
+    return storageNamespace;
 }
 
 StorageNamespaceImpl::StorageNamespaceImpl(StorageType storageType, const String& path, unsigned quota)

@@ -69,7 +69,9 @@ class CachedResourceStreamingClient final : public PlatformMediaResourceLoaderCl
 
     private:
         // PlatformMediaResourceLoaderClient virtual methods.
+#if USE(SOUP)
         virtual char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize) override;
+#endif
         virtual void responseReceived(const ResourceResponse&) override;
         virtual void dataReceived(const char*, int) override;
         virtual void accessControlCheckFailed(const ResourceError&) override;
@@ -105,7 +107,8 @@ class ResourceHandleStreamingClient : public ResourceHandleClient, public Stream
 #define WEBKIT_WEB_SRC_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_WEB_SRC, WebKitWebSrcPrivate))
 struct _WebKitWebSrcPrivate {
     _WebKitWebSrcPrivate()
-        : startSource("[WebKit] webKitWebSrcStart")
+        : pendingStart(false)
+        , startSource("[WebKit] webKitWebSrcStart")
         , stopSource("[WebKit] webKitWebSrcStop")
         , needDataSource("[WebKit] webKitWebSrcNeedDataMainCb")
         , enoughDataSource("[WebKit] webKitWebSrcEnoughDataMainCb")
@@ -131,6 +134,7 @@ struct _WebKitWebSrcPrivate {
 
     guint64 requestedOffset;
 
+    gboolean pendingStart;
     GSourceWrap::Dynamic startSource;
     GSourceWrap::Dynamic stopSource;
     GSourceWrap::Dynamic needDataSource;
@@ -371,7 +375,8 @@ static void removeTimeoutSources(WebKitWebSrc* src)
 {
     WebKitWebSrcPrivate* priv = src->priv;
 
-    priv->startSource.cancel();
+    if (!priv->pendingStart)
+        priv->startSource.cancel();
     priv->needDataSource.cancel();
     priv->enoughDataSource.cancel();
     priv->seekSource.cancel();
@@ -443,6 +448,7 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
 
     GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
 
+    priv->pendingStart = FALSE;
     priv->didPassAccessControlCheck = false;
 
     if (!priv->uri) {
@@ -548,6 +554,7 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     case GST_STATE_CHANGE_READY_TO_PAUSED:
     {
         GST_DEBUG_OBJECT(src, "READY->PAUSED");
+        priv->pendingStart = TRUE;
         GstObjectRef protector(GST_OBJECT(src));
         priv->startSource.schedule([protector] { webKitWebSrcStart(WEBKIT_WEB_SRC(protector.get())); });
         break;
@@ -555,6 +562,7 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     case GST_STATE_CHANGE_PAUSED_TO_READY:
     {
         GST_DEBUG_OBJECT(src, "PAUSED->READY");
+        priv->pendingStart = FALSE;
         // cancel pending sources
         removeTimeoutSources(src);
         GstObjectRef protector(GST_OBJECT(src));
@@ -590,6 +598,15 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
     case GST_QUERY_URI: {
         GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
         gst_query_set_uri(query, src->priv->uri);
+        result = TRUE;
+        break;
+    }
+    case GST_QUERY_SCHEDULING: {
+        GstSchedulingFlags flags;
+        int minSize, maxSize, align;
+
+        gst_query_parse_scheduling(query, &flags, &minSize, &maxSize, &align);
+        gst_query_set_scheduling(query, static_cast<GstSchedulingFlags>(flags | GST_SCHEDULING_FLAG_BANDWIDTH_LIMITED), minSize, maxSize, align);
         result = TRUE;
         break;
     }
@@ -1002,10 +1019,12 @@ CachedResourceStreamingClient::~CachedResourceStreamingClient()
 {
 }
 
+#if USE(SOUP)
 char* CachedResourceStreamingClient::getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize)
 {
     return createReadBuffer(requestedSize, actualSize);
 }
+#endif
 
 void CachedResourceStreamingClient::responseReceived(const ResourceResponse& response)
 {

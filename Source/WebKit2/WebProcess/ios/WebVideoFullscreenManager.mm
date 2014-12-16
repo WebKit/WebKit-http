@@ -69,6 +69,7 @@ WebVideoFullscreenManager::WebVideoFullscreenManager(PassRefPtr<WebPage> page)
     : m_page(page.get())
     , m_isAnimating(false)
     , m_targetIsFullscreen(false)
+    , m_fullscreenMode(HTMLMediaElement::VideoFullscreenModeNone)
     , m_isFullscreen(false)
 {
     setWebVideoFullscreenInterface(this);
@@ -101,8 +102,9 @@ void WebVideoFullscreenManager::enterVideoFullscreenForVideoElement(HTMLVideoEle
     setVideoElement(videoElement);
 
     m_layerHostingContext = LayerHostingContext::createForExternalHostingProcess();
+    bool allowOptimizedFullscreen = m_videoElement->mediaSession().allowsAlternateFullscreen(*m_videoElement.get());
     
-    m_page->send(Messages::WebVideoFullscreenManagerProxy::SetupFullscreenWithID(m_layerHostingContext->contextID(), clientRectForElement(videoElement), m_page->deviceScaleFactor(), m_fullscreenMode), m_page->pageID());
+    m_page->send(Messages::WebVideoFullscreenManagerProxy::SetupFullscreenWithID(m_layerHostingContext->contextID(), clientRectForElement(videoElement), m_page->deviceScaleFactor(), m_fullscreenMode, allowOptimizedFullscreen), m_page->pageID());
 }
 
 void WebVideoFullscreenManager::exitVideoFullscreen()

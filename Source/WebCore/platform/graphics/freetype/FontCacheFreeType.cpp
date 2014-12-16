@@ -112,29 +112,24 @@ void FontCache::getTraitsInFamily(const AtomicString&, Vector<unsigned>&)
 {
 }
 
-static String getFamilyNameStringFromFontDescriptionAndFamily(const FontDescription& fontDescription, const AtomicString& family)
+static String getFamilyNameStringFromFamily(const AtomicString& family)
 {
     // If we're creating a fallback font (e.g. "-webkit-monospace"), convert the name into
     // the fallback name (like "monospace") that fontconfig understands.
     if (family.length() && !family.startsWith("-webkit-"))
         return family.string();
 
-    switch (fontDescription.genericFamily()) {
-    case FontDescription::StandardFamily:
-    case FontDescription::SerifFamily:
+    if (family == standardFamily || family == serifFamily)
         return "serif";
-    case FontDescription::SansSerifFamily:
+    if (family == sansSerifFamily)
         return "sans-serif";
-    case FontDescription::MonospaceFamily:
+    if (family == monospaceFamily)
         return "monospace";
-    case FontDescription::CursiveFamily:
+    if (family == cursiveFamily)
         return "cursive";
-    case FontDescription::FantasyFamily:
+    if (family == fantasyFamily)
         return "fantasy";
-    case FontDescription::NoFamily:
-    default:
-        return "";
-    }
+    return "";
 }
 
 int fontWeightToFontconfigWeight(FontWeight weight)
@@ -170,7 +165,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
     // says that we must find an exact match for font family, slant (italic or oblique can be used)
     // and font weight (we only match bold/non-bold here).
     RefPtr<FcPattern> pattern = adoptRef(FcPatternCreate());
-    String familyNameString(getFamilyNameStringFromFontDescriptionAndFamily(fontDescription, family));
+    String familyNameString(getFamilyNameStringFromFamily(family));
     if (!FcPatternAddString(pattern.get(), FC_FAMILY, reinterpret_cast<const FcChar8*>(familyNameString.utf8().data())))
         return nullptr;
 

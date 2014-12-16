@@ -462,7 +462,6 @@ private:
             break;
         }
             
-        case GetMyScope:
         case SkipScope: {
             changed |= setPrediction(SpecObjectOther);
             break;
@@ -648,6 +647,7 @@ private:
         case ProfileWillCall:
         case ProfileDidCall:
         case ProfileType:
+        case ProfileControlFlow:
         case CheckHasInstance:
         case ThrowReferenceError:
         case ForceOSRExit:

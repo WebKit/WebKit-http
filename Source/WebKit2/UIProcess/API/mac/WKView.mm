@@ -51,8 +51,6 @@
 #import "StringUtilities.h"
 #import "TextChecker.h"
 #import "TextCheckerState.h"
-#import "TextIndicator.h"
-#import "TextIndicatorWindow.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 #import "ViewGestureController.h"
 #import "ViewSnapshotStore.h"
@@ -60,6 +58,7 @@
 #import "WKActionMenuController.h"
 #import "WKActionMenuItemTypes.h"
 #import "WKFullScreenWindowController.h"
+#import "WKImmediateActionController.h"
 #import "WKPrintingView.h"
 #import "WKProcessPoolInternal.h"
 #import "WKStringCF.h"
@@ -80,6 +79,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/ColorMac.h>
+#import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/DragController.h>
 #import <WebCore/DragData.h>
 #import <WebCore/FloatRect.h>
@@ -88,6 +88,8 @@
 #import <WebCore/FileSystem.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/LocalizedStrings.h>
+#import <WebCore/LookupSPI.h>
+#import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/PlatformScreen.h>
@@ -95,6 +97,8 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/TextIndicator.h>
+#import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
 #import <WebCore/WebCoreCALayerExtras.h>
@@ -140,6 +144,8 @@ typedef uint32_t CGSWindowID;
 CGSConnectionID CGSMainConnectionID(void);
 CGError CGSGetScreenRectForWindow(CGSConnectionID cid, CGSWindowID wid, CGRect *rect);
 };
+
+SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 
 using namespace WebKit;
 using namespace WebCore;
@@ -224,6 +230,7 @@ struct WKViewInterpretKeyEventsParameters {
     
     unsigned _frameSizeUpdatesDisabledCount;
     BOOL _shouldDeferViewInWindowChanges;
+    NSWindow *_targetWindowForMovePreparation;
 
     BOOL _viewInWindowChangeWasDeferred;
 
@@ -244,7 +251,8 @@ struct WKViewInterpretKeyEventsParameters {
 
     std::unique_ptr<ViewGestureController> _gestureController;
     BOOL _allowsMagnification;
-    BOOL _ignoresNonWheelMouseEvents;
+    BOOL _ignoresNonWheelEvents;
+    BOOL _ignoresAllEvents;
     BOOL _allowsBackForwardNavigationGestures;
 
     RetainPtr<CALayer> _rootLayer;
@@ -255,6 +263,7 @@ struct WKViewInterpretKeyEventsParameters {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     BOOL _automaticallyAdjustsContentInsets;
     RetainPtr<WKActionMenuController> _actionMenuController;
+    RetainPtr<WKImmediateActionController> _immediateActionController;
 #endif
 
 #if WK_API_ENABLED
@@ -308,6 +317,7 @@ struct WKViewInterpretKeyEventsParameters {
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [_data->_actionMenuController willDestroyView:self];
+    [_data->_immediateActionController willDestroyView:self];
 #endif
 
     _data->_page->close();
@@ -324,6 +334,9 @@ struct WKViewInterpretKeyEventsParameters {
     [workspaceNotificationCenter removeObserver:self name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
 
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationWillTerminateNotification object:NSApp];
+
+    if (canLoadLUNotificationPopoverWillClose())
+        [[NSNotificationCenter defaultCenter] removeObserver:self name:getLUNotificationPopoverWillClose() object:nil];
 
     WebContext::statistics().wkViewCount--;
 
@@ -1098,29 +1111,6 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 
 // Events
 
-- (BOOL)_shouldIgnoreMouseEvents
-{
-    // FIXME: This check is surprisingly specific. Are there any other cases where we need to block mouse events?
-    // Do we actually need to in thumbnail view? And if we do, what about non-mouse events?
-#if WK_API_ENABLED
-    if (_data->_thumbnailView)
-        return YES;
-#endif
-
-    // -scrollWheel: uses -_shouldIgnoreWheelEvents, so for all other event types it is correct to use this.
-    return _data->_ignoresNonWheelMouseEvents;
-}
-
-- (BOOL)_shouldIgnoreWheelEvents
-{
-#if WK_API_ENABLED
-    if (_data->_thumbnailView)
-        return YES;
-#endif
-
-    return NO;
-}
-
 // Override this so that AppKit will send us arrow keys as key down events so we can
 // support them via the key bindings mechanism.
 - (BOOL)_wantsKeyDownForEvent:(NSEvent *)event
@@ -1143,7 +1133,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
-        if (self._shouldIgnoreMouseEvents) \
+        if (_data->_ignoresNonWheelEvents) \
             return; \
         if (NSTextInputContext *context = [self inputContext]) { \
             [context handleEvent:theEvent completionHandler:^(BOOL handled) { \
@@ -1163,7 +1153,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
-        if (self._shouldIgnoreMouseEvents) \
+        if (_data->_ignoresNonWheelEvents) \
             return; \
         if ([[self inputContext] handleEvent:theEvent]) { \
             LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
@@ -1200,7 +1190,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)scrollWheel:(NSEvent *)event
 {
-    if ([self _shouldIgnoreWheelEvents])
+    if (_data->_ignoresAllEvents)
         return;
 
     if (_data->_allowsBackForwardNavigationGestures) {
@@ -1215,7 +1205,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)swipeWithEvent:(NSEvent *)event
 {
-    if (self._shouldIgnoreMouseEvents)
+    if (_data->_ignoresNonWheelEvents)
         return;
 
     if (!_data->_allowsBackForwardNavigationGestures) {
@@ -1233,7 +1223,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseMoved:(NSEvent *)event
 {
-    if (self._shouldIgnoreMouseEvents)
+    if (_data->_ignoresNonWheelEvents)
         return;
 
     // When a view is first responder, it gets mouse moved events even when the mouse is outside its visible rect.
@@ -1245,17 +1235,23 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseDown:(NSEvent *)event
 {
-    if (self._shouldIgnoreMouseEvents)
+    if (_data->_ignoresNonWheelEvents)
         return;
 
     [self _setMouseDownEvent:event];
     _data->_ignoringMouseDraggedEvents = NO;
+
+    [self _dismissContentRelativeChildWindows];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [_data->_actionMenuController wkView:self willHandleMouseDown:event];
+    [_data->_immediateActionController wkView:self willHandleMouseDown:event];
+#endif
     [self mouseDownInternal:event];
 }
 
 - (void)mouseUp:(NSEvent *)event
 {
-    if (self._shouldIgnoreMouseEvents)
+    if (_data->_ignoresNonWheelEvents)
         return;
 
     [self _setMouseDownEvent:nil];
@@ -1264,7 +1260,7 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
 
 - (void)mouseDragged:(NSEvent *)event
 {
-    if (self._shouldIgnoreMouseEvents)
+    if (_data->_ignoresNonWheelEvents)
         return;
 
     if (_data->_ignoringMouseDraggedEvents)
@@ -1736,6 +1732,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (BOOL)performKeyEquivalent:(NSEvent *)event
 {
+    if (_data->_ignoresNonWheelEvents)
+        return NO;
+
     // There's a chance that responding to this event will run a nested event loop, and
     // fetching a new event might release the old one. Retaining and then autoreleasing
     // the current event prevents that from causing a problem inside WebKit or AppKit code.
@@ -1773,6 +1772,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (void)keyUp:(NSEvent *)theEvent
 {
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
     LOG(TextInput, "keyUp:%p %@", theEvent, theEvent);
 
     [self _interpretKeyEvent:theEvent completionHandler:^(BOOL handledByInputMethod, const Vector<KeypressCommand>& commands) {
@@ -1783,6 +1785,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (void)keyDown:(NSEvent *)theEvent
 {
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
     LOG(TextInput, "keyDown:%p %@%s", theEvent, theEvent, (theEvent == _data->_keyDownEventBeingResent) ? " (re-sent)" : "");
 
     if ([self _tryHandlePluginComplexTextInputKeyDown:theEvent]) {
@@ -1807,6 +1812,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (void)flagsChanged:(NSEvent *)theEvent
 {
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
     LOG(TextInput, "flagsChanged:%p %@", theEvent, theEvent);
 
     unsigned short keyCode = [theEvent keyCode];
@@ -2167,6 +2175,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (BOOL)performKeyEquivalent:(NSEvent *)event
 {
+    if (_data->_ignoresNonWheelEvents)
+        return NO;
+
     // There's a chance that responding to this event will run a nested event loop, and
     // fetching a new event might release the old one. Retaining and then autoreleasing
     // the current event prevents that from causing a problem inside WebKit or AppKit code.
@@ -2204,6 +2215,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (void)keyUp:(NSEvent *)theEvent
 {
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
     LOG(TextInput, "keyUp:%p %@", theEvent, theEvent);
     // We don't interpret the keyUp event, as this breaks key bindings (see <https://bugs.webkit.org/show_bug.cgi?id=130100>).
     _data->_page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent, false, Vector<KeypressCommand>()));
@@ -2211,6 +2225,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (void)keyDown:(NSEvent *)theEvent
 {
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
     LOG(TextInput, "keyDown:%p %@%s", theEvent, theEvent, (theEvent == _data->_keyDownEventBeingResent) ? " (re-sent)" : "");
 
     // There's a chance that responding to this event will run a nested event loop, and
@@ -2246,6 +2263,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 - (void)flagsChanged:(NSEvent *)theEvent
 {
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
     LOG(TextInput, "flagsChanged:%p %@", theEvent, theEvent);
 
     // There's a chance that responding to this event will run a nested event loop, and
@@ -2480,7 +2500,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (void)removeWindowObservers
 {
-    NSWindow *window = [self window];
+    NSWindow *window = _data->_targetWindowForMovePreparation ? _data->_targetWindowForMovePreparation : [self window];
     if (!window)
         return;
 
@@ -2507,6 +2527,9 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (void)viewWillMoveToWindow:(NSWindow *)window
 {
+    // If we're in the middle of preparing to move to a window, we should only be moved to that window.
+    ASSERT(!_data->_targetWindowForMovePreparation || (_data->_targetWindowForMovePreparation == window));
+
     NSWindow *currentWindow = [self window];
     if (window == currentWindow)
         return;
@@ -2519,7 +2542,9 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (void)viewDidMoveToWindow
 {
-    if ([self window]) {
+    NSWindow *window = _data->_targetWindowForMovePreparation ? _data->_targetWindowForMovePreparation : self.window;
+
+    if (window) {
         [self doWindowDidChangeScreen];
 
         ViewState::Flags viewStateChanges = ViewState::WindowIsActive | ViewState::IsVisible;
@@ -2553,8 +2578,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         [NSEvent removeMonitor:_data->_flagsChangedEventMonitor];
         _data->_flagsChangedEventMonitor = nil;
 
-        WKHideWordDefinitionWindow();
-        [self _dismissActionMenuPopovers];
+        [self _dismissContentRelativeChildWindows];
     }
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
@@ -2562,7 +2586,8 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (void)doWindowDidChangeScreen
 {
-    _data->_page->windowScreenDidChange((PlatformDisplayID)[[[[[self window] screen] deviceDescription] objectForKey:@"NSScreenNumber"] intValue]);
+    NSWindow *window = _data->_targetWindowForMovePreparation ? _data->_targetWindowForMovePreparation : self.window;
+    _data->_page->windowScreenDidChange((PlatformDisplayID)[[[[window screen] deviceDescription] objectForKey:@"NSScreenNumber"] intValue]);
 }
 
 - (void)_windowDidBecomeKey:(NSNotification *)notification
@@ -2689,6 +2714,11 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     _data->_page->process().context().applicationWillTerminate();
 }
 
+- (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
+{
+    [self _setTextIndicator:nil fadeOut:NO];
+}
+
 - (void)_accessibilityRegisterUIProcessTokens
 {
     // Initialize remote accessibility when the window connection has been established.
@@ -2794,8 +2824,9 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (float)_intrinsicDeviceScaleFactor
 {
-    NSWindow *window = [self window];
-    if (window)
+    if (_data->_targetWindowForMovePreparation)
+        return [_data->_targetWindowForMovePreparation backingScaleFactor];
+    if (NSWindow *window = [self window])
         return [window backingScaleFactor];
     return [[NSScreen mainScreen] backingScaleFactor];
 }
@@ -2812,6 +2843,9 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 - (void)quickLookWithEvent:(NSEvent *)event
 {
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
     NSPoint locationInViewCoordinates = [self convertPoint:[event locationInWindow] fromView:nil];
     _data->_page->performDictionaryLookupAtLocation(FloatPoint(locationInViewCoordinates.x, locationInViewCoordinates.y));
 }
@@ -2837,8 +2871,10 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 - (WebKit::ColorSpaceData)_colorSpace
 {
     if (!_data->_colorSpace) {
-        if ([self window])
-            _data->_colorSpace = [[self window] colorSpace];
+        if (_data->_targetWindowForMovePreparation)
+            _data->_colorSpace = [_data->_targetWindowForMovePreparation colorSpace];
+        else if (NSWindow *window = [self window])
+            _data->_colorSpace = [window colorSpace];
         else
             _data->_colorSpace = [[NSScreen mainScreen] colorSpace];
     }
@@ -2851,6 +2887,8 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (void)_processDidExit
 {
+    [self _notifyInputContextAboutDiscardedComposition];
+
     if (_data->_layerHostingView)
         [self _setAcceleratedCompositingModeRootLayer:nil];
 
@@ -3057,7 +3095,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     }
 }
 
-- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animate:(BOOL)animate
+- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animationCompletionHandler:(std::function<void ()>)completionHandler
 {
     if (!textIndicator) {
         _data->_textIndicatorWindow = nullptr;
@@ -3067,7 +3105,13 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     if (!_data->_textIndicatorWindow)
         _data->_textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    _data->_textIndicatorWindow->setTextIndicator(textIndicator, fadeOut, animate);
+    NSRect contentRect = [self.window convertRectToScreen:[self convertRect:textIndicator->textBoundingRectInWindowCoordinates() toView:nil]];
+    _data->_textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut, WTF::move(completionHandler));
+}
+
+- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut
+{
+    [self _setTextIndicator:textIndicator fadeOut:fadeOut animationCompletionHandler:[] { }];
 }
 
 - (CALayer *)_rootLayer
@@ -3410,6 +3454,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [[super inputContext] discardMarkedText]; // Inform the input method that we won't have an inline input area despite having been asked to.
 }
 
+- (NSWindow *)_targetWindowForMovePreparation
+{
+    return _data->_targetWindowForMovePreparation;
+}
+
 #if ENABLE(FULLSCREEN_API)
 - (BOOL)_hasFullScreenWindowController
 {
@@ -3559,12 +3608,24 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillTerminate:) name:NSApplicationWillTerminateNotification object:NSApp];
 
+    if (canLoadLUNotificationPopoverWillClose())
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    if ([self respondsToSelector:@selector(setActionMenu:)]) {
+    // FIXME: Temporarily disable action menu installation.
+    /*if ([self respondsToSelector:@selector(setActionMenu:)]) {
         RetainPtr<NSMenu> menu = adoptNS([[NSMenu alloc] init]);
         self.actionMenu = menu.get();
         _data->_actionMenuController = adoptNS([[WKActionMenuController alloc] initWithPage:*_data->_page view:self]);
         self.actionMenu.delegate = _data->_actionMenuController.get();
+        self.actionMenu.autoenablesItems = NO;
+    }*/
+
+    if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
+        RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
+        _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:recognizer.get()]);
+        [recognizer setDelegate:_data->_immediateActionController.get()];
+        [self addGestureRecognizer:recognizer.get()];
     }
 #endif
 
@@ -3669,32 +3730,41 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
+    if (_data->_ignoresNonWheelEvents) {
+        [menu cancelTracking];
+        return;
+    }
+
     [_data->_actionMenuController prepareForMenu:menu withEvent:event];
 }
 
 - (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
+    if (_data->_ignoresNonWheelEvents) {
+        [menu cancelTracking];
+        return;
+    }
+
     [_data->_actionMenuController willOpenMenu:menu withEvent:event];
 }
 
 - (void)didCloseMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
+    if (_data->_ignoresNonWheelEvents) {
+        [menu cancelTracking];
+        return;
+    }
+
     [_data->_actionMenuController didCloseMenu:menu withEvent:event];
 }
 
 - (void)_didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData
 {
     [_data->_actionMenuController didPerformActionMenuHitTest:hitTestResult userData:userData];
+    [_data->_immediateActionController didPerformActionMenuHitTest:hitTestResult userData:userData];
 }
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-
-- (void)_dismissActionMenuPopovers
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [_data->_actionMenuController dismissActionMenuPopovers];
-#endif
-}
 
 @end
 
@@ -3806,7 +3876,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 + (void)hideWordDefinitionWindow
 {
-    WKHideWordDefinitionWindow();
+    if (!getLULookupDefinitionModuleClass())
+        return;
+    [getLULookupDefinitionModuleClass() hideDefinition];
 }
 
 - (CGFloat)minimumLayoutWidth
@@ -3959,6 +4031,31 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     }
 }
 
+- (void)_prepareForMoveToWindow:(NSWindow *)targetWindow withCompletionHandler:(void(^)(void))completionHandler
+{
+    _data->_shouldDeferViewInWindowChanges = YES;
+    [self viewWillMoveToWindow:targetWindow];
+    _data->_targetWindowForMovePreparation = targetWindow;
+    [self viewDidMoveToWindow];
+
+    _data->_shouldDeferViewInWindowChanges = NO;
+
+    _data->_page->installViewStateChangeCompletionHandler(^() {
+        completionHandler();
+        ASSERT(self.window == _data->_targetWindowForMovePreparation);
+        _data->_targetWindowForMovePreparation = nil;
+    });
+
+    [self _dispatchSetTopContentInset];
+    _data->_page->viewStateDidChange(ViewState::IsInWindow, false, WebPageProxy::ViewStateChangeDispatchMode::Immediate);
+    _data->_viewInWindowChangeWasDeferred = NO;
+}
+
+- (NSWindow *)_targetWindowForMovePreparation
+{
+    return _data->_targetWindowForMovePreparation;
+}
+
 - (BOOL)isDeferringViewInWindowChanges
 {
     return _data->_shouldDeferViewInWindowChanges;
@@ -3986,14 +4083,35 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_allowsBackForwardNavigationGestures;
 }
 
-- (void)_setIgnoresNonWheelMouseEvents:(BOOL)ignoresNonWheelMouseEvents
+- (void)_setIgnoresAllEvents:(BOOL)ignoresAllEvents
 {
-    _data->_ignoresNonWheelMouseEvents = ignoresNonWheelMouseEvents;
+    _data->_ignoresAllEvents = ignoresAllEvents;
+    [self _setIgnoresNonWheelEvents:ignoresAllEvents];
 }
 
-- (BOOL)_ignoresNonWheelMouseEvents
+// Forward _setIgnoresNonWheelMouseEvents to _setIgnoresNonWheelEvents to avoid breaking existing clients.
+- (void)_setIgnoresNonWheelMouseEvents:(BOOL)ignoresNonWheelMouseEvents
 {
-    return _data->_ignoresNonWheelMouseEvents;
+    [self _setIgnoresNonWheelEvents:ignoresNonWheelMouseEvents];
+}
+
+- (void)_setIgnoresNonWheelEvents:(BOOL)ignoresNonWheelEvents
+{
+    if (_data->_ignoresNonWheelEvents == ignoresNonWheelEvents)
+        return;
+
+    _data->_ignoresNonWheelEvents = ignoresNonWheelEvents;
+    _data->_page->setShouldDispatchFakeMouseMoveEvents(!ignoresNonWheelEvents);
+}
+
+- (BOOL)_ignoresNonWheelEvents
+{
+    return _data->_ignoresNonWheelEvents;
+}
+
+- (BOOL)_ignoresAllEvents
+{
+    return _data->_ignoresAllEvents;
 }
 
 - (void)_dispatchSetTopContentInset
@@ -4086,6 +4204,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return;
     }
 
+    [self _dismissContentRelativeChildWindows];
+
     [self _ensureGestureController];
 
     _data->_gestureController->handleMagnificationGesture(event.magnification, [self convertPoint:event.locationInWindow fromView:nil]);
@@ -4097,6 +4217,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [super smartMagnifyWithEvent:event];
         return;
     }
+
+    [self _dismissContentRelativeChildWindows];
 
     [self _ensureGestureController];
 
@@ -4115,11 +4237,15 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)setMagnification:(double)magnification centeredAtPoint:(NSPoint)point
 {
+    [self _dismissContentRelativeChildWindows];
+
     _data->_page->scalePageInViewCoordinates(magnification, roundedIntPoint(point));
 }
 
 - (void)setMagnification:(double)magnification
 {
+    [self _dismissContentRelativeChildWindows];
+
     FloatPoint viewCenter(NSMidX([self bounds]), NSMidY([self bounds]));
     _data->_page->scalePageInViewCoordinates(magnification, roundedIntPoint(viewCenter));
 }
@@ -4189,13 +4315,59 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return [self _actionMenuItemsForHitTestResult:hitTestResult withType:type defaultActionMenuItems:defaultMenuItems];
 }
 
+- (id)_immediateActionAnimationControllerForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKImmediateActionType)type userData:(WKTypeRef)userData
+{
+    return nil;
+}
+
+- (void)_dismissContentRelativeChildWindows
+{
+    // FIXME: We don't know which panel we are dismissing, it may not even be in the current page (see <rdar://problem/13875766>).
+    if (Class lookupDefinitionModuleClass = getLULookupDefinitionModuleClass())
+        [lookupDefinitionModuleClass hideDefinition];
+
+    DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
+    if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
+        [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && WK_API_ENABLED
+    [_data->_immediateActionController hidePreview];
+#endif
+
+    [self _setTextIndicator:nullptr fadeOut:NO];
+
+    static_cast<PageClient&>(*_data->_pageClient).dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
+}
+
 - (NSView *)_viewForPreviewingURL:(NSURL *)url initialFrameSize:(NSSize)initialFrameSize
 {
     return nil;
 }
 
+- (NSString *)_titleForPreviewOfURL:(NSURL *)url
+{
+    return nil;
+}
+
+- (void)_setPreviewTitle:(NSString *)previewTitle
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && WK_API_ENABLED
+    [_data->_immediateActionController setPreviewTitle:previewTitle];
+#endif
+}
+
 - (void)_finishPreviewingURL:(NSURL *)url withPreviewView:(NSView *)previewView
 {
+}
+
+- (void)_handleClickInPreviewView:(NSView *)previewView URL:(NSURL *)url
+{
+    [[NSWorkspace sharedWorkspace] openURL:url];
+}
+
+- (BOOL)_shouldUseStandardQuickLookPreview
+{
+    return YES;
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

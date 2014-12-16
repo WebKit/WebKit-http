@@ -40,6 +40,12 @@ namespace WebCore {
 static const double fadeAnimationDuration = 0.2;
 static const double fadeAnimationFrameRate = 30;
 
+static PageOverlay::PageOverlayID generatePageOverlayID()
+{
+    static PageOverlay::PageOverlayID pageOverlayID;
+    return ++pageOverlayID;
+}
+
 PassRefPtr<PageOverlay> PageOverlay::create(Client& client, OverlayType overlayType)
 {
     return adoptRef(new PageOverlay(client, overlayType));
@@ -48,13 +54,14 @@ PassRefPtr<PageOverlay> PageOverlay::create(Client& client, OverlayType overlayT
 PageOverlay::PageOverlay(Client& client, OverlayType overlayType)
     : m_client(client)
     , m_page(nullptr)
-    , m_fadeAnimationTimer(this, &PageOverlay::fadeAnimationTimerFired)
+    , m_fadeAnimationTimer(*this, &PageOverlay::fadeAnimationTimerFired)
     , m_fadeAnimationStartTime(0)
     , m_fadeAnimationDuration(fadeAnimationDuration)
     , m_fadeAnimationType(NoAnimation)
     , m_fractionFadedIn(1)
     , m_overlayType(overlayType)
     , m_backgroundColor(Color::transparent)
+    , m_pageOverlayID(generatePageOverlayID())
 {
 }
 
@@ -225,7 +232,7 @@ void PageOverlay::startFadeAnimation()
     m_fadeAnimationTimer.startRepeating(1 / fadeAnimationFrameRate);
 }
 
-void PageOverlay::fadeAnimationTimerFired(Timer&)
+void PageOverlay::fadeAnimationTimerFired()
 {
     float animationProgress = (currentTime() - m_fadeAnimationStartTime) / m_fadeAnimationDuration;
 

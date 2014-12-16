@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2014 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,11 +27,15 @@
 #include "config.h"
 #include "DOMTimer.h"
 
+#include "FrameView.h"
 #include "HTMLPlugInElement.h"
 #include "InspectorInstrumentation.h"
+#include "Logging.h"
+#include "Page.h"
 #include "PluginViewBase.h"
 #include "ScheduledAction.h"
 #include "ScriptExecutionContext.h"
+#include "Settings.h"
 #include "UserGestureIndicator.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
@@ -43,45 +47,76 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Frame.h"
-#include "Page.h"
 #include "WKContentObservation.h"
 #endif
 
 namespace WebCore {
 
 static const int maxIntervalForUserGestureForwarding = 1000; // One second matches Gecko.
-static const int minIntervalForNonUserObservablePluginScriptTimers = 1000; // Empirically determined to maximize battery life.
+static const int minIntervalForNonUserObservableChangeTimers = 1000; // Empirically determined to maximize battery life.
 static const int maxTimerNestingLevel = 5;
 static const double oneMillisecond = 0.001;
 
-struct DOMTimerFireState {
+class DOMTimerFireState {
+public:
     explicit DOMTimerFireState(ScriptExecutionContext& context)
-        : scriptDidInteractWithNonUserObservablePlugin(false)
-        , scriptDidInteractWithUserObservablePlugin(false)
-        , shouldSetCurrent(is<Document>(context))
+        : m_context(context)
+        , m_contextIsDocument(is<Document>(m_context))
     {
         // For worker threads, don't update the current DOMTimerFireState.
         // Setting this from workers would not be thread-safe, and its not relevant to current uses.
-        if (shouldSetCurrent) {
-            previous = current;
+        if (m_contextIsDocument) {
+            m_initialDOMTreeVersion = downcast<Document>(context).domTreeVersion();
+            m_previous = current;
             current = this;
         }
     }
 
     ~DOMTimerFireState()
     {
-        if (shouldSetCurrent)
-            current = previous;
+        if (m_contextIsDocument)
+            current = m_previous;
+    }
+
+    Document* contextDocument() const { return m_contextIsDocument ? &downcast<Document>(m_context) : nullptr; }
+
+    void setScriptMadeUserObservableChanges() { m_scriptMadeUserObservableChanges = true; }
+    void setScriptMadeNonUserObservableChanges() { m_scriptMadeNonUserObservableChanges = true; }
+    void setScriptMadeNonUserObservableChangesToElement(Element& element)
+    {
+        m_scriptMadeNonUserObservableChanges = true;
+        m_elementsChangedOutsideViewport.add(&element);
+    }
+
+    bool scriptMadeNonUserObservableChanges() const { return m_scriptMadeNonUserObservableChanges; }
+    bool scriptMadeUserObservableChanges() const
+    {
+        if (m_scriptMadeUserObservableChanges)
+            return true;
+
+        Document* document = contextDocument();
+        // To be conservative, we also consider any DOM Tree change to be user observable.
+        return document && document->domTreeVersion() != m_initialDOMTreeVersion;
+    }
+
+    void elementsChangedOutsideViewport(Vector<WeakPtr<Element>>& elements) const
+    {
+        ASSERT(elements.isEmpty());
+        elements.reserveCapacity(m_elementsChangedOutsideViewport.size());
+        for (auto& element : m_elementsChangedOutsideViewport)
+            elements.uncheckedAppend(element->createWeakPtr());
     }
 
     static DOMTimerFireState* current;
 
-    bool scriptDidInteractWithNonUserObservablePlugin;
-    bool scriptDidInteractWithUserObservablePlugin;
-
 private:
-    bool shouldSetCurrent;
-    DOMTimerFireState* previous;
+    ScriptExecutionContext& m_context;
+    uint64_t m_initialDOMTreeVersion;
+    DOMTimerFireState* m_previous;
+    HashSet<RefPtr<Element>> m_elementsChangedOutsideViewport;
+    bool m_contextIsDocument;
+    bool m_scriptMadeNonUserObservableChanges { false };
+    bool m_scriptMadeUserObservableChanges { false };
 };
 
 DOMTimerFireState* DOMTimerFireState::current = nullptr;
@@ -170,6 +205,14 @@ DOMTimer::DOMTimer(ScriptExecutionContext& context, std::unique_ptr<ScheduledAct
         startRepeating(m_currentTimerInterval);
 }
 
+DOMTimer::~DOMTimer()
+{
+    // If the ScriptExecutionContext has already been destroyed, there is
+    // no need to stop listening for viewport changes.
+    if (scriptExecutionContext() && isIntervalDependentOnViewport())
+        unregisterForViewportChanges();
+}
+
 int DOMTimer::install(ScriptExecutionContext& context, std::unique_ptr<ScheduledAction> action, int timeout, bool singleShot)
 {
     // DOMTimer constructor passes ownership of the initial ref on the object to the constructor.
@@ -212,18 +255,47 @@ void DOMTimer::removeById(ScriptExecutionContext& context, int timeoutId)
     context.removeTimeout(timeoutId);
 }
 
+inline bool DOMTimer::isDOMTimersThrottlingEnabled(Document& document) const
+{
+    auto* page = document.page();
+    if (!page)
+        return true;
+    return page->settings().domTimersThrottlingEnabled();
+}
+
 void DOMTimer::updateThrottlingStateIfNecessary(const DOMTimerFireState& fireState)
 {
-    if (fireState.scriptDidInteractWithUserObservablePlugin) {
+    Document* contextDocument = fireState.contextDocument();
+    // We don't throttle timers in worker threads.
+    if (!contextDocument)
+        return;
+
+    if (UNLIKELY(!isDOMTimersThrottlingEnabled(*contextDocument))) {
+        if (m_throttleState == ShouldThrottle) {
+            // Unthrottle the timer in case it was throttled before the setting was updated.
+            LOG(DOMTimers, "%p - Unthrottling DOM timer because throttling was disabled via settings.", this);
+            m_throttleState = ShouldNotThrottle;
+            updateTimerIntervalIfNecessary();
+        }
+        return;
+    }
+
+    if (fireState.scriptMadeUserObservableChanges()) {
+        ASSERT(m_elementsCausingThrottling.isEmpty());
         if (m_throttleState != ShouldNotThrottle) {
             m_throttleState = ShouldNotThrottle;
             updateTimerIntervalIfNecessary();
         }
-    } else if (fireState.scriptDidInteractWithNonUserObservablePlugin) {
+    } else if (fireState.scriptMadeNonUserObservableChanges()) {
         if (m_throttleState != ShouldThrottle) {
             m_throttleState = ShouldThrottle;
             updateTimerIntervalIfNecessary();
         }
+        // Update our vector of Elements causing throttling and register
+        // for viewport changes if the vector is not empty.
+        fireState.elementsChangedOutsideViewport(m_elementsCausingThrottling);
+        if (isIntervalDependentOnViewport())
+            registerForViewportChanges();
     }
 }
 
@@ -233,9 +305,26 @@ void DOMTimer::scriptDidInteractWithPlugin(HTMLPlugInElement& pluginElement)
         return;
 
     if (pluginElement.isUserObservable())
-        DOMTimerFireState::current->scriptDidInteractWithUserObservablePlugin = true;
+        DOMTimerFireState::current->setScriptMadeUserObservableChanges();
     else
-        DOMTimerFireState::current->scriptDidInteractWithNonUserObservablePlugin = true;
+        DOMTimerFireState::current->setScriptMadeNonUserObservableChanges();
+}
+
+void DOMTimer::scriptDidCauseElementRepaint(Element& element, bool changed)
+{
+    if (!DOMTimerFireState::current)
+        return;
+
+    if (!changed) {
+        // The script set a CSS property on the Element but it did not cause any change.
+        DOMTimerFireState::current->setScriptMadeNonUserObservableChanges();
+        return;
+    }
+
+    if (element.isInsideViewport())
+        DOMTimerFireState::current->setScriptMadeUserObservableChanges();
+    else
+        DOMTimerFireState::current->setScriptMadeNonUserObservableChangesToElement(element);
 }
 
 void DOMTimer::fired()
@@ -249,6 +338,10 @@ void DOMTimer::fired()
     ScriptExecutionContext& context = *scriptExecutionContext();
 
     DOMTimerFireState fireState(context);
+    if (isIntervalDependentOnViewport()) {
+        // We re-evaluate if the timer interval is dependent on the viewport every time it fires.
+        unregisterForViewportChanges();
+    }
 
 #if PLATFORM(IOS)
     Document* document = nullptr;
@@ -341,6 +434,22 @@ void DOMTimer::didStop()
     m_action = nullptr;
 }
 
+void DOMTimer::registerForViewportChanges()
+{
+    ASSERT(isIntervalDependentOnViewport());
+    if (auto* frameView = downcast<Document>(*scriptExecutionContext()).view())
+        frameView->registerThrottledDOMTimer(this);
+}
+
+void DOMTimer::unregisterForViewportChanges()
+{
+    ASSERT(scriptExecutionContext());
+    if (auto* frameView = downcast<Document>(*scriptExecutionContext()).view())
+        frameView->unregisterThrottledDOMTimer(this);
+
+    m_elementsCausingThrottling.clear();
+}
+
 void DOMTimer::updateTimerIntervalIfNecessary()
 {
     ASSERT(m_nestingLevel <= maxTimerNestingLevel);
@@ -348,14 +457,37 @@ void DOMTimer::updateTimerIntervalIfNecessary()
     double previousInterval = m_currentTimerInterval;
     m_currentTimerInterval = intervalClampedToMinimum();
 
-    if (WTF::areEssentiallyEqual(previousInterval, m_currentTimerInterval))
+    if (WTF::areEssentiallyEqual(previousInterval, m_currentTimerInterval, oneMillisecond))
         return;
 
     if (repeatInterval()) {
-        ASSERT(WTF::areEssentiallyEqual(repeatInterval(), previousInterval));
+        ASSERT(WTF::areEssentiallyEqual(repeatInterval(), previousInterval, oneMillisecond));
+        LOG(DOMTimers, "%p - Updating DOMTimer's repeat interval from %g ms to %g ms due to throttling.", this, previousInterval * 1000., m_currentTimerInterval * 1000.);
         augmentRepeatInterval(m_currentTimerInterval - previousInterval);
-    } else
+    } else {
+        LOG(DOMTimers, "%p - Updating DOMTimer's fire interval from %g ms to %g ms due to throttling.", this, previousInterval * 1000., m_currentTimerInterval * 1000.);
         augmentFireInterval(m_currentTimerInterval - previousInterval);
+    }
+}
+
+void DOMTimer::updateThrottlingStateAfterViewportChange(const IntRect& visibleRect)
+{
+    ASSERT(isIntervalDependentOnViewport());
+    // Check if the elements that caused this timer to be throttled are still outside the viewport.
+    for (auto& weakElementPtr : m_elementsCausingThrottling) {
+        Element* element = weakElementPtr.get();
+        // Skip elements that were removed from the document.
+        if (!element || !element->inDocument())
+            continue;
+
+        if (element->isInsideViewport(&visibleRect)) {
+            LOG(DOMTimers, "%p - Script is changing style of an element that is now inside the viewport, unthrottling the timer.", this);
+            m_throttleState = ShouldNotThrottle;
+            unregisterForViewportChanges();
+            updateTimerIntervalIfNecessary();
+            break;
+        }
+    }
 }
 
 double DOMTimer::intervalClampedToMinimum() const
@@ -372,7 +504,7 @@ double DOMTimer::intervalClampedToMinimum() const
     // Apply two throttles - the global (per Page) minimum, and also a per-timer throttle.
     intervalInSeconds = std::max(intervalInSeconds, scriptExecutionContext()->minimumTimerInterval());
     if (m_throttleState == ShouldThrottle)
-        intervalInSeconds = std::max(intervalInSeconds, minIntervalForNonUserObservablePluginScriptTimers * oneMillisecond);
+        intervalInSeconds = std::max(intervalInSeconds, minIntervalForNonUserObservableChangeTimers * oneMillisecond);
     return intervalInSeconds;
 }
 

@@ -198,10 +198,11 @@ void MediaControlsHost::enterFullscreenOptimized()
 bool MediaControlsHost::optimizedFullscreenSupported()
 {
 #if PLATFORM(IOS)
-    return wkIsOptimizedFullscreenSupported();
-#else
-    return false;
+    if (!wkIsOptimizedFullscreenSupported())
+        return false;
 #endif
+
+    return m_mediaElement->mediaSession().allowsAlternateFullscreen(*m_mediaElement);
 }
 
 void MediaControlsHost::updateCaptionDisplaySizes()
@@ -293,19 +294,12 @@ String MediaControlsHost::fullscreenMode() const
     DEPRECATED_DEFINE_STATIC_LOCAL(String, optimized, (ASCIILiteral("optimized")));
     String mode = none;
 
-    enum VideoFullscreenMode { VideoFullscreenModeNone, VideoFullscreenModeStandard, VideoFullscreenModeOptimized };
-
-    switch (m_mediaElement->fullscreenMode()) {
-    case HTMLMediaElement::VideoFullscreenModeNone:
+    if (m_mediaElement->fullscreenMode() == HTMLMediaElement::VideoFullscreenModeNone)
         mode = none;
-        break;
-    case HTMLMediaElement::VideoFullscreenModeStandard:
+    else if (m_mediaElement->fullscreenMode() == HTMLMediaElement::VideoFullscreenModeStandard)
         mode = standard;
-        break;
-    case HTMLMediaElement::VideoFullscreenModeOptimized:
+    else if (m_mediaElement->fullscreenMode() & HTMLMediaElement::VideoFullscreenModeOptimized)
         mode = optimized;
-        break;
-    }
     
     LOG(Media, "MediaControlsHost::fullscreenMode - returning \"%s\"", mode.utf8().data());
 
@@ -317,9 +311,6 @@ String MediaControlsHost::mediaUIImageData(const String& partID) const
 #if PLATFORM(IOS)
     if (partID == "optimized-fullscreen-button")
         return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenButton);
-
-    if (partID == "optimized-fullscreen-button-hilited")
-        return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenButtonHilited);
 
     if (partID == "optimized-fullscreen-placeholder")
         return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenPlaceholder);

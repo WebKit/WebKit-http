@@ -42,13 +42,16 @@ class RenderMathMLRoot : public RenderMathMLBlock {
 friend class RenderMathMLRootWrapper;
 
 public:
-    RenderMathMLRoot(Element&, PassRef<RenderStyle>);
-    RenderMathMLRoot(Document&, PassRef<RenderStyle>);
+    RenderMathMLRoot(Element&, Ref<RenderStyle>&&);
+    RenderMathMLRoot(Document&, Ref<RenderStyle>&&);
 
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
     virtual void updateFromElement() override;
     
+    RenderMathMLRootWrapper* baseWrapper() const;
+    RenderMathMLRootWrapper* indexWrapper() const;
+
 protected:
     virtual void layout() override;
     
@@ -61,9 +64,7 @@ private:
     void updateStyle();
     void restructureWrappers();
 
-    RenderMathMLRootWrapper* baseWrapper() const;
     RenderMathMLBlock* radicalWrapper() const;
-    RenderMathMLRootWrapper* indexWrapper() const;
     RenderMathMLRadicalOperator* radicalOperator() const;
 
     LayoutUnit m_verticalGap;
@@ -78,12 +79,12 @@ class RenderMathMLRootWrapper final : public RenderMathMLRow {
 friend class RenderMathMLRoot;
 
 public:
-    RenderMathMLRootWrapper(Document& document, PassRef<RenderStyle> style)
+    RenderMathMLRootWrapper(Document& document, Ref<RenderStyle>&& style)
         : RenderMathMLRow(document, WTF::move(style)) { }
 
 private:
-    RenderObject* removeChildWithoutRestructuring(RenderObject&);
-    virtual RenderObject* removeChild(RenderObject&) override;
+    void removeChildWithoutRestructuring(RenderObject&);
+    virtual void removeChild(RenderObject&) override;
     static RenderPtr<RenderMathMLRootWrapper> createAnonymousWrapper(RenderMathMLRoot* renderObject);
     virtual bool isRenderMathMLRootWrapper() const override { return true; }
     virtual const char* renderName() const override { return "RenderMathMLRootWrapper"; }

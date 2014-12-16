@@ -23,7 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "WebPlatformStrategies.h"
 
 #include "FrameLoader.h"
@@ -74,11 +73,6 @@ PluginStrategy* WebPlatformStrategies::createPluginStrategy()
 }
 
 SharedWorkerStrategy* WebPlatformStrategies::createSharedWorkerStrategy()
-{
-    return this;
-}
-
-StorageStrategy* WebPlatformStrategies::createStorageStrategy()
 {
     return this;
 }

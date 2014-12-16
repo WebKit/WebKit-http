@@ -190,7 +190,7 @@ void TextFieldInputType::forwardEvent(Event* event)
         || event->type() == eventNames().blurEvent
         || event->type() == eventNames().focusEvent)
     {
-        element().document().updateStyleIfNeededForNode(element());
+        element().document().updateStyleIfNeeded();
 
         if (element().renderer()) {
             RenderTextControlSingleLine& renderTextControl = downcast<RenderTextControlSingleLine>(*element().renderer());
@@ -223,7 +223,7 @@ bool TextFieldInputType::shouldSubmitImplicitly(Event* event)
         || InputType::shouldSubmitImplicitly(event);
 }
 
-RenderPtr<RenderElement> TextFieldInputType::createInputRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> TextFieldInputType::createInputRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderTextControlSingleLine>(element(), WTF::move(style));
 }
@@ -255,6 +255,7 @@ void TextFieldInputType::createShadowSubtree()
     m_innerText = TextControlInnerTextElement::create(document);
     if (!createsContainer) {
         element().userAgentShadowRoot()->appendChild(m_innerText, IGNORE_EXCEPTION);
+        updatePlaceholderText();
         return;
     }
 
@@ -266,6 +267,8 @@ void TextFieldInputType::createShadowSubtree()
     m_innerBlock = TextControlInnerElement::create(document);
     m_innerBlock->appendChild(m_innerText, IGNORE_EXCEPTION);
     m_container->appendChild(m_innerBlock, IGNORE_EXCEPTION);
+
+    updatePlaceholderText();
 
     if (shouldHaveSpinButton) {
         m_innerSpinButton = SpinButtonElement::create(document, *this);
@@ -381,7 +384,10 @@ void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent* 
     unsigned selectionLength = 0;
     if (element().focused()) {
         ASSERT(enclosingTextFormControl(element().document().frame()->selection().selection().start()) == &element());
-        selectionLength = numGraphemeClusters(innerText.substring(element().selectionStart(), element().selectionEnd()));
+        int selectionStart = element().selectionStart();
+        ASSERT(selectionStart <= element().selectionEnd());
+        int selectionCodeUnitCount = element().selectionEnd() - selectionStart;
+        selectionLength = selectionCodeUnitCount ? numGraphemeClusters(innerText.substring(selectionStart, selectionCodeUnitCount)) : 0;
     }
     ASSERT(oldLength >= selectionLength);
 

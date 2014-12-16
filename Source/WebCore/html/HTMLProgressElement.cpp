@@ -50,14 +50,14 @@ HTMLProgressElement::~HTMLProgressElement()
 {
 }
 
-PassRefPtr<HTMLProgressElement> HTMLProgressElement::create(const QualifiedName& tagName, Document& document)
+RefPtr<HTMLProgressElement> HTMLProgressElement::create(const QualifiedName& tagName, Document& document)
 {
     RefPtr<HTMLProgressElement> progress = adoptRef(new HTMLProgressElement(tagName, document));
     progress->ensureUserAgentShadowRoot();
-    return progress.release();
+    return progress;
 }
 
-RenderPtr<RenderElement> HTMLProgressElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLProgressElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     if (!style.get().hasAppearance())
         return RenderElement::createFor(*this, WTF::move(style));

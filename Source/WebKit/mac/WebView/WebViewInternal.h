@@ -41,28 +41,32 @@
 #import <WebCore/LayoutMilestones.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/WebCoreKeyboardUIMode.h>
-
-#include <wtf/Forward.h>
-#include <wtf/RetainPtr.h>
+#import <functional>
+#import <wtf/Forward.h>
+#import <wtf/RetainPtr.h>
 
 namespace WebCore {
 class Element;
 class Event;
 class Frame;
+class HTMLVideoElement;
 class HistoryItem;
-class URL;
 class KeyboardEvent;
 class Page;
 class RenderBox;
-class HTMLVideoElement;
+class TextIndicator;
+class URL;
 struct DictationAlternative;
 }
 
+struct DictionaryPopupInfo;
 class WebSelectionServiceController;
 #endif
 
+@class WebActionMenuController;
 @class WebBasePluginPackage;
 @class WebDownload;
+@class WebImmediateActionController;
 @class WebNodeHighlight;
 
 #ifdef __cplusplus
@@ -253,5 +257,16 @@ OBJC_CLASS NSTextAlternatives;
 // Conversion functions between WebCore root view coordinates and web view coordinates.
 - (NSPoint)_convertPointFromRootView:(NSPoint)point;
 - (NSRect)_convertRectFromRootView:(NSRect)rect;
+
+#if PLATFORM(MAC) && defined(__cplusplus)
+- (void)_setTextIndicator:(WebCore::TextIndicator*)textIndicator fadeOut:(BOOL)fadeOut animationCompletionHandler:(std::function<void ()>)completionHandler;
+- (void)_clearTextIndicator;
+- (void)_showDictionaryLookupPopup:(const DictionaryPopupInfo&)dictionaryPopupInfo;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+- (id)_animationControllerForDictionaryLookupPopupInfo:(const DictionaryPopupInfo&)dictionaryPopupInfo;
+- (WebActionMenuController *)_actionMenuController;
+- (WebImmediateActionController *)_immediateActionController;
+#endif
+#endif
 
 @end

@@ -255,7 +255,7 @@ bool WebEditorClient::isSelectTrailingWhitespaceEnabled()
 
 bool WebEditorClient::shouldApplyStyle(StyleProperties* style, Range* range)
 {
-    Ref<MutableStyleProperties> mutableStyle(style->isMutable() ? static_cast<MutableStyleProperties&>(*style) : style->mutableCopy());
+    Ref<MutableStyleProperties> mutableStyle(style->isMutable() ? Ref<MutableStyleProperties>(static_cast<MutableStyleProperties&>(*style)) : style->mutableCopy());
     return [[m_webView _editingDelegateForwarder] webView:m_webView
         shouldApplyStyle:kit(mutableStyle->ensureCSSStyleDeclaration()) toElementsInDOMRange:kit(range)];
 }
@@ -351,6 +351,11 @@ void WebEditorClient::respondToChangedSelection(Frame* frame)
     if (![m_webView _isClosing])
         WebThreadPostNotification(WebViewDidChangeSelectionNotification, m_webView, nil);
 #endif
+}
+
+void WebEditorClient::discardedComposition(Frame*)
+{
+    // The effects of this function are currently achieved via -[WebHTMLView _updateSelectionForInputManager].
 }
 
 void WebEditorClient::didEndEditing()

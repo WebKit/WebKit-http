@@ -92,6 +92,7 @@
 #include "Storage.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
+#include "StorageNamespaceProvider.h"
 #include "StyleMedia.h"
 #include "StyleResolver.h"
 #include "SuddenTermination.h"
@@ -856,10 +857,11 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
         return nullptr;
 
     RefPtr<StorageArea> storageArea;
-    if (!document->securityOrigin()->canAccessLocalStorage(document->topOrigin()))
-        storageArea = page->group().transientLocalStorage(document->topOrigin())->storageArea(document->securityOrigin());
+
+    if (document->securityOrigin()->canAccessLocalStorage(document->topOrigin()))
+        storageArea = page->storageNamespaceProvider().localStorageNamespace().storageArea(document->securityOrigin());
     else
-        storageArea = page->group().localStorage()->storageArea(document->securityOrigin());
+        storageArea = page->storageNamespaceProvider().transientLocalStorageNamespace(*document->topOrigin()).storageArea(document->securityOrigin());
 
     if (!storageArea->canAccessStorage(m_frame)) {
         ec = SECURITY_ERR;

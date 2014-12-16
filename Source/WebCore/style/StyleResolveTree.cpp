@@ -253,7 +253,7 @@ static bool shouldCreateRenderer(const Element& element, const RenderElement& pa
     return true;
 }
 
-static PassRef<RenderStyle> styleForElement(Element& element, RenderStyle& inheritedStyle)
+static Ref<RenderStyle> styleForElement(Element& element, RenderStyle& inheritedStyle)
 {
     if (element.hasCustomStyleResolveCallbacks()) {
         if (RefPtr<RenderStyle> style = element.customStyleForRenderer(inheritedStyle))
@@ -579,8 +579,6 @@ static void resetStyleForNonRenderedDescendants(Element& current)
 
 static bool needsPseudoElement(Element& current, PseudoId pseudoId)
 {
-    if (!current.document().styleSheetCollection().usesBeforeAfterRules())
-        return false;
     if (!current.renderer() || !current.renderer()->canHaveGeneratedChildren())
         return false;
     if (current.isPseudoElement())
@@ -986,8 +984,6 @@ void resolveTree(Document& document, Change change)
         Style::Change documentChange = determineChange(documentStyle.get(), document.renderView()->style());
         if (documentChange != NoChange)
             document.renderView()->setStyle(WTF::move(documentStyle));
-        else
-            documentStyle.dropRef();
     }
 
     Element* documentElement = document.documentElement();

@@ -51,13 +51,6 @@ typedef struct _SoupRequest SoupRequest;
 typedef const struct __CFData * CFDataRef;
 #endif
 
-#if USE(WININET)
-typedef unsigned long DWORD;
-typedef unsigned long DWORD_PTR;
-typedef void* LPVOID;
-typedef LPVOID HINTERNET;
-#endif
-
 #if PLATFORM(COCOA)
 OBJC_CLASS NSCachedURLResponse;
 OBJC_CLASS NSData;
@@ -180,14 +173,6 @@ public:
 
     WEBCORE_EXPORT static void forceContentSniffing();
 
-#if USE(WININET)
-    void setSynchronousInternetHandle(HINTERNET);
-    void fileLoadTimer(Timer*);
-    void onRedirect();
-    bool onRequestComplete();
-    static void CALLBACK internetStatusCallback(HINTERNET, DWORD_PTR, DWORD, LPVOID, DWORD);
-#endif
-
 #if USE(CURL) || USE(SOUP)
     ResourceHandleInternal* getInternal() { return d.get(); }
 #endif
@@ -204,9 +189,6 @@ public:
     static void setIgnoreSSLErrors(bool);
     double m_requestTime;
 #endif
-
-    // Used to work around the fact that you don't get any more NSURLConnection callbacks until you return from the one you're in.
-    static bool loadsBlocked();    
 
     bool hasAuthenticationChallenge() const;
     void clearAuthentication();
@@ -240,7 +222,7 @@ public:
     WEBCORE_EXPORT ResourceRequest& firstRequest();
     const String& lastHTTPMethod() const;
 
-    void failureTimerFired(Timer&);
+    void failureTimerFired();
 
     NetworkingContext* context() const;
 

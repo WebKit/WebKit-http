@@ -32,7 +32,7 @@ public:
     MAKE_GLIB_TEST_FIXTURE(UserContentManagerTest);
 
     UserContentManagerTest()
-        : WebViewTest(WEBKIT_WEB_VIEW(webkit_web_view_new_with_user_content_manager(webkit_user_content_manager_new())))
+        : WebViewTest(webkit_user_content_manager_new())
     {
         // A reference is leaked when passing the result of webkit_user_content_manager_new()
         // directly to webkit_web_view_new_with_user_content_manager() above. Adopting the
@@ -349,13 +349,23 @@ static void testUserContentManagerScriptMessageFromDOMBindings(UserScriptMessage
 {
     g_assert(test->registerHandler("dom"));
 
-    test->loadHtml("<html></html>", nullptr);
+    test->loadHtml("<html>1</html>", nullptr);
     WebKitJavascriptResult* javascriptResult = test->waitUntilMessageReceived("dom");
     g_assert(javascriptResult);
     GUniquePtr<char> valueString(WebViewTest::javascriptResultToCString(javascriptResult));
     g_assert_cmpstr(valueString.get(), ==, "DocumentLoaded");
 
     test->unregisterHandler("dom");
+
+    g_assert(test->registerHandler("dom-convenience"));
+
+    test->loadHtml("<html>2</html>", nullptr);
+    javascriptResult = test->waitUntilMessageReceived("dom-convenience");
+    g_assert(javascriptResult);
+    valueString.reset(WebViewTest::javascriptResultToCString(javascriptResult));
+    g_assert_cmpstr(valueString.get(), ==, "DocumentLoaded");
+
+    test->unregisterHandler("dom-convenience");
 }
 
 static void serverCallback(SoupServer* server, SoupMessage* message, const char* path, GHashTable*, SoupClientContext*, gpointer)
@@ -367,7 +377,6 @@ static void serverCallback(SoupServer* server, SoupMessage* message, const char*
 
 void beforeAll()
 {
-    webkit_web_context_set_web_extensions_directory(webkit_web_context_get_default(), WEBKIT_TEST_WEB_EXTENSIONS_DIR);
     kServer = new WebKitTestServer();
     kServer->run(serverCallback);
 

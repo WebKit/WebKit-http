@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "ArrayConstructor.h"
+#include "BasicBlockLocation.h"
 #include "CallLinkStatus.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
@@ -262,13 +263,11 @@ private:
                 JSFunction* callee = inlineCallFrame()->calleeConstant();
                 if (operand.offset() == JSStack::Callee)
                     return weakJSConstant(callee);
-                if (operand.offset() == JSStack::ScopeChain)
+                if (operand == m_inlineStackTop->m_codeBlock->scopeRegister())
                     return weakJSConstant(callee->scope());
             }
         } else if (operand.offset() == JSStack::Callee)
             return addToGraph(GetCallee);
-        else if (operand.offset() == JSStack::ScopeChain)
-            return addToGraph(GetMyScope);
         
         return getDirect(m_inlineStackTop->remapOperand(operand));
     }
@@ -526,10 +525,8 @@ private:
         int numArguments;
         if (InlineCallFrame* inlineCallFrame = inlineStackEntry->m_inlineCallFrame) {
             numArguments = inlineCallFrame->arguments.size();
-            if (inlineCallFrame->isClosureCall) {
+            if (inlineCallFrame->isClosureCall)
                 flushDirect(inlineStackEntry->remapOperand(VirtualRegister(JSStack::Callee)));
-                flushDirect(inlineStackEntry->remapOperand(VirtualRegister(JSStack::ScopeChain)));
-            }
         } else
             numArguments = inlineStackEntry->m_codeBlock->numParameters();
         for (unsigned argument = numArguments; argument-- > 1;)
@@ -1262,11 +1259,8 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
     if (callee.isClosureCall()) {
         VariableAccessData* calleeVariable =
             set(VirtualRegister(JSStack::Callee), callTargetNode, ImmediateNakedSet)->variableAccessData();
-        VariableAccessData* scopeVariable =
-            set(VirtualRegister(JSStack::ScopeChain), addToGraph(GetScope, callTargetNode), ImmediateNakedSet)->variableAccessData();
         
         calleeVariable->mergeShouldNeverUnbox(true);
-        scopeVariable->mergeShouldNeverUnbox(true);
         
         inlineVariableData.calleeVariable = calleeVariable;
     }
@@ -2025,7 +2019,7 @@ void ByteCodeParser::handleGetById(
 {
     NodeType getById = getByIdStatus.makesCalls() ? GetByIdFlush : GetById;
     
-    if (!getByIdStatus.isSimple() || !Options::enableAccessInlining()) {
+    if (!getByIdStatus.isSimple() || !getByIdStatus.numVariants() || !Options::enableAccessInlining()) {
         set(VirtualRegister(destinationOperand),
             addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
         return;
@@ -2140,7 +2134,7 @@ void ByteCodeParser::handlePutById(
     Node* base, unsigned identifierNumber, Node* value,
     const PutByIdStatus& putByIdStatus, bool isDirect)
 {
-    if (!putByIdStatus.isSimple() || !Options::enableAccessInlining()) {
+    if (!putByIdStatus.isSimple() || !putByIdStatus.numVariants() || !Options::enableAccessInlining()) {
         if (!putByIdStatus.isSet())
             addToGraph(ForceOSRExit);
         emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
@@ -2841,7 +2835,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             Node* base = get(VirtualRegister(currentInstruction[2].u.operand));
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
             
-            StringImpl* uid = m_graph.identifiers()[identifierNumber];
+            AtomicStringImpl* uid = m_graph.identifiers()[identifierNumber];
             GetByIdStatus getByIdStatus = GetByIdStatus::computeFor(
                 m_inlineStackTop->m_profiledBlock, m_dfgCodeBlock,
                 m_inlineStackTop->m_stubInfos, m_dfgStubInfos,
@@ -2889,6 +2883,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             Node* valueToProfile = get(VirtualRegister(currentInstruction[1].u.operand));
             addToGraph(ProfileType, OpInfo(currentInstruction[2].u.location), valueToProfile);
             NEXT_OPCODE(op_profile_type);
+        }
+
+        case op_profile_control_flow: {
+            BasicBlockLocation* basicBlockLocation = currentInstruction[1].u.basicBlockLocation;
+            addToGraph(ProfileControlFlow, OpInfo(basicBlockLocation));
+            NEXT_OPCODE(op_profile_control_flow);
         }
 
         // === Block terminators. ===
@@ -3195,10 +3195,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 if (lexicalEnvironment
                     && lexicalEnvironment->symbolTable()->m_functionEnteredOnce.isStillValid()) {
                     addToGraph(FunctionReentryWatchpoint, OpInfo(lexicalEnvironment->symbolTable()));
+                    addToGraph(Phantom, getDirect(m_inlineStackTop->remapOperand(VirtualRegister(currentInstruction[2].u.operand))));
                     set(VirtualRegister(dst), weakJSConstant(lexicalEnvironment));
                     break;
                 }
                 set(VirtualRegister(dst), getScope(VirtualRegister(currentInstruction[2].u.operand), depth));
+                if (inlineCallFrame())
+                    addToGraph(Phantom, getDirect(m_inlineStackTop->remapOperand(VirtualRegister(currentInstruction[2].u.operand))));
                 break;
             }
             case Dynamic:
@@ -3212,7 +3215,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int dst = currentInstruction[1].u.operand;
             int scope = currentInstruction[2].u.operand;
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
-            StringImpl* uid = m_graph.identifiers()[identifierNumber];
+            AtomicStringImpl* uid = m_graph.identifiers()[identifierNumber];
             ResolveType resolveType = ResolveModeAndType(currentInstruction[4].u.operand).type();
 
             Structure* structure = 0;
@@ -3301,7 +3304,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[2].u.operand];
             unsigned value = currentInstruction[3].u.operand;
             ResolveType resolveType = ResolveModeAndType(currentInstruction[4].u.operand).type();
-            StringImpl* uid = m_graph.identifiers()[identifierNumber];
+            AtomicStringImpl* uid = m_graph.identifiers()[identifierNumber];
 
             Structure* structure = 0;
             VariableWatchpointSet* watchpoints = 0;
@@ -3395,11 +3398,14 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_create_lexical_environment: {
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(CreateActivation, get(VirtualRegister(currentInstruction[1].u.operand))));
+            Node* lexicalEnvironment = addToGraph(CreateActivation, get(VirtualRegister(currentInstruction[1].u.operand)), get(VirtualRegister(currentInstruction[2].u.operand)));
+            set(VirtualRegister(currentInstruction[1].u.operand), lexicalEnvironment);
+            set(VirtualRegister(currentInstruction[2].u.operand), lexicalEnvironment);
             NEXT_OPCODE(op_create_lexical_environment);
         }
             
         case op_get_scope: {
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(GetScope, get(VirtualRegister(JSStack::Callee))));
             NEXT_OPCODE(op_get_scope);
         }
             
@@ -3433,22 +3439,22 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_new_func: {
-            if (!currentInstruction[3].u.operand) {
+            if (!currentInstruction[4].u.operand) {
                 set(VirtualRegister(currentInstruction[1].u.operand),
-                    addToGraph(NewFunctionNoCheck, OpInfo(currentInstruction[2].u.operand)));
+                    addToGraph(NewFunctionNoCheck, OpInfo(currentInstruction[3].u.operand), get(VirtualRegister(currentInstruction[2].u.operand))));
             } else {
                 set(VirtualRegister(currentInstruction[1].u.operand),
                     addToGraph(
                         NewFunction,
-                        OpInfo(currentInstruction[2].u.operand),
-                        get(VirtualRegister(currentInstruction[1].u.operand))));
+                        OpInfo(currentInstruction[3].u.operand),
+                        get(VirtualRegister(currentInstruction[1].u.operand)), get(VirtualRegister(currentInstruction[2].u.operand))));
             }
             NEXT_OPCODE(op_new_func);
         }
 
         case op_new_func_exp: {
             set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(NewFunctionExpression, OpInfo(currentInstruction[2].u.operand)));
+                addToGraph(NewFunctionExpression, OpInfo(currentInstruction[3].u.operand), get(VirtualRegister(currentInstruction[2].u.operand))));
             NEXT_OPCODE(op_new_func_exp);
         }
 
@@ -3710,7 +3716,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         m_switchRemap.resize(codeBlock->numberOfSwitchJumpTables());
 
         for (size_t i = 0; i < codeBlock->numberOfIdentifiers(); ++i) {
-            StringImpl* rep = codeBlock->identifier(i).impl();
+            AtomicStringImpl* rep = codeBlock->identifier(i).impl();
             BorrowedIdentifierMap::AddResult result = byteCodeParser->m_identifierMap.add(rep, byteCodeParser->m_graph.identifiers().numberOfIdentifiers());
             if (result.isNewEntry)
                 byteCodeParser->m_graph.identifiers().addLazily(rep);

@@ -35,7 +35,7 @@ class RenderTextFragment;
 // to date as the button changes.
 class RenderButton final : public RenderFlexibleBox {
 public:
-    RenderButton(HTMLFormControlElement&, PassRef<RenderStyle>);
+    RenderButton(HTMLFormControlElement&, Ref<RenderStyle>&&);
     virtual ~RenderButton();
 
     HTMLFormControlElement& formControlElement() const;
@@ -43,7 +43,7 @@ public:
     virtual bool canBeSelectionLeaf() const override;
 
     virtual void addChild(RenderObject* newChild, RenderObject *beforeChild = 0) override;
-    virtual RenderObject* removeChild(RenderObject&) override;
+    virtual void removeChild(RenderObject&) override;
     virtual void removeLeftoverAnonymousBlock(RenderBlock*) override { }
     virtual bool createsAnonymousWrapper() const override { return true; }
 
@@ -74,7 +74,7 @@ private:
 
     virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
 
-    void timerFired(Timer&);
+    void timerFired();
 
     RenderTextFragment* m_buttonText;
     RenderBlock* m_inner;

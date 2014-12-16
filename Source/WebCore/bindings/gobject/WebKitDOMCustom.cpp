@@ -20,9 +20,12 @@
 #include "WebKitDOMCustom.h"
 
 #include "JSMainThreadExecState.h"
+#include "SerializedScriptValue.h"
+#include "WebKitDOMDOMSettableTokenListPrivate.h"
 #include "WebKitDOMDOMWindowPrivate.h"
 #include "WebKitDOMHTMLInputElement.h"
 #include "WebKitDOMHTMLInputElementPrivate.h"
+#include "WebKitDOMHTMLLinkElementPrivate.h"
 #include "WebKitDOMHTMLTextAreaElement.h"
 #include "WebKitDOMHTMLTextAreaElementPrivate.h"
 #include "WebKitDOMPrivate.h"
@@ -64,3 +67,33 @@ WebKitDOMUserMessageHandler* webkit_dom_user_message_handlers_namespace_get_hand
     return kit(core(handlersNamespace)->handler(String::fromUTF8(name), WebCore::mainThreadNormalWorld()));
 }
 
+gboolean webkit_dom_dom_window_webkit_message_handlers_post_message(WebKitDOMDOMWindow* window, const gchar* handlerName, const gchar* message)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_DOM_WINDOW(window), FALSE);
+    g_return_val_if_fail(handlerName, FALSE);
+    g_return_val_if_fail(message, FALSE);
+
+    WebCore::DOMWindow* domWindow = core(window);
+    if (!domWindow->shouldHaveWebKitNamespaceForWorld(WebCore::mainThreadNormalWorld()))
+        return FALSE;
+
+    auto webkitNamespace = domWindow->webkitNamespace();
+    if (!webkitNamespace)
+        return FALSE;
+
+    auto handler = webkitNamespace->messageHandlers()->handler(String::fromUTF8(handlerName), WebCore::mainThreadNormalWorld());
+    if (!handler)
+        return FALSE;
+
+    WebCore::JSMainThreadNullState state;
+    handler->postMessage(WebCore::SerializedScriptValue::create(String::fromUTF8(message)));
+    return TRUE;
+}
+
+void webkit_dom_html_link_element_set_sizes(WebKitDOMHTMLLinkElement* linkElement, const gchar* value)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_HTML_LINK_ELEMENT(linkElement));
+    g_return_if_fail(value);
+
+    core(linkElement)->setSizes(String::fromUTF8(value));
+}

@@ -82,7 +82,7 @@ static inline void updateLogicalHeightForCell(RenderTableSection::RowStruct& row
     }
 }
 
-RenderTableSection::RenderTableSection(Element& element, PassRef<RenderStyle> style)
+RenderTableSection::RenderTableSection(Element& element, Ref<RenderStyle>&& style)
     : RenderBox(element, WTF::move(style), 0)
     , m_cCol(0)
     , m_cRow(0)
@@ -96,7 +96,7 @@ RenderTableSection::RenderTableSection(Element& element, PassRef<RenderStyle> st
     setInline(false);
 }
 
-RenderTableSection::RenderTableSection(Document& document, PassRef<RenderStyle> style)
+RenderTableSection::RenderTableSection(Document& document, Ref<RenderStyle>&& style)
     : RenderBox(document, WTF::move(style), 0)
     , m_cCol(0)
     , m_cRow(0)
@@ -1083,7 +1083,7 @@ CellSpan RenderTableSection::spannedRows(const LayoutRect& flippedRect, ShouldIn
     if (m_rowPos[nextRow] >= flippedRect.maxY())
         endRow = nextRow;
     else {
-        endRow = std::upper_bound(m_rowPos.begin() + nextRow, m_rowPos.end(), flippedRect.maxY()) - m_rowPos.begin();
+        endRow = std::upper_bound(m_rowPos.begin() + static_cast<int32_t>(nextRow), m_rowPos.end(), flippedRect.maxY()) - m_rowPos.begin();
         if (endRow == m_rowPos.size())
             endRow = m_rowPos.size() - 1;
     }
@@ -1114,7 +1114,7 @@ CellSpan RenderTableSection::spannedColumns(const LayoutRect& flippedRect, Shoul
     if (columnPos[nextColumn] >= flippedRect.maxX())
         endColumn = nextColumn;
     else {
-        endColumn = std::upper_bound(columnPos.begin() + nextColumn, columnPos.end(), flippedRect.maxX()) - columnPos.begin();
+        endColumn = std::upper_bound(columnPos.begin() + static_cast<int32_t>(nextColumn), columnPos.end(), flippedRect.maxX()) - columnPos.begin();
         if (endColumn == columnPos.size())
             endColumn = columnPos.size() - 1;
     }

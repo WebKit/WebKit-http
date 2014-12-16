@@ -50,6 +50,8 @@
 #include <webkit2/WebKitMimeInfo.h>
 #include <webkit2/WebKitNavigationAction.h>
 #include <webkit2/WebKitNavigationPolicyDecision.h>
+#include <webkit2/WebKitNotification.h>
+#include <webkit2/WebKitNotificationPermissionRequest.h>
 #include <webkit2/WebKitPermissionRequest.h>
 #include <webkit2/WebKitPlugin.h>
 #include <webkit2/WebKitPrintOperation.h>
@@ -62,6 +64,7 @@
 #include <webkit2/WebKitURISchemeRequest.h>
 #include <webkit2/WebKitUserContent.h>
 #include <webkit2/WebKitUserContentManager.h>
+#include <webkit2/WebKitUserMediaPermissionRequest.h>
 #include <webkit2/WebKitVersion.h>
 #include <webkit2/WebKitWebContext.h>
 #include <webkit2/WebKitWebInspector.h>

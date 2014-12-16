@@ -1172,6 +1172,18 @@ private:
 
             break;
         }
+
+        case CreateActivation:
+        case NewFunction: {
+            fixEdge<CellUse>(node->child2());
+            break;
+        }
+
+        case NewFunctionNoCheck:
+        case NewFunctionExpression: {
+            fixEdge<CellUse>(node->child1());
+            break;
+        }
             
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
@@ -1182,7 +1194,6 @@ private:
         case Flush:
         case PhantomLocal:
         case GetLocalUnlinked:
-        case GetMyScope:
         case GetClosureVar:
         case GetGlobalVar:
         case NotifyWrite:
@@ -1193,6 +1204,7 @@ private:
         case Construct:
         case ProfiledCall:
         case ProfiledConstruct:
+        case ProfileControlFlow:
         case NativeCall:
         case NativeConstruct:
         case NewObject:
@@ -1206,16 +1218,12 @@ private:
         case IsNumber:
         case IsObject:
         case IsFunction:
-        case CreateActivation:
         case CreateArguments:
         case PhantomArguments:
         case TearOffArguments:
         case GetMyArgumentsLength:
         case GetMyArgumentsLengthSafe:
         case CheckArgumentsNotCreated:
-        case NewFunction:
-        case NewFunctionNoCheck:
-        case NewFunctionExpression:
         case Jump:
         case Return:
         case Throw:
@@ -1433,7 +1441,7 @@ private:
     }
     
     bool isStringPrototypeMethodSane(
-        JSObject* stringPrototype, Structure* stringPrototypeStructure, StringImpl* uid)
+        JSObject* stringPrototype, Structure* stringPrototypeStructure, AtomicStringImpl* uid)
     {
         unsigned attributesUnused;
         PropertyOffset offset =

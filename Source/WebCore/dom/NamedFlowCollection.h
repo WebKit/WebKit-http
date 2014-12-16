@@ -49,7 +49,7 @@ public:
 
     Vector<RefPtr<WebKitNamedFlow>> namedFlows();
     WebKitNamedFlow* flowByName(const String&);
-    PassRef<WebKitNamedFlow> ensureFlowWithName(const String&);
+    Ref<WebKitNamedFlow> ensureFlowWithName(const String&);
 
     void discardNamedFlow(WebKitNamedFlow*);
 
@@ -63,7 +63,7 @@ private:
     struct NamedFlowHashFunctions;
     struct NamedFlowHashTranslator;
 
-    typedef ListHashSet<WebKitNamedFlow*, 1, NamedFlowHashFunctions> NamedFlowSet;
+    typedef ListHashSet<WebKitNamedFlow*, NamedFlowHashFunctions> NamedFlowSet;
 
     explicit NamedFlowCollection(Document*);
 

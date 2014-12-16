@@ -56,6 +56,9 @@ WebInspector.loaded = function()
     this.probeManager = new WebInspector.ProbeManager;
     this.replayManager = new WebInspector.ReplayManager;
 
+    // Global controllers.
+    this.quickConsole = {executionContextIdentifier: undefined};
+
     document.addEventListener("DOMContentLoaded", this.contentLoaded.bind(this));
 
     // Enable agents.
@@ -64,7 +67,8 @@ WebInspector.loaded = function()
     // Perform one-time tasks.
     WebInspector.CSSCompletions.requestCSSNameCompletions();
 
-    this.showShadowDOMSetting = new WebInspector.Setting("test-show-shadow-dom", true);
+    // Global settings.
+    this.showShadowDOMSetting = new WebInspector.Setting("show-shadow-dom", true);
 }
 
 WebInspector.contentLoaded = function()

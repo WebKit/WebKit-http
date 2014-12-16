@@ -26,20 +26,15 @@
 #include "config.h"
 #include "StorageAreaSync.h"
 
-#include "EventNames.h"
 #include "FileSystem.h"
-#include "HTMLElement.h"
 #include "SQLiteDatabaseTracker.h"
-#include "SQLiteFileSystem.h"
 #include "SQLiteStatement.h"
 #include "SQLiteTransaction.h"
-#include "SecurityOrigin.h"
 #include "StorageAreaImpl.h"
 #include "StorageSyncManager.h"
 #include "StorageTracker.h"
 #include "SuddenTermination.h"
 #include <wtf/MainThread.h>
-#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -52,7 +47,7 @@ static const double StorageSyncInterval = 1.0;
 static const int MaxiumItemsToSync = 100;
 
 inline StorageAreaSync::StorageAreaSync(PassRefPtr<StorageSyncManager> storageSyncManager, PassRefPtr<StorageAreaImpl> storageArea, const String& databaseIdentifier)
-    : m_syncTimer(this, &StorageAreaSync::syncTimerFired)
+    : m_syncTimer(*this, &StorageAreaSync::syncTimerFired)
     , m_itemsCleared(false)
     , m_finalSyncScheduled(false)
     , m_storageArea(storageArea)
@@ -108,7 +103,7 @@ void StorageAreaSync::scheduleFinalSync()
     // FIXME: This is synchronous.  We should do it on the background process, but
     // we should do it safely.
     m_finalSyncScheduled = true;
-    syncTimerFired(&m_syncTimer);
+    syncTimerFired();
 
     RefPtr<StorageAreaSync> protector(this);
     m_syncManager->dispatch([protector] {
@@ -166,7 +161,7 @@ void StorageAreaSync::scheduleCloseDatabase()
     }
 }
 
-void StorageAreaSync::syncTimerFired(Timer*)
+void StorageAreaSync::syncTimerFired()
 {
     ASSERT(isMainThread());
 
@@ -529,7 +524,7 @@ void StorageAreaSync::deleteEmptyDatabase()
             });
         } else {
             String databaseFilename = m_syncManager->fullDatabaseFilename(m_databaseIdentifier);
-            if (!SQLiteFileSystem::deleteDatabaseFile(databaseFilename))
+            if (!deleteFile(databaseFilename))
                 LOG_ERROR("Failed to delete database file %s\n", databaseFilename.utf8().data());
         }
     }
@@ -537,7 +532,7 @@ void StorageAreaSync::deleteEmptyDatabase()
 
 void StorageAreaSync::scheduleSync()
 {
-    syncTimerFired(&m_syncTimer);
+    syncTimerFired();
 }
 
 } // namespace WebCore

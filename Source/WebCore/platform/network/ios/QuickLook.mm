@@ -31,6 +31,8 @@
 #import "DocumentLoader.h"
 #import "FileSystemIOS.h"
 #import "Logging.h"
+#import "NSFileManagerSPI.h"
+#import "QuickLookSPI.h"
 #import "ResourceError.h"
 #import "ResourceHandle.h"
 #import "ResourceLoader.h"
@@ -39,9 +41,6 @@
 #import "SynchronousResourceHandleCFURLConnectionDelegate.h"
 #import "WebCoreURLResponseIOS.h"
 #import <Foundation/Foundation.h>
-#import <Foundation/NSFileManager_NSURLExtras.h>
-#import <QuickLook/QLPreviewConverter.h>
-#import <QuickLook/QuickLookPrivate.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/StdLibExtras.h>
 #import <wtf/Threading.h>
@@ -196,7 +195,7 @@ PassOwnPtr<ResourceRequest> WebCore::registerQLPreviewConverterIfNeeded(NSURL *u
     if ([WebCore::QLPreviewGetSupportedMIMETypesSet() containsObject:updatedMIMEType.get()]) {
         RetainPtr<NSString> uti = adoptNS(WebCore::QLTypeCopyUTIForURLAndMimeType(url, updatedMIMEType.get()));
 
-        RetainPtr<id> converter = adoptNS([[QLPreviewConverterClass() alloc] initWithData:data name:nil uti:uti.get() options:nil]);
+        RetainPtr<id> converter = adoptNS([allocQLPreviewConverterInstance() initWithData:data name:nil uti:uti.get() options:nil]);
         NSURLRequest *request = [converter previewRequest];
 
         // We use [request URL] here instead of url since it will be
@@ -448,7 +447,7 @@ static inline QuickLookHandleClient* emptyClient()
 
 QuickLookHandle::QuickLookHandle(NSURL *firstRequestURL, NSURLConnection *connection, NSURLResponse *nsResponse, id delegate)
     : m_firstRequestURL(firstRequestURL)
-    , m_converter(adoptNS([[QLPreviewConverterClass() alloc] initWithConnection:connection delegate:delegate response:nsResponse options:nil]))
+    , m_converter(adoptNS([allocQLPreviewConverterInstance() initWithConnection:connection delegate:delegate response:nsResponse options:nil]))
     , m_delegate(delegate)
     , m_finishedLoadingDataIntoConverter(false)
     , m_nsResponse([m_converter previewResponse])

@@ -72,6 +72,7 @@
     <ClCompile Include="..\wtf\dtoa\strtod.cc" />
     <ClCompile Include="..\wtf\FastBitVector.cpp" />
     <ClCompile Include="..\wtf\FastMalloc.cpp" />
+    <ClCompile Include="..\wtf\FeatureCounter.cpp" />
     <ClCompile Include="..\wtf\FilePrintStream.cpp" />
     <ClCompile Include="..\wtf\FunctionDispatcher.cpp" />
     <ClCompile Include="..\wtf\gobject\GlibUtilities.cpp">
@@ -104,6 +105,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\wtf\gobject\GThreadSafeMainLoopSource.cpp" />
     <ClCompile Include="..\wtf\GregorianDateTime.cpp" />
     <ClCompile Include="..\wtf\HashTable.cpp" />
     <ClCompile Include="..\wtf\MainThread.cpp" />
@@ -120,6 +122,7 @@
     <ClCompile Include="..\wtf\RAMSize.cpp" />
     <ClCompile Include="..\wtf\RandomNumber.cpp" />
     <ClCompile Include="..\wtf\RefCountedLeakCounter.cpp" />
+    <ClCompile Include="..\wtf\RefCounter.cpp" />
     <ClCompile Include="..\wtf\RunLoop.cpp" />
     <ClCompile Include="..\wtf\SHA1.cpp" />
     <ClCompile Include="..\wtf\SixCharacterHash.cpp" />
@@ -195,6 +198,7 @@
     <ClInclude Include="..\wtf\dtoa\utils.h" />
     <ClInclude Include="..\wtf\FastBitVector.h" />
     <ClInclude Include="..\wtf\FastMalloc.h" />
+    <ClInclude Include="..\wtf\FeatureCounter.h" />
     <ClInclude Include="..\wtf\FeatureDefines.h" />
     <ClInclude Include="..\wtf\FilePrintStream.h" />
     <ClInclude Include="..\wtf\FlipBytes.h" />
@@ -206,6 +210,7 @@
     <ClInclude Include="..\wtf\gobject\GMainLoopSource.h" />
     <ClInclude Include="..\wtf\gobject\GMutexLocker.h" />
     <ClInclude Include="..\wtf\gobject\GRefPtr.h" />
+    <ClInclude Include="..\wtf\gobject\GThreadSafeMainLoopSource.h" />
     <ClInclude Include="..\wtf\gobject\GTypedefs.h" />
     <ClInclude Include="..\wtf\gobject\GUniquePtr.h" />
     <ClInclude Include="..\wtf\GregorianDateTime.h" />
@@ -257,6 +262,7 @@
     <ClInclude Include="..\wtf\RedBlackTree.h" />
     <ClInclude Include="..\wtf\RefCounted.h" />
     <ClInclude Include="..\wtf\RefCountedLeakCounter.h" />
+    <ClInclude Include="..\wtf\RefCounter.h" />
     <ClInclude Include="..\wtf\RefPtr.h" />
     <ClInclude Include="..\wtf\RetainPtr.h" />
     <ClInclude Include="..\wtf\RunLoop.h" />

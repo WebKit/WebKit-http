@@ -50,6 +50,11 @@ typedef struct _GstMpegtsSection GstMpegtsSection;
 
 namespace WebCore {
 
+#if ENABLE(WEB_AUDIO)
+class AudioSourceProvider;
+class AudioSourceProviderGStreamer;
+#endif
+
 class AudioTrackPrivateGStreamer;
 class InbandMetadataTextTrackPrivateGStreamer;
 class InbandTextTrackPrivateGStreamer;
@@ -87,7 +92,7 @@ public:
     void setPreservesPitch(bool);
 
     void setPreload(MediaPlayer::Preload);
-    void fillTimerFired(Timer*);
+    void fillTimerFired();
 
     std::unique_ptr<PlatformTimeRanges> buffered() const;
     float maxTimeSeekable() const;
@@ -124,6 +129,10 @@ public:
     void simulateAudioInterruption();
 
     bool changePipelineState(GstState);
+
+#if ENABLE(WEB_AUDIO)
+    AudioSourceProvider* audioSourceProvider() { return reinterpret_cast<AudioSourceProvider*>(m_audioSourceProvider.get()); }
+#endif
 
 private:
     MediaPlayerPrivateGStreamer(MediaPlayer*);
@@ -164,6 +173,7 @@ private:
     virtual String engineDescription() const { return "GStreamer"; }
     virtual bool isLiveStream() const { return m_isStreaming; }
     virtual bool didPassCORSAccessCheck() const;
+    virtual bool canSaveMediaData() const override;
 
 private:
     GRefPtr<GstElement> m_playBin;
@@ -209,6 +219,9 @@ private:
     mutable unsigned long long m_totalBytes;
     URL m_url;
     bool m_preservesPitch;
+#if ENABLE(WEB_AUDIO)
+    OwnPtr<AudioSourceProviderGStreamer> m_audioSourceProvider;
+#endif
     GstState m_requestedState;
     GRefPtr<GstElement> m_autoAudioSink;
     bool m_missingPlugins;

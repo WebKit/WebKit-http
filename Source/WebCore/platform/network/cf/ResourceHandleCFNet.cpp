@@ -178,13 +178,6 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
     if (sslProps)
         CFURLRequestSetSSLProperties(request.get(), sslProps.get());
 
-#if PLATFORM(WIN)
-    if (CFHTTPCookieStorageRef cookieStorage = overridenCookieStorage()) {
-        // Overridden cookie storage doesn't come from a session, so the request does not have it yet.
-        CFURLRequestSetHTTPCookieStorage(request.get(), cookieStorage);
-    }
-#endif
-
     CFMutableDictionaryRef streamProperties  = CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
     if (!shouldUseCredentialStorage) {
@@ -584,11 +577,6 @@ void ResourceHandle::platformSetDefersLoading(bool defers)
         CFURLConnectionHalt(d->m_connection.get());
     else
         CFURLConnectionResume(d->m_connection.get());
-}
-
-bool ResourceHandle::loadsBlocked()
-{
-    return false;
 }
 
 #if PLATFORM(COCOA)

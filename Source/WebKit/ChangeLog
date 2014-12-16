@@ -1,3 +1,214 @@
+2014-12-12  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed 64bit build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-12-12  Anders Carlsson  <andersca@apple.com>
+
+        Handle null local storage database URLs
+        https://bugs.webkit.org/show_bug.cgi?id=139594
+        <rdar://problem/19236505>
+
+        Reviewed by Beth Dakin.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::WebStorageNamespaceProvider):
+
+2014-12-11  Anders Carlsson  <andersca@apple.com>
+
+        Build fix.
+
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-11  Anders Carlsson  <andersca@apple.com>
+
+        Replicate a bunch of PageGroup functions in WebStorageNamespaceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=139544
+
+        Reviewed by Antti Koivisto.
+
+        This code is currently unused but will be called by StorageTracker once that class has been
+        moved from WebCore to WebKit.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::clearLocalStorageForAllOrigins):
+        (WebStorageNamespaceProvider::clearLocalStorageForOrigin):
+        (WebStorageNamespaceProvider::closeIdleLocalStorageDatabases):
+        (WebStorageNamespaceProvider::syncLocalStorage):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-10  Beth Dakin  <bdakin@apple.com>
+
+        WK1: Add initial support for immediate actions
+        https://bugs.webkit.org/show_bug.cgi?id=139522
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-12-10  Anders Carlsson  <andersca@apple.com>
+
+        Add session storage handling to StorageNamespaceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=139507
+
+        Reviewed by Tim Horton.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::createSessionStorageNamespace):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-10  Anders Carlsson  <andersca@apple.com>
+
+        Add WebStorageNamespaceProvider::closeLocalStorage
+        https://bugs.webkit.org/show_bug.cgi?id=139502
+
+        Reviewed by Tim Horton.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (storageNamespaceProviders):
+        (WebStorageNamespaceProvider::WebStorageNamespaceProvider):
+        (WebStorageNamespaceProvider::~WebStorageNamespaceProvider):
+        Keep track of all live storage namespace providers.
+        
+        (WebStorageNamespaceProvider::closeLocalStorage):
+        Loop through all storage namespace providers and call close() on their local storage namespaces.
+
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177037.
+        https://bugs.webkit.org/show_bug.cgi?id=139464
+
+        broke ~50 API tests (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "Use the new storage namespace provider in WebKit1"
+        https://bugs.webkit.org/show_bug.cgi?id=139425
+        http://trac.webkit.org/changeset/177037
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        WebStorageNamespaceProvider should create StorageNamespaceImpls
+        https://bugs.webkit.org/show_bug.cgi?id=139419
+
+        Reviewed by Andreas Kling.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::createLocalStorageNamespace):
+        (WebStorageNamespaceProvider::createTransientLocalStorageNamespace):
+        Create StorageNamespaceImpls.
+
+        (WebStorageNamespaceProvider::createSessionStorageNamespace): Deleted.
+        Delete this for now.
+
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-08  Anders Carlsson  <andersca@apple.com>
+
+        WebStorageNamespaceProvider should know about its local storage database path
+        https://bugs.webkit.org/show_bug.cgi?id=139413
+
+        Reviewed by Andreas Kling.
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::create):
+        (WebStorageNamespaceProvider::WebStorageNamespaceProvider):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2014-12-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out version of WebStorageNamespaceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=139213
+
+        Reviewed by Sam Weinig.
+
+        * Storage/WebStorageNamespaceProvider.cpp: Added.
+        * Storage/WebStorageNamespaceProvider.h: Added.
+
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.xcodeproj/project.pbxproj:
+        Add new files.
+
+2014-12-05  Roger Fong  <roger_fong@apple.com>
+
+        [Win] proj files copying over too many resources..
+        https://bugs.webkit.org/show_bug.cgi?id=139315.
+        <rdar://problem/19148278>
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.proj: Only copy resource folders and WebKit.dll.
+
+2014-12-02  Sam Weinig  <sam@webkit.org>
+
+        Remove empty directories
+
+        Reviewed by Anders Carlsson.
+
+        * Source: Removed.
+        * Source/WebKit: Removed.
+        * Source/WebKit/mac: Removed.
+        * Source/WebKit/mac/Resources: Removed.
+
+2014-12-02  Tim Horton  <timothy_horton@apple.com>
+
+        Implement Lookup transition from selection for Legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=139180
+        <rdar://problem/19067172>
+
+        Reviewed by Beth Dakin.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Add mac/WebView/DictionaryPopupInfo.h.
+
+2014-12-01  Anders Carlsson  <andersca@apple.com>
+
+        Remove IWebCookieManager on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139144
+
+        Reviewed by Sam Weinig.
+
+        Remove files.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+
+2014-11-27  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out WebVisitedLinkStore class on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=139078
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+
+2014-11-27  Anders Carlsson  <andersca@apple.com>
+
+        Add a stubbed out WebVisitedLinkStore to WebViewGroup
+        https://bugs.webkit.org/show_bug.cgi?id=139066
+
+        Reviewed by Antti Koivisto.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-11-21  Anders Carlsson  <andersca@apple.com>
+
+        Add a new symbol.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-11-21  Anders Carlsson  <andersca@apple.com>
+
+        Remove a symbol that's gone.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
 2014-11-11  Chris Dumez  <cdumez@apple.com>
 
         Mark more virtual functions in HTMLInputElement as final

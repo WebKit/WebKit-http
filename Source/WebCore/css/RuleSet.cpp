@@ -30,6 +30,7 @@
 #include "RuleSet.h"
 
 #include "CSSFontSelector.h"
+#include "CSSKeyframesRule.h"
 #include "CSSSelector.h"
 #include "CSSSelectorList.h"
 #include "HTMLNames.h"
@@ -41,7 +42,6 @@
 #include "StyleRule.h"
 #include "StyleRuleImport.h"
 #include "StyleSheetContents.h"
-#include "WebKitCSSKeyframesRule.h"
 
 #if ENABLE(VIDEO_TRACK)
 #include "TextTrackCue.h"
@@ -96,47 +96,42 @@ static bool selectorCanMatchPseudoElement(const CSSSelector& rootSelector)
     return false;
 }
 
-static inline bool selectorListContainsAttributeSelector(const CSSSelector* selector)
-{
-    const CSSSelectorList* selectorList = selector->selectorList();
-    if (!selectorList)
-        return false;
-    for (const CSSSelector* selector = selectorList->first(); selector; selector = CSSSelectorList::next(selector)) {
-        for (const CSSSelector* component = selector; component; component = component->tagHistory()) {
-            if (component->isAttributeSelector())
-                return true;
-        }
-    }
-    return false;
-}
-
 static inline bool isCommonAttributeSelectorAttribute(const QualifiedName& attribute)
 {
     // These are explicitly tested for equality in canShareStyleWithElement.
     return attribute == typeAttr || attribute == readonlyAttr;
 }
 
-static inline bool containsUncommonAttributeSelector(const CSSSelector* selector)
+static bool containsUncommonAttributeSelector(const CSSSelector& rootSelector, bool matchesRightmostElement)
 {
-    for (; selector; selector = selector->tagHistory()) {
-        // Allow certain common attributes (used in the default style) in the selectors that match the current element.
-        if (selector->isAttributeSelector() && !isCommonAttributeSelectorAttribute(selector->attribute()))
-            return true;
-        if (selectorListContainsAttributeSelector(selector))
-            return true;
-        if (selector->relation() != CSSSelector::SubSelector) {
-            selector = selector->tagHistory();
-            break;
+    const CSSSelector* selector = &rootSelector;
+    do {
+        if (selector->isAttributeSelector()) {
+            // FIXME: considering non-rightmost simple selectors is necessary because of the style sharing of cousins.
+            // It is a primitive solution which disable a lot of style sharing on pages that rely on attributes for styling.
+            // We should investigate better ways of doing this.
+            if (!isCommonAttributeSelectorAttribute(selector->attribute()) || !matchesRightmostElement)
+                return true;
         }
-    }
 
-    for (; selector; selector = selector->tagHistory()) {
-        if (selector->isAttributeSelector())
-            return true;
-        if (selectorListContainsAttributeSelector(selector))
-            return true;
-    }
+        if (const CSSSelectorList* selectorList = selector->selectorList()) {
+            for (const CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
+                if (containsUncommonAttributeSelector(*subSelector, matchesRightmostElement))
+                    return true;
+            }
+        }
+
+        if (selector->relation() != CSSSelector::SubSelector)
+            matchesRightmostElement = false;
+
+        selector = selector->tagHistory();
+    } while (selector);
     return false;
+}
+
+static inline bool containsUncommonAttributeSelector(const CSSSelector& rootSelector)
+{
+    return containsUncommonAttributeSelector(rootSelector, true);
 }
 
 static inline PropertyWhitelistType determinePropertyWhitelistType(const AddRuleFlags addRuleFlags, const CSSSelector* selector)
@@ -161,7 +156,7 @@ RuleData::RuleData(StyleRule* rule, unsigned selectorIndex, unsigned position, A
     , m_position(position)
     , m_matchBasedOnRuleHash(static_cast<unsigned>(computeMatchBasedOnRuleHash(*selector())))
     , m_canMatchPseudoElement(selectorCanMatchPseudoElement(*selector()))
-    , m_containsUncommonAttributeSelector(WebCore::containsUncommonAttributeSelector(selector()))
+    , m_containsUncommonAttributeSelector(WebCore::containsUncommonAttributeSelector(*selector()))
     , m_linkMatchType(SelectorChecker::determineLinkMatchType(selector()))
     , m_propertyWhitelistType(determinePropertyWhitelistType(addRuleFlags, selector()))
 #if ENABLE(CSS_SELECTOR_JIT) && CSS_SELECTOR_JIT_PROFILING
@@ -312,10 +307,9 @@ void RuleSet::addRegionRule(StyleRuleRegion* regionRule, bool hasDocumentSecurit
     const Vector<RefPtr<StyleRuleBase>>& childRules = regionRule->childRules();
     AddRuleFlags addRuleFlags = hasDocumentSecurityOrigin ? RuleHasDocumentSecurityOrigin : RuleHasNoSpecialState;
     addRuleFlags = static_cast<AddRuleFlags>(addRuleFlags | RuleIsInRegionRule);
-    for (unsigned i = 0; i < childRules.size(); ++i) {
-        StyleRuleBase* regionStylingRule = childRules[i].get();
-        if (regionStylingRule->isStyleRule())
-            regionRuleSet->addStyleRule(static_cast<StyleRule*>(regionStylingRule), addRuleFlags);
+    for (auto& childRule : childRules) {
+        if (is<StyleRule>(*childRule))
+            regionRuleSet->addStyleRule(downcast<StyleRule>(childRule.get()), addRuleFlags);
     }
     // Update the "global" rule count so that proper order is maintained
     m_ruleCount = regionRuleSet->m_ruleCount;
@@ -325,35 +319,31 @@ void RuleSet::addRegionRule(StyleRuleRegion* regionRule, bool hasDocumentSecurit
 
 void RuleSet::addChildRules(const Vector<RefPtr<StyleRuleBase>>& rules, const MediaQueryEvaluator& medium, StyleResolver* resolver, bool hasDocumentSecurityOrigin, AddRuleFlags addRuleFlags)
 {
-    for (unsigned i = 0; i < rules.size(); ++i) {
-        StyleRuleBase* rule = rules[i].get();
-
-        if (rule->isStyleRule()) {
-            StyleRule* styleRule = static_cast<StyleRule*>(rule);
-            addStyleRule(styleRule, addRuleFlags);
-        } else if (rule->isPageRule())
-            addPageRule(static_cast<StyleRulePage*>(rule));
-        else if (rule->isMediaRule()) {
-            StyleRuleMedia* mediaRule = static_cast<StyleRuleMedia*>(rule);
-            if ((!mediaRule->mediaQueries() || medium.eval(mediaRule->mediaQueries(), resolver)))
-                addChildRules(mediaRule->childRules(), medium, resolver, hasDocumentSecurityOrigin, addRuleFlags);
-        } else if (rule->isFontFaceRule() && resolver) {
+    for (auto& rule : rules) {
+        if (is<StyleRule>(*rule))
+            addStyleRule(downcast<StyleRule>(rule.get()), addRuleFlags);
+        else if (is<StyleRulePage>(*rule))
+            addPageRule(downcast<StyleRulePage>(rule.get()));
+        else if (is<StyleRuleMedia>(*rule)) {
+            auto& mediaRule = downcast<StyleRuleMedia>(*rule);
+            if ((!mediaRule.mediaQueries() || medium.eval(mediaRule.mediaQueries(), resolver)))
+                addChildRules(mediaRule.childRules(), medium, resolver, hasDocumentSecurityOrigin, addRuleFlags);
+        } else if (is<StyleRuleFontFace>(*rule) && resolver) {
             // Add this font face to our set.
-            const StyleRuleFontFace* fontFaceRule = static_cast<StyleRuleFontFace*>(rule);
-            resolver->fontSelector()->addFontFaceRule(fontFaceRule);
+            resolver->fontSelector()->addFontFaceRule(downcast<StyleRuleFontFace>(rule.get()));
             resolver->invalidateMatchedPropertiesCache();
-        } else if (rule->isKeyframesRule() && resolver)
-            resolver->addKeyframeStyle(static_cast<StyleRuleKeyframes*>(rule));
-        else if (rule->isSupportsRule() && static_cast<StyleRuleSupports*>(rule)->conditionIsSupported())
-            addChildRules(static_cast<StyleRuleSupports*>(rule)->childRules(), medium, resolver, hasDocumentSecurityOrigin, addRuleFlags);
+        } else if (is<StyleRuleKeyframes>(*rule) && resolver)
+            resolver->addKeyframeStyle(downcast<StyleRuleKeyframes>(rule.get()));
+        else if (is<StyleRuleSupports>(*rule) && downcast<StyleRuleSupports>(*rule).conditionIsSupported())
+            addChildRules(downcast<StyleRuleSupports>(*rule).childRules(), medium, resolver, hasDocumentSecurityOrigin, addRuleFlags);
 #if ENABLE(CSS_REGIONS)
-        else if (rule->isRegionRule() && resolver) {
-            addRegionRule(static_cast<StyleRuleRegion*>(rule), hasDocumentSecurityOrigin);
+        else if (is<StyleRuleRegion>(*rule) && resolver) {
+            addRegionRule(downcast<StyleRuleRegion>(rule.get()), hasDocumentSecurityOrigin);
         }
 #endif
 #if ENABLE(CSS_DEVICE_ADAPTATION)
-        else if (rule->isViewportRule() && resolver) {
-            resolver->viewportStyleResolver()->addViewportRule(static_cast<StyleRuleViewport*>(rule));
+        else if (is<StyleRuleViewport>(*rule) && resolver) {
+            resolver->viewportStyleResolver()->addViewportRule(downcast<StyleRuleViewport>(rule.get()));
         }
 #endif
     }

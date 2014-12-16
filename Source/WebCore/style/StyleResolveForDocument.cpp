@@ -47,7 +47,7 @@ namespace WebCore {
 
 namespace Style {
 
-PassRef<RenderStyle> resolveForDocument(const Document& document)
+Ref<RenderStyle> resolveForDocument(const Document& document)
 {
     ASSERT(document.hasLivingRenderTree());
 
@@ -99,11 +99,8 @@ PassRef<RenderStyle> resolveForDocument(const Document& document)
     fontDescription.setScript(localeToScriptCodeForFontSelection(documentStyle.get().locale()));
     fontDescription.setUsePrinterFont(document.printing() || !settings.screenFontSubstitutionEnabled());
     fontDescription.setRenderingMode(settings.fontRenderingMode());
-    const AtomicString& standardFont = settings.standardFontFamily(fontDescription.script());
-    if (!standardFont.isEmpty()) {
-        fontDescription.setGenericFamily(FontDescription::StandardFamily);
-        fontDescription.setOneFamily(standardFont);
-    }
+    fontDescription.setOneFamily(standardFamily);
+
     fontDescription.setKeywordSize(CSSValueMedium - CSSValueXxSmall + 1);
     int size = fontSizeForKeyword(CSSValueMedium, false, document);
     fontDescription.setSpecifiedSize(size);

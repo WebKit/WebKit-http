@@ -74,7 +74,7 @@ MediaControlPanelElement::MediaControlPanelElement(Document& document)
     , m_isBeingDragged(false)
     , m_isDisplayed(false)
     , m_opaque(true)
-    , m_transitionTimer(this, &MediaControlPanelElement::transitionTimerFired)
+    , m_transitionTimer(*this, &MediaControlPanelElement::transitionTimerFired)
 {
     setPseudo(AtomicString("-webkit-media-controls-panel", AtomicString::ConstructFromLiteral));
 }
@@ -149,7 +149,7 @@ void MediaControlPanelElement::stopTimer()
         m_transitionTimer.stop();
 }
 
-void MediaControlPanelElement::transitionTimerFired(Timer&)
+void MediaControlPanelElement::transitionTimerFired()
 {
     if (!m_opaque)
         hide();
@@ -310,7 +310,7 @@ void MediaControlTimelineContainerElement::setTimeDisplaysHidden(bool hidden)
     }
 }
 
-RenderPtr<RenderElement> MediaControlTimelineContainerElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> MediaControlTimelineContainerElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderMediaControlTimelineContainer>(*this, WTF::move(style));
 }
@@ -330,7 +330,7 @@ PassRefPtr<MediaControlVolumeSliderContainerElement> MediaControlVolumeSliderCon
     return element.release();
 }
 
-RenderPtr<RenderElement> MediaControlVolumeSliderContainerElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> MediaControlVolumeSliderContainerElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderMediaVolumeSliderContainer>(*this, WTF::move(style));
 }
@@ -1073,7 +1073,7 @@ static const AtomicString& getMediaControlCurrentTimeDisplayElementShadowPseudoI
 
 MediaControlTextTrackContainerElement::MediaControlTextTrackContainerElement(Document& document)
     : MediaControlDivElement(document, MediaTextTrackDisplayContainer)
-    , m_updateTimer(this, &MediaControlTextTrackContainerElement::updateTimerFired)
+    , m_updateTimer(*this, &MediaControlTextTrackContainerElement::updateTimerFired)
     , m_fontSize(0)
     , m_fontSizeIsImportant(false)
     , m_updateTextTrackRepresentationStyle(false)
@@ -1088,7 +1088,7 @@ PassRefPtr<MediaControlTextTrackContainerElement> MediaControlTextTrackContainer
     return element.release();
 }
 
-RenderPtr<RenderElement> MediaControlTextTrackContainerElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> MediaControlTextTrackContainerElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderTextTrackContainerElement>(*this, WTF::move(style));
 }
@@ -1243,7 +1243,7 @@ void MediaControlTextTrackContainerElement::updateActiveCuesFontSize()
 
 }
 
-void MediaControlTextTrackContainerElement::updateTimerFired(Timer&)
+void MediaControlTextTrackContainerElement::updateTimerFired()
 {
     if (!document().page())
         return;

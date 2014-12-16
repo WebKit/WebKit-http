@@ -195,6 +195,8 @@
 @property (readonly) int clientLeft WEBKIT_AVAILABLE_MAC(10_5);
 @property (readonly) int clientTop WEBKIT_AVAILABLE_MAC(10_5);
 @property (readonly, copy) NSString *innerText WEBKIT_AVAILABLE_MAC(10_5);
+@property (copy) NSString *innerHTML;
+@property (copy) NSString *outerHTML;
 @property (readonly, strong) DOMElement *firstElementChild WEBKIT_AVAILABLE_MAC(10_6);
 @property (readonly, strong) DOMElement *lastElementChild WEBKIT_AVAILABLE_MAC(10_6);
 @property (readonly, strong) DOMElement *previousElementSibling WEBKIT_AVAILABLE_MAC(10_6);
@@ -314,11 +316,6 @@
 @interface DOMNodeList : DOMObject 10_4
 @property (readonly) unsigned length;
 - (DOMNode *)item:(unsigned)index;
-@end
-
-@interface DOMNotation : DOMNode 10_4
-@property (readonly, copy) NSString *publicId;
-@property (readonly, copy) NSString *systemId;
 @end
 
 @interface DOMProcessingInstruction : DOMCharacterData 10_4
@@ -476,9 +473,7 @@
 @property (copy) NSString *idName;
 @property (copy) NSString *lang;
 @property (copy) NSString *dir;
-@property (copy) NSString *innerHTML;
 @property (copy) NSString *innerText;
-@property (copy) NSString *outerHTML;
 @property (copy) NSString *outerText;
 @property (readonly, strong) DOMHTMLCollection *children;
 @property (copy) NSString *contentEditable;

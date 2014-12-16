@@ -35,6 +35,10 @@
 #include "Frame.h"
 #include "FrameNetworkingContext.h"
 #include "HTMLFormElement.h"
+#include "PageConfiguration.h"
+#include "StorageArea.h"
+#include "StorageNamespace.h"
+#include "StorageNamespaceProvider.h"
 #include <wtf/NeverDestroyed.h>
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -43,32 +47,83 @@
 
 namespace WebCore {
 
-void fillWithEmptyClients(Page::PageClients& pageClients)
+class EmptyStorageNamespaceProvider final : public StorageNamespaceProvider {
+    struct EmptyStorageArea : public StorageArea {
+        virtual unsigned length() override { return 0; }
+        virtual String key(unsigned) override { return String(); }
+        virtual String item(const String&) override { return String(); }
+        virtual void setItem(Frame*, const String&, const String&, bool&) override { }
+        virtual void removeItem(Frame*, const String&) override { }
+        virtual void clear(Frame*) override { }
+        virtual bool contains(const String&) override { return false; }
+        virtual bool canAccessStorage(Frame*) override { return false; }
+        virtual StorageType storageType() const override { return LocalStorage; }
+        virtual size_t memoryBytesUsedByCache() override { return 0; }
+    };
+
+    struct EmptyStorageNamespace final : public StorageNamespace {
+        virtual PassRefPtr<StorageArea> storageArea(PassRefPtr<SecurityOrigin>) override { return adoptRef(new EmptyStorageArea); }
+        virtual PassRefPtr<StorageNamespace> copy(Page*) override { return adoptRef(new EmptyStorageNamespace); }
+        virtual void close() override { }
+        virtual void clearOriginForDeletion(SecurityOrigin*) override { }
+        virtual void clearAllOriginsForDeletion() override { }
+        virtual void sync() override { }
+        virtual void closeIdleLocalStorageDatabases() override { }
+    };
+
+    virtual RefPtr<StorageNamespace> createSessionStorageNamespace(Page&, unsigned) override
+    {
+        return adoptRef(new EmptyStorageNamespace);
+    }
+
+    virtual RefPtr<StorageNamespace> createLocalStorageNamespace(unsigned) override
+    {
+        return adoptRef(new EmptyStorageNamespace);
+    }
+
+    virtual RefPtr<StorageNamespace> createTransientLocalStorageNamespace(SecurityOrigin&, unsigned) override
+    {
+        return adoptRef(new EmptyStorageNamespace);
+    }
+};
+
+class EmptyVisitedLinkStore : public VisitedLinkStore {
+    virtual bool isLinkVisited(Page&, LinkHash, const URL&, const AtomicString&) override { return false; }
+    virtual void addVisitedLink(Page&, LinkHash) override { }
+};
+
+void fillWithEmptyClients(PageConfiguration& pageConfiguration)
 {
     static NeverDestroyed<EmptyChromeClient> dummyChromeClient;
-    pageClients.chromeClient = &dummyChromeClient.get();
+    pageConfiguration.chromeClient = &dummyChromeClient.get();
 
 #if ENABLE(CONTEXT_MENUS)
     static NeverDestroyed<EmptyContextMenuClient> dummyContextMenuClient;
-    pageClients.contextMenuClient = &dummyContextMenuClient.get();
+    pageConfiguration.contextMenuClient = &dummyContextMenuClient.get();
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
     static NeverDestroyed<EmptyDragClient> dummyDragClient;
-    pageClients.dragClient = &dummyDragClient.get();
+    pageConfiguration.dragClient = &dummyDragClient.get();
 #endif
 
     static NeverDestroyed<EmptyEditorClient> dummyEditorClient;
-    pageClients.editorClient = &dummyEditorClient.get();
+    pageConfiguration.editorClient = &dummyEditorClient.get();
 
     static NeverDestroyed<EmptyInspectorClient> dummyInspectorClient;
-    pageClients.inspectorClient = &dummyInspectorClient.get();
+    pageConfiguration.inspectorClient = &dummyInspectorClient.get();
 
     static NeverDestroyed<EmptyFrameLoaderClient> dummyFrameLoaderClient;
-    pageClients.loaderClientForMainFrame = &dummyFrameLoaderClient.get();
-    
+    pageConfiguration.loaderClientForMainFrame = &dummyFrameLoaderClient.get();
+
     static NeverDestroyed<EmptyProgressTrackerClient> dummyProgressTrackerClient;
-    pageClients.progressTrackerClient = &dummyProgressTrackerClient.get();
+    pageConfiguration.progressTrackerClient = &dummyProgressTrackerClient.get();
+
+    static NeverDestroyed<EmptyDiagnosticLoggingClient> dummyDiagnosticLoggingClient;
+    pageConfiguration.diagnosticLoggingClient = &dummyDiagnosticLoggingClient.get();
+
+    pageConfiguration.storageNamespaceProvider = adoptRef(new EmptyStorageNamespaceProvider);
+    pageConfiguration.visitedLinkStore = adoptRef(new EmptyVisitedLinkStore);
 }
 
 class EmptyPopupMenu : public PopupMenu {

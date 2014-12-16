@@ -86,17 +86,17 @@ inline RenderStyle& defaultStyle()
     return style;
 }
 
-PassRef<RenderStyle> RenderStyle::create()
+Ref<RenderStyle> RenderStyle::create()
 {
     return adoptRef(*new RenderStyle(defaultStyle()));
 }
 
-PassRef<RenderStyle> RenderStyle::createDefaultStyle()
+Ref<RenderStyle> RenderStyle::createDefaultStyle()
 {
     return adoptRef(*new RenderStyle(true));
 }
 
-PassRef<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay display)
+Ref<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay display)
 {
     auto newStyle = RenderStyle::create();
     newStyle.get().inheritFrom(parentStyle);
@@ -105,12 +105,12 @@ PassRef<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderSt
     return newStyle;
 }
 
-PassRef<RenderStyle> RenderStyle::clone(const RenderStyle* other)
+Ref<RenderStyle> RenderStyle::clone(const RenderStyle* other)
 {
     return adoptRef(*new RenderStyle(*other));
 }
 
-PassRef<RenderStyle> RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle)
+Ref<RenderStyle> RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle)
 {
     ASSERT(pseudoStyle.styleType() == BEFORE || pseudoStyle.styleType() == AFTER);
 
@@ -392,6 +392,10 @@ inline bool RenderStyle::changeAffectsVisualOverflow(const RenderStyle& other) c
         && !rareNonInheritedData->shadowDataEquivalent(*other.rareNonInheritedData.get()))
         return true;
 
+    if (rareInheritedData.get() != other.rareInheritedData.get()
+        && !rareInheritedData->shadowDataEquivalent(*other.rareInheritedData.get()))
+        return true;
+
     if (inherited_flags._text_decorations != other.inherited_flags._text_decorations
         || visual->textDecoration != other.visual->textDecoration
         || rareNonInheritedData->m_textDecorationStyle != other.rareNonInheritedData->m_textDecorationStyle) {
@@ -532,9 +536,6 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
             || rareInheritedData->useTouchOverflowScrolling != other.rareInheritedData->useTouchOverflowScrolling
 #endif
             || rareInheritedData->listStyleImage != other.rareInheritedData->listStyleImage)
-            return true;
-
-        if (!rareInheritedData->shadowDataEquivalent(*other.rareInheritedData.get()))
             return true;
 
         if (textStrokeWidth() != other.textStrokeWidth())

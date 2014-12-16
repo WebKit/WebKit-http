@@ -37,6 +37,7 @@
 #include <WebCore/EventHandler.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
+#include <WebCore/RenderObject.h>
 #include <WebCore/ScrollView.h>
 
 using namespace WebCore;
@@ -54,7 +55,9 @@ void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& are
     if (!node)
         return;
 
-    IntRect zoomableArea = node->pixelSnappedBoundingBox();
+    IntRect zoomableArea;
+    if (RenderObject* renderer = node->renderer())
+        zoomableArea = renderer->absoluteBoundingBoxRect();
 
     while (true) {
         bool found = !node->isTextNode() && !node->isShadowRoot();
@@ -70,7 +73,8 @@ void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& are
             break;
 
         node = node->parentNode();
-        zoomableArea.unite(node->pixelSnappedBoundingBox());
+        if (RenderObject* renderer = node->renderer())
+            zoomableArea.unite(renderer->absoluteBoundingBoxRect());
     }
 
     if (node->document().frame() && node->document().frame()->view()) {

@@ -327,7 +327,7 @@ my @features = (
       define => "ENABLE_NOSNIFF", default => isEfl(), value => \$nosniffSupport },
 
     { option => "notifications", desc => "Toggle Notifications support",
-      define => "ENABLE_NOTIFICATIONS", default => 0, value => \$notificationsSupport },
+      define => "ENABLE_NOTIFICATIONS", default => isGtk(), value => \$notificationsSupport },
 
     { option => "orientation-events", desc => "Toggle Orientation Events support",
       define => "ENABLE_ORIENTATION_EVENTS", default => isIOSWebKit(), value => \$orientationEventsSupport },
@@ -369,7 +369,7 @@ my @features = (
       define => "ENABLE_SQL_DATABASE", default => 1, value => \$sqlDatabaseSupport },
 
     { option => "subtle-crypto", desc => "Toggle WebCrypto Subtle-Crypto support",
-      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isAppleMacWebKit() || isIOSWebKit()), value => \$subtleCrypto },
+      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isEfl() || isAppleMacWebKit() || isIOSWebKit()), value => \$subtleCrypto },
 
     { option => "suid-linux-sandbox", desc => "Toggle suid sandbox for linux",
       define => "ENABLE_SUID_SANDBOX_LINUX", default => 0, value => \$suidLinuxSandbox },

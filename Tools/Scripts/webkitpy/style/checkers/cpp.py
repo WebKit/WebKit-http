@@ -2043,7 +2043,7 @@ def check_member_initialization_list(clean_lines, line_number, error):
         if search(r'[^:]\:[^\:\s]+', line):
             error(line_number, 'whitespace/init', 4,
                 'Missing spaces around :')
-        if search(r'[^\s]\(.*\)\s?\:.*[^;]*$', line):
+        if (not line.lstrip().startswith(':')) and search(r'[^\s]\(.*\)\s?\:.*[^;]*$', line):
             error(line_number, 'whitespace/indent', 4,
                 'Should be indented on a separate line, with the colon or comma first on that line.')
         else:
@@ -2421,7 +2421,7 @@ def check_braces(clean_lines, line_number, error):
         # We also allow '#' for #endif and '=' for array initialization,
         # and '- (' and '+ (' for Objective-C methods.
         previous_line = get_previous_non_blank_line(clean_lines, line_number)[0]
-        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override)\s*)?(->\s*\S+)?\s*$', previous_line)
+        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override|const override)\s*)?(->\s*\S+)?\s*$', previous_line)
              or search(r'\b(if|for|while|switch|else|NS_ENUM)\b', previous_line))
             and previous_line.find('#') < 0
             and previous_line.find('- (') != 0

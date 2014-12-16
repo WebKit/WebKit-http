@@ -40,7 +40,7 @@ class RenderText;
 struct BidiRun;
 struct PaintInfo;
 
-typedef WTF::ListHashSet<RenderBox*, 16> TrackedRendererListHashSet;
+typedef WTF::ListHashSet<RenderBox*> TrackedRendererListHashSet;
 typedef WTF::HashMap<const RenderBlock*, std::unique_ptr<TrackedRendererListHashSet>> TrackedDescendantsMap;
 typedef WTF::HashMap<const RenderBox*, std::unique_ptr<HashSet<RenderBlock*>>> TrackedContainerMap;
 
@@ -60,8 +60,8 @@ public:
     friend class LineLayoutState;
 
 protected:
-    RenderBlock(Element&, PassRef<RenderStyle>, unsigned baseTypeFlags);
-    RenderBlock(Document&, PassRef<RenderStyle>, unsigned baseTypeFlags);
+    RenderBlock(Element&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
+    RenderBlock(Document&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
     virtual ~RenderBlock();
 
 public:
@@ -75,7 +75,7 @@ public:
     virtual void deleteLines();
 
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
-    virtual RenderObject* removeChild(RenderObject&) override;
+    virtual void removeChild(RenderObject&) override;
 
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0);
 
@@ -172,9 +172,9 @@ public:
 
     GapRects selectionGapRectsForRepaint(const RenderLayerModelObject* repaintContainer);
     LayoutRect logicalLeftSelectionGap(RenderBlock& rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
-        RenderObject* selObj, LayoutUnit logicalLeft, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches&, const PaintInfo*);
+        RenderBoxModelObject* selObj, LayoutUnit logicalLeft, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches&, const PaintInfo*);
     LayoutRect logicalRightSelectionGap(RenderBlock& rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
-        RenderObject* selObj, LayoutUnit logicalRight, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches&, const PaintInfo*);
+        RenderBoxModelObject* selObj, LayoutUnit logicalRight, LayoutUnit logicalTop, LayoutUnit logicalHeight, const LogicalSelectionOffsetCaches&, const PaintInfo*);
     void getSelectionGapInfo(SelectionState, bool& leftGap, bool& rightGap);
     RenderBlock* blockBeforeWithinSelectionRoot(LayoutSize& offset) const;
 
@@ -316,6 +316,7 @@ public:
 
 protected:
     virtual RenderFlowThread* locateFlowThreadContainingBlock() const override;
+    virtual void willBeDestroyed() override;
 
     virtual void layout() override;
 
@@ -421,8 +422,8 @@ private:
     void insertIntoTrackedRendererMaps(RenderBox& descendant, TrackedDescendantsMap*&, TrackedContainerMap*&);
     static void removeFromTrackedRendererMaps(RenderBox& descendant, TrackedDescendantsMap*&, TrackedContainerMap*&);
 
-    void createFirstLetterRenderer(RenderObject* firstLetterBlock, RenderText* currentTextChild);
-    void updateFirstLetterStyle(RenderObject* firstLetterBlock, RenderObject* firstLetterContainer);
+    void createFirstLetterRenderer(RenderElement* firstLetterBlock, RenderText* currentTextChild);
+    void updateFirstLetterStyle(RenderElement* firstLetterBlock, RenderObject* firstLetterContainer);
 
     Node* nodeForHitTest() const;
 
@@ -485,8 +486,6 @@ private:
     
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
     virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint&, const RenderRegion*);
-
-    bool expandsToEncloseOverhangingFloats() const;
 
     RenderPtr<RenderBlock> clone() const;
     RenderBlock* continuationBefore(RenderObject* beforeChild);

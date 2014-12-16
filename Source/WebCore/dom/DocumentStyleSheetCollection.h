@@ -67,8 +67,8 @@ public:
     void invalidateInjectedStyleSheetCache();
     void updateInjectedStyleSheetCache() const;
 
-    WEBCORE_EXPORT void addAuthorSheet(PassRef<StyleSheetContents> authorSheet);
-    WEBCORE_EXPORT void addUserSheet(PassRef<StyleSheetContents> userSheet);
+    WEBCORE_EXPORT void addAuthorSheet(Ref<StyleSheetContents>&& authorSheet);
+    WEBCORE_EXPORT void addUserSheet(Ref<StyleSheetContents>&& userSheet);
 
     enum UpdateFlag { NoUpdate = 0, OptimizedUpdate, FullUpdate };
 
@@ -101,12 +101,8 @@ public:
 
     bool hasPendingSheets() const { return m_pendingStylesheets > 0; }
 
-    bool usesSiblingRules() const { return m_usesSiblingRules || m_usesSiblingRulesOverride; }
-    void setUsesSiblingRulesOverride(bool b) { m_usesSiblingRulesOverride = b; }
     bool usesFirstLineRules() const { return m_usesFirstLineRules; }
     bool usesFirstLetterRules() const { return m_usesFirstLetterRules; }
-    bool usesBeforeAfterRules() const { return m_usesBeforeAfterRules || m_usesBeforeAfterRulesOverride; }
-    void setUsesBeforeAfterRulesOverride(bool b) { m_usesBeforeAfterRulesOverride = b; }
     bool usesRemUnits() const { return m_usesRemUnits; }
     void setUsesRemUnit(bool b) { m_usesRemUnits = b; }
 
@@ -152,18 +148,14 @@ private:
     bool m_hadActiveLoadingStylesheet;
     UpdateFlag m_pendingUpdateType;
 
-    typedef ListHashSet<Node*, 32> StyleSheetCandidateListHashSet;
+    typedef ListHashSet<Node*> StyleSheetCandidateListHashSet;
     StyleSheetCandidateListHashSet m_styleSheetCandidateNodes;
 
     String m_preferredStylesheetSetName;
     String m_selectedStylesheetSetName;
 
-    bool m_usesSiblingRules;
-    bool m_usesSiblingRulesOverride;
     bool m_usesFirstLineRules;
     bool m_usesFirstLetterRules;
-    bool m_usesBeforeAfterRules;
-    bool m_usesBeforeAfterRulesOverride;
     bool m_usesRemUnits;
 };
 

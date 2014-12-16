@@ -96,7 +96,7 @@ private:
 #endif
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;
-    virtual void setTextIndicator(PassRefPtr<TextIndicator>, bool fadeOut, bool animate) override;
+    virtual void setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool fadeOut) override;
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     virtual void exitAcceleratedCompositingMode() override;
@@ -128,7 +128,6 @@ private:
 
     virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
     virtual void didChangeViewportMetaTagWidth(float) override;
-    virtual void setUsesMinimalUI(bool) override;
     virtual double minimumZoomScale() const override;
     virtual WebCore::FloatSize contentsSize() const override;
 

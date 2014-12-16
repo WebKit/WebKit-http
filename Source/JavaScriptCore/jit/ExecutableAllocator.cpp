@@ -34,9 +34,6 @@
 #include <wtf/MetaAllocator.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/PageReservation.h>
-#if ENABLE(ASSEMBLER_WX_EXCLUSIVE)
-#include <wtf/PassOwnPtr.h>
-#endif
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/VMTags.h>
 #endif
@@ -173,7 +170,7 @@ void ExecutableAllocator::initializeAllocator()
 
 ExecutableAllocator::ExecutableAllocator(VM&)
 #if ENABLE(ASSEMBLER_WX_EXCLUSIVE)
-    : m_allocator(adoptPtr(new  DemandExecutableAllocator()))
+    : m_allocator(std::make_unique<DemandExecutableAllocator>())
 #endif
 {
     ASSERT(allocator());

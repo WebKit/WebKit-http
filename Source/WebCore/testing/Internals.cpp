@@ -31,6 +31,7 @@
 #include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "BackForwardController.h"
+#include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
@@ -52,6 +53,7 @@
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "HTMLIFrameElement.h"
+#include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
@@ -102,6 +104,7 @@
 #include "ViewportArguments.h"
 #include "WebConsoleAgent.h"
 #include "WorkerThread.h"
+#include "XMLHttpRequest.h"
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
 #include <inspector/InspectorValues.h>
@@ -380,10 +383,34 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
 {
     if (!contextDocument() || !contextDocument()->page())
         return false;
-    CachedResource* resource = memoryCache()->resourceForURL(contextDocument()->completeURL(url), contextDocument()->page()->sessionID());
+    CachedResource* resource = memoryCache().resourceForURL(contextDocument()->completeURL(url), contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
 }
 
+String Internals::xhrResponseSource(XMLHttpRequest* xhr)
+{
+    if (!xhr)
+        return "Null xhr";
+    if (xhr->resourceResponse().isNull())
+        return "Null response";
+    switch (xhr->resourceResponse().source()) {
+    case ResourceResponse::Source::Unknown:
+        return "Unknown";
+    case ResourceResponse::Source::Network:
+        return "Network";
+    case ResourceResponse::Source::DiskCache:
+        return "Disk cache";
+    case ResourceResponse::Source::DiskCacheAfterValidation:
+        return "Disk cache after validation";
+    }
+    ASSERT_NOT_REACHED();
+    return "Error";
+}
+
+void Internals::clearMemoryCache()
+{
+    memoryCache().evictResources();
+}
 
 Node* Internals::treeScopeRootNode(Node* node, ExceptionCode& ec)
 {
@@ -542,6 +569,15 @@ String Internals::elementRenderTreeAsText(Element* element, ExceptionCode& ec)
     return representation;
 }
 
+bool Internals::hasPausedImageAnimations(Element* element, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return false;
+    }
+    return element->renderer() && element->renderer()->hasPausedImageAnimations();
+}
+
 PassRefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Node* node, ExceptionCode& ec) const
 {
     if (!node) {
@@ -624,6 +660,16 @@ void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionC
     }
 
     return element->setPseudo(id);
+}
+
+bool Internals::isTimerThrottled(int timeoutId, ExceptionCode& ec)
+{
+    DOMTimer* timer = scriptExecutionContext()->findTimeout(timeoutId);
+    if (!timer) {
+        ec = NOT_FOUND_ERR;
+        return false;
+    }
+    return timer->m_throttleState == DOMTimer::ShouldThrottle;
 }
 
 String Internals::visiblePlaceholder(Element* element)
@@ -2398,6 +2444,15 @@ void Internals::setPageMuted(bool muted)
 
     if (Page* page = document->page())
         page->setMuted(muted);
+}
+
+bool Internals::isPagePlayingAudio()
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return false;
+
+    return document->page()->isPlayingAudio();
 }
 
 }

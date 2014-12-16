@@ -22,7 +22,7 @@
 
 messages -> WebPage LegacyReceiver {
     SetInitialFocus(bool forward, bool isKeyboardEventValid, WebKit::WebKeyboardEvent event)
-    SetViewState(unsigned viewState, bool wantsDidUpdateViewState)
+    SetViewState(unsigned viewState, bool wantsDidUpdateViewState, Vector<uint64_t> callbackIDs)
     SetLayerHostingMode(unsigned layerHostingMode)
 
     SetSessionID(WebCore::SessionID sessionID)
@@ -44,10 +44,9 @@ messages -> WebPage LegacyReceiver {
     WheelEventSyncForTesting(WebKit::WebWheelEvent event) -> (bool handled)
 #if PLATFORM(IOS)
     SetViewportConfigurationMinimumLayoutSize(WebCore::FloatSize size)
-    SetViewportConfigurationMinimumLayoutSizeForMinimalUI(WebCore::FloatSize size)
     SetMaximumUnobscuredSize(WebCore::FloatSize size)
     SetDeviceOrientation(int32_t deviceOrientation)
-    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatSize minimumLayoutSizeForMinimalUI,  WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation)
+    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation)
     SynchronizeDynamicViewportUpdate() -> (double newTargetScale, WebCore::FloatPoint newScrollPosition, uint64_t nextValidLayerTreeTransactionID)
 
     HandleTap(WebCore::IntPoint point)
@@ -65,6 +64,11 @@ messages -> WebPage LegacyReceiver {
     ExtendSelection(uint32_t granularity)
     SelectWordBackward()
     MoveSelectionByOffset(int32_t offset, uint64_t callbackID)
+    SelectTextWithGranularityAtPoint(WebCore::IntPoint point, uint32_t granularity, uint64_t callbackID)
+    SelectPositionAtBoundaryWithDirection(WebCore::IntPoint point, uint32_t granularity, uint32_t direction, uint64_t callbackID)
+    SelectPositionAtPoint(WebCore::IntPoint point, uint64_t callbackID)
+    BeginSelectionInDirection(uint32_t direction, uint64_t callbackID)
+    UpdateSelectionWithExtentPoint(WebCore::IntPoint point, uint64_t callbackID)
     RequestDictationContext(uint64_t callbackID)
     ReplaceDictatedText(String oldText, String newText)
     ReplaceSelectedText(String oldText, String newText)
@@ -78,7 +82,7 @@ messages -> WebPage LegacyReceiver {
     StartInteractionWithElementAtPosition(WebCore::IntPoint point)
     StopInteraction()
     PerformActionOnElement(uint32_t action)
-    FocusNextAssistedNode(bool isForward)
+    FocusNextAssistedNode(bool isForward, uint64_t callbackID)
     SetAssistedNodeValue(String value)
     SetAssistedNodeValueAsNumber(double value)
     SetAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection)
@@ -225,6 +229,7 @@ messages -> WebPage LegacyReceiver {
     PerformDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, String dragStorageName, uint32_t flags, WebKit::SandboxExtension::Handle sandboxExtensionHandle, WebKit::SandboxExtension::HandleArray sandboxExtensionsForUpload)
 #endif
 #if ENABLE(DRAG_SUPPORT)
+    DidStartDrag()
     DragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t operation)
 #endif
 
@@ -388,10 +393,6 @@ messages -> WebPage LegacyReceiver {
     WillStartUserTriggeredZooming();
 #endif
 
-#if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
-    SetAcceleratedCompositingWindowId(uint64_t nativeWindowHandle)
-#endif
-  
     SetScrollPinningBehavior(uint32_t pinning)
 
     GetBytecodeProfile(uint64_t callbackID)
@@ -400,5 +401,11 @@ messages -> WebPage LegacyReceiver {
 #if PLATFORM(MAC)
     PerformActionMenuHitTestAtLocation(WebCore::FloatPoint location)
     SelectLastActionMenuRange()
+    FocusAndSelectLastActionMenuHitTestResult()
+    DataDetectorsDidPresentUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
+    DataDetectorsDidChangeUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
+    DataDetectorsDidHideUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
 #endif
+
+    SetShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
 }

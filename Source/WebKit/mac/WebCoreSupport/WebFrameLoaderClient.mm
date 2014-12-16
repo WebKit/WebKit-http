@@ -109,6 +109,7 @@
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MouseEvent.h>
+#import <WebCore/NSURLDownloadSPI.h>
 #import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/PluginViewBase.h>
@@ -146,13 +147,11 @@
 #import "WebKitVersionChecks.h"
 #import "WebMailDelegate.h"
 #import "WebUIKitDelegate.h"
-#else
-#import <WebCore/QuickLookMac.h>
 #endif
 
 #if USE(QUICK_LOOK)
-#import <Foundation/NSFileManager_NSURLExtras.h>
 #import <WebCore/FileSystemIOS.h>
+#import <WebCore/NSFileManagerSPI.h>
 #import <WebCore/QuickLook.h>
 #import <WebCore/RuntimeApplicationChecksIOS.h>
 #endif
@@ -2246,14 +2245,6 @@ void WebFrameLoaderClient::didCreateQuickLookHandle(WebCore::QuickLookHandle& ha
         }
     };
     handle.setClient(adoptRef(new QuickLookDocumentWriter(handle)));
-}
-#endif
-
-#if PLATFORM(MAC)
-bool WebFrameLoaderClient::needsQuickLookResourceCachingQuirks() const
-{
-    static const bool shouldUseQuickLookResourceCachingQuirks = QuickLookMac::computeNeedsQuickLookResourceCachingQuirks();
-    return shouldUseQuickLookResourceCachingQuirks;
 }
 #endif
 
