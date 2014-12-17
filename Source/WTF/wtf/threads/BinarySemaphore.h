@@ -40,6 +40,7 @@ public:
 
     WTF_EXPORT_PRIVATE void signal();
     WTF_EXPORT_PRIVATE bool wait(double absoluteTime);
+    WTF_EXPORT_PRIVATE bool wait();
 
 #if OS(WINDOWS)
     HANDLE event() const { return m_event; }

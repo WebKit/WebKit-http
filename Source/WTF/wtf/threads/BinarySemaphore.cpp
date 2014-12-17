@@ -47,6 +47,19 @@ void BinarySemaphore::signal()
     m_condition.signal();
 }
 
+bool BinarySemaphore::wait()
+{
+    MutexLocker locker(m_mutex);
+
+    while (!m_isSet) {
+        m_condition.wait(m_mutex);
+    }
+
+    // Reset the semaphore.
+    m_isSet = false;
+    return true;
+}
+
 bool BinarySemaphore::wait(double absoluteTime)
 {
     MutexLocker locker(m_mutex);
