@@ -1009,7 +1009,7 @@ void TextureMapperGL::bindDefaultSurface()
 {
     m_context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, data().targetFrameBuffer);
     IntSize viewportSize(data().viewport[2], data().viewport[3]);
-    data().projectionMatrix = createProjectionMatrix(viewportSize, data().PaintFlags & PaintingMirrored);
+    data().projectionMatrix = createProjectionMatrix(viewportSize, /* data().PaintFlags & PaintingMirrored */ true);
     m_context3D->viewport(data().viewport[0], data().viewport[1], viewportSize.width(), viewportSize.height());
     m_clipStack.apply(m_context3D.get());
     data().currentSurface.clear();
