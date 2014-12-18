@@ -43,6 +43,10 @@
 #include "MediaSourceGStreamer.h"
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+#include <wtf/threads/BinarySemaphore.h>
+#endif
+
 typedef struct _GstBuffer GstBuffer;
 typedef struct _GstMessage GstMessage;
 typedef struct _GstElement GstElement;
@@ -64,6 +68,7 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateGStreamerBase {
 public:
     ~MediaPlayerPrivateGStreamer();
     static void registerMediaEngine(MediaEngineRegistrar);
+    void handleSyncMessage(GstMessage*);
     gboolean handleMessage(GstMessage*);
     void handlePluginInstallerResult(GstInstallPluginsReturn);
 
@@ -134,6 +139,11 @@ public:
     AudioSourceProvider* audioSourceProvider() { return reinterpret_cast<AudioSourceProvider*>(m_audioSourceProvider.get()); }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    void needKey(RefPtr<Uint8Array>);
+    void keyAdded();
+#endif
+
 private:
     MediaPlayerPrivateGStreamer(MediaPlayer*);
 
@@ -143,6 +153,11 @@ private:
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
     static bool isAvailable();
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&);
+    static void needKeyEventFromMain(void *invocation);
+#endif
+    static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     GstElement* createAudioSink();
 
@@ -174,6 +189,10 @@ private:
     virtual bool isLiveStream() const { return m_isStreaming; }
     virtual bool didPassCORSAccessCheck() const;
     virtual bool canSaveMediaData() const override;
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    std::unique_ptr<CDMSession> createSession(const String&);
+#endif
 
 private:
     GRefPtr<GstElement> m_playBin;
@@ -236,6 +255,9 @@ private:
 #endif
 #if ENABLE(MEDIA_SOURCE)
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
+#endif
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+    BinarySemaphore m_drmKeySemaphore;
 #endif
 };
 }

@@ -66,6 +66,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
     platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
+    platform/graphics/gstreamer/CDMSessionGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
     platform/graphics/gstreamer/ImageGStreamerCairo.cpp
@@ -228,5 +229,11 @@ if (ENABLE_TEXTURE_MAPPER)
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
+    )
+endif ()
+
+if (ENABLE_DXDRM)
+    list(APPEND WebCore_LIBRARIES
+        -lDxDrm
     )
 endif ()

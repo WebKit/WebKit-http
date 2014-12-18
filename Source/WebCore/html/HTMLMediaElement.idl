@@ -109,6 +109,7 @@
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitVideoDecodedByteCount;
 
 #if defined(ENABLE_ENCRYPTED_MEDIA) && ENABLE_ENCRYPTED_MEDIA
+#if !defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT
     [RaisesException] void webkitGenerateKeyRequest([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString keySystem, optional Uint8Array initData);
     [RaisesException] void webkitAddKey([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString keySystem, Uint8Array key, optional Uint8Array initData, [Default=NullString] optional DOMString sessionId);
     [RaisesException] void webkitCancelKeyRequest([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString keySystem, [Default=NullString] optional DOMString sessionId);
@@ -117,10 +118,13 @@
     attribute EventListener onwebkitkeyerror;
     attribute EventListener onwebkitkeymessage;
 #endif
+#endif
     [Conditional=ENCRYPTED_MEDIA|ENCRYPTED_MEDIA_V2] attribute EventListener onwebkitneedkey;
 #if defined(ENABLE_ENCRYPTED_MEDIA_V2) && ENABLE_ENCRYPTED_MEDIA_V2
+#if !defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT
     [ImplementedAs=keys] readonly attribute MediaKeys webkitKeys;
     [ImplementedAs=setMediaKeys] void webkitSetMediaKeys(MediaKeys mediaKeys);
+#endif
 #endif
 
 #if defined(ENABLE_VIDEO_TRACK) && ENABLE_VIDEO_TRACK
