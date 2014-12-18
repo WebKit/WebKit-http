@@ -66,9 +66,7 @@ const double cInverseGamma = 0.45455;
 const unsigned long cMaxPNGSize = 1000000UL;
 
 // Called if the decoding of the image fails.
-#if PLATFORM(QT)
-static void PNGAPI decodingFailed(png_structp, png_const_charp) NO_RETURN;
-#endif
+static NO_RETURN void PNGAPI decodingFailed(png_structp, png_const_charp);
 static void PNGAPI decodingFailed(png_structp png, png_const_charp)
 {
     longjmp(JMPBUF(png), 1);
