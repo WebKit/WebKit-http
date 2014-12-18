@@ -41,8 +41,12 @@ public:
 
 private:
     virtual void handleKeyboardEvent(uint32_t, uint32_t, uint32_t) override;
+
+    // FIXME: Relies on pointer handling support in Athol.
+#if 0
     virtual void handlePointerMotion(uint32_t, double, double) override;
     virtual void handlePointerButton(uint32_t, uint32_t, uint32_t) override;
+#endif
 
     AtholShell& m_shell;
 };
@@ -58,6 +62,8 @@ void InputClient::handleKeyboardEvent(uint32_t time, uint32_t key, uint32_t stat
         WKKeyboardKey{ time, key, state });
 }
 
+// FIXME: Relies on pointer handling support in Athol.
+#if 0
 void InputClient::handlePointerMotion(uint32_t time, double dx, double dy)
 {
     WKInputHandlerNotifyPointerMotion(m_shell.m_inputHandler.get(),
@@ -69,6 +75,7 @@ void InputClient::handlePointerButton(uint32_t time, uint32_t button, uint32_t s
     WKInputHandlerNotifyPointerButton(m_shell.m_inputHandler.get(),
         WKPointerButton{ time, button, state });
 }
+#endif
 
 AtholShell::AtholShell(API::Compositor* compositor)
     : m_compositor(compositor)
