@@ -60,7 +60,6 @@ LayerTreeHostWPE::LayerTreeHostWPE(WebPage* webPage)
     , m_notifyAfterScheduledLayerFlush(false)
     , m_layerFlushSchedulingEnabled(true)
     , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 10)
-    , m_frameRequestState(FrameRequestState::Completed)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitorWPE))
 {
 }
@@ -232,11 +231,6 @@ void LayerTreeHostWPE::paintContents(const GraphicsLayer* graphicsLayer, Graphic
 
 void LayerTreeHostWPE::layerFlushTimerFired()
 {
-    if (m_frameRequestState != FrameRequestState::Completed) {
-        m_frameRequestState = FrameRequestState::ScheduleLayerFlushOnCompletion;
-        return;
-    }
-
     flushAndRenderLayers();
 }
 
@@ -257,7 +251,7 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
     // The window size may be out of sync with the page size at this point, and getting
     // the viewport parameters incorrect, means that the content will be misplaced. Thus
     // we set the viewport parameters directly from the window size.
-    IntSize contextSize = m_context->defaultFrameBufferSize();
+    IntSize contextSize = context->defaultFrameBufferSize();
     glViewport(0, 0, contextSize.width(), contextSize.height());
 
     if (purpose == ForResize) {
@@ -269,6 +263,7 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
     downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer()->paint();
     m_textureMapper->endPainting();
 
+    wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
     context->swapBuffers();
 }
 
@@ -289,10 +284,6 @@ void LayerTreeHostWPE::flushAndRenderLayers()
     if (!flushPendingLayerChanges())
         return;
 
-    ASSERT(m_frameRequestState == FrameRequestState::Completed);
-    m_frameRequestState = FrameRequestState::InProgress;
-    wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
-
     // Our model is very simple. We always composite and render the tree immediately after updating it.
     compositeLayersToContext();
 
@@ -307,11 +298,6 @@ void LayerTreeHostWPE::scheduleLayerFlush()
 {
     if (!m_layerFlushSchedulingEnabled || m_layerFlushTimer.isScheduled())
         return;
-
-    if (m_frameRequestState != FrameRequestState::Completed) {
-        m_frameRequestState = FrameRequestState::ScheduleLayerFlushOnCompletion;
-        return;
-    }
 
     m_layerFlushTimer.schedule();
 }
@@ -366,20 +352,6 @@ const struct wl_callback_listener LayerTreeHostWPE::m_frameListener = {
 
         auto& layerTreeHost = *static_cast<LayerTreeHostWPE*>(data);
         layerTreeHost.m_displayRefreshMonitor->dispatchRefreshCallback();
-
-        switch (layerTreeHost.m_frameRequestState) {
-        case FrameRequestState::InProgress:
-            layerTreeHost.m_frameRequestState = FrameRequestState::Completed;
-            break;
-        case FrameRequestState::ScheduleLayerFlushOnCompletion:
-            ASSERT(!layerTreeHost.m_layerFlushTimer.isActive());
-            layerTreeHost.m_frameRequestState = FrameRequestState::Completed;
-            layerTreeHost.scheduleLayerFlush();
-            break;
-        case FrameRequestState::Completed:
-            ASSERT_NOT_REACHED();
-            break;
-        }
     }
 };
 
