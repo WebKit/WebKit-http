@@ -243,11 +243,9 @@ bool GraphicsLayer::replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChil
 
 void GraphicsLayer::removeAllChildren()
 {
-    while (m_children.size()) {
-        GraphicsLayer* curLayer = m_children[0];
-        ASSERT(curLayer->parent());
-        curLayer->removeFromParent();
-    }
+    auto oldChildren = WTF::move(m_children);
+    for (auto* child : oldChildren)
+        child->setParent(nullptr);
 }
 
 void GraphicsLayer::removeFromParent()
