@@ -333,7 +333,7 @@ my @features = (
       define => "ENABLE_ORIENTATION_EVENTS", default => isIOSWebKit(), value => \$orientationEventsSupport },
 
     { option => "performance-timeline", desc => "Toggle Performance Timeline support",
-      define => "ENABLE_PERFORMANCE_TIMELINE", default => isGtk(), value => \$performanceTimelineSupport },
+      define => "ENABLE_PERFORMANCE_TIMELINE", default => (isGtk() || isWPE()), value => \$performanceTimelineSupport },
 
     { option => "picture-sizes", desc => "Toggle sizes attribute support",
       define => "ENABLE_PICTURE_SIZES", default => 1, value => \$pictureSizesSupport },
@@ -351,7 +351,7 @@ my @features = (
       define => "ENABLE_RESOLUTION_MEDIA_QUERY", default => isEfl(), value => \$resolutionMediaQuerySupport },
 
     { option => "resource-timing", desc => "Toggle Resource Timing support",
-      define => "ENABLE_RESOURCE_TIMING", default => isGtk(), value => \$resourceTimingSupport },
+      define => "ENABLE_RESOURCE_TIMING", default => (isGtk() || isWPE()), value => \$resourceTimingSupport },
 
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
       define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isWPE()), value => \$requestAnimationFrameSupport },
@@ -363,7 +363,7 @@ my @features = (
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
 
     { option => "shared-workers", desc => "Toggle Shared Workers support",
-      define => "ENABLE_SHARED_WORKERS", default => (isAppleWebKit() || isGtk() || isEfl()), value => \$sharedWorkersSupport },
+      define => "ENABLE_SHARED_WORKERS", default => (isAppleWebKit() || isGtk() || isEfl() || isWPE()), value => \$sharedWorkersSupport },
 
     { option => "sql-database", desc => "Toggle SQL Database support",
       define => "ENABLE_SQL_DATABASE", default => 1, value => \$sqlDatabaseSupport },
@@ -396,7 +396,7 @@ my @features = (
       define => "ENABLE_TOUCH_ICON_LOADING", default => 0, value => \$touchIconLoadingSupport },
 
     { option => "user-timing", desc => "Toggle User Timing support",
-      define => "ENABLE_USER_TIMING", default => isGtk(), value => \$userTimingSupport },
+      define => "ENABLE_USER_TIMING", default => (isGtk() || isWPE()), value => \$userTimingSupport },
 
     { option => "vibration", desc => "Toggle Vibration support",
       define => "ENABLE_VIBRATION", default => isEfl(), value => \$vibrationSupport },
@@ -423,7 +423,7 @@ my @features = (
       define => "ENABLE_WEB_TIMING", default => (isGtk() || isEfl() || isWPE()), value => \$webTimingSupport },
 
     { option => "xhr-timeout", desc => "Toggle XHR Timeout support",
-      define => "ENABLE_XHR_TIMEOUT", default => (isEfl() || isGtk() || isAppleMacWebKit()), value => \$xhrTimeoutSupport },
+      define => "ENABLE_XHR_TIMEOUT", default => (isEfl() || isGtk() || isAppleMacWebKit() || isWPE()), value => \$xhrTimeoutSupport },
 
     { option => "xslt", desc => "Toggle XSLT support",
       define => "ENABLE_XSLT", default => 1, value => \$xsltSupport },
