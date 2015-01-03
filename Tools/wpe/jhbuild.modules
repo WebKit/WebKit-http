@@ -106,7 +106,7 @@
       <dep package="wayland"/>
       <dep package="cairo"/>
     </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/weston.git" checkoutdir="weston" tag="patches"/>
+    <branch repo="github.com" module="WebKitForWayland/weston.git" checkoutdir="weston" tag="patches-1.6"/>
   </autotools>
 
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">

@@ -107,7 +107,7 @@ void Environment::createOutput(struct weston_output* output)
 
     struct weston_view* baseView = weston_view_create(surface);
     weston_view_set_position(baseView, output->x, output->y);
-    wl_list_insert(&m_layer.view_list, &baseView->layer_link);
+    weston_layer_entry_insert(&m_layer.view_list, &baseView->layer_link);
 
     auto shellOutput = new Output(output, baseView);
     wl_list_insert(&m_outputList, &shellOutput->m_link);
@@ -120,7 +120,7 @@ void Environment::outputCreated(struct wl_listener*, void*)
 void Environment::registerSurface(struct weston_surface* surface)
 {
     auto shellSurface = new Surface(surface);
-    wl_list_insert(&m_layer.view_list, &shellSurface->m_view->layer_link);
+    weston_layer_entry_insert(&m_layer.view_list, &shellSurface->m_view->layer_link);
 
     weston_compositor_schedule_repaint(m_compositor);
 }
