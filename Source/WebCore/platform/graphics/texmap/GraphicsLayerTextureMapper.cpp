@@ -507,8 +507,7 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
 
 void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect)
 {
-    if (!m_layer->textureMapper())
-        return;
+    ASSERT(m_layer->textureMapper());
 
     flushCompositingStateForThisLayerOnly();
 
