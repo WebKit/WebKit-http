@@ -512,11 +512,11 @@ void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect)
     flushCompositingStateForThisLayerOnly();
 
     if (maskLayer())
-        maskLayer()->flushCompositingState(rect);
+        downcast<GraphicsLayerTextureMapper>(maskLayer())->flushCompositingState(rect);
     if (replicaLayer())
-        replicaLayer()->flushCompositingState(rect);
+        downcast<GraphicsLayerTextureMapper>(replicaLayer())->flushCompositingState(rect);
     for (auto* child : children())
-        child->flushCompositingState(rect);
+        downcast<GraphicsLayerTextureMapper>(child)->flushCompositingState(rect);
 }
 
 void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()
