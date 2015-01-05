@@ -136,9 +136,7 @@ std::unique_ptr<TextureMapper> TextureMapper::create(AccelerationMode mode)
 }
 
 TextureMapper::TextureMapper(AccelerationMode accelerationMode)
-    : m_context(0)
-    , m_interpolationQuality(InterpolationDefault)
-    , m_textDrawingMode(TextModeFill)
+    : m_context(nullptr)
     , m_texturePool(std::make_unique<BitmapTexturePool>())
     , m_accelerationMode(accelerationMode)
     , m_isMaskMode(false)
@@ -152,8 +150,8 @@ void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* 
 {
     std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(targetRect.size());
     GraphicsContext* context = imageBuffer->context();
-    context->setImageInterpolationQuality(textureMapper->imageInterpolationQuality());
-    context->setTextDrawingMode(textureMapper->textDrawingMode());
+    context->setImageInterpolationQuality(InterpolationDefault);
+    context->setTextDrawingMode(TextModeFill);
 
     IntRect sourceRect(targetRect);
     sourceRect.setLocation(offset);

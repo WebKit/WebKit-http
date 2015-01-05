@@ -143,11 +143,6 @@ public:
     virtual IntRect clipBounds() = 0;
     virtual PassRefPtr<BitmapTexture> createTexture() = 0;
 
-    void setImageInterpolationQuality(InterpolationQuality quality) { m_interpolationQuality = quality; }
-    void setTextDrawingMode(TextDrawingModeFlags mode) { m_textDrawingMode = mode; }
-
-    InterpolationQuality imageInterpolationQuality() const { return m_interpolationQuality; }
-    TextDrawingModeFlags textDrawingMode() const { return m_textDrawingMode; }
     AccelerationMode accelerationMode() const { return m_accelerationMode; }
 
     virtual void beginPainting(PaintFlags = 0) { }
@@ -178,13 +173,11 @@ private:
         return nullptr;
     }
 #endif
-    InterpolationQuality m_interpolationQuality;
-    TextDrawingModeFlags m_textDrawingMode;
-    std::unique_ptr<BitmapTexturePool> m_texturePool;
-    AccelerationMode m_accelerationMode;
-    bool m_isMaskMode;
     TransformationMatrix m_patternTransform;
-    WrapMode m_wrapMode;
+    std::unique_ptr<BitmapTexturePool> m_texturePool;
+    AccelerationMode m_accelerationMode : 8;
+    WrapMode m_wrapMode : 8;
+    bool m_isMaskMode : 8;
 };
 
 }
