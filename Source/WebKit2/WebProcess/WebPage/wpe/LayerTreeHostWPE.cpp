@@ -114,7 +114,7 @@ void LayerTreeHostWPE::initialize()
 
     m_textureMapper = TextureMapper::create(TextureMapper::OpenGLMode);
     static_cast<TextureMapperGL*>(m_textureMapper.get())->setEnableEdgeDistanceAntialiasing(true);
-    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer()->setTextureMapper(m_textureMapper.get());
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().setTextureMapper(m_textureMapper.get());
 
     // FIXME: Cretae page olverlay layers. https://bugs.webkit.org/show_bug.cgi?id=131433.
 
@@ -260,7 +260,7 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
     }
 
     m_textureMapper->beginPainting();
-    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer()->paint();
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().paint();
     m_textureMapper->endPainting();
 
     wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
