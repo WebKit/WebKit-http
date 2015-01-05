@@ -49,10 +49,11 @@ FormDataIODevice::FormDataIODevice(FormData* data)
     , m_currentDelta(0)
     , m_fileSize(0)
     , m_dataSize(0)
+    , m_formData(data)
 {
     setOpenMode(FormDataIODevice::ReadOnly);
 
-    prepareFormElements(data);
+    prepareFormElements();
     prepareCurrentElement();
     computeSize();
 }
@@ -62,19 +63,29 @@ FormDataIODevice::~FormDataIODevice()
     delete m_currentFile;
 }
 
-void FormDataIODevice::prepareFormElements(FormData* formData)
+bool FormDataIODevice::reset()
 {
-    if (!formData)
+    if (m_currentFile)
+        m_currentFile->close();
+
+    m_currentDelta = 0;
+    m_formElements = m_formData->elements();
+
+    prepareCurrentElement();
+    return true;
+}
+
+void FormDataIODevice::prepareFormElements()
+{
+    if (!m_formData)
         return;
 
-    RefPtr<FormData> formDataRef(formData);
-
 #if ENABLE(BLOB)
-    formDataRef = formDataRef->resolveBlobReferences();
+    m_formData = m_formData->resolveBlobReferences();
 #endif
 
     // Take a deep copy of the FormDataElements
-    m_formElements = formDataRef->elements();
+    m_formElements = m_formData->elements();
 }
 
 
