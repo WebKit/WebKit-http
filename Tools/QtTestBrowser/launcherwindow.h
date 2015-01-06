@@ -180,8 +180,8 @@ protected Q_SLOTS:
 #endif
 #ifndef QT_NO_OPENGL
     void toggleQGLWidgetViewport(bool enable);
-#endif
     void toggleQOpenGLWidgetViewport(bool enable);
+#endif
 
     void changeViewportUpdateMode(int mode);
     void animatedFlip();

@@ -47,6 +47,7 @@
 
 namespace WebCore {
 
+#if ENABLE(ACCELERATED_2D_CANVAS)
 ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, QOpenGLContext* compatibleContext, bool& success)
     : m_data(size, compatibleContext)
     , m_size(size)
@@ -58,6 +59,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, Color
 
     m_context = adoptPtr(new GraphicsContext(m_data.m_painter));
 }
+#endif
 
 ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, RenderingMode /*renderingMode*/, bool& success)
     : m_data(size)
@@ -75,6 +77,7 @@ ImageBuffer::~ImageBuffer()
 {
 }
 
+#if ENABLE(ACCELERATED_2D_CANVAS)
 PassOwnPtr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, float resolutionScale, ColorSpace colorSpace, QOpenGLContext* context)
 {
     bool success = false;
@@ -83,6 +86,7 @@ PassOwnPtr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size,
         return nullptr;
     return buf.release();
 }
+#endif
 
 GraphicsContext* ImageBuffer::context() const
 {

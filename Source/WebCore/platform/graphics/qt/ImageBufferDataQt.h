@@ -29,9 +29,12 @@
 #include "Image.h"
 
 #include <QImage>
-#include <QOpenGLContext>
 #include <QPainter>
 #include <QPaintDevice>
+
+#if ENABLE(ACCELERATED_2D_CANVAS)
+#include <QOpenGLContext>
+#endif
 
 #include <wtf/RefPtr.h>
 
@@ -61,7 +64,9 @@ class ImageBufferData
 {
 public:
     ImageBufferData(const IntSize&);
+#if ENABLE(ACCELERATED_2D_CANVAS)
     ImageBufferData(const IntSize&, QOpenGLContext*);
+#endif
     ~ImageBufferData();
     QPainter* m_painter;
     ImageBufferDataPrivate* m_impl;

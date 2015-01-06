@@ -586,7 +586,7 @@ void HTMLCanvasElement::createImageBuffer() const
         return;
 
     RenderingMode renderingMode = shouldAccelerate(bufferSize) ? Accelerated : Unaccelerated;
-#if PLATFORM(QT)
+#if PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
     if (renderingMode == Accelerated) {
         QWebPageClient* client = document()->page()->chrome().platformPageClient();
         // The WebKit2 Chrome does not have a pageclient.

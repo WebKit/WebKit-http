@@ -34,7 +34,6 @@
 #include "GraphicsSurface.h"
 #include "ImageData.h"
 #include "StillImageQt.h"
-#include "QFramebufferPaintDevice.h"
 
 #include <QImage>
 #include <QPaintEngine>
@@ -42,6 +41,7 @@
 #include <QPixmap>
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
+#include "QFramebufferPaintDevice.h"
 #include "TextureMapper.h"
 #include "TextureMapperPlatformLayer.h"
 #include "TextureMapperGL.h"
@@ -483,16 +483,12 @@ ImageBufferData::ImageBufferData(const IntSize& size)
     initPainter();
 }
 
+#if ENABLE(ACCELERATED_2D_CANVAS)
 ImageBufferData::ImageBufferData(const IntSize& size, QOpenGLContext* compatibleContext)
 {
     m_painter = new QPainter;
 
-#if ENABLE(ACCELERATED_2D_CANVAS)
     m_impl = new ImageBufferDataPrivateAccelerated(size, compatibleContext);
-#else
-    Q_UNUSED(compatibleContext);
-    m_impl = new ImageBufferDataPrivateUnaccelerated(size);
-#endif
 
     if (!m_impl->paintDevice())
         return;
@@ -501,11 +497,14 @@ ImageBufferData::ImageBufferData(const IntSize& size, QOpenGLContext* compatible
 
     initPainter();
 }
+#endif
 
 ImageBufferData::~ImageBufferData()
 {
+#if ENABLE(ACCELERATED_2D_CANVAS)
     if (m_impl->isAccelerated())
         static_cast<QFramebufferPaintDevice*>(m_impl->paintDevice())->ensureActiveTarget();
+#endif
     m_painter->end();
     delete m_painter;
     delete m_impl;
