@@ -2076,6 +2076,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(cons
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaEngineSupportParameters& parameters)
 {
+    // Disable VPX/Opus on MSE for now, mp4/avc1 seems way more reliable currently.
+    if (parameters.isMediaSource && parameters.type.endsWith("webm"))
+        return MediaPlayer::IsNotSupported;
+
     if (parameters.type.isNull() || parameters.type.isEmpty())
         return MediaPlayer::IsNotSupported;
 
