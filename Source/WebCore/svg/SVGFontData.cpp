@@ -22,6 +22,7 @@
 #if ENABLE(SVG_FONTS)
 #include "SVGFontData.h"
 
+#include "GlyphPage.h"
 #include "RenderElement.h"
 #include "SVGAltGlyphElement.h"
 #include "SVGFontElement.h"
@@ -63,13 +64,6 @@ void SVGFontData::initializeFontData(SimpleFontData* fontData, float fontSize)
     SVGFontFaceElement* svgFontFaceElement = this->svgFontFaceElement();
     ASSERT(svgFontFaceElement);
 
-    SVGFontElement* svgFontElement = svgFontFaceElement->associatedFontElement();
-    ASSERT(svgFontElement);
-    GlyphData missingGlyphData;
-    missingGlyphData.fontData = fontData;
-    missingGlyphData.glyph = svgFontElement->missingGlyph();
-    fontData->setMissingGlyphData(missingGlyphData);
-
     fontData->setZeroWidthSpaceGlyph(0);
     fontData->determinePitch();
 
@@ -80,7 +74,7 @@ void SVGFontData::initializeFontData(SimpleFontData* fontData, float fontSize)
     float descent = svgFontFaceElement->descent() * scale;
     float lineGap = 0.1f * fontSize;
 
-    GlyphPage* glyphPageZero = GlyphPageTreeNode::getRootChild(fontData, 0)->page();
+    const GlyphPage* glyphPageZero = fontData->glyphPage(0);
 
     if (!xHeight && glyphPageZero) {
         // Fallback if x_heightAttr is not specified for the font element.

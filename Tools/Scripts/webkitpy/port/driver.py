@@ -137,6 +137,8 @@ class Driver(object):
         self._crashed_process_name = None
         self._crashed_pid = None
 
+        self._driver_timed_out = False
+
         # WebKitTestRunner can report back subprocesses that became unresponsive
         # This could mean they crashed.
         self._subprocess_was_unresponsive = False
@@ -172,11 +174,18 @@ class Driver(object):
         start_time = time.time()
         self.start(driver_input.should_run_pixel_test, driver_input.args)
         test_begin_time = time.time()
+        self._driver_timed_out = False
         self.error_from_test = str()
         self.err_seen_eof = False
 
         command = self._command_from_driver_input(driver_input)
-        deadline = test_begin_time + int(driver_input.timeout) / 1000.0
+
+        # Certain timeouts are detected by the tool itself; tool detection is better,
+        # because results contain partial output in this case. Make script timeout longer
+        # by 5 seconds to avoid racing for which timeout is detected first.
+        # FIXME: It's not the job of the driver to decide what the timeouts should be.
+        # Move the additional timeout to driver_input.
+        deadline = test_begin_time + int(driver_input.timeout) / 1000.0 + 5
 
         self._server_process.write(command)
         text, audio = self._read_first_block(deadline)  # First block is either text or audio
@@ -184,6 +193,7 @@ class Driver(object):
 
         crashed = self.has_crashed()
         timed_out = self._server_process.timed_out
+        driver_timed_out = self._driver_timed_out
         pid = self._server_process.pid()
 
         if stop_when_done or crashed or timed_out:
@@ -213,7 +223,7 @@ class Driver(object):
 
         return DriverOutput(text, image, actual_image_hash, audio,
             crash=crashed, test_time=time.time() - test_begin_time, measurements=self._measurements,
-            timeout=timed_out, error=self.error_from_test,
+            timeout=timed_out or driver_timed_out, error=self.error_from_test,
             crashed_process_name=self._crashed_process_name,
             crashed_pid=self._crashed_pid, crash_log=crash_log, pid=pid)
 
@@ -349,7 +359,6 @@ class Driver(object):
             cmd.append('--threaded')
         if self._no_timeout:
             cmd.append('--no-timeout')
-        # FIXME: We need to pass --timeout=SECONDS to WebKitTestRunner for WebKit2.
 
         cmd.extend(self._port.get_option('additional_drt_flag', []))
         cmd.extend(self._port.additional_drt_flag())
@@ -359,10 +368,12 @@ class Driver(object):
         cmd.append('-')
         return cmd
 
+    def _check_for_driver_timeout(self, out_line):
+        if out_line == "FAIL: Timed out waiting for notifyDone to be called\n":
+            self._driver_timed_out = True
+
     def _check_for_driver_crash(self, error_line):
         if error_line == "#CRASHED\n":
-            # This is used on Windows and iOS to report that the process has crashed
-            # See http://trac.webkit.org/changeset/65537.
             self._crashed_process_name = self._server_process.name()
             self._crashed_pid = self._server_process.pid()
         elif (error_line.startswith("#CRASHED - ")
@@ -477,6 +488,7 @@ class Driver(object):
                 err_line, self.err_seen_eof = self._strip_eof(err_line)
 
             if out_line:
+                self._check_for_driver_timeout(out_line)
                 if out_line[-1] != "\n":
                     _log.error("Last character read from DRT stdout line was not a newline!  This indicates either a NRWT or DRT bug.")
                 content_length_before_header_check = block._content_length

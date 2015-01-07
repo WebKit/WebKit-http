@@ -22,10 +22,12 @@
 #define WTF_PassRefPtr_h
 
 #include <wtf/GetPtr.h>
-#include <wtf/PassRef.h>
+#include <wtf/Ref.h>
 
 namespace WTF {
 
+    template<typename T> class RefPtr;
+    template<typename T> class PassRefPtr;
     template<typename T> PassRefPtr<T> adoptRef(T*);
 
     template<typename T> ALWAYS_INLINE void refIfNotNull(T* ptr)
@@ -56,7 +58,7 @@ namespace WTF {
         ALWAYS_INLINE ~PassRefPtr() { derefIfNotNull(m_ptr); }
 
         template<typename U> PassRefPtr(const RefPtr<U>&);
-        template<typename U> PassRefPtr(PassRef<U> reference) : m_ptr(&reference.leakRef()) { }
+        template<typename U> PassRefPtr(Ref<U>&& reference) : m_ptr(&reference.leakRef()) { }
 
         T* get() const { return m_ptr; }
 
@@ -91,9 +93,7 @@ namespace WTF {
 
     template<typename T> inline T* PassRefPtr<T>::leakRef() const
     {
-        T* ptr = m_ptr;
-        m_ptr = nullptr;
-        return ptr;
+        return std::exchange(m_ptr, nullptr);
     }
 
     template<typename T, typename U> inline bool operator==(const PassRefPtr<T>& a, const PassRefPtr<U>& b) 

@@ -49,7 +49,7 @@ void TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded()
         return;
 
     m_waitToDumpWatchdogTimer.scheduleAfterDelay("[WTR] waitToDumpWatchdogTimerCallback", [this] { waitToDumpWatchdogTimerFired(); },
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(waitToDumpWatchdogTimerInterval)));
+        std::chrono::milliseconds(m_timeout));
 }
 
 JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSStringRef url)

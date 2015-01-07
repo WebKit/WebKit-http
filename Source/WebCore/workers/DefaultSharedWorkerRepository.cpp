@@ -58,7 +58,7 @@ namespace WebCore {
 
 class SharedWorkerProxy final : public ThreadSafeRefCounted<SharedWorkerProxy>, public WorkerLoaderProxy, public WorkerReportingProxy {
 public:
-    static PassRefPtr<SharedWorkerProxy> create(const String& name, const URL& url, PassRefPtr<SecurityOrigin> origin) { return adoptRef(new SharedWorkerProxy(name, url, origin)); }
+    static Ref<SharedWorkerProxy> create(const String& name, const URL& url, PassRefPtr<SecurityOrigin> origin) { return adoptRef(*new SharedWorkerProxy(name, url, origin)); }
 
     void setThread(PassRefPtr<SharedWorkerThread> thread) { m_thread = thread; }
     SharedWorkerThread* thread() { return m_thread.get(); }
@@ -87,8 +87,6 @@ public:
 
     // Removes a detached document from the list of worker's documents. May set the closing flag if this is the last document in the list.
     void documentDetached(Document*);
-
-    GroupSettings* groupSettings() const; // Page GroupSettings used by worker thread.
 
 private:
     SharedWorkerProxy(const String& name, const URL&, PassRefPtr<SecurityOrigin>);
@@ -151,19 +149,6 @@ bool SharedWorkerProxy::postTaskForModeToWorkerGlobalScope(ScriptExecutionContex
     ASSERT(m_thread);
     m_thread->runLoop().postTaskForMode(WTF::move(task), mode);
     return true;
-}
-
-GroupSettings* SharedWorkerProxy::groupSettings() const
-{
-    if (isClosing())
-        return 0;
-    ASSERT(m_workerDocuments.size());
-    // Just pick the first active document, and use the groupsettings of that page.
-    Document* document = *(m_workerDocuments.begin());
-    if (document->page())
-        return &document->page()->group().groupSettings();
-
-    return 0;
 }
 
 void SharedWorkerProxy::postExceptionToWorkerObject(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL)
@@ -337,7 +322,7 @@ void DefaultSharedWorkerRepository::workerScriptLoaded(SharedWorkerProxy& proxy,
 
     // Another loader may have already started up a thread for this proxy - if so, just send a connect to the pre-existing thread.
     if (!proxy.thread()) {
-        RefPtr<SharedWorkerThread> thread = SharedWorkerThread::create(proxy.name(), proxy.url(), userAgent, proxy.groupSettings(), workerScript, proxy, proxy, DontPauseWorkerGlobalScopeOnStart, contentSecurityPolicy, contentSecurityPolicyType);
+        RefPtr<SharedWorkerThread> thread = SharedWorkerThread::create(proxy.name(), proxy.url(), userAgent, workerScript, proxy, proxy, DontPauseWorkerGlobalScopeOnStart, contentSecurityPolicy, contentSecurityPolicyType);
         proxy.setThread(thread);
         thread->start();
     }
@@ -376,7 +361,7 @@ void DefaultSharedWorkerRepository::documentDetached(Document* document)
 void DefaultSharedWorkerRepository::connectToWorker(PassRefPtr<SharedWorker> worker, std::unique_ptr<MessagePortChannel> port, const URL& url, const String& name, ExceptionCode& ec)
 {
     MutexLocker lock(m_lock);
-    ASSERT(worker->scriptExecutionContext()->securityOrigin()->canAccess(SecurityOrigin::create(url).get()));
+    ASSERT(worker->scriptExecutionContext()->securityOrigin()->canAccess(&SecurityOrigin::create(url).get()));
     // Fetch a proxy corresponding to this SharedWorker.
     RefPtr<SharedWorkerProxy> proxy = getProxy(name, url);
 

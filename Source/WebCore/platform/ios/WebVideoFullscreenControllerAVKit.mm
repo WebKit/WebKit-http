@@ -37,7 +37,7 @@
 
 using namespace WebCore;
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED <= 82000
+#if __IPHONE_OS_VERSION_MIN_REQUIRED <= 80200
 
 @implementation WebVideoFullscreenController
 - (void)setVideoElement:(WebCore::HTMLVideoElement*)videoElement

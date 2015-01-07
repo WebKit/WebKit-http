@@ -67,7 +67,7 @@ PseudoElement::PseudoElement(Element& host, PseudoId pseudoId)
 PseudoElement::~PseudoElement()
 {
     ASSERT(!m_hostElement);
-    InspectorInstrumentation::pseudoElementDestroyed(document().page(), this);
+    InspectorInstrumentation::pseudoElementDestroyed(document().page(), *this);
 }
 
 RefPtr<RenderStyle> PseudoElement::customStyleForRenderer(RenderStyle& parentStyle)
@@ -112,7 +112,7 @@ void PseudoElement::didRecalcStyle(Style::Change)
         // We only manage the style for the generated content which must be images or text.
         if (!is<RenderImage>(*child) && !is<RenderQuote>(*child))
             continue;
-        PassRef<RenderStyle> createdStyle = RenderStyle::createStyleInheritingFromPseudoStyle(renderer.style());
+        Ref<RenderStyle> createdStyle = RenderStyle::createStyleInheritingFromPseudoStyle(renderer.style());
         downcast<RenderElement>(*child).setStyle(WTF::move(createdStyle));
     }
 }

@@ -22,7 +22,6 @@
 
 #include "GLContext.h"
 #include "GraphicsContext3D.h"
-#include <wtf/PassOwnPtr.h>
 
 #if USE(TEXTURE_MAPPER)
 #include "TextureMapperPlatformLayer.h"
@@ -49,7 +48,7 @@ public:
 
 private:
     GraphicsContext3D* m_context;
-    OwnPtr<GLContext> m_glContext;
+    std::unique_ptr<GLContext> m_glContext;
     GraphicsContext3D::RenderStyle m_renderStyle;
 };
 

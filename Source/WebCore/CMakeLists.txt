@@ -409,7 +409,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/NodeFilter.idl
     dom/NodeIterator.idl
     dom/NodeList.idl
-    dom/Notation.idl
     dom/OverflowEvent.idl
     dom/PageTransitionEvent.idl
     dom/PopStateEvent.idl
@@ -536,6 +535,8 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/CanvasRenderingContext.idl
     html/canvas/CanvasRenderingContext2D.idl
     html/canvas/DOMPath.idl
+    html/canvas/EXTBlendMinMax.idl
+    html/canvas/EXTFragDepth.idl
     html/canvas/EXTShaderTextureLOD.idl
     html/canvas/EXTTextureFilterAnisotropic.idl
     html/canvas/EXTsRGB.idl
@@ -821,7 +822,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBDatabaseMetadata.cpp
     Modules/indexeddb/IDBEventDispatcher.cpp
     Modules/indexeddb/IDBFactory.cpp
-    Modules/indexeddb/IDBFactoryBackendInterface.cpp
     Modules/indexeddb/IDBIndex.cpp
     Modules/indexeddb/IDBKey.cpp
     Modules/indexeddb/IDBKeyData.cpp
@@ -837,7 +837,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBTransactionBackendOperations.cpp
     Modules/indexeddb/IDBTransactionCoordinator.cpp
     Modules/indexeddb/IDBVersionChangeEvent.cpp
-    Modules/indexeddb/PageGroupIndexedDatabase.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
     Modules/mediacontrols/MediaControlsHost.cpp
@@ -1257,7 +1256,6 @@ set(WebCore_SOURCES
     css/CSSValueList.cpp
     css/CSSValuePool.cpp
     css/DOMWindowCSS.cpp
-    css/DeprecatedStyleBuilder.cpp
     css/DocumentRuleSets.cpp
     css/ElementRuleCollector.cpp
     css/FontLoader.cpp
@@ -1393,7 +1391,6 @@ set(WebCore_SOURCES
     dom/NodeRareData.cpp
     dom/NodeRenderingTraversal.cpp
     dom/NodeTraversal.cpp
-    dom/Notation.cpp
     dom/OverflowEvent.cpp
     dom/PageTransitionEvent.cpp
     dom/PendingScript.cpp
@@ -1414,6 +1411,7 @@ set(WebCore_SOURCES
     dom/ScriptableDocumentParser.cpp
     dom/ScriptedAnimationController.cpp
     dom/SecurityContext.cpp
+    dom/SecurityOriginPolicy.cpp
     dom/SelectorQuery.cpp
     dom/ShadowRoot.cpp
     dom/SpaceSplitString.cpp
@@ -1678,6 +1676,8 @@ set(WebCore_SOURCES
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
+    html/canvas/EXTBlendMinMax.cpp
+    html/canvas/EXTFragDepth.cpp
     html/canvas/EXTShaderTextureLOD.cpp
     html/canvas/EXTTextureFilterAnisotropic.cpp
     html/canvas/EXTsRGB.cpp
@@ -1895,6 +1895,7 @@ set(WebCore_SOURCES
     page/DOMWindow.cpp
     page/DOMWindowExtension.cpp
     page/DOMWindowProperty.cpp
+    page/DatabaseProvider.cpp
     page/DebugPageOverlays.cpp
     page/DeviceController.cpp
     page/DiagnosticLoggingKeys.cpp
@@ -1907,7 +1908,6 @@ set(WebCore_SOURCES
     page/FrameSnapshotting.cpp
     page/FrameTree.cpp
     page/FrameView.cpp
-    page/GroupSettings.cpp
     page/History.cpp
     page/Location.cpp
     page/MainFrame.cpp
@@ -1980,6 +1980,7 @@ set(WebCore_SOURCES
     platform/DisplaySleepDisabler.cpp
     platform/DragData.cpp
     platform/DragImage.cpp
+    platform/FeatureCounter.cpp
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
@@ -2078,7 +2079,6 @@ set(WebCore_SOURCES
     platform/graphics/FontGlyphs.cpp
     platform/graphics/GeneratedImage.cpp
     platform/graphics/GeometryUtilities.cpp
-    platform/graphics/GlyphPageTreeNode.cpp
     platform/graphics/Gradient.cpp
     platform/graphics/GradientImage.cpp
     platform/graphics/GraphicsContext.cpp
@@ -2244,7 +2244,6 @@ set(WebCore_SOURCES
     plugins/DOMPlugin.cpp
     plugins/DOMPluginArray.cpp
     plugins/PluginData.cpp
-    plugins/PluginDatabase.cpp
     plugins/PluginDebug.cpp
     plugins/PluginMainThreadScheduler.cpp
     plugins/PluginStream.cpp
@@ -2484,16 +2483,10 @@ set(WebCore_SOURCES
     replay/UserInputBridge.cpp
 
     storage/Storage.cpp
-    storage/StorageAreaImpl.cpp
-    storage/StorageAreaSync.cpp
     storage/StorageEvent.cpp
     storage/StorageEventDispatcher.cpp
     storage/StorageMap.cpp
-    storage/StorageNamespaceImpl.cpp
     storage/StorageNamespaceProvider.cpp
-    storage/StorageSyncManager.cpp
-    storage/StorageThread.cpp
-    storage/StorageTracker.cpp
 
     style/InlineTextBoxStyle.cpp
     style/StyleFontSizeFunctions.cpp
@@ -2783,13 +2776,6 @@ if (ENABLE_SQL_DATABASE)
     )
 endif ()
 
-if (NOT ENABLE_NETSCAPE_PLUGIN_API)
-    list(APPEND WebCore_SOURCES
-        plugins/PluginPackageNone.cpp
-        plugins/PluginViewNone.cpp
-    )
-endif ()
-
 list(APPEND WebCore_CSS_PROPERTY_NAMES
     ${WEBCORE_DIR}/css/SVGCSSPropertyNames.in
 )
@@ -2809,6 +2795,8 @@ if (ENABLE_WEBGL)
 
     list(APPEND WebCore_SOURCES
         html/canvas/ANGLEInstancedArrays.cpp
+        html/canvas/EXTBlendMinMax.cpp
+        html/canvas/EXTFragDepth.cpp
         html/canvas/EXTShaderTextureLOD.cpp
         html/canvas/EXTTextureFilterAnisotropic.cpp
         html/canvas/EXTsRGB.cpp
@@ -2848,6 +2836,8 @@ if (ENABLE_WEBGL)
     )
     list(APPEND WebCore_IDL_FILES
         html/canvas/ANGLEInstancedArrays.idl
+        html/canvas/EXTBlendMinMax.idl
+        html/canvas/EXTFragDepth.idl
         html/canvas/EXTShaderTextureLOD.idl
         html/canvas/EXTTextureFilterAnisotropic.idl
         html/canvas/EXTsRGB.idl

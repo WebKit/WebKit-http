@@ -33,9 +33,9 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RefPtr<HTMLWBRElement> HTMLWBRElement::create(const QualifiedName& tagName, Document& document)
+Ref<HTMLWBRElement> HTMLWBRElement::create(const QualifiedName& tagName, Document& document)
 {
-    return adoptRef(new HTMLWBRElement(tagName, document));
+    return adoptRef(*new HTMLWBRElement(tagName, document));
 }
 
 HTMLWBRElement::HTMLWBRElement(const QualifiedName& tagName, Document& document)
@@ -44,7 +44,7 @@ HTMLWBRElement::HTMLWBRElement(const QualifiedName& tagName, Document& document)
     ASSERT(hasTagName(wbrTag));
 }
 
-RenderPtr<RenderElement> HTMLWBRElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLWBRElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderLineBreak>(*this, WTF::move(style));
 }

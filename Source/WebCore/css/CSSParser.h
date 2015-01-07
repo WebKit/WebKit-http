@@ -80,6 +80,27 @@ public:
         GeneralSyntaxError
     };
 
+    class ValueWithCalculation {
+    public:
+        explicit ValueWithCalculation(CSSParserValue& value)
+            : m_value(value)
+        { }
+
+        CSSParserValue& value() const { return m_value; }
+        operator CSSParserValue&() { return m_value; }
+
+        CSSCalcValue* calculation() const { return m_calculation.get(); }
+        void setCalculation(RefPtr<CSSCalcValue>&& calculation)
+        {
+            ASSERT(isCalculation(m_value));
+            m_calculation = calculation;
+        }
+
+    private:
+        CSSParserValue& m_value;
+        RefPtr<CSSCalcValue> m_calculation;
+    };
+
     CSSParser(const CSSParserContext&);
 
     ~CSSParser();
@@ -92,9 +113,9 @@ public:
     static bool parseColor(RGBA32& color, const String&, bool strict = false);
     static bool parseSystemColor(RGBA32& color, const String&, Document*);
     static PassRefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
-    PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, CSSParserValue&);
+    PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, ValueWithCalculation&);
     bool parseDeclaration(MutableStyleProperties*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
-    static PassRef<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
+    static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     std::unique_ptr<MediaQuery> parseMediaQuery(const String&);
 #if ENABLE(PICTURE_SIZES)
     std::unique_ptr<SourceSizeList> parseSizesAttribute(const String&);
@@ -117,6 +138,8 @@ public:
 
     PassRefPtr<CSSValue> parseBackgroundColor();
 
+    // FIXME: Maybe these two methods could be combined into one.
+    bool parseMaskImage(CSSParserValueList&, RefPtr<CSSValue>&);
     bool parseFillImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
     enum FillPositionFlag { InvalidFillPosition = 0, AmbiguousFillPosition = 1, XFillPosition = 2, YFillPosition = 4 };
@@ -136,8 +159,8 @@ public:
     bool parseFillProperty(CSSPropertyID propId, CSSPropertyID& propId1, CSSPropertyID& propId2, RefPtr<CSSValue>&, RefPtr<CSSValue>&);
     bool parseFillShorthand(CSSPropertyID, const CSSPropertyID* properties, int numProperties, bool important);
 
-    void addFillValue(RefPtr<CSSValue>& lval, PassRef<CSSValue> rval);
-    void addAnimationValue(RefPtr<CSSValue>& lval, PassRef<CSSValue> rval);
+    void addFillValue(RefPtr<CSSValue>& lval, Ref<CSSValue>&& rval);
+    void addAnimationValue(RefPtr<CSSValue>& lval, Ref<CSSValue>&& rval);
 
     PassRefPtr<CSSValue> parseAnimationDelay();
     PassRefPtr<CSSValue> parseAnimationDirection();
@@ -280,7 +303,7 @@ public:
     PassRefPtr<CSSValue> parseTextIndent();
     
     bool parseLineBoxContain(bool important);
-    bool parseCalculation(CSSParserValue&, CalculationPermittedValueRange);
+    RefPtr<CSSCalcValue> parseCalculation(CSSParserValue&, CalculationPermittedValueRange);
 
     bool parseFontFeatureTag(CSSValueList&);
     bool parseFontFeatureSettings(bool important);
@@ -330,7 +353,7 @@ public:
 
     void clearProperties();
 
-    PassRef<ImmutableStyleProperties> createStyleProperties();
+    Ref<ImmutableStyleProperties> createStyleProperties();
 
     CSSParserContext m_context;
 
@@ -402,8 +425,8 @@ public:
     PassRefPtr<StyleRuleBase> createViewportRule();
 #endif
 
-    PassRef<CSSPrimitiveValue> createPrimitiveNumericValue(CSSParserValue&);
-    PassRef<CSSPrimitiveValue> createPrimitiveStringValue(CSSParserValue&);
+    Ref<CSSPrimitiveValue> createPrimitiveNumericValue(ValueWithCalculation&);
+    Ref<CSSPrimitiveValue> createPrimitiveStringValue(CSSParserValue&);
 
     static URL completeURL(const CSSParserContext&, const String& url);
 
@@ -496,8 +519,8 @@ private:
     void setupParser(const char* prefix, unsigned prefixLength, const String&, const char* suffix, unsigned suffixLength);
     bool inShorthand() const { return m_inParseShorthand; }
 
-    bool validWidth(CSSParserValue&);
-    bool validHeight(CSSParserValue&);
+    bool validateWidth(ValueWithCalculation&);
+    bool validateHeight(ValueWithCalculation&);
 
     void deleteFontFaceOnlyValues();
 
@@ -505,7 +528,7 @@ private:
     bool parseGeneratedImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
     bool parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, StyleSheetContents* contextStyleSheet);
-    PassRef<ImmutableStyleProperties> parseDeclaration(const String&, StyleSheetContents* contextStyleSheet);
+    Ref<ImmutableStyleProperties> parseDeclaration(const String&, StyleSheetContents* contextStyleSheet);
 
     PassRefPtr<CSSBasicShape> parseInsetRoundedCorners(PassRefPtr<CSSBasicShapeInset>, CSSParserValueList&);
 
@@ -576,8 +599,6 @@ private:
 
     std::unique_ptr<Vector<std::unique_ptr<CSSParserSelector>>> m_recycledSelectorVector;
 
-    RefPtr<CSSCalcValue> m_parsedCalculation;
-
     std::unique_ptr<RuleSourceDataList> m_supportsRuleDataStack;
 
     // defines units allowed for a certain property, used in parseUnit
@@ -611,16 +632,16 @@ private:
     bool isLoggingErrors();
     void logError(const String& message, int lineNumber);
 
-    bool validCalculationUnit(CSSParserValue&, Units, ReleaseParsedCalcValueCondition releaseCalc = DoNotReleaseParsedCalcValue);
+    bool validateCalculationUnit(ValueWithCalculation&, Units);
 
     bool shouldAcceptUnitLessValues(CSSParserValue&, Units, CSSParserMode);
 
-    inline bool validUnit(CSSParserValue& value, Units unitflags, ReleaseParsedCalcValueCondition releaseCalc = DoNotReleaseParsedCalcValue) { return validUnit(value, unitflags, m_context.mode, releaseCalc); }
-    bool validUnit(CSSParserValue&, Units, CSSParserMode, ReleaseParsedCalcValueCondition releaseCalc = DoNotReleaseParsedCalcValue);
+    inline bool validateUnit(ValueWithCalculation& value, Units unitFlags) { return validateUnit(value, unitFlags, m_context.mode); }
+    bool validateUnit(ValueWithCalculation&, Units, CSSParserMode);
 
     bool parseBorderImageQuad(Units, RefPtr<CSSPrimitiveValue>&);
-    int colorIntFromValue(CSSParserValue&);
-    double parsedDouble(CSSParserValue&, ReleaseParsedCalcValueCondition releaseCalc = DoNotReleaseParsedCalcValue);
+    int colorIntFromValue(ValueWithCalculation&);
+    double parsedDouble(ValueWithCalculation&);
     
     friend class TransformOperationInfo;
     friend class FilterOperationInfo;

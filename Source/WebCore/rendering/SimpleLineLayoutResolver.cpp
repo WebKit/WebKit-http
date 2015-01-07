@@ -77,10 +77,11 @@ StringView RunResolver::Run::text() const
     auto& resolver = m_iterator.resolver();
     auto& run = m_iterator.simpleRun();
     auto& segment = resolver.m_flowContents.segmentForPosition(run.start);
-    ASSERT(segment.renderer.is8Bit());
     // We currently split runs on segment boundaries (different RenderText).
     ASSERT(run.end <= segment.end);
-    return StringView(segment.renderer.characters8(), segment.renderer.textLength()).substring(run.start - segment.start, run.end - run.start);
+    if (segment.renderer.is8Bit())
+        return StringView(segment.renderer.characters8(), segment.renderer.textLength()).substring(run.start - segment.start, run.end - run.start);
+    return StringView(segment.renderer.characters16(), segment.renderer.textLength()).substring(run.start - segment.start, run.end - run.start);
 }
 
 RunResolver::Iterator::Iterator(const RunResolver& resolver, unsigned runIndex, unsigned lineIndex)
@@ -159,10 +160,10 @@ Range<RunResolver::Iterator> RunResolver::rangeForRenderer(const RenderText& ren
     auto& segment = m_flowContents.segmentForRenderer(renderer);
 
     auto rangeBegin = begin();
-    for (;(*rangeBegin).start() < segment.start && rangeBegin != end(); ++rangeBegin) { }
+    for (;rangeBegin != end() && (*rangeBegin).start() < segment.start; ++rangeBegin) { }
 
     auto rangeEnd = rangeBegin;
-    for (;(*rangeEnd).end() <= segment.end && rangeEnd != end(); ++rangeEnd) { }
+    for (;rangeEnd != end() && (*rangeEnd).end() <= segment.end; ++rangeEnd) { }
 
     return Range<Iterator>(rangeBegin, rangeEnd);
 }

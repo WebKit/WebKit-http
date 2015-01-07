@@ -1,3 +1,577 @@
+2015-01-06  Alexey Proskuryakov  <ap@apple.com>
+
+        ADDRESS_SANITIZER macro is overloaded
+        https://bugs.webkit.org/show_bug.cgi?id=140130
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h: Added an ASAN_ENABLED macro. The abbreviation should become well
+        known - we already use it in tools.
+
+        * wtf/Assertions.h:
+        * wtf/RefCounted.h:
+        * wtf/SizeLimits.cpp:
+        Change the conditional to ENABLE(SECURITY_ASSERTIONS). These checks will be used
+        in debug builds, and also when one explicitly passes -DENABLE_SECURITY_ASSERTIONS.
+
+2015-01-05  Andreas Kling  <akling@apple.com>
+
+        Purge PassRefPtr from Page.
+        <https://webkit.org/b/140089>
+
+        Reviewed by Anders Carlsson.
+
+        Make SchedulePair::create() return Ref since it never fails.
+
+        * wtf/SchedulePair.h:
+        (WTF::SchedulePair::create):
+
+2015-01-01  Darin Adler  <darin@apple.com>
+
+        Rework code that hides characters in password fields to streamline a little
+        https://bugs.webkit.org/show_bug.cgi?id=140035
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::fill): Deleted.
+        * wtf/text/StringImpl.h: Deleted StringImpl::fill.
+        * wtf/text/WTFString.h:
+        (WTF::String::fill): Deleted.
+
+2014-12-26  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        Removed use of __builtin_s{add,sub}_overflow introduced in r177729 that was causing a compiler used at Apple to crash because of <rdar://problem/19347133>.
+
+        * wtf/SaturatedArithmetic.h:
+        (signedAddOverflows):
+        (signedSubtractOverflows):
+
+2014-12-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19348208> REGRESSION (r177027): iOS builds use the wrong toolchain
+        https://bugs.webkit.org/show_bug.cgi?id=139950
+
+        Reviewed by David Kilzer.
+
+        * Configurations/Base.xcconfig: Only define TOOLCHAINS when building for OS X, doing so
+        in a manner that works with Xcode 5.1.1.
+
+2014-12-25  Dan Bernstein  <mitz@apple.com>
+
+        Try to fix the Windows build after r177733.
+
+        * wtf/Ref.h:
+
+2014-12-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Simplify saturated integer add/sub
+        https://bugs.webkit.org/show_bug.cgi?id=139854
+
+        Address Darin's post-commit feedback to fix API tests.
+
+        * wtf/SaturatedArithmetic.h: (saturatedSubtraction):
+
+2014-12-24  Benjamin Poulain  <benjamin@webkit.org>
+
+        Simplify saturated integer add/sub
+        https://bugs.webkit.org/show_bug.cgi?id=139854
+
+        Reviewed by Darin Adler.
+
+        * wtf/Compiler.h:
+        Make a wrapper for __has_builtin for compilers that do not support it.
+
+        * wtf/SaturatedArithmetic.h:
+        (saturatedAddition):
+        (saturatedSubtraction):
+        Use the builtins when possible instead of reinventing the wheel.
+        On ARMv7, use the saturated math instructions.
+
+2014-12-23  Anders Carlsson  <andersca@apple.com>
+
+        Move dynamic_objc_cast to RetainPtr.h
+        https://bugs.webkit.org/show_bug.cgi?id=139915
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RetainPtr.h:
+        (WTF::dynamic_objc_cast):
+
+2014-12-23  Anders Carlsson  <andersca@apple.com>
+
+        Re-indent RefPtr.h and RetainPtr.h.
+
+        Rubber-stamped by Sam Weinig.
+
+        * wtf/RefPtr.h:
+        * wtf/RetainPtr.h:
+
+2014-12-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] add optimized fullscreen API
+        https://bugs.webkit.org/show_bug.cgi?id=139833
+        <rdar://problem/18844486>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h: Define ENABLE_VIDEO_PRESENTATION_MODE.
+
+2014-12-18  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Fix build break on EFL and GTK since r177523
+        https://bugs.webkit.org/show_bug.cgi?id=139805
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Ref.h: Include <wtf/StdLibExtras.h> to use std::exchange().
+
+2014-12-18  Gavin Barraclough  <barraclough@apple.com>
+
+        Add strong typing to RefCounter interface, return value as a bool.
+        https://bugs.webkit.org/show_bug.cgi?id=139776
+
+        Unreviewed style fixes.
+
+        * wtf/RefCounter.h:
+        (WTF::=):
+
+2014-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Build correction after r177541.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::Token<T>::Token): Revise constructor inlines to correct
+        syntax error.
+
+2014-12-18  Gavin Barraclough  <barraclough@apple.com>
+
+        Add strong typing to RefCounter interface, return value as a bool.
+        https://bugs.webkit.org/show_bug.cgi?id=139776
+
+        Reviewed by Geoff Garen.
+
+        Currently all token vended by a RefCounter have the same type - Ref<RefCounter::Count>.
+        This means there is no compile time type checking to prevent mistakes. Update the count()
+        method to token<>(), templated on type used to identify the token being returned.
+        Calls to token<T>() will return a result of type RefCounter::Token<T>.
+
+        There are a few problems with the fact the counter will return you an exact count of the
+        number of outstanding tokens:
+          - It is desirable to only fire the callback on zero-edge changes; it is more consistent
+            to do so if the value is only readable as a boolean.
+          - It is desirable to provide the value as an argument to the callback, however to make
+            this useful for integer values it is also necessary to indicate the direction of change
+            (0->1 is often interesting where 2->1 is not).
+          - There is a mismatch between the precision of returning a count, and the inherent
+            imprecision of a token based mechanism, where it may be difficult to guarantee
+            absolutely no unnecessary refcount churn, and thus unintentional counter values.
+
+        * wtf/RefCounter.cpp:
+        (WTF::RefCounter::Count::ref):
+        (WTF::RefCounter::Count::deref):
+            - only call the callback on zero-edge changes; provide the value.
+        (WTF::RefCounter::RefCounter):
+            - callback now takes a bool argument.
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::Token::Token):
+            - New opaque type to reference the RefCounter::Count.
+        (WTF::RefCounter::Token::operator!):
+            - ! operator checks for null / anasigned Tokens.
+        (WTF::RefCounter::RefCounter):
+            - callback now takes a bool argument.
+        (WTF::RefCounter::token):
+            - renamed from count(), templated on type of token returned.
+        (WTF::RefCounter::value):
+            - now returns a bool.
+        (WTF::RefCounter::Token<T>::Token):
+        (WTF::=):
+            - Tokens can be copied & assigned.
+        (WTF::RefCounter::count): Deleted.
+            - renamed to token<>().
+
+2014-12-18  Anders Carlsson  <andersca@apple.com>
+
+        Simplify smart pointer classes by using std::exchange
+        https://bugs.webkit.org/show_bug.cgi?id=139790
+
+        Reviewed by Andreas Kling.
+
+        * wtf/MallocPtr.h:
+        * wtf/OSObjectPtr.h:
+        * wtf/OwnPtr.h:
+        (WTF::OwnPtr<T>::clear):
+        (WTF::OwnPtr<T>::release):
+        (WTF::OwnPtr<T>::leakPtr):
+        (WTF::=):
+        * wtf/PassOwnPtr.h:
+        (WTF::PassOwnPtr<T>::leakPtr):
+        * wtf/PassRefPtr.h:
+        (WTF::PassRefPtr<T>::leakRef):
+        * wtf/Ref.h:
+        * wtf/RefPtr.h:
+        (WTF::RefPtr<T>::clear):
+        (WTF::RefPtr<T>::leakRef):
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr<T>::leakRef):
+
+2014-12-18  Anders Carlsson  <andersca@apple.com>
+
+        Clean up MachSendRight and add a copySendRight member function
+        https://bugs.webkit.org/show_bug.cgi?id=139788
+
+        Reviewed by Tim Horton.
+
+        * wtf/StdLibExtras.h:
+        (std::exchange):
+        Add an implementation of std::exchange.
+
+2014-12-17  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Make it possible to toggle FeatureCounter support at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=139688
+        <rdar://problem/19266254>
+
+        Reviewed by Andreas Kling.
+
+        Remove FeatureCounter API from WTF and move it to WebCore/platform
+        instead so that it can log conditionally based on a WebCore setting.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+
+2014-12-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct DebugSuffix builds under MSBuild
+        https://bugs.webkit.org/show_bug.cgi?id=139733
+        <rdar://problem/19276880>
+
+        Reviewed by Simon Fraser.
+
+        * WTF.vcxproj/WTF.proj: Make sure to use the '_debug' suffix
+        when building the DebugSuffix target.
+
+2014-12-17  Anders Carlsson  <andersca@apple.com>
+
+        Make Ref::copyRef const and ref-qualified
+        https://bugs.webkit.org/show_bug.cgi?id=139730
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Ref.h:
+
+2014-12-16  Daniel Bates  <dabates@apple.com>
+
+        [iOS] WTF fails to build with public SDK due to missing header CPAggregateDictionary.h
+        https://bugs.webkit.org/show_bug.cgi?id=139695
+
+        Reviewed by Chris Dumez.
+
+        Add USE(APPLE_INTERNAL_SDK)-guard around iOS-specific feature counter implementation
+        as we are only interested in counting features in builds of iOS WebKit that were built
+        with the Apple Internal SDK.
+
+        * wtf/FeatureCounter.cpp:
+        * wtf/ios/FeatureCounter.mm:
+
+2014-12-16  Geoffrey Garen  <ggaren@apple.com>
+
+        Enable FastMalloc in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=139692
+
+        Reviewed by Alexey Proskuryakov.
+
+        This will give debug builds greater fidelity to the real thing.
+
+        FastMalloc now transparently supports all the malloc debugging APIs I
+        know of by disabling itself at runtime -- and it should be easy to add
+        support for any APIs I missed -- so there's no need to turn it off in
+        debug builds.
+
+        * wtf/FastMalloc.cpp:
+
+2014-12-16  Anders Carlsson  <andersca@apple.com>
+
+        RefPtr::copyRef should be const
+        https://bugs.webkit.org/show_bug.cgi?id=139689
+
+        Reviewed by Andreas Kling.
+
+        copyRef() doesn't modify the original object so it should be const.
+        Also, add a && qualified overload and mark it deleted so that calls to copyRef() where
+        the object is an rvalue will fail to compile.
+
+        * wtf/RefPtr.h:
+
+2014-12-15  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Add feature counting support
+        https://bugs.webkit.org/show_bug.cgi?id=139652
+        <rdar://problem/19255690>
+
+        Reviewed by Gavin Barraclough.
+
+        Add a FeatureCounter API for to log / count when a feature
+        is used. For now, this is only implementated on iOS.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FeatureCounter.cpp: Added.
+        (WTF::incrementFeatureCounterKey):
+        (WTF::setFeatureCounterKey):
+        * wtf/FeatureCounter.h: Added.
+        * wtf/ios/FeatureCounter.mm: Added.
+        (WTF::incrementFeatureCounterKey):
+        (WTF::setFeatureCounterKey):
+
+2014-12-12  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the DONT_FINALIZE_ON_MAIN_THREAD #define
+        https://bugs.webkit.org/show_bug.cgi?id=139613
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h:
+        Remove the #define.
+
+2014-12-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177284.
+        https://bugs.webkit.org/show_bug.cgi?id=139658
+
+        "Breaks API tests and LayoutTests on Yosemite Debug"
+        (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "Make sure range based iteration of Vector<> still receives
+        bounds checking"
+        https://bugs.webkit.org/show_bug.cgi?id=138821
+        http://trac.webkit.org/changeset/177284
+
+2014-12-15  Andreas Kling  <akling@apple.com>
+
+        Purge PassRefPtr from FocusEvent code.
+        <https://webkit.org/b/139647>
+
+        Reviewed by Anders Carlsson.
+
+        Add a RefPtr::copyRef() to use when passing a RefPtr to a RefPtr&& without
+        transferring the ownership.
+
+        * wtf/RefPtr.h:
+
+2014-12-15  Oliver Hunt  <oliver@apple.com>
+
+        Make sure range based iteration of Vector<> still receives bounds checking
+        https://bugs.webkit.org/show_bug.cgi?id=138821
+
+        Reviewed by Mark Lam.
+
+        Add a new IndexedIterator struct to WTF that wraps a
+        Vector type and index to provide pointer like semantics
+        while still performing runtime bounds checking, even in
+        release builds. We store a simple index into the vector
+        which means that this iterator allows vector resizing
+        during iteration. If the vector is resized such that the
+        iterator is out of bounds, then any attempt to dereference
+        the iterator will crash safely.
+
+        For the purpose of retaining semantically equivalent
+        behaviour, the iterator can be moved to m_index == size()
+        as that is the standard "end" terminator for these types.
+        Attempting to dereference at that point will still crash
+        rather than perform an unsafe memory operation.
+
+        By necessity there are many overrides for operator + and - as
+        we otherwise hit many different type promotion ambiguities when
+        performing arithmetic with iterators. These ambiguities are also
+        different for 32- vs. 64-bit, so duplicating the functions
+        and then forwarding to the core implementations that performed
+        the bounds checking and mutation seemed like the right call.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/IndexedIterator.h: Added.
+        (WTF::IndexedIterator::IndexedIterator):
+        (WTF::IndexedIterator::operator->):
+        (WTF::IndexedIterator::operator*):
+        (WTF::IndexedIterator::get):
+        (WTF::IndexedIterator::operator++):
+        (WTF::IndexedIterator::operator--):
+        (WTF::IndexedIterator::operator UnspecifiedBoolType):
+        (WTF::IndexedIterator::operator-):
+        (WTF::IndexedIterator::operator=):
+        (WTF::IndexedIterator::operator==):
+        (WTF::IndexedIterator::operator!=):
+        (WTF::IndexedIterator::operator<):
+        (WTF::IndexedIterator::operator<=):
+        (WTF::IndexedIterator::operator>):
+        (WTF::IndexedIterator::operator>=):
+        (WTF::IndexedIterator::operator const_iterator):
+        (WTF::IndexedIterator::unsafeGet):
+        (WTF::getPtr):
+        (WTF::operator-):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::operator<=):
+        (WTF::operator>=):
+        (WTF::operator<):
+        (WTF::operator>):
+        (WTF::IndexedIteratorSelector::makeIterator):
+        (WTF::IndexedIteratorSelector::makeConstIterator):
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        * wtf/Vector.h:
+        (WTF::Vector::Vector):
+        (WTF::Vector::begin):
+        (WTF::Vector::end):
+        (WTF::OverflowHandler>::Vector):
+        (WTF::=):
+        (WTF::OverflowHandler>::fill):
+        (WTF::OverflowHandler>::expandCapacity):
+        (WTF::OverflowHandler>::tryExpandCapacity):
+        (WTF::OverflowHandler>::resize):
+        (WTF::OverflowHandler>::shrink):
+        (WTF::OverflowHandler>::grow):
+        (WTF::OverflowHandler>::reserveCapacity):
+        (WTF::OverflowHandler>::tryReserveCapacity):
+        (WTF::OverflowHandler>::shrinkCapacity):
+        (WTF::OverflowHandler>::append):
+        (WTF::OverflowHandler>::tryAppend):
+        (WTF::OverflowHandler>::appendSlowCase):
+        (WTF::OverflowHandler>::uncheckedAppend):
+        (WTF::OverflowHandler>::appendVector):
+        (WTF::OverflowHandler>::insert):
+        (WTF::OverflowHandler>::insertVector):
+        (WTF::OverflowHandler>::remove):
+
+2014-12-14  Andreas Kling  <akling@apple.com>
+
+        Minor follow-up tweaks suggested by Darin on bug 139587.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+
+2014-12-14  Andreas Kling  <akling@apple.com>
+
+        Replace PassRef with Ref/Ref&& across the board.
+        <https://webkit.org/b/139587>
+
+        Reviewed by Darin Adler.
+
+        Kill the PassRef class and replace it by Ref/Ref&&.
+        Usage is simple:
+
+            - For locals and members, keep using Ref<T>.
+            - For return types, use Ref<T>.
+            - For (ownership-transferring) arguments, use Ref<T>&&.
+
+        When passing to a Ref&&, use WTF::move() to mobilize the value
+        at the call site, e.g:
+
+            void myFunction(Ref<Foo>&&);
+
+            Ref<Foo> myFoo(Foo::create());
+            myFunction(WTF::move(myFoo));
+            // 'myFoo' is invalid from this point forward.
+
+        As you can see, it works a lot like PassRefPtr, but unlike PassRefPtr
+        it won't surprise you by becoming null *unless* you WTF::move it.
+
+        I've also added a Ref::copyRef() for instances where you want to
+        return a Ref *without* transferring ownership, e.g code like:
+
+            Ref<Foo> foo() { return m_foo; }
+
+        ... now becomes ...
+
+            Ref<Foo> foo() { return m_foo.copyRef(); }
+
+        This makes it explicit that a refcount bump will occur.
+
+        Finally, do note that unlike last year's PassRef, Ref&& does not
+        require you to move it to avoid leaking; it will clean itself up.
+
+        * wtf/PassRef.h:
+        (WTF::adopted): Deleted.
+        (WTF::PassRef<T>::PassRef): Deleted.
+        (WTF::PassRef<T>::~PassRef): Deleted.
+        (WTF::PassRef<T>::get): Deleted.
+        (WTF::PassRef<T>::ptr): Deleted.
+        (WTF::PassRef<T>::leakRef): Deleted.
+        (WTF::adoptRef): Deleted.
+        (WTF::createRefCounted): Deleted.
+        * wtf/PassRefPtr.h:
+        (WTF::PassRefPtr::PassRefPtr):
+        * wtf/Ref.h:
+        (WTF::adopted):
+        (WTF::Ref::~Ref):
+        (WTF::Ref::Ref):
+        (WTF::Ref::operator=):
+        (WTF::Ref::operator->):
+        (WTF::Ref::ptr):
+        (WTF::Ref::get):
+        (WTF::Ref::operator T&):
+        (WTF::Ref::operator const T&):
+        (WTF::Ref<T>::replace):
+        (WTF::adoptRef):
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::count):
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::releaseNonNull):
+        (WTF::RefPtr<T>::RefPtr):
+        (WTF::=):
+        * wtf/text/AtomicString.cpp:
+        (WTF::addToStringTable):
+        (WTF::AtomicString::add):
+        (WTF::AtomicString::addFromLiteralData):
+        (WTF::AtomicString::addSlowCase):
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createFromLiteral):
+        (WTF::StringImpl::createWithoutCopying):
+        (WTF::StringImpl::createUninitializedInternal):
+        (WTF::StringImpl::createUninitializedInternalNonEmpty):
+        (WTF::StringImpl::createUninitialized):
+        (WTF::StringImpl::reallocateInternal):
+        (WTF::StringImpl::reallocate):
+        (WTF::StringImpl::createInternal):
+        (WTF::StringImpl::create):
+        (WTF::StringImpl::create8BitIfPossible):
+        (WTF::StringImpl::substring):
+        (WTF::StringImpl::lower):
+        (WTF::StringImpl::upper):
+        (WTF::StringImpl::fill):
+        (WTF::StringImpl::foldCase):
+        (WTF::StringImpl::convertToASCIILowercase):
+        (WTF::StringImpl::stripMatchedCharacters):
+        (WTF::StringImpl::stripWhiteSpace):
+        (WTF::StringImpl::removeCharacters):
+        (WTF::StringImpl::simplifyMatchedCharactersToSpace):
+        (WTF::StringImpl::simplifyWhiteSpace):
+        (WTF::StringImpl::replace):
+        (WTF::StringImpl::adopt):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::create8BitIfPossible):
+        (WTF::StringImpl::create):
+        (WTF::StringImpl::createSubstringSharingImpl8):
+        (WTF::StringImpl::createSubstringSharingImpl):
+        (WTF::StringImpl::createFromLiteral):
+        (WTF::StringImpl::createEmptyUnique):
+        (WTF::StringImpl::adopt):
+        (WTF::StringImpl::replace):
+        (WTF::StringImpl::constructInternal<LChar>):
+        (WTF::StringImpl::constructInternal<UChar>):
+        (WTF::StringImpl::isolatedCopy):
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+
 2014-12-10  Geoffrey Garen  <ggaren@apple.com>
 
         Please disable the webkitFirstVersionWithInitConstructorSupport check on Apple TV

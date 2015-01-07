@@ -1636,7 +1636,7 @@ bool EventHandler::handleMousePressEvent(const PlatformMouseEvent& platformMouse
 {
     RefPtr<FrameView> protector(m_frame.view());
 
-    if (InspectorInstrumentation::handleMousePress(m_frame.page())) {
+    if (InspectorInstrumentation::handleMousePress(m_frame)) {
         invalidateClick();
         return true;
     }
@@ -2687,7 +2687,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
 
 #if PLATFORM(MAC)
     if (event.phase() == PlatformWheelEventPhaseNone && event.momentumPhase() == PlatformWheelEventPhaseNone)
-        m_frame.mainFrame().latchingState()->clear();
+        m_frame.mainFrame().resetLatchingState();
 #endif
 
     // FIXME: It should not be necessary to do this mutation here.
@@ -2734,7 +2734,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
 void EventHandler::clearLatchedState()
 {
 #if PLATFORM(MAC)
-    m_frame.mainFrame().latchingState()->clear();
+    m_frame.mainFrame().resetLatchingState();
 #endif
     m_frame.mainFrame().wheelEventDeltaTracker()->endTrackingDeltas();
 }
@@ -2748,8 +2748,7 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
 
 #if PLATFORM(MAC)
     ScrollLatchingState* latchedState = m_frame.mainFrame().latchingState();
-    ASSERT(latchedState);
-    Element* stopElement = latchedState->previousWheelScrolledElement();
+    Element* stopElement = latchedState ? latchedState->previousWheelScrolledElement() : nullptr;
 
     // Workaround for scrolling issues <rdar://problem/14758615>.
     if (m_frame.mainFrame().wheelEventDeltaTracker()->isTrackingDeltas())
@@ -2767,7 +2766,7 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
         wheelEvent->setDefaultHandled();
     
 #if PLATFORM(MAC)
-    if (!latchedState->wheelEventElement())
+    if (latchedState && !latchedState->wheelEventElement())
         latchedState->setPreviousWheelScrolledElement(stopElement);
 #endif
 }
@@ -3866,7 +3865,7 @@ bool EventHandler::handleTouchEvent(const PlatformTouchEvent& event)
             Node* node = result.innerElement();
             ASSERT(node);
 
-            if (InspectorInstrumentation::handleTouchEvent(m_frame.page(), node))
+            if (node && InspectorInstrumentation::handleTouchEvent(m_frame, *node))
                 return true;
 
             Document& doc = node->document();

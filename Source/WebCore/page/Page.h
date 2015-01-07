@@ -67,6 +67,7 @@ class ClientRectList;
 class Color;
 class ContextMenuClient;
 class ContextMenuController;
+class DatabaseProvider;
 class DragCaretController;
 class DragClient;
 class DragController;
@@ -192,7 +193,7 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT PassRefPtr<ClientRectList> nonFastScrollableRects(const Frame*);
+    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects(const Frame*);
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -218,7 +219,7 @@ public:
 
     WEBCORE_EXPORT bool findString(const String&, FindOptions);
 
-    WEBCORE_EXPORT PassRefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
+    WEBCORE_EXPORT RefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
 
     WEBCORE_EXPORT unsigned countFindMatches(const String&, FindOptions, unsigned maxMatchCount);
     WEBCORE_EXPORT unsigned markAllMatchesForText(const String&, FindOptions, bool shouldHighlight, unsigned maxMatchCount);
@@ -233,8 +234,8 @@ public:
     enum { NoMatchAfterUserSelection = -1 };
     WEBCORE_EXPORT void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range>>&, int& indexForSelection);
 #if PLATFORM(COCOA)
-    WEBCORE_EXPORT void addSchedulePair(PassRefPtr<SchedulePair>);
-    WEBCORE_EXPORT void removeSchedulePair(PassRefPtr<SchedulePair>);
+    WEBCORE_EXPORT void addSchedulePair(Ref<SchedulePair>&&);
+    WEBCORE_EXPORT void removeSchedulePair(Ref<SchedulePair>&&);
     SchedulePairHashSet* scheduledRunLoopPairs() { return m_scheduledRunLoopPairs.get(); }
 
     std::unique_ptr<SchedulePairHashSet> m_scheduledRunLoopPairs;
@@ -291,6 +292,7 @@ public:
 
     // Notifications when the Page starts and stops being presented via a native window.
     WEBCORE_EXPORT void setViewState(ViewState::Flags);
+    void setPageActivityState(PageActivityState::Flags);
     WEBCORE_EXPORT void setIsVisible(bool);
     WEBCORE_EXPORT void setIsPrerender();
     bool isVisible() const { return m_viewState & ViewState::IsVisible; }
@@ -322,7 +324,7 @@ public:
     WEBCORE_EXPORT void invalidateStylesForLink(LinkHash);
 
     StorageNamespace* sessionStorage(bool optionalCreate = true);
-    void setSessionStorage(PassRefPtr<StorageNamespace>);
+    void setSessionStorage(RefPtr<StorageNamespace>&&);
 
     bool hasCustomHTMLTokenizerTimeDelay() const;
     double customHTMLTokenizerTimeDelay() const;
@@ -382,7 +384,6 @@ public:
     void resetSeenMediaEngines();
 
     PageThrottler& pageThrottler() { return m_pageThrottler; }
-    WEBCORE_EXPORT void enablePageThrottler();
 
     PageConsoleClient& console() { return *m_consoleClient; }
 
@@ -402,14 +403,16 @@ public:
     void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
     unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
 
+    DatabaseProvider& databaseProvider() { return m_databaseProvider; }
+
     StorageNamespaceProvider& storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
-    void setStorageNamespaceProvider(PassRef<StorageNamespaceProvider>);
+    void setStorageNamespaceProvider(Ref<StorageNamespaceProvider>&&);
 
     UserContentController* userContentController() { return m_userContentController.get(); }
-    void setUserContentController(UserContentController*);
+    WEBCORE_EXPORT void setUserContentController(UserContentController*);
 
     VisitedLinkStore& visitedLinkStore();
-    void setVisitedLinkStore(PassRef<VisitedLinkStore>);
+    WEBCORE_EXPORT void setVisitedLinkStore(Ref<VisitedLinkStore>&&);
 
     WEBCORE_EXPORT SessionID sessionID() const;
     WEBCORE_EXPORT void setSessionID(SessionID);
@@ -573,6 +576,7 @@ private:
     unsigned m_lastSpatialNavigationCandidatesCount;
     unsigned m_framesHandlingBeforeUnloadEvent;
 
+    Ref<DatabaseProvider> m_databaseProvider;
     Ref<StorageNamespaceProvider> m_storageNamespaceProvider;
     RefPtr<UserContentController> m_userContentController;
     Ref<VisitedLinkStore> m_visitedLinkStore;

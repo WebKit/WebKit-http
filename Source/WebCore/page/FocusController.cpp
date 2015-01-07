@@ -127,10 +127,10 @@ static inline void dispatchEventsOnWindowAndFocusedElement(Document* document, b
     }
 
     if (!focused && document->focusedElement())
-        document->focusedElement()->dispatchBlurEvent(0);
+        document->focusedElement()->dispatchBlurEvent(nullptr);
     document->dispatchWindowEvent(Event::create(focused ? eventNames().focusEvent : eventNames().blurEvent, false, false));
     if (focused && document->focusedElement())
-        document->focusedElement()->dispatchFocusEvent(0, FocusDirectionNone);
+        document->focusedElement()->dispatchFocusEvent(nullptr, FocusDirectionNone);
 }
 
 static inline bool hasCustomFocusLogic(Element& element)
@@ -544,7 +544,7 @@ static bool relinquishesEditingFocus(Node *node)
     if (!frame || !root)
         return false;
 
-    return frame->editor().shouldEndEditing(rangeOfContents(*root).get());
+    return frame->editor().shouldEndEditing(rangeOfContents(*root).ptr());
 }
 
 static void clearSelectionIfNeeded(Frame* oldFocusedFrame, Frame* newFocusedFrame, Node* newFocusedNode)

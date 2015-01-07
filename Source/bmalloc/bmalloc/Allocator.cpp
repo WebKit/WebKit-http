@@ -27,16 +27,20 @@
 #include "BAssert.h"
 #include "Deallocator.h"
 #include "Heap.h"
+#include "LargeChunk.h"
 #include "PerProcess.h"
 #include "Sizes.h"
+#include "XLargeChunk.h"
 #include <algorithm>
+#include <cstdlib>
 
 using namespace std;
 
 namespace bmalloc {
 
-Allocator::Allocator(Deallocator& deallocator)
-    : m_deallocator(deallocator)
+Allocator::Allocator(Heap* heap, Deallocator& deallocator)
+    : m_isBmallocEnabled(heap->environment().isBmallocEnabled())
+    , m_deallocator(deallocator)
 {
     for (unsigned short size = alignment; size <= mediumMax; size += alignment)
         m_bumpAllocators[sizeClass(size)].init(size);
@@ -45,6 +49,45 @@ Allocator::Allocator(Deallocator& deallocator)
 Allocator::~Allocator()
 {
     scavenge();
+}
+
+void* Allocator::reallocate(void* object, size_t newSize)
+{
+    if (!m_isBmallocEnabled)
+        return realloc(object, newSize);
+
+    void* result = allocate(newSize);
+    if (!object)
+        return result;
+
+    size_t oldSize = 0;
+    switch (objectType(object)) {
+    case Small: {
+        SmallPage* page = SmallPage::get(SmallLine::get(object));
+        oldSize = objectSize(page->sizeClass());
+        break;
+    }
+    case Medium: {
+        MediumPage* page = MediumPage::get(MediumLine::get(object));
+        oldSize = objectSize(page->sizeClass());
+        break;
+    }
+    case Large: {
+        BeginTag* beginTag = LargeChunk::beginTag(object);
+        oldSize = beginTag->size();
+        break;
+    }
+    case XLarge: {
+        XLargeChunk* chunk = XLargeChunk::get(object);
+        oldSize = chunk->size();
+        break;
+    }
+    }
+
+    size_t copySize = std::min(oldSize, newSize);
+    memcpy(result, object, copySize);
+    m_deallocator.deallocate(object);
+    return result;
 }
 
 void Allocator::scavenge()
@@ -103,6 +146,9 @@ NO_INLINE void* Allocator::allocateXLarge(size_t size)
 
 void* Allocator::allocateSlowCase(size_t size)
 {
+    if (!m_isBmallocEnabled)
+        return malloc(size);
+
     if (size <= mediumMax) {
         size_t sizeClass = bmalloc::sizeClass(size);
         BumpAllocator& allocator = m_bumpAllocators[sizeClass];

@@ -88,7 +88,7 @@ public:
         s_currentDecl = 0;
         s_shouldNotifyInspector = false;
         if (localCopyStyleDecl->parentElement())
-            InspectorInstrumentation::didInvalidateStyleAttr(&localCopyStyleDecl->parentElement()->document(), localCopyStyleDecl->parentElement());
+            InspectorInstrumentation::didInvalidateStyleAttr(localCopyStyleDecl->parentElement()->document(), *localCopyStyleDecl->parentElement());
     }
 
     void enqueueMutationRecord()
@@ -293,7 +293,7 @@ StyleSheetContents* PropertySetCSSStyleDeclaration::contextStyleSheet() const
     return cssStyleSheet ? &cssStyleSheet->contents() : 0;
 }
 
-PassRef<MutableStyleProperties> PropertySetCSSStyleDeclaration::copyProperties() const
+Ref<MutableStyleProperties> PropertySetCSSStyleDeclaration::copyProperties() const
 {
     return m_propertySet->mutableCopy();
 }

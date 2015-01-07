@@ -122,7 +122,8 @@ private:
     virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
 #endif
 
-    void setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool fadeOut);
+    virtual void setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool fadeOut) override;
+    virtual void setTextIndicatorAnimationProgress(float) override;
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
@@ -139,8 +140,7 @@ private:
     virtual void makeFirstResponder();
     
     virtual void didPerformDictionaryLookup(const DictionaryPopupInfo&);
-    virtual void dismissDictionaryLookupPanel();
-    virtual void dismissActionMenuPopovers();
+    virtual void dismissContentRelativeChildWindows();
 
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings);
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText);
@@ -190,7 +190,7 @@ private:
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
     virtual void removeNavigationGestureSnapshot() override;
 
-    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, API::Object*) override;
+    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, bool forImmediateAction, API::Object*) override;
     virtual void showPlatformContextMenu(NSMenu *, WebCore::IntPoint) override;
 
     WKView *m_wkView;
@@ -200,7 +200,7 @@ private:
     CorrectionPanel m_correctionPanel;
 #endif
 #if USE(DICTATION_ALTERNATIVES)
-    OwnPtr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
+    std::unique_ptr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
 #endif
 };
 

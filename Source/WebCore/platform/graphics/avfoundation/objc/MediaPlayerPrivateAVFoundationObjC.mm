@@ -496,11 +496,7 @@ void MediaPlayerPrivateAVFoundationObjC::cancelLoad()
 #if ENABLE(IOS_AIRPLAY)
         [m_avPlayer.get() removeObserver:m_objcObserver.get() forKeyPath:@"externalPlaybackActive"];
 #endif
-        
-        RetainPtr<AVPlayerType> strongPlayer = WTF::move(m_avPlayer);
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), [strongPlayer] () mutable {
-            strongPlayer.clear();
-        });
+        m_avPlayer = nil;
     }
 
     // Reset cached properties
@@ -2008,9 +2004,9 @@ bool MediaPlayerPrivateAVFoundationObjC::hasSingleSecurityOrigin() const
     if (!m_avAsset || [m_avAsset statusOfValueForKey:@"resolvedURL" error:nullptr] != AVKeyValueStatusLoaded)
         return false;
     
-    RefPtr<SecurityOrigin> resolvedOrigin = SecurityOrigin::create(resolvedURL());
-    RefPtr<SecurityOrigin> requestedOrigin = SecurityOrigin::createFromString(assetURL());
-    return resolvedOrigin->isSameSchemeHostPort(requestedOrigin.get());
+    Ref<SecurityOrigin> resolvedOrigin(SecurityOrigin::create(resolvedURL()));
+    Ref<SecurityOrigin> requestedOrigin(SecurityOrigin::createFromString(assetURL()));
+    return resolvedOrigin.get().isSameSchemeHostPort(&requestedOrigin.get());
 }
 
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)

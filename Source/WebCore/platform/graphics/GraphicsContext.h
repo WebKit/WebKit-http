@@ -37,7 +37,6 @@
 #include "Path.h"
 #include "Pattern.h"
 #include <wtf/Noncopyable.h>
-#include <wtf/PassOwnPtr.h>
 
 #if USE(CG)
 typedef struct CGContext PlatformGraphicsContext;
@@ -238,10 +237,10 @@ namespace WebCore {
         ColorSpace strokeColorSpace() const;
         WEBCORE_EXPORT void setStrokeColor(const Color&, ColorSpace);
 
-        void setStrokePattern(PassRef<Pattern>);
+        void setStrokePattern(Ref<Pattern>&&);
         Pattern* strokePattern() const;
 
-        void setStrokeGradient(PassRef<Gradient>);
+        void setStrokeGradient(Ref<Gradient>&&);
         Gradient* strokeGradient() const;
 
         WindRule fillRule() const;
@@ -250,10 +249,10 @@ namespace WebCore {
         ColorSpace fillColorSpace() const;
         WEBCORE_EXPORT void setFillColor(const Color&, ColorSpace);
 
-        void setFillPattern(PassRef<Pattern>);
+        void setFillPattern(Ref<Pattern>&&);
         Pattern* fillPattern() const;
 
-        WEBCORE_EXPORT void setFillGradient(PassRef<Gradient>);
+        WEBCORE_EXPORT void setFillGradient(Ref<Gradient>&&);
         Gradient* fillGradient() const;
 
         void setShadowsIgnoreTransforms(bool);
@@ -333,7 +332,7 @@ namespace WebCore {
         void drawTiledImage(Image*, ColorSpace, const FloatRect& destination, const FloatRect& source, const FloatSize& tileScaleFactor,
             Image::TileRule, Image::TileRule, const ImagePaintingOptions& = ImagePaintingOptions());
 
-        void drawImageBuffer(ImageBuffer*, ColorSpace, const FloatPoint& destination, const ImagePaintingOptions& = ImagePaintingOptions());
+        WEBCORE_EXPORT void drawImageBuffer(ImageBuffer*, ColorSpace, const FloatPoint& destination, const ImagePaintingOptions& = ImagePaintingOptions());
         void drawImageBuffer(ImageBuffer*, ColorSpace, const FloatRect& destination, const ImagePaintingOptions& = ImagePaintingOptions());
         void drawImageBuffer(ImageBuffer*, ColorSpace, const FloatRect& destination, const FloatRect& source, const ImagePaintingOptions& = ImagePaintingOptions());
 
@@ -526,7 +525,7 @@ namespace WebCore {
             DIBPixelData m_pixelData;
         };
 
-        PassOwnPtr<WindowsBitmap> createWindowsBitmap(const IntSize&);
+        std::unique_ptr<WindowsBitmap> createWindowsBitmap(const IntSize&);
         // The bitmap should be non-premultiplied.
         void drawWindowsBitmap(WindowsBitmap*, const IntPoint&);
 #endif

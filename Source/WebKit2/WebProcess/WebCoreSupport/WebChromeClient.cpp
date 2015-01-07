@@ -27,12 +27,13 @@
 #include "config.h"
 #include "WebChromeClient.h"
 
+#include "APISecurityOrigin.h"
 #include "DrawingArea.h"
 #include "InjectedBundleNavigationAction.h"
-#include "InjectedBundleUserMessageCoders.h"
 #include "LayerTreeHost.h"
 #include "NavigationActionData.h"
 #include "PageBanner.h"
+#include "UserData.h"
 #include "WebColorChooser.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebFrame.h"
@@ -48,7 +49,6 @@
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include "WebSearchPopupMenu.h"
-#include "WebSecurityOrigin.h"
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ColorChooser.h>
@@ -599,7 +599,7 @@ void WebChromeClient::mouseDidMoveOverElement(const HitTestResult& hitTestResult
 
     // Notify the UIProcess.
     WebHitTestResult::Data webHitTestResultData(hitTestResult);
-    m_page->send(Messages::WebPageProxy::MouseDidMoveOverElement(webHitTestResultData, modifierFlags, InjectedBundleUserMessageEncoder(userData.get())));
+    m_page->send(Messages::WebPageProxy::MouseDidMoveOverElement(webHitTestResultData, modifierFlags, UserData(WebProcess::shared().transformObjectsToHandles(userData.get()).get())));
 }
 
 void WebChromeClient::didBeginTrackingPotentialLongMousePress(const IntPoint& mouseDownPosition, const HitTestResult& hitTestResult)
@@ -611,7 +611,7 @@ void WebChromeClient::didBeginTrackingPotentialLongMousePress(const IntPoint& mo
     
     // Notify the UIProcess.
     WebHitTestResult::Data webHitTestResultData(hitTestResult);
-    m_page->send(Messages::WebPageProxy::DidBeginTrackingPotentialLongMousePress(mouseDownPosition, webHitTestResultData, InjectedBundleUserMessageEncoder(userData.get())));
+    m_page->send(Messages::WebPageProxy::DidBeginTrackingPotentialLongMousePress(mouseDownPosition, webHitTestResultData, UserData(WebProcess::shared().transformObjectsToHandles(userData.get()).get())));
 }
 
 void WebChromeClient::didRecognizeLongMousePress()
@@ -622,7 +622,7 @@ void WebChromeClient::didRecognizeLongMousePress()
     m_page->injectedBundleUIClient().didRecognizeLongMousePress(m_page, userData);
 
     // Notify the UIProcess.
-    m_page->send(Messages::WebPageProxy::DidRecognizeLongMousePress(InjectedBundleUserMessageEncoder(userData.get())));
+    m_page->send(Messages::WebPageProxy::DidRecognizeLongMousePress(UserData(WebProcess::shared().transformObjectsToHandles(userData.get()).get())));
 }
 
 void WebChromeClient::didCancelTrackingPotentialLongMousePress()
@@ -633,7 +633,7 @@ void WebChromeClient::didCancelTrackingPotentialLongMousePress()
     m_page->injectedBundleUIClient().didCancelTrackingPotentialLongMousePress(m_page, userData);
 
     // Notify the UIProcess.
-    m_page->send(Messages::WebPageProxy::DidCancelTrackingPotentialLongMousePress(InjectedBundleUserMessageEncoder(userData.get())));
+    m_page->send(Messages::WebPageProxy::DidCancelTrackingPotentialLongMousePress(UserData(WebProcess::shared().transformObjectsToHandles(userData.get()).get())));
 }
 
 void WebChromeClient::setToolTip(const String& toolTip, TextDirection)
@@ -681,8 +681,8 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
     uint64_t currentQuota = dbManager.quotaForOrigin(origin);
     uint64_t currentOriginUsage = dbManager.usageForOrigin(origin);
     uint64_t newQuota = 0;
-    RefPtr<WebSecurityOrigin> webSecurityOrigin = WebSecurityOrigin::create(WebCore::SecurityOrigin::createFromDatabaseIdentifier(origin->databaseIdentifier()));
-    newQuota = m_page->injectedBundleUIClient().didExceedDatabaseQuota(m_page, webSecurityOrigin.get(), databaseName, details.displayName(), currentQuota, currentOriginUsage, details.currentUsage(), details.expectedUsage());
+    RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(WebCore::SecurityOrigin::createFromDatabaseIdentifier(origin->databaseIdentifier()));
+    newQuota = m_page->injectedBundleUIClient().didExceedDatabaseQuota(m_page, securityOrigin.get(), databaseName, details.displayName(), currentQuota, currentOriginUsage, details.currentUsage(), details.expectedUsage());
 
     if (!newQuota) {
         unsigned syncSendFlags = IPC::InformPlatformProcessWillSuspend;
@@ -706,8 +706,8 @@ void WebChromeClient::reachedMaxAppCacheSize(int64_t)
 
 void WebChromeClient::reachedApplicationCacheOriginQuota(SecurityOrigin* origin, int64_t totalBytesNeeded)
 {
-    RefPtr<WebSecurityOrigin> webSecurityOrigin = WebSecurityOrigin::createFromString(origin->toString());
-    if (m_page->injectedBundleUIClient().didReachApplicationCacheOriginQuota(m_page, webSecurityOrigin.get(), totalBytesNeeded))
+    RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::createFromString(origin->toString());
+    if (m_page->injectedBundleUIClient().didReachApplicationCacheOriginQuota(m_page, securityOrigin.get(), totalBytesNeeded))
         return;
 
     unsigned syncSendFlags = IPC::InformPlatformProcessWillSuspend;
@@ -1043,6 +1043,11 @@ bool WebChromeClient::shouldUseTiledBackingForFrameView(const FrameView* frameVi
 void WebChromeClient::isPlayingAudioDidChange(bool newIsPlayingAudio)
 {
     m_page->send(Messages::WebPageProxy::IsPlayingAudioDidChange(newIsPlayingAudio));
+}
+
+void WebChromeClient::setPageActivityState(PageActivityState::Flags activityState)
+{
+    m_page->setPageActivityState(activityState);
 }
 
 #if ENABLE(SUBTLE_CRYPTO)

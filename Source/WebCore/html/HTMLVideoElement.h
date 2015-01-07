@@ -37,7 +37,7 @@ class HTMLImageLoader;
 
 class HTMLVideoElement final : public HTMLMediaElement {
 public:
-    static RefPtr<HTMLVideoElement> create(const QualifiedName&, Document&, bool);
+    static Ref<HTMLVideoElement> create(const QualifiedName&, Document&, bool);
 
     WEBCORE_EXPORT unsigned videoWidth() const;
     WEBCORE_EXPORT unsigned videoHeight() const;
@@ -76,7 +76,16 @@ public:
     bool shouldDisplayPosterImage() const { return displayMode() == Poster || displayMode() == PosterWaitingForVideo; }
 
     URL posterImageURL() const;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
+
+#if ENABLE(VIDEO_PRESENTATION_MODE)
+    bool webkitSupportsPresentationMode(const String&) const;
+    void webkitSetPresentationMode(const String&);
+    String webkitPresentationMode() const;
+    virtual void fullscreenModeChanged(VideoFullscreenMode) override;
+
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitpresentationmodechanged);
+#endif
 
 private:
     HTMLVideoElement(const QualifiedName&, Document&, bool);

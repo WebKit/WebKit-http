@@ -23,14 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WebSecurityOriginInternal.h"
-#import "WebStorageManagerPrivate.h"
 #import "WebStorageManagerInternal.h"
-#import "WebStorageTrackerClient.h"
 
+#import "StorageTracker.h"
+#import "WebSecurityOriginInternal.h"
+#import "WebStorageNamespaceProvider.h"
+#import "WebStorageTrackerClient.h"
 #import <WebCore/PageGroup.h>
 #import <WebCore/SecurityOrigin.h>
-#import <WebCore/StorageTracker.h>
 #import <pthread.h>
 
 using namespace WebCore;
@@ -101,7 +101,7 @@ static pthread_once_t registerLocalStoragePath = PTHREAD_ONCE_INIT;
 
 - (void)syncLocalStorage
 {
-    PageGroup::syncLocalStorage();
+    WebStorageNamespaceProvider::syncLocalStorage();
 }
 
 - (void)syncFileSystemAndTrackerDatabase
@@ -122,7 +122,7 @@ static pthread_once_t registerLocalStoragePath = PTHREAD_ONCE_INIT;
 
 + (void)closeIdleLocalStorageDatabases
 {
-    PageGroup::closeIdleLocalStorageDatabases();
+    WebStorageNamespaceProvider::closeIdleLocalStorageDatabases();
 }
 
 static void initializeLocalStoragePath()

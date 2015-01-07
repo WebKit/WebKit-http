@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,40 +32,27 @@
 
 namespace WebCore {
 
+SegmentedFontData::SegmentedFontData()
+{
+    
+}
+
 SegmentedFontData::~SegmentedFontData()
 {
-    GlyphPageTreeNode::pruneTreeCustomFontData(this);
 }
 
-const SimpleFontData* SegmentedFontData::fontDataForCharacter(UChar32 c) const
+const SimpleFontData* SegmentedFontData::simpleFontDataForCharacter(UChar32 c) const
 {
-    Vector<FontDataRange>::const_iterator end = m_ranges.end();
-    for (Vector<FontDataRange>::const_iterator it = m_ranges.begin(); it != end; ++it) {
-        if (it->from() <= c && it->to() >= c)
-            return it->fontData().get();
+    for (auto& range : m_ranges) {
+        if (range.from() <= c && c <= range.to())
+            return range.fontData().get();
     }
-    return m_ranges[0].fontData().get();
+    return nullptr;
 }
 
-bool SegmentedFontData::containsCharacter(UChar32 c) const
+const SimpleFontData& SegmentedFontData::simpleFontDataForFirstRange() const
 {
-    Vector<FontDataRange>::const_iterator end = m_ranges.end();
-    for (Vector<FontDataRange>::const_iterator it = m_ranges.begin(); it != end; ++it) {
-        if (c >= it->from() && c <= it->to())
-            return true;
-    }
-    return false;
-}
-
-bool SegmentedFontData::containsCharacters(const UChar* characters, int length) const
-{
-    UChar32 c;
-    for (int i = 0; i < length; ) {
-        U16_NEXT(characters, i, length, c)
-        if (!containsCharacter(c))
-            return false;
-    }
-    return true;
+    return *m_ranges[0].fontData();
 }
 
 bool SegmentedFontData::isCustomFont() const
@@ -76,9 +63,8 @@ bool SegmentedFontData::isCustomFont() const
 
 bool SegmentedFontData::isLoading() const
 {
-    Vector<FontDataRange>::const_iterator end = m_ranges.end();
-    for (Vector<FontDataRange>::const_iterator it = m_ranges.begin(); it != end; ++it) {
-        if (it->fontData()->isLoading())
+    for (auto& range : m_ranges) {
+        if (range.fontData()->isLoading())
             return true;
     }
     return false;

@@ -30,7 +30,7 @@ namespace WebCore {
 
 class HTMLFrameElement final : public HTMLFrameElementBase {
 public:
-    static RefPtr<HTMLFrameElement> create(const QualifiedName&, Document&);
+    static Ref<HTMLFrameElement> create(const QualifiedName&, Document&);
 
     bool hasFrameBorder() const { return m_frameBorder; }
 
@@ -42,7 +42,7 @@ private:
     virtual void didAttachRenderers() override;
 
     virtual bool rendererIsNeeded(const RenderStyle&) override;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
     
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
 

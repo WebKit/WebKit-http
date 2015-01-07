@@ -75,7 +75,7 @@ public:
 
 private:
 #ifndef NDEBUG
-    static unsigned s_count;
+    WEBCORE_EXPORT static unsigned s_count;
 #endif
 };
 
@@ -303,8 +303,6 @@ private:
     Vector<RefPtr<Node>> m_snapshot; // Lazily instantiated.
     ChildNodesLazySnapshot* m_nextSnapshot;
 };
-
-LayoutRect rendererAnchorRect(const ContainerNode&);
 
 } // namespace WebCore
 

@@ -44,6 +44,10 @@
 // can indicate that a Converter helper function in
 // css/StyleBuilderConverter.h should be used.
 //
+// * ConditionalConverter=XXX:
+// Similar to Converter=XXX but the converter function returns a boolean
+// to indicate if the property setter should be called or not.
+//
 // * Custom=[Initial|Value|Inherit|All]:
 // Custom=Initial option is used to indicate that the CSS property requires
 // special handling to set its initial value.
@@ -56,29 +60,57 @@
 // If special handling is also needed to apply inherit or initial value, use
 // Custom=All. Alternatively, several '|'-separated options can be passed:
 // e.g. 'Custom=Inherit|Value".
+//
+// * AutoFunctions:
+// Indicates that this CSS property requires handling of "auto" and has
+// corresponding hasAutoXXX() / setHasAutoXXX() methods on RenderStyle.
+//
+// * VisitedLinkColorSupport:
+// Indicates that this CSS property is a color property with a
+// "setVisitedLinkXXX()" setter on RenderStyle to be called when
+// StyleResolver::applyPropertyToVisitedLinkStyle() return true.
+// The regular setter on RenderStyle will only be called if
+// StyleResolver::applyPropertyToRegularStyle() returns true.
+//
+// * NoDefaultColor:
+// Should only with used with "VisitedLinkColorSupport". It indicates that for
+// setting the inherited value, it will not fallback to using the parent's
+// "color" property if the inherited color is invalid.
+//
+// * AnimationProperty:
+// Indicates that this CSS property is an animation / transition property.
+// It must have corresponding methods on the Animation class.
+//
+// * FontProperty:
+// Indicates that this CSS property is font-related. It must have corresponding
+// methods on the FontDescription class.
+//
+// * FillLayerProperty:
+// Indicates that this CSS property is a FillLayer property. It must have
+// corresponding methods on the FillLayer class.
 
 
 // high-priority property names have to be listed first, to simplify the check
 // for applying them first.
-color [Inherited, LegacyStyleBuilder]
+color [Inherited, VisitedLinkColorSupport, NoDefaultColor]
 direction [Inherited, Custom=Value]
 display [Custom=Inherit|Value]
 font [Inherited, LegacyStyleBuilder]
 font-family [Inherited, Custom=All]
-font-size [Inherited, LegacyStyleBuilder]
-font-style [Inherited, LegacyStyleBuilder]
-font-variant [Inherited, LegacyStyleBuilder]
-font-weight [Inherited, LegacyStyleBuilder]
-text-rendering [Inherited, LegacyStyleBuilder]
+font-size [Inherited, Custom=All]
+font-style [Inherited, FontProperty, TypeName=FontItalic, NameForMethods=Italic]
+font-variant [Inherited, FontProperty, TypeName=FontSmallCaps, NameForMethods=SmallCaps]
+font-weight [Inherited, Custom=All]
+text-rendering [Inherited, FontProperty, TypeName=TextRenderingMode, NameForMethods=TextRenderingMode]
 -webkit-font-feature-settings [Inherited, LegacyStyleBuilder]
--webkit-font-kerning [Inherited, LegacyStyleBuilder]
--webkit-font-smoothing [Inherited, LegacyStyleBuilder]
--webkit-font-variant-ligatures [Inherited, LegacyStyleBuilder]
+-webkit-font-kerning [Inherited, FontProperty, TypeName=FontDescription::Kerning, NameForMethods=Kerning]
+-webkit-font-smoothing [Inherited, FontProperty, TypeName=FontSmoothingMode]
+-webkit-font-variant-ligatures [Inherited, Custom=All]
 -webkit-locale [Inherited, Custom=Value]
 -webkit-text-orientation [Inherited, Custom=Value]
 -epub-text-orientation = -webkit-text-orientation
 #if defined(ENABLE_IOS_TEXT_AUTOSIZING) && ENABLE_IOS_TEXT_AUTOSIZING
--webkit-text-size-adjust [Inherited, LegacyStyleBuilder]
+-webkit-text-size-adjust [Inherited, Custom=Value]
 #endif
 -webkit-writing-mode [Inherited, Custom=Value]
 -epub-writing-mode = -webkit-writing-mode
@@ -96,31 +128,31 @@ line-height [Inherited, Getter=specifiedLineHeight, Custom=Value]
 
 // The remaining properties are listed in alphabetical order
 animation [LegacyStyleBuilder]
-animation-delay [LegacyStyleBuilder]
-animation-direction [LegacyStyleBuilder]
-animation-duration [LegacyStyleBuilder]
-animation-fill-mode [LegacyStyleBuilder]
-animation-iteration-count [LegacyStyleBuilder]
-animation-name [LegacyStyleBuilder]
-animation-play-state [LegacyStyleBuilder]
-animation-timing-function [LegacyStyleBuilder]
+animation-delay [AnimationProperty, TypeName=double, NameForMethods=Delay]
+animation-direction [AnimationProperty, TypeName=Animation::AnimationDirection, NameForMethods=Direction]
+animation-duration [AnimationProperty, TypeName=double, NameForMethods=Duration]
+animation-fill-mode [AnimationProperty, TypeName=unsigned, NameForMethods=FillMode]
+animation-iteration-count [AnimationProperty, TypeName=double, NameForMethods=IterationCount]
+animation-name [AnimationProperty, TypeName=String, NameForMethods=Name]
+animation-play-state [AnimationProperty, TypeName=EAnimPlayState, NameForMethods=PlayState]
+animation-timing-function [AnimationProperty, TypeName=PassRefPtr<TimingFunction>, NameForMethods=TimingFunction]
 background [LegacyStyleBuilder]
-background-attachment [LegacyStyleBuilder]
-background-blend-mode [LegacyStyleBuilder]
-background-clip [LegacyStyleBuilder]
-background-color [LegacyStyleBuilder]
-background-image [LegacyStyleBuilder]
-background-origin [LegacyStyleBuilder]
+background-attachment [FillLayerProperty, TypeName=EFillAttachment, NameForMethods=Attachment]
+background-blend-mode [FillLayerProperty, TypeName=BlendMode, NameForMethods=BlendMode]
+background-clip [FillLayerProperty, TypeName=EFillBox, NameForMethods=Clip]
+background-color [VisitedLinkColorSupport, Initial=invalidColor, NoDefaultColor]
+background-image [FillLayerProperty, TypeName=StyleImage*, NameForMethods=Image]
+background-origin [FillLayerProperty, TypeName=EFillBox, NameForMethods=Origin]
 background-position [LegacyStyleBuilder]
-background-position-x [LegacyStyleBuilder]
-background-position-y [LegacyStyleBuilder]
+background-position-x [FillLayerProperty, TypeName=Length, NameForMethods=XPosition]
+background-position-y [FillLayerProperty, TypeName=Length, NameForMethods=YPosition]
 background-repeat [LegacyStyleBuilder]
-background-repeat-x [LegacyStyleBuilder]
-background-repeat-y [LegacyStyleBuilder]
-background-size [LegacyStyleBuilder]
+background-repeat-x [FillLayerProperty, TypeName=EFillRepeat, NameForMethods=RepeatX]
+background-repeat-y [FillLayerProperty, TypeName=EFillRepeat, NameForMethods=RepeatY]
+background-size [FillLayerProperty, TypeName=EFillSize, NameForMethods=Size]
 border [LegacyStyleBuilder]
 border-bottom [LegacyStyleBuilder]
-border-bottom-color [LegacyStyleBuilder]
+border-bottom-color [VisitedLinkColorSupport, Initial=invalidColor]
 border-bottom-left-radius [Initial=initialBorderRadius, Converter=Radius]
 -webkit-border-bottom-left-radius = border-bottom-left-radius
 border-bottom-right-radius [Initial=initialBorderRadius, Converter=Radius]
@@ -133,21 +165,21 @@ border-image [LegacyStyleBuilder]
 border-image-outset [Custom=All]
 border-image-repeat [Custom=All]
 border-image-slice [Custom=All]
-border-image-source [Converter=BorderImageSource<CSSPropertyBorderImageSource>]
+border-image-source [Converter=StyleImage<CSSPropertyBorderImageSource>]
 border-image-width [Custom=All]
 border-left [LegacyStyleBuilder]
-border-left-color [LegacyStyleBuilder]
+border-left-color [VisitedLinkColorSupport, Initial=invalidColor]
 border-left-style [TypeName=EBorderStyle, Initial=initialBorderStyle]
 border-left-width [Initial=initialBorderWidth, Converter=LineWidth<float>]
 border-radius [LegacyStyleBuilder]
 border-right [LegacyStyleBuilder]
-border-right-color [LegacyStyleBuilder]
+border-right-color [VisitedLinkColorSupport, Initial=invalidColor]
 border-right-style [TypeName=EBorderStyle, Initial=initialBorderStyle]
 border-right-width [Initial=initialBorderWidth, Converter=LineWidth<float>]
 border-spacing [Inherited, LegacyStyleBuilder]
 border-style [LegacyStyleBuilder]
 border-top [LegacyStyleBuilder]
-border-top-color [LegacyStyleBuilder]
+border-top-color [VisitedLinkColorSupport, Initial=invalidColor]
 border-top-left-radius [Initial=initialBorderRadius, Converter=Radius]
 -webkit-border-top-left-radius = border-top-left-radius
 border-top-right-radius [Initial=initialBorderRadius, Converter=Radius]
@@ -165,10 +197,10 @@ caption-side [Inherited]
 clear
 clip [Custom=All]
 -webkit-clip-path [Converter=ClipPath]
-content [LegacyStyleBuilder]
-counter-increment [LegacyStyleBuilder]
-counter-reset [LegacyStyleBuilder]
-cursor [Inherited, LegacyStyleBuilder]
+content [Custom=All]
+counter-increment [Custom=All]
+counter-reset [Custom=All]
+cursor [Inherited, Custom=All]
 #if defined(ENABLE_CURSOR_VISIBILITY) && ENABLE_CURSOR_VISIBILITY
 -webkit-cursor-visibility [Inherited, TypeName=CursorVisibility]
 #endif
@@ -186,7 +218,7 @@ image-resolution [Inherited, Custom=All]
 left [Initial=initialOffset, Converter=LengthOrAuto]
 letter-spacing [Inherited, Converter=Spacing]
 list-style [Inherited, LegacyStyleBuilder]
-list-style-image [Inherited, LegacyStyleBuilder]
+list-style-image [Inherited, Converter=StyleImage<CSSPropertyListStyleImage>]
 list-style-position [Inherited]
 list-style-type [Inherited]
 margin [LegacyStyleBuilder]
@@ -203,9 +235,9 @@ opacity [TypeName=float]
 // Honor -webkit-opacity as a synonym for opacity. This was the only syntax that worked in Safari 1.1,
 // and may be in use on some websites and widgets.
 -webkit-opacity = opacity
-orphans [Inherited, LegacyStyleBuilder]
+orphans [Inherited, TypeName=short, AutoFunctions]
 outline [LegacyStyleBuilder]
-outline-color [LegacyStyleBuilder]
+outline-color [VisitedLinkColorSupport, Initial=invalidColor]
 outline-offset [Converter=ComputedLength<int>]
 outline-style [Custom=All]
 outline-width [Converter=LineWidth<unsigned short>]
@@ -267,34 +299,34 @@ unicode-range [LegacyStyleBuilder]
 vertical-align [Custom=Value]
 visibility [Inherited]
 white-space [Inherited]
-widows [Inherited, LegacyStyleBuilder]
+widows [Inherited, TypeName=short, AutoFunctions]
 width [Initial=initialSize, Converter=LengthSizing]
 word-break [Inherited]
 -epub-word-break = word-break
-word-spacing [Inherited, Custom=Value]
+word-spacing [Inherited, ConditionalConverter=WordSpacing, TypeName=Length]
 word-wrap [Inherited=EOverflowWrap, NameForMethods=OverflowWrap]
-z-index [LegacyStyleBuilder]
-alt [LegacyStyleBuilder]
+z-index [TypeName=int, AutoFunctions]
+alt [NameForMethods=ContentAltText, Custom=Value]
 -webkit-alt = alt
 -webkit-animation [LegacyStyleBuilder]
--webkit-animation-delay [LegacyStyleBuilder]
--webkit-animation-direction [LegacyStyleBuilder]
--webkit-animation-duration [LegacyStyleBuilder]
--webkit-animation-fill-mode [LegacyStyleBuilder]
--webkit-animation-iteration-count [LegacyStyleBuilder]
--webkit-animation-name [LegacyStyleBuilder]
--webkit-animation-play-state [LegacyStyleBuilder]
--webkit-animation-timing-function [LegacyStyleBuilder]
+-webkit-animation-delay [AnimationProperty, TypeName=double, NameForMethods=Delay]
+-webkit-animation-direction [AnimationProperty, TypeName=Animation::AnimationDirection, NameForMethods=Direction]
+-webkit-animation-duration [AnimationProperty, TypeName=double, NameForMethods=Duration]
+-webkit-animation-fill-mode [AnimationProperty, TypeName=unsigned, NameForMethods=FillMode]
+-webkit-animation-iteration-count [AnimationProperty, TypeName=double, NameForMethods=IterationCount]
+-webkit-animation-name [AnimationProperty, TypeName=String, NameForMethods=Name]
+-webkit-animation-play-state [AnimationProperty, TypeName=EAnimPlayState, NameForMethods=PlayState]
+-webkit-animation-timing-function [AnimationProperty, TypeName=PassRefPtr<TimingFunction>, NameForMethods=TimingFunction]
 -webkit-appearance [TypeName=ControlPart]
 -webkit-aspect-ratio [Inherited, Custom=All]
 -webkit-backface-visibility
--webkit-background-clip [LegacyStyleBuilder]
--webkit-background-composite [LegacyStyleBuilder]
--webkit-background-origin [LegacyStyleBuilder]
+-webkit-background-clip [FillLayerProperty, TypeName=EFillBox, NameForMethods=Clip]
+-webkit-background-composite [FillLayerProperty, TypeName=CompositeOperator, NameForMethods=Composite]
+-webkit-background-origin [FillLayerProperty, TypeName=EFillBox, NameForMethods=Origin]
 // -webkit-background-size differs from background-size only in the interpretation of
 // a single value: -webkit-background-size: l; is equivalent to background-size: l l;
 // whereas background-size: l; is equivalent to background-size: l auto;
--webkit-background-size [LegacyStyleBuilder]
+-webkit-background-size [FillLayerProperty, TypeName=EFillSize, NameForMethods=Size]
 -webkit-border-after [LegacyStyleBuilder]
 -webkit-border-after-color [LegacyStyleBuilder]
 -webkit-border-after-style [LegacyStyleBuilder]
@@ -337,17 +369,17 @@ alt [LegacyStyleBuilder]
 -webkit-column-break-after [TypeName=EPageBreak, Initial=initialPageBreak]
 -webkit-column-break-before [TypeName=EPageBreak, Initial=initialPageBreak]
 -webkit-column-break-inside [TypeName=EPageBreak, Initial=initialPageBreak]
-column-count [LegacyStyleBuilder]
+column-count [TypeName=unsigned short, AutoFunctions]
 -webkit-column-count = column-count
 column-fill [TypeName=ColumnFill]
 -webkit-column-fill = column-fill
-column-gap [LegacyStyleBuilder]
+column-gap [Custom=All]
 -webkit-column-gap = column-gap
 column-progression [TypeName=ColumnProgression]
 -webkit-column-progression = column-progression
 column-rule [LegacyStyleBuilder]
 -webkit-column-rule = column-rule
-column-rule-color [LegacyStyleBuilder]
+column-rule-color [VisitedLinkColorSupport, Initial=invalidColor]
 -webkit-column-rule-color = column-rule-color
 column-rule-style [TypeName=EBorderStyle, Initial=initialBorderStyle]
 -webkit-column-rule-style = column-rule-style
@@ -355,7 +387,7 @@ column-rule-width [Converter=LineWidth<unsigned short>]
 -webkit-column-rule-width = column-rule-width
 column-span [TypeName=ColumnSpan]
 -webkit-column-span = column-span
-column-width [LegacyStyleBuilder]
+column-width [TypeName=float, AutoFunctions, Converter=ComputedLength<float>]
 -webkit-column-width = column-width
 columns [LegacyStyleBuilder]
 -webkit-columns = columns
@@ -366,7 +398,7 @@ columns [LegacyStyleBuilder]
 mix-blend-mode [TypeName=BlendMode, NameForMethods=BlendMode]
 isolation [TypeName=Isolation]
 #endif
--webkit-filter [LegacyStyleBuilder]
+-webkit-filter [ConditionalConverter=FilterOperations, TypeName=FilterOperations]
 align-content
 -webkit-align-content = align-content
 align-items
@@ -390,26 +422,26 @@ flex-wrap
 justify-content
 -webkit-justify-content = justify-content
 #if defined(ENABLE_FILTERS_LEVEL_2) && ENABLE_FILTERS_LEVEL_2
--webkit-backdrop-filter [LegacyStyleBuilder]
+-webkit-backdrop-filter [ConditionalConverter=FilterOperations, TypeName=FilterOperations]
 #endif
 -webkit-justify-self [Custom=Value]
 -webkit-font-size-delta [LegacyStyleBuilder]
 #if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
 -webkit-grid [LegacyStyleBuilder]
 -webkit-grid-area [LegacyStyleBuilder]
--webkit-grid-auto-columns [LegacyStyleBuilder]
--webkit-grid-auto-rows [LegacyStyleBuilder]
--webkit-grid-column-end [LegacyStyleBuilder]
--webkit-grid-column-start [LegacyStyleBuilder]
+-webkit-grid-auto-columns [ConditionalConverter=GridTrackSize, TypeName=GridTrackSize]
+-webkit-grid-auto-rows [ConditionalConverter=GridTrackSize, TypeName=GridTrackSize]
+-webkit-grid-column-end [ConditionalConverter=GridPosition, TypeName=GridPosition, NameForMethods=GridItemColumnEnd]
+-webkit-grid-column-start [ConditionalConverter=GridPosition, TypeName=GridPosition, NameForMethods=GridItemColumnStart]
 -webkit-grid-template [LegacyStyleBuilder]
--webkit-grid-template-columns [LegacyStyleBuilder]
--webkit-grid-template-rows [LegacyStyleBuilder]
--webkit-grid-row-end [LegacyStyleBuilder]
--webkit-grid-row-start [LegacyStyleBuilder]
+-webkit-grid-template-columns [Custom=All]
+-webkit-grid-template-rows [Custom=All]
+-webkit-grid-row-end [ConditionalConverter=GridPosition, TypeName=GridPosition, NameForMethods=GridItemRowEnd]
+-webkit-grid-row-start [ConditionalConverter=GridPosition, TypeName=GridPosition, NameForMethods=GridItemRowStart]
 -webkit-grid-column [LegacyStyleBuilder]
 -webkit-grid-row [LegacyStyleBuilder]
--webkit-grid-template-areas [LegacyStyleBuilder]
--webkit-grid-auto-flow [LegacyStyleBuilder]
+-webkit-grid-template-areas [Custom=All]
+-webkit-grid-auto-flow [Converter=GridAutoFlow]
 #endif
 -webkit-hyphenate-character [Inherited, NameForMethods=HyphenationString, Converter=StringOrAuto]
 -webkit-hyphenate-limit-after [Inherited, NameForMethods=HyphenationLimitAfter, Converter=Number<short>]
@@ -437,7 +469,7 @@ justify-content
 -webkit-margin-start [LegacyStyleBuilder]
 -webkit-marquee [LegacyStyleBuilder]
 -webkit-marquee-direction
--webkit-marquee-increment [Custom=Value]
+-webkit-marquee-increment [ConditionalConverter=MarqueeIncrement, TypeName=Length]
 -webkit-marquee-repetition [NameForMethods=MarqueeLoopCount, Converter=MarqueeRepetition]
 -webkit-marquee-speed [Converter=MarqueeSpeed]
 -webkit-marquee-style [TypeName=EMarqueeBehavior, NameForMethods=MarqueeBehavior]
@@ -446,20 +478,20 @@ justify-content
 -webkit-mask-box-image-outset [Custom=All]
 -webkit-mask-box-image-repeat [Custom=All]
 -webkit-mask-box-image-slice [Custom=All]
--webkit-mask-box-image-source [Converter=BorderImageSource<CSSPropertyWebkitMaskBoxImageSource>]
+-webkit-mask-box-image-source [Converter=StyleImage<CSSPropertyWebkitMaskBoxImageSource>]
 -webkit-mask-box-image-width [Custom=All]
--webkit-mask-clip [LegacyStyleBuilder]
--webkit-mask-composite [LegacyStyleBuilder]
--webkit-mask-image [LegacyStyleBuilder]
--webkit-mask-origin [LegacyStyleBuilder]
+-webkit-mask-clip [FillLayerProperty, TypeName=EFillBox, NameForMethods=Clip]
+-webkit-mask-composite [FillLayerProperty, TypeName=CompositeOperator, NameForMethods=Composite]
+-webkit-mask-image [Custom=Initial|Inherit, ConditionalConverter=MaskImageOperations, TypeName=Vector<RefPtr<MaskImageOperation>>]
+-webkit-mask-origin [FillLayerProperty, TypeName=EFillBox, NameForMethods=Origin]
 -webkit-mask-position [LegacyStyleBuilder]
--webkit-mask-position-x [LegacyStyleBuilder]
--webkit-mask-position-y [LegacyStyleBuilder]
+-webkit-mask-position-x [FillLayerProperty, TypeName=Length, NameForMethods=XPosition]
+-webkit-mask-position-y [FillLayerProperty, TypeName=Length, NameForMethods=YPosition]
 -webkit-mask-repeat [LegacyStyleBuilder]
--webkit-mask-repeat-x [LegacyStyleBuilder]
--webkit-mask-repeat-y [LegacyStyleBuilder]
--webkit-mask-size [LegacyStyleBuilder]
--webkit-mask-source-type [LegacyStyleBuilder]
+-webkit-mask-repeat-x [FillLayerProperty, TypeName=EFillRepeat, NameForMethods=RepeatX]
+-webkit-mask-repeat-y [FillLayerProperty, TypeName=EFillRepeat, NameForMethods=RepeatY]
+-webkit-mask-size [FillLayerProperty, TypeName=FillSize, NameForMethods=Size]
+-webkit-mask-source-type [FillLayerProperty, TypeName=EMaskSourceType, NameForMethods=MaskSourceType]
 -webkit-max-logical-width [LegacyStyleBuilder]
 -webkit-max-logical-height [LegacyStyleBuilder]
 -webkit-min-logical-width [LegacyStyleBuilder]
@@ -471,18 +503,18 @@ order [TypeName=int]
 -webkit-padding-before [LegacyStyleBuilder]
 -webkit-padding-end [LegacyStyleBuilder]
 -webkit-padding-start [LegacyStyleBuilder]
--webkit-perspective [Custom=Value]
+-webkit-perspective [ConditionalConverter=Perspective, TypeName=float]
 -webkit-perspective-origin [LegacyStyleBuilder]
 -webkit-perspective-origin-x [Converter=Length]
 -webkit-perspective-origin-y [Converter=Length]
 -webkit-print-color-adjust [Inherited, TypeName=PrintColorAdjust]
 -webkit-rtl-ordering [Inherited, TypeName=Order, Setter=setRTLOrdering, Initial=initialRTLOrdering]
 #if defined(ENABLE_CSS_SCROLL_SNAP)
--webkit-scroll-snap-points-x [LegacyStyleBuilder]
--webkit-scroll-snap-points-y [LegacyStyleBuilder]
--webkit-scroll-snap-type [LegacyStyleBuilder]
--webkit-scroll-snap-destination [LegacyStyleBuilder]
--webkit-scroll-snap-coordinate [LegacyStyleBuilder]
+-webkit-scroll-snap-points-x [Converter=ScrollSnapPoints]
+-webkit-scroll-snap-points-y [Converter=ScrollSnapPoints]
+-webkit-scroll-snap-type [TypeName=ScrollSnapType]
+-webkit-scroll-snap-destination [Converter=SnapCoordinatePair]
+-webkit-scroll-snap-coordinate [Converter=ScrollSnapCoordinates, NameForMethods=ScrollSnapCoordinates]
 #endif
 -webkit-text-combine [Inherited, TypeName=TextCombine]
 -epub-text-combine = -webkit-text-combine
@@ -493,14 +525,14 @@ order [TypeName=int]
 -webkit-text-decoration [LegacyStyleBuilder]
 -webkit-text-decoration-line [NameForMethods=TextDecoration, Converter=TextDecoration]
 -webkit-text-decoration-style [TypeName=TextDecorationStyle]
--webkit-text-decoration-color [LegacyStyleBuilder]
--webkit-text-decoration-skip [Inherited, LegacyStyleBuilder]
+-webkit-text-decoration-color [VisitedLinkColorSupport, Initial=invalidColor]
+-webkit-text-decoration-skip [Inherited, Converter=TextDecorationSkip]
 -webkit-text-underline-position [Inherited, Converter=TextUnderlinePosition]
 -webkit-text-decorations-in-effect [Inherited, LegacyStyleBuilder]
 -webkit-text-emphasis [Inherited, LegacyStyleBuilder]
 -epub-text-emphasis = -webkit-text-emphasis
 text-emphasis = -webkit-text-emphasis
--webkit-text-emphasis-color [Inherited, LegacyStyleBuilder]
+-webkit-text-emphasis-color [Inherited, VisitedLinkColorSupport, Initial=invalidColor]
 -epub-text-emphasis-color = -webkit-text-emphasis-color
 text-emphasis-color = -webkit-text-emphasis-color
 -webkit-text-emphasis-position [Inherited, Converter=TextEmphasisPosition]
@@ -508,10 +540,10 @@ text-emphasis-position = -webkit-text-emphasis-position
 -webkit-text-emphasis-style [Inherited, Custom=All]
 -epub-text-emphasis-style = -webkit-text-emphasis-style
 text-emphasis-style = -webkit-text-emphasis-style
--webkit-text-fill-color [Inherited, LegacyStyleBuilder]
+-webkit-text-fill-color [Inherited, VisitedLinkColorSupport, Initial=invalidColor]
 -webkit-text-security [Inherited]
 -webkit-text-stroke [Inherited, LegacyStyleBuilder]
--webkit-text-stroke-color [Inherited, LegacyStyleBuilder]
+-webkit-text-stroke-color [Inherited, VisitedLinkColorSupport, Initial=invalidColor]
 -webkit-text-stroke-width [Inherited, Converter=TextStrokeWidth]
 -webkit-transform [Converter=Transform]
 -webkit-transform-origin [LegacyStyleBuilder]
@@ -520,10 +552,10 @@ text-emphasis-style = -webkit-text-emphasis-style
 -webkit-transform-origin-z [Converter=ComputedLength<float>]
 -webkit-transform-style [TypeName=ETransformStyle3D, NameForMethods=TransformStyle3D]
 -webkit-transition [LegacyStyleBuilder]
--webkit-transition-delay [LegacyStyleBuilder]
--webkit-transition-duration [LegacyStyleBuilder]
--webkit-transition-property [LegacyStyleBuilder]
--webkit-transition-timing-function [LegacyStyleBuilder]
+-webkit-transition-delay [AnimationProperty, TypeName=double, NameForMethods=Delay]
+-webkit-transition-duration [AnimationProperty, TypeName=double, NameForMethods=Duration]
+-webkit-transition-property [AnimationProperty, TypeName=CSSPropertyID, NameForMethods=Property]
+-webkit-transition-timing-function [AnimationProperty, TypeName=PassRefPtr<TimingFunction>, NameForMethods=TimingFunction]
 -webkit-user-drag
 -webkit-user-modify [Inherited]
 -webkit-user-select [Inherited]
@@ -536,7 +568,7 @@ text-emphasis-style = -webkit-text-emphasis-style
 -webkit-region-break-inside [TypeName=EPageBreak, Initial=initialPageBreak]
 #endif
 #if defined(ENABLE_CSS_SHAPES) && ENABLE_CSS_SHAPES
--webkit-shape-outside [Custom=Value]
+-webkit-shape-outside [Converter=ShapeValue]
 -webkit-shape-margin [Converter=Length]
 -webkit-shape-image-threshold [Converter=Number<float>]
 #endif

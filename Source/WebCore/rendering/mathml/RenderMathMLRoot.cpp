@@ -55,12 +55,12 @@ namespace WebCore {
 // In order to accept invalid markup and to handle <mroot> and <msqrt> consistently, we will allow any number of children in the BaseWrapper of <mroot> too.
 // We will allow the IndexWrapper to be empty and it will always contain the last child of the <mroot> if there are at least 2 elements.
 
-RenderMathMLRoot::RenderMathMLRoot(Element& element, PassRef<RenderStyle> style)
+RenderMathMLRoot::RenderMathMLRoot(Element& element, Ref<RenderStyle>&& style)
     : RenderMathMLBlock(element, WTF::move(style))
 {
 }
 
-RenderMathMLRoot::RenderMathMLRoot(Document& document, PassRef<RenderStyle> style)
+RenderMathMLRoot::RenderMathMLRoot(Document& document, Ref<RenderStyle>&& style)
     : RenderMathMLBlock(document, WTF::move(style))
 {
 }
@@ -208,17 +208,17 @@ void RenderMathMLRoot::updateStyle()
     LayoutUnit kernAfterDegree = -10 * style().font().size() / 18;
     m_degreeBottomRaisePercent = 0.6f;
 
-    const auto& primaryFontData = style().font().primaryFont();
-    if (primaryFontData && primaryFontData->mathData()) {
+    const auto& primaryFontData = style().font().primaryFontData();
+    if (auto* mathData = style().font().primaryFontData().mathData()) {
         // FIXME: m_verticalGap should use RadicalDisplayStyleVertical in display mode (https://bugs.webkit.org/show_bug.cgi?id=118737).
-        m_verticalGap = primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::RadicalVerticalGap);
-        m_ruleThickness = primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::RadicalRuleThickness);
-        m_extraAscender = primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::RadicalExtraAscender);
+        m_verticalGap = mathData->getMathConstant(primaryFontData, OpenTypeMathData::RadicalVerticalGap);
+        m_ruleThickness = mathData->getMathConstant(primaryFontData, OpenTypeMathData::RadicalRuleThickness);
+        m_extraAscender = mathData->getMathConstant(primaryFontData, OpenTypeMathData::RadicalExtraAscender);
 
         if (!isRenderMathMLSquareRoot()) {
-            kernBeforeDegree = primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::RadicalKernBeforeDegree);
-            kernAfterDegree = primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::RadicalKernAfterDegree);
-            m_degreeBottomRaisePercent = primaryFontData->mathData()->getMathConstant(primaryFontData, OpenTypeMathData::RadicalDegreeBottomRaisePercent);
+            kernBeforeDegree = mathData->getMathConstant(primaryFontData, OpenTypeMathData::RadicalKernBeforeDegree);
+            kernAfterDegree = mathData->getMathConstant(primaryFontData, OpenTypeMathData::RadicalKernAfterDegree);
+            m_degreeBottomRaisePercent = mathData->getMathConstant(primaryFontData, OpenTypeMathData::RadicalDegreeBottomRaisePercent);
         }
     }
 

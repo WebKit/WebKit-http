@@ -23,6 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#import "NSImmediateActionGestureRecognizerSPI.h"
 #import "SoftLinking.h"
 #import <objc/runtime.h>
 
@@ -46,5 +47,15 @@ SOFT_LINK_CLASS_OPTIONAL(Lookup, LULookupDefinitionModule)
 @end
 
 #endif // !USE(APPLE_INTERNAL_SDK)
+
+#if  __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+@interface LULookupDefinitionModule (AnimationController)
+
++ (id<NSImmediateActionAnimationController>)lookupAnimationControllerForTerm:(NSAttributedString *)term atLocation:(NSPoint)screenPoint options:(NSDictionary *)options;
+
+@end
+
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 #endif // PLATFORM(MAC)

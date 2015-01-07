@@ -47,7 +47,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebView::WebView(WebContext* context, WebPageGroup* pageGroup)
+WebView::WebView(WebProcessPool* context, WebPageGroup* pageGroup)
     : m_focused(false)
     , m_visible(false)
     , m_opacity(1.0)
@@ -451,6 +451,11 @@ PassRefPtr<WebColorPicker> WebView::createColorPicker(WebPageProxy*, const WebCo
 #endif
 
 void WebView::setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool)
+{
+    notImplemented();
+}
+
+void WebView::setTextIndicatorAnimationProgress(float)
 {
     notImplemented();
 }

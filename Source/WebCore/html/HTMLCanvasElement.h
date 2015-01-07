@@ -63,8 +63,8 @@ public:
 
 class HTMLCanvasElement final : public HTMLElement {
 public:
-    static RefPtr<HTMLCanvasElement> create(Document&);
-    static RefPtr<HTMLCanvasElement> create(const QualifiedName&, Document&);
+    static Ref<HTMLCanvasElement> create(Document&);
+    static Ref<HTMLCanvasElement> create(const QualifiedName&, Document&);
     virtual ~HTMLCanvasElement();
 
     void addObserver(CanvasObserver&);
@@ -139,7 +139,7 @@ private:
     HTMLCanvasElement(const QualifiedName&, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
     virtual bool canContainRangeEndPoint() const override;
     virtual bool canStartSelection() const override;

@@ -50,7 +50,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED > 82000
+#if __IPHONE_OS_VERSION_MIN_REQUIRED > 80200
 
 PassRefPtr<WebVideoFullscreenManagerProxy> WebVideoFullscreenManagerProxy::create(WebPageProxy& page)
 {
@@ -105,7 +105,7 @@ void WebVideoFullscreenManagerProxy::fullscreenModeChanged(HTMLMediaElement::Vid
     m_page->send(Messages::WebVideoFullscreenManager::fullscreenModeChanged(mode), m_page->pageID());
 }
     
-void WebVideoFullscreenManagerProxy::setSeekableRangesVector(Vector<std::pair<double, double>>& ranges)
+void WebVideoFullscreenManagerProxy::setSeekableRangesVector(const Vector<std::pair<double, double>>& ranges)
 {
     RefPtr<TimeRanges> timeRanges = TimeRanges::create();
     for (const auto& range : ranges)
@@ -141,6 +141,7 @@ void WebVideoFullscreenManagerProxy::requestExitFullscreen()
 void WebVideoFullscreenManagerProxy::didExitFullscreen()
 {
     m_page->send(Messages::WebVideoFullscreenManager::DidExitFullscreen(), m_page->pageID());
+    m_page->didExitFullscreen();
 }
     
 void WebVideoFullscreenManagerProxy::didCleanupFullscreen()
@@ -158,6 +159,7 @@ void WebVideoFullscreenManagerProxy::didSetupFullscreen()
 void WebVideoFullscreenManagerProxy::didEnterFullscreen()
 {
     m_page->send(Messages::WebVideoFullscreenManager::DidEnterFullscreen(), m_page->pageID());
+    m_page->didEnterFullscreen();
 }
 
 void WebVideoFullscreenManagerProxy::play()

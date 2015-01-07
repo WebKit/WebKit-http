@@ -81,11 +81,6 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
         plugins/win/PluginPackageWin.cpp
         plugins/win/PluginViewWin.cpp
     )
-else ()
-    list(APPEND WebCore_SOURCES
-        plugins/PluginPackageNone.cpp
-        plugins/PluginViewNone.cpp
-    )
 endif ()
 
 list(APPEND WebCore_SOURCES

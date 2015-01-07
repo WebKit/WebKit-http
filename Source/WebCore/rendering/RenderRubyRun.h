@@ -43,7 +43,7 @@ class RenderRubyText;
 
 class RenderRubyRun final : public RenderBlockFlow {
 public:
-    RenderRubyRun(Document&, PassRef<RenderStyle>);
+    RenderRubyRun(Document&, Ref<RenderStyle>&&);
     virtual ~RenderRubyRun();
 
     bool hasRubyText() const;
@@ -63,7 +63,7 @@ public:
     virtual RenderBlock* firstLineBlock() const override;
     virtual void updateFirstLetter() override;
 
-    void getOverhang(bool firstLine, RenderObject* startRenderer, RenderObject* endRenderer, int& startOverhang, int& endOverhang) const;
+    void getOverhang(bool firstLine, RenderObject* startRenderer, RenderObject* endRenderer, float& startOverhang, float& endOverhang) const;
 
     static RenderRubyRun* staticCreateRubyRun(const RenderObject* parentRuby);
     

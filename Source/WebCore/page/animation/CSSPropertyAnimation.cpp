@@ -42,6 +42,7 @@
 #include "ClipPathOperation.h"
 #include "FloatConversion.h"
 #include "IdentityTransformOperation.h"
+#include "MaskImageOperation.h"
 #include "Matrix3DTransformOperation.h"
 #include "MatrixTransformOperation.h"
 #include "RenderBox.h"
@@ -341,6 +342,19 @@ static inline PassRefPtr<StyleImage> blendFunc(const AnimationBase* anim, StyleI
     return to;
 }
 
+static inline PassRefPtr<MaskImageOperation> blendFunc(const AnimationBase* anim, const RefPtr<MaskImageOperation> from, const RefPtr<MaskImageOperation> to, double progress)
+{
+    if (!from.get() || !to.get())
+        return to;
+
+    // Only animates between masks using images (PNG, entire SVG, generated image).
+    // It does not animate between <mask> elements (file.svg#identifier).
+    if (from->image() && to->image())
+        return MaskImageOperation::create(blendFunc(anim, from->image(), to->image(), progress));
+
+    return to;
+}
+
 static inline NinePieceImage blendFunc(const AnimationBase* anim, const NinePieceImage& from, const NinePieceImage& to, double progress)
 {
     if (!from.hasImage() || !to.hasImage())
@@ -497,6 +511,30 @@ public:
         StyleImage* imageA = (a->*m_getter)();
         StyleImage* imageB = (b->*m_getter)();
         return StyleImage::imagesEquivalent(imageA, imageB);
+    }
+};
+
+class MaskImagePropertyWrapper : public PropertyWrapper<const RefPtr<MaskImageOperation>> {
+public:
+    MaskImagePropertyWrapper()
+        : PropertyWrapper<const RefPtr<MaskImageOperation>>(CSSPropertyWebkitMaskImage, &RenderStyle::maskImage, &RenderStyle::setMaskImage)
+    {
+    }
+    
+    virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
+    {
+        // If the style pointers are the same, don't bother doing the test.
+        // If either is null, return false. If both are null, return true.
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+        
+        const RefPtr<MaskImageOperation> maskImageA = (a->*m_getter)();
+        const RefPtr<MaskImageOperation> maskImageB = (b->*m_getter)();
+        StyleImage* styleImageA = (maskImageA ? maskImageA->image() : nullptr);
+        StyleImage* styleImageB = (maskImageB ? maskImageB->image() : nullptr);
+        return StyleImage::imagesEquivalent(styleImageA, styleImageB);
     }
 };
 
@@ -882,7 +920,7 @@ public:
 class FillLayersPropertyWrapper : public AnimationPropertyWrapperBase {
 public:
     typedef const FillLayer* (RenderStyle::*LayersGetter)() const;
-    typedef FillLayer* (RenderStyle::*LayersAccessor)();
+    typedef FillLayer& (RenderStyle::*LayersAccessor)();
 
     FillLayersPropertyWrapper(CSSPropertyID prop, LayersGetter getter, LayersAccessor accessor)
         : AnimationPropertyWrapperBase(prop)
@@ -931,7 +969,7 @@ public:
     {
         const FillLayer* aLayer = (a->*m_layersGetter)();
         const FillLayer* bLayer = (b->*m_layersGetter)();
-        FillLayer* dstLayer = (dst->*m_layersAccessor)();
+        FillLayer* dstLayer = &(dst->*m_layersAccessor)();
 
         while (aLayer && bLayer && dstLayer) {
             m_fillLayerPropertyWrapper->blend(anim, dstLayer, aLayer, bLayer, progress);
@@ -1150,9 +1188,9 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
 
         new PropertyWrapperVisitedAffectedColor(CSSPropertyBackgroundColor, &RenderStyle::backgroundColor, &RenderStyle::setBackgroundColor, &RenderStyle::visitedLinkBackgroundColor, &RenderStyle::setVisitedLinkBackgroundColor),
 
-        new FillLayersPropertyWrapper(CSSPropertyBackgroundImage, &RenderStyle::backgroundLayers, &RenderStyle::accessBackgroundLayers),
+        new FillLayersPropertyWrapper(CSSPropertyBackgroundImage, &RenderStyle::backgroundLayers, &RenderStyle::ensureBackgroundLayers),
         new StyleImagePropertyWrapper(CSSPropertyListStyleImage, &RenderStyle::listStyleImage, &RenderStyle::setListStyleImage),
-        new StyleImagePropertyWrapper(CSSPropertyWebkitMaskImage, &RenderStyle::maskImage, &RenderStyle::setMaskImage),
+        new MaskImagePropertyWrapper(),
 
         new StyleImagePropertyWrapper(CSSPropertyBorderImageSource, &RenderStyle::borderImageSource, &RenderStyle::setBorderImageSource),
         new LengthPropertyWrapper<LengthBox>(CSSPropertyBorderImageSlice, &RenderStyle::borderImageSlices, &RenderStyle::setBorderImageSlices),
@@ -1162,14 +1200,14 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
         new StyleImagePropertyWrapper(CSSPropertyWebkitMaskBoxImageSource, &RenderStyle::maskBoxImageSource, &RenderStyle::setMaskBoxImageSource),
         new PropertyWrapper<const NinePieceImage&>(CSSPropertyWebkitMaskBoxImage, &RenderStyle::maskBoxImage, &RenderStyle::setMaskBoxImage),
 
-        new FillLayersPropertyWrapper(CSSPropertyBackgroundPositionX, &RenderStyle::backgroundLayers, &RenderStyle::accessBackgroundLayers),
-        new FillLayersPropertyWrapper(CSSPropertyBackgroundPositionY, &RenderStyle::backgroundLayers, &RenderStyle::accessBackgroundLayers),
-        new FillLayersPropertyWrapper(CSSPropertyBackgroundSize, &RenderStyle::backgroundLayers, &RenderStyle::accessBackgroundLayers),
-        new FillLayersPropertyWrapper(CSSPropertyWebkitBackgroundSize, &RenderStyle::backgroundLayers, &RenderStyle::accessBackgroundLayers),
+        new FillLayersPropertyWrapper(CSSPropertyBackgroundPositionX, &RenderStyle::backgroundLayers, &RenderStyle::ensureBackgroundLayers),
+        new FillLayersPropertyWrapper(CSSPropertyBackgroundPositionY, &RenderStyle::backgroundLayers, &RenderStyle::ensureBackgroundLayers),
+        new FillLayersPropertyWrapper(CSSPropertyBackgroundSize, &RenderStyle::backgroundLayers, &RenderStyle::ensureBackgroundLayers),
+        new FillLayersPropertyWrapper(CSSPropertyWebkitBackgroundSize, &RenderStyle::backgroundLayers, &RenderStyle::ensureBackgroundLayers),
 
-        new FillLayersPropertyWrapper(CSSPropertyWebkitMaskPositionX, &RenderStyle::maskLayers, &RenderStyle::accessMaskLayers),
-        new FillLayersPropertyWrapper(CSSPropertyWebkitMaskPositionY, &RenderStyle::maskLayers, &RenderStyle::accessMaskLayers),
-        new FillLayersPropertyWrapper(CSSPropertyWebkitMaskSize, &RenderStyle::maskLayers, &RenderStyle::accessMaskLayers),
+        new FillLayersPropertyWrapper(CSSPropertyWebkitMaskPositionX, &RenderStyle::maskLayers, &RenderStyle::ensureMaskLayers),
+        new FillLayersPropertyWrapper(CSSPropertyWebkitMaskPositionY, &RenderStyle::maskLayers, &RenderStyle::ensureMaskLayers),
+        new FillLayersPropertyWrapper(CSSPropertyWebkitMaskSize, &RenderStyle::maskLayers, &RenderStyle::ensureMaskLayers),
 
         new PropertyWrapper<float>(CSSPropertyFontSize,
             // Must pass a specified size to setFontSize if Text Autosizing is enabled, but a computed size

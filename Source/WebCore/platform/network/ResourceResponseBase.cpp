@@ -48,14 +48,11 @@ ResourceResponseBase::ResourceResponseBase()
     : m_expectedContentLength(0)
     , m_includesCertificateInfo(false)
     , m_httpStatusCode(0)
-    , m_connectionID(0)
     , m_cacheControlMaxAge(0)
     , m_age(0)
     , m_date(0)
     , m_expires(0)
     , m_lastModified(0)
-    , m_wasCached(false)
-    , m_connectionReused(false)
     , m_isNull(true)
     , m_haveParsedCacheControlHeader(false)
     , m_haveParsedAgeHeader(false)
@@ -65,6 +62,7 @@ ResourceResponseBase::ResourceResponseBase()
     , m_cacheControlContainsNoCache(false)
     , m_cacheControlContainsNoStore(false)
     , m_cacheControlContainsMustRevalidate(false)
+    , m_source(Source::Unknown)
 {
 }
 
@@ -75,14 +73,11 @@ ResourceResponseBase::ResourceResponseBase(const URL& url, const String& mimeTyp
     , m_textEncodingName(textEncodingName)
     , m_includesCertificateInfo(true) // Empty but valid for synthetic responses.
     , m_httpStatusCode(0)
-    , m_connectionID(0)
     , m_cacheControlMaxAge(0)
     , m_age(0)
     , m_date(0)
     , m_expires(0)
     , m_lastModified(0)
-    , m_wasCached(false)
-    , m_connectionReused(false)
     , m_isNull(false)
     , m_haveParsedCacheControlHeader(false)
     , m_haveParsedAgeHeader(false)
@@ -92,6 +87,7 @@ ResourceResponseBase::ResourceResponseBase(const URL& url, const String& mimeTyp
     , m_cacheControlContainsNoCache(false)
     , m_cacheControlContainsNoStore(false)
     , m_cacheControlContainsMustRevalidate(false)
+    , m_source(Source::Unknown)
 {
 }
 
@@ -517,44 +513,16 @@ bool ResourceResponseBase::isAttachment() const
     return equalIgnoringCase(value, "attachment");
 }
   
-bool ResourceResponseBase::wasCached() const
+ResourceResponseBase::Source ResourceResponseBase::source() const
 {
     lazyInit(AllFields);
 
-    return m_wasCached;
+    return m_source;
 }
 
-void ResourceResponseBase::setWasCached(bool value)
+void ResourceResponseBase::setSource(Source source)
 {
-    m_wasCached = value;
-}
-
-bool ResourceResponseBase::connectionReused() const
-{
-    lazyInit(AllFields);
-
-    return m_connectionReused;
-}
-
-void ResourceResponseBase::setConnectionReused(bool connectionReused)
-{
-    lazyInit(AllFields);
-
-    m_connectionReused = connectionReused;
-}
-
-unsigned ResourceResponseBase::connectionID() const
-{
-    lazyInit(AllFields);
-
-    return m_connectionID;
-}
-
-void ResourceResponseBase::setConnectionID(unsigned connectionID)
-{
-    lazyInit(AllFields);
-
-    m_connectionID = connectionID;
+    m_source = source;
 }
 
 void ResourceResponseBase::lazyInit(InitLevel initLevel) const

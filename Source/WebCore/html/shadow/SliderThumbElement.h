@@ -61,8 +61,8 @@ public:
 private:
     SliderThumbElement(Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
-    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren() override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
+    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
     virtual bool isDisabledFormControl() const override;
     virtual bool matchesReadWritePseudoClass() const override;
     virtual Element* focusDelegate() override;
@@ -100,7 +100,7 @@ private:
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     // FIXME: Currently it is safe to use 0, but this may need to change
-    // if touch identifers change in the future and can be 0.
+    // if touch identifiers change in the future and can be 0.
     static const unsigned NoIdentifier = 0;
     unsigned m_exclusiveTouchIdentifier;
     bool m_isRegisteredAsTouchEventListener;
@@ -116,7 +116,7 @@ inline PassRefPtr<SliderThumbElement> SliderThumbElement::create(Document& docum
 
 class RenderSliderThumb final : public RenderBlockFlow {
 public:
-    RenderSliderThumb(SliderThumbElement&, PassRef<RenderStyle>);
+    RenderSliderThumb(SliderThumbElement&, Ref<RenderStyle>&&);
     void updateAppearance(RenderStyle* parentStyle);
 
 private:
@@ -131,7 +131,7 @@ public:
 
 private:
     SliderContainerElement(Document&);
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
     virtual const AtomicString& shadowPseudoId() const override;
 };
 

@@ -28,11 +28,6 @@
 
 #import "WebFrameLoaderClient.h"
 
-// Terrible hack; lets us get at the WebFrame private structure.
-#define private public
-#import "WebFrame.h"
-#undef private
-
 #import "DOMElementInternal.h"
 #import "DOMHTMLFormElementInternal.h"
 #import "WebBackForwardList.h"
@@ -1429,9 +1424,9 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     bool isMainFrame = coreFrame->isMainFrame();
     if (isMainFrame && coreFrame->view())
         coreFrame->view()->setParentVisible(false);
-    coreFrame->setView(0);
+    coreFrame->setView(nullptr);
     RefPtr<FrameView> coreView = FrameView::create(*coreFrame);
-    coreFrame->setView(coreView);
+    coreFrame->setView(coreView.copyRef());
 
     [m_webFrame.get() _updateBackgroundAndUpdatesWhileOffscreen];
     [m_webFrame->_private->webFrameView _install];

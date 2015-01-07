@@ -28,9 +28,6 @@
 
 #if PLATFORM(MAC)
 
-#import "WebContext.h"
-#import "WebPageGroup.h"
-#import "WebProcessMessages.h"
 #import "WKFullKeyboardAccessWatcher.h"
 
 namespace WebKit {
@@ -58,24 +55,6 @@ void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& l
     launchOptions.architecture = ProcessLauncher::LaunchOptions::MatchCurrentArchitecture;
     launchOptions.executableHeap = false;
     launchOptions.useXPC = shouldUseXPC();
-}
-
-bool WebProcessProxy::allPagesAreProcessSuppressible() const
-{
-    return (m_processSuppressiblePages.size() == m_pageMap.size()) && !m_processSuppressiblePages.isEmpty();
-}
-
-void WebProcessProxy::updateProcessSuppressionState()
-{
-    if (state() != State::Running)
-        return;
-
-    bool canEnable = allPagesAreProcessSuppressible();
-    if (m_processSuppressionEnabled == canEnable)
-        return;
-    m_processSuppressionEnabled = canEnable;
-
-    m_context->updateProcessSuppressionState();
 }
 
 } // namespace WebKit

@@ -26,28 +26,19 @@
 #ifndef PageGroup_h
 #define PageGroup_h
 
-#include "SecurityOriginHash.h"
 #include "Supplementable.h"
-#include "UserScript.h"
-#include "UserStyleSheet.h"
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-    class URL;
-    class GroupSettings;
-    class IDBFactoryBackendInterface;
     class Page;
-    class SecurityOrigin;
-    class StorageNamespace;
-
 #if ENABLE(VIDEO_TRACK)
-    class CaptionPreferencesChangedListener;
     class CaptionUserPreferences;
 #endif
 
-    class PageGroup : public Supplementable<PageGroup> {
+    class PageGroup {
         WTF_MAKE_NONCOPYABLE(PageGroup); WTF_MAKE_FAST_ALLOCATED;
     public:
         WEBCORE_EXPORT explicit PageGroup(const String& name);
@@ -56,14 +47,6 @@ namespace WebCore {
 
         WEBCORE_EXPORT static PageGroup* pageGroup(const String& groupName);
 
-        WEBCORE_EXPORT static void closeLocalStorage();
-
-        static void clearLocalStorageForAllOrigins();
-        static void clearLocalStorageForOrigin(SecurityOrigin*);
-        WEBCORE_EXPORT static void closeIdleLocalStorageDatabases();
-        // DumpRenderTree helper that triggers a StorageArea sync.
-        WEBCORE_EXPORT static void syncLocalStorage();
-
         const HashSet<Page*>& pages() const { return m_pages; }
 
         void addPage(Page&);
@@ -71,13 +54,6 @@ namespace WebCore {
 
         const String& name() { return m_name; }
         unsigned identifier() { return m_identifier; }
-
-        StorageNamespace* localStorage();
-        bool hasLocalStorage() { return m_localStorage; }
-
-        StorageNamespace* transientLocalStorage(SecurityOrigin* topOrigin);
-
-        GroupSettings& groupSettings() const { return *m_groupSettings; }
 
 #if ENABLE(VIDEO_TRACK)
         WEBCORE_EXPORT void captionPreferencesChanged();
@@ -89,10 +65,6 @@ namespace WebCore {
         HashSet<Page*> m_pages;
 
         unsigned m_identifier;
-        RefPtr<StorageNamespace> m_localStorage;
-        HashMap<RefPtr<SecurityOrigin>, RefPtr<StorageNamespace>> m_transientLocalStorageMap;
-
-        const std::unique_ptr<GroupSettings> m_groupSettings;
 
 #if ENABLE(VIDEO_TRACK)
         std::unique_ptr<CaptionUserPreferences> m_captionPreferences;

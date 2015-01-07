@@ -326,8 +326,6 @@ Class kitClass(WebCore::Node* impl)
             return [DOMDocumentType class];
         case WebCore::Node::DOCUMENT_FRAGMENT_NODE:
             return [DOMDocumentFragment class];
-        case WebCore::Node::NOTATION_NODE:
-            return [DOMNotation class];
         case WebCore::Node::XPATH_NAMESPACE_NODE:
             // FIXME: Create an XPath objective C wrapper
             // See http://bugs.webkit.org/show_bug.cgi?id=8755
@@ -671,7 +669,7 @@ id <DOMEventTarget> kit(WebCore::EventTarget* eventTarget)
     auto renderer = core(self)->renderer();
     if (!renderer)
         return nil;
-    return renderer->style().font().primaryFont()->getNSFont();
+    return renderer->style().font().primaryFontData().getNSFont();
 }
 #else
 - (CTFontRef)_font
@@ -679,7 +677,7 @@ id <DOMEventTarget> kit(WebCore::EventTarget* eventTarget)
     RenderObject* renderer = core(self)->renderer();
     if (!renderer)
         return nil;
-    return renderer->style().font().primaryFont()->getCTFont();
+    return renderer->style().font().primaryFontData().getCTFont();
 }
 #endif
 

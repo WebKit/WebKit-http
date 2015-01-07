@@ -276,7 +276,7 @@ String StyledMarkupAccumulator::renderedText(const Node& node, const Range* rang
 
     Position start = createLegacyEditingPosition(const_cast<Node*>(&node), startOffset);
     Position end = createLegacyEditingPosition(const_cast<Node*>(&node), endOffset);
-    return plainText(Range::create(node.document(), start, end).get(), behavior);
+    return plainText(Range::create(node.document(), start, end).ptr(), behavior);
 }
 
 String StyledMarkupAccumulator::stringValueForRange(const Node& node, const Range* range)
@@ -798,7 +798,7 @@ PassRefPtr<DocumentFragment> createFragmentFromText(Range& context, const String
             fillContainerFromString(fragment.get(), s);
         } else {
             if (useClonesOfEnclosingBlock)
-                element = block->cloneElementWithoutChildren();
+                element = block->cloneElementWithoutChildren(document);
             else
                 element = createDefaultParagraphElement(document);
             fillContainerFromString(element.get(), s);
@@ -994,15 +994,15 @@ void replaceChildrenWithText(ContainerNode& container, const String& text, Excep
         return;
     }
 
-    RefPtr<Text> textNode = Text::create(containerNode->document(), text);
+    Ref<Text> textNode = Text::create(containerNode->document(), text);
 
     if (hasOneChild(containerNode)) {
-        containerNode->replaceChild(textNode.release(), containerNode->firstChild(), ec);
+        containerNode->replaceChild(WTF::move(textNode), containerNode->firstChild(), ec);
         return;
     }
 
     containerNode->removeChildren();
-    containerNode->appendChild(textNode.release(), ec);
+    containerNode->appendChild(WTF::move(textNode), ec);
 }
 
 }

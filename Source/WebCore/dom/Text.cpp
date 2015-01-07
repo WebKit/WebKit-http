@@ -38,19 +38,14 @@
 
 namespace WebCore {
 
-RefPtr<Text> Text::create(Document& document, const String& data)
+Ref<Text> Text::create(Document& document, const String& data)
 {
-    return adoptRef(new Text(document, data, CreateText));
+    return adoptRef(*new Text(document, data, CreateText));
 }
 
-RefPtr<Text> Text::create(ScriptExecutionContext& context, const String& data)
+Ref<Text> Text::createEditingText(Document& document, const String& data)
 {
-    return adoptRef(new Text(downcast<Document>(context), data, CreateText));
-}
-
-RefPtr<Text> Text::createEditingText(Document& document, const String& data)
-{
-    return adoptRef(new Text(document, data, CreateEditingText));
+    return adoptRef(*new Text(document, data, CreateEditingText));
 }
 
 Text::~Text()
@@ -71,13 +66,13 @@ RefPtr<Text> Text::splitText(unsigned offset, ExceptionCode& ec)
 
     EventQueueScope scope;
     String oldStr = data();
-    RefPtr<Text> newText = virtualCreate(oldStr.substring(offset));
+    Ref<Text> newText = virtualCreate(oldStr.substring(offset));
     setDataWithoutUpdate(oldStr.substring(0, offset));
 
     dispatchModifiedEvent(oldStr);
 
     if (parentNode())
-        parentNode()->insertBefore(newText.get(), nextSibling(), ec);
+        parentNode()->insertBefore(newText.ptr(), nextSibling(), ec);
     if (ec)
         return 0;
 
@@ -87,7 +82,7 @@ RefPtr<Text> Text::splitText(unsigned offset, ExceptionCode& ec)
     if (renderer())
         renderer()->setTextWithOffset(dataImpl(), 0, oldStr.length());
 
-    return newText.release();
+    return WTF::move(newText);
 }
 
 static const Text* earliestLogicallyAdjacentTextNode(const Text* text)
@@ -169,9 +164,9 @@ Node::NodeType Text::nodeType() const
     return TEXT_NODE;
 }
 
-RefPtr<Node> Text::cloneNode(bool /*deep*/)
+RefPtr<Node> Text::cloneNodeInternal(Document& targetDocument, CloningOperation)
 {
-    return create(document(), data());
+    return create(targetDocument, data());
 }
 
 static bool isSVGShadowText(Text* text)
@@ -203,21 +198,20 @@ bool Text::childTypeAllowed(NodeType) const
     return false;
 }
 
-RefPtr<Text> Text::virtualCreate(const String& data)
+Ref<Text> Text::virtualCreate(const String& data)
 {
     return create(document(), data);
 }
 
-RefPtr<Text> Text::createWithLengthLimit(Document& document, const String& data, unsigned start, unsigned lengthLimit)
+Ref<Text> Text::createWithLengthLimit(Document& document, const String& data, unsigned start, unsigned lengthLimit)
 {
     unsigned dataLength = data.length();
 
     if (!start && dataLength <= lengthLimit)
         return create(document, data);
 
-    RefPtr<Text> result = Text::create(document, String());
+    Ref<Text> result = Text::create(document, String());
     result->parserAppendData(data, start, lengthLimit);
-
     return result;
 }
 

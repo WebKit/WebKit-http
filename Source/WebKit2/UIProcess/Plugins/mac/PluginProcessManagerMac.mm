@@ -32,10 +32,12 @@
 
 namespace WebKit {
 
-void PluginProcessManager::setProcessSuppressionEnabled(bool processSuppressionEnabled)
+void PluginProcessManager::updateProcessSuppressionDisabled(bool disabled)
 {
+    bool enabled = !disabled;
+
     for (auto& pluginProcess : m_pluginProcesses)
-        pluginProcess->setProcessSuppressionEnabled(processSuppressionEnabled);
+        pluginProcess->setProcessSuppressionEnabled(enabled);
 }
 
 } // namespace WebKit

@@ -29,10 +29,12 @@
 #include "ContentData.h"
 #include "ControlStates.h"
 #include "CursorList.h"
+#include "ElementChildIterator.h"
 #include "EventHandler.h"
 #include "Frame.h"
 #include "FrameSelection.h"
-#include "HTMLElement.h"
+#include "HTMLBodyElement.h"
+#include "HTMLHtmlElement.h"
 #include "HTMLNames.h"
 #include "FlowThreadController.h"
 #include "RenderCounter.h"
@@ -78,7 +80,7 @@ static HashMap<const RenderObject*, ControlStates*>& controlStatesRendererMap()
     return map;
 }
 
-inline RenderElement::RenderElement(ContainerNode& elementOrDocument, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+inline RenderElement::RenderElement(ContainerNode& elementOrDocument, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderObject(elementOrDocument)
     , m_baseTypeFlags(baseTypeFlags)
     , m_ancestorLineBoxDirty(false)
@@ -95,12 +97,12 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, PassRef<Re
 {
 }
 
-RenderElement::RenderElement(Element& element, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderElement::RenderElement(Element& element, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderElement(static_cast<ContainerNode&>(element), WTF::move(style), baseTypeFlags)
 {
 }
 
-RenderElement::RenderElement(Document& document, PassRef<RenderStyle> style, unsigned baseTypeFlags)
+RenderElement::RenderElement(Document& document, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
     : RenderElement(static_cast<ContainerNode&>(document), WTF::move(style), baseTypeFlags)
 {
 }
@@ -116,6 +118,8 @@ RenderElement::~RenderElement()
         for (const FillLayer* maskLayer = m_style->maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
             if (StyleImage* maskImage = maskLayer->image())
                 maskImage->removeClient(this);
+            else if (maskLayer->maskImage().get())
+                maskLayer->maskImage()->removeRendererImageClient(this);
         }
 
         if (StyleImage* borderImage = m_style->borderImage().image())
@@ -135,7 +139,7 @@ RenderElement::~RenderElement()
         view().removeRendererWithPausedImageAnimations(*this);
 }
 
-RenderPtr<RenderElement> RenderElement::createFor(Element& element, PassRef<RenderStyle> style)
+RenderPtr<RenderElement> RenderElement::createFor(Element& element, Ref<RenderStyle>&& style)
 {
     // Minimal support for content properties replacing an entire element.
     // Works only if we have exactly one piece of content and it's a URL.
@@ -321,18 +325,22 @@ inline bool RenderElement::shouldRepaintForStyleDifference(StyleDifference diff)
 void RenderElement::updateFillImages(const FillLayer* oldLayers, const FillLayer* newLayers)
 {
     // Optimize the common case
-    if (oldLayers && !oldLayers->next() && newLayers && !newLayers->next() && (oldLayers->image() == newLayers->image()))
+    if (oldLayers && !oldLayers->next() && newLayers && !newLayers->next() && oldLayers->image() == newLayers->image() && oldLayers->maskImage() == newLayers->maskImage())
         return;
     
     // Go through the new layers and addClients first, to avoid removing all clients of an image.
     for (const FillLayer* currNew = newLayers; currNew; currNew = currNew->next()) {
-        if (currNew->image())
-            currNew->image()->addClient(this);
+        if (StyleImage* image = currNew->image())
+            image->addClient(this);
+        else if (currNew->maskImage().get())
+            currNew->maskImage()->addRendererImageClient(this);
     }
 
     for (const FillLayer* currOld = oldLayers; currOld; currOld = currOld->next()) {
-        if (currOld->image())
-            currOld->image()->removeClient(this);
+        if (StyleImage* image = currOld->image())
+            image->removeClient(this);
+        else if (currOld->maskImage().get())
+            currOld->maskImage()->removeRendererImageClient(this);
     }
 }
 
@@ -384,7 +392,7 @@ void RenderElement::initializeStyle()
     // have their parent set before getting a call to initializeStyle() :|
 }
 
-void RenderElement::setStyle(PassRef<RenderStyle> style)
+void RenderElement::setStyle(Ref<RenderStyle>&& style)
 {
     // FIXME: Should change RenderView so it can use initializeStyle too.
     // If we do that, we can assert m_hasInitializedStyle unconditionally,
@@ -856,7 +864,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         setHorizontalWritingMode(true);
         setHasBoxDecorations(false);
         setHasOverflowClip(false);
-        setHasTransform(false);
+        setHasTransformRelatedProperty(false);
         setHasReflection(false);
     } else {
         s_affectsParentBlock = false;
@@ -1107,16 +1115,14 @@ void RenderElement::setNeedsSimplifiedNormalFlowLayout()
 RenderElement& RenderElement::rendererForRootBackground()
 {
     ASSERT(isRoot());
-    if (!hasBackground() && element() && element()->hasTagName(HTMLNames::htmlTag)) {
+    if (!hasBackground() && is<HTMLHtmlElement>(element())) {
         // Locate the <body> element using the DOM. This is easier than trying
         // to crawl around a render tree with potential :before/:after content and
         // anonymous blocks created by inline <body> tags etc. We can locate the <body>
         // render object very easily via the DOM.
-        if (auto body = document().body()) {
-            if (body->hasTagName(HTMLNames::bodyTag)) {
-                if (auto renderer = body->renderer())
-                    return *renderer;
-            }
+        if (auto* body = childrenOfType<HTMLBodyElement>(*element()).first()) {
+            if (auto* renderer = body->renderer())
+                return *renderer;
         }
     }
     return *this;
@@ -1330,15 +1336,23 @@ bool RenderElement::borderImageIsLoadedAndCanBeRendered() const
     return borderImage && borderImage->canRender(this, style().effectiveZoom()) && borderImage->isLoaded();
 }
 
-bool RenderElement::isInsideViewport(const IntRect* visibleRect) const
+bool RenderElement::mayCauseRepaintInsideViewport(const IntRect* optionalViewportRect) const
 {
     auto& frameView = view().frameView();
     if (frameView.isOffscreen())
         return false;
 
+    if (!hasOverflowClip()) {
+        // FIXME: Computing the overflow rect is expensive if any descendant has
+        // its own self-painting layer. As a result, we prefer to abort early in
+        // this case and assume it may cause us to repaint inside the viewport.
+        if (!hasLayer() || downcast<RenderLayerModelObject>(*this).layer()->firstChild())
+            return true;
+    }
+
     // Compute viewport rect if it was not provided.
-    const IntRect& viewportRect = visibleRect ? *visibleRect : frameView.windowToContents(frameView.windowClipRect());
-    return viewportRect.intersects(enclosingIntRect(absoluteClippedOverflowRect()));
+    const IntRect& visibleRect = optionalViewportRect ? *optionalViewportRect : frameView.windowToContents(frameView.windowClipRect());
+    return visibleRect.intersects(enclosingIntRect(absoluteClippedOverflowRect()));
 }
 
 static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const IntRect& visibleRect)

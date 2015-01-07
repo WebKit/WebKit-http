@@ -37,6 +37,7 @@
 #import <WebCore/GraphicsContextCG.h>
 #import <WebCore/IOSurface.h>
 #import <WebCore/IOSurfacePool.h>
+#import <WebCore/MachSendRight.h>
 #import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/WebLayer.h>
 
@@ -106,8 +107,7 @@ void RemoteLayerBackingStore::encode(IPC::ArgumentEncoder& encoder) const
 
 #if USE(IOSURFACE)
     if (m_acceleratesDrawing) {
-        mach_port_t port = m_frontBuffer.surface->createMachPort();
-        encoder << IPC::MachPort(port, MACH_MSG_TYPE_MOVE_SEND);
+        encoder << m_frontBuffer.surface->createSendRight();
         return;
     }
 #endif
@@ -135,11 +135,10 @@ bool RemoteLayerBackingStore::decode(IPC::ArgumentDecoder& decoder, RemoteLayerB
 
 #if USE(IOSURFACE)
     if (result.m_acceleratesDrawing) {
-        IPC::MachPort machPort;
-        if (!decoder.decode(machPort))
+        MachSendRight sendRight;
+        if (!decoder.decode(sendRight))
             return false;
-        result.m_frontBuffer.surface = IOSurface::createFromMachPort(machPort.port(), ColorSpaceDeviceRGB);
-        mach_port_deallocate(mach_task_self(), machPort.port());
+        result.m_frontBuffer.surface = IOSurface::createFromSendRight(sendRight, ColorSpaceDeviceRGB);
         return true;
     }
 #endif

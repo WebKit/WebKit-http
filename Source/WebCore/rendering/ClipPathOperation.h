@@ -66,9 +66,9 @@ protected:
 
 class ReferenceClipPathOperation final : public ClipPathOperation {
 public:
-    static PassRefPtr<ReferenceClipPathOperation> create(const String& url, const String& fragment)
+    static Ref<ReferenceClipPathOperation> create(const String& url, const String& fragment)
     {
-        return adoptRef(new ReferenceClipPathOperation(url, fragment));
+        return adoptRef(*new ReferenceClipPathOperation(url, fragment));
     }
 
     const String& url() const { return m_url; }
@@ -96,9 +96,9 @@ private:
 
 class ShapeClipPathOperation final : public ClipPathOperation {
 public:
-    static PassRefPtr<ShapeClipPathOperation> create(PassRef<BasicShape> shape)
+    static Ref<ShapeClipPathOperation> create(Ref<BasicShape>&& shape)
     {
-        return adoptRef(new ShapeClipPathOperation(WTF::move(shape)));
+        return adoptRef(*new ShapeClipPathOperation(WTF::move(shape)));
     }
 
     const BasicShape& basicShape() const { return m_shape; }
@@ -122,7 +122,7 @@ private:
         return m_shape.ptr() == shapeClip.m_shape.ptr();
     }
 
-    explicit ShapeClipPathOperation(PassRef<BasicShape> shape)
+    explicit ShapeClipPathOperation(Ref<BasicShape>&& shape)
         : ClipPathOperation(Shape)
         , m_shape(WTF::move(shape))
         , m_referenceBox(BoxMissing)
@@ -135,9 +135,9 @@ private:
 
 class BoxClipPathOperation final : public ClipPathOperation {
 public:
-    static PassRefPtr<BoxClipPathOperation> create(CSSBoxType referenceBox)
+    static Ref<BoxClipPathOperation> create(CSSBoxType referenceBox)
     {
-        return adoptRef(new BoxClipPathOperation(referenceBox));
+        return adoptRef(*new BoxClipPathOperation(referenceBox));
     }
 
     const Path pathForReferenceRect(const RoundedRect& boundingRect) const

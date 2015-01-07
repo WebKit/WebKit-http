@@ -138,8 +138,10 @@ public:
         DOCUMENT_NODE = 9,
         DOCUMENT_TYPE_NODE = 10,
         DOCUMENT_FRAGMENT_NODE = 11,
-        NOTATION_NODE = 12,
         XPATH_NAMESPACE_NODE = 13,
+    };
+    enum DeprecatedNodeType {
+        NOTATION_NODE = 12,
     };
     enum DocumentPosition {
         DOCUMENT_POSITION_EQUIVALENT = 0x00,
@@ -201,7 +203,15 @@ public:
 
     WEBCORE_EXPORT void remove(ExceptionCode&);
     bool hasChildNodes() const { return firstChild(); }
-    virtual RefPtr<Node> cloneNode(bool deep) = 0;
+
+    enum class CloningOperation {
+        OnlySelf,
+        SelfWithTemplateContent,
+        Everything,
+    };
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
+    RefPtr<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
+
     virtual const AtomicString& localName() const;
     virtual const AtomicString& namespaceURI() const;
     virtual const AtomicString& prefix() const;
@@ -736,8 +746,6 @@ inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
     ASSERT(!isShadowRoot());
     return parentNode();
 }
-
-WEBCORE_EXPORT IntRect rendererBoundingBox(const Node&);
 
 } // namespace WebCore
 

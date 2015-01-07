@@ -41,7 +41,7 @@ namespace WebKit {
 
 WebToDatabaseProcessConnection::WebToDatabaseProcessConnection(IPC::Connection::Identifier connectionIdentifier)
 {
-    m_connection = IPC::Connection::createClientConnection(connectionIdentifier, this, RunLoop::main());
+    m_connection = IPC::Connection::createClientConnection(connectionIdentifier, *this, RunLoop::main());
     m_connection->open();
 }
 
@@ -49,7 +49,7 @@ WebToDatabaseProcessConnection::~WebToDatabaseProcessConnection()
 {
 }
 
-void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
+void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::WebIDBServerConnection::messageReceiverName()) {
         HashMap<uint64_t, WebIDBServerConnection*>::iterator connectionIterator = m_webIDBServerConnections.find(decoder.destinationID());
@@ -61,12 +61,12 @@ void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection* connecti
     ASSERT_NOT_REACHED();
 }
 
-void WebToDatabaseProcessConnection::didClose(IPC::Connection* connection)
+void WebToDatabaseProcessConnection::didClose(IPC::Connection& connection)
 {
     WebProcess::shared().webToDatabaseProcessConnectionClosed(this);
 }
 
-void WebToDatabaseProcessConnection::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
+void WebToDatabaseProcessConnection::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
 {
 }
 

@@ -310,18 +310,12 @@ void DOMTimer::scriptDidInteractWithPlugin(HTMLPlugInElement& pluginElement)
         DOMTimerFireState::current->setScriptMadeNonUserObservableChanges();
 }
 
-void DOMTimer::scriptDidCauseElementRepaint(Element& element, bool changed)
+void DOMTimer::scriptDidCauseElementRepaint(Element& element, bool mayRepaintNonDescendants)
 {
     if (!DOMTimerFireState::current)
         return;
 
-    if (!changed) {
-        // The script set a CSS property on the Element but it did not cause any change.
-        DOMTimerFireState::current->setScriptMadeNonUserObservableChanges();
-        return;
-    }
-
-    if (element.isInsideViewport())
+    if (mayRepaintNonDescendants || element.mayCauseRepaintInsideViewport())
         DOMTimerFireState::current->setScriptMadeUserObservableChanges();
     else
         DOMTimerFireState::current->setScriptMadeNonUserObservableChangesToElement(element);
@@ -480,7 +474,7 @@ void DOMTimer::updateThrottlingStateAfterViewportChange(const IntRect& visibleRe
         if (!element || !element->inDocument())
             continue;
 
-        if (element->isInsideViewport(&visibleRect)) {
+        if (element->mayCauseRepaintInsideViewport(&visibleRect)) {
             LOG(DOMTimers, "%p - Script is changing style of an element that is now inside the viewport, unthrottling the timer.", this);
             m_throttleState = ShouldNotThrottle;
             unregisterForViewportChanges();

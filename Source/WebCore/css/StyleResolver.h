@@ -64,7 +64,6 @@ class CSSStyleSheet;
 class CSSValue;
 class ContainerNode;
 class Document;
-class DeprecatedStyleBuilder;
 class Element;
 class Frame;
 class FrameView;
@@ -147,15 +146,15 @@ public:
     void pushParentElement(Element*);
     void popParentElement(Element*);
 
-    PassRef<RenderStyle> styleForElement(Element*, RenderStyle* parentStyle, StyleSharingBehavior = AllowStyleSharing,
+    Ref<RenderStyle> styleForElement(Element*, RenderStyle* parentStyle, StyleSharingBehavior = AllowStyleSharing,
         RuleMatchingBehavior = MatchAllRules, const RenderRegion* regionForStyling = nullptr);
 
     void keyframeStylesForAnimation(Element*, const RenderStyle*, KeyframeList&);
 
     PassRefPtr<RenderStyle> pseudoStyleForElement(Element*, const PseudoStyleRequest&, RenderStyle* parentStyle);
 
-    PassRef<RenderStyle> styleForPage(int pageIndex);
-    PassRef<RenderStyle> defaultStyleForElement();
+    Ref<RenderStyle> styleForPage(int pageIndex);
+    Ref<RenderStyle> defaultStyleForElement();
 
     RenderStyle* style() const { return m_state.style(); }
     RenderStyle* parentStyle() const { return m_state.parentStyle(); }
@@ -181,7 +180,7 @@ private:
     StyledElement* findSiblingForStyleSharing(Node*, unsigned& count) const;
     bool canShareStyleWithElement(StyledElement*) const;
 
-    PassRef<RenderStyle> styleForKeyframe(const RenderStyle*, const StyleKeyframe*, KeyframeValue&);
+    Ref<RenderStyle> styleForKeyframe(const RenderStyle*, const StyleKeyframe*, KeyframeValue&);
 
 public:
     // These methods will give back the set of rules that matched for a given element (or a pseudo-element).
@@ -237,8 +236,7 @@ public:
 
     void clearCachedPropertiesAffectedByViewportUnits();
 
-    bool createFilterOperations(CSSValue* inValue, FilterOperations& outOperations);
-    bool createMaskImageOperations(CSSValue* inValue, Vector<RefPtr<MaskImageOperation>>& outOperations);
+    bool createFilterOperations(CSSValue& inValue, FilterOperations& outOperations);
     void loadPendingSVGDocuments();
 
     void loadPendingResources();
@@ -301,6 +299,7 @@ private:
 #endif
     
     void adjustStyleForInterCharacterRuby();
+    void adjustStyleForMaskImages();
     
     bool fastRejectSelector(const RuleData&) const;
 
@@ -362,11 +361,11 @@ public:
         Document& document() const { return m_element->document(); }
         Element* element() const { return m_element; }
         StyledElement* styledElement() const { return m_styledElement; }
-        void setStyle(PassRef<RenderStyle>);
+        void setStyle(Ref<RenderStyle>&&);
         RenderStyle* style() const { return m_style.get(); }
-        PassRef<RenderStyle> takeStyle() { return m_style.releaseNonNull(); }
+        Ref<RenderStyle> takeStyle() { return m_style.releaseNonNull(); }
 
-        void setParentStyle(PassRef<RenderStyle> parentStyle) { m_parentStyle = WTF::move(parentStyle); }
+        void setParentStyle(Ref<RenderStyle>&& parentStyle) { m_parentStyle = WTF::move(parentStyle); }
         RenderStyle* parentStyle() const { return m_parentStyle.get(); }
         RenderStyle* rootElementStyle() const { return m_rootElementStyle; }
 
@@ -505,11 +504,6 @@ private:
     bool classNamesAffectedByRules(const SpaceSplitString&) const;
     bool sharingCandidateHasIdenticalStyleAffectingAttributes(StyledElement*) const;
 
-    Length parseSnapCoordinate(CSSPrimitiveValue&);
-    Length parseSnapCoordinate(CSSValueList&, unsigned offset);
-    LengthSize parseSnapCoordinatePair(CSSValueList&, unsigned offset);
-    ScrollSnapPoints parseSnapPoints(CSSValue&);
-
     unsigned m_matchedPropertiesCacheAdditionsSinceLastSweep;
 
     typedef HashMap<unsigned, MatchedPropertiesCacheItem> MatchedPropertiesCache;
@@ -532,14 +526,11 @@ private:
     RefPtr<ViewportStyleResolver> m_viewportStyleResolver;
 #endif
 
-    const DeprecatedStyleBuilder& m_deprecatedStyleBuilder;
-
     CSSToStyleMap m_styleMap;
     InspectorCSSOMWrappers m_inspectorCSSOMWrappers;
 
     State m_state;
 
-    friend class DeprecatedStyleBuilder;
     friend bool operator==(const MatchedProperties&, const MatchedProperties&);
     friend bool operator!=(const MatchedProperties&, const MatchedProperties&);
     friend bool operator==(const MatchRanges&, const MatchRanges&);

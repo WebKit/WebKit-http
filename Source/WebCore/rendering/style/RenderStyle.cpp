@@ -86,17 +86,17 @@ inline RenderStyle& defaultStyle()
     return style;
 }
 
-PassRef<RenderStyle> RenderStyle::create()
+Ref<RenderStyle> RenderStyle::create()
 {
     return adoptRef(*new RenderStyle(defaultStyle()));
 }
 
-PassRef<RenderStyle> RenderStyle::createDefaultStyle()
+Ref<RenderStyle> RenderStyle::createDefaultStyle()
 {
     return adoptRef(*new RenderStyle(true));
 }
 
-PassRef<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay display)
+Ref<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay display)
 {
     auto newStyle = RenderStyle::create();
     newStyle.get().inheritFrom(parentStyle);
@@ -105,12 +105,12 @@ PassRef<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderSt
     return newStyle;
 }
 
-PassRef<RenderStyle> RenderStyle::clone(const RenderStyle* other)
+Ref<RenderStyle> RenderStyle::clone(const RenderStyle* other)
 {
     return adoptRef(*new RenderStyle(*other));
 }
 
-PassRef<RenderStyle> RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle)
+Ref<RenderStyle> RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle)
 {
     ASSERT(pseudoStyle.styleType() == BEFORE || pseudoStyle.styleType() == AFTER);
 
@@ -830,6 +830,28 @@ bool RenderStyle::diffRequiresLayerRepaint(const RenderStyle& style, bool isComp
 
     return false;
 }
+    
+void RenderStyle::setMaskImage(const Vector<RefPtr<MaskImageOperation>>& ops)
+{
+    FillLayer* curLayer = &rareNonInheritedData.access()->m_mask;
+    while (curLayer) {
+        curLayer->setMaskImage(nullptr);
+        curLayer = curLayer->next();
+    }
+
+    curLayer = &rareNonInheritedData.access()->m_mask;
+    FillLayer* prevLayer = nullptr;
+    for (auto& maskImage : ops) {
+        if (!curLayer) {
+            prevLayer->setNext(std::make_unique<FillLayer>(MaskFillLayer));
+            curLayer = prevLayer->next();
+        }
+
+        curLayer->setMaskImage(maskImage);
+        prevLayer = curLayer;
+        curLayer = curLayer->next();
+    }
+}
 
 void RenderStyle::setClip(Length top, Length right, Length bottom, Length left)
 {
@@ -1162,7 +1184,7 @@ const AtomicString& RenderStyle::hyphenString() const
     // FIXME: This should depend on locale.
     DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, hyphenMinusString, (&hyphenMinus, 1));
     DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, hyphenString, (&hyphen, 1));
-    return font().primaryFontHasGlyphForCharacter(hyphen) ? hyphenString : hyphenMinusString;
+    return font().primaryFontData().glyphForCharacter(hyphen) ? hyphenString : hyphenMinusString;
 }
 
 const AtomicString& RenderStyle::textEmphasisMarkString() const
@@ -1291,18 +1313,18 @@ void RenderStyle::adjustTransitions()
     }
 }
 
-AnimationList* RenderStyle::accessAnimations()
+AnimationList& RenderStyle::ensureAnimations()
 {
     if (!rareNonInheritedData.access()->m_animations)
         rareNonInheritedData.access()->m_animations = std::make_unique<AnimationList>();
-    return rareNonInheritedData->m_animations.get();
+    return *rareNonInheritedData->m_animations;
 }
 
-AnimationList* RenderStyle::accessTransitions()
+AnimationList& RenderStyle::ensureTransitions()
 {
     if (!rareNonInheritedData.access()->m_transitions)
         rareNonInheritedData.access()->m_transitions = std::make_unique<AnimationList>();
-    return rareNonInheritedData->m_transitions.get();
+    return *rareNonInheritedData->m_transitions;
 }
 
 const Animation* RenderStyle::transitionForProperty(CSSPropertyID property) const

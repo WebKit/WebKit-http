@@ -35,6 +35,13 @@
 /* COMPILER_QUIRK() - whether the compiler being used to build the project requires a given quirk. */
 #define COMPILER_QUIRK(WTF_COMPILER_QUIRK) (defined WTF_COMPILER_QUIRK_##WTF_COMPILER_QUIRK  && WTF_COMPILER_QUIRK_##WTF_COMPILER_QUIRK)
 
+/* COMPILER_HAS_CLANG_BUILTIN() - wether the compiler supports a particular clang builtin. */
+#ifdef __has_builtin
+#define COMPILER_HAS_CLANG_BUILTIN(x) __has_builtin(x)
+#else
+#define COMPILER_HAS_CLANG_BUILTIN(x) 0
+#endif
+
 /* ==== COMPILER() - primary detection of the compiler being used to build the project, in alphabetical order ==== */
 
 /* COMPILER(CLANG) - Clang  */
@@ -127,6 +134,12 @@
 
 #if defined(__ARM_EABI__) || defined(__EABI__)
 #define WTF_COMPILER_SUPPORTS_EABI 1
+#endif
+
+#if defined(__has_feature)
+#define ASAN_ENABLED __has_feature(address_sanitizer)
+#else
+#define ASAN_ENABLED false
 #endif
 
 /* ==== Compiler-independent macros for various compiler features, in alphabetical order ==== */

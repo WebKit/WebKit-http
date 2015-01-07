@@ -49,7 +49,6 @@
 #import "PixelDumpSupport.h"
 #import "PolicyDelegate.h"
 #import "ResourceLoadDelegate.h"
-#import "StorageTrackerDelegate.h"
 #import "TestRunner.h"
 #import "UIDelegate.h"
 #import "WebArchiveDumpSupport.h"
@@ -189,7 +188,6 @@ static ResourceLoadDelegate *resourceLoadDelegate;
 static HistoryDelegate *historyDelegate;
 PolicyDelegate *policyDelegate;
 DefaultPolicyDelegate *defaultPolicyDelegate;
-StorageTrackerDelegate *storageDelegate;
 #if PLATFORM(IOS)
 static ScrollViewResizerDelegate *scrollViewResizerDelegate;
 #endif
@@ -891,8 +889,6 @@ static void resetWebPreferencesToConsistentValues()
     [preferences _setMinimumZoomFontSize:0];
 #endif
 
-    [preferences setScreenFontSubstitutionEnabled:YES];
-
 #if ENABLE(MEDIA_SOURCE)
     [preferences setMediaSourceEnabled:YES];
 #endif
@@ -933,7 +929,6 @@ static void setDefaultsToConsistentValuesForTesting()
             @"hellolfworld": @"hello\nworld"
         },
 #endif
-        @"WebKitKerningAndLigaturesEnabledByDefault": @NO,
         @"AppleScrollBarVariant": @"DoubleMax",
 #if !PLATFORM(IOS)
         @"NSScrollAnimationEnabled": @NO,
@@ -994,7 +989,6 @@ static void allocateGlobalControllers()
     resourceLoadDelegate = [[ResourceLoadDelegate alloc] init];
     policyDelegate = [[PolicyDelegate alloc] init];
     historyDelegate = [[HistoryDelegate alloc] init];
-    storageDelegate = [[StorageTrackerDelegate alloc] init];
     defaultPolicyDelegate = [[DefaultPolicyDelegate alloc] init];
 #if PLATFORM(IOS)
     scrollViewResizerDelegate = [[ScrollViewResizerDelegate alloc] init];
@@ -1016,7 +1010,6 @@ static void releaseGlobalControllers()
     releaseAndZero(&resourceLoadDelegate);
     releaseAndZero(&uiDelegate);
     releaseAndZero(&policyDelegate);
-    releaseAndZero(&storageDelegate);
 #if PLATFORM(IOS)
     releaseAndZero(&scrollViewResizerDelegate);
 #endif
@@ -1121,7 +1114,6 @@ static void prepareConsistentTestingEnvironment()
 #endif
 }
 
-#if PLATFORM(IOS)
 const char crashedMessage[] = "#CRASHED\n";
 
 void writeCrashedMessageOnFatalError(int signalCode)
@@ -1134,7 +1126,6 @@ void writeCrashedMessageOnFatalError(int signalCode)
     write(STDERR_FILENO, &crashedMessage[0], sizeof(crashedMessage) - 1);
     fsync(STDERR_FILENO);
 }
-#endif
 
 void dumpRenderTree(int argc, const char *argv[])
 {
@@ -1150,12 +1141,12 @@ void dumpRenderTree(int argc, const char *argv[])
     dup2(outfd, STDOUT_FILENO);
     int errfd = open(stderrPath, O_RDWR | O_NONBLOCK);
     dup2(errfd, STDERR_FILENO);
+#endif
 
     signal(SIGILL, &writeCrashedMessageOnFatalError);
     signal(SIGFPE, &writeCrashedMessageOnFatalError);
     signal(SIGBUS, &writeCrashedMessageOnFatalError);
     signal(SIGSEGV, &writeCrashedMessageOnFatalError);
-#endif
 
     initializeGlobalsFromCommandLineOptions(argc, argv);
     prepareConsistentTestingEnvironment();
@@ -1863,6 +1854,7 @@ static void runTest(const string& inputLine)
 #endif
 
     gTestRunner = TestRunner::create(testURL, command.expectedPixelHash);
+    gTestRunner->setCustomTimeout(command.timeout);
     topLoadingFrame = nil;
 #if !PLATFORM(IOS)
     ASSERT(!draggingInfo); // the previous test should have called eventSender.mouseUp to drop!

@@ -23,6 +23,7 @@
 #include "WebKitWebView.h"
 
 #include "APIData.h"
+#include "APISerializedScriptValue.h"
 #include "ImageOptions.h"
 #include "WebCertificateInfo.h"
 #include "WebContextMenuItem.h"
@@ -59,7 +60,6 @@
 #include "WebKitWebViewBasePrivate.h"
 #include "WebKitWebViewPrivate.h"
 #include "WebKitWindowPropertiesPrivate.h"
-#include "WebSerializedScriptValue.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/DragIcon.h>
@@ -148,7 +148,8 @@ enum {
     PROP_FAVICON,
     PROP_URI,
     PROP_ZOOM_LEVEL,
-    PROP_IS_LOADING
+    PROP_IS_LOADING,
+    PROP_IS_PLAYING_AUDIO
 };
 
 typedef HashMap<uint64_t, GRefPtr<WebKitWebResource> > LoadingResourcesMap;
@@ -228,6 +229,11 @@ static void webkitWebViewSetIsLoading(WebKitWebView* webView, bool isLoading)
 
     webView->priv->isLoading = isLoading;
     g_object_notify(G_OBJECT(webView), "is-loading");
+}
+
+void webkitWebViewIsPlayingAudioChanged(WebKitWebView* webView)
+{
+    g_object_notify(G_OBJECT(webView), "is-playing-audio");
 }
 
 class PageLoadStateObserver final : public PageLoadState::Observer {
@@ -597,6 +603,7 @@ static gboolean webkitWebViewShowNotification(WebKitWebView* webView, WebKitNoti
     notify_notification_show(notification.get(), nullptr);
     return TRUE;
 #else
+    UNUSED_PARAM(webView);
     UNUSED_PARAM(webNotification);
     return FALSE;
 #endif
@@ -611,6 +618,7 @@ static gboolean webkitWebViewCloseNotification(WebKitWebView* webView, WebKitNot
     }
     return TRUE;
 #else
+    UNUSED_PARAM(webView);
     UNUSED_PARAM(webNotification);
     return FALSE;
 #endif
@@ -718,6 +726,9 @@ static void webkitWebViewGetProperty(GObject* object, guint propId, GValue* valu
         break;
     case PROP_IS_LOADING:
         g_value_set_boolean(value, webkit_web_view_is_loading(webView));
+        break;
+    case PROP_IS_PLAYING_AUDIO:
+        g_value_set_boolean(value, webkit_web_view_is_playing_audio(webView));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
@@ -899,13 +910,15 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * The zoom level of the #WebKitWebView content.
      * See webkit_web_view_set_zoom_level() for more details.
      */
-    g_object_class_install_property(gObjectClass,
-                                    PROP_ZOOM_LEVEL,
-                                    g_param_spec_double("zoom-level",
-                                                        "Zoom level",
-                                                        _("The zoom level of the view content"),
-                                                        0, G_MAXDOUBLE, 1,
-                                                        WEBKIT_PARAM_READWRITE));
+    g_object_class_install_property(
+        gObjectClass,
+        PROP_ZOOM_LEVEL,
+        g_param_spec_double(
+            "zoom-level",
+            _("Zoom level"),
+            _("The zoom level of the view content"),
+            0, G_MAXDOUBLE, 1,
+            WEBKIT_PARAM_READWRITE));
 
     /**
      * WebKitWebView:is-loading:
@@ -917,13 +930,35 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * When the load operation finishes the property is set to %FALSE before
      * #WebKitWebView::load-changed is emitted with %WEBKIT_LOAD_FINISHED.
      */
-    g_object_class_install_property(gObjectClass,
-                                    PROP_IS_LOADING,
-                                    g_param_spec_boolean("is-loading",
-                                                         "Is Loading",
-                                                         _("Whether the view is loading a page"),
-                                                         FALSE,
-                                                         WEBKIT_PARAM_READABLE));
+    g_object_class_install_property(
+        gObjectClass,
+        PROP_IS_LOADING,
+        g_param_spec_boolean(
+            "is-loading",
+            _("Is Loading"),
+            _("Whether the view is loading a page"),
+            FALSE,
+            WEBKIT_PARAM_READABLE));
+
+    /**
+     * WebKitWebView::is-playing-audio:
+     *
+     * Whether the #WebKitWebView is currently playing audio from a page.
+     * This property becomes %TRUE as soon as web content starts playing any
+     * kind of audio. When a page is no longer playing any kind of sound,
+     * the property is set back to %FALSE.
+     *
+     * Since: 2.8
+     */
+    g_object_class_install_property(
+        gObjectClass,
+        PROP_IS_PLAYING_AUDIO,
+        g_param_spec_boolean(
+            "is-playing-audio",
+            "Is Playing Audio",
+            _("Whether the view is playing audio"),
+            FALSE,
+            WEBKIT_PARAM_READABLE));
 
     /**
      * WebKitWebView::load-changed:
@@ -2448,6 +2483,27 @@ gboolean webkit_web_view_is_loading(WebKitWebView* webView)
 }
 
 /**
+ * webkit_web_view_is_playing_audio:
+ * @web_view: a #WebKitWebView
+ *
+ * Gets the value of the #WebKitWebView::is-playing-audio property.
+ * You can monitor when a page in a #WebKitWebView is playing audio by
+ * connecting to the notify::is-playing-audio signal of @web_view. This
+ * is useful when the application wants to provide visual feedback when a
+ * page is producing sound.
+ *
+ * Returns: %TRUE if a page in @web_view is playing audio or %FALSE otherwise.
+ *
+ * Since: 2.8
+ */
+gboolean webkit_web_view_is_playing_audio(WebKitWebView* webView)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
+
+    return getPage(webView)->isPlayingAudio();
+}
+
+/**
  * webkit_web_view_go_back:
  * @web_view: a #WebKitWebView
  *
@@ -2893,7 +2949,7 @@ JSGlobalContextRef webkit_web_view_get_javascript_global_context(WebKitWebView* 
     return webView->priv->javascriptGlobalContext;
 }
 
-static void webkitWebViewRunJavaScriptCallback(WebSerializedScriptValue* wkSerializedScriptValue, GTask* task)
+static void webkitWebViewRunJavaScriptCallback(API::SerializedScriptValue* wkSerializedScriptValue, GTask* task)
 {
     if (g_task_return_error_if_cancelled(task))
         return;
@@ -2930,7 +2986,7 @@ void webkit_web_view_run_javascript(WebKitWebView* webView, const gchar* script,
     g_return_if_fail(script);
 
     GTask* task = g_task_new(webView, cancellable, callback, userData);
-    getPage(webView)->runJavaScriptInMainFrame(String::fromUTF8(script), [task](WebSerializedScriptValue* serializedScriptValue, CallbackBase::Error) {
+    getPage(webView)->runJavaScriptInMainFrame(String::fromUTF8(script), [task](API::SerializedScriptValue* serializedScriptValue, CallbackBase::Error) {
         webkitWebViewRunJavaScriptCallback(serializedScriptValue, adoptGRef(task).get());
     });
 }
@@ -3021,7 +3077,7 @@ static void resourcesStreamReadCallback(GObject* object, GAsyncResult* result, g
     WebKitWebView* webView = WEBKIT_WEB_VIEW(g_task_get_source_object(task.get()));
     gpointer outputStreamData = g_memory_output_stream_get_data(G_MEMORY_OUTPUT_STREAM(object));
     getPage(webView)->runJavaScriptInMainFrame(String::fromUTF8(reinterpret_cast<const gchar*>(outputStreamData)),
-        [task](WebSerializedScriptValue* serializedScriptValue, CallbackBase::Error) {
+        [task](API::SerializedScriptValue* serializedScriptValue, CallbackBase::Error) {
             webkitWebViewRunJavaScriptCallback(serializedScriptValue, task.get());
         });
 }
@@ -3416,14 +3472,14 @@ void webkit_web_view_get_snapshot(WebKitWebView* webView, WebKitSnapshotRegion r
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    ImmutableDictionary::MapType message;
+    API::Dictionary::MapType message;
     uint64_t callbackID = generateSnapshotCallbackID();
     message.set(String::fromUTF8("SnapshotOptions"), API::UInt64::create(static_cast<uint64_t>(webKitSnapshotOptionsToSnapshotOptions(options))));
     message.set(String::fromUTF8("SnapshotRegion"), API::UInt64::create(static_cast<uint64_t>(toSnapshotRegion(region))));
     message.set(String::fromUTF8("CallbackID"), API::UInt64::create(callbackID));
 
     webView->priv->snapshotResultsMap.set(callbackID, adoptGRef(g_task_new(webView, cancellable, callback, userData)));
-    getPage(webView)->postMessageToInjectedBundle(String::fromUTF8("GetSnapshot"), ImmutableDictionary::create(WTF::move(message)).get());
+    getPage(webView)->postMessageToInjectedBundle(String::fromUTF8("GetSnapshot"), API::Dictionary::create(WTF::move(message)).get());
 }
 
 /**

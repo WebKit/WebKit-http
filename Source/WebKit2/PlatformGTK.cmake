@@ -15,6 +15,8 @@ add_definitions(-DLIBDIR="${LIB_INSTALL_DIR}")
 set(WebKit2_USE_PREFIX_HEADER ON)
 
 list(APPEND WebKit2_SOURCES
+    NetworkProcess/cache/NetworkCacheStorageSoup.cpp
+
     NetworkProcess/gtk/NetworkProcessMainGtk.cpp
 
     NetworkProcess/soup/NetworkProcessSoup.cpp
@@ -266,7 +268,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gtk/InputMethodFilter.cpp
     UIProcess/gtk/RedirectedXCompositeWindow.cpp
     UIProcess/gtk/TextCheckerGtk.cpp
-    UIProcess/gtk/WebContextGtk.cpp
     UIProcess/gtk/WebContextMenuProxyGtk.cpp
     UIProcess/gtk/WebFullScreenClientGtk.cpp
     UIProcess/gtk/WebInspectorClientGtk.cpp
@@ -274,11 +275,12 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gtk/WebPageProxyGtk.cpp
     UIProcess/gtk/WebPopupMenuProxyGtk.cpp
     UIProcess/gtk/WebPreferencesGtk.cpp
+    UIProcess/gtk/WebProcessPoolGtk.cpp
     UIProcess/gtk/WebProcessProxyGtk.cpp
 
     UIProcess/Network/soup/NetworkProcessProxySoup.cpp
-    UIProcess/soup/WebContextSoup.cpp
     UIProcess/soup/WebCookieManagerProxySoup.cpp
+    UIProcess/soup/WebProcessPoolSoup.cpp
 
     WebProcess/Cookies/soup/WebCookieManagerSoup.cpp
     WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp

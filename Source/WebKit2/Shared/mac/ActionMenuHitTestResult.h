@@ -27,6 +27,7 @@
 #define ActionMenuHitTestResult_h
 
 #include "DataReference.h"
+#include "DictionaryPopupInfo.h"
 #include "ShareableBitmap.h"
 #include "SharedMemory.h"
 #include "WebHitTestResult.h"
@@ -59,6 +60,10 @@ struct ActionMenuHitTestResult {
     WebCore::FloatRect detectedDataBoundingBox;
     RefPtr<WebCore::TextIndicator> detectedDataTextIndicator;
     WebCore::PageOverlay::PageOverlayID detectedDataOriginatingPageOverlay;
+
+    DictionaryPopupInfo dictionaryPopupInfo;
+
+    RefPtr<WebCore::TextIndicator> linkTextIndicator;
 };
 
 } // namespace WebKit

@@ -61,10 +61,10 @@ OBJC_CLASS WKWebInspectorWKView;
 
 namespace WebKit {
 
-class WebContext;
 class WebFrameProxy;
 class WebPageGroup;
 class WebPageProxy;
+class WebProcessPool;
 
 enum AttachmentSide {
     AttachmentSideBottom,
@@ -94,6 +94,8 @@ public:
     void show();
     void hide();
     void close();
+
+    void didRelaunchInspectorPageProcess();
     
 #if PLATFORM(MAC)
     void createInspectorWindow();
@@ -131,7 +133,7 @@ public:
     void togglePageProfiling();
 
     static bool isInspectorPage(WebPageProxy&);
-    static WebContext& inspectorContext();
+    static WebProcessPool& inspectorProcessPool();
 
     // Provided by platform WebInspectorProxy implementations.
     String inspectorPageURL() const;
@@ -152,11 +154,12 @@ private:
     void eagerlyCreateInspectorPage();
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
     WebPageProxy* platformCreateInspectorPage();
     void platformOpen();
     void platformDidClose();
+    void platformInvalidate();
     void platformBringToFront();
     void platformHide();
     bool platformIsFront();
@@ -223,6 +226,8 @@ private:
     // all the inspectors in the same group will make it impossible to debug
     // the inspector code, so we use the level to make different page groups.
     unsigned m_level;
+    
+    IPC::Attachment m_connectionIdentifier;
 
     AttachmentSide m_attachmentSide;
 

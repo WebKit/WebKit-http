@@ -82,8 +82,10 @@
     } else
         _fontDescriptors.grow(index + 1);
 
-    const WebCore::SimpleFontData* fontData = _font->fontDataAt(index)->fontDataForCharacter(_character);
-    fontDescriptor = CTFontCopyFontDescriptor(fontData->platformData().ctFont());
+    const WebCore::SimpleFontData* simpleFontData = _font->fontDataAt(index)->simpleFontDataForCharacter(_character);
+    if (!simpleFontData)
+        simpleFontData = &_font->fontDataAt(index)->simpleFontDataForFirstRange();
+    fontDescriptor = CTFontCopyFontDescriptor(simpleFontData->platformData().ctFont());
     _fontDescriptors[index] = adoptCF(fontDescriptor);
     return (id)fontDescriptor;
 }
@@ -92,7 +94,7 @@
 
 namespace WebCore {
 
-ComplexTextController::ComplexTextRun::ComplexTextRun(CTRunRef ctRun, const SimpleFontData* fontData, const UChar* characters, unsigned stringLocation, size_t stringLength, CFRange runRange)
+ComplexTextController::ComplexTextRun::ComplexTextRun(CTRunRef ctRun, const SimpleFontData& fontData, const UChar* characters, unsigned stringLocation, size_t stringLength, CFRange runRange)
     : m_fontData(fontData)
     , m_characters(characters)
     , m_stringLocation(stringLocation)
@@ -128,7 +130,7 @@ ComplexTextController::ComplexTextRun::ComplexTextRun(CTRunRef ctRun, const Simp
 
 // Missing glyphs run constructor. Core Text will not generate a run of missing glyphs, instead falling back on
 // glyphs from LastResort. We want to use the primary font's missing glyph in order to match the fast text code path.
-ComplexTextController::ComplexTextRun::ComplexTextRun(const SimpleFontData* fontData, const UChar* characters, unsigned stringLocation, size_t stringLength, bool ltr)
+ComplexTextController::ComplexTextRun::ComplexTextRun(const SimpleFontData& fontData, const UChar* characters, unsigned stringLocation, size_t stringLength, bool ltr)
     : m_fontData(fontData)
     , m_characters(characters)
     , m_stringLocation(stringLocation)
@@ -161,7 +163,7 @@ ComplexTextController::ComplexTextRun::ComplexTextRun(const SimpleFontData* font
     // Synthesize a run of missing glyphs.
     m_glyphsVector.fill(0, m_glyphCount);
     m_glyphs = m_glyphsVector.data();
-    m_advancesVector.fill(CGSizeMake(m_fontData->widthForGlyph(0), 0), m_glyphCount);
+    m_advancesVector.fill(CGSizeMake(m_fontData.widthForGlyph(0), 0), m_glyphCount);
     m_advances = m_advancesVector.data();
 }
 
@@ -186,7 +188,7 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
 {
     if (!fontData) {
         // Create a run of missing glyphs from the primary font.
-        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFont(), cp, stringLocation, length, m_run.ltr()));
+        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFontData(), cp, stringLocation, length, m_run.ltr()));
         return;
     }
 
@@ -199,7 +201,9 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
         isSystemFallback = true;
 
         U16_GET(cp, 0, 0, length, baseCharacter);
-        fontData = m_font.fontDataAt(0)->fontDataForCharacter(baseCharacter);
+        fontData = m_font.fontDataAt(0)->simpleFontDataForCharacter(baseCharacter);
+        if (!fontData)
+            fontData = &m_font.fontDataAt(0)->simpleFontDataForFirstRange();
 
         RetainPtr<WebCascadeList> cascadeList = adoptNS([[WebCascadeList alloc] initWithFont:&m_font character:baseCharacter]);
 
@@ -249,14 +253,16 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
             CFDictionaryRef runAttributes = CTRunGetAttributes(ctRun);
             CTFontRef runFont = static_cast<CTFontRef>(CFDictionaryGetValue(runAttributes, kCTFontAttributeName));
             ASSERT(CFGetTypeID(runFont) == CTFontGetTypeID());
-            if (!CFEqual(runFont, fontData->platformData().ctFont())) {
+            RetainPtr<CFTypeRef> runFontEqualityObject = FontPlatformData::objectForEqualityCheck(runFont);
+            if (!CFEqual(runFontEqualityObject.get(), fontData->platformData().objectForEqualityCheck().get())) {
                 // Begin trying to see if runFont matches any of the fonts in the fallback list.
-                RetainPtr<CGFontRef> runCGFont = adoptCF(CTFontCopyGraphicsFont(runFont, 0));
                 unsigned i = 0;
                 for (const FontData* candidateFontData = m_font.fontDataAt(i); candidateFontData; candidateFontData = m_font.fontDataAt(++i)) {
-                    runFontData = candidateFontData->fontDataForCharacter(baseCharacter);
-                    RetainPtr<CGFontRef> cgFont = adoptCF(CTFontCopyGraphicsFont(runFontData->platformData().ctFont(), 0));
-                    if (CFEqual(cgFont.get(), runCGFont.get()))
+                    runFontData = candidateFontData->simpleFontDataForCharacter(baseCharacter);
+                    if (!runFontData)
+                        continue;
+                    RetainPtr<CFTypeRef> runFontEqualityObject = runFontData->platformData().objectForEqualityCheck();
+                    if (CFEqual(runFontEqualityObject.get(), runFontEqualityObject.get()))
                         break;
                     runFontData = 0;
                 }
@@ -267,7 +273,7 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
                     // NSFontRenderingMode.
                     RetainPtr<CFStringRef> fontName = adoptCF(CTFontCopyPostScriptName(runFont));
                     if (CFEqual(fontName.get(), CFSTR("LastResort"))) {
-                        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFont(), cp, stringLocation + runRange.location, runRange.length, m_run.ltr()));
+                        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFontData(), cp, stringLocation + runRange.location, runRange.length, m_run.ltr()));
                         continue;
                     }
                     runFontData = fontCache().getCachedFontData(m_font.fontDescription(), fontName.get(), false, FontCache::DoNotRetain).get();
@@ -283,14 +289,14 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
                     ASSERT(runFontData);
 #endif
                 }
-                if (m_fallbackFonts && runFontData != m_font.primaryFont())
+                if (m_fallbackFonts && runFontData != &m_font.primaryFontData())
                     m_fallbackFonts->add(runFontData);
             }
         }
-        if (m_fallbackFonts && runFontData != m_font.primaryFont())
+        if (m_fallbackFonts && runFontData != &m_font.primaryFontData())
             m_fallbackFonts->add(fontData);
 
-        m_complexTextRuns.append(ComplexTextRun::create(ctRun, runFontData, cp, stringLocation, length, runRange));
+        m_complexTextRuns.append(ComplexTextRun::create(ctRun, *runFontData, cp, stringLocation, length, runRange));
     }
 }
 

@@ -78,9 +78,9 @@ namespace WebCore {
     class DocumentLoader : public RefCounted<DocumentLoader>, private CachedRawResourceClient {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        static PassRefPtr<DocumentLoader> create(const ResourceRequest& request, const SubstituteData& data)
+        static Ref<DocumentLoader> create(const ResourceRequest& request, const SubstituteData& data)
         {
-            return adoptRef(new DocumentLoader(request, data));
+            return adoptRef(*new DocumentLoader(request, data));
         }
         WEBCORE_EXPORT virtual ~DocumentLoader();
 
@@ -118,7 +118,7 @@ namespace WebCore {
         // FIXME: This method seems to violate the encapsulation of this class.
         WEBCORE_EXPORT void setResponseMIMEType(const String&);
 #endif
-
+        const String& currentContentType() const;
         void replaceRequestURLForSameDocumentNavigation(const URL&);
         bool isStopping() const { return m_isStopping; }
         void stopLoading();

@@ -43,49 +43,37 @@ class ContextMenuContext;
 
 namespace WebKit {
 
-enum TelephoneNumberContextTag { TelephoneNumberContext };
-
 class ContextMenuContextData {
 public:
     ContextMenuContextData();
-    ContextMenuContextData(TelephoneNumberContextTag);
     ContextMenuContextData(const WebCore::ContextMenuContext&);
-
-    ContextMenuContextData(const ContextMenuContextData&);
-    ContextMenuContextData& operator=(const ContextMenuContextData&);
     
     const WebHitTestResult::Data& webHitTestResultData() const { return m_webHitTestResultData; }
 
 #if ENABLE(SERVICE_CONTROLS)
     ContextMenuContextData(const Vector<uint8_t>& selectionData, const Vector<String>& selectedTelephoneNumbers, bool isEditable)
-        : m_isTelephoneNumberContext(false)
-        , m_controlledSelectionData(selectionData)
+        : m_controlledSelectionData(selectionData)
         , m_selectedTelephoneNumbers(selectedTelephoneNumbers)
         , m_selectionIsEditable(isEditable)
-    { }
+    {
+    }
 
-    const ShareableBitmap::Handle& controlledImageHandle() const { return m_controlledImageHandle; }
+    ShareableBitmap* controlledImage() const { return m_controlledImage.get(); }
     const Vector<uint8_t>& controlledSelectionData() const { return m_controlledSelectionData; }
     const Vector<String>& selectedTelephoneNumbers() const { return m_selectedTelephoneNumbers; }
 
     bool controlledDataIsEditable() const;
-    bool needsServicesMenu() const { return !m_controlledImageHandle.isNull() || !m_controlledSelectionData.isEmpty(); }
-#endif
-
-#if ENABLE(TELEPHONE_NUMBER_DETECTION)
-    bool isTelephoneNumberContext() const { return m_isTelephoneNumberContext; }
+    bool needsServicesMenu() const { return m_controlledImage || !m_controlledSelectionData.isEmpty(); }
 #endif
 
     void encode(IPC::ArgumentEncoder&) const;
     static bool decode(IPC::ArgumentDecoder&, ContextMenuContextData&);
 
 private:
-
     WebHitTestResult::Data m_webHitTestResultData;
-    bool m_isTelephoneNumberContext;
 
 #if ENABLE(SERVICE_CONTROLS)
-    ShareableBitmap::Handle m_controlledImageHandle;
+    RefPtr<ShareableBitmap> m_controlledImage;
     Vector<uint8_t> m_controlledSelectionData;
     Vector<String> m_selectedTelephoneNumbers;
     bool m_selectionIsEditable;

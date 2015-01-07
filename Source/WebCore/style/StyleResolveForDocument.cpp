@@ -47,7 +47,7 @@ namespace WebCore {
 
 namespace Style {
 
-PassRef<RenderStyle> resolveForDocument(const Document& document)
+Ref<RenderStyle> resolveForDocument(const Document& document)
 {
     ASSERT(document.hasLivingRenderTree());
 
@@ -101,7 +101,7 @@ PassRef<RenderStyle> resolveForDocument(const Document& document)
     fontDescription.setRenderingMode(settings.fontRenderingMode());
     fontDescription.setOneFamily(standardFamily);
 
-    fontDescription.setKeywordSize(CSSValueMedium - CSSValueXxSmall + 1);
+    fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
     int size = fontSizeForKeyword(CSSValueMedium, false, document);
     fontDescription.setSpecifiedSize(size);
     bool useSVGZoomRules = document.isSVGDocument();

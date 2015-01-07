@@ -256,11 +256,13 @@ struct AccessibilityTextUnderElementMode {
     
     ChildrenInclusion childrenInclusion;
     bool includeFocusableContent;
+    Node* ignoredChildNode;
     
-    AccessibilityTextUnderElementMode(ChildrenInclusion c = TextUnderElementModeSkipIgnoredChildren, bool i = false)
-    : childrenInclusion(c)
-    , includeFocusableContent(i)
-    { }
+    AccessibilityTextUnderElementMode(ChildrenInclusion c = TextUnderElementModeSkipIgnoredChildren, bool i = false, Node* ignored = nullptr)
+        : childrenInclusion(c)
+        , includeFocusableContent(i)
+        , ignoredChildNode(ignored)
+        { }
 };
     
 enum AccessibilityOrientation {
@@ -691,6 +693,7 @@ public:
     static AccessibilityObject* anchorElementForNode(Node*);
     static AccessibilityObject* headingElementForNode(Node*);
     virtual Element* anchorElement() const { return nullptr; }
+    bool supportsPressAction() const;
     virtual Element* actionElement() const { return nullptr; }
     virtual LayoutRect boundingBoxRect() const { return LayoutRect(); }
     IntRect pixelSnappedBoundingBoxRect() const { return snappedIntRect(boundingBoxRect()); }

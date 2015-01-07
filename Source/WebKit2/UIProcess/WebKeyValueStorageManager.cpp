@@ -27,10 +27,10 @@
 #include "WebKeyValueStorageManager.h"
 
 #include "APIArray.h"
+#include "APISecurityOrigin.h"
 #include "LocalStorageDetails.h"
 #include "SecurityOriginData.h"
-#include "WebContext.h"
-#include "WebSecurityOrigin.h"
+#include "WebProcessPool.h"
 #include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
@@ -60,13 +60,13 @@ String WebKeyValueStorageManager::modificationTimeKey()
     return key;
 }
 
-PassRefPtr<WebKeyValueStorageManager> WebKeyValueStorageManager::create(WebContext* context)
+PassRefPtr<WebKeyValueStorageManager> WebKeyValueStorageManager::create(WebProcessPool* processPool)
 {
-    return adoptRef(new WebKeyValueStorageManager(context));
+    return adoptRef(new WebKeyValueStorageManager(processPool));
 }
 
-WebKeyValueStorageManager::WebKeyValueStorageManager(WebContext* context)
-    : WebContextSupplement(context)
+WebKeyValueStorageManager::WebKeyValueStorageManager(WebProcessPool* processPool)
+    : WebContextSupplement(processPool)
 {
 }
 
@@ -88,11 +88,11 @@ void WebKeyValueStorageManager::derefWebContextSupplement()
 
 void WebKeyValueStorageManager::getKeyValueStorageOrigins(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    context()->storageManager().getOrigins([callbackFunction](Vector<RefPtr<SecurityOrigin>> securityOrigins) {
+    processPool()->storageManager().getOrigins([callbackFunction](Vector<RefPtr<SecurityOrigin>> securityOrigins) {
         Vector<RefPtr<API::Object>> webSecurityOrigins;
         webSecurityOrigins.reserveInitialCapacity(securityOrigins.size());
         for (auto& origin : securityOrigins)
-            webSecurityOrigins.uncheckedAppend(WebSecurityOrigin::create(WTF::move(origin)));
+            webSecurityOrigins.uncheckedAppend(API::SecurityOrigin::create(WTF::move(origin)));
 
         callbackFunction(API::Array::create(WTF::move(webSecurityOrigins)).get(), CallbackBase::Error::None);
     });
@@ -100,7 +100,7 @@ void WebKeyValueStorageManager::getKeyValueStorageOrigins(std::function<void (AP
 
 void WebKeyValueStorageManager::getStorageDetailsByOrigin(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    context()->storageManager().getStorageDetailsByOrigin([callbackFunction](Vector<LocalStorageDetails> storageDetails) {
+    processPool()->storageManager().getStorageDetailsByOrigin([callbackFunction](Vector<LocalStorageDetails> storageDetails) {
         HashMap<String, RefPtr<API::Object>> detailsMap;
         Vector<RefPtr<API::Object>> result;
         result.reserveInitialCapacity(storageDetails.size());
@@ -108,7 +108,7 @@ void WebKeyValueStorageManager::getStorageDetailsByOrigin(std::function<void (AP
         for (const LocalStorageDetails& originDetails : storageDetails) {
             HashMap<String, RefPtr<API::Object>> detailsMap;
 
-            RefPtr<API::Object> origin = WebSecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(originDetails.originIdentifier));
+            RefPtr<API::Object> origin = API::SecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(originDetails.originIdentifier));
 
             detailsMap.set(WebKeyValueStorageManager::originKey(), origin);
             if (originDetails.creationTime)
@@ -116,21 +116,21 @@ void WebKeyValueStorageManager::getStorageDetailsByOrigin(std::function<void (AP
             if (originDetails.modificationTime)
                 detailsMap.set(WebKeyValueStorageManager::modificationTimeKey(), API::Double::create(originDetails.modificationTime.valueOr(0)));
 
-            result.uncheckedAppend(ImmutableDictionary::create(WTF::move(detailsMap)));
+            result.uncheckedAppend(API::Dictionary::create(WTF::move(detailsMap)));
         }
 
         callbackFunction(API::Array::create(WTF::move(result)).get(), CallbackBase::Error::None);
     });
 }
 
-void WebKeyValueStorageManager::deleteEntriesForOrigin(WebSecurityOrigin* origin)
+void WebKeyValueStorageManager::deleteEntriesForOrigin(API::SecurityOrigin* origin)
 {
-    context()->storageManager().deleteEntriesForOrigin(origin->securityOrigin());
+    processPool()->storageManager().deleteEntriesForOrigin(origin->securityOrigin());
 }
 
 void WebKeyValueStorageManager::deleteAllEntries()
 {
-    context()->storageManager().deleteAllEntries();
+    processPool()->storageManager().deleteAllEntries();
 }
 
 } // namespace WebKit

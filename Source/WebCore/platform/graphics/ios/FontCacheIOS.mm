@@ -149,8 +149,8 @@ static LanguageSpecificFont languageSpecificFallbackFont(UChar32 c)
         return LanguageSpecificFont::None;
     if (c < 0x1200)
         return LanguageSpecificFont::Korean;
-    if (c < 0x1401)
-        return LanguageSpecificFont::Khmer; // FIXME: These codepoints don't belong to Khmer
+    if (c < 0x1400)
+        return LanguageSpecificFont::None;
     if (c < 0x1780)
         return LanguageSpecificFont::CanadianAboriginalSyllabic;
     if (c < 0x1800)
@@ -427,6 +427,11 @@ PassRefPtr<SimpleFontData> FontCache::systemFallbackForCharacters(const FontDesc
         }
         if (useEmojiFont)
             simpleFontData = getCachedFontData(description, appleColorEmoji, false, DoNotRetain);
+        else {
+            RetainPtr<CTFontRef> fallbackFont = adoptCF(CTFontCreateForCharacters(originalFontData->getCTFont(), characters, length, nullptr));
+            if (RetainPtr<CFStringRef> foundFontName = adoptCF(CTFontCopyPostScriptName(fallbackFont.get())))
+                simpleFontData = getCachedFontData(description, foundFontName.get(), false, DoNotRetain);
+        }
         break;
     }
     }

@@ -50,7 +50,7 @@ template <> void deleteOwnedPtr<WebCore::TextLayout>(WebCore::TextLayout* ptr)
 
 namespace WebCore {
 
-static PassRef<FontGlyphs> retrieveOrAddCachedFontGlyphs(const FontDescription&, PassRefPtr<FontSelector>);
+static Ref<FontGlyphs> retrieveOrAddCachedFontGlyphs(const FontDescription&, PassRefPtr<FontSelector>);
 
 const uint8_t Font::s_roundingHackCharacterTable[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 1 /*\t*/, 1 /*\n*/, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -215,7 +215,10 @@ struct FontGlyphsCacheKey {
 struct FontGlyphsCacheEntry {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    FontGlyphsCacheEntry(FontGlyphsCacheKey&& k, PassRef<FontGlyphs> g) : key(WTF::move(k)), glyphs(WTF::move(g)) { }
+    FontGlyphsCacheEntry(FontGlyphsCacheKey&& k, Ref<FontGlyphs>&& g)
+        : key(WTF::move(k))
+        , glyphs(WTF::move(g))
+    { }
     FontGlyphsCacheKey key;
     Ref<FontGlyphs> glyphs;
 };
@@ -296,7 +299,7 @@ void pruneUnreferencedEntriesFromFontGlyphsCache()
         fontGlyphsCache().remove(toRemove[i]);
 }
 
-static PassRef<FontGlyphs> retrieveOrAddCachedFontGlyphs(const FontDescription& fontDescription, PassRefPtr<FontSelector> fontSelector)
+static Ref<FontGlyphs> retrieveOrAddCachedFontGlyphs(const FontDescription& fontDescription, PassRefPtr<FontSelector> fontSelector)
 {
     FontGlyphsCacheKey key;
     makeFontGlyphsCacheKey(key, fontDescription, fontSelector.get());
@@ -308,7 +311,7 @@ static PassRef<FontGlyphs> retrieveOrAddCachedFontGlyphs(const FontDescription& 
 
     std::unique_ptr<FontGlyphsCacheEntry>& newEntry = addResult.iterator->value;
     newEntry = std::make_unique<FontGlyphsCacheEntry>(WTF::move(key), FontGlyphs::create(fontSelector));
-    PassRef<FontGlyphs> glyphs = newEntry->glyphs.get();
+    Ref<FontGlyphs> glyphs = newEntry->glyphs.get();
 
     static const unsigned unreferencedPruneInterval = 50;
     static const int maximumEntries = 400;
@@ -414,6 +417,26 @@ float Font::width(const TextRun& run, int& charsConsumed, String& glyphName) con
     return width(run);
 }
 
+GlyphData Font::glyphDataForCharacter(UChar32 c, bool mirror, FontDataVariant variant) const
+{
+    if (variant == AutoVariant) {
+        if (m_fontDescription.smallCaps() && !primaryFontData().isSVGFont()) {
+            UChar32 upperC = u_toupper(c);
+            if (upperC != c) {
+                c = upperC;
+                variant = SmallCapsVariant;
+            } else
+                variant = NormalVariant;
+        } else
+            variant = NormalVariant;
+    }
+
+    if (mirror)
+        c = u_charMirror(c);
+
+    return m_glyphs->glyphDataForCharacter(c, m_fontDescription, variant);
+}
+
 #if !PLATFORM(COCOA)
 PassOwnPtr<TextLayout> Font::createLayout(RenderText*, float, bool) const
 {
@@ -503,7 +526,7 @@ bool Font::fastAverageCharWidthIfAvailable(float& width) const
 {
     bool success = hasValidAverageCharWidth();
     if (success)
-        width = roundf(primaryFont()->avgCharWidth()); // FIXME: primaryFont() might not correspond to firstFamily().
+        width = roundf(primaryFontData().avgCharWidth()); // FIXME: primaryFontData() might not correspond to firstFamily().
     return success;
 }
 

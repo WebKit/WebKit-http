@@ -26,12 +26,11 @@
 #include "config.h"
 #include "WebOriginDataManagerProxy.h"
 
+#include "APISecurityOrigin.h"
 #include "SecurityOriginData.h"
-#include "WebContext.h"
 #include "WebOriginDataManagerMessages.h"
 #include "WebOriginDataManagerProxyMessages.h"
-#include "WebSecurityOrigin.h"
-#include <WebCore/SecurityOrigin.h>
+#include "WebProcessPool.h"
 #include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
@@ -43,15 +42,15 @@ const char* WebOriginDataManagerProxy::supplementName()
     return "WebOriginDataManagerProxy";
 }
 
-PassRefPtr<WebOriginDataManagerProxy> WebOriginDataManagerProxy::create(WebContext* context)
+PassRefPtr<WebOriginDataManagerProxy> WebOriginDataManagerProxy::create(WebProcessPool* processPool)
 {
-    return adoptRef(new WebOriginDataManagerProxy(context));
+    return adoptRef(new WebOriginDataManagerProxy(processPool));
 }
 
-WebOriginDataManagerProxy::WebOriginDataManagerProxy(WebContext* context)
-    : WebContextSupplement(context)
+WebOriginDataManagerProxy::WebOriginDataManagerProxy(WebProcessPool* processPool)
+    : WebContextSupplement(processPool)
 {
-    context->addMessageReceiver(Messages::WebOriginDataManagerProxy::messageReceiverName(), *this);
+    processPool->addMessageReceiver(Messages::WebOriginDataManagerProxy::messageReceiverName(), *this);
 }
 
 WebOriginDataManagerProxy::~WebOriginDataManagerProxy()
@@ -59,7 +58,7 @@ WebOriginDataManagerProxy::~WebOriginDataManagerProxy()
 }
 
 
-void WebOriginDataManagerProxy::contextDestroyed()
+void WebOriginDataManagerProxy::processPoolDestroyed()
 {
     invalidateCallbackMap(m_arrayCallbacks, CallbackBase::Error::OwnerWasInvalidated);
 }
@@ -86,7 +85,7 @@ void WebOriginDataManagerProxy::derefWebContextSupplement()
 
 class CallbackSynchronizer : public RefCounted<CallbackSynchronizer> {
 public:
-    static PassRefPtr<CallbackSynchronizer> create(const std::function<void(const CallbackBase::Error&)>& callback)
+    static PassRefPtr<CallbackSynchronizer> create(const std::function<void (const CallbackBase::Error&)>& callback)
     {
         return adoptRef(new CallbackSynchronizer(callback));
     }
@@ -116,7 +115,7 @@ public:
     }
 
 protected:
-    CallbackSynchronizer(const std::function<void(const CallbackBase::Error&)>& callback)
+    CallbackSynchronizer(const std::function<void (const CallbackBase::Error&)>& callback)
         : m_count(0)
         , m_callback(callback)
         , m_error(CallbackBase::Error::None)
@@ -125,7 +124,7 @@ protected:
     }
 
     unsigned m_count;
-    std::function<void(const CallbackBase::Error&)> m_callback;
+    std::function<void (const CallbackBase::Error&)> m_callback;
     CallbackBase::Error m_error;
 };
 
@@ -156,9 +155,9 @@ static std::pair<RefPtr<CallbackSynchronizer>, ArrayCallback::CallbackFunction> 
 }
 
 template <typename CallbackType, typename MessageType, typename... Parameters>
-static void sendMessageToAllProcessesInContext(WebContext* context, typename CallbackType::CallbackFunction callback, HashMap<uint64_t, RefPtr<CallbackType>>& callbackStorage, Parameters... parameters)
+static void sendMessageToAllProcessesInProcessPool(WebProcessPool* processPool, typename CallbackType::CallbackFunction callback, HashMap<uint64_t, RefPtr<CallbackType>>& callbackStorage, Parameters... parameters)
 {
-    if (!context) {
+    if (!processPool) {
         CallbackType::create(callback)->invalidate();
         return;
     }
@@ -167,7 +166,7 @@ static void sendMessageToAllProcessesInContext(WebContext* context, typename Cal
     RefPtr<CallbackSynchronizer> synchronizer = synchronizerAndCallback.first;
     auto perProcessCallback = synchronizerAndCallback.second;
 
-    for (auto& process : context->processes()) {
+    for (auto& process : processPool->processes()) {
         if (!process || !process->canSendMessage())
             continue;
 
@@ -183,60 +182,60 @@ static void sendMessageToAllProcessesInContext(WebContext* context, typename Cal
         RefPtr<CallbackType> callback = CallbackType::create(perProcessCallback);
         uint64_t callbackID = callback->callbackID();
         callbackStorage.set(callbackID, callback.release());
-        context->sendToDatabaseProcessRelaunchingIfNecessary(MessageType(parameters..., callbackID));
+        processPool->sendToDatabaseProcessRelaunchingIfNecessary(MessageType(parameters..., callbackID));
     }
 }
 
 void WebOriginDataManagerProxy::getOrigins(WKOriginDataTypes types, std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
 {
-    sendMessageToAllProcessesInContext<ArrayCallback, Messages::WebOriginDataManager::GetOrigins>(context(), callbackFunction, m_arrayCallbacks, types);
+    sendMessageToAllProcessesInProcessPool<ArrayCallback, Messages::WebOriginDataManager::GetOrigins>(processPool(), callbackFunction, m_arrayCallbacks, types);
 }
 
-void WebOriginDataManagerProxy::didGetOrigins(IPC::Connection* connection, const Vector<SecurityOriginData>& originIdentifiers, uint64_t callbackID)
+void WebOriginDataManagerProxy::didGetOrigins(IPC::Connection& connection, const Vector<SecurityOriginData>& originIdentifiers, uint64_t callbackID)
 {
     RefPtr<ArrayCallback> callback = m_arrayCallbacks.take(callbackID);
-    MESSAGE_CHECK_BASE(callback, connection);
+    MESSAGE_CHECK_BASE(callback, &connection);
 
     Vector<RefPtr<API::Object>> securityOrigins;
     securityOrigins.reserveInitialCapacity(originIdentifiers.size());
 
     for (const auto& originIdentifier : originIdentifiers)
-        securityOrigins.uncheckedAppend(WebSecurityOrigin::create(originIdentifier.securityOrigin()));
+        securityOrigins.uncheckedAppend(API::SecurityOrigin::create(originIdentifier.securityOrigin()));
 
     callback->performCallbackWithReturnValue(API::Array::create(WTF::move(securityOrigins)).get());
 }
 
-void WebOriginDataManagerProxy::deleteEntriesForOrigin(WKOriginDataTypes types, WebSecurityOrigin* origin, std::function<void (CallbackBase::Error)> callbackFunction)
+void WebOriginDataManagerProxy::deleteEntriesForOrigin(WKOriginDataTypes types, API::SecurityOrigin* origin, std::function<void (CallbackBase::Error)> callbackFunction)
 {
     SecurityOriginData securityOriginData;
     securityOriginData.protocol = origin->securityOrigin().protocol();
     securityOriginData.host = origin->securityOrigin().host();
     securityOriginData.port = origin->securityOrigin().port();
 
-    sendMessageToAllProcessesInContext<VoidCallback, Messages::WebOriginDataManager::DeleteEntriesForOrigin>(context(), callbackFunction, m_voidCallbacks, types, securityOriginData);
+    sendMessageToAllProcessesInProcessPool<VoidCallback, Messages::WebOriginDataManager::DeleteEntriesForOrigin>(processPool(), callbackFunction, m_voidCallbacks, types, securityOriginData);
 }
 
 void WebOriginDataManagerProxy::deleteEntriesModifiedBetweenDates(WKOriginDataTypes types, double startDate, double endDate, std::function<void (CallbackBase::Error)> callbackFunction)
 {
-    sendMessageToAllProcessesInContext<VoidCallback, Messages::WebOriginDataManager::DeleteEntriesModifiedBetweenDates>(context(), callbackFunction, m_voidCallbacks, types, startDate, endDate);
+    sendMessageToAllProcessesInProcessPool<VoidCallback, Messages::WebOriginDataManager::DeleteEntriesModifiedBetweenDates>(processPool(), callbackFunction, m_voidCallbacks, types, startDate, endDate);
 }
 
-void WebOriginDataManagerProxy::didDeleteEntries(IPC::Connection* connection, uint64_t callbackID)
+void WebOriginDataManagerProxy::didDeleteEntries(IPC::Connection& connection, uint64_t callbackID)
 {
     RefPtr<VoidCallback> callback = m_voidCallbacks.take(callbackID);
-    MESSAGE_CHECK_BASE(callback, connection);
+    MESSAGE_CHECK_BASE(callback, &connection);
     callback->performCallback();
 }
 
 void WebOriginDataManagerProxy::deleteAllEntries(WKOriginDataTypes types, std::function<void (CallbackBase::Error)> callbackFunction)
 {
-    sendMessageToAllProcessesInContext<VoidCallback, Messages::WebOriginDataManager::DeleteAllEntries>(context(), callbackFunction, m_voidCallbacks, types);
+    sendMessageToAllProcessesInProcessPool<VoidCallback, Messages::WebOriginDataManager::DeleteAllEntries>(processPool(), callbackFunction, m_voidCallbacks, types);
 }
 
-void WebOriginDataManagerProxy::didDeleteAllEntries(IPC::Connection* connection, uint64_t callbackID)
+void WebOriginDataManagerProxy::didDeleteAllEntries(IPC::Connection& connection, uint64_t callbackID)
 {
     RefPtr<VoidCallback> callback = m_voidCallbacks.take(callbackID);
-    MESSAGE_CHECK_BASE(callback, connection);
+    MESSAGE_CHECK_BASE(callback, &connection);
     callback->performCallback();
 }
 

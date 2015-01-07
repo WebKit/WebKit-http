@@ -129,10 +129,10 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
     setHasCustomStyleResolveCallbacks();
 }
 
-RefPtr<HTMLInputElement> HTMLInputElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
+Ref<HTMLInputElement> HTMLInputElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
 {
     bool shouldCreateShadowRootLazily = createdByParser;
-    RefPtr<HTMLInputElement> inputElement = adoptRef(new HTMLInputElement(tagName, document, form, createdByParser));
+    Ref<HTMLInputElement> inputElement = adoptRef(*new HTMLInputElement(tagName, document, form, createdByParser));
     if (!shouldCreateShadowRootLazily)
         inputElement->ensureUserAgentShadowRoot();
     return inputElement;
@@ -616,12 +616,14 @@ inline void HTMLInputElement::initializeInputType()
     if (type.isNull()) {
         m_inputType = InputType::createText(*this);
         ensureUserAgentShadowRoot();
+        setNeedsWillValidateCheck();
         return;
     }
 
     m_hasType = true;
     m_inputType = InputType::create(*this, type);
     ensureUserAgentShadowRoot();
+    setNeedsWillValidateCheck();
     registerForSuspensionCallbackIfNeeded();
     runPostTypeUpdateTasks();
 }
@@ -761,7 +763,7 @@ bool HTMLInputElement::rendererIsNeeded(const RenderStyle& style)
     return m_inputType->rendererIsNeeded() && HTMLTextFormControlElement::rendererIsNeeded(style);
 }
 
-RenderPtr<RenderElement> HTMLInputElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLInputElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return m_inputType->createInputRenderer(WTF::move(style));
 }
@@ -1877,7 +1879,10 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
         parameters.stepBase = 0;
     }
 
-    parameters.anchorRectInRootView = document().view()->contentsToRootView(rendererBoundingBox(*this));
+    if (RenderElement* renderer = this->renderer())
+        parameters.anchorRectInRootView = document().view()->contentsToRootView(renderer->absoluteBoundingBoxRect());
+    else
+        parameters.anchorRectInRootView = IntRect();
     parameters.currentValue = value();
     parameters.isAnchorElementRTL = computedStyle()->direction() == RTL;
 #if ENABLE(DATALIST_ELEMENT)

@@ -200,7 +200,7 @@ public:
     double offsetWidth();
     double offsetHeight();
 
-    bool isInsideViewport(const IntRect* visibleRect = nullptr) const;
+    bool mayCauseRepaintInsideViewport(const IntRect* visibleRect = nullptr) const;
 
     // FIXME: Replace uses of offsetParent in the platform with calls
     // to the render layer and merge bindingsOffsetParent and offsetParent.
@@ -220,8 +220,8 @@ public:
 
     WEBCORE_EXPORT IntRect boundsInRootViewSpace();
 
-    RefPtr<ClientRectList> getClientRects();
-    RefPtr<ClientRect> getBoundingClientRect();
+    Ref<ClientRectList> getClientRects();
+    Ref<ClientRect> getBoundingClientRect();
     
     // Returns the absolute bounding box translated into client coordinates.
     WEBCORE_EXPORT IntRect clientRect() const;
@@ -267,8 +267,8 @@ public:
 
     virtual String nodeName() const override;
 
-    RefPtr<Element> cloneElementWithChildren();
-    RefPtr<Element> cloneElementWithoutChildren();
+    RefPtr<Element> cloneElementWithChildren(Document&);
+    RefPtr<Element> cloneElementWithoutChildren(Document&);
 
     void normalizeAttributes();
     String nodeNamePreservingCase() const;
@@ -311,7 +311,7 @@ public:
 
     void lazyReattach();
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>);
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&);
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
@@ -532,10 +532,10 @@ public:
     bool dispatchWheelEvent(const PlatformWheelEvent&);
     bool dispatchKeyEvent(const PlatformKeyboardEvent&);
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
-    void dispatchFocusInEvent(const AtomicString& eventType, PassRefPtr<Element> oldFocusedElement);
-    void dispatchFocusOutEvent(const AtomicString& eventType, PassRefPtr<Element> newFocusedElement);
-    virtual void dispatchFocusEvent(PassRefPtr<Element> oldFocusedElement, FocusDirection);
-    virtual void dispatchBlurEvent(PassRefPtr<Element> newFocusedElement);
+    void dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement);
+    void dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement);
+    virtual void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection);
+    virtual void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement);
 
     virtual bool willRecalcStyle(Style::Change);
     virtual void didRecalcStyle(Style::Change);
@@ -546,8 +546,8 @@ public:
     virtual void didDetachRenderers();
     virtual RefPtr<RenderStyle> customStyleForRenderer(RenderStyle& parentStyle);
 
-    void setBeforePseudoElement(PassRefPtr<PseudoElement>);
-    void setAfterPseudoElement(PassRefPtr<PseudoElement>);
+    void setBeforePseudoElement(Ref<PseudoElement>&&);
+    void setAfterPseudoElement(Ref<PseudoElement>&&);
     void clearBeforePseudoElement();
     void clearAfterPseudoElement();
     void resetComputedStyle();
@@ -632,10 +632,10 @@ private:
 
     // cloneNode is private so that non-virtual cloneElementWithChildren and cloneElementWithoutChildren
     // are used instead.
-    virtual RefPtr<Node> cloneNode(bool deep) override;
-    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren();
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren(Document&);
 
-    void addShadowRoot(PassRefPtr<ShadowRoot>);
+    void addShadowRoot(Ref<ShadowRoot>&&);
     void removeShadowRoot();
 
     bool rareDataStyleAffectedByEmpty() const;

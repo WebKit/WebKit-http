@@ -30,6 +30,7 @@
 
 #import "ActionMenuHitTestResult.h"
 #import "WKImmediateActionTypes.h"
+#import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
 #import <wtf/RetainPtr.h>
 
 namespace WebKit {
@@ -43,23 +44,28 @@ enum class ImmediateActionState {
 };
 }
 
+@class DDActionContext;
 @class WKView;
 
-@interface WKImmediateActionController : NSObject <NSGestureRecognizerDelegate> {
+@interface WKImmediateActionController : NSObject <NSImmediateActionGestureRecognizerDelegate> {
 @private
     WebKit::WebPageProxy *_page;
     WKView *_wkView;
 
     WebKit::ImmediateActionState _state;
     WebKit::ActionMenuHitTestResult _hitTestResult;
+    RefPtr<API::Object> _userData;
     _WKImmediateActionType _type;
+    NSImmediateActionGestureRecognizer *_immediateActionRecognizer;
 
-    NSPoint _eventLocationInView;
+    BOOL _hasActivatedActionContext;
+    RetainPtr<DDActionContext> _currentActionContext;
 }
 
-- (instancetype)initWithPage:(WebKit::WebPageProxy&)page view:(WKView *)wkView;
+- (instancetype)initWithPage:(WebKit::WebPageProxy&)page view:(WKView *)wkView recognizer:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer;
 - (void)willDestroyView:(WKView *)view;
 - (void)didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData;
+- (void)wkView:(WKView *)wkView willHandleMouseDown:(NSEvent *)event;
 
 @end
 

@@ -40,7 +40,7 @@ class CSSKeyframeRule;
 
 class StyleRuleKeyframes : public StyleRuleBase {
 public:
-    static PassRef<StyleRuleKeyframes> create() { return adoptRef(*new StyleRuleKeyframes()); }
+    static Ref<StyleRuleKeyframes> create() { return adoptRef(*new StyleRuleKeyframes()); }
     
     ~StyleRuleKeyframes();
     
@@ -55,7 +55,7 @@ public:
     
     int findKeyframeIndex(const String& key) const;
 
-    PassRef<StyleRuleKeyframes> copy() const { return adoptRef(*new StyleRuleKeyframes(*this)); }
+    Ref<StyleRuleKeyframes> copy() const { return adoptRef(*new StyleRuleKeyframes(*this)); }
 
 private:
     StyleRuleKeyframes();
@@ -100,5 +100,9 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_RULE(CSSKeyframesRule, CSSRule::KEYFRAMES_RULE)
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRuleKeyframes)
+    static bool isType(const WebCore::StyleRuleBase& rule) { return rule.isKeyframesRule(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // CSSKeyframesRule_h

@@ -289,21 +289,29 @@ DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, error);
 DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, focus);
 DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, load);
 
-RefPtr<Node> Element::cloneNode(bool deep)
+RefPtr<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation type)
 {
-    return deep ? cloneElementWithChildren() : cloneElementWithoutChildren();
+    switch (type) {
+    case CloningOperation::OnlySelf:
+    case CloningOperation::SelfWithTemplateContent:
+        return cloneElementWithoutChildren(targetDocument);
+    case CloningOperation::Everything:
+        return cloneElementWithChildren(targetDocument);
+    }
+    ASSERT_NOT_REACHED();
+    return nullptr;
 }
 
-RefPtr<Element> Element::cloneElementWithChildren()
+RefPtr<Element> Element::cloneElementWithChildren(Document& targetDocument)
 {
-    RefPtr<Element> clone = cloneElementWithoutChildren();
+    RefPtr<Element> clone = cloneElementWithoutChildren(targetDocument);
     cloneChildNodes(clone.get());
     return clone.release();
 }
 
-RefPtr<Element> Element::cloneElementWithoutChildren()
+RefPtr<Element> Element::cloneElementWithoutChildren(Document& targetDocument)
 {
-    RefPtr<Element> clone = cloneElementWithoutAttributesAndChildren();
+    RefPtr<Element> clone = cloneElementWithoutAttributesAndChildren(targetDocument);
     // This will catch HTML elements in the wrong namespace that are not correctly copied.
     // This is a sanity check as HTML overloads some of the DOM methods.
     ASSERT(isHTMLElement() == clone->isHTMLElement());
@@ -312,9 +320,9 @@ RefPtr<Element> Element::cloneElementWithoutChildren()
     return clone.release();
 }
 
-RefPtr<Element> Element::cloneElementWithoutAttributesAndChildren()
+RefPtr<Element> Element::cloneElementWithoutAttributesAndChildren(Document& targetDocument)
 {
-    return document().createElement(tagQName(), false);
+    return targetDocument.createElement(tagQName(), false);
 }
 
 RefPtr<Attr> Element::detachAttribute(unsigned index)
@@ -883,7 +891,7 @@ IntRect Element::boundsInRootViewSpace()
     return result;
 }
 
-RefPtr<ClientRectList> Element::getClientRects()
+Ref<ClientRectList> Element::getClientRects()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
@@ -900,7 +908,7 @@ RefPtr<ClientRectList> Element::getClientRects()
     return ClientRectList::create(quads);
 }
 
-RefPtr<ClientRect> Element::getBoundingClientRect()
+Ref<ClientRect> Element::getBoundingClientRect()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
@@ -1326,7 +1334,7 @@ bool Element::rendererIsNeeded(const RenderStyle& style)
     return style.display() != NONE;
 }
 
-RenderPtr<RenderElement> Element::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return RenderElement::createFor(*this, WTF::move(style));
 }
@@ -1449,24 +1457,24 @@ void Element::resetNeedsNodeRenderingTraversalSlowPath()
     setNeedsNodeRenderingTraversalSlowPath(shouldUseNodeRenderingTraversalSlowPath(*this));
 }
 
-void Element::addShadowRoot(PassRefPtr<ShadowRoot> newShadowRoot)
+void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 {
     ASSERT(!shadowRoot());
 
-    ShadowRoot* shadowRoot = newShadowRoot.get();
-    ensureElementRareData().setShadowRoot(newShadowRoot);
+    ShadowRoot& shadowRoot = newShadowRoot.get();
+    ensureElementRareData().setShadowRoot(WTF::move(newShadowRoot));
 
-    shadowRoot->setHostElement(this);
-    shadowRoot->setParentTreeScope(&treeScope());
-    shadowRoot->distributor().didShadowBoundaryChange(this);
+    shadowRoot.setHostElement(this);
+    shadowRoot.setParentTreeScope(&treeScope());
+    shadowRoot.distributor().didShadowBoundaryChange(this);
 
-    ChildNodeInsertionNotifier(*this).notify(*shadowRoot);
+    ChildNodeInsertionNotifier(*this).notify(shadowRoot);
 
     resetNeedsNodeRenderingTraversalSlowPath();
 
     setNeedsStyleRecalc(ReconstructRenderTree);
 
-    InspectorInstrumentation::didPushShadowRoot(this, shadowRoot);
+    InspectorInstrumentation::didPushShadowRoot(*this, shadowRoot);
 }
 
 void Element::removeShadowRoot()
@@ -1474,7 +1482,7 @@ void Element::removeShadowRoot()
     RefPtr<ShadowRoot> oldRoot = shadowRoot();
     if (!oldRoot)
         return;
-    InspectorInstrumentation::willPopShadowRoot(this, oldRoot.get());
+    InspectorInstrumentation::willPopShadowRoot(*this, *oldRoot);
     document().removeFocusedNodeOfSubtree(oldRoot.get());
 
     ASSERT(!oldRoot->renderer());
@@ -1992,36 +2000,34 @@ void Element::blur()
     }
 }
 
-void Element::dispatchFocusInEvent(const AtomicString& eventType, PassRefPtr<Element> oldFocusedElement)
+void Element::dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement)
 {
     ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
-    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, oldFocusedElement));
+    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(oldFocusedElement)));
 }
 
-void Element::dispatchFocusOutEvent(const AtomicString& eventType, PassRefPtr<Element> newFocusedElement)
+void Element::dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement)
 {
     ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
-    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, newFocusedElement));
+    dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
 }
 
-void Element::dispatchFocusEvent(PassRefPtr<Element> oldFocusedElement, FocusDirection)
+void Element::dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection)
 {
     if (document().page())
         document().page()->chrome().client().elementDidFocus(this);
 
-    RefPtr<FocusEvent> event = FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, oldFocusedElement);
-    EventDispatcher::dispatchEvent(this, event.release());
+    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, WTF::move(oldFocusedElement)));
 }
 
-void Element::dispatchBlurEvent(PassRefPtr<Element> newFocusedElement)
+void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
 {
     if (document().page())
         document().page()->chrome().client().elementDidBlur(this);
 
-    RefPtr<FocusEvent> event = FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, newFocusedElement);
-    EventDispatcher::dispatchEvent(this, event.release());
+    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
 }
 
 void Element::mergeWithNextTextNode(Text& node, ExceptionCode& ec)
@@ -2094,7 +2100,7 @@ String Element::innerText()
     if (!renderer())
         return textContent(true);
 
-    return plainText(rangeOfContents(*this).get());
+    return plainText(rangeOfContents(*this).ptr());
 }
 
 String Element::outerText()
@@ -2323,14 +2329,14 @@ PseudoElement* Element::afterPseudoElement() const
     return hasRareData() ? elementRareData()->afterPseudoElement() : 0;
 }
 
-void Element::setBeforePseudoElement(PassRefPtr<PseudoElement> element)
+void Element::setBeforePseudoElement(Ref<PseudoElement>&& element)
 {
-    ensureElementRareData().setBeforePseudoElement(element);
+    ensureElementRareData().setBeforePseudoElement(WTF::move(element));
 }
 
-void Element::setAfterPseudoElement(PassRefPtr<PseudoElement> element)
+void Element::setAfterPseudoElement(Ref<PseudoElement>&& element)
 {
-    ensureElementRareData().setAfterPseudoElement(element);
+    ensureElementRareData().setAfterPseudoElement(WTF::move(element));
 }
 
 static void disconnectPseudoElement(PseudoElement* pseudoElement)
@@ -2415,9 +2421,9 @@ bool Element::shouldAppearIndeterminate() const
     return false;
 }
 
-bool Element::isInsideViewport(const IntRect* visibleRect) const
+bool Element::mayCauseRepaintInsideViewport(const IntRect* visibleRect) const
 {
-    return renderer() && renderer()->isInsideViewport(visibleRect);
+    return renderer() && renderer()->mayCauseRepaintInsideViewport(visibleRect);
 }
 
 DOMTokenList& Element::classList()
@@ -2804,29 +2810,27 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
     if (std::unique_ptr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(*this, name))
         recipients->enqueueMutationRecord(MutationRecord::createAttributes(*this, name, oldValue));
 
-#if ENABLE(INSPECTOR)
-    InspectorInstrumentation::willModifyDOMAttr(&document(), this, oldValue, newValue);
-#endif
+    InspectorInstrumentation::willModifyDOMAttr(document(), *this, oldValue, newValue);
 }
 
 void Element::didAddAttribute(const QualifiedName& name, const AtomicString& value)
 {
     attributeChanged(name, nullAtom, value);
-    InspectorInstrumentation::didModifyDOMAttr(&document(), this, name.localName(), value);
+    InspectorInstrumentation::didModifyDOMAttr(document(), *this, name.localName(), value);
     dispatchSubtreeModifiedEvent();
 }
 
 void Element::didModifyAttribute(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue)
 {
     attributeChanged(name, oldValue, newValue);
-    InspectorInstrumentation::didModifyDOMAttr(&document(), this, name.localName(), newValue);
+    InspectorInstrumentation::didModifyDOMAttr(document(), *this, name.localName(), newValue);
     // Do not dispatch a DOMSubtreeModified event here; see bug 81141.
 }
 
 void Element::didRemoveAttribute(const QualifiedName& name, const AtomicString& oldValue)
 {
     attributeChanged(name, oldValue, nullAtom);
-    InspectorInstrumentation::didRemoveDOMAttr(&document(), this, name.localName());
+    InspectorInstrumentation::didRemoveDOMAttr(document(), *this, name.localName());
     dispatchSubtreeModifiedEvent();
 }
 

@@ -37,9 +37,9 @@ struct ImageCandidate;
 class HTMLImageElement : public HTMLElement, public FormNamedItem {
     friend class HTMLFormElement;
 public:
-    static RefPtr<HTMLImageElement> create(Document&);
-    static RefPtr<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
-    static RefPtr<HTMLImageElement> createForJSConstructor(Document&, const int* optionalWidth, const int* optionalHeight);
+    static Ref<HTMLImageElement> create(Document&);
+    static Ref<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
+    static Ref<HTMLImageElement> createForJSConstructor(Document&, const int* optionalWidth, const int* optionalHeight);
 
     virtual ~HTMLImageElement();
 
@@ -102,7 +102,7 @@ private:
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
     virtual void didAttachRenderers() override;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
     void setBestFitURLAndDPRFromImageCandidate(const ImageCandidate&);
 
     virtual bool canStartSelection() const override;

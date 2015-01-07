@@ -79,7 +79,7 @@
 
 #if ENABLE(3D_RENDERING)
 // This symbol is used to determine from a script whether 3D rendering is enabled (via 'nm').
-bool WebCoreHas3DRendering = true;
+WEBCORE_EXPORT bool WebCoreHas3DRendering = true;
 #endif
 
 #if !PLATFORM(MAC) && !PLATFORM(IOS)
@@ -804,7 +804,7 @@ void RenderLayerCompositor::appendDocumentOverlayLayers(Vector<GraphicsLayer*>& 
 void RenderLayerCompositor::layerBecameNonComposited(const RenderLayer& layer)
 {
     // Inform the inspector that the given RenderLayer was destroyed.
-    InspectorInstrumentation::renderLayerDestroyed(page(), &layer);
+    InspectorInstrumentation::renderLayerDestroyed(page(), layer);
 
     ASSERT(m_compositedLayerCount > 0);
     --m_compositedLayerCount;
@@ -2261,7 +2261,7 @@ CompositingReasons RenderLayerCompositor::reasonsForCompositing(const RenderLaye
         reasons |= CompositingReasonNegativeZIndexChildren;
         break;
     case RenderLayer::IndirectCompositingReason::GraphicalEffect:
-        if (renderer->layer()->transform())
+        if (renderer->hasTransform())
             reasons |= CompositingReasonTransformWithCompositedDescendants;
 
         if (renderer->isTransparent())

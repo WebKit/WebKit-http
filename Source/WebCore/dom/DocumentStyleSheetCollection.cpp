@@ -45,6 +45,7 @@
 #include "StyleSheetList.h"
 #include "UserContentController.h"
 #include "UserContentURLPattern.h"
+#include "UserStyleSheet.h"
 
 namespace WebCore {
 
@@ -175,14 +176,14 @@ void DocumentStyleSheetCollection::invalidateInjectedStyleSheetCache()
     m_document.styleResolverChanged(DeferRecalcStyle);
 }
 
-void DocumentStyleSheetCollection::addAuthorSheet(PassRef<StyleSheetContents> authorSheet)
+void DocumentStyleSheetCollection::addAuthorSheet(Ref<StyleSheetContents>&& authorSheet)
 {
     ASSERT(!authorSheet.get().isUserStyleSheet());
     m_authorStyleSheets.append(CSSStyleSheet::create(WTF::move(authorSheet), &m_document));
     m_document.styleResolverChanged(RecalcStyleImmediately);
 }
 
-void DocumentStyleSheetCollection::addUserSheet(PassRef<StyleSheetContents> userSheet)
+void DocumentStyleSheetCollection::addUserSheet(Ref<StyleSheetContents>&& userSheet)
 {
     ASSERT(userSheet.get().isUserStyleSheet());
     m_userStyleSheets.append(CSSStyleSheet::create(WTF::move(userSheet), &m_document));

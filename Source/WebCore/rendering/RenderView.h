@@ -44,7 +44,7 @@ class RenderQuote;
 
 class RenderView final : public RenderBlockFlow, public SelectionSubtreeRoot {
 public:
-    RenderView(Document&, PassRef<RenderStyle>);
+    RenderView(Document&, Ref<RenderStyle>&&);
     virtual ~RenderView();
 
     WEBCORE_EXPORT bool hitTest(const HitTestRequest&, HitTestResult&);
@@ -224,7 +224,7 @@ public:
     void didCreateRenderer() { ++m_rendererCount; }
     void didDestroyRenderer() { --m_rendererCount; }
 
-    WEBCORE_EXPORT void resumePausedImageAnimationsIfNeeded();
+    void resumePausedImageAnimationsIfNeeded();
     void addRendererWithPausedImageAnimations(RenderElement&);
     void removeRendererWithPausedImageAnimations(RenderElement&);
 

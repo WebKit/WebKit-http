@@ -46,16 +46,16 @@ class RenderStyle;
 // on a single RenderElement, such as a number of properties transitioning at once.
 class CompositeAnimation : public RefCounted<CompositeAnimation> {
 public:
-    static PassRefPtr<CompositeAnimation> create(AnimationControllerPrivate* animationController)
+    static Ref<CompositeAnimation> create(AnimationControllerPrivate* animationController)
     {
-        return adoptRef(new CompositeAnimation(animationController));
+        return adoptRef(*new CompositeAnimation(animationController));
     };
 
     ~CompositeAnimation();
     
     void clearRenderer();
 
-    PassRef<RenderStyle> animate(RenderElement&, RenderStyle* currentStyle, RenderStyle& targetStyle);
+    Ref<RenderStyle> animate(RenderElement&, RenderStyle* currentStyle, RenderStyle& targetStyle);
     PassRefPtr<RenderStyle> getAnimatedStyle() const;
 
     double timeToNextService() const;

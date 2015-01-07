@@ -29,6 +29,7 @@
 #if WK_API_ENABLED
 
 #import "APIFormClient.h"
+#import "APISerializedScriptValue.h"
 #import "CompletionHandlerCallChecker.h"
 #import "FindClient.h"
 #import "LegacySessionStateCoding.h"
@@ -58,14 +59,13 @@
 #import "WKWebViewContentProvider.h"
 #import "WebBackForwardList.h"
 #import "WebCertificateInfo.h"
-#import "WebContext.h"
 #import "WebFormSubmissionListenerProxy.h"
 #import "WebKitSystemInterface.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebPreferencesKeys.h"
+#import "WebProcessPool.h"
 #import "WebProcessProxy.h"
-#import "WebSerializedScriptValue.h"
 #import "_WKFindDelegate.h"
 #import "_WKFormDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
@@ -243,7 +243,7 @@ static int32_t deviceOrientation()
 
 - (BOOL)_mayAutomaticallyShowVideoOptimized
 {
-#if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 82000)
+#if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 80200)
     return false;
 #else
     if (!_page || !_page->videoFullscreenManager())
@@ -278,7 +278,7 @@ static int32_t deviceOrientation()
 
     CGRect bounds = self.bounds;
 
-    WebKit::WebContext& context = *[_configuration processPool]->_context;
+    WebKit::WebProcessPool& processPool = *[_configuration processPool]->_processPool;
 
     WebKit::WebPageConfiguration webPageConfiguration;
     webPageConfiguration.preferences = [_configuration preferences]->_preferences.get();
@@ -302,6 +302,7 @@ static int32_t deviceOrientation()
 #if PLATFORM(IOS)
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsInlineKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsAlternateFullscreenKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsAlternateFullscreen]));
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::featureCounterEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _featureCounterEnabled]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackRequiresUserGestureKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackRequiresUserAction]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsAirPlayKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackAllowsAirPlay]));
 #endif
@@ -313,7 +314,7 @@ static int32_t deviceOrientation()
 
     [self addSubview:_scrollView.get()];
 
-    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self]);
+    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds processPool:processPool configuration:WTF::move(webPageConfiguration) webView:self]);
 
     _page = [_contentView page];
     _page->setDeviceOrientation(deviceOrientation());
@@ -341,7 +342,7 @@ static int32_t deviceOrientation()
 #endif
 
 #if PLATFORM(MAC)
-    _wkView = adoptNS([[WKView alloc] initWithFrame:bounds context:context configuration:WTF::move(webPageConfiguration) webView:self]);
+    _wkView = adoptNS([[WKView alloc] initWithFrame:bounds processPool:processPool configuration:WTF::move(webPageConfiguration) webView:self]);
     [self addSubview:_wkView.get()];
     _page = WebKit::toImpl([_wkView pageRef]);
 
@@ -378,7 +379,7 @@ static int32_t deviceOrientation()
 - (void)dealloc
 {
     if (_remoteObjectRegistry)
-        _page->process().context().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID());
+        _page->process().processPool().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID());
 
     _page->close();
 
@@ -386,6 +387,7 @@ static int32_t deviceOrientation()
 #if PLATFORM(IOS)
     [[_configuration _contentProviderRegistry] removePage:*_page];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [_scrollView setInternalDelegate:nil];
 #endif
 
     pageToViewMap().remove(_page.get());
@@ -581,7 +583,7 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 {
     auto handler = adoptNS([completionHandler copy]);
 
-    _page->runJavaScriptInMainFrame(javaScriptString, [handler](WebKit::WebSerializedScriptValue* serializedScriptValue, WebKit::ScriptValueCallback::Error errorCode) {
+    _page->runJavaScriptInMainFrame(javaScriptString, [handler](API::SerializedScriptValue* serializedScriptValue, WebKit::ScriptValueCallback::Error errorCode) {
         if (!handler)
             return;
 
@@ -1620,7 +1622,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     if (!_remoteObjectRegistry) {
         _remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithMessageSender:*_page]);
-        _page->process().context().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
+        _page->process().processPool().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
     }
 
     return _remoteObjectRegistry.get();

@@ -64,7 +64,7 @@ WorkerMessagingProxy::WorkerMessagingProxy(Worker* workerObject)
     , m_workerThreadHadPendingActivity(false)
     , m_askedToTerminate(false)
 #if ENABLE(INSPECTOR)
-    , m_pageInspector(0)
+    , m_pageInspector(nullptr)
 #endif
 {
     ASSERT(m_workerObject);
@@ -84,10 +84,7 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     // FIXME: This need to be revisited when we support nested worker one day
     ASSERT(m_scriptExecutionContext);
     Document& document = downcast<Document>(*m_scriptExecutionContext);
-    GroupSettings* settings = nullptr;
-    if (document.page())
-        settings = &document.page()->group().groupSettings();
-    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, settings, sourceCode, *this, *this, startMode, document.contentSecurityPolicy()->deprecatedHeader(), document.contentSecurityPolicy()->deprecatedHeaderType(), document.topOrigin());
+    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, sourceCode, *this, *this, startMode, document.contentSecurityPolicy()->deprecatedHeader(), document.contentSecurityPolicy()->deprecatedHeaderType(), document.topOrigin());
     workerThreadCreated(thread);
     thread->start();
     InspectorInstrumentation::didStartWorkerGlobalScope(m_scriptExecutionContext.get(), this, scriptURL);
@@ -296,7 +293,8 @@ void WorkerMessagingProxy::postMessageToPageInspector(const String& message)
 {
     StringCapture capturedMessage(message);
     m_scriptExecutionContext->postTask([this, capturedMessage] (ScriptExecutionContext&) {
-        m_pageInspector->dispatchMessageFromWorker(capturedMessage.string());
+        if (m_pageInspector)
+            m_pageInspector->dispatchMessageFromWorker(capturedMessage.string());
     });
 }
 #endif

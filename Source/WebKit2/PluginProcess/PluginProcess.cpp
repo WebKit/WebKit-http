@@ -57,9 +57,6 @@ PluginProcess& PluginProcess::shared()
 PluginProcess::PluginProcess()
     : m_supportsAsynchronousPluginInitialization(false)
     , m_minimumLifetimeTimer(RunLoop::main(), this, &PluginProcess::minimumLifetimeTimerFired)
-#if PLATFORM(COCOA)
-    , m_compositingRenderServerPort(MACH_PORT_NULL)
-#endif
     , m_connectionActivity("PluginProcess connection activity.")
 {
     NetscapePlugin::setSetExceptionFunction(WebProcessConnection::setGlobalException);
@@ -123,23 +120,23 @@ bool PluginProcess::shouldTerminate()
     return m_webProcessConnections.isEmpty();
 }
 
-void PluginProcess::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
+void PluginProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
     didReceivePluginProcessMessage(connection, decoder);
 }
 
-void PluginProcess::didClose(IPC::Connection*)
+void PluginProcess::didClose(IPC::Connection&)
 {
     // The UI process has crashed, just go ahead and quit.
     // FIXME: If the plug-in is spinning in the main loop, we'll never get this message.
     stopRunLoop();
 }
 
-void PluginProcess::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference, IPC::StringReference)
+void PluginProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
 {
 }
 
-void PluginProcess::initializePluginProcess(const PluginProcessCreationParameters& parameters)
+void PluginProcess::initializePluginProcess(PluginProcessCreationParameters&& parameters)
 {
     ASSERT(!m_pluginModule);
 
@@ -147,7 +144,7 @@ void PluginProcess::initializePluginProcess(const PluginProcessCreationParameter
     setMinimumLifetime(parameters.minimumLifetime);
     setTerminationTimeout(parameters.terminationTimeout);
 
-    platformInitializePluginProcess(parameters);
+    platformInitializePluginProcess(WTF::move(parameters));
 }
 
 void PluginProcess::createWebProcessConnection()

@@ -30,7 +30,6 @@
 
 #import <WebCore/NotImplemented.h>
 
-#import "WebContext.h"
 #import "WebProcessMessages.h"
 
 namespace WebKit {
@@ -48,17 +47,6 @@ void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& l
     launchOptions.executableHeap = false;
 
     launchOptions.useXPC = true;
-}
-
-bool WebProcessProxy::allPagesAreProcessSuppressible() const
-{
-    notImplemented();
-    return false;
-}
-
-void WebProcessProxy::updateProcessSuppressionState()
-{
-    notImplemented();
 }
 
 } // namespace WebKit

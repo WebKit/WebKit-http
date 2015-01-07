@@ -86,14 +86,14 @@ HTMLCanvasElement::HTMLCanvasElement(const QualifiedName& tagName, Document& doc
     ASSERT(hasTagName(canvasTag));
 }
 
-RefPtr<HTMLCanvasElement> HTMLCanvasElement::create(Document& document)
+Ref<HTMLCanvasElement> HTMLCanvasElement::create(Document& document)
 {
-    return adoptRef(new HTMLCanvasElement(canvasTag, document));
+    return adoptRef(*new HTMLCanvasElement(canvasTag, document));
 }
 
-RefPtr<HTMLCanvasElement> HTMLCanvasElement::create(const QualifiedName& tagName, Document& document)
+Ref<HTMLCanvasElement> HTMLCanvasElement::create(const QualifiedName& tagName, Document& document)
 {
-    return adoptRef(new HTMLCanvasElement(tagName, document));
+    return adoptRef(*new HTMLCanvasElement(tagName, document));
 }
 
 HTMLCanvasElement::~HTMLCanvasElement()
@@ -111,7 +111,7 @@ void HTMLCanvasElement::parseAttribute(const QualifiedName& name, const AtomicSt
     HTMLElement::parseAttribute(name, value);
 }
 
-RenderPtr<RenderElement> HTMLCanvasElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLCanvasElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     Frame* frame = document().frame();
     if (frame && frame->script().canExecuteScripts(NotAboutToExecuteScript)) {

@@ -36,6 +36,7 @@
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
 #import "DictionaryPopupInfo.h"
+#import "StorageThread.h"
 #import "WebAlternativeTextClient.h"
 #import "WebApplicationCache.h"
 #import "WebBackForwardListInternal.h"
@@ -45,6 +46,7 @@
 #import "WebDOMOperationsPrivate.h"
 #import "WebDataSourceInternal.h"
 #import "WebDatabaseManagerPrivate.h"
+#import "WebDatabaseProvider.h"
 #import "WebDefaultEditingDelegate.h"
 #import "WebDefaultPolicyDelegate.h"
 #import "WebDefaultUIDelegate.h"
@@ -175,12 +177,13 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/Settings.h>
-#import <WebCore/StorageThread.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/UserAgent.h>
 #import <WebCore/UserContentController.h>
+#import <WebCore/UserScript.h>
+#import <WebCore/UserStyleSheet.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreView.h>
 #import <WebCore/Widget.h>
@@ -895,7 +898,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
         RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
-        _private->immediateActionController = [[WebImmediateActionController alloc] initWithWebView:self];
+        _private->immediateActionController = [[WebImmediateActionController alloc] initWithWebView:self recognizer:recognizer.get()];
         [recognizer setDelegate:_private->immediateActionController];
         [self addGestureRecognizer:recognizer.get()];
     }
@@ -964,6 +967,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
+    pageConfiguration.databaseProvider = &WebDatabaseProvider::shared();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentController = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
@@ -1219,9 +1223,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->settings().setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
     _private->page->settings().setScreenFontSubstitutionEnabled(false);
     
-    // FIXME: <rdar://problem/7394370> Always use primary font baseline in text field base line calculation, ignore fallback fonts.
-    _private->page->settings().setAlwaysUseBaselineOfPrimaryFont([preferences _alwaysUseBaselineOfPrimaryFont]);
-
     _private->page->settings().setFontFallbackPrefersPictographs(true);
     _private->page->settings().setPictographFontFamily("AppleColorEmoji");
     
@@ -2347,7 +2348,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if PLATFORM(IOS)
     settings.setStandalone([preferences _standalone]);
     settings.setTelephoneNumberParsingEnabled([preferences _telephoneNumberParsingEnabled]);
-    settings.setAlwaysUseBaselineOfPrimaryFont([preferences _alwaysUseBaselineOfPrimaryFont]);
     settings.setAllowMultiElementImplicitSubmission([preferences _allowMultiElementImplicitFormSubmission]);
     settings.setLayoutInterval(std::chrono::milliseconds([preferences _layoutInterval]));
     settings.setMaxParseDuration([preferences _maxParseDuration]);
@@ -3964,12 +3964,12 @@ static inline IMP getMethod(id o, SEL s)
 
 + (void)_addOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
 {
-    SecurityPolicy::addOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    SecurityPolicy::addOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
 + (void)_removeOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
 {
-    SecurityPolicy::removeOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    SecurityPolicy::removeOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
 + (void)_resetOriginAccessWhitelists
@@ -4807,7 +4807,6 @@ static Vector<String> toStringVector(NSArray* patterns)
         [WebPluginDatabase closeSharedDatabase];
 
     WebStorageNamespaceProvider::closeLocalStorage();
-    PageGroup::closeLocalStorage();
 }
 #endif // !PLATFORM(IOS)
 
@@ -7205,9 +7204,14 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
     return [[self _editingDelegateForwarder] webView:self shouldChangeSelectedDOMRange:currentRange toDOMRange:proposedRange affinity:selectionAffinity stillSelecting:flag];
 }
 
+- (void)_setMaintainsInactiveSelection:(BOOL)shouldMaintainInactiveSelection
+{
+    _private->shouldMaintainInactiveSelection = shouldMaintainInactiveSelection;
+}
+
 - (BOOL)maintainsInactiveSelection
 {
-    return NO;
+    return _private->shouldMaintainInactiveSelection;
 }
 
 - (void)setSelectedDOMRange:(DOMRange *)range affinity:(NSSelectionAffinity)selectionAffinity
@@ -8605,9 +8609,41 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 {
     return _private->actionMenuController;
 }
+
+- (WebImmediateActionController *)_immediateActionController
+{
+    return _private->immediateActionController;
+}
+
+- (id)_animationControllerForDictionaryLookupPopupInfo:(const DictionaryPopupInfo&)dictionaryPopupInfo
+{
+    if (!dictionaryPopupInfo.attributedString)
+        return nil;
+
+    NSPoint textBaselineOrigin = dictionaryPopupInfo.origin;
+
+    // Convert to screen coordinates.
+    textBaselineOrigin = [self.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
+
+    if (canLoadLUTermOptionDisableSearchTermIndicator() && canLoadLUNotificationPopoverWillClose()) {
+        if (!_private->hasInitializedLookupObserver) {
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
+            _private->hasInitializedLookupObserver = YES;
+        }
+
+        RetainPtr<NSMutableDictionary> mutableOptions = adoptNS([dictionaryPopupInfo.options mutableCopy]);
+        if (!mutableOptions)
+            mutableOptions = adoptNS([[NSMutableDictionary alloc] init]);
+        [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
+        [self _setTextIndicator:dictionaryPopupInfo.textIndicator.get() fadeOut:NO];
+        return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
+    }
+
+    return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
+}
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
-- (void)_setTextIndicator:(TextIndicator *)textIndicator fadeOut:(BOOL)fadeOut animationCompletionHandler:(std::function<void ()>)completionHandler
+- (void)_setTextIndicator:(TextIndicator *)textIndicator fadeOut:(BOOL)fadeOut
 {
     if (!textIndicator) {
         _private->textIndicatorWindow = nullptr;
@@ -8618,12 +8654,18 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
         _private->textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
     NSRect contentRect = [self.window convertRectToScreen:textIndicator->textBoundingRectInWindowCoordinates()];
-    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut, WTF::move(completionHandler));
+    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut);
 }
 
 - (void)_clearTextIndicator
 {
-    [self _setTextIndicator:nullptr fadeOut:NO animationCompletionHandler:^ { }];
+    [self _setTextIndicator:nullptr fadeOut:NO];
+}
+
+- (void)_setTextIndicatorAnimationProgress:(float)progress
+{
+    if (_private->textIndicatorWindow)
+        _private->textIndicatorWindow->setAnimationProgress(progress);
 }
 
 - (void)_showDictionaryLookupPopup:(const DictionaryPopupInfo&)dictionaryPopupInfo
@@ -8646,16 +8688,15 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
         if (!mutableOptions)
             mutableOptions = adoptNS([[NSMutableDictionary alloc] init]);
         [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
-        [self _setTextIndicator:dictionaryPopupInfo.textIndicator.get() fadeOut:NO animationCompletionHandler:[dictionaryPopupInfo, textBaselineOrigin, mutableOptions] {
-            [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
-        }];
+        [self _setTextIndicator:dictionaryPopupInfo.textIndicator.get() fadeOut:NO];
+        [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
     } else
         [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
 }
 
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
 {
-    [self _setTextIndicator:nullptr fadeOut:NO animationCompletionHandler:[] { }];
+    [self _setTextIndicator:nullptr fadeOut:NO];
 }
 #endif // PLATFORM(MAC)
 

@@ -733,31 +733,15 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, float x1
             return;
         case DOTTED:
         case DASHED: {
-            if (thickness > 0) {
-                bool wasAntialiased = graphicsContext->shouldAntialias();
-                StrokeStyle oldStrokeStyle = graphicsContext->strokeStyle();
-                graphicsContext->setShouldAntialias(antialias);
-                graphicsContext->setStrokeColor(color, style.colorSpace());
-                graphicsContext->setStrokeThickness(thickness);
-                graphicsContext->setStrokeStyle(borderStyle == DASHED ? DashedStroke : DottedStroke);
-
-                // FIXME: There's some odd adjustment in GraphicsContext::drawLine() that disables device pixel precision line drawing.
-                int adjustedX = floorToInt((x1 + x2) / 2);
-                int adjustedY = floorToInt((y1 + y2) / 2);
-
-                switch (side) {
-                    case BSBottom:
-                    case BSTop:
-                        graphicsContext->drawLine(FloatPoint(x1, adjustedY), FloatPoint(x2, adjustedY));
-                        break;
-                    case BSRight:
-                    case BSLeft:
-                        graphicsContext->drawLine(FloatPoint(adjustedX, y1), FloatPoint(adjustedX, y2));
-                        break;
-                }
-                graphicsContext->setShouldAntialias(wasAntialiased);
-                graphicsContext->setStrokeStyle(oldStrokeStyle);
-            }
+            bool wasAntialiased = graphicsContext->shouldAntialias();
+            StrokeStyle oldStrokeStyle = graphicsContext->strokeStyle();
+            graphicsContext->setShouldAntialias(antialias);
+            graphicsContext->setStrokeColor(color, style.colorSpace());
+            graphicsContext->setStrokeThickness(thickness);
+            graphicsContext->setStrokeStyle(borderStyle == DASHED ? DashedStroke : DottedStroke);
+            graphicsContext->drawLine(roundPointToDevicePixels(LayoutPoint(x1, y1), deviceScaleFactor), roundPointToDevicePixels(LayoutPoint(x2, y2), deviceScaleFactor));
+            graphicsContext->setShouldAntialias(wasAntialiased);
+            graphicsContext->setStrokeStyle(oldStrokeStyle);
             break;
         }
         case DOUBLE: {
@@ -1648,9 +1632,7 @@ void RenderObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformSt
 bool RenderObject::shouldUseTransformFromContainer(const RenderObject* containerObject) const
 {
 #if ENABLE(3D_RENDERING)
-    // hasTransform() indicates whether the object has transform, transform-style or perspective. We just care about transform,
-    // so check the layer's transform directly.
-    return (hasLayer() && downcast<RenderLayerModelObject>(*this).layer()->transform()) || (containerObject && containerObject->style().hasPerspective());
+    return hasTransform() || (containerObject && containerObject->style().hasPerspective());
 #else
     UNUSED_PARAM(containerObject);
     return hasTransform();
@@ -1811,6 +1793,7 @@ RenderElement* RenderObject::container(const RenderLayerModelObject* repaintCont
         // we'll just return 0).
         // FIXME: The definition of view() has changed to not crawl up the render tree.  It might
         // be safe now to use it.
+        // FIXME: share code with containingBlockForFixedPosition().
         while (o && o->parent() && !(o->hasTransform() && o->isRenderBlock())) {
             // foreignObject is the containing block for its contents.
             if (o->isSVGForeignObject())
@@ -1830,7 +1813,9 @@ RenderElement* RenderObject::container(const RenderLayerModelObject* repaintCont
         // Same goes here.  We technically just want our containing block, but
         // we may not have one if we're part of an uninstalled subtree.  We'll
         // climb as high as we can though.
-        while (o && o->style().position() == StaticPosition && !o->isRenderView() && !(o->hasTransform() && o->isRenderBlock())) {
+        // FIXME: share code with isContainingBlockCandidateForAbsolutelyPositionedObject().
+        // FIXME: hasTransformRelatedProperty() includes preserves3D() check, but this may need to change: https://www.w3.org/Bugs/Public/show_bug.cgi?id=27566
+        while (o && o->style().position() == StaticPosition && !o->isRenderView() && !(o->hasTransformRelatedProperty() && o->isRenderBlock())) {
             if (o->isSVGForeignObject()) // foreignObject is the containing block for contents inside it
                 break;
 

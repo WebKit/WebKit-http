@@ -42,7 +42,7 @@ class TemplateContentDocumentFragment;
 
 class HTMLTemplateElement final : public HTMLElement {
 public:
-    static RefPtr<HTMLTemplateElement> create(const QualifiedName&, Document&);
+    static Ref<HTMLTemplateElement> create(const QualifiedName&, Document&);
     virtual ~HTMLTemplateElement();
 
     DocumentFragment* content() const;
@@ -50,7 +50,7 @@ public:
 private:
     HTMLTemplateElement(const QualifiedName&, Document&);
 
-    virtual RefPtr<Node> cloneNode(bool deep) override;
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override;
     virtual void didMoveToNewDocument(Document* oldDocument) override;
 
     mutable RefPtr<TemplateContentDocumentFragment> m_content;

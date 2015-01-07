@@ -139,12 +139,14 @@
 
   <autotools id="llvm"
              autogen-sh="configure"
-             autogenargs="--enable-optimized=yes --enable-backtraces=no --enable-targets=x86_64 --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no --disable-expensive-checks --disable-debug-runtime --disable-assertions">
+             autogenargs="--enable-optimized=yes --enable-backtraces=no --enable-targets=host --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no --disable-expensive-checks --disable-debug-runtime --disable-assertions">
     <branch repo="llvm-tar"
             module="/releases/3.5.0/llvm-3.5.0.src.tar.xz" version="3.5.0" checkoutdir="llvm"
             hash="sha256:28e199f368ef0a4666708f31c7991ad3bcc3a578342b0306526dd35f07595c03">
       <patch file="llvm-elf-allow-fde-references-outside-the-2gb-range.patch" strip="1"/>
+      <patch file="llvm-elf-allow-fde-references-outside-the-2gb-range-arm64.patch" strip="1"/>
       <patch file="llvm-elf-add-stackmaps.patch" strip="1"/>
+      <patch file="llvm-elf-add-stackmaps-arm64.patch" strip="1"/>
     </branch>
   </autotools>
 
@@ -285,9 +287,9 @@
   <autotools id="atk"
              autogen-sh="configure"
              autogenargs="--disable-introspection">
-    <branch module="pub/GNOME/sources/atk/2.11/atk-2.11.92.tar.xz" version="2.11.92"
+    <branch module="pub/GNOME/sources/atk/2.15/atk-2.15.2.tar.xz" version="2.15.2"
             repo="ftp.gnome.org"
-            hash="sha256:71e9880f1b704dfd98806643b8dc66a5df4fcef155cf5944184d8e8f66dac689"/>
+            hash="sha256:179d15424b8aa3a5726903f0da458de68e0585dfd9d451c6dcfcdb6b7b509cbe"/>
     <dependencies>
         <dep package="glib"/>
     </dependencies>

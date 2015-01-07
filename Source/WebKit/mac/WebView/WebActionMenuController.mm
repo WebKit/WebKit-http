@@ -30,7 +30,6 @@
 #import "DOMElementInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
-#import "DictionaryPopupInfo.h"
 #import "WebDocumentInternal.h"
 #import "WebElementDictionary.h"
 #import "WebFrameInternal.h"
@@ -53,7 +52,6 @@
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLConverter.h>
-#import <WebCore/LookupSPI.h>
 #import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSSharingServicePickerSPI.h>
 #import <WebCore/NSSharingServiceSPI.h>
@@ -71,14 +69,8 @@
 #import <objc/objc-class.h>
 #import <objc/objc.h>
 
-SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, QuickLookUI)
-SOFT_LINK_CLASS(QuickLookUI, QLPreviewMenuItem)
-
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, ImageKit)
 SOFT_LINK_CLASS(ImageKit, IKSlideshow)
-
-@interface WebActionMenuController () <QLPreviewMenuItemDelegate>
-@end
 
 using namespace WebCore;
 
@@ -262,26 +254,19 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
     if (!view)
         return IntRect();
 
-    return view->contentsToWindow(rendererBoundingBox(*node));
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+        return IntRect();
+
+    return view->contentsToWindow(renderer->absoluteBoundingBoxRect());
 }
 
 - (NSArray *)_defaultMenuItemsForLink
 {
     RetainPtr<NSMenuItem> openLinkItem = [self _createActionMenuItemForTag:WebActionMenuItemTagOpenLinkInDefaultBrowser];
-
-    BOOL shouldUseStandardQuickLookPreview = [NSMenuItem respondsToSelector:@selector(standardQuickLookMenuItem)];
-    RetainPtr<NSMenuItem> previewLinkItem;
-    RetainPtr<QLPreviewMenuItem> qlPreviewLinkItem;
-    if (shouldUseStandardQuickLookPreview) {
-        qlPreviewLinkItem = [NSMenuItem standardQuickLookMenuItem];
-        [qlPreviewLinkItem setPreviewStyle:QLPreviewStylePopover];
-        [qlPreviewLinkItem setDelegate:self];
-    } else
-        previewLinkItem = [NSMenuItem separatorItem];
-
     RetainPtr<NSMenuItem> readingListItem = [self _createActionMenuItemForTag:WebActionMenuItemTagAddLinkToSafariReadingList];
 
-    return @[ openLinkItem.get(), shouldUseStandardQuickLookPreview ? qlPreviewLinkItem.get() : previewLinkItem.get(), [NSMenuItem separatorItem], readingListItem.get() ];
+    return @[ openLinkItem.get(), [NSMenuItem separatorItem], [NSMenuItem separatorItem], readingListItem.get() ];
 }
 
 #pragma mark mailto: and tel: Link actions
@@ -476,20 +461,18 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 - (NSArray *)_defaultMenuItemsForText
 {
     RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
-    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagLookupText];
     RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
     [pasteItem setEnabled:NO];
 
-    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get() ];
 }
 
 - (NSArray *)_defaultMenuItemsForEditableText
 {
     RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
-    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagLookupText];
     RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
 
-    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get() ];
 }
 
 - (NSArray *)_defaultMenuItemsForEditableTextWithSuggestions
@@ -526,13 +509,12 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     }
 
     RetainPtr<NSMenuItem> copyTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagCopyText];
-    RetainPtr<NSMenuItem> lookupTextItem = [self _createActionMenuItemForTag:WebActionMenuItemTagLookupText];
     RetainPtr<NSMenuItem> pasteItem = [self _createActionMenuItemForTag:WebActionMenuItemTagPaste];
     RetainPtr<NSMenuItem> textSuggestionsItem = [self _createActionMenuItemForTag:WebActionMenuItemTagTextSuggestions];
 
     [textSuggestionsItem setSubmenu:spellingSubMenu.get()];
 
-    return @[ copyTextItem.get(), lookupTextItem.get(), pasteItem.get(), textSuggestionsItem.get() ];
+    return @[ copyTextItem.get(), [NSMenuItem separatorItem], pasteItem.get(), textSuggestionsItem.get() ];
 }
 
 - (void)_selectDataDetectedText
@@ -592,16 +574,6 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     [_webView copy:self];
 }
 
-- (void)_lookupText:(id)sender
-{
-    Frame* frame = core([_webView _selectedOrMainFrame]);
-    if (!frame)
-        return;
-
-    DictionaryPopupInfo popupInfo = performDictionaryLookupForSelection(frame, frame->selection().selection());
-    [_webView _showDictionaryLookupPopup:popupInfo];
-}
-
 - (void)_paste:(id)sender
 {
     [_webView paste:self];
@@ -631,56 +603,6 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
 
     WebHTMLView *documentView = [[[_webView _selectedOrMainFrame] frameView] documentView];
     [documentView _changeSpellingToWord:selectedCorrection];
-}
-
-static DictionaryPopupInfo performDictionaryLookupForSelection(Frame* frame, const VisibleSelection& selection)
-{
-    NSDictionary *options = nil;
-    DictionaryPopupInfo popupInfo;
-    RefPtr<Range> selectedRange = rangeForDictionaryLookupForSelection(selection, &options);
-    if (selectedRange)
-        popupInfo = performDictionaryLookupForRange(frame, *selectedRange, options, TextIndicatorPresentationTransition::BounceAndCrossfade);
-    return popupInfo;
-}
-
-static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& range, NSDictionary *options, TextIndicatorPresentationTransition presentationTransition)
-{
-    DictionaryPopupInfo popupInfo;
-    if (range.text().stripWhiteSpace().isEmpty())
-        return popupInfo;
-    
-    RenderObject* renderer = range.startContainer()->renderer();
-    const RenderStyle& style = renderer->style();
-
-    Vector<FloatQuad> quads;
-    range.textQuads(quads);
-    if (quads.isEmpty())
-        return popupInfo;
-
-    IntRect rangeRect = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
-
-    popupInfo.origin = NSMakePoint(rangeRect.x(), rangeRect.y() + (style.fontMetrics().descent() * frame->page()->pageScaleFactor()));
-    popupInfo.options = options;
-
-    NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range, IncludeImagesInAttributedString::No);
-    RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
-    NSFontManager *fontManager = [NSFontManager sharedFontManager];
-
-    [nsAttributedString enumerateAttributesInRange:NSMakeRange(0, [nsAttributedString length]) options:0 usingBlock:^(NSDictionary *attributes, NSRange range, BOOL *stop) {
-        RetainPtr<NSMutableDictionary> scaledAttributes = adoptNS([attributes mutableCopy]);
-
-        NSFont *font = [scaledAttributes objectForKey:NSFontAttributeName];
-        if (font) {
-            font = [fontManager convertFont:font toSize:[font pointSize] * frame->page()->pageScaleFactor()];
-            [scaledAttributes setObject:font forKey:NSFontAttributeName];
-        }
-
-        [scaledNSAttributedString addAttributes:scaledAttributes.get() range:range];
-    }];
-
-    popupInfo.attributedString = scaledNSAttributedString.get();
-    popupInfo.textIndicator = TextIndicator::createWithRange(range, presentationTransition);
-    return popupInfo;
 }
 
 #pragma mark Whitespace actions
@@ -721,26 +643,6 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
     return _webView.window;
 }
 
-#pragma mark QLPreviewMenuItemDelegate implementation
-
-- (NSView *)menuItem:(NSMenuItem *)menuItem viewAtScreenPoint:(NSPoint)screenPoint
-{
-    return _webView;
-}
-
-- (id<QLPreviewItem>)menuItem:(NSMenuItem *)menuItem previewItemAtPoint:(NSPoint)point
-{
-    if (!_webView)
-        return nil;
-
-    return _hitTestResult.absoluteLinkURL();
-}
-
-- (NSRectEdge)menuItem:(NSMenuItem *)menuItem preferredEdgeForPoint:(NSPoint)point
-{
-    return NSMaxYEdge;
-}
-
 #pragma mark Menu Items
 
 - (RetainPtr<NSMenuItem>)_createActionMenuItemForTag:(uint32_t)tag
@@ -768,13 +670,6 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
         title = WEB_UI_STRING_KEY("Copy", "Copy (text action menu item)", "text action menu item");
         image = [NSImage imageNamed:@"NSActionMenuCopy"];
         enabled = _hitTestResult.allowsCopy();
-        break;
-
-    case WebActionMenuItemTagLookupText:
-        selector = @selector(_lookupText:);
-        title = WEB_UI_STRING_KEY("Look Up", "Look Up (action menu item)", "action menu item");
-        image = [NSImage imageNamed:@"NSActionMenuLookup"];
-        enabled = getLULookupDefinitionModuleClass() && _hitTestResult.allowsCopy();
         break;
 
     case WebActionMenuItemTagPaste:
@@ -923,7 +818,7 @@ static DictionaryPopupInfo performDictionaryLookupForRange(Frame* frame, Range& 
         return;
 
     if (_type == WebActionMenuDataDetectedItem && _currentDetectedDataTextIndicator) {
-        [_webView _setTextIndicator:_currentDetectedDataTextIndicator.get() fadeOut:NO animationCompletionHandler:^ { }];
+        [_webView _setTextIndicator:_currentDetectedDataTextIndicator.get() fadeOut:NO];
         _isShowingTextIndicator = YES;
     }
 }

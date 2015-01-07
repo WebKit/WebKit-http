@@ -35,7 +35,6 @@
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/RetainPtr.h>
 
 namespace WebCore {
@@ -53,7 +52,7 @@ class TileController final : public TiledBacking {
     friend class TileCoverageMap;
     friend class TileGrid;
 public:
-    explicit TileController(PlatformCALayer*);
+    WEBCORE_EXPORT explicit TileController(PlatformCALayer*);
     ~TileController();
 
     WEBCORE_EXPORT void tileCacheLayerBoundsChanged();

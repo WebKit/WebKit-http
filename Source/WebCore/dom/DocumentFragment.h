@@ -29,12 +29,9 @@
 
 namespace WebCore {
 
-class ScriptExecutionContext;
-
 class DocumentFragment : public ContainerNode {
 public:
-    static RefPtr<DocumentFragment> create(Document&);
-    static RefPtr<DocumentFragment> create(ScriptExecutionContext&);
+    static Ref<DocumentFragment> create(Document&);
 
     void parseHTML(const String&, Element* contextElement, ParserContentPolicy = AllowScriptingContent);
     bool parseXML(const String&, Element* contextElement, ParserContentPolicy = AllowScriptingContent);
@@ -48,7 +45,7 @@ protected:
 
 private:
     virtual NodeType nodeType() const override final;
-    virtual RefPtr<Node> cloneNode(bool deep) override;
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override;
     virtual bool childTypeAllowed(NodeType) const override;
 };
 

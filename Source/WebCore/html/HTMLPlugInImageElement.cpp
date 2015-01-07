@@ -189,7 +189,7 @@ bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const 
     return false;
 }
 
-RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     ASSERT(!document().inPageCache());
 
@@ -347,7 +347,7 @@ void HTMLPlugInImageElement::updateSnapshot(PassRefPtr<Image> image)
 
 static DOMWrapperWorld& plugInImageElementIsolatedWorld()
 {
-    static DOMWrapperWorld& isolatedWorld = *DOMWrapperWorld::create(JSDOMWindow::commonVM()).leakRef();
+    static DOMWrapperWorld& isolatedWorld = DOMWrapperWorld::create(JSDOMWindow::commonVM()).leakRef();
     return isolatedWorld;
 }
 

@@ -37,8 +37,6 @@
 #include "IntRect.h"
 #include "PlatformLayer.h"
 #include "TransformOperations.h"
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/TypeCasts.h>
 
 #if ENABLE(CSS_COMPOSITING)
@@ -183,7 +181,7 @@ public:
     const AnimationValue& at(size_t i) const { return *m_values.at(i); }
     
     // Insert, sorted by keyTime.
-    void insert(std::unique_ptr<const AnimationValue>);
+    WEBCORE_EXPORT void insert(std::unique_ptr<const AnimationValue>);
     
 protected:
     Vector<std::unique_ptr<const AnimationValue>> m_values;
@@ -462,7 +460,7 @@ public:
 
     // Return a string with a human readable form of the layer tree, If debug is true
     // pointers for the layers and timing data will be included in the returned string.
-    String layerTreeAsText(LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
+    WEBCORE_EXPORT String layerTreeAsText(LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
 
     // Return an estimate of the backing store memory cost (in bytes). May be incorrect for tiled layers.
     WEBCORE_EXPORT virtual double backingStoreMemoryEstimate() const;

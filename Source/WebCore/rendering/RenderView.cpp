@@ -93,7 +93,7 @@ struct SelectionIterator {
     }
 };
 
-RenderView::RenderView(Document& document, PassRef<RenderStyle> style)
+RenderView::RenderView(Document& document, Ref<RenderStyle>&& style)
     : RenderBlockFlow(document, WTF::move(style))
     , m_frameView(*document.view())
     , m_selectionUnsplitStart(0)
@@ -420,9 +420,9 @@ void RenderView::mapLocalToContainer(const RenderLayerModelObject* repaintContai
     ASSERT_ARG(repaintContainer, !repaintContainer || repaintContainer == this);
     ASSERT_UNUSED(wasFixed, !wasFixed || *wasFixed == (mode & IsFixed));
 
-    if (!repaintContainer && mode & UseTransforms && shouldUseTransformFromContainer(0)) {
+    if (!repaintContainer && mode & UseTransforms && shouldUseTransformFromContainer(nullptr)) {
         TransformationMatrix t;
-        getTransformFromContainer(0, LayoutSize(), t);
+        getTransformFromContainer(nullptr, LayoutSize(), t);
         transformState.applyTransform(t);
     }
     
@@ -446,9 +446,9 @@ const RenderObject* RenderView::pushMappingToContainer(const RenderLayerModelObj
     LayoutSize scrollOffset = frameView().scrollOffsetForFixedPosition();
 #endif
 
-    if (!ancestorToStopAt && shouldUseTransformFromContainer(0)) {
+    if (!ancestorToStopAt && shouldUseTransformFromContainer(nullptr)) {
         TransformationMatrix t;
-        getTransformFromContainer(0, LayoutSize(), t);
+        getTransformFromContainer(nullptr, LayoutSize(), t);
         geometryMap.pushView(this, scrollOffset, &t);
     } else
         geometryMap.pushView(this, scrollOffset);
@@ -465,9 +465,9 @@ void RenderView::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformStat
         transformState.move(frameView().scrollOffsetForFixedPosition());
 #endif
 
-    if (mode & UseTransforms && shouldUseTransformFromContainer(0)) {
+    if (mode & UseTransforms && shouldUseTransformFromContainer(nullptr)) {
         TransformationMatrix t;
-        getTransformFromContainer(0, LayoutSize(), t);
+        getTransformFromContainer(nullptr, LayoutSize(), t);
         transformState.applyTransform(t);
     }
 }
@@ -619,6 +619,8 @@ void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
     if (!shouldRepaint(repaintRect))
         return;
 
+    // FIXME: enclosingRect is needed as long as we integral snap ScrollView/FrameView/RenderWidget size/position.
+    IntRect enclosingRect = enclosingIntRect(repaintRect);
     if (auto ownerElement = document().ownerElement()) {
         RenderBox* ownerBox = ownerElement->renderBox();
         if (!ownerBox)
@@ -626,9 +628,9 @@ void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
         LayoutRect viewRect = this->viewRect();
 #if PLATFORM(IOS)
         // Don't clip using the visible rect since clipping is handled at a higher level on iPhone.
-        LayoutRect adjustedRect = repaintRect;
+        LayoutRect adjustedRect = enclosingRect;
 #else
-        LayoutRect adjustedRect = intersection(repaintRect, viewRect);
+        LayoutRect adjustedRect = intersection(enclosingRect, viewRect);
 #endif
         adjustedRect.moveBy(-viewRect.location());
         adjustedRect.moveBy(ownerBox->contentBoxRect().location());
@@ -637,9 +639,6 @@ void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
     }
 
     frameView().addTrackedRepaintRect(snapRectToDevicePixels(repaintRect, document().deviceScaleFactor()));
-
-    // FIXME: convert all repaint rect dependencies to FloatRect.
-    IntRect enclosingRect = enclosingIntRect(repaintRect);
     if (!m_accumulatedRepaintRegion) {
         frameView().repaintContentRectangle(enclosingRect);
         return;

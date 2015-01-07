@@ -142,7 +142,7 @@ public:
 
     virtual void updateFromStyle() override;
 
-    virtual bool requiresLayer() const override { return isRoot() || isPositioned() || createsGroup() || hasClipPath() || hasTransform() || hasHiddenBackface() || hasReflection(); }
+    virtual bool requiresLayer() const override { return isRoot() || isPositioned() || createsGroup() || hasClipPath() || hasTransformRelatedProperty() || hasHiddenBackface() || hasReflection(); }
 
     // This will work on inlines to return the bounding box of all of the lines' border boxes.
     virtual IntRect borderBoundingBox() const = 0;
@@ -251,8 +251,8 @@ public:
     void suspendAnimations(double time = 0);
 
 protected:
-    RenderBoxModelObject(Element&, PassRef<RenderStyle>, unsigned baseTypeFlags);
-    RenderBoxModelObject(Document&, PassRef<RenderStyle>, unsigned baseTypeFlags);
+    RenderBoxModelObject(Element&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
+    RenderBoxModelObject(Document&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
 
     virtual void willBeDestroyed() override;
 

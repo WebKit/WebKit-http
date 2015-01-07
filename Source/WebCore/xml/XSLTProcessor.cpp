@@ -37,6 +37,7 @@
 #include "HTMLDocument.h"
 #include "Page.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginPolicy.h"
 #include "Text.h"
 #include "TextResourceDecoder.h"
 #include "markup.h"
@@ -76,7 +77,7 @@ PassRefPtr<Document> XSLTProcessor::createDocumentFromSource(const String& sourc
 
     RefPtr<Document> result;
     if (sourceMIMEType == "text/plain") {
-        result = Document::create(frame, sourceIsDocument ? ownerDocument->url() : URL());
+        result = Document::createXHTML(frame, sourceIsDocument ? ownerDocument->url() : URL());
         transformTextStringToXHTMLDocumentString(documentSource);
     } else
         result = DOMImplementation::createDocument(sourceMIMEType, frame, sourceIsDocument ? ownerDocument->url() : URL());
@@ -90,13 +91,13 @@ PassRefPtr<Document> XSLTProcessor::createDocumentFromSource(const String& sourc
         if (Document* oldDocument = frame->document()) {
             result->setTransformSourceDocument(oldDocument);
             result->takeDOMWindowFrom(oldDocument);
-            result->setSecurityOrigin(oldDocument->securityOrigin());
+            result->setSecurityOriginPolicy(oldDocument->securityOriginPolicy());
             result->setCookieURL(oldDocument->cookieURL());
             result->setFirstPartyForCookies(oldDocument->firstPartyForCookies());
             result->contentSecurityPolicy()->copyStateFrom(oldDocument->contentSecurityPolicy());
         }
 
-        frame->setDocument(result);
+        frame->setDocument(result.copyRef());
     }
 
     RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create(sourceMIMEType);

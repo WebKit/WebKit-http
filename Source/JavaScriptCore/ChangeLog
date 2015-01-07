@@ -1,3 +1,615 @@
+2015-01-06  Chris Dumez  <cdumez@apple.com>
+
+        Drop ResourceResponseBase::connectionID and connectionReused members
+        https://bugs.webkit.org/show_bug.cgi?id=140158
+
+        Reviewed by Sam Weinig.
+
+        Drop ResourceResponseBase::connectionID and connectionReused members.
+        Those were needed by the Chromium port but are no longer used.
+
+        * inspector/protocol/Network.json:
+
+2015-01-06  Mark Lam  <mark.lam@apple.com>
+
+        Add the lexicalEnvironment as an operand to op_create_arguments.
+        <https://webkit.org/b/140148>
+
+        Reviewed by Geoffrey Garen.
+
+        This patch only adds the operand to the bytecode.  It is not in use yet.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::createArgumentsIfNecessary):
+        - Adds the lexicalEnvironment register (if present) as an operand to
+          op_create_arguments.  Else, adds a constant empty JSValue.
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2015-01-06  Alexey Proskuryakov  <ap@apple.com>
+
+        ADDRESS_SANITIZER macro is overloaded
+        https://bugs.webkit.org/show_bug.cgi?id=140130
+
+        Reviewed by Anders Carlsson.
+
+        * interpreter/JSStack.cpp: (JSC::JSStack::sanitizeStack): Use the new macro.
+        This code is nearly unused (only compiled in when JIT is disabled at build time),
+        however I've been told that it's best to keep it.
+
+2015-01-06  Mark Lam  <mark.lam@apple.com>
+
+        Fix Use details for op_create_arguments.
+        <https://webkit.org/b/140110>
+
+        Rubber stamped by Filip Pizlo.
+
+        The previous patch was wrong about op_create_arguments not using its 1st operand.
+        It does read from it (hence, used) to check if the Arguments object has already
+        been created or not.  This patch reverts the change for op_create_arguments.
+
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+
+2015-01-06  Mark Lam  <mark.lam@apple.com>
+
+        Fix Use details for op_create_lexical_environment and op_create_arguments.
+        <https://webkit.org/b/140110>
+
+        Reviewed by Filip Pizlo.
+
+        The current "Use" details for op_create_lexical_environment and
+        op_create_arguments are wrong.  op_create_argument uses nothing instead of the
+        1st operand (the output local).  op_create_lexical_environment uses its 2nd
+        operand (the scope chain) instead of the 1st (the output local).
+        This patch fixes them to specify the proper uses.
+
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+
+2015-01-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement ES6 String.prototype.repeat(count)
+        https://bugs.webkit.org/show_bug.cgi?id=140047
+
+        Reviewed by Darin Adler.
+
+        Introducing ES6 String.prototype.repeat(count) function.
+
+        * runtime/JSString.h:
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::repeatSmallString):
+        (JSC::stringProtoFuncRepeat):
+
+2015-01-03  Michael Saboff  <msaboff@apple.com>
+
+        Crash in operationNewFunction when scrolling on Google+
+        https://bugs.webkit.org/show_bug.cgi?id=140033
+
+        Reviewed by Oliver Hunt.
+
+        In DFG code, the scope register can be eliminated because all uses have been
+        dead code eliminated.  In the case where one of the uses was creating a function
+        that is never used, the baseline code will still create the function.  If we OSR
+        exit to a path where that function gets created, check the scope register value
+        and set the new, but dead, function to undefined instead of creating a new function.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_new_func_exp):
+
+2015-01-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        String includes methods perform toString on searchString before toInt32 on a offset
+        https://bugs.webkit.org/show_bug.cgi?id=140031
+
+        Reviewed by Darin Adler.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncStartsWith):
+        (JSC::stringProtoFuncEndsWith):
+        (JSC::stringProtoFuncIncludes):
+
+2015-01-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Change to return std::unique_ptr<> in fooCreate()
+        https://bugs.webkit.org/show_bug.cgi?id=139983
+
+        Reviewed by Darin Adler.
+
+        To avoid unnecessary std::unique_ptr<> casting, fooCreate() returns std::unique_ptr<> directly.
+
+        * create_regex_tables:
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::YarrPattern::reset):
+        (JSC::Yarr::YarrPattern::newlineCharacterClass):
+        (JSC::Yarr::YarrPattern::digitsCharacterClass):
+        (JSC::Yarr::YarrPattern::spacesCharacterClass):
+        (JSC::Yarr::YarrPattern::wordcharCharacterClass):
+        (JSC::Yarr::YarrPattern::nondigitsCharacterClass):
+        (JSC::Yarr::YarrPattern::nonspacesCharacterClass):
+        (JSC::Yarr::YarrPattern::nonwordcharCharacterClass):
+
+2015-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2015
+        https://bugs.webkit.org/show_bug.cgi?id=139880
+
+        Reviewed by Darin Adler.
+
+        * Info.plist:
+
+2015-01-01  Darin Adler  <darin@apple.com>
+
+        We often misspell identifier as "identifer"
+        https://bugs.webkit.org/show_bug.cgi?id=140025
+
+        Reviewed by Michael Saboff.
+
+        * runtime/ArrayConventions.h: Fix it.
+
+2014-12-29  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Move JavaScriptCore/yarr to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=139621
+
+        Reviewed by Anders Carlsson.
+
+        Final clean up OwnPtr|PassOwnPtr in JavaScriptCore/yarr.
+
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::ByteCompiler::atomParenthesesSubpatternEnd):
+        * yarr/YarrInterpreter.h:
+        (JSC::Yarr::BytecodePattern::BytecodePattern):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::opCompileParenthesesSubpattern):
+        (JSC::Yarr::YarrGenerator::opCompileParentheticalAssertion):
+        (JSC::Yarr::YarrGenerator::opCompileBody):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::CharacterClassConstructor::charClass):
+        (JSC::Yarr::YarrPatternConstructor::YarrPatternConstructor):
+        (JSC::Yarr::YarrPatternConstructor::reset):
+        (JSC::Yarr::YarrPatternConstructor::atomPatternCharacter):
+        (JSC::Yarr::YarrPatternConstructor::atomCharacterClassEnd):
+        (JSC::Yarr::YarrPatternConstructor::atomParenthesesSubpatternBegin):
+        (JSC::Yarr::YarrPatternConstructor::atomParentheticalAssertionBegin):
+        (JSC::Yarr::YarrPatternConstructor::copyDisjunction):
+        (JSC::Yarr::YarrPatternConstructor::checkForTerminalParentheses):
+        (JSC::Yarr::YarrPatternConstructor::optimizeDotStarWrappedExpressions):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::PatternDisjunction::addNewAlternative):
+        (JSC::Yarr::YarrPattern::newlineCharacterClass):
+        (JSC::Yarr::YarrPattern::digitsCharacterClass):
+        (JSC::Yarr::YarrPattern::spacesCharacterClass):
+        (JSC::Yarr::YarrPattern::wordcharCharacterClass):
+        (JSC::Yarr::YarrPattern::nondigitsCharacterClass):
+        (JSC::Yarr::YarrPattern::nonspacesCharacterClass):
+        (JSC::Yarr::YarrPattern::nonwordcharCharacterClass):
+
+2014-12-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19348208> REGRESSION (r177027): iOS builds use the wrong toolchain
+        https://bugs.webkit.org/show_bug.cgi?id=139950
+
+        Reviewed by David Kilzer.
+
+        * Configurations/Base.xcconfig: Only define TOOLCHAINS when building for OS X, doing so
+        in a manner that works with Xcode 5.1.1.
+
+2014-12-22  Mark Lam  <mark.lam@apple.com>
+
+        Use ctiPatchCallByReturnAddress() in JITOperations.cpp.
+        <https://webkit.org/b/139892>
+
+        Reviewed by Michael Saboff.
+
+        The code in JITOperations.cpp sometimes calls RepatchBuffer::relinkCallerToFunction()
+        directly, and sometimes uses a helper function, ctiPatchCallByReturnAddress().
+        This patch changes it to use the helper function consistently.
+
+        * jit/JITOperations.cpp:
+
+2014-12-22  Mark Lam  <mark.lam@apple.com>
+
+        Fix some typos in a comment.
+        <https://webkit.org/b/139882>
+
+        Reviewed by Michael Saboff.
+
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_by_val):
+
+2014-12-22  Mark Lam  <mark.lam@apple.com>
+
+        Assert that Array elements not copied when changing shape to ArrayStorage type are indeed holes.
+        <https://webkit.org/b/138118>
+
+        Reviewed by Michael Saboff.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::convertInt32ToArrayStorage):
+        (JSC::JSObject::convertDoubleToArrayStorage):
+        (JSC::JSObject::convertContiguousToArrayStorage):
+
+2014-12-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] add optimized fullscreen API
+        https://bugs.webkit.org/show_bug.cgi?id=139833
+        <rdar://problem/18844486>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE_VIDEO_PRESENTATION_MODE.
+
+2014-12-20  David Kilzer  <ddkilzer@apple.com>
+
+        Switch from using PLATFORM_NAME to SDK selectors in WebCore, WebInspectorUI, WebKit, WebKit2
+        <http://webkit.org/b/139463>
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/JavaScriptCore.xcconfig:
+        - Simplify SECTORDER_FLAGS.
+
+2014-12-19  Andreas Kling  <akling@apple.com>
+
+        Plug leak below LLVMCopyStringRepOfTargetData().
+        <https://webkit.org/b/139832>
+
+        Reviewed by Michael Saboff.
+
+        LLVMCopyStringRepOfTargetData() returns a strdup()'ed string, so make sure
+        to free() it after we're done using it.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+
+2014-12-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CRASH inspector-protocol/debugger/breakpoint-action-detach.html
+        https://bugs.webkit.org/show_bug.cgi?id=139797
+
+        Reviewed by Mark Lam.
+
+        * debugger/Debugger.h:
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::isAttached):
+        Check if we are the debugger for a particular global object.
+        (JSC::Debugger::pauseIfNeeded):
+        Pass the global object on when hitting a brekapoint.
+
+        * inspector/ScriptDebugServer.h:
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::handleBreakpointHit):
+        Stop evaluting breakpoint actions if a previous action caused the
+        debugger to detach from this global object.
+        (Inspector::ScriptDebugServer::handlePause):
+        Standardize on passing JSGlobalObject parameter first.
+
+2014-12-19  Mark Lam  <mark.lam@apple.com>
+
+        [Win] Endless compiler warnings created by DFGEdge.h.
+        <https://webkit.org/b/139801>
+
+        Reviewed by Brent Fulgham.
+
+        Add a cast to fix the type just the way the 64-bit version does.
+
+        * dfg/DFGEdge.h:
+        (JSC::DFG::Edge::makeWord):
+
+2014-12-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177574.
+        https://bugs.webkit.org/show_bug.cgi?id=139821
+
+        "Broke Production builds by installing
+        libWebCoreTestSupport.dylib in the wrong directory" (Requested
+        by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "Switch from using PLATFORM_NAME to SDK selectors in WebCore,
+        WebInspectorUI, WebKit, WebKit2"
+        https://bugs.webkit.org/show_bug.cgi?id=139463
+        http://trac.webkit.org/changeset/177574
+
+2014-12-19  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(174226): Captured arguments in a using function compiled by the DFG have the initial value when the closure was invoked
+        https://bugs.webkit.org/show_bug.cgi?id=139808
+
+        Reviewed by Oliver Hunt.
+
+        There are three changes here.
+        1) Create a VariableWatchpointSet for captured arguments variables.
+        2) Properly use the VariableWatchpointSet* found in op_put_to_scope in the 64 bit LLInt code.
+        3) Add the same putLocalClosureVar path to the 32 bit LLInt code that exists in the 64 bit version.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2014-12-19  David Kilzer  <ddkilzer@apple.com>
+
+        Switch from using PLATFORM_NAME to SDK selectors in WebCore, WebInspectorUI, WebKit, WebKit2
+        <http://webkit.org/b/139463>
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/JavaScriptCore.xcconfig:
+        - Simplify SECTORDER_FLAGS.
+
+2014-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * jsc.cpp: Remove typo.
+
+2014-12-17  Michael Saboff  <msaboff@apple.com>
+
+        Tests with infinite recursion frequently crash
+        https://bugs.webkit.org/show_bug.cgi?id=139548
+
+        Reviewed by Geoffrey Garen.
+
+        While unwinding, if the call frame doesn't have a codeblock, then we
+        are in native code, handle appropriately.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::unwindCallFrame):
+        (JSC::UnwindFunctor::operator()):
+        Added checks for null CodeBlock.
+
+        (JSC::Interpreter::unwind): Removed wrong ASSERT.
+
+2014-12-17  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Make it possible to toggle FeatureCounter support at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=139688
+        <rdar://problem/19266254>
+
+        Reviewed by Andreas Kling.
+
+        Stop linking against AppSupport framework as the functionality is no
+        longer in WTF (it was moved to WebCore).
+
+        * Configurations/JavaScriptCore.xcconfig:
+
+2014-12-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct DebugSuffix builds under MSBuild
+        https://bugs.webkit.org/show_bug.cgi?id=139733
+        <rdar://problem/19276880>
+
+        Reviewed by Simon Fraser.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj: Make sure to use the
+        '_debug' suffix when building the DebugSuffix target.
+
+2014-12-16  Enrica Casucci  <enrica@apple.com>
+
+        Fix iOS builders for 8.0
+        https://bugs.webkit.org/show_bug.cgi?id=139495
+
+        Reviewed by Michael Saboff.
+
+        * Configurations/LLVMForJSC.xcconfig:
+        * llvm/library/LLVMExports.cpp:
+        (initializeAndGetJSCLLVMAPI):
+
+2014-12-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177380.
+        https://bugs.webkit.org/show_bug.cgi?id=139707
+
+        "Breaks js/regres/elidable-new-object-* tests" (Requested by
+        msaboff_ on #webkit).
+
+        Reverted changeset:
+
+        "Fixes operationPutByIdOptimizes such that they check that the
+        put didn't"
+        https://bugs.webkit.org/show_bug.cgi?id=139500
+        http://trac.webkit.org/changeset/177380
+
+2014-12-16  Matthew Mirman  <mmirman@apple.com>
+
+        Fixes operationPutByIdOptimizes such that they check that the put didn't
+        change the structure of the object who's property access is being
+        cached.
+        https://bugs.webkit.org/show_bug.cgi?id=139500
+
+        Reviewed by Geoffrey Garen.
+
+        * jit/JITOperations.cpp:
+        (JSC::operationPutByIdStrictOptimize): saved the structure before the put.
+        (JSC::operationPutByIdNonStrictOptimize): ditto.
+        (JSC::operationPutByIdDirectStrictOptimize): ditto.
+        (JSC::operationPutByIdDirectNonStrictOptimize): ditto.
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID): Added argument for the old structure
+        (JSC::repatchPutByID): Added argument for the old structure
+        * jit/Repatch.h:
+        * tests/stress/put-by-id-build-list-order-recurse.js: 
+        Added test that fails without this patch.
+
+2014-12-15  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Add feature counting support
+        https://bugs.webkit.org/show_bug.cgi?id=139652
+        <rdar://problem/19255690>
+
+        Reviewed by Gavin Barraclough.
+
+        Link against AppSupport framework on iOS as we need it to implement
+        the new FeatureCounter API in WTF.
+
+        * Configurations/JavaScriptCore.xcconfig:
+
+2014-12-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177284.
+        https://bugs.webkit.org/show_bug.cgi?id=139658
+
+        "Breaks API tests and LayoutTests on Yosemite Debug"
+        (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "Make sure range based iteration of Vector<> still receives
+        bounds checking"
+        https://bugs.webkit.org/show_bug.cgi?id=138821
+        http://trac.webkit.org/changeset/177284
+
+2014-12-15  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        [EFL] FTL JIT not working on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=139295
+
+        Reviewed by Michael Saboff.
+
+        Added the missing code for stack unwinding and some additional small fixes
+        to get FTL working correctly.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLUnwindInfo.cpp:
+        (JSC::FTL::UnwindInfo::parse):
+
+2014-12-15  Oliver Hunt  <oliver@apple.com>
+
+        Make sure range based iteration of Vector<> still receives bounds checking
+        https://bugs.webkit.org/show_bug.cgi?id=138821
+
+        Reviewed by Mark Lam.
+
+        Update code to deal with slightly changed iterator semantics.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::visitChildren):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitComplexPopScopes):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitSwitchIntJump):
+        * ftl/FTLAbbreviations.h:
+        (JSC::FTL::mdNode):
+        (JSC::FTL::buildCall):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLengthWithArrayStorage):
+        (JSC::JSArray::sortCompactedVector):
+        * tools/ProfileTreeNode.h:
+        (JSC::ProfileTreeNode::dumpInternal):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::matchCharacterClass):
+
+2014-12-14  Filip Pizlo  <fpizlo@apple.com>
+
+        PutLocalSinkingPhase has an invalid assertion about incoming values, because both liveness and deferral analyses are conservative
+        https://bugs.webkit.org/show_bug.cgi?id=139630
+
+        Reviewed by Oliver Hunt.
+        
+        Replaces a faulty assertion with code to handle an awesome special case. Also adds a lot of
+        comments that reconstruct my reasoning about this code. I had to work hard to remember how
+        deferral worked so I wrote my discoveries down.
+
+        * dfg/DFGInsertionSet.h:
+        (JSC::DFG::InsertionSet::insertBottomConstantForUse):
+        * dfg/DFGPutLocalSinkingPhase.cpp:
+        * tests/stress/put-local-conservative.js: Added.
+        (foo):
+        (.result):
+        (bar):
+
+2014-12-14  Andreas Kling  <akling@apple.com>
+
+        Replace PassRef with Ref/Ref&& across the board.
+        <https://webkit.org/b/139587>
+
+        Reviewed by Darin Adler.
+
+        * runtime/Identifier.cpp:
+        (JSC::Identifier::add):
+        (JSC::Identifier::add8):
+        * runtime/Identifier.h:
+        (JSC::Identifier::add):
+        * runtime/IdentifierInlines.h:
+        (JSC::Identifier::add):
+
+2014-12-12  Matthew Mirman  <mmirman@apple.com>
+
+        shiftCountWithArrayStorage should exit to slow path if the object has a sparse map.
+        https://bugs.webkit.org/show_bug.cgi?id=139598
+        <rdar://problem/18779367>
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::shiftCountWithArrayStorage): Added check for object having a sparse map.
+        * tests/stress/sparse_splice.js: Added.
+
+2014-12-12  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Final clean up OwnPtr in JSC - runtime, ftl, and tool directories
+        https://bugs.webkit.org/show_bug.cgi?id=139532
+
+        Reviewed by Mark Lam.
+
+        Final remove OwnPtr, PassOwnPtr in runtime, ftl, and tools directories of JSC.
+
+        * builtins/BuiltinExecutables.h:
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        * ftl/FTLAbstractHeap.cpp:
+        (JSC::FTL::IndexedAbstractHeap::atSlow):
+        * ftl/FTLAbstractHeap.h:
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * ftl/FTLJITFinalizer.h:
+        * jsc.cpp:
+        (jscmain):
+        * parser/Lexer.h:
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::clearDeletedOffsets):
+        (JSC::PropertyTable::addDeletedOffset):
+        * runtime/PropertyTable.cpp:
+        (JSC::PropertyTable::PropertyTable):
+        * runtime/RegExpObject.cpp:
+        * runtime/SmallStrings.cpp:
+        * runtime/Structure.cpp:
+        * runtime/StructureIDTable.cpp:
+        (JSC::StructureIDTable::StructureIDTable):
+        (JSC::StructureIDTable::resize):
+        * runtime/StructureIDTable.h:
+        * runtime/StructureTransitionTable.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::~VM):
+        * runtime/VM.h:
+        * tools/CodeProfile.h:
+        (JSC::CodeProfile::CodeProfile):
+        (JSC::CodeProfile::addChild):
+
+2014-12-11  Dan Bernstein  <mitz@apple.com>
+
+        iOS Simulator production build fix.
+
+        * Configurations/JavaScriptCore.xcconfig: Don’t use an order file when building for the iOS
+        Simulator, as we did prior to 177027.
+
 2014-12-11  Joseph Pecoraro  <pecoraro@apple.com>
 
         Explicitly export somre more RWIProtocol classes.

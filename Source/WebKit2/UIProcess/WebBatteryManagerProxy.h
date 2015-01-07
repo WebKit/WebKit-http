@@ -36,14 +36,14 @@
 
 namespace WebKit {
 
-class WebContext;
+class WebProcessPool;
 class WebBatteryStatus;
 
 class WebBatteryManagerProxy : public API::ObjectImpl<API::Object::Type::BatteryManager>, public WebContextSupplement, private IPC::MessageReceiver {
 public:
     static const char* supplementName();
 
-    static PassRef<WebBatteryManagerProxy> create(WebContext*);
+    static Ref<WebBatteryManagerProxy> create(WebProcessPool*);
     virtual ~WebBatteryManagerProxy();
 
     void initializeProvider(const WKBatteryProviderBase*);
@@ -55,16 +55,16 @@ public:
     using API::Object::deref;
 
 private:
-    explicit WebBatteryManagerProxy(WebContext*);
+    explicit WebBatteryManagerProxy(WebProcessPool*);
 
     // WebContextSupplement
-    virtual void contextDestroyed() override;
+    virtual void processPoolDestroyed() override;
     virtual void processDidClose(WebProcessProxy*) override;
     virtual void refWebContextSupplement() override;
     virtual void derefWebContextSupplement() override;
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
     void startUpdating();
     void stopUpdating();

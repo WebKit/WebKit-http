@@ -42,7 +42,7 @@ class WebPageGroup : public API::ObjectImpl<API::Object::Type::PageGroup> {
 public:
     WebPageGroup(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
     static PassRefPtr<WebPageGroup> create(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
-    static PassRef<WebPageGroup> createNonNull(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
+    static Ref<WebPageGroup> createNonNull(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
     static WebPageGroup* get(uint64_t pageGroupID);
 
     virtual ~WebPageGroup();
@@ -50,10 +50,10 @@ public:
     void addPage(WebPageProxy*);
     void removePage(WebPageProxy*);
 
-    const String& identifier() const { return m_data.identifer; }
+    const String& identifier() const { return m_data.identifier; }
     uint64_t pageGroupID() const { return m_data.pageGroupID; }
 
-    const WebPageGroupData& data() { return m_data; }
+    const WebPageGroupData& data() const { return m_data; }
 
     void setPreferences(WebPreferences*);
     WebPreferences& preferences() const;

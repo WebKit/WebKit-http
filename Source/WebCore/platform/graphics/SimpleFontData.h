@@ -1,7 +1,7 @@
 /*
  * This file is part of the internal font implementation.
  *
- * Copyright (C) 2006, 2008, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2008, 2010, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2007-2008 Torch Mobile, Inc.
  *
  * This library is free software; you can redistribute it and/or
@@ -31,13 +31,12 @@
 #include "FloatRect.h"
 #include "GlyphBuffer.h"
 #include "GlyphMetricsMap.h"
-#include "GlyphPageTreeNode.h"
+#include "GlyphPage.h"
 #include "OpenTypeMathData.h"
 #if ENABLE(OPENTYPE_VERTICAL)
 #include "OpenTypeVerticalData.h"
 #endif
 #include "TypesettingFeatures.h"
-#include <wtf/OwnPtr.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/StringHash.h>
 
@@ -60,8 +59,10 @@
 
 namespace WebCore {
 
+class GlyphPage;
 class FontDescription;
 class SharedBuffer;
+struct GlyphData;
 struct WidthIterator;
 
 enum FontDataVariant { AutoVariant, NormalVariant, SmallCapsVariant, EmphasisMarkVariant, BrokenIdeographVariant };
@@ -69,15 +70,14 @@ enum Pitch { UnknownPitch, FixedPitch, VariablePitch };
 
 class SimpleFontData final : public FontData {
 public:
-    class AdditionalFontData {
+    class SVGData {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        virtual ~AdditionalFontData() { }
+        virtual ~SVGData() { }
 
         virtual void initializeFontData(SimpleFontData*, float fontSize) = 0;
         virtual float widthForSVGGlyph(Glyph, float fontSize) const = 0;
         virtual bool fillSVGGlyphPage(GlyphPage*, unsigned offset, unsigned length, UChar* buffer, unsigned bufferLength, const SimpleFontData*) const = 0;
-        virtual bool applySVGGlyphSelection(WidthIterator&, GlyphData&, bool mirror, int currentCharacter, unsigned& advanceLength, String& normalizedSpacesStringCache) const = 0;
     };
 
     // Used to create platform fonts.
@@ -87,9 +87,9 @@ public:
     }
 
     // Used to create SVG Fonts.
-    static PassRefPtr<SimpleFontData> create(std::unique_ptr<AdditionalFontData> fontData, float fontSize, bool syntheticBold, bool syntheticItalic)
+    static PassRefPtr<SimpleFontData> create(std::unique_ptr<SVGData> svgData, float fontSize, bool syntheticBold, bool syntheticItalic)
     {
-        return adoptRef(new SimpleFontData(WTF::move(fontData), fontSize, syntheticBold, syntheticItalic));
+        return adoptRef(new SimpleFontData(WTF::move(svgData), fontSize, syntheticBold, syntheticItalic));
     }
 
     virtual ~SimpleFontData();
@@ -165,23 +165,22 @@ public:
     Glyph zeroGlyph() const { return m_zeroGlyph; }
     void setZeroGlyph(Glyph zeroGlyph) { m_zeroGlyph = zeroGlyph; }
 
-    virtual const SimpleFontData* fontDataForCharacter(UChar32) const override;
-    virtual bool containsCharacters(const UChar*, int length) const override;
-
+    GlyphData glyphDataForCharacter(UChar32) const;
     Glyph glyphForCharacter(UChar32) const;
+
+    RefPtr<SimpleFontData> systemFallbackFontDataForCharacter(UChar32, const FontDescription&, bool isForPlatformFont) const;
+
+    const GlyphPage* glyphPage(unsigned pageNumber) const;
 
     void determinePitch();
     Pitch pitch() const { return m_treatAsFixedPitch ? FixedPitch : VariablePitch; }
 
-    AdditionalFontData* fontData() const { return m_fontData.get(); }
-    bool isSVGFont() const { return m_fontData != nullptr; }
+    const SVGData* svgData() const { return m_svgData.get(); }
+    bool isSVGFont() const { return !!m_svgData; }
 
     virtual bool isCustomFont() const override { return m_isCustomFont; }
     virtual bool isLoading() const override { return m_isLoading; }
     virtual bool isSegmented() const override;
-
-    const GlyphData& missingGlyphData() const { return m_missingGlyphData; }
-    void setMissingGlyphData(const GlyphData& glyphData) { m_missingGlyphData = glyphData; }
 
 #ifndef NDEBUG
     virtual String description() const override;
@@ -189,7 +188,7 @@ public:
 
 #if USE(APPKIT)
     const SimpleFontData* getCompositeFontReferenceFontData(NSFont *key) const;
-    NSFont* getNSFont() const { return m_platformData.font(); }
+    NSFont* getNSFont() const { return m_platformData.nsFont(); }
 #endif
 
 #if PLATFORM(IOS)
@@ -218,7 +217,7 @@ public:
 private:
     SimpleFontData(const FontPlatformData&, bool isCustomFont = false, bool isLoading = false, bool isTextOrientationFallback = false);
 
-    SimpleFontData(std::unique_ptr<AdditionalFontData>, float fontSize, bool syntheticBold, bool syntheticItalic);
+    SimpleFontData(std::unique_ptr<SVGData>, float fontSize, bool syntheticBold, bool syntheticItalic);
 
     void platformInit();
     void platformGlyphInit();
@@ -229,6 +228,11 @@ private:
 
     PassRefPtr<SimpleFontData> createScaledFontData(const FontDescription&, float scaleFactor) const;
     PassRefPtr<SimpleFontData> platformCreateScaledFontData(const FontDescription&, float scaleFactor) const;
+
+    virtual const SimpleFontData* simpleFontDataForCharacter(UChar32) const override;
+    virtual const SimpleFontData& simpleFontDataForFirstRange() const override;
+
+    void removeFromSystemFallbackCache();
 
 #if PLATFORM(WIN)
     void initGDIFont();
@@ -248,9 +252,11 @@ private:
     float m_avgCharWidth;
 
     FontPlatformData m_platformData;
-    std::unique_ptr<AdditionalFontData> m_fontData;
+    std::unique_ptr<SVGData> m_svgData;
 
-    mutable OwnPtr<GlyphMetricsMap<FloatRect>> m_glyphToBoundsMap;
+    mutable RefPtr<GlyphPage> m_glyphPageZero;
+    mutable HashMap<unsigned, RefPtr<GlyphPage>> m_glyphPages;
+    mutable std::unique_ptr<GlyphMetricsMap<FloatRect>> m_glyphToBoundsMap;
     mutable GlyphMetricsMap<float> m_glyphToWidthMap;
 
     bool m_treatAsFixedPitch;
@@ -259,6 +265,9 @@ private:
 
     bool m_isTextOrientationFallback;
     bool m_isBrokenIdeographFallback;
+
+    bool m_isUsedInSystemFallbackCache { false };
+
     mutable RefPtr<OpenTypeMathData> m_mathData;
 #if ENABLE(OPENTYPE_VERTICAL)
     RefPtr<OpenTypeVerticalData> m_verticalData;
@@ -271,8 +280,6 @@ private:
     float m_adjustedSpaceWidth;
 
     Glyph m_zeroWidthSpaceGlyph;
-
-    GlyphData m_missingGlyphData;
 
     struct DerivedFontData {
         explicit DerivedFontData(bool custom)
@@ -304,7 +311,7 @@ private:
 #endif
 
 #if PLATFORM(COCOA) || USE(HARFBUZZ)
-    mutable OwnPtr<HashMap<String, bool>> m_combiningCharacterSequenceSupport;
+    mutable std::unique_ptr<HashMap<String, bool>> m_combiningCharacterSequenceSupport;
 #endif
 
 #if PLATFORM(WIN)
@@ -331,7 +338,7 @@ ALWAYS_INLINE FloatRect SimpleFontData::boundsForGlyph(Glyph glyph) const
 
     bounds = platformBoundsForGlyph(glyph);
     if (!m_glyphToBoundsMap)
-        m_glyphToBoundsMap = adoptPtr(new GlyphMetricsMap<FloatRect>);
+        m_glyphToBoundsMap = std::make_unique<GlyphMetricsMap<FloatRect>>();
     m_glyphToBoundsMap->setMetricsForGlyph(glyph, bounds);
     return bounds;
 }
@@ -345,8 +352,8 @@ ALWAYS_INLINE float SimpleFontData::widthForGlyph(Glyph glyph) const
     if (width != cGlyphSizeUnknown)
         return width;
 
-    if (m_fontData)
-        width = m_fontData->widthForSVGGlyph(glyph, m_platformData.size());
+    if (isSVGFont())
+        width = m_svgData->widthForSVGGlyph(glyph, m_platformData.size());
 #if ENABLE(OPENTYPE_VERTICAL)
     else if (m_verticalData)
 #if USE(CG) || USE(CAIRO)

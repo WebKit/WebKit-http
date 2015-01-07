@@ -22,7 +22,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifndef TextDocumentParser_h
 #define TextDocumentParser_h
 
@@ -32,19 +31,19 @@ namespace WebCore {
 
 class TextDocumentParser final : public HTMLDocumentParser {
 public:
-    static PassRefPtr<TextDocumentParser> create(HTMLDocument& document)
+    static Ref<TextDocumentParser> create(HTMLDocument& document)
     {
-        return adoptRef(new TextDocumentParser(document));
+        return adoptRef(*new TextDocumentParser(document));
     }
-    virtual ~TextDocumentParser();
 
 private:
     explicit TextDocumentParser(HTMLDocument&);
 
     virtual void append(PassRefPtr<StringImpl>) override;
+
     void insertFakePreElement();
 
-    bool m_haveInsertedFakePreElement;
+    bool m_haveInsertedFakePreElement { false };
 };
 
 }

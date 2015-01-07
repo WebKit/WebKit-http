@@ -52,7 +52,7 @@ class ThreadableLoader;
 class XMLHttpRequest final : public ScriptWrappable, public RefCounted<XMLHttpRequest>, public EventTargetWithInlineData, private ThreadableLoaderClient, public ActiveDOMObject {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<XMLHttpRequest> create(ScriptExecutionContext&);
+    static Ref<XMLHttpRequest> create(ScriptExecutionContext&);
     ~XMLHttpRequest();
 
     // These exact numeric values are important because JS expects them.
@@ -143,6 +143,8 @@ public:
 
     XMLHttpRequestUpload* upload();
     XMLHttpRequestUpload* optionalUpload() const { return m_upload.get(); }
+
+    const ResourceResponse& resourceResponse() const { return m_response; }
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(readystatechange);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);

@@ -71,7 +71,7 @@ public:
     void updateStyleIfNeededDispatcherFired();
     void startUpdateStyleIfNeededDispatcher();
     void addEventToDispatch(PassRefPtr<Element> element, const AtomicString& eventType, const String& name, double elapsedTime);
-    void addElementChangeToDispatch(PassRef<Element>);
+    void addElementChangeToDispatch(Ref<Element>&&);
 
     bool hasAnimations() const { return !m_compositeAnimations.isEmpty(); }
 
@@ -97,6 +97,8 @@ public:
 
     double beginAnimationUpdateTime();
     void setBeginAnimationUpdateTime(double t) { m_beginAnimationUpdateTime = t; }
+    
+    void beginAnimationUpdate();
     void endAnimationUpdate();
     void receivedStartTimeResponse(double);
     
@@ -141,6 +143,9 @@ private:
     typedef HashSet<RefPtr<AnimationBase>> WaitingAnimationsSet;
     WaitingAnimationsSet m_animationsWaitingForStyle;
     WaitingAnimationsSet m_animationsWaitingForStartTimeResponse;
+
+    int m_beginAnimationUpdateCount;
+
     bool m_waitingForAsyncStartNotification;
     bool m_isSuspended;
 

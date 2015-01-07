@@ -60,7 +60,7 @@ public:
 
     virtual void path(Path&, const FloatRect&) = 0;
     virtual WindRule windRule() const { return RULE_NONZERO; }
-    virtual PassRef<BasicShape> blend(const BasicShape&, double) const = 0;
+    virtual Ref<BasicShape> blend(const BasicShape&, double) const = 0;
 
     virtual Type type() const = 0;
 };
@@ -147,7 +147,7 @@ private:
 
 class BasicShapeCircle final : public BasicShape {
 public:
-    static PassRefPtr<BasicShapeCircle> create() { return adoptRef(new BasicShapeCircle); }
+    static Ref<BasicShapeCircle> create() { return adoptRef(*new BasicShapeCircle); }
 
     const BasicShapeCenterCoordinate& centerX() const { return m_centerX; }
     const BasicShapeCenterCoordinate& centerY() const { return m_centerY; }
@@ -159,7 +159,7 @@ public:
     void setRadius(BasicShapeRadius radius) { m_radius = WTF::move(radius); }
 
     virtual void path(Path&, const FloatRect&) override;
-    virtual PassRef<BasicShape> blend(const BasicShape&, double) const override;
+    virtual Ref<BasicShape> blend(const BasicShape&, double) const override;
 
     virtual Type type() const override { return BasicShapeCircleType; }
 private:
@@ -172,7 +172,7 @@ private:
 
 class BasicShapeEllipse final : public BasicShape {
 public:
-    static PassRefPtr<BasicShapeEllipse> create() { return adoptRef(new BasicShapeEllipse); }
+    static Ref<BasicShapeEllipse> create() { return adoptRef(*new BasicShapeEllipse); }
 
     const BasicShapeCenterCoordinate& centerX() const { return m_centerX; }
     const BasicShapeCenterCoordinate& centerY() const { return m_centerY; }
@@ -186,7 +186,7 @@ public:
     void setRadiusY(BasicShapeRadius radiusY) { m_radiusY = WTF::move(radiusY); }
 
     virtual void path(Path&, const FloatRect&) override;
-    virtual PassRef<BasicShape> blend(const BasicShape&, double) const override;
+    virtual Ref<BasicShape> blend(const BasicShape&, double) const override;
 
     virtual Type type() const override { return BasicShapeEllipseType; }
 private:
@@ -200,7 +200,7 @@ private:
 
 class BasicShapePolygon final : public BasicShape {
 public:
-    static PassRefPtr<BasicShapePolygon> create() { return adoptRef(new BasicShapePolygon); }
+    static Ref<BasicShapePolygon> create() { return adoptRef(*new BasicShapePolygon); }
 
     const Vector<Length>& values() const { return m_values; }
     const Length& getXAt(unsigned i) const { return m_values[2 * i]; }
@@ -210,7 +210,7 @@ public:
     void appendPoint(Length x, Length y) { m_values.append(WTF::move(x)); m_values.append(WTF::move(y)); }
 
     virtual void path(Path&, const FloatRect&) override;
-    virtual PassRef<BasicShape> blend(const BasicShape&, double) const override;
+    virtual Ref<BasicShape> blend(const BasicShape&, double) const override;
 
     virtual WindRule windRule() const override { return m_windRule; }
 
@@ -226,7 +226,7 @@ private:
 
 class BasicShapeInset final : public BasicShape {
 public:
-    static PassRefPtr<BasicShapeInset> create() { return adoptRef(new BasicShapeInset); }
+    static Ref<BasicShapeInset> create() { return adoptRef(*new BasicShapeInset); }
 
     const Length& top() const { return m_top; }
     const Length& right() const { return m_right; }
@@ -249,7 +249,7 @@ public:
     void setBottomLeftRadius(LengthSize radius) { m_bottomLeftRadius = WTF::move(radius); }
 
     virtual void path(Path&, const FloatRect&) override;
-    virtual PassRef<BasicShape> blend(const BasicShape&, double) const override;
+    virtual Ref<BasicShape> blend(const BasicShape&, double) const override;
 
     virtual Type type() const override { return BasicShapeInsetType; }
 private:

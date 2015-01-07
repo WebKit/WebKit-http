@@ -38,7 +38,7 @@
 #include "ViewUpdateDispatcher.h"
 #include "VisitedLinkTable.h"
 #include "WebOriginDataManagerSupplement.h"
-#include <WebCore/SessionIDHash.h>
+#include <WebCore/SessionID.h>
 #include <WebCore/Timer.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -49,6 +49,7 @@
 
 #if PLATFORM(COCOA)
 #include <dispatch/dispatch.h>
+#include <WebCore/MachSendRight.h>
 #endif
 
 namespace API {
@@ -67,6 +68,7 @@ namespace WebKit {
 class DownloadManager;
 class EventDispatcher;
 class InjectedBundle;
+class UserData;
 class WebConnectionToUIProcess;
 class WebFrame;
 class WebIconDatabaseProxy;
@@ -115,7 +117,7 @@ public:
     InjectedBundle* injectedBundle() const { return m_injectedBundle.get(); }
 
 #if PLATFORM(COCOA)
-    mach_port_t compositingRenderServerPort() const { return m_compositingRenderServerPort; }
+    const WebCore::MachSendRight& compositingRenderServerPort() const { return m_compositingRenderServerPort; }
 #endif
 
     bool shouldPlugInAutoStartFromOrigin(WebPage&, const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
@@ -186,7 +188,13 @@ public:
     void resetAllGeolocationPermissions();
 #endif
 
-    RefPtr<API::Object> apiObjectByConvertingFromHandles(API::Object*);
+    RefPtr<API::Object> transformHandlesToObjects(API::Object*);
+    static RefPtr<API::Object> transformObjectsToHandles(API::Object*);
+
+#if PLATFORM(COCOA)
+    RefPtr<ObjCObjectGraph> transformHandlesToObjects(ObjCObjectGraph&);
+    static RefPtr<ObjCObjectGraph> transformObjectsToHandles(ObjCObjectGraph&);
+#endif
 
 #if ENABLE(SERVICE_CONTROLS)
     bool hasImageServices() const { return m_hasImageServices; }
@@ -203,8 +211,8 @@ private:
     virtual IPC::Connection* downloadProxyConnection() override;
     virtual AuthenticationManager& downloadsAuthenticationManager() override;
 
-    void initializeWebProcess(const WebProcessCreationParameters&, IPC::MessageDecoder&);
-    void platformInitializeWebProcess(const WebProcessCreationParameters&, IPC::MessageDecoder&);
+    void initializeWebProcess(WebProcessCreationParameters&&);
+    void platformInitializeWebProcess(WebProcessCreationParameters&&);
 
     void platformTerminate();
     void registerURLSchemeAsEmptyDocument(const String&);
@@ -259,7 +267,7 @@ private:
     void setEnabledServices(bool hasImageServices, bool hasSelectionServices, bool hasRichContentServices);
 #endif
 
-    void postInjectedBundleMessage(const IPC::DataReference& messageData);
+    void handleInjectedBundleMessage(const String& messageName, const UserData& messageBody);
     void setInjectedBundleParameter(const String& key, const IPC::DataReference&);
 
     // ChildProcess
@@ -278,19 +286,19 @@ private:
 
     // IPC::Connection::Client
     friend class WebConnectionToUIProcess;
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection*, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
-    virtual void didClose(IPC::Connection*) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    virtual void didClose(IPC::Connection&) override;
+    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // Implemented in generated WebProcessMessageReceiver.cpp
-    void didReceiveWebProcessMessage(IPC::Connection*, IPC::MessageDecoder&);
+    void didReceiveWebProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
 
     // WebOriginDataManagerSupplement
-    virtual void getOrigins(WKOriginDataTypes, std::function<void(const Vector<SecurityOriginData>&)> completion) override;
-    virtual void deleteEntriesForOrigin(WKOriginDataTypes, const SecurityOriginData&, std::function<void()> completion) override;
-    virtual void deleteEntriesModifiedBetweenDates(WKOriginDataTypes, double startDate, double endDate, std::function<void()> completion) override;
-    virtual void deleteAllEntries(WKOriginDataTypes, std::function<void()> completion) override;
+    virtual void getOrigins(WKOriginDataTypes, std::function<void (const Vector<SecurityOriginData>&)> completion) override;
+    virtual void deleteEntriesForOrigin(WKOriginDataTypes, const SecurityOriginData&, std::function<void ()> completion) override;
+    virtual void deleteEntriesModifiedBetweenDates(WKOriginDataTypes, double startDate, double endDate, std::function<void ()> completion) override;
+    virtual void deleteAllEntries(WKOriginDataTypes, std::function<void ()> completion) override;
 
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 
@@ -314,7 +322,7 @@ private:
     bool m_diskCacheIsDisabledForTesting;
 
 #if PLATFORM(COCOA)
-    mach_port_t m_compositingRenderServerPort;
+    WebCore::MachSendRight m_compositingRenderServerPort;
     pid_t m_presenterApplicationPid;
     dispatch_group_t m_clearResourceCachesDispatchGroup;
     bool m_shouldForceScreenFontSubstitution;

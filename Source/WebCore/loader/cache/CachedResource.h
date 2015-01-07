@@ -229,8 +229,8 @@ public:
     
     bool canUseCacheValidator() const;
 
-    virtual bool mustRevalidateDueToCacheHeaders(CachePolicy) const;
-    bool redirectChainAllowsReuse() const;
+    virtual bool mustRevalidateDueToCacheHeaders(const CachedResourceLoader&, CachePolicy) const;
+    bool redirectChainAllowsReuse(ReuseExpiredRedirectionOrNot) const;
 
     bool isCacheValidator() const { return m_resourceToRevalidate; }
     CachedResource* resourceToRevalidate() const { return m_resourceToRevalidate; }

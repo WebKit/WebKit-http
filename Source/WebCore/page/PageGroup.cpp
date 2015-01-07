@@ -31,7 +31,6 @@
 #include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "DocumentStyleSheetCollection.h"
-#include "GroupSettings.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -61,13 +60,11 @@ static unsigned getUniqueIdentifier()
 PageGroup::PageGroup(const String& name)
     : m_name(name)
     , m_identifier(getUniqueIdentifier())
-    , m_groupSettings(std::make_unique<GroupSettings>())
 {
 }
 
 PageGroup::PageGroup(Page& page)
     : m_identifier(getUniqueIdentifier())
-    , m_groupSettings(std::make_unique<GroupSettings>())
 {
     addPage(page);
 }
@@ -97,61 +94,6 @@ PageGroup* PageGroup::pageGroup(const String& groupName)
     return result.iterator->value;
 }
 
-void PageGroup::closeLocalStorage()
-{
-    if (!pageGroups)
-        return;
-
-    for (auto it = pageGroups->begin(), end = pageGroups->end(); it != end; ++it) {
-        if (it->value->hasLocalStorage())
-            it->value->localStorage()->close();
-    }
-}
-
-void PageGroup::clearLocalStorageForAllOrigins()
-{
-    if (!pageGroups)
-        return;
-
-    for (auto it = pageGroups->begin(), end = pageGroups->end(); it != end; ++it) {
-        if (it->value->hasLocalStorage())
-            it->value->localStorage()->clearAllOriginsForDeletion();
-    }
-}
-
-void PageGroup::clearLocalStorageForOrigin(SecurityOrigin* origin)
-{
-    if (!pageGroups)
-        return;
-
-    for (auto it = pageGroups->begin(), end = pageGroups->end(); it != end; ++it) {
-        if (it->value->hasLocalStorage())
-            it->value->localStorage()->clearOriginForDeletion(origin);
-    }
-}
-
-void PageGroup::closeIdleLocalStorageDatabases()
-{
-    if (!pageGroups)
-        return;
-
-    for (auto it = pageGroups->begin(), end = pageGroups->end(); it != end; ++it) {
-        if (it->value->hasLocalStorage())
-            it->value->localStorage()->closeIdleLocalStorageDatabases();
-    }
-}
-
-void PageGroup::syncLocalStorage()
-{
-    if (!pageGroups)
-        return;
-
-    for (auto it = pageGroups->begin(), end = pageGroups->end(); it != end; ++it) {
-        if (it->value->hasLocalStorage())
-            it->value->localStorage()->sync();
-    }
-}
-
 void PageGroup::addPage(Page& page)
 {
     ASSERT(!m_pages.contains(&page));
@@ -162,16 +104,6 @@ void PageGroup::removePage(Page& page)
 {
     ASSERT(m_pages.contains(&page));
     m_pages.remove(&page);
-}
-
-StorageNamespace* PageGroup::localStorage()
-{
-    return m_localStorage.get();
-}
-
-StorageNamespace* PageGroup::transientLocalStorage(SecurityOrigin*)
-{
-    return nullptr;
 }
 
 #if ENABLE(VIDEO_TRACK)

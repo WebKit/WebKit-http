@@ -138,13 +138,16 @@ protected:
 
     virtual void didRecalcStyle(Style::Change) override;
 
-    virtual void dispatchBlurEvent(PassRefPtr<Element> newFocusedElement) override;
+    virtual void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement) override;
 
     // This must be called any time the result of willValidate() has changed.
     void setNeedsWillValidateCheck();
     virtual bool computeWillValidate() const;
 
     bool validationMessageShadowTreeContains(const Node&) const;
+
+    virtual void willChangeForm() override;
+    virtual void didChangeForm() override;
 
 private:
     virtual void refFormAssociatedElement() override { ref(); }

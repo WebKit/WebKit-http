@@ -53,7 +53,7 @@ public:
     virtual bool requiresLayer() const override
     {
         return isRoot() || isPositioned() || createsGroup() || hasClipPath() || hasOverflowClip()
-            || hasTransform() || hasHiddenBackface() || hasReflection() || style().specifiesColumns()
+            || hasTransformRelatedProperty() || hasHiddenBackface() || hasReflection() || style().specifiesColumns()
             || !style().hasAutoZIndex();
     }
 
@@ -175,6 +175,9 @@ public:
     // Bounds of the outline box in absolute coords. Respects transforms
     virtual LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* /*repaintContainer*/, const RenderGeometryMap*) const override final;
     virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
+    
+    virtual FloatRect repaintRectInLocalCoordinates() const override { return borderBoxRect(); }
+    virtual FloatRect objectBoundingBox() const override { return borderBoxRect(); }
 
     // Use this with caution! No type checking is done!
     RenderBox* previousSiblingBox() const;
@@ -612,8 +615,8 @@ public:
     virtual bool needsLayoutAfterRegionRangeChange() const { return false; }
 
 protected:
-    RenderBox(Element&, PassRef<RenderStyle>, unsigned baseTypeFlags);
-    RenderBox(Document&, PassRef<RenderStyle>, unsigned baseTypeFlags);
+    RenderBox(Element&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
+    RenderBox(Document&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
 
     virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;

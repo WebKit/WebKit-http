@@ -120,7 +120,6 @@
         var MutationEventOld = window.MutationEvent;
         var NodeFilterOld = window.NodeFilter;
         var NodeOld = window.Node;
-        var NotationOld = window.Notation;
         var ProcessingInstructionOld = window.ProcessingInstruction;
         var RangeErrorOld = window.RangeError;
         var RangeExceptionOld = window.RangeException;
@@ -243,6 +242,8 @@
         var showModalDialogOld = window.showModalDialog;
         var stopOld = window.stop;
 
+        // The test runs on a timer and not in a load event handler because we want both
+        // window.onload and window.event to be undefined.
         setTimeout(function() {
             // Constructors
             shouldBe("window.Attr", "AttrOld");
@@ -322,7 +323,6 @@
             shouldBe("window.MutationEvent", "MutationEventOld");
             shouldBe("window.Node", "NodeOld");
             shouldBe("window.NodeFilter", "NodeFilterOld");
-            shouldBe("window.Notation", "NotationOld");
             shouldBe("window.ProcessingInstruction", "ProcessingInstructionOld");
             shouldBe("window.Range", "RangeOld");
             shouldBe("window.RangeError", "RangeErrorOld");

@@ -134,6 +134,7 @@
 #include "ScriptSourceCode.h"
 #include "ScrollingCoordinator.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginPolicy.h"
 #include "SecurityPolicy.h"
 #include "SegmentedString.h"
 #include "SelectorQuery.h"
@@ -343,7 +344,7 @@ static bool acceptsEditingFocus(Node* node)
     if (!frame || !root)
         return false;
 
-    return frame->editor().shouldBeginEditing(rangeOfContents(*root).get());
+    return frame->editor().shouldBeginEditing(rangeOfContents(*root).ptr());
 }
 
 static bool canAccessAncestor(const SecurityOrigin* activeSecurityOrigin, Frame* targetFrame)
@@ -564,11 +565,12 @@ static bool isAttributeOnAllOwners(const WebCore::QualifiedName& attribute, cons
 }
 #endif
 
-RefPtr<Document> Document::create(ScriptExecutionContext& context)
+Ref<Document> Document::create(ScriptExecutionContext& context)
 {
-    RefPtr<Document> document = adoptRef(new Document(nullptr, URL()));
-    document->setSecurityOrigin(context.securityOrigin());
-    return document.release();
+    Ref<Document> document = adoptRef(*new Document(nullptr, URL()));
+    document->setSecurityOriginPolicy(context.securityOriginPolicy());
+
+    return document;
 }
 
 Document::~Document()
@@ -860,17 +862,17 @@ RefPtr<Element> Document::createElement(const AtomicString& name, ExceptionCode&
     return createElement(QualifiedName(nullAtom, name, nullAtom), false);
 }
 
-RefPtr<DocumentFragment> Document::createDocumentFragment()
+Ref<DocumentFragment> Document::createDocumentFragment()
 {
     return DocumentFragment::create(document());
 }
 
-RefPtr<Text> Document::createTextNode(const String& data)
+Ref<Text> Document::createTextNode(const String& data)
 {
     return Text::create(*this, data);
 }
 
-RefPtr<Comment> Document::createComment(const String& data)
+Ref<Comment> Document::createComment(const String& data)
 {
     return Comment::create(*this, data);
 }
@@ -910,92 +912,45 @@ RefPtr<EntityReference> Document::createEntityReference(const String& name, Exce
     return EntityReference::create(*this, name);
 }
 
-RefPtr<Text> Document::createEditingTextNode(const String& text)
+Ref<Text> Document::createEditingTextNode(const String& text)
 {
     return Text::createEditingText(*this, text);
 }
 
-RefPtr<CSSStyleDeclaration> Document::createCSSStyleDeclaration()
+Ref<CSSStyleDeclaration> Document::createCSSStyleDeclaration()
 {
     Ref<MutableStyleProperties> propertySet(MutableStyleProperties::create());
-    return propertySet->ensureCSSStyleDeclaration();
+    return *propertySet->ensureCSSStyleDeclaration();
 }
 
 RefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCode& ec)
 {
-    ec = 0;
-    
     if (!importedNode) {
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
     }
 
     switch (importedNode->nodeType()) {
+    case ELEMENT_NODE:
     case TEXT_NODE:
-        return createTextNode(importedNode->nodeValue());
     case CDATA_SECTION_NODE:
-        return createCDATASection(importedNode->nodeValue(), ec);
     case ENTITY_REFERENCE_NODE:
-        return createEntityReference(importedNode->nodeName(), ec);
     case PROCESSING_INSTRUCTION_NODE:
-        return createProcessingInstruction(importedNode->nodeName(), importedNode->nodeValue(), ec);
     case COMMENT_NODE:
-        return createComment(importedNode->nodeValue());
-    case ELEMENT_NODE: {
-        Element& oldElement = downcast<Element>(*importedNode);
-        // FIXME: The following check might be unnecessary. Is it possible that
-        // oldElement has mismatched prefix/namespace?
-        if (!hasValidNamespaceForElements(oldElement.tagQName())) {
-            ec = NAMESPACE_ERR;
-            return nullptr;
-        }
+    case DOCUMENT_FRAGMENT_NODE:
+        return importedNode->cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf);
 
-        RefPtr<Element> newElement = createElement(oldElement.tagQName(), false);
-        newElement->cloneDataFromElement(oldElement);
-
-        if (deep) {
-            for (Node* oldChild = oldElement.firstChild(); oldChild; oldChild = oldChild->nextSibling()) {
-                RefPtr<Node> newChild = importNode(oldChild, true, ec);
-                if (ec)
-                    return nullptr;
-                newElement->appendChild(newChild.release(), ec);
-                if (ec)
-                    return nullptr;
-            }
-        }
-
-        return newElement.release();
-    }
     case ATTRIBUTE_NODE:
+        // FIXME: This will "Attr::normalize" child nodes of Attr.
         return Attr::create(*this, QualifiedName(nullAtom, downcast<Attr>(*importedNode).name(), nullAtom), downcast<Attr>(*importedNode).value());
-    case DOCUMENT_FRAGMENT_NODE: {
-        if (importedNode->isShadowRoot()) {
-            // ShadowRoot nodes should not be explicitly importable.
-            // Either they are imported along with their host node, or created implicitly.
-            break;
-        }
-        DocumentFragment& oldFragment = downcast<DocumentFragment>(*importedNode);
-        RefPtr<DocumentFragment> newFragment = createDocumentFragment();
-        if (deep) {
-            for (Node* oldChild = oldFragment.firstChild(); oldChild; oldChild = oldChild->nextSibling()) {
-                RefPtr<Node> newChild = importNode(oldChild, true, ec);
-                if (ec)
-                    return nullptr;
-                newFragment->appendChild(newChild.release(), ec);
-                if (ec)
-                    return nullptr;
-            }
-        }
-        
-        return newFragment.release();
-    }
+
+    case DOCUMENT_NODE: // Can't import a document into another document.
+    case DOCUMENT_TYPE_NODE: // FIXME: Support cloning a DocumentType node per DOM4.
+        break;
+
     case ENTITY_NODE:
-    case NOTATION_NODE:
-        // FIXME: It should be possible to import these node types, however in DOM3 the DocumentType is readonly, so there isn't much sense in doing that.
-        // Ability to add these imported nodes to a DocumentType will be considered for addition to a future release of the DOM.
-    case DOCUMENT_NODE:
-    case DOCUMENT_TYPE_NODE:
     case XPATH_NAMESPACE_NODE:
+        ASSERT_NOT_REACHED(); // These two types of DOM nodes are not implemented.
         break;
     }
     ec = NOT_SUPPORTED_ERR;
@@ -1019,7 +974,6 @@ RefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
 
     switch (source->nodeType()) {
     case ENTITY_NODE:
-    case NOTATION_NODE:
     case DOCUMENT_NODE:
     case DOCUMENT_TYPE_NODE:
     case XPATH_NAMESPACE_NODE:
@@ -1079,7 +1033,7 @@ bool Document::hasValidNamespaceForAttributes(const QualifiedName& qName)
 }
 
 // FIXME: This should really be in a possible ElementFactory class.
-RefPtr<Element> Document::createElement(const QualifiedName& name, bool createdByParser)
+Ref<Element> Document::createElement(const QualifiedName& name, bool createdByParser)
 {
     RefPtr<Element> element;
 
@@ -1101,7 +1055,7 @@ RefPtr<Element> Document::createElement(const QualifiedName& name, bool createdB
     // <image> uses imgTag so we need a special rule.
     ASSERT((name.matches(imageTag) && element->tagQName().matches(imgTag) && element->tagQName().prefix() == name.prefix()) || name == element->tagQName());
 
-    return element.release();
+    return element.releaseNonNull();
 }
 
 bool Document::cssRegionsEnabled() const
@@ -1376,6 +1330,26 @@ String Document::suggestedMIMEType() const
     if (DocumentLoader* loader = this->loader())
         return loader->responseMIMEType();
     return String();
+}
+
+void Document::overrideMIMEType(const String& mimeType)
+{
+    m_overriddenMIMEType = mimeType;
+}
+
+String Document::contentType() const
+{
+    if (!m_overriddenMIMEType.isNull())
+        return m_overriddenMIMEType;
+
+    if (DocumentLoader* documentLoader = loader())
+        return documentLoader->currentContentType();
+
+    String mimeType = suggestedMIMEType();
+    if (!mimeType.isNull())
+        return mimeType;
+
+    return ASCIILiteral("application/xml");
 }
 
 Node* Document::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint)
@@ -1680,7 +1654,7 @@ Settings* Document::settings() const
     return m_frame ? &m_frame->settings() : nullptr;
 }
 
-RefPtr<Range> Document::createRange()
+Ref<Range> Document::createRange()
 {
     return Range::create(*this);
 }
@@ -1723,7 +1697,7 @@ void Document::scheduleStyleRecalc()
     
     m_styleRecalcTimer.startOneShot(0);
 
-    InspectorInstrumentation::didScheduleStyleRecalculation(this);
+    InspectorInstrumentation::didScheduleStyleRecalculation(*this);
 }
 
 void Document::unscheduleStyleRecalc()
@@ -1765,6 +1739,7 @@ void Document::recalcStyle(Style::Change change)
         return; // Guard against re-entrancy. -dwh
 
     RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
+    AnimationUpdateBlock animationUpdateBlock(&m_frame->animation());
 
     // FIXME: We should update style on our ancestor chain before proceeding (especially for seamless),
     // however doing so currently causes several tests to crash, as Frame::setDocument calls Document::attach
@@ -1775,7 +1750,7 @@ void Document::recalcStyle(Style::Change change)
 
     m_styleSheetCollection.flushPendingUpdates();
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRecalculateStyle(this);
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRecalculateStyle(*this);
 
     if (m_elementSheet && m_elementSheet->contents().usesRemUnits())
         m_styleSheetCollection.setUsesRemUnit(true);
@@ -1816,6 +1791,10 @@ void Document::recalcStyle(Style::Change change)
 
     InspectorInstrumentation::didRecalculateStyle(cookie);
 
+    // Some animated images may now be inside the viewport due to style recalc,
+    // resume them if necessary.
+    frameView.viewportContentsChanged();
+
     // As a result of the style recalculation, the currently hovered element might have been
     // detached (for example, by setting display:none in the :hover style), schedule another mouseMove event
     // to check if any other elements ended up under the mouse pointer due to re-layout.
@@ -1837,7 +1816,6 @@ void Document::updateStyleIfNeeded()
     if ((!m_pendingStyleRecalcShouldForce && !childNeedsStyleRecalc()) || inPageCache())
         return;
 
-    AnimationUpdateBlock animationUpdateBlock(m_frame ? &m_frame->animation() : nullptr);
     recalcStyle(Style::NoChange);
 }
 
@@ -1903,7 +1881,7 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
     m_ignorePendingStylesheets = oldIgnore;
 }
 
-PassRef<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element* element)
+Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element* element)
 {
     ASSERT_ARG(element, &element->document() == this);
 
@@ -2242,7 +2220,7 @@ void Document::setVisuallyOrdered()
         renderView()->style().setRTLOrdering(VisualOrder);
 }
 
-RefPtr<DocumentParser> Document::createParser()
+Ref<DocumentParser> Document::createParser()
 {
     // FIXME: this should probably pass the frame instead
     return XMLDocumentParser::create(*this, view());
@@ -2258,7 +2236,7 @@ void Document::open(Document* ownerDocument)
     if (ownerDocument) {
         setURL(ownerDocument->url());
         setCookieURL(ownerDocument->cookieURL());
-        setSecurityOrigin(ownerDocument->securityOrigin());
+        setSecurityOriginPolicy(ownerDocument->securityOriginPolicy());
     }
 
     if (m_frame) {
@@ -3084,7 +3062,6 @@ bool Document::childTypeAllowed(NodeType type) const
     case DOCUMENT_NODE:
     case ENTITY_NODE:
     case ENTITY_REFERENCE_NODE:
-    case NOTATION_NODE:
     case TEXT_NODE:
     case XPATH_NAMESPACE_NODE:
         return false;
@@ -3143,7 +3120,6 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
             case DOCUMENT_NODE:
             case ENTITY_NODE:
             case ENTITY_REFERENCE_NODE:
-            case NOTATION_NODE:
             case TEXT_NODE:
             case XPATH_NAMESPACE_NODE:
                 return false;
@@ -3166,7 +3142,6 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
         case DOCUMENT_NODE:
         case ENTITY_NODE:
         case ENTITY_REFERENCE_NODE:
-        case NOTATION_NODE:
         case TEXT_NODE:
         case XPATH_NAMESPACE_NODE:
             return false;
@@ -3188,16 +3163,22 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
     return true;
 }
 
-RefPtr<Node> Document::cloneNode(bool deep)
+RefPtr<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
 {
-    RefPtr<Document> clone = cloneDocumentWithoutChildren();
+    Ref<Document> clone = cloneDocumentWithoutChildren();
     clone->cloneDataFromDocument(*this);
-    if (deep)
-        cloneChildNodes(clone.get());
-    return clone;
+    switch (type) {
+    case CloningOperation::OnlySelf:
+    case CloningOperation::SelfWithTemplateContent:
+        break;
+    case CloningOperation::Everything:
+        cloneChildNodes(clone.ptr());
+        break;
+    }
+    return WTF::move(clone);
 }
 
-RefPtr<Document> Document::cloneDocumentWithoutChildren() const
+Ref<Document> Document::cloneDocumentWithoutChildren() const
 {
     return isXHTMLDocument() ? createXHTML(nullptr, url()) : create(nullptr, url());
 }
@@ -3210,7 +3191,8 @@ void Document::cloneDataFromDocument(const Document& other)
     m_documentURI = other.documentURI();
 
     setCompatibilityMode(other.m_compatibilityMode);
-    setSecurityOrigin(other.securityOrigin());
+    setSecurityOriginPolicy(other.securityOriginPolicy());
+    overrideMIMEType(other.contentType());
     setDecoder(other.decoder());
 }
 
@@ -3452,7 +3434,7 @@ bool Document::setFocusedElement(PassRefPtr<Element> prpNewFocusedElement, Focus
         }
 
         // Dispatch the blur event and let the node do any other blur related activities (important for text fields)
-        oldFocusedElement->dispatchBlurEvent(newFocusedElement);
+        oldFocusedElement->dispatchBlurEvent(newFocusedElement.copyRef());
 
         if (m_focusedElement) {
             // handler shifted focus
@@ -3460,10 +3442,10 @@ bool Document::setFocusedElement(PassRefPtr<Element> prpNewFocusedElement, Focus
             newFocusedElement = nullptr;
         }
         
-        oldFocusedElement->dispatchFocusOutEvent(eventNames().focusoutEvent, newFocusedElement); // DOM level 3 name for the bubbling blur event.
+        oldFocusedElement->dispatchFocusOutEvent(eventNames().focusoutEvent, newFocusedElement.copyRef()); // DOM level 3 name for the bubbling blur event.
         // FIXME: We should remove firing DOMFocusOutEvent event when we are sure no content depends
         // on it, probably when <rdar://problem/8503958> is resolved.
-        oldFocusedElement->dispatchFocusOutEvent(eventNames().DOMFocusOutEvent, newFocusedElement); // DOM level 2 name for compatibility.
+        oldFocusedElement->dispatchFocusOutEvent(eventNames().DOMFocusOutEvent, newFocusedElement.copyRef()); // DOM level 2 name for compatibility.
 
         if (m_focusedElement) {
             // handler shifted focus
@@ -3492,7 +3474,7 @@ bool Document::setFocusedElement(PassRefPtr<Element> prpNewFocusedElement, Focus
         m_focusedElement = newFocusedElement;
 
         // Dispatch the focus event and let the node do any other focus related activities (important for text fields)
-        m_focusedElement->dispatchFocusEvent(oldFocusedElement, direction);
+        m_focusedElement->dispatchFocusEvent(oldFocusedElement.copyRef(), direction);
 
         if (m_focusedElement != newFocusedElement) {
             // handler shifted focus
@@ -3500,7 +3482,7 @@ bool Document::setFocusedElement(PassRefPtr<Element> prpNewFocusedElement, Focus
             goto SetFocusedNodeDone;
         }
 
-        m_focusedElement->dispatchFocusInEvent(eventNames().focusinEvent, oldFocusedElement); // DOM level 3 bubbling focus event.
+        m_focusedElement->dispatchFocusInEvent(eventNames().focusinEvent, oldFocusedElement.copyRef()); // DOM level 3 bubbling focus event.
 
         if (m_focusedElement != newFocusedElement) {
             // handler shifted focus
@@ -3510,7 +3492,7 @@ bool Document::setFocusedElement(PassRefPtr<Element> prpNewFocusedElement, Focus
 
         // FIXME: We should remove firing DOMFocusInEvent event when we are sure no content depends
         // on it, probably when <rdar://problem/8503958> is m.
-        m_focusedElement->dispatchFocusInEvent(eventNames().DOMFocusInEvent, oldFocusedElement); // DOM level 2 for compatibility.
+        m_focusedElement->dispatchFocusInEvent(eventNames().DOMFocusInEvent, oldFocusedElement.copyRef()); // DOM level 2 for compatibility.
 
         if (m_focusedElement != newFocusedElement) {
             // handler shifted focus
@@ -4614,7 +4596,7 @@ void Document::finishedParsing()
 
         f->loader().finishedParsing();
 
-        InspectorInstrumentation::domContentLoadedEventFired(f.get());
+        InspectorInstrumentation::domContentLoadedEventFired(*f);
     }
 
     // Schedule dropping of the DocumentSharedObjectPool. We keep it alive for a while after parsing finishes
@@ -4737,7 +4719,7 @@ void Document::initSecurityContext()
         // No source for a security context.
         // This can occur via document.implementation.createDocument().
         setCookieURL(URL(ParsedURLString, emptyString()));
-        setSecurityOrigin(SecurityOrigin::createUnique());
+        setSecurityOriginPolicy(SecurityOriginPolicy::create(SecurityOrigin::createUnique()));
         setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
         return;
     }
@@ -4757,7 +4739,7 @@ void Document::initSecurityContext()
         enforceSandboxFlags(SandboxOrigin);
 #endif
 
-    setSecurityOrigin(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url));
+    setSecurityOriginPolicy(SecurityOriginPolicy::create(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url)));
     setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
 
     if (Settings* settings = this->settings()) {
@@ -4813,7 +4795,7 @@ void Document::initSecurityContext()
     setCookieURL(ownerFrame->document()->cookieURL());
     // We alias the SecurityOrigins to match Firefox, see Bug 15313
     // https://bugs.webkit.org/show_bug.cgi?id=15313
-    setSecurityOrigin(ownerFrame->document()->securityOrigin());
+    setSecurityOriginPolicy(ownerFrame->document()->securityOriginPolicy());
 }
 
 void Document::initContentSecurityPolicy()

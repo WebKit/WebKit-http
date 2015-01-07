@@ -48,6 +48,8 @@
 #import "_WKFormInputSession.h"
 #import <CoreText/CTFontDescriptor.h>
 #import <DataDetectorsUI/DDDetectionController.h>
+#import <ManagedConfiguration/MCFeatures.h>
+#import <ManagedConfiguration/MCProfileConnection.h>
 #import <TextInput/TI_NSStringExtras.h>
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIFont_Private.h>
@@ -69,6 +71,11 @@
 
 SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectorsUI)
 SOFT_LINK_CLASS(DataDetectorsUI, DDDetectionController)
+SOFT_LINK_PRIVATE_FRAMEWORK(ManagedConfiguration);
+SOFT_LINK_CLASS(ManagedConfiguration, MCProfileConnection);
+SOFT_LINK_CONSTANT(ManagedConfiguration, MCFeatureDefinitionLookupAllowed, NSString *)
+
+#define MCFeatureDefinitionLookupAllowed getMCFeatureDefinitionLookupAllowed()
 
 using namespace WebCore;
 using namespace WebKit;
@@ -149,6 +156,10 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 + (BOOL)_addCompletion:(void(^)(BOOL))completion;
 @end
 
+@interface UIWebFormAccessory (StagingToRemove)
+@property(nonatomic,retain) NSArray *buttonItems;
+@end
+
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
 - (instancetype)initWithContentView:(WKContentView *)view userObject:(NSObject <NSSecureCoding> *)userObject;
@@ -193,6 +204,8 @@ const CGFloat minimumTapHighlightRadius = 2.0;
         [[_contentView formAccessoryView] showAutoFillButtonWithTitle:title];
     else
         [[_contentView formAccessoryView] hideAutoFillButton];
+    if (UICurrentUserInterfaceIdiomIsPad())
+        [_contentView reloadInputViews];
 }
 
 - (void)invalidate
@@ -1144,10 +1157,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Phone:
     case InputType::Number:
     case InputType::NumberPad:
-        return YES;
+        return !UICurrentUserInterfaceIdiomIsPad();
     case InputType::ContentEditable:
     case InputType::TextArea:
-        return YES;
+        return !UICurrentUserInterfaceIdiomIsPad();
     case InputType::Select:
     case InputType::Date:
     case InputType::DateTime:
@@ -1170,6 +1183,15 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     }
     
     return _formAccessoryView.get();
+}
+
+- (NSArray *)inputAssistantButtonItems
+{
+    if (!_formAccessoryView) {
+        _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
+        [_formAccessoryView setDelegate:self];
+    }
+    return ([_formAccessoryView respondsToSelector:@selector(buttonItems)]) ? [_formAccessoryView buttonItems] : nil;
 }
 
 - (NSArray *)supportedPasteboardTypesForCurrentSelection
@@ -1317,6 +1339,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         if (!textLength || textLength > 200)
             return NO;
 
+        if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
+            return NO;
+            
         return YES;
     }
 
@@ -1457,6 +1482,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_define:(id)sender
 {
+    if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
+        return;
+
     _page->getSelectionOrContentsAsString([self](const String& string, CallbackBase::Error error) {
         if (error != CallbackBase::Error::None)
             return;
@@ -1967,7 +1995,12 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     _inputPeripheral = nil;
 
     _didAccessoryTabInitiateFocus = YES; // Will be cleared in either -_displayFormNodeInputView or -cleanupInteraction.
-    _page->focusNextAssistedNode(isNext);
+    [self beginSelectionChange];
+    _page->focusNextAssistedNode(isNext, [self](CallbackBase::Error) {
+        [self endSelectionChange];
+        [self reloadInputViews];
+    });
+
 }
 
 - (void)accessoryAutoFill
@@ -2634,6 +2667,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 - (void)_startAssistingKeyboard
 {
     [self useSelectionAssistantWithMode:UIWebSelectionModeTextOnly];
+    [self reloadInputViews];
 }
 
 - (void)_stopAssistingKeyboard
@@ -2715,6 +2749,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     _inputPeripheral = nil;
 
     [self _stopAssistingKeyboard];
+    [_formAccessoryView hideAutoFillButton];
     [self reloadInputViews];
     [self _updateAccessory];
     // The name is misleading, but this actually clears the selection views and removes any selection.

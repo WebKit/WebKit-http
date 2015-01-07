@@ -61,7 +61,10 @@ class VideoTrackList;
 
 class SourceBuffer final : public RefCounted<SourceBuffer>, public ActiveDOMObject, public EventTargetWithInlineData, public ScriptWrappable, public SourceBufferPrivateClient, public AudioTrackClient, public VideoTrackClient, public TextTrackClient {
 public:
-    static PassRef<SourceBuffer> create(PassRef<SourceBufferPrivate>, MediaSource*);
+    static Ref<SourceBuffer> create(Ref<SourceBufferPrivate>&&, MediaSource*);
+
+    static const AtomicString& segmentsKeyword();
+    static const AtomicString& sequenceKeyword();
 
     virtual ~SourceBuffer();
 
@@ -79,7 +82,6 @@ public:
 
     void abortIfUpdating();
     void removedFromMediaSource();
-    const MediaTime& highestPresentationEndTimestamp() const { return m_highestPresentationEndTimestamp; }
     void seekToTime(const MediaTime&);
 
 #if ENABLE(VIDEO_TRACK)
@@ -112,13 +114,19 @@ public:
 
     Document& document() const;
 
+    const AtomicString& mode() const { return m_mode; }
+    void setMode(const AtomicString&, ExceptionCode&);
+
+    bool shouldGenerateTimestamps() const { return m_shouldGenerateTimestamps; }
+    void setShouldGenerateTimestamps(bool flag) { m_shouldGenerateTimestamps = flag; }
+
 protected:
     // EventTarget interface
     virtual void refEventTarget() override { ref(); }
     virtual void derefEventTarget() override { deref(); }
 
 private:
-    SourceBuffer(PassRef<SourceBufferPrivate>, MediaSource*);
+    SourceBuffer(Ref<SourceBufferPrivate>&&, MediaSource*);
 
     // SourceBufferPrivateClient
     virtual void sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString&) override;
@@ -177,11 +185,12 @@ private:
 
     // Internals
     friend class Internals;
-    Vector<String> bufferedSamplesForTrackID(const AtomicString&);
+    WEBCORE_EXPORT Vector<String> bufferedSamplesForTrackID(const AtomicString&);
 
     Ref<SourceBufferPrivate> m_private;
     MediaSource* m_source;
     GenericEventQueue m_asyncEventQueue;
+    AtomicString m_mode;
 
     Vector<unsigned char> m_pendingAppendData;
     Timer m_appendBufferTimer;
@@ -195,7 +204,8 @@ private:
     Vector<AtomicString> m_textCodecs;
 
     MediaTime m_timestampOffset;
-    MediaTime m_highestPresentationEndTimestamp;
+    MediaTime m_groupStartTimestamp;
+    MediaTime m_groupEndTimestamp;
 
     HashMap<AtomicString, TrackBuffer> m_trackBufferMap;
     RefPtr<TimeRanges> m_buffered;
@@ -217,6 +227,7 @@ private:
     bool m_receivedFirstInitializationSegment;
     bool m_active;
     bool m_bufferFull;
+    bool m_shouldGenerateTimestamps;
 };
 
 } // namespace WebCore

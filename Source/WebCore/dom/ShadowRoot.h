@@ -43,9 +43,9 @@ public:
         UserAgentShadowRoot = 0,
     };
 
-    static PassRefPtr<ShadowRoot> create(Document& document, ShadowRootType type)
+    static Ref<ShadowRoot> create(Document& document, ShadowRootType type)
     {
-        return adoptRef(new ShadowRoot(document, type));
+        return adoptRef(*new ShadowRoot(document, type));
     }
 
     virtual ~ShadowRoot();
@@ -76,8 +76,7 @@ private:
     virtual bool childTypeAllowed(NodeType) const override;
     virtual void childrenChanged(const ChildChange&) override;
 
-    // ShadowRoots should never be cloned.
-    virtual RefPtr<Node> cloneNode(bool) override { return 0; }
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
     bool isOrphan() const { return !hostElement(); }

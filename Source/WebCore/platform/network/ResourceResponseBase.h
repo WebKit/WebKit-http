@@ -93,8 +93,9 @@ public:
     WEBCORE_EXPORT bool isAttachment() const;
     WEBCORE_EXPORT String suggestedFilename() const;
 
-    void includeCertificateInfo() const;
-    CertificateInfo certificateInfo() const;
+    WEBCORE_EXPORT void includeCertificateInfo() const;
+    bool containsCertificateInfo() const { return m_includesCertificateInfo; }
+    WEBCORE_EXPORT CertificateInfo certificateInfo() const;
     
     // These functions return parsed values of the corresponding response headers.
     // NaN means that the header was not present or had invalid value.
@@ -108,14 +109,9 @@ public:
     double expires() const;
     WEBCORE_EXPORT double lastModified() const;
 
-    unsigned connectionID() const;
-    void setConnectionID(unsigned);
-
-    bool connectionReused() const;
-    void setConnectionReused(bool);
-
-    bool wasCached() const;
-    void setWasCached(bool);
+    enum class Source { Unknown, Network, DiskCache, DiskCacheAfterValidation };
+    WEBCORE_EXPORT Source source() const;
+    WEBCORE_EXPORT void setSource(Source);
 
     ResourceLoadTiming& resourceLoadTiming() const { return m_resourceLoadTiming; }
 
@@ -141,7 +137,7 @@ protected:
     WEBCORE_EXPORT ResourceResponseBase();
     ResourceResponseBase(const URL&, const String& mimeType, long long expectedLength, const String& textEncodingName);
 
-    void lazyInit(InitLevel) const;
+    WEBCORE_EXPORT void lazyInit(InitLevel) const;
 
     // The ResourceResponse subclass should shadow these functions to lazily initialize platform specific fields
     void platformLazyInit(InitLevel) { }
@@ -162,7 +158,6 @@ protected:
     mutable CertificateInfo m_certificateInfo;
 
     int m_httpStatusCode;
-    unsigned m_connectionID;
 
 private:
     mutable double m_cacheControlMaxAge;
@@ -172,9 +167,6 @@ private:
     mutable double m_lastModified;
 
 public:
-    bool m_wasCached : 1;
-    bool m_connectionReused : 1;
-
     bool m_isNull : 1;
     
 private:
@@ -191,6 +183,8 @@ private:
     mutable bool m_cacheControlContainsNoCache : 1;
     mutable bool m_cacheControlContainsNoStore : 1;
     mutable bool m_cacheControlContainsMustRevalidate : 1;
+
+    Source m_source;
 };
 
 inline bool operator==(const ResourceResponse& a, const ResourceResponse& b) { return ResourceResponseBase::compare(a, b); }
@@ -212,10 +206,10 @@ void ResourceResponseBase::encode(Encoder& encoder) const
     encoder << m_httpHeaderFields;
     encoder << m_resourceLoadTiming;
     encoder << m_httpStatusCode;
-    encoder << m_connectionID;
     encoder << m_includesCertificateInfo;
     if (m_includesCertificateInfo)
         encoder << m_certificateInfo;
+    encoder.encodeEnum(m_source);
 }
 
 template<class Decoder>
@@ -248,14 +242,14 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
         return false;
     if (!decoder.decode(response.m_httpStatusCode))
         return false;
-    if (!decoder.decode(response.m_connectionID))
-        return false;
     if (!decoder.decode(response.m_includesCertificateInfo))
         return false;
     if (response.m_includesCertificateInfo) {
         if (!decoder.decode(response.m_certificateInfo))
             return false;
     }
+    if (!decoder.decodeEnum(response.m_source))
+        return false;
     response.m_isNull = false;
 
     return true;

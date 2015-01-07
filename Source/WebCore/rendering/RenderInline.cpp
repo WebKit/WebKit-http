@@ -51,13 +51,13 @@
 
 namespace WebCore {
 
-RenderInline::RenderInline(Element& element, PassRef<RenderStyle> style)
+RenderInline::RenderInline(Element& element, Ref<RenderStyle>&& style)
     : RenderBoxModelObject(element, WTF::move(style), RenderInlineFlag)
 {
     setChildrenInline(true);
 }
 
-RenderInline::RenderInline(Document& document, PassRef<RenderStyle> style)
+RenderInline::RenderInline(Document& document, Ref<RenderStyle>&& style)
     : RenderBoxModelObject(document, WTF::move(style), RenderInlineFlag)
 {
     setChildrenInline(true);
@@ -124,7 +124,7 @@ void RenderInline::updateFromStyle()
     RenderBoxModelObject::updateFromStyle();
 
     // FIXME: Support transforms and reflections on inline flows someday.
-    setHasTransform(false);
+    setHasTransformRelatedProperty(false);
     setHasReflection(false);    
 }
 
@@ -416,6 +416,9 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
         current = downcast<RenderBoxModelObject>(current->parent());
         ++splitDepth;
     }
+
+    // Clear the flow thread containing blocks cached during the detached state insertions.
+    cloneInline->invalidateFlowThreadContainingBlockIncludingDescendants();
 
     // Now we are at the block level. We need to put the clone into the toBlock.
     toBlock->insertChildInternal(cloneInline.leakPtr(), nullptr, NotifyChildren);

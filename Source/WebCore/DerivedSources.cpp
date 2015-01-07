@@ -42,6 +42,8 @@
 #include "JSCanvasRenderingContext.cpp"
 #include "JSCanvasRenderingContext2D.cpp"
 #if ENABLE(WEBGL)
+#include "JSEXTBlendMinMax.cpp"
+#include "JSEXTFragDepth.cpp"
 #include "JSEXTShaderTextureLOD.cpp"
 #include "JSEXTTextureFilterAnisotropic.cpp"
 #include "JSEXTsRGB.cpp"
@@ -276,7 +278,6 @@
 #include "JSNodeFilter.cpp"
 #include "JSNodeIterator.cpp"
 #include "JSNodeList.cpp"
-#include "JSNotation.cpp"
 #include "JSNotificationCenter.cpp"
 #include "JSNotification.cpp"
 #include "JSOverflowEvent.cpp"

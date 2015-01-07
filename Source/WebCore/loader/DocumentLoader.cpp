@@ -516,8 +516,8 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     if (!redirectResponse.isNull()) {
         // If the redirecting url is not allowed to display content from the target origin,
         // then block the redirect.
-        RefPtr<SecurityOrigin> redirectingOrigin = SecurityOrigin::create(redirectResponse.url());
-        if (!redirectingOrigin->canDisplay(newRequest.url())) {
+        Ref<SecurityOrigin> redirectingOrigin(SecurityOrigin::create(redirectResponse.url()));
+        if (!redirectingOrigin.get().canDisplay(newRequest.url())) {
             FrameLoader::reportLocalLoadFailed(m_frame, newRequest.url().string());
             cancelMainResourceLoad(frameLoader()->cancelledError(newRequest));
             return;
@@ -612,7 +612,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
         unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
         ASSERT(identifier);
         if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, response.url(), identifier)) {
-            InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_frame, this, identifier, response);
+            InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_frame, *this, identifier, response);
             String message = "Refused to display '" + response.url().stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
             frame()->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
             frame()->document()->enforceSandboxFlags(SandboxOrigin);
@@ -709,7 +709,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
         }
 
         if (ResourceLoader* mainResourceLoader = this->mainResourceLoader())
-            InspectorInstrumentation::continueWithPolicyDownload(m_frame, this, mainResourceLoader->identifier(), m_response);
+            InspectorInstrumentation::continueWithPolicyDownload(m_frame, *this, mainResourceLoader->identifier(), m_response);
 
         // When starting the request, we didn't know that it would result in download and not navigation. Now we know that main document URL didn't change.
         // Download may use this knowledge for purposes unrelated to cookies, notably for setting file quarantine data.
@@ -723,7 +723,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     }
     case PolicyIgnore:
         if (ResourceLoader* mainResourceLoader = this->mainResourceLoader())
-            InspectorInstrumentation::continueWithPolicyIgnore(m_frame, this, mainResourceLoader->identifier(), m_response);
+            InspectorInstrumentation::continueWithPolicyIgnore(m_frame, *this, mainResourceLoader->identifier(), m_response);
         stopLoadingForPolicyChange();
         return;
     
@@ -948,7 +948,7 @@ void DocumentLoader::detachFromFrame()
         m_mainResource->removeClient(this);
 
     m_applicationCacheHost->setDOMApplicationCache(0);
-    InspectorInstrumentation::loaderDetachedFromFrame(m_frame, this);
+    InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
     m_frame = 0;
 }
 
@@ -1281,6 +1281,11 @@ URL DocumentLoader::documentURL() const
 const String& DocumentLoader::responseMIMEType() const
 {
     return m_response.mimeType();
+}
+
+const String& DocumentLoader::currentContentType() const
+{
+    return m_writer.mimeType();
 }
 
 #if PLATFORM(IOS)

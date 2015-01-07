@@ -30,7 +30,7 @@ namespace WebCore {
 
 class HTMLButtonElement final : public HTMLFormControlElement {
 public:
-    static RefPtr<HTMLButtonElement> create(const QualifiedName&, Document&, HTMLFormElement*);
+    static Ref<HTMLButtonElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
     void setType(const AtomicString&);
     
@@ -45,7 +45,7 @@ private:
 
     virtual const AtomicString& formControlType() const override;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
     // HTMLFormControlElement always creates one, but buttons don't need it.
     virtual bool alwaysCreateUserAgentShadowRoot() const override { return false; }

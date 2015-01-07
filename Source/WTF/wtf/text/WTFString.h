@@ -119,7 +119,7 @@ public:
     String(StringImpl& impl) : m_impl(&impl) { }
     String(StringImpl* impl) : m_impl(impl) { }
     String(PassRefPtr<StringImpl> impl) : m_impl(impl) { }
-    String(PassRef<StringImpl>&& impl) : m_impl(std::forward<PassRef<StringImpl>>(impl)) { }
+    String(Ref<StringImpl>&& impl) : m_impl(WTF::move(impl)) { }
     String(RefPtr<StringImpl>&& impl) : m_impl(impl) { }
 
     // Construct a string from a constant string literal.
@@ -309,8 +309,6 @@ public:
 
         return *this;
     }
-
-    void fill(UChar c) { if (m_impl) m_impl = m_impl->fill(c); }
 
     WTF_EXPORT_STRING_API void truncate(unsigned len);
     WTF_EXPORT_STRING_API void remove(unsigned pos, int len = 1);
@@ -521,7 +519,7 @@ inline void swap(String& a, String& b) { a.swap(b); }
 
 template<size_t inlineCapacity, typename OverflowHandler>
 String::String(const Vector<UChar, inlineCapacity, OverflowHandler>& vector)
-    : m_impl(vector.size() ? StringImpl::create(vector.data(), vector.size()) : *StringImpl::empty())
+    : m_impl(vector.size() ? StringImpl::create(vector.data(), vector.size()) : Ref<StringImpl>(*StringImpl::empty()))
 {
 }
 

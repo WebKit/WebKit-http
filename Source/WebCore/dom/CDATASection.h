@@ -29,16 +29,16 @@ namespace WebCore {
 
 class CDATASection final : public Text {
 public:
-    static RefPtr<CDATASection> create(Document&, const String&);
+    static Ref<CDATASection> create(Document&, const String&);
 
 private:
     CDATASection(Document&, const String&);
 
     virtual String nodeName() const override;
     virtual NodeType nodeType() const override;
-    virtual RefPtr<Node> cloneNode(bool deep) override;
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override;
     virtual bool childTypeAllowed(NodeType) const override;
-    virtual RefPtr<Text> virtualCreate(const String&) override;
+    virtual Ref<Text> virtualCreate(const String&) override;
 };
 
 } // namespace WebCore

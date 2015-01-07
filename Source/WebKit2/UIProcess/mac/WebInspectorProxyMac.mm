@@ -35,13 +35,13 @@
 #import "WKOpenPanelResultListener.h"
 #import "WKRetainPtr.h"
 #import "WKURLCF.h"
-#import "WKViewPrivate.h"
-#import "WebContext.h"
+#import "WKViewInternal.h"
 #import "WebInspectorMessages.h"
 #import "WebInspectorUIMessages.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebPreferences.h"
+#import "WebProcessPool.h"
 #import "WebProcessProxy.h"
 #import <QuartzCore/CoreAnimation.h>
 #import <WebCore/InspectorFrontendClientLocal.h>
@@ -86,6 +86,7 @@ static const unsigned webViewCloseTimeout = 60;
 
 - (id)initWithWebInspectorProxy:(WebInspectorProxy*)inspectorProxy;
 - (void)close;
+- (void)didRelaunchProcess;
 
 @end
 
@@ -123,6 +124,11 @@ static const unsigned webViewCloseTimeout = 60;
     _inspectorProxy = nullptr;
 }
 
+- (void)didRelaunchProcess
+{
+    static_cast<WebInspectorProxy*>(_inspectorProxy)->didRelaunchInspectorPageProcess();
+}
+
 - (void)windowDidMove:(NSNotification *)notification
 {
     static_cast<WebInspectorProxy*>(_inspectorProxy)->windowFrameDidChange();
@@ -145,10 +151,10 @@ static const unsigned webViewCloseTimeout = 60;
 
 - (void)inspectedViewFrameDidChange:(NSNotification *)notification
 {
-    if (_ignoreNextInspectedViewFrameDidChange)
+    if (_ignoreNextInspectedViewFrameDidChange) {
+        _ignoreNextInspectedViewFrameDidChange = NO;
         return;
-
-    _ignoreNextInspectedViewFrameDidChange = NO;
+    }
 
     // Resizing the views while inside this notification can lead to bad results when entering
     // or exiting full screen. To avoid that we need to perform the work after a delay. We only
@@ -164,14 +170,28 @@ static const unsigned webViewCloseTimeout = 60;
 
 @end
 
-@interface WKWebInspectorWKView : WKView
+@interface WKWebInspectorWKView : WKView {
+@private
+    WKWebInspectorProxyObjCAdapter *_inspectorProxyObjCAdapter;
+}
+
+@property (nonatomic, assign) WKWebInspectorProxyObjCAdapter *inspectorProxyObjCAdapter;
 @end
 
 @implementation WKWebInspectorWKView
 
+@synthesize inspectorProxyObjCAdapter = _inspectorProxyObjCAdapter;
+
 - (NSInteger)tag
 {
     return WKInspectorViewTag;
+}
+
+- (void)_didRelaunchProcess
+{
+    [super _didRelaunchProcess];
+
+    [self.inspectorProxyObjCAdapter didRelaunchProcess];
 }
 
 @end
@@ -291,7 +311,12 @@ void WebInspectorProxy::closeTimerFired()
     if (m_isAttached || m_inspectorWindow)
         return;
 
-    m_inspectorView = nil;
+    if (m_inspectorView) {
+        WebPageProxy* inspectorPage = toImpl(m_inspectorView.get().pageRef);
+        inspectorPage->close();
+        [m_inspectorView setInspectorProxyObjCAdapter:nil];
+        m_inspectorView = nil;
+    }
 
     [m_inspectorProxyObjCAdapter close];
     m_inspectorProxyObjCAdapter = nil;
@@ -455,7 +480,7 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
             initialRect = [NSWindow contentRectForFrameRect:windowFrame styleMask:windowStyleMask];
     }
 
-    m_inspectorView = adoptNS([[WKWebInspectorWKView alloc] initWithFrame:initialRect contextRef:toAPI(&inspectorContext()) pageGroupRef:toAPI(inspectorPageGroup()) relatedToPage:nullptr]);
+    m_inspectorView = adoptNS([[WKWebInspectorWKView alloc] initWithFrame:initialRect contextRef:toAPI(&inspectorProcessPool()) pageGroupRef:toAPI(inspectorPageGroup()) relatedToPage:nullptr]);
     ASSERT(m_inspectorView);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
@@ -464,6 +489,8 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
 
     m_inspectorProxyObjCAdapter = adoptNS([[WKWebInspectorProxyObjCAdapter alloc] initWithWebInspectorProxy:this]);
     ASSERT(m_inspectorProxyObjCAdapter);
+
+    [m_inspectorView setInspectorProxyObjCAdapter:m_inspectorProxyObjCAdapter.get()];
 
     WebPageProxy* inspectorPage = toImpl(m_inspectorView.get().pageRef);
     ASSERT(inspectorPage);
@@ -542,6 +569,13 @@ void WebInspectorProxy::platformDidClose()
     }
 
     m_closeTimer.startOneShot(webViewCloseTimeout);
+}
+
+void WebInspectorProxy::platformInvalidate()
+{
+    m_closeTimer.stop();
+
+    closeTimerFired();
 }
 
 void WebInspectorProxy::platformHide()
@@ -710,7 +744,8 @@ void WebInspectorProxy::inspectedViewFrameDidChange(CGFloat currentDimension)
             // Preserve the top position of the inspected view so banners in Safari still work. But don't use that
             // top position for the inspector view since the banners only stretch as wide as the the inspected view.
             inspectedViewFrame = NSMakeRect(0, 0, parentWidth - inspectorWidth, inspectedViewTop);
-            inspectorFrame = NSMakeRect(parentWidth - inspectorWidth, 0, inspectorWidth, NSHeight(parentBounds) - inspectedView._topContentInset);
+            CGFloat insetExcludingBanners = inspectedView._topContentInset - inspectedView._totalHeightOfBanners;
+            inspectorFrame = NSMakeRect(parentWidth - inspectorWidth, 0, inspectorWidth, NSHeight(parentBounds) - insetExcludingBanners);
             break;
         }
     }

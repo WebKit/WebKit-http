@@ -31,11 +31,13 @@
 #include "PluginModuleInfo.h"
 #include "PluginProcess.h"
 #include "PluginProcessAttributes.h"
+#include "ProcessThrottler.h"
 #include "WebProcessProxyMessages.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/RefCounter.h>
 #include <wtf/Vector.h>
 
 namespace IPC {
@@ -64,7 +66,9 @@ public:
     void clearSiteData(const PluginModuleInfo&, WebPluginSiteDataManager*, const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID);
 
 #if PLATFORM(COCOA)
-    void setProcessSuppressionEnabled(bool);
+    inline ProcessSuppressionDisabledToken processSuppressionDisabledToken();
+    inline bool processSuppressionDisabled() const;
+    void updateProcessSuppressionDisabled(bool);
 #endif
 
 private:
@@ -76,7 +80,23 @@ private:
     HashSet<uint64_t> m_knownTokens;
 
     Vector<RefPtr<PluginProcessProxy>> m_pluginProcesses;
+
+#if PLATFORM(COCOA)
+    RefCounter m_processSuppressionDisabledForPageCounter;
+#endif
 };
+
+#if PLATFORM(COCOA)
+inline ProcessSuppressionDisabledToken PluginProcessManager::processSuppressionDisabledToken()
+{
+    return m_processSuppressionDisabledForPageCounter.token<ProcessSuppressionDisabledTokenType>();
+}
+
+inline bool PluginProcessManager::processSuppressionDisabled() const
+{
+    return m_processSuppressionDisabledForPageCounter.value();
+}
+#endif
 
 } // namespace WebKit
 

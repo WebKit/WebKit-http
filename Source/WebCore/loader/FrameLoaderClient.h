@@ -80,7 +80,7 @@ namespace WebCore {
     class NavigationAction;
     class Page;
     class ProtectionSpace;
-    class PluginView;
+    class PluginViewBase;
     class PolicyChecker;
     class ResourceError;
     class ResourceHandle;
@@ -105,7 +105,7 @@ namespace WebCore {
 
     typedef std::function<void (PolicyAction)> FramePolicyFunction;
 
-    class FrameLoaderClient {
+    class WEBCORE_EXPORT FrameLoaderClient {
     public:
         // An inline function cannot be the first non-abstract virtual function declared
         // in the class as it results in the vtable being generated as a weak symbol.
@@ -274,7 +274,7 @@ namespace WebCore {
 
         virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) = 0;
 
-        virtual void dispatchDidFailToStartPlugin(const PluginView*) const { }
+        virtual void dispatchDidFailToStartPlugin(const PluginViewBase*) const { }
 
         virtual ObjectContentType objectContentType(const URL&, const String& mimeType, bool shouldPreferPlugInsForImages) = 0;
         virtual String overrideMediaType() const = 0;

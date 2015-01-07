@@ -222,19 +222,19 @@ FrameView::FrameView(Frame& frame)
 #endif
 }
 
-PassRefPtr<FrameView> FrameView::create(Frame& frame)
+Ref<FrameView> FrameView::create(Frame& frame)
 {
-    RefPtr<FrameView> view = adoptRef(new FrameView(frame));
+    Ref<FrameView> view = adoptRef(*new FrameView(frame));
     view->show();
-    return view.release();
+    return view;
 }
 
-PassRefPtr<FrameView> FrameView::create(Frame& frame, const IntSize& initialSize)
+Ref<FrameView> FrameView::create(Frame& frame, const IntSize& initialSize)
 {
-    RefPtr<FrameView> view = adoptRef(new FrameView(frame));
+    Ref<FrameView> view = adoptRef(*new FrameView(frame));
     view->Widget::setFrameRect(IntRect(view->location(), initialSize));
     view->show();
-    return view.release();
+    return view;
 }
 
 FrameView::~FrameView()
@@ -458,6 +458,8 @@ void FrameView::setFrameRect(const IntRect& newRect)
 
     if (frame().isMainFrame())
         frame().mainFrame().pageOverlayController().didChangeViewSize();
+
+    viewportContentsChanged();
 }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
@@ -1152,8 +1154,9 @@ void FrameView::layout(bool allowSubtree)
     if (isPainting())
         return;
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLayout(&frame());
-
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLayout(frame());
+    AnimationUpdateBlock animationUpdateBlock(&frame().animation());
+    
     if (!allowSubtree && m_layoutRoot) {
         m_layoutRoot->markContainingBlocksForLayout(false);
         m_layoutRoot = 0;
@@ -1185,7 +1188,7 @@ void FrameView::layout(bool allowSubtree)
         if (!styleResolver || styleResolver->hasMediaQueriesAffectedByViewportChange()) {
             document.styleResolverChanged(DeferRecalcStyle);
             // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
-            InspectorInstrumentation::mediaQueryResultChanged(&document);
+            InspectorInstrumentation::mediaQueryResultChanged(document);
         } else
             document.evaluateMediaQueryList();
 
@@ -1453,7 +1456,7 @@ String FrameView::mediaType() const
 {
     // See if we have an override type.
     String overrideType = frame().loader().client().overrideMediaType();
-    InspectorInstrumentation::applyEmulatedMedia(&frame(), &overrideType);
+    InspectorInstrumentation::applyEmulatedMedia(frame(), overrideType);
     if (!overrideType.isNull())
         return overrideType;
     return m_mediaType;
@@ -1748,6 +1751,14 @@ void FrameView::delayedScrollEventTimerFired()
     sendScrollEvent();
 }
 
+void FrameView::viewportContentsChanged()
+{
+    // When the viewport contents changes (scroll, resize, style recalc, layout, ...),
+    // check if we should resume animated images or unthrottle DOM timers.
+    resumeVisibleImageAnimationsIncludingSubframes();
+    updateThrottledDOMTimersState();
+}
+
 bool FrameView::fixedElementsLayoutRelativeToFrame() const
 {
     return frame().settings().fixedElementsLayoutRelativeToFrame();
@@ -1802,7 +1813,8 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
             return false;
         }
 
-        IntRect updateRect = snappedIntRect(layer->repaintRectIncludingNonCompositingDescendants());
+        // FIXME: use pixel snapping instead of enclosing when ScrollView has finished transitioning from IntRect to Float/LayoutRect.
+        IntRect updateRect = enclosingIntRect(layer->repaintRectIncludingNonCompositingDescendants());
         updateRect = contentsToRootView(updateRect);
         if (!isCompositedContentLayer && clipsRepaints())
             updateRect.intersect(rectToScroll);
@@ -2017,7 +2029,9 @@ void FrameView::scrollElementToRect(Element* element, const IntRect& rect)
 {
     frame().document()->updateLayoutIgnorePendingStylesheets();
 
-    LayoutRect bounds = rendererAnchorRect(*element);
+    LayoutRect bounds;
+    if (RenderElement* renderer = element->renderer())
+        bounds = renderer->anchorRect();
     int centeringOffsetX = (rect.width() - bounds.width()) / 2;
     int centeringOffsetY = (rect.height() - bounds.height()) / 2;
     setScrollPosition(IntPoint(bounds.x() - centeringOffsetX - rect.x(), bounds.y() - centeringOffsetY - rect.y()));
@@ -2108,8 +2122,7 @@ void FrameView::scrollPositionChanged(const IntPoint& oldPosition, const IntPoin
             renderView->compositor().frameViewDidScroll();
     }
 
-    resumeVisibleImageAnimationsIncludingSubframes();
-    updateThrottledDOMTimersState();
+    viewportContentsChanged();
 }
 
 void FrameView::resumeVisibleImageAnimationsIncludingSubframes()
@@ -2442,7 +2455,7 @@ void FrameView::scheduleRelayout()
         return;
     if (!frame().document()->shouldScheduleLayout())
         return;
-    InspectorInstrumentation::didInvalidateLayout(&frame());
+    InspectorInstrumentation::didInvalidateLayout(frame());
     // When frame flattening is enabled, the contents of the frame could affect the layout of the parent frames.
     // Also invalidate parent frame starting from the owner element of this frame.
     if (frame().ownerRenderer() && isInChildFrameWithFrameFlattening())
@@ -2491,7 +2504,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
         std::chrono::milliseconds delay = renderView.document().minimumLayoutDelay();
         ASSERT(!newRelayoutRoot.container() || !newRelayoutRoot.container()->needsLayout());
         m_layoutRoot = &newRelayoutRoot;
-        InspectorInstrumentation::didInvalidateLayout(&frame());
+        InspectorInstrumentation::didInvalidateLayout(frame());
         m_delayedLayout = delay.count();
         m_layoutTimer.startOneShot(delay);
         return;
@@ -2503,7 +2516,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
     if (!m_layoutRoot) {
         // Just relayout the subtree.
         newRelayoutRoot.markContainingBlocksForLayout(false);
-        InspectorInstrumentation::didInvalidateLayout(&frame());
+        InspectorInstrumentation::didInvalidateLayout(frame());
         return;
     }
 
@@ -2519,7 +2532,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
         m_layoutRoot->markContainingBlocksForLayout(false, &newRelayoutRoot);
         m_layoutRoot = &newRelayoutRoot;
         ASSERT(!m_layoutRoot->container() || !m_layoutRoot->container()->needsLayout());
-        InspectorInstrumentation::didInvalidateLayout(&frame());
+        InspectorInstrumentation::didInvalidateLayout(frame());
         return;
     }
 
@@ -2527,7 +2540,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
     m_layoutRoot->markContainingBlocksForLayout(false);
     m_layoutRoot = 0;
     newRelayoutRoot.markContainingBlocksForLayout(false);
-    InspectorInstrumentation::didInvalidateLayout(&frame());
+    InspectorInstrumentation::didInvalidateLayout(frame());
 }
 
 bool FrameView::layoutPending() const
@@ -2786,8 +2799,8 @@ void FrameView::scrollToAnchor()
         return;
 
     LayoutRect rect;
-    if (anchorNode != frame().document())
-        rect = rendererAnchorRect(*anchorNode.get());
+    if (anchorNode != frame().document() && anchorNode->renderer())
+        rect = anchorNode->renderer()->anchorRect();
 
     // Scroll nested layers and frames to reveal the anchor.
     // Align to the top and to the closest side (this matches other browsers).
@@ -2931,10 +2944,7 @@ void FrameView::performPostLayoutTasks()
     scrollToAnchor();
 
     sendResizeEventIfNeeded();
-
-    // Check if we should unthrottle DOMTimers after layout as the position
-    // of Elements may have changed.
-    updateThrottledDOMTimersState();
+    viewportContentsChanged();
 }
 
 IntSize FrameView::sizeForResizeEvent() const
@@ -3204,7 +3214,7 @@ void FrameView::setPagination(const Pagination& pagination)
     frame().document()->styleResolverChanged(DeferRecalcStyle);
 }
 
-IntRect FrameView::windowClipRect(bool clipToContents) const
+IntRect FrameView::windowClipRect() const
 {
     ASSERT(frame().view() == this);
 
@@ -3212,11 +3222,8 @@ IntRect FrameView::windowClipRect(bool clipToContents) const
         return contentsToWindow(IntRect(IntPoint(), totalContentsSize()));
 
     // Set our clip rect to be our contents.
-    IntRect clipRect;
-    if (clipToContents)
-        clipRect = contentsToWindow(visibleContentRect(LegacyIOSDocumentVisibleRect));
-    else
-        clipRect = contentsToWindow(visibleContentRectIncludingScrollbars(LegacyIOSDocumentVisibleRect));
+    IntRect clipRect = contentsToWindow(visibleContentRect(LegacyIOSDocumentVisibleRect));
+
     if (!frame().ownerElement())
         return clipRect;
 
@@ -3937,6 +3944,8 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     // region but then become included later by the second frame adding rects to the dirty region
     // when it lays out.
 
+    AnimationUpdateBlock animationUpdateBlock(&frame().animation());
+
     frame().document()->updateStyleIfNeeded();
 
     if (needsLayout())
@@ -4388,14 +4397,6 @@ bool FrameView::isFlippedDocument() const
         return false;
 
     return renderView->style().isFlippedBlocksWritingMode();
-}
-
-bool FrameView::containsSVGDocument() const
-{
-    if (frame().document())
-        return frame().document()->isSVGDocument();
-    
-    return false;
 }
 
 void FrameView::notifyWidgetsInAllFrames(WidgetNotification notification)

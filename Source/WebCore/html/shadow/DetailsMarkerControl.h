@@ -38,12 +38,12 @@ namespace WebCore {
 
 class DetailsMarkerControl final : public HTMLDivElement {
 public:
-    static PassRefPtr<DetailsMarkerControl> create(Document&);
+    static Ref<DetailsMarkerControl> create(Document&);
 
 private:
     DetailsMarkerControl(Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
     virtual bool rendererIsNeeded(const RenderStyle&) override;
 };
 

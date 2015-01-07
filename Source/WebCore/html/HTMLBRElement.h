@@ -30,8 +30,8 @@ namespace WebCore {
 
 class HTMLBRElement final : public HTMLElement {
 public:
-    static RefPtr<HTMLBRElement> create(Document&);
-    static RefPtr<HTMLBRElement> create(const QualifiedName&, Document&);
+    static Ref<HTMLBRElement> create(Document&);
+    static Ref<HTMLBRElement> create(const QualifiedName&, Document&);
 
     virtual bool canContainRangeEndPoint() const override { return false; }
 
@@ -41,7 +41,7 @@ private:
     virtual bool isPresentationAttribute(const QualifiedName&) const override;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 };
 
 } // namespace

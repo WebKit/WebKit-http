@@ -31,6 +31,7 @@
 #include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "BackForwardController.h"
+#include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
@@ -52,6 +53,7 @@
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "HTMLIFrameElement.h"
+#include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
@@ -102,6 +104,7 @@
 #include "ViewportArguments.h"
 #include "WebConsoleAgent.h"
 #include "WorkerThread.h"
+#include "XMLHttpRequest.h"
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
 #include <inspector/InspectorValues.h>
@@ -384,6 +387,30 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
     return resource && resource->status() == CachedResource::Cached;
 }
 
+String Internals::xhrResponseSource(XMLHttpRequest* xhr)
+{
+    if (!xhr)
+        return "Null xhr";
+    if (xhr->resourceResponse().isNull())
+        return "Null response";
+    switch (xhr->resourceResponse().source()) {
+    case ResourceResponse::Source::Unknown:
+        return "Unknown";
+    case ResourceResponse::Source::Network:
+        return "Network";
+    case ResourceResponse::Source::DiskCache:
+        return "Disk cache";
+    case ResourceResponse::Source::DiskCacheAfterValidation:
+        return "Disk cache after validation";
+    }
+    ASSERT_NOT_REACHED();
+    return "Error";
+}
+
+void Internals::clearMemoryCache()
+{
+    memoryCache().evictResources();
+}
 
 Node* Internals::treeScopeRootNode(Node* node, ExceptionCode& ec)
 {
@@ -722,7 +749,7 @@ void Internals::enableMockRTCPeerConnectionHandler()
 }
 #endif
 
-PassRefPtr<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
+Ref<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
 {
     Document* document = contextDocument();
     if (!document || !document->frame()) {
@@ -733,7 +760,7 @@ PassRefPtr<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
     return ClientRect::create(document->frame()->selection().absoluteCaretBounds());
 }
 
-PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& ec)
+Ref<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& ec)
 {
     if (!element) {
         ec = INVALID_ACCESS_ERR;
@@ -747,7 +774,7 @@ PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& e
     return ClientRect::create(renderer->absoluteBoundingBoxRectIgnoringTransforms());
 }
 
-PassRefPtr<ClientRectList> Internals::inspectorHighlightRects(ExceptionCode& ec)
+Ref<ClientRectList> Internals::inspectorHighlightRects(ExceptionCode& ec)
 {
 #if ENABLE(INSPECTOR)
     Document* document = contextDocument();
@@ -1308,7 +1335,7 @@ bool Internals::hasSpellingMarker(int from, int length, ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     updateEditorUINowIfScheduled();
 
@@ -1319,7 +1346,7 @@ bool Internals::hasAutocorrectedMarker(int from, int length, ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     updateEditorUINowIfScheduled();
 
@@ -1404,7 +1431,7 @@ bool Internals::isOverwriteModeEnabled(ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     return document->frame()->editor().isOverwriteModeEnabled();
 }
@@ -1453,7 +1480,7 @@ Vector<String> Internals::consoleMessageArgumentCounts() const
     if (!document || !document->page())
         return Vector<String>();
 
-    InstrumentingAgents* instrumentingAgents = instrumentationForPage(document->page());
+    InstrumentingAgents* instrumentingAgents = InspectorInstrumentation::instrumentingAgentsForPage(document->page());
     if (!instrumentingAgents)
         return Vector<String>();
 
@@ -1534,7 +1561,7 @@ bool Internals::hasGrammarMarker(int from, int length, ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     return document->frame()->editor().selectionStartHasMarkerFor(DocumentMarker::Grammar, from, length);
 }
@@ -1641,17 +1668,17 @@ String Internals::mainThreadScrollingReasons(ExceptionCode& ec) const
     return page->synchronousScrollingReasonsAsText();
 }
 
-PassRefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) const
+RefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) const
 {
     Document* document = contextDocument();
     if (!document || !document->frame()) {
         ec = INVALID_ACCESS_ERR;
-        return 0;
+        return nullptr;
     }
 
     Page* page = document->page();
     if (!page)
-        return 0;
+        return nullptr;
 
     return page->nonFastScrollableRects(document->frame());
 }
@@ -2218,7 +2245,7 @@ double Internals::closestTimeToTimeRanges(double time, TimeRanges* ranges)
 }
 #endif
 
-PassRefPtr<ClientRect> Internals::selectionBounds(ExceptionCode& ec)
+Ref<ClientRect> Internals::selectionBounds(ExceptionCode& ec)
 {
     Document* document = contextDocument();
     if (!document || !document->frame()) {

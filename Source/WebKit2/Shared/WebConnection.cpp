@@ -28,6 +28,7 @@
 
 #include "ArgumentCoders.h"
 #include "DataReference.h"
+#include "UserData.h"
 #include "WebConnectionMessages.h"
 #include <wtf/text/WTFString.h>
 
@@ -51,11 +52,7 @@ void WebConnection::postMessage(const String& messageName, API::Object* messageB
     if (!hasValidConnection())
         return;
 
-    auto encoder = std::make_unique<IPC::MessageEncoder>(Messages::WebConnection::HandleMessage::receiverName(), Messages::WebConnection::HandleMessage::name(), 0);
-    encoder->encode(messageName);
-    encodeMessageBody(*encoder, messageBody);
-
-    sendMessage(WTF::move(encoder), 0);
+    send(Messages::WebConnection::HandleMessage(messageName, UserData(transformObjectsToHandles(messageBody))));
 }
 
 void WebConnection::didClose()
@@ -63,22 +60,9 @@ void WebConnection::didClose()
     m_client.didClose(this);
 }
 
-void WebConnection::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
+void WebConnection::handleMessage(const String& messageName, const UserData& messageBody)
 {
-    didReceiveWebConnectionMessage(connection, decoder);
-}
-
-void WebConnection::handleMessage(IPC::MessageDecoder& decoder)
-{
-    String messageName;
-    if (!decoder.decode(messageName))
-        return;
-
-    RefPtr<API::Object> messageBody;
-    if (!decodeMessageBody(decoder, messageBody))
-        return;
-
-    m_client.didReceiveMessage(this, messageName, messageBody.get());
+    m_client.didReceiveMessage(this, messageName, transformHandlesToObjects(messageBody.object()).get());
 }
 
 } // namespace WebKit

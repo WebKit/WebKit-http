@@ -58,6 +58,7 @@
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
+#include "FeatureCounter.h"
 #include "FloatRect.h"
 #include "FormState.h"
 #include "FormSubmission.h"
@@ -539,10 +540,18 @@ void FrameLoader::willTransitionToCommitted()
 bool FrameLoader::closeURL()
 {
     history().saveDocumentState();
-    
-    // Should only send the pagehide event here if the current document exists and has not been placed in the page cache.    
+
     Document* currentDocument = m_frame.document();
-    stopLoading(currentDocument && !currentDocument->inPageCache() ? UnloadEventPolicyUnloadAndPageHide : UnloadEventPolicyUnloadOnly);
+    UnloadEventPolicy unloadEventPolicy;
+    if (m_frame.page() && m_frame.page()->chrome().client().isSVGImageChromeClient()) {
+        // If this is the SVGDocument of an SVGImage, no need to dispatch events or recalcStyle.
+        unloadEventPolicy = UnloadEventPolicyNone;
+    } else {
+        // Should only send the pagehide event here if the current document exists and has not been placed in the page cache.
+        unloadEventPolicy = currentDocument && !currentDocument->inPageCache() ? UnloadEventPolicyUnloadAndPageHide : UnloadEventPolicyUnloadOnly;
+    }
+
+    stopLoading(unloadEventPolicy);
     
     m_frame.editor().clearUndoRedoOperations();
     return true;
@@ -948,41 +957,6 @@ void FrameLoader::loadArchive(PassRefPtr<Archive> archive)
     load(documentLoader.get());
 }
 #endif // ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
-
-ObjectContentType FrameLoader::defaultObjectContentType(const URL& url, const String& mimeTypeIn, bool shouldPreferPlugInsForImages)
-{
-    String mimeType = mimeTypeIn;
-
-    if (mimeType.isEmpty())
-        mimeType = mimeTypeFromURL(url);
-
-#if !PLATFORM(COCOA) && !PLATFORM(EFL) && !PLATFORM(HAIKU) // Mac has no PluginDatabase, nor does EFL
-    if (mimeType.isEmpty()) {
-        String decodedPath = decodeURLEscapeSequences(url.path());
-        mimeType = PluginDatabase::installedPlugins()->MIMETypeForExtension(decodedPath.substring(decodedPath.reverseFind('.') + 1));
-    }
-#endif
-
-    if (mimeType.isEmpty())
-        return ObjectContentFrame; // Go ahead and hope that we can display the content.
-
-#if !PLATFORM(COCOA) && !PLATFORM(EFL) && !PLATFORM(HAIKU) // Mac has no PluginDatabase, nor does EFL
-    bool plugInSupportsMIMEType = PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType);
-#else
-    bool plugInSupportsMIMEType = false;
-#endif
-
-    if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return shouldPreferPlugInsForImages && plugInSupportsMIMEType ? WebCore::ObjectContentNetscapePlugin : WebCore::ObjectContentImage;
-
-    if (plugInSupportsMIMEType)
-        return WebCore::ObjectContentNetscapePlugin;
-
-    if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
-        return WebCore::ObjectContentFrame;
-
-    return WebCore::ObjectContentNone;
-}
 
 String FrameLoader::outgoingReferrer() const
 {
@@ -1404,6 +1378,39 @@ void FrameLoader::load(DocumentLoader* newDocumentLoader)
     loadWithDocumentLoader(newDocumentLoader, type, 0, AllowNavigationToInvalidURL::Yes);
 }
 
+static void logNavigationWithFeatureCounter(Page* page, FrameLoadType type)
+{
+    const char* key;
+    switch (type) {
+    case FrameLoadType::Standard:
+        key = FeatureCounterNavigationStandardKey;
+        break;
+    case FrameLoadType::Back:
+        key = FeatureCounterNavigationBackKey;
+        break;
+    case FrameLoadType::Forward:
+        key = FeatureCounterNavigationForwardKey;
+        break;
+    case FrameLoadType::IndexedBackForward:
+        key = FeatureCounterNavigationIndexedBackForwardKey;
+        break;
+    case FrameLoadType::Reload:
+        key = FeatureCounterNavigationReloadKey;
+        break;
+    case FrameLoadType::Same:
+        key = FeatureCounterNavigationSameKey;
+        break;
+    case FrameLoadType::ReloadFromOrigin:
+        key = FeatureCounterNavigationReloadFromOriginKey;
+        break;
+    case FrameLoadType::Replace:
+    case FrameLoadType::RedirectWithLockedBackForwardList:
+        // Not logging those for now.
+        return;
+    }
+    FEATURE_COUNTER_INCREMENT_KEY(page, key);
+}
+
 void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType type, PassRefPtr<FormState> prpFormState, AllowNavigationToInvalidURL allowNavigationToInvalidURL)
 {
     // Retain because dispatchBeforeLoadEvent may release the last reference to it.
@@ -1421,6 +1428,10 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
     if (m_frame.document())
         m_previousURL = m_frame.document()->url();
+
+    // Log main frame navigation types.
+    if (m_frame.isMainFrame())
+        logNavigationWithFeatureCounter(m_frame.page(), type);
 
     policyChecker().setLoadType(type);
     RefPtr<FormState> formState = prpFormState;
@@ -1738,7 +1749,7 @@ void FrameLoader::commitProvisionalLoad()
 
     std::unique_ptr<CachedPage> cachedPage;
     if (m_loadingFromCachedPage)
-        cachedPage = pageCache()->take(history().provisionalItem());
+        cachedPage = pageCache()->take(history().provisionalItem(), m_frame.page());
 
     LOG(PageCache, "WebCoreLoading %s: About to commit provisional load from previous URL '%s' to new URL '%s'", m_frame.tree().uniqueName().string().utf8().data(),
         m_frame.document() ? m_frame.document()->url().stringCenterEllipsizedToLength().utf8().data() : "",
@@ -1755,11 +1766,11 @@ void FrameLoader::commitProvisionalLoad()
             LOG(MemoryPressure, "Pruning page cache because under memory pressure at: %s", __PRETTY_FUNCTION__);
             LOG(PageCache, "Pruning page cache to 0 due to memory pressure");
             // Don't cache any page if we are under memory pressure.
-            pageCache()->pruneToCapacityNow(0);
+            pageCache()->pruneToCapacityNow(0, PruningReason::MemoryPressure);
         } else if (systemMemoryLevel() <= memoryLevelThresholdToPrunePageCache) {
             LOG(MemoryPressure, "Pruning page cache because system memory level is %d at: %s", systemMemoryLevel(), __PRETTY_FUNCTION__);
             LOG(PageCache, "Pruning page cache to %d due to low memory (level %d less or equal to %d threshold)", pageCache()->capacity() / 2, systemMemoryLevel(), memoryLevelThresholdToPrunePageCache);
-            pageCache()->pruneToCapacityNow(pageCache()->capacity() / 2);
+            pageCache()->pruneToCapacityNow(pageCache()->capacity() / 2, PruningReason::MemoryPressure);
         }
     }
 #endif
@@ -1782,8 +1793,8 @@ void FrameLoader::commitProvisionalLoad()
 
     if (pdl && m_documentLoader) {
         // Check if the destination page is allowed to access the previous page's timing information.
-        RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::create(pdl->request().url());
-        m_documentLoader->timing()->setHasSameOriginAsPreviousDocument(securityOrigin->canRequest(m_previousURL));
+        Ref<SecurityOrigin> securityOrigin(SecurityOrigin::create(pdl->request().url()));
+        m_documentLoader->timing()->setHasSameOriginAsPreviousDocument(securityOrigin.get().canRequest(m_previousURL));
     }
 
     // Call clientRedirectCancelledOrFinished() here so that the frame load delegate is notified that the redirect's
@@ -2490,7 +2501,7 @@ void FrameLoader::detachFromParent()
     // handlers might start a new subresource load in this frame.
     stopAllLoaders();
 
-    InspectorInstrumentation::frameDetachedFromParent(&m_frame);
+    InspectorInstrumentation::frameDetachedFromParent(m_frame);
 
     detachViewsAndDocumentLoader();
 
@@ -3024,14 +3035,14 @@ void FrameLoader::loadedResourceFromMemoryCache(CachedResource* resource, Resour
         return;
 
     if (!page->areMemoryCacheClientCallsEnabled()) {
-        InspectorInstrumentation::didLoadResourceFromMemoryCache(page, m_documentLoader.get(), resource);
+        InspectorInstrumentation::didLoadResourceFromMemoryCache(*page, m_documentLoader.get(), resource);
         m_documentLoader->recordMemoryCacheLoadForFutureClientNotification(resource->resourceRequest());
         m_documentLoader->didTellClientAboutLoad(resource->url());
         return;
     }
 
     if (m_client.dispatchDidLoadResourceFromMemoryCache(m_documentLoader.get(), newRequest, resource->response(), resource->encodedSize())) {
-        InspectorInstrumentation::didLoadResourceFromMemoryCache(page, m_documentLoader.get(), resource);
+        InspectorInstrumentation::didLoadResourceFromMemoryCache(*page, m_documentLoader.get(), resource);
         m_documentLoader->didTellClientAboutLoad(resource->url());
         return;
     }
@@ -3039,7 +3050,7 @@ void FrameLoader::loadedResourceFromMemoryCache(CachedResource* resource, Resour
     unsigned long identifier;
     ResourceError error;
     requestFromDelegate(newRequest, identifier, error);
-    InspectorInstrumentation::markResourceAsCached(page, identifier);
+    InspectorInstrumentation::markResourceAsCached(*page, identifier);
     notifier().sendRemainingDelegateMessages(m_documentLoader.get(), identifier, newRequest, resource->response(), 0, resource->encodedSize(), 0, error);
 }
 
@@ -3164,7 +3175,7 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem* item, FrameLoadType loa
     // Remember this item so we can traverse any child items as child frames load
     history().setProvisionalItem(item);
 
-    if (CachedPage* cachedPage = pageCache()->get(item)) {
+    if (CachedPage* cachedPage = pageCache()->get(item, m_frame.page())) {
         auto documentLoader = cachedPage->documentLoader();
         documentLoader->setTriggeringAction(NavigationAction(documentLoader->request(), loadType, false));
         documentLoader->setLastCheckedRequest(ResourceRequest());
@@ -3314,10 +3325,10 @@ void FrameLoader::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
 
 #if ENABLE(INSPECTOR)
     if (Page* page = m_frame.page())
-        page->inspectorController().didClearWindowObjectInWorld(&m_frame, world);
+        page->inspectorController().didClearWindowObjectInWorld(m_frame, world);
 #endif
 
-    InspectorInstrumentation::didClearWindowObjectInWorld(&m_frame, world);
+    InspectorInstrumentation::didClearWindowObjectInWorld(m_frame, world);
 }
 
 void FrameLoader::dispatchGlobalObjectAvailableInAllWorlds()
@@ -3374,7 +3385,7 @@ void FrameLoader::dispatchDidCommitLoad()
         m_frame.page()->resetSeenMediaEngines();
     }
 
-    InspectorInstrumentation::didCommitLoad(&m_frame, m_documentLoader.get());
+    InspectorInstrumentation::didCommitLoad(m_frame, m_documentLoader.get());
 
 #if ENABLE(REMOTE_INSPECTOR)
     if (m_frame.isMainFrame())

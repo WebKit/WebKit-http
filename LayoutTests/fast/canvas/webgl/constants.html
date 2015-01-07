@@ -8,7 +8,7 @@ found in the LICENSE file.
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>WebGL Constants Test</title>
 <script src="resources/desktop-gl-constants.js" type="text/javascript"></script>
-<script src="../../../resources/js-test-pre.js"></script>
+<script src="../../../resources/js-test.js"></script>
 <script src="resources/webgl-test.js"></script>
 </head>
 <body>
@@ -438,7 +438,11 @@ BROWSER_DEFAULT_WEBGL              : 0x9244,
 SRGB_EXT :                                  0x8C40,
 SRGB_ALPHA_EXT :                            0x8C42,
 SRGB8_ALPHA8_EXT :                          0x8C43,
-FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING_EXT : 0x8210
+FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING_EXT : 0x8210,
+
+/* EXT_BLEND_MINMAX extension */
+MIN_EXT :                                   0x8007,
+MAX_EXT :                                   0x8008
 };
 
 // Constants removed from the WebGL spec compared to ES 2.0
@@ -513,7 +517,5 @@ for (var i in gl) {
 
 debug("");
 </script>
-<script src="../../../resources/js-test-post.js"></script>
-
 </body>
 </html>

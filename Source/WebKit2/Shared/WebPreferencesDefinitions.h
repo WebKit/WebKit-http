@@ -121,6 +121,7 @@
     macro(TabsToLinks, tabsToLinks, Bool, bool, DEFAULT_WEBKIT_TABSTOLINKS_ENABLED) \
     macro(DNSPrefetchingEnabled, dnsPrefetchingEnabled, Bool, bool, false) \
     macro(DOMTimersThrottlingEnabled, domTimersThrottlingEnabled, Bool, bool, true) \
+    macro(FeatureCounterEnabled, featureCounterEnabled, Bool, bool, false) \
     macro(WebArchiveDebugModeEnabled, webArchiveDebugModeEnabled, Bool, bool, false) \
     macro(LocalFileContentSniffingEnabled, localFileContentSniffingEnabled, Bool, bool, false) \
     macro(UsesPageCache, usesPageCache, Bool, bool, true) \
@@ -196,7 +197,6 @@
     macro(ShouldConvertPositionStyleOnCopy, shouldConvertPositionStyleOnCopy, Bool, bool, false) \
     macro(Standalone, standalone, Bool, bool, false) \
     macro(TelephoneNumberParsingEnabled, telephoneNumberParsingEnabled, Bool, bool, false) \
-    macro(AlwaysUseBaselineOfPrimaryFont, alwaysUseBaselineOfPrimaryFont, Bool, bool, false) \
     macro(AllowMultiElementImplicitSubmission, allowMultiElementImplicitSubmission, Bool, bool, false) \
     macro(AlwaysUseAcceleratedOverflowScroll, alwaysUseAcceleratedOverflowScroll, Bool, bool, false) \
     macro(PasswordEchoEnabled, passwordEchoEnabled, Bool, bool, DEFAULT_PASSWORD_ECHO_ENABLED) \

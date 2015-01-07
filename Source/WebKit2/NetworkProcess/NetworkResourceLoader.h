@@ -29,9 +29,11 @@
 #if ENABLE(NETWORK_PROCESS)
 
 #include "MessageSender.h"
+#include "NetworkCache.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkResourceLoadParameters.h"
 #include "ShareableResource.h"
+#include <WebCore/CacheValidation.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceHandleClient.h>
 #include <WebCore/ResourceLoaderOptions.h>
@@ -87,7 +89,7 @@ public:
     static size_t fileBackedResourceMinimumSize();
 #endif
     // Message handlers.
-    void didReceiveNetworkResourceLoaderMessage(IPC::Connection*, IPC::MessageDecoder&);
+    void didReceiveNetworkResourceLoaderMessage(IPC::Connection&, IPC::MessageDecoder&);
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
     static void tryGetShareableHandleFromCFURLCachedResponse(ShareableResource::Handle&, CFCachedURLResponseRef);
@@ -98,6 +100,9 @@ public:
     void continueCanAuthenticateAgainstProtectionSpace(bool);
 #endif
     void continueWillSendRequest(const WebCore::ResourceRequest& newRequest);
+
+    WebCore::SharedBuffer* bufferedData() { return m_bufferedData.get(); }
+    const WebCore::ResourceResponse& response() const { return m_response; }
 
     NetworkConnectionToWebProcess* connectionToWebProcess() const { return m_connection.get(); }
     WebCore::SessionID sessionID() const { return m_parameters.sessionID; }
@@ -142,6 +147,12 @@ private:
 #endif
 #endif
 
+#if ENABLE(NETWORK_CACHE)
+    void didRetrieveCacheEntry(std::unique_ptr<NetworkCache::Entry>);
+    void validateCacheEntry(std::unique_ptr<NetworkCache::Entry>);
+#endif
+
+    void startNetworkLoad();
     void continueDidReceiveResponse();
 
     void cleanup();
@@ -167,6 +178,7 @@ private:
     RefPtr<WebCore::ResourceHandle> m_handle;
 
     WebCore::ResourceRequest m_currentRequest;
+    WebCore::ResourceResponse m_response;
 
     size_t m_bytesReceived;
     size_t m_bufferedDataEncodedDataLength;
@@ -180,6 +192,12 @@ private:
     bool m_defersLoading;
 
     WebCore::Timer m_bufferingTimer;
+#if ENABLE(NETWORK_CACHE)
+    RefPtr<WebCore::SharedBuffer> m_bufferedDataForCache;
+    std::unique_ptr<NetworkCache::Entry> m_cacheEntryForValidation;
+
+    WebCore::RedirectChainCacheStatus m_redirectChainCacheStatus;
+#endif
 };
 
 } // namespace WebKit

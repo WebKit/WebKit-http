@@ -61,12 +61,15 @@ HTMLFormControlElement::HTMLFormControlElement(const QualifiedName& tagName, Doc
     , m_wasChangedSinceLastFormControlChangeEvent(false)
     , m_hasAutofocused(false)
 {
-    setForm(form ? form : HTMLFormElement::findClosestFormAncestor(*this));
+    setForm(form);
     setHasCustomStyleResolveCallbacks();
 }
 
 HTMLFormControlElement::~HTMLFormControlElement()
 {
+    // The calls willChangeForm() and didChangeForm() are virtual, we want the
+    // form to be reset while this object still exists.
+    setForm(nullptr);
 }
 
 String HTMLFormControlElement::formEnctype() const
@@ -417,8 +420,11 @@ void HTMLFormControlElement::setNeedsWillValidateCheck()
     updateValidity();
     setNeedsStyleRecalc();
 
-    if (!m_willValidate && !wasValid)
+    if (!m_willValidate && !wasValid) {
         removeInvalidElementToAncestorFromInsertionPoint(*this, parentNode());
+        if (HTMLFormElement* form = this->form())
+            form->removeInvalidAssociatedFormControlIfNeeded(*this);
+    }
 
     if (!m_willValidate)
         hideVisibleValidationMessage();
@@ -464,6 +470,22 @@ inline bool HTMLFormControlElement::isValidFormControlElement() const
     return m_isValid;
 }
 
+void HTMLFormControlElement::willChangeForm()
+{
+    if (HTMLFormElement* form = this->form())
+        form->removeInvalidAssociatedFormControlIfNeeded(*this);
+    FormAssociatedElement::willChangeForm();
+}
+
+void HTMLFormControlElement::didChangeForm()
+{
+    FormAssociatedElement::didChangeForm();
+    if (HTMLFormElement* form = this->form()) {
+        if (m_willValidateInitialized && m_willValidate && !isValidFormControlElement())
+            form->registerInvalidAssociatedFormControl(*this);
+    }
+}
+
 void HTMLFormControlElement::updateValidity()
 {
     bool willValidate = this->willValidate();
@@ -475,10 +497,15 @@ void HTMLFormControlElement::updateValidity()
         // Update style for pseudo classes such as :valid :invalid.
         setNeedsStyleRecalc();
 
-        if (!m_isValid)
+        if (!m_isValid) {
             addInvalidElementToAncestorFromInsertionPoint(*this, parentNode());
-        else
+            if (HTMLFormElement* form = this->form())
+                form->registerInvalidAssociatedFormControl(*this);
+        } else {
             removeInvalidElementToAncestorFromInsertionPoint(*this, parentNode());
+            if (HTMLFormElement* form = this->form())
+                form->removeInvalidAssociatedFormControlIfNeeded(*this);
+        }
     }
 
     // Updates only if this control already has a validtion message.
@@ -500,9 +527,9 @@ bool HTMLFormControlElement::validationMessageShadowTreeContains(const Node& nod
     return m_validationMessage && m_validationMessage->shadowTreeContains(node);
 }
 
-void HTMLFormControlElement::dispatchBlurEvent(PassRefPtr<Element> newFocusedElement)
+void HTMLFormControlElement::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
 {
-    HTMLElement::dispatchBlurEvent(newFocusedElement);
+    HTMLElement::dispatchBlurEvent(WTF::move(newFocusedElement));
     hideVisibleValidationMessage();
 }
 

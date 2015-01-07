@@ -212,6 +212,7 @@ list(APPEND WebCore_SOURCES
     platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/linux/GamepadDeviceLinux.cpp
+    platform/linux/MemoryPressureHandlerLinux.cpp
 
     platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
 
@@ -245,9 +246,6 @@ list(APPEND WebCore_SOURCES
     platform/text/efl/TextBreakIteratorInternalICUEfl.cpp
 
     platform/text/enchant/TextCheckerEnchant.cpp
-
-    plugins/PluginPackageNone.cpp
-    plugins/PluginViewNone.cpp
 )
 
 if (WTF_USE_GEOCLUE2)

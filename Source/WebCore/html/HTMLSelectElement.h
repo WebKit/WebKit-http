@@ -38,7 +38,7 @@ class HTMLOptionsCollection;
 
 class HTMLSelectElement : public HTMLFormControlElementWithState, public TypeAheadDataSource {
 public:
-    static RefPtr<HTMLSelectElement> create(const QualifiedName&, Document&, HTMLFormElement*);
+    static Ref<HTMLSelectElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
     WEBCORE_EXPORT int selectedIndex() const;
     void setSelectedIndex(int);
@@ -122,8 +122,8 @@ private:
     virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
     virtual bool isMouseFocusable() const override;
 
-    virtual void dispatchFocusEvent(PassRefPtr<Element> oldFocusedElement, FocusDirection) override final;
-    virtual void dispatchBlurEvent(PassRefPtr<Element> newFocusedElement) override final;
+    virtual void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection) override final;
+    virtual void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement) override final;
     
     virtual bool canStartSelection() const override { return false; }
 
@@ -137,7 +137,7 @@ private:
     virtual bool isPresentationAttribute(const QualifiedName&) const override;
 
     virtual bool childShouldCreateRenderer(const Node&) const override;
-    virtual RenderPtr<RenderElement> createElementRenderer(PassRef<RenderStyle>) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
     virtual bool appendFormData(FormDataList&, bool) override;
 
     virtual void reset() override;

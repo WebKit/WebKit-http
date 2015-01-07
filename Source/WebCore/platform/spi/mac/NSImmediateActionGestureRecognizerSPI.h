@@ -27,15 +27,36 @@
 
 #import <AppKit/NSGestureRecognizer.h>
 
-#if __has_include(<AppKit/NSImmediateActionGestureRecognizer.h>)
+// FIXME: This header should include system headers when possible.
 
-#import <AppKit/NSImmediateActionGestureRecognizer.h>
+@class NSImmediateActionGestureRecognizer;
 
-#else
+@protocol NSImmediateActionGestureRecognizerDelegate <NSGestureRecognizerDelegate>
+@optional
 
-@interface NSImmediateActionGestureRecognizer : NSGestureRecognizer
+- (void)immediateActionRecognizerWillPrepare:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer;
+- (void)immediateActionRecognizerWillBeginAnimation:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer;
+- (void)immediateActionRecognizerDidUpdateAnimation:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer;
+- (void)immediateActionRecognizerDidCancelAnimation:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer;
+- (void)immediateActionRecognizerDidCompleteAnimation:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer;
+
 @end
 
-#endif // __has_include(<AppKit/NSImmediateActionGestureRecognizer.h>)
+@protocol NSImmediateActionAnimationController <NSObject>
+@optional
+
+- (void)recognizerWillBeginAnimation:(NSImmediateActionGestureRecognizer *)recognizer;
+- (void)recognizerDidUpdateAnimation:(NSImmediateActionGestureRecognizer *)recognizer;
+- (void)recognizerDidCancelAnimation:(NSImmediateActionGestureRecognizer *)recognizer;
+- (void)recognizerDidCompleteAnimation:(NSImmediateActionGestureRecognizer *)recognizer;
+- (void)recognizerDidDismissAnimation:(NSImmediateActionGestureRecognizer *)recognizer;
+@end
+
+@interface NSImmediateActionGestureRecognizer : NSGestureRecognizer
+
+@property (strong) id<NSImmediateActionAnimationController> animationController;
+@property (readonly) CGFloat animationProgress;
+
+@end
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

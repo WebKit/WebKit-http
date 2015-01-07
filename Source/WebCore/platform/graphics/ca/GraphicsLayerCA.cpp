@@ -388,7 +388,7 @@ void GraphicsLayerCA::setName(const String& name)
     if (!m_layer->isPlatformCALayerRemote())
         caLayerDescription = String::format("CALayer(%p) ", m_layer->platformLayer());
 
-    String longName = caLayerDescription + String::format("GraphicsLayer(%p) ", this) + name;
+    String longName = caLayerDescription + String::format("GraphicsLayer(%p, %llu) ", this, primaryLayerID()) + name;
     GraphicsLayer::setName(longName);
     noteLayerPropertyChanged(NameChanged);
 }
@@ -933,6 +933,9 @@ void GraphicsLayerCA::setContentsToPlatformLayer(PlatformLayer* platformLayer, C
     if (m_contentsLayer && platformLayer == m_contentsLayer->platformLayer())
         return;
 
+    if (m_contentsClippingLayer && m_contentsLayer)
+        m_contentsLayer->removeFromSuperlayer();
+
     // FIXME: The passed in layer might be a raw layer or an externally created
     // PlatformCALayer. To determine this we attempt to get the
     // PlatformCALayer pointer. If this returns a null pointer we assume it's
@@ -943,6 +946,9 @@ void GraphicsLayerCA::setContentsToPlatformLayer(PlatformLayer* platformLayer, C
     PlatformCALayer* platformCALayer = PlatformCALayer::platformCALayer(platformLayer);
     m_contentsLayer = platformLayer ? (platformCALayer ? platformCALayer : createPlatformCALayer(platformLayer, this)) : nullptr;
     m_contentsLayerPurpose = platformLayer ? purpose : NoContentsLayer;
+
+    if (m_contentsClippingLayer && m_contentsLayer)
+        m_contentsClippingLayer->appendSublayer(*m_contentsLayer);
 
     noteSublayersChanged();
     noteLayerPropertyChanged(ContentsPlatformLayerChanged);
@@ -1820,12 +1826,53 @@ void GraphicsLayerCA::updateAcceleratesDrawing()
     m_layer->setAcceleratesDrawing(m_acceleratesDrawing);
 }
 
+static void setLayerDebugBorder(PlatformCALayer& layer, Color borderColor, float borderWidth)
+{
+    layer.setBorderColor(borderColor);
+    layer.setBorderWidth(borderColor.isValid() ? borderWidth : 0);
+}
+
+static float contentsLayerBorderWidth = 4;
+static Color contentsLayerDebugBorderColor(bool showingBorders)
+{
+    return showingBorders ? Color(0, 0, 128, 180) : Color();
+}
+
+static float cloneLayerBorderWidth = 2;
+static Color cloneLayerDebugBorderColor(bool showingBorders)
+{
+    return showingBorders ? Color(255, 122, 251) : Color();
+}
+
 void GraphicsLayerCA::updateDebugBorder()
 {
-    if (isShowingDebugBorder())
-        updateDebugIndicators();
-    else
-        m_layer->setBorderWidth(0);
+    Color borderColor;
+    float width = 0;
+
+    bool showDebugBorders = isShowingDebugBorder();
+    if (showDebugBorders)
+        getDebugBorderInfo(borderColor, width);
+
+    setLayerDebugBorder(*m_layer, borderColor, width);
+    if (m_contentsLayer)
+        setLayerDebugBorder(*m_contentsLayer, contentsLayerDebugBorderColor(showDebugBorders), contentsLayerBorderWidth);
+
+    if (m_layerClones) {
+        for (auto& clone : m_layerClones->values())
+            setLayerDebugBorder(*clone, borderColor, width);
+    }
+
+    if (m_structuralLayerClones) {
+        Color cloneLayerBorderColor = cloneLayerDebugBorderColor(showDebugBorders);
+        for (auto& clone : m_structuralLayerClones->values())
+            setLayerDebugBorder(*clone, cloneLayerBorderColor, cloneLayerBorderWidth);
+    }
+
+    if (m_contentsLayerClones) {
+        Color contentsLayerBorderColor = contentsLayerDebugBorderColor(showDebugBorders);
+        for (auto& contentsLayerClone : m_contentsLayerClones->values())
+            setLayerDebugBorder(*contentsLayerClone, contentsLayerBorderColor, contentsLayerBorderWidth);
+    }
 }
 
 FloatRect GraphicsLayerCA::adjustTiledLayerVisibleRect(TiledBacking* tiledBacking, const FloatRect& oldVisibleRect, const FloatRect& newVisibleRect, const FloatSize& oldSize, const FloatSize& newSize)
@@ -3009,14 +3056,8 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
 }
 
 void GraphicsLayerCA::setDebugBorder(const Color& color, float borderWidth)
-{    
-    if (color.isValid()) {
-        m_layer->setBorderColor(color);
-        m_layer->setBorderWidth(borderWidth);
-    } else {
-        m_layer->setBorderColor(Color::transparent);
-        m_layer->setBorderWidth(0);
-    }
+{
+    setLayerDebugBorder(*m_layer, color, borderWidth);
 }
 
 void GraphicsLayerCA::setCustomAppearance(CustomAppearance customAppearance)
@@ -3102,7 +3143,7 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
         m_uncommittedChanges |= VisibleRectChanged;
 
 #ifndef NDEBUG
-    String name = String::format("%sCALayer(%p) GraphicsLayer(%p) ", (m_layer->layerType() == PlatformCALayer::LayerTypeWebTiledLayer) ? "Tiled " : "", m_layer->platformLayer(), this) + m_name;
+    String name = String::format("%sCALayer(%p) GraphicsLayer(%p, %llu) ", (m_layer->layerType() == PlatformCALayer::LayerTypeWebTiledLayer) ? "Tiled " : "", m_layer->platformLayer(), this, primaryLayerID()) + m_name;
     m_layer->setName(name);
 #endif
 
@@ -3138,16 +3179,13 @@ void GraphicsLayerCA::setupContentsLayer(PlatformCALayer* contentsLayer)
     } else
         contentsLayer->setAnchorPoint(FloatPoint3D());
 
-    if (isShowingDebugBorder()) {
-        contentsLayer->setBorderColor(Color(0, 0, 128, 180));
-        contentsLayer->setBorderWidth(4);
-    }
+    setLayerDebugBorder(*contentsLayer, contentsLayerDebugBorderColor(isShowingDebugBorder()), contentsLayerBorderWidth);
 }
 
 PassRefPtr<PlatformCALayer> GraphicsLayerCA::findOrMakeClone(CloneID cloneID, PlatformCALayer *sourceLayer, LayerMap* clones, CloneLevel cloneLevel)
 {
     if (!sourceLayer)
-        return 0;
+        return nullptr;
 
     RefPtr<PlatformCALayer> resultLayer;
 
@@ -3339,12 +3377,9 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::cloneLayer(PlatformCALayer *layer, 
         newLayer->setOpacity(layer->opacity());
         moveOrCopyAnimations(Copy, layer, newLayer.get());
     }
-    
-    if (isShowingDebugBorder()) {
-        newLayer->setBorderColor(Color(255, 122, 251));
-        newLayer->setBorderWidth(2);
-    }
-    
+
+    setLayerDebugBorder(*newLayer, cloneLayerDebugBorderColor(isShowingDebugBorder()), cloneLayerBorderWidth);
+
     return newLayer;
 }
 

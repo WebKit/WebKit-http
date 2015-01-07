@@ -72,7 +72,9 @@ void ScrollingCoordinatorMac::pageDestroyed()
 
     // Invalidating the scrolling tree will break the reference cycle between the ScrollingCoordinator and ScrollingTree objects.
     RefPtr<ThreadedScrollingTree> scrollingTree = static_pointer_cast<ThreadedScrollingTree>(releaseScrollingTree());
-    ScrollingThread::dispatch(bind(&ThreadedScrollingTree::invalidate, scrollingTree));
+    ScrollingThread::dispatch([scrollingTree] {
+        scrollingTree->invalidate();
+    });
 }
 
 void ScrollingCoordinatorMac::commitTreeStateIfNeeded()
@@ -92,7 +94,10 @@ bool ScrollingCoordinatorMac::handleWheelEvent(FrameView*, const PlatformWheelEv
     if (scrollingTree()->willWheelEventStartSwipeGesture(wheelEvent))
         return false;
 
-    ScrollingThread::dispatch(bind(&ThreadedScrollingTree::handleWheelEvent, downcast<ThreadedScrollingTree>(scrollingTree()), wheelEvent));
+    RefPtr<ThreadedScrollingTree> threadedScrollingTree = downcast<ThreadedScrollingTree>(scrollingTree());
+    ScrollingThread::dispatch([threadedScrollingTree, wheelEvent] {
+        threadedScrollingTree->handleWheelEvent(wheelEvent);
+    });
     return true;
 }
 
@@ -115,8 +120,13 @@ void ScrollingCoordinatorMac::commitTreeState()
 {
     ASSERT(scrollingStateTree()->hasChangedProperties());
 
-    OwnPtr<ScrollingStateTree> treeState = scrollingStateTree()->commit(LayerRepresentation::PlatformLayerRepresentation);
-    ScrollingThread::dispatch(bind(&ThreadedScrollingTree::commitNewTreeState, downcast<ThreadedScrollingTree>(scrollingTree()), treeState.release()));
+    RefPtr<ThreadedScrollingTree> threadedScrollingTree = downcast<ThreadedScrollingTree>(scrollingTree());
+    ScrollingStateTree* unprotectedTreeState = scrollingStateTree()->commit(LayerRepresentation::PlatformLayerRepresentation).release();
+
+    ScrollingThread::dispatch([threadedScrollingTree, unprotectedTreeState] {
+        std::unique_ptr<ScrollingStateTree> treeState(unprotectedTreeState);
+        threadedScrollingTree->commitNewTreeState(WTF::move(treeState));
+    });
 
     updateTiledScrollingIndicator();
 }

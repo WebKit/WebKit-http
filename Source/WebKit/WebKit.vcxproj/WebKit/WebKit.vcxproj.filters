@@ -217,6 +217,27 @@
     <ClCompile Include="..\..\win\WebSerializedJSValue.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Storage\StorageAreaImpl.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Storage\StorageAreaSync.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Storage\StorageNamespaceImpl.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Storage\StorageSyncManager.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Storage\StorageThread.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Storage\StorageTracker.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Storage\WebDatabaseProvider.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Storage\WebStorageNamespaceProvider.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -271,6 +292,10 @@
     </ClCompile>
     <ClCompile Include="..\..\win\WebCoreSupport\AcceleratedCompositingContext.cpp">
       <Filter>WebCoreSupport</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\win\WebCoreSupport\WebVisitedLinkStore.cpp" />
+    <ClCompile Include="..\..\win\WebApplicationCache.cpp">
+      <Filter>Sources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -499,9 +524,6 @@
     <ClInclude Include="..\..\win\WebSerializedJSValue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClCompile Include="..\..\Storage\WebStorageNamespaceProvider.h">
-      <Filter>Sources</Filter>
-    </ClCompile>
     <ClInclude Include="..\..\win\WebTextRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -535,6 +557,39 @@
     </ClInclude>
     <ClInclude Include="..\..\win\WebCoreSupport\AcceleratedCompositingContext.h">
       <Filter>WebCoreSupport</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\StorageAreaImpl.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\StorageAreaSync.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\StorageNamespaceImpl.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\StorageSyncManager.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\StorageThread.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\StorageTracker.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\StorageTrackerClient.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\WebDatabaseProvider.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Storage\WebStorageNamespaceProvider.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\win\WebCoreSupport\WebVisitedLinkStore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\win\WebApplicationCache.h">
+      <Filter>Sources</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

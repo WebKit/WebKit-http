@@ -43,9 +43,9 @@ inline HTMLFrameElement::HTMLFrameElement(const QualifiedName& tagName, Document
     setHasCustomStyleResolveCallbacks();
 }
 
-RefPtr<HTMLFrameElement> HTMLFrameElement::create(const QualifiedName& tagName, Document& document)
+Ref<HTMLFrameElement> HTMLFrameElement::create(const QualifiedName& tagName, Document& document)
 {
-    return adoptRef(new HTMLFrameElement(tagName, document));
+    return adoptRef(*new HTMLFrameElement(tagName, document));
 }
 
 bool HTMLFrameElement::rendererIsNeeded(const RenderStyle&)
@@ -54,7 +54,7 @@ bool HTMLFrameElement::rendererIsNeeded(const RenderStyle&)
     return isURLAllowed();
 }
 
-RenderPtr<RenderElement> HTMLFrameElement::createElementRenderer(PassRef<RenderStyle> style)
+RenderPtr<RenderElement> HTMLFrameElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderFrame>(*this, WTF::move(style));
 }
