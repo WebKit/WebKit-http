@@ -77,6 +77,7 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "TextEncoding.h"
+#include "WebDatabaseProvider.h"
 #include "WebDownload.h"
 #include "WebDownloadPrivate.h"
 #include "WebFrame.h"
@@ -223,7 +224,7 @@ BWebPage::BWebPage(BWebView* webView)
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
     pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.progressTrackerClient = fProgressTracker;
-    // backForwardClient ?
+    // pageClients.backForwardClient ? (apparently not set in win and mac?)
     pageClients.editorClient = new EditorClientHaiku(this);
     // pluginClient ?
     // validationMessageClient?
@@ -231,6 +232,7 @@ BWebPage::BWebPage(BWebView* webView)
     // userContentController?
     pageClients.visitedLinkStore = &WebVisitedLinkStore::shared();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
+    pageClients.databaseProvider = &WebDatabaseProvider::shared();
 
     // FIXME we should get this from the page settings, but they are created
     // after the page, and we need this before the page is created.

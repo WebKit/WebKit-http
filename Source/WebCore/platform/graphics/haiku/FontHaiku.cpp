@@ -106,7 +106,7 @@ float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const 
                            int from, int to) const
 {
     BView* view = context->platformContext();
-    view->SetFont(primaryFont()->platformData().font());
+    view->SetFont(primaryFontData().platformData().font());
 
     const char* string = run.subRun(from,to).string().utf8().data();
     view->DrawString(string, point);
@@ -117,7 +117,7 @@ float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const 
 
 float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
 {
-    const BFont* font = primaryFont()->platformData().font();
+    const BFont* font = primaryFontData().platformData().font();
     ASSERT(font);
     float width = font->StringWidth(run.string().utf8().data());
     return width;

@@ -29,7 +29,7 @@
  */
 
 #include "config.h"
-#include "GlyphPageTreeNode.h"
+#include "GlyphPage.h"
 
 #include "SimpleFontData.h"
 #include "../freetype/UTF16UChar32Iterator.h"

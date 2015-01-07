@@ -372,13 +372,6 @@ void TestRunner::clearApplicationCacheForOrigin(OpaqueJSString* url)
     notImplemented();
 }
 
-long long TestRunner::localStorageDiskUsageForOrigin(JSStringRef)
-{
-    // FIXME: Implement to support getting disk usage in bytes for an origin.
-    notImplemented();
-    return 0;
-}
-
 JSValueRef TestRunner::originsWithApplicationCache(JSContextRef context)
 {
     // FIXME: Implement to get origins that contain application caches.
@@ -398,32 +391,6 @@ void TestRunner::clearAllDatabases()
 }
 
 void TestRunner::setDatabaseQuota(unsigned long long quota)
-{
-    notImplemented();
-}
-
-JSValueRef TestRunner::originsWithLocalStorage(JSContextRef context)
-{
-    notImplemented();
-    return JSValueMakeUndefined(context);
-}
-
-void TestRunner::deleteAllLocalStorage()
-{
-    notImplemented();
-}
-
-void TestRunner::deleteLocalStorageForOrigin(JSStringRef)
-{
-    notImplemented();
-}
-
-void TestRunner::observeStorageTrackerNotifications(unsigned)
-{
-    notImplemented();
-}
-
-void TestRunner::syncLocalStorage()
 {
     notImplemented();
 }

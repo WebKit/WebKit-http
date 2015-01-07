@@ -26,7 +26,7 @@
 #include "StorageSyncManager.h"
 
 #include "StorageThread.h"
-#include <WebCore/FileSystem.h>
+#include <WebCore/platform/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
 

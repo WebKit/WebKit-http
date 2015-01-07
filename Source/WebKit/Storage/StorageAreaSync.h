@@ -26,8 +26,8 @@
 #ifndef StorageAreaSync_h
 #define StorageAreaSync_h
 
-#include <WebCore/SQLiteDatabase.h>
-#include <WebCore/Timer.h>
+#include <WebCore/platform/sql/SQLiteDatabase.h>
+#include <WebCore/platform/Timer.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/StringHash.h>
 

@@ -28,11 +28,11 @@
 #include "StorageAreaImpl.h"
 #include "StorageSyncManager.h"
 #include "StorageTracker.h"
-#include <WebCore/FileSystem.h>
-#include <WebCore/SQLiteDatabaseTracker.h>
-#include <WebCore/SQLiteStatement.h>
-#include <WebCore/SQLiteTransaction.h>
-#include <WebCore/SuddenTermination.h>
+#include <WebCore/platform/FileSystem.h>
+#include <WebCore/platform/sql/SQLiteDatabaseTracker.h>
+#include <WebCore/platform/sql/SQLiteStatement.h>
+#include <WebCore/platform/sql/SQLiteTransaction.h>
+#include <WebCore/platform/SuddenTermination.h>
 #include <wtf/MainThread.h>
 
 namespace WebCore {

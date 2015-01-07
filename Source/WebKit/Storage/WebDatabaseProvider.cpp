@@ -25,7 +25,7 @@
 
 #include "WebDatabaseProvider.h"
 
-#include <WebCore/IDBFactoryBackendInterface.h>
+#include <WebCore/Modules/indexeddb/IDBFactoryBackendInterface.h>
 #include <wtf/NeverDestroyed.h>
 
 WebDatabaseProvider& WebDatabaseProvider::shared()

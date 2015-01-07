@@ -26,9 +26,9 @@
 #ifndef StorageNamespaceImpl_h
 #define StorageNamespaceImpl_h
 
-#include <WebCore/SecurityOriginHash.h>
-#include <WebCore/StorageArea.h>
-#include <WebCore/StorageNamespace.h>
+#include <WebCore/page/SecurityOriginHash.h>
+#include <WebCore/storage/StorageArea.h>
+#include <WebCore/storage/StorageNamespace.h>
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>

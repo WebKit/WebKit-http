@@ -87,25 +87,6 @@ PassRefPtr<SimpleFontData> SimpleFontData::platformCreateScaledFontData(const Fo
     return SimpleFontData::create(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false);
 }
 
-bool SimpleFontData::containsCharacters(const UChar* characters, int length) const
-{
-    const BFont* font = m_platformData.font();
-    if (!font)
-        return false;
-
-    bool result[length];
-    icu::UnicodeString source(characters, length);
-    std::string utf8;
-    source.toUTF8String(utf8);
-
-    font->GetHasGlyphs(utf8.c_str(), length, result);
-    for (int i = 0; i < length; i++) {
-        if (!result[i])
-            return false;
-    }
-    return true;
-}
-
 void SimpleFontData::determinePitch()
 {
     m_treatAsFixedPitch = m_platformData.font() && m_platformData.font()->IsFixed();

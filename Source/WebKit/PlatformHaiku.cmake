@@ -55,6 +55,13 @@ LIST(APPEND WebKit_SOURCES
     haiku/API/WebView.cpp
     haiku/API/WebWindow.cpp
 
+    Storage/StorageAreaImpl.cpp
+    Storage/StorageAreaSync.cpp
+    Storage/StorageNamespaceImpl.cpp
+    Storage/StorageSyncManager.cpp
+    Storage/StorageThread.cpp
+    Storage/StorageTracker.cpp
+    Storage/WebDatabaseProvider.cpp
     Storage/WebStorageNamespaceProvider.cpp
 )
 

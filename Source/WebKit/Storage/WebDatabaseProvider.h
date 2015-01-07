@@ -26,7 +26,7 @@
 #ifndef WebDatabaseProvider_h
 #define WebDatabaseProvider_h
 
-#include <WebCore/DatabaseProvider.h>
+#include <WebCore/page/DatabaseProvider.h>
 #include <wtf/Forward.h>
 
 class WebDatabaseProvider final : public WebCore::DatabaseProvider {
