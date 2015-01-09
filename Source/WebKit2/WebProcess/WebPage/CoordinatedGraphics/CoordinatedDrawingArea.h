@@ -64,7 +64,9 @@ private:
     virtual void scheduleCompositingLayerFlush() override;
     virtual void scheduleCompositingLayerFlushImmediately() override;
 
-    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection*, IPC::MessageDecoder&);
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&);
+#endif
 
     virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 

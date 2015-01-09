@@ -100,7 +100,7 @@ class ObjCGenerator:
 
     # Generate ObjC types, command handlers, and event dispatchers for a subset of domains.
 
-    DOMAINS_TO_GENERATE = ['CSS', 'DOM', 'DOMStorage', 'Network', 'Page']
+    DOMAINS_TO_GENERATE = ['CSS', 'DOM', 'DOMStorage', 'Network', 'Page', 'GenericTypes']
 
     @staticmethod
     def should_generate_domain_types_filter(model):
@@ -276,6 +276,14 @@ class ObjCGenerator:
         if (isinstance(_type, ArrayType)):
             sub_type = strip_block_comment_markers(ObjCGenerator.objc_class_for_type(_type.element_type))
             return 'NSArray/*<%s>*/' % sub_type
+        return None
+
+    @staticmethod
+    def objc_class_for_array_type(_type):
+        if isinstance(_type, AliasedType):
+            _type = _type.aliased_type
+        if isinstance(_type, ArrayType):
+            return ObjCGenerator.objc_class_for_type(_type.element_type)
         return None
 
     @staticmethod

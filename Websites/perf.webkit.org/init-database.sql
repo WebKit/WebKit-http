@@ -4,8 +4,10 @@ DROP TABLE test_configurations CASCADE;
 DROP TYPE test_configuration_type CASCADE;
 DROP TABLE aggregators CASCADE;
 DROP TABLE builds CASCADE;
+DROP TABLE committers CASCADE;
 DROP TABLE commits CASCADE;
 DROP TABLE build_commits CASCADE;
+DROP TABLE build_slaves CASCADE;
 DROP TABLE builders CASCADE;
 DROP TABLE repositories CASCADE;
 DROP TABLE platforms CASCADE;
@@ -14,6 +16,12 @@ DROP TABLE tests CASCADE;
 DROP TABLE reports CASCADE;
 DROP TABLE tracker_repositories CASCADE;
 DROP TABLE bug_trackers CASCADE;
+DROP TABLE analysis_tasks CASCADE;
+DROP TABLE bugs CASCADE;
+DROP TABLE analysis_test_groups CASCADE;
+DROP TABLE root_sets CASCADE;
+DROP TABLE build_requests CASCADE;
+
 
 CREATE TABLE platforms (
     platform_id serial PRIMARY KEY,
@@ -39,17 +47,32 @@ CREATE TABLE tracker_repositories (
 CREATE TABLE builders (
     builder_id serial PRIMARY KEY,
     builder_name varchar(64) NOT NULL UNIQUE,
-    builder_password_hash character(64) NOT NULL,
+    builder_password_hash character(64),
     builder_build_url varchar(1024));
+
+CREATE TABLE build_slaves (
+    slave_id serial PRIMARY KEY,
+    slave_name varchar(64) NOT NULL UNIQUE,
+    slave_password_hash character(64));
 
 CREATE TABLE builds (
     build_id serial PRIMARY KEY,
     build_builder integer REFERENCES builders ON DELETE CASCADE,
+    build_slave integer REFERENCES build_slaves ON DELETE CASCADE,
     build_number integer NOT NULL,
     build_time timestamp NOT NULL,
     build_latest_revision timestamp,
     CONSTRAINT builder_build_time_tuple_must_be_unique UNIQUE(build_builder, build_number, build_time));
 CREATE INDEX build_builder_index ON builds(build_builder);
+
+CREATE TABLE committers (
+    committer_id serial PRIMARY KEY,
+    committer_repository integer NOT NULL REFERENCES repositories ON DELETE CASCADE,
+    committer_account varchar(320) NOT NULL,
+    committer_name varchar(128),
+    CONSTRAINT committer_in_repository_must_be_unique UNIQUE(committer_repository, committer_account));
+CREATE INDEX committer_account_index ON committers(committer_account);
+CREATE INDEX committer_name_index ON committers(committer_name);
 
 CREATE TABLE commits (
     commit_id serial PRIMARY KEY,
@@ -57,14 +80,11 @@ CREATE TABLE commits (
     commit_revision varchar(64) NOT NULL,
     commit_parent integer REFERENCES commits ON DELETE CASCADE,
     commit_time timestamp,
-    commit_author_name varchar(128),
-    commit_author_email varchar(320),
+    commit_committer integer REFERENCES committers ON DELETE CASCADE,
     commit_message text,
     commit_reported boolean NOT NULL DEFAULT FALSE,
     CONSTRAINT commit_in_repository_must_be_unique UNIQUE(commit_repository, commit_revision));
 CREATE INDEX commit_time_index ON commits(commit_time);
-CREATE INDEX commit_author_name_index ON commits(commit_author_name);
-CREATE INDEX commit_author_email_index ON commits(commit_author_email);
 
 CREATE TABLE build_commits (
     commit_build integer NOT NULL REFERENCES builds ON DELETE CASCADE,
@@ -122,6 +142,7 @@ CREATE TABLE run_iterations (
 CREATE TABLE reports (
     report_id serial PRIMARY KEY,
     report_builder integer NOT NULL REFERENCES builders ON DELETE RESTRICT,
+    report_slave integer REFERENCES build_slaves ON DELETE RESTRICT,
     report_build_number integer,
     report_build integer REFERENCES builds,
     report_created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),

@@ -129,8 +129,6 @@ list(APPEND WebCore_SOURCES
     platform/text/LocaleICU.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextEncodingDetectorICU.cpp
-    plugins/PluginPackageNone.cpp
-    plugins/PluginViewNone.cpp
 
     # FIXME: Split into a WebCorePlatform library
     editing/wpe/EditorWPE.cpp

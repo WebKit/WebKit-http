@@ -42,6 +42,7 @@
 #include "ScheduledAction.h"
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginPolicy.h"
 #include "URL.h"
 #include "WorkerInspectorController.h"
 #include "WorkerLocation.h"
@@ -63,10 +64,9 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, WorkerThread& thread, PassRefPtr<SecurityOrigin> topOrigin)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, WorkerThread& thread, PassRefPtr<SecurityOrigin> topOrigin)
     : m_url(url)
     , m_userAgent(userAgent)
-    , m_groupSettings(WTF::move(settings))
     , m_script(std::make_unique<WorkerScriptController>(this))
     , m_thread(thread)
 #if ENABLE(INSPECTOR)
@@ -76,7 +76,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, st
     , m_eventQueue(*this)
     , m_topOrigin(topOrigin)
 {
-    setSecurityOrigin(SecurityOrigin::create(url));
+    setSecurityOriginPolicy(SecurityOriginPolicy::create(SecurityOrigin::create(url)));
 }
 
 WorkerGlobalScope::~WorkerGlobalScope()
@@ -189,7 +189,7 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode&
     Vector<URL>::const_iterator end = completedURLs.end();
 
     for (Vector<URL>::const_iterator it = completedURLs.begin(); it != end; ++it) {
-        RefPtr<WorkerScriptLoader> scriptLoader(WorkerScriptLoader::create());
+        Ref<WorkerScriptLoader> scriptLoader = WorkerScriptLoader::create();
         scriptLoader->loadSynchronously(scriptExecutionContext(), *it, AllowCrossOriginRequests);
 
         // If the fetching attempt failed, throw a NETWORK_ERR exception and abort all these steps.
@@ -214,7 +214,7 @@ EventTarget* WorkerGlobalScope::errorEventTarget()
     return this;
 }
 
-void WorkerGlobalScope::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>)
+void WorkerGlobalScope::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<ScriptCallStack>&&)
 {
     thread().workerReportingProxy().postExceptionToWorkerObject(errorMessage, lineNumber, columnNumber, sourceURL);
 }
@@ -230,7 +230,7 @@ void WorkerGlobalScope::addConsoleMessage(MessageSource source, MessageLevel lev
     addMessageToWorkerConsole(source, level, message, String(), 0, 0, 0, 0, requestIdentifier);
 }
 
-void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, JSC::ExecState* state, unsigned long requestIdentifier)
+void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<ScriptCallStack>&& callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
         postTask(AddConsoleMessageTask(source, level, StringCapture(message)));
@@ -238,14 +238,14 @@ void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, con
     }
 
     thread().workerReportingProxy().postConsoleMessageToWorkerObject(source, level, message, lineNumber, columnNumber, sourceURL);
-    addMessageToWorkerConsole(source, level, message, sourceURL, lineNumber, columnNumber, callStack, state, requestIdentifier);
+    addMessageToWorkerConsole(source, level, message, sourceURL, lineNumber, columnNumber, WTF::move(callStack), state, requestIdentifier);
 }
 
-void WorkerGlobalScope::addMessageToWorkerConsole(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, JSC::ExecState* state, unsigned long requestIdentifier)
+void WorkerGlobalScope::addMessageToWorkerConsole(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<ScriptCallStack>&& callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     ASSERT(isContextThread());
     if (callStack)
-        InspectorInstrumentation::addMessageToConsole(this, source, MessageType::Log, level, message, callStack, requestIdentifier);
+        InspectorInstrumentation::addMessageToConsole(this, source, MessageType::Log, level, message, WTF::move(callStack), requestIdentifier);
     else
         InspectorInstrumentation::addMessageToConsole(this, source, MessageType::Log, level, message, sourceURL, lineNumber, columnNumber, state, requestIdentifier);
 }

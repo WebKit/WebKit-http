@@ -194,6 +194,14 @@ private:
     std::unique_ptr<CDMSession> createSession(const String&);
 #endif
 
+#if ENABLE(MEDIA_SOURCE)
+    // TODO: Implement
+    virtual unsigned long totalVideoFrames() { return 0; }
+    virtual unsigned long droppedVideoFrames() { return 0; }
+    virtual unsigned long corruptedVideoFrames() { return 0; }
+    virtual MediaTime totalFrameDelay() { return MediaTime::zeroTime(); }
+#endif
+
 private:
     GRefPtr<GstElement> m_playBin;
     GRefPtr<GstElement> m_source;
@@ -255,6 +263,9 @@ private:
 #endif
 #if ENABLE(MEDIA_SOURCE)
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
+    bool isMediaSource() const { return m_mediaSource; }
+#else
+    bool isMediaSource() const { return false; }
 #endif
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     BinarySemaphore m_drmKeySemaphore;

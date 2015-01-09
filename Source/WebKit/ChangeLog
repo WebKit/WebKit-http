@@ -1,3 +1,325 @@
+2015-01-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r178124.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove symbol that
+        is no longer part of WebCore.
+
+2015-01-07  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: update symbol.
+
+2015-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178039.
+        https://bugs.webkit.org/show_bug.cgi?id=140187
+
+        Breaks ObjC Inspector Protocol (Requested by JoePeck on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: purge PassRefPtr from Inspector code and use
+        Ref for typed and untyped protocol objects"
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+        http://trac.webkit.org/changeset/178039
+
+2015-01-06  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: update symbol.
+
+2015-01-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a WebKit1 database provider
+        https://bugs.webkit.org/show_bug.cgi?id=140126
+
+        Reviewed by Sam Weinig.
+
+        Add a stubbed out database provider.
+
+        * Storage/WebDatabaseProvider.cpp: Added.
+        (WebDatabaseProvider::shared):
+        (WebDatabaseProvider::WebDatabaseProvider):
+        (WebDatabaseProvider::~WebDatabaseProvider):
+        (WebDatabaseProvider::createIDBFactoryBackend):
+        * Storage/WebDatabaseProvider.h: Added.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2015-01-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177963.
+        https://bugs.webkit.org/show_bug.cgi?id=140136
+
+        Caused lots of crashes (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Add a WebKit1 database provider"
+        https://bugs.webkit.org/show_bug.cgi?id=140126
+        http://trac.webkit.org/changeset/177963
+
+2015-01-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a WebKit1 database provider
+        https://bugs.webkit.org/show_bug.cgi?id=140126
+
+        Reviewed by Sam Weinig.
+
+        Add a stubbed out database provider.
+
+        * Storage/WebDatabaseProvider.cpp: Added.
+        (WebDatabaseProvider::shared):
+        (WebDatabaseProvider::WebDatabaseProvider):
+        (WebDatabaseProvider::~WebDatabaseProvider):
+        (WebDatabaseProvider::createIDBFactoryBackend):
+        * Storage/WebDatabaseProvider.h: Added.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2015-01-05  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r177925.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Correct symbol name.
+
+2014-12-29  Anders Carlsson  <andersca@apple.com>
+
+        Remove unneeded StorageNamespace functions
+        https://bugs.webkit.org/show_bug.cgi?id=139997
+
+        Reviewed by Sam Weinig.
+
+        We can just cast to StorageNamespaceImpl directly, no need for virtual dispatch.
+
+        * Storage/StorageNamespaceImpl.h:
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebStorageNamespaceProvider::closeLocalStorage):
+        (WebStorageNamespaceProvider::clearLocalStorageForAllOrigins):
+        (WebStorageNamespaceProvider::clearLocalStorageForOrigin):
+        (WebStorageNamespaceProvider::closeIdleLocalStorageDatabases):
+        (WebStorageNamespaceProvider::syncLocalStorage):
+
+2014-12-29  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of some PageGroup storage functions
+        https://bugs.webkit.org/show_bug.cgi?id=139996
+
+        Reviewed by Sam Weinig.
+
+        Call WebStorageNamespaceProvider directly instead.
+
+        * Storage/StorageTracker.cpp:
+        (WebCore::StorageTracker::deleteAllOrigins):
+        (WebCore::StorageTracker::deleteOrigin):
+
+2014-12-29  Anders Carlsson  <andersca@apple.com>
+
+        Move storage code from WebCore to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=139558
+
+        Reviewed by Darin Adler.
+
+        * Storage/StorageAreaImpl.cpp: Renamed from Source/WebCore/storage/StorageAreaImpl.cpp.
+        (WebCore::StorageAreaImpl::~StorageAreaImpl):
+        (WebCore::StorageAreaImpl::StorageAreaImpl):
+        (WebCore::StorageAreaImpl::create):
+        (WebCore::StorageAreaImpl::copy):
+        (WebCore::StorageAreaImpl::canAccessStorage):
+        (WebCore::StorageAreaImpl::storageType):
+        (WebCore::StorageAreaImpl::length):
+        (WebCore::StorageAreaImpl::key):
+        (WebCore::StorageAreaImpl::item):
+        (WebCore::StorageAreaImpl::setItem):
+        (WebCore::StorageAreaImpl::removeItem):
+        (WebCore::StorageAreaImpl::clear):
+        (WebCore::StorageAreaImpl::contains):
+        (WebCore::StorageAreaImpl::importItems):
+        (WebCore::StorageAreaImpl::close):
+        (WebCore::StorageAreaImpl::clearForOriginDeletion):
+        (WebCore::StorageAreaImpl::sync):
+        (WebCore::StorageAreaImpl::blockUntilImportComplete):
+        (WebCore::StorageAreaImpl::memoryBytesUsedByCache):
+        (WebCore::StorageAreaImpl::incrementAccessCount):
+        (WebCore::StorageAreaImpl::decrementAccessCount):
+        (WebCore::StorageAreaImpl::closeDatabaseTimerFired):
+        (WebCore::StorageAreaImpl::closeDatabaseIfIdle):
+        (WebCore::StorageAreaImpl::dispatchStorageEvent):
+        * Storage/StorageAreaImpl.h: Renamed from Source/WebCore/storage/StorageAreaImpl.h.
+        * Storage/StorageAreaSync.cpp: Renamed from Source/WebCore/storage/StorageAreaSync.cpp.
+        (WebCore::StorageAreaSync::StorageAreaSync):
+        (WebCore::StorageAreaSync::create):
+        (WebCore::StorageAreaSync::~StorageAreaSync):
+        (WebCore::StorageAreaSync::scheduleFinalSync):
+        (WebCore::StorageAreaSync::scheduleItemForSync):
+        (WebCore::StorageAreaSync::scheduleClear):
+        (WebCore::StorageAreaSync::scheduleCloseDatabase):
+        (WebCore::StorageAreaSync::syncTimerFired):
+        (WebCore::StorageAreaSync::openDatabase):
+        (WebCore::StorageAreaSync::migrateItemTableIfNeeded):
+        (WebCore::StorageAreaSync::performImport):
+        (WebCore::StorageAreaSync::markImported):
+        (WebCore::StorageAreaSync::blockUntilImportComplete):
+        (WebCore::StorageAreaSync::sync):
+        (WebCore::StorageAreaSync::performSync):
+        (WebCore::StorageAreaSync::deleteEmptyDatabase):
+        (WebCore::StorageAreaSync::scheduleSync):
+        * Storage/StorageAreaSync.h: Renamed from Source/WebCore/storage/StorageAreaSync.h.
+        * Storage/StorageNamespaceImpl.cpp: Renamed from Source/WebCore/storage/StorageNamespaceImpl.cpp.
+        (WebCore::localStorageNamespaceMap):
+        (WebCore::StorageNamespaceImpl::createSessionStorageNamespace):
+        (WebCore::StorageNamespaceImpl::getOrCreateLocalStorageNamespace):
+        (WebCore::StorageNamespaceImpl::StorageNamespaceImpl):
+        (WebCore::StorageNamespaceImpl::~StorageNamespaceImpl):
+        (WebCore::StorageNamespaceImpl::copy):
+        (WebCore::StorageNamespaceImpl::storageArea):
+        (WebCore::StorageNamespaceImpl::close):
+        (WebCore::StorageNamespaceImpl::clearOriginForDeletion):
+        (WebCore::StorageNamespaceImpl::clearAllOriginsForDeletion):
+        (WebCore::StorageNamespaceImpl::sync):
+        (WebCore::StorageNamespaceImpl::closeIdleLocalStorageDatabases):
+        * Storage/StorageNamespaceImpl.h: Renamed from Source/WebCore/storage/StorageNamespaceImpl.h.
+        * Storage/StorageSyncManager.cpp: Renamed from Source/WebCore/storage/StorageSyncManager.cpp.
+        (WebCore::StorageSyncManager::create):
+        (WebCore::StorageSyncManager::StorageSyncManager):
+        (WebCore::StorageSyncManager::~StorageSyncManager):
+        (WebCore::StorageSyncManager::fullDatabaseFilename):
+        (WebCore::StorageSyncManager::dispatch):
+        (WebCore::StorageSyncManager::close):
+        * Storage/StorageSyncManager.h: Renamed from Source/WebCore/storage/StorageSyncManager.h.
+        * Storage/StorageThread.cpp: Renamed from Source/WebCore/storage/StorageThread.cpp.
+        (WebCore::activeStorageThreads):
+        (WebCore::StorageThread::StorageThread):
+        (WebCore::StorageThread::~StorageThread):
+        (WebCore::StorageThread::start):
+        (WebCore::StorageThread::threadEntryPointCallback):
+        (WebCore::StorageThread::threadEntryPoint):
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        (WebCore::StorageThread::performTerminate):
+        (WebCore::StorageThread::releaseFastMallocFreeMemoryInAllThreads):
+        * Storage/StorageThread.h: Renamed from Source/WebCore/storage/StorageThread.h.
+        * Storage/StorageTracker.cpp: Renamed from Source/WebCore/storage/StorageTracker.cpp.
+        (WebCore::StorageTracker::initializeTracker):
+        (WebCore::StorageTracker::internalInitialize):
+        (WebCore::StorageTracker::tracker):
+        (WebCore::StorageTracker::StorageTracker):
+        (WebCore::StorageTracker::setDatabaseDirectoryPath):
+        (WebCore::StorageTracker::databaseDirectoryPath):
+        (WebCore::StorageTracker::trackerDatabasePath):
+        (WebCore::ensureDatabaseFileExists):
+        (WebCore::StorageTracker::openTrackerDatabase):
+        (WebCore::StorageTracker::importOriginIdentifiers):
+        (WebCore::StorageTracker::finishedImportingOriginIdentifiers):
+        (WebCore::StorageTracker::syncImportOriginIdentifiers):
+        (WebCore::StorageTracker::syncFileSystemAndTrackerDatabase):
+        (WebCore::StorageTracker::setOriginDetails):
+        (WebCore::StorageTracker::syncSetOriginDetails):
+        (WebCore::StorageTracker::origins):
+        (WebCore::StorageTracker::deleteAllOrigins):
+        (WebCore::truncateDatabaseFile):
+        (WebCore::StorageTracker::syncDeleteAllOrigins):
+        (WebCore::StorageTracker::deleteOriginWithIdentifier):
+        (WebCore::StorageTracker::deleteOrigin):
+        (WebCore::StorageTracker::syncDeleteOrigin):
+        (WebCore::StorageTracker::willDeleteAllOrigins):
+        (WebCore::StorageTracker::willDeleteOrigin):
+        (WebCore::StorageTracker::canDeleteOrigin):
+        (WebCore::StorageTracker::cancelDeletingOrigin):
+        (WebCore::StorageTracker::isActive):
+        (WebCore::StorageTracker::setIsActive):
+        (WebCore::StorageTracker::databasePathForOrigin):
+        (WebCore::StorageTracker::diskUsageForOrigin):
+        * Storage/StorageTracker.h: Renamed from Source/WebCore/storage/StorageTracker.h.
+        (WebCore::StorageTracker::storageDatabaseIdleInterval):
+        (WebCore::StorageTracker::setStorageDatabaseIdleInterval):
+        * Storage/StorageTrackerClient.h: Renamed from Source/WebCore/storage/StorageTrackerClient.h.
+        (WebCore::StorageTrackerClient::~StorageTrackerClient):
+        * Storage/WebStorageNamespaceProvider.cpp:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2014-12-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Build fix after r177668.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing export definition
+        for new symbols.
+
+2014-12-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Build fix after r177588.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Fix
+        symbol declaration.
+
+2014-12-19  Alex Christensen  <achristensen@webkit.org>
+
+        [Win64] Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Fixed some 64-bit linker symbols.
+
+2014-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build correction after r177513.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Correct for new
+        method signature.
+
+2014-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct Windows tests after Bug 139149.
+        https://bugs.webkit.org/show_bug.cgi?id=139781
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj: Add new interface.
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters: Ditto.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj: Add new application cache object.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters: Ditto.
+
+2014-12-18  Andreas Kling  <akling@apple.com>
+
+        Attempt to fix Windows build after Range::create() changes.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2014-12-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct DebugSuffix builds under MSBuild
+        https://bugs.webkit.org/show_bug.cgi?id=139733
+        <rdar://problem/19276880>
+
+        Reviewed by Simon Fraser.
+
+        * WebKit.vcxproj/WebKit.proj: Make sure to use the '_debug' suffix
+        when building the DebugSuffix target.
+
+2014-12-17  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Link errors.
+        https://bugs.webkit.org/show_bug.cgi?id=139729
+
+        Reviewed by Anders Carlsson.
+
+        The list of exported symbols needs to be updated.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
 2014-12-12  Roger Fong  <roger_fong@apple.com>
 
         [Windows] Unreviewed 64bit build fix.

@@ -31,7 +31,6 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "AbstractSQLTransaction.h"
 #include "Database.h" // FIXME: Should only be used in the frontend.
 #include "DatabaseAuthorizer.h"
 #include "DatabaseBackend.h"
@@ -43,6 +42,9 @@
 #include "OriginLock.h"
 #include "SQLError.h"
 #include "SQLStatementBackend.h"
+#include "SQLStatementCallback.h"
+#include "SQLStatementErrorCallback.h"
+#include "SQLTransaction.h"
 #include "SQLTransactionClient.h"
 #include "SQLTransactionCoordinator.h"
 #include "SQLValue.h"
@@ -344,14 +346,12 @@
 
 namespace WebCore {
 
-PassRefPtr<SQLTransactionBackend> SQLTransactionBackend::create(DatabaseBackend* db,
-    PassRefPtr<AbstractSQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
+PassRefPtr<SQLTransactionBackend> SQLTransactionBackend::create(DatabaseBackend* db, PassRefPtr<SQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
 {
     return adoptRef(new SQLTransactionBackend(db, frontend, wrapper, readOnly));
 }
 
-SQLTransactionBackend::SQLTransactionBackend(DatabaseBackend* db,
-    PassRefPtr<AbstractSQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
+SQLTransactionBackend::SQLTransactionBackend(DatabaseBackend* db, PassRefPtr<SQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
     : m_frontend(frontend)
     , m_database(db)
     , m_wrapper(wrapper)
@@ -426,7 +426,7 @@ void SQLTransactionBackend::doCleanup()
     m_wrapper = 0;
 }
 
-AbstractSQLStatement* SQLTransactionBackend::currentStatement()
+SQLStatement* SQLTransactionBackend::currentStatement()
 {
     return m_currentStatementBackend->frontend();
 }
@@ -526,8 +526,7 @@ bool SQLTransactionBackend::shouldPerformWhilePaused() const
 }
 #endif
 
-void SQLTransactionBackend::executeSQL(std::unique_ptr<AbstractSQLStatement> statement,
-    const String& sqlStatement, const Vector<SQLValue>& arguments, int permissions)
+void SQLTransactionBackend::executeSQL(std::unique_ptr<SQLStatement> statement, const String& sqlStatement, const Vector<SQLValue>& arguments, int permissions)
 {
     RefPtr<SQLStatementBackend> statementBackend;
     statementBackend = SQLStatementBackend::create(WTF::move(statement), sqlStatement, arguments, permissions);

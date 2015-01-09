@@ -62,7 +62,7 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
 {
     ASSERT(m_page);
     ASSERT(!m_inspectorView);
-    m_inspectorView = GTK_WIDGET(webkitWebViewBaseCreate(&inspectorContext(), nullptr, inspectorPageGroup(), nullptr, nullptr));
+    m_inspectorView = GTK_WIDGET(webkitWebViewBaseCreate(&inspectorProcessPool(), nullptr, inspectorPageGroup(), nullptr, nullptr));
     g_object_add_weak_pointer(G_OBJECT(m_inspectorView), reinterpret_cast<void**>(&m_inspectorView));
     return webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(m_inspectorView));
 }
@@ -166,6 +166,10 @@ void WebInspectorProxy::platformDidClose()
         m_inspectorWindow = 0;
     }
     m_inspectorView = 0;
+}
+
+void WebInspectorProxy::platformInvalidate()
+{
 }
 
 void WebInspectorProxy::platformHide()

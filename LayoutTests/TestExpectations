@@ -10,6 +10,9 @@ webkit.org/b/116293 media/video-seek-after-end.html [ Pass Failure ]
 
 webkit.org/b/116473 editing/selection/user-drag-element-and-user-select-none.html [ Failure ]
 
+webkit.org/b/139862 editing/spelling/editing-multiple-words-with-markers.html [ Timeout Pass ]
+webkit.org/b/139903 [ Debug ] editing/spelling/grammar-paste.html [ Timeout Pass ]
+
 # media/W3C/video/networkState/networkState_during_progress.html is flaky
 webkit.org/b/76280 media/W3C/video/networkState/networkState_during_progress.html [ Pass Failure ]
 
@@ -19,9 +22,6 @@ webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Crash Pas
 
 # This test will run slowly in debug mode, but is plenty fast in release.
 [ Debug ] js/slow-stress/emscripten-memops.html [ Skip ]
-
-# Skip tests for the old inspector UI that will be ported or removed soon.
-inspector-obsolete [ Skip ]
 
 webkit.org/b/112521 [ Release ] webaudio/javascriptaudionode.html [ Pass Failure ]
 webkit.org/b/112521 [ Debug ] webaudio/javascriptaudionode.html [ Skip ]
@@ -36,6 +36,8 @@ webkit.org/b/137359 webaudio/distance-linear.html [ Pass Failure ]
 webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas-2x.html [ ImageOnlyFailure ]
 webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas-2x.html [ ImageOnlyFailure ]
 webkit.org/b/124349 fast/hidpi/image-srcset-relative-svg-canvas.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/139590 animations/cross-fade-webkit-mask-image.html [ Pass Failure ]
 
 # The test frequently times out, and is just unsuccessful at detecting incorrect behavior when it passes.
 webkit.org/b/72698 media/audio-garbage-collect.html [ Skip ]
@@ -173,9 +175,6 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFa
 
 # nth-child tests takes long time and Debug build sometimes timeouts because there are many test cases.
 webkit.org/b/137149 fast/selectors/nth-child-of-basics.html [ Slow ]
-
-# Promises/A+ 2.3.3 has many tests and it sometimes exceeds the time limit.
-webkit.org/b/136878 js/promises-tests/promises-tests-2-3-3.html [ Slow ]
 
 # @supports W3C Failures
 webkit.org/b/137566 css3/conditional/w3c/at-supports-010.html [ ImageOnlyFailure ]
@@ -324,10 +323,6 @@ webkit.org/b/139595 http/tests/xmlhttprequest/workers/abort-exception-assert.htm
 [ Debug ] fast/history/history-back-while-pdf-in-pagecache.html [ Skip ]
 webkit.org/b/121628 [ Release ] fast/history/history-back-while-pdf-in-pagecache.html [ Pass ImageOnlyFailure ]
 
-# Catching infinite recursion is broken.
-webkit.org/b/139548 fast/workers/worker-constructor.html [ Skip ]
-webkit.org/b/139548 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html [ Skip ]
-
 # Network process disk cache is not enabled yet
 webkit.org/b/30322 http/tests/cache/disk-cache-validation.html [ Skip ]
 
@@ -336,12 +331,18 @@ webkit.org/b/139634 [ Debug ] fast/selectors/nth-child-of-register-requirement.h
 webkit.org/b/139634 [ Debug ] fast/selectors/not-backtracking.html [ Slow ]
 
 webkit.org/b/61932 [ Debug ] jquery/manipulation.html [ Slow ]
+[ Debug ] jquery/core.html [ Slow ]
+[ Debug ] jquery/event.html [ Slow ]
+[ Debug ] jquery/offset.html [ Slow ]
+[ Debug ] jquery/traversing.html [ Slow ]
 
 webkit.org/b/139638 [ Debug ] svg/filters/svg-deeply-nested-crash.html [ Slow ]
 
 webkit.org/b/139639 [ Debug ] cssom/non-subpixel-scroll-top-left-values.html [ Slow ]
 
 webkit.org/b/139640 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Slow ]
+
+[ Debug ] fast/workers/worker-cloneport.html [ Slow ]
 
 # Imported Mozilla SVG tests
 webkit.org/b/5968 imported/mozilla/svg/linearGradient-basic-03.svg [ ImageOnlyFailure ]
@@ -437,3 +438,22 @@ webkit.org/b/139417 imported/mozilla/svg/filters/filter-marked-line-06.svg [ Ima
 webkit.org/b/139417 imported/mozilla/svg/filters/filter-marked-line-07.svg [ ImageOnlyFailure ]
 webkit.org/b/139417 imported/mozilla/svg/filters/filter-marked-line-08.svg [ ImageOnlyFailure ]
 webkit.org/b/139417 imported/mozilla/svg/filters/filter-marked-line-09.svg [ ImageOnlyFailure ]
+
+[ Debug ] fast/loader/document-with-fragment-url-3.html [ Pass Timeout ]
+[ Debug ] fast/loader/document-with-fragment-url-4.html [ Pass Timeout ]
+
+webkit.org/b/110546 [ Debug ] fast/parser/document-write-fighting-eof.html [ Skip ]
+webkit.org/b/110546 [ Debug ] fast/parser/document-write-partial-entity-before-load.html [ Skip ]
+
+webkit.org/b/85902 [ Debug ] fast/overflow/lots-of-sibling-inline-boxes.html [ Slow ]
+webkit.org/b/121452 [ Debug ] fast/frames/lots-of-objects.html [ Slow ]
+webkit.org/b/121452 [ Debug ] fast/frames/lots-of-iframes.html [ Slow ]
+webkit.org/b/135053 [ Debug ] html5lib/webkit-resumer.html [ Slow ]
+[ Debug ] js/dfg-double-vote-fuzz.html [ Slow ]
+[ Debug ] js/dom/string-replacement-outofmemory.html [ Slow ]
+
+webkit.org/b/139865 js/promises-tests/promises-tests-2-3-3.html [ Skip ]
+
+webkit.org/b/139840 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html [ Pass Failure ]
+
+webkit.org/b/140043 [ Debug ] js/dom/Promise.html [ Pass Failure ]

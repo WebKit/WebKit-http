@@ -221,7 +221,10 @@ SLOW_PATH_DECL(slow_path_get_callee)
 SLOW_PATH_DECL(slow_path_create_arguments)
 {
     BEGIN();
-    JSValue arguments = JSValue(Arguments::create(vm, exec));
+    int lexicalEnvironmentReg = pc[2].u.operand;
+    JSLexicalEnvironment* lexicalEnvironment = VirtualRegister(lexicalEnvironmentReg).isValid() ?
+        exec->uncheckedR(lexicalEnvironmentReg).lexicalEnvironment() : nullptr;
+    JSValue arguments = JSValue(Arguments::create(vm, exec, lexicalEnvironment));
     CHECK_EXCEPTION();
     exec->uncheckedR(pc[1].u.operand) = arguments;
     exec->uncheckedR(unmodifiedArgumentsRegister(VirtualRegister(pc[1].u.operand)).offset()) = arguments;
@@ -617,12 +620,10 @@ SLOW_PATH_DECL(slow_path_to_index_string)
     RETURN(jsString(exec, Identifier::from(exec, OP(2).jsValue().asUInt32()).string()));
 }
 
-SLOW_PATH_DECL(slow_path_profile_type)
+SLOW_PATH_DECL(slow_path_profile_type_clear_log)
 {
     BEGIN();
-    TypeLocation* location = pc[2].u.location;
-    JSValue val = OP_C(1).jsValue();
-    vm.typeProfilerLog()->recordTypeInformationForLocation(val, location);
+    vm.typeProfilerLog()->processLogEntries(ASCIILiteral("LLInt log full."));
     END();
 }
 

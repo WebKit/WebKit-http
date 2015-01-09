@@ -38,10 +38,13 @@
 #import "ProcessThrottler.h"
 #import "WeakObjCPtr.h"
 
-@class WKNavigation;
 @class WKWebView;
 @protocol WKHistoryDelegatePrivate;
 @protocol WKNavigationDelegate;
+
+namespace API {
+class Navigation;
+}
 
 namespace WebKit {
 
@@ -63,16 +66,10 @@ public:
     RetainPtr<id <WKHistoryDelegatePrivate> > historyDelegate();
     void setHistoryDelegate(id <WKHistoryDelegatePrivate>);
 
-    RetainPtr<WKNavigation> createBackForwardNavigation(uint64_t navigationID, const WebBackForwardListItem&);
-    RetainPtr<WKNavigation> createLoadRequestNavigation(uint64_t navigationID, NSURLRequest *);
-    RetainPtr<WKNavigation> createReloadNavigation(uint64_t navigationID);
-    RetainPtr<WKNavigation> createLoadDataNavigation(uint64_t navigationID);
-
-    // Called by the history client.
-    void didNavigateWithNavigationData(const WebKit::WebNavigationDataStore&);
-    void didPerformClientRedirect(const WTF::String& sourceURL, const WTF::String& destinationURL);
-    void didPerformServerRedirect(const WTF::String& sourceURL, const WTF::String& destinationURL);
-    void didUpdateHistoryTitle(const WTF::String& title, const WTF::String& url);
+    Ref<API::Navigation> createBackForwardNavigation(uint64_t navigationID, const WebBackForwardListItem&);
+    Ref<API::Navigation> createLoadRequestNavigation(uint64_t navigationID, NSURLRequest *);
+    Ref<API::Navigation> createReloadNavigation(uint64_t navigationID);
+    Ref<API::Navigation> createLoadDataNavigation(uint64_t navigationID);
 
     // Called by the page client.
     void navigationGestureDidBegin();
@@ -115,10 +112,16 @@ private:
         virtual void didReceiveAuthenticationChallengeInFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::AuthenticationChallengeProxy*) override;
         virtual void processDidCrash(WebKit::WebPageProxy*) override;
         virtual PassRefPtr<API::Data> webCryptoMasterKey(WebKit::WebPageProxy&) override;
+
 #if USE(QUICK_LOOK)
         virtual void didStartLoadForQuickLookDocumentInMainFrame(const WTF::String& fileName, const WTF::String& uti) override;
         virtual void didFinishLoadForQuickLookDocumentInMainFrame(const WebKit::QuickLookDocumentData&) override;
 #endif
+
+        virtual void didNavigateWithNavigationData(WebKit::WebPageProxy&, const WebKit::WebNavigationDataStore&, WebKit::WebFrameProxy&) override;
+        virtual void didPerformClientRedirect(WebKit::WebPageProxy&, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy&) override;
+        virtual void didPerformServerRedirect(WebKit::WebPageProxy&, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy&) override;
+        virtual void didUpdateHistoryTitle(WebKit::WebPageProxy&, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy&) override;
 
         NavigationState& m_navigationState;
     };
@@ -174,7 +177,7 @@ private:
 #endif
     } m_navigationDelegateMethods;
 
-    HashMap<uint64_t, RetainPtr<WKNavigation>> m_navigations;
+    HashMap<uint64_t, RefPtr<API::Navigation>> m_navigations;
 
     WeakObjCPtr<id <WKHistoryDelegatePrivate> > m_historyDelegate;
     struct {
@@ -185,7 +188,7 @@ private:
     } m_historyDelegateMethods;
 
 #if PLATFORM(IOS)
-    std::unique_ptr<ProcessThrottler::BackgroundActivityToken> m_activityToken;
+    ProcessThrottler::BackgroundActivityToken m_activityToken;
 #endif
 };
 

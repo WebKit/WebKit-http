@@ -70,6 +70,7 @@ import "AccessibleApplication.idl";
 #include "DOMPrivate.idl"
 #include "DOMRange.idl"
 #include "DOMWindow.idl"
+#include "IWebApplicationCache.idl"
 #include "IWebArchive.idl"
 #include "IWebBackForwardList.idl"
 #include "IWebBackForwardListPrivate.idl"
@@ -195,6 +196,11 @@ library WebKit
         [default] interface IWebHistoryItem;
     }
 
+    [uuid(1119E970-4b13-4b9a-a049-41096104b689)]
+    coclass WebApplicationCache {
+        [default] interface IWebApplicationCache;
+    }
+
     [uuid(f71071fd-a51b-4b69-9eb6-44374405e80c)]
     coclass WebCache {
         [default] interface IWebCache;
@@ -289,4 +295,9 @@ library WebKit
     coclass WebUserContentURLPattern {
         [default] interface IWebUserContentURLPattern;
     }
+
+    [uuid(6eb8d98f-2723-4472-88d3-5936f9d6e631)]
+    coclass WebSecurityOrigin {
+        [default] interface IWebSecurityOrigin;
+    };
 }

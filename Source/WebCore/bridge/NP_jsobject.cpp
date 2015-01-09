@@ -29,12 +29,10 @@
 
 #include "NP_jsobject.h"
 
-#include "PluginView.h"
 #include "c_utility.h"
 #include "c_instance.h"
 #include "IdentifierRep.h"
 #include "JSDOMBinding.h"
-#include "npruntime_impl.h"
 #include "npruntime_priv.h"
 #include "runtime_root.h"
 #include <runtime/Error.h>
@@ -45,6 +43,10 @@
 #include <runtime/Completion.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
+
+#pragma GCC visibility push(default)
+#include "npruntime_impl.h"
+#pragma GCC visibility pop
 
 using namespace JSC;
 using namespace JSC::Bindings;
@@ -249,7 +251,7 @@ bool _NPN_Invoke(NPP npp, NPObject* o, NPIdentifier methodName, const NPVariant*
     return true;
 }
 
-bool _NPN_Evaluate(NPP instance, NPObject* o, NPString* s, NPVariant* variant)
+bool _NPN_Evaluate(NPP, NPObject* o, NPString* s, NPVariant* variant)
 {
     if (o->_class == NPScriptObjectClass) {
         JavaScriptObject* obj = reinterpret_cast<JavaScriptObject*>(o); 
@@ -257,10 +259,6 @@ bool _NPN_Evaluate(NPP instance, NPObject* o, NPString* s, NPVariant* variant)
         RootObject* rootObject = obj->rootObject;
         if (!rootObject || !rootObject->isValid())
             return false;
-
-        // There is a crash in Flash when evaluating a script that destroys the
-        // PluginView, so we destroy it asynchronously.
-        PluginView::keepAlive(instance);
 
         ExecState* exec = rootObject->globalObject()->globalExec();
         JSLockHolder lock(exec);

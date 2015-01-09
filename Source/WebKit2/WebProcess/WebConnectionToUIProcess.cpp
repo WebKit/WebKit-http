@@ -26,7 +26,6 @@
 #include "config.h"
 #include "WebConnectionToUIProcess.h"
 
-#include "InjectedBundleUserMessageCoders.h"
 #include "WebConnectionMessages.h"
 #include "WebProcess.h"
 
@@ -47,20 +46,19 @@ WebConnectionToUIProcess::WebConnectionToUIProcess(WebProcess* process)
 
 void WebConnectionToUIProcess::invalidate()
 {
-    m_process = 0;
+    m_process = nullptr;
 }
 
 // WebConnection
 
-void WebConnectionToUIProcess::encodeMessageBody(IPC::ArgumentEncoder& encoder, API::Object* messageBody)
+RefPtr<API::Object> WebConnectionToUIProcess::transformHandlesToObjects(API::Object* object)
 {
-    encoder << InjectedBundleUserMessageEncoder(messageBody);
+    return m_process->transformHandlesToObjects(object);
 }
 
-bool WebConnectionToUIProcess::decodeMessageBody(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& messageBody)
+RefPtr<API::Object> WebConnectionToUIProcess::transformObjectsToHandles(API::Object* object)
 {
-    InjectedBundleUserMessageDecoder messageBodyDecoder(messageBody);
-    return decoder.decode(messageBodyDecoder);
+    return m_process->transformObjectsToHandles(object);
 }
 
 bool WebConnectionToUIProcess::hasValidConnection() const

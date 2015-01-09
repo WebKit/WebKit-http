@@ -615,6 +615,11 @@ bool MediaPlayerPrivateGStreamer::doSeek(gint64 position, float rate, GstSeekFla
 {
     gint64 startTime, endTime;
 
+    // TODO: Should do more than that, need to notify the media source
+    // and probably flush the pipeline at least.
+    if (isMediaSource())
+        return true;
+
     if (rate > 0) {
         startTime = position;
         endTime = GST_CLOCK_TIME_NONE;
@@ -1338,7 +1343,7 @@ float MediaPlayerPrivateGStreamer::maxTimeLoaded() const
 
 bool MediaPlayerPrivateGStreamer::didLoadingProgress() const
 {
-    if (!m_playBin || !m_mediaDuration || !totalBytes())
+    if (!m_playBin || !m_mediaDuration || (!isMediaSource() && !totalBytes()))
         return false;
     float currentMaxTimeLoaded = maxTimeLoaded();
     bool didLoadingProgress = currentMaxTimeLoaded != m_maxTimeLoadedAtLastDidLoadingProgress;
@@ -1412,7 +1417,6 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
 #if ENABLE(MEDIA_SOURCE)
     if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
         MediaSourceGStreamer::open(m_mediaSource.get(), WEBKIT_MEDIA_SRC(m_source.get()));
-        webKitMediaSrcSetPlayBin(WEBKIT_MEDIA_SRC(m_source.get()), m_playBin.get());
     }
 #endif
 }
@@ -2161,7 +2165,7 @@ bool MediaPlayerPrivateGStreamer::canSaveMediaData() const
 
     if (m_url.protocolIsInHTTPFamily())
         return true;
-    
+
     return false;
 }
 

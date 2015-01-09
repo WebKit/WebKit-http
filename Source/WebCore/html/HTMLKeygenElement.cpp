@@ -58,9 +58,9 @@ protected:
     }
 
 private:
-    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren() override
+    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren(Document& targetDocument) override
     {
-        return create(document());
+        return create(targetDocument);
     }
 };
 
@@ -83,9 +83,9 @@ inline HTMLKeygenElement::HTMLKeygenElement(const QualifiedName& tagName, Docume
     ensureUserAgentShadowRoot().appendChild(select, IGNORE_EXCEPTION);
 }
 
-RefPtr<HTMLKeygenElement> HTMLKeygenElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
+Ref<HTMLKeygenElement> HTMLKeygenElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
 {
-    return adoptRef(new HTMLKeygenElement(tagName, document, form));
+    return adoptRef(*new HTMLKeygenElement(tagName, document, form));
 }
 
 void HTMLKeygenElement::parseAttribute(const QualifiedName& name, const AtomicString& value)

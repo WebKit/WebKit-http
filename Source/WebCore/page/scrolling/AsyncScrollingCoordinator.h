@@ -48,7 +48,7 @@ class ScrollingStateTree;
 // allowing asynchronous scrolling (in another thread or process).
 class AsyncScrollingCoordinator : public ScrollingCoordinator {
 public:
-    static PassRefPtr<AsyncScrollingCoordinator> create(Page*);
+    static Ref<AsyncScrollingCoordinator> create(Page*);
     WEBCORE_EXPORT virtual ~AsyncScrollingCoordinator();
 
     ScrollingTree* scrollingTree() const { return m_scrollingTree.get(); }
@@ -140,7 +140,7 @@ private:
 
     ScheduledScrollUpdate m_scheduledScrollUpdate;
 
-    OwnPtr<ScrollingStateTree> m_scrollingStateTree;
+    std::unique_ptr<ScrollingStateTree> m_scrollingStateTree;
     RefPtr<ScrollingTree> m_scrollingTree;
 };
 

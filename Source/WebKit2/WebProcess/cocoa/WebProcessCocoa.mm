@@ -27,10 +27,14 @@
 #import "WebProcess.h"
 
 #import "CustomProtocolManager.h"
+#import "ObjCObjectGraph.h"
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
 #import "SecItemShim.h"
+#import "WKBrowsingContextHandleInternal.h"
 #import "WKFullKeyboardAccessWatcher.h"
+#import "WKTypeRefWrapper.h"
+#import "WKWebProcessPlugInBrowserContextControllerInternal.h"
 #import "WebFrame.h"
 #import "WebInspector.h"
 #import "WebPage.h"
@@ -148,7 +152,7 @@ static id NSApplicationAccessibilityFocusedUIElement(NSApplication*, SEL)
 }
 #endif
 
-void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, IPC::MessageDecoder&)
+void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& parameters)
 {
 #if ENABLE(SANDBOX_EXTENSIONS)
     SandboxExtension::consumePermanently(parameters.uiProcessBundleResourcePathExtensionHandle);
@@ -187,7 +191,7 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     }
 #endif
 
-    m_compositingRenderServerPort = parameters.acceleratedCompositingPort.port();
+    m_compositingRenderServerPort = WTF::move(parameters.acceleratedCompositingPort);
     m_presenterApplicationPid = parameters.presenterApplicationPid;
     m_shouldForceScreenFontSubstitution = parameters.shouldForceScreenFontSubstitution;
     Font::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
@@ -288,6 +292,80 @@ void WebProcess::updateActivePages()
     }
     WKSetApplicationInformationItem(CFSTR("LSActivePageUserVisibleOriginsKey"), activePageURLs.get());
 #endif
+}
+
+RefPtr<ObjCObjectGraph> WebProcess::transformHandlesToObjects(ObjCObjectGraph& objectGraph)
+{
+    struct Transformer final : ObjCObjectGraph::Transformer {
+        Transformer(WebProcess& webProcess)
+            : m_webProcess(webProcess)
+        {
+        }
+
+        virtual bool shouldTransformObject(id object) const override
+        {
+#if WK_API_ENABLED
+            if (dynamic_objc_cast<WKBrowsingContextHandle>(object))
+                return true;
+
+            if (dynamic_objc_cast<WKTypeRefWrapper>(object))
+                return true;
+#endif
+            return false;
+        }
+
+        virtual RetainPtr<id> transformObject(id object) const
+        {
+#if WK_API_ENABLED
+            if (auto* handle = dynamic_objc_cast<WKBrowsingContextHandle>(object)) {
+                if (auto* webPage = m_webProcess.webPage(handle._pageID))
+                    return wrapper(*webPage);
+
+                return [NSNull null];
+            }
+
+            if (auto* wrapper = dynamic_objc_cast<WKTypeRefWrapper>(object))
+                return adoptNS([[WKTypeRefWrapper alloc] initWithObject:toAPI(m_webProcess.transformHandlesToObjects(toImpl(wrapper.object)).get())]);
+#endif
+            return object;
+        }
+
+        WebProcess& m_webProcess;
+    };
+
+    return ObjCObjectGraph::create(ObjCObjectGraph::transform(objectGraph.rootObject(), Transformer(*this)).get());
+}
+
+RefPtr<ObjCObjectGraph> WebProcess::transformObjectsToHandles(ObjCObjectGraph& objectGraph)
+{
+    struct Transformer final : ObjCObjectGraph::Transformer {
+        virtual bool shouldTransformObject(id object) const override
+        {
+#if WK_API_ENABLED
+            if (dynamic_objc_cast<WKWebProcessPlugInBrowserContextController>(object))
+                return true;
+
+            if (dynamic_objc_cast<WKTypeRefWrapper>(object))
+                return true;
+#endif
+
+            return false;
+        }
+
+        virtual RetainPtr<id> transformObject(id object) const
+        {
+#if WK_API_ENABLED
+            if (auto* controller = dynamic_objc_cast<WKWebProcessPlugInBrowserContextController>(object))
+                return controller.handle;
+
+            if (auto* wrapper = dynamic_objc_cast<WKTypeRefWrapper>(object))
+                return adoptNS([[WKTypeRefWrapper alloc] initWithObject:toAPI(transformObjectsToHandles(toImpl(wrapper.object)).get())]);
+#endif
+            return object;
+        }
+    };
+
+    return ObjCObjectGraph::create(ObjCObjectGraph::transform(objectGraph.rootObject(), Transformer()).get());
 }
 
 } // namespace WebKit

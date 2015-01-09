@@ -26,16 +26,14 @@
 #include "config.h"
 #include "LayerTreeHost.h"
 
-#if USE(COORDINATED_GRAPHICS)
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
 #include "CoordinatedLayerTreeHost.h"
-#endif
-
-#if USE(TEXTURE_MAPPER_GL)
-#if PLATFORM(GTK)
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+#include "ThreadedCoordinatedLayerTreeHost.h"
+#elif PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
 #include "LayerTreeHostGtk.h"
-#elif PLATFORM(WPE)
+#elif PLATFORM(WPE) && USE(TEXTURE_MAPPER_GL)
 #include "LayerTreeHostWPE.h"
-#endif
 #endif
 
 using namespace WebCore;
@@ -44,11 +42,13 @@ namespace WebKit {
 
 PassRefPtr<LayerTreeHost> LayerTreeHost::create(WebPage* webPage)
 {
-#if USE(COORDINATED_GRAPHICS)
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     return CoordinatedLayerTreeHost::create(webPage);
-#elif USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK)
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    return ThreadedCoordinatedLayerTreeHost::create(webPage);
+#elif PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
     return LayerTreeHostGtk::create(webPage);
-#elif USE(TEXTURE_MAPPER_GL) && PLATFORM(WPE)
+#elif PLATFORM(WPE) && USE(TEXTURE_MAPPER_GL)
     return LayerTreeHostWPE::create(webPage);
 #else
     UNUSED_PARAM(webPage);

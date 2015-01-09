@@ -30,6 +30,7 @@
 
 #import "GraphicsContextCG.h"
 #import "IOSurfacePool.h"
+#import "MachSendRight.h"
 #import <IOSurface/IOSurface.h>
 #import <wtf/Assertions.h>
 
@@ -59,9 +60,9 @@ PassRefPtr<IOSurface> IOSurface::create(IntSize size, ColorSpace colorSpace)
     return adoptRef(new IOSurface(size, colorSpace));
 }
 
-PassRefPtr<IOSurface> IOSurface::createFromMachPort(mach_port_t machPort, ColorSpace colorSpace)
+PassRefPtr<IOSurface> IOSurface::createFromSendRight(const MachSendRight& sendRight, ColorSpace colorSpace)
 {
-    RetainPtr<IOSurfaceRef> surface = adoptCF(IOSurfaceLookupFromMachPort(machPort));
+    RetainPtr<IOSurfaceRef> surface = adoptCF(IOSurfaceLookupFromMachPort(sendRight.sendRight()));
     return IOSurface::createFromSurface(surface.get(), colorSpace);
 }
 
@@ -129,9 +130,9 @@ IntSize IOSurface::maximumSize()
     return IntSize(IOSurfaceGetPropertyMaximum(kIOSurfaceWidth), IOSurfaceGetPropertyMaximum(kIOSurfaceHeight));
 }
 
-mach_port_t IOSurface::createMachPort() const
+MachSendRight IOSurface::createSendRight() const
 {
-    return IOSurfaceCreateMachPort(m_surface.get());
+    return MachSendRight::adopt(IOSurfaceCreateMachPort(m_surface.get()));
 }
 
 RetainPtr<CGImageRef> IOSurface::createImage()

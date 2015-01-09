@@ -260,7 +260,7 @@ Arguments* StackVisitor::Frame::createArguments()
     Arguments* arguments;
     ArgumentsMode mode;
     if (Options::enableFunctionDotArguments())
-        mode = NormalArgumentsCreationMode;
+        mode = ClonedArgumentsCreationMode;
     else
         mode = FakeArgumentValuesCreationMode;
 #if ENABLE(DFG_JIT)
@@ -272,7 +272,8 @@ Arguments* StackVisitor::Frame::createArguments()
     } else 
 #endif
     {
-        arguments = Arguments::create(vm, physicalFrame, mode);
+        JSLexicalEnvironment* lexicalEnvironment = physicalFrame->lexicalEnvironmentOrNullptr();
+        arguments = Arguments::create(vm, physicalFrame, lexicalEnvironment, mode);
         arguments->tearOff(physicalFrame);
     }
     return arguments;

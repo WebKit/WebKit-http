@@ -51,9 +51,9 @@ inline SVGScriptElement::SVGScriptElement(const QualifiedName& tagName, Document
     registerAnimatedPropertiesForSVGScriptElement();
 }
 
-PassRefPtr<SVGScriptElement> SVGScriptElement::create(const QualifiedName& tagName, Document& document, bool insertedByParser)
+Ref<SVGScriptElement> SVGScriptElement::create(const QualifiedName& tagName, Document& document, bool insertedByParser)
 {
-    return adoptRef(new SVGScriptElement(tagName, document, insertedByParser, false));
+    return adoptRef(*new SVGScriptElement(tagName, document, insertedByParser, false));
 }
 
 bool SVGScriptElement::isSupportedAttribute(const QualifiedName& attrName)
@@ -192,9 +192,9 @@ bool SVGScriptElement::hasSourceAttribute() const
     return hasAttribute(XLinkNames::hrefAttr);
 }
 
-RefPtr<Element> SVGScriptElement::cloneElementWithoutAttributesAndChildren()
+RefPtr<Element> SVGScriptElement::cloneElementWithoutAttributesAndChildren(Document& targetDocument)
 {
-    return adoptRef(new SVGScriptElement(tagQName(), document(), false, alreadyStarted()));
+    return adoptRef(new SVGScriptElement(tagQName(), targetDocument, false, alreadyStarted()));
 }
 
 #ifndef NDEBUG

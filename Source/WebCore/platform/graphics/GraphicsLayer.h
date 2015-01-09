@@ -37,8 +37,6 @@
 #include "IntRect.h"
 #include "PlatformLayer.h"
 #include "TransformOperations.h"
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/TypeCasts.h>
 
 #if ENABLE(CSS_COMPOSITING)
@@ -183,7 +181,7 @@ public:
     const AnimationValue& at(size_t i) const { return *m_values.at(i); }
     
     // Insert, sorted by keyTime.
-    void insert(std::unique_ptr<const AnimationValue>);
+    WEBCORE_EXPORT void insert(std::unique_ptr<const AnimationValue>);
     
 protected:
     Vector<std::unique_ptr<const AnimationValue>> m_values;
@@ -370,6 +368,9 @@ public:
     FloatRoundedRect contentsClippingRect() const { return m_contentsClippingRect; }
     virtual void setContentsClippingRect(const FloatRoundedRect& roundedRect) { m_contentsClippingRect = roundedRect; }
 
+    virtual bool applyClippingBorder(const FloatRoundedRect&) { return false; }
+    virtual void clearClippingBorder() { return; }
+
     // Transitions are identified by a special animation name that cannot clash with a keyframe identifier.
     static String animationNameForTransition(AnimatedPropertyID);
     
@@ -462,7 +463,7 @@ public:
 
     // Return a string with a human readable form of the layer tree, If debug is true
     // pointers for the layers and timing data will be included in the returned string.
-    String layerTreeAsText(LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
+    WEBCORE_EXPORT String layerTreeAsText(LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
 
     // Return an estimate of the backing store memory cost (in bytes). May be incorrect for tiled layers.
     WEBCORE_EXPORT virtual double backingStoreMemoryEstimate() const;
@@ -499,6 +500,8 @@ public:
     virtual bool isGraphicsLayerCA() const { return false; }
     virtual bool isGraphicsLayerCARemote() const { return false; }
     virtual bool isGraphicsLayerTextureMapper() const { return false; }
+
+    virtual bool needsClippingMaskLayer() { return true; };
 
 protected:
     // Should be called from derived class destructors. Should call willBeDestroyed() on super.

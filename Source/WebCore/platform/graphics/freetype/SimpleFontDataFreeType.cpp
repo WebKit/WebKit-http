@@ -101,10 +101,6 @@ void SimpleFontData::platformCharWidthInit()
     initCharWidths();
 }
 
-void SimpleFontData::platformDestroy()
-{
-}
-
 PassRefPtr<SimpleFontData> SimpleFontData::platformCreateScaledFontData(const FontDescription& fontDescription, float scaleFactor) const
 {
     ASSERT(m_platformData.scaledFont());
@@ -114,27 +110,6 @@ PassRefPtr<SimpleFontData> SimpleFontData::platformCreateScaledFontData(const Fo
         m_platformData.syntheticOblique(),
         fontDescription.orientation()),
         isCustomFont(), false);
-}
-
-bool SimpleFontData::containsCharacters(const UChar* characters, int bufferLength) const
-{
-    ASSERT(m_platformData.scaledFont());
-    FT_Face face = cairo_ft_scaled_font_lock_face(m_platformData.scaledFont());
-    if (!face)
-        return false;
-
-    UTF16UChar32Iterator iterator(characters, bufferLength);
-    UChar32 character = iterator.next();
-    while (character != iterator.end()) {
-        if (!FcFreeTypeCharIndex(face, character)) {
-            cairo_ft_scaled_font_unlock_face(m_platformData.scaledFont());
-            return false;
-        }
-        character = iterator.next();
-    }
-
-    cairo_ft_scaled_font_unlock_face(m_platformData.scaledFont());
-    return true;
 }
 
 void SimpleFontData::determinePitch()
@@ -176,7 +151,7 @@ float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
 bool SimpleFontData::canRenderCombiningCharacterSequence(const UChar* characters, size_t length) const
 {
     if (!m_combiningCharacterSequenceSupport)
-        m_combiningCharacterSequenceSupport = adoptPtr(new HashMap<String, bool>);
+        m_combiningCharacterSequenceSupport = std::make_unique<HashMap<String, bool>>();
 
     WTF::HashMap<String, bool>::AddResult addResult = m_combiningCharacterSequenceSupport->add(String(characters, length), false);
     if (!addResult.isNewEntry)

@@ -80,10 +80,10 @@ HTMLSelectElement::HTMLSelectElement(const QualifiedName& tagName, Document& doc
     ASSERT(hasTagName(selectTag));
 }
 
-RefPtr<HTMLSelectElement> HTMLSelectElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
+Ref<HTMLSelectElement> HTMLSelectElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
 {
     ASSERT(tagName.matches(selectTag));
-    return adoptRef(new HTMLSelectElement(tagName, document, form));
+    return adoptRef(*new HTMLSelectElement(tagName, document, form));
 }
 
 void HTMLSelectElement::didRecalcStyle(Style::Change styleChange)
@@ -218,16 +218,21 @@ int HTMLSelectElement::activeSelectionEndListIndex() const
     return lastSelectedListIndex();
 }
 
-void HTMLSelectElement::add(HTMLElement* element, HTMLElement* before, ExceptionCode& ec)
+void HTMLSelectElement::add(HTMLElement* element, HTMLElement* beforeElement, ExceptionCode& ec)
 {
-    if (!element || !(is<HTMLOptionElement>(*element) || element->hasTagName(hrTag)))
+    if (!element || !(is<HTMLOptionElement>(*element) || element->hasTagName(hrTag) || is<HTMLOptGroupElement>(*element)))
         return;
 
     // Make sure the element is ref'd and deref'd so we don't leak it.
     Ref<HTMLElement> protectNewChild(*element);
 
-    insertBefore(element, before, ec);
+    insertBefore(element, beforeElement, ec);
     updateValidity();
+}
+
+void HTMLSelectElement::add(HTMLElement* element, int beforeIndex, ExceptionCode& ec)
+{
+    add(element, item(beforeIndex), ec);
 }
 
 void HTMLSelectElement::removeByIndex(int optionIndex)

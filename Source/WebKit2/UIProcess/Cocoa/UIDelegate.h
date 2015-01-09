@@ -61,10 +61,12 @@ private:
         virtual PassRefPtr<WebKit::WebPageProxy> createNewPage(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const WebKit::NavigationActionData&) override;
         virtual void close(WebKit::WebPageProxy*) override;
         virtual void fullscreenMayReturnToInline(WebKit::WebPageProxy*) override;
+        virtual void didEnterFullscreen(WebKit::WebPageProxy*) override;
+        virtual void didExitFullscreen(WebKit::WebPageProxy*) override;
         virtual void runJavaScriptAlert(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, std::function<void ()> completionHandler) override;
         virtual void runJavaScriptConfirm(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, std::function<void (bool)> completionHandler) override;
         virtual void runJavaScriptPrompt(WebKit::WebPageProxy*, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy*, std::function<void (const WTF::String&)> completionHandler) override;
-        virtual void exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, WebSecurityOrigin*, const WTF::String& databaseName, const WTF::String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentUsage, unsigned long long expectedUsage, std::function<void (unsigned long long)>) override;
+        virtual void exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, API::SecurityOrigin*, const WTF::String& databaseName, const WTF::String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentUsage, unsigned long long expectedUsage, std::function<void (unsigned long long)>) override;
         virtual void reachedApplicationCacheOriginQuota(WebPageProxy*, const WebCore::SecurityOrigin&, uint64_t currentQuota, uint64_t totalBytesNeeded, std::function<void (unsigned long long)> completionHandler) override;
         virtual void printFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy*) override;
     #if PLATFORM(IOS)
@@ -88,6 +90,8 @@ private:
         bool webViewPrintFrame : 1;
         bool webViewClose : 1;
         bool webViewFullscreenMayReturnToInline : 1;
+        bool webViewDidEnterFullscreen : 1;
+        bool webViewDidExitFullscreen : 1;
 #if PLATFORM(IOS)
         bool webViewActionsForElementDefaultActions : 1;
         bool webViewDidNotHandleTapAsClickAtPoint : 1;

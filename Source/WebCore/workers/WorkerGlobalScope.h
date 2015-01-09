@@ -30,7 +30,6 @@
 #include "ContentSecurityPolicy.h"
 #include "EventListener.h"
 #include "EventTarget.h"
-#include "GroupSettings.h"
 #include "ScriptExecutionContext.h"
 #include "WorkerEventQueue.h"
 #include "WorkerScriptController.h"
@@ -66,7 +65,6 @@ namespace WebCore {
         virtual const URL& url() const override final { return m_url; }
         virtual URL completeURL(const String&) const override final;
 
-        const GroupSettings* groupSettings() { return m_groupSettings.get(); }
         virtual String userAgent(const URL&) const override;
 
         virtual void disableEval(const String& errorMessage) override;
@@ -141,11 +139,11 @@ namespace WebCore {
 #endif
 
     protected:
-        WorkerGlobalScope(const URL&, const String& userAgent, std::unique_ptr<GroupSettings>, WorkerThread&, PassRefPtr<SecurityOrigin> topOrigin);
+        WorkerGlobalScope(const URL&, const String& userAgent, WorkerThread&, PassRefPtr<SecurityOrigin> topOrigin);
         void applyContentSecurityPolicyFromString(const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType);
 
-        virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack>) override;
-        void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
+        virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) override;
+        void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
 
     private:
         virtual void refScriptExecutionContext() override { ref(); }
@@ -154,7 +152,7 @@ namespace WebCore {
         virtual void refEventTarget() override final { ref(); }
         virtual void derefEventTarget() override final { deref(); }
 
-        virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override;
+        virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override;
 
         virtual EventTarget* errorEventTarget() override;
 
@@ -162,7 +160,6 @@ namespace WebCore {
 
         URL m_url;
         String m_userAgent;
-        std::unique_ptr<GroupSettings> m_groupSettings;
 
         mutable RefPtr<WorkerLocation> m_location;
         mutable RefPtr<WorkerNavigator> m_navigator;

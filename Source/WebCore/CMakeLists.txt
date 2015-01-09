@@ -818,7 +818,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBDatabaseMetadata.cpp
     Modules/indexeddb/IDBEventDispatcher.cpp
     Modules/indexeddb/IDBFactory.cpp
-    Modules/indexeddb/IDBFactoryBackendInterface.cpp
     Modules/indexeddb/IDBIndex.cpp
     Modules/indexeddb/IDBKey.cpp
     Modules/indexeddb/IDBKeyData.cpp
@@ -834,7 +833,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBTransactionBackendOperations.cpp
     Modules/indexeddb/IDBTransactionCoordinator.cpp
     Modules/indexeddb/IDBVersionChangeEvent.cpp
-    Modules/indexeddb/PageGroupIndexedDatabase.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
     Modules/mediacontrols/MediaControlsHost.cpp
@@ -1254,7 +1252,6 @@ set(WebCore_SOURCES
     css/CSSValueList.cpp
     css/CSSValuePool.cpp
     css/DOMWindowCSS.cpp
-    css/DeprecatedStyleBuilder.cpp
     css/DocumentRuleSets.cpp
     css/ElementRuleCollector.cpp
     css/FontLoader.cpp
@@ -1410,6 +1407,7 @@ set(WebCore_SOURCES
     dom/ScriptableDocumentParser.cpp
     dom/ScriptedAnimationController.cpp
     dom/SecurityContext.cpp
+    dom/SecurityOriginPolicy.cpp
     dom/SelectorQuery.cpp
     dom/ShadowRoot.cpp
     dom/SpaceSplitString.cpp
@@ -1893,6 +1891,7 @@ set(WebCore_SOURCES
     page/DOMWindow.cpp
     page/DOMWindowExtension.cpp
     page/DOMWindowProperty.cpp
+    page/DatabaseProvider.cpp
     page/DebugPageOverlays.cpp
     page/DeviceController.cpp
     page/DiagnosticLoggingKeys.cpp
@@ -1905,7 +1904,6 @@ set(WebCore_SOURCES
     page/FrameSnapshotting.cpp
     page/FrameTree.cpp
     page/FrameView.cpp
-    page/GroupSettings.cpp
     page/History.cpp
     page/Location.cpp
     page/MainFrame.cpp
@@ -1978,6 +1976,7 @@ set(WebCore_SOURCES
     platform/DisplaySleepDisabler.cpp
     platform/DragData.cpp
     platform/DragImage.cpp
+    platform/FeatureCounter.cpp
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
@@ -2079,7 +2078,6 @@ set(WebCore_SOURCES
     platform/graphics/FontGlyphs.cpp
     platform/graphics/GeneratedImage.cpp
     platform/graphics/GeometryUtilities.cpp
-    platform/graphics/GlyphPageTreeNode.cpp
     platform/graphics/Gradient.cpp
     platform/graphics/GradientImage.cpp
     platform/graphics/GraphicsContext.cpp
@@ -2245,7 +2243,6 @@ set(WebCore_SOURCES
     plugins/DOMPlugin.cpp
     plugins/DOMPluginArray.cpp
     plugins/PluginData.cpp
-    plugins/PluginDatabase.cpp
     plugins/PluginDebug.cpp
     plugins/PluginMainThreadScheduler.cpp
     plugins/PluginStream.cpp
@@ -2485,16 +2482,10 @@ set(WebCore_SOURCES
     replay/UserInputBridge.cpp
 
     storage/Storage.cpp
-    storage/StorageAreaImpl.cpp
-    storage/StorageAreaSync.cpp
     storage/StorageEvent.cpp
     storage/StorageEventDispatcher.cpp
     storage/StorageMap.cpp
-    storage/StorageNamespaceImpl.cpp
     storage/StorageNamespaceProvider.cpp
-    storage/StorageSyncManager.cpp
-    storage/StorageThread.cpp
-    storage/StorageTracker.cpp
 
     style/InlineTextBoxStyle.cpp
     style/StyleFontSizeFunctions.cpp
@@ -2784,13 +2775,6 @@ if (ENABLE_SQL_DATABASE)
     )
 endif ()
 
-if (NOT ENABLE_NETSCAPE_PLUGIN_API)
-    list(APPEND WebCore_SOURCES
-        plugins/PluginPackageNone.cpp
-        plugins/PluginViewNone.cpp
-    )
-endif ()
-
 list(APPEND WebCore_CSS_PROPERTY_NAMES
     ${WEBCORE_DIR}/css/SVGCSSPropertyNames.in
 )
@@ -2971,12 +2955,8 @@ list(APPEND WebCore_LIBRARIES
 )
 
 if (WTF_USE_3D_GRAPHICS)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${THIRDPARTY_DIR}/ANGLE/src"
-        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
-        "${WEBCORE_DIR}/platform/graphics/gpu"
-    )
+    # For platforms that want to use system-provided OpenGL (ES) headers,
+    # these include directories need to be added before the ANGLE directories.
     if (OPENGL_FOUND)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${OPENGL_INCLUDE_DIR}
@@ -2992,6 +2972,12 @@ if (WTF_USE_3D_GRAPHICS)
             ${OPENGLES2_LIBRARIES}
         )
     endif ()
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${THIRDPARTY_DIR}/ANGLE/"
+        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+        "${WEBCORE_DIR}/platform/graphics/gpu"
+    )
 
     list(APPEND ANGLESupport_SOURCES
         ${THIRDPARTY_DIR}/ANGLE/src/common/blocklayout.cpp
@@ -3518,6 +3504,7 @@ if (WTF_USE_3D_GRAPHICS)
         APPEND
         PROPERTY INCLUDE_DIRECTORIES
             "${THIRDPARTY_DIR}/ANGLE/include"
+            "${THIRDPARTY_DIR}/ANGLE/src"
     )
     list(APPEND WebCore_LIBRARIES ANGLESupport)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)

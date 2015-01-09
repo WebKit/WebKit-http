@@ -31,14 +31,9 @@ inline Comment::Comment(Document& document, const String& text)
 {
 }
 
-RefPtr<Comment> Comment::create(Document& document, const String& text)
+Ref<Comment> Comment::create(Document& document, const String& text)
 {
-    return adoptRef(new Comment(document, text));
-}
-
-RefPtr<Comment> Comment::create(ScriptExecutionContext& context, const String& text)
-{
-    return adoptRef(new Comment(downcast<Document>(context), text));
+    return adoptRef(*new Comment(document, text));
 }
 
 String Comment::nodeName() const
@@ -51,9 +46,9 @@ Node::NodeType Comment::nodeType() const
     return COMMENT_NODE;
 }
 
-RefPtr<Node> Comment::cloneNodeInternal(CloningOperation)
+RefPtr<Node> Comment::cloneNodeInternal(Document& targetDocument, CloningOperation)
 {
-    return create(document(), data());
+    return create(targetDocument, data());
 }
 
 bool Comment::childTypeAllowed(NodeType) const

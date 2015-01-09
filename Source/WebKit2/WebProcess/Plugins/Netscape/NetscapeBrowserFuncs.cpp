@@ -41,6 +41,10 @@
 #include <utility>
 #include <wtf/text/StringBuilder.h>
 
+#if PLATFORM(COCOA)
+#include <WebCore/MachSendRight.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -489,7 +493,7 @@ static NPError NPN_GetValue(NPP npp, NPNVariable variable, void *value)
         case WKNVCALayerRenderServerPort: {
             RefPtr<NetscapePlugin> plugin = NetscapePlugin::fromNPP(npp);
 
-            *(mach_port_t*)value = plugin->compositingRenderServerPort();
+            *(mach_port_t*)value = plugin->compositingRenderServerPort().sendRight();
             break;
         }
 

@@ -28,7 +28,6 @@
 
 #if PLATFORM(MAC)
 
-#import <functional>
 #import <wtf/Noncopyable.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
@@ -45,15 +44,17 @@ class TextIndicatorWindow {
     WTF_MAKE_NONCOPYABLE(TextIndicatorWindow);
 
 public:
-    explicit TextIndicatorWindow(NSView *);
-    ~TextIndicatorWindow();
+    WEBCORE_EXPORT explicit TextIndicatorWindow(NSView *);
+    WEBCORE_EXPORT ~TextIndicatorWindow();
 
-    void setTextIndicator(PassRefPtr<TextIndicator>, CGRect contentRect, bool fadeOut, std::function<void ()> animationCompletionHandler);
+    WEBCORE_EXPORT void setTextIndicator(PassRefPtr<TextIndicator>, CGRect contentRect, bool fadeOut);
+
+    WEBCORE_EXPORT void setAnimationProgress(float);
 
 private:
     void closeWindow();
 
-    void startFadeOutTimerFired();
+    void startFadeOut();
 
     NSView *m_targetView;
     RefPtr<TextIndicator> m_textIndicator;
@@ -61,8 +62,6 @@ private:
     RetainPtr<WebTextIndicatorView> m_textIndicatorView;
 
     RunLoop::Timer<TextIndicatorWindow> m_startFadeOutTimer;
-
-    std::function<void ()> m_bounceAnimationCompletionHandler;
 };
 
 } // namespace WebKit

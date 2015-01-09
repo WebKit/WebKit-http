@@ -30,11 +30,11 @@
 
 #import "WKNSURLExtras.h"
 #import "WKViewInternal.h"
-#import "WebContext.h"
 #import "WebKitSystemInterface.h"
 #import "WebPageMessages.h"
 #import "WebPageProxy.h"
 #import "WebPageProxyMessages.h"
+#import "WebProcessPool.h"
 #import "WebProcessProxy.h"
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
@@ -101,7 +101,7 @@ using namespace WebKit;
 
     [_wkView _dismissContentRelativeChildWindows];
 
-    _page->performActionMenuHitTestAtLocation([_wkView convertPoint:event.locationInWindow fromView:nil]);
+    _page->performActionMenuHitTestAtLocation([_wkView convertPoint:event.locationInWindow fromView:nil], false);
 
     _state = ActionMenuState::Pending;
     [self _updateActionMenuItems];
@@ -240,7 +240,7 @@ using namespace WebKit;
 - (void)_saveVideoToDownloads:(id)sender
 {
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
-    _page->process().context().download(_page, hitTestResult->absoluteMediaURL());
+    _page->process().processPool().download(_page, hitTestResult->absoluteMediaURL());
 }
 
 #pragma mark Image actions
@@ -288,7 +288,7 @@ using namespace WebKit;
 - (void)_saveImageToDownloads:(id)sender
 {
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
-    _page->process().context().download(_page, hitTestResult->absoluteImageURL());
+    _page->process().processPool().download(_page, hitTestResult->absoluteImageURL());
 }
 
 // FIXME: We should try to share this with WebPageProxyMac's similar PDF functions.
@@ -399,8 +399,6 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     [_currentActionContext setHighlightFrame:[_wkView.window convertRectToScreen:[_wkView convertRect:_hitTestResult.detectedDataBoundingBox toView:nil]]];
 
     NSArray *menuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_currentActionContext mainResult] actionContext:_currentActionContext.get()];
-    if (menuItems.count == 1 && _hitTestResult.detectedDataTextIndicator)
-        _hitTestResult.detectedDataTextIndicator->setPresentationTransition(TextIndicatorPresentationTransition::Bounce);
     return menuItems;
 }
 

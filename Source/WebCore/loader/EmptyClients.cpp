@@ -28,6 +28,8 @@
 #include "config.h"
 #include "EmptyClients.h"
 
+#include "ColorChooser.h"
+#include "DatabaseProvider.h"
 #include "DateTimeChooser.h"
 #include "DocumentLoader.h"
 #include "FileChooser.h"
@@ -35,17 +37,20 @@
 #include "Frame.h"
 #include "FrameNetworkingContext.h"
 #include "HTMLFormElement.h"
+#include "IDBFactoryBackendInterface.h"
 #include "PageConfiguration.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
 #include "StorageNamespaceProvider.h"
 #include <wtf/NeverDestroyed.h>
 
-#if ENABLE(INPUT_TYPE_COLOR)
-#include "ColorChooser.h"
-#endif
-
 namespace WebCore {
+
+class EmptyDatabaseProvider final : public DatabaseProvider {
+#if ENABLE(INDEXED_DATABASE)
+    virtual RefPtr<IDBFactoryBackendInterface> createIDBFactoryBackend() { return nullptr; }
+#endif
+};
 
 class EmptyStorageNamespaceProvider final : public StorageNamespaceProvider {
     struct EmptyStorageArea : public StorageArea {
@@ -64,11 +69,6 @@ class EmptyStorageNamespaceProvider final : public StorageNamespaceProvider {
     struct EmptyStorageNamespace final : public StorageNamespace {
         virtual PassRefPtr<StorageArea> storageArea(PassRefPtr<SecurityOrigin>) override { return adoptRef(new EmptyStorageArea); }
         virtual PassRefPtr<StorageNamespace> copy(Page*) override { return adoptRef(new EmptyStorageNamespace); }
-        virtual void close() override { }
-        virtual void clearOriginForDeletion(SecurityOrigin*) override { }
-        virtual void clearAllOriginsForDeletion() override { }
-        virtual void sync() override { }
-        virtual void closeIdleLocalStorageDatabases() override { }
     };
 
     virtual RefPtr<StorageNamespace> createSessionStorageNamespace(Page&, unsigned) override
@@ -122,6 +122,7 @@ void fillWithEmptyClients(PageConfiguration& pageConfiguration)
     static NeverDestroyed<EmptyDiagnosticLoggingClient> dummyDiagnosticLoggingClient;
     pageConfiguration.diagnosticLoggingClient = &dummyDiagnosticLoggingClient.get();
 
+    pageConfiguration.databaseProvider = adoptRef(new EmptyDatabaseProvider);
     pageConfiguration.storageNamespaceProvider = adoptRef(new EmptyStorageNamespaceProvider);
     pageConfiguration.visitedLinkStore = adoptRef(new EmptyVisitedLinkStore);
 }

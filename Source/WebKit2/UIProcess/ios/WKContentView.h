@@ -41,10 +41,9 @@ namespace WebKit {
 class DrawingAreaProxy;
 class GeolocationPermissionRequestProxy;
 class RemoteLayerTreeTransaction;
-class WebContext;
 class WebFrameProxy;
 class WebPageProxy;
-class WebSecurityOrigin;
+class WebProcessPool;
 struct WebPageConfiguration;
 }
 
@@ -62,7 +61,7 @@ struct WebPageConfiguration;
 @property (nonatomic, getter=isShowingInspectorIndication) BOOL showingInspectorIndication;
 @property (nonatomic, readonly) BOOL isBackground;
 
-- (instancetype)initWithFrame:(CGRect)frame context:(WebKit::WebContext&)context configuration:(WebKit::WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView;
+- (instancetype)initWithFrame:(CGRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(WebKit::WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView;
 
 - (void)didUpdateVisibleRect:(CGRect)visibleRect unobscuredRect:(CGRect)unobscuredRect
     unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates

@@ -39,6 +39,7 @@
 #include "RegExpConstructor.h"
 #include "RegExpMatchesArray.h"
 #include "RegExpObject.h"
+#include <algorithm>
 #include <wtf/ASCIICType.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/StringView.h>
@@ -57,6 +58,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncConcat(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncLastIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncMatch(ExecState*);
+EncodedJSValue JSC_HOST_CALL stringProtoFuncRepeat(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncReplace(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSearch(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSlice(ExecState*);
@@ -107,6 +109,7 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION("indexOf", stringProtoFuncIndexOf, DontEnum, 1);
     JSC_NATIVE_FUNCTION("lastIndexOf", stringProtoFuncLastIndexOf, DontEnum, 1);
     JSC_NATIVE_FUNCTION("match", stringProtoFuncMatch, DontEnum, 1);
+    JSC_NATIVE_FUNCTION("repeat", stringProtoFuncRepeat, DontEnum, 1);
     JSC_NATIVE_FUNCTION("replace", stringProtoFuncReplace, DontEnum, 2);
     JSC_NATIVE_FUNCTION("search", stringProtoFuncSearch, DontEnum, 1);
     JSC_NATIVE_FUNCTION("slice", stringProtoFuncSlice, DontEnum, 2);
@@ -670,6 +673,66 @@ static inline bool checkObjectCoercible(JSValue thisValue)
         return false;
 
     return true;
+}
+
+template <typename CharacterType>
+static inline JSValue repeatCharacter(ExecState* exec, CharacterType character, unsigned repeatCount)
+{
+    CharacterType* buffer = nullptr;
+    RefPtr<StringImpl> impl = StringImpl::tryCreateUninitialized(repeatCount, buffer);
+    if (!impl)
+        return throwOutOfMemoryError(exec);
+
+    std::fill_n(buffer, repeatCount, character);
+
+    return jsString(exec, impl.release());
+}
+
+EncodedJSValue JSC_HOST_CALL stringProtoFuncRepeat(ExecState* exec)
+{
+    JSValue thisValue = exec->thisValue();
+    if (!checkObjectCoercible(thisValue))
+        return throwVMTypeError(exec);
+
+    JSString* string = thisValue.toString(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
+    double repeatCountDouble = exec->argument(0).toInteger(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+    if (repeatCountDouble < 0 || std::isinf(repeatCountDouble))
+        return throwVMError(exec, createRangeError(exec, ASCIILiteral("repeat() argument must be greater than or equal to 0 and not be infinity")));
+
+    VM& vm = exec->vm();
+
+    if (!string->length() || !repeatCountDouble)
+        return JSValue::encode(jsEmptyString(&vm));
+
+    if (repeatCountDouble == 1)
+        return JSValue::encode(string);
+
+    // JSString requires the limitation that its length is in the range of int32_t.
+    if (repeatCountDouble > std::numeric_limits<int32_t>::max() / string->length())
+        return JSValue::encode(throwOutOfMemoryError(exec));
+    unsigned repeatCount = static_cast<unsigned>(repeatCountDouble);
+
+    // For a string which length is small, instead of creating ropes,
+    // allocating a sequential buffer and fill with the repeated string for efficiency.
+    if (string->length() == 1) {
+        String repeatedString = string->value(exec);
+        UChar character = repeatedString.at(0);
+        if (!(character & ~0xff))
+            return JSValue::encode(repeatCharacter(exec, static_cast<LChar>(character), repeatCount));
+        return JSValue::encode(repeatCharacter(exec, character, repeatCount));
+    }
+
+    JSRopeString::RopeBuilder ropeBuilder(vm);
+    for (unsigned i = 0; i < repeatCount; ++i) {
+        if (!ropeBuilder.append(string))
+            return JSValue::encode(throwOutOfMemoryError(exec));
+    }
+    return JSValue::encode(ropeBuilder.release());
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncReplace(ExecState* exec)
@@ -1567,13 +1630,15 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncStartsWith(ExecState* exec)
     if (jsDynamicCast<RegExpObject*>(a0))
         return throwVMTypeError(exec);
 
+    String searchString = a0.toString(exec)->value(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
     unsigned start = std::max(0, exec->argument(1).toInt32(exec));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
-    String matchString = a0.toString(exec)->value(exec);
-
-    return JSValue::encode(jsBoolean(stringToSearchIn.startsWith(matchString, start, true)));
+    return JSValue::encode(jsBoolean(stringToSearchIn.startsWith(searchString, start, true)));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncEndsWith(ExecState* exec)
@@ -1590,6 +1655,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncEndsWith(ExecState* exec)
     if (jsDynamicCast<RegExpObject*>(a0))
         return throwVMTypeError(exec);
 
+    String searchString = a0.toString(exec)->value(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
     unsigned length = stringToSearchIn.length();
     JSValue a1 = exec->argument(1);
     int pos = a1.isUndefined() ? length : a1.toInt32(exec);
@@ -1597,9 +1666,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncEndsWith(ExecState* exec)
         return JSValue::encode(jsUndefined());
     unsigned end = std::min<unsigned>(std::max(pos, 0), length);
 
-    String matchString = a0.toString(exec)->value(exec);
-
-    return JSValue::encode(jsBoolean(stringToSearchIn.endsWith(matchString, end, true)));
+    return JSValue::encode(jsBoolean(stringToSearchIn.endsWith(searchString, end, true)));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncIncludes(ExecState* exec)
@@ -1616,13 +1683,15 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncIncludes(ExecState* exec)
     if (jsDynamicCast<RegExpObject*>(a0))
         return throwVMTypeError(exec);
 
+    String searchString = a0.toString(exec)->value(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
     unsigned start = std::max(0, exec->argument(1).toInt32(exec));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
-    String matchString = a0.toString(exec)->value(exec);
-
-    return JSValue::encode(jsBoolean(stringToSearchIn.contains(matchString, true, start)));
+    return JSValue::encode(jsBoolean(stringToSearchIn.contains(searchString, true, start)));
 }
     
 } // namespace JSC

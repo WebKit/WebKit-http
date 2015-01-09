@@ -130,9 +130,9 @@ void TextureMapperTiledBackingStore::createOrDestroyTilesIfNeeded(const FloatSiz
     // Remove unnecessary tiles, if they weren't recycled.
     // We use a threshold to make sure we don't create/destroy tiles too eagerly.
     for (auto& index : tileIndicesToRemove) {
-        m_tiles.remove(index);
         if (m_tiles.size() <= TileEraseThreshold)
             break;
+        m_tiles.remove(index);
     }
 }
 

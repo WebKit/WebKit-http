@@ -120,20 +120,20 @@ public:
     virtual void handleJavaScriptDialog(ErrorString&, bool accept, const String* promptText) override;
     virtual void archive(ErrorString&, String* data) override;
 
-    // InspectorInstrumentation API
+    // InspectorInstrumentation callbacks.
     void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld&);
     void domContentEventFired();
     void loadEventFired();
     void frameNavigated(DocumentLoader*);
-    void frameDetached(Frame*);
-    void loaderDetachedFromFrame(DocumentLoader*);
+    void frameDetached(Frame&);
+    void loaderDetachedFromFrame(DocumentLoader&);
     void frameStartedLoading(Frame&);
     void frameStoppedLoading(Frame&);
     void frameScheduledNavigation(Frame&, double delay);
     void frameClearedScheduledNavigation(Frame&);
     void willRunJavaScriptDialog(const String& message);
     void didRunJavaScriptDialog();
-    void applyEmulatedMedia(String*);
+    void applyEmulatedMedia(String&);
     void didPaint(RenderObject*, const LayoutRect&);
     void didLayout();
     void didScroll();
@@ -166,8 +166,8 @@ private:
     static bool mainResourceContent(Frame*, bool withBase64Encode, String* result);
     static bool dataContent(const char* data, unsigned size, const String& textEncodingName, bool withBase64Encode, String* result);
 
-    PassRefPtr<Inspector::Protocol::Page::Frame> buildObjectForFrame(Frame*);
-    PassRefPtr<Inspector::Protocol::Page::FrameResourceTree> buildObjectForFrameTree(Frame*);
+    Ref<Inspector::Protocol::Page::Frame> buildObjectForFrame(Frame*);
+    Ref<Inspector::Protocol::Page::FrameResourceTree> buildObjectForFrameTree(Frame*);
     Page* m_page;
     InspectorClient* m_client;
     std::unique_ptr<Inspector::InspectorPageFrontendDispatcher> m_frontendDispatcher;

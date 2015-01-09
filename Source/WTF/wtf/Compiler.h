@@ -35,6 +35,13 @@
 /* COMPILER_QUIRK() - whether the compiler being used to build the project requires a given quirk. */
 #define COMPILER_QUIRK(WTF_COMPILER_QUIRK) (defined WTF_COMPILER_QUIRK_##WTF_COMPILER_QUIRK  && WTF_COMPILER_QUIRK_##WTF_COMPILER_QUIRK)
 
+/* COMPILER_HAS_CLANG_BUILTIN() - wether the compiler supports a particular clang builtin. */
+#ifdef __has_builtin
+#define COMPILER_HAS_CLANG_BUILTIN(x) __has_builtin(x)
+#else
+#define COMPILER_HAS_CLANG_BUILTIN(x) 0
+#endif
+
 /* ==== COMPILER() - primary detection of the compiler being used to build the project, in alphabetical order ==== */
 
 /* COMPILER(CLANG) - Clang  */
@@ -129,6 +136,12 @@
 #define WTF_COMPILER_SUPPORTS_EABI 1
 #endif
 
+#if defined(__has_feature)
+#define ASAN_ENABLED __has_feature(address_sanitizer)
+#else
+#define ASAN_ENABLED false
+#endif
+
 /* ==== Compiler-independent macros for various compiler features, in alphabetical order ==== */
 
 /* ALWAYS_INLINE */
@@ -155,8 +168,17 @@
 #define CONSTEXPR
 #endif
 
-/* EXTERN_C */
+/* WTF_EXTERN_C_{BEGIN, END} */
 
+#ifdef __cplusplus
+#define WTF_EXTERN_C_BEGIN extern "C" {
+#define WTF_EXTERN_C_END }
+#else
+#define WTF_EXTERN_C_BEGIN
+#define WTF_EXTERN_C_END
+#endif
+
+/* FIXME: Remove this once we have transitioned to WTF_EXTERN_C_BEGIN/WTF_EXTERN_C_END. */
 #ifdef __cplusplus
 #define EXTERN_C extern "C"
 #else

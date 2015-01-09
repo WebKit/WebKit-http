@@ -28,23 +28,39 @@
 
 #include "APIArray.h"
 #include "APIData.h"
+#include "APIDictionary.h"
 #include "APIError.h"
 #include "APIFrameHandle.h"
 #include "APIGeometry.h"
 #include "APINumber.h"
+#include "APIPageGroupHandle.h"
+#include "APIPageHandle.h"
+#include "APISerializedScriptValue.h"
 #include "APIString.h"
 #include "APIURL.h"
 #include "APIURLRequest.h"
 #include "APIURLResponse.h"
+#include "APIUserContentURLPattern.h"
 #include "ArgumentCoders.h"
 #include "ArgumentEncoder.h"
-#include "MutableDictionary.h"
-#include "WebSerializedScriptValue.h"
+#include "ShareableBitmap.h"
+#include "WebCertificateInfo.h"
+#include "WebImage.h"
+#include "WebRenderLayer.h"
+#include "WebRenderObject.h"
+
+#if PLATFORM(COCOA)
+#include "ObjCObjectGraph.h"
+#endif
 
 namespace WebKit {
 
-UserData::UserData(API::Object* object)
-    : m_object(object)
+UserData::UserData()
+{
+}
+
+UserData::UserData(RefPtr<API::Object>&& object)
+    : m_object(WTF::move(object))
 {
 }
 
@@ -52,36 +68,77 @@ UserData::~UserData()
 {
 }
 
-RefPtr<API::Object> UserData::transform(API::Object* object, const std::function<RefPtr<API::Object> (const API::Object&)> transformer)
+static bool shouldTransform(const API::Object& object, const UserData::Transformer& transformer)
 {
-    if (!object)
-        return nullptr;
+    if (object.type() == API::Object::Type::Array) {
+        const auto& array = static_cast<const API::Array&>(object);
 
-    if (object->type() == API::Object::Type::Array) {
-        auto& array = static_cast<API::Array&>(*object);
+        for (const auto& element : array.elements()) {
+            if (!element)
+                continue;
+
+            if (shouldTransform(*element, transformer))
+                return true;
+        }
+    }
+
+    if (object.type() == API::Object::Type::Dictionary) {
+        const auto& dictionary = static_cast<const API::Dictionary&>(object);
+
+        for (const auto& keyValuePair : dictionary.map()) {
+            if (!keyValuePair.value)
+                continue;
+
+            if (shouldTransform(*keyValuePair.value, transformer))
+                return true;
+        }
+    }
+
+    return transformer.shouldTransformObject(object);
+}
+
+static RefPtr<API::Object> transformGraph(API::Object& object, const UserData::Transformer& transformer)
+{
+    if (object.type() == API::Object::Type::Array) {
+        auto& array = static_cast<API::Array&>(object);
 
         Vector<RefPtr<API::Object>> elements;
         elements.reserveInitialCapacity(array.elements().size());
-        for (const auto& element : array.elements())
-            elements.uncheckedAppend(transform(element.get(), transformer));
+        for (const auto& element : array.elements()) {
+            if (!element)
+                elements.uncheckedAppend(nullptr);
+            else
+                elements.uncheckedAppend(transformGraph(*element, transformer));
+        }
 
         return API::Array::create(WTF::move(elements));
     }
 
-    if (object->type() == API::Object::Type::Dictionary) {
-        auto& dictionary = static_cast<ImmutableDictionary&>(*object);
+    if (object.type() == API::Object::Type::Dictionary) {
+        auto& dictionary = static_cast<API::Dictionary&>(object);
 
-        ImmutableDictionary::MapType map;
-        for (const auto& keyValuePair : dictionary.map())
-            map.add(keyValuePair.key, transform(keyValuePair.value.get(), transformer));
-
-        return ImmutableDictionary::create(WTF::move(map));
+        API::Dictionary::MapType map;
+        for (const auto& keyValuePair : dictionary.map()) {
+            if (!keyValuePair.value)
+                map.add(keyValuePair.key, nullptr);
+            else
+                map.add(keyValuePair.key, transformGraph(*keyValuePair.value, transformer));
+        }
+        return API::Dictionary::create(WTF::move(map));
     }
 
-    if (auto transformedObject = transformer(*object))
-        return transformedObject;
+    return transformer.transformObject(object);
+}
 
-    return object;
+RefPtr<API::Object> UserData::transform(API::Object* object, const Transformer& transformer)
+{
+    if (!object)
+        return nullptr;
+
+    if (!shouldTransform(*object, transformer))
+        return object;
+
+    return transformGraph(*object, transformer);
 }
 
 void UserData::encode(IPC::ArgumentEncoder& encoder) const
@@ -94,7 +151,7 @@ bool UserData::decode(IPC::ArgumentDecoder& decoder, UserData& userData)
     return decode(decoder, userData.m_object);
 }
 
-void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object* object) const
+void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object* object)
 {
     if (!object) {
         encoder.encodeEnum(API::Object::Type::Null);
@@ -104,7 +161,7 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object* object) 
     encode(encoder, *object);
 }
 
-void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object) const
+void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object)
 {
     API::Object::Type type = object.type();
     encoder.encodeEnum(type);
@@ -122,12 +179,18 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object) 
         static_cast<const API::Boolean&>(object).encode(encoder);
         break;
 
+    case API::Object::Type::CertificateInfo: {
+        const auto& certificateInfo = static_cast<const WebCertificateInfo&>(object);
+        encoder << certificateInfo.certificateInfo();
+        break;
+    }
+
     case API::Object::Type::Data:
         static_cast<const API::Data&>(object).encode(encoder);
         break;
     
     case API::Object::Type::Dictionary: {
-        auto& dictionary = static_cast<const ImmutableDictionary&>(object);
+        auto& dictionary = static_cast<const API::Dictionary&>(object);
         auto& map = dictionary.map();
 
         encoder << static_cast<uint64_t>(map.size());
@@ -146,11 +209,34 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object) 
         static_cast<const API::Error&>(object).encode(encoder);
         break;
 
-    case API::Object::Type::FrameHandle: {
-        auto& frameHandle = static_cast<const API::FrameHandle&>(object);
-        encoder << frameHandle.frameID();
+    case API::Object::Type::FrameHandle:
+        static_cast<const API::FrameHandle&>(object).encode(encoder);
+        break;
+
+    case API::Object::Type::Image: {
+        auto& image = static_cast<const WebImage&>(object);
+
+        ShareableBitmap::Handle handle;
+        ASSERT(!image.bitmap() || image.bitmap()->isBackedBySharedMemory());
+        if (!image.bitmap() || !image.bitmap()->isBackedBySharedMemory() || !image.bitmap()->createHandle(handle)) {
+            // Initial false indicates no allocated bitmap or is not shareable.
+            encoder << false;
+            break;
+        }
+
+        // Initial true indicates a bitmap was allocated and is shareable.
+        encoder << true;
+        encoder << handle;
         break;
     }
+
+    case API::Object::Type::PageGroupHandle:
+        static_cast<const API::PageGroupHandle&>(object).encode(encoder);
+        break;
+
+    case API::Object::Type::PageHandle:
+        static_cast<const API::PageHandle&>(object).encode(encoder);
+        break;
 
     case API::Object::Type::Point:
         static_cast<const API::Point&>(object).encode(encoder);
@@ -160,8 +246,40 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object) 
         static_cast<const API::Rect&>(object).encode(encoder);
         break;
 
+    case API::Object::Type::RenderLayer: {
+        auto& renderLayer = static_cast<const WebRenderLayer&>(object);
+
+        encode(encoder, renderLayer.renderer());
+        encoder << renderLayer.isReflection();
+        encoder << renderLayer.isClipping();
+        encoder << renderLayer.isClipped();
+        encoder << static_cast<uint32_t>(renderLayer.compositingLayerType());
+        encoder << renderLayer.absoluteBoundingBox();
+        encoder << renderLayer.backingStoreMemoryEstimate();
+        encode(encoder, renderLayer.negativeZOrderList());
+        encode(encoder, renderLayer.normalFlowList());
+        encode(encoder, renderLayer.positiveZOrderList());
+        encode(encoder, renderLayer.frameContentsLayer());
+        break;
+    }
+
+    case API::Object::Type::RenderObject: {
+        auto& renderObject = static_cast<const WebRenderObject&>(object);
+
+        encoder << renderObject.name();
+        encoder << renderObject.elementTagName();
+        encoder << renderObject.elementID();
+        encode(encoder, renderObject.elementClassNames());
+        encoder << renderObject.absolutePosition();
+        encoder << renderObject.frameRect();
+        encoder << renderObject.textSnippet();
+        encoder << renderObject.textLength();
+        encode(encoder, renderObject.children());
+        break;
+    }
+
     case API::Object::Type::SerializedScriptValue: {
-        auto& serializedScriptValue = static_cast<const WebSerializedScriptValue&>(object);
+        auto& serializedScriptValue = static_cast<const API::SerializedScriptValue&>(object);
         encoder << serializedScriptValue.dataReference();
         break;
     }
@@ -176,10 +294,9 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object) 
         break;
     }
 
-    case API::Object::Type::URL: {
+    case API::Object::Type::URL:
         static_cast<const API::URL&>(object).encode(encoder);
         break;
-    }
 
     case API::Object::Type::URLRequest:
         static_cast<const API::URLRequest&>(object).encode(encoder);
@@ -192,6 +309,18 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object) 
     case API::Object::Type::UInt64:
         static_cast<const API::UInt64&>(object).encode(encoder);
         break;
+
+    case API::Object::Type::UserContentURLPattern: {
+        auto& urlPattern = static_cast<const API::UserContentURLPattern&>(object);
+        encoder << urlPattern.patternString();
+        break;
+    }
+
+#if PLATFORM(COCOA)
+    case API::Object::Type::ObjCObjectGraph:
+        static_cast<const ObjCObjectGraph&>(object).encode(encoder);
+        break;
+#endif
 
     default:
         ASSERT_NOT_REACHED();
@@ -228,6 +357,14 @@ bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result
             return false;
         break;
 
+    case API::Object::Type::CertificateInfo: {
+        WebCore::CertificateInfo certificateInfo;
+        if (!decoder.decode(certificateInfo))
+            return false;
+        result = WebCertificateInfo::create(certificateInfo);
+        break;
+    }
+
     case API::Object::Type::Data:
         if (!API::Data::decode(decoder, result))
             return false;
@@ -238,7 +375,7 @@ bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result
         if (!decoder.decode(size))
             return false;
 
-        ImmutableDictionary::MapType map;
+        API::Dictionary::MapType map;
         for (size_t i = 0; i < size; ++i) {
             String key;
             if (!decoder.decode(key))
@@ -252,7 +389,7 @@ bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result
                 return false;
         }
 
-        result = ImmutableDictionary::create(WTF::move(map));
+        result = API::Dictionary::create(WTF::move(map));
         break;
     }
 
@@ -266,19 +403,41 @@ bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result
             return false;
         break;
 
-    case API::Object::Type::FrameHandle: {
-        uint64_t frameID;
-        if (!decoder.decode(frameID))
+    case API::Object::Type::FrameHandle:
+        if (!API::FrameHandle::decode(decoder, result))
+            return false;
+        break;
+
+    case API::Object::Type::Image: {
+        bool didEncode = false;
+        if (!decoder.decode(didEncode))
             return false;
 
-        result = API::FrameHandle::create(frameID);
+        if (!didEncode)
+            break;
+
+        ShareableBitmap::Handle handle;
+        if (!decoder.decode(handle))
+            return false;
+
+        result = WebImage::create(ShareableBitmap::create(handle));
         break;
     }
 
     case API::Object::Type::Null:
         result = nullptr;
         break;
-        
+
+    case API::Object::Type::PageGroupHandle:
+        if (!API::PageGroupHandle::decode(decoder, result))
+            return false;
+        break;
+
+    case API::Object::Type::PageHandle:
+        if (!API::PageHandle::decode(decoder, result))
+            return false;
+        break;
+
     case API::Object::Type::Point:
         if (!API::Point::decode(decoder, result))
             return false;
@@ -289,13 +448,90 @@ bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result
             return false;
         break;
 
+    case API::Object::Type::RenderLayer: {
+        RefPtr<API::Object> renderer;
+        bool isReflection;
+        bool isClipping;
+        bool isClipped;
+        uint32_t compositingLayerTypeAsUInt32;
+        WebCore::IntRect absoluteBoundingBox;
+        double backingStoreMemoryEstimate;
+        RefPtr<API::Object> negativeZOrderList;
+        RefPtr<API::Object> normalFlowList;
+        RefPtr<API::Object> positiveZOrderList;
+        RefPtr<API::Object> frameContentsLayer;
+
+        if (!decode(decoder, renderer))
+            return false;
+        if (renderer->type() != API::Object::Type::RenderObject)
+            return false;
+        if (!decoder.decode(isReflection))
+            return false;
+        if (!decoder.decode(isClipping))
+            return false;
+        if (!decoder.decode(isClipped))
+            return false;
+        if (!decoder.decode(compositingLayerTypeAsUInt32))
+            return false;
+        if (!decoder.decode(absoluteBoundingBox))
+            return false;
+        if (!decoder.decode(backingStoreMemoryEstimate))
+            return false;
+        if (!decode(decoder, negativeZOrderList))
+            return false;
+        if (!decode(decoder, normalFlowList))
+            return false;
+        if (!decode(decoder, positiveZOrderList))
+            return false;
+        if (!decode(decoder, frameContentsLayer))
+            return false;
+
+        result = WebRenderLayer::create(static_pointer_cast<WebRenderObject>(renderer), isReflection, isClipping, isClipped, static_cast<WebRenderLayer::CompositingLayerType>(compositingLayerTypeAsUInt32), absoluteBoundingBox, backingStoreMemoryEstimate, static_pointer_cast<API::Array>(negativeZOrderList), static_pointer_cast<API::Array>(normalFlowList), static_pointer_cast<API::Array>(positiveZOrderList), static_pointer_cast<WebRenderLayer>(frameContentsLayer));
+        break;
+    }
+
+    case API::Object::Type::RenderObject: {
+        String name;
+        String textSnippet;
+        String elementTagName;
+        String elementID;
+        unsigned textLength;
+        RefPtr<API::Object> elementClassNames;
+        WebCore::IntPoint absolutePosition;
+        WebCore::IntRect frameRect;
+        RefPtr<API::Object> children;
+
+        if (!decoder.decode(name))
+            return false;
+        if (!decoder.decode(elementTagName))
+            return false;
+        if (!decoder.decode(elementID))
+            return false;
+        if (!decode(decoder, elementClassNames))
+            return false;
+        if (!decoder.decode(absolutePosition))
+            return false;
+        if (!decoder.decode(frameRect))
+            return false;
+        if (!decoder.decode(textSnippet))
+            return false;
+        if (!decoder.decode(textLength))
+            return false;
+        if (!decode(decoder, children))
+            return false;
+        if (children && children->type() != API::Object::Type::Array)
+            return false;
+        result = WebRenderObject::create(name, elementTagName, elementID, static_pointer_cast<API::Array>(elementClassNames), absolutePosition, frameRect, textSnippet, textLength, static_pointer_cast<API::Array>(children));
+        break;
+    }
+
     case API::Object::Type::SerializedScriptValue: {
         IPC::DataReference dataReference;
         if (!decoder.decode(dataReference))
             return false;
 
         auto vector = dataReference.vector();
-        result = WebSerializedScriptValue::adopt(vector);
+        result = API::SerializedScriptValue::adopt(vector);
         break;
     }
 
@@ -332,6 +568,21 @@ bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result
         if (!API::UInt64::decode(decoder, result))
             return false;
         break;
+
+    case API::Object::Type::UserContentURLPattern: {
+        String string;
+        if (!decoder.decode(string))
+            return false;
+        result = API::UserContentURLPattern::create(string);
+        break;
+    }
+
+#if PLATFORM(COCOA)
+    case API::Object::Type::ObjCObjectGraph:
+        if (!ObjCObjectGraph::decode(decoder, result))
+            return false;
+        break;
+#endif
 
     default:
         ASSERT_NOT_REACHED();

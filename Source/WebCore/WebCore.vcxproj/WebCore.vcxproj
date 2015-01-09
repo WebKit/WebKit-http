@@ -6769,7 +6769,6 @@
     <ClCompile Include="..\Modules\indexeddb\IDBCursorBackend.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBDatabase.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBFactory.cpp" />
-    <ClCompile Include="..\Modules\indexeddb\IDBFactoryBackendInterface.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBIndex.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBKey.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBKeyData.cpp" />
@@ -6777,7 +6776,6 @@
     <ClCompile Include="..\Modules\indexeddb\IDBObjectStore.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBRequest.cpp" />
     <ClCompile Include="..\Modules\indexeddb\IDBTransaction.cpp" />
-    <ClCompile Include="..\Modules\indexeddb\PageGroupIndexedDatabase.cpp" />
     <ClCompile Include="..\Modules\indexeddb\WorkerGlobalScopeIndexedDatabase.cpp" />
     <ClCompile Include="..\Modules\navigatorcontentutils\NavigatorContentUtils.cpp" />
     <ClCompile Include="..\Modules\proximity\DeviceProximityController.cpp" />
@@ -7185,6 +7183,7 @@
     <ClCompile Include="..\page\DOMWindow.cpp" />
     <ClCompile Include="..\page\DOMWindowExtension.cpp" />
     <ClCompile Include="..\page\DOMWindowProperty.cpp" />
+    <ClCompile Include="..\page\DatabaseProvider.cpp" />
     <ClCompile Include="..\page\DebugPageOverlays.cpp" />
     <ClCompile Include="..\page\DragController.cpp" />
     <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingCoordinatorCoordinatedGraphics.cpp" />
@@ -7209,7 +7208,6 @@
     <ClCompile Include="..\page\FrameSnapshotting.cpp" />
     <ClCompile Include="..\page\FrameTree.cpp" />
     <ClCompile Include="..\page\FrameView.cpp" />
-    <ClCompile Include="..\page\GroupSettings.cpp" />
     <ClCompile Include="..\page\History.cpp" />
     <ClCompile Include="..\page\animation\ImplicitAnimation.cpp" />
     <ClCompile Include="..\page\animation\KeyframeAnimation.cpp" />
@@ -7403,6 +7401,7 @@
     <ClCompile Include="..\platform\DisplaySleepDisabler.cpp" />
     <ClCompile Include="..\platform\DragData.cpp" />
     <ClCompile Include="..\platform\DragImage.cpp" />
+    <ClCompile Include="..\platform\FeatureCounter.cpp" />
     <ClCompile Include="..\platform\FileChooser.cpp" />
     <ClCompile Include="..\platform\FileStream.cpp" />
     <ClCompile Include="..\platform\FileSystem.cpp" />
@@ -8055,7 +8054,6 @@
     <ClCompile Include="..\platform\graphics\FontPlatformData.cpp" />
     <ClCompile Include="..\platform\graphics\GeometryUtilities.cpp" />
     <ClCompile Include="..\platform\graphics\GeneratedImage.cpp" />
-    <ClCompile Include="..\platform\graphics\GlyphPageTreeNode.cpp" />
     <ClCompile Include="..\platform\graphics\Gradient.cpp" />
     <ClCompile Include="..\platform\graphics\GradientImage.cpp" />
     <ClCompile Include="..\platform\graphics\GraphicsContext.cpp" />
@@ -13813,6 +13811,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\dom\SecurityOriginPolicy.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\dom\SelectorQuery.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -17870,16 +17882,10 @@
     <ClCompile Include="..\history\HistoryItem.cpp" />
     <ClCompile Include="..\history\PageCache.cpp" />
     <ClCompile Include="..\storage\Storage.cpp" />
-    <ClCompile Include="..\storage\StorageAreaImpl.cpp" />
-    <ClCompile Include="..\storage\StorageAreaSync.cpp" />
     <ClCompile Include="..\storage\StorageEvent.cpp" />
     <ClCompile Include="..\storage\StorageEventDispatcher.cpp" />
     <ClCompile Include="..\storage\StorageMap.cpp" />
-    <ClCompile Include="..\storage\StorageNamespaceImpl.cpp" />
     <ClCompile Include="..\storage\StorageNamespaceProvider.cpp" />
-    <ClCompile Include="..\storage\StorageSyncManager.cpp" />
-    <ClCompile Include="..\storage\StorageThread.cpp" />
-    <ClCompile Include="..\storage\StorageTracker.cpp" />
     <ClCompile Include="..\style\InlineTextBoxStyle.cpp" />
     <ClCompile Include="..\style\StyleFontSizeFunctions.cpp" />
     <ClCompile Include="..\style\StyleResolveForDocument.cpp" />
@@ -19046,7 +19052,6 @@
     <ClInclude Include="..\Modules\indexeddb\IDBObjectStoreBackendImpl.h" />
     <ClInclude Include="..\Modules\indexeddb\IDBRequest.h" />
     <ClInclude Include="..\Modules\indexeddb\IDBTransaction.h" />
-    <ClInclude Include="..\Modules\indexeddb\PageGroupIndexedDatabase.h" />
     <ClInclude Include="..\Modules\indexeddb\WorkerGlobalScopeIndexedDatabase.h" />
     <ClInclude Include="..\Modules\navigatorcontentutils\NavigatorContentUtils.h" />
     <ClInclude Include="..\Modules\proximity\DeviceProximityClient.h" />
@@ -19071,8 +19076,6 @@
     <ClInclude Include="..\Modules\notifications\WorkerGlobalScopeNotifications.h" />
     <ClInclude Include="..\Modules\plugins\PluginReplacement.h" />
     <ClInclude Include="..\Modules\webdatabase\AbstractDatabaseServer.h" />
-    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatement.h" />
-    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatementBackend.h" />
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionData.h" />
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionWrapper.h" />
     <ClInclude Include="..\Modules\webdatabase\Database.h" />
@@ -19190,6 +19193,7 @@
     <ClInclude Include="..\page\DOMWindow.h" />
     <ClInclude Include="..\page\DOMWindowExtension.h" />
     <ClInclude Include="..\page\DOMWindowProperty.h" />
+    <ClInclude Include="..\page\DatabaseProvider.h" />
     <ClInclude Include="..\page\DebugPageOverlays.h" />
     <ClInclude Include="..\page\DragActions.h" />
     <ClInclude Include="..\page\DragClient.h" />
@@ -19204,7 +19208,6 @@
     <ClInclude Include="..\page\FrameSnapshotting.h" />
     <ClInclude Include="..\page\FrameTree.h" />
     <ClInclude Include="..\page\FrameView.h" />
-    <ClInclude Include="..\page\GroupSettings.h" />
     <ClInclude Include="..\page\History.h" />
     <ClInclude Include="..\page\animation\ImplicitAnimation.h" />
     <ClInclude Include="..\page\animation\KeyframeAnimation.h" />
@@ -19370,6 +19373,7 @@
     <ClInclude Include="..\platform\DragData.h" />
     <ClInclude Include="..\platform\DragImage.h" />
     <ClInclude Include="..\platform\EventLoop.h" />
+    <ClInclude Include="..\platform\FeatureCounter.h" />
     <ClInclude Include="..\platform\FileChooser.h" />
     <ClInclude Include="..\platform\FileMetadata.h" />
     <ClInclude Include="..\platform\FileStream.h" />
@@ -19602,7 +19606,6 @@
     <ClInclude Include="..\platform\graphics\GlyphBuffer.h" />
     <ClInclude Include="..\platform\graphics\GlyphMetricsMap.h" />
     <ClInclude Include="..\platform\graphics\GlyphPage.h" />
-    <ClInclude Include="..\platform\graphics\GlyphPageTreeNode.h" />
     <ClInclude Include="..\platform\graphics\Gradient.h" />
     <ClInclude Include="..\platform\graphics\GraphicsContext.h" />
     <ClInclude Include="..\platform\graphics\GraphicsLayer.h" />
@@ -20628,6 +20631,7 @@
     <ClInclude Include="..\dom\ScriptExecutionContext.h" />
     <ClInclude Include="..\dom\ScriptRunner.h" />
     <ClInclude Include="..\dom\SecurityContext.h" />
+    <ClInclude Include="..\dom\SecurityOriginPolicy.h" />
     <ClInclude Include="..\dom\SelectorQuery.h" />
     <ClInclude Include="..\dom\SimulatedClickOptions.h" />
     <ClInclude Include="..\dom\SpaceSplitString.h" />
@@ -21276,17 +21280,11 @@
     <ClInclude Include="..\history\PageCache.h" />
     <ClInclude Include="..\storage\Storage.h" />
     <ClInclude Include="..\storage\StorageArea.h" />
-    <ClInclude Include="..\storage\StorageAreaImpl.h" />
-    <ClInclude Include="..\storage\StorageAreaSync.h" />
     <ClInclude Include="..\storage\StorageEvent.h" />
     <ClInclude Include="..\storage\StorageEventDispatcher.h" />
     <ClInclude Include="..\storage\StorageMap.h" />
     <ClInclude Include="..\storage\StorageNamespace.h" />
-    <ClInclude Include="..\storage\StorageNamespaceImpl.h" />
     <ClInclude Include="..\storage\StorageNamespaceProvider.h" />
-    <ClInclude Include="..\storage\StorageSyncManager.h" />
-    <ClInclude Include="..\storage\StorageThread.h" />
-    <ClInclude Include="..\storage\StorageTracker.h" />
     <ClInclude Include="..\style\InlineTextBoxStyle.h" />
     <ClInclude Include="..\style\StyleFontSizeFunctions.h" />
     <ClInclude Include="..\style\StyleResolveForDocument.h" />

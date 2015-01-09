@@ -81,13 +81,13 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
     UIProcess/Storage/StorageManager.cpp
     UIProcess/cairo/BackingStoreCairo.cpp
-    UIProcess/soup/WebContextSoup.cpp
     UIProcess/soup/WebCookieManagerProxySoup.cpp
+    UIProcess/soup/WebProcessPoolSoup.cpp
     UIProcess/wpe/TextCheckerWPE.cpp
-    UIProcess/wpe/WebContextWPE.cpp
     UIProcess/wpe/WebInspectorProxyWPE.cpp
     UIProcess/wpe/WebPageProxyWPE.cpp
     UIProcess/wpe/WebPreferencesWPE.cpp
+    UIProcess/wpe/WebProcessPoolWPE.cpp
     UIProcess/wpe/WebProcessProxyWPE.cpp
     WebProcess/Cookies/soup/WebCookieManagerSoup.cpp
     WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp

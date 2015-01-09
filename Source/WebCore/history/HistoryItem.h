@@ -53,6 +53,7 @@ class HistoryItem;
 class Image;
 class ResourceRequest;
 class URL;
+enum class PruningReason;
 
 typedef Vector<RefPtr<HistoryItem>> HistoryItemVector;
 
@@ -62,18 +63,18 @@ class HistoryItem : public RefCounted<HistoryItem> {
     friend class PageCache;
 
 public: 
-    static PassRefPtr<HistoryItem> create() { return adoptRef(new HistoryItem); }
-    static PassRefPtr<HistoryItem> create(const String& urlString, const String& title)
+    static Ref<HistoryItem> create() { return adoptRef(*new HistoryItem); }
+    static Ref<HistoryItem> create(const String& urlString, const String& title)
     {
-        return adoptRef(new HistoryItem(urlString, title));
+        return adoptRef(*new HistoryItem(urlString, title));
     }
-    static PassRefPtr<HistoryItem> create(const String& urlString, const String& title, const String& alternateTitle)
+    static Ref<HistoryItem> create(const String& urlString, const String& title, const String& alternateTitle)
     {
-        return adoptRef(new HistoryItem(urlString, title, alternateTitle));
+        return adoptRef(*new HistoryItem(urlString, title, alternateTitle));
     }
-    static PassRefPtr<HistoryItem> create(const URL& url, const String& target, const String& parent, const String& title)
+    static Ref<HistoryItem> create(const URL& url, const String& target, const String& parent, const String& title)
     {
-        return adoptRef(new HistoryItem(url, target, parent, title));
+        return adoptRef(*new HistoryItem(url, target, parent, title));
     }
     
     WEBCORE_EXPORT ~HistoryItem();
@@ -258,6 +259,7 @@ private:
     HistoryItem* m_next;
     HistoryItem* m_prev;
     std::unique_ptr<CachedPage> m_cachedPage;
+    PruningReason m_pruningReason;
 
 #if PLATFORM(IOS)
     FloatRect m_exposedContentRect;

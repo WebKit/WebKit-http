@@ -28,12 +28,12 @@
 
 #import "DynamicLinkerEnvironmentExtractor.h"
 #import "EnvironmentVariables.h"
+#import <WebCore/ServersSPI.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/WebCoreNSStringExtras.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
 #import <mach/machine.h>
-#import <servers/bootstrap.h>
 #import <spawn.h>
 #import <sys/param.h>
 #import <sys/stat.h>
@@ -44,9 +44,6 @@
 #import <wtf/spi/darwin/XPCSPI.h>
 #import <wtf/text/CString.h>
 #import <wtf/text/WTFString.h>
-
-// FIXME: We should be doing this another way.
-extern "C" kern_return_t bootstrap_register2(mach_port_t, name_t, mach_port_t, uint64_t);
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 // FIXME: Soft linking is temporary, make this into a regular function call once this function is available everywhere we need.
@@ -88,6 +85,19 @@ static void setUpTerminationNotificationHandler(pid_t pid)
     dispatch_resume(processDiedSource);
 }
 
+#if ASAN_ENABLED
+static const char* copyASanDynamicLibraryPath()
+{
+    uint32_t imageCount = _dyld_image_count();
+    for (uint32_t i = 0; i < imageCount; ++i) {
+        if (strstr(_dyld_get_image_name(i), "/libclang_rt.asan_"))
+            return fastStrDup(_dyld_get_image_name(i));
+    }
+
+    return 0;
+}
+#endif
+
 static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& launchOptions, bool isWebKitDevelopmentBuild, EnvironmentVariables& environmentVariables)
 {
     DynamicLinkerEnvironmentExtractor environmentExtractor([[NSBundle mainBundle] executablePath], _NSGetMachExecuteHeader()->cputype);
@@ -125,6 +135,14 @@ static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& la
 
         processShimPathNSString = [[processAppExecutablePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"WebProcessShim.dylib"];
     }
+
+#if ASAN_ENABLED
+    static const char* asanLibraryPath = copyASanDynamicLibraryPath();
+    ASSERT(asanLibraryPath); // ASan runtime library was not found in the current process. This code may need to be updated if the library name has changed.
+    // ASan doesn't require this library to be inserted, but it otherwise automatically performs a re-exec, making the child process stop in a debugger on launch one extra time.
+    if (asanLibraryPath)
+        environmentVariables.appendValue("DYLD_INSERT_LIBRARIES", asanLibraryPath, ':');
+#endif
 
     // Make sure that the shim library file exists and insert it.
     if (processShimPathNSString) {
@@ -478,9 +496,12 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
 
     args.append(nullptr);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     // Register ourselves.
     kern_return_t kr = bootstrap_register2(bootstrap_port, const_cast<char*>(serviceName.data()), listeningPort, 0);
     ASSERT_UNUSED(kr, kr == KERN_SUCCESS);
+#pragma clang diagnostic pop
 
     posix_spawnattr_t attr;
     posix_spawnattr_init(&attr);

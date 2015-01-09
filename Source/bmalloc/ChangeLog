@@ -1,3 +1,55 @@
+2015-01-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Make bmalloc work with ASan
+        https://bugs.webkit.org/show_bug.cgi?id=140194
+
+        Reviewed by Mark Lam.
+
+        * bmalloc/BPlatform.h: Added a way to detect Darwin OSes, since we need
+        an OS-specific API to test for loaded runtime libraries.
+
+        * bmalloc/Environment.cpp:
+        (bmalloc::isASanEnabled):
+        (bmalloc::Environment::computeIsBmallocEnabled): Disabled bmalloc if
+        ASan is enabled, since system malloc has the Asan hooks we need.
+
+        You could check for the ASan compile-time flag instead, but doing this
+        check at runtime prepares bmalloc for a world where it is a dynamic
+        library that might be loaded into projects it did not compile with.
+
+2015-01-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Fix up bmalloc's PerThread for use on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=139804
+
+        Reviewed by Anders Carlsson.
+
+        The previous implementation was a bit slow.
+
+        * bmalloc/PerThread.h:
+        (bmalloc::PerThreadStorage<Cache>::get):
+        (bmalloc::PerThreadStorage::get):
+        (bmalloc::PerThreadStorage::init): Added a catch-all cross-platform Unix
+        way to do fast per-thread access without taking a lock every time. This
+        probably works on all the platforms we care about, and it matches other
+        techniques we use elsewhere in WebKit.
+
+        (bmalloc::PerThread<T>::getFastCase): Removed the conditional from
+        this class because PerThreadStorage now encapsulates everything that
+        needs to be conditional.
+
+        (bmalloc::PerThreadStorage::initSharedKeyIfNeeded): Deleted.
+
+2014-12-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19348208> REGRESSION (r177027): iOS builds use the wrong toolchain
+        https://bugs.webkit.org/show_bug.cgi?id=139950
+
+        Reviewed by David Kilzer.
+
+        * Configurations/Base.xcconfig: Only define TOOLCHAINS when building for OS X, doing so
+        in a manner that works with Xcode 5.1.1.
+
 2014-12-15  Geoffrey Garen  <ggaren@apple.com>
 
         Safari crashes when you set Malloc environment variables

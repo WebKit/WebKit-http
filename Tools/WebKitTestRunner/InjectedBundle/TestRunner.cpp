@@ -55,8 +55,6 @@
 
 namespace WTR {
 
-const double TestRunner::waitToDumpWatchdogTimerInterval = 30;
-
 PassRefPtr<TestRunner> TestRunner::create()
 {
     return adoptRef(new TestRunner);
@@ -93,6 +91,7 @@ TestRunner::TestRunner()
     , m_policyDelegatePermissive(false)
     , m_globalFlag(false)
     , m_customFullScreenBehavior(false)
+    , m_timeout(30000)
     , m_databaseDefaultQuota(-1)
     , m_databaseMaxQuota(-1)
     , m_userStyleSheetEnabled(false)
@@ -161,12 +160,11 @@ void TestRunner::notifyDone()
     if (m_waitToDump && !InjectedBundle::shared().topLoadingFrame())
         InjectedBundle::shared().page()->dump();
 
-    m_waitToDump = false;
-}
+    // We don't call invalidateWaitToDumpWatchdogTimer() here, even if we continue to wait for a load to finish.
+    // The test is still subject to timeout checking - it is better to detect an async timeout inside WebKitTestRunner
+    // than to let webkitpy do that, because WebKitTestRunner will dump partial results.
 
-void TestRunner::setCustomTimeout(int timeout)
-{
-    m_timeout = timeout;
+    m_waitToDump = false;
 }
 
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)

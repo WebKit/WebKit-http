@@ -54,7 +54,7 @@ FillLayer::FillLayer(EFillLayerType type)
     , m_composite(FillLayer::initialFillComposite(type))
     , m_sizeType(FillLayer::initialFillSizeType(type))
     , m_blendMode(FillLayer::initialFillBlendMode(type))
-    , m_maskSourceType(FillLayer::initialMaskSourceType(type))
+    , m_maskSourceType(FillLayer::initialFillMaskSourceType(type))
     , m_imageSet(false)
     , m_attachmentSet(false)
     , m_clipSet(false)
@@ -378,7 +378,7 @@ bool FillLayer::hasRepeatXY() const
 bool FillLayer::hasImage() const
 {
     for (auto* layer = this; layer; layer = layer->m_next.get()) {
-        if (layer->m_image)
+        if (layer->image())
             return true;
     }
     return false;

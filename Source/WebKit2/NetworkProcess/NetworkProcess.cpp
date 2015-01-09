@@ -41,8 +41,8 @@
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
 #include "StatisticsData.h"
-#include "WebContextMessages.h"
 #include "WebCookieManager.h"
+#include "WebProcessPoolMessages.h"
 #include "WebsiteDataTypes.h"
 #include <WebCore/Logging.h>
 #include <WebCore/MemoryPressureHandler.h>
@@ -111,7 +111,7 @@ bool NetworkProcess::shouldTerminate()
     return false;
 }
 
-void NetworkProcess::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
+void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
     if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
@@ -119,18 +119,18 @@ void NetworkProcess::didReceiveMessage(IPC::Connection* connection, IPC::Message
     didReceiveNetworkProcessMessage(connection, decoder);
 }
 
-void NetworkProcess::didReceiveSyncMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
 {
     messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
 }
 
-void NetworkProcess::didClose(IPC::Connection*)
+void NetworkProcess::didClose(IPC::Connection&)
 {
     // The UIProcess just exited.
     RunLoop::current().stop();
 }
 
-void NetworkProcess::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference, IPC::StringReference)
+void NetworkProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
 {
     RunLoop::current().stop();
 }
@@ -297,7 +297,7 @@ void NetworkProcess::getNetworkProcessStatistics(uint64_t callbackID)
     data.statisticsNumbers.set("DownloadsActiveCount", shared().downloadManager().activeDownloadCount());
     data.statisticsNumbers.set("OutstandingAuthenticationChallengesCount", shared().authenticationManager().outstandingAuthenticationChallengeCount());
 
-    parentProcessConnection()->send(Messages::WebContext::DidGetStatistics(data, callbackID), 0);
+    parentProcessConnection()->send(Messages::WebProcessPool::DidGetStatistics(data, callbackID), 0);
 }
 
 void NetworkProcess::terminate()

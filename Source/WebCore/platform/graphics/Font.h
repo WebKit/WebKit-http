@@ -172,10 +172,10 @@ public:
 
     bool isPlatformFont() const { return m_glyphs->isForPlatformFont(); }
 
-    const FontMetrics& fontMetrics() const { return primaryFont()->fontMetrics(); }
-    float spaceWidth() const { return primaryFont()->spaceWidth() + m_letterSpacing; }
+    const FontMetrics& fontMetrics() const { return primaryFontData().fontMetrics(); }
+    float spaceWidth() const { return primaryFontData().spaceWidth() + m_letterSpacing; }
     float tabWidth(const SimpleFontData&, unsigned tabSize, float position) const;
-    float tabWidth(unsigned tabSize, float position) const { return tabWidth(*primaryFont(), tabSize, position); }
+    float tabWidth(unsigned tabSize, float position) const { return tabWidth(primaryFontData(), tabSize, position); }
     bool hasValidAverageCharWidth() const;
     bool fastAverageCharWidthIfAvailable(float &width) const; // returns true on success
 
@@ -183,20 +183,13 @@ public:
     int emphasisMarkDescent(const AtomicString&) const;
     int emphasisMarkHeight(const AtomicString&) const;
 
-    const SimpleFontData* primaryFont() const;
+    const SimpleFontData& primaryFontData() const;
     const FontData* fontDataAt(unsigned) const;
-    GlyphData glyphDataForCharacter(UChar32 c, bool mirror, FontDataVariant variant = AutoVariant) const
-    {
-        return glyphDataAndPageForCharacter(c, mirror, variant).first;
-    }
+    GlyphData glyphDataForCharacter(UChar32, bool mirror, FontDataVariant = AutoVariant) const;
+    
 #if PLATFORM(COCOA)
     const SimpleFontData* fontDataForCombiningCharacterSequence(const UChar*, size_t length, FontDataVariant) const;
 #endif
-    std::pair<GlyphData, GlyphPage*> glyphDataAndPageForCharacter(UChar32 c, bool mirror, FontDataVariant variant) const
-    {
-        return m_glyphs->glyphDataAndPageForCharacter(m_fontDescription, c, mirror, variant);
-    }
-    bool primaryFontHasGlyphForCharacter(UChar32) const;
 
     static bool isCJKIdeograph(UChar32);
     static bool isCJKIdeographOrSymbol(UChar32);
@@ -361,7 +354,7 @@ inline Font::~Font()
 {
 }
 
-inline const SimpleFontData* Font::primaryFont() const
+inline const SimpleFontData& Font::primaryFontData() const
 {
     ASSERT(m_glyphs);
     return m_glyphs->primarySimpleFontData(m_fontDescription);

@@ -49,20 +49,11 @@ public:
     WebCore::SecurityOrigin* topLevelOrigin() const { return m_topLevelOrigin.get(); }
     unsigned quotaInBytes() const { return m_quotaInBytes; }
 
-    // FIXME: Remove this deprecated overload.
-    static PassRefPtr<StorageNamespaceImpl> createLocalStorageNamespace(WebCore::PageGroup*);
-    static PassRefPtr<StorageNamespaceImpl> createSessionStorageNamespace(WebPage*);
-
 private:
     explicit StorageNamespaceImpl(WebCore::StorageType, uint64_t storageNamespaceID, WebCore::SecurityOrigin* topLevelOrigin, unsigned quotaInBytes);
 
     virtual PassRefPtr<WebCore::StorageArea> storageArea(PassRefPtr<WebCore::SecurityOrigin>) override;
     virtual PassRefPtr<WebCore::StorageNamespace> copy(WebCore::Page*) override;
-    virtual void close() override;
-    virtual void clearOriginForDeletion(WebCore::SecurityOrigin*) override;
-    virtual void clearAllOriginsForDeletion() override;
-    virtual void sync() override;
-    virtual void closeIdleLocalStorageDatabases() override;
 
     const WebCore::StorageType m_storageType;
     const uint64_t m_storageNamespaceID;

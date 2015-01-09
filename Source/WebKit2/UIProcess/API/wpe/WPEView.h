@@ -32,17 +32,17 @@
 #include <wtf/RefPtr.h>
 
 namespace WebKit {
-class WebContext;
 class WebPageGroup;
+class WebProcessPool;
 }
 
 namespace WPE {
 
 class View {
 public:
-    static View* create(WebKit::WebContext* context, WebKit::WebPageGroup* pageGroup)
+    static View* create(WebKit::WebProcessPool* pool, WebKit::WebPageGroup* pageGroup)
     {
-        return new View(context, pageGroup);
+        return new View(pool, pageGroup);
     }
 
     WebKit::WebPageProxy& page()
@@ -54,7 +54,7 @@ public:
     void setSize(const WebCore::IntSize& size);
 
 private:
-    View(WebKit::WebContext*, WebKit::WebPageGroup*);
+    View(WebKit::WebProcessPool*, WebKit::WebPageGroup*);
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;

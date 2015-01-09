@@ -401,7 +401,7 @@ public:
     typedef uint32_t VideoFullscreenMode;
 
     VideoFullscreenMode fullscreenMode() const { return m_videoFullscreenMode; }
-    void fullscreenModeChanged(VideoFullscreenMode mode) { m_videoFullscreenMode = mode; }
+    virtual void fullscreenModeChanged(VideoFullscreenMode mode) { m_videoFullscreenMode = mode; }
 
     void enterFullscreen(VideoFullscreenMode);
     virtual void enterFullscreen() override;
@@ -495,6 +495,8 @@ protected:
     bool mediaControlsDependOnPageScaleFactor() const { return m_mediaControlsDependOnPageScaleFactor; }
     void setMediaControlsDependOnPageScaleFactor(bool);
 #endif
+
+    void scheduleEvent(const AtomicString& eventName);
 
 private:
     void createMediaPlayer();
@@ -620,8 +622,7 @@ private:
     void addPlayedRange(const MediaTime& start, const MediaTime& end);
     
     void scheduleTimeupdateEvent(bool periodicEvent);
-    void scheduleEvent(const AtomicString& eventName);
-    
+
     // loading
     void selectMediaResource();
     void loadResource(const URL&, ContentType&, const String& keySystem);
@@ -772,7 +773,6 @@ private:
     bool m_volumeInitialized;
     MediaTime m_lastSeekTime;
     
-    unsigned m_previousProgress;
     double m_previousProgressTime;
 
     // The last time a timeupdate event was sent (based on monotonic clock).
@@ -828,6 +828,7 @@ private:
     ScanType m_scanType;
     ScanDirection m_scanDirection;
 
+    bool m_firstTimePlaying : 1;
     bool m_playing : 1;
     bool m_isWaitingUntilMediaCanStart : 1;
     bool m_shouldDelayLoadEvent : 1;

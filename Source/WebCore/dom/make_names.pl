@@ -381,7 +381,7 @@ sub printConstructorSignature
 {
     my ($F, $tagName, $constructorName, $constructorTagName) = @_;
 
-    print F "static PassRefPtr<$parameters{namespace}Element> ${constructorName}Constructor(const QualifiedName& $constructorTagName, Document& document";
+    print F "static Ref<$parameters{namespace}Element> ${constructorName}Constructor(const QualifiedName& $constructorTagName, Document& document";
     if ($parameters{namespace} eq "HTML") {
         print F ", HTMLFormElement*";
         print F " formElement" if $enabledTags{$tagName}{constructorNeedsFormElement};
@@ -407,7 +407,7 @@ sub printConstructorInterior
         print F <<END
     Settings* settings = document.settings();
     if (!MediaPlayer::isAvailable() || (settings && !settings->mediaEnabled()))
-        return 0;
+        return $parameters{fallbackInterfaceName}::create($constructorTagName, document);
     
 END
 ;
@@ -955,7 +955,7 @@ namespace WebCore {
 
 using namespace $parameters{namespace}Names;
 
-typedef PassRefPtr<$parameters{namespace}Element> (*$parameters{namespace}ConstructorFunction)(const QualifiedName&, Document&$formElementArgumentForDeclaration, bool createdByParser);
+typedef Ref<$parameters{namespace}Element> (*$parameters{namespace}ConstructorFunction)(const QualifiedName&, Document&$formElementArgumentForDeclaration, bool createdByParser);
 
 END
     ;
@@ -985,42 +985,23 @@ END
         map.add(table[i].name.localName().impl(), table[i].function);
 }
 
-PassRefPtr<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createElement(const QualifiedName& name, Document& document$formElementArgumentForDefinition, bool createdByParser)
+Ref<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createElement(const QualifiedName& name, Document& document$formElementArgumentForDefinition, bool createdByParser)
 {
-END
-    ;
-
-    if ($parameters{namespace} ne "HTML" and $parameters{namespace} ne "SVG") {
-        print F <<END
-#if ENABLE(DASHBOARD_SUPPORT)
-    Settings* settings = document.settings();
-    if (settings && settings->usesDashboardBackwardCompatibilityMode())
-        return 0;
-#endif
-END
-        ;
-    }
-
-    print F <<END
     static NeverDestroyed<HashMap<AtomicStringImpl*, $parameters{namespace}ConstructorFunction>> functions;
     if (functions.get().isEmpty())
         populate$parameters{namespace}FactoryMap(functions);
-    if ($parameters{namespace}ConstructorFunction function = functions.get().get(name.localName().impl())) {
+    if ($parameters{namespace}ConstructorFunction function = functions.get().get(name.localName().impl()))
 END
     ;
 
     if ($parameters{namespace} eq "HTML") {
-        print F "        if (RefPtr<$parameters{namespace}Element> element = function(name, document, formElement, createdByParser))\n";
-        print F "            return element.release();\n";
+        print F "        return function(name, document, formElement, createdByParser);\n";
     } else {
-        print F "        if (RefPtr<$parameters{namespace}Element> element = function(name, document, createdByParser))\n";
-        print F "            return element.release();\n";
+        print F "        return function(name, document, createdByParser);\n";
     }
 
-    print F "   }\n";
-    print F "   return $parameters{fallbackInterfaceName}::create(name, document);\n";
-
     print F <<END
+    return $parameters{fallbackInterfaceName}::create(name, document);
 }
 
 } // namespace WebCore
@@ -1060,7 +1041,7 @@ namespace WebCore {
 END
 ;
 
-print F "        static PassRefPtr<$parameters{namespace}Element> createElement(const QualifiedName&, Document&";
+print F "        static Ref<$parameters{namespace}Element> createElement(const QualifiedName&, Document&";
 print F ", HTMLFormElement* = nullptr" if $parameters{namespace} eq "HTML";
 print F ", bool createdByParser = false);\n";
 

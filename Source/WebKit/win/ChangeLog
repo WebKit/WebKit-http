@@ -1,3 +1,214 @@
+2015-01-08  Dean Jackson  <dino@apple.com>
+
+        Text not drawn or white-on-white for "Close Page"/"Go Back" button on safe browsing warning page
+        https://bugs.webkit.org/show_bug.cgi?id=140232
+        <rdar://problem/19371010>
+
+        Reviewed by Anders Carlsson.
+
+        Remove the applicationChromeMode setting, but leave stubs in to make
+        sure existing binaries don't break.
+
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::inApplicationChromeMode):
+        (WebPreferences::setApplicationChromeMode):
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2015-01-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WindowCloseTimer is an ActiveDOMObject and must call suspendIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=140184
+        <rdar://problem/19399740>
+
+        Reviewed by Jer Noble.
+
+        This bug was found in fast/loader/stateobjects/popstate-fires-with-page-cache.html
+
+        * WebView.cpp:
+        (WindowCloseTimer::create): Modify to ensure a call to suspendIfNeeded is made
+        during the creation process.
+
+2015-01-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [TexMap] m_layer member in GraphicsLayerTextureMapper is always non-null
+        https://bugs.webkit.org/show_bug.cgi?id=140135
+
+        Reviewed by Darin Adler.
+
+        GraphicsLayerTextureMapper::layer() now returns a reference,
+        so the call sites are updated.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::initialize):
+        (AcceleratedCompositingContext::startedAnimation):
+        (AcceleratedCompositingContext::compositeLayersToContext):
+
+2015-01-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a WebKit1 database provider
+        https://bugs.webkit.org/show_bug.cgi?id=140126
+
+        Reviewed by Sam Weinig.
+
+        Set the database provider.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2015-01-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r177963.
+        https://bugs.webkit.org/show_bug.cgi?id=140136
+
+        Caused lots of crashes (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Add a WebKit1 database provider"
+        https://bugs.webkit.org/show_bug.cgi?id=140126
+        http://trac.webkit.org/changeset/177963
+
+2015-01-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a WebKit1 database provider
+        https://bugs.webkit.org/show_bug.cgi?id=140126
+
+        Reviewed by Sam Weinig.
+
+        Set the database provider.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2014-12-29  Anders Carlsson  <andersca@apple.com>
+
+        Another attempt at fixing the build.
+
+        * WebKitDLL.cpp:
+        (shutDownWebKit):
+
+2014-12-29  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the Windows build.
+
+        * WebKitDLL.cpp:
+        (shutDownWebKit):
+
+2014-12-19  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Crash after failing to create GL context in accelerated compositing mode.
+        https://bugs.webkit.org/show_bug.cgi?id=139830
+
+        Reviewed by Alex Christensen.
+
+        There is missing a null pointer check.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::initialize):
+
+2014-12-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Add accessor for serializing HTTP loads.
+        https://bugs.webkit.org/show_bug.cgi?id=139817
+
+        Reviewed by Mark Lam.
+
+        * Interfaces/IWebViewPrivate.idl: Add new method.
+        * WebView.cpp:
+        (WebView::setLoadResourcesSerially): Provide implementation.
+        * WebView.h:
+
+2014-12-18  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Compile error in code for creating GL context.
+        https://bugs.webkit.org/show_bug.cgi?id=139782
+
+        Reviewed by Alex Christensen.
+
+        The GLContext::createContextForWindow method has changed return type to std::unique_ptr.
+
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+
+2014-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update DumpRenderTree to more closely match Mac version
+        https://bugs.webkit.org/show_bug.cgi?id=139799
+
+        Reviewed by Tim Horton.
+
+        * Interfaces/IWebSecurityOrigin.idl: Add initializer from URL.
+        * Interfaces/WebKit.idl: Add CLSID so we can instantiate a
+        WebSecurityOrigin from COM.
+        * WebApplicationCache.h: Decorate class declaration with CLSID
+        to support COM introspection.
+        * WebSecurityOrigin.cpp: Get rid of meaningless STDMETHODCALLTYPE
+        declarations inside implementation.
+        (WebSecurityOrigin::QueryInterface):
+        (WebSecurityOrigin::AddRef):
+        (WebSecurityOrigin::Release):
+        (WebSecurityOrigin::protocol):
+        (WebSecurityOrigin::host):
+        (WebSecurityOrigin::port):
+        (WebSecurityOrigin::usage):
+        (WebSecurityOrigin::quota):
+        (WebSecurityOrigin::setQuota):
+        (WebSecurityOrigin::initWithURL): Added.
+        * WebSecurityOrigin.h:
+
+2014-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct Windows tests after Bug 139149.
+        https://bugs.webkit.org/show_bug.cgi?id=139781
+
+        Reviewed by Anders Carlsson.
+
+        * Interfaces/IWebApplicationCache.idl: Added.
+        * Interfaces/WebKit.idl: Add new IDL file.
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read): Remove old debugging message.
+        * WebApplicationCache.cpp: Added.
+        (WebApplicationCache::WebApplicationCache):
+        (WebApplicationCache::~WebApplicationCache):
+        (WebApplicationCache::createInstance):
+        (WebApplicationCache::QueryInterface):
+        (WebApplicationCache::AddRef):
+        (WebApplicationCache::Release):
+        (WebApplicationCache::maximumSize):
+        (WebApplicationCache::setMaximumSize):
+        (WebApplicationCache::defaultOriginQuota):
+        (WebApplicationCache::setDefaultOriginQuota):
+        (WebApplicationCache::diskUsageForOrigin):
+        (WebApplicationCache::deleteAllApplicationCaches):
+        (WebApplicationCache::deleteCacheForOrigin):
+        (WebApplicationCache::originsWithCache):
+        * WebApplicationCache.h: Added.
+        * WebKitClassFactory.cpp: Add new interface header.
+
+2014-12-17  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of FrameLoader::defaultObjectContentType
+        https://bugs.webkit.org/show_bug.cgi?id=139758
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::objectContentType):
+
+2014-12-16  Andreas Kling  <akling@apple.com>
+
+        Use Ref for SecurityOrigin.
+        <https://webkit.org/b/139710>
+
+        Reviewed by Anders Carlsson.
+
+        * WebDatabaseManager.cpp:
+        (WebDatabaseManager::setQuota):
+        * WebView.cpp:
+        (WebView::addOriginAccessWhitelistEntry):
+        (WebView::removeOriginAccessWhitelistEntry):
+
 2014-12-11  Alexey Proskuryakov  <ap@apple.com>
 
         REGRESSION (Async Text Input): Text input method state is not reset when reloading a page

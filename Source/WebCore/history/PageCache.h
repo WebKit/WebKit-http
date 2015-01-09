@@ -37,6 +37,8 @@ namespace WebCore {
     class Frame;
     class HistoryItem;
     class Page;
+
+    enum class PruningReason { None, ProcessSuspended, MemoryPressure, ReachedCapacity };
     
     class PageCache {
         WTF_MAKE_NONCOPYABLE(PageCache); WTF_MAKE_FAST_ALLOCATED;
@@ -50,8 +52,8 @@ namespace WebCore {
         
         void add(PassRefPtr<HistoryItem>, Page&); // Prunes if capacity() is exceeded.
         WEBCORE_EXPORT void remove(HistoryItem*);
-        CachedPage* get(HistoryItem* item);
-        std::unique_ptr<CachedPage> take(HistoryItem*);
+        CachedPage* get(HistoryItem*, Page*);
+        std::unique_ptr<CachedPage> take(HistoryItem*, Page*);
 
         int pageCount() const { return m_size; }
         WEBCORE_EXPORT int frameCount() const;
@@ -62,7 +64,7 @@ namespace WebCore {
         void markPagesForFullStyleRecalc(Page*);
 
         // Used when memory is low to prune some cached pages.
-        void pruneToCapacityNow(int capacity);
+        WEBCORE_EXPORT void pruneToCapacityNow(int capacity, PruningReason);
 
 #if ENABLE(VIDEO_TRACK)
         void markPagesForCaptionPreferencesChanged();
@@ -81,7 +83,7 @@ namespace WebCore {
         void addToLRUList(HistoryItem*); // Adds to the head of the list.
         void removeFromLRUList(HistoryItem*);
 
-        void prune();
+        void prune(PruningReason);
 
         int m_capacity;
         int m_size;

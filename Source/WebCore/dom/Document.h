@@ -257,19 +257,19 @@ enum class DocumentCompatibilityMode : unsigned char {
 
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext {
 public:
-    static RefPtr<Document> create(Frame* frame, const URL& url)
+    static Ref<Document> create(Frame* frame, const URL& url)
     {
-        return adoptRef(new Document(frame, url));
+        return adoptRef(*new Document(frame, url));
     }
-    static RefPtr<Document> createXHTML(Frame* frame, const URL& url)
+    static Ref<Document> createXHTML(Frame* frame, const URL& url)
     {
-        return adoptRef(new Document(frame, url, XHTMLDocumentClass));
+        return adoptRef(*new Document(frame, url, XHTMLDocumentClass));
     }
-    static RefPtr<Document> createNonRenderedPlaceholder(Frame* frame, const URL& url)
+    static Ref<Document> createNonRenderedPlaceholder(Frame* frame, const URL& url)
     {
-        return adoptRef(new Document(frame, url, DefaultDocumentClass, NonRenderedPlaceholder));
+        return adoptRef(*new Document(frame, url, DefaultDocumentClass, NonRenderedPlaceholder));
     }
-    static RefPtr<Document> create(ScriptExecutionContext&);
+    static Ref<Document> create(ScriptExecutionContext&);
 
     virtual ~Document();
 
@@ -422,9 +422,9 @@ public:
     bool hasManifest() const;
     
     virtual RefPtr<Element> createElement(const AtomicString& tagName, ExceptionCode&);
-    WEBCORE_EXPORT RefPtr<DocumentFragment> createDocumentFragment();
-    WEBCORE_EXPORT RefPtr<Text> createTextNode(const String& data);
-    RefPtr<Comment> createComment(const String& data);
+    WEBCORE_EXPORT Ref<DocumentFragment> createDocumentFragment();
+    WEBCORE_EXPORT Ref<Text> createTextNode(const String& data);
+    Ref<Comment> createComment(const String& data);
     RefPtr<CDATASection> createCDATASection(const String& data, ExceptionCode&);
     RefPtr<ProcessingInstruction> createProcessingInstruction(const String& target, const String& data, ExceptionCode&);
     RefPtr<Attr> createAttribute(const String& name, ExceptionCode&);
@@ -433,7 +433,7 @@ public:
     RefPtr<Node> importNode(Node* importedNode, ExceptionCode& ec) { return importNode(importedNode, true, ec); }
     RefPtr<Node> importNode(Node* importedNode, bool deep, ExceptionCode&);
     WEBCORE_EXPORT RefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
-    WEBCORE_EXPORT RefPtr<Element> createElement(const QualifiedName&, bool createdByParser);
+    WEBCORE_EXPORT Ref<Element> createElement(const QualifiedName&, bool createdByParser);
 
     bool cssRegionsEnabled() const;
     bool cssCompositingEnabled() const;
@@ -464,6 +464,9 @@ public:
     void setContent(const String&);
 
     String suggestedMIMEType() const;
+
+    void overrideMIMEType(const String&);
+    String contentType() const;
 
     String contentLanguage() const { return m_contentLanguage; }
     void setContentLanguage(const String&);
@@ -579,7 +582,7 @@ public:
 
     float deviceScaleFactor() const;
 
-    WEBCORE_EXPORT RefPtr<Range> createRange();
+    WEBCORE_EXPORT Ref<Range> createRange();
 
     RefPtr<NodeIterator> createNodeIterator(Node* root, unsigned whatToShow,
         PassRefPtr<NodeFilter>, bool expandEntityReferences, ExceptionCode&);
@@ -588,8 +591,8 @@ public:
         PassRefPtr<NodeFilter>, bool expandEntityReferences, ExceptionCode&);
 
     // Special support for editing
-    RefPtr<CSSStyleDeclaration> createCSSStyleDeclaration();
-    RefPtr<Text> createEditingTextNode(const String&);
+    Ref<CSSStyleDeclaration> createCSSStyleDeclaration();
+    Ref<Text> createEditingTextNode(const String&);
 
     void recalcStyle(Style::Change = Style::NoChange);
     WEBCORE_EXPORT void updateStyleIfNeeded();
@@ -686,7 +689,7 @@ public:
 
     CSSStyleSheet& elementSheet();
     
-    virtual RefPtr<DocumentParser> createParser();
+    virtual Ref<DocumentParser> createParser();
     DocumentParser* parser() const { return m_parser.get(); }
     ScriptableDocumentParser* scriptableDocumentParser() const;
     
@@ -1176,7 +1179,7 @@ public:
     void sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, const IntPoint& newPosition, const IntRect& visibleRect, const IntSize& contentsSize, Element* target = nullptr);
 
     virtual EventTarget* errorEventTarget() override final;
-    virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack>) override final;
+    virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) override final;
 
     void initDNSPrefetch();
 
@@ -1253,7 +1256,7 @@ public:
 
     virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) override final;
 
-    virtual SecurityOrigin* topOrigin() const override final;
+    WEBCORE_EXPORT virtual SecurityOrigin* topOrigin() const override final;
 
 #if ENABLE(FONT_LOAD_EVENTS)
     RefPtr<FontLoader> fonts();
@@ -1272,10 +1275,10 @@ public:
     bool hasStyleWithViewportUnits() const { return m_hasStyleWithViewportUnits; }
     void updateViewportUnitsOnResize();
 
-    void addAudioProducer(AudioProducer*);
-    void removeAudioProducer(AudioProducer*);
+    WEBCORE_EXPORT void addAudioProducer(AudioProducer*);
+    WEBCORE_EXPORT void removeAudioProducer(AudioProducer*);
     bool isPlayingAudio() const { return m_isPlayingAudio; }
-    void updateIsPlayingAudio();
+    WEBCORE_EXPORT void updateIsPlayingAudio();
     void pageMutedStateDidChange();
 
 protected:
@@ -1284,7 +1287,7 @@ protected:
 
     void clearXMLVersion() { m_xmlVersion = String(); }
 
-    virtual RefPtr<Document> cloneDocumentWithoutChildren() const;
+    virtual Ref<Document> cloneDocumentWithoutChildren() const;
 
 private:
     friend class Node;
@@ -1308,13 +1311,13 @@ private:
     virtual String nodeName() const override final;
     virtual NodeType nodeType() const override final;
     virtual bool childTypeAllowed(NodeType) const override final;
-    virtual RefPtr<Node> cloneNodeInternal(CloningOperation) override final;
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override final;
     void cloneDataFromDocument(const Document&);
 
     virtual void refScriptExecutionContext() override final { ref(); }
     virtual void derefScriptExecutionContext() override final { deref(); }
 
-    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<Inspector::ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override final;
+    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) override final;
 
     virtual double minimumTimerInterval() const override final;
 
@@ -1407,6 +1410,9 @@ private:
     String m_documentURI;
 
     String m_baseTarget;
+
+    // MIME type of the document in case it was cloned or created by XHR.
+    String m_overriddenMIMEType;
 
     std::unique_ptr<DOMImplementation> m_implementation;
 

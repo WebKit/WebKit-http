@@ -34,7 +34,6 @@
 #import "ServicesController.h"
 #import "ShareableBitmap.h"
 #import "StringUtilities.h"
-#import "WebContext.h"
 #import "WebContextMenuItemData.h"
 #import "WebProcessProxy.h"
 #import "WKView.h"
@@ -74,14 +73,14 @@ using namespace WebCore;
 @end
 
 @interface WKSelectionHandlerWrapper : NSObject {
-    std::function<void()> _selectionHandler;
+    std::function<void ()> _selectionHandler;
 }
-- (id)initWithSelectionHandler:(std::function<void()>)selectionHandler;
+- (id)initWithSelectionHandler:(std::function<void ()>)selectionHandler;
 - (void)executeSelectionHandler;
 @end
 
 @implementation WKSelectionHandlerWrapper
-- (id)initWithSelectionHandler:(std::function<void()>)selectionHandler
+- (id)initWithSelectionHandler:(std::function<void ()>)selectionHandler
 {
     self = [super init];
     if (!self)
@@ -308,7 +307,7 @@ static Vector<RetainPtr<NSMenuItem>> nsMenuItemVector(const Vector<WebContextMen
             [menuItem setEnabled:items[i].enabled()];
             [menuItem setState:items[i].checked() ? NSOnState : NSOffState];
 
-            if (std::function<void()> selectionHandler = items[i].selectionHandler()) {
+            if (std::function<void ()> selectionHandler = items[i].selectionHandler()) {
                 WKSelectionHandlerWrapper *wrapper = [[WKSelectionHandlerWrapper alloc] initWithSelectionHandler:selectionHandler];
                 [menuItem setRepresentedObject:wrapper];
                 [wrapper release];
@@ -355,10 +354,10 @@ static Vector<RetainPtr<NSMenuItem>> nsMenuItemVector(const Vector<WebContextMen
 void WebContextMenuProxyMac::setupServicesMenu(const ContextMenuContextData& context)
 {
     bool includeEditorServices = context.controlledDataIsEditable();
-    bool hasControlledImage = !context.controlledImageHandle().isNull();
+    bool hasControlledImage = context.controlledImage();
     NSArray *items = nil;
     if (hasControlledImage) {
-        RefPtr<ShareableBitmap> image = ShareableBitmap::create(context.controlledImageHandle());
+        RefPtr<ShareableBitmap> image = context.controlledImage();
         if (!image)
             return;
 
@@ -472,7 +471,7 @@ void WebContextMenuProxyMac::showContextMenu(const IntPoint& menuLocation, const
     // FIXME: That API is better than WKPopupContextMenu. In the future all menus should use either it
     // or the [NSMenu popUpContextMenu:withEvent:forView:] API, depending on the menu type.
     // Then we could get rid of NSPopUpButtonCell, custom metrics, and WKPopupContextMenu.
-    if (context.isTelephoneNumberContext() || context.needsServicesMenu()) {
+    if (context.needsServicesMenu()) {
         [menu popUpMenuPositioningItem:nil atLocation:menuLocation inView:m_webView];
         hideContextMenu();
         return;

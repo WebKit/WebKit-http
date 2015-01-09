@@ -37,7 +37,6 @@
 #include <WebCore/WaylandSurfaceWPE.h>
 #include <wayland-client.h>
 #include <wtf/HashMap.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/gobject/GSourceWrap.h>
 
 namespace WebKit {
@@ -98,17 +97,11 @@ private:
     std::unique_ptr<WebCore::GraphicsLayer> m_nonCompositedContentLayer;
     std::unique_ptr<WebCore::TextureMapper> m_textureMapper;
     std::unique_ptr<WebCore::WaylandSurface> m_waylandSurface;
-    OwnPtr<WebCore::GLContext> m_context;
+    std::unique_ptr<WebCore::GLContext> m_context;
     bool m_layerFlushSchedulingEnabled;
     GSourceWrap::Static m_layerFlushTimer;
 
     static const struct wl_callback_listener m_frameListener;
-    enum class FrameRequestState {
-        InProgress,
-        ScheduleLayerFlushOnCompletion,
-        Completed
-    };
-    FrameRequestState m_frameRequestState;
 
     class DisplayRefreshMonitorWPE : public WebCore::DisplayRefreshMonitor {
     public:

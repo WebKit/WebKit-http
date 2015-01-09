@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2012-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -689,10 +689,15 @@ void JIT::emit_op_get_scope(Instruction* currentInstruction)
 void JIT::emit_op_create_arguments(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
+    int lexicalEnvironment = currentInstruction[2].u.operand;
 
     Jump argsCreated = branchTest64(NonZero, Address(callFrameRegister, sizeof(Register) * dst));
 
-    callOperation(operationCreateArguments);
+    if (VirtualRegister(lexicalEnvironment).isValid()) {
+        emitGetVirtualRegister(lexicalEnvironment, regT0);
+        callOperation(operationCreateArguments, regT0);
+    } else
+        callOperation(operationCreateArguments, TrustedImmPtr(nullptr));
     emitStoreCell(dst, returnValueGPR);
     emitStoreCell(unmodifiedArgumentsRegister(VirtualRegister(dst)), returnValueGPR);
 
@@ -956,13 +961,18 @@ void JIT::emitSlow_op_get_argument_by_val(Instruction* currentInstruction, Vecto
     int dst = currentInstruction[1].u.operand;
     int arguments = currentInstruction[2].u.operand;
     int property = currentInstruction[3].u.operand;
+    int lexicalEnvironment = currentInstruction[4].u.operand;
     
     linkSlowCase(iter);
     Jump skipArgumentsCreation = jump();
     
     linkSlowCase(iter);
     linkSlowCase(iter);
-    callOperation(operationCreateArguments);
+    if (VirtualRegister(lexicalEnvironment).isValid()) {
+        emitGetVirtualRegister(lexicalEnvironment, regT0);
+        callOperation(operationCreateArguments, regT0);
+    } else
+        callOperation(operationCreateArguments, TrustedImmPtr(nullptr));
     emitStoreCell(arguments, returnValueGPR);
     emitStoreCell(unmodifiedArgumentsRegister(VirtualRegister(arguments)), returnValueGPR);
     
@@ -1058,14 +1068,24 @@ void JIT::emit_op_new_func(Instruction* currentInstruction)
 
 void JIT::emit_op_new_func_exp(Instruction* currentInstruction)
 {
+    Jump notUndefinedScope;
     int dst = currentInstruction[1].u.operand;
 #if USE(JSVALUE64)
     emitGetVirtualRegister(currentInstruction[2].u.operand, regT0);
+    notUndefinedScope = branch64(NotEqual, regT0, TrustedImm64(JSValue::encode(jsUndefined())));
+    store64(TrustedImm64(JSValue::encode(jsUndefined())), Address(callFrameRegister, sizeof(Register) * dst));
 #else
     emitLoadPayload(currentInstruction[2].u.operand, regT0);
+    notUndefinedScope = branch32(NotEqual, tagFor(currentInstruction[2].u.operand), TrustedImm32(JSValue::UndefinedTag));
+    emitStore(dst, jsUndefined());
 #endif
+
+    Jump done = jump();
+    notUndefinedScope.link(this);
+
     FunctionExecutable* funcExpr = m_codeBlock->functionExpr(currentInstruction[3].u.operand);
     callOperation(operationNewFunction, dst, regT0, funcExpr);
+    done.link(this);
 }
 
 void JIT::emit_op_new_array(Instruction* currentInstruction)

@@ -95,12 +95,12 @@ inline SVGUseElement::SVGUseElement(const QualifiedName& tagName, Document& docu
     registerAnimatedPropertiesForSVGUseElement();
 }
 
-PassRefPtr<SVGUseElement> SVGUseElement::create(const QualifiedName& tagName, Document& document, bool wasInsertedByParser)
+Ref<SVGUseElement> SVGUseElement::create(const QualifiedName& tagName, Document& document, bool wasInsertedByParser)
 {
     // Always build a #shadow-root for SVGUseElement.
-    RefPtr<SVGUseElement> use = adoptRef(new SVGUseElement(tagName, document, wasInsertedByParser));
+    Ref<SVGUseElement> use = adoptRef(*new SVGUseElement(tagName, document, wasInsertedByParser));
     use->ensureUserAgentShadowRoot();
-    return use.release();
+    return use;
 }
 
 SVGUseElement::~SVGUseElement()
@@ -685,7 +685,7 @@ void SVGUseElement::buildShadowTree(SVGElement* target, SVGElementInstance* targ
     if (isDisallowedElement(*target))
         return;
 
-    RefPtr<SVGElement> newChild = static_pointer_cast<SVGElement>(targetInstance->correspondingElement()->cloneElementWithChildren());
+    RefPtr<SVGElement> newChild = static_pointer_cast<SVGElement>(targetInstance->correspondingElement()->cloneElementWithChildren(document()));
 
     // We don't walk the target tree element-by-element, and clone each element,
     // but instead use cloneElementWithChildren(). This is an optimization for the common
@@ -727,7 +727,7 @@ void SVGUseElement::expandUseElementsInShadowTree(Node* element)
         transferUseAttributesToReplacedElement(&use, cloneParent.get());
 
         if (target && !isDisallowedElement(*target)) {
-            RefPtr<Element> newChild = target->cloneElementWithChildren();
+            RefPtr<Element> newChild = target->cloneElementWithChildren(document());
             ASSERT(newChild->isSVGElement());
             cloneParent->appendChild(newChild.release());
         }

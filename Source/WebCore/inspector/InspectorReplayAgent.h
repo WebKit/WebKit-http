@@ -67,9 +67,9 @@ public:
     virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
-    // Callbacks from InspectorInstrumentation.
+    // InspectorInstrumentation callbacks.
     void frameNavigated(DocumentLoader*);
-    void frameDetached(Frame*);
+    void frameDetached(Frame&);
     void willDispatchEvent(const Event&, Frame*);
 
     // Notifications from ReplayController.
@@ -95,7 +95,7 @@ public:
     virtual void startCapturing(ErrorString&) override;
     virtual void stopCapturing(ErrorString&) override;
 
-    virtual void replayToPosition(ErrorString&, const RefPtr<Inspector::InspectorObject>&, bool shouldFastForward) override;
+    virtual void replayToPosition(ErrorString&, const RefPtr<Inspector::InspectorObject>&&, bool shouldFastForward) override;
     virtual void replayToCompletion(ErrorString&, bool shouldFastForward) override;
     virtual void pausePlayback(ErrorString&) override;
     virtual void cancelPlayback(ErrorString&) override;

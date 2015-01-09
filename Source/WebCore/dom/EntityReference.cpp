@@ -31,9 +31,9 @@ inline EntityReference::EntityReference(Document& document, const String& entity
 {
 }
 
-RefPtr<EntityReference> EntityReference::create(Document& document, const String& entityName)
+Ref<EntityReference> EntityReference::create(Document& document, const String& entityName)
 {
-    return adoptRef(new EntityReference(document, entityName));
+    return adoptRef(*new EntityReference(document, entityName));
 }
 
 String EntityReference::nodeName() const
@@ -46,9 +46,9 @@ Node::NodeType EntityReference::nodeType() const
     return ENTITY_REFERENCE_NODE;
 }
 
-RefPtr<Node> EntityReference::cloneNodeInternal(CloningOperation)
+RefPtr<Node> EntityReference::cloneNodeInternal(Document& targetDocument, CloningOperation)
 {
-    return create(document(), m_entityName);
+    return create(targetDocument, m_entityName);
 }
 
 } // namespace

@@ -42,6 +42,7 @@
 #include "DOMWindow.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "FeatureCounter.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
@@ -61,6 +62,10 @@
 #include "Settings.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
+
+#if ENABLE(CONTENT_EXTENSIONS)
+#include "ContentExtensionsInterface.h"
+#endif
 
 #if ENABLE(VIDEO_TRACK)
 #include "CachedTextTrack.h"
@@ -452,6 +457,11 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
     if (!canRequest(type, url, request.options(), request.forPreload()))
         return 0;
 
+#if ENABLE(CONTENT_EXTENSIONS)
+    if (ContentExtensions::shouldBlockURL(url))
+        return nullptr;
+#endif
+
     if (memoryCache().disabled()) {
         DocumentResourceMap::iterator it = m_documentResources.find(url.string());
         if (it != m_documentResources.end()) {
@@ -469,20 +479,28 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
 
     resource = memoryCache().resourceForRequest(request.resourceRequest(), sessionID());
 
+    Page* page = frame() ? frame()->page() : nullptr;
+    FEATURE_COUNTER_INCREMENT_KEY(page, resource ? FeatureCounterResourceRequestInMemoryCacheKey : FeatureCounterResourceRequestNotInMemoryCacheKey);
+
     const RevalidationPolicy policy = determineRevalidationPolicy(type, request.mutableResourceRequest(), request.forPreload(), resource.get(), request.defer());
     switch (policy) {
     case Reload:
         memoryCache().remove(resource.get());
         FALLTHROUGH;
     case Load:
+        if (resource)
+            FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedKey);
         resource = loadResource(type, request);
         break;
     case Revalidate:
+        if (resource)
+            FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheRevalidatingKey);
         resource = revalidateResource(request, resource.get());
         break;
     case Use:
         if (!shouldContinueAfterNotifyingLoadedFromMemoryCache(request, resource.get()))
             return 0;
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUsedKey);
         memoryCache().resourceAccessed(resource.get());
         break;
     }
@@ -584,9 +602,12 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
     if (forPreload && existingResource->isPreloaded())
         return Use;
 
+    Page* page = frame() ? frame()->page() : nullptr;
+
     // If the same URL has been loaded as a different type, we need to reload.
     if (existingResource->type() != type) {
         LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to type mismatch.");
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedReasonTypeMismatchKey);
         return Reload;
     }
 
@@ -608,20 +629,27 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
     // Alwaus use preloads.
     if (existingResource->isPreloaded())
         return Use;
-    
-    // CachePolicyHistoryBuffer uses the cache no matter what.
-    if (cachePolicy(type) == CachePolicyHistoryBuffer)
-        return Use;
+
+    // Validate the redirect chain.
+    bool cachePolicyIsHistoryBuffer = cachePolicy(type) == CachePolicyHistoryBuffer;
+    if (!existingResource->redirectChainAllowsReuse(cachePolicyIsHistoryBuffer ? ReuseExpiredRedirection : DoNotReuseExpiredRedirection)) {
+        LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to not cached or expired redirections.");
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedReasonRedirectChainKey);
+        return Reload;
+    }
+
+    // CachePolicyHistoryBuffer uses the cache except if this is a main resource with "cache-control: no-store".
+    if (cachePolicyIsHistoryBuffer) {
+        // FIXME: Ignoring "cache-control: no-cache" for sub-resources on history navigation but not the main
+        // resource is inconsistent. We should probably harmonize this.
+        if (!existingResource->response().cacheControlContainsNoStore() || type != CachedResource::MainResource)
+            return Use;
+    }
 
     // Don't reuse resources with Cache-control: no-store.
     if (existingResource->response().cacheControlContainsNoStore()) {
         LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to Cache-control: no-store.");
-        return Reload;
-    }
-
-    // Validate the redirect chain
-    if (!existingResource->redirectChainAllowsReuse()) {
-        LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to not cached or expired redirections.");
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedReasonNoStoreKey);
         return Reload;
     }
 
@@ -633,6 +661,7 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
     // client's requests are made without CORS and some with.
     if (existingResource->resourceRequest().allowCookies() != request.allowCookies()) {
         LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to difference in credentials settings.");
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedReasonCredentialSettingsKey);
         return Reload;
     }
 
@@ -643,12 +672,14 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
     // CachePolicyReload always reloads
     if (cachePolicy(type) == CachePolicyReload) {
         LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to CachePolicyReload.");
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedReasonReloadKey);
         return Reload;
     }
     
     // We'll try to reload the resource if it failed last time.
     if (existingResource->errorOccurred()) {
         LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicye reloading due to resource being in the error state");
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedReasonErrorKey);
         return Reload;
     }
     
@@ -657,13 +688,14 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Use;
 
     // Check if the cache headers requires us to revalidate (cache expiration for example).
-    if (existingResource->mustRevalidateDueToCacheHeaders(cachePolicy(type))) {
+    if (existingResource->mustRevalidateDueToCacheHeaders(*this, cachePolicy(type))) {
         // See if the resource has usable ETag or Last-modified headers.
         if (existingResource->canUseCacheValidator())
             return Revalidate;
         
         // No, must reload.
-        LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to missing cache validators.");            
+        LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to missing cache validators.");
+        FEATURE_COUNTER_INCREMENT_KEY(page, FeatureCounterResourceRequestInMemoryCacheUnusedReasonMustRevalidateNoValidatorKey);
         return Reload;
     }
 
@@ -741,9 +773,18 @@ CachePolicy CachedResourceLoader::cachePolicy(CachedResource::Type type) const
     if (type != CachedResource::MainResource)
         return frame()->loader().subresourceCachePolicy();
     
-    if (frame()->loader().loadType() == FrameLoadType::ReloadFromOrigin || frame()->loader().loadType() == FrameLoadType::Reload)
+    switch (frame()->loader().loadType()) {
+    case FrameLoadType::ReloadFromOrigin:
+    case FrameLoadType::Reload:
         return CachePolicyReload;
-    return CachePolicyVerify;
+    case FrameLoadType::Back:
+    case FrameLoadType::Forward:
+    case FrameLoadType::IndexedBackForward:
+        // Do not revalidate cached main resource on back/forward navigation.
+        return CachePolicyHistoryBuffer;
+    default:
+        return CachePolicyVerify;
+    }
 }
 
 void CachedResourceLoader::removeCachedResource(CachedResource* resource) const

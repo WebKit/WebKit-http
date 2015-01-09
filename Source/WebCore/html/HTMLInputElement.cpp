@@ -129,10 +129,10 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
     setHasCustomStyleResolveCallbacks();
 }
 
-RefPtr<HTMLInputElement> HTMLInputElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
+Ref<HTMLInputElement> HTMLInputElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
 {
     bool shouldCreateShadowRootLazily = createdByParser;
-    RefPtr<HTMLInputElement> inputElement = adoptRef(new HTMLInputElement(tagName, document, form, createdByParser));
+    Ref<HTMLInputElement> inputElement = adoptRef(*new HTMLInputElement(tagName, document, form, createdByParser));
     if (!shouldCreateShadowRootLazily)
         inputElement->ensureUserAgentShadowRoot();
     return inputElement;
@@ -616,12 +616,14 @@ inline void HTMLInputElement::initializeInputType()
     if (type.isNull()) {
         m_inputType = InputType::createText(*this);
         ensureUserAgentShadowRoot();
+        setNeedsWillValidateCheck();
         return;
     }
 
     m_hasType = true;
     m_inputType = InputType::create(*this, type);
     ensureUserAgentShadowRoot();
+    setNeedsWillValidateCheck();
     registerForSuspensionCallbackIfNeeded();
     runPostTypeUpdateTasks();
 }
@@ -1877,7 +1879,7 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
         parameters.stepBase = 0;
     }
 
-    if (RenderObject* renderer = this->renderer())
+    if (RenderElement* renderer = this->renderer())
         parameters.anchorRectInRootView = document().view()->contentsToRootView(renderer->absoluteBoundingBoxRect());
     else
         parameters.anchorRectInRootView = IntRect();

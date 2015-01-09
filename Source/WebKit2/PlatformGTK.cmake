@@ -15,6 +15,8 @@ add_definitions(-DLIBDIR="${LIB_INSTALL_DIR}")
 set(WebKit2_USE_PREFIX_HEADER ON)
 
 list(APPEND WebKit2_SOURCES
+    NetworkProcess/cache/NetworkCacheStorageSoup.cpp
+
     NetworkProcess/gtk/NetworkProcessMainGtk.cpp
 
     NetworkProcess/soup/NetworkProcessSoup.cpp
@@ -266,7 +268,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gtk/InputMethodFilter.cpp
     UIProcess/gtk/RedirectedXCompositeWindow.cpp
     UIProcess/gtk/TextCheckerGtk.cpp
-    UIProcess/gtk/WebContextGtk.cpp
     UIProcess/gtk/WebContextMenuProxyGtk.cpp
     UIProcess/gtk/WebFullScreenClientGtk.cpp
     UIProcess/gtk/WebInspectorClientGtk.cpp
@@ -274,11 +275,12 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gtk/WebPageProxyGtk.cpp
     UIProcess/gtk/WebPopupMenuProxyGtk.cpp
     UIProcess/gtk/WebPreferencesGtk.cpp
+    UIProcess/gtk/WebProcessPoolGtk.cpp
     UIProcess/gtk/WebProcessProxyGtk.cpp
 
     UIProcess/Network/soup/NetworkProcessProxySoup.cpp
-    UIProcess/soup/WebContextSoup.cpp
     UIProcess/soup/WebCookieManagerProxySoup.cpp
+    UIProcess/soup/WebProcessPoolSoup.cpp
 
     WebProcess/Cookies/soup/WebCookieManagerSoup.cpp
     WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp
@@ -309,7 +311,6 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp
 
-    WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp
     WebProcess/WebPage/gtk/PrinterListGtk.cpp
     WebProcess/WebPage/gtk/WebInspectorUIGtk.cpp
     WebProcess/WebPage/gtk/WebPageGtk.cpp
@@ -739,6 +740,27 @@ endif () # ENABLE_PLUGIN_PROCESS_GTK2
 list(APPEND PluginProcess_SOURCES
     PluginProcess/EntryPoint/unix/PluginProcessMain.cpp
 )
+
+if (ENABLE_THREADED_COMPOSITOR)
+    list(APPEND WebKit2_SOURCES
+        Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
+        Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
+        Shared/CoordinatedGraphics/SimpleViewportController.cpp
+        Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
+        Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
+        WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+    )
+    list(APPEND WebKit2_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
+        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
+        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
+        "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
+    )
+else (ENABLE_THREADED_COMPOSITOR)
+    list(APPEND WebKit2_SOURCES
+        WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp
+    )
+endif ()
 
 # Commands for building the built-in injected bundle.
 include_directories(

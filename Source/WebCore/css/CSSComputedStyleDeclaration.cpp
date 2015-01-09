@@ -1154,7 +1154,7 @@ static Ref<CSSValueList> getDelayValue(const AnimationList* animList)
             list.get().append(cssValuePool().createValue(animList->animation(i).delay(), CSSPrimitiveValue::CSS_S));
     } else {
         // Note that initialAnimationDelay() is used for both transitions and animations
-        list.get().append(cssValuePool().createValue(Animation::initialAnimationDelay(), CSSPrimitiveValue::CSS_S));
+        list.get().append(cssValuePool().createValue(Animation::initialDelay(), CSSPrimitiveValue::CSS_S));
     }
     return list;
 }
@@ -1167,7 +1167,7 @@ static Ref<CSSValueList> getDurationValue(const AnimationList* animList)
             list.get().append(cssValuePool().createValue(animList->animation(i).duration(), CSSPrimitiveValue::CSS_S));
     } else {
         // Note that initialAnimationDuration() is used for both transitions and animations
-        list.get().append(cssValuePool().createValue(Animation::initialAnimationDuration(), CSSPrimitiveValue::CSS_S));
+        list.get().append(cssValuePool().createValue(Animation::initialDuration(), CSSPrimitiveValue::CSS_S));
     }
     return list;
 }
@@ -1216,7 +1216,7 @@ static Ref<CSSValueList> getTimingFunctionValue(const AnimationList* animList)
             list.get().append(createTimingFunctionValue(animList->animation(i).timingFunction().get()));
     } else
         // Note that initialAnimationTimingFunction() is used for both transitions and animations
-        list.get().append(createTimingFunctionValue(Animation::initialAnimationTimingFunction().get()));
+        list.get().append(createTimingFunctionValue(Animation::initialTimingFunction().get()));
     return list;
 }
 
@@ -1282,13 +1282,6 @@ void CSSComputedStyleDeclaration::setCssText(const String&, ExceptionCode& ec)
     ec = NO_MODIFICATION_ALLOWED_ERR;
 }
 
-static CSSValueID cssIdentifierForFontSizeKeyword(int keywordSize)
-{
-    ASSERT_ARG(keywordSize, keywordSize);
-    ASSERT_ARG(keywordSize, keywordSize <= 8);
-    return static_cast<CSSValueID>(CSSValueXxSmall + keywordSize - 1);
-}
-
 PassRefPtr<CSSPrimitiveValue> ComputedStyleExtractor::getFontSizeCSSValuePreferringKeyword() const
 {
     if (!m_node)
@@ -1300,8 +1293,8 @@ PassRefPtr<CSSPrimitiveValue> ComputedStyleExtractor::getFontSizeCSSValuePreferr
     if (!style)
         return nullptr;
 
-    if (int keywordSize = style->fontDescription().keywordSize())
-        return cssValuePool().createIdentifierValue(cssIdentifierForFontSizeKeyword(keywordSize));
+    if (CSSValueID sizeIdentifier = style->fontDescription().keywordSizeAsIdentifier())
+        return cssValuePool().createIdentifierValue(sizeIdentifier);
 
     return zoomAdjustedPixelValue(style->fontDescription().computedPixelSize(), style.get());
 }
@@ -1793,9 +1786,8 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
 
         case CSSPropertyBackgroundColor:
             return cssValuePool().createColorValue(m_allowVisitedStyle? style->visitedDependentColor(CSSPropertyBackgroundColor).rgb() : style->backgroundColor().rgb());
-        case CSSPropertyBackgroundImage:
-        case CSSPropertyWebkitMaskImage: {
-            const FillLayer* layers = propertyID == CSSPropertyWebkitMaskImage ? style->maskLayers() : style->backgroundLayers();
+        case CSSPropertyBackgroundImage: {
+            const FillLayer* layers = style->backgroundLayers();
             if (!layers)
                 return cssValuePool().createIdentifierValue(CSSValueNone);
 
@@ -1810,6 +1802,27 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             for (const FillLayer* currLayer = layers; currLayer; currLayer = currLayer->next()) {
                 if (currLayer->image())
                     list->append(*currLayer->image()->cssValue());
+                else
+                    list->append(cssValuePool().createIdentifierValue(CSSValueNone));
+            }
+            return list.release();
+        }
+        case CSSPropertyWebkitMaskImage: {
+            const FillLayer* layers = style->maskLayers();
+            if (!layers)
+                return cssValuePool().createIdentifierValue(CSSValueNone);
+
+            if (!layers->next()) {
+                if (layers->maskImage().get())
+                    return layers->maskImage()->cssValue();
+
+                return cssValuePool().createIdentifierValue(CSSValueNone);
+            }
+
+            RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
+            for (const FillLayer* currLayer = layers; currLayer; currLayer = currLayer->next()) {
+                if (currLayer->maskImage().get())
+                    list->append(*currLayer->maskImage()->cssValue());
                 else
                     list->append(cssValuePool().createIdentifierValue(CSSValueNone));
             }
@@ -2170,8 +2183,6 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
 
             if (style->isGridAutoFlowAlgorithmDense())
                 list->append(cssValuePool().createIdentifierValue(CSSValueDense));
-            else if (style->isGridAutoFlowAlgorithmStack())
-                list->append(cssValuePool().createIdentifierValue(CSSValueStack));
 
             return list.release();
         }
@@ -2675,7 +2686,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
                         list->append(cssValuePool().createValue(iterationCount, CSSPrimitiveValue::CSS_NUMBER));
                 }
             } else
-                list->append(cssValuePool().createValue(Animation::initialAnimationIterationCount(), CSSPrimitiveValue::CSS_NUMBER));
+                list->append(cssValuePool().createValue(Animation::initialIterationCount(), CSSPrimitiveValue::CSS_NUMBER));
             return list.release();
         }
         case CSSPropertyAnimationName:
@@ -2874,9 +2885,9 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             // transition-property default value.
             list->append(cssValuePool().createIdentifierValue(CSSValueAll));
-            list->append(cssValuePool().createValue(Animation::initialAnimationDuration(), CSSPrimitiveValue::CSS_S));
-            list->append(createTimingFunctionValue(Animation::initialAnimationTimingFunction().get()));
-            list->append(cssValuePool().createValue(Animation::initialAnimationDelay(), CSSPrimitiveValue::CSS_S));
+            list->append(cssValuePool().createValue(Animation::initialDuration(), CSSPrimitiveValue::CSS_S));
+            list->append(createTimingFunctionValue(Animation::initialTimingFunction().get()));
+            list->append(cssValuePool().createValue(Animation::initialDelay(), CSSPrimitiveValue::CSS_S));
             return list.release();
         }
         case CSSPropertyPointerEvents:
@@ -3223,12 +3234,12 @@ bool ComputedStyleExtractor::propertyMatches(CSSPropertyID propertyID, const CSS
 {
     if (propertyID == CSSPropertyFontSize && is<CSSPrimitiveValue>(*value) && m_node) {
         m_node->document().updateLayoutIgnorePendingStylesheets();
-        RenderStyle* style = m_node->computedStyle(m_pseudoElementSpecifier);
-        if (style && style->fontDescription().keywordSize()) {
-            CSSValueID sizeValue = cssIdentifierForFontSizeKeyword(style->fontDescription().keywordSize());
-            const CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-            if (primitiveValue.isValueID() && primitiveValue.getValueID() == sizeValue)
-                return true;
+        if (RenderStyle* style = m_node->computedStyle(m_pseudoElementSpecifier)) {
+            if (CSSValueID sizeIdentifier = style->fontDescription().keywordSizeAsIdentifier()) {
+                auto& primitiveValue = downcast<CSSPrimitiveValue>(*value);
+                if (primitiveValue.isValueID() && primitiveValue.getValueID() == sizeIdentifier)
+                    return true;
+            }
         }
     }
     RefPtr<CSSValue> computedValue = propertyValue(propertyID);

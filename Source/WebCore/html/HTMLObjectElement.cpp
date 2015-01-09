@@ -69,16 +69,16 @@ inline HTMLObjectElement::HTMLObjectElement(const QualifiedName& tagName, Docume
     , m_useFallbackContent(false)
 {
     ASSERT(hasTagName(objectTag));
-    setForm(form ? form : HTMLFormElement::findClosestFormAncestor(*this));
+    setForm(form);
 }
 
 inline HTMLObjectElement::~HTMLObjectElement()
 {
 }
 
-RefPtr<HTMLObjectElement> HTMLObjectElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
+Ref<HTMLObjectElement> HTMLObjectElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
 {
-    return adoptRef(new HTMLObjectElement(tagName, document, form, createdByParser));
+    return adoptRef(*new HTMLObjectElement(tagName, document, form, createdByParser));
 }
 
 RenderWidget* HTMLObjectElement::renderWidgetLoadingPlugin() const

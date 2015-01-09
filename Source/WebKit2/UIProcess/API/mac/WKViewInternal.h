@@ -25,6 +25,7 @@
 
 #import "WKViewPrivate.h"
 
+#import "APIObject.h"
 #import "PluginComplexTextInputState.h"
 #import "SameDocumentNavigationType.h"
 #import "WebFindOptions.h"
@@ -33,6 +34,10 @@
 #import <wtf/Vector.h>
 
 @class WKWebViewConfiguration;
+
+namespace API {
+class Object;
+}
 
 namespace IPC {
 class DataReference;
@@ -49,7 +54,7 @@ namespace WebKit {
 class DrawingAreaProxy;
 class LayerTreeContext;
 class ViewSnapshot;
-class WebContext;
+class WebProcessPool;
 struct ActionMenuHitTestResult;
 struct ColorSpaceData;
 struct EditorState;
@@ -64,7 +69,7 @@ struct WebPageConfiguration;
 
 @interface WKView ()
 #if WK_API_ENABLED
-- (instancetype)initWithFrame:(CGRect)frame context:(WebKit::WebContext&)context configuration:(WebKit::WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView;
+- (instancetype)initWithFrame:(CGRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(WebKit::WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView;
 #endif
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
@@ -81,7 +86,7 @@ struct WebPageConfiguration;
 - (NSRect)_convertToDeviceSpace:(NSRect)rect;
 - (NSRect)_convertToUserSpace:(NSRect)rect;
 - (void)_setTextIndicator:(PassRefPtr<WebCore::TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut;
-- (void)_setTextIndicator:(PassRefPtr<WebCore::TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animationCompletionHandler:(std::function<void ()>)completionHandler;
+- (void)_setTextIndicatorAnimationProgress:(float)progress;
 
 - (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer;
 - (CALayer *)_acceleratedCompositingModeRootLayer;
@@ -127,7 +132,7 @@ struct WebPageConfiguration;
 - (void)_closeFullScreenWindowController;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-- (void)_didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData;
+- (void)_didPerformActionMenuHitTest:(const WebKit::ActionMenuHitTestResult&)hitTestResult forImmediateAction:(BOOL)forImmediateAction userData:(API::Object*)userData;
 #endif
 
 @property (nonatomic, retain, setter=_setPrimaryTrackingArea:) NSTrackingArea *_primaryTrackingArea;

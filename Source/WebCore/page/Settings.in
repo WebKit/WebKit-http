@@ -77,6 +77,7 @@ javaScriptExperimentsEnabled initial=false
 scriptMarkupEnabled initial=true
 needsSiteSpecificQuirks initial=false
 domTimersThrottlingEnabled initial=true
+featureCounterEnabled initial=false
 webArchiveDebugModeEnabled initial=false, conditional=WEB_ARCHIVE
 localFileContentSniffingEnabled initial=false
 offlineWebApplicationCacheEnabled initial=false
@@ -154,7 +155,6 @@ fixedPositionCreatesStackingContext initial=defaultFixedPositionCreatesStackingC
 syncXHRInDocumentsEnabled initial=true
 cookieEnabled initial=true
 mediaEnabled initial=true
-applicationChromeMode initial=false
 DOMPasteAllowed initial=false
 
 # When enabled, window.blur() does not change focus, and
@@ -218,9 +218,6 @@ shouldTransformsAffectOverflow initial=true
 shouldDispatchJavaScriptWindowOnErrorEvents initial=false
 alwaysUseAcceleratedOverflowScroll initial=false
 imageControlsEnabled initial=false, conditional=SERVICE_CONTROLS
-
-# FIXME: This is unneeded and should be removed.
-alwaysUseBaselineOfPrimaryFont initial=false
 
 enableInheritURIQueryComponent initial=false
 

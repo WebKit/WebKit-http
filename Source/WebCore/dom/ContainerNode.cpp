@@ -276,7 +276,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
     if (!checkAcceptChildGuaranteedNodeTypes(this, newChild.get(), ec))
         return false;
 
-    InspectorInstrumentation::willInsertDOMNode(&document(), this);
+    InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
     ChildListMutationScope mutation(*this);
     for (auto it = targets.begin(), end = targets.end(); it != end; ++it) {
@@ -432,7 +432,7 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
     if (!checkReplaceChild(this, newChild.get(), oldChild, ec))
         return false;
 
-    InspectorInstrumentation::willInsertDOMNode(&document(), this);
+    InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
     // Add the new child(ren)
     for (auto it = targets.begin(), end = targets.end(); it != end; ++it) {
@@ -577,7 +577,7 @@ bool ContainerNode::removeChild(Node* oldChild, ExceptionCode& ec)
 
 void ContainerNode::removeBetween(Node* previousChild, Node* nextChild, Node& oldChild)
 {
-    InspectorInstrumentation::didRemoveDOMNode(&oldChild.document(), &oldChild);
+    InspectorInstrumentation::didRemoveDOMNode(oldChild.document(), oldChild);
 
     NoEventDispatchAssertion assertNoEventDispatch;
 
@@ -699,7 +699,7 @@ bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec)
     if (!checkAcceptChildGuaranteedNodeTypes(this, newChild.get(), ec))
         return false;
 
-    InspectorInstrumentation::willInsertDOMNode(&document(), this);
+    InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
     // Now actually add the child(ren)
     ChildListMutationScope mutation(*this);
@@ -765,11 +765,12 @@ void ContainerNode::childrenChanged(const ChildChange& change)
     invalidateNodeListAndCollectionCachesInAncestors();
 }
 
-void ContainerNode::cloneChildNodes(ContainerNode *clone)
+void ContainerNode::cloneChildNodes(ContainerNode* clone)
 {
     ExceptionCode ec = 0;
+    Document& targetDocument = clone->document();
     for (Node* child = firstChild(); child && !ec; child = child->nextSibling()) {
-        RefPtr<Node> clonedChild = child->cloneNodeInternal(CloningOperation::SelfWithTemplateContent);
+        RefPtr<Node> clonedChild = child->cloneNodeInternal(targetDocument, CloningOperation::SelfWithTemplateContent);
         clone->appendChild(clonedChild, ec);
 
         if (!ec && is<ContainerNode>(child))
@@ -816,14 +817,14 @@ static void dispatchChildInsertionEvents(Node& child)
 static void dispatchChildRemovalEvents(Node& child)
 {
     if (child.isInShadowTree()) {
-        InspectorInstrumentation::willRemoveDOMNode(&child.document(), &child);
+        InspectorInstrumentation::willRemoveDOMNode(child.document(), child);
         return;
     }
 
     ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
 
     willCreatePossiblyOrphanedTreeByRemoval(&child);
-    InspectorInstrumentation::willRemoveDOMNode(&child.document(), &child);
+    InspectorInstrumentation::willRemoveDOMNode(child.document(), child);
 
     RefPtr<Node> c = &child;
     Ref<Document> document(child.document());

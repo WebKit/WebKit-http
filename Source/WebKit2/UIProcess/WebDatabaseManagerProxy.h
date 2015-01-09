@@ -40,9 +40,8 @@
 
 namespace WebKit {
 
-class WebContext;
+class WebProcessPool;
 class WebProcessProxy;
-class WebSecurityOrigin;
 
 typedef GenericCallback<API::Array*> ArrayCallback;
 
@@ -50,17 +49,17 @@ class WebDatabaseManagerProxy : public API::ObjectImpl<API::Object::Type::Databa
 public:
     static const char* supplementName();
 
-    static PassRefPtr<WebDatabaseManagerProxy> create(WebContext*);
+    static PassRefPtr<WebDatabaseManagerProxy> create(WebProcessPool*);
     virtual ~WebDatabaseManagerProxy();
 
     void initializeClient(const WKDatabaseManagerClientBase*);
 
     void getDatabasesByOrigin(std::function<void (API::Array*, CallbackBase::Error)>);
     void getDatabaseOrigins(std::function<void (API::Array*, CallbackBase::Error)>);
-    void deleteDatabaseWithNameForOrigin(const String& databaseIdentifier, WebSecurityOrigin*);
-    void deleteDatabasesForOrigin(WebSecurityOrigin*);
+    void deleteDatabaseWithNameForOrigin(const String& databaseIdentifier, API::SecurityOrigin*);
+    void deleteDatabasesForOrigin(API::SecurityOrigin*);
     void deleteAllDatabases();
-    void setQuotaForOrigin(WebSecurityOrigin*, uint64_t quota);
+    void setQuotaForOrigin(API::SecurityOrigin*, uint64_t quota);
     
     static String originKey();
     static String originQuotaKey();
@@ -77,17 +76,17 @@ public:
     using API::Object::deref;
 
 private:
-    explicit WebDatabaseManagerProxy(WebContext*);
+    explicit WebDatabaseManagerProxy(WebProcessPool*);
 
     // WebContextSupplement
-    virtual void contextDestroyed() override;
+    virtual void processPoolDestroyed() override;
     virtual void processDidClose(WebProcessProxy*) override;
     virtual bool shouldTerminate(WebProcessProxy*) const override;
     virtual void refWebContextSupplement() override;
     virtual void derefWebContextSupplement() override;
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
     // Message handlers.
     void didGetDatabasesByOrigin(const Vector<OriginAndDatabases>& originAndDatabases, uint64_t callbackID);

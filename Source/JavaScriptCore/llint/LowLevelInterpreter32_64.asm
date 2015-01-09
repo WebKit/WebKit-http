@@ -750,7 +750,7 @@ _llint_op_create_arguments:
     bineq TagOffset[cfr, t0, 8], EmptyValueTag, .opCreateArgumentsDone
     callSlowPath(_slow_path_create_arguments)
 .opCreateArgumentsDone:
-    dispatch(2)
+    dispatch(3)
 
 
 _llint_op_create_this:
@@ -1620,12 +1620,12 @@ _llint_op_get_argument_by_val:
     loadi ThisArgumentOffset + PayloadOffset[cfr, t2, 8], t1
     storei t0, TagOffset[cfr, t3, 8]
     storei t1, PayloadOffset[cfr, t3, 8]
-    valueProfile(t0, t1, 20, t2)
-    dispatch(6)
+    valueProfile(t0, t1, 24, t2)
+    dispatch(7)
 
 .opGetArgumentByValSlow:
     callSlowPath(_llint_slow_path_get_argument_by_val)
-    dispatch(6)
+    dispatch(7)
 
 
 macro contiguousPutByVal(storeCallback)
@@ -2339,6 +2339,19 @@ macro putClosureVar()
     storei t3, PayloadOffset[t0, t1, 8]
 end
 
+macro putLocalClosureVar()
+    loadisFromInstruction(3, t1)
+    loadConstantOrVariable(t1, t2, t3)
+    loadpFromInstruction(5, t4)
+    btpz t4, .noVariableWatchpointSet
+    notifyWrite(t4, t2, t3, t1, .pDynamic)
+.noVariableWatchpointSet:
+    loadp JSEnvironmentRecord::m_registers[t0], t0
+    loadisFromInstruction(6, t1)
+    storei t2, TagOffset[t0, t1, 8]
+    storei t3, PayloadOffset[t0, t1, 8]
+end
+
 
 _llint_op_put_to_scope:
     traceExecution()
@@ -2349,7 +2362,7 @@ _llint_op_put_to_scope:
     bineq t0, LocalClosureVar, .pGlobalProperty
     writeBarrierOnOperands(1, 3)
     loadVariable(1, t2, t1, t0)
-    putClosureVar()
+    putLocalClosureVar()
     dispatch(7)
 
 .pGlobalProperty:
@@ -2397,3 +2410,44 @@ _llint_op_put_to_scope:
 .pDynamic:
     callSlowPath(_llint_slow_path_put_to_scope)
     dispatch(7)
+
+_llint_op_profile_type:
+    traceExecution()
+    loadp CodeBlock[cfr], t1
+    loadp CodeBlock::m_vm[t1], t1
+    # t1 is holding the pointer to the typeProfilerLog.
+    loadp VM::m_typeProfilerLog[t1], t1
+
+    # t0 is holding the payload, t4 is holding the tag.
+    loadisFromInstruction(1, t2)
+    loadConstantOrVariable(t2, t4, t0)
+
+    # t2 is holding the pointer to the current log entry.
+    loadp TypeProfilerLog::m_currentLogEntryPtr[t1], t2
+
+    # Store the JSValue onto the log entry.
+    storei t4, TypeProfilerLog::LogEntry::value + TagOffset[t2]
+    storei t0, TypeProfilerLog::LogEntry::value + PayloadOffset[t2]
+
+    # Store the TypeLocation onto the log entry.
+    loadpFromInstruction(2, t3)
+    storep t3, TypeProfilerLog::LogEntry::location[t2]
+
+    bieq t4, CellTag, .opProfileTypeIsCell
+    storei 0, TypeProfilerLog::LogEntry::structureID[t2]
+    jmp .opProfileTypeSkipIsCell
+.opProfileTypeIsCell:
+    loadi JSCell::m_structureID[t0], t3
+    storei t3, TypeProfilerLog::LogEntry::structureID[t2]
+.opProfileTypeSkipIsCell:
+    
+    # Increment the current log entry.
+    addp sizeof TypeProfilerLog::LogEntry, t2
+    storep t2, TypeProfilerLog::m_currentLogEntryPtr[t1]
+
+    loadp TypeProfilerLog::m_logEndPtr[t1], t1
+    bpneq t2, t1, .opProfileTypeDone
+    callSlowPath(_slow_path_profile_type_clear_log)
+
+.opProfileTypeDone:
+    dispatch(6)

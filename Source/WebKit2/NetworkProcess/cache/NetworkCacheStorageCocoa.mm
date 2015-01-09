@@ -105,6 +105,11 @@ const uint8_t* NetworkCacheStorage::Data::data() const
     return m_data;
 }
 
+bool NetworkCacheStorage::Data::isNull() const
+{
+    return !m_dispatchData;
+}
+
 std::unique_ptr<NetworkCacheStorage> NetworkCacheStorage::open(const String& cachePath)
 {
     ASSERT(RunLoop::isMain());
@@ -415,7 +420,7 @@ void NetworkCacheStorage::store(const NetworkCacheKey& key, const Entry& entry, 
     ASSERT(RunLoop::isMain());
 
     StringCapture cachePathCapture(m_directoryPath);
-    dispatch_async(m_backgroundIOQueue.get(), [this, key, entry, cachePathCapture, completionHandler]() {
+    dispatch_async(m_backgroundIOQueue.get(), [this, key, entry, cachePathCapture, completionHandler] {
         auto data = encodeEntry(key, entry);
         int fd;
         auto channel = createIOChannelForKey(key, IOChannelType::Write, cachePathCapture.string(), fd);

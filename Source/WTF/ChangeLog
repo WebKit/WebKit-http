@@ -1,3 +1,421 @@
+2015-01-08  Darin Adler  <darin@apple.com>
+
+        Modernize and streamline HTMLTokenizer
+        https://bugs.webkit.org/show_bug.cgi?id=140166
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Forward.h: Removed PassRef, added OrdinalNumber and TextPosition.
+
+2015-01-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        [WK2] Start a prototype for declarative site specific extensions
+        https://bugs.webkit.org/show_bug.cgi?id=140160
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FeatureDefines.h:
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        As pointed out by Tim Horton, use C-style comment instead of C++-style comment as
+        wtf/Compiler.h is included in the sandbox profile and the sandbox profile compiler
+        doesn't understand C++-style comments.
+
+        * wtf/Compiler.h:
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        Reviewed by David Kilzer.
+
+        Move EXTERN_C_BEGIN and EXTERN_C_END macros from file WebKit2/config.h to here and
+        rename them to WTF_EXTERN_C_BEGIN and WTF_EXTERN_C_END, respectively, so that we
+        can make use of these macros in SPI wrapper headers (e.g. UIKitSPI.h).
+
+        I'll look to transition existing code to WTF_EXTERN_C_BEGIN/WTF_EXTERN_C_END and
+        remove EXTERN_C in a subsequent commit(s).
+
+        * wtf/Compiler.h:
+
+2015-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178068.
+        https://bugs.webkit.org/show_bug.cgi?id=140235
+
+        Breaks the iOS build (Requested by enrica on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Make WebKit2 build with public iOS SDK and more build
+        fixes for DRT"
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+        http://trac.webkit.org/changeset/178068
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        Reviewed by David Kilzer.
+
+        Move EXTERN_C_BEGIN and EXTERN_C_END macros from file WebKit2/config.h to here and
+        rename them to WTF_EXTERN_C_BEGIN and WTF_EXTERN_C_END, respectively, so that we
+        can make use of these macros in SPI wrapper headers (e.g. UIKitSPI.h).
+
+        I'll look to transition existing code to WTF_EXTERN_C_BEGIN/WTF_EXTERN_C_END and
+        remove EXTERN_C in a subsequent commit(s).
+
+        * wtf/Compiler.h:
+
+2015-01-07  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::create): Return a Ref.
+
+2015-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178039.
+        https://bugs.webkit.org/show_bug.cgi?id=140187
+
+        Breaks ObjC Inspector Protocol (Requested by JoePeck on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: purge PassRefPtr from Inspector code and use
+        Ref for typed and untyped protocol objects"
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+        http://trac.webkit.org/changeset/178039
+
+2015-01-06  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::create): Return a Ref.
+
+2015-01-06  Alexey Proskuryakov  <ap@apple.com>
+
+        ADDRESS_SANITIZER macro is overloaded
+        https://bugs.webkit.org/show_bug.cgi?id=140130
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h: Added an ASAN_ENABLED macro. The abbreviation should become well
+        known - we already use it in tools.
+
+        * wtf/Assertions.h:
+        * wtf/RefCounted.h:
+        * wtf/SizeLimits.cpp:
+        Change the conditional to ENABLE(SECURITY_ASSERTIONS). These checks will be used
+        in debug builds, and also when one explicitly passes -DENABLE_SECURITY_ASSERTIONS.
+
+2015-01-05  Andreas Kling  <akling@apple.com>
+
+        Purge PassRefPtr from Page.
+        <https://webkit.org/b/140089>
+
+        Reviewed by Anders Carlsson.
+
+        Make SchedulePair::create() return Ref since it never fails.
+
+        * wtf/SchedulePair.h:
+        (WTF::SchedulePair::create):
+
+2015-01-01  Darin Adler  <darin@apple.com>
+
+        Rework code that hides characters in password fields to streamline a little
+        https://bugs.webkit.org/show_bug.cgi?id=140035
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::fill): Deleted.
+        * wtf/text/StringImpl.h: Deleted StringImpl::fill.
+        * wtf/text/WTFString.h:
+        (WTF::String::fill): Deleted.
+
+2014-12-26  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        Removed use of __builtin_s{add,sub}_overflow introduced in r177729 that was causing a compiler used at Apple to crash because of <rdar://problem/19347133>.
+
+        * wtf/SaturatedArithmetic.h:
+        (signedAddOverflows):
+        (signedSubtractOverflows):
+
+2014-12-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19348208> REGRESSION (r177027): iOS builds use the wrong toolchain
+        https://bugs.webkit.org/show_bug.cgi?id=139950
+
+        Reviewed by David Kilzer.
+
+        * Configurations/Base.xcconfig: Only define TOOLCHAINS when building for OS X, doing so
+        in a manner that works with Xcode 5.1.1.
+
+2014-12-25  Dan Bernstein  <mitz@apple.com>
+
+        Try to fix the Windows build after r177733.
+
+        * wtf/Ref.h:
+
+2014-12-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Simplify saturated integer add/sub
+        https://bugs.webkit.org/show_bug.cgi?id=139854
+
+        Address Darin's post-commit feedback to fix API tests.
+
+        * wtf/SaturatedArithmetic.h: (saturatedSubtraction):
+
+2014-12-24  Benjamin Poulain  <benjamin@webkit.org>
+
+        Simplify saturated integer add/sub
+        https://bugs.webkit.org/show_bug.cgi?id=139854
+
+        Reviewed by Darin Adler.
+
+        * wtf/Compiler.h:
+        Make a wrapper for __has_builtin for compilers that do not support it.
+
+        * wtf/SaturatedArithmetic.h:
+        (saturatedAddition):
+        (saturatedSubtraction):
+        Use the builtins when possible instead of reinventing the wheel.
+        On ARMv7, use the saturated math instructions.
+
+2014-12-23  Anders Carlsson  <andersca@apple.com>
+
+        Move dynamic_objc_cast to RetainPtr.h
+        https://bugs.webkit.org/show_bug.cgi?id=139915
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RetainPtr.h:
+        (WTF::dynamic_objc_cast):
+
+2014-12-23  Anders Carlsson  <andersca@apple.com>
+
+        Re-indent RefPtr.h and RetainPtr.h.
+
+        Rubber-stamped by Sam Weinig.
+
+        * wtf/RefPtr.h:
+        * wtf/RetainPtr.h:
+
+2014-12-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] add optimized fullscreen API
+        https://bugs.webkit.org/show_bug.cgi?id=139833
+        <rdar://problem/18844486>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h: Define ENABLE_VIDEO_PRESENTATION_MODE.
+
+2014-12-18  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Fix build break on EFL and GTK since r177523
+        https://bugs.webkit.org/show_bug.cgi?id=139805
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Ref.h: Include <wtf/StdLibExtras.h> to use std::exchange().
+
+2014-12-18  Gavin Barraclough  <barraclough@apple.com>
+
+        Add strong typing to RefCounter interface, return value as a bool.
+        https://bugs.webkit.org/show_bug.cgi?id=139776
+
+        Unreviewed style fixes.
+
+        * wtf/RefCounter.h:
+        (WTF::=):
+
+2014-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Build correction after r177541.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::Token<T>::Token): Revise constructor inlines to correct
+        syntax error.
+
+2014-12-18  Gavin Barraclough  <barraclough@apple.com>
+
+        Add strong typing to RefCounter interface, return value as a bool.
+        https://bugs.webkit.org/show_bug.cgi?id=139776
+
+        Reviewed by Geoff Garen.
+
+        Currently all token vended by a RefCounter have the same type - Ref<RefCounter::Count>.
+        This means there is no compile time type checking to prevent mistakes. Update the count()
+        method to token<>(), templated on type used to identify the token being returned.
+        Calls to token<T>() will return a result of type RefCounter::Token<T>.
+
+        There are a few problems with the fact the counter will return you an exact count of the
+        number of outstanding tokens:
+          - It is desirable to only fire the callback on zero-edge changes; it is more consistent
+            to do so if the value is only readable as a boolean.
+          - It is desirable to provide the value as an argument to the callback, however to make
+            this useful for integer values it is also necessary to indicate the direction of change
+            (0->1 is often interesting where 2->1 is not).
+          - There is a mismatch between the precision of returning a count, and the inherent
+            imprecision of a token based mechanism, where it may be difficult to guarantee
+            absolutely no unnecessary refcount churn, and thus unintentional counter values.
+
+        * wtf/RefCounter.cpp:
+        (WTF::RefCounter::Count::ref):
+        (WTF::RefCounter::Count::deref):
+            - only call the callback on zero-edge changes; provide the value.
+        (WTF::RefCounter::RefCounter):
+            - callback now takes a bool argument.
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::Token::Token):
+            - New opaque type to reference the RefCounter::Count.
+        (WTF::RefCounter::Token::operator!):
+            - ! operator checks for null / anasigned Tokens.
+        (WTF::RefCounter::RefCounter):
+            - callback now takes a bool argument.
+        (WTF::RefCounter::token):
+            - renamed from count(), templated on type of token returned.
+        (WTF::RefCounter::value):
+            - now returns a bool.
+        (WTF::RefCounter::Token<T>::Token):
+        (WTF::=):
+            - Tokens can be copied & assigned.
+        (WTF::RefCounter::count): Deleted.
+            - renamed to token<>().
+
+2014-12-18  Anders Carlsson  <andersca@apple.com>
+
+        Simplify smart pointer classes by using std::exchange
+        https://bugs.webkit.org/show_bug.cgi?id=139790
+
+        Reviewed by Andreas Kling.
+
+        * wtf/MallocPtr.h:
+        * wtf/OSObjectPtr.h:
+        * wtf/OwnPtr.h:
+        (WTF::OwnPtr<T>::clear):
+        (WTF::OwnPtr<T>::release):
+        (WTF::OwnPtr<T>::leakPtr):
+        (WTF::=):
+        * wtf/PassOwnPtr.h:
+        (WTF::PassOwnPtr<T>::leakPtr):
+        * wtf/PassRefPtr.h:
+        (WTF::PassRefPtr<T>::leakRef):
+        * wtf/Ref.h:
+        * wtf/RefPtr.h:
+        (WTF::RefPtr<T>::clear):
+        (WTF::RefPtr<T>::leakRef):
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr<T>::leakRef):
+
+2014-12-18  Anders Carlsson  <andersca@apple.com>
+
+        Clean up MachSendRight and add a copySendRight member function
+        https://bugs.webkit.org/show_bug.cgi?id=139788
+
+        Reviewed by Tim Horton.
+
+        * wtf/StdLibExtras.h:
+        (std::exchange):
+        Add an implementation of std::exchange.
+
+2014-12-17  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Make it possible to toggle FeatureCounter support at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=139688
+        <rdar://problem/19266254>
+
+        Reviewed by Andreas Kling.
+
+        Remove FeatureCounter API from WTF and move it to WebCore/platform
+        instead so that it can log conditionally based on a WebCore setting.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+
+2014-12-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct DebugSuffix builds under MSBuild
+        https://bugs.webkit.org/show_bug.cgi?id=139733
+        <rdar://problem/19276880>
+
+        Reviewed by Simon Fraser.
+
+        * WTF.vcxproj/WTF.proj: Make sure to use the '_debug' suffix
+        when building the DebugSuffix target.
+
+2014-12-17  Anders Carlsson  <andersca@apple.com>
+
+        Make Ref::copyRef const and ref-qualified
+        https://bugs.webkit.org/show_bug.cgi?id=139730
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Ref.h:
+
+2014-12-16  Daniel Bates  <dabates@apple.com>
+
+        [iOS] WTF fails to build with public SDK due to missing header CPAggregateDictionary.h
+        https://bugs.webkit.org/show_bug.cgi?id=139695
+
+        Reviewed by Chris Dumez.
+
+        Add USE(APPLE_INTERNAL_SDK)-guard around iOS-specific feature counter implementation
+        as we are only interested in counting features in builds of iOS WebKit that were built
+        with the Apple Internal SDK.
+
+        * wtf/FeatureCounter.cpp:
+        * wtf/ios/FeatureCounter.mm:
+
+2014-12-16  Geoffrey Garen  <ggaren@apple.com>
+
+        Enable FastMalloc in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=139692
+
+        Reviewed by Alexey Proskuryakov.
+
+        This will give debug builds greater fidelity to the real thing.
+
+        FastMalloc now transparently supports all the malloc debugging APIs I
+        know of by disabling itself at runtime -- and it should be easy to add
+        support for any APIs I missed -- so there's no need to turn it off in
+        debug builds.
+
+        * wtf/FastMalloc.cpp:
+
+2014-12-16  Anders Carlsson  <andersca@apple.com>
+
+        RefPtr::copyRef should be const
+        https://bugs.webkit.org/show_bug.cgi?id=139689
+
+        Reviewed by Andreas Kling.
+
+        copyRef() doesn't modify the original object so it should be const.
+        Also, add a && qualified overload and mark it deleted so that calls to copyRef() where
+        the object is an rvalue will fail to compile.
+
+        * wtf/RefPtr.h:
+
 2014-12-15  Chris Dumez  <cdumez@apple.com>
 
         [iOS] Add feature counting support

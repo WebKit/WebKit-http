@@ -27,10 +27,10 @@
 #include "PlugInAutoStartProvider.h"
 
 #include "APIArray.h"
-#include "ImmutableDictionary.h"
-#include "WebContext.h"
+#include "APIDictionary.h"
 #include "WebContextClient.h"
 #include "WebProcessMessages.h"
+#include "WebProcessPool.h"
 #include <wtf/CurrentTime.h>
 
 using namespace WebCore;
@@ -39,8 +39,8 @@ static const double plugInAutoStartExpirationTimeThreshold = 30 * 24 * 60 * 60;
 
 namespace WebKit {
 
-PlugInAutoStartProvider::PlugInAutoStartProvider(WebContext* context)
-    : m_context(context)
+PlugInAutoStartProvider::PlugInAutoStartProvider(WebProcessPool* processPool)
+    : m_processPool(processPool)
 {
     m_hashToOriginMap.add(SessionID::defaultSessionID(), HashMap<unsigned, String>());
     m_autoStartTable.add(SessionID::defaultSessionID(), AutoStartTable());
@@ -67,10 +67,10 @@ void PlugInAutoStartProvider::addAutoStartOriginHash(const String& pageOrigin, u
     it->value.set(plugInOriginHash, expirationTime);
     sessionIterator->value.set(plugInOriginHash, pageOrigin);
 
-    m_context->sendToAllProcesses(Messages::WebProcess::DidAddPlugInAutoStartOriginHash(plugInOriginHash, expirationTime, sessionID));
+    m_processPool->sendToAllProcesses(Messages::WebProcess::DidAddPlugInAutoStartOriginHash(plugInOriginHash, expirationTime, sessionID));
 
     if (!sessionID.isEphemeral())
-        m_context->client().plugInAutoStartOriginHashesChanged(m_context);
+        m_processPool->client().plugInAutoStartOriginHashesChanged(m_processPool);
 }
 
 SessionPlugInAutoStartOriginMap PlugInAutoStartProvider::autoStartOriginHashesCopy() const
@@ -87,32 +87,32 @@ SessionPlugInAutoStartOriginMap PlugInAutoStartProvider::autoStartOriginHashesCo
     return sessionMap;
 }
 
-PassRefPtr<ImmutableDictionary> PlugInAutoStartProvider::autoStartOriginsTableCopy() const
+PassRefPtr<API::Dictionary> PlugInAutoStartProvider::autoStartOriginsTableCopy() const
 {
-    ImmutableDictionary::MapType map;
+    API::Dictionary::MapType map;
 
     double now = currentTime();
     for (const auto& stringOriginHash : m_autoStartTable.get(SessionID::defaultSessionID())) {
-        ImmutableDictionary::MapType hashMap;
+        API::Dictionary::MapType hashMap;
         for (const auto& originHash : stringOriginHash.value) {
             if (now <= originHash.value)
                 hashMap.set(String::number(originHash.key), API::Double::create(originHash.value));
         }
         if (hashMap.size())
-            map.set(stringOriginHash.key, ImmutableDictionary::create(WTF::move(hashMap)));
+            map.set(stringOriginHash.key, API::Dictionary::create(WTF::move(hashMap)));
     }
 
-    return ImmutableDictionary::create(WTF::move(map));
+    return API::Dictionary::create(WTF::move(map));
 }
 
-void PlugInAutoStartProvider::setAutoStartOriginsTable(ImmutableDictionary& table)
+void PlugInAutoStartProvider::setAutoStartOriginsTable(API::Dictionary& table)
 {
     setAutoStartOriginsTableWithItemsPassingTest(table, [](double) {
         return true;
     });
 }
 
-void PlugInAutoStartProvider::setAutoStartOriginsFilteringOutEntriesAddedAfterTime(ImmutableDictionary& table, double time)
+void PlugInAutoStartProvider::setAutoStartOriginsFilteringOutEntriesAddedAfterTime(API::Dictionary& table, double time)
 {
     double adjustedTimestamp = time + plugInAutoStartExpirationTimeThreshold;
     setAutoStartOriginsTableWithItemsPassingTest(table, [adjustedTimestamp](double expirationTimestamp) {
@@ -120,7 +120,7 @@ void PlugInAutoStartProvider::setAutoStartOriginsFilteringOutEntriesAddedAfterTi
     });
 }
 
-void PlugInAutoStartProvider::setAutoStartOriginsTableWithItemsPassingTest(ImmutableDictionary& table, std::function<bool(double expirationTimestamp)> isExpirationTimeAcceptable)
+void PlugInAutoStartProvider::setAutoStartOriginsTableWithItemsPassingTest(API::Dictionary& table, std::function<bool(double expirationTimestamp)> isExpirationTimeAcceptable)
 {
     ASSERT(isExpirationTimeAcceptable);
 
@@ -132,7 +132,7 @@ void PlugInAutoStartProvider::setAutoStartOriginsTableWithItemsPassingTest(Immut
 
     for (auto& strDict : table.map()) {
         PlugInAutoStartOriginMap hashes;
-        for (auto& hashTime : static_cast<ImmutableDictionary*>(strDict.value.get())->map()) {
+        for (auto& hashTime : static_cast<API::Dictionary*>(strDict.value.get())->map()) {
             bool ok;
             unsigned hash = hashTime.key.toUInt(&ok);
             if (!ok)
@@ -154,7 +154,7 @@ void PlugInAutoStartProvider::setAutoStartOriginsTableWithItemsPassingTest(Immut
             ast.set(strDict.key, hashes);
     }
 
-    m_context->sendToAllProcesses(Messages::WebProcess::ResetPlugInAutoStartOriginDefaultHashes(hashMap));
+    m_processPool->sendToAllProcesses(Messages::WebProcess::ResetPlugInAutoStartOriginDefaultHashes(hashMap));
 }
 
 void PlugInAutoStartProvider::setAutoStartOriginsArray(API::Array& originList)
@@ -184,8 +184,8 @@ void PlugInAutoStartProvider::didReceiveUserInteraction(unsigned plugInOriginHas
 
     double newExpirationTime = expirationTimeFromNow();
     m_autoStartTable.add(sessionID, AutoStartTable()).iterator->value.add(it->value, PlugInAutoStartOriginMap()).iterator->value.set(plugInOriginHash, newExpirationTime);
-    m_context->sendToAllProcesses(Messages::WebProcess::DidAddPlugInAutoStartOriginHash(plugInOriginHash, newExpirationTime, sessionID));
-    m_context->client().plugInAutoStartOriginHashesChanged(m_context);
+    m_processPool->sendToAllProcesses(Messages::WebProcess::DidAddPlugInAutoStartOriginHash(plugInOriginHash, newExpirationTime, sessionID));
+    m_processPool->client().plugInAutoStartOriginHashesChanged(m_processPool);
 }
 
 } // namespace WebKit

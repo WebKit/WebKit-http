@@ -141,7 +141,7 @@ PassRefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame
         return nullptr;
 
     RefPtr<Image> indicatorBitmapWithHighlight;
-    if (presentationTransition == TextIndicatorPresentationTransition::BounceAndCrossfade)
+    if (presentationTransition == TextIndicatorPresentationTransition::BounceAndCrossfade || presentationTransition == TextIndicatorPresentationTransition::Crossfade)
         indicatorBitmapWithHighlight = snapshotSelectionWithHighlight(frame);
 
     // Store the selection rect in window coordinates, to be used subsequently
@@ -193,6 +193,77 @@ TextIndicator::TextIndicator(const TextIndicatorData& data)
 
 TextIndicator::~TextIndicator()
 {
+}
+    
+bool TextIndicator::wantsBounce() const
+{
+    switch (m_data.presentationTransition) {
+    case TextIndicatorPresentationTransition::BounceAndCrossfade:
+    case TextIndicatorPresentationTransition::Bounce:
+        return true;
+        
+    case TextIndicatorPresentationTransition::FadeIn:
+    case TextIndicatorPresentationTransition::Crossfade:
+    case TextIndicatorPresentationTransition::None:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
+bool TextIndicator::wantsContentCrossfade() const
+{
+    if (!m_data.contentImageWithHighlight)
+        return false;
+    
+    switch (m_data.presentationTransition) {
+    case TextIndicatorPresentationTransition::BounceAndCrossfade:
+    case TextIndicatorPresentationTransition::Crossfade:
+        return true;
+        
+    case TextIndicatorPresentationTransition::Bounce:
+    case TextIndicatorPresentationTransition::FadeIn:
+    case TextIndicatorPresentationTransition::None:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
+bool TextIndicator::wantsFadeIn() const
+{
+    switch (m_data.presentationTransition) {
+    case TextIndicatorPresentationTransition::FadeIn:
+        return true;
+        
+    case TextIndicatorPresentationTransition::Bounce:
+    case TextIndicatorPresentationTransition::BounceAndCrossfade:
+    case TextIndicatorPresentationTransition::Crossfade:
+    case TextIndicatorPresentationTransition::None:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
+bool TextIndicator::wantsManualAnimation() const
+{
+    switch (m_data.presentationTransition) {
+    case TextIndicatorPresentationTransition::FadeIn:
+    case TextIndicatorPresentationTransition::Crossfade:
+        return true;
+
+    case TextIndicatorPresentationTransition::Bounce:
+    case TextIndicatorPresentationTransition::BounceAndCrossfade:
+    case TextIndicatorPresentationTransition::None:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
 } // namespace WebCore

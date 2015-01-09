@@ -51,6 +51,9 @@ public:
     static const unsigned w3cSVGViewWidth;
     static const unsigned w3cSVGViewHeight;
 
+    static const double shortTimeout;
+    static const double noTimeout;
+
     TestController(int argc, const char* argv[]);
     ~TestController();
 
@@ -68,14 +71,11 @@ public:
     bool shouldUseRemoteLayerTree() const { return m_shouldUseRemoteLayerTree; }
     
     // Runs the run loop until `done` is true or the timeout elapses.
-    enum TimeoutDuration { ShortTimeout, LongTimeout, NoTimeout, CustomTimeout };
     bool useWaitToDumpWatchdogTimer() { return m_useWaitToDumpWatchdogTimer; }
-    void runUntil(bool& done, TimeoutDuration);
+    void runUntil(bool& done, double timeoutSeconds);
     void notifyDone();
     
     void configureViewForTest(const TestInvocation&);
-
-    int getCustomTimeout();
     
     bool beforeUnloadReturnValue() const { return m_beforeUnloadReturnValue; }
     void setBeforeUnloadReturnValue(bool value) { m_beforeUnloadReturnValue = value; }
@@ -103,6 +103,8 @@ public:
 
     void terminateWebContentProcess();
     void reattachPageToWebProcess();
+
+    static const char* webProcessName();
 
     WorkQueueManager& workQueueManager() { return m_workQueueManager; }
 
@@ -225,13 +227,8 @@ private:
     State m_state;
     bool m_doneResetting;
 
-    double m_longTimeout;
-    double m_shortTimeout;
-    double m_noTimeout;
     bool m_useWaitToDumpWatchdogTimer;
     bool m_forceNoTimeout;
-
-    int m_timeout;
 
     bool m_didPrintWebProcessCrashedMessage;
     bool m_shouldExitWhenWebProcessCrashes;

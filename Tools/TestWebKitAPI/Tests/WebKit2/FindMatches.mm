@@ -24,6 +24,9 @@
  */
 
 #include "config.h"
+
+#if WK_HAVE_C_SPI
+
 #include "PlatformUtilities.h"
 #include "PlatformWebView.h"
 #import <WebKit/WebDocumentPrivate.h>
@@ -101,9 +104,14 @@ static void didGetImageForMatchResult(WKPageRef page, WKImageRef image, uint32_t
     DOMNode *target = [document getElementById:@"target"];
     [range selectNode:target];
     NSImage *expectedImage = [range renderedImageForcingBlackText:YES];
-    NSSize expectedSize = [expectedImage size];
-    EXPECT_EQ(size.width, expectedSize.width);
-    EXPECT_EQ(size.height, expectedSize.height);
+    EXPECT_EQ(1u, expectedImage.representations.count);
+    EXPECT_TRUE([[expectedImage.representations objectAtIndex:0] isKindOfClass:[NSBitmapImageRep class]]);
+
+    NSInteger expectedWidth = [(NSBitmapImageRep *)[expectedImage.representations objectAtIndex:0] pixelsWide];
+    NSInteger expectedHeight = [(NSBitmapImageRep *)[expectedImage.representations objectAtIndex:0] pixelsHigh];
+
+    EXPECT_EQ(size.width, expectedWidth);
+    EXPECT_EQ(size.height, expectedHeight);
     didCallGetImage = true;
 }
 
@@ -167,3 +175,5 @@ TEST(WebKit2, FindMatches)
 }
 
 } // namespace TestWebKitAPI
+
+#endif

@@ -35,7 +35,7 @@ class SVGScriptElement final : public SVGElement
                              , public SVGExternalResourcesRequired
                              , public ScriptElement {
 public:
-    static PassRefPtr<SVGScriptElement> create(const QualifiedName&, Document&, bool wasInsertedByParser);
+    static Ref<SVGScriptElement> create(const QualifiedName&, Document&, bool wasInsertedByParser);
 
 private:
     SVGScriptElement(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted);
@@ -65,7 +65,7 @@ private:
 
     virtual void dispatchLoadEvent() override { SVGExternalResourcesRequired::dispatchLoadEvent(this); }
 
-    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren() override;
+    virtual RefPtr<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
     virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
 
     // SVGExternalResourcesRequired

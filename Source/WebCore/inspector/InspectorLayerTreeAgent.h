@@ -56,9 +56,10 @@ public:
     virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
     void reset();
 
+    // InspectorInstrumentation callbacks.
     void layerTreeDidChange();
-    void renderLayerDestroyed(const RenderLayer*);
-    void pseudoElementDestroyed(PseudoElement*);
+    void renderLayerDestroyed(const RenderLayer&);
+    void pseudoElementDestroyed(PseudoElement&);
 
     // Called from the front-end.
     virtual void enable(ErrorString&) override;
@@ -74,8 +75,8 @@ private:
     void gatherLayersUsingRenderObjectHierarchy(ErrorString&, RenderObject*, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>&);
     void gatherLayersUsingRenderLayerHierarchy(ErrorString&, RenderLayer*, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>&);
 
-    PassRefPtr<Inspector::Protocol::LayerTree::Layer> buildObjectForLayer(ErrorString&, RenderLayer*);
-    PassRefPtr<Inspector::Protocol::LayerTree::IntRect> buildObjectForIntRect(const IntRect&);
+    Ref<Inspector::Protocol::LayerTree::Layer> buildObjectForLayer(ErrorString&, RenderLayer*);
+    Ref<Inspector::Protocol::LayerTree::IntRect> buildObjectForIntRect(const IntRect&);
 
     int idForNode(ErrorString&, Node*);
 

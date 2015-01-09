@@ -85,7 +85,7 @@ public:
     virtual HostWindow* hostWindow() const = 0;
 
     // Returns a clip rect in host window coordinates. Used to clip the blit on a scroll.
-    virtual IntRect windowClipRect(bool clipToContents = true) const = 0;
+    virtual IntRect windowClipRect() const = 0;
 
     // Functions for child manipulation and inspection.
     const HashSet<RefPtr<Widget>>& children() const { return m_children; }
@@ -410,7 +410,6 @@ protected:
     // Subclassed by FrameView to check the writing-mode of the document.
     virtual bool isVerticalDocument() const { return true; }
     virtual bool isFlippedDocument() const { return false; }
-    virtual bool containsSVGDocument() const { return false; }
 
     // Called to update the scrollbars to accurately reflect the state of the view.
     void updateScrollbars(const IntSize& desiredOffset);

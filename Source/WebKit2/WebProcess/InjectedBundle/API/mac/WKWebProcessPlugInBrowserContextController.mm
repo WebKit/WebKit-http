@@ -41,7 +41,6 @@
 #import "WKNSString.h"
 #import "WKNSURL.h"
 #import "WKNSURLRequest.h"
-#import "WKRenderingProgressEventsInternal.h"
 #import "WKRetainPtr.h"
 #import "WKStringCF.h"
 #import "WKURLRequestNS.h"
@@ -56,6 +55,8 @@
 #import "WebPage.h"
 #import "WebProcess.h"
 #import "_WKRemoteObjectRegistryInternal.h"
+#import "_WKRenderingProgressEventsInternal.h"
+#import "_WKSameDocumentNavigationTypeInternal.h"
 #import <WebCore/Document.h>
 #import <WebCore/Frame.h>
 #import <WebCore/HTMLFormElement.h>
@@ -64,6 +65,10 @@
 
 using namespace WebCore;
 using namespace WebKit;
+
+@interface NSObject (WKDeprecatedDelegateMethods)
+- (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller didSameDocumentNavigationForFrame:(WKWebProcessPlugInFrame *)frame;
+@end
 
 @implementation WKWebProcessPlugInBrowserContextController {
     API::ObjectStorage<WebPage> _page;
@@ -150,8 +155,13 @@ static void didSameDocumentNavigationForFrame(WKBundlePageRef page, WKBundleFram
     WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
-    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didSameDocumentNavigationForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigationForFrame:wrapper(*toImpl(frame))];
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didSameDocumentNavigation:forFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigation:toWKSameDocumentNavigationType(toSameDocumentNavigationType(type)) forFrame:wrapper(*toImpl(frame))];
+    else {
+        // FIXME: Remove this once clients switch to implementing the above delegate method.
+        if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didSameDocumentNavigationForFrame:)])
+            [(NSObject *)loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigationForFrame:wrapper(*toImpl(frame))];
+    }
 }
 
 static void didLayoutForFrame(WKBundlePageRef page, WKBundleFrameRef frame, const void* clientInfo)
@@ -169,7 +179,7 @@ static void didLayout(WKBundlePageRef page, WKLayoutMilestones milestones, WKTyp
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:renderingProgressDidChange:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController renderingProgressDidChange:renderingProgressEvents(milestones)];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController renderingProgressDidChange:renderingProgressEvents(toLayoutMilestones(milestones))];
 }
 
 static void didFirstVisuallyNonEmptyLayoutForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)

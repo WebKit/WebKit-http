@@ -34,6 +34,10 @@
 #include <libintl.h>
 #include <libsoup/soup.h>
 
+#if PLATFORM(X11)
+#include <X11/Xlib.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -47,14 +51,14 @@ public:
             sleep(30);
 #endif
 
+#if USE(COORDINATED_GRAPHICS_THREADED) && PLATFORM(X11)
+        XInitThreads();
+#endif
         gtk_init(nullptr, nullptr);
 
         bindtextdomain(GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
         bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
 
-        // Despite using system CAs to validate certificates we're
-        // accepting invalid certificates by default. New API will be
-        // added later to let client accept/discard invalid certificates.
         SoupNetworkSession::defaultSession().setSSLPolicy(SoupNetworkSession::SSLUseSystemCAFile);
         return true;
     }

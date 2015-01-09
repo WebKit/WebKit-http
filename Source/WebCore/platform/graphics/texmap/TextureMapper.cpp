@@ -98,15 +98,13 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 PassRefPtr<BitmapTexture> BitmapTexturePool::acquireTexture(const IntSize& size, TextureMapper* textureMapper)
 {
     BitmapTexturePoolEntry* selectedEntry = 0;
-    for (size_t i = 0; i < m_textures.size(); ++i) {
-        BitmapTexturePoolEntry* entry = &m_textures[i];
-
+    for (auto& entry : m_textures) {
         // If the surface has only one reference (the one in m_textures), we can safely reuse it.
-        if (entry->m_texture->refCount() > 1)
+        if (entry.m_texture->refCount() > 1)
             continue;
 
-        if (entry->m_texture->canReuseWith(size)) {
-            selectedEntry = entry;
+        if (entry.m_texture->canReuseWith(size)) {
+            selectedEntry = &entry;
             break;
         }
     }
@@ -136,9 +134,7 @@ std::unique_ptr<TextureMapper> TextureMapper::create(AccelerationMode mode)
 }
 
 TextureMapper::TextureMapper(AccelerationMode accelerationMode)
-    : m_context(0)
-    , m_interpolationQuality(InterpolationDefault)
-    , m_textDrawingMode(TextModeFill)
+    : m_context(nullptr)
     , m_texturePool(std::make_unique<BitmapTexturePool>())
     , m_accelerationMode(accelerationMode)
     , m_isMaskMode(false)
@@ -152,8 +148,8 @@ void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* 
 {
     std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(targetRect.size());
     GraphicsContext* context = imageBuffer->context();
-    context->setImageInterpolationQuality(textureMapper->imageInterpolationQuality());
-    context->setTextDrawingMode(textureMapper->textDrawingMode());
+    context->setImageInterpolationQuality(InterpolationDefault);
+    context->setTextDrawingMode(TextModeFill);
 
     IntRect sourceRect(targetRect);
     sourceRect.setLocation(offset);

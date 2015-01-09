@@ -399,9 +399,6 @@
     <ClCompile Include="..\Modules\indexeddb\IDBFactory.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\IDBFactoryBackendInterface.cpp">
-      <Filter>Modules\indexeddb</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\IDBIndex.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
@@ -418,9 +415,6 @@
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\IDBTransaction.cpp">
-      <Filter>Modules\indexeddb</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\PageGroupIndexedDatabase.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\WorkerGlobalScopeIndexedDatabase.cpp">
@@ -738,6 +732,9 @@
     <ClCompile Include="..\page\DebugPageOverlays.cpp">
       <Filter>page</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\DatabaseProvider.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\DragController.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -769,9 +766,6 @@
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\FrameView.cpp">
-      <Filter>page</Filter>
-    </ClCompile>
-    <ClCompile Include="..\page\GroupSettings.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\History.cpp">
@@ -1105,6 +1099,9 @@
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\DragImage.cpp">
+      <Filter>platform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\FeatureCounter.cpp">
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\FileChooser.cpp">
@@ -3360,6 +3357,9 @@
     <ClCompile Include="..\dom\SecurityContext.cpp">
       <Filter>dom</Filter>
     </ClCompile>
+    <ClCompile Include="..\dom\SecurityOriginPolicy.cpp">
+      <Filter>dom</Filter>
+    </ClCompile>
     <ClCompile Include="..\dom\SelectorQuery.cpp">
       <Filter>dom</Filter>
     </ClCompile>
@@ -4680,12 +4680,6 @@
     <ClCompile Include="..\storage\Storage.cpp">
       <Filter>storage</Filter>
     </ClCompile>
-    <ClCompile Include="..\storage\StorageAreaImpl.cpp">
-      <Filter>storage</Filter>
-    </ClCompile>
-    <ClCompile Include="..\storage\StorageAreaSync.cpp">
-      <Filter>storage</Filter>
-    </ClCompile>
     <ClCompile Include="..\storage\StorageEvent.cpp">
       <Filter>storage</Filter>
     </ClCompile>
@@ -4695,19 +4689,7 @@
     <ClCompile Include="..\storage\StorageMap.cpp">
       <Filter>storage</Filter>
     </ClCompile>
-    <ClCompile Include="..\storage\StorageNamespaceImpl.cpp">
-      <Filter>storage</Filter>
-    </ClCompile>
     <ClCompile Include="..\storage\StorageNamespaceProvider.cpp">
-      <Filter>storage</Filter>
-    </ClCompile>
-    <ClCompile Include="..\storage\StorageSyncManager.cpp">
-      <Filter>storage</Filter>
-    </ClCompile>
-    <ClCompile Include="..\storage\StorageThread.cpp">
-      <Filter>storage</Filter>
-    </ClCompile>
-    <ClCompile Include="..\storage\StorageTracker.cpp">
       <Filter>storage</Filter>
     </ClCompile>
     <ClCompile Include="..\bridge\jsc\BridgeJSC.cpp">
@@ -7356,9 +7338,6 @@
     <ClInclude Include="..\Modules\indexeddb\IDBTransaction.h">
       <Filter>Modules\indexeddb</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\indexeddb\PageGroupIndexedDatabase.h">
-      <Filter>Modules\indexeddb</Filter>
-    </ClInclude>
     <ClInclude Include="..\Modules\indexeddb\WorkerGlobalScopeIndexedDatabase.h">
       <Filter>Modules\indexeddb</Filter>
     </ClInclude>
@@ -7426,12 +7405,6 @@
       <Filter>Modules\notifications</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\AbstractDatabaseServer.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatement.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatementBackend.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionData.h">
@@ -7792,9 +7765,6 @@
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\FrameView.h">
-      <Filter>page</Filter>
-    </ClInclude>
-    <ClInclude Include="..\page\GroupSettings.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\History.h">
@@ -8176,6 +8146,9 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\DragImage.h">
+      <Filter>platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\FeatureCounter.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\EventLoop.h">
@@ -10485,6 +10458,9 @@
     <ClInclude Include="..\dom\SecurityContext.h">
       <Filter>dom</Filter>
     </ClInclude>
+    <ClInclude Include="..\dom\SecurityOriginPolicy.h">
+      <Filter>dom</Filter>
+    </ClInclude>
     <ClInclude Include="..\dom\SelectorQuery.h">
       <Filter>dom</Filter>
     </ClInclude>
@@ -12405,12 +12381,6 @@
     <ClInclude Include="..\storage\StorageArea.h">
       <Filter>storage</Filter>
     </ClInclude>
-    <ClInclude Include="..\storage\StorageAreaImpl.h">
-      <Filter>storage</Filter>
-    </ClInclude>
-    <ClInclude Include="..\storage\StorageAreaSync.h">
-      <Filter>storage</Filter>
-    </ClInclude>
     <ClInclude Include="..\storage\StorageEvent.h">
       <Filter>storage</Filter>
     </ClInclude>
@@ -12421,18 +12391,6 @@
       <Filter>storage</Filter>
     </ClInclude>
     <ClInclude Include="..\storage\StorageNamespace.h">
-      <Filter>storage</Filter>
-    </ClInclude>
-    <ClInclude Include="..\storage\StorageNamespaceImpl.h">
-      <Filter>storage</Filter>
-    </ClInclude>
-    <ClInclude Include="..\storage\StorageSyncManager.h">
-      <Filter>storage</Filter>
-    </ClInclude>
-    <ClInclude Include="..\storage\StorageThread.h">
-      <Filter>storage</Filter>
-    </ClInclude>
-    <ClInclude Include="..\storage\StorageTracker.h">
       <Filter>storage</Filter>
     </ClInclude>
     <ClInclude Include="..\bridge\Bridge.h">
@@ -15140,6 +15098,9 @@
     <ClInclude Include="..\html\URLUtils.h">
       <Filter>html</Filter>
     </ClInclude>
+    <ClInclude Include="..\page\DatabaseProvider.h">
+      <Filter>page</Filter>
+    </ClInclude>
     <ClInclude Include="..\page\DebugPageOverlays.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -15266,16 +15227,16 @@
     <ClInclude Include="..\html\canvas\EXTsRGB.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTFragDepth.h”>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTFragDepth.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\canvas\EXTFragDepth.h”>
+    <ClInclude Include="..\html\canvas\EXTFragDepth.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTBlendMinMax.h”>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTBlendMinMax.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\canvas\EXTBlendMinMax.h”>
+    <ClInclude Include="..\html\canvas\EXTBlendMinMax.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
   </ItemGroup>

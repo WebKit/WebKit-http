@@ -38,9 +38,8 @@
 namespace WebKit {
 
 struct SecurityOriginData;
-class WebContext;
+class WebProcessPool;
 class WebProcessProxy;
-class WebSecurityOrigin;
 
 typedef GenericCallback<API::Array*> ArrayCallback;
 
@@ -48,28 +47,28 @@ class WebResourceCacheManagerProxy : public API::ObjectImpl<API::Object::Type::C
 public:
     static const char* supplementName();
 
-    static PassRefPtr<WebResourceCacheManagerProxy> create(WebContext*);
+    static PassRefPtr<WebResourceCacheManagerProxy> create(WebProcessPool*);
     virtual ~WebResourceCacheManagerProxy();
 
     void getCacheOrigins(std::function<void (API::Array*, CallbackBase::Error)>);
-    void clearCacheForOrigin(WebSecurityOrigin*, ResourceCachesToClear);
+    void clearCacheForOrigin(API::SecurityOrigin*, ResourceCachesToClear);
     void clearCacheForAllOrigins(ResourceCachesToClear);
 
     using API::Object::ref;
     using API::Object::deref;
 
 private:
-    explicit WebResourceCacheManagerProxy(WebContext*);
+    explicit WebResourceCacheManagerProxy(WebProcessPool*);
 
     // WebContextSupplement
-    virtual void contextDestroyed() override;
+    virtual void processPoolDestroyed() override;
     virtual void processDidClose(WebProcessProxy*) override;
     virtual bool shouldTerminate(WebProcessProxy*) const override;
     virtual void refWebContextSupplement() override;
     virtual void derefWebContextSupplement() override;
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
     // Message handlers.
     void didGetCacheOrigins(const Vector<SecurityOriginData>& originIdentifiers, uint64_t callbackID);

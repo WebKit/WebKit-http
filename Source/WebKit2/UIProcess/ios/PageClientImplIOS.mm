@@ -34,6 +34,7 @@
 #import "InteractionInformationAtPosition.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NavigationState.h"
+#import "UIKitSPI.h"
 #import "ViewSnapshotStore.h"
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
@@ -46,20 +47,12 @@
 #import "WebEditCommandProxy.h"
 #import "WebProcessProxy.h"
 #import "_WKDownloadInternal.h"
-#import <UIKit/UIImagePickerController_Private.h>
-#import <UIKit/UIWebTouchEventsGestureRecognizer.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextIndicator.h>
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_webView->_page->process().connection())
-
-@interface UIView (IPI)
-- (UIScrollView *)_scroller;
-- (CGPoint)accessibilityConvertPointFromSceneReferenceCoordinates:(CGPoint)point;
-- (CGRect)accessibilityConvertRectToSceneReferenceCoordinates:(CGRect)rect;
-@end
 
 using namespace WebCore;
 using namespace WebKit;
@@ -237,9 +230,9 @@ void PageClientImpl::toolTipChanged(const String&, const String&)
     notImplemented();
 }
 
-bool PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& frame, WebSecurityOrigin& origin, GeolocationPermissionRequestProxy& request)
+bool PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& frame, API::SecurityOrigin& origin, GeolocationPermissionRequestProxy& request)
 {
-    [[wrapper(m_webView->_page->process().context()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:origin.securityOrigin() frame:frame request:request view:m_webView];
+    [[wrapper(m_webView->_page->process().processPool()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:origin.securityOrigin() frame:frame request:request view:m_webView];
     return true;
 }
 
@@ -445,6 +438,10 @@ PassRefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPagePr
 }
 
 void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, bool fadeOut)
+{
+}
+
+void PageClientImpl::setTextIndicatorAnimationProgress(float)
 {
 }
 

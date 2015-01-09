@@ -31,9 +31,9 @@ inline CDATASection::CDATASection(Document& document, const String& data)
 {
 }
 
-RefPtr<CDATASection> CDATASection::create(Document& document, const String& data)
+Ref<CDATASection> CDATASection::create(Document& document, const String& data)
 {
-    return adoptRef(new CDATASection(document, data));
+    return adoptRef(*new CDATASection(document, data));
 }
 
 String CDATASection::nodeName() const
@@ -46,9 +46,9 @@ Node::NodeType CDATASection::nodeType() const
     return CDATA_SECTION_NODE;
 }
 
-RefPtr<Node> CDATASection::cloneNodeInternal(CloningOperation)
+RefPtr<Node> CDATASection::cloneNodeInternal(Document& targetDocument, CloningOperation)
 {
-    return create(document(), data());
+    return create(targetDocument, data());
 }
 
 bool CDATASection::childTypeAllowed(NodeType) const
@@ -56,7 +56,7 @@ bool CDATASection::childTypeAllowed(NodeType) const
     return false;
 }
 
-RefPtr<Text> CDATASection::virtualCreate(const String& data)
+Ref<Text> CDATASection::virtualCreate(const String& data)
 {
     return create(document(), data);
 }

@@ -20,8 +20,8 @@
 #include "config.h"
 #include "WebKitJavascriptResult.h"
 
+#include "APISerializedScriptValue.h"
 #include "WebKitJavascriptResultPrivate.h"
-#include "WebSerializedScriptValue.h"
 #include <wtf/gobject/GRefPtr.h>
 
 using namespace WebKit;

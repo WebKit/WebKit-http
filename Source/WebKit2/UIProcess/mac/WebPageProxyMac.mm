@@ -43,7 +43,6 @@
 #import "StringUtilities.h"
 #import "TextChecker.h"
 #import "WKBrowsingContextControllerInternal.h"
-#import "WebContext.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import <WebCore/DictationAlternative.h>
@@ -312,7 +311,7 @@ void WebPageProxy::attributedSubstringForCharacterRangeAsync(const EditingRange&
         return;
     }
 
-    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), std::make_unique<ProcessThrottler::BackgroundActivityToken>(m_process->throttler()));
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), m_process->throttler().backgroundActivityToken());
 
     process().send(Messages::WebPage::AttributedSubstringForCharacterRangeAsync(range, callbackID), m_pageID);
 }
@@ -653,7 +652,7 @@ void WebPageProxy::showSelectionServiceMenu(const IPC::DataReference& selectionA
     Vector<WebContextMenuItemData> items;
     ContextMenuContextData contextData(selectionAsRTFD.vector(), telephoneNumbers, isEditable);
 
-    internalShowContextMenu(point, contextData, items, ContextMenuClientEligibility::NotEligibleForClient, nullptr);
+    internalShowContextMenu(point, contextData, items, ContextMenuClientEligibility::NotEligibleForClient, UserData());
 }
 #endif
 

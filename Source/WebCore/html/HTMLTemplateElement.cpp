@@ -55,9 +55,9 @@ HTMLTemplateElement::~HTMLTemplateElement()
         m_content->clearHost();
 }
 
-RefPtr<HTMLTemplateElement> HTMLTemplateElement::create(const QualifiedName& tagName, Document& document)
+Ref<HTMLTemplateElement> HTMLTemplateElement::create(const QualifiedName& tagName, Document& document)
 {
-    return adoptRef(new HTMLTemplateElement(tagName, document));
+    return adoptRef(*new HTMLTemplateElement(tagName, document));
 }
 
 DocumentFragment* HTMLTemplateElement::content() const
@@ -68,17 +68,17 @@ DocumentFragment* HTMLTemplateElement::content() const
     return m_content.get();
 }
 
-RefPtr<Node> HTMLTemplateElement::cloneNodeInternal(CloningOperation type)
+RefPtr<Node> HTMLTemplateElement::cloneNodeInternal(Document& targetDocument, CloningOperation type)
 {
     RefPtr<Node> clone;
     switch (type) {
     case CloningOperation::OnlySelf:
-        return cloneElementWithoutChildren();
+        return cloneElementWithoutChildren(targetDocument);
     case CloningOperation::SelfWithTemplateContent:
-        clone = cloneElementWithoutChildren();
+        clone = cloneElementWithoutChildren(targetDocument);
         break;
     case CloningOperation::Everything:
-        clone = cloneElementWithChildren();
+        clone = cloneElementWithChildren(targetDocument);
         break;
     }
     if (m_content)

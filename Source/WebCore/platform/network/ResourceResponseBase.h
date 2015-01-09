@@ -93,9 +93,9 @@ public:
     WEBCORE_EXPORT bool isAttachment() const;
     WEBCORE_EXPORT String suggestedFilename() const;
 
-    void includeCertificateInfo() const;
+    WEBCORE_EXPORT void includeCertificateInfo() const;
     bool containsCertificateInfo() const { return m_includesCertificateInfo; }
-    CertificateInfo certificateInfo() const;
+    WEBCORE_EXPORT CertificateInfo certificateInfo() const;
     
     // These functions return parsed values of the corresponding response headers.
     // NaN means that the header was not present or had invalid value.
@@ -109,15 +109,9 @@ public:
     double expires() const;
     WEBCORE_EXPORT double lastModified() const;
 
-    unsigned connectionID() const;
-    void setConnectionID(unsigned);
-
-    bool connectionReused() const;
-    void setConnectionReused(bool);
-
     enum class Source { Unknown, Network, DiskCache, DiskCacheAfterValidation };
-    Source source() const;
-    void setSource(Source);
+    WEBCORE_EXPORT Source source() const;
+    WEBCORE_EXPORT void setSource(Source);
 
     ResourceLoadTiming& resourceLoadTiming() const { return m_resourceLoadTiming; }
 
@@ -143,7 +137,7 @@ protected:
     WEBCORE_EXPORT ResourceResponseBase();
     ResourceResponseBase(const URL&, const String& mimeType, long long expectedLength, const String& textEncodingName);
 
-    void lazyInit(InitLevel) const;
+    WEBCORE_EXPORT void lazyInit(InitLevel) const;
 
     // The ResourceResponse subclass should shadow these functions to lazily initialize platform specific fields
     void platformLazyInit(InitLevel) { }
@@ -164,7 +158,6 @@ protected:
     mutable CertificateInfo m_certificateInfo;
 
     int m_httpStatusCode;
-    unsigned m_connectionID;
 
 private:
     mutable double m_cacheControlMaxAge;
@@ -174,8 +167,6 @@ private:
     mutable double m_lastModified;
 
 public:
-    bool m_connectionReused : 1;
-
     bool m_isNull : 1;
     
 private:
@@ -215,7 +206,6 @@ void ResourceResponseBase::encode(Encoder& encoder) const
     encoder << m_httpHeaderFields;
     encoder << m_resourceLoadTiming;
     encoder << m_httpStatusCode;
-    encoder << m_connectionID;
     encoder << m_includesCertificateInfo;
     if (m_includesCertificateInfo)
         encoder << m_certificateInfo;
@@ -251,8 +241,6 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
     if (!decoder.decode(response.m_resourceLoadTiming))
         return false;
     if (!decoder.decode(response.m_httpStatusCode))
-        return false;
-    if (!decoder.decode(response.m_connectionID))
         return false;
     if (!decoder.decode(response.m_includesCertificateInfo))
         return false;

@@ -27,7 +27,6 @@
 #include "Document.h"
 #include "ElementIterator.h"
 #include "Font.h"
-#include "GlyphPageTreeNode.h"
 #include "SVGGlyphElement.h"
 #include "SVGHKernElement.h"
 #include "SVGMissingGlyphElement.h"
@@ -54,9 +53,9 @@ inline SVGFontElement::SVGFontElement(const QualifiedName& tagName, Document& do
     registerAnimatedPropertiesForSVGFontElement();
 }
 
-PassRefPtr<SVGFontElement> SVGFontElement::create(const QualifiedName& tagName, Document& document)
+Ref<SVGFontElement> SVGFontElement::create(const QualifiedName& tagName, Document& document)
 {
-    return adoptRef(new SVGFontElement(tagName, document));
+    return adoptRef(*new SVGFontElement(tagName, document));
 }
 
 void SVGFontElement::invalidateGlyphCache()
