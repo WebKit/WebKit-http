@@ -54,6 +54,10 @@ void WebInspectorProxy::platformDidClose()
     notImplemented();
 }
 
+void WebInspectorProxy::platformInvalidate()
+{
+}
+
 void WebInspectorProxy::platformHide()
 {
     notImplemented();

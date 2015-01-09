@@ -31,7 +31,6 @@
 #include "WaylandWPEProtocolClient.h"
 #include <memory>
 #include <wayland-client.h>
-#include <wtf/PassOwnPtr.h>
 
 #include <wayland-egl.h>
 #include <EGL/egl.h>
@@ -52,7 +51,7 @@ public:
 
     std::unique_ptr<WaylandSurface> createSurface(const IntSize&);
 
-    PassOwnPtr<GLContextEGL> createOffscreenGLContext(GLContext*);
+    std::unique_ptr<GLContextEGL> createOffscreenGLContext(GLContext*);
 
 private:
     static const struct wl_registry_listener m_registryListener;

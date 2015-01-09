@@ -26,14 +26,14 @@
 #include "config.h"
 #include "WPEView.h"
 
-#include "WebContext.h"
 #include "WebPageGroup.h"
+#include "WebProcessPool.h"
 
 using namespace WebKit;
 
 namespace WPE {
 
-View::View(WebContext* context, WebPageGroup* pageGroup)
+View::View(WebProcessPool* pool, WebPageGroup* pageGroup)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
     , m_size{800, 600}
 {
@@ -50,7 +50,7 @@ View::View(WebContext* context, WebPageGroup* pageGroup)
     configuration.pageGroup = pageGroup;
     configuration.relatedPage = nullptr;
     configuration.userContentController = nullptr;
-    m_pageProxy = context->createWebPage(*m_pageClient, WTF::move(configuration));
+    m_pageProxy = pool->createWebPage(*m_pageClient, WTF::move(configuration));
     m_pageProxy->initializeWebPage();
 }
 

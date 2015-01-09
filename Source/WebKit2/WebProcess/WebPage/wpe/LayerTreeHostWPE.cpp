@@ -239,7 +239,11 @@ bool LayerTreeHostWPE::flushPendingLayerChanges()
     m_rootLayer->flushCompositingStateForThisLayerOnly();
     m_nonCompositedContentLayer->flushCompositingStateForThisLayerOnly();
 
-    return m_webPage->corePage()->mainFrame().view()->flushCompositingStateIncludingSubframes();
+    if (!m_webPage->corePage()->mainFrame().view()->flushCompositingStateIncludingSubframes())
+        return false;
+
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).updateBackingStoreIncludingSubLayers();
+    return true;
 }
 
 void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)

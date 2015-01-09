@@ -185,7 +185,7 @@ std::unique_ptr<WaylandSurface> WaylandDisplay::createSurface(const IntSize& siz
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
 }
 
-PassOwnPtr<GLContextEGL> WaylandDisplay::createOffscreenGLContext(GLContext* sharingContext)
+std::unique_ptr<GLContextEGL> WaylandDisplay::createOffscreenGLContext(GLContext* sharingContext)
 {
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, 1, 1);
