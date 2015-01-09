@@ -126,11 +126,11 @@ public:
     Vector<String> formControlStateOfPreviousHistoryItem(ExceptionCode&);
     void setFormControlStateOfPreviousHistoryItem(const Vector<String>&, ExceptionCode&);
 
-    PassRefPtr<ClientRect> absoluteCaretBounds(ExceptionCode&);
+    Ref<ClientRect> absoluteCaretBounds(ExceptionCode&);
 
-    PassRefPtr<ClientRect> boundingBox(Element*, ExceptionCode&);
+    Ref<ClientRect> boundingBox(Element*, ExceptionCode&);
 
-    PassRefPtr<ClientRectList> inspectorHighlightRects(ExceptionCode&);
+    Ref<ClientRectList> inspectorHighlightRects(ExceptionCode&);
     String inspectorHighlightObject(ExceptionCode&);
 
     unsigned markerCountForNode(Node*, const String&, ExceptionCode&);
@@ -218,7 +218,7 @@ public:
     String repaintRectsAsText(ExceptionCode&) const;
     String scrollingStateTreeAsText(ExceptionCode&) const;
     String mainThreadScrollingReasons(ExceptionCode&) const;
-    PassRefPtr<ClientRectList> nonFastScrollableRects(ExceptionCode&) const;
+    RefPtr<ClientRectList> nonFastScrollableRects(ExceptionCode&) const;
 
     void garbageCollectDocumentResources(ExceptionCode&) const;
 
@@ -265,7 +265,7 @@ public:
     void webkitDidExitFullScreenForElement(Element*);
 #endif
 
-    void setApplicationCacheOriginQuota(unsigned long long);
+    WEBCORE_EXPORT void setApplicationCacheOriginQuota(unsigned long long);
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
@@ -323,7 +323,7 @@ public:
     double closestTimeToTimeRanges(double time, TimeRanges*);
 #endif
 
-    PassRefPtr<ClientRect> selectionBounds(ExceptionCode&);
+    Ref<ClientRect> selectionBounds(ExceptionCode&);
 
 #if ENABLE(VIBRATION)
     bool isVibrating();
@@ -333,7 +333,7 @@ public:
     bool isPluginSnapshotted(Element*, ExceptionCode&);
 
 #if ENABLE(MEDIA_SOURCE)
-    void initializeMockMediaSource();
+    WEBCORE_EXPORT void initializeMockMediaSource();
     Vector<String> bufferedSamplesForTrackID(SourceBuffer*, const AtomicString&);
 #endif
 

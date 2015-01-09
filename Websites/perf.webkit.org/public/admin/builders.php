@@ -14,6 +14,8 @@ if ($db) {
     } else if ($action == 'update') {
         if (update_field('builders', 'builder', 'name') || update_field('builders', 'builder', 'build_url'))
             regenerate_manifest();
+        else if (update_field('build_slaves', 'slave', 'password_hash', hash('sha256', $_POST['new_password'])))
+            regenerate_manifest();
         else
             notice('Invalid parameters.');
     }
@@ -22,6 +24,7 @@ if ($db) {
         'name' => array('size' => 50, 'editing_mode' => 'string'),
         'password_hash' => array(),
         'password' => array('pre_insertion' => TRUE, 'editing_mode' => 'string'),
+        'new_password' => array('post_insertion' => TRUE, 'editing_mode' => 'string'),
         'build_url' => array('label' => 'Build URL', 'size' => 100, 'editing_mode' => 'url'),
     ));
 

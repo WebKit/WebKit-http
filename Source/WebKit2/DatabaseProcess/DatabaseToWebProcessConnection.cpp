@@ -42,7 +42,7 @@ PassRefPtr<DatabaseToWebProcessConnection> DatabaseToWebProcessConnection::creat
 
 DatabaseToWebProcessConnection::DatabaseToWebProcessConnection(IPC::Connection::Identifier connectionIdentifier)
 {
-    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, this, RunLoop::main());
+    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, RunLoop::main());
     m_connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);
     m_connection->open();
 }
@@ -52,7 +52,7 @@ DatabaseToWebProcessConnection::~DatabaseToWebProcessConnection()
 
 }
 
-void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
+void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::DatabaseToWebProcessConnection::messageReceiverName()) {
         didReceiveDatabaseToWebProcessConnectionMessage(connection, decoder);
@@ -69,7 +69,7 @@ void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection* connecti
     ASSERT_NOT_REACHED();
 }
 
-void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& reply)
+void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& reply)
 {
     if (decoder.messageReceiverName() == Messages::DatabaseProcessIDBConnection::messageReceiverName()) {
         IDBConnectionMap::iterator backendIterator = m_idbConnections.find(decoder.destinationID());
@@ -81,14 +81,14 @@ void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection* conn
     ASSERT_NOT_REACHED();
 }
 
-void DatabaseToWebProcessConnection::didClose(IPC::Connection*)
+void DatabaseToWebProcessConnection::didClose(IPC::Connection&)
 {
     // The WebProcess has disconnected, close all of the connections associated with it
     while (!m_idbConnections.isEmpty())
         removeDatabaseProcessIDBConnection(m_idbConnections.begin()->key);
 }
 
-void DatabaseToWebProcessConnection::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
+void DatabaseToWebProcessConnection::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
 {
 
 }

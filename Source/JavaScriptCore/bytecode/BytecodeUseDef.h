@@ -55,9 +55,7 @@ void computeUsesForBytecodeOffset(
     case op_touch_entry:
     case op_profile_control_flow:
         return;
-    case op_create_lexical_environment:
     case op_get_scope:
-    case op_create_arguments:
     case op_to_this:
     case op_pop_scope:
     case op_profile_will_call:
@@ -75,6 +73,7 @@ void computeUsesForBytecodeOffset(
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
         return;
     }
+    case op_create_arguments:
     case op_new_func:
     case op_ret_object_or_this:
     case op_jlesseq:
@@ -114,6 +113,7 @@ void computeUsesForBytecodeOffset(
         functor(codeBlock, instruction, opcodeID, instruction[4].u.operand);
         return;
     }
+    case op_create_lexical_environment:
     case op_get_enumerable_length:
     case op_new_func_exp:
     case op_to_index_string:
@@ -153,7 +153,6 @@ void computeUsesForBytecodeOffset(
     case op_has_indexed_property:
     case op_next_enumerator_pname:
     case op_get_by_val:
-    case op_get_argument_by_val:
     case op_in:
     case op_instanceof:
     case op_check_has_instance:
@@ -182,6 +181,7 @@ void computeUsesForBytecodeOffset(
         return;
     }
     case op_has_structure_property:
+    case op_get_argument_by_val:
     case op_get_generic_property_enumerator:
     case op_construct_varargs:
     case op_call_varargs: {

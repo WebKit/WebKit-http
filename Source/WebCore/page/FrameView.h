@@ -70,8 +70,8 @@ public:
     friend class RenderView;
     friend class Internals;
 
-    WEBCORE_EXPORT static PassRefPtr<FrameView> create(Frame&);
-    static PassRefPtr<FrameView> create(Frame&, const IntSize& initialSize);
+    WEBCORE_EXPORT static Ref<FrameView> create(Frame&);
+    static Ref<FrameView> create(Frame&, const IntSize& initialSize);
 
     virtual ~FrameView();
 
@@ -224,7 +224,7 @@ public:
     WEBCORE_EXPORT void setViewportSizeForCSSViewportUnits(IntSize);
     IntSize viewportSizeForCSSViewportUnits() const;
     
-    virtual IntRect windowClipRect(bool clipToContents = true) const override;
+    virtual IntRect windowClipRect() const override;
     WEBCORE_EXPORT IntRect windowClipRectForFrameOwner(const HTMLFrameOwnerElement*, bool clipToLayerContents) const;
 
     virtual IntRect windowResizerRect() const override;
@@ -244,6 +244,7 @@ public:
     WEBCORE_EXPORT virtual IntPoint maximumScrollPosition() const override;
     void delayedScrollEventTimerFired();
 
+    void viewportContentsChanged();
     void resumeVisibleImageAnimationsIncludingSubframes();
 
     // This is different than visibleContentRect() in that it ignores negative (or overly positive)
@@ -527,7 +528,6 @@ protected:
 
     virtual bool isVerticalDocument() const override;
     virtual bool isFlippedDocument() const override;
-    virtual bool containsSVGDocument() const override;
 
 private:
     explicit FrameView(Frame&);

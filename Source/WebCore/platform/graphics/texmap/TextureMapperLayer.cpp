@@ -21,6 +21,7 @@
 #include "TextureMapperLayer.h"
 
 #include "FloatQuad.h"
+#include "GraphicsLayerTextureMapper.h"
 #include "Region.h"
 #include <wtf/MathExtras.h>
 
@@ -447,6 +448,20 @@ TextureMapperLayer::~TextureMapperLayer()
         child->m_parent = nullptr;
 
     removeFromParent();
+}
+
+void TextureMapperLayer::setChildren(const Vector<GraphicsLayer*>& newChildren)
+{
+    removeAllChildren();
+    for (auto* child : newChildren)
+        addChild(&downcast<GraphicsLayerTextureMapper>(child)->layer());
+}
+
+void TextureMapperLayer::setChildren(const Vector<TextureMapperLayer*>& newChildren)
+{
+    removeAllChildren();
+    for (auto* child : newChildren)
+        addChild(child);
 }
 
 void TextureMapperLayer::addChild(TextureMapperLayer* childLayer)

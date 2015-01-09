@@ -368,7 +368,6 @@ void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
     prepareBackingStoreIfNeeded();
     commitLayerChanges();
     m_layer.syncAnimations();
-    updateBackingStoreIfNeeded();
 }
 
 void GraphicsLayerTextureMapper::prepareBackingStoreIfNeeded()
@@ -416,11 +415,8 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     if (m_changeMask == NoChanges)
         return;
 
-    if (m_changeMask & ChildrenChange) {
-        m_layer.removeAllChildren();
-        for (auto& child : m_children)
-            m_layer.addChild(&downcast<GraphicsLayerTextureMapper>(child)->layer());
-    }
+    if (m_changeMask & ChildrenChange)
+        m_layer.setChildren(children());
 
     if (m_changeMask & MaskLayerChange)
         m_layer.setMaskLayer(&downcast<GraphicsLayerTextureMapper>(maskLayer())->layer());
@@ -506,7 +502,8 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
 
 void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect)
 {
-    ASSERT(m_layer.textureMapper());
+    if (!m_layer.textureMapper())
+        return;
 
     flushCompositingStateForThisLayerOnly();
 
@@ -516,6 +513,21 @@ void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect)
         downcast<GraphicsLayerTextureMapper>(replicaLayer())->flushCompositingState(rect);
     for (auto* child : children())
         downcast<GraphicsLayerTextureMapper>(child)->flushCompositingState(rect);
+}
+
+void GraphicsLayerTextureMapper::updateBackingStoreIncludingSubLayers()
+{
+    if (!m_layer.textureMapper())
+        return;
+
+    updateBackingStoreIfNeeded();
+
+    if (maskLayer())
+        downcast<GraphicsLayerTextureMapper>(*maskLayer()).updateBackingStoreIfNeeded();
+    if (replicaLayer())
+        downcast<GraphicsLayerTextureMapper>(*replicaLayer()).updateBackingStoreIfNeeded();
+    for (auto* child : children())
+        downcast<GraphicsLayerTextureMapper>(*child).updateBackingStoreIncludingSubLayers();
 }
 
 void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()

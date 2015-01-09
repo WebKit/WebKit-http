@@ -55,12 +55,12 @@ class SingleTestRunner(object):
         self._options = options
         self._results_directory = results_directory
         self._driver = driver
-        self._timeout = test_input.timeout
         self._worker_name = worker_name
         self._test_name = test_input.test_name
         self._should_run_pixel_test = test_input.should_run_pixel_test
         self._reference_files = test_input.reference_files
         self._stop_when_done = stop_when_done
+        self._timeout = test_input.timeout
 
         if self._reference_files:
             # Detect and report a test which has a wrong combination of expectation files.

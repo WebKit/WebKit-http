@@ -28,9 +28,9 @@
 
 #include "DatabaseProcessMessages.h"
 #include "DatabaseProcessProxyMessages.h"
-#include "WebContext.h"
 #include "WebOriginDataManagerProxy.h"
 #include "WebOriginDataManagerProxyMessages.h"
+#include "WebProcessPool.h"
 
 #if ENABLE(DATABASE_PROCESS)
 
@@ -38,13 +38,13 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<DatabaseProcessProxy> DatabaseProcessProxy::create(WebContext* context)
+PassRefPtr<DatabaseProcessProxy> DatabaseProcessProxy::create(WebProcessPool* processPool)
 {
-    return adoptRef(new DatabaseProcessProxy(context));
+    return adoptRef(new DatabaseProcessProxy(processPool));
 }
 
-DatabaseProcessProxy::DatabaseProcessProxy(WebContext* context)
-    : m_webContext(context)
+DatabaseProcessProxy::DatabaseProcessProxy(WebProcessPool* processPool)
+    : m_processPool(processPool)
     , m_numPendingConnectionRequests(0)
 {
     connect();
@@ -69,7 +69,7 @@ void DatabaseProcessProxy::connectionWillClose(IPC::Connection*)
 {
 }
 
-void DatabaseProcessProxy::didReceiveMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder)
+void DatabaseProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::DatabaseProcessProxy::messageReceiverName()) {
         didReceiveDatabaseProcessProxyMessage(connection, decoder);
@@ -77,7 +77,7 @@ void DatabaseProcessProxy::didReceiveMessage(IPC::Connection* connection, IPC::M
     }
 
     if (decoder.messageReceiverName() == Messages::WebOriginDataManagerProxy::messageReceiverName()) {
-        m_webContext->supplement<WebOriginDataManagerProxy>()->didReceiveMessage(connection, decoder);
+        m_processPool->supplement<WebOriginDataManagerProxy>()->didReceiveMessage(connection, decoder);
         return;
     }
 }
@@ -94,7 +94,7 @@ void DatabaseProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::Web
     connection()->send(Messages::DatabaseProcess::CreateDatabaseToWebProcessConnection(), 0, IPC::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
-void DatabaseProcessProxy::didClose(IPC::Connection*)
+void DatabaseProcessProxy::didClose(IPC::Connection&)
 {
     // The database process must have crashed or exited, so send any pending sync replies we might have.
     while (!m_pendingConnectionReplies.isEmpty()) {
@@ -109,12 +109,11 @@ void DatabaseProcessProxy::didClose(IPC::Connection*)
 #endif
     }
 
-    // Tell WebContext to forget about this database process. This may cause us to be deleted.
-    m_webContext->databaseProcessCrashed(this);
-    
+    // Tell ProcessPool to forget about this database process. This may cause us to be deleted.
+    m_processPool->databaseProcessCrashed(this);
 }
 
-void DatabaseProcessProxy::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
+void DatabaseProcessProxy::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
 {
 }
 

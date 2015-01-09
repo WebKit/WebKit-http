@@ -118,6 +118,8 @@ RenderElement::~RenderElement()
         for (const FillLayer* maskLayer = m_style->maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
             if (StyleImage* maskImage = maskLayer->image())
                 maskImage->removeClient(this);
+            else if (maskLayer->maskImage().get())
+                maskLayer->maskImage()->removeRendererImageClient(this);
         }
 
         if (StyleImage* borderImage = m_style->borderImage().image())
@@ -323,18 +325,22 @@ inline bool RenderElement::shouldRepaintForStyleDifference(StyleDifference diff)
 void RenderElement::updateFillImages(const FillLayer* oldLayers, const FillLayer* newLayers)
 {
     // Optimize the common case
-    if (oldLayers && !oldLayers->next() && newLayers && !newLayers->next() && (oldLayers->image() == newLayers->image()))
+    if (oldLayers && !oldLayers->next() && newLayers && !newLayers->next() && oldLayers->image() == newLayers->image() && oldLayers->maskImage() == newLayers->maskImage())
         return;
     
     // Go through the new layers and addClients first, to avoid removing all clients of an image.
     for (const FillLayer* currNew = newLayers; currNew; currNew = currNew->next()) {
-        if (currNew->image())
-            currNew->image()->addClient(this);
+        if (StyleImage* image = currNew->image())
+            image->addClient(this);
+        else if (currNew->maskImage().get())
+            currNew->maskImage()->addRendererImageClient(this);
     }
 
     for (const FillLayer* currOld = oldLayers; currOld; currOld = currOld->next()) {
-        if (currOld->image())
-            currOld->image()->removeClient(this);
+        if (StyleImage* image = currOld->image())
+            image->removeClient(this);
+        else if (currOld->maskImage().get())
+            currOld->maskImage()->removeRendererImageClient(this);
     }
 }
 
@@ -1330,15 +1336,23 @@ bool RenderElement::borderImageIsLoadedAndCanBeRendered() const
     return borderImage && borderImage->canRender(this, style().effectiveZoom()) && borderImage->isLoaded();
 }
 
-bool RenderElement::isInsideViewport(const IntRect* visibleRect) const
+bool RenderElement::mayCauseRepaintInsideViewport(const IntRect* optionalViewportRect) const
 {
     auto& frameView = view().frameView();
     if (frameView.isOffscreen())
         return false;
 
+    if (!hasOverflowClip()) {
+        // FIXME: Computing the overflow rect is expensive if any descendant has
+        // its own self-painting layer. As a result, we prefer to abort early in
+        // this case and assume it may cause us to repaint inside the viewport.
+        if (!hasLayer() || downcast<RenderLayerModelObject>(*this).layer()->firstChild())
+            return true;
+    }
+
     // Compute viewport rect if it was not provided.
-    const IntRect& viewportRect = visibleRect ? *visibleRect : frameView.windowToContents(frameView.windowClipRect());
-    return viewportRect.intersects(enclosingIntRect(absoluteClippedOverflowRect()));
+    const IntRect& visibleRect = optionalViewportRect ? *optionalViewportRect : frameView.windowToContents(frameView.windowClipRect());
+    return visibleRect.intersects(enclosingIntRect(absoluteClippedOverflowRect()));
 }
 
 static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const IntRect& visibleRect)

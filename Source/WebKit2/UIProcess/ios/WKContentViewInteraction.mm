@@ -29,10 +29,14 @@
 #if PLATFORM(IOS)
 
 #import "APIUIClient.h"
+#import "DataDetectorsUISPI.h"
 #import "EditingRange.h"
+#import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
 #import "SmartMagnificationController.h"
+#import "TextInputSPI.h"
+#import "UIKitSPI.h"
 #import "WKActionSheetAssistant.h"
 #import "WKFormInputControl.h"
 #import "WKFormSelectControl.h"
@@ -46,29 +50,15 @@
 #import "WebProcessProxy.h"
 #import "_WKFormDelegate.h"
 #import "_WKFormInputSession.h"
+#import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
-#import <DataDetectorsUI/DDDetectionController.h>
-#import <TextInput/TI_NSStringExtras.h>
-#import <UIKit/UIApplication_Private.h>
-#import <UIKit/UIFont_Private.h>
-#import <UIKit/UIGestureRecognizer_Private.h>
-#import <UIKit/UIKeyboardImpl.h>
-#import <UIKit/UIKeyboardIntl.h>
-#import <UIKit/UILongPressGestureRecognizer_Private.h>
-#import <UIKit/UITapGestureRecognizer_Private.h>
-#import <UIKit/UITextInteractionAssistant_Private.h>
-#import <UIKit/UIWebDocumentView.h> // FIXME: should not include this header.
-#import <UIKit/_UIWebHighlightLongPressGestureRecognizer.h>
 #import <WebCore/Color.h>
+#import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/WebEvent.h>
-#import <WebCore/_UIHighlightViewSPI.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
 #import <wtf/RetainPtr.h>
-
-SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectorsUI)
-SOFT_LINK_CLASS(DataDetectorsUI, DDDetectionController)
 
 using namespace WebCore;
 using namespace WebKit;
@@ -1332,6 +1322,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         if (!textLength || textLength > 200)
             return NO;
 
+        if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
+            return NO;
+            
         return YES;
     }
 
@@ -1472,6 +1465,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_define:(id)sender
 {
+    if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
+        return;
+
     _page->getSelectionOrContentsAsString([self](const String& string, CallbackBase::Error error) {
         if (error != CallbackBase::Error::None)
             return;

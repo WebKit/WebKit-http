@@ -50,17 +50,17 @@ public:
         BlockAllStorage
     };
 
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> create(const URL&);
-    static PassRefPtr<SecurityOrigin> createUnique();
+    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const URL&);
+    static Ref<SecurityOrigin> createUnique();
 
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> createFromDatabaseIdentifier(const String&);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> createFromDatabaseIdentifier(const String&);
     // Alternate form of createFromDatabaseIdentifier that returns a nullptr on failure, instead of an empty origin.
     // FIXME: Many users of createFromDatabaseIdentifier seem to expect maybeCreateFromDatabaseIdentifier behavior,
     // but they aren't getting it so they might be buggy.
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
+    WEBCORE_EXPORT static RefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
 
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> createFromString(const String&);
-    WEBCORE_EXPORT static PassRefPtr<SecurityOrigin> create(const String& protocol, const String& host, int port);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> createFromString(const String&);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, int port);
 
     // Some URL schemes use nested URLs for their security context. For example,
     // filesystem URLs look like the following:
@@ -77,7 +77,7 @@ public:
 
     // Create a deep copy of this SecurityOrigin. This method is useful
     // when marshalling a SecurityOrigin to another thread.
-    WEBCORE_EXPORT PassRefPtr<SecurityOrigin> isolatedCopy() const;
+    WEBCORE_EXPORT Ref<SecurityOrigin> isolatedCopy() const;
 
     // Set the domain property of this security origin to newDomain. This
     // function does not check whether newDomain is a suffix of the current
@@ -157,8 +157,6 @@ public:
     bool canAccessPluginStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
     bool canAccessApplicationCache(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
     bool canAccessCookies() const { return !isUnique(); }
-    bool canAccessPasswordManager() const { return !isUnique(); }
-    bool canAccessFileSystem() const { return !isUnique(); }
     Policy canShowNotifications() const;
 
     // The local SecurityOrigin is the most privileged SecurityOrigin.

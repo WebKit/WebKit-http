@@ -31,51 +31,47 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "AbstractSQLTransaction.h"
 #include "SQLCallbackWrapper.h"
 #include "SQLStatement.h"
 #include "SQLTransactionStateMachine.h"
 #include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class AbstractSQLTransactionBackend;
 class Database;
 class SQLError;
 class SQLStatementCallback;
 class SQLStatementErrorCallback;
+class SQLTransactionBackend;
 class SQLTransactionCallback;
 class SQLTransactionErrorCallback;
 class SQLValue;
 class VoidCallback;
 
-class SQLTransaction : public SQLTransactionStateMachine<SQLTransaction>, public AbstractSQLTransaction {
+class SQLTransaction : public ThreadSafeRefCounted<SQLTransaction>, public SQLTransactionStateMachine<SQLTransaction> {
 public:
-    static PassRefPtr<SQLTransaction> create(Database*, PassRefPtr<SQLTransactionCallback>,
-        PassRefPtr<VoidCallback> successCallback, PassRefPtr<SQLTransactionErrorCallback>,
-        bool readOnly);
+    static Ref<SQLTransaction> create(Ref<Database>&&, RefPtr<SQLTransactionCallback>&&, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&&, bool readOnly);
+    ~SQLTransaction();
 
     void performPendingCallback();
 
-    void executeSQL(const String& sqlStatement, const Vector<SQLValue>& arguments,
-        PassRefPtr<SQLStatementCallback>, PassRefPtr<SQLStatementErrorCallback>, ExceptionCode&);
+    void executeSQL(const String& sqlStatement, const Vector<SQLValue>& arguments, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&, ExceptionCode&);
 
-    Database* database() { return m_database.get(); }
+    Database& database() { return m_database; }
+
+    // APIs called from the backend published via SQLTransaction:
+    void requestTransitToState(SQLTransactionState);
+    bool hasCallback() const;
+    bool hasSuccessCallback() const;
+    bool hasErrorCallback() const;
+    void setBackend(SQLTransactionBackend*);
 
 private:
-    SQLTransaction(Database*, PassRefPtr<SQLTransactionCallback>,
-        PassRefPtr<VoidCallback> successCallback, PassRefPtr<SQLTransactionErrorCallback>,
-        bool readOnly);
+    SQLTransaction(Ref<Database>&&, RefPtr<SQLTransactionCallback>&&, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&&, bool readOnly);
 
     void clearCallbackWrappers();
-
-    // APIs called from the backend published via AbstractSQLTransaction:
-    virtual void requestTransitToState(SQLTransactionState) override;
-    virtual bool hasCallback() const override;
-    virtual bool hasSuccessCallback() const override;
-    virtual bool hasErrorCallback() const override;
-    virtual void setBackend(AbstractSQLTransactionBackend*) override;
 
     // State Machine functions:
     virtual StateFunction stateFunctionFor(SQLTransactionState) override;
@@ -93,8 +89,8 @@ private:
 
     SQLTransactionState nextStateForTransactionError();
 
-    RefPtr<Database> m_database;
-    RefPtr<AbstractSQLTransactionBackend> m_backend;
+    Ref<Database> m_database;
+    RefPtr<SQLTransactionBackend> m_backend;
     SQLCallbackWrapper<SQLTransactionCallback> m_callbackWrapper;
     SQLCallbackWrapper<VoidCallback> m_successCallbackWrapper;
     SQLCallbackWrapper<SQLTransactionErrorCallback> m_errorCallbackWrapper;

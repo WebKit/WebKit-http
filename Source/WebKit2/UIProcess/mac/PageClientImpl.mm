@@ -140,7 +140,7 @@ PageClientImpl::PageClientImpl(WKView* wkView, WKWebView *webView)
     , m_webView(webView)
     , m_undoTarget(adoptNS([[WKEditorUndoTargetObjC alloc] init]))
 #if USE(DICTATION_ALTERNATIVES)
-    , m_alternativeTextUIController(adoptPtr(new AlternativeTextUIController))
+    , m_alternativeTextUIController(std::make_unique<AlternativeTextUIController>())
 #endif
 {
 #if !WK_API_ENABLED
@@ -493,6 +493,11 @@ void PageClientImpl::setTextIndicator(PassRefPtr<TextIndicator> textIndicator, b
     [m_wkView _setTextIndicator:textIndicator fadeOut:fadeOut];
 }
 
+void PageClientImpl::setTextIndicatorAnimationProgress(float progress)
+{
+    [m_wkView _setTextIndicatorAnimationProgress:progress];
+}
+
 void PageClientImpl::accessibilityWebProcessTokenReceived(const IPC::DataReference& data)
 {
     NSData* remoteToken = [NSData dataWithBytes:data.data() length:data.size()];
@@ -564,13 +569,9 @@ void PageClientImpl::didPerformDictionaryLookup(const DictionaryPopupInfo& dicti
     RetainPtr<NSMutableDictionary> mutableOptions = adoptNS([(NSDictionary *)dictionaryPopupInfo.options.get() mutableCopy]);
 
     if (canLoadLUTermOptionDisableSearchTermIndicator() && dictionaryPopupInfo.textIndicator.contentImage) {
-        // Run the animations serially because attaching another subwindow breaks the bounce animation.
-        // We could consider making the bounce NSAnimationNonblockingThreaded instead, which seems
-        // to work, but need to consider all of the implications.
-        [m_wkView _setTextIndicator:TextIndicator::create(dictionaryPopupInfo.textIndicator) fadeOut:NO animationCompletionHandler:[dictionaryPopupInfo, textBaselineOrigin, mutableOptions] {
-            [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
-            [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
-        }];
+        [m_wkView _setTextIndicator:TextIndicator::create(dictionaryPopupInfo.textIndicator) fadeOut:NO];
+        [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
+        [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
     } else
         [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
 }
@@ -774,10 +775,10 @@ CGRect PageClientImpl::boundsOfLayerInLayerBackedWindowCoordinates(CALayer *laye
     return [windowContentLayer convertRect:layer.bounds fromLayer:layer];
 }
 
-void PageClientImpl::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, API::Object* userData)
+void PageClientImpl::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, bool forImmediateAction, API::Object* userData)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [m_wkView _didPerformActionMenuHitTest:result userData:userData];
+    [m_wkView _didPerformActionMenuHitTest:result forImmediateAction:forImmediateAction userData:userData];
 #endif
 }
 

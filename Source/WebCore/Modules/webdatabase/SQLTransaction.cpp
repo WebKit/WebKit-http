@@ -31,7 +31,6 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "AbstractSQLTransactionBackend.h"
 #include "Database.h"
 #include "DatabaseAuthorizer.h"
 #include "DatabaseContext.h"
@@ -40,6 +39,7 @@
 #include "SQLError.h"
 #include "SQLStatementCallback.h"
 #include "SQLStatementErrorCallback.h"
+#include "SQLTransactionBackend.h"
 #include "SQLTransactionCallback.h"
 #include "SQLTransactionClient.h" // FIXME: Should be used in the backend only.
 #include "SQLTransactionErrorCallback.h"
@@ -49,24 +49,23 @@
 
 namespace WebCore {
 
-PassRefPtr<SQLTransaction> SQLTransaction::create(Database* db, PassRefPtr<SQLTransactionCallback> callback,
-    PassRefPtr<VoidCallback> successCallback, PassRefPtr<SQLTransactionErrorCallback> errorCallback,
-    bool readOnly)
+Ref<SQLTransaction> SQLTransaction::create(Ref<Database>&& database, RefPtr<SQLTransactionCallback>&& callback, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&& errorCallback, bool readOnly)
 {
-    return adoptRef(new SQLTransaction(db, callback, successCallback, errorCallback, readOnly));
+    return adoptRef(*new SQLTransaction(WTF::move(database), WTF::move(callback), WTF::move(successCallback), WTF::move(errorCallback), readOnly));
 }
 
-SQLTransaction::SQLTransaction(Database* db, PassRefPtr<SQLTransactionCallback> callback,
-    PassRefPtr<VoidCallback> successCallback, PassRefPtr<SQLTransactionErrorCallback> errorCallback,
-    bool readOnly)
-    : m_database(db)
-    , m_callbackWrapper(callback, db->scriptExecutionContext())
-    , m_successCallbackWrapper(successCallback, db->scriptExecutionContext())
-    , m_errorCallbackWrapper(errorCallback, db->scriptExecutionContext())
+SQLTransaction::SQLTransaction(Ref<Database>&& database, RefPtr<SQLTransactionCallback>&& callback, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&& errorCallback, bool readOnly)
+    : m_database(WTF::move(database))
+    , m_callbackWrapper(WTF::move(callback), m_database->scriptExecutionContext())
+    , m_successCallbackWrapper(WTF::move(successCallback), m_database->scriptExecutionContext())
+    , m_errorCallbackWrapper(WTF::move(errorCallback), m_database->scriptExecutionContext())
     , m_executeSqlAllowed(false)
     , m_readOnly(readOnly)
 {
-    ASSERT(m_database);
+}
+
+SQLTransaction::~SQLTransaction()
+{
 }
 
 bool SQLTransaction::hasCallback() const
@@ -84,7 +83,7 @@ bool SQLTransaction::hasErrorCallback() const
     return m_errorCallbackWrapper.hasCallback();
 }
 
-void SQLTransaction::setBackend(AbstractSQLTransactionBackend* backend)
+void SQLTransaction::setBackend(SQLTransactionBackend* backend)
 {
     ASSERT(!m_backend);
     m_backend = backend;
@@ -187,8 +186,7 @@ SQLTransactionState SQLTransaction::deliverStatementCallback()
     // Otherwise, continue to loop through the statement queue
     m_executeSqlAllowed = true;
 
-    AbstractSQLStatement* currentAbstractStatement = m_backend->currentStatement();
-    SQLStatement* currentStatement = static_cast<SQLStatement*>(currentAbstractStatement);
+    SQLStatement* currentStatement = m_backend->currentStatement();
     ASSERT(currentStatement);
 
     bool result = currentStatement->performCallback(this);
@@ -206,7 +204,7 @@ SQLTransactionState SQLTransaction::deliverQuotaIncreaseCallback()
 {
     ASSERT(m_backend->currentStatement());
 
-    bool shouldRetryCurrentStatement = m_database->transactionClient()->didExceedQuota(database());
+    bool shouldRetryCurrentStatement = m_database->transactionClient()->didExceedQuota(&database());
     m_backend->setShouldRetryCurrentStatement(shouldRetryCurrentStatement);
 
     return SQLTransactionState::RunStatements;
@@ -248,10 +246,10 @@ void SQLTransaction::performPendingCallback()
     runStateMachine();
 }
 
-void SQLTransaction::executeSQL(const String& sqlStatement, const Vector<SQLValue>& arguments, PassRefPtr<SQLStatementCallback> callback, PassRefPtr<SQLStatementErrorCallback> callbackError, ExceptionCode& e)
+void SQLTransaction::executeSQL(const String& sqlStatement, const Vector<SQLValue>& arguments, RefPtr<SQLStatementCallback>&& callback, RefPtr<SQLStatementErrorCallback>&& callbackError, ExceptionCode& ec)
 {
     if (!m_executeSqlAllowed || !m_database->opened()) {
-        e = INVALID_STATE_ERR;
+        ec = INVALID_STATE_ERR;
         return;
     }
 
@@ -261,7 +259,7 @@ void SQLTransaction::executeSQL(const String& sqlStatement, const Vector<SQLValu
     else if (m_readOnly)
         permissions |= DatabaseAuthorizer::ReadOnlyMask;
 
-    auto statement = std::make_unique<SQLStatement>(m_database.get(), callback, callbackError);
+    auto statement = std::make_unique<SQLStatement>(m_database, WTF::move(callback), WTF::move(callbackError));
     m_backend->executeSQL(WTF::move(statement), sqlStatement, arguments, permissions);
 }
 

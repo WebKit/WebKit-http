@@ -27,9 +27,9 @@
 #import "WKContextPrivateMac.h"
 
 #import "APIArray.h"
+#import "APIDictionary.h"
 #import "APINumber.h"
 #import "APIString.h"
-#import "ImmutableDictionary.h"
 #import "PluginInfoStore.h"
 #import "PluginInformation.h"
 #import "StringUtilities.h"
@@ -37,7 +37,7 @@
 #import "WKPluginInformation.h"
 #import "WKSharedAPICast.h"
 #import "WKStringCF.h"
-#import "WebContext.h"
+#import "WebProcessPool.h"
 #import <WebKitSystemInterface.h>
 #import <wtf/RetainPtr.h>
 
@@ -59,7 +59,7 @@ WKDictionaryRef WKContextCopyPlugInInfoForBundleIdentifier(WKContextRef contextR
     if (plugin.path.isNull())
         return 0;
 
-    RefPtr<ImmutableDictionary> dictionary = createPluginInformationDictionary(plugin);
+    RefPtr<API::Dictionary> dictionary = createPluginInformationDictionary(plugin);
     return toAPI(dictionary.release().leakRef());
 #else
     return 0;
@@ -97,12 +97,12 @@ void WKContextResetHSTSHosts(WKContextRef context)
 
 void WKContextRegisterSchemeForCustomProtocol(WKContextRef context, WKStringRef scheme)
 {
-    WebContext::registerGlobalURLSchemeAsHavingCustomProtocolHandlers(toWTFString(scheme));
+    WebProcessPool::registerGlobalURLSchemeAsHavingCustomProtocolHandlers(toWTFString(scheme));
 }
 
 void WKContextUnregisterSchemeForCustomProtocol(WKContextRef context, WKStringRef scheme)
 {
-    WebContext::unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers(toWTFString(scheme));
+    WebProcessPool::unregisterGlobalURLSchemeAsHavingCustomProtocolHandlers(toWTFString(scheme));
 }
 
 /* DEPRECATED -  Please use constants from WKPluginInformation instead. */

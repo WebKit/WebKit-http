@@ -157,9 +157,6 @@ http/tests/notifications/legacy/events.html
 http/tests/notifications/legacy/show.html
 http/tests/notifications/legacy/double-show.html
 
-# StorageTracker is not enabled.
-webkit.org/b/98933 storage/domstorage/localstorage/storagetracker [ Skip ]
-
 # Datalist is not yet enabled.
 webkit.org/b/98934 fast/forms/datalist [ Skip ]
 
@@ -225,8 +222,53 @@ webkit.org/b/61661 editing/pasteboard/drag-drop-list.html [ Failure ]
 webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
 
 # Tests for MediaSource API. Feature is not totally functional.
-webkit.org/b/99065 http/tests/media/media-source [ Skip ]
-webkit.org/b/99065 media/media-source [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-append-buffer.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-append-stream.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-appendwindow.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-buffered.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-a-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-av-audio-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-av-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-av-video-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-v-framerate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-v-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-a-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-av-audio-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-av-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-av-video-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-v-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-v-framerate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-v-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-duration.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-getvideoplaybackquality.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-is-type-supported.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-play.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-play-then-seek-back.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-redundant-seek.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-remove.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-seek-beyond-duration.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-seek-during-pending-seek.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-sourcebuffer-mode.html [ Skip ]
+
+webkit.org/b/99065 media/media-source/media-source-append-failed.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-multiple-initialization-segments.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-append-nonsync-sample-after-abort.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-duplicate-seeked.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-canplaythrough.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-duration-after-append.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-end-of-stream-buffered.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-end-of-stream.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-fudge-factor.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-monitor-source-buffers.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-overlapping-append.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-overlapping-decodetime.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-play.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-remove.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-seek-complete.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-track-enabled.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-tracks.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-video-playback-quality.html [ Skip ]
 
 # Encrypted Media Extensions are not enabled.
 webkit.org/b/99024 media/encrypted-media [ Skip ]
@@ -519,9 +561,6 @@ webkit.org/b/108927 http/tests/xmlhttprequest/workers/xmlhttprequest-file-not-fo
 webkit.org/b/110695 http/tests/security/cross-origin-local-storage-allowed.html [ Crash Pass ]
 webkit.org/b/110695 http/tests/security/cross-origin-local-storage.html [ Crash Pass ]
 webkit.org/b/110695 http/tests/security/cross-origin-plugin-allowed.html [ Crash Pass ]
-
-webkit.org/b/110546 [ Debug ] fast/parser/document-write-fighting-eof.html [ Skip ]
-webkit.org/b/110546 [ Debug ] fast/parser/document-write-partial-entity-before-load.html [ Skip ]
 
 webkit.org/b/111451 [ Debug ] editing/selection/selection-in-iframe-removed-crash.html [ Crash Pass ]
 
@@ -887,7 +926,6 @@ webkit.org/b/132250 media/audio-mpeg4-supported.html [ Timeout Pass ]
 webkit.org/b/132251 media/controls-drag-timebar.html [ Timeout Pass ]
 
 webkit.org/b/132254 fast/sub-pixel/simple-clipping.html [ ImageOnlyFailure Crash Pass ]
-webkit.org/b/132256 fast/frames/lots-of-objects.html [ Pass Slow ]
 webkit.org/b/132257 fast/history/form-submit-in-frame-via-onclick.html [ Timeout Pass ]
 webkit.org/b/132260 fast/workers/worker-close.html [ Timeout Pass ]
 webkit.org/b/132261 html5lib/generated/run-tests16-data.html [ Timeout Pass ]
@@ -1046,7 +1084,6 @@ Bug(GTK) css3/flexbox/multiline-justify-content.html [ Pass Slow ]
 Bug(GTK) [ Debug ] editing/selection/move-by-word-visually-crash-test-5.html [ Pass Slow ]
 Bug(GTK) [ Debug ] fast/css/visited-link-hang.html [ Pass Slow ]
 Bug(GTK) js/dom/create-lots-of-workers.html [ Pass Timeout ]
-Bug(GTK) [ Debug ] js/dfg-double-vote-fuzz.html [ Pass Slow ]
 Bug(GTK) js/dfg-float32array.html [ Pass Slow ]
 Bug(GTK) js/dfg-float64array.html [ Pass Slow ]
 Bug(GTK) js/dfg-int16array.html [ Pass Slow ]
@@ -1062,10 +1099,6 @@ Bug(GTK) [ Debug ] js/dom/random-array-gc-stress.html [ Pass Slow ]
 Bug(GTK) js/dom/string-replacement-outofmemory.html [ Pass Slow ]
 Bug(GTK) [ Debug ] js/dom/toString-and-valueOf-override.html [ Pass Slow ]
 Bug(GTK) [ Debug ] js/regress/method-on-number.html [ Pass Slow ]
-Bug(GTK) [ Debug ] fast/frames/lots-of-iframes.html [ Pass Slow ]
-Bug(GTK) [ Debug ] fast/workers/worker-cloneport.html [ Pass Slow ]
-Bug(GTK) [ Debug ] fast/overflow/lots-of-sibling-inline-boxes.html [ Pass Slow ]
-Bug(GTK) [ Debug ] jquery/core.html [ Pass Slow ]
 Bug(GTK) jquery/event.html [ Pass Slow ]
 Bug(GTK) jquery/manipulation.html [ Pass Slow ]
 Bug(GTK) jquery/offset.html [ Pass Slow ]
@@ -2295,6 +2328,23 @@ webkit.org/b/139479 fast/regions/overflow/overflow-region-inline.html [ ImageOnl
 webkit.org/b/139492 fast/text/space-width.html [ ImageOnlyFailure ]
 
 webkit.org/b/139493 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure ]
+
+# Missing glyph symbol is not rendered properly.
+webkit.org/b/140252 fast/css/line-height-determined-by-primary-font.html [ Failure ]
+webkit.org/b/140252 fast/ruby/bopomofo-letter-spacing.html [ Failure ]
+webkit.org/b/140252 fast/ruby/bopomofo-rl.html [ Failure ]
+webkit.org/b/140252 fast/ruby/bopomofo.html [ Failure ]
+webkit.org/b/140252 fast/text/decorations-with-text-combine.html [ Failure ]
+webkit.org/b/140252 fast/text/emphasis-combined-text.html [ Failure ]
+webkit.org/b/140252 fast/text/emphasis-vertical.html [ Failure ]
+webkit.org/b/140252 fast/text/international/khmer-selection.html [ Failure ]
+webkit.org/b/140252 fast/text/international/plane2.html [ Failure ]
+webkit.org/b/140252 fast/text/justify-ideograph-complex.html [ Failure ]
+webkit.org/b/140252 fast/text/justify-ideograph-simple.html [ Failure ]
+webkit.org/b/140252 fast/text/justify-ideograph-vertical.html [ Failure ]
+webkit.org/b/140252 fast/text/khmer-lao-font.html [ Failure ]
+webkit.org/b/140252 fast/text/midword-break-before-surrogate-pair-2.html [ Failure ]
+webkit.org/b/140252 svg/custom/svg-fonts-fallback.xhtml [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

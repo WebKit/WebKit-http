@@ -41,12 +41,11 @@
 #include "PNGImageDecoder.h"
 
 #include "Color.h"
-#include "png.h"
-#include <wtf/PassOwnPtr.h>
+#include <png.h>
 #include <wtf/StdLibExtras.h>
 
 #if USE(QCMSLIB)
-#include "qcms.h"
+#include <qcms.h>
 #endif
 
 #if defined(PNG_LIBPNG_VER_MAJOR) && defined(PNG_LIBPNG_VER_MINOR) && (PNG_LIBPNG_VER_MAJOR > 1 || (PNG_LIBPNG_VER_MAJOR == 1 && PNG_LIBPNG_VER_MINOR >= 4))
@@ -264,7 +263,7 @@ bool PNGImageDecoder::setFailed()
 {
     if (m_doNothingOnFailure)
         return false;
-    m_reader.clear();
+    m_reader = nullptr;
     return ImageDecoder::setFailed();
 }
 
@@ -563,7 +562,7 @@ void PNGImageDecoder::decode(bool onlySize)
         return;
 
     if (!m_reader)
-        m_reader = adoptPtr(new PNGImageReader(this));
+        m_reader = std::make_unique<PNGImageReader>(this);
 
     // If we couldn't decode the image but we've received all the data, decoding
     // has failed.
@@ -572,7 +571,7 @@ void PNGImageDecoder::decode(bool onlySize)
     // If we're done decoding the image, we don't need the PNGImageReader
     // anymore.  (If we failed, |m_reader| has already been cleared.)
     else if (isComplete())
-        m_reader.clear();
+        m_reader = nullptr;
 }
 
 } // namespace WebCore

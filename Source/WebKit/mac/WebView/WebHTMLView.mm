@@ -4879,8 +4879,8 @@ static NSString *fontNameForDescription(NSString *familyName, BOOL italic, BOOL 
     fontDescription.setWeight(bold ? FontWeight900 : FontWeight500);
     fontDescription.setSpecifiedSize(pointSize);
     FontCachePurgePreventer purgePreventer;
-    RefPtr<SimpleFontData> simpleFontData = fontCache().getCachedFontData(fontDescription, familyName, false, WebCore::FontCache::DoNotRetain);
-    return [simpleFontData->platformData().font() fontName];
+    RefPtr<SimpleFontData> simpleFontData = fontCache().fontForFamily(fontDescription, familyName);
+    return [simpleFontData->platformData().nsFont() fontName];
 }
 
 - (void)_addToStyle:(DOMCSSStyleDeclaration *)style fontA:(NSFont *)a fontB:(NSFont *)b
@@ -5651,7 +5651,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 - (void)quickLookWithEvent:(NSEvent *)event
 {
-    [[self _webView] _setTextIndicator:nullptr fadeOut:NO animationCompletionHandler:[] { }];
+    [[self _webView] _setTextIndicator:nullptr fadeOut:NO];
     [super quickLookWithEvent:event];
 }
 #endif // !PLATFORM(IOS)
@@ -6717,7 +6717,7 @@ static CGImageRef selectionImage(Frame* frame, bool forceBlackText)
     NSAttributedString *attributedString = [self _attributeStringFromDOMRange:[document _documentRange]];
     if (!attributedString) {
         Document* coreDocument = core(document);
-        attributedString = editingAttributedStringFromRange(*Range::create(*coreDocument, coreDocument, 0, coreDocument, coreDocument->countChildNodes()));
+        attributedString = editingAttributedStringFromRange(Range::create(*coreDocument, coreDocument, 0, coreDocument, coreDocument->countChildNodes()));
     }
     return attributedString;
 }

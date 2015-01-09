@@ -33,7 +33,7 @@
 #import <AppKit/NSAttributedString.h>
 #endif
 
-#import "APIHistoryClient.h"
+#import "APILegacyContextHistoryClient.h"
 #import "ActionMenuHitTestResult.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
@@ -66,13 +66,13 @@
 #import "WKViewInternal.h"
 #import "WKViewPrivate.h"
 #import "WebBackForwardList.h"
-#import "WebContext.h"
 #import "WebEventFactory.h"
 #import "WebKit2Initialize.h"
 #import "WebPage.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebPreferences.h"
+#import "WebProcessPool.h"
 #import "WebProcessProxy.h"
 #import "WebSystemInterface.h"
 #import "_WKThumbnailViewInternal.h"
@@ -259,11 +259,13 @@ struct WKViewInterpretKeyEventsParameters {
 
     BOOL _didScheduleSetTopContentInset;
     CGFloat _topContentInset;
+    CGFloat _totalHeightOfBanners;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     BOOL _automaticallyAdjustsContentInsets;
     RetainPtr<WKActionMenuController> _actionMenuController;
     RetainPtr<WKImmediateActionController> _immediateActionController;
+    RetainPtr<NSImmediateActionGestureRecognizer> _immediateActionGestureRecognizer;
 #endif
 
 #if WK_API_ENABLED
@@ -338,7 +340,7 @@ struct WKViewInterpretKeyEventsParameters {
     if (canLoadLUNotificationPopoverWillClose())
         [[NSNotificationCenter defaultCenter] removeObserver:self name:getLUNotificationPopoverWillClose() object:nil];
 
-    WebContext::statistics().wkViewCount--;
+    WebProcessPool::statistics().wkViewCount--;
 
     [super dealloc];
 }
@@ -2711,7 +2713,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (void)_applicationWillTerminate:(NSNotification *)notification
 {
-    _data->_page->process().context().applicationWillTerminate();
+    _data->_page->process().processPool().applicationWillTerminate();
 }
 
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
@@ -3095,7 +3097,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     }
 }
 
-- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut animationCompletionHandler:(std::function<void ()>)completionHandler
+- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut
 {
     if (!textIndicator) {
         _data->_textIndicatorWindow = nullptr;
@@ -3106,12 +3108,13 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         _data->_textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
     NSRect contentRect = [self.window convertRectToScreen:[self convertRect:textIndicator->textBoundingRectInWindowCoordinates() toView:nil]];
-    _data->_textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut, WTF::move(completionHandler));
+    _data->_textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut);
 }
 
-- (void)_setTextIndicator:(PassRefPtr<TextIndicator>)textIndicator fadeOut:(BOOL)fadeOut
+- (void)_setTextIndicatorAnimationProgress:(float)progress
 {
-    [self _setTextIndicator:textIndicator fadeOut:fadeOut animationCompletionHandler:[] { }];
+    if (_data->_textIndicatorWindow)
+        _data->_textIndicatorWindow->setAnimationProgress(progress);
 }
 
 - (CALayer *)_rootLayer
@@ -3556,7 +3559,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [self addTrackingArea:trackingArea];
 }
 
-- (instancetype)initWithFrame:(NSRect)frame context:(WebContext&)context configuration:(WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView
+- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView
 {
     self = [super initWithFrame:frame];
     if (!self)
@@ -3578,8 +3581,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [self addTrackingArea:_data->_primaryTrackingArea.get()];
 
     _data->_pageClient = std::make_unique<PageClientImpl>(self, webView);
-    _data->_page = context.createWebPage(*_data->_pageClient, WTF::move(webPageConfiguration));
-    _data->_page->setAddsVisitedLinks(context.historyClient().addsVisitedLinks());
+    _data->_page = processPool.createWebPage(*_data->_pageClient, WTF::move(webPageConfiguration));
+    _data->_page->setAddsVisitedLinks(processPool.historyClient().addsVisitedLinks());
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
     _data->_page->initializeWebPage();
@@ -3601,7 +3604,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     // Explicitly set the layer contents placement so AppKit will make sure that our layer has masksToBounds set to YES.
     self.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
 
-    WebContext::statistics().wkViewCount++;
+    WebProcessPool::statistics().wkViewCount++;
 
     NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
     [workspaceNotificationCenter addObserver:self selector:@selector(_activeSpaceDidChange:) name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
@@ -3612,20 +3615,19 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    // FIXME: Temporarily disable action menu installation.
-    /*if ([self respondsToSelector:@selector(setActionMenu:)]) {
+    if ([self respondsToSelector:@selector(setActionMenu:)]) {
         RetainPtr<NSMenu> menu = adoptNS([[NSMenu alloc] init]);
         self.actionMenu = menu.get();
         _data->_actionMenuController = adoptNS([[WKActionMenuController alloc] initWithPage:*_data->_page view:self]);
         self.actionMenu.delegate = _data->_actionMenuController.get();
         self.actionMenu.autoenablesItems = NO;
-    }*/
+    }
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
-        RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
-        _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:recognizer.get()]);
-        [recognizer setDelegate:_data->_immediateActionController.get()];
-        [self addGestureRecognizer:recognizer.get()];
+        _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
+        _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
+        [_data->_immediateActionGestureRecognizer setDelegate:_data->_immediateActionController.get()];
+        [self addGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
     }
 #endif
 
@@ -3758,10 +3760,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [_data->_actionMenuController didCloseMenu:menu withEvent:event];
 }
 
-- (void)_didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData
+- (void)_didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult forImmediateAction:(BOOL)forImmediateAction userData:(API::Object*)userData
 {
-    [_data->_actionMenuController didPerformActionMenuHitTest:hitTestResult userData:userData];
-    [_data->_immediateActionController didPerformActionMenuHitTest:hitTestResult userData:userData];
+    if (forImmediateAction)
+        [_data->_immediateActionController didPerformActionMenuHitTest:hitTestResult userData:userData];
+    else
+        [_data->_actionMenuController didPerformActionMenuHitTest:hitTestResult userData:userData];
 }
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
@@ -3791,7 +3795,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     webPageConfiguration.pageGroup = toImpl(pageGroupRef);
     webPageConfiguration.relatedPage = toImpl(relatedPage);
 
-    return [self initWithFrame:frame context:*toImpl(contextRef) configuration:webPageConfiguration webView:nil];
+    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:webPageConfiguration webView:nil];
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
@@ -4051,11 +4055,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_viewInWindowChangeWasDeferred = NO;
 }
 
-- (NSWindow *)_targetWindowForMovePreparation
-{
-    return _data->_targetWindowForMovePreparation;
-}
-
 - (BOOL)isDeferringViewInWindowChanges
 {
     return _data->_shouldDeferViewInWindowChanges;
@@ -4102,6 +4101,13 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     _data->_ignoresNonWheelEvents = ignoresNonWheelEvents;
     _data->_page->setShouldDispatchFakeMouseMoveEvents(!ignoresNonWheelEvents);
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if (ignoresNonWheelEvents)
+        [self removeGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
+    else if (NSGestureRecognizer *immediateActionRecognizer = _data->_immediateActionGestureRecognizer.get())
+        [self addGestureRecognizer:immediateActionRecognizer];
+#endif
 }
 
 - (BOOL)_ignoresNonWheelEvents
@@ -4140,6 +4146,16 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (CGFloat)_topContentInset
 {
     return _data->_topContentInset;
+}
+
+- (void)_setTotalHeightOfBanners:(CGFloat)totalHeightOfBanners
+{
+    _data->_totalHeightOfBanners = totalHeightOfBanners;
+}
+
+- (CGFloat)_totalHeightOfBanners
+{
+    return _data->_totalHeightOfBanners;
 }
 
 - (NSColor *)_pageExtendedBackgroundColor
@@ -4330,44 +4346,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
         [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && WK_API_ENABLED
-    [_data->_immediateActionController hidePreview];
-#endif
-
     [self _setTextIndicator:nullptr fadeOut:NO];
 
     static_cast<PageClient&>(*_data->_pageClient).dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
-}
-
-- (NSView *)_viewForPreviewingURL:(NSURL *)url initialFrameSize:(NSSize)initialFrameSize
-{
-    return nil;
-}
-
-- (NSString *)_titleForPreviewOfURL:(NSURL *)url
-{
-    return nil;
-}
-
-- (void)_setPreviewTitle:(NSString *)previewTitle
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && WK_API_ENABLED
-    [_data->_immediateActionController setPreviewTitle:previewTitle];
-#endif
-}
-
-- (void)_finishPreviewingURL:(NSURL *)url withPreviewView:(NSView *)previewView
-{
-}
-
-- (void)_handleClickInPreviewView:(NSView *)previewView URL:(NSURL *)url
-{
-    [[NSWorkspace sharedWorkspace] openURL:url];
-}
-
-- (BOOL)_shouldUseStandardQuickLookPreview
-{
-    return YES;
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

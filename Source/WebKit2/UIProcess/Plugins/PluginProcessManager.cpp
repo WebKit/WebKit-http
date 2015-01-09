@@ -29,7 +29,6 @@
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "PluginProcessProxy.h"
-#include "WebContext.h"
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/WTFString.h>
@@ -44,7 +43,7 @@ PluginProcessManager& PluginProcessManager::shared()
 
 PluginProcessManager::PluginProcessManager()
 #if PLATFORM(COCOA)
-    : m_processSuppressionDisabledForPageCounter([this]() { updateProcessSuppressionState(); })
+    : m_processSuppressionDisabledForPageCounter([this](bool value) { updateProcessSuppressionDisabled(value); })
 #endif
 {
 }

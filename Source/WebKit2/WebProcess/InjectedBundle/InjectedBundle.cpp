@@ -27,26 +27,28 @@
 #include "InjectedBundle.h"
 
 #include "APIArray.h"
+#include "APIData.h"
 #include "Arguments.h"
 #include "InjectedBundleScriptWorld.h"
-#include "InjectedBundleUserMessageCoders.h"
 #include "NotificationPermissionRequestManager.h"
 #include "SessionTracker.h"
+#include "UserData.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
 #include "WebApplicationCacheManager.h"
 #include "WebConnectionToUIProcess.h"
-#include "WebContextMessageKinds.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebDatabaseManager.h"
 #include "WebFrame.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebPage.h"
+#include "WebPageGroupProxy.h"
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
+#include "WebProcessPoolMessages.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSLock.h>
 #include <WebCore/ApplicationCache.h>
@@ -114,27 +116,17 @@ void InjectedBundle::initializeClient(const WKBundleClientBase* client)
 
 void InjectedBundle::postMessage(const String& messageName, API::Object* messageBody)
 {
-    auto encoder = std::make_unique<IPC::MessageEncoder>(WebContextLegacyMessages::messageReceiverName(), WebContextLegacyMessages::postMessageMessageName(), 0);
-    encoder->encode(messageName);
-    encoder->encode(InjectedBundleUserMessageEncoder(messageBody));
-
-    WebProcess::shared().parentProcessConnection()->sendMessage(WTF::move(encoder));
+    WebProcess::shared().parentProcessConnection()->send(Messages::WebProcessPool::HandleMessage(messageName, UserData(WebProcess::shared().transformObjectsToHandles(messageBody))), 0);
 }
 
 void InjectedBundle::postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData)
 {
-    InjectedBundleUserMessageDecoder messageDecoder(returnData);
+    UserData returnUserData;
 
-    uint64_t syncRequestID;
-    std::unique_ptr<IPC::MessageEncoder> encoder = WebProcess::shared().parentProcessConnection()->createSyncMessageEncoder(WebContextLegacyMessages::messageReceiverName(), WebContextLegacyMessages::postSynchronousMessageMessageName(), 0, syncRequestID);
-    encoder->encode(messageName);
-    encoder->encode(InjectedBundleUserMessageEncoder(messageBody));
-
-    std::unique_ptr<IPC::MessageDecoder> replyDecoder = WebProcess::shared().parentProcessConnection()->sendSyncMessage(syncRequestID, WTF::move(encoder), std::chrono::milliseconds::max());
-    if (!replyDecoder || !replyDecoder->decode(messageDecoder)) {
+    if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebProcessPool::HandleSynchronousMessage(messageName, UserData(WebProcess::shared().transformObjectsToHandles(messageBody))), Messages::WebProcessPool::HandleSynchronousMessage::Reply(returnUserData), 0))
         returnData = nullptr;
-        return;
-    }
+    else
+        returnData = WebProcess::shared().transformHandlesToObjects(returnUserData.object());
 }
 
 WebConnection* InjectedBundle::webConnectionToUIProcess() const
@@ -328,12 +320,12 @@ void InjectedBundle::setSpatialNavigationEnabled(WebPageGroupProxy* pageGroup, b
 
 void InjectedBundle::addOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
 {
-    SecurityPolicy::addOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    SecurityPolicy::addOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
 void InjectedBundle::removeOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
 {
-    SecurityPolicy::removeOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    SecurityPolicy::removeOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
 void InjectedBundle::resetOriginAccessWhitelists()

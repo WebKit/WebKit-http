@@ -117,11 +117,6 @@ void TestInvocation::setIsPixelTest(const std::string& expectedPixelHash)
     m_expectedPixelHash = expectedPixelHash;
 }
 
-void TestInvocation::setCustomTimeout(int timeout)
-{
-    m_timeout = timeout;
-}
-
 static bool shouldLogFrameLoadDelegates(const char* pathOrURL)
 {
     return strstr(pathOrURL, "loading/");
@@ -165,9 +160,7 @@ void TestInvocation::invoke()
 
     WKContextPostMessageToInjectedBundle(TestController::shared().context(), messageName.get(), beginTestMessageBody.get());
 
-    TestController::TimeoutDuration timeoutToUse = TestController::LongTimeout;
-
-    TestController::shared().runUntil(m_gotInitialResponse, TestController::ShortTimeout);
+    TestController::shared().runUntil(m_gotInitialResponse, TestController::shortTimeout);
     if (!m_gotInitialResponse) {
         m_errorMessage = "Timed out waiting for initial response from web process\n";
         m_webProcessIsUnresponsive = true;
@@ -178,18 +171,7 @@ void TestInvocation::invoke()
 
     WKPageLoadURL(TestController::shared().mainWebView()->page(), m_url.get());
 
-    if (TestController::shared().useWaitToDumpWatchdogTimer()) {
-        if (m_timeout > 0)
-            timeoutToUse = TestController::CustomTimeout;
-    } else
-        timeoutToUse = TestController::NoTimeout;
-    TestController::shared().runUntil(m_gotFinalMessage, timeoutToUse);
-
-    if (!m_gotFinalMessage) {
-        m_errorMessage = "Timed out waiting for final message from web process\n";
-        m_webProcessIsUnresponsive = true;
-        goto end;
-    }
+    TestController::shared().runUntil(m_gotFinalMessage, TestController::noTimeout);
     if (m_error)
         goto end;
 
@@ -219,14 +201,12 @@ void TestInvocation::dumpWebProcessUnresponsiveness()
 
 void TestInvocation::dumpWebProcessUnresponsiveness(const char* errorMessage)
 {
-    const char* errorMessageToStderr = 0;
+    char errorMessageToStderr[1024];
 #if PLATFORM(COCOA)
-    char buffer[64];
     pid_t pid = WKPageGetProcessIdentifier(TestController::shared().mainWebView()->page());
-    sprintf(buffer, "#PROCESS UNRESPONSIVE - WebProcess (pid %ld)\n", static_cast<long>(pid));
-    errorMessageToStderr = buffer;
+    sprintf(errorMessageToStderr, "#PROCESS UNRESPONSIVE - %s (pid %ld)\n", TestController::webProcessName(), static_cast<long>(pid));
 #else
-    errorMessageToStderr = "#PROCESS UNRESPONSIVE - WebProcess";
+    sprintf(errorMessageToStderr, "#PROCESS UNRESPONSIVE - %s", TestController::webProcessName());
 #endif
 
     dump(errorMessage, errorMessageToStderr, true);
@@ -266,7 +246,7 @@ void TestInvocation::dumpResults()
         if (PlatformWebView::windowSnapshotEnabled()) {
             m_gotRepaint = false;
             WKPageForceRepaint(TestController::shared().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
-            TestController::shared().runUntil(m_gotRepaint, TestController::ShortTimeout);
+            TestController::shared().runUntil(m_gotRepaint, TestController::shortTimeout);
             if (!m_gotRepaint) {
                 m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
                 m_webProcessIsUnresponsive = true;

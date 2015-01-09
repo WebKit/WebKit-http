@@ -35,7 +35,6 @@
 #import "MockGeolocationProvider.h"
 #import "MockWebNotificationProvider.h"
 #import "PolicyDelegate.h"
-#import "StorageTrackerDelegate.h"
 #import "UIDelegate.h"
 #import "WorkQueue.h"
 #import "WorkQueueItem.h"
@@ -82,7 +81,7 @@
 #endif
 
 #if PLATFORM(IOS)
-#import <UIKit/UIWebBrowserView.h>
+#import "UIKitSPI.h"
 #import <WebKit/WebCoreThread.h>
 #import <WebKit/WebCoreThreadMessage.h>
 #import <WebKit/WebDOMOperationsPrivate.h>
@@ -162,25 +161,6 @@ long long TestRunner::applicationCacheDiskUsageForOrigin(JSStringRef url)
     return usage;
 }
 
-void TestRunner::syncLocalStorage()
-{
-    [[WebStorageManager sharedWebStorageManager] syncLocalStorage];
-}
-
-long long TestRunner::localStorageDiskUsageForOrigin(JSStringRef url)
-{
-    RetainPtr<CFStringRef> urlCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, url));
-    WebSecurityOrigin *origin = [[WebSecurityOrigin alloc] initWithURL:[NSURL URLWithString:(NSString *)urlCF.get()]];
-    long long usage = [[WebStorageManager sharedWebStorageManager] diskUsageForOrigin:origin];
-    [origin release];
-    return usage;
-}
-
-void TestRunner::observeStorageTrackerNotifications(unsigned number)
-{
-    [storageDelegate logNotifications:number controller:this];
-}
-
 void TestRunner::clearApplicationCacheForOrigin(JSStringRef url)
 {
     RetainPtr<CFStringRef> urlCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, url));
@@ -215,11 +195,6 @@ void TestRunner::clearAllDatabases()
     [[WebDatabaseManager sharedWebDatabaseManager] deleteAllDatabases];
 }
 
-void TestRunner::deleteAllLocalStorage()
-{
-    [[WebStorageManager sharedWebStorageManager] deleteAllOrigins];
-}
-
 void TestRunner::setStorageDatabaseIdleInterval(double interval)
 {
     [WebStorageManager setStorageDatabaseIdleInterval:interval];
@@ -228,20 +203,6 @@ void TestRunner::setStorageDatabaseIdleInterval(double interval)
 void TestRunner::closeIdleLocalStorageDatabases()
 {
     [WebStorageManager closeIdleLocalStorageDatabases];
-}
-
-JSValueRef TestRunner::originsWithLocalStorage(JSContextRef context)
-{
-    return originsArrayToJS(context, [[WebStorageManager sharedWebStorageManager] origins]);
-}
-
-void TestRunner::deleteLocalStorageForOrigin(JSStringRef URL)
-{
-    RetainPtr<CFStringRef> urlCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, URL));
-    
-    WebSecurityOrigin *origin = [[WebSecurityOrigin alloc] initWithURL:[NSURL URLWithString:(NSString *)urlCF.get()]];
-    [[WebStorageManager sharedWebStorageManager] deleteOrigin:origin];
-    [origin release];
 }
 
 void TestRunner::clearBackForwardList()
@@ -646,8 +607,6 @@ void TestRunner::setWindowIsKey(bool windowIsKey)
     [[mainFrame webView] _updateActiveState];
 }
 
-static const CFTimeInterval waitToDumpWatchdogInterval = 30.0;
-
 static void waitUntilDoneWatchdogFired(CFRunLoopTimerRef timer, void* info)
 {
     gTestRunner->waitToDumpWatchdogTimerFired();
@@ -656,8 +615,8 @@ static void waitUntilDoneWatchdogFired(CFRunLoopTimerRef timer, void* info)
 void TestRunner::setWaitToDump(bool waitUntilDone)
 {
     m_waitToDump = waitUntilDone;
-    if (m_waitToDump && shouldSetWaitToDumpWatchdog())
-        setWaitToDumpWatchdog(CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + waitToDumpWatchdogInterval, 0, 0, 0, waitUntilDoneWatchdogFired, NULL));
+    if (m_waitToDump && m_timeout && shouldSetWaitToDumpWatchdog())
+        setWaitToDumpWatchdog(CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + m_timeout / 1000.0, 0, 0, 0, waitUntilDoneWatchdogFired, NULL));
 }
 
 int TestRunner::windowCount()

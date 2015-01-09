@@ -36,7 +36,6 @@
 
 namespace WebKit {
 
-class WebContext;
 class WebPageProxy;
 class WebProcessProxy;
     
@@ -57,7 +56,7 @@ private:
     VisitedLinkProvider();
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
     void addVisitedLinkHashFromPage(uint64_t pageID, WebCore::LinkHash);
 

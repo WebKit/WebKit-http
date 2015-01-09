@@ -527,8 +527,7 @@ void JIT_OPERATION operationPutByVal(ExecState* exec, EncodedJSValue encodedBase
             if (++byValInfo.slowPathCount >= 10
                 || object->structure(vm)->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero()) {
                 // Don't ever try to optimize.
-                RepatchBuffer repatchBuffer(exec->codeBlock());
-                repatchBuffer.relinkCallerToFunction(ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationPutByValGeneric));
+                ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationPutByValGeneric));
             }
         }
     }
@@ -573,8 +572,7 @@ void JIT_OPERATION operationDirectPutByVal(ExecState* callFrame, EncodedJSValue 
             if (++byValInfo.slowPathCount >= 10
                 || object->structure(vm)->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero()) {
                 // Don't ever try to optimize.
-                RepatchBuffer repatchBuffer(callFrame->codeBlock());
-                repatchBuffer.relinkCallerToFunction(ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationDirectPutByValGeneric));
+                ctiPatchCallByReturnAddress(callFrame->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationDirectPutByValGeneric));
             }
         }
     }
@@ -1404,13 +1402,20 @@ JSCell* JIT_OPERATION operationCreateActivation(ExecState* exec, JSScope* curren
     return lexicalEnvironment;
 }
 
-JSCell* JIT_OPERATION operationCreateArguments(ExecState* exec)
+// FIXME: This is a temporary thunk for the DFG until we add the lexicalEnvironment operand to the DFG CreateArguments node.
+JSCell* JIT_OPERATION operationCreateArgumentsForDFG(ExecState* exec)
+{
+    JSLexicalEnvironment* lexicalEnvironment = exec->lexicalEnvironmentOrNullptr();
+    return operationCreateArguments(exec, lexicalEnvironment);
+}
+    
+JSCell* JIT_OPERATION operationCreateArguments(ExecState* exec, JSLexicalEnvironment* lexicalEnvironment)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
     // NB: This needs to be exceedingly careful with top call frame tracking, since it
     // may be called from OSR exit, while the state of the call stack is bizarre.
-    Arguments* result = Arguments::create(vm, exec);
+    Arguments* result = Arguments::create(vm, exec, lexicalEnvironment);
     ASSERT(!vm.exception());
     return result;
 }
@@ -1418,7 +1423,8 @@ JSCell* JIT_OPERATION operationCreateArguments(ExecState* exec)
 JSCell* JIT_OPERATION operationCreateArgumentsDuringOSRExit(ExecState* exec)
 {
     DeferGCForAWhile(exec->vm().heap);
-    return operationCreateArguments(exec);
+    JSLexicalEnvironment* lexicalEnvironment = exec->lexicalEnvironmentOrNullptr();
+    return operationCreateArguments(exec, lexicalEnvironment);
 }
 
 EncodedJSValue JIT_OPERATION operationGetArgumentsLength(ExecState* exec, int32_t argumentsRegister)
@@ -1512,8 +1518,7 @@ EncodedJSValue JIT_OPERATION operationGetByValDefault(ExecState* exec, EncodedJS
             if (++byValInfo.slowPathCount >= 10
                 || object->structure(vm)->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero()) {
                 // Don't ever try to optimize.
-                RepatchBuffer repatchBuffer(exec->codeBlock());
-                repatchBuffer.relinkCallerToFunction(ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationGetByValGeneric));
+                ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationGetByValGeneric));
             }
         }
     }
@@ -1558,8 +1563,7 @@ EncodedJSValue JIT_OPERATION operationHasIndexedPropertyDefault(ExecState* exec,
         if (++byValInfo.slowPathCount >= 10
             || object->structure(vm)->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero()) {
             // Don't ever try to optimize.
-            RepatchBuffer repatchBuffer(exec->codeBlock());
-            repatchBuffer.relinkCallerToFunction(ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationHasIndexedPropertyGeneric));
+            ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationHasIndexedPropertyGeneric)); 
         }
     }
     

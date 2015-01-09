@@ -27,16 +27,14 @@
 #include "WebNotificationManagerProxy.h"
 
 #include "APIArray.h"
-#include "ImmutableDictionary.h"
-#include "WebContext.h"
+#include "APIDictionary.h"
+#include "APISecurityOrigin.h"
 #include "WebNotification.h"
 #include "WebNotificationManagerMessages.h"
 #include "WebPageProxy.h"
+#include "WebProcessPool.h"
 #include "WebProcessProxy.h"
-#include "WebSecurityOrigin.h"
 
-using namespace std;
-using namespace WTF;
 using namespace WebCore;
 
 namespace WebKit {
@@ -52,13 +50,13 @@ const char* WebNotificationManagerProxy::supplementName()
     return "WebNotificationManagerProxy";
 }
 
-PassRefPtr<WebNotificationManagerProxy> WebNotificationManagerProxy::create(WebContext* context)
+PassRefPtr<WebNotificationManagerProxy> WebNotificationManagerProxy::create(WebProcessPool* processPool)
 {
-    return adoptRef(new WebNotificationManagerProxy(context));
+    return adoptRef(new WebNotificationManagerProxy(processPool));
 }
 
-WebNotificationManagerProxy::WebNotificationManagerProxy(WebContext* context)
-    : WebContextSupplement(context)
+WebNotificationManagerProxy::WebNotificationManagerProxy(WebProcessPool* processPool)
+    : WebContextSupplement(processPool)
 {
 }
 
@@ -70,7 +68,7 @@ void WebNotificationManagerProxy::initializeProvider(const WKNotificationProvide
 
 // WebContextSupplement
 
-void WebNotificationManagerProxy::contextDestroyed()
+void WebNotificationManagerProxy::processPoolDestroyed()
 {
     m_provider.removeNotificationManager(this);
 }
@@ -87,7 +85,7 @@ void WebNotificationManagerProxy::derefWebContextSupplement()
 
 void WebNotificationManagerProxy::populateCopyOfNotificationPermissions(HashMap<String, bool>& permissions)
 {
-    RefPtr<ImmutableDictionary> knownPermissions = m_provider.notificationPermissions();
+    RefPtr<API::Dictionary> knownPermissions = m_provider.notificationPermissions();
 
     if (!knownPermissions)
         return;
@@ -232,17 +230,17 @@ void WebNotificationManagerProxy::providerDidCloseNotifications(API::Array* glob
         it->key->process().send(Messages::WebNotificationManager::DidCloseNotifications(it->value), 0);
 }
 
-void WebNotificationManagerProxy::providerDidUpdateNotificationPolicy(const WebSecurityOrigin* origin, bool allowed)
+void WebNotificationManagerProxy::providerDidUpdateNotificationPolicy(const API::SecurityOrigin* origin, bool allowed)
 {
-    if (!context())
+    if (!processPool())
         return;
 
-    context()->sendToAllProcesses(Messages::WebNotificationManager::DidUpdateNotificationDecision(origin->securityOrigin().toString(), allowed));
+    processPool()->sendToAllProcesses(Messages::WebNotificationManager::DidUpdateNotificationDecision(origin->securityOrigin().toString(), allowed));
 }
 
 void WebNotificationManagerProxy::providerDidRemoveNotificationPolicies(API::Array* origins)
 {
-    if (!context())
+    if (!processPool())
         return;
 
     size_t size = origins->size();
@@ -253,9 +251,9 @@ void WebNotificationManagerProxy::providerDidRemoveNotificationPolicies(API::Arr
     originStrings.reserveInitialCapacity(size);
     
     for (size_t i = 0; i < size; ++i)
-        originStrings.append(origins->at<WebSecurityOrigin>(i)->securityOrigin().toString());
+        originStrings.append(origins->at<API::SecurityOrigin>(i)->securityOrigin().toString());
     
-    context()->sendToAllProcesses(Messages::WebNotificationManager::DidRemoveNotificationDecisions(originStrings));
+    processPool()->sendToAllProcesses(Messages::WebNotificationManager::DidRemoveNotificationDecisions(originStrings));
 }
 
 } // namespace WebKit

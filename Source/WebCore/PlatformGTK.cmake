@@ -191,9 +191,6 @@ list(APPEND WebCore_SOURCES
     platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
 
     platform/network/gtk/CredentialBackingStore.cpp
-
-    plugins/PluginPackageNone.cpp
-    plugins/PluginViewNone.cpp
 )
 
 list(APPEND WebCorePlatformGTK_SOURCES
@@ -374,6 +371,31 @@ if (ENABLE_TEXTURE_MAPPER)
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
+    )
+endif ()
+
+if (ENABLE_THREADED_COMPOSITOR)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
+        "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
+        "${WEBCORE_DIR}/platform/graphics/texmap/threadedcompositor"
+    )
+    list(APPEND WebCore_SOURCES
+        page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
+        page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
+        page/scrolling/coordinatedgraphics/ScrollingStateScrollingNodeCoordinatedGraphics.cpp
+        page/scrolling/ScrollingStateStickyNode.cpp
+        page/scrolling/ScrollingThread.cpp
+        page/scrolling/ScrollingTreeNode.cpp
+        page/scrolling/ScrollingTreeScrollingNode.cpp
+        platform/graphics/TiledBackingStore.cpp
+        platform/graphics/texmap/coordinated/AreaAllocator.cpp
+        platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
+        platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
+        platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
+        platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
+        platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+        platform/graphics/texmap/coordinated/UpdateAtlas.cpp
     )
 endif ()
 

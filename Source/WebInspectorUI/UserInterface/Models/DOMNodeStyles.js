@@ -405,8 +405,10 @@ WebInspector.DOMNodeStyles.prototype = {
             return;
         }
 
-        function fetchedStyleSheetContent(styleSheet, content)
+        function fetchedStyleSheetContent(parameters)
         {
+            var content = parameters.content;
+
             console.assert(style.styleSheetTextRange);
             if (!style.styleSheetTextRange)
                 return;
@@ -446,7 +448,7 @@ WebInspector.DOMNodeStyles.prototype = {
         this._needsRefresh = true;
         this._ignoreNextContentDidChangeForStyleSheet = style.ownerStyleSheet;
 
-        style.ownerStyleSheet.requestContent(fetchedStyleSheetContent.bind(this));
+        style.ownerStyleSheet.requestContent().then(fetchedStyleSheetContent.bind(this));
     },
 
     changeProperty: function(property, name, value, priority)
@@ -594,6 +596,7 @@ WebInspector.DOMNodeStyles.prototype = {
             enabled = false;
             break;
         case "style":
+            // FIXME: Is this still needed? This includes UserAgent styles and HTML attribute styles.
             anonymous = true;
             break;
         }
@@ -648,6 +651,9 @@ WebInspector.DOMNodeStyles.prototype = {
 
         var id = payload.styleId;
         var mapKey = id ? id.styleSheetId + ":" + id.ordinal : null;
+
+        if (type == WebInspector.CSSStyleDeclaration.Type.Attribute)
+            mapKey = node.id + ":attribute";
 
         var styleDeclaration = rule ? rule.style : null;
         var styleDeclarations = [];
@@ -789,10 +795,10 @@ WebInspector.DOMNodeStyles.prototype = {
                 occurrence = ++ruleOccurrences[mapKey];
             else
                 ruleOccurrences[mapKey] = occurrence;
-        }
 
-        // Append the occurrence number to the map key for lookup in the rules map.
-        mapKey += ":" + occurrence;
+            // Append the occurrence number to the map key for lookup in the rules map.
+            mapKey += ":" + occurrence;
+        }
 
         var rule = null;
 
@@ -978,7 +984,7 @@ WebInspector.DOMNodeStyles.prototype = {
 
             for (var j = 0; j < properties.length; ++j) {
                 var property = properties[j];
-                if (!property.enabled || property.anonymous || !property.valid) {
+                if (!property.enabled || !property.valid) {
                     property.overridden = false;
                     continue;
                 }

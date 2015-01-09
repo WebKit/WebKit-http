@@ -29,17 +29,26 @@
 
 #include "BasicShapeFunctions.h"
 #include "CSSCalculationValue.h"
+#include "CSSFontFeatureValue.h"
+#include "CSSFunctionValue.h"
+#include "CSSGridLineNamesValue.h"
+#include "CSSGridTemplateAreasValue.h"
 #include "CSSImageGeneratorValue.h"
 #include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSReflectValue.h"
+#include "Frame.h"
 #include "Length.h"
+#include "LengthRepeat.h"
 #include "Pair.h"
 #include "QuotesData.h"
+#include "SVGURIReference.h"
 #include "Settings.h"
 #include "StyleResolver.h"
+#include "StyleScrollSnapPoints.h"
 #include "TransformFunctions.h"
+#include "WebKitCSSResourceValue.h"
 
 namespace WebCore {
 
@@ -59,7 +68,7 @@ public:
     static short convertWebkitHyphenateLimitLines(StyleResolver&, CSSValue&);
     template <CSSPropertyID property> static NinePieceImage convertBorderImage(StyleResolver&, CSSValue&);
     template <CSSPropertyID property> static NinePieceImage convertBorderMask(StyleResolver&, CSSValue&);
-    template <CSSPropertyID property> static PassRefPtr<StyleImage> convertBorderImageSource(StyleResolver&, CSSValue&);
+    template <CSSPropertyID property> static PassRefPtr<StyleImage> convertStyleImage(StyleResolver&, CSSValue&);
     static TransformOperations convertTransform(StyleResolver&, CSSValue&);
     static String convertString(StyleResolver&, CSSValue&);
     static String convertStringOrAuto(StyleResolver&, CSSValue&);
@@ -78,11 +87,49 @@ public:
     static LineBoxContain convertLineBoxContain(StyleResolver&, CSSValue&);
     static TextDecorationSkip convertTextDecorationSkip(StyleResolver&, CSSValue&);
     static PassRefPtr<ShapeValue> convertShapeValue(StyleResolver&, CSSValue&);
+#if ENABLE(CSS_SCROLL_SNAP)
+    static ScrollSnapPoints convertScrollSnapPoints(StyleResolver&, CSSValue&);
+    static LengthSize convertSnapCoordinatePair(StyleResolver&, CSSValue&, size_t offset = 0);
+    static Vector<LengthSize> convertScrollSnapCoordinates(StyleResolver&, CSSValue&);
+#endif
+#if ENABLE(CSS_GRID_LAYOUT)
+    static bool convertGridTrackSize(StyleResolver&, CSSValue&, GridTrackSize&);
+    static bool convertGridPosition(StyleResolver&, CSSValue&, GridPosition&);
+    static GridAutoFlow convertGridAutoFlow(StyleResolver&, CSSValue&);
+#endif // ENABLE(CSS_GRID_LAYOUT)
+    static bool convertWordSpacing(StyleResolver&, CSSValue&, Length&);
+    static bool convertPerspective(StyleResolver&, CSSValue&, float&);
+    static bool convertMarqueeIncrement(StyleResolver&, CSSValue&, Length&);
+    static bool convertFilterOperations(StyleResolver&, CSSValue&, FilterOperations&);
+    static bool convertMaskImageOperations(StyleResolver&, CSSValue&, Vector<RefPtr<MaskImageOperation>>&);
+#if PLATFORM(IOS)
+    static bool convertTouchCallout(StyleResolver&, CSSValue&);
+#endif
+#if ENABLE(TOUCH_EVENTS)
+    static Color convertTapHighlightColor(StyleResolver&, CSSValue&);
+#endif
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+    static bool convertOverflowScrolling(StyleResolver&, CSSValue&);
+#endif
+    static RefPtr<FontFeatureSettings> convertFontFeatureSettings(StyleResolver&, CSSValue&);
 
 private:
+    friend class StyleBuilderCustom;
+
     static Length convertToRadiusLength(CSSToLengthConversionData&, CSSPrimitiveValue&);
     static TextEmphasisPosition valueToEmphasisPosition(CSSPrimitiveValue&);
     static TextDecorationSkip valueToDecorationSkip(const CSSPrimitiveValue&);
+#if ENABLE(CSS_SCROLL_SNAP)
+    static Length parseSnapCoordinate(StyleResolver&, const CSSValue&);
+#endif
+#if ENABLE(CSS_GRID_LAYOUT)
+    static bool createGridTrackBreadth(CSSPrimitiveValue&, StyleResolver&, GridLength&);
+    static bool createGridTrackSize(CSSValue&, GridTrackSize&, StyleResolver&);
+    static bool createGridTrackList(CSSValue&, Vector<GridTrackSize>& trackSizes, NamedGridLinesMap&, OrderedNamedGridLinesMap&, StyleResolver&);
+    static bool createGridPosition(CSSValue&, GridPosition&);
+    static void createImplicitNamedGridLinesFromGridArea(const NamedGridAreaMap&, NamedGridLinesMap&, GridTrackSizingDirection);
+#endif // ENABLE(CSS_GRID_LAYOUT)
+    static CSSToLengthConversionData csstoLengthConversionDataWithTextZoomFactor(StyleResolver&);
 };
 
 inline Length StyleBuilderConverter::convertLength(StyleResolver& styleResolver, CSSValue& value)
@@ -267,7 +314,7 @@ inline NinePieceImage StyleBuilderConverter::convertBorderMask(StyleResolver& st
 }
 
 template <CSSPropertyID property>
-inline PassRefPtr<StyleImage> StyleBuilderConverter::convertBorderImageSource(StyleResolver& styleResolver, CSSValue& value)
+inline PassRefPtr<StyleImage> StyleBuilderConverter::convertStyleImage(StyleResolver& styleResolver, CSSValue& value)
 {
     return styleResolver.styleImage(property, value);
 }
@@ -637,6 +684,414 @@ inline PassRefPtr<ShapeValue> StyleBuilderConverter::convertShapeValue(StyleReso
     return nullptr;
 }
 #endif // ENABLE(CSS_SHAPES)
+
+#if ENABLE(CSS_SCROLL_SNAP)
+inline Length StyleBuilderConverter::parseSnapCoordinate(StyleResolver& styleResolver, const CSSValue& value)
+{
+    return downcast<CSSPrimitiveValue>(value).convertToLength<FixedIntegerConversion | PercentConversion | AutoConversion>(styleResolver.state().cssToLengthConversionData());
+}
+
+inline ScrollSnapPoints StyleBuilderConverter::convertScrollSnapPoints(StyleResolver& styleResolver, CSSValue& value)
+{
+    ScrollSnapPoints points;
+
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueElements);
+        points.usesElements = true;
+        return points;
+    }
+
+    points.hasRepeat = false;
+    for (auto& currentValue : downcast<CSSValueList>(value)) {
+        auto& itemValue = downcast<CSSPrimitiveValue>(currentValue.get());
+        if (auto* lengthRepeat = itemValue.getLengthRepeatValue()) {
+            if (auto* interval = lengthRepeat->interval()) {
+                points.repeatOffset = parseSnapCoordinate(styleResolver, *interval);
+                points.hasRepeat = true;
+                break;
+            }
+        }
+        points.offsets.append(parseSnapCoordinate(styleResolver, itemValue));
+    }
+
+    return points;
+}
+
+inline LengthSize StyleBuilderConverter::convertSnapCoordinatePair(StyleResolver& styleResolver, CSSValue& value, size_t offset)
+{
+    auto& valueList = downcast<CSSValueList>(value);
+    return LengthSize(parseSnapCoordinate(styleResolver, *valueList.item(offset)), parseSnapCoordinate(styleResolver, *valueList.item(offset + 1)));
+}
+
+inline Vector<LengthSize> StyleBuilderConverter::convertScrollSnapCoordinates(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& valueList = downcast<CSSValueList>(value);
+    ASSERT(!(valueList.length() % 2));
+    size_t pointCount = valueList.length() / 2;
+    Vector<LengthSize> coordinates;
+    coordinates.reserveInitialCapacity(pointCount);
+    for (size_t i = 0; i < pointCount; ++i)
+        coordinates.uncheckedAppend(convertSnapCoordinatePair(styleResolver, valueList, i * 2));
+    return coordinates;
+}
+#endif
+
+#if ENABLE(CSS_GRID_LAYOUT)
+bool StyleBuilderConverter::createGridTrackBreadth(CSSPrimitiveValue& primitiveValue, StyleResolver& styleResolver, GridLength& workingLength)
+{
+    if (primitiveValue.getValueID() == CSSValueWebkitMinContent) {
+        workingLength = Length(MinContent);
+        return true;
+    }
+
+    if (primitiveValue.getValueID() == CSSValueWebkitMaxContent) {
+        workingLength = Length(MaxContent);
+        return true;
+    }
+
+    if (primitiveValue.isFlex()) {
+        // Fractional unit.
+        workingLength.setFlex(primitiveValue.getDoubleValue());
+        return true;
+    }
+
+    workingLength = primitiveValue.convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion | AutoConversion>(styleResolver.state().cssToLengthConversionData());
+    if (workingLength.length().isUndefined())
+        return false;
+
+    if (primitiveValue.isLength())
+        workingLength.length().setHasQuirk(primitiveValue.isQuirkValue());
+
+    return true;
+}
+
+bool StyleBuilderConverter::createGridTrackSize(CSSValue& value, GridTrackSize& trackSize, StyleResolver& styleResolver)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        GridLength workingLength;
+        if (!createGridTrackBreadth(downcast<CSSPrimitiveValue>(value), styleResolver, workingLength))
+            return false;
+
+        trackSize.setLength(workingLength);
+        return true;
+    }
+
+    CSSValueList& arguments = *downcast<CSSFunctionValue>(value).arguments();
+    ASSERT_WITH_SECURITY_IMPLICATION(arguments.length() == 2);
+
+    GridLength minTrackBreadth;
+    GridLength maxTrackBreadth;
+    if (!createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(0)), styleResolver, minTrackBreadth) || !createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(1)), styleResolver, maxTrackBreadth))
+        return false;
+
+    trackSize.setMinMax(minTrackBreadth, maxTrackBreadth);
+    return true;
+}
+
+bool StyleBuilderConverter::createGridTrackList(CSSValue& value, Vector<GridTrackSize>& trackSizes, NamedGridLinesMap& namedGridLines, OrderedNamedGridLinesMap& orderedNamedGridLines, StyleResolver& styleResolver)
+{
+    // Handle 'none'.
+    if (is<CSSPrimitiveValue>(value))
+        return downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone;
+
+    if (!is<CSSValueList>(value))
+        return false;
+
+    unsigned currentNamedGridLine = 0;
+    for (auto& currentValue : downcast<CSSValueList>(value)) {
+        if (is<CSSGridLineNamesValue>(currentValue.get())) {
+            for (auto& currentGridLineName : downcast<CSSGridLineNamesValue>(currentValue.get())) {
+                String namedGridLine = downcast<CSSPrimitiveValue>(currentGridLineName.get()).getStringValue();
+                NamedGridLinesMap::AddResult result = namedGridLines.add(namedGridLine, Vector<unsigned>());
+                result.iterator->value.append(currentNamedGridLine);
+                OrderedNamedGridLinesMap::AddResult orderedResult = orderedNamedGridLines.add(currentNamedGridLine, Vector<String>());
+                orderedResult.iterator->value.append(namedGridLine);
+            }
+            continue;
+        }
+
+        ++currentNamedGridLine;
+        GridTrackSize trackSize;
+        if (!createGridTrackSize(currentValue, trackSize, styleResolver))
+            return false;
+
+        trackSizes.append(trackSize);
+    }
+
+    // The parser should have rejected any <track-list> without any <track-size> as
+    // this is not conformant to the syntax.
+    ASSERT(!trackSizes.isEmpty());
+    return true;
+}
+
+bool StyleBuilderConverter::createGridPosition(CSSValue& value, GridPosition& position)
+{
+    // We accept the specification's grammar:
+    // auto | <custom-ident> | [ <integer> && <custom-ident>? ] | [ span && [ <integer> || <custom-ident> ] ]
+    if (is<CSSPrimitiveValue>(value)) {
+        auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+        // We translate <ident> to <string> during parsing as it makes handling it simpler.
+        if (primitiveValue.isString()) {
+            position.setNamedGridArea(primitiveValue.getStringValue());
+            return true;
+        }
+
+        ASSERT(primitiveValue.getValueID() == CSSValueAuto);
+        return true;
+    }
+
+    auto& values = downcast<CSSValueList>(value);
+    ASSERT(values.length());
+
+    auto it = values.begin();
+    CSSPrimitiveValue* currentValue = &downcast<CSSPrimitiveValue>(it->get());
+    bool isSpanPosition = false;
+    if (currentValue->getValueID() == CSSValueSpan) {
+        isSpanPosition = true;
+        ++it;
+        currentValue = it != values.end() ? &downcast<CSSPrimitiveValue>(it->get()) : nullptr;
+    }
+
+    int gridLineNumber = 0;
+    if (currentValue && currentValue->isNumber()) {
+        gridLineNumber = currentValue->getIntValue();
+        ++it;
+        currentValue = it != values.end() ? &downcast<CSSPrimitiveValue>(it->get()) : nullptr;
+    }
+
+    String gridLineName;
+    if (currentValue && currentValue->isString()) {
+        gridLineName = currentValue->getStringValue();
+        ++it;
+    }
+
+    ASSERT(it == values.end());
+    if (isSpanPosition)
+        position.setSpanPosition(gridLineNumber ? gridLineNumber : 1, gridLineName);
+    else
+        position.setExplicitPosition(gridLineNumber, gridLineName);
+
+    return true;
+}
+
+void StyleBuilderConverter::createImplicitNamedGridLinesFromGridArea(const NamedGridAreaMap& namedGridAreas, NamedGridLinesMap& namedGridLines, GridTrackSizingDirection direction)
+{
+    for (auto& area : namedGridAreas) {
+        GridSpan areaSpan = direction == ForRows ? area.value.rows : area.value.columns;
+        {
+            auto& startVector = namedGridLines.add(area.key + "-start", Vector<unsigned>()).iterator->value;
+            startVector.append(areaSpan.resolvedInitialPosition.toInt());
+            std::sort(startVector.begin(), startVector.end());
+        }
+        {
+            auto& endVector = namedGridLines.add(area.key + "-end", Vector<unsigned>()).iterator->value;
+            endVector.append(areaSpan.resolvedFinalPosition.next().toInt());
+            std::sort(endVector.begin(), endVector.end());
+        }
+    }
+}
+
+inline bool StyleBuilderConverter::convertGridTrackSize(StyleResolver& styleResolver, CSSValue& value, GridTrackSize& trackSize)
+{
+    return createGridTrackSize(value, trackSize, styleResolver);
+}
+
+inline bool StyleBuilderConverter::convertGridPosition(StyleResolver&, CSSValue& value, GridPosition& gridPosition)
+{
+    return createGridPosition(value, gridPosition);
+}
+
+inline GridAutoFlow StyleBuilderConverter::convertGridAutoFlow(StyleResolver&, CSSValue& value)
+{
+    auto& list = downcast<CSSValueList>(value);
+    if (!list.length())
+        return RenderStyle::initialGridAutoFlow();
+
+    CSSPrimitiveValue& first = downcast<CSSPrimitiveValue>(*list.item(0));
+    CSSPrimitiveValue* second = downcast<CSSPrimitiveValue>(list.item(1));
+
+    GridAutoFlow autoFlow = RenderStyle::initialGridAutoFlow();
+    switch (first.getValueID()) {
+    case CSSValueRow:
+        if (second && second->getValueID() == CSSValueDense)
+            autoFlow =  AutoFlowRowDense;
+        else
+            autoFlow = AutoFlowRow;
+        break;
+    case CSSValueColumn:
+        if (second && second->getValueID() == CSSValueDense)
+            autoFlow = AutoFlowColumnDense;
+        else
+            autoFlow = AutoFlowColumn;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+
+    return autoFlow;
+}
+#endif // ENABLE(CSS_GRID_LAYOUT)
+
+inline CSSToLengthConversionData StyleBuilderConverter::csstoLengthConversionDataWithTextZoomFactor(StyleResolver& styleResolver)
+{
+    if (auto* frame = styleResolver.document().frame())
+        return styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(styleResolver.style()->effectiveZoom() * frame->textZoomFactor());
+
+    return styleResolver.state().cssToLengthConversionData();
+}
+
+inline bool StyleBuilderConverter::convertWordSpacing(StyleResolver& styleResolver, CSSValue& value, Length& wordSpacing)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueNormal)
+        wordSpacing = RenderStyle::initialWordSpacing();
+    else if (primitiveValue.isLength())
+        wordSpacing = primitiveValue.computeLength<Length>(csstoLengthConversionDataWithTextZoomFactor(styleResolver));
+    else if (primitiveValue.isPercentage())
+        wordSpacing = Length(clampTo<float>(primitiveValue.getDoubleValue(), minValueForCssLength, maxValueForCssLength), Percent);
+    else if (primitiveValue.isNumber())
+        wordSpacing = Length(primitiveValue.getDoubleValue(), Fixed);
+    else
+        return false;
+
+    return true;
+}
+
+inline bool StyleBuilderConverter::convertPerspective(StyleResolver& styleResolver, CSSValue& value, float& perspective)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueNone) {
+        perspective = 0;
+        return true;
+    }
+
+    if (primitiveValue.isLength())
+        perspective = primitiveValue.computeLength<float>(styleResolver.state().cssToLengthConversionData());
+    else if (primitiveValue.isNumber())
+        perspective = primitiveValue.getDoubleValue() * styleResolver.state().cssToLengthConversionData().zoom();
+    else {
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
+    return perspective >= 0;
+}
+
+inline bool StyleBuilderConverter::convertMarqueeIncrement(StyleResolver& styleResolver, CSSValue& value, Length& marqueeLength)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    switch (primitiveValue.getValueID()) {
+    case CSSValueSmall:
+        marqueeLength = Length(1, Fixed); // 1px.
+        return true;
+    case CSSValueNormal:
+        marqueeLength = Length(6, Fixed); // 6px. The WinIE default.
+        return true;
+    case CSSValueLarge:
+        marqueeLength = Length(36, Fixed); // 36px.
+        return true;
+    case CSSValueInvalid:
+        marqueeLength = primitiveValue.convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
+        return !marqueeLength.isUndefined();
+    default:
+        break;
+    }
+    return false;
+}
+
+inline bool StyleBuilderConverter::convertFilterOperations(StyleResolver& styleResolver, CSSValue& value, FilterOperations& operations)
+{
+    return styleResolver.createFilterOperations(value, operations);
+}
+
+inline bool StyleBuilderConverter::convertMaskImageOperations(StyleResolver& styleResolver, CSSValue& value, Vector<RefPtr<MaskImageOperation>>& operations)
+{
+    RefPtr<WebKitCSSResourceValue> maskImageValue;
+    RefPtr<CSSValueList> maskImagesList;
+    CSSValueList::iterator listIterator;
+    if (is<WebKitCSSResourceValue>(value))
+        maskImageValue = &downcast<WebKitCSSResourceValue>(value);
+    else if (is<CSSValueList>(value)) {
+        maskImagesList = &downcast<CSSValueList>(value);
+        listIterator = maskImagesList->begin();
+        if (listIterator != maskImagesList->end())
+            maskImageValue = &downcast<WebKitCSSResourceValue>(listIterator->get());
+    }
+
+    while (maskImageValue.get()) {
+        RefPtr<CSSValue> maskInnerValue = maskImageValue->innerValue();
+
+        RefPtr<MaskImageOperation> newMaskImage;
+        if (is<CSSPrimitiveValue>(maskInnerValue.get())) {
+            RefPtr<CSSPrimitiveValue> primitiveValue = downcast<CSSPrimitiveValue>(maskInnerValue.get());
+            if (primitiveValue->isValueID() && primitiveValue->getValueID() == CSSValueNone)
+                newMaskImage = MaskImageOperation::create();
+            else {
+                String cssUrl = primitiveValue->getStringValue();
+                URL url = styleResolver.document().completeURL(cssUrl);
+
+                bool isExternalDocument = SVGURIReference::isExternalURIReference(cssUrl, styleResolver.document());
+                newMaskImage = MaskImageOperation::create(maskImageValue, cssUrl, url.fragmentIdentifier(), isExternalDocument, styleResolver.document().cachedResourceLoader());
+                if (isExternalDocument)
+                    styleResolver.state().maskImagesWithPendingSVGDocuments().append(newMaskImage);
+            }
+        } else {
+            if (RefPtr<StyleImage> image = styleResolver.styleImage(CSSPropertyWebkitMaskImage, *maskInnerValue))
+                newMaskImage = MaskImageOperation::create(image);
+        }
+
+        // If we didn't get a valid value, use None so we keep the correct number and order of masks.
+        if (!newMaskImage)
+            newMaskImage = MaskImageOperation::create();
+
+        operations.append(newMaskImage);
+
+        if (maskImagesList) {
+            ++listIterator;
+            maskImageValue = listIterator != maskImagesList->end() ? &downcast<WebKitCSSResourceValue>(listIterator->get()) : nullptr;
+        } else
+            maskImageValue = nullptr;
+    }
+
+    return true;
+}
+
+inline RefPtr<FontFeatureSettings> StyleBuilderConverter::convertFontFeatureSettings(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNormal);
+        return nullptr;
+    }
+
+    RefPtr<FontFeatureSettings> settings = FontFeatureSettings::create();
+    for (auto& item : downcast<CSSValueList>(value)) {
+        auto& feature = downcast<CSSFontFeatureValue>(item.get());
+        settings->append(FontFeature(feature.tag(), feature.value()));
+    }
+    return WTF::move(settings);
+}
+
+#if PLATFORM(IOS)
+inline bool StyleBuilderConverter::convertTouchCallout(StyleResolver&, CSSValue& value)
+{
+    return !equalIgnoringCase(downcast<CSSPrimitiveValue>(value).getStringValue(), "none");
+}
+#endif
+
+#if ENABLE(TOUCH_EVENTS)
+inline Color StyleBuilderConverter::convertTapHighlightColor(StyleResolver& styleResolver, CSSValue& value)
+{
+    return styleResolver.colorFromPrimitiveValue(downcast<CSSPrimitiveValue>(value));
+}
+#endif
+
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+inline bool StyleBuilderConverter::convertOverflowScrolling(StyleResolver&, CSSValue& value)
+{
+    return downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueTouch;
+}
+#endif
 
 } // namespace WebCore
 

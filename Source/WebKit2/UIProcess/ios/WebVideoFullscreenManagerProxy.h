@@ -52,11 +52,11 @@ public:
 
 private:
     explicit WebVideoFullscreenManagerProxy(WebPageProxy&);
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
     // Translate to FullscreenInterface
     void setupFullscreenWithID(uint32_t, WebCore::IntRect initialRect, float hostingDeviceScaleFactor, WebCore::HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
-    void setSeekableRangesVector(Vector<std::pair<double, double>>&);
+    void setSeekableRangesVector(const Vector<std::pair<double, double>>&);
     void setExternalPlaybackProperties(bool enabled, uint32_t targetType, String localizedDeviceName);
     void fullscreenModeChanged(WebCore::HTMLMediaElement::VideoFullscreenMode);
     

@@ -60,7 +60,7 @@ struct EventListenerInfo;
 
 class CommandLineAPIHost : public RefCounted<CommandLineAPIHost> {
 public:
-    static PassRefPtr<CommandLineAPIHost> create();
+    static Ref<CommandLineAPIHost> create();
     ~CommandLineAPIHost();
 
     void init(Inspector::InspectorAgent* inspectorAgent
@@ -95,7 +95,7 @@ public:
     void addInspectedObject(std::unique_ptr<InspectableObject>);
     void clearInspectedObjects();
     InspectableObject* inspectedObject(unsigned index);
-    void inspectImpl(PassRefPtr<Inspector::InspectorValue> objectToInspect, PassRefPtr<Inspector::InspectorValue> hints);
+    void inspectImpl(RefPtr<Inspector::InspectorValue>&& objectToInspect, RefPtr<Inspector::InspectorValue>&& hints);
 
     void getEventListenersImpl(Node*, Vector<EventListenerInfo>& listenersArray);
 

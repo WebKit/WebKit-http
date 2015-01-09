@@ -35,17 +35,17 @@
 
 namespace WebKit {
 
-class WebContext;
+class WebProcessPool;
 
 class DatabaseProcessProxy : public ChildProcessProxy {
 public:
-    static PassRefPtr<DatabaseProcessProxy> create(WebContext*);
+    static PassRefPtr<DatabaseProcessProxy> create(WebProcessPool*);
     ~DatabaseProcessProxy();
 
     void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
 
 private:
-    DatabaseProcessProxy(WebContext*);
+    DatabaseProcessProxy(WebProcessPool*);
 
     // ChildProcessProxy
     virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
@@ -53,11 +53,11 @@ private:
     virtual void connectionWillClose(IPC::Connection*) override;
 
     // IPC::Connection::Client
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
-    virtual void didClose(IPC::Connection*) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    virtual void didClose(IPC::Connection&) override;
+    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
-    void didReceiveDatabaseProcessProxyMessage(IPC::Connection*, IPC::MessageDecoder&);
+    void didReceiveDatabaseProcessProxyMessage(IPC::Connection&, IPC::MessageDecoder&);
 
     // Message handlers
     void didCreateDatabaseToWebProcessConnection(const IPC::Attachment&);
@@ -67,7 +67,7 @@ private:
 
     void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&);
 
-    WebContext* m_webContext;
+    WebProcessPool* m_processPool;
 
     unsigned m_numPendingConnectionRequests;
     Deque<RefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>> m_pendingConnectionReplies;

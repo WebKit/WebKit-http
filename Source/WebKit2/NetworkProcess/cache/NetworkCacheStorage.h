@@ -32,9 +32,11 @@
 #include <WebCore/ResourceResponse.h>
 #include <wtf/BloomFilter.h>
 #include <wtf/Deque.h>
-#include <wtf/OSObjectPtr.h>
-#include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
+
+#if PLATFORM(COCOA)
+#include <wtf/OSObjectPtr.h>
+#endif
 
 namespace WebCore {
 class SharedBuffer;
@@ -61,7 +63,7 @@ public:
 #if PLATFORM(COCOA)
         explicit Data(OSObjectPtr<dispatch_data_t>);
 #endif
-        bool isNull() const { return !m_dispatchData; }
+        bool isNull() const;
 
         const uint8_t* data() const;
         size_t size() const { return m_size; }

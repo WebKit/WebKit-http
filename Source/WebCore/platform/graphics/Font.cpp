@@ -417,6 +417,26 @@ float Font::width(const TextRun& run, int& charsConsumed, String& glyphName) con
     return width(run);
 }
 
+GlyphData Font::glyphDataForCharacter(UChar32 c, bool mirror, FontDataVariant variant) const
+{
+    if (variant == AutoVariant) {
+        if (m_fontDescription.smallCaps() && !primaryFontData().isSVGFont()) {
+            UChar32 upperC = u_toupper(c);
+            if (upperC != c) {
+                c = upperC;
+                variant = SmallCapsVariant;
+            } else
+                variant = NormalVariant;
+        } else
+            variant = NormalVariant;
+    }
+
+    if (mirror)
+        c = u_charMirror(c);
+
+    return m_glyphs->glyphDataForCharacter(c, m_fontDescription, variant);
+}
+
 #if !PLATFORM(COCOA)
 PassOwnPtr<TextLayout> Font::createLayout(RenderText*, float, bool) const
 {
@@ -506,7 +526,7 @@ bool Font::fastAverageCharWidthIfAvailable(float& width) const
 {
     bool success = hasValidAverageCharWidth();
     if (success)
-        width = roundf(primaryFont()->avgCharWidth()); // FIXME: primaryFont() might not correspond to firstFamily().
+        width = roundf(primaryFontData().avgCharWidth()); // FIXME: primaryFontData() might not correspond to firstFamily().
     return success;
 }
 

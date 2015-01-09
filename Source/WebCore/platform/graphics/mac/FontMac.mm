@@ -248,16 +248,18 @@ void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* font, cons
 #if !PLATFORM(IOS)
     NSFont* drawFont;
     if (!isPrinterFont()) {
-        drawFont = [platformData.font() screenFont];
-        if (drawFont != platformData.font())
+        drawFont = [platformData.nsFont() screenFont];
+        if (drawFont != platformData.nsFont()) {
             // We are getting this in too many places (3406411); use ERROR so it only prints on debug versions for now. (We should debug this also, eventually).
             LOG_ERROR("Attempting to set non-screen font (%@) when drawing to screen.  Using screen font anyway, may result in incorrect metrics.",
-                [[[platformData.font() fontDescriptor] fontAttributes] objectForKey:NSFontNameAttribute]);
+                [[[platformData.nsFont() fontDescriptor] fontAttributes] objectForKey:NSFontNameAttribute]);
+        }
     } else {
-        drawFont = [platformData.font() printerFont];
-        if (drawFont != platformData.font())
+        drawFont = [platformData.nsFont() printerFont];
+        if (drawFont != platformData.nsFont()) {
             NSLog(@"Attempting to set non-printer font (%@) when printing.  Using printer font anyway, may result in incorrect metrics.",
-                [[[platformData.font() fontDescriptor] fontAttributes] objectForKey:NSFontNameAttribute]);
+                [[[platformData.nsFont() fontDescriptor] fontAttributes] objectForKey:NSFontNameAttribute]);
+        }
     }
 #endif
     
@@ -591,8 +593,8 @@ DashArray Font::dashesForIntersectionsWithRect(const TextRun& run, const FloatPo
 bool Font::primaryFontDataIsSystemFont() const
 {
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED > 1090
-    const auto* fontData = primaryFont();
-    return !fontData->isSVGFont() && CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(fontData->platformData().ctFont())).get());
+    const auto& fontData = primaryFontData();
+    return !fontData.isSVGFont() && CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(fontData.platformData().ctFont())).get());
 #else
     // System fonts are hidden by having a name that begins with a period, so simply search
     // for that here rather than try to keep the list up to date.

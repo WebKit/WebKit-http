@@ -32,6 +32,7 @@
 #include "DOMCoreClasses.h"
 #include "FullscreenVideoController.h"
 #include "MarshallingHelpers.h"
+#include "ResourceLoadScheduler.h"
 #include "SoftLinking.h"
 #include "SubframeLoader.h"
 #include "TextIterator.h"
@@ -40,6 +41,7 @@
 #include "WebContextMenuClient.h"
 #include "WebCoreTextRenderer.h"
 #include "WebDatabaseManager.h"
+#include "WebDatabaseProvider.h"
 #include "WebDocumentLoader.h"
 #include "WebDownload.h"
 #include "WebDragClient.h"
@@ -1289,7 +1291,9 @@ WindowCloseTimer* WindowCloseTimer::create(WebView* webView)
     if (!document)
         return nullptr;
 
-    return new WindowCloseTimer(*document, webView);
+    auto closeTimer = new WindowCloseTimer(*document, webView);
+    closeTimer->suspendIfNeeded();
+    return closeTimer;
 }
 
 WindowCloseTimer::WindowCloseTimer(ScriptExecutionContext& context, WebView* webView)
@@ -2811,6 +2815,7 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
     configuration.inspectorClient = m_inspectorClient;
 #endif // ENABLE(INSPECTOR)
     configuration.loaderClientForMainFrame = new WebFrameLoaderClient;
+    configuration.databaseProvider = &WebDatabaseProvider::shared();
     configuration.storageNamespaceProvider = WebStorageNamespaceProvider::create(localStorageDatabasePath(m_preferences.get()));
     configuration.progressTrackerClient = static_cast<WebFrameLoaderClient*>(configuration.loaderClientForMainFrame);
     configuration.visitedLinkStore = &WebVisitedLinkStore::shared();
@@ -4946,11 +4951,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         settings.setAuthorAndUserStylesEnabled(enabled);
     }
 
-    hr = prefsPrivate->inApplicationChromeMode(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setApplicationChromeMode(enabled);
-
     hr = prefsPrivate->offlineWebApplicationCacheEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -6409,13 +6409,13 @@ HRESULT WebView::invalidateBackingStore(const RECT* rect)
 
 HRESULT WebView::addOriginAccessWhitelistEntry(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains)
 {
-    SecurityPolicy::addOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(toString(sourceOrigin)), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
+    SecurityPolicy::addOriginAccessWhitelistEntry(SecurityOrigin::createFromString(toString(sourceOrigin)).get(), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
     return S_OK;
 }
 
 HRESULT WebView::removeOriginAccessWhitelistEntry(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains)
 {
-    SecurityPolicy::removeOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(toString(sourceOrigin)), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
+    SecurityPolicy::removeOriginAccessWhitelistEntry(SecurityOrigin::createFromString(toString(sourceOrigin)).get(), toString(destinationProtocol), toString(destinationHost), allowDestinationSubdomains);
     return S_OK;
 }
 
@@ -7048,3 +7048,9 @@ HRESULT STDMETHODCALLTYPE WebView::selectedRangeForTesting(/* [out] */ UINT* loc
     return S_OK;
 }
 
+HRESULT WebView::setLoadResourcesSerially(BOOL serialize)
+{
+    WebPlatformStrategies::initialize();
+    resourceLoadScheduler()->setSerialLoadingEnabled(serialize);
+    return S_OK;
+}

@@ -34,7 +34,7 @@
 #include "Font.h"
 #include "HarfBuzzFace.h"
 #include "SurrogatePairAwareTextIterator.h"
-#include "hb-icu.h"
+#include <hb-icu.h>
 #include <unicode/normlzr.h>
 #include <unicode/uchar.h>
 #include <wtf/MathExtras.h>
@@ -410,6 +410,8 @@ bool HarfBuzzShaper::collectHarfBuzzRuns()
     do {
         const UChar* currentCharacterPosition = iterator.characters();
         const SimpleFontData* currentFontData = nextFontData;
+        if (!currentFontData)
+            currentFontData = &m_font->primaryFontData();
         UScriptCode currentScript = nextScript;
 
         for (iterator.advance(clusterLength); iterator.consume(character, clusterLength); iterator.advance(clusterLength)) {

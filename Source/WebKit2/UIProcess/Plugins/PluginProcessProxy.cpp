@@ -32,9 +32,9 @@
 #include "PluginProcessCreationParameters.h"
 #include "PluginProcessManager.h"
 #include "PluginProcessMessages.h"
-#include "WebContext.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebPluginSiteDataManager.h"
+#include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <WebCore/NotImplemented.h>
 #include <wtf/RunLoop.h>
@@ -156,7 +156,7 @@ void PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch()
     m_pluginProcessManager->removePluginProcessProxy(this);
 }
 
-void PluginProcessProxy::didClose(IPC::Connection*)
+void PluginProcessProxy::didClose(IPC::Connection&)
 {
 #if PLATFORM(COCOA)
     if (m_modalWindowIsShowing)
@@ -166,15 +166,15 @@ void PluginProcessProxy::didClose(IPC::Connection*)
         exitFullscreen();
 #endif
 
-    const Vector<WebContext*>& contexts = WebContext::allContexts();
-    for (size_t i = 0; i < contexts.size(); ++i)
-        contexts[i]->sendToAllProcesses(Messages::PluginProcessConnectionManager::PluginProcessCrashed(m_pluginProcessToken));
+    const Vector<WebProcessPool*>& processPools = WebProcessPool::allProcessPools();
+    for (size_t i = 0; i < processPools.size(); ++i)
+        processPools[i]->sendToAllProcesses(Messages::PluginProcessConnectionManager::PluginProcessCrashed(m_pluginProcessToken));
 
     // This will cause us to be deleted.
     pluginProcessCrashedOrFailedToLaunch();
 }
 
-void PluginProcessProxy::didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference, IPC::StringReference)
+void PluginProcessProxy::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
 {
 }
 
@@ -187,7 +187,7 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::I
         return;
     }
 
-    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, this, RunLoop::main());
+    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, RunLoop::main());
 #if PLATFORM(MAC)
     m_connection->setShouldCloseConnectionOnMachExceptions();
 #endif
@@ -229,7 +229,7 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::I
     m_numPendingConnectionRequests = 0;
 
 #if PLATFORM(COCOA)
-    if (PluginProcessManager::shared().processSuppressionEnabled())
+    if (!PluginProcessManager::shared().processSuppressionDisabled())
         setProcessSuppressionEnabled(true);
 #endif
 }

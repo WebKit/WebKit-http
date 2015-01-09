@@ -86,6 +86,7 @@
 @property (readwrite, setter=_setIgnoresAllEvents:) BOOL _ignoresAllEvents;
 @property (readwrite) BOOL allowsBackForwardNavigationGestures;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
+@property (nonatomic, setter=_setTotalHeightOfBanners:) CGFloat _totalHeightOfBanners;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 @property (nonatomic, setter=_setAutomaticallyAdjustsContentInsets:) BOOL _automaticallyAdjustsContentInsets;
@@ -128,13 +129,6 @@
 // Clients that want to maintain default behavior can return nil. To disable the immediate action entirely, return NSNull. And to
 // do something custom, return an object that conforms to the NSImmediateActionAnimationController protocol.
 - (id)_immediateActionAnimationControllerForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKImmediateActionType)type userData:(WKTypeRef)userData;
-
-- (NSView *)_viewForPreviewingURL:(NSURL *)url initialFrameSize:(NSSize)initialFrameSize;
-- (NSString *)_titleForPreviewOfURL:(NSURL *)url;
-- (void)_setPreviewTitle:(NSString *)previewTitle;
-- (void)_finishPreviewingURL:(NSURL *)url withPreviewView:(NSView *)previewView;
-- (void)_handleClickInPreviewView:(NSView *)previewView URL:(NSURL *)url;
-- (BOOL)_shouldUseStandardQuickLookPreview;
 
 - (void)_dismissContentRelativeChildWindows;
 #endif

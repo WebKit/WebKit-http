@@ -24,6 +24,9 @@
  */
 
 #include "config.h"
+
+#if WK_HAVE_C_SPI
+
 #include "InjectedBundleTest.h"
 
 #include "PlatformUtilities.h"
@@ -62,3 +65,5 @@ void WebArchiveTest::didReceiveMessage(WKBundleRef bundle, WKStringRef messageNa
 }
 
 } // namespace TestWebKitAPI
+
+#endif

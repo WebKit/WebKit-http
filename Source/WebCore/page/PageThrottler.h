@@ -34,28 +34,44 @@
 
 namespace WebCore {
 
-typedef RefPtr<RefCounter::Count> PageActivityAssertionToken;
+class Page;
+
+enum PageActivityAssertionTokenType { };
+typedef RefCounter::Token<PageActivityAssertionTokenType> PageActivityAssertionToken;
+
+struct PageActivityState {
+    enum {
+        UserInputActivity = 1 << 0,
+        AudiblePlugin = 1 << 1,
+        MediaActivity = 1 << 2,
+        PageLoadActivity = 1 << 3,
+    };
+
+    typedef unsigned Flags;
+
+    static const Flags NoFlags = 0;
+    static const Flags AllFlags = UserInputActivity | AudiblePlugin | MediaActivity | PageLoadActivity;
+};
 
 class PageThrottler {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PageThrottler(ViewState::Flags);
+    PageThrottler(Page&);
 
-    void createUserActivity();
-    void setViewState(ViewState::Flags);
-
-    void didReceiveUserInput() { m_hysteresis.impulse(); }
-    void pluginDidEvaluateWhileAudioIsPlaying() { m_hysteresis.impulse(); }
+    void didReceiveUserInput() { m_userInputHysteresis.impulse(); }
+    void pluginDidEvaluateWhileAudioIsPlaying() { m_audiblePluginHysteresis.impulse(); }
     PageActivityAssertionToken mediaActivityToken();
     PageActivityAssertionToken pageLoadActivityToken();
 
 private:
-    void updateUserActivity();
+    void setActivityFlag(PageActivityState::Flags, bool);
 
-    ViewState::Flags m_viewState;
-    HysteresisActivity m_hysteresis;
-    std::unique_ptr<UserActivity> m_activity;
-    RefCounter m_pageActivityCounter;
+    Page& m_page;
+    PageActivityState::Flags m_activityState { PageActivityState::NoFlags };
+    HysteresisActivity m_userInputHysteresis;
+    HysteresisActivity m_audiblePluginHysteresis;
+    RefCounter m_mediaActivityCounter;
+    RefCounter m_pageLoadActivityCounter;
 };
 
 }

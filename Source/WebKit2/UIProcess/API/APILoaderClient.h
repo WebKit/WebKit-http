@@ -39,16 +39,17 @@ class ResourceError;
 
 namespace WebKit {
 class AuthenticationChallengeProxy;
-class ImmutableDictionary;
 class QuickLookDocumentData;
 class WebBackForwardListItem;
 class WebFrameProxy;
 class WebPageProxy;
 class WebProtectionSpace;
+struct WebNavigationDataStore;
 }
 
 namespace API {
 
+class Dictionary;
 class Object;
 
 class LoaderClient {
@@ -96,10 +97,15 @@ public:
 
     virtual PassRefPtr<Data> webCryptoMasterKey(WebKit::WebPageProxy&) { return nullptr; }
 
+    virtual void didNavigateWithNavigationData(WebKit::WebPageProxy&, const WebKit::WebNavigationDataStore&, WebKit::WebFrameProxy&) { }
+    virtual void didPerformClientRedirect(WebKit::WebPageProxy&, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy&) { }
+    virtual void didPerformServerRedirect(WebKit::WebPageProxy&, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy&) { }
+    virtual void didUpdateHistoryTitle(WebKit::WebPageProxy&, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy&) { }
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    virtual WebKit::PluginModuleLoadPolicy pluginLoadPolicy(WebKit::WebPageProxy*, WebKit::PluginModuleLoadPolicy currentPluginLoadPolicy, WebKit::ImmutableDictionary*, WTF::String& /* unavailabilityDescription */) { return currentPluginLoadPolicy; }
-    virtual void didFailToInitializePlugin(WebKit::WebPageProxy*, WebKit::ImmutableDictionary*) { }
-    virtual void didBlockInsecurePluginVersion(WebKit::WebPageProxy*, WebKit::ImmutableDictionary*) { }
+    virtual WebKit::PluginModuleLoadPolicy pluginLoadPolicy(WebKit::WebPageProxy*, WebKit::PluginModuleLoadPolicy currentPluginLoadPolicy, API::Dictionary*, WTF::String& /* unavailabilityDescription */) { return currentPluginLoadPolicy; }
+    virtual void didFailToInitializePlugin(WebKit::WebPageProxy*, API::Dictionary*) { }
+    virtual void didBlockInsecurePluginVersion(WebKit::WebPageProxy*, API::Dictionary*) { }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(WEBGL)

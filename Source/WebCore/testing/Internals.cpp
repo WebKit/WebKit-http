@@ -749,7 +749,7 @@ void Internals::enableMockRTCPeerConnectionHandler()
 }
 #endif
 
-PassRefPtr<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
+Ref<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
 {
     Document* document = contextDocument();
     if (!document || !document->frame()) {
@@ -760,7 +760,7 @@ PassRefPtr<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
     return ClientRect::create(document->frame()->selection().absoluteCaretBounds());
 }
 
-PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& ec)
+Ref<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& ec)
 {
     if (!element) {
         ec = INVALID_ACCESS_ERR;
@@ -774,7 +774,7 @@ PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& e
     return ClientRect::create(renderer->absoluteBoundingBoxRectIgnoringTransforms());
 }
 
-PassRefPtr<ClientRectList> Internals::inspectorHighlightRects(ExceptionCode& ec)
+Ref<ClientRectList> Internals::inspectorHighlightRects(ExceptionCode& ec)
 {
 #if ENABLE(INSPECTOR)
     Document* document = contextDocument();
@@ -1335,7 +1335,7 @@ bool Internals::hasSpellingMarker(int from, int length, ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     updateEditorUINowIfScheduled();
 
@@ -1346,7 +1346,7 @@ bool Internals::hasAutocorrectedMarker(int from, int length, ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     updateEditorUINowIfScheduled();
 
@@ -1431,7 +1431,7 @@ bool Internals::isOverwriteModeEnabled(ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     return document->frame()->editor().isOverwriteModeEnabled();
 }
@@ -1480,7 +1480,7 @@ Vector<String> Internals::consoleMessageArgumentCounts() const
     if (!document || !document->page())
         return Vector<String>();
 
-    InstrumentingAgents* instrumentingAgents = instrumentationForPage(document->page());
+    InstrumentingAgents* instrumentingAgents = InspectorInstrumentation::instrumentingAgentsForPage(document->page());
     if (!instrumentingAgents)
         return Vector<String>();
 
@@ -1561,7 +1561,7 @@ bool Internals::hasGrammarMarker(int from, int length, ExceptionCode&)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return false;
 
     return document->frame()->editor().selectionStartHasMarkerFor(DocumentMarker::Grammar, from, length);
 }
@@ -1668,17 +1668,17 @@ String Internals::mainThreadScrollingReasons(ExceptionCode& ec) const
     return page->synchronousScrollingReasonsAsText();
 }
 
-PassRefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) const
+RefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) const
 {
     Document* document = contextDocument();
     if (!document || !document->frame()) {
         ec = INVALID_ACCESS_ERR;
-        return 0;
+        return nullptr;
     }
 
     Page* page = document->page();
     if (!page)
-        return 0;
+        return nullptr;
 
     return page->nonFastScrollableRects(document->frame());
 }
@@ -2245,7 +2245,7 @@ double Internals::closestTimeToTimeRanges(double time, TimeRanges* ranges)
 }
 #endif
 
-PassRefPtr<ClientRect> Internals::selectionBounds(ExceptionCode& ec)
+Ref<ClientRect> Internals::selectionBounds(ExceptionCode& ec)
 {
     Document* document = contextDocument();
     if (!document || !document->frame()) {

@@ -29,16 +29,14 @@
 namespace WebCore {
 
 class RenderText;
-class ScriptExecutionContext;
 
 class Text : public CharacterData {
 public:
     static const unsigned defaultLengthLimit = 1 << 16;
 
-    static RefPtr<Text> create(Document&, const String&);
-    static RefPtr<Text> create(ScriptExecutionContext&, const String&);
-    static RefPtr<Text> createWithLengthLimit(Document&, const String&, unsigned positionInString, unsigned lengthLimit = defaultLengthLimit);
-    static RefPtr<Text> createEditingText(Document&, const String&);
+    static Ref<Text> create(Document&, const String&);
+    static Ref<Text> createWithLengthLimit(Document&, const String&, unsigned positionInString, unsigned lengthLimit = defaultLengthLimit);
+    static Ref<Text> createEditingText(Document&, const String&);
 
     virtual ~Text();
 
@@ -64,10 +62,10 @@ protected:
 private:
     virtual String nodeName() const override;
     virtual NodeType nodeType() const override;
-    virtual RefPtr<Node> cloneNodeInternal(CloningOperation) override;
+    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override;
     virtual bool childTypeAllowed(NodeType) const override;
 
-    virtual RefPtr<Text> virtualCreate(const String&);
+    virtual Ref<Text> virtualCreate(const String&);
 
 #ifndef NDEBUG
     virtual void formatForDebugger(char* buffer, unsigned length) const override;

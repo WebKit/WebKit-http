@@ -35,6 +35,10 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(COCOA)
+#include <WebCore/MachSendRight.h>
+#endif
+
 namespace WebKit {
 
 class NetscapePluginModule;
@@ -58,7 +62,7 @@ public:
     void setModalWindowIsShowing(bool);
     void setFullscreenWindowIsShowing(bool);
 
-    mach_port_t compositingRenderServerPort() const { return m_compositingRenderServerPort; }
+    const WebCore::MachSendRight& compositingRenderServerPort() const { return m_compositingRenderServerPort; }
 
     bool launchProcess(const String& launchPath, const Vector<String>& arguments);
     bool launchApplicationAtURL(const String& urlString, const Vector<String>& arguments);
@@ -84,13 +88,13 @@ private:
 #endif
 
     // IPC::Connection::Client
-    virtual void didReceiveMessage(IPC::Connection*, IPC::MessageDecoder&) override;
-    virtual void didClose(IPC::Connection*) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection*, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    virtual void didClose(IPC::Connection&) override;
+    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // Message handlers.
-    void didReceivePluginProcessMessage(IPC::Connection*, IPC::MessageDecoder&);
-    void initializePluginProcess(const PluginProcessCreationParameters&);
+    void didReceivePluginProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void initializePluginProcess(PluginProcessCreationParameters&&);
     void createWebProcessConnection();
     void getSitesWithData(uint64_t callbackID);
     void clearSiteData(const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID);
@@ -100,7 +104,7 @@ private:
     virtual void audioHardwareDidBecomeInactive() override;
     virtual void audioOutputDeviceChanged() override { }
 
-    void platformInitializePluginProcess(const PluginProcessCreationParameters&);
+    void platformInitializePluginProcess(PluginProcessCreationParameters&&);
     
     void setMinimumLifetime(double);
     void minimumLifetimeTimerFired();
@@ -123,7 +127,7 @@ private:
 
 #if PLATFORM(COCOA)
     // The Mach port used for accelerated compositing.
-    mach_port_t m_compositingRenderServerPort;
+    WebCore::MachSendRight m_compositingRenderServerPort;
 
     String m_nsurlCacheDirectory;
 #endif

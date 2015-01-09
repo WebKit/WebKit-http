@@ -70,13 +70,13 @@ public:
     virtual void setDOMBreakpoint(ErrorString&, int nodeId, const String& type) override;
     virtual void removeDOMBreakpoint(ErrorString&, int nodeId, const String& type) override;
 
-    // InspectorInstrumentation API
-    void willInsertDOMNode(Node* parent);
-    void didInvalidateStyleAttr(Node*);
-    void didInsertDOMNode(Node*);
-    void willRemoveDOMNode(Node*);
-    void didRemoveDOMNode(Node*);
-    void willModifyDOMAttr(Element*);
+    // InspectorInstrumentation callbacks.
+    void willInsertDOMNode(Node& parent);
+    void didInvalidateStyleAttr(Node&);
+    void didInsertDOMNode(Node&);
+    void willRemoveDOMNode(Node&);
+    void didRemoveDOMNode(Node&);
+    void willModifyDOMAttr(Element&);
     void willSendXMLHttpRequest(const String& url);
     void pauseOnNativeEventIfNeeded(bool isDOMEvent, const String& eventName, bool synchronous);
 
@@ -92,7 +92,7 @@ private:
     virtual void didPause() override;
     void disable();
 
-    void descriptionForDOMEvent(Node* target, int breakpointType, bool insertion, Inspector::InspectorObject* description);
+    void descriptionForDOMEvent(Node& target, int breakpointType, bool insertion, Inspector::InspectorObject& description);
     void updateSubtreeBreakpoints(Node*, uint32_t rootMask, bool set);
     bool hasBreakpoint(Node*, int type);
     void discardBindings();

@@ -28,12 +28,19 @@
 #include "config.h"
 #include "PluginPackage.h"
 
+#include "c_utility.h"
+#include "IdentifierRep.h"
 #include "MIMETypeRegistry.h"
+#include "NP_jsobject.h"
 #include "PluginDatabase.h"
 #include "PluginDebug.h"
+#include "PluginView.h"
+#include "runtime_root.h"
 #include "Timer.h"
 #include "npruntime_impl.h"
 #include <string.h>
+#include <JavaScriptCore/Completion.h>
+#include <JavaScriptCore/JSGlobalObject.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -267,6 +274,93 @@ void PluginPackage::determineModuleVersionFromDescription()
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
+static void getListFromVariantArgs(JSC::ExecState* exec, const NPVariant* args, unsigned argCount, JSC::Bindings::RootObject* rootObject, JSC::MarkedArgumentBuffer& aList)
+{
+    for (unsigned i = 0; i < argCount; ++i)
+        aList.append(JSC::Bindings::convertNPVariantToValue(exec, &args[i], rootObject));
+}
+
+static inline JSC::SourceCode makeSource(const String& source, const String& url = String(), const TextPosition& startPosition = TextPosition::minimumPosition())
+{
+    return JSC::SourceCode(JSC::StringSourceProvider::create(source, url, startPosition), startPosition.m_line.oneBasedInt(), startPosition.m_column.oneBasedInt());
+}
+
+static bool NPN_Evaluate(NPP instance, NPObject* o, NPString* s, NPVariant* variant)
+{
+    if (o->_class == NPScriptObjectClass) {
+        JavaScriptObject* obj = reinterpret_cast<JavaScriptObject*>(o);
+
+        JSC::Bindings::RootObject* rootObject = obj->rootObject;
+        if (!rootObject || !rootObject->isValid())
+            return false;
+
+        // There is a crash in Flash when evaluating a script that destroys the
+        // PluginView, so we destroy it asynchronously.
+        PluginView::keepAlive(instance);
+
+        JSC::ExecState* exec = rootObject->globalObject()->globalExec();
+        JSC::JSLockHolder lock(exec);
+        String scriptString = JSC::Bindings::convertNPStringToUTF16(s);
+
+        JSC::JSValue returnValue = JSC::evaluate(rootObject->globalObject()->globalExec(), makeSource(scriptString), JSC::JSValue());
+
+        JSC::Bindings::convertValueToNPVariant(exec, returnValue, variant);
+        exec->clearException();
+        return true;
+    }
+
+    VOID_TO_NPVARIANT(*variant);
+    return false;
+}
+
+static bool NPN_Invoke(NPP npp, NPObject* o, NPIdentifier methodName, const NPVariant* args, uint32_t argCount, NPVariant* result)
+{
+    if (o->_class == NPScriptObjectClass) {
+        JavaScriptObject* obj = reinterpret_cast<JavaScriptObject*>(o);
+
+        IdentifierRep* i = static_cast<IdentifierRep*>(methodName);
+        if (!i->isString())
+            return false;
+
+        // Special case the "eval" method.
+        if (methodName == _NPN_GetStringIdentifier("eval")) {
+            if (argCount != 1)
+                return false;
+            if (args[0].type != NPVariantType_String)
+                return false;
+            return WebCore::NPN_Evaluate(npp, o, const_cast<NPString*>(&args[0].value.stringValue), result);
+        }
+
+        // Look up the function object.
+        JSC::Bindings::RootObject* rootObject = obj->rootObject;
+        if (!rootObject || !rootObject->isValid())
+            return false;
+        JSC::ExecState* exec = rootObject->globalObject()->globalExec();
+        JSC::JSLockHolder lock(exec);
+        JSC::JSValue function = obj->imp->get(exec, JSC::Bindings::identifierFromNPIdentifier(exec, i->string()));
+        JSC::CallData callData;
+        JSC::CallType callType = getCallData(function, callData);
+        if (callType == JSC::CallTypeNone)
+            return false;
+
+        // Call the function object.
+        JSC::MarkedArgumentBuffer argList;
+        getListFromVariantArgs(exec, args, argCount, rootObject, argList);
+        JSC::JSValue resultV = JSC::call(exec, function, callType, callData, obj->imp, argList);
+
+        // Convert and return the result of the function call.
+        JSC::Bindings::convertValueToNPVariant(exec, resultV, result);
+        exec->clearException();
+        return true;
+    }
+
+    if (o->_class->invoke)
+        return o->_class->invoke(o, methodName, args, argCount, result);
+
+    VOID_TO_NPVARIANT(*result);
+    return true;
+}
+
 void PluginPackage::initializeBrowserFuncs()
 {
     memset(&m_browserFuncs, 0, sizeof(m_browserFuncs));
@@ -308,9 +402,9 @@ void PluginPackage::initializeBrowserFuncs()
     m_browserFuncs.createobject = _NPN_CreateObject;
     m_browserFuncs.retainobject = _NPN_RetainObject;
     m_browserFuncs.releaseobject = _NPN_ReleaseObject;
-    m_browserFuncs.invoke = _NPN_Invoke;
+    m_browserFuncs.invoke = WebCore::NPN_Invoke;
     m_browserFuncs.invokeDefault = _NPN_InvokeDefault;
-    m_browserFuncs.evaluate = _NPN_Evaluate;
+    m_browserFuncs.evaluate = WebCore::NPN_Evaluate;
     m_browserFuncs.getproperty = _NPN_GetProperty;
     m_browserFuncs.setproperty = _NPN_SetProperty;
     m_browserFuncs.removeproperty = _NPN_RemoveProperty;

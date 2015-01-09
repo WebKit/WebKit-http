@@ -157,6 +157,12 @@ set(WebKit2_SOURCES
 
     NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
+    NetworkProcess/cache/NetworkCache.cpp
+    NetworkProcess/cache/NetworkCacheCoders.cpp
+    NetworkProcess/cache/NetworkCacheEncoder.cpp
+    NetworkProcess/cache/NetworkCacheDecoder.cpp
+    NetworkProcess/cache/NetworkCacheKey.cpp
+
     Platform/Logging.cpp
     Platform/Module.cpp
     Platform/WorkQueue.cpp
@@ -178,15 +184,18 @@ set(WebKit2_SOURCES
     PluginProcess/PluginProcess.cpp
     PluginProcess/WebProcessConnection.cpp
 
-    Shared/APIArray.cpp
-    Shared/APIData.cpp
-    Shared/APIError.cpp
-    Shared/APIFrameHandle.cpp
-    Shared/APIGeometry.cpp
-    Shared/APIPageHandle.cpp
-    Shared/APIObject.cpp
-    Shared/APIURLRequest.cpp
-    Shared/APIURLResponse.cpp
+    Shared/API/APIArray.cpp
+    Shared/API/APIData.cpp
+    Shared/API/APIDictionary.cpp
+    Shared/API/APIError.cpp
+    Shared/API/APIFrameHandle.cpp
+    Shared/API/APIGeometry.cpp
+    Shared/API/APIPageGroupHandle.cpp
+    Shared/API/APIPageHandle.cpp
+    Shared/API/APIObject.cpp
+    Shared/API/APIURLRequest.cpp
+    Shared/API/APIURLResponse.cpp
+
     Shared/ActivityAssertion.cpp
     Shared/BlobDataFileReferenceWithSandboxExtension.cpp
     Shared/CacheModel.cpp
@@ -197,9 +206,7 @@ set(WebKit2_SOURCES
     Shared/DictionaryPopupInfo.cpp
     Shared/EditorState.cpp
     Shared/FontInfo.cpp
-    Shared/ImmutableDictionary.cpp
     Shared/LayerTreeContext.cpp
-    Shared/MutableDictionary.cpp
     Shared/NavigationActionData.cpp
     Shared/OriginAndDatabases.cpp
     Shared/PlatformPopupMenuData.cpp
@@ -288,8 +295,8 @@ set(WebKit2_SOURCES
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
     Shared/Plugins/Netscape/PluginInformation.cpp
 
-    UIProcess/APIContextConfiguration.cpp
     UIProcess/APINavigationData.cpp
+    UIProcess/APIProcessPoolConfiguration.cpp
     UIProcess/APISession.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
@@ -312,7 +319,7 @@ set(WebKit2_SOURCES
     UIProcess/WebBatteryProvider.cpp
     UIProcess/WebColorPicker.cpp
     UIProcess/WebConnectionToWebProcess.cpp
-    UIProcess/WebContext.cpp
+    UIProcess/WebProcessPool.cpp
     UIProcess/WebContextClient.cpp
     UIProcess/WebContextConnectionClient.cpp
     UIProcess/WebContextInjectedBundleClient.cpp
@@ -342,6 +349,7 @@ set(WebKit2_SOURCES
     UIProcess/WebPageContextMenuClient.cpp
     UIProcess/WebPageGroup.cpp
     UIProcess/WebPageProxy.cpp
+    UIProcess/WebPasteboardProxy.cpp
     UIProcess/WebPreferences.cpp
     UIProcess/WebProcessProxy.cpp
     UIProcess/WebResourceCacheManagerProxy.cpp
@@ -444,6 +452,7 @@ set(WebKit2_SOURCES
 
     WebProcess/Cookies/WebCookieManager.cpp
 
+    WebProcess/Databases/WebDatabaseProvider.cpp
     WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.cpp
 
     WebProcess/FileAPI/BlobRegistryProxy.cpp
@@ -592,7 +601,7 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/VisitedLinkProvider.messages.in
     UIProcess/WebApplicationCacheManagerProxy.messages.in
     UIProcess/WebBatteryManagerProxy.messages.in
-    UIProcess/WebContext.messages.in
+    UIProcess/WebProcessPool.messages.in
     UIProcess/WebCookieManagerProxy.messages.in
     UIProcess/WebDatabaseManagerProxy.messages.in
     UIProcess/WebFullScreenManagerProxy.messages.in
@@ -602,6 +611,7 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/WebMediaCacheManagerProxy.messages.in
     UIProcess/WebOriginDataManagerProxy.messages.in
     UIProcess/WebPageProxy.messages.in
+    UIProcess/WebPasteboardProxy.messages.in
     UIProcess/WebProcessProxy.messages.in
     UIProcess/WebResourceCacheManagerProxy.messages.in
     UIProcess/WebVibrationProxy.messages.in

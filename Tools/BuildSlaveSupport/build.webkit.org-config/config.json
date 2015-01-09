@@ -17,12 +17,12 @@
                     { "name": "bot158", "platform": "mac-mountainlion" },
                     { "name": "bot159", "platform": "mac-mountainlion" },
                     
-                    { "name": "apple-mac-114",  "platform": "mac-mavericks" },
+                    { "name": "bot629",  "platform": "mac-mavericks" },
                     { "name": "bot198",  "platform": "mac-mavericks" },
                     { "name": "bot199",  "platform": "mac-mavericks" },
                     { "name": "bot200",  "platform": "mac-mavericks" },
                     { "name": "bot101", "platform": "mac-mavericks" },
-                    { "name": "bot104", "platform": "mac-mavericks" },
+                    { "name": "bot124", "platform": "mac-mavericks" },
                     { "name": "bot105", "platform": "mac-mavericks" },
                     { "name": "bot108", "platform": "mac-mavericks" },
                     { "name": "bot135", "platform": "mac-mavericks" },
@@ -48,12 +48,12 @@
                     { "name": "bot193", "platform": "mac-yosemite" },
                     { "name": "bot194", "platform": "mac-yosemite" },
 
-                    { "name": "apple-windows-1", "platform": "win" },
-                    { "name": "apple-windows-2", "platform": "win" },
-                    { "name": "apple-windows-3", "platform": "win" },
-                    { "name": "apple-windows-4", "platform": "win" },
-                    { "name": "apple-windows-5", "platform": "win" },
-                    { "name": "apple-windows-6", "platform": "win" },
+                    { "name": "bot516", "platform": "win" },
+                    { "name": "bot514", "platform": "win" },
+                    { "name": "bot507", "platform": "win" },
+                    { "name": "bot504", "platform": "win" },
+                    { "name": "bot511", "platform": "win" },
+                    { "name": "bot501", "platform": "win" },
 
                     { "name": "gtk-linux-slave-1", "platform": "gtk" },
                     { "name": "gtk-linux-slave-2", "platform": "gtk" },
@@ -103,6 +103,7 @@
                     },
                     { "name": "Apple MountainLion Release WK2 (Tests)", "type": "TestWebKit2", "builddir": "mountainlion-release-tests-wk2",
                       "platform": "mac-mountainlion", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
                       "slavenames": ["bot197", "bot142"]
                     },
                     {
@@ -117,7 +118,7 @@
                     },
                     { "name": "Apple Mavericks Debug WK1 (Tests)", "type": "Test", "builddir": "mavericks-debug-tests-wk1",
                       "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["bot104", "bot108"]
+                      "slavenames": ["bot124", "bot108"]
                     },
                     { "name": "Apple Mavericks Debug WK2 (Tests)", "type": "TestWebKit2", "builddir": "mavericks-debug-tests-wk2",
                       "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
@@ -129,7 +130,7 @@
                     },
                     { "name": "Apple Mavericks 32-bit JSC (BuildAndTest)", "type": "BuildAndTest32bitJSC", "builddir": "mavericks-32bitJSC-debug",
                       "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["apple-mac-114"]
+                      "slavenames": ["bot629"]
                     },
                     { "name": "Apple Mavericks Release (Build)", "type": "Build", "builddir": "mavericks-release",
                       "platform": "mac-mavericks", "configuration": "release", "architectures": ["x86_64"],
@@ -143,6 +144,7 @@
                     },
                     { "name": "Apple Mavericks Release WK2 (Tests)", "type": "TestWebKit2", "builddir": "mavericks-release-tests-wk2",
                       "platform": "mac-mavericks", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
                       "slavenames": ["bot200", "bot152"]
                     },
                     {
@@ -183,6 +185,7 @@
                     },
                     { "name": "Apple Yosemite Release WK2 (Tests)", "type": "TestWebKit2", "builddir": "yosemite-release-tests-wk2",
                       "platform": "mac-yosemite", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
                       "slavenames": ["bot192", "bot193"]
                     },
                     {
@@ -194,23 +197,23 @@
                       "name": "Apple Win Release (Build)", "type": "Build", "builddir": "win-release",
                       "platform": "win", "configuration": "release", "architectures": ["i386"],
                       "triggers": ["win-release-tests"],
-                      "slavenames": ["apple-windows-2"]
+                      "slavenames": ["bot514"]
                     },
                     {
                       "name": "Apple Win 7 Release (Tests)", "type": "Test", "builddir": "win-release-tests",
                       "platform": "win", "configuration": "release", "architectures": ["i386"],
-                      "slavenames": ["apple-windows-5", "apple-windows-6"]
+                      "slavenames": ["bot511", "bot501"]
                     },
                     {
                       "name": "Apple Win Debug (Build)", "type": "Build", "builddir": "win-debug",
                       "platform": "win", "configuration": "debug", "architectures": ["i386"],
                       "triggers": ["win-debug-tests"],
-                      "slavenames": ["apple-windows-1"]
+                      "slavenames": ["bot516"]
                     },
                     {
                       "name": "Apple Win 7 Debug (Tests)", "type": "Test", "builddir": "win-debug-tests",
                       "platform": "win", "configuration": "debug", "architectures": ["i386"],
-                      "slavenames": ["apple-windows-3", "apple-windows-4"]
+                      "slavenames": ["bot507", "bot504"]
                     },
                     {
                       "name": "GTK Linux 32-bit Release", "type": "BuildAndNonLayoutTest", "builddir": "gtk-linux-32-release",

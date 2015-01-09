@@ -29,18 +29,16 @@
 #if PLATFORM(IOS)
 
 #import "RemoteLayerTreeTransaction.h"
+#import "UIKitSPI.h"
 #import "ViewGestureController.h"
-#import "WebPageProxy.h"
+#import "WKAPICast.h"
 #import "WKBrowsingContextGroupPrivate.h"
 #import "WKContentView.h"
 #import "WKProcessGroupPrivate.h"
 #import "WKScrollView.h"
-#import "WKAPICast.h"
-#import <UIKit/UIImage_Private.h>
-#import <UIKit/UIPeripheralHost_Private.h>
+#import "WebPageProxy.h"
+#import "WebProcessPool.h"
 #import <UIKit/UIScreen.h>
-#import <UIKit/UIScrollView_Private.h>
-#import <UIKit/UIWindow_Private.h>
 #import <wtf/RetainPtr.h>
 
 using namespace WebKit;
@@ -225,7 +223,7 @@ using namespace WebKit;
     webPageConfiguration.pageGroup = toImpl(pageGroupRef);
     webPageConfiguration.relatedPage = toImpl(relatedPage);
 
-    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds context:*toImpl(contextRef) configuration:WTF::move(webPageConfiguration) webView:nil]);
+    _contentView = adoptNS([[WKContentView alloc] initWithFrame:bounds processPool:*toImpl(contextRef) configuration:WTF::move(webPageConfiguration) webView:nil]);
 
     [[_contentView layer] setAnchorPoint:CGPointZero];
     [_contentView setFrame:bounds];

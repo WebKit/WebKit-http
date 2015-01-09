@@ -102,8 +102,6 @@ PassRefPtr<ThreadedCompositor> ThreadedCompositor::create(Client* client)
 
 ThreadedCompositor::ThreadedCompositor(Client* client)
     : m_client(client)
-    , m_scene(adoptRef(new CoordinatedGraphicsScene(this)))
-    , m_viewportController(std::make_unique<SimpleViewportController>(this))
     , m_threadIdentifier(0)
 {
     createCompositingThread();
@@ -293,6 +291,8 @@ void ThreadedCompositor::runCompositingThread()
         m_compositingRunLoop = std::make_unique<CompositingRunLoop>([&] {
             renderLayerTree();
         });
+        m_scene = adoptRef(new CoordinatedGraphicsScene(this));
+        m_viewportController = std::make_unique<SimpleViewportController>(this);
 
         m_initializeRunLoopCondition.signal();
     }
@@ -305,7 +305,7 @@ void ThreadedCompositor::runCompositingThread()
     {
         MutexLocker locker(m_terminateRunLoopConditionMutex);
         m_compositingRunLoop = nullptr;
-        m_context.clear();
+        m_context = nullptr;
         m_terminateRunLoopCondition.signal();
     }
 

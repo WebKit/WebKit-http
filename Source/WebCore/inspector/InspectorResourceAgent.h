@@ -84,34 +84,25 @@ public:
     virtual void didCreateFrontendAndBackend(Inspector::InspectorFrontendChannel*, Inspector::InspectorBackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::InspectorDisconnectReason) override;
 
-    void willSendRequest(unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse& redirectResponse);
+    // InspectorInstrumentation callbacks.
+    void willRecalculateStyle();
+    void didRecalculateStyle();
+    void willSendRequest(unsigned long identifier, DocumentLoader&, ResourceRequest&, const ResourceResponse& redirectResponse);
     void markResourceAsCached(unsigned long identifier);
-    void didReceiveResponse(unsigned long identifier, DocumentLoader* laoder, const ResourceResponse&, ResourceLoader*);
+    void didReceiveResponse(unsigned long identifier, DocumentLoader& loader, const ResourceResponse&, ResourceLoader*);
     void didReceiveData(unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
-    void didFinishLoading(unsigned long identifier, DocumentLoader*, double finishTime);
-    void didFailLoading(unsigned long identifier, DocumentLoader*, const ResourceError&);
-    void didLoadResourceFromMemoryCache(DocumentLoader*, CachedResource*);
-    void mainFrameNavigated(DocumentLoader*);
-    void setInitialScriptContent(unsigned long identifier, const String& sourceString);
-    void didReceiveScriptResponse(unsigned long identifier);
-
+    void didFinishLoading(unsigned long identifier, DocumentLoader&, double finishTime);
+    void didFailLoading(unsigned long identifier, DocumentLoader&, const ResourceError&);
+    void didLoadResourceFromMemoryCache(DocumentLoader&, CachedResource&);
     void documentThreadableLoaderStartedLoadingForClient(unsigned long identifier, ThreadableLoaderClient*);
-    void willLoadXHR(ThreadableLoaderClient*, const String& method, const URL&, bool async, PassRefPtr<FormData> body, const HTTPHeaderMap& headers, bool includeCrendentials);
+    void willLoadXHR(ThreadableLoaderClient*, const String& method, const URL&, bool async, RefPtr<FormData>&& body, const HTTPHeaderMap& headers, bool includeCrendentials);
     void didFailXHRLoading(ThreadableLoaderClient*);
     void didFinishXHRLoading(ThreadableLoaderClient*, unsigned long identifier, const String& sourceString);
     void didReceiveXHRResponse(unsigned long identifier);
     void willLoadXHRSynchronously();
     void didLoadXHRSynchronously();
-
-    void willDestroyCachedResource(CachedResource*);
-
-    // FIXME: InspectorResourceAgent should now be aware of style recalculation.
-    void willRecalculateStyle();
-    void didRecalculateStyle();
-    void didScheduleStyleRecalculation(Document*);
-
-    PassRefPtr<Inspector::Protocol::Network::Initiator> buildInitiatorObject(Document*);
-
+    void didReceiveScriptResponse(unsigned long identifier);
+    void willDestroyCachedResource(CachedResource&);
 #if ENABLE(WEB_SOCKETS)
     void didCreateWebSocket(unsigned long identifier, const URL& requestURL);
     void willSendWebSocketHandshakeRequest(unsigned long identifier, const ResourceRequest&);
@@ -122,10 +113,17 @@ public:
     void didReceiveWebSocketFrameError(unsigned long identifier, const String&);
 #endif
 
+    void mainFrameNavigated(DocumentLoader&);
+    void setInitialScriptContent(unsigned long identifier, const String& sourceString);
+
+    void didScheduleStyleRecalculation(Document&);
+
+    RefPtr<Inspector::Protocol::Network::Initiator> buildInitiatorObject(Document*);
+
     // Called from frontend.
     virtual void enable(ErrorString&) override;
     virtual void disable(ErrorString&) override;
-    virtual void setExtraHTTPHeaders(ErrorString&, const RefPtr<Inspector::InspectorObject>&) override;
+    virtual void setExtraHTTPHeaders(ErrorString&, const RefPtr<Inspector::InspectorObject>&&) override;
     virtual void getResponseBody(ErrorString&, const String& requestId, String* content, bool* base64Encoded) override;
     virtual void replayXHR(ErrorString&, const String& requestId) override;
     virtual void canClearBrowserCache(ErrorString&, bool*) override;
@@ -133,7 +131,7 @@ public:
     virtual void canClearBrowserCookies(ErrorString&, bool*) override;
     virtual void clearBrowserCookies(ErrorString&) override;
     virtual void setCacheDisabled(ErrorString&, bool cacheDisabled) override;
-    virtual void loadResource(ErrorString&, const String& frameId, const String& url, PassRefPtr<LoadResourceCallback>) override;
+    virtual void loadResource(ErrorString&, const String& frameId, const String& url, Ref<LoadResourceCallback>&&) override;
 
 private:
     void enable();

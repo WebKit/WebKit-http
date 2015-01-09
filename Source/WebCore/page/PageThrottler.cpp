@@ -26,51 +26,42 @@
 #include "config.h"
 #include "PageThrottler.h"
 
+#include "Page.h"
+
 namespace WebCore {
 
-PageThrottler::PageThrottler(ViewState::Flags viewState)
-    : m_viewState(viewState)
-    , m_hysteresis([this](HysteresisState) { updateUserActivity(); })
-    , m_pageActivityCounter([this]() { updateUserActivity(); })
+PageThrottler::PageThrottler(Page& page)
+    : m_page(page)
+    , m_userInputHysteresis([this](HysteresisState state) { setActivityFlag(PageActivityState::UserInputActivity, state == HysteresisState::Started); })
+    , m_audiblePluginHysteresis([this](HysteresisState state) { setActivityFlag(PageActivityState::AudiblePlugin, state == HysteresisState::Started); })
+    , m_mediaActivityCounter([this](bool value) { setActivityFlag(PageActivityState::MediaActivity, value); })
+    , m_pageLoadActivityCounter([this](bool value) { setActivityFlag(PageActivityState::PageLoadActivity, value); })
 {
-}
-
-void PageThrottler::createUserActivity()
-{
-    ASSERT(!m_activity);
-    m_activity = std::make_unique<UserActivity>("Page is active.");
-    updateUserActivity();
 }
 
 PageActivityAssertionToken PageThrottler::mediaActivityToken()
 {
-    return m_pageActivityCounter.count();
+    return m_mediaActivityCounter.token<PageActivityAssertionTokenType>();
 }
 
 PageActivityAssertionToken PageThrottler::pageLoadActivityToken()
 {
-    return m_pageActivityCounter.count();
+    return m_pageLoadActivityCounter.token<PageActivityAssertionTokenType>();
 }
 
-void PageThrottler::updateUserActivity()
+void PageThrottler::setActivityFlag(PageActivityState::Flags flag, bool value)
 {
-    if (!m_activity)
-        return;
-
-    // Allow throttling if there is no page activity, and the page is visually idle.
-    if (!m_pageActivityCounter.value() && m_hysteresis.state() == HysteresisState::Stopped && m_viewState & ViewState::IsVisuallyIdle)
-        m_activity->stop();
+    PageActivityState::Flags activityState = m_activityState;
+    if (value)
+        activityState |= flag;
     else
-        m_activity->start();
-}
+        activityState &= ~flag;
 
-void PageThrottler::setViewState(ViewState::Flags viewState)
-{
-    ViewState::Flags changed = m_viewState ^ viewState;
-    m_viewState = viewState;
+    if (m_activityState == activityState)
+        return;
+    m_activityState = activityState;
 
-    if (changed & ViewState::IsVisuallyIdle)
-        updateUserActivity();
+    m_page.setPageActivityState(m_activityState);
 }
 
 }

@@ -27,13 +27,13 @@
 #include "WebNotificationProvider.h"
 
 #include "APIArray.h"
+#include "APIDictionary.h"
 #include "APINumber.h"
-#include "ImmutableDictionary.h"
+#include "APISecurityOrigin.h"
 #include "WKAPICast.h"
 #include "WebNotification.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPageProxy.h"
-#include "WebSecurityOrigin.h"
 
 namespace WebKit {
 
@@ -91,10 +91,10 @@ void WebNotificationProvider::removeNotificationManager(WebNotificationManagerPr
     m_client.removeNotificationManager(toAPI(manager), m_client.base.clientInfo);
 }
 
-PassRefPtr<ImmutableDictionary> WebNotificationProvider::notificationPermissions()
+PassRefPtr<API::Dictionary> WebNotificationProvider::notificationPermissions()
 {
     if (!m_client.notificationPermissions)
-        return ImmutableDictionary::create();
+        return API::Dictionary::create();
 
     return adoptRef(toImpl(m_client.notificationPermissions(m_client.base.clientInfo)));
 }

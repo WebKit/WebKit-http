@@ -26,12 +26,8 @@
 #ifndef UserData_h
 #define UserData_h
 
-#include <functional>
+#include "APIObject.h"
 #include <wtf/RefPtr.h>
-
-namespace API {
-class Object;
-}
 
 namespace IPC {
 class ArgumentEncoder;
@@ -42,21 +38,27 @@ namespace WebKit {
 
 class UserData {
 public:
-    explicit UserData(API::Object* = nullptr);
+    UserData();
+    explicit UserData(RefPtr<API::Object>&&);
     ~UserData();
 
-    static RefPtr<API::Object> transform(API::Object*, const std::function<RefPtr<API::Object> (const API::Object&)> transformer);
+    struct Transformer {
+        virtual ~Transformer() { }
+        virtual bool shouldTransformObject(const API::Object&) const = 0;
+        virtual RefPtr<API::Object> transformObject(API::Object&) const = 0;
+    };
+    static RefPtr<API::Object> transform(API::Object*, const Transformer&);
 
     API::Object* object() const { return m_object.get(); }
 
     void encode(IPC::ArgumentEncoder&) const;
     static bool decode(IPC::ArgumentDecoder&, UserData&);
 
-private:
-    void encode(IPC::ArgumentEncoder&, const API::Object*) const;
-    void encode(IPC::ArgumentEncoder&, const API::Object&) const;
-
+    static void encode(IPC::ArgumentEncoder&, const API::Object*);
     static bool decode(IPC::ArgumentDecoder&, RefPtr<API::Object>&);
+
+private:
+    static void encode(IPC::ArgumentEncoder&, const API::Object&);
 
     RefPtr<API::Object> m_object;
 };

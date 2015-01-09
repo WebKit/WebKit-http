@@ -758,7 +758,9 @@ void CodeBlock::dumpBytecode(
         }
         case op_create_arguments: {
             int r0 = (++it)->u.operand;
-            printLocationOpAndRegisterOperand(out, exec, location, it, "create_arguments", r0);
+            int r1 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "create_arguments");
+            out.printf("%s %s", registerName(r0).data(), registerName(r1).data());
             break;
         }
         case op_init_lazy_reg: {
@@ -1114,8 +1116,9 @@ void CodeBlock::dumpBytecode(
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "get_argument_by_val");
-            out.printf("%s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data());
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data());
             ++it;
             dumpValueProfiling(out, it, hasPrintedProfiling);
             break;

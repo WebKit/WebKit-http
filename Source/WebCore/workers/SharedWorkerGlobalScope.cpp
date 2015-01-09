@@ -52,15 +52,15 @@ PassRefPtr<MessageEvent> createConnectEvent(PassRefPtr<MessagePort> prpPort)
 }
 
 // static
-PassRefPtr<SharedWorkerGlobalScope> SharedWorkerGlobalScope::create(const String& name, const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, SharedWorkerThread& thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
+Ref<SharedWorkerGlobalScope> SharedWorkerGlobalScope::create(const String& name, const URL& url, const String& userAgent, SharedWorkerThread& thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
 {
-    RefPtr<SharedWorkerGlobalScope> context = adoptRef(new SharedWorkerGlobalScope(name, url, userAgent, WTF::move(settings), thread));
+    Ref<SharedWorkerGlobalScope> context = adoptRef(*new SharedWorkerGlobalScope(name, url, userAgent, thread));
     context->applyContentSecurityPolicyFromString(contentSecurityPolicy, contentSecurityPolicyType);
-    return context.release();
+    return context;
 }
 
-SharedWorkerGlobalScope::SharedWorkerGlobalScope(const String& name, const URL& url, const String& userAgent, std::unique_ptr<GroupSettings> settings, SharedWorkerThread& thread)
-    : WorkerGlobalScope(url, userAgent, WTF::move(settings), thread, 0)
+SharedWorkerGlobalScope::SharedWorkerGlobalScope(const String& name, const URL& url, const String& userAgent, SharedWorkerThread& thread)
+    : WorkerGlobalScope(url, userAgent, thread, 0)
     , m_name(name)
 {
 }
@@ -79,10 +79,10 @@ SharedWorkerThread& SharedWorkerGlobalScope::thread()
     return static_cast<SharedWorkerThread&>(Base::thread());
 }
 
-void SharedWorkerGlobalScope::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<Inspector::ScriptCallStack> callStack)
+void SharedWorkerGlobalScope::logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&& callStack)
 {
-    WorkerGlobalScope::logExceptionToConsole(errorMessage, sourceURL, lineNumber, columnNumber, callStack);
-    addMessageToWorkerConsole(MessageSource::JS, MessageLevel::Error, errorMessage, sourceURL, lineNumber, columnNumber, callStack);
+    WorkerGlobalScope::logExceptionToConsole(errorMessage, sourceURL, lineNumber, columnNumber, callStack.copyRef());
+    addMessageToWorkerConsole(MessageSource::JS, MessageLevel::Error, errorMessage, sourceURL, lineNumber, columnNumber, callStack.copyRef());
 }
 
 } // namespace WebCore

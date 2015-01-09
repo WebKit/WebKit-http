@@ -43,7 +43,7 @@ static inline const SVGFontData* svgFontAndFontFaceElementForFontData(const Simp
     ASSERT(fontData->isCustomFont());
     ASSERT(fontData->isSVGFont());
 
-    const SVGFontData* svgFontData = static_cast<const SVGFontData*>(fontData->fontData());
+    auto* svgFontData = static_cast<const SVGFontData*>(fontData->svgData());
 
     fontFace = svgFontData->svgFontFaceElement();
     ASSERT(fontFace);
@@ -290,74 +290,62 @@ void SVGTextRunRenderingContext::drawSVGGlyphs(GraphicsContext* context, const S
     }
 }
 
+static GlyphData missingGlyphForFont(const Font& font)
+{
+    const SimpleFontData& primaryFontData = font.primaryFontData();
+    if (!primaryFontData.isSVGFont())
+        return GlyphData();
+    SVGFontElement* fontElement;
+    SVGFontFaceElement* fontFaceElement;
+    svgFontAndFontFaceElementForFontData(&primaryFontData, fontFaceElement, fontElement);
+    return GlyphData(fontElement->missingGlyph(), &primaryFontData);
+}
+
 GlyphData SVGTextRunRenderingContext::glyphDataForCharacter(const Font& font, WidthIterator& iterator, UChar32 character, bool mirror, int currentCharacter, unsigned& advanceLength, String& normalizedSpacesStringCache)
 {
-    const SimpleFontData* primaryFont = font.primaryFont();
-    ASSERT(primaryFont);
+    GlyphData glyphData = font.glyphDataForCharacter(character, mirror, AutoVariant);
+    if (!glyphData.glyph)
+        return missingGlyphForFont(font);
 
-    std::pair<GlyphData, GlyphPage*> pair = font.glyphDataAndPageForCharacter(character, mirror, AutoVariant);
-    GlyphData glyphData = pair.first;
-
-    // Check if we have the missing glyph data, in which case we can just return.
-    GlyphData missingGlyphData = primaryFont->missingGlyphData();
-    if (glyphData.glyph == missingGlyphData.glyph && glyphData.fontData == missingGlyphData.fontData) {
-        ASSERT(glyphData.fontData);
-        return glyphData;
-    }
-
-    // Save data from the font fallback list because we may modify it later. Do this before the
-    // potential change to glyphData.fontData below.
-    FontGlyphs* glyph = font.glyphs();
-    ASSERT(glyph);
-    FontGlyphs::GlyphPagesStateSaver glyphPagesSaver(*glyph);
+    ASSERT(glyphData.fontData);
 
     // Characters enclosed by an <altGlyph> element, may not be registered in the GlyphPage.
-    const SimpleFontData* originalFontData = glyphData.fontData;
-    if (glyphData.fontData && !glyphData.fontData->isSVGFont()) {
+    if (!glyphData.fontData->isSVGFont()) {
         auto& elementRenderer = is<RenderElement>(renderer()) ? downcast<RenderElement>(renderer()) : *renderer().parent();
         if (Element* parentRendererElement = elementRenderer.element()) {
             if (is<SVGAltGlyphElement>(*parentRendererElement))
-                glyphData.fontData = primaryFont;
+                glyphData.fontData = &font.primaryFontData();
         }
     }
 
-    const SimpleFontData* fontData = glyphData.fontData;
-    if (fontData) {
-        if (!fontData->isSVGFont())
-            return glyphData;
+    if (!glyphData.fontData->isSVGFont())
+        return glyphData;
 
-        SVGFontElement* fontElement = nullptr;
-        SVGFontFaceElement* fontFaceElement = nullptr;
+    SVGFontElement* fontElement = nullptr;
+    SVGFontFaceElement* fontFaceElement = nullptr;
+    const SVGFontData* svgFontData = svgFontAndFontFaceElementForFontData(glyphData.fontData, fontFaceElement, fontElement);
+    if (!svgFontData)
+        return glyphData;
 
-        const SVGFontData* svgFontData = svgFontAndFontFaceElementForFontData(fontData, fontFaceElement, fontElement);
-        if (!fontElement || !fontFaceElement)
-            return glyphData;
+    // If we got here, we're dealing with a glyph defined in a SVG Font.
+    // The returned glyph by glyphDataForCharacter() is a glyph stored in the SVG Font glyph table.
+    // This doesn't necessarily mean the glyph is suitable for rendering/measuring in this context, its
+    // arabic-form/orientation/... may not match, we have to apply SVG Glyph selection to discover that.
+    if (svgFontData->applySVGGlyphSelection(iterator, glyphData, mirror, currentCharacter, advanceLength, normalizedSpacesStringCache))
+        return glyphData;
 
-        // If we got here, we're dealing with a glyph defined in a SVG Font.
-        // The returned glyph by glyphDataAndPageForCharacter() is a glyph stored in the SVG Font glyph table.
-        // This doesn't necessarily mean the glyph is suitable for rendering/measuring in this context, its
-        // arabic-form/orientation/... may not match, we have to apply SVG Glyph selection to discover that.
-        if (svgFontData->applySVGGlyphSelection(iterator, glyphData, mirror, currentCharacter, advanceLength, normalizedSpacesStringCache))
-            return glyphData;
-    }
+    GlyphData missingGlyphData = missingGlyphForFont(font);
+    if (missingGlyphData.glyph)
+        return missingGlyphData;
 
-    GlyphPage* page = pair.second;
-    ASSERT(page);
+    // SVG font context sensitive selection failed and there is no defined missing glyph. Drop down to a default font.
+    // The behavior does not seem to be specified. For simplicity we don't try to resolve font fallbacks context-sensitively.
+    FontDescription fallbackDescription = font.fontDescription();
+    fallbackDescription.setFamilies(Vector<AtomicString> { sansSerifFamily });
+    Font fallbackFont(fallbackDescription, font.letterSpacing(), font.wordSpacing());
+    fallbackFont.update(font.fontSelector());
 
-    // No suitable glyph found that is compatible with the requirments (same language, arabic-form, orientation etc.)
-    // Even though our GlyphPage contains an entry for eg. glyph "a", it's not compatible. So we have to temporarily
-    // remove the glyph data information from the GlyphPage, and retry the lookup, which handles font fallbacks correctly.
-    page->setGlyphDataForCharacter(character, 0, nullptr);
-
-    // Assure that the font fallback glyph selection worked, aka. the fallbackGlyphData font data is not the same as before.
-    GlyphData fallbackGlyphData = font.glyphDataForCharacter(character, mirror);
-    ASSERT(fallbackGlyphData.fontData != fontData);
-
-    // Restore original state of the SVG Font glyph table and the current font fallback list,
-    // to assure the next lookup of the same glyph won't immediately return the fallback glyph.
-    page->setGlyphDataForCharacter(character, glyphData.glyph, originalFontData);
-    ASSERT(fallbackGlyphData.fontData);
-    return fallbackGlyphData;
+    return fallbackFont.glyphDataForCharacter(character, mirror, AutoVariant);
 }
 
 }

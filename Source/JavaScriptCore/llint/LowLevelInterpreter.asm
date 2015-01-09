@@ -1353,11 +1353,6 @@ _llint_op_to_index_string:
     callSlowPath(_slow_path_to_index_string)
     dispatch(3)
 
-_llint_op_profile_type:
-    traceExecution()
-    callSlowPath(_slow_path_profile_type)
-    dispatch(6)
-
 _llint_op_profile_control_flow:
     traceExecution()
     loadpFromInstruction(1, t0)

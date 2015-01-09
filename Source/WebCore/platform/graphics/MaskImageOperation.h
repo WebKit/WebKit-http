@@ -36,8 +36,6 @@
 #include "Length.h"
 #include "StyleImage.h"
 #include <wtf/HashCountedSet.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -57,9 +55,13 @@ public:
     PassRefPtr<CSSValue> cssValue();
 
     virtual ~MaskImageOperation();
+    
+    bool operator==(const MaskImageOperation&) const;
+    inline bool operator!=(const MaskImageOperation& other) const { return !operator==(other); }
 
     const String& url() const { return m_url; }
     const String& fragment() const { return m_fragment; }
+    bool isExternalDocument() const { return m_isExternalDocument; }
     StyleImage* image() const { return m_styleImage.get(); }
     void setImage(PassRefPtr<StyleImage> image) { m_styleImage = image; }
     void setRenderLayerImageClient(CachedImageClient*);

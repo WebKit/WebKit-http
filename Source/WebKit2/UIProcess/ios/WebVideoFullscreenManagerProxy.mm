@@ -29,6 +29,7 @@
 #if PLATFORM(IOS)
 
 #import "RemoteLayerTreeDrawingAreaProxy.h"
+#import "UIKitSPI.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
 #import "WebVideoFullscreenManagerMessages.h"
@@ -37,19 +38,12 @@
 #import <WebCore/TimeRanges.h>
 #import <WebKitSystemInterface.h>
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <UIKit/UIWindow_Private.h>
-#else
-#import <UIKit/UIWindow.h>
-@interface UIWindow (Details)
-+ (mach_port_t)_synchronizeDrawingAcrossProcesses;
-@end
-#endif
-
 using namespace WebCore;
 
 namespace WebKit {
-    
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED > 80200
+
 PassRefPtr<WebVideoFullscreenManagerProxy> WebVideoFullscreenManagerProxy::create(WebPageProxy& page)
 {
     return adoptRef(new WebVideoFullscreenManagerProxy(page));
@@ -103,7 +97,7 @@ void WebVideoFullscreenManagerProxy::fullscreenModeChanged(HTMLMediaElement::Vid
     m_page->send(Messages::WebVideoFullscreenManager::fullscreenModeChanged(mode), m_page->pageID());
 }
     
-void WebVideoFullscreenManagerProxy::setSeekableRangesVector(Vector<std::pair<double, double>>& ranges)
+void WebVideoFullscreenManagerProxy::setSeekableRangesVector(const Vector<std::pair<double, double>>& ranges)
 {
     RefPtr<TimeRanges> timeRanges = TimeRanges::create();
     for (const auto& range : ranges)
@@ -139,6 +133,7 @@ void WebVideoFullscreenManagerProxy::requestExitFullscreen()
 void WebVideoFullscreenManagerProxy::didExitFullscreen()
 {
     m_page->send(Messages::WebVideoFullscreenManager::DidExitFullscreen(), m_page->pageID());
+    m_page->didExitFullscreen();
 }
     
 void WebVideoFullscreenManagerProxy::didCleanupFullscreen()
@@ -156,6 +151,7 @@ void WebVideoFullscreenManagerProxy::didSetupFullscreen()
 void WebVideoFullscreenManagerProxy::didEnterFullscreen()
 {
     m_page->send(Messages::WebVideoFullscreenManager::DidEnterFullscreen(), m_page->pageID());
+    m_page->didEnterFullscreen();
 }
 
 void WebVideoFullscreenManagerProxy::play()
@@ -228,6 +224,7 @@ void WebVideoFullscreenManagerProxy::selectLegibleMediaOption(uint64_t index)
 {
     m_page->send(Messages::WebVideoFullscreenManager::SelectLegibleMediaOption(index), m_page->pageID());
 }
+#endif
 
 } // namespace WebKit
 

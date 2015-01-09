@@ -70,12 +70,13 @@ const unsigned TestController::viewHeight = 600;
 const unsigned TestController::w3cSVGViewWidth = 480;
 const unsigned TestController::w3cSVGViewHeight = 360;
 
-// defaultLongTimeout + defaultShortTimeout should be less than 80,
-// the default timeout value of the test harness so we can detect an
-// unresponsive web process.
-static const double defaultLongTimeout = 60;
-static const double defaultShortTimeout = 15;
-static const double defaultNoTimeout = -1;
+#if ASAN_ENABLED
+const double TestController::shortTimeout = 10.0;
+#else
+const double TestController::shortTimeout = 5.0;
+#endif
+
+const double TestController::noTimeout = -1;
 
 static WKURLRef blankURL()
 {
@@ -105,12 +106,8 @@ TestController::TestController(int argc, const char* argv[])
     , m_shouldDumpPixelsForAllTests(false)
     , m_state(Initial)
     , m_doneResetting(false)
-    , m_longTimeout(defaultLongTimeout)
-    , m_shortTimeout(defaultShortTimeout)
-    , m_noTimeout(defaultNoTimeout)
     , m_useWaitToDumpWatchdogTimer(true)
     , m_forceNoTimeout(false)
-    , m_timeout(0)
     , m_didPrintWebProcessCrashedMessage(false)
     , m_shouldExitWhenWebProcessCrashes(true)
     , m_beforeUnloadReturnValue(true)
@@ -194,11 +191,6 @@ static void decidePolicyForUserMediaPermissionRequest(WKPageRef, WKFrameRef, WKS
     TestController::shared().handleUserMediaPermissionRequest(permissionRequest);
 }
 
-int TestController::getCustomTimeout()
-{
-    return m_timeout;
-}
-
 WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WKDictionaryRef, WKEventModifiers, WKEventMouseButton, const void* clientInfo)
 {
     PlatformWebView* parentView = static_cast<PlatformWebView*>(const_cast<void*>(clientInfo));
@@ -266,7 +258,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
     WKPageSetPageUIClient(newPage, &otherPageUIClient.base);
 
     WKPageLoaderClientV5 pageLoaderClient = {
-        { 5, clientInfo },
+        { 5, &TestController::shared() },
         0, // didStartProvisionalLoadForFrame
         0, // didReceiveServerRedirectForProvisionalLoadForFrame
         0, // didFailProvisionalLoadWithErrorForFrame
@@ -310,7 +302,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
     WKPageSetPageLoaderClient(view->page(), &pageLoaderClient.base);
 
     WKPagePolicyClientV1 pagePolicyClient = {
-        { 1, clientInfo },
+        { 1, &TestController::shared() },
         0, // decidePolicyForNavigationAction_deprecatedForUseWithV0
         0, // decidePolicyForNewWindowAction
         0, // decidePolicyForResponse_deprecatedForUseWithV0
@@ -342,7 +334,7 @@ void TestController::initialize(int argc, const char* argv[])
 {
     platformInitialize();
 
-    Options options(defaultLongTimeout, defaultShortTimeout);
+    Options options;
     OptionsHandler optionsHandler(options);
 
     if (argc < 2) {
@@ -352,8 +344,6 @@ void TestController::initialize(int argc, const char* argv[])
     if (!optionsHandler.parse(argc, argv))
         exit(1);
 
-    m_longTimeout = options.longTimeout;
-    m_shortTimeout = options.shortTimeout;
     m_useWaitToDumpWatchdogTimer = options.useWaitToDumpWatchdogTimer;
     m_forceNoTimeout = options.forceNoTimeout;
     m_verbose = options.verbose;
@@ -657,7 +647,6 @@ void TestController::resetPreferencesToConsistentValues()
     WKPreferencesSetPictographFontFamily(preferences, pictographFontFamily);
     WKPreferencesSetSansSerifFontFamily(preferences, sansSerifFontFamily);
     WKPreferencesSetSerifFontFamily(preferences, serifFontFamily);
-    WKPreferencesSetScreenFontSubstitutionEnabled(preferences, true);
     WKPreferencesSetAsynchronousSpellCheckingEnabled(preferences, false);
 #if ENABLE(WEB_AUDIO)
     WKPreferencesSetMediaSourceEnabled(preferences, true);
@@ -746,7 +735,7 @@ bool TestController::resetStateToConsistentValues()
     m_doneResetting = false;
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
-    runUntil(m_doneResetting, ShortTimeout);
+    runUntil(m_doneResetting, shortTimeout);
     return m_doneResetting;
 }
 
@@ -760,7 +749,19 @@ void TestController::reattachPageToWebProcess()
     // Loading a web page is the only way to reattach an existing page to a process.
     m_doneResetting = false;
     WKPageLoadURL(m_mainWebView->page(), blankURL());
-    runUntil(m_doneResetting, LongTimeout);
+    runUntil(m_doneResetting, shortTimeout);
+}
+
+const char* TestController::webProcessName()
+{
+    // FIXME: Find a way to not hardcode the process name.
+#if PLATFORM(IOS)
+    return  "com.apple.WebKit.WebContent";
+#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
+    return "com.apple.WebKit.WebContent.Development";
+#else
+    return "WebProcess";
+#endif
 }
 
 void TestController::updateWebViewSizeForTest(const TestInvocation& test)
@@ -968,26 +969,10 @@ void TestController::run()
     }
 }
 
-void TestController::runUntil(bool& done, TimeoutDuration timeoutDuration)
+void TestController::runUntil(bool& done, double timeout)
 {
-    double timeout = m_noTimeout;
-    if (!m_forceNoTimeout) {
-        switch (timeoutDuration) {
-        case ShortTimeout:
-            timeout = m_shortTimeout;
-            break;
-        case LongTimeout:
-            timeout = m_longTimeout;
-            break;
-        case CustomTimeout:
-            timeout = m_timeout;
-            break;
-        case NoTimeout:
-        default:
-            timeout = m_noTimeout;
-            break;
-        }
-    }
+    if (m_forceNoTimeout)
+        timeout = noTimeout;
 
     platformRunUntil(done, timeout);
 }
@@ -1398,17 +1383,9 @@ void TestController::processDidCrash()
     if (!m_didPrintWebProcessCrashedMessage) {
 #if PLATFORM(COCOA)
         pid_t pid = WKPageGetProcessIdentifier(m_mainWebView->page());
-        // FIXME: Find a way to not hardcode the process name.
-#if PLATFORM(IOS)
-        const char* processName = "com.apple.WebKit.WebContent";
-#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
-        const char* processName = "com.apple.WebKit.WebContent.Development";
+        fprintf(stderr, "#CRASHED - %s (pid %ld)\n", webProcessName(), static_cast<long>(pid));
 #else
-        const char* processName = "WebProcess";
-#endif
-        fprintf(stderr, "#CRASHED - %s (pid %ld)\n", processName, static_cast<long>(pid));
-#else
-        fputs("#CRASHED - WebProcess\n", stderr);
+        fprintf(stderr, "#CRASHED - %s\n", webProcessName());
 #endif
         fflush(stderr);
         m_didPrintWebProcessCrashedMessage = true;
