@@ -988,7 +988,7 @@ bool QWebPagePrivate::gestureEvent(QGestureEvent* event)
 
   \a property specifies which property is queried.
 
-  \sa QWidget::inputMethodEvent(), QInputMethodEvent, QInputContext
+  \sa QWidget::inputMethodEvent(), QInputMethodEvent
 */
 QVariant QWebPage::inputMethodQuery(Qt::InputMethodQuery property) const
 {

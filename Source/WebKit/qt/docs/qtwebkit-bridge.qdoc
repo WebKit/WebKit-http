@@ -22,7 +22,7 @@
     The playlist manager is usually best authored as a classic desktop application,
     with the native-looking robust \l{QWidget}s as the application's backbone.
     The media-player control usually has a custom look and feel and is best written using the \l{Graphics View framework}
-    or \l{QtDeclarative}. The music store, which shows dynamic content
+    or \l{Qt Quick}. The music store, which shows dynamic content
     from the Internet and gets modified rapidly, is best authored in HTML and maintained on the server.
 
     With the Qt WebKit bridge, the music store component can interact with native parts of the application,
