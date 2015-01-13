@@ -102,6 +102,12 @@ private:
     GSourceWrap::Static m_layerFlushTimer;
 
     static const struct wl_callback_listener m_frameListener;
+    enum class FrameRequestState {
+        InProgress,
+        ScheduleLayerFlushOnCompletion,
+        Completed
+    };
+    FrameRequestState m_frameRequestState;
 
     class DisplayRefreshMonitorWPE : public WebCore::DisplayRefreshMonitor {
     public:
