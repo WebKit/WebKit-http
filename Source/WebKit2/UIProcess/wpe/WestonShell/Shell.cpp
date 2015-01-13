@@ -36,7 +36,7 @@
 
 namespace WPE {
 
-Shell::Shell(const Environment& environment)
+Shell::Shell(Environment& environment)
     : m_environment(environment)
 {
     auto* compositor = m_environment.compositor();
@@ -50,12 +50,11 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
     [](struct weston_pointer_grab*) { },
 
     // motion
-    [](struct weston_pointer_grab*, uint32_t, wl_fixed_t, wl_fixed_t)
+    [](struct weston_pointer_grab* grab, uint32_t, wl_fixed_t x, wl_fixed_t y)
     {
-        // struct weston_pointer* pointer = grab->pointer;
-        // weston_pointer_move(pointer, x, y);
-        // X coordinate: wl_fixed_to_int(pointer->x);
-        // Y coordinate: wl_fixed_to_int(pointer->y);
+        struct weston_pointer* pointer = grab->pointer;
+        weston_pointer_move(pointer, x, y);
+        Shell::instance().m_environment.updateCursorPosition(wl_fixed_to_int(pointer->x), wl_fixed_to_int(pointer->y));
     },
 
     // button
