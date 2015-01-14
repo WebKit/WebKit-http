@@ -100,6 +100,7 @@ public:
     void createGraphicsSurfaces(const IntSize&);
 
     bool isOpenGLES() const;
+    bool isValid() const;
 
     GraphicsContext3D* m_context;
     HostWindow* m_hostWindow;
@@ -121,6 +122,13 @@ bool GraphicsContext3DPrivate::isOpenGLES() const
 #else
     return false;
 #endif
+}
+
+bool GraphicsContext3DPrivate::isValid() const
+{
+    if (!m_platformContext || !m_platformContext->isValid())
+        return false;
+    return m_platformContext->isOpenGLES() || m_platformContext->format().majorVersion() >= 2;
 }
 
 bool GraphicsContext3D::isGLES2Compliant() const
@@ -404,12 +412,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     m_functions = m_private.get();
     validateAttributes();
 
-    static bool initialized = false;
-    static bool success = true;
-    if (!initialized) {
-        initialized = true;
-    }
-    if (!success) {
+    if (!m_private->isValid()) {
         m_private = nullptr;
         return;
     }
