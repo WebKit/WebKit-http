@@ -48,12 +48,12 @@ void TextureMapperLayer::computeTransformsRecursive()
         return;
 
     // Compute transforms recursively on the way down to leafs.
-    TransformationMatrix parentTransform;
     if (m_parent)
-        parentTransform = m_parent->m_currentTransform.combinedForChildren();
+        m_currentTransform.combineTransforms(m_parent->m_currentTransform.combinedForChildren());
     else if (m_effectTarget)
-        parentTransform = m_effectTarget->m_currentTransform.combined();
-    m_currentTransform.combineTransforms(parentTransform);
+        m_currentTransform.combineTransforms(m_effectTarget->m_currentTransform.combined());
+    else
+        m_currentTransform.combineTransforms(TransformationMatrix());
 
     m_state.visible = m_state.backfaceVisibility || !m_currentTransform.combined().isBackFaceVisible();
 
